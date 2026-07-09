@@ -221,7 +221,7 @@ function Dock() {
   // Explicit flex bottom-nav (version-independent — DaisyUI 5 dropped `btm-nav`). Labels truncate so
   // 3+ tabs stay inside a watch-narrow width.
   const t = useStore(A.S.t), cur = useStore(A.S.tab);
-  return html`<nav class="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 z-20 flex" style="padding-bottom:env(safe-area-inset-bottom)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex-1 flex flex-col items-center gap-0.5 py-2 min-w-0 ${cur === tab.id ? "text-primary" : "text-base-content/60"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-none truncate max-w-full px-1">${T(t, tab.label)}</span></button>`)}</nav>`;
+  return html`<nav class="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 z-20 flex" style="padding-bottom:env(safe-area-inset-bottom)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex-1 flex flex-col items-center gap-0.5 py-2 min-w-0 ${cur === tab.id ? "text-primary" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-none truncate max-w-full px-1">${T(t, tab.label)}</span></button>`)}</nav>`;
 }
 
 function Toast() {

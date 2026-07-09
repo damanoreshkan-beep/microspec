@@ -1,0 +1,7 @@
+{
+  "//": "microspec authoring toolkit — the deterministic half of the agent-driven loop (the LLM is the agent in-session).",
+  "tasks": {
+    "scaffold": "deno run -A scaffold.mjs",
+    "validate": "deno run -A ../schema/validate.mjs"
+  }
+}

@@ -13,7 +13,7 @@ const DEFAULT_PPCM = 96 / 2.54;      // ~37.8 CSS px per cm (baseline before cal
 const CARD_CM = 8.56;                // bank card long edge = 85.6 mm
 const CARD_RATIO = 85.6 / 53.98;     // ISO/IEC 7810 ID-1
 
-export function view({ S, openScreen, closeScreen }) {
+export function ruler({ S, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const screen = useStore(S.screen);
   const [ppcm, setPpcm] = useState(() => Number(localStorage.getItem(CAL_KEY)) || DEFAULT_PPCM);

@@ -1,0 +1,12 @@
+{
+  "name": "@microspec/runtime",
+  "tasks": {
+    "test": "deno test -A runtime_test.js"
+  },
+  "exports": {
+    "./validate": "./validate.js",
+    "./i18n": "./i18n.js",
+    "./feed": "./feed.js",
+    "./store": "./store.js"
+  }
+}

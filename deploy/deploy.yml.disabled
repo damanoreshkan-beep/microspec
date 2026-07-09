@@ -1,0 +1,35 @@
+# Pages deploy — kept DISABLED (as `.yml.disabled`) until the repo goes public and Pages is enabled.
+# To activate: move to .github/workflows/deploy.yml and (optionally) add `push: { branches: [main] }`.
+name: deploy
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - name: Assemble dist/
+        run: deno run -A deploy/build.mjs
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: dist }
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.d.outputs.page_url }}
+    steps:
+      - id: d
+        uses: actions/deploy-pages@v4

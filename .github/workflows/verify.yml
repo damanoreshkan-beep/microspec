@@ -1,0 +1,60 @@
+name: verify
+
+# The gate. Runtime is off-device — CI is the only place Chromium runs (visual gates need ~1GB RAM).
+# unit: browser-free logic + schema contract. verify: one Chromium job per app (axe + responsive + e2e).
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - name: Runtime unit tests (pure logic, no browser)
+        run: deno test -A packages/runtime/runtime_test.js
+      - name: Schema contract gate (ajv) over every app spec
+        run: deno run -A packages/schema/validate.mjs apps/*/spec.json
+
+  verify:
+    runs-on: ubuntu-latest
+    needs: unit
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [hn]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - name: Cache deno deps
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: deno-${{ hashFiles('packages/**/deno.json') }}
+          restore-keys: deno-
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+        with: { chrome-version: stable }
+      - run: sudo apt-get update && sudo apt-get install -y xvfb fonts-liberation
+      - name: Verify ${{ matrix.app }}
+        env:
+          DISPLAY: ":99"
+          DISPLAY_NUM: "99"
+          CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: deno run -A packages/gates/verify.mjs "$GITHUB_WORKSPACE/apps/${{ matrix.app }}" --shots
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shot-${{ matrix.app }}
+          path: apps/${{ matrix.app }}/states/main.png
+          if-no-files-found: warn

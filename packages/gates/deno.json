@@ -1,0 +1,10 @@
+{
+  "//": "microspec gates — CI-only Chromium harness (Astral). Zero node_modules; apps stay CDN-only.",
+  "tasks": {
+    "verify": "deno run -A verify.mjs"
+  },
+  "imports": {
+    "@astral/astral": "jsr:@astral/astral@^0.5.3",
+    "@std/http": "jsr:@std/http@^1"
+  }
+}

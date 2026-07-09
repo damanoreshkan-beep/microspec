@@ -1,0 +1,260 @@
+// microspec runtime — Preact render catalog. Reads a spec, renders via an allow-listed set of
+// components (families). This slice ships: shell (AppBar, Dock, SearchBar, Toast), the LIST family
+// (feed + row cards, badges, sections, search/searchFetch), PROFILE, top-level DETAIL drill-down,
+// and FILTER sheet/chips + InstallModal. converter/dashboard/tool views land in the next slice.
+import { Fragment } from "preact";
+import { useRef, useEffect } from "preact/hooks";
+import { html } from "htm/preact";
+import { useStore } from "@nanostores/preact";
+import { T, ago } from "./i18n.js";
+
+let A;            // app context: { spec, S, load, toast, toggleFav, favKey, swap }
+let VIEWS = {};   // tool-app custom views: { viewKey: PreactComponent }
+export function setApp(app, views) { A = app; VIEWS = views || {}; }
+
+// ---- helpers ----------------------------------------------------------------
+const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
+const searchText = (it) => Object.values(it).map((v) => Array.isArray(v) ? v.join(" ") : v).join(" ").toLowerCase();
+
+// tiny predicate language for sections / clientFilters / when-badges: "fav", "!fav", "field", "!field"
+function test(it, fav, expr) {
+  if (!expr) return true;
+  const neg = expr.startsWith("!");
+  const key = neg ? expr.slice(1) : expr;
+  const truthy = key === "fav" ? !!fav[A.favKey(it)] : !!it[key];
+  return neg ? !truthy : truthy;
+}
+
+// block javascript:/data: URLs coming from untrusted feed data
+function safeHref(href) {
+  if (typeof href !== "string") return null;
+  try { const u = new URL(href, location.href); return /^https?:$/.test(u.protocol) ? href : null; }
+  catch { return null; }
+}
+
+const metaText = (meta, it, dict, loc) => {
+  if (!meta) return "";
+  if (typeof meta === "string") return it[meta] ?? "";
+  const v = it[meta.field];
+  return v == null ? "" : (meta.format === "ago" ? ago(dict, v, loc) : String(v));
+};
+
+// searchFetch family: the search box debounce-drives a real refetch (query → data.js as filters.q).
+let _searchT;
+const debouncedLoad = () => { clearTimeout(_searchT); _searchT = setTimeout(() => A.load(), 350); };
+
+const Empty = (icon, text, hint) => html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-2 text-center px-6">${Icon(icon, "text-4xl")}<span class="font-medium">${text}</span>${hint && html`<span class="text-sm text-base-content/60">${hint}</span>`}</div>`;
+
+const Skeleton = (row) => html`<${Fragment}>${Array.from({ length: 6 }, (_, i) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl" key=${i}><div class=${row ? "card-body p-3 px-4 flex-row items-center gap-3" : "card-body p-4 gap-3"}>${row ? html`<div class="skeleton h-5 w-10"></div><div class="skeleton h-4 flex-1"></div><div class="skeleton h-5 w-16"></div>` : html`<div class="skeleton h-5 w-2/3"></div><div class="skeleton h-4 w-1/3"></div><div class="skeleton h-4 w-full"></div>`}</div></div>`)}</${Fragment}>`;
+
+const Frag = (children) => html`<${Fragment}>${children}</${Fragment}>`;
+
+// ---- badges -----------------------------------------------------------------
+function Badges({ item: it, badges, hide }) {
+  const t = useStore(A.S.t), fav = useStore(A.S.fav);
+  if (!badges) return null;
+  return html`<div class="flex flex-wrap gap-1.5 mt-0.5">${badges.map((b) => {
+    if (hide && b.key === hide) return null;
+    const cls = `badge badge-sm ${b.variant === "primary" ? "badge-primary" : b.variant === "success" ? "badge-success badge-outline" : "badge-ghost"} @max-[240px]:hidden`;
+    if (b.field) {
+      const v = it[b.field];
+      if (Array.isArray(v)) return v.map((x) => html`<span class=${cls} key=${x}>${x}</span>`);
+      return v != null && v !== "" ? html`<span class=${`${cls} ${b.icon ? "gap-1" : ""}`}>${b.icon ? Icon(b.icon) : null}${v}</span>` : null;
+    }
+    if (b.when && test(it, fav, b.when)) return html`<span class=${`${b.variant === "primary" ? "badge badge-sm badge-primary" : "badge badge-sm badge-ghost"} gap-1`}>${b.icon ? Icon(b.icon) : null} ${T(t, b.label)}</span>`;
+    return null;
+  })}</div>`;
+}
+
+// ---- card -------------------------------------------------------------------
+function Card({ item: it, card, hide }) {
+  const t = useStore(A.S.t), fav = useStore(A.S.fav), loc = useStore(A.S.locale);
+  const on = !!fav[A.favKey(it)];
+  const star = A.spec.fav ? html`<button data-fav=${A.favKey(it)} aria-label=${on ? T(t, "unfavAria") : T(t, "favAria")}
+    onClick=${(e) => { e.preventDefault(); e.stopPropagation(); A.toggleFav(it); }}
+    class=${`btn btn-ghost btn-xs btn-circle relative z-10 ${on ? "text-primary" : "opacity-50"}`}>${Icon(card.layout === "row" ? "lucide:star" : `lucide:bookmark${on ? "-check" : ""}`, "text-lg")}</button>` : null;
+
+  if (card.layout === "row") {
+    return html`<div class="card @container bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 px-4 flex-row items-center gap-3 @max-[260px]:px-2.5 @max-[260px]:gap-2">
+      <div class="font-bold text-primary w-11 shrink-0 @max-[260px]:w-8 @max-[260px]:text-sm">${it[card.lead] ?? "—"}</div>
+      <div class="flex-1 min-w-0 @max-[260px]:hidden"><div class="font-medium truncate text-sm">${it[card.title]}</div></div>
+      <div class="text-right @max-[260px]:text-sm"><div class="font-semibold tabular-nums">${it[card.trailing] == null ? "—" : card.unit ? it[card.trailing] + " " + card.unit : it[card.trailing]}</div></div>
+      ${star}
+    </div></div>`;
+  }
+
+  const body = html`<div class="card-body p-4 gap-2 @max-[240px]:p-3 @max-[240px]:gap-1">
+    <div class="flex items-start justify-between gap-2"><h2 class="font-semibold leading-snug break-words min-w-0 @max-[240px]:text-sm">${it[card.title] ?? "—"}</h2>${star}</div>
+    ${card.subtitle && it[card.subtitle] ? html`<div class="text-sm text-base-content/70 @max-[240px]:hidden">${it[card.subtitle]}</div>` : null}
+    <${Badges} item=${it} badges=${card.badges} hide=${hide} />
+    ${card.body && it[card.body] ? html`<p class="text-sm text-base-content/70 line-clamp-2 @max-[240px]:hidden">${it[card.body]}</p>` : null}
+    <div class="flex items-center justify-between gap-2 mt-0.5 @max-[240px]:hidden">
+      ${(() => { const mt = metaText(card.meta, it, t, loc); return mt ? html`<span class="text-xs text-base-content/80 flex items-center gap-1">${card.meta?.format === "ago" ? Icon("lucide:clock", "text-[0.9em] opacity-70") : null}${mt}</span>` : html`<span></span>`; })()}
+      ${card.more ? html`<span class="text-xs text-primary font-medium flex items-center gap-0.5 ml-auto">${T(t, card.more)} ${Icon("lucide:arrow-up-right")}</span>` : null}
+    </div></div>`;
+
+  const img = card.image && it[card.image] ? html`<figure class="aspect-video bg-base-300 overflow-hidden @max-[240px]:hidden"><img src=${it[card.image]} alt="" loading="lazy" class=${`w-full h-full ${card.imageFit === "contain" ? "object-contain" : "object-cover"}`}/></figure>` : null;
+  const cls = `card @container bg-base-100 border border-base-300 rounded-2xl${card.image ? " overflow-hidden" : ""}`;
+
+  // top-level detail turns every card into a drill-down (stretched-link: full-card button UNDER the star)
+  if (A.spec.detail) {
+    return html`<div class=${cls + " relative hover:border-primary/40 active:scale-[.99] transition"}>${img}${body}
+      <button class="aw-tap absolute inset-0 z-[1] rounded-2xl" aria-label=${`${it[card.title] ?? ""} — ${T(t, card.more || "title")}`} onClick=${() => A.S.detail.set(it)}></button></div>`;
+  }
+  const href = card.href ? safeHref(it[card.href]) : null;
+  return href
+    ? html`<a href=${href} target="_blank" rel="noopener" class=${cls + " block hover:border-primary/40 active:scale-[.99] transition"}>${img}${body}</a>`
+    : html`<div class=${cls}>${img}${body}</div>`;
+}
+
+function Section({ sec, items, card }) {
+  const t = useStore(A.S.t), filters = useStore(A.S.filters);
+  return html`<${Fragment}>
+    <div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span><span class=${`badge badge-sm ${sec.accent ? "badge-primary" : "badge-ghost"}`}>${items.length}</span><span class="flex-1 h-px bg-base-300"></span></div>
+    ${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}
+  </${Fragment}>`;
+}
+
+// ---- list family ------------------------------------------------------------
+function ListView({ tab }) {
+  const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters);
+  if (!tab.card) return Empty("lucide:alert-triangle", T(t, tab.empty?.text || "noResults"), null);
+  if (data.loading) return Skeleton(tab.card.layout === "row");
+  if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
+  if (tab.searchFetch && !q) return Empty(tab.prompt?.icon || "lucide:search", T(t, tab.prompt?.text || "searchPrompt"), T(t, tab.prompt?.hint || "searchPromptHint"));
+
+  let items = tab.source === "fav" ? Object.values(fav) : data.items;
+  if (q && !tab.searchFetch) items = items.filter((it) => searchText(it).includes(q));  // server already searched when searchFetch
+  for (const cf of (tab.clientFilters || [])) if (filters[cf.key]) items = items.filter((it) => test(it, fav, cf.when));
+  if (!items.length) return Empty(tab.empty?.icon || "lucide:search-x", T(t, tab.empty?.text || "noResults"), T(t, tab.empty?.hint || "noResultsHint"));
+
+  if (!tab.sections) return Frag(items.map((it) => html`<${Card} item=${it} card=${tab.card} key=${A.favKey(it) || it[tab.card.title]} />`));
+  return Frag(tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; }));
+}
+
+// ---- profile ----------------------------------------------------------------
+function Profile({ tab }) {
+  const t = useStore(A.S.t), theme = useStore(A.S.theme), loc = useStore(A.S.locale), fav = useStore(A.S.fav);
+  const p = A.spec.profile || {};
+  const savedTab = A.spec.tabs.find((x) => x.source === "fav");
+  return html`<div class="flex flex-col gap-3 pt-1">
+    ${p.install && !isStandalone() ? html`<button id="p-install" class="card bg-primary/10 border border-primary/25 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.installOpen.set(true)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:download", "text-xl text-primary")}<span class="flex-1 font-medium text-left text-primary">${T(t, "install")}</span>${Icon("lucide:chevron-right", "text-primary opacity-60")}</div></button>` : null}
+    <div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-5 items-center text-center gap-1">${Icon(p.icon || "lucide:box", "text-4xl text-primary")}<div class="font-bold text-lg mt-1">${T(t, "title")}</div><div class="text-sm text-base-content/60">${T(t, "profTagline")}</div></div></div>
+    ${savedTab ? html`<button class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
+    ${p.theme ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:moon", "text-xl")}<span class="flex-1 font-medium">${T(t, "profTheme")}</span><input id="p-theme" type="checkbox" class="toggle toggle-primary" checked=${theme === "dim"} onChange=${(e) => A.S.theme.set(e.target.checked ? "dim" : "light")} /></div></div>` : null}
+    ${p.lang ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
+    ${p.source ? html`<a href=${p.source.url} target="_blank" rel="noopener" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon(p.source.icon || "lucide:database", "text-xl")}<span class="flex-1 font-medium">${T(t, p.source.label)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
+  </div>`;
+}
+
+// ---- detail overlay ---------------------------------------------------------
+function DetailView() {
+  const t = useStore(A.S.t), it = useStore(A.S.detail), fav = useStore(A.S.fav);
+  if (!it) return null;
+  const d = A.spec.detail, on = !!fav[A.favKey(it)], close = () => A.S.detail.set(null);
+  const img = d.image && it[d.image] ? html`<figure class="aspect-video bg-base-300 rounded-2xl overflow-hidden border border-base-300"><img src=${it[d.image]} alt="" class=${`w-full h-full ${d.imageFit === "cover" ? "object-cover" : "object-contain"}`}/></figure>` : null;
+  const rows = (d.rows || []).map((r) => { const v = it[r.field]; return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-base-content/60">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
+  const actions = (d.actions || []).map((a) => { const href = safeHref(it[a.href]); return href ? html`<a href=${href} target="_blank" rel="noopener" class="btn btn-primary rounded-2xl w-full gap-2" key=${a.href}>${a.icon ? Icon(a.icon) : null}${T(t, a.label)} ${Icon("lucide:arrow-up-right")}</a>` : null; });
+  const star = A.spec.fav ? html`<button id="detail-fav" aria-label=${on ? T(t, "unfavAria") : T(t, "favAria")} onClick=${() => A.toggleFav(it)} class=${`btn btn-ghost btn-sm btn-circle ${on ? "text-primary" : "opacity-60"}`}>${Icon(`lucide:bookmark${on ? "-check" : ""}`, "text-xl")}</button>` : null;
+  return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
+    <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${it[d.title] ?? ""}</div>${star}</header>
+    <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">${img}<div><h1 class="text-2xl font-bold leading-tight break-words">${it[d.title] ?? ""}</h1>${d.subtitle && it[d.subtitle] ? html`<div class="text-base-content/70 mt-0.5">${it[d.subtitle]}</div>` : null}</div>${rows.some(Boolean) ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 py-1">${rows}</div></div>` : null}${actions.some(Boolean) ? html`<div class="flex flex-col gap-2">${actions}</div>` : null}</div>
+  </div>`;
+}
+
+// ---- filters ----------------------------------------------------------------
+function FilterChips() {
+  const t = useStore(A.S.t), filters = useStore(A.S.filters);
+  const f = A.spec.filters; if (!f) return null;
+  const defaults = f.defaults || {}, refetch = f.refetch;
+  const chips = [];
+  for (const c of (f.controls || [])) {
+    const v = filters[c.key], def = defaults[c.key] ?? (c.type === "toggle" ? false : "");
+    if (c.type === "toggle") { if (v) chips.push({ key: c.key, label: T(t, c.label), reset: false }); continue; }
+    if (v != null && v !== def) { const opt = (c.options || []).find((o) => o[0] === v); chips.push({ key: c.key, label: opt ? T(t, opt[1]) : String(v), reset: def }); }
+  }
+  if (!chips.length) return null;
+  return html`<div class="flex flex-wrap gap-1.5 px-4 mt-2">${chips.map((ch) => html`<button class="badge badge-primary badge-outline gap-1 cursor-pointer" key=${ch.key} onClick=${() => { A.S.filters.setKey(ch.key, ch.reset); if (refetch) A.load(); }}>${ch.label} ${Icon("lucide:x", "text-xs")}</button>`)}</div>`;
+}
+
+function FilterSheet() {
+  const t = useStore(A.S.t), open = useStore(A.S.sheet), filters = useStore(A.S.filters), data = useStore(A.S.data);
+  const f = A.spec.filters; if (!f) return null;
+  const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
+  return html`<dialog id="sheet" ref=${ref} class="modal modal-bottom" onClose=${() => A.S.sheet.set(false)}><div class="modal-box rounded-t-3xl pb-8 flex flex-col gap-3">
+    <div class="flex items-center justify-between"><h3 class="font-bold text-lg">${T(t, "filterTitle")}</h3><button class="btn btn-ghost btn-sm btn-circle" onClick=${() => A.S.sheet.set(false)}>${Icon("lucide:x", "text-xl")}</button></div>
+    ${(f.controls || []).map((c) => {
+      if (c.type === "select") return html`<label class="form-control" key=${c.key}><span class="text-sm flex items-center gap-2 mb-1">${c.icon ? Icon(c.icon) : null} ${T(t, c.label)}</span><select id=${"f-" + c.key} class="select select-bordered rounded-2xl w-full" value=${filters[c.key] || ""} onChange=${(e) => A.S.filters.setKey(c.key, e.target.value)}>${(data.meta[c.optionsFrom] || []).map((o) => html`<option value=${o.v} key=${o.v}>${o.l}</option>`)}</select></label>`;
+      if (c.type === "toggle") return html`<label class="flex items-center justify-between" key=${c.key}><span class="flex items-center gap-2">${c.icon ? Icon(c.icon) : null} ${T(t, c.label)}</span><input id=${"f-" + c.key} type="checkbox" class="toggle toggle-primary" checked=${!!filters[c.key]} onChange=${(e) => A.S.filters.setKey(c.key, e.target.checked)} /></label>`;
+      return html`<${Fragment} key=${c.key}><span class="flex items-center gap-2 text-sm">${c.icon ? Icon(c.icon) : null} ${T(t, c.label)}</span><div class="join w-full" id=${"f-" + c.key}>${c.options.map(([v, l]) => html`<button class=${`btn btn-sm join-item flex-1 ${(filters[c.key] || "") === v ? "btn-active" : ""}`} data-val=${v} key=${v} onClick=${() => A.S.filters.setKey(c.key, v)}>${T(t, l)}</button>`)}</div></${Fragment}>`;
+    })}
+    <button id="f-apply" class="btn btn-primary rounded-2xl mt-3" onClick=${() => { A.S.sheet.set(false); A.S.tab.set(A.spec.tabs[0].id); if (f.refetch) A.load(); }}>${T(t, "apply")}</button>
+  </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
+}
+
+function InstallModal() {
+  const t = useStore(A.S.t), open = useStore(A.S.installOpen), ev = useStore(A.S.installEvent);
+  const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
+  const go = async () => { if (ev) { ev.prompt(); await ev.userChoice; A.S.installEvent.set(null); } A.S.installOpen.set(false); };
+  return html`<dialog id="install" ref=${ref} class="modal modal-bottom" onClose=${() => A.S.installOpen.set(false)}><div class="modal-box rounded-t-3xl pb-8">
+    <div class="flex items-center justify-between mb-3"><h3 class="font-bold text-lg flex items-center gap-2">${Icon("lucide:download", "text-primary")} ${T(t, "installTitle")}</h3><button class="btn btn-ghost btn-sm btn-circle" onClick=${() => A.S.installOpen.set(false)}>${Icon("lucide:x", "text-xl")}</button></div>
+    <div class="text-sm text-base-content/70 mb-4">${T(t, "installDesc")}</div>
+    ${ev ? html`<button id="install-go" class="btn btn-primary rounded-2xl w-full gap-2" onClick=${go}>${Icon("lucide:download")} ${T(t, "installBtn")}</button>` : html`<div class="flex items-start gap-2 bg-base-200 rounded-2xl px-3 py-3 text-sm">${Icon(isIOS() ? "lucide:share" : "lucide:menu", "text-lg mt-0.5")}<span>${isIOS() ? T(t, "installIosHint") : T(t, "installGenericHint")}</span></div>`}
+  </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
+}
+
+// ---- shell ------------------------------------------------------------------
+function SearchBar({ tab }) {
+  const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query), fav = useStore(A.S.fav);
+  const status = tab.source === "fav" ? T(t, "savedCount", { n: Object.keys(fav).length })
+    : data.loading ? T(t, "statusLoading") : data.error ? T(t, "statusError")
+    : T(t, tab.statusKey || "status", { ...(data.meta || {}) });
+  return html`<div class="sticky top-14 z-10 bg-base-200 border-b border-base-300/50 px-4 pt-3 pb-2"><label class="input input-bordered flex items-center gap-2 h-11 rounded-2xl">${Icon("lucide:search", "text-lg opacity-50")}<input id="filter" type="search" class="grow" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /></label><div id="status" class="text-xs text-base-content/70 mt-1 min-h-4 px-1">${status}</div></div>`;
+}
+
+function AppBar() {
+  const t = useStore(A.S.t);
+  return html`<header class="navbar bg-base-100 sticky top-0 z-20 border-b border-base-300 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1"><span class="text-base font-bold tracking-tight">${T(t, "title")}</span></div>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button></header>`;
+}
+
+function Dock() {
+  // Explicit flex bottom-nav (version-independent — DaisyUI 5 dropped `btm-nav`). Labels truncate so
+  // 3+ tabs stay inside a watch-narrow width.
+  const t = useStore(A.S.t), cur = useStore(A.S.tab);
+  return html`<nav class="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 z-20 flex" style="padding-bottom:env(safe-area-inset-bottom)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex-1 flex flex-col items-center gap-0.5 py-2 min-w-0 ${cur === tab.id ? "text-primary" : "text-base-content/60"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-none truncate max-w-full px-1">${T(t, tab.label)}</span></button>`)}</nav>`;
+}
+
+function Toast() {
+  const key = useStore(A.S.toast), t = useStore(A.S.t);
+  const text = key === "saved" ? T(t, "toastSaved") : key === "removed" ? T(t, "toastRemoved") : key;
+  return html`<div data-toast class="pointer-events-none" style="position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:5.5rem"><div class=${`alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-3 px-5 font-medium flex items-center gap-2 w-max transition-opacity duration-200 ${key ? "opacity-100" : "opacity-0"}`}>${Icon("lucide:check-circle", "text-success text-lg")}${text || ""}</div></div>`;
+}
+
+function TabView({ tab }) {
+  if (tab.type === "list") return html`<${ListView} tab=${tab} />`;
+  if (tab.type === "profile") return html`<${Profile} tab=${tab} />`;
+  if (tab.type === "tool") { const V = VIEWS[tab.view]; return V ? html`<${V} t=${A.S.t.get()} tab=${tab} S=${A.S} toast=${A.toast} screen=${A.S.screen.get()} openScreen=${(s) => A.S.screen.set(s)} closeScreen=${() => A.S.screen.set(null)} />` : Empty("lucide:wrench", `view "${tab.view}" not provided`, null); }
+  // converter / dashboard land in the next slice
+  return Empty("lucide:construction", `${tab.type} view — coming next slice`, null);
+}
+
+export function App() {
+  const cur = useStore(A.S.tab);
+  const tab = A.spec.tabs.find((x) => x.id === cur) || A.spec.tabs[0];
+  return html`<${Fragment}>
+    <${AppBar} />
+    ${tab.type === "list" && tab.search ? html`<${SearchBar} tab=${tab} />` : null}
+    ${A.spec.filters ? html`<${FilterChips} />` : null}
+    <main id="view" class="px-4 pb-24 pt-3 max-w-xl mx-auto flex flex-col gap-2.5">
+      <${TabView} tab=${tab} />
+    </main>
+    ${A.spec.detail ? html`<${DetailView} />` : null}
+    ${A.spec.filters ? html`<${FilterSheet} />` : null}
+    <${InstallModal} />
+    <${Dock} />
+    <${Toast} />
+  </${Fragment}>`;
+}
+
+export const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+export const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;

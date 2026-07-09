@@ -19,20 +19,23 @@ spec **contract** for this niche, the manager **rulebook** (process that stops r
 | Package | Role | Runs on |
 |---|---|---|
 | `packages/schema` | The spec **contract** (JSON Schema, SoT) + ajv validator | anywhere |
-| `packages/runtime` | Preact catalog that renders a spec (families + invariants) | browser (zero-build ESM) |
-| `packages/gates` | `verify` = a11y + e2e + responsive + shots + probe | **CI** (Chromium) |
-| `packages/gen` | prompt → Claude structured-output → spec + data adapter | VPS brain |
-| `orchestrator` | prompt → gen → git → CI gate → deploy | VPS brain |
+| `packages/runtime` | Preact catalog that renders a spec (5 families + invariants) | browser (zero-build ESM) |
+| `packages/gates` | `verify` = a11y + e2e + responsive + shots | **CI** (Chromium) |
+| `packages/gen` | authoring toolkit — `scaffold` (spec+data → app shell) | anywhere |
 | `apps/` | reference farm (one app per family) = the family showcase + regression suite | — |
 
-Heavy visual gates run in GitHub Actions; the VPS runs only the lightweight brain.
+**The LLM in the loop is the agent (Claude) in-session** — there is no autonomous API generator. The
+human gives a prompt; the agent authors two files (`spec.json` + `data.js`); the toolkit scaffolds,
+validates, and CI gates. See `docs/AUTHORING.md`. Heavy visual gates run in GitHub Actions.
 
 ## Status
 
-- **P0** — monorepo scaffold + contract SoT + ajv validator ✅ (validates all reference families; rejects bad specs)
-- P1 runtime · P2 gates-in-CI · P3 reference apps · P4 generator · P5 VPS brain · P6 OSS polish — pending
+- **P0** contract + ajv ✅ · **P1** runtime — all 5 families ✅ · **P2** gates-in-CI ✅
+- **P3** 5 reference apps (hn · rates · weather · wiki · ruler), CI-green ✅
+- **P4** authoring toolkit (`scaffold` + rulebook) ✅
+- **P5** ~~VPS brain~~ — obviated (no API loop; deploy = GitHub Pages) · **P6** OSS polish + Pages deploy — pending
 
-See `packages/schema/SCHEMA.md` for the spec authoring reference.
+See `packages/schema/SCHEMA.md` for the spec reference and `docs/AUTHORING.md` for the loop.
 
 ## Contract gate
 

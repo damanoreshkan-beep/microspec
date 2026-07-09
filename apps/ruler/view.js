@@ -10,7 +10,7 @@ const DEFAULT_PPCM = 96 / 2.54;
 const CARD_CM = 8.56;                
 const CARD_RATIO = 85.6 / 53.98;     
 
-export function view({ S, openScreen, closeScreen }) {
+export function ruler({ S, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const screen = useStore(S.screen);
   const [ppcm, setPpcm] = useState(() => Number(localStorage.getItem(CAL_KEY)) || DEFAULT_PPCM);

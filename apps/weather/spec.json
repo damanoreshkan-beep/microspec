@@ -1,0 +1,43 @@
+{
+  "id": "weather",
+  "theme": "dim",
+  "tabs": [
+    {
+      "id": "now", "type": "dashboard", "icon": "lucide:sun", "label": "tabNow",
+      "hero": {
+        "place": "place", "icon": "wicon", "value": "temp", "unit": "°",
+        "metrics": [
+          { "field": "feels", "label": "mFeels", "unit": "°", "icon": "lucide:thermometer" },
+          { "field": "humidity", "label": "mHumidity", "unit": "%", "icon": "lucide:droplet" },
+          { "field": "wind", "label": "mWind", "unit": " km/h", "icon": "lucide:wind" }
+        ]
+      },
+      "strip": { "from": "hourly", "label": "stripLabel", "time": "time", "value": "temp", "unit": "°", "icon": "wicon" },
+      "days": { "label": "daysLabel", "day": "day", "hi": "hi", "lo": "lo", "unit": "°", "icon": "wicon" }
+    },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:cloud-sun", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://open-meteo.com/", "icon": "lucide:database" } },
+  "i18n": {
+    "uk": {
+      "title": "Погода", "tabNow": "Зараз", "tabMe": "Я",
+      "statusError": "Дані недоступні", "errorHint": "Перевір зʼєднання та онови",
+      "mFeels": "Відчувається", "mHumidity": "Вологість", "mWind": "Вітер",
+      "stripLabel": "Погодинно", "daysLabel": "На тиждень",
+      "profTheme": "Темна тема", "profLang": "Мова", "profTagline": "Погода зараз і прогноз", "profSource": "Джерело — open-meteo.com",
+      "install": "Встановити застосунок", "installTitle": "Встановлення", "installBtn": "Встановити", "installDesc": "Працює офлайн, відкривається як застосунок",
+      "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».", "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
+      "close": "Закрити", "refresh": "Оновити", "toastSaved": "Збережено", "toastRemoved": "Видалено"
+    },
+    "en": {
+      "title": "Weather", "tabNow": "Now", "tabMe": "Me",
+      "statusError": "Data unavailable", "errorHint": "Check connection and refresh",
+      "mFeels": "Feels like", "mHumidity": "Humidity", "mWind": "Wind",
+      "stripLabel": "Hourly", "daysLabel": "This week",
+      "profTheme": "Dark theme", "profLang": "Language", "profTagline": "Current weather and forecast", "profSource": "Source — open-meteo.com",
+      "install": "Install app", "installTitle": "Install", "installBtn": "Install", "installDesc": "Works offline, opens like an app",
+      "installIosHint": "In Safari: tap Share, then 'Add to Home Screen'.", "installGenericHint": "In your browser menu choose 'Install' or 'Add to Home Screen'.",
+      "close": "Close", "refresh": "Refresh", "toastSaved": "Saved", "toastRemoved": "Removed"
+    }
+  }
+}

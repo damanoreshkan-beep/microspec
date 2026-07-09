@@ -38,6 +38,7 @@ const metaText = (meta, it, dict, loc) => {
   const v = it[meta.field];
   return v == null ? "" : (meta.format === "ago" ? ago(dict, v, loc) : String(v));
 };
+const fmtNum = (n, loc) => new Intl.NumberFormat(loc === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
 // searchFetch family: the search box debounce-drives a real refetch (query → data.js as filters.q).
 let _searchT;
@@ -230,12 +231,64 @@ function Toast() {
   return html`<div data-toast class="pointer-events-none" style="position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:5.5rem"><div class=${`alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-3 px-5 font-medium flex items-center gap-2 w-max transition-opacity duration-200 ${key ? "opacity-100" : "opacity-0"}`}>${Icon("lucide:check-circle", "text-success text-lg")}${text || ""}</div></div>`;
 }
 
+// ---- converter family -------------------------------------------------------
+// Rate convention: rateField = value of 1 unit of this code expressed in `base` (base itself = 1).
+// So from→to: result = amount * rate(from) / rate(to). data.js must normalise to this convention.
+function ConverterView({ tab }) {
+  const t = useStore(A.S.t), data = useStore(A.S.data), loc = useStore(A.S.locale);
+  const amount = useStore(A.S.amount), from = useStore(A.S.from), to = useStore(A.S.to);
+  if (data.loading) return Skeleton(false);
+  if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
+  const codes = [tab.base, ...data.items.map((i) => i[tab.codeField])].filter((v, i, a) => v && a.indexOf(v) === i);
+  const rate = (code) => code === tab.base ? 1 : (Number(data.items.find((i) => i[tab.codeField] === code)?.[tab.rateField]) || 0);
+  const amt = parseFloat(String(amount).replace(",", ".")) || 0;
+  const rFrom = rate(from), rTo = rate(to);
+  const result = rTo ? amt * rFrom / rTo : 0;
+  const one = rTo ? rFrom / rTo : 0;
+  const quick = tab.quick || ["100", "500", "1000", "5000"];
+  const Sel = (id, val, onCh) => html`<select id=${id} class="select select-bordered rounded-2xl font-semibold w-24 shrink-0" value=${val} onChange=${(e) => onCh(e.target.value)}>${codes.map((c) => html`<option value=${c} key=${c}>${c}</option>`)}</select>`;
+  return html`<div class="flex flex-col gap-3">
+    <div class="card @container bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 gap-3">
+      <div class="flex gap-2 items-center"><input id="conv-amount" type="text" inputmode="decimal" class="input input-bordered rounded-2xl text-lg font-semibold tabular-nums flex-1 min-w-0" value=${amount} onInput=${(e) => A.S.amount.set(e.target.value)} />${Sel("conv-from", from, (v) => A.S.from.set(v))}</div>
+      <div class="flex justify-center"><button id="conv-swap" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "swap")} onClick=${A.swap}>${Icon("lucide:arrow-up-down", "text-xl")}</button></div>
+      <div class="flex gap-2 items-center"><div id="conv-result" class="input input-bordered rounded-2xl text-lg font-bold tabular-nums flex-1 min-w-0 flex items-center bg-base-200">${fmtNum(result, loc)}</div>${Sel("conv-to", to, (v) => A.S.to.set(v))}</div>
+      <div class="text-xs text-base-content/80 text-center">${T(t, "perUnit2", { a: "1 " + from, rate: fmtNum(one, loc), b: to })}</div>
+    </div></div>
+    <div class="flex flex-wrap gap-2 justify-center">${quick.map((q) => html`<button class="btn btn-sm btn-outline rounded-full" key=${q} onClick=${() => A.S.amount.set(q)}>${q}</button>`)}</div>
+  </div>`;
+}
+
+// ---- dashboard family -------------------------------------------------------
+// hero reads data.meta (flattened current); strip is a horizontal scroller over a meta array;
+// days is a vertical list over data.items.
+function DashboardView({ tab }) {
+  const t = useStore(A.S.t), data = useStore(A.S.data), loc = useStore(A.S.locale);
+  if (data.loading) return html`<div class="flex flex-col gap-3"><div class="skeleton h-44 rounded-2xl"></div><div class="skeleton h-24 rounded-2xl"></div></div>`;
+  if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
+  const m = data.meta || {}, h = tab.hero;
+  const place = h.place && m[h.place] ? (A.spec.filters
+    ? html`<button class="inline-flex items-center gap-1 text-sm text-base-content/80" onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:map-pin", "text-xs")}${m[h.place]} ${Icon("lucide:chevron-down", "text-xs")}</button>`
+    : html`<span class="text-sm text-base-content/80 inline-flex items-center gap-1">${Icon("lucide:map-pin", "text-xs")}${m[h.place]}</span>`) : null;
+  return html`<div class="flex flex-col gap-3">
+    <div class="card @container bg-gradient-to-b from-primary/15 to-base-100 border border-base-300 rounded-2xl"><div class="card-body p-5 items-center text-center gap-1">
+      ${place}
+      ${h.icon && m[h.icon] ? Icon(m[h.icon], "text-4xl text-primary my-1") : null}
+      <div class="text-5xl font-bold tabular-nums @max-[240px]:text-4xl">${m[h.value] ?? "—"}${h.unit || ""}</div>
+      ${h.caption && m[h.caption] ? html`<div class="text-sm text-base-content/80">${m[h.caption]}</div>` : null}
+      ${h.metrics ? html`<div class="flex flex-wrap gap-1.5 justify-center mt-2 @max-[240px]:hidden">${h.metrics.map((mt) => html`<span class="badge badge-ghost gap-1" key=${mt.field}>${mt.icon ? Icon(mt.icon) : null}${T(t, mt.label)}: ${m[mt.field] ?? "—"}${mt.unit || ""}</span>`)}</div>` : null}
+    </div></div>
+    ${tab.strip && Array.isArray(m[tab.strip.from]) ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-2"><div class="text-sm font-semibold px-1">${T(t, tab.strip.label)}</div><div class="flex gap-3 overflow-x-auto pb-1">${m[tab.strip.from].map((s, i) => html`<div class="flex flex-col items-center gap-0.5 shrink-0 min-w-12" key=${i}><span class="text-xs text-base-content/80">${s[tab.strip.time]}</span>${tab.strip.icon && s[tab.strip.icon] ? Icon(s[tab.strip.icon], "text-lg text-primary") : null}<span class="font-semibold tabular-nums">${s[tab.strip.value]}${tab.strip.unit || ""}</span></div>`)}</div></div></div>` : null}
+    ${tab.days ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-1">${tab.days.label ? html`<div class="text-sm font-semibold px-1 mb-1">${T(t, tab.days.label)}</div>` : null}${data.items.map((d, i) => html`<div class="flex items-center gap-3 py-1.5 border-b border-base-300/50 last:border-0" key=${i}><span class="flex-1 font-medium">${d[tab.days.day]}</span>${tab.days.icon && d[tab.days.icon] ? Icon(d[tab.days.icon], "text-lg text-primary") : null}<span class="tabular-nums font-semibold">${d[tab.days.hi]}${tab.days.unit || ""}</span>${tab.days.lo ? html`<span class="tabular-nums text-base-content/80 w-9 text-right @max-[240px]:hidden">${d[tab.days.lo]}${tab.days.unit || ""}</span>` : null}</div>`)}</div></div>` : null}
+  </div>`;
+}
+
 function TabView({ tab }) {
   if (tab.type === "list") return html`<${ListView} tab=${tab} />`;
+  if (tab.type === "converter") return html`<${ConverterView} tab=${tab} />`;
+  if (tab.type === "dashboard") return html`<${DashboardView} tab=${tab} />`;
   if (tab.type === "profile") return html`<${Profile} tab=${tab} />`;
   if (tab.type === "tool") { const V = VIEWS[tab.view]; return V ? html`<${V} t=${A.S.t.get()} tab=${tab} S=${A.S} toast=${A.toast} screen=${A.S.screen.get()} openScreen=${(s) => A.S.screen.set(s)} closeScreen=${() => A.S.screen.set(null)} />` : Empty("lucide:wrench", `view "${tab.view}" not provided`, null); }
-  // converter / dashboard land in the next slice
-  return Empty("lucide:construction", `${tab.type} view — coming next slice`, null);
+  return Empty("lucide:construction", `${tab.type} view — coming soon`, null);
 }
 
 export function App() {

@@ -15,6 +15,8 @@ concurrency:
 jobs:
   unit:
     runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.discover.outputs.apps }}
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
@@ -23,6 +25,12 @@ jobs:
         run: deno test -A packages/runtime/runtime_test.js
       - name: Schema contract gate (ajv) over every app spec
         run: deno run -A packages/schema/validate.mjs apps/*/spec.json
+      - name: Discover apps (spec + e2e present)
+        id: discover
+        run: |
+          APPS=$(for d in apps/*/; do [ -f "${d}spec.json" ] && [ -f "${d}e2e.spec.mjs" ] && basename "$d"; done | jq -R . | jq -cs .)
+          echo "apps → $APPS"
+          echo "apps=$APPS" >> "$GITHUB_OUTPUT"
 
   verify:
     runs-on: ubuntu-latest
@@ -30,7 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [hn]
+        app: ${{ fromJSON(needs.unit.outputs.apps) }}
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2

@@ -1,0 +1,10 @@
+{
+  "name": "@microspec/schema",
+  "tasks": {
+    "validate": "deno run -A validate.mjs"
+  },
+  "exports": {
+    ".": "./validate.mjs",
+    "./schema": "./spec.schema.json"
+  }
+}

@@ -33,9 +33,21 @@ validates, and CI gates. See `docs/AUTHORING.md`. Heavy visual gates run in GitH
 - **P0** contract + ajv ✅ · **P1** runtime — all 5 families ✅ · **P2** gates-in-CI ✅
 - **P3** 5 reference apps (hn · rates · weather · wiki · ruler), CI-green ✅
 - **P4** authoring toolkit (`scaffold` + rulebook) ✅
-- **P5** ~~VPS brain~~ — obviated (no API loop; deploy = GitHub Pages) · **P6** OSS polish + Pages deploy — pending
+- **P5** ~~VPS brain~~ — obviated (no API loop; deploy = GitHub Pages)
+- **P6** OSS polish — MIT license, `CONTRIBUTING`, Pages build (`deploy/build.mjs`) ✅ · public release — pending
 
-See `packages/schema/SCHEMA.md` for the spec reference and `docs/AUTHORING.md` for the loop.
+See `packages/schema/SCHEMA.md` for the spec reference, `docs/AUTHORING.md` for the loop, and
+`CONTRIBUTING.md` to add an app or a family.
+
+## Deploy
+
+`deno run -A deploy/build.mjs` assembles `dist/` (shared `_rt/` runtime + every app + a portal),
+rewriting `/_rt/` → `../_rt/` so the site works at any base path. Publishing to GitHub Pages is wired in
+`deploy/deploy.yml.disabled` (enabled at public release).
+
+## License
+
+[MIT](LICENSE) © 2026 Daman Oreshkan.
 
 ## Contract gate
 

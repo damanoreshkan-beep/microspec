@@ -25,6 +25,8 @@ jobs:
         run: deno test -A packages/runtime/runtime_test.js
       - name: Schema contract gate (ajv) over every app spec
         run: deno run -A packages/schema/validate.mjs apps/*/spec.json
+      - name: Build check (dist assembles)
+        run: deno run -A deploy/build.mjs
       - name: Discover apps (spec + e2e present)
         id: discover
         run: |

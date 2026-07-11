@@ -13,9 +13,10 @@ export default [
     name: "метрики: відчувається / вологість / вітер", run: async (h) => {
       await load(h);
       const t = await h.bodyText();
-      h.expect(/Відчувається|Feels/.test(t), "немає «відчувається»");
-      h.expect(/Вологість|Humidity/.test(t), "немає вологості");
-      h.expect(/Вітер|Wind/.test(t), "немає вітру");
+      // badges render uppercase (CSS text-transform → innerText is uppercased), so match case-insensitively
+      h.expect(/відчувається|feels/i.test(t), "немає «відчувається»");
+      h.expect(/вологість|humidity/i.test(t), "немає вологості");
+      h.expect(/вітер|wind/i.test(t), "немає вітру");
     },
   },
   {

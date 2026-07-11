@@ -1,6 +1,6 @@
 {
   "id": "weather",
-  "theme": "dim",
+  "theme": "signal",
   "tabs": [
     {
       "id": "now", "type": "dashboard", "icon": "lucide:sun", "label": "tabNow",

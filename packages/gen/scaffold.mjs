@@ -23,8 +23,9 @@ const mode = (await has(`${dir}/view.js`)) ? "tool" : "data";
 const dict = spec.i18n?.uk || spec.i18n?.en || {};
 const title = dict.title || spec.id;
 const tagline = dict.profTagline || title;
-const themeColor = spec.theme === "light" ? "#f8f9fa" : "#1c212b";
-const bg = spec.theme === "light" ? "#ffffff" : "#1c212b";
+const isLight = /light/.test(spec.theme || "");
+const themeColor = isLight ? "#FAFAF9" : "#0A0A0B";
+const bg = isLight ? "#FFFFFF" : "#0A0A0B";
 const lang = spec.i18n?.uk ? "uk" : "en";
 
 const startWiring = mode === "tool"
@@ -47,10 +48,11 @@ const indexHtml = `<!DOCTYPE html>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+  <link href="/_rt/theme.css" rel="stylesheet" type="text/css" />
   <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js"></script>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>body{font-family:'Manrope',ui-sans-serif,system-ui,sans-serif}</style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif}</style>
   <script type="importmap">
   {
     "imports": {

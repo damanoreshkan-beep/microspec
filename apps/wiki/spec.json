@@ -1,6 +1,6 @@
 {
   "id": "wiki",
-  "theme": "light",
+  "theme": "signal-light",
   "fav": { "key": "id" },
   "filters": {
     "refetch": true,

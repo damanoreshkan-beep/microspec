@@ -1,0 +1,39 @@
+/* Signal — restrained, ink-forward DaisyUI 5 themes for the microspec farm.
+   "Ink is the brand": primary = base-content; colour is reserved for meaning
+   (success / error / warning + secondary = the бронювання signal). Loaded via CDN, no build. */
+
+[data-theme="signal"] {
+  color-scheme: dark;
+  --color-base-100: #0A0A0B; --color-base-200: #141416; --color-base-300: #222225;
+  --color-base-content: #ECECEE;
+  --color-primary: #ECECEE;   --color-primary-content: #0A0A0B;   /* ink = brand */
+  --color-secondary: #9F8CF6; --color-secondary-content: #0A0A0B; /* бронювання */
+  --color-accent: #9F8CF6;    --color-accent-content: #0A0A0B;
+  --color-neutral: #1B1B1E;   --color-neutral-content: #ECECEE;
+  --color-success: #40C173;   --color-success-content: #06120B;
+  --color-error: #F0655E;     --color-error-content: #180605;
+  --color-warning: #D9973A;   --color-warning-content: #160D02;
+  --color-info: #9AA0A6;      --color-info-content: #0A0A0B;
+  --radius-box: 0.75rem; --radius-field: 0.5rem; --radius-selector: 0.375rem;
+  --border: 1px; --depth: 0;
+}
+
+[data-theme="signal-light"] {
+  color-scheme: light;
+  --color-base-100: #FFFFFF; --color-base-200: #FAFAF9; --color-base-300: #E7E7E3;
+  --color-base-content: #18181B;
+  --color-primary: #18181B;   --color-primary-content: #FFFFFF;
+  --color-secondary: #4B45B8; --color-secondary-content: #FFFFFF; /* бронювання */
+  --color-accent: #4B45B8;    --color-accent-content: #FFFFFF;
+  --color-neutral: #18181B;   --color-neutral-content: #FAFAF9;
+  --color-success: #157F45;   --color-success-content: #FFFFFF;
+  --color-error: #BE2F2A;     --color-error-content: #FFFFFF;
+  --color-warning: #8A5A00;   --color-warning-content: #FFFFFF;
+  --color-info: #6E6E76;      --color-info-content: #FFFFFF;
+  --radius-box: 0.75rem; --radius-field: 0.5rem; --radius-selector: 0.375rem;
+  --border: 1px; --depth: 0;
+}
+
+/* Signal conventions that ride on top of DaisyUI, farm-wide */
+:root { --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
+body { letter-spacing: -0.006em; }

@@ -1,6 +1,6 @@
 {
   "id": "ruler",
-  "theme": "dim",
+  "theme": "signal",
   "tabs": [
     { "id": "ruler", "type": "tool", "icon": "lucide:ruler", "label": "tabRuler", "view": "ruler", "needs": ["haptic"] },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }

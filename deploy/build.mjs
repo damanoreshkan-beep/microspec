@@ -15,9 +15,8 @@ await Deno.mkdir(`${OUT}/_rt`, { recursive: true });
 
 // 1) shared runtime → dist/_rt (all .js except unit tests)
 for await (const e of Deno.readDir("packages/runtime")) {
-  if (e.isFile && e.name.endsWith(".js") && !e.name.endsWith("_test.js")) {
-    await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);
-  }
+  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css");
+  if (e.isFile && keep) await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);
 }
 
 // 2) each app → dist/<id> (skip dev-only e2e/states); rewrite /_rt/ imports in html/js/json

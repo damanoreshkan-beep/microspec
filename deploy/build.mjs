@@ -4,6 +4,8 @@
 // base path (Pages /<repo>/ or a root domain) with zero hardcoding.
 //   deno run -A deploy/build.mjs
 
+import { generateAppIcons } from "./icons.mjs";
+
 const OUT = "dist";
 const rt = (s) => s.replaceAll("/_rt/", "../_rt/");
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
@@ -33,6 +35,12 @@ for await (const a of Deno.readDir("apps")) {
         await Deno.copyFile(`apps/${a.name}/${f.name}`, `${OUT}/${a.name}/${f.name}`);
       }
     }
+  }
+  // PWA icons — real PNGs (installability); generated from the app's brand
+  if (await has(`apps/${a.name}/brand.svg`)) {
+    const brand = (await has(`apps/${a.name}/brand.json`)) ? JSON.parse(await Deno.readTextFile(`apps/${a.name}/brand.json`)) : { bg: "#1f2430", fg: "#a78bfa" };
+    const paths = (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim();
+    await generateAppIcons(`${OUT}/${a.name}/icons`, brand, paths);
   }
   const d = spec.i18n?.uk || spec.i18n?.en || {};
   apps.push({ id: a.name, title: d.title || a.name, tagline: d.profTagline || "", icon: spec.profile?.icon || spec.tabs?.[0]?.icon || "lucide:box", theme: spec.theme || "dim" });

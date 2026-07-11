@@ -1,0 +1,61 @@
+{
+  "id": "launches",
+  "theme": "signal",
+  "fav": { "key": "id" },
+  "detail": {
+    "image": "thumb", "imageFit": "cover", "title": "title", "subtitle": "provider",
+    "rows": [
+      { "field": "rocket", "label": "dRocket", "icon": "lucide:rocket" },
+      { "field": "whenFull", "label": "dWhen", "icon": "lucide:clock" },
+      { "field": "pad", "label": "dPad", "icon": "lucide:map-pin" },
+      { "field": "mission", "label": "dMission", "icon": "lucide:satellite" }
+    ],
+    "actions": [ { "href": "url", "label": "dWatch", "icon": "lucide:play" } ]
+  },
+  "tabs": [
+    {
+      "id": "up", "type": "list", "icon": "lucide:rocket", "label": "tabUp",
+      "search": true, "searchKey": "search", "statusKey": "status",
+      "empty": { "icon": "lucide:rocket", "text": "noResults", "hint": "noResultsHint" },
+      "card": { "layout": "feed", "image": "thumb", "imageFit": "cover", "title": "title", "subtitle": "provider", "more": "more", "meta": { "field": "when" }, "badges": [ { "field": "status" } ] }
+    },
+    {
+      "id": "saved", "type": "list", "icon": "lucide:bookmark", "label": "tabSaved", "source": "fav",
+      "titleKey": "tabSaved", "search": true, "searchKey": "searchSaved",
+      "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
+      "card": { "layout": "feed", "image": "thumb", "imageFit": "cover", "title": "title", "subtitle": "provider", "more": "more", "meta": { "field": "when" }, "badges": [ { "field": "status" } ] }
+    },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:rocket", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://thespacedevs.com/", "icon": "lucide:database" } },
+  "i18n": {
+    "uk": {
+      "title": "Космічні запуски", "tabUp": "Найближчі", "tabSaved": "Стежу", "tabMe": "Я",
+      "search": "Пошук ракети чи місії…", "searchSaved": "Шукати у збережених…",
+      "status": "Найближчі запуски", "statusLoading": "Оновлення…", "statusError": "Дані недоступні", "savedCount": "{n} збережено",
+      "more": "Деталі",
+      "noResults": "Нічого не знайдено", "noResultsHint": "Спробуй іншу назву", "errorHint": "Перевір зʼєднання та онови",
+      "emptySaved": "Ще нічого не збережено", "emptySavedHint": "Тисни закладку на картці, щоб стежити за запуском",
+      "favAria": "Стежити за запуском", "unfavAria": "Прибрати зі списку",
+      "dRocket": "Ракета", "dWhen": "Час запуску", "dPad": "Майданчик", "dMission": "Місія", "dWatch": "Дивитись трансляцію", "back": "Назад",
+      "profTheme": "Темна тема", "profLang": "Мова", "profTagline": "Зворотний відлік до найближчих космічних запусків", "profSource": "Джерело — The Space Devs",
+      "install": "Встановити застосунок", "installTitle": "Встановлення", "installBtn": "Встановити", "installDesc": "Працює офлайн, відкривається як застосунок",
+      "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».", "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
+      "close": "Закрити", "refresh": "Оновити", "toastSaved": "Стежу", "toastRemoved": "Прибрано зі списку"
+    },
+    "en": {
+      "title": "Space Launches", "tabUp": "Upcoming", "tabSaved": "Watching", "tabMe": "Me",
+      "search": "Search a rocket or mission…", "searchSaved": "Search saved…",
+      "status": "Upcoming launches", "statusLoading": "Updating…", "statusError": "Data unavailable", "savedCount": "{n} saved",
+      "more": "Details",
+      "noResults": "Nothing found", "noResultsHint": "Try another name", "errorHint": "Check connection and refresh",
+      "emptySaved": "Nothing saved yet", "emptySavedHint": "Tap the bookmark on a card to follow a launch",
+      "favAria": "Follow launch", "unfavAria": "Remove from list",
+      "dRocket": "Rocket", "dWhen": "Launch time", "dPad": "Pad", "dMission": "Mission", "dWatch": "Watch live", "back": "Back",
+      "profTheme": "Dark theme", "profLang": "Language", "profTagline": "Countdown to the next rocket launches", "profSource": "Source — The Space Devs",
+      "install": "Install app", "installTitle": "Install", "installBtn": "Install", "installDesc": "Works offline, opens like an app",
+      "installIosHint": "In Safari: tap Share, then 'Add to Home Screen'.", "installGenericHint": "In your browser menu choose 'Install' or 'Add to Home Screen'.",
+      "close": "Close", "refresh": "Refresh", "toastSaved": "Following", "toastRemoved": "Removed"
+    }
+  }
+}

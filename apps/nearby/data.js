@@ -1,4 +1,22 @@
-import { viaProxy, isJsonObject } from "/_rt/feed.js";
+const MIRRORS = [
+  "https://overpass.osm.ch/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass-api.de/api/interpreter",
+];
+async function overpass(q) {
+  const body = "data=" + encodeURIComponent(q);
+  let err;
+  for (const m of MIRRORS) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const r = await fetch(`${m}?${body}`, { signal: ctrl.signal });
+      if (r.ok) { const txt = await r.text(); if (txt.trim().startsWith("{")) return JSON.parse(txt); }
+      err = new Error("status " + r.status);
+    } catch (e) { err = e; } finally { clearTimeout(t); }
+  }
+  throw err || new Error("overpass unavailable");
+}
 
 const KYIV = { lat: 50.45, lng: 30.52 };
 const CATS = {
@@ -55,8 +73,7 @@ export async function load(filters) {
   const c = CATS[key];
   const p = await pos();
   const q = `[out:json][timeout:20];(nwr${c.tag}(around:2500,${p.lat},${p.lng}););out center 50;`;
-  const url = "https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(q);
-  const data = JSON.parse(await viaProxy(url, isJsonObject));
+  const data = await overpass(q);
 
   const items = (data.elements || []).map((e) => {
     const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;

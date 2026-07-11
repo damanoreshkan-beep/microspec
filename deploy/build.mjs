@@ -9,9 +9,8 @@ await Deno.remove(OUT, { recursive: true }).catch(() => {});
 await Deno.mkdir(`${OUT}/_rt`, { recursive: true });
 
 for await (const e of Deno.readDir("packages/runtime")) {
-  if (e.isFile && e.name.endsWith(".js") && !e.name.endsWith("_test.js")) {
-    await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);
-  }
+  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css");
+  if (e.isFile && keep) await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);
 }
 
 const apps = [];

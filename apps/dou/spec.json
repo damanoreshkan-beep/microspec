@@ -1,6 +1,6 @@
 {
   "id": "dou",
-  "theme": "dim",
+  "theme": "signal",
   "fav": { "key": "link" },
   "filters": {
     "refetch": true,

@@ -1,7 +1,8 @@
-# Pages deploy — kept DISABLED (as `.yml.disabled`) until the repo goes public and Pages is enabled.
-# To activate: move to .github/workflows/deploy.yml and (optionally) add `push: { branches: [main] }`.
+# Pages deploy — assemble dist/ (portal + apps + shared _rt) and publish to GitHub Pages.
 name: deploy
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

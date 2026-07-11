@@ -174,7 +174,8 @@ function PermissionsScreen() {
   }, []);
   const toggle = async (k, st) => {
     if (st === "granted") { A.toast(L.revokeHint); return; }               // can't revoke from script
-    setStates((s) => ({ ...s, [k]: await PERMISSIONS[k].request() }));      // native prompt (only fires from "prompt")
+    const r = await PERMISSIONS[k].request();                              // native prompt (only fires from "prompt")
+    setStates((s) => ({ ...s, [k]: r }));
   };
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
     <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">

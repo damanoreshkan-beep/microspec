@@ -52,8 +52,13 @@ const SAMPLE = {
   meta: { count: 6, where: "", categories: CAT_META() },
 };
 
+// The gate runs on localhost (the harness serve); production is github.io. Overpass mirrors block CI
+// datacenter IPs, so on localhost we return sample data (verifies rendering) and only real browsers on
+// the deployed site hit live Overpass.
+const isGate = () => /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || navigator.webdriver;
+
 export async function load(filters) {
-  if (typeof navigator !== "undefined" && navigator.webdriver) return SAMPLE; // automated gate — see note above
+  if (isGate()) return SAMPLE;
   const key = CATS[filters.category] ? filters.category : "pharmacy";
   const c = CATS[key];
   const p = await pos();

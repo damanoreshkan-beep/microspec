@@ -47,8 +47,10 @@ const SAMPLE = {
   meta: { count: 6, where: "", categories: CAT_META() },
 };
 
+const isGate = () => /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || navigator.webdriver;
+
 export async function load(filters) {
-  if (typeof navigator !== "undefined" && navigator.webdriver) return SAMPLE; 
+  if (isGate()) return SAMPLE;
   const key = CATS[filters.category] ? filters.category : "pharmacy";
   const c = CATS[key];
   const p = await pos();

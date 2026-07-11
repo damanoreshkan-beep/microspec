@@ -37,3 +37,37 @@
 /* Signal conventions that ride on top of DaisyUI, farm-wide */
 :root { --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
 body { letter-spacing: -0.006em; }
+
+/* Stage B — instrument details. Global CSS over DaisyUI/render classes; no structural change.
+   Badges become mono, uppercase, hairline tags — the "instrument" signal. Colour still means:
+   solid ink = the strongest chip (bron), green outline = value (salary/points), hairline = meta. */
+.badge {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  font-weight: 500;
+  font-size: .66rem;
+  border-radius: .375rem;
+  height: auto;
+  padding: .16rem .42rem;
+  gap: .28rem;
+}
+.badge-ghost {
+  background: transparent;
+  border: 1px solid var(--color-base-300);
+  color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+}
+
+/* mono uppercase micro-labels: the status line under search + the bottom-nav labels */
+#status {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .045em;
+  font-size: .68rem;
+}
+nav.fixed.bottom-0 button > span {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  font-size: .58rem;
+}

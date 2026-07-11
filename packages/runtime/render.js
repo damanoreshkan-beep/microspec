@@ -56,7 +56,7 @@ function Badges({ item: it, badges, hide }) {
   if (!badges) return null;
   return html`<div class="flex flex-wrap gap-1.5 mt-0.5">${badges.map((b) => {
     if (hide && b.key === hide) return null;
-    const cls = `badge badge-sm ${b.variant === "primary" ? "badge-primary" : b.variant === "success" ? "badge-success badge-outline" : "badge-ghost"} @max-[240px]:hidden`;
+    const cls = `badge badge-sm ${b.variant === "primary" ? "badge-primary" : b.variant === "error" ? "badge-error" : b.variant === "success" ? "badge-success badge-outline" : "badge-ghost"} @max-[240px]:hidden`;
     if (b.field) {
       const v = it[b.field];
       if (Array.isArray(v)) return v.map((x) => html`<span class=${cls} key=${x}>${x}</span>`);

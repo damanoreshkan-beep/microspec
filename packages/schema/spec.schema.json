@@ -280,7 +280,7 @@
                     "label": { "type": "string", "minLength": 1, "description": "i18n key for the badge text (used with 'when')." },
                     "icon": { "type": "string", "minLength": 1, "description": "Iconify icon, prepended to the badge (works with both 'when' and 'field' badges)." },
                     "fmt": { "type": "string", "description": "Optional value formatting hint (e.g. 'rate')." },
-                    "variant": { "type": "string", "enum": ["primary", "ghost", "success"], "description": "Badge style." }
+                    "variant": { "type": "string", "enum": ["primary", "ghost", "success", "error"], "description": "Badge style. 'error' = solid danger (e.g. an active alert)." }
                   }
                 }
               }

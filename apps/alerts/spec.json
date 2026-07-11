@@ -1,0 +1,45 @@
+{
+  "id": "alerts",
+  "theme": "signal",
+  "tabs": [
+    {
+      "id": "now", "type": "list", "icon": "lucide:siren", "label": "tabNow",
+      "search": true, "searchKey": "search", "statusKey": "status",
+      "empty": { "icon": "lucide:shield-check", "text": "calmTitle", "hint": "calmHint" },
+      "card": {
+        "layout": "feed", "title": "title", "meta": { "field": "since" },
+        "badges": [ { "field": "typeLabel", "variant": "error" } ]
+      }
+    },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:triangle-alert", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://alerts.in.ua/", "icon": "lucide:database" } },
+  "i18n": {
+    "uk": {
+      "title": "Повітряні тривоги", "tabNow": "Зараз", "tabMe": "Я",
+      "search": "Пошук області…",
+      "status": "Активних тривог: {count}", "statusLoading": "Оновлення…", "statusError": "Дані недоступні",
+      "noResults": "Нічого не знайдено", "noResultsHint": "Спробуй іншу назву",
+      "calmTitle": "Тихо", "calmHint": "Наразі активних тривог немає. Не покладайся лише на застосунок — слухай офіційні сповіщення.",
+      "errorHint": "Не вдалося оновити. НЕ вважай це відсутністю тривоги — перевір офіційні джерела.",
+      "favAria": "Зберегти", "unfavAria": "Прибрати",
+      "profTheme": "Темна тема", "profLang": "Мова", "profTagline": "Активні повітряні тривоги по областях України", "profSource": "Джерело — alerts.in.ua",
+      "install": "Встановити застосунок", "installTitle": "Встановлення", "installBtn": "Встановити", "installDesc": "Працює офлайн, відкривається як застосунок",
+      "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».", "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
+      "close": "Закрити", "refresh": "Оновити", "toastSaved": "Збережено", "toastRemoved": "Видалено"
+    },
+    "en": {
+      "title": "Air Alerts", "tabNow": "Now", "tabMe": "Me",
+      "search": "Search a region…",
+      "status": "Active alerts: {count}", "statusLoading": "Updating…", "statusError": "Data unavailable",
+      "noResults": "Nothing found", "noResultsHint": "Try another name",
+      "calmTitle": "All clear", "calmHint": "No active alerts right now. Don't rely on this app alone — follow official sirens and notices.",
+      "errorHint": "Couldn't refresh. Do NOT read this as 'no alert' — check official sources.",
+      "favAria": "Save", "unfavAria": "Remove",
+      "profTheme": "Dark theme", "profLang": "Language", "profTagline": "Active air-raid alerts across Ukraine's regions", "profSource": "Source — alerts.in.ua",
+      "install": "Install app", "installTitle": "Install", "installBtn": "Install", "installDesc": "Works offline, opens like an app",
+      "installIosHint": "In Safari: tap Share, then 'Add to Home Screen'.", "installGenericHint": "In your browser menu choose 'Install' or 'Add to Home Screen'.",
+      "close": "Close", "refresh": "Refresh", "toastSaved": "Saved", "toastRemoved": "Removed"
+    }
+  }
+}

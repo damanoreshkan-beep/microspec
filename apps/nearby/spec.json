@@ -1,0 +1,58 @@
+{
+  "id": "nearby",
+  "theme": "signal",
+  "fav": { "key": "id" },
+  "filters": {
+    "refetch": true,
+    "defaults": { "category": "pharmacy" },
+    "controls": [
+      { "type": "select", "key": "category", "label": "fCat", "icon": "lucide:layers", "optionsFrom": "categories", "refetch": true, "chip": true }
+    ]
+  },
+  "tabs": [
+    {
+      "id": "list", "type": "list", "icon": "lucide:map-pin", "label": "tabList",
+      "search": true, "searchKey": "search", "statusKey": "status",
+      "empty": { "icon": "lucide:map-pin-off", "text": "noResults", "hint": "noResultsHint" },
+      "card": { "layout": "feed", "href": "maps", "title": "name", "subtitle": "addr", "more": "more", "badges": [ { "field": "distStr" } ] }
+    },
+    {
+      "id": "saved", "type": "list", "icon": "lucide:bookmark", "label": "tabSaved", "source": "fav",
+      "titleKey": "tabSaved", "search": true, "searchKey": "searchSaved",
+      "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
+      "card": { "layout": "feed", "href": "maps", "title": "name", "subtitle": "addr", "more": "more", "badges": [ { "field": "distStr" } ] }
+    },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:map-pin", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://www.openstreetmap.org/", "icon": "lucide:database" } },
+  "i18n": {
+    "uk": {
+      "title": "Поблизу", "tabList": "Поруч", "tabSaved": "Збережені", "tabMe": "Я",
+      "search": "Пошук за назвою…", "searchSaved": "Шукати у збережених…",
+      "status": "{count} поблизу{where}", "statusLoading": "Шукаємо поблизу…", "statusError": "Дані недоступні", "savedCount": "{n} збережено",
+      "more": "На карті",
+      "noResults": "Нічого поблизу", "noResultsHint": "Спробуй іншу категорію", "errorHint": "Перевір зʼєднання та онови",
+      "emptySaved": "Ще нічого не збережено", "emptySavedHint": "Тисни закладку на картці, щоб зберегти місце",
+      "favAria": "Зберегти місце", "unfavAria": "Прибрати зі збережених",
+      "fCat": "Категорія", "filterTitle": "Категорія", "apply": "Показати", "ariaFilter": "Категорія",
+      "profTheme": "Темна тема", "profLang": "Мова", "profTagline": "Аптеки, банкомати, кава, АЗС і укриття поруч із тобою", "profSource": "Дані — OpenStreetMap",
+      "install": "Встановити застосунок", "installTitle": "Встановлення", "installBtn": "Встановити", "installDesc": "Працює офлайн, відкривається як застосунок",
+      "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».", "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
+      "close": "Закрити", "refresh": "Оновити", "toastSaved": "Збережено", "toastRemoved": "Видалено зі збережених"
+    },
+    "en": {
+      "title": "Nearby", "tabList": "Nearby", "tabSaved": "Saved", "tabMe": "Me",
+      "search": "Search by name…", "searchSaved": "Search saved…",
+      "status": "{count} nearby{where}", "statusLoading": "Searching nearby…", "statusError": "Data unavailable", "savedCount": "{n} saved",
+      "more": "On map",
+      "noResults": "Nothing nearby", "noResultsHint": "Try another category", "errorHint": "Check connection and refresh",
+      "emptySaved": "Nothing saved yet", "emptySavedHint": "Tap the bookmark on a card to save a place",
+      "favAria": "Save place", "unfavAria": "Remove from saved",
+      "fCat": "Category", "filterTitle": "Category", "apply": "Show", "ariaFilter": "Category",
+      "profTheme": "Dark theme", "profLang": "Language", "profTagline": "Pharmacies, ATMs, coffee, fuel and shelters near you", "profSource": "Data — OpenStreetMap",
+      "install": "Install app", "installTitle": "Install", "installBtn": "Install", "installDesc": "Works offline, opens like an app",
+      "installIosHint": "In Safari: tap Share, then 'Add to Home Screen'.", "installGenericHint": "In your browser menu choose 'Install' or 'Add to Home Screen'.",
+      "close": "Close", "refresh": "Refresh", "toastSaved": "Saved", "toastRemoved": "Removed from saved"
+    }
+  }
+}

@@ -8,3 +8,42 @@ export const haptic = {
   bump: () => haptic.buzz(18),
   ok: () => haptic.buzz([12, 40, 12]),
 };
+
+export const geo = {
+  supported: typeof navigator !== "undefined" && "geolocation" in navigator,
+  watch(onPos, onErr) {
+    if (!this.supported) { onErr?.("unsupported"); return () => {}; }
+    const id = navigator.geolocation.watchPosition(
+      (p) => onPos({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
+      (e) => onErr?.(e.code === 1 ? "denied" : "unavailable"),
+      { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  },
+};
+
+export const compass = {
+  supported: typeof window !== "undefined" && typeof DeviceOrientationEvent !== "undefined",
+  needsPermission: typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function",
+  async request() {
+    if (this.needsPermission) { try { return (await DeviceOrientationEvent.requestPermission()) === "granted"; } catch { return false; } }
+    return true;
+  },
+  start(onHeading) {
+    if (!this.supported) return () => {};
+    let ema = null;
+    const handler = (e) => {
+      let h = null;
+      if (typeof e.webkitCompassHeading === "number") h = e.webkitCompassHeading;      
+      else if (e.absolute && typeof e.alpha === "number") h = (360 - e.alpha) % 360;    
+      if (h == null) return;
+      h = (h + ((screen.orientation && screen.orientation.angle) || 0)) % 360;          
+      if (ema == null) ema = h;
+      else { const d = ((h - ema + 540) % 360) - 180; ema = (ema + 0.25 * d + 360) % 360; } 
+      onHeading(ema);
+    };
+    const evt = "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation";
+    window.addEventListener(evt, handler, true);
+    return () => window.removeEventListener(evt, handler, true);
+  },
+};

@@ -1,0 +1,37 @@
+{
+  "id": "sun",
+  "theme": "signal",
+  "tabs": [
+    { "id": "compass", "type": "tool", "icon": "lucide:sun", "label": "tabCompass", "view": "sun", "needs": ["geo"] },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:sun", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://github.com/mourner/suncalc", "icon": "lucide:database" } },
+  "i18n": {
+    "uk": {
+      "title": "Сонячний компас", "tabCompass": "Компас", "tabMe": "Я",
+      "locating": "Визначаємо локацію…",
+      "alt": "висота", "belowHorizon": "за горизонтом",
+      "noCompass": "Компас недоступний — Пн угорі", "enableCompass": "Увімкнути компас", "approxKyiv": "Приблизно (Київ) — дозволь геолокацію",
+      "nowLabel": "зараз", "reset": "Зараз", "timeAria": "Час доби",
+      "sunrise": "схід", "golden": "золота", "sunset": "захід",
+      "hint": "Наведи телефон на позначку сонця. Посунь повзунок — побачиш, де сонце буде о будь-якій годині.",
+      "profTheme": "Темна тема", "profLang": "Мова", "profTagline": "Де сонце зараз і о будь-якій годині — компас, азимут, золота година", "profSource": "Астрономія — SunCalc",
+      "install": "Встановити застосунок", "installTitle": "Встановлення", "installBtn": "Встановити", "installDesc": "Працює офлайн, відкривається як застосунок",
+      "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».", "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
+      "close": "Закрити", "refresh": "Оновити", "toastSaved": "Збережено", "toastRemoved": "Видалено"
+    },
+    "en": {
+      "title": "Sun Compass", "tabCompass": "Compass", "tabMe": "Me",
+      "locating": "Locating…",
+      "alt": "alt", "belowHorizon": "below horizon",
+      "noCompass": "Compass unavailable — N is up", "enableCompass": "Enable compass", "approxKyiv": "Approx (Kyiv) — allow location",
+      "nowLabel": "now", "reset": "Now", "timeAria": "Time of day",
+      "sunrise": "rise", "golden": "golden", "sunset": "set",
+      "hint": "Point the phone at the sun marker. Drag the slider to see where the sun will be at any hour.",
+      "profTheme": "Dark theme", "profLang": "Language", "profTagline": "Where the sun is now and at any hour — compass, azimuth, golden hour", "profSource": "Astronomy — SunCalc",
+      "install": "Install app", "installTitle": "Install", "installBtn": "Install", "installDesc": "Works offline, opens like an app",
+      "installIosHint": "In Safari: tap Share, then 'Add to Home Screen'.", "installGenericHint": "In your browser menu choose 'Install' or 'Add to Home Screen'.",
+      "close": "Close", "refresh": "Refresh", "toastSaved": "Saved", "toastRemoved": "Removed"
+    }
+  }
+}

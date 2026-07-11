@@ -5,7 +5,7 @@
     { "id": "compass", "type": "tool", "icon": "lucide:sun", "label": "tabCompass", "view": "sun", "needs": ["geo"] },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
   ],
-  "profile": { "icon": "lucide:sun", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://github.com/mourner/suncalc", "icon": "lucide:database" } },
+  "profile": { "icon": "lucide:sun", "theme": true, "lang": true, "install": true, "permissions": ["geolocation", "motion"], "source": { "label": "profSource", "url": "https://github.com/mourner/suncalc", "icon": "lucide:database" } },
   "i18n": {
     "uk": {
       "title": "Сонячний компас", "tabCompass": "Компас", "tabMe": "Я",

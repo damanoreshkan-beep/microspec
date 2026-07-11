@@ -24,7 +24,7 @@
     },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
   ],
-  "profile": { "icon": "lucide:map-pin", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://www.openstreetmap.org/", "icon": "lucide:database" } },
+  "profile": { "icon": "lucide:map-pin", "theme": true, "lang": true, "install": true, "permissions": ["geolocation"], "source": { "label": "profSource", "url": "https://www.openstreetmap.org/", "icon": "lucide:database" } },
   "i18n": {
     "uk": {
       "title": "Поблизу", "tabList": "Поруч", "tabSaved": "Збережені", "tabMe": "Я",

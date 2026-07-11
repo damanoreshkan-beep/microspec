@@ -3,10 +3,11 @@
 // (feed + row cards, badges, sections, search/searchFetch), PROFILE, top-level DETAIL drill-down,
 // and FILTER sheet/chips + InstallModal. converter/dashboard/tool views land in the next slice.
 import { Fragment } from "preact";
-import { useRef, useEffect } from "preact/hooks";
+import { useRef, useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
 import { T, ago } from "./i18n.js";
+import { PERMISSIONS, permLabels } from "./permissions.js";
 
 let A;            // app context: { spec, S, load, toast, toggleFav, favKey, swap }
 let VIEWS = {};   // tool-app custom views: { viewKey: PreactComponent }
@@ -154,7 +155,45 @@ function Profile({ tab }) {
     ${savedTab ? html`<button class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
     ${p.theme ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:moon", "text-xl")}<span class="flex-1 font-medium">${T(t, "profTheme")}</span><input id="p-theme" type="checkbox" class="toggle toggle-primary" checked=${theme === "signal"} onChange=${(e) => A.S.theme.set(e.target.checked ? "signal" : "signal-light")} /></div></div>` : null}
     ${p.lang ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
+    ${p.permissions?.length ? html`<button id="p-perms" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.screen.set("perms")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield-check", "text-xl")}<span class="flex-1 font-medium text-left">${permLabels(loc).row}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>` : null}
     ${p.source ? html`<a href=${p.source.url} target="_blank" rel="noopener" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon(p.source.icon || "lucide:database", "text-xl")}<span class="flex-1 font-medium">${T(t, p.source.label)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
+  </div>`;
+}
+
+// ---- permissions screen (history-backed, opened from the profile) -----------
+function PermissionsScreen() {
+  const loc = useStore(A.S.locale), L = permLabels(loc);
+  const keys = (A.spec.profile?.permissions || []).filter((k) => PERMISSIONS[k]);
+  const [states, setStates] = useState({});
+  const refresh = async () => { const s = {}; for (const k of keys) s[k] = await PERMISSIONS[k].query(); setStates(s); };
+  useEffect(() => {
+    refresh();
+    const subs = [];
+    for (const k of keys) { try { navigator.permissions.query({ name: k }).then((ps) => { ps.onchange = refresh; subs.push(ps); }).catch(() => {}); } catch { /* unqueryable */ } }
+    return () => subs.forEach((ps) => { ps.onchange = null; });
+  }, []);
+  const toggle = async (k, st) => {
+    if (st === "granted") { A.toast(L.revokeHint); return; }               // can't revoke from script
+    setStates((s) => ({ ...s, [k]: await PERMISSIONS[k].request() }));      // native prompt (only fires from "prompt")
+  };
+  return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
+    <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
+      <button id="perms-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${L.back} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
+      <div class="flex-1 font-bold tracking-tight px-1">${L.title}</div>
+    </header>
+    <div class="px-4 pt-3 pb-8 flex flex-col gap-2 max-w-xl mx-auto">
+      <p class="text-sm text-base-content/60 px-1 mb-1">${L.intro}</p>
+      ${keys.map((k) => { const st = states[k] || "unknown", on = st === "granted", off = st === "unsupported"; return html`<${Fragment} key=${k}>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">
+          ${Icon(PERMISSIONS[k].icon, "text-xl")}
+          <span class="flex-1 font-medium">${L[k]}</span>
+          ${off ? html`<span class="text-xs text-base-content/50">${L.unsupported}</span>`
+            : st === "denied" ? html`<span class="badge badge-error badge-sm">${L.denied}</span>`
+            : html`<input id=${"perm-" + k} type="checkbox" class="toggle toggle-primary" checked=${on} aria-label=${L[k]} onChange=${() => toggle(k, st)} />`}
+        </div></div>
+        ${st === "denied" ? html`<div class="text-xs text-base-content/60 px-2 -mt-1 flex items-start gap-1.5">${Icon("lucide:info", "mt-0.5 shrink-0")}${L.deniedHint}</div>` : null}
+      </${Fragment}>`; })}
+    </div>
   </div>`;
 }
 
@@ -302,7 +341,7 @@ function TabView({ tab }) {
 }
 
 export function App() {
-  const cur = useStore(A.S.tab);
+  const cur = useStore(A.S.tab), screen = useStore(A.S.screen);
   const tab = A.spec.tabs.find((x) => x.id === cur) || A.spec.tabs[0];
   return html`<${Fragment}>
     <${AppBar} />
@@ -313,6 +352,7 @@ export function App() {
     </main>
     ${A.spec.detail ? html`<${DetailView} />` : null}
     ${A.spec.filters ? html`<${FilterSheet} />` : null}
+    ${screen === "perms" ? html`<${PermissionsScreen} />` : null}
     <${InstallModal} />
     <${Dock} />
     <${Toast} />

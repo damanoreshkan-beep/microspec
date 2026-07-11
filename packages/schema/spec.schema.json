@@ -38,6 +38,11 @@
         "theme": { "type": "boolean", "description": "Show dark-theme toggle." },
         "lang": { "type": "boolean", "description": "Show language switch (uk/en)." },
         "install": { "type": "boolean", "description": "Show PWA install entry." },
+        "permissions": {
+          "type": "array",
+          "description": "Show a history-backed Permissions screen (a row in the profile) with a toggle per listed permission; enabling triggers the native prompt.",
+          "items": { "type": "string", "enum": ["geolocation", "notifications", "motion", "camera", "microphone"] }
+        },
         "source": {
           "type": "object",
           "additionalProperties": false,

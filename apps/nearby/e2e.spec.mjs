@@ -46,6 +46,18 @@ export default [
     },
   },
   {
+    name: "екран дозволів відкривається, Back закриває", run: async (h) => {
+      await h.click('[data-tab="me"]'); await h.wait(150);
+      h.expect((await h.count("#p-perms")) === 1, "немає пункту «Дозволи»");
+      await h.click("#p-perms"); await h.wait(300);
+      h.expect((await h.count('[role="dialog"]')) === 1, "екран дозволів не відкрився");
+      h.expect(/Геолокація|Location|Дозволи|Permissions/.test(await h.bodyText()), "немає вмісту дозволів");
+      await h.back(); await h.wait(250);
+      h.expect((await h.count('[role="dialog"]')) === 0, "Back не закрив екран дозволів");
+      await h.click('[data-tab="list"]'); await h.wait(120);
+    },
+  },
+  {
     name: "PWA: профіль → модалка, Back закриває", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click("#p-install"); await h.wait(150);

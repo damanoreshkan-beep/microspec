@@ -116,6 +116,15 @@ function Section({ sec, items, card }) {
   </${Fragment}>`;
 }
 
+// dismissible info banner atop a list (e.g. dou explains "бронювання")
+function Banner({ banner }) {
+  const t = useStore(A.S.t);
+  return html`<div class="alert bg-primary/10 border border-primary/25 rounded-2xl text-sm py-2.5 px-3 flex items-start gap-2" role="note">
+    ${Icon(banner.icon, "text-primary text-lg mt-0.5 shrink-0")}
+    <div class="text-base-content"><span class="font-semibold">${T(t, banner.titleKey)}</span><span class="text-base-content/80">${T(t, banner.bodyKey)}</span></div>
+  </div>`;
+}
+
 // ---- list family ------------------------------------------------------------
 function ListView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters);
@@ -129,8 +138,9 @@ function ListView({ tab }) {
   for (const cf of (tab.clientFilters || [])) if (filters[cf.key]) items = items.filter((it) => test(it, fav, cf.when));
   if (!items.length) return Empty(tab.empty?.icon || "lucide:search-x", T(t, tab.empty?.text || "noResults"), T(t, tab.empty?.hint || "noResultsHint"));
 
-  if (!tab.sections) return Frag(items.map((it) => html`<${Card} item=${it} card=${tab.card} key=${A.favKey(it) || it[tab.card.title]} />`));
-  return Frag(tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; }));
+  const banner = tab.banner ? html`<${Banner} banner=${tab.banner} key="banner" />` : null;
+  if (!tab.sections) return Frag([banner, ...items.map((it) => html`<${Card} item=${it} card=${tab.card} key=${A.favKey(it) || it[tab.card.title]} />`)]);
+  return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })]);
 }
 
 // ---- profile ----------------------------------------------------------------

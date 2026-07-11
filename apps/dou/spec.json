@@ -1,0 +1,91 @@
+{
+  "id": "dou",
+  "theme": "dim",
+  "fav": { "key": "link" },
+  "filters": {
+    "refetch": true,
+    "defaults": { "category": "Front End", "exp": "" },
+    "controls": [
+      { "type": "select", "key": "category", "label": "filterCategory", "icon": "lucide:layers", "optionsFrom": "categories", "refetch": true },
+      { "type": "toggle", "key": "fbron", "label": "filterBron", "icon": "lucide:shield-check", "iconCls": "text-primary", "chip": true },
+      { "type": "toggle", "key": "fremote", "label": "filterRemote", "icon": "lucide:house-wifi", "chip": true },
+      { "type": "toggle", "key": "fsalary", "label": "filterSalary", "icon": "lucide:banknote", "chip": true },
+      { "type": "segment", "key": "exp", "label": "filterExp", "icon": "lucide:briefcase", "refetch": true,
+        "options": [["", "expAny"], ["0-1", "0–1"], ["1-3", "1–3"], ["3-5", "3–5"], ["5plus", "5+"]] }
+    ]
+  },
+  "profile": { "icon": "lucide:user", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://jobs.dou.ua/", "icon": "lucide:database" } },
+  "tabs": [
+    {
+      "id": "feed", "type": "list", "icon": "lucide:newspaper", "label": "dockFeed",
+      "search": true, "searchKey": "search", "statusKey": "statusCounts",
+      "banner": { "icon": "lucide:shield-check", "titleKey": "infoTitle", "bodyKey": "infoBody" },
+      "clientFilters": [{ "key": "fbron", "when": "bron" }, { "key": "fremote", "when": "remote" }, { "key": "fsalary", "when": "salary" }],
+      "sections": [
+        { "filter": "bron", "icon": "lucide:shield-check", "label": "sectionBron", "accent": true, "hideBadge": "bron" },
+        { "filter": "!bron", "icon": "lucide:layout-list", "label": "sectionAll", "labelParams": "category" }
+      ],
+      "card": {
+        "layout": "feed", "href": "link", "title": "position", "subtitle": "company", "more": "more", "body": "desc", "meta": { "field": "ts", "format": "ago" },
+        "badges": [
+          { "key": "bron", "when": "bron", "label": "badgeBron", "icon": "lucide:shield-check", "variant": "primary" },
+          { "field": "salary", "variant": "success" },
+          { "field": "tech", "variant": "ghost" },
+          { "when": "remote", "label": "chipRemote", "variant": "ghost" },
+          { "field": "city", "variant": "ghost" }
+        ]
+      }
+    },
+    {
+      "id": "saved", "type": "list", "icon": "lucide:bookmark", "label": "dockSaved", "source": "fav",
+      "titleKey": "dockSaved", "search": true, "searchKey": "searchSaved",
+      "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
+      "card": {
+        "layout": "feed", "href": "link", "title": "position", "subtitle": "company", "more": "more", "body": "desc", "meta": { "field": "ts", "format": "ago" },
+        "badges": [
+          { "field": "salary", "variant": "success" },
+          { "field": "tech", "variant": "ghost" },
+          { "when": "remote", "label": "chipRemote", "variant": "ghost" },
+          { "field": "city", "variant": "ghost" }
+        ]
+      }
+    },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "dockMe", "titleKey": "titleProfile" }
+  ],
+  "i18n": {
+    "uk": {
+      "title": "DOU · бронювання", "titleProfile": "Профіль", "dockFeed": "Стрічка", "dockSaved": "Збережені", "dockMe": "Я",
+      "search": "Пошук: React, Kyiv, remote…", "searchSaved": "Шукати у збережених…",
+      "statusCounts": "{bron} з бронюванням · {rest} інших", "statusLoading": "Оновлення…", "statusError": "Стрічка недоступна", "savedCount": "{n} збережено",
+      "sectionBron": "З бронюванням", "sectionAll": "Усі: {cat}",
+      "infoTitle": "Бронювання", "infoBody": " — відстрочка від мобілізації. Угорі — вакансії компаній, що її надають.",
+      "badgeBron": "бронювання", "chipRemote": "remote", "more": "Детальніше",
+      "agoToday": "сьогодні", "agoYesterday": "вчора", "agoDays": "{n} дн. тому", "agoWeeks": "{n} тиж. тому",
+      "noResults": "Нічого не знайдено", "noResultsHint": "Спробуй інший запит або скинь фільтри", "errorHint": "Перевір зʼєднання та онови",
+      "emptySaved": "Ще нічого не збережено", "emptySavedHint": "Тисни закладку на картці, щоб порівняти вакансії тут",
+      "favAria": "Зберегти вакансію", "unfavAria": "Прибрати зі збережених",
+      "profTheme": "Темна тема", "profLang": "Мова", "profTagline": "Вакансії з бронюванням від мобілізації", "profSource": "Джерело — jobs.dou.ua",
+      "install": "Встановити застосунок", "installTitle": "Встановлення", "installBtn": "Встановити", "installDesc": "Працює офлайн, відкривається як застосунок",
+      "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».", "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
+      "close": "Закрити", "refresh": "Оновити", "ariaFilter": "Фільтр", "filterTitle": "Фільтр", "filterCategory": "Категорія", "filterBron": "Лише з бронюванням", "filterRemote": "Віддалено", "filterSalary": "Із зарплатою", "filterExp": "Досвід", "expAny": "Будь-який", "apply": "Застосувати",
+      "toastSaved": "Збережено", "toastRemoved": "Видалено зі збережених"
+    },
+    "en": {
+      "title": "DOU · deferment", "titleProfile": "Profile", "dockFeed": "Feed", "dockSaved": "Saved", "dockMe": "Me",
+      "search": "Search: React, Kyiv, remote…", "searchSaved": "Search saved…",
+      "statusCounts": "{bron} with deferment · {rest} others", "statusLoading": "Updating…", "statusError": "Feed unavailable", "savedCount": "{n} saved",
+      "sectionBron": "With deferment", "sectionAll": "All: {cat}",
+      "infoTitle": "Deferment", "infoBody": " — deferment from mobilization. Companies that provide it are on top.",
+      "badgeBron": "deferment", "chipRemote": "remote", "more": "Details",
+      "agoToday": "today", "agoYesterday": "yesterday", "agoDays": "{n}d ago", "agoWeeks": "{n}w ago",
+      "noResults": "Nothing found", "noResultsHint": "Try another query or reset filters", "errorHint": "Check connection and refresh",
+      "emptySaved": "Nothing saved yet", "emptySavedHint": "Tap the bookmark on a card to compare vacancies here",
+      "favAria": "Save vacancy", "unfavAria": "Remove from saved",
+      "profTheme": "Dark theme", "profLang": "Language", "profTagline": "Jobs with deferment from mobilization", "profSource": "Source — jobs.dou.ua",
+      "install": "Install app", "installTitle": "Install", "installBtn": "Install", "installDesc": "Works offline, opens like an app",
+      "installIosHint": "In Safari: tap Share, then 'Add to Home Screen'.", "installGenericHint": "In your browser menu choose 'Install' or 'Add to Home Screen'.",
+      "close": "Close", "refresh": "Refresh", "ariaFilter": "Filter", "filterTitle": "Filter", "filterCategory": "Category", "filterBron": "Deferment only", "filterRemote": "Remote", "filterSalary": "With salary", "filterExp": "Experience", "expAny": "Any", "apply": "Apply",
+      "toastSaved": "Saved", "toastRemoved": "Removed from saved"
+    }
+  }
+}

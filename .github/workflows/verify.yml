@@ -15,6 +15,9 @@ concurrency:
 jobs:
   unit:
     runs-on: ubuntu-latest
+    # Fail fast on a hung/broken run (incl. a GitHub action-download outage stuck in "Set up job"):
+    # cap the whole job so it can't burn runner minutes retrying. Real work here is well under a minute.
+    timeout-minutes: 4
     outputs:
       apps: ${{ steps.discover.outputs.apps }}
     steps:
@@ -37,6 +40,10 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     needs: unit
+    # Cap the whole job: normal run is ~2min (chrome+xvfb setup + ~5s gate); this kills a stuck setup
+    # (e.g. GitHub action-download outage) or a hung browser instead of letting it drag ~4min and waste
+    # runner minutes across the whole matrix.
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -56,6 +63,9 @@ jobs:
         with: { chrome-version: stable }
       - run: sudo apt-get update && sudo apt-get install -y xvfb fonts-liberation
       - name: Verify ${{ matrix.app }}
+        # The gate itself is ~5s; 2min is a generous ceiling that fails fast if the browser or a
+        # network-dependent e2e step hangs, rather than waiting out the job-level timeout.
+        timeout-minutes: 2
         env:
           DISPLAY: ":99"
           DISPLAY_NUM: "99"

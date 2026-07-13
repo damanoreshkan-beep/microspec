@@ -41,11 +41,14 @@ function validateTab(tab, p, die, need) {
   if (tab.type === "list") {
     const c = tab.card;
     need(c && typeof c === "object", `${p}.card`, "required object for list tabs");
-    need(["row", "feed"].includes(c.layout), `${p}.card.layout`, `unknown layout "${c?.layout}" (expected "row" or "feed")`);
+    need(["row", "feed", "grid"].includes(c.layout), `${p}.card.layout`, `unknown layout "${c?.layout}" (expected "row", "feed" or "grid")`);
     need(nonEmpty(c.title), `${p}.card.title`, "required field name (card title / list key)");
     if (c.layout === "row") {
       need(nonEmpty(c.lead), `${p}.card.lead`, 'required for layout "row"');
       need(nonEmpty(c.trailing), `${p}.card.trailing`, 'required for layout "row"');
+    }
+    if (c.layout === "grid") {
+      need(nonEmpty(c.icon) || nonEmpty(c.image), `${p}.card`, 'layout "grid" needs a tile — set icon (item field with an iconify name) or image (item field with an icon URL)');
     }
     if (c.layout === "feed") {
       need(nonEmpty(c.subtitle) || nonEmpty(c.body) || nonEmpty(c.image), `${p}.card`,

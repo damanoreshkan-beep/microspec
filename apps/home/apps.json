@@ -1,0 +1,83 @@
+[
+  {
+    "id": "wiki",
+    "title": "Вікіпедія",
+    "tagline": "Швидкий пошук по Вікіпедії",
+    "glyph": "lucide:book-open-text",
+    "bg": "#202122",
+    "fg": "#ffffff",
+    "href": "./wiki/"
+  },
+  {
+    "id": "launches",
+    "title": "Космічні запуски",
+    "tagline": "Зворотний відлік до найближчих космічних запусків",
+    "glyph": "lucide:rocket",
+    "bg": "#0A0A0B",
+    "fg": "#9F8CF6",
+    "href": "./launches/"
+  },
+  {
+    "id": "rates",
+    "title": "Курси валют",
+    "tagline": "Курси валют і конвертер",
+    "glyph": "lucide:coins",
+    "bg": "#1f2430",
+    "fg": "#f0b429",
+    "href": "./rates/"
+  },
+  {
+    "id": "ruler",
+    "title": "Лінійка",
+    "tagline": "Екранна лінійка з калібруванням",
+    "glyph": "lucide:ruler",
+    "bg": "#1f2430",
+    "fg": "#34d399",
+    "href": "./ruler/"
+  },
+  {
+    "id": "nearby",
+    "title": "Поблизу",
+    "tagline": "Аптеки, банкомати, кава, АЗС і укриття поруч із тобою",
+    "glyph": "lucide:map-pin",
+    "bg": "#0A0A0B",
+    "fg": "#40C173",
+    "href": "./nearby/"
+  },
+  {
+    "id": "weather",
+    "title": "Погода",
+    "tagline": "Погода зараз і прогноз",
+    "glyph": "lucide:cloud-sun",
+    "bg": "#1f2430",
+    "fg": "#38bdf8",
+    "href": "./weather/"
+  },
+  {
+    "id": "sun",
+    "title": "Сонячний компас",
+    "tagline": "Де сонце зараз і о будь-якій годині — компас, азимут, золота година",
+    "glyph": "lucide:sun",
+    "bg": "#0A0A0B",
+    "fg": "#F5B94D",
+    "href": "./sun/"
+  },
+  {
+    "id": "dou",
+    "title": "DOU · бронювання",
+    "tagline": "Вакансії з бронюванням від мобілізації",
+    "glyph": "lucide:user",
+    "bg": "#1f2430",
+    "fg": "#7ee0a6",
+    "href": "./dou/"
+  },
+  {
+    "id": "hn",
+    "title": "Hacker News",
+    "tagline": "Головна Hacker News",
+    "glyph": "lucide:flame",
+    "bg": "#1f2430",
+    "fg": "#ff6600",
+    "href": "./hn/"
+  }
+]

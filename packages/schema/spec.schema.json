@@ -276,10 +276,13 @@
             "required": ["layout", "title"],
             "description": "Item card template (required for type:'list').",
             "properties": {
-              "layout": { "type": "string", "enum": ["row", "feed"], "description": "row -> compact rates row; feed -> rich card." },
-              "image": { "type": "string", "minLength": 1, "description": "feed layout (OPTIONAL) — item field with an image URL; renders a 16:9 figure atop the card (media/gallery)." },
+              "layout": { "type": "string", "enum": ["row", "feed", "grid"], "description": "row -> compact rates row; feed -> rich card; grid -> Android-style launcher icon tile." },
+              "image": { "type": "string", "minLength": 1, "description": "feed layout (OPTIONAL) — item field with an image URL; renders a 16:9 figure atop the card (media/gallery). grid layout — item field with an icon URL painted into the tile." },
               "imageFit": { "type": "string", "enum": ["cover", "contain"], "description": "image fit (default 'cover' = fill+crop; 'contain' = whole image matted, for art/posters)." },
-              "href": { "type": "string", "minLength": 1, "description": "Item field name holding the URL; makes the card a link. Field must exist on items." },
+              "href": { "type": "string", "minLength": 1, "description": "Item field name holding the URL; makes the card a link (feed opens a new tab; grid navigates same-tab). Field must exist on items." },
+              "icon": { "type": "string", "minLength": 1, "description": "grid layout — item field holding an iconify icon name, rendered on the tile when no image." },
+              "bg": { "type": "string", "minLength": 1, "description": "grid layout (OPTIONAL) — item field with the tile background colour (e.g. brand bg)." },
+              "fg": { "type": "string", "minLength": 1, "description": "grid layout (OPTIONAL) — item field with the tile glyph colour (e.g. brand fg)." },
               "lead": { "type": "string", "minLength": 1, "description": "row layout — item field shown in the bold left column." },
               "title": { "type": "string", "minLength": 1, "description": "Item field name for the card title/heading." },
               "subtitle": { "type": "string", "minLength": 1, "description": "feed layout — item field for the subtitle." },
@@ -314,6 +317,10 @@
                   "anyOf": [ { "required": ["subtitle"] }, { "required": ["body"] }, { "required": ["image"] } ],
                   "$comment": "UX guardrail: a feed card must carry a preview slot (subtitle/body/image) — a title-only feed card is raw. Use layout:'row' for a compact title+value line, or spec.enrich to fetch a body preview."
                 }
+              },
+              {
+                "if": { "properties": { "layout": { "const": "grid" } } },
+                "then": { "anyOf": [ { "required": ["icon"] }, { "required": ["image"] } ], "$comment": "A grid tile needs an icon (iconify field) or image (icon URL)." }
               }
             ]
           },

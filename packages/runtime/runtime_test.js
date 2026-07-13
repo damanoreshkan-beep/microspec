@@ -6,7 +6,7 @@ import { T, dictFor, ago } from "./i18n.js";
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
 const baseList = () => ({
-  id: "app", i18n, tabs: [{ id: "feed", type: "list", icon: "lucide:list", label: "hi", card: { layout: "feed", title: "name" } }],
+  id: "app", i18n, tabs: [{ id: "feed", type: "list", icon: "lucide:list", label: "hi", card: { layout: "feed", title: "name", body: "desc" } }],
 });
 
 Deno.test("validateSpec accepts one valid tab per family", () => {
@@ -52,6 +52,18 @@ Deno.test("validateSpec throws path-named errors", () => {
     const err = assertThrows(() => validateSpec(spec), Error);
     assert(err.message.includes(path), `expected error to name "${path}", got: ${err.message}`);
   }
+});
+
+Deno.test("validateSpec: feed card needs a preview slot (no raw title-only cards)", () => {
+  const raw = { ...baseList(), tabs: [{ id: "feed", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name" } }] };
+  const err = assertThrows(() => validateSpec(raw), Error);
+  assert(err.message.includes("spec.tabs[0].card") && /preview slot/.test(err.message), err.message);
+  // any one preview slot satisfies it
+  for (const slot of ["subtitle", "body", "image"]) {
+    validateSpec({ ...baseList(), tabs: [{ id: "feed", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", [slot]: "x" } }] });
+  }
+  // row layout is exempt (compact title+value line)
+  validateSpec({ ...baseList(), tabs: [{ id: "r", type: "list", icon: "i", label: "hi", card: { layout: "row", title: "name", lead: "a", trailing: "b" } }] });
 });
 
 Deno.test("validateSpec: searchFetch requires search:true", () => {

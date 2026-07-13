@@ -20,8 +20,18 @@
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "description": "Item field names whose English body text is machine-translated to the active locale (via the runtime's cached, fail-open translator). Use for API content that isn't localized at source, e.g. Hacker News titles: [\"title\"]. Chrome/UI strings must still be authored in the i18n dicts.",
+      "description": "Item field names whose English body text is machine-translated to the active locale (via the runtime's cached, fail-open translator). Use for API content that isn't localized at source, e.g. Hacker News titles: [\"title\"]. Chrome/UI strings must still be authored in the i18n dicts. May include an enrich.body virtual field to translate fetched previews too.",
       "items": { "type": "string", "minLength": 1 }
+    },
+    "enrich": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "body"],
+      "description": "Article-preview enrichment for link feeds whose API has no preview text (e.g. Hacker News). The runtime fetches each item's URL description once (cached, fail-open) and exposes it as the virtual field named by `body` — point card.body (and optionally detail rows / translate) at that same field name.",
+      "properties": {
+        "url": { "type": "string", "minLength": 1, "description": "Item field holding the outbound article URL to fetch a preview for." },
+        "body": { "type": "string", "minLength": 1, "description": "Virtual field name the fetched description is exposed as (use it in card.body). Not a real item key." }
+      }
     },
     "fav": {
       "type": "object",
@@ -296,7 +306,16 @@
                   }
                 }
               }
-            }
+            },
+            "allOf": [
+              {
+                "if": { "properties": { "layout": { "const": "feed" } } },
+                "then": {
+                  "anyOf": [ { "required": ["subtitle"] }, { "required": ["body"] }, { "required": ["image"] } ],
+                  "$comment": "UX guardrail: a feed card must carry a preview slot (subtitle/body/image) — a title-only feed card is raw. Use layout:'row' for a compact title+value line, or spec.enrich to fetch a body preview."
+                }
+              }
+            ]
           },
           "empty": {
             "type": "object",

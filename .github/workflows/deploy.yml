@@ -1,7 +1,12 @@
-# Pages deploy — assemble dist/ (portal + apps + shared _rt) and publish to GitHub Pages.
+# Pages deploy — assemble dist/ (home launcher + apps + shared _rt) and publish to GitHub Pages.
+# Runs ONLY after the `verify` gate passes on main (workflow_run), never in parallel with it: this
+# (a) never deploys red code, and (b) keeps the two workflows from spinning up ~12 jobs at once, each
+# hammering GitHub's action-resolution service (which halves our exposure when GitHub has an outage).
 name: deploy
 on:
-  push:
+  workflow_run:
+    workflows: [verify]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -18,8 +23,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 4  # fail fast on a stuck setup/build instead of burning runner minutes
+    # workflow_dispatch → always; workflow_run → only when the verify gate concluded success.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # workflow_run checks out the default branch by default; pin to the exact commit that passed verify.
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
       - uses: denoland/setup-deno@v2
         with: { deno-version: v2.x }
       - name: Assemble dist/

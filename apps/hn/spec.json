@@ -1,14 +1,15 @@
 {
   "id": "hn",
   "theme": "signal",
-  "translate": ["title"],
+  "translate": ["title", "desc"],
+  "enrich": { "url": "url", "body": "desc" },
   "fav": { "key": "id" },
   "tabs": [
     {
       "id": "feed", "type": "list", "icon": "lucide:flame", "label": "tabFeed",
       "search": true, "searchKey": "search", "statusKey": "status",
       "card": {
-        "layout": "feed", "href": "url", "title": "title", "more": "open",
+        "layout": "feed", "href": "url", "title": "title", "body": "desc", "more": "open",
         "meta": { "field": "ts", "format": "ago" },
         "badges": [
           { "field": "points", "icon": "lucide:arrow-up", "variant": "success" },
@@ -22,7 +23,7 @@
       "titleKey": "tabSaved", "search": true, "searchKey": "searchSaved",
       "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
       "card": {
-        "layout": "feed", "href": "url", "title": "title", "more": "open",
+        "layout": "feed", "href": "url", "title": "title", "body": "desc", "more": "open",
         "meta": { "field": "ts", "format": "ago" },
         "badges": [
           { "field": "points", "icon": "lucide:arrow-up", "variant": "success" },

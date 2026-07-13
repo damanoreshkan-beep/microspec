@@ -5,6 +5,7 @@ import { useStore } from "@nanostores/preact";
 import { T, ago } from "./i18n.js";
 import { PERMISSIONS, permLabels } from "./permissions.js";
 import { tr, warm, trTick } from "./translate.js";
+import { enrich, warmMeta, metaTick } from "./enrich.js";
 
 let A;            
 let VIEWS = {};   
@@ -12,7 +13,11 @@ export function setApp(app, views) { A = app; VIEWS = views || {}; }
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const trFields = () => A.spec.translate || [];
-const field = (it, name, loc) => trFields().includes(name) ? tr(it[name], loc) : it[name];
+function field(it, name, loc) {
+  const e = A.spec.enrich;
+  let v = (e && name === e.body) ? (enrich(it[e.url])?.description ?? "") : it[name];
+  return trFields().includes(name) ? tr(v, loc) : v;
+}
 const searchText = (it) => Object.values(it).map((v) => Array.isArray(v) ? v.join(" ") : v).join(" ").toLowerCase();
 
 function test(it, fav, expr) {
@@ -64,7 +69,7 @@ function Badges({ item: it, badges, hide }) {
 
 function Card({ item: it, card, hide }) {
   const t = useStore(A.S.t), fav = useStore(A.S.fav), loc = useStore(A.S.locale);
-  useStore(trTick); 
+  useStore(trTick); useStore(metaTick); 
   const on = !!fav[A.favKey(it)];
   const star = A.spec.fav ? html`<button data-fav=${A.favKey(it)} aria-label=${on ? T(t, "unfavAria") : T(t, "favAria")}
     onClick=${(e) => { e.preventDefault(); e.stopPropagation(); A.toggleFav(it); }}
@@ -79,11 +84,13 @@ function Card({ item: it, card, hide }) {
     </div></div>`;
   }
 
+  const sub = card.subtitle ? field(it, card.subtitle, loc) : null;      
+  const bodyTxt = card.body ? field(it, card.body, loc) : null;          
   const body = html`<div class="card-body p-4 gap-2 @max-[240px]:p-3 @max-[240px]:gap-1">
     <div class="flex items-start justify-between gap-2"><h2 class="font-semibold leading-snug break-words min-w-0 @max-[240px]:text-sm">${field(it, card.title, loc) ?? "—"}</h2>${star}</div>
-    ${card.subtitle && it[card.subtitle] ? html`<div class="text-sm text-base-content/70 @max-[240px]:hidden">${field(it, card.subtitle, loc)}</div>` : null}
+    ${sub ? html`<div class="text-sm text-base-content/70 @max-[240px]:hidden">${sub}</div>` : null}
     <${Badges} item=${it} badges=${card.badges} hide=${hide} />
-    ${card.body && it[card.body] ? html`<p class="text-sm text-base-content/70 line-clamp-2 @max-[240px]:hidden">${field(it, card.body, loc)}</p>` : null}
+    ${bodyTxt ? html`<p class="text-sm text-base-content/70 line-clamp-2 @max-[240px]:hidden">${bodyTxt}</p>` : null}
     <div class="flex items-center justify-between gap-2 mt-0.5 @max-[240px]:hidden">
       ${(() => { const mt = metaText(card.meta, it, t, loc); return mt ? html`<span class="text-xs text-base-content/80 flex items-center gap-1">${card.meta?.format === "ago" ? Icon("lucide:clock", "text-[0.9em] opacity-70") : null}${mt}</span>` : html`<span></span>`; })()}
       ${card.more ? html`<span class="text-xs text-primary font-medium flex items-center gap-0.5 ml-auto">${T(t, card.more)} ${Icon("lucide:arrow-up-right")}</span>` : null}
@@ -120,12 +127,13 @@ function Banner({ banner }) {
 
 function ListView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters), loc = useStore(A.S.locale);
+  const mt = useStore(metaTick);
   useEffect(() => {
-    const fields = A.spec.translate;
-    if (!fields?.length || loc === "en") return;
     const src = tab.source === "fav" ? Object.values(fav) : (data.items || []);
-    warm(src.flatMap((it) => fields.map((f) => it[f])), loc);
-  }, [data.items, fav, loc, tab.source]);
+    if (A.spec.enrich) warmMeta(src.map((it) => it[A.spec.enrich.url]));
+    const fields = A.spec.translate;
+    if (fields?.length && loc !== "en") warm(src.flatMap((it) => fields.map((f) => field(it, f, "en"))), loc);
+  }, [data.items, fav, loc, tab.source, mt]);
   if (!tab.card) return Empty("lucide:alert-triangle", T(t, tab.empty?.text || "noResults"), null);
   if (data.loading) return Skeleton(tab.card.layout === "row");
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
@@ -195,7 +203,7 @@ function PermissionsScreen() {
 
 function DetailView() {
   const t = useStore(A.S.t), it = useStore(A.S.detail), fav = useStore(A.S.fav), loc = useStore(A.S.locale);
-  useStore(trTick); 
+  useStore(trTick); useStore(metaTick); 
   if (!it) return null;
   const d = A.spec.detail, on = !!fav[A.favKey(it)], close = () => A.S.detail.set(null);
   const img = d.image && it[d.image] ? html`<figure class="aspect-video bg-base-300 rounded-2xl overflow-hidden border border-base-300"><img src=${it[d.image]} alt="" class=${`w-full h-full ${d.imageFit === "cover" ? "object-cover" : "object-contain"}`}/></figure>` : null;

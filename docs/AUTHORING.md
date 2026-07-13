@@ -16,6 +16,12 @@ prompt → probe source → author spec.json (ajv-gated) → author data.js → 
 2. **Author `spec.json`** — the declarative app (theme, tabs, card slots, detail, filters, i18n uk+en).
    The families are: `list` (feed|row) · `converter` · `dashboard` · `tool` · `profile`, plus top-level
    `detail`, per-list `search`/`searchFetch`, and `filters`. See `packages/schema/SCHEMA.md`.
+   **No raw cards (enforced):** a `feed` card must carry a preview slot — at least one of
+   `subtitle` / `body` / `image`; a title-only feed card is rejected by the validator. Use `layout:"row"`
+   for a compact title+value line. If the source API has no preview text (e.g. Hacker News), add top-level
+   `enrich: { url, body }` — the runtime fetches each item's article description and fills that `body`
+   field (cached, fail-open). Foreign-language body follows the UI locale via top-level `translate: [...]`
+   (list the field names, including an enriched `body`).
    **Gate it immediately:**
    ```
    deno run -A packages/schema/validate.mjs apps/<id>/spec.json     # exit 1 + path-named errors if bad

@@ -47,6 +47,10 @@ function validateTab(tab, p, die, need) {
       need(nonEmpty(c.lead), `${p}.card.lead`, 'required for layout "row"');
       need(nonEmpty(c.trailing), `${p}.card.trailing`, 'required for layout "row"');
     }
+    if (c.layout === "feed") {
+      need(nonEmpty(c.subtitle) || nonEmpty(c.body) || nonEmpty(c.image), `${p}.card`,
+        'a "feed" card needs a preview slot — set at least one of subtitle/body/image (a title-only feed card is raw; use layout:"row" for a compact title+value line, or add spec.enrich to fetch a body preview)');
+    }
     if (tab.searchFetch) need(tab.search === true, `${p}.search`, "searchFetch requires search:true");
     if (tab.sections != null) {
       need(Array.isArray(tab.sections), `${p}.sections`, "must be an array when present");

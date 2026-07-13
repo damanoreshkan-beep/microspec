@@ -1,7 +1,7 @@
 import { viaProxy, isJsonObject } from "/_rt/feed.js";
 
-export async function load() {
-  const url = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=15&hide_recent_previous=true";
+export async function load(filters = {}) {
+  const url = filters.cursor || "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=15&hide_recent_previous=true";
   const data = JSON.parse(await viaProxy(url, isJsonObject));
   if (!Array.isArray(data.results)) throw new Error("unavailable"); 
   const items = data.results.map((r) => ({
@@ -16,5 +16,5 @@ export async function load() {
     mission: r.mission?.description || "",
     url: r.vidURLs?.[0]?.url || "",
   }));
-  return { items, meta: {} };
+  return { items, meta: {}, next: data.next || null };
 }

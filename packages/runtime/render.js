@@ -159,6 +159,29 @@ function Banner({ banner }) {
 }
 
 // ---- list family ------------------------------------------------------------
+// Infinite scroll sentinel. Accessible-first: a real "load more" button (keyboard/SR reachable) that
+// ALSO auto-triggers via IntersectionObserver with a 500px prefetch margin. A.loadMore() no-ops when
+// there's no cursor or a page is already loading, so the observer can fire freely. Always mounted so the
+// observed node keeps a stable identity.
+function LoadMore() {
+  const t = useStore(A.S.t), data = useStore(A.S.data);
+  const ref = useRef();
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) A.loadMore(); }, { rootMargin: "500px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const btn = (cls, icon) => html`<button class=${`btn btn-ghost btn-sm gap-2 ${cls}`} onClick=${() => A.loadMore()}>${Icon(icon)} ${T(t, "loadMore")}</button>`;
+  return html`<div ref=${ref} class="flex justify-center py-4 min-h-8" aria-live="polite">
+    ${data.loadingMore ? html`<span class="loading loading-spinner loading-md text-primary" role="status" aria-label=${T(t, "statusLoading")}></span>`
+      : data.moreError ? btn("text-error", "lucide:rotate-cw")
+      : data.next != null ? btn("text-base-content/70", "lucide:chevron-down")
+      : null}
+  </div>`;
+}
+
 function ListView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters), loc = useStore(A.S.locale);
   const mt = useStore(metaTick);
@@ -188,7 +211,9 @@ function ListView({ tab }) {
   // grid layout lays its tiles out in an Android-style grid; other layouts stack in the flex-col main.
   // @container wrapper so the grid drops to 3 columns on a watch-narrow width (4 on a phone).
   if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`]);
-  if (!tab.sections) return Frag([banner, ...cards]);
+  // infinite scroll appends server pages under the live list (not the saved/fav tab, not sectioned lists)
+  const more = tab.paginate && tab.source !== "fav" ? html`<${LoadMore} key="more" />` : null;
+  if (!tab.sections) return Frag([banner, ...cards, more]);
   return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })]);
 }
 

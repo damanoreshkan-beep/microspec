@@ -1,8 +1,10 @@
 // Hacker News adapter (Algolia front-page API — CORS *, no key). Returns { items, meta }.
 import { viaProxy, isJsonObject } from "/_rt/feed.js";
 
-export async function load() {
-  const url = "https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=30";
+export async function load(filters = {}) {
+  // Infinite scroll: the front-page ranking spans several Algolia pages (nbHits ~150); cursor = page index.
+  const page = Number(filters.cursor) || 0;
+  const url = `https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=30&page=${page}`;
   const data = JSON.parse(await viaProxy(url, isJsonObject));
   const items = (data.hits || []).filter((h) => h.title).map((h) => ({
     id: String(h.objectID),
@@ -13,5 +15,6 @@ export async function load() {
     url: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`,
     ts: (h.created_at_i || 0) * 1000,
   }));
-  return { items, meta: {} };
+  const next = data.page + 1 < data.nbPages ? data.page + 1 : null;
+  return { items, meta: {}, next };
 }

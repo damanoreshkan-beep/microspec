@@ -9,15 +9,17 @@ const oneLine = (s) => { s = s.replace(/\s+/g, " ").trim(); return s.length > 10
 export async function load(filters) {
   const q = (filters.q || "").trim();
   const lang = LANGS[filters.lang] ? filters.lang : "uk";
-  if (!q) return { items: [], meta: { count: 0 } };
+  if (!q) return { items: [], meta: { count: 0 }, next: null };
 
-  const api = `https://${lang}.wikipedia.org/w/api.php?` + new URLSearchParams({
+  const params = {
     action: "query", format: "json", generator: "search",
     gsrsearch: q, gsrlimit: "20", gsrnamespace: "0", gsrqiprofile: "classic",
     prop: "extracts|description|pageimages",
     exintro: "1", explaintext: "1", exchars: "600",
     piprop: "thumbnail", pithumbsize: "400", origin: "*",
-  });
+  };
+  if (filters.cursor != null) params.gsroffset = String(filters.cursor); // infinite scroll: search offset
+  const api = `https://${lang}.wikipedia.org/w/api.php?` + new URLSearchParams(params);
   const data = JSON.parse(await viaProxy(api, isJsonObject));
   const pages = Object.values(data.query?.pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
 
@@ -34,5 +36,6 @@ export async function load(filters) {
       url: `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(p.title.replace(/ /g, "_"))}`,
     };
   });
-  return { items, meta: { count: items.length } };
+  // Wikipedia signals more results via continue.gsroffset — use it verbatim as the next-page cursor.
+  return { items, meta: { count: items.length }, next: data.continue?.gsroffset ?? null };
 }

@@ -7,7 +7,7 @@
   "tabs": [
     {
       "id": "feed", "type": "list", "icon": "lucide:flame", "label": "tabFeed",
-      "search": true, "searchKey": "search", "statusKey": "status",
+      "search": true, "searchKey": "search", "statusKey": "status", "paginate": true,
       "card": {
         "layout": "feed", "href": "url", "title": "title", "body": "desc", "more": "open",
         "meta": { "field": "ts", "format": "ago" },
@@ -40,7 +40,7 @@
       "title": "Hacker News", "tabFeed": "Головна", "tabSaved": "Збережені", "tabMe": "Я",
       "search": "Пошук у стрічці…", "searchSaved": "Шукати у збережених…",
       "status": "Hacker News · головна", "statusLoading": "Оновлення…", "statusError": "Дані недоступні", "savedCount": "{n} збережено",
-      "open": "Відкрити",
+      "open": "Відкрити", "loadMore": "Показати ще",
       "noResults": "Нічого не знайдено", "noResultsHint": "Спробуй інший запит", "errorHint": "Перевір зʼєднання та онови",
       "emptySaved": "Ще нічого не збережено", "emptySavedHint": "Тисни закладку на картці, щоб зберегти сюди",
       "favAria": "Зберегти", "unfavAria": "Прибрати зі збережених",
@@ -54,7 +54,7 @@
       "title": "Hacker News", "tabFeed": "Front page", "tabSaved": "Saved", "tabMe": "Me",
       "search": "Search the feed…", "searchSaved": "Search saved…",
       "status": "Hacker News · front page", "statusLoading": "Updating…", "statusError": "Data unavailable", "savedCount": "{n} saved",
-      "open": "Open",
+      "open": "Open", "loadMore": "Load more",
       "noResults": "Nothing found", "noResultsHint": "Try another query", "errorHint": "Check connection and refresh",
       "emptySaved": "Nothing saved yet", "emptySavedHint": "Tap the bookmark on a card to save it here",
       "favAria": "Save", "unfavAria": "Remove from saved",

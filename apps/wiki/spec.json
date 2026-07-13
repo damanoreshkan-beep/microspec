@@ -22,7 +22,7 @@
   "tabs": [
     {
       "id": "search", "type": "list", "icon": "lucide:search", "label": "tabSearch",
-      "search": true, "searchFetch": true, "searchKey": "search", "statusKey": "status",
+      "search": true, "searchFetch": true, "searchKey": "search", "statusKey": "status", "paginate": true,
       "prompt": { "icon": "lucide:book-open-text", "text": "searchPrompt", "hint": "searchPromptHint" },
       "empty": { "icon": "lucide:search-x", "text": "noResults", "hint": "noResultsHint" },
       "card": { "layout": "feed", "image": "thumb", "imageFit": "contain", "title": "title", "body": "desc", "more": "more" }
@@ -40,7 +40,7 @@
       "title": "Вікіпедія", "tabSearch": "Пошук", "tabSaved": "Збережені", "tabMe": "Я",
       "search": "Шукати у Вікіпедії…", "searchSaved": "Шукати у збережених…",
       "status": "Вікіпедія", "statusLoading": "Пошук…", "statusError": "Дані недоступні", "savedCount": "{n} збережено",
-      "more": "Читати", "readOn": "Читати у Вікіпедії",
+      "more": "Читати", "readOn": "Читати у Вікіпедії", "loadMore": "Показати ще",
       "searchPrompt": "Пошук у Вікіпедії", "searchPromptHint": "Введи слово, ім’я чи тему — і читай статтю прямо тут",
       "noResults": "Нічого не знайдено", "noResultsHint": "Спробуй інакший запит або іншу мову", "errorHint": "Перевір зʼєднання та онови",
       "emptySaved": "Ще нічого не збережено", "emptySavedHint": "Тисни закладку на картці, щоб зберегти статтю сюди",
@@ -56,7 +56,7 @@
       "title": "Wikipedia", "tabSearch": "Search", "tabSaved": "Saved", "tabMe": "Me",
       "search": "Search Wikipedia…", "searchSaved": "Search saved…",
       "status": "Wikipedia", "statusLoading": "Searching…", "statusError": "Data unavailable", "savedCount": "{n} saved",
-      "more": "Read", "readOn": "Read on Wikipedia",
+      "more": "Read", "readOn": "Read on Wikipedia", "loadMore": "Load more",
       "searchPrompt": "Search Wikipedia", "searchPromptHint": "Type a word, name or topic — read the article right here",
       "noResults": "Nothing found", "noResultsHint": "Try another query or another language", "errorHint": "Check connection and refresh",
       "emptySaved": "Nothing saved yet", "emptySavedHint": "Tap the bookmark on a card to save an article here",

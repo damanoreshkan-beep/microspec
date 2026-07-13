@@ -22,7 +22,8 @@ export function createApp(spec, dataLoad) {
     // ephemeral UI state
     query: atom(""),
     tab: atom(spec.tabs?.[0]?.id),
-    data: map({ items: [], meta: {}, loading: true, error: false }),
+    // next = opaque cursor for the following page (null = no more); loadingMore/moreError = paging state
+    data: map({ items: [], meta: {}, loading: true, error: false, next: null, loadingMore: false, moreError: false }),
     filters: map(spec.filters?.defaults ? { ...spec.filters.defaults } : {}),
     toast: atom(""),
     // history-backed overlays (index.js watches these for the back-button invariant)
@@ -34,14 +35,32 @@ export function createApp(spec, dataLoad) {
   };
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
 
+  // Full (re)load — page one. Resets the accumulated list + pagination cursor. Fires on init, filter
+  // change/refetch, searchFetch query change, and manual refresh.
   async function load() {
-    S.data.set({ ...S.data.get(), loading: true, error: false });
+    S.data.set({ ...S.data.get(), loading: true, error: false, moreError: false });
     try {
-      // searchFetch family: the trimmed query reaches data.js as filters.q
-      const { items, meta } = await dataLoad({ ...S.filters.get(), q: S.query.get().trim() });
-      S.data.set({ items: items || [], meta: meta || {}, loading: false, error: false });
+      // searchFetch family: the trimmed query reaches data.js as filters.q. `next` (optional) is the
+      // cursor for infinite scroll — data.js returns it and receives it back as filters.cursor.
+      const { items, meta, next } = await dataLoad({ ...S.filters.get(), q: S.query.get().trim() });
+      S.data.set({ items: items || [], meta: meta || {}, loading: false, error: false, next: next ?? null, loadingMore: false, moreError: false });
     } catch {
-      S.data.set({ items: [], meta: {}, loading: false, error: true });
+      S.data.set({ items: [], meta: {}, loading: false, error: true, next: null, loadingMore: false, moreError: false });
+    }
+  }
+
+  // Append the next page (infinite scroll). No-op if there's no cursor or a load is already in flight —
+  // so the IntersectionObserver can fire freely. A failed page keeps the list and flags moreError (retry).
+  async function loadMore() {
+    const d = S.data.get();
+    if (d.next == null || d.loading || d.loadingMore) return;
+    S.data.set({ ...d, loadingMore: true, moreError: false });
+    try {
+      const { items, meta, next } = await dataLoad({ ...S.filters.get(), q: S.query.get().trim(), cursor: d.next });
+      const cur = S.data.get();
+      S.data.set({ ...cur, items: [...cur.items, ...(items || [])], meta: { ...cur.meta, ...(meta || {}) }, next: next ?? null, loadingMore: false });
+    } catch {
+      S.data.set({ ...S.data.get(), loadingMore: false, moreError: true });
     }
   }
 
@@ -63,5 +82,5 @@ export function createApp(spec, dataLoad) {
 
   function swap() { const a = S.from.get(); S.from.set(S.to.get()); S.to.set(a); }
 
-  return { spec, S, load, toast, toggleFav, favKey, swap };
+  return { spec, S, load, loadMore, toast, toggleFav, favKey, swap };
 }

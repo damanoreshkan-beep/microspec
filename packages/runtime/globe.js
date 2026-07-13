@@ -6,7 +6,7 @@ import { feature } from "https://esm.sh/topojson-client@3";
 let LAND = null, LOADING = null;
 async function loadWorld() {
   if (LAND) return;
-  if (!LOADING) LOADING = fetch("/_rt/world-110m.json").then((r) => r.json()).then((topo) => { LAND = feature(topo, topo.objects.countries).features; });
+  if (!LOADING) LOADING = fetch(new URL("./world-110m.json", import.meta.url)).then((r) => r.json()).then((topo) => { LAND = feature(topo, topo.objects.countries).features; });
   await LOADING;
 }
 

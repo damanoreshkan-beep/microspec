@@ -66,6 +66,16 @@ Deno.test("validateSpec: feed card needs a preview slot (no raw title-only cards
   validateSpec({ ...baseList(), tabs: [{ id: "r", type: "list", icon: "i", label: "hi", card: { layout: "row", title: "name", lead: "a", trailing: "b" } }] });
 });
 
+Deno.test("validateSpec: grid layout (launcher) needs a tile, exempt from feed density", () => {
+  const gridTab = (card) => ({ ...baseList(), tabs: [{ id: "apps", type: "list", icon: "i", label: "hi", card: { layout: "grid", title: "title", ...card } }] });
+  // icon or image satisfies the tile requirement
+  validateSpec(gridTab({ icon: "glyph" }));
+  validateSpec(gridTab({ image: "iconUrl" }));
+  // a grid with neither is rejected (needs a tile), NOT the feed "preview slot" message
+  const err = assertThrows(() => validateSpec(gridTab({})), Error);
+  assert(err.message.includes("spec.tabs[0].card") && /needs a tile/.test(err.message), err.message);
+});
+
 Deno.test("validateSpec: searchFetch requires search:true", () => {
   const spec = baseList();
   spec.tabs[0].searchFetch = true; // no search:true

@@ -16,9 +16,14 @@ prompt → probe source → author spec.json (ajv-gated) → author data.js → 
 2. **Author `spec.json`** — the declarative app (theme, tabs, card slots, detail, filters, i18n uk+en).
    The families are: `list` (feed|row) · `converter` · `dashboard` · `tool` · `profile`, plus top-level
    `detail`, per-list `search`/`searchFetch`, and `filters`. See `packages/schema/SCHEMA.md`.
+   **Card layouts:** `feed` (rich card), `row` (compact title+value), `grid` (Android-style launcher
+   icon tile — a rounded `bg`/`fg` glyph tile + 2-line label, whole tile a same-tab link). The store home
+   is itself a microapp: `apps/home` (list/`grid` + profile), assembled at the site ROOT by build.mjs; its
+   app list is generated from every spec by `deno run -A deploy/manifest.mjs` → `apps/home/apps.json`
+   (build.mjs regenerates it automatically; rerun it after adding an app).
    **No raw cards (enforced):** a `feed` card must carry a preview slot — at least one of
    `subtitle` / `body` / `image`; a title-only feed card is rejected by the validator. Use `layout:"row"`
-   for a compact title+value line. If the source API has no preview text (e.g. Hacker News), add top-level
+   for a compact title+value line, or `layout:"grid"` for an icon tile (needs `icon` or `image`). If the source API has no preview text (e.g. Hacker News), add top-level
    `enrich: { url, body }` — the runtime fetches each item's article description and fills that `body`
    field (cached, fail-open). Foreign-language body follows the UI locale via top-level `translate: [...]`
    (list the field names, including an enriched `body`).

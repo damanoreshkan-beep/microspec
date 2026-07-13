@@ -1,29 +1,44 @@
 // Live Bitcoin tx flow (Blockchain.com WebSocket). On localhost the stream is synthetic (a raw WS from a
-// CI IP is nondeterministic), so the gate reviews a real, moving feed. list + detail + stream; search +
-// sort are systemic.
-const seed = async (h) => { for (let i = 0; i < 24; i++) { if (/BTC/.test(await h.bodyText())) break; await h.wait(300); } };
+// CI IP is nondeterministic), so the gate reviews a real, moving feed. Dense table + heat + chart + range
+// filter + search + sort — all systemic (declared in spec.json).
+const seed = async (h) => { for (let i = 0; i < 24; i++) { if ((await h.count("[data-row]")) > 3) break; await h.wait(300); } };
 
 export default [
   {
-    name: "живий потік транзакцій + суми/комісія", run: async (h) => {
+    name: "жива таблиця транзакцій + графік + суми/комісія", run: async (h) => {
       await seed(h);
-      h.expect((await h.count(".card")) > 3, "замало транзакцій");
+      h.expect((await h.count("[data-row]")) > 3, "замало рядків");
+      h.expect((await h.count("svg")) >= 1, "немає графіка");
       const t = await h.bodyText();
       h.expect(/[\d.]+\s*BTC/i.test(t), "немає сум у BTC");
-      h.expect(/sat\/vB/i.test(t), "немає комісії sat/vB"); // badge CSS uppercases → match case-insensitively
+      h.expect(/sat\/vB/i.test(t), "немає комісії");
       h.expect(/щойно|тому/.test(t), "немає відносного часу");
     },
   },
   {
-    name: "дрілдаун: максимум інфи по транзакції, Back закриває", run: async (h) => {
+    name: "дрілдаун з рядка: максимум інфи, Back закриває", run: async (h) => {
       await seed(h);
-      await h.click(".aw-tap"); await h.wait(300);
+      await h.click('[data-row="0"]'); await h.wait(300);
       h.expect((await h.count('[role="dialog"]')) === 1, "деталі не відкрились");
       const t = await h.bodyText();
-      h.expect(/Хеш|Hash/.test(t) && /Комісія|Fee/.test(t), "немає ключових полів");
-      h.expect(/Найбільший отримувач|Top recipient/.test(t), "немає адрес");
+      h.expect(/Хеш|Hash/.test(t) && /Комісія|Fee/.test(t) && /отримувач|recipient/i.test(t), "немає ключових полів");
       await h.back(); await h.wait(250);
       h.expect((await h.count('[role="dialog"]')) === 0, "Back не закрив деталі");
+    },
+  },
+  {
+    name: "фільтр «від–до» за сумою звужує і скидається чипом", run: async (h) => {
+      await seed(h);
+      await h.click("#filter-btn"); await h.wait(200);
+      h.expect((await h.count("#f-amt-from")) === 1, "немає range-поля");
+      await h.type("#f-amt-from", "999"); await h.wait(150);
+      await h.click("#f-apply"); await h.wait(250);
+      h.expect((await h.count("[data-row]")) === 0, "фільтр не звузив (немає переказів > 999 BTC)");
+      h.expect(/Нічого не знайдено|Nothing/.test(await h.bodyText()), "немає empty-стану");
+      const chip = await h.count(".badge.badge-primary");
+      h.expect(chip >= 1, "немає чипа активного фільтра");
+      await h.click(".badge.badge-primary"); await h.wait(400);
+      h.expect((await h.count("[data-row]")) > 0, "чип не скинув фільтр");
     },
   },
   {
@@ -37,12 +52,11 @@ export default [
   {
     name: "пошук звужує до 0 і відновлює", run: async (h) => {
       await seed(h);
-      const base = await h.count(".card");
+      const base = await h.count("[data-row]");
       await h.type("#filter", "zzz-нема-адреси"); await h.wait(300);
-      h.expect((await h.count(".card")) === 0, "пошук не звузив");
-      h.expect(/Нічого не знайдено|Nothing/.test(await h.bodyText()), "немає empty-стану");
+      h.expect((await h.count("[data-row]")) === 0, "пошук не звузив");
       await h.type("#filter", ""); await h.wait(400);
-      h.expect((await h.count(".card")) > 0, "не відновилось");
+      h.expect((await h.count("[data-row]")) > 0, "не відновилось");
     },
   },
   {

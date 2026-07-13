@@ -51,8 +51,9 @@ function validateTab(tab, p, die, need) {
   if (tab.type === "list") {
     const c = tab.card;
     need(c && typeof c === "object", `${p}.card`, "required object for list tabs");
-    need(["row", "feed", "grid"].includes(c.layout), `${p}.card.layout`, `unknown layout "${c?.layout}" (expected "row", "feed" or "grid")`);
-    need(nonEmpty(c.title), `${p}.card.title`, "required field name (card title / list key)");
+    need(["row", "feed", "grid", "table"].includes(c.layout), `${p}.card.layout`, `unknown layout "${c?.layout}" (expected "row", "feed", "grid" or "table")`);
+    if (c.layout !== "table") need(nonEmpty(c.title), `${p}.card.title`, "required field name (card title / list key)");
+    if (c.layout === "table") need(Array.isArray(c.columns) && c.columns.length, `${p}.card.columns`, 'layout "table" needs a non-empty columns array of { field, ... }');
     if (c.layout === "row") {
       need(nonEmpty(c.lead), `${p}.card.lead`, 'required for layout "row"');
       need(nonEmpty(c.trailing), `${p}.card.trailing`, 'required for layout "row"');

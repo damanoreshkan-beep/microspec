@@ -56,6 +56,23 @@ const metaText = (meta, it, dict, loc) => {
 const isTimeFmt = (fmt) => fmt === "ago" || fmt === "when" || fmt === "since";
 const fmtNum = (n, loc) => new Intl.NumberFormat(loc === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
+// locale date formats reusable by card meta, detail rows AND table columns (format: ago|when|since)
+const DATE_FMT = { ago, when: whenLabel, since: sinceLabel };
+const fmtCell = (c, it, t, loc) => (c.format && DATE_FMT[c.format]) ? DATE_FMT[c.format](t, it[c.field], loc) : it[c.field];
+
+// Sequential magnitude → intensity 0..1, log-scaled (suits money / long-tailed data) and normalized across
+// the currently-visible items. Reusable by table `heat` columns and `chart` bars — the color-by-strength.
+function heatMap(items, field) {
+  const v = items.map((it) => Math.max(0, Number(it[field]) || 0));
+  const pos = v.filter((x) => x > 0);
+  if (!pos.length) return new Map(items.map((it) => [it, 0]));
+  const lo = Math.log(Math.min(...pos)), span = Math.log(Math.max(...pos)) - lo || 1;
+  return new Map(items.map((it, i) => [it, v[i] > 0 ? Math.min(1, Math.max(0, (Math.log(v[i]) - lo) / span)) : 0]));
+}
+// single warm hue, dim→strong (sequential ramp for magnitude). `bg` for bars/accents, `ink` tints a value.
+const heatBg = (x) => `rgba(240,169,59,${(0.16 + 0.84 * x).toFixed(3)})`;
+const heatInk = (x) => (x >= 0.5 ? `rgba(240,169,59,${(0.55 + 0.45 * x).toFixed(3)})` : "");
+
 // searchFetch family: the search box debounce-drives a real refetch (query → data.js as filters.q).
 let _searchT;
 const debouncedLoad = () => { clearTimeout(_searchT); _searchT = setTimeout(() => A.load(), 350); };
@@ -182,6 +199,43 @@ function LoadMore() {
   </div>`;
 }
 
+// Live bar chart of recent items' numeric `field` (tab.chart: { type:"bars", field, max, label }). Single-
+// hue heat ramp (magnitude), thin rounded bars, uniform-scaled viewBox so the rounding stays crisp.
+// Systemic: any list with a numeric field gets a chart by declaring it — no bespoke code.
+function Chart({ tab }) {
+  const t = useStore(A.S.t), data = useStore(A.S.data);
+  const cfg = tab.chart, items = (data.items || []).slice(0, cfg.max || 40);
+  if (items.length < 2) return null;
+  const heat = heatMap(items, cfg.field);
+  const max = Math.max(...items.map((it) => Math.max(0, Number(it[cfg.field]) || 0))) || 1;
+  const W = 320, H = 56, bw = W / items.length, seq = items.slice().reverse(); // oldest → newest, L → R
+  return html`<div class="px-4 pt-3 max-w-xl mx-auto w-full"><div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-1.5">
+    ${cfg.label ? html`<div class="text-xs text-base-content/60 px-1 font-medium">${T(t, cfg.label)}</div>` : null}
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="w-full" style="height:52px" role="img" aria-label=${T(t, cfg.label || "title")}>
+      ${seq.map((it, i) => { const h = Math.max(1.5, (Math.max(0, Number(it[cfg.field]) || 0) / max) * (H - 3)); return html`<rect x=${(i * bw + bw * 0.14).toFixed(2)} y=${(H - h).toFixed(2)} width=${(bw * 0.72).toFixed(2)} height=${h.toFixed(2)} fill=${heatBg(heat.get(it))} key=${i}></rect>`; })}
+    </svg>
+  </div></div></div>`;
+}
+
+// Dense table layout (card.layout:"table", card.columns:[{field,label,heat,grow,align,mono,muted,format}]).
+// Scannable micro-rows with a heat accent bar + heat-tinted value. Rows drill into detail (or href).
+function Table({ items, tab }) {
+  const t = useStore(A.S.t), loc = useStore(A.S.locale);
+  const cols = tab.card.columns, hc = cols.find((c) => c.heat);
+  const heat = hc ? heatMap(items, hc.heat) : null;
+  const cls = (c) => `${c.grow ? "flex-1 min-w-0 truncate" : "shrink-0"}${c.align === "right" ? " text-right" : ""}${c.mono ? " tabular-nums" : ""}${c.muted ? " text-base-content/55" : ""}`;
+  const open = (it) => { if (A.spec.detail) A.S.detail.set(it); else if (tab.card.href) { const h = safeHref(it[tab.card.href]); if (h) window.open(h, "_blank"); } };
+  return html`<div class="px-4 max-w-xl mx-auto w-full">
+    <div class="flex items-center gap-3 px-3 py-1.5 text-[0.62rem] uppercase tracking-wide text-base-content/45">${cols.map((c) => html`<div class=${cls(c)} key=${c.field}>${c.label ? T(t, c.label) : ""}</div>`)}</div>
+    <div class="flex flex-col rounded-2xl overflow-hidden border border-base-300 bg-base-100">
+      ${items.map((it, i) => html`<button type="button" data-row=${i} class="flex items-center gap-3 pl-4 pr-3 py-2.5 text-sm border-b border-base-300/50 last:border-0 active:bg-base-200 text-left w-full relative" key=${A.favKey(it) || it[cols[0].field] || i} onClick=${() => open(it)}>
+        ${heat ? html`<span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full" style=${`background:${heatBg(heat.get(it))}`}></span>` : null}
+        ${cols.map((c) => html`<div class=${cls(c) + " font-medium"} style=${c.heat && heat ? `color:${heatInk(heat.get(it))}` : ""} key=${c.field}>${fmtCell(c, it, t, loc)}</div>`)}
+      </button>`)}
+    </div>
+  </div>`;
+}
+
 function ListView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters), loc = useStore(A.S.locale), sortKey = useStore(A.S.sort);
   const mt = useStore(metaTick);
@@ -204,6 +258,11 @@ function ListView({ tab }) {
   let items = tab.source === "fav" ? Object.values(fav) : data.items;
   if (q && !tab.searchFetch) items = items.filter((it) => searchText(it).includes(q));  // server already searched when searchFetch
   for (const cf of (tab.clientFilters || [])) if (filters[cf.key]) items = items.filter((it) => test(it, fav, cf.when));
+  // range filters (from–to on a numeric field) — declared in spec.filters.controls, persisted like the rest
+  for (const c of (A.spec.filters?.controls || [])) if (c.type === "range" && filters[c.key]) {
+    const r = filters[c.key];
+    items = items.filter((it) => { const v = Number(it[c.field]); return !isNaN(v) && (r.from == null || r.from === "" || v >= +r.from) && (r.to == null || r.to === "" || v <= +r.to); });
+  }
   if (tab.sort) {  // declarative persisted sort (S.sort holds the chosen key)
     const o = tab.sort.find((x) => x.key === sortKey) || tab.sort[0];
     const dir = o.dir === "asc" ? 1 : -1;
@@ -221,6 +280,7 @@ function ListView({ tab }) {
   if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`]);
   // infinite scroll appends server pages under the live list (not the saved/fav tab, not sectioned lists)
   const more = tab.paginate && tab.source !== "fav" ? html`<${LoadMore} key="more" />` : null;
+  if (tab.card.layout === "table") return Frag([banner, html`<${Table} items=${items} tab=${tab} key="tbl" />`, more]);
   if (!tab.sections) return Frag([banner, ...cards, more]);
   return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })]);
 }
@@ -308,6 +368,7 @@ function FilterChips() {
   for (const c of (f.controls || [])) {
     const v = filters[c.key], def = defaults[c.key] ?? (c.type === "toggle" ? false : "");
     if (c.type === "toggle") { if (v) chips.push({ key: c.key, label: T(t, c.label), reset: false }); continue; }
+    if (c.type === "range") { const r = v || {}; if ((r.from ?? "") !== "" || (r.to ?? "") !== "") chips.push({ key: c.key, label: `${T(t, c.label)}: ${r.from ?? "…"}–${r.to ?? "…"}`, reset: {} }); continue; }
     if (v != null && v !== def) { const opt = (c.options || []).find((o) => o[0] === v); chips.push({ key: c.key, label: opt ? T(t, opt[1]) : String(v), reset: def }); }
   }
   if (!chips.length) return null;
@@ -323,6 +384,12 @@ function FilterSheet() {
     ${(f.controls || []).map((c) => {
       if (c.type === "select") return html`<label class="form-control" key=${c.key}><span class="text-sm flex items-center gap-2 mb-1">${c.icon ? Icon(c.icon) : null} ${T(t, c.label)}</span><select id=${"f-" + c.key} class="select select-bordered rounded-2xl w-full" value=${filters[c.key] || ""} onChange=${(e) => A.S.filters.setKey(c.key, e.target.value)}>${(data.meta[c.optionsFrom] || []).map((o) => html`<option value=${o.v} key=${o.v}>${o.l}</option>`)}</select></label>`;
       if (c.type === "toggle") return html`<label class="flex items-center justify-between" key=${c.key}><span class="flex items-center gap-2">${c.icon ? Icon(c.icon) : null} ${T(t, c.label)}</span><input id=${"f-" + c.key} type="checkbox" class="toggle toggle-primary" checked=${!!filters[c.key]} onChange=${(e) => A.S.filters.setKey(c.key, e.target.checked)} /></label>`;
+      if (c.type === "range") { const r = filters[c.key] || {}; const set = (k, v) => A.S.filters.setKey(c.key, { ...(filters[c.key] || {}), [k]: v });
+        return html`<label class="form-control" key=${c.key}><span class="text-sm flex items-center gap-2 mb-1">${c.icon ? Icon(c.icon) : null} ${T(t, c.label)}${c.unit ? html`<span class="text-base-content/50">(${c.unit})</span>` : null}</span><div class="flex items-center gap-2">
+          <input id=${"f-" + c.key + "-from"} type="number" inputmode="decimal" step=${c.step || "any"} placeholder=${T(t, "rangeFrom")} value=${r.from ?? ""} class="input input-bordered rounded-2xl w-full tabular-nums" onInput=${(e) => set("from", e.target.value)} />
+          <span class="text-base-content/40 shrink-0">–</span>
+          <input id=${"f-" + c.key + "-to"} type="number" inputmode="decimal" step=${c.step || "any"} placeholder=${T(t, "rangeTo")} value=${r.to ?? ""} class="input input-bordered rounded-2xl w-full tabular-nums" onInput=${(e) => set("to", e.target.value)} />
+        </div></label>`; }
       return html`<${Fragment} key=${c.key}><span class="flex items-center gap-2 text-sm">${c.icon ? Icon(c.icon) : null} ${T(t, c.label)}</span><div class="join w-full" id=${"f-" + c.key}>${c.options.map(([v, l]) => html`<button class=${`btn btn-sm join-item flex-1 ${(filters[c.key] || "") === v ? "btn-active" : ""}`} data-val=${v} key=${v} onClick=${() => A.S.filters.setKey(c.key, v)}>${T(t, l)}</button>`)}</div></${Fragment}>`;
     })}
     <button id="f-apply" class="btn btn-primary rounded-2xl mt-3" onClick=${() => { A.S.sheet.set(false); A.S.tab.set(A.spec.tabs[0].id); if (f.refetch) A.load(); }}>${T(t, "apply")}</button>
@@ -443,6 +510,7 @@ export function App() {
     <${AppBar} />
     ${tab.type === "list" && tab.search ? html`<${SearchBar} tab=${tab} />` : null}
     ${A.spec.filters ? html`<${FilterChips} />` : null}
+    ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
     ${tab.type === "list" && tab.sort ? html`<${SortBar} tab=${tab} />` : null}
     <main id="view" class="px-4 pb-24 pt-3 max-w-xl mx-auto flex flex-col gap-2.5">
       <${TabView} tab=${tab} />

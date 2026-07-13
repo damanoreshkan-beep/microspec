@@ -138,8 +138,8 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["select", "toggle", "segment"],
-                "description": "Control kind."
+                "enum": ["select", "toggle", "segment", "range"],
+                "description": "Control kind. range = numeric from–to on a `field` (persisted; applied client-side)."
               },
               "key": {
                 "type": "string",
@@ -147,6 +147,9 @@
                 "description": "Filter state key written into S.filters; referenced by clientFilters[].key and section.labelParams."
               },
               "label": { "type": "string", "minLength": 1, "description": "i18n key for the control label." },
+              "field": { "type": "string", "minLength": 1, "description": "For type:'range' — item numeric field the from–to bounds filter." },
+              "step": { "type": ["string", "number"], "description": "For type:'range' — input step (default 'any')." },
+              "unit": { "type": "string", "description": "For type:'range' — unit shown by the label (e.g. 'BTC')." },
               "icon": { "type": "string", "minLength": 1, "description": "Iconify icon shown beside the control." },
               "iconCls": { "type": "string", "description": "Optional extra CSS classes for the toggle icon." },
               "optionsFrom": {
@@ -185,6 +188,10 @@
               {
                 "if": { "properties": { "type": { "const": "segment" } } },
                 "then": { "required": ["options"] }
+              },
+              {
+                "if": { "properties": { "type": { "const": "range" } } },
+                "then": { "required": ["field"] }
               }
             ]
           }
@@ -214,6 +221,18 @@
           "search": { "type": "boolean", "description": "list only — show the search/status bar." },
           "paginate": { "type": "boolean", "description": "list only — infinite scroll. data.js load() receives filters.cursor and returns { items, meta, next } where `next` is an opaque cursor for the following page (null/omitted = no more). The runtime appends pages via an accessible 'load more' sentinel (button + IntersectionObserver). Ignored on the saved/fav tab. Needs i18n key 'loadMore'." },
           "searchFetch": { "type": "boolean", "description": "list only (search family) — the search box debounce-drives a real refetch: the trimmed query reaches data.js load() as filters.q, and client-side filtering is skipped (the server already searched). Empty query shows the `prompt` empty-state. Requires search:true." },
+          "chart": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "field"],
+            "description": "list only — a live chart above the list, driven by the loaded items. Systemic/reusable.",
+            "properties": {
+              "type": { "type": "string", "enum": ["bars"], "description": "Chart form (bars = magnitude of recent values, heat-coloured)." },
+              "field": { "type": "string", "minLength": 1, "description": "Item numeric field to plot." },
+              "max": { "type": "integer", "minimum": 2, "description": "How many most-recent items to plot (default 40)." },
+              "label": { "type": "string", "minLength": 1, "description": "i18n key for the chart caption." }
+            }
+          },
           "sort": {
             "type": "array",
             "minItems": 1,
@@ -291,10 +310,30 @@
           "card": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["layout", "title"],
+            "required": ["layout"],
             "description": "Item card template (required for type:'list').",
             "properties": {
-              "layout": { "type": "string", "enum": ["row", "feed", "grid"], "description": "row -> compact rates row; feed -> rich card; grid -> Android-style launcher icon tile." },
+              "layout": { "type": "string", "enum": ["row", "feed", "grid", "table"], "description": "row -> compact rates row; feed -> rich card; grid -> Android-style launcher icon tile; table -> dense scannable rows with declared `columns` (+ optional heat)." },
+              "columns": {
+                "type": "array",
+                "minItems": 1,
+                "description": "table layout — the columns, left→right. Rows drill into detail (or card.href).",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["field"],
+                  "properties": {
+                    "field": { "type": "string", "minLength": 1, "description": "Item field for the cell value." },
+                    "label": { "type": "string", "minLength": 1, "description": "i18n key for the column header (optional)." },
+                    "heat": { "type": "string", "minLength": 1, "description": "Item numeric field — colours a left accent bar + tints this cell by magnitude (log-scaled across visible rows). The color-by-strength encoding." },
+                    "grow": { "type": "boolean", "description": "Take the remaining width and truncate (e.g. an address column)." },
+                    "align": { "type": "string", "enum": ["left", "right"], "description": "Cell alignment (default left)." },
+                    "mono": { "type": "boolean", "description": "Tabular-nums (numeric columns)." },
+                    "muted": { "type": "boolean", "description": "Secondary ink." },
+                    "format": { "type": "string", "enum": ["ago", "when", "since"], "description": "Locale-format the field as a date." }
+                  }
+                }
+              },
               "image": { "type": "string", "minLength": 1, "description": "feed layout (OPTIONAL) — item field with an image URL; renders a 16:9 figure atop the card (media/gallery). grid layout — item field with an icon URL painted into the tile." },
               "imageFit": { "type": "string", "enum": ["cover", "contain"], "description": "image fit (default 'cover' = fill+crop; 'contain' = whole image matted, for art/posters)." },
               "href": { "type": "string", "minLength": 1, "description": "Item field name holding the URL; makes the card a link (feed opens a new tab; grid navigates same-tab). Field must exist on items." },
@@ -330,6 +369,10 @@
             },
             "allOf": [
               {
+                "if": { "properties": { "layout": { "enum": ["row", "feed", "grid"] } } },
+                "then": { "required": ["title"] }
+              },
+              {
                 "if": { "properties": { "layout": { "const": "feed" } } },
                 "then": {
                   "anyOf": [ { "required": ["subtitle"] }, { "required": ["body"] }, { "required": ["image"] } ],
@@ -339,6 +382,10 @@
               {
                 "if": { "properties": { "layout": { "const": "grid" } } },
                 "then": { "anyOf": [ { "required": ["icon"] }, { "required": ["image"] } ], "$comment": "A grid tile needs an icon (iconify field) or image (icon URL)." }
+              },
+              {
+                "if": { "properties": { "layout": { "const": "table" } } },
+                "then": { "required": ["columns"] }
               }
             ]
           },

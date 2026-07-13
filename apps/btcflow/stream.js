@@ -37,6 +37,7 @@ export function stream(push) {
       id: x.hash, hash: x.hash, hashShort: trunc(x.hash),
       value: btc, valueStr: btc.toFixed(4) + " BTC", usd: u,
       sub: (u ? u + "  " : "") + "→ " + trunc(to.addr),
+      toShort: "→ " + trunc(to.addr),
       fee: feeRate, feeStr: feeRate + " sat/vB", feeFull: (feeSat / 1e8).toFixed(6) + " BTC · " + feeRate + " sat/vB",
       size: size + " B", ins, outs, io: ins + " → " + outs,
       topOut: trunc(to.addr) + " · " + ((to.value || 0) / 1e8).toFixed(4) + " BTC",

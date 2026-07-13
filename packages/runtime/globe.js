@@ -45,13 +45,14 @@ export function Globe({ onPick, selected, marker, focus, points, spin = true, he
     if (!ready) return;
     const cv = canvas.current, ctx = cv.getContext("2d"), proj = geoOrthographic();
     const dpr = Math.min(2, globalThis.devicePixelRatio || 1);
-    let size = 0;
-    const resize = () => {
-      size = Math.max(80, wrap.current.clientWidth);
-      cv.width = size * dpr; cv.height = size * dpr; cv.style.height = size + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      proj.scale(size / 2 - 2).translate([size / 2, size / 2]);
-      kick();
+    let size = 0, dirty = true, alive = true;
+    const markDirty = () => { dirty = true; };
+    S.current.markDirty = markDirty;
+
+    // Size via ResizeObserver (fires initially + on change) — never read clientWidth per-frame (reflow).
+    const measure = () => {
+      const w = Math.floor(wrap.current?.clientWidth || 0);
+      if (w > 0 && w !== size) { size = w; cv.width = size * dpr; cv.height = size * dpr; cv.style.height = size + "px"; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); proj.scale(size / 2 - 2).translate([size / 2, size / 2]); dirty = true; }
     };
 
     const draw = () => {
@@ -73,45 +74,46 @@ export function Globe({ onPick, selected, marker, focus, points, spin = true, he
       if (p.marker) dot(p.marker.lon, p.marker.lat, 5.5, c.accent, c.accentInk);
     };
 
-    const loop = () => {
+    // ONE continuous rAF loop (best practice: per-frame updates imperatively, bypassing React). It always
+    // ticks; auto-rotate/drag/fly set `dirty`, and it only redraws when dirty — so idle costs ~nothing but
+    // the animation is guaranteed to run from mount (no "starts only after you touch it").
+    const frame = () => {
+      if (!alive) return;
       const s = S.current, p = P.current;
-      let active = false;
       if (s.fly) {
         const k = Math.min(1, (performance.now() - s.fly.t0) / 700), e = easeInOut(k);
         let d = s.fly.to[0] - s.fly.from[0]; d = ((d + 180) % 360 + 360) % 360 - 180;
         s.rot = [s.fly.from[0] + d * e, s.fly.from[1] + (s.fly.to[1] - s.fly.from[1]) * e];
-        if (k >= 1) s.fly = null; active = true;
-      } else if (p.spin && !s.drag && p.selected == null && p.marker == null) { s.rot = [s.rot[0] + 0.12, s.rot[1]]; active = true; }
-      if (s.drag) active = true;
-      draw();
-      if (active) s.raf = requestAnimationFrame(loop); else s.running = false;
+        if (k >= 1) s.fly = null; dirty = true;
+      } else if (p.spin && !s.drag && p.selected == null && p.marker == null) { s.rot = [s.rot[0] + 0.12, s.rot[1]]; dirty = true; }
+      if (s.drag) dirty = true;
+      if (size && dirty) { draw(); dirty = false; }
+      S.current.raf = requestAnimationFrame(frame);
     };
-    const kick = () => { if (!S.current.running) { S.current.running = true; S.current.raf = requestAnimationFrame(loop); } };
 
-    const onDown = (e) => { S.current.drag = { x: e.clientX, y: e.clientY, rot: [...S.current.rot], moved: 0 }; S.current.fly = null; cv.setPointerCapture?.(e.pointerId); kick(); };
-    const onMove = (e) => { const s = S.current; if (!s.drag) return; const dx = e.clientX - s.drag.x, dy = e.clientY - s.drag.y; s.drag.moved = Math.max(s.drag.moved, Math.abs(dx) + Math.abs(dy)); const k = 0.3; s.rot = [s.drag.rot[0] + dx * k, Math.max(-90, Math.min(90, s.drag.rot[1] - dy * k))]; kick(); };
+    const onDown = (e) => { S.current.drag = { x: e.clientX, y: e.clientY, rot: [...S.current.rot], moved: 0 }; S.current.fly = null; cv.setPointerCapture?.(e.pointerId); };
+    const onMove = (e) => { const s = S.current; if (!s.drag) return; const dx = e.clientX - s.drag.x, dy = e.clientY - s.drag.y; s.drag.moved = Math.max(s.drag.moved, Math.abs(dx) + Math.abs(dy)); const k = 0.3; s.rot = [s.drag.rot[0] + dx * k, Math.max(-90, Math.min(90, s.drag.rot[1] - dy * k))]; dirty = true; };
     const onUp = (e) => {
-      const s = S.current; if (!s.drag) return; const tap = s.drag.moved < 6; s.drag = null;
+      const s = S.current; if (!s.drag) return; const tap = s.drag.moved < 6; s.drag = null; dirty = true;
       if (tap && P.current.onPick) { const rect = cv.getBoundingClientRect(); const ll = proj.invert([e.clientX - rect.left, e.clientY - rect.top]); if (ll) { const f = LAND.find((c) => geoContains(c, ll)); P.current.onPick({ lat: ll[1], lon: ll[0], id: f ? String(f.id) : null, name: f?.properties?.name || null }); } }
-      kick();
     };
 
-    resize();
-    const ro = new ResizeObserver(resize); ro.observe(wrap.current);
-    const mo = new MutationObserver(kick); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    measure();
+    const ro = new ResizeObserver(() => { measure(); }); ro.observe(wrap.current);
+    const mo = new MutationObserver(markDirty); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     cv.addEventListener("pointerdown", onDown); addEventListener("pointermove", onMove); addEventListener("pointerup", onUp);
-    S.current.kick = kick; kick();
-    return () => { cancelAnimationFrame(S.current.raf); S.current.running = false; ro.disconnect(); mo.disconnect(); cv.removeEventListener("pointerdown", onDown); removeEventListener("pointermove", onMove); removeEventListener("pointerup", onUp); };
+    S.current.raf = requestAnimationFrame(frame);
+    return () => { alive = false; cancelAnimationFrame(S.current.raf); ro.disconnect(); mo.disconnect(); cv.removeEventListener("pointerdown", onDown); removeEventListener("pointermove", onMove); removeEventListener("pointerup", onUp); };
   }, [ready]);
 
   // focus prop → animate the globe to centre that lat/lon
   useEffect(() => {
-    if (!focus || !S.current.kick) return;
+    if (!focus || !S.current.raf) return;
     S.current.fly = { from: [...S.current.rot], to: [-focus.lon, -focus.lat], t0: performance.now() };
-    S.current.kick();
+    S.current.markDirty?.();
   }, [focus?.lat, focus?.lon]);
-  // any prop change (selected/marker/points) → one redraw
-  useEffect(() => { S.current.kick?.(); });
+  // any prop change (selected/marker/points) → redraw next frame
+  useEffect(() => { S.current.markDirty?.(); });
 
   return html`<div ref=${wrap} class="relative w-full mx-auto select-none" style=${`max-width:${height}px`}>
     ${ready

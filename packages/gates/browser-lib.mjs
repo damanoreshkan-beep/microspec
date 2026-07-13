@@ -74,6 +74,8 @@ export function makeHelpers(page) {
     storage: (k) => ev((k) => localStorage.getItem(k), k),
     bodyText: () => ev(() => document.body.innerText),
     type:  (s, v) => ev((s, v) => { const e = document.querySelector(s); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); }, s, v),
+    // set a <select> value and fire change (native selects react to change, not input)
+    select: (s, v) => ev((s, v) => { const e = document.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }, s, v),
     click: (s) => ev((s) => document.querySelector(s)?.click(), s),
     hasClass: (s, c) => ev((s, c) => !!document.querySelector(s)?.classList.contains(c), s, c),
     scrollTo: (y) => ev((y) => window.scrollTo(0, y), y),

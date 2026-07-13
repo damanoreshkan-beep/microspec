@@ -11,7 +11,7 @@
 const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 const PRICE_URL = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT";
 const WHALE_BTC = 5;
-const CAP = 60;
+const CAP = 1000; // retain a deep history so the chart has a stable window (doesn't jump)
 const trunc = (a) => (a ? a.slice(0, 10) + "…" + a.slice(-6) : "—");
 
 export function stream(push) {

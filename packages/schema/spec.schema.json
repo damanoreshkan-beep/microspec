@@ -325,6 +325,7 @@
                   "properties": {
                     "field": { "type": "string", "minLength": 1, "description": "Item field for the cell value." },
                     "label": { "type": "string", "minLength": 1, "description": "i18n key for the column header (optional)." },
+                    "sub": { "type": "string", "minLength": 1, "description": "Item field for a small secondary line under the value (e.g. a USD conversion under a BTC amount)." },
                     "heat": { "type": "string", "minLength": 1, "description": "Item numeric field — colours a left accent bar + tints this cell by magnitude (log-scaled across visible rows). The color-by-strength encoding." },
                     "grow": { "type": "boolean", "description": "Take the remaining width and truncate (e.g. an address column)." },
                     "align": { "type": "string", "enum": ["left", "right"], "description": "Cell alignment (default left)." },

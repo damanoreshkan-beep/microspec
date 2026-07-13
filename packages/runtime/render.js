@@ -204,33 +204,37 @@ function LoadMore() {
 // Systemic: any list with a numeric field gets a chart by declaring it — no bespoke code.
 function Chart({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data);
-  const cfg = tab.chart, items = (data.items || []).slice(0, cfg.max || 40);
-  if (items.length < 2) return null;
-  const heat = heatMap(items, cfg.field);
-  const max = Math.max(...items.map((it) => Math.max(0, Number(it[cfg.field]) || 0))) || 1;
-  const W = 320, H = 56, bw = W / items.length, seq = items.slice().reverse(); // oldest → newest, L → R
+  const cfg = tab.chart, all = data.items || [];
+  if (all.length < 2) return null;
+  const plot = all.slice(0, cfg.max || 40);
+  const heat = heatMap(all, cfg.field);                                        // colour by GLOBAL magnitude
+  const sorted = all.map((it) => Math.max(0, Number(it[cfg.field]) || 0)).sort((a, b) => a - b);
+  const max = sorted[Math.floor(sorted.length * 0.92)] || sorted[sorted.length - 1] || 1; // stable y-scale (92nd pct over the whole buffer → no rescaling jump)
+  const W = 320, H = 56, bw = W / plot.length, seq = plot.slice().reverse();    // oldest → newest, L → R
   return html`<div class="px-4 pt-3 max-w-xl mx-auto w-full"><div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-1.5">
     ${cfg.label ? html`<div class="text-xs text-base-content/60 px-1 font-medium">${T(t, cfg.label)}</div>` : null}
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="w-full" style="height:52px" role="img" aria-label=${T(t, cfg.label || "title")}>
-      ${seq.map((it, i) => { const h = Math.max(1.5, (Math.max(0, Number(it[cfg.field]) || 0) / max) * (H - 3)); return html`<rect x=${(i * bw + bw * 0.14).toFixed(2)} y=${(H - h).toFixed(2)} width=${(bw * 0.72).toFixed(2)} height=${h.toFixed(2)} fill=${heatBg(heat.get(it))} key=${i}></rect>`; })}
+      ${seq.map((it, i) => { const h = Math.max(1.5, Math.min(1, (Math.max(0, Number(it[cfg.field]) || 0)) / max) * (H - 3)); return html`<rect x=${(i * bw + bw * 0.14).toFixed(2)} y=${(H - h).toFixed(2)} width=${(bw * 0.72).toFixed(2)} height=${h.toFixed(2)} fill=${heatBg(heat.get(it))} key=${i}></rect>`; })}
     </svg>
   </div></div></div>`;
 }
 
 // Dense table layout (card.layout:"table", card.columns:[{field,label,heat,grow,align,mono,muted,format}]).
 // Scannable micro-rows with a heat accent bar + heat-tinted value. Rows drill into detail (or href).
+const TABLE_CAP = 120; // rows painted into the DOM (the buffer behind them can be far larger, e.g. a stream)
 function Table({ items, tab }) {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
   const cols = tab.card.columns, hc = cols.find((c) => c.heat);
-  const heat = hc ? heatMap(items, hc.heat) : null;
+  const heat = hc ? heatMap(items, hc.heat) : null;   // magnitude over the full (filtered/sorted) set
+  const rows = items.slice(0, TABLE_CAP);
   const cls = (c) => `${c.grow ? "flex-1 min-w-0 truncate" : "shrink-0"}${c.align === "right" ? " text-right" : ""}${c.mono ? " tabular-nums" : ""}${c.muted ? " text-base-content/55" : ""}`;
   const open = (it) => { if (A.spec.detail) A.S.detail.set(it); else if (tab.card.href) { const h = safeHref(it[tab.card.href]); if (h) window.open(h, "_blank"); } };
   return html`<div class="px-4 max-w-xl mx-auto w-full">
     <div class="flex items-center gap-3 px-3 py-1.5 text-[0.62rem] uppercase tracking-wide text-base-content/45">${cols.map((c) => html`<div class=${cls(c)} key=${c.field}>${c.label ? T(t, c.label) : ""}</div>`)}</div>
     <div class="flex flex-col rounded-2xl overflow-hidden border border-base-300 bg-base-100">
-      ${items.map((it, i) => html`<button type="button" data-row=${i} class="flex items-center gap-3 pl-4 pr-3 py-2.5 text-sm border-b border-base-300/50 last:border-0 active:bg-base-200 text-left w-full relative" key=${A.favKey(it) || it[cols[0].field] || i} onClick=${() => open(it)}>
+      ${rows.map((it, i) => html`<button type="button" data-row=${i} class="flex items-center gap-3 pl-4 pr-3 py-2 text-sm border-b border-base-300/50 last:border-0 active:bg-base-200 text-left w-full relative" key=${A.favKey(it) || it[cols[0].field] || i} onClick=${() => open(it)}>
         ${heat ? html`<span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full" style=${`background:${heatBg(heat.get(it))}`}></span>` : null}
-        ${cols.map((c) => html`<div class=${cls(c) + " font-medium"} style=${c.heat && heat ? `color:${heatInk(heat.get(it))}` : ""} key=${c.field}>${fmtCell(c, it, t, loc)}</div>`)}
+        ${cols.map((c) => html`<div class=${cls(c) + " font-medium leading-tight"} style=${c.heat && heat ? `color:${heatInk(heat.get(it))}` : ""} key=${c.field}>${fmtCell(c, it, t, loc)}${c.sub && it[c.sub] != null && it[c.sub] !== "" ? html`<div class="text-[0.7rem] font-normal text-base-content/45 tabular-nums leading-tight">${it[c.sub]}</div>` : null}</div>`)}
       </button>`)}
     </div>
   </div>`;

@@ -13,7 +13,7 @@
   "details": "Деталі",
   "whaleLabel": "🐋 Кит",
   "chartLabel": "Сума переказів (останні 40)",
-  "colAmount": "Сума",
+  "colAmount": "Сума (BTC)",
   "colTo": "Отримувач",
   "colFee": "Комісія",
   "colTime": "Час",
@@ -53,5 +53,6 @@
   "close": "Закрити",
   "refresh": "Оновити",
   "toastSaved": "Збережено",
-  "toastRemoved": "Видалено"
+  "toastRemoved": "Видалено",
+  "colUsd": "У доларах"
 }

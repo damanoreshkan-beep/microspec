@@ -5,14 +5,13 @@ const seed = async (h) => { for (let i = 0; i < 24; i++) { if ((await h.count("[
 
 export default [
   {
-    name: "жива таблиця транзакцій + графік + суми/комісія", run: async (h) => {
+    name: "жива таблиця: сума BTC + USD + графік", run: async (h) => {
       await seed(h);
       h.expect((await h.count("[data-row]")) > 3, "замало рядків");
       h.expect((await h.count("svg")) >= 1, "немає графіка");
       const t = await h.bodyText();
       h.expect(/[\d.]+\s*BTC/i.test(t), "немає сум у BTC");
-      h.expect(/sat\/vB/i.test(t), "немає комісії");
-      h.expect(/щойно|тому/.test(t), "немає відносного часу");
+      h.expect(/\$[\d,]+/.test(t), "немає доларового еквівалента");
     },
   },
   {

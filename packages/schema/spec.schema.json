@@ -331,6 +331,7 @@
                     "align": { "type": "string", "enum": ["left", "right"], "description": "Cell alignment (default left)." },
                     "mono": { "type": "boolean", "description": "Tabular-nums (numeric columns)." },
                     "muted": { "type": "boolean", "description": "Secondary ink." },
+                    "lg": { "type": "boolean", "description": "Prominent value — larger, semibold (for the headline column a row is scanned by)." },
                     "format": { "type": "string", "enum": ["ago", "when", "since"], "description": "Locale-format the field as a date." }
                   }
                 }

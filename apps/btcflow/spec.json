@@ -34,10 +34,8 @@
       "card": {
         "layout": "table",
         "columns": [
-          { "field": "valueStr", "sub": "usd", "label": "colAmount", "heat": "value", "mono": true },
-          { "field": "toShort", "label": "colTo", "grow": true, "muted": true },
-          { "field": "feeStr", "label": "colFee", "align": "right", "mono": true, "muted": true },
-          { "field": "ts", "label": "colTime", "format": "since", "align": "right", "muted": true }
+          { "field": "valueStr", "label": "colAmount", "heat": "value", "grow": true, "mono": true, "lg": true },
+          { "field": "usd", "label": "colUsd", "align": "right", "mono": true, "lg": true }
         ]
       }
     },

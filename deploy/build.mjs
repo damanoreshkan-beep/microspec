@@ -18,7 +18,7 @@ await Deno.writeTextFile("apps/home/apps.json", JSON.stringify(await buildManife
 
 // 1) shared runtime → dist/_rt (all .js except unit tests)
 for await (const e of Deno.readDir("packages/runtime")) {
-  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css");
+  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json");
   if (e.isFile && keep) await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);
 }
 

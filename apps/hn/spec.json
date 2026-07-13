@@ -1,6 +1,7 @@
 {
   "id": "hn",
   "theme": "signal",
+  "translate": ["title"],
   "fav": { "key": "id" },
   "tabs": [
     {

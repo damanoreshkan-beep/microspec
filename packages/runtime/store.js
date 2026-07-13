@@ -7,6 +7,10 @@ const JSON_CODEC = { encode: JSON.stringify, decode: (s) => { try { return JSON.
 export function createApp(spec, dataLoad) {
   const ns = (spec.id || "app") + ":";
   const conv = spec.tabs.find((t) => t.type === "converter");
+  const sortTab = spec.tabs.find((t) => Array.isArray(t.sort) && t.sort.length);
+  const FKEY = ns + "filters";
+  let savedFilters = {};
+  try { savedFilters = JSON.parse(localStorage.getItem(FKEY) || "{}"); } catch {  }
 
   const S = {
     locale: persistentAtom(ns + "locale", "uk"),
@@ -17,8 +21,9 @@ export function createApp(spec, dataLoad) {
     to: persistentAtom(ns + "to", conv?.defaultTo || conv?.base || "UAH"),
     query: atom(""),
     tab: atom(spec.tabs?.[0]?.id),
+    sort: persistentAtom(ns + "sort", sortTab?.sort?.[0]?.key || ""),
     data: map({ items: [], meta: {}, loading: true, error: false, next: null, loadingMore: false, moreError: false }),
-    filters: map(spec.filters?.defaults ? { ...spec.filters.defaults } : {}),
+    filters: map({ ...(spec.filters?.defaults || {}), ...savedFilters }),
     toast: atom(""),
     sheet: atom(false),
     detail: atom(null),
@@ -27,6 +32,7 @@ export function createApp(spec, dataLoad) {
     installOpen: atom(false),
   };
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
+  S.filters.listen((v) => { try { localStorage.setItem(FKEY, JSON.stringify(v)); } catch {  } });
 
   async function load() {
     S.data.set({ ...S.data.get(), loading: true, error: false, moreError: false });

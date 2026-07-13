@@ -39,5 +39,10 @@ export function start(spec, arg2) {
   addEventListener("appinstalled", () => { S.installEvent.set(null); S.installOpen.set(false); });
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 
-  load();
+  if (opts.stream) {
+    const push = (items) => S.data.set({ ...S.data.get(), items: items || [], loading: false, error: false });
+    try { opts.stream(push, S); } catch { S.data.set({ ...S.data.get(), loading: false, error: true }); }
+  } else {
+    load();
+  }
 }

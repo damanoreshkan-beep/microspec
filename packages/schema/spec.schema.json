@@ -93,7 +93,8 @@
             "properties": {
               "icon": { "type": "string", "minLength": 1, "description": "Iconify icon for the row." },
               "label": { "type": "string", "minLength": 1, "description": "i18n key for the row label." },
-              "field": { "type": "string", "minLength": 1, "description": "Item field for the row value (pre-joined to a string in data.js)." }
+              "field": { "type": "string", "minLength": 1, "description": "Item field for the row value (pre-joined to a string in data.js)." },
+              "format": { "type": "string", "enum": ["ago", "when"], "description": "Optional: locale-format the field as a date instead of raw text — 'ago' (past relative) or 'when' (future absolute+countdown from a timestamp)." }
             }
           }
         },
@@ -290,7 +291,7 @@
               "unit": { "type": "string", "description": "row layout — unit suffix appended to the numerically-formatted trailing value." },
               "trend": { "type": "string", "minLength": 1, "description": "row layout (OPTIONAL) — item field with a signed % change; rendered green (up) / red (down) under the trailing value." },
               "more": { "type": "string", "minLength": 1, "description": "feed layout — i18n key for the 'details' call-to-action." },
-              "meta": { "oneOf": [ { "type": "string", "minLength": 1 }, { "type": "object", "additionalProperties": false, "required": ["field"], "properties": { "field": { "type": "string", "minLength": 1 }, "format": { "type": "string", "enum": ["ago"] } } } ], "description": "feed layout — footer meta: an item field name, OR { field, format:'ago' } for a locale-aware relative date (needs i18n agoToday/agoYesterday/agoDays/agoWeeks)." },
+              "meta": { "oneOf": [ { "type": "string", "minLength": 1 }, { "type": "object", "additionalProperties": false, "required": ["field"], "properties": { "field": { "type": "string", "minLength": 1 }, "format": { "type": "string", "enum": ["ago", "when"] } } } ], "description": "feed layout — footer meta: an item field name, OR { field, format } for a locale-aware date. format:'ago' = past relative (needs i18n agoToday/agoYesterday/agoDays/agoWeeks); format:'when' = future absolute+countdown from a timestamp (needs i18n whenPast/whenMin/whenHours/whenDays)." },
               "body": { "type": "string", "minLength": 1, "description": "feed layout — item field for the clamped body text." },
               "badges": {
                 "type": "array",

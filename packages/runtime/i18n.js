@@ -7,6 +7,19 @@ export const T = (dict, key, params) => {
 
 export const dictFor = (i18n, locale) => i18n?.[locale] || i18n?.en || {};
 
+export function whenLabel(dict, ts, locale, full = true) {
+  const d = new Date(ts);
+  if (isNaN(d)) return "";
+  const abs = d.toLocaleString(locale === "uk" ? "uk-UA" : "en-US", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  if (!full) return abs;
+  const min = Math.round((d - Date.now()) / 60000);
+  const rel = min < 0 ? T(dict, "whenPast")
+    : min < 60 ? T(dict, "whenMin", { n: min })
+    : min < 1440 ? T(dict, "whenHours", { n: Math.round(min / 60) })
+    : T(dict, "whenDays", { n: Math.round(min / 1440) });
+  return `${abs} · ${rel}`;
+}
+
 export function ago(dict, ts, locale) {
   const ms = Date.now() - Number(ts);
   const days = Math.floor(ms / 86400000);

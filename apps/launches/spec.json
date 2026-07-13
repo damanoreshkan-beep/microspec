@@ -7,7 +7,7 @@
     "image": "thumb", "imageFit": "cover", "title": "title", "subtitle": "provider",
     "rows": [
       { "field": "rocket", "label": "dRocket", "icon": "lucide:rocket" },
-      { "field": "whenFull", "label": "dWhen", "icon": "lucide:clock" },
+      { "field": "net", "label": "dWhen", "icon": "lucide:clock", "format": "when" },
       { "field": "pad", "label": "dPad", "icon": "lucide:map-pin" },
       { "field": "mission", "label": "dMission", "icon": "lucide:satellite" }
     ],
@@ -18,13 +18,13 @@
       "id": "up", "type": "list", "icon": "lucide:rocket", "label": "tabUp",
       "search": true, "searchKey": "search", "statusKey": "status",
       "empty": { "icon": "lucide:rocket", "text": "noResults", "hint": "noResultsHint" },
-      "card": { "layout": "feed", "image": "thumb", "imageFit": "cover", "title": "title", "subtitle": "provider", "more": "more", "meta": { "field": "when" }, "badges": [ { "field": "status" } ] }
+      "card": { "layout": "feed", "image": "thumb", "imageFit": "cover", "title": "title", "subtitle": "provider", "more": "more", "meta": { "field": "net", "format": "when" }, "badges": [ { "field": "status" } ] }
     },
     {
       "id": "saved", "type": "list", "icon": "lucide:bookmark", "label": "tabSaved", "source": "fav",
       "titleKey": "tabSaved", "search": true, "searchKey": "searchSaved",
       "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
-      "card": { "layout": "feed", "image": "thumb", "imageFit": "cover", "title": "title", "subtitle": "provider", "more": "more", "meta": { "field": "when" }, "badges": [ { "field": "status" } ] }
+      "card": { "layout": "feed", "image": "thumb", "imageFit": "cover", "title": "title", "subtitle": "provider", "more": "more", "meta": { "field": "net", "format": "when" }, "badges": [ { "field": "status" } ] }
     },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
   ],
@@ -34,6 +34,7 @@
       "title": "Космічні запуски", "tabUp": "Найближчі", "tabSaved": "Стежу", "tabMe": "Я",
       "search": "Пошук ракети чи місії…", "searchSaved": "Шукати у збережених…",
       "status": "Найближчі запуски", "statusLoading": "Оновлення…", "statusError": "Дані недоступні", "savedCount": "{n} збережено",
+      "whenPast": "щойно", "whenMin": "за {n} хв", "whenHours": "за {n} год", "whenDays": "за {n} дн",
       "more": "Деталі",
       "noResults": "Нічого не знайдено", "noResultsHint": "Спробуй іншу назву", "errorHint": "Перевір зʼєднання та онови",
       "emptySaved": "Ще нічого не збережено", "emptySavedHint": "Тисни закладку на картці, щоб стежити за запуском",
@@ -48,6 +49,7 @@
       "title": "Space Launches", "tabUp": "Upcoming", "tabSaved": "Watching", "tabMe": "Me",
       "search": "Search a rocket or mission…", "searchSaved": "Search saved…",
       "status": "Upcoming launches", "statusLoading": "Updating…", "statusError": "Data unavailable", "savedCount": "{n} saved",
+      "whenPast": "now", "whenMin": "in {n}m", "whenHours": "in {n}h", "whenDays": "in {n}d",
       "more": "Details",
       "noResults": "Nothing found", "noResultsHint": "Try another name", "errorHint": "Check connection and refresh",
       "emptySaved": "Nothing saved yet", "emptySavedHint": "Tap the bookmark on a card to follow a launch",

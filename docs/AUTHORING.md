@@ -34,7 +34,9 @@ prompt → probe source → author spec.json (ajv-gated) → author data.js → 
 
 3. **Author `data.js`** (data app) — `export async function load(filters) → { items, meta }`, using
    `import { viaProxy, isJsonObject } from "/_rt/feed.js"`. Every field a card/detail references must
-   exist on each item. For `searchFetch`, read `filters.q`. For a **tool** app author `view.js` instead
+   exist on each item. **Never format dates in data.js** (it has no locale — a baked string freezes one
+   language): return the raw timestamp and let the card `meta`/detail row render it locale-aware with
+   `format: "ago"` (past relative) or `format: "when"` (future absolute+countdown). For `searchFetch`, read `filters.q`. For a **tool** app author `view.js` instead
    (export a function named by the tab's `view` key; props `{ S, toast, openScreen, closeScreen }`).
 
 4. **Scaffold the boilerplate** — never hand-write the shell:

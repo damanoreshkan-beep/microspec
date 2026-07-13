@@ -9,8 +9,8 @@ export default [
       await seed(h);
       h.expect((await h.count(".card")) > 3, "замало транзакцій");
       const t = await h.bodyText();
-      h.expect(/[\d.]+\s*BTC/.test(t), "немає сум у BTC");
-      h.expect(/sat\/vB/.test(t), "немає комісії sat/vB");
+      h.expect(/[\d.]+\s*BTC/i.test(t), "немає сум у BTC");
+      h.expect(/sat\/vB/i.test(t), "немає комісії sat/vB"); // badge CSS uppercases → match case-insensitively
       h.expect(/щойно|тому/.test(t), "немає відносного часу");
     },
   },

@@ -15,10 +15,16 @@
     ],
     "actions": [ { "href": "explorerUrl", "label": "dExplorer", "icon": "lucide:external-link" } ]
   },
+  "filters": {
+    "controls": [
+      { "type": "range", "key": "amt", "field": "value", "label": "fAmount", "icon": "lucide:sliders-horizontal", "unit": "BTC", "step": "0.001", "chip": true }
+    ]
+  },
   "tabs": [
     {
       "id": "flow", "type": "list", "icon": "lucide:bitcoin", "label": "tabFlow",
       "search": true, "searchKey": "search", "statusKey": "status",
+      "chart": { "type": "bars", "field": "value", "max": 40, "label": "chartLabel" },
       "sort": [
         { "key": "val", "label": "sortValue", "by": "value", "dir": "desc" },
         { "key": "time", "label": "sortTime", "by": "ts", "dir": "desc" },
@@ -26,11 +32,12 @@
       ],
       "empty": { "icon": "lucide:search-x", "text": "noResults", "hint": "noResultsHint" },
       "card": {
-        "layout": "feed", "title": "valueStr", "subtitle": "sub", "more": "details",
-        "meta": { "field": "ts", "format": "since" },
-        "badges": [
-          { "field": "feeStr", "icon": "lucide:zap", "variant": "ghost" },
-          { "when": "whale", "label": "whaleLabel", "variant": "primary" }
+        "layout": "table",
+        "columns": [
+          { "field": "valueStr", "label": "colAmount", "heat": "value", "mono": true },
+          { "field": "toShort", "label": "colTo", "grow": true, "muted": true },
+          { "field": "feeStr", "label": "colFee", "align": "right", "mono": true, "muted": true },
+          { "field": "ts", "label": "colTime", "format": "since", "align": "right", "muted": true }
         ]
       }
     },

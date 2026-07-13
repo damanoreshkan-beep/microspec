@@ -8,6 +8,7 @@ import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
 import { T, ago } from "./i18n.js";
 import { PERMISSIONS, permLabels } from "./permissions.js";
+import { tr, warm, trTick } from "./translate.js";
 
 let A;            // app context: { spec, S, load, toast, toggleFav, favKey, swap }
 let VIEWS = {};   // tool-app custom views: { viewKey: PreactComponent }
@@ -15,6 +16,10 @@ export function setApp(app, views) { A = app; VIEWS = views || {}; }
 
 // ---- helpers ----------------------------------------------------------------
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
+// Body translation: fields listed in spec.translate are shown in the active locale (tr() is a cached,
+// fail-open sync read). Non-listed fields (and en) pass through untouched.
+const trFields = () => A.spec.translate || [];
+const field = (it, name, loc) => trFields().includes(name) ? tr(it[name], loc) : it[name];
 const searchText = (it) => Object.values(it).map((v) => Array.isArray(v) ? v.join(" ") : v).join(" ").toLowerCase();
 
 // tiny predicate language for sections / clientFilters / when-badges: "fav", "!fav", "field", "!field"
@@ -71,6 +76,7 @@ function Badges({ item: it, badges, hide }) {
 // ---- card -------------------------------------------------------------------
 function Card({ item: it, card, hide }) {
   const t = useStore(A.S.t), fav = useStore(A.S.fav), loc = useStore(A.S.locale);
+  useStore(trTick); // re-render when body translations for the active locale arrive
   const on = !!fav[A.favKey(it)];
   const star = A.spec.fav ? html`<button data-fav=${A.favKey(it)} aria-label=${on ? T(t, "unfavAria") : T(t, "favAria")}
     onClick=${(e) => { e.preventDefault(); e.stopPropagation(); A.toggleFav(it); }}
@@ -79,17 +85,17 @@ function Card({ item: it, card, hide }) {
   if (card.layout === "row") {
     return html`<div class="card @container bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 px-4 flex-row items-center gap-3 @max-[260px]:px-2.5 @max-[260px]:gap-2">
       <div class="font-bold text-primary w-11 shrink-0 @max-[260px]:w-8 @max-[260px]:text-sm">${it[card.lead] ?? "—"}</div>
-      <div class="flex-1 min-w-0 @max-[260px]:hidden"><div class="font-medium truncate text-sm">${it[card.title]}</div></div>
+      <div class="flex-1 min-w-0 @max-[260px]:hidden"><div class="font-medium truncate text-sm">${field(it, card.title, loc)}</div></div>
       <div class="text-right @max-[260px]:text-sm"><div class="font-semibold tabular-nums">${it[card.trailing] == null ? "—" : card.unit ? it[card.trailing] + " " + card.unit : it[card.trailing]}</div></div>
       ${star}
     </div></div>`;
   }
 
   const body = html`<div class="card-body p-4 gap-2 @max-[240px]:p-3 @max-[240px]:gap-1">
-    <div class="flex items-start justify-between gap-2"><h2 class="font-semibold leading-snug break-words min-w-0 @max-[240px]:text-sm">${it[card.title] ?? "—"}</h2>${star}</div>
-    ${card.subtitle && it[card.subtitle] ? html`<div class="text-sm text-base-content/70 @max-[240px]:hidden">${it[card.subtitle]}</div>` : null}
+    <div class="flex items-start justify-between gap-2"><h2 class="font-semibold leading-snug break-words min-w-0 @max-[240px]:text-sm">${field(it, card.title, loc) ?? "—"}</h2>${star}</div>
+    ${card.subtitle && it[card.subtitle] ? html`<div class="text-sm text-base-content/70 @max-[240px]:hidden">${field(it, card.subtitle, loc)}</div>` : null}
     <${Badges} item=${it} badges=${card.badges} hide=${hide} />
-    ${card.body && it[card.body] ? html`<p class="text-sm text-base-content/70 line-clamp-2 @max-[240px]:hidden">${it[card.body]}</p>` : null}
+    ${card.body && it[card.body] ? html`<p class="text-sm text-base-content/70 line-clamp-2 @max-[240px]:hidden">${field(it, card.body, loc)}</p>` : null}
     <div class="flex items-center justify-between gap-2 mt-0.5 @max-[240px]:hidden">
       ${(() => { const mt = metaText(card.meta, it, t, loc); return mt ? html`<span class="text-xs text-base-content/80 flex items-center gap-1">${card.meta?.format === "ago" ? Icon("lucide:clock", "text-[0.9em] opacity-70") : null}${mt}</span>` : html`<span></span>`; })()}
       ${card.more ? html`<span class="text-xs text-primary font-medium flex items-center gap-0.5 ml-auto">${T(t, card.more)} ${Icon("lucide:arrow-up-right")}</span>` : null}
@@ -101,7 +107,7 @@ function Card({ item: it, card, hide }) {
   // top-level detail turns every card into a drill-down (stretched-link: full-card button UNDER the star)
   if (A.spec.detail) {
     return html`<div class=${cls + " relative hover:border-primary/40 active:scale-[.99] transition"}>${img}${body}
-      <button class="aw-tap absolute inset-0 z-[1] rounded-2xl" aria-label=${`${it[card.title] ?? ""} — ${T(t, card.more || "title")}`} onClick=${() => A.S.detail.set(it)}></button></div>`;
+      <button class="aw-tap absolute inset-0 z-[1] rounded-2xl" aria-label=${`${field(it, card.title, loc) ?? ""} — ${T(t, card.more || "title")}`} onClick=${() => A.S.detail.set(it)}></button></div>`;
   }
   const href = card.href ? safeHref(it[card.href]) : null;
   return href
@@ -128,7 +134,16 @@ function Banner({ banner }) {
 
 // ---- list family ------------------------------------------------------------
 function ListView({ tab }) {
-  const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters);
+  const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters), loc = useStore(A.S.locale);
+  // Warm the body-translation cache for every visible item (live feed or saved). No-op for en or when
+  // already cached; Card re-renders itself via trTick as translations land. Kept above the early returns
+  // so the effect runs unconditionally (rules of hooks).
+  useEffect(() => {
+    const fields = A.spec.translate;
+    if (!fields?.length || loc === "en") return;
+    const src = tab.source === "fav" ? Object.values(fav) : (data.items || []);
+    warm(src.flatMap((it) => fields.map((f) => it[f])), loc);
+  }, [data.items, fav, loc, tab.source]);
   if (!tab.card) return Empty("lucide:alert-triangle", T(t, tab.empty?.text || "noResults"), null);
   if (data.loading) return Skeleton(tab.card.layout === "row");
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
@@ -200,16 +215,17 @@ function PermissionsScreen() {
 
 // ---- detail overlay ---------------------------------------------------------
 function DetailView() {
-  const t = useStore(A.S.t), it = useStore(A.S.detail), fav = useStore(A.S.fav);
+  const t = useStore(A.S.t), it = useStore(A.S.detail), fav = useStore(A.S.fav), loc = useStore(A.S.locale);
+  useStore(trTick); // re-render when body translations arrive
   if (!it) return null;
   const d = A.spec.detail, on = !!fav[A.favKey(it)], close = () => A.S.detail.set(null);
   const img = d.image && it[d.image] ? html`<figure class="aspect-video bg-base-300 rounded-2xl overflow-hidden border border-base-300"><img src=${it[d.image]} alt="" class=${`w-full h-full ${d.imageFit === "cover" ? "object-cover" : "object-contain"}`}/></figure>` : null;
-  const rows = (d.rows || []).map((r) => { const v = it[r.field]; return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-base-content/60">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
+  const rows = (d.rows || []).map((r) => { const v = field(it, r.field, loc); return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-base-content/60">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
   const actions = (d.actions || []).map((a) => { const href = safeHref(it[a.href]); return href ? html`<a href=${href} target="_blank" rel="noopener" class="btn btn-primary rounded-2xl w-full gap-2" key=${a.href}>${a.icon ? Icon(a.icon) : null}${T(t, a.label)} ${Icon("lucide:arrow-up-right")}</a>` : null; });
   const star = A.spec.fav ? html`<button id="detail-fav" aria-label=${on ? T(t, "unfavAria") : T(t, "favAria")} onClick=${() => A.toggleFav(it)} class=${`btn btn-ghost btn-sm btn-circle ${on ? "text-primary" : "opacity-60"}`}>${Icon(`lucide:bookmark${on ? "-check" : ""}`, "text-xl")}</button>` : null;
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${it[d.title] ?? ""}</div>${star}</header>
-    <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">${img}<div><h1 class="text-2xl font-bold leading-tight break-words">${it[d.title] ?? ""}</h1>${d.subtitle && it[d.subtitle] ? html`<div class="text-base-content/70 mt-0.5">${it[d.subtitle]}</div>` : null}</div>${rows.some(Boolean) ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 py-1">${rows}</div></div>` : null}${actions.some(Boolean) ? html`<div class="flex flex-col gap-2">${actions}</div>` : null}</div>
+    <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${field(it, d.title, loc) ?? ""}</div>${star}</header>
+    <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">${img}<div><h1 class="text-2xl font-bold leading-tight break-words">${field(it, d.title, loc) ?? ""}</h1>${d.subtitle && it[d.subtitle] ? html`<div class="text-base-content/70 mt-0.5">${field(it, d.subtitle, loc)}</div>` : null}</div>${rows.some(Boolean) ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 py-1">${rows}</div></div>` : null}${actions.some(Boolean) ? html`<div class="flex flex-col gap-2">${actions}</div>` : null}</div>
   </div>`;
 }
 

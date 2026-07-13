@@ -1,0 +1,19 @@
+{
+  "id": "crypto",
+  "theme": "signal",
+  "tabs": [
+    {
+      "id": "market", "type": "list", "icon": "lucide:candlestick-chart", "label": "tabMarket",
+      "search": true, "searchKey": "search", "statusKey": "status",
+      "sort": [
+        { "key": "vol", "label": "sortVol", "by": "vol", "dir": "desc" },
+        { "key": "chg", "label": "sortMovers", "by": "chg", "dir": "desc" },
+        { "key": "base", "label": "sortAlpha", "by": "base", "dir": "asc" }
+      ],
+      "empty": { "icon": "lucide:search-x", "text": "noResults", "hint": "noResultsHint" },
+      "card": { "layout": "row", "lead": "base", "title": "name", "trailing": "price", "trend": "chg" }
+    },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:candlestick-chart", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://www.binance.com/", "icon": "lucide:database" } }
+}

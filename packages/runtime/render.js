@@ -96,7 +96,7 @@ function Card({ item: it, card, hide }) {
     return html`<div class="card @container bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 px-4 flex-row items-center gap-3 @max-[260px]:px-2.5 @max-[260px]:gap-2">
       <div class="font-bold text-primary w-11 shrink-0 @max-[260px]:w-8 @max-[260px]:text-sm">${it[card.lead] ?? "—"}</div>
       <div class="flex-1 min-w-0 @max-[260px]:hidden"><div class="font-medium truncate text-sm">${field(it, card.title, loc)}</div></div>
-      <div class="text-right @max-[260px]:text-sm"><div class="font-semibold tabular-nums">${it[card.trailing] == null ? "—" : card.unit ? it[card.trailing] + " " + card.unit : it[card.trailing]}</div></div>
+      <div class="text-right @max-[260px]:text-sm"><div class="font-semibold tabular-nums">${it[card.trailing] == null ? "—" : card.unit ? it[card.trailing] + " " + card.unit : it[card.trailing]}</div>${card.trend && it[card.trend] != null ? html`<div class=${`text-xs font-medium tabular-nums ${Number(it[card.trend]) >= 0 ? "text-success" : "text-error"}`}>${Number(it[card.trend]) >= 0 ? "+" : ""}${it[card.trend]}%</div>` : null}</div>
       ${star}
     </div></div>`;
   }
@@ -183,7 +183,7 @@ function LoadMore() {
 }
 
 function ListView({ tab }) {
-  const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters), loc = useStore(A.S.locale);
+  const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters), loc = useStore(A.S.locale), sortKey = useStore(A.S.sort);
   const mt = useStore(metaTick);
   // Warm the enrichment + translation caches for every visible item (live feed or saved). Both are no-ops
   // when already cached; cards re-render via metaTick/trTick as data lands. Order matters: previews are
@@ -204,6 +204,14 @@ function ListView({ tab }) {
   let items = tab.source === "fav" ? Object.values(fav) : data.items;
   if (q && !tab.searchFetch) items = items.filter((it) => searchText(it).includes(q));  // server already searched when searchFetch
   for (const cf of (tab.clientFilters || [])) if (filters[cf.key]) items = items.filter((it) => test(it, fav, cf.when));
+  if (tab.sort) {  // declarative persisted sort (S.sort holds the chosen key)
+    const o = tab.sort.find((x) => x.key === sortKey) || tab.sort[0];
+    const dir = o.dir === "asc" ? 1 : -1;
+    items = [...items].sort((a, b) => {
+      const x = a[o.by], y = b[o.by];
+      return (typeof x === "number" && typeof y === "number" ? x - y : String(x ?? "").localeCompare(String(y ?? ""), undefined, { numeric: true })) * dir;
+    });
+  }
   if (!items.length) return Empty(tab.empty?.icon || "lucide:search-x", T(t, tab.empty?.text || "noResults"), T(t, tab.empty?.hint || "noResultsHint"));
 
   const banner = tab.banner ? html`<${Banner} banner=${tab.banner} key="banner" />` : null;
@@ -341,6 +349,15 @@ function SearchBar({ tab }) {
   return html`<div class="sticky top-14 z-20 bg-base-200 border-b border-base-300/50 px-4 pt-3 pb-2"><label class="input input-bordered flex items-center gap-2 h-11 rounded-2xl">${Icon("lucide:search", "text-lg opacity-50")}<input id="filter" type="search" class="grow" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /></label><div id="status" class="text-xs text-base-content/70 mt-1 min-h-4 px-1">${status}</div></div>`;
 }
 
+// Declarative, persisted sort control (segmented). The chosen key lives in S.sort (persistentAtom), so
+// it survives reloads; ListView reads it to order items. Declared entirely at the schema level (tab.sort).
+function SortBar({ tab }) {
+  const t = useStore(A.S.t), cur = useStore(A.S.sort);
+  return html`<div class="px-4 pt-3 max-w-xl mx-auto w-full"><div class="join w-full" id="sort" role="group" aria-label=${T(t, "sortAria")}>
+    ${tab.sort.map((o) => html`<button class=${`btn btn-sm join-item flex-1 ${cur === o.key ? "btn-active btn-primary" : ""}`} data-sort=${o.key} key=${o.key} aria-pressed=${cur === o.key} onClick=${() => A.S.sort.set(o.key)}>${T(t, o.label)}</button>`)}
+  </div></div>`;
+}
+
 function AppBar() {
   const t = useStore(A.S.t);
   return html`<header class="navbar bg-base-100 sticky top-0 z-30 border-b border-base-300 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1"><span class="text-base font-bold tracking-tight">${T(t, "title")}</span></div>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button></header>`;
@@ -426,6 +443,7 @@ export function App() {
     <${AppBar} />
     ${tab.type === "list" && tab.search ? html`<${SearchBar} tab=${tab} />` : null}
     ${A.spec.filters ? html`<${FilterChips} />` : null}
+    ${tab.type === "list" && tab.sort ? html`<${SortBar} tab=${tab} />` : null}
     <main id="view" class="px-4 pb-24 pt-3 max-w-xl mx-auto flex flex-col gap-2.5">
       <${TabView} tab=${tab} />
     </main>

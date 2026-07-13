@@ -10,6 +10,11 @@ const JSON_CODEC = { encode: JSON.stringify, decode: (s) => { try { return JSON.
 export function createApp(spec, dataLoad) {
   const ns = (spec.id || "app") + ":";
   const conv = spec.tabs.find((t) => t.type === "converter");
+  const sortTab = spec.tabs.find((t) => Array.isArray(t.sort) && t.sort.length);
+  // filters + sort persist across sessions (declared at the schema level; the runtime remembers the choice)
+  const FKEY = ns + "filters";
+  let savedFilters = {};
+  try { savedFilters = JSON.parse(localStorage.getItem(FKEY) || "{}"); } catch { /* bad/empty */ }
 
   const S = {
     // persisted preferences
@@ -22,9 +27,10 @@ export function createApp(spec, dataLoad) {
     // ephemeral UI state
     query: atom(""),
     tab: atom(spec.tabs?.[0]?.id),
+    sort: persistentAtom(ns + "sort", sortTab?.sort?.[0]?.key || ""),
     // next = opaque cursor for the following page (null = no more); loadingMore/moreError = paging state
     data: map({ items: [], meta: {}, loading: true, error: false, next: null, loadingMore: false, moreError: false }),
-    filters: map(spec.filters?.defaults ? { ...spec.filters.defaults } : {}),
+    filters: map({ ...(spec.filters?.defaults || {}), ...savedFilters }),
     toast: atom(""),
     // history-backed overlays (index.js watches these for the back-button invariant)
     sheet: atom(false),
@@ -34,6 +40,8 @@ export function createApp(spec, dataLoad) {
     installOpen: atom(false),
   };
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
+  // persist filter selections as JSON (keeps booleans intact, unlike per-key string storage)
+  S.filters.listen((v) => { try { localStorage.setItem(FKEY, JSON.stringify(v)); } catch { /* private mode / quota */ } });
 
   // Full (re)load — page one. Resets the accumulated list + pagination cursor. Fires on init, filter
   // change/refetch, searchFetch query change, and manual refresh.

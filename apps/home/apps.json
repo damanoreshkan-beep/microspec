@@ -18,6 +18,15 @@
     "href": "./launches/"
   },
   {
+    "id": "crypto",
+    "title": "Крипто-тікер",
+    "tagline": "Живі ціни топ-криптовалют у реальному часі — WebSocket, без затримок",
+    "glyph": "lucide:candlestick-chart",
+    "bg": "#0A0A0B",
+    "fg": "#F0A93B",
+    "href": "./crypto/"
+  },
+  {
     "id": "rates",
     "title": "Курси валют",
     "tagline": "Курси валют і конвертер",

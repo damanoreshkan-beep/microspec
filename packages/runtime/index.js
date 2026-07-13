@@ -44,5 +44,12 @@ export function start(spec, arg2) {
   addEventListener("appinstalled", () => { S.installEvent.set(null); S.installOpen.set(false); });
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 
-  load();
+  if (opts.stream) {
+    // Live data source (WebSocket/SSE/…): the app opens its own connection and pushes the current items;
+    // the list family renders them with its search / filter / sort. The stream owns its reconnect logic.
+    const push = (items) => S.data.set({ ...S.data.get(), items: items || [], loading: false, error: false });
+    try { opts.stream(push, S); } catch { S.data.set({ ...S.data.get(), loading: false, error: true }); }
+  } else {
+    load();
+  }
 }

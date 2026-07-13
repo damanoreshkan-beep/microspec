@@ -214,6 +214,22 @@
           "search": { "type": "boolean", "description": "list only — show the search/status bar." },
           "paginate": { "type": "boolean", "description": "list only — infinite scroll. data.js load() receives filters.cursor and returns { items, meta, next } where `next` is an opaque cursor for the following page (null/omitted = no more). The runtime appends pages via an accessible 'load more' sentinel (button + IntersectionObserver). Ignored on the saved/fav tab. Needs i18n key 'loadMore'." },
           "searchFetch": { "type": "boolean", "description": "list only (search family) — the search box debounce-drives a real refetch: the trimmed query reaches data.js load() as filters.q, and client-side filtering is skipped (the server already searched). Empty query shows the `prompt` empty-state. Requires search:true." },
+          "sort": {
+            "type": "array",
+            "minItems": 1,
+            "description": "list only — declarative, PERSISTED sort. Renders a segmented control; the first option is the default. Numbers sort numerically, strings locale-aware. The chosen key is remembered across sessions.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["key", "label", "by"],
+              "properties": {
+                "key": { "type": "string", "minLength": 1, "description": "Stable id for this sort (persisted)." },
+                "label": { "type": "string", "minLength": 1, "description": "i18n key for the control label." },
+                "by": { "type": "string", "minLength": 1, "description": "Item field to sort on." },
+                "dir": { "type": "string", "enum": ["asc", "desc"], "description": "Direction (default 'desc')." }
+              }
+            }
+          },
           "prompt": {
             "type": "object",
             "additionalProperties": false,

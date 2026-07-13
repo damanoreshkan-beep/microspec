@@ -2,30 +2,28 @@
   "id": "ruler",
   "theme": "signal",
   "tabs": [
-    { "id": "ruler", "type": "tool", "icon": "lucide:ruler", "label": "tabRuler", "view": "ruler", "needs": ["haptic"] },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
-  ],
-  "profile": { "icon": "lucide:ruler", "theme": true, "lang": true, "install": true },
-  "i18n": {
-    "uk": {
-      "title": "Лінійка", "tabRuler": "Лінійка", "tabMe": "Я",
-      "rulerHint": "Приклади предмет до екрана. Спершу відкалібруй під свій дисплей.",
-      "calibrate": "Калібрувати", "calibCard": "Приклади банківську картку довгою стороною до рамки й посунь повзунок, доки вони не збіжаться.",
-      "calibReset": "Скинути", "done": "Готово", "back": "Назад",
-      "profTheme": "Темна тема", "profLang": "Мова", "profTagline": "Екранна лінійка з калібруванням",
-      "install": "Встановити застосунок", "installTitle": "Встановлення", "installBtn": "Встановити", "installDesc": "Працює офлайн, відкривається як застосунок",
-      "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».", "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
-      "close": "Закрити", "refresh": "Оновити", "toastSaved": "Збережено", "toastRemoved": "Видалено"
+    {
+      "id": "ruler",
+      "type": "tool",
+      "icon": "lucide:ruler",
+      "label": "tabRuler",
+      "view": "ruler",
+      "needs": [
+        "haptic"
+      ]
     },
-    "en": {
-      "title": "Ruler", "tabRuler": "Ruler", "tabMe": "Me",
-      "rulerHint": "Hold an object to the screen. Calibrate to your display first.",
-      "calibrate": "Calibrate", "calibCard": "Hold a bank card's long edge to the frame and drag the slider until they match.",
-      "calibReset": "Reset", "done": "Done", "back": "Back",
-      "profTheme": "Dark theme", "profLang": "Language", "profTagline": "On-screen ruler with calibration",
-      "install": "Install app", "installTitle": "Install", "installBtn": "Install", "installDesc": "Works offline, opens like an app",
-      "installIosHint": "In Safari: tap Share, then 'Add to Home Screen'.", "installGenericHint": "In your browser menu choose 'Install' or 'Add to Home Screen'.",
-      "close": "Close", "refresh": "Refresh", "toastSaved": "Saved", "toastRemoved": "Removed"
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
     }
+  ],
+  "profile": {
+    "icon": "lucide:ruler",
+    "theme": true,
+    "lang": true,
+    "install": true
   }
 }

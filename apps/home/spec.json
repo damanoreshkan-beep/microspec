@@ -3,34 +3,44 @@
   "theme": "signal",
   "tabs": [
     {
-      "id": "apps", "type": "list", "icon": "lucide:layout-grid", "label": "tabApps",
-      "search": true, "searchKey": "search", "statusKey": "status",
-      "card": { "layout": "grid", "title": "title", "href": "href", "icon": "glyph", "bg": "bg", "fg": "fg" },
-      "empty": { "icon": "lucide:search-x", "text": "noResults", "hint": "noResultsHint" }
+      "id": "apps",
+      "type": "list",
+      "icon": "lucide:layout-grid",
+      "label": "tabApps",
+      "search": true,
+      "searchKey": "search",
+      "statusKey": "status",
+      "card": {
+        "layout": "grid",
+        "title": "title",
+        "href": "href",
+        "icon": "glyph",
+        "bg": "bg",
+        "fg": "fg"
+      },
+      "empty": {
+        "icon": "lucide:search-x",
+        "text": "noResults",
+        "hint": "noResultsHint"
+      }
     },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
-  "profile": { "icon": "lucide:layout-grid", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://github.com/damanoreshkan-beep/microspec", "icon": "lucide:github" } },
-  "i18n": {
-    "uk": {
-      "title": "microspec", "tabApps": "Застосунки", "tabMe": "Я",
-      "search": "Пошук застосунку…",
-      "status": "Каталог мікрозастосунків", "statusLoading": "Оновлення…", "statusError": "Дані недоступні",
-      "noResults": "Нічого не знайдено", "noResultsHint": "Спробуй інший запит", "errorHint": "Перевір зʼєднання та онови",
-      "profTheme": "Темна тема", "profLang": "Мова", "profTagline": "Домашній екран ферми мікрозастосунків — встановлювані, офлайн, з гейтами", "profSource": "Код — github.com/microspec",
-      "install": "Встановити застосунок", "installTitle": "Встановлення", "installBtn": "Встановити", "installDesc": "Працює офлайн, відкривається як застосунок",
-      "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».", "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
-      "close": "Закрити", "refresh": "Оновити", "toastSaved": "Збережено", "toastRemoved": "Видалено"
-    },
-    "en": {
-      "title": "microspec", "tabApps": "Apps", "tabMe": "Me",
-      "search": "Search an app…",
-      "status": "Micro-app catalogue", "statusLoading": "Updating…", "statusError": "Data unavailable",
-      "noResults": "Nothing found", "noResultsHint": "Try another query", "errorHint": "Check connection and refresh",
-      "profTheme": "Dark theme", "profLang": "Language", "profTagline": "The micro-app farm home screen — installable, offline, gated", "profSource": "Source — github.com/microspec",
-      "install": "Install app", "installTitle": "Install", "installBtn": "Install", "installDesc": "Works offline, opens like an app",
-      "installIosHint": "In Safari: tap Share, then 'Add to Home Screen'.", "installGenericHint": "In your browser menu choose 'Install' or 'Add to Home Screen'.",
-      "close": "Close", "refresh": "Refresh", "toastSaved": "Saved", "toastRemoved": "Removed"
+  "profile": {
+    "icon": "lucide:layout-grid",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": {
+      "label": "profSource",
+      "url": "https://github.com/damanoreshkan-beep/microspec",
+      "icon": "lucide:github"
     }
   }
 }

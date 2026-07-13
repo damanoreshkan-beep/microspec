@@ -1,11 +1,13 @@
 // microspec — app scaffolder (the deterministic half of authoring). The agent (LLM) writes only the
-// two app-specific files — spec.json + data.js (or view.js for a tool) — and this emits the identical
-// boilerplate every app needs: index.html (wired by mode), manifest.json, sw.js (network-first),
+// app-specific files — spec.json (structure) + i18n/<locale>.json (translations, one file per language)
+// + data.js (or view.js for a tool) — and this emits the identical boilerplate every app needs:
+// index.html (composes spec + locale files, wired by mode), manifest.json, sw.js (network-first),
 // icon.svg (from brand). It never overwrites the authored files unless --force.
 //
 //   deno run -A scaffold.mjs <appdir> [--force]
 //
 // Modes: `tool` if view.js exists (start(spec,{views})), else `data` (start(spec, load)).
+import { readLocales, localeList } from "./compose.mjs";
 
 const dir = (Deno.args[0] ?? "").replace(/\/$/, "");
 const force = Deno.args.includes("--force");
@@ -16,21 +18,31 @@ const readJson = async (p) => JSON.parse(await Deno.readTextFile(p));
 
 if (!(await has(`${dir}/spec.json`))) { console.error(`✗ ${dir}/spec.json missing — author it first`); Deno.exit(1); }
 const spec = await readJson(`${dir}/spec.json`);
+const i18n = await readLocales(dir);           // translations live in apps/<id>/i18n/<locale>.json
+const locales = localeList(i18n);
+if (!locales.length) { console.error(`✗ ${dir}/i18n/ has no locale files — author i18n/uk.json + i18n/en.json`); Deno.exit(1); }
 const brand = (await has(`${dir}/brand.json`)) ? await readJson(`${dir}/brand.json`) : { bg: "#1f2430", fg: "#a78bfa" };
 const brandPaths = (await has(`${dir}/brand.svg`)) ? (await Deno.readTextFile(`${dir}/brand.svg`)).trim() : '<rect x="4" y="4" width="16" height="16" rx="3"/>';
 const mode = (await has(`${dir}/view.js`)) ? "tool" : "data";
 
-const dict = spec.i18n?.uk || spec.i18n?.en || {};
+const dict = i18n.uk || i18n.en || {};
 const title = dict.title || spec.id;
 const tagline = dict.profTagline || title;
 const isLight = /light/.test(spec.theme || "");
 const themeColor = isLight ? "#FAFAF9" : "#0A0A0B";
 const bg = isLight ? "#FFFFFF" : "#0A0A0B";
-const lang = spec.i18n?.uk ? "uk" : "en";
+const lang = i18n.uk ? "uk" : locales[0];
 
-const startWiring = mode === "tool"
-  ? `    import * as views from "./view.js";\n    import { start } from "/_rt/index.js";\n    start(spec, { views });`
-  : `    import { load } from "./data.js";\n    import { start } from "/_rt/index.js";\n    start(spec, load);`;
+// index.html composes the spec from spec.json + each i18n/<locale>.json (imported as JSON modules) and
+// hands start() a { ...spec, i18n } — so the translations stay isolated per-language files on disk.
+const localeImports = locales.map((l) => `    import ${l} from "./i18n/${l}.json" with { type: "json" };`).join("\n");
+const startWiring = [
+  `    import spec from "./spec.json" with { type: "json" };`,
+  localeImports,
+  mode === "tool" ? `    import * as views from "./view.js";` : `    import { load } from "./data.js";`,
+  `    import { start } from "/_rt/index.js";`,
+  `    start({ ...spec, i18n: { ${locales.join(", ")} } }, ${mode === "tool" ? "{ views }" : "load"});`,
+].join("\n");
 
 const indexHtml = `<!DOCTYPE html>
 <html lang="${lang}" data-theme="${spec.theme || "dim"}">
@@ -69,7 +81,6 @@ const indexHtml = `<!DOCTYPE html>
 <body class="bg-base-200 min-h-dvh">
   <div id="app"></div>
   <script type="module">
-    import spec from "./spec.json" with { type: "json" };
 ${startWiring}
   </script>
 </body>

@@ -1,72 +1,138 @@
 {
   "id": "wiki",
   "theme": "signal-light",
-  "fav": { "key": "id" },
+  "fav": {
+    "key": "id"
+  },
   "filters": {
     "refetch": true,
-    "defaults": { "lang": "uk" },
+    "defaults": {
+      "lang": "uk"
+    },
     "controls": [
-      { "type": "segment", "key": "lang", "label": "fLang", "icon": "lucide:globe", "refetch": true, "chip": true,
-        "options": [["uk", "UK"], ["en", "EN"], ["de", "DE"], ["pl", "PL"]] }
+      {
+        "type": "segment",
+        "key": "lang",
+        "label": "fLang",
+        "icon": "lucide:globe",
+        "refetch": true,
+        "chip": true,
+        "options": [
+          [
+            "uk",
+            "UK"
+          ],
+          [
+            "en",
+            "EN"
+          ],
+          [
+            "de",
+            "DE"
+          ],
+          [
+            "pl",
+            "PL"
+          ]
+        ]
+      }
     ]
   },
   "detail": {
-    "image": "thumb", "imageFit": "contain", "title": "title", "subtitle": "desc",
+    "image": "thumb",
+    "imageFit": "contain",
+    "title": "title",
+    "subtitle": "desc",
     "rows": [
-      { "field": "extract", "label": "detailAbout", "icon": "lucide:book-open" },
-      { "field": "langName", "label": "detailLang", "icon": "lucide:globe" }
+      {
+        "field": "extract",
+        "label": "detailAbout",
+        "icon": "lucide:book-open"
+      },
+      {
+        "field": "langName",
+        "label": "detailLang",
+        "icon": "lucide:globe"
+      }
     ],
-    "actions": [ { "href": "url", "label": "readOn", "icon": "lucide:external-link" } ]
+    "actions": [
+      {
+        "href": "url",
+        "label": "readOn",
+        "icon": "lucide:external-link"
+      }
+    ]
   },
-  "profile": { "icon": "lucide:book-open-text", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://www.wikipedia.org/", "icon": "lucide:database" } },
+  "profile": {
+    "icon": "lucide:book-open-text",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": {
+      "label": "profSource",
+      "url": "https://www.wikipedia.org/",
+      "icon": "lucide:database"
+    }
+  },
   "tabs": [
     {
-      "id": "search", "type": "list", "icon": "lucide:search", "label": "tabSearch",
-      "search": true, "searchFetch": true, "searchKey": "search", "statusKey": "status", "paginate": true,
-      "prompt": { "icon": "lucide:book-open-text", "text": "searchPrompt", "hint": "searchPromptHint" },
-      "empty": { "icon": "lucide:search-x", "text": "noResults", "hint": "noResultsHint" },
-      "card": { "layout": "feed", "image": "thumb", "imageFit": "contain", "title": "title", "body": "desc", "more": "more" }
+      "id": "search",
+      "type": "list",
+      "icon": "lucide:search",
+      "label": "tabSearch",
+      "search": true,
+      "searchFetch": true,
+      "searchKey": "search",
+      "statusKey": "status",
+      "paginate": true,
+      "prompt": {
+        "icon": "lucide:book-open-text",
+        "text": "searchPrompt",
+        "hint": "searchPromptHint"
+      },
+      "empty": {
+        "icon": "lucide:search-x",
+        "text": "noResults",
+        "hint": "noResultsHint"
+      },
+      "card": {
+        "layout": "feed",
+        "image": "thumb",
+        "imageFit": "contain",
+        "title": "title",
+        "body": "desc",
+        "more": "more"
+      }
     },
     {
-      "id": "saved", "type": "list", "icon": "lucide:bookmark", "label": "tabSaved", "source": "fav",
-      "titleKey": "tabSaved", "search": true, "searchKey": "searchSaved",
-      "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
-      "card": { "layout": "feed", "image": "thumb", "imageFit": "contain", "title": "title", "body": "desc", "more": "more" }
+      "id": "saved",
+      "type": "list",
+      "icon": "lucide:bookmark",
+      "label": "tabSaved",
+      "source": "fav",
+      "titleKey": "tabSaved",
+      "search": true,
+      "searchKey": "searchSaved",
+      "empty": {
+        "icon": "lucide:bookmark",
+        "text": "emptySaved",
+        "hint": "emptySavedHint"
+      },
+      "card": {
+        "layout": "feed",
+        "image": "thumb",
+        "imageFit": "contain",
+        "title": "title",
+        "body": "desc",
+        "more": "more"
+      }
     },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
-  ],
-  "i18n": {
-    "uk": {
-      "title": "Вікіпедія", "tabSearch": "Пошук", "tabSaved": "Збережені", "tabMe": "Я",
-      "search": "Шукати у Вікіпедії…", "searchSaved": "Шукати у збережених…",
-      "status": "Вікіпедія", "statusLoading": "Пошук…", "statusError": "Дані недоступні", "savedCount": "{n} збережено",
-      "more": "Читати", "readOn": "Читати у Вікіпедії", "loadMore": "Показати ще",
-      "searchPrompt": "Пошук у Вікіпедії", "searchPromptHint": "Введи слово, ім’я чи тему — і читай статтю прямо тут",
-      "noResults": "Нічого не знайдено", "noResultsHint": "Спробуй інакший запит або іншу мову", "errorHint": "Перевір зʼєднання та онови",
-      "emptySaved": "Ще нічого не збережено", "emptySavedHint": "Тисни закладку на картці, щоб зберегти статтю сюди",
-      "favAria": "Зберегти статтю", "unfavAria": "Прибрати зі збережених",
-      "detailAbout": "Про що стаття", "detailLang": "Мова статті",
-      "fLang": "Мова Вікіпедії", "filterTitle": "Фільтр", "apply": "Застосувати", "ariaFilter": "Мова", "back": "Назад",
-      "profTheme": "Темна тема", "profLang": "Мова застосунку", "profTagline": "Швидкий пошук по Вікіпедії", "profSource": "Джерело — wikipedia.org",
-      "install": "Встановити застосунок", "installTitle": "Встановлення", "installBtn": "Встановити", "installDesc": "Працює офлайн, відкривається як застосунок",
-      "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».", "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
-      "close": "Закрити", "refresh": "Оновити", "toastSaved": "Збережено", "toastRemoved": "Видалено зі збережених"
-    },
-    "en": {
-      "title": "Wikipedia", "tabSearch": "Search", "tabSaved": "Saved", "tabMe": "Me",
-      "search": "Search Wikipedia…", "searchSaved": "Search saved…",
-      "status": "Wikipedia", "statusLoading": "Searching…", "statusError": "Data unavailable", "savedCount": "{n} saved",
-      "more": "Read", "readOn": "Read on Wikipedia", "loadMore": "Load more",
-      "searchPrompt": "Search Wikipedia", "searchPromptHint": "Type a word, name or topic — read the article right here",
-      "noResults": "Nothing found", "noResultsHint": "Try another query or another language", "errorHint": "Check connection and refresh",
-      "emptySaved": "Nothing saved yet", "emptySavedHint": "Tap the bookmark on a card to save an article here",
-      "favAria": "Save article", "unfavAria": "Remove from saved",
-      "detailAbout": "About", "detailLang": "Article language",
-      "fLang": "Wikipedia language", "filterTitle": "Filter", "apply": "Apply", "ariaFilter": "Language", "back": "Back",
-      "profTheme": "Dark theme", "profLang": "App language", "profTagline": "Fast search across Wikipedia", "profSource": "Source — wikipedia.org",
-      "install": "Install app", "installTitle": "Install", "installBtn": "Install", "installDesc": "Works offline, opens like an app",
-      "installIosHint": "In Safari: tap Share, then 'Add to Home Screen'.", "installGenericHint": "In your browser menu choose 'Install' or 'Add to Home Screen'.",
-      "close": "Close", "refresh": "Refresh", "toastSaved": "Saved", "toastRemoved": "Removed from saved"
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
     }
-  }
+  ]
 }

@@ -13,9 +13,13 @@ prompt → probe source → author spec.json (ajv-gated) → author data.js → 
    plain `deno eval` fetch. Confirm it returns `ACAO: *` to a browser `Origin` (direct works on a static
    host), or plan the `/feed` fallback. Pick a keyless, CORS-friendly source.
 
-2. **Author `spec.json`** — the declarative app (theme, tabs, card slots, detail, filters, i18n uk+en).
-   The families are: `list` (feed|row) · `converter` · `dashboard` · `tool` · `profile`, plus top-level
-   `detail`, per-list `search`/`searchFetch`, and `filters`. See `packages/schema/SCHEMA.md`.
+2. **Author `spec.json`** — the declarative app *structure only* (theme, tabs, card slots, detail,
+   filters). **Translations are NOT inline** — each language is its own file: `apps/<id>/i18n/uk.json`
+   and `apps/<id>/i18n/en.json` (flat `{ key: string }` dicts; `en` is the required fallback). index.html
+   composes them (`start({ ...spec, i18n })`); the ajv gate composes too, so a missing key still fails.
+   Add every new UI string to **all** locale files at once. The families are: `list` (feed|row) ·
+   `converter` · `dashboard` · `tool` · `profile`, plus top-level `detail`, per-list
+   `search`/`searchFetch`/`paginate`, and `filters`. See `packages/schema/SCHEMA.md`.
    **Card layouts:** `feed` (rich card), `row` (compact title+value), `grid` (Android-style launcher
    icon tile — a rounded `bg`/`fg` glyph tile + 2-line label, whole tile a same-tab link). The store home
    is itself a microapp: `apps/home` (list/`grid` + profile), assembled at the site ROOT by build.mjs; its

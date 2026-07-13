@@ -1,0 +1,9 @@
+{
+  "id": "globe",
+  "theme": "signal",
+  "tabs": [
+    { "id": "earth", "type": "tool", "icon": "lucide:globe", "label": "tabGlobe", "view": "globe" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:globe", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://github.com/topojson/world-atlas", "icon": "lucide:database" } }
+}

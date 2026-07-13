@@ -26,7 +26,7 @@ jobs:
     # workflow_dispatch → always; workflow_run → only when the verify gate concluded success.
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # workflow_run checks out the default branch by default; pin to the exact commit that passed verify.
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
@@ -34,7 +34,7 @@ jobs:
         with: { deno-version: v2.x }
       - name: Assemble dist/
         run: deno run -A deploy/build.mjs
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with: { path: dist }
   deploy:
     needs: build
@@ -45,4 +45,4 @@ jobs:
       url: ${{ steps.d.outputs.page_url }}
     steps:
       - id: d
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

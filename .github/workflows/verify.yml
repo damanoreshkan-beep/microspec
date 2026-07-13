@@ -21,7 +21,7 @@ jobs:
     outputs:
       apps: ${{ steps.discover.outputs.apps }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: denoland/setup-deno@v2
         with: { deno-version: v2.x }
       - name: Runtime unit tests (pure logic, no browser)
@@ -49,16 +49,16 @@ jobs:
       matrix:
         app: ${{ fromJSON(needs.unit.outputs.apps) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: denoland/setup-deno@v2
         with: { deno-version: v2.x }
       - name: Cache deno deps
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/deno
           key: deno-${{ hashFiles('packages/**/deno.json') }}
           restore-keys: deno-
-      - uses: browser-actions/setup-chrome@v1
+      - uses: browser-actions/setup-chrome@v2
         id: chrome
         with: { chrome-version: stable }
       - run: sudo apt-get update && sudo apt-get install -y xvfb fonts-liberation
@@ -73,7 +73,7 @@ jobs:
         run: deno run -A packages/gates/verify.mjs "$GITHUB_WORKSPACE/apps/${{ matrix.app }}" --shots
       - name: Upload screenshot
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: shot-${{ matrix.app }}
           path: apps/${{ matrix.app }}/states/main.png

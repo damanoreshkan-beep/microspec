@@ -32,6 +32,12 @@ for await (const a of Deno.readDir("apps")) {
       }
     }
   }
+  if (await has(`apps/${a.name}/i18n`)) {
+    await Deno.mkdir(`${outDir}/i18n`, { recursive: true });
+    for await (const lf of Deno.readDir(`apps/${a.name}/i18n`)) {
+      if (lf.isFile && lf.name.endsWith(".json")) await Deno.copyFile(`apps/${a.name}/i18n/${lf.name}`, `${outDir}/i18n/${lf.name}`);
+    }
+  }
   if (await has(`apps/${a.name}/brand.svg`)) {
     const brand = (await has(`apps/${a.name}/brand.json`)) ? JSON.parse(await Deno.readTextFile(`apps/${a.name}/brand.json`)) : { bg: "#1f2430", fg: "#a78bfa" };
     const paths = (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim();

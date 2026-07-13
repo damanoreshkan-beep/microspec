@@ -1,5 +1,6 @@
 import Ajv2020 from "npm:ajv@8/dist/2020.js";
 import addFormats from "npm:ajv-formats@3";
+import { readLocales } from "../gen/compose.mjs";
 
 const schema = JSON.parse(await Deno.readTextFile(new URL("./spec.schema.json", import.meta.url)));
 const ajv = new Ajv2020({ allErrors: true, strict: false });
@@ -12,7 +13,10 @@ if (import.meta.main) {
   let bad = 0;
   for (const f of files) {
     let spec;
-    try { spec = JSON.parse(await Deno.readTextFile(f)); }
+    try {
+      spec = JSON.parse(await Deno.readTextFile(f));
+      spec.i18n = await readLocales(f.replace(/\/spec\.json$/, ""));
+    }
     catch (e) { console.log(`✗ ${f} — not valid JSON: ${e.message}`); bad++; continue; }
     if (validateSchema(spec)) { console.log(`✓ ${f}`); }
     else {

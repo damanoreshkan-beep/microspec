@@ -1,68 +1,116 @@
 {
   "id": "hn",
   "theme": "signal",
-  "translate": ["title", "desc"],
-  "enrich": { "url": "url", "body": "desc" },
-  "fav": { "key": "id" },
+  "translate": [
+    "title",
+    "desc"
+  ],
+  "enrich": {
+    "url": "url",
+    "body": "desc"
+  },
+  "fav": {
+    "key": "id"
+  },
   "tabs": [
     {
-      "id": "feed", "type": "list", "icon": "lucide:flame", "label": "tabFeed",
-      "search": true, "searchKey": "search", "statusKey": "status", "paginate": true,
+      "id": "feed",
+      "type": "list",
+      "icon": "lucide:flame",
+      "label": "tabFeed",
+      "search": true,
+      "searchKey": "search",
+      "statusKey": "status",
+      "paginate": true,
       "card": {
-        "layout": "feed", "href": "url", "title": "title", "body": "desc", "more": "open",
-        "meta": { "field": "ts", "format": "ago" },
+        "layout": "feed",
+        "href": "url",
+        "title": "title",
+        "body": "desc",
+        "more": "open",
+        "meta": {
+          "field": "ts",
+          "format": "ago"
+        },
         "badges": [
-          { "field": "points", "icon": "lucide:arrow-up", "variant": "success" },
-          { "field": "comments", "icon": "lucide:message-square", "variant": "ghost" },
-          { "field": "author", "icon": "lucide:user", "variant": "ghost" }
+          {
+            "field": "points",
+            "icon": "lucide:arrow-up",
+            "variant": "success"
+          },
+          {
+            "field": "comments",
+            "icon": "lucide:message-square",
+            "variant": "ghost"
+          },
+          {
+            "field": "author",
+            "icon": "lucide:user",
+            "variant": "ghost"
+          }
         ]
       }
     },
     {
-      "id": "saved", "type": "list", "icon": "lucide:bookmark", "label": "tabSaved", "source": "fav",
-      "titleKey": "tabSaved", "search": true, "searchKey": "searchSaved",
-      "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
+      "id": "saved",
+      "type": "list",
+      "icon": "lucide:bookmark",
+      "label": "tabSaved",
+      "source": "fav",
+      "titleKey": "tabSaved",
+      "search": true,
+      "searchKey": "searchSaved",
+      "empty": {
+        "icon": "lucide:bookmark",
+        "text": "emptySaved",
+        "hint": "emptySavedHint"
+      },
       "card": {
-        "layout": "feed", "href": "url", "title": "title", "body": "desc", "more": "open",
-        "meta": { "field": "ts", "format": "ago" },
+        "layout": "feed",
+        "href": "url",
+        "title": "title",
+        "body": "desc",
+        "more": "open",
+        "meta": {
+          "field": "ts",
+          "format": "ago"
+        },
         "badges": [
-          { "field": "points", "icon": "lucide:arrow-up", "variant": "success" },
-          { "field": "comments", "icon": "lucide:message-square", "variant": "ghost" },
-          { "field": "author", "icon": "lucide:user", "variant": "ghost" }
+          {
+            "field": "points",
+            "icon": "lucide:arrow-up",
+            "variant": "success"
+          },
+          {
+            "field": "comments",
+            "icon": "lucide:message-square",
+            "variant": "ghost"
+          },
+          {
+            "field": "author",
+            "icon": "lucide:user",
+            "variant": "ghost"
+          }
         ]
       }
     },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
-  "profile": { "icon": "lucide:flame", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://news.ycombinator.com/", "icon": "lucide:database" } },
-  "i18n": {
-    "uk": {
-      "title": "Hacker News", "tabFeed": "Головна", "tabSaved": "Збережені", "tabMe": "Я",
-      "search": "Пошук у стрічці…", "searchSaved": "Шукати у збережених…",
-      "status": "Hacker News · головна", "statusLoading": "Оновлення…", "statusError": "Дані недоступні", "savedCount": "{n} збережено",
-      "open": "Відкрити", "loadMore": "Показати ще",
-      "noResults": "Нічого не знайдено", "noResultsHint": "Спробуй інший запит", "errorHint": "Перевір зʼєднання та онови",
-      "emptySaved": "Ще нічого не збережено", "emptySavedHint": "Тисни закладку на картці, щоб зберегти сюди",
-      "favAria": "Зберегти", "unfavAria": "Прибрати зі збережених",
-      "agoToday": "сьогодні", "agoYesterday": "вчора", "agoDays": "{n} дн. тому", "agoWeeks": "{n} тиж. тому",
-      "profTheme": "Темна тема", "profLang": "Мова", "profTagline": "Головна Hacker News", "profSource": "Джерело — news.ycombinator.com",
-      "install": "Встановити застосунок", "installTitle": "Встановлення", "installBtn": "Встановити", "installDesc": "Працює офлайн, відкривається як застосунок",
-      "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».", "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
-      "close": "Закрити", "refresh": "Оновити", "toastSaved": "Збережено", "toastRemoved": "Видалено зі збережених"
-    },
-    "en": {
-      "title": "Hacker News", "tabFeed": "Front page", "tabSaved": "Saved", "tabMe": "Me",
-      "search": "Search the feed…", "searchSaved": "Search saved…",
-      "status": "Hacker News · front page", "statusLoading": "Updating…", "statusError": "Data unavailable", "savedCount": "{n} saved",
-      "open": "Open", "loadMore": "Load more",
-      "noResults": "Nothing found", "noResultsHint": "Try another query", "errorHint": "Check connection and refresh",
-      "emptySaved": "Nothing saved yet", "emptySavedHint": "Tap the bookmark on a card to save it here",
-      "favAria": "Save", "unfavAria": "Remove from saved",
-      "agoToday": "today", "agoYesterday": "yesterday", "agoDays": "{n}d ago", "agoWeeks": "{n}w ago",
-      "profTheme": "Dark theme", "profLang": "Language", "profTagline": "Hacker News front page", "profSource": "Source — news.ycombinator.com",
-      "install": "Install app", "installTitle": "Install", "installBtn": "Install", "installDesc": "Works offline, opens like an app",
-      "installIosHint": "In Safari: tap Share, then 'Add to Home Screen'.", "installGenericHint": "In your browser menu choose 'Install' or 'Add to Home Screen'.",
-      "close": "Close", "refresh": "Refresh", "toastSaved": "Saved", "toastRemoved": "Removed from saved"
+  "profile": {
+    "icon": "lucide:flame",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": {
+      "label": "profSource",
+      "url": "https://news.ycombinator.com/",
+      "icon": "lucide:database"
     }
   }
 }

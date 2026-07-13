@@ -1,3 +1,5 @@
+import { readLocales } from "../packages/gen/compose.mjs";
+
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
 const readJson = async (p) => JSON.parse(await Deno.readTextFile(p));
 
@@ -6,7 +8,8 @@ export async function buildManifest() {
   for await (const a of Deno.readDir("apps")) {
     if (!a.isDirectory || a.name === "home" || !(await has(`apps/${a.name}/spec.json`))) continue;
     const spec = await readJson(`apps/${a.name}/spec.json`);
-    const d = spec.i18n?.uk || spec.i18n?.en || {};
+    const i18n = await readLocales(`apps/${a.name}`);
+    const d = i18n.uk || i18n.en || {};
     const brand = (await has(`apps/${a.name}/brand.json`)) ? await readJson(`apps/${a.name}/brand.json`) : { bg: "#1f2430", fg: "#a78bfa" };
     apps.push({
       id: a.name,

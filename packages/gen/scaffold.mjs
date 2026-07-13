@@ -1,3 +1,4 @@
+import { readLocales, localeList } from "./compose.mjs";
 
 const dir = (Deno.args[0] ?? "").replace(/\/$/, "");
 const force = Deno.args.includes("--force");
@@ -8,21 +9,29 @@ const readJson = async (p) => JSON.parse(await Deno.readTextFile(p));
 
 if (!(await has(`${dir}/spec.json`))) { console.error(`✗ ${dir}/spec.json missing — author it first`); Deno.exit(1); }
 const spec = await readJson(`${dir}/spec.json`);
+const i18n = await readLocales(dir);           
+const locales = localeList(i18n);
+if (!locales.length) { console.error(`✗ ${dir}/i18n/ has no locale files — author i18n/uk.json + i18n/en.json`); Deno.exit(1); }
 const brand = (await has(`${dir}/brand.json`)) ? await readJson(`${dir}/brand.json`) : { bg: "#1f2430", fg: "#a78bfa" };
 const brandPaths = (await has(`${dir}/brand.svg`)) ? (await Deno.readTextFile(`${dir}/brand.svg`)).trim() : '<rect x="4" y="4" width="16" height="16" rx="3"/>';
 const mode = (await has(`${dir}/view.js`)) ? "tool" : "data";
 
-const dict = spec.i18n?.uk || spec.i18n?.en || {};
+const dict = i18n.uk || i18n.en || {};
 const title = dict.title || spec.id;
 const tagline = dict.profTagline || title;
 const isLight = /light/.test(spec.theme || "");
 const themeColor = isLight ? "#FAFAF9" : "#0A0A0B";
 const bg = isLight ? "#FFFFFF" : "#0A0A0B";
-const lang = spec.i18n?.uk ? "uk" : "en";
+const lang = i18n.uk ? "uk" : locales[0];
 
-const startWiring = mode === "tool"
-  ? `    import * as views from "./view.js";\n    import { start } from "/_rt/index.js";\n    start(spec, { views });`
-  : `    import { load } from "./data.js";\n    import { start } from "/_rt/index.js";\n    start(spec, load);`;
+const localeImports = locales.map((l) => `    import ${l} from "./i18n/${l}.json" with { type: "json" };`).join("\n");
+const startWiring = [
+  `    import spec from "./spec.json" with { type: "json" };`,
+  localeImports,
+  mode === "tool" ? `    import * as views from "./view.js";` : `    import { load } from "./data.js";`,
+  `    import { start } from "/_rt/index.js";`,
+  `    start({ ...spec, i18n: { ${locales.join(", ")} } }, ${mode === "tool" ? "{ views }" : "load"});`,
+].join("\n");
 
 const indexHtml = `<!DOCTYPE html>
 <html lang="${lang}" data-theme="${spec.theme || "dim"}">
@@ -61,7 +70,6 @@ const indexHtml = `<!DOCTYPE html>
 <body class="bg-base-200 min-h-dvh">
   <div id="app"></div>
   <script type="module">
-    import spec from "./spec.json" with { type: "json" };
 ${startWiring}
   </script>
 </body>

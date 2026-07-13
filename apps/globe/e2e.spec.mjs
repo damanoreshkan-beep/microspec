@@ -19,7 +19,7 @@ export default [
       const t = await h.bodyText();
       h.expect(/Ukraine/.test(t), "немає назви країни");
       h.expect(/Kyiv/.test(t), "немає столиці");
-      h.expect(/Столиця|Capital/.test(t) && /Населення|Population/.test(t), "немає полів фактів");
+      h.expect(/Столиця|Capital/i.test(t) && /Населення|Population/i.test(t), "немає полів фактів"); // labels uppercased by CSS
     },
   },
   {

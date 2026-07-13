@@ -28,5 +28,10 @@
   "close": "Закрити",
   "refresh": "Оновити",
   "toastSaved": "Збережено",
-  "toastRemoved": "Видалено"
+  "toastRemoved": "Видалено",
+  "pickOnGlobe": "На глобусі",
+  "pickTitle": "Обери точку на Землі",
+  "pickHere": "Рахувати для цієї точки",
+  "myLocation": "Моє місце",
+  "tapGlobe": "Тапни точку на глобусі"
 }

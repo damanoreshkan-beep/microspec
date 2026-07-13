@@ -24,6 +24,22 @@ export default [
     },
   },
   {
+    name: "вибір локації на глобусі → перерахунок сонця", run: async (h) => {
+      await ready(h);
+      const kyiv = await h.text("[data-bearing]");
+      await h.click("#open-globe"); await h.wait(300);
+      h.expect((await h.count('[role="dialog"]')) === 1, "пікер не відкрився");
+      h.expect((await h.count('[data-city="Tokyo"]')) === 1, "немає пресетів міст");
+      await h.click('[data-city="Tokyo"]'); await h.wait(300);
+      h.expect(/Tokyo/.test(await h.bodyText()), "Токіо не обрано");
+      await h.click("#pick-here"); await h.wait(300);
+      h.expect((await h.count('[role="dialog"]')) === 0, "пікер не закрився");
+      h.expect((await h.count("#clear-pick")) === 1 && /Tokyo/.test(await h.text("#clear-pick")), "немає індикатора обраної точки");
+      h.expect(kyiv !== (await h.text("[data-bearing]")), "азимут сонця не перерахувався для іншої точки");
+      await h.click("#clear-pick"); await h.wait(200); // назад до GPS/Києва
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

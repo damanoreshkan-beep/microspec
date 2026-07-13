@@ -28,5 +28,10 @@
   "close": "Close",
   "refresh": "Refresh",
   "toastSaved": "Saved",
-  "toastRemoved": "Removed"
+  "toastRemoved": "Removed",
+  "pickOnGlobe": "On the globe",
+  "pickTitle": "Pick a spot on Earth",
+  "pickHere": "Use this location",
+  "myLocation": "My location",
+  "tapGlobe": "Tap a point on the globe"
 }

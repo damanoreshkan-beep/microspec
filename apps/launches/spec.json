@@ -1,6 +1,7 @@
 {
   "id": "launches",
   "theme": "signal",
+  "translate": ["title", "mission"],
   "fav": { "key": "id" },
   "detail": {
     "image": "thumb", "imageFit": "cover", "title": "title", "subtitle": "provider",

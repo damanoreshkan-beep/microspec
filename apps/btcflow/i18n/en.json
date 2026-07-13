@@ -13,7 +13,7 @@
   "details": "Details",
   "whaleLabel": "🐋 Whale",
   "chartLabel": "Transfer amounts (last 40)",
-  "colAmount": "Amount",
+  "colAmount": "Amount (BTC)",
   "colTo": "Recipient",
   "colFee": "Fee",
   "colTime": "Time",
@@ -53,5 +53,6 @@
   "close": "Close",
   "refresh": "Refresh",
   "toastSaved": "Saved",
-  "toastRemoved": "Removed"
+  "toastRemoved": "Removed",
+  "colUsd": "In USD"
 }

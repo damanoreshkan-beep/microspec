@@ -109,8 +109,8 @@ function Card({ item: it, card, hide }) {
         ? html`<img src=${it[card.image]} alt="" loading="lazy" class="w-full h-full object-cover"/>`
         : html`<iconify-icon icon=${(card.icon && it[card.icon]) || "lucide:box"} class="text-3xl" style=${fg ? `color:${fg}` : ""}></iconify-icon>`}
     </div>`;
-    const inner = html`<div class="flex flex-col items-center gap-1.5 active:scale-90 transition-transform">${tile}<div class="text-[0.72rem] leading-tight text-center line-clamp-2 text-base-content/90 px-0.5">${field(it, card.title, loc)}</div></div>`;
-    return href ? html`<a href=${href} aria-label=${it[card.title] ?? ""} class="block">${inner}</a>` : inner;
+    const inner = html`<div class="flex flex-col items-center gap-1.5 active:scale-90 transition-transform min-w-0 w-full">${tile}<div class="text-[0.72rem] leading-tight text-center line-clamp-2 break-words w-full text-base-content/90">${field(it, card.title, loc)}</div></div>`;
+    return href ? html`<a href=${href} aria-label=${it[card.title] ?? ""} class="block min-w-0">${inner}</a>` : inner;
   }
 
   const sub = card.subtitle ? field(it, card.subtitle, loc) : null;      // resolved (enrich/translate) — the
@@ -184,7 +184,8 @@ function ListView({ tab }) {
   const banner = tab.banner ? html`<${Banner} banner=${tab.banner} key="banner" />` : null;
   const cards = items.map((it) => html`<${Card} item=${it} card=${tab.card} key=${A.favKey(it) || it[tab.card.title]} />`);
   // grid layout lays its tiles out in an Android-style grid; other layouts stack in the flex-col main.
-  if (tab.card.layout === "grid") return Frag([banner, html`<div class="grid grid-cols-4 gap-x-3 gap-y-5 pt-2" key="grid">${cards}</div>`]);
+  // @container wrapper so the grid drops to 3 columns on a watch-narrow width (4 on a phone).
+  if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`]);
   if (!tab.sections) return Frag([banner, ...cards]);
   return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })]);
 }

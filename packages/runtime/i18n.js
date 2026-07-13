@@ -20,6 +20,16 @@ export function whenLabel(dict, ts, locale, full = true) {
   return `${abs} · ${rel}`;
 }
 
+export function sinceLabel(dict, ts, locale) {
+  const s = Math.max(0, Math.floor((Date.now() - Number(ts)) / 1000));
+  if (isNaN(s)) return "";
+  if (s < 5) return T(dict, "sinceNow");
+  if (s < 60) return T(dict, "sinceSec", { n: s });
+  if (s < 3600) return T(dict, "sinceMin", { n: Math.floor(s / 60) });
+  if (s < 86400) return T(dict, "sinceHour", { n: Math.floor(s / 3600) });
+  return T(dict, "sinceDay", { n: Math.floor(s / 86400) });
+}
+
 export function ago(dict, ts, locale) {
   const ms = Date.now() - Number(ts);
   const days = Math.floor(ms / 86400000);

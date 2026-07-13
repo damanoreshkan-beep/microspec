@@ -1,0 +1,40 @@
+{
+  "id": "btcflow",
+  "theme": "signal",
+  "detail": {
+    "title": "valueStr",
+    "subtitle": "usd",
+    "rows": [
+      { "field": "hashShort", "label": "dHash", "icon": "lucide:hash" },
+      { "field": "feeFull", "label": "dFee", "icon": "lucide:zap" },
+      { "field": "size", "label": "dSize", "icon": "lucide:file" },
+      { "field": "io", "label": "dIO", "icon": "lucide:arrow-right-left" },
+      { "field": "topIn", "label": "dTopIn", "icon": "lucide:arrow-up-from-line" },
+      { "field": "topOut", "label": "dTopOut", "icon": "lucide:arrow-down-to-line" },
+      { "field": "ts", "label": "dTime", "icon": "lucide:clock", "format": "since" }
+    ],
+    "actions": [ { "href": "explorerUrl", "label": "dExplorer", "icon": "lucide:external-link" } ]
+  },
+  "tabs": [
+    {
+      "id": "flow", "type": "list", "icon": "lucide:bitcoin", "label": "tabFlow",
+      "search": true, "searchKey": "search", "statusKey": "status",
+      "sort": [
+        { "key": "val", "label": "sortValue", "by": "value", "dir": "desc" },
+        { "key": "time", "label": "sortTime", "by": "ts", "dir": "desc" },
+        { "key": "fee", "label": "sortFee", "by": "fee", "dir": "desc" }
+      ],
+      "empty": { "icon": "lucide:search-x", "text": "noResults", "hint": "noResultsHint" },
+      "card": {
+        "layout": "feed", "title": "valueStr", "subtitle": "sub", "more": "details",
+        "meta": { "field": "ts", "format": "since" },
+        "badges": [
+          { "field": "feeStr", "icon": "lucide:zap", "variant": "ghost" },
+          { "when": "whale", "label": "whaleLabel", "variant": "primary" }
+        ]
+      }
+    },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:bitcoin", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://www.blockchain.com/explorer", "icon": "lucide:radio" } }
+}

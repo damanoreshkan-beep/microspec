@@ -31,6 +31,18 @@ export function whenLabel(dict, ts, locale, full = true) {
   return `${abs} · ${rel}`;
 }
 
+// Fine-grained past-relative for live feeds (`format: "since"`) — seconds/minutes granularity, updates as
+// the list re-renders. Needs i18n keys sinceNow / sinceSec({n}) / sinceMin({n}) / sinceHour({n}) / sinceDay({n}).
+export function sinceLabel(dict, ts, locale) {
+  const s = Math.max(0, Math.floor((Date.now() - Number(ts)) / 1000));
+  if (isNaN(s)) return "";
+  if (s < 5) return T(dict, "sinceNow");
+  if (s < 60) return T(dict, "sinceSec", { n: s });
+  if (s < 3600) return T(dict, "sinceMin", { n: Math.floor(s / 60) });
+  if (s < 86400) return T(dict, "sinceHour", { n: Math.floor(s / 3600) });
+  return T(dict, "sinceDay", { n: Math.floor(s / 86400) });
+}
+
 // Locale-aware relative date for card `meta: { field, format: "ago" }`. Needs the i18n keys
 // agoToday / agoYesterday / agoDays({n}) / agoWeeks({n}); older than ~a month falls back to a date.
 export function ago(dict, ts, locale) {

@@ -6,7 +6,7 @@ import { Fragment } from "preact";
 import { useRef, useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
-import { T, ago, whenLabel } from "./i18n.js";
+import { T, ago, whenLabel, sinceLabel } from "./i18n.js";
 import { PERMISSIONS, permLabels } from "./permissions.js";
 import { tr, warm, trTick } from "./translate.js";
 import { enrich, warmMeta, metaTick } from "./enrich.js";
@@ -50,10 +50,10 @@ const metaText = (meta, it, dict, loc) => {
   if (!meta) return "";
   if (typeof meta === "string") return it[meta] ?? "";
   const v = it[meta.field];
-  return v == null ? "" : (meta.format === "ago" ? ago(dict, v, loc) : meta.format === "when" ? whenLabel(dict, v, loc) : String(v));
+  return v == null ? "" : (meta.format === "ago" ? ago(dict, v, loc) : meta.format === "when" ? whenLabel(dict, v, loc) : meta.format === "since" ? sinceLabel(dict, v, loc) : String(v));
 };
 // meta formats that carry a clock affordance
-const isTimeFmt = (fmt) => fmt === "ago" || fmt === "when";
+const isTimeFmt = (fmt) => fmt === "ago" || fmt === "when" || fmt === "since";
 const fmtNum = (n, loc) => new Intl.NumberFormat(loc === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
 // searchFetch family: the search box debounce-drives a real refetch (query → data.js as filters.q).
@@ -289,7 +289,7 @@ function DetailView() {
   const rows = (d.rows || []).map((r) => {
     // a row with a date `format` is locale-formatted from the raw timestamp; otherwise the resolved
     // (enrich/translate-aware) field value.
-    const v = r.format === "when" ? whenLabel(t, it[r.field], loc) : r.format === "ago" ? ago(t, it[r.field], loc) : field(it, r.field, loc);
+    const v = r.format === "when" ? whenLabel(t, it[r.field], loc) : r.format === "ago" ? ago(t, it[r.field], loc) : r.format === "since" ? sinceLabel(t, it[r.field], loc) : field(it, r.field, loc);
     return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-base-content/60">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
   const actions = (d.actions || []).map((a) => { const href = safeHref(it[a.href]); return href ? html`<a href=${href} target="_blank" rel="noopener" class="btn btn-primary rounded-2xl w-full gap-2" key=${a.href}>${a.icon ? Icon(a.icon) : null}${T(t, a.label)} ${Icon("lucide:arrow-up-right")}</a>` : null; });
   const star = A.spec.fav ? html`<button id="detail-fav" aria-label=${on ? T(t, "unfavAria") : T(t, "favAria")} onClick=${() => A.toggleFav(it)} class=${`btn btn-ghost btn-sm btn-circle ${on ? "text-primary" : "opacity-60"}`}>${Icon(`lucide:bookmark${on ? "-check" : ""}`, "text-xl")}</button>` : null;

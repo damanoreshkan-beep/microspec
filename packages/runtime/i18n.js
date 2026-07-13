@@ -14,6 +14,23 @@ export const T = (dict, key, params) => {
 // Pick the active dict for a locale, falling back to en (the required fallback locale).
 export const dictFor = (i18n, locale) => i18n?.[locale] || i18n?.en || {};
 
+// Locale-aware absolute+relative timestamp for `format: "when"` (future events — launch countdowns,
+// schedules). Absolute part via Intl (locale month + HH:MM); relative countdown uses the i18n keys
+// whenPast / whenMin({n}) / whenHours({n}) / whenDays({n}). Kept in the runtime so a data.js never bakes
+// a language into a date string. `full:false` omits the relative tail.
+export function whenLabel(dict, ts, locale, full = true) {
+  const d = new Date(ts);
+  if (isNaN(d)) return "";
+  const abs = d.toLocaleString(locale === "uk" ? "uk-UA" : "en-US", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  if (!full) return abs;
+  const min = Math.round((d - Date.now()) / 60000);
+  const rel = min < 0 ? T(dict, "whenPast")
+    : min < 60 ? T(dict, "whenMin", { n: min })
+    : min < 1440 ? T(dict, "whenHours", { n: Math.round(min / 60) })
+    : T(dict, "whenDays", { n: Math.round(min / 1440) });
+  return `${abs} · ${rel}`;
+}
+
 // Locale-aware relative date for card `meta: { field, format: "ago" }`. Needs the i18n keys
 // agoToday / agoYesterday / agoDays({n}) / agoWeeks({n}); older than ~a month falls back to a date.
 export function ago(dict, ts, locale) {

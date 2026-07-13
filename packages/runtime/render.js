@@ -6,7 +6,7 @@ import { Fragment } from "preact";
 import { useRef, useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
-import { T, ago } from "./i18n.js";
+import { T, ago, whenLabel } from "./i18n.js";
 import { PERMISSIONS, permLabels } from "./permissions.js";
 import { tr, warm, trTick } from "./translate.js";
 import { enrich, warmMeta, metaTick } from "./enrich.js";
@@ -50,8 +50,10 @@ const metaText = (meta, it, dict, loc) => {
   if (!meta) return "";
   if (typeof meta === "string") return it[meta] ?? "";
   const v = it[meta.field];
-  return v == null ? "" : (meta.format === "ago" ? ago(dict, v, loc) : String(v));
+  return v == null ? "" : (meta.format === "ago" ? ago(dict, v, loc) : meta.format === "when" ? whenLabel(dict, v, loc) : String(v));
 };
+// meta formats that carry a clock affordance
+const isTimeFmt = (fmt) => fmt === "ago" || fmt === "when";
 const fmtNum = (n, loc) => new Intl.NumberFormat(loc === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
 // searchFetch family: the search box debounce-drives a real refetch (query → data.js as filters.q).
@@ -121,7 +123,7 @@ function Card({ item: it, card, hide }) {
     <${Badges} item=${it} badges=${card.badges} hide=${hide} />
     ${bodyTxt ? html`<p class="text-sm text-base-content/70 line-clamp-2 @max-[240px]:hidden">${bodyTxt}</p>` : null}
     <div class="flex items-center justify-between gap-2 mt-0.5 @max-[240px]:hidden">
-      ${(() => { const mt = metaText(card.meta, it, t, loc); return mt ? html`<span class="text-xs text-base-content/80 flex items-center gap-1">${card.meta?.format === "ago" ? Icon("lucide:clock", "text-[0.9em] opacity-70") : null}${mt}</span>` : html`<span></span>`; })()}
+      ${(() => { const mt = metaText(card.meta, it, t, loc); return mt ? html`<span class="text-xs text-base-content/80 flex items-center gap-1">${isTimeFmt(card.meta?.format) ? Icon("lucide:clock", "text-[0.9em] opacity-70") : null}${mt}</span>` : html`<span></span>`; })()}
       ${card.more ? html`<span class="text-xs text-primary font-medium flex items-center gap-0.5 ml-auto">${T(t, card.more)} ${Icon("lucide:arrow-up-right")}</span>` : null}
     </div></div>`;
 
@@ -251,7 +253,11 @@ function DetailView() {
   if (!it) return null;
   const d = A.spec.detail, on = !!fav[A.favKey(it)], close = () => A.S.detail.set(null);
   const img = d.image && it[d.image] ? html`<figure class="aspect-video bg-base-300 rounded-2xl overflow-hidden border border-base-300"><img src=${it[d.image]} alt="" class=${`w-full h-full ${d.imageFit === "cover" ? "object-cover" : "object-contain"}`}/></figure>` : null;
-  const rows = (d.rows || []).map((r) => { const v = field(it, r.field, loc); return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-base-content/60">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
+  const rows = (d.rows || []).map((r) => {
+    // a row with a date `format` is locale-formatted from the raw timestamp; otherwise the resolved
+    // (enrich/translate-aware) field value.
+    const v = r.format === "when" ? whenLabel(t, it[r.field], loc) : r.format === "ago" ? ago(t, it[r.field], loc) : field(it, r.field, loc);
+    return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-base-content/60">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
   const actions = (d.actions || []).map((a) => { const href = safeHref(it[a.href]); return href ? html`<a href=${href} target="_blank" rel="noopener" class="btn btn-primary rounded-2xl w-full gap-2" key=${a.href}>${a.icon ? Icon(a.icon) : null}${T(t, a.label)} ${Icon("lucide:arrow-up-right")}</a>` : null; });
   const star = A.spec.fav ? html`<button id="detail-fav" aria-label=${on ? T(t, "unfavAria") : T(t, "favAria")} onClick=${() => A.toggleFav(it)} class=${`btn btn-ghost btn-sm btn-circle ${on ? "text-primary" : "opacity-60"}`}>${Icon(`lucide:bookmark${on ? "-check" : ""}`, "text-xl")}</button>` : null;
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">

@@ -1,0 +1,9 @@
+{
+  "id": "pulse",
+  "theme": "signal",
+  "tabs": [
+    { "id": "live", "type": "tool", "icon": "lucide:activity", "label": "tabPulse", "view": "pulse" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:activity", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://stream.wikimedia.org/", "icon": "lucide:radio" } }
+}

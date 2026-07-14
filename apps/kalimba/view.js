@@ -56,7 +56,8 @@ export function kalimba({ S }) {
   const [scale, setScale] = useState("major");
   const [lit, setLit] = useState(() => new Set());
   const [playing, setPlaying] = useState(null);
-  const eng = useRef(null), flashes = useRef([]), song = useRef([]);
+  const [dim, setDim] = useState({ w: 0, h: 0 });                   // play-region size → the rotated board swaps it
+  const eng = useRef(null), flashes = useRef([]), song = useRef([]), region = useRef();
 
   const tines = useMemo(() => buildTines(STEPS[scale]), [scale]);
   const byAsc = useMemo(() => { const a = []; tines.forEach((tn) => { a[tn.asc] = tn; }); return a; }, [tines]);
@@ -76,6 +77,7 @@ export function kalimba({ S }) {
   };
 
   useEffect(() => stop, [scale]);                                   // stop a demo if the tuning changes
+  useEffect(() => { const el = region.current; if (!el) return; const apply = () => setDim({ w: el.clientWidth, h: el.clientHeight }); apply(); const ro = new ResizeObserver(apply); ro.observe(el); return () => ro.disconnect(); }, []);
   useEffect(() => () => { flashes.current.forEach(clearTimeout); song.current.forEach(clearTimeout); if (eng.current) eng.current.close(); }, []);
 
   return html`<div class="fixed left-0 right-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(4rem + env(safe-area-inset-bottom))">
@@ -85,16 +87,19 @@ export function kalimba({ S }) {
       ${SONGS.map((s) => html`<button data-song=${s.id} class=${`btn btn-xs shrink-0 gap-1 ${playing === s.id ? "btn-primary" : "btn-outline"}`} onClick=${() => (playing === s.id ? stop() : play(s))} key=${s.id}>${Icon(playing === s.id ? "lucide:square" : "lucide:play")}${T(t, s.name)}</button>`)}
     </div>
 
-    <div class="flex-1 min-h-0 p-2 flex flex-col">
-      <div class="h-2 rounded-full bg-gradient-to-b from-zinc-300 to-zinc-500 shrink-0 mb-1.5 mx-1"></div>
-      <div class="flex-1 min-h-0 flex items-start justify-center gap-[3px]">
-        ${tines.map((tn) => html`<button data-tine=${tn.pos} data-note=${tn.letter} aria-label=${label(tn.midi)}
-          onClick=${() => pluck(tn.pos)}
-          class=${`relative flex-1 min-w-0 rounded-b-md bg-gradient-to-b from-zinc-100 to-zinc-400 shadow-sm touch-manipulation transition-all duration-100 ${lit.has(tn.pos) ? "ring-2 ring-primary translate-y-1.5 z-10 brightness-110" : ""}`}
-          style=${`height:${tn.h}%`} key=${tn.pos}>
-          ${tn.tonic ? html`<span class="absolute inset-x-0 bottom-0 h-1.5 rounded-b-md bg-amber-400"></span>` : null}
-          <span class="pointer-events-none absolute inset-x-0 bottom-1.5 text-center text-[10px] font-bold text-zinc-800">${tn.letter}</span>
-        </button>`)}
+    <div ref=${region} class="flex-1 min-h-0 relative overflow-hidden">
+      <!-- keys rotated 90°: keep the APP portrait but turn the phone to landscape and play on wide tines -->
+      <div class="absolute top-1/2 left-1/2 flex flex-col p-2" style=${`width:${dim.h}px;height:${dim.w}px;transform:translate(-50%,-50%) rotate(90deg)`}>
+        <div class="h-2 rounded-full bg-gradient-to-b from-zinc-300 to-zinc-500 shrink-0 mb-1.5 mx-1"></div>
+        <div class="flex-1 min-h-0 flex items-start justify-center gap-[3px]">
+          ${tines.map((tn) => html`<button data-tine=${tn.pos} data-note=${tn.letter} aria-label=${label(tn.midi)}
+            onClick=${() => pluck(tn.pos)}
+            class=${`relative flex-1 min-w-0 rounded-b-md bg-gradient-to-b from-zinc-100 to-zinc-400 shadow-sm touch-manipulation transition-all duration-100 ${lit.has(tn.pos) ? "ring-2 ring-primary translate-y-1.5 z-10 brightness-110" : ""}`}
+            style=${`height:${tn.h}%`} key=${tn.pos}>
+            ${tn.tonic ? html`<span class="absolute inset-x-0 bottom-0 h-1.5 rounded-b-md bg-amber-400"></span>` : null}
+            <span class="pointer-events-none absolute inset-x-0 bottom-1.5 text-center text-[10px] font-bold text-zinc-800">${tn.letter}</span>
+          </button>`)}
+        </div>
       </div>
     </div>
     ${!audioSupported ? html`<div class="shrink-0 text-center text-xs text-base-content/70 pb-1">${T(t, "noAudio")}</div>` : null}

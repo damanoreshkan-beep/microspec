@@ -115,6 +115,5 @@ export function sun({ S, openScreen, closeScreen }) {
 
     <${TimeScale} value=${scrub} now=${now.getHours() * 60 + now.getMinutes()} onChange=${setScrub} t=${t}
       sunrise=${minOfDay(times.sunrise)} sunset=${minOfDay(times.sunset)} anchors=${anchors} />
-    <div class="text-xs text-base-content/70 text-center px-6">${T(t, "hint")}</div>
   </div>`;
 }

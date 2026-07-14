@@ -9,6 +9,12 @@ async function loadWorld() {
   if (!LOADING) LOADING = fetch(new URL("./world-110m.json", import.meta.url)).then((r) => r.json()).then((topo) => { LAND = feature(topo, topo.objects.countries).features; });
   await LOADING;
 }
+export function countryAt(lat, lon) {
+  if (!LAND) return null;
+  const f = LAND.find((c) => geoContains(c, [lon, lat]));
+  return f ? { id: String(f.id), name: f.properties?.name || null } : null;
+}
+export function worldReady() { return !!LAND; }
 
 const PALETTE = {
   dark:  { ocean: "#0c0c10", land: "#1c1c22", stroke: "#31313a", edge: "#3d3d48", grid: "#242430", accent: "#9F8CF6", accentInk: "#0a0a0b" },

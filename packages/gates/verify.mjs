@@ -40,9 +40,10 @@ try {
 
   if (wantShots) {
     await Deno.mkdir(`${appdir}/states`, { recursive: true });
-    await Deno.writeFile(`${appdir}/states/main.png`, await page.screenshot());
     const tabs = await ev(() => [...document.querySelectorAll("[data-tab]")].map((b) => b.getAttribute("data-tab")));
-    if (tabs.length > 1) { await h.click(`[data-tab="${tabs[tabs.length - 1]}"]`); await h.wait(500); await Deno.writeFile(`${appdir}/states/last.png`, await page.screenshot()); await h.click(`[data-tab="${tabs[0]}"]`); await h.wait(300); }
+    await Deno.writeFile(`${appdir}/states/main.png`, await page.screenshot());
+    for (const tb of tabs.slice(1)) { await h.click(`[data-tab="${tb}"]`); await h.wait(500); await Deno.writeFile(`${appdir}/states/tab-${tb}.png`, await page.screenshot()); }
+    if (tabs.length > 1) { await h.click(`[data-tab="${tabs[0]}"]`); await h.wait(300); }
     const baseTheme = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
     await ev((th) => document.documentElement.setAttribute("data-theme", th.includes("light") ? th : th + "-light"), baseTheme);
     await h.wait(250);

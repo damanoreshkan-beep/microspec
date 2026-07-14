@@ -6,9 +6,9 @@ import { html } from "htm/preact";
 import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { BODY_KEYS, eclipticPositions } from "/_rt/astro.js";
+import { BODIES, BODY_KEYS, Planet, eclipticPositions } from "/_rt/astro.js";
 import { SkyDial } from "/_rt/skydial.js";
-import { Sign } from "/_rt/zodiac.js";
+import { Sign, RULERS } from "/_rt/zodiac.js";
 
 const DAY = 86400000;
 const norm = (d) => (((d % 360) + 360) % 360);
@@ -86,5 +86,36 @@ export function transit({ S }) {
         ${rows}
       </div>
     </div>
+  </div>`;
+}
+
+// a uniform little planet dot (shaded + hairline) for the rulership matrix — sizes are equalised here so
+// the grid stays tidy (the real spheres, size-scaled, live on the wheel).
+const dot = (p) => html`<span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" style=${`background:${BODIES[p].color};box-shadow:inset -0.5px -0.5px 1px rgba(0,0,0,.35),0 0 0 0.5px rgba(130,130,130,.4)`}></span>`;
+
+// Rulership matrix — toggle the planets shown on the wheel BY SIGN. Tapping a sign toggles its ruling
+// planet(s) in the shared `filters.bodies`; a planet ruling two signs (e.g. Mercury → Gemini & Virgo)
+// links them, which the matrix makes visible. Same filter the multi-chip control writes to.
+export function rulers({ S }) {
+  const t = useStore(S.t), filters = useStore(S.filters);
+  const shown = new Set(Array.isArray(filters.bodies) ? filters.bodies : BODY_KEYS);
+  const toggle = (i) => {
+    const rs = RULERS[i], allOn = rs.every((p) => shown.has(p)), next = new Set(shown);
+    rs.forEach((p) => allOn ? next.delete(p) : next.add(p));
+    S.filters.setKey("bodies", BODY_KEYS.filter((k) => next.has(k)));
+  };
+  return html`<div class="px-4 pt-3 pb-24 max-w-xl mx-auto grid grid-cols-2 gap-2">
+    ${RULERS.map((rs, i) => {
+      const on = rs.every((p) => shown.has(p));
+      return html`<button data-sign=${i} aria-pressed=${on} class=${`rounded-2xl border p-3 flex flex-col gap-2 text-left transition ${on ? "border-primary bg-primary/10" : "border-base-300 opacity-55"}`} onClick=${() => toggle(i)} key=${i}>
+        <div class="flex items-center gap-2">
+          <${Sign} i=${i} cls="w-5 h-5 text-base-content shrink-0" />
+          <span class="font-semibold truncate">${T(t, "s" + i)}</span>
+        </div>
+        <div class="flex flex-col gap-0.5">
+          ${rs.map((p) => html`<span class="flex items-center gap-1.5 text-xs text-base-content/70" key=${p}>${dot(p)}${bodyLabel(t, p)}</span>`)}
+        </div>
+      </button>`;
+    })}
   </div>`;
 }

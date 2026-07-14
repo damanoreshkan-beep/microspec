@@ -31,6 +31,14 @@ export const SIGN_PATHS = [
   "M7 5C4 8 4 16 7 19 M17 5C20 8 20 16 17 19 M4 12H20",
 ];
 
+// modern planetary rulerships (index 0=Aries..11=Pisces): the traditional ruler + the modern outer
+// co-ruler where one is assigned — Scorpio = Mars & Pluto, Aquarius = Saturn & Uranus, Pisces = Jupiter &
+// Neptune. A planet can rule two signs (Mercury→Gemini+Virgo, Venus→Taurus+Libra, etc.).
+export const RULERS = [
+  ["mars"], ["venus"], ["mercury"], ["moon"], ["sun"], ["mercury"],
+  ["venus"], ["mars", "pluto"], ["jupiter"], ["saturn"], ["saturn", "uranus"], ["jupiter", "neptune"],
+];
+
 // a single sign glyph. `cls` sets size + colour (stroke follows currentColor, so it is theme-aware).
 export function Sign({ i, cls = "" }) {
   const d = SIGN_PATHS[i];

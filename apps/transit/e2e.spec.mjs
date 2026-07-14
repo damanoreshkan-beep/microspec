@@ -32,6 +32,23 @@ export default [
     },
   },
   {
+    name: "матриця управителів: знак вимикає свої планети (Скорпіон → Марс+Плутон)", run: async (h) => {
+      await ready(h);
+      await h.click('[data-tab="rulers"]'); await h.wait(200);
+      h.expect((await h.count("[data-sign]")) === 12, "немає 12 знаків у матриці");
+      if ((await h.attr('[data-sign="7"]', "aria-pressed")) !== "true") { await h.click('[data-sign="7"]'); await h.wait(150); }
+      await h.click('[data-sign="7"]'); await h.wait(150); // Scorpio OFF → hide Mars + Pluto
+      h.expect((await h.attr('[data-sign="7"]', "aria-pressed")) === "false", "Скорпіон не вимкнувся");
+      // Mars also rules Aries (0) → the shared ruler makes Aries read off too
+      h.expect((await h.attr('[data-sign="0"]', "aria-pressed")) === "false", "спільний управитель Марс не відбився на Овні");
+      await h.click('[data-tab="wheel"]'); await h.wait(200);
+      h.expect((await h.count('[data-mark="mars"]')) === 0, "Марс не зник з колеса");
+      h.expect((await h.count('[data-mark="pluto"]')) === 0, "Плутон не зник з колеса");
+      await h.click('[data-tab="rulers"]'); await h.wait(150); await h.click('[data-sign="7"]'); await h.wait(150); // restore
+      await h.click('[data-tab="wheel"]'); await h.wait(150);
+    },
+  },
+  {
     name: "системний multi-фільтр планет", run: async (h) => {
       await ready(h);
       h.expect((await h.count("#filter-btn")) === 1, "немає кнопки фільтра");

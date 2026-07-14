@@ -144,6 +144,15 @@
     "href": "./transit/"
   },
   {
+    "id": "onthisday",
+    "title": "Цей день",
+    "tagline": "Що сталося в цей день — події, народження та свята з історії",
+    "glyph": "lucide:history",
+    "bg": "#14100A",
+    "fg": "#D4A84B",
+    "href": "./onthisday/"
+  },
+  {
     "id": "dou",
     "title": "DOU · бронювання",
     "tagline": "Вакансії з бронюванням від мобілізації",

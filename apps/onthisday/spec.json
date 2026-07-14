@@ -1,0 +1,15 @@
+{
+  "id": "onthisday",
+  "theme": "signal",
+  "tabs": [
+    { "id": "today", "type": "tool", "icon": "lucide:history", "label": "tabToday", "view": "onthisday" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:history",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": { "label": "profSource", "url": "https://www.wikipedia.org", "icon": "lucide:database" }
+  }
+}

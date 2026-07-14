@@ -55,8 +55,8 @@ export function breathe({ S }) {
       <div class="text-xs text-base-content/70">${T(t, TECHS[tech].sub)}</div>
     </div>
 
-    <div class="flex items-center justify-center" style="height:290px;width:290px">
-      <div ref=${orbRef} data-orb class="rounded-full" style="width:200px;height:200px;background:radial-gradient(circle at 38% 32%, #9FEADE, #35A79B 56%, #1E655C);box-shadow:0 0 70px -6px #35A79B99;will-change:transform"></div>
+    <div class="w-full flex justify-center py-3">
+      <div ref=${orbRef} data-orb class="w-full max-w-[210px] aspect-square rounded-full" style="background:radial-gradient(circle at 38% 32%, #9FEADE, #35A79B 56%, #1E655C);box-shadow:0 0 70px -6px #35A79B99;will-change:transform"></div>
     </div>
 
     <div class="flex flex-col items-center gap-3 -mt-4">

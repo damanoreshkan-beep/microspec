@@ -47,7 +47,7 @@ export const noteFreq = (note) => { const m = noteToMidi(note); return m == null
 // null where audio is unavailable, so callers guard: `if (!eng.current) eng.current = createEngine()`.
 export function createEngine({ master = 0.85, noise = true } = {}) {
   if (!AC) return null;
-  const ctx = new AC();
+  const ctx = new AC({ latencyHint: "interactive" });               // lowest-latency mode for playable instruments
   const masterGain = ctx.createGain(); masterGain.gain.value = master; masterGain.connect(ctx.destination);
   const buffers = noise ? { white: noiseBuffer(ctx, "white"), pink: noiseBuffer(ctx, "pink"), brown: noiseBuffer(ctx, "brown") } : {};
   return {

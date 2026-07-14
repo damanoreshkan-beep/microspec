@@ -57,15 +57,25 @@ export function kalimba({ S }) {
   const [lit, setLit] = useState(() => new Set());
   const [playing, setPlaying] = useState(null);
   const [dim, setDim] = useState({ w: 0, h: 0 });                   // play-region size → the rotated board swaps it
-  const eng = useRef(null), flashes = useRef([]), song = useRef([]), region = useRef();
+  const eng = useRef(null), flashes = useRef([]), song = useRef([]), region = useRef(), ptr = useRef(new Map()), usingPtr = useRef(false);
 
   const tines = useMemo(() => buildTines(STEPS[scale]), [scale]);
   const byAsc = useMemo(() => { const a = []; tines.forEach((tn) => { a[tn.asc] = tn; }); return a; }, [tines]);
 
   const ensure = () => { if (!audioSupported) return null; if (!eng.current) eng.current = createEngine({ master: 0.7, noise: false }); eng.current.resume(); return eng.current; };
-  const flash = (pos) => { setLit((s) => { const n = new Set(s); n.add(pos); return n; }); flashes.current.push(setTimeout(() => setLit((s) => { const n = new Set(s); n.delete(pos); return n; }), 280)); };
+  const flash = (pos) => { setLit((s) => { const n = new Set(s); n.add(pos); return n; }); flashes.current.push(setTimeout(() => setLit((s) => { const n = new Set(s); n.delete(pos); return n; }), 260)); };
   const hit = (e, tn) => { if (e && tn) e.strike(tn.freq, TIMBRE); };
   const pluck = (pos) => { const tn = tines[pos]; hit(ensure(), tn); flash(pos); };
+
+  // Play on POINTER DOWN (no click-on-release lag), and hit-test each tine the finger slides over via
+  // elementFromPoint → glissando by dragging + true multi-touch (per-pointer last-tine), + fast repeats.
+  const tineAt = (x, y) => { const el = document.elementFromPoint(x, y); const b = el && el.closest && el.closest("[data-tine]"); return b ? Number(b.getAttribute("data-tine")) : null; };
+  const onDown = (e) => { const pos = tineAt(e.clientX, e.clientY); if (pos == null) return; usingPtr.current = true; e.preventDefault(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* */ } ptr.current.set(e.pointerId, pos); pluck(pos); };
+  const onMove = (e) => { if (!ptr.current.has(e.pointerId)) return; const pos = tineAt(e.clientX, e.clientY); if (pos == null) return; if (ptr.current.get(e.pointerId) !== pos) { ptr.current.set(e.pointerId, pos); pluck(pos); } };
+  const onLift = (e) => { ptr.current.delete(e.pointerId); };
+  // fallback for environments that don't emit pointer events (the headless gate's .click()); real devices
+  // fire pointerdown first → usingPtr guards against a double-trigger.
+  const onClickBoard = (e) => { if (usingPtr.current) return; const b = e.target.closest && e.target.closest("[data-tine]"); if (b) pluck(Number(b.getAttribute("data-tine"))); };
 
   const stop = () => { song.current.forEach(clearTimeout); song.current = []; setPlaying(null); };
   const play = (s) => {
@@ -91,12 +101,12 @@ export function kalimba({ S }) {
       <!-- keys rotated 90°: keep the APP portrait but turn the phone to landscape and play on wide tines -->
       <div class="absolute top-1/2 left-1/2 flex flex-col p-2" style=${`width:${dim.h}px;height:${dim.w}px;transform:translate(-50%,-50%) rotate(90deg)`}>
         <div class="h-2 rounded-full bg-gradient-to-b from-zinc-300 to-zinc-500 shrink-0 mb-1.5 mx-1"></div>
-        <div class="flex-1 min-h-0 flex items-start justify-center gap-[3px]">
+        <div class="flex-1 min-h-0 flex items-start justify-center gap-[3px] select-none" style="touch-action:none"
+          onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onLift} onPointerCancel=${onLift} onClick=${onClickBoard}>
           ${tines.map((tn) => html`<button data-tine=${tn.pos} data-note=${tn.letter} aria-label=${label(tn.midi)}
-            onClick=${() => pluck(tn.pos)}
-            class=${`relative flex-1 min-w-0 rounded-b-md bg-gradient-to-b from-zinc-100 to-zinc-400 shadow-sm touch-manipulation transition-all duration-100 ${lit.has(tn.pos) ? "ring-2 ring-primary translate-y-1.5 z-10 brightness-110" : ""}`}
+            class=${`relative flex-1 min-w-0 rounded-b-md bg-gradient-to-b from-zinc-100 to-zinc-400 shadow-sm transition-transform duration-100 ${lit.has(tn.pos) ? "ring-2 ring-primary translate-y-1.5 z-10 brightness-110" : ""}`}
             style=${`height:${tn.h}%`} key=${tn.pos}>
-            ${tn.tonic ? html`<span class="absolute inset-x-0 bottom-0 h-1.5 rounded-b-md bg-amber-400"></span>` : null}
+            ${tn.tonic ? html`<span class="pointer-events-none absolute inset-x-0 bottom-0 h-1.5 rounded-b-md bg-amber-400"></span>` : null}
             <span class="pointer-events-none absolute inset-x-0 bottom-1.5 text-center text-[10px] font-bold text-zinc-800">${tn.letter}</span>
           </button>`)}
         </div>

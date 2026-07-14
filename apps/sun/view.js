@@ -22,7 +22,7 @@ const _shift = (h, t, tgt) => `rgb(${_rgb(h).map((x) => Math.round(x + (tgt - x)
 const lighten = (h) => _shift(h, 0.5, 255), darken = (h) => _shift(h, 0.42, 0);
 const disc = (b) => { const c = BODIES[b]; const glow = c.glow ? `,0 0 ${Math.round(c.size * 0.8)}px ${Math.round(c.size * 0.22)}px ${c.color}88` : ""; return html`<div class="rounded-full" style=${`width:${c.size}px;height:${c.size}px;background:radial-gradient(circle at 33% 28%, ${lighten(c.color)}, ${c.color} 55%, ${darken(c.color)});box-shadow:inset -1px -1px 1.5px rgba(0,0,0,.42)${glow}`}></div>`; };
 const planet = (b) => { const c = BODIES[b]; if (!c.ring) return disc(b); return html`<div class="relative flex items-center justify-center" style=${`width:${c.size * 2.1}px;height:${c.size * 2.1}px`}><div class="absolute" style=${`width:${c.size * 2.1}px;height:${c.size * 0.72}px;border:1.4px solid ${lighten(c.color)};border-radius:50%;opacity:.8;transform:rotate(-18deg)`}></div>${disc(b)}</div>`; };
-const rFromAlt = (alt) => Math.min(45, Math.max(37, 45 - (Math.max(0, alt) / 90) * 8));
+const rFromAlt = (alt) => 46 - Math.min(90, Math.max(0, alt)) / 90 * 16; 
 const bodyOpacity = (alt) => (0.5 + 0.5 * Math.min(1, Math.max(0, alt) / 90)).toFixed(2); 
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -93,8 +93,14 @@ export function sun({ S, openScreen, closeScreen }) {
     planets = shown.filter((b) => b !== "sun" && BODIES[b]).map((b) => { const eq = Astro.Equator(BODIES[b].name, time, obs, true, true); const h = Astro.Horizon(time, obs, eq.ra, eq.dec, "normal"); return { b, az: h.azimuth, alt: h.altitude }; }).filter((m) => m.alt > 0);
   } catch {  }
   const marks = [...(shown.includes("sun") ? [{ b: "sun", sun: true, az: bearing, alt }] : []), ...planets].sort((a, b) => a.az - b.az);
-  let prevAz = -999, stack = 0;
-  for (const mk of marks) { stack = mk.az - prevAz < 15 ? stack + 1 : 0; mk.r = Math.max(20, rFromAlt(mk.alt) - stack * 10); prevAz = mk.az; } 
+  for (let i = 0; i < marks.length;) {
+    let j = i + 1;
+    while (j < marks.length && marks[j].az - marks[j - 1].az < 12) j++; 
+    const group = marks.slice(i, j);
+    if (group.length === 1) group[0].r = rFromAlt(group[0].alt);
+    else { group.sort((a, b) => a.alt - b.alt); const base = rFromAlt(group[0].alt); group.forEach((mk, k) => { mk.r = Math.max(24, base - k * 8.5); }); }
+    i = j;
+  }
 
   return html`<div class="flex flex-col gap-4 items-center">
     <!-- compass dial -->

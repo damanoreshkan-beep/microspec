@@ -15,6 +15,11 @@ export const SIGN_PATHS = [
   "M7 5C4 8 4 16 7 19 M17 5C20 8 20 16 17 19 M4 12H20",
 ];
 
+export const RULERS = [
+  ["mars"], ["venus"], ["mercury"], ["moon"], ["sun"], ["mercury"],
+  ["venus"], ["mars", "pluto"], ["jupiter"], ["saturn"], ["saturn", "uranus"], ["jupiter", "neptune"],
+];
+
 export function Sign({ i, cls = "" }) {
   const d = SIGN_PATHS[i];
   if (d == null) return null;

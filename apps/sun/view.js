@@ -196,7 +196,7 @@ export function sun({ S, openScreen, closeScreen }) {
             const active = ti.live ? scrub == null : (scrub != null && ti.m != null && Math.abs(scrub - ti.m) < 3);
             const disabled = !ti.live && ti.m == null;
             return html`<button id=${ti.live ? "now-tile" : null} data-tile=${ti.label} class=${`rounded-xl border py-2 transition ${active ? "border-primary bg-primary/10" : "border-base-300"}`} disabled=${disabled} onClick=${() => setScrub(ti.live ? null : ti.m)} key=${ti.label}>
-              <div class="text-[0.62rem] font-mono uppercase text-base-content/50">${T(t, ti.label)}</div>
+              <div class="text-[0.62rem] font-mono uppercase text-base-content/70">${T(t, ti.label)}</div>
               <div class=${`font-semibold tabular-nums mt-0.5 ${ti.accent}`}>${ti.val}</div>
             </button>`;
           })}

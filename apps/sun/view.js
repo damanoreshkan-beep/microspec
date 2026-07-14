@@ -128,7 +128,7 @@ export function sun({ S, openScreen, closeScreen }) {
 
   return html`<div class="flex flex-col gap-4 items-center">
     <!-- compass dial -->
-    <div class="relative w-full mx-auto overflow-visible" style="max-width:420px;aspect-ratio:1">
+    <div class="relative w-full mx-auto overflow-visible" style="max-width:360px;aspect-ratio:1">
       <div class="absolute inset-0 rounded-full border border-base-300 bg-base-100"></div>
       <!-- fixed marker: where the phone points (vertical, above the dial) -->
       <div class="absolute left-1/2 -top-1 -translate-x-1/2 text-base-content/50">${Icon("lucide:chevron-up", "text-xl")}</div>

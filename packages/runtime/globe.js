@@ -81,6 +81,9 @@ export function Globe({ onPick, selected, marker, focus, points, spin = true, he
       const center = [-s.rot[0], -s.rot[1]];
       const dot = (lon, lat, r, fill, ring) => { if (geoDistance([lon, lat], center) > Math.PI / 2) return; const xy = proj([lon, lat]); if (!xy) return; ctx.beginPath(); ctx.arc(xy[0], xy[1], r, 0, 2 * Math.PI); ctx.fillStyle = fill; ctx.fill(); if (ring) { ctx.strokeStyle = ring; ctx.lineWidth = 1.5; ctx.stroke(); } };
       if (p.points) for (const pt of p.points) dot(pt.lon, pt.lat, pt.r || 3, pt.color || c.accent);
+      // a point with `pulse:true` gets expanding rings drawn ON the canvas at its projected position — so the
+      // pulse stays anchored to the real lat/lon and moves with rotation/drag (never a fixed DOM overlay).
+      if (p.points) { const now = performance.now(); for (const pt of p.points) { if (!pt.pulse || geoDistance([pt.lon, pt.lat], center) > Math.PI / 2) continue; const xy = proj([pt.lon, pt.lat]); if (!xy) continue; for (let i = 0; i < 2; i++) { const ph = ((now / 1800) + i * 0.5) % 1; ctx.beginPath(); ctx.arc(xy[0], xy[1], (pt.r || 3) + 2 + ph * 22, 0, 2 * Math.PI); ctx.strokeStyle = pt.color || c.accent; ctx.globalAlpha = (1 - ph) * 0.5; ctx.lineWidth = 1.6; ctx.stroke(); } ctx.globalAlpha = 1; } }
       if (p.marker) dot(p.marker.lon, p.marker.lat, 5.5, c.accent, c.accentInk);
     };
 
@@ -97,6 +100,7 @@ export function Globe({ onPick, selected, marker, focus, points, spin = true, he
         if (k >= 1) s.fly = null; dirty = true;
       } else if (p.spin && s.ptrs.size === 0 && s.zoom <= 1.05 && p.selected == null && p.marker == null) { s.rot = [s.rot[0] + 0.12, s.rot[1]]; dirty = true; }
       if (s.drag) dirty = true;
+      if (p.points && p.points.some((pt) => pt.pulse)) dirty = true; // keep animating while a point pulses
       if (size && dirty) { draw(); dirty = false; }
       S.current.raf = requestAnimationFrame(frame);
     };

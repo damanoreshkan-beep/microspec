@@ -38,7 +38,7 @@ export function quakes({ S }) {
   const t = useStore(S.t), locale = useStore(S.locale);
   const [list, setList] = useState(isGate || MOCK ? sample() : null);
   const [err, setErr] = useState(false);
-  const rippleRef = useRef(), rowsRef = useRef();
+  const rowsRef = useRef();
 
   useEffect(() => {
     if (isGate || MOCK) return;
@@ -54,13 +54,14 @@ export function quakes({ S }) {
 
   const top = list && list.length ? list.reduce((a, b) => (b.mag > a.mag ? b : a)) : null;
 
-  // Motion: a looping seismic ripple over the strongest event + a stagger-in of the list
+  // Motion: stagger the list in. (The seismic ripple is drawn ON the globe canvas — anchored to the real
+  // epicentre lat/lon via `pulse:true` on its point — so it tracks rotation, unlike a fixed DOM overlay.)
   useEffect(() => {
-    if (!top) return;
-    const stops = [];
-    if (rippleRef.current) stops.push(animate(rippleRef.current, { scale: [0.5, 2.4], opacity: [0.55, 0] }, { duration: 2.2, repeat: Infinity, ease: "easeOut" }));
-    if (rowsRef.current) { const rows = rowsRef.current.querySelectorAll(".qrow"); if (rows.length) stops.push(animate(rows, { y: [12, 0] }, { delay: stagger(0.035), duration: 0.35, ease: "easeOut" })); }
-    return () => stops.forEach((s) => { try { s.stop(); } catch { /* */ } });
+    if (!top || !rowsRef.current) return;
+    const rows = rowsRef.current.querySelectorAll(".qrow");
+    if (!rows.length) return;
+    const a = animate(rows, { y: [12, 0] }, { delay: stagger(0.035), duration: 0.35, ease: "easeOut" });
+    return () => { try { a.stop(); } catch { /* */ } };
   }, [top && top.id]);
 
   if (!list) {
@@ -71,13 +72,12 @@ export function quakes({ S }) {
 
   const rtf = new Intl.RelativeTimeFormat(locale === "en" ? "en" : locale || "uk", { numeric: "auto" });
   const ago = (ms) => { const s = (Date.now() - ms) / 1000; if (s < 60) return rtf.format(-Math.round(s), "second"); if (s < 3600) return rtf.format(-Math.round(s / 60), "minute"); if (s < 86400) return rtf.format(-Math.round(s / 3600), "hour"); return rtf.format(-Math.round(s / 86400), "day"); };
-  const points = list.map((q) => ({ lat: q.lat, lon: q.lon, r: magSize(q.mag), color: magFill(q.mag) }));
+  const points = list.map((q) => ({ lat: q.lat, lon: q.lon, r: magSize(q.mag), color: magFill(q.mag), pulse: !!top && q.id === top.id }));
   const recent = list.slice().sort((a, b) => b.time - a.time).slice(0, 24);
 
   return html`<div class="flex flex-col gap-4 items-center">
-    <div class="relative w-full flex justify-center">
+    <div class="w-full flex justify-center">
       <${Globe} points=${points} focus=${top ? { lat: top.lat, lon: top.lon } : null} spin=${false} height=${300} />
-      ${top ? html`<div ref=${rippleRef} class="absolute rounded-full pointer-events-none" style=${`top:50%;left:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border:2px solid ${magFill(top.mag)}`}></div>` : null}
     </div>
 
     ${top ? html`<div class="flex flex-col items-center gap-0.5 -mt-1">

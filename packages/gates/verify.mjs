@@ -30,6 +30,7 @@ const no = (n, m, det) => { console.log(`  ${C.r}✗${C.x} ${n} — ${m}`); (det
 
 try {
   const page = await browser.newPage();
+  await page.setViewportSize({ width: dev.width, height: dev.height });
   const { h, ev } = makeHelpers(page);
   console.log(`\n  verify: ${appdir}\n`);
   await gotoAndSettle(page, srv.url, settle);

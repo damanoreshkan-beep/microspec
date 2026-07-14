@@ -5,6 +5,14 @@ import { viaProxy, isJsonObject } from "/_rt/feed.js";
 
 const LANGS = { uk: "Українська", en: "English", de: "Deutsch", pl: "Polski" };
 const oneLine = (s) => { s = s.replace(/\s+/g, " ").trim(); return s.length > 100 ? s.slice(0, 100).replace(/\s+\S*$/, "") + "…" : s; };
+// Not every article has a thumbnail → a deterministic letter tile so a card is NEVER image-less (keeps the
+// feed visually consistent + the "cards have a thumbnail" gate honest). Self-contained data-URI, no fetch.
+const placeholder = (title) => {
+  const ch = (title.trim()[0] || "?").toUpperCase();
+  let hue = 0; for (const c of title) hue = (hue * 31 + c.charCodeAt(0)) % 360;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="hsl(${hue} 32% 40%)"/><text x="50%" y="52%" dy=".35em" text-anchor="middle" font-family="system-ui,sans-serif" font-size="230" font-weight="700" fill="rgba(255,255,255,.92)">${ch}</text></svg>`;
+  return "data:image/svg+xml," + encodeURIComponent(svg);
+};
 
 export async function load(filters) {
   const q = (filters.q || "").trim();
@@ -32,7 +40,7 @@ export async function load(filters) {
       desc,
       extract: extract || desc,
       langName: LANGS[lang],
-      thumb: p.thumbnail?.source || "",
+      thumb: p.thumbnail?.source || placeholder(p.title),
       url: `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(p.title.replace(/ /g, "_"))}`,
     };
   });

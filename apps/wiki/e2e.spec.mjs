@@ -12,10 +12,12 @@ export default [
     },
   },
   {
-    name: "пошук повертає статті з мініатюрами", run: async (h) => {
+    name: "кожна картка має мініатюру або плейсхолдер", run: async (h) => {
       await search(h, "Київ");
-      h.expect((await h.count(".card")) > 3, "пошук не повернув статей");
-      h.expect((await h.count(".card img")) >= 1, "немає мініатюр");
+      const cards = await h.count(".card");
+      h.expect(cards > 3, "пошук не повернув статей");
+      // fallback letter-tile guarantees no image-less card, so imgs === cards (no flake on thumbnail-less pages)
+      h.expect((await h.count(".card img")) === cards, "є картки без зображення (мініатюра/плейсхолдер)");
       h.expect(/Читати/.test(await h.bodyText()), "немає афордансу «Читати»");
     },
   },

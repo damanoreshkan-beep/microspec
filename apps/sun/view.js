@@ -19,7 +19,7 @@ const hhmm = (d) => d instanceof Date && !isNaN(d) ? `${String(d.getHours()).pad
 
 export function sun({ S, openScreen, closeScreen }) {
   const t = useStore(S.t), screen = useStore(S.screen);
-  const [pos, setPos] = useState(MOCK ? KYIV : null);
+  const [pos, setPos] = useState(MOCK || isGate ? KYIV : null);
   const [heading, setHeading] = useState(MOCK || isGate ? 300 : null);
   const [needPerm, setNeedPerm] = useState(compass.needsPermission && !MOCK);
   const [scrub, setScrub] = useState(null); 
@@ -29,7 +29,7 @@ export function sun({ S, openScreen, closeScreen }) {
   const [, tick] = useState(0);
 
   useEffect(() => {
-    if (MOCK) return;
+    if (MOCK || isGate) return; 
     if (!geo.supported) { setPos(KYIV); return; }
     const stop = geo.watch((p) => setPos(p), () => setPos(KYIV));
     const to = setTimeout(() => setPos((cur) => cur || KYIV), 4000);

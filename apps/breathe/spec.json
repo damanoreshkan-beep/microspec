@@ -1,0 +1,14 @@
+{
+  "id": "breathe",
+  "theme": "signal",
+  "tabs": [
+    { "id": "breathe", "type": "tool", "icon": "lucide:wind", "label": "tabBreathe", "view": "breathe" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:wind",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

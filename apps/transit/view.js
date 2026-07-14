@@ -8,10 +8,13 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { BODY_KEYS, eclipticPositions } from "/_rt/astro.js";
 import { SkyDial } from "/_rt/skydial.js";
+import { Sign } from "/_rt/zodiac.js";
 
 const DAY = 86400000;
-const SIGN_SYM = ["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"];
 const norm = (d) => (((d % 360) + 360) % 360);
+// standard chart orientation: 0° Aries at the left (9 o'clock), signs run COUNTER-clockwise. The dial angle
+// is 0=up / clockwise, so screen angle = 270 − ecliptic longitude.
+const wheelAngle = (lon) => norm(270 - lon);
 const signOf = (lon) => Math.floor(norm(lon) / 30);
 const degIn = (lon) => norm(lon) % 30;
 const bodyLabel = (t, k) => T(t, "b" + k[0].toUpperCase() + k.slice(1));
@@ -20,7 +23,7 @@ const pt = (deg, r) => { const a = deg * Math.PI / 180; return [(50 + r * Math.s
 // faint zodiac ring + 12 sign divisions (decorative SVG, theme-aware via currentColor)
 const wheelOverlay = html`<svg viewBox="0 0 100 100" class="absolute inset-0 w-full h-full pointer-events-none text-base-content/25" fill="none" aria-hidden="true">
   <circle cx="50" cy="50" r="40" stroke="currentColor" stroke-width="0.4"></circle>
-  ${Array.from({ length: 12 }, (_, i) => { const [x1, y1] = pt(i * 30, 40), [x2, y2] = pt(i * 30, 46.5); return html`<line x1=${x1} y1=${y1} x2=${x2} y2=${y2} stroke="currentColor" stroke-width="0.4" key=${i}></line>`; })}
+  ${Array.from({ length: 12 }, (_, i) => { const [x1, y1] = pt(norm(270 - i * 30), 40), [x2, y2] = pt(norm(270 - i * 30), 46.5); return html`<line x1=${x1} y1=${y1} x2=${x2} y2=${y2} stroke="currentColor" stroke-width="0.4" key=${i}></line>`; })}
 </svg>`;
 const CHIPS = [[-30, "mMonth"], [-7, "mWeek"], [0, "today"], [7, "pWeek"], [30, "pMonth"]];
 
@@ -38,14 +41,14 @@ export function transit({ S }) {
   const prevMap = Object.fromEntries(prev.map((p) => [p.key, p.lon]));
   const isRetro = (k, lon) => { if (k === "sun" || k === "moon") return false; const pl = prevMap[k]; if (pl == null) return false; let d = lon - pl; if (d > 180) d -= 360; if (d < -180) d += 360; return d < 0; };
 
-  // wheel marks: ecliptic longitude = angle (0° Aries at top, clockwise), fixed ring, conjunctions fan inward
-  const marks = pos.map((p) => ({ key: p.key, body: p.key, angle: norm(p.lon), value: norm(p.lon), label: bodyLabel(t, p.key) }));
-  const rim = SIGN_SYM.map((sym, i) => ({ label: sym, angle: i * 30 + 15, cls: "text-sm text-base-content/70", rimR: 43 }));
+  // wheel marks: ecliptic longitude placed the standard way (Aries left, counter-clockwise); fixed ring
+  const marks = pos.map((p) => ({ key: p.key, body: p.key, angle: wheelAngle(p.lon), value: norm(p.lon), label: bodyLabel(t, p.key) }));
+  const rim = Array.from({ length: 12 }, (_, i) => ({ label: html`<${Sign} i=${i} cls="w-[18px] h-[18px]" />`, angle: wheelAngle(i * 30 + 15), cls: "text-base-content/70", rimR: 43 }));
 
   const sunLon = pos.find((p) => p.key === "sun")?.lon;
   const fmtDate = (d) => d.toLocaleDateString(locale === "en" ? "en-GB" : locale || "uk", { day: "numeric", month: "short", year: "numeric" });
   const center = html`<div class="contents">
-    ${sunLon != null ? html`<div class="text-3xl leading-none">${SIGN_SYM[signOf(sunLon)]}</div><div class="text-sm font-medium mt-1">${T(t, "s" + signOf(sunLon))}</div>` : null}
+    ${sunLon != null ? html`<div class="flex justify-center text-base-content"><${Sign} i=${signOf(sunLon)} cls="w-9 h-9" /></div><div class="text-sm font-medium mt-1">${T(t, "s" + signOf(sunLon))}</div>` : null}
     <div data-date class="text-xs text-base-content/70 mt-1 tabular-nums">${fmtDate(date)}</div>
   </div>`;
 
@@ -53,7 +56,7 @@ export function transit({ S }) {
     const s = signOf(p.lon), d = Math.floor(degIn(p.lon)), r = isRetro(p.key, p.lon);
     return html`<div data-row=${p.key} class="flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0" key=${p.key}>
       <div class="w-20 font-medium truncate">${bodyLabel(t, p.key)}</div>
-      <div class="text-base-content/70 text-lg w-6 text-center">${SIGN_SYM[s]}</div>
+      <div class="w-6 flex justify-center text-base-content/70"><${Sign} i=${s} cls="w-5 h-5" /></div>
       <div class="flex-1 min-w-0 truncate">${T(t, "s" + s)}</div>
       <div class="tabular-nums text-base-content/70 w-9 text-right">${d}°</div>
       <div class="w-4 text-center">${r ? html`<span class="text-warning font-mono" title=${T(t, "retro")}>℞</span>` : null}</div>
@@ -83,6 +86,5 @@ export function transit({ S }) {
         ${rows}
       </div>
     </div>
-    <div class="text-xs text-base-content/70 text-center px-6 pb-2">${T(t, "hint")}</div>
   </div>`;
 }

@@ -2,9 +2,10 @@ const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("
 
 export default [
   {
-    name: "калімба: 17 пелюсток + 3 демо рендеряться", run: async (h) => {
+    name: "калімба: 17 пелюсток + 6 ладів + 3 демо", run: async (h) => {
       await ready(h); await h.wait(200);
       h.expect((await h.count("[data-tine]")) === 17, "немає 17 пелюсток");
+      h.expect((await h.count("[data-scale]")) === 6, "немає 6 ладів");
       h.expect((await h.count("[data-song]")) === 3, "немає 3 демо-мелодій");
       h.expect((await h.attr('[data-tine="8"]', "aria-label")) === "C4", "центральна пелюстка не C4 (tonic)");
     },
@@ -16,6 +17,16 @@ export default [
       h.expect((await h.attr('[data-tine="8"]', "class")).includes("ring-primary"), "пелюстка не підсвітилась при тапі");
       await h.wait(300);
       h.expect(!(await h.attr('[data-tine="8"]', "class")).includes("ring-primary"), "підсвітка не згасла");
+    },
+  },
+  {
+    name: "перемикач ладу перебудовує пелюстки", run: async (h) => {
+      await ready(h);
+      await h.click('[data-scale="minor"]'); await h.wait(150);
+      h.expect((await h.attr('[data-scale="minor"]', "aria-pressed")) === "true", "лад не обрався");
+      h.expect((await h.attr('[data-tine="9"]', "aria-label")) === "Eb4", "ноти не перебудувались під мінор");
+      await h.click('[data-scale="major"]'); await h.wait(150);
+      h.expect((await h.attr('[data-tine="9"]', "aria-label")) === "E4", "не повернувся мажор");
     },
   },
   {

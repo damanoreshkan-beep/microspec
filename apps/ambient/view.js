@@ -167,7 +167,7 @@ export function ambient({ S }) {
 
     <div class="flex flex-col gap-4 w-full max-w-[420px]">
       ${GROUPS.map(({ cat, items }) => html`<div class="flex flex-col gap-2" key=${cat}>
-        <div class="text-[11px] font-semibold uppercase tracking-wide text-base-content/50 px-1">${T(t, cat)}</div>
+        <div class="text-[11px] font-semibold uppercase tracking-wide text-base-content/70 px-1">${T(t, cat)}</div>
         <div class="grid grid-cols-2 gap-2.5">
           ${items.map(({ key, name, icon }) => { const on = active.has(key); return html`<div data-layer=${key} class=${`rounded-2xl border p-3 flex flex-col gap-2 transition ${on ? "border-primary bg-primary/10" : "border-base-300 bg-base-100"}`} key=${key}>
             <button aria-pressed=${on} class="flex items-center gap-2.5 text-left w-full" onClick=${() => toggle(key)}>

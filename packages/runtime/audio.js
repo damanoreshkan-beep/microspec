@@ -22,12 +22,19 @@ export const filter = (ctx, type, freq, q) => { const f = ctx.createBiquadFilter
 // route a low-freq oscillator into an AudioParam (target) to modulate it by ±depth around base
 export const lfo = (ctx, hz, depth, target, base) => { const o = ctx.createOscillator(); o.frequency.value = hz; const g = ctx.createGain(); g.gain.value = depth; o.connect(g); g.connect(target); if (base != null) target.value = base; o.start(); return o; };
 
-// strike — a struck/plucked tone: fundamental + inharmonic partials with a fast attack and exponential
-// decay (bells, chimes, plucks, blips, kalimba tines). Fire-and-forget; the nodes free themselves.
-export function strike(ctx, dest, freq, { type = "sine", dur = 1.2, attack = 0.005, peak = 0.4, partials = [[1, 1]] } = {}) {
-  const t = ctx.currentTime, g = ctx.createGain(); g.connect(dest);
-  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  for (const [r, pg] of partials) { const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq * r; const pn = ctx.createGain(); pn.gain.value = pg; o.connect(pn); pn.connect(g); o.start(t); o.stop(t + dur + 0.05); }
+// strike — a struck/plucked tone: fundamental + inharmonic partials, each with its OWN exponential decay
+// (bells, chimes, plucks, kalimba tines). partials are [ratio, gain, decayScale?] — decayScale (default 1)
+// shortens that partial's decay relative to `dur`, so bright inharmonic overtones can ping in the attack
+// and die while the fundamental sustains (the physics of a struck bar). Fire-and-forget; nodes self-free.
+export function strike(ctx, dest, freq, { type = "sine", dur = 1.2, attack = 0.004, peak = 0.4, partials = [[1, 1]] } = {}) {
+  const t = ctx.currentTime;
+  for (const [r, pg, decayScale = 1] of partials) {
+    const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq * r;
+    const g = ctx.createGain(); o.connect(g); g.connect(dest);
+    const d = dur * decayScale;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak * pg, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.start(t); o.stop(t + d + 0.05);
+  }
 }
 
 // ---- equal-temperament note math ----

@@ -86,9 +86,13 @@ Layouts `feed`/`row`/`grid`/`table` · `detail` · `search`/`searchFetch` · `pa
 ## Quality gate — BOTH themes
 
 CI: `unit` (runtime tests + ajv over every spec) → a Chromium `verify` job per changed app
-(packages/ change → whole farm). Each verify runs:
-**axe 0 critical/serious in DARK *and* LIGHT** · no overflow@384 · glance@200 · e2e · shots
-(`main.png` + `light.png`).
+(packages/ change → whole farm). On **every tab** (not just the default) each verify runs:
+**axe 0 critical/serious in DARK *and* LIGHT** · no overflow@384 · glance@200; plus e2e and shots
+(`main.png` · `tab-<id>.png` per tab · `light.png`).
+
+- **Accessible names.** Every form control (`input`/`select`/`toggle`) needs an accessible name — an
+  `aria-label` (or wrapping `<label>`) — even when the visual design shows no text label. axe `label` /
+  `select-name` are *critical* and now fire on any tab.
 
 - **Theme-aware only.** Anything that flips with the theme must be theme-aware **CSS** — a DaisyUI var
   class (`text-base-content`, `bg-base-100`) or `light-dark(darkVal, lightVal)` — **never a colour computed

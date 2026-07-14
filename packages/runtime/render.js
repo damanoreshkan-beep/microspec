@@ -71,7 +71,9 @@ function heatMap(items, field) {
 }
 // single warm hue, dim→strong (sequential ramp for magnitude). `bg` for bars/accents, `ink` tints a value.
 const heatBg = (x) => `rgba(240,169,59,${(0.16 + 0.84 * x).toFixed(3)})`;
-const heatInk = (x) => (x >= 0.5 ? `rgba(240,169,59,${(0.55 + 0.45 * x).toFixed(3)})` : "");
+// theme-aware heat ink: bright amber on dark, a solid dark amber on light (bare amber fails contrast on
+// white). light-dark() keys off the theme's color-scheme; unsupported → the property drops to base-content.
+const heatInk = (x) => (x >= 0.5 ? `light-dark(#7a4a00,rgba(240,169,59,${(0.55 + 0.45 * x).toFixed(3)}))` : "");
 
 // searchFetch family: the search box debounce-drives a real refetch (query → data.js as filters.q).
 let _searchT;

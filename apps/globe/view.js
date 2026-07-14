@@ -43,6 +43,6 @@ export function globe({ S }) {
             ${row("lucide:coins", "fCurrency", f.cur)}
           </div>
         </div></div>`
-      : html`<div class="text-center text-base-content/50 py-4 text-sm flex flex-col items-center gap-2">${Icon("lucide:hand", "text-2xl opacity-40")}${T(t, "hint")}</div>`}
+      : html`<div class="text-center text-base-content/70 py-4 text-sm flex flex-col items-center gap-2">${Icon("lucide:hand", "text-2xl opacity-40")}${T(t, "hint")}</div>`}
   </div>`;
 }

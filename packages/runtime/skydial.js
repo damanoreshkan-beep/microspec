@@ -40,8 +40,8 @@ export function SkyDial({ marks = [], radial = altRadius, opacityFor = altOpacit
     <div class="absolute inset-0 rounded-full border border-base-300 bg-base-100"></div>
     ${overlay}
     ${rim.map((c) => html`<span class=${`absolute ${c.cls || "text-xs font-semibold text-base-content/70"}`} style=${dialAt(c.angle + rotate, c.rimR ?? 45)} key=${c.label}>${c.label}</span>`)}
-    ${ms.map((mk) => html`<div data-mark=${mk.key} ...${mk.attrs || {}} class="absolute pointer-events-none flex flex-col items-center gap-px" style=${`${dialAt(mk.angle + rotate, mk.r)};opacity:${mk.opacity ?? opacityFor(mk.value)}`} title=${mk.title ?? BODIES[mk.body]?.name ?? ""} key=${mk.key}>
-        ${mk.node ?? (mk.body ? html`<${Planet} body=${mk.body} />` : null)}
+    ${ms.map((mk) => html`<div data-mark=${mk.key} ...${mk.attrs || {}} class="absolute pointer-events-none flex flex-col items-center gap-px" style=${dialAt(mk.angle + rotate, mk.r)} title=${mk.title ?? BODIES[mk.body]?.name ?? ""} key=${mk.key}>
+        <div class="leading-none" style=${`opacity:${mk.opacity ?? opacityFor(mk.value)}`}>${mk.node ?? (mk.body ? html`<${Planet} body=${mk.body} />` : null)}</div>
         ${mk.label ? html`<span class=${`text-[0.5rem] font-semibold leading-none tracking-tight whitespace-nowrap ${mk.labelColor ? "" : "text-base-content"}`} style=${mk.labelColor ? `color:${mk.labelColor}` : ""}>${mk.label}</span>` : null}
       </div>`)}
     ${center ? html`<div class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">${center}</div>` : null}

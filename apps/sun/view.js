@@ -110,11 +110,11 @@ export function sun({ S, openScreen, closeScreen }) {
       <button id="open-globe" class="btn btn-ghost btn-sm rounded-2xl gap-2" onClick=${openGlobe}>${Icon("lucide:globe")}${T(t, "pickOnGlobe")}</button>
       ${picked
         ? html`<button id="clear-pick" class="text-xs text-primary flex items-center gap-1" onClick=${() => setPicked(null)}>${Icon("lucide:map-pin")}${picked.name || `${picked.lat.toFixed(1)}°, ${picked.lng.toFixed(1)}°`} · ${T(t, "myLocation")}</button>`
-        : pos.approx ? html`<div class="text-xs text-base-content/50">${T(t, "approxKyiv")}</div>` : null}
+        : pos.approx ? html`<div class="text-xs text-base-content/70">${T(t, "approxKyiv")}</div>` : null}
     </div>
 
     <${TimeScale} value=${scrub} now=${now.getHours() * 60 + now.getMinutes()} onChange=${setScrub} t=${t}
       sunrise=${minOfDay(times.sunrise)} sunset=${minOfDay(times.sunset)} anchors=${anchors} />
-    <div class="text-xs text-base-content/50 text-center px-6">${T(t, "hint")}</div>
+    <div class="text-xs text-base-content/70 text-center px-6">${T(t, "hint")}</div>
   </div>`;
 }

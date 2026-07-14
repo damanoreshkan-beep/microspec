@@ -47,6 +47,8 @@ const PRESETS = [["Kyiv", 50.45, 30.52], ["London", 51.5, -0.13], ["Tokyo", 35.6
 const DIRS = ["Пн", "Пн-Сх", "Сх", "Пд-Сх", "Пд", "Пд-Зх", "Зх", "Пн-Зх"];
 const dirName = (b) => DIRS[Math.round((b % 360) / 45) % 8];
 const hhmm = (d) => d instanceof Date && !isNaN(d) ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : "—";
+const minOfDay = (d) => d instanceof Date && !isNaN(d) ? d.getHours() * 60 + d.getMinutes() : null; // Date → minute-of-day (for the scrubber)
+const pctOfDay = (m) => m == null ? null : (m / 1439) * 100; // minute-of-day → % along the 24h scale
 
 export function sun({ S, openScreen, closeScreen }) {
   const t = useStore(S.t), screen = useStore(S.screen), filters = useStore(S.filters);
@@ -157,21 +159,50 @@ export function sun({ S, openScreen, closeScreen }) {
         : pos.approx ? html`<div class="text-xs text-base-content/50">${T(t, "approxKyiv")}</div>` : null}
     </div>
 
-    <!-- time scrubber -->
-    <div class="w-full max-w-[280px] flex flex-col gap-1.5">
-      <div class="flex items-center justify-between text-xs">
-        <span class="text-base-content/60 font-mono">${scrub == null ? T(t, "nowLabel") : hhmm(date)}</span>
-        ${scrub != null ? html`<button class="text-primary font-medium" onClick=${() => setScrub(null)}>${T(t, "reset")}</button>` : null}
-      </div>
-      <input id="scrub" type="range" min="0" max="1439" step="5" value=${scrub == null ? now.getHours() * 60 + now.getMinutes() : scrub} class="range range-xs range-primary" aria-label=${T(t, "timeAria")} onInput=${(e) => setScrub(Number(e.target.value))} />
-    </div>
-
-    <!-- golden hour / sunrise / sunset -->
-    <div class="grid grid-cols-3 gap-2 w-full max-w-[280px] text-center">
-      <div class="rounded-xl border border-base-300 py-2"><div class="text-[0.62rem] font-mono uppercase text-base-content/50">${T(t, "sunrise")}</div><div class="font-semibold tabular-nums mt-0.5">${hhmm(times.sunrise)}</div></div>
-      <div class="rounded-xl border border-base-300 py-2"><div class="text-[0.62rem] font-mono uppercase text-base-content/50">${T(t, "golden")}</div><div class="font-semibold tabular-nums mt-0.5 text-warning">${hhmm(times.goldenHour)}</div></div>
-      <div class="rounded-xl border border-base-300 py-2"><div class="text-[0.62rem] font-mono uppercase text-base-content/50">${T(t, "sunset")}</div><div class="font-semibold tabular-nums mt-0.5">${hhmm(times.sunset)}</div></div>
-    </div>
+    <!-- time scrubber with a day/night "sky ribbon" scale -->
+    ${(() => {
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const selMin = scrub == null ? nowMin : scrub;
+      const srP = pctOfDay(minOfDay(times.sunrise)), ssP = pctOfDay(minOfDay(times.sunset));
+      // night → sunrise → bright midday → sunset → night, positioned at the real sun times
+      const ribbon = (srP != null && ssP != null)
+        ? `background:linear-gradient(90deg,#141a2e,#1a2340 ${Math.max(0, srP - 5).toFixed(1)}%,#c98a3c ${srP.toFixed(1)}%,#f0bd63 ${((srP + ssP) / 2).toFixed(1)}%,#c98a3c ${ssP.toFixed(1)}%,#1a2340 ${Math.min(100, ssP + 5).toFixed(1)}%,#141a2e)`
+        : "background:#1a2340";
+      // clickable time anchors — the leading tile resets to live "now"
+      const tiles = [
+        { label: "nowLabel", val: hhmm(now), accent: "text-primary", live: true },
+        { label: "sunrise", val: hhmm(times.sunrise), accent: "", m: minOfDay(times.sunrise) },
+        { label: "golden", val: hhmm(times.goldenHour), accent: "text-warning", m: minOfDay(times.goldenHour) },
+        { label: "sunset", val: hhmm(times.sunset), accent: "", m: minOfDay(times.sunset) },
+      ];
+      return html`<div class="w-full max-w-[420px] flex flex-col gap-2">
+        <div class="text-center">
+          <span class="text-2xl font-bold tabular-nums font-mono">${hhmm(date)}</span>
+          ${scrub == null
+            ? html`<span class="text-xs text-primary ml-2 align-middle">● ${T(t, "nowLabel")}</span>`
+            : html`<span class="text-xs text-base-content/40 ml-2 align-middle font-mono">${T(t, "nowLabel")} ${hhmm(now)}</span>`}
+        </div>
+        <div class="relative">
+          <div class="h-2.5 rounded-full" style=${ribbon}></div>
+          <!-- where "now" sits on the 24h scale, so you can see how far you've scrubbed -->
+          <div class="absolute -top-0.5 h-3.5 w-0.5 rounded bg-base-content/80 -translate-x-1/2" style=${`left:${pctOfDay(nowMin).toFixed(1)}%`} title=${T(t, "nowLabel")}></div>
+        </div>
+        <input id="scrub" type="range" min="0" max="1439" step="5" value=${selMin} class="range range-xs range-primary -mt-1" aria-label=${T(t, "timeAria")} onInput=${(e) => setScrub(Number(e.target.value))} />
+        <div class="relative h-3 text-[0.55rem] font-mono text-base-content/35 select-none">
+          ${[0, 6, 12, 18, 24].map((h) => html`<span class="absolute -translate-x-1/2" style=${`left:${((h * 60) / 1439 * 100).toFixed(1)}%`} key=${h}>${String(h).padStart(2, "0")}:00</span>`)}
+        </div>
+        <div class="grid grid-cols-4 gap-2 text-center">
+          ${tiles.map((ti) => {
+            const active = ti.live ? scrub == null : (scrub != null && ti.m != null && Math.abs(scrub - ti.m) < 3);
+            const disabled = !ti.live && ti.m == null;
+            return html`<button id=${ti.live ? "now-tile" : null} data-tile=${ti.label} class=${`rounded-xl border py-2 transition ${active ? "border-primary bg-primary/10" : "border-base-300"}`} disabled=${disabled} onClick=${() => setScrub(ti.live ? null : ti.m)} key=${ti.label}>
+              <div class="text-[0.62rem] font-mono uppercase text-base-content/50">${T(t, ti.label)}</div>
+              <div class=${`font-semibold tabular-nums mt-0.5 ${ti.accent}`}>${ti.val}</div>
+            </button>`;
+          })}
+        </div>
+      </div>`;
+    })()}
     <div class="text-xs text-base-content/50 text-center px-6">${T(t, "hint")}</div>
   </div>`;
 }

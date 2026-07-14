@@ -24,6 +24,19 @@ export default [
     },
   },
   {
+    name: "тайли часу: стрибок на схід/захід і ресет на «зараз»", run: async (h) => {
+      await ready(h);
+      await h.click("#now-tile"); await h.wait(150); // establish live "now" regardless of prior test state
+      const nowB = await h.text("[data-bearing]");
+      await h.click('[data-tile="sunset"]'); await h.wait(200);
+      const setB = await h.text("[data-bearing]");
+      h.expect(nowB !== setB, "тайл заходу не перемотав час");
+      h.expect((await h.attr('[data-tile="sunset"]', "class")).includes("border-primary"), "активний тайл не підсвітився");
+      await h.click("#now-tile"); await h.wait(200);
+      h.expect((await h.text("[data-bearing]")) === nowB, "тайл «зараз» не повернув на поточний час");
+    },
+  },
+  {
     name: "вибір локації на глобусі → перерахунок сонця", run: async (h) => {
       await ready(h);
       const kyiv = await h.text("[data-bearing]");

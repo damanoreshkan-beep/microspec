@@ -38,11 +38,10 @@ export const compass = {
     if (this.needsPermission) { try { return (await DeviceOrientationEvent.requestPermission()) === "granted"; } catch { return false; } }
     return true;
   },
-  start(onHeading, onPitch) {
+  start(onHeading) {
     if (!this.supported) return () => {};
     let ema = null;
     const handler = (e) => {
-      if (onPitch && typeof e.beta === "number") onPitch(e.beta);                        // front-back tilt (pitch), for sky-pointing
       let h = null;
       if (typeof e.webkitCompassHeading === "number") h = e.webkitCompassHeading;      // iOS: from north, clockwise
       else if (e.absolute && typeof e.alpha === "number") h = (360 - e.alpha) % 360;    // Android: absolute

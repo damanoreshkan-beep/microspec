@@ -38,25 +38,34 @@ try {
   // apps (e.g. art = 28 object fetches) that render skeleton .card immediately — cold-cache safe.
   for (let i = 0; i < 30; i++) { if ((await h.count(".skeleton")) === 0 && (await h.bodyText()).trim()) break; await h.wait(500); }
 
-  console.log(`  ${C.d}design${C.x}`);
-  for (const c of await runDesignChecks(ev)) c.ok ? ok(c.name, c.msg) : no(c.name, c.msg, c.detail);
+  if (wantShots) await Deno.mkdir(`${appdir}/states`, { recursive: true });
+  const tabs = await ev(() => [...document.querySelectorAll("[data-tab]")].map((b) => b.getAttribute("data-tab")));
+  const tabList = tabs.length ? tabs : [null];
+
+  // design checks (a11y both themes · overflow@384 · glance@200) + shots on EVERY tab — a secondary view
+  // (e.g. a matrix) used to ship un-gated because only the default tab was ever reviewed.
+  for (let ti = 0; ti < tabList.length; ti++) {
+    const tb = tabList[ti];
+    if (ti > 0) {
+      await h.click(`[data-tab="${tb}"]`); await h.wait(500);
+      for (let i = 0; i < 20; i++) { if ((await h.count(".skeleton")) === 0 && (await h.bodyText()).trim()) break; await h.wait(300); }
+    }
+    const lbl = tabList.length > 1 && tb ? ` [${tb}]` : "";
+    console.log(`  ${C.d}design${lbl}${C.x}`);
+    for (const c of await runDesignChecks(ev)) c.ok ? ok(c.name + lbl, c.msg) : no(c.name + lbl, c.msg, c.detail);
+    if (wantShots) await Deno.writeFile(`${appdir}/states/${ti === 0 ? "main" : "tab-" + tb}.png`, await page.screenshot());
+  }
+  if (tabList.length > 1) { await h.click(`[data-tab="${tabList[0]}"]`); await h.wait(300); }
 
   if (wantShots) {
-    await Deno.mkdir(`${appdir}/states`, { recursive: true });
-    const tabs = await ev(() => [...document.querySelectorAll("[data-tab]")].map((b) => b.getAttribute("data-tab")));
-    await Deno.writeFile(`${appdir}/states/main.png`, await page.screenshot());
-    // shoot EVERY other tab too — so a multi-tab app's secondary views (e.g. a matrix) are reviewable, not
-    // just the default tab (the design critique otherwise never sees them).
-    for (const tb of tabs.slice(1)) { await h.click(`[data-tab="${tb}"]`); await h.wait(500); await Deno.writeFile(`${appdir}/states/tab-${tb}.png`, await page.screenshot()); }
-    if (tabs.length > 1) { await h.click(`[data-tab="${tabs[0]}"]`); await h.wait(300); }
-    // light-theme shot — the gate otherwise only ever reviews the dark theme, so light-mode defects (baked
-    // colours, dark-only shadows) ship unseen. Diagnostic (never fails); feeds the human design critique.
+    // one light-theme shot of the default tab for the human critique (per-tab LIGHT contrast is already
+    // gated inside runDesignChecks above); flip data-theme, shoot, restore.
     const baseTheme = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
     await ev((th) => document.documentElement.setAttribute("data-theme", th.includes("light") ? th : th + "-light"), baseTheme);
     await h.wait(250);
     await Deno.writeFile(`${appdir}/states/light.png`, await page.screenshot());
     await ev((th) => document.documentElement.setAttribute("data-theme", th), baseTheme);
-    console.log(`  ${C.g}✓${C.x} shots (main + light) → ${appdir}/states/`);
+    console.log(`  ${C.g}✓${C.x} shots (per-tab + light) → ${appdir}/states/`);
   }
 
   console.log(`  ${C.d}e2e${C.x}`);

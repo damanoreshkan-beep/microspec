@@ -59,14 +59,14 @@ export function quakes({ S }) {
     if (!top) return;
     const stops = [];
     if (rippleRef.current) stops.push(animate(rippleRef.current, { scale: [0.5, 2.4], opacity: [0.55, 0] }, { duration: 2.2, repeat: Infinity, ease: "easeOut" }));
-    if (rowsRef.current) { const rows = rowsRef.current.querySelectorAll(".qrow"); if (rows.length) stops.push(animate(rows, { opacity: [0, 1], y: [8, 0] }, { delay: stagger(0.035), duration: 0.35, ease: "easeOut" })); }
+    if (rowsRef.current) { const rows = rowsRef.current.querySelectorAll(".qrow"); if (rows.length) stops.push(animate(rows, { y: [12, 0] }, { delay: stagger(0.035), duration: 0.35, ease: "easeOut" })); }
     return () => stops.forEach((s) => { try { s.stop(); } catch { /* */ } });
   }, [top && top.id]);
 
   if (!list) {
     return err
-      ? html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`
-      : html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-3"><span class="loading loading-ring loading-lg"></span></div>`;
+      ? html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`
+      : html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-3"><span class="loading loading-ring loading-lg"></span></div>`;
   }
 
   const rtf = new Intl.RelativeTimeFormat(locale === "en" ? "en" : locale || "uk", { numeric: "auto" });
@@ -81,15 +81,15 @@ export function quakes({ S }) {
     </div>
 
     ${top ? html`<div class="flex flex-col items-center gap-0.5 -mt-1">
-      <div class="flex items-baseline gap-2"><span class="text-4xl font-bold tabular-nums leading-none" style=${`color:${magColor(top.mag)}`}>M${top.mag.toFixed(1)}</span><span class="text-sm text-base-content/60">${ago(top.time)}</span></div>
+      <div class="flex items-baseline gap-2"><span class="text-4xl font-bold tabular-nums leading-none" style=${`color:${magColor(top.mag)}`}>M${top.mag.toFixed(1)}</span><span class="text-sm text-base-content/70">${ago(top.time)}</span></div>
       <div class="text-sm text-base-content/80 text-center px-6">${top.place}</div>
-      <div class="text-xs text-base-content/50 mt-0.5">${list.length} ${T(t, "count24")}</div>
+      <div class="text-xs text-base-content/70 mt-0.5">${list.length} ${T(t, "count24")}</div>
     </div>` : null}
 
     <div ref=${rowsRef} class="w-full max-w-[420px] rounded-2xl border border-base-300 bg-base-100 divide-y divide-base-300/40">
       ${recent.map((q) => html`<div data-quake class="qrow flex items-center gap-3 px-4 py-2.5" key=${q.id}>
         <div class="w-11 text-center font-bold tabular-nums rounded-lg py-1 text-sm" style=${`color:${magColor(q.mag)};background:${magFill(q.mag)}22`}>${q.mag.toFixed(1)}</div>
-        <div class="flex-1 min-w-0"><div class="font-medium truncate text-sm">${q.place}</div><div class="text-xs text-base-content/55 tabular-nums">${Math.round(q.depth)} ${T(t, "km")} · ${ago(q.time)}</div></div>
+        <div class="flex-1 min-w-0"><div class="font-medium truncate text-sm">${q.place}</div><div class="text-xs text-base-content/70 tabular-nums">${Math.round(q.depth)} ${T(t, "km")} · ${ago(q.time)}</div></div>
       </div>`)}
     </div>
   </div>`;

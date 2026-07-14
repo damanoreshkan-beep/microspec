@@ -14,6 +14,7 @@ const SunCalc = _SunCalc.default || _SunCalc;
 // the solar-system bodies plotted on the dial (SunCalc only does the sun — planets via astronomy-engine).
 // each is a tiny shaded sphere in its ~true colour (researched); size ≈ relative scale (compressed).
 const BODIES = {
+  sun: { name: "Sun", color: "#FDB813", size: 20, glow: true },
   moon: { name: "Moon", color: "#CFCFD6", size: 10 }, mercury: { name: "Mercury", color: "#9A948C", size: 9 },
   venus: { name: "Venus", color: "#E7D8A6", size: 12 }, mars: { name: "Mars", color: "#D9603B", size: 10 },
   jupiter: { name: "Jupiter", color: "#D6A15B", size: 17 }, saturn: { name: "Saturn", color: "#E3C878", size: 14, ring: true },
@@ -25,7 +26,7 @@ const BODY_KEYS = Object.keys(BODIES);
 const _rgb = (h) => [0, 2, 4].map((i) => parseInt(h.slice(1 + i, 3 + i), 16));
 const _shift = (h, t, tgt) => `rgb(${_rgb(h).map((x) => Math.round(x + (tgt - x) * t)).join(",")})`;
 const lighten = (h) => _shift(h, 0.5, 255), darken = (h) => _shift(h, 0.42, 0);
-const disc = (b) => { const c = BODIES[b]; return html`<div class="rounded-full" style=${`width:${c.size}px;height:${c.size}px;background:radial-gradient(circle at 33% 28%, ${lighten(c.color)}, ${c.color} 55%, ${darken(c.color)});box-shadow:inset -1px -1px 1.5px rgba(0,0,0,.42)`}></div>`; };
+const disc = (b) => { const c = BODIES[b]; const glow = c.glow ? `,0 0 ${Math.round(c.size * 0.8)}px ${Math.round(c.size * 0.22)}px ${c.color}88` : ""; return html`<div class="rounded-full" style=${`width:${c.size}px;height:${c.size}px;background:radial-gradient(circle at 33% 28%, ${lighten(c.color)}, ${c.color} 55%, ${darken(c.color)});box-shadow:inset -1px -1px 1.5px rgba(0,0,0,.42)${glow}`}></div>`; };
 // a body marker: a shaded sphere; Saturn also gets a tilted ring.
 const planet = (b) => { const c = BODIES[b]; if (!c.ring) return disc(b); return html`<div class="relative flex items-center justify-center" style=${`width:${c.size * 2.1}px;height:${c.size * 2.1}px`}><div class="absolute" style=${`width:${c.size * 2.1}px;height:${c.size * 0.72}px;border:1.4px solid ${lighten(c.color)};border-radius:50%;opacity:.8;transform:rotate(-18deg)`}></div>${disc(b)}</div>`; };
 // bodies sit in a tight ring hugging the dial rim (cardinals are on the rim at 46%). altitude is a subtle
@@ -107,11 +108,11 @@ export function sun({ S, openScreen, closeScreen }) {
   let planets = [];
   try {
     const obs = new Astro.Observer(loc.lat, loc.lng, 0), time = new Astro.AstroTime(date);
-    planets = shown.filter((b) => BODIES[b]).map((b) => { const eq = Astro.Equator(BODIES[b].name, time, obs, true, true); const h = Astro.Horizon(time, obs, eq.ra, eq.dec, "normal"); return { b, az: h.azimuth, alt: h.altitude }; }).filter((m) => m.alt > 0);
+    planets = shown.filter((b) => b !== "sun" && BODIES[b]).map((b) => { const eq = Astro.Equator(BODIES[b].name, time, obs, true, true); const h = Astro.Horizon(time, obs, eq.ra, eq.dec, "normal"); return { b, az: h.azimuth, alt: h.altitude }; }).filter((m) => m.alt > 0);
   } catch { /* astronomy lib unavailable → just the sun */ }
-  // one ring of marks (sun + planets), de-clustered radially so bodies in conjunction don't stack their
-  // symbols on top of each other — each nearby body steps a little inward off the rim.
-  const marks = [{ sun: true, az: bearing, alt }, ...planets].sort((a, b) => a.az - b.az);
+  // one ring of marks — the sun (from SunCalc) is just another toggleable body, de-clustered radially with
+  // the planets so bodies in conjunction don't stack on top of each other; each nearby one steps inward.
+  const marks = [...(shown.includes("sun") ? [{ b: "sun", sun: true, az: bearing, alt }] : []), ...planets].sort((a, b) => a.az - b.az);
   let prevAz = -999, stack = 0;
   for (const mk of marks) { stack = mk.az - prevAz < 14 ? stack + 1 : 0; mk.r = Math.max(20, rFromAlt(mk.alt) - stack * 6); prevAz = mk.az; } // step out near-neighbours so their micro-labels get room
 
@@ -127,9 +128,7 @@ export function sun({ S, openScreen, closeScreen }) {
       <span class="absolute text-xs font-semibold text-base-content/70" style=${at(90 + roseRot, 46)}>Сх</span>
       <span class="absolute text-xs font-semibold text-base-content/70" style=${at(180 + roseRot, 46)}>Пд</span>
       <span class="absolute text-xs font-semibold text-base-content/70" style=${at(270 + roseRot, 46)}>Зх</span>
-      ${marks.map((mk) => mk.sun
-        ? html`<div data-sun class=${`absolute ${up ? "text-warning" : "text-base-content/30"}`} style=${at(mk.az + roseRot, mk.r)} key="sun">${Icon(up ? "lucide:sun" : "lucide:moon", "text-2xl")}</div>`
-        : html`<div data-planet=${mk.b} class="absolute pointer-events-none flex flex-col items-center gap-px" style=${`${at(mk.az + roseRot, mk.r)};opacity:${bodyOpacity(mk.alt)}`} title=${BODIES[mk.b].name} key=${mk.b}>
+      ${marks.map((mk) => html`<div data-planet=${mk.b} data-sun=${mk.sun ? true : null} class="absolute pointer-events-none flex flex-col items-center gap-px" style=${`${at(mk.az + roseRot, mk.r)};opacity:${bodyOpacity(mk.alt)}`} title=${BODIES[mk.b].name} key=${mk.b}>
             ${planet(mk.b)}
             <span class="text-[0.5rem] font-semibold leading-none tracking-tight whitespace-nowrap" style=${`color:${lighten(BODIES[mk.b].color)};text-shadow:0 1px 2px rgba(0,0,0,.6)`}>${T(t, "b" + mk.b[0].toUpperCase() + mk.b.slice(1))}</span>
           </div>`)}

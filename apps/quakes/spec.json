@@ -1,0 +1,15 @@
+{
+  "id": "quakes",
+  "theme": "signal",
+  "tabs": [
+    { "id": "map", "type": "tool", "icon": "lucide:waves", "label": "tabMap", "view": "quakes" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:waves",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": { "label": "profSource", "url": "https://earthquake.usgs.gov", "icon": "lucide:database" }
+  }
+}

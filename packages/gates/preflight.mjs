@@ -21,10 +21,15 @@ function installDom() {
   const noop = () => {};
   const ctxStub = new Proxy({}, { get: (_, p) => (["fillStyle", "strokeStyle", "lineWidth", "font", "globalAlpha", "lineCap", "lineJoin"].includes(p) ? "" : noop) });
   try { window.HTMLCanvasElement && (window.HTMLCanvasElement.prototype.getContext = () => ctxStub); } catch { /* linkedom may lack it */ }
+  // Web Animations API stub so `motion`'s animate() is a no-op instead of crashing (linkedom has no WAAPI)
+  const animStub = () => ({ finished: Promise.resolve(), cancel() {}, finish() {}, play() {}, pause() {}, reverse() {}, commitStyles() {}, persist() {}, updatePlaybackRate() {}, addEventListener() {}, removeEventListener() {}, currentTime: 0, playState: "finished", effect: null });
+  for (const proto of ["Element", "HTMLElement", "SVGElement"]) { try { window[proto] && (window[proto].prototype.animate = animStub); } catch { /* */ } }
+  try { window.document.getAnimations = () => []; window.document.timeline = { currentTime: 0 }; } catch { /* */ }
   const store = new Map();
   const g = globalThis;
   g.window = window; g.document = document;
   g.HTMLElement = window.HTMLElement; g.customElements = window.customElements;
+  g.Element = window.Element || class Element {}; g.NodeList = window.NodeList || class NodeList {}; g.HTMLCollection = window.HTMLCollection || class HTMLCollection {}; g.SVGElement = window.SVGElement || class SVGElement {}; g.Node = window.Node || class Node {};
   g.navigator = { userAgent: "preflight", language: "uk", onLine: true, permissions: { query: async () => ({ state: "prompt", onchange: null }) }, geolocation: { getCurrentPosition: noop, watchPosition: () => 0, clearWatch: noop } };
   g.location = window.location = { hostname: "localhost", search: "", href: "http://localhost/", origin: "http://localhost", pathname: "/", protocol: "http:" };
   g.history = window.history = { state: null, pushState() {}, replaceState() {}, back() {}, forward() {}, go() {} };
@@ -42,7 +47,11 @@ function installDom() {
   // apps must use their isGate/?mock sample on localhost, which is exactly what we set the hostname to.
   const realFetch = g.fetch;
   g.fetch = (u) => { const s = String(u); if (s.startsWith("file:")) return realFetch(u); return Promise.reject(new Error("preflight: network blocked (" + s.slice(0, 48) + ")")); };
-  return { window, document, rafErr };
+  // capture async/effect throws (they run in timers → would otherwise hard-crash the process) as findings
+  const uncaught = [];
+  try { globalThis.addEventListener("error", (e) => { uncaught.push(e.error?.message || e.message || String(e)); e.preventDefault?.(); }); } catch { /* */ }
+  try { globalThis.addEventListener("unhandledrejection", (e) => { const m = e.reason?.message || String(e.reason || ""); if (!/network blocked/.test(m)) uncaught.push(m); e.preventDefault?.(); }); } catch { /* */ }
+  return { window, document, rafErr, uncaught };
 }
 
 const flush = () => new Promise((r) => setTimeout(r, 60));
@@ -71,7 +80,7 @@ async function preflight(appdir) {
   for (const k of keys) for (const l of locales) if (!(k in i18n[l])) errs.push(`i18n key "${k}" missing in ${l}.json`);
 
   // --- mount: render the app in a linkedom DOM and inspect the output ---
-  const { document, rafErr } = installDom();
+  const { document, rafErr, uncaught } = installDom();
   try {
     const views = mode === "tool" ? await import(`file://${await Deno.realPath(`${appdir}/view.js`)}`) : {};
     const { start } = await import("/_rt/index.js");
@@ -92,6 +101,7 @@ async function preflight(appdir) {
     if (strays.size) errs.push(`stray tag-name text ${[...strays].map((s) => `"${s}"`).join(", ")} — likely an UNCLOSED tag in ${srcFile}`);
 
     for (const e of rafErr) errs.push("render loop threw: " + (e?.message || e));
+    for (const m of uncaught) errs.push("async/effect threw: " + m);
   } catch (e) {
     errs.push("mount threw: " + (e?.stack?.split("\n").slice(0, 3).join(" | ") || e?.message || e));
   }

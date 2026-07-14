@@ -471,12 +471,12 @@ function ConverterView({ tab }) {
   const result = rTo ? amt * rFrom / rTo : 0;
   const one = rTo ? rFrom / rTo : 0;
   const quick = tab.quick || ["100", "500", "1000", "5000"];
-  const Sel = (id, val, onCh) => html`<select id=${id} class="select select-bordered rounded-2xl font-semibold w-24 shrink-0" value=${val} onChange=${(e) => onCh(e.target.value)}>${codes.map((c) => html`<option value=${c} key=${c}>${c}</option>`)}</select>`;
+  const Sel = (id, val, onCh, aria) => html`<select id=${id} aria-label=${aria} class="select select-bordered rounded-2xl font-semibold w-24 shrink-0" value=${val} onChange=${(e) => onCh(e.target.value)}>${codes.map((c) => html`<option value=${c} key=${c}>${c}</option>`)}</select>`;
   return html`<div class="flex flex-col gap-3">
     <div class="card @container bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 gap-3">
-      <div class="flex gap-2 items-center"><input id="conv-amount" type="text" inputmode="decimal" class="input input-bordered rounded-2xl text-lg font-semibold tabular-nums flex-1 min-w-0" value=${amount} onInput=${(e) => A.S.amount.set(e.target.value)} />${Sel("conv-from", from, (v) => A.S.from.set(v))}</div>
+      <div class="flex gap-2 items-center"><input id="conv-amount" type="text" inputmode="decimal" aria-label=${T(t, "convAmount")} class="input input-bordered rounded-2xl text-lg font-semibold tabular-nums flex-1 min-w-0" value=${amount} onInput=${(e) => A.S.amount.set(e.target.value)} />${Sel("conv-from", from, (v) => A.S.from.set(v), T(t, "convFrom"))}</div>
       <div class="flex justify-center"><button id="conv-swap" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "swap")} onClick=${A.swap}>${Icon("lucide:arrow-up-down", "text-xl")}</button></div>
-      <div class="flex gap-2 items-center"><div id="conv-result" class="input input-bordered rounded-2xl text-lg font-bold tabular-nums flex-1 min-w-0 flex items-center bg-base-200">${fmtNum(result, loc)}</div>${Sel("conv-to", to, (v) => A.S.to.set(v))}</div>
+      <div class="flex gap-2 items-center"><div id="conv-result" class="input input-bordered rounded-2xl text-lg font-bold tabular-nums flex-1 min-w-0 flex items-center bg-base-200">${fmtNum(result, loc)}</div>${Sel("conv-to", to, (v) => A.S.to.set(v), T(t, "convTo"))}</div>
       <div class="text-xs text-base-content/80 text-center">${T(t, "perUnit2", { a: "1 " + from, rate: fmtNum(one, loc), b: to })}</div>
     </div></div>
     <div class="flex flex-wrap gap-2 justify-center">${quick.map((q) => html`<button class="btn btn-sm btn-outline rounded-full" key=${q} onClick=${() => A.S.amount.set(q)}>${q}</button>`)}</div>

@@ -153,6 +153,15 @@
     "href": "./onthisday/"
   },
   {
+    "id": "ambient",
+    "title": "Звуки",
+    "tagline": "Ambient-звуки для сну й фокусу — усе синтезується наживо, без файлів, офлайн",
+    "glyph": "lucide:audio-lines",
+    "bg": "#0E1120",
+    "fg": "#A5B4FC",
+    "href": "./ambient/"
+  },
+  {
     "id": "dou",
     "title": "DOU · бронювання",
     "tagline": "Вакансії з бронюванням від мобілізації",

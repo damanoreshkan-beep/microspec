@@ -12,6 +12,15 @@ export default [
     },
   },
   {
+    name: "клік по рядку → фокус на цьому землетрусі", run: async (h) => {
+      await ready(h);
+      h.expect(/M6\.2/.test(await h.text("[data-mag]")), "дефолт не найсильніший (M6.2)");
+      await h.click('[data-quake]:nth-child(3)'); await h.wait(250); // 3-й рядок = M4.8 Аляска
+      h.expect(/M4\.8/.test(await h.text("[data-mag]")), "заголовок не оновився на обраний рядок");
+      h.expect((await h.attr('[data-quake]:nth-child(3)', "class")).includes("bg-primary"), "обраний рядок не підсвітився");
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

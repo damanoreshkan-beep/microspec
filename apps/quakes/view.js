@@ -38,6 +38,7 @@ export function quakes({ S }) {
   const t = useStore(S.t), locale = useStore(S.locale);
   const [list, setList] = useState(isGate || MOCK ? sample() : null);
   const [err, setErr] = useState(false);
+  const [selId, setSelId] = useState(null); // the focused quake (tap a row or a globe dot); defaults to the strongest
   const rowsRef = useRef();
 
   useEffect(() => {
@@ -53,6 +54,7 @@ export function quakes({ S }) {
   }, []);
 
   const top = list && list.length ? list.reduce((a, b) => (b.mag > a.mag ? b : a)) : null;
+  const sel = (list && list.find((q) => q.id === selId)) || top; // globe + headline follow the selection
 
   // Motion: stagger the list in. (The seismic ripple is drawn ON the globe canvas — anchored to the real
   // epicentre lat/lon via `pulse:true` on its point — so it tracks rotation, unlike a fixed DOM overlay.)
@@ -72,25 +74,26 @@ export function quakes({ S }) {
 
   const rtf = new Intl.RelativeTimeFormat(locale === "en" ? "en" : locale || "uk", { numeric: "auto" });
   const ago = (ms) => { const s = (Date.now() - ms) / 1000; if (s < 60) return rtf.format(-Math.round(s), "second"); if (s < 3600) return rtf.format(-Math.round(s / 60), "minute"); if (s < 86400) return rtf.format(-Math.round(s / 3600), "hour"); return rtf.format(-Math.round(s / 86400), "day"); };
-  const points = list.map((q) => ({ lat: q.lat, lon: q.lon, r: magSize(q.mag), color: magFill(q.mag), pulse: !!top && q.id === top.id }));
+  const points = list.map((q) => ({ id: q.id, lat: q.lat, lon: q.lon, r: magSize(q.mag), color: magFill(q.mag), pulse: !!sel && q.id === sel.id }));
   const recent = list.slice().sort((a, b) => b.time - a.time).slice(0, 24);
 
   return html`<div class="flex flex-col gap-4 items-center">
     <div class="w-full flex justify-center">
-      <${Globe} points=${points} focus=${top ? { lat: top.lat, lon: top.lon } : null} spin=${false} height=${300} />
+      <${Globe} points=${points} focus=${sel ? { lat: sel.lat, lon: sel.lon } : null} spin=${false} height=${300} onPick=${(p) => p.point && setSelId(p.point.id)} />
     </div>
 
-    ${top ? html`<div class="flex flex-col items-center gap-0.5 -mt-1">
-      <div class="flex items-baseline gap-2"><span class="text-4xl font-bold tabular-nums leading-none" style=${`color:${magColor(top.mag)}`}>M${top.mag.toFixed(1)}</span><span class="text-sm text-base-content/70">${ago(top.time)}</span></div>
-      <div class="text-sm text-base-content/80 text-center px-6">${top.place}</div>
+    ${sel ? html`<div class="flex flex-col items-center gap-0.5 -mt-1">
+      <div class="flex items-baseline gap-2"><span data-mag class="text-4xl font-bold tabular-nums leading-none" style=${`color:${magColor(sel.mag)}`}>M${sel.mag.toFixed(1)}</span><span class="text-sm text-base-content/70">${ago(sel.time)}</span></div>
+      <div class="text-sm text-base-content/80 text-center px-6">${sel.place}</div>
       <div class="text-xs text-base-content/70 mt-0.5">${list.length} ${T(t, "count24")}</div>
     </div>` : null}
 
-    <div ref=${rowsRef} class="w-full max-w-[420px] rounded-2xl border border-base-300 bg-base-100 divide-y divide-base-300/40">
-      ${recent.map((q) => html`<div data-quake class="qrow flex items-center gap-3 px-4 py-2.5" key=${q.id}>
-        <div class="w-11 text-center font-bold tabular-nums rounded-lg py-1 text-sm" style=${`color:${magColor(q.mag)};border:1.5px solid ${magFill(q.mag)}`}>${q.mag.toFixed(1)}</div>
+    <div ref=${rowsRef} class="w-full max-w-[420px] rounded-2xl border border-base-300 bg-base-100 overflow-hidden divide-y divide-base-300/40">
+      ${recent.map((q) => html`<button data-quake class=${`qrow w-full text-left flex items-center gap-3 px-4 py-2.5 transition ${sel && q.id === sel.id ? "bg-primary/10" : "active:bg-base-200"}`} onClick=${() => setSelId(q.id)} key=${q.id}>
+        <div class="w-11 text-center font-bold tabular-nums rounded-lg py-1 text-sm shrink-0" style=${`color:${magColor(q.mag)};border:1.5px solid ${magFill(q.mag)}`}>${q.mag.toFixed(1)}</div>
         <div class="flex-1 min-w-0"><div class="font-medium truncate text-sm">${q.place}</div><div class="text-xs text-base-content/70 tabular-nums">${Math.round(q.depth)} ${T(t, "km")} · ${ago(q.time)}</div></div>
-      </div>`)}
+        ${sel && q.id === sel.id ? Icon("lucide:crosshair", "text-primary shrink-0") : null}
+      </button>`)}
     </div>
   </div>`;
 }

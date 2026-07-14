@@ -131,7 +131,15 @@ export function Globe({ onPick, selected, marker, focus, points, spin = true, he
       const now = performance.now();
       if (now - s.lastTap < 280 && s.zoom > 1.02) { s.zoom = 1; s.lastTap = 0; return; }  // double-tap resets zoom
       s.lastTap = now;
-      if (P.current.onPick) { const rect = cv.getBoundingClientRect(); const ll = proj.invert([e.clientX - rect.left, e.clientY - rect.top]); if (ll) { const f = LAND.find((c) => geoContains(c, ll)); P.current.onPick({ lat: ll[1], lon: ll[0], id: f ? String(f.id) : null, name: f?.properties?.name || null }); } }
+      if (P.current.onPick) {
+        const rect = cv.getBoundingClientRect(), px = e.clientX - rect.left, py = e.clientY - rect.top;
+        const ll = proj.invert([px, py]);
+        // hit-test overlay points first: the nearest VISIBLE point within (its radius + 10px) is "tapped".
+        // Systemic — any app with `points` gets tappable markers; the hit point rides along in the payload.
+        let hit = null, best = Infinity; const ctr = [-s.rot[0], -s.rot[1]];
+        for (const pt of (P.current.points || [])) { if (geoDistance([pt.lon, pt.lat], ctr) > Math.PI / 2) continue; const xy = proj([pt.lon, pt.lat]); if (!xy) continue; const d = Math.hypot(xy[0] - px, xy[1] - py), thr = (pt.r || 3) + 10; if (d <= thr && d < best) { best = d; hit = pt; } }
+        if (ll || hit) { const f = ll ? LAND.find((c) => geoContains(c, ll)) : null; P.current.onPick({ lat: ll ? ll[1] : hit.lat, lon: ll ? ll[0] : hit.lon, id: f ? String(f.id) : null, name: f?.properties?.name || null, point: hit }); }
+      }
     };
     // desktop: wheel / trackpad-pinch (ctrlKey) zoom — clamp deltaY so mouse-wheel (±100) and trackpad
     // (±small) both feel smooth; passive:false so the page doesn't zoom.

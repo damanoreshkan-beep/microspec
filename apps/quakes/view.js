@@ -14,7 +14,7 @@ const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 const MOCK = new URLSearchParams(location.search).get("mock");
 
 // magnitude → colour [dark-theme bright, light-theme dark]; text uses light-dark(), shapes the bright one
-const MAG = [["#41C06F", "#177F46"], ["#8FBE45", "#4A7D2E"], ["#D8B23C", "#856400"], ["#E2932F", "#985800"], ["#E7742E", "#A24810"], ["#EC5A4A", "#B63125"], ["#C94BBA", "#8E2A86"]];
+const MAG = [["#41C06F", "#136B3A"], ["#8FBE45", "#3F6B24"], ["#D8B23C", "#6E5200"], ["#E2932F", "#985800"], ["#E7742E", "#A24810"], ["#EC5A4A", "#B63125"], ["#C94BBA", "#8E2A86"]];
 const magI = (m) => Math.max(0, Math.min(6, Math.floor(m) - 2));
 const magFill = (m) => MAG[magI(m)][0];
 const magColor = (m) => `light-dark(${MAG[magI(m)][1]},${MAG[magI(m)][0]})`;
@@ -88,7 +88,7 @@ export function quakes({ S }) {
 
     <div ref=${rowsRef} class="w-full max-w-[420px] rounded-2xl border border-base-300 bg-base-100 divide-y divide-base-300/40">
       ${recent.map((q) => html`<div data-quake class="qrow flex items-center gap-3 px-4 py-2.5" key=${q.id}>
-        <div class="w-11 text-center font-bold tabular-nums rounded-lg py-1 text-sm" style=${`color:${magColor(q.mag)};background:${magFill(q.mag)}22`}>${q.mag.toFixed(1)}</div>
+        <div class="w-11 text-center font-bold tabular-nums rounded-lg py-1 text-sm" style=${`color:${magColor(q.mag)};border:1.5px solid ${magFill(q.mag)}`}>${q.mag.toFixed(1)}</div>
         <div class="flex-1 min-w-0"><div class="font-medium truncate text-sm">${q.place}</div><div class="text-xs text-base-content/70 tabular-nums">${Math.round(q.depth)} ${T(t, "km")} · ${ago(q.time)}</div></div>
       </div>`)}
     </div>

@@ -48,8 +48,8 @@ export function iss({ S }) {
 
   const stat = (icon, label, value, unit) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-0.5">
     <div class="text-[0.62rem] font-mono uppercase text-base-content/60 flex items-center gap-1">${Icon(icon)}${T(t, label)}</div>
-    <div class="text-xl font-bold tabular-nums">${value}<span class="text-sm font-medium text-base-content/60 ml-1">${T(t, unit)}</span></div>
-  </div>`;
+    <div class="text-xl font-bold tabular-nums truncate">${value}<span class="text-sm font-medium text-base-content/60 ml-1">${T(t, unit)}</span></div>
+  </div></div>`;
 
   return html`<div class="flex flex-col gap-4 items-center">
     <${Globe} points=${[{ lat, lon, r: 16, color: "rgba(245,185,77,.16)" }, { lat, lon, r: 5, color: "#F5B94D" }]} focus=${{ lat, lon }} spin=${false} height=${320} />
@@ -59,10 +59,10 @@ export function iss({ S }) {
       <span class="text-base-content/70">${T(t, "over")}</span><span class="font-semibold">${over}</span>
     </div>
 
-    <div class="grid grid-cols-2 gap-2 w-full max-w-[420px]">
+    <div class="@container w-full max-w-[420px]"><div class="grid grid-cols-2 @max-[260px]:grid-cols-1 gap-2">
       ${stat("lucide:arrow-up-from-line", "altitude", fmt(alt), "km")}
       ${stat("lucide:gauge", "velocity", fmt(vel), "kmh")}
-    </div>
+    </div></div>
 
     <div class="w-full max-w-[420px] rounded-2xl border border-base-300 bg-base-100 px-4 flex flex-col divide-y divide-base-300/40">
       <div class="flex items-center justify-between py-2.5"><span class="text-base-content/70 flex items-center gap-2">${Icon("lucide:map-pin")}${T(t, "coords")}</span><span data-coords class="font-medium tabular-nums">${lat.toFixed(2)}°, ${lon.toFixed(2)}°</span></div>

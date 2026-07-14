@@ -31,7 +31,7 @@ const disc = (b) => { const c = BODIES[b]; const glow = c.glow ? `,0 0 ${Math.ro
 const planet = (b) => { const c = BODIES[b]; if (!c.ring) return disc(b); return html`<div class="relative flex items-center justify-center" style=${`width:${c.size * 2.1}px;height:${c.size * 2.1}px`}><div class="absolute" style=${`width:${c.size * 2.1}px;height:${c.size * 0.72}px;border:1.4px solid ${lighten(c.color)};border-radius:50%;opacity:.8;transform:rotate(-18deg)`}></div>${disc(b)}</div>`; };
 // the dial is a real azimuthal sky map: angle = azimuth, radius = REAL altitude. rim (46%) = horizon,
 // inward = higher in the sky (kept clear of the centre readout). opacity fades bodies near the horizon.
-const rFromAlt = (alt) => 46 - Math.min(90, Math.max(0, alt)) / 90 * 16; // [46 (horizon) .. 30 (zenith)]
+const rFromAlt = (alt) => 40 - Math.min(90, Math.max(0, alt)) / 90 * 14; // [40 (horizon) .. 26 (zenith)] — leaves the outer rim + label room inside the circle
 const bodyOpacity = (alt) => (0.5 + 0.5 * Math.min(1, Math.max(0, alt) / 90)).toFixed(2); // fainter near horizon
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -120,31 +120,31 @@ export function sun({ S, openScreen, closeScreen }) {
     while (j < marks.length && marks[j].az - marks[j - 1].az < 12) j++; // cluster = consecutive marks within 12° azimuth
     const group = marks.slice(i, j);
     if (group.length === 1) group[0].r = rFromAlt(group[0].alt);
-    else { group.sort((a, b) => a.alt - b.alt); group.forEach((mk, k) => { mk.r = Math.max(20, 46 - k * 10); }); } // lowest altitude rides the rim, each higher body steps 10% inward — real order, guaranteed label spacing
+    else { group.sort((a, b) => a.alt - b.alt); group.forEach((mk, k) => { mk.r = Math.max(18, 40 - k * 9); }); } // lowest altitude rides the rim, each higher body steps 9% inward — real order, guaranteed label spacing
     i = j;
   }
 
   return html`<div class="flex flex-col gap-4 items-center">
     <!-- compass dial -->
-    <div class="relative w-full mx-auto overflow-visible" style="max-width:280px;aspect-ratio:1">
+    <div class="relative w-full mx-auto overflow-visible" style="max-width:420px;aspect-ratio:1">
       <div class="absolute inset-0 rounded-full border border-base-300 bg-base-100"></div>
       <!-- fixed marker: where the phone points (vertical, above the dial) -->
       <div class="absolute left-1/2 -top-1 -translate-x-1/2 text-base-content/50">${Icon("lucide:chevron-up", "text-xl")}</div>
-      <!-- cardinals hug the rim (46%); sun + planets ride a tight ring just inside — positioned by ANGLE
-           (no rotated container → never spills the dial) -->
-      <span class="absolute text-sm font-bold text-error" style=${at(roseRot, 46)}>Пн</span>
-      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(90 + roseRot, 46)}>Сх</span>
-      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(180 + roseRot, 46)}>Пд</span>
-      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(270 + roseRot, 46)}>Зх</span>
+      <!-- cardinals hug the rim (45%); sun + planets ride a tight ring further in (≤40%) so spheres + their
+           labels stay inside the circle — positioned by ANGLE (no rotated container → never spills the dial) -->
+      <span class="absolute text-sm font-bold text-error" style=${at(roseRot, 45)}>Пн</span>
+      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(90 + roseRot, 45)}>Сх</span>
+      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(180 + roseRot, 45)}>Пд</span>
+      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(270 + roseRot, 45)}>Зх</span>
       ${marks.map((mk) => html`<div data-planet=${mk.b} data-sun=${mk.sun ? true : null} class="absolute pointer-events-none flex flex-col items-center gap-px" style=${`${at(mk.az + roseRot, mk.r)};opacity:${bodyOpacity(mk.alt)}`} title=${BODIES[mk.b].name} key=${mk.b}>
             ${planet(mk.b)}
             <span class="text-[0.5rem] font-semibold leading-none tracking-tight whitespace-nowrap" style=${`color:${lighten(BODIES[mk.b].color)};text-shadow:0 1px 2px rgba(0,0,0,.6)`}>${T(t, "b" + mk.b[0].toUpperCase() + mk.b.slice(1))}</span>
           </div>`)}
       <!-- center readout -->
       <div class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">
-        <div data-bearing class="text-3xl font-bold tabular-nums">${Math.round(bearing)}°</div>
-        <div class="text-sm font-medium">${dirName(bearing)}</div>
-        <div class="text-xs text-base-content/60 tabular-nums">${up ? `${T(t, "alt")} ${Math.round(alt)}°` : T(t, "belowHorizon")}</div>
+        <div data-bearing class="text-5xl font-bold tabular-nums">${Math.round(bearing)}°</div>
+        <div class="text-base font-medium">${dirName(bearing)}</div>
+        <div class="text-sm text-base-content/60 tabular-nums">${up ? `${T(t, "alt")} ${Math.round(alt)}°` : T(t, "belowHorizon")}</div>
       </div>
     </div>
 

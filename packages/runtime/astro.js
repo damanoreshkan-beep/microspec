@@ -24,7 +24,7 @@ export const darken = (h) => _shift(h, 0.42, 0);
 
 const disc = (c) => {
   const glow = c.glow ? `,0 0 ${Math.round(c.size * 0.8)}px ${Math.round(c.size * 0.22)}px ${c.color}88` : "";
-  return html`<div class="rounded-full" style=${`width:${c.size}px;height:${c.size}px;background:radial-gradient(circle at 33% 28%, ${lighten(c.color)}, ${c.color} 55%, ${darken(c.color)});box-shadow:inset -1px -1px 1.5px rgba(0,0,0,.42)${glow}`}></div>`;
+  return html`<div class="rounded-full" style=${`width:${c.size}px;height:${c.size}px;background:radial-gradient(circle at 33% 28%, ${lighten(c.color)}, ${c.color} 55%, ${darken(c.color)});box-shadow:inset -1px -1px 1.5px rgba(0,0,0,.42),0 0 0 0.5px rgba(130,130,130,.35)${glow}`}></div>`;
 };
 
 export function Planet({ body }) {

@@ -43,9 +43,12 @@ try {
 
   if (wantShots) {
     await Deno.mkdir(`${appdir}/states`, { recursive: true });
-    await Deno.writeFile(`${appdir}/states/main.png`, await page.screenshot());
     const tabs = await ev(() => [...document.querySelectorAll("[data-tab]")].map((b) => b.getAttribute("data-tab")));
-    if (tabs.length > 1) { await h.click(`[data-tab="${tabs[tabs.length - 1]}"]`); await h.wait(500); await Deno.writeFile(`${appdir}/states/last.png`, await page.screenshot()); await h.click(`[data-tab="${tabs[0]}"]`); await h.wait(300); }
+    await Deno.writeFile(`${appdir}/states/main.png`, await page.screenshot());
+    // shoot EVERY other tab too — so a multi-tab app's secondary views (e.g. a matrix) are reviewable, not
+    // just the default tab (the design critique otherwise never sees them).
+    for (const tb of tabs.slice(1)) { await h.click(`[data-tab="${tb}"]`); await h.wait(500); await Deno.writeFile(`${appdir}/states/tab-${tb}.png`, await page.screenshot()); }
+    if (tabs.length > 1) { await h.click(`[data-tab="${tabs[0]}"]`); await h.wait(300); }
     // light-theme shot — the gate otherwise only ever reviews the dark theme, so light-mode defects (baked
     // colours, dark-only shadows) ship unseen. Diagnostic (never fails); feeds the human design critique.
     const baseTheme = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");

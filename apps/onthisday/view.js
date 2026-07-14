@@ -76,7 +76,7 @@ export function onthisday({ S }) {
   const items = (data[cat] || []).slice().sort((a, b) => (b.year || 0) - (a.year || 0));
   const body = (it) => html`<div class="card-body p-3 flex-row items-start gap-3">
     <div class="shrink-0 w-12 text-right pt-0.5"><span class="text-base font-bold tabular-nums text-primary">${it.year ?? "—"}</span></div>
-    <div class="flex-1 min-w-0"><p class="text-sm leading-snug">${it.text}</p></div>
+    <div class="flex-1 min-w-0"><p class="text-sm leading-snug break-words">${it.text}</p></div>
     ${it.thumb ? html`<img src=${it.thumb} loading="lazy" alt="" class="w-14 h-14 rounded-lg object-cover shrink-0" />` : null}
   </div>`;
 

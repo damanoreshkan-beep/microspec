@@ -51,7 +51,17 @@ prompt → probe source → author spec.json (ajv-gated) → author data.js|view
    sub-screen and assert `h.back()` closes it (not exits). Note badge/label CSS uppercases text → use `/i`
    regexes.
 
-6. **Push → CI is the gate** (below). **Check the run-level conclusion**, not streamed per-job output.
+6. **Pre-flight locally (browser-free) BEFORE pushing** — catches the render class of bugs in ~2s so you
+   don't burn a ~1-min CI round-trip on them:
+   ```
+   deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/<id>
+   ```
+   It mounts spec+view in a linkedom DOM and fails on: a throwing view (undefined var, bad import, V8-only
+   syntax), an **unclosed tag** (htm renders the tag name as literal text → corrupt DOM), a **missing i18n
+   key** referenced by the view (`T(t,"x")` in a locale that lacks `x`), or a blank render. It does NOT
+   replace verify (axe/overflow/shots need Chromium) — run both: preflight first, then push.
+
+7. **Push → CI is the gate** (below). **Check the run-level conclusion**, not streamed per-job output.
 
 ## Tool apps — compose the SYSTEMIC runtime, don't rebuild
 

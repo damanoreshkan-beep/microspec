@@ -1,0 +1,14 @@
+{
+  "id": "rave",
+  "theme": "signal",
+  "tabs": [
+    { "id": "beat", "type": "tool", "icon": "lucide:audio-waveform", "label": "tabBeat", "view": "rave" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:audio-waveform",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

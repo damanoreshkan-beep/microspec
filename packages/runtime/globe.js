@@ -23,6 +23,14 @@ async function loadWorld() {
   if (!LOADING) LOADING = fetch(new URL("./world-110m.json", import.meta.url)).then((r) => r.json()).then((topo) => { LAND = feature(topo, topo.objects.countries).features; });
   await LOADING;
 }
+// which country a point falls in — {id, name} or null (ocean / topology not loaded yet). Uses the world
+// topology any Globe on the page has already fetched. Systemic: reused e.g. by the ISS tracker.
+export function countryAt(lat, lon) {
+  if (!LAND) return null;
+  const f = LAND.find((c) => geoContains(c, [lon, lat]));
+  return f ? { id: String(f.id), name: f.properties?.name || null } : null;
+}
+export function worldReady() { return !!LAND; }
 
 // Signal-ish palette, theme-aware via the document's data-theme (hardcoded so canvas never depends on
 // oklch var support). Selected country + marker use the accent so they pop on the monochrome map.

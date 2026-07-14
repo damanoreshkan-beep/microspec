@@ -110,9 +110,9 @@ export function rave({ S }) {
     </div>
 
     <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-      ${PRESETS.map((p) => html`<button data-preset=${p.id} class="btn btn-xs btn-outline shrink-0" onClick=${() => { ensure(); setTracks(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
-      <button data-preset="random" class="btn btn-xs btn-outline shrink-0 gap-1" onClick=${() => { ensure(); setTracks(random()); }}>${Icon("lucide:dices")}${T(t, "rand")}</button>
-      <button data-preset="clear" class="btn btn-xs btn-ghost shrink-0 gap-1" onClick=${() => setTracks(empty())}>${Icon("lucide:eraser")}${T(t, "clear")}</button>
+      ${PRESETS.map((p) => html`<button data-preset=${p.id} class="btn btn-sm btn-outline shrink-0" onClick=${() => { ensure(); setTracks(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
+      <button data-preset="random" aria-label=${T(t, "rand")} class="btn btn-sm btn-square btn-outline shrink-0" onClick=${() => { ensure(); setTracks(random()); }}>${Icon("lucide:dices", "text-base")}</button>
+      <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => setTracks(empty())}>${Icon("lucide:eraser", "text-base")}</button>
     </div>
 
     <div class="flex flex-col gap-1">
@@ -123,7 +123,7 @@ export function rave({ S }) {
       ${TRACKS.map((tr) => html`<div class="flex items-center gap-[3px]" key=${tr.id}>
         <div class=${`w-7 shrink-0 flex items-center justify-center ${tracks[tr.id].some(Boolean) ? "text-base-content" : "text-base-content/40"}`}>${Icon(tr.icon, "text-lg")}</div>
         ${STEPS.map((s) => { const on = tracks[tr.id][s]; return html`<button data-cell=${`${tr.id}-${s}`} aria-pressed=${on} aria-label=${`${T(t, tr.name)} ${s + 1}`}
-          class=${`flex-1 min-w-0 aspect-square rounded-sm touch-manipulation transition-colors ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? tr.on : "bg-base-300"} ${s === cur ? "ring-2 ring-base-content/40" : ""}`}
+          class=${`flex-1 min-w-0 h-9 rounded touch-manipulation transition-colors ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? tr.on : "bg-base-300"} ${s === cur ? "ring-2 ring-base-content/50" : ""}`}
           onClick=${() => cellToggle(tr.id, s)} key=${s}></button>`; })}
       </div>`)}
     </div>

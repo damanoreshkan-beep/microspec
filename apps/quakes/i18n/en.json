@@ -1,0 +1,22 @@
+{
+  "title": "Earthquakes",
+  "tabMap": "Map",
+  "tabMe": "Me",
+  "count24": "quakes in 24 h",
+  "km": "km",
+  "statusError": "Couldn't fetch data",
+  "profTheme": "Dark theme",
+  "profLang": "Language",
+  "profTagline": "Earthquakes worldwide, live — magnitude, place and depth on a spinning globe",
+  "profSource": "Data — USGS",
+  "install": "Install app",
+  "installTitle": "Install",
+  "installBtn": "Install",
+  "installDesc": "Works offline, opens like an app",
+  "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
+  "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
+  "close": "Close",
+  "refresh": "Refresh",
+  "toastSaved": "Saved",
+  "toastRemoved": "Removed"
+}

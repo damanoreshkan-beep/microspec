@@ -54,7 +54,7 @@ function heatMap(items, field) {
   return new Map(items.map((it, i) => [it, v[i] > 0 ? Math.min(1, Math.max(0, (Math.log(v[i]) - lo) / span)) : 0]));
 }
 const heatBg = (x) => `rgba(240,169,59,${(0.16 + 0.84 * x).toFixed(3)})`;
-const heatInk = (x) => (x >= 0.5 ? `rgba(240,169,59,${(0.55 + 0.45 * x).toFixed(3)})` : "");
+const heatInk = (x) => (x >= 0.5 ? `light-dark(#7a4a00,rgba(240,169,59,${(0.55 + 0.45 * x).toFixed(3)}))` : "");
 
 let _searchT;
 const debouncedLoad = () => { clearTimeout(_searchT); _searchT = setTimeout(() => A.load(), 350); };

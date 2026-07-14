@@ -120,7 +120,7 @@ export function sun({ S, openScreen, closeScreen }) {
     while (j < marks.length && marks[j].az - marks[j - 1].az < 12) j++; // cluster = consecutive marks within 12° azimuth
     const group = marks.slice(i, j);
     if (group.length === 1) group[0].r = rFromAlt(group[0].alt);
-    else { group.sort((a, b) => a.alt - b.alt); const base = rFromAlt(group[0].alt); group.forEach((mk, k) => { mk.r = Math.max(24, base - k * 8.5); }); }
+    else { group.sort((a, b) => a.alt - b.alt); group.forEach((mk, k) => { mk.r = Math.max(20, 46 - k * 10); }); } // lowest altitude rides the rim, each higher body steps 10% inward — real order, guaranteed label spacing
     i = j;
   }
 

@@ -30,8 +30,7 @@ function buildTines(steps) {
   return out;
 }
 
-const TIMBRE = { type: "sine", attack: 0.003, peak: 0.5, partials: [[1, 1, 1], [4.98, 0.32, 0.12], [13.7, 0.11, 0.05]] };
-const durFor = (freq) => Math.min(2.8, Math.max(1.0, 2.8 * Math.pow(261.6 / freq, 0.45)));
+const TIMBRE = { type: "sine", dur: 2.1, attack: 0.002, peak: 0.45, partials: [[1, 1], [2.01, 0.55], [3.0, 0.22], [4.3, 0.1], [5.9, 0.05]] };
 
 const BASE = 7;
 const SONGS = [
@@ -52,7 +51,7 @@ export function kalimba({ S }) {
 
   const ensure = () => { if (!audioSupported) return null; if (!eng.current) eng.current = createEngine({ master: 0.7, noise: false }); eng.current.resume(); return eng.current; };
   const flash = (pos) => { setLit((s) => { const n = new Set(s); n.add(pos); return n; }); flashes.current.push(setTimeout(() => setLit((s) => { const n = new Set(s); n.delete(pos); return n; }), 280)); };
-  const hit = (e, tn) => { if (e && tn) e.strike(tn.freq, { ...TIMBRE, dur: durFor(tn.freq) }); };
+  const hit = (e, tn) => { if (e && tn) e.strike(tn.freq, TIMBRE); };
   const pluck = (pos) => { const tn = tines[pos]; hit(ensure(), tn); flash(pos); };
 
   const stop = () => { song.current.forEach(clearTimeout); song.current = []; setPlaying(null); };

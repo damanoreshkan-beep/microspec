@@ -4,7 +4,7 @@
   "filters": {
     "defaults": { "bodies": ["moon", "mercury", "venus", "mars", "jupiter", "saturn"] },
     "controls": [
-      { "type": "multi", "key": "bodies", "label": "fBodies", "icon": "lucide:orbit", "options": [["moon", "bMoon"], ["mercury", "bMercury"], ["venus", "bVenus"], ["mars", "bMars"], ["jupiter", "bJupiter"], ["saturn", "bSaturn"], ["uranus", "bUranus"], ["neptune", "bNeptune"]] }
+      { "type": "multi", "key": "bodies", "label": "fBodies", "icon": "lucide:orbit", "options": [["moon", "bMoon"], ["mercury", "bMercury"], ["venus", "bVenus"], ["mars", "bMars"], ["jupiter", "bJupiter"], ["saturn", "bSaturn"], ["uranus", "bUranus"], ["neptune", "bNeptune"], ["pluto", "bPluto"]] }
     ]
   },
   "tabs": [

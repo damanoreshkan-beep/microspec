@@ -44,11 +44,11 @@ export default [
       await ready(h);
       h.expect((await h.count("#filter-btn")) === 1, "немає кнопки фільтра");
       await h.click("#filter-btn"); await h.wait(200);
-      h.expect((await h.count("#f-bodies [data-val]")) === 8, "немає 8 планет у фільтрі");
+      h.expect((await h.count("#f-bodies [data-val]")) === 9, "немає 9 тіл у фільтрі");
       await h.click('#f-bodies [data-val="mars"]'); await h.wait(150);
       h.expect((await h.attr('#f-bodies [data-val="mars"]', "aria-pressed")) === "false", "Марс не вимкнувся");
       await h.click("#f-apply"); await h.wait(200);
-      h.expect(/\/8/.test(await h.bodyText()), "немає чипа активного фільтра планет");
+      h.expect(/\/9/.test(await h.bodyText()), "немає чипа активного фільтра планет");
     },
   },
   {

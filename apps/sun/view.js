@@ -12,14 +12,22 @@ import * as Astro from "https://esm.sh/astronomy-engine@2";
 const SunCalc = _SunCalc.default || _SunCalc;
 
 // the solar-system bodies plotted on the dial (SunCalc only does the sun — planets via astronomy-engine).
-// symbols are language-neutral; each gets its own colour so several read at a glance.
+// each is a tiny shaded sphere in its ~true colour (researched); size ≈ relative scale (compressed).
 const BODIES = {
-  moon: { name: "Moon", sym: "☾", color: "#D8D8DE" }, mercury: { name: "Mercury", sym: "☿", color: "#AEAEAE" },
-  venus: { name: "Venus", sym: "♀", color: "#E7D9A2" }, mars: { name: "Mars", sym: "♂", color: "#E0533B" },
-  jupiter: { name: "Jupiter", sym: "♃", color: "#D9A066" }, saturn: { name: "Saturn", sym: "♄", color: "#CBB57F" },
-  uranus: { name: "Uranus", sym: "♅", color: "#7FD4D0" }, neptune: { name: "Neptune", sym: "♆", color: "#6A8CF0" },
+  moon: { name: "Moon", color: "#CFCFD6", size: 10 }, mercury: { name: "Mercury", color: "#9A948C", size: 9 },
+  venus: { name: "Venus", color: "#E7D8A6", size: 12 }, mars: { name: "Mars", color: "#D9603B", size: 10 },
+  jupiter: { name: "Jupiter", color: "#D6A15B", size: 17 }, saturn: { name: "Saturn", color: "#E3C878", size: 14, ring: true },
+  uranus: { name: "Uranus", color: "#9FE0DC", size: 12 }, neptune: { name: "Neptune", color: "#5B7FD1", size: 12 },
+  pluto: { name: "Pluto", color: "#B79A7E", size: 8 },
 };
 const BODY_KEYS = Object.keys(BODIES);
+// lit-sphere shading: light from upper-left → darker lower-right, giving each dot a neat 3-D planet look.
+const _rgb = (h) => [0, 2, 4].map((i) => parseInt(h.slice(1 + i, 3 + i), 16));
+const _shift = (h, t, tgt) => `rgb(${_rgb(h).map((x) => Math.round(x + (tgt - x) * t)).join(",")})`;
+const lighten = (h) => _shift(h, 0.5, 255), darken = (h) => _shift(h, 0.42, 0);
+const disc = (b) => { const c = BODIES[b]; return html`<div class="rounded-full" style=${`width:${c.size}px;height:${c.size}px;background:radial-gradient(circle at 33% 28%, ${lighten(c.color)}, ${c.color} 55%, ${darken(c.color)});box-shadow:inset -1px -1px 1.5px rgba(0,0,0,.42)`}></div>`; };
+// a body marker: a shaded sphere; Saturn also gets a tilted ring.
+const planet = (b) => { const c = BODIES[b]; if (!c.ring) return disc(b); return html`<div class="relative flex items-center justify-center" style=${`width:${c.size * 2.1}px;height:${c.size * 2.1}px`}><div class="absolute" style=${`width:${c.size * 2.1}px;height:${c.size * 0.72}px;border:1.4px solid ${lighten(c.color)};border-radius:50%;opacity:.8;transform:rotate(-18deg)`}></div>${disc(b)}</div>`; };
 // bodies sit in a tight ring hugging the dial rim (cardinals are on the rim at 46%). altitude is a subtle
 // radial cue (higher = a touch inward) + opacity below — the ring stays clean, nothing floats mid-dial.
 const rFromAlt = (alt) => Math.min(45, Math.max(37, 45 - (Math.max(0, alt) / 90) * 8));
@@ -121,7 +129,7 @@ export function sun({ S, openScreen, closeScreen }) {
       <span class="absolute text-xs font-semibold text-base-content/70" style=${at(270 + roseRot, 46)}>Зх</span>
       ${marks.map((mk) => mk.sun
         ? html`<div data-sun class=${`absolute ${up ? "text-warning" : "text-base-content/30"}`} style=${at(mk.az + roseRot, mk.r)} key="sun">${Icon(up ? "lucide:sun" : "lucide:moon", "text-2xl")}</div>`
-        : html`<div data-planet=${mk.b} class="absolute font-bold leading-none text-[0.95rem] pointer-events-none" style=${`${at(mk.az + roseRot, mk.r)};color:${BODIES[mk.b].color};opacity:${bodyOpacity(mk.alt)}`} title=${BODIES[mk.b].name} key=${mk.b}>${BODIES[mk.b].sym}</div>`)}
+        : html`<div data-planet=${mk.b} class="absolute pointer-events-none flex items-center justify-center" style=${`${at(mk.az + roseRot, mk.r)};opacity:${bodyOpacity(mk.alt)}`} title=${BODIES[mk.b].name} key=${mk.b}>${planet(mk.b)}</div>`)}
       <!-- center readout -->
       <div class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">
         <div data-bearing class="text-3xl font-bold tabular-nums">${Math.round(bearing)}°</div>

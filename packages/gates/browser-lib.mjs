@@ -97,16 +97,26 @@ export async function gotoAndSettle(page, url, settle = 3500) {
 // The 3 design checks (a11y / overflow@384 / watch-glance@200). Returns [{name, ok, msg}].
 export async function runDesignChecks(ev) {
   const out = [];
+  const runAxe = () => ev(async () => {
+    const r = await axe.run(document, { resultTypes: ["violations"] });
+    return r.violations.map((x) => ({ id: x.id, impact: x.impact, n: x.nodes.length, targets: x.nodes.slice(0, 6).map((nd) => nd.target.join(" ")) }));
+  });
+  const axeResult = (v, label) => {
+    const bad = v.filter((x) => x.impact === "critical" || x.impact === "serious");
+    return bad.length
+      ? { name: `a11y ${label}: без critical/serious`, ok: false, msg: bad.map((b) => `${b.id}[${b.impact}×${b.n}]`).join(", "), detail: bad.map((b) => `${b.id}: ${b.targets.join(" | ")}`) }
+      : { name: `a11y ${label}: без critical/serious`, ok: true, msg: v.length ? `${v.length} minor` : "чисто" };
+  };
   try {
     await ev(async (src) => { await new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }, AXE);
-    const v = await ev(async () => {
-      const r = await axe.run(document, { resultTypes: ["violations"] });
-      return r.violations.map((x) => ({ id: x.id, impact: x.impact, n: x.nodes.length, targets: x.nodes.slice(0, 6).map((nd) => nd.target.join(" ")) }));
-    });
-    const bad = v.filter((x) => x.impact === "critical" || x.impact === "serious");
-    out.push(bad.length
-      ? { name: "a11y (axe): без critical/serious", ok: false, msg: bad.map((b) => `${b.id}[${b.impact}×${b.n}]`).join(", "), detail: bad.map((b) => `${b.id}: ${b.targets.join(" | ")}`) }
-      : { name: "a11y (axe): без critical/serious", ok: true, msg: v.length ? `${v.length} minor` : "чисто" });
+    out.push(axeResult(await runAxe(), "(dark)"));
+    // SAME pass in the LIGHT theme — contrast is theme-specific (a pale label on white passes the dark pass
+    // but fails here). Flip data-theme, re-run axe, restore — so both themes are guaranteed accessible.
+    const base = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
+    const flipped = await ev((th) => { const t = th.includes("light") ? th : th + "-light"; document.documentElement.setAttribute("data-theme", t); return t; }, base);
+    await sleep(200);
+    out.push(axeResult(await runAxe(), `light (${flipped})`));
+    await ev((th) => document.documentElement.setAttribute("data-theme", th), base);
   } catch (e) { out.push({ name: "a11y (axe)", ok: false, msg: "не вдалось завантажити axe: " + e.message }); }
 
   const ov = await ev(() => document.documentElement.scrollWidth - window.innerWidth);

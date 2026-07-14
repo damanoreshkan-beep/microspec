@@ -7,7 +7,7 @@
 //   • sun compass — az as angle, altitude as value, N/E/S/W as rim labels.
 //   • astro chart — ecliptic longitude as angle, a fixed ring, zodiac signs as rim labels.
 import { html } from "htm/preact";
-import { Planet, BODIES, lighten } from "./astro.js";
+import { Planet, BODIES } from "./astro.js";
 
 // place at dial angle `deg` (0=up, clockwise) on a circle of radius r% of the box.
 export const dialAt = (deg, r) => { const a = deg * Math.PI / 180; return `left:${(50 + r * Math.sin(a)).toFixed(2)}%;top:${(50 - r * Math.cos(a)).toFixed(2)}%;transform:translate(-50%,-50%)`; };
@@ -42,7 +42,7 @@ export function SkyDial({ marks = [], radial = altRadius, opacityFor = altOpacit
     ${rim.map((c) => html`<span class=${`absolute ${c.cls || "text-xs font-semibold text-base-content/70"}`} style=${dialAt(c.angle + rotate, c.rimR ?? 45)} key=${c.label}>${c.label}</span>`)}
     ${ms.map((mk) => html`<div data-mark=${mk.key} ...${mk.attrs || {}} class="absolute pointer-events-none flex flex-col items-center gap-px" style=${`${dialAt(mk.angle + rotate, mk.r)};opacity:${mk.opacity ?? opacityFor(mk.value)}`} title=${mk.title ?? BODIES[mk.body]?.name ?? ""} key=${mk.key}>
         ${mk.node ?? (mk.body ? html`<${Planet} body=${mk.body} />` : null)}
-        ${mk.label ? html`<span class="text-[0.5rem] font-semibold leading-none tracking-tight whitespace-nowrap" style=${`color:${mk.labelColor || lighten(BODIES[mk.body]?.color || "#ffffff")};text-shadow:0 1px 2px rgba(0,0,0,.6)`}>${mk.label}</span>` : null}
+        ${mk.label ? html`<span class=${`text-[0.5rem] font-semibold leading-none tracking-tight whitespace-nowrap ${mk.labelColor ? "" : "text-base-content"}`} style=${mk.labelColor ? `color:${mk.labelColor}` : ""}>${mk.label}</span>` : null}
       </div>`)}
     ${center ? html`<div class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">${center}</div>` : null}
   </div>`;

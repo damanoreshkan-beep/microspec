@@ -109,5 +109,5 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: shot-${{ matrix.app }}
-          path: apps/${{ matrix.app }}/states/main.png
+          path: apps/${{ matrix.app }}/states/
           if-no-files-found: warn

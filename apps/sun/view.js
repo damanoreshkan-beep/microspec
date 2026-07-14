@@ -9,7 +9,7 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { geo, compass } from "/_rt/sensors.js";
 import { Globe } from "/_rt/globe.js";
-import { BODIES, BODY_KEYS, lighten, skyPositions, sunHorizon, sunTimes } from "/_rt/astro.js";
+import { BODY_KEYS, skyPositions, sunHorizon, sunTimes } from "/_rt/astro.js";
 import { SkyDial } from "/_rt/skydial.js";
 import { TimeScale } from "/_rt/timescale.js";
 
@@ -83,8 +83,7 @@ export function sun({ S, openScreen, closeScreen }) {
   // solar-system bodies as SkyDial marks: azimuth = angle, real altitude = value (radius + conjunction order)
   const shown = Array.isArray(filters.bodies) ? filters.bodies : BODY_KEYS;
   const marks = skyPositions(loc.lat, loc.lng, date, shown).map((m) => ({
-    key: m.key, body: m.key, angle: m.az, value: m.alt,
-    label: bodyLabel(t, m.key), labelColor: lighten(BODIES[m.key].color),
+    key: m.key, body: m.key, angle: m.az, value: m.alt, label: bodyLabel(t, m.key),
     attrs: m.key === "sun" ? { "data-sun": true } : null,
   }));
 

@@ -1,0 +1,14 @@
+{
+  "id": "ambient",
+  "theme": "signal",
+  "tabs": [
+    { "id": "mix", "type": "tool", "icon": "lucide:audio-lines", "label": "tabMix", "view": "ambient" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:audio-lines",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

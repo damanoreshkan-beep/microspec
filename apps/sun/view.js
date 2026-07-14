@@ -9,6 +9,8 @@ const SunCalc = _SunCalc.default || _SunCalc;
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const MOCK = new URLSearchParams(location.search).get("mock");
+const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+const at = (deg, r) => { const a = deg * Math.PI / 180; return `left:${(50 + r * Math.sin(a)).toFixed(2)}%;top:${(50 - r * Math.cos(a)).toFixed(2)}%;transform:translate(-50%,-50%)`; };
 const KYIV = { lat: 50.45, lng: 30.52, approx: true };
 const PRESETS = [["Kyiv", 50.45, 30.52], ["London", 51.5, -0.13], ["Tokyo", 35.68, 139.69], ["New York", 40.71, -74.0], ["Sydney", -33.87, 151.21]];
 const DIRS = ["Пн", "Пн-Сх", "Сх", "Пд-Сх", "Пд", "Пд-Зх", "Зх", "Пн-Зх"];
@@ -18,7 +20,7 @@ const hhmm = (d) => d instanceof Date && !isNaN(d) ? `${String(d.getHours()).pad
 export function sun({ S, openScreen, closeScreen }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const [pos, setPos] = useState(MOCK ? KYIV : null);
-  const [heading, setHeading] = useState(MOCK ? 300 : null);
+  const [heading, setHeading] = useState(MOCK || isGate ? 300 : null);
   const [needPerm, setNeedPerm] = useState(compass.needsPermission && !MOCK);
   const [scrub, setScrub] = useState(null); 
   const [picked, setPicked] = useState(null); 
@@ -68,20 +70,16 @@ export function sun({ S, openScreen, closeScreen }) {
 
   return html`<div class="flex flex-col gap-4 items-center">
     <!-- compass dial -->
-    <div class="relative w-full mx-auto" style="max-width:280px;aspect-ratio:1">
+    <div class="relative w-full mx-auto overflow-visible" style="max-width:280px;aspect-ratio:1">
       <div class="absolute inset-0 rounded-full border border-base-300 bg-base-100"></div>
-      <!-- fixed marker: where the phone points -->
+      <!-- fixed marker: where the phone points (vertical, above the dial) -->
       <div class="absolute left-1/2 -top-1 -translate-x-1/2 text-base-content/50">${Icon("lucide:chevron-up", "text-xl")}</div>
-      <!-- rotating rose + sun -->
-      <div class="absolute inset-0 transition-transform duration-200" style=${`transform:rotate(${roseRot}deg)`}>
-        <span class="absolute left-1/2 top-2 -translate-x-1/2 text-sm font-bold text-error">Пн</span>
-        <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-base-content/70">Сх</span>
-        <span class="absolute left-1/2 bottom-2 -translate-x-1/2 text-xs font-semibold text-base-content/70">Пд</span>
-        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-base-content/70">Зх</span>
-        <div class="absolute inset-0" style=${`transform:rotate(${bearing}deg)`}>
-          <div data-sun class=${`absolute left-1/2 -translate-x-1/2 -top-1 ${up ? "text-warning" : "text-base-content/30"}`}>${Icon(up ? "lucide:sun" : "lucide:moon", "text-2xl")}</div>
-        </div>
-      </div>
+      <!-- rose + sun: positioned by ANGLE on the dial circle (no rotated container → never spills the dial) -->
+      <span class="absolute text-sm font-bold text-error" style=${at(roseRot, 42)}>Пн</span>
+      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(90 + roseRot, 42)}>Сх</span>
+      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(180 + roseRot, 42)}>Пд</span>
+      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(270 + roseRot, 42)}>Зх</span>
+      <div data-sun class=${`absolute ${up ? "text-warning" : "text-base-content/30"}`} style=${at(bearing + roseRot, 44)}>${Icon(up ? "lucide:sun" : "lucide:moon", "text-2xl")}</div>
       <!-- center readout -->
       <div class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">
         <div data-bearing class="text-3xl font-bold tabular-nums">${Math.round(bearing)}°</div>

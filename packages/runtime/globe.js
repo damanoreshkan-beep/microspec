@@ -35,7 +35,7 @@ const easeInOut = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2)
 
 export function Globe({ onPick, selected, marker, focus, points, spin = true, height = 340 }) {
   const wrap = useRef(), canvas = useRef();
-  const S = useRef({ rot: [10, -20], drag: null, fly: null, raf: 0, running: false });
+  const S = useRef({ rot: [10, -20], drag: null, fly: null, raf: 0, zoom: 1, ptrs: new Map(), pinch: null, pinched: false, lastTap: 0 });
   const P = useRef({}); P.current = { onPick, selected, marker, points, spin }; // latest props for the loop
   const [ready, setReady] = useState(!!LAND);
 
@@ -45,19 +45,19 @@ export function Globe({ onPick, selected, marker, focus, points, spin = true, he
     if (!ready) return;
     const cv = canvas.current, ctx = cv.getContext("2d"), proj = geoOrthographic();
     const dpr = Math.min(2, globalThis.devicePixelRatio || 1);
-    let size = 0, dirty = true, alive = true;
+    let size = 0, baseScale = 0, dirty = true, alive = true;
     const markDirty = () => { dirty = true; };
     S.current.markDirty = markDirty;
 
     // Size via ResizeObserver (fires initially + on change) — never read clientWidth per-frame (reflow).
     const measure = () => {
       const w = Math.floor(wrap.current?.clientWidth || 0);
-      if (w > 0 && w !== size) { size = w; cv.width = size * dpr; cv.height = size * dpr; cv.style.height = size + "px"; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); proj.scale(size / 2 - 2).translate([size / 2, size / 2]); dirty = true; }
+      if (w > 0 && w !== size) { size = w; cv.width = size * dpr; cv.height = size * dpr; cv.style.height = size + "px"; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); baseScale = size / 2 - 2; proj.translate([size / 2, size / 2]); dirty = true; }
     };
 
     const draw = () => {
       const s = S.current, p = P.current, c = pal();
-      proj.rotate(s.rot);
+      proj.scale(baseScale * s.zoom).rotate(s.rot); // pinch/wheel zoom scales the projection about the centre
       const path = geoPath(proj, ctx);
       ctx.clearRect(0, 0, size, size);
       ctx.beginPath(); path({ type: "Sphere" }); ctx.fillStyle = c.ocean; ctx.fill();
@@ -85,25 +85,51 @@ export function Globe({ onPick, selected, marker, focus, points, spin = true, he
         let d = s.fly.to[0] - s.fly.from[0]; d = ((d + 180) % 360 + 360) % 360 - 180;
         s.rot = [s.fly.from[0] + d * e, s.fly.from[1] + (s.fly.to[1] - s.fly.from[1]) * e];
         if (k >= 1) s.fly = null; dirty = true;
-      } else if (p.spin && !s.drag && p.selected == null && p.marker == null) { s.rot = [s.rot[0] + 0.12, s.rot[1]]; dirty = true; }
+      } else if (p.spin && s.ptrs.size === 0 && s.zoom <= 1.05 && p.selected == null && p.marker == null) { s.rot = [s.rot[0] + 0.12, s.rot[1]]; dirty = true; }
       if (s.drag) dirty = true;
       if (size && dirty) { draw(); dirty = false; }
       S.current.raf = requestAnimationFrame(frame);
     };
 
-    const onDown = (e) => { S.current.drag = { x: e.clientX, y: e.clientY, rot: [...S.current.rot], moved: 0 }; S.current.fly = null; cv.setPointerCapture?.(e.pointerId); };
-    const onMove = (e) => { const s = S.current; if (!s.drag) return; const dx = e.clientX - s.drag.x, dy = e.clientY - s.drag.y; s.drag.moved = Math.max(s.drag.moved, Math.abs(dx) + Math.abs(dy)); const k = 0.3; s.rot = [s.drag.rot[0] + dx * k, Math.max(-90, Math.min(90, s.drag.rot[1] - dy * k))]; dirty = true; };
-    const onUp = (e) => {
-      const s = S.current; if (!s.drag) return; const tap = s.drag.moved < 6; s.drag = null; dirty = true;
-      if (tap && P.current.onPick) { const rect = cv.getBoundingClientRect(); const ll = proj.invert([e.clientX - rect.left, e.clientY - rect.top]); if (ll) { const f = LAND.find((c) => geoContains(c, ll)); P.current.onPick({ lat: ll[1], lon: ll[0], id: f ? String(f.id) : null, name: f?.properties?.name || null }); } }
+    const clampZoom = (z) => Math.max(0.9, Math.min(7, z));
+    const pinchDist = () => { const [a, b] = [...S.current.ptrs.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+    // 1 pointer = drag-rotate; 2 pointers = pinch-zoom (Pointer Events, cached in a Map). touch-action:none
+    // on the canvas hands us the gesture so the page never zooms/scrolls under it.
+    const onDown = (e) => {
+      const s = S.current; s.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); s.fly = null; cv.setPointerCapture?.(e.pointerId);
+      if (s.ptrs.size === 1) { s.drag = { x: e.clientX, y: e.clientY, rot: [...s.rot], moved: 0 }; s.pinched = false; }
+      else if (s.ptrs.size === 2) { s.drag = null; s.pinch = { d0: pinchDist(), z0: s.zoom }; }
     };
+    const onMove = (e) => {
+      const s = S.current; if (!s.ptrs.has(e.pointerId)) return;
+      s.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (s.ptrs.size >= 2 && s.pinch) { s.zoom = clampZoom(s.pinch.z0 * pinchDist() / s.pinch.d0); s.pinched = true; dirty = true; }
+      else if (s.drag) { const dx = e.clientX - s.drag.x, dy = e.clientY - s.drag.y; s.drag.moved = Math.max(s.drag.moved, Math.abs(dx) + Math.abs(dy)); const k = 0.3 / s.zoom; s.rot = [s.drag.rot[0] + dx * k, Math.max(-90, Math.min(90, s.drag.rot[1] - dy * k))]; dirty = true; }
+    };
+    const onUp = (e) => {
+      const s = S.current; if (!s.ptrs.has(e.pointerId)) return;
+      s.ptrs.delete(e.pointerId); dirty = true;
+      if (s.ptrs.size < 2) s.pinch = null;
+      if (s.ptrs.size === 1) { const pt = [...s.ptrs.values()][0]; s.drag = { x: pt.x, y: pt.y, rot: [...s.rot], moved: 99 }; return; } // finger left after pinch → keep rotating
+      if (s.ptrs.size > 0) return;
+      const tap = s.drag && s.drag.moved < 6 && !s.pinched; s.drag = null;
+      if (!tap) return;
+      const now = performance.now();
+      if (now - s.lastTap < 280 && s.zoom > 1.02) { s.zoom = 1; s.lastTap = 0; return; }  // double-tap resets zoom
+      s.lastTap = now;
+      if (P.current.onPick) { const rect = cv.getBoundingClientRect(); const ll = proj.invert([e.clientX - rect.left, e.clientY - rect.top]); if (ll) { const f = LAND.find((c) => geoContains(c, ll)); P.current.onPick({ lat: ll[1], lon: ll[0], id: f ? String(f.id) : null, name: f?.properties?.name || null }); } }
+    };
+    // desktop: wheel / trackpad-pinch (ctrlKey) zoom — clamp deltaY so mouse-wheel (±100) and trackpad
+    // (±small) both feel smooth; passive:false so the page doesn't zoom.
+    const onWheel = (e) => { e.preventDefault(); const d = Math.max(-10, Math.min(10, e.deltaY)); S.current.zoom = clampZoom(S.current.zoom * Math.exp(-d * 0.012)); dirty = true; };
 
     measure();
     const ro = new ResizeObserver(() => { measure(); }); ro.observe(wrap.current);
     const mo = new MutationObserver(markDirty); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    cv.addEventListener("pointerdown", onDown); addEventListener("pointermove", onMove); addEventListener("pointerup", onUp);
+    cv.addEventListener("pointerdown", onDown); addEventListener("pointermove", onMove); addEventListener("pointerup", onUp); addEventListener("pointercancel", onUp);
+    cv.addEventListener("wheel", onWheel, { passive: false });
     S.current.raf = requestAnimationFrame(frame);
-    return () => { alive = false; cancelAnimationFrame(S.current.raf); ro.disconnect(); mo.disconnect(); cv.removeEventListener("pointerdown", onDown); removeEventListener("pointermove", onMove); removeEventListener("pointerup", onUp); };
+    return () => { alive = false; cancelAnimationFrame(S.current.raf); ro.disconnect(); mo.disconnect(); cv.removeEventListener("pointerdown", onDown); removeEventListener("pointermove", onMove); removeEventListener("pointerup", onUp); removeEventListener("pointercancel", onUp); cv.removeEventListener("wheel", onWheel); };
   }, [ready]);
 
   // focus prop → animate the globe to centre that lat/lon

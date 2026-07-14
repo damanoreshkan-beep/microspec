@@ -267,6 +267,10 @@ function ListView({ tab }) {
     const r = filters[c.key];
     items = items.filter((it) => { const v = Number(it[c.field]); return !isNaN(v) && (r.from == null || r.from === "" || v >= +r.from) && (r.to == null || r.to === "" || v <= +r.to); });
   }
+  for (const c of (A.spec.filters?.controls || [])) if (c.type === "multi" && c.field && Array.isArray(filters[c.key])) {
+    const set = new Set(filters[c.key]);
+    items = items.filter((it) => set.has(it[c.field]));
+  }
   if (tab.sort) {  // declarative persisted sort (S.sort holds the chosen key)
     const o = tab.sort.find((x) => x.key === sortKey) || tab.sort[0];
     const dir = o.dir === "asc" ? 1 : -1;
@@ -373,6 +377,7 @@ function FilterChips() {
     const v = filters[c.key], def = defaults[c.key] ?? (c.type === "toggle" ? false : "");
     if (c.type === "toggle") { if (v) chips.push({ key: c.key, label: T(t, c.label), reset: false }); continue; }
     if (c.type === "range") { const r = v || {}; if ((r.from ?? "") !== "" || (r.to ?? "") !== "") chips.push({ key: c.key, label: `${T(t, c.label)}: ${r.from ?? "…"}–${r.to ?? "…"}`, reset: {} }); continue; }
+    if (c.type === "multi") { const sel = Array.isArray(v) ? v : []; const all = (c.options || []).length; if (sel.length < all) chips.push({ key: c.key, label: `${T(t, c.label)}: ${sel.length}/${all}`, reset: (c.options || []).map((o) => o[0]) }); continue; }
     if (v != null && v !== def) { const opt = (c.options || []).find((o) => o[0] === v); chips.push({ key: c.key, label: opt ? T(t, opt[1]) : String(v), reset: def }); }
   }
   if (!chips.length) return null;
@@ -394,6 +399,8 @@ function FilterSheet() {
           <span class="text-base-content/40 shrink-0">–</span>
           <input id=${"f-" + c.key + "-to"} type="number" inputmode="decimal" step=${c.step || "any"} placeholder=${T(t, "rangeTo")} value=${r.to ?? ""} class="input input-bordered rounded-2xl w-full tabular-nums" onInput=${(e) => set("to", e.target.value)} />
         </div></label>`; }
+      if (c.type === "multi") { const sel = Array.isArray(filters[c.key]) ? filters[c.key] : []; const toggle = (v) => { const s = new Set(sel); s.has(v) ? s.delete(v) : s.add(v); A.S.filters.setKey(c.key, [...s]); };
+        return html`<${Fragment} key=${c.key}><span class="flex items-center gap-2 text-sm">${c.icon ? Icon(c.icon) : null} ${T(t, c.label)}</span><div class="flex flex-wrap gap-1.5" id=${"f-" + c.key}>${c.options.map(([v, l]) => html`<button class=${`btn btn-sm rounded-full gap-1 ${sel.includes(v) ? "btn-primary" : "btn-ghost border border-base-300"}`} data-val=${v} aria-pressed=${sel.includes(v)} key=${v} onClick=${() => toggle(v)}>${T(t, l)}</button>`)}</div></${Fragment}>`; }
       return html`<${Fragment} key=${c.key}><span class="flex items-center gap-2 text-sm">${c.icon ? Icon(c.icon) : null} ${T(t, c.label)}</span><div class="join w-full" id=${"f-" + c.key}>${c.options.map(([v, l]) => html`<button class=${`btn btn-sm join-item flex-1 ${(filters[c.key] || "") === v ? "btn-active" : ""}`} data-val=${v} key=${v} onClick=${() => A.S.filters.setKey(c.key, v)}>${T(t, l)}</button>`)}</div></${Fragment}>`;
     })}
     <button id="f-apply" class="btn btn-primary rounded-2xl mt-3" onClick=${() => { A.S.sheet.set(false); A.S.tab.set(A.spec.tabs[0].id); if (f.refetch) A.load(); }}>${T(t, "apply")}</button>

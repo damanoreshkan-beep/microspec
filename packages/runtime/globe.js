@@ -43,7 +43,9 @@ const easeInOut = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2)
 
 export function Globe({ onPick, selected, marker, focus, points, spin = true, height = 340 }) {
   const wrap = useRef(), canvas = useRef();
-  const S = useRef({ rot: [10, -20], drag: null, fly: null, raf: 0, zoom: 1, ptrs: new Map(), pinch: null, pinched: false, lastTap: 0 });
+  // start centred on `focus` when it's supplied at mount (e.g. an ISS tracker opens already looking at the
+  // station) — otherwise the default oblique view; a later focus change animates via the fly tween below.
+  const S = useRef({ rot: focus ? [-focus.lon, -focus.lat] : [10, -20], drag: null, fly: null, raf: 0, zoom: 1, ptrs: new Map(), pinch: null, pinched: false, lastTap: 0 });
   const P = useRef({}); P.current = { onPick, selected, marker, points, spin }; // latest props for the loop
   const [ready, setReady] = useState(!!LAND);
 

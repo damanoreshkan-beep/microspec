@@ -113,7 +113,7 @@ export function sun({ S, openScreen, closeScreen }) {
   // symbols on top of each other — each nearby body steps a little inward off the rim.
   const marks = [{ sun: true, az: bearing, alt }, ...planets].sort((a, b) => a.az - b.az);
   let prevAz = -999, stack = 0;
-  for (const mk of marks) { stack = mk.az - prevAz < 10 ? stack + 1 : 0; mk.r = Math.max(22, rFromAlt(mk.alt) - stack * 4.5); prevAz = mk.az; }
+  for (const mk of marks) { stack = mk.az - prevAz < 14 ? stack + 1 : 0; mk.r = Math.max(20, rFromAlt(mk.alt) - stack * 6); prevAz = mk.az; } // step out near-neighbours so their micro-labels get room
 
   return html`<div class="flex flex-col gap-4 items-center">
     <!-- compass dial -->
@@ -129,7 +129,10 @@ export function sun({ S, openScreen, closeScreen }) {
       <span class="absolute text-xs font-semibold text-base-content/70" style=${at(270 + roseRot, 46)}>Зх</span>
       ${marks.map((mk) => mk.sun
         ? html`<div data-sun class=${`absolute ${up ? "text-warning" : "text-base-content/30"}`} style=${at(mk.az + roseRot, mk.r)} key="sun">${Icon(up ? "lucide:sun" : "lucide:moon", "text-2xl")}</div>`
-        : html`<div data-planet=${mk.b} class="absolute pointer-events-none flex items-center justify-center" style=${`${at(mk.az + roseRot, mk.r)};opacity:${bodyOpacity(mk.alt)}`} title=${BODIES[mk.b].name} key=${mk.b}>${planet(mk.b)}</div>`)}
+        : html`<div data-planet=${mk.b} class="absolute pointer-events-none flex flex-col items-center gap-px" style=${`${at(mk.az + roseRot, mk.r)};opacity:${bodyOpacity(mk.alt)}`} title=${BODIES[mk.b].name} key=${mk.b}>
+            ${planet(mk.b)}
+            <span class="text-[0.5rem] font-semibold leading-none tracking-tight whitespace-nowrap" style=${`color:${lighten(BODIES[mk.b].color)};text-shadow:0 1px 2px rgba(0,0,0,.6)`}>${T(t, "b" + mk.b[0].toUpperCase() + mk.b.slice(1))}</span>
+          </div>`)}
       <!-- center readout -->
       <div class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">
         <div data-bearing class="text-3xl font-bold tabular-nums">${Math.round(bearing)}°</div>

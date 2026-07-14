@@ -101,6 +101,11 @@ export function sun({ S, openScreen, closeScreen }) {
     const obs = new Astro.Observer(loc.lat, loc.lng, 0), time = new Astro.AstroTime(date);
     planets = shown.filter((b) => BODIES[b]).map((b) => { const eq = Astro.Equator(BODIES[b].name, time, obs, true, true); const h = Astro.Horizon(time, obs, eq.ra, eq.dec, "normal"); return { b, az: h.azimuth, alt: h.altitude }; }).filter((m) => m.alt > 0);
   } catch { /* astronomy lib unavailable → just the sun */ }
+  // one ring of marks (sun + planets), de-clustered radially so bodies in conjunction don't stack their
+  // symbols on top of each other — each nearby body steps a little inward off the rim.
+  const marks = [{ sun: true, az: bearing, alt }, ...planets].sort((a, b) => a.az - b.az);
+  let prevAz = -999, stack = 0;
+  for (const mk of marks) { stack = mk.az - prevAz < 10 ? stack + 1 : 0; mk.r = Math.max(22, rFromAlt(mk.alt) - stack * 4.5); prevAz = mk.az; }
 
   return html`<div class="flex flex-col gap-4 items-center">
     <!-- compass dial -->
@@ -114,8 +119,9 @@ export function sun({ S, openScreen, closeScreen }) {
       <span class="absolute text-xs font-semibold text-base-content/70" style=${at(90 + roseRot, 46)}>Сх</span>
       <span class="absolute text-xs font-semibold text-base-content/70" style=${at(180 + roseRot, 46)}>Пд</span>
       <span class="absolute text-xs font-semibold text-base-content/70" style=${at(270 + roseRot, 46)}>Зх</span>
-      <div data-sun class=${`absolute ${up ? "text-warning" : "text-base-content/30"}`} style=${at(bearing + roseRot, rFromAlt(alt))}>${Icon(up ? "lucide:sun" : "lucide:moon", "text-2xl")}</div>
-      ${planets.map((m) => html`<div data-planet=${m.b} class="absolute font-bold leading-none text-[0.95rem] pointer-events-none" style=${`${at(m.az + roseRot, rFromAlt(m.alt))};color:${BODIES[m.b].color};opacity:${bodyOpacity(m.alt)}`} title=${BODIES[m.b].name} key=${m.b}>${BODIES[m.b].sym}</div>`)}
+      ${marks.map((mk) => mk.sun
+        ? html`<div data-sun class=${`absolute ${up ? "text-warning" : "text-base-content/30"}`} style=${at(mk.az + roseRot, mk.r)} key="sun">${Icon(up ? "lucide:sun" : "lucide:moon", "text-2xl")}</div>`
+        : html`<div data-planet=${mk.b} class="absolute font-bold leading-none text-[0.95rem] pointer-events-none" style=${`${at(mk.az + roseRot, mk.r)};color:${BODIES[mk.b].color};opacity:${bodyOpacity(mk.alt)}`} title=${BODIES[mk.b].name} key=${mk.b}>${BODIES[mk.b].sym}</div>`)}
       <!-- center readout -->
       <div class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">
         <div data-bearing class="text-3xl font-bold tabular-nums">${Math.round(bearing)}°</div>

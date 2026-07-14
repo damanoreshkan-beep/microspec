@@ -29,10 +29,11 @@ export const compass = {
     if (this.needsPermission) { try { return (await DeviceOrientationEvent.requestPermission()) === "granted"; } catch { return false; } }
     return true;
   },
-  start(onHeading) {
+  start(onHeading, onPitch) {
     if (!this.supported) return () => {};
     let ema = null;
     const handler = (e) => {
+      if (onPitch && typeof e.beta === "number") onPitch(e.beta);                        
       let h = null;
       if (typeof e.webkitCompassHeading === "number") h = e.webkitCompassHeading;      
       else if (e.absolute && typeof e.alpha === "number") h = (360 - e.alpha) % 360;    

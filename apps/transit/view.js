@@ -107,13 +107,14 @@ export function rulers({ S }) {
   return html`<div class="px-4 pt-3 pb-24 max-w-xl mx-auto grid grid-cols-2 gap-2">
     ${RULERS.map((rs, i) => {
       const on = rs.every((p) => shown.has(p));
-      return html`<button data-sign=${i} aria-pressed=${on} class=${`rounded-2xl border p-3 flex flex-col gap-2 text-left transition ${on ? "border-primary bg-primary/10" : "border-base-300 opacity-55"}`} onClick=${() => toggle(i)} key=${i}>
-        <div class="flex items-center gap-2">
-          <${Sign} i=${i} cls="w-5 h-5 text-base-content shrink-0" />
+      // state via border+bg (theme-aware, always-legible text) — no opacity dimming that would sink contrast
+      return html`<button data-sign=${i} aria-pressed=${on} class=${`rounded-2xl border p-3 flex flex-col gap-2 text-left transition ${on ? "border-primary bg-primary/10" : "border-base-300 bg-transparent"}`} onClick=${() => toggle(i)} key=${i}>
+        <div class="flex items-center gap-2 min-w-0">
+          <${Sign} i=${i} cls=${`w-5 h-5 shrink-0 ${on ? "text-primary" : "text-base-content/50"}`} />
           <span class="font-semibold truncate">${T(t, "s" + i)}</span>
         </div>
         <div class="flex flex-col gap-0.5">
-          ${rs.map((p) => html`<span class="flex items-center gap-1.5 text-xs text-base-content/70" key=${p}>${dot(p)}${bodyLabel(t, p)}</span>`)}
+          ${rs.map((p) => html`<span class="flex items-center gap-1.5 text-xs text-base-content/70 min-w-0" key=${p}>${dot(p)}<span class="truncate">${bodyLabel(t, p)}</span></span>`)}
         </div>
       </button>`;
     })}

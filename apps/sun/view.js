@@ -5,7 +5,17 @@ import { T } from "/_rt/i18n.js";
 import { geo, compass } from "/_rt/sensors.js";
 import { Globe } from "/_rt/globe.js";
 import _SunCalc from "https://esm.sh/suncalc@1.9.0";
+import * as Astro from "https://esm.sh/astronomy-engine@2";
 const SunCalc = _SunCalc.default || _SunCalc;
+
+const BODIES = {
+  moon: { name: "Moon", sym: "☾", color: "#D8D8DE" }, mercury: { name: "Mercury", sym: "☿", color: "#AEAEAE" },
+  venus: { name: "Venus", sym: "♀", color: "#E7D9A2" }, mars: { name: "Mars", sym: "♂", color: "#E0533B" },
+  jupiter: { name: "Jupiter", sym: "♃", color: "#D9A066" }, saturn: { name: "Saturn", sym: "♄", color: "#CBB57F" },
+  uranus: { name: "Uranus", sym: "♅", color: "#7FD4D0" }, neptune: { name: "Neptune", sym: "♆", color: "#6A8CF0" },
+};
+const BODY_KEYS = Object.keys(BODIES);
+const rFromAlt = (alt) => Math.min(44, Math.max(15, 40 - (alt / 90) * 25));
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const MOCK = new URLSearchParams(location.search).get("mock");
@@ -18,7 +28,7 @@ const dirName = (b) => DIRS[Math.round((b % 360) / 45) % 8];
 const hhmm = (d) => d instanceof Date && !isNaN(d) ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : "—";
 
 export function sun({ S, openScreen, closeScreen }) {
-  const t = useStore(S.t), screen = useStore(S.screen);
+  const t = useStore(S.t), screen = useStore(S.screen), filters = useStore(S.filters);
   const [pos, setPos] = useState(MOCK || isGate ? KYIV : null);
   const [heading, setHeading] = useState(MOCK || isGate ? 300 : null);
   const [needPerm, setNeedPerm] = useState(compass.needsPermission && !MOCK);
@@ -68,6 +78,13 @@ export function sun({ S, openScreen, closeScreen }) {
   const times = SunCalc.getTimes(now, loc.lat, loc.lng);
   const roseRot = -(heading || 0);
 
+  const shown = Array.isArray(filters.bodies) ? filters.bodies : BODY_KEYS;
+  let planets = [];
+  try {
+    const obs = new Astro.Observer(loc.lat, loc.lng, 0), time = new Astro.AstroTime(date);
+    planets = shown.filter((b) => BODIES[b]).map((b) => { const eq = Astro.Equator(BODIES[b].name, time, obs, true, true); const h = Astro.Horizon(time, obs, eq.ra, eq.dec, "normal"); return { b, az: h.azimuth, alt: h.altitude }; }).filter((m) => m.alt > 0);
+  } catch {  }
+
   return html`<div class="flex flex-col gap-4 items-center">
     <!-- compass dial -->
     <div class="relative w-full mx-auto overflow-visible" style="max-width:280px;aspect-ratio:1">
@@ -79,7 +96,8 @@ export function sun({ S, openScreen, closeScreen }) {
       <span class="absolute text-xs font-semibold text-base-content/70" style=${at(90 + roseRot, 42)}>Сх</span>
       <span class="absolute text-xs font-semibold text-base-content/70" style=${at(180 + roseRot, 42)}>Пд</span>
       <span class="absolute text-xs font-semibold text-base-content/70" style=${at(270 + roseRot, 42)}>Зх</span>
-      <div data-sun class=${`absolute ${up ? "text-warning" : "text-base-content/30"}`} style=${at(bearing + roseRot, 44)}>${Icon(up ? "lucide:sun" : "lucide:moon", "text-2xl")}</div>
+      <div data-sun class=${`absolute ${up ? "text-warning" : "text-base-content/30"}`} style=${at(bearing + roseRot, rFromAlt(alt))}>${Icon(up ? "lucide:sun" : "lucide:moon", "text-2xl")}</div>
+      ${planets.map((m) => html`<div data-planet=${m.b} class="absolute font-bold leading-none text-[0.95rem] pointer-events-none" style=${`${at(m.az + roseRot, rFromAlt(m.alt))};color:${BODIES[m.b].color}`} title=${BODIES[m.b].name} key=${m.b}>${BODIES[m.b].sym}</div>`)}
       <!-- center readout -->
       <div class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">
         <div data-bearing class="text-3xl font-bold tabular-nums">${Math.round(bearing)}°</div>

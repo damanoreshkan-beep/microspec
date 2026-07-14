@@ -33,5 +33,17 @@
   "pickTitle": "Обери точку на Землі",
   "pickHere": "Рахувати для цієї точки",
   "myLocation": "Моє місце",
-  "tapGlobe": "Тапни точку на глобусі"
+  "tapGlobe": "Тапни точку на глобусі",
+  "fBodies": "Планети",
+  "bMoon": "Місяць",
+  "bMercury": "Меркурій",
+  "bVenus": "Венера",
+  "bMars": "Марс",
+  "bJupiter": "Юпітер",
+  "bSaturn": "Сатурн",
+  "bUranus": "Уран",
+  "bNeptune": "Нептун",
+  "filterTitle": "Планети на небі",
+  "apply": "Готово",
+  "ariaFilter": "Фільтр планет"
 }

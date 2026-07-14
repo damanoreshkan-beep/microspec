@@ -33,5 +33,17 @@
   "pickTitle": "Pick a spot on Earth",
   "pickHere": "Use this location",
   "myLocation": "My location",
-  "tapGlobe": "Tap a point on the globe"
+  "tapGlobe": "Tap a point on the globe",
+  "fBodies": "Planets",
+  "bMoon": "Moon",
+  "bMercury": "Mercury",
+  "bVenus": "Venus",
+  "bMars": "Mars",
+  "bJupiter": "Jupiter",
+  "bSaturn": "Saturn",
+  "bUranus": "Uranus",
+  "bNeptune": "Neptune",
+  "filterTitle": "Planets in the sky",
+  "apply": "Done",
+  "ariaFilter": "Filter planets"
 }

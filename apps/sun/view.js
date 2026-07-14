@@ -114,7 +114,7 @@ export function sun({ S, openScreen, closeScreen }) {
   // the planets so bodies in conjunction don't stack on top of each other; each nearby one steps inward.
   const marks = [...(shown.includes("sun") ? [{ b: "sun", sun: true, az: bearing, alt }] : []), ...planets].sort((a, b) => a.az - b.az);
   let prevAz = -999, stack = 0;
-  for (const mk of marks) { stack = mk.az - prevAz < 14 ? stack + 1 : 0; mk.r = Math.max(20, rFromAlt(mk.alt) - stack * 6); prevAz = mk.az; } // step out near-neighbours so their micro-labels get room
+  for (const mk of marks) { stack = mk.az - prevAz < 15 ? stack + 1 : 0; mk.r = Math.max(20, rFromAlt(mk.alt) - stack * 10); prevAz = mk.az; } // a tight conjunction (sun+mercury+moon) fans into a radial spoke so full-word labels never collide
 
   return html`<div class="flex flex-col gap-4 items-center">
     <!-- compass dial -->

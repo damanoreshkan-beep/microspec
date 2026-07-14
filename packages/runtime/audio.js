@@ -14,10 +14,15 @@ export const noiseSource = (ctx, buf) => { const s = ctx.createBufferSource(); s
 export const filter = (ctx, type, freq, q) => { const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; if (q != null) f.Q.value = q; return f; };
 export const lfo = (ctx, hz, depth, target, base) => { const o = ctx.createOscillator(); o.frequency.value = hz; const g = ctx.createGain(); g.gain.value = depth; o.connect(g); g.connect(target); if (base != null) target.value = base; o.start(); return o; };
 
-export function strike(ctx, dest, freq, { type = "sine", dur = 1.2, attack = 0.005, peak = 0.4, partials = [[1, 1]] } = {}) {
-  const t = ctx.currentTime, g = ctx.createGain(); g.connect(dest);
-  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  for (const [r, pg] of partials) { const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq * r; const pn = ctx.createGain(); pn.gain.value = pg; o.connect(pn); pn.connect(g); o.start(t); o.stop(t + dur + 0.05); }
+export function strike(ctx, dest, freq, { type = "sine", dur = 1.2, attack = 0.004, peak = 0.4, partials = [[1, 1]] } = {}) {
+  const t = ctx.currentTime;
+  for (const [r, pg, decayScale = 1] of partials) {
+    const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq * r;
+    const g = ctx.createGain(); o.connect(g); g.connect(dest);
+    const d = dur * decayScale;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak * pg, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.start(t); o.stop(t + d + 0.05);
+  }
 }
 
 const SEMI = { C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5, "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11 };

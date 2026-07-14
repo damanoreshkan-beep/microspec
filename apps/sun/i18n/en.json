@@ -45,5 +45,6 @@
   "bNeptune": "Neptune",
   "filterTitle": "Planets in the sky",
   "apply": "Done",
-  "ariaFilter": "Filter planets"
+  "ariaFilter": "Filter planets",
+  "bPluto": "Pluto"
 }

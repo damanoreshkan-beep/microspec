@@ -30,6 +30,10 @@ const no = (n, m, det) => { console.log(`  ${C.r}✗${C.x} ${n} — ${m}`); (det
 
 try {
   const page = await browser.newPage();
+  // TRUE device viewport via CDP — Chromium clamps `--window-size` to a ~500px minimum, so the phone-width
+  // gates (overflow@384, axe, shots) were silently running at ~501px and MISSED 384-only overflows. Emulate
+  // the real width so what the gate checks == what the phone renders.
+  await page.setViewportSize({ width: dev.width, height: dev.height });
   const { h, ev } = makeHelpers(page);
   console.log(`\n  verify: ${appdir}\n`);
   await gotoAndSettle(page, srv.url, settle);

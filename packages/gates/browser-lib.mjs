@@ -119,8 +119,15 @@ export async function runDesignChecks(ev) {
     await ev((th) => document.documentElement.setAttribute("data-theme", th), base);
   } catch (e) { out.push({ name: "a11y (axe)", ok: false, msg: "не вдалось завантажити axe: " + e.message }); }
 
-  const ov = await ev(() => document.documentElement.scrollWidth - window.innerWidth);
-  out.push(ov <= 1 ? { name: "phone 384px: без горизонтального overflow", ok: true } : { name: "phone 384px: overflow", ok: false, msg: `+${ov}px` });
+  // overflow@384 + NAME the widest element that spills past the viewport, so a failure is instantly fixable
+  const ovi = await ev(() => {
+    const ov = document.documentElement.scrollWidth - window.innerWidth;
+    if (ov <= 1) return { ov: 0 };
+    let sel = "?", far = window.innerWidth;
+    for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; sel = el.tagName.toLowerCase() + (cls ? "." + cls : ""); } }
+    return { ov, sel };
+  });
+  out.push(ovi.ov <= 1 ? { name: "phone 384px: без горизонтального overflow", ok: true } : { name: "phone 384px: overflow", ok: false, msg: `+${ovi.ov}px — винуватець: ${ovi.sel}` });
 
   await ev(() => { const v = document.getElementById("view"); if (v) v.style.maxWidth = "200px"; });
   await sleep(250);

@@ -80,7 +80,7 @@ export function onthisday({ S }) {
     ${it.thumb ? html`<img src=${it.thumb} loading="lazy" alt="" class="w-14 h-14 rounded-lg object-cover shrink-0" />` : null}
   </div>`;
 
-  return html`<div class="px-4 pt-3 pb-24 max-w-xl mx-auto flex flex-col gap-3">
+  return html`<div class="flex flex-col gap-3">
     <div class="text-2xl font-bold text-center">${dateStr}</div>
     <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
       ${CATS.map((k) => html`<button data-cat=${k} aria-pressed=${k === cat} class=${`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border transition ${k === cat ? "border-primary bg-primary/10" : "border-base-300"}`} onClick=${() => setCat(k)} key=${k}>${T(t, LABEL[k])}</button>`)}

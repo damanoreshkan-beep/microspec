@@ -43,7 +43,12 @@ try {
     await Deno.writeFile(`${appdir}/states/main.png`, await page.screenshot());
     const tabs = await ev(() => [...document.querySelectorAll("[data-tab]")].map((b) => b.getAttribute("data-tab")));
     if (tabs.length > 1) { await h.click(`[data-tab="${tabs[tabs.length - 1]}"]`); await h.wait(500); await Deno.writeFile(`${appdir}/states/last.png`, await page.screenshot()); await h.click(`[data-tab="${tabs[0]}"]`); await h.wait(300); }
-    console.log(`  ${C.g}✓${C.x} shots → ${appdir}/states/`);
+    const baseTheme = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
+    await ev((th) => document.documentElement.setAttribute("data-theme", th.includes("light") ? th : th + "-light"), baseTheme);
+    await h.wait(250);
+    await Deno.writeFile(`${appdir}/states/light.png`, await page.screenshot());
+    await ev((th) => document.documentElement.setAttribute("data-theme", th), baseTheme);
+    console.log(`  ${C.g}✓${C.x} shots (main + light) → ${appdir}/states/`);
   }
 
   console.log(`  ${C.d}e2e${C.x}`);

@@ -20,9 +20,10 @@ const BODIES = {
   uranus: { name: "Uranus", sym: "♅", color: "#7FD4D0" }, neptune: { name: "Neptune", sym: "♆", color: "#6A8CF0" },
 };
 const BODY_KEYS = Object.keys(BODIES);
-// dial is a sky dome: azimuth = angle, altitude → radius (zenith near centre, horizon at the rim), clamped
-// so nothing overlaps the centre readout or leaves the dial.
-const rFromAlt = (alt) => Math.min(44, Math.max(15, 40 - (alt / 90) * 25));
+// bodies sit in a tight ring hugging the dial rim (cardinals are on the rim at 46%). altitude is a subtle
+// radial cue (higher = a touch inward) + opacity below — the ring stays clean, nothing floats mid-dial.
+const rFromAlt = (alt) => Math.min(45, Math.max(37, 45 - (Math.max(0, alt) / 90) * 8));
+const bodyOpacity = (alt) => (0.5 + 0.5 * Math.min(1, Math.max(0, alt) / 90)).toFixed(2); // fainter near horizon
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const MOCK = new URLSearchParams(location.search).get("mock");
@@ -107,13 +108,14 @@ export function sun({ S, openScreen, closeScreen }) {
       <div class="absolute inset-0 rounded-full border border-base-300 bg-base-100"></div>
       <!-- fixed marker: where the phone points (vertical, above the dial) -->
       <div class="absolute left-1/2 -top-1 -translate-x-1/2 text-base-content/50">${Icon("lucide:chevron-up", "text-xl")}</div>
-      <!-- rose + sun: positioned by ANGLE on the dial circle (no rotated container → never spills the dial) -->
-      <span class="absolute text-sm font-bold text-error" style=${at(roseRot, 42)}>Пн</span>
-      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(90 + roseRot, 42)}>Сх</span>
-      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(180 + roseRot, 42)}>Пд</span>
-      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(270 + roseRot, 42)}>Зх</span>
+      <!-- cardinals hug the rim (46%); sun + planets ride a tight ring just inside — positioned by ANGLE
+           (no rotated container → never spills the dial) -->
+      <span class="absolute text-sm font-bold text-error" style=${at(roseRot, 46)}>Пн</span>
+      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(90 + roseRot, 46)}>Сх</span>
+      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(180 + roseRot, 46)}>Пд</span>
+      <span class="absolute text-xs font-semibold text-base-content/70" style=${at(270 + roseRot, 46)}>Зх</span>
       <div data-sun class=${`absolute ${up ? "text-warning" : "text-base-content/30"}`} style=${at(bearing + roseRot, rFromAlt(alt))}>${Icon(up ? "lucide:sun" : "lucide:moon", "text-2xl")}</div>
-      ${planets.map((m) => html`<div data-planet=${m.b} class="absolute font-bold leading-none text-[0.95rem] pointer-events-none" style=${`${at(m.az + roseRot, rFromAlt(m.alt))};color:${BODIES[m.b].color}`} title=${BODIES[m.b].name} key=${m.b}>${BODIES[m.b].sym}</div>`)}
+      ${planets.map((m) => html`<div data-planet=${m.b} class="absolute font-bold leading-none text-[0.95rem] pointer-events-none" style=${`${at(m.az + roseRot, rFromAlt(m.alt))};color:${BODIES[m.b].color};opacity:${bodyOpacity(m.alt)}`} title=${BODIES[m.b].name} key=${m.b}>${BODIES[m.b].sym}</div>`)}
       <!-- center readout -->
       <div class="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">
         <div data-bearing class="text-3xl font-bold tabular-nums">${Math.round(bearing)}°</div>

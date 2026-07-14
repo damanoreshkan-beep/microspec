@@ -7,9 +7,9 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { audioSupported, noiseSource as src, filter as bqf, lfo, strike, createEngine } from "/_rt/audio.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const AC = typeof AudioContext !== "undefined" ? AudioContext : (typeof globalThis !== "undefined" && globalThis.webkitAudioContext) || null;
 
 const GROUPS = [
   { cat: "catWater", items: [
@@ -48,18 +48,7 @@ const GROUPS = [
 const LAYERS = GROUPS.flatMap((g) => g.items);
 const TIMERS = [15, 30, 60];
 
-// ---- synthesis (all generated) ----
-function noiseBuffer(ctx, type, seconds = 4) {
-  const n = Math.floor(ctx.sampleRate * seconds), buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
-  if (type === "white") { for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; }
-  else if (type === "pink") { let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0; for (let i = 0; i < n; i++) { const w = Math.random() * 2 - 1; b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.96900 * b2 + w * 0.1538520; b3 = 0.86650 * b3 + w * 0.3104856; b4 = 0.55000 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.0168980; d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11; b6 = w * 0.115926; } }
-  else { let last = 0; for (let i = 0; i < n; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; } }
-  return buf;
-}
-const src = (ctx, buf) => { const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; return s; };
-const bqf = (ctx, type, freq, q) => { const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; if (q != null) f.Q.value = q; return f; };
-const lfo = (ctx, hz, depth, target, base) => { const o = ctx.createOscillator(); o.frequency.value = hz; const g = ctx.createGain(); g.gain.value = depth; o.connect(g); g.connect(target); if (base != null) target.value = base; o.start(); return o; };
-
+// ---- synthesis (all generated) — noise/node/tone primitives live in /_rt/audio.js ----
 // per-layer node kit: tracks nodes + scheduler timers so a layer tears down cleanly.
 function makeKit(ctx, out) {
   const nodes = [], timers = [];
@@ -68,12 +57,8 @@ function makeKit(ctx, out) {
     add: (...ns) => { nodes.push(...ns); return ns[0]; },
     // repeating one-shot with a jittered gap (min + up to span ms)
     loop(min, span, fn) { const tick = () => { try { fn(); } catch { /* */ } timers.push(setTimeout(tick, min + Math.random() * span)); }; timers.push(setTimeout(tick, min + Math.random() * span)); },
-    // struck/plucked tone: fundamental + inharmonic partials with an exponential decay
-    hit(freq, { type = "sine", dur = 1.2, attack = 0.005, peak = 0.4, partials = [[1, 1]] } = {}) {
-      const t = ctx.currentTime, g = ctx.createGain(); g.connect(out);
-      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      for (const [r, pg] of partials) { const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq * r; const pn = ctx.createGain(); pn.gain.value = pg; o.connect(pn); pn.connect(g); o.start(t); o.stop(t + dur + 0.05); }
-    },
+    // struck/plucked tone (fundamental + inharmonic partials, exp decay) — the systemic strike()
+    hit: (freq, opts) => strike(ctx, out, freq, opts),
     stop() { for (const t of timers) clearTimeout(t); for (const n of nodes) { try { n.stop && n.stop(); } catch { /* */ } try { n.disconnect && n.disconnect(); } catch { /* */ } } },
   };
 }
@@ -116,7 +101,7 @@ const BUILDERS = {
 function startLayer(eng, key) {
   const ctx = eng.ctx, vol = ctx.createGain(); vol.gain.value = 0; vol.connect(eng.master);
   const kit = makeKit(ctx, vol);
-  BUILDERS[key](kit, eng.buf);
+  BUILDERS[key](kit, eng.buffers);
   eng.layers.set(key, { stop: () => { kit.stop(); try { vol.disconnect(); } catch { /* */ } }, setVol: (v) => { try { vol.gain.setTargetAtTime(v * 0.9, ctx.currentTime, 0.08); } catch { vol.gain.value = v * 0.9; } } });
 }
 
@@ -129,9 +114,9 @@ export function ambient({ S }) {
   const eng = useRef(null), timerRef = useRef(null);
 
   const ensure = () => {
-    if (!AC) return null;
-    if (!eng.current) { const ctx = new AC(); const master = ctx.createGain(); master.gain.value = 0.8; master.connect(ctx.destination); eng.current = { ctx, master, layers: new Map(), buf: { white: noiseBuffer(ctx, "white"), pink: noiseBuffer(ctx, "pink"), brown: noiseBuffer(ctx, "brown") } }; }
-    try { eng.current.ctx.resume(); } catch { /* */ }
+    if (!audioSupported) return null;
+    if (!eng.current) { eng.current = createEngine({ master: 0.8 }); eng.current.layers = new Map(); }
+    eng.current.resume();
     return eng.current;
   };
 
@@ -153,7 +138,7 @@ export function ambient({ S }) {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [timerMin, active]);
 
-  useEffect(() => () => { const e = eng.current; if (e) { for (const l of e.layers.values()) l.stop(); try { e.ctx.close(); } catch { /* */ } } }, []);
+  useEffect(() => () => { const e = eng.current; if (e) { for (const l of e.layers.values()) l.stop(); e.close(); } }, []);
 
   const toggle = (key) => { ensure(); setActive((s) => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n; }); };
   const setVol = (key, v) => setVols((m) => ({ ...m, [key]: v }));
@@ -185,6 +170,6 @@ export function ambient({ S }) {
       <span class="text-base-content/70 flex items-center gap-1.5">${Icon("lucide:moon")}${T(t, "sleep")}</span>
       ${TIMERS.map((m) => html`<button data-timer=${m} class=${`px-2.5 py-1 rounded-full text-xs font-medium border transition ${timerMin === m ? "border-primary bg-primary/10" : "border-base-300"}`} onClick=${() => setTimerMin((c) => (c === m ? 0 : m))} key=${m}>${m}${T(t, "min")}</button>`)}
     </div>
-    ${!AC ? html`<div class="text-xs text-base-content/50">${T(t, "noAudio")}</div>` : null}
+    ${!audioSupported ? html`<div class="text-xs text-base-content/70">${T(t, "noAudio")}</div>` : null}
   </div>`;
 }

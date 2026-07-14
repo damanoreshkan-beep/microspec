@@ -1,0 +1,22 @@
+{
+  "title": "Kalimba",
+  "tabPlay": "Play",
+  "tabMe": "Me",
+  "sGliss": "Glissando",
+  "sTwinkle": "Twinkle, Twinkle",
+  "sOde": "Ode to Joy",
+  "noAudio": "Audio is unavailable in this browser",
+  "profTheme": "Dark theme",
+  "profLang": "Language",
+  "profTagline": "A 17-tine thumb piano — tap to play, every note synthesised live, no files, offline",
+  "install": "Install app",
+  "installTitle": "Install",
+  "installBtn": "Install",
+  "installDesc": "Works offline, opens like an app",
+  "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
+  "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
+  "close": "Close",
+  "refresh": "Refresh",
+  "toastSaved": "Saved",
+  "toastRemoved": "Removed"
+}

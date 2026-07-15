@@ -16,21 +16,36 @@ const RIFF = [0, 0, 12, 0, 0, 0, 3, 0, 0, 7, 0, 0, 10, 0, 5, 0];    // per-step 
 
 const TRACKS = [
   { id: "kick", name: "tKick", icon: "lucide:drum", on: "bg-amber-500" },
+  { id: "snare", name: "tSnare", icon: "lucide:disc-2", on: "bg-red-500" },
   { id: "clap", name: "tClap", icon: "lucide:hand", on: "bg-pink-500" },
   { id: "hat", name: "tHat", icon: "lucide:hash", on: "bg-cyan-400" },
   { id: "ohat", name: "tOpenHat", icon: "lucide:circle-dot", on: "bg-sky-400" },
+  { id: "cowbell", name: "tCowbell", icon: "lucide:bell", on: "bg-yellow-400" },
+  { id: "tom", name: "tTom", icon: "lucide:circle", on: "bg-fuchsia-500" },
+  { id: "stab", name: "tStab", icon: "lucide:layers", on: "bg-violet-500" },
   { id: "acid", name: "tBass", icon: "lucide:zap", on: "bg-lime-400" },
+  { id: "sub", name: "tSub", icon: "lucide:waves", on: "bg-emerald-500" },
 ];
 const P = (s) => [...s].map((c) => c === "x");
 const PRESETS = [
-  { id: "techno", name: "pTechno", kick: "x...x...x...x...", clap: "....x.......x...", hat: "..x...x...x...x.", ohat: "................", acid: "x...x...x...x..." },
-  { id: "acid", name: "pAcid", kick: "x...x...x...x...", clap: "....x.......x...", hat: "xxxxxxxxxxxxxxxx", ohat: "..x...x...x...x.", acid: "x.xxx.x.x.xxx.x." },
-  { id: "minimal", name: "pMinimal", kick: "x...x...x...x...", clap: "........x.......", hat: "..x...x...x...x.", ohat: "................", acid: "x.......x......." },
-  { id: "rave", name: "pRave", kick: "x...x...x.x.x...", clap: "....x...x...x...", hat: "xxxxxxxxxxxxxxxx", ohat: "..x...x...x...x.", acid: "x.x.x.x.x.x.x.x." },
+  { id: "techno", name: "pTechno", kick: "x...x...x...x...", clap: "....x.......x...", hat: "..x...x...x...x.", acid: "x...x...x...x...", sub: "x...x...x...x..." },
+  { id: "acid", name: "pAcid", kick: "x...x...x...x...", clap: "....x.......x...", hat: "xxxxxxxxxxxxxxxx", ohat: "..x...x...x...x.", acid: "x.xxx.x.x.xxx.x.", sub: "x...x...x...x..." },
+  { id: "minimal", name: "pMinimal", kick: "x...x...x...x...", clap: "........x.......", hat: "..x...x...x...x.", sub: "x.......x......." },
+  { id: "rave", name: "pRave", kick: "x...x...x.x.x...", clap: "....x...x...x...", hat: "xxxxxxxxxxxxxxxx", ohat: "..x...x...x...x.", stab: "x.......x.......", acid: "x.x.x.x.x.x.x.x.", sub: "x...x...x...x..." },
+  { id: "hardgroove", name: "pHardgroove", kick: "x...x...x...x...", snare: "....x.......x...", tom: "......x.......x.", cowbell: "..x...x...x...x.", hat: "x.x.x.x.x.x.x.x.", sub: "x...x...x...x..." },
+  { id: "trance", name: "pTrance", kick: "x...x...x...x...", ohat: "..x...x...x...x.", stab: "x...x...x...x...", clap: "....x.......x...", sub: ".x.x.x.x.x.x.x.x" },
+  { id: "dub", name: "pDub", kick: "x.......x.......", stab: "....x.......x...", sub: "x...x...x...x...", hat: "..x...x...x...x.", clap: "............x..." },
+  { id: "hardtechno", name: "pHardtechno", kick: "x.x.x.x.x.x.x.x.", clap: "....x.......x...", snare: "..x...x...x...x.", stab: "x...x...x...x...", acid: "xx.xxx.xxx.xxx.x", hat: "xxxxxxxxxxxxxxxx", ohat: "..x...x...x...x." },
+  { id: "detroit", name: "pDetroit", kick: "x...x...x...x...", clap: "....x.......x...", hat: "..x...x...x...x.", cowbell: "x..x..x..x..x...", stab: "..x.......x.....", acid: "x...x...x...x..." },
+  { id: "electro", name: "pElectro", kick: "x..x..x...x.x...", snare: "....x.......x...", hat: "x.x.x.x.x.x.x.x.", cowbell: "..x...x...x...x.", sub: "x..x..x...x.x..." },
 ];
-const parse = (p) => Object.fromEntries(TRACKS.map((tr) => [tr.id, P(p[tr.id])]));
+const parse = (p) => Object.fromEntries(TRACKS.map((tr) => [tr.id, P(p[tr.id] || "................")]));
 const empty = () => Object.fromEntries(TRACKS.map((tr) => [tr.id, Array(N).fill(false)]));
-const random = () => ({ kick: STEPS.map((i) => i % 4 === 0), clap: STEPS.map((i) => i % 8 === 4 || Math.random() < 0.1), hat: STEPS.map(() => Math.random() < 0.55), ohat: STEPS.map((i) => i % 2 === 1 && Math.random() < 0.4), acid: STEPS.map(() => Math.random() < 0.45) });
+const random = () => ({
+  kick: STEPS.map((i) => i % 4 === 0), snare: STEPS.map((i) => i % 8 === 4), clap: STEPS.map((i) => i % 8 === 4 && Math.random() < 0.5),
+  hat: STEPS.map(() => Math.random() < 0.55), ohat: STEPS.map((i) => i % 2 === 1 && Math.random() < 0.4), cowbell: STEPS.map(() => Math.random() < 0.18),
+  tom: STEPS.map(() => Math.random() < 0.12), stab: STEPS.map((i) => i % 4 === 0 && Math.random() < 0.5), acid: STEPS.map(() => Math.random() < 0.4), sub: STEPS.map((i) => i % 4 === 0),
+});
 
 // ---- drum/synth voices (generated) ----
 const KICK = (ctx, out, t) => {
@@ -65,6 +80,36 @@ const ACID = (ctx, out, t, freq, cutoff) => {
   const g = ctx.createGain(); g.gain.setValueAtTime(0.45, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
   o.connect(lp); lp.connect(g); g.connect(out); o.start(t); o.stop(t + 0.26);
 };
+const SNARE = (ctx, out, buf, t) => {
+  const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(130, t + 0.1);
+  const og = ctx.createGain(); og.gain.setValueAtTime(0.5, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.12); o.connect(og); og.connect(out); o.start(t); o.stop(t + 0.13);
+  const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 1500;
+  const ng = ctx.createGain(); ng.gain.setValueAtTime(0.5, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+  const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(hp); hp.connect(ng); ng.connect(out); s.start(t); s.stop(t + 0.2);
+};
+const COWBELL = (ctx, out, t) => {
+  const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2640; bp.Q.value = 1;
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.3, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+  bp.connect(g); g.connect(out);
+  for (const f of [540, 800]) { const o = ctx.createOscillator(); o.type = "square"; o.frequency.value = f; o.connect(bp); o.start(t); o.stop(t + 0.27); }
+};
+const TOM = (ctx, out, t) => {
+  const o = ctx.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(90, t + 0.18);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+  o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.32);
+};
+const STAB = (ctx, out, t, cutoff) => {                             // rave chord stab — minor triad saw through a filter env
+  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 6;
+  lp.frequency.setValueAtTime(Math.min(cutoff * 4, 9000), t); lp.frequency.exponentialRampToValueAtTime(Math.max(cutoff, 600), t + 0.18);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.28, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+  lp.connect(g); g.connect(out);
+  for (const n of [0, 3, 7, 12]) { const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = midiToFreq(ROOT + 24 + n); o.connect(lp); o.start(t); o.stop(t + 0.34); }
+};
+const SUB = (ctx, out, t, freq) => {
+  const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = freq;
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.7, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+  o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.32);
+};
 
 export function rave({ S }) {
   const t = useStore(S.t);
@@ -79,15 +124,29 @@ export function rave({ S }) {
   useEffect(() => { bRef.current = bpm; }, [bpm]);
   useEffect(() => { cRef.current = cutoff; }, [cutoff]);
 
-  const ensure = () => { if (!audioSupported) return null; if (!eng.current) eng.current = createEngine({ master: 0.6 }); eng.current.resume(); return eng.current; };
+  const ensure = () => {
+    if (!audioSupported) return null;
+    if (!eng.current) {
+      eng.current = createEngine({ master: 0.9 });
+      const c = eng.current.ctx.createDynamicsCompressor();          // glue bus — punch + no clipping with many voices
+      c.threshold.value = -10; c.knee.value = 6; c.ratio.value = 6; c.attack.value = 0.003; c.release.value = 0.12;
+      c.connect(eng.current.master); eng.current.bus = c;
+    }
+    eng.current.resume(); return eng.current;
+  };
 
   const fire = (s, time) => {
-    const e = eng.current; if (!e) return; const ctx = e.ctx, out = e.master, Tr = tRef.current;
+    const e = eng.current; if (!e) return; const ctx = e.ctx, out = e.bus, buf = e.buffers.white, Tr = tRef.current, cut = cRef.current;
     if (Tr.kick[s]) KICK(ctx, out, time);
-    if (Tr.clap[s]) CLAP(ctx, out, e.buffers.white, time);
+    if (Tr.snare[s]) SNARE(ctx, out, buf, time);
+    if (Tr.clap[s]) CLAP(ctx, out, buf, time);
     if (Tr.hat[s]) HAT(ctx, out, time, false);
     if (Tr.ohat[s]) HAT(ctx, out, time, true);
-    if (Tr.acid[s]) ACID(ctx, out, time, midiToFreq(ROOT + RIFF[s]), cRef.current);
+    if (Tr.cowbell[s]) COWBELL(ctx, out, time);
+    if (Tr.tom[s]) TOM(ctx, out, time);
+    if (Tr.stab[s]) STAB(ctx, out, time, cut);
+    if (Tr.acid[s]) ACID(ctx, out, time, midiToFreq(ROOT + RIFF[s]), cut);
+    if (Tr.sub[s]) SUB(ctx, out, time, midiToFreq(ROOT + RIFF[s]));
     q.current.push({ s, time });
   };
   const tick = () => { const e = eng.current; if (!e) return; const spb = 60 / bRef.current / 4; while (nextT.current < e.ctx.currentTime + 0.1) { fire(stepN.current, nextT.current); nextT.current += spb; stepN.current = (stepN.current + 1) % N; } };

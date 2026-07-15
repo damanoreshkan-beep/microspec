@@ -18,6 +18,7 @@ const R = JSON.parse(await Deno.readTextFile(recipePath));
 // Kept in lockstep uk⇄en so the locale-parity gate stays green automatically.
 const BASE = {
   uk: { tabSaved: "Збережені", tabMe: "Я", searchSaved: "Шукати у збережених…", status: "", open: "Відкрити",
+    statusLoading: "Оновлення…", statusError: "Дані недоступні", savedCount: "{n} збережено",
     noResults: "Нічого не знайдено", noResultsHint: "Спробуй інший запит", errorHint: "Перевір зʼєднання та онови",
     emptySaved: "Ще нічого не збережено", emptySavedHint: "Тисни закладку на картці, щоб зберегти сюди",
     favAria: "Зберегти", unfavAria: "Прибрати зі збережених", profTheme: "Темна тема", profLang: "Мова",
@@ -26,6 +27,7 @@ const BASE = {
     installGenericHint: "У меню браузера обери «Встановити».", close: "Закрити", refresh: "Оновити",
     toastSaved: "Збережено", toastRemoved: "Видалено зі збережених" },
   en: { tabSaved: "Saved", tabMe: "Me", searchSaved: "Search saved…", status: "", open: "Open",
+    statusLoading: "Refreshing…", statusError: "Data unavailable", savedCount: "{n} saved",
     noResults: "Nothing found", noResultsHint: "Try another query", errorHint: "Check your connection and refresh",
     emptySaved: "Nothing saved yet", emptySavedHint: "Tap the bookmark on a card to save it here",
     favAria: "Save", unfavAria: "Remove from saved", profTheme: "Dark theme", profLang: "Language",

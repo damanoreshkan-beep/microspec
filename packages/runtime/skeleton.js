@@ -9,7 +9,8 @@ import { useRef, useEffect } from "preact/hooks";
 const CH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789абвгґдежзиклмнпрстуфхцч#%&/<>";
 const rc = () => CH[(Math.random() * CH.length) | 0];
 const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const instant = () => isGate || (typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+const forceAnim = typeof location !== "undefined" && location.search.includes("__anim");   // gate hook: exercise animations
+const instant = () => !forceAnim && (isGate || (typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches));
 
 // Scramble — decode text. With `text`: scrambles then resolves into it (once, on each text change → the
 // translation reveal). Without `text`: a placeholder bar of `len` scrambling chars. Inherits colour/size.

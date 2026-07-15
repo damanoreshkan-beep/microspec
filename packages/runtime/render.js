@@ -92,8 +92,8 @@ const Empty = (icon, text, hint) => html`<div class="flex flex-col items-center 
 
 // Loading placeholder for a list: decoding cards (scramble text + blinking-pixel image) — never a spinner.
 const Skeleton = (card = {}) => { const row = card.layout === "row", img = !!card.image; return html`<${Fragment}>${Array.from({ length: 5 }, (_, i) => row
-  ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl" key=${i}><div class="card-body p-3 px-4 flex-row items-center gap-3 text-base-content/70"><${Scramble} len=${2} cls="w-9 shrink-0 text-primary/60 font-bold" /><div class="flex-1 min-w-0"><${Scramble} len=${18} /></div><${Scramble} len=${5} /></div></div>`
-  : html`<div class=${`card bg-base-100 border border-base-300 rounded-2xl${img ? " overflow-hidden" : ""}`} key=${i}>${img ? html`<figure class="aspect-video overflow-hidden"><${Pixels} /></figure>` : null}<div class="card-body p-4 gap-2 text-base-content/70"><div class="font-semibold"><${Scramble} len=${16} /></div><div class="text-sm text-base-content/60"><${Scramble} len=${26} /></div></div></div>`)}</${Fragment}>`; };
+  ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 px-4 flex-row items-center gap-3 text-base-content/70"><${Scramble} len=${2} cls="w-9 shrink-0 text-primary/60 font-bold" /><div class="flex-1 min-w-0 truncate"><${Scramble} len=${18} /></div><div class="shrink-0"><${Scramble} len=${5} /></div></div></div>`
+  : html`<div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}>${img ? html`<figure class="aspect-video overflow-hidden"><${Pixels} /></figure>` : null}<div class="card-body p-4 gap-2 text-base-content/70"><div class="font-semibold truncate"><${Scramble} len=${16} /></div><div class="text-sm text-base-content/70 truncate"><${Scramble} len=${26} /></div></div></div>`)}</${Fragment}>`; };
 
 const Frag = (children) => html`<${Fragment}>${children}</${Fragment}>`;
 

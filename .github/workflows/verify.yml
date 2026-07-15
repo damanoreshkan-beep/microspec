@@ -30,6 +30,9 @@ jobs:
         run: deno test -A packages/runtime/runtime_test.js
       - name: Schema contract gate (ajv) over every app spec
         run: deno run -A packages/schema/validate.mjs apps/*/spec.json
+      - name: Runtime files import each other relatively (absolute /_rt/ 404s at a subpath like /microspec/)
+        run: |
+          if grep -rn 'from "/_rt/' packages/runtime/*.js; then echo "::error::runtime files must use relative imports (./x.js), not /_rt/ — absolute breaks on GitHub Pages"; exit 1; fi
       - name: Gate efficacy (mutation-test the preflight gate — fail on any escape)
         run: deno run -A packages/gates/efficacy.mjs --ci
       - name: Authorless conformance (a deterministic no-LLM generator produces a passing app)

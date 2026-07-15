@@ -45,7 +45,7 @@ export default [
   {
     name: "збереження: закладка додає в Збережені", run: async (h) => {
       await load(h);
-      await h.click("[data-fav] button[aria-label]"); await h.wait(150);
+      await h.click("[data-fav]"); await h.wait(150);   // the star button carries data-fav (z-[2], above the drill-down overlay)
       await h.click('[data-tab="saved"]'); await h.wait(200);
       h.expect((await h.count("[data-fav]")) >= 1, "збережена модель не зʼявилась");
       await h.click('[data-tab="catalog"]'); await h.wait(150);

@@ -33,6 +33,7 @@ export function strike(ctx, dest, freq, { type = "sine", dur = 1.2, attack = 0.0
     const g = ctx.createGain(); o.connect(g); g.connect(dest);
     const d = dur * decayScale;
     g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak * pg, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.onended = () => { try { o.disconnect(); g.disconnect(); } catch { /* */ } };   // free the graph promptly (nodes don't GC fast)
     o.start(t); o.stop(t + d + 0.05);
   }
 }

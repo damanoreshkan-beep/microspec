@@ -224,7 +224,12 @@ export function rave({ S, toast }) {
   };
 
   const fire = (s, time) => {
-    const e = eng.current; if (!e) return; const ctx = e.ctx, out = e.bus, buf = e.buffers.white, Tr = $tracks.get(), cut = $fx.get().squelch;
+    const e = eng.current; if (!e) return; const ctx = e.ctx, buf = e.buffers.white, Tr = $tracks.get(), cut = $fx.get().squelch;
+    // every step's voices feed a throwaway group gain that is DISCONNECTED once the tails finish — nodes
+    // don't GC promptly (WebAudio #904), so leaving them wired makes the audio thread process ever more dead
+    // nodes → rising CPU → crackle → dropout. Freeing per step keeps the live node count bounded.
+    const out = ctx.createGain(); out.connect(e.bus);
+    setTimeout(() => { try { out.disconnect(); } catch { /* */ } }, Math.max(0, (time - ctx.currentTime) * 1000) + 1300);
     if (Tr.kick[s]) KICK(ctx, out, time);
     if (Tr.hardkick[s]) HARDKICK(ctx, out, time);
     if (Tr.snare[s]) SNARE(ctx, out, buf, time);
@@ -241,9 +246,11 @@ export function rave({ S, toast }) {
     if (Tr.reese[s]) REESE(ctx, out, time, midiToFreq(ROOT + RIFF[s]));
     if (Tr.sub[s]) SUB(ctx, out, time, midiToFreq(ROOT + RIFF[s]));
     if (Tr.rumble[s]) RUMBLE(ctx, out, time);
-    q.current.push({ s, time });
+    if (q.current.length < 128) q.current.push({ s, time });
   };
-  const tick = () => { const e = eng.current; if (!e) return; const spb = 60 / $bpm.get() / 4, sw = $fx.get().swing; while (nextT.current < e.ctx.currentTime + 0.1) { const s = stepN.current; fire(s, nextT.current + (s % 2 ? sw * spb : 0)); nextT.current += spb; stepN.current = (s + 1) % N; } };
+  // lookahead scheduler. If we fell behind (tab throttled/backgrounded → the interval paused), resync instead
+  // of scheduling a burst of past-dated notes (which would all fire at once = a crackle spike).
+  const tick = () => { const e = eng.current; if (!e) return; const spb = 60 / $bpm.get() / 4, sw = $fx.get().swing; if (nextT.current < e.ctx.currentTime) nextT.current = e.ctx.currentTime; while (nextT.current < e.ctx.currentTime + 0.1) { const s = stepN.current; fire(s, nextT.current + (s % 2 ? sw * spb : 0)); nextT.current += spb; stepN.current = (s + 1) % N; } };
   const draw = () => { const e = eng.current; if (e) { const now = e.ctx.currentTime; while (q.current.length && q.current[0].time <= now) setCur(q.current.shift().s); } raf.current = requestAnimationFrame(draw); };
   const start = () => { const e = ensure(); setPlaying(true); if (!e) return; nextT.current = e.ctx.currentTime + 0.06; stepN.current = 0; sched.current = setInterval(tick, 25); raf.current = requestAnimationFrame(draw); };
   const stop = () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); sched.current = null; raf.current = null; q.current = []; setPlaying(false); setCur(-1); };

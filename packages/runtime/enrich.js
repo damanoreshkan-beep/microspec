@@ -16,8 +16,45 @@
 // no proxy needed), and extracts a clean description even when a page has no og:description meta. Probed
 // at ~7/8 hit rate on a live HN front page vs 1/8 for og-scraping through public proxies.
 import { atom } from "nanostores";
+import { viaProxy } from "./feed.js";
 
 export const metaTick = atom(0);
+
+// Per-host description resolvers. Default = Jina Reader (fetchMeta below). A few hosts need a bespoke
+// extractor: Hugging Face blocks anonymous Jina AND its og:description is a generic site blurb, so the
+// real model card lives in README.md — fetched through the CORS proxy (HF restricts CORS to its own
+// origin) and reduced to its first prose paragraph. Same { description } contract, same cache, same
+// fail-open. A new host that hides its prose the same way just adds an entry here.
+function hfReadmeDesc(md) {
+  let t = String(md || "").replace(/^---\s*\r?\n[\s\S]*?\r?\n---\s*\r?\n/, ""); // strip YAML frontmatter
+  if (/access to (model|this repo|the model) .*is restricted/i.test(t.slice(0, 400))) return ""; // gated
+  const out = [];
+  for (const raw of t.split("\n")) {
+    const line = raw.trim();
+    if (!line) { if (out.length) break; else continue; }                  // blank line ends 1st paragraph
+    if (/^(#|!\[|<|\[!|\||-{3,}|={3,}|>|\*\s|-\s|\d+\.\s)/.test(line)) continue; // heading/img/html/badge/table/rule/quote/list
+    const s = line.replace(/!\[[^\]]*\]\([^)]*\)/g, "")                    // images
+                  .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")                 // links → their text
+                  .replace(/<[^>]+>/g, "")                                 // inline html
+                  .replace(/https?:\/\/\S+/g, "")                          // bare URLs
+                  .replace(/[*`_]/g, "").replace(/\s+/g, " ").trim();      // emphasis / code ticks / gaps
+    if (s.length < 20) continue;
+    out.push(s);
+    if (out.join(" ").length > 220) break;
+  }
+  return out.join(" ").replace(/\s+/g, " ").trim().slice(0, 340);
+}
+
+const RESOLVERS = {
+  "huggingface.co": async (url) => {
+    const m = url.match(/^https?:\/\/huggingface\.co\/([^/?#]+\/[^/?#]+)/); // org/model
+    if (!m) return null;                                                    // not a model page → let Jina try
+    const md = await viaProxy(`https://huggingface.co/${m[1]}/raw/main/README.md`, (x) => typeof x === "string" && x.length > 0, 12000);
+    const description = hfReadmeDesc(md);
+    if (!description) throw new Error("no card");                           // gated / no README → fail-open
+    return { description };
+  },
+};
 
 const mem = new Map();      // url → { description }
 const pending = new Set();  // urls in flight (dedupe concurrent warms)
@@ -41,6 +78,10 @@ export function enrich(url) {
 }
 
 async function fetchMeta(url) {
+  let host = "";
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { /* bad url → Jina */ }
+  const resolver = RESOLVERS[host];
+  if (resolver) { const r = await resolver(url); if (r) return r; }   // resolver may throw (fail-open) or null → Jina
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 10000);
   try {

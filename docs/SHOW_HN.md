@@ -84,10 +84,14 @@ gate it identically"? Repo's MIT — issues and forks welcome.
 HN will probe hard. Concede what's true, then sharpen the real point. Never get defensive.
 
 **"This is just axe-core + Playwright in CI. Nothing new."**
-> Correct — the tools are commodity, and I say so. The claim isn't "novel gate," it's "novel *floor*."
-> Because apps are a constrained spec against one runtime (not freeform code), the gate can be a hard
-> *merge blocker* for every app uniformly, and green actually means something. Bolt/v0 can't gate that
-> way — there's no shared contract to gate against. The constraint is the contribution, not the linter.
+> Correct that the tools are commodity — I say so. Two things aren't. (1) The *floor*: because apps are a
+> constrained spec against one runtime, the gate is a hard *merge blocker* for every app uniformly, so
+> green means something. Bolt/v0 can't gate that way — there's no shared contract to gate against. (2) I
+> **measure the gate itself**: a mutation-testing harness injects realistic breakages into every app and
+> reports the catch rate. It started at 79%, exposed a real gap (locale-parity wasn't enforced), I closed
+> it, and it's 100% (51/51) on the browser-free tier now — and that number runs in CI, so the gate can't
+> silently regress. I've never seen another "AI builds apps" project publish a gate-efficacy number. The
+> constraint + the measurement are the contribution, not the linter.
 
 **"Why not just generate freeform React and gate it identically?"** *(the best objection — engage it fully)*
 > You can, and you should gate freeform too. The difference is what a red gate costs you. With freeform,

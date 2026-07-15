@@ -30,6 +30,8 @@ jobs:
         run: deno test -A packages/runtime/runtime_test.js
       - name: Schema contract gate (ajv) over every app spec
         run: deno run -A packages/schema/validate.mjs apps/*/spec.json
+      - name: Gate efficacy (mutation-test the preflight gate — fail on any escape)
+        run: deno run -A packages/gates/efficacy.mjs --ci
       - name: Build check (dist assembles)
         run: deno run -A deploy/build.mjs
       - name: Discover apps to verify (changed apps; whole farm on a shared change)

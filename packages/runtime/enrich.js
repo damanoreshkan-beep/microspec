@@ -1,6 +1,38 @@
 import { atom } from "nanostores";
+import { viaProxy } from "./feed.js";
 
 export const metaTick = atom(0);
+
+function hfReadmeDesc(md) {
+  let t = String(md || "").replace(/^---\s*\r?\n[\s\S]*?\r?\n---\s*\r?\n/, ""); 
+  if (/access to (model|this repo|the model) .*is restricted/i.test(t.slice(0, 400))) return ""; 
+  const out = [];
+  for (const raw of t.split("\n")) {
+    const line = raw.trim();
+    if (!line) { if (out.length) break; else continue; }                  
+    if (/^(#|!\[|<|\[!|\||-{3,}|={3,}|>|\*\s|-\s|\d+\.\s)/.test(line)) continue; 
+    const s = line.replace(/!\[[^\]]*\]\([^)]*\)/g, "")                    
+                  .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")                 
+                  .replace(/<[^>]+>/g, "")                                 
+                  .replace(/https?:\/\/\S+/g, "")                          
+                  .replace(/[*`_]/g, "").replace(/\s+/g, " ").trim();      
+    if (s.length < 20) continue;
+    out.push(s);
+    if (out.join(" ").length > 220) break;
+  }
+  return out.join(" ").replace(/\s+/g, " ").trim().slice(0, 340);
+}
+
+const RESOLVERS = {
+  "huggingface.co": async (url) => {
+    const m = url.match(/^https?:\/\/huggingface\.co\/([^/?#]+\/[^/?#]+)/); 
+    if (!m) return null;                                                    
+    const md = await viaProxy(`https://huggingface.co/${m[1]}/raw/main/README.md`, (x) => typeof x === "string" && x.length > 0, 12000);
+    const description = hfReadmeDesc(md);
+    if (!description) throw new Error("no card");                           
+    return { description };
+  },
+};
 
 const mem = new Map();      
 const pending = new Set();  
@@ -23,6 +55,10 @@ export function enrich(url) {
 }
 
 async function fetchMeta(url) {
+  let host = "";
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch {  }
+  const resolver = RESOLVERS[host];
+  if (resolver) { const r = await resolver(url); if (r) return r; }   
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 10000);
   try {

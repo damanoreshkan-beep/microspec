@@ -1,0 +1,112 @@
+{
+  "id": "hf",
+  "theme": "signal",
+  "translate": [
+    "desc"
+  ],
+  "enrich": {
+    "url": "url",
+    "body": "desc"
+  },
+  "fav": {
+    "key": "id"
+  },
+  "detail": {
+    "title": "name",
+    "subtitle": "author",
+    "rows": [
+      { "field": "desc", "label": "dDesc", "icon": "lucide:file-text" },
+      { "field": "task", "label": "dTask", "icon": "lucide:cpu" },
+      { "field": "downloads", "label": "dDownloads", "icon": "lucide:download" },
+      { "field": "likes", "label": "dLikes", "icon": "lucide:heart" },
+      { "field": "lib", "label": "dLib", "icon": "lucide:package" },
+      { "field": "createdAt", "label": "dCreated", "icon": "lucide:calendar", "format": "ago" }
+    ],
+    "actions": [
+      { "href": "url", "label": "dOpen", "icon": "lucide:external-link" }
+    ]
+  },
+  "filters": {
+    "refetch": true,
+    "defaults": { "sort": "likes" },
+    "controls": [
+      {
+        "type": "seg",
+        "key": "sort",
+        "label": "filterSort",
+        "icon": "lucide:arrow-up-down",
+        "options": [
+          ["likes", "sortLikes"],
+          ["downloads", "sortDownloads"]
+        ]
+      }
+    ]
+  },
+  "tabs": [
+    {
+      "id": "catalog",
+      "type": "list",
+      "icon": "lucide:sparkles",
+      "label": "tabCatalog",
+      "search": true,
+      "searchKey": "search",
+      "statusKey": "status",
+      "empty": { "icon": "lucide:search-x", "text": "noResults", "hint": "noResultsHint" },
+      "card": {
+        "layout": "feed",
+        "title": "name",
+        "subtitle": "author",
+        "body": "desc",
+        "more": "open",
+        "meta": { "field": "createdAt", "format": "ago" },
+        "badges": [
+          { "field": "task", "icon": "lucide:cpu", "variant": "primary" },
+          { "field": "downloads", "icon": "lucide:download", "variant": "ghost" },
+          { "field": "likes", "icon": "lucide:heart", "variant": "ghost" }
+        ]
+      }
+    },
+    {
+      "id": "saved",
+      "type": "list",
+      "icon": "lucide:bookmark",
+      "label": "tabSaved",
+      "source": "fav",
+      "titleKey": "tabSaved",
+      "search": true,
+      "searchKey": "searchSaved",
+      "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
+      "card": {
+        "layout": "feed",
+        "title": "name",
+        "subtitle": "author",
+        "body": "desc",
+        "more": "open",
+        "meta": { "field": "createdAt", "format": "ago" },
+        "badges": [
+          { "field": "task", "icon": "lucide:cpu", "variant": "primary" },
+          { "field": "downloads", "icon": "lucide:download", "variant": "ghost" },
+          { "field": "likes", "icon": "lucide:heart", "variant": "ghost" }
+        ]
+      }
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:sparkles",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": {
+      "label": "profSource",
+      "url": "https://huggingface.co/models",
+      "icon": "lucide:database"
+    }
+  }
+}

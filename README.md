@@ -10,10 +10,10 @@ agent-generated apps **verifiably** correct instead of hopefully correct.
 
 [![verify](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml/badge.svg)](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml)
 [![gate efficacy](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damanoreshkan-beep/microspec/main/docs/efficacy.json)](packages/gates/efficacy.mjs)
-[![live demo](https://img.shields.io/badge/live-25%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
+[![live demo](https://img.shields.io/badge/live-26%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-> **▶ Try the farm live:** **[25 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)** —
+> **▶ Try the farm live:** **[26 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)** —
 > each is a spec + adapter that passed the gates. Add any to your home screen; they work offline.
 
 <p align="center">
@@ -42,7 +42,7 @@ Give the agent a **floor it cannot fall through:**
 2. **Gate everything in CI.** A headless-Chromium harness runs the app in every state and **fails the
    build** on any violation. Red gate → no merge. Green gate → auto-deploy to GitHub Pages.
 
-The 25-app farm is the proof, and doubles as the regression suite for the runtime itself.
+The 26-app farm is the proof, and doubles as the regression suite for the runtime itself.
 
 ## The gate (this is the wedge)
 
@@ -83,7 +83,7 @@ Both tiers are measured and enforced:
 The verify tier proves the headline the hard way: a mutation that strips a control's accessible name is
 **caught by axe in CI**, by measurement, not assertion. (One honest footnote: a synthetic *overflow* probe
 escaped — the dock truncates an over-long label — so we dropped it; overflow@384 is already enforced across
-all 25 apps on every push.)
+all 26 apps on every push.)
 
 ## See it live
 
@@ -141,7 +141,7 @@ import map; styling is Tailwind + DaisyUI.
 | `packages/runtime` | the Preact catalog that renders a spec (5 families + invariants), zero-build |
 | `packages/gates` | `verify` (Chromium a11y / responsive / e2e / shots) + `preflight` (browser-free) |
 | `packages/gen` | `scaffold` — spec + data → runnable app shell |
-| `apps/` | the reference farm: 25 apps = family showcase + runtime regression suite |
+| `apps/` | the reference farm: 26 apps = family showcase + runtime regression suite |
 
 ## Quickstart
 
@@ -168,6 +168,22 @@ the authoring loop, [`docs/TESTING.md`](docs/TESTING.md) for the gate internals,
 - **Isn't:** a general-purpose app builder or an autonomous code generator. The agent is a human-driven
   coding assistant (Claude Code) in the loop; the moat is the family taste + the spec contract + the gates,
   not the LLM.
+
+## The author is pluggable (it's not an AI wrapper)
+
+The model writes ~40 lines of JSON + a small adapter. The runtime (thousands of lines) and the gates do the
+real work — and **neither calls a model**. So the *author* is swappable:
+
+- **Claude** — writes a spec against the JSON-Schema contract (what this repo used).
+- **Any other model** — nothing here is Anthropic-specific; the contract is just JSON Schema.
+- **A deterministic script** — [`packages/gen/authorless.mjs`](packages/gen/authorless.mjs) turns a recipe
+  (a source URL + a field map) into a complete app with **zero model calls**. The
+  [**Books**](https://damanoreshkan-beep.github.io/microspec/books/) app (free Project Gutenberg catalog)
+  was generated this way from [`recipes/books.json`](recipes/books.json) — and passed the *same* a11y /
+  responsive / e2e gates as everything else. CI re-runs `authorless … --check` on every push to keep it true.
+- **A human** — hand-write `spec.json` + `data.js`, scaffold, gate.
+
+If a plain function can author a passing app, the LLM isn't the moat — the contract + families + gates are.
 
 ## License
 

@@ -1,0 +1,89 @@
+{
+  "id": "books",
+  "theme": "signal",
+  "translate": [
+    "desc"
+  ],
+  "fav": {
+    "key": "id"
+  },
+  "tabs": [
+    {
+      "id": "feed",
+      "type": "list",
+      "icon": "lucide:book-open",
+      "label": "tabFeed",
+      "search": true,
+      "searchKey": "search",
+      "statusKey": "status",
+      "empty": {
+        "icon": "lucide:search-x",
+        "text": "noResults",
+        "hint": "noResultsHint"
+      },
+      "card": {
+        "layout": "feed",
+        "href": "url",
+        "title": "title",
+        "subtitle": "author",
+        "body": "desc",
+        "more": "open",
+        "badges": [
+          {
+            "field": "downloads",
+            "icon": "lucide:download",
+            "variant": "ghost"
+          }
+        ]
+      }
+    },
+    {
+      "id": "saved",
+      "type": "list",
+      "icon": "lucide:bookmark",
+      "label": "tabSaved",
+      "source": "fav",
+      "titleKey": "tabSaved",
+      "search": true,
+      "searchKey": "searchSaved",
+      "empty": {
+        "icon": "lucide:bookmark",
+        "text": "emptySaved",
+        "hint": "emptySavedHint"
+      },
+      "card": {
+        "layout": "feed",
+        "href": "url",
+        "title": "title",
+        "subtitle": "author",
+        "body": "desc",
+        "more": "open",
+        "badges": [
+          {
+            "field": "downloads",
+            "icon": "lucide:download",
+            "variant": "ghost"
+          }
+        ]
+      }
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:book-open",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": {
+      "label": "profSource",
+      "url": "https://www.gutenberg.org",
+      "icon": "lucide:database"
+    }
+  }
+}

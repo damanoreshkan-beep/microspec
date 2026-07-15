@@ -15,8 +15,13 @@ agent-generated apps **verifiably** correct instead of hopefully correct.
 > **▶ Try the farm live:** **[24 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)** —
 > each is a spec + adapter that passed the gates. Add any to your home screen; they work offline.
 
-<!-- DEMO GIF: broken PR → red gate → fix → green → deploy. See docs/DEMO.md to record it, then: -->
-<!-- ![the gate blocking a broken app](docs/demo/gate.gif) -->
+<p align="center">
+  <a href="https://damanoreshkan-beep.github.io/microspec/store/">
+    <img src="docs/demo/gate.svg" width="720"
+      alt="An agent drops one translation; the preflight gate catches it in ~2s, then passes after the fix">
+  </a>
+  <br><sub>The gate catching a real mistake — an agent's dropped translation — in ~2 seconds. Only green merges.</sub>
+</p>
 
 ---
 

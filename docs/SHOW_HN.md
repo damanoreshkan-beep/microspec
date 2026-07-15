@@ -79,6 +79,40 @@ gate it identically"? Repo's MIT — issues and forks welcome.
 
 ---
 
+## Handling the skeptical comments (rehearse these — they decide the thread)
+
+HN will probe hard. Concede what's true, then sharpen the real point. Never get defensive.
+
+**"This is just axe-core + Playwright in CI. Nothing new."**
+> Correct — the tools are commodity, and I say so. The claim isn't "novel gate," it's "novel *floor*."
+> Because apps are a constrained spec against one runtime (not freeform code), the gate can be a hard
+> *merge blocker* for every app uniformly, and green actually means something. Bolt/v0 can't gate that
+> way — there's no shared contract to gate against. The constraint is the contribution, not the linter.
+
+**"Why not just generate freeform React and gate it identically?"** *(the best objection — engage it fully)*
+> You can, and you should gate freeform too. The difference is what a red gate costs you. With freeform,
+> a failure means "re-generate and hope"; the agent has 10,000 ways to be wrong and no guardrail. With a
+> spec, the failure surface is tiny and the fix is mechanical — usually one field. Narrow surface → gates
+> that pass reliably instead of flapping. It's the same reason typed > untyped at scale.
+
+**"It's narrow — toy apps, not real software."**
+> Yes, deliberately. It's a *vertical* framework for installable data/tool micro-PWAs, not a React
+> replacement. I'd rather nail one class of app verifiably than half-build every class. If your app isn't
+> in the five families, this isn't for you — and that honesty is the point.
+
+**"It's an AI wrapper / vibe-coded slop."**
+> The LLM is the least defensible part and I don't lean on it — the repo works with a human writing specs
+> by hand. The durable pieces are the family catalog, the spec contract, and the gates. Judge those.
+
+**"axe-core misses most real a11y issues."**
+> True — automated a11y catches ~30-40% of WCAG. But it catches 100% of the regressions it covers, on
+> every merge, in both themes, forever — which is 30-40% more than the zero that freeform generators
+> enforce today. It's a floor, not a ceiling; manual audits still matter.
+
+**"Personal project / bus factor."**
+> Fair. It's MIT and the whole thing is ~a few thousand lines of readable Deno + Preact, no build. The
+> gates and schema are the parts worth forking even if you never touch my runtime.
+
 ## Cross-post targets (after HN)
 
 - r/webdev, r/PWA, r/opensource — lead with the live gallery + the one-line claim.

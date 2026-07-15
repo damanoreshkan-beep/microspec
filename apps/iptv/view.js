@@ -75,14 +75,14 @@ export function iptv({ S }) {
 
   return html`<${Fragment}>
     <div class="flex flex-col gap-2.5">
-      <div class="flex items-center gap-2">
-        <select id="country" aria-label=${T(t, "country")} class="select select-bordered select-sm rounded-2xl shrink-0" value=${country} onChange=${(e) => $country.set(e.target.value)}>
+      <div class="@container"><div class="flex items-center gap-2 @max-[300px]:flex-col @max-[300px]:items-stretch">
+        <select id="country" aria-label=${T(t, "country")} class="select select-bordered select-sm rounded-2xl w-full @min-[300px]:w-auto @min-[300px]:shrink-0" value=${country} onChange=${(e) => $country.set(e.target.value)}>
           ${COUNTRIES.map(([c, f, n]) => html`<option value=${c} key=${c}>${f} ${n}</option>`)}
         </select>
-        <label class="input input-bordered input-sm flex items-center gap-2 rounded-2xl flex-1 min-w-0">
+        <label class="input input-bordered input-sm flex items-center gap-2 rounded-2xl flex-1 min-w-0 w-full">
           ${Icon("lucide:search", "opacity-50")}<input id="ch-search" type="search" aria-label=${T(t, "search")} class="grow min-w-0" placeholder=${T(t, "search")} value=${query} onInput=${(e) => $query.set(e.target.value)} />
         </label>
-      </div>
+      </div></div>
 
       ${cats.length > 1 ? html`<div class="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-0.5">
         <button class=${`btn btn-xs rounded-full shrink-0 ${cat === "" ? "btn-primary" : "btn-ghost border border-base-300"}`} onClick=${() => $cat.set("")}>${T(t, "allCats")}</button>
@@ -93,9 +93,9 @@ export function iptv({ S }) {
         : err ? html`<div class="flex flex-col items-center gap-2 py-16 text-base-content/60">${Icon("lucide:cloud-off", "text-4xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline rounded-2xl" onClick=${() => loadCountry(country)}>${T(t, "retry")}</button></div>`
         : !filtered.length ? html`<div class="flex flex-col items-center gap-2 py-16 text-base-content/60">${Icon("lucide:tv-minimal", "text-4xl")}<div>${T(t, "noChannels")}</div></div>`
         : html`<${Fragment}>
-          <div class="text-xs text-base-content/50 px-0.5">${T(t, "count", { n: filtered.length })}</div>
+          <div class="text-xs text-base-content/70 px-0.5">${T(t, "count", { n: filtered.length })}</div>
           <div class="grid grid-cols-3 gap-2.5 @max-[260px]:grid-cols-2">${shown.map((ch) => html`<${Tile} ch=${ch} onPlay=${play} key=${ch.id} />`)}</div>
-          ${filtered.length > CAP ? html`<div class="text-center text-xs text-base-content/50 py-2">${T(t, "more", { n: filtered.length - CAP })}</div>` : null}
+          ${filtered.length > CAP ? html`<div class="text-center text-xs text-base-content/70 py-2">${T(t, "more", { n: filtered.length - CAP })}</div>` : null}
         </${Fragment}>`}
     </div>
 

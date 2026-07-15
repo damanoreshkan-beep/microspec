@@ -4,9 +4,9 @@ export default [
   {
     name: "секвенсер: 5×16 = 80 клітин, пресети, транспорт", run: async (h) => {
       await ready(h); await h.wait(200);
-      h.expect((await h.count("[data-cell]")) === 160, "немає 160 клітин (10 доріжок × 16)");
+      h.expect((await h.count("[data-cell]")) === 192, "немає 192 клітин (12 доріжок × 16)");
       h.expect((await h.count("#play")) === 1, "немає кнопки play/stop");
-      h.expect((await h.count("[data-preset]")) === 12, "немає 12 пресетів (10 + random + clear)");
+      h.expect((await h.count("[data-preset]")) === 20, "немає 20 пресетів (18 + random + clear)");
     },
   },
   {

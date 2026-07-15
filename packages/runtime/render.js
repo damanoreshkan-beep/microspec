@@ -9,7 +9,8 @@ import { useStore } from "@nanostores/preact";
 import { T, ago, whenLabel, sinceLabel, sys } from "./i18n.js";
 import { CORE, BUILD, appVersion } from "./version.js";
 import { PERMISSIONS, permLabels } from "./permissions.js";
-import { tr, warm, trTick } from "./translate.js";
+import { tr, warm, trTick, CONTENT_LANG } from "./translate.js";
+import { Scramble, Pixels, Loading } from "./skeleton.js";
 import { enrich, warmMeta, metaTick } from "./enrich.js";
 
 let A;            // app context: { spec, S, load, toast, toggleFav, favKey, swap }
@@ -28,6 +29,13 @@ function field(it, name, loc) {
   const e = A.spec.enrich;
   let v = (e && name === e.body) ? (enrich(it[e.url])?.description ?? "") : it[name];
   return trFields().includes(name) ? tr(v, loc) : v;
+}
+// Visible render of a field. A translated field (locale ≠ source) decodes into its value — a scramble that
+// resolves, and re-plays when the async translation lands. Plain string for non-translated fields.
+function fieldNode(it, name, loc) {
+  const e = A.spec.enrich, raw = (e && name === e.body) ? (enrich(it[e.url])?.description ?? "") : it[name];
+  if (!trFields().includes(name) || loc === CONTENT_LANG || typeof raw !== "string" || !raw.trim()) return field(it, name, loc);
+  return html`<${Scramble} text=${tr(raw, loc)} len=${raw.length} />`;
 }
 const searchText = (it) => Object.values(it).map((v) => Array.isArray(v) ? v.join(" ") : v).join(" ").toLowerCase();
 
@@ -82,7 +90,10 @@ const debouncedLoad = () => { clearTimeout(_searchT); _searchT = setTimeout(() =
 
 const Empty = (icon, text, hint) => html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-2 text-center px-6">${Icon(icon, "text-4xl")}<span class="font-medium">${text}</span>${hint && html`<span class="text-sm text-base-content/60">${hint}</span>`}</div>`;
 
-const Skeleton = (row) => html`<${Fragment}>${Array.from({ length: 6 }, (_, i) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl" key=${i}><div class=${row ? "card-body p-3 px-4 flex-row items-center gap-3" : "card-body p-4 gap-3"}>${row ? html`<div class="skeleton h-5 w-10"></div><div class="skeleton h-4 flex-1"></div><div class="skeleton h-5 w-16"></div>` : html`<div class="skeleton h-5 w-2/3"></div><div class="skeleton h-4 w-1/3"></div><div class="skeleton h-4 w-full"></div>`}</div></div>`)}</${Fragment}>`;
+// Loading placeholder for a list: decoding cards (scramble text + blinking-pixel image) — never a spinner.
+const Skeleton = (card = {}) => { const row = card.layout === "row", img = !!card.image; return html`<${Fragment}>${Array.from({ length: 5 }, (_, i) => row
+  ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl" key=${i}><div class="card-body p-3 px-4 flex-row items-center gap-3 text-base-content/70"><${Scramble} len=${2} cls="w-9 shrink-0 text-primary/60 font-bold" /><div class="flex-1 min-w-0"><${Scramble} len=${18} /></div><${Scramble} len=${5} /></div></div>`
+  : html`<div class=${`card bg-base-100 border border-base-300 rounded-2xl${img ? " overflow-hidden" : ""}`} key=${i}>${img ? html`<figure class="aspect-video overflow-hidden"><${Pixels} /></figure>` : null}<div class="card-body p-4 gap-2 text-base-content/70"><div class="font-semibold"><${Scramble} len=${16} /></div><div class="text-sm text-base-content/60"><${Scramble} len=${26} /></div></div></div>`)}</${Fragment}>`; };
 
 const Frag = (children) => html`<${Fragment}>${children}</${Fragment}>`;
 
@@ -115,7 +126,7 @@ function Card({ item: it, card, hide }) {
   if (card.layout === "row") {
     return html`<div class="card @container bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 px-4 flex-row items-center gap-3 @max-[260px]:px-2.5 @max-[260px]:gap-2">
       <div class="font-bold text-primary w-11 shrink-0 @max-[260px]:w-8 @max-[260px]:text-sm">${it[card.lead] ?? "—"}</div>
-      <div class="flex-1 min-w-0 @max-[260px]:hidden"><div class="font-medium truncate text-sm">${field(it, card.title, loc)}</div></div>
+      <div class="flex-1 min-w-0 @max-[260px]:hidden"><div class="font-medium truncate text-sm">${fieldNode(it, card.title, loc)}</div></div>
       <div class="text-right @max-[260px]:text-sm"><div class="font-semibold tabular-nums">${it[card.trailing] == null ? "—" : card.unit ? it[card.trailing] + " " + card.unit : it[card.trailing]}</div>${card.trend && it[card.trend] != null ? html`<div class=${`text-xs font-medium tabular-nums ${Number(it[card.trend]) >= 0 ? "text-success" : "text-error"}`}>${Number(it[card.trend]) >= 0 ? "+" : ""}${it[card.trend]}%</div>` : null}</div>
       ${star}
     </div></div>`;
@@ -138,10 +149,10 @@ function Card({ item: it, card, hide }) {
   const sub = card.subtitle ? field(it, card.subtitle, loc) : null;      // resolved (enrich/translate) — the
   const bodyTxt = card.body ? field(it, card.body, loc) : null;          // value may be virtual, so gate on it
   const body = html`<div class="card-body p-4 gap-2 @max-[240px]:p-3 @max-[240px]:gap-1">
-    <div class="flex items-start justify-between gap-2"><h2 class="font-semibold leading-snug break-words min-w-0 @max-[240px]:text-sm">${field(it, card.title, loc) ?? "—"}</h2>${star}</div>
-    ${sub ? html`<div class="text-sm text-base-content/70 @max-[240px]:hidden">${sub}</div>` : null}
+    <div class="flex items-start justify-between gap-2"><h2 class="font-semibold leading-snug break-words min-w-0 @max-[240px]:text-sm">${fieldNode(it, card.title, loc) ?? "—"}</h2>${star}</div>
+    ${sub ? html`<div class="text-sm text-base-content/70 @max-[240px]:hidden">${fieldNode(it, card.subtitle, loc)}</div>` : null}
     <${Badges} item=${it} badges=${card.badges} hide=${hide} />
-    ${bodyTxt ? html`<p class="text-sm text-base-content/70 line-clamp-2 @max-[240px]:hidden">${bodyTxt}</p>` : null}
+    ${bodyTxt ? html`<p class="text-sm text-base-content/70 line-clamp-2 @max-[240px]:hidden">${fieldNode(it, card.body, loc)}</p>` : null}
     <div class="flex items-center justify-between gap-2 mt-0.5 @max-[240px]:hidden">
       ${(() => { const mt = metaText(card.meta, it, t, loc); return mt ? html`<span class="text-xs text-base-content/80 flex items-center gap-1">${isTimeFmt(card.meta?.format) ? Icon("lucide:clock", "text-[0.9em] opacity-70") : null}${mt}</span>` : html`<span></span>`; })()}
       ${card.more ? html`<span class="text-xs text-primary font-medium flex items-center gap-0.5 ml-auto">${T(t, card.more)} ${Icon("lucide:arrow-up-right")}</span>` : null}
@@ -195,7 +206,7 @@ function LoadMore() {
   }, []);
   const btn = (cls, icon) => html`<button class=${`btn btn-ghost btn-sm gap-2 ${cls}`} onClick=${() => A.loadMore()}>${Icon(icon)} ${T(t, "loadMore")}</button>`;
   return html`<div ref=${ref} class="flex justify-center py-4 min-h-8" aria-live="polite">
-    ${data.loadingMore ? html`<span class="loading loading-spinner loading-md text-primary" role="status" aria-label=${T(t, "statusLoading")}></span>`
+    ${data.loadingMore ? html`<div class="text-base-content/60 text-sm" role="status" aria-label=${T(t, "statusLoading")}><${Scramble} len=${10} /></div>`
       : data.moreError ? btn("text-error", "lucide:rotate-cw")
       : data.next != null ? btn("text-base-content/70", "lucide:chevron-down")
       : null}
@@ -258,7 +269,7 @@ function ListView({ tab }) {
     if (fields?.length && loc !== "en") warm(src.flatMap((it) => fields.map((f) => field(it, f, "en"))), loc);
   }, [data.items, fav, loc, tab.source, mt]);
   if (!tab.card) return Empty("lucide:alert-triangle", T(t, tab.empty?.text || "noResults"), null);
-  if (data.loading) return Skeleton(tab.card.layout === "row");
+  if (data.loading) return Skeleton(tab.card);
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
   if (tab.searchFetch && !q) return Empty(tab.prompt?.icon || "lucide:search", T(t, tab.prompt?.text || "searchPrompt"), T(t, tab.prompt?.hint || "searchPromptHint"));
 
@@ -466,7 +477,7 @@ function Toast() {
 function ConverterView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), loc = useStore(A.S.locale);
   const amount = useStore(A.S.amount), from = useStore(A.S.from), to = useStore(A.S.to);
-  if (data.loading) return Skeleton(false);
+  if (data.loading) return Skeleton({ layout: "row" });
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
   const codes = [tab.base, ...data.items.map((i) => i[tab.codeField])].filter((v, i, a) => v && a.indexOf(v) === i);
   const rate = (code) => code === tab.base ? 1 : (Number(data.items.find((i) => i[tab.codeField] === code)?.[tab.rateField]) || 0);
@@ -492,7 +503,7 @@ function ConverterView({ tab }) {
 // days is a vertical list over data.items.
 function DashboardView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), loc = useStore(A.S.locale);
-  if (data.loading) return html`<div class="flex flex-col gap-3"><div class="skeleton h-44 rounded-2xl"></div><div class="skeleton h-24 rounded-2xl"></div></div>`;
+  if (data.loading) return html`<div class="flex flex-col gap-4 pt-3 px-4 max-w-xl mx-auto"><figure class="aspect-video rounded-2xl overflow-hidden border border-base-300"><${Pixels} /></figure><div class="text-2xl font-bold text-base-content/70"><${Scramble} len=${18} /></div><div class="flex flex-col gap-2 text-base-content/60"><${Scramble} len=${30} /><${Scramble} len=${22} /></div></div>`;
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
   const m = data.meta || {}, h = tab.hero;
   const place = h.place && m[h.place] ? (A.spec.filters

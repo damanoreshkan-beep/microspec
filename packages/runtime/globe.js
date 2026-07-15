@@ -14,6 +14,7 @@ import { html } from "htm/preact";
 import { useRef, useEffect, useState } from "preact/hooks";
 import { geoOrthographic, geoPath, geoGraticule10, geoContains, geoDistance } from "https://esm.sh/d3-geo@3";
 import { feature } from "https://esm.sh/topojson-client@3";
+import { Pixels } from "./skeleton.js";
 
 let LAND = null, LOADING = null;
 async function loadWorld() {
@@ -166,6 +167,6 @@ export function Globe({ onPick, selected, marker, focus, points, spin = true, he
   return html`<div ref=${wrap} class="relative w-full mx-auto select-none" style=${`max-width:${height}px`}>
     ${ready
       ? html`<canvas ref=${canvas} class="w-full block touch-none cursor-grab active:cursor-grabbing" style="aspect-ratio:1"></canvas>`
-      : html`<div class="flex items-center justify-center" style=${`height:${height}px`}><span class="loading loading-spinner loading-lg text-primary"></span></div>`}
+      : html`<div class="overflow-hidden rounded-2xl" style=${`height:${height}px`}><${Pixels} /></div>`}
   </div>`;
 }

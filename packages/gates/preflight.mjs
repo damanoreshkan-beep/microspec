@@ -79,6 +79,10 @@ async function preflight(appdir) {
   for (const m of JSON.stringify(spec).matchAll(/"(?:label|titleKey|searchKey)":"([A-Za-z][\w]*)"/g)) keys.add(m[1]);
   for (const k of keys) for (const l of locales) if (!(k in i18n[l])) errs.push(`i18n key "${k}" missing in ${l}.json`);
 
+  // No content-less spinner loaders — show the app + a modern skeleton (/_rt/skeleton.js Loading/Scramble/
+  // Pixels) instead. DaisyUI loading spinners are banned in app source.
+  if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
+
   // --- mount: render the app in a linkedom DOM and inspect the output ---
   const { document, rafErr, uncaught } = installDom();
   try {

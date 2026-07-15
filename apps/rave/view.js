@@ -11,6 +11,7 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { collection } from "/_rt/db.js";
+import { Loading } from "/_rt/skeleton.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const N = 16, STEPS = [...Array(N).keys()];
@@ -312,7 +313,7 @@ export function raveSaved({ S }) {
   const open = (it) => { $tracks.set({ ...empty(), ...(it.tracks || {}) }); if (it.bpm) $bpm.set(it.bpm); $fx.set({ ...DFX, ...(it.fx || {}) }); S.tab.set("beat"); };
   const del = async (id) => { try { await SAVES.remove(id); } catch { /* */ } load(); };
 
-  if (list === null) return html`<div class="flex justify-center py-20"><span class="loading loading-ring loading-lg"></span></div>`;
+  if (list === null) return html`<${Loading} lines=${[20, 16, 22]} />`;
   if (!list.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:bookmark", "text-4xl")}<span>${T(t, "savedEmpty")}</span></div>`;
 
   return html`<div class="flex flex-col gap-2">

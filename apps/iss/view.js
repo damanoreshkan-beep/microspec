@@ -5,6 +5,7 @@ import { html } from "htm/preact";
 import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Loading } from "/_rt/skeleton.js";
 import { Globe, countryAt, worldReady } from "/_rt/globe.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -38,7 +39,7 @@ export function iss({ S }) {
   if (!pos) {
     return err
       ? html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-2 text-center px-6">${Icon("lucide:satellite-dish", "text-3xl")}<span>${T(t, "statusError")}</span></div>`
-      : html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-3"><span class="loading loading-ring loading-lg"></span></div>`;
+      : html`<${Loading} />`;
   }
 
   const { latitude: lat, longitude: lon, altitude: alt, velocity: vel, visibility: vis } = pos;

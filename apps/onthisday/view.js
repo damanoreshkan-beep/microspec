@@ -5,6 +5,7 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Loading } from "/_rt/skeleton.js";
 import { animate, stagger } from "motion";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -69,7 +70,7 @@ export function onthisday({ S }) {
   if (!data) {
     return err
       ? html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`
-      : html`<div class="flex flex-col items-center text-base-content/60 py-20"><span class="loading loading-ring loading-lg"></span></div>`;
+      : html`<${Loading} />`;
   }
 
   const dateStr = new Date().toLocaleDateString(locale === "en" ? "en-GB" : locale || "uk", { day: "numeric", month: "long" });

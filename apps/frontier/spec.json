@@ -1,0 +1,132 @@
+{
+  "id": "frontier",
+  "theme": "signal",
+  "translate": [
+    "desc"
+  ],
+  "fav": {
+    "key": "id"
+  },
+  "detail": {
+    "title": "name",
+    "subtitle": "owner",
+    "rows": [
+      { "field": "desc", "label": "dDesc", "icon": "lucide:file-text" },
+      { "field": "lang", "label": "dLang", "icon": "lucide:code" },
+      { "field": "stars", "label": "dStars", "icon": "lucide:star" },
+      { "field": "forks", "label": "dForks", "icon": "lucide:git-fork" },
+      { "field": "issues", "label": "dIssues", "icon": "lucide:circle-dot" },
+      { "field": "license", "label": "dLicense", "icon": "lucide:scale" },
+      { "field": "topicsStr", "label": "dTopics", "icon": "lucide:tags" },
+      { "field": "created", "label": "dCreated", "icon": "lucide:sparkles", "format": "ago" },
+      { "field": "pushed", "label": "dPushed", "icon": "lucide:clock", "format": "ago" }
+    ],
+    "actions": [
+      { "href": "url", "label": "dOpen", "icon": "lucide:github" }
+    ]
+  },
+  "filters": {
+    "refetch": true,
+    "defaults": { "period": "month", "category": "" },
+    "controls": [
+      {
+        "type": "segment",
+        "key": "period",
+        "label": "filterPeriod",
+        "icon": "lucide:calendar-clock",
+        "options": [
+          ["week", "periodWeek"],
+          ["month", "periodMonth"],
+          ["quarter", "periodQuarter"]
+        ]
+      },
+      {
+        "type": "select",
+        "key": "category",
+        "label": "filterCategory",
+        "icon": "lucide:layers",
+        "refetch": true,
+        "chip": true,
+        "options": [
+          ["", "catAll"],
+          ["llm", "catLlm"],
+          ["agents", "catAgents"],
+          ["machine-learning", "catMl"],
+          ["computer-vision", "catCv"],
+          ["robotics", "catRobotics"],
+          ["web", "catWeb"],
+          ["developer-tools", "catDevtools"],
+          ["security", "catSecurity"],
+          ["blockchain", "catBlockchain"]
+        ]
+      }
+    ]
+  },
+  "tabs": [
+    {
+      "id": "catalog",
+      "type": "list",
+      "icon": "lucide:flame",
+      "label": "tabCatalog",
+      "search": true,
+      "searchKey": "search",
+      "statusKey": "status",
+      "empty": { "icon": "lucide:search-x", "text": "noResults", "hint": "noResultsHint" },
+      "card": {
+        "layout": "feed",
+        "title": "name",
+        "subtitle": "owner",
+        "body": "desc",
+        "more": "open",
+        "meta": { "field": "pushed", "format": "ago" },
+        "badges": [
+          { "field": "lang", "icon": "lucide:code", "variant": "primary" },
+          { "field": "stars", "icon": "lucide:star", "variant": "ghost" },
+          { "field": "forks", "icon": "lucide:git-fork", "variant": "ghost" }
+        ]
+      }
+    },
+    {
+      "id": "saved",
+      "type": "list",
+      "icon": "lucide:bookmark",
+      "label": "tabSaved",
+      "source": "fav",
+      "titleKey": "tabSaved",
+      "search": true,
+      "searchKey": "searchSaved",
+      "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
+      "card": {
+        "layout": "feed",
+        "title": "name",
+        "subtitle": "owner",
+        "body": "desc",
+        "more": "open",
+        "meta": { "field": "pushed", "format": "ago" },
+        "badges": [
+          { "field": "lang", "icon": "lucide:code", "variant": "primary" },
+          { "field": "stars", "icon": "lucide:star", "variant": "ghost" },
+          { "field": "forks", "icon": "lucide:git-fork", "variant": "ghost" }
+        ]
+      }
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:git-branch",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": {
+      "label": "profSource",
+      "url": "https://github.com/search?q=stars:%3E10&type=repositories",
+      "icon": "lucide:github"
+    }
+  }
+}

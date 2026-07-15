@@ -11,12 +11,12 @@ export const haptic = {
 
 export const geo = {
   supported: typeof navigator !== "undefined" && "geolocation" in navigator,
-  watch(onPos, onErr) {
+  watch(onPos, onErr, opts) {
     if (!this.supported) { onErr?.("unsupported"); return () => {}; }
     const id = navigator.geolocation.watchPosition(
       (p) => onPos({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
       (e) => onErr?.(e.code === 1 ? "denied" : "unavailable"),
-      { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000 },
+      { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000, ...opts },
     );
     return () => navigator.geolocation.clearWatch(id);
   },

@@ -9,6 +9,7 @@
       "label": "tabRuler",
       "view": "ruler",
       "needs": [
+        "geo",
         "haptic"
       ]
     },

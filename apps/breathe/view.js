@@ -50,7 +50,7 @@ export function breathe({ S }) {
   return html`<div class="flex flex-col items-center gap-5 pt-2">
     <div class="flex flex-col items-center gap-1">
       <div class="flex gap-1.5 flex-wrap justify-center px-4">
-        ${ORDER.map((k) => html`<button data-tech=${k} aria-pressed=${k === tech} class=${`px-3.5 py-1.5 rounded-full text-sm font-medium border transition ${k === tech ? "border-primary bg-primary/10" : "border-base-300"}`} onClick=${() => choose(k)} key=${k}>${T(t, TECHS[k].name)}</button>`)}
+        ${ORDER.map((k) => html`<button data-tech=${k} aria-pressed=${k === tech} class=${`px-3.5 py-1.5 rounded-full text-sm font-medium border transition ${k === tech ? "border-primary bg-primary text-primary-content" : "border-base-300"}`} onClick=${() => choose(k)} key=${k}>${T(t, TECHS[k].name)}</button>`)}
       </div>
       <div class="text-xs text-base-content/70">${T(t, TECHS[tech].sub)}</div>
     </div>

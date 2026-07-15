@@ -12,6 +12,9 @@ export function start(spec, arg2) {
 
   const opts = typeof arg2 === "function" ? { load: arg2 } : (arg2 || {});
   const app = createApp(spec, opts.load || (async () => ({ items: [], meta: {} })));
+  // Only data apps pass a real load — for tool/stream apps the AppBar refresh would be a dead affordance
+  // (it calls the no-op load and updates nothing), so it's hidden there. See the taste-gate finding.
+  app.canRefresh = typeof opts.load === "function";
   setApp(app, opts.views || {});
   const { S, load } = app;
 

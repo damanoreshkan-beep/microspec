@@ -3,3 +3,4 @@ dist/
 states/
 *.log
 .DS_Store
+packages/gates/shots/

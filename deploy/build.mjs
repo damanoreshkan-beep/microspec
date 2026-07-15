@@ -34,14 +34,14 @@ for await (const e of Deno.readDir("packages/runtime")) {
   else await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);
 }
 
-// 2) each app → dist/<id>, EXCEPT `home` which is the store launcher and assembles at the site root
-//    (dist/). Skip dev-only e2e; rewrite /_rt/ imports to the right relative depth per destination.
+// 2) each app → dist/<id>; the `home` store goes to dist/store/ (NOT the root) so its manifest scope
+//    (/…/store/) does NOT envelop the apps (/…/<id>/). Sibling scopes = each app stays independently
+//    installable even when the store PWA is installed. The root is a redirect to ./store/ (below).
 const ids = [];
 for await (const a of Deno.readDir("apps")) {
   if (!a.isDirectory || !(await has(`apps/${a.name}/spec.json`))) continue;
-  const atRoot = a.name === "home";
-  const outDir = atRoot ? OUT : `${OUT}/${a.name}`;
-  const rt = (s) => s.replaceAll("/_rt/", atRoot ? "./_rt/" : "../_rt/");
+  const outDir = a.name === "home" ? `${OUT}/store` : `${OUT}/${a.name}`;
+  const rt = (s) => s.replaceAll("/_rt/", "../_rt/");   // everything is now one level deep under dist/
   await Deno.mkdir(outDir, { recursive: true });
   const appVer = "1." + (await gitCount(`apps/${a.name}`));   // app version = commits touching this app
   for await (const f of Deno.readDir(`apps/${a.name}`)) {
@@ -74,5 +74,7 @@ for await (const a of Deno.readDir("apps")) {
   ids.push(a.name);
 }
 
+// root → redirect to the store (which now lives in its own scope at /store/)
+await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="uk"><meta charset="utf-8"><title>microspec</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><link rel="canonical" href="./store/"><script>location.replace("./store/"+location.search+location.hash)</script><body style="background:#0a0a0b"></body></html>\n`);
 await Deno.writeTextFile(`${OUT}/.nojekyll`, "");
-console.log(`built dist/ — ${ids.length} apps (home → site root): ${ids.join(", ")}`);
+console.log(`built dist/ — ${ids.length} apps (home → /store/): ${ids.join(", ")}`);

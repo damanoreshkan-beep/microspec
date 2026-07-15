@@ -2,28 +2,7 @@
   "id": "home",
   "theme": "signal",
   "tabs": [
-    {
-      "id": "apps",
-      "type": "list",
-      "icon": "lucide:layout-grid",
-      "label": "tabApps",
-      "search": true,
-      "searchKey": "search",
-      "statusKey": "status",
-      "card": {
-        "layout": "grid",
-        "title": "title",
-        "href": "href",
-        "icon": "glyph",
-        "bg": "bg",
-        "fg": "fg"
-      },
-      "empty": {
-        "icon": "lucide:search-x",
-        "text": "noResults",
-        "hint": "noResultsHint"
-      }
-    },
+    { "id": "apps", "type": "tool", "icon": "lucide:layout-grid", "label": "tabApps", "view": "store" },
     {
       "id": "me",
       "type": "profile",

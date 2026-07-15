@@ -1,24 +1,35 @@
-// The store home is itself a microapp (list/grid family). Data is a local import (apps.json), so tiles
-// render immediately; we still poll a couple times to be safe.
-const load = async (h) => { for (let i = 0; i < 8; i++) { if ((await h.count(".grid a")) > 0) break; await h.wait(150); } };
+// The store home is a custom tool app: a searchable icon grid, a history-backed per-app description screen,
+// and NEW badges (IndexedDB). apps.json is a local import → tiles render immediately.
+const ready = async (h) => { for (let i = 0; i < 12; i++) { if ((await h.count("[data-app]")) > 0) break; await h.wait(200); } };
 
 export default [
   {
-    name: "сітка застосунків рендериться плитками", run: async (h) => {
-      await load(h);
-      h.expect((await h.count(".grid a")) >= 6, "замало плиток у сітці");
-      h.expect(/^\.\//.test(await h.attr(".grid a", "href")), "плитка не веде на застосунок");
+    name: "стор: сітка застосунків + пошук + NEW-бейджі", run: async (h) => {
+      await ready(h); await h.wait(200);
+      h.expect((await h.count("[data-app]")) >= 10, "замало плиток застосунків");
+      h.expect((await h.count(".input")) === 1, "немає поля пошуку");
+      h.expect(/НОВЕ|NEW/.test(await h.text('[data-app="rave"]')) || (await h.count(".badge-primary")) > 0, "немає NEW-бейджів на невідкритих");
     },
   },
   {
-    name: "пошук звужує до 0 і відновлює", run: async (h) => {
-      await load(h);
-      const base = await h.count(".grid a");
-      await h.type("#filter", "zzzz-нема-такого"); await h.wait(250);
-      h.expect((await h.count(".grid a")) === 0, "очікував 0 плиток");
-      h.expect(/Нічого не знайдено/.test(await h.bodyText()), "немає empty-стану");
-      await h.type("#filter", ""); await h.wait(250);
-      h.expect((await h.count(".grid a")) === base, "не відновилось");
+    name: "пошук фільтрує сітку", run: async (h) => {
+      await ready(h);
+      const base = await h.count("[data-app]");
+      await h.type(".input", "рейв"); await h.wait(250);
+      const now = await h.count("[data-app]");
+      h.expect(now >= 1 && now < base, "пошук не звузив сітку");
+      await h.type(".input", ""); await h.wait(250);
+      h.expect((await h.count("[data-app]")) === base, "не відновилось після очищення");
+    },
+  },
+  {
+    name: "тап по застосунку → екран опису, Back закриває", run: async (h) => {
+      await ready(h);
+      await h.click('[data-app="rave"]'); await h.wait(250);
+      h.expect((await h.count("#open-app")) === 1, "не відкрився екран опису з кнопкою Відкрити");
+      h.expect(/техно|techno/i.test(await h.bodyText()), "немає опису застосунку");
+      await h.back(); await h.wait(250);
+      h.expect((await h.count("#open-app")) === 0, "Back не закрив екран опису");
     },
   },
   {

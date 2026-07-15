@@ -256,7 +256,8 @@ export function rave({ S, toast }) {
   const setFx = (id, v) => $fx.set({ ...fx, [id]: v });
   const save = async () => { try { const list = await SAVES.all(); await SAVES.put("p" + Date.now(), { name: `${T(t, "beatWord")} ${list.length + 1}`, tracks, bpm, fx }); toast?.(T(t, "toastSaved")); } catch { /* no idb */ } };
 
-  return html`<div class="flex flex-col gap-3">
+  return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(4rem + env(safe-area-inset-bottom))">
+    <div class="shrink-0 w-full max-w-xl mx-auto px-4 pt-3 flex flex-col gap-3">
     <div class="flex items-center gap-3">
       <button id="play" aria-label=${playing ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle btn-lg shadow-lg ${playing ? "btn-secondary" : "btn-primary"}`} onClick=${() => (playing ? stop() : start())}>${Icon(playing ? "lucide:square" : "lucide:play", "text-2xl")}</button>
       <div class="flex-1 min-w-0">
@@ -275,9 +276,12 @@ export function rave({ S, toast }) {
       <button data-preset="random" aria-label=${T(t, "rand")} class="btn btn-sm btn-square btn-outline shrink-0" onClick=${() => { ensure(); $tracks.set(random()); }}>${Icon("lucide:dices", "text-base")}</button>
       <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => $tracks.set(empty())}>${Icon("lucide:eraser", "text-base")}</button>
     </div>
+    ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
+    </div>
 
+    <div class="flex-1 min-h-0 overflow-y-auto w-full max-w-xl mx-auto px-4 pb-4">
     <div class="flex flex-col gap-1">
-      <div class="flex items-center gap-[3px]">
+      <div class="sticky top-0 z-10 bg-base-200 flex items-center gap-[3px] py-1">
         <div class="w-7 shrink-0"></div>
         ${STEPS.map((s) => html`<div class=${`flex-1 h-1 rounded-full ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${s === cur ? "bg-primary" : "bg-base-300"}`} key=${s}></div>`)}
       </div>
@@ -288,7 +292,7 @@ export function rave({ S, toast }) {
           onClick=${() => cellToggle(tr.id, s)} key=${s}></button>`; })}
       </div>`)}
     </div>
-    ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
+    </div>
   </div>`;
 }
 

@@ -1,0 +1,15 @@
+{
+  "id": "iptv",
+  "theme": "signal",
+  "tabs": [
+    { "id": "watch", "type": "tool", "icon": "lucide:tv", "label": "tabWatch", "view": "iptv" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:tv",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": { "label": "profSource", "url": "https://github.com/iptv-org/iptv", "icon": "lucide:github" }
+  }
+}

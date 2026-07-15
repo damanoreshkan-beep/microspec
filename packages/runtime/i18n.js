@@ -12,6 +12,15 @@ export const SYS = {
 };
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 
+export const MEDIA = {
+  player: { en: "Player", uk: "Плеєр", ru: "Плеер", de: "Player", pl: "Odtwarzacz" },
+  back: { en: "Back", uk: "Назад", ru: "Назад", de: "Zurück", pl: "Wstecz" },
+  loading: { en: "Connecting…", uk: "Підключення…", ru: "Подключение…", de: "Verbinde…", pl: "Łączenie…" },
+  unavailable: { en: "Stream unavailable", uk: "Потік недоступний", ru: "Поток недоступен", de: "Stream nicht verfügbar", pl: "Strumień niedostępny" },
+  openExternal: { en: "Open in player", uk: "Відкрити у плеєрі", ru: "Открыть в плеере", de: "Im Player öffnen", pl: "Otwórz w odtwarzaczu" },
+};
+export const media = (key, locale) => MEDIA[key]?.[locale] || MEDIA[key]?.en || "";
+
 export function whenLabel(dict, ts, locale, full = true) {
   const d = new Date(ts);
   if (isNaN(d)) return "";

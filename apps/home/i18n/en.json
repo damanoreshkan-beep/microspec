@@ -22,5 +22,7 @@
   "close": "Close",
   "refresh": "Refresh",
   "toastSaved": "Saved",
-  "toastRemoved": "Removed"
+  "toastRemoved": "Removed",
+  "openApp": "Open",
+  "newBadge": "NEW"
 }

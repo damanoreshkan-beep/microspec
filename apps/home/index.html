@@ -39,9 +39,9 @@
     import spec from "./spec.json" with { type: "json" };
     import en from "./i18n/en.json" with { type: "json" };
     import uk from "./i18n/uk.json" with { type: "json" };
-    import { load } from "./data.js";
+    import * as views from "./view.js";
     import { start } from "/_rt/index.js";
-    start({ ...spec, i18n: { en, uk } }, load);
+    start({ ...spec, i18n: { en, uk } }, { views });
   </script>
 </body>
 </html>

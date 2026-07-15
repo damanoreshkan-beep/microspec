@@ -26,9 +26,8 @@ for await (const e of Deno.readDir("packages/runtime")) {
 const ids = [];
 for await (const a of Deno.readDir("apps")) {
   if (!a.isDirectory || !(await has(`apps/${a.name}/spec.json`))) continue;
-  const atRoot = a.name === "home";
-  const outDir = atRoot ? OUT : `${OUT}/${a.name}`;
-  const rt = (s) => s.replaceAll("/_rt/", atRoot ? "./_rt/" : "../_rt/");
+  const outDir = a.name === "home" ? `${OUT}/store` : `${OUT}/${a.name}`;
+  const rt = (s) => s.replaceAll("/_rt/", "../_rt/");   
   await Deno.mkdir(outDir, { recursive: true });
   const appVer = "1." + (await gitCount(`apps/${a.name}`));   
   for await (const f of Deno.readDir(`apps/${a.name}`)) {
@@ -59,5 +58,6 @@ for await (const a of Deno.readDir("apps")) {
   ids.push(a.name);
 }
 
+await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="uk"><meta charset="utf-8"><title>microspec</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><link rel="canonical" href="./store/"><script>location.replace("./store/"+location.search+location.hash)</script><body style="background:#0a0a0b"></body></html>\n`);
 await Deno.writeTextFile(`${OUT}/.nojekyll`, "");
-console.log(`built dist/ — ${ids.length} apps (home → site root): ${ids.join(", ")}`);
+console.log(`built dist/ — ${ids.length} apps (home → /store/): ${ids.join(", ")}`);

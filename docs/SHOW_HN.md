@@ -42,7 +42,7 @@ Chromium and **fail the build** on:
 Red gate → no merge. Green gate → auto-deploy to GitHub Pages. So an agent that introduces a low-contrast
 button or an element that overruns the watch simply can't land the PR — no human has to catch it.
 
-The whole thing is the proof: 24 apps live on plain Pages, no backend, each built this way. Try a few —
+The whole thing is the proof: 25 apps live on plain Pages, no backend, each built this way. Try a few —
 Frontier (fresh GitHub OSS, descriptions translated on-device), a Hugging Face models+Spaces catalog, a
 GPS ruler with a WebXR AR mode. The runtime is zero-build: browser-native ESM (Preact + htm), Tailwind +
 DaisyUI, loaded from a CDN import map — no bundler, no node_modules in the apps.
@@ -102,9 +102,12 @@ HN will probe hard. Concede what's true, then sharpen the real point. Never get 
 > that pass reliably instead of flapping. It's the same reason typed > untyped at scale.
 
 **"It's narrow — toy apps, not real software."**
-> Yes, deliberately. It's a *vertical* framework for installable data/tool micro-PWAs, not a React
-> replacement. I'd rather nail one class of app verifiably than half-build every class. If your app isn't
-> in the five families, this isn't for you — and that honesty is the point.
+> Two answers. (1) Narrow is deliberate — it's a *vertical* framework for installable micro-PWAs, not a
+> React replacement; I'd rather nail one class verifiably than half-build every class. (2) "Toy" is wrong:
+> not everything is a feed. Habits is a local-first streak tracker (IndexedDB, streak math, a 13-week
+> contribution heatmap, JSON export, fully offline). Rave is a polyphonic techno synth (16 voices, FX rack,
+> look-ahead scheduler — synthesised, no samples). Ruler measures in the real world via WebXR AR. Those are
+> stateful, offline, real — and each one still passes the same a11y / responsive / e2e gate.
 
 **"It's an AI wrapper / vibe-coded slop."**
 > The LLM is the least defensible part and I don't lean on it — the repo works with a human writing specs

@@ -94,7 +94,7 @@ export function ruler({ S }) {
       </div>
       <div class="text-right shrink-0">
         <div class="text-[0.62rem] font-mono uppercase text-base-content/60">${live != null ? T(t, "live") : T(t, "points")}</div>
-        <div class="text-lg font-semibold tabular-nums" style=${`color:${ACCENT}`}>${live != null ? fmt(live) : String(pts.length)}</div>
+        <div class="text-lg font-semibold tabular-nums" style="color:light-dark(#0b6e4a,#34d399)">${live != null ? fmt(live) : String(pts.length)}</div>
       </div>
     </div>
 
@@ -105,7 +105,7 @@ export function ruler({ S }) {
     </div>
 
     <div class="flex items-center gap-2">
-      <button id="add" aria-label=${T(t, "addPoint")} disabled=${!ready} class="btn btn-primary flex-1 rounded-2xl gap-2 disabled:opacity-40" onClick=${add}>${Icon("lucide:map-pin-plus", "text-lg")}${T(t, "addPoint")}</button>
+      <button id="add" aria-label=${T(t, "addPoint")} disabled=${!ready} class="btn btn-primary flex-1 min-w-0 rounded-2xl gap-2 disabled:opacity-40" onClick=${add}>${Icon("lucide:map-pin-plus", "text-lg shrink-0")}<span class="truncate">${T(t, "addPoint")}</span></button>
       <button id="undo" aria-label=${T(t, "undo")} disabled=${!pts.length} class="btn btn-outline btn-square rounded-2xl disabled:opacity-40" onClick=${undo}>${Icon("lucide:undo-2", "text-lg")}</button>
       <button id="clear" aria-label=${T(t, "clear")} disabled=${!pts.length} class="btn btn-ghost btn-square rounded-2xl disabled:opacity-40" onClick=${clear}>${Icon("lucide:eraser", "text-lg")}</button>
     </div>

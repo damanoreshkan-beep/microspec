@@ -20,6 +20,16 @@ export const SYS = {
 };
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 
+// Built-in chrome for the video player (/_rt/video.js) — shared by every video app, so no app duplicates it.
+export const MEDIA = {
+  player: { en: "Player", uk: "Плеєр", ru: "Плеер", de: "Player", pl: "Odtwarzacz" },
+  back: { en: "Back", uk: "Назад", ru: "Назад", de: "Zurück", pl: "Wstecz" },
+  loading: { en: "Connecting…", uk: "Підключення…", ru: "Подключение…", de: "Verbinde…", pl: "Łączenie…" },
+  unavailable: { en: "Stream unavailable", uk: "Потік недоступний", ru: "Поток недоступен", de: "Stream nicht verfügbar", pl: "Strumień niedostępny" },
+  openExternal: { en: "Open in player", uk: "Відкрити у плеєрі", ru: "Открыть в плеере", de: "Im Player öffnen", pl: "Otwórz w odtwarzaczu" },
+};
+export const media = (key, locale) => MEDIA[key]?.[locale] || MEDIA[key]?.en || "";
+
 // Locale-aware absolute+relative timestamp for `format: "when"` (future events — launch countdowns,
 // schedules). Absolute part via Intl (locale month + HH:MM); relative countdown uses the i18n keys
 // whenPast / whenMin({n}) / whenHours({n}) / whenDays({n}). Kept in the runtime so a data.js never bakes

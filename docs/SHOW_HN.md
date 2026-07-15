@@ -12,7 +12,7 @@ what moves a Show HN.
 ## Title (pick one)
 
 1. **Show HN: A framework where an AI literally can't merge a broken or inaccessible app**
-2. Show HN: 24 installable PWAs an AI built – and couldn't ship broken (spec + CI gates)
+2. Show HN: 25 installable PWAs an AI built – and couldn't ship broken (spec + CI gates)
 3. Show HN: I gated AI-authored apps so they can't merge if they fail a11y/responsive/e2e
 
 > #1 leads with the sharpest claim. Keep it under ~80 chars so it doesn't truncate.

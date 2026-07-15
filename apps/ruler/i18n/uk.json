@@ -29,5 +29,12 @@
   "close": "Закрити",
   "refresh": "Оновити",
   "toastSaved": "Збережено",
-  "toastRemoved": "Видалено"
+  "toastRemoved": "Видалено",
+  "mGps": "GPS",
+  "mAr": "AR",
+  "arTitle": "AR-лінійка",
+  "arHint": "Наведи камеру на поверхню, став точки й вимірюй у реальних метрах (см-точність).",
+  "arStart": "Почати AR",
+  "arUnsupported": "AR-режим потребує Android Chrome з ARCore (як твій Samsung). iOS Safari не підтримує WebXR.",
+  "uCm": "см"
 }

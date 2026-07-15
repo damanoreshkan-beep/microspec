@@ -24,5 +24,7 @@
   "close": "Закрити",
   "refresh": "Оновити",
   "toastSaved": "Збережено",
-  "toastRemoved": "Видалено"
+  "toastRemoved": "Видалено",
+  "updBadge": "ОНОВ",
+  "newVersion": "нова версія"
 }

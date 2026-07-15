@@ -29,5 +29,12 @@
   "close": "Close",
   "refresh": "Refresh",
   "toastSaved": "Saved",
-  "toastRemoved": "Removed"
+  "toastRemoved": "Removed",
+  "mGps": "GPS",
+  "mAr": "AR",
+  "arTitle": "AR ruler",
+  "arHint": "Point the camera at a surface, drop points and measure in real metres (cm-accurate).",
+  "arStart": "Start AR",
+  "arUnsupported": "AR mode needs Android Chrome with ARCore (like your Samsung). iOS Safari has no WebXR.",
+  "uCm": "cm"
 }

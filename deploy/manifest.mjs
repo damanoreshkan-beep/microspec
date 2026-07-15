@@ -2,6 +2,9 @@ import { readLocales } from "../packages/gen/compose.mjs";
 
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
 const readJson = async (p) => JSON.parse(await Deno.readTextFile(p));
+async function gitCount(path) {
+  try { const { stdout, success } = await new Deno.Command("git", { args: ["rev-list", "--count", "HEAD", "--", path], stdout: "piped", stderr: "null" }).output(); return success ? (parseInt(new TextDecoder().decode(stdout).trim(), 10) || 0) : 0; } catch { return 0; }
+}
 
 export async function buildManifest() {
   const apps = [];
@@ -19,6 +22,7 @@ export async function buildManifest() {
       bg: brand.bg,
       fg: brand.fg,
       href: `./${a.name}/`,
+      version: spec.version || ("1." + (await gitCount(`apps/${a.name}`))),
     });
   }
   apps.sort((x, y) => x.title.localeCompare(y.title, "uk"));

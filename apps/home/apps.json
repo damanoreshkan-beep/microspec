@@ -6,7 +6,8 @@
     "glyph": "lucide:book-open-text",
     "bg": "#202122",
     "fg": "#ffffff",
-    "href": "./wiki/"
+    "href": "./wiki/",
+    "version": "1.7"
   },
   {
     "id": "globe",
@@ -15,7 +16,8 @@
     "glyph": "lucide:globe",
     "bg": "#0A0A0B",
     "fg": "#5BA6E8",
-    "href": "./globe/"
+    "href": "./globe/",
+    "version": "1.4"
   },
   {
     "id": "breathe",
@@ -24,7 +26,8 @@
     "glyph": "lucide:wind",
     "bg": "#0A1413",
     "fg": "#4FC2B3",
-    "href": "./breathe/"
+    "href": "./breathe/",
+    "version": "1.3"
   },
   {
     "id": "ambient",
@@ -33,7 +36,8 @@
     "glyph": "lucide:audio-lines",
     "bg": "#0E1120",
     "fg": "#A5B4FC",
-    "href": "./ambient/"
+    "href": "./ambient/",
+    "version": "1.5"
   },
   {
     "id": "quakes",
@@ -42,7 +46,8 @@
     "glyph": "lucide:waves",
     "bg": "#0C0F14",
     "fg": "#E0463A",
-    "href": "./quakes/"
+    "href": "./quakes/",
+    "version": "1.7"
   },
   {
     "id": "kalimba",
@@ -51,7 +56,8 @@
     "glyph": "lucide:piano",
     "bg": "#1A1410",
     "fg": "#E0A94B",
-    "href": "./kalimba/"
+    "href": "./kalimba/",
+    "version": "1.6"
   },
   {
     "id": "launches",
@@ -60,7 +66,8 @@
     "glyph": "lucide:rocket",
     "bg": "#0A0A0B",
     "fg": "#9F8CF6",
-    "href": "./launches/"
+    "href": "./launches/",
+    "version": "1.7"
   },
   {
     "id": "crypto",
@@ -69,7 +76,8 @@
     "glyph": "lucide:candlestick-chart",
     "bg": "#0A0A0B",
     "fg": "#F0A93B",
-    "href": "./crypto/"
+    "href": "./crypto/",
+    "version": "1.2"
   },
   {
     "id": "rates",
@@ -78,7 +86,8 @@
     "glyph": "lucide:coins",
     "bg": "#1f2430",
     "fg": "#f0b429",
-    "href": "./rates/"
+    "href": "./rates/",
+    "version": "1.6"
   },
   {
     "id": "kp",
@@ -87,7 +96,8 @@
     "glyph": "lucide:activity",
     "bg": "#120A08",
     "fg": "#E2932F",
-    "href": "./kp/"
+    "href": "./kp/",
+    "version": "1.4"
   },
   {
     "id": "iss",
@@ -96,7 +106,8 @@
     "glyph": "lucide:satellite",
     "bg": "#0A0F1E",
     "fg": "#7CC7FF",
-    "href": "./iss/"
+    "href": "./iss/",
+    "version": "1.5"
   },
   {
     "id": "nearby",
@@ -105,7 +116,8 @@
     "glyph": "lucide:map-pin",
     "bg": "#0A0A0B",
     "fg": "#40C173",
-    "href": "./nearby/"
+    "href": "./nearby/",
+    "version": "1.8"
   },
   {
     "id": "weather",
@@ -114,7 +126,8 @@
     "glyph": "lucide:cloud-sun",
     "bg": "#1f2430",
     "fg": "#38bdf8",
-    "href": "./weather/"
+    "href": "./weather/",
+    "version": "1.6"
   },
   {
     "id": "btcflow",
@@ -123,7 +136,8 @@
     "glyph": "lucide:bitcoin",
     "bg": "#0A0A0B",
     "fg": "#F7931A",
-    "href": "./btcflow/"
+    "href": "./btcflow/",
+    "version": "1.6"
   },
   {
     "id": "pulse",
@@ -132,7 +146,8 @@
     "glyph": "lucide:activity",
     "bg": "#0A0A0B",
     "fg": "#40C173",
-    "href": "./pulse/"
+    "href": "./pulse/",
+    "version": "1.3"
   },
   {
     "id": "rave",
@@ -141,7 +156,8 @@
     "glyph": "lucide:audio-waveform",
     "bg": "#0A0A0F",
     "fg": "#E9458B",
-    "href": "./rave/"
+    "href": "./rave/",
+    "version": "1.14"
   },
   {
     "id": "sun",
@@ -150,7 +166,8 @@
     "glyph": "lucide:sun",
     "bg": "#0A0A0B",
     "fg": "#F5B94D",
-    "href": "./sun/"
+    "href": "./sun/",
+    "version": "1.27"
   },
   {
     "id": "transit",
@@ -159,7 +176,8 @@
     "glyph": "lucide:orbit",
     "bg": "#0E0B1A",
     "fg": "#C0A9F5",
-    "href": "./transit/"
+    "href": "./transit/",
+    "version": "1.5"
   },
   {
     "id": "onthisday",
@@ -168,7 +186,8 @@
     "glyph": "lucide:history",
     "bg": "#14100A",
     "fg": "#D4A84B",
-    "href": "./onthisday/"
+    "href": "./onthisday/",
+    "version": "1.5"
   },
   {
     "id": "dou",
@@ -177,7 +196,8 @@
     "glyph": "lucide:user",
     "bg": "#1f2430",
     "fg": "#7ee0a6",
-    "href": "./dou/"
+    "href": "./dou/",
+    "version": "1.5"
   },
   {
     "id": "ruler",
@@ -186,7 +206,8 @@
     "glyph": "lucide:ruler",
     "bg": "#1f2430",
     "fg": "#34d399",
-    "href": "./ruler/"
+    "href": "./ruler/",
+    "version": "1.8"
   },
   {
     "id": "hn",
@@ -195,6 +216,7 @@
     "glyph": "lucide:flame",
     "bg": "#1f2430",
     "fg": "#ff6600",
-    "href": "./hn/"
+    "href": "./hn/",
+    "version": "1.9"
   }
 ]

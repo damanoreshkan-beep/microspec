@@ -24,5 +24,7 @@
   "toastSaved": "Saved",
   "toastRemoved": "Removed",
   "openApp": "Open",
-  "newBadge": "NEW"
+  "newBadge": "NEW",
+  "updBadge": "UPD",
+  "newVersion": "new version"
 }

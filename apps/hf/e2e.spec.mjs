@@ -56,6 +56,23 @@ export default [
     },
   },
   {
+    name: "Spaces: перемикання типу показує спейси з посиланням /spaces/", run: async (h) => {
+      await load(h);
+      await h.click("#filter-btn"); await h.wait(150);
+      await h.click('#f-type [data-val="spaces"]'); await h.wait(120);
+      await h.click("#f-apply"); await h.wait(500);
+      await load(h);
+      h.expect((await h.count(".card")) > 2, "спейси не завантажились");
+      await h.click(".aw-tap"); await h.wait(250);   // detail carries the outbound HF link
+      h.expect((await h.count('a[href^="https://huggingface.co/spaces/"]')) >= 1, "деталі спейса без посилання /spaces/");
+      await h.back(); await h.wait(200);
+      // switch back to models so later shared-page tests see the models catalog
+      await h.click("#filter-btn"); await h.wait(150);
+      await h.click('#f-type [data-val="models"]'); await h.wait(120);
+      await h.click("#f-apply"); await h.wait(500); await load(h);
+    },
+  },
+  {
     name: "збереження: закладка додає в Збережені", run: async (h) => {
       await load(h);
       await h.click("[data-fav]"); await h.wait(150);   // the star button carries data-fav (z-[2], above the drill-down overlay)

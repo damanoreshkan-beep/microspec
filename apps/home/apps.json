@@ -112,12 +112,12 @@
   {
     "id": "hf",
     "title": "Нейронки",
-    "tagline": "Каталог свіжих нейромереж з Hugging Face — задача, завантаження, вподобання й опис українською",
+    "tagline": "Каталог свіжих моделей і Spaces з Hugging Face — тип, завантаження, вподобання й опис українською",
     "glyph": "lucide:sparkles",
     "bg": "#1a1a1a",
     "fg": "#FFD21E",
     "href": "./hf/",
-    "version": "1.3"
+    "version": "1.5"
   },
   {
     "id": "nearby",

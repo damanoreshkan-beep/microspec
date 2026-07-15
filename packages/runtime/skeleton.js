@@ -4,7 +4,8 @@ import { useRef, useEffect } from "preact/hooks";
 const CH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789абвгґдежзиклмнпрстуфхцч#%&/<>";
 const rc = () => CH[(Math.random() * CH.length) | 0];
 const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const instant = () => isGate || (typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+const forceAnim = typeof location !== "undefined" && location.search.includes("__anim");   
+const instant = () => !forceAnim && (isGate || (typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches));
 
 export function Scramble({ text, len = 14, cls = "", speed = 32 }) {
   const ref = useRef();

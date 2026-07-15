@@ -1,56 +1,141 @@
 # microspec
 
-> Working codename — **naming TBD before the repo goes public.**
+**An AI can't merge a broken app here.**
 
-An **open-source, vertical framework for AI-generated installable micro-PWAs.** An LLM writes a thin
-**spec** (+ a tiny data adapter) against a **verified runtime**, and automated **gates** (a11y, e2e,
-responsive) mean the AI *can't* ship an inaccessible, broken, or untranslated app. Clean-room successor
-to the `nanoai2ui`/microapp system.
+microspec is an open-source framework for AI-authored, installable micro-PWAs. An agent writes a thin
+**spec** (+ a tiny data adapter) against a **verified runtime**, and hard **CI gates** — accessibility,
+responsiveness, end-to-end behavior, runtime-error surveillance — *block the merge* if the app is broken,
+inaccessible, or untranslated. The constraint is the point: a narrow spec + a gated runtime is what makes
+agent-generated apps **verifiably** correct instead of hopefully correct.
 
-## Why this exists
+[![verify](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml/badge.svg)](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml)
+[![live demo](https://img.shields.io/badge/live-24%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-The mechanics of "prompt → app" are commodity (Claude structured outputs · spec→render · axe-core/
-Playwright). The defensible value is the **vertical**: the family catalog (accumulated UI taste), the
-spec **contract** for this niche, the manager **rulebook** (process that stops rabbit-holes), and the
-**distribution** channel. This repo packages exactly that.
+> **▶ Try the farm live:** **[24 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)** —
+> each is a spec + adapter that passed the gates. Add any to your home screen; they work offline.
+
+<!-- DEMO GIF: broken PR → red gate → fix → green → deploy. See docs/DEMO.md to record it, then: -->
+<!-- ![the gate blocking a broken app](docs/demo/gate.gif) -->
+
+---
+
+## The problem
+
+"Prompt → app" is now commodity — Lovable, v0, Bolt, Cursor all generate freeform code. The universal
+catch: the output is often inaccessible, non-responsive, or subtly broken, and **you can't trust it
+without reviewing every line.** Freeform generation has no floor.
+
+## The idea
+
+Give the agent a **floor it cannot fall through:**
+
+1. **Constrain the surface.** Apps are declared as a JSON **spec** against a fixed runtime with five
+   families (`list · dashboard · converter · tool · profile`) and detail / search / filters / i18n / PWA
+   baked in. The agent writes structure, not a framework.
+2. **Gate everything in CI.** A headless-Chromium harness runs the app in every state and **fails the
+   build** on any violation. Red gate → no merge. Green gate → auto-deploy to GitHub Pages.
+
+The 24-app farm is the proof, and doubles as the regression suite for the runtime itself.
+
+## The gate (this is the wedge)
+
+Every changed app is run through a real browser (Astral + Chromium + axe-core) across its **loading,
+settled, and animated** states, and watched for runtime errors the whole time:
+
+| Check | What fails the build |
+|---|---|
+| **Accessibility** | any axe-core violation of `critical` / `serious` impact — in **both** light & dark themes |
+| **Responsive @384px** | any horizontal overflow at true phone width |
+| **Glanceable @200px** | content that doesn't fit a smartwatch-width container |
+| **End-to-end** | app-authored `e2e.spec.mjs` assertions (`count · click · type · back · prop · waitFor …`) |
+| **Runtime errors** | any uncaught error or `console.error` during any state |
+| **Render integrity** | blank render, unclosed tags, missing i18n keys, content-less spinners (browser-free `preflight`, ~2s) |
+
+An agent that introduces an inaccessible contrast pair, an element that overflows the watch, or a view
+that throws **cannot get its PR merged.** No human has to catch it.
+
+## See it live
+
+The farm runs on plain GitHub Pages, no backend:
+
+| App | What it is |
+|---|---|
+| [**Frontier**](https://damanoreshkan-beep.github.io/microspec/frontier/) | fresh breakthrough OSS from GitHub, descriptions translated on-device |
+| [**Neural Nets**](https://damanoreshkan-beep.github.io/microspec/hf/) | Hugging Face models & Spaces catalog with translated model cards |
+| [**GPS Ruler**](https://damanoreshkan-beep.github.io/microspec/ruler/) | measure distance/area by walking a polyline; WebXR AR mode |
+| [**Weather**](https://damanoreshkan-beep.github.io/microspec/weather/) | a dashboard-family app, structure-first with modern skeletons |
+
+…plus 20 more (`hn · rates · crypto · quakes · iss · launches · transit · sun · kp · globe · rave · …`).
+
+## How it works
+
+An app is three files the agent writes — `spec.json`, `i18n/*.json`, and `data.js` — plus boilerplate the
+toolkit scaffolds. A spec is declarative:
+
+```jsonc
+{
+  "id": "hn", "theme": "signal",
+  "translate": ["title", "desc"],
+  "fav": { "key": "id" },
+  "tabs": [
+    { "id": "feed", "type": "list", "search": true,
+      "card": { "layout": "feed", "title": "title", "body": "desc",
+                "badges": [ { "field": "points", "icon": "lucide:arrow-up" } ] } },
+    { "id": "me", "type": "profile" }
+  ]
+}
+```
+
+```js
+// data.js — the only imperative part: fetch → map to the item shape the card declares.
+export async function load() {
+  const r = await fetch("https://hn.algolia.com/api/v1/search?tags=front_page");
+  const { hits } = await r.json();
+  return { items: hits.map((h) => ({ id: h.objectID, title: h.title, desc: "", points: h.points })) };
+}
+```
+
+The runtime renders it — accessible, responsive, installable, i18n, history-routed — and the gates verify
+it. There is **no build step:** the runtime is browser-native ESM (Preact + htm + nanostores) from a CDN
+import map; styling is Tailwind + DaisyUI.
 
 ## Layers
 
-| Package | Role | Runs on |
-|---|---|---|
-| `packages/schema` | The spec **contract** (JSON Schema, SoT) + ajv validator | anywhere |
-| `packages/runtime` | Preact catalog that renders a spec (5 families + invariants) | browser (zero-build ESM) |
-| `packages/gates` | `verify` = a11y + e2e + responsive + shots | **CI** (Chromium) |
-| `packages/gen` | authoring toolkit — `scaffold` (spec+data → app shell) | anywhere |
-| `apps/` | reference farm (one app per family) = the family showcase + regression suite | — |
+| Package | Role |
+|---|---|
+| `packages/schema` | the spec **contract** — JSON Schema (single source of truth) + ajv validator |
+| `packages/runtime` | the Preact catalog that renders a spec (5 families + invariants), zero-build |
+| `packages/gates` | `verify` (Chromium a11y / responsive / e2e / shots) + `preflight` (browser-free) |
+| `packages/gen` | `scaffold` — spec + data → runnable app shell |
+| `apps/` | the reference farm: 24 apps = family showcase + runtime regression suite |
 
-**The LLM in the loop is the agent (Claude) in-session** — there is no autonomous API generator. The
-human gives a prompt; the agent authors two files (`spec.json` + `data.js`); the toolkit scaffolds,
-validates, and CI gates. See `docs/AUTHORING.md`. Heavy visual gates run in GitHub Actions.
+## Quickstart
 
-## Status
+```bash
+# scaffold a new app from a spec + i18n you (or an agent) authored
+deno run -A packages/gen/scaffold.mjs apps/myapp
 
-- **P0** contract + ajv ✅ · **P1** runtime — all 5 families ✅ · **P2** gates-in-CI ✅
-- **P3** 5 reference apps (hn · rates · weather · wiki · ruler), CI-green ✅
-- **P4** authoring toolkit (`scaffold` + rulebook) ✅
-- **P5** ~~VPS brain~~ — obviated (no API loop; deploy = GitHub Pages)
-- **P6** OSS polish — MIT license, `CONTRIBUTING`, Pages build (`deploy/build.mjs`) ✅ · public release — pending
+# fast, browser-free checks before you push (contract + render integrity)
+deno run -A packages/schema/validate.mjs apps/myapp/spec.json
+deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/myapp
 
-See `packages/schema/SCHEMA.md` for the spec reference, `docs/AUTHORING.md` for the loop, and
-`CONTRIBUTING.md` to add an app or a family.
+# assemble the static site (shared runtime + every app + portal)
+deno run -A deploy/build.mjs
+```
 
-## Deploy
+Full gates (Chromium) run in GitHub Actions on every push. See [`docs/AUTHORING.md`](docs/AUTHORING.md) for
+the authoring loop, [`docs/TESTING.md`](docs/TESTING.md) for the gate internals, and
+[`packages/schema/SCHEMA.md`](packages/schema/SCHEMA.md) for the spec reference.
 
-`deno run -A deploy/build.mjs` assembles `dist/` (shared `_rt/` runtime + every app + a portal),
-rewriting `/_rt/` → `../_rt/` so the site works at any base path. Publishing to GitHub Pages is wired in
-`deploy/deploy.yml.disabled` (enabled at public release).
+## What it is / isn't
+
+- **Is:** an opinionated, *vertical* framework for a specific class of app — installable, offline, data/tool
+  micro-PWAs in five families — where correctness is machine-enforced.
+- **Isn't:** a general-purpose app builder or an autonomous code generator. The agent is a human-driven
+  coding assistant (Claude Code) in the loop; the moat is the family taste + the spec contract + the gates,
+  not the LLM.
 
 ## License
 
-[MIT](LICENSE) © 2026 Daman Oreshkan.
-
-## Contract gate
-
-```bash
-deno run -A packages/schema/validate.mjs <spec.json>...   # exit 0 = valid, 1 = invalid (path-named errors)
-```
+[MIT](LICENSE) © 2026 Daman Oreshkan. Contributions welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md).

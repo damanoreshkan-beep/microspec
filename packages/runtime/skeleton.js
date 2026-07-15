@@ -1,25 +1,33 @@
 import { html } from "htm/preact";
-import { useRef, useEffect } from "preact/hooks";
+import { useRef, useEffect, useState } from "preact/hooks";
 
 const CH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789абвгґдежзиклмнпрстуфхцч#%&/<>";
 const rc = () => CH[(Math.random() * CH.length) | 0];
+const now = () => (typeof performance !== "undefined" && performance.now ? performance.now() : 0);
 const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 const forceAnim = typeof location !== "undefined" && location.search.includes("__anim");   
-const instant = () => !forceAnim && (isGate || (typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches));
+const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+const instant = () => !forceAnim && (isGate || reduced());
 
-export function Scramble({ text, len = 14, cls = "", speed = 32 }) {
-  const ref = useRef();
-  const ph = !(typeof text === "string" && text.trim());               
+export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) {
+  const ref = useRef(), born = useRef(0);
+  const ph = !(typeof text === "string" && text.trim());
   useEffect(() => {
     const el = ref.current; if (!el) return;
+    if (!born.current) born.current = now();
     const target = ph ? null : text;
     const n = Math.max(1, Math.min(72, target ? target.length : len));
     if (instant()) { el.textContent = target ?? "".padEnd(n, "░"); return; }
-    let timer, f = 0;
+    const decodeAt = born.current + minMs;
+    let timer, decodeStart = 0;
     const tick = () => {
-      f++;
-      if (target) { const done = Math.floor(f / 2); if (done >= n) { el.textContent = target; return; } el.textContent = target.slice(0, done) + target.slice(done).replace(/\S/g, rc); }
-      else el.textContent = Array.from({ length: n }, rc).join("");
+      const t0 = now();
+      if (target && t0 >= decodeAt) {
+        if (!decodeStart) decodeStart = t0;
+        const done = Math.floor(Math.min(1, (t0 - decodeStart) / 480) * n);
+        if (done >= n) { el.textContent = target; return; }
+        el.textContent = target.slice(0, done) + target.slice(done).replace(/\S/g, rc);
+      } else el.textContent = Array.from({ length: n }, rc).join("");
       timer = setTimeout(tick, speed);
     };
     tick();
@@ -43,6 +51,17 @@ export function Pixels({ cls = "" }) {
   }, []);
   return html`<canvas ref=${ref} aria-hidden="true" class=${`w-full h-full block ${cls}`}></canvas>`;
 }
+
+export function useReveal(ready, minMs = 1000) {
+  const born = useRef(0), [, bump] = useState(0);
+  if (!born.current) born.current = now();
+  if (isGate || reduced()) return !!ready;
+  const left = born.current + minMs - now();
+  useEffect(() => { if (ready && left > 0) { const id = setTimeout(() => bump((x) => x + 1), left + 20); return () => clearTimeout(id); } }, [ready, left > 0]);
+  return !!ready && left <= 0;
+}
+
+export const Reveal = ({ children, cls = "" }) => html`<div class=${`ms-reveal ${cls}`}>${children}</div>`;
 
 export function Loading({ lines = [15, 22, 18, 25, 14] } = {}) {
   return html`<div class="flex flex-col gap-3 py-8 px-1" role="status" aria-busy="true">

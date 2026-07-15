@@ -30,6 +30,7 @@ jobs:
         with:
           # workflow_run checks out the default branch by default; pin to the exact commit that passed verify.
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+          fetch-depth: 0   # full history so build.mjs can derive versions from commit counts
       - uses: denoland/setup-deno@v2
         with: { deno-version: v2.x }
       - name: Assemble dist/

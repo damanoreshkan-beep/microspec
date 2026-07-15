@@ -71,8 +71,19 @@ touched) and records whether the gate goes red. The score is caught / total: a n
 The first run scored **79%** — and surfaced a real gap: the browser-free tier wasn't enforcing that every
 locale defines the same keys, so an app could ship an untranslated runtime string. We added a locale-parity
 check and it went to **100% (51/51)**. That loop — *measure → find a gap → close it → re-measure* — now runs
-in CI, so a regression in the **gate itself** fails the build. Regressions the browser-free tier can't reach
-(contrast, overflow, e2e) are the Chromium `verify` tier's job, measured in the same catalog in CI.
+in CI, so a regression in the **gate itself** fails the build.
+
+Both tiers are measured and enforced:
+
+| Tier | Catches | Score |
+|---|---|---|
+| **preflight** (browser-free) | dropped translation · invalid spec · banned spinner · throwing view · locale drift | **100%** (51/51) |
+| **verify** (Chromium, in CI) | broken data adapter · failing e2e · **inaccessible control (axe)** | **100%** (6/6) |
+
+The verify tier proves the headline the hard way: a mutation that strips a control's accessible name is
+**caught by axe in CI**, by measurement, not assertion. (One honest footnote: a synthetic *overflow* probe
+escaped — the dock truncates an over-long label — so we dropped it; overflow@384 is already enforced across
+all 24 apps on every push.)
 
 ## See it live
 

@@ -90,7 +90,9 @@ HN will probe hard. Concede what's true, then sharpen the real point. Never get 
 > **measure the gate itself**: a mutation-testing harness injects realistic breakages into every app and
 > reports the catch rate. It started at 79%, exposed a real gap (locale-parity wasn't enforced), I closed
 > it, and it's 100% (51/51) on the browser-free tier now — and that number runs in CI, so the gate can't
-> silently regress. I've never seen another "AI builds apps" project publish a gate-efficacy number. The
+> silently regress. The Chromium tier is measured the same way: a mutation that strips a control's
+> accessible name is *caught by axe in CI* (100%, 6/6) — the a11y claim proven by measurement, not
+> assertion. I've never seen another "AI builds apps" project publish a gate-efficacy number. The
 > constraint + the measurement are the contribution, not the linter.
 
 **"Why not just generate freeform React and gate it identically?"** *(the best objection — engage it fully)*

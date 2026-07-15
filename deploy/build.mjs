@@ -16,10 +16,13 @@ await Deno.mkdir(`${OUT}/_rt`, { recursive: true });
 // 0) refresh the store launcher's app list from the current specs (home/data.js imports it)
 await Deno.writeTextFile("apps/home/apps.json", JSON.stringify(await buildManifest(), null, 2) + "\n");
 
-// 1) shared runtime → dist/_rt (all .js except unit tests)
+// 1) shared runtime → dist/_rt (all .js except unit tests). build.js is stamped with the deployed commit.
+const BUILD_SHA = (Deno.env.get("GITHUB_SHA") || "dev").slice(0, 7);
 for await (const e of Deno.readDir("packages/runtime")) {
   const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json");
-  if (e.isFile && keep) await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);
+  if (!e.isFile || !keep) continue;
+  if (e.name === "build.js") await Deno.writeTextFile(`${OUT}/_rt/build.js`, `export const BUILD = "${BUILD_SHA}";\n`);
+  else await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);
 }
 
 // 2) each app → dist/<id>, EXCEPT `home` which is the store launcher and assembles at the site root

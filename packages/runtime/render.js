@@ -7,6 +7,7 @@ import { useRef, useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
 import { T, ago, whenLabel, sinceLabel, sys } from "./i18n.js";
+import { CORE, BUILD, appVersion } from "./version.js";
 import { PERMISSIONS, permLabels } from "./permissions.js";
 import { tr, warm, trTick } from "./translate.js";
 import { enrich, warmMeta, metaTick } from "./enrich.js";
@@ -308,6 +309,7 @@ function Profile({ tab }) {
     ${p.lang ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
     ${p.permissions?.length ? html`<button id="p-perms" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.screen.set("perms")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield-check", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${permLabels(loc).row}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>` : null}
     ${p.source ? html`<a href=${p.source.url} target="_blank" rel="noopener" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon(p.source.icon || "lucide:database", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, p.source.label)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
+    <div data-version class="text-center text-[11px] text-base-content/70 pt-1 tabular-nums">v${appVersion(A.spec)} · core ${CORE}${BUILD && BUILD !== "dev" ? ` · ${BUILD}` : ""}</div>
   </div>`;
 }
 

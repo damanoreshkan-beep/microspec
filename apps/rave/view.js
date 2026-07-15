@@ -198,6 +198,10 @@ const $tracks = atom(parse(PRESETS[0])), $bpm = atom(130), $fx = atom({ ...DFX }
 export function rave({ S, toast }) {
   const t = useStore(S.t);
   const tracks = useStore($tracks), bpm = useStore($bpm), fx = useStore($fx);
+  // Highlight the preset chip only while the pattern still IS that preset — edit a step and the highlight
+  // clears (it stays truthful, never stale). Cheap: 6 small patterns compared per render.
+  const trackKey = JSON.stringify(tracks);
+  const activePreset = PRESETS.find((p) => JSON.stringify(parse(p)) === trackKey)?.id;
   const [playing, setPlaying] = useState(false);
   const [cur, setCur] = useState(-1);
   const eng = useRef(null), sched = useRef(null), raf = useRef(null), nextT = useRef(0), stepN = useRef(0), q = useRef([]);
@@ -276,11 +280,11 @@ export function rave({ S, toast }) {
     </div>
 
     <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
-      ${FX.map((f) => html`<div class="flex items-center gap-1.5 min-w-0" key=${f.id}>${Icon(f.icon, "text-base text-base-content/70 shrink-0")}<input type="range" min=${f.min} max=${f.max} step=${f.step} value=${fx[f.id]} class="range range-xs range-accent w-full min-w-0" aria-label=${T(t, f.label)} onInput=${(e) => setFx(f.id, Number(e.target.value))} /></div>`)}
+      ${FX.map((f) => html`<div class="flex flex-col gap-0.5 min-w-0" key=${f.id}><div class="flex items-center gap-1 text-[0.6rem] uppercase tracking-wide text-base-content/70">${Icon(f.icon, "text-[0.85em] shrink-0")}<span class="truncate">${T(t, f.label)}</span></div><input type="range" min=${f.min} max=${f.max} step=${f.step} value=${fx[f.id]} class="range range-xs range-accent w-full min-w-0" aria-label=${T(t, f.label)} onInput=${(e) => setFx(f.id, Number(e.target.value))} /></div>`)}
     </div>
 
     <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-      ${PRESETS.map((p) => html`<button data-preset=${p.id} class="btn btn-sm btn-outline shrink-0" onClick=${() => { ensure(); $tracks.set(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
+      ${PRESETS.map((p) => html`<button data-preset=${p.id} aria-pressed=${activePreset === p.id} class=${`btn btn-sm shrink-0 ${activePreset === p.id ? "btn-primary" : "btn-outline"}`} onClick=${() => { ensure(); $tracks.set(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
       <button data-preset="random" aria-label=${T(t, "rand")} class="btn btn-sm btn-square btn-outline shrink-0" onClick=${() => { ensure(); $tracks.set(random()); }}>${Icon("lucide:dices", "text-base")}</button>
       <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => $tracks.set(empty())}>${Icon("lucide:eraser", "text-base")}</button>
     </div>

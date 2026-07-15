@@ -5,6 +5,7 @@
 // (the iPhone Measure equivalent) the web path is WebXR AR — Android/ARCore only, camera-based — noted, not
 // built here. The structure renders immediately; the readout is an atomic skeleton until a fix arrives.
 import { html } from "htm/preact";
+import { Fragment } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
@@ -57,13 +58,53 @@ function draw(cv, pts, cur) {
 let _t;   // set inside the component so fmt can reach the dict (kept module-level for draw())
 const fmt = (m) => m < 1000 ? `${Math.round(m < 10 ? m * 10 : m) / (m < 10 ? 10 : 1)} ${T(_t, "uM")}` : `${(m / 1000).toFixed(2)} ${T(_t, "uKm")}`;
 const fmtArea = (a) => a < 10000 ? `${Math.round(a)} ${T(_t, "uM2")}` : `${(a / 10000).toFixed(2)} ${T(_t, "uHa")}`;
+// centimetre-friendly for AR (small real-world distances)
+const fmtCm = (m) => m < 1 ? `${Math.round(m * 100)} ${T(_t, "uCm")}` : `${m.toFixed(2)} ${T(_t, "uM")}`;
+const arTotal = (pts) => pts.reduce((s, p, i) => (i ? s + p.distanceTo(pts[i - 1]) : 0), 0);
+
+// AR ruler via WebXR (Android Chrome / ARCore — iOS Safari has no WebXR). Lazy-loads three.js. Places
+// points on real surfaces via hit-test; measures the polyline in real metres. onStat pushes {live,total,n}.
+async function startAR({ overlay, onStat, onEnd }) {
+  const THREE = await import("https://esm.sh/three@0.161.0");
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setPixelRatio(devicePixelRatio || 1); renderer.setSize(innerWidth, innerHeight); renderer.xr.enabled = true;
+  renderer.domElement.style.cssText = "position:fixed;inset:0;z-index:35"; document.body.appendChild(renderer.domElement);
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
+  const reticle = new THREE.Mesh(new THREE.RingGeometry(0.045, 0.058, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x34d399 }));
+  reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff }), liveMat = new THREE.LineDashedMaterial({ color: 0x34d399, dashSize: 0.02, gapSize: 0.015 });
+  const pts = [], nodes = [], lines = []; let liveLine = null, retPos = null;
+  const session = await navigator.xr.requestSession("immersive-ar", { requiredFeatures: ["hit-test", "local"], optionalFeatures: ["dom-overlay"], domOverlay: { root: overlay } });
+  await renderer.xr.setSession(session);
+  const viewer = await session.requestReferenceSpace("viewer"), local = await session.requestReferenceSpace("local");
+  const hitSource = await session.requestHitTestSource({ space: viewer });
+  renderer.setAnimationLoop((_, frame) => {
+    if (frame) {
+      const hits = frame.getHitTestResults(hitSource);
+      if (hits.length) { reticle.visible = true; reticle.matrix.fromArray(hits[0].getPose(local).transform.matrix); retPos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix); }
+      else { reticle.visible = false; retPos = null; }
+      if (liveLine) { scene.remove(liveLine); liveLine.geometry.dispose(); liveLine = null; }
+      if (pts.length && retPos) { const g = new THREE.BufferGeometry().setFromPoints([pts[pts.length - 1], retPos]); liveLine = new THREE.Line(g, liveMat); liveLine.computeLineDistances(); scene.add(liveLine); }
+      onStat({ live: pts.length && retPos ? pts[pts.length - 1].distanceTo(retPos) : null, total: arTotal(pts), n: pts.length });
+    }
+    renderer.render(scene, camera);
+  });
+  const add = () => { if (!retPos) return; const p = retPos.clone(); pts.push(p); const m = new THREE.Mesh(new THREE.SphereGeometry(0.011, 16, 16), new THREE.MeshBasicMaterial({ color: 0x34d399 })); m.position.copy(p); scene.add(m); nodes.push(m); if (pts.length >= 2) { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([pts[pts.length - 2], p]), lineMat); scene.add(l); lines.push(l); } onStat({ live: null, total: arTotal(pts), n: pts.length }); };
+  const undo = () => { if (!pts.length) return; pts.pop(); scene.remove(nodes.pop()); if (lines.length) scene.remove(lines.pop()); onStat({ live: null, total: arTotal(pts), n: pts.length }); };
+  session.addEventListener("end", () => { renderer.setAnimationLoop(null); renderer.domElement.remove(); try { renderer.dispose(); } catch { /* */ } onEnd(); });
+  return { add, undo, end: () => session.end() };
+}
 
 export function ruler({ S }) {
   const t = useStore(S.t); _t = t;
   const [pts, setPts] = useState(() => (isGate || MOCK ? SAMPLE.slice() : []));
   const [cur, setCur] = useState(isGate || MOCK ? SAMPLE_CUR : null);
   const [err, setErr] = useState(null);
-  const cv = useRef();
+  const [mode, setMode] = useState("gps");
+  const [arSup, setArSup] = useState(null);           // null=checking · true/false WebXR AR support
+  const [ar, setAr] = useState(null);                 // AR controller while a session is live
+  const [arStat, setArStat] = useState({ live: null, total: 0, n: 0 });
+  const cv = useRef(), overlay = useRef(), arRef = useRef(null);
 
   useEffect(() => {
     if (isGate || MOCK) return;
@@ -71,6 +112,9 @@ export function ruler({ S }) {
     return geo.watch((p) => { setCur(p); setErr(null); }, (e) => setErr(e), { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
   }, []);
   useEffect(() => { draw(cv.current, pts, cur); }, [pts, cur, t]);
+  useEffect(() => { let ok = true; (navigator.xr?.isSessionSupported ? navigator.xr.isSessionSupported("immersive-ar") : Promise.resolve(false)).then((s) => ok && setArSup(!!s)).catch(() => ok && setArSup(false)); return () => { ok = false; }; }, []);
+  useEffect(() => () => { try { arRef.current?.end(); } catch { /* */ } }, []);
+  const startArMode = async () => { try { const c = await startAR({ overlay: overlay.current, onStat: setArStat, onEnd: () => { setAr(null); arRef.current = null; } }); setAr(c); arRef.current = c; } catch { setArSup(false); } };
 
   const add = () => { if (!cur) return; setPts((p) => [...p, { ...cur }]); haptic.tick(); };
   const undo = () => setPts((p) => p.slice(0, -1));
@@ -82,32 +126,49 @@ export function ruler({ S }) {
   const ready = !!cur;
 
   return html`<div class="flex flex-col gap-3">
-    <div class="rounded-2xl border border-base-300 bg-base-200/40 overflow-hidden">
-      <canvas ref=${cv} aria-hidden="true" class="w-full h-[300px] block text-base-content"></canvas>
+    <div class="flex gap-1 p-1 bg-base-200 rounded-2xl self-center">
+      ${[["gps", "lucide:milestone", "mGps"], ["ar", "lucide:scan-line", "mAr"]].map(([m, ic, lbl]) => html`<button data-mode=${m} aria-pressed=${mode === m} class=${`px-4 py-1.5 rounded-xl text-sm font-medium flex items-center gap-1.5 transition ${mode === m ? "bg-primary text-primary-content" : "text-base-content/70"}`} onClick=${() => setMode(m)} key=${m}>${Icon(ic, "text-base")}${T(t, lbl)}</button>`)}
     </div>
 
-    <div class="flex items-end justify-between gap-3 px-1">
-      <div class="min-w-0">
-        <div class="text-[0.62rem] font-mono uppercase text-base-content/60">${T(t, "total")}</div>
-        <div class="text-3xl font-bold tabular-nums leading-none">${pts.length >= 2 ? fmt(total) : ready ? "—" : html`<${Scramble} len=${5} />`}</div>
-        ${area != null ? html`<div class="text-xs text-base-content/70 mt-1 tabular-nums">${T(t, "area")}: ${fmtArea(area)}</div>` : null}
+    ${mode === "gps" ? html`<div class="flex flex-col gap-3">
+      <div class="rounded-2xl border border-base-300 bg-base-200/40 overflow-hidden">
+        <canvas ref=${cv} aria-hidden="true" class="w-full h-[300px] block text-base-content"></canvas>
       </div>
-      <div class="text-right shrink-0">
-        <div class="text-[0.62rem] font-mono uppercase text-base-content/60">${live != null ? T(t, "live") : T(t, "points")}</div>
-        <div class="text-lg font-semibold tabular-nums" style="color:light-dark(#0b6e4a,#34d399)">${live != null ? fmt(live) : String(pts.length)}</div>
+      <div class="flex items-end justify-between gap-3 px-1">
+        <div class="min-w-0">
+          <div class="text-[0.62rem] font-mono uppercase text-base-content/60">${T(t, "total")}</div>
+          <div class="text-3xl font-bold tabular-nums leading-none">${pts.length >= 2 ? fmt(total) : ready ? "—" : html`<${Scramble} len=${5} />`}</div>
+          ${area != null ? html`<div class="text-xs text-base-content/70 mt-1 tabular-nums">${T(t, "area")}: ${fmtArea(area)}</div>` : null}
+        </div>
+        <div class="text-right shrink-0">
+          <div class="text-[0.62rem] font-mono uppercase text-base-content/60">${live != null ? T(t, "live") : T(t, "points")}</div>
+          <div class="text-lg font-semibold tabular-nums" style="color:light-dark(#0b6e4a,#34d399)">${live != null ? fmt(live) : String(pts.length)}</div>
+        </div>
       </div>
-    </div>
+      <div class="flex items-center gap-1.5 text-xs px-1 min-h-4">
+        ${err ? html`<span class="text-error flex items-center gap-1">${Icon("lucide:map-pin-off")}${T(t, "no" + (err === "denied" ? "Perm" : "Gps"))}</span>`
+          : ready ? html`<span class="text-base-content/70 flex items-center gap-1">${Icon("lucide:satellite-dish")}${T(t, "accuracy")} ±${Math.round(cur.accuracy || 0)} ${T(t, "uM")}</span>`
+          : html`<span class="text-base-content/60 flex items-center gap-1.5">${Icon("lucide:loader-circle")}${T(t, "locating")}</span>`}
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="add" aria-label=${T(t, "addPoint")} disabled=${!ready} class="btn btn-primary flex-1 min-w-0 rounded-2xl gap-2 disabled:opacity-40" onClick=${add}>${Icon("lucide:map-pin-plus", "text-lg shrink-0")}<span class="truncate">${T(t, "addPoint")}</span></button>
+        <button id="undo" aria-label=${T(t, "undo")} disabled=${!pts.length} class="btn btn-outline btn-square rounded-2xl disabled:opacity-40" onClick=${undo}>${Icon("lucide:undo-2", "text-lg")}</button>
+        <button id="clear" aria-label=${T(t, "clear")} disabled=${!pts.length} class="btn btn-ghost btn-square rounded-2xl disabled:opacity-40" onClick=${clear}>${Icon("lucide:eraser", "text-lg")}</button>
+      </div>
+    </div>` : html`<div class="flex flex-col items-center text-center gap-4 py-10 px-6">
+      ${arSup === false ? html`${Icon("lucide:scan-line", "text-5xl text-base-content/30")}<div class="font-bold text-lg">${T(t, "arTitle")}</div><p class="text-sm text-base-content/70">${T(t, "arUnsupported")}</p>`
+        : arSup === null ? html`<div class="py-6 text-base-content/60"><${Scramble} len=${16} /></div>`
+        : html`${Icon("lucide:scan-line", "text-6xl text-primary")}<div><div class="font-bold text-lg">${T(t, "arTitle")}</div><p class="text-sm text-base-content/70 mt-1 max-w-xs">${T(t, "arHint")}</p></div><button id="ar-start" class="btn btn-primary btn-lg rounded-2xl gap-2 mt-1" onClick=${startArMode}>${Icon("lucide:play")}${T(t, "arStart")}</button>`}
+    </div>`}
 
-    <div class="flex items-center gap-1.5 text-xs px-1 min-h-4">
-      ${err ? html`<span class="text-error flex items-center gap-1">${Icon("lucide:map-pin-off")}${T(t, "no" + (err === "denied" ? "Perm" : "Gps"))}</span>`
-        : ready ? html`<span class="text-base-content/70 flex items-center gap-1">${Icon("lucide:satellite-dish")}${T(t, "accuracy")} ±${Math.round(cur.accuracy || 0)} ${T(t, "uM")}</span>`
-        : html`<span class="text-base-content/60 flex items-center gap-1.5">${Icon("lucide:loader-circle")}${T(t, "locating")}</span>`}
-    </div>
-
-    <div class="flex items-center gap-2">
-      <button id="add" aria-label=${T(t, "addPoint")} disabled=${!ready} class="btn btn-primary flex-1 min-w-0 rounded-2xl gap-2 disabled:opacity-40" onClick=${add}>${Icon("lucide:map-pin-plus", "text-lg shrink-0")}<span class="truncate">${T(t, "addPoint")}</span></button>
-      <button id="undo" aria-label=${T(t, "undo")} disabled=${!pts.length} class="btn btn-outline btn-square rounded-2xl disabled:opacity-40" onClick=${undo}>${Icon("lucide:undo-2", "text-lg")}</button>
-      <button id="clear" aria-label=${T(t, "clear")} disabled=${!pts.length} class="btn btn-ghost btn-square rounded-2xl disabled:opacity-40" onClick=${clear}>${Icon("lucide:eraser", "text-lg")}</button>
-    </div>
+    <div ref=${overlay} class="fixed inset-0 z-40 pointer-events-none flex flex-col justify-between">${ar ? html`<${Fragment}>
+      <div class="flex justify-center" style="padding-top:calc(env(safe-area-inset-top) + 1rem)"><div class="bg-base-100/90 rounded-2xl px-4 py-2 shadow-lg text-center pointer-events-auto"><div class="text-2xl font-bold tabular-nums">${arStat.n >= 2 ? fmtCm(arStat.total) : arStat.live != null ? fmtCm(arStat.live) : "—"}</div><div class="text-[0.58rem] font-mono uppercase text-base-content/60">${arStat.n >= 2 ? T(t, "total") : T(t, "live")}</div></div></div>
+      <div class="flex-1 flex items-center justify-center"><div class="w-9 h-9 rounded-full border-2 border-white/90 flex items-center justify-center shadow"><div class="w-1.5 h-1.5 rounded-full bg-white"></div></div></div>
+      <div class="flex items-center justify-center gap-4 pointer-events-auto" style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
+        <button aria-label=${T(t, "undo")} class="btn btn-circle btn-outline bg-base-100/80" onClick=${() => ar.undo()}>${Icon("lucide:undo-2", "text-lg")}</button>
+        <button id="ar-add" aria-label=${T(t, "addPoint")} class="btn btn-circle btn-primary btn-lg shadow-xl" onClick=${() => { ar.add(); haptic.tick(); }}>${Icon("lucide:plus", "text-2xl")}</button>
+        <button aria-label=${T(t, "close")} class="btn btn-circle btn-outline bg-base-100/80" onClick=${() => ar.end()}>${Icon("lucide:x", "text-lg")}</button>
+      </div>
+    </${Fragment}>` : null}</div>
   </div>`;
 }

@@ -259,6 +259,8 @@
     "https://esm.sh/preact@10.27.1/hooks": "22a4babd13029422488ffe89f1fa9c82bf335f6fc8930d2707da855177b2d265",
     "https://esm.sh/suncalc@1.9.0": "c656e61c3f35d9f67f7c6ad4c5230763e440a5581ea59e319227f4ab89e474fd",
     "https://esm.sh/suncalc@1.9.0/denonext/suncalc.mjs": "fc244ac1674f9738f3dd420ede62562af498b658498bf3f495bce432c49adb10",
+    "https://esm.sh/three@0.161.0": "68a97296b9873b39b05fa55d77872825ebac4a206a303935153643599b9f7536",
+    "https://esm.sh/three@0.161.0/denonext/three.mjs": "dead6acc3e2554d5dcdf8c090d91666fa887739180f1daef33dd74dd84111dce",
     "https://esm.sh/topojson-client@3.1.0": "e664d697a59fcfdaf0bae03ea35fef8aa44351fc02631c5ccfa9354df03fff5e",
     "https://esm.sh/topojson-client@3.1.0/denonext/topojson-client.mjs": "56ef2b146e10a1b99b0fc42f2f96bd41931d42e256efd1954724aeee505a7010",
     "https://esm.sh/uhyphen@0.2.0/denonext/uhyphen.mjs": "c9cb7bd80a7d7de55616628523cd6be52a74cfc5ccdd0c871c10e94861e34f71",

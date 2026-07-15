@@ -28,6 +28,15 @@ export default [
     },
   },
   {
+    name: "AR-режим: перемикач + fallback без WebXR", run: async (h) => {
+      await ready(h);
+      await h.click('[data-mode="ar"]'); await h.wait(400);
+      h.expect(/ARCore|WebXR|Safari/i.test(await h.bodyText()), "немає AR-панелі / пояснення підтримки");
+      await h.click('[data-mode="gps"]'); await h.wait(150);
+      h.expect((await h.count("#add")) === 1, "не повернувся GPS-режим");
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

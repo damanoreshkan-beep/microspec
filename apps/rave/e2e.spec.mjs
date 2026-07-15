@@ -44,8 +44,9 @@ export default [
       await h.click('[data-tab="saved"]'); await h.wait(400);
       let n = 0; for (let i = 0; i < 15; i++) { n = await h.count("[data-saved]"); if (n > 0) break; await h.wait(300); }
       h.expect(n > 0, "збережений біт не зʼявився у вкладці");
-      await h.click("[data-saved] button"); await h.wait(400);
-      h.expect((await h.count("[data-cell]")) === 160, "після завантаження не повернулись у секвенсер");
+      await h.click("[data-load]");
+      let cells = 0; for (let i = 0; i < 12; i++) { await h.wait(250); cells = await h.count("[data-cell]"); if (cells === 192) break; }
+      h.expect(cells === 192, "після завантаження не повернулись у секвенсер");
       await h.click('[data-tab="saved"]'); await h.wait(300);
       await h.click("[data-del]"); await h.wait(300);
     },

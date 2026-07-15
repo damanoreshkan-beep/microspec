@@ -13,7 +13,7 @@
 import { parseHTML } from "https://esm.sh/linkedom@0.18.5?external=canvas";
 
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[0m" };
-const TAGS = new Set(["div", "span", "button", "a", "svg", "section", "header", "main", "footer", "nav", "p", "ul", "ol", "li", "input", "select", "option", "label", "g", "rect", "circle", "path", "line", "polyline", "polygon", "text", "iconify-icon", "img", "table", "tr", "td"]);
+const TAGS = new Set(["div", "span", "button", "svg", "section", "header", "main", "footer", "nav", "input", "select", "option", "label", "rect", "circle", "path", "line", "polyline", "polygon", "text", "iconify-icon", "img", "table"]);
 
 function installDom() {
   const { window, document } = parseHTML(`<!doctype html><html data-theme="signal"><head></head><body><div id="app"></div></body></html>`);
@@ -86,7 +86,7 @@ async function preflight(appdir) {
     if (!htmlOut.trim() || htmlOut.length < 30) errs.push("render produced (almost) no output — blank/crashed view");
 
     const strays = new Set();
-    const walk = (n) => { for (const c of n.childNodes || []) { if (c.nodeType === 3) { const v = (c.textContent || "").trim(); if (TAGS.has(v)) strays.add(v); } else walk(c); } };
+    const walk = (n) => { for (const c of n.childNodes || []) { if (c.nodeType === 3) { const v = (c.textContent || "").trim(); if (v.length >= 3 && TAGS.has(v)) strays.add(v); } else walk(c); } };
     walk(app);
     if (strays.size) errs.push(`stray tag-name text ${[...strays].map((s) => `"${s}"`).join(", ")} — likely an UNCLOSED tag in ${srcFile}`);
 

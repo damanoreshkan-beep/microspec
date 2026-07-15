@@ -18,8 +18,10 @@ const SORTS = { likes: "likes", downloads: "downloads" };
 export async function load(filters = {}) {
   const sort = SORTS[filters.sort] || "likes";
   const q = (filters.q || "").trim();
+  const cat = (filters.category || "").trim();   // pipeline_tag — server-side category filter
   const params = new URLSearchParams({ sort, direction: "-1", limit: "40" });
   if (q) params.set("search", q);
+  if (cat) params.set("filter", cat);
   // No pagination: HF pages via a Link header the CORS proxy strips, so we take the top 40 — a catalog page.
   const url = `https://huggingface.co/api/models?${params}`;
   const data = JSON.parse(await viaProxy(url, isJsonArray));

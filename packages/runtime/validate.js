@@ -140,7 +140,7 @@ function validateControls(controls, die, need) {
     need(nonEmpty(c.type), `${cp}.type`, 'required (e.g. "select", "toggle", "segment")');
     need(nonEmpty(c.key), `${cp}.key`, "required non-empty filter state key");
     need(nonEmpty(c.label), `${cp}.label`, "required i18n key");
-    if (c.type === "select") need(nonEmpty(c.optionsFrom), `${cp}.optionsFrom`, "select requires optionsFrom (a key in data.meta)");
+    if (c.type === "select") need(nonEmpty(c.optionsFrom) || (Array.isArray(c.options) && c.options.length), `${cp}.optionsFrom`, "select requires optionsFrom (a data.meta key) or an inline options array of [value, labelKey] pairs");
     if (c.type === "segment" || c.type === "multi") need(Array.isArray(c.options) && c.options.length, `${cp}.options`, `${c.type} requires a non-empty options array of [value, labelKey] pairs`);
   });
 }

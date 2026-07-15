@@ -164,7 +164,7 @@
               },
               "options": {
                 "type": "array",
-                "description": "For type:'segment' — array of [value, labelKey] pairs.",
+                "description": "Inline [value, labelKey] pairs (localized via T). Required for 'segment' and 'multi'; an alternative to 'optionsFrom' for 'select'.",
                 "items": {
                   "type": "array",
                   "minItems": 2,
@@ -188,7 +188,7 @@
             "allOf": [
               {
                 "if": { "properties": { "type": { "const": "select" } } },
-                "then": { "required": ["optionsFrom"] }
+                "then": { "anyOf": [{ "required": ["optionsFrom"] }, { "required": ["options"] }] }
               },
               {
                 "if": { "properties": { "type": { "const": "segment" } } },

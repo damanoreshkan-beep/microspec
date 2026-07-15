@@ -43,6 +43,17 @@ export default [
     },
   },
   {
+    name: "категорія фільтрує каталог серверно + чип", run: async (h) => {
+      await load(h);
+      await h.click("#filter-btn"); await h.wait(150);
+      await h.select("#f-category", "text-to-image"); await h.wait(120);   // select value = pipeline_tag
+      await h.click("#f-apply"); await h.wait(500);
+      await load(h);
+      h.expect((await h.count(".card")) > 2, "категорія не повернула моделей");
+      h.expect(/Генерація зображень/.test(await h.bodyText()), "немає локалізованого чипа/лейбла категорії");
+    },
+  },
+  {
     name: "збереження: закладка додає в Збережені", run: async (h) => {
       await load(h);
       await h.click("[data-fav]"); await h.wait(150);   // the star button carries data-fav (z-[2], above the drill-down overlay)

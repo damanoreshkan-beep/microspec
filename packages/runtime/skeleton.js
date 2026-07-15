@@ -44,8 +44,8 @@ export function Pixels({ cls = "" }) {
   return html`<canvas ref=${ref} aria-hidden="true" class=${`w-full h-full block ${cls}`}></canvas>`;
 }
 
-export function Loading({ lines = [15, 24, 19, 27, 16] } = {}) {
+export function Loading({ lines = [15, 22, 18, 25, 14] } = {}) {
   return html`<div class="flex flex-col gap-3 py-8 px-1" role="status" aria-busy="true">
-    ${lines.map((n, i) => html`<div class="text-base-content/70 text-sm" key=${i}><${Scramble} len=${n} /></div>`)}
+    ${lines.map((n, i) => html`<div class="text-base-content/70 text-sm truncate" key=${i}><${Scramble} len=${n} /></div>`)}
   </div>`;
 }

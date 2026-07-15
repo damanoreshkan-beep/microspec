@@ -37,6 +37,20 @@ export default [
     },
   },
   {
+    name: "зберегти патерн → зʼявляється у «Збережені» → завантажується", run: async (h) => {
+      await ready(h);
+      await h.click('[data-preset="rave"]'); await h.wait(120);
+      await h.click("[data-save]"); await h.wait(400);
+      await h.click('[data-tab="saved"]'); await h.wait(400);
+      let n = 0; for (let i = 0; i < 15; i++) { n = await h.count("[data-saved]"); if (n > 0) break; await h.wait(300); }
+      h.expect(n > 0, "збережений біт не зʼявився у вкладці");
+      await h.click("[data-saved] button"); await h.wait(400);
+      h.expect((await h.count("[data-cell]")) === 160, "після завантаження не повернулись у секвенсер");
+      await h.click('[data-tab="saved"]'); await h.wait(300);
+      await h.click("[data-del]"); await h.wait(300);
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

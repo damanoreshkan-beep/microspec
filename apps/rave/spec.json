@@ -3,6 +3,7 @@
   "theme": "signal",
   "tabs": [
     { "id": "beat", "type": "tool", "icon": "lucide:audio-waveform", "label": "tabBeat", "view": "rave" },
+    { "id": "saved", "type": "tool", "icon": "lucide:bookmark", "label": "tabSaved", "view": "raveSaved" },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
   ],
   "profile": {

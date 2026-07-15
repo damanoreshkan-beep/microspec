@@ -7,31 +7,30 @@ const compact = (n) => {
   return String(n);
 };
 
-const SORTS = { likes: "likes", downloads: "downloads" };
-
 export async function load(filters = {}) {
-  const sort = SORTS[filters.sort] || "likes";
+  const spaces = filters.type === "spaces";              
+  const kind = spaces ? "spaces" : "models";
+  const sort = (!spaces && filters.sort === "downloads") ? "downloads" : "likes";
   const q = (filters.q || "").trim();
-  const cat = (filters.category || "").trim();   
+  const cat = (filters.category || "").trim();           
   const params = new URLSearchParams({ sort, direction: "-1", limit: "40" });
   if (q) params.set("search", q);
   if (cat) params.set("filter", cat);
-  const url = `https://huggingface.co/api/models?${params}`;
-  const data = JSON.parse(await viaProxy(url, isJsonArray));
+  const data = JSON.parse(await viaProxy(`https://huggingface.co/api/${kind}?${params}`, isJsonArray));
   const items = (Array.isArray(data) ? data : []).map((m) => {
     const id = m.id || m.modelId || "";
     const [org, ...rest] = id.split("/");
-    const name = rest.length ? rest.join("/") : id;   
+    const name = rest.length ? rest.join("/") : id;      
     return {
       id,
       name,
       author: rest.length ? org : "",
-      task: m.pipeline_tag || "",
-      lib: m.library_name || "",
-      downloads: compact(m.downloads),
+      task: spaces ? (m.sdk || "space") : (m.pipeline_tag || ""),   
+      lib: spaces ? "" : (m.library_name || ""),
+      downloads: spaces ? "" : compact(m.downloads),      
       likes: compact(m.likes),
       createdAt: m.createdAt ? Date.parse(m.createdAt) : 0,
-      url: `https://huggingface.co/${id}`,
+      url: spaces ? `https://huggingface.co/spaces/${id}` : `https://huggingface.co/${id}`,
     };
   }).filter((it) => it.id);
   return { items, meta: {} };

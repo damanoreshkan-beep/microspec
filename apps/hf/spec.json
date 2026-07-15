@@ -28,8 +28,18 @@
   },
   "filters": {
     "refetch": true,
-    "defaults": { "sort": "likes", "category": "" },
+    "defaults": { "type": "models", "sort": "likes", "category": "" },
     "controls": [
+      {
+        "type": "segment",
+        "key": "type",
+        "label": "filterType",
+        "icon": "lucide:layout-grid",
+        "options": [
+          ["models", "typeModels"],
+          ["spaces", "typeSpaces"]
+        ]
+      },
       {
         "type": "select",
         "key": "category",

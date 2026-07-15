@@ -25,7 +25,7 @@ function hfReadmeDesc(md) {
 
 const RESOLVERS = {
   "huggingface.co": async (url) => {
-    const m = url.match(/^https?:\/\/huggingface\.co\/([^/?#]+\/[^/?#]+)/); 
+    const m = url.match(/^https?:\/\/huggingface\.co\/((?:spaces|datasets)\/[^/?#]+\/[^/?#]+|[^/?#]+\/[^/?#]+)/);
     if (!m) return null;                                                    
     const md = await viaProxy(`https://huggingface.co/${m[1]}/raw/main/README.md`, (x) => typeof x === "string" && x.length > 0, 12000);
     const description = hfReadmeDesc(md);

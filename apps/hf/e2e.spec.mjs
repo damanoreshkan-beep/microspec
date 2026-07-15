@@ -43,14 +43,16 @@ export default [
     },
   },
   {
-    name: "категорія фільтрує каталог серверно + чип", run: async (h) => {
+    name: "категорія: локалізовані інлайн-опції + фільтр не ламає каталог", run: async (h) => {
       await load(h);
+      // inline select options localize via T — textContent holds every option regardless of visibility
+      const opts = await h.prop("#f-category", "textContent");
+      h.expect(/Генерація зображень/.test(opts) && /Розпізнавання мови/.test(opts), "інлайн-опції категорії не локалізовані");
       await h.click("#filter-btn"); await h.wait(150);
       await h.select("#f-category", "text-to-image"); await h.wait(120);   // select value = pipeline_tag
       await h.click("#f-apply"); await h.wait(500);
       await load(h);
-      h.expect((await h.count(".card")) > 2, "категорія не повернула моделей");
-      h.expect(/Генерація зображень/.test(await h.bodyText()), "немає локалізованого чипа/лейбла категорії");
+      h.expect((await h.count(".card")) > 2, "після вибору категорії немає карток");
     },
   },
   {

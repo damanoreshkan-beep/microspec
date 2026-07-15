@@ -1,0 +1,84 @@
+# Demo scene — "the gate blocks a broken app"
+
+The single most persuasive asset for microspec is an 8-second loop showing an agent's mistake being
+**caught by a gate, not a human.** This doc is a storyboard + reproducible recipe. Two acts — record Act A
+first (fast, deterministic, no cloud); Act B is the hero when you want the "CI blocks the merge" money shot.
+
+Put the finished GIF at `docs/demo/gate.gif` and uncomment the image line near the top of `README.md`.
+
+---
+
+## Act A — terminal GIF (reproducible now, ~10s)
+
+**Story:** an agent adds a feature to an app but forgets one translation. The browser-free `preflight`
+gate catches it in ~2s — before the code ever reaches CI.
+
+This is 100% real: the command, the failure, and the exact error message below are what the tool prints.
+
+```
+$ pf apps/hf                       # ✓ hf   — clean
+# agent edits the app but drops one i18n key…
+$ pf apps/hf                       # ✗ hf   — i18n key "tabSaved" missing in uk.json
+$ git checkout apps/hf/i18n/uk.json
+$ pf apps/hf                       # ✓ hf   — clean again
+```
+
+### Record it with [VHS](https://github.com/charmbracelet/vhs) (deterministic, re-renderable)
+
+```bash
+# one-time: brew install vhs   (or: go install github.com/charmbracelet/vhs@latest)
+vhs docs/demo/preflight.tape     # → writes docs/demo/gate.gif
+```
+
+The tape lives at [`docs/demo/preflight.tape`](demo/preflight.tape). It self-restores the edited file
+(`git checkout`), so running it leaves the repo clean.
+
+### Captions to overlay (optional, but they carry the story)
+
+| Time | On screen | Caption |
+|---|---|---|
+| 0–2s | `pf apps/hf` → ✓ | *An app in the farm. Green.* |
+| 2–4s | the edit | *The agent ships a feature — and forgets one translation.* |
+| 4–7s | `pf apps/hf` → ✗ | *The gate catches it in 2 seconds. No human reviewed this.* |
+| 7–10s | checkout → ✓ | *Fixed. Green. Only green merges.* |
+
+---
+
+## Act B — the hero: CI blocks the merge (screen recording)
+
+**Story:** an agent opens a PR. The Chromium gate runs, goes **red**, and the merge button is blocked.
+The agent pushes a fix, the gate goes **green**, and the app auto-deploys to GitHub Pages. This is the
+shot that sells the one-line claim.
+
+### Storyboard (record the browser at ~1280×720, then speed up 2–3×)
+
+1. **A green farm** (1s) — the live gallery at `/store/`, or the Actions tab all-green.
+2. **A PR with a broken app** (2s) — "add app: …", the Files-changed diff visible.
+3. **The gate turns red** (3s) — the `verify (…)` check fails; expand it to show the failing line, e.g.
+   `✗ phone 384px: horizontal overflow` or `✗ a11y settled: color-contrast[serious]` or a failing
+   `e2e.spec.mjs` assertion. **Merge is blocked.**
+4. **The fix** (2s) — one commit pushed to the PR branch.
+5. **Green + deploy** (2s) — `verify` ✓ → `deploy` ✓ → the new app is live on Pages.
+
+### Pick a break the gate reliably catches
+
+Craft the "broken app" so the failure is real and legible in the log. Ranked by how reliably they fail
+`verify`:
+
+- **e2e regression (most reliable).** Delete a badge/field the app's `e2e.spec.mjs` asserts on — the
+  authored assertion fails with its own message. Guaranteed red, self-explaining.
+- **Render error.** Reference an undefined variable in a tool app's `view.js` (or break `data.js`) — the
+  view throws; the gate's runtime-error surveillance flags `uncaught: …`. (`preflight` catches this one
+  locally too — a nice "if you'd run preflight, you'd have known" beat.)
+- **Overflow @384.** Map a field to a long unbroken string rendered in a non-truncating slot (e.g. a
+  badge value) — it overruns true phone width → `✗ phone 384px`.
+- **Accessibility.** Introduce a low-contrast custom color or an icon-only control without an accessible
+  name → axe flags `critical`/`serious` in one or both themes. The strongest narrative if you can craft
+  one, since a11y is the headline claim.
+
+> Keep it honest: use a real regression and show the real red check. The point of microspec is that the
+> gate is not theater — don't fake the failure.
+
+### Reset
+
+After recording, close the PR or push the fix and merge; delete the demo branch so `main` stays green.

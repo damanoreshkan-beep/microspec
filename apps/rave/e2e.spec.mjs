@@ -4,9 +4,9 @@ export default [
   {
     name: "секвенсер: 5×16 = 80 клітин, пресети, транспорт", run: async (h) => {
       await ready(h); await h.wait(200);
-      h.expect((await h.count("[data-cell]")) === 192, "немає 192 клітин (12 доріжок × 16)");
+      h.expect((await h.count("[data-cell]")) === 256, "немає 256 клітин (16 доріжок × 16)");
       h.expect((await h.count("#play")) === 1, "немає кнопки play/stop");
-      h.expect((await h.count("[data-preset]")) === 20, "немає 20 пресетів (18 + random + clear)");
+      h.expect((await h.count("[data-preset]")) === 26, "немає 26 пресетів (24 + random + clear)");
     },
   },
   {
@@ -45,8 +45,8 @@ export default [
       let n = 0; for (let i = 0; i < 15; i++) { n = await h.count("[data-saved]"); if (n > 0) break; await h.wait(300); }
       h.expect(n > 0, "збережений біт не зʼявився у вкладці");
       await h.click("[data-load]");
-      let cells = 0; for (let i = 0; i < 12; i++) { await h.wait(250); cells = await h.count("[data-cell]"); if (cells === 192) break; }
-      h.expect(cells === 192, "після завантаження не повернулись у секвенсер");
+      let cells = 0; for (let i = 0; i < 12; i++) { await h.wait(250); cells = await h.count("[data-cell]"); if (cells === 256) break; }
+      h.expect(cells === 256, "після завантаження не повернулись у секвенсер");
       await h.click('[data-tab="saved"]'); await h.wait(300);
       await h.click("[data-del]"); await h.wait(300);
     },

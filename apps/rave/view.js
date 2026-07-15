@@ -1,9 +1,9 @@
-// Rave — a techno generator: a 16-step, 12-voice drum machine + acid/sub bass, all SYNTHESISED (no samples)
-// via Web Audio, running through an FX rack (drive → dry/delay/reverb sends → master filter → compressor).
-// Timing = the lookahead scheduler (setInterval picks notes ~0.1s ahead on the audio clock; swing shifts odd
-// 16ths; the playhead follows via a queue + rAF). The working pattern + FX live in nanostore atoms (survive
-// tab switches) and autosave to IndexedDB (/_rt/db.js); a "Saved" tab lists named saves. Refs: MDN Advanced
-// techniques · Chris Wilson "A Tale of Two Clocks".
+// Rave — a techno generator: a 16-step, 16-voice drum machine + hard-techno bass arsenal, all SYNTHESISED
+// (no samples) via Web Audio through an FX rack (drive → crush → dry/delay/reverb → master filter →
+// compressor). Hard voices: gabber hardkick (sine → hard waveshaper), reese bass (detuned saws → resonant
+// filter + distortion), hoover/mentasm (detuned saw stack + filter sweep), rumble. Timing = the lookahead
+// scheduler; the working pattern + FX live in nanostore atoms (survive tab switches) and autosave to
+// IndexedDB (/_rt/db.js); a "Saved" tab lists named saves. Refs: MDN · Chris Wilson "Two Clocks".
 import { html } from "htm/preact";
 import { useState, useRef, useEffect } from "preact/hooks";
 import { atom } from "nanostores";
@@ -14,11 +14,12 @@ import { collection } from "/_rt/db.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const N = 16, STEPS = [...Array(N).keys()];
-const ROOT = 36;                                                    // C2 — the acid bass root
-const RIFF = [0, 0, 12, 0, 0, 0, 3, 0, 0, 7, 0, 0, 10, 0, 5, 0];    // per-step semitone offsets → an instant acid line
+const ROOT = 36;                                                    // C2 — the bass root
+const RIFF = [0, 0, 12, 0, 0, 0, 3, 0, 0, 7, 0, 0, 10, 0, 5, 0];    // per-step semitone offsets → an instant bass line
 
 const TRACKS = [
   { id: "kick", name: "tKick", icon: "lucide:drum", on: "bg-amber-500" },
+  { id: "hardkick", name: "tHardkick", icon: "lucide:swords", on: "bg-rose-600" },
   { id: "snare", name: "tSnare", icon: "lucide:disc-2", on: "bg-red-500" },
   { id: "clap", name: "tClap", icon: "lucide:hand", on: "bg-pink-500" },
   { id: "rim", name: "tRim", icon: "lucide:slash", on: "bg-orange-400" },
@@ -27,9 +28,12 @@ const TRACKS = [
   { id: "ride", name: "tRide", icon: "lucide:disc-3", on: "bg-teal-400" },
   { id: "cowbell", name: "tCowbell", icon: "lucide:bell", on: "bg-yellow-400" },
   { id: "tom", name: "tTom", icon: "lucide:circle", on: "bg-fuchsia-500" },
+  { id: "hoover", name: "tHoover", icon: "lucide:tornado", on: "bg-indigo-500" },
   { id: "stab", name: "tStab", icon: "lucide:layers", on: "bg-violet-500" },
   { id: "acid", name: "tBass", icon: "lucide:zap", on: "bg-lime-400" },
+  { id: "reese", name: "tReese", icon: "lucide:audio-waveform", on: "bg-purple-600" },
   { id: "sub", name: "tSub", icon: "lucide:waves", on: "bg-emerald-500" },
+  { id: "rumble", name: "tRumble", icon: "lucide:vibrate", on: "bg-stone-500" },
 ];
 const P = (s) => [...s].map((c) => c === "x");
 const PRESETS = [
@@ -40,36 +44,48 @@ const PRESETS = [
   { id: "hardgroove", name: "pHardgroove", kick: "x...x...x...x...", snare: "....x.......x...", tom: "......x.......x.", cowbell: "..x...x...x...x.", hat: "x.x.x.x.x.x.x.x.", sub: "x...x...x...x..." },
   { id: "trance", name: "pTrance", kick: "x...x...x...x...", ohat: "..x...x...x...x.", stab: "x...x...x...x...", clap: "....x.......x...", sub: ".x.x.x.x.x.x.x.x" },
   { id: "dub", name: "pDub", kick: "x.......x.......", stab: "....x.......x...", sub: "x...x...x...x...", hat: "..x...x...x...x.", clap: "............x..." },
-  { id: "hardtechno", name: "pHardtechno", kick: "x.x.x.x.x.x.x.x.", clap: "....x.......x...", snare: "..x...x...x...x.", stab: "x...x...x...x...", acid: "xx.xxx.xxx.xxx.x", hat: "xxxxxxxxxxxxxxxx", ohat: "..x...x...x...x." },
+  { id: "hardtechno", name: "pHardtechno", hardkick: "x.x.x.x.x.x.x.x.", clap: "....x.......x...", snare: "..x...x...x...x.", stab: "x...x...x...x...", acid: "xx.xxx.xxx.xxx.x", hat: "xxxxxxxxxxxxxxxx", ohat: "..x...x...x...x." },
   { id: "detroit", name: "pDetroit", kick: "x...x...x...x...", clap: "....x.......x...", hat: "..x...x...x...x.", cowbell: "x..x..x..x..x...", stab: "..x.......x.....", acid: "x...x...x...x..." },
   { id: "electro", name: "pElectro", kick: "x..x..x...x.x...", snare: "....x.......x...", hat: "x.x.x.x.x.x.x.x.", cowbell: "..x...x...x...x.", sub: "x..x..x...x.x..." },
   { id: "house", name: "pHouse", kick: "x...x...x...x...", clap: "....x.......x...", ohat: "..x...x...x...x.", rim: "x.x.x.x.x.x.x.x.", sub: "x...x...x...x..." },
-  { id: "gabber", name: "pGabber", kick: "xxxxxxxxxxxxxxxx", stab: "x...x...x...x...", ohat: "..x...x...x...x.", clap: "....x.......x..." },
+  { id: "gabber", name: "pGabber", hardkick: "xxxxxxxxxxxxxxxx", hoover: "x...x...x...x...", ohat: "..x...x...x...x.", clap: "....x.......x..." },
   { id: "breakbeat", name: "pBreakbeat", kick: "x.....x...x.....", snare: "....x.......x...", rim: "..x..x..x..x..x.", ride: "x.x.x.x.x.x.x.x." },
   { id: "psy", name: "pPsy", kick: "x...x...x...x...", sub: "x.xxx.xxx.xxx.xx", acid: ".xxx.xxx.xxx.xxx", ride: "..x...x...x...x." },
   { id: "tribal", name: "pTribal", kick: "x...x...x...x...", tom: "..x.x...x.x.....", cowbell: "x..x..x..x..x...", rim: "..x...x...x...x." },
   { id: "garage", name: "pGarage", kick: "x...x...x...x...", clap: "....x.......x...", ohat: "..x...x...x...x.", sub: "x..x..x...x.x...", hat: "x.x.x.x.x.x.x.x." },
-  { id: "industrial", name: "pIndustrial", kick: "x...x...x...x...", snare: "..x...x...x...x.", ride: "xxxxxxxxxxxxxxxx", stab: "x.......x......." },
+  { id: "industrial", name: "pIndustrial", hardkick: "x...x...x...x...", snare: "..x...x...x...x.", ride: "xxxxxxxxxxxxxxxx", stab: "x.......x......." },
   { id: "downtempo", name: "pDowntempo", kick: "x.......x.......", snare: "....x.......x...", ride: "..x...x...x...x.", stab: "x...............", sub: "x.......x......." },
+  { id: "schranz", name: "pSchranz", hardkick: "x...x...x...x...", rumble: "..x...x...x...x.", ohat: "x.x.x.x.x.x.x.x.", ride: "xxxxxxxxxxxxxxxx", reese: "x...x...x...x..." },
+  { id: "hardcore", name: "pHardcore", hardkick: "x.x.x.x.x.x.x.x.", hoover: "x.......x.......", clap: "....x.......x...", reese: "x.x.x.x.x.x.x.x." },
+  { id: "gabbercore", name: "pGabbercore", hardkick: "xx.xxx.xxx.xxx.x", hoover: "x...x...x...x...", ohat: "..x...x...x...x." },
+  { id: "mentasm", name: "pMentasm", kick: "x...x...x...x...", hoover: "x...x.x.x...x.x.", reese: "x...x...x...x...", ohat: "..x...x...x...x." },
+  { id: "rumbletech", name: "pRumbletech", hardkick: "x...x...x...x...", rumble: "x.x.x.x.x.x.x.x.", ohat: "..x...x...x...x.", reese: "x...x...x...x..." },
+  { id: "acidcore", name: "pAcidcore", hardkick: "x...x...x...x...", acid: "xxxxxxxxxxxxxxxx", hoover: "x.......x.......", ohat: "..x...x...x...x." },
 ];
 const parse = (p) => Object.fromEntries(TRACKS.map((tr) => [tr.id, P(p[tr.id] || "................")]));
 const empty = () => Object.fromEntries(TRACKS.map((tr) => [tr.id, Array(N).fill(false)]));
-const random = () => ({
-  kick: STEPS.map((i) => i % 4 === 0), snare: STEPS.map((i) => i % 8 === 4), clap: STEPS.map((i) => i % 8 === 4 && Math.random() < 0.5),
-  rim: STEPS.map(() => Math.random() < 0.2), hat: STEPS.map(() => Math.random() < 0.55), ohat: STEPS.map((i) => i % 2 === 1 && Math.random() < 0.4),
-  ride: STEPS.map(() => Math.random() < 0.15), cowbell: STEPS.map(() => Math.random() < 0.16), tom: STEPS.map(() => Math.random() < 0.12),
-  stab: STEPS.map((i) => i % 4 === 0 && Math.random() < 0.5), acid: STEPS.map(() => Math.random() < 0.4), sub: STEPS.map((i) => i % 4 === 0),
-});
+const random = () => Object.fromEntries(TRACKS.map((tr) => {
+  const d = { kick: (i) => i % 4 === 0, hardkick: () => false, snare: (i) => i % 8 === 4, clap: (i) => i % 8 === 4 && Math.random() < 0.5, rim: () => Math.random() < 0.2, hat: () => Math.random() < 0.55, ohat: (i) => i % 2 === 1 && Math.random() < 0.4, ride: () => Math.random() < 0.15, cowbell: () => Math.random() < 0.16, tom: () => Math.random() < 0.12, hoover: (i) => i % 8 === 0 && Math.random() < 0.5, stab: (i) => i % 4 === 0 && Math.random() < 0.5, acid: () => Math.random() < 0.4, reese: (i) => i % 4 === 0 && Math.random() < 0.4, sub: (i) => i % 4 === 0, rumble: (i) => i % 2 === 0 && Math.random() < 0.3 }[tr.id];
+  return [tr.id, STEPS.map((i) => (d ? d(i) : false))];
+}));
 
 const FX = [
   { id: "squelch", icon: "lucide:activity", label: "fxSquelch", min: 200, max: 5000, step: 20 },
   { id: "drive", icon: "lucide:flame", label: "fxDrive", min: 0, max: 1, step: 0.02 },
+  { id: "crush", icon: "lucide:binary", label: "fxCrush", min: 0, max: 1, step: 0.02 },
   { id: "delay", icon: "lucide:repeat-2", label: "fxDelay", min: 0, max: 0.8, step: 0.02 },
   { id: "reverb", icon: "lucide:cloudy", label: "fxReverb", min: 0, max: 0.9, step: 0.02 },
   { id: "mfilter", icon: "lucide:filter", label: "fxFilter", min: 0, max: 1, step: 0.02 },
   { id: "swing", icon: "lucide:wind", label: "fxSwing", min: 0, max: 0.6, step: 0.02 },
 ];
-const DFX = { squelch: 1200, drive: 0, delay: 0, reverb: 0, mfilter: 1, swing: 0 };
+const DFX = { squelch: 1200, drive: 0, crush: 0, delay: 0, reverb: 0, mfilter: 1, swing: 0 };
+
+// ---- waveshaper curves ----
+const curveOf = (fn) => { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) c[i] = fn(i / (n - 1) * 2 - 1); return c; };
+const HARD = curveOf((x) => Math.tanh(x * 4)), SOFT = curveOf((x) => Math.tanh(x * 2));
+const driveCurve = (a) => curveOf((x) => { const k = a * a * 80; return (1 + k) * x / (1 + k * Math.abs(x)); });
+const crushCurve = (a) => { const steps = Math.max(2, Math.round(64 * (1 - a) + 2)); return curveOf((x) => Math.round(x * steps) / steps); };
+function makeIR(ctx, seconds = 1.8, decay = 3) { const len = Math.floor(ctx.sampleRate * seconds), buf = ctx.createBuffer(2, len, ctx.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); } return buf; }
 
 // ---- synth voices (generated) ----
 const KICK = (ctx, out, t) => {
@@ -80,6 +96,14 @@ const KICK = (ctx, out, t) => {
   const c = ctx.createOscillator(), cg = ctx.createGain(); c.type = "triangle"; c.frequency.value = 1000;
   cg.gain.setValueAtTime(0.5, t); cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.015);
   c.connect(cg); cg.connect(out); c.start(t); c.stop(t + 0.02);
+};
+const HARDKICK = (ctx, out, t) => {                                 // gabber kick — sine driven hard so the tail buzzes
+  const o = ctx.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+  const sh = ctx.createWaveShaper(); sh.curve = HARD; sh.oversample = "2x";
+  const g = ctx.createGain(); g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+  o.connect(sh); sh.connect(g); g.connect(out); o.start(t); o.stop(t + 0.52);
+  const c = ctx.createOscillator(), cg = ctx.createGain(); c.type = "square"; c.frequency.value = 1200;
+  cg.gain.setValueAtTime(0.6, t); cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.012); c.connect(cg); cg.connect(out); c.start(t); c.stop(t + 0.015);
 };
 const metallic = (ctx, out, t, { bp, hp, dur, gain, q = 0.8 }) => {
   const b = ctx.createBiquadFilter(); b.type = "bandpass"; b.frequency.value = bp; b.Q.value = q;
@@ -132,6 +156,13 @@ const STAB = (ctx, out, t, cutoff) => {
   lp.connect(g); g.connect(out);
   for (const n of [0, 3, 7, 12]) { const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = midiToFreq(ROOT + 24 + n); o.connect(lp); o.start(t); o.stop(t + 0.34); }
 };
+const HOOVER = (ctx, out, t) => {                                   // mentasm/hoover — detuned saw stack + filter sweep
+  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 8; lp.frequency.setValueAtTime(4200, t); lp.frequency.exponentialRampToValueAtTime(700, t + 0.32);
+  const sh = ctx.createWaveShaper(); sh.curve = SOFT;
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.2, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+  sh.connect(lp); lp.connect(g); g.connect(out);
+  for (const n of [0, 0.12, 7, 7.12, 12]) { const o = ctx.createOscillator(); o.type = "sawtooth"; const f = midiToFreq(ROOT + 24 + n); o.frequency.setValueAtTime(f * 1.06, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.08); o.connect(sh); o.start(t); o.stop(t + 0.44); }
+};
 const ACID = (ctx, out, t, freq, cutoff) => {
   const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = freq;
   const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 13;
@@ -139,20 +170,29 @@ const ACID = (ctx, out, t, freq, cutoff) => {
   const g = ctx.createGain(); g.gain.setValueAtTime(0.45, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
   o.connect(lp); lp.connect(g); g.connect(out); o.start(t); o.stop(t + 0.26);
 };
+const REESE = (ctx, out, t, freq) => {                              // growling detuned-saw bass + resonant filter movement
+  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 5; lp.frequency.value = 1000;
+  const sh = ctx.createWaveShaper(); sh.curve = HARD;
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.36);
+  sh.connect(lp); lp.connect(g); g.connect(out);
+  for (const c of [-8, 0, 8]) { const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = freq * (1 + c / 1000); o.connect(sh); o.start(t); o.stop(t + 0.38); }
+  const lfo = ctx.createOscillator(); lfo.frequency.value = 6; const lg = ctx.createGain(); lg.gain.value = 500; lfo.connect(lg); lg.connect(lp.frequency); lfo.start(t); lfo.stop(t + 0.38);
+};
 const SUB = (ctx, out, t, freq) => {
   const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = freq;
   const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.7, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
   o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.32);
 };
-
-// ---- FX helpers ----
-function driveCurve(amount) { const k = amount * amount * 80, n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = (1 + k) * x / (1 + k * Math.abs(x)); } return c; }
-function makeIR(ctx, seconds = 1.8, decay = 3) { const len = Math.floor(ctx.sampleRate * seconds), buf = ctx.createBuffer(2, len, ctx.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); } return buf; }
+const RUMBLE = (ctx, out, t) => {                                   // rolling low-end under the kick
+  const o = ctx.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(55, t); o.frequency.exponentialRampToValueAtTime(36, t + 0.4);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.6, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+  o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.47);
+};
 
 // ---- shared state (atoms survive tab switches) + autosave to IndexedDB ----
 const SAVES = collection("ravePatterns"), CUR = collection("raveCurrent");
 const $tracks = atom(parse(PRESETS[0])), $bpm = atom(130), $fx = atom({ ...DFX });
-(async () => { try { const s = await CUR.get("state"); if (s && s.tracks) { $tracks.set(s.tracks); if (s.bpm) $bpm.set(s.bpm); if (s.fx) $fx.set({ ...DFX, ...s.fx }); } } catch { /* no idb → defaults */ } })();
+(async () => { try { const s = await CUR.get("state"); if (s && s.tracks) { $tracks.set({ ...empty(), ...s.tracks }); if (s.bpm) $bpm.set(s.bpm); if (s.fx) $fx.set({ ...DFX, ...s.fx }); } } catch { /* no idb → defaults */ } })();
 
 export function rave({ S, toast }) {
   const t = useStore(S.t);
@@ -161,22 +201,23 @@ export function rave({ S, toast }) {
   const [cur, setCur] = useState(-1);
   const eng = useRef(null), sched = useRef(null), raf = useRef(null), nextT = useRef(0), stepN = useRef(0), q = useRef([]);
 
-  const applyFx = (e) => { const f = $fx.get(); e.bus.curve = driveCurve(f.drive); e.fx.dsend.gain.value = f.delay; e.fx.rsend.gain.value = f.reverb; e.fx.mf.frequency.value = 200 * Math.pow(90, f.mfilter); e.fx.delay.delayTime.value = 3 * (60 / $bpm.get() / 4); };
+  const applyFx = (e) => { const f = $fx.get(); e.fx.drive.curve = driveCurve(f.drive); e.fx.crush.curve = crushCurve(f.crush); e.fx.dsend.gain.value = f.delay; e.fx.rsend.gain.value = f.reverb; e.fx.mf.frequency.value = 200 * Math.pow(90, f.mfilter); e.fx.delay.delayTime.value = 3 * (60 / $bpm.get() / 4); };
   const ensure = () => {
     if (!audioSupported) return null;
     if (!eng.current) {
-      const e = createEngine({ master: 0.9 }), ctx = e.ctx;
+      const e = createEngine({ master: 0.85 }), ctx = e.ctx;
       const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -10; comp.knee.value = 6; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.12; comp.connect(e.master);
       const mf = ctx.createBiquadFilter(); mf.type = "lowpass"; mf.frequency.value = 18000; mf.connect(comp);
       const sum = ctx.createGain(); sum.connect(mf);
       const drive = ctx.createWaveShaper(); drive.oversample = "2x"; drive.curve = driveCurve(0);
-      const dry = ctx.createGain(); drive.connect(dry); dry.connect(sum);
+      const crush = ctx.createWaveShaper(); crush.curve = crushCurve(0); drive.connect(crush);
+      const dry = ctx.createGain(); crush.connect(dry); dry.connect(sum);
       const dsend = ctx.createGain(); dsend.gain.value = 0; const delay = ctx.createDelay(1.5); delay.delayTime.value = 3 * (60 / 130 / 4);
       const dfb = ctx.createGain(); dfb.gain.value = 0.36; const df = ctx.createBiquadFilter(); df.type = "lowpass"; df.frequency.value = 2200;
-      drive.connect(dsend); dsend.connect(delay); delay.connect(df); df.connect(dfb); dfb.connect(delay); df.connect(sum);
+      crush.connect(dsend); dsend.connect(delay); delay.connect(df); df.connect(dfb); dfb.connect(delay); df.connect(sum);
       const rsend = ctx.createGain(); rsend.gain.value = 0; const rev = ctx.createConvolver(); rev.buffer = makeIR(ctx);
-      drive.connect(rsend); rsend.connect(rev); rev.connect(sum);
-      e.bus = drive; e.fx = { drive, dsend, rsend, mf, delay };
+      crush.connect(rsend); rsend.connect(rev); rev.connect(sum);
+      e.bus = drive; e.fx = { drive, crush, dsend, rsend, mf, delay };
       eng.current = e; applyFx(e);
     }
     eng.current.resume(); return eng.current;
@@ -185,6 +226,7 @@ export function rave({ S, toast }) {
   const fire = (s, time) => {
     const e = eng.current; if (!e) return; const ctx = e.ctx, out = e.bus, buf = e.buffers.white, Tr = $tracks.get(), cut = $fx.get().squelch;
     if (Tr.kick[s]) KICK(ctx, out, time);
+    if (Tr.hardkick[s]) HARDKICK(ctx, out, time);
     if (Tr.snare[s]) SNARE(ctx, out, buf, time);
     if (Tr.clap[s]) CLAP(ctx, out, buf, time);
     if (Tr.rim[s]) RIM(ctx, out, buf, time);
@@ -193,9 +235,12 @@ export function rave({ S, toast }) {
     if (Tr.ride[s]) RIDE(ctx, out, time);
     if (Tr.cowbell[s]) COWBELL(ctx, out, time);
     if (Tr.tom[s]) TOM(ctx, out, time);
+    if (Tr.hoover[s]) HOOVER(ctx, out, time);
     if (Tr.stab[s]) STAB(ctx, out, time, cut);
     if (Tr.acid[s]) ACID(ctx, out, time, midiToFreq(ROOT + RIFF[s]), cut);
+    if (Tr.reese[s]) REESE(ctx, out, time, midiToFreq(ROOT + RIFF[s]));
     if (Tr.sub[s]) SUB(ctx, out, time, midiToFreq(ROOT + RIFF[s]));
+    if (Tr.rumble[s]) RUMBLE(ctx, out, time);
     q.current.push({ s, time });
   };
   const tick = () => { const e = eng.current; if (!e) return; const spb = 60 / $bpm.get() / 4, sw = $fx.get().swing; while (nextT.current < e.ctx.currentTime + 0.1) { const s = stepN.current; fire(s, nextT.current + (s % 2 ? sw * spb : 0)); nextT.current += spb; stepN.current = (s + 1) % N; } };
@@ -204,8 +249,8 @@ export function rave({ S, toast }) {
   const stop = () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); sched.current = null; raf.current = null; q.current = []; setPlaying(false); setCur(-1); };
 
   useEffect(() => () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); if (eng.current) eng.current.close(); }, []);
-  useEffect(() => { CUR.put("state", { tracks, bpm, fx }).catch(() => {}); }, [tracks, bpm, fx]);   // autosave working pattern
-  useEffect(() => { const e = eng.current; if (e && e.fx) applyFx(e); }, [fx, bpm]);                // live FX + tempo-synced delay
+  useEffect(() => { CUR.put("state", { tracks, bpm, fx }).catch(() => {}); }, [tracks, bpm, fx]);
+  useEffect(() => { const e = eng.current; if (e && e.fx) applyFx(e); }, [fx, bpm]);
 
   const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
   const setFx = (id, v) => $fx.set({ ...fx, [id]: v });

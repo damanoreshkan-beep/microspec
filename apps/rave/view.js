@@ -253,7 +253,7 @@ export function raveSaved({ S }) {
   const [list, setList] = useState(null);
   const load = () => SAVES.all().then(setList).catch(() => setList([]));
   useEffect(() => { load(); }, []);
-  const open = (it) => { $tracks.set(it.tracks); if (it.bpm) $bpm.set(it.bpm); $fx.set({ ...DFX, ...(it.fx || {}) }); S.tab.set("beat"); };
+  const open = (it) => { $tracks.set({ ...empty(), ...(it.tracks || {}) }); if (it.bpm) $bpm.set(it.bpm); $fx.set({ ...DFX, ...(it.fx || {}) }); S.tab.set("beat"); };
   const del = async (id) => { try { await SAVES.remove(id); } catch { /* */ } load(); };
 
   if (list === null) return html`<div class="flex justify-center py-20"><span class="loading loading-ring loading-lg"></span></div>`;
@@ -262,7 +262,7 @@ export function raveSaved({ S }) {
   return html`<div class="flex flex-col gap-2">
     ${list.map((it) => html`<div data-saved class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" key=${it.id}>
       <div class="card-body p-3 flex-row items-center gap-3">
-        <button class="flex-1 min-w-0 text-left flex flex-col gap-1.5" onClick=${() => open(it)}>
+        <button data-load class="flex-1 min-w-0 text-left flex flex-col gap-1.5" onClick=${() => open(it)}>
           <span class="font-semibold truncate">${it.name || T(t, "beatWord")}</span>
           <span class="flex items-center gap-1.5 flex-wrap">
             <span class="text-xs text-base-content/70 tabular-nums mr-1">${it.bpm || 130} BPM</span>

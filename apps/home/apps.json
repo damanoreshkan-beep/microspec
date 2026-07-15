@@ -37,7 +37,7 @@
     "bg": "#0d1512",
     "fg": "#10b981",
     "href": "./habits/",
-    "version": "1.0"
+    "version": "1.2"
   },
   {
     "id": "ambient",
@@ -68,6 +68,16 @@
     "fg": "#E0A94B",
     "href": "./kalimba/",
     "version": "1.6"
+  },
+  {
+    "id": "books",
+    "title": "Книги",
+    "tagline": "Каталог безкоштовних книг Project Gutenberg — 78 000+ творів, опис українською",
+    "glyph": "lucide:book-open",
+    "bg": "#1c1917",
+    "fg": "#d6b370",
+    "href": "./books/",
+    "version": "1.0"
   },
   {
     "id": "launches",
@@ -127,7 +137,7 @@
     "bg": "#1a1a1a",
     "fg": "#FFD21E",
     "href": "./hf/",
-    "version": "1.6"
+    "version": "1.7"
   },
   {
     "id": "nearby",
@@ -177,7 +187,7 @@
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.14"
+    "version": "1.15"
   },
   {
     "id": "sun",
@@ -207,7 +217,7 @@
     "bg": "#0d1117",
     "fg": "#3fb950",
     "href": "./frontier/",
-    "version": "1.1"
+    "version": "1.2"
   },
   {
     "id": "onthisday",
@@ -237,7 +247,7 @@
     "bg": "#1f2430",
     "fg": "#34d399",
     "href": "./ruler/",
-    "version": "1.9"
+    "version": "1.10"
   },
   {
     "id": "hn",

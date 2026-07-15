@@ -1,0 +1,20 @@
+{
+  "id": "books",
+  "theme": "signal",
+  "icon": "lucide:book-open",
+  "source": "https://gutendex.com/books/",
+  "searchParam": "?search=",
+  "proxy": true,
+  "root": "results",
+  "map": { "id": "id", "title": "title", "author": "authors.0.name", "desc": "summaries.0", "downloads": "download_count" },
+  "urlTemplate": "https://www.gutenberg.org/ebooks/{id}",
+  "compact": ["downloads"],
+  "translate": ["desc"],
+  "badges": [{ "field": "downloads", "icon": "lucide:download" }],
+  "brand": { "bg": "#1c1917", "fg": "#d6b370" },
+  "source_url": "https://www.gutenberg.org",
+  "i18n": {
+    "uk": { "title": "Книги", "tabFeed": "Каталог", "search": "Пошук книги…", "profTagline": "Каталог безкоштовних книг Project Gutenberg — 78 000+ творів, опис українською", "profSource": "Джерело — gutenberg.org" },
+    "en": { "title": "Books", "tabFeed": "Catalog", "search": "Search a book…", "profTagline": "A catalog of free Project Gutenberg books — 78,000+ works, summaries translated", "profSource": "Source — gutenberg.org" }
+  }
+}

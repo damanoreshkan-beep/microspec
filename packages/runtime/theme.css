@@ -71,3 +71,9 @@ nav.fixed.bottom-0 button > span {
   letter-spacing: .03em;
   font-size: .58rem;
 }
+
+/* skeleton → content reveal: a fast, smooth fade-in when real content replaces a skeleton (/_rt/skeleton.js
+   Reveal). Frozen to its final state during the design-check axe pass, so contrast is measured on real text. */
+@keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
+.ms-reveal { animation: msReveal .28s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }

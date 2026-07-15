@@ -5,7 +5,7 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Loading } from "/_rt/skeleton.js";
+import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { animate, stagger } from "motion";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -59,27 +59,24 @@ export function onthisday({ S }) {
     return () => { live = false; };
   }, [locale]);
 
+  const ready = useReveal(!!data);   // hold the skeleton ≥1s so a fast load doesn't flash
   useEffect(() => {
     if (!listRef.current) return;
     const rows = listRef.current.querySelectorAll(".otd");
     if (!rows.length) return;
     const a = animate(rows, { y: [10, 0] }, { delay: stagger(0.025), duration: 0.3, ease: "easeOut" });
     return () => { try { a.stop(); } catch { /* */ } };
-  }, [cat, data]);
+  }, [cat, ready]);
 
-  if (!data) {
-    return err
-      ? html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`
-      : html`<${Loading} />`;
-  }
-
+  // Structure (date + category tabs) renders immediately; the entries are decoding skeleton cards until ready.
   const dateStr = new Date().toLocaleDateString(locale === "en" ? "en-GB" : locale || "uk", { day: "numeric", month: "long" });
-  const items = (data[cat] || []).slice().sort((a, b) => (b.year || 0) - (a.year || 0));
+  const items = data ? (data[cat] || []).slice().sort((a, b) => (b.year || 0) - (a.year || 0)) : [];
   const body = (it) => html`<div class="card-body p-3 flex-row items-start gap-3">
     <div class="shrink-0 w-12 text-right pt-0.5"><span class="text-base font-bold tabular-nums text-primary">${it.year ?? "—"}</span></div>
     <div class="flex-1 min-w-0"><p class="text-sm leading-snug break-words">${it.text}</p></div>
     ${it.thumb ? html`<img src=${it.thumb} loading="lazy" alt="" class="w-14 h-14 rounded-lg object-cover shrink-0" />` : null}
   </div>`;
+  const skel = (i) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${"s" + i}><div class="card-body p-3 flex-row items-start gap-3 text-base-content/70"><div class="shrink-0 w-12 text-right pt-0.5"><span class="text-base font-bold tabular-nums text-primary/50"><${Scramble} len=${4} /></span></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate text-sm"><${Scramble} len=${34} /></div><div class="truncate text-sm w-2/3"><${Scramble} len=${18} /></div></div></div></div>`;
 
   return html`<div class="flex flex-col gap-3">
     <div class="text-2xl font-bold text-center">${dateStr}</div>
@@ -87,8 +84,9 @@ export function onthisday({ S }) {
       ${CATS.map((k) => html`<button data-cat=${k} aria-pressed=${k === cat} class=${`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border transition ${k === cat ? "border-primary bg-primary/10" : "border-base-300"}`} onClick=${() => setCat(k)} key=${k}>${T(t, LABEL[k])}</button>`)}
     </div>
     <div ref=${listRef} class="flex flex-col gap-2">
-      ${items.length
-        ? items.map((it, i) => it.url
+      ${err ? html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`
+        : !ready ? Array.from({ length: 5 }, (_, i) => skel(i))
+        : items.length ? items.map((it, i) => it.url
           ? html`<a data-otd href=${it.url} target="_blank" rel="noopener" class="otd card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" key=${i}>${body(it)}</a>`
           : html`<div data-otd class="otd card bg-base-100 border border-base-300 rounded-2xl" key=${i}>${body(it)}</div>`)
         : html`<div class="text-center text-base-content/60 py-10">${T(t, "empty")}</div>`}

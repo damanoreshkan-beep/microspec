@@ -27,7 +27,7 @@ const C = { g: "\x1b[32m", r: "\x1b[31m", d: "\x1b[2m", x: "\x1b[0m" };
 let pass = 0, fail = 0;
 const ok = (n, m = "") => { console.log(`  ${C.g}✓${C.x} ${n}${m ? C.d + " — " + m + C.x : ""}`); pass++; };
 const no = (n, m, det) => { console.log(`  ${C.r}✗${C.x} ${n} — ${m}`); (det || []).forEach((l) => console.log(`      ${l}`)); fail++; };
-const settleData = async (h) => { for (let i = 0; i < 30; i++) { if ((await h.count(".skeleton")) === 0 && (await h.bodyText()).trim()) break; await h.wait(500); } };
+const settleData = async (h) => { for (let i = 0; i < 30; i++) { if ((await h.count(".skeleton, [data-skel]")) === 0 && (await h.bodyText()).trim()) break; await h.wait(500); } };
 // a bare DaisyUI spinner is banned (see /_rt/skeleton.js); count any that leaked into the live DOM
 const spinnerCount = (ev) => ev(() => document.querySelectorAll(".loading-spinner,.loading-ring,.loading-dots,.loading-ball,.loading-bars,.loading-infinity").length);
 const isBlank = (ev) => ev(() => (document.body.innerText || "").replace(/\s/g, "").length < 2 && document.querySelectorAll("main *, nav [data-tab]").length < 2);

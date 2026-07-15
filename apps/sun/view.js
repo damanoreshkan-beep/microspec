@@ -12,6 +12,7 @@ import { Globe } from "/_rt/globe.js";
 import { BODY_KEYS, skyPositions, sunHorizon, sunTimes } from "/_rt/astro.js";
 import { SkyDial } from "/_rt/skydial.js";
 import { TimeScale } from "/_rt/timescale.js";
+import { Scramble } from "/_rt/skeleton.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const MOCK = new URLSearchParams(location.search).get("mock");
@@ -71,26 +72,28 @@ export function sun({ S, openScreen, closeScreen }) {
     </div>`;
   }
 
-  if (!pos) return html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-2 text-center px-6">${Icon("lucide:loader", "text-3xl animate-spin")}<span>${T(t, "locating")}</span></div>`;
-
-  const loc = picked || pos; // GPS location, unless a point was chosen on the globe
+  // No spinner: the dial renders IMMEDIATELY; the centre readout + scrubber are atomic skeletons until a
+  // location is known (GPS, a globe pick, or the Kyiv fallback). loc may be null for a moment on a real device.
+  const loc = picked || pos;
+  const ready = !!loc;
   const now = new Date();
   const date = scrub == null ? now : new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(scrub / 60), scrub % 60);
-  const sunPos = sunHorizon(loc.lat, loc.lng, date); // always shown in the centre readout, regardless of filter
-  const bearing = sunPos.az, alt = sunPos.alt, up = alt > -0.833;
-  const times = sunTimes(loc.lat, loc.lng, now);
-
-  // solar-system bodies as SkyDial marks: azimuth = angle, real altitude = value (radius + conjunction order)
-  const shown = Array.isArray(filters.bodies) ? filters.bodies : BODY_KEYS;
-  const marks = skyPositions(loc.lat, loc.lng, date, shown).map((m) => ({
-    key: m.key, body: m.key, angle: m.az, value: m.alt, label: bodyLabel(t, m.key),
-    attrs: m.key === "sun" ? { "data-sun": true } : null,
-  }));
+  let bearing = 0, alt = 0, up = false, times = {}, marks = [];
+  if (ready) {
+    const sunPos = sunHorizon(loc.lat, loc.lng, date);
+    bearing = sunPos.az; alt = sunPos.alt; up = alt > -0.833;
+    times = sunTimes(loc.lat, loc.lng, now);
+    const shown = Array.isArray(filters.bodies) ? filters.bodies : BODY_KEYS;
+    marks = skyPositions(loc.lat, loc.lng, date, shown).map((m) => ({
+      key: m.key, body: m.key, angle: m.az, value: m.alt, label: bodyLabel(t, m.key),
+      attrs: m.key === "sun" ? { "data-sun": true } : null,
+    }));
+  }
 
   const center = html`<div class="contents">
-    <div data-bearing class="text-5xl font-bold tabular-nums">${Math.round(bearing)}°</div>
-    <div class="text-base font-medium">${dirName(bearing)}</div>
-    <div class="text-sm text-base-content/60 tabular-nums">${up ? `${T(t, "alt")} ${Math.round(alt)}°` : T(t, "belowHorizon")}</div>
+    <div data-bearing class="text-5xl font-bold tabular-nums"><${Scramble} text=${ready ? Math.round(bearing) + "°" : null} len=${4} /></div>
+    <div class="text-base font-medium"><${Scramble} text=${ready ? dirName(bearing) : null} len=${6} /></div>
+    <div class="text-sm text-base-content/60 tabular-nums"><${Scramble} text=${ready ? (up ? `${T(t, "alt")} ${Math.round(alt)}°` : T(t, "belowHorizon")) : null} len=${9} /></div>
   </div>`;
 
   const anchors = [
@@ -110,10 +113,11 @@ export function sun({ S, openScreen, closeScreen }) {
       <button id="open-globe" class="btn btn-ghost btn-sm rounded-2xl gap-2" onClick=${openGlobe}>${Icon("lucide:globe")}${T(t, "pickOnGlobe")}</button>
       ${picked
         ? html`<button id="clear-pick" class="text-xs text-primary flex items-center gap-1" onClick=${() => setPicked(null)}>${Icon("lucide:map-pin")}${picked.name || `${picked.lat.toFixed(1)}°, ${picked.lng.toFixed(1)}°`} · ${T(t, "myLocation")}</button>`
-        : pos.approx ? html`<div class="text-xs text-base-content/70">${T(t, "approxKyiv")}</div>` : null}
+        : ready ? (pos?.approx ? html`<div class="text-xs text-base-content/70">${T(t, "approxKyiv")}</div>` : null)
+        : html`<div class="text-xs text-base-content/60 flex items-center gap-1.5">${Icon("lucide:map-pin")}${T(t, "locating")}</div>`}
     </div>
 
-    <${TimeScale} value=${scrub} now=${now.getHours() * 60 + now.getMinutes()} onChange=${setScrub} t=${t}
-      sunrise=${minOfDay(times.sunrise)} sunset=${minOfDay(times.sunset)} anchors=${anchors} />
+    ${ready ? html`<${TimeScale} value=${scrub} now=${now.getHours() * 60 + now.getMinutes()} onChange=${setScrub} t=${t}
+      sunrise=${minOfDay(times.sunrise)} sunset=${minOfDay(times.sunset)} anchors=${anchors} />` : null}
   </div>`;
 }

@@ -5,7 +5,7 @@ import { html } from "htm/preact";
 import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Loading } from "/_rt/skeleton.js";
+import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { Globe, countryAt, worldReady } from "/_rt/globe.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -36,11 +36,14 @@ export function iss({ S }) {
   // re-render until the globe's topology is loaded, so "over <country>" resolves
   useEffect(() => { const id = setInterval(() => { tick((x) => x + 1); if (worldReady()) clearInterval(id); }, 1000); return () => clearInterval(id); }, []);
 
-  if (!pos) {
-    return err
-      ? html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-2 text-center px-6">${Icon("lucide:satellite-dish", "text-3xl")}<span>${T(t, "statusError")}</span></div>`
-      : html`<${Loading} />`;
-  }
+  const ready = useReveal(!!pos);   // hold the skeleton ≥1s so a fast fix doesn't flash
+  if (err && !pos) return html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-2 text-center px-6">${Icon("lucide:satellite-dish", "text-3xl")}<span>${T(t, "statusError")}</span></div>`;
+  // the real globe spins immediately (it needs no data); the readout + stats are decoding skeletons
+  if (!ready) return html`<div class="flex flex-col gap-4 items-center">
+    <${Globe} points=${[]} spin=${true} height=${320} />
+    <div class="flex items-center gap-2 text-sm text-base-content/60">${Icon("lucide:satellite", "text-base")}<span class="font-semibold"><${Scramble} len=${12} /></span></div>
+    <div class="grid grid-cols-2 gap-2 w-full">${[0, 1, 2, 3].map((i) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 gap-0.5 text-base-content/60"><div class="text-[0.62rem] truncate"><${Scramble} len=${8} /></div><div class="text-xl font-bold truncate"><${Scramble} len=${6} /></div></div></div>`)}</div>
+  </div>`;
 
   const { latitude: lat, longitude: lon, altitude: alt, velocity: vel, visibility: vis } = pos;
   const country = countryAt(lat, lon);

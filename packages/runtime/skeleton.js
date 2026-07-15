@@ -1,39 +1,47 @@
-// microspec runtime — modern loading placeholders. NO content-less spinners: the app chrome always shows,
-// and pending content is a skeleton in place. Text decodes (a scramble of letters/digits that resolves into
-// the value — also the reveal when an EN body is translated to the active locale); images are blinking
-// pixels. Both are decorative (aria-hidden) and go INSTANT (final value, no animation) in the gate/preflight
-// and under prefers-reduced-motion, so shots + e2e stay deterministic and the effect is device-only.
+// microspec runtime — modern loading placeholders. NO content-less spinners and NO layout-hiding "loading
+// screens": the app's real structure renders immediately, and only the not-yet-known VALUES are atomic
+// skeletons in place — text decodes (a letters/digits scramble that resolves into the value; also the reveal
+// when EN is translated to the locale), images are blinking pixels. Skeletons hold for a MIN time (no flash)
+// then reveal smoothly. All decorative bits are aria-hidden and go INSTANT (final value, no animation) in the
+// gate/preflight and under prefers-reduced-motion, so shots + e2e stay deterministic; the effect is device-only.
 import { html } from "htm/preact";
-import { useRef, useEffect } from "preact/hooks";
+import { useRef, useEffect, useState } from "preact/hooks";
 
 const CH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789абвгґдежзиклмнпрстуфхцч#%&/<>";
 const rc = () => CH[(Math.random() * CH.length) | 0];
+const now = () => (typeof performance !== "undefined" && performance.now ? performance.now() : 0);
 const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 const forceAnim = typeof location !== "undefined" && location.search.includes("__anim");   // gate hook: exercise animations
-const instant = () => !forceAnim && (isGate || (typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches));
+const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+const instant = () => !forceAnim && (isGate || reduced());
 
-// Scramble — decode text. With `text`: scrambles then resolves into it (once, on each text change → the
-// translation reveal). Without `text`: a placeholder bar of `len` scrambling chars. Inherits colour/size.
-export function Scramble({ text, len = 14, cls = "", speed = 32 }) {
-  const ref = useRef();
-  const ph = !(typeof text === "string" && text.trim());               // placeholder (no value) vs real-value decode
+// Scramble — atomic value slot. With a value it holds a scramble for ~minMs (no flash on a fast load) then
+// DECODES into the value; without one it's a perpetual placeholder bar. Value slots decode smoothly; the
+// gate/reduced-motion show the final value instantly.
+export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) {
+  const ref = useRef(), born = useRef(0);
+  const ph = !(typeof text === "string" && text.trim());
   useEffect(() => {
     const el = ref.current; if (!el) return;
+    if (!born.current) born.current = now();
     const target = ph ? null : text;
     const n = Math.max(1, Math.min(72, target ? target.length : len));
     if (instant()) { el.textContent = target ?? "".padEnd(n, "░"); return; }
-    let timer, f = 0;
+    const decodeAt = born.current + minMs;
+    let timer, decodeStart = 0;
     const tick = () => {
-      f++;
-      if (target) { const done = Math.floor(f / 2); if (done >= n) { el.textContent = target; return; } el.textContent = target.slice(0, done) + target.slice(done).replace(/\S/g, rc); }
-      else el.textContent = Array.from({ length: n }, rc).join("");
+      const t0 = now();
+      if (target && t0 >= decodeAt) {
+        if (!decodeStart) decodeStart = t0;
+        const done = Math.floor(Math.min(1, (t0 - decodeStart) / 480) * n);
+        if (done >= n) { el.textContent = target; return; }
+        el.textContent = target.slice(0, done) + target.slice(done).replace(/\S/g, rc);
+      } else el.textContent = Array.from({ length: n }, rc).join("");
       timer = setTimeout(tick, speed);
     };
     tick();
     return () => clearTimeout(timer);
   }, [text, len]);
-  // Placeholder text is decorative + mono (stable-width bars); a real-value decode inherits the normal font
-  // and stays accessible (screen readers, and reduced-motion → instant final text, read the real value).
   return html`<span ref=${ref} aria-hidden=${ph ? "true" : null} class=${`${ph ? "font-mono tracking-tight" : ""} ${cls}`}></span>`;
 }
 
@@ -54,7 +62,22 @@ export function Pixels({ cls = "" }) {
   return html`<canvas ref=${ref} aria-hidden="true" class=${`w-full h-full block ${cls}`}></canvas>`;
 }
 
-// Loading — drop-in modern loading block for a custom/tool view (replaces a spinner): a few decoding lines.
+// useReveal(ready, minMs) — hold a whole skeleton for a MIN time (no flash on a fast load), then reveal.
+// Returns false while a skeleton should show. Instant in the gate / reduced-motion (deterministic).
+export function useReveal(ready, minMs = 1000) {
+  const born = useRef(0), [, bump] = useState(0);
+  if (!born.current) born.current = now();
+  if (isGate || reduced()) return !!ready;
+  const left = born.current + minMs - now();
+  useEffect(() => { if (ready && left > 0) { const id = setTimeout(() => bump((x) => x + 1), left + 20); return () => clearTimeout(id); } }, [ready, left > 0]);
+  return !!ready && left <= 0;
+}
+
+// Content that fades in when it replaces a skeleton (smooth, fast). Frozen (final state) in the gate.
+export const Reveal = ({ children, cls = "" }) => html`<div class=${`ms-reveal ${cls}`}>${children}</div>`;
+
+// Loading — a LAST-RESORT modern loading block (a few decoding lines) for a view with no meaningful structure
+// to show yet. Prefer rendering the real layout with atomic Scramble/Pixels slots instead of this.
 export function Loading({ lines = [15, 22, 18, 25, 14] } = {}) {
   return html`<div class="flex flex-col gap-3 py-8 px-1" role="status" aria-busy="true">
     ${lines.map((n, i) => html`<div class="text-base-content/70 text-sm truncate" key=${i}><${Scramble} len=${n} /></div>`)}

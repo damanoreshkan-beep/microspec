@@ -5,7 +5,7 @@ import { html } from "htm/preact";
 import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Loading } from "/_rt/skeleton.js";
+import { Scramble, Pixels, useReveal } from "/_rt/skeleton.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const KP_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json";
@@ -62,11 +62,15 @@ export function kp({ S }) {
     return () => { live = false; clearInterval(id); };
   }, []);
 
-  if (!data) {
-    return err
-      ? html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`
-      : html`<${Loading} />`;
-  }
+  const ready = useReveal(!!data);   // hold the skeleton ≥1s so a fast load doesn't flash
+  if (err && !data) return html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`;
+  // structure-shaped skeleton (gauge ring + chart + stat cards) with decoding value slots — never a bare block
+  if (!ready) return html`<div class="flex flex-col gap-4 items-center">
+    <div class="w-36 h-36 rounded-full border-[6px] border-base-300 flex items-center justify-center"><span class="text-4xl font-bold tabular-nums text-base-content/40"><${Scramble} len=${3} /></span></div>
+    <div class="text-lg font-bold text-base-content/50"><${Scramble} len=${9} /></div>
+    <div class="w-full h-24 rounded-2xl overflow-hidden border border-base-300"><${Pixels} /></div>
+    <div class="grid grid-cols-2 gap-2 w-full">${[0, 1].map((i) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 gap-1 text-base-content/60"><div class="text-[0.62rem] truncate"><${Scramble} len=${7} /></div><div class="text-xl font-bold truncate"><${Scramble} len=${4} /></div></div></div>`)}</div>
+  </div>`;
 
   const entries = (data.entries || []).filter((e) => e && e.kp != null);
   const observed = entries.filter((e) => e.observed === "observed");

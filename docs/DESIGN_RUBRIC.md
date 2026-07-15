@@ -49,9 +49,20 @@ Policy: `blocked: true` only on a **hard** (red) finding — those are objective
 debt to fix, not build-blockers (an agent's aesthetic judgment is non-deterministic; don't gate the build on
 taste, gate it on the objective floor and *surface* the taste).
 
-## Worked example — `habits`, first pass
+## Review log (what the agent taste gate found)
 
-The gate found what no code check could: **today was drawn twice** (a circle toggle *and* the ringed last
-cell of the week strip) in **two geometries** (circle vs square) — redundant and incoherent. Fix: the strip
-became the 7 days *before* today (today is owned solely by the circle), cells made subtler. Re-shoot to
-confirm. Strengths noted: restrained palette, colour carried only by non-text elements (a11y-safe).
+Each row is a real finding no axe/overflow/e2e check could see. 🔴 fixed (hard), 🟠 fixed, 🟡 = logged debt.
+
+| App | Sev | Finding | Status |
+|---|---|---|---|
+| habits | 🟠 | "today" drawn twice (circle toggle + ringed week-cell), two geometries | fixed — strip is now the 7 days before today |
+| habits · rave · ruler | 🟠 | dead refresh button on offline/tool apps (no-op `load`) | fixed — `app.canRefresh` hides it for tool/stream apps |
+| ruler | 🟠 | total-distance **skeleton never resolves** in the no-GPS/denied state (a disguised infinite loader) | fixed — shows "—" once located OR errored |
+| rave | 🟡 | preset chips (Техно/Ейсід/…) have no active/selected state — you can't tell which is loaded | debt |
+| rave | 🟡 | 8 FX sliders are icon-only; several icons are ambiguous (drive? reverb?) | debt |
+| frontier | 🟡 | two cards show identical `14K★ / 1.2K` — `compact()` rounding erases the distinction | debt |
+| frontier | 🟡 | "Деталі ↗" uses an external-link arrow for an in-app drill-down | debt |
+
+Strengths repeatedly noted: restrained dark palette (no gradients / emoji soup), colour = meaning carried
+by non-text elements (a11y-safe), clear hierarchy. `frontier` correctly **keeps** refresh (it has a real
+`load`) — validating the auto-detect.

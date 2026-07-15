@@ -137,7 +137,7 @@ export function ruler({ S }) {
       <div class="flex items-end justify-between gap-3 px-1">
         <div class="min-w-0">
           <div class="text-[0.62rem] font-mono uppercase text-base-content/60">${T(t, "total")}</div>
-          <div class="text-3xl font-bold tabular-nums leading-none">${pts.length >= 2 ? fmt(total) : ready ? "—" : html`<${Scramble} len=${5} />`}</div>
+          <div class="text-3xl font-bold tabular-nums leading-none">${pts.length >= 2 ? fmt(total) : (ready || err) ? "—" : html`<${Scramble} len=${5} />`}</div>
           ${area != null ? html`<div class="text-xs text-base-content/70 mt-1 tabular-nums">${T(t, "area")}: ${fmtArea(area)}</div>` : null}
         </div>
         <div class="text-right shrink-0">

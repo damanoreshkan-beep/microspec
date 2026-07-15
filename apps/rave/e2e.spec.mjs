@@ -71,6 +71,13 @@ export default [
     },
   },
   {
+    name: "версія: профіль показує версію апки й ядра", run: async (h) => {
+      await h.click('[data-tab="me"]'); await h.wait(200);
+      h.expect((await h.count("[data-version]")) === 1, "немає футера версії у профілі");
+      h.expect(/v\d.*core/i.test(await h.text("[data-version]")), "футер не містить версії апки й ядра");
+    },
+  },
+  {
     name: "подвійний Back: перший Back попереджає й не виходить", run: async (h) => {
       await h.click('[data-tab="beat"]'); await h.wait(150);
       await h.back(); await h.wait(250);

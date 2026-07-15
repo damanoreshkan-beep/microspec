@@ -16,6 +16,11 @@
       "minLength": 1,
       "description": "Default DaisyUI theme name used when no persisted theme exists (e.g. 'dim', 'light')."
     },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "App version (semver-ish) shown in the profile footer alongside the runtime core version. Defaults to 1.0.0."
+    },
     "translate": {
       "type": "array",
       "minItems": 1,

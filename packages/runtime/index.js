@@ -10,6 +10,7 @@ export function start(spec, arg2) {
 
   const opts = typeof arg2 === "function" ? { load: arg2 } : (arg2 || {});
   const app = createApp(spec, opts.load || (async () => ({ items: [], meta: {} })));
+  app.canRefresh = typeof opts.load === "function";
   setApp(app, opts.views || {});
   const { S, load } = app;
 

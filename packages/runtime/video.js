@@ -6,8 +6,8 @@
 //   <${Player} url=… title=… locale=… onClose=… />                     // full-screen overlay component
 import { html } from "htm/preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { media } from "/_rt/i18n.js";
-import { Pixels } from "/_rt/skeleton.js";
+import { media } from "./i18n.js";
+import { Pixels } from "./skeleton.js";
 
 const HLS = "https://esm.sh/hls.js@1.5.17";
 const clearSrc = (v) => { try { v.removeAttribute("src"); v.load(); } catch { /* torn down */ } };

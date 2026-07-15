@@ -58,10 +58,12 @@ Each row is a real finding no axe/overflow/e2e check could see. 🔴 fixed (hard
 | habits | 🟠 | "today" drawn twice (circle toggle + ringed week-cell), two geometries | fixed — strip is now the 7 days before today |
 | habits · rave · ruler | 🟠 | dead refresh button on offline/tool apps (no-op `load`) | fixed — `app.canRefresh` hides it for tool/stream apps |
 | ruler | 🟠 | total-distance **skeleton never resolves** in the no-GPS/denied state (a disguised infinite loader) | fixed — shows "—" once located OR errored |
-| rave | 🟡 | preset chips (Техно/Ейсід/…) have no active/selected state — you can't tell which is loaded | debt |
-| rave | 🟡 | 8 FX sliders are icon-only; several icons are ambiguous (drive? reverb?) | debt |
-| frontier | 🟡 | two cards show identical `14K★ / 1.2K` — `compact()` rounding erases the distinction | debt |
-| frontier | 🟡 | "Деталі ↗" uses an external-link arrow for an in-app drill-down | debt |
+| rave | 🟡 | preset chips (Техно/Ейсід/…) have no active/selected state | fixed — active chip is `btn-primary` while the pattern still matches it |
+| rave | 🟡 | 8 FX sliders are icon-only; several icons ambiguous (drive? reverb?) | fixed — each slider now labelled (icon + name caption) |
+| frontier · hf | 🟡 | two cards show identical `14K★` — `compact()` rounded away the difference | fixed — 1 decimal through 99.9K (14.2K vs 13.6K) |
+| frontier | 🟡 | "Деталі ↗" used an external-link arrow for an in-app drill-down | fixed — runtime uses a chevron when the card drills into a detail view |
+
+Every finding fixed. The taste gate now has zero open debt on the reviewed apps.
 
 Strengths repeatedly noted: restrained dark palette (no gradients / emoji soup), colour = meaning carried
 by non-text elements (a11y-safe), clear hierarchy. `frontier` correctly **keeps** refresh (it has a real

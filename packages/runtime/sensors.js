@@ -15,14 +15,15 @@ export const haptic = {
 };
 
 // geo — geolocation as a callback watch. onPos({lat,lng,accuracy}); onErr("denied"|"unavailable"|"unsupported").
+// opts override the PositionOptions — e.g. { enableHighAccuracy: true, maximumAge: 1000 } for a precise ruler.
 export const geo = {
   supported: typeof navigator !== "undefined" && "geolocation" in navigator,
-  watch(onPos, onErr) {
+  watch(onPos, onErr, opts) {
     if (!this.supported) { onErr?.("unsupported"); return () => {}; }
     const id = navigator.geolocation.watchPosition(
       (p) => onPos({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
       (e) => onErr?.(e.code === 1 ? "denied" : "unavailable"),
-      { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000 },
+      { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000, ...opts },
     );
     return () => navigator.geolocation.clearWatch(id);
   },

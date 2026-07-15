@@ -1,35 +1,39 @@
+// GPS ruler — the gate seeds a sample path (headless has no GPS), so the canvas + readouts render.
+const ready = async (h) => { for (let i = 0; i < 12; i++) { if ((await h.count("#add")) > 0) break; await h.wait(200); } };
+
 export default [
   {
-    name: "лінійка рендериться (tool-view)", run: async (h) => {
-      h.expect((await h.count("[data-ruler]")) === 1, "немає лінійки");
-      h.expect((await h.count("#ruler-calib")) === 1, "немає кнопки калібрування");
+    name: "GPS-лінійка: канвас + полілінія + загальна відстань + точність", run: async (h) => {
+      await ready(h); await h.wait(200);
+      h.expect((await h.count("canvas")) === 1, "немає канваса з полілінією");
+      h.expect((await h.count("#add")) === 1 && (await h.count("#undo")) === 1 && (await h.count("#clear")) === 1, "немає керування (додати/скасувати/очистити)");
+      h.expect(/\d[\d.,]*\s*(м|км)/.test(await h.bodyText()), "немає загальної відстані по координатах");
+      h.expect(/±\s*\d/.test(await h.bodyText()), "немає точності GPS");
     },
   },
   {
-    name: "калібрування: під-екран відкривається, Back закриває (routing-інваріант)", run: async (h) => {
-      await h.click("#ruler-calib"); await h.wait(200);
-      h.expect((await h.count("[data-calib]")) === 1, "калібрування не відкрилось");
-      h.expect((await h.count("#calib-range")) === 1, "немає повзунка");
-      await h.back(); await h.wait(200);
-      h.expect((await h.count("[data-calib]")) === 0, "Back не закрив калібрування");
-      h.expect((await h.count("[data-ruler]")) === 1, "Back вийшов замість повернути до лінійки");
+    name: "очистити скидає полілінію", run: async (h) => {
+      await ready(h);
+      await h.click("#clear"); await h.wait(150);
+      h.expect((await h.prop("#undo", "disabled")) === true, "після очищення undo не задизейблився");
+      h.expect(/—/.test(await h.text("main")), "загальна відстань не скинулась на —");
     },
   },
   {
-    name: "калібрування зберігається", run: async (h) => {
-      await h.click("#ruler-calib"); await h.wait(200);
-      await h.type("#calib-range", "45"); await h.wait(150);
-      await h.click("#calib-done"); await h.wait(200);
-      h.expect((await h.storage("ruler:pxPerCm")) === "45", "калібрування не збереглось");
+    name: "додати точку працює", run: async (h) => {
+      await ready(h);
+      await h.click("#clear"); await h.wait(120);
+      await h.click("#add"); await h.wait(150);
+      h.expect((await h.prop("#undo", "disabled")) !== true, "після додавання точки undo лишився задизейбленим");
     },
   },
   {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);
-      h.expect(/Ruler|Calibrate|Language/.test(await h.bodyText()), "не EN");
+      h.expect(/Ruler|Language|Total distance/i.test(await h.bodyText()), "не EN");
       await h.click('[data-loc="uk"]'); await h.wait(250);
-      h.expect(/Лінійка|Калібрувати|Мова/.test(await h.bodyText()), "не UA");
+      h.expect(/Лінійка|Мова|відстань/.test(await h.bodyText()), "не UA");
       await h.click('[data-tab="ruler"]'); await h.wait(120);
     },
   },

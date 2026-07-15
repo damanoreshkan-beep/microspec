@@ -8,22 +8,23 @@ const instant = () => isGate || (typeof matchMedia !== "undefined" && matchMedia
 
 export function Scramble({ text, len = 14, cls = "", speed = 32 }) {
   const ref = useRef();
+  const ph = !(typeof text === "string" && text.trim());               
   useEffect(() => {
     const el = ref.current; if (!el) return;
-    const target = (typeof text === "string" && text) ? text : null;
+    const target = ph ? null : text;
     const n = Math.max(1, Math.min(72, target ? target.length : len));
     if (instant()) { el.textContent = target ?? "".padEnd(n, "░"); return; }
     let timer, f = 0;
     const tick = () => {
       f++;
-      if (target) { const done = Math.floor(f / 2); el.textContent = target.slice(0, done) + target.slice(done).replace(/\S/g, rc); if (done >= n) { el.textContent = target; return; } }
+      if (target) { const done = Math.floor(f / 2); if (done >= n) { el.textContent = target; return; } el.textContent = target.slice(0, done) + target.slice(done).replace(/\S/g, rc); }
       else el.textContent = Array.from({ length: n }, rc).join("");
       timer = setTimeout(tick, speed);
     };
     tick();
     return () => clearTimeout(timer);
   }, [text, len]);
-  return html`<span ref=${ref} aria-hidden="true" class=${`font-mono tracking-tight ${cls}`}></span>`;
+  return html`<span ref=${ref} aria-hidden=${ph ? "true" : null} class=${`${ph ? "font-mono tracking-tight" : ""} ${cls}`}></span>`;
 }
 
 export function Pixels({ cls = "" }) {

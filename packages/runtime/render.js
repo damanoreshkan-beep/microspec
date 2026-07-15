@@ -503,7 +503,7 @@ function ConverterView({ tab }) {
 // days is a vertical list over data.items.
 function DashboardView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), loc = useStore(A.S.locale);
-  if (data.loading) return html`<div class="flex flex-col gap-4 pt-3 px-4 max-w-xl mx-auto"><figure class="aspect-video rounded-2xl overflow-hidden border border-base-300"><${Pixels} /></figure><div class="text-2xl font-bold text-base-content/70"><${Scramble} len=${18} /></div><div class="flex flex-col gap-2 text-base-content/60"><${Scramble} len=${30} /><${Scramble} len=${22} /></div></div>`;
+  if (data.loading) return html`<div class="flex flex-col gap-4 pt-3 px-4 max-w-xl mx-auto"><figure class="aspect-video rounded-2xl overflow-hidden border border-base-300"><${Pixels} /></figure><div class="text-2xl font-bold text-base-content/70 truncate"><${Scramble} len=${18} /></div><div class="flex flex-col gap-2 text-base-content/70"><div class="truncate"><${Scramble} len=${30} /></div><div class="truncate"><${Scramble} len=${22} /></div></div></div>`;
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
   const m = data.meta || {}, h = tab.hero;
   const place = h.place && m[h.place] ? (A.spec.filters

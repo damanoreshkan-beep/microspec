@@ -6,7 +6,7 @@ import { Fragment } from "preact";
 import { useRef, useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
-import { T, ago, whenLabel, sinceLabel } from "./i18n.js";
+import { T, ago, whenLabel, sinceLabel, sys } from "./i18n.js";
 import { PERMISSIONS, permLabels } from "./permissions.js";
 import { tr, warm, trTick } from "./translate.js";
 import { enrich, warmMeta, metaTick } from "./enrich.js";
@@ -451,9 +451,11 @@ function Dock() {
 }
 
 function Toast() {
-  const key = useStore(A.S.toast), t = useStore(A.S.t);
-  const text = key === "saved" ? T(t, "toastSaved") : key === "removed" ? T(t, "toastRemoved") : key;
-  return html`<div data-toast class="pointer-events-none" style="position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:5.5rem"><div class=${`alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-3 px-5 font-medium flex items-center gap-2 w-max transition-opacity duration-200 ${key ? "opacity-100" : "opacity-0"}`}>${Icon("lucide:check-circle", "text-success text-lg")}${text || ""}</div></div>`;
+  const key = useStore(A.S.toast), t = useStore(A.S.t), loc = useStore(A.S.locale);
+  const isExit = key === "__exit__";
+  const text = isExit ? sys("exit", loc) : key === "saved" ? T(t, "toastSaved") : key === "removed" ? T(t, "toastRemoved") : key;
+  const icon = isExit ? Icon("lucide:log-out", "text-base-content/70 text-lg") : Icon("lucide:check-circle", "text-success text-lg");
+  return html`<div data-toast class="pointer-events-none" style="position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:5.5rem"><div class=${`alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-3 px-5 font-medium flex items-center gap-2 w-max transition-opacity duration-200 ${key ? "opacity-100" : "opacity-0"}`}>${icon}${text || ""}</div></div>`;
 }
 
 // ---- converter family -------------------------------------------------------

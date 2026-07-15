@@ -70,4 +70,12 @@ export default [
       h.expect((await h.prop("#install", "open")) !== true, "Back не закрив");
     },
   },
+  {
+    name: "подвійний Back: перший Back попереджає й не виходить", run: async (h) => {
+      await h.click('[data-tab="beat"]'); await h.wait(150);
+      await h.back(); await h.wait(250);
+      h.expect(/вийти|exit/i.test(await h.text("[data-toast]")), "немає попередження про вихід на перший Back");
+      h.expect((await h.count("#play")) === 1, "апка вийшла з першого Back");
+    },
+  },
 ];

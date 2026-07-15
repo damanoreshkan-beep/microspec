@@ -32,13 +32,24 @@ export function start(spec, arg2) {
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],
   ];
   const anyOpen = () => overlays.some(([a, , isOpen]) => isOpen(a.get()));
-  let pushed = false;
+  let pushed = false, selfBack = false, exitArmed = false, exitTimer;
   for (const [a] of overlays) a.listen(() => {
     const open = anyOpen();
     if (open && !pushed) { pushed = true; history.pushState({ msOverlay: 1 }, ""); }
-    else if (!open && pushed) { pushed = false; if (history.state?.msOverlay) history.back(); }
+    else if (!open && pushed) { pushed = false; if (history.state?.msOverlay) { selfBack = true; history.back(); } }  // closing via UI balances history
   });
-  addEventListener("popstate", () => { if (anyOpen()) { pushed = false; overlays.forEach(([, close]) => close()); } });
+  // Double-Back-to-exit at the app ROOT (TikTok-style). A persistent guard entry makes the first hardware/
+  // browser Back at root catchable: we cancel it and warn, then allow a second Back within ~2s to leave.
+  history.pushState({ msRoot: 1 }, "");
+  addEventListener("popstate", () => {
+    if (selfBack) { selfBack = false; return; }                                       // our own balancing back()
+    if (anyOpen()) { pushed = false; overlays.forEach(([, close]) => close()); return; }  // Back closes an overlay
+    if (exitArmed) { clearTimeout(exitTimer); exitArmed = false; history.back(); return; } // 2nd Back → actually leave
+    exitArmed = true;
+    history.pushState({ msRoot: 1 }, "");                                              // re-arm the guard → cancel this Back
+    app.toast("__exit__");
+    exitTimer = setTimeout(() => { exitArmed = false; }, 2000);
+  });
 
   addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); S.installEvent.set(e); });
   addEventListener("appinstalled", () => { S.installEvent.set(null); S.installOpen.set(false); });

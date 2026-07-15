@@ -14,6 +14,12 @@ export const T = (dict, key, params) => {
 // Pick the active dict for a locale, falling back to en (the required fallback locale).
 export const dictFor = (i18n, locale) => i18n?.[locale] || i18n?.en || {};
 
+// Built-in runtime strings — chrome shared by EVERY app, so they live here (not each app's i18n dict).
+export const SYS = {
+  exit: { en: "Press Back again to exit", uk: "Натисніть «Назад» ще раз, щоб вийти", ru: "Нажмите «Назад» ещё раз, чтобы выйти", de: "Zum Beenden erneut „Zurück“ drücken", pl: "Naciśnij Wstecz ponownie, aby wyjść" },
+};
+export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
+
 // Locale-aware absolute+relative timestamp for `format: "when"` (future events — launch countdowns,
 // schedules). Absolute part via Intl (locale month + HH:MM); relative countdown uses the i18n keys
 // whenPast / whenMin({n}) / whenHours({n}) / whenDays({n}). Kept in the runtime so a data.js never bakes

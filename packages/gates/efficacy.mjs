@@ -28,12 +28,11 @@ async function copyApp(app) {
   return { dir, dst };
 }
 
-async function preflightRed(appdir) {
-  const p = new Deno.Command("deno", {
-    args: ["run", "-A", `--import-map=${IMPORTMAP}`, PREFLIGHT, appdir],
-    stdout: "null", stderr: "null", cwd: ROOT,
-  });
-  const { code } = await p.output();
+async function gateRed(gate, appdir) {
+  const cmd = gate === "verify"
+    ? new Deno.Command("deno", { args: ["run", "-A", `${ROOT}/packages/gates/verify.mjs`, appdir], stdout: "null", stderr: "null", cwd: ROOT, env: Deno.env.toObject() })
+    : new Deno.Command("deno", { args: ["run", "-A", `--import-map=${IMPORTMAP}`, PREFLIGHT, appdir], stdout: "null", stderr: "null", cwd: ROOT });
+  const { code } = await cmd.output();
   return code !== 0;
 }
 
@@ -72,6 +71,18 @@ const MUTATIONS = [
   { id: "data-adapter-throws", cat: "render", tier: "verify",
     applies: ({ mode }) => mode === "data",
     async mutate(d) { const f = `${d}/data.js`; if (!await exists(f)) return false; await Deno.writeTextFile(f, 'throw new Error("mutant: broken data module");\n' + await Deno.readTextFile(f)); return "data.js throws on import"; } },
+
+  { id: "strip-card-badges", cat: "e2e", tier: "verify",
+    applies: ({ spec }) => JSON.stringify(spec).includes('"badges"'),
+    async mutate(d) { await editJson(`${d}/spec.json`, (o) => { for (const t of o.tabs || []) if (t.card?.badges) delete t.card.badges; }); return "removed all card badges"; } },
+
+  { id: "overflow-long-label", cat: "overflow", tier: "verify",
+    applies: ({ spec }) => !!spec.tabs?.[0]?.label,
+    async mutate(d, { spec }) { const k = spec.tabs[0].label, long = "Ф".repeat(140); for (const l of ["uk", "en"]) { const p = `${d}/i18n/${l}.json`; if (await exists(p)) await editJson(p, (o) => { if (k in o) o[k] = long; }); } return `tab label "${k}" → 140-char run`; } },
+
+  { id: "a11y-empty-tab-names", cat: "a11y", tier: "verify",
+    applies: ({ spec }) => (spec.tabs || []).some((t) => t.label),
+    async mutate(d, { spec }) { const keys = (spec.tabs || []).map((t) => t.label).filter(Boolean); for (const l of ["uk", "en"]) { const p = `${d}/i18n/${l}.json`; if (await exists(p)) await editJson(p, (o) => { for (const k of keys) if (k in o) o[k] = ""; }); } return "emptied tab labels"; } },
 ];
 
 async function run() {
@@ -90,7 +101,7 @@ async function run() {
 
     const base = await copyApp(app);
     let baseRed = true;
-    try { baseRed = await preflightRed(base.dst); } finally { await Deno.remove(base.dir, { recursive: true }).catch(() => {}); }
+    try { baseRed = await gateRed(gate, base.dst); } finally { await Deno.remove(base.dir, { recursive: true }).catch(() => {}); }
     if (baseRed) { console.log(`  ${C.y}⚠ ${app}${C.x} ${C.d}baseline not green — skipped (env/network?)${C.x}`); continue; }
 
     const row = [];
@@ -101,7 +112,7 @@ async function run() {
       try {
         detail = await m.mutate(dst, ctx);
         if (detail === false) continue;              
-        caught = await preflightRed(dst);
+        caught = await gateRed(gate, dst);
       } finally { await Deno.remove(dir, { recursive: true }).catch(() => {}); }
       trials.push({ app, mut: m.id, cat: m.cat, caught });
       row.push(`${caught ? C.g + "✓" : C.r + "✗"}${C.x}${C.d}${m.id}${C.x}`);

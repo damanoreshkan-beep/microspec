@@ -12,8 +12,10 @@ const SORTS = { likes: "likes", downloads: "downloads" };
 export async function load(filters = {}) {
   const sort = SORTS[filters.sort] || "likes";
   const q = (filters.q || "").trim();
+  const cat = (filters.category || "").trim();   
   const params = new URLSearchParams({ sort, direction: "-1", limit: "40" });
   if (q) params.set("search", q);
+  if (cat) params.set("filter", cat);
   const url = `https://huggingface.co/api/models?${params}`;
   const data = JSON.parse(await viaProxy(url, isJsonArray));
   const items = (Array.isArray(data) ? data : []).map((m) => {

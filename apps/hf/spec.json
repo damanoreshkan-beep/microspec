@@ -28,8 +28,30 @@
   },
   "filters": {
     "refetch": true,
-    "defaults": { "sort": "likes" },
+    "defaults": { "sort": "likes", "category": "" },
     "controls": [
+      {
+        "type": "select",
+        "key": "category",
+        "label": "filterCategory",
+        "icon": "lucide:layers",
+        "refetch": true,
+        "chip": true,
+        "options": [
+          ["", "catAll"],
+          ["text-generation", "catTextGen"],
+          ["text-to-image", "catTextImage"],
+          ["text-to-video", "catTextVideo"],
+          ["image-text-to-text", "catVLM"],
+          ["automatic-speech-recognition", "catASR"],
+          ["text-to-speech", "catTTS"],
+          ["image-classification", "catImgCls"],
+          ["object-detection", "catObjDet"],
+          ["feature-extraction", "catEmbed"],
+          ["text-classification", "catTextCls"],
+          ["translation", "catTranslation"]
+        ]
+      },
       {
         "type": "segment",
         "key": "sort",

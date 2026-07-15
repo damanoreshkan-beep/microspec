@@ -1,7 +1,12 @@
 {
   "title": "Rave",
   "tabBeat": "Beat",
+  "tabSaved": "Saved",
   "tabMe": "Me",
+  "aSave": "Save",
+  "beatWord": "Beat",
+  "savedEmpty": "No saved beats yet — hit Save on the Beat tab",
+  "del": "Delete",
   "tKick": "Kick",
   "tSnare": "Snare",
   "tClap": "Clap",

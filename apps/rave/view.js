@@ -1,13 +1,16 @@
-// Rave — a techno generator: a 16-step drum machine + acid bassline, everything SYNTHESISED (no samples)
-// via Web Audio. 909-style kick (pitch-enveloped sine), metallic hats (6 square waves → highpass), clap
-// (multi-burst noise), and a 303 acid bass (saw → resonant lowpass with a filter envelope). Timing uses
-// the lookahead scheduler (setInterval picks notes ~0.1s ahead on the audio clock → rock-solid; the visual
-// playhead follows via a queue + rAF). Refs: MDN Advanced techniques · Chris Wilson "A Tale of Two Clocks".
+// Rave — a techno generator: a 16-step, 10-voice drum machine + acid/sub bass, everything SYNTHESISED (no
+// samples) via Web Audio. 909-style kick, metallic hats (6 square waves), clap/snare (noise), 808 cowbell,
+// tom, a rave chord stab, a 303 acid bass and a sub. Timing = the lookahead scheduler (setInterval picks
+// notes ~0.1s ahead on the audio clock; the playhead follows via a queue + rAF). The working pattern lives
+// in nanostore atoms (survives tab switches) and autosaves to IndexedDB (/_rt/db.js) — a "Saved" tab lists
+// named saves. Refs: MDN Advanced techniques · Chris Wilson "A Tale of Two Clocks".
 import { html } from "htm/preact";
 import { useState, useRef, useEffect } from "preact/hooks";
+import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
+import { collection } from "/_rt/db.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const N = 16, STEPS = [...Array(N).keys()];
@@ -47,7 +50,7 @@ const random = () => ({
   tom: STEPS.map(() => Math.random() < 0.12), stab: STEPS.map((i) => i % 4 === 0 && Math.random() < 0.5), acid: STEPS.map(() => Math.random() < 0.4), sub: STEPS.map((i) => i % 4 === 0),
 });
 
-// ---- drum/synth voices (generated) ----
+// ---- synth voices (generated) ----
 const KICK = (ctx, out, t) => {
   const o = ctx.createOscillator(), g = ctx.createGain();
   o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(50, t + 0.09);
@@ -111,18 +114,17 @@ const SUB = (ctx, out, t, freq) => {
   o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.32);
 };
 
-export function rave({ S }) {
+// ---- shared state: working pattern in atoms (survives tab switches) + autosave to IndexedDB ----
+const SAVES = collection("ravePatterns"), CUR = collection("raveCurrent");
+const $tracks = atom(parse(PRESETS[0])), $bpm = atom(130), $cutoff = atom(1200);
+(async () => { try { const s = await CUR.get("state"); if (s && s.tracks) { $tracks.set(s.tracks); if (s.bpm) $bpm.set(s.bpm); if (s.cutoff) $cutoff.set(s.cutoff); } } catch { /* no idb → defaults */ } })();
+
+export function rave({ S, toast }) {
   const t = useStore(S.t);
-  const [tracks, setTracks] = useState(() => parse(PRESETS[0]));
+  const tracks = useStore($tracks), bpm = useStore($bpm), cutoff = useStore($cutoff);
   const [playing, setPlaying] = useState(false);
-  const [bpm, setBpm] = useState(130);
-  const [cutoff, setCutoff] = useState(1200);
   const [cur, setCur] = useState(-1);
   const eng = useRef(null), sched = useRef(null), raf = useRef(null), nextT = useRef(0), stepN = useRef(0), q = useRef([]);
-  const tRef = useRef(tracks), bRef = useRef(bpm), cRef = useRef(cutoff);
-  useEffect(() => { tRef.current = tracks; }, [tracks]);
-  useEffect(() => { bRef.current = bpm; }, [bpm]);
-  useEffect(() => { cRef.current = cutoff; }, [cutoff]);
 
   const ensure = () => {
     if (!audioSupported) return null;
@@ -136,7 +138,7 @@ export function rave({ S }) {
   };
 
   const fire = (s, time) => {
-    const e = eng.current; if (!e) return; const ctx = e.ctx, out = e.bus, buf = e.buffers.white, Tr = tRef.current, cut = cRef.current;
+    const e = eng.current; if (!e) return; const ctx = e.ctx, out = e.bus, buf = e.buffers.white, Tr = $tracks.get(), cut = $cutoff.get();
     if (Tr.kick[s]) KICK(ctx, out, time);
     if (Tr.snare[s]) SNARE(ctx, out, buf, time);
     if (Tr.clap[s]) CLAP(ctx, out, buf, time);
@@ -149,29 +151,32 @@ export function rave({ S }) {
     if (Tr.sub[s]) SUB(ctx, out, time, midiToFreq(ROOT + RIFF[s]));
     q.current.push({ s, time });
   };
-  const tick = () => { const e = eng.current; if (!e) return; const spb = 60 / bRef.current / 4; while (nextT.current < e.ctx.currentTime + 0.1) { fire(stepN.current, nextT.current); nextT.current += spb; stepN.current = (stepN.current + 1) % N; } };
+  const tick = () => { const e = eng.current; if (!e) return; const spb = 60 / $bpm.get() / 4; while (nextT.current < e.ctx.currentTime + 0.1) { fire(stepN.current, nextT.current); nextT.current += spb; stepN.current = (stepN.current + 1) % N; } };
   const draw = () => { const e = eng.current; if (e) { const now = e.ctx.currentTime; while (q.current.length && q.current[0].time <= now) setCur(q.current.shift().s); } raf.current = requestAnimationFrame(draw); };
   const start = () => { const e = ensure(); setPlaying(true); if (!e) return; nextT.current = e.ctx.currentTime + 0.06; stepN.current = 0; sched.current = setInterval(tick, 25); raf.current = requestAnimationFrame(draw); };
   const stop = () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); sched.current = null; raf.current = null; q.current = []; setPlaying(false); setCur(-1); };
 
   useEffect(() => () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); if (eng.current) eng.current.close(); }, []);
+  useEffect(() => { CUR.put("state", { tracks, bpm, cutoff }).catch(() => {}); }, [tracks, bpm, cutoff]);   // autosave working pattern
 
-  const cellToggle = (tid, s) => { ensure(); setTracks((Tr) => ({ ...Tr, [tid]: Tr[tid].map((v, i) => (i === s ? !v : v)) })); };
+  const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
+  const save = async () => { try { const list = await SAVES.all(); await SAVES.put("p" + Date.now(), { name: `${T(t, "beatWord")} ${list.length + 1}`, tracks, bpm, cutoff }); toast?.(T(t, "toastSaved")); } catch { /* no idb */ } };
 
   return html`<div class="flex flex-col gap-3">
     <div class="flex items-center gap-3">
       <button id="play" aria-label=${playing ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle btn-lg shadow-lg ${playing ? "btn-secondary" : "btn-primary"}`} onClick=${() => (playing ? stop() : start())}>${Icon(playing ? "lucide:square" : "lucide:play", "text-2xl")}</button>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between text-xs mb-0.5"><span class="font-semibold tabular-nums">${bpm} BPM</span><span class="flex items-center gap-1 text-base-content/70">${Icon("lucide:filter")}${Math.round(cutoff)}</span></div>
-        <input type="range" min="90" max="150" value=${bpm} class="range range-xs range-primary" aria-label=${T(t, "tempo")} onInput=${(e) => setBpm(Number(e.target.value))} />
-        <input type="range" min="200" max="5000" step="20" value=${cutoff} class="range range-xs range-accent mt-1" aria-label=${T(t, "filter")} onInput=${(e) => setCutoff(Number(e.target.value))} />
+        <input type="range" min="90" max="150" value=${bpm} class="range range-xs range-primary" aria-label=${T(t, "tempo")} onInput=${(e) => $bpm.set(Number(e.target.value))} />
+        <input type="range" min="200" max="5000" step="20" value=${cutoff} class="range range-xs range-accent mt-1" aria-label=${T(t, "filter")} onInput=${(e) => $cutoff.set(Number(e.target.value))} />
       </div>
+      <button id="save" data-save aria-label=${T(t, "aSave")} class="btn btn-circle btn-outline" onClick=${save}>${Icon("lucide:save", "text-xl")}</button>
     </div>
 
     <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-      ${PRESETS.map((p) => html`<button data-preset=${p.id} class="btn btn-sm btn-outline shrink-0" onClick=${() => { ensure(); setTracks(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
-      <button data-preset="random" aria-label=${T(t, "rand")} class="btn btn-sm btn-square btn-outline shrink-0" onClick=${() => { ensure(); setTracks(random()); }}>${Icon("lucide:dices", "text-base")}</button>
-      <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => setTracks(empty())}>${Icon("lucide:eraser", "text-base")}</button>
+      ${PRESETS.map((p) => html`<button data-preset=${p.id} class="btn btn-sm btn-outline shrink-0" onClick=${() => { ensure(); $tracks.set(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
+      <button data-preset="random" aria-label=${T(t, "rand")} class="btn btn-sm btn-square btn-outline shrink-0" onClick=${() => { ensure(); $tracks.set(random()); }}>${Icon("lucide:dices", "text-base")}</button>
+      <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => $tracks.set(empty())}>${Icon("lucide:eraser", "text-base")}</button>
     </div>
 
     <div class="flex flex-col gap-1">
@@ -187,5 +192,33 @@ export function rave({ S }) {
       </div>`)}
     </div>
     ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
+  </div>`;
+}
+
+// Saved tab — lists named patterns from IndexedDB; tap to load into the sequencer (jumps to the Beat tab).
+export function raveSaved({ S }) {
+  const t = useStore(S.t);
+  const [list, setList] = useState(null);
+  const load = () => SAVES.all().then(setList).catch(() => setList([]));
+  useEffect(() => { load(); }, []);
+  const open = (it) => { $tracks.set(it.tracks); if (it.bpm) $bpm.set(it.bpm); if (it.cutoff) $cutoff.set(it.cutoff); S.tab.set("beat"); };
+  const del = async (id) => { try { await SAVES.remove(id); } catch { /* */ } load(); };
+
+  if (list === null) return html`<div class="flex justify-center py-20"><span class="loading loading-ring loading-lg"></span></div>`;
+  if (!list.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:bookmark", "text-4xl")}<span>${T(t, "savedEmpty")}</span></div>`;
+
+  return html`<div class="flex flex-col gap-2">
+    ${list.map((it) => html`<div data-saved class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" key=${it.id}>
+      <div class="card-body p-3 flex-row items-center gap-3">
+        <button class="flex-1 min-w-0 text-left flex flex-col gap-1.5" onClick=${() => open(it)}>
+          <span class="font-semibold truncate">${it.name || T(t, "beatWord")}</span>
+          <span class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-xs text-base-content/70 tabular-nums mr-1">${it.bpm || 130} BPM</span>
+            ${TRACKS.filter((tr) => it.tracks?.[tr.id]?.some(Boolean)).map((tr) => html`<span class=${`w-2 h-2 rounded-full ${tr.on}`} key=${tr.id}></span>`)}
+          </span>
+        </button>
+        <button data-del aria-label=${T(t, "del")} class="btn btn-ghost btn-sm btn-circle text-base-content/60" onClick=${() => del(it.id)}>${Icon("lucide:trash-2", "text-lg")}</button>
+      </div>
+    </div>`)}
   </div>`;
 }

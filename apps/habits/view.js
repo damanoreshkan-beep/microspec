@@ -101,14 +101,16 @@ async function importData(file) {
 }
 
 // ---- small pieces -----------------------------------------------------------
+// The 7 days BEFORE today — a subtle history strip. Today is owned solely by the big check button, so it's
+// never drawn twice (taste-gate fix). Still tappable to back-fill a missed day.
 const Dots = ({ h, marks, onToggle, t }) => {
-  const days = []; for (let i = 6; i >= 0; i--) days.push(ymd(addDays(new Date(), -i)));
-  return html`<div class="overflow-x-auto -mx-0.5 px-0.5"><div class="flex gap-1.5 w-max" role="group" aria-label=${T(t, "week")}>${days.map((d) => {
-    const on = !!marks[h.id + "|" + d], isToday = d === today();
+  const days = []; for (let i = 7; i >= 1; i--) days.push(ymd(addDays(new Date(), -i)));
+  return html`<div class="overflow-x-auto -mx-0.5 px-0.5"><div class="flex gap-1.5 w-max pt-0.5" role="group" aria-label=${T(t, "week")}>${days.map((d) => {
+    const on = !!marks[h.id + "|" + d];
     return html`<button key=${d} onClick=${() => onToggle(h.id, d)} aria-pressed=${on}
       aria-label=${`${d} ${on ? T(t, "done") : T(t, "notDone")}`}
-      class=${`w-7 h-7 rounded-lg shrink-0 border transition active:scale-90 ${isToday ? "ring-2 ring-offset-1 ring-offset-base-100" : ""}`}
-      style=${`border-color:${on ? h.color : "var(--fallback-b3,#d1d5db)"};background:${on ? h.color : "transparent"};${isToday ? "--tw-ring-color:" + h.color : ""}`}></button>`;
+      class="w-6 h-6 rounded-md shrink-0 border transition active:scale-90"
+      style=${`border-color:${on ? h.color : "var(--fallback-b3,#3a3f4b)"};background:${on ? h.color : "transparent"}`}></button>`;
   })}</div></div>`;
 };
 

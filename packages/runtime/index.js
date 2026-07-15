@@ -27,13 +27,22 @@ export function start(spec, arg2) {
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],
   ];
   const anyOpen = () => overlays.some(([a, , isOpen]) => isOpen(a.get()));
-  let pushed = false;
+  let pushed = false, selfBack = false, exitArmed = false, exitTimer;
   for (const [a] of overlays) a.listen(() => {
     const open = anyOpen();
     if (open && !pushed) { pushed = true; history.pushState({ msOverlay: 1 }, ""); }
-    else if (!open && pushed) { pushed = false; if (history.state?.msOverlay) history.back(); }
+    else if (!open && pushed) { pushed = false; if (history.state?.msOverlay) { selfBack = true; history.back(); } }  
   });
-  addEventListener("popstate", () => { if (anyOpen()) { pushed = false; overlays.forEach(([, close]) => close()); } });
+  history.pushState({ msRoot: 1 }, "");
+  addEventListener("popstate", () => {
+    if (selfBack) { selfBack = false; return; }                                       
+    if (anyOpen()) { pushed = false; overlays.forEach(([, close]) => close()); return; }  
+    if (exitArmed) { clearTimeout(exitTimer); exitArmed = false; history.back(); return; } 
+    exitArmed = true;
+    history.pushState({ msRoot: 1 }, "");                                              
+    app.toast("__exit__");
+    exitTimer = setTimeout(() => { exitArmed = false; }, 2000);
+  });
 
   addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); S.installEvent.set(e); });
   addEventListener("appinstalled", () => { S.installEvent.set(null); S.installOpen.set(false); });

@@ -7,6 +7,11 @@ export const T = (dict, key, params) => {
 
 export const dictFor = (i18n, locale) => i18n?.[locale] || i18n?.en || {};
 
+export const SYS = {
+  exit: { en: "Press Back again to exit", uk: "Натисніть «Назад» ще раз, щоб вийти", ru: "Нажмите «Назад» ещё раз, чтобы выйти", de: "Zum Beenden erneut „Zurück“ drücken", pl: "Naciśnij Wstecz ponownie, aby wyjść" },
+};
+export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
+
 export function whenLabel(dict, ts, locale, full = true) {
   const d = new Date(ts);
   if (isNaN(d)) return "";

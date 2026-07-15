@@ -83,6 +83,7 @@ export async function gotoAndSettle(page, url, settle = 3500) {
 
 export async function runDesignChecks(ev) {
   const out = [];
+  await ev(() => { const s = document.createElement("style"); s.id = "__freeze"; s.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}"; document.head.appendChild(s); });
   const runAxe = () => ev(async () => {
     const r = await axe.run(document, { resultTypes: ["violations"] });
     return r.violations.map((x) => ({ id: x.id, impact: x.impact, n: x.nodes.length, targets: x.nodes.slice(0, 6).map((nd) => nd.target.join(" ")) }));
@@ -123,5 +124,6 @@ export async function runDesignChecks(ev) {
   out.push(watch.o <= 2
     ? { name: `watch ~200px: ${watch.mode === "card" ? "контент уміщується (container query)" : "без overflow (custom view)"}`, ok: true }
     : { name: "watch ~200px: контент не вміщується", ok: false, msg: `+${watch.o}px overflow${watch.mode === "card" ? " у картці" : ""}` });
+  await ev(() => document.getElementById("__freeze")?.remove());
   return out;
 }

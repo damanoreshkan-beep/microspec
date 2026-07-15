@@ -117,7 +117,7 @@
     "bg": "#1a1a1a",
     "fg": "#FFD21E",
     "href": "./hf/",
-    "version": "1.5"
+    "version": "1.6"
   },
   {
     "id": "nearby",
@@ -188,6 +188,16 @@
     "fg": "#C0A9F5",
     "href": "./transit/",
     "version": "1.5"
+  },
+  {
+    "id": "frontier",
+    "title": "Фронтир",
+    "tagline": "Фронтир OSS — свіжі проривні проєкти з GitHub: мова, зорі, форки й опис українською",
+    "glyph": "lucide:git-branch",
+    "bg": "#0d1117",
+    "fg": "#3fb950",
+    "href": "./frontier/",
+    "version": "1.0"
   },
   {
     "id": "onthisday",

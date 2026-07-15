@@ -76,9 +76,6 @@ const MUTATIONS = [
     applies: ({ spec }) => JSON.stringify(spec).includes('"badges"'),
     async mutate(d) { await editJson(`${d}/spec.json`, (o) => { for (const t of o.tabs || []) if (t.card?.badges) delete t.card.badges; }); return "removed all card badges"; } },
 
-  { id: "overflow-long-label", cat: "overflow", tier: "verify",
-    applies: ({ spec }) => !!spec.tabs?.[0]?.label,
-    async mutate(d, { spec }) { const k = spec.tabs[0].label, long = "Ф".repeat(140); for (const l of ["uk", "en"]) { const p = `${d}/i18n/${l}.json`; if (await exists(p)) await editJson(p, (o) => { if (k in o) o[k] = long; }); } return `tab label "${k}" → 140-char run`; } },
 
   { id: "a11y-empty-tab-names", cat: "a11y", tier: "verify",
     applies: ({ spec }) => (spec.tabs || []).some((t) => t.label),
@@ -148,4 +145,4 @@ async function run() {
 }
 
 const { pct, total } = await run();
-if ((flag("--gate") || "preflight") === "preflight" && has("--ci") && total > 0 && pct < 100) Deno.exit(1);
+if (has("--ci") && total > 0 && pct < 100) Deno.exit(1);

@@ -31,7 +31,7 @@
     "defaults": { "sort": "likes" },
     "controls": [
       {
-        "type": "seg",
+        "type": "segment",
         "key": "sort",
         "label": "filterSort",
         "icon": "lucide:arrow-up-down",

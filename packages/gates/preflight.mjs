@@ -13,7 +13,12 @@
 import { parseHTML } from "https://esm.sh/linkedom@0.18.5?external=canvas";
 
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[0m" };
-const TAGS = new Set(["div", "span", "button", "a", "svg", "section", "header", "main", "footer", "nav", "p", "ul", "ol", "li", "input", "select", "option", "label", "g", "rect", "circle", "path", "line", "polyline", "polygon", "text", "iconify-icon", "img", "table", "tr", "td"]);
+// Tag names an unclosed tag can leak as literal text (htm renders `<span>` with no close as the text
+// "span"). Only ≥3-char structural tags — 1–2-char tags (a, p, li, tr, td, ul, ol, g) collide with real
+// content: ISO language/country codes ("tr" = Türkçe, "td" = Chad), single letters, abbreviations. Those
+// are also the tags least likely to be a genuine forgotten-close (people drop <div>/<span>/<button>, not
+// <a>/<tr>). The walk enforces the length floor too, so this set stays self-documenting.
+const TAGS = new Set(["div", "span", "button", "svg", "section", "header", "main", "footer", "nav", "input", "select", "option", "label", "rect", "circle", "path", "line", "polyline", "polygon", "text", "iconify-icon", "img", "table"]);
 
 // one shared DOM + global shim, reset per app
 function installDom() {
@@ -100,7 +105,7 @@ async function preflight(appdir) {
 
     // stray tag-name text nodes = an unclosed tag htm turned into literal text
     const strays = new Set();
-    const walk = (n) => { for (const c of n.childNodes || []) { if (c.nodeType === 3) { const v = (c.textContent || "").trim(); if (TAGS.has(v)) strays.add(v); } else walk(c); } };
+    const walk = (n) => { for (const c of n.childNodes || []) { if (c.nodeType === 3) { const v = (c.textContent || "").trim(); if (v.length >= 3 && TAGS.has(v)) strays.add(v); } else walk(c); } };
     walk(app);
     if (strays.size) errs.push(`stray tag-name text ${[...strays].map((s) => `"${s}"`).join(", ")} — likely an UNCLOSED tag in ${srcFile}`);
 

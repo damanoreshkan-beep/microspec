@@ -69,6 +69,11 @@ async function preflight(appdir) {
   for (const m of JSON.stringify(spec).matchAll(/"(?:label|titleKey|searchKey)":"([A-Za-z][\w]*)"/g)) keys.add(m[1]);
   for (const k of keys) for (const l of locales) if (!(k in i18n[l])) errs.push(`i18n key "${k}" missing in ${l}.json`);
 
+  if (i18n.en) for (const l of locales) { if (l === "en") continue;
+    for (const k of Object.keys(i18n.en)) if (!(k in i18n[l])) errs.push(`i18n key "${k}" missing in ${l}.json (locale parity)`);
+    for (const k of Object.keys(i18n[l])) if (!(k in i18n.en)) errs.push(`i18n key "${k}" in ${l}.json absent from en.json (locale parity)`);
+  }
+
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
   const { document, rafErr, uncaught } = installDom();

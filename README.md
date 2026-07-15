@@ -9,6 +9,7 @@ inaccessible, or untranslated. The constraint is the point: a narrow spec + a ga
 agent-generated apps **verifiably** correct instead of hopefully correct.
 
 [![verify](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml/badge.svg)](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml)
+[![gate efficacy](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damanoreshkan-beep/microspec/main/docs/efficacy.json)](packages/gates/efficacy.mjs)
 [![live demo](https://img.shields.io/badge/live-24%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -59,6 +60,19 @@ settled, and animated** states, and watched for runtime errors the whole time:
 
 An agent that introduces an inaccessible contrast pair, an element that overflows the watch, or a view
 that throws **cannot get its PR merged.** No human has to catch it.
+
+## Measured, not claimed
+
+"The gate catches bugs" is itself testable. [`packages/gates/efficacy.mjs`](packages/gates/efficacy.mjs)
+**mutation-tests the gate**: it injects a catalog of realistic agent mistakes — a dropped translation, an
+invalid spec, a banned spinner, a throwing view — into a *copy* of each app (the real tree is never
+touched) and records whether the gate goes red. The score is caught / total: a number, not a promise.
+
+The first run scored **79%** — and surfaced a real gap: the browser-free tier wasn't enforcing that every
+locale defines the same keys, so an app could ship an untranslated runtime string. We added a locale-parity
+check and it went to **100% (51/51)**. That loop — *measure → find a gap → close it → re-measure* — now runs
+in CI, so a regression in the **gate itself** fails the build. Regressions the browser-free tier can't reach
+(contrast, overflow, e2e) are the Chromium `verify` tier's job, measured in the same catalog in CI.
 
 ## See it live
 

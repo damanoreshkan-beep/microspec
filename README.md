@@ -10,10 +10,10 @@ agent-generated apps **verifiably** correct instead of hopefully correct.
 
 [![verify](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml/badge.svg)](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml)
 [![gate efficacy](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damanoreshkan-beep/microspec/main/docs/efficacy.json)](packages/gates/efficacy.mjs)
-[![live demo](https://img.shields.io/badge/live-24%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
+[![live demo](https://img.shields.io/badge/live-25%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-> **▶ Try the farm live:** **[24 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)** —
+> **▶ Try the farm live:** **[25 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)** —
 > each is a spec + adapter that passed the gates. Add any to your home screen; they work offline.
 
 <p align="center">
@@ -42,7 +42,7 @@ Give the agent a **floor it cannot fall through:**
 2. **Gate everything in CI.** A headless-Chromium harness runs the app in every state and **fails the
    build** on any violation. Red gate → no merge. Green gate → auto-deploy to GitHub Pages.
 
-The 24-app farm is the proof, and doubles as the regression suite for the runtime itself.
+The 25-app farm is the proof, and doubles as the regression suite for the runtime itself.
 
 ## The gate (this is the wedge)
 
@@ -83,7 +83,7 @@ Both tiers are measured and enforced:
 The verify tier proves the headline the hard way: a mutation that strips a control's accessible name is
 **caught by axe in CI**, by measurement, not assertion. (One honest footnote: a synthetic *overflow* probe
 escaped — the dock truncates an over-long label — so we dropped it; overflow@384 is already enforced across
-all 24 apps on every push.)
+all 25 apps on every push.)
 
 ## See it live
 
@@ -91,12 +91,15 @@ The farm runs on plain GitHub Pages, no backend:
 
 | App | What it is |
 |---|---|
+| [**Habits**](https://damanoreshkan-beep.github.io/microspec/habits/) | a local-first streak tracker — IndexedDB, streak math, a 13-week contribution heatmap, JSON export; fully offline |
+| [**Rave**](https://damanoreshkan-beep.github.io/microspec/rave/) | a polyphonic techno synth — 16 voices, an FX rack, a look-ahead scheduler, saved patterns; synthesised, no audio files |
+| [**GPS Ruler**](https://damanoreshkan-beep.github.io/microspec/ruler/) | measure distance/area by walking a polyline; **WebXR AR** mode on Android |
 | [**Frontier**](https://damanoreshkan-beep.github.io/microspec/frontier/) | fresh breakthrough OSS from GitHub, descriptions translated on-device |
 | [**Neural Nets**](https://damanoreshkan-beep.github.io/microspec/hf/) | Hugging Face models & Spaces catalog with translated model cards |
-| [**GPS Ruler**](https://damanoreshkan-beep.github.io/microspec/ruler/) | measure distance/area by walking a polyline; WebXR AR mode |
-| [**Weather**](https://damanoreshkan-beep.github.io/microspec/weather/) | a dashboard-family app, structure-first with modern skeletons |
 
-…plus 20 more (`hn · rates · crypto · quakes · iss · launches · transit · sun · kp · globe · rave · …`).
+**Not just feeds.** Habits is a stateful, offline productivity app (your data, exportable); Rave is a real
+instrument; Ruler measures in AR. Read-only catalogs (Frontier, Neural Nets, weather) are one slice —
+…plus 20 more (`hn · rates · crypto · quakes · iss · launches · transit · sun · kp · globe · dou · …`).
 
 ## How it works
 
@@ -138,7 +141,7 @@ import map; styling is Tailwind + DaisyUI.
 | `packages/runtime` | the Preact catalog that renders a spec (5 families + invariants), zero-build |
 | `packages/gates` | `verify` (Chromium a11y / responsive / e2e / shots) + `preflight` (browser-free) |
 | `packages/gen` | `scaffold` — spec + data → runnable app shell |
-| `apps/` | the reference farm: 24 apps = family showcase + runtime regression suite |
+| `apps/` | the reference farm: 25 apps = family showcase + runtime regression suite |
 
 ## Quickstart
 

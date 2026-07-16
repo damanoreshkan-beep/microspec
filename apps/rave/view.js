@@ -209,6 +209,36 @@ const RUMBLE = (ctx, out, t) => {
   o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.47);
 };
 
+const beatSig = (r) => JSON.stringify({
+  t: TRACKS.map((tr) => (r.tracks?.[tr.id] || []).map((v) => (v ? 1 : 0)).join("")),
+  b: r.bpm ?? null,
+  f: FX.map((f) => r.fx?.[f.id] ?? null),
+  r: r.riff ?? null,
+});
+const genreKey = (tracks) => {
+  const on = (id) => tracks?.[id]?.some(Boolean);
+  const voices = TRACKS.filter((tr) => on(tr.id)).length;
+  if (on("hardkick") && on("rumble")) return "gSchranz";
+  if (on("hardkick")) return "gHard";
+  if (on("hoover")) return "gRave";
+  if (on("acid")) return "gAcid";
+  if (on("reese")) return "gReese";
+  return voices <= 4 ? "gMinimal" : "gTechno";
+};
+const textureKey = (fx) => fx.crush > 0.3 ? "xCrushed" : fx.drive > 0.45 ? "xDirty" : fx.reverb > 0.5 ? "xDeep"
+  : fx.delay > 0.4 ? "xDub" : fx.swing > 0.28 ? "xSwung" : fx.mfilter < 0.4 ? "xMuted" : null;
+const NEUTER = new Set(["gTechno"]);
+const beatName = (t, tracks, bpm, fx) => {
+  const g = genreKey(tracks), tex = textureKey(fx || {});
+  const adj = tex ? T(t, NEUTER.has(g) ? tex + "N" : tex) : "";
+  return `${adj ? adj + " " : ""}${T(t, g)} · ${bpm}`;
+};
+const uniqueName = (base, list) => {
+  if (!list.some((it) => it.name === base)) return base;
+  let n = 2; while (list.some((it) => it.name === `${base} (${n})`)) n++;
+  return `${base} (${n})`;
+};
+
 const SAVES = collection("ravePatterns"), CUR = collection("raveCurrent");
 const $tracks = atom(parse(PRESETS[0])), $bpm = atom(130), $fx = atom({ ...DFX });
 const $riff = atom(RIFF);   
@@ -284,7 +314,16 @@ export function rave({ S, toast }) {
 
   const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
   const setFx = (id, v) => $fx.set({ ...fx, [id]: v });
-  const save = async () => { try { const list = await SAVES.all(); await SAVES.put("p" + Date.now(), { name: `${T(t, "beatWord")} ${list.length + 1}`, tracks, bpm, fx, riff: $riff.get() }); toast?.(T(t, "toastSaved")); } catch {  } };
+  const save = async () => {
+    try {
+      const list = await SAVES.all();
+      const rec = { tracks, bpm, fx, riff: $riff.get() };
+      const dup = list.find((it) => beatSig(it) === beatSig(rec));
+      if (dup) { toast?.(T(t, "toastDup", { name: dup.name || T(t, "beatWord") })); haptic.bump(); return; }
+      await SAVES.put("p" + Date.now(), { name: uniqueName(beatName(t, tracks, bpm, fx), list), ...rec });
+      toast?.(T(t, "toastSaved"));
+    } catch {  }
+  };
 
   const generate = (seed = (Math.random() * 0xffffffff) >>> 0, animate = true) => {
     if (animate) ensure();

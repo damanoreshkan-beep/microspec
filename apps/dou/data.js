@@ -34,6 +34,12 @@ function parse(xml, bron) {
   return [...d.querySelectorAll("item")].map((it) => {
     const g = (s) => it.querySelector(s)?.textContent?.trim() || "";
     const tmp = document.createElement("div"); tmp.innerHTML = g("description");
+    // Block elements carry no text of their own, so textContent concatenates their contents with nothing
+    // between them: "<b>Роль</b><p>Завдання…</p>" came out as "РольЗавдання", and a <ul> of technologies as
+    // "ReactTypeScript". Insert a space at every block boundary first; the \s+ collapse below tidies the rest.
+    for (const el of tmp.querySelectorAll("p,div,br,li,tr,h1,h2,h3,h4,h5,h6,section,article,blockquote")) {
+      el.parentNode?.insertBefore(document.createTextNode(" "), el);
+    }
     const desc = tmp.textContent.replace(/\s+/g, " ").trim();
     const m = parseTitle(g("title"));
     const tech = TECH.filter((k) => new RegExp("\\b" + k.replace("+", "\\+"), "i").test(m.position + " " + desc)).slice(0, 3);

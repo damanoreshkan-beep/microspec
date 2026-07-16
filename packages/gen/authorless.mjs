@@ -44,6 +44,7 @@ const badges = (R.badges || []).map((b) => ({ field: b.field, icon: b.icon, vari
 // (see packages/runtime/validate.js), and a card is a 2-line clamp of a body that is usually far longer.
 const card = { layout: "feed", href: "url", title: "title", subtitle: "author", body: "desc", more: "open", badges };
 const detail = {
+  ...(R.detail?.image ? { image: R.detail.image, ...(R.detail.imageFit ? { imageFit: R.detail.imageFit } : {}) } : {}),
   title: "title",
   ...(R.detail?.subtitle ? { subtitle: R.detail.subtitle } : { subtitle: "author" }),
   body: R.detail?.body || "desc",                       // the FULL text — the card only ever shows 2 lines of it

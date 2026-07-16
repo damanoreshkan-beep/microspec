@@ -6,7 +6,7 @@ const COMPACT = new Set(["downloads"]);
 const JOIN = new Set(["subjects","shelves","lang"]);
 const JOIN_CAP = 6;
 const joinList = (v) => Array.isArray(v) ? v.slice(0, JOIN_CAP).join(", ") : (v ?? "");
-const MAP = {"id":"id","title":"title","author":"authors.0.name","desc":"summaries.0","downloads":"download_count","subjects":"subjects","shelves":"bookshelves","lang":"languages","readUrl":"formats.text/html","epubUrl":"formats.application/epub+zip"};
+const MAP = {"id":"id","title":"title","author":"authors.0.name","desc":"summaries.0","downloads":"download_count","subjects":"subjects","shelves":"bookshelves","lang":"languages","readUrl":"formats.text/html","epubUrl":"formats.application/epub+zip","cover":"formats.image/jpeg"};
 const URLT = "https://www.gutenberg.org/ebooks/{id}";
 
 export async function load(filters = {}) {

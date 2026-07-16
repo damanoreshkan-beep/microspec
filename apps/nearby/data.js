@@ -2,25 +2,41 @@
 // overpass-api.de 406s bot-like requests; kumi works). Geo is read here: real location, else Kyiv fallback
 // (so it renders everywhere incl. the headless gate). Category comes from filters.category (refetch).
 // Overpass mirrors are flaky (any one can be down/slow). Try a few in order with a bounded timeout each,
-// return the first good JSON, else throw → the runtime shows an error+refresh instead of hanging on the
-// skeleton. osm.ch is fastest/most reliable at time of writing; kumi/de as fallbacks.
+// else throw → the runtime shows an error+refresh instead of hanging on the skeleton.
+//
+// NEVER overpass.osm.ch: it is a SWITZERLAND-ONLY extract. It sat first in this list because it was picked
+// as "fastest/most reliable" — which it is, precisely because it holds almost no data. Outside Switzerland
+// it answers every query with a perfectly valid 200 and `elements: []`, so this app showed "0 nearby" to
+// every user on earth except the Swiss, for its whole life, with the gate green the entire time. Measured:
+// Zurich → 50 pharmacies, Geneva → 50, Berlin → 0, Kyiv → 0, London → 0. Pick a mirror for COVERAGE, then
+// for speed — never the other way round.
 const MIRRORS = [
-  "https://overpass.osm.ch/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass-api.de/api/interpreter",
 ];
 async function overpass(q) {
   const body = "data=" + encodeURIComponent(q);
-  let err;
+  let err, empty = false;
   for (const m of MIRRORS) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 8000);
     try {
       const r = await fetch(`${m}?${body}`, { signal: ctrl.signal });
-      if (r.ok) { const txt = await r.text(); if (txt.trim().startsWith("{")) return JSON.parse(txt); }
-      err = new Error("status " + r.status);
+      if (r.ok) {
+        const txt = await r.text();
+        if (txt.trim().startsWith("{")) {
+          const j = JSON.parse(txt);
+          // A 200 with zero elements is NOT proof that the area is empty — it is indistinguishable from a
+          // mirror that simply lacks the region (exactly how the Swiss mirror hid this bug). Treat it as
+          // unconfirmed and ask the next mirror; only believe "nothing here" once one of them is done and
+          // they still agree. Costs an extra request in genuinely empty areas, and only there.
+          if (j.elements?.length) return j;
+          empty = true;
+        }
+      } else err = new Error("status " + r.status);
     } catch (e) { err = e; } finally { clearTimeout(t); }
   }
+  if (empty) return { elements: [] };   // every reachable mirror agrees the area really is empty
   throw err || new Error("overpass unavailable");
 }
 

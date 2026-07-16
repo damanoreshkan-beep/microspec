@@ -8,6 +8,8 @@
     "key": "id"
   },
   "detail": {
+    "image": "cover",
+    "imageFit": "contain",
     "title": "title",
     "subtitle": "author",
     "body": "desc",

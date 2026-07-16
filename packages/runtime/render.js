@@ -506,7 +506,18 @@ function Dock() {
   //     island stopped being an island.
   // Content-sized columns + `min-w-14` (56px ≥ the 44px tap-target floor) give both: compact, honest, and
   // "Я" costs what "Я" is worth. Truncation only engages at watch width, where fit-content runs out of room.
-  return html`<nav data-dock class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary/15 text-primary" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
+  // The active tab is a FILLED ink pill, and that is a correctness fix, not a style choice. This theme's
+  // founding axiom is "ink is the brand": --color-primary and --color-base-content are the SAME hex. So the
+  // universal idiom — active = `text-primary`, inactive = `text-base-content/80` — silently resolves to
+  // 100% vs 80% of one colour: a measured 1.56:1 between them, where 3:1 is the floor at which an eye
+  // reliably tells two UI states apart. On a 9px glyph it is invisible. It was invisible in the old bar
+  // too, for as long as this farm has existed, with every gate green — axe checks text against its
+  // background, never one state against the other.
+  // Carrying the signal on a SHAPE instead of a luminance step: the pill reads 16.6:1 against the island
+  // (17.6:1 in signal-light), the label on it 16.8:1, and inactive labels stay at their full 10.6:1 — the
+  // active state is now unmissable without dimming anything or spending colour, which this theme reserves
+  // for meaning.
+  return html`<nav data-dock class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary text-primary-content" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
 }
 
 function Toast() {

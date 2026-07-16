@@ -1,0 +1,19 @@
+{
+  "title": "Sopilka",
+  "tabPlay": "Play",
+  "tabMe": "Me",
+  "note": "Note",
+  "overblow": "Overblow",
+  "noAudio": "Audio is unavailable in this browser",
+  "profTheme": "Dark theme",
+  "profLang": "Language",
+  "profTagline": "The Ukrainian sopilka — diatonic prima, six holes, C major. Real fingering: cover the holes from the top, slide a finger and the note glides legato. Synthesised live, no samples, offline",
+  "install": "Install app",
+  "installTitle": "Install",
+  "installBtn": "Install",
+  "installDesc": "Works offline, opens as an app",
+  "installIosHint": "In Safari: Share → Add to Home Screen.",
+  "installGenericHint": "In the browser menu choose Install.",
+  "close": "Close",
+  "refresh": "Refresh"
+}

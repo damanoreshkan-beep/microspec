@@ -466,6 +466,16 @@ function AppBar() {
   return html`<header class="navbar bg-base-100 sticky top-0 z-30 border-b border-base-300 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1"><span class="text-base font-bold tracking-tight">${T(t, "title")}</span></div>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 
+// The page dissolving into the bottom edge instead of being sliced by the island. Purely decorative, so
+// aria-hidden and pointer-events-none — it must never eat a tap meant for the card underneath it.
+//
+// Its height is EXACTLY --dock-h + the safe area, and that boundary is load-bearing: --dock-h is defined as
+// the zone every other layout clears, so a fade of exactly that size cannot veil anything. One rem taller
+// and it would wash over the bottom row of rave's sequencer and kalimba's keys — both are fixed panels at
+// the same z-20 that stop precisely at --dock-h, and this paints after them.
+const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
+  style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 38%, transparent)"></div>`;
+
 function Dock() {
   // Explicit flex bottom-nav (version-independent — DaisyUI 5 dropped `btm-nav`). Labels truncate so
   // 3+ tabs stay inside a watch-narrow width.
@@ -582,6 +592,7 @@ export function App() {
     ${A.spec.detail ? html`<${DetailView} />` : null}
     ${A.spec.filters ? html`<${FilterSheet} />` : null}
     ${screen === "perms" ? html`<${PermissionsScreen} />` : null}
+    <${DockFade} />
     <${InstallModal} />
     <${Dock} />
     <${Toast} />

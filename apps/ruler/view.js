@@ -3,13 +3,6 @@
 // segment to your current position, the coordinate readout, the GPS accuracy circle, a scale bar and a
 // north arrow. Metres–km, works on any device with a GPS fix. The structure renders immediately; the
 // readout is an atomic skeleton until a fix arrives.
-//
-// There is no AR mode, deliberately. It existed (WebXR + ARCore + three.js) and was removed: iOS Safari
-// exposes no WebXR at all, the one product that closed that gap with its own SLAM (8th Wall) retired its
-// hosted platform in Feb 2026, and every remaining cross-platform option is commercial SaaS with a backend
-// — which a zero-dep static farm cannot take. It was also the one feature no gate could ever verify:
-// headless Chromium has no XR device, so AR shipped untested by construction. A tool that only half its
-// users can run, that CI cannot check, is worse than one honest measure that always works.
 import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";

@@ -4,7 +4,7 @@
 // them to the runtime, which renders + searches + sorts them. It owns its own reconnect.
 //
 // CI/dev: Binance geo-blocks datacenter IPs (US CI runners), so on localhost we synthesize a live ticker —
-// the gate reviews a real, moving market. Same env-double idea as pulse/nearby.
+// the gate reviews a real, moving market. Same env-double idea as pulse.
 const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 
 // [binanceSymbol, ticker, name, seedPrice(for the mock)]

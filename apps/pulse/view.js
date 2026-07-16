@@ -9,7 +9,7 @@
 // title/editor. Scope/toggle changes reset the accumulated view; search is a pure display filter.
 //
 // CI/dev: the real stream is nondeterministic (and may be blocked from a CI IP), so on localhost we feed
-// a synthetic stream — the gate sees a live, populated view. Same env-double idea as nearby.
+// a synthetic stream — the gate sees a live, populated view. Same env-double idea as crypto.
 import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";

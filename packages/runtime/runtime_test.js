@@ -304,7 +304,7 @@ Deno.test("scoreGroove punishes two voices playing the identical figure (doublin
 Deno.test("validateSpec: a card that leaves the app needs a detail (the drill-down contract)", () => {
   // The farm's rule: a tap opens the IN-APP detail; the outbound link lives in detail.actions. Without
   // spec.detail the runtime renders the card as <a target="_blank">, so the tap throws the user out to the
-  // source before they can read, save, or even see what the item is. books/dou/hn/nearby all shipped that
+  // source before they can read, save, or even see what the item is. books, dou and hn all shipped that
   // way — the pattern existed, nothing enforced it.
   const withHref = () => ({ ...baseList(), tabs: [{ id: "feed", type: "list", icon: "i", label: "hi", card: { layout: "feed", href: "url", title: "name", body: "desc" } }] });
   const err = assertThrows(() => validateSpec(withHref()), Error);
@@ -337,7 +337,7 @@ Deno.test("validateSpec: feed body prose must be translated (or declared already
   validateSpec({ ...feedBody(), localized: true });              // adapter already returns the active locale
 
   // Scoped to `body` on purpose: identifiers must NOT be machine-translated. A row card of names/values
-  // (crypto, rates) and a subtitle address (nearby) stay legal untouched — translating "Bitcoin" or
+  // (crypto, rates) and a subtitle holding an address stay legal untouched — translating "Bitcoin" or
   // "Khreshchatyk 1" would corrupt them, not localize them.
   validateSpec({ ...baseList(), tabs: [{ id: "r", type: "list", icon: "i", label: "hi", card: { layout: "row", title: "name", lead: "a", trailing: "b" } }] });
   validateSpec({ ...baseList(), tabs: [{ id: "f", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", subtitle: "addr" } }] });

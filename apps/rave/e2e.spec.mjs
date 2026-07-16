@@ -6,7 +6,23 @@ export default [
       await ready(h); await h.wait(200);
       h.expect((await h.count("[data-cell]")) === 256, "немає 256 клітин (16 доріжок × 16)");
       h.expect((await h.count("#play")) === 1, "немає кнопки play/stop");
-      h.expect((await h.count("[data-preset]")) === 26, "немає 26 пресетів (24 + random + clear)");
+      h.expect((await h.count("[data-preset]")) === 25, "немає 25 пресетів (24 + clear)");
+      h.expect((await h.count("[data-gen]")) === 1, "немає кнопки генерації");
+    },
+  },
+  {
+    name: "генератор: пише патерн у сітку, кік на долю", run: async (h) => {
+      await ready(h);
+      await h.click('[data-preset="clear"]'); await h.wait(120);
+      h.expect((await h.attr('[data-cell="kick-0"]', "aria-pressed")) === "false", "clear не очистив перед генерацією");
+      await h.click("[data-gen]");
+      await h.wait(900);                                                     
+      h.expect((await h.attr("[data-gen]", "aria-busy")) === "false", "кнопка лишилась у стані генерації");
+      const pressed = async (id, s) => (await h.attr(`[data-cell="${id}-${s}"]`, "aria-pressed")) === "true";
+      h.expect((await pressed("kick", 0)) || (await pressed("hardkick", 0)), "генератор не поставив кік на долю");
+      let on = 0;
+      for (let s = 0; s < 16; s++) if ((await pressed("kick", s)) || (await pressed("hardkick", s))) on++;
+      h.expect(on >= 4, "кік-доріжка майже порожня — світч не дописав патерн");
     },
   },
   {

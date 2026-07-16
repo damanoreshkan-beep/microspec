@@ -54,7 +54,6 @@
   "pMentasm": "Mentasm",
   "pRumbletech": "Rumble techno",
   "pAcidcore": "Acidcore",
-  "rand": "Random",
   "clear": "Clear",
   "tempo": "Tempo",
   "filter": "Filter",
@@ -63,7 +62,7 @@
   "noAudio": "Audio is unavailable in this browser",
   "profTheme": "Dark theme",
   "profLang": "Language",
-  "profTagline": "A techno generator — a 16-step, 16-voice sequencer (hard kick, reese bass, hoover, rumble), 24 patterns and an FX rack (drive, crush, delay, reverb, master filter, swing), saveable beats, all synthesised live, no samples, offline",
+  "profTagline": "A techno generator — a 16-step, 16-voice sequencer (hard kick, reese bass, hoover, rumble), a research-backed generator (Euclidean rhythms, the Longuet-Higgins & Lee syncopation measure, Witek's inverted-U of groove, harmonicity), 24 patterns and an FX rack (drive, crush, delay, reverb, master filter, swing), saveable beats, all synthesised live, no samples, offline",
   "install": "Install app",
   "installTitle": "Install",
   "installBtn": "Install",
@@ -73,5 +72,6 @@
   "close": "Close",
   "refresh": "Refresh",
   "toastSaved": "Saved",
-  "toastRemoved": "Removed"
+  "toastRemoved": "Removed",
+  "gen": "Generate"
 }

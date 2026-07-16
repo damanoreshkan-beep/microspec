@@ -1,5 +1,4 @@
 import { html } from "htm/preact";
-import { Fragment } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
@@ -57,52 +56,12 @@ let _t;
 const fmt = (m) => m < 1000 ? `${Math.round(m < 10 ? m * 10 : m) / (m < 10 ? 10 : 1)} ${T(_t, "uM")}` : `${(m / 1000).toFixed(2)} ${T(_t, "uKm")}`;
 const fmtArea = (a) => a < 10000 ? `${Math.round(a)} ${T(_t, "uM2")}` : `${(a / 10000).toFixed(2)} ${T(_t, "uHa")}`;
 const coordStr = (p) => `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
-const fmtCm = (m) => m < 1 ? `${Math.round(m * 100)} ${T(_t, "uCm")}` : `${m.toFixed(2)} ${T(_t, "uM")}`;
-const arTotal = (pts) => pts.reduce((s, p, i) => (i ? s + p.distanceTo(pts[i - 1]) : 0), 0);
-
-const THREE_URL = "https://esm.sh/three@0.161.0";
-export const loadThree = () => import(THREE_URL);
-
-async function startAR(session, THREE, { onStat, onEnd }) {
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-  renderer.setPixelRatio(devicePixelRatio || 1); renderer.setSize(innerWidth, innerHeight); renderer.xr.enabled = true;
-  renderer.domElement.style.cssText = "position:fixed;inset:0;z-index:35"; document.body.appendChild(renderer.domElement);
-  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
-  const reticle = new THREE.Mesh(new THREE.RingGeometry(0.045, 0.058, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x34d399 }));
-  reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
-  const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff }), liveMat = new THREE.LineDashedMaterial({ color: 0x34d399, dashSize: 0.02, gapSize: 0.015 });
-  const pts = [], nodes = [], lines = []; let liveLine = null, retPos = null;
-  await renderer.xr.setSession(session);
-  const viewer = await session.requestReferenceSpace("viewer"), local = await session.requestReferenceSpace("local");
-  const hitSource = await session.requestHitTestSource({ space: viewer });
-  renderer.setAnimationLoop((_, frame) => {
-    if (frame) {
-      const hits = frame.getHitTestResults(hitSource);
-      if (hits.length) { reticle.visible = true; reticle.matrix.fromArray(hits[0].getPose(local).transform.matrix); retPos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix); }
-      else { reticle.visible = false; retPos = null; }
-      if (liveLine) { scene.remove(liveLine); liveLine.geometry.dispose(); liveLine = null; }
-      if (pts.length && retPos) { const g = new THREE.BufferGeometry().setFromPoints([pts[pts.length - 1], retPos]); liveLine = new THREE.Line(g, liveMat); liveLine.computeLineDistances(); scene.add(liveLine); }
-      onStat({ live: pts.length && retPos ? pts[pts.length - 1].distanceTo(retPos) : null, total: arTotal(pts), n: pts.length });
-    }
-    renderer.render(scene, camera);
-  });
-  const add = () => { if (!retPos) return; const p = retPos.clone(); pts.push(p); const m = new THREE.Mesh(new THREE.SphereGeometry(0.011, 16, 16), new THREE.MeshBasicMaterial({ color: 0x34d399 })); m.position.copy(p); scene.add(m); nodes.push(m); if (pts.length >= 2) { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([pts[pts.length - 2], p]), lineMat); scene.add(l); lines.push(l); } onStat({ live: null, total: arTotal(pts), n: pts.length }); };
-  const undo = () => { if (!pts.length) return; pts.pop(); scene.remove(nodes.pop()); if (lines.length) scene.remove(lines.pop()); onStat({ live: null, total: arTotal(pts), n: pts.length }); };
-  session.addEventListener("end", () => { renderer.setAnimationLoop(null); renderer.domElement.remove(); try { renderer.dispose(); } catch {  } onEnd(); });
-  return { add, undo, end: () => session.end() };
-}
-
 export function ruler({ S, toast }) {
   const t = useStore(S.t); _t = t;
   const [pts, setPts] = useState(() => (isGate || MOCK ? SAMPLE.slice() : []));
   const [cur, setCur] = useState(isGate || MOCK ? SAMPLE_CUR : null);
   const [err, setErr] = useState(null);
-  const [mode, setMode] = useState("gps");
-  const [arSup, setArSup] = useState(null);           
-  const [ar, setAr] = useState(null);                 
-  const [arStat, setArStat] = useState({ live: null, total: 0, n: 0 });
-  const [arErr, setArErr] = useState(null);           
-  const cv = useRef(), overlay = useRef(), arRef = useRef(null), threeP = useRef(null);
+  const cv = useRef();
 
   useEffect(() => {
     if (isGate || MOCK) return;
@@ -111,24 +70,6 @@ export function ruler({ S, toast }) {
   }, []);
   useEffect(() => { draw(cv.current, pts, cur); }, [pts, cur, t]);
   useEffect(() => { const on = () => draw(cv.current, pts, cur); addEventListener("resize", on); return () => removeEventListener("resize", on); }, [pts, cur]);
-  useEffect(() => { let ok = true; (navigator.xr?.isSessionSupported ? navigator.xr.isSessionSupported("immersive-ar") : Promise.resolve(false)).then((s) => ok && setArSup(!!s)).catch(() => ok && setArSup(false)); return () => { ok = false; }; }, []);
-  useEffect(() => () => { try { arRef.current?.end(); } catch {  } }, []);
-  useEffect(() => { if (mode === "ar" && arSup && !threeP.current) threeP.current = loadThree().catch(() => null); }, [mode, arSup]);
-
-  const startArMode = async () => {
-    setArErr(null);
-    let session = null;
-    try {
-      session = await navigator.xr.requestSession("immersive-ar", { requiredFeatures: ["hit-test", "local"], optionalFeatures: ["dom-overlay"], domOverlay: { root: overlay.current } });
-      const THREE = await (threeP.current ||= loadThree());
-      if (!THREE) throw new Error("three.js failed to load");
-      const c = await startAR(session, THREE, { onStat: setArStat, onEnd: () => { setAr(null); arRef.current = null; } });
-      setAr(c); arRef.current = c;
-    } catch (e) {
-      try { await session?.end(); } catch {  }
-      setArErr(e?.name ? `${e.name}: ${e.message || ""}`.trim() : String(e?.message || e || "unknown"));
-    }
-  };
 
   const copyCoords = async () => { if (!cur) return; try { await navigator.clipboard.writeText(coordStr(cur)); toast?.(T(t, "copied")); haptic.tick(); } catch {  } };
   const add = () => { if (!cur) return; setPts((p) => [...p, { ...cur }]); haptic.tick(); };
@@ -141,11 +82,6 @@ export function ruler({ S, toast }) {
   const ready = !!cur;
 
   return html`<div class="flex flex-col gap-3">
-    <div class="flex gap-1 p-1 bg-base-200 rounded-2xl self-center">
-      ${[["gps", "lucide:milestone", "mGps"], ["ar", "lucide:scan-line", "mAr"]].map(([m, ic, lbl]) => html`<button data-mode=${m} aria-pressed=${mode === m} class=${`px-4 py-1.5 rounded-xl text-sm font-medium flex items-center gap-1.5 transition ${mode === m ? "bg-primary text-primary-content" : "text-base-content/70"}`} onClick=${() => setMode(m)} key=${m}>${Icon(ic, "text-base")}${T(t, lbl)}</button>`)}
-    </div>
-
-    ${mode === "gps" ? html`<div class="flex flex-col gap-3">
       <div class="rounded-2xl border border-base-300 bg-base-200/40 overflow-hidden">
         <canvas ref=${cv} aria-hidden="true" class="w-full h-[52vh] min-h-[280px] max-h-[460px] block text-base-content"></canvas>
       </div>
@@ -173,25 +109,5 @@ export function ruler({ S, toast }) {
         <button id="undo" aria-label=${T(t, "undo")} disabled=${!pts.length} class="btn btn-outline btn-square rounded-2xl disabled:opacity-40" onClick=${undo}>${Icon("lucide:undo-2", "text-lg")}</button>
         <button id="clear" aria-label=${T(t, "clear")} disabled=${!pts.length} class="btn btn-ghost btn-square rounded-2xl disabled:opacity-40" onClick=${clear}>${Icon("lucide:eraser", "text-lg")}</button>
       </div>
-    </div>` : html`<div class="flex flex-col items-center text-center gap-4 py-10 px-6">
-      ${arSup === false ? html`${Icon("lucide:scan-line", "text-5xl text-base-content/30")}<div class="font-bold text-lg">${T(t, "arTitle")}</div><p class="text-sm text-base-content/70">${T(t, "arUnsupported")}</p>`
-        : arSup === null ? html`<div class="py-6 text-base-content/60"><${Scramble} len=${16} /></div>`
-        : html`${Icon("lucide:scan-line", "text-6xl text-primary")}<div><div class="font-bold text-lg">${T(t, "arTitle")}</div><p class="text-sm text-base-content/70 mt-1 max-w-xs">${T(t, "arHint")}</p></div>
-          <button id="ar-start" class="btn btn-primary btn-lg rounded-2xl gap-2 mt-1" onClick=${startArMode}>${Icon("lucide:play")}${T(t, "arStart")}</button>
-          ${arErr ? html`<div data-ar-err class="mt-1 flex flex-col items-center gap-1.5 max-w-xs">
-            <span class="text-error text-sm flex items-center gap-1.5">${Icon("lucide:triangle-alert")}${T(t, "arFailed")}</span>
-            <code class="text-[0.7rem] font-mono text-base-content/60 break-all leading-snug">${arErr}</code>
-          </div>` : null}`}
-    </div>`}
-
-    <div ref=${overlay} class="fixed inset-0 z-40 pointer-events-none flex flex-col justify-between">${ar ? html`<${Fragment}>
-      <div class="flex justify-center" style="padding-top:calc(env(safe-area-inset-top) + 1rem)"><div class="bg-base-100/90 rounded-2xl px-4 py-2 shadow-lg text-center pointer-events-auto"><div class="text-2xl font-bold tabular-nums">${arStat.n >= 2 ? fmtCm(arStat.total) : arStat.live != null ? fmtCm(arStat.live) : "—"}</div><div class="text-[0.58rem] font-mono uppercase text-base-content/60">${arStat.n >= 2 ? T(t, "total") : T(t, "live")}</div></div></div>
-      <div class="flex-1 flex items-center justify-center"><div class="w-9 h-9 rounded-full border-2 border-white/90 flex items-center justify-center shadow"><div class="w-1.5 h-1.5 rounded-full bg-white"></div></div></div>
-      <div class="flex items-center justify-center gap-4 pointer-events-auto" style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
-        <button aria-label=${T(t, "undo")} class="btn btn-circle btn-outline bg-base-100/80" onClick=${() => ar.undo()}>${Icon("lucide:undo-2", "text-lg")}</button>
-        <button id="ar-add" aria-label=${T(t, "addPoint")} class="btn btn-circle btn-primary btn-lg shadow-xl" onClick=${() => { ar.add(); haptic.tick(); }}>${Icon("lucide:plus", "text-2xl")}</button>
-        <button aria-label=${T(t, "close")} class="btn btn-circle btn-outline bg-base-100/80" onClick=${() => ar.end()}>${Icon("lucide:x", "text-lg")}</button>
-      </div>
-    </${Fragment}>` : null}</div>
   </div>`;
 }

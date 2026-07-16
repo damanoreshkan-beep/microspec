@@ -44,7 +44,7 @@ button or an element that overruns the watch simply can't land the PR — no hum
 
 The whole thing is the proof: 25 apps live on plain Pages, no backend, each built this way. Try a few —
 Frontier (fresh GitHub OSS, descriptions translated on-device), a Hugging Face models+Spaces catalog, a
-GPS ruler with a WebXR AR mode. The runtime is zero-build: browser-native ESM (Preact + htm), Tailwind +
+GPS ruler (haversine segments, shoelace area, live coordinates). The runtime is zero-build: browser-native ESM (Preact + htm), Tailwind +
 DaisyUI, loaded from a CDN import map — no bundler, no node_modules in the apps.
 
 Honest scope: it's a *vertical* framework for a narrow class of app, not a general builder or an
@@ -106,7 +106,7 @@ HN will probe hard. Concede what's true, then sharpen the real point. Never get 
 > React replacement; I'd rather nail one class verifiably than half-build every class. (2) "Toy" is wrong:
 > not everything is a feed. Habits is a local-first streak tracker (IndexedDB, streak math, a 13-week
 > contribution heatmap, JSON export, fully offline). Rave is a polyphonic techno synth (16 voices, FX rack,
-> look-ahead scheduler — synthesised, no samples). Ruler measures in the real world via WebXR AR. Those are
+> look-ahead scheduler — synthesised, no samples). Ruler measures real distance and area from GPS coordinates as you walk them. Those are
 > stateful, offline, real — and each one still passes the same a11y / responsive / e2e gate.
 
 **"It's an AI wrapper / vibe-coded slop."**

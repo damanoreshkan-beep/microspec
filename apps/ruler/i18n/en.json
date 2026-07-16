@@ -30,14 +30,6 @@
   "refresh": "Refresh",
   "toastSaved": "Saved",
   "toastRemoved": "Removed",
-  "mGps": "GPS",
-  "mAr": "AR",
-  "arTitle": "AR ruler",
-  "arHint": "Point the camera at a surface, drop points and measure in real metres (cm-accurate).",
-  "arStart": "Start AR",
-  "arUnsupported": "This browser or device does not provide WebXR AR. It needs Android with ARCore (Google Play Services for AR); iOS and Safari have no WebXR at all.",
-  "uCm": "cm",
   "copyCoords": "Copy coordinates",
-  "copied": "Coordinates copied",
-  "arFailed": "AR did not start"
+  "copied": "Coordinates copied"
 }

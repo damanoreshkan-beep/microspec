@@ -16,7 +16,7 @@ export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) 
     const el = ref.current; if (!el) return;
     if (!born.current) born.current = now();
     const target = ph ? null : text;
-    const n = Math.max(1, Math.min(72, target ? target.length : len));
+    const n = Math.max(1, target ? target.length : Math.min(72, len));
     if (instant()) { el.textContent = target ?? "".padEnd(n, "░"); return; }
     const decodeAt = born.current + minMs;
     let timer, decodeStart = 0;
@@ -27,7 +27,7 @@ export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) 
         const done = Math.floor(Math.min(1, (t0 - decodeStart) / 480) * n);
         if (done >= n) { el.textContent = target; return; }
         el.textContent = target.slice(0, done) + target.slice(done).replace(/\S/g, rc);
-      } else el.textContent = Array.from({ length: n }, rc).join("");
+      } else el.textContent = target ? target.replace(/\S/g, rc) : Array.from({ length: n }, rc).join("");
       timer = setTimeout(tick, speed);
     };
     tick();

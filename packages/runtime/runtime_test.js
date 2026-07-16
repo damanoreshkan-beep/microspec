@@ -5,7 +5,8 @@ import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, 
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
 const baseList = () => ({
-  id: "app", i18n, tabs: [{ id: "feed", type: "list", icon: "lucide:list", label: "hi", card: { layout: "feed", title: "name", body: "desc" } }],
+  id: "app", i18n, translate: ["desc"],
+  tabs: [{ id: "feed", type: "list", icon: "lucide:list", label: "hi", card: { layout: "feed", title: "name", body: "desc" } }],
 });
 
 Deno.test("validateSpec accepts one valid tab per family", () => {
@@ -52,7 +53,7 @@ Deno.test("validateSpec: feed card needs a preview slot (no raw title-only cards
   const err = assertThrows(() => validateSpec(raw), Error);
   assert(err.message.includes("spec.tabs[0].card") && /preview slot/.test(err.message), err.message);
   for (const slot of ["subtitle", "body", "image"]) {
-    validateSpec({ ...baseList(), tabs: [{ id: "feed", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", [slot]: "x" } }] });
+    validateSpec({ ...baseList(), translate: ["x"], tabs: [{ id: "feed", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", [slot]: "x" } }] });
   }
   validateSpec({ ...baseList(), tabs: [{ id: "r", type: "list", icon: "i", label: "hi", card: { layout: "row", title: "name", lead: "a", trailing: "b" } }] });
 });
@@ -282,4 +283,16 @@ Deno.test("validateSpec: a card that leaves the app needs a detail (the drill-do
 Deno.test("validateSpec: detail.body is an accepted long-form slot", () => {
   validateSpec({ ...baseList(), detail: { title: "name", body: "desc" } });
   validateSpec({ ...baseList(), detail: { title: "name" } });   
+});
+
+Deno.test("validateSpec: feed body prose must be translated (or declared already-localized)", () => {
+  const feedBody = () => { const s = { ...baseList(), tabs: [{ id: "f", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", body: "desc" } }] }; delete s.translate; return s; };
+  const err = assertThrows(() => validateSpec(feedBody()), Error);
+  assert(err.message.includes("spec.tabs[0].card.body") && /translate/.test(err.message), err.message);
+
+  validateSpec({ ...feedBody(), translate: ["desc"] });          
+  validateSpec({ ...feedBody(), localized: true });              
+
+  validateSpec({ ...baseList(), tabs: [{ id: "r", type: "list", icon: "i", label: "hi", card: { layout: "row", title: "name", lead: "a", trailing: "b" } }] });
+  validateSpec({ ...baseList(), tabs: [{ id: "f", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", subtitle: "addr" } }] });
 });

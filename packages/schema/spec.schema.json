@@ -35,6 +35,10 @@
         "minLength": 1
       }
     },
+    "localized": {
+      "type": "boolean",
+      "description": "The data adapter already returns content in the ACTIVE locale (e.g. wiki fetching ${lang}.wikipedia.org), so body prose needs no runtime translation. Exempts the app from the card.body-must-be-translated rule. Do not set it just to silence the rule."
+    },
     "enrich": {
       "type": "object",
       "additionalProperties": false,
@@ -1346,6 +1350,58 @@
                             }
                           }
                         }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "$comment": "card.body is API prose and arrives in the source language whatever the locale. Either spec.translate lists it, or spec.localized declares the adapter returns the active locale. Scoped to `body` on purpose: titles/names/addresses are identifiers — machine-translating them makes the app worse. Mirrored in packages/runtime/validate.js; the two validators must stay in lockstep.",
+      "if": {
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "localized"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "translate"
+              ]
+            }
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "tabs": {
+            "items": {
+              "properties": {
+                "card": {
+                  "not": {
+                    "allOf": [
+                      {
+                        "required": [
+                          "body"
+                        ]
+                      },
+                      {
+                        "properties": {
+                          "layout": {
+                            "const": "feed"
+                          }
+                        },
+                        "required": [
+                          "layout"
+                        ]
                       }
                     ]
                   }

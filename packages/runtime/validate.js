@@ -58,6 +58,10 @@ function validateTab(tab, p, die, need, spec) {
       need(nonEmpty(c.subtitle) || nonEmpty(c.body) || nonEmpty(c.image), `${p}.card`,
         'a "feed" card needs a preview slot — set at least one of subtitle/body/image (a title-only feed card is raw; use layout:"row" for a compact title+value line, or add spec.enrich to fetch a body preview)');
     }
+    if (c.layout === "feed" && nonEmpty(c.body) && !spec.localized) {
+      need((spec.translate || []).includes(c.body), `${p}.card.body`,
+        `card.body "${c.body}" is API prose but is not in spec.translate — a non-English reader would get it in the source language. Add "${c.body}" to spec.translate, or set spec.localized:true if the adapter already returns the active locale.`);
+    }
     if (tab.searchFetch) need(tab.search === true, `${p}.search`, "searchFetch requires search:true");
     if (tab.sections != null) {
       need(Array.isArray(tab.sections), `${p}.sections`, "must be an array when present");

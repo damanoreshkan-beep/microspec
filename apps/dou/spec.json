@@ -1,6 +1,9 @@
 {
   "id": "dou",
   "theme": "signal",
+  "translate": [
+    "desc"
+  ],
   "fav": {
     "key": "link"
   },

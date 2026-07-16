@@ -4,15 +4,23 @@
 // Overpass mirrors are flaky (any one can be down/slow). Try a few in order with a bounded timeout each,
 // else throw → the runtime shows an error+refresh instead of hanging on the skeleton.
 //
-// NEVER overpass.osm.ch: it is a SWITZERLAND-ONLY extract. It sat first in this list because it was picked
-// as "fastest/most reliable" — which it is, precisely because it holds almost no data. Outside Switzerland
-// it answers every query with a perfectly valid 200 and `elements: []`, so this app showed "0 nearby" to
-// every user on earth except the Swiss, for its whole life, with the gate green the entire time. Measured:
-// Zurich → 50 pharmacies, Geneva → 50, Berlin → 0, Kyiv → 0, London → 0. Pick a mirror for COVERAGE, then
-// for speed — never the other way round.
+// NEVER overpass.osm.ch: it is a SWITZERLAND-ONLY extract. It sat first here because it was picked as
+// "fastest/most reliable" — which it is, precisely because it holds almost no data. Outside Switzerland it
+// answers every query with a perfectly valid 200 and `elements: []`, so this app told every user on earth
+// except the Swiss "0 nearby", for its whole life, with the gate green throughout. Measured: Zurich 50
+// pharmacies · Geneva 50 · Berlin 0 · Kyiv 0 · London 0. Pick a mirror for COVERAGE first, speed second.
+//
+// overpass-api.de is first because it is the only instance that actually answers with data. Its "406s
+// bot-like requests" reputation is a red herring: it 406s a request missing a User-Agent OR a Referer, and
+// serves 200 the moment BOTH are present — which a browser always sends automatically (default
+// referrer-policy sends our origin). So it 406s curl/deno and works fine from the app. Never conclude a
+// source is blocked from a server-side probe; the app is not a server.
+//
+// It is still a free, overloaded instance: healthy replies land in ~3s, degraded ones 504 after ~15s.
+// Hence the fallback and the per-mirror timeout below.
 const MIRRORS = [
-  "https://overpass.kumi.systems/api/interpreter",
   "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
 ];
 async function overpass(q) {
   const body = "data=" + encodeURIComponent(q);

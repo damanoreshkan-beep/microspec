@@ -2,6 +2,13 @@
    "Ink is the brand": primary = base-content; colour is reserved for meaning
    (success / error / warning + secondary = the бронювання signal). Loaded via CDN, no build. */
 
+/* The dock's total footprint above the safe area — its height plus the gap it floats over.
+   ONE number, because four separate things must clear the dock: the scroll padding under <main>, the
+   toast, and the tool apps that pin themselves between the header and the dock. Each used to carry its
+   own guess (6rem / 5.5rem / 4rem / 4rem) — four constants for one measurement, silently drifting apart
+   the moment the dock changed shape. Consumers add env(safe-area-inset-bottom) themselves. */
+:root { --dock-h: 4.25rem; }
+
 [data-theme="signal"] {
   color-scheme: dark;
   --color-base-100: #0A0A0B; --color-base-200: #141416; --color-base-300: #222225;
@@ -65,7 +72,7 @@ body { letter-spacing: -0.006em; }
   letter-spacing: .045em;
   font-size: .68rem;
 }
-nav.fixed.bottom-0 button > span {
+nav[data-dock] button > span {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: .03em;

@@ -104,7 +104,7 @@ export function rulers({ S }) {
     rs.forEach((p) => allOn ? next.delete(p) : next.add(p));
     S.filters.setKey("bodies", BODY_KEYS.filter((k) => next.has(k)));
   };
-  return html`<div class="px-4 pt-3 pb-24 max-w-xl mx-auto grid grid-cols-2 gap-2">
+  return html`<div style="padding-bottom:calc(var(--dock-h) + 1.5rem)" class="px-4 pt-3 max-w-xl mx-auto grid grid-cols-2 gap-2">
     ${RULERS.map((rs, i) => {
       const on = rs.every((p) => shown.has(p));
       // state via border+bg (theme-aware, always-legible text) — no opacity dimming that would sink contrast

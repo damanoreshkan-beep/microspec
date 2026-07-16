@@ -90,7 +90,7 @@ export function kalimba({ S }) {
   useEffect(() => { const el = region.current; if (!el) return; const apply = () => setDim({ w: el.clientWidth, h: el.clientHeight }); apply(); const ro = new ResizeObserver(apply); ro.observe(el); return () => ro.disconnect(); }, []);
   useEffect(() => () => { flashes.current.forEach(clearTimeout); song.current.forEach(clearTimeout); if (eng.current) eng.current.close(); }, []);
 
-  return html`<div class="fixed left-0 right-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(4rem + env(safe-area-inset-bottom))">
+  return html`<div class="fixed left-0 right-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <div class="shrink-0 flex items-center gap-1.5 overflow-x-auto px-2 py-2 border-b border-base-300">
       ${SCALES.map((s) => html`<button data-scale=${s.id} aria-pressed=${scale === s.id} class=${`btn btn-xs shrink-0 ${scale === s.id ? "btn-primary" : "btn-ghost"}`} onClick=${() => setScale(s.id)} key=${s.id}>${T(t, s.name)}</button>`)}
       <span class="w-px self-stretch bg-base-300 mx-0.5 shrink-0"></span>

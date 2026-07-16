@@ -1,20 +1,26 @@
 const MIRRORS = [
-  "https://overpass.osm.ch/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass-api.de/api/interpreter",
 ];
 async function overpass(q) {
   const body = "data=" + encodeURIComponent(q);
-  let err;
+  let err, empty = false;
   for (const m of MIRRORS) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 8000);
     try {
       const r = await fetch(`${m}?${body}`, { signal: ctrl.signal });
-      if (r.ok) { const txt = await r.text(); if (txt.trim().startsWith("{")) return JSON.parse(txt); }
-      err = new Error("status " + r.status);
+      if (r.ok) {
+        const txt = await r.text();
+        if (txt.trim().startsWith("{")) {
+          const j = JSON.parse(txt);
+          if (j.elements?.length) return j;
+          empty = true;
+        }
+      } else err = new Error("status " + r.status);
     } catch (e) { err = e; } finally { clearTimeout(t); }
   }
+  if (empty) return { elements: [] };   
   throw err || new Error("overpass unavailable");
 }
 

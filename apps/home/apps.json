@@ -7,7 +7,7 @@
     "bg": "#202122",
     "fg": "#ffffff",
     "href": "./wiki/",
-    "version": "1.7"
+    "version": "1.8"
   },
   {
     "id": "globe",
@@ -237,7 +237,7 @@
     "bg": "#1f2430",
     "fg": "#7ee0a6",
     "href": "./dou/",
-    "version": "1.7"
+    "version": "1.8"
   },
   {
     "id": "ruler",

@@ -77,6 +77,10 @@ export default [
     // The name is now read off the sound (genre + texture + tempo), so a duplicate is refused rather than
     // filed as "Beat 2" next to an identical "Beat 1".
     name: "ідентичний біт не зберігається двічі", run: async (h) => {
+      // The previous case ends on the Saved tab; the transport and presets only exist on the Beat tab, and
+      // a click on a missing selector is a silent no-op — so without this the test would "run" and assert
+      // against a screen it never reached.
+      await h.click('[data-tab="beat"]'); await h.wait(200);
       await ready(h);
       await h.click('[data-preset="techno"]'); await h.wait(150);
       await h.click("[data-save]"); await h.wait(500);

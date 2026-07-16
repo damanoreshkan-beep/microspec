@@ -65,8 +65,13 @@ for await (const a of Deno.readDir("apps")) {
       if (lf.isFile && lf.name.endsWith(".json")) await Deno.copyFile(`apps/${a.name}/i18n/${lf.name}`, `${outDir}/i18n/${lf.name}`);
     }
   }
-  // PWA icons — real PNGs (installability); generated from the app's brand
-  if (await has(`apps/${a.name}/brand.svg`)) {
+  // PWA icons — real PNGs (installability); generated from the app's brand.
+  // A missing brand.svg is FATAL, never a silent skip: Chrome needs a real PNG ≥192 to offer an install, so
+  // skipping quietly ships an app that simply cannot be installed while every gate stays green. That is not
+  // hypothetical — `books` shipped exactly that way (authorless never wrote brand.svg), and nobody noticed
+  // until someone tried to install it. Fail loudly at build instead.
+  {
+    if (!(await has(`apps/${a.name}/brand.svg`))) throw new Error(`apps/${a.name}/brand.svg is missing — no PNG icons would be generated and the app would not be installable`);
     const brand = (await has(`apps/${a.name}/brand.json`)) ? JSON.parse(await Deno.readTextFile(`apps/${a.name}/brand.json`)) : { bg: "#1f2430", fg: "#a78bfa" };
     const paths = (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim();
     await generateAppIcons(`${outDir}/icons`, brand, paths);

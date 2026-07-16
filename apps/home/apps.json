@@ -187,7 +187,7 @@
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.16"
+    "version": "1.19"
   },
   {
     "id": "sun",
@@ -237,7 +237,7 @@
     "bg": "#1f2430",
     "fg": "#7ee0a6",
     "href": "./dou/",
-    "version": "1.5"
+    "version": "1.6"
   },
   {
     "id": "ruler",

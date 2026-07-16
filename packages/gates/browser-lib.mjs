@@ -81,6 +81,10 @@ export function makeHelpers(page) {
     scrollTo: (y) => ev((y) => window.scrollTo(0, y), y),
     scrollY: () => ev(() => window.scrollY),
     back: () => ev(() => history.back()),
+    // Reload the page and wait for the app to settle. The ONLY way to test that something survives a
+    // session: an app persisting to IndexedDB is indistinguishable from one that silently drops it until
+    // you actually come back. Without this the gate could never tell "saved" from "lost".
+    reload: async (settle = 1200) => { await page.reload({ waitUntil: "load" }); await sleep(settle); },
     wait: (ms) => sleep(ms),
     expect: (cond, msg) => { if (!cond) throw new Error(msg || "assertion failed"); },
     // poll a body-text regex up to `ms` — the cold-cache settle lesson, reusable

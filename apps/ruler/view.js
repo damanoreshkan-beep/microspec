@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { geo, haptic } from "/_rt/sensors.js";
+import { collection } from "/_rt/db.js";
 import { Scramble } from "/_rt/skeleton.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -70,18 +71,39 @@ const fmtArea = (a) => a < 10000 ? `${Math.round(a)} ${T(_t, "uM2")}` : `${(a / 
 // measured distances, drew the polyline and reported accuracy, but never once answered "where am I?".
 // 5 decimals ≈ 1.1 m, already finer than any phone fix; more digits would be fiction dressed as precision.
 const coordStr = (p) => `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+
+// The walk survives the session. You measure a field by WALKING it — ten minutes outdoors, screen off,
+// the OS evicts the backgrounded tab, and every vertex is gone with no way to recover them but to walk it
+// again. Points live in IndexedDB from the moment they are dropped.
+const CUR = collection("rulerWalk");
+const okPt = (p) => p && typeof p.lat === "number" && typeof p.lng === "number" && isFinite(p.lat) && isFinite(p.lng);
 export function ruler({ S, toast }) {
   const t = useStore(S.t); _t = t;
-  const [pts, setPts] = useState(() => (isGate || MOCK ? SAMPLE.slice() : []));
+  const [pts, setPts] = useState([]);
   const [cur, setCur] = useState(isGate || MOCK ? SAMPLE_CUR : null);
   const [err, setErr] = useState(null);
-  const cv = useRef();
+  const cv = useRef(), hydrated = useRef(false);
 
   useEffect(() => {
     if (isGate || MOCK) return;
     if (!geo.supported) { setErr("unsupported"); return; }
     return geo.watch((p) => { setCur(p); setErr(null); }, (e) => setErr(e), { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
   }, []);
+  // Restore the walk, then start saving — never the other way round. The save effect also runs on mount,
+  // and if it fired before the read resolved it would write the initial [] straight over the stored walk:
+  // the app would "persist" perfectly and lose your data on every single launch. `hydrated` gates it.
+  // The sample seeds ONLY when nothing is stored, so the gate exercises the real persistence path instead
+  // of a branch that skips it — a reload in the e2e must see the saved point, not a re-seeded fixture.
+  useEffect(() => {
+    let ok = true;
+    const seed = () => { if (ok && (isGate || MOCK)) setPts(SAMPLE.slice()); };
+    CUR.get("walk")
+      .then((v) => { if (!ok) return; const saved = (v?.pts || []).filter(okPt); saved.length ? setPts(saved) : seed(); })
+      .catch(seed)                                        // no IndexedDB (private mode / preflight) → in-memory only
+      .finally(() => { if (ok) hydrated.current = true; });
+    return () => { ok = false; };
+  }, []);
+  useEffect(() => { if (hydrated.current) CUR.put("walk", { pts }).catch(() => { /* quota / no idb */ }); }, [pts]);
   useEffect(() => { draw(cv.current, pts, cur); }, [pts, cur, t]);
   // The canvas is sized in vh now, so a rotate changes its box — redraw or the polyline stays at the old scale.
   useEffect(() => { const on = () => draw(cv.current, pts, cur); addEventListener("resize", on); return () => removeEventListener("resize", on); }, [pts, cur]);

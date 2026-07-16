@@ -102,6 +102,17 @@ export default [
 ];
 `;
 
+const LUCIDE = "0.544.0";
+async function brandSvg(icon) {
+  const name = String(icon || "").replace(/^lucide:/, "").trim();
+  if (!name) throw new Error("recipe.icon is required — it becomes the app's PWA icon");
+  const r = await fetch(`https://unpkg.com/lucide-static@${LUCIDE}/icons/${name}.svg`);
+  if (!r.ok) throw new Error(`recipe.icon "${icon}": lucide-static has no "${name}.svg" (HTTP ${r.status})`);
+  const shapes = [...(await r.text()).matchAll(/<(?:path|circle|rect|line|polyline|polygon|ellipse)\b[^>]*\/>/g)].map((m) => m[0].replace(/\s+/g, " ").trim());
+  if (!shapes.length) throw new Error(`lucide icon "${name}" yielded no geometry`);
+  return shapes.join("");
+}
+
 const dir = check ? await Deno.makeTempDir({ prefix: `authorless_${R.id}_` }) + `/${R.id}` : `apps/${R.id}`;
 await Deno.mkdir(`${dir}/i18n`, { recursive: true });
 await Deno.writeTextFile(`${dir}/spec.json`, JSON.stringify(spec, null, 2) + "\n");
@@ -109,6 +120,7 @@ await Deno.writeTextFile(`${dir}/data.js`, data);
 await Deno.writeTextFile(`${dir}/i18n/uk.json`, JSON.stringify(i18n.uk, null, 2) + "\n");
 await Deno.writeTextFile(`${dir}/i18n/en.json`, JSON.stringify(i18n.en, null, 2) + "\n");
 await Deno.writeTextFile(`${dir}/brand.json`, JSON.stringify(R.brand || { bg: "#1f2430", fg: "#a78bfa" }) + "\n");
+await Deno.writeTextFile(`${dir}/brand.svg`, (await brandSvg(R.icon)) + "\n");
 await Deno.writeTextFile(`${dir}/e2e.spec.mjs`, e2e);
 console.log(`authorless: wrote ${dir} (spec + data + i18n×2 + brand + e2e) — 0 lines authored by a model`);
 

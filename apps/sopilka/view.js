@@ -26,7 +26,7 @@ import { useState, useRef, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { audioSupported, createEngine, midiToFreq } from "/_rt/audio.js";
-import { blow, fingeredSemitone } from "/_rt/wind.js";
+import { blow, fingeredSemitone, handCovered } from "/_rt/wind.js";
 import { haptic } from "/_rt/sensors.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -77,9 +77,17 @@ export function sopilka({ S }) {
     }
     return null;
   };
-  // Recompute from ALL live pointers — the whole point of independent holes.
+  // The hand. A screen has no palm, so the holes ABOVE your highest finger are taken as covered — because
+  // on a real pipe they are: the fingers that are not doing anything are still resting on the upper holes.
+  // Without this the instrument is unplayable, and provably so: with one finger the covered set is a single
+  // hole, which never forms the consecutive run the air column needs, so every hole in the pipe sounds
+  // Ля or Ля♯ and nothing else. That is what "всі отвори ля" was — not a mis-tuning, a missing hand.
+  //
+  // What this buys: ONE finger walks the whole diatonic scale (touch the lowest hole you want stopped),
+  // and a SECOND finger below it covers an extra hole — which is exactly a fork. Playable with a thumb,
+  // still able to express the cross-fingerings that made independent holes worth having.
   const sync = () => {
-    const set = new Set([...ptrs.current.values()].filter((v) => v != null));
+    const set = handCovered([...ptrs.current.values()].filter((v) => v != null));
     setCovered(set);
     if (voice.current) voice.current.setFreq(freqOf(set));   // legato: the breath never stops, only the bore
     return set;

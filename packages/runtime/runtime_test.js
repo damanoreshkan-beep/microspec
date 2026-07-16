@@ -4,7 +4,7 @@ import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { validateSpec } from "./validate.js";
 import { T, dictFor, ago, whenLabel } from "./i18n.js";
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "./groove.js";
-import { fingeredSemitone } from "./wind.js";
+import { fingeredSemitone, handCovered } from "./wind.js";
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
 const baseList = () => ({
@@ -381,4 +381,31 @@ Deno.test("fingeredSemitone: only holes BELOW the first opening fork it", () => 
   assertEquals(fingeredSemitone(fing("●●●●●●"), SOPILKA), 0);
   // Generic over the family: the scale and hole count are the caller's, not the runtime's.
   assertEquals(fingeredSemitone(new Set([0]), [7, 5, 0]), 5);   // a 2-hole pipe, its own tuning
+});
+
+Deno.test("handCovered: one finger must play the scale — the bug that made the pipe sound one note", () => {
+  // Shipped without this and every hole on the instrument sounded Ля or Ля♯. Not a tuning error: a single
+  // touch is a single hole, and a lone hole never forms the consecutive run from the top that sets the air
+  // column, so the pitch collapsed to "nothing stopped, one fork" no matter where you pressed.
+  const semi = (touched) => fingeredSemitone(handCovered(touched), SOPILKA);
+  assertEquals(semi([5]), 0);    // До   — one finger on the lowest hole stops all six
+  assertEquals(semi([4]), 2);    // Ре
+  assertEquals(semi([3]), 4);    // Мі
+  assertEquals(semi([2]), 5);    // Фа
+  assertEquals(semi([1]), 7);    // Соль
+  assertEquals(semi([0]), 9);    // Ля
+  assertEquals(semi([]), 11);    // Сі — a finger on the body of the pipe: breath, nothing stopped
+
+  // Without the hand, the failure is total and identical everywhere — the regression this guards:
+  assertEquals(fingeredSemitone(new Set([5]), SOPILKA), 10);
+  assertEquals(fingeredSemitone(new Set([3]), SOPILKA), 10);
+});
+
+Deno.test("handCovered: a second finger below the first is a fork, not a re-stack", () => {
+  const semi = (touched) => fingeredSemitone(handCovered(touched), SOPILKA);
+  assertEquals(semi([0, 2]), 8);   // Соль♯ — Ля forked
+  assertEquals(semi([1, 3]), 6);   // Фа♯   — Соль forked
+  assertEquals(semi([3, 5]), 3);   // Ре♯   — Мі forked
+  // Order of touches must not matter: it is a set of fingers, not a sequence of taps.
+  assertEquals(semi([3, 1]), semi([1, 3]));
 });

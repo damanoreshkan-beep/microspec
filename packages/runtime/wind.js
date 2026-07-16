@@ -38,6 +38,24 @@ export const FIPPLE = [[1, 1], [2, 0.11], [3, 0.26], [4, 0.05], [5, 0.1], [6, 0.
 // consecutively from the top; scale.length - 1 = the number of holes.
 // NOT modelled: half-holing (rolling a finger to cover part of a hole), which real players use for the
 // semitones a fork cannot reach. A touchscreen has no half of a fingertip.
+// handCovered — what a HAND is covering, given only the holes a touchscreen reported.
+//
+// Not physics; an affordance, and a necessary one. A screen has no palm: it sees the two fingers you put
+// down and nothing about the four resting on the pipe. Feed those raw touches to fingeredSemitone and the
+// instrument dies — a single touch is a single hole, which never forms the consecutive run the air column
+// needs, so EVERY hole sounds the same one or two notes. (Observed exactly that: every hole gave Ля.)
+//
+// So the holes above your highest finger are taken as covered, because on a real pipe they are. One finger
+// then walks the whole diatonic scale (stop the lowest hole you want closed), and a second finger below it
+// adds a hole out of sequence — which is precisely a fork. Playable with a thumb, still expressive.
+export function handCovered(touched) {
+  const set = new Set(touched);
+  if (!touched.length) return set;                  // a finger on the body of the pipe: breath, nothing stopped
+  const top = Math.min(...touched);
+  for (let i = 0; i < top; i++) set.add(i);
+  return set;
+}
+
 export function fingeredSemitone(covered, scale) {
   const holes = scale.length - 1;
   let k = 0;

@@ -2,6 +2,14 @@ import { noiseBuffer } from "./audio.js";
 
 export const FIPPLE = [[1, 1], [2, 0.11], [3, 0.26], [4, 0.05], [5, 0.1], [6, 0.03]];
 
+export function fingeredSemitone(covered, scale) {
+  const holes = scale.length - 1;
+  let k = 0;
+  while (k < holes && covered.has(k)) k++;
+  for (let i = k + 1; i < holes; i++) if (covered.has(i)) return scale[k] - 1;   
+  return scale[k];
+}
+
 let _noise;                                    
 const noiseFor = (ctx) => (_noise ||= noiseBuffer(ctx, "white", 4));
 

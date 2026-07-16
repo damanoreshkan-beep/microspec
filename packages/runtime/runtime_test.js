@@ -2,6 +2,7 @@ import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { validateSpec } from "./validate.js";
 import { T, dictFor, ago, whenLabel } from "./i18n.js";
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "./groove.js";
+import { fingeredSemitone } from "./wind.js";
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
 const baseList = () => ({
@@ -295,4 +296,32 @@ Deno.test("validateSpec: feed body prose must be translated (or declared already
 
   validateSpec({ ...baseList(), tabs: [{ id: "r", type: "list", icon: "i", label: "hi", card: { layout: "row", title: "name", lead: "a", trailing: "b" } }] });
   validateSpec({ ...baseList(), tabs: [{ id: "f", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", subtitle: "addr" } }] });
+});
+
+
+const SOPILKA = [11, 9, 7, 5, 4, 2, 0];                       
+const fing = (s) => new Set([...s].map((c, i) => (c === "●" ? i : -1)).filter((i) => i >= 0));
+
+Deno.test("fingeredSemitone: the diatonic staircase (all six covered → tonic, lift from the bottom)", () => {
+  assertEquals(fingeredSemitone(fing("●●●●●●"), SOPILKA), 0);   
+  assertEquals(fingeredSemitone(fing("●●●●●○"), SOPILKA), 2);   
+  assertEquals(fingeredSemitone(fing("●●●●○○"), SOPILKA), 4);   
+  assertEquals(fingeredSemitone(fing("●●●○○○"), SOPILKA), 5);   
+  assertEquals(fingeredSemitone(fing("●●○○○○"), SOPILKA), 7);   
+  assertEquals(fingeredSemitone(fing("●○○○○○"), SOPILKA), 9);   
+  assertEquals(fingeredSemitone(fing("○○○○○○"), SOPILKA), 11);  
+});
+
+Deno.test("fingeredSemitone: a fork flattens — the canonical cross-fingering", () => {
+  assertEquals(fingeredSemitone(fing("○●●○○○"), SOPILKA), 10);
+  assertEquals(fingeredSemitone(fing("●●●●○●"), SOPILKA), 3);   
+  assertEquals(fingeredSemitone(fing("●●○●●●"), SOPILKA), 6);   
+  assertEquals(fingeredSemitone(fing("●○●●●●"), SOPILKA), 8);   
+});
+
+Deno.test("fingeredSemitone: only holes BELOW the first opening fork it", () => {
+  assertEquals(fingeredSemitone(fing("●●○●○○"), SOPILKA), 6);
+  assertEquals(fingeredSemitone(fing("●●○●●●"), SOPILKA), 6);
+  assertEquals(fingeredSemitone(fing("●●●●●●"), SOPILKA), 0);
+  assertEquals(fingeredSemitone(new Set([0]), [7, 5, 0]), 5);   
 });

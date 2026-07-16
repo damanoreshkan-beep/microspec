@@ -22,7 +22,7 @@ export function validateSpec(spec) {
     need(nonEmpty(spec.fav.key), "spec.fav.key", "required non-empty string when spec.fav is present");
   }
 
-  spec.tabs.forEach((tab, i) => validateTab(tab, `spec.tabs[${i}]`, die, need));
+  spec.tabs.forEach((tab, i) => validateTab(tab, `spec.tabs[${i}]`, die, need, spec));
 
   if (spec.detail != null) validateDetail(spec.detail, die, need);
   if (spec.filters?.controls != null) validateControls(spec.filters.controls, die, need);
@@ -30,7 +30,7 @@ export function validateSpec(spec) {
   return spec;
 }
 
-function validateTab(tab, p, die, need) {
+function validateTab(tab, p, die, need, spec) {
   need(tab && typeof tab === "object", p, "must be an object");
   need(nonEmpty(tab.id), `${p}.id`, "required non-empty string");
   need(nonEmpty(tab.type), `${p}.type`, "required string");
@@ -47,6 +47,9 @@ function validateTab(tab, p, die, need) {
     if (c.layout === "row") {
       need(nonEmpty(c.lead), `${p}.card.lead`, 'required for layout "row"');
       need(nonEmpty(c.trailing), `${p}.card.trailing`, 'required for layout "row"');
+    }
+    if (c.layout !== "grid" && nonEmpty(c.href)) {
+      need(!!spec.detail, `${p}.card.href`, 'card.href without spec.detail — a tap would leave the app instead of opening the in-app detail; add spec.detail (put the link in detail.actions), or drop card.href');
     }
     if (c.layout === "grid") {
       need(nonEmpty(c.icon) || nonEmpty(c.image), `${p}.card`, 'layout "grid" needs a tile — set icon (item field with an iconify name) or image (item field with an icon URL)');

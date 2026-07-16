@@ -267,3 +267,19 @@ Deno.test("scoreGroove punishes two voices playing the identical figure (doublin
   const doubled = { ...base, tracks: { ...base.tracks, acid: fig, stab: [...fig] } };
   assert(scoreGroove(doubled, ROLES) < scoreGroove(distinct, ROLES), "duplicate figures must cost");
 });
+
+Deno.test("validateSpec: a card that leaves the app needs a detail (the drill-down contract)", () => {
+  const withHref = () => ({ ...baseList(), tabs: [{ id: "feed", type: "list", icon: "i", label: "hi", card: { layout: "feed", href: "url", title: "name", body: "desc" } }] });
+  const err = assertThrows(() => validateSpec(withHref()), Error);
+  assert(err.message.includes("spec.tabs[0].card.href") && /detail/.test(err.message), err.message);
+
+  validateSpec({ ...withHref(), detail: { title: "name", body: "desc", actions: [{ href: "url", label: "open" }] } });
+  validateSpec(baseList());
+
+  validateSpec({ ...baseList(), tabs: [{ id: "apps", type: "list", icon: "i", label: "hi", card: { layout: "grid", href: "url", title: "title", icon: "glyph" } }] });
+});
+
+Deno.test("validateSpec: detail.body is an accepted long-form slot", () => {
+  validateSpec({ ...baseList(), detail: { title: "name", body: "desc" } });
+  validateSpec({ ...baseList(), detail: { title: "name" } });   
+});

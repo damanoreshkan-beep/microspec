@@ -30,5 +30,12 @@
   "close": "Close",
   "refresh": "Refresh",
   "toastSaved": "Saved",
-  "toastRemoved": "Removed from saved"
+  "toastRemoved": "Removed from saved",
+  "back": "Back",
+  "detSubjects": "Subjects",
+  "detShelves": "Shelves",
+  "detLang": "Language",
+  "detDownloads": "Downloads",
+  "actRead": "Read online",
+  "actEpub": "Download EPUB"
 }

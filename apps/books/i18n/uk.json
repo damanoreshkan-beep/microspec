@@ -30,5 +30,12 @@
   "close": "Закрити",
   "refresh": "Оновити",
   "toastSaved": "Збережено",
-  "toastRemoved": "Видалено зі збережених"
+  "toastRemoved": "Видалено зі збережених",
+  "back": "Назад",
+  "detSubjects": "Теми",
+  "detShelves": "Полиці",
+  "detLang": "Мова",
+  "detDownloads": "Завантажень",
+  "actRead": "Читати онлайн",
+  "actEpub": "Завантажити EPUB"
 }

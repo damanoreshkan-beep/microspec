@@ -83,6 +83,41 @@
       "icon": "lucide:database"
     }
   },
+  "detail": {
+    "title": "position",
+    "subtitle": "company",
+    "body": "desc",
+    "rows": [
+      {
+        "icon": "lucide:banknote",
+        "label": "detSalary",
+        "field": "salary"
+      },
+      {
+        "icon": "lucide:code",
+        "label": "detTech",
+        "field": "tech"
+      },
+      {
+        "icon": "lucide:map-pin",
+        "label": "detCity",
+        "field": "city"
+      },
+      {
+        "icon": "lucide:clock",
+        "label": "detPosted",
+        "field": "ts",
+        "format": "ago"
+      }
+    ],
+    "actions": [
+      {
+        "icon": "lucide:external-link",
+        "label": "open",
+        "href": "link"
+      }
+    ]
+  },
   "tabs": [
     {
       "id": "feed",

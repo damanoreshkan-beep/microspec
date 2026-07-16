@@ -21,6 +21,29 @@
       }
     ]
   },
+  "detail": {
+    "title": "name",
+    "subtitle": "addr",
+    "rows": [
+      {
+        "icon": "lucide:footprints",
+        "label": "detDist",
+        "field": "distStr"
+      },
+      {
+        "icon": "lucide:tag",
+        "label": "detKind",
+        "field": "tag"
+      }
+    ],
+    "actions": [
+      {
+        "icon": "lucide:map",
+        "label": "open",
+        "href": "maps"
+      }
+    ]
+  },
   "tabs": [
     {
       "id": "list",

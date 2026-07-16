@@ -9,10 +9,14 @@ export default [
     },
   },
   {
-    name: "картка веде на jobs.dou.ua", run: async (h) => {
+    name: "картка → деталі → кнопка відкрити вакансію", run: async (h) => {
       await load(h);
-      h.expect(/jobs\.dou\.ua/.test(await h.attr(".card", "href")), "поганий href");
-      h.expect(/Детальніше/.test(await h.bodyText()), "немає афордансу");
+      h.expect((await h.count(".card[href]")) === 0, "картка — зовнішнє посилання; тап має вести в деталі");
+      await h.click(".aw-tap"); await h.wait(350);
+      h.expect((await h.count("#detail-back")) === 1, "деталі не відкрились");
+      h.expect(/jobs\.dou\.ua/.test(await h.attr("a.btn-primary", "href")), "у деталях немає кнопки відкрити джерело");
+      await h.back(); await h.wait(250);
+      h.expect((await h.count("#detail-back")) === 0, "Back не закрив деталі");
     },
   },
   {

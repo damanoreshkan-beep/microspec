@@ -1,6 +1,6 @@
 const MIRRORS = [
-  "https://overpass.kumi.systems/api/interpreter",
   "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
 ];
 async function overpass(q) {
   const body = "data=" + encodeURIComponent(q);

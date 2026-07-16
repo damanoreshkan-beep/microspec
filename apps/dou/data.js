@@ -1,5 +1,5 @@
+import { VPS_PROXY } from "/_rt/feed.js";
 const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const VPS_PROXY = "https://jobs-map.mooo.com/feed"; 
 const proxied = (u) => (isLocal ? "/feed" : VPS_PROXY) + "?url=" + encodeURIComponent(u);
 
 async function fetchFeed(url, ok) {

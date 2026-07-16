@@ -1,10 +1,11 @@
 const isLocal = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 
+export const VPS_PROXY = "https://jobs-map.mooo.com/feed";
+
 const PROXIES = [
   (u) => u,                                                            
   ...(isLocal ? [(u) => `/feed?url=${encodeURIComponent(u)}`] : []),   
-  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  (u) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`,
+  (u) => `${VPS_PROXY}?url=${encodeURIComponent(u)}`,                  
 ];
 
 export async function viaProxy(url, validate = (x) => !!x, timeout = 10000) {

@@ -1,0 +1,9 @@
+{
+  "id": "compass",
+  "theme": "signal",
+  "tabs": [
+    { "id": "rose", "type": "tool", "icon": "lucide:compass", "label": "tabRose", "view": "compassView", "needs": ["geo", "orientation"] },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:compass", "theme": true, "lang": true, "install": true }
+}

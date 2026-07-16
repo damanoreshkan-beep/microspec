@@ -6,7 +6,28 @@ export default [
       await ready(h); await h.wait(200);
       h.expect((await h.count("[data-cell]")) === 256, "немає 256 клітин (16 доріжок × 16)");
       h.expect((await h.count("#play")) === 1, "немає кнопки play/stop");
-      h.expect((await h.count("[data-preset]")) === 26, "немає 26 пресетів (24 + random + clear)");
+      h.expect((await h.count("[data-preset]")) === 25, "немає 25 пресетів (24 + clear)");
+      h.expect((await h.count("[data-gen]")) === 1, "немає кнопки генерації");
+    },
+  },
+  {
+    // The generator is the app's thesis: a scored search over Euclidean rhythms, not a dice roll. The maths
+    // is unit-tested in packages/runtime/runtime_test.js; here we only assert it reaches the UI — the sweep
+    // writes a real pattern, always with a downbeat kick, and never leaves the grid empty or mid-animation.
+    name: "генератор: пише патерн у сітку, кік на долю", run: async (h) => {
+      await ready(h);
+      await h.click('[data-preset="clear"]'); await h.wait(120);
+      h.expect((await h.attr('[data-cell="kick-0"]', "aria-pressed")) === "false", "clear не очистив перед генерацією");
+      await h.click("[data-gen]");
+      await h.wait(900);                                                     // 16 columns × 28ms sweep + slack
+      h.expect((await h.attr("[data-gen]", "aria-busy")) === "false", "кнопка лишилась у стані генерації");
+      // Which low voice carries the pulse depends on the archetype (techno → kick, hard techno → hardkick),
+      // so assert the BAND, not one track: some low voice must land the downbeat and fill the bar.
+      const pressed = async (id, s) => (await h.attr(`[data-cell="${id}-${s}"]`, "aria-pressed")) === "true";
+      h.expect((await pressed("kick", 0)) || (await pressed("hardkick", 0)), "генератор не поставив кік на долю");
+      let on = 0;
+      for (let s = 0; s < 16; s++) if ((await pressed("kick", s)) || (await pressed("hardkick", s))) on++;
+      h.expect(on >= 4, "кік-доріжка майже порожня — світч не дописав патерн");
     },
   },
   {

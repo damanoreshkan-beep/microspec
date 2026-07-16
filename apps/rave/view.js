@@ -10,6 +10,7 @@ import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
+import { generateGroove, mulberry32 } from "/_rt/groove.js";
 import { collection } from "/_rt/db.js";
 import { Scramble, useReveal } from "/_rt/skeleton.js";
 
@@ -65,10 +66,43 @@ const PRESETS = [
 ];
 const parse = (p) => Object.fromEntries(TRACKS.map((tr) => [tr.id, P(p[tr.id] || "................")]));
 const empty = () => Object.fromEntries(TRACKS.map((tr) => [tr.id, Array(N).fill(false)]));
-const random = () => Object.fromEntries(TRACKS.map((tr) => {
-  const d = { kick: (i) => i % 4 === 0, hardkick: () => false, snare: (i) => i % 8 === 4, clap: (i) => i % 8 === 4 && Math.random() < 0.5, rim: () => Math.random() < 0.2, hat: () => Math.random() < 0.55, ohat: (i) => i % 2 === 1 && Math.random() < 0.4, ride: () => Math.random() < 0.15, cowbell: () => Math.random() < 0.16, tom: () => Math.random() < 0.12, hoover: (i) => i % 8 === 0 && Math.random() < 0.5, stab: (i) => i % 4 === 0 && Math.random() < 0.5, acid: () => Math.random() < 0.4, reese: (i) => i % 4 === 0 && Math.random() < 0.4, sub: (i) => i % 4 === 0, rumble: (i) => i % 2 === 0 && Math.random() < 0.3 }[tr.id];
-  return [tr.id, STEPS.map((i) => (d ? d(i) : false))];
-}));
+// ---- generation archetypes ----
+// The split: the RUNTIME owns the science (/_rt/groove.js — Euclidean rhythms, the LHL syncopation measure,
+// Witek's inverted-U, harmonicity) and searches for the most danceable candidate. The APP owns the taste —
+// which voices belong together in a genre, and what an onset count means for a hat vs a kick. So an
+// archetype is just a legal search space: a kick never gets a bossa clave, a hat never gets four onsets.
+//   band → which inverted-U target applies (low anchors the pulse, mid drives the groove, high lifts it)
+//   ks   → legal Euclidean onset counts   ·   rots → legal rotations   ·   p → chance the voice is present
+const V = (id, band, ks, rots, p, extra) => ({ id, band, ks, rots, p, ...extra });
+const KICK4 = V("kick", "low", [4], [0], 1);
+const ARCHETYPES = [
+  { id: "techno", bpm: [130, 138], fx: { drive: [0.08, 0.3], delay: [0, 0.22], reverb: [0.05, 0.28], squelch: [700, 2400], swing: [0, 0.12] },
+    voices: [KICK4, V("sub", "low", [4, 6, 7], [0], 0.85, { bass: true }), V("clap", "mid", [2], [4], 0.85, { backbeat: true }),
+      V("hat", "high", [8, 11, 13], [0, 1, 2], 0.9), V("ohat", "high", [4, 5], [2], 0.5),
+      V("acid", "mid", [5, 7, 9], [0, 1, 2, 3], 0.6, { bass: true }), V("stab", "mid", [2, 3, 4], [0, 2, 4], 0.4), V("rim", "mid", [3, 5], [1, 3], 0.3)] },
+  { id: "acid", bpm: [128, 136], fx: { drive: [0.2, 0.5], delay: [0.1, 0.35], reverb: [0.05, 0.25], squelch: [400, 1600], swing: [0, 0.16] },
+    voices: [KICK4, V("sub", "low", [4], [0], 0.7, { bass: true }), V("clap", "mid", [2], [4], 0.8, { backbeat: true }),
+      V("hat", "high", [11, 13, 16], [0, 1], 0.95), V("ohat", "high", [4], [2], 0.6),
+      V("acid", "mid", [7, 9, 11, 13], [0, 1, 2, 3], 1, { bass: true }), V("rim", "mid", [3, 5], [1, 3], 0.25)] },
+  { id: "hardtechno", bpm: [140, 150], fx: { drive: [0.35, 0.7], crush: [0, 0.25], delay: [0, 0.2], reverb: [0.05, 0.2], squelch: [600, 2000], swing: [0, 0.06] },
+    voices: [V("hardkick", "low", [4, 8], [0], 1), V("rumble", "low", [4, 8], [0, 2], 0.6),
+      V("clap", "mid", [2], [4], 0.7, { backbeat: true }), V("snare", "mid", [4, 8], [2], 0.4, { backbeat: true }),
+      V("ohat", "high", [4, 8], [2], 0.7), V("ride", "high", [8, 16], [0], 0.4),
+      V("reese", "mid", [4, 5, 7], [0, 2], 0.6, { bass: true }), V("hoover", "mid", [2, 3], [0, 4], 0.4), V("stab", "mid", [2, 4], [0, 4], 0.4)] },
+  { id: "minimal", bpm: [126, 132], fx: { drive: [0, 0.15], delay: [0.15, 0.4], reverb: [0.15, 0.45], squelch: [900, 3000], swing: [0.04, 0.2] },
+    voices: [KICK4, V("sub", "low", [4, 6], [0], 0.8, { bass: true }), V("clap", "mid", [1, 2], [4], 0.6, { backbeat: true }),
+      V("hat", "high", [5, 7, 8], [1, 2], 0.8), V("rim", "mid", [3, 5, 7], [1, 2, 3], 0.6),
+      V("cowbell", "mid", [3, 5], [0, 2], 0.3), V("stab", "mid", [2, 3], [0, 4], 0.35)] },
+  { id: "rave", bpm: [134, 145], fx: { drive: [0.2, 0.45], crush: [0, 0.2], delay: [0.05, 0.3], reverb: [0.1, 0.35], squelch: [500, 2200], swing: [0, 0.1] },
+    voices: [KICK4, V("sub", "low", [4, 6], [0], 0.7, { bass: true }), V("clap", "mid", [2, 4], [4], 0.9, { backbeat: true }),
+      V("hat", "high", [13, 16], [0], 0.9), V("ohat", "high", [4], [2], 0.7),
+      V("hoover", "mid", [2, 3, 5], [0, 4], 0.6), V("stab", "mid", [2, 4, 5], [0, 4], 0.6), V("acid", "mid", [7, 9], [0, 2], 0.5, { bass: true })] },
+  { id: "electro", bpm: [124, 134], fx: { drive: [0.1, 0.35], crush: [0.05, 0.3], delay: [0.05, 0.25], reverb: [0.05, 0.3], squelch: [700, 2600], swing: [0, 0.14] },
+    voices: [V("kick", "low", [4, 5, 6, 7], [0], 1), V("sub", "low", [5, 6, 7], [0, 2], 0.8, { bass: true }),
+      V("snare", "mid", [2], [4], 0.9, { backbeat: true }), V("hat", "high", [8, 11], [0, 1], 0.85),
+      V("cowbell", "mid", [3, 5], [0, 2], 0.4), V("tom", "mid", [3, 5], [2, 6], 0.35), V("rim", "mid", [3, 5], [1, 3], 0.4)] },
+];
+const lerp = (rng, [lo, hi]) => lo + rng() * (hi - lo);
 
 const FX = [
   { id: "squelch", icon: "lucide:activity", label: "fxSquelch", min: 200, max: 5000, step: 20 },
@@ -193,7 +227,8 @@ const RUMBLE = (ctx, out, t) => {                                   // rolling l
 // ---- shared state (atoms survive tab switches) + autosave to IndexedDB ----
 const SAVES = collection("ravePatterns"), CUR = collection("raveCurrent");
 const $tracks = atom(parse(PRESETS[0])), $bpm = atom(130), $fx = atom({ ...DFX });
-(async () => { try { const s = await CUR.get("state"); if (s && s.tracks) { $tracks.set({ ...empty(), ...s.tracks }); if (s.bpm) $bpm.set(s.bpm); if (s.fx) $fx.set({ ...DFX, ...s.fx }); } } catch { /* no idb → defaults */ } })();
+const $riff = atom(RIFF);   // per-step semitone offsets for the bass voices — the generator rewrites it
+(async () => { try { const s = await CUR.get("state"); if (s && s.tracks) { $tracks.set({ ...empty(), ...s.tracks }); if (s.bpm) $bpm.set(s.bpm); if (s.fx) $fx.set({ ...DFX, ...s.fx }); if (s.riff?.length === N) $riff.set(s.riff); } } catch { /* no idb → defaults */ } })();
 
 export function rave({ S, toast }) {
   const t = useStore(S.t);
@@ -204,7 +239,8 @@ export function rave({ S, toast }) {
   const activePreset = PRESETS.find((p) => JSON.stringify(parse(p)) === trackKey)?.id;
   const [playing, setPlaying] = useState(false);
   const [cur, setCur] = useState(-1);
-  const eng = useRef(null), sched = useRef(null), raf = useRef(null), nextT = useRef(0), stepN = useRef(0), q = useRef([]);
+  const [sweep, setSweep] = useState(-1);   // -1 idle, else the column the generator is currently writing
+  const eng = useRef(null), sched = useRef(null), raf = useRef(null), nextT = useRef(0), stepN = useRef(0), q = useRef([]), genT = useRef(null);
 
   const applyFx = (e) => { const f = $fx.get(); e.fx.drive.curve = driveCurve(f.drive); e.fx.crush.curve = crushCurve(f.crush); e.fx.dsend.gain.value = f.delay; e.fx.rsend.gain.value = f.reverb; e.fx.mf.frequency.value = 200 * Math.pow(90, f.mfilter); e.fx.delay.delayTime.value = 3 * (60 / $bpm.get() / 4); };
   const ensure = () => {
@@ -229,7 +265,7 @@ export function rave({ S, toast }) {
   };
 
   const fire = (s, time) => {
-    const e = eng.current; if (!e) return; const ctx = e.ctx, buf = e.buffers.white, Tr = $tracks.get(), cut = $fx.get().squelch;
+    const e = eng.current; if (!e) return; const ctx = e.ctx, buf = e.buffers.white, Tr = $tracks.get(), cut = $fx.get().squelch, Rf = $riff.get();
     // every step's voices feed a throwaway group gain that is DISCONNECTED once the tails finish — nodes
     // don't GC promptly (WebAudio #904), so leaving them wired makes the audio thread process ever more dead
     // nodes → rising CPU → crackle → dropout. Freeing per step keeps the live node count bounded.
@@ -247,9 +283,9 @@ export function rave({ S, toast }) {
     if (Tr.tom[s]) TOM(ctx, out, time);
     if (Tr.hoover[s]) HOOVER(ctx, out, time);
     if (Tr.stab[s]) STAB(ctx, out, time, cut);
-    if (Tr.acid[s]) ACID(ctx, out, time, midiToFreq(ROOT + RIFF[s]), cut);
-    if (Tr.reese[s]) REESE(ctx, out, time, midiToFreq(ROOT + RIFF[s]));
-    if (Tr.sub[s]) SUB(ctx, out, time, midiToFreq(ROOT + RIFF[s]));
+    if (Tr.acid[s]) ACID(ctx, out, time, midiToFreq(ROOT + Rf[s]), cut);
+    if (Tr.reese[s]) REESE(ctx, out, time, midiToFreq(ROOT + Rf[s]));
+    if (Tr.sub[s]) SUB(ctx, out, time, midiToFreq(ROOT + Rf[s]));
     if (Tr.rumble[s]) RUMBLE(ctx, out, time);
     if (q.current.length < 128) q.current.push({ s, time });
   };
@@ -260,13 +296,39 @@ export function rave({ S, toast }) {
   const start = () => { const e = ensure(); setPlaying(true); if (!e) return; nextT.current = e.ctx.currentTime + 0.06; stepN.current = 0; sched.current = setInterval(tick, 25); raf.current = requestAnimationFrame(draw); };
   const stop = () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); sched.current = null; raf.current = null; q.current = []; setPlaying(false); setCur(-1); };
 
-  useEffect(() => () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); if (eng.current) eng.current.close(); }, []);
+  useEffect(() => () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); if (genT.current) clearInterval(genT.current); if (eng.current) eng.current.close(); }, []);
   useEffect(() => { CUR.put("state", { tracks, bpm, fx }).catch(() => {}); }, [tracks, bpm, fx]);
   useEffect(() => { const e = eng.current; if (e && e.fx) applyFx(e); }, [fx, bpm]);
 
   const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
   const setFx = (id, v) => $fx.set({ ...fx, [id]: v });
-  const save = async () => { try { const list = await SAVES.all(); await SAVES.put("p" + Date.now(), { name: `${T(t, "beatWord")} ${list.length + 1}`, tracks, bpm, fx }); toast?.(T(t, "toastSaved")); } catch { /* no idb */ } };
+  const save = async () => { try { const list = await SAVES.all(); await SAVES.put("p" + Date.now(), { name: `${T(t, "beatWord")} ${list.length + 1}`, tracks, bpm, fx, riff: $riff.get() }); toast?.(T(t, "toastSaved")); } catch { /* no idb */ } };
+
+  // Generate — pick an archetype from the seed, let the runtime search its Euclidean space for the
+  // best-scoring groove, then WRITE it across the grid column by column instead of snapping it in. The
+  // sweep is the point: you watch the bar being composed left to right, so the button reads as a machine
+  // that made something, not as a dice throw that swapped the screen.
+  const generate = () => {
+    ensure();
+    if (genT.current) clearInterval(genT.current);
+    const seed = (Math.random() * 0xffffffff) >>> 0;
+    const arch = ARCHETYPES[seed % ARCHETYPES.length];
+    const g = generateGroove(arch.voices, { seed });
+    const rng = mulberry32(seed ^ 0x5bf03635);
+    const full = { ...empty(), ...g.tracks };
+    $riff.set(g.riff);
+    $bpm.set(Math.round(lerp(rng, arch.bpm)));
+    $fx.set({ ...DFX, ...Object.fromEntries(Object.entries(arch.fx).map(([k, range]) => [k, Math.round(lerp(rng, range) * 100) / 100])) });
+    $tracks.set(empty());
+    setSweep(0);
+    let c = 0;
+    genT.current = setInterval(() => {
+      const upto = c;
+      $tracks.set(Object.fromEntries(TRACKS.map((tr) => [tr.id, full[tr.id].map((v, i) => (i <= upto ? v : false))])));
+      setSweep(c);
+      if (++c >= N) { clearInterval(genT.current); genT.current = null; setSweep(-1); }
+    }, 28);
+  };
 
   return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(4rem + env(safe-area-inset-bottom))">
     <div class="shrink-0 w-full max-w-xl mx-auto px-4 pt-3 flex flex-col gap-3">
@@ -284,8 +346,10 @@ export function rave({ S, toast }) {
     </div>
 
     <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+      <button id="gen" data-gen aria-label=${T(t, "gen")} aria-busy=${sweep >= 0} class=${`btn btn-sm shrink-0 gap-1.5 btn-accent transition-transform ${sweep >= 0 ? "scale-105" : "btn-outline"}`} onClick=${generate}>
+        ${Icon("lucide:sparkles", `text-base ${sweep >= 0 ? "animate-pulse" : ""}`)}<span>${T(t, "gen")}</span>
+      </button>
       ${PRESETS.map((p) => html`<button data-preset=${p.id} aria-pressed=${activePreset === p.id} class=${`btn btn-sm shrink-0 ${activePreset === p.id ? "btn-primary" : "btn-outline"}`} onClick=${() => { ensure(); $tracks.set(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
-      <button data-preset="random" aria-label=${T(t, "rand")} class="btn btn-sm btn-square btn-outline shrink-0" onClick=${() => { ensure(); $tracks.set(random()); }}>${Icon("lucide:dices", "text-base")}</button>
       <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => $tracks.set(empty())}>${Icon("lucide:eraser", "text-base")}</button>
     </div>
     ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
@@ -295,12 +359,12 @@ export function rave({ S, toast }) {
     <div class="flex flex-col gap-1">
       <div class="sticky top-0 z-10 bg-base-200 flex items-center gap-[3px] py-1">
         <div class="w-7 shrink-0"></div>
-        ${STEPS.map((s) => html`<div class=${`flex-1 h-1 rounded-full ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${s === cur ? "bg-primary" : "bg-base-300"}`} key=${s}></div>`)}
+        ${STEPS.map((s) => html`<div class=${`flex-1 h-1 rounded-full transition-colors ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${s === sweep ? "bg-accent" : s === cur ? "bg-primary" : "bg-base-300"}`} key=${s}></div>`)}
       </div>
       ${TRACKS.map((tr) => html`<div class="flex items-center gap-[3px]" key=${tr.id}>
         <div class=${`w-7 shrink-0 flex items-center justify-center ${tracks[tr.id].some(Boolean) ? "text-base-content" : "text-base-content/40"}`}>${Icon(tr.icon, "text-base")}</div>
         ${STEPS.map((s) => { const on = tracks[tr.id][s]; return html`<button data-cell=${`${tr.id}-${s}`} aria-pressed=${on} aria-label=${`${T(t, tr.name)} ${s + 1}`}
-          class=${`flex-1 min-w-0 h-8 rounded touch-manipulation transition-colors ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? tr.on : "bg-base-300"} ${s === cur ? "ring-2 ring-base-content/50" : ""}`}
+          class=${`flex-1 min-w-0 h-8 rounded touch-manipulation transition-all duration-150 ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? tr.on : "bg-base-300"} ${s === sweep ? "ring-2 ring-accent scale-105" : s === cur ? "ring-2 ring-base-content/50" : ""}`}
           onClick=${() => cellToggle(tr.id, s)} key=${s}></button>`; })}
       </div>`)}
     </div>
@@ -314,7 +378,7 @@ export function raveSaved({ S }) {
   const [list, setList] = useState(null);
   const load = () => SAVES.all().then(setList).catch(() => setList([]));
   useEffect(() => { load(); }, []);
-  const open = (it) => { $tracks.set({ ...empty(), ...(it.tracks || {}) }); if (it.bpm) $bpm.set(it.bpm); $fx.set({ ...DFX, ...(it.fx || {}) }); S.tab.set("beat"); };
+  const open = (it) => { $tracks.set({ ...empty(), ...(it.tracks || {}) }); if (it.bpm) $bpm.set(it.bpm); $fx.set({ ...DFX, ...(it.fx || {}) }); $riff.set(it.riff?.length === N ? it.riff : RIFF); S.tab.set("beat"); };
   const del = async (id) => { try { await SAVES.remove(id); } catch { /* */ } load(); };
 
   if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-base-content/60"><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="truncate text-xs"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;

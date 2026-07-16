@@ -113,6 +113,11 @@ export function ruler({ S, toast }) {
   const undo = () => setPts((p) => p.slice(0, -1));
   const clear = () => { setPts([]); haptic.bump(); };
 
+  // The canvas is sized in `svh`, deliberately. `vh` is defined as the LARGE viewport — the height the page
+  // would have if the browser's address bar were already retracted — so on a phone with the bar showing,
+  // 52vh is more than 52% of what you can actually see and the readout gets pushed under the fold on load.
+  // `svh` is the small viewport: it fits from the first paint. Not `dvh` either — that one tracks the bar
+  // live, and draw() is wired to resize, so scrolling would repaint the polyline on every gesture.
   const total = pts.reduce((s, p, i) => (i ? s + hav(pts[i - 1], p) : 0), 0);
   const live = pts.length && cur ? hav(pts[pts.length - 1], cur) : null;
   const area = pts.length >= 3 ? shoelace(pts) : null;
@@ -120,7 +125,7 @@ export function ruler({ S, toast }) {
 
   return html`<div class="flex flex-col gap-3">
       <div class="rounded-2xl border border-base-300 bg-base-200/40 overflow-hidden">
-        <canvas ref=${cv} aria-hidden="true" class="w-full h-[52vh] min-h-[280px] max-h-[460px] block text-base-content"></canvas>
+        <canvas ref=${cv} aria-hidden="true" class="w-full h-[52svh] min-h-[280px] max-h-[460px] block text-base-content"></canvas>
       </div>
       <div class="flex items-end justify-between gap-3 px-1">
         <div class="min-w-0">

@@ -117,13 +117,15 @@ export function ruler({ S, toast }) {
 
   const startArMode = async () => {
     setArErr(null);
+    let session = null;
     try {
-      const session = await navigator.xr.requestSession("immersive-ar", { requiredFeatures: ["hit-test", "local"], optionalFeatures: ["dom-overlay"], domOverlay: { root: overlay.current } });
+      session = await navigator.xr.requestSession("immersive-ar", { requiredFeatures: ["hit-test", "local"], optionalFeatures: ["dom-overlay"], domOverlay: { root: overlay.current } });
       const THREE = await (threeP.current ||= loadThree());
       if (!THREE) throw new Error("three.js failed to load");
       const c = await startAR(session, THREE, { onStat: setArStat, onEnd: () => { setAr(null); arRef.current = null; } });
       setAr(c); arRef.current = c;
     } catch (e) {
+      try { await session?.end(); } catch {  }
       setArErr(e?.name ? `${e.name}: ${e.message || ""}`.trim() : String(e?.message || e || "unknown"));
     }
   };

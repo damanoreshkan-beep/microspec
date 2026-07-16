@@ -2,6 +2,14 @@ import { noiseBuffer } from "./audio.js";
 
 export const FIPPLE = [[1, 1], [2, 0.11], [3, 0.26], [4, 0.05], [5, 0.1], [6, 0.03]];
 
+export function handCovered(touched) {
+  const set = new Set(touched);
+  if (!touched.length) return set;                  
+  const top = Math.min(...touched);
+  for (let i = 0; i < top; i++) set.add(i);
+  return set;
+}
+
 export function fingeredSemitone(covered, scale) {
   const holes = scale.length - 1;
   let k = 0;

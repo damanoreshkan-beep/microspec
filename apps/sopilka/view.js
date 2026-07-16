@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { audioSupported, createEngine, midiToFreq } from "/_rt/audio.js";
-import { blow, fingeredSemitone } from "/_rt/wind.js";
+import { blow, fingeredSemitone, handCovered } from "/_rt/wind.js";
 import { haptic } from "/_rt/sensors.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -50,7 +50,7 @@ export function sopilka({ S }) {
     return null;
   };
   const sync = () => {
-    const set = new Set([...ptrs.current.values()].filter((v) => v != null));
+    const set = handCovered([...ptrs.current.values()].filter((v) => v != null));
     setCovered(set);
     if (voice.current) voice.current.setFreq(freqOf(set));   
     return set;

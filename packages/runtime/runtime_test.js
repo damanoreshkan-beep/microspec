@@ -2,7 +2,7 @@ import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { validateSpec } from "./validate.js";
 import { T, dictFor, ago, whenLabel } from "./i18n.js";
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "./groove.js";
-import { fingeredSemitone } from "./wind.js";
+import { fingeredSemitone, handCovered } from "./wind.js";
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
 const baseList = () => ({
@@ -324,4 +324,26 @@ Deno.test("fingeredSemitone: only holes BELOW the first opening fork it", () => 
   assertEquals(fingeredSemitone(fing("●●○●●●"), SOPILKA), 6);
   assertEquals(fingeredSemitone(fing("●●●●●●"), SOPILKA), 0);
   assertEquals(fingeredSemitone(new Set([0]), [7, 5, 0]), 5);   
+});
+
+Deno.test("handCovered: one finger must play the scale — the bug that made the pipe sound one note", () => {
+  const semi = (touched) => fingeredSemitone(handCovered(touched), SOPILKA);
+  assertEquals(semi([5]), 0);    
+  assertEquals(semi([4]), 2);    
+  assertEquals(semi([3]), 4);    
+  assertEquals(semi([2]), 5);    
+  assertEquals(semi([1]), 7);    
+  assertEquals(semi([0]), 9);    
+  assertEquals(semi([]), 11);    
+
+  assertEquals(fingeredSemitone(new Set([5]), SOPILKA), 10);
+  assertEquals(fingeredSemitone(new Set([3]), SOPILKA), 10);
+});
+
+Deno.test("handCovered: a second finger below the first is a fork, not a re-stack", () => {
+  const semi = (touched) => fingeredSemitone(handCovered(touched), SOPILKA);
+  assertEquals(semi([0, 2]), 8);   
+  assertEquals(semi([1, 3]), 6);   
+  assertEquals(semi([3, 5]), 3);   
+  assertEquals(semi([3, 1]), semi([1, 3]));
 });

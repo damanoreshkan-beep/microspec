@@ -296,3 +296,28 @@ Deno.test("scoreGroove punishes two voices playing the identical figure (doublin
   const doubled = { ...base, tracks: { ...base.tracks, acid: fig, stab: [...fig] } };
   assert(scoreGroove(doubled, ROLES) < scoreGroove(distinct, ROLES), "duplicate figures must cost");
 });
+
+Deno.test("validateSpec: a card that leaves the app needs a detail (the drill-down contract)", () => {
+  // The farm's rule: a tap opens the IN-APP detail; the outbound link lives in detail.actions. Without
+  // spec.detail the runtime renders the card as <a target="_blank">, so the tap throws the user out to the
+  // source before they can read, save, or even see what the item is. books/dou/hn/nearby all shipped that
+  // way — the pattern existed, nothing enforced it.
+  const withHref = () => ({ ...baseList(), tabs: [{ id: "feed", type: "list", icon: "i", label: "hi", card: { layout: "feed", href: "url", title: "name", body: "desc" } }] });
+  const err = assertThrows(() => validateSpec(withHref()), Error);
+  assert(err.message.includes("spec.tabs[0].card.href") && /detail/.test(err.message), err.message);
+
+  // …and passes once a detail exists.
+  validateSpec({ ...withHref(), detail: { title: "name", body: "desc", actions: [{ href: "url", label: "open" }] } });
+  // A card with no href never needed one.
+  validateSpec(baseList());
+
+  // `grid` is exempt — the launcher tile, where leaving IS the point (it opens another app).
+  validateSpec({ ...baseList(), tabs: [{ id: "apps", type: "list", icon: "i", label: "hi", card: { layout: "grid", href: "url", title: "title", icon: "glyph" } }] });
+});
+
+Deno.test("validateSpec: detail.body is an accepted long-form slot", () => {
+  // The card can only ever show a 2-line clamp; without a body slot the drill-down was thinner than the
+  // thing it drilled into.
+  validateSpec({ ...baseList(), detail: { title: "name", body: "desc" } });
+  validateSpec({ ...baseList(), detail: { title: "name" } });   // still optional
+});

@@ -35,5 +35,10 @@
   "close": "Закрити",
   "refresh": "Оновити",
   "toastSaved": "Збережено",
-  "toastRemoved": "Видалено зі збережених"
+  "toastRemoved": "Видалено зі збережених",
+  "back": "Назад",
+  "detPoints": "Балів",
+  "detComments": "Коментарів",
+  "detAuthor": "Автор",
+  "detPosted": "Опубліковано"
 }

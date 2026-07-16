@@ -3,8 +3,13 @@ const load = async (h) => { for (let i = 0; i < 24; i++) { if ((await h.count("[
 export default [
   { name: "стрічка вантажиться з картками", run: async (h) => { await load(h);
     h.expect((await h.count(".card")) > 3, "немає карток"); } },
-  { name: "картка веде на url", run: async (h) => { await load(h);
-    h.expect(/^https?:/.test(await h.attr(".card", "href")), "поганий href"); } },
+  { name: "картка відкриває деталі, а не викидає з апки", run: async (h) => { await load(h);
+    h.expect((await h.count(".card[href]")) === 0, "картка — зовнішнє посилання; тап має вести в деталі");
+    await h.click(".aw-tap"); await h.wait(350);
+    h.expect((await h.count("#detail-back")) === 1, "деталі не відкрились");
+    h.expect(/^https?:/.test(await h.attr("a.btn-primary", "href")), "у деталях немає кнопки відкрити джерело");
+    await h.back(); await h.wait(250);
+    h.expect((await h.count("#detail-back")) === 0, "Back не закрив деталі"); } },
   { name: "пошук звужує до 0 і відновлює", run: async (h) => { await load(h);
     const base = await h.count(".card"); await h.type("#filter", "zzzzнемає"); await h.wait(250);
     h.expect((await h.count(".card")) < base, "пошук не звузив");

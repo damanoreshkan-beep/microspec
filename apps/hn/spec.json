@@ -12,6 +12,40 @@
   "fav": {
     "key": "id"
   },
+  "detail": {
+    "title": "title",
+    "body": "desc",
+    "rows": [
+      {
+        "icon": "lucide:arrow-up",
+        "label": "detPoints",
+        "field": "points"
+      },
+      {
+        "icon": "lucide:message-square",
+        "label": "detComments",
+        "field": "comments"
+      },
+      {
+        "icon": "lucide:user",
+        "label": "detAuthor",
+        "field": "author"
+      },
+      {
+        "icon": "lucide:clock",
+        "label": "detPosted",
+        "field": "ts",
+        "format": "ago"
+      }
+    ],
+    "actions": [
+      {
+        "icon": "lucide:external-link",
+        "label": "open",
+        "href": "url"
+      }
+    ]
+  },
   "tabs": [
     {
       "id": "feed",

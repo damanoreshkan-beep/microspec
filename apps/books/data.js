@@ -3,7 +3,10 @@ import { viaProxy, isJsonObject } from "/_rt/feed.js";
 const pick = (o, path) => path.split(".").reduce((v, k) => (v == null ? v : v[k]), o);
 const compact = (n) => { n = Number(n) || 0; if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, "") + "M"; if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e5 ? 0 : 1).replace(/\.0$/, "") + "K"; return String(n); };
 const COMPACT = new Set(["downloads"]);
-const MAP = {"id":"id","title":"title","author":"authors.0.name","desc":"summaries.0","downloads":"download_count"};
+const JOIN = new Set(["subjects","shelves","lang"]);
+const JOIN_CAP = 6;
+const joinList = (v) => Array.isArray(v) ? v.slice(0, JOIN_CAP).join(", ") : (v ?? "");
+const MAP = {"id":"id","title":"title","author":"authors.0.name","desc":"summaries.0","downloads":"download_count","subjects":"subjects","shelves":"bookshelves","lang":"languages","readUrl":"formats.text/html","epubUrl":"formats.application/epub+zip"};
 const URLT = "https://www.gutenberg.org/ebooks/{id}";
 
 export async function load(filters = {}) {
@@ -13,7 +16,7 @@ export async function load(filters = {}) {
   const rows = pick(data, "results") || [];
   const items = rows.map((r) => {
     const it = {};
-    for (const k in MAP) { let v = pick(r, MAP[k]); if (COMPACT.has(k)) v = compact(v); it[k] = v == null ? "" : v; }
+    for (const k in MAP) { let v = pick(r, MAP[k]); if (JOIN.has(k)) v = joinList(v); if (COMPACT.has(k)) v = compact(v); it[k] = v == null ? "" : v; }
     it.url = URLT ? URLT.replace(/\{(\w+)\}/g, (_, f) => pick(r, f) ?? "") : it.url;
     return it;
   }).filter((it) => it.id != null && it.title);

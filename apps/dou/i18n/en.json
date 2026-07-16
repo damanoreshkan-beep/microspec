@@ -50,5 +50,11 @@
   "expAny": "Any",
   "apply": "Apply",
   "toastSaved": "Saved",
-  "toastRemoved": "Removed from saved"
+  "toastRemoved": "Removed from saved",
+  "back": "Back",
+  "open": "Open the job",
+  "detSalary": "Salary",
+  "detTech": "Tech",
+  "detCity": "City",
+  "detPosted": "Posted"
 }

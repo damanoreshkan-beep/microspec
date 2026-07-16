@@ -35,5 +35,10 @@
   "close": "Close",
   "refresh": "Refresh",
   "toastSaved": "Saved",
-  "toastRemoved": "Removed from saved"
+  "toastRemoved": "Removed from saved",
+  "back": "Back",
+  "detPoints": "Points",
+  "detComments": "Comments",
+  "detAuthor": "Author",
+  "detPosted": "Posted"
 }

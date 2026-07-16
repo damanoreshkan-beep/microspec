@@ -6,15 +6,68 @@
   "searchParam": "?search=",
   "proxy": true,
   "root": "results",
-  "map": { "id": "id", "title": "title", "author": "authors.0.name", "desc": "summaries.0", "downloads": "download_count" },
+  "map": {
+    "id": "id",
+    "title": "title",
+    "author": "authors.0.name",
+    "desc": "summaries.0",
+    "downloads": "download_count",
+    "subjects": "subjects",
+    "shelves": "bookshelves",
+    "lang": "languages",
+    "readUrl": "formats.text/html",
+    "epubUrl": "formats.application/epub+zip"
+  },
+  "join": ["subjects", "shelves", "lang"],
+  "joinCap": 6,
   "urlTemplate": "https://www.gutenberg.org/ebooks/{id}",
   "compact": ["downloads"],
   "translate": ["desc"],
   "badges": [{ "field": "downloads", "icon": "lucide:download" }],
+  "detail": {
+    "subtitle": "author",
+    "body": "desc",
+    "rows": [
+      { "icon": "lucide:tags", "label": "detSubjects", "field": "subjects" },
+      { "icon": "lucide:library-big", "label": "detShelves", "field": "shelves" },
+      { "icon": "lucide:languages", "label": "detLang", "field": "lang" },
+      { "icon": "lucide:download", "label": "detDownloads", "field": "downloads" }
+    ],
+    "actions": [
+      { "icon": "lucide:book-open-text", "label": "actRead", "href": "readUrl" },
+      { "icon": "lucide:download", "label": "actEpub", "href": "epubUrl" }
+    ]
+  },
   "brand": { "bg": "#1c1917", "fg": "#d6b370" },
   "source_url": "https://www.gutenberg.org",
   "i18n": {
-    "uk": { "title": "Книги", "tabFeed": "Каталог", "search": "Пошук книги…", "profTagline": "Каталог безкоштовних книг Project Gutenberg — 78 000+ творів, опис українською", "profSource": "Джерело — gutenberg.org" },
-    "en": { "title": "Books", "tabFeed": "Catalog", "search": "Search a book…", "profTagline": "A catalog of free Project Gutenberg books — 78,000+ works, summaries translated", "profSource": "Source — gutenberg.org" }
+    "uk": {
+      "title": "Книги",
+      "tabFeed": "Каталог",
+      "search": "Пошук книги…",
+      "back": "Назад",
+      "detSubjects": "Теми",
+      "detShelves": "Полиці",
+      "detLang": "Мова",
+      "detDownloads": "Завантажень",
+      "actRead": "Читати онлайн",
+      "actEpub": "Завантажити EPUB",
+      "profTagline": "Каталог безкоштовних книг Project Gutenberg — 78 000+ творів, опис українською",
+      "profSource": "Джерело — gutenberg.org"
+    },
+    "en": {
+      "title": "Books",
+      "tabFeed": "Catalog",
+      "search": "Search a book…",
+      "back": "Back",
+      "detSubjects": "Subjects",
+      "detShelves": "Shelves",
+      "detLang": "Language",
+      "detDownloads": "Downloads",
+      "actRead": "Read online",
+      "actEpub": "Download EPUB",
+      "profTagline": "A catalog of free Project Gutenberg books — 78,000+ works, summaries translated",
+      "profSource": "Source — gutenberg.org"
+    }
   }
 }

@@ -4,7 +4,11 @@
   "title": "microspec micro-app spec",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "tabs", "i18n"],
+  "required": [
+    "id",
+    "tabs",
+    "i18n"
+  ],
   "properties": {
     "id": {
       "type": "string",
@@ -26,22 +30,38 @@
       "minItems": 1,
       "uniqueItems": true,
       "description": "Item field names whose English body text is machine-translated to the active locale (via the runtime's cached, fail-open translator). Use for API content that isn't localized at source, e.g. Hacker News titles: [\"title\"]. Chrome/UI strings must still be authored in the i18n dicts. May include an enrich.body virtual field to translate fetched previews too.",
-      "items": { "type": "string", "minLength": 1 }
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "enrich": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["url", "body"],
+      "required": [
+        "url",
+        "body"
+      ],
       "description": "Article-preview enrichment for link feeds whose API has no preview text (e.g. Hacker News). The runtime fetches each item's URL description once (cached, fail-open) and exposes it as the virtual field named by `body` — point card.body (and optionally detail rows / translate) at that same field name.",
       "properties": {
-        "url": { "type": "string", "minLength": 1, "description": "Item field holding the outbound article URL to fetch a preview for." },
-        "body": { "type": "string", "minLength": 1, "description": "Virtual field name the fetched description is exposed as (use it in card.body). Not a real item key." }
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Item field holding the outbound article URL to fetch a preview for."
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Virtual field name the fetched description is exposed as (use it in card.body). Not a real item key."
+        }
       }
     },
     "fav": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["key"],
+      "required": [
+        "key"
+      ],
       "description": "Enables favorites/bookmark feature. When present, at least one tab should set source:'fav'.",
       "properties": {
         "key": {
@@ -56,24 +76,61 @@
       "additionalProperties": false,
       "description": "Configuration for tabs of type 'profile'.",
       "properties": {
-        "icon": { "type": "string", "minLength": 1, "description": "Iconify icon for the profile avatar." },
-        "theme": { "type": "boolean", "description": "Show dark-theme toggle." },
-        "lang": { "type": "boolean", "description": "Show language switch (uk/en)." },
-        "install": { "type": "boolean", "description": "Show PWA install entry." },
+        "icon": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Iconify icon for the profile avatar."
+        },
+        "theme": {
+          "type": "boolean",
+          "description": "Show dark-theme toggle."
+        },
+        "lang": {
+          "type": "boolean",
+          "description": "Show language switch (uk/en)."
+        },
+        "install": {
+          "type": "boolean",
+          "description": "Show PWA install entry."
+        },
         "permissions": {
           "type": "array",
           "description": "Show a history-backed Permissions screen (a row in the profile) with a toggle per listed permission; enabling triggers the native prompt.",
-          "items": { "type": "string", "enum": ["geolocation", "notifications", "motion", "camera", "microphone"] }
+          "items": {
+            "type": "string",
+            "enum": [
+              "geolocation",
+              "notifications",
+              "motion",
+              "camera",
+              "microphone"
+            ]
+          }
         },
         "source": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["url"],
+          "required": [
+            "url"
+          ],
           "description": "Optional external 'data source' link row.",
           "properties": {
-            "label": { "type": "string", "minLength": 1, "description": "i18n key for the row label (display uses fixed 'profSource', but kept for documentation)." },
-            "url": { "type": "string", "minLength": 1, "format": "uri", "description": "External URL opened in a new tab." },
-            "icon": { "type": "string", "minLength": 1, "description": "Iconify icon for the source row." }
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "description": "i18n key for the row label (display uses fixed 'profSource', but kept for documentation)."
+            },
+            "url": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri",
+              "description": "External URL opened in a new tab."
+            },
+            "icon": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Iconify icon for the source row."
+            }
           }
         }
       }
@@ -81,25 +138,74 @@
     "detail": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["title"],
+      "required": [
+        "title"
+      ],
       "description": "In-app drill-down page. When present, tapping a list card opens a full-screen detail overlay (instead of card.href). All slot fields are item keys unless noted; row/action labels are i18n keys. Needs i18n key 'back'.",
       "properties": {
-        "image": { "type": "string", "minLength": 1, "description": "OPTIONAL item field — hero image URL (16:9)." },
-        "imageFit": { "type": "string", "enum": ["cover", "contain"], "description": "Hero image fit (default 'contain')." },
-        "title": { "type": "string", "minLength": 1, "description": "REQUIRED item field — page + app-bar title." },
-        "subtitle": { "type": "string", "minLength": 1, "description": "OPTIONAL item field — under the title." },
+        "image": {
+          "type": "string",
+          "minLength": 1,
+          "description": "OPTIONAL item field — hero image URL (16:9)."
+        },
+        "imageFit": {
+          "type": "string",
+          "enum": [
+            "cover",
+            "contain"
+          ],
+          "description": "Hero image fit (default 'contain')."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "REQUIRED item field — page + app-bar title."
+        },
+        "subtitle": {
+          "type": "string",
+          "minLength": 1,
+          "description": "OPTIONAL item field — under the title."
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "description": "OPTIONAL item field — long-form prose (the full description/summary), rendered as a readable paragraph block above the fact rows. The card can only show a 2-line clamp; this is where the full text goes. translate/enrich aware."
+        },
         "rows": {
           "type": "array",
           "description": "Fact rows; a row whose field resolves empty/null is dropped.",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["label", "field"],
+            "required": [
+              "label",
+              "field"
+            ],
             "properties": {
-              "icon": { "type": "string", "minLength": 1, "description": "Iconify icon for the row." },
-              "label": { "type": "string", "minLength": 1, "description": "i18n key for the row label." },
-              "field": { "type": "string", "minLength": 1, "description": "Item field for the row value (pre-joined to a string in data.js)." },
-              "format": { "type": "string", "enum": ["ago", "when", "since"], "description": "Optional: locale-format the field as a date instead of raw text — 'ago' (past relative) or 'when' (future absolute+countdown from a timestamp)." }
+              "icon": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Iconify icon for the row."
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "i18n key for the row label."
+              },
+              "field": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Item field for the row value (pre-joined to a string in data.js)."
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "ago",
+                  "when",
+                  "since"
+                ],
+                "description": "Optional: locale-format the field as a date instead of raw text — 'ago' (past relative) or 'when' (future absolute+countdown from a timestamp)."
+              }
             }
           }
         },
@@ -109,11 +215,26 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["label", "href"],
+            "required": [
+              "label",
+              "href"
+            ],
             "properties": {
-              "icon": { "type": "string", "minLength": 1, "description": "Iconify icon for the action button." },
-              "label": { "type": "string", "minLength": 1, "description": "i18n key for the action label." },
-              "href": { "type": "string", "minLength": 1, "description": "Item field holding the URL (opened in a new tab; sanitized)." }
+              "icon": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Iconify icon for the action button."
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "i18n key for the action label."
+              },
+              "href": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Item field holding the URL (opened in a new tab; sanitized)."
+              }
             }
           }
         }
@@ -127,7 +248,15 @@
         "defaults": {
           "type": "object",
           "description": "Initial filter state. Keys SHOULD match controls[].key.",
-          "additionalProperties": { "type": ["string", "boolean", "number", "array", "object"] }
+          "additionalProperties": {
+            "type": [
+              "string",
+              "boolean",
+              "number",
+              "array",
+              "object"
+            ]
+          }
         },
         "refetch": {
           "type": "boolean",
@@ -139,11 +268,21 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["type", "key", "label"],
+            "required": [
+              "type",
+              "key",
+              "label"
+            ],
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["select", "toggle", "segment", "range", "multi"],
+                "enum": [
+                  "select",
+                  "toggle",
+                  "segment",
+                  "range",
+                  "multi"
+                ],
                 "description": "Control kind. range = numeric from–to on a `field`; multi = multi-select chips (filter state is an array of chosen `options` values; for list tabs with a `field` it keeps items whose field is in the set)."
               },
               "key": {
@@ -151,12 +290,36 @@
                 "minLength": 1,
                 "description": "Filter state key written into S.filters; referenced by clientFilters[].key and section.labelParams."
               },
-              "label": { "type": "string", "minLength": 1, "description": "i18n key for the control label." },
-              "field": { "type": "string", "minLength": 1, "description": "For type:'range' — item numeric field the from–to bounds filter." },
-              "step": { "type": ["string", "number"], "description": "For type:'range' — input step (default 'any')." },
-              "unit": { "type": "string", "description": "For type:'range' — unit shown by the label (e.g. 'BTC')." },
-              "icon": { "type": "string", "minLength": 1, "description": "Iconify icon shown beside the control." },
-              "iconCls": { "type": "string", "description": "Optional extra CSS classes for the toggle icon." },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "i18n key for the control label."
+              },
+              "field": {
+                "type": "string",
+                "minLength": 1,
+                "description": "For type:'range' — item numeric field the from–to bounds filter."
+              },
+              "step": {
+                "type": [
+                  "string",
+                  "number"
+                ],
+                "description": "For type:'range' — input step (default 'any')."
+              },
+              "unit": {
+                "type": "string",
+                "description": "For type:'range' — unit shown by the label (e.g. 'BTC')."
+              },
+              "icon": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Iconify icon shown beside the control."
+              },
+              "iconCls": {
+                "type": "string",
+                "description": "Optional extra CSS classes for the toggle icon."
+              },
               "optionsFrom": {
                 "type": "string",
                 "minLength": 1,
@@ -170,8 +333,14 @@
                   "minItems": 2,
                   "maxItems": 2,
                   "prefixItems": [
-                    { "type": "string", "description": "Option value written into filter state." },
-                    { "type": "string", "description": "i18n key (or literal) for the option label." }
+                    {
+                      "type": "string",
+                      "description": "Option value written into filter state."
+                    },
+                    {
+                      "type": "string",
+                      "description": "i18n key (or literal) for the option label."
+                    }
                   ],
                   "items": false
                 }
@@ -187,20 +356,69 @@
             },
             "allOf": [
               {
-                "if": { "properties": { "type": { "const": "select" } } },
-                "then": { "anyOf": [{ "required": ["optionsFrom"] }, { "required": ["options"] }] }
+                "if": {
+                  "properties": {
+                    "type": {
+                      "const": "select"
+                    }
+                  }
+                },
+                "then": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "optionsFrom"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "options"
+                      ]
+                    }
+                  ]
+                }
               },
               {
-                "if": { "properties": { "type": { "const": "segment" } } },
-                "then": { "required": ["options"] }
+                "if": {
+                  "properties": {
+                    "type": {
+                      "const": "segment"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "options"
+                  ]
+                }
               },
               {
-                "if": { "properties": { "type": { "const": "range" } } },
-                "then": { "required": ["field"] }
+                "if": {
+                  "properties": {
+                    "type": {
+                      "const": "range"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "field"
+                  ]
+                }
               },
               {
-                "if": { "properties": { "type": { "const": "multi" } } },
-                "then": { "required": ["options"] }
+                "if": {
+                  "properties": {
+                    "type": {
+                      "const": "multi"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "options"
+                  ]
+                }
               }
             ]
           }
@@ -214,32 +432,99 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "type", "icon", "label"],
+        "required": [
+          "id",
+          "type",
+          "icon",
+          "label"
+        ],
         "properties": {
-          "id": { "type": "string", "minLength": 1, "description": "Unique tab id." },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique tab id."
+          },
           "type": {
             "type": "string",
-            "enum": ["list", "converter", "profile", "dashboard", "tool"],
+            "enum": [
+              "list",
+              "converter",
+              "profile",
+              "dashboard",
+              "tool"
+            ],
             "description": "Renderer: list -> ListView, converter -> ConverterView, profile -> Profile, dashboard -> DashboardView, tool -> a custom app-supplied view (sensor/instrument apps)."
           },
-          "view": { "type": "string", "minLength": 1, "description": "tool only — key into the views map passed to start(spec, { views }); names the app's custom Preact component (the irreducible interactive visual)." },
-          "needs": { "type": "array", "items": { "type": "string" }, "description": "tool only (OPTIONAL) — hardware capabilities the view uses (e.g. ['haptic','geo','camera']); documents intent / drives permission priming." },
-          "icon": { "type": "string", "minLength": 1, "description": "Iconify icon for the dock button." },
-          "label": { "type": "string", "minLength": 1, "description": "i18n key for the dock label." },
-          "titleKey": { "type": "string", "minLength": 1, "description": "i18n key for the app-bar title when this tab is active (defaults to 'title')." },
-          "search": { "type": "boolean", "description": "list only — show the search/status bar." },
-          "paginate": { "type": "boolean", "description": "list only — infinite scroll. data.js load() receives filters.cursor and returns { items, meta, next } where `next` is an opaque cursor for the following page (null/omitted = no more). The runtime appends pages via an accessible 'load more' sentinel (button + IntersectionObserver). Ignored on the saved/fav tab. Needs i18n key 'loadMore'." },
-          "searchFetch": { "type": "boolean", "description": "list only (search family) — the search box debounce-drives a real refetch: the trimmed query reaches data.js load() as filters.q, and client-side filtering is skipped (the server already searched). Empty query shows the `prompt` empty-state. Requires search:true." },
+          "view": {
+            "type": "string",
+            "minLength": 1,
+            "description": "tool only — key into the views map passed to start(spec, { views }); names the app's custom Preact component (the irreducible interactive visual)."
+          },
+          "needs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "tool only (OPTIONAL) — hardware capabilities the view uses (e.g. ['haptic','geo','camera']); documents intent / drives permission priming."
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Iconify icon for the dock button."
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "i18n key for the dock label."
+          },
+          "titleKey": {
+            "type": "string",
+            "minLength": 1,
+            "description": "i18n key for the app-bar title when this tab is active (defaults to 'title')."
+          },
+          "search": {
+            "type": "boolean",
+            "description": "list only — show the search/status bar."
+          },
+          "paginate": {
+            "type": "boolean",
+            "description": "list only — infinite scroll. data.js load() receives filters.cursor and returns { items, meta, next } where `next` is an opaque cursor for the following page (null/omitted = no more). The runtime appends pages via an accessible 'load more' sentinel (button + IntersectionObserver). Ignored on the saved/fav tab. Needs i18n key 'loadMore'."
+          },
+          "searchFetch": {
+            "type": "boolean",
+            "description": "list only (search family) — the search box debounce-drives a real refetch: the trimmed query reaches data.js load() as filters.q, and client-side filtering is skipped (the server already searched). Empty query shows the `prompt` empty-state. Requires search:true."
+          },
           "chart": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["type", "field"],
+            "required": [
+              "type",
+              "field"
+            ],
             "description": "list only — a live chart above the list, driven by the loaded items. Systemic/reusable.",
             "properties": {
-              "type": { "type": "string", "enum": ["bars"], "description": "Chart form (bars = magnitude of recent values, heat-coloured)." },
-              "field": { "type": "string", "minLength": 1, "description": "Item numeric field to plot." },
-              "max": { "type": "integer", "minimum": 2, "description": "How many most-recent items to plot (default 40)." },
-              "label": { "type": "string", "minLength": 1, "description": "i18n key for the chart caption." }
+              "type": {
+                "type": "string",
+                "enum": [
+                  "bars"
+                ],
+                "description": "Chart form (bars = magnitude of recent values, heat-coloured)."
+              },
+              "field": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Item numeric field to plot."
+              },
+              "max": {
+                "type": "integer",
+                "minimum": 2,
+                "description": "How many most-recent items to plot (default 40)."
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "i18n key for the chart caption."
+              }
             }
           },
           "sort": {
@@ -249,12 +534,35 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["key", "label", "by"],
+              "required": [
+                "key",
+                "label",
+                "by"
+              ],
               "properties": {
-                "key": { "type": "string", "minLength": 1, "description": "Stable id for this sort (persisted)." },
-                "label": { "type": "string", "minLength": 1, "description": "i18n key for the control label." },
-                "by": { "type": "string", "minLength": 1, "description": "Item field to sort on." },
-                "dir": { "type": "string", "enum": ["asc", "desc"], "description": "Direction (default 'desc')." }
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Stable id for this sort (persisted)."
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "i18n key for the control label."
+                },
+                "by": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Item field to sort on."
+                },
+                "dir": {
+                  "type": "string",
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ],
+                  "description": "Direction (default 'desc')."
+                }
               }
             }
           },
@@ -263,27 +571,65 @@
             "additionalProperties": false,
             "description": "searchFetch only — the empty-state shown before the user has typed a query (distinct from `empty`, which is 'no results').",
             "properties": {
-              "icon": { "type": "string", "minLength": 1, "description": "Iconify icon (defaults to 'lucide:search')." },
-              "text": { "type": "string", "minLength": 1, "description": "i18n key for the prompt title (defaults to 'searchPrompt')." },
-              "hint": { "type": "string", "minLength": 1, "description": "i18n key for the prompt hint (defaults to 'searchPromptHint')." }
+              "icon": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Iconify icon (defaults to 'lucide:search')."
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "description": "i18n key for the prompt title (defaults to 'searchPrompt')."
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "description": "i18n key for the prompt hint (defaults to 'searchPromptHint')."
+              }
             }
           },
-          "searchKey": { "type": "string", "minLength": 1, "description": "i18n key for the search placeholder (defaults to 'search')." },
-          "statusKey": { "type": "string", "minLength": 1, "description": "i18n key for the status line under the search bar (defaults to 'status'); interpolated with {date, ...meta}." },
+          "searchKey": {
+            "type": "string",
+            "minLength": 1,
+            "description": "i18n key for the search placeholder (defaults to 'search')."
+          },
+          "statusKey": {
+            "type": "string",
+            "minLength": 1,
+            "description": "i18n key for the status line under the search bar (defaults to 'status'); interpolated with {date, ...meta}."
+          },
           "source": {
             "type": "string",
-            "enum": ["fav"],
+            "enum": [
+              "fav"
+            ],
             "description": "If 'fav', the list reads from saved favorites instead of data.items."
           },
           "banner": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["icon", "titleKey", "bodyKey"],
+            "required": [
+              "icon",
+              "titleKey",
+              "bodyKey"
+            ],
             "description": "Dismissible info banner above the list.",
             "properties": {
-              "icon": { "type": "string", "minLength": 1, "description": "Iconify icon." },
-              "titleKey": { "type": "string", "minLength": 1, "description": "i18n key for bold lead text." },
-              "bodyKey": { "type": "string", "minLength": 1, "description": "i18n key for body text." }
+              "icon": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Iconify icon."
+              },
+              "titleKey": {
+                "type": "string",
+                "minLength": 1,
+                "description": "i18n key for bold lead text."
+              },
+              "bodyKey": {
+                "type": "string",
+                "minLength": 1,
+                "description": "i18n key for body text."
+              }
             }
           },
           "clientFilters": {
@@ -292,10 +638,21 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["key", "when"],
+              "required": [
+                "key",
+                "when"
+              ],
               "properties": {
-                "key": { "type": "string", "minLength": 1, "description": "Filter state key (must match a filters.controls[].key)." },
-                "when": { "type": "string", "minLength": 1, "description": "test() expression evaluated per item: 'field' (truthy), '!field' (falsy), 'fav', '!fav'." }
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Filter state key (must match a filters.controls[].key)."
+                },
+                "when": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "test() expression evaluated per item: 'field' (truthy), '!field' (falsy), 'fav', '!fav'."
+                }
               }
             }
           },
@@ -305,24 +662,61 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["filter", "label"],
+              "required": [
+                "filter",
+                "label"
+              ],
               "properties": {
-                "filter": { "type": "string", "minLength": 1, "description": "test() expression: 'field', '!field', 'fav', '!fav'." },
-                "icon": { "type": "string", "minLength": 1, "description": "Iconify icon for the section header." },
-                "label": { "type": "string", "minLength": 1, "description": "i18n key for the section header." },
-                "accent": { "type": "boolean", "description": "Highlight the section header/count in primary color." },
-                "hideBadge": { "type": "string", "minLength": 1, "description": "Badge key to suppress on cards inside this section." },
-                "labelParams": { "type": "string", "minLength": 1, "description": "Filter state key whose value is interpolated into the label as {cat}." }
+                "filter": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "test() expression: 'field', '!field', 'fav', '!fav'."
+                },
+                "icon": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Iconify icon for the section header."
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "i18n key for the section header."
+                },
+                "accent": {
+                  "type": "boolean",
+                  "description": "Highlight the section header/count in primary color."
+                },
+                "hideBadge": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Badge key to suppress on cards inside this section."
+                },
+                "labelParams": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Filter state key whose value is interpolated into the label as {cat}."
+                }
               }
             }
           },
           "card": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["layout"],
+            "required": [
+              "layout"
+            ],
             "description": "Item card template (required for type:'list').",
             "properties": {
-              "layout": { "type": "string", "enum": ["row", "feed", "grid", "table"], "description": "row -> compact rates row; feed -> rich card; grid -> Android-style launcher icon tile; table -> dense scannable rows with declared `columns` (+ optional heat)." },
+              "layout": {
+                "type": "string",
+                "enum": [
+                  "row",
+                  "feed",
+                  "grid",
+                  "table"
+                ],
+                "description": "row -> compact rates row; feed -> rich card; grid -> Android-style launcher icon tile; table -> dense scannable rows with declared `columns` (+ optional heat)."
+              },
               "columns": {
                 "type": "array",
                 "minItems": 1,
@@ -330,36 +724,168 @@
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": ["field"],
+                  "required": [
+                    "field"
+                  ],
                   "properties": {
-                    "field": { "type": "string", "minLength": 1, "description": "Item field for the cell value." },
-                    "label": { "type": "string", "minLength": 1, "description": "i18n key for the column header (optional)." },
-                    "sub": { "type": "string", "minLength": 1, "description": "Item field for a small secondary line under the value (e.g. a USD conversion under a BTC amount)." },
-                    "heat": { "type": "string", "minLength": 1, "description": "Item numeric field — colours a left accent bar + tints this cell by magnitude (log-scaled across visible rows). The color-by-strength encoding." },
-                    "grow": { "type": "boolean", "description": "Take the remaining width and truncate (e.g. an address column)." },
-                    "align": { "type": "string", "enum": ["left", "right"], "description": "Cell alignment (default left)." },
-                    "mono": { "type": "boolean", "description": "Tabular-nums (numeric columns)." },
-                    "muted": { "type": "boolean", "description": "Secondary ink." },
-                    "lg": { "type": "boolean", "description": "Prominent value — larger, semibold (for the headline column a row is scanned by)." },
-                    "format": { "type": "string", "enum": ["ago", "when", "since"], "description": "Locale-format the field as a date." }
+                    "field": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Item field for the cell value."
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "i18n key for the column header (optional)."
+                    },
+                    "sub": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Item field for a small secondary line under the value (e.g. a USD conversion under a BTC amount)."
+                    },
+                    "heat": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Item numeric field — colours a left accent bar + tints this cell by magnitude (log-scaled across visible rows). The color-by-strength encoding."
+                    },
+                    "grow": {
+                      "type": "boolean",
+                      "description": "Take the remaining width and truncate (e.g. an address column)."
+                    },
+                    "align": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "right"
+                      ],
+                      "description": "Cell alignment (default left)."
+                    },
+                    "mono": {
+                      "type": "boolean",
+                      "description": "Tabular-nums (numeric columns)."
+                    },
+                    "muted": {
+                      "type": "boolean",
+                      "description": "Secondary ink."
+                    },
+                    "lg": {
+                      "type": "boolean",
+                      "description": "Prominent value — larger, semibold (for the headline column a row is scanned by)."
+                    },
+                    "format": {
+                      "type": "string",
+                      "enum": [
+                        "ago",
+                        "when",
+                        "since"
+                      ],
+                      "description": "Locale-format the field as a date."
+                    }
                   }
                 }
               },
-              "image": { "type": "string", "minLength": 1, "description": "feed layout (OPTIONAL) — item field with an image URL; renders a 16:9 figure atop the card (media/gallery). grid layout — item field with an icon URL painted into the tile." },
-              "imageFit": { "type": "string", "enum": ["cover", "contain"], "description": "image fit (default 'cover' = fill+crop; 'contain' = whole image matted, for art/posters)." },
-              "href": { "type": "string", "minLength": 1, "description": "Item field name holding the URL; makes the card a link (feed opens a new tab; grid navigates same-tab). Field must exist on items." },
-              "icon": { "type": "string", "minLength": 1, "description": "grid layout — item field holding an iconify icon name, rendered on the tile when no image." },
-              "bg": { "type": "string", "minLength": 1, "description": "grid layout (OPTIONAL) — item field with the tile background colour (e.g. brand bg)." },
-              "fg": { "type": "string", "minLength": 1, "description": "grid layout (OPTIONAL) — item field with the tile glyph colour (e.g. brand fg)." },
-              "lead": { "type": "string", "minLength": 1, "description": "row layout — item field shown in the bold left column." },
-              "title": { "type": "string", "minLength": 1, "description": "Item field name for the card title/heading." },
-              "subtitle": { "type": "string", "minLength": 1, "description": "feed layout — item field for the subtitle." },
-              "trailing": { "type": "string", "minLength": 1, "description": "row layout — item field for the right-aligned value." },
-              "unit": { "type": "string", "description": "row layout — unit suffix appended to the numerically-formatted trailing value." },
-              "trend": { "type": "string", "minLength": 1, "description": "row layout (OPTIONAL) — item field with a signed % change; rendered green (up) / red (down) under the trailing value." },
-              "more": { "type": "string", "minLength": 1, "description": "feed layout — i18n key for the 'details' call-to-action." },
-              "meta": { "oneOf": [ { "type": "string", "minLength": 1 }, { "type": "object", "additionalProperties": false, "required": ["field"], "properties": { "field": { "type": "string", "minLength": 1 }, "format": { "type": "string", "enum": ["ago", "when", "since"] } } } ], "description": "feed layout — footer meta: an item field name, OR { field, format } for a locale-aware date. format:'ago' = past relative (needs i18n agoToday/agoYesterday/agoDays/agoWeeks); format:'when' = future absolute+countdown from a timestamp (needs i18n whenPast/whenMin/whenHours/whenDays)." },
-              "body": { "type": "string", "minLength": 1, "description": "feed layout — item field for the clamped body text." },
+              "image": {
+                "type": "string",
+                "minLength": 1,
+                "description": "feed layout (OPTIONAL) — item field with an image URL; renders a 16:9 figure atop the card (media/gallery). grid layout — item field with an icon URL painted into the tile."
+              },
+              "imageFit": {
+                "type": "string",
+                "enum": [
+                  "cover",
+                  "contain"
+                ],
+                "description": "image fit (default 'cover' = fill+crop; 'contain' = whole image matted, for art/posters)."
+              },
+              "href": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Item field name holding the URL; makes the card a link (feed opens a new tab; grid navigates same-tab). Field must exist on items."
+              },
+              "icon": {
+                "type": "string",
+                "minLength": 1,
+                "description": "grid layout — item field holding an iconify icon name, rendered on the tile when no image."
+              },
+              "bg": {
+                "type": "string",
+                "minLength": 1,
+                "description": "grid layout (OPTIONAL) — item field with the tile background colour (e.g. brand bg)."
+              },
+              "fg": {
+                "type": "string",
+                "minLength": 1,
+                "description": "grid layout (OPTIONAL) — item field with the tile glyph colour (e.g. brand fg)."
+              },
+              "lead": {
+                "type": "string",
+                "minLength": 1,
+                "description": "row layout — item field shown in the bold left column."
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Item field name for the card title/heading."
+              },
+              "subtitle": {
+                "type": "string",
+                "minLength": 1,
+                "description": "feed layout — item field for the subtitle."
+              },
+              "trailing": {
+                "type": "string",
+                "minLength": 1,
+                "description": "row layout — item field for the right-aligned value."
+              },
+              "unit": {
+                "type": "string",
+                "description": "row layout — unit suffix appended to the numerically-formatted trailing value."
+              },
+              "trend": {
+                "type": "string",
+                "minLength": 1,
+                "description": "row layout (OPTIONAL) — item field with a signed % change; rendered green (up) / red (down) under the trailing value."
+              },
+              "more": {
+                "type": "string",
+                "minLength": 1,
+                "description": "feed layout — i18n key for the 'details' call-to-action."
+              },
+              "meta": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "field"
+                    ],
+                    "properties": {
+                      "field": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "format": {
+                        "type": "string",
+                        "enum": [
+                          "ago",
+                          "when",
+                          "since"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "description": "feed layout — footer meta: an item field name, OR { field, format } for a locale-aware date. format:'ago' = past relative (needs i18n agoToday/agoYesterday/agoDays/agoWeeks); format:'when' = future absolute+countdown from a timestamp (needs i18n whenPast/whenMin/whenHours/whenDays)."
+              },
+              "body": {
+                "type": "string",
+                "minLength": 1,
+                "description": "feed layout — item field for the clamped body text."
+              },
               "badges": {
                 "type": "array",
                 "description": "Badges shown on the card. Each badge is either field-driven (field) or condition-driven (when+label).",
@@ -367,36 +893,133 @@
                   "type": "object",
                   "additionalProperties": false,
                   "properties": {
-                    "key": { "type": "string", "minLength": 1, "description": "Badge identity; can be targeted by section.hideBadge." },
-                    "when": { "type": "string", "minLength": 1, "description": "test() expression; renders label badge when truthy." },
-                    "field": { "type": "string", "minLength": 1, "description": "Item field whose value (string or array) is rendered as badge text." },
-                    "label": { "type": "string", "minLength": 1, "description": "i18n key for the badge text (used with 'when')." },
-                    "icon": { "type": "string", "minLength": 1, "description": "Iconify icon, prepended to the badge (works with both 'when' and 'field' badges)." },
-                    "fmt": { "type": "string", "description": "Optional value formatting hint (e.g. 'rate')." },
-                    "variant": { "type": "string", "enum": ["primary", "ghost", "success"], "description": "Badge style." }
+                    "key": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Badge identity; can be targeted by section.hideBadge."
+                    },
+                    "when": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "test() expression; renders label badge when truthy."
+                    },
+                    "field": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Item field whose value (string or array) is rendered as badge text."
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "i18n key for the badge text (used with 'when')."
+                    },
+                    "icon": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Iconify icon, prepended to the badge (works with both 'when' and 'field' badges)."
+                    },
+                    "fmt": {
+                      "type": "string",
+                      "description": "Optional value formatting hint (e.g. 'rate')."
+                    },
+                    "variant": {
+                      "type": "string",
+                      "enum": [
+                        "primary",
+                        "ghost",
+                        "success"
+                      ],
+                      "description": "Badge style."
+                    }
                   }
                 }
               }
             },
             "allOf": [
               {
-                "if": { "properties": { "layout": { "enum": ["row", "feed", "grid"] } } },
-                "then": { "required": ["title"] }
+                "if": {
+                  "properties": {
+                    "layout": {
+                      "enum": [
+                        "row",
+                        "feed",
+                        "grid"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "title"
+                  ]
+                }
               },
               {
-                "if": { "properties": { "layout": { "const": "feed" } } },
+                "if": {
+                  "properties": {
+                    "layout": {
+                      "const": "feed"
+                    }
+                  }
+                },
                 "then": {
-                  "anyOf": [ { "required": ["subtitle"] }, { "required": ["body"] }, { "required": ["image"] } ],
+                  "anyOf": [
+                    {
+                      "required": [
+                        "subtitle"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "body"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "image"
+                      ]
+                    }
+                  ],
                   "$comment": "UX guardrail: a feed card must carry a preview slot (subtitle/body/image) — a title-only feed card is raw. Use layout:'row' for a compact title+value line, or spec.enrich to fetch a body preview."
                 }
               },
               {
-                "if": { "properties": { "layout": { "const": "grid" } } },
-                "then": { "anyOf": [ { "required": ["icon"] }, { "required": ["image"] } ], "$comment": "A grid tile needs an icon (iconify field) or image (icon URL)." }
+                "if": {
+                  "properties": {
+                    "layout": {
+                      "const": "grid"
+                    }
+                  }
+                },
+                "then": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "icon"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "image"
+                      ]
+                    }
+                  ],
+                  "$comment": "A grid tile needs an icon (iconify field) or image (icon URL)."
+                }
               },
               {
-                "if": { "properties": { "layout": { "const": "table" } } },
-                "then": { "required": ["columns"] }
+                "if": {
+                  "properties": {
+                    "layout": {
+                      "const": "table"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "columns"
+                  ]
+                }
               }
             ]
           },
@@ -405,40 +1028,114 @@
             "additionalProperties": false,
             "description": "Empty-state override for a list tab.",
             "properties": {
-              "icon": { "type": "string", "minLength": 1, "description": "Iconify icon (defaults to 'lucide:search-x')." },
-              "text": { "type": "string", "minLength": 1, "description": "i18n key for the empty title (defaults to 'noResults')." },
-              "hint": { "type": "string", "minLength": 1, "description": "i18n key for the empty hint (defaults to 'noResultsHint')." }
+              "icon": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Iconify icon (defaults to 'lucide:search-x')."
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "description": "i18n key for the empty title (defaults to 'noResults')."
+              },
+              "hint": {
+                "type": "string",
+                "minLength": 1,
+                "description": "i18n key for the empty hint (defaults to 'noResultsHint')."
+              }
             }
           },
-          "codeField": { "type": "string", "minLength": 1, "description": "converter only — item field holding the currency/unit code." },
-          "rateField": { "type": "string", "minLength": 1, "description": "converter only — item field holding the numeric rate." },
-          "base": { "type": "string", "minLength": 1, "description": "converter only — base code with implicit rate 1 (e.g. 'UAH')." },
-          "defaultFrom": { "type": "string", "description": "converter only (OPTIONAL) — initial 'from' code (default 'USD')." },
-          "defaultTo": { "type": "string", "description": "converter only (OPTIONAL) — initial 'to' code (default base)." },
-          "quick": { "type": "array", "items": { "type": "string" }, "description": "converter only (OPTIONAL) — quick-amount chips (default ['100','500','1000','5000'])." },
+          "codeField": {
+            "type": "string",
+            "minLength": 1,
+            "description": "converter only — item field holding the currency/unit code."
+          },
+          "rateField": {
+            "type": "string",
+            "minLength": 1,
+            "description": "converter only — item field holding the numeric rate."
+          },
+          "base": {
+            "type": "string",
+            "minLength": 1,
+            "description": "converter only — base code with implicit rate 1 (e.g. 'UAH')."
+          },
+          "defaultFrom": {
+            "type": "string",
+            "description": "converter only (OPTIONAL) — initial 'from' code (default 'USD')."
+          },
+          "defaultTo": {
+            "type": "string",
+            "description": "converter only (OPTIONAL) — initial 'to' code (default base)."
+          },
+          "quick": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "converter only (OPTIONAL) — quick-amount chips (default ['100','500','1000','5000'])."
+          },
           "hero": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["value"],
+            "required": [
+              "value"
+            ],
             "description": "dashboard only — the big glanceable block. Reads data.meta (a flattened current-conditions object).",
             "properties": {
-              "place": { "type": "string", "minLength": 1, "description": "OPTIONAL meta field — small location line above the icon (becomes a tappable city picker when top-level filters exist)." },
-              "icon": { "type": "string", "minLength": 1, "description": "OPTIONAL meta field holding an iconify icon name (big glyph)." },
-              "value": { "type": "string", "minLength": 1, "description": "REQUIRED meta field — the big number." },
-              "unit": { "type": "string", "description": "OPTIONAL literal suffix appended to the big value." },
-              "caption": { "type": "string", "minLength": 1, "description": "OPTIONAL meta field — text under the value." },
+              "place": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OPTIONAL meta field — small location line above the icon (becomes a tappable city picker when top-level filters exist)."
+              },
+              "icon": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OPTIONAL meta field holding an iconify icon name (big glyph)."
+              },
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "description": "REQUIRED meta field — the big number."
+              },
+              "unit": {
+                "type": "string",
+                "description": "OPTIONAL literal suffix appended to the big value."
+              },
+              "caption": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OPTIONAL meta field — text under the value."
+              },
               "metrics": {
                 "type": "array",
                 "description": "OPTIONAL labeled stat chips (hidden at watch width).",
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": ["field"],
+                  "required": [
+                    "field"
+                  ],
                   "properties": {
-                    "field": { "type": "string", "minLength": 1, "description": "REQUIRED meta field for the chip value." },
-                    "icon": { "type": "string", "minLength": 1, "description": "Iconify icon for the chip." },
-                    "unit": { "type": "string", "description": "Literal suffix on the chip value." },
-                    "label": { "type": "string", "minLength": 1, "description": "i18n key shown as the chip label." }
+                    "field": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "REQUIRED meta field for the chip value."
+                    },
+                    "icon": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Iconify icon for the chip."
+                    },
+                    "unit": {
+                      "type": "string",
+                      "description": "Literal suffix on the chip value."
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "i18n key shown as the chip label."
+                    }
                   }
                 }
               }
@@ -447,48 +1144,143 @@
           "strip": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["from", "time", "value"],
+            "required": [
+              "from",
+              "time",
+              "value"
+            ],
             "description": "dashboard only (OPTIONAL) — a horizontal scroller reading a meta ARRAY (e.g. hourly).",
             "properties": {
-              "from": { "type": "string", "minLength": 1, "description": "REQUIRED meta key holding the array." },
-              "label": { "type": "string", "minLength": 1, "description": "OPTIONAL i18n key for the section header (gets a clock icon)." },
-              "time": { "type": "string", "minLength": 1, "description": "REQUIRED item field — top label (e.g. '14:00')." },
-              "icon": { "type": "string", "minLength": 1, "description": "OPTIONAL item field — iconify icon name." },
-              "value": { "type": "string", "minLength": 1, "description": "REQUIRED item field — bottom value." },
-              "unit": { "type": "string", "description": "OPTIONAL literal suffix on the strip value." }
+              "from": {
+                "type": "string",
+                "minLength": 1,
+                "description": "REQUIRED meta key holding the array."
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OPTIONAL i18n key for the section header (gets a clock icon)."
+              },
+              "time": {
+                "type": "string",
+                "minLength": 1,
+                "description": "REQUIRED item field — top label (e.g. '14:00')."
+              },
+              "icon": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OPTIONAL item field — iconify icon name."
+              },
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "description": "REQUIRED item field — bottom value."
+              },
+              "unit": {
+                "type": "string",
+                "description": "OPTIONAL literal suffix on the strip value."
+              }
             }
           },
           "days": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["day", "hi"],
+            "required": [
+              "day",
+              "hi"
+            ],
             "description": "dashboard only (OPTIONAL) — a vertical list reading data.items.",
             "properties": {
-              "label": { "type": "string", "minLength": 1, "description": "OPTIONAL i18n key for the section header (calendar icon)." },
-              "day": { "type": "string", "minLength": 1, "description": "REQUIRED item field — left label." },
-              "icon": { "type": "string", "minLength": 1, "description": "OPTIONAL item field — iconify icon name." },
-              "hi": { "type": "string", "minLength": 1, "description": "REQUIRED item field — primary value." },
-              "lo": { "type": "string", "minLength": 1, "description": "OPTIONAL item field — muted secondary value (hidden at watch width)." },
-              "unit": { "type": "string", "description": "OPTIONAL literal suffix on hi/lo." }
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OPTIONAL i18n key for the section header (calendar icon)."
+              },
+              "day": {
+                "type": "string",
+                "minLength": 1,
+                "description": "REQUIRED item field — left label."
+              },
+              "icon": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OPTIONAL item field — iconify icon name."
+              },
+              "hi": {
+                "type": "string",
+                "minLength": 1,
+                "description": "REQUIRED item field — primary value."
+              },
+              "lo": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OPTIONAL item field — muted secondary value (hidden at watch width)."
+              },
+              "unit": {
+                "type": "string",
+                "description": "OPTIONAL literal suffix on hi/lo."
+              }
             }
           }
         },
         "allOf": [
           {
-            "if": { "properties": { "type": { "const": "list" } } },
-            "then": { "required": ["card"] }
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "list"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "card"
+              ]
+            }
           },
           {
-            "if": { "properties": { "type": { "const": "converter" } } },
-            "then": { "required": ["codeField", "rateField", "base"] }
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "converter"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "codeField",
+                "rateField",
+                "base"
+              ]
+            }
           },
           {
-            "if": { "properties": { "type": { "const": "dashboard" } } },
-            "then": { "required": ["hero"] }
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "dashboard"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "hero"
+              ]
+            }
           },
           {
-            "if": { "properties": { "type": { "const": "tool" } } },
-            "then": { "required": ["view"] }
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "tool"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "view"
+              ]
+            }
           }
         ]
       }
@@ -496,21 +1288,73 @@
     "i18n": {
       "type": "object",
       "minProperties": 1,
-      "required": ["en"],
+      "required": [
+        "en"
+      ],
       "description": "Locale dictionaries. 'en' is required as the runtime fallback. Each locale maps i18n keys to display strings; interpolation placeholders use {name} syntax.",
       "properties": {
-        "en": { "$ref": "#/$defs/locale" },
-        "uk": { "$ref": "#/$defs/locale" }
+        "en": {
+          "$ref": "#/$defs/locale"
+        },
+        "uk": {
+          "$ref": "#/$defs/locale"
+        }
       },
-      "additionalProperties": { "$ref": "#/$defs/locale" }
+      "additionalProperties": {
+        "$ref": "#/$defs/locale"
+      }
     }
   },
   "$defs": {
     "locale": {
       "type": "object",
       "minProperties": 1,
-      "additionalProperties": { "type": "string" },
+      "additionalProperties": {
+        "type": "string"
+      },
       "description": "Map of i18n key -> string."
     }
-  }
+  },
+  "allOf": [
+    {
+      "$comment": "A card tap must never leave the app. With spec.detail the runtime turns the card into an in-app drill-down; without it, card.href renders the card as <a target=_blank> and the user is thrown out to the source before they can read, save or even see the item. So a non-grid card.href REQUIRES spec.detail (put the outbound link in detail.actions). `grid` is exempt — it is the launcher tile, where opening another app IS the point. Mirrored in packages/runtime/validate.js; the two validators must stay in lockstep.",
+      "if": {
+        "not": {
+          "required": [
+            "detail"
+          ]
+        }
+      },
+      "then": {
+        "properties": {
+          "tabs": {
+            "items": {
+              "properties": {
+                "card": {
+                  "not": {
+                    "allOf": [
+                      {
+                        "required": [
+                          "href"
+                        ]
+                      },
+                      {
+                        "properties": {
+                          "layout": {
+                            "not": {
+                              "const": "grid"
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

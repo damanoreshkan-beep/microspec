@@ -34,5 +34,9 @@
   "close": "Close",
   "refresh": "Refresh",
   "toastSaved": "Saved",
-  "toastRemoved": "Removed from saved"
+  "toastRemoved": "Removed from saved",
+  "back": "Back",
+  "open": "Open in Maps",
+  "detDist": "Distance",
+  "detKind": "Category"
 }

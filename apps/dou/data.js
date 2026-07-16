@@ -1,10 +1,10 @@
 // DOU data adapter. Returns { items (tagged bron), meta:{bron,rest,categories} }.
 //
-// DOU sends NO CORS and blocks public proxies (allorigins → 520), so this app cannot use the shared
-// direct→public chain. It routes through a same-origin proxy we control: the dev `/feed` on localhost,
-// and our own hardened proxy on the VPS in production (see proxy/feed-proxy.mjs + deploy notes).
+// DOU sends NO CORS, so it routes through a proxy we control: the dev `/feed` on localhost, and our own
+// hardened proxy on the VPS in production (see proxy/feed-proxy.mjs + deploy notes). The URL comes from the
+// runtime so there is one place to change it, not one per app.
+import { VPS_PROXY } from "/_rt/feed.js";
 const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const VPS_PROXY = "https://jobs-map.mooo.com/feed"; // our /feed proxy (allowlisted to dou.ua)
 const proxied = (u) => (isLocal ? "/feed" : VPS_PROXY) + "?url=" + encodeURIComponent(u);
 
 async function fetchFeed(url, ok) {

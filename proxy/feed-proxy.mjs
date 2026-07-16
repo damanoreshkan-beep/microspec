@@ -10,7 +10,7 @@ import http from "node:http";
 
 const PORT = Number(process.env.PORT) || 8787;
 // Allowlist — NEVER an open proxy. Add hosts here as apps need them.
-const ALLOW = [/(^|\.)dou\.ua$/i, /(^|\.)wikipedia\.org$/i];
+const ALLOW = [/(^|\.)dou\.ua$/i, /(^|\.)wikipedia\.org$/i, /(^|\.)gutendex\.com$/i];
 const UA = "Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, OPTIONS" };
 

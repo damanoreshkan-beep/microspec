@@ -92,13 +92,22 @@ The farm runs on plain GitHub Pages, no backend:
 | App | What it is |
 |---|---|
 | [**Habits**](https://damanoreshkan-beep.github.io/microspec/habits/) | a local-first streak tracker — IndexedDB, streak math, a 13-week contribution heatmap, JSON export; fully offline |
-| [**Rave**](https://damanoreshkan-beep.github.io/microspec/rave/) | a polyphonic techno synth — 16 voices, an FX rack, a look-ahead scheduler, saved patterns; synthesised, no audio files |
+| [**Rave**](https://damanoreshkan-beep.github.io/microspec/rave/) | a polyphonic techno synth — 16 voices, an FX rack, a look-ahead scheduler, saved patterns; synthesised, no audio files. **Generate** is a scored search over Euclidean rhythms, not a dice roll |
 | [**GPS Ruler**](https://damanoreshkan-beep.github.io/microspec/ruler/) | measure distance/area by walking a polyline; **WebXR AR** mode on Android |
 | [**Frontier**](https://damanoreshkan-beep.github.io/microspec/frontier/) | fresh breakthrough OSS from GitHub, descriptions translated on-device |
 | [**Neural Nets**](https://damanoreshkan-beep.github.io/microspec/hf/) | Hugging Face models & Spaces catalog with translated model cards |
 
 **Not just feeds.** Habits is a stateful, offline productivity app (your data, exportable); Rave is a real
 instrument; Ruler measures in AR. Read-only catalogs (Frontier, Neural Nets, weather) are one slice —
+
+Depth lives in the runtime, not in the apps. `packages/runtime/groove.js` is four published results turned
+into four functions — Toussaint's Euclidean rhythms (2005), the Longuet-Higgins & Lee syncopation measure
+(1984), the inverted-U of groove from [Witek et al. (2014)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0094446)
+(pleasure peaks at *medium* syncopation), and harmonicity from [Bowling & Purves (2018)](https://www.pnas.org/doi/10.1073/pnas.1505768112).
+Rave's Generate button samples that space and keeps the highest-scoring bar. The unit gate asserts
+`bjorklund(3,8)` **is** the Cuban tresillo and that the search beats coin-flip random on every seed — so
+"generated, not random" is a test, not a bullet point. Any future music app imports it for free.
+
 …plus 20 more (`hn · rates · crypto · quakes · iss · launches · transit · sun · kp · globe · dou · …`).
 
 ## How it works

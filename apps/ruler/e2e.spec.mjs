@@ -35,6 +35,17 @@ export default [
     },
   },
   {
+    name: "точки переживають перезавантаження", run: async (h) => {
+      await ready(h);
+      await h.click("#clear"); await h.wait(200);
+      await h.click("#add"); await h.wait(250);
+      h.expect((await h.prop("#undo", "disabled")) !== true, "точка не додалась перед перезавантаженням");
+      await h.reload();
+      await ready(h); await h.wait(300);
+      h.expect((await h.prop("#undo", "disabled")) !== true, "точку втрачено після перезавантаження — вимірювання зникає разом із вкладкою");
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { geo, haptic } from "/_rt/sensors.js";
+import { collection } from "/_rt/db.js";
 import { Scramble } from "/_rt/skeleton.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -56,18 +57,31 @@ let _t;
 const fmt = (m) => m < 1000 ? `${Math.round(m < 10 ? m * 10 : m) / (m < 10 ? 10 : 1)} ${T(_t, "uM")}` : `${(m / 1000).toFixed(2)} ${T(_t, "uKm")}`;
 const fmtArea = (a) => a < 10000 ? `${Math.round(a)} ${T(_t, "uM2")}` : `${(a / 10000).toFixed(2)} ${T(_t, "uHa")}`;
 const coordStr = (p) => `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+
+const CUR = collection("rulerWalk");
+const okPt = (p) => p && typeof p.lat === "number" && typeof p.lng === "number" && isFinite(p.lat) && isFinite(p.lng);
 export function ruler({ S, toast }) {
   const t = useStore(S.t); _t = t;
-  const [pts, setPts] = useState(() => (isGate || MOCK ? SAMPLE.slice() : []));
+  const [pts, setPts] = useState([]);
   const [cur, setCur] = useState(isGate || MOCK ? SAMPLE_CUR : null);
   const [err, setErr] = useState(null);
-  const cv = useRef();
+  const cv = useRef(), hydrated = useRef(false);
 
   useEffect(() => {
     if (isGate || MOCK) return;
     if (!geo.supported) { setErr("unsupported"); return; }
     return geo.watch((p) => { setCur(p); setErr(null); }, (e) => setErr(e), { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
   }, []);
+  useEffect(() => {
+    let ok = true;
+    const seed = () => { if (ok && (isGate || MOCK)) setPts(SAMPLE.slice()); };
+    CUR.get("walk")
+      .then((v) => { if (!ok) return; const saved = (v?.pts || []).filter(okPt); saved.length ? setPts(saved) : seed(); })
+      .catch(seed)                                        
+      .finally(() => { if (ok) hydrated.current = true; });
+    return () => { ok = false; };
+  }, []);
+  useEffect(() => { if (hydrated.current) CUR.put("walk", { pts }).catch(() => {  }); }, [pts]);
   useEffect(() => { draw(cv.current, pts, cur); }, [pts, cur, t]);
   useEffect(() => { const on = () => draw(cv.current, pts, cur); addEventListener("resize", on); return () => removeEventListener("resize", on); }, [pts, cur]);
 

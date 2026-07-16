@@ -4,7 +4,7 @@
   "tabMe": "Me",
   "total": "Total distance",
   "area": "Area",
-  "live": "To cursor",
+  "live": "To position",
   "points": "Points",
   "accuracy": "Accuracy",
   "locating": "Locating…",
@@ -35,6 +35,9 @@
   "arTitle": "AR ruler",
   "arHint": "Point the camera at a surface, drop points and measure in real metres (cm-accurate).",
   "arStart": "Start AR",
-  "arUnsupported": "AR mode needs Android Chrome with ARCore (like your Samsung). iOS Safari has no WebXR.",
-  "uCm": "cm"
+  "arUnsupported": "This browser or device does not provide WebXR AR. It needs Android with ARCore (Google Play Services for AR); iOS and Safari have no WebXR at all.",
+  "uCm": "cm",
+  "copyCoords": "Copy coordinates",
+  "copied": "Coordinates copied",
+  "arFailed": "AR did not start"
 }

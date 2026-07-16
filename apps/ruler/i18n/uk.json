@@ -4,7 +4,7 @@
   "tabMe": "Я",
   "total": "Загальна відстань",
   "area": "Площа",
-  "live": "До курсора",
+  "live": "До позиції",
   "points": "Точок",
   "accuracy": "Точність",
   "locating": "Визначаю позицію…",
@@ -35,6 +35,9 @@
   "arTitle": "AR-лінійка",
   "arHint": "Наведи камеру на поверхню, став точки й вимірюй у реальних метрах (см-точність).",
   "arStart": "Почати AR",
-  "arUnsupported": "AR-режим потребує Android Chrome з ARCore (як твій Samsung). iOS Safari не підтримує WebXR.",
-  "uCm": "см"
+  "arUnsupported": "Цей браузер або пристрій не дає WebXR AR. Потрібен Android з ARCore (Google Play Services for AR); iOS та Safari WebXR не мають зовсім.",
+  "uCm": "см",
+  "copyCoords": "Скопіювати координати",
+  "copied": "Координати скопійовано",
+  "arFailed": "AR не запустився"
 }

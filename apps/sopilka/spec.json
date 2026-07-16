@@ -1,0 +1,14 @@
+{
+  "id": "sopilka",
+  "theme": "signal",
+  "tabs": [
+    { "id": "play", "type": "tool", "icon": "lucide:audio-lines", "label": "tabPlay", "view": "sopilka" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:audio-lines",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

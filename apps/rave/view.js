@@ -276,15 +276,19 @@ export function rave({ S, toast }) {
   useEffect(() => () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); if (genT.current) clearInterval(genT.current); if (eng.current) eng.current.close(); }, []);
   useEffect(() => { CUR.put("state", { tracks, bpm, fx }).catch(() => {}); }, [tracks, bpm, fx]);
   useEffect(() => { const e = eng.current; if (e && e.fx) applyFx(e); }, [fx, bpm]);
+  useEffect(() => {
+    const v = new URLSearchParams(location.search).get("seed");
+    if (v == null) return;
+    generate(/^\d+$/.test(v) ? Number(v) >>> 0 : 1312, false);
+  }, []);
 
   const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
   const setFx = (id, v) => $fx.set({ ...fx, [id]: v });
   const save = async () => { try { const list = await SAVES.all(); await SAVES.put("p" + Date.now(), { name: `${T(t, "beatWord")} ${list.length + 1}`, tracks, bpm, fx, riff: $riff.get() }); toast?.(T(t, "toastSaved")); } catch {  } };
 
-  const generate = () => {
-    ensure();
+  const generate = (seed = (Math.random() * 0xffffffff) >>> 0, animate = true) => {
+    if (animate) ensure();
     if (genT.current) clearInterval(genT.current);
-    const seed = (Math.random() * 0xffffffff) >>> 0;
     const arch = ARCHETYPES[seed % ARCHETYPES.length];
     const g = generateGroove(arch.voices, { seed });
     const rng = mulberry32(seed ^ 0x5bf03635);
@@ -292,6 +296,7 @@ export function rave({ S, toast }) {
     $riff.set(g.riff);
     $bpm.set(Math.round(lerp(rng, arch.bpm)));
     $fx.set({ ...DFX, ...Object.fromEntries(Object.entries(arch.fx).map(([k, range]) => [k, Math.round(lerp(rng, range) * 100) / 100])) });
+    if (!animate) { $tracks.set(full); setSweep(-1); return; }
     $tracks.set(empty());
     setSweep(0);
     let c = 0;
@@ -319,7 +324,7 @@ export function rave({ S, toast }) {
     </div>
 
     <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-      <button id="gen" data-gen aria-label=${T(t, "gen")} aria-busy=${sweep >= 0} class=${`btn btn-sm shrink-0 gap-1.5 btn-accent transition-transform ${sweep >= 0 ? "scale-105" : "btn-outline"}`} onClick=${generate}>
+      <button id="gen" data-gen aria-label=${T(t, "gen")} aria-busy=${sweep >= 0} class=${`btn btn-sm shrink-0 gap-1.5 btn-accent transition-transform ${sweep >= 0 ? "scale-105" : "btn-outline"}`} onClick=${() => generate()}>
         ${Icon("lucide:sparkles", `text-base ${sweep >= 0 ? "animate-pulse" : ""}`)}<span>${T(t, "gen")}</span>
       </button>
       ${PRESETS.map((p) => html`<button data-preset=${p.id} aria-pressed=${activePreset === p.id} class=${`btn btn-sm shrink-0 ${activePreset === p.id ? "btn-primary" : "btn-outline"}`} onClick=${() => { ensure(); $tracks.set(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}

@@ -85,6 +85,28 @@ The verify tier proves the headline the hard way: a mutation that strips a contr
 escaped — the dock truncates an over-long label — so we dropped it; overflow@384 is already enforced across
 all 26 apps on every push.)
 
+### …and what the gates still cannot see
+
+Measuring the gate's strength without measuring its blind spots would be marketing. The same rigour is
+turned on itself in **[`docs/GATE_BLINDSPOTS.md`](docs/GATE_BLINDSPOTS.md)**: a catalogue of real defects
+that shipped **with every gate green**, each with the receipt.
+
+The pattern is always the same — *a gate verifies that a mechanism exists; it does not ask whether the
+mechanism achieves its purpose:*
+
+| The gate asks | It does not ask |
+|---|---|
+| Does a manifest exist? | Can a user actually install this? |
+| Does text render? | Is it in the reader's language? |
+| Does each state pass contrast? | Can you tell the states apart? |
+
+That last one is the sharpest: the dock's active tab was invisible for the life of this project at a
+measured **1.56:1** against its inactive siblings — because axe checks text against its *background*, never
+one state against *another*. Both states passed every check. The difference between them, which is the
+entire point, passed nothing, because nothing looked.
+
+A green gate is a floor, not a verdict.
+
 ## See it live
 
 The farm runs on plain GitHub Pages, no backend:

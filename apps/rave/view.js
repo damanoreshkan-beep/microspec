@@ -224,6 +224,54 @@ const RUMBLE = (ctx, out, t) => {                                   // rolling l
   o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.47);
 };
 
+// beatSig — the identity of a saved beat: pattern + tempo + FX + bass line, i.e. everything that decides
+// how it SOUNDS. Built field-by-field rather than JSON.stringify(record) so it never depends on key order
+// surviving a round trip through IndexedDB.
+//
+// Deliberately compares the WHOLE state, not just the grid: the same rhythm at 128 and at 145 BPM is not
+// the same beat, and neither is one with the filter swept open. So this only ever refuses a save where
+// nothing at all has changed since the last one — the double-tap, never a real variation.
+const beatSig = (r) => JSON.stringify({
+  t: TRACKS.map((tr) => (r.tracks?.[tr.id] || []).map((v) => (v ? 1 : 0)).join("")),
+  b: r.bpm ?? null,
+  f: FX.map((f) => r.fx?.[f.id] ?? null),
+  r: r.riff ?? null,
+});
+// beatName — the name is READ OFF the beat, not counted. "Beat 1 / Beat 2 / Beat 3" told you nothing and
+// silently collided after a delete (list.length+1 reissues a number). A saved beat is now called what it
+// actually is: the genre comes from which voices are playing, the texture from where the FX rack sits, and
+// the tempo is the tempo — "Брудний Ейсід · 142". Nothing invented; every word is a fact about the sound.
+const genreKey = (tracks) => {
+  const on = (id) => tracks?.[id]?.some(Boolean);
+  const voices = TRACKS.filter((tr) => on(tr.id)).length;
+  if (on("hardkick") && on("rumble")) return "gSchranz";
+  if (on("hardkick")) return "gHard";
+  if (on("hoover")) return "gRave";
+  if (on("acid")) return "gAcid";
+  if (on("reese")) return "gReese";
+  return voices <= 4 ? "gMinimal" : "gTechno";
+};
+// One adjective, from whichever knob is actually pushed — checked most-audible first so a crushed, driven
+// beat reads "Crushed" rather than stacking. No knob pushed → no adjective, not a filler word.
+const textureKey = (fx) => fx.crush > 0.3 ? "xCrushed" : fx.drive > 0.45 ? "xDirty" : fx.reverb > 0.5 ? "xDeep"
+  : fx.delay > 0.4 ? "xDub" : fx.swing > 0.28 ? "xSwung" : fx.mfilter < 0.4 ? "xMuted" : null;
+// Ukrainian adjectives agree in gender, and "техно" is NEUTER while every other genre here is masculine —
+// "Дабовий Техно" is simply wrong, the way "a dirty techno" would not be. The `N` variants carry the neuter
+// form; in English they are identical, because English adjectives do not inflect. Cheaper than pretending
+// a template can be language-agnostic.
+const NEUTER = new Set(["gTechno"]);
+const beatName = (t, tracks, bpm, fx) => {
+  const g = genreKey(tracks), tex = textureKey(fx || {});
+  const adj = tex ? T(t, NEUTER.has(g) ? tex + "N" : tex) : "";
+  return `${adj ? adj + " " : ""}${T(t, g)} · ${bpm}`;
+};
+// Two different beats can still land on the same name (same genre, same tempo) — suffix only then.
+const uniqueName = (base, list) => {
+  if (!list.some((it) => it.name === base)) return base;
+  let n = 2; while (list.some((it) => it.name === `${base} (${n})`)) n++;
+  return `${base} (${n})`;
+};
+
 // ---- shared state (atoms survive tab switches) + autosave to IndexedDB ----
 const SAVES = collection("ravePatterns"), CUR = collection("raveCurrent");
 const $tracks = atom(parse(PRESETS[0])), $bpm = atom(130), $fx = atom({ ...DFX });
@@ -310,7 +358,16 @@ export function rave({ S, toast }) {
 
   const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
   const setFx = (id, v) => $fx.set({ ...fx, [id]: v });
-  const save = async () => { try { const list = await SAVES.all(); await SAVES.put("p" + Date.now(), { name: `${T(t, "beatWord")} ${list.length + 1}`, tracks, bpm, fx, riff: $riff.get() }); toast?.(T(t, "toastSaved")); } catch { /* no idb */ } };
+  const save = async () => {
+    try {
+      const list = await SAVES.all();
+      const rec = { tracks, bpm, fx, riff: $riff.get() };
+      const dup = list.find((it) => beatSig(it) === beatSig(rec));
+      if (dup) { toast?.(T(t, "toastDup", { name: dup.name || T(t, "beatWord") })); haptic.bump(); return; }
+      await SAVES.put("p" + Date.now(), { name: uniqueName(beatName(t, tracks, bpm, fx), list), ...rec });
+      toast?.(T(t, "toastSaved"));
+    } catch { /* no idb */ }
+  };
 
   // Generate — pick an archetype from the seed, let the runtime search its Euclidean space for the
   // best-scoring groove, then WRITE it across the grid column by column instead of snapping it in. The

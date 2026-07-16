@@ -73,6 +73,30 @@ export default [
     },
   },
   {
+    // Save was keyed by Date.now(), so a double-tap stored the same beat twice under two different names.
+    // The name is now read off the sound (genre + texture + tempo), so a duplicate is refused rather than
+    // filed as "Beat 2" next to an identical "Beat 1".
+    name: "ідентичний біт не зберігається двічі", run: async (h) => {
+      await ready(h);
+      await h.click('[data-preset="techno"]'); await h.wait(150);
+      await h.click("[data-save]"); await h.wait(500);
+      await h.click("[data-save]"); await h.wait(500);            // той самий стан — має відмовити
+      h.expect(/вже збережено|already saved/i.test(await h.text("[data-toast]")), "друге збереження не попередило про дубль");
+      await h.click('[data-tab="saved"]'); await h.wait(400);
+      let n = 0; for (let i = 0; i < 12; i++) { n = await h.count("[data-saved]"); if (n > 0) break; await h.wait(250); }
+      h.expect(n === 1, `ідентичний біт збережено ${n} разів замість 1`);
+      // …а змінений — зберігається (інший темп = інший біт, не дубль)
+      await h.click('[data-tab="beat"]'); await h.wait(200);
+      await h.click('[data-preset="gabber"]'); await h.wait(150);
+      await h.click("[data-save]"); await h.wait(500);
+      await h.click('[data-tab="saved"]'); await h.wait(400);
+      h.expect((await h.count("[data-saved]")) === 2, "змінений біт не зберігся — дубль-перевірка занадто сувора");
+      // назва читається зі звуку, а не «Біт N»
+      h.expect(/\d{2,3}\s*$/.test(await h.text("[data-saved] .font-semibold")), "у назві немає темпу — вона не виведена зі звуку");
+      for (const _ of [0, 1]) { await h.click("[data-del]"); await h.wait(350); }
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

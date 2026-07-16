@@ -143,18 +143,21 @@ export function ruler({ S, toast }) {
 
   const startArMode = async () => {
     setArErr(null);
+    let session = null;
     try {
       // requestSession FIRST, while the click's transient activation is still valid. Anything awaited
       // before this (a CDN import, a permission prompt) can invalidate it.
-      const session = await navigator.xr.requestSession("immersive-ar", { requiredFeatures: ["hit-test", "local"], optionalFeatures: ["dom-overlay"], domOverlay: { root: overlay.current } });
+      session = await navigator.xr.requestSession("immersive-ar", { requiredFeatures: ["hit-test", "local"], optionalFeatures: ["dom-overlay"], domOverlay: { root: overlay.current } });
       const THREE = await (threeP.current ||= loadThree());
       if (!THREE) throw new Error("three.js failed to load");
       const c = await startAR(session, THREE, { onStat: setArStat, onEnd: () => { setAr(null); arRef.current = null; } });
       setAr(c); arRef.current = c;
     } catch (e) {
-      // Never collapse a failure into "unsupported" again. This used to be `catch { setArSup(false) }`, so a
-      // denied camera, a missing ARCore, an unavailable hit-test, a cancelled prompt and a blocked CDN all
-      // rendered the same dead end with no reason — undiagnosable for the user AND for us. Show what broke.
+      // Close the session we opened before re-throwing it at the user. Without this, a failure ANYWHERE
+      // downstream (three.js, setSession, hit-test) leaks a live immersive session: the camera flashes on,
+      // nothing renders, and every later tap dies with "InvalidStateError: There is already an active,
+      // immersive XRSession" — which masks the real first error behind a symptom of the leak itself.
+      try { await session?.end(); } catch { /* already ended */ }
       setArErr(e?.name ? `${e.name}: ${e.message || ""}`.trim() : String(e?.message || e || "unknown"));
     }
   };

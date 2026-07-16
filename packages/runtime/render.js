@@ -404,6 +404,9 @@ function AppBar() {
   return html`<header class="navbar bg-base-100 sticky top-0 z-30 border-b border-base-300 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1"><span class="text-base font-bold tracking-tight">${T(t, "title")}</span></div>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 
+const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
+  style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 38%, transparent)"></div>`;
+
 function Dock() {
   const t = useStore(A.S.t), cur = useStore(A.S.tab);
   return html`<nav data-dock class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary/15 text-primary" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
@@ -486,6 +489,7 @@ export function App() {
     ${A.spec.detail ? html`<${DetailView} />` : null}
     ${A.spec.filters ? html`<${FilterSheet} />` : null}
     ${screen === "perms" ? html`<${PermissionsScreen} />` : null}
+    <${DockFade} />
     <${InstallModal} />
     <${Dock} />
     <${Toast} />

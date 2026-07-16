@@ -69,6 +69,7 @@ export default [
   },
   {
     name: "ідентичний біт не зберігається двічі", run: async (h) => {
+      await h.click('[data-tab="beat"]'); await h.wait(200);
       await ready(h);
       await h.click('[data-preset="techno"]'); await h.wait(150);
       await h.click("[data-save]"); await h.wait(500);

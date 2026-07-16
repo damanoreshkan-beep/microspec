@@ -4,6 +4,7 @@ import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { validateSpec } from "./validate.js";
 import { T, dictFor, ago, whenLabel } from "./i18n.js";
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "./groove.js";
+import { fingeredSemitone } from "./wind.js";
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
 const baseList = () => ({
@@ -341,4 +342,43 @@ Deno.test("validateSpec: feed body prose must be translated (or declared already
   // "Khreshchatyk 1" would corrupt them, not localize them.
   validateSpec({ ...baseList(), tabs: [{ id: "r", type: "list", icon: "i", label: "hi", card: { layout: "row", title: "name", lead: "a", trailing: "b" } }] });
   validateSpec({ ...baseList(), tabs: [{ id: "f", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", subtitle: "addr" } }] });
+});
+
+// ---- wind: fipple-flute fingering (packages/runtime/wind.js) ----
+// The rule is physics, so it is checkable against the real charts players use — that is the whole reason
+// it is a rule and not a transcribed table.
+
+const SOPILKA = [11, 9, 7, 5, 4, 2, 0];                       // C-major prima: index = holes covered from the top
+const fing = (s) => new Set([...s].map((c, i) => (c === "●" ? i : -1)).filter((i) => i >= 0));
+
+Deno.test("fingeredSemitone: the diatonic staircase (all six covered → tonic, lift from the bottom)", () => {
+  assertEquals(fingeredSemitone(fing("●●●●●●"), SOPILKA), 0);   // До
+  assertEquals(fingeredSemitone(fing("●●●●●○"), SOPILKA), 2);   // Ре
+  assertEquals(fingeredSemitone(fing("●●●●○○"), SOPILKA), 4);   // Мі
+  assertEquals(fingeredSemitone(fing("●●●○○○"), SOPILKA), 5);   // Фа
+  assertEquals(fingeredSemitone(fing("●●○○○○"), SOPILKA), 7);   // Соль
+  assertEquals(fingeredSemitone(fing("●○○○○○"), SOPILKA), 9);   // Ля
+  assertEquals(fingeredSemitone(fing("○○○○○○"), SOPILKA), 11);  // Сі
+});
+
+Deno.test("fingeredSemitone: a fork flattens — the canonical cross-fingering", () => {
+  // The reference case every whistle chart carries: C natural on a D whistle is ○●●○○○ — top hole open, so
+  // the base is the seventh (C♯), and two holes covered BELOW the opening flatten it a semitone. Transposed
+  // to a C sopilka the same fingering must give B♭ (A♯ = 10), a semitone under the open-holes B.
+  assertEquals(fingeredSemitone(fing("○●●○○○"), SOPILKA), 10);
+  // …and the rest of the chromatics fall out of the same line, unasked:
+  assertEquals(fingeredSemitone(fing("●●●●○●"), SOPILKA), 3);   // Ре♯ (base Мі, forked)
+  assertEquals(fingeredSemitone(fing("●●○●●●"), SOPILKA), 6);   // Фа♯ (base Соль, forked)
+  assertEquals(fingeredSemitone(fing("●○●●●●"), SOPILKA), 8);   // Соль♯ (base Ля, forked)
+});
+
+Deno.test("fingeredSemitone: only holes BELOW the first opening fork it", () => {
+  // A hole covered below an opening flattens; the opening itself still decides the base. Covering MORE
+  // below does not flatten further — a fork is a semitone, not a slider.
+  assertEquals(fingeredSemitone(fing("●●○●○○"), SOPILKA), 6);
+  assertEquals(fingeredSemitone(fing("●●○●●●"), SOPILKA), 6);
+  // All covered has no opening, so it can never be forked.
+  assertEquals(fingeredSemitone(fing("●●●●●●"), SOPILKA), 0);
+  // Generic over the family: the scale and hole count are the caller's, not the runtime's.
+  assertEquals(fingeredSemitone(new Set([0]), [7, 5, 0]), 5);   // a 2-hole pipe, its own tuning
 });

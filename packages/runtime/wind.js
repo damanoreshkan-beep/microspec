@@ -22,6 +22,30 @@ import { noiseBuffer } from "./audio.js";
 // entirely gives a synthetic hollowness (a pure square), keeping them equal gives a reed.
 export const FIPPLE = [[1, 1], [2, 0.11], [3, 0.26], [4, 0.05], [5, 0.1], [6, 0.03]];
 
+// fingeredSemitone — which note a set of covered holes sounds, from the ACOUSTICS rather than a chart.
+//
+//   the air column effectively ends at the FIRST OPEN hole from the top — that sets the note;
+//   holes covered BELOW that opening lengthen the column slightly and flatten it about a semitone.
+//
+// The second line is the cross/fork fingering ("вилка"), and it is how a six-hole diatonic pipe reaches
+// notes between its scale steps. Encoding the rule rather than a lookup table means the chromatics fall out
+// instead of being transcribed — and it is checkable: on a D whistle, C natural is fingered ○●●○○○ (top
+// hole open, so the base is the seventh, C♯; two holes covered below it flatten it to C natural). This
+// reproduces that, and every other entry of the standard chart, from one line of physics.
+//
+// Generic across the fipple family — сопілка, флояра, денцівка, фрілка, tin whistle, recorder — because the
+// hole count and the scale are the caller's. `scale[i]` = semitones above the tonic with i holes covered
+// consecutively from the top; scale.length - 1 = the number of holes.
+// NOT modelled: half-holing (rolling a finger to cover part of a hole), which real players use for the
+// semitones a fork cannot reach. A touchscreen has no half of a fingertip.
+export function fingeredSemitone(covered, scale) {
+  const holes = scale.length - 1;
+  let k = 0;
+  while (k < holes && covered.has(k)) k++;
+  for (let i = k + 1; i < holes; i++) if (covered.has(i)) return scale[k] - 1;   // fork → flatten
+  return scale[k];
+}
+
 let _noise;                                    // one shared noise buffer per context — it is 4s of random
 const noiseFor = (ctx) => (_noise ||= noiseBuffer(ctx, "white", 4));
 

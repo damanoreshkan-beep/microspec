@@ -60,6 +60,9 @@ Each row is a real finding no axe/overflow/e2e check could see. 🔴 fixed (hard
 | ruler | 🟠 | total-distance **skeleton never resolves** in the no-GPS/denied state (a disguised infinite loader) | fixed — shows "—" once located OR errored |
 | rave | 🟡 | preset chips (Техно/Ейсід/…) have no active/selected state | fixed — active chip is `btn-primary` while the pattern still matches it |
 | rave | 🟡 | 8 FX sliders are icon-only; several icons ambiguous (drive? reverb?) | fixed — each slider now labelled (icon + name caption) |
+| rave (generated) | 🟠 | pressing Generate yields a mostly-dark 16×16 matrix — the ~6 voices it drew carry the same visual weight as the 10 it skipped, so the payoff is illegible | fixed — silent tracks render off-cells at `bg-base-300/40`, matching their already-dimmed row icon; the beat now pops, nothing is hidden or untappable |
+| rave | 🟡 | the FX rack (6 labelled sliders) now outweighs the instrument: it eats ~40% of the fixed header and clips the sequencer mid-row at the dock. Note the cause — the earlier fix on line 62 (labelling ambiguous icons) doubled the rack height. A fix traded one defect for another | open — needs a layout call (collapse the rack? move FX behind a sheet? two-column labels?), not a unilateral restructure |
+| rave | 🟢 | hat / ohat / ride are near-identical blues (cyan-400 / sky-400 / teal-400), adjacent rows hard to tell apart | wontfix — deliberate family coding (warm = low end, blues = cymbals, greens/purples = bass); hue carries the family, position carries the voice |
 | frontier · hf | 🟡 | two cards show identical `14K★` — `compact()` rounded away the difference | fixed — 1 decimal through 99.9K (14.2K vs 13.6K) |
 | frontier | 🟡 | "Деталі ↗" used an external-link arrow for an in-app drill-down | fixed — runtime uses a chevron when the card drills into a detail view |
 

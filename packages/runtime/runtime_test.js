@@ -7,7 +7,10 @@ import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, 
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
 const baseList = () => ({
-  id: "app", i18n, tabs: [{ id: "feed", type: "list", icon: "lucide:list", label: "hi", card: { layout: "feed", title: "name", body: "desc" } }],
+  // translate is not incidental here: a feed card.body is API prose, and the contract requires it be
+  // translated (or the app declare spec.localized). A fixture without it would not be a legal app.
+  id: "app", i18n, translate: ["desc"],
+  tabs: [{ id: "feed", type: "list", icon: "lucide:list", label: "hi", card: { layout: "feed", title: "name", body: "desc" } }],
 });
 
 Deno.test("validateSpec accepts one valid tab per family", () => {
@@ -59,9 +62,10 @@ Deno.test("validateSpec: feed card needs a preview slot (no raw title-only cards
   const raw = { ...baseList(), tabs: [{ id: "feed", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name" } }] };
   const err = assertThrows(() => validateSpec(raw), Error);
   assert(err.message.includes("spec.tabs[0].card") && /preview slot/.test(err.message), err.message);
-  // any one preview slot satisfies it
+  // any one preview slot satisfies it (a `body` slot also has to declare its translation — see the
+  // body-prose contract test below; that is a separate rule, not this one)
   for (const slot of ["subtitle", "body", "image"]) {
-    validateSpec({ ...baseList(), tabs: [{ id: "feed", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", [slot]: "x" } }] });
+    validateSpec({ ...baseList(), translate: ["x"], tabs: [{ id: "feed", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", [slot]: "x" } }] });
   }
   // row layout is exempt (compact title+value line)
   validateSpec({ ...baseList(), tabs: [{ id: "r", type: "list", icon: "i", label: "hi", card: { layout: "row", title: "name", lead: "a", trailing: "b" } }] });
@@ -320,4 +324,21 @@ Deno.test("validateSpec: detail.body is an accepted long-form slot", () => {
   // thing it drilled into.
   validateSpec({ ...baseList(), detail: { title: "name", body: "desc" } });
   validateSpec({ ...baseList(), detail: { title: "name" } });   // still optional
+});
+
+Deno.test("validateSpec: feed body prose must be translated (or declared already-localized)", () => {
+  // dou shipped English job descriptions into a Ukrainian UI for months. The translate engine existed and
+  // five apps used it; dou just never declared it, and nothing asked.
+  const feedBody = () => { const s = { ...baseList(), tabs: [{ id: "f", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", body: "desc" } }] }; delete s.translate; return s; };
+  const err = assertThrows(() => validateSpec(feedBody()), Error);
+  assert(err.message.includes("spec.tabs[0].card.body") && /translate/.test(err.message), err.message);
+
+  validateSpec({ ...feedBody(), translate: ["desc"] });          // translated at render time
+  validateSpec({ ...feedBody(), localized: true });              // adapter already returns the active locale
+
+  // Scoped to `body` on purpose: identifiers must NOT be machine-translated. A row card of names/values
+  // (crypto, rates) and a subtitle address (nearby) stay legal untouched — translating "Bitcoin" or
+  // "Khreshchatyk 1" would corrupt them, not localize them.
+  validateSpec({ ...baseList(), tabs: [{ id: "r", type: "list", icon: "i", label: "hi", card: { layout: "row", title: "name", lead: "a", trailing: "b" } }] });
+  validateSpec({ ...baseList(), tabs: [{ id: "f", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", subtitle: "addr" } }] });
 });

@@ -25,7 +25,12 @@ export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) 
     const el = ref.current; if (!el) return;
     if (!born.current) born.current = now();
     const target = ph ? null : text;
-    const n = Math.max(1, Math.min(72, target ? target.length : len));
+    // A known value scrambles at its OWN full length — never a capped stand-in. The 72-char cap used to
+    // apply here too, so a 600-char description spent ~900ms as 72 random characters and then jumped to its
+    // real size: the block grew ~8× and everything under it moved. A skeleton that misreports the size of
+    // what is coming is worse than none — it guarantees the layout shift it exists to prevent.
+    // The cap still bounds a PLACEHOLDER (no text yet), where `len` is only the caller's guess.
+    const n = Math.max(1, target ? target.length : Math.min(72, len));
     if (instant()) { el.textContent = target ?? "".padEnd(n, "░"); return; }
     const decodeAt = born.current + minMs;
     let timer, decodeStart = 0;
@@ -36,7 +41,11 @@ export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) 
         const done = Math.floor(Math.min(1, (t0 - decodeStart) / 480) * n);
         if (done >= n) { el.textContent = target; return; }
         el.textContent = target.slice(0, done) + target.slice(done).replace(/\S/g, rc);
-      } else el.textContent = Array.from({ length: n }, rc).join("");
+      // With a target, scramble the text IN PLACE: `\S` → noise, whitespace untouched. That keeps the exact
+      // length, the word shapes and therefore the wrap points, so the paragraph occupies its final box from
+      // the first frame and resolves into itself. A run of N random glyphs cannot do that — it wraps
+      // differently and reflows on decode.
+      } else el.textContent = target ? target.replace(/\S/g, rc) : Array.from({ length: n }, rc).join("");
       timer = setTimeout(tick, speed);
     };
     tick();

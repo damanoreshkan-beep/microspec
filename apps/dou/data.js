@@ -37,7 +37,7 @@ function parse(xml, bron) {
     const desc = tmp.textContent.replace(/\s+/g, " ").trim();
     const m = parseTitle(g("title"));
     const tech = TECH.filter((k) => new RegExp("\\b" + k.replace("+", "\\+"), "i").test(m.position + " " + desc)).slice(0, 3);
-    return { ...m, link: g("link"), bron, tech, desc: desc.slice(0, 150), ts: new Date(g("pubDate")).getTime() };
+    return { ...m, link: g("link"), bron, tech, desc: desc.slice(0, 600), ts: new Date(g("pubDate")).getTime() };
   });
 }
 let _cats = null;

@@ -37,6 +37,8 @@ jobs:
         run: deno run -A packages/gates/efficacy.mjs --ci
       - name: Authorless conformance (a deterministic no-LLM generator produces a passing app)
         run: deno run -A packages/gen/authorless.mjs recipes/books.json --check
+      - name: App-count claims match the farm (a stale README is a claim nobody measured)
+        run: deno run -A deploy/counts.mjs --check
       - name: Build check (dist assembles)
         run: deno run -A deploy/build.mjs
       - name: Discover apps to verify (changed apps; whole farm on a shared change)

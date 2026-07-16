@@ -406,7 +406,7 @@ function AppBar() {
 
 function Dock() {
   const t = useStore(A.S.t), cur = useStore(A.S.tab);
-  return html`<nav data-dock class="fixed left-3 right-3 mx-auto w-fit z-30 flex items-stretch gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_10px_30px_-8px_rgba(0,0,0,.5)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex-1 flex flex-col items-center gap-0.5 px-4 py-1.5 min-w-0 rounded-[1rem] transition-colors max-[260px]:px-2 max-[260px]:gap-0 ${cur === tab.id ? "bg-primary/15 text-primary" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full px-1">${T(t, tab.label)}</span></button>`)}</nav>`;
+  return html`<nav data-dock class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col auto-cols-fr gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-5 py-1.5 min-w-0 rounded-[1rem] transition-colors max-[280px]:px-2.5 ${cur === tab.id ? "bg-primary/15 text-primary" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
 }
 
 function Toast() {

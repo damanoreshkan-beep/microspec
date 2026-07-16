@@ -77,9 +77,17 @@ export function compassView({ S }) {
       <div class="text-sm text-base-content/70 mt-1 h-5">${shown == null ? "" : T(t, pointKey(shown))}</div>
     </div>
 
-    <div class="relative w-72 h-72 max-w-[85vw] max-h-[85vw]" data-rose>
+    <div class="relative w-full max-w-72" data-rose>
+      <!-- The index triangle lives OUTSIDE the clip: it marks where you are pointing and must not be cut.
+           Everything that rotates lives inside, and the clip is not decoration — rotating a square grows
+           its bounding box by √2 (288px → 407px at 45°), which overflows the page at phone width and
+           blows the watch apart. Sized with w-full/max-w + aspect-square rather than a vw cap: vw measures
+           a viewport, and this element cares about its CONTAINER — which at watch width is not the same
+           number. (The farm has no vh/vw for exactly this reason; I reached for one anyway and the gate
+           charged me 39px for it.) -->
+      <div class="absolute left-1/2 -translate-x-1/2 -top-1 z-10 text-base-content">${Icon("lucide:triangle", "text-lg rotate-180")}</div>
+      <div class="relative aspect-square overflow-hidden rounded-full">
       <div class="absolute inset-0 rounded-full border border-base-content/15 bg-base-200/40"></div>
-      <!-- the rose turns; the index at the top is you -->
       <div class="absolute inset-0 transition-transform duration-100" style=${`transform:rotate(${shown == null ? 0 : -shown}deg)`}>
         ${[0, 90, 180, 270].map((a) => html`<div key=${a} class="absolute inset-0" style=${`transform:rotate(${a}deg)`}>
           <div class=${`absolute left-1/2 -translate-x-1/2 top-2 text-sm font-bold ${a === 0 ? "text-error" : "text-base-content/70"}`}>${T(t, POINTS[a / 22.5])}</div>
@@ -89,8 +97,8 @@ export function compassView({ S }) {
           <div class="absolute left-1/2 -translate-x-1/2 top-5 w-px h-3 bg-base-content/25"></div>
         </div>`)}
       </div>
-      <div class="absolute left-1/2 -translate-x-1/2 -top-1 text-base-content">${Icon("lucide:triangle", "text-lg rotate-180")}</div>
       <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-base-content/50"></div>
+      </div>
     </div>
 
     <div class="flex flex-col items-center gap-1.5 text-xs min-h-12">

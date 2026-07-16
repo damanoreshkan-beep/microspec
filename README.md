@@ -93,12 +93,12 @@ The farm runs on plain GitHub Pages, no backend:
 |---|---|
 | [**Habits**](https://damanoreshkan-beep.github.io/microspec/habits/) | a local-first streak tracker — IndexedDB, streak math, a 13-week contribution heatmap, JSON export; fully offline |
 | [**Rave**](https://damanoreshkan-beep.github.io/microspec/rave/) | a polyphonic techno synth — 16 voices, an FX rack, a look-ahead scheduler, saved patterns; synthesised, no audio files. **Generate** is a scored search over Euclidean rhythms, not a dice roll |
-| [**GPS Ruler**](https://damanoreshkan-beep.github.io/microspec/ruler/) | measure distance/area by walking a polyline; **WebXR AR** mode on Android |
+| [**GPS Ruler**](https://damanoreshkan-beep.github.io/microspec/ruler/) | measure distance/area by walking a polyline — haversine segments, shoelace area, live coordinates, scale bar, north arrow |
 | [**Frontier**](https://damanoreshkan-beep.github.io/microspec/frontier/) | fresh breakthrough OSS from GitHub, descriptions translated on-device |
 | [**Neural Nets**](https://damanoreshkan-beep.github.io/microspec/hf/) | Hugging Face models & Spaces catalog with translated model cards |
 
 **Not just feeds.** Habits is a stateful, offline productivity app (your data, exportable); Rave is a real
-instrument; Ruler measures in AR. Read-only catalogs (Frontier, Neural Nets, weather) are one slice —
+instrument; Ruler is a real GPS field tool. Read-only catalogs (Frontier, Neural Nets, weather) are one slice —
 
 Depth lives in the runtime, not in the apps. `packages/runtime/groove.js` is four published results turned
 into four functions — Toussaint's Euclidean rhythms (2005), the Longuet-Higgins & Lee syncopation measure

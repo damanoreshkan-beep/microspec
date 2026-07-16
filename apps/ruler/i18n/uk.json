@@ -30,14 +30,6 @@
   "refresh": "Оновити",
   "toastSaved": "Збережено",
   "toastRemoved": "Видалено",
-  "mGps": "GPS",
-  "mAr": "AR",
-  "arTitle": "AR-лінійка",
-  "arHint": "Наведи камеру на поверхню, став точки й вимірюй у реальних метрах (см-точність).",
-  "arStart": "Почати AR",
-  "arUnsupported": "Цей браузер або пристрій не дає WebXR AR. Потрібен Android з ARCore (Google Play Services for AR); iOS та Safari WebXR не мають зовсім.",
-  "uCm": "см",
   "copyCoords": "Скопіювати координати",
-  "copied": "Координати скопійовано",
-  "arFailed": "AR не запустився"
+  "copied": "Координати скопійовано"
 }

@@ -3,6 +3,7 @@ import { validateSpec } from "./validate.js";
 import { T, dictFor, ago, whenLabel } from "./i18n.js";
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "./groove.js";
 import { fingeredSemitone, handCovered } from "./wind.js";
+import { field, declination, decimalYear, inRange, EPOCH } from "./geomag.js";
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
 const baseList = () => ({
@@ -346,4 +347,36 @@ Deno.test("handCovered: a second finger below the first is a fork, not a re-stac
   assertEquals(semi([1, 3]), 6);   
   assertEquals(semi([3, 5]), 3);   
   assertEquals(semi([3, 1]), semi([1, 3]));
+});
+
+
+Deno.test("geomag: all 100 official NOAA test points", async () => {
+  const txt = await Deno.readTextFile(new URL("./wmm2025_testvalues.txt", import.meta.url));
+  const pts = txt.split("\n").filter((l) => l.trim() && !l.startsWith("#")).map((l) => l.trim().split(/\s+/).map(Number));
+  assertEquals(pts.length, 100, "the official test set is 100 points — a short read is a silent pass");
+  for (const [year, alt, lat, lon, D, I, H, X, Y, Z, F] of pts) {
+    const r = field(lat, lon, alt, year);
+    const where = `(${lat}, ${lon}) alt=${alt}km ${year}`;
+    let dD = Math.abs(r.declination - D); if (dD > 180) dD = 360 - dD;   
+    assert(dD < 0.01, `${where}: declination ${r.declination.toFixed(3)} vs ${D}`);
+    assert(Math.abs(r.inclination - I) < 0.01, `${where}: inclination ${r.inclination.toFixed(3)} vs ${I}`);
+    for (const [name, got, want] of [["X", r.X, X], ["Y", r.Y, Y], ["Z", r.Z, Z], ["H", r.H, H], ["F", r.F, F]]) {
+      assert(Math.abs(got - want) < 5, `${where}: ${name} ${got.toFixed(1)} vs ${want}`);
+    }
+  }
+});
+
+Deno.test("geomag: Ukraine's declination is real, eastward, and drifts", () => {
+  const d = declination(50.45, 30.52, 0.2, 2026.5);
+  assert(d > 6 && d < 10, `Kyiv declination out of the plausible band: ${d.toFixed(2)}°`);
+  assert(Math.abs(declination(50.45, 30.52, 0, 2029.9) - declination(50.45, 30.52, 0, 2025.0)) > 0.1, "no secular drift");
+  assert(Math.abs(declination(51.5, -0.13, 0, 2026.5)) < 3, "London should be near zero");
+  assert(Math.abs(declination(64.8, -147.7, 0, 2026.5)) > 10, "Fairbanks should be far off");
+});
+
+Deno.test("geomag: decimalYear + validity window", () => {
+  assertEquals(decimalYear(new Date(Date.UTC(2026, 0, 1))), 2026);
+  assert(Math.abs(decimalYear(new Date(Date.UTC(2026, 6, 2))) - 2026.5) < 0.01);
+  assert(inRange(2025.0) && inRange(2029.9), "inside the model's window");
+  assert(!inRange(2024.9) && !inRange(2030.0), "outside it, WMM2025 is extrapolation and must say so");
 });

@@ -90,7 +90,7 @@ export function rulers({ S }) {
     rs.forEach((p) => allOn ? next.delete(p) : next.add(p));
     S.filters.setKey("bodies", BODY_KEYS.filter((k) => next.has(k)));
   };
-  return html`<div class="px-4 pt-3 pb-24 max-w-xl mx-auto grid grid-cols-2 gap-2">
+  return html`<div style="padding-bottom:calc(var(--dock-h) + 1.5rem)" class="px-4 pt-3 max-w-xl mx-auto grid grid-cols-2 gap-2">
     ${RULERS.map((rs, i) => {
       const on = rs.every((p) => shown.has(p));
       return html`<button data-sign=${i} aria-pressed=${on} class=${`rounded-2xl border p-3 flex flex-col gap-2 text-left transition ${on ? "border-primary bg-primary/10" : "border-base-300 bg-transparent"}`} onClick=${() => toggle(i)} key=${i}>

@@ -1,3 +1,4 @@
+:root { --dock-h: 4.25rem; }
 [data-theme="signal"] {
   color-scheme: dark;
   --color-base-100: #0A0A0B; --color-base-200: #141416; --color-base-300: #222225;
@@ -59,7 +60,7 @@ body { letter-spacing: -0.006em; }
   letter-spacing: .045em;
   font-size: .68rem;
 }
-nav.fixed.bottom-0 button > span {
+nav[data-dock] button > span {
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: .03em;

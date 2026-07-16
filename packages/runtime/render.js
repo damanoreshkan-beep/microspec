@@ -406,7 +406,7 @@ function AppBar() {
 
 function Dock() {
   const t = useStore(A.S.t), cur = useStore(A.S.tab);
-  return html`<nav class="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 z-30 flex" style="padding-bottom:env(safe-area-inset-bottom)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex-1 flex flex-col items-center gap-0.5 py-2 min-w-0 ${cur === tab.id ? "text-primary" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full px-1">${T(t, tab.label)}</span></button>`)}</nav>`;
+  return html`<nav data-dock class="fixed left-1/2 -translate-x-1/2 z-30 flex items-stretch gap-1 p-1 max-w-[calc(100vw-1.5rem)] rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_10px_30px_-8px_rgba(0,0,0,.5)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex-1 flex flex-col items-center gap-0.5 px-4 py-1.5 min-w-0 rounded-[1rem] transition-colors max-[260px]:px-2 max-[260px]:gap-0 ${cur === tab.id ? "bg-primary/15 text-primary" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full px-1">${T(t, tab.label)}</span></button>`)}</nav>`;
 }
 
 function Toast() {
@@ -414,7 +414,7 @@ function Toast() {
   const isExit = key === "__exit__";
   const text = isExit ? sys("exit", loc) : key === "saved" ? T(t, "toastSaved") : key === "removed" ? T(t, "toastRemoved") : key;
   const icon = isExit ? Icon("lucide:log-out", "text-base-content/70 text-lg") : Icon("lucide:check-circle", "text-success text-lg");
-  return html`<div data-toast class="pointer-events-none" style="position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:5.5rem"><div class=${`alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-3 px-5 font-medium flex items-center gap-2 w-max transition-opacity duration-200 ${key ? "opacity-100" : "opacity-0"}`}>${icon}${text || ""}</div></div>`;
+  return html`<div data-toast class="pointer-events-none" style="position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:calc(var(--dock-h) + 0.75rem)"><div class=${`alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-3 px-5 font-medium flex items-center gap-2 w-max transition-opacity duration-200 ${key ? "opacity-100" : "opacity-0"}`}>${icon}${text || ""}</div></div>`;
 }
 
 function ConverterView({ tab }) {
@@ -480,7 +480,7 @@ export function App() {
     ${A.spec.filters ? html`<${FilterChips} />` : null}
     ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
     ${tab.type === "list" && tab.sort ? html`<${SortBar} tab=${tab} />` : null}
-    <main id="view" class="px-4 pb-24 pt-3 max-w-xl mx-auto flex flex-col gap-2.5">
+    <main id="view" class="px-4 pt-3 max-w-xl mx-auto flex flex-col gap-2.5" style="padding-bottom:calc(var(--dock-h) + 1.5rem)">
       <${TabView} tab=${tab} />
     </main>
     ${A.spec.detail ? html`<${DetailView} />` : null}

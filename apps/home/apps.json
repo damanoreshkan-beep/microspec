@@ -67,7 +67,7 @@
     "bg": "#1A1410",
     "fg": "#E0A94B",
     "href": "./kalimba/",
-    "version": "1.6"
+    "version": "1.7"
   },
   {
     "id": "books",
@@ -177,7 +177,7 @@
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.21"
+    "version": "1.22"
   },
   {
     "id": "sun",
@@ -197,7 +197,7 @@
     "bg": "#0E0B1A",
     "fg": "#C0A9F5",
     "href": "./transit/",
-    "version": "1.5"
+    "version": "1.6"
   },
   {
     "id": "frontier",

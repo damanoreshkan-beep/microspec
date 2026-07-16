@@ -97,7 +97,7 @@ export function ruler({ S, toast }) {
 
   return html`<div class="flex flex-col gap-3">
       <div class="rounded-2xl border border-base-300 bg-base-200/40 overflow-hidden">
-        <canvas ref=${cv} aria-hidden="true" class="w-full h-[52vh] min-h-[280px] max-h-[460px] block text-base-content"></canvas>
+        <canvas ref=${cv} aria-hidden="true" class="w-full h-[52svh] min-h-[280px] max-h-[460px] block text-base-content"></canvas>
       </div>
       <div class="flex items-end justify-between gap-3 px-1">
         <div class="min-w-0">

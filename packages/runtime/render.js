@@ -486,7 +486,13 @@ function Dock() {
   // 100vw is the viewport INCLUDING the scrollbar, so on desktop it over-measures and the cap it computes is
   // wrong by exactly the gutter it exists to protect. w-fit is min(max-content, available) — the island
   // hugs its tabs and can never exceed the space left between the two insets. No viewport unit needed.
-  return html`<nav data-dock class="fixed left-3 right-3 mx-auto w-fit z-30 flex items-stretch gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_10px_30px_-8px_rgba(0,0,0,.5)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex-1 flex flex-col items-center gap-0.5 px-4 py-1.5 min-w-0 rounded-[1rem] transition-colors max-[260px]:px-2 max-[260px]:gap-0 ${cur === tab.id ? "bg-primary/15 text-primary" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full px-1">${T(t, tab.label)}</span></button>`)}</nav>`;
+  // A grid of equal columns, not flex. `flex-1` is `flex: 1 1 0%` — a ZERO basis — and inside a
+  // `fit-content` box that under-computes the container's max-content, so the tabs got squeezed and the
+  // labels ellipsised into "ГОЛО…" / "ЗБЕР…". An island whose own labels are cut off does not read as a
+  // design, it reads as a broken bar. `grid-flow-col auto-cols-fr` under `w-fit` sizes every column to the
+  // WIDEST tab's content: equal tabs, nothing truncated, and the island still hugs exactly what it holds.
+  // Truncation now only ever engages at watch width, where fit-content clamps to the available space.
+  return html`<nav data-dock class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col auto-cols-fr gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-5 py-1.5 min-w-0 rounded-[1rem] transition-colors max-[280px]:px-2.5 ${cur === tab.id ? "bg-primary/15 text-primary" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
 }
 
 function Toast() {

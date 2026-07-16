@@ -12,6 +12,16 @@ export default [
     },
   },
   {
+    // A GPS instrument that never tells you WHERE you are shipped for months — nobody noticed, because
+    // every gate only ever checked the derived numbers (distance, area, accuracy), never the position itself.
+    name: "показує координати позиції", run: async (h) => {
+      await ready(h); await h.wait(200);
+      h.expect((await h.count("[data-coords]")) === 1, "немає читача координат");
+      const c = await h.text("[data-coords]");
+      h.expect(/-?\d+\.\d{5}\s*,\s*-?\d+\.\d{5}/.test(c), `координати не у форматі lat, lng з 5 знаками: "${c}"`);
+    },
+  },
+  {
     name: "очистити скидає полілінію", run: async (h) => {
       await ready(h);
       await h.click("#clear"); await h.wait(150);

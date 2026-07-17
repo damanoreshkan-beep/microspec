@@ -84,3 +84,18 @@ nav[data-dock] button > span {
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
+
+/* Native-app touch feel, farm-wide. The Web Interface Guidelines floor no axe/overflow gate can see:
+   - kill the grey iOS/Android tap-flash (we own every :active state ourselves),
+   - `manipulation` drops the legacy double-tap-zoom delay on anything tappable,
+   - `overscroll-behavior: contain` stops a scrolled sheet/strip from chaining into the page body
+     (rubber-band that scrolls the whole app behind an open modal). */
+body { -webkit-tap-highlight-color: transparent; }
+button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
+.overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
+
+/* Respect prefers-reduced-motion for the decorative Tailwind loops too (ping/pulse/spin/bounce), not just
+   our own reveal — a live-dot pulse or a spinning glyph is motion a sensitive user asked us to still. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }
+}

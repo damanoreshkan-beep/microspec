@@ -51,7 +51,7 @@ function validateTab(tab, p, die, need, spec) {
   if (tab.type === "list") {
     const c = tab.card;
     need(c && typeof c === "object", `${p}.card`, "required object for list tabs");
-    need(["row", "feed", "grid", "table"].includes(c.layout), `${p}.card.layout`, `unknown layout "${c?.layout}" (expected "row", "feed", "grid" or "table")`);
+    need(["row", "feed", "grid", "gallery", "table"].includes(c.layout), `${p}.card.layout`, `unknown layout "${c?.layout}" (expected "row", "feed", "grid", "gallery" or "table")`);
     if (c.layout !== "table") need(nonEmpty(c.title), `${p}.card.title`, "required field name (card title / list key)");
     if (c.layout === "table") need(Array.isArray(c.columns) && c.columns.length, `${p}.card.columns`, 'layout "table" needs a non-empty columns array of { field, ... }');
     if (c.layout === "row") {
@@ -68,6 +68,11 @@ function validateTab(tab, p, die, need, spec) {
     }
     if (c.layout === "grid") {
       need(nonEmpty(c.icon) || nonEmpty(c.image), `${p}.card`, 'layout "grid" needs a tile — set icon (item field with an iconify name) or image (item field with an icon URL)');
+    }
+    // gallery is art-forward: the tile IS how you recognise the thing while scanning a catalogue. Strip the
+    // art and it is just a worse feed. Mirrors spec.schema.json (lockstep).
+    if (c.layout === "gallery") {
+      need(nonEmpty(c.image) || nonEmpty(c.icon), `${p}.card`, 'layout "gallery" needs art — set image (item field with an icon/cover URL) or icon (item field with an iconify name)');
     }
     // UX guardrail: a "feed" card is the large, content-forward card — a title with nothing under it is a
     // raw card. Require at least one preview slot (subtitle / body / image); badges & meta are metadata,

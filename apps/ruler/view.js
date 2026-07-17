@@ -190,7 +190,7 @@ export function ruler({ S, toast }) {
           : ready ? html`<span data-fix class=${`flex items-center gap-1 shrink-0 tabular-nums ${canAdd ? "text-base-content/70" : "text-warning"}`}>
               ${Icon(canAdd ? "lucide:satellite-dish" : "lucide:satellite", "shrink-0")}
               ±${shownAcc < 10 ? Math.round(shownAcc * 10) / 10 : Math.round(shownAcc)} ${T(t, "uM")}
-              ${depth >= 2 ? html`<span class="opacity-55">${depth}×</span>` : null}
+              ${depth >= 2 ? html`<span class="text-[0.9em]">${depth}×</span>` : null}
             </span>`
           : html`<span class="text-base-content/60 flex items-center gap-1.5">${Icon("lucide:loader-circle")}${T(t, "locating")}</span>`}
         ${ready ? html`<button id="coords" data-coords aria-label=${T(t, "copyCoords")} class="font-mono tabular-nums text-base-content/70 flex items-center gap-1.5 min-w-0 active:opacity-60" onClick=${copyCoords}>

@@ -105,7 +105,7 @@ export function air({ S }) {
   // structure-shaped skeleton: gauge ring + forecast band + two stat lists, with decoding value slots
   if (!ready) return html`<div class="flex flex-col gap-5 items-center">
     <div class="w-36 h-36 rounded-full border-[6px] border-base-300 flex items-center justify-center"><span class="text-5xl font-bold tabular-nums text-base-content/40"><${Scramble} len=${2} /></span></div>
-    <div class="text-lg font-bold text-base-content/50"><${Scramble} len=${10} /></div>
+    <div class="text-lg font-bold text-base-content/50"><${Scramble} len=${8} /></div>
     <div class="w-full max-w-[420px] h-28 rounded-2xl overflow-hidden border border-base-300"><${Pixels} /></div>
     <div class="w-full max-w-[420px] flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div class="flex items-center justify-between text-base-content/50 border-b border-base-300/50 pb-2" key=${i}><${Scramble} len=${7} /><${Scramble} len=${5} /></div>`)}</div>
   </div>`;
@@ -150,11 +150,12 @@ export function air({ S }) {
       <div class="text-[0.62rem] font-mono uppercase text-base-content/60 px-1 mb-0.5">${T(t, "pollutantsLabel")}</div>
       ${POLLUTANTS.map((p) => {
         const v = c[p.f], pb = pollutantBand(p.sp, v);
-        return html`<div class="flex items-baseline gap-3 py-1.5 border-b border-base-300/50 last:border-0" key=${p.sp}>
-          <span class="font-mono text-sm font-semibold w-16 shrink-0">${p.label}</span>
-          <span class="flex-1"></span>
-          <span class="tabular-nums font-bold text-lg" style=${pb >= 0 ? `color:${inkFor(pb)}` : ""}>${v != null ? Math.round(v) : "—"}</span>
-          <span class="text-xs text-base-content/60 w-14 shrink-0">µg/m³</span>
+        return html`<div class="flex items-baseline justify-between gap-2 py-1.5 border-b border-base-300/50 last:border-0" key=${p.sp}>
+          <span class="font-mono text-sm font-semibold shrink-0">${p.label}</span>
+          <span class="flex items-baseline gap-1 min-w-0">
+            <span class="tabular-nums font-bold text-lg" style=${pb >= 0 ? `color:${inkFor(pb)}` : ""}>${v != null ? Math.round(v) : "—"}</span>
+            <span class="text-xs text-base-content/60 @max-[240px]:hidden">µg/m³</span>
+          </span>
         </div>`;
       })}
     </div>
@@ -164,11 +165,11 @@ export function air({ S }) {
       <div class="text-[0.62rem] font-mono uppercase text-base-content/60 px-1 mb-0.5">${T(t, "pollenLabel")}</div>
       ${active.length ? active.map((p) => {
         const pb = pollenBand(p.sp, p.v);
-        return html`<div class="flex items-center gap-3 py-1.5 border-b border-base-300/50 last:border-0" key=${p.sp}>
+        return html`<div class="flex items-center gap-2 py-1.5 border-b border-base-300/50 last:border-0" key=${p.sp}>
           <span class="w-2 h-2 rounded-full shrink-0" style=${`background:${POLLEN_DOT[pb] || "var(--fallback-bc,currentColor)"}`}></span>
           <span class="font-medium truncate flex-1 min-w-0">${T(t, p.key)}</span>
-          <span class="text-sm font-semibold" style=${POLLEN_INK[pb] ? `color:${POLLEN_INK[pb]}` : ""}>${T(t, POLLEN_KEYS[pb])}</span>
-          <span class="tabular-nums text-xs text-base-content/60 w-20 text-right shrink-0">${Math.round(p.v)} ${T(t, "grains")}</span>
+          <span class="text-sm font-semibold shrink-0" style=${POLLEN_INK[pb] ? `color:${POLLEN_INK[pb]}` : ""}>${T(t, POLLEN_KEYS[pb])}</span>
+          <span class="tabular-nums text-xs text-base-content/60 text-right shrink-0 @max-[280px]:hidden">${Math.round(p.v)} ${T(t, "grains")}</span>
         </div>`;
       }) : html`<div class="flex items-center gap-2 py-1.5 text-base-content/60"><span class="w-2 h-2 rounded-full bg-base-content/30 shrink-0"></span><span>${T(t, "pnNone")}</span></div>`}
     </div>

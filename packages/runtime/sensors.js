@@ -41,6 +41,31 @@ export const geo = {
   },
 };
 
+export const wakeLock = {
+  supported: typeof navigator !== "undefined" && "wakeLock" in navigator,
+  acquire() {
+    if (!this.supported) return { release: () => {}, supported: false };
+    let sentinel = null, live = true;
+    const take = async () => {
+      if (!live || sentinel || document.visibilityState !== "visible") return;
+      try { sentinel = await navigator.wakeLock.request("screen"); sentinel.addEventListener?.("release", () => { sentinel = null; }); }
+      catch { sentinel = null; }                                   
+    };
+    const onVis = () => { if (document.visibilityState === "visible") take(); };
+    document.addEventListener("visibilitychange", onVis);
+    take();
+    return {
+      supported: true,
+      release() {
+        live = false;
+        document.removeEventListener("visibilitychange", onVis);
+        try { sentinel?.release(); } catch {  }
+        sentinel = null;
+      },
+    };
+  },
+};
+
 export const compass = {
   supported: typeof window !== "undefined" && typeof DeviceOrientationEvent !== "undefined",
   needsPermission: typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function",

@@ -42,6 +42,22 @@ export default [
     },
   },
   {
+    name: "фільтри: мова + епоха, шторка history-backed", run: async (h) => {
+      await ready(h);
+      await h.click("#filter-btn"); await h.wait(250);
+      h.expect((await h.prop("#sheet", "open")) === true, "шторка фільтрів не відкрилась");
+      h.expect((await h.count("#f-lang")) === 1, "немає селекта мови");
+      h.expect((await h.count("#f-era")) === 1, "немає селекта епохи");
+      await h.select("#f-lang", "uk"); await h.wait(200);
+      await h.click("#f-apply"); await h.wait(2500);
+      const n = await h.count(firstCard);
+      h.expect(n > 0 && n < 20, `фільтр мови не звузив вибірку (${n} карток)`);
+      await h.click("#filter-btn"); await h.wait(250);
+      await h.back(); await h.wait(250);
+      h.expect((await h.prop("#sheet", "open")) !== true, "Back не закрив шторку фільтрів");
+    },
+  },
+  {
     name: "пошук фільтрує", run: async (h) => {
       await ready(h);
       const before = await h.count(firstCard);

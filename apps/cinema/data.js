@@ -1,6 +1,27 @@
 const API = "https://archive.org/advancedsearch.php";
-const Q = 'collection:(feature_films) AND mediatype:(movies) AND format:("h.264")';
-const FIELDS = ["identifier", "title", "year", "description", "downloads"];
+const BASE = 'collection:(feature_films) AND mediatype:(movies) AND format:("h.264")';
+const FIELDS = ["identifier", "title", "year", "description", "downloads", "language"];
+
+const LANGS = {
+  en: ["eng", "English"], es: ["spa", "Spanish"], de: ["ger", "German"], tr: ["tur", "Turkish"],
+  fr: ["fre", "French"], ja: ["jpn", "Japanese"], it: ["ita", "Italian"], ru: ["rus", "Russian"], uk: ["ukr", "Ukrainian"],
+};
+
+const ERAS = {
+  silent: "[* TO 1929]",      
+  golden: "[1930 TO 1949]",   
+  mid: "[1950 TO 1969]",      
+  late: "[1970 TO 1999]",     
+  modern: "[2000 TO *]",      
+};
+
+const query = (f = {}) => {
+  const parts = [BASE];
+  const codes = LANGS[f.lang];
+  if (codes) parts.push(`language:(${codes.map((c) => `"${c}"`).join(" OR ")})`);
+  if (ERAS[f.era]) parts.push(`year:${ERAS[f.era]}`);
+  return parts.join(" AND ");
+};
 
 const clean = (d) => {
   const raw = Array.isArray(d) ? d.join(" ") : typeof d === "string" ? d : "";
@@ -16,9 +37,9 @@ const clean = (d) => {
 const year = (y) => { const n = parseInt(Array.isArray(y) ? y[0] : y, 10); return n >= 1870 && n <= 2100 ? String(n) : ""; };
 const views = (n) => { const v = Number(n) || 0; return v >= 1000 ? `${Math.round(v / 1000)}k` : v ? String(v) : ""; };
 
-export async function load() {
+export async function load(filters = {}) {
   const u = new URL(API);
-  u.searchParams.set("q", Q);
+  u.searchParams.set("q", query(filters));
   for (const f of FIELDS) u.searchParams.append("fl[]", f);
   u.searchParams.append("sort[]", "downloads desc");     
   u.searchParams.set("rows", "60");

@@ -97,5 +97,98 @@
       "url": "https://archive.org/details/feature_films",
       "icon": "lucide:archive"
     }
+  },
+  "filters": {
+    "refetch": true,
+    "defaults": {
+      "lang": "",
+      "era": ""
+    },
+    "controls": [
+      {
+        "type": "select",
+        "key": "lang",
+        "label": "fLang",
+        "icon": "lucide:languages",
+        "refetch": true,
+        "chip": true,
+        "options": [
+          [
+            "",
+            "fAny"
+          ],
+          [
+            "en",
+            "lEn"
+          ],
+          [
+            "es",
+            "lEs"
+          ],
+          [
+            "de",
+            "lDe"
+          ],
+          [
+            "tr",
+            "lTr"
+          ],
+          [
+            "fr",
+            "lFr"
+          ],
+          [
+            "ja",
+            "lJa"
+          ],
+          [
+            "it",
+            "lIt"
+          ],
+          [
+            "ru",
+            "lRu"
+          ],
+          [
+            "uk",
+            "lUk"
+          ]
+        ]
+      },
+      {
+        "type": "select",
+        "key": "era",
+        "label": "fEra",
+        "icon": "lucide:calendar-range",
+        "refetch": true,
+        "chip": true,
+        "options": [
+          [
+            "",
+            "fAny"
+          ],
+          [
+            "silent",
+            "eSilent"
+          ],
+          [
+            "golden",
+            "eGolden"
+          ],
+          [
+            "mid",
+            "eMid"
+          ],
+          [
+            "late",
+            "eLate"
+          ],
+          [
+            "modern",
+            "eModern"
+          ]
+        ]
+      }
+    ]
   }
 }

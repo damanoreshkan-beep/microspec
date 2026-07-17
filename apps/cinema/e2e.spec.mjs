@@ -52,6 +52,25 @@ export default [
     },
   },
   {
+    // Filters refetch against the archive rather than sieving the 60 rows already on screen — so this
+    // asserts the SHEET routes and the query actually goes back out, not that a list got shorter.
+    name: "фільтри: мова + епоха, шторка history-backed", run: async (h) => {
+      await ready(h);
+      await h.click("#filter-btn"); await h.wait(250);
+      h.expect((await h.prop("#sheet", "open")) === true, "шторка фільтрів не відкрилась");
+      h.expect((await h.count("#f-lang")) === 1, "немає селекта мови");
+      h.expect((await h.count("#f-era")) === 1, "немає селекта епохи");
+      await h.select("#f-lang", "uk"); await h.wait(200);
+      await h.click("#f-apply"); await h.wait(2500);
+      // Ukrainian is 4 films in the whole archive (measured) — a real, tiny result, not an empty state.
+      const n = await h.count(firstCard);
+      h.expect(n > 0 && n < 20, `фільтр мови не звузив вибірку (${n} карток)`);
+      await h.click("#filter-btn"); await h.wait(250);
+      await h.back(); await h.wait(250);
+      h.expect((await h.prop("#sheet", "open")) !== true, "Back не закрив шторку фільтрів");
+    },
+  },
+  {
     name: "пошук фільтрує", run: async (h) => {
       await ready(h);
       const before = await h.count(firstCard);

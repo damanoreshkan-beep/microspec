@@ -8,10 +8,12 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { Scramble, Pixels, useReveal } from "/_rt/skeleton.js";
 import { eaqiBand, pollutantBand, pollenBand } from "/_rt/air.js";
+import { geo } from "/_rt/sensors.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const LAT = 50.45, LNG = 30.52; // Kyiv
-const URL_ = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${LAT}&longitude=${LNG}` +
+const KYIV = { lat: 50.45, lng: 30.52, place: null, located: false }; // fallback — place null → T("place")
+const urlFor = (lat, lng) =>
+  `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}` +
   "&current=european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,ragweed_pollen,olive_pollen" +
   "&hourly=european_aqi&timezone=auto&forecast_days=2";
 const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -76,16 +78,37 @@ const gauge = (aqi, band) => {
 };
 
 export function air({ S }) {
-  const t = useStore(S.t);
+  const t = useStore(S.t), locale = useStore(S.locale);
+  const [loc, setLoc] = useState(KYIV);
   const [data, setData] = useState(isGate || MOCK ? makeSample() : null);
   const [err, setErr] = useState(false);
 
+  // Resolve the device location once (one fix is enough for a slow-moving reading); keep Kyiv on refusal.
+  // The city name comes from a keyless reverse geocoder in the active language — a data value, not a key.
+  useEffect(() => {
+    if (isGate || MOCK || !geo.supported) return;
+    let stop = () => {};
+    stop = geo.watch(
+      (fix) => {
+        stop();
+        setLoc((l) => ({ ...l, lat: fix.lat, lng: fix.lng, located: true }));
+        fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${fix.lat}&longitude=${fix.lng}&localityLanguage=${locale}`)
+          .then((r) => r.json())
+          .then((g) => { const name = g.city || g.locality || g.principalSubdivision; if (name) setLoc((l) => ({ ...l, place: name })); })
+          .catch(() => {});
+      },
+      () => {}, // denied / unavailable → the Kyiv fallback stands
+    );
+    return () => stop();
+  }, []);
+
+  // Fetch air quality for the current coordinates — refires when the fix replaces the fallback.
   useEffect(() => {
     if (isGate || MOCK) return;
     let live = true;
     const load = async () => {
       try {
-        const r = await fetch(URL_);
+        const r = await fetch(urlFor(loc.lat, loc.lng));
         if (!r.ok) throw 0;
         const d = await r.json();
         const start = Math.max(0, (d.hourly?.time || []).findIndex((x) => x >= d.current.time));
@@ -98,7 +121,7 @@ export function air({ S }) {
     load();
     const id = setInterval(load, 300000); // air quality moves slowly; a 5-min poll is ample
     return () => { live = false; clearInterval(id); };
-  }, []);
+  }, [loc.lat, loc.lng]);
 
   const ready = useReveal(!!data);
   if (err && !data) return html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`;
@@ -131,7 +154,7 @@ export function air({ S }) {
     </div>
     <div class="flex flex-col items-center gap-0.5 -mt-2 text-center px-4">
       <div class="text-lg font-bold" style=${`color:${inkFor(band)}`}>${T(t, AQI_KEYS[clamp(band, 5)])}</div>
-      <div class="text-xs text-base-content/60">${T(t, "place")} · ${T(t, "updated")} ${hhmm(c.time)}</div>
+      <div class="text-xs text-base-content/60 inline-flex items-center gap-1" data-live>${Icon("lucide:map-pin", "text-[0.7rem]")}${loc.place || T(t, loc.located ? "myLocation" : "place")} · ${T(t, "updated")} ${hhmm(c.time)}</div>
     </div>
 
     <!-- 24-hour forecast -->

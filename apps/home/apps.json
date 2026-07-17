@@ -7,7 +7,7 @@
     "bg": "#0d1117",
     "fg": "#7c9cf7",
     "href": "./openapps/",
-    "version": "1.0"
+    "version": "1.5"
   },
   {
     "id": "wiki",
@@ -258,6 +258,16 @@
     "fg": "#D4A84B",
     "href": "./onthisday/",
     "version": "1.5"
+  },
+  {
+    "id": "air",
+    "title": "Якість повітря",
+    "tagline": "Якість повітря наживо — європейський індекс, ключові забрудники та прогноз пилку",
+    "glyph": "lucide:wind",
+    "bg": "#08120F",
+    "fg": "#41C06F",
+    "href": "./air/",
+    "version": "1.0"
   },
   {
     "id": "dou",

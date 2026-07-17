@@ -85,6 +85,21 @@ may still declare `spec.filters` to get the systemic filter UI + persisted state
 `useStore(S.filters)`). **Runtime-internal imports must be RELATIVE** (`./astro.js`), never `/_rt/…`: the
 build copies `packages/runtime/*` verbatim; only *app* files get the `/_rt/`→`../_rt/` base-path rewrite.
 
+### Haptics are systemic — do not call them for a tap
+
+The runtime delegates one `pointerdown` listener and answers every tappable element itself
+(`hapticFor()` in `/_rt/sensors.js`, unit-tested; wired in `index.js`; checked on every app by `verify`).
+**Never write `haptic.tick()` for a tap** — you will double-fire on top of the runtime, and an app where
+some controls answer and others don't feels broken in a way nobody can name.
+
+Declare intent on the element instead: `data-haptic="bump"` (destructive — clear/delete/reset),
+`data-haptic="off"` (this control fires its own, or must stay silent). Typing and disabled controls are
+silent by default. Call `haptic.*` from an app **only for an outcome** the tap cannot predict — a save
+rejected, a note changing under a sliding finger — never for the touch itself.
+
+In e2e use **`h.tap()`**, not `h.click()`: `click()` dispatches no pointer events, so anything a finger
+triggers is invisible to it.
+
 ### Sensor apps — seed the mock, and mark what it renders
 
 `/_rt/sensors.js` gives `haptic · geo · compass · motion · mic · camera · wakeLock`. The reading

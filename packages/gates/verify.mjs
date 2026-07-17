@@ -65,6 +65,23 @@ try {
     if (wantShots) await Deno.writeFile(`${appdir}/states/${ti === 0 ? "main" : "tab-" + tb}.png`, await page.screenshot());
   }
   if (tabList.length > 1) { await h.click(`[data-tab="${tabList[0]}"]`); await h.wait(300); }
+
+  const buzz = await ev(() => {
+    if (!("vibrate" in navigator)) return { skip: true };
+    const el = document.querySelector("nav[data-dock] button, main button:not([disabled]), main a[href]");
+    if (!el) return { none: true };
+    let n = 0;
+    const orig = navigator.vibrate;
+    try {
+      navigator.vibrate = () => { n++; return true; };
+      el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+    } finally { navigator.vibrate = orig; }
+    return { n };
+  });
+  if (buzz.skip) ok("haptic: тактильний відгук на тап", "пропущено — Vibration API немає в цьому браузері");
+  else if (buzz.none) ok("haptic: тактильний відгук на тап", "немає інтерактивних елементів");
+  else buzz.n > 0 ? ok("haptic: тактильний відгук на тап")
+    : no("haptic: тап без відгуку", "runtime не викликав vibrate на pointerdown — делегування в index.js розірване");
   if (wantShots) {
     const baseTheme = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
     await ev((th) => document.documentElement.setAttribute("data-theme", th.includes("light") ? th : th + "-light"), baseTheme);

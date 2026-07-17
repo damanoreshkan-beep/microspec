@@ -3,6 +3,7 @@ import { html } from "htm/preact";
 import { validateSpec } from "./validate.js";
 import { createApp } from "./store.js";
 import { setApp, App } from "./render.js";
+import { haptic, hapticFor } from "./sensors.js";
 
 export function start(spec, arg2) {
   try { validateSpec(spec); }
@@ -17,6 +18,11 @@ export function start(spec, arg2) {
   const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
   applyTheme(S.theme.get());
   S.theme.listen(applyTheme);
+
+  addEventListener("pointerdown", (e) => {
+    const pattern = hapticFor(e.target);
+    if (pattern) haptic[pattern]?.();
+  }, { capture: true, passive: true });
 
   render(html`<${App} />`, document.getElementById("app"));
   S.tab.listen(() => { window.scrollTo({ top: 0 }); if (S.screen.get()) S.screen.set(null); }); 

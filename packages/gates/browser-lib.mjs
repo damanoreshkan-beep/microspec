@@ -65,6 +65,14 @@ export function makeHelpers(page) {
     type:  (s, v) => ev((s, v) => { const e = document.querySelector(s); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); }, s, v),
     select: (s, v) => ev((s, v) => { const e = document.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }, s, v),
     click: (s) => ev((s) => document.querySelector(s)?.click(), s),
+    tap: (s) => ev((s) => {
+      const e = document.querySelector(s);
+      if (!e) return false;
+      e.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+      e.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true }));
+      e.click();
+      return true;
+    }, s),
     hasClass: (s, c) => ev((s, c) => !!document.querySelector(s)?.classList.contains(c), s, c),
     scrollTo: (y) => ev((y) => window.scrollTo(0, y), y),
     scrollY: () => ev(() => window.scrollY),

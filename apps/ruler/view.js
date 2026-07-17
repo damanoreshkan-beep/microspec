@@ -2,7 +2,7 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { geo, haptic } from "/_rt/sensors.js";
+import { geo } from "/_rt/sensors.js";
 import { stationaryTail, meanFix, segErr, totalErr, usableFix } from "/_rt/geofix.js";
 import { collection } from "/_rt/db.js";
 import { Scramble } from "/_rt/skeleton.js";
@@ -96,15 +96,14 @@ export function ruler({ S, toast }) {
   useEffect(() => { draw(cv.current, pts, cur); }, [pts, cur, t]);
   useEffect(() => { const on = () => draw(cv.current, pts, cur); addEventListener("resize", on); return () => removeEventListener("resize", on); }, [pts, cur]);
 
-  const copyCoords = async () => { if (!cur) return; try { await navigator.clipboard.writeText(coordStr(cur)); toast?.(T(t, "copied")); haptic.tick(); } catch {  } };
+  const copyCoords = async () => { if (!cur) return; try { await navigator.clipboard.writeText(coordStr(cur)); toast?.(T(t, "copied")); } catch {  } };
   const add = () => {
     if (!usableFix(cur)) return;
     const tail = stationaryTail(buf.current, { now: Date.now() });
     setPts((p) => [...p, tail.length >= 2 ? meanFix(tail) : { ...cur, n: 1 }]);
-    haptic.tick();
   };
   const undo = () => setPts((p) => p.slice(0, -1));
-  const clear = () => { setPts([]); haptic.bump(); };
+  const clear = () => setPts([]);
 
   const total = pts.reduce((s, p, i) => (i ? s + hav(pts[i - 1], p) : 0), 0);
   const live = pts.length && cur ? hav(pts[pts.length - 1], cur) : null;
@@ -148,7 +147,7 @@ export function ruler({ S, toast }) {
       <div class="flex items-center gap-2">
         <button id="add" aria-label=${T(t, "addPoint")} disabled=${!canAdd} class="btn btn-primary flex-1 min-w-0 rounded-2xl gap-2 disabled:opacity-40" onClick=${add}>${Icon("lucide:map-pin-plus", "text-lg shrink-0")}<span class="truncate">${T(t, "addPoint")}</span></button>
         <button id="undo" aria-label=${T(t, "undo")} disabled=${!pts.length} class="btn btn-outline btn-square rounded-2xl disabled:opacity-40" onClick=${undo}>${Icon("lucide:undo-2", "text-lg")}</button>
-        <button id="clear" aria-label=${T(t, "clear")} disabled=${!pts.length} class="btn btn-ghost btn-square rounded-2xl disabled:opacity-40" onClick=${clear}>${Icon("lucide:eraser", "text-lg")}</button>
+        <button id="clear" data-haptic="bump" aria-label=${T(t, "clear")} disabled=${!pts.length} class="btn btn-ghost btn-square rounded-2xl disabled:opacity-40" onClick=${clear}>${Icon("lucide:eraser", "text-lg")}</button>
       </div>
   </div>`;
 }

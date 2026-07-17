@@ -9,6 +9,21 @@ export const haptic = {
   ok: () => haptic.buzz([12, 40, 12]),
 };
 
+const TAPPABLE = 'button, a[href], summary, label[for], select, input, textarea, [role="button"], [role="tab"], [role="switch"], [role="option"], [data-tab], [data-loc], .btn, .tab';
+const QUIET_INPUT = /^(text|search|email|url|tel|password|number)$/;
+export function hapticFor(el) {
+  const t = el?.closest?.(TAPPABLE);
+  if (!t) return null;
+  if (t.disabled === true || t.hasAttribute?.("disabled") || t.getAttribute?.("aria-disabled") === "true") return null;
+  const want = t.getAttribute?.("data-haptic");
+  if (want) return want === "off" ? null : want;
+  const tag = (t.tagName || "").toLowerCase();
+  const type = t.getAttribute?.("type") || t.type || "text";
+  if (tag === "textarea" || (tag === "input" && QUIET_INPUT.test(type))) return null;
+  if (t.classList?.contains("btn-error")) return "bump";
+  return "tick";
+}
+
 export const geo = {
   supported: typeof navigator !== "undefined" && "geolocation" in navigator,
   watch(onPos, onErr, opts) {

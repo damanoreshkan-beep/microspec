@@ -66,6 +66,7 @@ export async function load(filters = {}) {
 
   const data = JSON.parse(await viaProxy(`${API}?${params}`, isJsonObject, 15000));
 
+  const raw = (data.items || []).length;
   const items = (data.items || []).map((it) => ({
     id: String(it.id),
     title: it.name,
@@ -79,10 +80,12 @@ export async function load(filters = {}) {
     url: it.html_url,
   })).filter((it) => it.title);
 
-  // GitHub's Search API serves only the first 1000 results and 422s a request past them, so offer "more"
-  // only while the NEXT page (page + 1) still fits inside that window — and stop when a short page proves
-  // there is nothing behind it. The cursor we hand back is this page's number; loadMore returns it as
-  // filters.cursor and we resume at page + 1.
-  const more = items.length === PAGE && (page + 1) * PAGE <= 1000;
+  // "Is there another page" is a property of the SOURCE, not of our client-side filtering: keying it off the
+  // post-filter `items.length` meant one dropped item (empty name) on a full page read as "last page" and
+  // killed paging with results still behind it. Use GitHub's own signals — a full RAW page (more likely
+  // follows) and the total, capped at the 1000 results the Search API will actually serve (it 422s past
+  // them). The cursor we hand back is this page's number; loadMore returns it as filters.cursor → page + 1.
+  const total = Math.min(data.total_count ?? 0, 1000);
+  const more = raw === PAGE && page * PAGE < total;
   return { items, next: more ? String(page) : undefined };
 }

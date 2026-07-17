@@ -87,7 +87,7 @@
     "bg": "#0B1220",
     "fg": "#7DD3FC",
     "href": "./compass/",
-    "version": "1.3"
+    "version": "1.4"
   },
   {
     "id": "launches",
@@ -197,7 +197,7 @@
     "bg": "#0A0A0B",
     "fg": "#F5B94D",
     "href": "./sun/",
-    "version": "1.27"
+    "version": "1.28"
   },
   {
     "id": "sopilka",
@@ -257,7 +257,7 @@
     "bg": "#1f2430",
     "fg": "#34d399",
     "href": "./ruler/",
-    "version": "1.18"
+    "version": "1.19"
   },
   {
     "id": "hn",

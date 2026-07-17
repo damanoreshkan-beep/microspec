@@ -4,6 +4,7 @@ import { html } from "htm/preact";
 import { validateSpec } from "./validate.js";
 import { createApp } from "./store.js";
 import { setApp, App } from "./render.js";
+import { haptic, hapticFor } from "./sensors.js";
 
 // start(spec, load) — data app; OR start(spec, { load?, views? }) — tool app with custom views.
 export function start(spec, arg2) {
@@ -21,6 +22,17 @@ export function start(spec, arg2) {
   const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
   applyTheme(S.theme.get());
   S.theme.listen(applyTheme);
+
+  // Touch feedback, for the whole farm, from one place. These are apps, not pages: a tap that answers
+  // is most of what separates the two, and a runtime that leaves it to each view ships a dock that
+  // buzzes next to buttons that don't. `pointerdown`, not click — the answer has to land under the
+  // finger, not after the handler. Passive + capture so it can never delay or swallow a gesture, and it
+  // reads the element rather than the app's intent, so a control added tomorrow is already covered.
+  // (navigator.vibrate is Android/Chrome; iOS Safari has no Vibration API at all and stays silent.)
+  addEventListener("pointerdown", (e) => {
+    const pattern = hapticFor(e.target);
+    if (pattern) haptic[pattern]?.();
+  }, { capture: true, passive: true });
 
   render(html`<${App} />`, document.getElementById("app"));
   S.tab.listen(() => { window.scrollTo({ top: 0 }); if (S.screen.get()) S.screen.set(null); }); // leaving a tab closes its sub-screen

@@ -77,6 +77,17 @@ export function makeHelpers(page) {
     // set a <select> value and fire change (native selects react to change, not input)
     select: (s, v) => ev((s, v) => { const e = document.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }, s, v),
     click: (s) => ev((s) => document.querySelector(s)?.click(), s),
+    // A real tap: pointerdown THEN click. `click()` alone dispatches neither pointer nor touch events, so
+    // anything a finger triggers — the runtime's delegated haptic, a press state, a pointer-driven
+    // instrument — is invisible to click() and passes a test it never actually exercised.
+    tap: (s) => ev((s) => {
+      const e = document.querySelector(s);
+      if (!e) return false;
+      e.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+      e.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true }));
+      e.click();
+      return true;
+    }, s),
     hasClass: (s, c) => ev((s, c) => !!document.querySelector(s)?.classList.contains(c), s, c),
     scrollTo: (y) => ev((y) => window.scrollTo(0, y), y),
     scrollY: () => ev(() => window.scrollY),

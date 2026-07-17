@@ -70,6 +70,28 @@ try {
     if (wantShots) await Deno.writeFile(`${appdir}/states/${ti === 0 ? "main" : "tab-" + tb}.png`, await page.screenshot());
   }
   if (tabList.length > 1) { await h.click(`[data-tab="${tabList[0]}"]`); await h.wait(300); }
+
+  // ── Touch feedback is a farm-wide must-have, so it is checked on EVERY app, not left to one app's e2e. ──
+  // hapticFor() is unit-tested, but a pure function nobody calls is a pure function nobody feels: the whole
+  // feature is the delegated listener in index.js, and that wiring is exactly what a unit test cannot see.
+  // So: spy on navigator.vibrate, dispatch a REAL pointerdown (h.click() calls .click(), which never fires
+  // one — a tap in this harness is not a tap), and require the runtime to answer.
+  const buzz = await ev(() => {
+    if (!("vibrate" in navigator)) return { skip: true };
+    const el = document.querySelector("nav[data-dock] button, main button:not([disabled]), main a[href]");
+    if (!el) return { none: true };
+    let n = 0;
+    const orig = navigator.vibrate;
+    try {
+      navigator.vibrate = () => { n++; return true; };
+      el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+    } finally { navigator.vibrate = orig; }
+    return { n };
+  });
+  if (buzz.skip) ok("haptic: тактильний відгук на тап", "пропущено — Vibration API немає в цьому браузері");
+  else if (buzz.none) ok("haptic: тактильний відгук на тап", "немає інтерактивних елементів");
+  else buzz.n > 0 ? ok("haptic: тактильний відгук на тап")
+    : no("haptic: тап без відгуку", "runtime не викликав vibrate на pointerdown — делегування в index.js розірване");
   if (wantShots) {
     const baseTheme = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
     await ev((th) => document.documentElement.setAttribute("data-theme", th.includes("light") ? th : th + "-light"), baseTheme);

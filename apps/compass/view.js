@@ -21,7 +21,7 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { geo, compass, haptic } from "/_rt/sensors.js";
+import { geo, compass } from "/_rt/sensors.js";
 import { declination, decimalYear, inRange } from "/_rt/geomag.js";
 import { Scramble } from "/_rt/skeleton.js";
 
@@ -67,7 +67,6 @@ export function compassView({ S }) {
   useEffect(() => () => stopRef.current?.(), []);
 
   const grant = async () => {
-    haptic.tick();
     if (await compass.request()) { setNeedPerm(false); stopRef.current = listen(); }
   };
 

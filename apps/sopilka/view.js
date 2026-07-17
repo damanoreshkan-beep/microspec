@@ -148,7 +148,7 @@ export function sopilka({ S }) {
     </div>
 
     <button id="over" data-over aria-pressed=${over} class=${`btn btn-sm rounded-2xl gap-2 ${over ? "btn-primary" : "btn-outline"}`}
-      onClick=${() => { setOver((v) => !v); haptic.bump(); }}>${Icon("lucide:wind", "text-base")}${T(t, "overblow")}</button>
+      data-haptic="bump" onClick=${() => setOver((v) => !v)}>${Icon("lucide:wind", "text-base")}${T(t, "overblow")}</button>
     ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
   </div>`;
 }

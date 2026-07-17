@@ -14,6 +14,36 @@ export const haptic = {
   ok: () => haptic.buzz([12, 40, 12]),
 };
 
+// Which haptic a tap on this element deserves — or none. Pure, so it is unit-tested rather than felt.
+//
+// Touch feedback is not a per-app flourish: an app where the dock buzzes and the buttons don't feels
+// broken in a way nobody can name, and asking every view to remember haptic.tick() guarantees exactly
+// that. So the runtime delegates one listener (index.js) and this decides. An app writes nothing.
+//
+//   data-haptic="off"  — opt out (an element that fires its own, or must stay silent)
+//   data-haptic="bump" — opt up (destructive: clear, delete, reset)
+//
+// Typing is deliberately silent: a buzz per keystroke is a phone with a fault, not a tactile UI. Disabled
+// controls are silent too — feedback for an action that will not happen is a lie you can feel.
+const TAPPABLE = 'button, a[href], summary, label[for], select, input, textarea, [role="button"], [role="tab"], [role="switch"], [role="option"], [data-tab], [data-loc], .btn, .tab';
+const QUIET_INPUT = /^(text|search|email|url|tel|password|number)$/;
+export function hapticFor(el) {
+  const t = el?.closest?.(TAPPABLE);
+  if (!t) return null;
+  // Both forms: preact sets `disabled` as a PROPERTY when the DOM has one, so the attribute can be absent
+  // while the control is genuinely disabled — checking either alone misses half the cases.
+  if (t.disabled === true || t.hasAttribute?.("disabled") || t.getAttribute?.("aria-disabled") === "true") return null;
+  const want = t.getAttribute?.("data-haptic");
+  if (want) return want === "off" ? null : want;
+  const tag = (t.tagName || "").toLowerCase();
+  // The ATTRIBUTE, not the property: an <input> with no type attribute really is a text field, but a
+  // `.type` that failed to reflect would silence every checkbox and radio in the farm.
+  const type = t.getAttribute?.("type") || t.type || "text";
+  if (tag === "textarea" || (tag === "input" && QUIET_INPUT.test(type))) return null;
+  if (t.classList?.contains("btn-error")) return "bump";
+  return "tick";
+}
+
 // geo — geolocation as a callback watch. onErr("denied"|"unavailable"|"unsupported").
 // opts override the PositionOptions — e.g. { enableHighAccuracy: true, maximumAge: 1000 } for a precise ruler.
 //

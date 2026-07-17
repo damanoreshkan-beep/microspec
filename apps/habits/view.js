@@ -215,7 +215,7 @@ export function habits({ S, closeScreen }) {
               <button data-today class=${`w-9 h-9 rounded-full shrink-0 border-2 flex items-center justify-center active:scale-90 transition`}
                 aria-pressed=${!!marks[h.id + "|" + today()]} aria-label=${`${h.name} ${T(t, "todayToggle")}`}
                 style=${`border-color:${h.color};${marks[h.id + "|" + today()] ? "background:" + h.color + ";color:#fff" : "color:" + h.color}`}
-                onClick=${() => toggle(h.id, today())}>${Icon("lucide:check", "text-lg")}</button>
+                data-haptic="off" onClick=${() => toggle(h.id, today())}>${Icon("lucide:check", "text-lg")}</button>
             </div>
             <${Dots} h=${h} marks=${marks} onToggle=${toggle} t=${t} />
           </div></div>`; })}

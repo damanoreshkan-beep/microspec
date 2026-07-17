@@ -516,3 +516,19 @@ Deno.test("validateSpec: an action either leaves the app or plays in it", () => 
   assert(err.message.includes("spec.detail.actions[0].play"), err.message);
   assertThrows(() => validateSpec(withDetail([{ play: "video" }])), Error, "spec.detail.actions[0].label");
 });
+
+Deno.test("validateSpec: gallery needs art, because the art IS the recognition", () => {
+  const gal = (card) => ({ ...baseList(), tabs: [{ id: "apps", type: "list", icon: "i", label: "hi", card: { layout: "gallery", title: "name", ...card } }] });
+  validateSpec(gal({ image: "iconUrl" }));
+  validateSpec(gal({ icon: "glyph" }));
+  validateSpec(gal({ image: "iconUrl", subtitle: "publisher", badges: [{ field: "version" }] }));
+  const err = assertThrows(() => validateSpec(gal({ subtitle: "publisher" })), Error);
+  assert(err.message.includes("spec.tabs[0].card") && /needs art/.test(err.message), err.message);
+  validateSpec(gal({ image: "iconUrl" }));
+  assertThrows(() => validateSpec(gal({ image: "iconUrl", title: "" })), Error, "spec.tabs[0].card.title");
+});
+
+Deno.test("validateSpec: gallery is a real layout, and a typo is still caught", () => {
+  const bad = { ...baseList(), tabs: [{ id: "t", type: "list", icon: "i", label: "l", card: { layout: "galery", title: "name", image: "x" } }] };
+  assertThrows(() => validateSpec(bad), Error, "spec.tabs[0].card.layout");
+});

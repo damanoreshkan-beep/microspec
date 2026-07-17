@@ -734,9 +734,10 @@
                   "row",
                   "feed",
                   "grid",
+                  "gallery",
                   "table"
                 ],
-                "description": "row -> compact rates row; feed -> rich card; grid -> Android-style launcher icon tile; table -> dense scannable rows with declared `columns` (+ optional heat)."
+                "description": "row -> compact rates row; feed -> rich card; grid -> Android-style launcher icon tile (title only, the tile IS the destination); gallery -> catalog showcase: art-forward tile + title + subtitle + badges, drills into the detail (software/game/media catalogues); table -> dense scannable rows with declared `columns` (+ optional heat)."
               },
               "columns": {
                 "type": "array",
@@ -964,7 +965,8 @@
                       "enum": [
                         "row",
                         "feed",
-                        "grid"
+                        "grid",
+                        "gallery"
                       ]
                     }
                   }
@@ -972,6 +974,22 @@
                 "then": {
                   "required": [
                     "title"
+                  ]
+                }
+              },
+              {
+                "$comment": "gallery is art-forward: the tile IS the recognition — a software/game catalogue you scan by icon. Without one it is a worse feed. Mirrored in packages/runtime/validate.js; the two validators must stay in lockstep.",
+                "if": {
+                  "properties": {
+                    "layout": {
+                      "const": "gallery"
+                    }
+                  }
+                },
+                "then": {
+                  "anyOf": [
+                    { "required": ["image"] },
+                    { "required": ["icon"] }
                   ]
                 }
               },

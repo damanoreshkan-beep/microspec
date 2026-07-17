@@ -121,6 +121,24 @@ function Card({ item: it, card, hide }) {
     return href ? html`<a href=${href} aria-label=${it[card.title] ?? ""} class="block min-w-0">${inner}</a>` : inner;
   }
 
+  if (card.layout === "gallery") {
+    const art = html`<div class="aspect-square w-full rounded-2xl flex items-center justify-center overflow-hidden border border-base-300 bg-base-200/60 shrink-0">
+      ${card.image && it[card.image]
+        ? html`<img src=${it[card.image]} alt="" loading="lazy" class=${`w-full h-full ${card.imageFit === "cover" ? "object-cover" : "object-contain p-3"}`}/>`
+        : html`<iconify-icon icon=${(card.icon && it[card.icon]) || "lucide:package"} class="text-3xl opacity-60"></iconify-icon>`}
+    </div>`;
+    const gsub = card.subtitle ? field(it, card.subtitle, loc) : null;
+    return html`<div class="relative flex flex-col gap-2 min-w-0 active:scale-[.97] transition-transform">
+      ${art}
+      <div class="min-w-0">
+        <div class="text-sm font-semibold leading-tight line-clamp-2 break-words">${field(it, card.title, loc)}</div>
+        ${gsub ? html`<div class="text-xs text-base-content/60 truncate mt-0.5">${gsub}</div>` : null}
+        ${card.badges?.length ? html`<div class="flex flex-wrap gap-1 mt-1.5"><${Badges} item=${it} badges=${card.badges} /></div>` : null}
+      </div>
+      <button class="aw-tap absolute inset-0 z-[1] rounded-2xl" aria-label=${`${field(it, card.title, loc) ?? ""} — ${T(t, card.more || "title")}`} onClick=${() => A.S.detail.set(it)}></button>
+    </div>`;
+  }
+
   const sub = card.subtitle ? field(it, card.subtitle, loc) : null;      
   const bodyTxt = card.body ? field(it, card.body, loc) : null;          
   const body = html`<div class="card-body p-4 gap-2 @max-[240px]:p-3 @max-[240px]:gap-1">
@@ -255,6 +273,7 @@ function ListView({ tab }) {
   const banner = tab.banner ? html`<${Banner} banner=${tab.banner} key="banner" />` : null;
   const cards = items.map((it) => html`<${Card} item=${it} card=${tab.card} key=${A.favKey(it) || it[tab.card.title]} />`);
   if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`]);
+  if (tab.card.layout === "gallery") return Frag([banner, html`<div class="@container pt-2" key="gallery"><div class="grid grid-cols-2 @max-[240px]:grid-cols-1 @min-[560px]:grid-cols-3 gap-x-3 gap-y-5">${cards}</div></div>`]);
   const more = tab.paginate && tab.source !== "fav" ? html`<${LoadMore} key="more" />` : null;
   if (tab.card.layout === "table") return Frag([banner, html`<${Table} items=${items} tab=${tab} key="tbl" />`, more]);
   if (!tab.sections) return Frag([banner, ...cards, more]);

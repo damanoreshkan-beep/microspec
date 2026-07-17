@@ -70,6 +70,16 @@
     "version": "1.7"
   },
   {
+    "id": "winapps",
+    "title": "Каталог програм",
+    "tagline": "Каталог програм для Windows — тисячі пакетів Chocolatey: версія, видавець, команда встановлення",
+    "glyph": "lucide:app-window",
+    "bg": "#0f1115",
+    "fg": "#5eb3f6",
+    "href": "./winapps/",
+    "version": "1.0"
+  },
+  {
     "id": "cinema",
     "title": "Кіно",
     "tagline": "Кіно — фільми суспільного надбання з Internet Archive: дивись просто в застосунку, продовжуй з того місця, де зупинився",
@@ -97,7 +107,7 @@
     "bg": "#0B1220",
     "fg": "#7DD3FC",
     "href": "./compass/",
-    "version": "1.5"
+    "version": "1.6"
   },
   {
     "id": "launches",

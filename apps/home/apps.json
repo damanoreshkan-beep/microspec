@@ -70,6 +70,16 @@
     "version": "1.7"
   },
   {
+    "id": "cinema",
+    "title": "Кіно",
+    "tagline": "Кіно — фільми суспільного надбання з Internet Archive: дивись просто в застосунку, продовжуй з того місця, де зупинився",
+    "glyph": "lucide:clapperboard",
+    "bg": "#0f0f12",
+    "fg": "#f4b942",
+    "href": "./cinema/",
+    "version": "1.0"
+  },
+  {
     "id": "books",
     "title": "Книги",
     "tagline": "Каталог безкоштовних книг Project Gutenberg — 78 000+ творів, опис українською",

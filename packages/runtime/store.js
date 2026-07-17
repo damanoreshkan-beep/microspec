@@ -28,6 +28,7 @@ export function createApp(spec, dataLoad) {
     sheet: atom(false),
     detail: atom(null),
     screen: atom(null),
+    player: atom(null),
     installEvent: atom(null),
     installOpen: atom(false),
   };

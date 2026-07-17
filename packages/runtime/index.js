@@ -28,22 +28,34 @@ export function start(spec, arg2) {
   S.tab.listen(() => { window.scrollTo({ top: 0 }); if (S.screen.get()) S.screen.set(null); }); 
 
   const overlays = [
-    [S.detail, () => S.detail.set(null), (v) => v != null],
-    [S.screen, () => S.screen.set(null), (v) => v != null],
     [S.sheet, () => S.sheet.set(false), (v) => v === true],
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],
+    [S.screen, () => S.screen.set(null), (v) => v != null],
+    [S.detail, () => S.detail.set(null), (v) => v != null],
+    [S.player, () => S.player.set(null), (v) => v != null],
   ];
-  const anyOpen = () => overlays.some(([a, , isOpen]) => isOpen(a.get()));
-  let pushed = false, selfBack = false, exitArmed = false, exitTimer;
+  const openCount = () => overlays.filter(([a, , isOpen]) => isOpen(a.get())).length;
+  const anyOpen = () => openCount() > 0;
+  let depth = 0, fromPop = false, selfBack = false, exitArmed = false, exitTimer;
   for (const [a] of overlays) a.listen(() => {
-    const open = anyOpen();
-    if (open && !pushed) { pushed = true; history.pushState({ msOverlay: 1 }, ""); }
-    else if (!open && pushed) { pushed = false; if (history.state?.msOverlay) { selfBack = true; history.back(); } }  
+    const n = openCount();
+    if (fromPop) { depth = n; return; }                       
+    if (n > depth) { depth = n; history.pushState({ msOverlay: 1 }, ""); }
+    else if (n < depth) { const d = depth - n; depth = n; if (history.state?.msOverlay) { selfBack = true; history.go(-d); } } 
   });
   history.pushState({ msRoot: 1 }, "");
   addEventListener("popstate", () => {
     if (selfBack) { selfBack = false; return; }                                       
-    if (anyOpen()) { pushed = false; overlays.forEach(([, close]) => close()); return; }  
+    if (anyOpen()) {
+      for (let i = overlays.length - 1; i >= 0; i--) {
+        const [a, close, isOpen] = overlays[i];
+        if (!isOpen(a.get())) continue;
+        fromPop = true; try { close(); } finally { fromPop = false; }
+        depth = openCount();
+        break;
+      }
+      return;
+    }
     if (exitArmed) { clearTimeout(exitTimer); exitArmed = false; history.back(); return; } 
     exitArmed = true;
     history.pushState({ msRoot: 1 }, "");                                              

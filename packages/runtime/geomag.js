@@ -95,3 +95,5 @@ export const decimalYear = (d = new Date()) => {
 };
 
 export const inRange = (year = decimalYear()) => year >= EPOCH && year < VALID_UNTIL;
+
+export const trueFrom = (magneticDeg, dec) => ((dec == null ? magneticDeg : magneticDeg + dec) % 360 + 360) % 360;

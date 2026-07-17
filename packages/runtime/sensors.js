@@ -33,9 +33,20 @@ export const compass = {
     if (this.needsPermission) { try { return (await DeviceOrientationEvent.requestPermission()) === "granted"; } catch { return false; } }
     return true;
   },
-  start(onHeading) {
+  start(onHeading, { trueNorth = true } = {}) {
     if (!this.supported) return () => {};
-    let ema = null;
+    let ema = null, dec = null, wmm = null, stopGeo = () => {};
+
+    if (trueNorth && geo.supported) {
+      stopGeo = geo.watch(async (p) => {
+        try {
+          wmm = wmm || await import("./geomag.js");
+          const y = wmm.decimalYear();
+          dec = wmm.inRange(y) ? wmm.declination(p.lat, p.lng, (p.altitude || 0) / 1000, y) : null;
+        } catch { dec = null; }                                                    
+      }, () => { dec = null; }, { enableHighAccuracy: false, maximumAge: 300000, timeout: 20000 });
+    }
+
     const handler = (e) => {
       let h = null;
       if (typeof e.webkitCompassHeading === "number") h = e.webkitCompassHeading;      
@@ -44,10 +55,10 @@ export const compass = {
       h = (h + ((screen.orientation && screen.orientation.angle) || 0)) % 360;          
       if (ema == null) ema = h;
       else { const d = ((h - ema + 540) % 360) - 180; ema = (ema + 0.25 * d + 360) % 360; } 
-      onHeading(ema);
+      onHeading(wmm ? wmm.trueFrom(ema, dec) : ema, { magnetic: ema, declination: dec, isTrue: dec != null });
     };
     const evt = "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation";
     window.addEventListener(evt, handler, true);
-    return () => window.removeEventListener(evt, handler, true);
+    return () => { stopGeo(); window.removeEventListener(evt, handler, true); };
   },
 };

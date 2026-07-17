@@ -17,8 +17,11 @@ const pointKey = (deg) => POINTS[Math.round(norm(deg) / 22.5) % 16];
 
 export function compassView({ S }) {
   const t = useStore(S.t);
-  const [mag, setMag] = useState(isGate || MOCK ? 0 : null);      
-  const [pos, setPos] = useState(isGate || MOCK ? SAMPLE : null);
+  const year = decimalYear();
+  const stale = !inRange(year);                                   
+  const seed = isGate || MOCK ? (stale ? null : declination(SAMPLE.lat, SAMPLE.lng, 0, year)) : null;
+  const [shown, setShown] = useState(isGate || MOCK ? norm(seed || 0) : null);   
+  const [dec, setDec] = useState(seed);
   const [geoErr, setGeoErr] = useState(null);
   const [needPerm, setNeedPerm] = useState(false);
   const stopRef = useRef(null);
@@ -26,29 +29,25 @@ export function compassView({ S }) {
   useEffect(() => {
     if (isGate || MOCK) return;
     if (!geo.supported) { setGeoErr("unsupported"); return; }
-    return geo.watch((p) => { setPos(p); setGeoErr(null); }, (e) => setGeoErr(e), { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 });
+    return geo.watch(() => setGeoErr(null), (e) => setGeoErr(e), { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 });
   }, []);
 
+  const listen = () => compass.start((deg, m) => { setShown(deg); setDec(m.declination); });
   useEffect(() => {
     if (isGate || MOCK) return;
     if (!compass.supported) return;
     if (compass.needsPermission) { setNeedPerm(true); return; }    
-    stopRef.current = compass.start(setMag);
+    stopRef.current = listen();
     return () => stopRef.current?.();
   }, []);
   useEffect(() => () => stopRef.current?.(), []);
 
   const grant = async () => {
     haptic.tick();
-    if (await compass.request()) { setNeedPerm(false); stopRef.current = compass.start(setMag); }
+    if (await compass.request()) { setNeedPerm(false); stopRef.current = listen(); }
   };
 
-  const year = decimalYear();
-  const stale = !inRange(year);                                   
-  const dec = pos && !stale ? declination(pos.lat, pos.lng, (pos.altitude || 0) / 1000, year) : null;
-  const trueHdg = mag != null && dec != null ? norm(mag + dec) : null;
-  const shown = trueHdg ?? (mag != null ? norm(mag) : null);      
-  const isTrue = trueHdg != null;
+  const isTrue = dec != null;
 
   return html`<div class="flex flex-col items-center gap-4">
     <div class="text-center min-h-20">

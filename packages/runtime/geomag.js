@@ -143,3 +143,9 @@ export const decimalYear = (d = new Date()) => {
 // inRange — WMM2025 is only valid 2025.0–2030.0. Outside that the coefficients are extrapolation, and the
 // honest thing is to say so rather than quietly keep drawing an arrow.
 export const inRange = (year = decimalYear()) => year >= EPOCH && year < VALID_UNTIL;
+
+// Compose a magnetic heading with the local declination into a true one. The whole correction is this
+// single line — which is exactly why it belongs in one place: spread across apps it is one addition each
+// of them can get backwards (the sign of declination is east-positive, so it ADDS) or simply never do.
+// A null declination means no position, hence no model, hence no correction: the heading stays magnetic.
+export const trueFrom = (magneticDeg, dec) => ((dec == null ? magneticDeg : magneticDeg + dec) % 360 + 360) % 360;

@@ -5,15 +5,18 @@
 // not a constant you can hardcode — it depends on where you stand and it drifts every year, which is why
 // the correction is a global model rather than a number.
 //
-// So this app is really two instruments stacked: the phone's magnetometer, and /_rt/geomag.js — the World
-// Magnetic Model (WMM2025, NGA/DGC, NOAA/BGS), degree-12 spherical harmonics over 90 Gauss coefficients,
-// evaluated on-device for your position and today's date. No backend, no key, works in a forest.
+// The correction is not this app's to make — /_rt/sensors.js hands every consumer a true heading, because
+// a compass capability that answered "magnetic" would be handing each app a bug to remember. Underneath it
+// is /_rt/geomag.js: the World Magnetic Model (WMM2025, NGA/DGC, NOAA/BGS), degree-12 spherical harmonics
+// over 90 Gauss coefficients, evaluated on-device for your position and today's date. No backend, no key,
+// works in a forest.
 //
 //   true bearing = magnetic bearing + declination
 //
-// The honest part: without a location there IS no declination — the model is a function of where you are.
-// This app then says so and shows the magnetic bearing labelled as magnetic, rather than drawing a "true"
-// north it cannot know. A compass that guesses is worse than one that admits.
+// What this app adds is the disclosure: it shows the declination it is working with, and when there is no
+// position there is no declination — the model is a function of where you are — so it labels the bearing
+// magnetic instead of drawing a "true" north it cannot know. A compass that guesses is worse than one that
+// admits.
 import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
@@ -34,39 +37,41 @@ const pointKey = (deg) => POINTS[Math.round(norm(deg) / 22.5) % 16];
 
 export function compassView({ S }) {
   const t = useStore(S.t);
-  const [mag, setMag] = useState(isGate || MOCK ? 0 : null);      // magnetic heading, degrees
-  const [pos, setPos] = useState(isGate || MOCK ? SAMPLE : null);
+  const year = decimalYear();
+  const stale = !inRange(year);                                   // WMM2025 is only valid 2025.0–2030.0
+  // Headless has neither magnetometer nor GPS, so the gate is handed what the sensor would deliver at the
+  // sample position: heading 0 magnetic, which IS the declination once corrected.
+  const seed = isGate || MOCK ? (stale ? null : declination(SAMPLE.lat, SAMPLE.lng, 0, year)) : null;
+  const [shown, setShown] = useState(isGate || MOCK ? norm(seed || 0) : null);   // what the rose is oriented to
+  const [dec, setDec] = useState(seed);
   const [geoErr, setGeoErr] = useState(null);
   const [needPerm, setNeedPerm] = useState(false);
   const stopRef = useRef(null);
 
+  // The heading arrives already true — /_rt/sensors.js owns the model and the position it needs. This app
+  // watches geolocation only to tell "denied" apart from "no fix yet" in the readout below.
   useEffect(() => {
     if (isGate || MOCK) return;
     if (!geo.supported) { setGeoErr("unsupported"); return; }
-    return geo.watch((p) => { setPos(p); setGeoErr(null); }, (e) => setGeoErr(e), { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 });
+    return geo.watch(() => setGeoErr(null), (e) => setGeoErr(e), { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 });
   }, []);
 
+  const listen = () => compass.start((deg, m) => { setShown(deg); setDec(m.declination); });
   useEffect(() => {
     if (isGate || MOCK) return;
     if (!compass.supported) return;
     if (compass.needsPermission) { setNeedPerm(true); return; }    // iOS: needs a gesture, cannot auto-start
-    stopRef.current = compass.start(setMag);
+    stopRef.current = listen();
     return () => stopRef.current?.();
   }, []);
   useEffect(() => () => stopRef.current?.(), []);
 
   const grant = async () => {
     haptic.tick();
-    if (await compass.request()) { setNeedPerm(false); stopRef.current = compass.start(setMag); }
+    if (await compass.request()) { setNeedPerm(false); stopRef.current = listen(); }
   };
 
-  const year = decimalYear();
-  const stale = !inRange(year);                                   // WMM2025 is only valid 2025.0–2030.0
-  // The declination needs a position. No position → no correction, and we say so instead of inventing one.
-  const dec = pos && !stale ? declination(pos.lat, pos.lng, (pos.altitude || 0) / 1000, year) : null;
-  const trueHdg = mag != null && dec != null ? norm(mag + dec) : null;
-  const shown = trueHdg ?? (mag != null ? norm(mag) : null);      // what the rose is oriented to
-  const isTrue = trueHdg != null;
+  const isTrue = dec != null;
 
   return html`<div class="flex flex-col items-center gap-4">
     <div class="text-center min-h-20">

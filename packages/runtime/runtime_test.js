@@ -5,7 +5,7 @@ import { validateSpec } from "./validate.js";
 import { T, dictFor, ago, whenLabel } from "./i18n.js";
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "./groove.js";
 import { fingeredSemitone, handCovered } from "./wind.js";
-import { field, declination, decimalYear, inRange, EPOCH } from "./geomag.js";
+import { field, declination, decimalYear, inRange, EPOCH, trueFrom } from "./geomag.js";
 import { meanFix, stationaryTail, segErr, totalErr, usableFix, BIAS_FRAC } from "./geofix.js";
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
@@ -530,4 +530,14 @@ Deno.test("usableFix — a vague fix is a wrong vertex, not a coarse one", () =>
   assert(!usableFix({ accuracy: 60 }), "±60 m must not be droppable into a polyline");
   assert(!usableFix({ accuracy: 0 }) && !usableFix(null) && !usableFix({}));
   assert(usableFix({ accuracy: 60 }, 80), "the limit is the caller's to set");
+});
+
+Deno.test("trueFrom — east declination adds, and wraps the circle", () => {
+  assertEquals(Math.round(trueFrom(0, 7.5) * 10) / 10, 7.5);      // Kyiv: magnetic 0 is 7.5° east of true
+  assertEquals(Math.round(trueFrom(355, 10) * 10) / 10, 5);        // across the 360/0 seam
+  assertEquals(Math.round(trueFrom(5, -10) * 10) / 10, 355);       // west declination subtracts
+  assertEquals(trueFrom(123, null), 123, "no position → no model → the heading stays magnetic, uncorrected");
+  const kyiv = declination(50.4501, 30.5234, 0, 2026.0);
+  assert(kyiv > 5 && kyiv < 12, `Kyiv declination should be ~5-12° east, got ${kyiv}`);
+  assert(trueFrom(0, kyiv) !== 0, "a compass in Kyiv that reports 0 is not pointing at true north");
 });

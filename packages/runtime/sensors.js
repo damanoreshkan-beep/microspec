@@ -71,6 +71,41 @@ export const geo = {
   },
 };
 
+// wakeLock — keep the screen awake. `acquire()` → a handle with release(); no-op where unsupported.
+//
+// The OS blanks the screen on an idle timer, and "idle" means "no touches" — watching a film is idle by
+// that definition. Every video app on the web needs this and it is not automatic: a <video> playing does
+// NOT hold the screen on in a PWA.
+//
+// The sharp edge: the lock is released by the BROWSER whenever the page is hidden, and it does not come
+// back on its own. Acquire once and the screen dies the first time the user checks a notification and
+// returns — which looks exactly like "it works, sometimes". So the handle re-acquires on visibilitychange
+// and stays alive until you release it.
+export const wakeLock = {
+  supported: typeof navigator !== "undefined" && "wakeLock" in navigator,
+  acquire() {
+    if (!this.supported) return { release: () => {}, supported: false };
+    let sentinel = null, live = true;
+    const take = async () => {
+      if (!live || sentinel || document.visibilityState !== "visible") return;
+      try { sentinel = await navigator.wakeLock.request("screen"); sentinel.addEventListener?.("release", () => { sentinel = null; }); }
+      catch { sentinel = null; }                                   // denied / low battery — the film still plays
+    };
+    const onVis = () => { if (document.visibilityState === "visible") take(); };
+    document.addEventListener("visibilitychange", onVis);
+    take();
+    return {
+      supported: true,
+      release() {
+        live = false;
+        document.removeEventListener("visibilitychange", onVis);
+        try { sentinel?.release(); } catch { /* already gone */ }
+        sentinel = null;
+      },
+    };
+  },
+};
+
 // compass — which way you are facing, in degrees clockwise from TRUE north (0..360).
 //
 // True, not magnetic. The magnetometer points at the magnetic pole, which is not north and is not a fixed

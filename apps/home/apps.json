@@ -37,7 +37,7 @@
     "bg": "#0d1512",
     "fg": "#10b981",
     "href": "./habits/",
-    "version": "1.2"
+    "version": "1.3"
   },
   {
     "id": "ambient",
@@ -87,7 +87,7 @@
     "bg": "#0B1220",
     "fg": "#7DD3FC",
     "href": "./compass/",
-    "version": "1.4"
+    "version": "1.5"
   },
   {
     "id": "launches",
@@ -207,7 +207,7 @@
     "bg": "#231708",
     "fg": "#e8c874",
     "href": "./sopilka/",
-    "version": "1.3"
+    "version": "1.4"
   },
   {
     "id": "transit",
@@ -257,7 +257,7 @@
     "bg": "#1f2430",
     "fg": "#34d399",
     "href": "./ruler/",
-    "version": "1.19"
+    "version": "1.20"
   },
   {
     "id": "hn",

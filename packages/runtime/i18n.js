@@ -27,6 +27,9 @@ export const MEDIA = {
   loading: { en: "Connecting…", uk: "Підключення…", ru: "Подключение…", de: "Verbinde…", pl: "Łączenie…" },
   unavailable: { en: "Stream unavailable", uk: "Потік недоступний", ru: "Поток недоступен", de: "Stream nicht verfügbar", pl: "Strumień niedostępny" },
   openExternal: { en: "Open in player", uk: "Відкрити у плеєрі", ru: "Открыть в плеере", de: "Im Player öffnen", pl: "Otwórz w odtwarzaczu" },
+  pip: { en: "Picture in picture", uk: "Картинка в картинці", ru: "Картинка в картинке", de: "Bild-in-Bild", pl: "Obraz w obrazie" },
+  fullscreen: { en: "Fullscreen", uk: "На весь екран", ru: "На весь экран", de: "Vollbild", pl: "Pełny ekran" },
+  exitFullscreen: { en: "Exit fullscreen", uk: "Вийти з повного екрана", ru: "Выйти из полного экрана", de: "Vollbild beenden", pl: "Zamknij pełny ekran" },
 };
 export const media = (key, locale) => MEDIA[key]?.[locale] || MEDIA[key]?.en || "";
 

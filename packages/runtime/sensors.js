@@ -14,7 +14,11 @@ export const geo = {
   watch(onPos, onErr, opts) {
     if (!this.supported) { onErr?.("unsupported"); return () => {}; }
     const id = navigator.geolocation.watchPosition(
-      (p) => onPos({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
+      (p) => onPos({
+        lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy,
+        altitude: p.coords.altitude, altitudeAccuracy: p.coords.altitudeAccuracy,
+        heading: p.coords.heading, speed: p.coords.speed, t: p.timestamp,
+      }),
       (e) => onErr?.(e.code === 1 ? "denied" : "unavailable"),
       { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000, ...opts },
     );

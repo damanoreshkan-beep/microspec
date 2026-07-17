@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { geo, haptic } from "/_rt/sensors.js";
+import { stationaryTail, meanFix, segErr, totalErr, usableFix } from "/_rt/geofix.js";
 import { collection } from "/_rt/db.js";
 import { Scramble } from "/_rt/skeleton.js";
 
@@ -11,7 +12,10 @@ const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 const MOCK = new URLSearchParams(location.search).get("mock");
 const ACCENT = "#34d399";
 const SAMPLE = [{ lat: 50.4501, lng: 30.5234, accuracy: 8 }, { lat: 50.4509, lng: 30.5240, accuracy: 8 }, { lat: 50.4512, lng: 30.5258, accuracy: 8 }, { lat: 50.4506, lng: 30.5266, accuracy: 8 }];
-const SAMPLE_CUR = { lat: 50.4500, lng: 30.5270, accuracy: 6 };
+const SAMPLE_CUR = { lat: 50.4500, lng: 30.5270, accuracy: 6, t: 0 };
+const SAMPLE_FIXES = Array.from({ length: 12 }, (_, i) => ({
+  lat: SAMPLE_CUR.lat + ((i % 4) - 1.5) * 2e-5, lng: SAMPLE_CUR.lng + ((i % 3) - 1) * 2e-5, accuracy: 6, t: 0,
+}));
 
 const R = 6371000;
 const hav = (a, b) => { const p = Math.PI / 180, dφ = (b.lat - a.lat) * p, dλ = (b.lng - a.lng) * p, s = Math.sin(dφ / 2) ** 2 + Math.cos(a.lat * p) * Math.cos(b.lat * p) * Math.sin(dλ / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(s)); };
@@ -57,6 +61,7 @@ let _t;
 const fmt = (m) => m < 1000 ? `${Math.round(m < 10 ? m * 10 : m) / (m < 10 ? 10 : 1)} ${T(_t, "uM")}` : `${(m / 1000).toFixed(2)} ${T(_t, "uKm")}`;
 const fmtArea = (a) => a < 10000 ? `${Math.round(a)} ${T(_t, "uM2")}` : `${(a / 10000).toFixed(2)} ${T(_t, "uHa")}`;
 const coordStr = (p) => `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+const fmtErr = (m) => `± ${m < 10 ? Math.round(m * 10) / 10 : Math.round(m)} ${T(_t, "uM")}`;
 
 const CUR = collection("rulerWalk");
 const okPt = (p) => p && typeof p.lat === "number" && typeof p.lng === "number" && isFinite(p.lat) && isFinite(p.lng);
@@ -65,12 +70,18 @@ export function ruler({ S, toast }) {
   const [pts, setPts] = useState([]);
   const [cur, setCur] = useState(isGate || MOCK ? SAMPLE_CUR : null);
   const [err, setErr] = useState(null);
-  const cv = useRef(), hydrated = useRef(false);
+  const [depth, setDepth] = useState(0);                  
+  const cv = useRef(), hydrated = useRef(false), buf = useRef([]);
 
   useEffect(() => {
-    if (isGate || MOCK) return;
+    if (isGate || MOCK) { buf.current = SAMPLE_FIXES.slice(); setDepth(stationaryTail(buf.current, { now: 0 }).length); return; }
     if (!geo.supported) { setErr("unsupported"); return; }
-    return geo.watch((p) => { setCur(p); setErr(null); }, (e) => setErr(e), { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
+    return geo.watch((p) => {
+      const fix = { ...p, t: p.t || Date.now() };
+      buf.current = [...buf.current, fix].slice(-180);     
+      setDepth(stationaryTail(buf.current, { now: fix.t }).length);
+      setCur(fix); setErr(null);
+    }, (e) => setErr(e), { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
   }, []);
   useEffect(() => {
     let ok = true;
@@ -86,7 +97,12 @@ export function ruler({ S, toast }) {
   useEffect(() => { const on = () => draw(cv.current, pts, cur); addEventListener("resize", on); return () => removeEventListener("resize", on); }, [pts, cur]);
 
   const copyCoords = async () => { if (!cur) return; try { await navigator.clipboard.writeText(coordStr(cur)); toast?.(T(t, "copied")); haptic.tick(); } catch {  } };
-  const add = () => { if (!cur) return; setPts((p) => [...p, { ...cur }]); haptic.tick(); };
+  const add = () => {
+    if (!usableFix(cur)) return;
+    const tail = stationaryTail(buf.current, { now: Date.now() });
+    setPts((p) => [...p, tail.length >= 2 ? meanFix(tail) : { ...cur, n: 1 }]);
+    haptic.tick();
+  };
   const undo = () => setPts((p) => p.slice(0, -1));
   const clear = () => { setPts([]); haptic.bump(); };
 
@@ -94,6 +110,10 @@ export function ruler({ S, toast }) {
   const live = pts.length && cur ? hav(pts[pts.length - 1], cur) : null;
   const area = pts.length >= 3 ? shoelace(pts) : null;
   const ready = !!cur;
+  const canAdd = usableFix(cur);
+  const pend = depth >= 2 ? meanFix(stationaryTail(buf.current, { now: cur?.t || 0 })) : null;
+  const shownAcc = pend?.accuracy ?? cur?.accuracy ?? 0;
+  const tErr = pts.length >= 2 ? totalErr(pts.slice(1).map((p, i) => segErr(pts[i], p))) : null;
 
   return html`<div class="flex flex-col gap-3">
       <div class="rounded-2xl border border-base-300 bg-base-200/40 overflow-hidden">
@@ -102,7 +122,10 @@ export function ruler({ S, toast }) {
       <div class="flex items-end justify-between gap-3 px-1">
         <div class="min-w-0">
           <div class="text-[0.62rem] font-mono uppercase text-base-content/60">${T(t, "total")}</div>
-          <div class="text-3xl font-bold tabular-nums leading-none">${pts.length >= 2 ? fmt(total) : (ready || err) ? "—" : html`<${Scramble} len=${5} />`}</div>
+          <div class="flex items-baseline gap-2 flex-wrap">
+            <div class="text-3xl font-bold tabular-nums leading-none">${pts.length >= 2 ? fmt(total) : (ready || err) ? "—" : html`<${Scramble} len=${5} />`}</div>
+            ${tErr != null ? html`<span data-err class="text-xs font-mono tabular-nums text-base-content/60">${fmtErr(tErr)}</span>` : null}
+          </div>
           ${area != null ? html`<div class="text-xs text-base-content/70 mt-1 tabular-nums">${T(t, "area")}: ${fmtArea(area)}</div>` : null}
         </div>
         <div class="text-right shrink-0">
@@ -112,14 +135,18 @@ export function ruler({ S, toast }) {
       </div>
       <div class="flex items-center justify-between gap-2 text-xs px-1 min-h-4">
         ${err ? html`<span class="text-error flex items-center gap-1">${Icon("lucide:map-pin-off")}${T(t, "no" + (err === "denied" ? "Perm" : "Gps"))}</span>`
-          : ready ? html`<span class="text-base-content/70 flex items-center gap-1 shrink-0">${Icon("lucide:satellite-dish")}±${Math.round(cur.accuracy || 0)} ${T(t, "uM")}</span>`
+          : ready ? html`<span data-fix class=${`flex items-center gap-1 shrink-0 tabular-nums ${canAdd ? "text-base-content/70" : "text-warning"}`}>
+              ${Icon(canAdd ? "lucide:satellite-dish" : "lucide:satellite", "shrink-0")}
+              ±${shownAcc < 10 ? Math.round(shownAcc * 10) / 10 : Math.round(shownAcc)} ${T(t, "uM")}
+              ${depth >= 2 ? html`<span class="opacity-55">${depth}×</span>` : null}
+            </span>`
           : html`<span class="text-base-content/60 flex items-center gap-1.5">${Icon("lucide:loader-circle")}${T(t, "locating")}</span>`}
         ${ready ? html`<button id="coords" data-coords aria-label=${T(t, "copyCoords")} class="font-mono tabular-nums text-base-content/70 flex items-center gap-1.5 min-w-0 active:opacity-60" onClick=${copyCoords}>
           <span class="truncate">${coordStr(cur)}</span>${Icon("lucide:copy", "text-[0.9em] shrink-0 opacity-60")}
         </button>` : null}
       </div>
       <div class="flex items-center gap-2">
-        <button id="add" aria-label=${T(t, "addPoint")} disabled=${!ready} class="btn btn-primary flex-1 min-w-0 rounded-2xl gap-2 disabled:opacity-40" onClick=${add}>${Icon("lucide:map-pin-plus", "text-lg shrink-0")}<span class="truncate">${T(t, "addPoint")}</span></button>
+        <button id="add" aria-label=${T(t, "addPoint")} disabled=${!canAdd} class="btn btn-primary flex-1 min-w-0 rounded-2xl gap-2 disabled:opacity-40" onClick=${add}>${Icon("lucide:map-pin-plus", "text-lg shrink-0")}<span class="truncate">${T(t, "addPoint")}</span></button>
         <button id="undo" aria-label=${T(t, "undo")} disabled=${!pts.length} class="btn btn-outline btn-square rounded-2xl disabled:opacity-40" onClick=${undo}>${Icon("lucide:undo-2", "text-lg")}</button>
         <button id="clear" aria-label=${T(t, "clear")} disabled=${!pts.length} class="btn btn-ghost btn-square rounded-2xl disabled:opacity-40" onClick=${clear}>${Icon("lucide:eraser", "text-lg")}</button>
       </div>

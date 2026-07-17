@@ -19,6 +19,15 @@ export default [
     },
   },
   {
+    name: "загальна відстань несе свою похибку", run: async (h) => {
+      await ready(h); await h.wait(200);
+      h.expect((await h.count("[data-err]")) === 1, "загальна відстань без ± — число виглядає точнішим, ніж воно є");
+      h.expect(/±\s*[\d.]+\s*(м|m)/.test(await h.text("[data-err]")), `похибка не у форматі ± N м: "${await h.text("[data-err]")}"`);
+      await h.click("#clear"); await h.wait(150);
+      h.expect((await h.count("[data-err]")) === 0, "± лишилось без жодного сегмента — похибка ні до чого");
+    },
+  },
+  {
     name: "очистити скидає полілінію", run: async (h) => {
       await ready(h);
       await h.click("#clear"); await h.wait(150);

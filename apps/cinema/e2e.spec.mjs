@@ -2,7 +2,9 @@
 // CONTRACT: `detail.actions[].play` must produce a real in-app player, and the stack it opens on must
 // behave. If this app needs a view.js to pass, video isn't in the system.
 const ready = async (h) => { await h.waitFor(/\S{6}/, 15000); await h.wait(300); };
-const firstCard = "main [data-card], main .card, main a[href], main button";
+// The tap target is the runtime's transparent overlay button, not the .card div — clicking the card
+// itself does nothing, which is exactly what the first run of this file proved.
+const firstCard = ".aw-tap";
 
 export default [
   {
@@ -17,10 +19,10 @@ export default [
     name: "картка відкриває деталі, а не викидає з апки", run: async (h) => {
       await ready(h);
       await h.click(firstCard); await h.wait(400);
-      h.expect((await h.count('[role="dialog"]')) > 0, "клік по картці не відкрив деталі");
+      h.expect((await h.count("#detail-back")) === 1, "клік по картці не відкрив деталі");
       h.expect((await h.count("[data-play]")) === 1, "у деталях немає кнопки перегляду — dead `play` action");
       await h.back(); await h.wait(300);
-      h.expect((await h.count('[role="dialog"]')) === 0, "Back не закрив деталі");
+      h.expect((await h.count("#detail-back")) === 0, "Back не закрив деталі");
     },
   },
   {
@@ -46,7 +48,7 @@ export default [
       h.expect((await h.count("video")) === 0, "Back не закрив плеєр");
       h.expect((await h.count("[data-play]")) === 1, "Back з плеєра викинув аж у список — деталі втрачено");
       await h.back(); await h.wait(300);
-      h.expect((await h.count('[role="dialog"]')) === 0, "другий Back не закрив деталі");
+      h.expect((await h.count("#detail-back")) === 0, "другий Back не закрив деталі");
     },
   },
   {

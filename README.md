@@ -73,11 +73,19 @@ locale defines the same keys, so an app could ship an untranslated runtime strin
 check and it went to **100% (51/51)**. That loop — *measure → find a gap → close it → re-measure* — now runs
 in CI, so a regression in the **gate itself** fails the build.
 
+It has since run again, on a gap that cost two shipped defects: headless has no GPS and no magnetometer, so
+a sensor app rendered its *empty* state and every check below — a11y, overflow@384, watch@200 — signed off
+on a screen no user sees. A compass rose overflowed by 39px unmeasured (a rotated square's bounding box
+grows √2, but a dial with no heading never rotates); a readout failed contrast in both themes because the
+element never mounted. Preflight now fails any app that reads a sensor and renders no live state, and
+`sensor-mock-unseeded` mutates the *cause* — it disables the gate detection so the mock stops seeding —
+rather than the marker. **52/52.**
+
 Both tiers are measured and enforced:
 
 | Tier | Catches | Score |
 |---|---|---|
-| **preflight** (browser-free) | dropped translation · invalid spec · banned spinner · throwing view · locale drift | **100%** (51/51) |
+| **preflight** (browser-free) | dropped translation · invalid spec · banned spinner · throwing view · locale drift · unseeded sensor mock | **100%** (52/52) |
 | **verify** (Chromium, in CI) | broken data adapter · failing e2e · **inaccessible control (axe)** | **100%** (6/6) |
 
 The verify tier proves the headline the hard way: a mutation that strips a control's accessible name is

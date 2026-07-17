@@ -95,6 +95,12 @@ async function preflight(appdir) {
     walk(app);
     if (strays.size) errs.push(`stray tag-name text ${[...strays].map((s) => `"${s}"`).join(", ")} — likely an UNCLOSED tag in ${srcFile}`);
 
+    const sensorImport = src.match(/import\s*\{([^}]*)\}\s*from\s*["']\/_rt\/sensors\.js["']/);
+    const reads = sensorImport && /\b(geo|compass|motion|mic|camera)\b/.test(sensorImport[1]);
+    if (reads && !app?.querySelector("[data-live]")) {
+      errs.push(`reads a sensor but rendered no [data-live] element — headless has no hardware, so this is the empty waiting state, and every check below (a11y, overflow@384, watch@200) is now measuring a screen no user sees. Seed the mock with a reading (see apps/ruler SAMPLE_FIXES) and mark what it renders with data-live.`);
+    }
+
     for (const e of rafErr) errs.push("render loop threw: " + (e?.message || e));
     for (const m of uncaught) errs.push("async/effect threw: " + m);
   } catch (e) {

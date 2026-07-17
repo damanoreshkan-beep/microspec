@@ -85,6 +85,25 @@ may still declare `spec.filters` to get the systemic filter UI + persisted state
 `useStore(S.filters)`). **Runtime-internal imports must be RELATIVE** (`./astro.js`), never `/_rt/…`: the
 build copies `packages/runtime/*` verbatim; only *app* files get the `/_rt/`→`../_rt/` base-path rewrite.
 
+### Sensor apps — seed the mock, and mark what it renders
+
+`/_rt/sensors.js` gives `haptic · geo · compass · motion · mic · camera · wakeLock`. The reading
+capabilities feed you finished answers: `compass.start(cb)` reports **true** north (it watches position and
+applies the World Magnetic Model itself — never add declination in an app), `geo.watch` reports the full
+spec fix `{lat,lng,accuracy,altitude,altitudeAccuracy,heading,speed,t}` where `accuracy` is a **95%**
+radius. For anything measured, `/_rt/geofix.js` averages a stationary series into a vertex and propagates
+error into a total — a distance printed without its `±` is not a measurement.
+
+**The gate has no hardware.** Left alone your app renders "locating…" forever, and that empty branch is
+what a11y, overflow@384 and watch@200 then measure — so the live layout (a rotated dial's bounding box, the
+readout at its widest) is checked by nobody and breaks only on a real phone. This has shipped twice.
+
+So: seed a plausible reading when `isGate || MOCK` (see `apps/ruler` — `SAMPLE_FIXES` is a stationary burst,
+`apps/sun` — heading `300`, deliberately rotated), and put **`data-live`** on an element that cannot exist
+without a reading. Preflight fails any app importing `geo`/`compass`/`motion`/`mic`/`camera` that mounts no
+`[data-live]`. Seed the *widest* state, not the tidiest: the string nobody measures is the one that
+overflows.
+
 ## Systemic capabilities (declare in the spec — reusable across apps)
 
 Layouts `feed`/`row`/`grid`/`table` · `detail` · `search`/`searchFetch` · `paginate` (infinite scroll) ·

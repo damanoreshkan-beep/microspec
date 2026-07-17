@@ -68,6 +68,18 @@ const MUTATIONS = [
     applies: ({ mode }) => mode === "tool",
     async mutate(d) { const f = `${d}/view.js`; await Deno.writeTextFile(f, 'throw new Error("mutant: broken view module");\n' + await Deno.readTextFile(f)); return "view.js throws on import"; } },
 
+  { id: "sensor-mock-unseeded", cat: "render", tier: "preflight",
+    applies: ({ mode }) => mode === "tool",
+    async mutate(d) {
+      const f = `${d}/view.js`;
+      const s = await Deno.readTextFile(f);
+      if (!/import\s*\{[^}]*\b(geo|compass|motion|mic|camera)\b[^}]*\}\s*from\s*["']\/_rt\/sensors\.js["']/.test(s)) return false;
+      const out = s.replace(/\.test\(location\.hostname\)/g, ".test('nowhere')");
+      if (out === s) return false;
+      await Deno.writeTextFile(f, out);
+      return "gate detection disabled — the mock no longer seeds a reading";
+    } },
+
   { id: "data-adapter-throws", cat: "render", tier: "verify",
     applies: ({ mode }) => mode === "data",
     async mutate(d) { const f = `${d}/data.js`; if (!await exists(f)) return false; await Deno.writeTextFile(f, 'throw new Error("mutant: broken data module");\n' + await Deno.readTextFile(f)); return "data.js throws on import"; } },

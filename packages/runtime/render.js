@@ -296,7 +296,10 @@ function ListView({ tab }) {
   if (!tab.card) return Empty("lucide:alert-triangle", T(t, tab.empty?.text || "noResults"), null);
   if (!useReveal(!data.loading)) return Skeleton(tab.card);
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
-  if (tab.searchFetch && !q) return Empty(tab.prompt?.icon || "lucide:search", T(t, tab.prompt?.text || "searchPrompt"), T(t, tab.prompt?.hint || "searchPromptHint"));
+  // A search box demands a query; a shelf shows its stock. `browse` is the difference — without it a
+  // catalogue greets you with an empty screen and an instruction, which is the one thing a catalogue is for
+  // NOT doing. (wiki wants the prompt: there is no "popular" Wikipedia article to open with.)
+  if (tab.searchFetch && !q && !tab.browse) return Empty(tab.prompt?.icon || "lucide:search", T(t, tab.prompt?.text || "searchPrompt"), T(t, tab.prompt?.hint || "searchPromptHint"));
 
   let items = tab.source === "fav" ? Object.values(fav) : data.items;
   if (q && !tab.searchFetch) items = items.filter((it) => searchText(it).includes(q));  // server already searched when searchFetch

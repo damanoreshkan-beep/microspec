@@ -47,5 +47,6 @@
   "eModern": "2000+",
   "filters": "Filters",
   "reset": "Reset",
-  "apply": "Show"
+  "apply": "Show",
+  "back": "Back"
 }

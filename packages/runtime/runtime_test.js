@@ -632,3 +632,12 @@ Deno.test("validateSpec: gallery is a real layout, and a typo is still caught", 
   const bad = { ...baseList(), tabs: [{ id: "t", type: "list", icon: "i", label: "l", card: { layout: "galery", title: "name", image: "x" } }] };
   assertThrows(() => validateSpec(bad), Error, "spec.tabs[0].card.layout");
 });
+
+Deno.test("validateSpec: browse rides on searchFetch (a shelf, not a search box)", () => {
+  const tab = (extra) => ({ ...baseList(), tabs: [{ id: "f", type: "list", icon: "i", label: "hi", search: true, searchFetch: true, ...extra, card: { layout: "feed", title: "name", body: "desc" } }] });
+  validateSpec(tab({ browse: true }));
+  validateSpec(tab({}));
+  // browse is meaningless without the fetch it modifies — and searchFetch still needs a search box.
+  const err = assertThrows(() => validateSpec({ ...baseList(), tabs: [{ id: "f", type: "list", icon: "i", label: "hi", searchFetch: true, card: { layout: "feed", title: "name", body: "desc" } }] }), Error);
+  assert(err.message.includes("searchFetch requires search"), err.message);
+});

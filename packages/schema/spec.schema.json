@@ -513,7 +513,11 @@
           },
           "searchFetch": {
             "type": "boolean",
-            "description": "list only (search family) — the search box debounce-drives a real refetch: the trimmed query reaches data.js load() as filters.q, and client-side filtering is skipped (the server already searched). Empty query shows the `prompt` empty-state. Requires search:true."
+            "description": "list only (search family) — the search box debounce-drives a real refetch: the trimmed query reaches data.js load() as filters.q, and client-side filtering is skipped (the server already searched). Empty query shows the `prompt` empty-state unless `browse` is set. Requires search:true."
+          },
+          "browse": {
+            "type": "boolean",
+            "description": "list only, with searchFetch — an empty query LOADS instead of prompting. A catalogue is browsed first and searched second (popular packages, top films): demanding a query before showing anything is right for a search box (wiki) and wrong for a shelf. data.js load() must handle an empty filters.q. Without it, searchFetch shows the `prompt` empty-state and needs i18n keys searchPrompt/searchPromptHint."
           },
           "chart": {
             "type": "object",

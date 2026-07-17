@@ -93,6 +93,26 @@ async function preflight(appdir) {
     for (const k of Object.keys(i18n[l])) if (!(k in i18n.en)) errs.push(`i18n key "${k}" in ${l}.json absent from en.json (locale parity)`);
   }
 
+  // --- strings the RUNTIME renders because of what the spec DECLARED ---
+  //
+  // Locale parity compares the locales to each other, and the key check reads the app's own source. A string
+  // that neither locale defines, referenced by neither — rendered by the runtime purely because a capability
+  // was switched on in spec.json — slips through both: parity holds (both are equally missing it) and the
+  // app source never mentions it. T() then falls back to the raw key and the screen literally says
+  // "searchPrompt". That shipped: winapps turned on searchFetch and greeted everyone with the key name.
+  const declared = [
+    [(s) => (s.tabs || []).some((t) => t.searchFetch && !t.browse && !t.prompt), ["searchPrompt", "searchPromptHint"], "tab.searchFetch without browse/prompt shows the search empty-state"],
+    [(s) => (s.tabs || []).some((t) => t.paginate), ["loadMore"], "tab.paginate renders a load-more control"],
+    [(s) => !!s.detail, ["back"], "spec.detail renders a back button"],
+    [(s) => !!s.fav, ["favAria", "unfavAria"], "spec.fav renders bookmark controls"],
+  ];
+  for (const [applies, keys, why] of declared) {
+    if (!applies(spec)) continue;
+    for (const k of keys) for (const l of locales) {
+      if (!(k in i18n[l])) errs.push(`i18n key "${k}" missing in ${l}.json — ${why}, and the runtime would render the raw key`);
+    }
+  }
+
   // No content-less spinner loaders — show the app + a modern skeleton (/_rt/skeleton.js Loading/Scramble/
   // Pixels) instead. DaisyUI loading spinners are banned in app source.
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);

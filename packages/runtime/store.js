@@ -36,6 +36,9 @@ export function createApp(spec, dataLoad) {
     sheet: atom(false),
     detail: atom(null),
     screen: atom(null),
+    // The video an in-app `play` action opened: { url, title, poster, key }. Stacks ON TOP of detail, so
+    // Back returns to the item rather than to the list.
+    player: atom(null),
     installEvent: atom(null),
     installOpen: atom(false),
   };

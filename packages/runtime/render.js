@@ -12,6 +12,8 @@ import { PERMISSIONS, permLabels } from "./permissions.js";
 import { tr, warm, trTick, CONTENT_LANG } from "./translate.js";
 import { Scramble, Pixels, useReveal } from "./skeleton.js";
 import { enrich, warmMeta, metaTick } from "./enrich.js";
+import { Player } from "./video.js";
+import { collection } from "./db.js";
 
 let A;            // app context: { spec, S, load, toast, toggleFav, favKey, swap }
 let VIEWS = {};   // tool-app custom views: { viewKey: PreactComponent }
@@ -379,7 +381,22 @@ function DetailView() {
     // (enrich/translate-aware) field value.
     const v = r.format === "when" ? whenLabel(t, it[r.field], loc) : r.format === "ago" ? ago(t, it[r.field], loc) : r.format === "since" ? sinceLabel(t, it[r.field], loc) : field(it, r.field, loc);
     return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-base-content/60">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
-  const actions = (d.actions || []).map((a) => { const href = safeHref(it[a.href]); return href ? html`<a href=${href} target="_blank" rel="noopener" class="btn btn-primary rounded-2xl w-full gap-2" key=${a.href}>${a.icon ? Icon(a.icon) : null}${T(t, a.label)} ${Icon("lucide:arrow-up-right")}</a>` : null; });
+  const actions = (d.actions || []).map((a) => {
+    // `play` keeps the viewer in the app: the runtime's player, stacked over this detail, so Back returns
+    // here rather than to the list. No arrow-up-right — that glyph promises you are being thrown out.
+    if (a.play) {
+      const url = safeHref(it[a.play]);
+      if (!url) return null;
+      const open = () => A.S.player.set({
+        url, title: field(it, d.title, loc) ?? "",
+        poster: d.image ? it[d.image] : "",
+        key: String(it.id ?? url),          // where playback resumes from is remembered against this
+      });
+      return html`<button id=${`detail-play-${a.play}`} data-play class="btn btn-primary rounded-2xl w-full gap-2" key=${a.play} onClick=${open}>${a.icon ? Icon(a.icon) : Icon("lucide:play")}${T(t, a.label)}</button>`;
+    }
+    const href = safeHref(it[a.href]);
+    return href ? html`<a href=${href} target="_blank" rel="noopener" class="btn btn-primary rounded-2xl w-full gap-2" key=${a.href}>${a.icon ? Icon(a.icon) : null}${T(t, a.label)} ${Icon("lucide:arrow-up-right")}</a>` : null;
+  });
   const star = A.spec.fav ? html`<button id="detail-fav" aria-label=${on ? T(t, "unfavAria") : T(t, "favAria")} onClick=${() => A.toggleFav(it)} class=${`btn btn-ghost btn-sm btn-circle ${on ? "text-primary" : "opacity-60"}`}>${Icon(`lucide:bookmark${on ? "-check" : ""}`, "text-xl")}</button>` : null;
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
     <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${field(it, d.title, loc) ?? ""}</div>${star}</header>
@@ -430,6 +447,26 @@ function FilterSheet() {
     })}
     <button id="f-apply" class="btn btn-primary rounded-2xl mt-3" onClick=${() => { A.S.sheet.set(false); A.S.tab.set(A.spec.tabs[0].id); if (f.refetch) A.load(); }}>${T(t, "apply")}</button>
   </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
+}
+
+// PlayerHost — the in-app video an action opened. The RUNTIME remembers where you stopped, so a spec that
+// declares `play` gets resume for free and no app writes storage for it (the whole point of the contract).
+// It waits for the stored position before mounting: mounting at 0 and seeking a moment later is exactly the
+// yank that makes resume feel broken, and the wait is one IndexedDB read.
+const PLAYPOS = collection("playPos");
+function PlayerHost() {
+  const p = useStore(A.S.player), loc = useStore(A.S.locale);
+  const [startAt, setStartAt] = useState(null);          // null = still reading; a number = ready to mount
+  useEffect(() => {
+    if (!p) { setStartAt(null); return; }
+    let ok = true;
+    PLAYPOS.get(p.key).then((v) => { if (ok) setStartAt(Number(v?.t) || 0); }).catch(() => { if (ok) setStartAt(0); });
+    return () => { ok = false; };
+  }, [p?.key]);
+  if (!p || startAt == null) return null;
+  return html`<${Player} url=${p.url} title=${p.title} poster=${p.poster} locale=${loc} startAt=${startAt}
+    onTime=${(t, d) => PLAYPOS.put(p.key, { t, d }).catch(() => { /* quota / no idb → resume is a nicety */ })}
+    onClose=${() => A.S.player.set(null)} />`;
 }
 
 function InstallModal() {
@@ -601,6 +638,7 @@ export function App() {
       <${TabView} tab=${tab} />
     </main>
     ${A.spec.detail ? html`<${DetailView} />` : null}
+    <${PlayerHost} />
     ${A.spec.filters ? html`<${FilterSheet} />` : null}
     ${screen === "perms" ? html`<${PermissionsScreen} />` : null}
     <${DockFade} />

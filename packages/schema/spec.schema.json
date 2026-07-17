@@ -215,13 +215,25 @@
         },
         "actions": {
           "type": "array",
-          "description": "External link buttons at the bottom of the detail page.",
+          "description": "Action buttons at the bottom of the detail page. Each is EITHER an outbound link (href) OR an in-app video (play) — exactly one.",
           "items": {
             "type": "object",
             "additionalProperties": false,
+            "$comment": "Exactly one of href/play. Both would be an action with two meanings — leave the app, or stay in it — and the runtime would have to guess which the author meant. Mirrored in packages/runtime/validate.js; the two validators must stay in lockstep.",
             "required": [
-              "label",
-              "href"
+              "label"
+            ],
+            "oneOf": [
+              {
+                "required": [
+                  "href"
+                ]
+              },
+              {
+                "required": [
+                  "play"
+                ]
+              }
             ],
             "properties": {
               "icon": {
@@ -238,6 +250,11 @@
                 "type": "string",
                 "minLength": 1,
                 "description": "Item field holding the URL (opened in a new tab; sanitized)."
+              },
+              "play": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Item field holding a video URL (HLS or progressive). Opens the runtime's full-screen player IN-APP: screen stays awake, picture-in-picture, fullscreen, and playback resumes where you left it (position kept by the runtime, keyed on the item). The player is history-backed — system Back closes it and returns to the detail."
               }
             }
           }

@@ -145,8 +145,13 @@ function validateDetail(d, die, need) {
   if (d.actions != null) {
     need(Array.isArray(d.actions), "spec.detail.actions", "must be an array when present");
     d.actions.forEach((a, i) => {
-      need(nonEmpty(a?.href), `spec.detail.actions[${i}].href`, "required item field holding a URL");
-      need(nonEmpty(a?.label), `spec.detail.actions[${i}].label`, "required i18n key");
+      const ap = `spec.detail.actions[${i}]`;
+      need(nonEmpty(a?.label), `${ap}.label`, "required i18n key");
+      // Exactly one of href/play. An action carrying both has two meanings — leave the app, or stay in it
+      // — and the runtime would have to guess which was meant. Mirrors spec.schema.json (lockstep).
+      const hasHref = nonEmpty(a?.href), hasPlay = nonEmpty(a?.play);
+      need(hasHref || hasPlay, `${ap}.href`, "required: item field holding a URL — or use `play` for an item field holding a video URL (in-app player)");
+      need(!(hasHref && hasPlay), `${ap}.play`, "cannot set both href and play — an action either leaves the app or plays in it, not both");
     });
   }
 }

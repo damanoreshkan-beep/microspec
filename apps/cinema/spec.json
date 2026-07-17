@@ -1,0 +1,101 @@
+{
+  "id": "cinema",
+  "theme": "signal",
+  "translate": [
+    "desc"
+  ],
+  "fav": {
+    "key": "id"
+  },
+  "tabs": [
+    {
+      "id": "films",
+      "type": "list",
+      "icon": "lucide:clapperboard",
+      "label": "tabFilms",
+      "search": true,
+      "card": {
+        "layout": "feed",
+        "title": "title",
+        "body": "desc",
+        "image": "thumb",
+        "badges": [
+          {
+            "field": "year",
+            "icon": "lucide:calendar"
+          },
+          {
+            "field": "views",
+            "icon": "lucide:eye"
+          }
+        ]
+      }
+    },
+    {
+      "id": "saved",
+      "type": "list",
+      "icon": "lucide:bookmark",
+      "label": "tabSaved",
+      "card": {
+        "layout": "feed",
+        "title": "title",
+        "body": "desc",
+        "image": "thumb"
+      },
+      "source": "fav",
+      "titleKey": "tabSaved",
+      "empty": {
+        "icon": "lucide:bookmark",
+        "text": "emptySaved"
+      }
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "detail": {
+    "title": "title",
+    "image": "thumb",
+    "imageFit": "cover",
+    "body": "desc",
+    "rows": [
+      {
+        "field": "year",
+        "label": "rYear",
+        "icon": "lucide:calendar"
+      },
+      {
+        "field": "views",
+        "label": "rViews",
+        "icon": "lucide:eye"
+      }
+    ],
+    "actions": [
+      {
+        "label": "watch",
+        "play": "video",
+        "icon": "lucide:play"
+      },
+      {
+        "label": "source",
+        "href": "url",
+        "icon": "lucide:archive"
+      }
+    ]
+  },
+  "profile": {
+    "icon": "lucide:clapperboard",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": {
+      "label": "profSource",
+      "url": "https://archive.org/details/feature_films",
+      "icon": "lucide:archive"
+    }
+  }
+}

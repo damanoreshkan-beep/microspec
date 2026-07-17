@@ -8,7 +8,7 @@ import { fingeredSemitone, handCovered } from "./wind.js";
 import { field, declination, decimalYear, inRange, EPOCH, trueFrom } from "./geomag.js";
 import { meanFix, stationaryTail, segErr, totalErr, usableFix, BIAS_FRAC } from "./geofix.js";
 import { hapticFor } from "./sensors.js";
-import { resumeAt, RESUME_MIN, pickFile } from "./playback.js";
+import { resumeAt, RESUME_MIN } from "./playback.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
@@ -599,39 +599,17 @@ Deno.test("resumeAt — the band, not the saved number", () => {
   assertEquals(resumeAt(-5, D), 0, "never seek backwards out of the file");
 });
 
-// ── pickFile — the archive is fine; picking wrong is what looks broken ────────────────────────────
-// The fixture is the real file list of archive.org/details/road-demon-1938, measured, not imagined.
-const IA_ITEM = [
-  { name: "Road Demon (1938)   .avi", format: "Cinepack", source: "original", size: "773000000" },
-  { name: "Road Demon (1938)   .mp4", format: "h.264", source: "derivative", size: "398846229" },
-  { name: "__ia_thumb.jpg", format: "Item Tile", source: "original", size: "8000" },
-  { name: "road-demon-1938.thumbs/Road Demon (1938)   _000001.jpg", format: "Thumbnail", source: "derivative", size: "3000" },
-  { name: "road-demon-1938_archive.torrent", format: "Archive BitTorrent", source: "metadata", size: "20000" },
-  { name: "road-demon-1938_meta.xml", format: "Metadata", source: "original", size: "1000" },
-];
 
-Deno.test("pickFile — the original is the trap: 773MB of Cinepak no browser can decode", () => {
-  const f = pickFile(IA_ITEM);
-  assertEquals(f.name, "Road Demon (1938)   .mp4");
-  assertEquals(f.format, "h.264", "must pick the playable derivative over the bigger original");
-});
-
-Deno.test("pickFile — h.264 beats a bigger file in a worse codec", () => {
-  const picked = pickFile([
-    { name: "a.webm", format: "WebM", size: "900000000" },
-    { name: "b.mp4", format: "h.264", size: "100000000" },
-  ]);
-  assertEquals(picked.name, "b.mp4", "codec compatibility outranks size");
-  assertEquals(pickFile([
-    { name: "low.mp4", format: "h.264", size: "50000000" },
-    { name: "hi.mp4", format: "h.264", size: "400000000" },
-  ]).name, "hi.mp4", "among equals the bigger file is the better picture");
-});
-
-Deno.test("pickFile — never a thumbnail, a torrent or metadata", () => {
-  assertEquals(pickFile([IA_ITEM[2], IA_ITEM[3], IA_ITEM[4], IA_ITEM[5]]), null, "nothing playable → say so, don't hand back a .jpg");
-  assertEquals(pickFile([]), null);
-  assertEquals(pickFile(null), null);
-  assertEquals(pickFile([{ format: "h.264" }]), null, "a file with no name is not a file");
-  assertEquals(pickFile([{ name: "x.thumbs/clip.mp4", format: "h.264", size: "1000" }]), null, "an item whose only video is a thumbnail strip is not a film");
+// ── detail.actions: href XOR play — and the two validators must agree ─────────────────────────────
+Deno.test("validateSpec: an action either leaves the app or plays in it", () => {
+  const withDetail = (actions) => ({ ...baseList(), detail: { title: "name", actions } });
+  validateSpec(withDetail([{ label: "open", href: "url" }]));
+  validateSpec(withDetail([{ label: "watch", play: "video" }]));
+  validateSpec(withDetail([{ label: "watch", play: "video", icon: "lucide:play" }]));
+  // neither → the button would do nothing at all
+  assertThrows(() => validateSpec(withDetail([{ label: "x" }])), Error, "spec.detail.actions[0].href");
+  // both → two meanings, and the runtime would have to guess which the author meant
+  const err = assertThrows(() => validateSpec(withDetail([{ label: "x", href: "url", play: "video" }])), Error);
+  assert(err.message.includes("spec.detail.actions[0].play"), err.message);
+  assertThrows(() => validateSpec(withDetail([{ play: "video" }])), Error, "spec.detail.actions[0].label");
 });

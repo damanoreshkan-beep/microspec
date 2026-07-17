@@ -2,29 +2,6 @@
 // and drags htm/preact behind it, so anything living there can never be reached by the unit gate. The
 // decisions worth getting right are decisions, not markup — they belong where a test can hold them.
 
-// Pick the one file a browser can actually play, out of an archive item's pile.
-//
-// This is not "the first video file". A real Internet Archive item ships the ORIGINAL — frequently a
-// Cinepak .avi of 773 MB that no browser has ever been able to decode — alongside the h.264 derivative
-// that plays, plus ~70 thumbnails, a torrent and four metadata blobs. Take the original and you ship a
-// black screen for a film that works fine; the app would look broken while the archive was perfect.
-//
-// So: extension must be playable, path must not be a thumbnail, then rank by codec (h.264 is the one
-// format every phone decodes) and prefer the largest of the best rank — with range requests, size buys
-// bitrate rather than waiting, and the viewer chose to watch a film.
-const PLAYABLE = /\.(mp4|m4v|webm|ogv)$/i;
-const THUMBS = /(^|\/)[^/]*\.thumbs\//i;
-const RANK = [/h\.?\s*264|avc/i, /mpeg-?\s*4|mp4/i, /webm|vp[89]/i, /ogg|ogv|theora/i];
-const rankOf = (f) => {
-  const s = `${f.format || ""} ${f.name || ""}`;
-  const i = RANK.findIndex((re) => re.test(s));
-  return i < 0 ? RANK.length : i;
-};
-export function pickFile(files) {
-  const ok = (files || []).filter((f) => f?.name && PLAYABLE.test(f.name) && !THUMBS.test(f.name));
-  if (!ok.length) return null;
-  return ok.sort((a, b) => rankOf(a) - rankOf(b) || (Number(b.size) || 0) - (Number(a.size) || 0))[0];
-}
 
 // Where to actually start, given a remembered position.
 //

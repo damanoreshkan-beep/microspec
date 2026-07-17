@@ -40,25 +40,42 @@ export function start(spec, arg2) {
   // Back-button routing invariant: hardware/browser Back closes an open overlay (detail, sheet,
   // install modal, tool sub-screen) instead of exiting the PWA. Each open state = one history entry;
   // closing via UI consumes it with history.back() so history stays balanced. Tabs are NOT routed.
+  // Ordered BOTTOM → TOP: overlays stack, and Back must close only the top one. The player opens over a
+  // detail, so a flat "Back closes everything" would drop the viewer from the film all the way back to the
+  // list, losing the item they were reading — one history entry per open layer is what makes Back mean
+  // "the previous screen" rather than "the beginning".
   const overlays = [
-    [S.detail, () => S.detail.set(null), (v) => v != null],
-    [S.screen, () => S.screen.set(null), (v) => v != null],
     [S.sheet, () => S.sheet.set(false), (v) => v === true],
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],
+    [S.screen, () => S.screen.set(null), (v) => v != null],
+    [S.detail, () => S.detail.set(null), (v) => v != null],
+    [S.player, () => S.player.set(null), (v) => v != null],
   ];
-  const anyOpen = () => overlays.some(([a, , isOpen]) => isOpen(a.get()));
-  let pushed = false, selfBack = false, exitArmed = false, exitTimer;
+  const openCount = () => overlays.filter(([a, , isOpen]) => isOpen(a.get())).length;
+  const anyOpen = () => openCount() > 0;
+  let depth = 0, fromPop = false, selfBack = false, exitArmed = false, exitTimer;
   for (const [a] of overlays) a.listen(() => {
-    const open = anyOpen();
-    if (open && !pushed) { pushed = true; history.pushState({ msOverlay: 1 }, ""); }
-    else if (!open && pushed) { pushed = false; if (history.state?.msOverlay) { selfBack = true; history.back(); } }  // closing via UI balances history
+    const n = openCount();
+    if (fromPop) { depth = n; return; }                       // Back already consumed the entry — don't balance it
+    if (n > depth) { depth = n; history.pushState({ msOverlay: 1 }, ""); }
+    else if (n < depth) { const d = depth - n; depth = n; if (history.state?.msOverlay) { selfBack = true; history.go(-d); } } // closing via UI balances history
   });
   // Double-Back-to-exit at the app ROOT (TikTok-style). A persistent guard entry makes the first hardware/
   // browser Back at root catchable: we cancel it and warn, then allow a second Back within ~2s to leave.
   history.pushState({ msRoot: 1 }, "");
   addEventListener("popstate", () => {
     if (selfBack) { selfBack = false; return; }                                       // our own balancing back()
-    if (anyOpen()) { pushed = false; overlays.forEach(([, close]) => close()); return; }  // Back closes an overlay
+    // Back closes the TOP-most overlay only — the player returns you to the detail you opened it from.
+    if (anyOpen()) {
+      for (let i = overlays.length - 1; i >= 0; i--) {
+        const [a, close, isOpen] = overlays[i];
+        if (!isOpen(a.get())) continue;
+        fromPop = true; try { close(); } finally { fromPop = false; }
+        depth = openCount();
+        break;
+      }
+      return;
+    }
     if (exitArmed) { clearTimeout(exitTimer); exitArmed = false; history.back(); return; } // 2nd Back → actually leave
     exitArmed = true;
     history.pushState({ msRoot: 1 }, "");                                              // re-arm the guard → cancel this Back

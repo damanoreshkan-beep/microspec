@@ -102,8 +102,9 @@ triggers is invisible to it.
 
 ### Sensor apps — seed the mock, and mark what it renders
 
-`/_rt/sensors.js` gives `haptic · geo · compass · motion · mic · camera · wakeLock`. The reading
-capabilities feed you finished answers: `compass.start(cb)` reports **true** north (it watches position and
+`/_rt/sensors.js` gives `haptic · geo · compass · wakeLock` — that is the whole list today; motion/mic/camera
+do not exist yet and adding one is a deliberate runtime extension. The reading capabilities feed you finished
+answers: `compass.start(cb)` reports **true** north (it watches position and
 applies the World Magnetic Model itself — never add declination in an app), `geo.watch` reports the full
 spec fix `{lat,lng,accuracy,altitude,altitudeAccuracy,heading,speed,t}` where `accuracy` is a **95%**
 radius. For anything measured, `/_rt/geofix.js` averages a stationary series into a vertex and propagates
@@ -123,7 +124,7 @@ overflows.
 
 Layouts `feed`/`row`/`grid`/`table` · `detail` · `search`/`searchFetch` · `paginate` (infinite scroll) ·
 `sort` (persisted segmented control) · `filters` types `select`/`toggle`/`segment`/`range`/`multi`
-(persisted) · `stream` (live source) · `chart` (SVG heat bars) · table columns
+(persisted) · `stream` (live source) · `detail.actions[].play` (in-app video: wakeLock + PiP + fullscreen + resume, all runtime-owned) · `chart` (SVG heat bars) · table columns
 (`heat`/`sub`/`lg`/`muted`/`mono`/`align`/`format`) · `translate` · `enrich` · date `format`
 `ago`/`when`/`since`. Add a capability to the schema+runtime once; every app reuses it. See `SCHEMA.md`.
 

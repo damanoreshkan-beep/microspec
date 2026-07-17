@@ -30,6 +30,9 @@ export function breathe({ S }) {
     if (!playing) return;
     const c = TECHS[tech], total = c.in + c.h1 + c.out + c.h2;
     const label = { in: T(t, "pIn"), hold: T(t, "pHold"), out: T(t, "pOut") };
+    // Reduced motion: keep the phase/count guidance updating, but hold the orb still — the size pulse is
+    // exactly the large, repeating motion a sensitive user asked us to suppress.
+    const reduce = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     let raf, start = performance.now();
     const loop = (now) => {
       const el = ((now - start) / 1000) % total;
@@ -38,7 +41,7 @@ export function breathe({ S }) {
       else if (el < c.in + c.h1) { scale = 1; ph = "hold"; rem = c.in + c.h1 - el; }
       else if (el < c.in + c.h1 + c.out) { scale = 1 - 0.45 * ease((el - c.in - c.h1) / c.out); ph = "out"; rem = c.in + c.h1 + c.out - el; }
       else { scale = 0.55; ph = "hold"; rem = total - el; }
-      if (orbRef.current) orbRef.current.style.transform = `scale(${scale.toFixed(3)})`;
+      if (orbRef.current) orbRef.current.style.transform = `scale(${(reduce ? 0.8 : scale).toFixed(3)})`;
       if (phaseRef.current) phaseRef.current.textContent = label[ph];
       if (countRef.current) countRef.current.textContent = String(Math.ceil(rem));
       raf = requestAnimationFrame(loop);

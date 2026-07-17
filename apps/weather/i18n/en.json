@@ -2,6 +2,7 @@
   "title": "Weather",
   "tabNow": "Now",
   "tabMe": "Me",
+  "place": "Kyiv",
   "statusError": "Data unavailable",
   "errorHint": "Check connection and refresh",
   "mFeels": "Feels like",

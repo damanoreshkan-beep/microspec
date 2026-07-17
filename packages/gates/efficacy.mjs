@@ -90,6 +90,10 @@ const MUTATIONS = [
     applies: ({ mode }) => mode !== "stream",
     async mutate(d, { mode }) { const f = `${d}/${mode === "tool" ? "view.js" : "data.js"}`; if (!await exists(f)) return false; await Deno.writeTextFile(f, await Deno.readTextFile(f) + '\nexport const __mut = "loading loading-spinner"; // injected\n'); return "injected spinner class"; } },
 
+  { id: "locale-blind-date", cat: "i18n", tier: "preflight",
+    applies: ({ mode }) => mode !== "stream",
+    async mutate(d, { mode }) { const f = `${d}/${mode === "tool" ? "view.js" : "data.js"}`; if (!await exists(f)) return false; await Deno.writeTextFile(f, await Deno.readTextFile(f) + '\nexport const __mut = new Date().toLocaleDateString(undefined, { weekday: "short" }); // injected\n'); return "injected locale-blind toLocaleDateString(undefined)"; } },
+
   { id: "view-throws", cat: "render", tier: "preflight",
     applies: ({ mode }) => mode === "tool",
     async mutate(d) { const f = `${d}/view.js`; await Deno.writeTextFile(f, 'throw new Error("mutant: broken view module");\n' + await Deno.readTextFile(f)); return "view.js throws on import"; } },

@@ -39,6 +39,7 @@ export async function load(filters = {}) {
 
   const data = JSON.parse(await viaProxy(`${API}?${params}`, isJsonObject, 15000));
 
+  const raw = (data.items || []).length;
   const items = (data.items || []).map((it) => ({
     id: String(it.id),
     title: it.name,
@@ -52,6 +53,7 @@ export async function load(filters = {}) {
     url: it.html_url,
   })).filter((it) => it.title);
 
-  const more = items.length === PAGE && (page + 1) * PAGE <= 1000;
+  const total = Math.min(data.total_count ?? 0, 1000);
+  const more = raw === PAGE && page * PAGE < total;
   return { items, next: more ? String(page) : undefined };
 }

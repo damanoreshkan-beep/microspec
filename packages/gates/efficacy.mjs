@@ -94,6 +94,24 @@ const MUTATIONS = [
     applies: ({ mode }) => mode === "tool",
     async mutate(d) { const f = `${d}/view.js`; await Deno.writeTextFile(f, 'throw new Error("mutant: broken view module");\n' + await Deno.readTextFile(f)); return "view.js throws on import"; } },
 
+  // The defect this reproduces is the one that actually shipped, twice: headless has no hardware, so a
+  // sensor app renders its "locating…" branch, and every check downstream then signs off on a screen no
+  // user sees. Disabling the gate detection is precisely that failure — the mock stops seeding a reading,
+  // the live UI never mounts, and the app looks perfect while its real layout was measured by nobody.
+  // Note this is not a mutation of the marker (renaming data-live would only prove the selector runs); it
+  // mutates the CAUSE, and the check has to notice the empty state that results.
+  { id: "sensor-mock-unseeded", cat: "render", tier: "preflight",
+    applies: ({ mode }) => mode === "tool",
+    async mutate(d) {
+      const f = `${d}/view.js`;
+      const s = await Deno.readTextFile(f);
+      if (!/import\s*\{[^}]*\b(geo|compass|motion|mic|camera)\b[^}]*\}\s*from\s*["']\/_rt\/sensors\.js["']/.test(s)) return false;
+      const out = s.replace(/\.test\(location\.hostname\)/g, ".test('nowhere')");
+      if (out === s) return false;
+      await Deno.writeTextFile(f, out);
+      return "gate detection disabled — the mock no longer seeds a reading";
+    } },
+
   // preflight deliberately does NOT execute data.js (no fetch, no logic), so a broken adapter is invisible
   // to it — that regression is the verify tier's job (the app errors at runtime, caught by e2e in CI).
   { id: "data-adapter-throws", cat: "render", tier: "verify",

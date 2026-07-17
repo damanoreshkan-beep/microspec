@@ -187,7 +187,7 @@ export function ruler({ S, toast }) {
       </div>
       <div class="flex items-center justify-between gap-2 text-xs px-1 min-h-4">
         ${err ? html`<span class="text-error flex items-center gap-1">${Icon("lucide:map-pin-off")}${T(t, "no" + (err === "denied" ? "Perm" : "Gps"))}</span>`
-          : ready ? html`<span data-fix class=${`flex items-center gap-1 shrink-0 tabular-nums ${canAdd ? "text-base-content/70" : "text-warning"}`}>
+          : ready ? html`<span data-fix data-live class=${`flex items-center gap-1 shrink-0 tabular-nums ${canAdd ? "text-base-content/70" : "text-warning"}`}>
               ${Icon(canAdd ? "lucide:satellite-dish" : "lucide:satellite", "shrink-0")}
               ±${shownAcc < 10 ? Math.round(shownAcc * 10) / 10 : Math.round(shownAcc)} ${T(t, "uM")}
               ${depth >= 2 ? html`<span class="text-[0.9em]">${depth}×</span>` : null}

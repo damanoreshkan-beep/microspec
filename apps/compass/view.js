@@ -110,7 +110,7 @@ export function compassView({ S }) {
       ${needPerm ? html`<button id="perm" data-perm class="btn btn-sm btn-primary rounded-2xl gap-2" onClick=${grant}>${Icon("lucide:compass")}${T(t, "enable")}</button>`
         : !compass.supported ? html`<span class="text-error flex items-center gap-1">${Icon("lucide:compass")}${T(t, "noCompass")}</span>` : null}
 
-      ${dec != null ? html`<span data-dec class="text-base-content/70 flex items-center gap-1.5 font-mono tabular-nums">
+      ${dec != null ? html`<span data-dec data-live class="text-base-content/70 flex items-center gap-1.5 font-mono tabular-nums">
           ${Icon("lucide:magnet", "text-[0.9em]")}${T(t, "decl")} ${dec >= 0 ? "+" : "−"}${Math.abs(dec).toFixed(1)}°${dec >= 0 ? T(t, "east") : T(t, "west")}
         </span>`
         : stale ? html`<span class="text-warning flex items-center gap-1">${Icon("lucide:triangle-alert")}${T(t, "expired")}</span>`

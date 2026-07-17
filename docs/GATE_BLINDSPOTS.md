@@ -74,6 +74,16 @@ not *empty* — the two are indistinguishable from a single source. Ask the next
 - `h-[52vh]` looked correct everywhere in CI. `vh` is defined as the **large** viewport — the height the
   page would have if the address bar were already retracted — so the canvas overflows on a real phone.
   **Headless Chromium has no address bar to retract.** *Closed: `svh`, and the farm now contains no vh/vw.*
+- **Headless has no hardware, so a sensor app renders its empty state — and that is the screen the gate
+  measured.** The compass rose overflowed by 39px at 384px and 132px at 200px: a rotated square's bounding
+  box grows √2, but with no magnetometer the dial sat at 0° and never rotated. The ruler's fix readout
+  failed contrast in both themes at an effective 39% opacity — invisible to axe, because with no GPS the
+  element never mounted. Both were green. Both were broken only on a phone. The a11y sweep, overflow@384
+  and watch@200 all passed a screen no user will ever see. *Closed: preflight fails any app importing a
+  reading capability (`geo`/`compass`/`motion`/`mic`/`camera`) that mounts no `[data-live]` element — the
+  mock must seed a plausible reading, and the live UI must exist for the checks below it to mean anything.
+  Measured by `efficacy.mjs/sensor-mock-unseeded`, which disables the gate detection so the mock stops
+  seeding — mutating the cause, not the marker.*
 - Server-side probes are not the app. `overpass-api.de` returns `406` to curl and `200` to a browser: it
   requires a `User-Agent` **and** a `Referer`, both of which a browser always sends. Concluding "blocked"
   from a shell nearly cost the app its data source.

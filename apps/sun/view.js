@@ -104,8 +104,13 @@ export function sun({ S, openScreen, closeScreen }) {
   ];
 
   return html`<div class="flex flex-col gap-4 items-center">
-    <${SkyDial} size=${360} rotate=${-(heading || 0)} marks=${marks} rim=${CARDINALS} center=${center}
-      overlay=${html`<div class="absolute left-1/2 -top-1 -translate-x-1/2 text-base-content/50">${Icon("lucide:chevron-up", "text-xl")}</div>`} />
+    <!-- data-live marks the dial as heading-bearing: display:contents, so it is a claim about state and
+         not a box. Without a heading the dial sits at 0° and its rotated bounding box — the thing that
+         actually overflows — never exists for a gate to measure. -->
+    <div data-live=${heading == null ? null : true} class="contents">
+      <${SkyDial} size=${360} rotate=${-(heading || 0)} marks=${marks} rim=${CARDINALS} center=${center}
+        overlay=${html`<div class="absolute left-1/2 -top-1 -translate-x-1/2 text-base-content/50">${Icon("lucide:chevron-up", "text-xl")}</div>`} />
+    </div>
 
     ${heading == null ? html`<div class="text-xs text-base-content/60 flex items-center gap-1.5">${Icon("lucide:compass")}${needPerm ? "" : T(t, "noCompass")}</div>` : null}
     ${needPerm ? html`<button id="grant" class="btn btn-primary btn-sm rounded-2xl gap-2" onClick=${grant}>${Icon("lucide:compass")}${T(t, "enableCompass")}</button>` : null}

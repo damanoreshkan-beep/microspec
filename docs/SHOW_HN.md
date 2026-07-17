@@ -89,7 +89,7 @@ HN will probe hard. Concede what's true, then sharpen the real point. Never get 
 > green means something. Bolt/v0 can't gate that way — there's no shared contract to gate against. (2) I
 > **measure the gate itself**: a mutation-testing harness injects realistic breakages into every app and
 > reports the catch rate. It started at 79%, exposed a real gap (locale-parity wasn't enforced), I closed
-> it, and it's 100% (51/51) on the browser-free tier now — and that number runs in CI, so the gate can't
+> it, and it's 100% (52/52) on the browser-free tier now — and that number runs in CI, so the gate can't
 > silently regress. The Chromium tier is measured the same way: a mutation that strips a control's
 > accessible name is *caught by axe in CI* (100%, 6/6) — the a11y claim proven by measurement, not
 > assertion. I've never seen another "AI builds apps" project publish a gate-efficacy number. The

@@ -118,6 +118,24 @@ async function preflight(appdir) {
     walk(app);
     if (strays.size) errs.push(`stray tag-name text ${[...strays].map((s) => `"${s}"`).join(", ")} — likely an UNCLOSED tag in ${srcFile}`);
 
+    // --- an app that reads a sensor must render a READING here, not an empty waiting state ---
+    //
+    // Headless has no GPS, no magnetometer, no microphone. Left alone, a sensor app renders its "locating…"
+    // branch forever, and that is the branch every gate downstream then measures: the a11y sweep, the 384px
+    // overflow check and the watch check all sign off on a screen the user never sees. The live layout —
+    // the rotated dial whose bounding box grows √2, the readout that is widest once it has a value, the
+    // colour that only appears at low contrast when there is something to colour — is exactly the part
+    // nobody looks at, and it ships green while being broken on a phone.
+    //
+    // So a sensor app seeds its mock with a plausible reading, and the way to prove it did is to require
+    // the reading-shaped UI to exist. `data-live` marks an element that CANNOT render without a reading;
+    // if none mounted, the app is sitting in its empty state and the gates below are measuring nothing.
+    const sensorImport = src.match(/import\s*\{([^}]*)\}\s*from\s*["']\/_rt\/sensors\.js["']/);
+    const reads = sensorImport && /\b(geo|compass|motion|mic|camera)\b/.test(sensorImport[1]);
+    if (reads && !app?.querySelector("[data-live]")) {
+      errs.push(`reads a sensor but rendered no [data-live] element — headless has no hardware, so this is the empty waiting state, and every check below (a11y, overflow@384, watch@200) is now measuring a screen no user sees. Seed the mock with a reading (see apps/ruler SAMPLE_FIXES) and mark what it renders with data-live.`);
+    }
+
     for (const e of rafErr) errs.push("render loop threw: " + (e?.message || e));
     for (const m of uncaught) errs.push("async/effect threw: " + m);
   } catch (e) {

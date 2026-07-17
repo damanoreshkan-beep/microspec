@@ -47,11 +47,14 @@ const query = (os, q) => {
   return `${term}${base} ${EXCLUDE}`;
 };
 
-export async function load(filters = {}, cursor) {
+export async function load(filters = {}) {
   const q = (filters.q || "").trim();
   const os = filters.os || "";
   const sort = filters.sort === "updated" ? "updated" : "stars";
-  const page = (Number(cursor) || 0) + 1;          // GitHub pages are 1-indexed; our cursor is 0-indexed
+  // The infinite-scroll cursor arrives as filters.cursor (the `next` we returned last time), NOT a second
+  // argument — the runtime calls load({ ...filters, q, cursor }). It IS the last GitHub page number, so the
+  // next page is cursor + 1; a first load has no cursor and starts at page 1.
+  const page = (Number(filters.cursor) || 0) + 1;
 
   const params = new URLSearchParams({
     q: query(os, q),
@@ -76,8 +79,10 @@ export async function load(filters = {}, cursor) {
     url: it.html_url,
   })).filter((it) => it.title);
 
-  // GitHub's Search API caps at 1000 results (~41 pages of 24); stop offering "more" at the wall, and stop
-  // when a short page proves there is nothing behind it.
-  const more = items.length === PAGE && page * PAGE < 1000;
+  // GitHub's Search API serves only the first 1000 results and 422s a request past them, so offer "more"
+  // only while the NEXT page (page + 1) still fits inside that window — and stop when a short page proves
+  // there is nothing behind it. The cursor we hand back is this page's number; loadMore returns it as
+  // filters.cursor and we resume at page + 1.
+  const more = items.length === PAGE && (page + 1) * PAGE <= 1000;
   return { items, next: more ? String(page) : undefined };
 }

@@ -45,6 +45,19 @@ export default [
     },
   },
   {
+    // Infinite scroll: the cursor round-trips as filters.cursor, so load-more must APPEND a distinct next
+    // page, not re-fetch page one. Regressed once when load() read the cursor as a positional arg (always
+    // undefined) and every page came back as page 1.
+    name: "інфініт-пейджинг доклеює наступну сторінку", run: async (h) => {
+      await ready(h);
+      const before = await h.count(".aw-tap");
+      h.expect(before >= 20, `перша сторінка замала: ${before}`);
+      await h.click('[aria-live="polite"] button'); await h.wait(3500);
+      const after = await h.count(".aw-tap");
+      h.expect(after > before, `load-more не додав карток: було ${before}, стало ${after}`);
+    },
+  },
+  {
     // searchFetch: thousands of repos, so search must reach the server, not sieve 24 rows.
     name: "пошук іде на сервер, а не просіює екран", run: async (h) => {
       await ready(h);

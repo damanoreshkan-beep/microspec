@@ -117,6 +117,13 @@ async function preflight(appdir) {
   // Pixels) instead. DaisyUI loading spinners are banned in app source.
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
+  // Locale-blind date/number formatting. `toLocale*String()` with no locale (or `undefined`) formats with the
+  // system/browser locale, not the app's — it freezes one language and never reacts to the toggle (weather
+  // shipped English weekdays under a Ukrainian UI). Pass the app locale explicitly (see globe/kp:
+  // `loc === "uk" ? "uk-UA" : "en-US"`), or return a raw timestamp for the runtime renderer to format.
+  { const m = src.match(/\.toLocale(?:Date|Time)?String\(\s*(?:undefined\b|\))/);
+    if (m) errs.push(`locale-blind \`${m[0]}…\` — pass the app locale, or return a raw value for the renderer to format (never bake a locale-frozen string in an adapter/view)`); }
+
   // --- mount: render the app in a linkedom DOM and inspect the output ---
   const { document, rafErr, uncaught } = installDom();
   try {

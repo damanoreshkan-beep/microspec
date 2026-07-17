@@ -2,7 +2,7 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { geo, compass } from "/_rt/sensors.js";
+import { compass } from "/_rt/sensors.js";
 import { declination, decimalYear, inRange } from "/_rt/geomag.js";
 import { Scramble } from "/_rt/skeleton.js";
 
@@ -22,17 +22,11 @@ export function compassView({ S }) {
   const seed = isGate || MOCK ? (stale ? null : declination(SAMPLE.lat, SAMPLE.lng, 0, year)) : null;
   const [shown, setShown] = useState(isGate || MOCK ? norm(seed || 0) : null);   
   const [dec, setDec] = useState(seed);
-  const [geoErr, setGeoErr] = useState(null);
+  const [geoState, setGeoState] = useState(isGate || MOCK ? "ok" : null);
   const [needPerm, setNeedPerm] = useState(false);
   const stopRef = useRef(null);
 
-  useEffect(() => {
-    if (isGate || MOCK) return;
-    if (!geo.supported) { setGeoErr("unsupported"); return; }
-    return geo.watch(() => setGeoErr(null), (e) => setGeoErr(e), { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 });
-  }, []);
-
-  const listen = () => compass.start((deg, m) => { setShown(deg); setDec(m.declination); });
+  const listen = () => compass.start((deg, m) => { setShown(deg); setDec(m.declination); setGeoState(m.geo); });
   useEffect(() => {
     if (isGate || MOCK) return;
     if (!compass.supported) return;
@@ -89,7 +83,8 @@ export function compassView({ S }) {
           ${Icon("lucide:magnet", "text-[0.9em]")}${T(t, "decl")} ${dec >= 0 ? "+" : "−"}${Math.abs(dec).toFixed(1)}°${dec >= 0 ? T(t, "east") : T(t, "west")}
         </span>`
         : stale ? html`<span class="text-warning flex items-center gap-1">${Icon("lucide:triangle-alert")}${T(t, "expired")}</span>`
-        : html`<span data-nodec class="text-warning flex items-center gap-1.5 text-center">${Icon("lucide:map-pin-off", "shrink-0")}${T(t, geoErr === "denied" ? "noPerm" : "noPos")}</span>`}
+        : geoState ? html`<span data-nodec class="text-warning flex items-center gap-1.5 text-center">${Icon("lucide:map-pin-off", "shrink-0")}${T(t, geoState === "denied" ? "noPerm" : "noPos")}</span>`
+        : null}
 
       ${dec != null ? html`<span class="text-base-content/45 font-mono text-[0.65rem]">${T(t, "model")}</span>` : null}
     </div>

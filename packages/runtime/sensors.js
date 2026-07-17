@@ -76,6 +76,7 @@ export const compass = {
   start(onHeading, { trueNorth = true } = {}) {
     if (!this.supported) return () => {};
     let ema = null, dec = null, wmm = null, stopGeo = () => {};
+    let geoState = geo.supported ? "pending" : "unsupported";   
 
     if (trueNorth && geo.supported) {
       stopGeo = geo.watch(async (p) => {
@@ -83,8 +84,10 @@ export const compass = {
           wmm = wmm || await import("./geomag.js");
           const y = wmm.decimalYear();
           dec = wmm.inRange(y) ? wmm.declination(p.lat, p.lng, (p.altitude || 0) / 1000, y) : null;
-        } catch { dec = null; }                                                    
-      }, () => { dec = null; }, { enableHighAccuracy: false, maximumAge: 300000, timeout: 20000 });
+          geoState = "ok";
+        } catch { dec = null; geoState = "ok"; }                                   
+      }, (e) => { dec = null; geoState = e === "denied" ? "denied" : "unavailable"; },
+      { enableHighAccuracy: false, maximumAge: 300000, timeout: 20000 });
     }
 
     const handler = (e) => {
@@ -95,7 +98,7 @@ export const compass = {
       h = (h + ((screen.orientation && screen.orientation.angle) || 0)) % 360;          
       if (ema == null) ema = h;
       else { const d = ((h - ema + 540) % 360) - 180; ema = (ema + 0.25 * d + 360) % 360; } 
-      onHeading(wmm ? wmm.trueFrom(ema, dec) : ema, { magnetic: ema, declination: dec, isTrue: dec != null });
+      onHeading(wmm ? wmm.trueFrom(ema, dec) : ema, { magnetic: ema, declination: dec, isTrue: dec != null, geo: geoState });
     };
     const evt = "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation";
     window.addEventListener(evt, handler, true);

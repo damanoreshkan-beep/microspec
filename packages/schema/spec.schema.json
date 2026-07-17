@@ -1262,6 +1262,10 @@
               "unit": {
                 "type": "string",
                 "description": "OPTIONAL literal suffix on hi/lo."
+              },
+              "weekday": {
+                "type": "boolean",
+                "description": "OPTIONAL — treat the `day` field as a raw ISO date and render it as a locale-aware short weekday (never bake the weekday string in data.js — no locale there)."
               }
             }
           }

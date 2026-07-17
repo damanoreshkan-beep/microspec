@@ -640,9 +640,12 @@ function DashboardView({ tab }) {
   if (!useReveal(!data.loading)) return html`<div data-skel class="flex flex-col gap-4"><figure class="aspect-video rounded-2xl overflow-hidden border border-base-300"><${Pixels} /></figure><div class="text-2xl font-bold text-base-content/70 truncate"><${Scramble} len=${18} /></div><div class="flex flex-col gap-2 text-base-content/70"><div class="truncate"><${Scramble} len=${30} /></div><div class="truncate"><${Scramble} len=${22} /></div></div></div>`;
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
   const m = data.meta || {}, h = tab.hero;
-  const place = h.place && m[h.place] ? (A.spec.filters
-    ? html`<button class="inline-flex items-center gap-1 text-sm text-base-content/80" onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:map-pin", "text-xs")}${m[h.place]} ${Icon("lucide:chevron-down", "text-xs")}</button>`
-    : html`<span class="text-sm text-base-content/80 inline-flex items-center gap-1">${Icon("lucide:map-pin", "text-xs")}${m[h.place]}</span>`) : null;
+  // place is rendered through T() so a data.js that returns an i18n key (e.g. "place") localises reactively;
+  // a plain string (a real place name) passes through unchanged.
+  const placeText = h.place && m[h.place] ? T(t, m[h.place]) : null;
+  const place = placeText ? (A.spec.filters
+    ? html`<button class="inline-flex items-center gap-1 text-sm text-base-content/80" onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:map-pin", "text-xs")}${placeText} ${Icon("lucide:chevron-down", "text-xs")}</button>`
+    : html`<span class="text-sm text-base-content/80 inline-flex items-center gap-1">${Icon("lucide:map-pin", "text-xs")}${placeText}</span>`) : null;
   return html`<div class="flex flex-col gap-3">
     <div class="card @container bg-gradient-to-b from-primary/15 to-base-100 border border-base-300 rounded-2xl"><div class="card-body p-5 items-center text-center gap-1">
       ${place}
@@ -652,7 +655,7 @@ function DashboardView({ tab }) {
       ${h.metrics ? html`<div class="flex flex-wrap gap-1.5 justify-center mt-2 @max-[240px]:hidden">${h.metrics.map((mt) => html`<span class="badge badge-ghost gap-1" key=${mt.field}>${mt.icon ? Icon(mt.icon) : null}${T(t, mt.label)}: ${m[mt.field] ?? "—"}${mt.unit || ""}</span>`)}</div>` : null}
     </div></div>
     ${tab.strip && Array.isArray(m[tab.strip.from]) ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-2"><div class="text-sm font-semibold px-1">${T(t, tab.strip.label)}</div><div class="flex gap-3 overflow-x-auto pb-1" tabindex="0" role="group" aria-label=${T(t, tab.strip.label)}>${m[tab.strip.from].map((s, i) => html`<div class="flex flex-col items-center gap-0.5 shrink-0 min-w-12" key=${i}><span class="text-xs text-base-content/80">${s[tab.strip.time]}</span>${tab.strip.icon && s[tab.strip.icon] ? Icon(s[tab.strip.icon], "text-lg text-primary") : null}<span class="font-semibold tabular-nums">${s[tab.strip.value]}${tab.strip.unit || ""}</span></div>`)}</div></div></div>` : null}
-    ${tab.days ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-1">${tab.days.label ? html`<div class="text-sm font-semibold px-1 mb-1">${T(t, tab.days.label)}</div>` : null}${data.items.map((d, i) => html`<div class="flex items-center gap-3 py-1.5 border-b border-base-300/50 last:border-0" key=${i}><span class="flex-1 min-w-0 truncate font-medium">${d[tab.days.day]}</span>${tab.days.icon && d[tab.days.icon] ? Icon(d[tab.days.icon], "text-lg text-primary") : null}<span class="tabular-nums font-semibold">${d[tab.days.hi]}${tab.days.unit || ""}</span>${tab.days.lo ? html`<span class="tabular-nums text-base-content/80 w-9 text-right @max-[240px]:hidden">${d[tab.days.lo]}${tab.days.unit || ""}</span>` : null}</div>`)}</div></div>` : null}
+    ${tab.days ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-1">${tab.days.label ? html`<div class="text-sm font-semibold px-1 mb-1">${T(t, tab.days.label)}</div>` : null}${data.items.map((d, i) => html`<div class="flex items-center gap-3 py-1.5 border-b border-base-300/50 last:border-0" key=${i}><span class="flex-1 min-w-0 truncate font-medium">${tab.days.weekday ? new Date(d[tab.days.day]).toLocaleDateString(loc === "en" ? "en-GB" : loc || "uk", { weekday: "short" }) : d[tab.days.day]}</span>${tab.days.icon && d[tab.days.icon] ? Icon(d[tab.days.icon], "text-lg text-primary") : null}<span class="tabular-nums font-semibold">${d[tab.days.hi]}${tab.days.unit || ""}</span>${tab.days.lo ? html`<span class="tabular-nums text-base-content/80 w-9 text-right @max-[240px]:hidden">${d[tab.days.lo]}${tab.days.unit || ""}</span>` : null}</div>`)}</div></div>` : null}
   </div>`;
 }
 

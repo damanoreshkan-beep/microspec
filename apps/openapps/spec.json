@@ -1,0 +1,173 @@
+{
+  "id": "openapps",
+  "theme": "signal",
+  "translate": [
+    "desc"
+  ],
+  "fav": {
+    "key": "id"
+  },
+  "filters": {
+    "refetch": true,
+    "defaults": {
+      "os": "",
+      "sort": "stars"
+    },
+    "controls": [
+      {
+        "type": "select",
+        "key": "os",
+        "label": "fOs",
+        "icon": "lucide:monitor-smartphone",
+        "refetch": true,
+        "chip": true,
+        "options": [
+          [
+            "",
+            "osAll"
+          ],
+          [
+            "windows",
+            "osWindows"
+          ],
+          [
+            "macos",
+            "osMac"
+          ],
+          [
+            "linux",
+            "osLinux"
+          ],
+          [
+            "android",
+            "osAndroid"
+          ]
+        ]
+      },
+      {
+        "type": "segment",
+        "key": "sort",
+        "label": "fSort",
+        "icon": "lucide:arrow-up-down",
+        "options": [
+          [
+            "stars",
+            "sortStars"
+          ],
+          [
+            "updated",
+            "sortUpdated"
+          ]
+        ]
+      }
+    ]
+  },
+  "tabs": [
+    {
+      "id": "apps",
+      "type": "list",
+      "icon": "lucide:layout-grid",
+      "label": "tabApps",
+      "search": true,
+      "searchFetch": true,
+      "searchKey": "search",
+      "browse": true,
+      "paginate": true,
+      "card": {
+        "layout": "gallery",
+        "title": "title",
+        "subtitle": "owner",
+        "image": "icon",
+        "imageFit": "cover",
+        "badges": [
+          {
+            "field": "stars",
+            "icon": "lucide:star",
+            "variant": "ghost"
+          }
+        ]
+      }
+    },
+    {
+      "id": "saved",
+      "type": "list",
+      "icon": "lucide:bookmark",
+      "label": "tabSaved",
+      "source": "fav",
+      "titleKey": "tabSaved",
+      "empty": {
+        "icon": "lucide:bookmark",
+        "text": "emptySaved"
+      },
+      "card": {
+        "layout": "gallery",
+        "title": "title",
+        "subtitle": "owner",
+        "image": "icon",
+        "imageFit": "cover",
+        "badges": [
+          {
+            "field": "stars",
+            "icon": "lucide:star",
+            "variant": "ghost"
+          }
+        ]
+      }
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "detail": {
+    "title": "title",
+    "subtitle": "owner",
+    "image": "icon",
+    "imageFit": "cover",
+    "body": "desc",
+    "rows": [
+      {
+        "field": "stars",
+        "label": "rStars",
+        "icon": "lucide:star"
+      },
+      {
+        "field": "lang",
+        "label": "rLang",
+        "icon": "lucide:code"
+      },
+      {
+        "field": "license",
+        "label": "rLicense",
+        "icon": "lucide:scale"
+      },
+      {
+        "field": "updated",
+        "label": "rUpdated",
+        "icon": "lucide:calendar",
+        "format": "ago"
+      }
+    ],
+    "actions": [
+      {
+        "label": "openRepo",
+        "href": "url",
+        "icon": "lucide:github"
+      }
+    ]
+  },
+  "profile": {
+    "icon": "lucide:layout-grid",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": {
+      "label": "profSource",
+      "url": "https://github.com/topics/app",
+      "icon": "lucide:github"
+    }
+  }
+}

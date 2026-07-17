@@ -1,7 +1,7 @@
 {
-  "name": "Каталог програм",
-  "short_name": "Каталог програм",
-  "description": "Каталог програм для Windows — тисячі пакетів Chocolatey: версія, видавець, команда встановлення",
+  "name": "Відкриті застосунки",
+  "short_name": "Відкриті застосунки",
+  "description": "Відкриті застосунки з GitHub за платформами — Windows, macOS, Linux, Android: зірки, мова, ліцензія",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

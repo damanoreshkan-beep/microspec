@@ -328,9 +328,9 @@ function ListView({ tab }) {
   // grid layout lays its tiles out in an Android-style grid; other layouts stack in the flex-col main.
   // @container wrapper so the grid drops to 3 columns on a watch-narrow width (4 on a phone).
   if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`]);
-  // Two columns on a phone, one on a watch — a catalogue tile carries a publisher line and a badge, and at
-  // three columns that text is unreadable long before the icon is.
-  if (tab.card.layout === "gallery") return Frag([banner, html`<div class="@container pt-2" key="gallery"><div class="grid grid-cols-2 @max-[240px]:grid-cols-1 @min-[560px]:grid-cols-3 gap-x-3 gap-y-5">${cards}</div></div>`]);
+  // Three columns on a phone — a store shelf, not a two-up feed: the icon carries the recognition and the
+  // caption is one line under it. Drops to two on a watch, climbs to four on a tablet.
+  if (tab.card.layout === "gallery") return Frag([banner, html`<div class="@container pt-2" key="gallery"><div class="grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`]);
   // infinite scroll appends server pages under the live list (not the saved/fav tab, not sectioned lists)
   const more = tab.paginate && tab.source !== "fav" ? html`<${LoadMore} key="more" />` : null;
   if (tab.card.layout === "table") return Frag([banner, html`<${Table} items=${items} tab=${tab} key="tbl" />`, more]);

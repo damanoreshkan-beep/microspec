@@ -1,5 +1,15 @@
 [
   {
+    "id": "openapps",
+    "title": "Відкриті застосунки",
+    "tagline": "Відкриті застосунки з GitHub за платформами — Windows, macOS, Linux, Android: зірки, мова, ліцензія",
+    "glyph": "lucide:layout-grid",
+    "bg": "#0d1117",
+    "fg": "#7c9cf7",
+    "href": "./openapps/",
+    "version": "1.0"
+  },
+  {
     "id": "wiki",
     "title": "Вікіпедія",
     "tagline": "Швидкий пошук по Вікіпедії",
@@ -70,16 +80,6 @@
     "version": "1.7"
   },
   {
-    "id": "winapps",
-    "title": "Каталог програм",
-    "tagline": "Каталог програм для Windows — тисячі пакетів Chocolatey: версія, видавець, команда встановлення",
-    "glyph": "lucide:app-window",
-    "bg": "#0f1115",
-    "fg": "#5eb3f6",
-    "href": "./winapps/",
-    "version": "1.1"
-  },
-  {
     "id": "cinema",
     "title": "Кіно",
     "tagline": "Кіно — фільми суспільного надбання з Internet Archive: дивись просто в застосунку, продовжуй з того місця, де зупинився",
@@ -87,7 +87,7 @@
     "bg": "#0f0f12",
     "fg": "#f4b942",
     "href": "./cinema/",
-    "version": "1.3"
+    "version": "1.4"
   },
   {
     "id": "books",

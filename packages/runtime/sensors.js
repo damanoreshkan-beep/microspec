@@ -132,6 +132,10 @@ export const compass = {
   start(onHeading, { trueNorth = true } = {}) {
     if (!this.supported) return () => {};
     let ema = null, dec = null, wmm = null, stopGeo = () => {};
+    // Why there is no declination, not just that there isn't one. A consumer showing "no position" when the
+    // real reason is a denied permission — or a missing magnetometer — is telling the user something false,
+    // and it would need its own second geolocation watch just to guess at it.
+    let geoState = geo.supported ? "pending" : "unsupported";   // pending | ok | denied | unavailable | unsupported
 
     if (trueNorth && geo.supported) {
       // The model is ~2 KB of Gauss coefficients: imported only once a compass actually runs, so the apps
@@ -144,8 +148,10 @@ export const compass = {
           const y = wmm.decimalYear();
           // Outside the model's window an extrapolated declination is a guess wearing a decimal point.
           dec = wmm.inRange(y) ? wmm.declination(p.lat, p.lng, (p.altitude || 0) / 1000, y) : null;
-        } catch { dec = null; }                                                    // model unreachable → stay magnetic
-      }, () => { dec = null; }, { enableHighAccuracy: false, maximumAge: 300000, timeout: 20000 });
+          geoState = "ok";
+        } catch { dec = null; geoState = "ok"; }                                   // positioned, but model unreachable
+      }, (e) => { dec = null; geoState = e === "denied" ? "denied" : "unavailable"; },
+      { enableHighAccuracy: false, maximumAge: 300000, timeout: 20000 });
     }
 
     const handler = (e) => {
@@ -158,7 +164,7 @@ export const compass = {
       else { const d = ((h - ema + 540) % 360) - 180; ema = (ema + 0.25 * d + 360) % 360; } // circular EMA
       // Smooth the magnetometer, then correct — never the reverse: the EMA would drag a step change in
       // declination through the heading and swing the needle for no physical reason.
-      onHeading(wmm ? wmm.trueFrom(ema, dec) : ema, { magnetic: ema, declination: dec, isTrue: dec != null });
+      onHeading(wmm ? wmm.trueFrom(ema, dec) : ema, { magnetic: ema, declination: dec, isTrue: dec != null, geo: geoState });
     };
     const evt = "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation";
     window.addEventListener(evt, handler, true);

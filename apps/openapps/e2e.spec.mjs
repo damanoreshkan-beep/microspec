@@ -52,8 +52,11 @@ export default [
       await ready(h);
       const before = await h.count(".aw-tap");
       h.expect(before >= 20, `перша сторінка замала: ${before}`);
-      await h.click('[aria-live="polite"] button'); await h.wait(3500);
-      const after = await h.count(".aw-tap");
+      h.expect((await h.count("#loadmore")) === 1, "немає кнопки «показати ще» — next не віддається, пейджинг мертвий");
+      await h.click("#loadmore");
+      // Poll for growth: the page-2 GitHub fetch can outlast a fixed wait on a cold CI runner.
+      let after = before;
+      for (let i = 0; i < 12 && after <= before; i++) { await h.wait(700); after = await h.count(".aw-tap"); }
       h.expect(after > before, `load-more не додав карток: було ${before}, стало ${after}`);
     },
   },

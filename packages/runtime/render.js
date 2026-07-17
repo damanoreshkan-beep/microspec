@@ -237,7 +237,7 @@ function LoadMore() {
     io.observe(el);
     return () => io.disconnect();
   }, []);
-  const btn = (cls, icon) => html`<button class=${`btn btn-ghost btn-sm gap-2 ${cls}`} onClick=${() => A.loadMore()}>${Icon(icon)} ${T(t, "loadMore")}</button>`;
+  const btn = (cls, icon) => html`<button id="loadmore" class=${`btn btn-ghost btn-sm gap-2 ${cls}`} onClick=${() => A.loadMore()}>${Icon(icon)} ${T(t, "loadMore")}</button>`;
   return html`<div ref=${ref} class="flex justify-center py-4 min-h-8" aria-live="polite">
     ${data.loadingMore ? html`<div class="text-base-content/60 text-sm" role="status" aria-label=${T(t, "statusLoading")}><${Scramble} len=${10} /></div>`
       : data.moreError ? btn("text-error", "lucide:rotate-cw")

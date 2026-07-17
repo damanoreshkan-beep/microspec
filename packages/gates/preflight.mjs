@@ -74,6 +74,19 @@ async function preflight(appdir) {
     for (const k of Object.keys(i18n[l])) if (!(k in i18n.en)) errs.push(`i18n key "${k}" in ${l}.json absent from en.json (locale parity)`);
   }
 
+  const declared = [
+    [(s) => (s.tabs || []).some((t) => t.searchFetch && !t.browse && !t.prompt), ["searchPrompt", "searchPromptHint"], "tab.searchFetch without browse/prompt shows the search empty-state"],
+    [(s) => (s.tabs || []).some((t) => t.paginate), ["loadMore"], "tab.paginate renders a load-more control"],
+    [(s) => !!s.detail, ["back"], "spec.detail renders a back button"],
+    [(s) => !!s.fav, ["favAria", "unfavAria"], "spec.fav renders bookmark controls"],
+  ];
+  for (const [applies, keys, why] of declared) {
+    if (!applies(spec)) continue;
+    for (const k of keys) for (const l of locales) {
+      if (!(k in i18n[l])) errs.push(`i18n key "${k}" missing in ${l}.json — ${why}, and the runtime would render the raw key`);
+    }
+  }
+
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
   const { document, rafErr, uncaught } = installDom();

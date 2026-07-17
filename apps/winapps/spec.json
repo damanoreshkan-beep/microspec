@@ -1,8 +1,12 @@
 {
   "id": "winapps",
   "theme": "signal",
-  "translate": ["desc"],
-  "fav": { "key": "id" },
+  "translate": [
+    "desc"
+  ],
+  "fav": {
+    "key": "id"
+  },
   "tabs": [
     {
       "id": "apps",
@@ -17,8 +21,15 @@
         "title": "title",
         "subtitle": "publisher",
         "image": "icon",
-        "badges": [{ "field": "version", "icon": "lucide:tag", "variant": "ghost" }]
-      }
+        "badges": [
+          {
+            "field": "version",
+            "icon": "lucide:tag",
+            "variant": "ghost"
+          }
+        ]
+      },
+      "browse": true
     },
     {
       "id": "saved",
@@ -27,16 +38,31 @@
       "label": "tabSaved",
       "source": "fav",
       "titleKey": "tabSaved",
-      "empty": { "icon": "lucide:bookmark", "text": "emptySaved" },
+      "empty": {
+        "icon": "lucide:bookmark",
+        "text": "emptySaved"
+      },
       "card": {
         "layout": "gallery",
         "title": "title",
         "subtitle": "publisher",
         "image": "icon",
-        "badges": [{ "field": "version", "icon": "lucide:tag", "variant": "ghost" }]
+        "badges": [
+          {
+            "field": "version",
+            "icon": "lucide:tag",
+            "variant": "ghost"
+          }
+        ]
       }
     },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
   "detail": {
     "title": "title",
@@ -45,13 +71,34 @@
     "imageFit": "contain",
     "body": "desc",
     "rows": [
-      { "field": "version", "label": "rVersion", "icon": "lucide:tag" },
-      { "field": "downloads", "label": "rDownloads", "icon": "lucide:download" },
-      { "field": "install", "label": "rInstall", "icon": "lucide:terminal" },
-      { "field": "updated", "label": "rUpdated", "icon": "lucide:calendar", "format": "ago" }
+      {
+        "field": "version",
+        "label": "rVersion",
+        "icon": "lucide:tag"
+      },
+      {
+        "field": "downloads",
+        "label": "rDownloads",
+        "icon": "lucide:download"
+      },
+      {
+        "field": "install",
+        "label": "rInstall",
+        "icon": "lucide:terminal"
+      },
+      {
+        "field": "updated",
+        "label": "rUpdated",
+        "icon": "lucide:calendar",
+        "format": "ago"
+      }
     ],
     "actions": [
-      { "label": "openSite", "href": "url", "icon": "lucide:external-link" }
+      {
+        "label": "openSite",
+        "href": "url",
+        "icon": "lucide:external-link"
+      }
     ]
   },
   "profile": {
@@ -59,6 +106,10 @@
     "theme": true,
     "lang": true,
     "install": true,
-    "source": { "label": "profSource", "url": "https://community.chocolatey.org/packages", "icon": "lucide:package" }
+    "source": {
+      "label": "profSource",
+      "url": "https://community.chocolatey.org/packages",
+      "icon": "lucide:package"
+    }
   }
 }

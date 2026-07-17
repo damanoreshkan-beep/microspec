@@ -22,6 +22,18 @@ export default [
     },
   },
   {
+    // A ruler that prints a distance and hides its error is the failure this app shipped with for months:
+    // every number was ±8 m at each end and the screen said so nowhere. The ± is not decoration, it is
+    // the measurement — so the gate holds it to the total, not just to the live fix readout.
+    name: "загальна відстань несе свою похибку", run: async (h) => {
+      await ready(h); await h.wait(200);
+      h.expect((await h.count("[data-err]")) === 1, "загальна відстань без ± — число виглядає точнішим, ніж воно є");
+      h.expect(/±\s*[\d.]+\s*(м|m)/.test(await h.text("[data-err]")), `похибка не у форматі ± N м: "${await h.text("[data-err]")}"`);
+      await h.click("#clear"); await h.wait(150);
+      h.expect((await h.count("[data-err]")) === 0, "± лишилось без жодного сегмента — похибка ні до чого");
+    },
+  },
+  {
     name: "очистити скидає полілінію", run: async (h) => {
       await ready(h);
       await h.click("#clear"); await h.wait(150);

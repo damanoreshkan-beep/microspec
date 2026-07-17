@@ -14,14 +14,26 @@ export const haptic = {
   ok: () => haptic.buzz([12, 40, 12]),
 };
 
-// geo — geolocation as a callback watch. onPos({lat,lng,accuracy}); onErr("denied"|"unavailable"|"unsupported").
+// geo — geolocation as a callback watch. onErr("denied"|"unavailable"|"unsupported").
 // opts override the PositionOptions — e.g. { enableHighAccuracy: true, maximumAge: 1000 } for a precise ruler.
+//
+// onPos gets every field the spec defines — {lat,lng,accuracy,altitude,altitudeAccuracy,heading,speed,t} —
+// and that is the whole of it: there is no satellite count, no fix type, no HDOP and no raw GNSS anywhere
+// in the web platform, so a view can never show them. `accuracy` is a 95% confidence radius in metres,
+// which is what makes it arithmetic rather than a vibe (see /_rt/geofix.js).
+// altitude/heading/speed are nullable by spec (heading is null whenever you are standing still) — we used
+// to drop them on the floor here, which quietly made every consumer's `pos.altitude` undefined forever.
+// `t` is the fix time, needed by anything that averages a series of fixes.
 export const geo = {
   supported: typeof navigator !== "undefined" && "geolocation" in navigator,
   watch(onPos, onErr, opts) {
     if (!this.supported) { onErr?.("unsupported"); return () => {}; }
     const id = navigator.geolocation.watchPosition(
-      (p) => onPos({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
+      (p) => onPos({
+        lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy,
+        altitude: p.coords.altitude, altitudeAccuracy: p.coords.altitudeAccuracy,
+        heading: p.coords.heading, speed: p.coords.speed, t: p.timestamp,
+      }),
       (e) => onErr?.(e.code === 1 ? "denied" : "unavailable"),
       { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000, ...opts },
     );

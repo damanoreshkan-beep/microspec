@@ -23,11 +23,11 @@ const query = (os, q) => {
   return `${term}${base} ${EXCLUDE}`;
 };
 
-export async function load(filters = {}, cursor) {
+export async function load(filters = {}) {
   const q = (filters.q || "").trim();
   const os = filters.os || "";
   const sort = filters.sort === "updated" ? "updated" : "stars";
-  const page = (Number(cursor) || 0) + 1;          
+  const page = (Number(filters.cursor) || 0) + 1;
 
   const params = new URLSearchParams({
     q: query(os, q),
@@ -52,6 +52,6 @@ export async function load(filters = {}, cursor) {
     url: it.html_url,
   })).filter((it) => it.title);
 
-  const more = items.length === PAGE && page * PAGE < 1000;
+  const more = items.length === PAGE && (page + 1) * PAGE <= 1000;
   return { items, next: more ? String(page) : undefined };
 }

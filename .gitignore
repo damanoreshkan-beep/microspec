@@ -4,3 +4,5 @@ states/
 *.log
 .DS_Store
 packages/gates/shots/
+.claude/skills/
+skills-lock.json

@@ -5,7 +5,7 @@ export default [
     name: "герой показує температуру", run: async (h) => {
       await load(h);
       h.expect(/\d+°/.test(await h.bodyText()), "немає температури");
-      h.expect(/Kyiv/.test(await h.bodyText()), "немає локації");
+      h.expect(/Київ|Kyiv/.test(await h.bodyText()), "немає локації"); 
     },
   },
   {

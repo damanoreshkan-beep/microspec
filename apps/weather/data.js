@@ -28,7 +28,7 @@ export async function load() {
   }));
 
   const items = d.daily.time.map((t, i) => ({
-    day: new Date(t).toLocaleDateString(undefined, { weekday: "short" }),
+    day: t, 
     hi: Math.round(d.daily.temperature_2m_max[i]),
     lo: Math.round(d.daily.temperature_2m_min[i]),
     wicon: wicon(d.daily.weather_code[i]),
@@ -37,7 +37,7 @@ export async function load() {
   return {
     items,
     meta: {
-      place: "Kyiv",
+      place: "place", 
       temp: Math.round(now.temperature_2m),
       wicon: wicon(now.weather_code),
       feels: Math.round(now.apparent_temperature),

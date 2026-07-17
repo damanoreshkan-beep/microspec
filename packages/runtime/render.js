@@ -92,8 +92,16 @@ const debouncedLoad = () => { clearTimeout(_searchT); _searchT = setTimeout(() =
 
 const Empty = (icon, text, hint) => html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-2 text-center px-6">${Icon(icon, "text-4xl")}<span class="font-medium">${text}</span>${hint && html`<span class="text-sm text-base-content/60">${hint}</span>`}</div>`;
 
-// Loading placeholder for a list: decoding cards (scramble text + blinking-pixel image) — never a spinner.
-const Skeleton = (card = {}) => { const row = card.layout === "row", img = !!card.image; return html`<${Fragment}>${Array.from({ length: 5 }, (_, i) => row
+// Loading placeholder: decoding cards (scramble text + blinking-pixel image) — never a spinner. The
+// placeholder must match the layout it stands in, or it misreports the shape of what is coming and guarantees
+// the reflow it exists to prevent. gallery is a square-art grid, not a stack of feed cards: mirror the real
+// grid wrapper and tile (aspect-SQUARE art, one-line title + subtitle + a badge) so 3-up stays 3-up.
+const Skeleton = (card = {}) => {
+  if (card.layout === "gallery") return html`<div class="@container pt-2"><div class="grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5">${Array.from({ length: 9 }, (_, i) => html`<div data-skel class="flex flex-col gap-2 min-w-0" key=${i}>
+    <div class="aspect-square w-full rounded-2xl overflow-hidden border border-base-300 bg-base-200/60"><${Pixels} /></div>
+    <div class="min-w-0 text-base-content/70"><div class="text-sm font-semibold truncate"><${Scramble} len=${9} /></div><div class="text-xs truncate mt-0.5"><${Scramble} len=${7} /></div><div class="mt-1.5"><${Scramble} len=${5} cls="text-xs" /></div></div>
+  </div>`)}</div></div>`;
+  const row = card.layout === "row", img = !!card.image; return html`<${Fragment}>${Array.from({ length: 5 }, (_, i) => row
   ? html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 px-4 flex-row items-center gap-3 text-base-content/70"><${Scramble} len=${2} cls="w-9 shrink-0 text-primary/60 font-bold" /><div class="flex-1 min-w-0 truncate"><${Scramble} len=${18} /></div><div class="shrink-0"><${Scramble} len=${5} /></div></div></div>`
   : html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}>${img ? html`<figure class="aspect-video overflow-hidden"><${Pixels} /></figure>` : null}<div class="card-body p-4 gap-2 text-base-content/70"><div class="font-semibold truncate"><${Scramble} len=${16} /></div><div class="text-sm text-base-content/70 truncate"><${Scramble} len=${26} /></div></div></div>`)}</${Fragment}>`; };
 

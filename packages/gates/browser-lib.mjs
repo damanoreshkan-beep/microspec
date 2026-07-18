@@ -44,7 +44,7 @@ export function serveLocal(dir) {
 export async function bootBrowser(dev = DEVICES.s25ultra) {
   return await launch({
     path: Deno.env.get("CHROMIUM_PATH") ?? "/usr/sbin/chromium",
-    headless: false,
+    headless: Deno.env.get("HEADFUL") === "1" ? false : true,
     args: [
       "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage",
       `--window-size=${dev.width},${dev.height}`, `--force-device-scale-factor=${dev.dpr}`, "--hide-scrollbars",

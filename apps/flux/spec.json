@@ -1,0 +1,16 @@
+{
+  "id": "flux",
+  "theme": "signal",
+  "category": "creative",
+  "tabs": [
+    { "id": "paint", "type": "tool", "icon": "lucide:sparkles", "label": "tabPaint", "view": "flux", "needs": ["camera"] },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:sparkles",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "permissions": ["camera"]
+  }
+}

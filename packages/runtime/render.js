@@ -464,7 +464,7 @@ const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 botto
 
 function Dock() {
   const t = useStore(A.S.t), cur = useStore(A.S.tab);
-  return html`<nav data-dock class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary text-primary-content" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
+  return html`<nav data-dock class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary text-primary-content" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
 }
 
 function Toast() {
@@ -539,7 +539,7 @@ export function App() {
     ${A.spec.filters ? html`<${FilterChips} />` : null}
     ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
     ${tab.type === "list" && tab.sort ? html`<${SortBar} tab=${tab} />` : null}
-    <main id="view" class="px-4 pt-3 max-w-xl mx-auto flex flex-col gap-2.5" style="padding-bottom:calc(var(--dock-h) + 1.5rem)">
+    <main id="view" class="px-4 pt-4 max-w-xl mx-auto flex flex-col gap-3" style="padding-bottom:calc(var(--dock-h) + 1.5rem)">
       <${TabView} tab=${tab} />
     </main>
     ${A.spec.detail ? html`<${DetailView} />` : null}

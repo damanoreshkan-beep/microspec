@@ -525,7 +525,7 @@ const DEMO_SAVES = [
 const Spectrum = ({ tracks, live, cur }) => {
   const bars = beatBars(tracks), mx = Math.max(1, ...bars);
   return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">
-    ${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-primary" : v ? "bg-primary/40" : "bg-base-content/10"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}
+    ${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-primary" : v ? "bg-primary/60" : "bg-base-content/15"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}
   </span>`;
 };
 

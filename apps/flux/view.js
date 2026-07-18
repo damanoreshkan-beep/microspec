@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { camera } from "/_rt/sensors.js";
+import { CameraPrime } from "/_rt/camprime.js";
 import { motionCells, motionEnergy, centroidOf } from "/_rt/motion.js";
 import { createEngine, midiToFreq, filter } from "/_rt/audio.js";
 
@@ -37,12 +38,13 @@ function paintSeed(ctx, w, h) {
 }
 
 export function flux({ S }) {
-  const t = useStore(S.t);
+  const t = useStore(S.t), loc = useStore(S.locale);
   const gate = isGate || MOCK;
   const [energy, setEnergy] = useState(gate ? 0.42 : 0);
   const [ghost, setGhost] = useState(true);
   const [sound, setSound] = useState(false);
   const [err, setErr] = useState(null);
+  const [enabled, setEnabled] = useState(gate);   // camera opens only after the user taps Enable (gate auto-on)
   const videoRef = useRef(), sampleRef = useRef(), paintRef = useRef(), prevRef = useRef(null), rafRef = useRef(0);
   const engRef = useRef(null), oscRef = useRef(null), filtRef = useRef(null), sgainRef = useRef(null), soundRef = useRef(false);
   soundRef.current = sound;
@@ -59,7 +61,7 @@ export function flux({ S }) {
 
   // live: camera + per-frame motion painting
   useEffect(() => {
-    if (gate) return;
+    if (gate || !enabled) return;
     if (!camera.supported) { setErr("unsupported"); return; }
     let liveFlag = true, stop = () => {};
     fit();
@@ -108,7 +110,7 @@ export function flux({ S }) {
       stop = s; rafRef.current = requestAnimationFrame(step);
     });
     return () => { liveFlag = false; cancelAnimationFrame(rafRef.current); removeEventListener("resize", onResize); stop(); };
-  }, []);
+  }, [enabled]);
 
   const clear = () => { const c = paintRef.current, ctx = c?.getContext?.("2d"); if (ctx) ctx.clearRect(0, 0, c.width, c.height); };
   const save = () => {
@@ -138,16 +140,11 @@ export function flux({ S }) {
 
   return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <div class="relative flex-1 min-h-0 overflow-hidden bg-black">
-      ${!gate && !err ? html`<video ref=${videoRef} autoplay muted playsinline class=${`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${ghost ? "opacity-20" : "opacity-0"}`}></video>` : null}
+      ${enabled && !err && !gate ? html`<video ref=${videoRef} autoplay muted playsinline class=${`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${ghost ? "opacity-20" : "opacity-0"}`}></video>` : null}
       <canvas ref=${sampleRef} class="hidden"></canvas>
       <canvas ref=${paintRef} class="absolute inset-0 w-full h-full"></canvas>
-      ${!err ? html`<div class="absolute top-3 left-3 right-3 flex items-center pointer-events-none">
+      ${enabled && !err ? html`<div class="absolute top-3 left-3 right-3 flex items-center pointer-events-none">
         <div data-live class="h-1.5 flex-1 rounded-full bg-white/15 overflow-hidden"><div class="h-full rounded-full bg-white/70 transition-[width] duration-150" style=${`width:${Math.round(energy * 100)}%`}></div></div>
-      </div>` : null}
-      ${err ? html`<div class="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center bg-base-200">
-        ${Icon("lucide:camera-off", "text-4xl text-base-content/50")}
-        <div class="font-semibold">${T(t, err === "denied" ? "permBlocked" : "permUnavailable")}</div>
-        ${err === "denied" ? html`<button class="btn btn-primary btn-sm rounded-2xl" onClick=${() => S.screen.set("perms")}>${T(t, "permEnable")}</button>` : null}
       </div>` : null}
     </div>
 
@@ -157,5 +154,6 @@ export function flux({ S }) {
       <button data-clear aria-label=${T(t, "clear")} data-haptic="bump" onClick=${clear} class="btn btn-ghost btn-sm btn-circle">${Icon("lucide:trash-2", "text-lg")}</button>
       <button data-save aria-label=${T(t, "save")} onClick=${save} class="btn btn-primary rounded-2xl gap-2 px-5">${Icon("lucide:download")}${T(t, "save")}</button>
     </div>
+    ${!enabled || err ? html`<${CameraPrime} loc=${loc} reason=${T(t, "primeReason")} onEnable=${() => setEnabled(true)} onSettings=${() => S.screen.set("perms")} denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />` : null}
   </div>`;
 }

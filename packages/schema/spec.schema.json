@@ -22,7 +22,7 @@
     },
     "category": {
       "type": "string",
-      "enum": ["feeds", "money", "science", "tools", "sound", "play", "wellness"],
+      "enum": ["feeds", "money", "science", "tools", "sound", "creative", "play", "wellness"],
       "description": "Store category — the launcher sections and filter-chips group apps by this."
     },
     "version": {

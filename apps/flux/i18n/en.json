@@ -1,0 +1,23 @@
+{
+  "title": "Flux",
+  "tabPaint": "Paint",
+  "tabMe": "Me",
+  "clear": "Clear",
+  "save": "Save",
+  "ghost": "Show camera",
+  "permBlocked": "Camera blocked",
+  "permEnable": "Enable camera",
+  "permUnavailable": "Camera unavailable here",
+  "profTheme": "Dark theme",
+  "profLang": "Language",
+  "profTagline": "Paint with motion — your movement leaves light",
+  "install": "Install app",
+  "installTitle": "Install",
+  "installBtn": "Install",
+  "installDesc": "Works offline, opens like an app",
+  "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
+  "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
+  "close": "Close",
+  "toastSaved": "Saved",
+  "toastRemoved": "Removed"
+}

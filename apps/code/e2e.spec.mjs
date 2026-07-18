@@ -12,6 +12,15 @@ export default [
     },
   },
   {
+    name: "правила: «?» → екран, Back закриває (історія-backed)", run: async (h) => {
+      await ready(h);
+      await h.tap("[data-help]"); await h.wait(200);
+      h.expect((await h.count("[data-rules]")) > 0, "екран правил не відкрився");
+      await h.back(); await h.wait(250);
+      h.expect((await h.count("[data-rules]")) === 0, "Back не закрив правила");
+    },
+  },
+  {
     name: "хід: заповнити код → перевірка → новий рядок", run: async (h) => {
       await ready(h);
       const before = await h.count("[data-row]");

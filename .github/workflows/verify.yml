@@ -100,18 +100,12 @@ jobs:
           path: ~/.cache/deno
           key: deno-${{ hashFiles('packages/**/deno.json') }}
           restore-keys: deno-
-      - uses: browser-actions/setup-chrome@v2
-        id: chrome
-        with: { chrome-version: stable }
-      - run: sudo apt-get update && sudo apt-get install -y xvfb fonts-liberation
       - name: Verify ${{ matrix.app }}
-        # The gate itself is ~5s; 2min is a generous ceiling that fails fast if the browser or a
-        # network-dependent e2e step hangs, rather than waiting out the job-level timeout.
+        # Chrome is preinstalled on the runner (no setup-chrome download) and we run headless (no Xvfb / no
+        # apt-get) — that removes ~25s of per-job setup. The gate itself is ~5s; 2min fails fast on a hang.
         timeout-minutes: 2
         env:
-          DISPLAY: ":99"
-          DISPLAY_NUM: "99"
-          CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          CHROMIUM_PATH: /usr/bin/google-chrome
         run: deno run -A packages/gates/verify.mjs "$GITHUB_WORKSPACE/apps/${{ matrix.app }}" --shots
       - name: Upload screenshot
         if: always()
@@ -121,31 +115,5 @@ jobs:
           path: apps/${{ matrix.app }}/states/
           if-no-files-found: warn
 
-  # Mutation-test the Chromium `verify` gate: inject a11y / overflow / e2e / runtime breakages into a copy
-  # of a few apps and measure the catch rate (the verify-tier companion to the browser-free efficacy step
-  # in `unit`). Informational for now — reports the number so we can confirm which mutations verify catches
-  # before enforcing.
-  efficacy-verify:
-    runs-on: ubuntu-latest
-    needs: unit
-    if: ${{ needs.unit.outputs.apps != '[]' }}
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v5
-      - uses: denoland/setup-deno@v2
-        with: { deno-version: v2.x }
-      - uses: browser-actions/setup-chrome@v2
-        id: chrome
-        with: { chrome-version: stable }
-      - run: sudo apt-get update && sudo apt-get install -y xvfb fonts-liberation
-      - name: Mutation-test the verify gate (a11y / e2e / data-integrity — fail on any escape)
-        timeout-minutes: 8
-        env:
-          DISPLAY: ":99"
-          DISPLAY_NUM: "99"
-          CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
-        run: deno run -A packages/gates/efficacy.mjs --gate verify --apps hn,hf --ci --json verify-efficacy.json
-      - name: Upload verify-efficacy report
-        if: always()
-        uses: actions/upload-artifact@v6
-        with: { name: verify-efficacy, path: verify-efficacy.json, if-no-files-found: warn }
+  # The verify-gate mutation test (expensive Chromium mutation runs) is NOT here — it moved to its own
+  # nightly workflow (.github/workflows/efficacy.yml) so it never adds ~5 minutes to a push's wait.

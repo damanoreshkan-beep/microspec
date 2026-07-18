@@ -11,6 +11,7 @@ import { hapticFor } from "./sensors.js";
 import { eaqiBand, pollutantBand, pollenBand, AQI_BANDS, POLLEN_BANDS } from "./air.js";
 import { feedback, solved, makeSecret } from "./codebreak.js";
 import { rgbToHex, rgbToHsl, avgColor, luminance, ink, palette } from "./colour.js";
+import { hueToNote, paletteToChord, brightnessToCutoff, satToDetune, SCALES } from "./chroma.js";
 import { resumeAt, RESUME_MIN } from "./playback.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
@@ -765,4 +766,30 @@ Deno.test("colour palette: median cut is deterministic and separates dominant co
   assertEquals(blues, 1, "one blue-dominant swatch");
   // a single-colour image yields a single swatch, never k padded duplicates
   assertEquals(palette(rgba(Array(50).fill([30, 60, 90])), 5).length, 1);
+});
+
+Deno.test("chroma hueToNote: hue splits the scale, never leaves it, monotone non-decreasing", () => {
+  assertEquals(hueToNote(0), 48);          // root
+  assertEquals(hueToNote(359), 48 + 21);   // top of the two-octave pentatonic
+  assertEquals(hueToNote(120), 55);        // green → scale degree 3
+  assertEquals(hueToNote(240), 62);        // blue  → scale degree 6
+  let prev = -1;
+  for (let h = 0; h < 360; h += 5) { const n = hueToNote(h); assert(n >= prev, `hue ${h} dipped`); assert(SCALES.penta.includes(n - 48), "left the scale"); prev = n; }
+});
+
+Deno.test("chroma paletteToChord: hues → a sorted, de-duplicated, in-scale chord", () => {
+  assertEquals(paletteToChord([[255, 0, 0], [0, 255, 0], [0, 0, 255]]), [48, 55, 62]);
+  assertEquals(paletteToChord([[255, 0, 0], [255, 0, 0]]), [48], "same hue collapses to one note");
+  assertEquals(paletteToChord([]), []);
+  for (const n of paletteToChord([[10, 200, 130], [200, 40, 90], [40, 40, 220]], SCALES.minor)) assert(SCALES.minor.includes(n - 48), "minor mode stays in scale");
+});
+
+Deno.test("chroma brightness→cutoff and sat→detune: clamped, monotone, right endpoints", () => {
+  assertEquals(brightnessToCutoff(0), 300);
+  assertEquals(brightnessToCutoff(1), 4000);
+  assertEquals(brightnessToCutoff(-5), 300);
+  assertEquals(brightnessToCutoff(9), 4000);
+  assert(brightnessToCutoff(0.5) > 300 && brightnessToCutoff(0.5) < 4000);
+  assertEquals(satToDetune(0), 0);
+  assertEquals(satToDetune(1), 14);
 });

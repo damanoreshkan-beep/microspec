@@ -12,7 +12,7 @@ import { eaqiBand, pollutantBand, pollenBand, AQI_BANDS, POLLEN_BANDS } from "./
 import { feedback, solved, makeSecret } from "./codebreak.js";
 import { rgbToHex, rgbToHsl, avgColor, luminance, ink, palette } from "./colour.js";
 import { hueToNote, paletteToChord, brightnessToCutoff, satToDetune, SCALES } from "./chroma.js";
-import { motionCells, motionEnergy } from "./motion.js";
+import { motionCells, motionEnergy, centroidOf } from "./motion.js";
 import { resumeAt, RESUME_MIN } from "./playback.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
@@ -821,4 +821,16 @@ Deno.test("motion motionEnergy: 0 when still, rises with change, clamped", () =>
   assert(motionEnergy(flat(0), flat(255)) === 1, "max change clamps to 1");
   const mid = motionEnergy(flat(20), flat(40));
   assert(mid > 0 && mid < 1, "partial change is between");
+});
+
+Deno.test("motion centroidOf: magnitude-weighted centre, empty → middle", () => {
+  assertEquals(centroidOf([]), { x: 0.5, y: 0.5, m: 0 });
+  assertEquals(centroidOf(null), { x: 0.5, y: 0.5, m: 0 });
+  // two equal-weight cells → midpoint
+  const c = centroidOf([{ x: 0.2, y: 0.4, m: 0.5 }, { x: 0.6, y: 0.8, m: 0.5 }]);
+  assert(Math.abs(c.x - 0.4) < 1e-9 && Math.abs(c.y - 0.6) < 1e-9, "midpoint");
+  // heavier cell pulls the centre toward it
+  const w = centroidOf([{ x: 0, y: 0, m: 0.1 }, { x: 1, y: 1, m: 0.9 }]);
+  assert(w.x > 0.8 && w.y > 0.8, "weighted toward the strong cell");
+  assert(w.m > 0 && w.m <= 1, "energy in range");
 });

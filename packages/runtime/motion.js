@@ -18,6 +18,15 @@ export function motionCells(prev, cur, W, H, threshold = 24) {
   return cells;
 }
 
+// Weighted centre of a motionCells() result → { x, y (0..1), m (0..1) }: where the movement is, and how
+// much. No motion → the centre with m 0. Drives the sound (Y → pitch, m → loudness).
+export function centroidOf(cells) {
+  if (!cells || !cells.length) return { x: 0.5, y: 0.5, m: 0 };
+  let sx = 0, sy = 0, sm = 0;
+  for (const c of cells) { sx += c.x * c.m; sy += c.y * c.m; sm += c.m; }
+  return sm ? { x: sx / sm, y: sy / sm, m: Math.min(1, sm / 40) } : { x: 0.5, y: 0.5, m: 0 };
+}
+
 // Mean luma change across the frame, 0..1 — the "how much is moving" meter.
 export function motionEnergy(prev, cur) {
   if (!prev || !cur || prev.length !== cur.length || !cur.length) return 0;

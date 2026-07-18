@@ -20,6 +20,14 @@ export default [
     },
   },
   {
+    name: "звук тогл", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-sound]")) === 1, "немає кнопки звуку");
+      await h.tap("[data-sound]"); await h.wait(200);
+      h.expect((await h.count("[data-sound].btn-primary")) === 1, "звук не увімкнувся");
+    },
+  },
+  {
     name: "дозволи: профіль → екран, Back закриває (історія-backed)", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click("#p-perms"); await h.wait(200);

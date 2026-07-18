@@ -8,7 +8,12 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { camera } from "/_rt/sensors.js";
-import { motionCells, motionEnergy } from "/_rt/motion.js";
+import { motionCells, motionEnergy, centroidOf } from "/_rt/motion.js";
+import { createEngine, midiToFreq, filter } from "/_rt/audio.js";
+
+// C major pentatonic over two octaves — the vertical position of the movement picks a note, so it always
+// sounds musical. Top of frame = high.
+const PITCHES = [48, 50, 52, 55, 57, 60, 62, 64, 67, 69];
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -36,8 +41,11 @@ export function flux({ S }) {
   const gate = isGate || MOCK;
   const [energy, setEnergy] = useState(gate ? 0.42 : 0);
   const [ghost, setGhost] = useState(true);
+  const [sound, setSound] = useState(false);
   const [err, setErr] = useState(null);
   const videoRef = useRef(), sampleRef = useRef(), paintRef = useRef(), prevRef = useRef(null), rafRef = useRef(0);
+  const engRef = useRef(null), oscRef = useRef(null), filtRef = useRef(null), sgainRef = useRef(null), soundRef = useRef(false);
+  soundRef.current = sound;
 
   const fit = () => { const c = paintRef.current; if (!c) return; const r = c.getBoundingClientRect?.(); if (r && r.width) { c.width = Math.round(r.width); c.height = Math.round(r.height); } };
 
@@ -66,25 +74,36 @@ export function flux({ S }) {
           sctx.drawImage(v, 0, 0, W, H);
           const cur = sctx.getImageData(0, 0, W, H).data;
           const cells = motionCells(prevRef.current, cur, W, H, 22);
-          setEnergy(motionEnergy(prevRef.current, cur));
+          const en = motionEnergy(prevRef.current, cur);
+          setEnergy(en);
           prevRef.current = cur.slice(0);
           const pw = pc.width, ph = pc.height;
           pctx.globalCompositeOperation = "destination-out";           // fade the old trails toward transparent
           pctx.fillStyle = "rgba(0,0,0,0.055)"; pctx.fillRect(0, 0, pw, ph);
-          pctx.globalCompositeOperation = "lighter";                   // additive glow
+          pctx.globalCompositeOperation = "lighter";                   // additive glow (rear camera → no mirror)
           const stepN = Math.max(1, Math.floor(cells.length / 240));
           for (let i = 0; i < cells.length; i += stepN) {
-            const c = cells[i], x = (1 - c.x) * pw, y = c.y * ph, rad = 3 + c.m * 13; // mirror x → matches the ghost
+            const c = cells[i], x = c.x * pw, y = c.y * ph, rad = 3 + c.m * 13;
             const g = pctx.createRadialGradient(x, y, 0, x, y, rad);
             g.addColorStop(0, `rgba(${c.r},${c.g},${c.b},0.55)`); g.addColorStop(1, `rgba(${c.r},${c.g},${c.b},0)`);
             pctx.fillStyle = g; pctx.beginPath(); pctx.arc(x, y, rad, 0, 7); pctx.fill();
           }
           pctx.globalCompositeOperation = "source-over";
+          // sound: the movement plays. Y → pitch (top = high, in a pentatonic scale), energy → brightness + gain.
+          if (soundRef.current && engRef.current && oscRef.current) {
+            const ctx = engRef.current.ctx, now = ctx.currentTime, cen = centroidOf(cells);
+            const note = PITCHES[Math.max(0, Math.min(PITCHES.length - 1, Math.floor((1 - cen.y) * PITCHES.length)))];
+            try {
+              oscRef.current.frequency.setTargetAtTime(midiToFreq(note), now, 0.08);
+              filtRef.current.frequency.setTargetAtTime(400 + en * 3200, now, 0.1);
+              sgainRef.current.gain.setTargetAtTime(Math.min(0.18, en * 0.5), now, 0.12);
+            } catch { /* node gone */ }
+          }
         } catch { /* transient decode/read */ }
       }
       rafRef.current = requestAnimationFrame(step);
     };
-    camera.start(videoRef.current, (e) => { if (liveFlag) setErr(e); }, { facingMode: "user" }).then((s) => {
+    camera.start(videoRef.current, (e) => { if (liveFlag) setErr(e); }, { facingMode: "environment" }).then((s) => {
       if (!liveFlag) { s(); return; }
       stop = s; rafRef.current = requestAnimationFrame(step);
     });
@@ -101,10 +120,25 @@ export function flux({ S }) {
       S.toast?.(T(t, "toastSaved"));
     } catch { /* export blocked */ }
   };
+  const toggleSound = () => {
+    if (sound) { try { sgainRef.current?.gain.setTargetAtTime(0, engRef.current.ctx.currentTime, 0.2); } catch { /* */ } setSound(false); return; }
+    try {
+      if (!engRef.current) {
+        const eng = createEngine({ noise: false }); if (!eng) return;
+        const osc = eng.ctx.createOscillator(); osc.type = "triangle"; osc.frequency.value = 220;
+        const f = filter(eng.ctx, "lowpass", 800, 0.9);
+        const g = eng.ctx.createGain(); g.gain.value = 0;
+        osc.connect(f); f.connect(g); g.connect(eng.master); osc.start();
+        engRef.current = eng; oscRef.current = osc; filtRef.current = f; sgainRef.current = g;
+      }
+      engRef.current.resume(); setSound(true);
+    } catch { /* audio unavailable */ }
+  };
+  useEffect(() => () => { try { oscRef.current?.stop(); engRef.current?.close(); } catch { /* */ } }, []);
 
   return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <div class="relative flex-1 min-h-0 overflow-hidden bg-black">
-      ${!gate && !err ? html`<video ref=${videoRef} autoplay muted playsinline class=${`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${ghost ? "opacity-20" : "opacity-0"}`} style="transform:scaleX(-1)"></video>` : null}
+      ${!gate && !err ? html`<video ref=${videoRef} autoplay muted playsinline class=${`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${ghost ? "opacity-20" : "opacity-0"}`}></video>` : null}
       <canvas ref=${sampleRef} class="hidden"></canvas>
       <canvas ref=${paintRef} class="absolute inset-0 w-full h-full"></canvas>
       ${!err ? html`<div class="absolute top-3 left-3 right-3 flex items-center pointer-events-none">
@@ -119,6 +153,7 @@ export function flux({ S }) {
 
     <div class="shrink-0 bg-base-100 border-t border-base-300 px-4 pt-3 pb-3 flex items-center justify-center gap-3">
       <button data-ghost aria-label=${T(t, "ghost")} aria-pressed=${ghost} onClick=${() => setGhost((g) => !g)} class=${`btn btn-circle btn-sm ${ghost ? "btn-primary" : "btn-ghost"}`}>${Icon(ghost ? "lucide:eye" : "lucide:eye-off", "text-lg")}</button>
+      <button data-sound aria-label=${T(t, "sound")} aria-pressed=${sound} onClick=${toggleSound} class=${`btn btn-circle btn-sm ${sound ? "btn-primary" : "btn-ghost"}`}>${Icon(sound ? "lucide:volume-2" : "lucide:volume-x", "text-lg")}</button>
       <button data-clear aria-label=${T(t, "clear")} data-haptic="bump" onClick=${clear} class="btn btn-ghost btn-sm btn-circle">${Icon("lucide:trash-2", "text-lg")}</button>
       <button data-save aria-label=${T(t, "save")} onClick=${save} class="btn btn-primary rounded-2xl gap-2 px-5">${Icon("lucide:download")}${T(t, "save")}</button>
     </div>

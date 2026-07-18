@@ -31,6 +31,7 @@ export function createApp(spec, dataLoad) {
     player: atom(null),
     installEvent: atom(null),
     installOpen: atom(false),
+    qrOpen: atom(false),          
   };
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
   S.filters.listen((v) => { try { localStorage.setItem(FKEY, JSON.stringify(v)); } catch {  } });

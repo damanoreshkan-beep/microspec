@@ -111,6 +111,23 @@ export default [
     },
   },
   {
+    name: "збережені: грати другий біт поверх першого — один активний, без збоїв", run: async (h) => {
+      await h.click('[data-tab="beat"]'); await h.wait(180); await ready(h);
+      await h.click('[data-preset="techno"]'); await h.wait(120); await h.click("[data-save]"); await h.wait(350);
+      await h.click('[data-preset="gabber"]'); await h.wait(120); await h.click("[data-save]"); await h.wait(350);
+      await h.click('[data-tab="saved"]'); await h.wait(350);
+      let n = 0; for (let i = 0; i < 12; i++) { n = await h.count("[data-saved]"); if (n === 2) break; await h.wait(250); }
+      h.expect(n === 2, `очікував 2 збережені біти, маю ${n}`);
+      await h.click('[data-saved]:nth-of-type(1) [data-play]'); await h.wait(200);
+      h.expect((await h.count("[data-play].btn-secondary")) === 1, "перший біт не позначився активним");
+      await h.click('[data-saved]:nth-of-type(2) [data-play]'); await h.wait(200);   
+      h.expect((await h.count("[data-play].btn-secondary")) === 1, "після другого play активні ДВА айтеми — рестарт не витіснив перший");
+      await h.click("[data-play].btn-secondary"); await h.wait(150);
+      h.expect((await h.count("[data-play].btn-secondary")) === 0, "stop не зупинив відтворення");
+      for (const _ of [0, 1]) { await h.click("[data-del]"); await h.wait(300); }
+    },
+  },
+  {
     name: "ідентичний біт не зберігається двічі", run: async (h) => {
       await h.click('[data-tab="beat"]'); await h.wait(200);
       await ready(h);

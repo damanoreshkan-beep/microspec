@@ -58,6 +58,8 @@
   "tempo": "Tempo",
   "filter": "Filter",
   "aPlay": "Play",
+  "prevTrack": "Previous",
+  "nextTrack": "Next",
   "aStop": "Stop",
   "noAudio": "Audio is unavailable in this browser",
   "profTheme": "Dark theme",

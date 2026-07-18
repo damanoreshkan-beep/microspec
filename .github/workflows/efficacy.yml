@@ -1,0 +1,35 @@
+name: efficacy
+
+# Mutation-test the Chromium `verify` gate: inject a11y / overflow / e2e / runtime breakages into a copy of
+# a few apps and measure the catch rate. It is EXPENSIVE (~5min of Chromium mutation runs) and does not
+# need to gate every push — the gate's own tests already run per-push in `verify`. So it runs nightly (and
+# on demand), off the per-push critical path, instead of adding 5 minutes to every commit's wait.
+
+on:
+  schedule:
+    - cron: "0 4 * * *"   # nightly 04:00 UTC
+  workflow_dispatch:
+
+jobs:
+  efficacy-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+        with: { chrome-version: stable }
+      - run: sudo apt-get update && sudo apt-get install -y xvfb fonts-liberation
+      - name: Mutation-test the verify gate (a11y / e2e / data-integrity — fail on any escape)
+        timeout-minutes: 10
+        env:
+          DISPLAY: ":99"
+          DISPLAY_NUM: "99"
+          CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: deno run -A packages/gates/efficacy.mjs --gate verify --apps hn,hf --ci --json verify-efficacy.json
+      - name: Upload verify-efficacy report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with: { name: verify-efficacy, path: verify-efficacy.json, if-no-files-found: warn }

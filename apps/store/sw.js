@@ -1,4 +1,4 @@
-const CACHE = "home-v2";
+const CACHE = "store-v2";
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil((async () => { for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k); await self.clients.claim(); })()));
 // Network-first with REVALIDATION: fetch({cache:"no-cache"}) bypasses the browser HTTP cache (GitHub Pages

@@ -1,6 +1,7 @@
 {
   "id": "cinema",
   "theme": "signal",
+  "category": "feeds",
   "translate": [
     "desc"
   ],

@@ -12,10 +12,15 @@ import apps from "./apps.json" with { type: "json" };
 const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls || ""} style=${style || ""}></iconify-icon>`;
 const SEEN = collection("seen");   // { id → { v: lastSeenVersion } } — powers NEW / update badges
 const appUrl = (id) => `../${id}/`;   // store is /…/store/, apps are siblings /…/<id>/
+// Section order: everyday utilities first. Each app declares its own `category` in spec.json (carried into
+// apps.json by the manifest), so the grid groups itself — the store never hard-codes which app goes where.
+const CATS = ["science", "feeds", "tools", "sound", "money", "wellness", "play"];
+const catKey = (c) => "cat" + c[0].toUpperCase() + c.slice(1);
 
 export function store({ S, openScreen, closeScreen }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const [q, setQ] = useState("");
+  const [cat, setCat] = useState("all");   // active category chip; "all" shows every section
   const [seen, setSeen] = useState(null);   // { id: version } last opened at (null while loading from IndexedDB)
   useEffect(() => { SEEN.all().then((r) => setSeen(Object.fromEntries(r.map((x) => [x.id, x.v])))).catch(() => setSeen({})); }, []);
   const badgeOf = (a) => (!seen ? null : !(a.id in seen) ? "new" : seen[a.id] !== a.version ? "upd" : null);   // never opened / opened-older-version / current
@@ -35,22 +40,42 @@ export function store({ S, openScreen, closeScreen }) {
     </div>
   </div>`;
 
-  // ── searchable icon grid ──
-  const query = q.trim().toLowerCase();
-  const list = query ? apps.filter((a) => (a.title + " " + (a.tagline || "")).toLowerCase().includes(query)) : apps;
-  return html`<div class="flex flex-col gap-4">
-    <div class="relative">
-      <input value=${q} onInput=${(e) => setQ(e.target.value)} placeholder=${T(t, "search")} aria-label=${T(t, "search")} class="input input-bordered w-full rounded-2xl pl-10" />
-      ${Icon("lucide:search", "absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50 text-lg pointer-events-none")}
+  // ── search + category chips + sectioned icon grid ──
+  const card = (a) => html`<button data-app=${a.id} class="flex flex-col items-center gap-1.5 active:scale-90 transition-transform min-w-0" onClick=${() => openScreen(a.id)} key=${a.id}>
+    <div class="relative aspect-square w-full rounded-[24%] flex items-center justify-center border border-base-content/10 shadow-sm" style=${`background:${a.bg}`}>
+      ${Icon(a.glyph, "text-3xl", `color:${a.fg}`)}
+      ${(() => { const b = badgeOf(a); return b ? html`<span class="absolute top-1 right-1">${tag(b)}</span>` : null; })()}
     </div>
-    ${list.length ? html`<div class="grid grid-cols-4 gap-x-3 gap-y-4 @max-[300px]:grid-cols-3">
-      ${list.map((a) => html`<button data-app=${a.id} class="flex flex-col items-center gap-1.5 active:scale-90 transition-transform min-w-0" onClick=${() => openScreen(a.id)} key=${a.id}>
-        <div class="relative aspect-square w-full rounded-[24%] flex items-center justify-center border border-base-content/10 shadow-sm" style=${`background:${a.bg}`}>
-          ${Icon(a.glyph, "text-3xl", `color:${a.fg}`)}
-          ${(() => { const b = badgeOf(a); return b ? html`<span class="absolute top-1 right-1">${tag(b)}</span>` : null; })()}
-        </div>
-        <div class="text-[0.72rem] leading-tight text-center line-clamp-2 break-words w-full text-base-content/90">${a.title}</div>
-      </button>`)}
-    </div>` : html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-2 text-center px-6">${Icon("lucide:search-x", "text-4xl")}<span>${T(t, "noResults")}</span></div>`}
+    <div class="text-[0.72rem] leading-tight text-center line-clamp-2 break-words w-full text-base-content/90">${a.title}</div>
+  </button>`;
+  const grid = (items) => html`<div class="grid grid-cols-4 gap-x-3 gap-y-4 @max-[300px]:grid-cols-3">${items.map(card)}</div>`;
+  const noResults = html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-2 text-center px-6">${Icon("lucide:search-x", "text-4xl")}<span>${T(t, "noResults")}</span></div>`;
+  const searchBar = html`<div class="relative">
+    <input value=${q} onInput=${(e) => setQ(e.target.value)} placeholder=${T(t, "search")} aria-label=${T(t, "search")} class="input input-bordered w-full rounded-2xl pl-10" />
+    ${Icon("lucide:search", "absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50 text-lg pointer-events-none")}
+  </div>`;
+
+  // search wins: a flat, un-sectioned result set across the whole farm
+  const query = q.trim().toLowerCase();
+  if (query) {
+    const list = apps.filter((a) => (a.title + " " + (a.tagline || "")).toLowerCase().includes(query));
+    return html`<div class="flex flex-col gap-4">${searchBar}${list.length ? grid(list) : noResults}</div>`;
+  }
+
+  const shown = cat === "all" ? CATS : [cat];
+  return html`<div class="flex flex-col gap-4">${searchBar}
+    <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4" role="tablist" aria-label=${T(t, "categories")}>
+      ${["all", ...CATS].map((c) => html`<button data-cat=${c} role="tab" aria-selected=${cat === c} class=${`btn btn-sm rounded-full shrink-0 ${cat === c ? "btn-primary" : "btn-ghost border border-base-300"}`} onClick=${() => setCat(c)} key=${c}>${T(t, catKey(c))}</button>`)}
+    </div>
+    <div class="flex flex-col gap-5">
+      ${shown.map((c) => {
+        const items = apps.filter((a) => a.category === c);
+        if (!items.length) return null;
+        return html`<div class="flex flex-col gap-2" key=${c}>
+          <div class="text-[0.62rem] font-mono uppercase tracking-wide text-base-content/60 px-1 flex items-center gap-1.5">${T(t, catKey(c))}<span class="text-base-content/40 normal-case">${items.length}</span></div>
+          ${grid(items)}
+        </div>`;
+      })}
+    </div>
   </div>`;
 }

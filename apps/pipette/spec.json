@@ -1,15 +1,33 @@
 {
   "id": "pipette",
   "theme": "signal",
+  "category": "tools",
   "tabs": [
-    { "id": "pick", "type": "tool", "icon": "lucide:pipette", "label": "tabPick", "view": "pipette", "needs": ["camera"] },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "pick",
+      "type": "tool",
+      "icon": "lucide:pipette",
+      "label": "tabPick",
+      "view": "pipette",
+      "needs": [
+        "camera"
+      ]
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
   "profile": {
     "icon": "lucide:pipette",
     "theme": true,
     "lang": true,
     "install": true,
-    "permissions": ["camera"]
+    "permissions": [
+      "camera"
+    ]
   }
 }

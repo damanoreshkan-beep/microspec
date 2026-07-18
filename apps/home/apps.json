@@ -187,7 +187,7 @@
     "bg": "#0A0A0B",
     "fg": "#3FC7C0",
     "href": "./pipette/",
-    "version": "1.0"
+    "version": "1.2"
   },
   {
     "id": "weather",
@@ -228,6 +228,16 @@
     "fg": "#E9458B",
     "href": "./rave/",
     "version": "1.22"
+  },
+  {
+    "id": "synesth",
+    "title": "Синестезія",
+    "tagline": "Наведи камеру — і почуй кольори",
+    "glyph": "lucide:audio-lines",
+    "bg": "#0A0A0F",
+    "fg": "#9F8CF6",
+    "href": "./synesth/",
+    "version": "1.0"
   },
   {
     "id": "sun",

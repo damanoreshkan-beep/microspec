@@ -27,7 +27,7 @@ Add any to your home screen. They work offline. Every one is a spec + adapter th
 <tr>
 <td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/kp/"><img src="docs/shots/kp.png" alt="Aurora — a Kp-index dashboard"></a><div align="center"><sub><b>Aurora</b> · a Kp-index space-weather dashboard</sub></div></td>
 <td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/globe/"><img src="docs/shots/globe.png" alt="Globe — spin to any country"></a><div align="center"><sub><b>Globe</b> · spin the world, tap a country</sub></div></td>
-<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/store/"><img src="docs/shots/store.png" alt="The launcher — 35 apps"></a><div align="center"><sub><b>The launcher</b> · 35 apps, one home screen</sub></div></td>
+<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/store/"><img src="docs/shots/store.png" alt="The launcher"></a><div align="center"><sub><b>The launcher</b> · every app, one home screen</sub></div></td>
 </tr>
 </table>
 

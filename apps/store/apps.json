@@ -18,7 +18,7 @@
     "bg": "#202122",
     "fg": "#ffffff",
     "href": "./wiki/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "feeds"
   },
   {
@@ -95,7 +95,7 @@
     "bg": "#0f0f12",
     "fg": "#f4b942",
     "href": "./cinema/",
-    "version": "1.5",
+    "version": "1.6",
     "category": "feeds"
   },
   {
@@ -106,7 +106,7 @@
     "bg": "#1c1917",
     "fg": "#d6b370",
     "href": "./books/",
-    "version": "1.6",
+    "version": "1.7",
     "category": "feeds"
   },
   {
@@ -260,7 +260,7 @@
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.25",
+    "version": "1.26",
     "category": "sound"
   },
   {

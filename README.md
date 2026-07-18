@@ -1,20 +1,41 @@
-# microspec
+<div align="center">
 
-**An AI can't merge a broken app here.**
+<img src="docs/banner.svg" width="820" alt="microspec — an AI can't merge a broken app here">
 
-microspec is an open-source framework for AI-authored, installable micro-PWAs. An agent writes a thin
-**spec** (+ a tiny data adapter) against a **verified runtime**, and hard **CI gates** — accessibility,
-responsiveness, end-to-end behavior, runtime-error surveillance — *block the merge* if the app is broken,
-inaccessible, or untranslated. The constraint is the point: a narrow spec + a gated runtime is what makes
-agent-generated apps **verifiably** correct instead of hopefully correct.
+<br>
 
 [![verify](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml/badge.svg)](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml)
 [![gate efficacy](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damanoreshkan-beep/microspec/main/docs/efficacy.json)](packages/gates/efficacy.mjs)
 [![live demo](https://img.shields.io/badge/live-35%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
+[![built on Android](https://img.shields.io/badge/built%20on-Termux%20%2F%20Android-a78bfa)](#-written-on-a-phone)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-> **▶ Try the farm live:** **[35 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)** —
-> each is a spec + adapter that passed the gates. Add any to your home screen; they work offline.
+### **[▶ Open the farm — 35 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)**
+
+Add any to your home screen. They work offline. Every one is a spec + adapter that **passed the gates.**
+
+</div>
+
+---
+
+<table>
+<tr>
+<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/quakes/"><img src="docs/shots/quakes.png" alt="Quakes — a live seismic globe"></a><div align="center"><sub><b>Quakes</b> · live seismic globe, magnitude-coded</sub></div></td>
+<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/rave/"><img src="docs/shots/rave.png" alt="Rave — techno synth + sequencer"></a><div align="center"><sub><b>Rave</b> · a synthesised techno instrument</sub></div></td>
+<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/kalimba/"><img src="docs/shots/kalimba.png" alt="Kalimba — a playable thumb piano"></a><div align="center"><sub><b>Kalimba</b> · a playable thumb piano</sub></div></td>
+</tr>
+<tr>
+<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/kp/"><img src="docs/shots/kp.png" alt="Aurora — a Kp-index dashboard"></a><div align="center"><sub><b>Aurora</b> · a Kp-index space-weather dashboard</sub></div></td>
+<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/globe/"><img src="docs/shots/globe.png" alt="Globe — spin to any country"></a><div align="center"><sub><b>Globe</b> · spin the world, tap a country</sub></div></td>
+<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/store/"><img src="docs/shots/store.png" alt="The launcher — 35 apps"></a><div align="center"><sub><b>The launcher</b> · 35 apps, one home screen</sub></div></td>
+</tr>
+</table>
+
+microspec is an open-source framework for **AI-authored, installable micro-PWAs.** An agent writes a thin
+**spec** (+ a tiny data adapter) against a **verified runtime**, and hard **CI gates** — accessibility,
+responsiveness, end-to-end behaviour, runtime-error surveillance — *block the merge* if the app is broken,
+inaccessible, or untranslated. The constraint is the point: a narrow spec + a gated runtime is what makes
+agent-generated apps **verifiably** correct instead of hopefully correct.
 
 <p align="center">
   <a href="https://damanoreshkan-beep.github.io/microspec/store/">
@@ -24,7 +45,15 @@ agent-generated apps **verifiably** correct instead of hopefully correct.
   <br><sub>The gate catching a real mistake — an agent's dropped translation — in ~2 seconds. Only green merges.</sub>
 </p>
 
----
+## 📱 Written on a phone
+
+No laptop. No desktop. The runtime, the gates, and all 35 apps were written and shipped from **Termux on
+Android** — on-device [Deno](https://deno.com), a phone as the whole workstation.
+
+That constraint *shaped the toolchain*, it isn't a party trick: the heavy browser gate (Chromium + axe)
+can't run on the phone, so local checks are **browser-free and fast** (contract + render integrity in ~2s),
+and the real-browser matrix runs in **GitHub Actions** on every push. The split between "what a phone
+verifies in a second" and "what CI verifies in a minute" is the same split the rest of this README is about.
 
 ## The problem
 
@@ -68,39 +97,22 @@ that throws **cannot get its PR merged.** No human has to catch it.
 invalid spec, a banned spinner, a throwing view — into a *copy* of each app (the real tree is never
 touched) and records whether the gate goes red. The score is caught / total: a number, not a promise.
 
-The first run scored **79%** — and surfaced a real gap: the browser-free tier wasn't enforcing that every
-locale defines the same keys, so an app could ship an untranslated runtime string. We added a locale-parity
-check and it went to **100% (51/51)**. That loop — *measure → find a gap → close it → re-measure* — now runs
-in CI, so a regression in the **gate itself** fails the build.
-
-It has since run again, on a gap that cost two shipped defects: headless has no GPS and no magnetometer, so
-a sensor app rendered its *empty* state and every check below — a11y, overflow@384, watch@200 — signed off
-on a screen no user sees. A compass rose overflowed by 39px unmeasured (a rotated square's bounding box
-grows √2, but a dial with no heading never rotates); a readout failed contrast in both themes because the
-element never mounted. Preflight now fails any app that reads a sensor and renders no live state, and
-`sensor-mock-unseeded` mutates the *cause* — it disables the gate detection so the mock stops seeding —
-rather than the marker. **52/52.**
-
-Both tiers are measured and enforced:
-
 | Tier | Catches | Score |
 |---|---|---|
-| **preflight** (browser-free) | dropped translation · invalid spec · banned spinner · throwing view · locale drift · unseeded sensor mock | **100%** (52/52) |
-| **verify** (Chromium, in CI) | broken data adapter · failing e2e · **inaccessible control (axe)** | **100%** (6/6) |
+| **preflight** (browser-free, runs on the phone) | dropped translation · invalid spec · banned spinner · throwing view · locale drift · unseeded sensor mock | **100%** (60/60) |
+| **verify** (Chromium, in CI) | broken data adapter · failing e2e · **inaccessible control (axe)** | **100%** |
 
-The verify tier proves the headline the hard way: a mutation that strips a control's accessible name is
-**caught by axe in CI**, by measurement, not assertion. (One honest footnote: a synthetic *overflow* probe
-escaped — the dock truncates an over-long label — so we dropped it; overflow@384 is already enforced across
-all 35 apps on every push.)
+The first run scored **79%** and surfaced a real gap — the browser-free tier wasn't enforcing locale
+parity, so an app could ship an untranslated string. We added the check and re-measured. That loop —
+*measure → find a gap → close it → re-measure* — now runs in CI, so a regression in the **gate itself**
+fails the build.
 
 ### …and what the gates still cannot see
 
 Measuring the gate's strength without measuring its blind spots would be marketing. The same rigour is
-turned on itself in **[`docs/GATE_BLINDSPOTS.md`](docs/GATE_BLINDSPOTS.md)**: a catalogue of real defects
-that shipped **with every gate green**, each with the receipt.
-
-The pattern is always the same — *a gate verifies that a mechanism exists; it does not ask whether the
-mechanism achieves its purpose:*
+turned on itself in **[`docs/GATE_BLINDSPOTS.md`](docs/GATE_BLINDSPOTS.md)** — a catalogue of real defects
+that shipped **with every gate green.** The pattern is always the same: *a gate verifies that a mechanism
+exists; it does not ask whether the mechanism achieves its purpose.*
 
 | The gate asks | It does not ask |
 |---|---|
@@ -110,35 +122,25 @@ mechanism achieves its purpose:*
 
 That last one is the sharpest: the dock's active tab was invisible for the life of this project at a
 measured **1.56:1** against its inactive siblings — because axe checks text against its *background*, never
-one state against *another*. Both states passed every check. The difference between them, which is the
-entire point, passed nothing, because nothing looked.
+one state against *another*. Both states passed every check. **A green gate is a floor, not a verdict.**
 
-A green gate is a floor, not a verdict.
+## Not just feeds
 
-## See it live
+Depth lives in the runtime, not the apps. Habits is a stateful offline tracker (IndexedDB, streak math, a
+13-week heatmap, JSON export); Rave is a real instrument; GPS Ruler measures distance/area by walking a
+polyline (haversine + shoelace). Read-only catalogs are one slice.
 
-The farm runs on plain GitHub Pages, no backend:
+`packages/runtime/groove.js` is four published results turned into four functions — Toussaint's Euclidean
+rhythms (2005), the Longuet-Higgins & Lee syncopation measure (1984), the inverted-U of groove from
+[Witek et al. (2014)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0094446), and
+harmonicity from [Bowling & Purves (2018)](https://www.pnas.org/doi/10.1073/pnas.1505768112). Rave's
+**Generate** samples that space and keeps the highest-scoring bar; the unit gate asserts `bjorklund(3,8)`
+**is** the Cuban tresillo and that the search beats coin-flip random on every seed — so "generated, not
+random" is a test, not a bullet point. Any future music app imports it for free.
 
-| App | What it is |
-|---|---|
-| [**Habits**](https://damanoreshkan-beep.github.io/microspec/habits/) | a local-first streak tracker — IndexedDB, streak math, a 13-week contribution heatmap, JSON export; fully offline |
-| [**Rave**](https://damanoreshkan-beep.github.io/microspec/rave/) | a polyphonic techno synth — 16 voices, an FX rack, a look-ahead scheduler, saved patterns; synthesised, no audio files. **Generate** is a scored search over Euclidean rhythms, not a dice roll |
-| [**GPS Ruler**](https://damanoreshkan-beep.github.io/microspec/ruler/) | measure distance/area by walking a polyline — haversine segments, shoelace area, live coordinates, scale bar, north arrow |
-| [**Frontier**](https://damanoreshkan-beep.github.io/microspec/frontier/) | fresh breakthrough OSS from GitHub, descriptions translated on-device |
-| [**Neural Nets**](https://damanoreshkan-beep.github.io/microspec/hf/) | Hugging Face models & Spaces catalog with translated model cards |
-
-**Not just feeds.** Habits is a stateful, offline productivity app (your data, exportable); Rave is a real
-instrument; Ruler is a real GPS field tool. Read-only catalogs (Frontier, Neural Nets, weather) are one slice —
-
-Depth lives in the runtime, not in the apps. `packages/runtime/groove.js` is four published results turned
-into four functions — Toussaint's Euclidean rhythms (2005), the Longuet-Higgins & Lee syncopation measure
-(1984), the inverted-U of groove from [Witek et al. (2014)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0094446)
-(pleasure peaks at *medium* syncopation), and harmonicity from [Bowling & Purves (2018)](https://www.pnas.org/doi/10.1073/pnas.1505768112).
-Rave's Generate button samples that space and keeps the highest-scoring bar. The unit gate asserts
-`bjorklund(3,8)` **is** the Cuban tresillo and that the search beats coin-flip random on every seed — so
-"generated, not random" is a test, not a bullet point. Any future music app imports it for free.
-
-…plus 30 more (`hn · rates · crypto · quakes · iss · launches · transit · sun · kp · globe · dou · …`).
+<div align="center">
+  <sub><code>habits · rave · ruler · frontier · hf · hn · rates · crypto · quakes · iss · launches · transit · sun · kp · globe · kalimba · weather · books · cinema · wiki · dou · …</code></sub>
+</div>
 
 ## How it works
 
@@ -170,7 +172,7 @@ export async function load() {
 
 The runtime renders it — accessible, responsive, installable, i18n, history-routed — and the gates verify
 it. There is **no build step:** the runtime is browser-native ESM (Preact + htm + nanostores) from a CDN
-import map; styling is Tailwind + DaisyUI.
+import map; styling is Tailwind + DaisyUI; the type system is the Geist superfamily.
 
 ## Layers
 
@@ -188,7 +190,7 @@ import map; styling is Tailwind + DaisyUI.
 # scaffold a new app from a spec + i18n you (or an agent) authored
 deno run -A packages/gen/scaffold.mjs apps/myapp
 
-# fast, browser-free checks before you push (contract + render integrity)
+# fast, browser-free checks before you push (contract + render integrity) — these run on a phone
 deno run -A packages/schema/validate.mjs apps/myapp/spec.json
 deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/myapp
 
@@ -200,6 +202,21 @@ Full gates (Chromium) run in GitHub Actions on every push. See [`docs/AUTHORING.
 the authoring loop, [`docs/TESTING.md`](docs/TESTING.md) for the gate internals, and
 [`packages/schema/SCHEMA.md`](packages/schema/SCHEMA.md) for the spec reference.
 
+## The author is pluggable (it's not an AI wrapper)
+
+The model writes ~40 lines of JSON + a small adapter. The runtime (thousands of lines) and the gates do the
+real work — and **neither calls a model.** So the *author* is swappable:
+
+- **Claude** — writes a spec against the JSON-Schema contract (what this repo used).
+- **Any other model** — nothing here is Anthropic-specific; the contract is just JSON Schema.
+- **A deterministic script** — [`packages/gen/authorless.mjs`](packages/gen/authorless.mjs) turns a recipe
+  (a source URL + a field map) into a complete app with **zero model calls**. The
+  [**Books**](https://damanoreshkan-beep.github.io/microspec/books/) app was generated this way and passed
+  the *same* a11y / responsive / e2e gates as everything else.
+- **A human** — hand-write `spec.json` + `data.js`, scaffold, gate.
+
+If a plain function can author a passing app, the LLM isn't the moat — the contract + families + gates are.
+
 ## What it is / isn't
 
 - **Is:** an opinionated, *vertical* framework for a specific class of app — installable, offline, data/tool
@@ -207,22 +224,6 @@ the authoring loop, [`docs/TESTING.md`](docs/TESTING.md) for the gate internals,
 - **Isn't:** a general-purpose app builder or an autonomous code generator. The agent is a human-driven
   coding assistant (Claude Code) in the loop; the moat is the family taste + the spec contract + the gates,
   not the LLM.
-
-## The author is pluggable (it's not an AI wrapper)
-
-The model writes ~40 lines of JSON + a small adapter. The runtime (thousands of lines) and the gates do the
-real work — and **neither calls a model**. So the *author* is swappable:
-
-- **Claude** — writes a spec against the JSON-Schema contract (what this repo used).
-- **Any other model** — nothing here is Anthropic-specific; the contract is just JSON Schema.
-- **A deterministic script** — [`packages/gen/authorless.mjs`](packages/gen/authorless.mjs) turns a recipe
-  (a source URL + a field map) into a complete app with **zero model calls**. The
-  [**Books**](https://damanoreshkan-beep.github.io/microspec/books/) app (free Project Gutenberg catalog)
-  was generated this way from [`recipes/books.json`](recipes/books.json) — and passed the *same* a11y /
-  responsive / e2e gates as everything else. CI re-runs `authorless … --check` on every push to keep it true.
-- **A human** — hand-write `spec.json` + `data.js`, scaffold, gate.
-
-If a plain function can author a passing app, the LLM isn't the moat — the contract + families + gates are.
 
 ## License
 

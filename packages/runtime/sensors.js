@@ -171,3 +171,33 @@ export const compass = {
     return () => { stopGeo(); window.removeEventListener(evt, handler, true); };
   },
 };
+
+// camera — a live video stream attached to a <video>, for apps that READ pixels (colour picker, scanner).
+// Thin on purpose: it owns only the hardware lifecycle (permission → stream → release). Sampling the frame
+// (canvas → getImageData) and the maths on those pixels belong to the app + /_rt/colour.js — the headless
+// gate has no canvas, so a view must seed its reading from a pixel buffer, never from a live capture.
+//
+//   start(videoEl, onErr?, opts?) → stop fn.  onErr("denied" | "unavailable" | "unsupported").
+//   opts.facingMode: "environment" (default, rear) | "user" (selfie).
+// The stop fn releases the camera (stops every track) AND survives being called before the async open
+// resolves — an unmount mid-permission must not leak a hot camera the moment the user grants it.
+export const camera = {
+  supported: typeof navigator !== "undefined" && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+  async start(video, onErr, { facingMode = "environment" } = {}) {
+    if (!this.supported) { onErr?.("unsupported"); return () => {}; }
+    let stream = null, stopped = false;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
+      if (stopped) { stream.getTracks().forEach((tr) => tr.stop()); return () => {}; } // unmounted mid-open
+      if (video) { video.srcObject = stream; video.setAttribute?.("playsinline", ""); try { await video.play?.(); } catch { /* autoplay quirk */ } }
+    } catch (e) {
+      onErr?.(e && e.name === "NotAllowedError" ? "denied" : "unavailable");
+      return () => {};
+    }
+    return () => {
+      stopped = true;
+      try { stream?.getTracks().forEach((tr) => tr.stop()); } catch { /* already gone */ }
+      try { if (video) video.srcObject = null; } catch { /* detached */ }
+    };
+  },
+};

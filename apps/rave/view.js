@@ -276,11 +276,17 @@ const uniqueName = (base, list) => {
 const SAVES = collection("ravePatterns"), CUR = collection("raveCurrent");
 const $tracks = atom(parse(PRESETS[0])), $bpm = atom(130), $fx = atom({ ...DFX });
 const $riff = atom(RIFF);   // per-step semitone offsets for the bass voices — the generator rewrites it
+const $hist = atom({ seeds: [], idx: -1 });   // session playlist: generated seeds + current index (next / prev)
+// A deterministic "song title" per seed — same beat, same name — so the OS media notification reads like a track.
+const NAMEA = ["Neon", "Acid", "Void", "Hyper", "Dark", "Rust", "Strobe", "Chrome", "Ghost", "Iron", "Warp", "Blast", "Cyber", "Toxic", "Vapor", "Rave"];
+const NAMEB = ["Drift", "Storm", "Machine", "Circuit", "Sector", "Halo", "Engine", "Prophet", "Rush", "Grid", "Pulse", "Descent", "Overdrive", "Signal", "Riot", "Dawn"];
+const trackName = (seed) => `${NAMEA[(seed >>> 0) % 16]} ${NAMEB[(seed >>> 8) % 16]}`;
+const randSeed = () => (Math.random() * 0xffffffff) >>> 0;
 (async () => { try { const s = await CUR.get("state"); if (s && s.tracks) { $tracks.set({ ...empty(), ...s.tracks }); if (s.bpm) $bpm.set(s.bpm); if (s.fx) $fx.set({ ...DFX, ...s.fx }); if (s.riff?.length === N) $riff.set(s.riff); } } catch { /* no idb → defaults */ } })();
 
 export function rave({ S, toast }) {
   const t = useStore(S.t);
-  const tracks = useStore($tracks), bpm = useStore($bpm), fx = useStore($fx);
+  const tracks = useStore($tracks), bpm = useStore($bpm), fx = useStore($fx), hist = useStore($hist);
   // Highlight the preset chip only while the pattern still IS that preset — edit a step and the highlight
   // clears (it stays truthful, never stale). Cheap: 6 small patterns compared per render.
   const trackKey = JSON.stringify(tracks);
@@ -288,7 +294,7 @@ export function rave({ S, toast }) {
   const [playing, setPlaying] = useState(false);
   const [cur, setCur] = useState(-1);
   const [sweep, setSweep] = useState(-1);   // -1 idle, else the column the generator is currently writing
-  const eng = useRef(null), sched = useRef(null), raf = useRef(null), nextT = useRef(0), stepN = useRef(0), q = useRef([]), genT = useRef(null);
+  const eng = useRef(null), sched = useRef(null), raf = useRef(null), nextT = useRef(0), stepN = useRef(0), q = useRef([]), genT = useRef(null), mediaEl = useRef(null);
 
   const applyFx = (e) => { const f = $fx.get(); e.fx.drive.curve = driveCurve(f.drive); e.fx.crush.curve = crushCurve(f.crush); e.fx.dsend.gain.value = f.delay; e.fx.rsend.gain.value = f.reverb; e.fx.mf.frequency.value = 200 * Math.pow(90, f.mfilter); e.fx.delay.delayTime.value = 3 * (60 / $bpm.get() / 4); };
   const ensure = () => {
@@ -308,6 +314,25 @@ export function rave({ S, toast }) {
       crush.connect(rsend); rsend.connect(rev); rev.connect(sum);
       e.bus = drive; e.fx = { drive, crush, dsend, rsend, mf, delay };
       eng.current = e; applyFx(e);
+      // Web Audio alone does NOT request Android audio focus, so an OS media notification never appears —
+      // the fix is to route the synth into a MediaStream and play it through a detached <audio> element,
+      // which the platform recognises as playback. Fully guarded: any failure restores the direct output so
+      // the beat is never lost (you just don't get the lock-screen controls on that device).
+      try {
+        const msd = ctx.createMediaStreamDestination();
+        const el = new Audio(); el.srcObject = msd.stream; el.loop = true;
+        e.master.disconnect(); e.master.connect(msd);
+        el.play().catch(() => { try { e.master.disconnect(); e.master.connect(ctx.destination); } catch { /* */ } });
+        mediaEl.current = el;
+      } catch { /* no MediaStream capture → sound stays on ctx.destination, just no notification */ }
+      try {
+        if ("mediaSession" in navigator) {
+          navigator.mediaSession.setActionHandler("play", () => { if (!sched.current) start(); });
+          navigator.mediaSession.setActionHandler("pause", () => stop());
+          navigator.mediaSession.setActionHandler("nexttrack", () => nextTrack());
+          navigator.mediaSession.setActionHandler("previoustrack", () => prevTrack());
+        }
+      } catch { /* MediaSession unsupported */ }
     }
     eng.current.resume(); return eng.current;
   };
@@ -341,8 +366,8 @@ export function rave({ S, toast }) {
   // of scheduling a burst of past-dated notes (which would all fire at once = a crackle spike).
   const tick = () => { const e = eng.current; if (!e) return; const spb = 60 / $bpm.get() / 4, sw = $fx.get().swing; if (nextT.current < e.ctx.currentTime) nextT.current = e.ctx.currentTime; while (nextT.current < e.ctx.currentTime + 0.1) { const s = stepN.current; fire(s, nextT.current + (s % 2 ? sw * spb : 0)); nextT.current += spb; stepN.current = (s + 1) % N; } };
   const draw = () => { const e = eng.current; if (e) { const now = e.ctx.currentTime; while (q.current.length && q.current[0].time <= now) setCur(q.current.shift().s); } raf.current = requestAnimationFrame(draw); };
-  const start = () => { const e = ensure(); setPlaying(true); if (!e) return; nextT.current = e.ctx.currentTime + 0.06; stepN.current = 0; sched.current = setInterval(tick, 25); raf.current = requestAnimationFrame(draw); };
-  const stop = () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); sched.current = null; raf.current = null; q.current = []; setPlaying(false); setCur(-1); };
+  const start = () => { const e = ensure(); setPlaying(true); if (!e) return; nextT.current = e.ctx.currentTime + 0.06; stepN.current = 0; sched.current = setInterval(tick, 25); raf.current = requestAnimationFrame(draw); const h = $hist.get(); setMeta(h.idx >= 0 ? h.seeds[h.idx] : null); try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; } catch { /* */ } };
+  const stop = () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); sched.current = null; raf.current = null; q.current = []; setPlaying(false); setCur(-1); try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused"; } catch { /* */ } };
 
   useEffect(() => () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); if (genT.current) clearInterval(genT.current); if (eng.current) eng.current.close(); }, []);
   useEffect(() => { CUR.put("state", { tracks, bpm, fx }).catch(() => {}); }, [tracks, bpm, fx]);
@@ -353,7 +378,10 @@ export function rave({ S, toast }) {
   useEffect(() => {
     const v = new URLSearchParams(location.search).get("seed");
     if (v == null) return;
-    generate(/^\d+$/.test(v) ? Number(v) >>> 0 : 1312, false);
+    const seed = /^\d+$/.test(v) ? Number(v) >>> 0 : 1312;
+    generate(seed, false);
+    $hist.set({ seeds: [seed], idx: 0 });
+    setMeta(seed);
   }, []);
 
   const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
@@ -397,15 +425,33 @@ export function rave({ S, toast }) {
     }, 28);
   };
 
+  // ── the session playlist: next / prev step through remembered seeds and AUTO-GENERATE at either end ──
+  const setMeta = (seed) => {
+    try {
+      if (!("mediaSession" in navigator)) return;
+      navigator.mediaSession.metadata = new MediaMetadata({ title: seed != null ? trackName(seed) : "Rave", artist: "rave", album: "microspec" });
+    } catch { /* */ }
+  };
+  const loadTrack = (seed) => { generate(seed); setMeta(seed); };
+  const newTrack = () => { const seed = randSeed(); const { seeds } = $hist.get(); const next = [...seeds, seed]; $hist.set({ seeds: next, idx: next.length - 1 }); loadTrack(seed); };
+  const nextTrack = () => { let { seeds, idx } = $hist.get(); if (idx >= seeds.length - 1) { seeds = [...seeds, randSeed()]; idx = seeds.length - 1; } else idx += 1; $hist.set({ seeds, idx }); loadTrack(seeds[idx]); };
+  const prevTrack = () => { let { seeds, idx } = $hist.get(); if (idx <= 0) { seeds = [randSeed(), ...seeds]; idx = 0; } else idx -= 1; $hist.set({ seeds, idx }); loadTrack(seeds[idx]); };
+
+  const cSeed = hist.idx >= 0 && hist.idx < hist.seeds.length ? hist.seeds[hist.idx] : null;
   return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <div class="shrink-0 w-full max-w-xl mx-auto px-4 pt-3 flex flex-col gap-3">
-    <div class="flex items-center gap-3">
-      <button id="play" aria-label=${playing ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle btn-lg shadow-lg ${playing ? "btn-secondary" : "btn-primary"}`} onClick=${() => (playing ? stop() : start())}>${Icon(playing ? "lucide:square" : "lucide:play", "text-2xl")}</button>
+    <div class="flex items-center gap-2">
+      <button data-prev aria-label=${T(t, "prevTrack")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${prevTrack}>${Icon("lucide:skip-back", "text-lg")}</button>
+      <button id="play" aria-label=${playing ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle btn-lg shadow-lg shrink-0 ${playing ? "btn-secondary" : "btn-primary"}`} onClick=${() => (playing ? stop() : start())}>${Icon(playing ? "lucide:square" : "lucide:play", "text-2xl")}</button>
+      <button data-next aria-label=${T(t, "nextTrack")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${nextTrack}>${Icon("lucide:skip-forward", "text-lg")}</button>
       <div class="flex-1 min-w-0">
-        <div class="flex items-center justify-between text-xs mb-0.5"><span class="font-semibold tabular-nums">${bpm} BPM</span></div>
+        <div class="flex items-center justify-between text-xs mb-0.5 gap-2">
+          <span data-track class="font-mono truncate text-base-content/80">${cSeed != null ? "♪ " + trackName(cSeed) : ""}</span>
+          <span class="font-semibold tabular-nums shrink-0">${bpm} BPM</span>
+        </div>
         <input type="range" min="90" max="150" value=${bpm} class="range range-xs range-primary w-full" aria-label=${T(t, "tempo")} onInput=${(e) => $bpm.set(Number(e.target.value))} />
       </div>
-      <button id="save" data-save aria-label=${T(t, "aSave")} class="btn btn-circle btn-outline" onClick=${save}>${Icon("lucide:save", "text-xl")}</button>
+      <button id="save" data-save aria-label=${T(t, "aSave")} class="btn btn-circle btn-outline btn-sm shrink-0" onClick=${save}>${Icon("lucide:save", "text-lg")}</button>
     </div>
 
     <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
@@ -413,7 +459,7 @@ export function rave({ S, toast }) {
     </div>
 
     <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-      <button id="gen" data-gen aria-label=${T(t, "gen")} aria-busy=${sweep >= 0} class=${`btn btn-sm shrink-0 gap-1.5 btn-accent transition-transform ${sweep >= 0 ? "scale-105" : "btn-outline"}`} onClick=${() => generate()}>
+      <button id="gen" data-gen aria-label=${T(t, "gen")} aria-busy=${sweep >= 0} class=${`btn btn-sm shrink-0 gap-1.5 btn-accent transition-transform ${sweep >= 0 ? "scale-105" : "btn-outline"}`} onClick=${newTrack}>
         ${Icon("lucide:sparkles", `text-base ${sweep >= 0 ? "animate-pulse" : ""}`)}<span>${T(t, "gen")}</span>
       </button>
       ${PRESETS.map((p) => html`<button data-preset=${p.id} aria-pressed=${activePreset === p.id} class=${`btn btn-sm shrink-0 ${activePreset === p.id ? "btn-primary" : "btn-outline"}`} onClick=${() => { ensure(); $tracks.set(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}

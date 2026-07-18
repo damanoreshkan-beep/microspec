@@ -31,6 +31,20 @@ export default [
     },
   },
   {
+    // next/prev generate a fresh beat at the ends of the session playlist and step back through the ones
+    // already made — so prev must return the SAME track it remembered, not a new random one.
+    name: "транспорт: next/prev — автогенерація з памʼяттю", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-next]")) === 1 && (await h.count("[data-prev]")) === 1, "немає кнопок next/prev");
+      await h.click("[data-next]"); await h.wait(650);
+      const n1 = await h.text("[data-track]");
+      h.expect(/\S/.test(n1), "next не встановив назву треку");
+      await h.click("[data-next]"); await h.wait(650);
+      await h.click("[data-prev]"); await h.wait(650);
+      h.expect((await h.text("[data-track]")) === n1, "prev не повернув запамʼятований попередній трек");
+    },
+  },
+  {
     name: "клік по клітині перемикає крок", run: async (h) => {
       await ready(h);
       h.expect((await h.attr('[data-cell="kick-1"]', "aria-pressed")) === "false", "kick-1 мав бути вимкнений");

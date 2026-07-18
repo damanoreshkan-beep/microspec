@@ -1,6 +1,7 @@
 {
   "id": "hn",
   "theme": "signal",
+  "category": "feeds",
   "translate": [
     "title",
     "desc"

@@ -1,5 +1,5 @@
 {
-  "id": "home",
+  "id": "store",
   "theme": "signal",
   "tabs": [
     { "id": "apps", "type": "tool", "icon": "lucide:layout-grid", "label": "tabApps", "view": "store" },

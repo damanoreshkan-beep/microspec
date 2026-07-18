@@ -1,9 +1,22 @@
 {
   "id": "habits",
   "theme": "signal",
+  "category": "wellness",
   "tabs": [
-    { "id": "today", "type": "tool", "icon": "lucide:calendar-check", "label": "tabToday", "view": "habits" },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "today",
+      "type": "tool",
+      "icon": "lucide:calendar-check",
+      "label": "tabToday",
+      "view": "habits"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
   "profile": {
     "icon": "lucide:sprout",

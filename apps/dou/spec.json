@@ -1,6 +1,7 @@
 {
   "id": "dou",
   "theme": "signal",
+  "category": "feeds",
   "translate": [
     "desc"
   ],

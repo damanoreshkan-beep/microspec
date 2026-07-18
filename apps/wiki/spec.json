@@ -1,6 +1,7 @@
 {
   "id": "wiki",
   "theme": "signal-light",
+  "category": "feeds",
   "localized": true,
   "fav": {
     "key": "id"

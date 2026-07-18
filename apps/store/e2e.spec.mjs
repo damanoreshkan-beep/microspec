@@ -21,6 +21,18 @@ export default [
     },
   },
   {
+    name: "чіпи фільтрують за категорією", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-cat]")) >= 5, "немає чіпів категорій");
+      const all = await h.count("[data-app]");
+      await h.tap('[data-cat="sound"]'); await h.wait(200);
+      const sound = await h.count("[data-app]");
+      h.expect(sound >= 1 && sound < all, "чіп не звузив до категорії");
+      await h.tap('[data-cat="all"]'); await h.wait(150);
+      h.expect((await h.count("[data-app]")) === all, "не відновилось на «Усі»");
+    },
+  },
+  {
     name: "тап по застосунку → екран опису, Back закриває", run: async (h) => {
       await ready(h);
       await h.click('[data-app="rave"]'); await h.wait(250);

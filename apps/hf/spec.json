@@ -1,6 +1,7 @@
 {
   "id": "hf",
   "theme": "signal",
+  "category": "feeds",
   "translate": [
     "desc"
   ],
@@ -15,20 +16,53 @@
     "title": "name",
     "subtitle": "author",
     "rows": [
-      { "field": "desc", "label": "dDesc", "icon": "lucide:file-text" },
-      { "field": "task", "label": "dTask", "icon": "lucide:cpu" },
-      { "field": "downloads", "label": "dDownloads", "icon": "lucide:download" },
-      { "field": "likes", "label": "dLikes", "icon": "lucide:heart" },
-      { "field": "lib", "label": "dLib", "icon": "lucide:package" },
-      { "field": "createdAt", "label": "dCreated", "icon": "lucide:calendar", "format": "ago" }
+      {
+        "field": "desc",
+        "label": "dDesc",
+        "icon": "lucide:file-text"
+      },
+      {
+        "field": "task",
+        "label": "dTask",
+        "icon": "lucide:cpu"
+      },
+      {
+        "field": "downloads",
+        "label": "dDownloads",
+        "icon": "lucide:download"
+      },
+      {
+        "field": "likes",
+        "label": "dLikes",
+        "icon": "lucide:heart"
+      },
+      {
+        "field": "lib",
+        "label": "dLib",
+        "icon": "lucide:package"
+      },
+      {
+        "field": "createdAt",
+        "label": "dCreated",
+        "icon": "lucide:calendar",
+        "format": "ago"
+      }
     ],
     "actions": [
-      { "href": "url", "label": "dOpen", "icon": "lucide:external-link" }
+      {
+        "href": "url",
+        "label": "dOpen",
+        "icon": "lucide:external-link"
+      }
     ]
   },
   "filters": {
     "refetch": true,
-    "defaults": { "type": "models", "sort": "likes", "category": "" },
+    "defaults": {
+      "type": "models",
+      "sort": "likes",
+      "category": ""
+    },
     "controls": [
       {
         "type": "segment",
@@ -36,8 +70,14 @@
         "label": "filterType",
         "icon": "lucide:layout-grid",
         "options": [
-          ["models", "typeModels"],
-          ["spaces", "typeSpaces"]
+          [
+            "models",
+            "typeModels"
+          ],
+          [
+            "spaces",
+            "typeSpaces"
+          ]
         ]
       },
       {
@@ -48,18 +88,54 @@
         "refetch": true,
         "chip": true,
         "options": [
-          ["", "catAll"],
-          ["text-generation", "catTextGen"],
-          ["text-to-image", "catTextImage"],
-          ["text-to-video", "catTextVideo"],
-          ["image-text-to-text", "catVLM"],
-          ["automatic-speech-recognition", "catASR"],
-          ["text-to-speech", "catTTS"],
-          ["image-classification", "catImgCls"],
-          ["object-detection", "catObjDet"],
-          ["feature-extraction", "catEmbed"],
-          ["text-classification", "catTextCls"],
-          ["translation", "catTranslation"]
+          [
+            "",
+            "catAll"
+          ],
+          [
+            "text-generation",
+            "catTextGen"
+          ],
+          [
+            "text-to-image",
+            "catTextImage"
+          ],
+          [
+            "text-to-video",
+            "catTextVideo"
+          ],
+          [
+            "image-text-to-text",
+            "catVLM"
+          ],
+          [
+            "automatic-speech-recognition",
+            "catASR"
+          ],
+          [
+            "text-to-speech",
+            "catTTS"
+          ],
+          [
+            "image-classification",
+            "catImgCls"
+          ],
+          [
+            "object-detection",
+            "catObjDet"
+          ],
+          [
+            "feature-extraction",
+            "catEmbed"
+          ],
+          [
+            "text-classification",
+            "catTextCls"
+          ],
+          [
+            "translation",
+            "catTranslation"
+          ]
         ]
       },
       {
@@ -68,8 +144,14 @@
         "label": "filterSort",
         "icon": "lucide:arrow-up-down",
         "options": [
-          ["likes", "sortLikes"],
-          ["downloads", "sortDownloads"]
+          [
+            "likes",
+            "sortLikes"
+          ],
+          [
+            "downloads",
+            "sortDownloads"
+          ]
         ]
       }
     ]
@@ -83,18 +165,37 @@
       "search": true,
       "searchKey": "search",
       "statusKey": "status",
-      "empty": { "icon": "lucide:search-x", "text": "noResults", "hint": "noResultsHint" },
+      "empty": {
+        "icon": "lucide:search-x",
+        "text": "noResults",
+        "hint": "noResultsHint"
+      },
       "card": {
         "layout": "feed",
         "title": "name",
         "subtitle": "author",
         "body": "desc",
         "more": "open",
-        "meta": { "field": "createdAt", "format": "ago" },
+        "meta": {
+          "field": "createdAt",
+          "format": "ago"
+        },
         "badges": [
-          { "field": "task", "icon": "lucide:cpu", "variant": "primary" },
-          { "field": "downloads", "icon": "lucide:download", "variant": "ghost" },
-          { "field": "likes", "icon": "lucide:heart", "variant": "ghost" }
+          {
+            "field": "task",
+            "icon": "lucide:cpu",
+            "variant": "primary"
+          },
+          {
+            "field": "downloads",
+            "icon": "lucide:download",
+            "variant": "ghost"
+          },
+          {
+            "field": "likes",
+            "icon": "lucide:heart",
+            "variant": "ghost"
+          }
         ]
       }
     },
@@ -107,18 +208,37 @@
       "titleKey": "tabSaved",
       "search": true,
       "searchKey": "searchSaved",
-      "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
+      "empty": {
+        "icon": "lucide:bookmark",
+        "text": "emptySaved",
+        "hint": "emptySavedHint"
+      },
       "card": {
         "layout": "feed",
         "title": "name",
         "subtitle": "author",
         "body": "desc",
         "more": "open",
-        "meta": { "field": "createdAt", "format": "ago" },
+        "meta": {
+          "field": "createdAt",
+          "format": "ago"
+        },
         "badges": [
-          { "field": "task", "icon": "lucide:cpu", "variant": "primary" },
-          { "field": "downloads", "icon": "lucide:download", "variant": "ghost" },
-          { "field": "likes", "icon": "lucide:heart", "variant": "ghost" }
+          {
+            "field": "task",
+            "icon": "lucide:cpu",
+            "variant": "primary"
+          },
+          {
+            "field": "downloads",
+            "icon": "lucide:download",
+            "variant": "ghost"
+          },
+          {
+            "field": "likes",
+            "icon": "lucide:heart",
+            "variant": "ghost"
+          }
         ]
       }
     },

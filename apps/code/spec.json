@@ -1,0 +1,14 @@
+{
+  "id": "code",
+  "theme": "signal",
+  "tabs": [
+    { "id": "play", "type": "tool", "icon": "lucide:puzzle", "label": "tabPlay", "view": "code" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:puzzle",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

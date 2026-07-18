@@ -105,3 +105,24 @@ export const compass = {
     return () => { stopGeo(); window.removeEventListener(evt, handler, true); };
   },
 };
+
+export const camera = {
+  supported: typeof navigator !== "undefined" && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+  async start(video, onErr, { facingMode = "environment" } = {}) {
+    if (!this.supported) { onErr?.("unsupported"); return () => {}; }
+    let stream = null, stopped = false;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
+      if (stopped) { stream.getTracks().forEach((tr) => tr.stop()); return () => {}; } 
+      if (video) { video.srcObject = stream; video.setAttribute?.("playsinline", ""); try { await video.play?.(); } catch {  } }
+    } catch (e) {
+      onErr?.(e && e.name === "NotAllowedError" ? "denied" : "unavailable");
+      return () => {};
+    }
+    return () => {
+      stopped = true;
+      try { stream?.getTracks().forEach((tr) => tr.stop()); } catch {  }
+      try { if (video) video.srcObject = null; } catch {  }
+    };
+  },
+};

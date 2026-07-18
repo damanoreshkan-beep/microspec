@@ -21,7 +21,7 @@
   --color-error: #F0655E;     --color-error-content: #180605;
   --color-warning: #D9973A;   --color-warning-content: #160D02;
   --color-info: #9AA0A6;      --color-info-content: #0A0A0B;
-  --radius-box: 0.75rem; --radius-field: 0.5rem; --radius-selector: 0.375rem;
+  --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
   --border: 1px; --depth: 0;
 }
 
@@ -37,7 +37,7 @@
   --color-error: #BE2F2A;     --color-error-content: #FFFFFF;
   --color-warning: #8A5A00;   --color-warning-content: #FFFFFF;
   --color-info: #6E6E76;      --color-info-content: #FFFFFF;
-  --radius-box: 0.75rem; --radius-field: 0.5rem; --radius-selector: 0.375rem;
+  --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
   --border: 1px; --depth: 0;
 }
 
@@ -92,6 +92,20 @@ nav[data-dock] button > span {
   letter-spacing: .03em;
   font-size: .58rem;
 }
+
+/* Liquid glass — the bottom sheets and modals only (cards stay solid ink, colour stays meaning). The
+   material is a frosted panel: the page blurred and lifted behind it, plus a hairline top sheen so the blur
+   reads as a pane of glass rather than a flat tint. Opacity is kept high (82%) so text contrast over the
+   dimmed backdrop stays deterministic — the blur does the glass, not thin translucency the axe gate can't
+   predict. A gentle overshoot on the open gives the sheet the "liquid" settle. */
+.modal-box {
+  background: color-mix(in oklch, var(--color-base-100) 82%, transparent);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  box-shadow: 0 -10px 44px -12px rgba(0, 0, 0, .5), inset 0 1px 0 0 rgba(255, 255, 255, .09);
+  transition-timing-function: cubic-bezier(.22, 1, .3, 1.12);
+}
+@media (prefers-reduced-motion: reduce) { .modal-box { transition-timing-function: ease-out; } }
 
 /* skeleton → content reveal: a fast, smooth fade-in when real content replaces a skeleton (/_rt/skeleton.js
    Reveal). Frozen to its final state during the design-check axe pass, so contrast is measured on real text. */

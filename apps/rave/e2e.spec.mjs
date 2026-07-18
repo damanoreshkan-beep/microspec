@@ -72,6 +72,23 @@ export default [
     },
   },
   {
+    // The three tabs are separate tool views, so a tab switch unmounts the Beat view. The engine lives at
+    // module scope precisely so playback outlives that unmount — start, cross to Saved and back, and #play
+    // must still read as playing (a torn-down engine would have reset it to idle).
+    name: "музика не зупиняється при переході по табах", run: async (h) => {
+      await ready(h);
+      const idle = await h.attr("#play", "aria-label");
+      await h.click("#play"); await h.wait(150);
+      const live = await h.attr("#play", "aria-label");
+      h.expect(live !== idle, "play не запустився");
+      await h.click('[data-tab="saved"]'); await h.wait(300);
+      await h.click('[data-tab="beat"]'); await h.wait(300);
+      await ready(h);
+      h.expect((await h.attr("#play", "aria-label")) === live, "музика зупинилась при переході по табах");
+      await h.click("#play"); await h.wait(120);                  // stop — leave clean for the next case
+    },
+  },
+  {
     name: "зберегти патерн → зʼявляється у «Збережені» → завантажується", run: async (h) => {
       await ready(h);
       await h.click('[data-preset="rave"]'); await h.wait(120);
@@ -84,6 +101,25 @@ export default [
       h.expect(cells === 256, "після завантаження не повернулись у секвенсер");
       await h.click('[data-tab="saved"]'); await h.wait(300);
       await h.click("[data-del]"); await h.wait(300);
+    },
+  },
+  {
+    // Each saved item carries a Play button (audition without leaving the list) and a minimalist spectrum
+    // drawn from the beat's per-step voice density. Verify both exist per item and that Play toggles state.
+    name: "збережені: кнопка плей + спектр у кожному айтемі", run: async (h) => {
+      await h.click('[data-tab="beat"]'); await h.wait(200); await ready(h);
+      await h.click('[data-preset="acid"]'); await h.wait(120);
+      await h.click("[data-save]"); await h.wait(400);
+      await h.click('[data-tab="saved"]'); await h.wait(400);
+      let n = 0; for (let i = 0; i < 15; i++) { n = await h.count("[data-saved]"); if (n > 0) break; await h.wait(300); }
+      h.expect(n > 0, "збережений біт не зʼявився");
+      h.expect((await h.count("[data-play]")) === n, "не в кожного айтема є кнопка плей");
+      h.expect((await h.count("[data-spectrum]")) === n, "не в кожного айтема є спектр");
+      const a0 = await h.attr("[data-play]", "aria-label");
+      await h.click("[data-play]"); await h.wait(200);
+      h.expect((await h.attr("[data-play]", "aria-label")) !== a0, "плей у списку не запустив відтворення");
+      await h.click("[data-play]"); await h.wait(150);            // stop
+      await h.click("[data-del]"); await h.wait(300);             // clean up
     },
   },
   {

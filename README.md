@@ -10,10 +10,10 @@ agent-generated apps **verifiably** correct instead of hopefully correct.
 
 [![verify](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml/badge.svg)](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml)
 [![gate efficacy](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damanoreshkan-beep/microspec/main/docs/efficacy.json)](packages/gates/efficacy.mjs)
-[![live demo](https://img.shields.io/badge/live-34%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
+[![live demo](https://img.shields.io/badge/live-35%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-> **▶ Try the farm live:** **[34 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)** —
+> **▶ Try the farm live:** **[35 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)** —
 > each is a spec + adapter that passed the gates. Add any to your home screen; they work offline.
 
 <p align="center">
@@ -42,7 +42,7 @@ Give the agent a **floor it cannot fall through:**
 2. **Gate everything in CI.** A headless-Chromium harness runs the app in every state and **fails the
    build** on any violation. Red gate → no merge. Green gate → auto-deploy to GitHub Pages.
 
-The 34-app farm is the proof, and doubles as the regression suite for the runtime itself.
+The 35-app farm is the proof, and doubles as the regression suite for the runtime itself.
 
 ## The gate (this is the wedge)
 
@@ -91,7 +91,7 @@ Both tiers are measured and enforced:
 The verify tier proves the headline the hard way: a mutation that strips a control's accessible name is
 **caught by axe in CI**, by measurement, not assertion. (One honest footnote: a synthetic *overflow* probe
 escaped — the dock truncates an over-long label — so we dropped it; overflow@384 is already enforced across
-all 34 apps on every push.)
+all 35 apps on every push.)
 
 ### …and what the gates still cannot see
 
@@ -138,7 +138,7 @@ Rave's Generate button samples that space and keeps the highest-scoring bar. The
 `bjorklund(3,8)` **is** the Cuban tresillo and that the search beats coin-flip random on every seed — so
 "generated, not random" is a test, not a bullet point. Any future music app imports it for free.
 
-…plus 29 more (`hn · rates · crypto · quakes · iss · launches · transit · sun · kp · globe · dou · …`).
+…plus 30 more (`hn · rates · crypto · quakes · iss · launches · transit · sun · kp · globe · dou · …`).
 
 ## How it works
 
@@ -180,7 +180,7 @@ import map; styling is Tailwind + DaisyUI.
 | `packages/runtime` | the Preact catalog that renders a spec (5 families + invariants), zero-build |
 | `packages/gates` | `verify` (Chromium a11y / responsive / e2e / shots) + `preflight` (browser-free) |
 | `packages/gen` | `scaffold` — spec + data → runnable app shell |
-| `apps/` | the reference farm: 34 apps = family showcase + runtime regression suite |
+| `apps/` | the reference farm: 35 apps = family showcase + runtime regression suite |
 
 ## Quickstart
 

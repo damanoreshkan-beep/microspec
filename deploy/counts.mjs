@@ -16,20 +16,15 @@ const check = Deno.args.includes("--check");
 const catalog = JSON.parse(await Deno.readTextFile(`${ROOT}/apps/store/apps.json`));
 const N = Array.isArray(catalog) ? catalog.length : Object.keys(catalog).length;
 
-const readme = await Deno.readTextFile(`${ROOT}/README.md`);
-// The "See it live" table names a few apps in full; "…plus N more" is the remainder, so it has to follow N.
-const NAMED = (readme.match(/^\| \[\*\*/gm) || []).length;
-const REST = N - NAMED;
-
-// Each rule is [regex with the number as group 2, replacement number]. Anchored on surrounding words so a
-// count can never be confused with the efficacy scores or any other digit on the page.
+// Each rule is [file, regex with the number as group 2, replacement number]. Anchored on surrounding words
+// so a count can never be confused with the efficacy scores or any other digit on the page. Every hardcoded
+// app-count claim across the README + Show HN draft gets a rule; reword a claim and you update its rule here.
 const RULES = [
   ["README.md", /(live-)(\d+)(%20apps)/g, N],
-  ["README.md", /(\[)(\d+)( installable apps\])/g, N],
+  ["README.md", /(farm — )(\d+)( installable apps\])/g, N],
   ["README.md", /(The )(\d+)(-app farm)/g, N],
-  ["README.md", /(all )(\d+)( apps on every push)/g, N],
+  ["README.md", /(and all )(\d+)( apps were written)/g, N],
   ["README.md", /(the reference farm: )(\d+)( apps)/g, N],
-  ["README.md", /(…plus )(\d+)( more)/g, REST],
   ["docs/SHOW_HN.md", /(the proof: )(\d+)( apps live)/g, N],
 ];
 
@@ -49,7 +44,7 @@ for (const [file, re, want] of RULES) {
 
 if (check) {
   if (stale.length) {
-    console.error(`\n  ✗ app-count claims are stale (farm has ${N} installable apps, ${NAMED} named + ${REST} more):\n`);
+    console.error(`\n  ✗ app-count claims are stale (farm has ${N} installable apps):\n`);
     for (const s of stale) console.error(`      ${s}`);
     console.error(`\n  fix: deno run -A deploy/counts.mjs\n`);
     Deno.exit(1);
@@ -57,5 +52,5 @@ if (check) {
   console.log(`  ✓ app-count claims match the farm (${N} installable apps)`);
 } else {
   for (const [file, text] of files) await Deno.writeTextFile(`${ROOT}/${file}`, text);
-  console.log(stale.length ? `  ✓ updated ${stale.length} claim(s) → ${N} apps (${NAMED} named + ${REST} more)` : `  ✓ already correct (${N} apps)`);
+  console.log(stale.length ? `  ✓ updated ${stale.length} claim(s) → ${N} apps` : `  ✓ already correct (${N} apps)`);
 }

@@ -520,12 +520,14 @@ const DEMO_SAVES = [
   { id: "demo-3", name: "Iron Gabber · 145", bpm: 145, tracks: preset("gabber"), fx: { ...DFX, reverb: 0.5 }, riff: RIFF },
 ];
 
-// A saved item's spectrum: the per-step density bars (beatBars). While THIS beat is the one playing, the
-// live step lights up (colour = the audio position), otherwise it's a static muted fingerprint of the groove.
+// A saved item's spectrum: the per-step density bars (beatBars). The design system reserves colour for
+// meaning and paints everything else in ink, so the fingerprint is ink (bg-primary) and only the live step —
+// while THIS beat is the one playing — lights up in the meaning-colour (bg-secondary = the audio position),
+// matching the playing item's btn-secondary. Empty steps stay a faint ink baseline so the 16-grid still reads.
 const Spectrum = ({ tracks, live, cur }) => {
   const bars = beatBars(tracks), mx = Math.max(1, ...bars);
   return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">
-    ${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-base-content" : v ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}
+    ${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-secondary" : v ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}
   </span>`;
 };
 

@@ -1,6 +1,7 @@
 {
   "id": "books",
   "theme": "signal",
+  "category": "feeds",
   "translate": [
     "desc"
   ],

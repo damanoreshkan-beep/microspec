@@ -1,45 +1,148 @@
 {
   "id": "btcflow",
   "theme": "signal",
+  "category": "money",
   "detail": {
     "title": "valueStr",
     "subtitle": "usd",
     "rows": [
-      { "field": "hashShort", "label": "dHash", "icon": "lucide:hash" },
-      { "field": "feeFull", "label": "dFee", "icon": "lucide:zap" },
-      { "field": "size", "label": "dSize", "icon": "lucide:file" },
-      { "field": "io", "label": "dIO", "icon": "lucide:arrow-right-left" },
-      { "field": "topIn", "label": "dTopIn", "icon": "lucide:arrow-up-from-line" },
-      { "field": "topOut", "label": "dTopOut", "icon": "lucide:arrow-down-to-line" },
-      { "field": "ts", "label": "dTime", "icon": "lucide:clock", "format": "since" }
+      {
+        "field": "hashShort",
+        "label": "dHash",
+        "icon": "lucide:hash"
+      },
+      {
+        "field": "feeFull",
+        "label": "dFee",
+        "icon": "lucide:zap"
+      },
+      {
+        "field": "size",
+        "label": "dSize",
+        "icon": "lucide:file"
+      },
+      {
+        "field": "io",
+        "label": "dIO",
+        "icon": "lucide:arrow-right-left"
+      },
+      {
+        "field": "topIn",
+        "label": "dTopIn",
+        "icon": "lucide:arrow-up-from-line"
+      },
+      {
+        "field": "topOut",
+        "label": "dTopOut",
+        "icon": "lucide:arrow-down-to-line"
+      },
+      {
+        "field": "ts",
+        "label": "dTime",
+        "icon": "lucide:clock",
+        "format": "since"
+      }
     ],
-    "actions": [ { "href": "explorerUrl", "label": "dExplorer", "icon": "lucide:external-link" } ]
+    "actions": [
+      {
+        "href": "explorerUrl",
+        "label": "dExplorer",
+        "icon": "lucide:external-link"
+      }
+    ]
   },
   "filters": {
     "controls": [
-      { "type": "range", "key": "amt", "field": "value", "label": "fAmount", "icon": "lucide:sliders-horizontal", "unit": "BTC", "step": "0.001", "chip": true }
+      {
+        "type": "range",
+        "key": "amt",
+        "field": "value",
+        "label": "fAmount",
+        "icon": "lucide:sliders-horizontal",
+        "unit": "BTC",
+        "step": "0.001",
+        "chip": true
+      }
     ]
   },
   "tabs": [
     {
-      "id": "flow", "type": "list", "icon": "lucide:bitcoin", "label": "tabFlow",
-      "search": true, "searchKey": "search", "statusKey": "status",
-      "chart": { "type": "bars", "field": "value", "max": 40, "label": "chartLabel" },
+      "id": "flow",
+      "type": "list",
+      "icon": "lucide:bitcoin",
+      "label": "tabFlow",
+      "search": true,
+      "searchKey": "search",
+      "statusKey": "status",
+      "chart": {
+        "type": "bars",
+        "field": "value",
+        "max": 40,
+        "label": "chartLabel"
+      },
       "sort": [
-        { "key": "val", "label": "sortValue", "by": "value", "dir": "desc" },
-        { "key": "time", "label": "sortTime", "by": "ts", "dir": "desc" },
-        { "key": "fee", "label": "sortFee", "by": "fee", "dir": "desc" }
+        {
+          "key": "val",
+          "label": "sortValue",
+          "by": "value",
+          "dir": "desc"
+        },
+        {
+          "key": "time",
+          "label": "sortTime",
+          "by": "ts",
+          "dir": "desc"
+        },
+        {
+          "key": "fee",
+          "label": "sortFee",
+          "by": "fee",
+          "dir": "desc"
+        }
       ],
-      "empty": { "icon": "lucide:search-x", "text": "noResults", "hint": "noResultsHint" },
+      "empty": {
+        "icon": "lucide:search-x",
+        "text": "noResults",
+        "hint": "noResultsHint"
+      },
       "card": {
         "layout": "table",
         "columns": [
-          { "field": "valueStr", "label": "colAmount", "heat": "value", "grow": true, "mono": true, "lg": true },
-          { "field": "usd", "label": "colUsd", "align": "right", "mono": true, "lg": true }
+          {
+            "field": "valueStr",
+            "label": "colAmount",
+            "heat": "value",
+            "grow": true,
+            "mono": true,
+            "lg": true
+          },
+          {
+            "field": "usd",
+            "label": "colUsd",
+            "align": "right",
+            "mono": true,
+            "lg": true
+          }
         ]
       }
     },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
-  "profile": { "icon": "lucide:bitcoin", "theme": true, "lang": true, "install": true, "source": { "label": "profSource", "url": "https://www.blockchain.com/explorer", "icon": "lucide:radio" } }
+  "profile": {
+    "icon": "lucide:bitcoin",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": {
+      "label": "profSource",
+      "url": "https://www.blockchain.com/explorer",
+      "icon": "lucide:radio"
+    }
+  }
 }

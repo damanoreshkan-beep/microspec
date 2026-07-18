@@ -1,6 +1,7 @@
 {
   "id": "rates",
   "theme": "signal",
+  "category": "money",
   "fav": {
     "key": "code"
   },

@@ -1,6 +1,7 @@
 {
   "id": "launches",
   "theme": "signal",
+  "category": "science",
   "translate": [
     "title",
     "mission"

@@ -20,6 +20,11 @@
       "minLength": 1,
       "description": "Default DaisyUI theme name used when no persisted theme exists (e.g. 'dim', 'light')."
     },
+    "category": {
+      "type": "string",
+      "enum": ["feeds", "money", "science", "tools", "sound", "play", "wellness"],
+      "description": "Store category — the launcher sections and filter-chips group apps by this."
+    },
     "version": {
       "type": "string",
       "minLength": 1,

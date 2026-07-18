@@ -1,9 +1,22 @@
 {
   "id": "kalimba",
   "theme": "signal",
+  "category": "sound",
   "tabs": [
-    { "id": "play", "type": "tool", "icon": "lucide:piano", "label": "tabPlay", "view": "kalimba" },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "play",
+      "type": "tool",
+      "icon": "lucide:piano",
+      "label": "tabPlay",
+      "view": "kalimba"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
   "profile": {
     "icon": "lucide:piano",

@@ -1,6 +1,7 @@
 {
   "id": "ruler",
   "theme": "signal",
+  "category": "tools",
   "tabs": [
     {
       "id": "ruler",

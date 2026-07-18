@@ -28,7 +28,9 @@ function seedBuffer() {
 export function pipette({ S }) {
   const t = useStore(S.t);
   const gate = isGate || MOCK;
-  const seed = useMemo(() => (gate ? { picked: [122, 90, 200], pal: palette(seedBuffer(), 5) } : null), []);
+  // gate seed: picked = the palette's middle swatch, which is exactly the 135° gradient's centre — so the
+  // reticle dot matches what it sits on in the seeded shot (on a real device picked IS the centre pixel).
+  const seed = useMemo(() => { if (!gate) return null; const pal = palette(seedBuffer(), 5); return { pal, picked: pal[2] || pal[0] }; }, []);
   const [picked, setPicked] = useState(seed ? seed.picked : null);
   const [pal, setPal] = useState(seed ? seed.pal : []);
   const [err, setErr] = useState(null);
@@ -97,7 +99,8 @@ export function pipette({ S }) {
         <button aria-label=${hex} onClick=${() => picked && copy(picked)} class="w-14 h-14 rounded-2xl shrink-0 border border-base-300 active:scale-95 transition" style=${picked ? `background:${hex}` : ""}></button>
         <div class="flex-1 min-w-0">
           <div data-live class="text-2xl font-bold font-mono tabular-nums leading-tight">${hex}</div>
-          <div class="text-xs text-base-content/60 font-mono truncate">${rgbStr}${hslStr ? " · " + hslStr : ""}</div>
+          <div class="text-[0.7rem] text-base-content/60 font-mono leading-snug truncate">${rgbStr}</div>
+          ${hslStr ? html`<div class="text-[0.7rem] text-base-content/60 font-mono leading-snug truncate">${hslStr}</div>` : null}
         </div>
         <button data-freeze aria-label=${T(t, frozen ? "live" : "freeze")} aria-pressed=${frozen} onClick=${() => setFrozen((f) => !f)} class=${`btn btn-circle btn-sm ${frozen ? "btn-primary" : "btn-ghost"}`}>${Icon(frozen ? "lucide:play" : "lucide:snowflake", "text-lg")}</button>
       </div>

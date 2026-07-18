@@ -1,0 +1,27 @@
+{
+  "id": "imagine",
+  "theme": "signal",
+  "category": "creative",
+  "tabs": [
+    {
+      "id": "make",
+      "type": "tool",
+      "icon": "lucide:sparkles",
+      "label": "tabMake",
+      "view": "imagine"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:sparkles",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

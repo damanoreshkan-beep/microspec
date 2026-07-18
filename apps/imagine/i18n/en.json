@@ -1,0 +1,17 @@
+{
+  "title": "Imagine",
+  "profTagline": "Type a prompt, get an image at your screen's exact proportions and the highest resolution FLUX.2 allows — a wallpaper made for this phone. The key lives on our server, never in the app.",
+  "tabMake": "Make",
+  "tabMe": "Me",
+  "promptPlaceholder": "Describe an image…",
+  "generate": "Generate",
+  "again": "Again",
+  "save": "Save",
+  "saved": "Saved",
+  "eGenerating": "Painting…",
+  "eCredits": "Out of credits — top up the FLUX account",
+  "eRate": "Too many requests — wait a moment",
+  "eFailed": "Couldn't generate that",
+  "eNetwork": "Network error — try again",
+  "eTimeout": "Took too long — try again"
+}

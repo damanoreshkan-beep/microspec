@@ -37,7 +37,7 @@
     "bg": "#0A1413",
     "fg": "#4FC2B3",
     "href": "./breathe/",
-    "version": "1.3"
+    "version": "1.4"
   },
   {
     "id": "habits",
@@ -98,6 +98,16 @@
     "fg": "#d6b370",
     "href": "./books/",
     "version": "1.5"
+  },
+  {
+    "id": "code",
+    "title": "Код",
+    "tagline": "Зламай прихований кольоровий код",
+    "glyph": "lucide:puzzle",
+    "bg": "#0B0A12",
+    "fg": "#B98BEA",
+    "href": "./code/",
+    "version": "1.0"
   },
   {
     "id": "compass",
@@ -177,7 +187,7 @@
     "bg": "#1f2430",
     "fg": "#38bdf8",
     "href": "./weather/",
-    "version": "1.6"
+    "version": "1.8"
   },
   {
     "id": "btcflow",
@@ -267,7 +277,7 @@
     "bg": "#08120F",
     "fg": "#41C06F",
     "href": "./air/",
-    "version": "1.0"
+    "version": "1.4"
   },
   {
     "id": "dou",

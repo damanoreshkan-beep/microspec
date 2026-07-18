@@ -17,7 +17,8 @@ const wantShots = Deno.args.includes("--shots");
 const dev = DEVICES[opt("device", "s25ultra")] ?? DEVICES.s25ultra;
 const settle = Number(opt("settle", 1500));
 
-if (!(await ensureDisplayUp())) { console.error("No virtual display and Xvfb won't start. Try:  deno task setup"); Deno.exit(2); }
+// Headless (default) needs no display; only the HEADFUL debug path requires a live Xvfb.
+if (Deno.env.get("HEADFUL") === "1" && !(await ensureDisplayUp())) { console.error("No virtual display and Xvfb won't start. Try:  deno task setup"); Deno.exit(2); }
 
 const e2eSpec = (await import(`file://${appdir}/e2e.spec.mjs`)).default;
 const srv = serveLocal(appdir);

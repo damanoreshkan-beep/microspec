@@ -367,6 +367,7 @@ export function rave({ S, toast }) {
   useEffect(() => { uiT = t; }, [t]);   
   useEffect(() => { CUR.put("state", { tracks, bpm, fx }).catch(() => {}); }, [tracks, bpm, fx]);
   useEffect(() => { if (eng && eng.fx) applyFx(eng); }, [fx, bpm]);
+  useEffect(() => { if (typeof location !== "undefined" && new URLSearchParams(location.search).has("demo")) S.tab.set("saved"); }, []);
   useEffect(() => {
     const v = new URLSearchParams(location.search).get("seed");
     if (v == null) return;

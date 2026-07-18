@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 384" width="1200" height="384" role="img" aria-label="microspec — an AI can't merge a broken app here. Built on a phone, Termux on Android.">
+  <rect x="0" y="0" width="1200" height="384" rx="20" fill="#0A0A0B"/>
+  <rect x="0.5" y="0.5" width="1199" height="383" rx="19.5" fill="none" stroke="#ECECEE" stroke-opacity="0.08"/>
+
+  <!-- wordmark: mono, uppercase, tracked — the header/dock wordmark, blown up -->
+  <text x="600" y="150" text-anchor="middle"
+        font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace"
+        font-size="86" font-weight="700" letter-spacing="15" fill="#ECECEE">MICROSPEC</text>
+
+  <!-- one purple hairline: colour = meaning, spent once -->
+  <rect x="540" y="180" width="120" height="3" rx="1.5" fill="#9F8CF6"/>
+
+  <text x="600" y="234" text-anchor="middle"
+        font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="25" font-weight="500" fill="#B4B4BA">An AI can&#39;t merge a broken app here.</text>
+
+  <!-- the farm, as its app-glyph colours -->
+  <g>
+    <circle cx="532" cy="292" r="7" fill="#F59E0B"/>
+    <circle cx="566" cy="292" r="7" fill="#22D3EE"/>
+    <circle cx="600" cy="292" r="7" fill="#40C173"/>
+    <circle cx="634" cy="292" r="7" fill="#9F8CF6"/>
+    <circle cx="668" cy="292" r="7" fill="#E9458B"/>
+  </g>
+
+  <text x="600" y="345" text-anchor="middle"
+        font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace"
+        font-size="15" font-weight="500" letter-spacing="4" fill="#6E6E76">WRITTEN ENTIRELY ON A PHONE  ·  TERMUX  ·  ANDROID</text>
+</svg>

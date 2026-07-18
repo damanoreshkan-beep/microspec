@@ -6,12 +6,12 @@
   "_meta": {
     "gate": "preflight",
     "apps": 8,
-    "caught": 51,
-    "total": 51,
+    "caught": 60,
+    "total": 60,
     "byCategory": {
       "i18n": {
-        "c": 24,
-        "n": 24
+        "c": 32,
+        "n": 32
       },
       "schema": {
         "c": 16,
@@ -22,8 +22,8 @@
         "n": 8
       },
       "render": {
-        "c": 3,
-        "n": 3
+        "c": 4,
+        "n": 4
       }
     },
     "escapes": []

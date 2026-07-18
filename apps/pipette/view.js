@@ -10,6 +10,7 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { camera } from "/_rt/sensors.js";
 import { avgColor, palette, rgbToHex, rgbToHsl } from "/_rt/colour.js";
+import { CameraPrime } from "/_rt/camprime.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -26,7 +27,7 @@ function seedBuffer() {
 }
 
 export function pipette({ S }) {
-  const t = useStore(S.t);
+  const t = useStore(S.t), loc = useStore(S.locale);
   const gate = isGate || MOCK;
   // gate seed: picked = the palette's middle swatch, which is exactly the 135° gradient's centre — so the
   // reticle dot matches what it sits on in the seeded shot (on a real device picked IS the centre pixel).
@@ -34,12 +35,13 @@ export function pipette({ S }) {
   const [picked, setPicked] = useState(seed ? seed.picked : null);
   const [pal, setPal] = useState(seed ? seed.pal : []);
   const [err, setErr] = useState(null);
+  const [enabled, setEnabled] = useState(gate);   // camera opens only after the user taps Enable (gate auto-on)
   const [frozen, setFrozen] = useState(false);
   const videoRef = useRef(), canvasRef = useRef(), frozenRef = useRef(false);
   frozenRef.current = frozen;
 
   useEffect(() => {
-    if (gate) return;
+    if (gate || !enabled) return;
     if (!camera.supported) { setErr("unsupported"); return; }
     let live = true, timer = null, stop = () => {};
     const sample = () => {
@@ -61,7 +63,7 @@ export function pipette({ S }) {
       stop = s; timer = setInterval(sample, 150);
     });
     return () => { live = false; clearInterval(timer); stop(); };
-  }, []);
+  }, [enabled]);
 
   const copy = async (rgb) => {
     const hex = rgbToHex(rgb);
@@ -76,20 +78,15 @@ export function pipette({ S }) {
   return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <!-- preview -->
     <div class="relative flex-1 min-h-0 overflow-hidden bg-black">
-      ${!gate && !err ? html`<video ref=${videoRef} autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover"></video>` : null}
+      ${enabled && !err && !gate ? html`<video ref=${videoRef} autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover"></video>` : null}
       ${gate ? html`<div class="absolute inset-0" style=${`background:${grad}`}></div>` : null}
       <canvas ref=${canvasRef} class="hidden"></canvas>
-      ${!err ? html`<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+      ${enabled && !err ? html`<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div class="w-16 h-16 rounded-full border-2 border-white/90" style="box-shadow:0 0 0 2px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.35)">
           <div class="w-full h-full rounded-full flex items-center justify-center">
             <div class="w-5 h-5 rounded-full border border-white/80" style=${picked ? `background:${hex}` : ""}></div>
           </div>
         </div>
-      </div>` : null}
-      ${err ? html`<div class="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center bg-base-200">
-        ${Icon("lucide:camera-off", "text-4xl text-base-content/50")}
-        <div class="font-semibold">${T(t, err === "denied" ? "permBlocked" : "permUnavailable")}</div>
-        ${err === "denied" ? html`<button class="btn btn-primary btn-sm rounded-2xl" onClick=${() => S.screen.set("perms")}>${T(t, "permEnable")}</button>` : null}
       </div>` : null}
     </div>
 
@@ -110,5 +107,6 @@ export function pipette({ S }) {
           : html`<div class="flex-1 h-9 rounded-lg bg-base-300/40" key=${i}></div>`)}
       </div>
     </div>
+    ${!enabled || err ? html`<${CameraPrime} loc=${loc} reason=${T(t, "primeReason")} onEnable=${() => setEnabled(true)} onSettings=${() => S.screen.set("perms")} denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />` : null}
   </div>`;
 }

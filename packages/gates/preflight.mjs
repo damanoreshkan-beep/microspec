@@ -162,6 +162,12 @@ async function preflight(appdir) {
     if (reads && !app?.querySelector("[data-live]")) {
       errs.push(`reads a sensor but rendered no [data-live] element — headless has no hardware, so this is the empty waiting state, and every check below (a11y, overflow@384, watch@200) is now measuring a screen no user sees. Seed the mock with a reading (see apps/ruler SAMPLE_FIXES) and mark what it renders with data-live.`);
     }
+    // The camera never opens cold: a native prompt with no context scares users into denying. An app that
+    // imports `camera` MUST render the priming screen (/_rt/camprime.js) and only start the stream on the
+    // user's explicit tap. Grepped, not inferred — the check is the policy.
+    if (sensorImport && /\bcamera\b/.test(sensorImport[1]) && !/CameraPrime/.test(src)) {
+      errs.push(`imports the camera but never renders <${"CameraPrime"}/> — a camera view must PRIME the permission with a custom "why + processed on your device" screen before the native getUserMedia prompt, never open the stream cold. Import { CameraPrime } from "/_rt/camprime.js" and show it until the user opts in.`);
+    }
 
     for (const e of rafErr) errs.push("render loop threw: " + (e?.message || e));
     for (const m of uncaught) errs.push("async/effect threw: " + m);

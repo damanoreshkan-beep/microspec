@@ -9,6 +9,7 @@ import { useState, useEffect, useRef, useMemo } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { camera } from "/_rt/sensors.js";
+import { CameraPrime } from "/_rt/camprime.js";
 import { palette, avgColor, luminance, rgbToHsl, rgbToHex, ink } from "/_rt/colour.js";
 import { hueToNote, paletteToChord, brightnessToCutoff, SCALES } from "/_rt/chroma.js";
 import { createEngine, midiToFreq, filter } from "/_rt/audio.js";
@@ -29,7 +30,7 @@ function seedBuffer() {
 }
 
 export function synesth({ S }) {
-  const t = useStore(S.t);
+  const t = useStore(S.t), loc = useStore(S.locale);
   const gate = isGate || MOCK;
   const seed = useMemo(() => (gate ? { pal: palette(seedBuffer(), 5), lum: luminance(avgColor(seedBuffer())) } : null), []);
   const [pal, setPal] = useState(seed ? seed.pal : []);
@@ -37,6 +38,7 @@ export function synesth({ S }) {
   const [scale, setScale] = useState("penta");
   const [playing, setPlaying] = useState(false);
   const [err, setErr] = useState(null);
+  const [enabled, setEnabled] = useState(gate);   // camera opens only after the user taps Enable (gate auto-on)
   const videoRef = useRef(), canvasRef = useRef();
   const engRef = useRef(null), filterRef = useRef(null), voicesRef = useRef(new Map());
 
@@ -44,7 +46,7 @@ export function synesth({ S }) {
 
   // camera → palette + brightness (like the eyedropper, but we keep the whole-frame reading, not the centre)
   useEffect(() => {
-    if (gate) return;
+    if (gate || !enabled) return;
     if (!camera.supported) { setErr("unsupported"); return; }
     let liveFlag = true, timer = null, stop = () => {};
     const sample = () => {
@@ -64,7 +66,7 @@ export function synesth({ S }) {
       stop = s; timer = setInterval(sample, 400); // slow, contemplative — the pad drifts, it doesn't strobe
     });
     return () => { liveFlag = false; clearInterval(timer); stop(); };
-  }, []);
+  }, [enabled]);
 
   // audio graph: sustained triangle voices through one brightness-driven low-pass. Defensive — every node
   // op is guarded, and the whole engine only exists after a tap (autoplay is blocked on mobile).
@@ -107,19 +109,14 @@ export function synesth({ S }) {
 
   return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <div class="relative flex-1 min-h-0 overflow-hidden bg-black">
-      ${!gate && !err ? html`<video ref=${videoRef} autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover opacity-35"></video>` : null}
+      ${enabled && !err && !gate ? html`<video ref=${videoRef} autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover opacity-35"></video>` : null}
       ${gate ? html`<div class="absolute inset-0 opacity-35" style=${`background:linear-gradient(135deg, ${(pal.length ? pal : [[20, 20, 24]]).map(rgbToHex).join(",")})`}></div>` : null}
       <canvas ref=${canvasRef} class="hidden"></canvas>
-      ${!err ? html`<div data-live class="absolute inset-0 flex items-center justify-center gap-4 flex-wrap content-center px-8">
+      ${enabled && !err ? html`<div data-live class="absolute inset-0 flex items-center justify-center gap-4 flex-wrap content-center px-8">
         ${pal.map((rgb, i) => {
           const hex = rgbToHex(rgb);
           return html`<div data-orb class="w-16 h-16 rounded-full flex items-center justify-center text-lg font-mono font-semibold ${playing ? "animate-pulse" : ""}" style=${`background:${hex};color:${ink(rgb)};box-shadow:0 0 44px -6px ${hex}`} key=${i}>${noteName(hueToNote(rgbToHsl(rgb)[0], SCALES[scale]))}</div>`;
         })}
-      </div>` : null}
-      ${err ? html`<div class="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center bg-base-200">
-        ${Icon("lucide:camera-off", "text-4xl text-base-content/50")}
-        <div class="font-semibold">${T(t, err === "denied" ? "permBlocked" : "permUnavailable")}</div>
-        ${err === "denied" ? html`<button class="btn btn-primary btn-sm rounded-2xl" onClick=${() => S.screen.set("perms")}>${T(t, "permEnable")}</button>` : null}
       </div>` : null}
     </div>
 
@@ -132,5 +129,6 @@ export function synesth({ S }) {
         <div class="flex-1 min-w-0 font-mono text-sm text-base-content/70 truncate">${notes.length ? notes.map(noteName).join(" · ") : "—"}</div>
       </div>
     </div>
+    ${!enabled || err ? html`<${CameraPrime} loc=${loc} reason=${T(t, "primeReason")} onEnable=${() => setEnabled(true)} onSettings=${() => S.screen.set("perms")} denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />` : null}
   </div>`;
 }

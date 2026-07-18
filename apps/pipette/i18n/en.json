@@ -1,5 +1,6 @@
 {
   "title": "Eyedropper",
+  "primeReason": "Point the camera at anything to read its exact colour.",
   "tabPick": "Pick",
   "tabMe": "Me",
   "copied": "Copied {v}",

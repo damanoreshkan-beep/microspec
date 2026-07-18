@@ -431,6 +431,10 @@ export function rave({ S, toast }) {
   // unmount on a tab switch — there is deliberately no cleanup that closes it here.
   useEffect(() => { CUR.put("state", { tracks, bpm, fx }).catch(() => {}); }, [tracks, bpm, fx]);
   useEffect(() => { if (eng && eng.fx) applyFx(eng); }, [fx, bpm]);
+  // ?demo opens straight to the Saved tab (its populated state — see DEMO_SAVES) so the visual gate can shoot
+  // it: a fresh app lands on Beat and has no saves, so the populated Saved layout is otherwise unreachable by
+  // a screenshot. Review-only; never set in normal use or the e2e.
+  useEffect(() => { if (typeof location !== "undefined" && new URLSearchParams(location.search).has("demo")) S.tab.set("saved"); }, []);
   // ?seed=<n> renders that exact beat. The search is deterministic, so a seed IS a beat — the URL is the
   // whole song, shareable, with nothing stored anywhere. Bare ?seed picks a fixed one so a screenshot of a
   // populated grid is reproducible (the taste gate shoots the live app and can't press buttons).

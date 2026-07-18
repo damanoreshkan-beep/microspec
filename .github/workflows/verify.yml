@@ -100,18 +100,12 @@ jobs:
           path: ~/.cache/deno
           key: deno-${{ hashFiles('packages/**/deno.json') }}
           restore-keys: deno-
-      - uses: browser-actions/setup-chrome@v2
-        id: chrome
-        with: { chrome-version: stable }
-      - run: sudo apt-get update && sudo apt-get install -y xvfb fonts-liberation
       - name: Verify ${{ matrix.app }}
-        # The gate itself is ~5s; 2min is a generous ceiling that fails fast if the browser or a
-        # network-dependent e2e step hangs, rather than waiting out the job-level timeout.
+        # Chrome is preinstalled on the runner (no setup-chrome download) and we run headless (no Xvfb / no
+        # apt-get) — that removes ~25s of per-job setup. The gate itself is ~5s; 2min fails fast on a hang.
         timeout-minutes: 2
         env:
-          DISPLAY: ":99"
-          DISPLAY_NUM: "99"
-          CHROMIUM_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          CHROMIUM_PATH: /usr/bin/google-chrome
         run: deno run -A packages/gates/verify.mjs "$GITHUB_WORKSPACE/apps/${{ matrix.app }}" --shots
       - name: Upload screenshot
         if: always()

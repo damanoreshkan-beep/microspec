@@ -72,7 +72,7 @@ export function store({ S, openScreen, closeScreen }) {
         const items = apps.filter((a) => a.category === c);
         if (!items.length) return null;
         return html`<div class="flex flex-col gap-2" key=${c}>
-          <div class="text-[0.62rem] font-mono uppercase tracking-wide text-base-content/60 px-1 flex items-center gap-1.5">${T(t, catKey(c))}<span class="text-base-content/40 normal-case">${items.length}</span></div>
+          <div class="text-[0.62rem] font-mono uppercase tracking-wide text-base-content/60 px-1 flex items-center gap-1.5">${T(t, catKey(c))}<span class="text-base-content/60 normal-case tabular-nums">${items.length}</span></div>
           ${grid(items)}
         </div>`;
       })}

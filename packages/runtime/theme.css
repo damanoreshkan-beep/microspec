@@ -41,9 +41,23 @@
   --border: 1px; --depth: 0;
 }
 
-/* Signal conventions that ride on top of DaisyUI, farm-wide */
-:root { --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
+/* Signal conventions that ride on top of DaisyUI, farm-wide.
+   Type system = the Geist superfamily (loaded per app in the head): Geist for body/UI, Geist Mono for every
+   mono role below — one designed superfamily instead of Inter + an unrelated system-mono stack. Both carry
+   Cyrillic, so the uk locale keeps its own type. The stack keeps ui-monospace/-sans fallbacks for offline. */
+:root { --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
 body { letter-spacing: -0.006em; }
+
+/* The header wordmark — the app's name set as the top-of-screen echo of the dock labels: mono, uppercase,
+   heavy, a touch of tracking. This is the header's identity; the title text-treatment lives here (like the
+   dock labels below) so a header stays a wordmark no matter which shell renders it. */
+[data-title] {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 700;
+  font-size: 1.02rem;
+}
 
 /* Stage B — instrument details. Global CSS over DaisyUI/render classes; no structural change.
    Badges become mono, uppercase, hairline tags — the "instrument" signal. Colour still means:

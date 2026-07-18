@@ -1,15 +1,32 @@
 {
   "id": "iss",
   "theme": "signal",
+  "category": "science",
   "tabs": [
-    { "id": "track", "type": "tool", "icon": "lucide:satellite", "label": "tabTrack", "view": "iss" },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "track",
+      "type": "tool",
+      "icon": "lucide:satellite",
+      "label": "tabTrack",
+      "view": "iss"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
   "profile": {
     "icon": "lucide:satellite",
     "theme": true,
     "lang": true,
     "install": true,
-    "source": { "label": "profSource", "url": "https://wheretheiss.at", "icon": "lucide:database" }
+    "source": {
+      "label": "profSource",
+      "url": "https://wheretheiss.at",
+      "icon": "lucide:database"
+    }
   }
 }

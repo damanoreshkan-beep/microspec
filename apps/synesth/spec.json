@@ -1,15 +1,33 @@
 {
   "id": "synesth",
   "theme": "signal",
+  "category": "sound",
   "tabs": [
-    { "id": "live", "type": "tool", "icon": "lucide:audio-lines", "label": "tabLive", "view": "synesth", "needs": ["camera"] },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "live",
+      "type": "tool",
+      "icon": "lucide:audio-lines",
+      "label": "tabLive",
+      "view": "synesth",
+      "needs": [
+        "camera"
+      ]
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
   "profile": {
     "icon": "lucide:audio-lines",
     "theme": true,
     "lang": true,
     "install": true,
-    "permissions": ["camera"]
+    "permissions": [
+      "camera"
+    ]
   }
 }

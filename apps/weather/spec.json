@@ -1,6 +1,7 @@
 {
   "id": "weather",
   "theme": "signal",
+  "category": "science",
   "tabs": [
     {
       "id": "now",

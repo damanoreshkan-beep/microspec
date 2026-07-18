@@ -13,7 +13,7 @@
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 const check = Deno.args.includes("--check");
 
-const catalog = JSON.parse(await Deno.readTextFile(`${ROOT}/apps/home/apps.json`));
+const catalog = JSON.parse(await Deno.readTextFile(`${ROOT}/apps/store/apps.json`));
 const N = Array.isArray(catalog) ? catalog.length : Object.keys(catalog).length;
 
 const readme = await Deno.readTextFile(`${ROOT}/README.md`);

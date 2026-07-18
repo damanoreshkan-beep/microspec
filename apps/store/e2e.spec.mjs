@@ -1,5 +1,5 @@
-// The store home is a custom tool app: a searchable icon grid, a history-backed per-app description screen,
-// and NEW badges (IndexedDB). apps.json is a local import → tiles render immediately.
+// The store is a custom tool app: category chips + sectioned icon grid, a search that flattens across the
+// farm, a history-backed per-app description screen, and NEW badges (IndexedDB). apps.json imports locally.
 const ready = async (h) => { for (let i = 0; i < 12; i++) { if ((await h.count("[data-app]")) > 0) break; await h.wait(200); } };
 
 export default [
@@ -20,6 +20,18 @@ export default [
       h.expect(now >= 1 && now < base, "пошук не звузив сітку");
       await h.type(".input", ""); await h.wait(250);
       h.expect((await h.count("[data-app]")) === base, "не відновилось після очищення");
+    },
+  },
+  {
+    name: "чіпи фільтрують за категорією", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-cat]")) >= 5, "немає чіпів категорій");
+      const all = await h.count("[data-app]");
+      await h.tap('[data-cat="sound"]'); await h.wait(200);
+      const sound = await h.count("[data-app]");
+      h.expect(sound >= 1 && sound < all, "чіп не звузив до категорії");
+      await h.tap('[data-cat="all"]'); await h.wait(150);
+      h.expect((await h.count("[data-app]")) === all, "не відновилось на «Усі»");
     },
   },
   {

@@ -1,15 +1,32 @@
 {
   "id": "kp",
   "theme": "signal",
+  "category": "science",
   "tabs": [
-    { "id": "now", "type": "tool", "icon": "lucide:activity", "label": "tabNow", "view": "kp" },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "now",
+      "type": "tool",
+      "icon": "lucide:activity",
+      "label": "tabNow",
+      "view": "kp"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
   "profile": {
     "icon": "lucide:activity",
     "theme": true,
     "lang": true,
     "install": true,
-    "source": { "label": "profSource", "url": "https://www.swpc.noaa.gov", "icon": "lucide:database" }
+    "source": {
+      "label": "profSource",
+      "url": "https://www.swpc.noaa.gov",
+      "icon": "lucide:database"
+    }
   }
 }

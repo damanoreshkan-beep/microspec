@@ -18,7 +18,7 @@ async function gitCount(path) {
 export async function buildManifest() {
   const apps = [];
   for await (const a of Deno.readDir("apps")) {
-    if (!a.isDirectory || a.name === "home" || !(await has(`apps/${a.name}/spec.json`))) continue;
+    if (!a.isDirectory || a.name === "store" || !(await has(`apps/${a.name}/spec.json`))) continue;
     const spec = await readJson(`apps/${a.name}/spec.json`);
     const i18n = await readLocales(`apps/${a.name}`);
     const d = i18n.uk || i18n.en || {};
@@ -32,6 +32,7 @@ export async function buildManifest() {
       fg: brand.fg,
       href: `./${a.name}/`,
       version: spec.version || ("1." + (await gitCount(`apps/${a.name}`))),
+      category: spec.category || "feeds",
     });
   }
   apps.sort((x, y) => x.title.localeCompare(y.title, "uk"));
@@ -40,6 +41,6 @@ export async function buildManifest() {
 
 if (import.meta.main) {
   const apps = await buildManifest();
-  await Deno.writeTextFile("apps/home/apps.json", JSON.stringify(apps, null, 2) + "\n");
-  console.log(`manifest: ${apps.length} apps → apps/home/apps.json (${apps.map((a) => a.id).join(", ")})`);
+  await Deno.writeTextFile("apps/store/apps.json", JSON.stringify(apps, null, 2) + "\n");
+  console.log(`manifest: ${apps.length} apps → apps/store/apps.json (${apps.map((a) => a.id).join(", ")})`);
 }

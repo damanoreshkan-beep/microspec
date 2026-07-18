@@ -1,9 +1,22 @@
 {
   "id": "breathe",
   "theme": "signal",
+  "category": "wellness",
   "tabs": [
-    { "id": "breathe", "type": "tool", "icon": "lucide:wind", "label": "tabBreathe", "view": "breathe" },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "breathe",
+      "type": "tool",
+      "icon": "lucide:wind",
+      "label": "tabBreathe",
+      "view": "breathe"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
   "profile": {
     "icon": "lucide:wind",

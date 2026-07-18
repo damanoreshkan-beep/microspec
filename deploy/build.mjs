@@ -14,7 +14,7 @@ await Deno.remove(OUT, { recursive: true }).catch(() => {});
 await Deno.mkdir(`${OUT}/_rt`, { recursive: true });
 
 // 0) refresh the store launcher's app list from the current specs (home/data.js imports it)
-await Deno.writeTextFile("apps/home/apps.json", JSON.stringify(await buildManifest(), null, 2) + "\n");
+await Deno.writeTextFile("apps/store/apps.json", JSON.stringify(await buildManifest(), null, 2) + "\n");
 
 // git-derived versions (auto, no manual bump): the number of commits that touched a path IS its version's
 // build number, so a version moves exactly when its code changes. Needs history — the deploy checkout uses
@@ -34,13 +34,13 @@ for await (const e of Deno.readDir("packages/runtime")) {
   else await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);
 }
 
-// 2) each app → dist/<id>; the `home` store goes to dist/store/ (NOT the root) so its manifest scope
-//    (/…/store/) does NOT envelop the apps (/…/<id>/). Sibling scopes = each app stays independently
-//    installable even when the store PWA is installed. The root is a redirect to ./store/ (below).
+// 2) each app → dist/<id>; the `store` launcher lands at dist/store/ — its own scope (/…/store/) does NOT
+//    envelop the apps (/…/<id>/), so each app stays independently installable even when the store PWA is
+//    installed. The root is a redirect to ./store/ (below).
 const ids = [];
 for await (const a of Deno.readDir("apps")) {
   if (!a.isDirectory || !(await has(`apps/${a.name}/spec.json`))) continue;
-  const outDir = a.name === "home" ? `${OUT}/store` : `${OUT}/${a.name}`;
+  const outDir = `${OUT}/${a.name}`;
   const rt = (s) => s.replaceAll("/_rt/", "../_rt/");   // everything is now one level deep under dist/
   await Deno.mkdir(outDir, { recursive: true });
   const appVer = "1." + (await gitCount(`apps/${a.name}`));   // app version = commits touching this app
@@ -82,4 +82,4 @@ for await (const a of Deno.readDir("apps")) {
 // root → redirect to the store (which now lives in its own scope at /store/)
 await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="uk"><meta charset="utf-8"><title>microspec</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><link rel="canonical" href="./store/"><script>location.replace("./store/"+location.search+location.hash)</script><body style="background:#0a0a0b"></body></html>\n`);
 await Deno.writeTextFile(`${OUT}/.nojekyll`, "");
-console.log(`built dist/ — ${ids.length} apps (home → /store/): ${ids.join(", ")}`);
+console.log(`built dist/ — ${ids.length} apps (store at /store/): ${ids.join(", ")}`);

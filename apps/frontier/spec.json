@@ -1,6 +1,7 @@
 {
   "id": "frontier",
   "theme": "signal",
+  "category": "feeds",
   "translate": [
     "desc"
   ],
@@ -11,23 +12,68 @@
     "title": "name",
     "subtitle": "owner",
     "rows": [
-      { "field": "desc", "label": "dDesc", "icon": "lucide:file-text" },
-      { "field": "lang", "label": "dLang", "icon": "lucide:code" },
-      { "field": "stars", "label": "dStars", "icon": "lucide:star" },
-      { "field": "forks", "label": "dForks", "icon": "lucide:git-fork" },
-      { "field": "issues", "label": "dIssues", "icon": "lucide:circle-dot" },
-      { "field": "license", "label": "dLicense", "icon": "lucide:scale" },
-      { "field": "topicsStr", "label": "dTopics", "icon": "lucide:tags" },
-      { "field": "created", "label": "dCreated", "icon": "lucide:sparkles", "format": "ago" },
-      { "field": "pushed", "label": "dPushed", "icon": "lucide:clock", "format": "ago" }
+      {
+        "field": "desc",
+        "label": "dDesc",
+        "icon": "lucide:file-text"
+      },
+      {
+        "field": "lang",
+        "label": "dLang",
+        "icon": "lucide:code"
+      },
+      {
+        "field": "stars",
+        "label": "dStars",
+        "icon": "lucide:star"
+      },
+      {
+        "field": "forks",
+        "label": "dForks",
+        "icon": "lucide:git-fork"
+      },
+      {
+        "field": "issues",
+        "label": "dIssues",
+        "icon": "lucide:circle-dot"
+      },
+      {
+        "field": "license",
+        "label": "dLicense",
+        "icon": "lucide:scale"
+      },
+      {
+        "field": "topicsStr",
+        "label": "dTopics",
+        "icon": "lucide:tags"
+      },
+      {
+        "field": "created",
+        "label": "dCreated",
+        "icon": "lucide:sparkles",
+        "format": "ago"
+      },
+      {
+        "field": "pushed",
+        "label": "dPushed",
+        "icon": "lucide:clock",
+        "format": "ago"
+      }
     ],
     "actions": [
-      { "href": "url", "label": "dOpen", "icon": "lucide:github" }
+      {
+        "href": "url",
+        "label": "dOpen",
+        "icon": "lucide:github"
+      }
     ]
   },
   "filters": {
     "refetch": true,
-    "defaults": { "period": "month", "category": "" },
+    "defaults": {
+      "period": "month",
+      "category": ""
+    },
     "controls": [
       {
         "type": "segment",
@@ -35,9 +81,18 @@
         "label": "filterPeriod",
         "icon": "lucide:calendar-clock",
         "options": [
-          ["week", "periodWeek"],
-          ["month", "periodMonth"],
-          ["quarter", "periodQuarter"]
+          [
+            "week",
+            "periodWeek"
+          ],
+          [
+            "month",
+            "periodMonth"
+          ],
+          [
+            "quarter",
+            "periodQuarter"
+          ]
         ]
       },
       {
@@ -48,16 +103,46 @@
         "refetch": true,
         "chip": true,
         "options": [
-          ["", "catAll"],
-          ["llm", "catLlm"],
-          ["agents", "catAgents"],
-          ["machine-learning", "catMl"],
-          ["computer-vision", "catCv"],
-          ["robotics", "catRobotics"],
-          ["web", "catWeb"],
-          ["developer-tools", "catDevtools"],
-          ["security", "catSecurity"],
-          ["blockchain", "catBlockchain"]
+          [
+            "",
+            "catAll"
+          ],
+          [
+            "llm",
+            "catLlm"
+          ],
+          [
+            "agents",
+            "catAgents"
+          ],
+          [
+            "machine-learning",
+            "catMl"
+          ],
+          [
+            "computer-vision",
+            "catCv"
+          ],
+          [
+            "robotics",
+            "catRobotics"
+          ],
+          [
+            "web",
+            "catWeb"
+          ],
+          [
+            "developer-tools",
+            "catDevtools"
+          ],
+          [
+            "security",
+            "catSecurity"
+          ],
+          [
+            "blockchain",
+            "catBlockchain"
+          ]
         ]
       }
     ]
@@ -71,18 +156,37 @@
       "search": true,
       "searchKey": "search",
       "statusKey": "status",
-      "empty": { "icon": "lucide:search-x", "text": "noResults", "hint": "noResultsHint" },
+      "empty": {
+        "icon": "lucide:search-x",
+        "text": "noResults",
+        "hint": "noResultsHint"
+      },
       "card": {
         "layout": "feed",
         "title": "name",
         "subtitle": "owner",
         "body": "desc",
         "more": "open",
-        "meta": { "field": "pushed", "format": "ago" },
+        "meta": {
+          "field": "pushed",
+          "format": "ago"
+        },
         "badges": [
-          { "field": "lang", "icon": "lucide:code", "variant": "primary" },
-          { "field": "stars", "icon": "lucide:star", "variant": "ghost" },
-          { "field": "forks", "icon": "lucide:git-fork", "variant": "ghost" }
+          {
+            "field": "lang",
+            "icon": "lucide:code",
+            "variant": "primary"
+          },
+          {
+            "field": "stars",
+            "icon": "lucide:star",
+            "variant": "ghost"
+          },
+          {
+            "field": "forks",
+            "icon": "lucide:git-fork",
+            "variant": "ghost"
+          }
         ]
       }
     },
@@ -95,18 +199,37 @@
       "titleKey": "tabSaved",
       "search": true,
       "searchKey": "searchSaved",
-      "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
+      "empty": {
+        "icon": "lucide:bookmark",
+        "text": "emptySaved",
+        "hint": "emptySavedHint"
+      },
       "card": {
         "layout": "feed",
         "title": "name",
         "subtitle": "owner",
         "body": "desc",
         "more": "open",
-        "meta": { "field": "pushed", "format": "ago" },
+        "meta": {
+          "field": "pushed",
+          "format": "ago"
+        },
         "badges": [
-          { "field": "lang", "icon": "lucide:code", "variant": "primary" },
-          { "field": "stars", "icon": "lucide:star", "variant": "ghost" },
-          { "field": "forks", "icon": "lucide:git-fork", "variant": "ghost" }
+          {
+            "field": "lang",
+            "icon": "lucide:code",
+            "variant": "primary"
+          },
+          {
+            "field": "stars",
+            "icon": "lucide:star",
+            "variant": "ghost"
+          },
+          {
+            "field": "forks",
+            "icon": "lucide:git-fork",
+            "variant": "ghost"
+          }
         ]
       }
     },

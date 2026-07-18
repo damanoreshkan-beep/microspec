@@ -91,11 +91,16 @@ export function code({ S }) {
         <span class="text-[0.62rem] font-mono uppercase tracking-wide text-base-content/60">${T(t, "attemptsLeft", { n: MAX - rows.length })}</span>
         <button aria-label=${T(t, "newGame")} data-haptic="bump" onClick=${newGame} class="btn btn-ghost btn-xs btn-circle text-base-content/70">${Icon("lucide:rotate-ccw", "text-base")}</button>
       </div>
-      <div class="flex-1"></div>
-      ${rows.map((r, i) => html`<div class="flex items-center justify-center gap-3" data-row key=${i}>
-        <div class="flex gap-2">${r.guess.map((ci) => disc(ci, false))}</div>
-        <div class="w-9 shrink-0 flex justify-center">${pips(r.fb)}</div>
-      </div>`)}
+      <div class="flex-1 min-h-2"></div>
+      ${Array.from({ length: MAX }, (_, i) => {
+        const r = rows[i];
+        return html`<div class="flex items-center justify-center gap-3" data-row=${r ? "1" : null} key=${i}>
+          <div class="flex gap-2">${Array.from({ length: SLOTS }, (_, s) => r
+            ? disc(r.guess[s], false)
+            : html`<span class="w-7 h-7 rounded-full border border-base-300 shrink-0" key=${s}></span>`)}</div>
+          <div class="w-9 shrink-0 flex justify-center">${r ? pips(r.fb) : null}</div>
+        </div>`;
+      })}
     </div>
 
     <!-- input: current guess + palette + check -->

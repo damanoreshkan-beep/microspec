@@ -47,6 +47,7 @@ export function start(spec, arg2) {
   const overlays = [
     [S.sheet, () => S.sheet.set(false), (v) => v === true],
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],
+    [S.qrOpen, () => S.qrOpen.set(false), (v) => v === true],
     [S.screen, () => S.screen.set(null), (v) => v != null],
     [S.detail, () => S.detail.set(null), (v) => v != null],
     [S.player, () => S.player.set(null), (v) => v != null],

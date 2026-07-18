@@ -538,12 +538,41 @@ function SortBar({ tab }) {
   </div></div>`;
 }
 
+// Systemic UI strings that belong to no single app (like CameraPrime's) — the desktop "open on phone" self-QR.
+const QR_LBL = {
+  en: { open: "Open on phone", title: "Open on your phone", stay: "Stay on desktop" },
+  uk: { open: "Відкрити на телефоні", title: "Відкрити на телефоні", stay: "Залишитись на десктопі" },
+};
+
 function AppBar() {
-  const t = useStore(A.S.t);
+  const t = useStore(A.S.t), loc = useStore(A.S.locale);
+  const qL = QR_LBL[loc] || QR_LBL.en;
   // The header shares the dock's material — a blurred ink island edge rather than a flat bar with a hairline
   // welded under it — and the title is the app's wordmark (mono/uppercase/heavy, styled via [data-title]),
   // the top-of-screen rhyme of the dock labels. Height stays min-h-14 (the tool apps pin to 3.5rem).
-  return html`<header class="navbar bg-base-100/80 backdrop-blur-xl sticky top-0 z-30 border-b border-base-content/10 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+  // The "open on phone" trigger is desktop-only (hidden lg:) — a QR of THIS page to hop to your phone; it
+  // stays in the DOM on mobile (display:none) so nothing needs a special build, and it's harmless there.
+  return html`<header class="navbar bg-base-100/80 backdrop-blur-xl sticky top-0 z-30 border-b border-base-content/10 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+}
+
+// Desktop "open on phone": a QR of the current URL so you can continue on a phone, with an explicit "stay on
+// desktop" dismiss. History-backed via S.qrOpen (system Back closes it). The encoder is lazy-imported the
+// moment the modal opens, so no app pays for it until a desktop user asks — and the headless mobile gate,
+// which never opens it, never loads it either.
+function QrModal() {
+  const open = useStore(A.S.qrOpen), loc = useStore(A.S.locale);
+  const L = QR_LBL[loc] || QR_LBL.en;
+  const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
+  const [uri, setUri] = useState("");
+  const url = typeof location !== "undefined" ? location.href : "";
+  useEffect(() => { if (!open) return; let live = true; import("./qrcode.js").then((m) => { if (live) setUri(m.qrDataUri(url, { margin: 3 })); }).catch(() => { /* offline first-open before cache → the URL text is the fallback */ }); return () => { live = false; }; }, [open, url]);
+  const close = () => A.S.qrOpen.set(false);
+  return html`<dialog id="qr-invite" ref=${ref} class="modal modal-bottom" onClose=${close}><div class="modal-box rounded-t-3xl pb-8 flex flex-col items-center gap-4">
+    <div class="flex items-center justify-between w-full"><h3 class="font-bold text-lg flex items-center gap-2">${Icon("lucide:smartphone", "text-primary")} ${L.title}</h3><button aria-label=${L.stay} class="btn btn-ghost btn-sm btn-circle" onClick=${close}>${Icon("lucide:x", "text-xl")}</button></div>
+    <div class="rounded-2xl bg-white p-3">${uri ? html`<img data-qr src=${uri} alt="" width="216" height="216" class="block w-52 h-52" />` : html`<div class="w-52 h-52"></div>`}</div>
+    <div class="font-mono text-xs text-base-content/55 break-all text-center max-w-full">${url}</div>
+    <button data-qr-stay class="btn btn-primary rounded-2xl w-full" onClick=${close}>${L.stay}</button>
+  </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
 }
 
 // The page dissolving into the bottom edge instead of being sliced by the island. Purely decorative, so
@@ -689,6 +718,7 @@ export function App() {
     ${screen === "perms" ? html`<${PermissionsScreen} />` : null}
     <${DockFade} />
     <${InstallModal} />
+    <${QrModal} />
     <${Dock} />
     <${Toast} />
   </${Fragment}>`;

@@ -1,0 +1,29 @@
+{
+  "id": "qr",
+  "theme": "signal",
+  "category": "tools",
+  "tabs": [
+    {
+      "id": "scan",
+      "type": "tool",
+      "icon": "lucide:scan-line",
+      "label": "tabScan",
+      "view": "qr",
+      "needs": ["camera"]
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:scan-line",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "permissions": ["camera"]
+  }
+}

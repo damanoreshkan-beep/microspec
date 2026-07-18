@@ -41,6 +41,7 @@ export function createApp(spec, dataLoad) {
     player: atom(null),
     installEvent: atom(null),
     installOpen: atom(false),
+    qrOpen: atom(false),          // desktop "open on phone" self-QR (history-backed like the others)
   };
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
   // persist filter selections as JSON (keeps booleans intact, unlike per-key string storage)

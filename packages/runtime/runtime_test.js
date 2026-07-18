@@ -13,6 +13,8 @@ import { feedback, solved, makeSecret } from "./codebreak.js";
 import { rgbToHex, rgbToHsl, avgColor, luminance, ink, palette } from "./colour.js";
 import { hueToNote, paletteToChord, brightnessToCutoff, satToDetune, SCALES } from "./chroma.js";
 import { motionCells, motionEnergy, centroidOf } from "./motion.js";
+import { analyzeQR } from "./urlsafe.js";
+import { qrMatrix } from "./qrcode.js";
 import { resumeAt, RESUME_MIN } from "./playback.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
@@ -833,4 +835,74 @@ Deno.test("motion centroidOf: magnitude-weighted centre, empty → middle", () =
   const w = centroidOf([{ x: 0, y: 0, m: 0.1 }, { x: 1, y: 1, m: 0.9 }]);
   assert(w.x > 0.8 && w.y > 0.8, "weighted toward the strong cell");
   assert(w.m > 0 && w.m <= 1, "energy in range");
+});
+
+Deno.test("urlsafe: a plain https link is safe; host is extracted", () => {
+  const r = analyzeQR("https://example.com/path?q=1");
+  assertEquals(r.kind, "url");
+  assertEquals(r.host, "example.com");
+  assertEquals(r.verdict, "safe");
+  assertEquals(r.flags.length, 0);
+});
+
+Deno.test("urlsafe: http is a caution (insecure), not a verdict on the host", () => {
+  const r = analyzeQR("http://example.com");
+  assertEquals(r.verdict, "caution");
+  assert(r.flags.some((f) => f.code === "insecure"));
+});
+
+Deno.test("urlsafe: shorteners flag as caution (destination hidden)", () => {
+  assert(analyzeQR("https://bit.ly/abc").flags.some((f) => f.code === "shortener"));
+  assertEquals(analyzeQR("https://bit.ly/abc").verdict, "caution");
+});
+
+Deno.test("urlsafe: Cyrillic homograph host is DANGER (mixed-script)", () => {
+  // "аpple.com" — the first а is Cyrillic U+0430, the rest Latin: identical to the eye, points elsewhere.
+  const r = analyzeQR("https://аpple.com/login");
+  assertEquals(r.verdict, "danger");
+  assert(r.flags.some((f) => f.code === "mixed-script"));
+});
+
+Deno.test("urlsafe: userinfo spoof (trusted@evil) is DANGER; the real host is evil.com", () => {
+  const r = analyzeQR("https://apple.com@evil.example/login");
+  assertEquals(r.host, "evil.example");
+  assertEquals(r.verdict, "danger");
+  assert(r.flags.some((f) => f.code === "userinfo"));
+});
+
+Deno.test("urlsafe: script/code schemes are DANGER and never 'open'", () => {
+  const r = analyzeQR("javascript:alert(1)");
+  assertEquals(r.kind, "code");
+  assertEquals(r.verdict, "danger");
+});
+
+Deno.test("urlsafe: raw IP host is a caution", () => {
+  assert(analyzeQR("http://192.168.1.1/admin").flags.some((f) => f.code === "ip-host"));
+});
+
+Deno.test("urlsafe: non-URL payloads are typed, never openable web links", () => {
+  assertEquals(analyzeQR("WIFI:S:MyNet;T:WPA;P:secret;;").kind, "wifi");
+  assertEquals(analyzeQR("WIFI:S:MyNet;T:WPA;P:secret;;").ssid, "MyNet");
+  assertEquals(analyzeQR("tel:+380501234567").kind, "tel");
+  assertEquals(analyzeQR("mailto:a@b.com").kind, "mailto");
+  assertEquals(analyzeQR("just a note").kind, "text");
+});
+
+Deno.test("urlsafe: a bare host with no scheme parses as a link but flags the assumption", () => {
+  const r = analyzeQR("example.com/x");
+  assertEquals(r.kind, "url");
+  assertEquals(r.host, "example.com");
+  assert(r.flags.some((f) => f.code === "no-scheme"));
+});
+
+Deno.test("qrcode qrMatrix: square, odd module count, with the three finder patterns", () => {
+  const m = qrMatrix("https://damanoreshkan-beep.github.io/microspec/qr/");
+  const n = m.length;
+  assert(n >= 21 && n % 2 === 1, `module count ${n} should be odd, ≥21`);
+  assertEquals(m.every((row) => row.length === n), true);
+  // a finder pattern is a dark 7×7 with a light ring and a 3×3 dark core — check the top-left corners + core.
+  const finder = (r0, c0) => m[r0][c0] && m[r0 + 6][c0 + 6] && !m[r0 + 1][c0 + 1] && m[r0 + 3][c0 + 3];
+  assert(finder(0, 0), "top-left finder");
+  assert(finder(0, n - 7), "top-right finder");
+  assert(finder(n - 7, 0), "bottom-left finder");
 });

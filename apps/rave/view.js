@@ -366,7 +366,7 @@ export function rave({ S, toast }) {
   // of scheduling a burst of past-dated notes (which would all fire at once = a crackle spike).
   const tick = () => { const e = eng.current; if (!e) return; const spb = 60 / $bpm.get() / 4, sw = $fx.get().swing; if (nextT.current < e.ctx.currentTime) nextT.current = e.ctx.currentTime; while (nextT.current < e.ctx.currentTime + 0.1) { const s = stepN.current; fire(s, nextT.current + (s % 2 ? sw * spb : 0)); nextT.current += spb; stepN.current = (s + 1) % N; } };
   const draw = () => { const e = eng.current; if (e) { const now = e.ctx.currentTime; while (q.current.length && q.current[0].time <= now) setCur(q.current.shift().s); } raf.current = requestAnimationFrame(draw); };
-  const start = () => { const e = ensure(); setPlaying(true); if (!e) return; nextT.current = e.ctx.currentTime + 0.06; stepN.current = 0; sched.current = setInterval(tick, 25); raf.current = requestAnimationFrame(draw); const h = $hist.get(); setMeta(h.idx >= 0 ? h.seeds[h.idx] : null); try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; } catch { /* */ } };
+  const start = () => { const e = ensure(); setPlaying(true); if (!e) return; nextT.current = e.ctx.currentTime + 0.06; stepN.current = 0; sched.current = setInterval(tick, 25); raf.current = requestAnimationFrame(draw); setMeta(curTitle()); try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; } catch { /* */ } };
   const stop = () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); sched.current = null; raf.current = null; q.current = []; setPlaying(false); setCur(-1); try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused"; } catch { /* */ } };
 
   useEffect(() => () => { if (sched.current) clearInterval(sched.current); if (raf.current) cancelAnimationFrame(raf.current); if (genT.current) clearInterval(genT.current); if (eng.current) eng.current.close(); }, []);
@@ -381,7 +381,7 @@ export function rave({ S, toast }) {
     const seed = /^\d+$/.test(v) ? Number(v) >>> 0 : 1312;
     generate(seed, false);
     $hist.set({ seeds: [seed], idx: 0 });
-    setMeta(seed);
+    setMeta(trackName(seed));
   }, []);
 
   const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
@@ -426,18 +426,27 @@ export function rave({ S, toast }) {
   };
 
   // ── the session playlist: next / prev step through remembered seeds and AUTO-GENERATE at either end ──
-  const setMeta = (seed) => {
+  // The now-playing title: a generated track's name, or the active preset's name, so the notification is
+  // never blank.
+  const curTitle = () => {
+    const h = $hist.get();
+    if (h.idx >= 0 && h.idx < h.seeds.length) return trackName(h.seeds[h.idx]);
+    const p = PRESETS.find((x) => JSON.stringify(parse(x)) === JSON.stringify($tracks.get()));
+    return p ? T(t, p.name) : "Rave";
+  };
+  const setMeta = (title) => {
     try {
       if (!("mediaSession" in navigator)) return;
-      navigator.mediaSession.metadata = new MediaMetadata({ title: seed != null ? trackName(seed) : "Rave", artist: "rave", album: "microspec" });
+      navigator.mediaSession.metadata = new MediaMetadata({ title: title || "Rave", artist: "rave", album: "microspec" });
     } catch { /* */ }
   };
-  const loadTrack = (seed) => { generate(seed); setMeta(seed); };
+  const loadTrack = (seed) => { generate(seed); setMeta(trackName(seed)); };
   const newTrack = () => { const seed = randSeed(); const { seeds } = $hist.get(); const next = [...seeds, seed]; $hist.set({ seeds: next, idx: next.length - 1 }); loadTrack(seed); };
   const nextTrack = () => { let { seeds, idx } = $hist.get(); if (idx >= seeds.length - 1) { seeds = [...seeds, randSeed()]; idx = seeds.length - 1; } else idx += 1; $hist.set({ seeds, idx }); loadTrack(seeds[idx]); };
   const prevTrack = () => { let { seeds, idx } = $hist.get(); if (idx <= 0) { seeds = [randSeed(), ...seeds]; idx = 0; } else idx -= 1; $hist.set({ seeds, idx }); loadTrack(seeds[idx]); };
 
   const cSeed = hist.idx >= 0 && hist.idx < hist.seeds.length ? hist.seeds[hist.idx] : null;
+  const npTitle = cSeed != null ? trackName(cSeed) : (activePreset ? T(t, (PRESETS.find((p) => p.id === activePreset) || {}).name || "") : "");
   return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <div class="shrink-0 w-full max-w-xl mx-auto px-4 pt-3 flex flex-col gap-3">
     <div class="flex items-center gap-2">
@@ -446,7 +455,7 @@ export function rave({ S, toast }) {
       <button data-next aria-label=${T(t, "nextTrack")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${nextTrack}>${Icon("lucide:skip-forward", "text-lg")}</button>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between text-xs mb-0.5 gap-2">
-          <span data-track class="font-mono truncate text-base-content/80">${cSeed != null ? "♪ " + trackName(cSeed) : ""}</span>
+          <span data-track class="font-mono truncate text-base-content/80">${npTitle ? "♪ " + npTitle : ""}</span>
           <span class="font-semibold tabular-nums shrink-0">${bpm} BPM</span>
         </div>
         <input type="range" min="90" max="150" value=${bpm} class="range range-xs range-primary w-full" aria-label=${T(t, "tempo")} onInput=${(e) => $bpm.set(Number(e.target.value))} />

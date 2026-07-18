@@ -1,0 +1,23 @@
+{
+  "title": "Eyedropper",
+  "tabPick": "Pick",
+  "tabMe": "Me",
+  "copied": "Copied {v}",
+  "freeze": "Freeze",
+  "live": "Live",
+  "permBlocked": "Camera blocked",
+  "permEnable": "Enable camera",
+  "permUnavailable": "Camera unavailable here",
+  "profTheme": "Dark theme",
+  "profLang": "Language",
+  "profTagline": "Point the camera, read any colour",
+  "install": "Install app",
+  "installTitle": "Install",
+  "installBtn": "Install",
+  "installDesc": "Works offline, opens like an app",
+  "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
+  "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
+  "close": "Close",
+  "toastSaved": "Saved",
+  "toastRemoved": "Removed"
+}

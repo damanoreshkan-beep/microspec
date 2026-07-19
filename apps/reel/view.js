@@ -165,7 +165,7 @@ function Logo({ s }) {
 const SourceRow = ({ s, active, subbed, onPlay, onToggle, t }) => html`<div class=${`flex items-center gap-3 p-2 pr-2.5 rounded-2xl border ${active ? "border-primary bg-primary/5" : "border-base-300 bg-base-100"}`}>
   <button data-src-row class="flex items-center gap-3 flex-1 min-w-0 text-left active:scale-[.99] transition" onClick=${() => onPlay(s)}>
     <${Logo} s=${s} />
-    <div class="min-w-0"><div class="font-medium truncate">${s.name}</div><div class="text-xs text-base-content/60 truncate">${hostOf(s.url)}</div></div>
+    <div class="min-w-0"><div class="font-medium truncate">${s.name}</div><div class="text-xs text-base-content/70 truncate">${hostOf(s.url)}</div></div>
   </button>
   <button class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${subbed ? "text-primary" : "opacity-60"}`} aria-label=${T(t, subbed ? "unsub" : "sub")} data-haptic=${subbed ? "bump" : "off"} onClick=${onToggle}>${Icon(subbed ? "lucide:check" : "lucide:plus", "text-lg")}</button>
 </div>`;
@@ -187,7 +187,7 @@ export function sources({ S }) {
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:bookmark", "text-primary")} ${T(t, "subs")}</div>
         ${subs.length
           ? subs.map((s) => html`<${SourceRow} s=${s} active=${s.url === curSrc} subbed=${true} onPlay=${play} onToggle=${() => unsub(s.url)} t=${t} key=${s.url} />`)
-          : html`<div class="text-sm text-base-content/50 px-1 py-3">${T(t, "noSubs")}</div>`}
+          : html`<div class="text-sm text-base-content/70 px-1 py-3">${T(t, "noSubs")}</div>`}
       </div>
 
       ${discover.length ? html`<div class="flex flex-col gap-2">

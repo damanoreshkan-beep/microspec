@@ -8,11 +8,10 @@ import { T } from "/_rt/i18n.js";
 import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { Globe } from "/_rt/globe.js";
 import { animate, stagger } from "motion";
+import { isGate, MOCK } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const USGS = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson";
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 
 // magnitude → colour [dark-theme bright, light-theme dark]; text uses light-dark(), shapes the bright one
 const MAG = [["#41C06F", "#136B3A"], ["#8FBE45", "#3F6B24"], ["#D8B23C", "#6E5200"], ["#E2932F", "#985800"], ["#E7742E", "#A24810"], ["#EC5A4A", "#B63125"], ["#C94BBA", "#8E2A86"]];

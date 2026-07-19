@@ -14,12 +14,10 @@ import { Sign } from "/_rt/zodiac.js";
 import { sunSign } from "/_rt/horoscope.js";
 import { tr, warm, trTick } from "/_rt/translate.js";
 import { Scramble, Pixels } from "/_rt/skeleton.js";
+import { gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 const QS = new URLSearchParams(location.search);
-const MOCK = QS.get("mock");
-const gate = isGate || MOCK != null;
 const SIGN_OVERRIDE = QS.get("sign"); // ?sign=0..11 previews any sign (for a phone/mock check)
 
 const API = "https://jobs-map.mooo.com/feed/horoscope";

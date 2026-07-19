@@ -2,7 +2,7 @@
 // it directly (own IP → the generous per-user rate limit) and only falls back to a proxy if that 403s.
 // "Frontier" = recently-created repos ranked by stars within a time window → what's breaking out now.
 // Descriptions are English prose; translate.js decodes them into the active locale. Returns { items, meta }.
-import { viaProxy, isJsonObject } from "/_rt/feed.js";
+import { viaProxy, fetchJson } from "/_rt/feed.js";
 
 const compact = (n) => {
   n = Number(n) || 0;
@@ -22,7 +22,7 @@ export async function load(filters = {}) {
   if (topic) parts.push(`topic:${topic}`);
   if (q) parts.push(q);
   const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(parts.join(" "))}&sort=stars&order=desc&per_page=40`;
-  const data = JSON.parse(await viaProxy(url, isJsonObject));
+  const data = await fetchJson(url);
   const items = (data.items || []).map((it) => ({
     id: String(it.id),
     name: it.name,

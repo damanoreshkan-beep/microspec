@@ -13,10 +13,9 @@ import { CameraPrime } from "/_rt/camprime.js";
 import { palette, avgColor, luminance, rgbToHsl, rgbToHex, ink } from "/_rt/colour.js";
 import { hueToNote, paletteToChord, brightnessToCutoff, SCALES } from "/_rt/chroma.js";
 import { createEngine, midiToFreq, filter } from "/_rt/audio.js";
+import { gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 const NOTE_NAMES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
 const noteName = (m) => NOTE_NAMES[((m % 12) + 12) % 12];
 const SCALE_KEYS = [["penta", "scalePenta"], ["minor", "scaleMinor"], ["lydian", "scaleLydian"]];
@@ -31,7 +30,6 @@ function seedBuffer() {
 
 export function synesth({ S }) {
   const t = useStore(S.t), loc = useStore(S.locale);
-  const gate = isGate || MOCK;
   const seed = useMemo(() => (gate ? { pal: palette(seedBuffer(), 5), lum: luminance(avgColor(seedBuffer())) } : null), []);
   const [pal, setPal] = useState(seed ? seed.pal : []);
   const [lum, setLum] = useState(seed ? seed.lum : 0.5);

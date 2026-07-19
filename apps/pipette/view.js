@@ -11,10 +11,9 @@ import { T } from "/_rt/i18n.js";
 import { camera } from "/_rt/sensors.js";
 import { avgColor, palette, rgbToHex, rgbToHsl } from "/_rt/colour.js";
 import { CameraPrime } from "/_rt/camprime.js";
+import { gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 
 // A synthetic frame for the gate: five saturated bands. The real colour.js runs on it (deterministic
 // palette + a picked colour), so the seeded shot exercises the maths, never a live capture.
@@ -28,7 +27,6 @@ function seedBuffer() {
 
 export function pipette({ S }) {
   const t = useStore(S.t), loc = useStore(S.locale);
-  const gate = isGate || MOCK;
   // gate seed: picked = the palette's middle swatch, which is exactly the 135° gradient's centre — so the
   // reticle dot matches what it sits on in the seeded shot (on a real device picked IS the centre pixel).
   const seed = useMemo(() => { if (!gate) return null; const pal = palette(seedBuffer(), 5); return { pal, picked: pal[2] || pal[0] }; }, []);

@@ -38,3 +38,18 @@ export async function viaProxy(url, validate = (x) => !!x, timeout = 10000) {
 
 export const isJsonArray = (x) => x.trim().startsWith("[");
 export const isJsonObject = (x) => x.trim().startsWith("{");
+
+// fetchJson — the one-liner every data.js repeated: fetch through the proxy chain and JSON.parse, validating
+// the shape (object by default, or an array) so a bad/HTML proxy response is skipped rather than parsed.
+export async function fetchJson(url, { array = false, timeout = 10000 } = {}) {
+  return JSON.parse(await viaProxy(url, array ? isJsonArray : isJsonObject, timeout));
+}
+
+// pool — bounded-concurrency map (translate/enrich endpoints rate-limit; a burst of 30 would get throttled).
+// Runs at most `n` of `fn` at once over `items`; resolves when all are done. (Was duplicated in translate.js
+// + enrich.js.)
+export async function pool(items, n, fn) {
+  let i = 0;
+  const worker = async () => { while (i < items.length) { const idx = i++; await fn(items[idx]); } };
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker));
+}

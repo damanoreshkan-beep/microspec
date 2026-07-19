@@ -13,11 +13,10 @@ import { T } from "/_rt/i18n.js";
 import { tr, warm, trTick } from "/_rt/translate.js";
 import { SPREADS, spreadById, hashSeed, draw } from "/_rt/tarot.js";
 import { DECK } from "./deck.js";
+import { gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const QS = new URLSearchParams(location.search);
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const gate = isGate || QS.get("mock") != null;
 const SPREAD_OVERRIDE = QS.get("spread"); // ?spread=celtic previews any spread (phone/mock check)
 const imgURL = (file) => new URL(`./assets/${file}`, import.meta.url).href;   // robust regardless of page path
 const randSeed = () => Math.floor(Math.random() * 0x100000000) >>> 0;

@@ -9,6 +9,7 @@ import { T } from "/_rt/i18n.js";
 import { Scramble, Pixels, useReveal } from "/_rt/skeleton.js";
 import { eaqiBand, pollutantBand, pollenBand } from "/_rt/air.js";
 import { geo } from "/_rt/sensors.js";
+import { isGate, MOCK, gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const KYIV = { lat: 50.45, lng: 30.52, place: null, located: false }; // fallback — place null → T("place")
@@ -16,8 +17,6 @@ const urlFor = (lat, lng) =>
   `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}` +
   "&current=european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,ragweed_pollen,olive_pollen" +
   "&hourly=european_aqi&timezone=auto&forecast_days=2";
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 
 // per band 0..5: [dark-theme bright (SVG fills — saturated, visible on both), light-theme dark (text)]
 // good green → fair lime → moderate yellow → poor orange → very-poor red → extreme purple (EEA ramp)

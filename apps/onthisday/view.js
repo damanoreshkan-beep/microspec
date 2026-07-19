@@ -7,13 +7,12 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { animate, stagger } from "motion";
+import { isGate, MOCK } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const LANGS = { uk: "uk", en: "en", de: "de", pl: "pl" };
 const CATS = ["selected", "events", "births", "deaths", "holidays"];
 const LABEL = { selected: "cSelected", events: "cEvents", births: "cBirths", deaths: "cDeaths", holidays: "cHolidays" };
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 const pick = (e) => ({ year: e.year, text: e.text, url: e.pages?.[0]?.content_urls?.desktop?.page || e.pages?.[0]?.content_urls?.mobile?.page || null, thumb: e.pages?.[0]?.thumbnail?.source || null });
 
 function sample() {

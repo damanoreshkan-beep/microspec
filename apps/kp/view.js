@@ -6,12 +6,11 @@ import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { Scramble, Pixels, useReveal } from "/_rt/skeleton.js";
+import { isGate, MOCK, gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const KP_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json";
 const WIND_URL = "https://services.swpc.noaa.gov/products/summary/solar-wind-speed.json";
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 
 // per Kp floor 0..9: [dark-theme bright, light-theme dark] — quiet greens → storm oranges/reds → G5 purple
 const KP = [["#41C06F", "#177F46"], ["#41C06F", "#177F46"], ["#41C06F", "#177F46"], ["#5FB85B", "#2E7D3A"], ["#D8B23C", "#856400"], ["#E2932F", "#985800"], ["#E7742E", "#A24810"], ["#EC5A4A", "#B63125"], ["#E0463A", "#A5291F"], ["#C94BBA", "#8E2A86"]];

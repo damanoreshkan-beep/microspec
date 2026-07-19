@@ -11,14 +11,13 @@ import { camera } from "/_rt/sensors.js";
 import { CameraPrime } from "/_rt/camprime.js";
 import { motionCells, motionEnergy, centroidOf } from "/_rt/motion.js";
 import { createEngine, midiToFreq, filter } from "/_rt/audio.js";
+import { gate } from "/_rt/gate.js";
 
 // C major pentatonic over two octaves — the vertical position of the movement picks a note, so it always
 // sounds musical. Top of frame = high.
 const PITCHES = [48, 50, 52, 55, 57, 60, 62, 64, 67, 69];
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 
 // gate seed: a deterministic glowing ribbon (a Lissajous path), so the shot shows a real painted canvas.
 function paintSeed(ctx, w, h) {
@@ -39,7 +38,6 @@ function paintSeed(ctx, w, h) {
 
 export function flux({ S }) {
   const t = useStore(S.t), loc = useStore(S.locale);
-  const gate = isGate || MOCK;
   const [energy, setEnergy] = useState(gate ? 0.42 : 0);
   const [ghost, setGhost] = useState(true);
   const [sound, setSound] = useState(false);

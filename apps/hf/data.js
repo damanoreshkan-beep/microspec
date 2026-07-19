@@ -2,7 +2,7 @@
 // the runtime's CORS proxy (viaProxy). Descriptions aren't in the list payload — the runtime's enrich step
 // fetches each model's README card (see enrich.js → huggingface.co resolver) and translate.js decodes the
 // English prose into the active locale. Returns { items, meta }.
-import { viaProxy, isJsonArray } from "/_rt/feed.js";
+import { viaProxy, fetchJson } from "/_rt/feed.js";
 
 // Downloads/likes span 0 → tens of millions; a raw count blows out a badge. Compact once, here, so the
 // card + detail render a tidy "627K" / "13.6M" and never a 8-digit number.
@@ -24,7 +24,7 @@ export async function load(filters = {}) {
   if (q) params.set("search", q);
   if (cat) params.set("filter", cat);
   // No pagination: HF pages via a Link header the CORS proxy strips, so we take the top 40 — a catalog page.
-  const data = JSON.parse(await viaProxy(`https://huggingface.co/api/${kind}?${params}`, isJsonArray));
+  const data = await fetchJson(`https://huggingface.co/api/${kind}?${params}`, { array: true });
   const items = (Array.isArray(data) ? data : []).map((m) => {
     const id = m.id || m.modelId || "";
     const [org, ...rest] = id.split("/");

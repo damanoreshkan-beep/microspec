@@ -24,10 +24,9 @@ import { T } from "/_rt/i18n.js";
 import { compass } from "/_rt/sensors.js";
 import { declination, decimalYear, inRange } from "/_rt/geomag.js";
 import { Scramble } from "/_rt/skeleton.js";
+import { isGate, MOCK, gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 const SAMPLE = { lat: 50.4501, lng: 30.5234, accuracy: 12 };   // Kyiv — the gate has no magnetometer or GPS
 
 const norm = (d) => ((d % 360) + 360) % 360;

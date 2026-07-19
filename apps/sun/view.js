@@ -14,12 +14,11 @@ import { BODY_KEYS, skyPositions, sunHorizon, sunTimes } from "/_rt/astro.js";
 import { SkyDial } from "/_rt/skydial.js";
 import { TimeScale } from "/_rt/timescale.js";
 import { Scramble } from "/_rt/skeleton.js";
+import { isGate, MOCK, gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const MOCK = new URLSearchParams(location.search).get("mock");
 // on localhost (the gate) render the compass in a ROTATED, located state so the overflow gate + shot see the
 // live layout (headless has no GPS/compass → 0°, which used to hide a rotated-container overflow).
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 const KYIV = { lat: 50.45, lng: 30.52, approx: true };
 const PRESETS = [["Kyiv", 50.45, 30.52], ["London", 51.5, -0.13], ["Tokyo", 35.68, 139.69], ["New York", 40.71, -74.0], ["Sydney", -33.87, 151.21]];
 const DIRS = ["Пн", "Пн-Сх", "Сх", "Пд-Сх", "Пд", "Пд-Зх", "Зх", "Пн-Зх"];

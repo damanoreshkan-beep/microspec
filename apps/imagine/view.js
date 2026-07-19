@@ -11,11 +11,9 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { fitResolution } from "/_rt/imgsize.js";
+import { gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
-const gate = isGate || MOCK != null;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const randSeed = () => Math.floor(Math.random() * 1e9);
 

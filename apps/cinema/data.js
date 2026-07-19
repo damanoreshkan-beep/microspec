@@ -1,3 +1,5 @@
+import { isGate, gate } from "/_rt/gate.js";
+import { letterTile } from "/_rt/tile.js";
 // Кіно — public-domain feature films from the Internet Archive, watched in the app.
 //
 // This app has no view.js, and that is the point: it is a spec plus this adapter. The player it opens —
@@ -72,8 +74,7 @@ const views = (n) => { const v = Number(n) || 0; return v >= 1000 ? `${Math.roun
 // whole run and forces a re-run. So in the gate we serve a deterministic fixture that RESPONDS to the same
 // filters (lang / era / search) the e2e drives — self-contained SVG posters, so a card is never image-less
 // even when archive is unreachable. Real public-domain films (incl. Dovzhenko's Ukrainian silents).
-const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const poster = (t, hue) => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><rect width="300" height="450" fill="hsl(${hue} 34% 22%)"/><text x="50%" y="52%" fill="rgba(255,255,255,.92)" font-family="system-ui,sans-serif" font-size="150" font-weight="700" text-anchor="middle" dy=".35em">${t[0]}</text></svg>`);
+const poster = (t, hue) => letterTile(t, { hue, sat: 34, light: 22 });
 const FIXTURE = [
   { id: "Nosferatu", title: "Nosferatu", year: "1922", lang: "de", era: "silent", desc: "A vampire brings plague to a German town." },
   { id: "Metropolis", title: "Metropolis", year: "1927", lang: "de", era: "silent", desc: "A futurist city split between thinkers and workers." },

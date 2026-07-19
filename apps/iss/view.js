@@ -7,11 +7,10 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { Globe, countryAt, worldReady } from "/_rt/globe.js";
+import { isGate, MOCK, gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const ISS_URL = "https://api.wheretheiss.at/v1/satellites/25544";
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 // gate/mock sample (over the Pacific, in Earth's shadow) so the globe + telemetry render for the shot & e2e
 const SAMPLE = { latitude: -11.78, longitude: -169.26, altitude: 423.47, velocity: 27566.47, visibility: "eclipsed" };
 const fmt = (n) => n == null ? "—" : Math.round(Number(n)).toLocaleString("en-US").replace(/,/g, " ");

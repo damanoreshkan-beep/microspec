@@ -293,7 +293,7 @@
     "bg": "#0A0A0B",
     "fg": "#F5B94D",
     "href": "./sun/",
-    "version": "1.31",
+    "version": "1.32",
     "category": "science"
   },
   {
@@ -436,7 +436,7 @@
     "bg": "#0A0A0B",
     "fg": "#34D399",
     "href": "./temu/",
-    "version": "1.0",
+    "version": "1.2",
     "category": "play"
   }
 ]

@@ -1,5 +1,5 @@
 // Weather adapter (Open-Meteo — no key, CORS *, rock-solid). Fixed location: Kyiv.
-import { viaProxy, isJsonObject } from "/_rt/feed.js";
+import { fetchJson } from "/_rt/feed.js";
 
 // WMO weather_code → lucide icon
 const wicon = (c) =>
@@ -19,7 +19,7 @@ export async function load() {
     "&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m,apparent_temperature" +
     "&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code" +
     "&timezone=auto&forecast_days=5";
-  const d = JSON.parse(await viaProxy(u, isJsonObject));
+  const d = await fetchJson(u);
   const now = d.current;
 
   const start = Math.max(0, d.hourly.time.findIndex((t) => t >= now.time));

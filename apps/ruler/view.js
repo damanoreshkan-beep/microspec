@@ -19,10 +19,9 @@ import { geo } from "/_rt/sensors.js";
 import { stationaryTail, meanFix, segErr, totalErr, usableFix } from "/_rt/geofix.js";
 import { collection } from "/_rt/db.js";
 import { Scramble } from "/_rt/skeleton.js";
+import { isGate, MOCK, gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 const ACCENT = "#34d399";
 // a deterministic sample path so the gate/mock sees the live layout (headless has no GPS)
 const SAMPLE = [{ lat: 50.4501, lng: 30.5234, accuracy: 8 }, { lat: 50.4509, lng: 30.5240, accuracy: 8 }, { lat: 50.4512, lng: 30.5258, accuracy: 8 }, { lat: 50.4506, lng: 30.5266, accuracy: 8 }];

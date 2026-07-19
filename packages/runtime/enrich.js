@@ -16,7 +16,7 @@
 // no proxy needed), and extracts a clean description even when a page has no og:description meta. Probed
 // at ~7/8 hit rate on a live HN front page vs 1/8 for og-scraping through public proxies.
 import { atom } from "nanostores";
-import { viaProxy } from "./feed.js";
+import { viaProxy, pool } from "./feed.js";
 
 export const metaTick = atom(0);
 
@@ -94,12 +94,6 @@ async function fetchMeta(url) {
     if (!description) throw new Error("no description");
     return { description };
   } finally { clearTimeout(t); }
-}
-
-async function pool(items, n, fn) {
-  let i = 0;
-  const worker = async () => { while (i < items.length) { const idx = i++; await fn(items[idx]); } };
-  await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker));
 }
 
 // warmMeta(urls) — fetch a description for every not-yet-cached URL, then bump metaTick once. Cheap to

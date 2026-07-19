@@ -14,7 +14,7 @@
 //   `-topic:awesome -topic:library -topic:framework -topic:template` strips the link-lists and the SDKs,
 //   which are the noise a "which app do I install" catalogue must not show.
 // • Sorting by stars is the popularity signal (what people actually run); `updated` surfaces what is alive.
-import { viaProxy, isJsonObject } from "/_rt/feed.js";
+import { viaProxy, fetchJson } from "/_rt/feed.js";
 
 const API = "https://api.github.com/search/repositories";
 const PAGE = 24;
@@ -64,7 +64,7 @@ export async function load(filters = {}) {
     page: String(page),
   });
 
-  const data = JSON.parse(await viaProxy(`${API}?${params}`, isJsonObject, 15000));
+  const data = await fetchJson(`${API}?${params}`, { timeout: 15000 });
 
   const raw = (data.items || []).length;
   const items = (data.items || []).map((it) => ({

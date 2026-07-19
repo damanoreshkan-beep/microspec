@@ -1,6 +1,6 @@
 // Exchange-rates adapter (Frankfurter, ECB data — CORS *, no key). Normalises to the runtime's
 // converter convention: rate = value of 1 unit of this currency expressed in the base (USD).
-import { viaProxy, isJsonObject } from "/_rt/feed.js";
+import { fetchJson } from "/_rt/feed.js";
 
 const NAMES = {
   EUR: "Euro", GBP: "British Pound", JPY: "Japanese Yen", CHF: "Swiss Franc", CAD: "Canadian Dollar",
@@ -13,7 +13,7 @@ const NAMES = {
 };
 
 export async function load() {
-  const d = JSON.parse(await viaProxy("https://api.frankfurter.dev/v1/latest?base=USD", isJsonObject));
+  const d = await fetchJson("https://api.frankfurter.dev/v1/latest?base=USD");
   const items = Object.entries(d.rates || {})
     .map(([code, perUsd]) => ({
       code,

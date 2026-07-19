@@ -10,11 +10,10 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { mulberry32 } from "/_rt/groove.js";
 import { feedback, solved, makeSecret } from "/_rt/codebreak.js";
+import { isGate, MOCK, gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const SLOTS = 4, NCOLORS = 6, MAX = 10;
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 
 // Each peg: a saturated hue visible on both themes + a near-black ink for its symbol + a distinct shape,
 // so colour is never the only channel (colour-blind play + SR names). Symbols: ● ▲ ■ ◆ ★ ⬢.

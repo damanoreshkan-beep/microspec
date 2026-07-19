@@ -19,6 +19,8 @@
   "month": "This month",
   "last13": "Last 13 weeks",
   "delete": "Delete habit",
+  "delHabitTitle": "Delete «{name}»?",
+  "delHabitBody": "{n} days of history — this can't be undone.",
   "dayStreak": "{n}-day streak",
   "noStreak": "Start a streak today",
   "todayToggle": "toggle today",

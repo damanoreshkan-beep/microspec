@@ -32,6 +32,8 @@ export function createApp(spec, dataLoad) {
     installEvent: atom(null),
     installOpen: atom(false),
     qrOpen: atom(false),          
+    confirm: atom(null),          
+    undo: atom(null),             
   };
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
   S.filters.listen((v) => { try { localStorage.setItem(FKEY, JSON.stringify(v)); } catch {  } });
@@ -61,21 +63,30 @@ export function createApp(spec, dataLoad) {
 
   let toastTimer;
   function toast(key) {
+    S.undo.set(null);                                  
     S.toast.set(key);
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => S.toast.set(""), 2200);
   }
+
+  let undoTimer;
+  function undo(fn, label = "") {
+    clearTimeout(undoTimer); clearTimeout(toastTimer);
+    S.toast.set(""); S.undo.set({ fn, label });
+    undoTimer = setTimeout(() => S.undo.set(null), 5000);
+  }
+  function confirm(opts) { S.confirm.set(opts); }
 
   const favKey = (it) => it[spec.fav?.key];
   function toggleFav(it) {
     const k = favKey(it);
     if (k == null) return;
     const f = { ...S.fav.get() };
-    if (f[k]) { delete f[k]; toast("removed"); } else { f[k] = it; toast("saved"); }
-    S.fav.set(f);
+    if (f[k]) { const prev = f[k]; delete f[k]; S.fav.set(f); undo(() => { const g = { ...S.fav.get() }; g[k] = prev; S.fav.set(g); }); }
+    else { f[k] = it; S.fav.set(f); toast("saved"); }
   }
 
   function swap() { const a = S.from.get(); S.from.set(S.to.get()); S.to.set(a); }
 
-  return { spec, S, load, loadMore, toast, toggleFav, favKey, swap };
+  return { spec, S, load, loadMore, toast, undo, confirm, toggleFav, favKey, swap };
 }

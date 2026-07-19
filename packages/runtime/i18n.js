@@ -9,6 +9,9 @@ export const dictFor = (i18n, locale) => i18n?.[locale] || i18n?.en || {};
 
 export const SYS = {
   exit: { en: "Press Back again to exit", uk: "Натисніть «Назад» ще раз, щоб вийти", ru: "Нажмите «Назад» ещё раз, чтобы выйти", de: "Zum Beenden erneut „Zurück“ drücken", pl: "Naciśnij Wstecz ponownie, aby wyjść" },
+  deleted: { en: "Deleted", uk: "Видалено", ru: "Удалено", de: "Gelöscht", pl: "Usunięto" },
+  undo: { en: "Undo", uk: "Скасувати", ru: "Отменить", de: "Rückgängig", pl: "Cofnij" },
+  cancel: { en: "Cancel", uk: "Скасувати", ru: "Отмена", de: "Abbrechen", pl: "Anuluj" },
 };
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 

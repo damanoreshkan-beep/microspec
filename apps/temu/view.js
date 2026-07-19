@@ -23,19 +23,23 @@ export function temu({ S, toast, undo, screen, openScreen, closeScreen }) {
   const sc = useStore(S.screen);
   const cart = useStore($cart), star = useStore($star);
   const [catId, setCatId] = useState(CATS[0].id);
-  const [products, setProducts] = useState(gate ? gateFixture(CATS[0].q) : null);
+  const [products, setProducts] = useState(gate ? gateFixture(CATS[0].queries[0]) : null);
   const [err, setErr] = useState(false);
   const [detail, setDetail] = useState(null);
   const cat = catById(catId);
 
   useEffect(() => {
-    if (gate) { setProducts(gateFixture(cat.q)); setErr(false); return; }
+    if (gate) { setProducts(gateFixture(cat.queries[0])); setErr(false); return; }
     setProducts(null); setErr(false);
     let live = true;
-    fetch(`${SHOP}?q=${encodeURIComponent(cat.q)}`)
-      .then((r) => r.ok ? r.json() : Promise.reject())
-      .then((d) => { if (live) { setProducts(d.items || []); setErr(false); } })
-      .catch(() => { if (live) { setProducts([]); setErr(true); } });
+    Promise.all(cat.queries.map((q) => fetch(`${SHOP}?q=${encodeURIComponent(q)}`).then((r) => r.ok ? r.json() : { items: [] }).catch(() => ({ items: [] }))))
+      .then((results) => {
+        if (!live) return;
+        const lists = results.map((r) => (r.items || []).slice(0, 8));
+        const seen = new Set(), merged = [];
+        for (let i = 0; i < 8; i++) for (const l of lists) { const p = l[i]; if (p && !seen.has(p.id)) { seen.add(p.id); merged.push(p); } }
+        setProducts(merged); setErr(merged.length === 0);
+      });
     return () => { live = false; };
   }, [catId]);
 

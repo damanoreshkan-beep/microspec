@@ -18,7 +18,7 @@ const BFL_KEY = process.env.BFL_KEY || "";
 const FLUX_CREATE = "https://api.bfl.ai/v1/flux-2-pro-preview";
 // The paid create endpoint is origin-guarded (browsers enforce Origin) + rate-limited. A wall against casual
 // web abuse, not a cryptographic one — a determined non-browser client can still spend, so keep a BFL cap too.
-const ALLOW_ORIGIN = new Set(["https://damanoreshkan-beep.github.io", "https://dhammapada.mooo.com"]);
+const ALLOW_ORIGIN = new Set(["https://damanoreshkan-beep.github.io"]);
 // Original /feed allowlist (unchanged). NEVER an open proxy.
 const ALLOW = [/(^|\.)dou\.ua$/i, /(^|\.)wikipedia\.org$/i, /(^|\.)gutendex\.com$/i, /(^|\.)chocolatey\.org$/i];
 // Keyless flux passthrough is restricted to Black Forest Labs hosts (polling_url + the signed delivery image).

@@ -77,20 +77,29 @@ async function loadSource(url, append = false) {
 // The single live <video>, mounted only in the ACTIVE slide (so exactly one plays). createPlayer handles mp4 vs
 // HLS and tears down on unmount; a failed source flips to an explicit "video unavailable" state (not silent black).
 function VideoLayer({ item, t }) {
-  const ref = useRef();
+  const ref = useRef(), bgRef = useRef();
   const [errored, setErrored] = useState(false);
   useEffect(() => {
     setErrored(false);
     const v = ref.current; if (!v) return;
     v.muted = true; v.loop = true;                                                        // muted → browsers allow autoplay
-    let handle, dead = false;
+    let handle, bgHandle, dead = false;
     createPlayer(v, item.video, { onReady: () => v.play?.().catch(() => {}), onError: () => setErrored(true) })
       .then((h) => { if (dead) h?.destroy?.(); else handle = h; });
-    return () => { dead = true; handle?.destroy?.(); };
+    // ambient backdrop: when there's no poster to blur, a muted copy of the video fills the letterbox area.
+    if (!item.poster && bgRef.current) { const bg = bgRef.current; bg.muted = true; bg.loop = true; createPlayer(bg, item.video, { onReady: () => bg.play?.().catch(() => {}) }).then((h) => { if (dead) h?.destroy?.(); else bgHandle = h; }); }
+    return () => { dead = true; handle?.destroy?.(); bgHandle?.destroy?.(); };
   }, [item.video]);
   const toggle = () => { const v = ref.current; if (v && !errored) (v.paused ? v.play?.().catch(() => {}) : v.pause?.()); };
+  // Blanking fill (tiktok/ambient-mode): the FOREGROUND video is object-contain (full frame, no crop), and the
+  // black letterbox is replaced by a blurred, scaled fill of the same content — so nothing is cropped and there
+  // are no black bars.
   return html`<${Fragment}>
-    <video ref=${ref} onClick=${toggle} playsinline loop muted poster=${item.poster || ""} class=${`absolute inset-0 w-full h-full object-cover bg-black ${errored ? "opacity-0" : ""}`}></video>
+    ${item.poster
+      ? html`<img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" onError=${(e) => e.currentTarget.remove()} />`
+      : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
+    <div class="absolute inset-0 bg-black/25" aria-hidden="true"></div>
+    <video ref=${ref} onClick=${toggle} playsinline loop muted poster=${item.poster || ""} class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
     ${errored ? html`<div data-vid-err class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/70 pointer-events-none">${Icon("lucide:video-off", "text-5xl")}<span class="text-sm">${T(t, "videoErr")}</span></div>` : null}
   </${Fragment}>`;
 }
@@ -100,7 +109,11 @@ function Slide({ item, idx, active, t }) {
     ${active
       ? html`<${VideoLayer} item=${item} t=${t} />`
       : item.poster
-        ? html`<${Fragment}><img src=${item.poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-60" onError=${(e) => e.currentTarget.remove()} /><div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/85 text-5xl drop-shadow-lg")}</div></${Fragment}>`
+        ? html`<${Fragment}>
+            <img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-55" onError=${(e) => e.currentTarget.remove()} />
+            <img src=${item.poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain" onError=${(e) => e.currentTarget.remove()} />
+            <div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/85 text-5xl drop-shadow-lg")}</div>
+          </${Fragment}>`
         : html`<div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/10 text-7xl")}</div>`}
     <div class="absolute inset-x-0 bottom-0 z-[1] pointer-events-none p-4 pt-16 bg-gradient-to-t from-black/75 via-black/25 to-transparent" style="padding-bottom:calc(var(--dock-h) + 1rem)">
       <div class="flex items-end gap-2">

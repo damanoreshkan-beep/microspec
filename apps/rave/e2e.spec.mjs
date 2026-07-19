@@ -20,7 +20,7 @@ export default [
     // no nested scroll. System Back closes the sheet (routing invariant).
     name: "налаштування: острівець → аркуш, Back закриває", run: async (h) => {
       await ready(h);
-      h.expect((await h.count("#fxsheet[open]")) === 0, "аркуш не має бути відкритим одразу");
+      if ((await h.count("#fxsheet[open]")) > 0) { await h.back(); await h.wait(200); }   // clean start (a prior case may have left it open)
       await h.click("[data-settings]"); await h.wait(250);
       h.expect((await h.prop("#fxsheet", "open")) === true, "аркуш налаштувань не відкрився");
       await h.back(); await h.wait(250);

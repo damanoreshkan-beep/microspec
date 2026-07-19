@@ -6,8 +6,7 @@ const FLUX_CREATE = "https://api.bfl.ai/v1/flux-2-pro-preview";
 const ALLOW_ORIGIN = new Set(["https://damanoreshkan-beep.github.io"]);
 const ALLOW = [/(^|\.)dou\.ua$/i, /(^|\.)wikipedia\.org$/i, /(^|\.)gutendex\.com$/i, /(^|\.)chocolatey\.org$/i];
 const ALLOW_FLUX = [/(^|\.)bfl\.ai$/i, /(^|\.)bfl\.ml$/i];
-const ALLOW_IMG = [/(^|\.)aliexpress-media\.com$/i, /(^|\.)alicdn\.com$/i];
-const UA = "Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";
+const UA ="Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
 
 const hits = new Map();
@@ -43,31 +42,6 @@ function parseHoroscope(html) {
     let m; while ((m = re.exec(rblock))) { const k = map[m[1].trim()]; if (k) ratings[k] = (m[2].match(/icon-star-filled highlight/g) || []).length; }
   }
   return { date, text, ratings };
-}
-
-const UA_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36";
-const SHOP_TTL = 15 * 60_000;
-const shopCache = new Map();
-const shopSeen = new Set(); 
-["mechanical keyboard hotswap", "keyboard keycaps pbt", "keyboard switches tactile", "thinkpad laptop", "framework laptop", "usb c docking station", "graphene pixel phone", "faraday signal blocking bag", "usb data blocker", "flipper zero", "proxmark rfid", "usb rubber ducky", "raspberry pi", "mini pc n100", "nas enclosure hotswap", "split ergonomic keyboard", "trackball mouse", "monitor arm single", "plain black hoodie men", "techwear cargo pants", "merino beanie", "yerba mate gourd", "aeropress coffee maker", "electrolyte tablets", "tech backpack laptop", "cable organizer pouch", "titanium multitool keychain"].forEach((q) => shopSeen.add(q.replace(/\s+/g, "-") + "|1"));
-const shopSlug = (q) => String(q || "").toLowerCase().replace(/[^a-z0-9 ]/g, "").trim().replace(/\s+/g, "-").slice(0, 60);
-function parseAli(html) {
-  const i = html.indexOf('"itemList":{"content":[');
-  if (i < 0) return [];
-  const seg = html.slice(i, i + 400000);
-  const items = [];
-  const re = /"productId":"(\d+)"([\s\S]*?)(?="productId":"|\](?:,"[a-z])|$)/g;
-  let m;
-  while ((m = re.exec(seg)) && items.length < 40) {
-    const b = m[2];
-    const img = b.match(/"imgUrl":"([^"]+)"/)?.[1];
-    const title = b.match(/"displayTitle":"([^"]*)"/)?.[1];
-    const price = b.match(/"salePrice":\{[^]*?"formattedPrice":"([^"]*)"/)?.[1];
-    const orig = b.match(/"originalPrice":\{[^]*?"formattedPrice":"([^"]*)"/)?.[1];
-    const disc = b.match(/"salePrice":\{[^]*?"discount":(\d+)/)?.[1] || b.match(/"discount":(\d+)/)?.[1];
-    if (img && title && price) items.push({ id: m[1], title, img: "https:" + img, price, orig: orig && orig !== price ? orig : null, discount: disc ? +disc : null, url: `https://www.aliexpress.com/item/${m[1]}.html` });
-  }
-  return items;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -109,45 +83,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (p === "/feed/img" && req.method === "GET") {
-    const target = u.searchParams.get("url");
-    let host; try { host = new URL(target).hostname; } catch { return send(res, 400, CORS, "bad url"); }
-    if (!ALLOW_IMG.some((re) => re.test(host))) return send(res, 403, CORS, "host not allowed");
-    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
-    try {
-      const r = await fetch(target, { headers: { "user-agent": UA_DESKTOP }, signal: ctrl.signal, redirect: "follow" });
-      const ab = await r.arrayBuffer();
-      send(res, r.status, { ...CORS, "content-type": r.headers.get("content-type") || "image/jpeg", "cache-control": "public, max-age=86400" }, Buffer.from(ab));
-    } catch { send(res, 502, CORS, "upstream error"); }
-    finally { clearTimeout(t); }
-    return;
-  }
-
-  if (p === "/feed/shop" && req.method === "GET") {
-    const slug = shopSlug(u.searchParams.get("q"));
-    const page = Math.max(1, Math.min(20, Number(u.searchParams.get("page")) || 1));
-    if (!slug) return send(res, 400, CORS, "bad query");
-    const key = `${slug}|${page}`, hit = shopCache.get(key);
-    if (shopSeen.size < 200) shopSeen.add(key);
-    if (hit && Date.now() - hit.ts < SHOP_TTL) return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify(hit.data));
-    const target = `https://www.aliexpress.com/w/wholesale-${slug}.html?page=${page}`;
-    const fetchOnce = async () => {
-      const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
-      try { const r = await fetch(target, { headers: { "user-agent": UA_DESKTOP, "accept-language": "en-US,en;q=0.9", "accept": "text/html,application/xhtml+xml" }, signal: ctrl.signal, redirect: "follow" }); return parseAli(await r.text()); }
-      catch { return []; } finally { clearTimeout(t); }
-    };
-    let items = [];
-    for (let a = 0; a < 3 && !items.length; a++) items = await fetchOnce();
-    if (items.length) {
-      const data = { q: slug, page, items };
-      if (shopCache.size > 300) shopCache.clear();
-      shopCache.set(key, { ts: Date.now(), data });
-      return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify(data));
-    }
-    if (hit) return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify(hit.data)); 
-    return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ q: slug, page, items: [] }));
-  }
-
   if (p === "/feed/horoscope" && req.method === "GET") {
     const sign = Number(u.searchParams.get("sign")), day = String(u.searchParams.get("day") || "today");
     if (!Number.isInteger(sign) || sign < 1 || sign > 12 || !HORO_DAYS.has(day)) return send(res, 400, CORS, "bad params");
@@ -184,19 +119,5 @@ const server = http.createServer(async (req, res) => {
 
   send(res, 404, CORS, "not found");
 });
-
-setInterval(async () => {
-  if (!shopSeen.size) return;
-  let pick = null, oldest = Infinity;
-  for (const k of shopSeen) { const ts = shopCache.get(k)?.ts ?? 0; if (ts < oldest) { oldest = ts; pick = k; } }
-  if (!pick) return;
-  const [slug, pg] = pick.split("|");
-  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
-  try {
-    const r = await fetch(`https://www.aliexpress.com/w/wholesale-${slug}.html?page=${pg}`, { headers: { "user-agent": UA_DESKTOP, "accept-language": "en-US,en;q=0.9" }, signal: ctrl.signal, redirect: "follow" });
-    const items = parseAli(await r.text());
-    if (items.length) shopCache.set(pick, { ts: Date.now(), data: { q: slug, page: Number(pg), items } });
-  } catch {  } finally { clearTimeout(t); }
-}, 40000);
 
 server.listen(PORT, process.env.HOST || "127.0.0.1", () => console.log(`feed-proxy listening on 127.0.0.1:${PORT}`));

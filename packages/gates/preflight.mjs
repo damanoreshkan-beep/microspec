@@ -79,6 +79,10 @@ async function preflight(appdir) {
     [(s) => (s.tabs || []).some((t) => t.paginate), ["loadMore"], "tab.paginate renders a load-more control"],
     [(s) => !!s.detail, ["back"], "spec.detail renders a back button"],
     [(s) => !!s.fav, ["favAria", "unfavAria"], "spec.fav renders bookmark controls"],
+    [(s) => !!s.profile, ["profTagline"], "the profile tab renders the app tagline"],
+    [(s) => !!s.profile?.theme, ["profTheme"], "profile.theme renders a dark-theme toggle"],
+    [(s) => !!s.profile?.lang, ["profLang"], "profile.lang renders a language switch"],
+    [(s) => !!s.profile?.install, ["install", "installTitle", "installBtn", "installDesc", "installIosHint", "installGenericHint", "close"], "profile.install renders the install button + install sheet"],
   ];
   for (const [applies, keys, why] of declared) {
     if (!applies(spec)) continue;

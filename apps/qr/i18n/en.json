@@ -31,5 +31,14 @@
   "copy": "Copy",
   "copied": "Copied",
   "again": "Scan again",
-  "noCamera": "Camera unavailable here"
+  "noCamera": "Camera unavailable here",
+  "profTheme": "Dark theme",
+  "profLang": "Language",
+  "install": "Install app",
+  "installTitle": "Install",
+  "installBtn": "Install",
+  "installDesc": "Works offline, opens like an app",
+  "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
+  "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
+  "close": "Close"
 }

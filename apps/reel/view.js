@@ -19,6 +19,9 @@ import { Pixels } from "/_rt/skeleton.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
+// Route playback through the reverse proxy: a signed/expiring URL was signed for the VPS IP (that fetched the
+// page), so re-fetching it from the VPS (within its window) keeps the token valid — where a direct hit fails.
+const framed = (u) => `${VPS_PROXY}/frame?url=${encodeURIComponent(u)}`;
 
 // Ready-made channels — ONLY sources verified to extract THROUGH THE PROXY (the VPS datacenter IP matters:
 // Cloudflare-guarded sites like Pexels return nothing from it, exactly like the AliExpress lesson). Each shows
@@ -65,7 +68,7 @@ function markWatched(url) {
   watchedDB.put(url, {}).catch(() => {});
 }
 function clearWatched() { $watched.set(new Set()); watchedDB.clear().catch(() => {}); }
-const unseen = (arr) => arr.filter((i) => !$watched.get().has(i.video));
+const unseen = (arr) => arr.filter((i) => !$watched.get().has(i.orig || i.video));         // key on the stable original URL
 
 const $items = atom(gate ? MOCK : []);
 const $next = atom(null);
@@ -73,6 +76,8 @@ const $loading = atom(!gate);
 const $err = atom(false);
 const $active = atom(0);
 const $frameUrl = atom("");
+const $ephemeral = atom(false);   // source hands out signed/expiring URLs (server flag)
+const $errCount = atom(0);        // consecutive video-playback failures → confirms a dead source
 
 let loadingMore = false;
 async function loadSource(url, append = false) {
@@ -82,9 +87,13 @@ async function loadSource(url, append = false) {
   try {
     const r = await fetch(`${VPS_PROXY}/videos?url=${encodeURIComponent(url)}`);
     const d = await r.json();
-    const got = unseen(Array.isArray(d.items) ? d.items : []);                            // drop already-watched
+    // signed/expiring source → play each video THROUGH the proxy (VPS IP that holds the valid token); keep the
+    // original URL for the "open original" link.
+    const raw = (Array.isArray(d.items) ? d.items : []).map((i) => d.ephemeral ? { ...i, orig: i.video, video: framed(i.video) } : i);
+    const got = unseen(raw);                                                              // drop already-watched
     $items.set(append ? [...$items.get(), ...got] : got);
     $next.set(d.next || null);
+    if (!append) { $ephemeral.set(!!d.ephemeral); $errCount.set(0); }
   } catch { if (!append) $err.set(true); }
   finally { $loading.set(false); loadingMore = false; }
 }
@@ -99,7 +108,7 @@ function VideoLayer({ item, t }) {
     const v = ref.current; if (!v) return;
     v.muted = true; v.loop = true;                                                        // muted → browsers allow autoplay
     let handle, bgHandle, dead = false;
-    createPlayer(v, item.video, { onReady: () => v.play?.().catch(() => {}), onError: () => setErrored(true) })
+    createPlayer(v, item.video, { onReady: () => { $errCount.set(0); v.play?.().catch(() => {}); }, onError: () => { setErrored(true); $errCount.set($errCount.get() + 1); } })
       .then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     // ambient backdrop: when there's no poster to blur, a muted copy of the video fills the letterbox area.
     if (!item.poster && bgRef.current) { const bg = bgRef.current; bg.muted = true; bg.loop = true; createPlayer(bg, item.video, { onReady: () => bg.play?.().catch(() => {}) }).then((h) => { if (dead) h?.destroy?.(); else bgHandle = h; }); }
@@ -133,7 +142,7 @@ function Slide({ item, idx, active, t }) {
     <div class="absolute inset-x-0 bottom-0 z-[1] pointer-events-none p-4 pt-16 bg-gradient-to-t from-black/75 via-black/25 to-transparent" style="padding-bottom:calc(var(--dock-h) + 1rem)">
       <div class="flex items-end gap-2">
         <div class="min-w-0 flex-1 text-white font-semibold text-sm leading-snug line-clamp-2" style="text-shadow:0 1px 6px rgba(0,0,0,.6)">${/[a-zа-яїієґ]/i.test(item.title || "") ? item.title : ""}</div>
-        <a href=${item.video} target="_blank" rel="noopener" class="pointer-events-auto shrink-0 text-white/70 active:text-white p-1" aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-lg")}</a>
+        <a href=${item.orig || item.video} target="_blank" rel="noopener" class="pointer-events-auto shrink-0 text-white/70 active:text-white p-1" aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-lg")}</a>
       </div>
     </div>
   </section>`;
@@ -178,7 +187,8 @@ function FrameView({ S, t }) {
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [url]);
-  const use = () => { const got = unseen(harvested); if (got.length) { $items.set(got); $next.set(null); $active.set(0); $src.set(url); subscribe({ name: hostOf(url), url, icon: "lucide:link" }); } S.screen.set(null); S.tab.set("reel"); };
+  // harvested URLs came from the proxied (VPS-IP) session → play them through the proxy so their tokens stay valid.
+  const use = () => { const got = unseen(harvested.map((h) => ({ ...h, orig: h.video, video: framed(h.video) }))); if (got.length) { $items.set(got); $next.set(null); $active.set(0); $ephemeral.set(true); subscribe({ name: hostOf(url), url, icon: "lucide:link" }); } S.screen.set(null); S.tab.set("reel"); };
   const iframeSrc = gate || !url ? "about:blank" : `${VPS_PROXY}/frame?url=${encodeURIComponent(url)}`;
   return html`<div class="fixed inset-0 z-40 bg-base-300 flex flex-col" role="dialog" aria-modal="true" aria-label=${hostOf(url)}>
     <div class="flex items-center gap-2 px-2 py-2 bg-base-100/90 backdrop-blur-md border-b border-base-300" style="padding-top:calc(env(safe-area-inset-top) + 0.5rem)">
@@ -194,13 +204,13 @@ function FrameView({ S, t }) {
 export function reel({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const items = useStore($items), loading = useStore($loading), err = useStore($err);
-  const active = useStore($active), next = useStore($next);
+  const active = useStore($active), next = useStore($next), errCount = useStore($errCount);
   const src = useStore($src);
   const scroller = useRef();
 
   useEffect(() => { if (!gate) loadSource(src); }, [src]);
   useEffect(() => { if (next && active >= items.length - 3) loadSource(next, true); }, [active, items.length, next]);
-  useEffect(() => { const it = items[active]; if (!it || gate) return; const id = setTimeout(() => markWatched(it.video), 2500); return () => clearTimeout(id); }, [active, items]);   // dwell → watched
+  useEffect(() => { const it = items[active]; if (!it || gate) return; const id = setTimeout(() => markWatched(it.orig || it.video), 2500); return () => clearTimeout(id); }, [active, items]);   // dwell → watched
   useEffect(() => {
     const root = scroller.current; if (!root || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting && e.intersectionRatio >= 0.6) { const i = Number(e.target.dataset.idx); if (!Number.isNaN(i)) $active.set(i); } }, { root, threshold: [0.6] });
@@ -218,7 +228,9 @@ export function reel({ S }) {
       ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/70 px-8 text-center">${Icon("lucide:cloud-off", "text-5xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => loadSource(src)}>${T(t, "retry")}</button></section>`
       : !items.length
         ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/60 px-8 text-center">${Icon("lucide:film", "text-5xl")}<div>${T(t, "empty")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
-        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} t=${t} key=${it.video + i} />`);
+        : errCount >= 3
+          ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/70 px-8 text-center">${Icon("lucide:link-2-off", "text-5xl")}<div class="font-medium text-white">${T(t, "signedSource")}</div><div class="text-sm text-white/60">${hostOf(src)}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl mt-1" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
+          : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} t=${t} key=${(it.orig || it.video) + i} />`);
 
   return html`<${Fragment}>
     <div ref=${scroller} class="fixed inset-0 z-0 bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain" style="scrollbar-width:none">${body}</div>

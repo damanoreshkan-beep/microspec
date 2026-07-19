@@ -29,6 +29,9 @@ const ALLOW_FLUX = [/(^|\.)bfl\.ai$/i, /(^|\.)bfl\.ml$/i];
 const UA ="Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
 const UA_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36";
+// Signed / expiring CDN URL markers — a source whose video URLs mostly carry these hands out one-time,
+// IP+time-bound links (e.g. tube-site previews) that won't play once re-fetched from another IP/session.
+const SIGN_RX = /[?&](?:validto|validfrom|expires?|token|signature|sig|policy|hash|key-pair-id|x-amz-[a-z-]+|__token__|st|e)=/i;
 // SSRF guard for the arbitrary-URL video extractor: only http(s), and the resolved IP must not be private/loopback
 // (so a user-supplied URL can never make the proxy hit our own metadata/LAN). Best-effort single-lookup check.
 const PRIVATE_IP = /^(?:0\.|10\.|127\.|169\.254\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.|::1$|fe80:|fc|fd)/i;
@@ -269,7 +272,9 @@ const server = http.createServer(async (req, res) => {
       const ct = r.headers.get("content-type") || "";
       const J = { ...CORS, "content-type": "application/json" };
       if (!/html|xml|json/i.test(ct)) return send(res, 200, J, JSON.stringify({ items: [], next: null, note: "not an html page" }));
-      send(res, 200, J, JSON.stringify(parseVideos(await r.text(), r.url)));
+      const data = parseVideos(await r.text(), r.url);
+      if (data.items.length) data.ephemeral = data.items.filter((i) => SIGN_RX.test(i.video)).length >= Math.ceil(data.items.length * 0.6);
+      send(res, 200, J, JSON.stringify(data));
     } catch { send(res, 502, CORS, "upstream error"); }
     finally { clearTimeout(t); }
     return;
@@ -284,6 +289,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const headers = { "user-agent": FRAME_UA, "accept-language": "en-US,en;q=0.9", "accept": "text/html,application/xhtml+xml,image/avif,image/webp,*/*;q=0.8", "referer": src.origin + "/" };
       if (cookieJar.has(host)) headers.cookie = cookieJar.get(host);
+      if (req.headers.range) headers.range = req.headers.range;                             // stream video: forward byte ranges
       const r = await fetch(src.href, { headers, signal: ctrl.signal, redirect: "follow" });
       const setC = r.headers.getSetCookie?.() || [];                                       // capture the click-through cookies
       if (setC.length) { const map = new Map((cookieJar.get(host) || "").split("; ").filter(Boolean).map((c) => [c.split("=")[0], c])); for (const c of setC) { const kv = c.split(";")[0].trim(); if (kv) map.set(kv.split("=")[0], kv); } cookieJar.set(host, [...map.values()].join("; ")); }
@@ -292,7 +298,11 @@ const server = http.createServer(async (req, res) => {
       if (/text\/html/i.test(ct)) return send(res, 200, { ...CORS, "content-type": "text/html; charset=utf-8" }, rewriteHtml(await r.text(), src.href));
       if (/text\/css/i.test(ct)) return send(res, 200, { ...CORS, "content-type": "text/css; charset=utf-8" }, rewriteCss(await r.text(), src.href));
       const ab = await r.arrayBuffer();                                                    // images / video / js / fonts: pass through as-is
-      send(res, r.status, { ...CORS, "content-type": ct || "application/octet-stream", "cache-control": "public, max-age=3600" }, Buffer.from(ab));
+      const oh = { ...CORS, "content-type": ct || "application/octet-stream", "accept-ranges": "bytes" };
+      const cr = r.headers.get("content-range"); if (cr) oh["content-range"] = cr;         // 206 partial for <video> seeking
+      const cl = r.headers.get("content-length"); if (cl) oh["content-length"] = cl;
+      if (!/^(?:video|audio)\//i.test(ct)) oh["cache-control"] = "public, max-age=3600";   // don't cache signed/expiring media
+      send(res, r.status, oh, Buffer.from(ab));
     } catch { send(res, 502, CORS, "frame upstream error"); }
     finally { clearTimeout(t); }
     return;

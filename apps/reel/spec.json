@@ -11,6 +11,13 @@
       "view": "reel"
     },
     {
+      "id": "sources",
+      "type": "tool",
+      "icon": "lucide:layout-grid",
+      "label": "tabSources",
+      "view": "sources"
+    },
+    {
       "id": "me",
       "type": "profile",
       "icon": "lucide:user",

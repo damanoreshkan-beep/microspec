@@ -314,7 +314,7 @@ const fire = (s, time) => {
 };
 const tick = () => { const e = eng; if (!e) return; const spb = 60 / $bpm.get() / 4, sw = $fx.get().swing; if (nextT < e.ctx.currentTime) nextT = e.ctx.currentTime; while (nextT < e.ctx.currentTime + 0.1) { const s = stepN; fire(s, nextT + (s % 2 ? sw * spb : 0)); nextT += spb; stepN = (s + 1) % N; } };
 const draw = () => { const e = eng; if (e) { const now = e.ctx.currentTime; while (q.length && q[0].time <= now) $cur.set(q.shift().s); } raf = requestAnimationFrame(draw); };
-const start = () => { const e = ensure(); $playing.set(true); if (!e) return; nextT = e.ctx.currentTime + 0.06; stepN = 0; sched = setInterval(tick, 25); raf = requestAnimationFrame(draw); setMeta(curTitle()); try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; } catch {  } };
+const start = () => { const e = ensure(); $playing.set(true); if (!e) return; if (sched) clearInterval(sched); if (raf) cancelAnimationFrame(raf); q = []; nextT = e.ctx.currentTime + 0.06; stepN = 0; sched = setInterval(tick, 25); raf = requestAnimationFrame(draw); setMeta(curTitle()); try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; } catch {  } };
 const stop = () => { if (sched) clearInterval(sched); if (raf) cancelAnimationFrame(raf); sched = null; raf = null; q = []; $playing.set(false); $cur.set(-1); try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused"; } catch {  } };
 
 const curTitle = () => {

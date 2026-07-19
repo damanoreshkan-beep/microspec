@@ -18,6 +18,7 @@
   "sub": "Subscribe",
   "unsub": "Unsubscribe",
   "noSubs": "Nothing subscribed yet",
+  "clearWatched": "Clear watch history ({n})",
   "profTheme": "Dark theme",
   "profLang": "Language",
   "profTagline": "Paste any page URL and every video on it becomes a full-screen, auto-scrolling reel — the next pages load themselves as you swipe.",

@@ -136,10 +136,28 @@ function parseVideos(html, base) {
     const title = ((md.title && decodeEntities(String(md.title)).trim()) || vtitle.get(k) || humanize(k) || "video").slice(0, 140);
     items.push({ video: c.url, title, poster: c.poster || md.poster || proximity(c.pos) || null });
   }
+  // ── next-page discovery, layered (most reliable first): <link|a rel=next> → an anchor that READS like "next"
+  // by aria-label / class / short link text (multilingual, excluding "previous") → a ?page-style param bump.
+  // (A JS "load more" button that fires XHR has no href and can't be followed without a browser.) ──
+  const NEXT_RX = /(?:^|[^a-zа-я])(?:next|older|newer|load\s*more|show\s*more|näch|weiter|suivant|pró?xim|siguiente|successiv|volgende|næste|nästa|następn|далі|наступн|вперед|показати ще|ще|дальше|ещё|еще)(?:[^a-zа-я]|$)|[»›→]/i;
+  const PREV_RX = /(?:^|[^a-zа-я])(?:prev(?:ious)?|zurück|précéd|anterior|vorige|forrige|föregå|poprzedn|попередн|назад|предыдущ)(?:[^a-zа-я]|$)|[«‹←]/i;
+  const badHref = (h) => !h || /^(?:#|javascript:|mailto:|tel:)/i.test(h);
   let next = null;
-  const rel = html.match(/<(?:a|link)\b[^>]*\brel=["']next["'][^>]*\bhref=["']([^"']+)["']/i) || html.match(/<(?:a|link)\b[^>]*\bhref=["']([^"']+)["'][^>]*\brel=["']next["']/i);
-  if (rel) next = abs(rel[1]);
-  else { try { const u = new URL(base); for (const key of ["page", "p", "pg", "paged", "offset", "start"]) { if (u.searchParams.has(key)) { const n = parseInt(u.searchParams.get(key), 10); if (!isNaN(n)) { u.searchParams.set(key, (key === "offset" || key === "start") ? n + Math.max(1, items.length) : n + 1); next = u.href; break; } } } } catch { /* no cursor */ } }
+  const relm = html.match(/<(?:a|link)\b[^>]*\brel=["'][^"']*\bnext\b[^"']*["'][^>]*\bhref=["']([^"']+)["']/i) || html.match(/<(?:a|link)\b[^>]*\bhref=["']([^"']+)["'][^>]*\brel=["'][^"']*\bnext\b[^"']*["']/i);
+  if (relm && !badHref(relm[1])) next = abs(relm[1]);
+  if (!next) {
+    for (const m of html.matchAll(/<a\b([^>]*?)\bhref=["']([^"']+)["']([^>]*)>([\s\S]{0,160}?)<\/a>/gi)) {
+      const href = m[2]; if (badHref(href)) continue;
+      const attrs = m[1] + " " + m[3];
+      const aria = (attrs.match(/\baria-label=["']([^"']*)["']/i) || [, ""])[1];
+      const cls = (attrs.match(/\bclass=["']([^"']*)["']/i) || [, ""])[1];
+      const txt = decodeEntities(m[4].replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+      if (PREV_RX.test(`${aria} ${txt} ${cls.replace(/[-_]/g, " ")}`)) continue;
+      const classNext = /\bnext\b/i.test(cls) || /\b(?:pagination|pager|load[-_]?more)\b/i.test(cls);
+      if (NEXT_RX.test(aria) || classNext || (txt.length <= 20 && NEXT_RX.test(txt))) { const a = abs(href); if (a && a !== base) { next = a; break; } }
+    }
+  }
+  if (!next) { try { const u = new URL(base); for (const key of ["page", "p", "pg", "paged", "offset", "start", "from", "skip"]) { if (u.searchParams.has(key)) { const n = parseInt(u.searchParams.get(key), 10); if (!isNaN(n)) { u.searchParams.set(key, (key === "offset" || key === "start" || key === "skip") ? n + Math.max(1, items.length) : n + 1); next = u.href; break; } } } } catch { /* no cursor */ } }
   return { items, next };
 }
 

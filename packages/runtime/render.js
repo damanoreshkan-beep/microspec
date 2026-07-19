@@ -630,11 +630,41 @@ function Dock() {
 }
 
 function Toast() {
-  const key = useStore(A.S.toast), t = useStore(A.S.t), loc = useStore(A.S.locale);
+  const key = useStore(A.S.toast), undo = useStore(A.S.undo), t = useStore(A.S.t), loc = useStore(A.S.locale);
+  const band = "position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:calc(var(--dock-h) + 0.75rem)";
+  // Interactive undo snackbar (reversible deletes). The outer band stays pointer-events-none so it never eats
+  // a tap meant for the content beneath; only the snackbar itself is tappable, and it sits ABOVE the dock.
+  if (undo) {
+    const label = undo.label ? `«${undo.label}» ` : "";
+    return html`<div data-toast class="pointer-events-none" style=${band}>
+      <div class="pointer-events-auto alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-2 pl-4 pr-2 font-medium flex items-center gap-2 w-max max-w-[calc(100vw-1.5rem)] ms-reveal">
+        ${Icon("lucide:trash-2", "text-base-content/55 text-lg shrink-0")}<span class="truncate">${label}${sys("deleted", loc)}</span>
+        <button data-undo class="btn btn-sm btn-ghost text-primary font-semibold rounded-xl gap-1.5 shrink-0" onClick=${() => { const fn = A.S.undo.get()?.fn; A.S.undo.set(null); fn?.(); }}>${Icon("lucide:undo-2", "text-base")}${sys("undo", loc)}</button>
+      </div>
+    </div>`;
+  }
   const isExit = key === "__exit__";
   const text = isExit ? sys("exit", loc) : key === "saved" ? T(t, "toastSaved") : key === "removed" ? T(t, "toastRemoved") : key;
   const icon = isExit ? Icon("lucide:log-out", "text-base-content/70 text-lg") : Icon("lucide:check-circle", "text-success text-lg");
-  return html`<div data-toast class="pointer-events-none" style="position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:calc(var(--dock-h) + 0.75rem)"><div class=${`alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-3 px-5 font-medium flex items-center gap-2 w-max transition-opacity duration-200 ${key ? "opacity-100" : "opacity-0"}`}>${icon}${text || ""}</div></div>`;
+  return html`<div data-toast class="pointer-events-none" style=${band}><div class=${`alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-3 px-5 font-medium flex items-center gap-2 w-max transition-opacity duration-200 ${key ? "opacity-100" : "opacity-0"}`}>${icon}${text || ""}</div></div>`;
+}
+
+// Danger-confirm sheet — the irreversible half of delete safety. History-backed via S.confirm (Back = cancel,
+// wired in index.js overlays). The copy carries the safety (caller names the thing + what's lost); the danger
+// button uses the real verb, Cancel is first so it's what a dialog auto-focuses — never the destructive one.
+function ConfirmSheet() {
+  const c = useStore(A.S.confirm), loc = useStore(A.S.locale);
+  const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; c ? d.showModal?.() : d.close?.(); }, [c]);
+  const close = () => A.S.confirm.set(null);
+  const go = () => { const fn = c?.onConfirm; close(); fn?.(); };
+  return html`<dialog id="confirm" ref=${ref} class="modal modal-bottom" onClose=${close}><div class="modal-box rounded-t-3xl pb-8">
+    <h3 class="font-bold text-lg flex items-start gap-2">${Icon("lucide:triangle-alert", "text-error text-xl shrink-0 mt-0.5")}<span>${c?.title || ""}</span></h3>
+    ${c?.body ? html`<p class="text-sm text-base-content/70 mt-2 pl-8">${c.body}</p>` : null}
+    <div class="flex gap-2 mt-5">
+      <button id="confirm-cancel" class="btn btn-ghost flex-1 rounded-2xl" onClick=${close}>${sys("cancel", loc)}</button>
+      <button id="confirm-go" data-haptic="bump" class="btn btn-error flex-1 rounded-2xl" onClick=${go}>${c?.verb || ""}</button>
+    </div>
+  </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
 }
 
 // ---- converter family -------------------------------------------------------
@@ -696,7 +726,7 @@ function TabView({ tab }) {
   if (tab.type === "converter") return html`<${ConverterView} tab=${tab} />`;
   if (tab.type === "dashboard") return html`<${DashboardView} tab=${tab} />`;
   if (tab.type === "profile") return html`<${Profile} tab=${tab} />`;
-  if (tab.type === "tool") { const V = VIEWS[tab.view]; return V ? html`<${V} t=${A.S.t.get()} tab=${tab} S=${A.S} toast=${A.toast} screen=${A.S.screen.get()} openScreen=${(s) => A.S.screen.set(s)} closeScreen=${() => A.S.screen.set(null)} />` : Empty("lucide:wrench", `view "${tab.view}" not provided`, null); }
+  if (tab.type === "tool") { const V = VIEWS[tab.view]; return V ? html`<${V} t=${A.S.t.get()} tab=${tab} S=${A.S} toast=${A.toast} undo=${A.undo} confirm=${A.confirm} screen=${A.S.screen.get()} openScreen=${(s) => A.S.screen.set(s)} closeScreen=${() => A.S.screen.set(null)} />` : Empty("lucide:wrench", `view "${tab.view}" not provided`, null); }
   return Empty("lucide:construction", `${tab.type} view — coming soon`, null);
 }
 
@@ -719,6 +749,7 @@ export function App() {
     <${DockFade} />
     <${InstallModal} />
     <${QrModal} />
+    <${ConfirmSheet} />
     <${Dock} />
     <${Toast} />
   </${Fragment}>`;

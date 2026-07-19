@@ -43,11 +43,20 @@ export default [
     },
   },
   {
-    name: "видалення звички з деталей", run: async (h) => {
+    // High-consequence delete (habit + its whole history) → a danger-confirm, and it's history-backed:
+    // #d-del opens the sheet but deletes NOTHING until confirmed; Back cancels it and the habit survives.
+    name: "видалення звички: конфірм, Back скасовує, підтвердження видаляє", run: async (h) => {
       const before = await h.count("[data-habit]");
       await h.click("[data-open]"); await h.wait(200);
-      await h.click("#d-del"); await h.wait(300);
-      h.expect((await h.count("[data-habit]")) === before - 1, "звичка не видалилась");
+      await h.click("#d-del"); await h.wait(200);
+      h.expect((await h.prop("#confirm", "open")) === true, "конфірм не відкрився");
+      await h.back(); await h.wait(200);
+      h.expect((await h.prop("#confirm", "open")) !== true, "Back не закрив конфірм");
+      h.expect((await h.count("#d-back")) === 1, "деталі закрились — конфірм не мав їх чіпати");
+      h.expect((await h.count("[data-habit]")) === before, "звичку видалено попри скасування");
+      await h.click("#d-del"); await h.wait(200);
+      await h.click("#confirm-go"); await h.wait(300);
+      h.expect((await h.count("[data-habit]")) === before - 1, "підтверджене видалення не спрацювало");
     },
   },
   {

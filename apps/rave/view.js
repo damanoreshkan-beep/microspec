@@ -540,7 +540,7 @@ const Spectrum = ({ tracks, live, cur }) => {
 // to edit it; the Play button auditions it right here, so the engine (module scope) keeps running and this
 // list simply reflects it. "Which item is playing" is read off the sound — the loaded state's signature vs
 // each saved beat's — so it stays truthful no matter how the beat was last changed.
-export function raveSaved({ S }) {
+export function raveSaved({ S, undo }) {
   const t = useStore(S.t);
   useEffect(() => { uiT = t; }, [t]);
   const [list, setList] = useState(null);
@@ -553,7 +553,12 @@ export function raveSaved({ S }) {
   const loadBeat = (it) => { $tracks.set({ ...empty(), ...(it.tracks || {}) }); $bpm.set(it.bpm || 130); $fx.set({ ...DFX, ...(it.fx || {}) }); $riff.set(it.riff?.length === N ? it.riff : RIFF); };
   const open = (it) => { loadBeat(it); S.tab.set("beat"); };
   const play = (it) => { if (isCur(it)) { stop(); return; } loadBeat(it); start(); setMeta(it.name || T(t, "beatWord")); };
-  const del = async (id) => { try { await SAVES.remove(id); } catch { /* */ } load(); };
+  // Reversible → optimistic delete + a 5s undo (re-put the captured record), not a confirm. See runtime store.undo.
+  const del = async (it) => {
+    const { id, _ts, ...rec } = it;
+    try { await SAVES.remove(id); } catch { /* */ } load();
+    undo?.(async () => { try { await SAVES.put(id, rec); } catch { /* */ } load(); }, it.name || T(t, "beatWord"));
+  };
 
   if (!useReveal(list !== null || demo)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-base-content/60"><div class="w-9 h-9 rounded-full bg-base-300 shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
   const items = demo ? DEMO_SAVES : list;
@@ -570,7 +575,7 @@ export function raveSaved({ S }) {
           </span>
           <${Spectrum} tracks=${it.tracks} live=${on} cur=${cur} />
         </button>
-        <button data-del aria-label=${T(t, "del")} class="btn btn-ghost btn-sm btn-circle text-base-content/60" onClick=${() => del(it.id)}>${Icon("lucide:trash-2", "text-lg")}</button>
+        <button data-del aria-label=${T(t, "del")} data-haptic="bump" class="btn btn-ghost btn-sm btn-circle text-base-content/60" onClick=${() => del(it)}>${Icon("lucide:trash-2", "text-lg")}</button>
       </div>
     </div>`; })}
   </div>`;

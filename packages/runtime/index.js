@@ -35,6 +35,10 @@ export function start(spec, arg2) {
   }, { capture: true, passive: true });
 
   render(html`<${App} />`, document.getElementById("app"));
+  // Dissolve the HTML instant app-shell (#boot) now the live app is painted underneath it — a crossfade from
+  // the wordmark/loading-line shell to the real chrome in the same places, so first load never flashes blank.
+  const boot = document.getElementById("boot");
+  if (boot && !/[?&]__boot\b/.test(location.search)) { requestAnimationFrame(() => { boot.classList.add("gone"); setTimeout(() => boot.remove(), 450); }); } // ?__boot freezes the shell for review/gates
   S.tab.listen(() => { window.scrollTo({ top: 0 }); if (S.screen.get()) S.screen.set(null); }); // leaving a tab closes its sub-screen
 
   // Back-button routing invariant: hardware/browser Back closes an open overlay (detail, sheet,

@@ -27,7 +27,7 @@ const MOCK = [
 
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
 const $muted = persistentAtom("reel:muted", "1");                                        
-const $subs = persistentAtom("reel:subs", "[]", { encode: JSON.stringify, decode: JSON.parse });
+const $subs = persistentAtom("reel:subs", [], { encode: JSON.stringify, decode: JSON.parse });
 const $items = atom(gate ? MOCK : []);
 const $next = atom(null);
 const $loading = atom(!gate);

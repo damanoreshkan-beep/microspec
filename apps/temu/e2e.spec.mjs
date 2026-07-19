@@ -1,32 +1,20 @@
 // temu — real AliExpress products via the /feed/shop proxy; the headless gate seeds a deterministic
-// fixture (from the search query) so it renders offline and still changes when the query does. dev mode
-// defaults ON (curated). Cart/starred/dev persist in localStorage; tests tolerate that. No emoji.
+// fixture (from the category's query) so it renders offline and changes with the category. Cart/starred
+// persist in localStorage; tests tolerate that. No emoji.
 export default [
   {
-    name: "store renders: 9 categories, dev mode ON, product grid", run: async (h) => {
+    name: "store renders: 9 category tabs + product grid", run: async (h) => {
       h.expect((await h.count("[data-cat]")) === 9, "має бути 9 категорій");
       h.expect((await h.count("[data-grid] [data-card]")) >= 4, "порожня сітка товарів");
-      const dev = await h.text("[data-dev]");
-      h.expect(/dev mode/.test(dev) && /on/i.test(dev), "dev mode не увімкнено за замовчуванням");
-    },
-  },
-  {
-    name: "dev mode toggles the catalog (curated ↔ mainstream)", run: async (h) => {
-      const curated = await h.text("[data-grid]");
-      await h.click("[data-dev]"); await h.wait(180);
-      const mainstream = await h.text("[data-grid]");
-      h.expect(mainstream !== curated, "перемикання dev mode не змінило каталог");
-      const dev = await h.text("[data-dev]");
-      h.expect(/dev mode/.test(dev) && /off/i.test(dev), "dev mode не вимкнувся");
-      await h.click("[data-dev]"); await h.wait(150); // back to curated (ON)
+      h.expect((await h.count("[data-grid] img")) >= 4, "немає зображень товарів");
     },
   },
   {
     name: "category switch changes the grid", run: async (h) => {
       const before = await h.text("[data-grid]");
-      await h.click('[data-cat="rigs"]'); await h.wait(150);
+      await h.click('[data-cat="rigs"]'); await h.wait(200);
       h.expect((await h.text("[data-grid]")) !== before, "зміна категорії не оновила сітку");
-      await h.click('[data-cat="apparel"]'); await h.wait(120);
+      await h.click('[data-cat="keebs"]'); await h.wait(150);
     },
   },
   {
@@ -41,9 +29,10 @@ export default [
     },
   },
   {
-    name: "product detail (історія-backed, Back закриває)", run: async (h) => {
+    name: "product detail: buy-link out, історія-backed (Back закриває)", run: async (h) => {
       await h.click("[data-card]"); await h.wait(200);
       h.expect((await h.prop("#detailsheet", "open")) === true, "деталі товару не відкрились");
+      h.expect((await h.count("[data-buy]")) === 1, "немає кнопки покупки на AliExpress");
       await h.back(); await h.wait(200);
       h.expect((await h.prop("#detailsheet", "open")) !== true, "Back не закрив деталі");
     },
@@ -61,9 +50,9 @@ export default [
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);
-      h.expect(/Store|Apparel|staging/i.test(await h.bodyText()), "не EN");
+      h.expect(/Store|staging|Keebs/i.test(await h.bodyText()), "не EN");
       await h.click('[data-loc="uk"]'); await h.wait(250);
-      h.expect(/Крамниця|Одяг|Ноутбуки/i.test(await h.bodyText()), "не UA");
+      h.expect(/Крамниця|Ноутбуки|стейджинг/i.test(await h.bodyText()), "не UA");
       await h.click('[data-tab="shop"]'); await h.wait(120);
     },
   },

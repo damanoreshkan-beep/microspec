@@ -1,8 +1,8 @@
-// temu — a real dev/hacker marketplace over live AliExpress data (via our /feed/shop proxy). A `dev mode`
-// flag (default ON) makes every category a curated hacker search (mechanical keyboard, ThinkPad, Flipper
-// Zero…); flip it OFF and it's the loud mainstream search — the contrast is the joke, but the products,
-// images, prices and discounts are all real and current. Dark terminal aesthetic; no emoji. Product detail,
-// a `staging area` cart + `starred` wishlist (both persisted), and buy-links out to AliExpress.
+// temu — a dev/hacker marketplace over live AliExpress data (via our /feed/shop proxy). Every category is a
+// real search for what an engineer actually buys (mechanical keyboards, ThinkPads, Flipper Zero…). Real
+// products, images, prices and discounts. Dark, minimal, no emoji. Product detail, a `staging area` cart +
+// `starred` wishlist (both persisted), buy-links out to AliExpress. Images are re-served same-origin through
+// /feed/img (AliExpress CDN renders unreliably direct).
 import { html } from "htm/preact";
 import { Fragment } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
@@ -17,11 +17,8 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 const TILE = "background-color:#0C0C0F;background-image:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px);background-size:9px 9px";
 const SHOP = "https://jobs-map.mooo.com/feed/shop";
 const IMGPROXY = "https://jobs-map.mooo.com/feed/img";
-// Browsers render AliExpress CDN images unreliably (a server-side fetch always works), so re-serve them
-// same-origin through our proxy — reliable + SW-cacheable. Gate/mock data-URIs pass through untouched.
 const imgSrc = (u) => (u && !u.startsWith("data:")) ? `${IMGPROXY}?url=${encodeURIComponent(u)}` : u;
 
-const $dev = persistentAtom("temu.dev.v1", "1");
 const $cart = persistentAtom("temu.cart.v2", [], { encode: JSON.stringify, decode: JSON.parse });
 const $star = persistentAtom("temu.star.v2", [], { encode: JSON.stringify, decode: JSON.parse });
 const slim = (p) => ({ id: p.id, title: p.title, price: p.price, orig: p.orig, discount: p.discount, img: p.img, url: p.url });
@@ -29,54 +26,48 @@ const slim = (p) => ({ id: p.id, title: p.title, price: p.price, orig: p.orig, d
 export function temu({ S, toast, undo, screen, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const sc = useStore(S.screen);
-  const devRaw = useStore($dev), cart = useStore($cart), star = useStore($star);
-  const dev = devRaw !== "0";
-  const [catId, setCatId] = useState("apparel");
-  const [products, setProducts] = useState(gate ? gateFixture("plain black hoodie") : null);
+  const cart = useStore($cart), star = useStore($star);
+  const [catId, setCatId] = useState(CATS[0].id);
+  const [products, setProducts] = useState(gate ? gateFixture(CATS[0].q) : null);
   const [err, setErr] = useState(false);
   const [detail, setDetail] = useState(null);
   const cat = catById(catId);
-  const query = dev ? cat.dev : cat.main;
 
   useEffect(() => {
-    if (gate) { setProducts(gateFixture(query)); setErr(false); return; }
+    if (gate) { setProducts(gateFixture(cat.q)); setErr(false); return; }
     setProducts(null); setErr(false);
     let live = true;
-    fetch(`${SHOP}?q=${encodeURIComponent(query)}`)
+    fetch(`${SHOP}?q=${encodeURIComponent(cat.q)}`)
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((d) => { if (live) { setProducts(d.items || []); setErr(false); } })
       .catch(() => { if (live) { setProducts([]); setErr(true); } });
     return () => { live = false; };
-  }, [catId, dev]);
+  }, [catId]);
 
   const inCart = (id) => cart.some((p) => p.id === id), isStar = (id) => star.some((p) => p.id === id);
   const addCart = (p) => { if (!inCart(p.id)) $cart.set([...cart, slim(p)]); toast(T(t, "staged")); };
-  const removeCart = (id) => { $cart.set(cart.filter((p) => p.id !== id)); const was = cart.find((p) => p.id === id); undo(() => $cart.set([...($cart.get()), was]), was?.title || ""); };
+  const removeCart = (id) => { const was = cart.find((p) => p.id === id); $cart.set(cart.filter((p) => p.id !== id)); undo(() => $cart.set([...($cart.get()), was]), was?.title || ""); };
   const toggleStar = (p) => $star.set(isStar(p.id) ? star.filter((x) => x.id !== p.id) : [...star, slim(p)]);
   const openDetail = (p) => { setDetail(p); openScreen("detail"); };
 
   return html`<${Fragment}>
     <div class="flex flex-col gap-4">
-      <div class="sticky top-0 z-20 -mx-4 px-4 py-2 bg-base-100/80 backdrop-blur-xl border-b border-base-content/10 flex items-center gap-2">
-        <button data-dev onClick=${() => $dev.set(dev ? "0" : "1")} class=${`flex items-center gap-2 min-w-0 rounded-full border pl-2.5 pr-3 py-1.5 font-mono text-sm transition ${dev ? "border-secondary/50 text-secondary bg-secondary/10" : "border-base-300 text-base-content/60"}`}>
-          <span class=${`shrink-0 w-2 h-2 rounded-full ${dev ? "bg-secondary" : "border border-base-content/45"}`}></span>
-          <span class="truncate">dev mode · ${dev ? T(t, "stOn") : T(t, "stOff")}</span>
-        </button>
-        <div class="flex-1 min-w-2"></div>
+      <!-- glass island: scrolling category tabs + cart / starred, minimal (no hard borders) -->
+      <div class="sticky top-0 z-20 -mx-4 px-4 py-2 bg-base-100/70 backdrop-blur-xl flex items-center gap-2">
+        <div class="relative flex-1 min-w-0">
+          <div class="flex gap-1 overflow-x-auto -my-1 py-1 pr-6" role="tablist">
+            ${CATS.map((c) => html`<button role="tab" data-cat=${c.id} aria-selected=${catId === c.id} onClick=${() => setCatId(c.id)} class=${`shrink-0 rounded-full px-3 py-1.5 text-sm font-mono transition-colors ${catId === c.id ? "bg-primary text-primary-content" : "text-base-content/55 hover:text-base-content/90"}`} key=${c.id}>${T(t, "cat_" + c.id)}</button>`)}
+          </div>
+          <div class="pointer-events-none absolute right-0 inset-y-0 w-6 bg-gradient-to-l from-base-100/70 to-transparent"></div>
+        </div>
         <${IconBtn} attr="data-starred-open" label=${T(t, "starredTitle")} icon="lucide:bookmark" n=${star.length} onClick=${() => openScreen("starred")} accent=${false} />
         <${IconBtn} attr="data-cart-open" label=${T(t, "cartTitle")} icon="lucide:shopping-bag" n=${cart.length} onClick=${() => openScreen("cart")} accent=${true} />
       </div>
 
-      <div class="-mt-1 text-[0.68rem] font-mono text-base-content/60">${dev ? T(t, "devSubOn") : T(t, "devSubOff")} · <span class="text-base-content/75">${query}</span></div>
-
-      <div class="flex gap-1 overflow-x-auto -mx-4 px-4 pb-1" role="tablist">
-        ${CATS.map((c) => html`<button role="tab" data-cat=${c.id} aria-selected=${catId === c.id} onClick=${() => setCatId(c.id)} class=${`shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-mono transition-colors border ${catId === c.id ? "border-primary/40 text-primary bg-primary/10" : "border-transparent text-base-content/55 hover:text-base-content/80"}`} key=${c.id}>${T(t, "cat_" + c.id)}</button>`)}
-      </div>
-
       ${err && (!products || !products.length)
-      ? html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-3 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span class="text-sm">${T(t, "loadFail")}</span></div>`
+      ? html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-3 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span class="text-sm">${T(t, "loadFail")}</span></div>`
       : products == null
-        ? html`<div class="grid grid-cols-2 gap-3">${[0, 1, 2, 3].map((i) => html`<div class="rounded-2xl border border-base-300 overflow-hidden" key=${i}><div class="aspect-square"><${Pixels} /></div><div class="p-3 flex flex-col gap-2"><div class="h-3 rounded bg-base-300"></div><div class="h-3 w-2/3 rounded bg-base-300"></div></div></div>`)}</div>`
+        ? html`<div class="grid grid-cols-2 gap-3">${[0, 1, 2, 3].map((i) => html`<div class="rounded-2xl overflow-hidden bg-base-100" key=${i}><div class="aspect-square"><${Pixels} /></div><div class="p-3 flex flex-col gap-2"><div class="h-3 rounded bg-base-300"></div><div class="h-3 w-2/3 rounded bg-base-300"></div></div></div>`)}</div>`
         : html`<div data-grid data-live class="grid grid-cols-2 gap-3">
             ${products.map((p) => html`<${Card} p=${p} t=${t} starred=${isStar(p.id)} onOpen=${() => openDetail(p)} onAdd=${() => addCart(p)} onStar=${() => toggleStar(p)} key=${p.id} />`)}
           </div>`}
@@ -89,9 +80,9 @@ export function temu({ S, toast, undo, screen, openScreen, closeScreen }) {
 }
 
 function IconBtn({ attr, label, icon, n, onClick, accent }) {
-  return html`<button ...${{ [attr]: "" }} onClick=${onClick} aria-label=${label} class="relative w-9 h-9 grid place-items-center rounded-full border border-base-300 text-base-content/75 active:scale-95 transition">
+  return html`<button ...${{ [attr]: "" }} onClick=${onClick} aria-label=${label} class="relative shrink-0 w-9 h-9 grid place-items-center rounded-full text-base-content/75 hover:text-base-content active:scale-95 transition">
     ${Icon(icon, "text-lg")}
-    ${n > 0 ? html`<span class=${`absolute -top-1 -right-1 min-w-4 h-4 px-1 grid place-items-center rounded-full text-[0.6rem] font-bold tabular-nums ${accent ? "bg-secondary text-secondary-content" : "bg-base-content text-base-100"}`}>${n}</span>` : null}
+    ${n > 0 ? html`<span class=${`absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 grid place-items-center rounded-full text-[0.6rem] font-bold tabular-nums ${accent ? "bg-secondary text-secondary-content" : "bg-base-content text-base-100"}`}>${n}</span>` : null}
   </button>`;
 }
 
@@ -102,19 +93,19 @@ const Price = ({ p, big }) => html`<div class="flex items-baseline gap-1.5 flex-
 
 // stretched-link card: the image+text is a full-area click target (→ detail); star/add float above it.
 function Card({ p, t, starred, onOpen, onAdd, onStar }) {
-  return html`<div class="relative rounded-2xl border border-base-300 bg-base-100 overflow-hidden">
+  return html`<div class="relative rounded-2xl bg-base-100 overflow-hidden">
     <button data-card onClick=${onOpen} aria-label=${p.title} class="absolute inset-0 z-0"></button>
     <div class="pointer-events-none">
       <div class="relative aspect-square overflow-hidden" style=${TILE}>
         <img src=${imgSrc(p.img)} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover" />
-        ${p.discount ? html`<span class="absolute top-2 left-2 rounded bg-orange-500 text-white text-[0.6rem] font-bold px-1.5 py-0.5">-${p.discount}%</span>` : null}
+        ${p.discount ? html`<span class="absolute top-2 left-2 rounded-md bg-orange-500 text-white text-[0.6rem] font-bold px-1.5 py-0.5">-${p.discount}%</span>` : null}
       </div>
       <div class="p-3 flex flex-col gap-1.5">
-        <div class="text-xs leading-tight line-clamp-2 min-h-[2rem] break-words">${p.title}</div>
+        <div class="text-xs leading-tight line-clamp-2 min-h-[2rem] break-words text-base-content/90">${p.title}</div>
         <${Price} p=${p} />
       </div>
     </div>
-    <button data-star onClick=${onStar} aria-pressed=${starred} aria-label=${`${T(t, "starredTitle")}: ${p.title}`} class=${`absolute top-2 right-2 z-10 w-8 h-8 grid place-items-center rounded-full backdrop-blur-sm transition ${starred ? "text-secondary bg-secondary/20" : "text-white/80 bg-black/35"}`}>${Icon(starred ? "lucide:bookmark-check" : "lucide:bookmark", "text-base")}</button>
+    <button data-star onClick=${onStar} aria-pressed=${starred} aria-label=${`${T(t, "starredTitle")}: ${p.title}`} class=${`absolute top-2 right-2 z-10 w-8 h-8 grid place-items-center rounded-full backdrop-blur-sm transition ${starred ? "text-secondary bg-secondary/20" : "text-white/85 bg-black/35"}`}>${Icon(starred ? "lucide:bookmark-check" : "lucide:bookmark", "text-base")}</button>
     <button data-add onClick=${onAdd} aria-label=${`${T(t, "add")}: ${p.title}`} class="absolute bottom-2 right-2 z-10 w-9 h-9 grid place-items-center rounded-full bg-primary text-primary-content shadow-lg active:scale-90 transition">${Icon("lucide:plus", "text-lg")}</button>
   </div>`;
 }
@@ -132,7 +123,7 @@ function DetailSheet({ open, onClose, p, t, starred, inCart, onAdd, onStar }) {
       ${p ? html`<div class="flex flex-col gap-4">
         <div class="relative aspect-square max-h-[52vh] rounded-2xl overflow-hidden" style=${TILE}>
           <img src=${imgSrc(p.img)} alt="" class="absolute inset-0 w-full h-full object-contain" />
-          ${p.discount ? html`<span class="absolute top-3 left-3 rounded bg-orange-500 text-white text-xs font-bold px-2 py-0.5">-${p.discount}%</span>` : null}
+          ${p.discount ? html`<span class="absolute top-3 left-3 rounded-md bg-orange-500 text-white text-xs font-bold px-2 py-0.5">-${p.discount}%</span>` : null}
         </div>
         <div class="text-sm leading-snug">${p.title}</div>
         <${Price} p=${p} big=${true} />

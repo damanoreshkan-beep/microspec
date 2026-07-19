@@ -9,14 +9,14 @@ const STREAM = "https://stream.wikimedia.org/v2/stream/recentchange";
 const WINDOW_MS = 60000; 
 
 const LANGS = [
-  ["uk", "Українська", "🇺🇦"], ["en", "English", "🌐"], ["de", "Deutsch", "🇩🇪"], ["fr", "Français", "🇫🇷"],
-  ["es", "Español", "🌐"], ["ru", "Русский", "🇷🇺"], ["it", "Italiano", "🇮🇹"], ["pl", "Polski", "🇵🇱"],
-  ["ja", "日本語", "🇯🇵"], ["pt", "Português", "🌐"], ["nl", "Nederlands", "🇳🇱"], ["zh", "中文", "🇨🇳"],
-  ["sv", "Svenska", "🇸🇪"], ["ar", "العربية", "🌐"], ["cs", "Čeština", "🇨🇿"], ["fa", "فارسی", "🇮🇷"],
-  ["tr", "Türkçe", "🇹🇷"], ["ko", "한국어", "🇰🇷"], ["fi", "Suomi", "🇫🇮"], ["he", "עברית", "🇮🇱"],
+  ["uk", "Українська"], ["en", "English"], ["de", "Deutsch"], ["fr", "Français"],
+  ["es", "Español"], ["ru", "Русский"], ["it", "Italiano"], ["pl", "Polski"],
+  ["ja", "日本語"], ["pt", "Português"], ["nl", "Nederlands"], ["zh", "中文"],
+  ["sv", "Svenska"], ["ar", "العربية"], ["cs", "Čeština"], ["fa", "فارسی"],
+  ["tr", "Türkçe"], ["ko", "한국어"], ["fi", "Suomi"], ["he", "עברית"],
 ];
 const PROJECTS = [["wd", "Wikidata"], ["commons", "Wikimedia Commons"], ["meta", "Meta-Wiki"]];
-const SCOPE_NAME = Object.fromEntries([...LANGS.map(([c, n, f]) => [c, `${f} ${n}`]), ...PROJECTS.map(([c, n]) => [c, n])]);
+const SCOPE_NAME = Object.fromEntries([...LANGS, ...PROJECTS].map(([c, n]) => [c, n]));
 
 function wikiCode(ev) {
   const s = ev.server_name || "";
@@ -128,7 +128,7 @@ export function pulse({ S }) {
       <label class="input input-bordered flex items-center gap-2 h-11 rounded-2xl">${Icon("lucide:search", "text-lg opacity-50")}<input id="q" type="search" class="grow" placeholder=${T(t, "search")} autocomplete="off" value=${q} onInput=${(e) => setQ(e.target.value)} /></label>
       <select id="scope" class="select select-bordered rounded-2xl w-full" value=${scope} onChange=${(e) => setScope(e.target.value)} aria-label=${T(t, "fScope")}>
         <option value="all">${T(t, "allScopes")}</option>
-        <optgroup label=${T(t, "gLangs")}>${LANGS.map(([c, n, fl]) => html`<option value=${c} key=${c}>${fl} ${n} · ${c}</option>`)}</optgroup>
+        <optgroup label=${T(t, "gLangs")}>${LANGS.map(([c, n]) => html`<option value=${c} key=${c}>${n} · ${c}</option>`)}</optgroup>
         <optgroup label=${T(t, "gProjects")}>${PROJECTS.map(([c, n]) => html`<option value=${c} key=${c}>${n}</option>`)}</optgroup>
       </select>
       <div class="flex gap-2">

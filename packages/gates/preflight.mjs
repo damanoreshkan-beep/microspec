@@ -89,6 +89,12 @@ async function preflight(appdir) {
 
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
+  { const emojiRe = /\p{Emoji_Presentation}/gu;
+    const scan = (label, text) => { const m = text.match(emojiRe); if (m) errs.push(`emoji ${[...new Set(m)].join(" ")} in ${label} — emoji are banned farm-wide; use a crafted vector (iconify lucide:*/mdi:*, an /_rt SVG like Sign) or plain words, never an emoji`); };
+    scan(srcFile, src);
+    scan("spec.json", JSON.stringify(spec));
+    for (const l of locales) scan(`i18n/${l}.json`, JSON.stringify(i18n[l])); }
+
   { const m = src.match(/\.toLocale(?:Date|Time)?String\(\s*(?:undefined\b|\))/);
     if (m) errs.push(`locale-blind \`${m[0]}…\` — pass the app locale, or return a raw value for the renderer to format (never bake a locale-frozen string in an adapter/view)`); }
 

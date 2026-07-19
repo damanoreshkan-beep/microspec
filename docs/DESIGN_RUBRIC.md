@@ -33,6 +33,30 @@ criteria below and emit the verdict.
 - **Clear hierarchy** — an obvious primary action; scannable, not flat or cluttered.
 - **Self-evident** — no hand-holding captions or hint text a good UI wouldn't need.
 
+## Modern baseline (2027 — the standing bar, applied without being asked)
+
+Every app is built to the *current* bar by default — nobody has to request "make it modern". This is the
+established language; match it and push it forward, never regress to generic. (Mirrored in the skill so it's
+a standing assumption, not a per-task ask.)
+
+- **Type:** the Geist superfamily (Geist + Geist Mono, Cyrillic) — never Inter/system defaults.
+- **Ink is the brand:** near-white primary; colour (purple secondary/accent, success/warning/error) is for
+  *meaning* only. `packages/runtime/theme.css`.
+- **Floating glass islands:** dock + header are `bg-base-100/80 backdrop-blur-xl` + hairline + rim; a tool
+  app's persistent controls become islands like them.
+- **One page scroll:** content flows in `<main>`; no `position:fixed` panel with a nested `overflow-y-auto`.
+  Overflow → a history-backed sheet (`S.screen`).
+- **Instant app-shell** (`#boot`), **liquid-glass sheets** (`.modal-box`), rounder radii, **haptics** on tap.
+- **Delete safety:** reversible → `store.undo` (undo-toast); severe → `store.confirm` (danger sheet).
+- **Floors that are also gates:** no spinners (skeletons), installable (build + verify PWA gates),
+  history-backed overlays, i18n parity (en + uk).
+- **No emoji, ever** — they're OS-specific colour clip-art, cheap and unthemeable. Use a crafted vector (iconify
+  `lucide:*`/`mdi:*`, a runtime SVG like `/_rt/zodiac.js` `Sign`) or, where a component can't render (a native
+  `<option>`, a data string), plain words. Preflight enforces it (`\p{Emoji_Presentation}`).
+
+When a genuinely new next-year pattern is relevant, do a quick trend-research pass, fold it in with restraint,
+and **update this section + the skill** so the baseline compounds.
+
 ## Verdict format (what the agent emits)
 
 ```json

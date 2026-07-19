@@ -1,0 +1,15 @@
+{
+  "id": "horoscope",
+  "theme": "signal",
+  "category": "play",
+  "tabs": [
+    { "id": "read", "type": "tool", "icon": "lucide:moon-star", "label": "tabRead", "view": "horoscope" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:moon-star",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

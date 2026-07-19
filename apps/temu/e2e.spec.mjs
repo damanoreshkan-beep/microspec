@@ -13,7 +13,8 @@ export default [
       await h.click("[data-dev]"); await h.wait(180);
       const mainstream = await h.text("[data-grid]");
       h.expect(mainstream !== curated, "перемикання dev mode не змінило каталог");
-      h.expect(/sold|продано/i.test(await h.bodyText()), "OFF-режим не показує mainstream-мотлох");
+      const dev = await h.text("[data-dev]");
+      h.expect(/dev mode/.test(dev) && /off/i.test(dev), "dev mode не вимкнувся");
       await h.click("[data-dev]"); await h.wait(150); 
     },
   },

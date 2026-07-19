@@ -199,4 +199,4 @@ setInterval(async () => {
   } catch {  } finally { clearTimeout(t); }
 }, 40000);
 
-server.listen(PORT, "127.0.0.1", () => console.log(`feed-proxy listening on 127.0.0.1:${PORT}`));
+server.listen(PORT, process.env.HOST || "127.0.0.1", () => console.log(`feed-proxy listening on 127.0.0.1:${PORT}`));

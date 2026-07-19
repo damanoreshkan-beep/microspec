@@ -13,5 +13,14 @@
   "eRate": "Too many requests — wait a moment",
   "eFailed": "Couldn't generate that",
   "eNetwork": "Network error — try again",
-  "eTimeout": "Took too long — try again"
+  "eTimeout": "Took too long — try again",
+  "profTheme": "Dark theme",
+  "profLang": "Language",
+  "install": "Install app",
+  "installTitle": "Install",
+  "installBtn": "Install",
+  "installDesc": "Works offline, opens like an app",
+  "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
+  "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
+  "close": "Close"
 }

@@ -64,6 +64,32 @@ function parseHoroscope(html) {
   return { date, text, ratings };
 }
 
+// ── AliExpress search → compact JSON (keyless, like the horoscope scrape). The query is sanitised to a safe
+// slug and interpolated into a CONSTANT aliexpress.com URL (no SSRF surface); prices come back in the
+// request's geo currency (₴ from the VPS). Cached per (slug,page). Parses the embedded itemList JSON. ──
+const UA_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36";
+const SHOP_TTL = 15 * 60_000;
+const shopCache = new Map();
+const shopSlug = (q) => String(q || "").toLowerCase().replace(/[^a-z0-9 ]/g, "").trim().replace(/\s+/g, "-").slice(0, 60);
+function parseAli(html) {
+  const i = html.indexOf('"itemList":{"content":[');
+  if (i < 0) return [];
+  const seg = html.slice(i, i + 400000);
+  const items = [];
+  const re = /"productId":"(\d+)"([\s\S]*?)(?="productId":"|\](?:,"[a-z])|$)/g;
+  let m;
+  while ((m = re.exec(seg)) && items.length < 40) {
+    const b = m[2];
+    const img = b.match(/"imgUrl":"([^"]+)"/)?.[1];
+    const title = b.match(/"displayTitle":"([^"]*)"/)?.[1];
+    const price = b.match(/"salePrice":\{[^]*?"formattedPrice":"([^"]*)"/)?.[1];
+    const orig = b.match(/"originalPrice":\{[^]*?"formattedPrice":"([^"]*)"/)?.[1];
+    const disc = b.match(/"salePrice":\{[^]*?"discount":(\d+)/)?.[1] || b.match(/"discount":(\d+)/)?.[1];
+    if (img && title && price) items.push({ id: m[1], title, img: "https:" + img, price, orig: orig && orig !== price ? orig : null, discount: disc ? +disc : null, url: `https://www.aliexpress.com/item/${m[1]}.html` });
+  }
+  return items;
+}
+
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://localhost");
   const p = u.pathname;
@@ -100,6 +126,26 @@ const server = http.createServer(async (req, res) => {
       const r = await fetch(target, { headers: { "user-agent": UA }, signal: ctrl.signal, redirect: "follow" });
       const ab = await r.arrayBuffer();
       send(res, r.status, { ...CORS, "content-type": r.headers.get("content-type") || "application/octet-stream" }, Buffer.from(ab));
+    } catch { send(res, 502, CORS, "upstream error"); }
+    finally { clearTimeout(t); }
+    return;
+  }
+
+  // ── AliExpress product search (parsed to compact JSON, cached per query) ──
+  if (p === "/feed/shop" && req.method === "GET") {
+    const slug = shopSlug(u.searchParams.get("q"));
+    const page = Math.max(1, Math.min(20, Number(u.searchParams.get("page")) || 1));
+    if (!slug) return send(res, 400, CORS, "bad query");
+    const key = `${slug}|${page}`, hit = shopCache.get(key);
+    if (hit && Date.now() - hit.ts < SHOP_TTL) return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify(hit.data));
+    const target = `https://www.aliexpress.com/w/wholesale-${slug}.html?page=${page}`;
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
+    try {
+      const r = await fetch(target, { headers: { "user-agent": UA_DESKTOP, "accept-language": "en-US,en;q=0.9" }, signal: ctrl.signal, redirect: "follow" });
+      const data = { q: slug, page, items: parseAli(await r.text()) };
+      if (shopCache.size > 300) shopCache.clear();
+      shopCache.set(key, { ts: Date.now(), data });
+      send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify(data));
     } catch { send(res, 502, CORS, "upstream error"); }
     finally { clearTimeout(t); }
     return;

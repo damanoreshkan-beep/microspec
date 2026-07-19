@@ -282,7 +282,7 @@ function ListView({ tab }) {
 
   const banner = tab.banner ? html`<${Banner} banner=${tab.banner} key="banner" />` : null;
   const paginate = !!tab.paginate && tab.source !== "fav";
-  const grow = () => { if (vis < items.length) setVis((c) => Math.min(items.length, c + WINDOW_PAGE)); else if (paginate) A.loadMore(); };
+  const grow = () => { if (vis < items.length) setVis((c) => Math.min(items.length, c + WINDOW_PAGE)); else if (paginate) { setVis((c) => c + WINDOW_PAGE); A.loadMore(); } };
   const shown = items.slice(0, vis);
   const cards = shown.map((it) => html`<${Card} item=${it} card=${tab.card} key=${A.favKey(it) || it[tab.card.title]} />`);
   const tail = html`<${InfiniteTail} count=${vis} total=${items.length} grow=${grow} paginate=${paginate} key="tail" />`;

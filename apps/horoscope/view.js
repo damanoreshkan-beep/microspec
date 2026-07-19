@@ -53,7 +53,7 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
 
       <!-- day segmented -->
       <div role="tablist" class="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-base-100 border border-base-300">
-        ${[0, 1, 2].map((i) => html`<button role="tab" data-day=${DAY_IDS[i]} aria-selected=${day === i} class=${`py-2 rounded-xl text-sm font-medium transition-colors ${day === i ? "bg-primary text-primary-content" : "text-base-content/60"}`} onClick=${() => setDay(i)} key=${i}>${T(t, DAY_KEYS[i])}</button>`)}
+        ${[0, 1, 2].map((i) => html`<button role="tab" data-day=${DAY_IDS[i]} aria-selected=${day === i} class=${`min-w-0 truncate py-2 rounded-xl text-sm font-medium transition-colors ${day === i ? "bg-primary text-primary-content" : "text-base-content/60"}`} onClick=${() => setDay(i)} key=${i}>${T(t, DAY_KEYS[i])}</button>`)}
       </div>
 
       <!-- reading -->
@@ -72,8 +72,8 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
           </div>`)}
         </div>
 
-        <!-- lucky number + colour of the day -->
-        <div class="grid grid-cols-2 gap-3">
+        <!-- lucky number + colour of the day (stacks on a watch, side-by-side from ~300px) -->
+        <div class="grid grid-cols-1 @min-[300px]:grid-cols-2 gap-3">
           <div class="rounded-2xl bg-base-100 border border-base-300 p-4">
             <div class="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${T(t, "lucky")}</div>
             <div class="text-3xl font-bold tabular-nums text-secondary mt-0.5">${r.lucky}</div>

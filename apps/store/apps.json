@@ -427,5 +427,16 @@
     "href": "./qr/",
     "version": "1.4",
     "category": "tools"
+  },
+  {
+    "id": "reel",
+    "title": "Reel",
+    "tagline": "Встав будь-який URL сторінки — і кожне відео на ній стає повноекранною стрічкою, що гортається сама; наступні сторінки підвантажуються, поки ти свайпаєш.",
+    "glyph": "lucide:clapperboard",
+    "bg": "#0B0B0D",
+    "fg": "#ECECEE",
+    "href": "./reel/",
+    "version": "1.0",
+    "category": "feeds"
   }
 ]

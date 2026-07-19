@@ -8,8 +8,11 @@
 //   GET  /feed/flux/get?url=<enc> → keyless, binary-safe passthrough to bfl.ai only (poll + delivery image)
 //   GET  /feed/horoscope?sign=1..12&day=today|tomorrow|yesterday → real horoscope.com reading, parsed to
 //                                  compact JSON {date,sign,day,text,ratings} + CORS, cached per day.
+//   GET  /feed/videos?url=<enc>   → light HTML video extractor: pulls playable video URLs (+ poster/title) and
+//                                  the next-page link from any page, for the tiktok-style reel app. SSRF-guarded.
 //   GET  /health                 → "ok"
 import http from "node:http";
+import dns from "node:dns/promises";
 
 const PORT = Number(process.env.PORT) || 8787;
 const BFL_KEY = process.env.BFL_KEY || "";
@@ -25,6 +28,16 @@ const ALLOW = [/(^|\.)dou\.ua$/i, /(^|\.)wikipedia\.org$/i, /(^|\.)gutendex\.com
 const ALLOW_FLUX = [/(^|\.)bfl\.ai$/i, /(^|\.)bfl\.ml$/i];
 const UA ="Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
+const UA_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36";
+// SSRF guard for the arbitrary-URL video extractor: only http(s), and the resolved IP must not be private/loopback
+// (so a user-supplied URL can never make the proxy hit our own metadata/LAN). Best-effort single-lookup check.
+const PRIVATE_IP = /^(?:0\.|10\.|127\.|169\.254\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.|::1$|fe80:|fc|fd)/i;
+async function safeUrl(raw) {
+  let url; try { url = new URL(raw); } catch { return null; }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  try { const { address } = await dns.lookup(url.hostname); if (PRIVATE_IP.test(address)) return null; } catch { return null; }
+  return url;
+}
 
 // crude per-IP rate limit on the paid path — a backstop, not billing.
 const hits = new Map();
@@ -62,6 +75,34 @@ function parseHoroscope(html) {
     let m; while ((m = re.exec(rblock))) { const k = map[m[1].trim()]; if (k) ratings[k] = (m[2].match(/icon-star-filled highlight/g) || []).length; }
   }
   return { date, text, ratings };
+}
+
+// ── light HTML video extractor (keyless). Pulls playable video URLs from a page via the common embed patterns
+// (<video>/<source>, og:video, JSON-LD contentUrl, and bare .mp4/.m3u8/.webm anywhere), dedupes transcoded /
+// resolution variants down to one item each, and finds the next-page link (rel=next, else a ?page-style bump).
+// No browser — works on any page that puts its media in the HTML; JS-only sites just return []. ──
+const humanize = (s) => { try { s = decodeURIComponent(s); } catch {} return s.replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[_+]+/g, " ").replace(/\s+/g, " ").trim(); };
+function parseVideos(html, base) {
+  const abs = (u) => { try { return new URL(String(u).replace(/&amp;/g, "&"), base).href; } catch { return null; } };
+  const isVid = (u) => /\.(?:mp4|m3u8|webm|mov)(?:\?|#|$)/i.test(u);
+  const found = [];
+  const add = (u) => { const a = abs(u); if (a && isVid(a)) found.push(a); };
+  for (const m of html.matchAll(/<(?:video|source)\b[^>]*\bsrc=["']([^"']+)["']/gi)) add(m[1]);
+  for (const m of html.matchAll(/<meta\b[^>]*(?:property|name)=["'](?:og:video(?::url|:secure_url)?|twitter:player:stream)["'][^>]*\bcontent=["']([^"']+)["']/gi)) add(m[1]);
+  for (const m of html.matchAll(/<meta\b[^>]*\bcontent=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:video(?::url|:secure_url)?|twitter:player:stream)["']/gi)) add(m[1]);
+  for (const m of html.matchAll(/"(?:contentUrl|embedUrl)"\s*:\s*"([^"\\]+)"/gi)) add(m[1]);
+  for (const m of html.matchAll(/https?:\\?\/\\?\/[^"'\s\\<>]+?\.(?:mp4|m3u8|webm)(?:\?[^"'\s\\<>]*)?/gi)) add(m[0].replace(/\\/g, ""));
+  // dedupe by normalized filename stem — collapses /transcoded/ dirs and 480p/720px-… resolution variants.
+  const norm = (url) => { try { const u = new URL(url); let pth = decodeURIComponent(u.pathname).replace(/\/transcoded\//, "/").replace(/\.(?:\d{2,4}p|\d{2,4}px-[^/]*)\.(mp4|webm|m3u8|mov)$/i, ".$1"); return (pth.split("/").filter(Boolean).pop() || pth).toLowerCase(); } catch { return url; } };
+  const seen = new Set(), items = [];
+  for (const v of found) { const k = norm(v); if (seen.has(k)) continue; seen.add(k); items.push({ video: v, title: humanize(k) || "video", poster: null }); }
+  const ogImg = abs(html.match(/<meta\b[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)?.[1] || "");
+  if (ogImg) for (const it of items) it.poster = ogImg;   // page-level fallback thumbnail
+  let next = null;
+  const rel = html.match(/<(?:a|link)\b[^>]*\brel=["']next["'][^>]*\bhref=["']([^"']+)["']/i) || html.match(/<(?:a|link)\b[^>]*\bhref=["']([^"']+)["'][^>]*\brel=["']next["']/i);
+  if (rel) next = abs(rel[1]);
+  else { try { const u = new URL(base); for (const key of ["page", "p", "pg", "paged", "offset", "start"]) { if (u.searchParams.has(key)) { const n = parseInt(u.searchParams.get(key), 10); if (!isNaN(n)) { u.searchParams.set(key, (key === "offset" || key === "start") ? n + Math.max(1, items.length) : n + 1); next = u.href; break; } } } } catch { /* no cursor */ } }
+  return { items, next };
 }
 
 const server = http.createServer(async (req, res) => {
@@ -121,6 +162,22 @@ const server = http.createServer(async (req, res) => {
       if (horoCache.size > 200) horoCache.clear();
       horoCache.set(key, { ts: Date.now(), data });
       send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify(data));
+    } catch { send(res, 502, CORS, "upstream error"); }
+    finally { clearTimeout(t); }
+    return;
+  }
+
+  // ── light video extractor for the reel app: any page URL → playable videos + next-page cursor (SSRF-guarded) ──
+  if (p === "/feed/videos" && req.method === "GET") {
+    const src = await safeUrl(u.searchParams.get("url"));
+    if (!src) return send(res, 400, { ...CORS, "content-type": "application/json" }, JSON.stringify({ items: [], next: null, error: "bad or blocked url" }));
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 12000);
+    try {
+      const r = await fetch(src.href, { headers: { "user-agent": UA_DESKTOP, "accept-language": "en-US,en;q=0.9", "accept": "text/html,application/xhtml+xml" }, signal: ctrl.signal, redirect: "follow" });
+      const ct = r.headers.get("content-type") || "";
+      const J = { ...CORS, "content-type": "application/json" };
+      if (!/html|xml|json/i.test(ct)) return send(res, 200, J, JSON.stringify({ items: [], next: null, note: "not an html page" }));
+      send(res, 200, J, JSON.stringify(parseVideos(await r.text(), r.url)));
     } catch { send(res, 502, CORS, "upstream error"); }
     finally { clearTimeout(t); }
     return;

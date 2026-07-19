@@ -42,6 +42,8 @@ export function createApp(spec, dataLoad) {
     installEvent: atom(null),
     installOpen: atom(false),
     qrOpen: atom(false),          // desktop "open on phone" self-QR (history-backed like the others)
+    confirm: atom(null),          // { title, body?, verb, onConfirm } — danger-confirm sheet (history-backed)
+    undo: atom(null),             // { fn, label } — interactive undo snackbar; NOT history-backed (transient)
   };
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
   // persist filter selections as JSON (keeps booleans intact, unlike per-key string storage)
@@ -78,21 +80,36 @@ export function createApp(spec, dataLoad) {
 
   let toastTimer;
   function toast(key) {
+    S.undo.set(null);                                  // a plain toast supersedes any pending undo snackbar
     S.toast.set(key);
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => S.toast.set(""), 2200);
   }
+
+  // Delete safety — the reversible half. A destructive action does its delete OPTIMISTICALLY (the caller
+  // removes it and captures what's needed to restore), then calls undo(restore, label): an interactive
+  // snackbar offers "Undo" for 5s. NN/g's preferred pattern — an undo you notice protects a mis-tap far
+  // better than a confirm dialog clicked reflexively. High-consequence deletes use confirm() instead.
+  let undoTimer;
+  function undo(fn, label = "") {
+    clearTimeout(undoTimer); clearTimeout(toastTimer);
+    S.toast.set(""); S.undo.set({ fn, label });
+    undoTimer = setTimeout(() => S.undo.set(null), 5000);
+  }
+  // Delete safety — the irreversible half. Opens a history-backed danger-confirm sheet (Back = cancel). The
+  // caller carries the copy (name the thing, say what's lost) and the verb; onConfirm runs only on explicit tap.
+  function confirm(opts) { S.confirm.set(opts); }
 
   const favKey = (it) => it[spec.fav?.key];
   function toggleFav(it) {
     const k = favKey(it);
     if (k == null) return;
     const f = { ...S.fav.get() };
-    if (f[k]) { delete f[k]; toast("removed"); } else { f[k] = it; toast("saved"); }
-    S.fav.set(f);
+    if (f[k]) { const prev = f[k]; delete f[k]; S.fav.set(f); undo(() => { const g = { ...S.fav.get() }; g[k] = prev; S.fav.set(g); }); }
+    else { f[k] = it; S.fav.set(f); toast("saved"); }
   }
 
   function swap() { const a = S.from.get(); S.from.set(S.to.get()); S.to.set(a); }
 
-  return { spec, S, load, loadMore, toast, toggleFav, favKey, swap };
+  return { spec, S, load, loadMore, toast, undo, confirm, toggleFav, favKey, swap };
 }

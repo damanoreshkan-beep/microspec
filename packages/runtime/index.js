@@ -55,6 +55,7 @@ export function start(spec, arg2) {
     [S.screen, () => S.screen.set(null), (v) => v != null],
     [S.detail, () => S.detail.set(null), (v) => v != null],
     [S.player, () => S.player.set(null), (v) => v != null],
+    [S.confirm, () => S.confirm.set(null), (v) => v != null],   // danger-confirm sheet — stacks on top, Back cancels
   ];
   const openCount = () => overlays.filter(([a, , isOpen]) => isOpen(a.get())).length;
   const anyOpen = () => openCount() > 0;

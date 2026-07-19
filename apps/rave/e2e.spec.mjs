@@ -172,6 +172,22 @@ export default [
     },
   },
   {
+    // Reversible delete → optimistic remove + a 5s "Undo" snackbar; tapping it re-inserts the beat. No confirm.
+    name: "збережені: видалення можна скасувати (undo)", run: async (h) => {
+      await h.click('[data-tab="beat"]'); await h.wait(180); await ready(h);
+      await h.click('[data-preset="detroit"]'); await h.wait(120); await h.click("[data-save]"); await h.wait(400);
+      await h.click('[data-tab="saved"]'); await h.wait(350);
+      let n = 0; for (let i = 0; i < 12; i++) { n = await h.count("[data-saved]"); if (n > 0) break; await h.wait(250); }
+      h.expect(n > 0, "немає збереженого біта");
+      await h.click("[data-del]"); await h.wait(250);
+      h.expect((await h.count("[data-saved]")) === n - 1, "біт не зник одразу (оптимістичне видалення)");
+      h.expect((await h.count("[data-undo]")) === 1, "немає снекбару «Скасувати»");
+      await h.click("[data-undo]"); await h.wait(350);
+      h.expect((await h.count("[data-saved]")) === n, "«Скасувати» не повернуло біт");
+      await h.click("[data-del]"); await h.wait(300);   // clean up (no undo tap → commits)
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

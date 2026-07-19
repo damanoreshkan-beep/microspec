@@ -165,10 +165,17 @@ function AddSheet({ S, t }) {
 }
 
 // ---- habit detail screen ----------------------------------------------------
-function Detail({ id, S, t, closeScreen }) {
+function Detail({ id, S, t, closeScreen, confirm }) {
   const habits = useStore($habits), marks = useStore($marks);
   const h = habits.find((x) => x.id === id);
   if (!h) return null;
+  // High-consequence (drops the habit + its whole history, unrecoverable) → a danger-confirm, not undo.
+  const askDelete = () => confirm({
+    title: T(t, "delHabitTitle", { name: h.name }),
+    body: T(t, "delHabitBody", { n: Object.keys(marks).filter((k) => k.startsWith(h.id + "|")).length }),
+    verb: T(t, "delete"),
+    onConfirm: async () => { await removeHabit(h.id); closeScreen(); },
+  });
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
     <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
       <button id="d-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${closeScreen}>${Icon("lucide:arrow-left", "text-xl")}</button>
@@ -184,12 +191,12 @@ function Detail({ id, S, t, closeScreen }) {
         <div class="text-sm font-semibold">${T(t, "last13")}</div>
         <${Heatmap} h=${h} marks=${marks} onToggle=${toggle} t=${t} />
       </div></div>
-      <button id="d-del" class="btn btn-ghost text-error rounded-2xl border border-base-300 gap-2" onClick=${async () => { await removeHabit(h.id); closeScreen(); }}>${Icon("lucide:trash-2")} ${T(t, "delete")}</button>
+      <button id="d-del" data-haptic="bump" class="btn btn-ghost text-error rounded-2xl border border-base-300 gap-2" onClick=${askDelete}>${Icon("lucide:trash-2")} ${T(t, "delete")}</button>
     </div></div>`;
 }
 
 // ---- main tool view ---------------------------------------------------------
-export function habits({ S, closeScreen }) {
+export function habits({ S, closeScreen, confirm }) {
   const t = useStore(S.t), hs = useStore($habits), marks = useStore($marks), ready = useStore($ready), screen = useStore(S.screen), sheet = useStore(S.sheet);
   useEffect(() => { loadAll(); }, []);
 
@@ -229,6 +236,6 @@ export function habits({ S, closeScreen }) {
       </div>`}
 
     ${sheet ? html`<${AddSheet} S=${S} t=${t} />` : null}
-    ${detailId ? html`<${Detail} id=${detailId} S=${S} t=${t} closeScreen=${closeScreen} />` : null}
+    ${detailId ? html`<${Detail} id=${detailId} S=${S} t=${t} closeScreen=${closeScreen} confirm=${confirm} />` : null}
   </${Fragment}>`;
 }

@@ -339,8 +339,9 @@ function ListView({ tab }) {
 
   const banner = tab.banner ? html`<${Banner} banner=${tab.banner} key="banner" />` : null;
   const paginate = !!tab.paginate && tab.source !== "fav";
-  // grow() widens the client window first; once the whole local list is shown it pulls the next server page.
-  const grow = () => { if (vis < items.length) setVis((c) => Math.min(items.length, c + WINDOW_PAGE)); else if (paginate) A.loadMore(); };
+  // grow() widens the client window first; once the whole local list is shown it pulls the next server page AND
+  // widens the window past it, so the freshly-paged items are actually revealed (not left hidden behind vis).
+  const grow = () => { if (vis < items.length) setVis((c) => Math.min(items.length, c + WINDOW_PAGE)); else if (paginate) { setVis((c) => c + WINDOW_PAGE); A.loadMore(); } };
   // Client-side windowing: only the first `vis` items hit the DOM (grown on scroll) so a thousand-item grid or
   // feed mounts instantly and stays smooth. The same sentinel then falls through to server paging for feeds.
   const shown = items.slice(0, vis);

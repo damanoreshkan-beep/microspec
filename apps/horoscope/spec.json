@@ -1,7 +1,7 @@
 {
   "id": "horoscope",
   "theme": "signal",
-  "category": "play",
+  "category": "esoterica",
   "tabs": [
     { "id": "read", "type": "tool", "icon": "lucide:moon-star", "label": "tabRead", "view": "horoscope" },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }

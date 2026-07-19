@@ -80,6 +80,12 @@ for await (const a of Deno.readDir("apps")) {
       if (lf.isFile && lf.name.endsWith(".json")) await Deno.copyFile(`apps/${a.name}/i18n/${lf.name}`, `${outDir}/i18n/${lf.name}`);
     }
   }
+  if (await has(`apps/${a.name}/assets`)) {
+    await Deno.mkdir(`${outDir}/assets`, { recursive: true });
+    for await (const af of Deno.readDir(`apps/${a.name}/assets`)) {
+      if (af.isFile) await Deno.copyFile(`apps/${a.name}/assets/${af.name}`, `${outDir}/assets/${af.name}`);
+    }
+  }
   {
     if (!(await has(`apps/${a.name}/brand.svg`))) throw new Error(`apps/${a.name}/brand.svg is missing — no PNG icons would be generated and the app would not be installable`);
     const brand = (await has(`apps/${a.name}/brand.json`)) ? JSON.parse(await Deno.readTextFile(`apps/${a.name}/brand.json`)) : { bg: "#1f2430", fg: "#a78bfa" };

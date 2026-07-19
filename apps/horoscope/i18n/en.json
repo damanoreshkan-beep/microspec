@@ -1,6 +1,6 @@
 {
   "title": "Horoscope",
-  "profTagline": "Your sign's reading for yesterday, today and tomorrow — generated on your device, offline and private, stable through the day and fresh each morning. Pick your sign once; the stars do the rest.",
+  "profTagline": "Your sign's real daily reading — yesterday, today and tomorrow — with the day's star ratings, from horoscope.com. Cached on your device, so the last reading stays readable offline. Pick your sign once; the stars do the rest.",
   "profTheme": "Dark theme",
   "profLang": "Language",
   "install": "Install app",
@@ -15,18 +15,14 @@
   "dYesterday": "Yesterday",
   "dToday": "Today",
   "dTomorrow": "Tomorrow",
-  "mood": "Mood",
+  "ratings": "Star ratings",
   "love": "Love",
   "work": "Work",
-  "health": "Health",
-  "lucky": "Lucky number",
-  "luckyColour": "Colour of the day",
+  "vibe": "Vibe",
+  "success": "Success",
+  "offline": "Offline — showing the last saved reading.",
+  "noConnection": "No connection. Check the network and try again.",
   "pickSign": "Choose your sign",
   "signs": "Aries|Taurus|Gemini|Cancer|Leo|Virgo|Libra|Scorpio|Sagittarius|Capricorn|Aquarius|Pisces",
-  "signDates": "Mar 21 – Apr 19|Apr 20 – May 20|May 21 – Jun 20|Jun 21 – Jul 22|Jul 23 – Aug 22|Aug 23 – Sep 22|Sep 23 – Oct 22|Oct 23 – Nov 21|Nov 22 – Dec 21|Dec 22 – Jan 19|Jan 20 – Feb 18|Feb 19 – Mar 20",
-  "moods": "Radiant|Grounded|Restless|Focused|Tender|Bold|Reflective",
-  "colours": "Amber|Rose|Teal|Violet|Gold|Indigo",
-  "openings": "The morning arrives with an unusual clarity.|A quiet momentum has been building beneath the surface.|Today asks less of you than it first seems.|Something you set aside returns, softened.|The pace is yours to set — and slower suits you.|An old certainty loosens its grip, and that's a relief.|You're closer to a decision than you think.",
-  "focuses": "Attention on the people around you is repaid twice over.|A small risk at work opens a door you'd stopped watching.|Rest is not the reward for the day — it's part of the work.|Say the true thing kindly; it lands better than you fear.|Money follows a boundary you finally hold.|Creativity wants a limit today, not a blank page.|The body is asking for water, movement, and less screen.",
-  "advice": "Trust the first, calmer answer.|Let one thing stay unfinished on purpose.|Reach out before you feel ready.|Choose the plan you can keep, not the one that impresses.|Protect the first hour of your morning.|Give the credit away; keep the lesson.|End the day lighter than you started it."
+  "signDates": "Mar 21 – Apr 19|Apr 20 – May 20|May 21 – Jun 20|Jun 21 – Jul 22|Jul 23 – Aug 22|Aug 23 – Sep 22|Sep 23 – Oct 22|Oct 23 – Nov 21|Nov 22 – Dec 21|Dec 22 – Jan 19|Jan 20 – Feb 18|Feb 19 – Mar 20"
 }

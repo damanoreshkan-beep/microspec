@@ -16,7 +16,7 @@ import { motionCells, motionEnergy, centroidOf } from "./motion.js";
 import { analyzeQR } from "./urlsafe.js";
 import { qrMatrix } from "./qrcode.js";
 import { fitResolution } from "./imgsize.js";
-import { sunSign, reading } from "./horoscope.js";
+import { sunSign } from "./horoscope.js";
 import { resumeAt, RESUME_MIN } from "./playback.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
@@ -956,18 +956,4 @@ Deno.test("horoscope sunSign: cutoffs map month/day to the right sign, wrapping 
   assertEquals(sunSign(7, 23), 4);   // Leo
   assertEquals(sunSign(12, 21), 8);  // last Sagittarius day
   assertEquals(sunSign(12, 22), 9);  // Capricorn again
-});
-
-Deno.test("horoscope reading: deterministic per (sign, date); ratings + lucky in range; selectors in [0,1)", () => {
-  const a = reading(4, "2027-07-23"), b = reading(4, "2027-07-23");
-  assertEquals(JSON.stringify(a), JSON.stringify(b), "same sign+date must give the same reading");
-  for (const k of ["open", "focus", "advice", "mood", "color"]) { assert(a[k] >= 0 && a[k] < 1, `${k} out of [0,1)`); }
-  for (const k of ["love", "work", "health"]) { assert(a[k] >= 2 && a[k] <= 5, `${k}=${a[k]} not 2..5`); }
-  assert(a.lucky >= 1 && a.lucky <= 40, `lucky=${a.lucky} not 1..40`);
-});
-
-Deno.test("horoscope reading: a different day (and a different sign) changes the reading", () => {
-  const today = reading(4, "2027-07-23"), tomorrow = reading(4, "2027-07-24"), otherSign = reading(5, "2027-07-23");
-  assert(JSON.stringify(today) !== JSON.stringify(tomorrow), "tomorrow should differ from today");
-  assert(JSON.stringify(today) !== JSON.stringify(otherSign), "another sign should differ same day");
 });

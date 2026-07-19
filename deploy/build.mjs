@@ -10,6 +10,46 @@ import { buildManifest } from "./manifest.mjs";
 const OUT = "dist";
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
 
+// ── PWA installability gate ─────────────────────────────────────────────────────────────────────────────
+// Nothing else in the farm verifies that an app can actually be INSTALLED — the Chromium verify gate checks
+// a11y / overflow / e2e / runtime errors, but never the manifest, icons or service worker. So a
+// non-installable app shipped green (books, with zero icons; and any app whose manifest drifts). This asserts
+// the real criteria Chrome uses to offer "Install", against the BUILT output (built manifest + generated
+// icons live here, not in the source the verify gate serves) — fail-loud, per app, on every build.
+const iconArea = (s) => Math.max(0, ...String(s || "").split(/\s+/).map((x) => parseInt(x, 10) || 0));
+async function assertInstallable(outDir, id) {
+  let mf;
+  try { mf = JSON.parse(await Deno.readTextFile(`${outDir}/manifest.json`)); }
+  catch { throw new Error(`${id}: manifest.json missing or invalid JSON — not installable`); }
+  const missing = [];
+  if (!mf.name && !mf.short_name) missing.push("name/short_name");
+  if (!mf.start_url) missing.push("start_url");
+  if (!["standalone", "fullscreen", "minimal-ui"].includes(mf.display)) missing.push(`display (got "${mf.display}")`);
+  const pngs = (mf.icons || []).filter((i) => (i.type || "").includes("png") && (!i.purpose || i.purpose.split(/\s+/).includes("any")));
+  if (!pngs.some((i) => iconArea(i.sizes) >= 192)) missing.push("a ≥192px png icon (purpose any)");
+  if (!pngs.some((i) => iconArea(i.sizes) >= 512)) missing.push("a ≥512px png icon (purpose any)");
+  if (missing.length) throw new Error(`${id}: manifest is not installable — missing ${missing.join(", ")}`);
+  // every icon the manifest points at must EXIST in the build and (for png) be a real PNG of the stated size —
+  // a 404 or wrong-size icon makes Chrome silently refuse the install.
+  for (const i of mf.icons || []) {
+    const p = `${outDir}/${i.src}`;
+    if (!(await has(p))) throw new Error(`${id}: manifest references "${i.src}" but it is not in the build — it would 404 and block install`);
+    if ((i.type || "").includes("png")) {
+      const b = await Deno.readFile(p);
+      if (!(b[0] === 137 && b[1] === 80 && b[2] === 78 && b[3] === 71)) throw new Error(`${id}: "${i.src}" is not a valid PNG`);
+      const w = (b[16] << 24) | (b[17] << 16) | (b[18] << 8) | b[19], h = (b[20] << 24) | (b[21] << 16) | (b[22] << 8) | b[23];
+      const want = iconArea(i.sizes);
+      if (want && (w !== want || h !== want)) throw new Error(`${id}: "${i.src}" is ${w}×${h} but the manifest declares ${want}×${want}`);
+    }
+  }
+  // Chrome will not offer install without a service worker that has a fetch handler, and the page must link
+  // the manifest.
+  const sw = await Deno.readTextFile(`${outDir}/sw.js`).catch(() => "");
+  if (!/addEventListener\(\s*["']fetch["']/.test(sw)) throw new Error(`${id}: sw.js is missing a fetch handler — not installable`);
+  const html = await Deno.readTextFile(`${outDir}/index.html`);
+  if (!/rel=["']manifest["']/.test(html)) throw new Error(`${id}: index.html does not link the manifest`);
+}
+
 await Deno.remove(OUT, { recursive: true }).catch(() => {});
 await Deno.mkdir(`${OUT}/_rt`, { recursive: true });
 
@@ -76,6 +116,7 @@ for await (const a of Deno.readDir("apps")) {
     const paths = (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim();
     await generateAppIcons(`${outDir}/icons`, brand, paths);
   }
+  await assertInstallable(outDir, a.name);   // fail the build if this app cannot be installed as a PWA
   ids.push(a.name);
 }
 

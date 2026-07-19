@@ -54,9 +54,9 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
       <div>
         <div class="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-base-content/45 mb-2">${T(t, "pickSpread")}</div>
         <div class="grid grid-cols-2 gap-2">
-          ${SPREADS.map((s) => html`<button data-spread=${s.id} aria-pressed=${spreadId === s.id} class=${`flex items-center justify-between gap-2 rounded-2xl border p-3 text-left transition active:scale-[.98] ${spreadId === s.id ? "border-secondary bg-secondary/10 text-secondary" : "border-base-300 bg-base-100 text-base-content/80"}`} onClick=${() => pickSpread(s.id)} key=${s.id}>
-            <span class="text-sm font-medium leading-tight">${T(t, SPREAD_KEY[s.id])}</span>
-            <span class="text-[0.7rem] font-mono tabular-nums shrink-0 ${spreadId === s.id ? "text-secondary/70" : "text-base-content/40"}">${s.pos.length}</span>
+          ${SPREADS.map((s) => html`<button data-spread=${s.id} aria-pressed=${spreadId === s.id} class=${`flex items-center justify-between gap-2 min-w-0 rounded-2xl border p-3 text-left transition active:scale-[.98] ${spreadId === s.id ? "border-secondary bg-secondary/10 text-secondary" : "border-base-300 bg-base-100 text-base-content/80"}`} onClick=${() => pickSpread(s.id)} key=${s.id}>
+            <span class="min-w-0 break-words text-sm font-medium leading-tight">${T(t, SPREAD_KEY[s.id])}</span>
+            <span class=${`text-[0.7rem] font-mono tabular-nums shrink-0 ${spreadId === s.id ? "text-secondary/80" : "text-base-content/70"}`}>${s.pos.length}</span>
           </button>`)}
         </div>
       </div>
@@ -85,7 +85,7 @@ function Tile({ d, pos, t, loc, onOpen }) {
   return html`<button data-card class="flex flex-col gap-1.5 text-center active:scale-[.98] transition" onClick=${onOpen}>
     <div class="text-[0.58rem] font-mono uppercase tracking-wide text-base-content/45 truncate">${T(t, pos)}</div>
     <img src=${imgURL(c.img)} alt=${cardName(c, loc)} loading="lazy" class=${`w-full aspect-[350/600] object-cover rounded-lg border border-base-300 shadow ${d.reversed ? "rotate-180" : ""}`} />
-    <div class="text-xs font-medium leading-tight line-clamp-2 min-h-[2rem]">${cardName(c, loc)}</div>
+    <div class="text-xs font-medium leading-tight line-clamp-2 min-h-[2rem] break-words">${cardName(c, loc)}</div>
     <div class=${`text-[0.6rem] ${d.reversed ? "text-warning" : "text-base-content/45"}`}>${T(t, d.reversed ? "reversed" : "upright")}</div>
   </button>`;
 }
@@ -96,7 +96,7 @@ function Solo({ d, pos, t, loc, onOpen }) {
   const c = DECK[d.card];
   return html`<div data-reading class="flex flex-col items-center gap-4">
     <div class="text-[0.6rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${T(t, pos)}</div>
-    <button data-card class="w-44 max-w-[62%] active:scale-[.99] transition" onClick=${onOpen}>
+    <button data-card class="w-[62%] max-w-[11rem] active:scale-[.99] transition" onClick=${onOpen}>
       <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-full aspect-[350/600] object-cover rounded-xl border border-base-300 shadow-lg ${d.reversed ? "rotate-180" : ""}`} />
     </button>
     <div class="text-center">

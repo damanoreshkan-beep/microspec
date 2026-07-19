@@ -82,6 +82,19 @@ try {
   else if (buzz.none) ok("haptic: тактильний відгук на тап", "немає інтерактивних елементів");
   else buzz.n > 0 ? ok("haptic: тактильний відгук на тап")
     : no("haptic: тап без відгуку", "runtime не викликав vibrate на pointerdown — делегування в index.js розірване");
+
+  const pwa = await ev(async () => {
+    const link = document.querySelector('link[rel="manifest"]');
+    if (!link) return "no <link rel=manifest>";
+    let mf; try { mf = await (await fetch(link.href)).json(); } catch { return "manifest not fetchable / invalid JSON"; }
+    if (!mf.name && !mf.short_name) return "manifest has no name/short_name";
+    if (!["standalone", "fullscreen", "minimal-ui"].includes(mf.display)) return `manifest display="${mf.display}" is not installable`;
+    if (!("serviceWorker" in navigator)) return "no serviceWorker support";
+    for (let i = 0; i < 20; i++) { if (await navigator.serviceWorker.getRegistration()) return null; await new Promise((r) => setTimeout(r, 300)); }
+    return "service worker never registered (Chrome offers no install)";
+  });
+  pwa === null ? ok("PWA: манифест + service worker → встановлюється") : no("PWA: не встановлюється як застосунок", pwa);
+
   if (wantShots) {
     const baseTheme = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
     await ev((th) => document.documentElement.setAttribute("data-theme", th.includes("light") ? th : th + "-light"), baseTheme);

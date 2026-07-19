@@ -11,7 +11,7 @@
   "sortFee": "By fee",
   "sortAria": "Sort",
   "details": "Details",
-  "whaleLabel": "🐋 Whale",
+  "whaleLabel": "Whale",
   "chartLabel": "Transfer amounts (last 40)",
   "colAmount": "Amount (BTC)",
   "colTo": "Recipient",

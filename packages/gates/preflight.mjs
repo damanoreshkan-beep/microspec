@@ -117,6 +117,17 @@ async function preflight(appdir) {
   // Pixels) instead. DaisyUI loading spinners are banned in app source.
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
+  // No emoji anywhere in app source — they render as OS-specific colour clip-art (cheap, inconsistent, off-brand)
+  // and can't be themed. Use a crafted vector instead: an iconify glyph (lucide:*, mdi:*), a runtime SVG
+  // (e.g. /_rt/zodiac.js `Sign`), or — where the render context can't hold a component (a native <option>,
+  // a plain string) — just words. `\p{Emoji_Presentation}` targets default-emoji chars (incl. flags, zodiac
+  // signs) without flagging text symbols like ·, →, ♪, digits.
+  { const emojiRe = /\p{Emoji_Presentation}/gu;
+    const scan = (label, text) => { const m = text.match(emojiRe); if (m) errs.push(`emoji ${[...new Set(m)].join(" ")} in ${label} — emoji are banned farm-wide; use a crafted vector (iconify lucide:*/mdi:*, an /_rt SVG like Sign) or plain words, never an emoji`); };
+    scan(srcFile, src);
+    scan("spec.json", JSON.stringify(spec));
+    for (const l of locales) scan(`i18n/${l}.json`, JSON.stringify(i18n[l])); }
+
   // Locale-blind date/number formatting. `toLocale*String()` with no locale (or `undefined`) formats with the
   // system/browser locale, not the app's — it freezes one language and never reacts to the toggle (weather
   // shipped English weekdays under a Ukrainian UI). Pass the app locale explicitly (see globe/kp:

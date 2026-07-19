@@ -15,12 +15,13 @@ import { Pixels } from "/_rt/skeleton.js";
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
 // Curated countries with the most / most-watchable channels (iptv-org country codes, lowercase).
+// Country names carry the identity — no flag emoji (banned farm-wide, and unrenderable as a vector in <option>).
 const COUNTRIES = [
-  ["us", "🇺🇸", "United States"], ["uk", "🇬🇧", "United Kingdom"], ["ca", "🇨🇦", "Canada"], ["ua", "🇺🇦", "Ukraine"],
-  ["pl", "🇵🇱", "Poland"], ["de", "🇩🇪", "Germany"], ["fr", "🇫🇷", "France"], ["es", "🇪🇸", "Spain"], ["it", "🇮🇹", "Italy"],
-  ["nl", "🇳🇱", "Netherlands"], ["br", "🇧🇷", "Brazil"], ["mx", "🇲🇽", "Mexico"], ["ar", "🇦🇷", "Argentina"],
-  ["in", "🇮🇳", "India"], ["tr", "🇹🇷", "Türkiye"], ["jp", "🇯🇵", "Japan"], ["kr", "🇰🇷", "South Korea"],
-  ["au", "🇦🇺", "Australia"], ["ae", "🇦🇪", "UAE"], ["sa", "🇸🇦", "Saudi Arabia"],
+  ["us", "United States"], ["uk", "United Kingdom"], ["ca", "Canada"], ["ua", "Ukraine"],
+  ["pl", "Poland"], ["de", "Germany"], ["fr", "France"], ["es", "Spain"], ["it", "Italy"],
+  ["nl", "Netherlands"], ["br", "Brazil"], ["mx", "Mexico"], ["ar", "Argentina"],
+  ["in", "India"], ["tr", "Türkiye"], ["jp", "Japan"], ["kr", "South Korea"],
+  ["au", "Australia"], ["ae", "UAE"], ["sa", "Saudi Arabia"],
 ];
 const CAP = 120;   // render at most this many tiles; search/filter narrows to reach the rest
 
@@ -77,7 +78,7 @@ export function iptv({ S }) {
     <div class="flex flex-col gap-2.5">
       <div class="@container"><div class="flex items-center gap-2 @max-[300px]:flex-col @max-[300px]:items-stretch">
         <select id="country" aria-label=${T(t, "country")} class="select select-bordered select-sm rounded-2xl w-full @min-[300px]:w-auto @min-[300px]:shrink-0" value=${country} onChange=${(e) => $country.set(e.target.value)}>
-          ${COUNTRIES.map(([c, f, n]) => html`<option value=${c} key=${c}>${f} ${n}</option>`)}
+          ${COUNTRIES.map(([c, n]) => html`<option value=${c} key=${c}>${n}</option>`)}
         </select>
         <label class="input input-bordered input-sm flex items-center gap-2 rounded-2xl flex-1 min-w-0 w-full">
           ${Icon("lucide:search", "opacity-50")}<input id="ch-search" type="search" aria-label=${T(t, "search")} class="grow min-w-0" placeholder=${T(t, "search")} value=${query} onInput=${(e) => $query.set(e.target.value)} />

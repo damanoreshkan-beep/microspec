@@ -161,6 +161,39 @@ function parseVideos(html, base) {
   return { items, next };
 }
 
+// ── /feed/frame: same-origin reverse proxy for the interactive "source view". Fetches the target, STRIPS the
+// frame-blocking headers (we simply never re-send X-Frame-Options / CSP), rewrites asset+link URLs (and CSS
+// url()) back through this endpoint so everything loads via us with the right Referer/cookies, and injects a
+// shim that routes runtime fetch/XHR through the proxy + harvests <video> URLs and postMessages them to the
+// parent app. Cookies are jarred per host, so a user's click-through of a consent/age modal persists and can be
+// reused by /feed/videos. NOTE: SSRF-guarded but otherwise an open proxy; the cookie jar is process-global
+// (fine for a single owner, not multi-tenant). ──
+const FRAME_UA = "Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";
+export const cookieJar = new Map();   // host → "k=v; k2=v2" captured from Set-Cookie, sent back on later requests
+const FRAME_SHIM = `(function(){
+var T=window.__TARGET__||location.href;
+function P(u){try{if(!u||/^(data:|blob:|#|javascript:|mailto:|tel:)/i.test(u))return u;var a=new URL(u,T).href;if(a.indexOf(location.origin)===0)return u;return"/feed/frame?url="+encodeURIComponent(a)}catch(e){return u}}
+function clean(s){if(!s)return s;var i=s.indexOf("/feed/frame?url=");if(i>=0){try{return decodeURIComponent(s.slice(i+16))}catch(e){}}return s}
+var of=window.fetch;if(of)window.fetch=function(i,init){try{if(typeof i==="string")i=P(i);else if(i&&i.url)i=new Request(P(i.url),i)}catch(e){}return of.call(this,i,init)};
+var ox=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(){try{if(arguments[1])arguments[1]=P(arguments[1])}catch(e){}return ox.apply(this,arguments)};
+function harvest(){try{var out=[];document.querySelectorAll("video,source").forEach(function(el){var s=clean(el.currentSrc||el.src||el.getAttribute("src")||"");if(/\\.(mp4|m3u8|webm|mov)(\\?|#|$)/i.test(s)&&out.indexOf(s)<0)out.push(s)});if(out.length)parent.postMessage({__reel:"videos",videos:out.slice(0,60)},"*")}catch(e){}}
+try{new MutationObserver(harvest).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["src"]})}catch(e){}
+setInterval(harvest,1500);setTimeout(harvest,400);
+})();`;
+function proxify(u, base) {
+  if (!u || /^(?:data:|blob:|javascript:|mailto:|tel:|#)/i.test(u)) return u;
+  try { return "/feed/frame?url=" + encodeURIComponent(new URL(u.replace(/&amp;/g, "&"), base).href); } catch { return u; }
+}
+function rewriteCss(css, base) { return css.replace(/url\((['"]?)([^'")]+)\1\)/gi, (m, q, v) => `url(${q}${proxify(v, base)}${q})`); }
+function rewriteHtml(html, base) {
+  html = html.replace(/<base\b[^>]*>/gi, "");                                             // we do absolute rewriting; a <base> would fight it
+  html = html.replace(/\b(href|src|poster|action|data-src|data-lazy-src|data-poster)=(["'])([^"']*)\2/gi, (m, a, q, v) => `${a}=${q}${proxify(v, base)}${q}`);
+  html = html.replace(/\bsrcset=(["'])([^"']*)\1/gi, (m, q, v) => `srcset=${q}${v.split(",").map((p) => { const s = p.trim().split(/\s+/); return proxify(s[0], base) + (s[1] ? " " + s[1] : ""); }).join(", ")}${q}`);
+  html = rewriteCss(html, base);
+  const inject = `<script>window.__TARGET__=${JSON.stringify(base)};${FRAME_SHIM}</script>`;
+  return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + inject) : inject + html;
+}
+
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://localhost");
   const p = u.pathname;
@@ -235,6 +268,29 @@ const server = http.createServer(async (req, res) => {
       if (!/html|xml|json/i.test(ct)) return send(res, 200, J, JSON.stringify({ items: [], next: null, note: "not an html page" }));
       send(res, 200, J, JSON.stringify(parseVideos(await r.text(), r.url)));
     } catch { send(res, 502, CORS, "upstream error"); }
+    finally { clearTimeout(t); }
+    return;
+  }
+
+  // ── interactive reverse-proxy source view (header strip + URL rewrite + cookie jar + harvest shim) ──
+  if (p === "/feed/frame" && req.method === "GET") {
+    const src = await safeUrl(u.searchParams.get("url"));
+    if (!src) return send(res, 400, CORS, "bad or blocked url");
+    const host = src.hostname;
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
+    try {
+      const headers = { "user-agent": FRAME_UA, "accept-language": "en-US,en;q=0.9", "accept": "text/html,application/xhtml+xml,image/avif,image/webp,*/*;q=0.8", "referer": src.origin + "/" };
+      if (cookieJar.has(host)) headers.cookie = cookieJar.get(host);
+      const r = await fetch(src.href, { headers, signal: ctrl.signal, redirect: "follow" });
+      const setC = r.headers.getSetCookie?.() || [];                                       // capture the click-through cookies
+      if (setC.length) { const map = new Map((cookieJar.get(host) || "").split("; ").filter(Boolean).map((c) => [c.split("=")[0], c])); for (const c of setC) { const kv = c.split(";")[0].trim(); if (kv) map.set(kv.split("=")[0], kv); } cookieJar.set(host, [...map.values()].join("; ")); }
+      const ct = r.headers.get("content-type") || "";
+      // We deliberately DO NOT forward X-Frame-Options / Content-Security-Policy → the page can be iframed.
+      if (/text\/html/i.test(ct)) return send(res, 200, { ...CORS, "content-type": "text/html; charset=utf-8" }, rewriteHtml(await r.text(), src.href));
+      if (/text\/css/i.test(ct)) return send(res, 200, { ...CORS, "content-type": "text/css; charset=utf-8" }, rewriteCss(await r.text(), src.href));
+      const ab = await r.arrayBuffer();                                                    // images / video / js / fonts: pass through as-is
+      send(res, r.status, { ...CORS, "content-type": ct || "application/octet-stream", "cache-control": "public, max-age=3600" }, Buffer.from(ab));
+    } catch { send(res, 502, CORS, "frame upstream error"); }
     finally { clearTimeout(t); }
     return;
   }

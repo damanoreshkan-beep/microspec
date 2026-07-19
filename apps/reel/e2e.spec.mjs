@@ -12,14 +12,6 @@ export default [
     },
   },
   {
-    name: "звук перемикається", run: async (h) => {
-      await ready(h);
-      const before = await h.prop("#mute", "ariaLabel");
-      await h.tap("#mute"); await h.wait(200);
-      h.expect((await h.prop("#mute", "ariaLabel")) !== before, "кнопка звуку не змінила стан");
-    },
-  },
-  {
     name: "джерела: готові канали + додати-URL (Back закриває)", run: async (h) => {
       await ready(h);
       await h.tap("#source"); await h.wait(300);                       // reel → sources tab

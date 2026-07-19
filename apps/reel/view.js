@@ -37,7 +37,6 @@ const MOCK = [
 ];
 
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
-const $muted = persistentAtom("reel:muted", "1");                                        // "1" = muted (autoplay-safe)
 const $subs = persistentAtom("reel:subs", [], { encode: JSON.stringify, decode: JSON.parse });
 const $items = atom(gate ? MOCK : []);
 const $next = atom(null);
@@ -62,30 +61,29 @@ async function loadSource(url, append = false) {
 
 // The single live <video>, mounted only in the ACTIVE slide (so exactly one plays). createPlayer handles mp4 vs
 // HLS and tears down on unmount; a failed source flips to an explicit "video unavailable" state (not silent black).
-function VideoLayer({ item, muted, t }) {
+function VideoLayer({ item, t }) {
   const ref = useRef();
   const [errored, setErrored] = useState(false);
   useEffect(() => {
     setErrored(false);
     const v = ref.current; if (!v) return;
-    v.muted = muted; v.loop = true;
+    v.muted = true; v.loop = true;                                                        // muted → browsers allow autoplay
     let handle, dead = false;
     createPlayer(v, item.video, { onReady: () => v.play?.().catch(() => {}), onError: () => setErrored(true) })
       .then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     return () => { dead = true; handle?.destroy?.(); };
   }, [item.video]);
-  useEffect(() => { if (ref.current) ref.current.muted = muted; }, [muted]);
   const toggle = () => { const v = ref.current; if (v && !errored) (v.paused ? v.play?.().catch(() => {}) : v.pause?.()); };
   return html`<${Fragment}>
-    <video ref=${ref} onClick=${toggle} playsinline loop poster=${item.poster || ""} class=${`absolute inset-0 w-full h-full object-cover bg-black ${errored ? "opacity-0" : ""}`}></video>
+    <video ref=${ref} onClick=${toggle} playsinline loop muted poster=${item.poster || ""} class=${`absolute inset-0 w-full h-full object-cover bg-black ${errored ? "opacity-0" : ""}`}></video>
     ${errored ? html`<div data-vid-err class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/70 pointer-events-none">${Icon("lucide:video-off", "text-5xl")}<span class="text-sm">${T(t, "videoErr")}</span></div>` : null}
   </${Fragment}>`;
 }
 
-function Slide({ item, idx, active, muted, t }) {
+function Slide({ item, idx, active, t }) {
   return html`<section data-reel data-idx=${idx} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
     ${active
-      ? html`<${VideoLayer} item=${item} muted=${muted} t=${t} />`
+      ? html`<${VideoLayer} item=${item} t=${t} />`
       : item.poster
         ? html`<${Fragment}><img src=${item.poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover opacity-60" onError=${(e) => e.currentTarget.remove()} /><div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/85 text-5xl drop-shadow-lg")}</div></${Fragment}>`
         : html`<div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/10 text-7xl")}</div>`}
@@ -121,7 +119,7 @@ function SourceSheet({ S, t }) {
 export function reel({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const items = useStore($items), loading = useStore($loading), err = useStore($err);
-  const active = useStore($active), next = useStore($next), muted = useStore($muted) === "1";
+  const active = useStore($active), next = useStore($next);
   const src = useStore($src);
   const scroller = useRef();
 
@@ -135,7 +133,6 @@ export function reel({ S }) {
   }, [items.length]);
 
   const rail = html`<div class="fixed right-3 z-20 flex flex-col gap-2.5" style="bottom:calc(var(--dock-h) + 1.5rem)">
-    <button id="mute" class="btn btn-circle bg-black/40 border-white/15 text-white backdrop-blur-md active:scale-95" aria-label=${T(t, muted ? "unmute" : "mute")} data-haptic="off" onClick=${() => $muted.set(muted ? "0" : "1")}>${Icon(muted ? "lucide:volume-off" : "lucide:volume-2", "text-xl")}</button>
     <button id="source" class="btn btn-circle bg-black/40 border-white/15 text-white backdrop-blur-md active:scale-95" aria-label=${T(t, "changeSrc")} onClick=${() => S.tab.set("sources")}>${Icon("lucide:layout-grid", "text-xl")}</button>
   </div>`;
 
@@ -145,7 +142,7 @@ export function reel({ S }) {
       ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/70 px-8 text-center">${Icon("lucide:cloud-off", "text-5xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => loadSource(src)}>${T(t, "retry")}</button></section>`
       : !items.length
         ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/60 px-8 text-center">${Icon("lucide:film", "text-5xl")}<div>${T(t, "empty")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
-        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} muted=${muted} t=${t} key=${it.video + i} />`);
+        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} t=${t} key=${it.video + i} />`);
 
   return html`<${Fragment}>
     <div ref=${scroller} class="fixed inset-0 z-0 bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain" style="scrollbar-width:none">${body}</div>

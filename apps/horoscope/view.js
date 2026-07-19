@@ -72,8 +72,8 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
           </div>`)}
         </div>
 
-        <!-- lucky number + colour of the day (stacks on a watch, side-by-side from ~300px) -->
-        <div class="grid grid-cols-1 @min-[300px]:grid-cols-2 gap-3">
+        <!-- lucky number + colour of the day (@container: stacks on a watch, side-by-side from ~300px) -->
+        <div class="@container"><div class="grid grid-cols-1 @min-[300px]:grid-cols-2 gap-3">
           <div class="rounded-2xl bg-base-100 border border-base-300 p-4">
             <div class="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${T(t, "lucky")}</div>
             <div class="text-3xl font-bold tabular-nums text-secondary mt-0.5">${r.lucky}</div>
@@ -85,7 +85,7 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
               <span class="block font-semibold truncate">${parts(t.colours)[colourIdx] || ""}</span>
             </span>
           </div>
-        </div>
+        </div></div>
       </div>
     </div>
 

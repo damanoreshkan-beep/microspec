@@ -9,7 +9,7 @@ export default [
       h.expect((await h.prop('[data-day="today"]', "ariaSelected")) === "true", "'сьогодні' не активне за замовчуванням");
       h.expect((await h.text("[data-reading]")).trim().length > 20, "порожній гороскоп");
       h.expect(/Love|Любов/.test(await h.bodyText()) && /Work|Робота/.test(await h.bodyText()) && /Health|Здоров/.test(await h.bodyText()), "немає шкал любов/робота/здоровʼя");
-      h.expect(/Lucky|Щасливе/.test(await h.bodyText()), "немає щасливого числа");
+      h.expect(/Lucky|Щасливе/iu.test(await h.bodyText()), "немає щасливого числа"); // label is text-transform:uppercase (innerText → ЩАСЛИВЕ), so match case-insensitively
     },
   },
   {

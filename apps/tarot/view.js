@@ -15,8 +15,10 @@ import { SPREADS, spreadById, hashSeed, draw } from "/_rt/tarot.js";
 import { DECK } from "./deck.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
+const QS = new URLSearchParams(location.search);
 const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const gate = isGate || new URLSearchParams(location.search).get("mock") != null;
+const gate = isGate || QS.get("mock") != null;
+const SPREAD_OVERRIDE = QS.get("spread"); // ?spread=celtic previews any spread (phone/mock check)
 const imgURL = (file) => new URL(`./assets/${file}`, import.meta.url).href;   // robust regardless of page path
 const randSeed = () => Math.floor(Math.random() * 0x100000000) >>> 0;
 const dk = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -30,7 +32,7 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const loc = useStore(S.locale);
   useStore(trTick);                                              // re-render as translations land
-  const [spreadId, setSpreadId] = useState("daily");
+  const [spreadId, setSpreadId] = useState(SPREADS.some((s) => s.id === SPREAD_OVERRIDE) ? SPREAD_OVERRIDE : "daily");
   const [nonce, setNonce] = useState(0);                         // bumped on shuffle → fresh draw
   const [detail, setDetail] = useState(0);                       // index into the current draw, for the sheet
   const liveBase = useRef(randSeed()).current;                   // random per session, stable across renders

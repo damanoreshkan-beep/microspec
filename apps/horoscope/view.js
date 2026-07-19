@@ -12,8 +12,10 @@ import { sunSign, reading } from "/_rt/horoscope.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
+const QS = new URLSearchParams(location.search);
+const MOCK = QS.get("mock");
 const gate = isGate || MOCK != null;
+const SIGN_OVERRIDE = QS.get("sign"); // ?sign=0..11 previews any sign (for a phone/mock check); user can still change it
 
 // Remembered sign ("" → default to today's sun sign on first launch, then whatever you pick).
 const $sign = persistentAtom("horoscope.sign", "");
@@ -31,7 +33,8 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const stored = useStore($sign);
   const now = gate ? new Date(2027, 6, 23) : new Date();          // Jul 23 (Leo) — a reproducible gate shot
-  const signIdx = stored === "" ? sunSign(now.getMonth() + 1, now.getDate()) : clampSign(stored);
+  const signIdx = (SIGN_OVERRIDE != null && SIGN_OVERRIDE !== "") ? clampSign(SIGN_OVERRIDE)
+    : stored === "" ? sunSign(now.getMonth() + 1, now.getDate()) : clampSign(stored);
   const [day, setDay] = useState(1);                              // 0 yesterday · 1 today · 2 tomorrow
   const r = reading(signIdx, dk(addDays(now, day - 1)));
 

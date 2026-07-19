@@ -105,6 +105,13 @@ async function preflight(appdir) {
     [(s) => (s.tabs || []).some((t) => t.paginate), ["loadMore"], "tab.paginate renders a load-more control"],
     [(s) => !!s.detail, ["back"], "spec.detail renders a back button"],
     [(s) => !!s.fav, ["favAria", "unfavAria"], "spec.fav renders bookmark controls"],
+    // The profile tab is 100% runtime-rendered from spec.profile flags — its labels live in NO app source,
+    // so a missing one prints the raw key ("profTheme", "install") on a screen the app author never wrote.
+    // Parity can't catch it (both locales equally missing) — only tying the key to the declared capability does.
+    [(s) => !!s.profile, ["profTagline"], "the profile tab renders the app tagline"],
+    [(s) => !!s.profile?.theme, ["profTheme"], "profile.theme renders a dark-theme toggle"],
+    [(s) => !!s.profile?.lang, ["profLang"], "profile.lang renders a language switch"],
+    [(s) => !!s.profile?.install, ["install", "installTitle", "installBtn", "installDesc", "installIosHint", "installGenericHint", "close"], "profile.install renders the install button + install sheet"],
   ];
   for (const [applies, keys, why] of declared) {
     if (!applies(spec)) continue;

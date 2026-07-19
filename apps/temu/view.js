@@ -50,8 +50,8 @@ export function temu({ S, toast, undo, screen, openScreen, closeScreen }) {
           <span class="truncate">dev mode · ${dev ? T(t, "stOn") : T(t, "stOff")}</span>
         </button>
         <div class="flex-1 min-w-2"></div>
-        <${IconBtn} data=${"starred-open"} icon="lucide:bookmark" n=${star.length} onClick=${() => openScreen("starred")} accent=${false} />
-        <${IconBtn} data=${"cart-open"} icon="lucide:shopping-bag" n=${cart.length} onClick=${() => openScreen("cart")} accent=${true} />
+        <${IconBtn} attr="data-starred-open" label=${T(t, "starredTitle")} icon="lucide:bookmark" n=${star.length} onClick=${() => openScreen("starred")} accent=${false} />
+        <${IconBtn} attr="data-cart-open" label=${T(t, "cartTitle")} icon="lucide:shopping-bag" n=${cart.length} onClick=${() => openScreen("cart")} accent=${true} />
       </div>
 
       <!-- dev-mode subline (state, self-evident contrast) -->
@@ -74,8 +74,8 @@ export function temu({ S, toast, undo, screen, openScreen, closeScreen }) {
   </${Fragment}>`;
 }
 
-function IconBtn({ data, icon, n, onClick, accent }) {
-  return html`<button data-${data} onClick=${onClick} class="relative w-9 h-9 grid place-items-center rounded-full border border-base-300 text-base-content/75 active:scale-95 transition">
+function IconBtn({ attr, label, icon, n, onClick, accent }) {
+  return html`<button ...${{ [attr]: "" }} onClick=${onClick} aria-label=${label} class="relative w-9 h-9 grid place-items-center rounded-full border border-base-300 text-base-content/75 active:scale-95 transition">
     ${Icon(icon, "text-lg")}
     ${n > 0 ? html`<span class=${`absolute -top-1 -right-1 min-w-4 h-4 px-1 grid place-items-center rounded-full text-[0.6rem] font-bold tabular-nums ${accent ? "bg-secondary text-secondary-content" : "bg-base-content text-base-100"}`}>${n}</span>` : null}
   </button>`;
@@ -104,8 +104,8 @@ function Card({ p, t, starred, onOpen, onAdd, onStar }) {
         </div>
       </div>
     </div>
-    <button data-star onClick=${onStar} aria-pressed=${starred} class=${`absolute top-2 right-2 z-10 w-8 h-8 grid place-items-center rounded-full backdrop-blur-sm transition ${starred ? "text-secondary bg-secondary/15" : "text-white/70 bg-black/25"}`}>${Icon(starred ? "lucide:bookmark-check" : "lucide:bookmark", "text-base")}</button>
-    <button data-add onClick=${onAdd} class="absolute bottom-2 right-2 z-10 w-9 h-9 grid place-items-center rounded-full bg-primary text-primary-content shadow-lg active:scale-90 transition">${Icon("lucide:plus", "text-lg")}</button>
+    <button data-star onClick=${onStar} aria-pressed=${starred} aria-label=${`${T(t, "starredTitle")}: ${p.name}`} class=${`absolute top-2 right-2 z-10 w-8 h-8 grid place-items-center rounded-full backdrop-blur-sm transition ${starred ? "text-secondary bg-secondary/15" : "text-white/70 bg-black/25"}`}>${Icon(starred ? "lucide:bookmark-check" : "lucide:bookmark", "text-base")}</button>
+    <button data-add onClick=${onAdd} aria-label=${`${T(t, "add")}: ${p.name}`} class="absolute bottom-2 right-2 z-10 w-9 h-9 grid place-items-center rounded-full bg-primary text-primary-content shadow-lg active:scale-90 transition">${Icon("lucide:plus", "text-lg")}</button>
   </div>`;
 }
 
@@ -139,7 +139,7 @@ function DetailSheet({ open, onClose, p, t, starred, inCart, onAdd, onStar }) {
         </div>
         <div class="flex gap-2">
           <button data-add onClick=${onAdd} class="btn btn-primary flex-1 rounded-xl gap-1.5">${Icon(inCart ? "lucide:check" : "lucide:plus", "text-base")}${T(t, "add")}</button>
-          <button data-star onClick=${onStar} aria-pressed=${starred} class=${`btn rounded-xl border ${starred ? "btn-ghost border-secondary text-secondary" : "btn-ghost border-base-300"}`}>${Icon(starred ? "lucide:bookmark-check" : "lucide:bookmark", "text-lg")}</button>
+          <button data-star onClick=${onStar} aria-pressed=${starred} aria-label=${T(t, "starredTitle")} class=${`btn rounded-xl border ${starred ? "btn-ghost border-secondary text-secondary" : "btn-ghost border-base-300"}`}>${Icon(starred ? "lucide:bookmark-check" : "lucide:bookmark", "text-lg")}</button>
         </div>
       </div>` : null}
     </div>
@@ -168,7 +168,7 @@ function CartSheet({ open, onClose, ids, t, onRemove, onOpen }) {
       <h3 class="font-mono font-bold text-lg mb-1">${T(t, "cartTitle")}</h3>
       ${items.length ? html`<${Fragment}>
         <div class="flex flex-col divide-y divide-base-300">
-          ${items.map((p) => html`<${Row} p=${p} t=${t} key=${p.id} trailing=${html`<button data-remove onClick=${() => onRemove(p.id)} class="w-8 h-8 grid place-items-center rounded-full text-base-content/45 hover:text-error active:scale-90 transition">${Icon("lucide:x", "text-base")}</button>`} />`)}
+          ${items.map((p) => html`<${Row} p=${p} t=${t} key=${p.id} trailing=${html`<button data-remove onClick=${() => onRemove(p.id)} aria-label=${`${T(t, "removed")}: ${p.name}`} class="w-8 h-8 grid place-items-center rounded-full text-base-content/45 hover:text-error active:scale-90 transition">${Icon("lucide:x", "text-base")}</button>`} />`)}
         </div>
         <div class="flex justify-between items-baseline font-mono mt-4 mb-3"><span class="text-base-content/60">${T(t, "total")}</span><span class="text-xl font-bold tabular-nums">${money(total)}</span></div>
         <button class="btn btn-primary w-full rounded-xl gap-2 cursor-not-allowed" disabled>${Icon("lucide:git-commit-horizontal", "text-base")}${T(t, "commitPush")}</button>
@@ -193,7 +193,7 @@ function StarSheet({ open, onClose, ids, t, onOpen, onStar }) {
         ${items.map((p) => html`<div class="relative" key=${p.id}>
           <button data-card onClick=${() => onOpen(p.id)} aria-label=${p.name} class="absolute inset-0 z-0"></button>
           <div class="pointer-events-none"><${Row} p=${p} t=${t} trailing=${null} /></div>
-          <button data-star onClick=${() => onStar(p.id)} class="absolute top-1/2 -translate-y-1/2 right-1 z-10 w-8 h-8 grid place-items-center rounded-full text-secondary active:scale-90 transition">${Icon("lucide:bookmark-check", "text-base")}</button>
+          <button data-star onClick=${() => onStar(p.id)} aria-label=${`${T(t, "starredTitle")}: ${p.name}`} class="absolute top-1/2 -translate-y-1/2 right-1 z-10 w-8 h-8 grid place-items-center rounded-full text-secondary active:scale-90 transition">${Icon("lucide:bookmark-check", "text-base")}</button>
         </div>`)}
       </div>` : html`<div class="flex flex-col items-center text-center gap-2 py-12 text-base-content/55">
         ${Icon("lucide:bookmark", "text-3xl")}

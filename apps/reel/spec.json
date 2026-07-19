@@ -1,0 +1,27 @@
+{
+  "id": "reel",
+  "theme": "signal",
+  "category": "feeds",
+  "tabs": [
+    {
+      "id": "reel",
+      "type": "tool",
+      "icon": "lucide:play",
+      "label": "tabReel",
+      "view": "reel"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:clapperboard",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

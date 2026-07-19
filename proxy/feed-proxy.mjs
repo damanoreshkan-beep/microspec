@@ -23,6 +23,9 @@ const ALLOW_ORIGIN = new Set(["https://damanoreshkan-beep.github.io"]);
 const ALLOW = [/(^|\.)dou\.ua$/i, /(^|\.)wikipedia\.org$/i, /(^|\.)gutendex\.com$/i, /(^|\.)chocolatey\.org$/i];
 // Keyless flux passthrough is restricted to Black Forest Labs hosts (polling_url + the signed delivery image).
 const ALLOW_FLUX = [/(^|\.)bfl\.ai$/i, /(^|\.)bfl\.ml$/i];
+// Product-image passthrough (temu): browsers render AliExpress CDN images unreliably even though a
+// server-side fetch always succeeds — so we re-serve them same-origin (also SW-cacheable = offline).
+const ALLOW_IMG = [/(^|\.)aliexpress-media\.com$/i, /(^|\.)alicdn\.com$/i];
 const UA = "Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
 
@@ -126,6 +129,21 @@ const server = http.createServer(async (req, res) => {
       const r = await fetch(target, { headers: { "user-agent": UA }, signal: ctrl.signal, redirect: "follow" });
       const ab = await r.arrayBuffer();
       send(res, r.status, { ...CORS, "content-type": r.headers.get("content-type") || "application/octet-stream" }, Buffer.from(ab));
+    } catch { send(res, 502, CORS, "upstream error"); }
+    finally { clearTimeout(t); }
+    return;
+  }
+
+  // ── product-image passthrough (aliexpress CDN → same-origin, binary-safe, cached) ──
+  if (p === "/feed/img" && req.method === "GET") {
+    const target = u.searchParams.get("url");
+    let host; try { host = new URL(target).hostname; } catch { return send(res, 400, CORS, "bad url"); }
+    if (!ALLOW_IMG.some((re) => re.test(host))) return send(res, 403, CORS, "host not allowed");
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
+    try {
+      const r = await fetch(target, { headers: { "user-agent": UA_DESKTOP }, signal: ctrl.signal, redirect: "follow" });
+      const ab = await r.arrayBuffer();
+      send(res, r.status, { ...CORS, "content-type": r.headers.get("content-type") || "image/jpeg", "cache-control": "public, max-age=86400" }, Buffer.from(ab));
     } catch { send(res, 502, CORS, "upstream error"); }
     finally { clearTimeout(t); }
     return;

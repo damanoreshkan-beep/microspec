@@ -14,6 +14,19 @@ export default [
     },
   },
   {
+    name: "полярна зоря: статичний маркер на півночі + виведення", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-polaris]")) === 1, "немає маркера Полярної зорі");
+      h.expect((await h.count("[data-polaris-info]")) === 1, "немає виведення Полярної");
+      h.expect(/Polaris|Полярна/.test(await h.text("[data-polaris-info]")), "виведення без назви Полярної");
+      // static: сонце реагує на скрабер, Полярна — ні (її висота = широта, не залежить від часу)
+      await h.type("#scrub", "60"); await h.wait(150);
+      const a = await h.text("[data-polaris-info]");
+      await h.type("#scrub", "800"); await h.wait(150);
+      h.expect((await h.text("[data-polaris-info]")) === a, "виведення Полярної змінилось від часу — не статичне");
+    },
+  },
+  {
     name: "скрабер часу змінює позицію сонця", run: async (h) => {
       await ready(h);
       await h.type("#scrub", "120"); await h.wait(200);

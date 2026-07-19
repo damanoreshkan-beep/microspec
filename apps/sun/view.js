@@ -4,6 +4,7 @@
 // view is thin composition. Degrades gracefully: no GPS → Kyiv (renders in the headless gate too); no
 // compass → north-up map.
 import { html } from "htm/preact";
+import { Fragment } from "preact";
 import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
@@ -28,6 +29,25 @@ const minOfDay = (d) => d instanceof Date && !isNaN(d) ? d.getHours() * 60 + d.g
 const bodyLabel = (t, k) => T(t, "b" + k[0].toUpperCase() + k.slice(1));
 // N/E/S/W hug the rim; N is red like a compass needle.
 const CARDINALS = [{ label: "Пн", angle: 0, cls: "text-sm font-bold text-error" }, { label: "Сх", angle: 90 }, { label: "Пд", angle: 180 }, { label: "Зх", angle: 270 }];
+
+// Polaris — a crafted 4-point star with a soft glow. Blue-periwinkle so it reads as a STAR (not a shaded
+// planet sphere) and stays visible on both themes; a faint neutral outline defines it on white.
+const PoleStar = ({ size = 15 }) => html`<span class="relative inline-block align-middle" style=${`width:${size}px;height:${size}px`}>
+  <span class="absolute inset-0" style="background:radial-gradient(circle,rgba(138,162,255,.55),transparent 66%)"></span>
+  <svg viewBox="0 0 24 24" class="relative block" style=${`width:${size}px;height:${size}px`}><path d="M12 1.4l1.95 8.15L22 12l-8.05 2.45L12 22.6l-1.95-8.15L2 12l8.05-2.45z" fill="#8AA2FF" stroke="rgba(90,90,110,.35)" stroke-width="0.6"/></svg>
+</span>`;
+
+// The dial's cosmic frame: a horizon ring + dashed altitude circles (30° / 60°) + a zenith point, and a
+// faint inward vignette for sky depth. Decorative (aria-hidden), theme-aware via currentColor. Makes the
+// planets' altitude (radius) legible instead of floating in a blank disc.
+const SKY_RINGS = html`<svg viewBox="0 0 100 100" class="absolute inset-0 w-full h-full pointer-events-none text-base-content" fill="none" aria-hidden="true">
+  <defs><radialGradient id="sundial-sky" cx="50%" cy="50%" r="50%"><stop offset="52%" stop-color="currentColor" stop-opacity="0"></stop><stop offset="100%" stop-color="currentColor" stop-opacity="0.05"></stop></radialGradient></defs>
+  <circle cx="50" cy="50" r="40" fill="url(#sundial-sky)"></circle>
+  <circle cx="50" cy="50" r="40" stroke="currentColor" stroke-opacity="0.14" stroke-width="0.5"></circle>
+  <circle cx="50" cy="50" r="35.3" stroke="currentColor" stroke-opacity="0.09" stroke-width="0.4" stroke-dasharray="0.8 2.6"></circle>
+  <circle cx="50" cy="50" r="30.7" stroke="currentColor" stroke-opacity="0.09" stroke-width="0.4" stroke-dasharray="0.8 2.6"></circle>
+  <circle cx="50" cy="50" r="1" fill="currentColor" fill-opacity="0.22"></circle>
+</svg>`;
 
 export function sun({ S, openScreen, closeScreen }) {
   const t = useStore(S.t), screen = useStore(S.screen), filters = useStore(S.filters);
@@ -88,7 +108,12 @@ export function sun({ S, openScreen, closeScreen }) {
       key: m.key, body: m.key, angle: m.az, value: m.alt, label: bodyLabel(t, m.key),
       attrs: m.key === "sun" ? { "data-sun": true } : null,
     }));
+    // Polaris — STATIC: at true north (az 0), altitude ≈ latitude. It does not depend on `date`, so it
+    // stays put while the sun/planets sweep with the time scrubber — the still point the sky turns around.
+    // (Only the northern celestial pole star; below the horizon south of the equator.)
+    if (loc.lat > 0.5) marks.push({ key: "polaris", node: html`<${PoleStar} />`, angle: 0, value: loc.lat, label: T(t, "bPolaris"), opacity: 1, title: "Polaris", attrs: { "data-polaris": true } });
   }
+  const polarisAlt = ready && loc.lat > 0.5 ? Math.round(loc.lat) : null;
 
   const center = html`<div class="contents">
     <div data-bearing class="text-5xl font-bold tabular-nums"><${Scramble} text=${ready ? Math.round(bearing) + "°" : null} len=${4} /></div>
@@ -109,7 +134,7 @@ export function sun({ S, openScreen, closeScreen }) {
          actually overflows — never exists for a gate to measure. -->
     <div data-live=${heading == null ? null : true} class="contents">
       <${SkyDial} size=${360} rotate=${-(heading || 0)} marks=${marks} rim=${CARDINALS} center=${center}
-        overlay=${html`<div class="absolute left-1/2 -top-1 -translate-x-1/2 text-base-content/50">${Icon("lucide:chevron-up", "text-xl")}</div>`} />
+        overlay=${html`<${Fragment}>${SKY_RINGS}<div class="absolute left-1/2 -top-1 -translate-x-1/2 text-base-content/50">${Icon("lucide:chevron-up", "text-xl")}</div></${Fragment}>`} />
     </div>
 
     ${heading == null ? html`<div class="text-xs text-base-content/60 flex items-center gap-1.5">${Icon("lucide:compass")}${needPerm ? "" : T(t, "noCompass")}</div>` : null}
@@ -121,6 +146,8 @@ export function sun({ S, openScreen, closeScreen }) {
         : ready ? (pos?.approx ? html`<div class="text-xs text-base-content/70">${T(t, "approxKyiv")}</div>` : null)
         : html`<div class="text-xs text-base-content/60 flex items-center gap-1.5">${Icon("lucide:map-pin")}${T(t, "locating")}</div>`}
     </div>
+
+    ${polarisAlt != null ? html`<div data-polaris-info class="flex items-center gap-1.5 text-xs text-base-content/65 font-mono tabular-nums"><${PoleStar} size=${13} />${T(t, "bPolaris")} · ${polarisAlt}°</div>` : null}
 
     ${ready ? html`<${TimeScale} value=${scrub} now=${now.getHours() * 60 + now.getMinutes()} onChange=${setScrub} t=${t}
       sunrise=${minOfDay(times.sunrise)} sunset=${minOfDay(times.sunset)} anchors=${anchors} />` : null}

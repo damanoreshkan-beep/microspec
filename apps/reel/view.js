@@ -14,6 +14,7 @@ import { T } from "/_rt/i18n.js";
 import { createPlayer } from "/_rt/video.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
+import { collection, idbSupported } from "/_rt/db.js";
 import { Pixels } from "/_rt/skeleton.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -37,7 +38,21 @@ const MOCK = [
 ];
 
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
-const $subs = persistentAtom("reel:subs", [], { encode: JSON.stringify, decode: JSON.parse });
+// Subscriptions live in IndexedDB (the runtime's collection() store) — a real DB, not localStorage. $subs is a
+// reactive mirror the views read; writes go to both (optimistic atom + async idb). Headless/no-idb: atom only.
+const subsDB = collection("reelSubs");
+const $subs = atom([]);
+if (idbSupported && !gate) subsDB.all().then((rows) => $subs.set(rows)).catch(() => {});
+async function subscribe(s) {
+  if ($subs.get().some((x) => x.url === s.url)) return;
+  const rec = { name: s.name, url: s.url, icon: s.icon || "lucide:link", color: s.color || "#8b5cf6" };
+  $subs.set([{ id: s.url, ...rec }, ...$subs.get()]);
+  try { await subsDB.put(s.url, rec); } catch { /* no idb (headless) — the atom still holds it this session */ }
+}
+async function unsubscribe(url) {
+  $subs.set($subs.get().filter((x) => x.url !== url));
+  try { await subsDB.remove(url); } catch { /* */ }
+}
 const $items = atom(gate ? MOCK : []);
 const $next = atom(null);
 const $loading = atom(!gate);
@@ -97,8 +112,14 @@ function Slide({ item, idx, active, t }) {
 }
 
 function SourceSheet({ S, t }) {
-  const [val, setVal] = useState($src.get());
-  const submit = (e) => { e?.preventDefault?.(); const u = val.trim(); if (u) $src.set(u); S.tab.set("reel"); S.screen.set(null); };
+  const [val, setVal] = useState("");
+  const submit = (e) => {
+    e?.preventDefault?.();
+    const u = val.trim(); if (!u) return S.screen.set(null);
+    const url = /^https?:\/\//i.test(u) ? u : "https://" + u;                             // tolerate a missing scheme
+    subscribe({ name: hostOf(url), url, icon: "lucide:link" });                           // save it → joins the list
+    $src.set(url); S.tab.set("reel"); S.screen.set(null);
+  };
   return html`<div class="fixed inset-0 z-40 flex items-end" role="dialog" aria-modal="true" aria-label=${T(t, "srcTitle")}>
     <button class="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-label=${T(t, "close")} onClick=${() => S.screen.set(null)}></button>
     <form onSubmit=${submit} class="relative w-full max-w-xl mx-auto bg-base-100 rounded-t-3xl p-5 flex flex-col gap-3" style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
@@ -171,8 +192,6 @@ export function sources({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const subs = useStore($subs), curSrc = useStore($src);
   const play = (s) => { $src.set(s.url); S.tab.set("reel"); };
-  const sub = (s) => { if (!$subs.get().some((x) => x.url === s.url)) $subs.set([...$subs.get(), { name: s.name, url: s.url, icon: s.icon, color: s.color }]); };
-  const unsub = (url) => $subs.set($subs.get().filter((x) => x.url !== url));
   const subbedUrls = new Set(subs.map((x) => x.url));
   const discover = PRESETS.filter((p) => !subbedUrls.has(p.url));
 
@@ -183,13 +202,13 @@ export function sources({ S }) {
       <div class="flex flex-col gap-2">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:bookmark", "text-primary")} ${T(t, "subs")}</div>
         ${subs.length
-          ? subs.map((s) => html`<${SourceRow} s=${s} active=${s.url === curSrc} subbed=${true} onPlay=${play} onToggle=${() => unsub(s.url)} t=${t} key=${s.url} />`)
+          ? subs.map((s) => html`<${SourceRow} s=${s} active=${s.url === curSrc} subbed=${true} onPlay=${play} onToggle=${() => unsubscribe(s.url)} t=${t} key=${s.url} />`)
           : html`<div class="text-sm text-base-content/70 px-1 py-3">${T(t, "noSubs")}</div>`}
       </div>
 
       ${discover.length ? html`<div class="flex flex-col gap-2">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:compass")} ${T(t, "discover")}</div>
-        ${discover.map((s) => html`<${SourceRow} s=${s} active=${s.url === curSrc} subbed=${false} onPlay=${play} onToggle=${() => sub(s)} t=${t} key=${s.url} />`)}
+        ${discover.map((s) => html`<${SourceRow} s=${s} active=${s.url === curSrc} subbed=${false} onPlay=${play} onToggle=${() => subscribe(s)} t=${t} key=${s.url} />`)}
       </div>` : null}
     </div>
     ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}

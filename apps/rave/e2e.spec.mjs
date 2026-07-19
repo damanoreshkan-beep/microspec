@@ -1,18 +1,31 @@
 const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("[data-cell]")) > 0) break; await h.wait(500); } };
+const openFx = async (h) => { if ((await h.count("#fxsheet[open]")) === 0) { await h.click("[data-settings]"); await h.wait(250); } };
 
 export default [
   {
-    name: "секвенсер: 5×16 = 80 клітин, пресети, транспорт", run: async (h) => {
+    name: "секвенсер: 256 клітин, транспорт-острівець, пресети в аркуші", run: async (h) => {
       await ready(h); await h.wait(200);
       h.expect((await h.count("[data-cell]")) === 256, "немає 256 клітин (16 доріжок × 16)");
-      h.expect((await h.count("#play")) === 1, "немає кнопки play/stop");
-      h.expect((await h.count("[data-preset]")) === 25, "немає 25 пресетів (24 + clear)");
-      h.expect((await h.count("[data-gen]")) === 1, "немає кнопки генерації");
+      h.expect((await h.count("#play")) === 1, "немає кнопки play/stop на острівці");
+      h.expect((await h.count("[data-settings]")) === 1, "немає кнопки налаштувань на острівці");
+      await openFx(h);
+      h.expect((await h.count("[data-preset]")) === 25, "немає 25 пресетів (24 + clear) в аркуші");
+      h.expect((await h.count("[data-gen]")) === 1, "немає кнопки генерації в аркуші");
+    },
+  },
+  {
+    name: "налаштування: острівець → аркуш, Back закриває", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("#fxsheet[open]")) === 0, "аркуш не має бути відкритим одразу");
+      await h.click("[data-settings]"); await h.wait(250);
+      h.expect((await h.prop("#fxsheet", "open")) === true, "аркуш налаштувань не відкрився");
+      await h.back(); await h.wait(250);
+      h.expect((await h.prop("#fxsheet", "open")) !== true, "Back не закрив аркуш");
     },
   },
   {
     name: "генератор: пише патерн у сітку, кік на долю", run: async (h) => {
-      await ready(h);
+      await ready(h); await openFx(h);
       await h.click('[data-preset="clear"]'); await h.wait(120);
       h.expect((await h.attr('[data-cell="kick-0"]', "aria-pressed")) === "false", "clear не очистив перед генерацією");
       await h.click("[data-gen]");
@@ -47,7 +60,7 @@ export default [
   },
   {
     name: "clear очищає, пресет заповнює", run: async (h) => {
-      await ready(h);
+      await ready(h); await openFx(h);
       await h.click('[data-preset="clear"]'); await h.wait(80);
       h.expect((await h.attr('[data-cell="kick-0"]', "aria-pressed")) === "false", "clear не очистив");
       await h.click('[data-preset="techno"]'); await h.wait(80);
@@ -80,7 +93,7 @@ export default [
   },
   {
     name: "зберегти патерн → зʼявляється у «Збережені» → завантажується", run: async (h) => {
-      await ready(h);
+      await ready(h); await openFx(h);
       await h.click('[data-preset="rave"]'); await h.wait(120);
       await h.click("[data-save]"); await h.wait(400);
       await h.click('[data-tab="saved"]'); await h.wait(400);
@@ -95,7 +108,7 @@ export default [
   },
   {
     name: "збережені: кнопка плей + спектр у кожному айтемі", run: async (h) => {
-      await h.click('[data-tab="beat"]'); await h.wait(200); await ready(h);
+      await h.click('[data-tab="beat"]'); await h.wait(200); await ready(h); await openFx(h);
       await h.click('[data-preset="acid"]'); await h.wait(120);
       await h.click("[data-save]"); await h.wait(400);
       await h.click('[data-tab="saved"]'); await h.wait(400);
@@ -112,7 +125,7 @@ export default [
   },
   {
     name: "збережені: грати другий біт поверх першого — один активний, без збоїв", run: async (h) => {
-      await h.click('[data-tab="beat"]'); await h.wait(180); await ready(h);
+      await h.click('[data-tab="beat"]'); await h.wait(180); await ready(h); await openFx(h);
       await h.click('[data-preset="techno"]'); await h.wait(120); await h.click("[data-save]"); await h.wait(350);
       await h.click('[data-preset="gabber"]'); await h.wait(120); await h.click("[data-save]"); await h.wait(350);
       await h.click('[data-tab="saved"]'); await h.wait(350);
@@ -130,7 +143,7 @@ export default [
   {
     name: "ідентичний біт не зберігається двічі", run: async (h) => {
       await h.click('[data-tab="beat"]'); await h.wait(200);
-      await ready(h);
+      await ready(h); await openFx(h);
       await h.click('[data-preset="techno"]'); await h.wait(150);
       await h.click("[data-save]"); await h.wait(500);
       await h.click("[data-save]"); await h.wait(500);            
@@ -138,7 +151,7 @@ export default [
       await h.click('[data-tab="saved"]'); await h.wait(400);
       let n = 0; for (let i = 0; i < 12; i++) { n = await h.count("[data-saved]"); if (n > 0) break; await h.wait(250); }
       h.expect(n === 1, `ідентичний біт збережено ${n} разів замість 1`);
-      await h.click('[data-tab="beat"]'); await h.wait(200);
+      await h.click('[data-tab="beat"]'); await h.wait(200); await openFx(h);
       await h.click('[data-preset="gabber"]'); await h.wait(150);
       await h.click("[data-save]"); await h.wait(500);
       await h.click('[data-tab="saved"]'); await h.wait(400);
@@ -149,7 +162,7 @@ export default [
   },
   {
     name: "збережені: видалення можна скасувати (undo)", run: async (h) => {
-      await h.click('[data-tab="beat"]'); await h.wait(180); await ready(h);
+      await h.click('[data-tab="beat"]'); await h.wait(180); await ready(h); await openFx(h);
       await h.click('[data-preset="detroit"]'); await h.wait(120); await h.click("[data-save]"); await h.wait(400);
       await h.click('[data-tab="saved"]'); await h.wait(350);
       let n = 0; for (let i = 0; i < 12; i++) { n = await h.count("[data-saved]"); if (n > 0) break; await h.wait(250); }

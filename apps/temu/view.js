@@ -63,7 +63,7 @@ export function temu({ S, toast, undo, screen, openScreen, closeScreen }) {
         <${IconBtn} attr="data-cart-open" label=${T(t, "cartTitle")} icon="lucide:shopping-bag" n=${cart.length} onClick=${() => openScreen("cart")} accent=${true} />
       </div>
 
-      <div class="-mt-1 text-[0.68rem] font-mono text-base-content/55">${dev ? T(t, "devSubOn") : T(t, "devSubOff")} · <span class="text-base-content/40">${query}</span></div>
+      <div class="-mt-1 text-[0.68rem] font-mono text-base-content/60">${dev ? T(t, "devSubOn") : T(t, "devSubOff")} · <span class="text-base-content/75">${query}</span></div>
 
       <div class="flex gap-1 overflow-x-auto -mx-4 px-4 pb-1" role="tablist">
         ${CATS.map((c) => html`<button role="tab" data-cat=${c.id} aria-selected=${catId === c.id} onClick=${() => setCatId(c.id)} class=${`shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-mono transition-colors border ${catId === c.id ? "border-primary/40 text-primary bg-primary/10" : "border-transparent text-base-content/55 hover:text-base-content/80"}`} key=${c.id}>${T(t, "cat_" + c.id)}</button>`)}

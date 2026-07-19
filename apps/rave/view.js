@@ -5,7 +5,8 @@
 // scheduler; the working pattern + FX live in nanostore atoms (survive tab switches) and autosave to
 // IndexedDB (/_rt/db.js); a "Saved" tab lists named saves. Refs: MDN · Chris Wilson "Two Clocks".
 import { html } from "htm/preact";
-import { useState, useEffect } from "preact/hooks";
+import { Fragment } from "preact";
+import { useState, useEffect, useRef } from "preact/hooks";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
@@ -423,7 +424,7 @@ const generate = (seed = (Math.random() * 0xffffffff) >>> 0, animate = true) => 
 // Saved list can show each groove's shape at a glance without playing it. Pure presentation, like genreKey.
 const beatBars = (tracks) => STEPS.map((s) => TRACKS.reduce((n, tr) => n + (tracks?.[tr.id]?.[s] ? 1 : 0), 0));
 
-export function rave({ S, toast }) {
+export function rave({ S, toast, screen, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const tracks = useStore($tracks), bpm = useStore($bpm), fx = useStore($fx), hist = useStore($hist);
   // Highlight the preset chip only while the pattern still IS that preset — edit a step and the highlight
@@ -453,7 +454,6 @@ export function rave({ S, toast }) {
   }, []);
 
   const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
-  const setFx = (id, v) => $fx.set({ ...fx, [id]: v });
   const save = async () => {
     try {
       const list = await SAVES.all();
@@ -467,39 +467,12 @@ export function rave({ S, toast }) {
 
   const cSeed = hist.idx >= 0 && hist.idx < hist.seeds.length ? hist.seeds[hist.idx] : null;
   const npTitle = cSeed != null ? trackName(cSeed) : (activePreset ? T(t, (PRESETS.find((p) => p.id === activePreset) || {}).name || "") : "");
-  return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
-    <div class="shrink-0 w-full max-w-xl mx-auto px-4 pt-3 flex flex-col gap-3">
-    <div class="flex items-center gap-2">
-      <button data-prev aria-label=${T(t, "prevTrack")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${prevTrack}>${Icon("lucide:skip-back", "text-lg")}</button>
-      <button id="play" aria-label=${playing ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle btn-lg shadow-lg shrink-0 ${playing ? "btn-secondary" : "btn-primary"}`} onClick=${() => (playing ? stop() : start())}>${Icon(playing ? "lucide:square" : "lucide:play", "text-2xl")}</button>
-      <button data-next aria-label=${T(t, "nextTrack")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${nextTrack}>${Icon("lucide:skip-forward", "text-lg")}</button>
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center justify-between text-xs mb-0.5 gap-2">
-          <span data-track class="font-mono truncate text-base-content/80">${npTitle ? "♪ " + npTitle : ""}</span>
-          <span class="font-semibold tabular-nums shrink-0">${bpm} BPM</span>
-        </div>
-        <input type="range" min="90" max="150" value=${bpm} class="range range-xs range-primary w-full" aria-label=${T(t, "tempo")} onInput=${(e) => $bpm.set(Number(e.target.value))} />
-      </div>
-      <button id="save" data-save aria-label=${T(t, "aSave")} class="btn btn-circle btn-outline btn-sm shrink-0" onClick=${save}>${Icon("lucide:save", "text-lg")}</button>
-    </div>
-
-    <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
-      ${FX.map((f) => html`<div class="flex flex-col gap-0.5 min-w-0" key=${f.id}><div class="flex items-center gap-1 text-[0.6rem] uppercase tracking-wide text-base-content/70">${Icon(f.icon, "text-[0.85em] shrink-0")}<span class="truncate">${T(t, f.label)}</span></div><input type="range" min=${f.min} max=${f.max} step=${f.step} value=${fx[f.id]} class="range range-xs range-accent w-full min-w-0" aria-label=${T(t, f.label)} onInput=${(e) => setFx(f.id, Number(e.target.value))} /></div>`)}
-    </div>
-
-    <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-      <button id="gen" data-gen aria-label=${T(t, "gen")} aria-busy=${sweep >= 0} class=${`btn btn-sm shrink-0 gap-1.5 btn-accent transition-transform ${sweep >= 0 ? "scale-105" : "btn-outline"}`} onClick=${newTrack}>
-        ${Icon("lucide:sparkles", `text-base ${sweep >= 0 ? "animate-pulse" : ""}`)}<span>${T(t, "gen")}</span>
-      </button>
-      ${PRESETS.map((p) => html`<button data-preset=${p.id} aria-pressed=${activePreset === p.id} class=${`btn btn-sm shrink-0 ${activePreset === p.id ? "btn-primary" : "btn-outline"}`} onClick=${() => { ensure(); $tracks.set(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
-      <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => $tracks.set(empty())}>${Icon("lucide:eraser", "text-base")}</button>
-    </div>
-    ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
-    </div>
-
-    <div class="flex-1 min-h-0 overflow-y-auto w-full max-w-xl mx-auto px-4 pb-4">
-    <div class="flex flex-col gap-1">
-      <div class="sticky top-0 z-10 bg-base-200 flex items-center gap-[3px] py-1">
+  const sheetOpen = screen === "fx";
+  return html`<${Fragment}>
+    <!-- ONE page scroll: the 16-voice grid flows in the page (no nested scroll). The step ruler sticks under
+         the header; bottom padding clears the floating transport island + the dock. -->
+    <div class="pb-40 flex flex-col gap-1">
+      <div class="sticky z-10 -mx-4 px-4 bg-base-200/85 backdrop-blur flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
         <div class="w-7 shrink-0"></div>
         ${STEPS.map((s) => html`<div class=${`flex-1 h-1 rounded-full transition-colors ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${s === sweep ? "bg-accent" : s === cur ? "bg-primary" : "bg-base-300"}`} key=${s}></div>`)}
       </div>
@@ -510,8 +483,48 @@ export function rave({ S, toast }) {
           onClick=${() => cellToggle(tr.id, s)} key=${s}></button>`; })}
       </div>`; })}
     </div>
+
+    <!-- floating transport island — the persistent controls, glass like the dock, floating above it -->
+    <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)">
+      <div class="pointer-events-auto w-full max-w-xl flex items-center gap-2 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2">
+        <button data-prev aria-label=${T(t, "prevTrack")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${prevTrack}>${Icon("lucide:skip-back", "text-lg")}</button>
+        <button id="play" aria-label=${playing ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle shadow-lg shrink-0 ${playing ? "btn-secondary" : "btn-primary"}`} onClick=${() => (playing ? stop() : start())}>${Icon(playing ? "lucide:square" : "lucide:play", "text-xl")}</button>
+        <button data-next aria-label=${T(t, "nextTrack")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${nextTrack}>${Icon("lucide:skip-forward", "text-lg")}</button>
+        <button data-tempo class="flex-1 min-w-0 text-left leading-tight" aria-label=${T(t, "tempo")} onClick=${() => openScreen("fx")}>
+          <span data-track class="block font-mono text-xs truncate text-base-content/80">${npTitle ? "♪ " + npTitle : "♪"}</span>
+          <span class="block text-sm font-semibold tabular-nums">${bpm} BPM</span>
+        </button>
+        <button id="save" data-save aria-label=${T(t, "aSave")} class="btn btn-circle btn-outline btn-sm shrink-0" onClick=${save}>${Icon("lucide:save", "text-lg")}</button>
+        <button data-settings aria-label=${T(t, "settings")} aria-expanded=${sheetOpen} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => openScreen("fx")}>${Icon("lucide:sliders-horizontal", "text-lg")}</button>
+      </div>
     </div>
-  </div>`;
+
+    <${FxSheet} open=${sheetOpen} onClose=${closeScreen} t=${t} sweep=${sweep} activePreset=${activePreset} />
+  </${Fragment}>`;
+}
+
+// The settings island → a history-backed bottom sheet (S.screen="fx", so system Back closes it). Holds what
+// used to crowd the top: tempo, the FX rack and the presets/generator — reachable in one tap, out of the way
+// while you edit the grid. Reads the shared atoms directly; preset/generate use the module transport fns.
+function FxSheet({ open, onClose, t, sweep, activePreset }) {
+  const fx = useStore($fx), bpm = useStore($bpm);
+  const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
+  const setFx = (id, v) => $fx.set({ ...fx, [id]: v });
+  return html`<dialog id="fxsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}><div class="modal-box rounded-t-3xl pb-8 flex flex-col gap-3 max-w-xl mx-auto">
+    <div class="flex flex-col gap-0.5">
+      <div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${T(t, "tempo")}</span><span class="font-semibold tabular-nums">${bpm} BPM</span></div>
+      <input type="range" min="90" max="150" value=${bpm} class="range range-xs range-primary w-full" aria-label=${T(t, "tempo")} onInput=${(e) => $bpm.set(Number(e.target.value))} />
+    </div>
+    <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
+      ${FX.map((f) => html`<div class="flex flex-col gap-0.5 min-w-0" key=${f.id}><div class="flex items-center gap-1 text-[0.6rem] uppercase tracking-wide text-base-content/70">${Icon(f.icon, "text-[0.85em] shrink-0")}<span class="truncate">${T(t, f.label)}</span></div><input type="range" min=${f.min} max=${f.max} step=${f.step} value=${fx[f.id]} class="range range-xs range-accent w-full min-w-0" aria-label=${T(t, f.label)} onInput=${(e) => setFx(f.id, Number(e.target.value))} /></div>`)}
+    </div>
+    <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+      <button id="gen" data-gen aria-label=${T(t, "gen")} aria-busy=${sweep >= 0} class=${`btn btn-sm shrink-0 gap-1.5 btn-accent transition-transform ${sweep >= 0 ? "scale-105" : "btn-outline"}`} onClick=${newTrack}>${Icon("lucide:sparkles", `text-base ${sweep >= 0 ? "animate-pulse" : ""}`)}<span>${T(t, "gen")}</span></button>
+      ${PRESETS.map((p) => html`<button data-preset=${p.id} aria-pressed=${activePreset === p.id} class=${`btn btn-sm shrink-0 ${activePreset === p.id ? "btn-primary" : "btn-outline"}`} onClick=${() => { ensure(); $tracks.set(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
+      <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => $tracks.set(empty())}>${Icon("lucide:eraser", "text-base")}</button>
+    </div>
+    ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
+  </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
 }
 
 // A populated Saved list needs saved data, which a fresh screenshot has none of — so the visual gate could

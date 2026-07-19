@@ -1,15 +1,11 @@
-import { viaProxy, isJsonObject } from "/_rt/feed.js";
+import { fetchJson } from "/_rt/feed.js";
+import { isGate, gate } from "/_rt/gate.js";
+import { letterTile } from "/_rt/tile.js";
 
 const LANGS = { uk: "Українська", en: "English", de: "Deutsch", pl: "Polski" };
 const oneLine = (s) => { s = s.replace(/\s+/g, " ").trim(); return s.length > 100 ? s.slice(0, 100).replace(/\s+\S*$/, "") + "…" : s; };
-const placeholder = (title) => {
-  const ch = (title.trim()[0] || "?").toUpperCase();
-  let hue = 0; for (const c of title) hue = (hue * 31 + c.charCodeAt(0)) % 360;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="hsl(${hue} 32% 40%)"/><text x="50%" y="52%" dy=".35em" text-anchor="middle" font-family="system-ui,sans-serif" font-size="230" font-weight="700" fill="rgba(255,255,255,.92)">${ch}</text></svg>`;
-  return "data:image/svg+xml," + encodeURIComponent(svg);
-};
+const placeholder = (title) => letterTile(title, { w: 400, h: 400, sat: 32, light: 40, fontSize: 230 });
 
-const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 const GATE_ARTS = [
   ["Київ", "Столиця України", "Київ — столиця та найбільше місто України на річці Дніпро, одне з найдавніших міст Європи."],
   ["Україна", "Держава у Східній Європі", "Україна — держава у Східній Європі, друга за площею країна континенту."],
@@ -39,7 +35,7 @@ export async function load(filters) {
   };
   if (filters.cursor != null) params.gsroffset = String(filters.cursor); 
   const api = `https://${lang}.wikipedia.org/w/api.php?` + new URLSearchParams(params);
-  const data = JSON.parse(await viaProxy(api, isJsonObject));
+  const data = await fetchJson(api);
   const pages = Object.values(data.query?.pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
 
   const items = pages.map((p) => {

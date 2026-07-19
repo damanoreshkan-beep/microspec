@@ -4,11 +4,10 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { mulberry32 } from "/_rt/groove.js";
 import { feedback, solved, makeSecret } from "/_rt/codebreak.js";
+import { isGate, MOCK, gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const SLOTS = 4, NCOLORS = 6, MAX = 10;
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 
 const PEGS = [
   { c: "#EC5A4A", ink: "#2A0906", sym: "●", key: "cRed" },

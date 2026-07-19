@@ -5,10 +5,9 @@ import { T } from "/_rt/i18n.js";
 import { camera } from "/_rt/sensors.js";
 import { avgColor, palette, rgbToHex, rgbToHsl } from "/_rt/colour.js";
 import { CameraPrime } from "/_rt/camprime.js";
+import { gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 
 function seedBuffer() {
   const bands = [[233, 90, 74], [228, 185, 60], [70, 196, 110], [63, 199, 192], [122, 90, 200]];
@@ -20,7 +19,6 @@ function seedBuffer() {
 
 export function pipette({ S }) {
   const t = useStore(S.t), loc = useStore(S.locale);
-  const gate = isGate || MOCK;
   const seed = useMemo(() => { if (!gate) return null; const pal = palette(seedBuffer(), 5); return { pal, picked: pal[2] || pal[0] }; }, []);
   const [picked, setPicked] = useState(seed ? seed.picked : null);
   const [pal, setPal] = useState(seed ? seed.pal : []);

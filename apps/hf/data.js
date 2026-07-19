@@ -1,4 +1,4 @@
-import { viaProxy, isJsonArray } from "/_rt/feed.js";
+import { viaProxy, fetchJson } from "/_rt/feed.js";
 
 const compact = (n) => {
   n = Number(n) || 0;
@@ -16,7 +16,7 @@ export async function load(filters = {}) {
   const params = new URLSearchParams({ sort, direction: "-1", limit: "40" });
   if (q) params.set("search", q);
   if (cat) params.set("filter", cat);
-  const data = JSON.parse(await viaProxy(`https://huggingface.co/api/${kind}?${params}`, isJsonArray));
+  const data = await fetchJson(`https://huggingface.co/api/${kind}?${params}`, { array: true });
   const items = (Array.isArray(data) ? data : []).map((m) => {
     const id = m.id || m.modelId || "";
     const [org, ...rest] = id.split("/");

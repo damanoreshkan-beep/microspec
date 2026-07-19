@@ -1,4 +1,4 @@
-import { viaProxy, isJsonObject } from "/_rt/feed.js";
+import { viaProxy, fetchJson } from "/_rt/feed.js";
 
 const API = "https://api.github.com/search/repositories";
 const PAGE = 24;
@@ -37,7 +37,7 @@ export async function load(filters = {}) {
     page: String(page),
   });
 
-  const data = JSON.parse(await viaProxy(`${API}?${params}`, isJsonObject, 15000));
+  const data = await fetchJson(`${API}?${params}`, { timeout: 15000 });
 
   const raw = (data.items || []).length;
   const items = (data.items || []).map((it) => ({

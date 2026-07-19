@@ -26,3 +26,13 @@ export async function viaProxy(url, validate = (x) => !!x, timeout = 10000) {
 
 export const isJsonArray = (x) => x.trim().startsWith("[");
 export const isJsonObject = (x) => x.trim().startsWith("{");
+
+export async function fetchJson(url, { array = false, timeout = 10000 } = {}) {
+  return JSON.parse(await viaProxy(url, array ? isJsonArray : isJsonObject, timeout));
+}
+
+export async function pool(items, n, fn) {
+  let i = 0;
+  const worker = async () => { while (i < items.length) { const idx = i++; await fn(items[idx]); } };
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker));
+}

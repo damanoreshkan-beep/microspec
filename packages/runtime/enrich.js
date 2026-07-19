@@ -1,5 +1,5 @@
 import { atom } from "nanostores";
-import { viaProxy } from "./feed.js";
+import { viaProxy, pool } from "./feed.js";
 
 export const metaTick = atom(0);
 
@@ -69,12 +69,6 @@ async function fetchMeta(url) {
     if (!description) throw new Error("no description");
     return { description };
   } finally { clearTimeout(t); }
-}
-
-async function pool(items, n, fn) {
-  let i = 0;
-  const worker = async () => { while (i < items.length) { const idx = i++; await fn(items[idx]); } };
-  await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker));
 }
 
 export async function warmMeta(urls) {

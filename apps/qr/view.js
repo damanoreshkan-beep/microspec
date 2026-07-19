@@ -6,10 +6,9 @@ import { T } from "/_rt/i18n.js";
 import { camera, haptic } from "/_rt/sensors.js";
 import { CameraPrime } from "/_rt/camprime.js";
 import { analyzeQR } from "/_rt/urlsafe.js";
+import { MOCK, gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const isGate = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const MOCK = new URLSearchParams(location.search).get("mock");
 const seedRaw = MOCK && MOCK !== "1" && MOCK !== "" ? MOCK : "https://bit.ly/3xR2k9q";
 
 let _detector, _jsQR, _noBD = false;
@@ -39,7 +38,6 @@ const VERDICT = {
 
 export function qr({ S, toast }) {
   const t = useStore(S.t), loc = useStore(S.locale);
-  const gate = isGate || MOCK != null;
   const [result, setResult] = useState(gate ? analyzeQR(seedRaw) : null);
   const [err, setErr] = useState(null);
   const [enabled, setEnabled] = useState(gate);

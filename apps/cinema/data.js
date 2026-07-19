@@ -1,3 +1,5 @@
+import { isGate, gate } from "/_rt/gate.js";
+import { letterTile } from "/_rt/tile.js";
 const API = "https://archive.org/advancedsearch.php";
 const BASE = 'collection:(feature_films) AND mediatype:(movies) AND format:("h.264")';
 const FIELDS = ["identifier", "title", "year", "description", "downloads", "language"];
@@ -37,8 +39,7 @@ const clean = (d) => {
 const year = (y) => { const n = parseInt(Array.isArray(y) ? y[0] : y, 10); return n >= 1870 && n <= 2100 ? String(n) : ""; };
 const views = (n) => { const v = Number(n) || 0; return v >= 1000 ? `${Math.round(v / 1000)}k` : v ? String(v) : ""; };
 
-const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const poster = (t, hue) => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><rect width="300" height="450" fill="hsl(${hue} 34% 22%)"/><text x="50%" y="52%" fill="rgba(255,255,255,.92)" font-family="system-ui,sans-serif" font-size="150" font-weight="700" text-anchor="middle" dy=".35em">${t[0]}</text></svg>`);
+const poster = (t, hue) => letterTile(t, { hue, sat: 34, light: 22 });
 const FIXTURE = [
   { id: "Nosferatu", title: "Nosferatu", year: "1922", lang: "de", era: "silent", desc: "A vampire brings plague to a German town." },
   { id: "Metropolis", title: "Metropolis", year: "1927", lang: "de", era: "silent", desc: "A futurist city split between thinkers and workers." },

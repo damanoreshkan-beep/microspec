@@ -1,4 +1,6 @@
 import { viaProxy, isJsonObject } from "/_rt/feed.js";
+import { isGate, gate } from "/_rt/gate.js";
+import { letterTile } from "/_rt/tile.js";
 const pick = (o, path) => path.split(".").reduce((v, k) => (v == null ? v : v[k]), o);
 const compact = (n) => { n = Number(n) || 0; if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, "") + "M"; if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e5 ? 0 : 1).replace(/\.0$/, "") + "K"; return String(n); };
 const COMPACT = new Set(["downloads"]);
@@ -8,8 +10,7 @@ const joinList = (v) => Array.isArray(v) ? v.slice(0, JOIN_CAP).join(", ") : (v 
 const MAP = {"id":"id","title":"title","author":"authors.0.name","desc":"summaries.0","downloads":"download_count","subjects":"subjects","shelves":"bookshelves","lang":"languages","readUrl":"formats.text/html","epubUrl":"formats.application/epub+zip","cover":"formats.image/jpeg"};
 const URLT = "https://www.gutenberg.org/ebooks/{id}";
 
-const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const bcover = (t, hue) => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><rect width="300" height="450" fill="hsl(${hue} 30% 24%)"/><text x="50%" y="52%" fill="rgba(255,255,255,.92)" font-family="system-ui,sans-serif" font-size="150" font-weight="700" text-anchor="middle" dy=".35em">${t[0]}</text></svg>`);
+const bcover = (t, hue) => letterTile(t, { hue, sat: 30, light: 24 });
 const GATE_BOOKS = [
   { id: 1342, title: "Pride and Prejudice", author: "Jane Austen", desc: "Elizabeth Bennet and the proud Mr Darcy." },
   { id: 84, title: "Frankenstein", author: "Mary Shelley", desc: "A scientist creates, then abandons, life." },

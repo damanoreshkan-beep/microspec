@@ -1,4 +1,4 @@
-import { viaProxy, isJsonObject } from "/_rt/feed.js";
+import { viaProxy, fetchJson } from "/_rt/feed.js";
 
 const compact = (n) => {
   n = Number(n) || 0;
@@ -18,7 +18,7 @@ export async function load(filters = {}) {
   if (topic) parts.push(`topic:${topic}`);
   if (q) parts.push(q);
   const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(parts.join(" "))}&sort=stars&order=desc&per_page=40`;
-  const data = JSON.parse(await viaProxy(url, isJsonObject));
+  const data = await fetchJson(url);
   const items = (data.items || []).map((it) => ({
     id: String(it.id),
     name: it.name,

@@ -101,8 +101,8 @@ function Card({ p, t, starred, onOpen, onAdd, onStar }) {
   return html`<div class="relative rounded-2xl border border-base-300 bg-base-100 overflow-hidden">
     <button data-card onClick=${onOpen} aria-label=${p.title} class="absolute inset-0 z-0"></button>
     <div class="pointer-events-none">
-      <div class="relative aspect-square" style=${TILE}>
-        <img src=${p.img} alt=${p.title} loading="lazy" class="absolute inset-0 w-full h-full object-cover" />
+      <div class="relative aspect-square overflow-hidden" style=${TILE}>
+        <img src=${p.img} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover" />
         ${p.discount ? html`<span class="absolute top-2 left-2 rounded bg-orange-500 text-white text-[0.6rem] font-bold px-1.5 py-0.5">-${p.discount}%</span>` : null}
       </div>
       <div class="p-3 flex flex-col gap-1.5">
@@ -127,7 +127,7 @@ function DetailSheet({ open, onClose, p, t, starred, inCart, onAdd, onStar }) {
     <div class="modal-box rounded-t-3xl pb-8 max-w-xl mx-auto">
       ${p ? html`<div class="flex flex-col gap-4">
         <div class="relative aspect-square max-h-[52vh] rounded-2xl overflow-hidden" style=${TILE}>
-          <img src=${p.img} alt=${p.title} class="absolute inset-0 w-full h-full object-contain" />
+          <img src=${p.img} alt="" class="absolute inset-0 w-full h-full object-contain" />
           ${p.discount ? html`<span class="absolute top-3 left-3 rounded bg-orange-500 text-white text-xs font-bold px-2 py-0.5">-${p.discount}%</span>` : null}
         </div>
         <div class="text-sm leading-snug">${p.title}</div>
@@ -145,7 +145,7 @@ function DetailSheet({ open, onClose, p, t, starred, inCart, onAdd, onStar }) {
 
 function Row({ p, t, trailing }) {
   return html`<div class="flex items-center gap-3 py-2.5">
-    <div class="w-12 h-12 shrink-0 rounded-lg overflow-hidden" style=${TILE}><img src=${p.img} alt=${p.title} class="w-full h-full object-cover" /></div>
+    <div class="w-12 h-12 shrink-0 rounded-lg overflow-hidden" style=${TILE}><img src=${p.img} alt="" class="w-full h-full object-cover" /></div>
     <div class="flex-1 min-w-0">
       <div class="text-xs leading-tight line-clamp-2">${p.title}</div>
       <div class="text-xs text-base-content/60 font-mono tabular-nums mt-0.5">${p.price}</div>

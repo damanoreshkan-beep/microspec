@@ -40,7 +40,7 @@
     "bg": "#0A0A0F",
     "fg": "#A78BFA",
     "href": "./horoscope/",
-    "version": "1.5",
+    "version": "1.6",
     "category": "esoterica"
   },
   {
@@ -315,7 +315,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./tarot/",
-    "version": "1.0",
+    "version": "1.3",
     "category": "esoterica"
   },
   {
@@ -427,5 +427,16 @@
     "href": "./qr/",
     "version": "1.3",
     "category": "tools"
+  },
+  {
+    "id": "temu",
+    "title": "temu",
+    "tagline": "Усе, що інженер реально купує. Маркетплейс із прапорцем `dev mode`, увімкненим за замовчуванням — кожна категорія тихо стає стартер-паком: чорна худі / ThinkPad / Flipper Zero. Вимкни його — і побачиш мотлох, який алгоритм впарює всім іншим. Нічого не продається; кнопка оплати просто каже commit & push.",
+    "glyph": "lucide:shopping-bag",
+    "bg": "#0A0A0B",
+    "fg": "#34D399",
+    "href": "./temu/",
+    "version": "1.0",
+    "category": "play"
   }
 ]

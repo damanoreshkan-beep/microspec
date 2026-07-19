@@ -223,25 +223,29 @@ function Banner({ banner }) {
 }
 
 // ---- list family ------------------------------------------------------------
-// Infinite scroll sentinel. Accessible-first: a real "load more" button (keyboard/SR reachable) that
-// ALSO auto-triggers via IntersectionObserver with a 500px prefetch margin. A.loadMore() no-ops when
-// there's no cursor or a page is already loading, so the observer can fire freely. Always mounted so the
-// observed node keeps a stable identity.
-function LoadMore() {
+// Systemic infinite scroll — ONE sentinel drives both client windowing and server paging. Only `count` of
+// `total` local items are in the DOM; an IntersectionObserver 600px ahead calls grow() to widen the window,
+// and once the whole local list is shown grow() falls through to A.loadMore() for the next server page (live
+// feeds). Accessible-first: a real focusable button does exactly what the observer does; loading/error states
+// are announced via aria-live. A.loadMore() no-ops with no cursor or a page in flight, so it can fire freely.
+const WINDOW_PAGE = 24;   // list/grid/row items revealed per scroll step
+function InfiniteTail({ count, total, grow, paginate }) {
   const t = useStore(A.S.t), data = useStore(A.S.data);
   const ref = useRef();
+  const hasLocal = count < total;
+  const hasMore = hasLocal || (paginate && data.next != null);
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) A.loadMore(); }, { rootMargin: "500px" });
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) grow(); }, { rootMargin: "600px" });
     io.observe(el);
     return () => io.disconnect();
-  }, []);
-  const btn = (cls, icon) => html`<button id="loadmore" class=${`btn btn-ghost btn-sm gap-2 ${cls}`} onClick=${() => A.loadMore()}>${Icon(icon)} ${T(t, "loadMore")}</button>`;
+  }, [count, total, data.next, data.loadingMore]);
+  const btn = (cls, icon) => html`<button id="loadmore" class=${`btn btn-ghost btn-sm gap-2 ${cls}`} onClick=${grow}>${Icon(icon)} ${T(t, "loadMore")}</button>`;
   return html`<div ref=${ref} class="flex justify-center py-4 min-h-8" aria-live="polite">
     ${data.loadingMore ? html`<div class="text-base-content/60 text-sm" role="status" aria-label=${T(t, "statusLoading")}><${Scramble} len=${10} /></div>`
-      : data.moreError ? btn("text-error", "lucide:rotate-cw")
-      : data.next != null ? btn("text-base-content/70", "lucide:chevron-down")
+      : data.moreError && !hasLocal ? btn("text-error", "lucide:rotate-cw")
+      : hasMore ? btn("text-base-content/70", "lucide:chevron-down")
       : null}
   </div>`;
 }
@@ -290,6 +294,7 @@ function Table({ items, tab }) {
 function ListView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters), loc = useStore(A.S.locale), sortKey = useStore(A.S.sort);
   const mt = useStore(metaTick);
+  const [vis, setVis] = useState(WINDOW_PAGE);   // client-side window size (grows on scroll)
   // Warm the enrichment + translation caches for every visible item (live feed or saved). Both are no-ops
   // when already cached; cards re-render via metaTick/trTick as data lands. Order matters: previews are
   // fetched first, then the translation pass runs over the RESOLVED values (field(…, "en") returns the
@@ -301,6 +306,7 @@ function ListView({ tab }) {
     const fields = A.spec.translate;
     if (fields?.length && loc !== "en") warm(src.flatMap((it) => fields.map((f) => field(it, f, "en"))), loc);
   }, [data.items, fav, loc, tab.source, mt]);
+  useEffect(() => { setVis(WINDOW_PAGE); }, [tab, q, sortKey, filters]);   // reset the window when the item set changes
   if (!tab.card) return Empty("lucide:alert-triangle", T(t, tab.empty?.text || "noResults"), null);
   if (!useReveal(!data.loading)) return Skeleton(tab.card);
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
@@ -332,20 +338,23 @@ function ListView({ tab }) {
   if (!items.length) return Empty(tab.empty?.icon || "lucide:search-x", T(t, tab.empty?.text || "noResults"), T(t, tab.empty?.hint || "noResultsHint"));
 
   const banner = tab.banner ? html`<${Banner} banner=${tab.banner} key="banner" />` : null;
-  const cards = items.map((it) => html`<${Card} item=${it} card=${tab.card} key=${A.favKey(it) || it[tab.card.title]} />`);
-  // infinite scroll appends server pages under the live list (not the saved/fav tab, not sectioned lists).
-  // Defined BEFORE the grid/gallery returns so EVERY paginated layout mounts the sentinel — a gallery
-  // catalogue (the one layout you actually scroll for a thousand items) returned here without it, so its
-  // load-more button and IntersectionObserver never existed and paging was silently dead.
-  const more = tab.paginate && tab.source !== "fav" ? html`<${LoadMore} key="more" />` : null;
+  const paginate = !!tab.paginate && tab.source !== "fav";
+  // grow() widens the client window first; once the whole local list is shown it pulls the next server page.
+  const grow = () => { if (vis < items.length) setVis((c) => Math.min(items.length, c + WINDOW_PAGE)); else if (paginate) A.loadMore(); };
+  // Client-side windowing: only the first `vis` items hit the DOM (grown on scroll) so a thousand-item grid or
+  // feed mounts instantly and stays smooth. The same sentinel then falls through to server paging for feeds.
+  const shown = items.slice(0, vis);
+  const cards = shown.map((it) => html`<${Card} item=${it} card=${tab.card} key=${A.favKey(it) || it[tab.card.title]} />`);
+  const tail = html`<${InfiniteTail} count=${vis} total=${items.length} grow=${grow} paginate=${paginate} key="tail" />`;
   // grid layout lays its tiles out in an Android-style grid; other layouts stack in the flex-col main.
   // @container wrapper so the grid drops to 3 columns on a watch-narrow width (4 on a phone).
-  if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, more]);
+  if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
   // Three columns on a phone — a store shelf, not a two-up feed: the icon carries the recognition and the
   // caption is one line under it. Drops to two on a watch, climbs to four on a tablet.
-  if (tab.card.layout === "gallery") return Frag([banner, html`<div class="@container pt-2" key="gallery"><div class="grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, more]);
-  if (tab.card.layout === "table") return Frag([banner, html`<${Table} items=${items} tab=${tab} key="tbl" />`, more]);
-  if (!tab.sections) return Frag([banner, ...cards, more]);
+  if (tab.card.layout === "gallery") return Frag([banner, html`<div class="@container pt-2" key="gallery"><div class="grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
+  // table has its own row cap and isn't a row/grid scroll surface — keep it on server paging only.
+  if (tab.card.layout === "table") return Frag([banner, html`<${Table} items=${items} tab=${tab} key="tbl" />`, html`<${InfiniteTail} count=${items.length} total=${items.length} grow=${() => paginate && A.loadMore()} paginate=${paginate} key="tail" />`]);
+  if (!tab.sections) return Frag([banner, ...cards, tail]);
   return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })]);
 }
 

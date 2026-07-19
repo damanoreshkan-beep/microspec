@@ -3,7 +3,7 @@ import http from "node:http";
 const PORT = Number(process.env.PORT) || 8787;
 const BFL_KEY = process.env.BFL_KEY || "";
 const FLUX_CREATE = "https://api.bfl.ai/v1/flux-2-pro-preview";
-const ALLOW_ORIGIN = new Set(["https://damanoreshkan-beep.github.io"]);
+const ALLOW_ORIGIN = new Set(["https://damanoreshkan-beep.github.io", "https://dhammapada.mooo.com"]);
 const ALLOW = [/(^|\.)dou\.ua$/i, /(^|\.)wikipedia\.org$/i, /(^|\.)gutendex\.com$/i, /(^|\.)chocolatey\.org$/i];
 const ALLOW_FLUX = [/(^|\.)bfl\.ai$/i, /(^|\.)bfl\.ml$/i];
 const UA = "Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";

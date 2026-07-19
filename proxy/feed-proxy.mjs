@@ -82,22 +82,60 @@ function parseHoroscope(html) {
 // resolution variants down to one item each, and finds the next-page link (rel=next, else a ?page-style bump).
 // No browser — works on any page that puts its media in the HTML; JS-only sites just return []. ──
 const humanize = (s) => { try { s = decodeURIComponent(s); } catch {} return s.replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[_+]+/g, " ").replace(/\s+/g, " ").trim(); };
+const firstUrl = (x) => Array.isArray(x) ? firstUrl(x[0]) : (x && typeof x === "object" ? (x.url || x.contentUrl) : x);
 function parseVideos(html, base) {
   const abs = (u) => { try { return new URL(String(u).replace(/&amp;/g, "&"), base).href; } catch { return null; } };
   const isVid = (u) => /\.(?:mp4|m3u8|webm|mov)(?:\?|#|$)/i.test(u);
-  const found = [];
-  const add = (u) => { const a = abs(u); if (a && isVid(a)) found.push(a); };
-  for (const m of html.matchAll(/<(?:video|source)\b[^>]*\bsrc=["']([^"']+)["']/gi)) add(m[1]);
-  for (const m of html.matchAll(/<meta\b[^>]*(?:property|name)=["'](?:og:video(?::url|:secure_url)?|twitter:player:stream)["'][^>]*\bcontent=["']([^"']+)["']/gi)) add(m[1]);
-  for (const m of html.matchAll(/<meta\b[^>]*\bcontent=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:video(?::url|:secure_url)?|twitter:player:stream)["']/gi)) add(m[1]);
-  for (const m of html.matchAll(/"(?:contentUrl|embedUrl)"\s*:\s*"([^"\\]+)"/gi)) add(m[1]);
-  for (const m of html.matchAll(/https?:\\?\/\\?\/[^"'\s\\<>]+?\.(?:mp4|m3u8|webm)(?:\?[^"'\s\\<>]*)?/gi)) add(m[0].replace(/\\/g, ""));
-  // dedupe by normalized filename stem — collapses /transcoded/ dirs and 480p/720px-… resolution variants.
-  const norm = (url) => { try { const u = new URL(url); let pth = decodeURIComponent(u.pathname).replace(/\/transcoded\//, "/").replace(/\.(?:\d{2,4}p|\d{2,4}px-[^/]*)\.(mp4|webm|m3u8|mov)$/i, ".$1"); return (pth.split("/").filter(Boolean).pop() || pth).toLowerCase(); } catch { return url; } };
+  // dedupe key: last path segment, sans /transcoded/, extension, and resolution/fps/quality tokens (so a video
+  // published in 360p/720p/1080p collapses to one item).
+  const normKey = (url) => {
+    try {
+      const u = new URL(url); let seg = (decodeURIComponent(u.pathname).replace(/\/transcoded\//, "/").split("/").filter(Boolean).pop() || "").toLowerCase();
+      const ext = (seg.match(/\.(mp4|webm|m3u8|mov)$/) || [, ""])[1]; seg = seg.replace(/\.(?:mp4|webm|m3u8|mov)$/, "");
+      seg = seg.replace(/([_-]|\b)(?:\d{2,4}p|\d{2,4}px|\d{2,4}[_-]\d{2,4}|\d{1,3}fps|hd|sd|hi|lo|small|medium|large|orig(?:inal)?)(?=$|[_-])/gi, "");
+      return seg.replace(/[_-]+$/, "") + "." + ext;
+    } catch { return url; }
+  };
+  // (a) JSON-LD VideoObject → the most reliable per-item title + thumbnail when a site ships schema.org data.
+  const meta = new Map();
+  for (const m of html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const walk = (o) => {
+        if (!o || typeof o !== "object") return;
+        if (Array.isArray(o)) return o.forEach(walk);
+        if (String(o["@type"] || "").toLowerCase().includes("video")) { const v = abs(o.contentUrl || o.embedUrl || ""); if (v) meta.set(normKey(v), { title: o.name || o.headline, poster: abs(firstUrl(o.thumbnailUrl)) }); }
+        Object.values(o).forEach(walk);
+      };
+      walk(JSON.parse(m[1].trim()));
+    } catch { /* bad ld+json — skip */ }
+  }
+  // (b) candidate videos with their source position + any inline poster/title on the <video> tag.
+  const cands = [], vtitle = new Map();
+  const addAt = (url, pos, poster) => { const a = abs(url); if (a && isVid(a)) cands.push({ url: a, pos, poster: poster ? abs(poster) : null }); };
+  for (const m of html.matchAll(/<video\b([^>]*)>/gi)) { const src = (m[1].match(/\bsrc=["']([^"']+)["']/) || [])[1]; const p = (m[1].match(/\bposter=["']([^"']+)["']/) || [])[1]; const tt = (m[1].match(/\b(?:title|aria-label|data-title)=["']([^"']{3,120})["']/) || [])[1]; if (src) { addAt(src, m.index, p); if (tt) vtitle.set(normKey(abs(src) || src), decodeEntities(tt).trim()); } }
+  for (const m of html.matchAll(/<source\b[^>]*\bsrc=["']([^"']+)["']/gi)) addAt(m[1], m.index, null);
+  for (const m of html.matchAll(/<meta\b[^>]*(?:property|name)=["'](?:og:video(?::url|:secure_url)?)["'][^>]*\bcontent=["']([^"']+)["']/gi)) addAt(m[1], m.index, null);
+  for (const m of html.matchAll(/"(?:contentUrl|embedUrl)"\s*:\s*"([^"\\]+)"/gi)) addAt(m[1], m.index, null);
+  for (const m of html.matchAll(/https?:\\?\/\\?\/[^"'\s\\<>]+?\.(?:mp4|m3u8|webm)(?:\?[^"'\s\\<>]*)?/gi)) addAt(m[0].replace(/\\/g, ""), m.index, null);
+  // (c) poster-only proximity: the <img> that most looks like a thumbnail nearest the video's HTML position.
+  // (Proximity TITLES are dropped — they grab page chrome; the filename/JSON-LD title is cleaner.)
+  const proximity = (pos) => {
+    const start = Math.max(0, pos - 3500), win = html.slice(start, pos + 1000), rel = pos - start;
+    let poster = null, bestScore = -Infinity;
+    for (const m of win.matchAll(/<img\b[^>]*?\b(?:data-src|data-lazy-src|src)=["']([^"']+)["']/gi)) {
+      const u = m[1]; if (!/^https?:|^\/\//.test(u) && !u.startsWith("/")) continue;
+      const score = (/thumb|preview|poster|cover|_medium|\d{2,4}x\d{2,4}|\d{2,4}px/i.test(u) ? 4000 : 0) - Math.abs(m.index - rel);
+      if (score > bestScore) { bestScore = score; poster = u; }
+    }
+    return poster ? abs(poster) : null;
+  };
   const seen = new Set(), items = [];
-  for (const v of found) { const k = norm(v); if (seen.has(k)) continue; seen.add(k); items.push({ video: v, title: humanize(k) || "video", poster: null }); }
-  const ogImg = abs(html.match(/<meta\b[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)?.[1] || "");
-  if (ogImg) for (const it of items) it.poster = ogImg;   // page-level fallback thumbnail
+  for (const c of cands) {
+    const k = normKey(c.url); if (seen.has(k)) continue; seen.add(k);
+    const md = meta.get(k) || {};
+    const title = ((md.title && decodeEntities(String(md.title)).trim()) || vtitle.get(k) || humanize(k) || "video").slice(0, 140);
+    items.push({ video: c.url, title, poster: c.poster || md.poster || proximity(c.pos) || null });
+  }
   let next = null;
   const rel = html.match(/<(?:a|link)\b[^>]*\brel=["']next["'][^>]*\bhref=["']([^"']+)["']/i) || html.match(/<(?:a|link)\b[^>]*\bhref=["']([^"']+)["'][^>]*\brel=["']next["']/i);
   if (rel) next = abs(rel[1]);

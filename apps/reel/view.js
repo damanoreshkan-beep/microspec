@@ -72,6 +72,7 @@ const $next = atom(null);
 const $loading = atom(!gate);
 const $err = atom(false);
 const $active = atom(0);
+const $frameUrl = atom("");
 
 let loadingMore = false;
 async function loadSource(url, append = false) {
@@ -140,16 +141,12 @@ function Slide({ item, idx, active, t }) {
 
 function SourceSheet({ S, t }) {
   const [val, setVal] = useState("");
-  const submit = (e) => {
-    e?.preventDefault?.();
-    const u = val.trim(); if (!u) return S.screen.set(null);
-    const url = /^https?:\/\//i.test(u) ? u : "https://" + u;                             // tolerate a missing scheme
-    subscribe({ name: hostOf(url), url, icon: "lucide:link" });                           // save it → joins the list
-    $src.set(url); S.tab.set("reel"); S.screen.set(null);
-  };
+  const norm = () => { const u = val.trim(); return u ? (/^https?:\/\//i.test(u) ? u : "https://" + u) : ""; };
+  const load = (e) => { e?.preventDefault?.(); const url = norm(); if (!url) return S.screen.set(null); subscribe({ name: hostOf(url), url, icon: "lucide:link" }); $src.set(url); S.tab.set("reel"); S.screen.set(null); };
+  const browse = () => { const url = norm(); if (url) { $frameUrl.set(url); S.screen.set("frame"); } };            // interactive reverse-proxy view
   return html`<div class="fixed inset-0 z-40 flex items-end" role="dialog" aria-modal="true" aria-label=${T(t, "srcTitle")}>
     <button class="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-label=${T(t, "close")} onClick=${() => S.screen.set(null)}></button>
-    <form onSubmit=${submit} class="relative w-full max-w-xl mx-auto bg-base-100 rounded-t-3xl p-5 flex flex-col gap-3" style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
+    <form onSubmit=${load} class="relative w-full max-w-xl mx-auto bg-base-100 rounded-t-3xl p-5 flex flex-col gap-3" style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
       <div class="flex items-center justify-between">
         <h2 class="font-bold text-lg flex items-center gap-2">${Icon("lucide:link", "text-primary")} ${T(t, "srcTitle")}</h2>
         <button type="button" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "close")} onClick=${() => S.screen.set(null)}>${Icon("lucide:x", "text-xl")}</button>
@@ -158,8 +155,38 @@ function SourceSheet({ S, t }) {
         ${Icon("lucide:globe", "opacity-50 shrink-0")}
         <input id="src-input" type="url" inputmode="url" autocomplete="off" class="grow min-w-0" placeholder=${T(t, "srcPlaceholder")} aria-label=${T(t, "srcTitle")} value=${val} onInput=${(e) => setVal(e.target.value)} />
       </label>
-      <button id="src-load" type="submit" class="btn btn-primary rounded-2xl w-full">${Icon("lucide:play")} ${T(t, "load")}</button>
+      <div class="flex gap-2">
+        <button id="src-load" type="submit" class="btn btn-primary rounded-2xl flex-1 gap-1">${Icon("lucide:play")} ${T(t, "load")}</button>
+        <button id="src-browse" type="button" class="btn btn-outline rounded-2xl flex-1 gap-1" onClick=${browse}>${Icon("lucide:compass")} ${T(t, "browse")}</button>
+      </div>
     </form>
+  </div>`;
+}
+
+// Interactive reverse-proxy source view: the site rendered same-origin via /feed/frame (so its consent/age
+// modals can be clicked; cookies jar server-side). The injected shim harvests <video> URLs and postMessages
+// them here; "use" loads them into the reel. Heavy sites with datacenter-IP anti-bot may just show a challenge.
+function FrameView({ S, t }) {
+  const url = useStore($frameUrl);
+  const [harvested, setHarvested] = useState([]);
+  useEffect(() => {
+    setHarvested([]);
+    const onMsg = (e) => {
+      if (!e.data || e.data.__reel !== "videos" || !Array.isArray(e.data.videos)) return;
+      setHarvested((prev) => { const seen = new Set(prev.map((x) => x.video)); const add = e.data.videos.filter((v) => typeof v === "string" && !seen.has(v)).map((v) => ({ video: v, title: hostOf(url), poster: null })); return add.length ? [...prev, ...add] : prev; });
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [url]);
+  const use = () => { const got = unseen(harvested); if (got.length) { $items.set(got); $next.set(null); $active.set(0); $src.set(url); subscribe({ name: hostOf(url), url, icon: "lucide:link" }); } S.screen.set(null); S.tab.set("reel"); };
+  const iframeSrc = gate || !url ? "about:blank" : `${VPS_PROXY}/frame?url=${encodeURIComponent(url)}`;
+  return html`<div class="fixed inset-0 z-40 bg-base-300 flex flex-col" role="dialog" aria-modal="true" aria-label=${hostOf(url)}>
+    <div class="flex items-center gap-2 px-2 py-2 bg-base-100/90 backdrop-blur-md border-b border-base-300" style="padding-top:calc(env(safe-area-inset-top) + 0.5rem)">
+      <button class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, "close")} onClick=${() => S.screen.set(null)}>${Icon("lucide:x", "text-xl")}</button>
+      <div class="flex-1 min-w-0 text-sm truncate text-base-content/70 font-mono">${hostOf(url)}</div>
+      <button id="use-harvest" class=${`btn btn-sm rounded-2xl gap-1 shrink-0 ${harvested.length ? "btn-primary" : "btn-disabled opacity-50"}`} aria-label=${T(t, "openOrig")} onClick=${use}>${Icon("lucide:play")} ${harvested.length}</button>
+    </div>
+    <iframe data-frame src=${iframeSrc} sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation allow-modals" class="flex-1 w-full bg-white" title=${hostOf(url)}></iframe>
   </div>`;
 }
 
@@ -196,7 +223,7 @@ export function reel({ S }) {
   return html`<${Fragment}>
     <div ref=${scroller} class="fixed inset-0 z-0 bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain" style="scrollbar-width:none">${body}</div>
     ${rail}
-    ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
+    ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : screen === "frame" ? html`<${FrameView} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }
 
@@ -241,6 +268,6 @@ export function sources({ S }) {
 
       ${watchedN > 0 ? html`<button id="clear-watched" class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70 self-center mt-2" onClick=${clearWatched} data-haptic="bump">${Icon("lucide:rotate-ccw")} ${T(t, "clearWatched", { n: watchedN })}</button>` : null}
     </div>
-    ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
+    ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : screen === "frame" ? html`<${FrameView} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }

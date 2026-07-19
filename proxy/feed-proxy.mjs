@@ -262,7 +262,10 @@ const server = http.createServer(async (req, res) => {
     if (!src) return send(res, 400, { ...CORS, "content-type": "application/json" }, JSON.stringify({ items: [], next: null, error: "bad or blocked url" }));
     const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 12000);
     try {
-      const r = await fetch(src.href, { headers: { "user-agent": UA_DESKTOP, "accept-language": "en-US,en;q=0.9", "accept": "text/html,application/xhtml+xml" }, signal: ctrl.signal, redirect: "follow" });
+      // reuse any cookies captured from a /feed/frame click-through for this host (consent/age unlock), + a Referer
+      const h = { "user-agent": UA_DESKTOP, "accept-language": "en-US,en;q=0.9", "accept": "text/html,application/xhtml+xml", "referer": src.origin + "/" };
+      if (cookieJar.has(src.hostname)) h.cookie = cookieJar.get(src.hostname);
+      const r = await fetch(src.href, { headers: h, signal: ctrl.signal, redirect: "follow" });
       const ct = r.headers.get("content-type") || "";
       const J = { ...CORS, "content-type": "application/json" };
       if (!/html|xml|json/i.test(ct)) return send(res, 200, J, JSON.stringify({ items: [], next: null, note: "not an html page" }));

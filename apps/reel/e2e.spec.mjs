@@ -22,4 +22,16 @@ export default [
       h.expect((await h.count("#src-input")) === 0, "Back не закрив шит");
     },
   },
+  {
+    name: "перегляд у рамці відкривається і Back закриває", run: async (h) => {
+      await ready(h);
+      await h.tap("#source"); await h.wait(300);
+      await h.tap("#add-url"); await h.wait(300);
+      await h.type("#src-input", "example.com"); await h.wait(120);
+      await h.tap("#src-browse"); await h.wait(400);
+      h.expect((await h.count("[data-frame]")) === 1, "рамка перегляду не відкрилась");
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("[data-frame]")) === 0, "Back не закрив рамку");
+    },
+  },
 ];

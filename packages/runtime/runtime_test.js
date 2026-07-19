@@ -17,6 +17,7 @@ import { analyzeQR } from "./urlsafe.js";
 import { qrMatrix } from "./qrcode.js";
 import { fitResolution } from "./imgsize.js";
 import { sunSign } from "./horoscope.js";
+import { SPREADS, spreadById, hashSeed, draw } from "./tarot.js";
 import { resumeAt, RESUME_MIN } from "./playback.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
@@ -956,4 +957,30 @@ Deno.test("horoscope sunSign: cutoffs map month/day to the right sign, wrapping 
   assertEquals(sunSign(7, 23), 4);   // Leo
   assertEquals(sunSign(12, 21), 8);  // last Sagittarius day
   assertEquals(sunSign(12, 22), 9);  // Capricorn again
+});
+
+Deno.test("tarot SPREADS: sizes match the layouts, positions unique", () => {
+  assertEquals(SPREADS.map((s) => s.pos.length), [1, 3, 3, 10], "spread sizes: daily/ppf/sao/celtic");
+  for (const s of SPREADS) assertEquals(new Set(s.pos).size, s.pos.length, `${s.id} positions must be unique`);
+  assertEquals(spreadById("celtic").pos.length, 10);
+  assertEquals(spreadById("nope").id, "daily", "unknown id falls back to the first spread");
+});
+
+Deno.test("tarot hashSeed: deterministic uint32", () => {
+  assertEquals(hashSeed("2027-07-23"), hashSeed("2027-07-23"), "same string → same seed");
+  assert(hashSeed("a") !== hashSeed("b"), "different strings → different seeds");
+  const h = hashSeed("2027-07-23");
+  assert(Number.isInteger(h) && h >= 0 && h <= 0xffffffff, "seed is uint32");
+});
+
+Deno.test("tarot draw: deterministic per seed; distinct in-range cards; orientation is bool", () => {
+  const a = draw(12345, 10), b = draw(12345, 10);
+  assertEquals(JSON.stringify(a), JSON.stringify(b), "same seed+size → same draw");
+  assertEquals(a.length, 10, "draws `size` cards");
+  assertEquals(new Set(a.map((d) => d.card)).size, 10, "cards are DISTINCT (no card twice in a spread)");
+  for (const d of a) { assert(d.card >= 0 && d.card < 78, `card ${d.card} in range`); assertEquals(typeof d.reversed, "boolean"); }
+});
+
+Deno.test("tarot draw: a different seed gives a different spread", () => {
+  assert(JSON.stringify(draw(1, 3)) !== JSON.stringify(draw(2, 3)), "different seed → different draw");
 });

@@ -1,13 +1,13 @@
 {
-  "id": "horoscope",
+  "id": "tarot",
   "theme": "signal",
   "category": "esoterica",
   "tabs": [
-    { "id": "read", "type": "tool", "icon": "lucide:moon-star", "label": "tabRead", "view": "horoscope" },
+    { "id": "read", "type": "tool", "icon": "lucide:layers", "label": "tabRead", "view": "tarot" },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
   ],
   "profile": {
-    "icon": "lucide:moon-star",
+    "icon": "lucide:sparkles",
     "theme": true,
     "lang": true,
     "install": true

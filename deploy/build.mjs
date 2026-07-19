@@ -105,6 +105,14 @@ for await (const a of Deno.readDir("apps")) {
       if (lf.isFile && lf.name.endsWith(".json")) await Deno.copyFile(`apps/${a.name}/i18n/${lf.name}`, `${outDir}/i18n/${lf.name}`);
     }
   }
+  // static binary assets (e.g. tarot's public-domain card scans) live in an assets/ subdir the top-level
+  // file loop also skips — copy it through verbatim so image-backed apps work offline at the /<app>/ path.
+  if (await has(`apps/${a.name}/assets`)) {
+    await Deno.mkdir(`${outDir}/assets`, { recursive: true });
+    for await (const af of Deno.readDir(`apps/${a.name}/assets`)) {
+      if (af.isFile) await Deno.copyFile(`apps/${a.name}/assets/${af.name}`, `${outDir}/assets/${af.name}`);
+    }
+  }
   // PWA icons — real PNGs (installability); generated from the app's brand.
   // A missing brand.svg is FATAL, never a silent skip: Chrome needs a real PNG ≥192 to offer an install, so
   // skipping quietly ships an app that simply cannot be installed while every gate stays green. That is not

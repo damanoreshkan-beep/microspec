@@ -1,5 +1,6 @@
-// temu — deterministic on-device catalog. dev mode defaults ON (curated). Cart/starred/dev persist in
-// localStorage; tests are written to tolerate that. No emoji; icons are iconify glyphs on dark tiles.
+// temu — real AliExpress products via the /feed/shop proxy; the headless gate seeds a deterministic
+// fixture (from the search query) so it renders offline and still changes when the query does. dev mode
+// defaults ON (curated). Cart/starred/dev persist in localStorage; tests tolerate that. No emoji.
 export default [
   {
     name: "store renders: 9 categories, dev mode ON, product grid", run: async (h) => {
@@ -15,7 +16,8 @@ export default [
       await h.click("[data-dev]"); await h.wait(180);
       const mainstream = await h.text("[data-grid]");
       h.expect(mainstream !== curated, "перемикання dev mode не змінило каталог");
-      h.expect(/sold|продано/i.test(await h.bodyText()), "OFF-режим не показує mainstream-мотлох");
+      const dev = await h.text("[data-dev]");
+      h.expect(/dev mode/.test(dev) && /off/i.test(dev), "dev mode не вимкнувся");
       await h.click("[data-dev]"); await h.wait(150); // back to curated (ON)
     },
   },

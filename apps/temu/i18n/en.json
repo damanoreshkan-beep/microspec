@@ -40,5 +40,6 @@
   "emptyStarredHint": "tap the bookmark on any card",
   "removed": "removed",
   "undo": "undo",
-  "soldSuffix": "sold"
+  "buy": "View on AliExpress",
+  "loadFail": "couldn't load — check the connection"
 }

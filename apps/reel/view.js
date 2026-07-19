@@ -77,7 +77,7 @@ function VideoLayer({ item, muted, t }) {
   useEffect(() => { if (ref.current) ref.current.muted = muted; }, [muted]);
   const toggle = () => { const v = ref.current; if (v && !errored) (v.paused ? v.play?.().catch(() => {}) : v.pause?.()); };
   return html`<${Fragment}>
-    <video ref=${ref} onClick=${toggle} playsinline loop poster=${item.poster || ""} class=${`absolute inset-0 w-full h-full object-contain bg-black ${errored ? "opacity-0" : ""}`}></video>
+    <video ref=${ref} onClick=${toggle} playsinline loop poster=${item.poster || ""} class=${`absolute inset-0 w-full h-full object-cover bg-black ${errored ? "opacity-0" : ""}`}></video>
     ${errored ? html`<div data-vid-err class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/70 pointer-events-none">${Icon("lucide:video-off", "text-5xl")}<span class="text-sm">${T(t, "videoErr")}</span></div>` : null}
   </${Fragment}>`;
 }
@@ -91,7 +91,7 @@ function Slide({ item, idx, active, muted, t }) {
         : html`<div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/10 text-7xl")}</div>`}
     <div class="absolute inset-x-0 bottom-0 z-[1] pointer-events-none p-4 pt-16 bg-gradient-to-t from-black/75 via-black/25 to-transparent" style="padding-bottom:calc(var(--dock-h) + 1rem)">
       <div class="flex items-end gap-2">
-        <div class="min-w-0 flex-1 text-white font-semibold text-sm leading-snug line-clamp-2" style="text-shadow:0 1px 6px rgba(0,0,0,.6)">${item.title || "video"}</div>
+        <div class="min-w-0 flex-1 text-white font-semibold text-sm leading-snug line-clamp-2" style="text-shadow:0 1px 6px rgba(0,0,0,.6)">${/[a-zа-яїієґ]/i.test(item.title || "") ? item.title : ""}</div>
         <a href=${item.video} target="_blank" rel="noopener" class="pointer-events-auto shrink-0 text-white/70 active:text-white p-1" aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-lg")}</a>
       </div>
     </div>

@@ -53,6 +53,20 @@ async function unsubscribe(url) {
   $subs.set($subs.get().filter((x) => x.url !== url));
   try { await subsDB.remove(url); } catch { /* */ }
 }
+
+// Watch history (IndexedDB) — a video counts as watched after it dwells as the active slide (not a fly-by), and
+// is then filtered out of future loads. $watched mirrors the store as a Set for O(1) lookups during filtering.
+const watchedDB = collection("reelWatched");
+const $watched = atom(new Set());
+if (idbSupported && !gate) watchedDB.all().then((rows) => $watched.set(new Set(rows.map((r) => r.id)))).catch(() => {});
+function markWatched(url) {
+  if (!url || $watched.get().has(url)) return;
+  const s = new Set($watched.get()); s.add(url); $watched.set(s);
+  watchedDB.put(url, {}).catch(() => {});
+}
+function clearWatched() { $watched.set(new Set()); watchedDB.clear().catch(() => {}); }
+const unseen = (arr) => arr.filter((i) => !$watched.get().has(i.video));
+
 const $items = atom(gate ? MOCK : []);
 const $next = atom(null);
 const $loading = atom(!gate);
@@ -67,7 +81,7 @@ async function loadSource(url, append = false) {
   try {
     const r = await fetch(`${VPS_PROXY}/videos?url=${encodeURIComponent(url)}`);
     const d = await r.json();
-    const got = Array.isArray(d.items) ? d.items : [];
+    const got = unseen(Array.isArray(d.items) ? d.items : []);                            // drop already-watched
     $items.set(append ? [...$items.get(), ...got] : got);
     $next.set(d.next || null);
   } catch { if (!append) $err.set(true); }
@@ -159,6 +173,7 @@ export function reel({ S }) {
 
   useEffect(() => { if (!gate) loadSource(src); }, [src]);
   useEffect(() => { if (next && active >= items.length - 3) loadSource(next, true); }, [active, items.length, next]);
+  useEffect(() => { const it = items[active]; if (!it || gate) return; const id = setTimeout(() => markWatched(it.video), 2500); return () => clearTimeout(id); }, [active, items]);   // dwell → watched
   useEffect(() => {
     const root = scroller.current; if (!root || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting && e.intersectionRatio >= 0.6) { const i = Number(e.target.dataset.idx); if (!Number.isNaN(i)) $active.set(i); } }, { root, threshold: [0.6] });
@@ -203,7 +218,7 @@ const SourceRow = ({ s, active, subbed, onPlay, onToggle, t }) => html`<div clas
 
 export function sources({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
-  const subs = useStore($subs), curSrc = useStore($src);
+  const subs = useStore($subs), curSrc = useStore($src), watchedN = useStore($watched).size;
   const play = (s) => { $src.set(s.url); S.tab.set("reel"); };
   const subbedUrls = new Set(subs.map((x) => x.url));
   const discover = PRESETS.filter((p) => !subbedUrls.has(p.url));
@@ -223,6 +238,8 @@ export function sources({ S }) {
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:compass")} ${T(t, "discover")}</div>
         ${discover.map((s) => html`<${SourceRow} s=${s} active=${s.url === curSrc} subbed=${false} onPlay=${play} onToggle=${() => subscribe(s)} t=${t} key=${s.url} />`)}
       </div>` : null}
+
+      ${watchedN > 0 ? html`<button id="clear-watched" class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70 self-center mt-2" onClick=${clearWatched} data-haptic="bump">${Icon("lucide:rotate-ccw")} ${T(t, "clearWatched", { n: watchedN })}</button>` : null}
     </div>
     ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
   </${Fragment}>`;

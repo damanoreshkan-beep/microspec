@@ -1,7 +1,7 @@
 {
   "name": "Потік",
   "short_name": "Потік",
-  "description": "Малюй рухом — твій жест лишає світло",
+  "description": "Малюй рухом — твій жест лишає світло і звук",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

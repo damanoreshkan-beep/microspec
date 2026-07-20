@@ -25,9 +25,10 @@ export default [
   {
     name: "shuffle re-draws", run: async (h) => {
       await h.click('[data-spread="ppf"]'); await h.wait(150);
-      const before = await h.text("[data-reading]");
+      // compact tiles show no card name — the drawn card is identified by its art, so compare the image
+      const before = await h.attr("[data-reading] img", "src");
       await h.click("[data-shuffle]"); await h.wait(150);
-      h.expect((await h.text("[data-reading]")) !== before, "перетасування не змінило розклад");
+      h.expect((await h.attr("[data-reading] img", "src")) !== before, "перетасування не змінило розклад");
       await h.click('[data-spread="daily"]'); await h.wait(120);
     },
   },

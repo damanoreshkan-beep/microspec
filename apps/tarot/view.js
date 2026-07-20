@@ -19,7 +19,7 @@ import { SPREADS, spreadById, hashSeed, draw } from "/_rt/tarot.js";
 import { DECK } from "./deck.js";
 import { gate } from "/_rt/gate.js";
 import { animate, stagger } from "motion";
-import { useSheetDrag, useSwipe } from "/_rt/gesture.js";
+import { useSheetDrag, usePanX } from "/_rt/gesture.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const QS = new URLSearchParams(location.search);
@@ -66,10 +66,10 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
 
   const openCard = (i) => { setDetail(i); openScreen("card"); };
   const pickSpread = (id) => { setSpreadId(id); };
-  // swipe the reading left/right to move between spreads (clamped to the list)
+  // swipe the reading left/right to move between spreads — the pane follows the finger, clamped to the list
   const sIdx = SPREADS.findIndex((s) => s.id === spreadId);
-  const goSpread = (d) => { const s = SPREADS[Math.min(SPREADS.length - 1, Math.max(0, sIdx + d))]; if (s) setSpreadId(s.id); };
-  const swipe = useSwipe({ onLeft: () => goSpread(1), onRight: () => goSpread(-1) });
+  const goSpread = (d) => { const s = SPREADS[sIdx + d]; if (s) setSpreadId(s.id); };
+  const { paneRef, pan } = usePanX({ onNext: () => goSpread(1), onPrev: () => goSpread(-1), canNext: sIdx < SPREADS.length - 1, canPrev: sIdx > 0 });
   const shuffle = () => { setOverride(null); setNonce((n) => n + 1); };
   // The ritual: request motion/compass on the tap gesture (iOS needs it inline), then open the flow.
   const openRitual = () => { try { const req = typeof DeviceOrientationEvent !== "undefined" && DeviceOrientationEvent.requestPermission; if (typeof req === "function") req.call(DeviceOrientationEvent).catch(() => {}); } catch { /* */ } openScreen("ritual"); };
@@ -83,13 +83,13 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
       ? html`<div class="flex flex-col gap-4">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
           <${Header} t=${t} spreadId=${spreadId} isDaily=${true} />
-          <${Solo} d=${drawn[0]} pos=${spread.pos[0]} t=${t} loc=${loc} onOpen=${() => openCard(0)} />
+          <div class="overflow-hidden"><div ref=${paneRef} ...${pan} class="touch-pan-y will-change-transform"><${Solo} d=${drawn[0]} pos=${spread.pos[0]} t=${t} loc=${loc} onOpen=${() => openCard(0)} /></div></div>
         </div>`
       // any multi-card spread: the WHOLE structure fits the screen — cards shrink to fit, no page scroll.
-      : html`<div class="flex flex-col gap-2.5 h-[calc(100dvh-11.5rem)] min-h-0">
+      : html`<div class="flex flex-col gap-2.5 h-[calc(100dvh-11.5rem)] min-h-0 overflow-hidden">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
           <${Header} t=${t} spreadId=${spreadId} isDaily=${false} onShuffle=${shuffle} onRitual=${openRitual} />
-          <${FitReading} rows=${rows} drawn=${drawn} pos=${spread.pos} t=${t} loc=${loc} onOpen=${openCard} swipe=${swipe} />
+          <${FitReading} rows=${rows} drawn=${drawn} pos=${spread.pos} t=${t} loc=${loc} onOpen=${openCard} paneRef=${paneRef} pan=${pan} />
         </div>`}
 
     <${Ritual} open=${screen === "ritual"} onClose=${closeScreen} onDraw=${completeRitual} deckLen=${spread.majorOnly ? 22 : 78} t=${t} loc=${loc} spreadName=${T(t, SPREAD_KEY[spreadId])} />
@@ -138,10 +138,10 @@ function Header({ t, spreadId, isDaily, onShuffle, onRitual }) {
 
 // The reading, fit to the viewport: rows share the height (flex-1) and each card scales to the smaller of
 // its row's height and 1/maxCols of the width, keeping the spread's shape — the whole thing visible at once.
-function FitReading({ rows, drawn, pos, t, loc, onOpen, swipe }) {
+function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
   const maxCols = Math.max(...rows.map((r) => r.length));
   const wpct = (94 / maxCols).toFixed(2);
-  return html`<div data-reading ...${swipe || {}} class="flex-1 min-h-0 overflow-hidden flex flex-col gap-2">
+  return html`<div data-reading ref=${paneRef} ...${pan || {}} class="flex-1 min-h-0 overflow-hidden flex flex-col gap-2 touch-pan-y will-change-transform">
     ${rows.map((row, ri) => html`<div class="flex-1 min-h-0 flex justify-center items-stretch gap-2" key=${ri}>
       ${row.map((pi) => html`<${FitTile} d=${drawn[pi]} pos=${pos[pi]} t=${t} loc=${loc} wpct=${wpct} onOpen=${() => onOpen(pi)} key=${pi} />`)}
     </div>`)}

@@ -66,10 +66,6 @@ export function pendulum({ S }) {
   const next = () => { buzz(); advanceAtRef.current = totalRef.current + ADVANCE; setDurIdx((i) => (i + 1) % N); };
   const toggle = () => { buzz(); setPlaying((p) => !p); };
 
-  // The gate has no clock and no animation — paint one still, deterministic frame so the taste shot is
-  // reproducible and composed (bob toward pole A, pole A lit).
-  useEffect(() => { if (gate) paint(pstate(GATE_PH * PERIOD, PERIOD, AMP)); }, [durIdx]);
-
   useEffect(() => {
     if (gate || !playing) return;
     const reduce = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -93,12 +89,18 @@ export function pendulum({ S }) {
   }, [playing]);
 
   const [aKey, bKey] = DUALITIES[durIdx];
+  // The initial frame the JSX renders — the gate's still frame, or the resting top of the in-breath live.
+  // Driving the arm transform + pole styles from this (not a hardcoded literal) means a Preact re-render
+  // reconciles to a CONSISTENT frame instead of resetting the arm to vertical; the rAF loop overrides it
+  // within one frame while playing, and it is the whole truth under the (clock-less) gate.
+  const init = gate ? pstate(GATE_PH * PERIOD, PERIOD, AMP) : pstate(0, PERIOD, AMP);
+  const poleStyle = (w) => `opacity:${(0.6 + 0.4 * w).toFixed(3)};color:${w >= 0.5 ? "var(--color-accent)" : "inherit"}`;
 
   return html`<${Fragment}>
     <div class="flex flex-col items-center gap-6 pt-1 pb-2 min-h-[78dvh]">
       <!-- which pair, of the eight -->
-      <div class="flex gap-1.5" aria-hidden="true">
-        ${DUALITIES.map((_, i) => html`<span class=${`h-1.5 w-1.5 rounded-full transition-colors ${i === durIdx ? "bg-accent" : "bg-base-content/25"}`} key=${i}></span>`)}
+      <div class="flex gap-2" aria-hidden="true">
+        ${DUALITIES.map((_, i) => html`<span class=${`h-2 w-2 rounded-full transition-colors ${i === durIdx ? "bg-accent" : "bg-base-content/40"}`} key=${i}></span>`)}
       </div>
 
       <!-- the pendulum -->
@@ -108,19 +110,19 @@ export function pendulum({ S }) {
           <path d="M55 215 A ${ARM} ${ARM} 0 0 0 265 215" fill="none" stroke="var(--color-base-content)" stroke-opacity="0.1" stroke-width="1.25" stroke-dasharray="2 6" stroke-linecap="round" />
           <!-- pivot -->
           <circle cx=${PX} cy=${PY} r="3.4" fill="var(--color-base-content)" fill-opacity="0.5" />
-          <!-- arm + bob (rotated each frame) -->
-          <g ref=${armRef} data-arm transform=${`rotate(0 ${PX} ${PY})`}>
-            <line x1=${PX} y1=${PY} x2=${PX} y2=${BOB - 18} stroke="var(--color-base-content)" stroke-opacity="0.35" stroke-width="1.75" />
-            <circle cx=${PX} cy=${BOB} r="26" fill="var(--color-accent)" fill-opacity="0.18" />
-            <circle data-bob cx=${PX} cy=${BOB} r="16" fill="var(--color-primary)" style="filter:drop-shadow(0 0 12px color-mix(in oklch, var(--color-accent) 70%, transparent))" />
+          <!-- arm + bob (rotated each frame by the rAF loop; initial angle from init) -->
+          <g ref=${armRef} data-arm transform=${`rotate(${init.angle.toFixed(2)} ${PX} ${PY})`}>
+            <line x1=${PX} y1=${PY} x2=${PX} y2=${BOB - 20} stroke="var(--color-base-content)" stroke-opacity="0.35" stroke-width="1.75" />
+            <circle cx=${PX} cy=${BOB} r="30" fill="var(--color-accent)" fill-opacity="0.16" />
+            <circle data-bob cx=${PX} cy=${BOB} r="18" fill="var(--color-primary)" style="filter:drop-shadow(0 0 14px color-mix(in oklch, var(--color-accent) 70%, transparent))" />
           </g>
         </svg>
       </div>
 
       <!-- the two poles: left = draw-in, right = release; the one the breath favours takes the accent -->
       <div class="grid grid-cols-2 gap-3 w-full max-w-sm text-center">
-        <div ref=${aRef} data-pole data-pole-a class="text-2xl font-semibold leading-tight break-words" style="opacity:1;color:var(--color-accent)">${T(t, aKey)}</div>
-        <div ref=${bRef} data-pole data-pole-b class="text-2xl font-semibold leading-tight break-words" style="opacity:0.6">${T(t, bKey)}</div>
+        <div ref=${aRef} data-pole data-pole-a class="text-2xl font-semibold leading-tight break-words" style=${poleStyle(init.weightA)}>${T(t, aKey)}</div>
+        <div ref=${bRef} data-pole data-pole-b class="text-2xl font-semibold leading-tight break-words" style=${poleStyle(init.weightB)}>${T(t, bKey)}</div>
       </div>
 
       <div class="flex-1"></div>

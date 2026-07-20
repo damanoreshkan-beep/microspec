@@ -114,8 +114,9 @@ export function pendulum({ S }) {
   // both fade to nothing through the centre. `mult` (0→1 over a bloom) cross-dissolves to a freshly-turned pair.
   const placeWords = (x, y, s, mult) => {
     const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
-    if (aRef.current) { aRef.current.style.transform = tf; aRef.current.style.opacity = (clamp01((s - 0.12) / 0.62) * mult).toFixed(3); }
-    if (bRef.current) { bRef.current.style.transform = tf; bRef.current.style.opacity = (clamp01((-s - 0.12) / 0.62) * mult).toFixed(3); }
+    const put = (el, op) => { if (!el) return; el.style.transform = tf; el.style.opacity = op.toFixed(3); el.style.visibility = op > 0.04 ? "visible" : "hidden"; };
+    put(aRef.current, clamp01((s - 0.12) / 0.62) * mult);
+    put(bRef.current, clamp01((-s - 0.12) / 0.62) * mult);
   };
 
   // three.js — real device only. Under the gate (no WebGL) this never runs and the DOM fallback stays.
@@ -166,7 +167,8 @@ export function pendulum({ S }) {
   const init = gate ? pstate(GATE_PH * PERIOD, PERIOD, AMP) : pstate(0, PERIOD, AMP);
   // Static first frame (also the gate/axe frame): light words centred over the bob, one pole shown.
   const wordBase = "position:absolute;top:58%;left:50%;transform:translate(-50%,-50%);max-width:11rem;will-change:transform,opacity";
-  const wordStyle = (w) => `${wordBase};opacity:${(clamp01((w - 0.12) / 0.62)).toFixed(3)}`;
+  // A near-zero word is hidden (visibility), not just faded — axe treats a ~0-opacity text as a contrast fail.
+  const wordStyle = (w) => { const op = clamp01((w - 0.12) / 0.62); return `${wordBase};opacity:${op.toFixed(3)};visibility:${op > 0.04 ? "visible" : "hidden"}`; };
 
   return html`<${Fragment}>
     <!-- full-screen pendulum body; tap (or Enter) to turn to the next duality. three.js mounts here -->

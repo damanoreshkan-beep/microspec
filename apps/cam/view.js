@@ -112,8 +112,13 @@ export function cam({ S }) {
       <!-- the console body -->
       <div class="w-full max-w-sm mx-auto flex flex-col gap-3 rounded-[1.9rem] border border-base-content/10 bg-gradient-to-b from-base-100 to-base-200 p-4 shadow-[0_10px_40px_-12px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.06)]">
         <div class="shrink-0 flex items-center justify-between px-0.5">
-          <div class="font-mono text-[0.6rem] uppercase tracking-[0.22em] text-base-content/45">${T(t, "title")}</div>
-          <div class="flex items-center gap-1.5 font-mono text-[0.58rem] uppercase tracking-widest text-base-content/45">${T(t, FX[fx][0])}${zoom > 1.02 ? html`<span class="text-secondary"> · ${zoom.toFixed(1)}×</span>` : null}</div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary/85 shadow-[0_0_7px] shadow-primary/60"></span>
+            <span class="font-mono text-[0.6rem] uppercase tracking-[0.3em] text-base-content/40">${loc === "uk" ? "μКАМ" : "μCAM"}</span>
+          </div>
+          <div class="flex items-center gap-1.5 font-mono text-[0.58rem] uppercase tracking-widest text-base-content/45">
+            <span>${T(t, FX[fx][0])}</span><span class="text-base-content/25">·</span><span>${aspect}</span>${zoom > 1.02 ? html`<span class="text-secondary">· ${zoom.toFixed(1)}×</span>` : null}
+          </div>
         </div>
 
         <!-- the square viewfinder screen, set in a bezel -->
@@ -127,6 +132,9 @@ export function cam({ S }) {
             </div>` : null}
             ${aspect !== "1:1" ? cropBars(aspect) : null}
             <div class="absolute inset-0 pointer-events-none" style="background:linear-gradient(135deg,rgba(255,255,255,.08),transparent 42%)"></div>
+            <div class="absolute inset-3 pointer-events-none" aria-hidden="true">
+              ${["top-0 left-0 border-t-2 border-l-2 rounded-tl-md", "top-0 right-0 border-t-2 border-r-2 rounded-tr-md", "bottom-0 left-0 border-b-2 border-l-2 rounded-bl-md", "bottom-0 right-0 border-b-2 border-r-2 rounded-br-md"].map((c, i) => html`<span key=${i} class=${`absolute w-5 h-5 border-white/30 ${c}`}></span>`)}
+            </div>
             ${count > 0 ? html`<div class="absolute inset-0 flex items-center justify-center"><div class="text-[3.5rem] font-bold tabular-nums text-white drop-shadow-lg">${count}</div></div>` : null}
             <div class=${`absolute inset-0 bg-white pointer-events-none transition-opacity duration-150 ${flash ? "opacity-80" : "opacity-0"}`}></div>
           </div>
@@ -147,8 +155,8 @@ export function cam({ S }) {
             ${Icon("lucide:search", "text-sm text-base-content/55 shrink-0")}
             <input type="range" min="1" max="4" step="0.1" value=${zoom} aria-label=${T(t, "aZoom")} onInput=${(e) => setZoom(+e.target.value)} class="range range-xs range-primary flex-1" />
           </div>
-          <!-- toggles -->
-          <div class="flex items-center justify-center gap-2 flex-wrap">
+          <!-- toggles: a recessed button deck -->
+          <div class="flex items-center justify-center gap-2 flex-wrap rounded-2xl border border-base-content/8 bg-base-300/40 px-2.5 py-2.5 shadow-[inset_0_1px_3px_rgba(0,0,0,.45)]">
             ${Toggle(facing === "user", "lucide:switch-camera", T(t, "aFlip"), flip)}
             ${caps.torch ? Toggle(torch, "lucide:flashlight", T(t, "aTorch"), () => { buzz(); setTorch((v) => !v); }) : null}
             ${Toggle(grid, "lucide:grid-3x3", T(t, "aGrid"), () => { buzz(); setGrid((v) => !v); })}

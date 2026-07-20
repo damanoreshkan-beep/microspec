@@ -54,8 +54,8 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const openCard = (i) => { setDetail(i); openScreen("card"); };
   const pickSpread = (id) => { setSpreadId(id); };
   const sIdx = SPREADS.findIndex((s) => s.id === spreadId);
-  const goSpread = (d) => { const s = SPREADS[sIdx + d]; if (s) setSpreadId(s.id); };
-  const { paneRef, pan } = usePanX({ onNext: () => goSpread(1), onPrev: () => goSpread(-1), canNext: sIdx < SPREADS.length - 1, canPrev: sIdx > 0 });
+  const goSpread = (d) => { const s = SPREADS[(sIdx + d + SPREADS.length) % SPREADS.length]; if (s) setSpreadId(s.id); };
+  const { paneRef, pan } = usePanX({ onNext: () => goSpread(1), onPrev: () => goSpread(-1) });   
   const shuffle = () => { setOverride(null); setNonce((n) => n + 1); };
   const openRitual = () => { try { const req = typeof DeviceOrientationEvent !== "undefined" && DeviceOrientationEvent.requestPermission; if (typeof req === "function") req.call(DeviceOrientationEvent).catch(() => {}); } catch {  } openScreen("ritual"); };
   const completeRitual = (s) => { setOverride(s >>> 0); closeScreen(); };

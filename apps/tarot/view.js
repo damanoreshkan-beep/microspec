@@ -51,7 +51,6 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const drawn = draw(seed, spread.pos.length, spread.majorOnly ? 22 : 78);
   const isDaily = spread.pos.length === 1;
 
-  useEffect(() => { openScreen("ritual"); }, []); // TEMP shot
   useEffect(() => { setOverride(null); }, [spreadId]);           // a new spread starts fresh
   // translate the meanings actually shown (chosen orientation) into the active locale
   useEffect(() => { warm(drawn.map(meaningOf), loc); }, [seed, loc]);

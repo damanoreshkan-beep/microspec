@@ -3,8 +3,8 @@
 // Card art is the vendored public-domain RWS scans — no emoji anywhere.
 export default [
   {
-    name: "card of the day renders: 4 spreads, one card + meaning", run: async (h) => {
-      h.expect((await h.count("[data-spread]")) === 4, "має бути 4 розклади");
+    name: "card of the day renders: 9 spreads, one card + meaning", run: async (h) => {
+      h.expect((await h.count("[data-spread]")) === 9, "має бути 9 розкладів");
       h.expect((await h.prop('[data-spread="daily"]', "ariaPressed")) === "true", "'карта дня' не активна за замовчуванням");
       h.expect((await h.count("[data-card]")) === 1, "карта дня — рівно одна карта");
       h.expect((await h.count("[data-reading] img, [data-card] img")) >= 1, "немає зображення карти");
@@ -17,6 +17,8 @@ export default [
       h.expect((await h.count("[data-card]")) === 3, "минуле/тепер/майбутнє = 3 карти");
       await h.click('[data-spread="celtic"]'); await h.wait(150);
       h.expect((await h.count("[data-card]")) === 10, "кельтський хрест = 10 карт");
+      await h.click('[data-spread="pyramid"]'); await h.wait(150);
+      h.expect((await h.count("[data-card]")) === 6, "піраміда душі = 6 карт");
       await h.click('[data-spread="daily"]'); await h.wait(120);
     },
   },

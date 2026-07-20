@@ -5,10 +5,23 @@
 import { mulberry32 } from "./groove.js";
 
 // The spreads. `pos` are i18n keys for each position, in layout order; size = pos.length.
+// `rows` (optional) is the visual arrangement: each inner array lists position indices (into `pos`)
+// on that row, top → bottom, so a spread can render as its real shape (a pyramid, a fork, a star).
+// Every position index must appear exactly once across all rows. Spreads without `rows` fall back to
+// the flat grid. `majorOnly` restricts the draw to the 22 Major Arcana (deck indices 0..21).
 export const SPREADS = [
   { id: "daily", pos: ["posToday"] },
   { id: "ppf", pos: ["posPast", "posPresent", "posFuture"] },
   { id: "sao", pos: ["posSituation", "posAction", "posResult"] },
+  { id: "mindbody", pos: ["posMind", "posBody", "posSpirit"] },
+  { id: "choice", pos: ["posSelfNow", "posDoAct", "posDoOut", "posDontAct", "posDontOut", "posAdviceC"],
+    rows: [[2, 4], [1, 3], [0], [5]] },
+  { id: "star", pos: ["posCore", "posNow", "posHelps", "posHinders", "posLearn", "posTrend"],
+    rows: [[1], [5, 2], [0], [4, 3]] },
+  { id: "love", pos: ["posYou", "posThem", "posBond", "posChallengeL", "posDirection"],
+    rows: [[0, 1], [2], [3], [4]] },
+  { id: "pyramid", majorOnly: true, pos: ["posRoots", "posGround", "posShadow", "posInner", "posOuter", "posSoul"],
+    rows: [[5], [3, 4], [0, 1, 2]] },
   { id: "celtic", pos: ["posHeart", "posCross", "posBelow", "posBehind", "posAbove", "posBefore", "posSelfC", "posEnv", "posHopes", "posFinal"] },
 ];
 export const spreadById = (id) => SPREADS.find((s) => s.id === id) || SPREADS[0];

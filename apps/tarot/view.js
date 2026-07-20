@@ -1,5 +1,8 @@
-// Tarot — draw the Rider-Waite-Smith deck for a reading. Four spreads (card of the day, past/present/future,
-// situation/action/outcome, ten-card Celtic Cross). The deck (78 cards + canonical Waite meanings + the
+// Tarot — draw the Rider-Waite-Smith deck for a reading. Nine spreads, each with a plain one-line
+// description of what it answers: card of the day, past/present/future, situation/action/outcome,
+// mind/body/spirit, the crossroads (do-it vs don't), the star, a love reading, the Major-Arcana Soul
+// Pyramid, and the ten-card Celtic Cross. Shaped spreads (pyramid, star, fork) render via `Rows` from
+// their `rows` layout; the rest fall out of a flat grid. The deck (78 cards + canonical Waite meanings + the
 // public-domain 1909 scans) is app-owned in ./deck.js with images vendored same-origin under ./assets/ —
 // fully offline. The draw math is the SYSTEMIC /_rt/tarot.js (seeded, unit-tested): the card of the day is
 // seeded by the date so it's stable through the day; other spreads reshuffle. English meanings are
@@ -22,7 +25,8 @@ const imgURL = (file) => new URL(`./assets/${file}`, import.meta.url).href;   //
 const randSeed = () => Math.floor(Math.random() * 0x100000000) >>> 0;
 const dk = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-const SPREAD_KEY = { daily: "spreadDaily", ppf: "spreadPPF", sao: "spreadSAO", celtic: "spreadCeltic" };
+const SPREAD_KEY = { daily: "spreadDaily", ppf: "spreadPPF", sao: "spreadSAO", mindbody: "spreadMind", choice: "spreadChoice", star: "spreadStar", love: "spreadLove", pyramid: "spreadPyramid", celtic: "spreadCeltic" };
+const DESC_KEY = { daily: "descDaily", ppf: "descPPF", sao: "descSAO", mindbody: "descMind", choice: "descChoice", star: "descStar", love: "descLove", pyramid: "descPyramid", celtic: "descCeltic" };
 const SUIT_KEY = { wands: "suitWands", cups: "suitCups", swords: "suitSwords", pentacles: "suitPentacles" };
 const cardName = (c, loc) => (loc === "uk" ? c.uk : c.name);
 const meaningOf = (d) => DECK[d.card][d.reversed ? "rev" : "up"];
@@ -40,7 +44,7 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const spread = spreadById(spreadId);
   const seed = spreadId === "daily" ? hashSeed(dk(now))
     : ((gate ? 0 : liveBase) ^ hashSeed(spreadId + ":" + nonce)) >>> 0;
-  const drawn = draw(seed, spread.pos.length);
+  const drawn = draw(seed, spread.pos.length, spread.majorOnly ? 22 : 78);
 
   // translate the meanings actually shown (chosen orientation) into the active locale
   useEffect(() => { warm(drawn.map(meaningOf), loc); }, [seed, loc]);
@@ -62,15 +66,21 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
         </div>
       </div>
 
-      <!-- reading header + shuffle (shuffle hidden for the day's fixed card) -->
-      <div class="flex items-center justify-between gap-2">
-        <div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>
-        ${spreadId !== "daily" ? html`<button data-shuffle class="btn btn-sm btn-ghost gap-1.5 rounded-full border border-base-300" onClick=${shuffle}>${Icon("lucide:shuffle", "text-base")}<span class="text-xs">${T(t, "redraw")}</span></button>` : null}
+      <!-- reading header + shuffle (shuffle hidden for the day's fixed card). The description says, plainly,
+           what question the spread answers — that's content, like a card's meaning, not a UI hint. -->
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>
+          <p class="mt-1 text-[0.8rem] leading-snug text-base-content/55 break-words">${T(t, DESC_KEY[spreadId])}</p>
+        </div>
+        ${spreadId !== "daily" ? html`<button data-shuffle class="btn btn-sm btn-ghost gap-1.5 rounded-full border border-base-300 shrink-0" onClick=${shuffle}>${Icon("lucide:shuffle", "text-base")}<span class="text-xs">${T(t, "redraw")}</span></button>` : null}
       </div>
 
       <!-- reading -->
       ${spread.pos.length === 1
       ? html`<${Solo} d=${drawn[0]} pos=${spread.pos[0]} t=${t} loc=${loc} onOpen=${() => openCard(0)} />`
+      : spread.rows
+      ? html`<${Rows} rows=${spread.rows} drawn=${drawn} pos=${spread.pos} seed=${seed} t=${t} loc=${loc} onOpen=${openCard} />`
       : html`<div data-reading class=${`grid ${spread.pos.length === 3 ? "grid-cols-3" : "grid-cols-2"} gap-x-3 gap-y-4`}>
           ${drawn.map((d, i) => html`<${Tile} d=${d} pos=${spread.pos[i]} t=${t} loc=${loc} onOpen=${() => openCard(i)} key=${`${seed}-${i}`} />`)}
         </div>`}
@@ -89,6 +99,20 @@ function Tile({ d, pos, t, loc, onOpen }) {
     <div class="text-xs font-medium leading-tight line-clamp-2 min-h-[2rem] break-words">${cardName(c, loc)}</div>
     <div class=${`text-[0.6rem] ${d.reversed ? "text-warning" : "text-base-content/45"}`}>${T(t, d.reversed ? "reversed" : "upright")}</div>
   </button>`;
+}
+
+// a shaped spread (pyramid, star, fork…): each row is centered and every tile is sized to the widest row,
+// so a 3-2-1 pyramid actually reads as a pyramid and a fork reads as a fork. Falls out of the flat grid.
+function Rows({ rows, drawn, pos, seed, t, loc, onOpen }) {
+  const maxCols = Math.max(...rows.map((r) => r.length));
+  const w = `calc(${(100 / maxCols).toFixed(4)}% - 0.75rem)`;
+  return html`<div data-reading class="flex flex-col gap-4">
+    ${rows.map((row, ri) => html`<div class="flex justify-center gap-3" key=${ri}>
+      ${row.map((pi) => html`<div style=${`width:${w}`} key=${`${seed}-${pi}`}>
+        <${Tile} d=${drawn[pi]} pos=${pos[pi]} t=${t} loc=${loc} onOpen=${() => onOpen(pi)} />
+      </div>`)}
+    </div>`)}
+  </div>`;
 }
 
 // the single card-of-the-day: larger, with the meaning shown inline (tap the image for the full sheet too)

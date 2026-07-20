@@ -33,7 +33,7 @@ export function cam({ S }) {
   const t = useStore(S.t), loc = useStore(S.locale);
   const [enabled, setEnabled] = useState(gate);
   const [err, setErr] = useState(null);
-  const [facing, setFacing] = useState("environment");
+  const [facing, setFacing] = useState("user"); // TEMP-SHOT
   const [fx, setFx] = useState(0);
   const [expo, setExpo] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -45,7 +45,9 @@ export function cam({ S }) {
   const [caps, setCaps] = useState({ torch: false, zoom: null });
   const [shot, setShot] = useState(null);         // last capture (object URL) → thumbnail
   const [count, setCount] = useState(0);          // self-timer countdown
-  const [flash, setFlash] = useState(false);
+  const [flash, setFlash] = useState(false);      // brief post-capture screen flash
+  const [frontFlash, setFrontFlash] = useState(true); // TEMP-SHOT // front-camera screen-flash mode (no hardware torch up front)
+  const [lit, setLit] = useState(false);          // screen flooded white to light the face while grabbing
 
   const videoRef = useRef(), streamRef = useRef(null), trackRef = useRef(null), timerRef = useRef(0);
   const filterStr = () => `${FX[fx][1]} brightness(${expo.toFixed(2)})`.trim();
@@ -97,10 +99,15 @@ export function cam({ S }) {
     } catch { /* capture blocked */ }
     setFlash(true); setTimeout(() => setFlash(false), 160);
   };
+  // fire: front-flash floods the screen bright white and lets the front camera expose to the lit face before the grab
+  const fire = () => {
+    if (frontFlash && facing === "user") { setLit(true); setTimeout(() => { grab(); setTimeout(() => setLit(false), 140); }, 420); }
+    else grab();
+  };
   const shoot = () => {
     buzz(14);
-    if (timer > 0) { let n = timer; setCount(n); clearInterval(timerRef.current); timerRef.current = setInterval(() => { n -= 1; if (n <= 0) { clearInterval(timerRef.current); setCount(0); grab(); } else { setCount(n); buzz(6); } }, 1000); }
-    else grab();
+    if (timer > 0) { let n = timer; setCount(n); clearInterval(timerRef.current); timerRef.current = setInterval(() => { n -= 1; if (n <= 0) { clearInterval(timerRef.current); setCount(0); fire(); } else { setCount(n); buzz(6); } }, 1000); }
+    else fire();
   };
   useEffect(() => () => clearInterval(timerRef.current), []);
 
@@ -131,6 +138,7 @@ export function cam({ S }) {
               <div class="absolute top-1/3 left-0 right-0 h-px bg-white/25"></div><div class="absolute top-2/3 left-0 right-0 h-px bg-white/25"></div>
             </div>` : null}
             ${aspect !== "1:1" ? cropBars(aspect) : null}
+            ${frontFlash && facing === "user" && !lit ? html`<div class="absolute inset-0 rounded-[inherit] pointer-events-none shadow-[inset_0_0_0_3px_rgba(255,255,255,.9),inset_0_0_22px_rgba(255,255,255,.35)]" aria-hidden="true"></div>` : null}
             <div class="absolute inset-0 pointer-events-none" style="background:linear-gradient(135deg,rgba(255,255,255,.08),transparent 42%)"></div>
             <div class="absolute inset-3 pointer-events-none" aria-hidden="true">
               ${["top-0 left-0 border-t-2 border-l-2 rounded-tl-md", "top-0 right-0 border-t-2 border-r-2 rounded-tr-md", "bottom-0 left-0 border-b-2 border-l-2 rounded-bl-md", "bottom-0 right-0 border-b-2 border-r-2 rounded-br-md"].map((c, i) => html`<span key=${i} class=${`absolute w-5 h-5 border-white/30 ${c}`}></span>`)}
@@ -158,7 +166,9 @@ export function cam({ S }) {
           <!-- toggles: a recessed button deck -->
           <div class="flex items-center justify-center gap-2 flex-wrap rounded-2xl border border-base-content/8 bg-base-300/40 px-2.5 py-2.5 shadow-[inset_0_1px_3px_rgba(0,0,0,.45)]">
             ${Toggle(facing === "user", "lucide:switch-camera", T(t, "aFlip"), flip)}
-            ${caps.torch ? Toggle(torch, "lucide:flashlight", T(t, "aTorch"), () => { buzz(); setTorch((v) => !v); }) : null}
+            ${facing === "user"
+              ? Toggle(frontFlash, "lucide:zap", T(t, "aFrontFlash"), () => { buzz(); setFrontFlash((v) => !v); })
+              : (caps.torch ? Toggle(torch, "lucide:flashlight", T(t, "aTorch"), () => { buzz(); setTorch((v) => !v); }) : null)}
             ${Toggle(grid, "lucide:grid-3x3", T(t, "aGrid"), () => { buzz(); setGrid((v) => !v); })}
             ${Toggle(timer > 0, "lucide:timer", T(t, "aTimer"), cycleTimer, timer > 0 ? html`<span class="text-xs font-mono font-bold">${timer}</span>` : null)}
             ${Toggle(showMirror, "lucide:flip-horizontal-2", T(t, "aMirror"), () => { buzz(); setMirror((v) => !v); })}
@@ -176,6 +186,7 @@ export function cam({ S }) {
       </div>
     </div>
 
+    ${lit ? html`<div class="fixed inset-0 z-40 bg-white" aria-hidden="true"></div>` : null}
     ${!enabled || err ? html`<${CameraPrime} loc=${loc} reason=${T(t, "primeReason")} onEnable=${enable} onSettings=${() => S.screen.set("perms")} denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />` : null}
   </${Fragment}>`;
 }

@@ -1,0 +1,15 @@
+{
+  "id": "outpost",
+  "theme": "signal",
+  "category": "sound",
+  "tabs": [
+    { "id": "gen", "type": "tool", "icon": "lucide:orbit", "label": "tabGen", "view": "outpost" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:orbit",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

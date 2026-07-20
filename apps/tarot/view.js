@@ -164,12 +164,17 @@ const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   const dref = useRef(), cref = useRef();
   const [color, setColor] = useState(0);
-  const [num, setNum] = useState(() => (gate ? hashSeed("ritual:" + deckLen) % deckLen : 0));
+  const [num, setNum] = useState(() => hashSeed("0|") % deckLen);
   const [charge, setCharge] = useState(gate ? 0.6 : 0);
-  const S = useRef({ samples: [], heading: 0, tx: 0, ty: 0, px: 0.5, py: 0.5, touch: 0, moved: 0, color: 0 }).current;
+  const [live, setLive] = useState(gate ? { tilt: 18, head: 127, time: "07:23:00" } : { tilt: 0, head: 0, time: "" });
+  const S = useRef({ samples: [], heading: 0, tx: 0, ty: 0, px: 0.5, py: 0.5, touch: 0, moved: 0, color: 0, num: 0 }).current;
 
+  // The drawn cards are a PURE function of (colour, number): the same colour + number always give the same
+  // spread. The number is distilled live from your motion/tilt/compass/touch + the moment; a different
+  // colour reshapes it too. So the ring is the honest key — reproducible, legible.
+  const recount = () => { const n = hashSeed(`${S.color}|${S.samples.join(",")}`) % deckLen; S.num = n; setNum(n); };
   useEffect(() => { const el = dref.current; if (!el) return; if (open) { if (!el.open) el.showModal?.(); } else el.close?.(); }, [open]);
-  useEffect(() => { S.color = color; }, [color]);
+  useEffect(() => { S.color = color; recount(); }, [color]);
 
   // the living particle field (+ device tilt/compass + touch drag → entropy)
   useEffect(() => {
@@ -199,11 +204,13 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
     if (gate) { ctx.fillStyle = "#0a0a0c"; ctx.fillRect(0, 0, cv.width, cv.height); paint(1400); return; }   // one still frame for the gate/CI shot
     let raf, last = 0;
     const push = (now) => {
-      if (now - last < 80) return; last = now;
+      if (now - last < 90) return; last = now;
       S.samples.push((Math.round(S.heading * 7 + S.tx * 131 + S.ty * 197 + S.px * 311 + S.py * 233 + now * 0.03) & 2047));
       if (S.samples.length > 80) S.samples.shift();
-      setNum(hashSeed(`${S.color}|${S.samples.join(",")}`) % deckLen);
+      recount();
       setCharge(Math.min(1, S.samples.length / 44));
+      const d = new Date();
+      setLive({ tilt: Math.round(Math.hypot(S.tx, S.ty) * 60), head: Math.round((S.heading % 360 + 360) % 360), time: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}` });
     };
     const loop = (now) => { paint(now); if (S.touch || S.moved) push(now); raf = requestAnimationFrame(loop); };
     raf = requestAnimationFrame(loop);
@@ -216,7 +223,7 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
     return () => { cancelAnimationFrame(raf); window.removeEventListener("deviceorientation", onOri); cv.removeEventListener("pointerdown", onPtr); cv.removeEventListener("pointermove", onPtr); window.removeEventListener("pointerup", onUp); window.removeEventListener("resize", size); };
   }, [open]);
 
-  const drawNow = () => { const seed = hashSeed(`${S.color}|${S.samples.join(",")}|${Math.round(S.heading)}|${gate ? 0 : Date.now()}`) >>> 0; onDraw(seed); };
+  const drawNow = () => { onDraw(hashSeed(`${S.color}|${S.num}`) >>> 0); };   // pure fn of (colour, number)
   const col = RIT_COLORS[color];
 
   return html`<dialog id="ritual" ref=${dref} class="modal" onClose=${onClose}>
@@ -233,7 +240,17 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
 
         <p class="mt-3 text-[0.9rem] leading-snug text-base-content/70 max-w-[16rem]">${T(t, "ritualWhat")}</p>
 
-        <div class="flex-1 min-h-0 flex items-center justify-center">
+        <div class="flex-1 min-h-0 flex flex-col items-center justify-center gap-5">
+          <!-- the live formula: colour · tilt · compass · time, distilling into the number -->
+          <div class="flex items-center gap-2 font-mono text-[0.72rem] text-base-content/75 tabular-nums" aria-hidden="true">
+            <span class="h-3.5 w-3.5 rounded-full shrink-0" style=${`background:${rgba(col, 1)}`}></span>
+            <span class="text-base-content/30">·</span>
+            <span class="inline-flex items-center gap-1">${Icon("lucide:move-3d", "text-sm text-base-content/55")}${live.tilt}°</span>
+            <span class="text-base-content/30">·</span>
+            <span class="inline-flex items-center gap-1">${Icon("lucide:compass", "text-sm text-base-content/55")}${live.head}°</span>
+            <span class="text-base-content/30">·</span>
+            <span class="inline-flex items-center gap-1">${Icon("lucide:clock", "text-sm text-base-content/55")}${live.time || "—"}</span>
+          </div>
           <div class="relative flex items-center justify-center" style="width:9.5rem;height:9.5rem">
             <svg viewBox="0 0 100 100" class="absolute inset-0 w-full h-full -rotate-90" aria-hidden="true">
               <circle cx="50" cy="50" r="45" fill="none" stroke="var(--color-base-content)" stroke-opacity="0.12" stroke-width="2.5" />

@@ -114,7 +114,7 @@ export function cam({ S }) {
         <div class="shrink-0 flex items-center justify-between px-0.5">
           <div class="flex items-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-primary/85 shadow-[0_0_7px] shadow-primary/60"></span>
-            <span class="font-mono text-[0.6rem] uppercase tracking-[0.3em] text-base-content/40">${loc === "uk" ? "μКАМ" : "μCAM"}</span>
+            <span class="font-mono text-[0.6rem] uppercase tracking-[0.3em] text-base-content/60">${loc === "uk" ? "μКАМ" : "μCAM"}</span>
           </div>
           <div class="flex items-center gap-1.5 font-mono text-[0.58rem] uppercase tracking-widest text-base-content/45">
             <span>${T(t, FX[fx][0])}</span><span class="text-base-content/25">·</span><span>${aspect}</span>${zoom > 1.02 ? html`<span class="text-secondary">· ${zoom.toFixed(1)}×</span>` : null}

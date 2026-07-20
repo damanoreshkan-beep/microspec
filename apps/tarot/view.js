@@ -175,10 +175,10 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   useEffect(() => {
     if (!open) return;
     const cv = cref.current; if (!cv || !cv.getContext) return;
-    const ctx = cv.getContext("2d"); if (!ctx) return;
+    const ctx = cv.getContext("2d"); if (!ctx || typeof ctx.arc !== "function") return;   // real 2D context only (linkedom → bail)
     S.samples = []; S.touch = 0; S.moved = 0;
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    const size = () => { const r = cv.getBoundingClientRect(); cv.width = Math.max(1, (r.width || innerWidth) * dpr); cv.height = Math.max(1, (r.height || innerHeight) * dpr); };
+    const dpr = Math.min((globalThis.devicePixelRatio || 1), 2);
+    const size = () => { const r = cv.getBoundingClientRect(); cv.width = Math.max(1, (r.width || globalThis.innerWidth || 360) * dpr); cv.height = Math.max(1, (r.height || globalThis.innerHeight || 640) * dpr); };
     size();
     // deterministic golden-angle distribution → same field everywhere, animates live
     const P = Array.from({ length: 96 }, (_, i) => ({ a: i * 2.39996, r: 0.14 + ((i * 0.61803) % 1) * 0.86, sz: 1 + ((i * 0.37) % 1) * 2.4, spd: 0.0025 + ((i * 0.113) % 1) * 0.006 }));

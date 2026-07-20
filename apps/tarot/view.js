@@ -40,7 +40,6 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const drawn = draw(seed, spread.pos.length, spread.majorOnly ? 22 : 78);
   const isDaily = spread.pos.length === 1;
 
-  useEffect(() => { openScreen("ritual"); }, []); 
   useEffect(() => { setOverride(null); }, [spreadId]);           
   useEffect(() => { warm(drawn.map(meaningOf), loc); }, [seed, loc]);
   useEffect(() => {

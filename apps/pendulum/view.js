@@ -40,9 +40,8 @@ const GATE_PH = 0.12;  // a still, deterministic frame for the gate / screenshot
 const PIVOT = "9vh";   // pivot near the top
 const ARM = "47vh";    // rod length — a jewel in the lower-centre, not a wall
 
-// A luminous orb: a bright highlight, a lavender body, and a soft radiating glow.
+// A luminous orb: a bright highlight fading to a deep lavender body, with soft inner depth.
 const BOB_BG = "radial-gradient(circle at 42% 36%, #ffffff 0%, #ECE7FF 12%, #BBA9F6 46%, #6E5CC9 78%, #40367F 100%)";
-const BOB_SHADOW = "0 0 10px 1px rgba(159,140,246,.6), 0 0 40px 7px rgba(159,140,246,.36), 0 0 92px 20px rgba(159,140,246,.15)";
 
 export function pendulum({ S }) {
   const t = useStore(S.t);
@@ -102,7 +101,10 @@ export function pendulum({ S }) {
         <div ref=${armRef} style=${`position:absolute;left:50%;top:${PIVOT};transform-origin:top center;transform:rotate(${init.angle.toFixed(2)}deg)`}>
           <div style="position:absolute;top:-5px;left:-5px;width:9px;height:9px;border-radius:9999px;background:var(--color-base-content);opacity:0.35"></div>
           <div style=${`width:2px;height:${ARM};margin-left:-1px;background:linear-gradient(to bottom, transparent, color-mix(in oklch, var(--color-base-content) 70%, transparent));opacity:0.28`}></div>
-          <div ref=${bobRef} data-bob style=${`position:absolute;top:${ARM};left:0;width:6.5rem;height:6.5rem;transform:translate(-50%,-50%);border-radius:9999px;background:${BOB_BG};box-shadow:${BOB_SHADOW}`}></div>
+          <div ref=${bobRef} data-bob style=${`position:absolute;top:${ARM};left:0;width:6rem;height:6rem;transform:translate(-50%,-50%)`}>
+            <div style="position:absolute;left:50%;top:50%;width:15rem;height:15rem;transform:translate(-50%,-50%);border-radius:9999px;background:radial-gradient(circle, rgba(159,140,246,.34) 0%, rgba(159,140,246,.12) 30%, rgba(159,140,246,0) 62%)"></div>
+            <div style=${`position:absolute;inset:0;border-radius:9999px;background:${BOB_BG};box-shadow:inset 0 -5px 13px rgba(52,42,102,.55), 0 3px 12px rgba(0,0,0,.28)`}></div>
+          </div>
         </div>
       </div>
     </button>

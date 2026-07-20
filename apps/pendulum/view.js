@@ -61,7 +61,9 @@ async function makeScene(host) {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(34, w / h, 0.1, 100);
-  const fit = () => { camera.position.set(0, 0.4, Math.max(8, 8 * (0.62 / (w / h)))); camera.lookAt(0, 0.4, 0); };
+  // Frame the pendulum in the UPPER two-thirds — pivot near the top, bob a little above centre — so the
+  // glow clears the control island and dock at the bottom.
+  const fit = () => { camera.position.set(0, 0.9, 9); camera.lookAt(0, 0.9, 0); };
   fit();
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.35));
@@ -69,10 +71,10 @@ async function makeScene(host) {
   const glowLight = new THREE.PointLight(ACCENT, 26, 12, 2);
 
   const pivot = new THREE.Group();
-  pivot.position.set(0, 2.1, 0);
+  pivot.position.set(0, 3.3, 0);
   scene.add(pivot);
 
-  const L = 3.5;
+  const L = 3.0;
   const cap = new THREE.Mesh(new THREE.SphereGeometry(0.09, 24, 24), new THREE.MeshStandardMaterial({ color: INK, roughness: 0.6, transparent: true, opacity: 0.55 }));
   pivot.add(cap);
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.028, L, 16), new THREE.MeshStandardMaterial({ color: INK, emissive: ACCENT, emissiveIntensity: 0.12, roughness: 0.5, transparent: true, opacity: 0.55 }));
@@ -82,7 +84,7 @@ async function makeScene(host) {
   const bob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 48, 48), new THREE.MeshStandardMaterial({ color: 0xF3F0FF, emissive: ACCENT, emissiveIntensity: 1.35, roughness: 0.32, metalness: 0.1 }));
   bob.position.y = bobY; pivot.add(bob);
   const halo = (r, o) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 28), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false })); m.position.y = bobY; pivot.add(m); return m; };
-  halo(0.86, 0.2); halo(1.35, 0.09); halo(2.1, 0.035);
+  halo(0.82, 0.2); halo(1.2, 0.085); halo(1.7, 0.03);
   glowLight.position.set(0, bobY, 0.6); pivot.add(glowLight);
 
   const resize = () => {

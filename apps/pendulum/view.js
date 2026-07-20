@@ -75,21 +75,26 @@ async function makeScene(host) {
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.026, L, 16), new THREE.MeshStandardMaterial({ color: INK, emissive: ACCENT, emissiveIntensity: 0.1, roughness: 0.5, transparent: true, opacity: 0.5 }));
   rod.position.y = -L / 2; pivot.add(rod);
 
-  // The bob group (bob + glow shells + light) hangs at the rod's end and scales for the bloom pulse.
+  // The bob group (orb + glow + light) hangs at the rod's end and scales for the bloom pulse. A luminous
+  // lavender orb; the word inside is drawn in dark ink for contrast. The glow is ONE smooth additive sprite
+  // (radial-gradient texture), not stepped shells — softer, no banding.
   const bobGroup = new THREE.Group(); bobGroup.position.y = -L; pivot.add(bobGroup);
-  // A DARK orb so the light word inside stays legible; the glow lives in the additive shells + point light.
-  const bob = new THREE.Mesh(new THREE.SphereGeometry(0.62, 48, 48), new THREE.MeshStandardMaterial({ color: 0x1b1636, emissive: ACCENT, emissiveIntensity: 0.28, roughness: 0.45, metalness: 0.15 }));
+  const bob = new THREE.Mesh(new THREE.SphereGeometry(0.62, 48, 48), new THREE.MeshStandardMaterial({ color: 0xBBAcFF, emissive: ACCENT, emissiveIntensity: 0.45, roughness: 0.4, metalness: 0.1 }));
   bobGroup.add(bob);
-  const shells = [[0.78, 0.28], [1.05, 0.14], [1.5, 0.07], [2.1, 0.03]].map(([r, o]) => {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 28), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false }));
-    bobGroup.add(m); return { m, o };
-  });
-  const glowLight = new THREE.PointLight(ACCENT, 20, 12, 2); glowLight.position.set(0, 0, 0.5); bobGroup.add(glowLight);
+  const gc = document.createElement("canvas"); gc.width = gc.height = 256;
+  const g2 = gc.getContext("2d");
+  const grd = g2.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grd.addColorStop(0, "rgba(159,140,246,0.85)"); grd.addColorStop(0.28, "rgba(159,140,246,0.4)");
+  grd.addColorStop(0.6, "rgba(159,140,246,0.11)"); grd.addColorStop(1, "rgba(159,140,246,0)");
+  g2.fillStyle = grd; g2.fillRect(0, 0, 256, 256);
+  const glowMat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(gc), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+  const glow = new THREE.Sprite(glowMat); glow.scale.set(6.2, 6.2, 1); bobGroup.add(glow);
+  const glowLight = new THREE.PointLight(ACCENT, 16, 12, 2); glowLight.position.set(0, 0, 0.6); bobGroup.add(glowLight);
 
   const v = new THREE.Vector3();
   return {
     setAngle: (deg) => { pivot.rotation.z = (deg * Math.PI) / 180; },
-    setPulse: (scale, glow) => { bobGroup.scale.setScalar(scale); shells.forEach((s) => (s.m.material.opacity = s.o * (1 + 1.4 * glow))); glowLight.intensity = 20 * (1 + 1.1 * glow); },
+    setPulse: (scale, glow2) => { bobGroup.scale.setScalar(scale); glowLight.intensity = 16 * (1 + 1.3 * glow2); },
     projectBob: () => { bobGroup.getWorldPosition(v); v.project(camera); return { x: (v.x * 0.5 + 0.5) * cv.clientWidth, y: (-v.y * 0.5 + 0.5) * cv.clientHeight }; },
     render: () => renderer.render(scene, camera),
     resize: fit,
@@ -112,11 +117,15 @@ export function pendulum({ S }) {
 
   // Place + fade the pole words onto the bob's screen position. Word A rises at one extreme, B at the other;
   // both fade to nothing through the centre. `mult` (0→1 over a bloom) cross-dissolves to a freshly-turned pair.
+  // Fade a pole up across its half of the swing, to nothing through the fast centre. `sd` is the signed
+  // reach toward that pole (+s for A, -s for B).
+  const fade = (sd) => clamp01((sd - 0.05) / 0.4);
   const placeWords = (x, y, s, mult) => {
     const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
-    const put = (el, op) => { if (!el) return; el.style.transform = tf; el.style.opacity = op.toFixed(3); el.style.visibility = op > 0.04 ? "visible" : "hidden"; };
-    put(aRef.current, clamp01((s - 0.12) / 0.62) * mult);
-    put(bRef.current, clamp01((-s - 0.12) / 0.62) * mult);
+    const ink = webglRef.current ? "#171033" : "";   // dark on the luminous orb; light (JSX) on the dark bg
+    const put = (el, op) => { if (!el) return; el.style.transform = tf; el.style.opacity = op.toFixed(3); el.style.visibility = op > 0.04 ? "visible" : "hidden"; el.style.color = ink; };
+    put(aRef.current, fade(s) * mult);
+    put(bRef.current, fade(-s) * mult);
   };
 
   // three.js — real device only. Under the gate (no WebGL) this never runs and the DOM fallback stays.
@@ -166,9 +175,10 @@ export function pendulum({ S }) {
   const [aKey, bKey] = DUALITIES[durIdx];
   const init = gate ? pstate(GATE_PH * PERIOD, PERIOD, AMP) : pstate(0, PERIOD, AMP);
   // Static first frame (also the gate/axe frame): light words centred over the bob, one pole shown.
-  const wordBase = "position:absolute;top:58%;left:50%;transform:translate(-50%,-50%);max-width:11rem;will-change:transform,opacity";
-  // A near-zero word is hidden (visibility), not just faded — axe treats a ~0-opacity text as a contrast fail.
-  const wordStyle = (w) => { const op = clamp01((w - 0.12) / 0.62); return `${wordBase};opacity:${op.toFixed(3)};visibility:${op > 0.04 ? "visible" : "hidden"}`; };
+  const wordBase = "position:absolute;top:57%;left:50%;transform:translate(-50%,-50%);max-width:9.5rem;will-change:transform,opacity";
+  // Static first frame (also the gate/axe frame): the drawn-toward pole shown, the other hidden — a
+  // near-zero-opacity word is what axe reads as a contrast fail, so hide it via visibility.
+  const wordStyle = (sd) => { const op = clamp01((sd - 0.05) / 0.4); return `${wordBase};opacity:${op.toFixed(3)};visibility:${op > 0.04 ? "visible" : "hidden"}`; };
 
   return html`<${Fragment}>
     <!-- full-screen pendulum body; tap (or Enter) to turn to the next duality. three.js mounts here -->
@@ -184,8 +194,8 @@ export function pendulum({ S }) {
 
     <!-- the pole words — inside the orb, riding it, positioned each frame by the loop -->
     <div class="fixed inset-0 z-10 pointer-events-none" aria-live="polite">
-      <div ref=${aRef} data-pole data-pole-a class="text-[1.35rem] font-semibold leading-tight text-center break-words text-base-content" style=${wordStyle(init.weightA)}>${T(t, aKey)}</div>
-      <div ref=${bRef} data-pole data-pole-b class="text-[1.35rem] font-semibold leading-tight text-center break-words text-base-content" style=${wordStyle(init.weightB)}>${T(t, bKey)}</div>
+      <div ref=${aRef} data-pole data-pole-a class="text-[1.5rem] font-semibold leading-tight text-center break-words text-base-content" style=${wordStyle(init.s)}>${T(t, aKey)}</div>
+      <div ref=${bRef} data-pole data-pole-b class="text-[1.5rem] font-semibold leading-tight text-center break-words text-base-content" style=${wordStyle(-init.s)}>${T(t, bKey)}</div>
     </div>
   </${Fragment}>`;
 }

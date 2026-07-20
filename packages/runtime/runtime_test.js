@@ -961,7 +961,7 @@ Deno.test("horoscope sunSign: cutoffs map month/day to the right sign, wrapping 
 });
 
 Deno.test("tarot SPREADS: sizes match the layouts, positions unique", () => {
-  assertEquals(SPREADS.map((s) => s.pos.length), [1, 3, 3, 3, 6, 6, 5, 6, 10], "spread sizes");
+  assertEquals(SPREADS.map((s) => s.pos.length), [1, 3, 3, 3, 6, 5, 4, 6, 5, 6, 10], "spread sizes");
   for (const s of SPREADS) assertEquals(new Set(s.pos).size, s.pos.length, `${s.id} positions must be unique`);
   assertEquals(spreadById("celtic").pos.length, 10);
   assertEquals(spreadById("nope").id, "daily", "unknown id falls back to the first spread");

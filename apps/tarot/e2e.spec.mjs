@@ -3,8 +3,8 @@
 // Card art is the vendored public-domain RWS scans — no emoji anywhere.
 export default [
   {
-    name: "card of the day renders: 9 spreads, one card + meaning", run: async (h) => {
-      h.expect((await h.count("[data-spread]")) === 9, "має бути 9 розкладів");
+    name: "card of the day renders: 11 spreads, one card + meaning", run: async (h) => {
+      h.expect((await h.count("[data-spread]")) === 11, "має бути 11 розкладів");
       h.expect((await h.prop('[data-spread="daily"]', "ariaPressed")) === "true", "'карта дня' не активна за замовчуванням");
       h.expect((await h.count("[data-card]")) === 1, "карта дня — рівно одна карта");
       h.expect((await h.count("[data-reading] img, [data-card] img")) >= 1, "немає зображення карти");

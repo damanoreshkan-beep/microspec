@@ -1,0 +1,15 @@
+{
+  "id": "pendulum",
+  "theme": "signal",
+  "category": "esoterica",
+  "tabs": [
+    { "id": "swing", "type": "tool", "icon": "lucide:infinity", "label": "tabPend", "view": "pendulum" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:infinity",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

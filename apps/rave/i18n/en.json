@@ -1,6 +1,7 @@
 {
   "title": "Rave",
   "tabBeat": "Beat",
+  "tabPads": "Pads",
   "tabSaved": "Saved",
   "tabMe": "Me",
   "aSave": "Save",
@@ -65,7 +66,7 @@
   "noAudio": "Audio is unavailable in this browser",
   "profTheme": "Dark theme",
   "profLang": "Language",
-  "profTagline": "A minimal techno groove player — pick a style (techno, acid, house, rave, hardgroove, dub, electro), hit play, sweep one filter. Four light voices through Euclidean grooves, synthesised live, no samples, offline.",
+  "profTagline": "A techno groove box: a simple player (pick a style, play, sweep one filter), a full 16-voice x 16-step pad matrix to build beats by hand, and saved beats. All synthesised live with light voices through one master filter, no samples, offline.",
   "install": "Install app",
   "installTitle": "Install",
   "installBtn": "Install",

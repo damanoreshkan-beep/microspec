@@ -36,7 +36,7 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const loc = useStore(S.locale);
   useStore(trTick);                                              // re-render as translations land
-  const [spreadId, setSpreadId] = useState(SPREADS.some((s) => s.id === SPREAD_OVERRIDE) ? SPREAD_OVERRIDE : "daily");
+  const [spreadId, setSpreadId] = useState(SPREADS.some((s) => s.id === SPREAD_OVERRIDE) ? SPREAD_OVERRIDE : "celtic");
   const [nonce, setNonce] = useState(0);                         // bumped on shuffle → fresh draw
   const [detail, setDetail] = useState(0);                       // index into the current draw, for the sheet
   const liveBase = useRef(randSeed()).current;                   // random per session, stable across renders

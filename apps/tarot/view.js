@@ -51,6 +51,7 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const drawn = draw(seed, spread.pos.length, spread.majorOnly ? 22 : 78);
   const isDaily = spread.pos.length === 1;
 
+  useEffect(() => { openScreen("ritual"); }, []); // TEMP shot
   useEffect(() => { setOverride(null); }, [spreadId]);           // a new spread starts fresh
   // translate the meanings actually shown (chosen orientation) into the active locale
   useEffect(() => { warm(drawn.map(meaningOf), loc); }, [seed, loc]);
@@ -230,6 +231,8 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
           <button data-ritual-close aria-label=${T(t, "close")} class="btn btn-sm btn-circle btn-ghost" onClick=${onClose}>${Icon("lucide:x", "text-lg")}</button>
         </div>
 
+        <p class="mt-3 text-[0.9rem] leading-snug text-base-content/70 max-w-[16rem]">${T(t, "ritualWhat")}</p>
+
         <div class="flex-1 min-h-0 flex items-center justify-center">
           <div class="relative flex items-center justify-center" style="width:9.5rem;height:9.5rem">
             <svg viewBox="0 0 100 100" class="absolute inset-0 w-full h-full -rotate-90" aria-hidden="true">
@@ -244,6 +247,7 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
         </div>
 
         <div class="flex flex-col gap-4">
+          <p class="text-center text-[0.72rem] leading-relaxed text-base-content/60 max-w-sm mx-auto">${T(t, "ritualHow")}</p>
           <div class="flex justify-center gap-3">
             ${RIT_COLORS.map((c, i) => html`<button data-color=${i} aria-label=${`${T(t, "colorPick")} ${i + 1}`} aria-pressed=${color === i} class=${`h-8 w-8 rounded-full transition ${color === i ? "ring-2 ring-offset-2 ring-offset-base-100 scale-110" : "opacity-60"}`} style=${`background:${rgba(c, 1)};--tw-ring-color:${rgba(c, 1)}`} onClick=${() => setColor(i)} key=${i}></button>`)}
           </div>

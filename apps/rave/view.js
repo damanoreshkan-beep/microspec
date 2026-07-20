@@ -97,7 +97,7 @@ export function rave({ S }) {
 
     <!-- step visualiser (read-only) -->
     <div data-viz class="w-full max-w-[440px] grid grid-cols-[repeat(16,minmax(0,1fr))] gap-1">
-      ${[...Array(N)].map((_, i) => { const beat = i % 4 === 0, k = s.kick[i], on = i === cur; return html`<div key=${i} class=${`h-8 rounded-md transition-colors ${on ? "bg-secondary" : k ? "bg-secondary/30" : beat ? "bg-base-content/12" : "bg-base-content/[0.06]"}`}></div>`; })}
+      ${[...Array(N)].map((_, i) => { const beat = i % 4 === 0, k = s.kick[i], on = i === cur; return html`<div key=${i} class=${`h-8 rounded-md transition-colors ${on ? "bg-secondary" : k ? "bg-secondary/45" : beat ? "bg-base-content/20" : "bg-base-content/10"}`}></div>`; })}
     </div>
 
     <!-- transport -->

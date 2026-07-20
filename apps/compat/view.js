@@ -38,7 +38,7 @@ export function match({ S }) {
   const r = A && B ? compat(A, B) : null;
 
   const dateField = (val, set, label) => html`<label class="flex flex-col gap-1 min-w-0">
-    <span class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/55">${label}</span>
+    <span class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/65">${label}</span>
     <input type="date" value=${val} max="2035-12-31" onInput=${(e) => set(e.target.value)} class="input input-bordered rounded-2xl h-11 w-full text-sm" />
   </label>`;
 
@@ -71,7 +71,7 @@ function Ring({ score, t }) {
       </svg>
       <div class="absolute inset-0 flex flex-col items-center justify-center">
         <div data-overall class="text-[2.6rem] font-bold tabular-nums leading-none" style=${`color:${col}`}>${score}</div>
-        <div class="text-[0.55rem] font-mono uppercase tracking-widest text-base-content/55 mt-0.5">${T(t, "overall")}</div>
+        <div class="text-[0.55rem] font-mono uppercase tracking-widest text-base-content/65 mt-0.5">${T(t, "overall")}</div>
       </div>
     </div>
     <div class="text-sm font-semibold" style=${`color:${col}`}>${T(t, "band" + bi)}</div>
@@ -80,13 +80,13 @@ function Ring({ score, t }) {
 
 function Person({ label, P, t }) {
   return html`<div class="rounded-2xl border border-base-300 bg-base-100 p-3 flex flex-col items-center gap-2">
-    <div class="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-base-content/50">${label}</div>
+    <div class="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${label}</div>
     <${Sign} i=${P.sun} cls="w-9 h-9 text-secondary" />
     <div class="text-sm font-semibold leading-tight">${T(t, "sign" + P.sun)}</div>
     <div class="flex gap-3.5 mt-1">
       ${["moon", "venus", "mars"].map((pl) => html`<div class="flex flex-col items-center gap-1" key=${pl}>
         <${Sign} i=${P[pl]} cls="w-4 h-4 text-base-content/65" />
-        <span class="text-[0.5rem] font-mono uppercase tracking-wide text-base-content/45">${T(t, "pl_" + pl)}</span>
+        <span class="text-[0.5rem] font-mono uppercase tracking-wide text-base-content/65">${T(t, "pl_" + pl)}</span>
       </div>`)}
     </div>
   </div>`;

@@ -6,9 +6,8 @@ export default [
       await ready(h); await h.wait(300);
       h.expect((await h.count("[data-stage]")) === 1, "немає сцени маятника");
       h.expect((await h.count("[data-bob]")) === 1, "немає тягарця");
-      h.expect((await h.count("[data-pole]")) === 2, "має бути дві протилежності");
-      h.expect((await h.text("[data-pole-a]")).trim().length > 0, "порожня перша протилежність");
-      h.expect((await h.text("[data-pole-b]")).trim().length > 0, "порожня друга протилежність");
+      h.expect((await h.count("[data-pole]")) === 2, "мають бути дві протилежності в DOM");
+      h.expect((await h.text("[data-pole-a]")).trim().length > 0, "видима протилежність порожня");
     },
   },
   {

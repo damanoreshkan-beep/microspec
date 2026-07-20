@@ -63,18 +63,22 @@ async function makeScene(host) {
   rod.position.y = -L / 2; pivot.add(rod);
 
   const bobGroup = new THREE.Group(); bobGroup.position.y = -L; pivot.add(bobGroup);
-  const bob = new THREE.Mesh(new THREE.SphereGeometry(0.62, 48, 48), new THREE.MeshStandardMaterial({ color: 0x1b1636, emissive: ACCENT, emissiveIntensity: 0.28, roughness: 0.45, metalness: 0.15 }));
+  const bob = new THREE.Mesh(new THREE.SphereGeometry(0.62, 48, 48), new THREE.MeshStandardMaterial({ color: 0xBBAcFF, emissive: ACCENT, emissiveIntensity: 0.45, roughness: 0.4, metalness: 0.1 }));
   bobGroup.add(bob);
-  const shells = [[0.78, 0.28], [1.05, 0.14], [1.5, 0.07], [2.1, 0.03]].map(([r, o]) => {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 28), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false }));
-    bobGroup.add(m); return { m, o };
-  });
-  const glowLight = new THREE.PointLight(ACCENT, 20, 12, 2); glowLight.position.set(0, 0, 0.5); bobGroup.add(glowLight);
+  const gc = document.createElement("canvas"); gc.width = gc.height = 256;
+  const g2 = gc.getContext("2d");
+  const grd = g2.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grd.addColorStop(0, "rgba(159,140,246,0.85)"); grd.addColorStop(0.28, "rgba(159,140,246,0.4)");
+  grd.addColorStop(0.6, "rgba(159,140,246,0.11)"); grd.addColorStop(1, "rgba(159,140,246,0)");
+  g2.fillStyle = grd; g2.fillRect(0, 0, 256, 256);
+  const glowMat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(gc), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+  const glow = new THREE.Sprite(glowMat); glow.scale.set(6.2, 6.2, 1); bobGroup.add(glow);
+  const glowLight = new THREE.PointLight(ACCENT, 16, 12, 2); glowLight.position.set(0, 0, 0.6); bobGroup.add(glowLight);
 
   const v = new THREE.Vector3();
   return {
     setAngle: (deg) => { pivot.rotation.z = (deg * Math.PI) / 180; },
-    setPulse: (scale, glow) => { bobGroup.scale.setScalar(scale); shells.forEach((s) => (s.m.material.opacity = s.o * (1 + 1.4 * glow))); glowLight.intensity = 20 * (1 + 1.1 * glow); },
+    setPulse: (scale, glow2) => { bobGroup.scale.setScalar(scale); glowLight.intensity = 16 * (1 + 1.3 * glow2); },
     projectBob: () => { bobGroup.getWorldPosition(v); v.project(camera); return { x: (v.x * 0.5 + 0.5) * cv.clientWidth, y: (-v.y * 0.5 + 0.5) * cv.clientHeight }; },
     render: () => renderer.render(scene, camera),
     resize: fit,
@@ -95,11 +99,13 @@ export function pendulum({ S }) {
 
   const advance = () => { pulseAtRef.current = performance.now(); buzz(); setDurIdx((i) => (i + 1) % N); advanceAtRef.current = totalRef.current + ADVANCE; };
 
+  const fade = (sd) => clamp01((sd - 0.05) / 0.4);
   const placeWords = (x, y, s, mult) => {
     const tf = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
-    const put = (el, op) => { if (!el) return; el.style.transform = tf; el.style.opacity = op.toFixed(3); el.style.visibility = op > 0.04 ? "visible" : "hidden"; };
-    put(aRef.current, clamp01((s - 0.12) / 0.62) * mult);
-    put(bRef.current, clamp01((-s - 0.12) / 0.62) * mult);
+    const ink = webglRef.current ? "#171033" : "";   
+    const put = (el, op) => { if (!el) return; el.style.transform = tf; el.style.opacity = op.toFixed(3); el.style.visibility = op > 0.04 ? "visible" : "hidden"; el.style.color = ink; };
+    put(aRef.current, fade(s) * mult);
+    put(bRef.current, fade(-s) * mult);
   };
 
   useEffect(() => {
@@ -146,8 +152,8 @@ export function pendulum({ S }) {
 
   const [aKey, bKey] = DUALITIES[durIdx];
   const init = gate ? pstate(GATE_PH * PERIOD, PERIOD, AMP) : pstate(0, PERIOD, AMP);
-  const wordBase = "position:absolute;top:58%;left:50%;transform:translate(-50%,-50%);max-width:11rem;will-change:transform,opacity";
-  const wordStyle = (w) => { const op = clamp01((w - 0.12) / 0.62); return `${wordBase};opacity:${op.toFixed(3)};visibility:${op > 0.04 ? "visible" : "hidden"}`; };
+  const wordBase = "position:absolute;top:57%;left:50%;transform:translate(-50%,-50%);max-width:9.5rem;will-change:transform,opacity";
+  const wordStyle = (sd) => { const op = clamp01((sd - 0.05) / 0.4); return `${wordBase};opacity:${op.toFixed(3)};visibility:${op > 0.04 ? "visible" : "hidden"}`; };
 
   return html`<${Fragment}>
     <!-- full-screen pendulum body; tap (or Enter) to turn to the next duality. three.js mounts here -->
@@ -163,8 +169,8 @@ export function pendulum({ S }) {
 
     <!-- the pole words — inside the orb, riding it, positioned each frame by the loop -->
     <div class="fixed inset-0 z-10 pointer-events-none" aria-live="polite">
-      <div ref=${aRef} data-pole data-pole-a class="text-[1.35rem] font-semibold leading-tight text-center break-words text-base-content" style=${wordStyle(init.weightA)}>${T(t, aKey)}</div>
-      <div ref=${bRef} data-pole data-pole-b class="text-[1.35rem] font-semibold leading-tight text-center break-words text-base-content" style=${wordStyle(init.weightB)}>${T(t, bKey)}</div>
+      <div ref=${aRef} data-pole data-pole-a class="text-[1.5rem] font-semibold leading-tight text-center break-words text-base-content" style=${wordStyle(init.s)}>${T(t, aKey)}</div>
+      <div ref=${bRef} data-pole data-pole-b class="text-[1.5rem] font-semibold leading-tight text-center break-words text-base-content" style=${wordStyle(-init.s)}>${T(t, bKey)}</div>
     </div>
   </${Fragment}>`;
 }

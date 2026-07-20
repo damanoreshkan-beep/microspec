@@ -7,6 +7,7 @@
 import { html } from "htm/preact";
 import { Fragment } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
+import { useSheetDrag } from "/_rt/gesture.js";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
@@ -509,8 +510,9 @@ export function rave({ S, toast, screen, openScreen, closeScreen }) {
 function FxSheet({ open, onClose, t, sweep, activePreset }) {
   const fx = useStore($fx), bpm = useStore($bpm);
   const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
+  const { boxRef, grip } = useSheetDrag(onClose);
   const setFx = (id, v) => $fx.set({ ...fx, [id]: v });
-  return html`<dialog id="fxsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}><div class="modal-box rounded-t-3xl pb-8 flex flex-col gap-3 max-w-xl mx-auto">
+  return html`<dialog id="fxsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col gap-3 max-w-xl mx-auto">${grip}
     <div class="flex flex-col gap-0.5">
       <div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${T(t, "tempo")}</span><span class="font-semibold tabular-nums">${bpm} BPM</span></div>
       <input type="range" min="90" max="150" value=${bpm} class="range range-xs range-primary w-full" aria-label=${T(t, "tempo")} onInput=${(e) => $bpm.set(Number(e.target.value))} />

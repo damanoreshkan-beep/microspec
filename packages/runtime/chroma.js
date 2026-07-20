@@ -7,9 +7,13 @@ import { rgbToHsl } from "./colour.js";
 // Two octaves of each mode, low→high, so a full hue sweep (0..360) spans a wide, playable range. Degrees
 // are semitone offsets from the root.
 export const SCALES = {
-  penta: [0, 2, 4, 7, 9, 12, 14, 16, 19, 21],   // major pentatonic — no wrong notes
-  minor: [0, 3, 5, 7, 10, 12, 15, 17, 19, 22],  // natural minor pentatonic-ish, wistful
-  lydian: [0, 2, 4, 6, 7, 11, 12, 14, 16, 18],  // bright, floating
+  penta: [0, 2, 4, 7, 9, 12, 14, 16, 19, 21],          // major pentatonic — no wrong notes (Calm)
+  minor: [0, 3, 5, 7, 10, 12, 15, 17, 19, 22],         // natural minor pentatonic-ish, wistful (Wistful)
+  lydian: [0, 2, 4, 6, 7, 11, 12, 14, 16, 18],         // raised 4th — bright, floating (Dream)
+  dorian: [0, 2, 3, 5, 7, 9, 10, 12, 14, 15],          // minor with a bright 6th — warm, hopeful (Tender)
+  wholetone: [0, 2, 4, 6, 8, 10, 12, 14, 16, 18],      // all whole steps — no home, weightless (Haze)
+  harmonicMinor: [0, 2, 3, 5, 7, 8, 11, 12, 14, 15],   // augmented 2nd — exotic, dramatic (Mystery)
+  blues: [0, 3, 5, 6, 7, 10, 12, 15, 17, 18],          // the flat-5 blue note — soulful, moody (Night)
 };
 const ROOT = 48; // C3 — a warm mid-low pad register
 

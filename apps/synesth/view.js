@@ -18,7 +18,7 @@ import { gate } from "/_rt/gate.js";
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const NOTE_NAMES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
 const noteName = (m) => NOTE_NAMES[((m % 12) + 12) % 12];
-const SCALE_KEYS = [["penta", "scalePenta"], ["minor", "scaleMinor"], ["lydian", "scaleLydian"]];
+const SCALE_KEYS = [["penta", "scalePenta"], ["minor", "scaleMinor"], ["lydian", "scaleLydian"], ["dorian", "scaleDorian"], ["wholetone", "scaleWholetone"], ["harmonicMinor", "scaleHarmonic"], ["blues", "scaleBlues"]];
 
 function seedBuffer() {
   const bands = [[233, 90, 74], [228, 185, 60], [70, 196, 110], [63, 199, 192], [122, 90, 200]];
@@ -119,7 +119,7 @@ export function synesth({ S }) {
     </div>
 
     <div class="shrink-0 bg-base-100 border-t border-base-300 px-4 pt-3 pb-3 flex flex-col gap-3 max-w-md w-full mx-auto">
-      <div class="flex items-center gap-2 justify-center">
+      <div class="flex flex-wrap items-center gap-2 justify-center">
         ${SCALE_KEYS.map(([s, k]) => html`<button data-scale=${s} aria-pressed=${scale === s} class=${`btn btn-xs rounded-full ${scale === s ? "btn-primary" : "btn-ghost"}`} onClick=${() => setScale(s)} key=${s}>${T(t, k)}</button>`)}
       </div>
       <div class="flex items-center gap-3">

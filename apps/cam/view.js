@@ -33,7 +33,7 @@ export function cam({ S }) {
   const t = useStore(S.t), loc = useStore(S.locale);
   const [enabled, setEnabled] = useState(gate);
   const [err, setErr] = useState(null);
-  const [facing, setFacing] = useState("user"); // TEMP-SHOT
+  const [facing, setFacing] = useState("environment");
   const [fx, setFx] = useState(0);
   const [expo, setExpo] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -46,7 +46,7 @@ export function cam({ S }) {
   const [shot, setShot] = useState(null);         // last capture (object URL) → thumbnail
   const [count, setCount] = useState(0);          // self-timer countdown
   const [flash, setFlash] = useState(false);      // brief post-capture screen flash
-  const [frontFlash, setFrontFlash] = useState(true); // TEMP-SHOT // front-camera screen-flash mode (no hardware torch up front)
+  const [frontFlash, setFrontFlash] = useState(false); // front-camera screen-flash mode (no hardware torch up front)
   const [lit, setLit] = useState(false);          // screen flooded white to light the face while grabbing
 
   const videoRef = useRef(), streamRef = useRef(null), trackRef = useRef(null), timerRef = useRef(0);

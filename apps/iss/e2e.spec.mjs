@@ -8,7 +8,7 @@ export default [
       h.expect((await h.count("canvas")) >= 1, "немає глобуса");
       h.expect((await h.count("[data-over]")) === 1, "немає індикатора «над»");
       h.expect((await h.count("[data-coords]")) === 1, "немає координат");
-      h.expect(/423/.test(await h.bodyText()), "немає висоти (км)");
+      h.expect(/417/.test(await h.bodyText()), "немає висоти (км)");
       h.expect(/океаном/i.test(await h.text("[data-over]")), "семпл має бути над океаном");
     },
   },

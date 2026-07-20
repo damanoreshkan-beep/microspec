@@ -76,8 +76,7 @@ const $loading = atom(!gate);
 const $err = atom(false);
 const $active = atom(0);
 const $frameUrl = atom("");
-const $ephemeral = atom(false);   // source hands out signed/expiring URLs (server flag)
-const $errCount = atom(0);        // consecutive video-playback failures → confirms a dead source
+const $ephemeral = atom(false);   // source hands out signed/expiring URLs → show poster + "watch" link, don't play
 
 let loadingMore = false;
 async function loadSource(url, append = false) {
@@ -87,19 +86,28 @@ async function loadSource(url, append = false) {
   try {
     const r = await fetch(`${VPS_PROXY}/videos?url=${encodeURIComponent(url)}`);
     const d = await r.json();
-    // signed/expiring source → play each video THROUGH the proxy (VPS IP that holds the valid token); keep the
-    // original URL for the "open original" link.
-    const raw = (Array.isArray(d.items) ? d.items : []).map((i) => d.ephemeral ? { ...i, orig: i.video, video: framed(i.video) } : i);
-    const got = unseen(raw);                                                              // drop already-watched
+    const got = unseen(Array.isArray(d.items) ? d.items : []);                            // drop already-watched
     $items.set(append ? [...$items.get(), ...got] : got);
     $next.set(d.next || null);
-    if (!append) { $ephemeral.set(!!d.ephemeral); $errCount.set(0); }
+    if (!append) $ephemeral.set(!!d.ephemeral);        // signed/expiring source → show poster + "watch" link, don't try to play
   } catch { if (!append) $err.set(true); }
   finally { $loading.set(false); loadingMore = false; }
 }
 
+// Blanking fill: a poster shown full-frame (object-contain) over a blurred scaled copy of itself — no black bars,
+// nothing cropped. Reused by the preview/inactive slides and the video-error fallback.
+const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
+  <img src=${poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-55" onError=${(e) => e.currentTarget.remove()} />
+  <img src=${poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain" onError=${(e) => e.currentTarget.remove()} />
+</${Fragment}>` : null;
+// The "watch on the site" link — opens the video's real page (falls back to the clip URL). For signed sources
+// whose clips won't play here, this is the whole point: browse the previews, tap through to watch.
+const WatchLink = ({ item, t }) => html`<a href=${item.page || item.orig || item.video} target="_blank" rel="noopener" class="absolute inset-0 z-[1] flex items-center justify-center" aria-label=${T(t, "watch")}>
+  <span class="btn btn-primary rounded-full gap-2 shadow-lg pointer-events-none">${Icon("lucide:external-link", "text-lg")} ${T(t, "watch")}</span>
+</a>`;
+
 // The single live <video>, mounted only in the ACTIVE slide (so exactly one plays). createPlayer handles mp4 vs
-// HLS and tears down on unmount; a failed source flips to an explicit "video unavailable" state (not silent black).
+// HLS and tears down on unmount. On failure it falls back to the poster + a "watch" link (not a dead black slide).
 function VideoLayer({ item, t }) {
   const ref = useRef(), bgRef = useRef();
   const [errored, setErrored] = useState(false);
@@ -108,41 +116,37 @@ function VideoLayer({ item, t }) {
     const v = ref.current; if (!v) return;
     v.muted = true; v.loop = true;                                                        // muted → browsers allow autoplay
     let handle, bgHandle, dead = false;
-    createPlayer(v, item.video, { onReady: () => { $errCount.set(0); v.play?.().catch(() => {}); }, onError: () => { setErrored(true); $errCount.set($errCount.get() + 1); } })
-      .then((h) => { if (dead) h?.destroy?.(); else handle = h; });
+    createPlayer(v, item.video, { onReady: () => v.play?.().catch(() => {}), onError: () => setErrored(true) }).then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     // ambient backdrop: when there's no poster to blur, a muted copy of the video fills the letterbox area.
     if (!item.poster && bgRef.current) { const bg = bgRef.current; bg.muted = true; bg.loop = true; createPlayer(bg, item.video, { onReady: () => bg.play?.().catch(() => {}) }).then((h) => { if (dead) h?.destroy?.(); else bgHandle = h; }); }
     return () => { dead = true; handle?.destroy?.(); bgHandle?.destroy?.(); };
   }, [item.video]);
   const toggle = () => { const v = ref.current; if (v && !errored) (v.paused ? v.play?.().catch(() => {}) : v.pause?.()); };
-  // Blanking fill (tiktok/ambient-mode): the FOREGROUND video is object-contain (full frame, no crop), and the
-  // black letterbox is replaced by a blurred, scaled fill of the same content — so nothing is cropped and there
-  // are no black bars.
   return html`<${Fragment}>
-    ${item.poster
-      ? html`<img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" onError=${(e) => e.currentTarget.remove()} />`
-      : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
+    ${errored
+      ? html`<${PosterFill} poster=${item.poster} />`
+      : item.poster
+        ? html`<img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" onError=${(e) => e.currentTarget.remove()} />`
+        : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
     <div class="absolute inset-0 bg-black/25" aria-hidden="true"></div>
     <video ref=${ref} onClick=${toggle} playsinline loop muted poster=${item.poster || ""} class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
-    ${errored ? html`<div data-vid-err class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/70 pointer-events-none">${Icon("lucide:video-off", "text-5xl")}<span class="text-sm">${T(t, "videoErr")}</span></div>` : null}
+    ${errored ? html`<${WatchLink} item=${item} t=${t} />` : null}
   </${Fragment}>`;
 }
 
-function Slide({ item, idx, active, t }) {
+function Slide({ item, idx, active, ephemeral, t }) {
   return html`<section data-reel data-idx=${idx} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
-    ${active
-      ? html`<${VideoLayer} item=${item} t=${t} />`
-      : item.poster
-        ? html`<${Fragment}>
-            <img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-55" onError=${(e) => e.currentTarget.remove()} />
-            <img src=${item.poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain" onError=${(e) => e.currentTarget.remove()} />
-            <div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/85 text-5xl drop-shadow-lg")}</div>
-          </${Fragment}>`
-        : html`<div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/10 text-7xl")}</div>`}
-    <div class="absolute inset-x-0 bottom-0 z-[1] pointer-events-none p-4 pt-16 bg-gradient-to-t from-black/75 via-black/25 to-transparent" style="padding-bottom:calc(var(--dock-h) + 1rem)">
+    ${ephemeral
+      ? html`<${Fragment}><${PosterFill} poster=${item.poster} /><${WatchLink} item=${item} t=${t} /></${Fragment}>`
+      : active
+        ? html`<${VideoLayer} item=${item} t=${t} />`
+        : item.poster
+          ? html`<${Fragment}><${PosterFill} poster=${item.poster} /><div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/85 text-5xl drop-shadow-lg")}</div></${Fragment}>`
+          : html`<div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/10 text-7xl")}</div>`}
+    <div class="absolute inset-x-0 bottom-0 z-[2] pointer-events-none p-4 pt-16 bg-gradient-to-t from-black/75 via-black/25 to-transparent" style="padding-bottom:calc(var(--dock-h) + 1rem)">
       <div class="flex items-end gap-2">
         <div class="min-w-0 flex-1 text-white font-semibold text-sm leading-snug line-clamp-2" style="text-shadow:0 1px 6px rgba(0,0,0,.6)">${/[a-zа-яїієґ]/i.test(item.title || "") ? item.title : ""}</div>
-        <a href=${item.orig || item.video} target="_blank" rel="noopener" class="pointer-events-auto shrink-0 text-white/70 active:text-white p-1" aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-lg")}</a>
+        <a href=${item.page || item.orig || item.video} target="_blank" rel="noopener" class="pointer-events-auto shrink-0 text-white/70 active:text-white p-1" aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-lg")}</a>
       </div>
     </div>
   </section>`;
@@ -204,7 +208,7 @@ function FrameView({ S, t }) {
 export function reel({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const items = useStore($items), loading = useStore($loading), err = useStore($err);
-  const active = useStore($active), next = useStore($next), errCount = useStore($errCount);
+  const active = useStore($active), next = useStore($next), ephemeral = useStore($ephemeral);
   const src = useStore($src);
   const scroller = useRef();
 
@@ -228,9 +232,7 @@ export function reel({ S }) {
       ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/70 px-8 text-center">${Icon("lucide:cloud-off", "text-5xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => loadSource(src)}>${T(t, "retry")}</button></section>`
       : !items.length
         ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/60 px-8 text-center">${Icon("lucide:film", "text-5xl")}<div>${T(t, "empty")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
-        : errCount >= 3
-          ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/70 px-8 text-center">${Icon("lucide:link-2-off", "text-5xl")}<div class="font-medium text-white">${T(t, "signedSource")}</div><div class="text-sm text-white/60">${hostOf(src)}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl mt-1" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
-          : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} t=${t} key=${(it.orig || it.video) + i} />`);
+        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} ephemeral=${ephemeral} t=${t} key=${(it.orig || it.video) + i} />`);
 
   return html`<${Fragment}>
     <div ref=${scroller} class="fixed inset-0 z-0 bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain" style="scrollbar-width:none">${body}</div>

@@ -18,6 +18,7 @@ import { tr, warm, trTick } from "/_rt/translate.js";
 import { SPREADS, spreadById, hashSeed, draw } from "/_rt/tarot.js";
 import { DECK } from "./deck.js";
 import { gate } from "/_rt/gate.js";
+import { animate, stagger } from "motion";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const QS = new URLSearchParams(location.search);
@@ -37,24 +38,39 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const loc = useStore(S.locale);
   useStore(trTick);                                              // re-render as translations land
   const [spreadId, setSpreadId] = useState(SPREADS.some((s) => s.id === SPREAD_OVERRIDE) ? SPREAD_OVERRIDE : "daily");
-  const [nonce, setNonce] = useState(0);                         // bumped on shuffle → fresh draw
+  const [nonce, setNonce] = useState(0);                         // bumped on quick shuffle → fresh draw
+  const [override, setOverride] = useState(null);                // the seed from a completed ritual
   const [detail, setDetail] = useState(0);                       // index into the current draw, for the sheet
   const liveBase = useRef(randSeed()).current;                   // random per session, stable across renders
 
   const now = gate ? new Date(2027, 6, 23) : new Date();
   const spread = spreadById(spreadId);
   const seed = spreadId === "daily" ? hashSeed(dk(now))
+    : override != null ? override                                // the ritual's charged draw
     : ((gate ? 0 : liveBase) ^ hashSeed(spreadId + ":" + nonce)) >>> 0;
   const drawn = draw(seed, spread.pos.length, spread.majorOnly ? 22 : 78);
+  const isDaily = spread.pos.length === 1;
 
+  useEffect(() => { openScreen("ritual"); }, []); // TEMP: auto-open ritual so CI shoots + axe-checks it
+  useEffect(() => { setOverride(null); }, [spreadId]);           // a new spread starts fresh
   // translate the meanings actually shown (chosen orientation) into the active locale
   useEffect(() => { warm(drawn.map(meaningOf), loc); }, [seed, loc]);
+  // deal the cards in whenever the draw changes (skipped under the gate so shots stay static)
+  useEffect(() => {
+    if (gate || isDaily) return;
+    const cards = document.querySelectorAll("[data-reading] [data-card]");
+    if (!cards.length) return;
+    const a = animate([...cards], { opacity: [0, 1], y: [16, 0] }, { delay: stagger(0.045), duration: 0.4, ease: "easeOut" });
+    return () => a.stop?.();
+  }, [seed]);
 
   const openCard = (i) => { setDetail(i); openScreen("card"); };
   const pickSpread = (id) => { setSpreadId(id); };
-  const shuffle = () => setNonce((n) => n + 1);
+  const shuffle = () => { setOverride(null); setNonce((n) => n + 1); };
+  // The ritual: request motion/compass on the tap gesture (iOS needs it inline), then open the flow.
+  const openRitual = () => { try { const req = typeof DeviceOrientationEvent !== "undefined" && DeviceOrientationEvent.requestPermission; if (typeof req === "function") req.call(DeviceOrientationEvent).catch(() => {}); } catch { /* */ } openScreen("ritual"); };
+  const completeRitual = (s) => { setOverride(s >>> 0); closeScreen(); };
 
-  const isDaily = spread.pos.length === 1;
   const rows = spread.rows || defaultRows(spread.pos.length);
 
   return html`<${Fragment}>
@@ -68,10 +84,11 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
       // any multi-card spread: the WHOLE structure fits the screen — cards shrink to fit, no page scroll.
       : html`<div class="flex flex-col gap-2.5 h-[calc(100dvh-11.5rem)] min-h-0">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
-          <${Header} t=${t} spreadId=${spreadId} isDaily=${false} onShuffle=${shuffle} />
+          <${Header} t=${t} spreadId=${spreadId} isDaily=${false} onShuffle=${shuffle} onRitual=${openRitual} />
           <${FitReading} rows=${rows} drawn=${drawn} pos=${spread.pos} t=${t} loc=${loc} onOpen=${openCard} />
         </div>`}
 
+    <${Ritual} open=${screen === "ritual"} onClose=${closeScreen} onDraw=${completeRitual} deckLen=${spread.majorOnly ? 22 : 78} t=${t} loc=${loc} spreadName=${T(t, SPREAD_KEY[spreadId])} />
     <${CardSheet} open=${screen === "card"} onClose=${closeScreen} d=${drawn[detail]} pos=${spread.pos[detail]} t=${t} loc=${loc} />
   </${Fragment}>`;
 }
@@ -99,14 +116,17 @@ function Picker({ t, spreadId, onPick }) {
   </div>`;
 }
 
-// title + one-line description + shuffle (shuffle hidden for the day's fixed card)
-function Header({ t, spreadId, isDaily, onShuffle }) {
+// title + one-line description + a quick shuffle and the Ritual (charged draw). Both hidden for the day's card.
+function Header({ t, spreadId, isDaily, onShuffle, onRitual }) {
   return html`<div class="shrink-0 flex items-start justify-between gap-3">
     <div class="min-w-0">
       <div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>
       <p class="mt-0.5 text-[0.78rem] leading-snug text-base-content/55 break-words line-clamp-2">${T(t, DESC_KEY[spreadId])}</p>
     </div>
-    ${!isDaily ? html`<button data-shuffle class="btn btn-sm btn-ghost gap-1.5 rounded-full border border-base-300 shrink-0" onClick=${onShuffle}>${Icon("lucide:shuffle", "text-base")}<span class="text-xs">${T(t, "redraw")}</span></button>` : null}
+    ${!isDaily ? html`<div class="shrink-0 flex items-center gap-1.5">
+      <button data-shuffle aria-label=${T(t, "redraw")} class="btn btn-sm btn-ghost btn-circle border border-base-300" onClick=${onShuffle}>${Icon("lucide:shuffle", "text-base")}</button>
+      <button data-ritual class="btn btn-sm btn-secondary gap-1.5 rounded-full" onClick=${onRitual}>${Icon("lucide:sparkles", "text-base")}<span class="text-xs font-semibold">${T(t, "ritual")}</span></button>
+    </div>` : null}
   </div>`;
 }
 
@@ -131,6 +151,109 @@ function FitTile({ d, pos, t, loc, wpct, onOpen }) {
     </div>
     <div class="shrink-0 text-[0.5rem] font-mono uppercase tracking-wide text-base-content/50 truncate max-w-full leading-tight">${T(t, pos)}</div>
   </button>`;
+}
+
+// The Ritual — a participatory "charge the draw" flow. Instead of an opaque shuffle, the querent gives the
+// draw its entropy: a colour, and the phone's tilt + compass heading (or a finger dragged through the
+// field) + the moment in time — all swirling in a living particle field, distilled into a number 0..N-1 and
+// hashed into the seed. Makes the randomness feel personal and legible. Canvas2D (not WebGL) so it renders
+// identically everywhere — on the device and in the CI gate that screenshots it. Deterministic under gate.
+const RIT_COLORS = [[159, 140, 246], [240, 101, 94], [64, 193, 115], [217, 151, 58], [90, 169, 230], [232, 160, 214]];
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
+  const dref = useRef(), cref = useRef();
+  const [color, setColor] = useState(0);
+  const [num, setNum] = useState(() => (gate ? hashSeed("ritual:" + deckLen) % deckLen : 0));
+  const [charge, setCharge] = useState(gate ? 0.6 : 0);
+  const S = useRef({ samples: [], heading: 0, tx: 0, ty: 0, px: 0.5, py: 0.5, touch: 0, moved: 0, color: 0 }).current;
+
+  useEffect(() => { const el = dref.current; if (!el) return; if (open) { if (!el.open) el.showModal?.(); } else el.close?.(); }, [open]);
+  useEffect(() => { S.color = color; }, [color]);
+
+  // the living particle field (+ device tilt/compass + touch drag → entropy)
+  useEffect(() => {
+    if (!open) return;
+    const cv = cref.current; if (!cv || !cv.getContext) return;
+    const ctx = cv.getContext("2d"); if (!ctx) return;
+    S.samples = []; S.touch = 0; S.moved = 0;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const size = () => { const r = cv.getBoundingClientRect(); cv.width = Math.max(1, (r.width || innerWidth) * dpr); cv.height = Math.max(1, (r.height || innerHeight) * dpr); };
+    size();
+    // deterministic golden-angle distribution → same field everywhere, animates live
+    const P = Array.from({ length: 96 }, (_, i) => ({ a: i * 2.39996, r: 0.14 + ((i * 0.61803) % 1) * 0.86, sz: 1 + ((i * 0.37) % 1) * 2.4, spd: 0.0025 + ((i * 0.113) % 1) * 0.006 }));
+    const paint = (now) => {
+      const w = cv.width, h = cv.height, cx = w / 2, cy = h * 0.44, R = Math.min(w, h) * 0.4, c = RIT_COLORS[S.color];
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "rgba(10,10,12,0.22)"; ctx.fillRect(0, 0, w, h);       // dark wash → motion trails
+      ctx.globalCompositeOperation = "lighter";
+      const tx = S.tx * 0.5 + (S.touch ? (S.px - 0.5) * 0.7 : 0), ty = S.ty * 0.5 + (S.touch ? (S.py - 0.5) * 0.7 : 0);
+      for (const p of P) {
+        p.a += p.spd + S.heading * 0.000012;
+        const rad = p.r * R * (0.88 + 0.14 * Math.sin(now * 0.001 + p.a * 3));
+        const x = cx + Math.cos(p.a) * rad + tx * R, y = cy + Math.sin(p.a) * rad * 0.8 + ty * R;
+        ctx.fillStyle = rgba(c, 0.5); ctx.beginPath(); ctx.arc(x, y, p.sz * dpr, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = rgba(c, 0.06); ctx.beginPath(); ctx.arc(x, y, p.sz * 5 * dpr, 0, 6.2832); ctx.fill();
+      }
+    };
+    if (gate) { ctx.fillStyle = "#0a0a0c"; ctx.fillRect(0, 0, cv.width, cv.height); paint(1400); return; }   // one still frame for the gate/CI shot
+    let raf, last = 0;
+    const push = (now) => {
+      if (now - last < 80) return; last = now;
+      S.samples.push((Math.round(S.heading * 7 + S.tx * 131 + S.ty * 197 + S.px * 311 + S.py * 233 + now * 0.03) & 2047));
+      if (S.samples.length > 80) S.samples.shift();
+      setNum(hashSeed(`${S.color}|${S.samples.join(",")}`) % deckLen);
+      setCharge(Math.min(1, S.samples.length / 44));
+    };
+    const loop = (now) => { paint(now); if (S.touch || S.moved) push(now); raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop);
+    const onOri = (e) => { if (e.alpha != null) S.heading = e.alpha; S.tx = Math.max(-1, Math.min(1, (e.gamma || 0) / 60)); S.ty = Math.max(-1, Math.min(1, (e.beta || 0) / 60)); S.moved = 1; };
+    const onPtr = (e) => { const r = cv.getBoundingClientRect(); S.px = (e.clientX - r.left) / r.width; S.py = (e.clientY - r.top) / r.height; S.touch = 1; };
+    const onUp = () => { S.touch = 0; };
+    window.addEventListener("deviceorientation", onOri);
+    cv.addEventListener("pointerdown", onPtr); cv.addEventListener("pointermove", onPtr);
+    window.addEventListener("pointerup", onUp); window.addEventListener("resize", size);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("deviceorientation", onOri); cv.removeEventListener("pointerdown", onPtr); cv.removeEventListener("pointermove", onPtr); window.removeEventListener("pointerup", onUp); window.removeEventListener("resize", size); };
+  }, [open]);
+
+  const drawNow = () => { const seed = hashSeed(`${S.color}|${S.samples.join(",")}|${Math.round(S.heading)}|${gate ? 0 : Date.now()}`) >>> 0; onDraw(seed); };
+  const col = RIT_COLORS[color];
+
+  return html`<dialog id="ritual" ref=${dref} class="modal" onClose=${onClose}>
+    <div class="modal-box max-w-none w-screen h-[100dvh] max-h-none rounded-none p-0 bg-base-100 overflow-hidden relative">
+      <canvas ref=${cref} data-live aria-hidden="true" class="absolute inset-0 w-full h-full"></canvas>
+      <div class="relative z-10 flex flex-col h-full px-5" style="padding-top:calc(env(safe-area-inset-top) + 1rem);padding-bottom:calc(env(safe-area-inset-bottom) + 1.25rem)">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-[0.62rem] font-mono uppercase tracking-[0.16em] text-base-content/60">${T(t, "ritual")}</div>
+            <div class="font-bold text-lg leading-tight">${spreadName}</div>
+          </div>
+          <button data-ritual-close aria-label=${T(t, "close")} class="btn btn-sm btn-circle btn-ghost" onClick=${onClose}>${Icon("lucide:x", "text-lg")}</button>
+        </div>
+
+        <div class="flex-1 min-h-0 flex items-center justify-center">
+          <div class="relative flex items-center justify-center" style="width:9.5rem;height:9.5rem">
+            <svg viewBox="0 0 100 100" class="absolute inset-0 w-full h-full -rotate-90" aria-hidden="true">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--color-base-content)" stroke-opacity="0.12" stroke-width="2.5" />
+              <circle cx="50" cy="50" r="45" fill="none" stroke=${rgba(col, 0.95)} stroke-width="2.5" stroke-linecap="round" stroke-dasharray=${`${(charge * 282.7).toFixed(1)} 282.7`} style="transition:stroke-dasharray .2s linear" />
+            </svg>
+            <div class="text-center">
+              <div class="text-[2.6rem] font-bold tabular-nums leading-none" style=${`color:${rgba(col, 1)}`}>${num}</div>
+              <div class="text-[0.55rem] font-mono uppercase tracking-widest text-base-content/60 mt-1">0–${deckLen - 1}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          <div class="flex justify-center gap-3">
+            ${RIT_COLORS.map((c, i) => html`<button data-color=${i} aria-label=${`${T(t, "colorPick")} ${i + 1}`} aria-pressed=${color === i} class=${`h-8 w-8 rounded-full transition ${color === i ? "ring-2 ring-offset-2 ring-offset-base-100 scale-110" : "opacity-60"}`} style=${`background:${rgba(c, 1)};--tw-ring-color:${rgba(c, 1)}`} onClick=${() => setColor(i)} key=${i}></button>`)}
+          </div>
+          <button data-draw class="btn btn-lg w-full rounded-2xl border-0 font-bold text-[#0a0a0b]" style=${`background:${rgba(col, 1)}`} onClick=${drawNow}>${T(t, "drawCards")}</button>
+        </div>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>${T(t, "close")}</button></form>
+  </dialog>`;
 }
 
 // the single card-of-the-day: larger, with the meaning shown inline (tap the image for the full sheet too)

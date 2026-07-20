@@ -1070,3 +1070,14 @@ Deno.test("synastry compat: axes + weighted overall in 0..100; identical charts 
 Deno.test("synastry band: thresholds", () => {
   assertEquals([90, 78, 77, 62, 48, 47, 20].map(band), [3, 3, 2, 2, 1, 0, 0]);
 });
+
+Deno.test("chroma SCALES: every mood scale is well-formed (starts at 0, non-decreasing, 10 degrees, in range)", () => {
+  for (const [name, s] of Object.entries(SCALES)) {
+    assertEquals(s.length, 10, `${name} spans two octaves (10 degrees)`);
+    assertEquals(s[0], 0, `${name} starts on the root`);
+    for (let i = 1; i < s.length; i++) assert(s[i] >= s[i - 1], `${name} is monotone non-decreasing`);
+    for (const d of s) assert(Number.isInteger(d) && d >= 0 && d <= 24, `${name} degree ${d} within two octaves`);
+    // every degree lands on a note that hueToNote can reach across the wheel
+    assertEquals(hueToNote(0, s), 48 + s[0]); assertEquals(hueToNote(359, s), 48 + s[s.length - 1]);
+  }
+});

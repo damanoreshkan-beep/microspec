@@ -14,6 +14,7 @@ import { Scramble, Pixels, useReveal } from "./skeleton.js";
 import { enrich, warmMeta, metaTick } from "./enrich.js";
 import { Player } from "./video.js";
 import { collection } from "./db.js";
+import { useSheetDrag } from "./gesture.js";
 
 let A;            // app context: { spec, S, load, toast, toggleFav, favKey, swap }
 let VIEWS = {};   // tool-app custom views: { viewKey: PreactComponent }
@@ -475,7 +476,8 @@ function FilterSheet() {
   const t = useStore(A.S.t), open = useStore(A.S.sheet), filters = useStore(A.S.filters), data = useStore(A.S.data);
   const f = A.spec.filters; if (!f) return null;
   const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
-  return html`<dialog id="sheet" ref=${ref} class="modal modal-bottom" onClose=${() => A.S.sheet.set(false)}><div class="modal-box rounded-t-3xl pb-8 flex flex-col gap-3">
+  const { boxRef, grip } = useSheetDrag(() => A.S.sheet.set(false));
+  return html`<dialog id="sheet" ref=${ref} class="modal modal-bottom" onClose=${() => A.S.sheet.set(false)}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col gap-3">${grip}
     <div class="flex items-center justify-between"><h3 class="font-bold text-lg">${T(t, "filterTitle")}</h3><button aria-label=${T(t, "close")} class="btn btn-ghost btn-sm btn-circle" onClick=${() => A.S.sheet.set(false)}>${Icon("lucide:x", "text-xl")}</button></div>
     ${(f.controls || []).map((c) => {
       if (c.type === "select") {
@@ -523,7 +525,8 @@ function InstallModal() {
   const t = useStore(A.S.t), open = useStore(A.S.installOpen), ev = useStore(A.S.installEvent);
   const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
   const go = async () => { if (ev) { ev.prompt(); await ev.userChoice; A.S.installEvent.set(null); } A.S.installOpen.set(false); };
-  return html`<dialog id="install" ref=${ref} class="modal modal-bottom" onClose=${() => A.S.installOpen.set(false)}><div class="modal-box rounded-t-3xl pb-8">
+  const { boxRef, grip } = useSheetDrag(() => A.S.installOpen.set(false));
+  return html`<dialog id="install" ref=${ref} class="modal modal-bottom" onClose=${() => A.S.installOpen.set(false)}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8">${grip}
     <div class="flex items-center justify-between mb-3"><h3 class="font-bold text-lg flex items-center gap-2">${Icon("lucide:download", "text-primary")} ${T(t, "installTitle")}</h3><button aria-label=${T(t, "close")} class="btn btn-ghost btn-sm btn-circle" onClick=${() => A.S.installOpen.set(false)}>${Icon("lucide:x", "text-xl")}</button></div>
     <div class="text-sm text-base-content/70 mb-4">${T(t, "installDesc")}</div>
     ${ev ? html`<button id="install-go" class="btn btn-primary rounded-2xl w-full gap-2" onClick=${go}>${Icon("lucide:download")} ${T(t, "installBtn")}</button>` : html`<div class="flex items-start gap-2 bg-base-200 rounded-2xl px-3 py-3 text-sm">${Icon(isIOS() ? "lucide:share" : "lucide:menu", "text-lg mt-0.5")}<span>${isIOS() ? T(t, "installIosHint") : T(t, "installGenericHint")}</span></div>`}
@@ -577,7 +580,8 @@ function QrModal() {
   const url = typeof location !== "undefined" ? location.href : "";
   useEffect(() => { if (!open) return; let live = true; import("./qrcode.js").then((m) => { if (live) setUri(m.qrDataUri(url, { margin: 3 })); }).catch(() => { /* offline first-open before cache → the URL text is the fallback */ }); return () => { live = false; }; }, [open, url]);
   const close = () => A.S.qrOpen.set(false);
-  return html`<dialog id="qr-invite" ref=${ref} class="modal modal-bottom" onClose=${close}><div class="modal-box rounded-t-3xl pb-8 flex flex-col items-center gap-4">
+  const { boxRef, grip } = useSheetDrag(close);
+  return html`<dialog id="qr-invite" ref=${ref} class="modal modal-bottom" onClose=${close}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col items-center gap-4">${grip}
     <div class="flex items-center justify-between w-full"><h3 class="font-bold text-lg flex items-center gap-2">${Icon("lucide:smartphone", "text-primary")} ${L.title}</h3><button aria-label=${L.stay} class="btn btn-ghost btn-sm btn-circle" onClick=${close}>${Icon("lucide:x", "text-xl")}</button></div>
     <div class="rounded-2xl bg-white p-3">${uri ? html`<img data-qr src=${uri} alt="" width="216" height="216" class="block w-52 h-52" />` : html`<div class="w-52 h-52"></div>`}</div>
     <div class="font-mono text-xs text-base-content/55 break-all text-center max-w-full">${url}</div>
@@ -667,7 +671,8 @@ function ConfirmSheet() {
   const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; c ? d.showModal?.() : d.close?.(); }, [c]);
   const close = () => A.S.confirm.set(null);
   const go = () => { const fn = c?.onConfirm; close(); fn?.(); };
-  return html`<dialog id="confirm" ref=${ref} class="modal modal-bottom" onClose=${close}><div class="modal-box rounded-t-3xl pb-8">
+  const { boxRef, grip } = useSheetDrag(close);
+  return html`<dialog id="confirm" ref=${ref} class="modal modal-bottom" onClose=${close}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8">${grip}
     <h3 class="font-bold text-lg flex items-start gap-2">${Icon("lucide:triangle-alert", "text-error text-xl shrink-0 mt-0.5")}<span>${c?.title || ""}</span></h3>
     ${c?.body ? html`<p class="text-sm text-base-content/70 mt-2 pl-8">${c.body}</p>` : null}
     <div class="flex gap-2 mt-5">

@@ -194,7 +194,7 @@
     "bg": "#0A0A0F",
     "fg": "#9F8CF6",
     "href": "./pendulum/",
-    "version": "1.2",
+    "version": "1.4",
     "category": "esoterica"
   },
   {
@@ -326,7 +326,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./tarot/",
-    "version": "1.5",
+    "version": "1.6",
     "category": "esoterica"
   },
   {

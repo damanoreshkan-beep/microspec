@@ -66,10 +66,10 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
 
   const openCard = (i) => { setDetail(i); openScreen("card"); };
   const pickSpread = (id) => { setSpreadId(id); };
-  // swipe the reading left/right to move between spreads — the pane follows the finger, clamped to the list
+  // swipe the reading left/right to move between spreads — the pane follows the finger and WRAPS (last↔first)
   const sIdx = SPREADS.findIndex((s) => s.id === spreadId);
-  const goSpread = (d) => { const s = SPREADS[sIdx + d]; if (s) setSpreadId(s.id); };
-  const { paneRef, pan } = usePanX({ onNext: () => goSpread(1), onPrev: () => goSpread(-1), canNext: sIdx < SPREADS.length - 1, canPrev: sIdx > 0 });
+  const goSpread = (d) => { const s = SPREADS[(sIdx + d + SPREADS.length) % SPREADS.length]; if (s) setSpreadId(s.id); };
+  const { paneRef, pan } = usePanX({ onNext: () => goSpread(1), onPrev: () => goSpread(-1) });   // canNext/canPrev default true → cyclic
   const shuffle = () => { setOverride(null); setNonce((n) => n + 1); };
   // The ritual: request motion/compass on the tap gesture (iOS needs it inline), then open the flow.
   const openRitual = () => { try { const req = typeof DeviceOrientationEvent !== "undefined" && DeviceOrientationEvent.requestPermission; if (typeof req === "function") req.call(DeviceOrientationEvent).catch(() => {}); } catch { /* */ } openScreen("ritual"); };

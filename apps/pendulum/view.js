@@ -1,19 +1,26 @@
-// Pendulum (Маятник) — a contemplative dowsing pendulum that swings between the two poles of a duality,
-// one full swing to a breath. The swing/crossfade math is the systemic, unit-tested /_rt/pendulum.js;
-// this view is a thin renderer: ONE rAF loop computes the frame from elapsed time (perfect sync, no
-// drift), mutates the arm transform + the two pole words directly via refs (no per-frame Preact render),
-// and advances through the dualities every few breaths. The pole the breath is drawn toward lights in the
-// accent — colour = meaning. Fully offline, no API. No emoji: the only imagery is the drawn pendulum.
+// Pendulum (Маятник) — a contemplative dowsing pendulum swinging between the two poles of a duality, one
+// full swing to a breath. The pendulum is a FULL-SCREEN ambient layer BEHIND the content (fixed inset-0,
+// -z-10): a long arm pivoting from the top of the viewport, its glowing bob swinging low — so it never
+// crops, it breathes with the whole screen. On top float the two pole words: a calm, weightless drift via
+// the systemic `motion` (an eased, mirrored, infinite y-oscillation, each word on its own period), while
+// the breath crossfades the accent onto whichever pole it's drawn toward — colour = meaning.
+//
+// The swing/crossfade math is the systemic, unit-tested /_rt/pendulum.js. ONE rAF loop computes each frame
+// from elapsed time (no drift) and mutates the arm transform + pole opacity/colour via refs — no per-frame
+// Preact render. Reduced motion holds the arm and stills the float, keeping only the gentle crossfade; the
+// gate paints one deterministic still. Fully offline, no API, no emoji — the only imagery is the pendulum.
 import { html } from "htm/preact";
 import { Fragment } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
+import { animate } from "motion";
 import { T } from "/_rt/i18n.js";
 import { state as pstate } from "/_rt/pendulum.js";
 import { gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = () => { try { navigator.vibrate?.(8); } catch { /* unsupported */ } };
+const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // The dualities, as [pole-A, pole-B] i18n keys. Pole A (left, lit at the top of the in-breath) is the
 // drawing-in / affirming side; pole B (right) is the releasing / negating side. The words are content and
@@ -31,12 +38,11 @@ const DUALITIES = [
 const N = DUALITIES.length;
 
 const PERIOD = 8000;   // one breath (in + out), ms
-const AMP = 30;        // swing amplitude, degrees
+const AMP = 16;        // swing amplitude, degrees (a calm arc for a screen-tall pendulum)
 const ADVANCE = 5;     // breaths spent on each duality before it turns over on its own
 const GATE_PH = 0.12;  // a still, deterministic frame for the server-rendered gate shot
-
-// pivot + arm geometry, in the SVG's own 320×300 space
-const PX = 160, PY = 34, ARM = 204, BOB = 160 + ARM;
+const ARM = "66vh";    // arm length — pendulum spans the viewport, bob swinging low
+const PIVOT = "6vh";   // pivot near the top edge
 
 export function pendulum({ S }) {
   const t = useStore(S.t);
@@ -45,36 +51,32 @@ export function pendulum({ S }) {
   const [playing, setPlaying] = useState(true);
 
   const armRef = useRef();
-  const aRef = useRef(), bRef = useRef();
-  const totalRef = useRef(0);      // breaths accumulated across pause/resume
+  const aRef = useRef(), bRef = useRef();           // the pole words (crossfade)
+  const aWrapRef = useRef(), bWrapRef = useRef();   // their float wrappers (drift)
+  const totalRef = useRef(0);                       // breaths accumulated across pause/resume
   const advanceAtRef = useRef(ADVANCE);
 
-  // Paint one frame's crossfade onto the two pole words. Both stay legible (opacity floor 0.6 → passes
-  // contrast); the leading pole takes the accent. Describes pixels, not intent.
+  // Paint one frame: rotate the arm and crossfade the two poles. Both words stay legible (opacity floor
+  // 0.6 → passes contrast); the leading pole takes the accent. Pixels, not intent.
   const paint = (st) => {
-    const set = (el, w) => {
-      if (!el) return;
-      el.style.opacity = (0.6 + 0.4 * w).toFixed(3);
-      el.style.color = w >= 0.5 ? "var(--color-accent)" : "";
-    };
+    if (armRef.current) armRef.current.style.transform = `rotate(${st.angle.toFixed(2)}deg)`;
+    const set = (el, w) => { if (el) { el.style.opacity = (0.6 + 0.4 * w).toFixed(3); el.style.color = w >= 0.5 ? "var(--color-accent)" : ""; } };
     set(aRef.current, st.weightA);
     set(bRef.current, st.weightB);
-    if (armRef.current) armRef.current.setAttribute("transform", `rotate(${st.angle.toFixed(2)} ${PX} ${PY})`);
   };
 
   const prev = () => { buzz(); advanceAtRef.current = totalRef.current + ADVANCE; setDurIdx((i) => (i - 1 + N) % N); };
   const next = () => { buzz(); advanceAtRef.current = totalRef.current + ADVANCE; setDurIdx((i) => (i + 1) % N); };
   const toggle = () => { buzz(); setPlaying((p) => !p); };
 
+  // The swing + breath clock. Independent of durIdx so the pair turning over never resets the rhythm.
   useEffect(() => {
     if (gate || !playing) return;
-    const reduce = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = reduced();
     let raf, startT = performance.now(), runLast = 0;
     const loop = (now) => {
       const st = pstate(now - startT, PERIOD, AMP);
-      // Reduced motion: hold the arm still (the swing is the large repeating motion), keep the gentle
-      // opacity crossfade so the in/out rhythm still reads.
-      if (reduce) st.angle = 0;
+      if (reduce) st.angle = 0;                     // hold the arm; keep the gentle crossfade
       paint(st);
       if (st.breath !== runLast) {
         runLast = st.breath;
@@ -88,44 +90,44 @@ export function pendulum({ S }) {
     return () => cancelAnimationFrame(raf);
   }, [playing]);
 
+  // The calm floating drift of the two words — weightless, eased, mirrored, each on its own slow period.
+  useEffect(() => {
+    if (gate || reduced() || !aWrapRef.current || !bWrapRef.current) return;
+    const opts = { ease: "easeInOut", repeat: Infinity, repeatType: "mirror" };
+    const a1 = animate(aWrapRef.current, { y: [-7, 7] }, { duration: 5.6, ...opts });
+    const a2 = animate(bWrapRef.current, { y: [7, -7] }, { duration: 6.7, delay: 0.5, ...opts });
+    return () => { a1.stop(); a2.stop(); };
+  }, []);
+
   const [aKey, bKey] = DUALITIES[durIdx];
   // The initial frame the JSX renders — the gate's still frame, or the resting top of the in-breath live.
-  // Driving the arm transform + pole styles from this (not a hardcoded literal) means a Preact re-render
-  // reconciles to a CONSISTENT frame instead of resetting the arm to vertical; the rAF loop overrides it
-  // within one frame while playing, and it is the whole truth under the (clock-less) gate.
+  // Driving the arm transform + pole styles from this (not a hardcoded literal) keeps a Preact re-render
+  // reconciling to a CONSISTENT frame; the rAF loop overrides within one frame while playing.
   const init = gate ? pstate(GATE_PH * PERIOD, PERIOD, AMP) : pstate(0, PERIOD, AMP);
   const poleStyle = (w) => `opacity:${(0.6 + 0.4 * w).toFixed(3)};color:${w >= 0.5 ? "var(--color-accent)" : "inherit"}`;
 
   return html`<${Fragment}>
-    <div class="flex flex-col items-center gap-6 pt-1 pb-2 min-h-[78dvh]">
+    <!-- ambient full-screen pendulum, behind the content -->
+    <div data-stage class="fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div ref=${armRef} style=${`position:absolute;left:50%;top:${PIVOT};transform-origin:top center;transform:rotate(${init.angle.toFixed(2)}deg);will-change:transform`}>
+        <div style="position:absolute;top:-5px;left:-5px;width:10px;height:10px;border-radius:9999px;background:var(--color-base-content);opacity:0.3"></div>
+        <div style=${`width:2px;height:${ARM};margin-left:-1px;border-radius:2px;background:linear-gradient(to bottom, transparent, color-mix(in oklch, var(--color-base-content) 62%, transparent));opacity:0.16`}></div>
+        <div data-bob style=${`position:absolute;top:${ARM};left:0;width:6.5rem;height:6.5rem;transform:translate(-50%,-50%);border-radius:9999px;background:radial-gradient(circle at 50% 42%, color-mix(in oklch, var(--color-primary) 82%, transparent) 0%, color-mix(in oklch, var(--color-accent) 52%, transparent) 40%, transparent 68%)`}></div>
+      </div>
+    </div>
+
+    <!-- content, above the pendulum -->
+    <div class="relative z-10 flex flex-col items-center justify-between min-h-[82dvh] pb-1">
       <!-- which pair, of the eight -->
-      <div class="flex gap-2" aria-hidden="true">
+      <div class="flex gap-2 pt-1" aria-hidden="true">
         ${DUALITIES.map((_, i) => html`<span class=${`h-2 w-2 rounded-full transition-colors ${i === durIdx ? "bg-accent" : "bg-base-content/40"}`} key=${i}></span>`)}
       </div>
 
-      <!-- the pendulum -->
-      <div data-stage class="w-full flex justify-center">
-        <svg viewBox="0 0 320 300" class="w-full max-w-[19rem]" aria-hidden="true">
-          <!-- swing path -->
-          <path d="M55 215 A ${ARM} ${ARM} 0 0 0 265 215" fill="none" stroke="var(--color-base-content)" stroke-opacity="0.1" stroke-width="1.25" stroke-dasharray="2 6" stroke-linecap="round" />
-          <!-- pivot -->
-          <circle cx=${PX} cy=${PY} r="3.4" fill="var(--color-base-content)" fill-opacity="0.5" />
-          <!-- arm + bob (rotated each frame by the rAF loop; initial angle from init) -->
-          <g ref=${armRef} data-arm transform=${`rotate(${init.angle.toFixed(2)} ${PX} ${PY})`}>
-            <line x1=${PX} y1=${PY} x2=${PX} y2=${BOB - 20} stroke="var(--color-base-content)" stroke-opacity="0.35" stroke-width="1.75" />
-            <circle cx=${PX} cy=${BOB} r="30" fill="var(--color-accent)" fill-opacity="0.16" />
-            <circle data-bob cx=${PX} cy=${BOB} r="18" fill="var(--color-primary)" style="filter:drop-shadow(0 0 14px color-mix(in oklch, var(--color-accent) 70%, transparent))" />
-          </g>
-        </svg>
+      <!-- the two poles, floating; the one the breath favours takes the accent -->
+      <div class="grid grid-cols-2 gap-4 w-full max-w-sm text-center">
+        <div ref=${aWrapRef} style="will-change:transform"><div ref=${aRef} data-pole data-pole-a class="text-[1.7rem] font-semibold leading-tight break-words" style=${poleStyle(init.weightA)}>${T(t, aKey)}</div></div>
+        <div ref=${bWrapRef} style="will-change:transform"><div ref=${bRef} data-pole data-pole-b class="text-[1.7rem] font-semibold leading-tight break-words" style=${poleStyle(init.weightB)}>${T(t, bKey)}</div></div>
       </div>
-
-      <!-- the two poles: left = draw-in, right = release; the one the breath favours takes the accent -->
-      <div class="grid grid-cols-2 gap-3 w-full max-w-sm text-center">
-        <div ref=${aRef} data-pole data-pole-a class="text-2xl font-semibold leading-tight break-words" style=${poleStyle(init.weightA)}>${T(t, aKey)}</div>
-        <div ref=${bRef} data-pole data-pole-b class="text-2xl font-semibold leading-tight break-words" style=${poleStyle(init.weightB)}>${T(t, bKey)}</div>
-      </div>
-
-      <div class="flex-1"></div>
 
       <!-- controls (glass island) + breath count -->
       <div class="flex flex-col items-center gap-3">

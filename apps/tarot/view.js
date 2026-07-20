@@ -25,8 +25,8 @@ const imgURL = (file) => new URL(`./assets/${file}`, import.meta.url).href;   //
 const randSeed = () => Math.floor(Math.random() * 0x100000000) >>> 0;
 const dk = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-const SPREAD_KEY = { daily: "spreadDaily", ppf: "spreadPPF", sao: "spreadSAO", mindbody: "spreadMind", choice: "spreadChoice", star: "spreadStar", love: "spreadLove", pyramid: "spreadPyramid", celtic: "spreadCeltic" };
-const DESC_KEY = { daily: "descDaily", ppf: "descPPF", sao: "descSAO", mindbody: "descMind", choice: "descChoice", star: "descStar", love: "descLove", pyramid: "descPyramid", celtic: "descCeltic" };
+const SPREAD_KEY = { daily: "spreadDaily", ppf: "spreadPPF", sao: "spreadSAO", mindbody: "spreadMind", choice: "spreadChoice", poles: "spreadPoles", shadowlight: "spreadShadowLight", star: "spreadStar", love: "spreadLove", pyramid: "spreadPyramid", celtic: "spreadCeltic" };
+const DESC_KEY = { daily: "descDaily", ppf: "descPPF", sao: "descSAO", mindbody: "descMind", choice: "descChoice", poles: "descPoles", shadowlight: "descShadowLight", star: "descStar", love: "descLove", pyramid: "descPyramid", celtic: "descCeltic" };
 const SUIT_KEY = { wands: "suitWands", cups: "suitCups", swords: "suitSwords", pentacles: "suitPentacles" };
 const cardName = (c, loc) => (loc === "uk" ? c.uk : c.name);
 const meaningOf = (d) => DECK[d.card][d.reversed ? "rev" : "up"];

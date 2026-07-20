@@ -10,6 +10,7 @@
     "icon": "lucide:sparkles",
     "theme": true,
     "lang": true,
-    "install": true
+    "install": true,
+    "permissions": ["motion"]
   }
 }

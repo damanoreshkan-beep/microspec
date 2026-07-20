@@ -25,10 +25,12 @@ export default [
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);
-      h.expect(/Reactor Core|Ventilation|Generator/i.test(await h.bodyText()), "не EN");
+      await h.click('[data-tab="gen"]'); await h.wait(180);
+      h.expect(/Reactor Core|Ventilation|Deep space/.test(await h.bodyText()), "не EN");
+      await h.click('[data-tab="me"]'); await h.wait(120);
       await h.click('[data-loc="uk"]'); await h.wait(250);
-      h.expect(/Реакторне ядро|Вентиляція|Генератор/.test(await h.bodyText()), "не UA");
-      await h.click('[data-tab="gen"]'); await h.wait(120);
+      await h.click('[data-tab="gen"]'); await h.wait(180);
+      h.expect(/Реакторне ядро|Вентиляція|Далекий космос/.test(await h.bodyText()), "не UA");
     },
   },
   {

@@ -1,597 +1,120 @@
-// Rave — a techno generator: a 16-step, 16-voice drum machine + hard-techno bass arsenal, all SYNTHESISED
-// (no samples) via Web Audio through an FX rack (drive → crush → dry/delay/reverb → master filter →
-// compressor). Hard voices: gabber hardkick (sine → hard waveshaper), reese bass (detuned saws → resonant
-// filter + distortion), hoover/mentasm (detuned saw stack + filter sweep), rumble. Timing = the lookahead
-// scheduler; the working pattern + FX live in nanostore atoms (survive tab switches) and autosave to
-// IndexedDB (/_rt/db.js); a "Saved" tab lists named saves. Refs: MDN · Chris Wilson "Two Clocks".
+// Rave — a minimal techno groove player. Pick a style, hit play, sweep one filter. Everything is SYNTHESISED
+// (no samples): four light voices (kick, hat, clap, acid bass) through a single master lowpass — the macro
+// "Filter" knob. Grooves are Euclidean (bjorklund, from the unit-tested /_rt/groove.js) so each style is a
+// musical four-on-the-floor/offbeat pattern, not hand-drawn. Deliberately lean: the previous build stacked a
+// 16-voice engine + per-hit 2× waveshapers + a convolution reverb and starved the audio thread on a phone
+// (stutter); here a hit is 1–3 nodes and a bar is a couple dozen, so it never throttles. The engine + transport
+// live at MODULE scope so playback survives tab switches. Timing = a lookahead scheduler (Chris Wilson, "Two
+// Clocks"). Refs: MDN Web Audio · Euclidean rhythm (Toussaint).
 import { html } from "htm/preact";
-import { Fragment } from "preact";
-import { useState, useEffect, useRef } from "preact/hooks";
-import { useSheetDrag } from "/_rt/gesture.js";
+import { useEffect } from "preact/hooks";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
-import { generateGroove, mulberry32 } from "/_rt/groove.js";
-import { collection } from "/_rt/db.js";
-import { Scramble, useReveal } from "/_rt/skeleton.js";
+import { bjorklund } from "/_rt/groove.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const N = 16, STEPS = [...Array(N).keys()];
-const ROOT = 36;                                                    // C2 — the bass root
-const RIFF = [0, 0, 12, 0, 0, 0, 3, 0, 0, 7, 0, 0, 10, 0, 5, 0];    // per-step semitone offsets → an instant bass line
+const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
+const N = 16;
+const steps = (arr) => { const b = Array(N).fill(false); for (const s of arr) b[s] = true; return b; };
+const RIFF = [0, 0, 12, 0, 0, 7, 0, 3, 0, 0, 12, 0, 5, 0, 7, 0];    // acid-ish bass line (semitones over the root)
 
-const TRACKS = [
-  { id: "kick", name: "tKick", icon: "lucide:drum", on: "bg-amber-500" },
-  { id: "hardkick", name: "tHardkick", icon: "lucide:swords", on: "bg-rose-600" },
-  { id: "snare", name: "tSnare", icon: "lucide:disc-2", on: "bg-red-500" },
-  { id: "clap", name: "tClap", icon: "lucide:hand", on: "bg-pink-500" },
-  { id: "rim", name: "tRim", icon: "lucide:slash", on: "bg-orange-400" },
-  { id: "hat", name: "tHat", icon: "lucide:hash", on: "bg-cyan-400" },
-  { id: "ohat", name: "tOpenHat", icon: "lucide:circle-dot", on: "bg-sky-400" },
-  { id: "ride", name: "tRide", icon: "lucide:disc-3", on: "bg-teal-400" },
-  { id: "cowbell", name: "tCowbell", icon: "lucide:bell", on: "bg-yellow-400" },
-  { id: "tom", name: "tTom", icon: "lucide:circle", on: "bg-fuchsia-500" },
-  { id: "hoover", name: "tHoover", icon: "lucide:tornado", on: "bg-indigo-500" },
-  { id: "stab", name: "tStab", icon: "lucide:layers", on: "bg-violet-500" },
-  { id: "acid", name: "tBass", icon: "lucide:zap", on: "bg-lime-400" },
-  { id: "reese", name: "tReese", icon: "lucide:audio-waveform", on: "bg-purple-600" },
-  { id: "sub", name: "tSub", icon: "lucide:waves", on: "bg-emerald-500" },
-  { id: "rumble", name: "tRumble", icon: "lucide:vibrate", on: "bg-stone-500" },
+// a style = a groove. kick/hat/bass via Euclidean fills; clap on the backbeat. root is the bass MIDI note.
+const St = (id, key, bpm, kk, hk, clap, bk, root) => ({ id, key, bpm, kick: bjorklund(kk, N), hat: bjorklund(hk, N), clap: steps(clap), bass: bjorklund(bk, N), root });
+const STYLES = [
+  St("techno", "pTechno", 132, 4, 8, [4, 12], 5, 36),
+  St("acid", "pAcid", 130, 4, 8, [4, 12], 9, 34),
+  St("house", "pHouse", 124, 4, 8, [4, 12], 4, 38),
+  St("minimal", "pMinimal", 126, 4, 5, [12], 3, 36),
+  St("rave", "pRave", 140, 4, 11, [4, 12], 7, 36),
+  St("hardgroove", "pHardgroove", 138, 4, 11, [4, 12], 9, 33),
+  St("dub", "pDub", 120, 3, 4, [8], 3, 31),
+  St("electro", "pElectro", 128, 5, 8, [4, 12], 6, 36),
 ];
-const P = (s) => [...s].map((c) => c === "x");
-const PRESETS = [
-  { id: "techno", name: "pTechno", kick: "x...x...x...x...", clap: "....x.......x...", hat: "..x...x...x...x.", acid: "x...x...x...x...", sub: "x...x...x...x..." },
-  { id: "acid", name: "pAcid", kick: "x...x...x...x...", clap: "....x.......x...", hat: "xxxxxxxxxxxxxxxx", ohat: "..x...x...x...x.", acid: "x.xxx.x.x.xxx.x.", sub: "x...x...x...x..." },
-  { id: "minimal", name: "pMinimal", kick: "x...x...x...x...", clap: "........x.......", hat: "..x...x...x...x.", sub: "x.......x......." },
-  { id: "rave", name: "pRave", kick: "x...x...x.x.x...", clap: "....x...x...x...", hat: "xxxxxxxxxxxxxxxx", ohat: "..x...x...x...x.", stab: "x.......x.......", acid: "x.x.x.x.x.x.x.x.", sub: "x...x...x...x..." },
-  { id: "hardgroove", name: "pHardgroove", kick: "x...x...x...x...", snare: "....x.......x...", tom: "......x.......x.", cowbell: "..x...x...x...x.", hat: "x.x.x.x.x.x.x.x.", sub: "x...x...x...x..." },
-  { id: "trance", name: "pTrance", kick: "x...x...x...x...", ohat: "..x...x...x...x.", stab: "x...x...x...x...", clap: "....x.......x...", sub: ".x.x.x.x.x.x.x.x" },
-  { id: "dub", name: "pDub", kick: "x.......x.......", stab: "....x.......x...", sub: "x...x...x...x...", hat: "..x...x...x...x.", clap: "............x..." },
-  { id: "hardtechno", name: "pHardtechno", hardkick: "x.x.x.x.x.x.x.x.", clap: "....x.......x...", snare: "..x...x...x...x.", stab: "x...x...x...x...", acid: "xx.xxx.xxx.xxx.x", hat: "xxxxxxxxxxxxxxxx", ohat: "..x...x...x...x." },
-  { id: "detroit", name: "pDetroit", kick: "x...x...x...x...", clap: "....x.......x...", hat: "..x...x...x...x.", cowbell: "x..x..x..x..x...", stab: "..x.......x.....", acid: "x...x...x...x..." },
-  { id: "electro", name: "pElectro", kick: "x..x..x...x.x...", snare: "....x.......x...", hat: "x.x.x.x.x.x.x.x.", cowbell: "..x...x...x...x.", sub: "x..x..x...x.x..." },
-  { id: "house", name: "pHouse", kick: "x...x...x...x...", clap: "....x.......x...", ohat: "..x...x...x...x.", rim: "x.x.x.x.x.x.x.x.", sub: "x...x...x...x..." },
-  { id: "gabber", name: "pGabber", hardkick: "xxxxxxxxxxxxxxxx", hoover: "x...x...x...x...", ohat: "..x...x...x...x.", clap: "....x.......x..." },
-  { id: "breakbeat", name: "pBreakbeat", kick: "x.....x...x.....", snare: "....x.......x...", rim: "..x..x..x..x..x.", ride: "x.x.x.x.x.x.x.x." },
-  { id: "psy", name: "pPsy", kick: "x...x...x...x...", sub: "x.xxx.xxx.xxx.xx", acid: ".xxx.xxx.xxx.xxx", ride: "..x...x...x...x." },
-  { id: "tribal", name: "pTribal", kick: "x...x...x...x...", tom: "..x.x...x.x.....", cowbell: "x..x..x..x..x...", rim: "..x...x...x...x." },
-  { id: "garage", name: "pGarage", kick: "x...x...x...x...", clap: "....x.......x...", ohat: "..x...x...x...x.", sub: "x..x..x...x.x...", hat: "x.x.x.x.x.x.x.x." },
-  { id: "industrial", name: "pIndustrial", hardkick: "x...x...x...x...", snare: "..x...x...x...x.", ride: "xxxxxxxxxxxxxxxx", stab: "x.......x......." },
-  { id: "downtempo", name: "pDowntempo", kick: "x.......x.......", snare: "....x.......x...", ride: "..x...x...x...x.", stab: "x...............", sub: "x.......x......." },
-  { id: "schranz", name: "pSchranz", hardkick: "x...x...x...x...", rumble: "..x...x...x...x.", ohat: "x.x.x.x.x.x.x.x.", ride: "xxxxxxxxxxxxxxxx", reese: "x...x...x...x..." },
-  { id: "hardcore", name: "pHardcore", hardkick: "x.x.x.x.x.x.x.x.", hoover: "x.......x.......", clap: "....x.......x...", reese: "x.x.x.x.x.x.x.x." },
-  { id: "gabbercore", name: "pGabbercore", hardkick: "xx.xxx.xxx.xxx.x", hoover: "x...x...x...x...", ohat: "..x...x...x...x." },
-  { id: "mentasm", name: "pMentasm", kick: "x...x...x...x...", hoover: "x...x.x.x...x.x.", reese: "x...x...x...x...", ohat: "..x...x...x...x." },
-  { id: "rumbletech", name: "pRumbletech", hardkick: "x...x...x...x...", rumble: "x.x.x.x.x.x.x.x.", ohat: "..x...x...x...x.", reese: "x...x...x...x..." },
-  { id: "acidcore", name: "pAcidcore", hardkick: "x...x...x...x...", acid: "xxxxxxxxxxxxxxxx", hoover: "x.......x.......", ohat: "..x...x...x...x." },
-];
-const parse = (p) => Object.fromEntries(TRACKS.map((tr) => [tr.id, P(p[tr.id] || "................")]));
-const empty = () => Object.fromEntries(TRACKS.map((tr) => [tr.id, Array(N).fill(false)]));
-// ---- generation archetypes ----
-// The split: the RUNTIME owns the science (/_rt/groove.js — Euclidean rhythms, the LHL syncopation measure,
-// Witek's inverted-U, harmonicity) and searches for the most danceable candidate. The APP owns the taste —
-// which voices belong together in a genre, and what an onset count means for a hat vs a kick. So an
-// archetype is just a legal search space: a kick never gets a bossa clave, a hat never gets four onsets.
-//   band → which inverted-U target applies (low anchors the pulse, mid drives the groove, high lifts it)
-//   ks   → legal Euclidean onset counts   ·   rots → legal rotations   ·   p → chance the voice is present
-const V = (id, band, ks, rots, p, extra) => ({ id, band, ks, rots, p, ...extra });
-const KICK4 = V("kick", "low", [4], [0], 1);
-const ARCHETYPES = [
-  { id: "techno", bpm: [130, 138], fx: { drive: [0.08, 0.3], delay: [0, 0.22], reverb: [0.05, 0.28], squelch: [700, 2400], swing: [0, 0.12] },
-    voices: [KICK4, V("sub", "low", [4, 6, 7], [0], 0.85, { bass: true }), V("clap", "mid", [2], [4], 0.85, { backbeat: true }),
-      V("hat", "high", [8, 11, 13], [0, 1, 2], 0.9), V("ohat", "high", [4, 5], [2], 0.5),
-      V("acid", "mid", [5, 7, 9], [0, 1, 2, 3], 0.6, { bass: true }), V("stab", "mid", [2, 3, 4], [0, 2, 4], 0.4), V("rim", "mid", [3, 5], [1, 3], 0.3)] },
-  { id: "acid", bpm: [128, 136], fx: { drive: [0.2, 0.5], delay: [0.1, 0.35], reverb: [0.05, 0.25], squelch: [400, 1600], swing: [0, 0.16] },
-    voices: [KICK4, V("sub", "low", [4], [0], 0.7, { bass: true }), V("clap", "mid", [2], [4], 0.8, { backbeat: true }),
-      V("hat", "high", [11, 13, 16], [0, 1], 0.95), V("ohat", "high", [4], [2], 0.6),
-      V("acid", "mid", [7, 9, 11, 13], [0, 1, 2, 3], 1, { bass: true }), V("rim", "mid", [3, 5], [1, 3], 0.25)] },
-  { id: "hardtechno", bpm: [140, 150], fx: { drive: [0.35, 0.7], crush: [0, 0.25], delay: [0, 0.2], reverb: [0.05, 0.2], squelch: [600, 2000], swing: [0, 0.06] },
-    voices: [V("hardkick", "low", [4, 8], [0], 1), V("rumble", "low", [4, 8], [0, 2], 0.6),
-      V("clap", "mid", [2], [4], 0.7, { backbeat: true }), V("snare", "mid", [4, 8], [2], 0.4, { backbeat: true }),
-      V("ohat", "high", [4, 8], [2], 0.7), V("ride", "high", [8, 16], [0], 0.4),
-      V("reese", "mid", [4, 5, 7], [0, 2], 0.6, { bass: true }), V("hoover", "mid", [2, 3], [0, 4], 0.4), V("stab", "mid", [2, 4], [0, 4], 0.4)] },
-  { id: "minimal", bpm: [126, 132], fx: { drive: [0, 0.15], delay: [0.15, 0.4], reverb: [0.15, 0.45], squelch: [900, 3000], swing: [0.04, 0.2] },
-    voices: [KICK4, V("sub", "low", [4, 6], [0], 0.8, { bass: true }), V("clap", "mid", [1, 2], [4], 0.6, { backbeat: true }),
-      V("hat", "high", [5, 7, 8], [1, 2], 0.8), V("rim", "mid", [3, 5, 7], [1, 2, 3], 0.6),
-      V("cowbell", "mid", [3, 5], [0, 2], 0.3), V("stab", "mid", [2, 3], [0, 4], 0.35)] },
-  { id: "rave", bpm: [134, 145], fx: { drive: [0.2, 0.45], crush: [0, 0.2], delay: [0.05, 0.3], reverb: [0.1, 0.35], squelch: [500, 2200], swing: [0, 0.1] },
-    voices: [KICK4, V("sub", "low", [4, 6], [0], 0.7, { bass: true }), V("clap", "mid", [2, 4], [4], 0.9, { backbeat: true }),
-      V("hat", "high", [13, 16], [0], 0.9), V("ohat", "high", [4], [2], 0.7),
-      V("hoover", "mid", [2, 3, 5], [0, 4], 0.6), V("stab", "mid", [2, 4, 5], [0, 4], 0.6), V("acid", "mid", [7, 9], [0, 2], 0.5, { bass: true })] },
-  { id: "electro", bpm: [124, 134], fx: { drive: [0.1, 0.35], crush: [0.05, 0.3], delay: [0.05, 0.25], reverb: [0.05, 0.3], squelch: [700, 2600], swing: [0, 0.14] },
-    voices: [V("kick", "low", [4, 5, 6, 7], [0], 1), V("sub", "low", [5, 6, 7], [0, 2], 0.8, { bass: true }),
-      V("snare", "mid", [2], [4], 0.9, { backbeat: true }), V("hat", "high", [8, 11], [0, 1], 0.85),
-      V("cowbell", "mid", [3, 5], [0, 2], 0.4), V("tom", "mid", [3, 5], [2, 6], 0.35), V("rim", "mid", [3, 5], [1, 3], 0.4)] },
-];
-const lerp = (rng, [lo, hi]) => lo + rng() * (hi - lo);
 
-const FX = [
-  { id: "squelch", icon: "lucide:activity", label: "fxSquelch", min: 200, max: 5000, step: 20 },
-  { id: "drive", icon: "lucide:flame", label: "fxDrive", min: 0, max: 1, step: 0.02 },
-  { id: "crush", icon: "lucide:binary", label: "fxCrush", min: 0, max: 1, step: 0.02 },
-  { id: "delay", icon: "lucide:repeat-2", label: "fxDelay", min: 0, max: 0.8, step: 0.02 },
-  { id: "reverb", icon: "lucide:cloudy", label: "fxReverb", min: 0, max: 0.9, step: 0.02 },
-  { id: "mfilter", icon: "lucide:filter", label: "fxFilter", min: 0, max: 1, step: 0.02 },
-  { id: "swing", icon: "lucide:wind", label: "fxSwing", min: 0, max: 0.6, step: 0.02 },
-];
-const DFX = { squelch: 1200, drive: 0, crush: 0, delay: 0, reverb: 0, mfilter: 1, swing: 0 };
+// ---- module-scope engine + transport (survive the view unmounting on tab switch) ----
+const $style = atom(0), $playing = atom(false), $filt = atom(0.82), $cur = atom(-1);
+let eng = null, mf = null, sched = null, raf = null, nextT = 0, stepN = 0, q = [];
+const filtHz = (v) => 200 * Math.pow(90, Math.max(0, Math.min(1, v)));
 
-// ---- waveshaper curves ----
-const curveOf = (fn) => { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) c[i] = fn(i / (n - 1) * 2 - 1); return c; };
-const HARD = curveOf((x) => Math.tanh(x * 4)), SOFT = curveOf((x) => Math.tanh(x * 2));
-const driveCurve = (a) => curveOf((x) => { const k = a * a * 80; return (1 + k) * x / (1 + k * Math.abs(x)); });
-const crushCurve = (a) => { const steps = Math.max(2, Math.round(64 * (1 - a) + 2)); return curveOf((x) => Math.round(x * steps) / steps); };
-function makeIR(ctx, seconds = 1.8, decay = 3) { const len = Math.floor(ctx.sampleRate * seconds), buf = ctx.createBuffer(2, len, ctx.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); } return buf; }
-
-// ---- synth voices (generated) ----
-const KICK = (ctx, out, t) => {
-  const o = ctx.createOscillator(), g = ctx.createGain();
-  o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(50, t + 0.09);
-  g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
-  o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.45);
-  const c = ctx.createOscillator(), cg = ctx.createGain(); c.type = "triangle"; c.frequency.value = 1000;
-  cg.gain.setValueAtTime(0.5, t); cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.015);
-  c.connect(cg); cg.connect(out); c.start(t); c.stop(t + 0.02);
-};
-const HARDKICK = (ctx, out, t) => {                                 // gabber kick — sine driven hard so the tail buzzes
-  const o = ctx.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
-  const sh = ctx.createWaveShaper(); sh.curve = HARD; sh.oversample = "2x";
-  const g = ctx.createGain(); g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
-  o.connect(sh); sh.connect(g); g.connect(out); o.start(t); o.stop(t + 0.52);
-  const c = ctx.createOscillator(), cg = ctx.createGain(); c.type = "square"; c.frequency.value = 1200;
-  cg.gain.setValueAtTime(0.6, t); cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.012); c.connect(cg); cg.connect(out); c.start(t); c.stop(t + 0.015);
-};
-const metallic = (ctx, out, t, { bp, hp, dur, gain, q = 0.8 }) => {
-  const b = ctx.createBiquadFilter(); b.type = "bandpass"; b.frequency.value = bp; b.Q.value = q;
-  const h = ctx.createBiquadFilter(); h.type = "highpass"; h.frequency.value = hp;
-  const g = ctx.createGain(); b.connect(h); h.connect(g); g.connect(out);
-  for (const r of [2, 3, 4.16, 5.43, 6.79, 8.21]) { const o = ctx.createOscillator(); o.type = "square"; o.frequency.value = 40 * r; o.connect(b); o.start(t); o.stop(t + dur + 0.02); }
-  g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-};
-const HAT = (ctx, out, t, open) => metallic(ctx, out, t, { bp: 10000, hp: 7000, dur: open ? 0.32 : 0.055, gain: 0.32 });
-const RIDE = (ctx, out, t) => metallic(ctx, out, t, { bp: 8000, hp: 5000, dur: 0.8, gain: 0.2, q: 0.6 });
-const noiseBurst = (ctx, out, buf, t, { type, freq, dur, gain, q }) => {
-  const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; if (q != null) f.Q.value = q;
-  const g = ctx.createGain(); f.connect(g); g.connect(out);
-  const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(f); s.start(t); s.stop(t + dur + 0.02);
-  g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-};
-const CLAP = (ctx, out, buf, t) => {
-  const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1100; bp.Q.value = 1.3;
-  const g = ctx.createGain(); bp.connect(g); g.connect(out);
-  const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(bp); s.start(t); s.stop(t + 0.22);
-  g.gain.setValueAtTime(0.0001, t);
-  for (const off of [0, 0.012, 0.024]) { g.gain.setValueAtTime(0.7, t + off); g.gain.exponentialRampToValueAtTime(0.06, t + off + 0.011); }
-  g.gain.setValueAtTime(0.7, t + 0.032); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
-};
-const SNARE = (ctx, out, buf, t) => {
-  const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(130, t + 0.1);
-  const og = ctx.createGain(); og.gain.setValueAtTime(0.5, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.12); o.connect(og); og.connect(out); o.start(t); o.stop(t + 0.13);
-  noiseBurst(ctx, out, buf, t, { type: "highpass", freq: 1500, dur: 0.18, gain: 0.5 });
-};
-const RIM = (ctx, out, buf, t) => {
-  const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = 440;
-  const og = ctx.createGain(); og.gain.setValueAtTime(0.5, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.03); o.connect(og); og.connect(out); o.start(t); o.stop(t + 0.04);
-  noiseBurst(ctx, out, buf, t, { type: "highpass", freq: 3000, dur: 0.03, gain: 0.4 });
-};
-const COWBELL = (ctx, out, t) => {
-  const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2640; bp.Q.value = 1;
-  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.3, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
-  bp.connect(g); g.connect(out);
-  for (const f of [540, 800]) { const o = ctx.createOscillator(); o.type = "square"; o.frequency.value = f; o.connect(bp); o.start(t); o.stop(t + 0.27); }
-};
-const TOM = (ctx, out, t) => {
-  const o = ctx.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(90, t + 0.18);
-  const g = ctx.createGain(); g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-  o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.32);
-};
-const STAB = (ctx, out, t, cutoff) => {
-  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 6;
-  lp.frequency.setValueAtTime(Math.min(cutoff * 4, 9000), t); lp.frequency.exponentialRampToValueAtTime(Math.max(cutoff, 600), t + 0.18);
-  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.26, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
-  lp.connect(g); g.connect(out);
-  for (const n of [0, 3, 7, 12]) { const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = midiToFreq(ROOT + 24 + n); o.connect(lp); o.start(t); o.stop(t + 0.34); }
-};
-const HOOVER = (ctx, out, t) => {                                   // mentasm/hoover — detuned saw stack + filter sweep
-  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 8; lp.frequency.setValueAtTime(4200, t); lp.frequency.exponentialRampToValueAtTime(700, t + 0.32);
-  const sh = ctx.createWaveShaper(); sh.curve = SOFT;
-  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.2, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
-  sh.connect(lp); lp.connect(g); g.connect(out);
-  for (const n of [0, 0.12, 7, 7.12, 12]) { const o = ctx.createOscillator(); o.type = "sawtooth"; const f = midiToFreq(ROOT + 24 + n); o.frequency.setValueAtTime(f * 1.06, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.08); o.connect(sh); o.start(t); o.stop(t + 0.44); }
-};
-const ACID = (ctx, out, t, freq, cutoff) => {
-  const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = freq;
-  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 13;
-  lp.frequency.setValueAtTime(Math.min(cutoff * 6, 13000), t); lp.frequency.exponentialRampToValueAtTime(cutoff, t + 0.2);
-  const g = ctx.createGain(); g.gain.setValueAtTime(0.45, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
-  o.connect(lp); lp.connect(g); g.connect(out); o.start(t); o.stop(t + 0.26);
-};
-const REESE = (ctx, out, t, freq) => {                              // growling detuned-saw bass + resonant filter movement
-  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 5; lp.frequency.value = 1000;
-  const sh = ctx.createWaveShaper(); sh.curve = HARD;
-  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.36);
-  sh.connect(lp); lp.connect(g); g.connect(out);
-  for (const c of [-8, 0, 8]) { const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = freq * (1 + c / 1000); o.connect(sh); o.start(t); o.stop(t + 0.38); }
-  const lfo = ctx.createOscillator(); lfo.frequency.value = 6; const lg = ctx.createGain(); lg.gain.value = 500; lfo.connect(lg); lg.connect(lp.frequency); lfo.start(t); lfo.stop(t + 0.38);
-};
-const SUB = (ctx, out, t, freq) => {
-  const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = freq;
-  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.7, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-  o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.32);
-};
-const RUMBLE = (ctx, out, t) => {                                   // rolling low-end under the kick
-  const o = ctx.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(55, t); o.frequency.exponentialRampToValueAtTime(36, t + 0.4);
-  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.6, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
-  o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.47);
-};
-
-// beatSig — the identity of a saved beat: pattern + tempo + FX + bass line, i.e. everything that decides
-// how it SOUNDS. Built field-by-field rather than JSON.stringify(record) so it never depends on key order
-// surviving a round trip through IndexedDB.
-//
-// Deliberately compares the WHOLE state, not just the grid: the same rhythm at 128 and at 145 BPM is not
-// the same beat, and neither is one with the filter swept open. So this only ever refuses a save where
-// nothing at all has changed since the last one — the double-tap, never a real variation.
-const beatSig = (r) => JSON.stringify({
-  t: TRACKS.map((tr) => (r.tracks?.[tr.id] || []).map((v) => (v ? 1 : 0)).join("")),
-  b: r.bpm ?? null,
-  f: FX.map((f) => r.fx?.[f.id] ?? null),
-  r: r.riff ?? null,
-});
-// beatName — the name is READ OFF the beat, not counted. "Beat 1 / Beat 2 / Beat 3" told you nothing and
-// silently collided after a delete (list.length+1 reissues a number). A saved beat is now called what it
-// actually is: the genre comes from which voices are playing, the texture from where the FX rack sits, and
-// the tempo is the tempo — "Брудний Ейсід · 142". Nothing invented; every word is a fact about the sound.
-const genreKey = (tracks) => {
-  const on = (id) => tracks?.[id]?.some(Boolean);
-  const voices = TRACKS.filter((tr) => on(tr.id)).length;
-  if (on("hardkick") && on("rumble")) return "gSchranz";
-  if (on("hardkick")) return "gHard";
-  if (on("hoover")) return "gRave";
-  if (on("acid")) return "gAcid";
-  if (on("reese")) return "gReese";
-  return voices <= 4 ? "gMinimal" : "gTechno";
-};
-// One adjective, from whichever knob is actually pushed — checked most-audible first so a crushed, driven
-// beat reads "Crushed" rather than stacking. No knob pushed → no adjective, not a filler word.
-const textureKey = (fx) => fx.crush > 0.3 ? "xCrushed" : fx.drive > 0.45 ? "xDirty" : fx.reverb > 0.5 ? "xDeep"
-  : fx.delay > 0.4 ? "xDub" : fx.swing > 0.28 ? "xSwung" : fx.mfilter < 0.4 ? "xMuted" : null;
-// Ukrainian adjectives agree in gender, and "техно" is NEUTER while every other genre here is masculine —
-// "Дабовий Техно" is simply wrong, the way "a dirty techno" would not be. The `N` variants carry the neuter
-// form; in English they are identical, because English adjectives do not inflect. Cheaper than pretending
-// a template can be language-agnostic.
-const NEUTER = new Set(["gTechno"]);
-const beatName = (t, tracks, bpm, fx) => {
-  const g = genreKey(tracks), tex = textureKey(fx || {});
-  const adj = tex ? T(t, NEUTER.has(g) ? tex + "N" : tex) : "";
-  return `${adj ? adj + " " : ""}${T(t, g)} · ${bpm}`;
-};
-// Two different beats can still land on the same name (same genre, same tempo) — suffix only then.
-const uniqueName = (base, list) => {
-  if (!list.some((it) => it.name === base)) return base;
-  let n = 2; while (list.some((it) => it.name === `${base} (${n})`)) n++;
-  return `${base} (${n})`;
-};
-
-// ---- shared state (atoms survive tab switches) + autosave to IndexedDB ----
-const SAVES = collection("ravePatterns"), CUR = collection("raveCurrent");
-const $tracks = atom(parse(PRESETS[0])), $bpm = atom(130), $fx = atom({ ...DFX });
-const $riff = atom(RIFF);   // per-step semitone offsets for the bass voices — the generator rewrites it
-const $hist = atom({ seeds: [], idx: -1 });   // session playlist: generated seeds + current index (next / prev)
-// A deterministic "song title" per seed — same beat, same name — so the OS media notification reads like a track.
-const NAMEA = ["Neon", "Acid", "Void", "Hyper", "Dark", "Rust", "Strobe", "Chrome", "Ghost", "Iron", "Warp", "Blast", "Cyber", "Toxic", "Vapor", "Rave"];
-const NAMEB = ["Drift", "Storm", "Machine", "Circuit", "Sector", "Halo", "Engine", "Prophet", "Rush", "Grid", "Pulse", "Descent", "Overdrive", "Signal", "Riot", "Dawn"];
-const trackName = (seed) => `${NAMEA[(seed >>> 0) % 16]} ${NAMEB[(seed >>> 8) % 16]}`;
-const randSeed = () => (Math.random() * 0xffffffff) >>> 0;
-(async () => { try { const s = await CUR.get("state"); if (s && s.tracks) { $tracks.set({ ...empty(), ...s.tracks }); if (s.bpm) $bpm.set(s.bpm); if (s.fx) $fx.set({ ...DFX, ...s.fx }); if (s.riff?.length === N) $riff.set(s.riff); } } catch { /* no idb → defaults */ } })();
-
-// ── the audio engine is a MODULE singleton, not component state ──────────────────────────────────────────
-// The three tabs (Beat / Saved / Me) are separate tool views: switching tab UNMOUNTS the current view. If
-// the engine, scheduler and playing flag lived in the component, that unmount would tear the sound down —
-// so they live here, at module scope, and playback simply continues while the UI comes and goes. The
-// reactive slices the views read (is it playing · which step is lit · which column the generator is writing)
-// are atoms, so both views re-render from the one source of truth.
-let eng = null, sched = null, raf = null, nextT = 0, stepN = 0, q = [], genT = null, mediaEl = null;
-let uiT = {};                                                        // latest locale table (for the OS media title)
-const $playing = atom(false), $cur = atom(-1), $sweep = atom(-1);
-
-const applyFx = (e) => { const f = $fx.get(); e.fx.drive.curve = driveCurve(f.drive); e.fx.crush.curve = crushCurve(f.crush); e.fx.dsend.gain.value = f.delay; e.fx.rsend.gain.value = f.reverb; e.fx.mf.frequency.value = 200 * Math.pow(90, f.mfilter); e.fx.delay.delayTime.value = 3 * (60 / $bpm.get() / 4); };
-const ensure = () => {
+function ensure() {
   if (!audioSupported) return null;
   if (!eng) {
-    const e = createEngine({ master: 0.85 }), ctx = e.ctx;
-    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -10; comp.knee.value = 6; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.12; comp.connect(e.master);
-    const mf = ctx.createBiquadFilter(); mf.type = "lowpass"; mf.frequency.value = 18000; mf.connect(comp);
-    const sum = ctx.createGain(); sum.connect(mf);
-    const drive = ctx.createWaveShaper(); drive.oversample = "2x"; drive.curve = driveCurve(0);
-    const crush = ctx.createWaveShaper(); crush.curve = crushCurve(0); drive.connect(crush);
-    const dry = ctx.createGain(); crush.connect(dry); dry.connect(sum);
-    const dsend = ctx.createGain(); dsend.gain.value = 0; const delay = ctx.createDelay(1.5); delay.delayTime.value = 3 * (60 / 130 / 4);
-    const dfb = ctx.createGain(); dfb.gain.value = 0.36; const df = ctx.createBiquadFilter(); df.type = "lowpass"; df.frequency.value = 2200;
-    crush.connect(dsend); dsend.connect(delay); delay.connect(df); df.connect(dfb); dfb.connect(delay); df.connect(sum);
-    const rsend = ctx.createGain(); rsend.gain.value = 0; const rev = ctx.createConvolver(); rev.buffer = makeIR(ctx);
-    crush.connect(rsend); rsend.connect(rev); rev.connect(sum);
-    e.bus = drive; e.fx = { drive, crush, dsend, rsend, mf, delay };
-    eng = e; applyFx(e);
-    // Web Audio alone does NOT request Android audio focus, so an OS media notification never appears —
-    // the fix is to route the synth into a MediaStream and play it through a detached <audio> element,
-    // which the platform recognises as playback. Fully guarded: any failure restores the direct output so
-    // the beat is never lost (you just don't get the lock-screen controls on that device).
-    try {
-      const msd = ctx.createMediaStreamDestination();
-      const el = new Audio(); el.srcObject = msd.stream; el.loop = true;
-      e.master.disconnect(); e.master.connect(msd);
-      el.play().catch(() => { try { e.master.disconnect(); e.master.connect(ctx.destination); } catch { /* */ } });
-      mediaEl = el;
-    } catch { /* no MediaStream capture → sound stays on ctx.destination, just no notification */ }
-    try {
-      if ("mediaSession" in navigator) {
-        navigator.mediaSession.setActionHandler("play", () => { if (!sched) start(); });
-        navigator.mediaSession.setActionHandler("pause", () => stop());
-        navigator.mediaSession.setActionHandler("nexttrack", () => nextTrack());
-        navigator.mediaSession.setActionHandler("previoustrack", () => prevTrack());
-      }
-    } catch { /* MediaSession unsupported */ }
+    eng = createEngine({ master: 0.9, noise: true });
+    if (!eng) return null;
+    mf = eng.ctx.createBiquadFilter(); mf.type = "lowpass"; mf.Q.value = 1.1; mf.frequency.value = filtHz($filt.get()); mf.connect(eng.master);
   }
-  eng.resume(); return eng;
-};
-
-const fire = (s, time) => {
-  const e = eng; if (!e) return; const ctx = e.ctx, buf = e.buffers.white, Tr = $tracks.get(), cut = $fx.get().squelch, Rf = $riff.get();
-  // every step's voices feed a throwaway group gain that is DISCONNECTED once the tails finish — nodes
-  // don't GC promptly (WebAudio #904), so leaving them wired makes the audio thread process ever more dead
-  // nodes → rising CPU → crackle → dropout. Freeing per step keeps the live node count bounded.
-  const out = ctx.createGain(); out.connect(e.bus);
-  setTimeout(() => { try { out.disconnect(); } catch { /* */ } }, Math.max(0, (time - ctx.currentTime) * 1000) + 1300);
-  if (Tr.kick[s]) KICK(ctx, out, time);
-  if (Tr.hardkick[s]) HARDKICK(ctx, out, time);
-  if (Tr.snare[s]) SNARE(ctx, out, buf, time);
-  if (Tr.clap[s]) CLAP(ctx, out, buf, time);
-  if (Tr.rim[s]) RIM(ctx, out, buf, time);
-  if (Tr.hat[s]) HAT(ctx, out, time, false);
-  if (Tr.ohat[s]) HAT(ctx, out, time, true);
-  if (Tr.ride[s]) RIDE(ctx, out, time);
-  if (Tr.cowbell[s]) COWBELL(ctx, out, time);
-  if (Tr.tom[s]) TOM(ctx, out, time);
-  if (Tr.hoover[s]) HOOVER(ctx, out, time);
-  if (Tr.stab[s]) STAB(ctx, out, time, cut);
-  if (Tr.acid[s]) ACID(ctx, out, time, midiToFreq(ROOT + Rf[s]), cut);
-  if (Tr.reese[s]) REESE(ctx, out, time, midiToFreq(ROOT + Rf[s]));
-  if (Tr.sub[s]) SUB(ctx, out, time, midiToFreq(ROOT + Rf[s]));
-  if (Tr.rumble[s]) RUMBLE(ctx, out, time);
-  if (q.length < 128) q.push({ s, time });
-};
-// lookahead scheduler. If we fell behind (tab throttled/backgrounded → the interval paused), resync instead
-// of scheduling a burst of past-dated notes (which would all fire at once = a crackle spike).
-const tick = () => { const e = eng; if (!e) return; const spb = 60 / $bpm.get() / 4, sw = $fx.get().swing; if (nextT < e.ctx.currentTime) nextT = e.ctx.currentTime; while (nextT < e.ctx.currentTime + 0.1) { const s = stepN; fire(s, nextT + (s % 2 ? sw * spb : 0)); nextT += spb; stepN = (s + 1) % N; } };
-const draw = () => { const e = eng; if (e) { const now = e.ctx.currentTime; while (q.length && q[0].time <= now) $cur.set(q.shift().s); } raf = requestAnimationFrame(draw); };
-// start() is IDEMPOTENT — it tears down any live scheduler/raf before starting a fresh one. Since the engine
-// went module-scope (so music survives tab switches) there is no component teardown to stop the old loop, so
-// a second call — e.g. tapping Play on a different saved beat while one is already playing — would otherwise
-// ORPHAN the running setInterval and stack a second tick loop. Each stacked loop schedules its own voices
-// every 25ms; a few of them overload the audio thread and the sound stutters then freezes. One loop, always.
-const start = () => { const e = ensure(); $playing.set(true); if (!e) return; if (sched) clearInterval(sched); if (raf) cancelAnimationFrame(raf); q = []; nextT = e.ctx.currentTime + 0.06; stepN = 0; sched = setInterval(tick, 25); raf = requestAnimationFrame(draw); setMeta(curTitle()); try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; } catch { /* */ } };
-const stop = () => { if (sched) clearInterval(sched); if (raf) cancelAnimationFrame(raf); sched = null; raf = null; q = []; $playing.set(false); $cur.set(-1); try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused"; } catch { /* */ } };
-
-// ── the session playlist: next / prev step through remembered seeds and AUTO-GENERATE at either end ──
-// The now-playing title: a generated track's name, or the active preset's name, so the notification is
-// never blank.
-const curTitle = () => {
-  const h = $hist.get();
-  if (h.idx >= 0 && h.idx < h.seeds.length) return trackName(h.seeds[h.idx]);
-  const p = PRESETS.find((x) => JSON.stringify(parse(x)) === JSON.stringify($tracks.get()));
-  return p ? T(uiT, p.name) : "Rave";
-};
-const setMeta = (title) => {
-  try {
-    if (!("mediaSession" in navigator)) return;
-    navigator.mediaSession.metadata = new MediaMetadata({ title: title || "Rave", artist: "rave", album: "microspec" });
-  } catch { /* */ }
-};
-const loadTrack = (seed) => { generate(seed); setMeta(trackName(seed)); };
-const newTrack = () => { const seed = randSeed(); const { seeds } = $hist.get(); const next = [...seeds, seed]; $hist.set({ seeds: next, idx: next.length - 1 }); loadTrack(seed); };
-const nextTrack = () => { let { seeds, idx } = $hist.get(); if (idx >= seeds.length - 1) { seeds = [...seeds, randSeed()]; idx = seeds.length - 1; } else idx += 1; $hist.set({ seeds, idx }); loadTrack(seeds[idx]); };
-const prevTrack = () => { let { seeds, idx } = $hist.get(); if (idx <= 0) { seeds = [randSeed(), ...seeds]; idx = 0; } else idx -= 1; $hist.set({ seeds, idx }); loadTrack(seeds[idx]); };
-
-// Generate — pick an archetype from the seed, let the runtime search its Euclidean space for the best-scoring
-// groove, then WRITE it across the grid column by column instead of snapping it in. The sweep is the point:
-// you watch the bar being composed left to right, so the button reads as a machine that made something, not
-// as a dice throw that swapped the screen. `animate:false` skips the sweep and the AudioContext — used by the
-// ?seed= deep link, which must render the finished bar on load, with no user gesture to unlock audio with.
-const generate = (seed = (Math.random() * 0xffffffff) >>> 0, animate = true) => {
-  if (animate) ensure();
-  if (genT) clearInterval(genT);
-  const arch = ARCHETYPES[seed % ARCHETYPES.length];
-  const g = generateGroove(arch.voices, { seed });
-  const rng = mulberry32(seed ^ 0x5bf03635);
-  const full = { ...empty(), ...g.tracks };
-  $riff.set(g.riff);
-  $bpm.set(Math.round(lerp(rng, arch.bpm)));
-  $fx.set({ ...DFX, ...Object.fromEntries(Object.entries(arch.fx).map(([k, range]) => [k, Math.round(lerp(rng, range) * 100) / 100])) });
-  if (!animate) { $tracks.set(full); $sweep.set(-1); return; }
-  $tracks.set(empty());
-  $sweep.set(0);
-  let c = 0;
-  genT = setInterval(() => {
-    const upto = c;
-    $tracks.set(Object.fromEntries(TRACKS.map((tr) => [tr.id, full[tr.id].map((v, i) => (i <= upto ? v : false))])));
-    $sweep.set(c);
-    if (++c >= N) { clearInterval(genT); genT = null; $sweep.set(-1); }
-  }, 28);
-};
-
-// A minimalist fingerprint of a saved beat: per-step active-voice count → bar heights. Deterministic, so the
-// Saved list can show each groove's shape at a glance without playing it. Pure presentation, like genreKey.
-const beatBars = (tracks) => STEPS.map((s) => TRACKS.reduce((n, tr) => n + (tracks?.[tr.id]?.[s] ? 1 : 0), 0));
-
-export function rave({ S, toast, screen, openScreen, closeScreen }) {
-  const t = useStore(S.t);
-  const tracks = useStore($tracks), bpm = useStore($bpm), fx = useStore($fx), hist = useStore($hist);
-  // Highlight the preset chip only while the pattern still IS that preset — edit a step and the highlight
-  // clears (it stays truthful, never stale). Cheap: 6 small patterns compared per render.
-  const trackKey = JSON.stringify(tracks);
-  const activePreset = PRESETS.find((p) => JSON.stringify(parse(p)) === trackKey)?.id;
-  const playing = useStore($playing), cur = useStore($cur), sweep = useStore($sweep);
-  useEffect(() => { uiT = t; }, [t]);   // keep the module title-builder's locale in sync with the UI
-  // The engine, scheduler and transport now live at MODULE scope (above) so playback survives this view's
-  // unmount on a tab switch — there is deliberately no cleanup that closes it here.
-  useEffect(() => { CUR.put("state", { tracks, bpm, fx }).catch(() => {}); }, [tracks, bpm, fx]);
-  useEffect(() => { if (eng && eng.fx) applyFx(eng); }, [fx, bpm]);
-  // ?demo opens straight to the Saved tab (its populated state — see DEMO_SAVES) so the visual gate can shoot
-  // it: a fresh app lands on Beat and has no saves, so the populated Saved layout is otherwise unreachable by
-  // a screenshot. Review-only; never set in normal use or the e2e.
-  useEffect(() => { if (typeof location !== "undefined" && new URLSearchParams(location.search).has("demo")) S.tab.set("saved"); }, []);
-  // ?seed=<n> renders that exact beat. The search is deterministic, so a seed IS a beat — the URL is the
-  // whole song, shareable, with nothing stored anywhere. Bare ?seed picks a fixed one so a screenshot of a
-  // populated grid is reproducible (the taste gate shoots the live app and can't press buttons).
-  useEffect(() => {
-    const v = new URLSearchParams(location.search).get("seed");
-    if (v == null) return;
-    const seed = /^\d+$/.test(v) ? Number(v) >>> 0 : 1312;
-    generate(seed, false);
-    $hist.set({ seeds: [seed], idx: 0 });
-    setMeta(trackName(seed));
-  }, []);
-
-  const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
-  const save = async () => {
-    try {
-      const list = await SAVES.all();
-      const rec = { tracks, bpm, fx, riff: $riff.get() };
-      const dup = list.find((it) => beatSig(it) === beatSig(rec));
-      if (dup) { toast?.(T(t, "toastDup", { name: dup.name || T(t, "beatWord") })); haptic.bump(); return; }
-      await SAVES.put("p" + Date.now(), { name: uniqueName(beatName(t, tracks, bpm, fx), list), ...rec });
-      toast?.(T(t, "toastSaved"));
-    } catch { /* no idb */ }
-  };
-
-  const cSeed = hist.idx >= 0 && hist.idx < hist.seeds.length ? hist.seeds[hist.idx] : null;
-  const npTitle = cSeed != null ? trackName(cSeed) : (activePreset ? T(t, (PRESETS.find((p) => p.id === activePreset) || {}).name || "") : "");
-  const sheetOpen = screen === "fx";
-  return html`<${Fragment}>
-    <!-- ONE page scroll: the 16-voice grid flows in the page (no nested scroll). The step ruler sticks under
-         the header; bottom padding clears the floating transport island + the dock. -->
-    <div class="pb-40 flex flex-col gap-1">
-      <div class="sticky z-10 -mx-4 px-4 bg-base-200/85 backdrop-blur flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
-        <div class="w-7 shrink-0"></div>
-        ${STEPS.map((s) => html`<div class=${`flex-1 h-1 rounded-full transition-colors ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${s === sweep ? "bg-accent" : s === cur ? "bg-primary" : "bg-base-300"}`} key=${s}></div>`)}
-      </div>
-      ${TRACKS.map((tr) => { const live = tracks[tr.id].some(Boolean); return html`<div class="flex items-center gap-[3px]" key=${tr.id}>
-        <div class=${`w-7 shrink-0 flex items-center justify-center ${live ? "text-base-content" : "text-base-content/40"}`}>${Icon(tr.icon, "text-base")}</div>
-        ${STEPS.map((s) => { const on = tracks[tr.id][s]; return html`<button data-cell=${`${tr.id}-${s}`} aria-pressed=${on} aria-label=${`${T(t, tr.name)} ${s + 1}`}
-          class=${`flex-1 min-w-0 h-8 rounded touch-manipulation transition-all duration-150 ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? tr.on : live ? "bg-base-300" : "bg-base-300/20"} ${s === sweep ? "ring-2 ring-accent scale-105" : s === cur ? "ring-2 ring-base-content/50" : ""}`}
-          onClick=${() => cellToggle(tr.id, s)} key=${s}></button>`; })}
-      </div>`; })}
-    </div>
-
-    <!-- floating transport island — the persistent controls, glass like the dock, floating above it -->
-    <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)">
-      <div class="pointer-events-auto w-full max-w-xl flex items-center gap-2 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2">
-        <button data-prev aria-label=${T(t, "prevTrack")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${prevTrack}>${Icon("lucide:skip-back", "text-lg")}</button>
-        <button id="play" aria-label=${playing ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle shadow-lg shrink-0 ${playing ? "btn-secondary" : "btn-primary"}`} onClick=${() => (playing ? stop() : start())}>${Icon(playing ? "lucide:square" : "lucide:play", "text-xl")}</button>
-        <button data-next aria-label=${T(t, "nextTrack")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${nextTrack}>${Icon("lucide:skip-forward", "text-lg")}</button>
-        <button data-tempo class="flex-1 min-w-0 text-left leading-tight" aria-label=${T(t, "tempo")} onClick=${() => openScreen("fx")}>
-          <span data-track class="block font-mono text-xs truncate text-base-content/80">${npTitle ? "♪ " + npTitle : "♪"}</span>
-          <span class="block text-sm font-semibold tabular-nums">${bpm} BPM</span>
-        </button>
-        <button id="save" data-save aria-label=${T(t, "aSave")} class="btn btn-circle btn-outline btn-sm shrink-0" onClick=${save}>${Icon("lucide:save", "text-lg")}</button>
-        <button data-settings aria-label=${T(t, "settings")} aria-expanded=${sheetOpen} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => openScreen("fx")}>${Icon("lucide:sliders-horizontal", "text-lg")}</button>
-      </div>
-    </div>
-
-    <${FxSheet} open=${sheetOpen} onClose=${closeScreen} t=${t} sweep=${sweep} activePreset=${activePreset} />
-  </${Fragment}>`;
+  eng.resume();
+  return eng;
 }
+const applyFilter = () => { if (mf) try { mf.frequency.setTargetAtTime(filtHz($filt.get()), eng.ctx.currentTime, 0.03); } catch { mf.frequency.value = filtHz($filt.get()); } };
 
-// The settings island → a history-backed bottom sheet (S.screen="fx", so system Back closes it). Holds what
-// used to crowd the top: tempo, the FX rack and the presets/generator — reachable in one tap, out of the way
-// while you edit the grid. Reads the shared atoms directly; preset/generate use the module transport fns.
-function FxSheet({ open, onClose, t, sweep, activePreset }) {
-  const fx = useStore($fx), bpm = useStore($bpm);
-  const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
-  const { boxRef, grip } = useSheetDrag(onClose);
-  const setFx = (id, v) => $fx.set({ ...fx, [id]: v });
-  return html`<dialog id="fxsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col gap-3 max-w-xl mx-auto">${grip}
-    <div class="flex flex-col gap-0.5">
-      <div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${T(t, "tempo")}</span><span class="font-semibold tabular-nums">${bpm} BPM</span></div>
-      <input type="range" min="90" max="150" value=${bpm} class="range range-xs range-primary w-full" aria-label=${T(t, "tempo")} onInput=${(e) => $bpm.set(Number(e.target.value))} />
-    </div>
-    <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
-      ${FX.map((f) => html`<div class="flex flex-col gap-0.5 min-w-0" key=${f.id}><div class="flex items-center gap-1 text-[0.6rem] uppercase tracking-wide text-base-content/70">${Icon(f.icon, "text-[0.85em] shrink-0")}<span class="truncate">${T(t, f.label)}</span></div><input type="range" min=${f.min} max=${f.max} step=${f.step} value=${fx[f.id]} class="range range-xs range-accent w-full min-w-0" aria-label=${T(t, f.label)} onInput=${(e) => setFx(f.id, Number(e.target.value))} /></div>`)}
-    </div>
-    <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-      <button id="gen" data-gen aria-label=${T(t, "gen")} aria-busy=${sweep >= 0} class=${`btn btn-sm shrink-0 gap-1.5 btn-accent transition-transform ${sweep >= 0 ? "scale-105" : "btn-outline"}`} onClick=${newTrack}>${Icon("lucide:sparkles", `text-base ${sweep >= 0 ? "animate-pulse" : ""}`)}<span>${T(t, "gen")}</span></button>
-      ${PRESETS.map((p) => html`<button data-preset=${p.id} aria-pressed=${activePreset === p.id} class=${`btn btn-sm shrink-0 ${activePreset === p.id ? "btn-primary" : "btn-outline"}`} onClick=${() => { ensure(); $tracks.set(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
-      <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => $tracks.set(empty())}>${Icon("lucide:eraser", "text-base")}</button>
-    </div>
-    ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
-  </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
+// voices — each self-frees; all route through the master filter (the one macro knob)
+function kick(ctx, t) { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.11); g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32); o.connect(g); g.connect(mf); o.start(t); o.stop(t + 0.34); o.onended = () => { try { o.disconnect(); g.disconnect(); } catch { /* */ } }; }
+function noiseHit(ctx, buf, t, { type, freq, q: Q, peak, dur }) { const s = ctx.createBufferSource(); s.buffer = buf; const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; if (Q != null) f.Q.value = Q; const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); s.connect(f); f.connect(g); g.connect(mf); s.start(t); s.stop(t + dur + 0.02); s.onended = () => { try { s.disconnect(); f.disconnect(); g.disconnect(); } catch { /* */ } }; }
+function bass(ctx, t, freq, dur) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sawtooth"; o.frequency.value = freq; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.01); g.gain.setValueAtTime(0.5, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); g.connect(mf); o.start(t); o.stop(t + dur + 0.02); o.onended = () => { try { o.disconnect(); g.disconnect(); } catch { /* */ } }; }
+
+function fire(step, time) {
+  const e = eng, s = STYLES[$style.get()], b = e.buffers, ctx = e.ctx, spb = 60 / s.bpm / 4;
+  if (s.kick[step]) kick(ctx, time);
+  if (s.hat[step]) noiseHit(ctx, b.white, time, { type: "highpass", freq: 8000, peak: 0.32, dur: step % 4 === 2 ? 0.11 : 0.045 });
+  if (s.clap[step]) noiseHit(ctx, b.white, time, { type: "bandpass", freq: 1600, q: 1.4, peak: 0.5, dur: 0.12 });
+  if (s.bass[step]) bass(ctx, time, midiToFreq(s.root + RIFF[step]), spb * 0.95);
+  q.push({ time, step });
 }
-
-// A populated Saved list needs saved data, which a fresh screenshot has none of — so the visual gate could
-// only ever shoot the empty state. `?demo` seeds a deterministic in-memory list (never persisted, no
-// `data-saved` collision with the real e2e counts, which never sets the flag) so the populated layout —
-// play button + spectrum per row — is reviewable. Same idea as the data-app gate fixtures.
-const preset = (id) => parse(PRESETS.find((p) => p.id === id));
-const DEMO_SAVES = [
-  { id: "demo-1", name: "Neon Techno · 132", bpm: 132, tracks: preset("techno"), fx: { ...DFX }, riff: RIFF },
-  { id: "demo-2", name: "Acid Storm · 138", bpm: 138, tracks: preset("acid"), fx: { ...DFX, drive: 0.42, crush: 0.28 }, riff: RIFF },
-  { id: "demo-3", name: "Iron Gabber · 145", bpm: 145, tracks: preset("gabber"), fx: { ...DFX, reverb: 0.5 }, riff: RIFF },
-];
-
-// A saved item's spectrum: the per-step density bars (beatBars). The design system reserves colour for
-// meaning and paints everything else in ink, so the fingerprint is ink (bg-primary) and only the live step —
-// while THIS beat is the one playing — lights up in the meaning-colour (bg-secondary = the audio position),
-// matching the playing item's btn-secondary. Empty steps stay a faint ink baseline so the 16-grid still reads.
-const Spectrum = ({ tracks, live, cur }) => {
-  const bars = beatBars(tracks), mx = Math.max(1, ...bars);
-  return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">
-    ${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-secondary" : v ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}
-  </span>`;
+const tick = () => {
+  const e = eng; if (!e) return; const s = STYLES[$style.get()], spb = 60 / s.bpm / 4;
+  if (nextT < e.ctx.currentTime) nextT = e.ctx.currentTime;
+  while (nextT < e.ctx.currentTime + 0.1) { fire(stepN, nextT); nextT += spb; stepN = (stepN + 1) % N; }
 };
+const draw = () => { const e = eng; if (e) { const now = e.ctx.currentTime; while (q.length && q[0].time <= now) $cur.set(q.shift().step); } raf = requestAnimationFrame(draw); };
 
-// Saved tab — lists named patterns from IndexedDB. Tapping the name loads the beat and jumps to the Beat tab
-// to edit it; the Play button auditions it right here, so the engine (module scope) keeps running and this
-// list simply reflects it. "Which item is playing" is read off the sound — the loaded state's signature vs
-// each saved beat's — so it stays truthful no matter how the beat was last changed.
-export function raveSaved({ S, undo }) {
-  const t = useStore(S.t);
-  useEffect(() => { uiT = t; }, [t]);
-  const [list, setList] = useState(null);
-  const tracks = useStore($tracks), bpm = useStore($bpm), fx = useStore($fx), riff = useStore($riff), playing = useStore($playing), cur = useStore($cur);
-  const demo = typeof location !== "undefined" && new URLSearchParams(location.search).has("demo");
-  const load = () => SAVES.all().then(setList).catch(() => setList([]));
-  useEffect(() => { load(); }, []);
-  const curSig = beatSig({ tracks, bpm, fx, riff });
-  const isCur = (it) => playing && beatSig(it) === curSig;
-  const loadBeat = (it) => { $tracks.set({ ...empty(), ...(it.tracks || {}) }); $bpm.set(it.bpm || 130); $fx.set({ ...DFX, ...(it.fx || {}) }); $riff.set(it.riff?.length === N ? it.riff : RIFF); };
-  const open = (it) => { loadBeat(it); S.tab.set("beat"); };
-  const play = (it) => { if (isCur(it)) { stop(); return; } loadBeat(it); start(); setMeta(it.name || T(t, "beatWord")); };
-  // Reversible → optimistic delete + a 5s undo (re-put the captured record), not a confirm. See runtime store.undo.
-  const del = async (it) => {
-    const { id, _ts, ...rec } = it;
-    try { await SAVES.remove(id); } catch { /* */ } load();
-    undo?.(async () => { try { await SAVES.put(id, rec); } catch { /* */ } load(); }, it.name || T(t, "beatWord"));
-  };
+function start() {
+  const e = ensure(); $playing.set(true); if (!e) return;
+  if (sched) clearInterval(sched); if (raf) cancelAnimationFrame(raf);   // idempotent: never stack a second loop
+  q = []; nextT = e.ctx.currentTime + 0.06; stepN = 0; sched = setInterval(tick, 25); raf = requestAnimationFrame(draw);
+}
+function stop() { $playing.set(false); if (sched) { clearInterval(sched); sched = null; } if (raf) { cancelAnimationFrame(raf); raf = null; } $cur.set(-1); }
 
-  if (!useReveal(list !== null || demo)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-base-content/60"><div class="w-9 h-9 rounded-full bg-base-300 shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
-  const items = demo ? DEMO_SAVES : list;
-  if (!items.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:bookmark", "text-4xl")}<span>${T(t, "savedEmpty")}</span></div>`;
+export function rave({ S }) {
+  const t = useStore(S.t), style = useStore($style), playing = useStore($playing), filt = useStore($filt), cur = useStore($cur);
+  useEffect(() => () => { /* keep playing across tab switches; nothing to tear down here */ }, []);
+  const s = STYLES[style];
 
-  return html`<div class="flex flex-col gap-2">
-    ${items.map((it) => { const on = isCur(it); return html`<div data-saved class="card bg-base-100 border border-base-300 rounded-2xl transition" key=${it.id}>
-      <div class="card-body p-3 flex-row items-center gap-3">
-        <button data-play aria-label=${on ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle btn-sm shrink-0 ${on ? "btn-secondary" : "btn-primary"}`} onClick=${() => play(it)}>${Icon(on ? "lucide:square" : "lucide:play", "text-base")}</button>
-        <button data-load class="flex-1 min-w-0 text-left flex flex-col gap-1.5" onClick=${() => open(it)}>
-          <span class="flex items-baseline justify-between gap-2">
-            <span class="font-semibold truncate">${it.name || T(t, "beatWord")}</span>
-            <span class="text-xs text-base-content/70 tabular-nums shrink-0">${it.bpm || 130} BPM</span>
-          </span>
-          <${Spectrum} tracks=${it.tracks} live=${on} cur=${cur} />
-        </button>
-        <button data-del aria-label=${T(t, "del")} data-haptic="bump" class="btn btn-ghost btn-sm btn-circle text-base-content/60" onClick=${() => del(it)}>${Icon("lucide:trash-2", "text-lg")}</button>
+  const pickStyle = (i) => { buzz(); $style.set(i); };
+  const shift = (d) => { buzz(); $style.set((style + d + STYLES.length) % STYLES.length); };
+  const toggle = () => { buzz(12); playing ? stop() : start(); };
+  const setFilt = (v) => { $filt.set(v); applyFilter(); };
+
+  return html`<div class="flex flex-col items-center gap-6 pt-1">
+    <!-- style selector -->
+    <div class="w-full max-w-[440px] -mx-1 px-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div class="flex gap-2 w-max">
+        ${STYLES.map((st, i) => { const on = i === style; return html`<button data-style=${st.id} aria-pressed=${on} onClick=${() => pickStyle(i)} key=${st.id} class=${`shrink-0 rounded-full border px-3.5 py-2 text-sm font-medium transition ${on ? "border-secondary/60 bg-secondary/12 text-secondary" : "border-base-content/12 text-base-content/70"}`}>${T(t, st.key)}</button>`; })}
       </div>
-    </div>`; })}
+    </div>
+
+    <!-- step visualiser (read-only) -->
+    <div data-viz class="w-full max-w-[440px] grid grid-cols-[repeat(16,minmax(0,1fr))] gap-1">
+      ${[...Array(N)].map((_, i) => { const beat = i % 4 === 0, k = s.kick[i], on = i === cur; return html`<div key=${i} class=${`h-8 rounded-md transition-colors ${on ? "bg-secondary" : k ? "bg-secondary/30" : beat ? "bg-base-content/12" : "bg-base-content/[0.06]"}`}></div>`; })}
+    </div>
+
+    <!-- transport -->
+    <div class="flex items-center gap-5">
+      <button aria-label=${T(t, "prevTrack")} onClick=${() => shift(-1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:skip-back", "text-xl")}</button>
+      <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} onClick=${toggle} class="w-20 h-20 rounded-full bg-secondary text-secondary-content grid place-items-center shadow-xl active:scale-95 transition">${Icon(playing ? "lucide:square" : "lucide:play", "text-3xl")}</button>
+      <button aria-label=${T(t, "nextTrack")} onClick=${() => shift(1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:skip-forward", "text-xl")}</button>
+    </div>
+    <div class="-mt-3 font-mono text-xs uppercase tracking-[0.2em] text-base-content/55">${T(t, s.key)} · ${s.bpm} BPM</div>
+
+    <!-- the one macro knob -->
+    <div class="w-full max-w-[440px] flex items-center gap-3 rounded-2xl border border-base-content/10 bg-base-100/60 backdrop-blur px-4 py-3">
+      ${Icon("lucide:filter", "text-base text-base-content/60 shrink-0")}
+      <span class="text-sm font-medium w-24 shrink-0">${T(t, "fxFilter")}</span>
+      <input data-filter type="range" min="0.05" max="1" step="0.01" value=${filt} aria-label=${T(t, "fxFilter")} onInput=${(e) => setFilt(Number(e.target.value))} class="range range-xs range-secondary flex-1" />
+    </div>
+
+    ${!audioSupported ? html`<div class="text-xs text-base-content/60">${T(t, "noAudio")}</div>` : null}
   </div>`;
 }

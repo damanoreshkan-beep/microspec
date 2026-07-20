@@ -132,12 +132,23 @@ function parseVideos(html, base) {
     }
     return poster ? abs(poster) : null;
   };
+  // the page link nearest the video (the wrapping <a> in a thumbnail grid) — so "watch" opens the real video page,
+  // not the raw (often signed/expiring) clip URL.
+  const nearestAnchor = (pos) => {
+    const start = Math.max(0, pos - 4000), win = html.slice(start, pos + 400), rel = pos - start;
+    let href = null, best = Infinity;
+    for (const m of win.matchAll(/<a\b[^>]*?\bhref=["']([^"'#\s]+)["']/gi)) {
+      const u = m[1]; if (/^(?:data:|javascript:|mailto:|tel:)/i.test(u) || /\.(?:jpe?g|png|webp|gif|svg|css|js|mp4|webm|m3u8|ico|woff)/i.test(u)) continue;
+      const d = Math.abs(m.index - rel); if (d < best) { best = d; href = u; }
+    }
+    return href ? abs(href) : null;
+  };
   const seen = new Set(), items = [];
   for (const c of cands) {
     const k = normKey(c.url); if (seen.has(k)) continue; seen.add(k);
     const md = meta.get(k) || {};
     const title = ((md.title && decodeEntities(String(md.title)).trim()) || vtitle.get(k) || humanize(k) || "video").slice(0, 140);
-    items.push({ video: c.url, title, poster: c.poster || md.poster || proximity(c.pos) || null });
+    items.push({ video: c.url, title, poster: c.poster || md.poster || proximity(c.pos) || null, page: nearestAnchor(c.pos) });
   }
   // ── next-page discovery, layered (most reliable first): <link|a rel=next> → an anchor that READS like "next"
   // by aria-label / class / short link text (multilingual, excluding "previous") → a ?page-style param bump.

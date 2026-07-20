@@ -8,6 +8,7 @@ import { SPREADS, spreadById, hashSeed, draw } from "/_rt/tarot.js";
 import { DECK } from "./deck.js";
 import { gate } from "/_rt/gate.js";
 import { animate, stagger } from "motion";
+import { useSheetDrag, useSwipe } from "/_rt/gesture.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const QS = new URLSearchParams(location.search);
@@ -52,6 +53,9 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
 
   const openCard = (i) => { setDetail(i); openScreen("card"); };
   const pickSpread = (id) => { setSpreadId(id); };
+  const sIdx = SPREADS.findIndex((s) => s.id === spreadId);
+  const goSpread = (d) => { const s = SPREADS[Math.min(SPREADS.length - 1, Math.max(0, sIdx + d))]; if (s) setSpreadId(s.id); };
+  const swipe = useSwipe({ onLeft: () => goSpread(1), onRight: () => goSpread(-1) });
   const shuffle = () => { setOverride(null); setNonce((n) => n + 1); };
   const openRitual = () => { try { const req = typeof DeviceOrientationEvent !== "undefined" && DeviceOrientationEvent.requestPermission; if (typeof req === "function") req.call(DeviceOrientationEvent).catch(() => {}); } catch {  } openScreen("ritual"); };
   const completeRitual = (s) => { setOverride(s >>> 0); closeScreen(); };
@@ -68,7 +72,7 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
       : html`<div class="flex flex-col gap-2.5 h-[calc(100dvh-11.5rem)] min-h-0">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
           <${Header} t=${t} spreadId=${spreadId} isDaily=${false} onShuffle=${shuffle} onRitual=${openRitual} />
-          <${FitReading} rows=${rows} drawn=${drawn} pos=${spread.pos} t=${t} loc=${loc} onOpen=${openCard} />
+          <${FitReading} rows=${rows} drawn=${drawn} pos=${spread.pos} t=${t} loc=${loc} onOpen=${openCard} swipe=${swipe} />
         </div>`}
 
     <${Ritual} open=${screen === "ritual"} onClose=${closeScreen} onDraw=${completeRitual} deckLen=${spread.majorOnly ? 22 : 78} t=${t} loc=${loc} spreadName=${T(t, SPREAD_KEY[spreadId])} />
@@ -86,7 +90,9 @@ function defaultRows(n) {
 }
 
 function Picker({ t, spreadId, onPick }) {
-  return html`<div class="shrink-0 -mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+  const wrapRef = useRef();
+  useEffect(() => { wrapRef.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView?.({ inline: "center", block: "nearest", behavior: "smooth" }); }, [spreadId]);
+  return html`<div ref=${wrapRef} class="shrink-0 -mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
     <div class="flex gap-2 w-max pb-0.5">
       ${SPREADS.map((s) => html`<button data-spread=${s.id} aria-pressed=${spreadId === s.id} class=${`shrink-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition active:scale-95 ${spreadId === s.id ? "border-secondary bg-secondary/15 text-secondary" : "border-base-300 bg-base-100 text-base-content/75"}`} onClick=${() => onPick(s.id)} key=${s.id}>
         <span class="text-xs font-medium whitespace-nowrap">${T(t, SPREAD_KEY[s.id])}</span>
@@ -109,10 +115,10 @@ function Header({ t, spreadId, isDaily, onShuffle, onRitual }) {
   </div>`;
 }
 
-function FitReading({ rows, drawn, pos, t, loc, onOpen }) {
+function FitReading({ rows, drawn, pos, t, loc, onOpen, swipe }) {
   const maxCols = Math.max(...rows.map((r) => r.length));
   const wpct = (94 / maxCols).toFixed(2);
-  return html`<div data-reading class="flex-1 min-h-0 overflow-hidden flex flex-col gap-2">
+  return html`<div data-reading ...${swipe || {}} class="flex-1 min-h-0 overflow-hidden flex flex-col gap-2">
     ${rows.map((row, ri) => html`<div class="flex-1 min-h-0 flex justify-center items-stretch gap-2" key=${ri}>
       ${row.map((pi) => html`<${FitTile} d=${drawn[pi]} pos=${pos[pi]} t=${t} loc=${loc} wpct=${wpct} onOpen=${() => onOpen(pi)} key=${pi} />`)}
     </div>`)}
@@ -191,11 +197,13 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
 
   const drawNow = () => { onDraw(hashSeed(`${S.color}|${S.num}`) >>> 0); };   
   const col = RIT_COLORS[color];
+  const { boxRef, grip } = useSheetDrag(onClose);   
 
   return html`<dialog id="ritual" ref=${dref} class="modal" onClose=${onClose}>
-    <div class="modal-box max-w-none w-screen h-[100dvh] max-h-none rounded-none p-0 bg-base-100 overflow-hidden relative">
+    <div ref=${boxRef} class="modal-box max-w-none w-screen h-[100dvh] max-h-none rounded-none p-0 bg-base-100 overflow-hidden relative">
       <canvas ref=${cref} data-live aria-hidden="true" class="absolute inset-0 w-full h-full"></canvas>
-      <div class="relative z-10 flex flex-col h-full px-5" style="padding-top:calc(env(safe-area-inset-top) + 1rem);padding-bottom:calc(env(safe-area-inset-bottom) + 1.25rem)">
+      <div class="relative z-10 flex flex-col h-full px-5" style="padding-top:calc(env(safe-area-inset-top) + 0.5rem);padding-bottom:calc(env(safe-area-inset-bottom) + 1.25rem)">
+        ${grip}
         <div class="flex items-center justify-between">
           <div>
             <div class="text-[0.62rem] font-mono uppercase tracking-[0.16em] text-base-content/60">${T(t, "ritual")}</div>
@@ -262,10 +270,11 @@ function CardSheet({ open, onClose, d, pos, t, loc }) {
   const ref = useRef();
   useStore(trTick);
   useEffect(() => { const el = ref.current; if (!el) return; if (open) { if (!el.open) el.showModal?.(); } else el.close?.(); }, [open]);
+  const { boxRef, grip } = useSheetDrag(onClose);
   const c = d ? DECK[d.card] : null;
   const kind = c ? (c.arcana === "major" ? T(t, "arcanaMajor") : `${T(t, "arcanaMinor")} · ${T(t, SUIT_KEY[c.suit])}`) : "";
   return html`<dialog id="cardsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}>
-    <div class="modal-box rounded-t-3xl pb-8 max-w-xl mx-auto">
+    <div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 max-w-xl mx-auto">${grip}
       ${c ? html`<div class="flex flex-col items-center gap-4">
         <div class="text-[0.6rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${T(t, pos)}</div>
         <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-40 aspect-[350/600] object-cover rounded-xl border border-base-300 shadow-lg ${d.reversed ? "rotate-180" : ""}`} />

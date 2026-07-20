@@ -33,6 +33,21 @@ export default [
     },
   },
   {
+    name: "ритуал: відкриття, Back закриває, витягування розкриває карти", run: async (h) => {
+      await h.click('[data-spread="ppf"]'); await h.wait(150);
+      await h.click("[data-ritual]"); await h.wait(200);
+      h.expect((await h.prop("#ritual", "open")) === true, "ритуал не відкрився");
+      await h.back(); await h.wait(200);
+      h.expect((await h.prop("#ritual", "open")) !== true, "Back не закрив ритуал");
+      await h.click("[data-ritual]"); await h.wait(200);
+      await h.click('[data-color="2"]'); await h.wait(100);
+      await h.click("[data-draw]"); await h.wait(250);
+      h.expect((await h.prop("#ritual", "open")) !== true, "ритуал не закрився після витягування");
+      h.expect((await h.count("[data-card]")) === 3, "карти не розкрились після ритуалу");
+      await h.click('[data-spread="daily"]'); await h.wait(120);
+    },
+  },
+  {
     name: "card detail: аркуш історія-backed (Back закриває)", run: async (h) => {
       await h.click("[data-card]"); await h.wait(200);
       h.expect((await h.prop("#cardsheet", "open")) === true, "аркуш карти не відкрився");

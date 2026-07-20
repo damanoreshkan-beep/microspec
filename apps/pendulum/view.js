@@ -107,11 +107,12 @@ export function pendulum({ S }) {
   const poleStyle = (w) => `opacity:${(0.6 + 0.4 * w).toFixed(3)};color:${w >= 0.5 ? "var(--color-accent)" : "inherit"}`;
 
   return html`<${Fragment}>
-    <!-- ambient full-screen pendulum, behind the content -->
-    <div data-stage class="fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
+    <!-- ambient full-screen pendulum, behind the content (z-0 sits above the body's opaque background;
+         the content layer below is relative z-10, so it paints on top) -->
+    <div data-stage class="fixed inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden="true">
       <div ref=${armRef} style=${`position:absolute;left:50%;top:${PIVOT};transform-origin:top center;transform:rotate(${init.angle.toFixed(2)}deg);will-change:transform`}>
-        <div style="position:absolute;top:-5px;left:-5px;width:10px;height:10px;border-radius:9999px;background:var(--color-base-content);opacity:0.3"></div>
-        <div style=${`width:2px;height:${ARM};margin-left:-1px;border-radius:2px;background:linear-gradient(to bottom, transparent, color-mix(in oklch, var(--color-base-content) 62%, transparent));opacity:0.16`}></div>
+        <div style="position:absolute;top:-5px;left:-5px;width:10px;height:10px;border-radius:9999px;background:var(--color-base-content);opacity:0.35"></div>
+        <div style=${`width:2px;height:${ARM};margin-left:-1px;border-radius:2px;background:linear-gradient(to bottom, transparent, color-mix(in oklch, var(--color-base-content) 70%, transparent));opacity:0.24`}></div>
         <div data-bob style=${`position:absolute;top:${ARM};left:0;width:6.5rem;height:6.5rem;transform:translate(-50%,-50%);border-radius:9999px;background:radial-gradient(circle at 50% 42%, color-mix(in oklch, var(--color-primary) 82%, transparent) 0%, color-mix(in oklch, var(--color-accent) 52%, transparent) 40%, transparent 68%)`}></div>
       </div>
     </div>

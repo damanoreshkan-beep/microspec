@@ -42,63 +42,74 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const pickSpread = (id) => { setSpreadId(id); };
   const shuffle = () => setNonce((n) => n + 1);
 
+  const isDaily = spread.pos.length === 1;
+  const rows = spread.rows || defaultRows(spread.pos.length);
+
   return html`<${Fragment}>
-    <div class="flex flex-col gap-5">
-      <!-- spread picker -->
-      <div>
-        <div class="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-base-content/45 mb-2">${T(t, "pickSpread")}</div>
-        <div class="grid grid-cols-2 gap-2">
-          ${SPREADS.map((s) => html`<button data-spread=${s.id} aria-pressed=${spreadId === s.id} class=${`flex items-center justify-between gap-2 min-w-0 rounded-2xl border p-3 text-left transition active:scale-[.98] ${spreadId === s.id ? "border-secondary bg-secondary/10 text-secondary" : "border-base-300 bg-base-100 text-base-content/80"}`} onClick=${() => pickSpread(s.id)} key=${s.id}>
-            <span class="min-w-0 break-words text-sm font-medium leading-tight">${T(t, SPREAD_KEY[s.id])}</span>
-            <span class=${`text-[0.7rem] font-mono tabular-nums shrink-0 ${spreadId === s.id ? "text-secondary/80" : "text-base-content/70"}`}>${s.pos.length}</span>
-          </button>`)}
-        </div>
-      </div>
-
-      <!-- reading header + shuffle (shuffle hidden for the day's fixed card). The description says, plainly,
-           what question the spread answers — that's content, like a card's meaning, not a UI hint. -->
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>
-          <p class="mt-1 text-[0.8rem] leading-snug text-base-content/55 break-words">${T(t, DESC_KEY[spreadId])}</p>
-        </div>
-        ${spreadId !== "daily" ? html`<button data-shuffle class="btn btn-sm btn-ghost gap-1.5 rounded-full border border-base-300 shrink-0" onClick=${shuffle}>${Icon("lucide:shuffle", "text-base")}<span class="text-xs">${T(t, "redraw")}</span></button>` : null}
-      </div>
-
-      <!-- reading -->
-      ${spread.pos.length === 1
-      ? html`<${Solo} d=${drawn[0]} pos=${spread.pos[0]} t=${t} loc=${loc} onOpen=${() => openCard(0)} />`
-      : spread.rows
-      ? html`<${Rows} rows=${spread.rows} drawn=${drawn} pos=${spread.pos} seed=${seed} t=${t} loc=${loc} onOpen=${openCard} />`
-      : html`<div data-reading class=${`grid ${spread.pos.length === 3 ? "grid-cols-3" : "grid-cols-2"} gap-x-3 gap-y-4`}>
-          ${drawn.map((d, i) => html`<${Tile} d=${d} pos=${spread.pos[i]} t=${t} loc=${loc} onOpen=${() => openCard(i)} key=${`${seed}-${i}`} />`)}
+    ${isDaily
+      ? html`<div class="flex flex-col gap-4">
+          <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
+          <${Header} t=${t} spreadId=${spreadId} isDaily=${true} />
+          <${Solo} d=${drawn[0]} pos=${spread.pos[0]} t=${t} loc=${loc} onOpen=${() => openCard(0)} />
+        </div>`
+      : html`<div class="flex flex-col gap-2.5 h-[calc(100dvh-11.5rem)] min-h-0">
+          <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
+          <${Header} t=${t} spreadId=${spreadId} isDaily=${false} onShuffle=${shuffle} />
+          <${FitReading} rows=${rows} drawn=${drawn} pos=${spread.pos} t=${t} loc=${loc} onOpen=${openCard} />
         </div>`}
-    </div>
 
     <${CardSheet} open=${screen === "card"} onClose=${closeScreen} d=${drawn[detail]} pos=${spread.pos[detail]} t=${t} loc=${loc} />
   </${Fragment}>`;
 }
 
-function Tile({ d, pos, t, loc, onOpen }) {
-  const c = DECK[d.card];
-  return html`<button data-card class="flex flex-col gap-1.5 text-center active:scale-[.98] transition" onClick=${onOpen}>
-    <div class="text-[0.58rem] font-mono uppercase tracking-wide text-base-content/45 truncate">${T(t, pos)}</div>
-    <img src=${imgURL(c.img)} alt=${cardName(c, loc)} loading="lazy" class=${`w-full aspect-[350/600] object-cover rounded-lg border border-base-300 shadow ${d.reversed ? "rotate-180" : ""}`} />
-    <div class="text-xs font-medium leading-tight line-clamp-2 min-h-[2rem] break-words">${cardName(c, loc)}</div>
-    <div class=${`text-[0.6rem] ${d.reversed ? "text-warning" : "text-base-content/45"}`}>${T(t, d.reversed ? "reversed" : "upright")}</div>
-  </button>`;
+const seq = (a, b) => Array.from({ length: b - a }, (_, i) => a + i);
+function defaultRows(n) {
+  if (n <= 4) return [seq(0, n)];
+  const per = Math.ceil(n / Math.ceil(n / 4));
+  const rows = [];
+  for (let i = 0; i < n; i += per) rows.push(seq(i, Math.min(i + per, n)));
+  return rows;
 }
 
-function Rows({ rows, drawn, pos, seed, t, loc, onOpen }) {
+function Picker({ t, spreadId, onPick }) {
+  return html`<div class="shrink-0 -mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div class="flex gap-2 w-max pb-0.5">
+      ${SPREADS.map((s) => html`<button data-spread=${s.id} aria-pressed=${spreadId === s.id} class=${`shrink-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition active:scale-95 ${spreadId === s.id ? "border-secondary bg-secondary/15 text-secondary" : "border-base-300 bg-base-100 text-base-content/75"}`} onClick=${() => onPick(s.id)} key=${s.id}>
+        <span class="text-xs font-medium whitespace-nowrap">${T(t, SPREAD_KEY[s.id])}</span>
+        <span class="text-[0.6rem] font-mono tabular-nums opacity-70">${s.pos.length}</span>
+      </button>`)}
+    </div>
+  </div>`;
+}
+
+function Header({ t, spreadId, isDaily, onShuffle }) {
+  return html`<div class="shrink-0 flex items-start justify-between gap-3">
+    <div class="min-w-0">
+      <div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>
+      <p class="mt-0.5 text-[0.78rem] leading-snug text-base-content/55 break-words line-clamp-2">${T(t, DESC_KEY[spreadId])}</p>
+    </div>
+    ${!isDaily ? html`<button data-shuffle class="btn btn-sm btn-ghost gap-1.5 rounded-full border border-base-300 shrink-0" onClick=${onShuffle}>${Icon("lucide:shuffle", "text-base")}<span class="text-xs">${T(t, "redraw")}</span></button>` : null}
+  </div>`;
+}
+
+function FitReading({ rows, drawn, pos, t, loc, onOpen }) {
   const maxCols = Math.max(...rows.map((r) => r.length));
-  const w = `calc(${(100 / maxCols).toFixed(4)}% - 0.75rem)`;
-  return html`<div data-reading class="flex flex-col gap-4">
-    ${rows.map((row, ri) => html`<div class="flex justify-center gap-3" key=${ri}>
-      ${row.map((pi) => html`<div style=${`width:${w}`} key=${`${seed}-${pi}`}>
-        <${Tile} d=${drawn[pi]} pos=${pos[pi]} t=${t} loc=${loc} onOpen=${() => onOpen(pi)} />
-      </div>`)}
+  const wpct = (94 / maxCols).toFixed(2);
+  return html`<div data-reading class="flex-1 min-h-0 overflow-hidden flex flex-col gap-2">
+    ${rows.map((row, ri) => html`<div class="flex-1 min-h-0 flex justify-center items-stretch gap-2" key=${ri}>
+      ${row.map((pi) => html`<${FitTile} d=${drawn[pi]} pos=${pos[pi]} t=${t} loc=${loc} wpct=${wpct} onOpen=${() => onOpen(pi)} key=${pi} />`)}
     </div>`)}
   </div>`;
+}
+
+function FitTile({ d, pos, t, loc, wpct, onOpen }) {
+  const c = DECK[d.card];
+  return html`<button data-card class="h-full min-h-0 flex flex-col items-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
+    <div class="min-h-0 flex-1 flex items-center justify-center w-full">
+      <img src=${imgURL(c.img)} alt="" loading="lazy" class=${`max-h-full max-w-full w-auto h-auto object-contain rounded-md border border-base-300 shadow-sm ${d.reversed ? "rotate-180" : ""}`} />
+    </div>
+    <div class="shrink-0 text-[0.5rem] font-mono uppercase tracking-wide text-base-content/50 truncate max-w-full leading-tight">${T(t, pos)}</div>
+  </button>`;
 }
 
 function Solo({ d, pos, t, loc, onOpen }) {

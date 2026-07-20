@@ -25,7 +25,7 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const loc = useStore(S.locale);
   useStore(trTick);                                              
-  const [spreadId, setSpreadId] = useState(SPREADS.some((s) => s.id === SPREAD_OVERRIDE) ? SPREAD_OVERRIDE : "star");
+  const [spreadId, setSpreadId] = useState(SPREADS.some((s) => s.id === SPREAD_OVERRIDE) ? SPREAD_OVERRIDE : "daily");
   const [nonce, setNonce] = useState(0);                         
   const [detail, setDetail] = useState(0);                       
   const liveBase = useRef(randSeed()).current;                   

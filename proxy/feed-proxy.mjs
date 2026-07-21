@@ -2,8 +2,6 @@ import http from "node:http";
 import dns from "node:dns/promises";
 
 const PORT = Number(process.env.PORT) || 8787;
-const BFL_KEY = process.env.BFL_KEY || "";
-const FLUX_CREATE = "https://api.bfl.ai/v1/flux-2-pro-preview";
 const ALLOW_ORIGIN = new Set(["https://damanoreshkan-beep.github.io"]);
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
@@ -25,7 +23,6 @@ const IMG_SPACES = [
 const IMG_TTL = 7 * 86400_000;
 const imgCache = new Map();                                      
 const ALLOW = [/(^|\.)dou\.ua$/i, /(^|\.)wikipedia\.org$/i, /(^|\.)gutendex\.com$/i, /(^|\.)chocolatey\.org$/i];
-const ALLOW_FLUX = [/(^|\.)bfl\.ai$/i, /(^|\.)bfl\.ml$/i];
 const UA ="Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
 const UA_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36";
@@ -306,38 +303,6 @@ const server = http.createServer(async (req, res) => {
     return send(res, 502, CORS, "all providers failed");
   }
 
-  if (p === "/feed/flux" && req.method === "POST") {
-    if (!BFL_KEY) return send(res, 500, CORS, "no key configured");
-    const origin = req.headers.origin || "";
-    if (!ALLOW_ORIGIN.has(origin)) return send(res, 403, CORS, "origin not allowed");
-    if (!rateOk(ipOf(req))) return send(res, 429, CORS, "rate limited");
-    let inp;
-    try { inp = JSON.parse(await readBody(req)); } catch { return send(res, 400, CORS, "bad json"); }
-    const prompt = String(inp.prompt || "").slice(0, 4000).trim();
-    if (!prompt) return send(res, 400, CORS, "empty prompt");
-    const body = { prompt, output_format: inp.output_format === "png" ? "png" : "jpeg", safety_tolerance: 2 };
-    if (Number.isInteger(inp.width)) body.width = inp.width;
-    if (Number.isInteger(inp.height)) body.height = inp.height;
-    if (Number.isInteger(inp.seed)) body.seed = inp.seed;
-    try {
-      const r = await fetch(FLUX_CREATE, { method: "POST", headers: { "content-type": "application/json", accept: "application/json", "x-key": BFL_KEY }, body: JSON.stringify(body) });
-      return send(res, r.status, { ...CORS, "content-type": "application/json" }, await r.text());
-    } catch { return send(res, 502, CORS, "upstream error"); }
-  }
-
-  if (p === "/feed/flux/get" && req.method === "GET") {
-    const target = u.searchParams.get("url");
-    let host; try { host = new URL(target).hostname; } catch { return send(res, 400, CORS, "bad url"); }
-    if (!ALLOW_FLUX.some((re) => re.test(host))) return send(res, 403, CORS, "host not allowed");
-    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 20000);
-    try {
-      const r = await fetch(target, { headers: { "user-agent": UA }, signal: ctrl.signal, redirect: "follow" });
-      const ab = await r.arrayBuffer();
-      send(res, r.status, { ...CORS, "content-type": r.headers.get("content-type") || "application/octet-stream" }, Buffer.from(ab));
-    } catch { send(res, 502, CORS, "upstream error"); }
-    finally { clearTimeout(t); }
-    return;
-  }
 
   if (p === "/feed/horoscope" && req.method === "GET") {
     const sign = Number(u.searchParams.get("sign")), day = String(u.searchParams.get("day") || "today");

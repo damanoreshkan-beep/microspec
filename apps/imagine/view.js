@@ -4,12 +4,12 @@ import { useState, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
-import { fitResolution } from "/_rt/imgsize.js";
 import { gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const randSeed = () => Math.floor(Math.random() * 1e9);
+const W = 768, H = 1024;
 
 function mockArt(seed) {
   let s = (seed >>> 0) || 1;
@@ -26,10 +26,9 @@ function mockArt(seed) {
 
 export function imagine({ S, toast }) {
   const t = useStore(S.t);
-  const dim = fitResolution(typeof innerWidth !== "undefined" ? innerWidth : 390, typeof innerHeight !== "undefined" ? innerHeight : 844, typeof devicePixelRatio !== "undefined" ? devicePixelRatio : 2, 4);
   const [prompt, setPrompt] = useState(gate ? "northern lights over a frozen lake, cinematic, ultra detailed" : "");
   const [phase, setPhase] = useState(gate ? "done" : "idle");                    
-  const [result, setResult] = useState(gate ? { url: mockArt(7), w: dim.width, h: dim.height, seed: 7 } : null);
+  const [result, setResult] = useState(gate ? { url: mockArt(7), w: W, h: H, seed: 7 } : null);
   const [error, setError] = useState(null);
   const runRef = useRef(0);                                                       
 
@@ -38,34 +37,30 @@ export function imagine({ S, toast }) {
   const generate = async () => {
     const p = prompt.trim();
     if (!p || phase === "generating") return;
-    const seed = randSeed(), { width, height } = dim, run = ++runRef.current;
-    setError(null); setResult(null); setPhase("generating");
-    if (gate) { await sleep(90); if (run === runRef.current) { setResult({ url: mockArt(seed), w: width, h: height, seed }); setPhase("done"); } return; }
+    const seed = randSeed(), run = ++runRef.current;
+    setError(null);
+    if (result?.url?.startsWith?.("blob:")) URL.revokeObjectURL(result.url);      
+    setResult(null); setPhase("generating");
+    if (gate) { await sleep(90); if (run === runRef.current) { setResult({ url: mockArt(seed), w: W, h: H, seed }); setPhase("done"); } return; }
     try {
-      const cr = await fetch(`${VPS_PROXY}/flux`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: p, width, height, seed, output_format: "jpeg" }) });
-      if (cr.status === 402) return fail(run, "eCredits");
-      if (cr.status === 429) return fail(run, "eRate");
-      if (!cr.ok) return fail(run, "eFailed");
-      const j = await cr.json();
-      if (!j.polling_url) return fail(run, "eFailed");
-      for (let i = 0; i < 80; i++) {                                             
-        await sleep(1500);
-        if (run !== runRef.current) return;
-        let pj; try { pj = await (await fetch(`${VPS_PROXY}/flux/get?url=${encodeURIComponent(j.polling_url)}`)).json(); } catch { continue; }
-        if (pj.status === "Ready" && pj.result?.sample) { if (run === runRef.current) { setResult({ url: pj.result.sample, w: width, h: height, seed }); setPhase("done"); } return; }
-        if (pj.status === "Error" || pj.status === "Failed") return fail(run, "eFailed");
-      }
-      fail(run, "eTimeout");
-    } catch { fail(run, "eNetwork"); }
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 115000);
+      const r = await fetch(`${VPS_PROXY}/image?prompt=${encodeURIComponent(p)}&w=${W}&h=${H}&seed=${seed}`, { signal: ctrl.signal });
+      clearTimeout(to);
+      if (run !== runRef.current) return;
+      if (!r.ok) return fail(run, r.status === 429 ? "eRate" : "eFailed");
+      const blob = await r.blob();
+      if (run !== runRef.current) return;
+      if (!blob.type.startsWith("image/")) return fail(run, "eFailed");
+      setResult({ url: URL.createObjectURL(blob), w: W, h: H, seed });
+      setPhase("done");
+    } catch (e) { fail(run, e && e.name === "AbortError" ? "eTimeout" : "eNetwork"); }
   };
 
-  const save = async () => {
+  const save = () => {
     if (!result?.url) return;
     try {
-      const src = gate ? result.url : `${VPS_PROXY}/flux/get?url=${encodeURIComponent(result.url)}`;
-      const blob = await (await fetch(src)).blob();
-      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `imagine-${result.seed}.jpg`;
-      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 8000);
+      const a = document.createElement("a"); a.href = result.url; a.download = `imagine-${result.seed}.jpg`;
+      document.body.appendChild(a); a.click(); a.remove();
       toast?.(T(t, "saved"));
     } catch { toast?.(T(t, "eNetwork")); }
   };

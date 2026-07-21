@@ -15,6 +15,8 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { tr, warm, trTick } from "/_rt/translate.js";
+import { summary, warmSummary, isSummarized, aiTick } from "/_rt/ai.js";
+import { Scramble } from "/_rt/skeleton.js";
 import { SPREADS, spreadById, hashSeed, draw } from "/_rt/tarot.js";
 import { DECK } from "./deck.js";
 import { gate } from "/_rt/gate.js";
@@ -38,6 +40,7 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const loc = useStore(S.locale);
   useStore(trTick);                                              // re-render as translations land
+  useStore(aiTick);                                             // …and as the AI synthesis of the spread lands
   const [spreadId, setSpreadId] = useState(SPREADS.some((s) => s.id === SPREAD_OVERRIDE) ? SPREAD_OVERRIDE : "daily");
   const [nonce, setNonce] = useState(0);                         // bumped on quick shuffle → fresh draw
   const [override, setOverride] = useState(null);                // the seed from a completed ritual
@@ -51,6 +54,13 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
     : ((gate ? 0 : liveBase) ^ hashSeed(spreadId + ":" + nonce)) >>> 0;
   const drawn = draw(seed, spread.pos.length, spread.majorOnly ? 22 : 78);
   const isDaily = spread.pos.length === 1;
+
+  // Systemic AI synthesis of a multi-card spread: gather the structured facts (position · card · orientation ·
+  // meaning) into one block, keyed by a stable signature of THIS draw so the same spread hits cache. The short
+  // reading is produced on demand (when the synthesis sheet opens), never per shuffle — see SynthSheet.
+  const drawSig = spreadId + "|" + drawn.map((d) => d.card + (d.reversed ? "r" : "u")).join(",");
+  const synthText = `${T(t, SPREAD_KEY[spreadId])} — ${T(t, DESC_KEY[spreadId])}\n` +
+    drawn.map((d, i) => `${i + 1}. ${T(t, spread.pos[i])}: ${cardName(DECK[d.card], loc)} (${T(t, d.reversed ? "reversed" : "upright")}) — ${meaningOf(d)}`).join("\n");
 
   useEffect(() => { setOverride(null); }, [spreadId]);           // a new spread starts fresh
   // translate the meanings actually shown (chosen orientation) into the active locale
@@ -88,12 +98,13 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
       // any multi-card spread: the WHOLE structure fits the screen — cards shrink to fit, no page scroll.
       : html`<div class="flex flex-col gap-2.5 h-[calc(100dvh-11.5rem)] min-h-0 overflow-hidden">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
-          <${Header} t=${t} spreadId=${spreadId} isDaily=${false} onShuffle=${shuffle} onRitual=${openRitual} />
+          <${Header} t=${t} spreadId=${spreadId} isDaily=${false} onShuffle=${shuffle} onRitual=${openRitual} onSynth=${() => openScreen("synth")} />
           <${FitReading} rows=${rows} drawn=${drawn} pos=${spread.pos} t=${t} loc=${loc} onOpen=${openCard} paneRef=${paneRef} pan=${pan} />
         </div>`}
 
     <${Ritual} open=${screen === "ritual"} onClose=${closeScreen} onDraw=${completeRitual} deckLen=${spread.majorOnly ? 22 : 78} t=${t} loc=${loc} spreadName=${T(t, SPREAD_KEY[spreadId])} />
     <${CardSheet} open=${screen === "card"} onClose=${closeScreen} d=${drawn[detail]} pos=${spread.pos[detail]} t=${t} loc=${loc} />
+    <${SynthSheet} open=${screen === "synth"} onClose=${closeScreen} sig=${drawSig} input=${synthText} t=${t} loc=${loc} spreadName=${T(t, SPREAD_KEY[spreadId])} />
   </${Fragment}>`;
 }
 
@@ -123,17 +134,58 @@ function Picker({ t, spreadId, onPick }) {
 }
 
 // title + one-line description + a quick shuffle and the Ritual (charged draw). Both hidden for the day's card.
-function Header({ t, spreadId, isDaily, onShuffle, onRitual }) {
+function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
   return html`<div class="shrink-0 flex items-start justify-between gap-3">
     <div class="min-w-0">
       <div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>
       <p class="mt-0.5 text-[0.78rem] leading-snug text-base-content/55 break-words line-clamp-2">${T(t, DESC_KEY[spreadId])}</p>
     </div>
     ${!isDaily ? html`<div class="shrink-0 flex items-center gap-1.5">
+      <button data-synth aria-label=${T(t, "synthTitle")} class="btn btn-sm btn-ghost btn-circle border border-base-300" onClick=${onSynth}>${Icon("lucide:scroll-text", "text-base")}</button>
       <button data-shuffle aria-label=${T(t, "redraw")} class="btn btn-sm btn-ghost btn-circle border border-base-300" onClick=${onShuffle}>${Icon("lucide:shuffle", "text-base")}</button>
       <button data-ritual class="btn btn-sm btn-secondary gap-1.5 rounded-full" onClick=${onRitual}>${Icon("lucide:sparkles", "text-base")}<span class="text-xs font-semibold">${T(t, "ritual")}</span></button>
     </div>` : null}
   </div>`;
+}
+
+// The AI reading of the whole spread — history-backed sheet (Back closes). Opens → the systemic summarize
+// synthesises the structured draw into one short reading in the active locale; a skeleton animates until it
+// lands, then it reveals. On-demand (not per shuffle) to respect the free quota; cached per draw. Under the
+// gate a fixed reading renders so the shot + e2e are deterministic and offline. Fail-open.
+const GATE_SUMMARY = { uk: "Розклад радить довіритися внутрішньому чуттю: минуле поступово відпускає, теперішнє прояснюється, а майбутнє винагородить терпіння й чесність із собою. Дій виважено — рівновага вже поруч.", en: "The spread counsels trust in your own instinct: the past is loosening its grip, the present is clearing, and the future rewards patience and honesty with yourself. Move deliberately — the balance you seek is already near." };
+function SynthSheet({ open, onClose, sig, input, t, loc, spreadName }) {
+  const ref = useRef();
+  useStore(aiTick);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { const el = ref.current; if (!el) return; if (open) { if (!el.open) el.showModal?.(); } else el.close?.(); }, [open]);
+  // Request the synthesis; fail-open — if it hasn't landed in ~12s (offline / the free tier rate-limited), stop
+  // the skeleton and offer a retry rather than spinning forever (the RPM window clears within ~a minute).
+  const run = () => { setFailed(false); warmSummary(sig, input, loc); return setTimeout(() => setFailed(!isSummarized(sig, loc)), 12000); };
+  useEffect(() => {
+    if (!open || gate || isSummarized(sig, loc)) return;
+    const timer = run();
+    return () => clearTimeout(timer);
+  }, [open, sig, loc]);
+  const { boxRef, grip } = useSheetDrag(onClose);
+  const done = gate || isSummarized(sig, loc);
+  const text = gate ? (GATE_SUMMARY[loc] || GATE_SUMMARY.en) : summary(sig, loc);
+  return html`<dialog id="synthsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}>
+    <div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 max-w-xl mx-auto">${grip}
+      <div class="flex items-center gap-2 mb-3">
+        ${Icon("lucide:scroll-text", "text-secondary")}
+        <div class="min-w-0">
+          <div class="font-bold text-lg leading-tight truncate">${T(t, "synthTitle")}</div>
+          <div class="text-[0.68rem] font-mono uppercase tracking-wide text-base-content/50 truncate">${spreadName}</div>
+        </div>
+      </div>
+      ${done
+        ? html`<p data-synth-text class="text-[0.97rem] leading-relaxed text-base-content/90">${text}</p>`
+        : failed
+          ? html`<button data-synth-retry class="btn btn-sm btn-ghost gap-2 border border-base-300 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "synthRetry")}</span></button>`
+          : html`<div class="flex flex-col gap-2 text-base-content/55">${[30, 34, 28, 20].map((n, i) => html`<div class="text-[0.95rem]" key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>${T(t, "close")}</button></form>
+  </dialog>`;
 }
 
 // The reading, fit to the viewport: rows share the height (flex-1) and each card scales to the smaller of

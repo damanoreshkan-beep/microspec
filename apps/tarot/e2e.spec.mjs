@@ -48,6 +48,17 @@ export default [
     },
   },
   {
+    name: "AI-тлумачення розкладу: аркуш історія-backed (Back закриває), рендерить текст", run: async (h) => {
+      await h.click('[data-spread="ppf"]'); await h.wait(150);
+      await h.click("[data-synth]"); await h.wait(200);
+      h.expect((await h.prop("#synthsheet", "open")) === true, "аркуш тлумачення не відкрився");
+      h.expect((await h.text("[data-synth-text]")).trim().length > 40, "порожнє тлумачення розкладу");
+      await h.back(); await h.wait(200);
+      h.expect((await h.prop("#synthsheet", "open")) !== true, "Back не закрив аркуш тлумачення");
+      await h.click('[data-spread="daily"]'); await h.wait(120);
+    },
+  },
+  {
     name: "card detail: аркуш історія-backed (Back закриває)", run: async (h) => {
       await h.click("[data-card]"); await h.wait(200);
       h.expect((await h.prop("#cardsheet", "open")) === true, "аркуш карти не відкрився");

@@ -1,14 +1,14 @@
 
-function keyOf(item) {
-  const u = (item && (item.orig || item.video)) || "";
-  try { const x = new URL(u); return x.origin + x.pathname; } catch { return u; }
-}
+const norm = (u) => { try { const x = new URL(u); return x.origin + x.pathname; } catch { return u || ""; } };
 
 export function dedupeVideos(items) {
   const seen = new Set(), out = [];
   for (const it of (Array.isArray(items) ? items : [])) {
-    const k = keyOf(it);
-    if (k) { if (seen.has(k)) continue; seen.add(k); }
+    const vk = norm((it && (it.orig || it.video)) || "");
+    const pk = it && it.poster ? norm(it.poster) : "";
+    if ((vk && seen.has("v:" + vk)) || (pk && seen.has("p:" + pk))) continue;
+    if (vk) seen.add("v:" + vk);
+    if (pk) seen.add("p:" + pk);
     out.push(it);
   }
   return out;

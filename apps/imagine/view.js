@@ -5,12 +5,14 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
+import { QUALITY, sizeFor, estimateSeconds } from "/_rt/imgsize.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const randSeed = () => Math.floor(Math.random() * 1e9);
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;   
-const W = 768, H = 1024;
+const HI = QUALITY.length - 1;
+const { width: W, height: H } = sizeFor(QUALITY[HI]);                            
 
 function mockArt(seed) {
   let s = (seed >>> 0) || 1;
@@ -32,7 +34,11 @@ export function imagine({ S, toast }) {
   const [result, setResult] = useState(gate ? { url: mockArt(7), w: W, h: H, seed: 7 } : null);
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);                                      
+  const [q, setQ] = useState(HI);                                                 
   const runRef = useRef(0);                                                       
+
+  const { width, height } = sizeFor(QUALITY[q]);                                  
+  const est = estimateSeconds(width, height);                                     
 
   const fail = (run, key) => { if (run === runRef.current) { setError(key); setPhase("error"); } };
 
@@ -43,9 +49,10 @@ export function imagine({ S, toast }) {
     setError(null); setElapsed(0);
     if (result?.url?.startsWith?.("blob:")) URL.revokeObjectURL(result.url);      
     setResult(null); setPhase("generating");
-    if (gate) { await sleep(90); if (run === runRef.current) { setResult({ url: mockArt(seed), w: W, h: H, seed }); setPhase("done"); } return; }
+    const w = width, h = height;                                                  
+    if (gate) { await sleep(90); if (run === runRef.current) { setResult({ url: mockArt(seed), w, h, seed }); setPhase("done"); } return; }
     try {
-      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: p, width: W, height: H, seed }) });
+      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: p, width: w, height: h, seed }) });
       if (run !== runRef.current) return;
       if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : "eFailed");
       const { job } = await cr.json();
@@ -60,7 +67,7 @@ export function imagine({ S, toast }) {
         if ((pr.headers.get("content-type") || "").startsWith("image/")) {
           const blob = await pr.blob();
           if (run !== runRef.current) return;
-          setResult({ url: URL.createObjectURL(blob), w: W, h: H, seed }); setPhase("done"); return;
+          setResult({ url: URL.createObjectURL(blob), w, h, seed }); setPhase("done"); return;
         }
         let j; try { j = await pr.json(); } catch { continue; }
         if (j.status === "error") return fail(run, "eFailed");
@@ -89,8 +96,8 @@ export function imagine({ S, toast }) {
       ${phase === "generating" ? html`<${Fragment}>
         <div class="absolute inset-0 animate-pulse" style="background:linear-gradient(120deg,#141416,#241f36,#141416)"></div>
         <div class="relative z-10 flex flex-col items-center gap-3 w-56 max-w-[70%]">
-          <div data-gen class="font-mono text-sm uppercase tracking-wide text-base-content/70 tabular-nums">${T(t, "eGenerating")} ${fmt(elapsed)}</div>
-          <div class="w-full h-1 rounded-full bg-base-content/15 overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / 0.6))}%`}></div></div>
+          <div data-gen class="font-mono text-sm uppercase tracking-wide text-base-content/70 tabular-nums">${T(t, "eGenerating")} ${fmt(elapsed)}<span class="text-base-content/40"> / ~${fmt(est)}</span></div>
+          <div class="w-full h-1 rounded-full bg-base-content/15 overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / Math.max(1, est) * 100))}%`}></div></div>
         </div>
       </${Fragment}>` : null}
       ${phase === "idle" ? html`<div class="text-base-content/20">${Icon("lucide:sparkles", "text-5xl")}</div>` : null}
@@ -99,6 +106,14 @@ export function imagine({ S, toast }) {
 
     <div class="shrink-0 bg-base-100 border-t border-base-300 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
       <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-base-content/70 shrink-0">${Icon("lucide:sliders-horizontal", "text-[0.9em]")}<span>${T(t, "quality")}</span></div>
+        <input data-quality type="range" min="0" max=${QUALITY.length - 1} step="1" value=${q} aria-label=${T(t, "quality")} disabled=${phase === "generating"} onInput=${(e) => setQ(Number(e.target.value))} class="range range-xs range-primary flex-1" />
+        <div class="flex items-center gap-2 font-mono text-[0.65rem] tabular-nums text-base-content/70 shrink-0">
+          <span data-size>${width}×${height}</span>
+          <span data-estimate class="flex items-center gap-0.5">${Icon("lucide:clock", "text-[0.95em] opacity-80")}~${fmt(est)}</span>
+        </div>
+      </div>
       <div class="flex gap-2">
         <button id="go" data-go class="btn btn-primary flex-1 rounded-2xl gap-2" disabled=${phase === "generating" || !prompt.trim()} onClick=${generate}>${Icon("lucide:sparkles", "text-lg")}${T(t, phase === "done" || phase === "error" ? "again" : "generate")}</button>
         ${phase === "done" && result ? html`<button data-save class="btn btn-outline rounded-2xl gap-2 shrink-0" onClick=${save}>${Icon("lucide:download", "text-lg")}${T(t, "save")}</button>` : null}

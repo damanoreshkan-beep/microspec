@@ -22,6 +22,18 @@ export default [
     },
   },
   {
+    name: "повзунок якості змінює розмір і естімейт", run: async (h) => {
+      await ready(h);
+      const sizeHi = await h.text("[data-size]"), estHi = await h.text("[data-estimate]");
+      h.expect(/×/.test(sizeHi), "немає читання розміру");
+      await h.type("[data-quality]", "0");                                        
+      await h.wait(150);
+      const sizeLo = await h.text("[data-size]"), estLo = await h.text("[data-estimate]");
+      h.expect(sizeLo !== sizeHi, "розмір не змінився від повзунка якості");
+      h.expect(estLo !== estHi, "естімейт не змінився від повзунка якості");
+    },
+  },
+  {
     name: "порожній опис не запускає генерацію", run: async (h) => {
       await ready(h);
       await h.type("#prompt", "");

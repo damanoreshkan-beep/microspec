@@ -359,7 +359,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./tarot/",
-    "version": "1.19",
+    "version": "1.20",
     "category": "esoterica"
   },
   {
@@ -381,7 +381,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./imagine/",
-    "version": "1.4",
+    "version": "1.5",
     "category": "creative"
   },
   {

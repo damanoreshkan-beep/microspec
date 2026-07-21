@@ -34,6 +34,12 @@ async function askAI(text, locale, mode) {
 }
 
 
+export async function suggest(mode, spark, locale) {
+  try { return await askAI(String(spark || ""), locale, mode); }
+  catch { return ""; }
+}
+
+
 export function polish(text, locale) {
   if (typeof text !== "string" || !text.trim() || !locale || locale === CONTENT_LANG) return text;
   return cacheFor("", locale)[text] || text;

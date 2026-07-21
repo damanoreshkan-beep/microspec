@@ -18,6 +18,7 @@ import { qrMatrix } from "./qrcode.js";
 import { fitResolution, sizeFor, estimateSeconds, QUALITY, MAX_SIDE, AR } from "./imgsize.js";
 import { sunSign } from "./horoscope.js";
 import { SPREADS, spreadById, hashSeed, draw } from "./tarot.js";
+import { silentWav } from "./mediasession.js";
 import { phase as penPhase, swing as penSwing, state as penState } from "./pendulum.js";
 import { signOf, signPair, compat, band, ELEMENT, MODALITY } from "./synastry.js";
 import { centsToRatio, semiToRatio, beatHz, chord, dbToGain, faderGain, equalPower, detune, STATIONS, LAYERS, station, reactorVoices } from "./scifi.js";
@@ -1209,4 +1210,20 @@ Deno.test("orbit sun + shadow: sunlit geometry is correct", () => {
   const ax = { x: -s.x * 6800, y: -s.y * 6800, z: -s.z * 6800 };
   const perp = Math.abs(s.z) < 0.9 ? { x: 0, y: 0, z: 9000 } : { x: 9000, y: 0, z: 0 };
   assert(isSunlit({ x: ax.x + perp.x, y: ax.y + perp.y, z: ax.z + perp.z }, d), "off-axis behind Earth → lit");
+});
+
+Deno.test("mediasession silentWav: a valid all-zero PCM WAV data URI", () => {
+  const uri = silentWav(250, 8000);
+  assert(uri.startsWith("data:audio/wav;base64,"), "not a wav data URI");
+  const bytes = Uint8Array.from(atob(uri.slice("data:audio/wav;base64,".length)), (c) => c.charCodeAt(0));
+  const tag = (o) => String.fromCharCode(...bytes.slice(o, o + 4));
+  assertEquals(tag(0), "RIFF"); assertEquals(tag(8), "WAVE"); assertEquals(tag(12), "fmt "); assertEquals(tag(36), "data");
+  const dv = new DataView(bytes.buffer);
+  const frames = Math.round(8000 * 250 / 1000), dataLen = frames * 2;   // 16-bit mono
+  assertEquals(dv.getUint16(34, true), 16, "not 16-bit");
+  assertEquals(dv.getUint16(22, true), 1, "not mono");
+  assertEquals(dv.getUint32(40, true), dataLen, "data chunk size wrong");
+  assertEquals(dv.getUint32(4, true), 36 + dataLen, "RIFF size wrong");
+  assertEquals(bytes.length, 44 + dataLen, "byte length wrong");
+  assert(bytes.slice(44).every((b) => b === 0), "samples are not silent");
 });

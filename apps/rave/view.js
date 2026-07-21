@@ -18,6 +18,8 @@ import { generateGroove, mulberry32 } from "/_rt/groove.js";
 import { collection } from "/_rt/db.js";
 import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { isGate } from "/_rt/gate.js";
+import { wakeLock } from "/_rt/sensors.js";
+import { holdAudio } from "/_rt/mediasession.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -102,6 +104,12 @@ const SAVES = collection("ravePatterns");
 
 // ---- engine (module scope) ----
 let eng = null, bus = null, fxN = null, sched = null, raf = null, nextT = 0, stepN = 0, q = [], genT = null;
+// ---- keep-alive: hold the screen on + own an OS media session so the beat survives backgrounding (both
+// module-scope, like the engine, so they persist across tab switches). See /_rt/mediasession.js. ----
+let wl = null, np = null;
+const npTitle = () => { const id = (PLAYER[$style.get()] || PLAYER[0])[0]; return `${id[0].toUpperCase()}${id.slice(1)} · ${$bpm.get()} BPM`; };
+const artUrl = () => { try { return new URL("icons/icon-512.png", location.href).href; } catch { return null; } };
+const syncNP = () => { if (np) np.meta(npTitle()); };
 const filtHz = (v) => 200 * Math.pow(90, Math.max(0, Math.min(1, v)));
 function applyFx() { if (!fxN) return; const f = $fx.get(), t = eng.ctx.currentTime; fxN.drive.curve = driveCurve(f.drive); fxN.crush.curve = crushCurve(f.crush); try { fxN.dsend.gain.setTargetAtTime(f.delay, t, 0.03); fxN.rsend.gain.setTargetAtTime(f.reverb, t, 0.03); fxN.mf.frequency.setTargetAtTime(filtHz(f.mfilter), t, 0.03); } catch { /* */ } fxN.delay.delayTime.value = 3 * (60 / $bpm.get() / 4); }
 function ensure() {
@@ -183,8 +191,23 @@ function fire(step, time) {
 }
 const tick = () => { const e = eng; if (!e) return; const spb = 60 / $bpm.get() / 4, sw = $fx.get().swing; if (nextT < e.ctx.currentTime) nextT = e.ctx.currentTime; while (nextT < e.ctx.currentTime + 0.1) { const s = stepN; fire(s, nextT + (s % 2 ? sw * spb : 0)); nextT += spb; stepN = (s + 1) % N; } };
 const draw = () => { const e = eng; if (e) { const now = e.ctx.currentTime; while (q.length && q[0].time <= now) $cur.set(q.shift().step); } raf = requestAnimationFrame(draw); };
-function start() { const e = ensure(); $playing.set(true); if (!e) return; if (sched) clearInterval(sched); if (raf) cancelAnimationFrame(raf); q = []; nextT = e.ctx.currentTime + 0.06; stepN = 0; sched = setInterval(tick, 25); raf = requestAnimationFrame(draw); }
-function stop() { $playing.set(false); if (sched) { clearInterval(sched); sched = null; } if (raf) { cancelAnimationFrame(raf); raf = null; } $cur.set(-1); }
+function start() {
+  const e = ensure(); $playing.set(true); if (!e) return;
+  wl = wakeLock.acquire();                                          // screen stays on while it plays
+  if (np) np.release();                                            // one live session; a lingering one is a phantom notification
+  np = holdAudio({ title: npTitle(), artist: "microspec", artwork: artUrl(),
+    onPlay: () => { if (!$playing.get()) start(); },                // lock-screen / headset transport
+    onPause: () => stop(), onPrev: () => stepTrack(-1), onNext: () => stepTrack(1),
+    resumeCtx: () => e.resume() });
+  np.setPlaying(npTitle());
+  if (sched) clearInterval(sched); if (raf) cancelAnimationFrame(raf); q = []; nextT = e.ctx.currentTime + 0.06; stepN = 0; sched = setInterval(tick, 25); raf = requestAnimationFrame(draw);
+}
+function stop() {
+  $playing.set(false);
+  if (wl) { wl.release(); wl = null; }
+  if (np) { np.release(); np = null; }
+  if (sched) { clearInterval(sched); sched = null; } if (raf) { cancelAnimationFrame(raf); raf = null; } $cur.set(-1);
+}
 const toggle = () => { buzz(12); $playing.get() ? stop() : start(); };
 
 // ---- generator: pick an archetype from the seed, search its Euclidean space, write the bar left→right ----
@@ -196,7 +219,7 @@ function generate(seed = randSeed(), animate = true) {
   $riff.set(g.riff.length === N ? g.riff : RIFF);
   $bpm.set(Math.round(lerp(rng, arch.bpm)));
   $fx.set({ ...DFX, ...Object.fromEntries(Object.entries(arch.fx).filter(([k]) => k in DFX).map(([k, r]) => [k, Math.round(lerp(rng, r) * 100) / 100])) });
-  applyFx();
+  applyFx(); syncNP();
   if (!animate) { $tracks.set(full); $sweep.set(-1); return; }
   $tracks.set(empty()); $sweep.set(0); let c = 0;
   genT = setInterval(() => { const upto = c; $tracks.set(Object.fromEntries(TRACKS.map((tr) => [tr.id, full[tr.id].map((v, i) => (i <= upto ? v : false))]))); $sweep.set(c); if (++c >= N) { clearInterval(genT); genT = null; $sweep.set(-1); } }, 26); }
@@ -211,7 +234,7 @@ const autoName = (t, tracks, bpm, list) => { const key = JSON.stringify(tracks),
 // ================= Beat: player + generator =================
 export function rave({ S }) {
   const t = useStore(S.t), tracks = useStore($tracks), style = useStore($style), playing = useStore($playing), fx = useStore($fx), cur = useStore($cur), bpm = useStore($bpm), sweep = useStore($sweep);
-  const pick = (i) => { buzz(); ensure(); const [id, b] = PLAYER[i]; $style.set(i); $tracks.set(parse(presetById(id))); $bpm.set(b); $hist.set({ seeds: [], idx: -1 }); };
+  const pick = (i) => { buzz(); ensure(); const [id, b] = PLAYER[i]; $style.set(i); $tracks.set(parse(presetById(id))); $bpm.set(b); $hist.set({ seeds: [], idx: -1 }); syncNP(); };
   const kickRow = tracks.kick;
 
   return html`<div class="flex flex-col items-center gap-5 pt-1">

@@ -9,6 +9,7 @@ import { gate } from "/_rt/gate.js";
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const randSeed = () => Math.floor(Math.random() * 1e9);
+const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;   
 const W = 768, H = 1024;
 
 function mockArt(seed) {
@@ -30,6 +31,7 @@ export function imagine({ S, toast }) {
   const [phase, setPhase] = useState(gate ? "done" : "idle");                    
   const [result, setResult] = useState(gate ? { url: mockArt(7), w: W, h: H, seed: 7 } : null);
   const [error, setError] = useState(null);
+  const [elapsed, setElapsed] = useState(0);                                      
   const runRef = useRef(0);                                                       
 
   const fail = (run, key) => { if (run === runRef.current) { setError(key); setPhase("error"); } };
@@ -38,22 +40,33 @@ export function imagine({ S, toast }) {
     const p = prompt.trim();
     if (!p || phase === "generating") return;
     const seed = randSeed(), run = ++runRef.current;
-    setError(null);
+    setError(null); setElapsed(0);
     if (result?.url?.startsWith?.("blob:")) URL.revokeObjectURL(result.url);      
     setResult(null); setPhase("generating");
     if (gate) { await sleep(90); if (run === runRef.current) { setResult({ url: mockArt(seed), w: W, h: H, seed }); setPhase("done"); } return; }
     try {
-      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 115000);
-      const r = await fetch(`${VPS_PROXY}/image?prompt=${encodeURIComponent(p)}&w=${W}&h=${H}&seed=${seed}`, { signal: ctrl.signal });
-      clearTimeout(to);
+      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: p, width: W, height: H, seed }) });
       if (run !== runRef.current) return;
-      if (!r.ok) return fail(run, r.status === 429 ? "eRate" : "eFailed");
-      const blob = await r.blob();
-      if (run !== runRef.current) return;
-      if (!blob.type.startsWith("image/")) return fail(run, "eFailed");
-      setResult({ url: URL.createObjectURL(blob), w: W, h: H, seed });
-      setPhase("done");
-    } catch (e) { fail(run, e && e.name === "AbortError" ? "eTimeout" : "eNetwork"); }
+      if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : "eFailed");
+      const { job } = await cr.json();
+      if (!job) return fail(run, "eFailed");
+      const t0 = Date.now();
+      for (let i = 0; i < 100; i++) {                                             
+        await sleep(1500);
+        if (run !== runRef.current) return;
+        setElapsed(Math.round((Date.now() - t0) / 1000));
+        let pr; try { pr = await fetch(`${VPS_PROXY}/image/get?job=${job}`); } catch { continue; }
+        if (run !== runRef.current) return;
+        if ((pr.headers.get("content-type") || "").startsWith("image/")) {
+          const blob = await pr.blob();
+          if (run !== runRef.current) return;
+          setResult({ url: URL.createObjectURL(blob), w: W, h: H, seed }); setPhase("done"); return;
+        }
+        let j; try { j = await pr.json(); } catch { continue; }
+        if (j.status === "error") return fail(run, "eFailed");
+      }
+      fail(run, "eTimeout");
+    } catch { fail(run, "eNetwork"); }
   };
 
   const save = () => {
@@ -75,7 +88,10 @@ export function imagine({ S, toast }) {
       </${Fragment}>` : null}
       ${phase === "generating" ? html`<${Fragment}>
         <div class="absolute inset-0 animate-pulse" style="background:linear-gradient(120deg,#141416,#241f36,#141416)"></div>
-        <div data-gen class="relative z-10 font-mono text-sm uppercase tracking-wide text-base-content/70">${T(t, "eGenerating")}</div>
+        <div class="relative z-10 flex flex-col items-center gap-3 w-56 max-w-[70%]">
+          <div data-gen class="font-mono text-sm uppercase tracking-wide text-base-content/70 tabular-nums">${T(t, "eGenerating")} ${fmt(elapsed)}</div>
+          <div class="w-full h-1 rounded-full bg-base-content/15 overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / 0.6))}%`}></div></div>
+        </div>
       </${Fragment}>` : null}
       ${phase === "idle" ? html`<div class="text-base-content/20">${Icon("lucide:sparkles", "text-5xl")}</div>` : null}
       ${phase === "error" ? html`<div class="flex flex-col items-center gap-2 text-center px-8">${Icon("lucide:alert-triangle", "text-3xl text-error")}<div data-error class="text-sm text-base-content/70">${T(t, error || "eFailed")}</div></div>` : null}

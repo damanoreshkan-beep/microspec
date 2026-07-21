@@ -22,6 +22,8 @@ const IMG_SPACES = [
 ];
 const IMG_TTL = 7 * 86400_000;
 const imgCache = new Map();                                      
+let imgJobSeq = 0;
+const imgJobs = new Map();                                       
 const ALLOW = [/(^|\.)dou\.ua$/i, /(^|\.)wikipedia\.org$/i, /(^|\.)gutendex\.com$/i, /(^|\.)chocolatey\.org$/i];
 const UA ="Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
@@ -220,41 +222,61 @@ async function gradioImage(sp, prompt, w, h, seed) {
   } catch { return null; } finally { clearTimeout(t); }
 }
 
+async function runImageJob(id, prompt, w, h, seed) {
+  const job = imgJobs.get(id); if (!job) return;
+  const ckey = `${prompt}|${w}|${h}|${seed}`, cached = imgCache.get(ckey);
+  if (cached && Date.now() - cached.ts < IMG_TTL) { job.status = "done"; job.ct = cached.ct; job.buf = cached.buf; return; }
+  const started = Date.now();
+  for (const sp of IMG_SPACES) {
+    if (Date.now() - started > 110000) break;                    
+    job.stage = sp.host;
+    const url = await gradioImage(sp, prompt, w, h, seed).catch(() => null);
+    if (!url) continue;
+    try {
+      const c = new AbortController(), t = setTimeout(() => c.abort(), 20000);
+      const im = await fetch(url, { signal: c.signal }); clearTimeout(t);
+      const ct = im.headers.get("content-type") || "";
+      if (!im.ok || !ct.startsWith("image/")) continue;
+      const buf = Buffer.from(await im.arrayBuffer());
+      if (buf.length < 512) continue;                            
+      if (imgCache.size > 300) imgCache.clear();
+      imgCache.set(ckey, { ts: Date.now(), ct, buf });
+      job.status = "done"; job.ct = ct; job.buf = buf; return;
+    } catch { continue; }
+  }
+  job.status = "error";
+}
+
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://localhost");
   const p = u.pathname;
   if (req.method === "OPTIONS") return send(res, 204, CORS, "");
   if (p === "/health") return send(res, 200, CORS, "ok");
 
-  if (p === "/feed/image" && req.method === "GET") {
-    const origin = req.headers.origin || "", ref = req.headers.referer || "";
-    if (!ALLOW_ORIGIN.has(origin) && ![...ALLOW_ORIGIN].some((o) => ref.startsWith(o))) return send(res, 403, CORS, "origin not allowed");
+  if (p === "/feed/image" && req.method === "POST") {
+    const origin = req.headers.origin || "";
+    if (!ALLOW_ORIGIN.has(origin)) return send(res, 403, CORS, "origin not allowed");
     if (!rateOk(ipOf(req))) return send(res, 429, CORS, "rate limited");
-    const prompt = String(u.searchParams.get("prompt") || "").slice(0, 800).trim();
+    let inp;
+    try { inp = JSON.parse(await readBody(req)); } catch { return send(res, 400, CORS, "bad json"); }
+    const prompt = String(inp.prompt || "").slice(0, 800).trim();
     if (!prompt) return send(res, 400, CORS, "empty prompt");
-    const w = Math.max(256, Math.min(1024, Number(u.searchParams.get("w")) || 768));
-    const h = Math.max(256, Math.min(1024, Number(u.searchParams.get("h")) || 768));
-    const seed = Number(u.searchParams.get("seed")) || 0;
-    const ckey = `${prompt}|${w}|${h}|${seed}`, hit = imgCache.get(ckey);
-    if (hit && Date.now() - hit.ts < IMG_TTL) return send(res, 200, { ...CORS, "content-type": hit.ct, "x-image-by": "cache" }, hit.buf);
-    const started = Date.now();
-    for (const sp of IMG_SPACES) {
-      if (Date.now() - started > 100000) break;                 
-      const url = await gradioImage(sp, prompt, w, h, seed).catch(() => null);
-      if (!url) continue;
-      try {
-        const c = new AbortController(), t = setTimeout(() => c.abort(), 15000);
-        const im = await fetch(url, { signal: c.signal }); clearTimeout(t);
-        const ct = im.headers.get("content-type") || "";
-        if (!im.ok || !ct.startsWith("image/")) continue;
-        const buf = Buffer.from(await im.arrayBuffer());
-        if (buf.length < 512) continue;                         
-        if (imgCache.size > 300) imgCache.clear();
-        imgCache.set(ckey, { ts: Date.now(), ct, buf });
-        return send(res, 200, { ...CORS, "content-type": ct, "x-image-by": sp.host }, buf);
-      } catch { continue; }
-    }
-    return send(res, 502, CORS, "all image spaces failed");
+    const w = Math.max(256, Math.min(1024, Number(inp.width) || 768));
+    const h = Math.max(256, Math.min(1024, Number(inp.height) || 768));
+    const seed = Number(inp.seed) || 0;
+    const now = Date.now();
+    for (const [k, v] of imgJobs) if (now - v.ts > 300000) imgJobs.delete(k);   
+    const id = (++imgJobSeq).toString(36) + now.toString(36);
+    imgJobs.set(id, { ts: now, status: "pending", stage: "starting" });
+    runImageJob(id, prompt, w, h, seed);                                        
+    return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ job: id }));
+  }
+  if (p === "/feed/image/get" && req.method === "GET") {
+    const job = imgJobs.get(u.searchParams.get("job") || "");
+    if (!job) return send(res, 404, { ...CORS, "content-type": "application/json" }, JSON.stringify({ status: "error" }));
+    if (job.status === "done") return send(res, 200, { ...CORS, "content-type": job.ct, "x-image-by": job.stage }, job.buf);
+    if (job.status === "error") return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ status: "error" }));
+    return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ status: "pending", stage: job.stage, elapsed: Math.round((Date.now() - job.ts) / 1000) }));
   }
 
   if (p === "/feed/ai" && req.method === "POST") {

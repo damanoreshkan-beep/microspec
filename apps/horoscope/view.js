@@ -14,6 +14,7 @@ import { T } from "/_rt/i18n.js";
 import { Sign } from "/_rt/zodiac.js";
 import { sunSign } from "/_rt/horoscope.js";
 import { tr, warm, trTick } from "/_rt/translate.js";
+import { polish, warmPolish, aiTick } from "/_rt/ai.js";
 import { Scramble, Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 
@@ -54,6 +55,7 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const loc = useStore(S.locale);
   useStore(trTick);                                               // re-render when a translation lands
+  useStore(aiTick);                                               // …and again when its natural rewrite lands
   const stored = useStore($sign);
   const now = gate ? new Date(2027, 6, 23) : new Date();          // Jul 23 (Leo) — a reproducible default
   const signIdx = (SIGN_OVERRIDE != null && SIGN_OVERRIDE !== "") ? clampSign(SIGN_OVERRIDE)
@@ -78,7 +80,12 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
 
   // Translate the (English) reading into the active locale — cached permanently, fail-open to the original.
   useEffect(() => { if (data?.text) warm([data.text], loc); }, [data && data.text, loc]);
-  const readingText = data ? tr(data.text, loc) : "";
+  const translated = data ? tr(data.text, loc) : "";
+  // …then lightly rewrite the (wooden, literal) machine translation into natural prose via the systemic AI
+  // module — only once the translation itself has landed (translated ≠ the English source), and never under
+  // the gate (deterministic shot/e2e; no LLM calls). Fail-open: the translated text shows until the polish lands.
+  useEffect(() => { if (!gate && translated && translated !== data?.text) warmPolish([translated], loc); }, [translated, loc]);
+  const readingText = polish(translated, loc);
   const dateLabel = data?.date ? new Date(now.getFullYear(), now.getMonth(), now.getDate() + (day - 1))
     .toLocaleDateString(loc === "en" ? "en-GB" : loc || "uk", { day: "numeric", month: "long" }) : "";
 

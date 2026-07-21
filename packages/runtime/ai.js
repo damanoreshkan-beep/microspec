@@ -25,6 +25,11 @@ export function polish(text, locale) {
   return cacheFor(locale)[text] || text;
 }
 
+export function isPolished(text, locale) {
+  if (typeof text !== "string" || !text.trim() || !locale || locale === CONTENT_LANG) return true;
+  return text in cacheFor(locale);
+}
+
 async function polishOne(text, locale) {
   const r = await fetch(AI, {
     method: "POST",

@@ -153,7 +153,9 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
 </${Fragment}>` : null;
 // The "watch on the site" link — opens the video's real page (falls back to the clip URL). For signed sources
 // whose clips won't play here, this is the whole point: browse the previews, tap through to watch.
-const WatchLink = ({ item, t }) => html`<a href=${item.page || item.orig || item.video} target="_blank" rel="noopener" class="absolute inset-0 z-[1] flex items-center justify-center" aria-label=${T(t, "watch")}>
+// The whole slide is the tap target (browse previews → tap to watch), but the visible pill sits at the very
+// bottom (above the dock + title) so it never covers the poster preview.
+const WatchLink = ({ item, t }) => html`<a data-watch href=${item.page || item.orig || item.video} target="_blank" rel="noopener" class="absolute inset-0 z-[3] flex items-end justify-center" style="padding-bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 4.5rem)" aria-label=${T(t, "watch")}>
   <span class="btn btn-primary rounded-full gap-2 shadow-lg pointer-events-none">${Icon("lucide:external-link", "text-lg")} ${T(t, "watch")}</span>
 </a>`;
 

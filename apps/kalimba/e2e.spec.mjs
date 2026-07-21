@@ -8,7 +8,17 @@ export default [
       h.expect((await h.count("[data-scale]")) === 6, "немає 6 ладів");
       h.expect((await h.count("[data-song]")) === 5, "немає 5 пісень");
       h.expect((await h.count("[data-flow]")) === 1, "немає кнопки Flow");
+      h.expect((await h.count("[data-voice]")) === 6, "немає 6 голосів");
       h.expect((await h.attr('[data-tine="8"]', "aria-label")) === "C4", "центральна пелюстка не C4 (tonic)");
+    },
+  },
+  {
+    name: "перемикач голосу обирається", run: async (h) => {
+      await ready(h);
+      await h.tap('[data-voice="bell"]'); await h.wait(120);
+      h.expect((await h.attr('[data-voice="bell"]', "aria-pressed")) === "true", "голос не обрався");
+      await h.tap('[data-voice="classic"]'); await h.wait(90);
+      h.expect((await h.attr('[data-voice="classic"]', "aria-pressed")) === "true", "не повернувся класик");
     },
   },
   {

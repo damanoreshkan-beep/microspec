@@ -39,10 +39,19 @@ function buildTines(steps) {
   return out;
 }
 
-// the warm, music-box-ish timbre from the FIRST version (harmonic partials 2x/3x/…). The physically-
-// accurate bar model (inharmonic ~5x/~14x) was more authentic but the user preferred this one — it just
-// sounds nicer, so taste wins over the research here. Long even ring on every tine.
-const TIMBRE = { type: "sine", dur: 2.1, attack: 0.002, peak: 0.45, partials: [[1, 1], [2.01, 0.55], [3.0, 0.22], [4.3, 0.1], [5.9, 0.05]] };
+// VOICES — genuinely different timbres, not the same tone retuned: the lever is oscillator `type` + the
+// partial recipe + decay. Warm harmonic ring (classic) vs a short bright pluck (box) vs airy triangle
+// shimmer (glass) vs a dry wooden bar tuned to marimba's ~1:4:10 modes vs a long inharmonic bell vs a reedy
+// electric. Each is audibly its own instrument. `classic` stays the default (the warm one the owner liked).
+const VOICES = [
+  { id: "classic", name: "vClassic", t: { type: "sine", dur: 2.1, attack: 0.002, peak: 0.45, partials: [[1, 1], [2.01, 0.55], [3.0, 0.22], [4.3, 0.1], [5.9, 0.05]] } },
+  { id: "box", name: "vBox", t: { type: "sine", dur: 1.05, attack: 0.001, peak: 0.5, partials: [[1, 1], [2, 0.5], [4, 0.24], [6.5, 0.1], [9, 0.04]] } },
+  { id: "glass", name: "vGlass", t: { type: "triangle", dur: 2.9, attack: 0.003, peak: 0.4, partials: [[1, 0.7], [2, 0.55], [3, 0.42], [5, 0.22], [7, 0.12], [9, 0.05]] } },
+  { id: "marimba", name: "vMarimba", t: { type: "sine", dur: 0.6, attack: 0.001, peak: 0.55, partials: [[1, 1], [3.9, 0.35], [9.2, 0.12]] } },
+  { id: "bell", name: "vBell", t: { type: "sine", dur: 3.3, attack: 0.001, peak: 0.4, partials: [[1, 1], [2, 0.5], [2.76, 0.35, 0.7], [5.4, 0.16, 0.5], [8.9, 0.06, 0.35]] } },
+  { id: "electric", name: "vElectric", t: { type: "triangle", dur: 2.2, attack: 0.004, peak: 0.4, partials: [[1, 1], [2, 0.4], [3, 0.5], [4, 0.2], [5, 0.25]] } },
+];
+const voiceById = (id) => VOICES.find((v) => v.id === id) || VOICES[0];
 
 // demos as scale-STEP offsets from a mid base → they play in whatever tuning is selected. Songs that carry a
 // `scale` are REAL tunes (they only sound right in one key), so tapping them retunes the board to match; the
@@ -60,6 +69,7 @@ const SONGS = [
 export function kalimba({ S }) {
   const t = useStore(S.t);
   const [scale, setScale] = useState("major");
+  const [voice, setVoice] = useState("classic");
   const [lit, setLit] = useState(() => new Set());
   const [playing, setPlaying] = useState(null);
   const [dim, setDim] = useState({ w: 0, h: 0 });                   // play-region size → the rotated board swaps it
@@ -70,7 +80,8 @@ export function kalimba({ S }) {
 
   const ensure = () => { if (!audioSupported) return null; if (!eng.current) eng.current = createEngine({ master: 0.7, noise: false }); eng.current.resume(); return eng.current; };
   const flash = (pos) => { setLit((s) => { const n = new Set(s); n.add(pos); return n; }); flashes.current.push(setTimeout(() => setLit((s) => { const n = new Set(s); n.delete(pos); return n; }), 260)); };
-  const hit = (e, tn) => { if (e && tn) e.strike(tn.freq, TIMBRE); };
+  const timbre = voiceById(voice).t;
+  const hit = (e, tn) => { if (e && tn) e.strike(tn.freq, timbre); };
   const pluck = (pos) => { const tn = tines[pos]; hit(ensure(), tn); flash(pos); };
 
   // Play on POINTER DOWN (no click-on-release lag), and hit-test each tine the finger slides over via
@@ -111,11 +122,17 @@ export function kalimba({ S }) {
   useEffect(() => () => { flashes.current.forEach(clearTimeout); song.current.forEach(clearTimeout); if (eng.current) eng.current.close(); }, []);
 
   return html`<div class="fixed left-0 right-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
-    <div class="shrink-0 flex items-center gap-1.5 overflow-x-auto px-2 py-2 border-b border-base-300">
-      ${SCALES.map((s) => html`<button data-scale=${s.id} aria-pressed=${scale === s.id} class=${`btn btn-xs shrink-0 ${scale === s.id ? "btn-primary" : "btn-ghost"}`} onClick=${() => setScale(s.id)} key=${s.id}>${T(t, s.name)}</button>`)}
-      <span class="w-px self-stretch bg-base-300 mx-0.5 shrink-0"></span>
-      <button data-flow aria-pressed=${playing === "flow"} class=${`btn btn-xs shrink-0 gap-1 ${playing === "flow" ? "btn-secondary" : "btn-outline btn-secondary"}`} onClick=${() => (playing === "flow" ? stop() : flow())}>${Icon(playing === "flow" ? "lucide:square" : "lucide:sparkles")}${T(t, "sFlow")}</button>
-      ${SONGS.map((s) => html`<button data-song=${s.id} class=${`btn btn-xs shrink-0 gap-1 ${playing === s.id ? "btn-primary" : "btn-outline"}`} onClick=${() => (playing === s.id ? stop() : play(s))} key=${s.id}>${Icon(playing === s.id ? "lucide:square" : "lucide:play")}${T(t, s.name)}</button>`)}
+    <div class="shrink-0 flex flex-col gap-1 px-2 py-2 border-b border-base-300">
+      <div class="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <span class="shrink-0 grid place-items-center text-base-content/60" title=${T(t, "voice")}>${Icon("lucide:music", "text-sm")}</span>
+        ${VOICES.map((v) => html`<button data-voice=${v.id} aria-pressed=${voice === v.id} class=${`btn btn-xs shrink-0 ${voice === v.id ? "btn-secondary" : "btn-ghost"}`} onClick=${() => { setVoice(v.id); const e = ensure(); if (e && tines[8]) e.strike(tines[8].freq, voiceById(v.id).t); flash(8); }} key=${v.id}>${T(t, v.name)}</button>`)}
+      </div>
+      <div class="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        ${SCALES.map((s) => html`<button data-scale=${s.id} aria-pressed=${scale === s.id} class=${`btn btn-xs shrink-0 ${scale === s.id ? "btn-primary" : "btn-ghost"}`} onClick=${() => setScale(s.id)} key=${s.id}>${T(t, s.name)}</button>`)}
+        <span class="w-px self-stretch bg-base-300 mx-0.5 shrink-0"></span>
+        <button data-flow aria-pressed=${playing === "flow"} class=${`btn btn-xs shrink-0 gap-1 ${playing === "flow" ? "btn-secondary" : "btn-outline btn-secondary"}`} onClick=${() => (playing === "flow" ? stop() : flow())}>${Icon(playing === "flow" ? "lucide:square" : "lucide:sparkles")}${T(t, "sFlow")}</button>
+        ${SONGS.map((s) => html`<button data-song=${s.id} class=${`btn btn-xs shrink-0 gap-1 ${playing === s.id ? "btn-primary" : "btn-outline"}`} onClick=${() => (playing === s.id ? stop() : play(s))} key=${s.id}>${Icon(playing === s.id ? "lucide:square" : "lucide:play")}${T(t, s.name)}</button>`)}
+      </div>
     </div>
 
     <div ref=${region} class="flex-1 min-h-0 relative overflow-hidden">

@@ -16,23 +16,25 @@ export const dictFor = (i18n, locale) => i18n?.[locale] || i18n?.en || {};
 
 // Built-in runtime strings — chrome shared by EVERY app, so they live here (not each app's i18n dict).
 export const SYS = {
-  exit: { en: "Press Back again to exit", uk: "Натисніть «Назад» ще раз, щоб вийти", ru: "Нажмите «Назад» ещё раз, чтобы выйти", de: "Zum Beenden erneut „Zurück“ drücken", pl: "Naciśnij Wstecz ponownie, aby wyjść" },
-  deleted: { en: "Deleted", uk: "Видалено", ru: "Удалено", de: "Gelöscht", pl: "Usunięto" },
-  undo: { en: "Undo", uk: "Скасувати", ru: "Отменить", de: "Rückgängig", pl: "Cofnij" },
-  cancel: { en: "Cancel", uk: "Скасувати", ru: "Отмена", de: "Abbrechen", pl: "Anuluj" },
+  exit: { en: "Press Back again to exit", uk: "Натисніть «Назад» ще раз, щоб вийти" },
+  deleted: { en: "Deleted", uk: "Видалено" },
+  undo: { en: "Undo", uk: "Скасувати" },
+  cancel: { en: "Cancel", uk: "Скасувати" },
+  share: { en: "Share app", uk: "Поділитися" },
+  shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
 };
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 
 // Built-in chrome for the video player (/_rt/video.js) — shared by every video app, so no app duplicates it.
 export const MEDIA = {
-  player: { en: "Player", uk: "Плеєр", ru: "Плеер", de: "Player", pl: "Odtwarzacz" },
-  back: { en: "Back", uk: "Назад", ru: "Назад", de: "Zurück", pl: "Wstecz" },
-  loading: { en: "Connecting…", uk: "Підключення…", ru: "Подключение…", de: "Verbinde…", pl: "Łączenie…" },
-  unavailable: { en: "Stream unavailable", uk: "Потік недоступний", ru: "Поток недоступен", de: "Stream nicht verfügbar", pl: "Strumień niedostępny" },
-  openExternal: { en: "Open in player", uk: "Відкрити у плеєрі", ru: "Открыть в плеере", de: "Im Player öffnen", pl: "Otwórz w odtwarzaczu" },
-  pip: { en: "Picture in picture", uk: "Картинка в картинці", ru: "Картинка в картинке", de: "Bild-in-Bild", pl: "Obraz w obrazie" },
-  fullscreen: { en: "Fullscreen", uk: "На весь екран", ru: "На весь экран", de: "Vollbild", pl: "Pełny ekran" },
-  exitFullscreen: { en: "Exit fullscreen", uk: "Вийти з повного екрана", ru: "Выйти из полного экрана", de: "Vollbild beenden", pl: "Zamknij pełny ekran" },
+  player: { en: "Player", uk: "Плеєр" },
+  back: { en: "Back", uk: "Назад" },
+  loading: { en: "Connecting…", uk: "Підключення…" },
+  unavailable: { en: "Stream unavailable", uk: "Потік недоступний" },
+  openExternal: { en: "Open in player", uk: "Відкрити у плеєрі" },
+  pip: { en: "Picture in picture", uk: "Картинка в картинці" },
+  fullscreen: { en: "Fullscreen", uk: "На весь екран" },
+  exitFullscreen: { en: "Exit fullscreen", uk: "Вийти з повного екрана" },
 };
 export const media = (key, locale) => MEDIA[key]?.[locale] || MEDIA[key]?.en || "";
 

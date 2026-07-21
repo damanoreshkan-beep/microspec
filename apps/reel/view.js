@@ -6,8 +6,9 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { T } from "/_rt/i18n.js";
 import { createPlayer } from "/_rt/video.js";
-import { VPS_PROXY } from "/_rt/feed.js";
+import { VPS_PROXY, pool } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
+import { dedupeVideos, isBlackSample } from "/_rt/vfilter.js";
 import { collection, idbSupported } from "/_rt/db.js";
 import { Pixels } from "/_rt/skeleton.js";
 
@@ -21,10 +22,13 @@ const PRESETS = [
   { name: "Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/Category:Animations", icon: "simple-icons:wikimediacommons", color: "#3366CC" },
 ];
 const DEFAULT_SRC = PRESETS[0].url;
+const BLACK_PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAAAAADhZOFXAAAAEklEQVR4nGJgoA4AAAAA//8DAABIAAFYHHymAAAAAElFTkSuQmCC";
 const MOCK = [
   { video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", title: "Big Buck Bunny", poster: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg" },
   { video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4", title: "Elephants Dream", poster: null },
   { video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4", title: "Sintel", poster: null },
+  { video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", title: "Big Buck Bunny dup", poster: null },
+  { video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", title: "Broken clip", poster: BLACK_PX },
 ];
 
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
@@ -53,13 +57,42 @@ function markWatched(url) {
 function clearWatched() { $watched.set(new Set()); watchedDB.clear().catch(() => {}); }
 const unseen = (arr) => arr.filter((i) => !$watched.get().has(i.orig || i.video));         
 
-const $items = atom(gate ? MOCK : []);
+const $items = atom(gate ? dedupeVideos(MOCK) : []);
 const $next = atom(null);
 const $loading = atom(!gate);
 const $err = atom(false);
 const $active = atom(0);
 const $frameUrl = atom("");
 const $ephemeral = atom(false);   
+
+const blackPosters = new Set();     
+const checkedPosters = new Set();   
+function posterIsBlack(poster) {
+  const isData = poster.startsWith("data:");
+  if (gate && !isData) return Promise.resolve(false);                                    
+  if (typeof document === "undefined" || typeof Image === "undefined") return Promise.resolve(false);  
+  return new Promise((resolve) => {
+    const img = new Image(); if (!isData) img.crossOrigin = "anonymous";
+    let done = false; const finish = (v) => { if (!done) { done = true; clearTimeout(to); resolve(v); } };
+    const to = setTimeout(() => finish(false), 6000);                                     
+    img.onload = () => { try {
+      const c = document.createElement("canvas"); c.width = 24; c.height = 24;
+      const cx = c.getContext("2d", { willReadFrequently: true }); cx.drawImage(img, 0, 0, 24, 24);
+      finish(isBlackSample(cx.getImageData(0, 0, 24, 24).data));
+    } catch { finish(false); } };                                                          
+    img.onerror = () => finish(false);
+    img.src = isData ? poster : framed(poster);
+  });
+}
+async function checkBlackPosters() {
+  const todo = [];
+  for (const it of $items.get()) { const p = it.poster; if (p && !checkedPosters.has(p)) { checkedPosters.add(p); todo.push(p); } }
+  if (!todo.length) return;
+  const hits = new Set();
+  await pool(todo, 4, async (p) => { if (await posterIsBlack(p)) hits.add(p); });          
+  if (hits.size) { hits.forEach((p) => blackPosters.add(p)); $items.set($items.get().filter((i) => !(i.poster && hits.has(i.poster)))); }
+}
+const clean = (arr) => dedupeVideos(unseen(arr).filter((i) => !(i.poster && blackPosters.has(i.poster))));
 
 let loadingMore = false;
 async function loadSource(url, append = false) {
@@ -69,8 +102,8 @@ async function loadSource(url, append = false) {
   try {
     const r = await fetch(`${VPS_PROXY}/videos?url=${encodeURIComponent(url)}`);
     const d = await r.json();
-    const got = unseen(Array.isArray(d.items) ? d.items : []);                            
-    $items.set(append ? [...$items.get(), ...got] : got);
+    const got = clean(Array.isArray(d.items) ? d.items : []);
+    $items.set(append ? dedupeVideos([...$items.get(), ...got]) : got);                   
     $next.set(d.next || null);
     if (!append) $ephemeral.set(!!d.ephemeral);        
   } catch { if (!append) $err.set(true); }
@@ -164,7 +197,7 @@ function FrameView({ S, t }) {
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [url]);
-  const use = () => { const got = unseen(harvested.map((h) => ({ ...h, orig: h.video, video: framed(h.video) }))); if (got.length) { $items.set(got); $next.set(null); $active.set(0); $ephemeral.set(true); subscribe({ name: hostOf(url), url, icon: "lucide:link" }); } S.screen.set(null); S.tab.set("reel"); };
+  const use = () => { const got = clean(harvested.map((h) => ({ ...h, orig: h.video, video: framed(h.video) }))); if (got.length) { $items.set(got); $next.set(null); $active.set(0); $ephemeral.set(true); subscribe({ name: hostOf(url), url, icon: "lucide:link" }); } S.screen.set(null); S.tab.set("reel"); };
   const iframeSrc = gate || !url ? "about:blank" : `${VPS_PROXY}/frame?url=${encodeURIComponent(url)}`;
   return html`<div class="fixed inset-0 z-40 bg-base-300 flex flex-col" role="dialog" aria-modal="true" aria-label=${hostOf(url)}>
     <div class="flex items-center gap-2 px-2 py-2 bg-base-100/90 backdrop-blur-md border-b border-base-300" style="padding-top:calc(env(safe-area-inset-top) + 0.5rem)">
@@ -184,6 +217,7 @@ export function reel({ S }) {
   const scroller = useRef();
 
   useEffect(() => { if (!gate) loadSource(src); }, [src]);
+  useEffect(() => { void checkBlackPosters(); }, [items]);                                 
   useEffect(() => { if (next && active >= items.length - 3) loadSource(next, true); }, [active, items.length, next]);
   useEffect(() => { const it = items[active]; if (!it || gate) return; const id = setTimeout(() => markWatched(it.orig || it.video), 2500); return () => clearTimeout(id); }, [active, items]);   
   useEffect(() => {

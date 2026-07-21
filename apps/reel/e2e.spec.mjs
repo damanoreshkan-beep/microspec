@@ -1,11 +1,14 @@
 const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("[data-reel]")) > 0) break; await h.wait(300); } };
+const settles = async (h, n) => { for (let i = 0; i < 25; i++) { if ((await h.count("[data-reel]")) === n) return true; await h.wait(200); } return false; };
 
 export default [
   {
-    name: "стрічка рендериться повноекранними слайдами", run: async (h) => {
+    name: "стрічка рендериться; биті чорні постери й дублікати відфільтровано", run: async (h) => {
       await ready(h);
-      h.expect((await h.count("[data-reel]")) >= 3, "немає слайдів стрічки");
+      h.expect(await settles(h, 3), "фільтри не звели стрічку до 3 чистих слайдів (дубль/чорний постер лишились)");
       h.expect((await h.count("video")) === 1, "активний слайд не має одного відео-елемента");
+      h.expect(!/Broken clip/.test(await h.bodyText()), "битий чорний постер не відфільтрувався");
+      h.expect(!/\bdup\b/.test(await h.bodyText()), "дублікат не відфільтрувався");
     },
   },
   {

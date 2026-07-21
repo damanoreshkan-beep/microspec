@@ -11,7 +11,19 @@ const GEMINI_MODELS = (process.env.GEMINI_MODELS || "gemini-2.5-flash,gemini-2.5
 const AI_PROVIDERS = GEMINI_KEY ? GEMINI_MODELS.map((model) => ({ name: "gemini/" + model, base: GEMINI_BASE, model, key: GEMINI_KEY })) : [];
 const AI_LANG = { uk: "українською", en: "English" };            
 const AI_TTL = 30 * 86400_000;                                  
-const aiCache = new Map();                                       
+const aiCache = new Map();  
+const IMG_SPACES = [
+  { host: "kingnish-realtime-flux", pre: "/gradio_api", api: "generate_image", data: (p, w, h, s) => [p, s, w, h] },
+  { host: "bytedance-sdxl-lightning", pre: "", api: "generate_image", data: (p) => [p, "4-Step"] },
+  { host: "black-forest-labs-flux-1-schnell", pre: "/gradio_api", api: "infer", data: (p, w, h, s) => [p, s, false, w, h, 4] },
+  { host: "multimodalart-flux-1-merged", pre: "/gradio_api", api: "infer", data: (p, w, h, s) => [p, s, false, w, h, 3.5, 8] },
+  { host: "stabilityai-stable-diffusion-3-medium", pre: "/gradio_api", api: "infer", data: (p, w, h, s) => [p, "", s, false, w, h, 5.0, 28] },
+  { host: "stabilityai-stable-diffusion-3-5-large", pre: "/gradio_api", api: "infer", data: (p, w, h, s) => [p, "", s, false, w, h, 4.5, 28] },
+  { host: "black-forest-labs-flux-1-dev", pre: "/gradio_api", api: "infer", data: (p, w, h, s) => [p, s, false, w, h, 3.5, 20] },
+  { host: "prithivmlmods-flux-lora-dlc", pre: "/gradio_api", api: "run_lora", data: (p, w, h, s) => [p, null, 0.75, 3.5, 8, false, s, w, h, 0.9] },
+];
+const IMG_TTL = 7 * 86400_000;
+const imgCache = new Map();                                      
 const ALLOW = [/(^|\.)dou\.ua$/i, /(^|\.)wikipedia\.org$/i, /(^|\.)gutendex\.com$/i, /(^|\.)chocolatey\.org$/i];
 const ALLOW_FLUX = [/(^|\.)bfl\.ai$/i, /(^|\.)bfl\.ml$/i];
 const UA ="Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";
@@ -177,11 +189,76 @@ function aiSystem(locale, mode) {
   return `You are a copy editor. You are given a passage in ${lang} produced by machine translation, so it reads literal and unnatural. Rewrite it into natural, fluent ${lang}, preserving the meaning of every sentence — add nothing, drop nothing, invent nothing. No explanations or quotes — return ONLY the corrected text.`;
 }
 
+async function gradioImage(sp, prompt, w, h, seed) {
+  const base = "https://" + sp.host + ".hf.space" + sp.pre + "/call/" + sp.api;
+  let event_id;
+  { const c = new AbortController(), t = setTimeout(() => c.abort(), 8000);
+    try {
+      const r = await fetch(base, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ data: sp.data(prompt, w, h, seed) }), signal: c.signal });
+      if (!r.ok) return null;
+      event_id = (await r.json())?.event_id;
+    } catch { return null; } finally { clearTimeout(t); } }
+  if (!event_id) return null;
+  const c = new AbortController(), t = setTimeout(() => c.abort(), 55000);
+  try {
+    const r = await fetch(base + "/" + event_id, { signal: c.signal });
+    if (!r.ok) return null;
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let buf = "", ev = null;
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1);
+        if (line.startsWith("event:")) ev = line.slice(6).trim();
+        else if (line.startsWith("data:") && (ev === "complete" || ev === "error")) {
+          reader.cancel().catch(() => {});
+          if (ev === "error") return null;
+          try { const f = JSON.parse(line.slice(5).trim())[0]; return (f && f.url) || (typeof f === "string" ? f : null); } catch { return null; }
+        }
+      }
+    }
+    return null;
+  } catch { return null; } finally { clearTimeout(t); }
+}
+
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://localhost");
   const p = u.pathname;
   if (req.method === "OPTIONS") return send(res, 204, CORS, "");
   if (p === "/health") return send(res, 200, CORS, "ok");
+
+  if (p === "/feed/image" && req.method === "GET") {
+    const origin = req.headers.origin || "", ref = req.headers.referer || "";
+    if (!ALLOW_ORIGIN.has(origin) && ![...ALLOW_ORIGIN].some((o) => ref.startsWith(o))) return send(res, 403, CORS, "origin not allowed");
+    if (!rateOk(ipOf(req))) return send(res, 429, CORS, "rate limited");
+    const prompt = String(u.searchParams.get("prompt") || "").slice(0, 800).trim();
+    if (!prompt) return send(res, 400, CORS, "empty prompt");
+    const w = Math.max(256, Math.min(1024, Number(u.searchParams.get("w")) || 768));
+    const h = Math.max(256, Math.min(1024, Number(u.searchParams.get("h")) || 768));
+    const seed = Number(u.searchParams.get("seed")) || 0;
+    const ckey = `${prompt}|${w}|${h}|${seed}`, hit = imgCache.get(ckey);
+    if (hit && Date.now() - hit.ts < IMG_TTL) return send(res, 200, { ...CORS, "content-type": hit.ct, "x-image-by": "cache" }, hit.buf);
+    const started = Date.now();
+    for (const sp of IMG_SPACES) {
+      if (Date.now() - started > 100000) break;                 
+      const url = await gradioImage(sp, prompt, w, h, seed).catch(() => null);
+      if (!url) continue;
+      try {
+        const c = new AbortController(), t = setTimeout(() => c.abort(), 15000);
+        const im = await fetch(url, { signal: c.signal }); clearTimeout(t);
+        const ct = im.headers.get("content-type") || "";
+        if (!im.ok || !ct.startsWith("image/")) continue;
+        const buf = Buffer.from(await im.arrayBuffer());
+        if (buf.length < 512) continue;                         
+        if (imgCache.size > 300) imgCache.clear();
+        imgCache.set(ckey, { ts: Date.now(), ct, buf });
+        return send(res, 200, { ...CORS, "content-type": ct, "x-image-by": sp.host }, buf);
+      } catch { continue; }
+    }
+    return send(res, 502, CORS, "all image spaces failed");
+  }
 
   if (p === "/feed/ai" && req.method === "POST") {
     if (!AI_PROVIDERS.length) return send(res, 500, CORS, "no ai key configured");

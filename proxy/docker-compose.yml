@@ -1,6 +1,11 @@
-# Bare feed-proxy in Docker — no VPN, just the Node proxy. restart:unless-stopped makes it survive ssh
-# disconnect AND reboot with zero babysitting (the Docker daemon owns its lifecycle). nginx on the host
-# reverse-proxies https://jobs-map.mooo.com/feed → 127.0.0.1:8787 → this container.
+# feed-proxy in Docker. restart:unless-stopped makes it survive ssh disconnect AND reboot with zero babysitting
+# (the Docker daemon owns its lifecycle). nginx on the host reverse-proxies https://jobs-map.mooo.com/feed →
+# 127.0.0.1:8787 → this container.
+#
+# LIVE DEPLOYMENT routes ALL egress through an ExpressVPN container (US exit) — see the VPN VARIANT below.
+# Why: /feed/image cascades anonymous HF Gradio Spaces whose ZeroGPU guest quota is per-IP, so a VPN IP gives
+# a fresh bucket; the VPN exits US so /feed/ai (Gemini free tier, US-geo-gated) keeps working. In that variant
+# the proxy has NO `ports:` of its own — port 8787 is published by the VPN container it shares a netns with.
 services:
   proxy:
     container_name: feed-proxy
@@ -9,6 +14,10 @@ services:
       - /home/mrx/feed-proxy:/app
     working_dir: /app
     command: sh -c "set -a; . ./.env; PORT=8787 HOST=0.0.0.0 exec node feed-proxy.mjs"
+    # --- BARE variant (no VPN): direct egress from the VPS IP. Publishes its own port. ---
     ports:
       - "127.0.0.1:8787:8787"
+    # --- VPN variant (LIVE): comment out `ports:` above and use the VPN container's netns instead. The VPN
+    #     container must publish 127.0.0.1:8787 and be up FIRST; if it is recreated, recreate feed-proxy too. ---
+    # network_mode: "container:dhammapada-x-vpn"
     restart: unless-stopped

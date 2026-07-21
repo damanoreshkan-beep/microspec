@@ -5,6 +5,13 @@ const PORT = Number(process.env.PORT) || 8787;
 const BFL_KEY = process.env.BFL_KEY || "";
 const FLUX_CREATE = "https://api.bfl.ai/v1/flux-2-pro-preview";
 const ALLOW_ORIGIN = new Set(["https://damanoreshkan-beep.github.io"]);
+const AI_PROVIDERS = [
+  { name: "gemini", base: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", model: process.env.GEMINI_MODEL || "gemini-2.5-flash-lite", key: process.env.GEMINI_API_KEY || "" },
+  { name: "groq", base: "https://api.groq.com/openai/v1/chat/completions", model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile", key: process.env.GROQ_API_KEY || "" },
+].filter((prov) => prov.key);
+const AI_LANG = { uk: "українською", en: "English" };            
+const AI_TTL = 30 * 86400_000;                                  
+const aiCache = new Map();                                       
 const ALLOW = [/(^|\.)dou\.ua$/i, /(^|\.)wikipedia\.org$/i, /(^|\.)gutendex\.com$/i, /(^|\.)chocolatey\.org$/i];
 const ALLOW_FLUX = [/(^|\.)bfl\.ai$/i, /(^|\.)bfl\.ml$/i];
 const UA ="Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";
@@ -160,11 +167,52 @@ function rewriteHtml(html, base) {
   return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + inject) : inject + html;
 }
 
+function aiSystem(locale) {
+  if (locale === "uk") return "Ти — редактор-стиліст. Тобі дають фрагмент тексту українською, отриманий машинним перекладом, тому він звучить дослівно й неприродно. Перепиши його природною, живою, грамотною українською, ЗБЕРІГАЮЧИ зміст кожного речення — нічого не додавай, не прибирай і не вигадуй. Без пояснень, приміток чи лапок — поверни ЛИШЕ виправлений текст.";
+  const lang = AI_LANG[locale] || locale || "the same language";
+  return `You are a copy editor. You are given a passage in ${lang} produced by machine translation, so it reads literal and unnatural. Rewrite it into natural, fluent ${lang}, preserving the meaning of every sentence — add nothing, drop nothing, invent nothing. No explanations or quotes — return ONLY the corrected text.`;
+}
+
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://localhost");
   const p = u.pathname;
   if (req.method === "OPTIONS") return send(res, 204, CORS, "");
   if (p === "/health") return send(res, 200, CORS, "ok");
+
+  if (p === "/feed/ai" && req.method === "POST") {
+    if (!AI_PROVIDERS.length) return send(res, 500, CORS, "no ai key configured");
+    const origin = req.headers.origin || "";
+    if (!ALLOW_ORIGIN.has(origin)) return send(res, 403, CORS, "origin not allowed");
+    if (!rateOk(ipOf(req))) return send(res, 429, CORS, "rate limited");
+    let inp;
+    try { inp = JSON.parse(await readBody(req)); } catch { return send(res, 400, CORS, "bad json"); }
+    const text = String(inp.text || "").slice(0, 2000).trim();
+    const locale = String(inp.locale || "").slice(0, 8);
+    if (!text) return send(res, 400, CORS, "empty text");
+    const ckey = locale + " " + text, hit = aiCache.get(ckey);
+    if (hit && Date.now() - hit.ts < AI_TTL) return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ text: hit.text, cached: true }));
+    const messages = [{ role: "system", content: aiSystem(locale) }, { role: "user", content: text }];
+    for (const prov of AI_PROVIDERS) {
+      const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 20000);
+      try {
+        const r = await fetch(prov.base, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: "Bearer " + prov.key },
+          body: JSON.stringify({ model: prov.model, messages, temperature: 0.4, max_tokens: 800 }),
+          signal: ctrl.signal,
+        });
+        if (!r.ok) continue;                                    
+        const j = await r.json();
+        const out = (j?.choices?.[0]?.message?.content || "").trim();
+        if (!out) continue;
+        if (aiCache.size > 3000) aiCache.clear();
+        aiCache.set(ckey, { ts: Date.now(), text: out });
+        return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ text: out, by: prov.name }));
+      } catch {  }
+      finally { clearTimeout(t); }
+    }
+    return send(res, 502, CORS, "all providers failed");
+  }
 
   if (p === "/feed/flux" && req.method === "POST") {
     if (!BFL_KEY) return send(res, 500, CORS, "no key configured");

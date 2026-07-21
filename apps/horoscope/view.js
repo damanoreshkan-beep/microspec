@@ -8,6 +8,7 @@ import { T } from "/_rt/i18n.js";
 import { Sign } from "/_rt/zodiac.js";
 import { sunSign } from "/_rt/horoscope.js";
 import { tr, warm, trTick } from "/_rt/translate.js";
+import { polish, warmPolish, aiTick } from "/_rt/ai.js";
 import { Scramble, Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 
@@ -44,6 +45,7 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const loc = useStore(S.locale);
   useStore(trTick);                                               
+  useStore(aiTick);                                               
   const stored = useStore($sign);
   const now = gate ? new Date(2027, 6, 23) : new Date();          
   const signIdx = (SIGN_OVERRIDE != null && SIGN_OVERRIDE !== "") ? clampSign(SIGN_OVERRIDE)
@@ -66,7 +68,9 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
   }, [signIdx, day]);
 
   useEffect(() => { if (data?.text) warm([data.text], loc); }, [data && data.text, loc]);
-  const readingText = data ? tr(data.text, loc) : "";
+  const translated = data ? tr(data.text, loc) : "";
+  useEffect(() => { if (!gate && translated && translated !== data?.text) warmPolish([translated], loc); }, [translated, loc]);
+  const readingText = polish(translated, loc);
   const dateLabel = data?.date ? new Date(now.getFullYear(), now.getMonth(), now.getDate() + (day - 1))
     .toLocaleDateString(loc === "en" ? "en-GB" : loc || "uk", { day: "numeric", month: "long" }) : "";
 

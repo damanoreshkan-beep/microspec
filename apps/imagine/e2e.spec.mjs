@@ -37,6 +37,16 @@ export default [
     },
   },
   {
+    name: "кнопка «Випадковий опис» заповнює поле (гейт: без мережі)", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-dream]")) === 1, "немає кнопки автоопису");
+      await h.type("#prompt", "");
+      await h.wait(80);
+      await h.click("[data-dream]"); await h.wait(150);
+      h.expect((await h.prop("#prompt", "value")).trim().length > 0, "автоопис не заповнив поле");
+    },
+  },
+  {
     name: "порожній опис не запускає генерацію", run: async (h) => {
       await ready(h);
       await h.type("#prompt", "");

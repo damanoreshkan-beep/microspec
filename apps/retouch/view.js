@@ -18,11 +18,17 @@ import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
 import { CameraPrime } from "/_rt/camprime.js";
 import { readLastGen } from "/_rt/lastgen.js";
+import { toEnglish } from "/_rt/translate.js";
+import { suggest } from "/_rt/ai.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
 const randSeed = () => Math.floor(Math.random() * 1e9);
+// Random seed phrases for the "surprise me" button — the AI expands one into a short, localized edit
+// instruction. Only a spark for variety (never shown); the model writes the actual instruction in the locale.
+const SPARKS = ["turn it into an oil painting", "cinematic golden-hour lighting", "vintage film photograph", "soft watercolour illustration", "add dramatic shadows", "make it a snowy winter scene", "cyberpunk neon aesthetic", "dreamy pastel tones", "black-and-white film noir", "warm autumn colours", "add a glowing sunset sky", "studio portrait lighting", "misty morning atmosphere", "retro 80s synthwave look", "add gentle falling rain", "turn day into night", "pencil sketch style", "vibrant pop-art colours", "soft cinematic bloom", "add a shallow depth of field"];
+const gateDream = "перетвори на олійний живопис";                                  // gate: deterministic, no network
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;    // seconds → m:ss
 const EST = 40;                                                                   // rough edit wall-clock (steps-heavy models run slower than text→image)
 const MAX_SIDE = 1024;                                                            // cap the uploaded image (payload + the Spaces clamp beyond this)
@@ -77,6 +83,7 @@ export function retouch({ S, toast }) {
   const [enabled, setEnabled] = useState(false);                                  // camera stream opened
   const [camErr, setCamErr] = useState(null);
   const [hasLast, setHasLast] = useState(false);                                  // an image from Уяви is available
+  const [suggesting, setSuggesting] = useState(false);                            // "surprise me" instruction is being written by the AI
 
   const fileRef = useRef(), videoRef = useRef(), streamRef = useRef(null), runRef = useRef(0), blobs = useRef([]);
 
@@ -137,6 +144,16 @@ export function retouch({ S, toast }) {
 
   const fail = (run, key) => { if (run === runRef.current) { setError(key); setPhase("error"); } };
 
+  // "Surprise me" — the AI writes a fresh edit instruction (in the active locale) from a random spark; toEnglish
+  // converts it for the model at edit() time. Fail-open: a miss leaves the field as-is. The gate uses a fixed line.
+  const dream = async () => {
+    if (suggesting || phase === "editing") return;
+    if (gate) { setPrompt(gateDream); return; }
+    setSuggesting(true);
+    try { const out = await suggest("edit", SPARKS[Math.floor(Math.random() * SPARKS.length)], loc); if (out) setPrompt(out); }
+    finally { setSuggesting(false); }
+  };
+
   const edit = async () => {
     const p = prompt.trim();
     if (!p || !srcUrl || phase === "editing") return;
@@ -149,9 +166,11 @@ export function retouch({ S, toast }) {
     try { image = await toEditableDataURL(srcUrl); } catch { return fail(run, "eFailed"); }
     if (run !== runRef.current) return;
     if (image.length > 9_000_000) return fail(run, "eBig");                       // ~6.7 MB decoded — over the proxy's body cap
+    let pEn = p; try { pEn = await toEnglish(p); } catch { /* fail-open: send the original — the edit models prefer English but a native instruction still runs */ }
+    if (run !== runRef.current) return;
     try {
       // Async job + poll, exactly like Уяви: POST starts the cascade, short polls never trip the proxy's 60s cap.
-      const cr = await fetch(`${VPS_PROXY}/image/edit`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ image, prompt: p, seed }) });
+      const cr = await fetch(`${VPS_PROXY}/image/edit`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ image, prompt: pEn, seed }) });
       if (run !== runRef.current) return;
       if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : cr.status === 413 ? "eBig" : "eFailed");
       const { job } = await cr.json();
@@ -232,7 +251,10 @@ export function retouch({ S, toast }) {
 
     <!-- ── composer / actions ── -->
     ${phase === "ready" || phase === "editing" || phase === "error" ? html`<div class="shrink-0 bg-base-100 border-t border-base-300 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
-      <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey} disabled=${phase === "editing"}></textarea>
+      <div class="relative">
+        <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey} disabled=${phase === "editing"}></textarea>
+        <button data-dream aria-label=${T(t, "dream")} disabled=${suggesting || phase === "editing"} onClick=${() => { buzz(); dream(); }} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
+      </div>
       <div class="flex gap-2">
         <button data-new class="btn btn-ghost rounded-2xl gap-2 shrink-0 border border-base-content/10" aria-label=${T(t, "newImg")} disabled=${phase === "editing"} onClick=${backToChooser}>${Icon("lucide:image", "text-lg")}</button>
         <button data-edit class="btn btn-primary flex-1 rounded-2xl gap-2" disabled=${phase === "editing" || !prompt.trim()} onClick=${edit}>${Icon("lucide:wand-sparkles", "text-lg")}${T(t, phase === "error" ? "again" : "editBtn")}</button>

@@ -301,6 +301,14 @@ function aiSystem(locale, mode) {
     if (locale === "uk") return "Ти — досвідчений таролог. Нижче — розклад: позиції, карти (пряма чи перевернута) та їхні значення. Стисло, за 3–4 речення, синтезуй ЄДИНЕ зв'язне тлумачення цього розкладу природною українською — покажи, як карти складаються в одну історію разом (а не перелічуй їх по одній). Без вступів, заголовків, списків і лапок — поверни ЛИШЕ саме тлумачення.";
     return `You are an experienced tarot reader. Below is a spread: positions, cards (upright or reversed) and their meanings. In 3–4 sentences, synthesise ONE cohesive reading in ${lang} — show how the cards combine into a single story (do not list them one by one). No preamble, headings, lists or quotes — return ONLY the reading itself.`;
   }
+  if (mode === "dream") {   // imagine — expand a spark into a vivid text→image scene prompt
+    if (locale === "uk") return "Ти — генератор описів для нейромережі, що малює зображення. Користувач дає коротку іскру-натяк. Розгорни її в ОДИН яскравий, конкретний, візуальний опис сцени українською: об'єкт, оточення, освітлення, настрій і натяк на стиль (напр. кінематографічно, макрозйомка, акварель). 1–2 речення фраз через коми. Без вступів, варіантів, пояснень чи лапок — поверни ЛИШЕ сам опис.";
+    return `You write prompts for a text-to-image model. The user gives a short spark. Expand it into ONE vivid, concrete, visual scene description in ${lang}: subject, setting, lighting, mood and a style cue (e.g. cinematic, macro, watercolour). 1–2 sentences of comma-separated phrases. No preamble, options, explanations or quotes — return ONLY the prompt.`;
+  }
+  if (mode === "edit") {    // retouch — a short creative photo-edit instruction
+    if (locale === "uk") return "Ти — генератор інструкцій для редагування фото нейромережею. Користувач дає коротку іскру-натяк. Сформулюй ОДНУ коротку творчу вказівку українською, що перетворює наявне фото — стиль, освітлення, пора року, атмосфера чи доданий об'єкт (напр. «перетвори на олійний живопис», «додай тепле призахідне світло»). Наказовий спосіб, до 12 слів. Без пояснень і лапок — поверни ЛИШЕ саму інструкцію.";
+    return `You write photo-editing instructions for an image-editing model. The user gives a short spark. Produce ONE short, creative instruction in ${lang} that transforms an existing photo — style, lighting, season, mood or an added object (e.g. "turn it into an oil painting", "add warm sunset light"). Imperative, max 12 words. No explanation or quotes — return ONLY the instruction.`;
+  }
   if (locale === "uk") return "Ти — редактор-стиліст. Тобі дають фрагмент тексту українською, отриманий машинним перекладом, тому він звучить дослівно й неприродно. Перепиши його природною, живою, грамотною українською, ЗБЕРІГАЮЧИ зміст кожного речення — нічого не додавай, не прибирай і не вигадуй. Без пояснень, приміток чи лапок — поверни ЛИШЕ виправлений текст.";
   return `You are a copy editor. You are given a passage in ${lang} produced by machine translation, so it reads literal and unnatural. Rewrite it into natural, fluent ${lang}, preserving the meaning of every sentence — add nothing, drop nothing, invent nothing. No explanations or quotes — return ONLY the corrected text.`;
 }
@@ -518,18 +526,20 @@ const server = http.createServer(async (req, res) => {
     if (!rateOk(ipOf(req))) return send(res, 429, CORS, "rate limited");
     let inp;
     try { inp = JSON.parse(await readBody(req)); } catch { return send(res, 400, CORS, "bad json"); }
-    const mode = inp.mode === "summarize" ? "summarize" : "polish";
-    const text = String(inp.text || "").slice(0, mode === "summarize" ? 6000 : 2000).trim();
+    const mode = ["summarize", "dream", "edit"].includes(inp.mode) ? inp.mode : "polish";
+    const creative = mode === "dream" || mode === "edit";                        // "surprise me" prompt gen: fresh line each call → no cache, high temperature
+    const text = String(inp.text || "").slice(0, mode === "summarize" ? 6000 : creative ? 200 : 2000).trim();
     const locale = String(inp.locale || "").slice(0, 8);
     if (!text) return send(res, 400, CORS, "empty text");
-    const ckey = mode + " " + locale + " " + text, hit = aiCache.get(ckey);
+    const ckey = mode + " " + locale + " " + text, hit = !creative && aiCache.get(ckey);
     if (hit && Date.now() - hit.ts < AI_TTL) return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ text: hit.text, cached: true }));
     const messages = [{ role: "system", content: aiSystem(locale, mode) }, { role: "user", content: text }];
-    const maxTokens = mode === "summarize" ? 400 : 800;
+    const maxTokens = mode === "summarize" ? 400 : creative ? 220 : 800;
+    const temperature = creative ? 0.95 : 0.4;                                   // creative modes want variety, not fidelity
     for (const prov of AI_PROVIDERS) {
       // reasoning_effort:"none" disables the 2.5 "thinking" budget — otherwise a thinking model spends the
       // whole max_tokens reasoning and truncates the visible answer. We want direct output for both modes.
-      const payload = JSON.stringify({ model: prov.model, messages, temperature: 0.4, max_tokens: maxTokens, reasoning_effort: "none" });
+      const payload = JSON.stringify({ model: prov.model, messages, temperature, max_tokens: maxTokens, reasoning_effort: "none" });
       // one retry per provider on a TRANSIENT failure (429 burst / 5xx / network) — the free tiers throttle
       // short bursts, and a single ~600ms backoff recovers most of them before we give up / fall to the next.
       for (let attempt = 0; attempt < 2; attempt++) {
@@ -548,8 +558,7 @@ const server = http.createServer(async (req, res) => {
             const j = await r.json();
             const out = (j?.choices?.[0]?.message?.content || "").trim();
             if (!out) break;
-            if (aiCache.size > 3000) aiCache.clear();
-            aiCache.set(ckey, { ts: Date.now(), text: out });
+            if (!creative) { if (aiCache.size > 3000) aiCache.clear(); aiCache.set(ckey, { ts: Date.now(), text: out }); }
             return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ text: out, by: prov.name }));
           }
         } catch { transient = true; }                                  // timeout / network → retry once

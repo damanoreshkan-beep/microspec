@@ -13,10 +13,16 @@ import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
 import { QUALITY, DEFAULT, sizeFor, estimateSeconds } from "/_rt/imgsize.js";
 import { writeLastGen } from "/_rt/lastgen.js";
+import { toEnglish } from "/_rt/translate.js";
+import { suggest } from "/_rt/ai.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const randSeed = () => Math.floor(Math.random() * 1e9);
+// Random seed phrases for the "surprise me" button — the AI expands one into a full, localized prompt. Only a
+// spark for variety (never shown), so plain English is fine; the model writes the actual prompt in the locale.
+const SPARKS = ["a lighthouse in a raging storm", "bioluminescent jellyfish in the deep sea", "a lone cabin under the northern lights", "brutalist architecture at dawn", "a fox in a misty autumn forest", "floating islands above the clouds", "a neon-lit rainy Tokyo alley", "an astronaut on a pastel desert planet", "a koi pond with cherry blossoms", "a snowy mountain village at dusk", "a whale swimming through a starry sky", "an old library with towering shelves", "a hummingbird at a tropical flower", "a coral reef bursting with colour", "a foggy harbour at first light", "a field of lavender under a purple sky", "a dragon curled on a mountain peak", "a quiet café on a rainy Paris street"];
+const gateDream = "гірське озеро на світанку, кришталева вода, золоте світло, кінематографічно";   // gate: deterministic, no network
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;   // seconds → m:ss
 // Default = the balanced middle stop (768×1024) — the resolution the app always rendered; the slider trades
 // DOWN to a fast draft or UP to a slow high-res (…1536×2048). See /_rt/imgsize.js for the size→estimate math.
@@ -38,19 +44,30 @@ function mockArt(seed) {
 }
 
 export function imagine({ S, toast }) {
-  const t = useStore(S.t);
+  const t = useStore(S.t), loc = useStore(S.locale);
   const [prompt, setPrompt] = useState(gate ? "northern lights over a frozen lake, cinematic, ultra detailed" : "");
   const [phase, setPhase] = useState(gate ? "done" : "idle");                    // idle | generating | done | error
   const [result, setResult] = useState(gate ? { url: mockArt(7), w: W, h: H, seed: 7 } : null);
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);                                      // seconds since generation began (the live estimate)
   const [q, setQ] = useState(DEFAULT);                                            // quality stop (index into QUALITY); starts balanced — no regression
+  const [suggesting, setSuggesting] = useState(false);                            // "surprise me" prompt is being written by the AI
   const runRef = useRef(0);                                                       // guards against a stale response landing after a new run
 
   const { width, height } = sizeFor(QUALITY[q]);                                  // the request size this quality asks for
   const est = estimateSeconds(width, height);                                     // approximate wall-clock the slider is trading against
 
   const fail = (run, key) => { if (run === runRef.current) { setError(key); setPhase("error"); } };
+
+  // "Surprise me" — the AI writes a fresh prompt (in the active locale) from a random spark; toEnglish converts
+  // it for the model at generate() time. Fail-open: a miss leaves the field as-is. The gate uses a fixed line.
+  const dream = async () => {
+    if (suggesting || phase === "generating") return;
+    if (gate) { setPrompt(gateDream); return; }
+    setSuggesting(true);
+    try { const out = await suggest("dream", SPARKS[Math.floor(Math.random() * SPARKS.length)], loc); if (out) setPrompt(out); }
+    finally { setSuggesting(false); }
+  };
 
   const generate = async () => {
     const p = prompt.trim();
@@ -61,10 +78,12 @@ export function imagine({ S, toast }) {
     setResult(null); setPhase("generating");
     const w = width, h = height;                                                  // freeze the size for this run (the slider is disabled while generating)
     if (gate) { await sleep(90); if (run === runRef.current) { setResult({ url: mockArt(seed), w, h, seed }); setPhase("done"); } return; }
+    let pEn = p; try { pEn = await toEnglish(p); } catch { /* fail-open: send the original — the models prefer English but a native prompt still runs */ }
+    if (run !== runRef.current) return;
     try {
       // Async: POST starts the job, then poll — short requests, so a slow (>60s) generation never trips the
       // proxy's 60s cap. Each poll returns JSON while pending (updating the elapsed estimate) or the image bytes.
-      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: p, width: w, height: h, seed }) });
+      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: pEn, width: w, height: h, seed }) });
       if (run !== runRef.current) return;
       if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : "eFailed");
       const { job } = await cr.json();
@@ -120,7 +139,10 @@ export function imagine({ S, toast }) {
     </div>
 
     <div class="shrink-0 bg-base-100 border-t border-base-300 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
-      <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
+      <div class="relative">
+        <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
+        <button data-dream aria-label=${T(t, "dream")} disabled=${suggesting || phase === "generating"} onClick=${dream} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
+      </div>
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-base-content/70 shrink-0">${Icon("lucide:sliders-horizontal", "text-[0.9em]")}<span>${T(t, "quality")}</span></div>
         <input data-quality type="range" min="0" max=${QUALITY.length - 1} step="1" value=${q} aria-label=${T(t, "quality")} disabled=${phase === "generating"} onInput=${(e) => setQ(Number(e.target.value))} class="range range-xs range-primary flex-1" />

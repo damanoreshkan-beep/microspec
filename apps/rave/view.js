@@ -17,6 +17,7 @@ import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { generateGroove, mulberry32 } from "/_rt/groove.js";
 import { collection } from "/_rt/db.js";
 import { Scramble, useReveal } from "/_rt/skeleton.js";
+import { isGate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -154,10 +155,30 @@ const VOICES = {
   rumble: (c, t, o) => nz(c, t, o.b.brown, { type: "lowpass", freq: 90, peak: 0.5, dur: o.spb * 0.95 }),
 };
 
+// ---- sample packs: open drum kits (Tone.js drum-samples, CORS) as ONLINE add-ons that swap the percussion
+// voices for real samples; bass/tonal voices stay synth. Loads lazily on select; until loaded (or offline, or
+// the headless gate) the synth voice plays — a seamless fallback, never a broken beat. ----
+const PBASE = "https://tonejs.github.io/audio/drum-samples";
+const SFILES = ["kick", "snare", "hihat", "tom1", "tom2", "tom3"];
+const SMAP = { kick: "kick", hardkick: "kick", snare: "snare", clap: "snare", rim: "snare", hat: "hihat", ohat: "hihat", shaker: "hihat", ride: "hihat", crash: "hihat", tom: "tom1", conga: "tom2", cowbell: "tom3", clave: "tom3" };
+const PACKS = [{ id: "LINN", label: "LinnDrum" }, { id: "R8", label: "R-8" }, { id: "CR78", label: "CR-78" }, { id: "KPR77", label: "KPR-77" }, { id: "Techno", label: "Techno" }, { id: "Stark", label: "Stark" }, { id: "Bongos", label: "Bongos" }, { id: "4OP-FM", label: "FM" }, { id: "Kit8", label: "Kit 8" }, { id: "acoustic-kit", label: "Acoustic" }];
+const BUF = new Map();
+const $pack = atom("synth"), $loading = atom(null);
+function playSample(c, buf, t, peak = 0.92) { const s = c.createBufferSource(); s.buffer = buf; const g = c.createGain(); g.gain.value = peak; s.connect(g); g.connect(bus); s.start(t); s.onended = () => { try { s.disconnect(); g.disconnect(); } catch { /* */ } }; }
+async function selectPack(id) {
+  buzz(); $pack.set(id);
+  if (id === "synth" || isGate) return;                          // gate never hits the network (deterministic e2e)
+  if (SFILES.every((f) => BUF.has(`${id}:${f}`))) return;
+  const e = ensure(); if (!e) return;
+  $loading.set(id);
+  await Promise.all(SFILES.map(async (f) => { const k = `${id}:${f}`; if (BUF.has(k)) return; try { const r = await fetch(`${PBASE}/${id}/${f}.mp3`); if (!r.ok) return; BUF.set(k, await e.ctx.decodeAudioData(await r.arrayBuffer())); } catch { /* stays synth */ } }));
+  $loading.set(null);
+}
+
 function fire(step, time) {
-  const e = eng, tr = $tracks.get(), c = e.ctx, spb = 60 / $bpm.get() / 4, riff = $riff.get();
+  const e = eng, tr = $tracks.get(), c = e.ctx, spb = 60 / $bpm.get() / 4, riff = $riff.get(), pk = $pack.get();
   const o = { b: e.buffers, spb, note: (m) => midiToFreq(m + riff[step]) };
-  for (const T2 of TRACKS) if (tr[T2.id][step]) VOICES[T2.id](c, time, o);
+  for (const T2 of TRACKS) if (tr[T2.id][step]) { const sf = pk !== "synth" ? SMAP[T2.id] : null, buf = sf ? BUF.get(`${pk}:${sf}`) : null; if (buf) playSample(c, buf, time); else VOICES[T2.id](c, time, o); }
   if (q.length < 128) q.push({ time, step });
 }
 const tick = () => { const e = eng; if (!e) return; const spb = 60 / $bpm.get() / 4, sw = $fx.get().swing; if (nextT < e.ctx.currentTime) nextT = e.ctx.currentTime; while (nextT < e.ctx.currentTime + 0.1) { const s = stepN; fire(s, nextT + (s % 2 ? sw * spb : 0)); nextT += spb; stepN = (s + 1) % N; } };
@@ -260,7 +281,7 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
 // The settings island → a history-backed bottom sheet (S.screen="fx", so system Back closes it): tempo, the
 // full FX rack, the generator and the genre presets — out of the way while you edit the grid.
 function FxSheet({ open, onClose, t, sweep }) {
-  const fx = useStore($fx), bpm = useStore($bpm), tracks = useStore($tracks);
+  const fx = useStore($fx), bpm = useStore($bpm), tracks = useStore($tracks), pack = useStore($pack), loading = useStore($loading);
   const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
   const { boxRef, grip } = useSheetDrag(onClose);
   const activePreset = PRESETS.find((p) => JSON.stringify(parse(p)) === JSON.stringify(tracks))?.id;
@@ -276,6 +297,12 @@ function FxSheet({ open, onClose, t, sweep }) {
       <button data-gen aria-label=${T(t, "gen")} class=${`btn btn-sm shrink-0 gap-1.5 ${sweep >= 0 ? "btn-accent" : "btn-accent btn-outline"}`} onClick=${newTrack}>${Icon("lucide:sparkles", `text-base ${sweep >= 0 ? "animate-pulse" : ""}`)}<span>${T(t, "gen")}</span></button>
       ${PRESETS.map((p) => html`<button data-preset=${p.id} aria-pressed=${activePreset === p.id} class=${`btn btn-sm shrink-0 ${activePreset === p.id ? "btn-primary" : "btn-outline"}`} onClick=${() => { ensure(); $tracks.set(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
       <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => $tracks.set(empty())}>${Icon("lucide:eraser", "text-base")}</button>
+    </div>
+    <div class="flex flex-col gap-1">
+      <div class="text-[0.6rem] uppercase tracking-wide text-base-content/70 flex items-center gap-1">${Icon("lucide:package", "text-[0.85em]")}${T(t, "packs")}</div>
+      <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+        ${[{ id: "synth", label: T(t, "packSynth") }, ...PACKS].map((p) => { const on = pack === p.id, busy = loading === p.id; return html`<button data-pack=${p.id} aria-pressed=${on} aria-busy=${busy} onClick=${() => selectPack(p.id)} key=${p.id} class=${`btn btn-sm shrink-0 ${on ? "btn-secondary" : "btn-outline"} ${busy ? "animate-pulse" : ""}`}>${p.label}</button>`; })}
+      </div>
     </div>
     ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
   </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;

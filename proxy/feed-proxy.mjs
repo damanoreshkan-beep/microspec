@@ -255,26 +255,7 @@ function parseVideos(html, base) {
     }
   }
   if (!next) { try { const u = new URL(base); for (const key of ["page", "p", "pg", "paged", "offset", "start", "from", "skip"]) { if (u.searchParams.has(key)) { const n = parseInt(u.searchParams.get(key), 10); if (!isNaN(n)) { u.searchParams.set(key, (key === "offset" || key === "start" || key === "skip") ? n + Math.max(1, items.length) : n + 1); next = u.href; break; } } } } catch { /* no cursor */ } }
-  // ── smart list detection: keep the repeating gallery, drop stray one-off videos (a hero/ad/background clip,
-  // or a junk URL swept from inline JS). A content LIST's items share a URL "template" — the path with its
-  // id/digit/hash segments collapsed (…/videos/#/#-#.mp4); a lone embedded video is a singleton template. When
-  // a clear repeating pattern exists (top template repeats ≥4× AND is a plurality of the page), keep only the
-  // templates that actually repeat and drop the one-offs. Otherwise keep everything — a page with a handful of
-  // videos has no list to mine, and dropping there would lose real content. (Cheap regex-space stand-in for the
-  // DOM record-extraction that a real parser — MDR / tag-path clustering — would do with a full tree.)
-  const listTmpl = (url) => { try { const u = new URL(url); return u.host + u.pathname.replace(/[0-9a-f]{8,}/gi, "#").replace(/\d+/g, "#").replace(/#(?:[._-]?#)+/g, "#"); } catch { return String(url); } };
-  let listed = items;
-  if (items.length > 4) {
-    const count = new Map();
-    for (const it of items) { const k = listTmpl(it.video); count.set(k, (count.get(k) || 0) + 1); }
-    let top = 0; for (const n of count.values()) if (n > top) top = n;
-    if (top >= 4 && top >= items.length * 0.3) {
-      const keep = items.filter((it) => count.get(listTmpl(it.video)) >= 2);   // repeating templates only → outliers gone
-      if (keep.length >= 3) listed = keep;
-    }
-  }
-  try { if (listed.length !== items.length) console.log("[videos]", new URL(base).host, `raw=${items.length} → listed=${listed.length}`); } catch { /* */ }
-  return { items: listed, next };
+  return { items, next };
 }
 
 // ── /feed/frame: same-origin reverse proxy for the interactive "source view". Fetches the target, STRIPS the

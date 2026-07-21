@@ -2,23 +2,23 @@
 // "black/broken" posters. Kept here (not in the app) so the logic is unit-tested; the app owns only the DOM
 // side (loading a poster into a canvas) — this module never touches the DOM.
 
-// Stable identity for a video item. Prefer the ORIGINAL (pre-proxy) URL, and key on origin + pathname so
-// signed / cache-busted query variants of the same file collapse to one (`…/clip.mp4?token=a` and `?token=b`
-// are the same clip). Falls back to the raw string when it isn't a URL. A video FILE's identity is its path,
-// not its query, so stripping the query is safe here and catches the common "listed twice / re-signed" dupes.
-function keyOf(item) {
-  const u = (item && (item.orig || item.video)) || "";
-  try { const x = new URL(u); return x.origin + x.pathname; } catch { return u; }
-}
+// Normalise a URL to its identity: origin + pathname, dropping signing / cache-bust query + hash
+// (`…/clip.mp4?token=a` and `?token=b` are the same file). Non-URLs pass through unchanged.
+const norm = (u) => { try { const x = new URL(u); return x.origin + x.pathname; } catch { return u || ""; } };
 
 // dedupeVideos(items) — drop duplicate clips, preserving order and the FIRST occurrence (which carries the
-// best title/poster from JSON-LD, usually listed before the bare <video>). Items without a usable key are
-// always kept (we can't prove they're dupes).
+// best title/poster from JSON-LD, usually listed before the bare <video>). Two items are the same clip when
+// EITHER their normalised VIDEO url OR their normalised POSTER url matches: a page lists a clip twice
+// (JSON-LD + <video>, or re-signed variants) AND — the case the video-url alone misses — broken/unavailable
+// clips repeat sharing one placeholder poster thumbnail. Items with neither key are always kept.
 export function dedupeVideos(items) {
   const seen = new Set(), out = [];
   for (const it of (Array.isArray(items) ? items : [])) {
-    const k = keyOf(it);
-    if (k) { if (seen.has(k)) continue; seen.add(k); }
+    const vk = norm((it && (it.orig || it.video)) || "");
+    const pk = it && it.poster ? norm(it.poster) : "";
+    if ((vk && seen.has("v:" + vk)) || (pk && seen.has("p:" + pk))) continue;
+    if (vk) seen.add("v:" + vk);
+    if (pk) seen.add("p:" + pk);
     out.push(it);
   }
   return out;

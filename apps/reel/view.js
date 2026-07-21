@@ -29,8 +29,15 @@ const framed = (u) => `${VPS_PROXY}/frame?url=${encodeURIComponent(u)}`;
 // the site's real favicon as its logo, falling back to an iconify vector (never emoji).
 const PRESETS = [
   { name: "Mixkit", url: "https://mixkit.co/free-stock-video/", icon: "lucide:clapperboard", color: "#F03D4E" },
+  { name: "Space", url: "https://mixkit.co/free-stock-video/space/", icon: "lucide:rocket", color: "#A78BFA" },
+  { name: "Nature", url: "https://mixkit.co/free-stock-video/nature/", icon: "lucide:leaf", color: "#34D399" },
+  { name: "Aerial", url: "https://mixkit.co/free-stock-video/aerial/", icon: "lucide:mountain", color: "#38BDF8" },
+  { name: "Abstract", url: "https://mixkit.co/free-stock-video/abstract/", icon: "lucide:shapes", color: "#F472B6" },
+  { name: "Dareful 4K", url: "https://dareful.com/", icon: "lucide:aperture", color: "#F59E0B" },
   { name: "Coverr", url: "https://coverr.co/", icon: "lucide:film", color: "#5B6CFF" },
   { name: "Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/Category:Animations", icon: "simple-icons:wikimediacommons", color: "#3366CC" },
+  { name: "Underwater", url: "https://commons.wikimedia.org/wiki/Category:Underwater_videos", icon: "lucide:waves", color: "#22D3EE" },
+  { name: "Time-lapse", url: "https://commons.wikimedia.org/wiki/Category:Time-lapse_videos", icon: "lucide:timer", color: "#FB923C" },
 ];
 const DEFAULT_SRC = PRESETS[0].url;
 // A solid-black 8×8 PNG (raster → never taints a canvas). Seeds the gate so the black-poster filter is

@@ -242,6 +242,17 @@
     "category": "feeds"
   },
   {
+    "id": "retouch",
+    "title": "Онови",
+    "tagline": "Дай фото інструкцію — «додай сніг», «прибери дроти», «як олійна картина» — і ШІ перемалює зображення. Твоє фото завантажується на безкоштовний сервіс редагування лише коли ти застосовуєш зміну.",
+    "glyph": "lucide:wand-sparkles",
+    "bg": "#0A0A0F",
+    "fg": "#5EEAD4",
+    "href": "./retouch/",
+    "version": "1.0",
+    "category": "creative"
+  },
+  {
     "id": "pipette",
     "title": "Піпетка",
     "tagline": "Наведи камеру — і зчитай будь-який колір",
@@ -304,7 +315,7 @@
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.42",
+    "version": "1.43",
     "category": "sound"
   },
   {
@@ -381,7 +392,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./imagine/",
-    "version": "1.5",
+    "version": "1.7",
     "category": "creative"
   },
   {

@@ -1,0 +1,28 @@
+{
+  "id": "retouch",
+  "theme": "signal",
+  "category": "creative",
+  "tabs": [
+    {
+      "id": "edit",
+      "type": "tool",
+      "icon": "lucide:wand-sparkles",
+      "label": "tabEdit",
+      "view": "retouch"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:wand-sparkles",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "permissions": ["camera"]
+  }
+}

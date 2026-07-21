@@ -384,7 +384,9 @@ async function gradioEdit(sp, img, prompt, w, h, seed) {
       event_id = (await r.json())?.event_id;
     } catch { return null; } finally { clearTimeout(t); } }
   if (!event_id) return null;
-  const c = new AbortController(), t = setTimeout(() => c.abort(), 100000);
+  // Per-Space stream cap kept below the overall budget so ONE stalled/queued Space can't eat the whole cascade
+  // (observed: a busy ZeroGPU Space can sit ~70s before yielding) — cap it and fall through to the next Space.
+  const c = new AbortController(), t = setTimeout(() => c.abort(), 70000);
   try {
     const r = await fetch(base + "/" + event_id, { signal: c.signal });
     if (!r.ok) return null;

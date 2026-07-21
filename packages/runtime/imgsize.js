@@ -24,8 +24,15 @@ export function fitResolution(vw, vh, dpr = 1, maxMP = 4) {
 // the estimate below reflects. Portrait 3:4 (the composer's frame); each stop's long edge ×AR lands on a
 // clean 32-multiple, so the aspect ratio is exact with no drift.
 export const AR = 3 / 4;                                   // portrait 3:4 — width ÷ height
-export const MAX_SIDE = 1024;                              // the free Spaces silently clamp beyond this
-export const QUALITY = [512, 640, 768, 896, 1024];        // long-edge (px) stops: 0 = draft … 4 = high
+export const MAX_SIDE = 2048;                              // FLUX schnell/dev honour up to 2048/side (SD3=1344,
+                                                          // realtime is smaller — the cascade falls through)
+// Long-edge (px) stops, 0 = draft … top = max. Every stop is a multiple of 128, so ×AR lands on a clean
+// 32-multiple (exact 3:4, no drift). The top two (1536/2048) only the big FLUX Spaces can serve, so they're
+// slower and a touch less reliable — offered, not the default.
+export const QUALITY = [512, 768, 1024, 1536, 2048];
+// The default stop — balanced and reliable (768×1024, what the app always rendered). NOT the max, so the
+// slider trades both ways: down to a fast draft, up to a slow high-res render.
+export const DEFAULT = 2;
 
 // A quality stop (long edge, px) → the concrete request size. AR kept, both sides latent-aligned to 32 and
 // never past the Space ceiling. Portrait, so the long edge is the height.
@@ -35,10 +42,11 @@ export function sizeFor(longEdge) {
   return { width: w, height: h, mp: Math.round((w * h) / 10_000) / 100 };
 }
 
-// Approximate wall-clock for one free-Space generation: a fixed cold-start/queue floor plus a per-megapixel
-// diffusion cost. Deliberately a single rough number (the Spaces' queueing dominates and swings), always
-// surfaced with a "~". Tuned to the observed ~15–35s band across the 0.2–0.8 MP request range.
-const COLD = 11, PER_MP = 26;
+// Approximate wall-clock for one free-Space generation: a small start-up floor plus a per-megapixel cost.
+// Deliberately a single rough number (a warm realtime Space is seconds; a cold ZeroGPU fallback is far
+// slower — the truth swings), always surfaced with a "~". Anchored to the measured warm cascade (~2s at
+// 0.8 MP, ~9s at 3.1 MP) with a buffer for cold-start/queue, giving ~8s draft … ~31s at the 1536×2048 max.
+const COLD = 6, PER_MP = 8;
 export function estimateSeconds(w, h) {
   return Math.round(COLD + PER_MP * (w * h) / 1_000_000);
 }

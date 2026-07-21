@@ -43,6 +43,13 @@ export function polish(text, locale) {
   return cacheFor(locale)[text] || text;
 }
 
+// isPolished(text, locale) — has this string already been rewritten + cached? (false while still in flight, so
+// a caller can hold a loading state until the natural rewrite lands). Passthrough/empty count as done.
+export function isPolished(text, locale) {
+  if (typeof text !== "string" || !text.trim() || !locale || locale === CONTENT_LANG) return true;
+  return text in cacheFor(locale);
+}
+
 async function polishOne(text, locale) {
   const r = await fetch(AI, {
     method: "POST",

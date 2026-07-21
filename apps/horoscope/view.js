@@ -2,7 +2,8 @@
 // (professional astrologers), plus the day's four star ratings (love/work/vibe/success). Fetched through
 // our allowlisted VPS proxy (jobs-map.mooo.com/feed/horoscope → parsed compact JSON, CORS *), then cached
 // per (sign, day) in localStorage so the last reading stays instant and readable offline. English prose is
-// translated to the active locale via /_rt/translate.js (fail-open: the original shows until it lands).
+// translated to the active locale AND lightly rewritten into natural prose via the systemic /_rt/localize.js
+// hook, which holds a skeleton until the FINAL text is ready (never the wooden intermediate). Fail-open.
 // The sign glyph is the hand-drawn SVG from /_rt/zodiac.js — never an emoji.
 import { html } from "htm/preact";
 import { Fragment } from "preact";
@@ -13,8 +14,7 @@ import { persistentAtom } from "@nanostores/persistent";
 import { T } from "/_rt/i18n.js";
 import { Sign } from "/_rt/zodiac.js";
 import { sunSign } from "/_rt/horoscope.js";
-import { tr, warm, trTick } from "/_rt/translate.js";
-import { polish, warmPolish, aiTick } from "/_rt/ai.js";
+import { useLocalized } from "/_rt/localize.js";
 import { Scramble, Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 
@@ -54,8 +54,6 @@ async function fetchReading(signIdx, dayId) {
 export function horoscope({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const loc = useStore(S.locale);
-  useStore(trTick);                                               // re-render when a translation lands
-  useStore(aiTick);                                               // …and again when its natural rewrite lands
   const stored = useStore($sign);
   const now = gate ? new Date(2027, 6, 23) : new Date();          // Jul 23 (Leo) — a reproducible default
   const signIdx = (SIGN_OVERRIDE != null && SIGN_OVERRIDE !== "") ? clampSign(SIGN_OVERRIDE)
@@ -78,14 +76,10 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
     return () => { live = false; };
   }, [signIdx, day]);
 
-  // Translate the (English) reading into the active locale — cached permanently, fail-open to the original.
-  useEffect(() => { if (data?.text) warm([data.text], loc); }, [data && data.text, loc]);
-  const translated = data ? tr(data.text, loc) : "";
-  // …then lightly rewrite the (wooden, literal) machine translation into natural prose via the systemic AI
-  // module — only once the translation itself has landed (translated ≠ the English source), and never under
-  // the gate (deterministic shot/e2e; no LLM calls). Fail-open: the translated text shows until the polish lands.
-  useEffect(() => { if (!gate && translated && translated !== data?.text) warmPolish([translated], loc); }, [translated, loc]);
-  const readingText = polish(translated, loc);
+  // Translate → naturally rewrite the reading for the active locale, as one systemic step: `localizing` stays
+  // true until the FINAL text is ready, so the UI animates a skeleton instead of flashing the wooden
+  // intermediate. Fail-open + gate-safe (the hook handles the network + the gate — no guard needed here).
+  const { text: readingText, pending: localizing } = useLocalized(data?.text, loc);
   const dateLabel = data?.date ? new Date(now.getFullYear(), now.getMonth(), now.getDate() + (day - 1))
     .toLocaleDateString(loc === "en" ? "en-GB" : loc || "uk", { day: "numeric", month: "long" }) : "";
 
@@ -121,7 +115,10 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
               <span class="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${dateLabel}</span>
               ${err ? html`<span class="text-[0.62rem] text-warning/80 truncate">${T(t, "offline")}</span>` : null}
             </div>
-            <p data-reading data-live class="text-[0.97rem] leading-relaxed text-base-content/90">${readingText}</p>
+            ${localizing
+      ? html`<!-- translating + rewriting: hold the animated skeleton until the final natural text is ready -->
+          <div class="flex flex-col gap-2 text-base-content/55">${[26, 30, 28, 18].map((n, i) => html`<div class="text-[0.97rem]" key=${i}><${Scramble} len=${n} /></div>`)}</div>`
+      : html`<p data-reading data-live class="text-[0.97rem] leading-relaxed text-base-content/90">${readingText}</p>`}
 
             <!-- the day's four real star ratings -->
             <div data-ratings class="flex flex-col gap-2.5 rounded-2xl bg-base-100 border border-base-300 p-4">

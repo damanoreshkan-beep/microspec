@@ -1,0 +1,43 @@
+{
+  "name": "Хендпан",
+  "short_name": "Хендпан",
+  "description": "Хендпан, на якому можна грати: удар по тон-полю дає солодкий гармонічний дзвін 1:2:3 (основна, октава, дуодецима), 10 налаштованих строїв і 5 голосів, Потік автоматично генерує медитативну лінію (науково обґрунтований мелодичний пошук — консонанс, голосоведення, розв'язання), запиши власні лупи ударами й тчи їх на сітці. Синтез наживо, без семплів, офлайн.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0A0A0B",
+  "background_color": "#0A0A0B",
+  "lang": "uk",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

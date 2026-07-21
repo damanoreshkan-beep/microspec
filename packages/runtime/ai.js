@@ -1,8 +1,8 @@
 // microspec runtime — systemic AI text polish.
 //
 // Machine translation (translate.js, the free gtx endpoint) is literal and often reads wooden. This module
-// takes such text and asks a server-side LLM — via POST /feed/ai on our VPS proxy (Gemini primary, Groq
-// fallback, the key held server-side) — to LIGHTLY rewrite it into natural, fluent prose in the SAME
+// takes such text and asks a server-side LLM — via POST /feed/ai on our VPS proxy (Gemini free tier, the
+// key held server-side) — to LIGHTLY rewrite it into natural, fluent prose in the SAME
 // language, preserving the meaning of every sentence. It is a *systemic* capability: any app can call
 // polish() on API-derived body text that reads awkwardly after translation.
 //

@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useMemo } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
+import { generateMelody } from "/_rt/melody.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -35,8 +36,10 @@ const TIMBRE = { type: "sine", dur: 2.1, attack: 0.002, peak: 0.45, partials: [[
 const BASE = 7;
 const SONGS = [
   { id: "gliss", name: "sGliss", step: 95, seq: Array.from({ length: 17 }, (_, k) => k - BASE) },
-  { id: "twinkle", name: "sTwinkle", step: 340, seq: [0, 0, 4, 4, 5, 5, 4, null, 3, 3, 2, 2, 1, 1, 0] },
-  { id: "ode", name: "sOde", step: 320, seq: [2, 2, 3, 4, 4, 3, 2, 1, 0, 0, 1, 2, 2, 1, 1] },
+  { id: "avatarLeaves", name: "sAvatarLeaves", step: 360, scale: "major", seq: [4, 4, 3, 2, null, 4, 4, 3, 2, null, 0, 2, 2, 2, 1, 0, null, 4, 4, 3, 2, null, 0, 4, 4, 4, 3, 2, null, 0, 2, 2, 2, 1, 0, null, 2, 2, 1, 0] },
+  { id: "avatarTheme", name: "sAvatarTheme", step: 300, scale: "major", seq: [4, 4, 3, 2, null, 4, 4, 3, 2, null, 1, 2, 2, 2, 1, 0, null, 2, 2, 2, 1, 0, null, 4, 4, 4, 3, 2, null, 4, 4, 3, 2, null, 2, 2, 2, 1, 0, null, 2, 2, 1, 0] },
+  { id: "twinkle", name: "sTwinkle", step: 340, scale: "major", seq: [0, 0, 4, 4, 5, 5, 4, null, 3, 3, 2, 2, 1, 1, 0] },
+  { id: "ode", name: "sOde", step: 320, scale: "major", seq: [2, 2, 3, 4, 4, 3, 2, 1, 0, 0, 1, 2, 2, 1, 1] },
 ];
 
 export function kalimba({ S }) {
@@ -45,7 +48,7 @@ export function kalimba({ S }) {
   const [lit, setLit] = useState(() => new Set());
   const [playing, setPlaying] = useState(null);
   const [dim, setDim] = useState({ w: 0, h: 0 });                   
-  const eng = useRef(null), flashes = useRef([]), song = useRef([]), region = useRef(), ptr = useRef(new Map()), usingPtr = useRef(false);
+  const eng = useRef(null), flashes = useRef([]), song = useRef([]), region = useRef(), ptr = useRef(new Map()), usingPtr = useRef(false), switching = useRef(false);
 
   const tines = useMemo(() => buildTines(STEPS[scale]), [scale]);
   const byAsc = useMemo(() => { const a = []; tines.forEach((tn) => { a[tn.asc] = tn; }); return a; }, [tines]);
@@ -62,15 +65,25 @@ export function kalimba({ S }) {
   const onClickBoard = (e) => { if (usingPtr.current) return; const b = e.target.closest && e.target.closest("[data-tine]"); if (b) pluck(Number(b.getAttribute("data-tine"))); };
 
   const stop = () => { song.current.forEach(clearTimeout); song.current = []; setPlaying(null); };
+  const baFor = (sc) => { const a = []; buildTines(STEPS[sc]).forEach((tn) => { a[tn.asc] = tn; }); return a; };
   const play = (s) => {
     stop(); const e = ensure(); setPlaying(s.id);
+    const sc = s.scale || scale;
+    if (s.scale && s.scale !== scale) { switching.current = true; setScale(s.scale); }   
+    const ba = sc === scale ? byAsc : baFor(sc);
     s.seq.forEach((off, step) => song.current.push(setTimeout(() => {
-      if (off != null) { const tn = byAsc[BASE + off]; if (tn) { hit(e, tn); flash(tn.pos); } }
+      if (off != null) { const tn = ba[BASE + off]; if (tn) { hit(e, tn); flash(tn.pos); } }
       if (step === s.seq.length - 1) song.current.push(setTimeout(() => setPlaying(null), s.step + 200));
     }, step * s.step)));
   };
+  const flow = () => {
+    const steps = STEPS[scale]; const offs = [0]; let acc = 0;
+    for (let k = 0; k < 9; k++) { acc += steps[k % steps.length]; offs.push(acc); }
+    const g = generateMelody(offs, { seed: (Math.random() * 0xffffffff) >>> 0, len: 14, restP: 0.16, tries: 220 });
+    play({ id: "flow", step: 300, seq: g.notes.map((n) => (n.rest ? null : n.i)) });
+  };
 
-  useEffect(() => stop, [scale]);                                   
+  useEffect(() => { if (switching.current) { switching.current = false; return; } stop(); }, [scale]);   
   useEffect(() => { const el = region.current; if (!el) return; const apply = () => setDim({ w: el.clientWidth, h: el.clientHeight }); apply(); const ro = new ResizeObserver(apply); ro.observe(el); return () => ro.disconnect(); }, []);
   useEffect(() => () => { flashes.current.forEach(clearTimeout); song.current.forEach(clearTimeout); if (eng.current) eng.current.close(); }, []);
 
@@ -78,6 +91,7 @@ export function kalimba({ S }) {
     <div class="shrink-0 flex items-center gap-1.5 overflow-x-auto px-2 py-2 border-b border-base-300">
       ${SCALES.map((s) => html`<button data-scale=${s.id} aria-pressed=${scale === s.id} class=${`btn btn-xs shrink-0 ${scale === s.id ? "btn-primary" : "btn-ghost"}`} onClick=${() => setScale(s.id)} key=${s.id}>${T(t, s.name)}</button>`)}
       <span class="w-px self-stretch bg-base-300 mx-0.5 shrink-0"></span>
+      <button data-flow aria-pressed=${playing === "flow"} class=${`btn btn-xs shrink-0 gap-1 ${playing === "flow" ? "btn-secondary" : "btn-outline btn-secondary"}`} onClick=${() => (playing === "flow" ? stop() : flow())}>${Icon(playing === "flow" ? "lucide:square" : "lucide:sparkles")}${T(t, "sFlow")}</button>
       ${SONGS.map((s) => html`<button data-song=${s.id} class=${`btn btn-xs shrink-0 gap-1 ${playing === s.id ? "btn-primary" : "btn-outline"}`} onClick=${() => (playing === s.id ? stop() : play(s))} key=${s.id}>${Icon(playing === s.id ? "lucide:square" : "lucide:play")}${T(t, s.name)}</button>`)}
     </div>
 

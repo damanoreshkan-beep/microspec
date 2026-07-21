@@ -2,12 +2,32 @@ const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("
 
 export default [
   {
-    name: "калімба: 17 пелюсток + 6 ладів + 3 демо", run: async (h) => {
+    name: "калімба: 17 пелюсток + 6 ладів + пісні + Flow", run: async (h) => {
       await ready(h); await h.wait(200);
       h.expect((await h.count("[data-tine]")) === 17, "немає 17 пелюсток");
       h.expect((await h.count("[data-scale]")) === 6, "немає 6 ладів");
-      h.expect((await h.count("[data-song]")) === 3, "немає 3 демо-мелодій");
+      h.expect((await h.count("[data-song]")) === 5, "немає 5 пісень");
+      h.expect((await h.count("[data-flow]")) === 1, "немає кнопки Flow");
       h.expect((await h.attr('[data-tine="8"]', "aria-label")) === "C4", "центральна пелюстка не C4 (tonic)");
+    },
+  },
+  {
+    name: "Flow генерує і грає, потім зупиняється", run: async (h) => {
+      await ready(h);
+      await h.tap("[data-flow]"); await h.wait(120);
+      h.expect((await h.attr("[data-flow]", "class")).includes("btn-secondary"), "Flow не почав грати");
+      await h.tap("[data-flow]"); await h.wait(120);
+      h.expect(!(await h.attr("[data-flow]", "aria-pressed")) || (await h.attr("[data-flow]", "aria-pressed")) === "false", "Flow не зупинився");
+    },
+  },
+  {
+    name: "пісня Аватара перебудовує лад у мажор", run: async (h) => {
+      await ready(h);
+      await h.click('[data-scale="minor"]'); await h.wait(150);
+      h.expect((await h.attr('[data-tine="9"]', "aria-label")) === "Eb4", "не перейшло в мінор");
+      await h.tap('[data-song="avatarLeaves"]'); await h.wait(160);
+      h.expect((await h.attr('[data-tine="9"]', "aria-label")) === "E4", "пісня не перебудувала лад у мажор");
+      await h.tap('[data-song="avatarLeaves"]'); await h.wait(90);
     },
   },
   {

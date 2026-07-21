@@ -1,0 +1,12 @@
+{
+  "id": "handpan",
+  "theme": "signal",
+  "category": "sound",
+  "tabs": [
+    { "id": "play", "type": "tool", "icon": "lucide:disc-3", "label": "tabPlay", "view": "handpan" },
+    { "id": "weave", "type": "tool", "icon": "lucide:grid-3x3", "label": "tabWeave", "view": "handpanWeave" },
+    { "id": "saved", "type": "tool", "icon": "lucide:bookmark", "label": "tabSaved", "view": "handpanSaved" },
+    { "id": "me", "type": "profile", "icon": "lucide:disc-3", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:disc-3", "theme": true, "lang": true, "install": true }
+}

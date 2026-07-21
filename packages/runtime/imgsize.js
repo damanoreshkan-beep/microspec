@@ -12,8 +12,9 @@ export function fitResolution(vw, vh, dpr = 1, maxMP = 4) {
 }
 
 export const AR = 3 / 4;                                   
-export const MAX_SIDE = 1024;                              
-export const QUALITY = [512, 640, 768, 896, 1024];        
+export const MAX_SIDE = 2048;                              
+export const QUALITY = [512, 768, 1024, 1536, 2048];
+export const DEFAULT = 2;
 
 export function sizeFor(longEdge) {
   const h = Math.min(MAX_SIDE, snap(Math.max(MIN, longEdge)));
@@ -21,7 +22,7 @@ export function sizeFor(longEdge) {
   return { width: w, height: h, mp: Math.round((w * h) / 10_000) / 100 };
 }
 
-const COLD = 11, PER_MP = 26;
+const COLD = 6, PER_MP = 8;
 export function estimateSeconds(w, h) {
   return Math.round(COLD + PER_MP * (w * h) / 1_000_000);
 }

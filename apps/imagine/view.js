@@ -5,14 +5,14 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
-import { QUALITY, sizeFor, estimateSeconds } from "/_rt/imgsize.js";
+import { QUALITY, DEFAULT, sizeFor, estimateSeconds } from "/_rt/imgsize.js";
+import { writeLastGen } from "/_rt/lastgen.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const randSeed = () => Math.floor(Math.random() * 1e9);
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;   
-const HI = QUALITY.length - 1;
-const { width: W, height: H } = sizeFor(QUALITY[HI]);                            
+const { width: W, height: H } = sizeFor(QUALITY[DEFAULT]);                       
 
 function mockArt(seed) {
   let s = (seed >>> 0) || 1;
@@ -34,7 +34,7 @@ export function imagine({ S, toast }) {
   const [result, setResult] = useState(gate ? { url: mockArt(7), w: W, h: H, seed: 7 } : null);
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);                                      
-  const [q, setQ] = useState(HI);                                                 
+  const [q, setQ] = useState(DEFAULT);                                            
   const runRef = useRef(0);                                                       
 
   const { width, height } = sizeFor(QUALITY[q]);                                  
@@ -67,7 +67,9 @@ export function imagine({ S, toast }) {
         if ((pr.headers.get("content-type") || "").startsWith("image/")) {
           const blob = await pr.blob();
           if (run !== runRef.current) return;
-          setResult({ url: URL.createObjectURL(blob), w, h, seed }); setPhase("done"); return;
+          setResult({ url: URL.createObjectURL(blob), w, h, seed }); setPhase("done");
+          writeLastGen(blob, p);                                                   
+          return;
         }
         let j; try { j = await pr.json(); } catch { continue; }
         if (j.status === "error") return fail(run, "eFailed");

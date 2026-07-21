@@ -289,7 +289,7 @@ async function gradioEdit(sp, img, prompt, w, h, seed) {
       event_id = (await r.json())?.event_id;
     } catch { return null; } finally { clearTimeout(t); } }
   if (!event_id) return null;
-  const c = new AbortController(), t = setTimeout(() => c.abort(), 100000);
+  const c = new AbortController(), t = setTimeout(() => c.abort(), 70000);
   try {
     const r = await fetch(base + "/" + event_id, { signal: c.signal });
     if (!r.ok) return null;

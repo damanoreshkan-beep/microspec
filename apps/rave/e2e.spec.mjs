@@ -2,12 +2,20 @@ const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("
 
 export default [
   {
-    name: "плеєр: стилі, транспорт, фільтр, візуалізатор", run: async (h) => {
+    name: "плеєр: стилі, генератор, транспорт, фільтр", run: async (h) => {
       await ready(h);
       h.expect((await h.count("[data-style]")) === 8, "немає 8 стилів");
       h.expect((await h.count("#play")) === 1, "немає програвання");
+      h.expect((await h.count("#gen")) === 1, "немає генератора");
       h.expect((await h.count("[data-filter]")) === 1, "немає фільтра");
       h.expect((await h.count("[data-viz] > div")) === 16, "візуалізатор не 16 кроків");
+    },
+  },
+  {
+    name: "генератор пише біт", run: async (h) => {
+      await ready(h);
+      await h.tap("#gen"); await h.wait(700);   
+      h.expect((await h.count("[data-viz] > div")) === 16, "візуалізатор зник після генерації");
     },
   },
   {
@@ -20,10 +28,10 @@ export default [
     },
   },
   {
-    name: "матриця подів: 16x16, редагування, збереження", run: async (h) => {
+    name: "матриця 22x16: редагування + збереження", run: async (h) => {
       await h.click('[data-tab="pads"]'); await h.wait(200);
-      h.expect((await h.count("[data-cell]")) === 256, "матриця не 16x16");
-      const cell = '[data-cell="tom-6"]';
+      h.expect((await h.count("[data-cell]")) === 22 * 16, "матриця не 22x16");
+      const cell = '[data-cell="conga-6"]';
       const before = await h.attr(cell, "aria-pressed");
       await h.tap(cell); await h.wait(120);
       h.expect((await h.attr(cell, "aria-pressed")) !== before, "пад не перемкнувся");
@@ -33,10 +41,13 @@ export default [
     },
   },
   {
-    name: "видалення з undo", run: async (h) => {
-      await h.click('[data-tab="saved"]'); await h.wait(250);
-      const n = await h.count("[data-saved]");
-      if (n > 0) { await h.tap("[data-saved] [data-del]"); await h.wait(300); h.expect((await h.count("[data-saved]")) === n - 1, "не видалилось"); }
+    name: "налаштування: sheet, Back закриває", run: async (h) => {
+      await h.click('[data-tab="pads"]'); await h.wait(200);
+      await h.tap("[data-settings]"); await h.wait(200);
+      h.expect((await h.prop("#fxsheet", "open")) === true, "sheet не відкрився");
+      h.expect((await h.count("[data-fx]")) === 6, "немає 6 FX-повзунків");
+      await h.back(); await h.wait(200);
+      h.expect((await h.prop("#fxsheet", "open")) !== true, "Back не закрив sheet");
     },
   },
   {

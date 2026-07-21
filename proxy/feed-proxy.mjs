@@ -21,6 +21,38 @@ const IMG_SPACES = [
   { host: "prithivmlmods-flux-lora-dlc", pre: "/gradio_api", api: "run_lora", data: (p, w, h, s) => [p, null, 0.75, 3.5, 8, false, s, w, h, 0.9] },
 ];
 const IMG_TTL = 7 * 86400_000;
+const fd = (url) => ({ url });                                    
+const gal = (url) => [{ image: { url }, caption: null }];         
+const outUrl = (a) => (a && a[0] && (a[0].url || (typeof a[0] === "string" ? a[0] : null))) || null;
+const outGallery = (a) => a?.[0]?.[0]?.image?.url || a?.[0]?.[0]?.url || null;
+const outSlider = (a) => a?.[0]?.[1]?.url || a?.[0]?.url || a?.[1]?.url || null;  
+const IMG_EDIT_SPACES = [
+  { host: "multimodalart-qwen-image-edit-fast", pre: "/gradio_api", api: "infer", data: (img, p, w, h, s) => [fd(img), p, s, false, 1.0, 8, false], out: outUrl },
+  { host: "black-forest-labs-flux-1-kontext-dev", pre: "/gradio_api", api: "infer", data: (img, p, w, h, s) => [fd(img), p, s, false, 2.5, 28], out: outUrl },
+  { host: "linoyts-qwen-image-edit-2511-fast", pre: "/gradio_api", api: "infer", data: (img, p, w, h, s) => [gal(img), p, s, false, 1.0, 8, h, w, false], out: outGallery },
+  { host: "akhaliq-flux-1-kontext-dev", pre: "/gradio_api", api: "infer", data: (img, p, w, h, s) => [fd(img), p, s, false, 2.5, 28], out: outUrl },
+  { host: "qwen-qwen-image-edit-2511", pre: "/gradio_api", api: "infer", data: (img, p, w, h, s) => [gal(img), p, s, false, 4.0, 40, h, w, false], out: outGallery },
+  { host: "qwen-qwen-image-edit", pre: "/gradio_api", api: "infer", data: (img, p, w, h, s) => [fd(img), p, s, false, 4.0, 50, false], out: outUrl },
+  { host: "stepfun-ai-step1x-edit", pre: "/gradio_api", api: "inference", data: (img, p, w, h, s) => [p, fd(img), s, 1024], out: outSlider },
+  { host: "omnigen2-omnigen2", pre: "/gradio_api", api: "run", data: (img, p, w, h, s) => [p, w, h, "euler", 50, fd(img), null, null, "", 5.0, 2.0, 0.0, 1.0, 1, 2048, 1048576, s], out: outUrl },
+  { host: "prithivmlmods-qwen-image-edit-2509-loras-fast", pre: "/gradio_api", api: "infer", data: (img, p, w, h, s) => [img, p, "", s, false, 1.0, 8], out: outUrl },
+];
+const IMG_EDIT_TTL = 3 * 86400_000;
+const editCache = new Map();                                     
+let editJobSeq = 0;
+const editJobs = new Map();                                      
+function jpegSize(buf) {
+  if (!buf || buf.length < 4 || buf[0] !== 0xFF || buf[1] !== 0xD8) return null;
+  let o = 2;
+  while (o + 9 < buf.length) {
+    if (buf[o] !== 0xFF) { o++; continue; }
+    const m = buf[o + 1];
+    if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) return { w: buf.readUInt16BE(o + 7), h: buf.readUInt16BE(o + 5) };
+    if (m === 0xD8 || m === 0xD9 || (m >= 0xD0 && m <= 0xD7)) { o += 2; continue; }
+    o += 2 + buf.readUInt16BE(o + 2);
+  }
+  return null;
+}
 const imgCache = new Map();                                      
 let imgJobSeq = 0;
 const imgJobs = new Map();                                       
@@ -46,7 +78,7 @@ function rateOk(ip) {
   return a.length <= max;
 }
 const ipOf = (req) => (req.headers["x-forwarded-for"] || "").split(",")[0].trim() || req.socket.remoteAddress || "?";
-const readBody = (req) => new Promise((resolve, reject) => { let b = ""; req.on("data", (c) => { b += c; if (b.length > 8000) req.destroy(); }); req.on("end", () => resolve(b)); req.on("error", reject); });
+const readBody = (req, max = 8000) => new Promise((resolve, reject) => { let b = ""; req.on("data", (c) => { b += c; if (b.length > max) req.destroy(); }); req.on("end", () => resolve(b)); req.on("error", reject); });
 const send = (res, code, headers, body) => { res.writeHead(code, headers); res.end(body); };
 
 const HORO_DAYS = new Set(["today", "tomorrow", "yesterday"]);
@@ -247,6 +279,70 @@ async function runImageJob(id, prompt, w, h, seed) {
   job.status = "error";
 }
 
+async function gradioEdit(sp, img, prompt, w, h, seed) {
+  const base = "https://" + sp.host + ".hf.space" + sp.pre + "/call/" + sp.api;
+  let event_id;
+  { const c = new AbortController(), t = setTimeout(() => c.abort(), 12000);
+    try {
+      const r = await fetch(base, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ data: sp.data(img, prompt, w, h, seed) }), signal: c.signal });
+      if (!r.ok) return null;
+      event_id = (await r.json())?.event_id;
+    } catch { return null; } finally { clearTimeout(t); } }
+  if (!event_id) return null;
+  const c = new AbortController(), t = setTimeout(() => c.abort(), 100000);
+  try {
+    const r = await fetch(base + "/" + event_id, { signal: c.signal });
+    if (!r.ok) return null;
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let buf = "", ev = null;
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1);
+        if (line.startsWith("event:")) ev = line.slice(6).trim();
+        else if (line.startsWith("data:") && (ev === "complete" || ev === "error")) {
+          reader.cancel().catch(() => {});
+          if (ev === "error") return null;
+          try { const url = sp.out(JSON.parse(line.slice(5).trim())); return url || null; } catch { return null; }
+        }
+      }
+    }
+    return null;
+  } catch { return null; } finally { clearTimeout(t); }
+}
+
+async function runEditJob(id, img, prompt, seed) {
+  const job = editJobs.get(id); if (!job) return;
+  let dims = null;
+  try { const b = Buffer.from(img.slice(img.indexOf(",") + 1), "base64"); dims = jpegSize(b); } catch {  }
+  const w = dims?.w || 1024, h = dims?.h || 1024;
+  const sig = img.length + ":" + img.slice(-48);                 
+  const ckey = `${sig}|${prompt}|${seed}`, cached = editCache.get(ckey);
+  if (cached && Date.now() - cached.ts < IMG_EDIT_TTL) { job.status = "done"; job.ct = cached.ct; job.buf = cached.buf; return; }
+  const started = Date.now();
+  for (const sp of IMG_EDIT_SPACES) {
+    if (Date.now() - started > 150000) break;                    
+    job.stage = sp.host;
+    let url = await gradioEdit(sp, img, prompt, w, h, seed).catch(() => null);
+    if (!url) continue;
+    if (url.startsWith("/")) url = "https://" + sp.host + ".hf.space" + url;   
+    try {
+      const c = new AbortController(), t = setTimeout(() => c.abort(), 25000);
+      const im = await fetch(url, { signal: c.signal }); clearTimeout(t);
+      const ct = im.headers.get("content-type") || "";
+      if (!im.ok || !ct.startsWith("image/")) continue;
+      const b = Buffer.from(await im.arrayBuffer());
+      if (b.length < 512) continue;                              
+      if (editCache.size > 200) editCache.clear();
+      editCache.set(ckey, { ts: Date.now(), ct, buf: b });
+      job.status = "done"; job.ct = ct; job.buf = b; return;
+    } catch { continue; }
+  }
+  job.status = "error";
+}
+
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://localhost");
   const p = u.pathname;
@@ -261,8 +357,8 @@ const server = http.createServer(async (req, res) => {
     try { inp = JSON.parse(await readBody(req)); } catch { return send(res, 400, CORS, "bad json"); }
     const prompt = String(inp.prompt || "").slice(0, 800).trim();
     if (!prompt) return send(res, 400, CORS, "empty prompt");
-    const w = Math.max(256, Math.min(1024, Number(inp.width) || 768));
-    const h = Math.max(256, Math.min(1024, Number(inp.height) || 768));
+    const w = Math.max(256, Math.min(2048, Number(inp.width) || 768));
+    const h = Math.max(256, Math.min(2048, Number(inp.height) || 768));
     const seed = Number(inp.seed) || 0;
     const now = Date.now();
     for (const [k, v] of imgJobs) if (now - v.ts > 300000) imgJobs.delete(k);   
@@ -273,6 +369,32 @@ const server = http.createServer(async (req, res) => {
   }
   if (p === "/feed/image/get" && req.method === "GET") {
     const job = imgJobs.get(u.searchParams.get("job") || "");
+    if (!job) return send(res, 404, { ...CORS, "content-type": "application/json" }, JSON.stringify({ status: "error" }));
+    if (job.status === "done") return send(res, 200, { ...CORS, "content-type": job.ct, "x-image-by": job.stage }, job.buf);
+    if (job.status === "error") return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ status: "error" }));
+    return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ status: "pending", stage: job.stage, elapsed: Math.round((Date.now() - job.ts) / 1000) }));
+  }
+
+  if (p === "/feed/image/edit" && req.method === "POST") {
+    const origin = req.headers.origin || "";
+    if (!ALLOW_ORIGIN.has(origin)) return send(res, 403, CORS, "origin not allowed");
+    if (!rateOk(ipOf(req))) return send(res, 429, CORS, "rate limited");
+    let inp;
+    try { inp = JSON.parse(await readBody(req, 12_000_000)); } catch { return send(res, 400, CORS, "bad json"); }
+    const image = String(inp.image || "");
+    if (!/^data:image\/[a-z+]+;base64,/.test(image)) return send(res, 400, CORS, "bad image");
+    const prompt = String(inp.prompt || "").slice(0, 800).trim();
+    if (!prompt) return send(res, 400, CORS, "empty prompt");
+    const seed = Number(inp.seed) || 0;
+    const now = Date.now();
+    for (const [k, v] of editJobs) if (now - v.ts > 300000) editJobs.delete(k);   
+    const id = (++editJobSeq).toString(36) + now.toString(36) + "e";
+    editJobs.set(id, { ts: now, status: "pending", stage: "starting" });
+    runEditJob(id, image, prompt, seed);                                          
+    return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ job: id }));
+  }
+  if (p === "/feed/image/edit/get" && req.method === "GET") {
+    const job = editJobs.get(u.searchParams.get("job") || "");
     if (!job) return send(res, 404, { ...CORS, "content-type": "application/json" }, JSON.stringify({ status: "error" }));
     if (job.status === "done") return send(res, 200, { ...CORS, "content-type": job.ct, "x-image-by": job.stage }, job.buf);
     if (job.status === "error") return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ status: "error" }));

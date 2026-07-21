@@ -1296,6 +1296,16 @@ Deno.test("vfilter dedupeVideos: exact + signed-variant dupes collapse, order + 
   assertEquals(out.map((i) => i.title), ["A", "B", "C"]);                        // first occurrence kept, order preserved
 });
 
+Deno.test("vfilter dedupeVideos: same poster collapses broken repeats even when video urls differ", () => {
+  const items = [
+    { video: "https://cdn.x/broken-1.mp4", poster: "https://cdn.x/unavailable.jpg", title: "A" },
+    { video: "https://cdn.x/broken-2.mp4", poster: "https://cdn.x/unavailable.jpg?v=2", title: "A-repeat" }, // same poster path → dropped
+    { video: "https://cdn.x/good.mp4", poster: "https://cdn.x/good.jpg", title: "B" },
+    { video: "https://cdn.x/none-1.mp4" }, { video: "https://cdn.x/none-2.mp4" },                            // null posters never collide
+  ];
+  assertEquals(dedupeVideos(items).map((i) => i.title || "no-poster"), ["A", "B", "no-poster", "no-poster"]);
+});
+
 Deno.test("vfilter dedupeVideos: keeps distinct paths and items without a url; tolerates junk", () => {
   const items = [
     { video: "https://cdn.x/a.mp4" }, { video: "https://cdn.x/b.mp4" },          // distinct → both kept

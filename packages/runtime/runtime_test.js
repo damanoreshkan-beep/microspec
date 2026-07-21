@@ -17,6 +17,7 @@ import { motionCells, motionEnergy, centroidOf } from "./motion.js";
 import { analyzeQR } from "./urlsafe.js";
 import { qrMatrix } from "./qrcode.js";
 import { fitResolution, sizeFor, estimateSeconds, QUALITY, DEFAULT, MAX_SIDE, AR } from "./imgsize.js";
+import { dedupeVideos, isBlackSample } from "./vfilter.js";
 import { sunSign } from "./horoscope.js";
 import { SPREADS, spreadById, hashSeed, draw } from "./tarot.js";
 import { silentWav } from "./mediasession.js";
@@ -1280,4 +1281,46 @@ Deno.test("scoreMelody rewards a resolving, stepwise phrase over a leapy unresol
   const stepwise = [0, 1, 2, 1, 2, 3, 2, 1, 0].map((i) => ({ i }));      // walks and lands on the tonic
   const leapy = [0, 8, 1, 7, 2, 6, 3, 5, 4].map((i) => ({ i }));         // zig-zags, ends off the tonic
   assert(scoreMelody(stepwise, C_MAJOR) > scoreMelody(leapy, C_MAJOR), "sweet phrase must outscore the leapy one");
+});
+
+// ---- vfilter: reel feed cleanup (dedupe + black-poster classifier) ----------------------------------------
+Deno.test("vfilter dedupeVideos: exact + signed-variant dupes collapse, order + first kept", () => {
+  const items = [
+    { video: "https://cdn.x/clip.mp4", title: "A", poster: "p1" },
+    { video: "https://cdn.x/other.mp4", title: "B" },
+    { video: "https://cdn.x/clip.mp4", title: "A-dup" },                         // exact dup → dropped
+    { orig: "https://cdn.x/clip.mp4?token=ZZZ", video: "framed:...", title: "A-signed" }, // same path, diff query → dropped
+    { video: "https://cdn.x/third.mp4", title: "C" },
+  ];
+  const out = dedupeVideos(items);
+  assertEquals(out.map((i) => i.title), ["A", "B", "C"]);                        // first occurrence kept, order preserved
+});
+
+Deno.test("vfilter dedupeVideos: keeps distinct paths and items without a url; tolerates junk", () => {
+  const items = [
+    { video: "https://cdn.x/a.mp4" }, { video: "https://cdn.x/b.mp4" },          // distinct → both kept
+    { title: "no url 1" }, { title: "no url 2" },                                // unkeyable → both kept
+    { orig: "https://cdn.x/a.mp4", video: "framed" },                            // dup of the first (by orig)
+  ];
+  const out = dedupeVideos(items);
+  assertEquals(out.length, 4);
+  assertEquals(dedupeVideos(null), []);
+  assertEquals(dedupeVideos([]).length, 0);
+});
+
+// helper: build an RGBA sample from a flat list of [r,g,b] pixels (alpha forced opaque)
+const vpx = (px) => { const a = new Uint8ClampedArray(px.length * 4); px.forEach(([r, g, b], i) => { a[i*4]=r; a[i*4+1]=g; a[i*4+2]=b; a[i*4+3]=255; }); return a; };
+
+Deno.test("vfilter isBlackSample: uniform black / near-black is flagged", () => {
+  assert(isBlackSample(vpx(Array(64).fill([0, 0, 0]))), "pure black → broken");
+  assert(isBlackSample(vpx(Array(64).fill([6, 6, 6]))), "near-black JPEG floor → broken");
+});
+
+Deno.test("vfilter isBlackSample: any real content keeps the clip", () => {
+  assert(!isBlackSample(vpx(Array(64).fill([128, 128, 128]))), "mid-grey → not black");
+  // a mostly-black frame with ONE bright highlight (a light in a night scene) → real content, keep it
+  const nightScene = Array(64).fill([3, 3, 3]); nightScene[40] = [230, 220, 200];
+  assert(!isBlackSample(vpx(nightScene)), "dark frame with a highlight → kept (peak test)");
+  assert(!isBlackSample(vpx(Array(64).fill([10, 120, 40]))), "coloured → not black");
+  assert(!isBlackSample(new Uint8ClampedArray(0)), "empty sample → not black (fail toward keep)");
 });

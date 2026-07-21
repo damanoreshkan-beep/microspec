@@ -11,17 +11,6 @@
     "category": "sound"
   },
   {
-    "id": "aura",
-    "title": "Аура",
-    "tagline": "Поклади телефон плазом, передньою камерою вгору, і грай музику рухами пальців над ним — положення руки обирає ноту в обраному ладі-настрої, рух розгойдує голос, а навколо світиться жива three.js-аура кольору ноти. Камера, синтезатор і візуал — усе на пристрої, офлайн.",
-    "glyph": "lucide:audio-lines",
-    "bg": "#0A0A0F",
-    "fg": "#9F8CF6",
-    "href": "./aura/",
-    "version": "1.1",
-    "category": "creative"
-  },
-  {
     "id": "openapps",
     "title": "Відкриті застосунки",
     "tagline": "Відкриті застосунки з GitHub за платформами — Windows, macOS, Linux, Android: зірки, мова, ліцензія",
@@ -62,7 +51,7 @@
     "bg": "#0A0A0F",
     "fg": "#A78BFA",
     "href": "./horoscope/",
-    "version": "1.8",
+    "version": "1.10",
     "category": "esoterica"
   },
   {
@@ -315,7 +304,7 @@
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.41",
+    "version": "1.42",
     "category": "sound"
   },
   {

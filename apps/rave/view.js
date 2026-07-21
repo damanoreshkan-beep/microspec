@@ -10,6 +10,7 @@ import { html } from "htm/preact";
 import { Fragment } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { atom } from "nanostores";
+import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { useSheetDrag } from "/_rt/gesture.js";
@@ -98,8 +99,15 @@ const crushCurve = (a) => { const s = Math.max(2, Math.round(64 * (1 - a) + 2));
 function makeIR(ctx, seconds = 1.3, decay = 3) { const len = Math.floor(ctx.sampleRate * seconds), buf = ctx.createBuffer(2, len, ctx.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); } return buf; }
 
 // ---- shared state ----
-const $tracks = atom(parse(presetById("techno"))), $bpm = atom(132), $fx = atom({ ...DFX }), $riff = atom(RIFF);
-const $playing = atom(false), $cur = atom(-1), $style = atom(0), $sweep = atom(-1), $hist = atom({ seeds: [], idx: -1 });
+// The working set (pattern, tempo, FX rack, riff, genre, sample pack) PERSISTS across restarts under `rave:*`
+// — reopen the app and your last groove is exactly where you left it. Playback/generator state stays ephemeral
+// (a reload must not auto-play, replay the sweep, or restore a mid-flight step). One JSON codec for all values.
+const NS = "rave:";
+const JC = (initial) => ({ encode: JSON.stringify, decode: (s) => { try { return JSON.parse(s); } catch { return initial; } } });
+const persisted = (key, initial) => persistentAtom(NS + key, initial, JC(initial));
+const $tracks = persisted("tracks", parse(presetById("techno"))), $bpm = persisted("bpm", 132), $fx = persisted("fx", { ...DFX }), $riff = persisted("riff", RIFF);
+const $style = persisted("style", 0);
+const $playing = atom(false), $cur = atom(-1), $sweep = atom(-1), $hist = atom({ seeds: [], idx: -1 });
 const SAVES = collection("ravePatterns");
 
 // ---- engine (module scope) ----
@@ -171,10 +179,11 @@ const SFILES = ["kick", "snare", "hihat", "tom1", "tom2", "tom3"];
 const SMAP = { kick: "kick", hardkick: "kick", snare: "snare", clap: "snare", rim: "snare", hat: "hihat", ohat: "hihat", shaker: "hihat", ride: "hihat", crash: "hihat", tom: "tom1", conga: "tom2", cowbell: "tom3", clave: "tom3" };
 const PACKS = [{ id: "LINN", label: "LinnDrum" }, { id: "R8", label: "R-8" }, { id: "CR78", label: "CR-78" }, { id: "KPR77", label: "KPR-77" }, { id: "Techno", label: "Techno" }, { id: "Stark", label: "Stark" }, { id: "Bongos", label: "Bongos" }, { id: "4OP-FM", label: "FM" }, { id: "Kit8", label: "Kit 8" }, { id: "acoustic-kit", label: "Acoustic" }];
 const BUF = new Map();
-const $pack = atom("synth"), $loading = atom(null);
+const $pack = persisted("pack", "synth"), $loading = atom(null);
 function playSample(c, buf, t, peak = 0.92) { const s = c.createBufferSource(); s.buffer = buf; const g = c.createGain(); g.gain.value = peak; s.connect(g); g.connect(bus); s.start(t); s.onended = () => { try { s.disconnect(); g.disconnect(); } catch { /* */ } }; }
-async function selectPack(id) {
-  buzz(); $pack.set(id);
+// Fetch + decode a pack's samples into BUF (idempotent, gate-safe, fail-open to synth). Split out from
+// selectPack so a persisted pack can be re-loaded silently on mount (no buzz, no re-set) — see the Beat effect.
+async function loadPackSamples(id) {
   if (id === "synth" || isGate) return;                          // gate never hits the network (deterministic e2e)
   if (SFILES.every((f) => BUF.has(`${id}:${f}`))) return;
   const e = ensure(); if (!e) return;
@@ -182,6 +191,7 @@ async function selectPack(id) {
   await Promise.all(SFILES.map(async (f) => { const k = `${id}:${f}`; if (BUF.has(k)) return; try { const r = await fetch(`${PBASE}/${id}/${f}.mp3`); if (!r.ok) return; BUF.set(k, await e.ctx.decodeAudioData(await r.arrayBuffer())); } catch { /* stays synth */ } }));
   $loading.set(null);
 }
+async function selectPack(id) { buzz(); $pack.set(id); await loadPackSamples(id); }
 
 function fire(step, time) {
   const e = eng, tr = $tracks.get(), c = e.ctx, spb = 60 / $bpm.get() / 4, riff = $riff.get(), pk = $pack.get();
@@ -234,6 +244,9 @@ const autoName = (t, tracks, bpm, list) => { const key = JSON.stringify(tracks),
 // ================= Beat: player + generator =================
 export function rave({ S }) {
   const t = useStore(S.t), tracks = useStore($tracks), style = useStore($style), playing = useStore($playing), fx = useStore($fx), cur = useStore($cur), bpm = useStore($bpm), sweep = useStore($sweep);
+  // A persisted non-synth pack was only remembered, not loaded — fetch its samples once on mount so the restored
+  // kit actually plays (until then playback falls back to synth; the load is silent — no buzz, no re-select).
+  useEffect(() => { loadPackSamples($pack.get()); }, []);
   const pick = (i) => { buzz(); ensure(); const [id, b] = PLAYER[i]; $style.set(i); $tracks.set(parse(presetById(id))); $bpm.set(b); $hist.set({ seeds: [], idx: -1 }); syncNP(); };
   const kickRow = tracks.kick;
 

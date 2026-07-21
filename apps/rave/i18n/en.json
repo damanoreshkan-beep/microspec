@@ -64,6 +64,8 @@
   "clear": "Clear",
   "tempo": "Tempo",
   "settings": "Sound settings",
+  "packs": "Sound packs",
+  "packSynth": "Synth",
   "filter": "Filter",
   "aPlay": "Play",
   "prevTrack": "Previous",

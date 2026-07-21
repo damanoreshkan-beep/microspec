@@ -49,6 +49,9 @@ export default [
       await h.tap("[data-settings]"); await h.wait(200);
       h.expect((await h.prop("#fxsheet", "open")) === true, "sheet не відкрився");
       h.expect((await h.count("[data-fx]")) === 6, "немає 6 FX-повзунків");
+      h.expect((await h.count("[data-pack]")) === 11, "немає 10 пакетів + синтез");
+      await h.tap('[data-pack="R8"]'); await h.wait(150);
+      h.expect((await h.attr('[data-pack="R8"]', "aria-pressed")) === "true", "пакет не обрався");
       await h.back(); await h.wait(200);
       h.expect((await h.prop("#fxsheet", "open")) !== true, "Back не закрив sheet");
     },

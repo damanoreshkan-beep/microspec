@@ -7,7 +7,6 @@ const FLUX_CREATE = "https://api.bfl.ai/v1/flux-2-pro-preview";
 const ALLOW_ORIGIN = new Set(["https://damanoreshkan-beep.github.io"]);
 const AI_PROVIDERS = [
   { name: "gemini", base: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", model: process.env.GEMINI_MODEL || "gemini-2.5-flash-lite", key: process.env.GEMINI_API_KEY || "" },
-  { name: "groq", base: "https://api.groq.com/openai/v1/chat/completions", model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile", key: process.env.GROQ_API_KEY || "" },
 ].filter((prov) => prov.key);
 const AI_LANG = { uk: "українською", en: "English" };            
 const AI_TTL = 30 * 86400_000;                                  
@@ -193,23 +192,32 @@ const server = http.createServer(async (req, res) => {
     if (hit && Date.now() - hit.ts < AI_TTL) return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ text: hit.text, cached: true }));
     const messages = [{ role: "system", content: aiSystem(locale) }, { role: "user", content: text }];
     for (const prov of AI_PROVIDERS) {
-      const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 20000);
-      try {
-        const r = await fetch(prov.base, {
-          method: "POST",
-          headers: { "content-type": "application/json", authorization: "Bearer " + prov.key },
-          body: JSON.stringify({ model: prov.model, messages, temperature: 0.4, max_tokens: 800 }),
-          signal: ctrl.signal,
-        });
-        if (!r.ok) continue;                                    
-        const j = await r.json();
-        const out = (j?.choices?.[0]?.message?.content || "").trim();
-        if (!out) continue;
-        if (aiCache.size > 3000) aiCache.clear();
-        aiCache.set(ckey, { ts: Date.now(), text: out });
-        return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ text: out, by: prov.name }));
-      } catch {  }
-      finally { clearTimeout(t); }
+      const payload = JSON.stringify({ model: prov.model, messages, temperature: 0.4, max_tokens: 800 });
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 20000);
+        let transient = false;
+        try {
+          const r = await fetch(prov.base, {
+            method: "POST",
+            headers: { "content-type": "application/json", authorization: "Bearer " + prov.key },
+            body: payload,
+            signal: ctrl.signal,
+          });
+          if (r.status === 429 || r.status >= 500) transient = true;   
+          else if (!r.ok) break;                                       
+          else {
+            const j = await r.json();
+            const out = (j?.choices?.[0]?.message?.content || "").trim();
+            if (!out) break;
+            if (aiCache.size > 3000) aiCache.clear();
+            aiCache.set(ckey, { ts: Date.now(), text: out });
+            return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ text: out, by: prov.name }));
+          }
+        } catch { transient = true; }                                  
+        finally { clearTimeout(t); }
+        if (transient && attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
+        break;
+      }
     }
     return send(res, 502, CORS, "all providers failed");
   }

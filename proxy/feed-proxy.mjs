@@ -181,7 +181,19 @@ function parseVideos(html, base) {
     }
   }
   if (!next) { try { const u = new URL(base); for (const key of ["page", "p", "pg", "paged", "offset", "start", "from", "skip"]) { if (u.searchParams.has(key)) { const n = parseInt(u.searchParams.get(key), 10); if (!isNaN(n)) { u.searchParams.set(key, (key === "offset" || key === "start" || key === "skip") ? n + Math.max(1, items.length) : n + 1); next = u.href; break; } } } } catch {  } }
-  return { items, next };
+  const listTmpl = (url) => { try { const u = new URL(url); return u.host + u.pathname.replace(/[0-9a-f]{8,}/gi, "#").replace(/\d+/g, "#").replace(/#(?:[._-]?#)+/g, "#"); } catch { return String(url); } };
+  let listed = items;
+  if (items.length > 4) {
+    const count = new Map();
+    for (const it of items) { const k = listTmpl(it.video); count.set(k, (count.get(k) || 0) + 1); }
+    let top = 0; for (const n of count.values()) if (n > top) top = n;
+    if (top >= 4 && top >= items.length * 0.3) {
+      const keep = items.filter((it) => count.get(listTmpl(it.video)) >= 2);   
+      if (keep.length >= 3) listed = keep;
+    }
+  }
+  try { if (listed.length !== items.length) console.log("[videos]", new URL(base).host, `raw=${items.length} → listed=${listed.length}`); } catch {  }
+  return { items: listed, next };
 }
 
 const FRAME_UA = "Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Mobile Safari/537.36";

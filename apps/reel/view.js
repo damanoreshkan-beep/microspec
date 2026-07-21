@@ -121,7 +121,7 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
   <img src=${poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-55" onError=${(e) => e.currentTarget.remove()} />
   <img src=${poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain" onError=${(e) => e.currentTarget.remove()} />
 </${Fragment}>` : null;
-const WatchLink = ({ item, t }) => html`<a href=${item.page || item.orig || item.video} target="_blank" rel="noopener" class="absolute inset-0 z-[1] flex items-center justify-center" aria-label=${T(t, "watch")}>
+const WatchLink = ({ item, t }) => html`<a data-watch href=${item.page || item.orig || item.video} target="_blank" rel="noopener" class="absolute inset-0 z-[3] flex items-end justify-center" style="padding-bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 4.5rem)" aria-label=${T(t, "watch")}>
   <span class="btn btn-primary rounded-full gap-2 shadow-lg pointer-events-none">${Icon("lucide:external-link", "text-lg")} ${T(t, "watch")}</span>
 </a>`;
 

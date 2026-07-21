@@ -217,7 +217,7 @@ export function handpan({ S }) {
     </div>
 
     <div class="flex-1 min-h-0 relative grid place-items-center px-3">
-      <div class="relative w-[min(86vw,58vh)] aspect-square rounded-full bg-gradient-to-br from-base-300/70 to-base-100 border border-base-content/10 shadow-[inset_0_2px_18px_rgba(0,0,0,.45)] select-none" style="touch-action:none"
+      <div class="relative w-[min(90vw,62vh)] aspect-square rounded-full bg-gradient-to-br from-base-300/70 to-base-100 border border-base-content/10 shadow-[inset_0_2px_18px_rgba(0,0,0,.45)] select-none" style="touch-action:none"
         onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onLift} onPointerCancel=${onLift} onClick=${onClickBoard}>
         <!-- ding (centre) -->
         <button data-field="0" aria-label=${label(s.midi[0])} class=${`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 grid place-items-center rounded-full transition-all duration-150 ${lit.has(0) ? "ring-2 ring-secondary brightness-125 scale-95" : "ring-1 ring-base-content/15"} bg-gradient-to-br from-base-content/25 to-base-content/5`} style="width:26%;height:26%">
@@ -261,9 +261,9 @@ export function handpanWeave({ S, toast, screen, openScreen, closeScreen }) {
         ${STEPS.map((step) => html`<div class=${`flex-1 h-1 rounded-full transition-colors ${step % 4 === 0 && step > 0 ? "ml-1" : ""} ${step === sweep ? "bg-accent" : step === cur ? "bg-secondary" : "bg-base-300"}`} key=${step}></div>`)}
       </div>
       ${rows.map(({ i, m }) => { const live = loop.some((cell) => cell && cell.includes(i)); return html`<div class="flex items-center gap-[3px]" key=${i}>
-        <div class=${`w-7 shrink-0 text-center text-xs font-medium tabular-nums ${i === 0 ? "text-secondary" : live ? "text-base-content" : "text-base-content/45"}`} title=${label(m)}>${letter(m)}</div>
-        ${STEPS.map((step) => { const on = (loop[step] || []).includes(i); return html`<button data-cell=${`${i}-${step}`} aria-pressed=${on} aria-label=${`${label(m)} ${step + 1}`} onClick=${() => cellToggle(i, step)} key=${step}
-          class=${`flex-1 min-w-0 h-7 rounded touch-manipulation transition-all duration-150 ${step % 4 === 0 && step > 0 ? "ml-1" : ""} ${on ? (i === 0 ? "bg-secondary" : "bg-primary") : live ? "bg-base-300" : "bg-base-300/25"} ${step === sweep ? "ring-2 ring-accent scale-105" : step === cur ? "ring-2 ring-base-content/50" : ""}`}></button>`; })}
+        <div class=${`w-7 shrink-0 text-center text-sm font-medium tabular-nums ${i === 0 ? "text-secondary" : live ? "text-base-content" : "text-base-content/70"}`} title=${label(m)}>${letter(m)}</div>
+        ${STEPS.map((step) => { const on = (loop[step] || []).includes(i); const beat = step % 4 === 0; return html`<button data-cell=${`${i}-${step}`} aria-pressed=${on} aria-label=${`${label(m)} ${step + 1}`} onClick=${() => cellToggle(i, step)} key=${step}
+          class=${`flex-1 min-w-0 h-9 rounded-md touch-manipulation transition-all duration-150 ${beat && step > 0 ? "ml-1" : ""} ${on ? (i === 0 ? "bg-secondary" : "bg-primary") : beat ? "bg-base-300/80" : "bg-base-300/55"} ${step === sweep ? "ring-2 ring-accent scale-105" : step === cur ? "ring-2 ring-base-content/50" : ""}`}></button>`; })}
       </div>`; })}
     </div>
 
@@ -312,7 +312,7 @@ function SettingsSheet({ open, onClose, t }) {
     <div class="flex flex-col gap-1">
       <div class="text-[0.6rem] uppercase tracking-wide text-base-content/70 flex items-center gap-1">${Icon("lucide:disc-3", "text-[0.85em]")}${T(t, "scale")}</div>
       <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-        ${SCALES.map((sc) => { const on = sc.id === scaleId; return html`<button data-setscale=${sc.id} aria-pressed=${on} onClick=${() => { buzz(); ensure(); $scale.set(sc.id); applyDrone(); }} key=${sc.id} class=${`btn btn-sm shrink-0 gap-1.5 ${on ? "btn-secondary" : "btn-outline"}`}>${T(t, sc.name)}<span class="opacity-60 text-[0.7em]">${T(t, sc.mood)}</span></button>`; })}
+        ${SCALES.map((sc) => { const on = sc.id === scaleId; return html`<button data-setscale=${sc.id} aria-pressed=${on} title=${T(t, sc.mood)} onClick=${() => { buzz(); ensure(); $scale.set(sc.id); applyDrone(); }} key=${sc.id} class=${`btn btn-sm shrink-0 ${on ? "btn-secondary" : "btn-outline"}`}>${T(t, sc.name)}</button>`; })}
       </div>
     </div>
     ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}

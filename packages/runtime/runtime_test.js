@@ -15,7 +15,7 @@ import { hueToNote, paletteToChord, brightnessToCutoff, satToDetune, SCALES } fr
 import { motionCells, motionEnergy, centroidOf } from "./motion.js";
 import { analyzeQR } from "./urlsafe.js";
 import { qrMatrix } from "./qrcode.js";
-import { fitResolution } from "./imgsize.js";
+import { fitResolution, sizeFor, estimateSeconds, QUALITY, MAX_SIDE, AR } from "./imgsize.js";
 import { sunSign } from "./horoscope.js";
 import { SPREADS, spreadById, hashSeed, draw } from "./tarot.js";
 import { phase as penPhase, swing as penSwing, state as penState } from "./pendulum.js";
@@ -950,6 +950,36 @@ Deno.test("imgsize fitResolution: a smaller MP budget yields a smaller image", (
   const hi = fitResolution(1000, 1000, 2, 4), lo = fitResolution(1000, 1000, 2, 1);
   assert(lo.width * lo.height < hi.width * hi.height, "1MP budget must be smaller than 4MP");
   assert(lo.width * lo.height <= 1_000_000);
+});
+
+Deno.test("imgsize sizeFor: every quality stop is exact 3:4, 32-aligned and within the Space ceiling", () => {
+  for (const stop of QUALITY) {
+    const s = sizeFor(stop);
+    assertEquals(s.width % 32, 0, `width 32-aligned (${s.width})`);
+    assertEquals(s.height % 32, 0, `height 32-aligned (${s.height})`);
+    assert(s.width <= MAX_SIDE && s.height <= MAX_SIDE, `≤ ${MAX_SIDE} per side (${s.width}×${s.height})`);
+    assert(Math.abs(s.width / s.height - AR) < 1e-9, `exact 3:4 (${s.width}×${s.height})`);
+  }
+  // the top stop is the app's default High resolution — must stay the pre-slider 768×1024
+  const hi = sizeFor(QUALITY.at(-1));
+  assertEquals([hi.width, hi.height], [768, 1024]);
+});
+
+Deno.test("imgsize sizeFor: higher stop is strictly larger; over-cap input clamps to the ceiling", () => {
+  for (let i = 1; i < QUALITY.length; i++) {
+    const lo = sizeFor(QUALITY[i - 1]), hi = sizeFor(QUALITY[i]);
+    assert(hi.width * hi.height > lo.width * lo.height, `stop ${i} larger than ${i - 1}`);
+  }
+  const over = sizeFor(4096);
+  assert(over.width <= MAX_SIDE && over.height <= MAX_SIDE, "beyond-ceiling long edge clamps to MAX_SIDE");
+});
+
+Deno.test("imgsize estimateSeconds: monotonic in area, in a sane band, ~32s at full 768×1024", () => {
+  const draft = sizeFor(QUALITY[0]), full = sizeFor(QUALITY.at(-1));
+  const eDraft = estimateSeconds(draft.width, draft.height), eFull = estimateSeconds(full.width, full.height);
+  assert(eDraft < eFull, "a bigger image estimates a longer wait");
+  assert(eDraft >= 10 && eFull <= 45, `estimates stay in a plausible band (${eDraft}s … ${eFull}s)`);
+  assert(Math.abs(eFull - 32) <= 3, `full-res estimate ≈ 32s (${eFull}s)`);
 });
 
 Deno.test("horoscope sunSign: cutoffs map month/day to the right sign, wrapping at year end", () => {

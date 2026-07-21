@@ -31,6 +31,18 @@ export default [
     },
   },
   {
+    name: "налаштування переживають перезапуск", run: async (h) => {
+      await ready(h);
+      await h.tap('[data-style="house"]'); await h.wait(200);              // house = 124 BPM, not the techno/132 default
+      h.expect((await h.attr('[data-style="house"]', "aria-pressed")) === "true", "house не обрався");
+      await h.reload();
+      await ready(h);
+      h.expect((await h.attr('[data-style="house"]', "aria-pressed")) === "true", "стиль не зберігся після перезапуску");
+      h.expect(/124\s*BPM/i.test(await h.bodyText()), "темп не зберігся після перезапуску");
+      await h.tap('[data-style="techno"]'); await h.wait(150);             // restore the default so later shared-page cases start clean
+    },
+  },
+  {
     name: "матриця 22x16: редагування + збереження", run: async (h) => {
       await h.click('[data-tab="pads"]'); await h.wait(200);
       h.expect((await h.count("[data-cell]")) === 22 * 16, "матриця не 22x16");

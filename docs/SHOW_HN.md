@@ -42,7 +42,7 @@ Chromium and **fail the build** on:
 Red gate → no merge. Green gate → auto-deploy to GitHub Pages. So an agent that introduces a low-contrast
 button or an element that overruns the watch simply can't land the PR — no human has to catch it.
 
-The whole thing is the proof: 45 apps live on plain Pages, no backend, each built this way. Try a few —
+The whole thing is the proof: 46 apps live on plain Pages, no backend, each built this way. Try a few —
 Frontier (fresh GitHub OSS, descriptions translated on-device), a Hugging Face models+Spaces catalog, a
 GPS ruler (haversine segments, shoelace area, live coordinates). The runtime is zero-build: browser-native ESM (Preact + htm), Tailwind +
 DaisyUI, loaded from a CDN import map — no bundler, no node_modules in the apps.

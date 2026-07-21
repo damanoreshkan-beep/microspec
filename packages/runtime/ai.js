@@ -52,6 +52,19 @@ async function askAI(text, locale, mode) {
   return (j && typeof j.text === "string") ? j.text.trim() : "";
 }
 
+// ── suggest: a one-shot CREATIVE generation for the "surprise me" prompt buttons ─────────────────────────
+
+// suggest(mode, spark, locale) — generate a fresh prompt line on demand (the wand button in imagine/retouch).
+// Unlike polish/summary this is deliberately UNCACHED — every tap returns a new line — so `spark` (a random
+// seed phrase the caller supplies) drives the variety. mode "dream" → a vivid scene prompt; "edit" → a short
+// photo-edit instruction. Returns the generated text in the active locale, or "" on any failure (the caller
+// keeps the field unchanged). Never called under the gate (no network). The image models want English, but we
+// generate in-locale for a native feel and let translate.js/toEnglish convert it at send time.
+export async function suggest(mode, spark, locale) {
+  try { return await askAI(String(spark || ""), locale, mode); }
+  catch { return ""; }
+}
+
 // ── polish: a light rewrite of wooden machine translation ────────────────────────────────────────────────
 
 // polish(text, locale) — synchronous. Returns the cached natural rewrite, or the input on a miss / passthrough.

@@ -13,6 +13,16 @@ export default [
     },
   },
   {
+    name: "кнопка «Випадкова ідея» заповнює поле (гейт: без мережі)", run: async (h) => {
+      await settle(h, "[data-dream]");
+      h.expect((await h.count("[data-dream]")) === 1, "немає кнопки автоідеї");
+      await h.type("#prompt", "");
+      await h.wait(80);
+      await h.click("[data-dream]"); await h.wait(150);
+      h.expect((await h.prop("#prompt", "value")).trim().length > 0, "автоідея не заповнила поле");
+    },
+  },
+  {
     name: "порожня інструкція не запускає редагування", run: async (h) => {
       await settle(h, "[data-edit]");
       await h.type("#prompt", "");

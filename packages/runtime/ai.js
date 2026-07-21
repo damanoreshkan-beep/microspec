@@ -6,45 +6,47 @@ const AI = `${VPS_PROXY}/ai`;
 
 export const aiTick = atom(0);
 
-const mem = new Map();       
 const pending = new Set();   
 
-function cacheFor(locale) {
-  if (mem.has(locale)) return mem.get(locale);
+const mem = new Map();
+function cacheFor(ns, locale) {
+  const k = ns ? ns + ":" + locale : locale;
+  if (mem.has(k)) return mem.get(k);
   let obj = {};
-  try { obj = JSON.parse(localStorage.getItem("ms:ai:" + locale) || "{}"); } catch {  }
-  mem.set(locale, obj);
+  try { obj = JSON.parse(localStorage.getItem("ms:ai:" + k) || "{}"); } catch {  }
+  mem.set(k, obj);
   return obj;
 }
-function persist(locale, obj) {
-  try { localStorage.setItem("ms:ai:" + locale, JSON.stringify(obj)); } catch {  }
+function persist(ns, locale, obj) {
+  const k = ns ? ns + ":" + locale : locale;
+  try { localStorage.setItem("ms:ai:" + k, JSON.stringify(obj)); } catch {  }
 }
+
+async function askAI(text, locale, mode) {
+  const r = await fetch(AI, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ mode, text, locale }),
+  });
+  if (!r.ok) throw new Error("status " + r.status);
+  const j = await r.json();
+  return (j && typeof j.text === "string") ? j.text.trim() : "";
+}
+
 
 export function polish(text, locale) {
   if (typeof text !== "string" || !text.trim() || !locale || locale === CONTENT_LANG) return text;
-  return cacheFor(locale)[text] || text;
+  return cacheFor("", locale)[text] || text;
 }
 
 export function isPolished(text, locale) {
   if (typeof text !== "string" || !text.trim() || !locale || locale === CONTENT_LANG) return true;
-  return text in cacheFor(locale);
-}
-
-async function polishOne(text, locale) {
-  const r = await fetch(AI, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text, locale }),
-  });
-  if (!r.ok) throw new Error("status " + r.status);
-  const j = await r.json();
-  const out = (j && typeof j.text === "string") ? j.text.trim() : "";
-  return out || text;
+  return text in cacheFor("", locale);
 }
 
 export async function warmPolish(texts, locale) {
   if (!locale || locale === CONTENT_LANG) return;
-  const cache = cacheFor(locale);
+  const cache = cacheFor("", locale);
   const todo = [...new Set(
     (texts || []).filter((s) => typeof s === "string" && s.trim() && !(s in cache) && !pending.has(locale + " " + s)),
   )];
@@ -52,9 +54,31 @@ export async function warmPolish(texts, locale) {
   todo.forEach((s) => pending.add(locale + " " + s));
   let changed = false;
   await pool(todo, 2, async (src) => {
-    try { cache[src] = await polishOne(src, locale); changed = true; }
+    try { const out = await askAI(src, locale, "polish"); cache[src] = out || src; changed = true; }
     catch {  }
     finally { pending.delete(locale + " " + src); }
   });
-  if (changed) { persist(locale, cache); aiTick.set(aiTick.get() + 1); }
+  if (changed) { persist("", locale, cache); aiTick.set(aiTick.get() + 1); }
+}
+
+
+export function summary(key, locale) {
+  if (typeof key !== "string" || !key || !locale) return "";
+  return cacheFor("sum", locale)[key] || "";
+}
+
+export function isSummarized(key, locale) {
+  if (typeof key !== "string" || !key || !locale) return false;
+  return key in cacheFor("sum", locale);
+}
+
+export async function warmSummary(key, text, locale) {
+  if (typeof key !== "string" || !key || typeof text !== "string" || !text.trim() || !locale) return;
+  const cache = cacheFor("sum", locale);
+  const tag = "sum " + locale + " " + key;
+  if (key in cache || pending.has(tag)) return;
+  pending.add(tag);
+  try { const out = await askAI(text, locale, "summarize"); if (out) { cache[key] = out; persist("sum", locale, cache); aiTick.set(aiTick.get() + 1); } }
+  catch {  }
+  finally { pending.delete(tag); }
 }

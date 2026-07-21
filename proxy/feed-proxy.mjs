@@ -5,9 +5,10 @@ const PORT = Number(process.env.PORT) || 8787;
 const BFL_KEY = process.env.BFL_KEY || "";
 const FLUX_CREATE = "https://api.bfl.ai/v1/flux-2-pro-preview";
 const ALLOW_ORIGIN = new Set(["https://damanoreshkan-beep.github.io"]);
-const AI_PROVIDERS = [
-  { name: "gemini", base: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", model: process.env.GEMINI_MODEL || "gemini-2.5-flash-lite", key: process.env.GEMINI_API_KEY || "" },
-].filter((prov) => prov.key);
+const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const GEMINI_MODELS = (process.env.GEMINI_MODELS || "gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash").split(",").map((s) => s.trim()).filter(Boolean);
+const AI_PROVIDERS = GEMINI_KEY ? GEMINI_MODELS.map((model) => ({ name: "gemini/" + model, base: GEMINI_BASE, model, key: GEMINI_KEY })) : [];
 const AI_LANG = { uk: "українською", en: "English" };            
 const AI_TTL = 30 * 86400_000;                                  
 const aiCache = new Map();                                       
@@ -166,9 +167,13 @@ function rewriteHtml(html, base) {
   return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + inject) : inject + html;
 }
 
-function aiSystem(locale) {
-  if (locale === "uk") return "Ти — редактор-стиліст. Тобі дають фрагмент тексту українською, отриманий машинним перекладом, тому він звучить дослівно й неприродно. Перепиши його природною, живою, грамотною українською, ЗБЕРІГАЮЧИ зміст кожного речення — нічого не додавай, не прибирай і не вигадуй. Без пояснень, приміток чи лапок — поверни ЛИШЕ виправлений текст.";
+function aiSystem(locale, mode) {
   const lang = AI_LANG[locale] || locale || "the same language";
+  if (mode === "summarize") {
+    if (locale === "uk") return "Ти — досвідчений таролог. Нижче — розклад: позиції, карти (пряма чи перевернута) та їхні значення. Стисло, за 3–4 речення, синтезуй ЄДИНЕ зв'язне тлумачення цього розкладу природною українською — покажи, як карти складаються в одну історію разом (а не перелічуй їх по одній). Без вступів, заголовків, списків і лапок — поверни ЛИШЕ саме тлумачення.";
+    return `You are an experienced tarot reader. Below is a spread: positions, cards (upright or reversed) and their meanings. In 3–4 sentences, synthesise ONE cohesive reading in ${lang} — show how the cards combine into a single story (do not list them one by one). No preamble, headings, lists or quotes — return ONLY the reading itself.`;
+  }
+  if (locale === "uk") return "Ти — редактор-стиліст. Тобі дають фрагмент тексту українською, отриманий машинним перекладом, тому він звучить дослівно й неприродно. Перепиши його природною, живою, грамотною українською, ЗБЕРІГАЮЧИ зміст кожного речення — нічого не додавай, не прибирай і не вигадуй. Без пояснень, приміток чи лапок — поверни ЛИШЕ виправлений текст.";
   return `You are a copy editor. You are given a passage in ${lang} produced by machine translation, so it reads literal and unnatural. Rewrite it into natural, fluent ${lang}, preserving the meaning of every sentence — add nothing, drop nothing, invent nothing. No explanations or quotes — return ONLY the corrected text.`;
 }
 
@@ -185,14 +190,16 @@ const server = http.createServer(async (req, res) => {
     if (!rateOk(ipOf(req))) return send(res, 429, CORS, "rate limited");
     let inp;
     try { inp = JSON.parse(await readBody(req)); } catch { return send(res, 400, CORS, "bad json"); }
-    const text = String(inp.text || "").slice(0, 2000).trim();
+    const mode = inp.mode === "summarize" ? "summarize" : "polish";
+    const text = String(inp.text || "").slice(0, mode === "summarize" ? 6000 : 2000).trim();
     const locale = String(inp.locale || "").slice(0, 8);
     if (!text) return send(res, 400, CORS, "empty text");
-    const ckey = locale + " " + text, hit = aiCache.get(ckey);
+    const ckey = mode + " " + locale + " " + text, hit = aiCache.get(ckey);
     if (hit && Date.now() - hit.ts < AI_TTL) return send(res, 200, { ...CORS, "content-type": "application/json" }, JSON.stringify({ text: hit.text, cached: true }));
-    const messages = [{ role: "system", content: aiSystem(locale) }, { role: "user", content: text }];
+    const messages = [{ role: "system", content: aiSystem(locale, mode) }, { role: "user", content: text }];
+    const maxTokens = mode === "summarize" ? 400 : 800;
     for (const prov of AI_PROVIDERS) {
-      const payload = JSON.stringify({ model: prov.model, messages, temperature: 0.4, max_tokens: 800 });
+      const payload = JSON.stringify({ model: prov.model, messages, temperature: 0.4, max_tokens: maxTokens, reasoning_effort: "none" });
       for (let attempt = 0; attempt < 2; attempt++) {
         const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 20000);
         let transient = false;

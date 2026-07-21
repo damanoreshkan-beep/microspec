@@ -21,8 +21,11 @@ const LBL = {
   },
 };
 
-// { loc, reason (translated one-liner: what the camera is for), onEnable, onSettings, denied?, unavailable? }
-export function CameraPrime({ loc, reason, onEnable, onSettings, denied, unavailable }) {
+// { loc, reason (translated one-liner: what the camera is for), onEnable, onSettings, denied?, unavailable?,
+//   privacy?, privacyIcon? } — privacy/privacyIcon OVERRIDE the built-in "processed on your device" line for
+//   apps where that would be untrue (e.g. an editor that uploads the photo to a service): pass an honest line
+//   + a fitting icon instead of implying the frames stay local. Default keeps the on-device reassurance.
+export function CameraPrime({ loc, reason, onEnable, onSettings, denied, unavailable, privacy, privacyIcon }) {
   const L = LBL[loc] || LBL.en;
   const bad = denied || unavailable;
   return html`<div data-prime class="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 px-8 text-center bg-base-200">
@@ -31,7 +34,7 @@ export function CameraPrime({ loc, reason, onEnable, onSettings, denied, unavail
       <div class="text-xl font-bold">${unavailable ? L.unavailable : denied ? L.blocked : L.title}</div>
       <p class="text-sm text-base-content/70 max-w-xs leading-relaxed">${denied ? L.blockedHint : reason}</p>
     </div>
-    ${bad ? null : html`<div class="flex items-center gap-1.5 text-xs text-base-content/60 max-w-xs">${Icon("lucide:shield-check", "text-sm shrink-0")}<span>${L.privacy}</span></div>`}
+    ${bad ? null : html`<div class="flex items-center gap-1.5 text-xs text-base-content/60 max-w-xs">${Icon(privacyIcon || "lucide:shield-check", "text-sm shrink-0")}<span>${privacy || L.privacy}</span></div>`}
     ${unavailable ? null : denied
       ? html`<button data-enable class="btn btn-primary rounded-2xl px-6 gap-2" onClick=${onSettings}>${Icon("lucide:settings")}${L.settings}</button>`
       : html`<button data-enable class="btn btn-primary rounded-2xl px-6 gap-2" onClick=${onEnable}>${Icon("lucide:camera")}${L.enable}</button>`}

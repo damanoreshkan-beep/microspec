@@ -15,7 +15,7 @@ import { hueToNote, paletteToChord, brightnessToCutoff, satToDetune, SCALES } fr
 import { motionCells, motionEnergy, centroidOf } from "./motion.js";
 import { analyzeQR } from "./urlsafe.js";
 import { qrMatrix } from "./qrcode.js";
-import { fitResolution, sizeFor, estimateSeconds, QUALITY, MAX_SIDE, AR } from "./imgsize.js";
+import { fitResolution, sizeFor, estimateSeconds, QUALITY, DEFAULT, MAX_SIDE, AR } from "./imgsize.js";
 import { sunSign } from "./horoscope.js";
 import { SPREADS, spreadById, hashSeed, draw } from "./tarot.js";
 import { silentWav } from "./mediasession.js";
@@ -961,9 +961,12 @@ Deno.test("imgsize sizeFor: every quality stop is exact 3:4, 32-aligned and with
     assert(s.width <= MAX_SIDE && s.height <= MAX_SIDE, `≤ ${MAX_SIDE} per side (${s.width}×${s.height})`);
     assert(Math.abs(s.width / s.height - AR) < 1e-9, `exact 3:4 (${s.width}×${s.height})`);
   }
-  // the top stop is the app's default High resolution — must stay the pre-slider 768×1024
+  // the DEFAULT stop is the app's balanced render — must stay the pre-slider 768×1024 (no regression)
+  const def = sizeFor(QUALITY[DEFAULT]);
+  assertEquals([def.width, def.height], [768, 1024]);
+  // the top stop is the high-res max the big FLUX Spaces honour
   const hi = sizeFor(QUALITY.at(-1));
-  assertEquals([hi.width, hi.height], [768, 1024]);
+  assertEquals([hi.width, hi.height], [1536, 2048]);
 });
 
 Deno.test("imgsize sizeFor: higher stop is strictly larger; over-cap input clamps to the ceiling", () => {
@@ -975,12 +978,16 @@ Deno.test("imgsize sizeFor: higher stop is strictly larger; over-cap input clamp
   assert(over.width <= MAX_SIDE && over.height <= MAX_SIDE, "beyond-ceiling long edge clamps to MAX_SIDE");
 });
 
-Deno.test("imgsize estimateSeconds: monotonic in area, in a sane band, ~32s at full 768×1024", () => {
+Deno.test("imgsize estimateSeconds: monotonic in area, in a plausible band across the ladder", () => {
   const draft = sizeFor(QUALITY[0]), full = sizeFor(QUALITY.at(-1));
   const eDraft = estimateSeconds(draft.width, draft.height), eFull = estimateSeconds(full.width, full.height);
   assert(eDraft < eFull, "a bigger image estimates a longer wait");
-  assert(eDraft >= 10 && eFull <= 45, `estimates stay in a plausible band (${eDraft}s … ${eFull}s)`);
-  assert(Math.abs(eFull - 32) <= 3, `full-res estimate ≈ 32s (${eFull}s)`);
+  assert(eDraft >= 5 && eFull <= 40, `estimates stay in a plausible band (${eDraft}s … ${eFull}s)`);
+  // strictly increasing at every step of the quality ladder
+  for (let i = 1; i < QUALITY.length; i++) {
+    const a = sizeFor(QUALITY[i - 1]), b = sizeFor(QUALITY[i]);
+    assert(estimateSeconds(b.width, b.height) > estimateSeconds(a.width, a.height), `estimate rises at stop ${i}`);
+  }
 });
 
 Deno.test("horoscope sunSign: cutoffs map month/day to the right sign, wrapping at year end", () => {

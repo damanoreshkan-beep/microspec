@@ -1,0 +1,43 @@
+{
+  "name": "Онови",
+  "short_name": "Онови",
+  "description": "Дай фото інструкцію — «додай сніг», «прибери дроти», «як олійна картина» — і ШІ перемалює зображення. Твоє фото завантажується на безкоштовний сервіс редагування лише коли ти застосовуєш зміну.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0A0A0B",
+  "background_color": "#0A0A0B",
+  "lang": "uk",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -133,7 +133,7 @@ function makeRing(canvas, THREE) {
 // height is its band level; the ridge scrolls toward the camera (advanceTerrain). Solid instanced boxes,
 // hue by depth, lit by level and fading into the distance. Fixed full-screen, transparent clear so base-200
 // reads as the sky. Rotation uses the gentle dynamic-centre head-look (st.turn), not absolute heading.
-const ROWS = 20, COLS = 31;   // odd → a column sits dead-centre, so no black seam down the middle
+const ROWS = 20, COLS = 30;
 function makeTerrain(canvas, THREE) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(DPR());
@@ -141,13 +141,7 @@ function makeTerrain(canvas, THREE) {
   const cam = new THREE.PerspectiveCamera(62, 1, 0.1, 100);
   const group = new THREE.Group(); scene.add(group);
 
-  // A dim floor under the pillars: any gap between columns now shows GROUND, never the black background — the
-  // real cause of the "black spikes". Kept dark so it reads as a floor, not a lit wall.
-  const floorGeo = new THREE.PlaneGeometry(90, 100); floorGeo.rotateX(-Math.PI / 2);
-  const floorMat = new THREE.MeshBasicMaterial({ toneMapped: false });
-  const floor = new THREE.Mesh(floorGeo, floorMat); floor.position.y = -1.5; group.add(floor);
-
-  const geo = new THREE.BoxGeometry(0.56, 1, 0.42); geo.translate(0, 0.5, 0);   // wide enough to nearly close the gaps
+  const geo = new THREE.BoxGeometry(0.34, 1, 0.34); geo.translate(0, 0.5, 0);   // grow up from the base
   const mat = new THREE.MeshBasicMaterial({ transparent: true, toneMapped: false });
   const mesh = new THREE.InstancedMesh(geo, mat, ROWS * COLS);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -169,13 +163,12 @@ function makeTerrain(canvas, THREE) {
         mesh.setColorAt(idx, col.setHSL(((st.hue + r * 3) % 360) / 360, 0.62, (0.12 + v * 0.5) * fade));
       }
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-      floorMat.color.setHSL((st.hue % 360) / 360, 0.4, 0.05);   // dim ground tint, follows the song's hue
       group.rotation.y = st.turn * 0.5 + p.x * 0.12;
       cam.position.set(p.x * 0.5, 1.7 - p.y * 0.3, 3.1 + st.bands.bass * 0.25);   // slightly higher: look over the field, not through it
       cam.lookAt(0, -0.2, -7);
       renderer.render(scene, cam);
     },
-    dispose() { geo.dispose(); mat.dispose(); floorGeo.dispose(); floorMat.dispose(); renderer.dispose(); },
+    dispose() { geo.dispose(); mat.dispose(); renderer.dispose(); },
   };
 }
 

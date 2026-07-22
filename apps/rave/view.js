@@ -21,6 +21,7 @@ import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { isGate } from "/_rt/gate.js";
 import { wakeLock } from "/_rt/sensors.js";
 import { holdAudio } from "/_rt/mediasession.js";
+import { bindAudio, enableImmersion, disableImmersion, immersionState, immersionAvailable, RingViz, TerrainBg } from "./viz.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -112,6 +113,7 @@ const SAVES = collection("ravePatterns");
 
 // ---- engine (module scope) ----
 let eng = null, bus = null, fxN = null, sched = null, raf = null, nextT = 0, stepN = 0, q = [], genT = null;
+let analyser = null, freqBuf = null;   // FFT tap off the master bus → the 3D spectrum (viz.js). A pure observer.
 // ---- keep-alive: hold the screen on + own an OS media session so the beat survives backgrounding (both
 // module-scope, like the engine, so they persist across tab switches). See /_rt/mediasession.js. ----
 let wl = null, np = null;
@@ -135,6 +137,11 @@ function ensure() {
     crush.connect(dsend); dsend.connect(delay); delay.connect(df); df.connect(dfb); dfb.connect(delay); df.connect(sum);
     const rsend = ctx.createGain(); rsend.gain.value = 0; const rev = ctx.createConvolver(); rev.buffer = makeIR(ctx); crush.connect(rsend); rsend.connect(rev); rev.connect(sum);
     eng = e; bus = drive; fxN = { drive, crush, dsend, rsend, mf, delay }; applyFx();
+    // Tap the final mix for the spectrum: master → analyser is an observer branch (no onward connection), so
+    // it can never alter what you hear. fftSize 2048 (1024 bins) + a snappy smoothing constant for a beat.
+    analyser = ctx.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = 0.7;
+    freqBuf = new Uint8Array(analyser.frequencyBinCount); e.master.connect(analyser);
+    bindAudio(() => { if (!analyser || !$playing.get()) return null; analyser.getByteFrequencyData(freqBuf); return freqBuf; });
   }
   eng.resume(); return eng;
 }
@@ -249,16 +256,27 @@ export function rave({ S }) {
   useEffect(() => { loadPackSamples($pack.get()); }, []);
   const pick = (i) => { buzz(); ensure(); const [id, b] = PLAYER[i]; $style.set(i); $tracks.set(parse(presetById(id))); $bpm.set(b); $hist.set({ seeds: [], idx: -1 }); syncNP(); };
   const kickRow = tracks.kick;
+  // Immersion (gyro parallax + compass rotation) is opt-in and lives behind THIS tap — the gesture iOS needs
+  // to grant DeviceOrientation. A toggle, not a screen, so it isn't history-routed; hidden where it'd be dead.
+  const [immersed, setImmersed] = useState(immersionState.on);
+  const toggleImmersion = async () => { buzz(12); if (immersionState.on) { disableImmersion(); setImmersed(false); } else { setImmersed(await enableImmersion()); } };
 
-  return html`<div class="flex flex-col items-center gap-5 pt-1">
+  return html`<${Fragment}>
+    <${TerrainBg} />
+    <div class="relative z-10 flex flex-col items-center gap-5 pt-1">
     <div class="w-full max-w-[440px] -mx-1 px-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div class="flex gap-2 w-max">
         ${PLAYER.map(([id], i) => { const on = i === style; return html`<button data-style=${id} aria-pressed=${on} onClick=${() => pick(i)} key=${id} class=${`shrink-0 rounded-full border px-3.5 py-2 text-sm font-medium transition ${on ? "border-secondary/60 bg-secondary/12 text-secondary" : "border-base-content/12 text-base-content/70"}`}>${T(t, presetName(id))}</button>`; })}
       </div>
     </div>
 
+    <div class="relative w-full max-w-[440px] -mb-1">
+      <${RingViz} />
+      ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-1 right-1 btn btn-circle btn-sm border-base-content/10 backdrop-blur-md ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/50 text-base-content/60"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
+    </div>
+
     <div data-viz class="w-full max-w-[440px] grid grid-cols-[repeat(16,minmax(0,1fr))] gap-1">
-      ${STEPS.map((i) => { const beat = i % 4 === 0, k = kickRow[i], on = i === cur, sw = i === sweep; return html`<div key=${i} class=${`h-8 rounded-md transition-colors ${sw ? "bg-accent" : on ? "bg-secondary" : k ? "bg-secondary/45" : beat ? "bg-base-content/20" : "bg-base-content/10"}`}></div>`; })}
+      ${STEPS.map((i) => { const beat = i % 4 === 0, k = kickRow[i], on = i === cur, sw = i === sweep; return html`<div key=${i} class=${`h-2.5 rounded-md transition-colors ${sw ? "bg-accent" : on ? "bg-secondary" : k ? "bg-secondary/45" : beat ? "bg-base-content/20" : "bg-base-content/10"}`}></div>`; })}
     </div>
 
     <div class="flex items-center gap-5">
@@ -277,7 +295,8 @@ export function rave({ S }) {
       <input data-filter type="range" min="0" max="1" step="0.01" value=${fx.mfilter} aria-label=${T(t, "fxFilter")} onInput=${(e) => setFx("mfilter", Number(e.target.value))} class="range range-xs range-secondary flex-1" />
     </div>
     ${!audioSupported ? html`<div class="text-xs text-base-content/60">${T(t, "noAudio")}</div>` : null}
-  </div>`;
+    </div>
+  </${Fragment}>`;
 }
 
 // ================= Pads: the matrix + settings sheet =================

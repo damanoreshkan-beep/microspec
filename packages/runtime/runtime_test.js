@@ -26,6 +26,7 @@ import { signOf, signPair, compat, band, ELEMENT, MODALITY } from "./synastry.js
 import { centsToRatio, semiToRatio, beatHz, chord, dbToGain, faderGain, equalPower, detune, STATIONS, LAYERS, station, reactorVoices } from "./scifi.js";
 import { sat, makeSat, parseTleText, subpoint, sunEciUnit, isSunlit, FALLBACK_TLE } from "./orbit.js";
 import { resumeAt, RESUME_MIN } from "./playback.js";
+import { logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, advanceTerrain, Parallax, seedFrame } from "./spectrum.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
@@ -1333,4 +1334,69 @@ Deno.test("vfilter isBlackSample: any real content keeps the clip", () => {
   assert(!isBlackSample(vpx(nightScene)), "dark frame with a highlight → kept (peak test)");
   assert(!isBlackSample(vpx(Array(64).fill([10, 120, 40]))), "coloured → not black");
   assert(!isBlackSample(new Uint8ClampedArray(0)), "empty sample → not black (fail toward keep)");
+});
+
+// ---- spectrum.js — audio-reactive visual DSP + geometry math ----
+Deno.test("spectrum logBandEdges: monotonic, in-range, correct length", () => {
+  const e = logBandEdges(28, 32, 16000, 44100, 2048);
+  assertEquals(e.length, 29);
+  const bins = 2048 / 2;
+  for (let i = 0; i < e.length; i++) { assert(e[i] >= 1 && e[i] <= bins - 1, `edge ${i} in range`); if (i) assert(e[i] >= e[i - 1], "non-decreasing"); }
+  assert(e[e.length - 1] > e[0], "spans a real range");
+});
+
+Deno.test("spectrum bandLevels: full-scale → ~1, silence → 0, always ≥1 bin", () => {
+  const edges = logBandEdges(28, 32, 16000, 44100, 2048);
+  const hot = new Uint8Array(1024).fill(255), cold = new Uint8Array(1024);
+  const lh = bandLevels(hot, edges); assert(lh.every((v) => Math.abs(v - 1) < 1e-6), "all bands ≈1");
+  const lc = bandLevels(cold, edges); assert(lc.every((v) => v === 0), "all bands 0");
+  assertEquals(lh.length, 28);
+});
+
+Deno.test("spectrum splitBands: energy localises to the right band", () => {
+  const sr = 44100, fftSize = 2048, hzPerBin = sr / fftSize;
+  const only = (f0, f1) => { const u = new Uint8Array(1024); for (let i = Math.round(f0 / hzPerBin); i <= Math.round(f1 / hzPerBin); i++) u[i] = 255; return u; };
+  const b = splitBands(only(20, 150), sr, fftSize); assert(b.bass > 0.9 && b.mid < 0.05 && b.treble < 0.05, "bass isolated");
+  const tr = splitBands(only(2000, 16000), sr, fftSize); assert(tr.treble > 0.9 && tr.bass < 0.05, "treble isolated");
+});
+
+Deno.test("spectrum spectralCentroid: bass → warm hue, treble → cool hue", () => {
+  const sr = 44100, fftSize = 2048, hzPerBin = sr / fftSize;
+  const only = (f) => { const u = new Uint8Array(1024); u[Math.round(f / hzPerBin)] = 255; return u; };
+  const lo = spectralCentroid(only(80), sr, fftSize), hi = spectralCentroid(only(6000), sr, fftSize);
+  assert(lo.hue > hi.hue, "lower centroid → higher (warmer) hue");
+  assert(lo.hue <= 280 && hi.hue >= 190, "hue stays inside the signal-palette band");
+});
+
+Deno.test("spectrum Envelope: attack faster than release", () => {
+  const up = Envelope(0.6, 0.12, 1), tgt = [1];
+  up.update(tgt); const afterAttack = up.v[0];
+  const down = Envelope(0.6, 0.12, 1); down.v[0] = 1; down.update([0]); const afterRelease = 1 - down.v[0];
+  assert(afterAttack > afterRelease, "rises faster than it falls");
+  assert(afterAttack > 0 && afterAttack < 1, "eases, not a jump");
+});
+
+Deno.test("spectrum advanceTerrain: front row injected, rows recede", () => {
+  const rows = 4, cols = 3, grid = new Float32Array(rows * cols);
+  advanceTerrain(grid, rows, cols, [1, 1, 1]);
+  assert(grid[0] > 0.9, "front row got the level");
+  assert(grid[cols] === 0, "second row still empty after one step");
+  advanceTerrain(grid, rows, cols, [0, 0, 0]);
+  assert(grid[cols] > 0 && grid[cols] < 1, "previous front receded with decay");
+});
+
+Deno.test("spectrum Parallax: clamps, low-passes, and reduced-motion zeroes", () => {
+  const p = Parallax({ alpha: 1, maxDeg: 20, gain: 1 });
+  p.update(40, 40); assert(Math.abs(p.x - 1) < 1e-6 && Math.abs(p.y - 1) < 1e-6, "beyond maxDeg clamps to 1");
+  const s = Parallax({ alpha: 0.1 }); s.update(20, 20); assert(s.x > 0 && s.x < 0.5, "EMA eases in, no jump");
+  const r = Parallax({ alpha: 1, reduced: true }); r.update(20, 20); assert(r.x === 0 && r.y === 0, "reduced-motion → centred");
+  const n = Parallax({ alpha: 1 }); n.update(null, null); assert(n.x === 0, "null readings → centred");
+});
+
+Deno.test("spectrum seedFrame: deterministic, in-range, bass-heavy", () => {
+  const a = seedFrame(1024, 0), b = seedFrame(1024, 0);
+  assertEquals([...a], [...b], "deterministic for a fixed phase");
+  assert(a.every((v) => v >= 0 && v <= 255), "bytes in range");
+  const front = a.slice(0, 40).reduce((s, v) => s + v, 0), back = a.slice(-40).reduce((s, v) => s + v, 0);
+  assert(front > back, "low frequencies carry more energy");
 });

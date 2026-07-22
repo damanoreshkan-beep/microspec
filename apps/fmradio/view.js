@@ -278,7 +278,7 @@ export function savedView({ S, undo }) {
         <span class=${`font-mono tabular-nums text-xl w-[4.5rem] shrink-0 ${on ? "text-primary" : ""}`}>${fmMhz(s.freq)}</span>
         <span class="flex-1 min-w-0 flex flex-col">
           <span class="truncate font-medium">${nm || T(t, "tuning")}</span>
-          ${s.pty ? html`<span class="text-[0.7rem] text-base-content/50 uppercase tracking-wide truncate">${ptyName(s.pty)}</span>` : null}
+          ${s.pty ? html`<span class="text-[0.7rem] text-base-content/70 uppercase tracking-wide truncate">${ptyName(s.pty)}</span>` : null}
         </span>
       </button>
       <button data-del aria-label=${T(t, "del")} data-haptic="bump" class="btn btn-ghost btn-sm btn-circle text-base-content/50 shrink-0" onClick=${() => del(i)}><iconify-icon icon="lucide:trash-2" class="text-lg"></iconify-icon></button>

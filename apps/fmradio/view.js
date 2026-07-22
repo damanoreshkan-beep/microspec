@@ -172,7 +172,7 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
       <div class="w-full rounded-3xl border border-base-content/10 bg-base-100/60 backdrop-blur-xl p-5 @max-[300px]:p-3 flex flex-col gap-3" data-card>
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
-            <span class=${`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.62rem] font-mono uppercase tracking-wider border ${stereo ? "border-primary/40 text-primary bg-primary/10" : "border-base-content/15 text-base-content/50"}`} data-stereo>${Icon("lucide:radio", "text-[0.9em]")}${T(t, stereo ? "stereo" : "mono")}</span>
+            <span class=${`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.62rem] font-mono uppercase tracking-wider border ${stereo ? "border-primary/40 text-primary bg-primary/10" : "border-base-content/20 text-base-content/70"}`} data-stereo>${Icon("lucide:radio", "text-[0.9em]")}${T(t, stereo ? "stereo" : "mono")}</span>
             ${genre ? html`<span class="rounded-full px-2 py-0.5 text-[0.62rem] uppercase tracking-wider bg-secondary/12 text-secondary border border-secondary/25 truncate max-w-[9rem] @max-[300px]:hidden" data-genre>${genre}</span>` : null}
           </div>
           <div class="flex items-center gap-2.5">

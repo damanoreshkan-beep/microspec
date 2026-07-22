@@ -165,10 +165,10 @@ export function fmradioView({ S, screen, openScreen, closeScreen }) {
   }
 
   return html`<${Fragment}>
-    <div class="flex flex-col items-center gap-4 max-w-[440px] mx-auto w-full pb-28">
-      <div class="flex items-end justify-center gap-4 w-full pt-1" data-live data-readout>
+    <div class="@container flex flex-col items-center gap-4 max-w-[440px] mx-auto w-full pb-28">
+      <div class="flex items-end justify-center gap-4 @max-[280px]:gap-2 w-full pt-1" data-live data-readout>
         <div class="flex items-baseline gap-2 font-mono tabular-nums">
-          <span class="text-6xl font-semibold leading-none tracking-tight">${fmMhz(freq)}</span>
+          <span class="text-4xl @min-[260px]:text-5xl @min-[340px]:text-6xl font-semibold leading-none tracking-tight">${fmMhz(freq)}</span>
           <span class="text-sm uppercase tracking-[0.18em] text-base-content/55">${T(t, "unitMhz")}</span>
         </div>
         <${SignalBars} level=${signal} label=${T(t, "sigLabel")} />
@@ -180,15 +180,15 @@ export function fmradioView({ S, screen, openScreen, closeScreen }) {
       </div>
 
       <div class="w-full flex flex-col gap-1.5 px-1">
-        <input type="range" min=${FM_LO} max=${FM_HI} step="0.1" value=${(freq / 1e6).toFixed(1)}
+        <input type="range" min=${FM_LO} max=${FM_HI} step="0.1" value=${(freq / 1e6).toFixed(1)} data-band
           aria-label=${T(t, "band")} onInput=${(e) => setFreq(Number(e.target.value) * 1e6)} class="range range-sm range-primary w-full" />
         <div class="flex justify-between font-mono text-[0.65rem] text-base-content/55 tabular-nums"><span>${FM_LO.toFixed(1)}</span><span>${FM_HI.toFixed(1)}</span></div>
       </div>
 
-      <div class="flex items-center gap-6">
+      <div class="flex items-center gap-6 @max-[280px]:gap-3">
         <button data-tune="down" aria-label=${T(t, "tuneDown")} onClick=${() => setFreq(freq - STEP_HZ)} class="btn btn-circle btn-ghost">${Icon("lucide:minus", "text-2xl")}</button>
         <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} onClick=${() => (playing ? pause() : play())}
-          class=${`w-20 h-20 rounded-full grid place-items-center shadow-xl active:scale-95 transition ${playing ? "bg-primary text-primary-content" : "bg-base-content text-base-100"}`}>
+          class=${`w-20 h-20 @max-[280px]:w-16 @max-[280px]:h-16 rounded-full grid place-items-center shadow-xl active:scale-95 transition ${playing ? "bg-primary text-primary-content" : "bg-base-content text-base-100"}`}>
           ${Icon(playing ? "lucide:volume-2" : "lucide:play", "text-3xl")}
         </button>
         <button data-tune="up" aria-label=${T(t, "tuneUp")} onClick=${() => setFreq(freq + STEP_HZ)} class="btn btn-circle btn-ghost">${Icon("lucide:plus", "text-2xl")}</button>

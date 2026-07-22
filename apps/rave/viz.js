@@ -149,14 +149,14 @@ function makeTerrain(canvas, THREE) {
   const mat = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true, transparent: true, opacity: 0.6, toneMapped: false });
   const mesh = new THREE.Mesh(geo, mat); group.add(mesh);
   const pos = geo.attributes.position, colAttr = geo.attributes.color, grid = new Float32Array(ROWS * COLS), col = new THREE.Color();
-  const HMAX = 3.3;
+  const HMAX = 4.2;
 
   return {
     resize(w, h) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); },
     frame(st, p) {
       advanceTerrain(grid, ROWS, COLS, st.levels);
       for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-        const vi = r * COLS + c, vh = Math.pow(grid[(ROWS - 1 - r) * COLS + c], 1.7);   // sharpen → spectrum spikes
+        const vi = r * COLS + c, vh = Math.pow(grid[(ROWS - 1 - r) * COLS + c], 1.4);   // sharpen → spectrum spikes
         pos.setY(vi, vh * HMAX);
         const fade = 1 - (r / ROWS) * 0.55, hue = ((st.hue + c * 5 + r * 2) % 360 + 360) % 360;
         col.setHSL(hue / 360, 0.72, (0.14 + vh * 0.5) * fade);                          // hue by column/depth, lit by peak

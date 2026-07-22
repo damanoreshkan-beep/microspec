@@ -7,7 +7,10 @@ import { HackRF } from "/_rt/hackrf.js";
 import { capture, isolateFrame, renderOOK } from "/_rt/ook.js";
 
 const SR = 2_000_000, TX_OFFSET = 250_000, CAP_BLOCKS = 28, MAX_XFER = 262144;
-const ROLLING_MIN = 48;                                  // ≥48 timing entries ⇒ likely a long rolling-code frame
+// A KeeLoq rolling frame is ~66 bits ≈ 132 timing entries; a fixed EV1527 (24-bit) is ~48. Flag as a HINT only
+// (never a block — a naive rolling replay is harmless, it just won't open anything). High threshold so ordinary
+// fixed-code remotes are never mislabelled.
+const ROLLING_MIN = 110;
 const post = (m, transfer) => self.postMessage(m, transfer || []);
 
 let rx = null;

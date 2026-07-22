@@ -2,6 +2,7 @@
 export const VENDOR_ID = 0x1d50, PRODUCT_ID = 0x6089;
 export const USB_FILTERS = [{ vendorId: VENDOR_ID, productId: PRODUCT_ID }];
 export const RX_ENDPOINT = 1;              
+export const TX_ENDPOINT = 2;              
 export const TRANSFER_SIZE = 262144;       
 
 export const REQUEST = {
@@ -12,6 +13,7 @@ export const REQUEST = {
   AMP_ENABLE: 17,
   SET_LNA_GAIN: 19,
   SET_VGA_GAIN: 20,
+  SET_TXVGA_GAIN: 21,
 };
 export const MODE = { OFF: 0, RECEIVE: 1, TRANSMIT: 2 };
 
@@ -31,6 +33,7 @@ export function setFreqPayload(hz) {
 
 export const clampLnaGain = (db) => Math.max(0, Math.min(40, Math.round(db / 8) * 8));
 export const clampVgaGain = (db) => Math.max(0, Math.min(62, Math.round(db / 2) * 2));
+export const clampTxVgaGain = (db) => Math.max(0, Math.min(47, Math.round(db)));
 
 export const BASEBAND_FILTERS = [1_750_000, 2_500_000, 3_500_000, 5_000_000, 5_500_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000, 12_000_000, 14_000_000, 15_000_000, 20_000_000, 24_000_000, 28_000_000];
 export function roundBasebandFilter(bwHz) {
@@ -68,7 +71,12 @@ export class HackRF {
   setAmp(on) { return this._out(REQUEST.AMP_ENABLE, on ? 1 : 0, 0); }
   setLnaGain(db) { return this._in(REQUEST.SET_LNA_GAIN, 0, clampLnaGain(db), 1); }
   setVgaGain(db) { return this._in(REQUEST.SET_VGA_GAIN, 0, clampVgaGain(db), 1); }
+  setTxVgaGain(db) { return this._in(REQUEST.SET_TXVGA_GAIN, 0, clampTxVgaGain(db), 1); }
   setMode(mode) { return this._out(REQUEST.SET_TRANSCEIVER_MODE, mode, 0); }
+
+  startTx() { return this.setMode(MODE.TRANSMIT); }
+  write(buffer) { return this.dev.transferOut(TX_ENDPOINT, buffer); }   
+  async stopTx() { try { await this.setMode(MODE.OFF); } catch {  } try { await this.setAmp(false); } catch {  } }
 
   async read() { const r = await this.dev.transferIn(RX_ENDPOINT, TRANSFER_SIZE); return r.data ? new Uint8Array(r.data.buffer) : new Uint8Array(0); }
 

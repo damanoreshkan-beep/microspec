@@ -1,0 +1,27 @@
+{
+  "id": "wish",
+  "theme": "signal",
+  "category": "tools",
+  "tabs": [
+    {
+      "id": "lists",
+      "type": "tool",
+      "icon": "lucide:gift",
+      "label": "tabLists",
+      "view": "wish"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:sparkles",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

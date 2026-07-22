@@ -72,9 +72,15 @@ function pump() {
   clock += 1 / 60;                                             // synthetic clock → frame-rate-independent maths, fully deterministic under the gate
   const live = _getBytes && !isGate ? _getBytes() : null;
   // paused / gate: seed gentle deterministic ripples (no Math.random) so the surface is alive
-  if (!live && clock - seedT > 1.5) {                          // resting: a sparse, gentle sand shimmer near the centre — never big idle waves
-    seedT = clock; const a = clock * 0.7;
-    field.strike(Math.cos(a) * R_IN * 0.35, Math.sin(a * 1.3) * R_IN * 0.35, { amp: 0.5, hue: 252 + 30 * Math.sin(a * 0.8), t: clock });
+  if (!live && clock - seedT > (isGate ? 0.85 : 1.5)) {
+    seedT = clock;
+    if (isGate) {                                              // gate/preview: a clear, representative bloom ON a tone-field position, so the shot shows the strike look (a populated screen, not an empty one)
+      const k = Math.floor(clock / 0.85) % 8, a = -Math.PI / 2 + (k / 8) * Math.PI * 2;
+      field.strike(Math.cos(a) * R_IN, Math.sin(a) * R_IN, { amp: 1, hue: 260 - k * 7, t: clock });
+    } else {                                                   // resting: a sparse, gentle sand shimmer near the centre — never big idle waves
+      const a = clock * 0.7;
+      field.strike(Math.cos(a) * R_IN * 0.35, Math.sin(a * 1.3) * R_IN * 0.35, { amp: 0.55, hue: 252 + 30 * Math.sin(a * 0.8), t: clock });
+    }
   }
   field.prune(clock);
   const target = live ? meanByte(live) : Math.min(1, field.energy(clock) * 0.4);

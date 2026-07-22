@@ -359,7 +359,7 @@
     "bg": "#17111a",
     "fg": "#fb7185",
     "href": "./wish/",
-    "version": "1.0",
+    "version": "1.2",
     "category": "tools"
   },
   {
@@ -425,7 +425,7 @@
     "bg": "#0C1014",
     "fg": "#E0B24E",
     "href": "./handpan/",
-    "version": "1.7",
+    "version": "1.12",
     "category": "sound"
   },
   {
@@ -460,6 +460,17 @@
     "href": "./dou/",
     "version": "1.12",
     "category": "feeds"
+  },
+  {
+    "id": "fmradio",
+    "title": "FM-радіо",
+    "tagline": "Живе FM, декодоване на пристрої з твого HackRF",
+    "glyph": "lucide:radio",
+    "bg": "#0A0A0B",
+    "fg": "#B7ADEB",
+    "href": "./fmradio/",
+    "version": "1.3",
+    "category": "hackrf"
   },
   {
     "id": "ruler",

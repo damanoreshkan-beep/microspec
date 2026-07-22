@@ -1,28 +1,39 @@
 // FM radio for a HackRF over WebUSB. Headless has no device, so the view runs in demo mode (gate): it seeds a
-// deterministic spectrum + a connected, populated screen. These cases exercise that live UI — the tuner, the
-// spectrum/waterfall, the transport, the settings sheet (history-backed, Back closes), i18n and the PWA modal.
-const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("[data-readout]")) > 0) break; await h.wait(300); } };
+// tuned station (RDS name/genre/radiotext + stereo) and a scan list. These cases exercise that head-unit — the
+// now-playing card, seek + station list, the transport, the settings sheet (history-backed, Back closes), i18n
+// and the PWA modal.
+const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("[data-card]")) > 0) break; await h.wait(300); } };
 
 export default [
   {
-    name: "живий приймач: readout, спектр, waterfall, тюнер, транспорт", run: async (h) => {
+    name: "head unit: readout, станція (RDS), жанр, стерео, сигнал, транспорт", run: async (h) => {
       await ready(h);
-      h.expect((await h.count("[data-readout][data-live]")) === 1, "немає живого readout частоти");
-      h.expect((await h.count("[data-spectrum]")) === 1, "немає спектра");
-      h.expect((await h.count("[data-waterfall]")) === 1, "немає waterfall");
+      h.expect((await h.count("[data-nowplaying][data-live]")) === 1, "немає живого now-playing");
+      h.expect((await h.count("[data-stereo]")) === 1, "немає індикатора стерео");
+      h.expect((await h.count("[data-signal]")) === 1, "немає індикатора сигналу");
       h.expect((await h.count("[data-band]")) === 1, "немає band-слайдера");
       h.expect((await h.count("#play")) === 1, "немає транспорту");
-      h.expect((await h.count("[data-signal]")) === 1, "немає індикатора сигналу");
-      h.expect(/mhz|мгц/i.test(await h.bodyText()), "немає одиниць частоти");
+      const body = await h.bodyText();
+      h.expect(/HIT FM/.test(body), "немає назви станції (RDS PS)");
+      h.expect(/Pop music/.test(body), "немає жанру (PTY)");
+      h.expect(/mhz|мгц/i.test(body), "немає одиниць частоти");
     },
   },
   {
-    name: "тюнінг змінює частоту", run: async (h) => {
+    name: "список станцій: тап налаштовує частоту", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-station]")) >= 4, "немає списку знайдених станцій");
+      await h.tap('[data-station="96.0"]'); await h.wait(200);
+      h.expect(/96\.0/.test(await h.bodyText()), "тап по станції не змінив частоту");
+      h.expect((await h.attr('[data-station="96.0"]', "aria-current")) === "true", "станція не позначилась активною");
+    },
+  },
+  {
+    name: "seek змінює частоту", run: async (h) => {
       await ready(h);
       const before = await h.bodyText();
-      await h.tap('[data-tune="up"]'); await h.wait(150);
-      await h.tap('[data-tune="up"]'); await h.wait(150);
-      h.expect((await h.bodyText()) !== before, "readout не змінився після підстроювання");
+      await h.tap('[data-seek="up"]'); await h.wait(150);
+      h.expect((await h.bodyText()) !== before, "seek не змінив частоту");
     },
   },
   {
@@ -56,7 +67,7 @@ export default [
       await ready(h);
       await h.tap("[data-settings]"); await h.wait(200);
       h.expect((await h.attr('[data-tc="75"]', "aria-pressed")) === "true", "деемфазис не зберігся");
-      await h.tap('[data-tc="50"]'); await h.wait(120);        // restore default for later shared-page cases
+      await h.tap('[data-tc="50"]'); await h.wait(120);
       await h.back(); await h.wait(150);
     },
   },
@@ -65,10 +76,10 @@ export default [
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);
       await h.click('[data-tab="tune"]'); await h.wait(200);
-      h.expect(/Signal/i.test(await h.bodyText()), "не EN");
+      h.expect(/Signal|Stereo/i.test(await h.bodyText()), "не EN");
       await h.click('[data-tab="me"]'); await h.wait(120);
       await h.click('[data-loc="uk"]'); await h.wait(250);
-      h.expect(/Мова|Тема/.test(await h.bodyText()), "не UA");
+      h.expect(/Сигнал|Стерео|Мова/.test(await h.bodyText()), "не UA");
       await h.click('[data-tab="tune"]'); await h.wait(120);
     },
   },

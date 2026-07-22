@@ -167,67 +167,53 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
   const info = rds.rt || rds.scroll || "";             // RadioText, or the scrolling-PS text when the PS is dynamic
   const savedNow = savedList.some((x) => x.freq === freq);
   return html`<${Fragment}>
-    <div class="@container flex flex-col items-center gap-4 max-w-[440px] mx-auto w-full pb-28">
-      <!-- now-playing head unit -->
-      <div class="w-full rounded-3xl border border-base-content/10 bg-base-100/60 backdrop-blur-xl p-5 @max-[300px]:p-3 flex flex-col gap-3" data-card>
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <span class=${`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.62rem] font-mono uppercase tracking-wider border ${stereo ? "border-primary/40 text-primary bg-primary/10" : "border-base-content/20 text-base-content/70"}`} data-stereo>${Icon("lucide:radio", "text-[0.9em]")}${T(t, stereo ? "stereo" : "mono")}</span>
-            ${genre ? html`<span class="rounded-full px-2 py-0.5 text-[0.62rem] uppercase tracking-wider bg-secondary/12 text-secondary border border-secondary/25 truncate max-w-[9rem] @max-[300px]:hidden" data-genre>${genre}</span>` : null}
-          </div>
-          <div class="flex items-center gap-2.5">
-            <${SignalBars} level=${signal} label=${T(t, "sigLabel")} />
-            <button data-save aria-pressed=${savedNow} aria-label=${T(t, "save")} onClick=${() => toggleSave(undo)} class=${`btn btn-circle btn-sm ${savedNow ? "bg-primary/15 text-primary border border-primary/30" : "btn-ghost text-base-content/45"}`}>${Icon(savedNow ? "lucide:bookmark-check" : "lucide:bookmark", "text-lg")}</button>
-          </div>
-        </div>
-
-        <div class="flex items-baseline gap-2 font-mono tabular-nums">
-          <span class="text-5xl @min-[300px]:text-6xl @max-[240px]:text-4xl font-semibold leading-none tracking-tight">${fmMhz(freq)}</span>
-          <span class="text-sm uppercase tracking-[0.18em] text-base-content/55">${T(t, "unitMhz")}</span>
-        </div>
-
-        <div class="min-h-[3.4rem] flex flex-col gap-1" data-live data-nowplaying>
-          <div class="text-2xl @max-[260px]:text-xl font-semibold leading-tight truncate">${name || html`<span class="text-base-content/35">${T(t, "tuning")}</span>`}</div>
-          ${info ? html`<div class="text-sm text-base-content/65 leading-snug line-clamp-2" data-rt>${info}</div>` : null}
-        </div>
-      </div>
-
-      <!-- transport: seek to previous / next station, play/pause -->
-      <div class="flex items-center gap-6 @max-[280px]:gap-3">
-        <button data-seek="down" aria-label=${T(t, "seekDown")} onClick=${() => seek(-1)} class="btn btn-circle btn-ghost">${Icon("lucide:chevrons-left", "text-2xl")}</button>
-        <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} onClick=${() => (playing ? pause() : play())}
-          class=${`w-20 h-20 @max-[280px]:w-16 @max-[280px]:h-16 rounded-full grid place-items-center shadow-xl active:scale-95 transition ${playing ? "bg-primary text-primary-content" : "bg-base-content text-base-100"}`}>
-          ${Icon(playing ? "lucide:volume-2" : "lucide:play", "text-3xl")}
-        </button>
-        <button data-seek="up" aria-label=${T(t, "seekUp")} onClick=${() => seek(1)} class="btn btn-circle btn-ghost">${Icon("lucide:chevrons-right", "text-2xl")}</button>
-      </div>
-
-      <!-- manual tuner -->
-      <div class="w-full flex items-center gap-3 px-1">
+    <!-- body: a compact tuner header, then the station list — this is what scrolls -->
+    <div class="flex flex-col gap-1.5 max-w-[440px] mx-auto w-full pb-[8.5rem]">
+      <div class="flex items-center gap-2 pt-0.5 pb-1">
         <input type="range" min=${FM_LO} max=${FM_HI} step="0.1" value=${(freq / 1e6).toFixed(1)} data-band
           aria-label=${T(t, "band")} onInput=${(e) => setFreq(Number(e.target.value) * 1e6)} class="range range-sm range-primary flex-1 min-w-0" />
         <button data-scan aria-label=${T(t, "scan")} disabled=${scanSt.active} onClick=${scan} class="btn btn-sm btn-outline border-base-content/20 gap-1.5 shrink-0">${Icon("lucide:radar", `text-base ${scanSt.active ? "animate-spin" : ""}`)}${T(t, "scan")}</button>
       </div>
-
-      <!-- station list -->
-      <div class="w-full flex flex-col gap-1.5">
-        ${scanSt.active ? html`<div class="w-full h-1.5 rounded-full bg-base-content/10 overflow-hidden" data-scanbar><div class="h-full bg-primary transition-[width] duration-200" style=${`width:${Math.round((scanSt.frac || 0) * 100)}%`}></div></div>` : null}
-        ${stations.length ? stations.slice().sort((a, b) => a.freq - b.freq).map((s) => {
+      ${scanSt.active ? html`<div class="w-full h-1.5 rounded-full bg-base-content/10 overflow-hidden" data-scanbar><div class="h-full bg-primary transition-[width] duration-200" style=${`width:${Math.round((scanSt.frac || 0) * 100)}%`}></div></div>` : null}
+      ${stations.length ? stations.slice().sort((a, b) => a.freq - b.freq).map((s) => {
     const on = Math.abs(s.freq - freq) < STEP_HZ / 2;
     return html`<button key=${s.freq} data-station=${fmMhz(s.freq)} aria-current=${on} onClick=${() => setFreq(s.freq)}
-          class=${`flex items-center gap-3 rounded-2xl border px-4 py-2.5 text-left transition ${on ? "border-primary/50 bg-primary/10" : "border-base-content/10 bg-base-100/40 hover:bg-base-100/70"}`}>
-          <span class="font-mono tabular-nums text-lg w-16 shrink-0 ${on ? "text-primary" : ""}">${fmMhz(s.freq)}</span>
-          <span class="flex-1 min-w-0 truncate text-sm ${on && rds.ps ? "text-base-content" : "text-base-content/55"}">${on && rds.ps ? rds.ps : s.ps || (s.stereo ? T(t, "stereo") : T(t, "mono"))}</span>
-          ${s.stereo ? Icon("lucide:radio", "text-base-content/40 text-base shrink-0") : null}
-        </button>`;
-  }) : html`<button data-scan-empty onClick=${scan} disabled=${scanSt.active} class="btn btn-ghost btn-sm justify-start gap-2 text-base-content/60">${Icon("lucide:radar")}${T(t, "scanHint")}</button>`}
-      </div>
+        class=${`flex items-center gap-3 rounded-2xl border px-4 py-2.5 text-left transition ${on ? "border-primary/50 bg-primary/10" : "border-base-content/10 bg-base-100/40 hover:bg-base-100/70"}`}>
+        <span class="font-mono tabular-nums text-lg w-16 shrink-0 ${on ? "text-primary" : ""}">${fmMhz(s.freq)}</span>
+        <span class="flex-1 min-w-0 truncate text-sm ${on && rds.ps ? "text-base-content" : "text-base-content/55"}">${on && rds.ps ? rds.ps : s.ps || (s.stereo ? T(t, "stereo") : T(t, "mono"))}</span>
+        ${s.stereo ? Icon("lucide:radio", "text-base-content/40 text-base shrink-0") : null}
+      </button>`;
+  }) : html`<button data-scan-empty onClick=${scan} disabled=${scanSt.active} class="btn btn-ghost btn-sm justify-start gap-2 text-base-content/60 mt-1">${Icon("lucide:radar")}${T(t, "scanHint")}</button>`}
     </div>
 
-    <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)">
-      <div class="pointer-events-auto flex items-center gap-2 rounded-full border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-2 py-1.5">
-        <button data-settings aria-label=${T(t, "settings")} aria-expanded=${screen === "rf"} class="btn btn-circle btn-ghost btn-sm" onClick=${() => { buzz(); openScreen("rf"); }}>${Icon("lucide:sliders-horizontal", "text-lg")}</button>
-        <button data-disconnect aria-label=${T(t, "disconnect")} class="btn btn-circle btn-ghost btn-sm text-base-content/60" onClick=${() => { if (!demo) disconnect(); }}>${Icon("lucide:power", "text-lg")}</button>
+    <!-- floating player island: now-playing + transport + settings + power, all in one compact bar -->
+    <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.4rem)">
+      <div data-player class="pointer-events-auto w-full max-w-[440px] flex flex-col gap-2 rounded-[1.5rem] border border-base-content/10 bg-base-100/85 backdrop-blur-xl shadow-[0_10px_30px_-8px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2.5">
+        <div class="flex items-center gap-2.5" data-live data-nowplaying>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="font-mono tabular-nums text-xl font-semibold leading-none shrink-0">${fmMhz(freq)}</span>
+              <span class="text-[0.6rem] uppercase tracking-wider text-base-content/55 shrink-0">${T(t, "unitMhz")}</span>
+              <span class="truncate font-semibold text-sm ml-0.5">${name || html`<span class="text-base-content/35">${T(t, "tuning")}</span>`}</span>
+              <span data-stereo class=${`shrink-0 ${stereo ? "text-primary" : "text-base-content/30"}`} title=${T(t, stereo ? "stereo" : "mono")}>${Icon("lucide:radio", "text-sm")}</span>
+              ${genre ? html`<span class="shrink-0 rounded-full px-1.5 py-px text-[0.55rem] uppercase tracking-wider bg-secondary/12 text-secondary border border-secondary/25 truncate max-w-[6rem]" data-genre>${genre}</span>` : null}
+            </div>
+            ${info ? html`<div class="text-[0.72rem] text-base-content/60 leading-snug truncate mt-0.5" data-rt>${info}</div>` : null}
+          </div>
+          <${SignalBars} level=${signal} label=${T(t, "sigLabel")} />
+          <button data-save aria-pressed=${savedNow} aria-label=${T(t, "save")} onClick=${() => toggleSave(undo)} class=${`btn btn-circle btn-sm shrink-0 ${savedNow ? "bg-primary/15 text-primary border border-primary/30" : "btn-ghost text-base-content/45"}`}>${Icon(savedNow ? "lucide:bookmark-check" : "lucide:bookmark", "text-base")}</button>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button data-seek="down" aria-label=${T(t, "seekDown")} onClick=${() => seek(-1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:chevrons-left", "text-xl")}</button>
+          <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} onClick=${() => (playing ? pause() : play())}
+            class=${`w-12 h-12 rounded-full grid place-items-center shadow-lg active:scale-95 transition shrink-0 ${playing ? "bg-primary text-primary-content" : "bg-base-content text-base-100"}`}>
+            ${Icon(playing ? "lucide:volume-2" : "lucide:play", "text-xl")}
+          </button>
+          <button data-seek="up" aria-label=${T(t, "seekUp")} onClick=${() => seek(1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:chevrons-right", "text-xl")}</button>
+          <span class="flex-1"></span>
+          <button data-settings aria-label=${T(t, "settings")} aria-expanded=${screen === "rf"} class="btn btn-circle btn-ghost btn-sm" onClick=${() => { buzz(); openScreen("rf"); }}>${Icon("lucide:sliders-horizontal", "text-lg")}</button>
+          <button data-disconnect aria-label=${T(t, "disconnect")} class="btn btn-circle btn-ghost btn-sm text-base-content/55" onClick=${() => { if (!demo) disconnect(); }}>${Icon("lucide:power", "text-lg")}</button>
+        </div>
       </div>
     </div>
 

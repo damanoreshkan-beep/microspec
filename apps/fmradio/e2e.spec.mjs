@@ -2,7 +2,7 @@
 // tuned station (RDS name/genre/radiotext + stereo) and a scan list. These cases exercise that head-unit — the
 // now-playing card, seek + station list, the transport, the settings sheet (history-backed, Back closes), i18n
 // and the PWA modal.
-const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("[data-card]")) > 0) break; await h.wait(300); } };
+const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("[data-player]")) > 0) break; await h.wait(300); } };
 
 export default [
   {
@@ -87,7 +87,7 @@ export default [
       const n0 = await h.count("[data-saved]");
       h.expect(n0 >= 2, "немає збережених станцій");
       await h.tap('[data-saved] [data-open]'); await h.wait(250);
-      h.expect((await h.count("[data-card]")) === 1, "тап не відкрив станцію на радіо");
+      h.expect((await h.count("[data-player]")) === 1, "тап не відкрив станцію на радіо");
       await h.click('[data-tab="saved"]'); await h.wait(200);
       await h.tap('[data-saved] [data-del]'); await h.wait(250);
       h.expect((await h.count("[data-saved]")) === n0 - 1, "видалення не спрацювало");

@@ -85,44 +85,80 @@ export class RdsBlockSync {
   }
 }
 
-// ---- group parser: groups → {pi, pty, ps, rt, tp, ms} with per-character voting (PS/RT flicker in noise) ----
+// ---- group parser with a STABLE, ACCUMULATING display layer (windytan/redsea + mathertel behaviour):
+// latch the last fully-confirmed value, only swap on a new fully-confirmed one, and never clear on noise.
+// PS uses 2-of-3 per-character voting; a churning confirmed PS is detected as dynamic (scrolling text) and
+// kept OUT of the name slot; RadioText debounces the A/B flag and holds the last complete message. Timing is
+// a GROUP COUNTER (not wall-clock) so this stays pure and unit-testable. See docs/research/rds-and-scan.md. ----
+const DYN_WINDOW = 90, DYN_DISTINCT = 3, AB_DEBOUNCE = 2;   // ≈8 s @ 11.4 groups/s · dynamic-PS trigger · A/B settle
+const txt = (arr, n) => { let s = ""; for (let i = 0; i < n; i++) { if (arr[i] === 0x0D) break; s += rdsChar(arr[i]); } return s.replace(/\s+$/, ""); };
+
 export class RdsParser {
-  constructor(need = 2) {
-    this.need = need;
-    this.pi = 0; this.pty = 0; this.tp = 0; this.ms = 0;
-    this.ps = new Uint8Array(8).fill(0x20); this.psV = Array(8).fill(null);
-    this.rt = new Uint8Array(64).fill(0x20); this.rtV = Array(64).fill(null); this.rtAB = null;
+  constructor() {
+    this.gn = 0; this.pi = 0; this.pty = 0; this.tp = 0; this.ms = 0;
+    // PS: three-deep shift register per position → 2-of-3 vote; a latched stable name; dynamic-PS tracking.
+    this.p1 = new Uint8Array(8); this.p2 = new Uint8Array(8); this.p3 = new Uint8Array(8); this.fill = new Uint8Array(8);
+    this.stablePS = null; this.lastCand = null; this.dynamic = false; this.psHist = [];
+    // RT: working buffer + seen-mask, latched complete message, A/B debounce.
+    this.rt = new Uint8Array(64).fill(0x20); this.rtSeen = new Uint8Array(64); this.rtTerm = -1;
+    this.stableRT = ""; this.rtPublished = false; this.abCommit = -1; this.abCand = -1; this.abCount = 0;
   }
-  _vote(V, arr, pos, ch) {
-    const v = V[pos];
-    if (v && v.ch === ch) v.count++; else V[pos] = { ch, count: 1 };
-    if (V[pos].count >= this.need) arr[pos] = ch;
+  _psVote() {                                          // 2-of-3 per position; null unless EVERY position has ≥2 real
+    const out = new Uint8Array(8);                      // receptions and reaches consensus (avoids confirming the
+    for (let p = 0; p < 8; p++) {                       // initial zeros during acquisition → no false dynamic-PS)
+      if (this.fill[p] < 2) return null;
+      const a = this.p1[p], b = this.p2[p], c = this.p3[p];
+      if (a === b || a === c) out[p] = a; else if (b === c) out[p] = b; else return null;
+    }
+    return out;
   }
   group(g) {
     const { a, b, c, d, ok } = g;
-    if (!ok[0] || !ok[1]) return;                     // need PI + type/flags
-    this.pi = a;
+    if (!ok[0] || !ok[1]) return;                      // need PI + type/flags block valid
+    this.gn++; this.pi = a;
     const type = (b >> 12) & 0xF, ver = (b >> 11) & 1;
     this.pty = (b >> 5) & 0x1F; this.tp = (b >> 10) & 1;
-    if (type === 0) {                                 // 0A/0B — PS name (chars in Block D), MS flag
+    if (type === 0) {
       this.ms = (b >> 3) & 1;
-      if (ok[3]) { const seg = b & 0x3; this._vote(this.psV, this.ps, seg * 2, (d >> 8) & 0xFF); this._vote(this.psV, this.ps, seg * 2 + 1, d & 0xFF); }
-    } else if (type === 2) {                           // 2A/2B — RadioText
-      const ab = (b >> 4) & 1, addr = b & 0xF;
-      if (this.rtAB !== null && ab !== this.rtAB) { this.rt.fill(0x20); this.rtV = Array(64).fill(null); }
-      this.rtAB = ab;
-      if (ver === 0) {                                // 2A: 4 chars (Block C + D)
-        if (ok[2]) { this._vote(this.rtV, this.rt, addr * 4, (c >> 8) & 0xFF); this._vote(this.rtV, this.rt, addr * 4 + 1, c & 0xFF); }
-        if (ok[3]) { this._vote(this.rtV, this.rt, addr * 4 + 2, (d >> 8) & 0xFF); this._vote(this.rtV, this.rt, addr * 4 + 3, d & 0xFF); }
-      } else if (ok[3]) {                             // 2B: 2 chars (Block D) at addr*2
-        this._vote(this.rtV, this.rt, addr * 2, (d >> 8) & 0xFF); this._vote(this.rtV, this.rt, addr * 2 + 1, d & 0xFF);
+      if (ok[3]) {
+        const seg = b & 0x3, hi = (d >> 8) & 0xFF, lo = d & 0xFF;
+        for (const [p, ch] of [[seg * 2, hi], [seg * 2 + 1, lo]]) { this.p3[p] = this.p2[p]; this.p2[p] = this.p1[p]; this.p1[p] = ch; if (this.fill[p] < 3) this.fill[p]++; }
+        if (seg === 3) this._confirmPS();
       }
+    } else if (type === 2) {
+      const ab = (b >> 4) & 1, addr = b & 0xF;
+      // A/B debounce: only clear the working buffer once the new flag holds for AB_DEBOUNCE consecutive groups
+      if (ab === this.abCommit) { this.abCand = -1; this.abCount = 0; }
+      else { if (ab === this.abCand) this.abCount++; else { this.abCand = ab; this.abCount = 1; } if (this.abCount >= AB_DEBOUNCE) { this.abCommit = ab; this.rt.fill(0x20); this.rtSeen.fill(0); this.rtTerm = -1; this.rtPublished = false; this.abCand = -1; this.abCount = 0; } }
+      const put = (pos, ch) => { this.rt[pos] = ch; this.rtSeen[pos] = 1; if (ch === 0x0D && (this.rtTerm < 0 || pos < this.rtTerm)) this.rtTerm = pos; };
+      if (ver === 0) { if (ok[2]) { put(addr * 4, (c >> 8) & 0xFF); put(addr * 4 + 1, c & 0xFF); } if (ok[3]) { put(addr * 4 + 2, (d >> 8) & 0xFF); put(addr * 4 + 3, d & 0xFF); } }
+      else if (ok[3]) { put(addr * 2, (d >> 8) & 0xFF); put(addr * 2 + 1, d & 0xFF); }
+      this._confirmRT();
     }
   }
+  _confirmPS() {
+    const cand = this._psVote(); if (!cand) return;    // no consensus this round → hold
+    this.lastCand = cand;
+    if (this.stablePS && this._eq(cand, this.stablePS)) return;   // steady → nothing to do
+    this.psHist.push({ s: txt(cand, 8), gn: this.gn });
+    this.psHist = this.psHist.filter((e) => e.gn > this.gn - DYN_WINDOW);
+    if (new Set(this.psHist.map((e) => e.s)).size >= DYN_DISTINCT) { this.dynamic = true; return; }   // scrolling → freeze name
+    if (!this.dynamic) this.stablePS = cand;           // a real, stable change (or first acquisition)
+  }
+  _confirmRT() {
+    if (this.rtPublished) return;                                 // already latched this message; a stray group can't corrupt it
+    const end = this.rtTerm >= 0 ? this.rtTerm : 64;
+    for (let p = 0; p < end; p++) if (!this.rtSeen[p]) return;    // message not fully assembled yet → hold last
+    this.stableRT = txt(this.rt, end); this.rtPublished = true;
+  }
+  _eq(a, b) { for (let i = 0; i < 8; i++) if (a[i] !== b[i]) return false; return true; }
   snapshot() {
-    let ps = ""; for (let i = 0; i < 8; i++) ps += rdsChar(this.ps[i]);
-    let rt = ""; for (let i = 0; i < 64; i++) { const ch = this.rt[i]; if (ch === 0x0D) break; rt += rdsChar(ch); }
-    return { pi: this.pi, pty: this.pty, ptyName: ptyName(this.pty), ps: ps.replace(/\s+$/, ""), rt: rt.replace(/\s+$/, ""), tp: this.tp, ms: this.ms };
+    return {
+      pi: this.pi, pty: this.pty, ptyName: ptyName(this.pty), tp: this.tp, ms: this.ms,
+      ps: this.stablePS ? txt(this.stablePS, 8) : "",
+      rt: this.stableRT,
+      dynamic: this.dynamic, scroll: this.dynamic && this.lastCand ? txt(this.lastCand, 8).trim() : "",
+    };
   }
 }
 

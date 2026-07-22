@@ -1,0 +1,10 @@
+{
+  "id": "subclone",
+  "theme": "signal",
+  "category": "hackrf",
+  "tabs": [
+    { "id": "clone", "type": "tool", "icon": "lucide:radio-receiver", "label": "tabClone", "view": "subcloneView" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:radio-receiver", "theme": true, "lang": true, "install": true }
+}

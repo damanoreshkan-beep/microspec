@@ -1,7 +1,7 @@
 
 import { html } from "htm/preact";
 import { useRef, useState, useEffect } from "preact/hooks";
-import { isGate } from "/_rt/gate.js";
+import { isGate, gate } from "/_rt/gate.js";
 import { RippleField } from "/_rt/ripple.js";
 import { Parallax } from "/_rt/spectrum.js";
 import { compass, tilt } from "/_rt/sensors.js";
@@ -45,10 +45,10 @@ const TURN_MAX = 0.34;
 let pumpRaf = null, ambient = 0, seedT = -1;
 function pump() {
   clock += 1 / 60;                                             
-  const live = _getBytes && !isGate ? _getBytes() : null;
-  if (!live && clock - seedT > (isGate ? 0.85 : 1.5)) {
+  const live = _getBytes && !gate ? _getBytes() : null;
+  if (!live && clock - seedT > (gate ? 0.85 : 1.5)) {
     seedT = clock;
-    if (isGate) {                                              
+    if (gate) {                                                
       const k = Math.floor(clock / 0.85) % 8, a = -Math.PI / 2 + (k / 8) * Math.PI * 2;
       field.strike(Math.cos(a) * R_IN, Math.sin(a) * R_IN, { amp: 1, hue: 260 - k * 7, t: clock });
     } else {                                                   

@@ -24,6 +24,7 @@ import { isGate } from "/_rt/gate.js";
 import { wakeLock } from "/_rt/sensors.js";
 import { holdAudio } from "/_rt/mediasession.js";
 import { bindAudio, enableImmersion, disableImmersion, immersionState, immersionAvailable, RippleBg, strikeRipple } from "./viz.js";
+import { Parallax } from "/_rt/spectrum.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -33,6 +34,7 @@ const letter = (m) => PC[((m % 12) + 12) % 12];
 const label = (m) => letter(m) + (Math.floor(m / 12) - 1);
 const randSeed = () => (Math.random() * 0xffffffff) >>> 0;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const reducedMotion = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ---- scales: ding (index 0, the deep centre note) + tone fields ascending, as absolute MIDI. The famous
 // handpan tunings; switching retunes every field. mood is a one-word feel used in the picker. ----
@@ -212,7 +214,25 @@ export function handpan({ S }) {
   const t = useStore(S.t); _dict = t;
   const scaleId = useStore($scale), playing = useStore($playing), recording = useStore($recording), lit = useStore($lit), sweep = useStore($sweep), space = useStore($space);
   const s = scaleById(scaleId), n = s.midi.length - 1;              // fields around the ding
-  const ptr = useRef(new Map()), usingPtr = useRef(false);
+  const ptr = useRef(new Map()), usingPtr = useRef(false), panRef = useRef();
+  // Drive the steel fields' light direction (--lx/--ly on the pan) — the gyroscope when "Depth" is on (shared
+  // immersion tilt stream, smoothed by Parallax), else a slow idle drift so the metal is always alive; a fixed
+  // top-left light under reduced-motion. Writes CSS vars only (no re-render) — see RESEARCH-buttons.md.
+  useEffect(() => {
+    const el = panRef.current; if (!el || typeof requestAnimationFrame === "undefined") return;
+    const lp = Parallax({ maxDeg: 26, gain: 1, reduced: reducedMotion });
+    let raf = 0;
+    const loop = (ts) => {
+      let lx, ly;
+      if (immersionState.on && immersionState.beta != null) { const p = lp.update(immersionState.beta, immersionState.gamma); lx = p.x; ly = p.y; }
+      else if (!reducedMotion) { const a = (ts || 0) * 0.00045; lx = Math.cos(a) * 0.55; ly = -0.2 + Math.sin(a * 0.85) * 0.4; }
+      else { lx = -0.35; ly = -0.5; }
+      el.style.setProperty("--lx", lx.toFixed(3)); el.style.setProperty("--ly", ly.toFixed(3));
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
   const [immersed, setImmersed] = useState(immersionState.on);
   const toggleImmersion = async () => { buzz(12); if (immersionState.on) { disableImmersion(); setImmersed(false); } else { setImmersed(await enableImmersion()); } };
   const pick = (id) => { buzz(); ensure(); $scale.set(id); applyDrone(); $hist.set({ seeds: [], idx: -1 }); };
@@ -235,16 +255,16 @@ export function handpan({ S }) {
     </div>
 
     <div class="flex-1 min-h-0 relative grid place-items-center px-3">
-      <div class="relative w-[min(90vw,62vh)] aspect-square rounded-full bg-gradient-to-br from-base-300 to-base-100 border border-base-content/10 shadow-[inset_0_2px_18px_rgba(0,0,0,.5),0_10px_40px_-12px_rgba(0,0,0,.7)] select-none" style="touch-action:none"
+      <div ref=${panRef} class="relative w-[min(90vw,62vh)] aspect-square rounded-full bg-gradient-to-br from-base-300 to-base-100 border border-base-content/10 shadow-[inset_0_2px_18px_rgba(0,0,0,.5),0_10px_40px_-12px_rgba(0,0,0,.7)] select-none" style="touch-action:none"
         onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onLift} onPointerCancel=${onLift} onClick=${onClickBoard}>
-        <!-- ding (centre) -->
-        <button data-field="0" aria-label=${label(s.midi[0])} class=${`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 grid place-items-center rounded-full transition-all duration-150 ${lit.has(0) ? "ring-2 ring-secondary brightness-125 scale-95" : "ring-1 ring-base-content/15"} bg-gradient-to-br from-base-content/25 to-base-content/5`} style="width:26%;height:26%">
-          <span class="pointer-events-none text-sm font-semibold text-base-content/80">${letter(s.midi[0])}</span>
+        <!-- ding (centre) — a convex steel dome -->
+        <button data-field="0" aria-label=${label(s.midi[0])} class=${`hp-field hp-ding ${lit.has(0) ? "hp-lit" : ""}`} style="left:50%;top:50%;width:27%;height:27%">
+          <span class="hp-lbl">${letter(s.midi[0])}</span>
         </button>
         ${fields.map((f) => html`<button data-field=${f.idx} data-note=${letter(f.m)} aria-label=${label(f.m)} key=${f.idx}
-          class=${`absolute -translate-x-1/2 -translate-y-1/2 grid place-items-center rounded-full transition-all duration-150 ${lit.has(f.idx) ? "ring-2 ring-secondary brightness-125 scale-90" : "ring-1 ring-base-content/12"} bg-gradient-to-br from-base-content/18 to-base-content/[0.04]`}
+          class=${`hp-field ${lit.has(f.idx) ? "hp-lit" : ""}`}
           style=${`left:${f.x}%;top:${f.y}%;width:${f.size}%;height:${f.size}%`}>
-          <span class="pointer-events-none text-xs font-medium text-base-content/75">${letter(f.m)}</span>
+          <span class="hp-lbl">${letter(f.m)}</span>
         </button>`)}
       </div>
     </div>

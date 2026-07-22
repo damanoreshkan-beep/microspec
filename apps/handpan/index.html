@@ -31,6 +31,37 @@
     @keyframes bootslide{0%{left:-38%}100%{left:100%}}
     @media(prefers-reduced-motion:reduce){#boot .bb i{animation:none;left:0;width:100%;opacity:.5}}
   </style>
+  <style>
+    /* Realistic tone fields — dark nitrided-steel domes/dimples that catch a specular glint following a light
+       whose direction (--lx/--ly, set on the pan by the gyroscope) shifts as you tilt the phone. Real DOM
+       buttons (accessible, hit-testable); the 3D is pure light-reactive CSS. See RESEARCH-buttons.md. */
+    .hp-field{position:absolute;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;
+      border:0;padding:0;cursor:pointer;appearance:none;-webkit-tap-highlight-color:transparent;--glow:var(--color-secondary,#9F8CF6);
+      background:radial-gradient(circle at 50% 50%,#191a1f 0%,#212228 66%,#2c2d34 100%);
+      box-shadow:
+        calc(var(--lx,0)*-3px) calc(var(--ly,0)*-3px + 3px) 9px -1px rgba(0,0,0,.66),
+        inset calc(var(--lx,0)*1.5px) calc(var(--ly,0)*1.5px) 1px rgba(255,255,255,.13),
+        inset calc(var(--lx,0)*-2px) calc(var(--ly,0)*-2px) 7px rgba(0,0,0,.5),
+        0 0 0 1px rgba(0,0,0,.45);
+      transition:filter .2s ease;}
+    .hp-field::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;mix-blend-mode:screen;
+      background:radial-gradient(circle at calc(50% + var(--lx,0)*30%) calc(50% + var(--ly,0)*30%),
+        rgba(255,255,255,.42) 0%,rgba(255,255,255,.09) 15%,transparent 38%);}
+    .hp-ding{background:radial-gradient(circle at 50% 40%,#34353c 0%,#212228 58%,#131418 100%);
+      box-shadow:
+        calc(var(--lx,0)*-4px) calc(var(--ly,0)*-4px + 5px) 15px -2px rgba(0,0,0,.72),
+        inset calc(var(--lx,0)*2px) calc(var(--ly,0)*2px) 3px rgba(255,255,255,.2),
+        inset calc(var(--lx,0)*-3px) calc(var(--ly,0)*-3px) 9px rgba(0,0,0,.5),
+        0 0 0 1px rgba(0,0,0,.5);}
+    .hp-ding::after{background:radial-gradient(circle at calc(50% + var(--lx,0)*26%) calc(40% + var(--ly,0)*24%),
+        rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 16%,transparent 42%);}
+    .hp-lbl{position:relative;z-index:1;pointer-events:none;font-weight:600;color:rgba(236,236,238,.82);
+      font-size:clamp(.62rem,2.5vw,.95rem);text-shadow:0 1px 1px rgba(0,0,0,.55);}
+    .hp-lit{animation:hp-press .22s cubic-bezier(.3,.7,.3,1);
+      filter:drop-shadow(0 0 5px var(--glow)) drop-shadow(0 0 2px var(--glow)) brightness(1.14);}
+    @keyframes hp-press{0%{transform:translate(-50%,-50%) scale(1)}34%{transform:translate(-50%,-50%) scale(.85)}100%{transform:translate(-50%,-50%) scale(1)}}
+    @media(prefers-reduced-motion:reduce){.hp-lit{animation:none}}
+  </style>
   <script type="importmap">
   {
     "imports": {

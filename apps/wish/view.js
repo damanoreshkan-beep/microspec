@@ -290,15 +290,15 @@ function WishDetail({ id, S, t, closeScreen, undo }) {
 }
 
 // ---- list switcher ----------------------------------------------------------
-const ListSwitcher = ({ lists, wishes, active, t, onAdd }) => html`<div class="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-1" role="tablist" aria-label=${T(t, "tabLists")}>
+const ListSwitcher = ({ lists, wishes, active, t, onAdd }) => html`<div class="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-1" role="group" aria-label=${T(t, "tabLists")}>
   ${lists.map((l) => {
     const n = wishes.filter((w) => w.listId === l.id && !w.granted).length;
     const on = l.id === active;
-    return html`<button key=${l.id} data-list=${l.id} role="tab" aria-selected=${on} onClick=${() => setActive(l.id)}
+    return html`<button key=${l.id} data-list=${l.id} aria-pressed=${on} onClick=${() => setActive(l.id)}
       class=${`shrink-0 h-9 px-3 rounded-full border flex items-center gap-2 transition ${on ? "bg-primary/15 border-primary/40 text-base-content" : "border-base-content/15 text-base-content/70"}`}>
       <span style=${`color:${l.color}`}>${Icon(l.icon, "text-base")}</span>
       <span class="font-medium text-sm whitespace-nowrap">${l.name}</span>
-      <span class="text-xs tabular-nums text-base-content/60">${n}</span>
+      <span class="text-xs tabular-nums text-base-content/70">${n}</span>
     </button>`;
   })}
   <button id="add-list" class="shrink-0 w-9 h-9 rounded-full border border-base-content/15 flex items-center justify-center text-base-content/70 active:scale-90" aria-label=${T(t, "addList")}
@@ -358,7 +358,7 @@ export function wish({ S, closeScreen, confirm, undo }) {
           </div>` : html`
           <div class="flex flex-col gap-2.5">
             ${pending.map((w) => html`<${WishCard} key=${w.id} w=${w} list=${activeList} t=${t} onOpen=${openDetail} />`)}
-            ${granted.length ? html`<div class="flex items-center gap-2 mt-2 mb-0.5 text-sm font-semibold text-base-content/60">
+            ${granted.length ? html`<div class="flex items-center gap-2 mt-2 mb-0.5 text-sm font-semibold text-base-content/70">
               ${Icon("lucide:check-circle", "text-base text-success")} ${T(t, "grantedSection")} · ${granted.length}</div>` : null}
             ${granted.map((w) => html`<${WishCard} key=${w.id} w=${w} list=${activeList} t=${t} onOpen=${openDetail} />`)}
           </div>`}

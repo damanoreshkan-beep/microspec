@@ -156,7 +156,7 @@ function makeTerrain(canvas, THREE) {
       advanceTerrain(grid, ROWS, COLS, st.levels);
       for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
         const idx = r * COLS + c, v = grid[idx];
-        dummy.position.set((c - (COLS - 1) / 2) * SX, -1.5, -r * SZ - 0.5);
+        dummy.position.set((c - (COLS - 1) / 2) * SX, -1.5, -r * SZ - 4.2);   // near edge pushed back → no looming black gaps
         dummy.scale.set(1, 0.02 + v * MAXH, 1);
         dummy.updateMatrix(); mesh.setMatrixAt(idx, dummy.matrix);
         const fade = 1 - (r / ROWS) * 0.72;
@@ -164,8 +164,8 @@ function makeTerrain(canvas, THREE) {
       }
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       group.rotation.y = st.turn * 0.5 + p.x * 0.12;
-      cam.position.set(p.x * 0.5, 1.35 - p.y * 0.3, 3.1 + st.bands.bass * 0.25);
-      cam.lookAt(0, 0.1, -6);
+      cam.position.set(p.x * 0.5, 1.7 - p.y * 0.3, 3.1 + st.bands.bass * 0.25);   // slightly higher: look over the field, not through it
+      cam.lookAt(0, -0.2, -7);
       renderer.render(scene, cam);
     },
     dispose() { geo.dispose(); mat.dispose(); renderer.dispose(); },

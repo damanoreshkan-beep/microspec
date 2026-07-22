@@ -175,7 +175,7 @@ export function fmradioView({ S, screen, openScreen, closeScreen }) {
       </div>
 
       <div class="w-full rounded-3xl border border-base-content/10 bg-base-100/50 overflow-hidden backdrop-blur">
-        <canvas ref=${useCanvas((cv) => drawSpectrum(cv, $spectrum.get()), spectrum)} class="block w-full h-24" aria-label=${T(t, "spectrum")} data-spectrum></canvas>
+        <canvas ref=${useCanvas((cv) => drawSpectrum(cv, $spectrum.get()), spectrum)} class="block w-full h-24" role="img" aria-label=${T(t, "spectrum")} data-spectrum></canvas>
         <canvas ref=${useWaterfall(spectrum, demo)} class="block w-full h-32 border-t border-base-content/10" aria-hidden="true" data-waterfall></canvas>
       </div>
 
@@ -227,7 +227,7 @@ function useWaterfall(spectrum, demo) {
 function SignalBars({ level, label }) {
   const bars = 5, lit = Math.round(level * bars);
   return html`<div class="flex flex-col items-center gap-1" data-signal>
-    <div class="flex items-end gap-[3px] h-8" aria-label=${label}>
+    <div class="flex items-end gap-[3px] h-8" role="img" aria-label=${label}>
       ${[...Array(bars)].map((_, i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${30 + i * 17.5}%`}></span>`)}
     </div>
     <span class="text-[0.6rem] uppercase tracking-wider text-base-content/55">${label}</span>

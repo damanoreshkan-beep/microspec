@@ -13,7 +13,7 @@ export default [
       h.expect((await h.count("[data-band]")) === 1, "немає band-слайдера");
       h.expect((await h.count("#play")) === 1, "немає транспорту");
       h.expect((await h.count("[data-signal]")) === 1, "немає індикатора сигналу");
-      h.expect(/MHz|МГц/.test(await h.bodyText()), "немає одиниць частоти");
+      h.expect(/mhz|мгц/i.test(await h.bodyText()), "немає одиниць частоти");
     },
   },
   {

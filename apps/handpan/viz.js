@@ -17,7 +17,7 @@
 
 import { html } from "htm/preact";
 import { useRef, useState, useEffect } from "preact/hooks";
-import { isGate } from "/_rt/gate.js";
+import { isGate, gate } from "/_rt/gate.js";
 import { RippleField } from "/_rt/ripple.js";
 import { Parallax } from "/_rt/spectrum.js";
 import { compass, tilt } from "/_rt/sensors.js";
@@ -70,11 +70,11 @@ const TURN_MAX = 0.34;                                         // gentler than r
 let pumpRaf = null, ambient = 0, seedT = -1;
 function pump() {
   clock += 1 / 60;                                             // synthetic clock → frame-rate-independent maths, fully deterministic under the gate
-  const live = _getBytes && !isGate ? _getBytes() : null;
-  // paused / gate: seed gentle deterministic ripples (no Math.random) so the surface is alive
-  if (!live && clock - seedT > (isGate ? 0.85 : 1.5)) {
+  const live = _getBytes && !gate ? _getBytes() : null;
+  // paused / gate: seed deterministic ripples (no Math.random) so the surface is alive
+  if (!live && clock - seedT > (gate ? 0.85 : 1.5)) {
     seedT = clock;
-    if (isGate) {                                              // gate/preview: a clear, representative bloom ON a tone-field position, so the shot shows the strike look (a populated screen, not an empty one)
+    if (gate) {                                                // gate/preview (localhost verify OR ?mock): a clear, representative bloom ON a tone-field position — the strike look, a populated screen
       const k = Math.floor(clock / 0.85) % 8, a = -Math.PI / 2 + (k / 8) * Math.PI * 2;
       field.strike(Math.cos(a) * R_IN, Math.sin(a) * R_IN, { amp: 1, hue: 260 - k * 7, t: clock });
     } else {                                                   // resting: a sparse, gentle sand shimmer near the centre — never big idle waves

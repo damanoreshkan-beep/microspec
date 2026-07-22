@@ -172,6 +172,33 @@ export const compass = {
   },
 };
 
+// tilt — raw device pitch/roll (β/γ, degrees) for parallax/immersion. Shares the SAME gesture-gated
+// permission as `compass` (both ride DeviceOrientationEvent), so an app that already primed the compass need
+// not ask twice — call either `request()`. Unlike compass this wants no true-north correction and no
+// geolocation: it is relative motion, not a bearing. Screen-orientation aware so β/γ mean the same thing in
+// portrait and landscape. The SMOOTHING + clamping lives in /_rt/spectrum.js `Parallax` (pure, unit-tested)
+// — this only owns the hardware stream. Null β/γ on some low-end Android is normal: the consumer degrades.
+//   start(onTilt) → stop fn.  onTilt({ beta, gamma }) — beta ≈ front/back pitch, gamma ≈ left/right roll.
+export const tilt = {
+  supported: typeof window !== "undefined" && typeof DeviceOrientationEvent !== "undefined",
+  needsPermission: typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function",
+  async request() {
+    if (this.needsPermission) { try { return (await DeviceOrientationEvent.requestPermission()) === "granted"; } catch { return false; } }
+    return true;
+  },
+  start(onTilt) {
+    if (!this.supported) return () => {};
+    const handler = (e) => {
+      let beta = typeof e.beta === "number" ? e.beta : null, gamma = typeof e.gamma === "number" ? e.gamma : null;
+      const a = (screen.orientation && screen.orientation.angle) || 0;                 // portrait/landscape swap
+      if (a === 90 || a === 270) { const b = beta; beta = gamma; gamma = b == null ? null : -b; }
+      onTilt({ beta, gamma });
+    };
+    window.addEventListener("deviceorientation", handler, true);
+    return () => window.removeEventListener("deviceorientation", handler, true);
+  },
+};
+
 // camera — a live video stream attached to a <video>, for apps that READ pixels (colour picker, scanner).
 // Thin on purpose: it owns only the hardware lifecycle (permission → stream → release). Sampling the frame
 // (canvas → getImageData) and the maths on those pixels belong to the app + /_rt/colour.js — the headless

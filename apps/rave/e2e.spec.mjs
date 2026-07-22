@@ -15,6 +15,13 @@ export default [
     },
   },
   {
+    name: "3D спектр: кільце-герой + фон-ландшафт", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-ring]")) === 1, "немає 3D-кільця спектра");
+      h.expect((await h.count("[data-terrain]")) === 1, "немає фонового аудіо-ландшафту");
+    },
+  },
+  {
     name: "генератор пише біт", run: async (h) => {
       await ready(h);
       await h.tap("#gen"); await h.wait(700);   // the write-on sweep is ~420ms

@@ -34,7 +34,7 @@ export default [
   {
     name: "Flow генерує лінію", run: async (h) => {
       await ready(h);
-      await h.tap("#flow"); await h.wait(700);   // the write-on sweep is ~480ms, then it auto-plays
+      await h.tap("#flow"); await h.wait(1300);  // ~480ms write-on sweep (setInterval, throttles under CI load) then auto-play — give real headroom
       h.expect((await h.attr("#play", "data-playing")) === "true", "Flow не почав грати");
       await h.tap("#play"); await h.wait(150);
       h.expect((await h.attr("#play", "data-playing")) !== "true", "не зупинився");

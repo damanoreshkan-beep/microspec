@@ -29,10 +29,10 @@ function hasWebGL() {
 }
 
 // ---- field geometry (world units) — one shared field, one grid ----
-const COLS = 30, ROWS = 30, SP = 0.4;                          // 900 dots
+const COLS = 26, ROWS = 26, SP = 0.46;                         // 676 dots; kept in rave's instanced tri-budget for software WebGL (CI/low-end)
 const HX = ((COLS - 1) * SP) / 2, HZ = ((ROWS - 1) * SP) / 2;  // half-extents ≈ ±5.8
 const R_IN = 0.66 * Math.min(HX, HZ);                          // strike ring radius (maps view's field ring)
-const MAXH = 0.62, DOT = 0.066;                                // displacement scale + dot radius
+const MAXH = 0.62, DOT = 0.075;                                // displacement scale + dot radius
 const field = RippleField();
 
 // ---- audio binding — view.js hands us a getter that returns the live Uint8Array (else null) ----
@@ -103,7 +103,7 @@ function makeField(canvas, THREE) {
   const cam = new THREE.PerspectiveCamera(52, 1, 0.1, 100);
   const group = new THREE.Group(); scene.add(group);
 
-  const geo = new THREE.SphereGeometry(DOT, 7, 6);
+  const geo = new THREE.IcosahedronGeometry(DOT, 0);           // 20 tris — a faceted dot, ~identical at this size, far cheaper than a sphere under software WebGL
   const mat = new THREE.MeshBasicMaterial({ transparent: true, toneMapped: false });
   const mesh = new THREE.InstancedMesh(geo, mat, ROWS * COLS);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);

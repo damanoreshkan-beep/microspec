@@ -129,10 +129,11 @@ function makeRing(canvas, THREE) {
   };
 }
 
-// Audio terrain: a synthwave WIREFRAME grid — a floor of thin glowing ridgelines whose peaks are the band
-// levels, scrolling toward the camera (advanceTerrain). A wireframe is the right primitive for a background:
-// it is mostly transparent, so it recedes to a low horizon and can never wall off or spike over the controls
-// the way a field of solid pillars does. Fixed full-screen, transparent clear so base-200 reads as the sky.
+// Audio terrain — the merge of all three tries: the WIREFRAME grid keeps a background that recedes to a low
+// horizon and never walls off the controls (thin lines, mostly transparent), while the SPIKY per-column
+// peaks + the rich PER-VERTEX colour bring back the vivid spectrum-columns look of the earlier pillar field.
+// Peaks are sharpened (pow curve) so loud bands spike and quiet ones flatten — a spectrum, not a soft dune;
+// hue sweeps across columns (by frequency) and rows (by depth), lit brighter where the beat is loud.
 const ROWS = 30, COLS = 26;
 function makeTerrain(canvas, THREE) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
@@ -144,21 +145,28 @@ function makeTerrain(canvas, THREE) {
   // Plane in XY, baked flat by rotateX(-90°): a vertex's local z (initially 0) now lifts WORLD Y — so
   // setY(i, h) raises the ridge. Verts are row-major, (ROWS)×(COLS); row 0 sits farthest, last row nearest.
   const geo = new THREE.PlaneGeometry(30, 34, COLS - 1, ROWS - 1); geo.rotateX(-Math.PI / 2);
-  const mat = new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.5, toneMapped: false });
+  geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3));
+  const mat = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true, transparent: true, opacity: 0.6, toneMapped: false });
   const mesh = new THREE.Mesh(geo, mat); group.add(mesh);
-  const pos = geo.attributes.position, grid = new Float32Array(ROWS * COLS);
-  const HMAX = 2.4;
+  const pos = geo.attributes.position, colAttr = geo.attributes.color, grid = new Float32Array(ROWS * COLS), col = new THREE.Color();
+  const HMAX = 3.3;
 
   return {
     resize(w, h) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); },
     frame(st, p) {
       advanceTerrain(grid, ROWS, COLS, st.levels);
-      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) pos.setY(r * COLS + c, grid[(ROWS - 1 - r) * COLS + c] * HMAX);
-      pos.needsUpdate = true;
-      mat.color.setHSL((st.hue % 360) / 360, 0.62, 0.5); mat.opacity = 0.3 + st.bands.bass * 0.35;   // glows with the beat
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        const vi = r * COLS + c, vh = Math.pow(grid[(ROWS - 1 - r) * COLS + c], 1.7);   // sharpen → spectrum spikes
+        pos.setY(vi, vh * HMAX);
+        const fade = 1 - (r / ROWS) * 0.55, hue = ((st.hue + c * 5 + r * 2) % 360 + 360) % 360;
+        col.setHSL(hue / 360, 0.72, (0.14 + vh * 0.5) * fade);                          // hue by column/depth, lit by peak
+        colAttr.setXYZ(vi, col.r, col.g, col.b);
+      }
+      pos.needsUpdate = true; colAttr.needsUpdate = true;
+      mat.opacity = 0.4 + st.bands.bass * 0.35;   // whole field glows with the beat
       group.rotation.y = st.turn * 0.6 + p.x * 0.08;
       // High + shallow downward look: the grid recedes to a horizon low on screen, leaving the upper two
-      // thirds clean dark for the ring + transport. Thin lines mean even the near field never occludes.
+      // thirds clean dark for the ring + transport. Thin lines mean even the near spikes never occlude.
       cam.position.set(p.x * 0.4, 4.4 - p.y * 0.35, 7.2); cam.lookAt(0, -0.6, -5);
       renderer.render(scene, cam);
     },

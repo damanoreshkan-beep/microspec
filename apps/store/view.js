@@ -9,7 +9,7 @@ import apps from "./apps.json" with { type: "json" };
 const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls || ""} style=${style || ""}></iconify-icon>`;
 const SEEN = collection("seen");   
 const appUrl = (id) => `../${id}/`;   
-const CATS = ["science", "feeds", "tools", "sound", "creative", "money", "wellness", "play", "esoterica"];
+const CATS = ["science", "feeds", "tools", "sound", "hackrf", "creative", "money", "wellness", "play", "esoterica"];
 const catKey = (c) => "cat" + c[0].toUpperCase() + c.slice(1);
 
 export function store({ S, openScreen, closeScreen }) {

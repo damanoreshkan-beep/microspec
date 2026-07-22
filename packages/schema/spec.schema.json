@@ -22,7 +22,7 @@
     },
     "category": {
       "type": "string",
-      "enum": ["feeds", "money", "science", "tools", "sound", "creative", "play", "wellness", "esoterica"],
+      "enum": ["feeds", "money", "science", "tools", "sound", "hackrf", "creative", "play", "wellness", "esoterica"],
       "description": "Store category — the launcher sections and filter-chips group apps by this."
     },
     "version": {

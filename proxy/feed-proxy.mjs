@@ -169,6 +169,46 @@ function parseHoroscope(html) {
 // No browser — works on any page that puts its media in the HTML; JS-only sites just return []. ──
 const humanize = (s) => { try { s = decodeURIComponent(s); } catch {} return s.replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[_+]+/g, " ").replace(/\s+/g, " ").trim(); };
 const firstUrl = (x) => Array.isArray(x) ? firstUrl(x[0]) : (x && typeof x === "object" ? (x.url || x.contentUrl) : x);
+
+// ── structural list detection (DEPTA/MDR family) — find the repeating gallery, ignore stray videos. Builds a
+// light DOM tree, finds every <video> node, climbs each to its repeating "card" (the innermost ancestor whose
+// siblings share its tag+class), clusters cards by (parent, signature). If a dominant repeating gallery exists
+// (top cluster ≥3 videos AND a plurality), returns the BYTE RANGES of its cards; a candidate whose position
+// falls outside every range (a lone hero/ad/background clip, an og:video share tag, a URL swept from inline JS)
+// is the junk to drop. Returns null when there is no clear gallery → the caller keeps everything (never a false
+// drop). This is the tree-based record extraction that a URL-string heuristic could only fake. ──
+function galleryRanges(html) {
+  const VOID = new Set("area base br col embed hr img input link meta param source track wbr".split(" "));
+  const RAW = new Set("script style template noscript svg".split(" "));
+  const HL = html.toLowerCase();
+  const root = { tag: "#root", sig: "#root", parent: null, children: [], pos: 0, end: html.length, id: 0 };
+  let cur = root, nid = 1;
+  const videos = [];
+  const TAG = /<(\/?)([a-zA-Z][\w-]*)([^>]*)>/g;
+  let m;
+  while ((m = TAG.exec(html))) {
+    const close = m[1], tag = m[2].toLowerCase(), attrs = m[3], self = /\/\s*$/.test(attrs);
+    if (!close && RAW.has(tag)) { const c = HL.indexOf("</" + tag, TAG.lastIndex); if (c < 0) break; const gt = html.indexOf(">", c); TAG.lastIndex = gt >= 0 ? gt + 1 : c + tag.length + 2; continue; }
+    if (close) { let n = cur; while (n && n !== root && n.tag !== tag) n = n.parent; if (n && n !== root) { n.end = TAG.lastIndex; cur = n.parent; } continue; }
+    const clsM = attrs.match(/\bclass\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'=>]+))/i);
+    const cls = (clsM ? (clsM[2] ?? clsM[3] ?? clsM[4] ?? "") : "").toLowerCase().split(/\s+/).filter(Boolean).sort().join(" ");
+    const node = { tag, sig: tag + "|" + cls, parent: cur, children: [], pos: m.index, end: m.index + m[0].length, id: nid++ };
+    cur.children.push(node);
+    if (tag === "video") videos.push(node);
+    if (!VOID.has(tag) && !self) cur = node;
+  }
+  if (videos.length < 4) return null;                                                    // too few to be a list → take-all
+  const cardOf = (v) => { let a = v; while (a && a.parent) { let sibs = 0; for (const c of a.parent.children) if (c.sig === a.sig) sibs++; if (sibs >= 2) return a; a = a.parent; } return null; };
+  const clusters = new Map();                                                            // (card.parent.id | card.sig) → { cards:Map, n }
+  for (const v of videos) { const card = cardOf(v); if (!card || !card.parent) continue; const key = card.parent.id + "|" + card.sig; let cl = clusters.get(key); if (!cl) { cl = { cards: new Map(), n: 0 }; clusters.set(key, cl); } cl.cards.set(card.id, card); cl.n++; }
+  if (!clusters.size) return null;
+  let topN = 0; for (const cl of clusters.values()) if (cl.n > topN) topN = cl.n;
+  if (topN < 3 || topN < videos.length * 0.4) return null;                               // no dominant gallery → take-all
+  const ranges = [];
+  for (const cl of clusters.values()) if (cl.n >= 2) for (const card of cl.cards.values()) ranges.push([card.pos, card.end]);
+  return ranges.length ? ranges : null;
+}
+
 function parseVideos(html, base) {
   const abs = (u) => { try { return new URL(String(u).replace(/&amp;/g, "&"), base).href; } catch { return null; } };
   const isVid = (u) => /\.(?:mp4|m3u8|webm|mov)(?:\?|#|$)/i.test(u);
@@ -197,12 +237,14 @@ function parseVideos(html, base) {
   }
   // (b) candidate videos with their source position + any inline poster/title on the <video> tag.
   const cands = [], vtitle = new Map();
-  const addAt = (url, pos, poster) => { const a = abs(url); if (a && isVid(a)) cands.push({ url: a, pos, poster: poster ? abs(poster) : null }); };
-  for (const m of html.matchAll(/<video\b([^>]*)>/gi)) { const src = (m[1].match(/\bsrc=["']([^"']+)["']/) || [])[1]; const p = (m[1].match(/\bposter=["']([^"']+)["']/) || [])[1]; const tt = (m[1].match(/\b(?:title|aria-label|data-title)=["']([^"']{3,120})["']/) || [])[1]; if (src) { addAt(src, m.index, p); if (tt) vtitle.set(normKey(abs(src) || src), decodeEntities(tt).trim()); } }
-  for (const m of html.matchAll(/<source\b[^>]*\bsrc=["']([^"']+)["']/gi)) addAt(m[1], m.index, null);
-  for (const m of html.matchAll(/<meta\b[^>]*(?:property|name)=["'](?:og:video(?::url|:secure_url)?)["'][^>]*\bcontent=["']([^"']+)["']/gi)) addAt(m[1], m.index, null);
-  for (const m of html.matchAll(/"(?:contentUrl|embedUrl)"\s*:\s*"([^"\\]+)"/gi)) addAt(m[1], m.index, null);
-  for (const m of html.matchAll(/https?:\\?\/\\?\/[^"'\s\\<>]+?\.(?:mp4|m3u8|webm)(?:\?[^"'\s\\<>]*)?/gi)) addAt(m[0].replace(/\\/g, ""), m.index, null);
+  // `from` tags the source so the list filter can trust structured data (jsonld) and range-check only the noisy
+  // ones (a lone <video>/<source>/og hero, or a bare URL swept from inline JS).
+  const addAt = (url, pos, poster, from) => { const a = abs(url); if (a && isVid(a)) cands.push({ url: a, pos, poster: poster ? abs(poster) : null, from }); };
+  for (const m of html.matchAll(/<video\b([^>]*)>/gi)) { const src = (m[1].match(/\bsrc=["']([^"']+)["']/) || [])[1]; const p = (m[1].match(/\bposter=["']([^"']+)["']/) || [])[1]; const tt = (m[1].match(/\b(?:title|aria-label|data-title)=["']([^"']{3,120})["']/) || [])[1]; if (src) { addAt(src, m.index, p, "video"); if (tt) vtitle.set(normKey(abs(src) || src), decodeEntities(tt).trim()); } }
+  for (const m of html.matchAll(/<source\b[^>]*\bsrc=["']([^"']+)["']/gi)) addAt(m[1], m.index, null, "video");
+  for (const m of html.matchAll(/<meta\b[^>]*(?:property|name)=["'](?:og:video(?::url|:secure_url)?)["'][^>]*\bcontent=["']([^"']+)["']/gi)) addAt(m[1], m.index, null, "og");
+  for (const m of html.matchAll(/"(?:contentUrl|embedUrl)"\s*:\s*"([^"\\]+)"/gi)) addAt(m[1], m.index, null, "jsonld");
+  for (const m of html.matchAll(/https?:\\?\/\\?\/[^"'\s\\<>]+?\.(?:mp4|m3u8|webm)(?:\?[^"'\s\\<>]*)?/gi)) addAt(m[0].replace(/\\/g, ""), m.index, null, "raw");
   // (c) poster-only proximity: the <img> that most looks like a thumbnail nearest the video's HTML position.
   // (Proximity TITLES are dropped — they grab page chrome; the filename/JSON-LD title is cleaner.)
   const proximity = (pos) => {
@@ -226,8 +268,24 @@ function parseVideos(html, base) {
     }
     return href ? abs(href) : null;
   };
+  // Drop noisy candidates OUTSIDE the repeating gallery (a hero/ad/background <video>, an og share tag, a URL
+  // swept from inline JS). JSON-LD VideoObjects are declared content and often list grid items WITHOUT a rendered
+  // <video> tag — but only trust them when they're on a gallery HOST (Mixkit's schema videos sit on the same
+  // CDN as its grid; a foreign host in JSON-LD is an istock/Getty-style promo embed, not the page's content).
+  // Fail-safe: any error, no clear gallery, or too little left → keep everything (never a false drop).
+  const hostOf = (u) => { try { return new URL(u).host; } catch { return ""; } };
+  let usedCands = cands;
+  try {
+    const ranges = galleryRanges(html);
+    if (ranges) {
+      const inR = (p) => ranges.some(([s, e]) => p >= s && p <= e);
+      const galleryHosts = new Set(cands.filter((c) => inR(c.pos)).map((c) => hostOf(c.url)));
+      const kept = cands.filter((c) => inR(c.pos) || (c.from === "jsonld" && galleryHosts.has(hostOf(c.url))));
+      if (kept.length >= 3) usedCands = kept;
+    }
+  } catch { /* structural pass failed → take-all */ }
   const seen = new Set(), items = [];
-  for (const c of cands) {
+  for (const c of usedCands) {
     const k = normKey(c.url); if (seen.has(k)) continue; seen.add(k);
     const md = meta.get(k) || {};
     const title = ((md.title && decodeEntities(String(md.title)).trim()) || vtitle.get(k) || humanize(k) || "video").slice(0, 140);

@@ -33,10 +33,10 @@ function hasWebGL() {
 // the struck field (under the finger / on the tone-field circle in Flow), not a big screen-wide wave. ----
 const COLS = 28, ROWS = 28, SP = 0.34;                         // 784 grains, extent ≈ ±4.6 → sits on/around the pan
 const HX = ((COLS - 1) * SP) / 2, HZ = ((ROWS - 1) * SP) / 2;
-const R_IN = 0.5 * Math.min(HX, HZ);                           // strike ring radius (maps view's field ring, close to the pan)
+const R_IN = 0.4 * Math.min(HX, HZ);                           // strike radius — pulled in so blooms sit ON the tone fields, not past the rim
 const MAXH = 0.4, DOT = 0.044;                                 // gentle relief + a fine grain (was big & chunky)
-// speed/wavelength small + a STRONG spatial spread → the bloom stays tight around the strike, then fades fast
-const field = RippleField({ speed: 2.8, wavelength: 1.25, width: 0.66, life: 1.0, spread: 0.42, max: 10 });
+// speed/wavelength small + a STRONG spatial spread → the ring dies fast; the halo glow (below) carries the bloom
+const field = RippleField({ speed: 2.4, wavelength: 1.2, width: 0.6, life: 0.9, spread: 0.55, max: 10 });
 
 // ---- audio binding — view.js hands us a getter that returns the live Uint8Array (else null) ----
 let _getBytes = null;
@@ -72,10 +72,10 @@ function pump() {
   clock += 1 / 60;                                             // synthetic clock → frame-rate-independent maths, fully deterministic under the gate
   const live = _getBytes && !gate ? _getBytes() : null;
   // paused / gate: seed deterministic ripples (no Math.random) so the surface is alive
-  if (!live && clock - seedT > (gate ? 0.85 : 1.5)) {
+  if (!live && clock - seedT > (gate ? 1.1 : 1.5)) {
     seedT = clock;
     if (gate) {                                                // gate/preview (localhost verify OR ?mock): a clear, representative bloom ON a tone-field position — the strike look, a populated screen
-      const k = Math.floor(clock / 0.85) % 8, a = -Math.PI / 2 + (k / 8) * Math.PI * 2;
+      const k = Math.floor(clock / 1.1) % 8, a = -Math.PI / 2 + (k / 8) * Math.PI * 2;
       field.strike(Math.cos(a) * R_IN, Math.sin(a) * R_IN, { amp: 1, hue: 260 - k * 7, t: clock });
     } else {                                                   // resting: a sparse, gentle sand shimmer near the centre — never big idle waves
       const a = clock * 0.7;
@@ -133,13 +133,13 @@ function makeField(canvas, THREE) {
     frame(st, p) {
       const t = st.clock;
       for (let i = 0; i < ROWS * COLS; i++) {
-        const s = field.sample(px[i], pz[i], t), glow = field.glow(px[i], pz[i], t);
-        const energy = Math.min(1.4, Math.max(Math.abs(s.h), glow));   // a soft HALO under the strike + the ring's crest
-        const lift = Math.min(1, energy * 1.9);
-        dummy.position.set(px[i], (s.h * 0.6 + glow * 0.5) * MAXH, pz[i]);   // gentle relief from both
-        dummy.scale.setScalar(0.5 + energy * 0.95);           // a lit grain grows a little — a glow, not a chunky node
+        const s = field.sample(px[i], pz[i], t), glow = field.glow(px[i], pz[i], t, 0.9, 0.8);
+        const energy = Math.min(1.4, Math.max(Math.abs(s.h) * 0.5, glow));   // the tight HALO leads; the ring is subtle character
+        const lift = Math.min(1, energy * 2.0);
+        dummy.position.set(px[i], (s.h * 0.5 + glow * 0.55) * MAXH, pz[i]);
+        dummy.scale.setScalar(0.5 + energy * 0.9);            // a lit grain grows a little — a glow, not a chunky node
         dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix);
-        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.62 - lift * 0.18, (0.045 + lift * 0.62 + st.amb * 0.04) * fade[i]);
+        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.62 - lift * 0.16, (0.045 + lift * 0.66 + st.amb * 0.04) * fade[i]);
         mesh.setColorAt(i, col);                              // resting grain ≈ black; a struck point blooms into a soft glow of sand, tight under the finger
       }
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;

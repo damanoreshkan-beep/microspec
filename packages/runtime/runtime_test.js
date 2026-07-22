@@ -28,8 +28,9 @@ import { sat, makeSat, parseTleText, subpoint, sunEciUnit, isSunlit, FALLBACK_TL
 import { resumeAt, RESUME_MIN } from "./playback.js";
 import { logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, advanceTerrain, Parallax, seedFrame } from "./spectrum.js";
 import { RippleField, ring, RIPPLE_DEFAULTS } from "./ripple.js";
-import { iqFromBytes, firLowpass, deemphasisAlpha, fft, powerSpectrum, seedSpectrum, FmReceiver, IN_RATE, IF_RATE, OUT_RATE, MAX_DEV, OFFSET_HZ } from "./fmradio.js";
+import { iqFromBytes, firLowpass, deemphasisAlpha, fft, powerSpectrum, seedSpectrum, FmReceiver, IN_RATE, IF_RATE, OUT_RATE, MAX_DEV, OFFSET_HZ, goertzelPower, pilotRatioDb, rssiFromBytes, PILOT_COEFF } from "./fmradio.js";
 import { sampleRatePayload, setFreqPayload, clampLnaGain, clampVgaGain, roundBasebandFilter, basebandFilterParams, REQUEST, MODE, VENDOR_ID, PRODUCT_ID, TRANSFER_SIZE } from "./hackrf.js";
+import { syndrome, OFFSET, ptyName, rdsChar, RdsBlockSync, RdsParser, Rds } from "./rds.js";
 import { parsePrice, parseWishMeta, toNumber, sortWishes, wishTotals, fmtMoney } from "./wish.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
@@ -1678,4 +1679,104 @@ Deno.test("baseband filter rounds down to a valid MAX2837 bandwidth, packed low1
   assertEquals(roundBasebandFilter(28_000_000), 28_000_000);
   const p = basebandFilterParams(1_750_000);
   assertEquals((p.index << 16) | p.value, 1_750_000);
+});
+
+// ================= RDS (rds.js) =================
+// A standard RDS modulator (independent of the decoder's internals) so the whole chain — CRC/offset framing
+// AND the 57 kHz DBPSK DSP — is validated by a synthetic-signal round-trip, the same tactic as the FM test.
+function rdsCrc10(data16) { let reg = 0; for (let i = 25; i >= 0; i--) { const bit = i >= 10 ? (data16 >> (i - 10)) & 1 : 0; reg = (reg << 1) | bit; if (reg & 0x400) reg ^= 0x5B9; reg &= 0x7FF; } return reg & 0x3FF; }
+function rdsBlock(data16, off) { return ((data16 & 0xFFFF) << 10) | ((rdsCrc10(data16) ^ off) & 0x3FF); }
+function blockBits(b26) { const a = []; for (let i = 25; i >= 0; i--) a.push((b26 >> i) & 1); return a; }
+function groupBits(a, b, c, d) { return [...blockBits(rdsBlock(a, OFFSET.A)), ...blockBits(rdsBlock(b, OFFSET.B)), ...blockBits(rdsBlock(c, OFFSET.C)), ...blockBits(rdsBlock(d, OFFSET.D))]; }
+const PI = 0x1234, PTY = 10;
+const PS = "TEST FM ", RT = "HELLO RADIO\r";
+function ps0A(seg) { const b = (PTY << 5) | (1 << 3) | (seg & 3); const d = (PS.charCodeAt(seg * 2) << 8) | PS.charCodeAt(seg * 2 + 1); return groupBits(PI, b, 0, d); }
+function rt2A(addr) { const b = 0x2000 | (PTY << 5) | (addr & 0xF); const cc = (i) => (i < RT.length ? RT.charCodeAt(i) : 0x20); const c = (cc(addr * 4) << 8) | cc(addr * 4 + 1), d = (cc(addr * 4 + 2) << 8) | cc(addr * 4 + 3); return groupBits(PI, b, c, d); }
+function rdsStream(reps) { const bits = []; for (let r = 0; r < reps; r++) { for (let s = 0; s < 4; s++) bits.push(...ps0A(s)); for (let a = 0; a < 3; a++) bits.push(...rt2A(a)); } return bits; }
+
+Deno.test("rds syndrome: a clean block's syndrome equals its own offset word (match table)", () => {
+  for (const data of [0x0000, 0x1234, 0xABCD, 0xFFFF]) {
+    assertEquals(syndrome(rdsBlock(data, OFFSET.A)), OFFSET.A);
+    assertEquals(syndrome(rdsBlock(data, OFFSET.B)), OFFSET.B);
+    assertEquals(syndrome(rdsBlock(data, OFFSET.C)), OFFSET.C);
+    assertEquals(syndrome(rdsBlock(data, OFFSET.D)), OFFSET.D);
+  }
+  assert(syndrome(rdsBlock(0x1234, OFFSET.A) ^ 1) !== OFFSET.A, "a single bit error changes the syndrome");
+});
+
+Deno.test("ptyName / rdsChar tables", () => {
+  assertEquals(ptyName(10), "Pop music"); assertEquals(ptyName(1), "News"); assertEquals(ptyName(0), "None");
+  assertEquals(rdsChar(0x54), "T"); assertEquals(rdsChar(0x0D), "\r"); assertEquals(rdsChar(0x02), "·");
+});
+
+Deno.test("rds framing: bitstream → block sync → parser recovers PS, RadioText, PTY, PI", () => {
+  const sync = new RdsBlockSync(), parser = new RdsParser();
+  for (const bit of rdsStream(12)) { const g = sync.pushBit(bit); if (g) parser.group(g); }
+  const s = parser.snapshot();
+  assertEquals(s.pi, PI);
+  assertEquals(s.ptyName, "Pop music");
+  assertEquals(s.ps, "TEST FM");
+  assertEquals(s.rt, "HELLO RADIO");
+});
+
+Deno.test("rds end-to-end DSP: 57 kHz DBPSK MPX → Rds recovers the station metadata", () => {
+  const FS = 250_000, CHIP = 2375;   // 2 chips per bit
+  const bits = rdsStream(30);
+  // differential encode, then biphase (Manchester) chips: e=1 → [+1,−1], e=0 → [−1,+1]
+  const chips = []; let e = 0;
+  for (const b of bits) { e ^= b; chips.push(e ? 1 : -1, e ? -1 : 1); }
+  // modulate chips onto a 57 kHz subcarrier at FS (rectangular chips; the decoder's LPF shapes them)
+  const total = Math.floor(chips.length * FS / CHIP);
+  const mpx = new Float32Array(total);
+  for (let n = 0; n < total; n++) { const ci = Math.floor(n * CHIP / FS); mpx[n] = 0.7 * chips[ci] * Math.cos(2 * Math.PI * 57000 * n / FS); }
+  const rds = new Rds(FS);
+  let snap;
+  for (let i = 0; i < total; i += 8192) snap = rds.process(mpx.subarray(i, Math.min(total, i + 8192)));
+  assert(rds.groups > 20, `decoded too few groups (${rds.groups})`);
+  assertEquals(snap.pi, PI);
+  assertEquals(snap.ptyName, "Pop music");
+  assertEquals(snap.ps, "TEST FM");
+  assert(/HELLO RADIO/.test(snap.rt), `RadioText not recovered: "${snap.rt}"`);
+});
+
+Deno.test("rds DSP robustness: locks through a carrier phase+freq offset and additive noise", () => {
+  const FS = 250_000, CHIP = 2375;
+  const bits = rdsStream(45);
+  const chips = []; let e = 0;
+  for (const b of bits) { e ^= b; chips.push(e ? 1 : -1, e ? -1 : 1); }
+  const total = Math.floor(chips.length * FS / CHIP);
+  const mpx = new Float32Array(total);
+  // deterministic pseudo-noise (no Math.random in this suite's spirit), a static phase offset, +6 Hz carrier drift
+  let seed = 1234567;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff - 0.5; };
+  for (let n = 0; n < total; n++) { const ci = Math.floor(n * CHIP / FS); mpx[n] = 0.7 * chips[ci] * Math.cos(2 * Math.PI * 57006 * n / FS + 1.1) + 0.05 * rnd(); }
+  const rds = new Rds(FS);
+  let snap; for (let i = 0; i < total; i += 8192) snap = rds.process(mpx.subarray(i, Math.min(total, i + 8192)));
+  assertEquals(snap.ps, "TEST FM");
+  assertEquals(snap.ptyName, "Pop music");
+  assert(/HELLO RADIO/.test(snap.rt), `RadioText not recovered under impairment: "${snap.rt}"`);
+});
+
+// ================= FM auto-scan helpers (fmradio.js) =================
+Deno.test("goertzelPower: peaks at the target bin, low off-target", () => {
+  const N = 2500, fs = IF_RATE, tone = new Float32Array(N);
+  for (let n = 0; n < N; n++) tone[n] = Math.sin(2 * Math.PI * 19000 * n / fs);
+  const at19 = goertzelPower(tone, PILOT_COEFF);
+  const off = goertzelPower(tone, 2 * Math.cos(2 * Math.PI * 30000 / fs));
+  assert(at19 > 100 * off, "a 19 kHz tone concentrates at the 19 kHz bin");
+});
+
+Deno.test("pilotRatioDb: high with a pilot present, low on noise", () => {
+  const N = 2500, fs = IF_RATE;
+  let seed = 99; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff - 0.5; };
+  const withPilot = new Float32Array(N), noise = new Float32Array(N);
+  for (let n = 0; n < N; n++) { const nz = 0.3 * rnd(); withPilot[n] = Math.sin(2 * Math.PI * 19000 * n / fs) + nz; noise[n] = nz; }
+  assert(pilotRatioDb(withPilot) > 6, `pilot should be detected: ${pilotRatioDb(withPilot).toFixed(1)} dB`);
+  assert(pilotRatioDb(noise) < 6, `noise should not: ${pilotRatioDb(noise).toFixed(1)} dB`);
+});
+
+Deno.test("rssiFromBytes: stronger IQ → higher dBFS, monotone", () => {
+  const mk = (amp) => { const b = new Uint8Array(2048); for (let i = 0; i < b.length; i++) b[i] = (Math.round(amp * Math.sin(i)) + 256) & 0xff; return b; };
+  assert(rssiFromBytes(mk(100)) > rssiFromBytes(mk(20)), "louder signal reads higher");
+  assert(rssiFromBytes(mk(100)) < 0, "dBFS is ≤ 0 (relative to full scale)");
 });

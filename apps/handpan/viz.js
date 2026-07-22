@@ -12,10 +12,10 @@ function hasWebGL() {
   try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; }
 }
 
-const COLS = 30, ROWS = 30, SP = 0.4;                          
+const COLS = 26, ROWS = 26, SP = 0.46;                         
 const HX = ((COLS - 1) * SP) / 2, HZ = ((ROWS - 1) * SP) / 2;  
 const R_IN = 0.66 * Math.min(HX, HZ);                          
-const MAXH = 0.62, DOT = 0.066;                                
+const MAXH = 0.62, DOT = 0.075;                                
 const field = RippleField();
 
 let _getBytes = null;
@@ -78,7 +78,7 @@ function makeField(canvas, THREE) {
   const cam = new THREE.PerspectiveCamera(52, 1, 0.1, 100);
   const group = new THREE.Group(); scene.add(group);
 
-  const geo = new THREE.SphereGeometry(DOT, 7, 6);
+  const geo = new THREE.IcosahedronGeometry(DOT, 0);           
   const mat = new THREE.MeshBasicMaterial({ transparent: true, toneMapped: false });
   const mesh = new THREE.InstancedMesh(geo, mat, ROWS * COLS);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);

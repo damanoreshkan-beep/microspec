@@ -11,7 +11,8 @@ export default [
       h.expect((await h.count("[data-freq]")) === 3, "немає трьох частот");
       h.expect((await h.count("#record")) === 1, "немає кнопки запису");
       h.expect((await h.count("[data-saved]")) >= 3, "немає списку сигналів");
-      h.expect((await h.count("[data-transmit]")) === 2, "передавати можна лише фіксовані (2 з 3)");
+      h.expect((await h.count("[data-transmit]")) === 3, "передавати можна всі сигнали");
+      h.expect((await h.count("[data-rolling]")) === 1, "rolling лишається підказкою (не блок)");
       h.expect(/rolling/i.test(await h.bodyText()), "немає позначки rolling-code");
     },
   },

@@ -177,10 +177,14 @@ export function seedSpectrum(bins, phase = 0) {
   const out = new Float32Array(bins), mid = bins / 2;
   for (let b = 0; b < bins; b++) {
     const d = (b - mid) / bins;
-    const floor = -70 + 6 * Math.sin(b * 0.21 + phase * 0.05) + 4 * Math.sin(b * 0.07 - phase * 0.03);
-    const station = 34 * Math.exp(-(d * d) / 0.0016);              // the tuned carrier, centered
-    const side = 10 * Math.exp(-((Math.abs(d) - 0.06) ** 2) / 0.0009); // stereo/pilot shoulders
-    out[b] = floor + station + side;
+    // A mostly-flat noise floor: several static incommensurate ripples read as per-column texture (real RF
+    // grass), and ONE small animated term gives the waterfall gentle life without the diagonal moiré a big
+    // phase term produces. Kept quiet so the carrier — not the floor — is what the eye lands on.
+    const floor = -73 + 1.6 * Math.sin(b * 0.55) + 1.1 * Math.sin(b * 0.23 + 1.3)
+      + 0.8 * Math.sin(b * 1.7 + 0.6) + 1.1 * Math.sin(b * 0.09 + phase * 0.05);
+    const station = 30 * Math.exp(-(d * d) / 0.0026);              // the tuned carrier — a broad FM haystack, centered
+    const shoulder = 3 * Math.exp(-((Math.abs(d) - 0.05) ** 2) / 0.001); // faint sidebands
+    out[b] = floor + station + shoulder;
   }
   return out;
 }

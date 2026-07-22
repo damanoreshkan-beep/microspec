@@ -116,20 +116,23 @@ function heat(v) {
 }
 function drawSpectrum(cv, bins) {
   const c = ctx2d(cv); const w = cv?.width | 0, h = cv?.height | 0; if (!c || !w || !h || !bins) return;
+  // theme-aware: on the light card a near-white trace vanishes, so the trace + reticle go to ink there.
+  const light = typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light");
+  const ink = light ? "24,22,32" : "236,236,238", fillRgb = light ? "99,84,182" : "139,127,214";
   c.clearRect(0, 0, w, h);
   const n = bins.length, midX = w / 2;
   c.beginPath(); c.moveTo(0, h);
   for (let x = 0; x <= w; x++) { const v = norm(bins[Math.min(n - 1, x / w * n | 0)]); c.lineTo(x, h - v * h); }
   c.lineTo(w, h); c.closePath();
   const grad = c.createLinearGradient && c.createLinearGradient(0, 0, 0, h);
-  if (grad && grad.addColorStop) { grad.addColorStop(0, "rgba(139,127,214,0.55)"); grad.addColorStop(1, "rgba(139,127,214,0.04)"); c.fillStyle = grad; }
-  else c.fillStyle = "rgba(139,127,214,0.3)";
+  if (grad && grad.addColorStop) { grad.addColorStop(0, `rgba(${fillRgb},0.5)`); grad.addColorStop(1, `rgba(${fillRgb},0.04)`); c.fillStyle = grad; }
+  else c.fillStyle = `rgba(${fillRgb},0.3)`;
   c.fill();
   c.beginPath();
   for (let x = 0; x <= w; x++) { const v = norm(bins[Math.min(n - 1, x / w * n | 0)]); const y = h - v * h; x ? c.lineTo(x, y) : c.moveTo(x, y); }
-  c.strokeStyle = "rgba(236,236,238,0.85)"; c.lineWidth = Math.max(1, h / 90); c.stroke();
+  c.strokeStyle = `rgba(${ink},0.85)`; c.lineWidth = Math.max(1, h / 90); c.stroke();
   // center reticle — the tuned carrier sits at 0 Hz (mid-band)
-  c.strokeStyle = "rgba(236,236,238,0.14)"; c.lineWidth = 1; c.beginPath(); c.moveTo(midX, 0); c.lineTo(midX, h); c.stroke();
+  c.strokeStyle = `rgba(${ink},0.16)`; c.lineWidth = 1; c.beginPath(); c.moveTo(midX, 0); c.lineTo(midX, h); c.stroke();
 }
 function drawWaterRow(cv, bins) {
   const c = ctx2d(cv); const w = cv?.width | 0, h = cv?.height | 0; if (!c || !w || !h || !bins) return;
@@ -140,7 +143,7 @@ function drawWaterRow(cv, bins) {
 
 // ================= views =================
 export function fmradioView({ S, screen, openScreen, closeScreen }) {
-  const t = useStore(S.t);
+  const t = useStore(S.t), theme = useStore(S.theme);
   const connected = useStore($connected), signal = useStore($signal), freq = useStore($freq), usbOk = useStore($usbOk);
   const spectrum = useStore($spectrum), playing = useStore($playing);
   const demo = gate;
@@ -175,8 +178,8 @@ export function fmradioView({ S, screen, openScreen, closeScreen }) {
       </div>
 
       <div class="w-full rounded-3xl border border-base-content/10 bg-base-100/50 overflow-hidden backdrop-blur">
-        <canvas ref=${useCanvas((cv) => drawSpectrum(cv, $spectrum.get()), spectrum)} class="block w-full h-24" role="img" aria-label=${T(t, "spectrum")} data-spectrum></canvas>
-        <canvas ref=${useWaterfall(spectrum, demo)} class="block w-full h-32 border-t border-base-content/10" aria-hidden="true" data-waterfall></canvas>
+        <canvas ref=${useCanvas((cv) => drawSpectrum(cv, $spectrum.get()), [spectrum, theme])} class="block w-full h-28" role="img" aria-label=${T(t, "spectrum")} data-spectrum></canvas>
+        <canvas ref=${useWaterfall(spectrum, demo)} class="block w-full h-52 border-t border-base-content/10" aria-hidden="true" data-waterfall></canvas>
       </div>
 
       <div class="w-full flex flex-col gap-1.5 px-1">
@@ -206,10 +209,10 @@ export function fmradioView({ S, screen, openScreen, closeScreen }) {
   </${Fragment}>`;
 }
 
-// draw to a canvas whenever `dep` changes, and on resize
-function useCanvas(draw, dep) {
+// draw to a canvas whenever any `deps` change (spectrum frame, theme), and on resize
+function useCanvas(draw, deps) {
   const ref = useRef(null);
-  useEffect(() => { const cv = ref.current; if (!cv) return; sizeCanvas(cv); draw(cv); }, [dep]);
+  useEffect(() => { const cv = ref.current; if (!cv) return; sizeCanvas(cv); draw(cv); }, deps);
   useEffect(() => { const cv = ref.current; if (!cv) return; const on = () => { sizeCanvas(cv); draw(cv); }; addEventListener("resize", on); return () => removeEventListener("resize", on); }, []);
   return ref;
 }

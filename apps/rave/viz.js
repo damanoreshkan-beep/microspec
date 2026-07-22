@@ -129,45 +129,43 @@ function makeRing(canvas, THREE) {
   };
 }
 
-// Audio terrain — the merge of all three tries: the WIREFRAME grid keeps a background that recedes to a low
-// horizon and never walls off the controls (thin lines, mostly transparent), while the SPIKY per-column
-// peaks + the rich PER-VERTEX colour bring back the vivid spectrum-columns look of the earlier pillar field.
-// Peaks are sharpened (pow curve) so loud bands spike and quiet ones flatten — a spectrum, not a soft dune;
-// hue sweeps across columns (by frequency) and rows (by depth), lit brighter where the beat is loud.
-const ROWS = 30, COLS = 26;
+// Audio terrain — the first-version FIELD OF SPECTRUM PILLARS (the look the owner prefers). Each column's
+// height is its band level; the ridge scrolls toward the camera (advanceTerrain). Solid instanced boxes,
+// hue by depth, lit by level and fading into the distance. Fixed full-screen, transparent clear so base-200
+// reads as the sky. Rotation uses the gentle dynamic-centre head-look (st.turn), not absolute heading.
+const ROWS = 20, COLS = 30;
 function makeTerrain(canvas, THREE) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(DPR());
   const scene = new THREE.Scene();
-  const cam = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+  const cam = new THREE.PerspectiveCamera(62, 1, 0.1, 100);
   const group = new THREE.Group(); scene.add(group);
 
-  // Plane in XY, baked flat by rotateX(-90°): a vertex's local z (initially 0) now lifts WORLD Y — so
-  // setY(i, h) raises the ridge. Verts are row-major, (ROWS)×(COLS); row 0 sits farthest, last row nearest.
-  const geo = new THREE.PlaneGeometry(30, 34, COLS - 1, ROWS - 1); geo.rotateX(-Math.PI / 2);
-  geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3));
-  const mat = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true, transparent: true, opacity: 0.6, toneMapped: false });
-  const mesh = new THREE.Mesh(geo, mat); group.add(mesh);
-  const pos = geo.attributes.position, colAttr = geo.attributes.color, grid = new Float32Array(ROWS * COLS), col = new THREE.Color();
-  const HMAX = 4.2;
+  const geo = new THREE.BoxGeometry(0.34, 1, 0.34); geo.translate(0, 0.5, 0);   // grow up from the base
+  const mat = new THREE.MeshBasicMaterial({ transparent: true, toneMapped: false });
+  const mesh = new THREE.InstancedMesh(geo, mat, ROWS * COLS);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  group.add(mesh);
+  const grid = new Float32Array(ROWS * COLS), col = new THREE.Color(), dummy = new THREE.Object3D();
+  const SX = 0.62, SZ = 0.9, MAXH = 2.6;
+  for (let i = 0; i < ROWS * COLS; i++) mesh.setColorAt(i, col.setHSL(0.6, 0.6, 0.2));
 
   return {
     resize(w, h) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); },
     frame(st, p) {
       advanceTerrain(grid, ROWS, COLS, st.levels);
       for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-        const vi = r * COLS + c, vh = Math.pow(grid[(ROWS - 1 - r) * COLS + c], 1.4);   // sharpen → spectrum spikes
-        pos.setY(vi, vh * HMAX);
-        const fade = 1 - (r / ROWS) * 0.55, hue = ((st.hue + c * 5 + r * 2) % 360 + 360) % 360;
-        col.setHSL(hue / 360, 0.72, (0.14 + vh * 0.5) * fade);                          // hue by column/depth, lit by peak
-        colAttr.setXYZ(vi, col.r, col.g, col.b);
+        const idx = r * COLS + c, v = grid[idx];
+        dummy.position.set((c - (COLS - 1) / 2) * SX, -1.5, -r * SZ - 0.5);
+        dummy.scale.set(1, 0.02 + v * MAXH, 1);
+        dummy.updateMatrix(); mesh.setMatrixAt(idx, dummy.matrix);
+        const fade = 1 - (r / ROWS) * 0.72;
+        mesh.setColorAt(idx, col.setHSL(((st.hue + r * 3) % 360) / 360, 0.62, (0.12 + v * 0.5) * fade));
       }
-      pos.needsUpdate = true; colAttr.needsUpdate = true;
-      mat.opacity = 0.4 + st.bands.bass * 0.35;   // whole field glows with the beat
-      group.rotation.y = st.turn * 0.6 + p.x * 0.08;
-      // High + shallow downward look: the grid recedes to a horizon low on screen, leaving the upper two
-      // thirds clean dark for the ring + transport. Thin lines mean even the near spikes never occlude.
-      cam.position.set(p.x * 0.4, 4.4 - p.y * 0.35, 7.2); cam.lookAt(0, -0.6, -5);
+      mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      group.rotation.y = st.turn * 0.5 + p.x * 0.12;
+      cam.position.set(p.x * 0.5, 1.35 - p.y * 0.3, 3.1 + st.bands.bass * 0.25);
+      cam.lookAt(0, 0.1, -6);
       renderer.render(scene, cam);
     },
     dispose() { geo.dispose(); mat.dispose(); renderer.dispose(); },

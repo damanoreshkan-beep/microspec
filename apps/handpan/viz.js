@@ -12,11 +12,11 @@ function hasWebGL() {
   try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; }
 }
 
-const COLS = 26, ROWS = 26, SP = 0.46;                         
-const HX = ((COLS - 1) * SP) / 2, HZ = ((ROWS - 1) * SP) / 2;  
-const R_IN = 0.66 * Math.min(HX, HZ);                          
-const MAXH = 0.85, DOT = 0.075;                                
-const field = RippleField({ spread: 0.09 });                  
+const COLS = 28, ROWS = 28, SP = 0.34;                         
+const HX = ((COLS - 1) * SP) / 2, HZ = ((ROWS - 1) * SP) / 2;
+const R_IN = 0.5 * Math.min(HX, HZ);                           
+const MAXH = 0.4, DOT = 0.044;                                 
+const field = RippleField({ speed: 2.8, wavelength: 1.25, width: 0.66, life: 1.0, spread: 0.42, max: 10 });
 
 let _getBytes = null;
 export function bindAudio(fn) { _getBytes = fn; }
@@ -46,9 +46,9 @@ let pumpRaf = null, ambient = 0, seedT = -1;
 function pump() {
   clock += 1 / 60;                                             
   const live = _getBytes && !isGate ? _getBytes() : null;
-  if (!live && clock - seedT > 0.85) {
+  if (!live && clock - seedT > 1.5) {                          
     seedT = clock; const a = clock * 0.7;
-    field.strike(Math.cos(a) * R_IN * 0.45, Math.sin(a * 1.3) * R_IN * 0.45, { amp: 1.05, hue: 252 + 30 * Math.sin(a * 0.8), t: clock });
+    field.strike(Math.cos(a) * R_IN * 0.35, Math.sin(a * 1.3) * R_IN * 0.35, { amp: 0.5, hue: 252 + 30 * Math.sin(a * 0.8), t: clock });
   }
   field.prune(clock);
   const target = live ? meanByte(live) : Math.min(1, field.energy(clock) * 0.4);
@@ -70,12 +70,12 @@ function subscribe(fn) {
   return () => { subs.delete(fn); if (!subs.size && pumpRaf) { cancelAnimationFrame(pumpRaf); pumpRaf = null; } };
 }
 
-const CAM_Y = 8.0, CAM_Z = 6.4, MAXD = Math.sqrt(HX * HX + HZ * HZ);
+const CAM_Y = 9.2, CAM_Z = 4.2, MAXD = Math.sqrt(HX * HX + HZ * HZ);   
 function makeField(canvas, THREE) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(DPR());
   const scene = new THREE.Scene();
-  const cam = new THREE.PerspectiveCamera(52, 1, 0.1, 100);
+  const cam = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
   const group = new THREE.Group(); scene.add(group);
 
   const geo = new THREE.IcosahedronGeometry(DOT, 0);           
@@ -97,19 +97,19 @@ function makeField(canvas, THREE) {
     frame(st, p) {
       const t = st.clock;
       for (let i = 0; i < ROWS * COLS; i++) {
-        const s = field.sample(px[i], pz[i], t), mag = Math.min(1.5, Math.abs(s.h));
-        const lift = Math.min(1, mag * 2.2);                  
+        const s = field.sample(px[i], pz[i], t), mag = Math.min(1.4, Math.abs(s.h));
+        const lift = Math.min(1, mag * 2.4);                  
         dummy.position.set(px[i], s.h * MAXH, pz[i]);
-        dummy.scale.setScalar(0.5 + mag * 1.5);               
+        dummy.scale.setScalar(0.5 + mag * 0.6);               
         dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix);
-        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.62 - lift * 0.22, (0.05 + lift * 0.62 + st.amb * 0.05) * fade[i]);
+        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.6 - lift * 0.16, (0.045 + lift * 0.58 + st.amb * 0.04) * fade[i]);
         mesh.setColorAt(i, col);                              
       }
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-      group.rotation.y = st.turn * 0.4 + p.x * 0.05;
-      group.position.y = st.amb * 0.14;                       
-      cam.position.set(p.x * 0.6, CAM_Y - p.y * 0.4, CAM_Z);
-      cam.lookAt(0, 0, -0.3);
+      group.rotation.y = st.turn * 0.35 + p.x * 0.04;
+      group.position.y = st.amb * 0.06;                       
+      cam.position.set(p.x * 0.5, CAM_Y - p.y * 0.3, CAM_Z);
+      cam.lookAt(0, 0, 0);
       renderer.render(scene, cam);
     },
     dispose() { geo.dispose(); mat.dispose(); renderer.dispose(); },

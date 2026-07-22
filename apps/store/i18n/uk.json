@@ -37,5 +37,6 @@
   "toastSaved": "Збережено",
   "toastRemoved": "Видалено",
   "updBadge": "ОНОВ",
-  "newVersion": "нова версія"
+  "newVersion": "нова версія",
+  "installed": "Встановлено"
 }

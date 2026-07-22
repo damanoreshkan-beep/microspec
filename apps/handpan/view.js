@@ -23,6 +23,7 @@ import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { isGate } from "/_rt/gate.js";
 import { wakeLock } from "/_rt/sensors.js";
 import { holdAudio } from "/_rt/mediasession.js";
+import { bindAudio, enableImmersion, disableImmersion, immersionState, immersionAvailable, RippleBg, strikeRipple } from "./viz.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -94,6 +95,11 @@ function ensure() {
     const dry = ctx.createGain(); dry.gain.value = 0.92; busIn.connect(dry); dry.connect(sum);
     const rev = ctx.createConvolver(); rev.buffer = makeIR(ctx); revSend = ctx.createGain(); revSend.gain.value = spaceGain($space.get());
     busIn.connect(revSend); revSend.connect(rev); rev.connect(sum);
+    // tap the final mix for the resonance viz — master → analyser is an OBSERVER branch (no onward
+    // connection), so it never alters the sound. Strikes drive the ripples; this scalar drives the breathing.
+    const an = ctx.createAnalyser(); an.fftSize = 1024; an.smoothingTimeConstant = 0.75;
+    const fb = new Uint8Array(an.frequencyBinCount); e.master.connect(an);
+    bindAudio(() => { if (!eng) return null; an.getByteFrequencyData(fb); return fb; });
     eng = e; applyDrone();
   }
   eng.resume(); return eng;
@@ -132,9 +138,16 @@ function applyDrone() {
 
 // ---- flash (long ring on a struck field) ----
 const flash = (i) => { const s = new Set($lit.get()); s.add(i); $lit.set(s); setTimeout(() => { const n = new Set($lit.get()); n.delete(i); $lit.set(n); }, 520); };
+// map a struck tone-field → a resonance ripple (viz.js): position from its ring angle (ding = centre), hue
+// from the semitone above the ding (violet → blue), amp from velocity. A no-op where WebGL/the viz is absent.
+function rippleFor(idx, vel = 1) {
+  const s = curScale(), n = s.midi.length - 1; let nx = 0, nz = 0;
+  if (idx > 0 && n > 0) { const a = -Math.PI / 2 + ((idx - 1) / n) * Math.PI * 2; nx = Math.cos(a); nz = Math.sin(a); }
+  strikeRipple(nx, nz, vel, 268 - clamp((s.midi[idx] - s.midi[0]) / 24, 0, 1) * 70);
+}
 // strike a scale index (0 = ding). Records into the loop when armed.
 function strike(idx, vel = 1) {
-  const s = curScale(); if (idx < 0 || idx >= s.midi.length) return; ensure(); strikeNote(midiToFreq(s.midi[idx]), vel); flash(idx);
+  const s = curScale(); if (idx < 0 || idx >= s.midi.length) return; ensure(); strikeNote(midiToFreq(s.midi[idx]), vel); flash(idx); rippleFor(idx, vel);
   if ($recording.get() && $playing.get()) { const step = $cur.get() < 0 ? 0 : $cur.get(); const cur = $loop.get(), cell = cur[step] || []; if (!cell.includes(idx)) { const next = cur.slice(); next[step] = [...cell, idx]; $loop.set(next); } }
 }
 
@@ -158,7 +171,7 @@ function strikeAtTime(freq, t) {
   if (tb.chiff && e.buffers.white) { const s = c.createBufferSource(); s.buffer = e.buffers.white; const f = c.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = clamp(freq * 6, 800, 9000); f.Q.value = 0.7; const ng = c.createGain(); ng.gain.setValueAtTime(tb.chiff, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.08); s.connect(f); f.connect(ng); ng.connect(g); s.start(t); s.stop(t + 0.1); s.onended = () => { try { s.disconnect(); f.disconnect(); ng.disconnect(); } catch { /* */ } }; }
 }
 const tick = () => { const e = eng; if (!e) return; const dt = spb(); if (nextT < e.ctx.currentTime) nextT = e.ctx.currentTime; while (nextT < e.ctx.currentTime + 0.12) { fireStep(stepN, nextT); nextT += dt; stepN = (stepN + 1) % N; } };
-const draw = () => { const e = eng; if (e) { const now = e.ctx.currentTime; while (q.length && q[0].time <= now) { const it = q.shift(); $cur.set(it.step); const cell = $loop.get()[it.step] || []; cell.forEach(flash); } } raf = requestAnimationFrame(draw); };
+const draw = () => { const e = eng; if (e) { const now = e.ctx.currentTime; while (q.length && q[0].time <= now) { const it = q.shift(); $cur.set(it.step); const cell = $loop.get()[it.step] || []; cell.forEach((i) => { flash(i); rippleFor(i, 0.9); }); } } raf = requestAnimationFrame(draw); };
 
 function start() {
   const e = ensure(); $playing.set(true); if (!e) return;
@@ -200,6 +213,8 @@ export function handpan({ S }) {
   const scaleId = useStore($scale), playing = useStore($playing), recording = useStore($recording), lit = useStore($lit), sweep = useStore($sweep), space = useStore($space);
   const s = scaleById(scaleId), n = s.midi.length - 1;              // fields around the ding
   const ptr = useRef(new Map()), usingPtr = useRef(false);
+  const [immersed, setImmersed] = useState(immersionState.on);
+  const toggleImmersion = async () => { buzz(12); if (immersionState.on) { disableImmersion(); setImmersed(false); } else { setImmersed(await enableImmersion()); } };
   const pick = (id) => { buzz(); ensure(); $scale.set(id); applyDrone(); $hist.set({ seeds: [], idx: -1 }); };
 
   const fieldAt = (x, y) => { const el = document.elementFromPoint(x, y); const b = el && el.closest && el.closest("[data-field]"); return b ? Number(b.getAttribute("data-field")) : null; };
@@ -211,7 +226,10 @@ export function handpan({ S }) {
   // field geometry: ding in the centre, fields evenly around a ring starting from the top, ascending clockwise
   const fields = s.midi.slice(1).map((m, k) => { const ang = -Math.PI / 2 + (k / n) * Math.PI * 2; const R = 37; return { idx: k + 1, m, x: 50 + R * Math.cos(ang), y: 50 + R * Math.sin(ang), size: clamp(24 - (m - s.midi[0]) * 0.32, 15, 23) }; });
 
-  return html`<div class="fixed left-0 right-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+  return html`<div class="fixed left-0 right-0 z-20 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+    <${RippleBg} />
+    ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-2 right-2 z-20 btn btn-circle btn-sm border-base-content/10 backdrop-blur-md ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/50 text-base-content/60"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
+    <div class="relative z-10 flex flex-col flex-1 min-h-0">
     <div class="shrink-0 flex items-center gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       ${SCALES.map((sc) => { const on = sc.id === scaleId; return html`<button data-scale=${sc.id} aria-pressed=${on} onClick=${() => pick(sc.id)} key=${sc.id} class=${`shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium transition ${on ? "border-secondary/60 bg-secondary/12 text-secondary" : "border-base-content/12 text-base-content/70"}`}>${T(t, sc.name)}</button>`; })}
     </div>
@@ -243,6 +261,7 @@ export function handpan({ S }) {
       </div>
     </div>
     ${!audioSupported ? html`<div class="shrink-0 text-center text-xs text-base-content/70 pb-1">${T(t, "noAudio")}</div>` : null}
+    </div>
   </div>`;
 }
 

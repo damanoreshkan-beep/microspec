@@ -16,6 +16,12 @@ export default [
     },
   },
   {
+    name: "3D резонанс: фонове поле хвиль від ударів", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-ripple]")) === 1, "немає фонового поля резонансу (хвиль)");
+    },
+  },
+  {
     name: "удар по полю + зміна строю перебудовує пан", run: async (h) => {
       await ready(h);
       await h.tap('[data-field="0"]'); await h.wait(120);

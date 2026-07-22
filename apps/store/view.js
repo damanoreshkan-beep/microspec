@@ -15,7 +15,7 @@ const SEEN = collection("seen");   // { id → { v: lastSeenVersion } } — powe
 const appUrl = (id) => `../${id}/`;   // store is /…/store/, apps are siblings /…/<id>/
 // Section order: everyday utilities first. Each app declares its own `category` in spec.json (carried into
 // apps.json by the manifest), so the grid groups itself — the store never hard-codes which app goes where.
-const CATS = ["science", "feeds", "tools", "sound", "creative", "money", "wellness", "play", "esoterica"];
+const CATS = ["science", "feeds", "tools", "sound", "hackrf", "creative", "money", "wellness", "play", "esoterica"];
 const catKey = (c) => "cat" + c[0].toUpperCase() + c.slice(1);
 
 export function store({ S, openScreen, closeScreen }) {

@@ -6,11 +6,11 @@
 
 [![verify](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml/badge.svg)](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml)
 [![gate efficacy](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damanoreshkan-beep/microspec/main/docs/efficacy.json)](packages/gates/efficacy.mjs)
-[![live demo](https://img.shields.io/badge/live-47%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
+[![live demo](https://img.shields.io/badge/live-48%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
 [![built on Android](https://img.shields.io/badge/built%20on-Termux%20%2F%20Android-a78bfa)](#-written-on-a-phone)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-### **[▶ Open the farm — 47 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)**
+### **[▶ Open the farm — 48 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)**
 
 Add any to your home screen. They work offline. Every one is a spec + adapter that **passed the gates.**
 
@@ -47,7 +47,7 @@ agent-generated apps **verifiably** correct instead of hopefully correct.
 
 ## 📱 Written on a phone
 
-No laptop. No desktop. The runtime, the gates, and all 47 apps were written and shipped from **Termux on
+No laptop. No desktop. The runtime, the gates, and all 48 apps were written and shipped from **Termux on
 Android** — on-device [Deno](https://deno.com), a phone as the whole workstation.
 
 That constraint *shaped the toolchain*, it isn't a party trick: the heavy browser gate (Chromium + axe)
@@ -71,7 +71,7 @@ Give the agent a **floor it cannot fall through:**
 2. **Gate everything in CI.** A headless-Chromium harness runs the app in every state and **fails the
    build** on any violation. Red gate → no merge. Green gate → auto-deploy to GitHub Pages.
 
-The 47-app farm is the proof, and doubles as the regression suite for the runtime itself.
+The 48-app farm is the proof, and doubles as the regression suite for the runtime itself.
 
 ## The gate (this is the wedge)
 
@@ -182,7 +182,7 @@ import map; styling is Tailwind + DaisyUI; the type system is the Geist superfam
 | `packages/runtime` | the Preact catalog that renders a spec (5 families + invariants), zero-build |
 | `packages/gates` | `verify` (Chromium a11y / responsive / e2e / shots) + `preflight` (browser-free) |
 | `packages/gen` | `scaffold` — spec + data → runnable app shell |
-| `apps/` | the reference farm: 47 apps = family showcase + runtime regression suite |
+| `apps/` | the reference farm: 48 apps = family showcase + runtime regression suite |
 
 ## Quickstart
 

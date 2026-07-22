@@ -106,6 +106,26 @@ export const compass = {
   },
 };
 
+export const tilt = {
+  supported: typeof window !== "undefined" && typeof DeviceOrientationEvent !== "undefined",
+  needsPermission: typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function",
+  async request() {
+    if (this.needsPermission) { try { return (await DeviceOrientationEvent.requestPermission()) === "granted"; } catch { return false; } }
+    return true;
+  },
+  start(onTilt) {
+    if (!this.supported) return () => {};
+    const handler = (e) => {
+      let beta = typeof e.beta === "number" ? e.beta : null, gamma = typeof e.gamma === "number" ? e.gamma : null;
+      const a = (screen.orientation && screen.orientation.angle) || 0;                 
+      if (a === 90 || a === 270) { const b = beta; beta = gamma; gamma = b == null ? null : -b; }
+      onTilt({ beta, gamma });
+    };
+    window.addEventListener("deviceorientation", handler, true);
+    return () => window.removeEventListener("deviceorientation", handler, true);
+  },
+};
+
 export const camera = {
   supported: typeof navigator !== "undefined" && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
   async start(video, onErr, { facingMode = "environment" } = {}) {

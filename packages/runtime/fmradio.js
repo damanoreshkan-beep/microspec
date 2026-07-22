@@ -114,17 +114,18 @@ export class FmReceiver {
         ifI[oi] = ai; ifQ[oi] = aq; oi++;
       }
     }
-    const dem = new Float32Array(outN);
+    const mpx = new Float32Array(outN), demph = new Float32Array(outN);
     for (let n = 0; n < outN; n++) {
       const I = ifI[n], Q = ifQ[n];
       const real = this.pI * I + this.pQ * Q, imag = this.pI * Q - I * this.pQ;
       this.pI = I; this.pQ = Q;
       const d = Math.atan2(imag, real) * this.ampl;
+      mpx[n] = d;
       this.deemY += this.deemA * (d - this.deemY);
-      dem[n] = this.deemY;
+      demph[n] = this.deemY;
     }
-    const audio = this.resample(dem);
-    return { audio, if: { i: ifI, q: ifQ } };
+    const audio = this.resample(demph);
+    return { audio, mpx };
   }
 
   resample(x) {
@@ -141,6 +142,24 @@ export class FmReceiver {
     this.readFrom -= x.length;                                      
     return Float32Array.from(out);
   }
+}
+
+export function goertzelPower(x, coeff) {
+  let s1 = 0, s2 = 0;
+  for (let n = 0; n < x.length; n++) { const s = x[n] + coeff * s1 - s2; s2 = s1; s1 = s; }
+  return s1 * s1 + s2 * s2 - coeff * s1 * s2;
+}
+export const PILOT_COEFF = 2 * Math.cos(2 * Math.PI * 19000 / IF_RATE);   
+const REF_LO = 2 * Math.cos(2 * Math.PI * 15500 / IF_RATE), REF_HI = 2 * Math.cos(2 * Math.PI * 22500 / IF_RATE);
+export function pilotRatioDb(mpx) {
+  const p = goertzelPower(mpx, PILOT_COEFF);
+  const r = 0.5 * (goertzelPower(mpx, REF_LO) + goertzelPower(mpx, REF_HI));
+  return 10 * Math.log10((p + 1e-12) / (r + 1e-12));
+}
+export function rssiFromBytes(bytes) {
+  const n = bytes.length >> 1; let s = 0;
+  for (let k = 0, j = 0; k < n; k++) { let bi = bytes[j++], bq = bytes[j++]; if (bi > 127) bi -= 256; if (bq > 127) bq -= 256; s += bi * bi + bq * bq; }
+  return 10 * Math.log10(s / (n * 128 * 128) + 1e-12);
 }
 
 export function seedSpectrum(bins, phase = 0) {

@@ -116,7 +116,7 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
   }
 
   return html`<${Fragment}>
-    <div class="flex flex-col gap-3 max-w-[440px] mx-auto w-full pb-24">
+    <div class="@container flex flex-col gap-3 max-w-[440px] mx-auto w-full pb-24">
       <!-- band selector -->
       <div class="flex items-center gap-2 pt-0.5">
         <div class="flex gap-1.5 flex-1">
@@ -128,7 +128,7 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
       <!-- band spectrum -->
       <div class="w-full rounded-3xl border border-base-content/10 bg-base-100/50 overflow-hidden backdrop-blur">
         <canvas ref=${useCanvas((cv) => drawSpectrum(cv, $spectrum.get()), [spectrum, theme])} class="block w-full h-24" role="img" aria-label=${T(t, "spectrum")} data-spectrum></canvas>
-        <div class="flex justify-between px-3 py-1 font-mono text-[0.6rem] text-base-content/45 tabular-nums border-t border-base-content/10">
+        <div class="flex justify-between px-3 py-1 font-mono text-[0.6rem] text-base-content/60 tabular-nums border-t border-base-content/10">
           <span>${fMhz(BANDS[band].dlLo)}</span><span class="uppercase tracking-wider">${BANDS[band].label}</span><span>${fMhz(BANDS[band].dlHi)} MHz</span>
         </div>
       </div>
@@ -136,7 +136,7 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
       <!-- active carriers -->
       <div class="flex items-center justify-between px-1">
         <span class="text-xs uppercase tracking-wide text-base-content/60">${T(t, "carriers")}</span>
-        <span class="font-mono text-xs tabular-nums text-base-content/50" data-count>${arfcns.length}</span>
+        <span class="font-mono text-xs tabular-nums text-base-content/65" data-count>${arfcns.length}</span>
       </div>
       <div class="flex flex-col gap-1.5" data-live data-carriers>
         ${arfcns.length ? arfcns.map((a) => html`<div key=${a.arfcn} data-arfcn=${a.arfcn} class="flex items-center gap-3 rounded-2xl border border-base-content/10 bg-base-100/40 px-4 py-2.5">
@@ -146,7 +146,7 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
             ${a.bcch ? html`<span class="text-[0.6rem] uppercase tracking-wider text-secondary" data-bcch>BCCH · C0</span>` : null}
           </div>
           <${Bars} level=${norm(a.db)} label=${T(t, "sigLabel")} />
-          <span class="font-mono tabular-nums text-xs text-base-content/60 w-14 text-right shrink-0">${a.db} dBm</span>
+          <span class="font-mono tabular-nums text-xs text-base-content/60 w-14 text-right shrink-0 @max-[300px]:hidden">${a.db} dBm</span>
         </div>`)
       : html`<div class="flex flex-col items-center text-base-content/55 py-10 gap-2 text-center px-6">${Icon("lucide:radio-tower", "text-3xl")}<span class="text-sm">${T(t, sweep.active ? "scanning" : "noCarriers")}</span></div>`}
       </div>
@@ -156,7 +156,7 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
     <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.4rem)">
       <div data-player class="pointer-events-auto w-full max-w-[440px] flex items-center gap-2.5 rounded-full border border-base-content/10 bg-base-100/85 backdrop-blur-xl shadow-[0_10px_30px_-8px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.09)] px-4 py-2.5">
         ${Icon("lucide:radar", `text-lg text-primary ${sweep.active ? "animate-spin" : ""}`)}
-        <span class="flex-1 min-w-0 text-sm font-medium truncate">${T(t, "scanning")} <span class="text-base-content/50 font-mono text-xs">${BANDS[band].label}</span></span>
+        <span class="flex-1 min-w-0 text-sm font-medium truncate">${T(t, "scanning")} <span class="text-base-content/70 font-mono text-xs">${BANDS[band].label}</span></span>
         <button data-settings aria-label=${T(t, "settings")} aria-expanded=${screen === "rf"} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => { buzz(); openScreen("rf"); }}>${Icon("lucide:sliders-horizontal", "text-lg")}</button>
         <button data-disconnect aria-label=${T(t, "disconnect")} class="btn btn-circle btn-ghost btn-sm text-base-content/55 shrink-0" onClick=${() => { if (!demo) disconnect(); }}>${Icon("lucide:power", "text-lg")}</button>
       </div>

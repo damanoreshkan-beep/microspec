@@ -32,8 +32,8 @@ function hasWebGL() {
 const COLS = 26, ROWS = 26, SP = 0.46;                         // 676 dots; kept in rave's instanced tri-budget for software WebGL (CI/low-end)
 const HX = ((COLS - 1) * SP) / 2, HZ = ((ROWS - 1) * SP) / 2;  // half-extents ≈ ±5.8
 const R_IN = 0.66 * Math.min(HX, HZ);                          // strike ring radius (maps view's field ring)
-const MAXH = 0.62, DOT = 0.075;                                // displacement scale + dot radius
-const field = RippleField();
+const MAXH = 0.85, DOT = 0.075;                                // displacement scale + dot radius
+const field = RippleField({ spread: 0.09 });                  // slower crest falloff → the ring stays bright as it expands
 
 // ---- audio binding — view.js hands us a getter that returns the live Uint8Array (else null) ----
 let _getBytes = null;
@@ -69,9 +69,9 @@ function pump() {
   clock += 1 / 60;                                             // synthetic clock → frame-rate-independent maths, fully deterministic under the gate
   const live = _getBytes && !isGate ? _getBytes() : null;
   // paused / gate: seed gentle deterministic ripples (no Math.random) so the surface is alive
-  if (!live && clock - seedT > 1.25) {
-    seedT = clock; const a = clock * 0.6;
-    field.strike(Math.cos(a) * R_IN * 0.8, Math.sin(a * 1.3) * R_IN * 0.8, { amp: 0.85, hue: 250 + 34 * Math.sin(a), t: clock });
+  if (!live && clock - seedT > 0.85) {
+    seedT = clock; const a = clock * 0.7;
+    field.strike(Math.cos(a) * R_IN * 0.45, Math.sin(a * 1.3) * R_IN * 0.45, { amp: 1.05, hue: 252 + 30 * Math.sin(a * 0.8), t: clock });
   }
   field.prune(clock);
   const target = live ? meanByte(live) : Math.min(1, field.energy(clock) * 0.4);
@@ -112,9 +112,11 @@ function makeField(canvas, THREE) {
   // precompute each node's world XZ + a radial edge-fade so the grid melts into the base (no hard rectangle)
   const px = new Float32Array(ROWS * COLS), pz = new Float32Array(ROWS * COLS), fade = new Float32Array(ROWS * COLS);
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    const i = r * COLS + c, x = -HX + c * SP, z = -HZ + r * SP;
+    const i = r * COLS + c;
+    // small deterministic jitter so the field reads as an organic resonant surface, not a mechanical grid
+    const x = -HX + c * SP + 0.18 * Math.sin(i * 12.9898), z = -HZ + r * SP + 0.18 * Math.cos(i * 78.233);
     px[i] = x; pz[i] = z; fade[i] = 1 - Math.min(1, Math.sqrt(x * x + z * z) / MAXD) * 0.85;
-    mesh.setColorAt(i, col.setHSL(0.7, 0.5, 0.1));
+    mesh.setColorAt(i, col.setHSL(0.7, 0.5, 0.05));
   }
 
   return {
@@ -122,13 +124,13 @@ function makeField(canvas, THREE) {
     frame(st, p) {
       const t = st.clock;
       for (let i = 0; i < ROWS * COLS; i++) {
-        const s = field.sample(px[i], pz[i], t), y = s.h * MAXH, mag = Math.min(1.4, Math.abs(s.h));
-        dummy.position.set(px[i], y, pz[i]);
-        dummy.scale.setScalar(0.7 + mag * 0.6);
+        const s = field.sample(px[i], pz[i], t), mag = Math.min(1.5, Math.abs(s.h));
+        const lift = Math.min(1, mag * 2.2);                  // wavefront carried by BRIGHTNESS + SIZE (a near-top-down tilt hides pure height)
+        dummy.position.set(px[i], s.h * MAXH, pz[i]);
+        dummy.scale.setScalar(0.5 + mag * 1.5);               // crests swell into larger glowing nodes
         dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix);
-        const lift = Math.min(1, mag * 1.25);
-        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.55, (0.09 + lift * 0.5 + st.amb * 0.05) * fade[i]);
-        mesh.setColorAt(i, col);
+        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.62 - lift * 0.22, (0.05 + lift * 0.62 + st.amb * 0.05) * fade[i]);
+        mesh.setColorAt(i, col);                              // flat field ≈ black texture; a passing crest lights to bright, near-white violet
       }
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       group.rotation.y = st.turn * 0.4 + p.x * 0.05;

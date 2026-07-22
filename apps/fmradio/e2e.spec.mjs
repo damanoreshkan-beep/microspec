@@ -15,7 +15,7 @@ export default [
       h.expect((await h.count("#play")) === 1, "немає транспорту");
       const body = await h.bodyText();
       h.expect(/HIT FM/.test(body), "немає назви станції (RDS PS)");
-      h.expect(/Pop music/.test(body), "немає жанру (PTY)");
+      h.expect(/pop music/i.test(body), "немає жанру (PTY)");
       h.expect(/mhz|мгц/i.test(body), "немає одиниць частоти");
     },
   },

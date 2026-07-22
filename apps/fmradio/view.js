@@ -147,11 +147,11 @@ export function fmradioView({ S, screen, openScreen, closeScreen }) {
   return html`<${Fragment}>
     <div class="@container flex flex-col items-center gap-4 max-w-[440px] mx-auto w-full pb-28">
       <!-- now-playing head unit -->
-      <div class="w-full rounded-3xl border border-base-content/10 bg-base-100/60 backdrop-blur-xl p-5 flex flex-col gap-3" data-card>
+      <div class="w-full rounded-3xl border border-base-content/10 bg-base-100/60 backdrop-blur-xl p-5 @max-[300px]:p-3 flex flex-col gap-3" data-card>
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <span class=${`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.62rem] font-mono uppercase tracking-wider border ${stereo ? "border-primary/40 text-primary bg-primary/10" : "border-base-content/15 text-base-content/50"}`} data-stereo>${Icon("lucide:radio", "text-[0.9em]")}${T(t, stereo ? "stereo" : "mono")}</span>
-            ${genre ? html`<span class="rounded-full px-2 py-0.5 text-[0.62rem] uppercase tracking-wider bg-secondary/12 text-secondary border border-secondary/25" data-genre>${genre}</span>` : null}
+            ${genre ? html`<span class="rounded-full px-2 py-0.5 text-[0.62rem] uppercase tracking-wider bg-secondary/12 text-secondary border border-secondary/25 truncate max-w-[9rem] @max-[300px]:hidden" data-genre>${genre}</span>` : null}
           </div>
           <${SignalBars} level=${signal} label=${T(t, "sigLabel")} />
         </div>
@@ -180,7 +180,7 @@ export function fmradioView({ S, screen, openScreen, closeScreen }) {
       <!-- manual tuner -->
       <div class="w-full flex items-center gap-3 px-1">
         <input type="range" min=${FM_LO} max=${FM_HI} step="0.1" value=${(freq / 1e6).toFixed(1)} data-band
-          aria-label=${T(t, "band")} onInput=${(e) => setFreq(Number(e.target.value) * 1e6)} class="range range-sm range-primary flex-1" />
+          aria-label=${T(t, "band")} onInput=${(e) => setFreq(Number(e.target.value) * 1e6)} class="range range-sm range-primary flex-1 min-w-0" />
         <button data-scan aria-label=${T(t, "scan")} disabled=${scanSt.active} onClick=${scan} class="btn btn-sm btn-outline border-base-content/20 gap-1.5 shrink-0">${Icon("lucide:radar", `text-base ${scanSt.active ? "animate-spin" : ""}`)}${T(t, "scan")}</button>
       </div>
 

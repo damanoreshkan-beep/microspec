@@ -76,10 +76,12 @@ export default [
       await h.click("#edit-list"); await h.wait(200);
       await h.click("#l-del"); await h.wait(200);
       h.expect((await h.prop("#confirm", "open")) === true, "конфірм не відкрився");
+      // Back cancels the confirm only — it stacks on top, so the list sheet stays open beneath it.
       await h.back(); await h.wait(200);
       h.expect((await h.prop("#confirm", "open")) !== true, "Back не закрив конфірм");
+      h.expect((await h.count("#l-save")) === 1, "Back мав скасувати лише конфірм, не аркуш списку");
       h.expect((await h.count("[data-list]")) === before, "список видалено попри скасування");
-      await h.click("#edit-list"); await h.wait(200);
+      // sheet is still open → delete again directly, then confirm
       await h.click("#l-del"); await h.wait(200);
       await h.click("#confirm-go"); await h.wait(350);
       h.expect((await h.count("[data-list]")) === before - 1, "підтверджене видалення списку не спрацювало");

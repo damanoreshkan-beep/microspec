@@ -56,7 +56,7 @@ function saveCap(name) {
   $saved.set([{ id: uid(), name: name || fMhz(c.freq) + " FM", freq: c.freq, frame: c.frame, entries: c.entries, rolling: c.rolling }, ...$saved.get()]);
   $rec.set({ state: "idle", cap: null });
 }
-function transmit(s) { buzz(12); if (s.rolling) return; if (gate || !worker) { $tx.set(s.id); setTimeout(() => $tx.set(null), 900); return; } worker.postMessage({ type: "transmit", id: s.id, freq: s.freq, frame: s.frame, repeats: 5, txGain: $txGain.get() }); }
+function transmit(s) { buzz(12); if (gate || !worker) { $tx.set(s.id); setTimeout(() => $tx.set(null), 900); return; } worker.postMessage({ type: "transmit", id: s.id, freq: s.freq, frame: s.frame, repeats: 5, txGain: $txGain.get() }); }
 function setFreq(f) { buzz(); $freq.set(f); $rec.set({ state: "idle", cap: null }); }
 
 export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {
@@ -118,9 +118,10 @@ export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {
             <span class="font-medium truncate">${s.name}</span>
             <span class="font-mono text-[0.7rem] text-base-content/55 tabular-nums">${fMhz(s.freq)} MHz · ${s.entries}${s.rolling ? html` · <span class="text-warning">rolling</span>` : ""}</span>
           </div>
-          ${s.rolling
-            ? html`<span class="text-warning shrink-0" title=${T(t, "rollingWarn")}>${Icon("lucide:shield-alert", "text-lg")}</span>`
-            : html`<button data-transmit=${s.id} aria-label=${T(t, "transmit")} disabled=${sending} onClick=${() => transmit(s)} class=${`btn btn-sm shrink-0 gap-1.5 ${sending ? "btn-primary" : "btn-outline border-primary/40 text-primary"}`}>${Icon("lucide:radio-tower", `text-base ${sending ? "animate-pulse" : ""}`)}<span class="@max-[340px]:hidden">${T(t, sending ? "transmitting" : "transmit")}</span></button>`}
+          <div class="flex items-center gap-2 shrink-0">
+            ${s.rolling ? html`<span class="text-warning" title=${T(t, "rollingWarn")} data-rolling>${Icon("lucide:shield-alert", "text-base")}</span>` : null}
+            <button data-transmit=${s.id} aria-label=${T(t, "transmit")} disabled=${sending} onClick=${() => transmit(s)} class=${`btn btn-sm gap-1.5 ${sending ? "btn-primary" : "btn-outline border-primary/40 text-primary"}`}>${Icon("lucide:radio-tower", `text-base ${sending ? "animate-pulse" : ""}`)}<span class="@max-[340px]:hidden">${T(t, sending ? "transmitting" : "transmit")}</span></button>
+          </div>
           <button data-del aria-label=${T(t, "del")} data-haptic="bump" class="btn btn-ghost btn-sm btn-circle text-base-content/50 shrink-0" onClick=${() => del(s, undo)}>${Icon("lucide:trash-2", "text-lg")}</button>
         </div>`; })}
       </div>` : rec.state !== "captured" ? html`<div class="flex flex-col items-center text-base-content/55 py-10 gap-2 text-center px-6">${Icon("lucide:radio-receiver", "text-3xl")}<span class="text-sm">${T(t, "savedEmpty")}</span></div>` : null}

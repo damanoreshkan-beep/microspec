@@ -46,9 +46,15 @@ let pumpRaf = null, ambient = 0, seedT = -1;
 function pump() {
   clock += 1 / 60;                                             
   const live = _getBytes && !isGate ? _getBytes() : null;
-  if (!live && clock - seedT > 1.5) {                          
-    seedT = clock; const a = clock * 0.7;
-    field.strike(Math.cos(a) * R_IN * 0.35, Math.sin(a * 1.3) * R_IN * 0.35, { amp: 0.5, hue: 252 + 30 * Math.sin(a * 0.8), t: clock });
+  if (!live && clock - seedT > (isGate ? 0.85 : 1.5)) {
+    seedT = clock;
+    if (isGate) {                                              
+      const k = Math.floor(clock / 0.85) % 8, a = -Math.PI / 2 + (k / 8) * Math.PI * 2;
+      field.strike(Math.cos(a) * R_IN, Math.sin(a) * R_IN, { amp: 1, hue: 260 - k * 7, t: clock });
+    } else {                                                   
+      const a = clock * 0.7;
+      field.strike(Math.cos(a) * R_IN * 0.35, Math.sin(a * 1.3) * R_IN * 0.35, { amp: 0.55, hue: 252 + 30 * Math.sin(a * 0.8), t: clock });
+    }
   }
   field.prune(clock);
   const target = live ? meanByte(live) : Math.min(1, field.energy(clock) * 0.4);

@@ -94,7 +94,7 @@ export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {
       <!-- frequency selector -->
       <div class="flex gap-1.5 pt-0.5">
         ${OOK_FREQS.map((f) => html`<button key=${f} data-freq=${f} aria-pressed=${freq === f} onClick=${() => setFreq(f)}
-          class=${`flex-1 rounded-xl border px-2 py-1.5 font-mono text-sm transition ${freq === f ? "border-primary/50 bg-primary/12 text-primary" : "border-base-content/15 text-base-content/60"}`}>${fMhz(f)}</button>`)}
+          class=${`flex-1 min-w-0 rounded-xl border px-2 @max-[300px]:px-1 py-1.5 font-mono text-sm @max-[300px]:text-[0.7rem] transition ${freq === f ? "border-primary/50 bg-primary/12 text-primary" : "border-base-content/15 text-base-content/60"}`}>${fMhz(f)}</button>`)}
       </div>
 
       <!-- just-captured signal, pending save -->
@@ -120,7 +120,7 @@ export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {
           </div>
           ${s.rolling
             ? html`<span class="text-warning shrink-0" title=${T(t, "rollingWarn")}>${Icon("lucide:shield-alert", "text-lg")}</span>`
-            : html`<button data-transmit=${s.id} aria-label=${T(t, "transmit")} disabled=${sending} onClick=${() => transmit(s)} class=${`btn btn-sm shrink-0 gap-1.5 ${sending ? "btn-primary" : "btn-outline border-primary/40 text-primary"}`}>${Icon(sending ? "lucide:radio-tower" : "lucide:radio-tower", `text-base ${sending ? "animate-pulse" : ""}`)}${T(t, sending ? "transmitting" : "transmit")}</button>`}
+            : html`<button data-transmit=${s.id} aria-label=${T(t, "transmit")} disabled=${sending} onClick=${() => transmit(s)} class=${`btn btn-sm shrink-0 gap-1.5 ${sending ? "btn-primary" : "btn-outline border-primary/40 text-primary"}`}>${Icon("lucide:radio-tower", `text-base ${sending ? "animate-pulse" : ""}`)}<span class="@max-[340px]:hidden">${T(t, sending ? "transmitting" : "transmit")}</span></button>`}
           <button data-del aria-label=${T(t, "del")} data-haptic="bump" class="btn btn-ghost btn-sm btn-circle text-base-content/50 shrink-0" onClick=${() => del(s, undo)}>${Icon("lucide:trash-2", "text-lg")}</button>
         </div>`; })}
       </div>` : rec.state !== "captured" ? html`<div class="flex flex-col items-center text-base-content/55 py-10 gap-2 text-center px-6">${Icon("lucide:radio-receiver", "text-3xl")}<span class="text-sm">${T(t, "savedEmpty")}</span></div>` : null}

@@ -34,8 +34,12 @@ export default [
   {
     name: "Flow генерує лінію", run: async (h) => {
       await ready(h);
-      await h.tap("#flow"); await h.wait(1300);  // ~480ms write-on sweep (setInterval, throttles under CI load) then auto-play — give real headroom
-      h.expect((await h.attr("#play", "data-playing")) === "true", "Flow не почав грати");
+      await h.tap("#flow");
+      // The write-on sweep is a ~480ms setInterval that THROTTLES under CI load, so a fixed wait races it —
+      // poll for auto-play (up to ~6s) instead of guessing a duration. This is what made the test flaky.
+      let flowing = false;
+      for (let i = 0; i < 20; i++) { await h.wait(300); if ((await h.attr("#play", "data-playing")) === "true") { flowing = true; break; } }
+      h.expect(flowing, "Flow не почав грати");
       await h.tap("#play"); await h.wait(150);
       h.expect((await h.attr("#play", "data-playing")) !== "true", "не зупинився");
     },

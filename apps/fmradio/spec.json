@@ -4,6 +4,7 @@
   "category": "hackrf",
   "tabs": [
     { "id": "tune", "type": "tool", "icon": "lucide:radio", "label": "tabTune", "view": "fmradioView" },
+    { "id": "saved", "type": "tool", "icon": "lucide:bookmark", "label": "tabSaved", "view": "savedView" },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
   ],
   "profile": {

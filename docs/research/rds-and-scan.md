@@ -79,3 +79,26 @@ end-to-end test. Real-signal robustness (SNR, multipath) is inherently on-hardwa
 Now-playing card: freq + **station name (PS)** + PTY genre badge + stereo(pilot) + signal + **RadioText** line.
 Seek ⏮/⏭ (next valid station), Scan-band → station list (freq + PS, tap to tune, persisted). Band slider stays.
 Gate/demo seeds a mock station (PS/PTY/RT/stereo) + a mock scan list so the populated screen renders.
+
+## RDS stable/accumulating display (v2 — the "car radio" behaviour)
+
+Sources: windytan/redsea (`rdsstring.cc` latch `last_complete_string_`), mathertel/Radio (2-of-3 PS vote),
+Si4735/TEF668x driver docs, RDS Forum (dynamic-PS). Core rule: **decouple display from decode — latch the last
+fully-confirmed value; only swap on a NEW fully-confirmed value; never clear on noise/sync-loss (freeze).**
+
+- **PS anti-flicker**: 3-deep shift register per char position; a position votes 2-of-3 AND only after ≥2 real
+  receptions (a `fill` counter — never confirm the initial zeros → no false acquisition transient). Latch
+  `stablePS`, publish on change only. Bad (CRC-fail) blocks never enter the buffer.
+- **Dynamic PS** (stations scroll text through the 8-char PS): ≥3 distinct *confirmed* PS within ~90 groups
+  (≈8 s) ⇒ `dynamic=true`; freeze the name slot, route the churning text to a separate `scroll` line.
+- **RadioText**: debounce the A/B flag (commit only after ≥2 consecutive good blocks) before clearing the
+  buffer; latch the last COMPLETE message once (`rtPublished`) so a stray group can't corrupt it; complete at
+  the first `0x0D` or all 64 chars. Hold last complete on signal loss.
+- **Timing = a group counter**, not wall-clock → the whole layer stays pure + unit-tested (13 rds tests:
+  framing, end-to-end DSP + robustness, PS latch-through-noise, dynamic-PS freeze, RT A/B debounce).
+- **Accumulation**: a fast band-scan CANNOT decode RDS (needs ≥2–4 s dwell) — names come only from listening.
+  Key remembered stations by frequency (PI stored too, for future AF de-dup): on a confirmed non-dynamic PS at
+  the tuned freq, write `known[freq]={ps,pi,pty}` and propagate into the scan + saved lists, so the lists fill
+  with names over time and a revisited frequency shows its name instantly.
+- **Saved stations** (favourites): persisted list; star toggles on the now-playing card; reversible delete via
+  the runtime undo-toast (`store.undo`), on a dedicated Saved tab.

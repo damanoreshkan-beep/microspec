@@ -2,7 +2,7 @@ import { HackRF } from "/_rt/hackrf.js";
 import { capture, isolateFrame, renderOOK } from "/_rt/ook.js";
 
 const SR = 2_000_000, TX_OFFSET = 250_000, CAP_BLOCKS = 28, MAX_XFER = 262144;
-const ROLLING_MIN = 48;                                  
+const ROLLING_MIN = 110;
 const post = (m, transfer) => self.postMessage(m, transfer || []);
 
 let rx = null;

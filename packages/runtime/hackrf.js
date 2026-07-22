@@ -10,6 +10,7 @@
 export const VENDOR_ID = 0x1d50, PRODUCT_ID = 0x6089;
 export const USB_FILTERS = [{ vendorId: VENDOR_ID, productId: PRODUCT_ID }];
 export const RX_ENDPOINT = 1;              // bulk IN — firmware RX_ENDPOINT_ADDRESS = (IN | 1)
+export const TX_ENDPOINT = 2;              // bulk OUT — firmware TX_ENDPOINT_ADDRESS = (OUT | 2)
 export const TRANSFER_SIZE = 262144;       // firmware TRANSFER_BUFFER_SIZE (256 KiB) = 131072 complex samples
 
 // enum hackrf_vendor_request (subset used for RX)
@@ -21,6 +22,7 @@ export const REQUEST = {
   AMP_ENABLE: 17,
   SET_LNA_GAIN: 19,
   SET_VGA_GAIN: 20,
+  SET_TXVGA_GAIN: 21,
 };
 export const MODE = { OFF: 0, RECEIVE: 1, TRANSMIT: 2 };
 
@@ -44,6 +46,8 @@ export function setFreqPayload(hz) {
 // LNA (IF) gain: 0–40 dB in 8-dB steps. VGA (baseband) gain: 0–62 dB in 2-dB steps. Both passed in `index`.
 export const clampLnaGain = (db) => Math.max(0, Math.min(40, Math.round(db / 8) * 8));
 export const clampVgaGain = (db) => Math.max(0, Math.min(62, Math.round(db / 2) * 2));
+// TX IF (VGA) gain: 0–47 dB in 1-dB steps, passed in `index`.
+export const clampTxVgaGain = (db) => Math.max(0, Math.min(47, Math.round(db)));
 
 // MAX2837 baseband filter bandwidths (Hz). Round DOWN to the largest valid ≤ request (min if below range).
 export const BASEBAND_FILTERS = [1_750_000, 2_500_000, 3_500_000, 5_000_000, 5_500_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000, 12_000_000, 14_000_000, 15_000_000, 20_000_000, 24_000_000, 28_000_000];
@@ -85,7 +89,13 @@ export class HackRF {
   setAmp(on) { return this._out(REQUEST.AMP_ENABLE, on ? 1 : 0, 0); }
   setLnaGain(db) { return this._in(REQUEST.SET_LNA_GAIN, 0, clampLnaGain(db), 1); }
   setVgaGain(db) { return this._in(REQUEST.SET_VGA_GAIN, 0, clampVgaGain(db), 1); }
+  setTxVgaGain(db) { return this._in(REQUEST.SET_TXVGA_GAIN, 0, clampTxVgaGain(db), 1); }
   setMode(mode) { return this._out(REQUEST.SET_TRANSCEIVER_MODE, mode, 0); }
+
+  // ---- transmit: one pre-rendered burst fits in a single bulk-OUT, so no streaming/underflow (mobile-safe) ----
+  startTx() { return this.setMode(MODE.TRANSMIT); }
+  write(buffer) { return this.dev.transferOut(TX_ENDPOINT, buffer); }   // interleaved int8 IQ
+  async stopTx() { try { await this.setMode(MODE.OFF); } catch { /* */ } try { await this.setAmp(false); } catch { /* */ } }
 
   // One bulk read of int8 IQ. The worker keeps several of these in flight so the USB stack never stalls.
   async read() { const r = await this.dev.transferIn(RX_ENDPOINT, TRANSFER_SIZE); return r.data ? new Uint8Array(r.data.buffer) : new Uint8Array(0); }

@@ -132,6 +132,17 @@
     "category": "feeds"
   },
   {
+    "id": "subclone",
+    "title": "Клонер пультів",
+    "tagline": "Захопи та відтвори свої фіксовані-код пульти через HackRF",
+    "glyph": "lucide:radio-receiver",
+    "bg": "#0A0A0B",
+    "fg": "#F0A868",
+    "href": "./subclone/",
+    "version": "1.0",
+    "category": "hackrf"
+  },
+  {
     "id": "books",
     "title": "Книги",
     "tagline": "Каталог безкоштовних книг Project Gutenberg — 78 000+ творів, опис українською",

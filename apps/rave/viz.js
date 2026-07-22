@@ -102,7 +102,7 @@ function makeRing(canvas, THREE) {
         dummy.rotation.set(0, -a, 0);
         dummy.scale.set(1, 0.1 + lv * 2.6, 1);
         dummy.updateMatrix(); bars.setMatrixAt(i, dummy.matrix);
-        bars.setColorAt(i, col.setHSL(((st.hue + i * 2) % 360) / 360, 0.72, 0.42 + lv * 0.4));
+        bars.setColorAt(i, col.setHSL(((st.hue + i * 3) % 360) / 360, 0.82, 0.36 + lv * 0.32));
       }
       bars.instanceMatrix.needsUpdate = true; if (bars.instanceColor) bars.instanceColor.needsUpdate = true;
       const pulse = 0.55 + st.bands.bass * 0.9;
@@ -126,14 +126,15 @@ function makeTerrain(canvas, THREE) {
   const cam = new THREE.PerspectiveCamera(62, 1, 0.1, 100);
   const group = new THREE.Group(); scene.add(group);
 
-  const geo = new THREE.BoxGeometry(0.34, 1, 0.34); geo.translate(0, 0.5, 0);
+  // Wider than the gap so the field reads as a lit ridge, not a black picket fence.
+  const geo = new THREE.BoxGeometry(0.5, 1, 0.42); geo.translate(0, 0.5, 0);
   const mat = new THREE.MeshBasicMaterial({ transparent: true, toneMapped: false });
   const mesh = new THREE.InstancedMesh(geo, mat, ROWS * COLS);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   group.add(mesh);
   const grid = new Float32Array(ROWS * COLS), col = new THREE.Color(), dummy = new THREE.Object3D();
-  const SX = 0.62, SZ = 0.9, MAXH = 2.6;
-  for (let i = 0; i < ROWS * COLS; i++) mesh.setColorAt(i, col.setHSL(0.6, 0.6, 0.2));
+  const SX = 0.62, SZ = 0.92, MAXH = 1.35, BASE = -1.7;
+  for (let i = 0; i < ROWS * COLS; i++) mesh.setColorAt(i, col.setHSL(0.6, 0.6, 0.08));
 
   return {
     resize(w, h) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); },
@@ -141,16 +142,20 @@ function makeTerrain(canvas, THREE) {
       advanceTerrain(grid, ROWS, COLS, st.levels);
       for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
         const idx = r * COLS + c, v = grid[idx];
-        dummy.position.set((c - (COLS - 1) / 2) * SX, -1.5, -r * SZ - 0.5);
+        dummy.position.set((c - (COLS - 1) / 2) * SX, BASE, -r * SZ - 0.5);
         dummy.scale.set(1, 0.02 + v * MAXH, 1);
         dummy.updateMatrix(); mesh.setMatrixAt(idx, dummy.matrix);
-        const fade = 1 - (r / ROWS) * 0.72;
-        mesh.setColorAt(idx, col.setHSL(((st.hue + r * 3) % 360) / 360, 0.62, (0.12 + v * 0.5) * fade));
+        // A BACKGROUND: dim and desaturated so it recedes behind the transport instead of fighting it; the
+        // ridge glows only where the beat is loud. Far rows fade toward the horizon.
+        const fade = 1 - (r / ROWS) * 0.5;
+        mesh.setColorAt(idx, col.setHSL(((st.hue + r * 3) % 360) / 360, 0.55, (0.045 + v * 0.24) * fade));
       }
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-      group.rotation.y = heading * 0.35 + p.x * 0.12;
-      cam.position.set(p.x * 0.5, 1.35 - p.y * 0.3, 3.1 + st.bands.bass * 0.25);
-      cam.lookAt(0, 0.1, -6);
+      group.rotation.y = heading * 0.3 + p.x * 0.1;
+      // Camera high and pitched DOWN so the field lies as a floor receding to a low horizon — the top two
+      // thirds of the screen stay clean dark for the ring + controls.
+      cam.position.set(p.x * 0.5, 2.7 - p.y * 0.3, 4.8 + st.bands.bass * 0.2);
+      cam.lookAt(0, -1.6, -7.5);
       renderer.render(scene, cam);
     },
     dispose() { geo.dispose(); mat.dispose(); renderer.dispose(); },

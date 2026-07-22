@@ -112,18 +112,25 @@ function makeTerrain(canvas, THREE) {
   const group = new THREE.Group(); scene.add(group);
 
   const geo = new THREE.PlaneGeometry(30, 34, COLS - 1, ROWS - 1); geo.rotateX(-Math.PI / 2);
-  const mat = new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.5, toneMapped: false });
+  geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3));
+  const mat = new THREE.MeshBasicMaterial({ wireframe: true, vertexColors: true, transparent: true, opacity: 0.6, toneMapped: false });
   const mesh = new THREE.Mesh(geo, mat); group.add(mesh);
-  const pos = geo.attributes.position, grid = new Float32Array(ROWS * COLS);
-  const HMAX = 2.4;
+  const pos = geo.attributes.position, colAttr = geo.attributes.color, grid = new Float32Array(ROWS * COLS), col = new THREE.Color();
+  const HMAX = 3.3;
 
   return {
     resize(w, h) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); },
     frame(st, p) {
       advanceTerrain(grid, ROWS, COLS, st.levels);
-      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) pos.setY(r * COLS + c, grid[(ROWS - 1 - r) * COLS + c] * HMAX);
-      pos.needsUpdate = true;
-      mat.color.setHSL((st.hue % 360) / 360, 0.62, 0.5); mat.opacity = 0.3 + st.bands.bass * 0.35;   
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        const vi = r * COLS + c, vh = Math.pow(grid[(ROWS - 1 - r) * COLS + c], 1.7);   
+        pos.setY(vi, vh * HMAX);
+        const fade = 1 - (r / ROWS) * 0.55, hue = ((st.hue + c * 5 + r * 2) % 360 + 360) % 360;
+        col.setHSL(hue / 360, 0.72, (0.14 + vh * 0.5) * fade);                          
+        colAttr.setXYZ(vi, col.r, col.g, col.b);
+      }
+      pos.needsUpdate = true; colAttr.needsUpdate = true;
+      mat.opacity = 0.4 + st.bands.bass * 0.35;   
       group.rotation.y = st.turn * 0.6 + p.x * 0.08;
       cam.position.set(p.x * 0.4, 4.4 - p.y * 0.35, 7.2); cam.lookAt(0, -0.6, -5);
       renderer.render(scene, cam);

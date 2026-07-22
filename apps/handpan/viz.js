@@ -14,9 +14,9 @@ function hasWebGL() {
 
 const COLS = 28, ROWS = 28, SP = 0.34;                         
 const HX = ((COLS - 1) * SP) / 2, HZ = ((ROWS - 1) * SP) / 2;
-const R_IN = 0.5 * Math.min(HX, HZ);                           
+const R_IN = 0.4 * Math.min(HX, HZ);                           
 const MAXH = 0.4, DOT = 0.044;                                 
-const field = RippleField({ speed: 2.8, wavelength: 1.25, width: 0.66, life: 1.0, spread: 0.42, max: 10 });
+const field = RippleField({ speed: 2.4, wavelength: 1.2, width: 0.6, life: 0.9, spread: 0.55, max: 10 });
 
 let _getBytes = null;
 export function bindAudio(fn) { _getBytes = fn; }
@@ -46,10 +46,10 @@ let pumpRaf = null, ambient = 0, seedT = -1;
 function pump() {
   clock += 1 / 60;                                             
   const live = _getBytes && !gate ? _getBytes() : null;
-  if (!live && clock - seedT > (gate ? 0.85 : 1.5)) {
+  if (!live && clock - seedT > (gate ? 1.1 : 1.5)) {
     seedT = clock;
     if (gate) {                                                
-      const k = Math.floor(clock / 0.85) % 8, a = -Math.PI / 2 + (k / 8) * Math.PI * 2;
+      const k = Math.floor(clock / 1.1) % 8, a = -Math.PI / 2 + (k / 8) * Math.PI * 2;
       field.strike(Math.cos(a) * R_IN, Math.sin(a) * R_IN, { amp: 1, hue: 260 - k * 7, t: clock });
     } else {                                                   
       const a = clock * 0.7;
@@ -103,13 +103,13 @@ function makeField(canvas, THREE) {
     frame(st, p) {
       const t = st.clock;
       for (let i = 0; i < ROWS * COLS; i++) {
-        const s = field.sample(px[i], pz[i], t), glow = field.glow(px[i], pz[i], t);
-        const energy = Math.min(1.4, Math.max(Math.abs(s.h), glow));   
-        const lift = Math.min(1, energy * 1.9);
-        dummy.position.set(px[i], (s.h * 0.6 + glow * 0.5) * MAXH, pz[i]);   
-        dummy.scale.setScalar(0.5 + energy * 0.95);           
+        const s = field.sample(px[i], pz[i], t), glow = field.glow(px[i], pz[i], t, 0.9, 0.8);
+        const energy = Math.min(1.4, Math.max(Math.abs(s.h) * 0.5, glow));   
+        const lift = Math.min(1, energy * 2.0);
+        dummy.position.set(px[i], (s.h * 0.5 + glow * 0.55) * MAXH, pz[i]);
+        dummy.scale.setScalar(0.5 + energy * 0.9);            
         dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix);
-        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.62 - lift * 0.18, (0.045 + lift * 0.62 + st.amb * 0.04) * fade[i]);
+        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.62 - lift * 0.16, (0.045 + lift * 0.66 + st.amb * 0.04) * fade[i]);
         mesh.setColorAt(i, col);                              
       }
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;

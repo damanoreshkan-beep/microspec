@@ -103,12 +103,13 @@ function makeField(canvas, THREE) {
     frame(st, p) {
       const t = st.clock;
       for (let i = 0; i < ROWS * COLS; i++) {
-        const s = field.sample(px[i], pz[i], t), mag = Math.min(1.4, Math.abs(s.h));
-        const lift = Math.min(1, mag * 2.4);                  
-        dummy.position.set(px[i], s.h * MAXH, pz[i]);
-        dummy.scale.setScalar(0.5 + mag * 0.6);               
+        const s = field.sample(px[i], pz[i], t), glow = field.glow(px[i], pz[i], t);
+        const energy = Math.min(1.4, Math.max(Math.abs(s.h), glow));   
+        const lift = Math.min(1, energy * 1.9);
+        dummy.position.set(px[i], (s.h * 0.6 + glow * 0.5) * MAXH, pz[i]);   
+        dummy.scale.setScalar(0.5 + energy * 0.95);           
         dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix);
-        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.6 - lift * 0.16, (0.045 + lift * 0.58 + st.amb * 0.04) * fade[i]);
+        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.62 - lift * 0.18, (0.045 + lift * 0.62 + st.amb * 0.04) * fade[i]);
         mesh.setColorAt(i, col);                              
       }
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;

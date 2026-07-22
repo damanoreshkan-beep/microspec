@@ -103,7 +103,7 @@ function makeRing(canvas, THREE) {
   };
 }
 
-const ROWS = 20, COLS = 31;   
+const ROWS = 20, COLS = 30;
 function makeTerrain(canvas, THREE) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(DPR());
@@ -111,11 +111,7 @@ function makeTerrain(canvas, THREE) {
   const cam = new THREE.PerspectiveCamera(62, 1, 0.1, 100);
   const group = new THREE.Group(); scene.add(group);
 
-  const floorGeo = new THREE.PlaneGeometry(90, 100); floorGeo.rotateX(-Math.PI / 2);
-  const floorMat = new THREE.MeshBasicMaterial({ toneMapped: false });
-  const floor = new THREE.Mesh(floorGeo, floorMat); floor.position.y = -1.5; group.add(floor);
-
-  const geo = new THREE.BoxGeometry(0.56, 1, 0.42); geo.translate(0, 0.5, 0);   
+  const geo = new THREE.BoxGeometry(0.34, 1, 0.34); geo.translate(0, 0.5, 0);   
   const mat = new THREE.MeshBasicMaterial({ transparent: true, toneMapped: false });
   const mesh = new THREE.InstancedMesh(geo, mat, ROWS * COLS);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -137,13 +133,12 @@ function makeTerrain(canvas, THREE) {
         mesh.setColorAt(idx, col.setHSL(((st.hue + r * 3) % 360) / 360, 0.62, (0.12 + v * 0.5) * fade));
       }
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-      floorMat.color.setHSL((st.hue % 360) / 360, 0.4, 0.05);   
       group.rotation.y = st.turn * 0.5 + p.x * 0.12;
       cam.position.set(p.x * 0.5, 1.7 - p.y * 0.3, 3.1 + st.bands.bass * 0.25);   
       cam.lookAt(0, -0.2, -7);
       renderer.render(scene, cam);
     },
-    dispose() { geo.dispose(); mat.dispose(); floorGeo.dispose(); floorMat.dispose(); renderer.dispose(); },
+    dispose() { geo.dispose(); mat.dispose(); renderer.dispose(); },
   };
 }
 

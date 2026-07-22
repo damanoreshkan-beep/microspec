@@ -37,5 +37,6 @@
   "openApp": "Open",
   "newBadge": "NEW",
   "updBadge": "UPD",
-  "newVersion": "new version"
+  "newVersion": "new version",
+  "installed": "Installed"
 }

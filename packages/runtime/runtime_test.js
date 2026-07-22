@@ -11,7 +11,7 @@ import { meanFix, stationaryTail, segErr, totalErr, usableFix, BIAS_FRAC } from 
 import { hapticFor } from "./sensors.js";
 import { eaqiBand, pollutantBand, pollenBand, AQI_BANDS, POLLEN_BANDS } from "./air.js";
 import { feedback, solved, makeSecret } from "./codebreak.js";
-import { rgbToHex, rgbToHsl, avgColor, luminance, ink, palette } from "./colour.js";
+import { rgbToHex, rgbToHsl, avgColor, luminance, ink, palette, hexRgb, iconTint } from "./colour.js";
 import { hueToNote, paletteToChord, brightnessToCutoff, satToDetune, SCALES } from "./chroma.js";
 import { motionCells, motionEnergy, centroidOf } from "./motion.js";
 import { analyzeQR } from "./urlsafe.js";
@@ -1451,4 +1451,33 @@ Deno.test("RippleField: deterministic (no Math.random) — identical sequences m
   const a = build().sample(2, 2, 0.7), b = build().sample(2, 2, 0.7);
   assertEquals(a.h, b.h, "same height");
   assertEquals(a.hue, b.hue, "same hue");
+});
+
+// ---- colour.js — adaptive app-icon tint ----
+Deno.test("hexRgb: parses #rrggbb, #rgb shorthand, tolerates junk", () => {
+  assertEquals(hexRgb("#ECECEE"), [236, 236, 238]);
+  assertEquals(hexRgb("#fff"), [255, 255, 255]);
+  assertEquals(hexRgb("E9458B"), [233, 69, 139]);
+  assertEquals(hexRgb("#zzz"), [0, 0, 0]);
+});
+
+Deno.test("iconTint: dark theme keeps the brand tile + vibrant glyph", () => {
+  const it = iconTint("#0C1014", "#E9458B", true);
+  assert(it.tile.includes("#0C1014"), "dark tile built on the brand bg");
+  assertEquals(it.glyph, "#E9458B", "dark glyph is the raw accent");
+});
+
+Deno.test("iconTint: light theme → pastel accent tile, no black square", () => {
+  const it = iconTint("#0C1014", "#E9458B", false);
+  assert(it.tile.includes("#fff") && it.tile.includes("#E9458B"), "light tile is the accent mixed into white");
+  assert(!it.tile.includes("#0C1014"), "the raw near-black bg is NOT the light tile");
+  assert(it.glyph.includes("#E9458B"), "light glyph carries the accent");
+});
+
+Deno.test("iconTint: inky/neutral accent falls back to the brand bg (stays legible on light)", () => {
+  const it = iconTint("#0A0A0F", "#ECECEE", false);   // ink-white accent would wash out on white
+  assert(it.tile.includes("#0A0A0F"), "light tile colours from the brand bg, not the near-white accent");
+  assert(!it.glyph.includes("#ECECEE"), "glyph is not the invisible near-white accent");
+  // a vibrant-but-light accent (yellow) is NOT treated as inky — it keeps its own colour
+  assert(iconTint("#231708", "#FFD21E", false).tile.includes("#FFD21E"), "saturated yellow stays the hue source");
 });

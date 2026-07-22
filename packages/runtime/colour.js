@@ -36,6 +36,27 @@ export function luminance([r, g, b]) {
 }
 export const ink = (rgb) => (luminance(rgb) > 0.4 ? "#000000" : "#FFFFFF");
 
+// "#rgb" / "#rrggbb" → [r,g,b] 0..255. Tolerant: strips '#', expands shorthand, pads/clamps garbage to 0.
+export function hexRgb(hex) {
+  const s = String(hex).replace(/^#/, "");
+  const h = (s.length === 3 ? s.replace(/(.)/g, "$1$1") : s).padEnd(6, "0").slice(0, 6);
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) || 0);
+}
+
+// Adaptive app-icon tint. Apps declare a dark brand `bg` + an accent `fg`; a raw dark bg reads as a heavy
+// black square on the LIGHT theme, so derive a {tile, glyph} pair that stays colourful AND legible in BOTH
+// themes — the same icon adapts with the theme instead of being a flat black square. The colour source is the
+// accent, unless it's inky/near-neutral-light (low saturation + high luminance, e.g. an ink-white accent),
+// in which case we fall back to the brand `bg` so a light tile isn't a washed-out white with an invisible
+// glyph. Returns CSS strings (color-mix, oklch) — resolved by the browser, so no JS re-tint per pixel.
+export function iconTint(bg, fg, dark) {
+  const rgb = hexRgb(fg), [, sat] = rgbToHsl(rgb);
+  const hue = (sat < 18 && luminance(rgb) > 0.5) ? bg : fg;   // inky accent → colour from the brand bg
+  return dark
+    ? { tile: `linear-gradient(145deg, color-mix(in oklch, ${hue} 24%, ${bg}), ${bg})`, glyph: fg }
+    : { tile: `linear-gradient(145deg, color-mix(in oklch, ${hue} 22%, #fff), color-mix(in oklch, ${hue} 8%, #fff))`, glyph: `color-mix(in oklch, ${hue} 84%, #000)` };
+}
+
 // Dominant palette of an RGBA buffer via median cut: repeatedly split the colour box with the widest
 // channel spread at its median, until k boxes, then average each. Deterministic — same pixels → same
 // palette (shareable, gate-stable). Returns up to k [r,g,b]; fewer only if the image has fewer colours.

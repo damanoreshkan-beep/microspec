@@ -1547,3 +1547,12 @@ Deno.test("fmtMoney: grouped thousands, symbol side per currency", () => {
   assertEquals(fmtMoney(199.9, "EUR"), "€199,90");
   assertEquals(fmtMoney(null, "UAH"), "");
 });
+
+Deno.test("RippleField.glow: a soft halo, bright at the strike, fading with distance + time", () => {
+  const f = RippleField();
+  f.strike(0, 0, { amp: 1, t: 0 });
+  const c0 = f.glow(0, 0, 0.05), near = f.glow(0.5, 0, 0.05), far = f.glow(4, 0, 0.05);
+  assert(c0 > near && near > far, "brightest at the strike point, falls off with distance");
+  assert(f.glow(0, 0, 0.05) > f.glow(0, 0, 1.2), "fades over time");
+  assert(far < 0.05, "localised — negligible far away");
+});

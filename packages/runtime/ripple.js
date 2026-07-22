@@ -55,6 +55,20 @@ export function RippleField(opts = {}) {
     },
     height(x, y, t) { return this.sample(x, y, t).h; },
 
+    // Soft radial HALO at each strike — bright at the struck point, fading over time — the "glow under the
+    // finger", distinct from the expanding wavefront ring (a thin ring of fine grains alone reads as noise, not
+    // a glow). gr = halo radius (world), gl = halo life (s). Returns a 0..~amp glow scalar at (x,y,t).
+    glow(x, y, t, gr = 1.05, gl = 0.85) {
+      let g = 0;
+      for (let i = 0; i < src.length; i++) {
+        const s = src[i], age = t - s.t0; if (age < 0) continue;
+        const e = s.amp * Math.exp(-age / gl); if (e < 0.01) continue;
+        const dx = x - s.x, dy = y - s.y;
+        g += e * Math.exp(-(dx * dx + dy * dy) / (gr * gr));
+      }
+      return g;
+    },
+
     // total live energy (Σ amp·decay) — drives the global breathing/glow when there's no live audio to tap.
     energy(t) {
       let e = 0;

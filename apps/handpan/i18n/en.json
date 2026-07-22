@@ -45,6 +45,7 @@
   "prevScale": "Previous scale",
   "nextScale": "Next scale",
   "noAudio": "Audio is unavailable in this browser",
+  "immersion": "Depth — tilt to look around",
   "toastSaved": "Saved",
   "toastRemoved": "Removed",
   "toastDup": "Already saved as “{name}”",

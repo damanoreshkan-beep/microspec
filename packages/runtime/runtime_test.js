@@ -1780,3 +1780,39 @@ Deno.test("rssiFromBytes: stronger IQ → higher dBFS, monotone", () => {
   assert(rssiFromBytes(mk(100)) > rssiFromBytes(mk(20)), "louder signal reads higher");
   assert(rssiFromBytes(mk(100)) < 0, "dBFS is ≤ 0 (relative to full scale)");
 });
+
+// ---- RDS stable/accumulating display layer ----
+const g0A = (ps, seg, ok = [1, 1, 1, 1]) => ({ a: 0x1234, b: (10 << 5) | (seg & 3), c: 0, d: (ps.charCodeAt(seg * 2) << 8) | ps.charCodeAt(seg * 2 + 1), ok });
+const feedPS = (p, ps, reps) => { for (let r = 0; r < reps; r++) for (let s = 0; s < 4; s++) p.group(g0A(ps, s)); };
+const g2A = (str, addr, ab = 0, ok = [1, 1, 1, 1]) => { const cc = (i) => (i < str.length ? str.charCodeAt(i) : 0x20); return { a: 0x1234, b: 0x2000 | (ab << 4) | (addr & 0xF), c: (cc(addr * 4) << 8) | cc(addr * 4 + 1), d: (cc(addr * 4 + 2) << 8) | cc(addr * 4 + 3), ok }; };
+
+Deno.test("rds PS latch: a confirmed name survives noise + dropout (never cleared)", () => {
+  const p = new RdsParser();
+  feedPS(p, "TEST FM ", 3);
+  assertEquals(p.snapshot().ps, "TEST FM");
+  // a single differing group must not flip a 2-of-3-confirmed name
+  for (let s = 0; s < 4; s++) p.group(g0A("HITS ONE", s));
+  assertEquals(p.snapshot().ps, "TEST FM", "one group can't overwrite a confirmed name");
+  // CRC-failed (bad block-D) groups write nothing → name holds
+  for (let r = 0; r < 3; r++) for (let s = 0; s < 4; s++) p.group(g0A("XXXXXXXX", s, [1, 1, 1, 0]));
+  assertEquals(p.snapshot().ps, "TEST FM", "bad blocks never reach the buffer");
+});
+
+Deno.test("rds dynamic PS: a churning name is detected and kept out of the name slot", () => {
+  const p = new RdsParser();
+  feedPS(p, "AAAA1111", 2); feedPS(p, "BBBB2222", 2); feedPS(p, "CCCC3333", 2);
+  const s = p.snapshot();
+  assert(s.dynamic, "three distinct confirmed names → dynamic");
+  assert(s.ps !== "CCCC3333", "name slot is frozen, not following the scroll");
+  assertEquals(s.scroll, "CCCC3333", "latest frame is exposed as scroll text");
+});
+
+Deno.test("rds RadioText: A/B flag debounced, last complete message latched", () => {
+  const p = new RdsParser();
+  for (let r = 0; r < 3; r++) { p.group(g2A("HELLO\r", 0, 0)); p.group(g2A("HELLO\r", 1, 0)); }
+  assertEquals(p.snapshot().rt, "HELLO");
+  p.group(g2A("XXXXXX", 0, 1));                 // a single flipped A/B must NOT wipe the text
+  assertEquals(p.snapshot().rt, "HELLO", "one flipped A/B can't clear RadioText");
+  for (let r = 0; r < 3; r++) { p.group(g2A("WORLD\r", 0, 1)); p.group(g2A("WORLD\r", 1, 1)); } // sustained new message
+  assertEquals(p.snapshot().rt, "WORLD", "a debounced new message replaces atomically");
+});

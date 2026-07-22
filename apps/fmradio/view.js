@@ -18,6 +18,7 @@ import { wakeLock } from "/_rt/sensors.js";
 import { holdAudio } from "/_rt/mediasession.js";
 import { gate } from "/_rt/gate.js";
 import { OUT_RATE } from "/_rt/fmradio.js";
+import { ptyName } from "/_rt/rds.js";
 import { usbSupported, USB_FILTERS } from "/_rt/hackrf.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -34,6 +35,8 @@ const $connected = atom(false), $playing = atom(false), $signal = atom(0), $usbO
 const $rds = atom({ ...EMPTY_RDS }), $stereo = atom(false), $scan = atom({ active: false, frac: 0 });
 const $freq = persistentAtom("fmradio:freq", 100e6, { encode: String, decode: Number });
 const $stations = persistentAtom("fmradio:stations", [], JC([]));
+const $known = persistentAtom("fmradio:known", {}, JC({}));   // accumulated station names, keyed by frequency
+const $saved = persistentAtom("fmradio:saved", [], JC([]));   // user favourites
 const $vol = persistentAtom("fmradio:vol", 0.8, { encode: String, decode: Number });
 const $lna = persistentAtom("fmradio:lna", 16, { encode: String, decode: Number });
 const $vga = persistentAtom("fmradio:vga", 20, { encode: String, decode: Number });
@@ -67,7 +70,7 @@ function startWorker() {
     const m = e.data;
     if (m.type === "audio") pushAudio(new Float32Array(m.buf));
     else if (m.type === "signal") { $signal.set(rssiLevel(m.rssi)); $stereo.set(!!m.stereo); }
-    else if (m.type === "rds") { const { type, ...s } = m; $rds.set(s); if (np) np.meta(npTitle()); }
+    else if (m.type === "rds") { const { type, ...s } = m; $rds.set(s); if (s.ps && !s.dynamic) rememberStation($freq.get(), s); if (np) np.meta(npTitle()); }
     else if (m.type === "scanStart") $scan.set({ active: true, frac: 0 });
     else if (m.type === "scanProgress") $scan.set({ active: true, frac: m.frac ?? $scan.get().frac });
     else if (m.type === "scanDone") { mergeStations(m.stations); $scan.set({ active: false, frac: 1 }); }
@@ -77,10 +80,23 @@ function startWorker() {
   worker.postMessage({ type: "start", freq: $freq.get(), lna: $lna.get(), vga: $vga.get(), amp: $amp.get(), tcUs: $tc.get() });
 }
 function stopWorker() { if (!worker) return; try { worker.postMessage({ type: "stop" }); } catch { /* */ } const w = worker; worker = null; setTimeout(() => { try { w.terminate(); } catch { /* */ } }, 400); }
-// keep any station the scan found, carrying a known PS name forward if we had one
+// keep any station the scan found, carrying a known/accumulated PS name forward if we have one
 function mergeStations(found) {
-  const prev = $stations.get();
-  $stations.set(found.map((s) => { const old = prev.find((p) => p.freq === s.freq); return { ...s, ps: old?.ps || "" }; }));
+  const known = $known.get();
+  $stations.set(found.map((s) => ({ ...s, ps: known[s.freq]?.ps || "" })));
+}
+// accumulate a confirmed station name against its frequency, and propagate into the scan + saved lists
+function rememberStation(freq, s) {
+  const k = { ...$known.get() }; k[freq] = { ps: s.ps, pi: s.pi, pty: s.pty }; $known.set(k);
+  const patch = (atom) => { const list = atom.get(); const i = list.findIndex((x) => x.freq === freq); if (i >= 0 && list[i].ps !== s.ps) { const n = [...list]; n[i] = { ...n[i], ps: s.ps, pi: s.pi, pty: s.pty }; atom.set(n); } };
+  patch($stations); patch($saved);
+}
+const isSaved = (freq) => $saved.get().some((x) => x.freq === freq);
+function toggleSave(undo) {
+  buzz(12);
+  const freq = $freq.get(), r = $rds.get(), kn = $known.get()[freq] || {}, sv = $saved.get(), i = sv.findIndex((x) => x.freq === freq);
+  if (i >= 0) { const removed = sv[i]; $saved.set(sv.filter((_, k) => k !== i)); undo?.(() => $saved.set([...$saved.get(), removed].sort((a, b) => a.freq - b.freq)), removed.ps || fmMhz(removed.freq)); }
+  else $saved.set([...sv, { freq, pi: r.pi || kn.pi || 0, ps: r.ps || kn.ps || "", pty: r.pty || kn.pty || 0 }].sort((a, b) => a.freq - b.freq));
 }
 
 async function connect() {
@@ -111,11 +127,12 @@ function pushGain() { if (worker) worker.postMessage({ type: "gain", lna: $lna.g
 function setTc(tc) { $tc.set(tc); if (worker) worker.postMessage({ type: "deemph", tcUs: tc }); }
 
 // ================= view =================
-export function fmradioView({ S, screen, openScreen, closeScreen }) {
+export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
   const t = useStore(S.t);
   const connected = useStore($connected), usbOk = useStore($usbOk);
   const freq = useStore($freq), signal = useStore($signal), playing = useStore($playing);
   const rds = useStore($rds), stereo = useStore($stereo), scanSt = useStore($scan), stations = useStore($stations);
+  const known = useStore($known), savedList = useStore($saved);
   const demo = gate;
 
   // Under the gate / ?mock there is no HackRF — seed a plausible tuned station + scan list so the populated
@@ -123,12 +140,14 @@ export function fmradioView({ S, screen, openScreen, closeScreen }) {
   useEffect(() => {
     if (!demo) return;
     $connected.set(true); $freq.set(100e6); $signal.set(0.74); $stereo.set(true);
-    $rds.set({ pi: 0x4A01, pty: 10, ptyName: "Pop music", ps: "HIT FM", rt: "Now playing — the best hits, live on air", tp: 0, ms: 1 });
+    $rds.set({ pi: 0x4A01, pty: 10, ptyName: "Pop music", ps: "HIT FM", rt: "Now playing — the best hits, live on air", dynamic: false, scroll: "", tp: 0, ms: 1 });
+    $known.set({ 96_000_000: { ps: "RADIO ROKS", pi: 0x4A02, pty: 11 }, 100_000_000: { ps: "HIT FM", pi: 0x4A01, pty: 10 }, 103_600_000: { ps: "KISS FM", pi: 0x4A03, pty: 10 } });
     $stations.set([
-      { freq: 96_000_000, stereo: true, ps: "" }, { freq: 98_600_000, stereo: true, ps: "" },
-      { freq: 100_000_000, stereo: true, ps: "HIT FM" }, { freq: 103_600_000, stereo: true, ps: "" },
+      { freq: 96_000_000, stereo: true, ps: "RADIO ROKS" }, { freq: 98_600_000, stereo: true, ps: "" },
+      { freq: 100_000_000, stereo: true, ps: "HIT FM" }, { freq: 103_600_000, stereo: true, ps: "KISS FM" },
       { freq: 105_000_000, stereo: false, ps: "" }, { freq: 107_000_000, stereo: true, ps: "" },
     ]);
+    $saved.set([{ freq: 100_000_000, pi: 0x4A01, ps: "HIT FM", pty: 10 }, { freq: 103_600_000, pi: 0x4A03, ps: "KISS FM", pty: 10 }]);
   }, []);
 
   if (!connected) {
@@ -144,6 +163,9 @@ export function fmradioView({ S, screen, openScreen, closeScreen }) {
   }
 
   const genre = rds.ptyName && rds.pty ? rds.ptyName : "";
+  const name = rds.ps || known[freq]?.ps || "";        // live name, else the accumulated one for this frequency
+  const info = rds.rt || rds.scroll || "";             // RadioText, or the scrolling-PS text when the PS is dynamic
+  const savedNow = savedList.some((x) => x.freq === freq);
   return html`<${Fragment}>
     <div class="@container flex flex-col items-center gap-4 max-w-[440px] mx-auto w-full pb-28">
       <!-- now-playing head unit -->
@@ -153,7 +175,10 @@ export function fmradioView({ S, screen, openScreen, closeScreen }) {
             <span class=${`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.62rem] font-mono uppercase tracking-wider border ${stereo ? "border-primary/40 text-primary bg-primary/10" : "border-base-content/15 text-base-content/50"}`} data-stereo>${Icon("lucide:radio", "text-[0.9em]")}${T(t, stereo ? "stereo" : "mono")}</span>
             ${genre ? html`<span class="rounded-full px-2 py-0.5 text-[0.62rem] uppercase tracking-wider bg-secondary/12 text-secondary border border-secondary/25 truncate max-w-[9rem] @max-[300px]:hidden" data-genre>${genre}</span>` : null}
           </div>
-          <${SignalBars} level=${signal} label=${T(t, "sigLabel")} />
+          <div class="flex items-center gap-2.5">
+            <${SignalBars} level=${signal} label=${T(t, "sigLabel")} />
+            <button data-save aria-pressed=${savedNow} aria-label=${T(t, "save")} onClick=${() => toggleSave(undo)} class=${`btn btn-circle btn-sm ${savedNow ? "bg-primary/15 text-primary border border-primary/30" : "btn-ghost text-base-content/45"}`}>${Icon(savedNow ? "lucide:bookmark-check" : "lucide:bookmark", "text-lg")}</button>
+          </div>
         </div>
 
         <div class="flex items-baseline gap-2 font-mono tabular-nums">
@@ -162,8 +187,8 @@ export function fmradioView({ S, screen, openScreen, closeScreen }) {
         </div>
 
         <div class="min-h-[3.4rem] flex flex-col gap-1" data-live data-nowplaying>
-          <div class="text-2xl @max-[260px]:text-xl font-semibold leading-tight truncate">${rds.ps || html`<span class="text-base-content/35">${T(t, "tuning")}</span>`}</div>
-          ${rds.rt ? html`<div class="text-sm text-base-content/65 leading-snug line-clamp-2" data-rt>${rds.rt}</div>` : null}
+          <div class="text-2xl @max-[260px]:text-xl font-semibold leading-tight truncate">${name || html`<span class="text-base-content/35">${T(t, "tuning")}</span>`}</div>
+          ${info ? html`<div class="text-sm text-base-content/65 leading-snug line-clamp-2" data-rt>${info}</div>` : null}
         </div>
       </div>
 
@@ -237,4 +262,27 @@ function SettingsSheet({ open, onClose, t, demo }) {
     </div>
     ${!demo ? html`<button data-disconnect class="btn btn-ghost btn-sm gap-2 text-base-content/60 self-start" onClick=${() => { disconnect(); onClose(); }}>${Icon("lucide:power")}${T(t, "disconnect")}</button>` : null}
   </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
+}
+
+// Saved tab — the user's favourite stations. Tap opens on the Radio tab; delete is reversible (undo-toast).
+export function savedView({ S, undo }) {
+  const t = useStore(S.t), saved = useStore($saved), freq = useStore($freq), known = useStore($known);
+  const open = (s) => { buzz(); setFreq(s.freq); S.tab.set("tune"); };
+  const del = (i) => { buzz(); const removed = saved[i]; $saved.set(saved.filter((_, k) => k !== i)); undo?.(() => $saved.set([...$saved.get(), removed].sort((a, b) => a.freq - b.freq)), removed.ps || fmMhz(removed.freq)); };
+  if (!saved.length) return html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-3 text-center px-6"><iconify-icon icon="lucide:bookmark" class="text-4xl"></iconify-icon><span>${T(t, "savedEmpty")}</span></div>`;
+  return html`<div class="flex flex-col gap-2 max-w-[440px] mx-auto w-full pb-6">
+    ${saved.map((s, i) => {
+    const on = Math.abs(s.freq - freq) < STEP_HZ / 2, nm = s.ps || known[s.freq]?.ps || "";
+    return html`<div key=${s.freq} data-saved class=${`flex items-center gap-3 rounded-2xl border px-4 py-3 transition ${on ? "border-primary/50 bg-primary/10" : "border-base-content/10 bg-base-100/40"}`}>
+      <button data-open class="flex-1 min-w-0 flex items-center gap-3 text-left" onClick=${() => open(s)}>
+        <span class=${`font-mono tabular-nums text-xl w-[4.5rem] shrink-0 ${on ? "text-primary" : ""}`}>${fmMhz(s.freq)}</span>
+        <span class="flex-1 min-w-0 flex flex-col">
+          <span class="truncate font-medium">${nm || T(t, "tuning")}</span>
+          ${s.pty ? html`<span class="text-[0.7rem] text-base-content/50 uppercase tracking-wide truncate">${ptyName(s.pty)}</span>` : null}
+        </span>
+      </button>
+      <button data-del aria-label=${T(t, "del")} data-haptic="bump" class="btn btn-ghost btn-sm btn-circle text-base-content/50 shrink-0" onClick=${() => del(i)}><iconify-icon icon="lucide:trash-2" class="text-lg"></iconify-icon></button>
+    </div>`;
+  })}
+  </div>`;
 }

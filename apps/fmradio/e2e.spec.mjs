@@ -72,6 +72,29 @@ export default [
     },
   },
   {
+    name: "зірка зберігає/прибирає станцію", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-save]")) === 1, "немає кнопки збереження");
+      const before = await h.attr("[data-save]", "aria-pressed");
+      await h.tap("[data-save]"); await h.wait(200);
+      h.expect((await h.attr("[data-save]", "aria-pressed")) !== before, "зірка не перемкнулась");
+      await h.tap("[data-save]"); await h.wait(150);   // restore
+    },
+  },
+  {
+    name: "вкладка Збережені: список, відкрити на радіо, видалити", run: async (h) => {
+      await h.click('[data-tab="saved"]'); await h.wait(250);
+      const n0 = await h.count("[data-saved]");
+      h.expect(n0 >= 2, "немає збережених станцій");
+      await h.tap('[data-saved] [data-open]'); await h.wait(250);
+      h.expect((await h.count("[data-card]")) === 1, "тап не відкрив станцію на радіо");
+      await h.click('[data-tab="saved"]'); await h.wait(200);
+      await h.tap('[data-saved] [data-del]'); await h.wait(250);
+      h.expect((await h.count("[data-saved]")) === n0 - 1, "видалення не спрацювало");
+      await h.click('[data-tab="tune"]'); await h.wait(150);
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

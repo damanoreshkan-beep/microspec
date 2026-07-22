@@ -28,12 +28,15 @@ function hasWebGL() {
   try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; }
 }
 
-// ---- field geometry (world units) — one shared field, one grid ----
-const COLS = 26, ROWS = 26, SP = 0.46;                         // 676 dots; kept in rave's instanced tri-budget for software WebGL (CI/low-end)
-const HX = ((COLS - 1) * SP) / 2, HZ = ((ROWS - 1) * SP) / 2;  // half-extents ≈ ±5.8
-const R_IN = 0.66 * Math.min(HX, HZ);                          // strike ring radius (maps view's field ring)
-const MAXH = 0.85, DOT = 0.075;                                // displacement scale + dot radius
-const field = RippleField({ spread: 0.09 });                  // slower crest falloff → the ring stays bright as it expands
+// ---- field geometry (world units) — one shared field of FINE grains ("glow of sand"), concentrated around
+// the pan rather than washing full-bleed. 28×28 tiny dots; a strike lights a NEAT, LOCALISED bloom right at
+// the struck field (under the finger / on the tone-field circle in Flow), not a big screen-wide wave. ----
+const COLS = 28, ROWS = 28, SP = 0.34;                         // 784 grains, extent ≈ ±4.6 → sits on/around the pan
+const HX = ((COLS - 1) * SP) / 2, HZ = ((ROWS - 1) * SP) / 2;
+const R_IN = 0.5 * Math.min(HX, HZ);                           // strike ring radius (maps view's field ring, close to the pan)
+const MAXH = 0.4, DOT = 0.044;                                 // gentle relief + a fine grain (was big & chunky)
+// speed/wavelength small + a STRONG spatial spread → the bloom stays tight around the strike, then fades fast
+const field = RippleField({ speed: 2.8, wavelength: 1.25, width: 0.66, life: 1.0, spread: 0.42, max: 10 });
 
 // ---- audio binding — view.js hands us a getter that returns the live Uint8Array (else null) ----
 let _getBytes = null;
@@ -69,9 +72,9 @@ function pump() {
   clock += 1 / 60;                                             // synthetic clock → frame-rate-independent maths, fully deterministic under the gate
   const live = _getBytes && !isGate ? _getBytes() : null;
   // paused / gate: seed gentle deterministic ripples (no Math.random) so the surface is alive
-  if (!live && clock - seedT > 0.85) {
+  if (!live && clock - seedT > 1.5) {                          // resting: a sparse, gentle sand shimmer near the centre — never big idle waves
     seedT = clock; const a = clock * 0.7;
-    field.strike(Math.cos(a) * R_IN * 0.45, Math.sin(a * 1.3) * R_IN * 0.45, { amp: 1.05, hue: 252 + 30 * Math.sin(a * 0.8), t: clock });
+    field.strike(Math.cos(a) * R_IN * 0.35, Math.sin(a * 1.3) * R_IN * 0.35, { amp: 0.5, hue: 252 + 30 * Math.sin(a * 0.8), t: clock });
   }
   field.prune(clock);
   const target = live ? meanByte(live) : Math.min(1, field.energy(clock) * 0.4);
@@ -95,12 +98,12 @@ function subscribe(fn) {
 }
 
 // ======================= three.js scene (InstancedMesh dot field, no GLSL) =======================
-const CAM_Y = 8.0, CAM_Z = 6.4, MAXD = Math.sqrt(HX * HX + HZ * HZ);
+const CAM_Y = 9.2, CAM_Z = 4.2, MAXD = Math.sqrt(HX * HX + HZ * HZ);   // more top-down → rings read as neat circles ON the pan
 function makeField(canvas, THREE) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(DPR());
   const scene = new THREE.Scene();
-  const cam = new THREE.PerspectiveCamera(52, 1, 0.1, 100);
+  const cam = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
   const group = new THREE.Group(); scene.add(group);
 
   const geo = new THREE.IcosahedronGeometry(DOT, 0);           // 20 tris — a faceted dot, ~identical at this size, far cheaper than a sphere under software WebGL
@@ -124,19 +127,19 @@ function makeField(canvas, THREE) {
     frame(st, p) {
       const t = st.clock;
       for (let i = 0; i < ROWS * COLS; i++) {
-        const s = field.sample(px[i], pz[i], t), mag = Math.min(1.5, Math.abs(s.h));
-        const lift = Math.min(1, mag * 2.2);                  // wavefront carried by BRIGHTNESS + SIZE (a near-top-down tilt hides pure height)
+        const s = field.sample(px[i], pz[i], t), mag = Math.min(1.4, Math.abs(s.h));
+        const lift = Math.min(1, mag * 2.4);                  // the grain lights up where the bloom passes — a fine glow, not a swelling blob
         dummy.position.set(px[i], s.h * MAXH, pz[i]);
-        dummy.scale.setScalar(0.5 + mag * 1.5);               // crests swell into larger glowing nodes
+        dummy.scale.setScalar(0.5 + mag * 0.6);               // stays a small grain (was a chunky node)
         dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix);
-        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.62 - lift * 0.22, (0.05 + lift * 0.62 + st.amb * 0.05) * fade[i]);
-        mesh.setColorAt(i, col);                              // flat field ≈ black texture; a passing crest lights to bright, near-white violet
+        col.setHSL(((s.hue % 360) + 360) % 360 / 360, 0.6 - lift * 0.16, (0.045 + lift * 0.58 + st.amb * 0.04) * fade[i]);
+        mesh.setColorAt(i, col);                              // resting grain ≈ black; a struck bloom glows soft violet, tight to the strike
       }
       mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-      group.rotation.y = st.turn * 0.4 + p.x * 0.05;
-      group.position.y = st.amb * 0.14;                       // slow breathing with the reverb wash
-      cam.position.set(p.x * 0.6, CAM_Y - p.y * 0.4, CAM_Z);
-      cam.lookAt(0, 0, -0.3);
+      group.rotation.y = st.turn * 0.35 + p.x * 0.04;
+      group.position.y = st.amb * 0.06;                       // barely-there breathing with the reverb wash
+      cam.position.set(p.x * 0.5, CAM_Y - p.y * 0.3, CAM_Z);
+      cam.lookAt(0, 0, 0);
       renderer.render(scene, cam);
     },
     dispose() { geo.dispose(); mat.dispose(); renderer.dispose(); },

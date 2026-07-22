@@ -30,6 +30,20 @@ export function luminance([r, g, b]) {
 }
 export const ink = (rgb) => (luminance(rgb) > 0.4 ? "#000000" : "#FFFFFF");
 
+export function hexRgb(hex) {
+  const s = String(hex).replace(/^#/, "");
+  const h = (s.length === 3 ? s.replace(/(.)/g, "$1$1") : s).padEnd(6, "0").slice(0, 6);
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) || 0);
+}
+
+export function iconTint(bg, fg, dark) {
+  const rgb = hexRgb(fg), [, sat] = rgbToHsl(rgb);
+  const hue = (sat < 18 && luminance(rgb) > 0.5) ? bg : fg;   
+  return dark
+    ? { tile: `linear-gradient(145deg, color-mix(in oklch, ${hue} 24%, ${bg}), ${bg})`, glyph: fg }
+    : { tile: `linear-gradient(145deg, color-mix(in oklch, ${hue} 22%, #fff), color-mix(in oklch, ${hue} 8%, #fff))`, glyph: `color-mix(in oklch, ${hue} 84%, #000)` };
+}
+
 export function palette(px, k = 5) {
   const pts = [];
   const stride = 4 * Math.max(1, Math.floor(px.length / 4 / 4000)); 

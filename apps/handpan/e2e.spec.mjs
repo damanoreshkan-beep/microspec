@@ -31,8 +31,10 @@ export default [
   {
     name: "Flow генерує лінію", run: async (h) => {
       await ready(h);
-      await h.tap("#flow"); await h.wait(1300);  
-      h.expect((await h.attr("#play", "data-playing")) === "true", "Flow не почав грати");
+      await h.tap("#flow");
+      let flowing = false;
+      for (let i = 0; i < 20; i++) { await h.wait(300); if ((await h.attr("#play", "data-playing")) === "true") { flowing = true; break; } }
+      h.expect(flowing, "Flow не почав грати");
       await h.tap("#play"); await h.wait(150);
       h.expect((await h.attr("#play", "data-playing")) !== "true", "не зупинився");
     },

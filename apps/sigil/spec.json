@@ -1,0 +1,16 @@
+{
+  "id": "sigil",
+  "theme": "signal",
+  "category": "esoterica",
+  "tabs": [
+    { "id": "forge", "type": "tool", "icon": "lucide:flame", "label": "tabForge", "view": "forge" },
+    { "id": "grimoire", "type": "tool", "icon": "lucide:book-marked", "label": "tabGrimoire", "view": "grimoire" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:flame",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

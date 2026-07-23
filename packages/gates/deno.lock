@@ -106,6 +106,8 @@
     "https://esm.sh/linkedom@0.18.5/X-ZWNhbnZhcw/denonext/esm/svg/element.mjs": "62ad8f3c65303c474f17d8e1526d3278145de5c8b898808cdae67218485d75dc",
     "https://esm.sh/linkedom@0.18.5/X-ZWNhbnZhcw/denonext/linkedom.mjs": "8dcb1576862ed7a6e7001946b0900a5dcf2e7e7daa8653cdd545668ae19ed7f4",
     "https://esm.sh/linkedom@0.18.5?external=canvas": "2a31e570efc08d1268fff623cf995c4c4b36b576b6bb4fd292b2423b9b09c2ea",
+    "https://esm.sh/lodash-es@4.17.21": "1252ccd86311d14f2dd05282cf3e40e1ff76bfa79c71ca49b903e902129944cb",
+    "https://esm.sh/lodash-es@4.17.21/denonext/lodash-es.mjs": "6f7d7db2f829218b6a787d9652b7e90333a1b89e5eb3a8b4c4b9eb6de3b062ec",
     "https://esm.sh/motion@11.18.2": "70cf7abfc1e78194026247e40906350a6878815da52fdab9cc6a06e394fa0bc4",
     "https://esm.sh/motion@11.18.2/denonext/dist/es/framer-motion/dist/es/animation/animate/index.mjs": "7f09eb468da93ba7366bf128dd8a9b742bf1a732617a0664774c629218c089cf",
     "https://esm.sh/motion@11.18.2/denonext/dist/es/framer-motion/dist/es/animation/animate/resolve-subjects.mjs": "0aedc7a0ad945dffce906a87c046e214abfda8f3a575f246f40c16765837c67e",

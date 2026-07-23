@@ -24,18 +24,43 @@ export function dedupeVideos(items) {
   return out;
 }
 
-// isBlackSample(rgba, opts) — classify a small canvas sample (RGBA bytes from getImageData) as a
-// "black/broken" poster: near-zero MEAN luma AND no meaningfully bright pixel ANYWHERE. The peak test is the
-// discriminator — a real frame, even a night scene, has some highlight (a light, a rim, a face); a broken or
-// placeholder frame is uniformly ~0. Alpha is ignored (posters are opaque; a fully transparent one reads as
-// blank too, which is equally unwanted). Rec.601 luma. Conservative thresholds → fail toward KEEPING a clip.
-export function isBlackSample(rgba, { meanMax = 12, peakMax = 24 } = {}) {
-  if (!rgba || rgba.length < 4) return false;
-  let sum = 0, peak = 0, n = 0;
+// lumaStats(rgba) — Rec.601 luma mean / peak / population standard deviation over an RGBA sample (bytes from
+// getImageData). Alpha is ignored (posters are opaque; a fully transparent one reads as blank too, which is
+// equally unwanted). Returns null for an empty/too-short sample so callers can fail toward KEEPING a clip.
+function lumaStats(rgba) {
+  if (!rgba || rgba.length < 4) return null;
+  let sum = 0, sumSq = 0, peak = 0, n = 0;
   for (let i = 0; i + 3 < rgba.length; i += 4) {
     const l = 0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2];
-    sum += l; if (l > peak) peak = l; n++;
+    sum += l; sumSq += l * l; if (l > peak) peak = l; n++;
   }
-  if (!n) return false;
-  return (sum / n) <= meanMax && peak <= peakMax;
+  if (!n) return null;
+  const mean = sum / n;
+  return { mean, peak, std: Math.sqrt(Math.max(0, sumSq / n - mean * mean)) };
+}
+
+// isBlackSample(rgba, opts) — classify a small canvas sample as a "black/broken" poster: near-zero MEAN luma
+// AND no meaningfully bright pixel ANYWHERE. The peak test is the discriminator — a real frame, even a night
+// scene, has some highlight (a light, a rim, a face); a broken or placeholder frame is uniformly ~0.
+// Conservative thresholds → fail toward KEEPING a clip.
+export function isBlackSample(rgba, { meanMax = 12, peakMax = 24 } = {}) {
+  const s = lumaStats(rgba);
+  return !!s && s.mean <= meanMax && s.peak <= peakMax;
+}
+
+// isFlatSample(rgba, opts) — classify a sample as a "flat/placeholder" poster: a single near-uniform fill of
+// ANY colour (a solid grey/white/coloured card a CDN serves when it has no real thumbnail). The discriminator
+// is luma standard deviation ≈ 0 — a genuine video frame always carries texture/gradient/JPEG noise (std well
+// above the floor even for a foggy sky or a night scene), a synthetic fill does not. Complements isBlackSample,
+// which only catches the *black* case; this also catches uniform light/coloured placeholders. It subsumes a
+// perfectly flat black frame too, so callers OR the two. Conservative threshold → fail toward KEEPING a clip.
+export function isFlatSample(rgba, { stdMax = 6 } = {}) {
+  const s = lumaStats(rgba);
+  return !!s && s.std <= stdMax;
+}
+
+// hasPoster(item) — does the item carry a usable poster? A poster is present only when it is a non-empty
+// string (after trimming); null / "" / whitespace / non-strings count as posterless. Pure, DOM-free.
+export function hasPoster(item) {
+  return !!item && typeof item.poster === "string" && item.poster.trim() !== "";
 }

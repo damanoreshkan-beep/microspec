@@ -17,7 +17,7 @@ import { motionCells, motionEnergy, centroidOf } from "./motion.js";
 import { analyzeQR } from "./urlsafe.js";
 import { qrMatrix } from "./qrcode.js";
 import { fitResolution, sizeFor, estimateSeconds, QUALITY, DEFAULT, MAX_SIDE, AR } from "./imgsize.js";
-import { dedupeVideos, isBlackSample } from "./vfilter.js";
+import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "./vfilter.js";
 import { PLANETS, squareFor, isMagic, magicConstant, distill, normalize, sigilPath, hash32, smooth } from "./sigil.js";
 import { sha1hex, splitHash, parseRange, lookup, checkPassword } from "./pwned.js";
 import { sunSign } from "./horoscope.js";
@@ -1345,6 +1345,37 @@ Deno.test("vfilter isBlackSample: any real content keeps the clip", () => {
   assert(!isBlackSample(vpx(nightScene)), "dark frame with a highlight → kept (peak test)");
   assert(!isBlackSample(vpx(Array(64).fill([10, 120, 40]))), "coloured → not black");
   assert(!isBlackSample(new Uint8ClampedArray(0)), "empty sample → not black (fail toward keep)");
+});
+
+Deno.test("vfilter isFlatSample: any uniform fill (grey/white/coloured/black) is a placeholder", () => {
+  assert(isFlatSample(vpx(Array(64).fill([128, 128, 128]))), "flat mid-grey → placeholder (black test misses this)");
+  assert(isFlatSample(vpx(Array(64).fill([255, 255, 255]))), "flat white → placeholder");
+  assert(isFlatSample(vpx(Array(64).fill([40, 40, 40]))), "flat dark grey → placeholder");
+  assert(isFlatSample(vpx(Array(64).fill([0, 0, 0]))), "flat black → placeholder (subsumes the black case)");
+  assert(isFlatSample(vpx(Array(64).fill([30, 110, 180]))), "flat coloured card → placeholder");
+});
+
+Deno.test("vfilter isFlatSample: real textured content keeps the clip (fail toward keep)", () => {
+  // a gradient (dawn sky) — luma marches across the sample, std well above the floor → NOT flat
+  const gradient = Array.from({ length: 64 }, (_, i) => { const v = i * 4; return [v, v, v]; });
+  assert(!isFlatSample(vpx(gradient)), "gradient → textured, kept");
+  // near-flat but with JPEG-noise jitter (±10) → still textured enough to keep
+  const noisy = Array.from({ length: 64 }, (_, i) => { const v = 90 + (i % 5) * 7; return [v, v, v]; });
+  assert(!isFlatSample(vpx(noisy)), "noisy near-flat → kept");
+  // one bright highlight over black (night scene) → variance from the highlight → kept
+  const night = Array(64).fill([3, 3, 3]); night[40] = [230, 220, 200];
+  assert(!isFlatSample(vpx(night)), "night scene with a highlight → kept");
+  assert(!isFlatSample(new Uint8ClampedArray(0)), "empty sample → not flat (fail toward keep)");
+});
+
+Deno.test("vfilter hasPoster: only a non-empty string counts", () => {
+  assert(hasPoster({ poster: "https://cdn.x/p.jpg" }), "real url → has poster");
+  assert(hasPoster({ poster: "data:image/png;base64,AAAA" }), "data uri → has poster");
+  assert(!hasPoster({ poster: null }), "null → posterless");
+  assert(!hasPoster({ poster: "" }), "empty string → posterless");
+  assert(!hasPoster({ poster: "   " }), "whitespace → posterless");
+  assert(!hasPoster({ video: "x.mp4" }), "missing key → posterless");
+  assert(!hasPoster(null), "no item → posterless");
 });
 
 // ---- spectrum.js — audio-reactive visual DSP + geometry math ----

@@ -1,0 +1,15 @@
+{
+  "id": "pwned",
+  "theme": "signal",
+  "category": "tools",
+  "tabs": [
+    { "id": "check", "type": "tool", "icon": "lucide:shield-check", "label": "tabCheck", "view": "check" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:shield-check",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

@@ -116,7 +116,7 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
 
   const p = preset();
   return html`<${Fragment}>
-    <div class="@container flex flex-col gap-3 max-w-[440px] mx-auto w-full pb-28">
+    <div class="@container flex flex-col gap-3 max-w-[440px] mx-auto w-full pb-40">
       <!-- preset selector -->
       <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
         ${LORA_PRESETS.map((pp) => html`<button key=${pp.key} data-preset=${pp.key} aria-pressed=${pk === pp.key} onClick=${() => setPreset(pp.key)}

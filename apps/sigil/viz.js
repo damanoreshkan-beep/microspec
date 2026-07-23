@@ -54,7 +54,7 @@ function makeScene(THREE, sigil) {
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(46, 1, 0.1, 100); cam.position.set(0, 0, 3.35);
   const group = new THREE.Group(); scene.add(group);
-  group.position.y = 0.34; group.scale.setScalar(0.78);   // centre the glyph in the open canvas above the island
+  group.position.y = 0.3; group.scale.setScalar(0.62);   // centre + margin: a portrait viewport is narrow, so keep the (square-fit) glyph clear of the side edges
   let col = readTheme();
   const INK = new THREE.Color(col.ink), ACC = new THREE.Color(col.accent);
 
@@ -137,21 +137,24 @@ export function SigilStage({ sigil }) {
   const store = useRef({ renderer: null, THREE: null, scene: null, raf: null, ro: null, mo: null, t0: 0 }).current;
   useEffect(() => {
     const canvas = ref.current; if (!canvas) return; let dead = false;
+    store.sigil = sigil;   // seed from the first render — the async init below builds with it (the [sigil] effect only fires on CHANGE)
     const dims = () => { const r = canvas.getBoundingClientRect(); return [Math.max(1, Math.round(r.width)), Math.max(1, Math.round(r.height))]; };
     const size = () => { const [w, h] = dims(), dpr = DPR(), bw = Math.round(w * dpr), bh = Math.round(h * dpr); canvas.width = bw; canvas.height = bh; store.renderer?.setSize(bw, bh, false); store.scene?.resize(bw, bh); };
     store.build = () => {
       if (!store.THREE || !store.sigil) return;
-      try { store.scene?.dispose?.(); store.scene = makeScene(store.THREE, store.sigil); const [w, h] = dims(), dpr = DPR(); store.scene.resize(Math.round(w * dpr), Math.round(h * dpr)); } catch { store.scene = null; }
+      try { store.scene?.dispose?.(); store.scene = makeScene(store.THREE, store.sigil); const [w, h] = dims(), dpr = DPR(); store.scene.resize(Math.round(w * dpr), Math.round(h * dpr)); } catch (e) { store.err = e; store.scene = null; }
     };
     (async () => {
-      if (hasWebGL() && store.sigil) {
+      if (hasWebGL()) {
         try {
           const THREE = await import("three"); if (dead) return; store.THREE = THREE;
           store.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
           store.renderer.setClearColor(0x000000, 0);
           store.build();
-        } catch { store.THREE = null; store.renderer = null; }
+        } catch (e) { store.err = e; store.THREE = null; store.renderer = null; }
       }
+      // diagnostic breadcrumbs — which render path actually ran, and any WebGL init error (read by the gate)
+      try { canvas.dataset.haswebgl = hasWebGL() ? "yes" : "no"; canvas.dataset.render = store.scene ? "webgl" : (store.renderer ? "renderer-no-scene" : "2d"); if (store.err) canvas.dataset.err = String(store.err && store.err.message || store.err).slice(0, 140); } catch { /* */ }
       size();
       const loop = (ms) => {
         if (dead) return;

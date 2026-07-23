@@ -3,11 +3,12 @@ const settles = async (h, n) => { for (let i = 0; i < 25; i++) { if ((await h.co
 
 export default [
   {
-    name: "стрічка рендериться; биті чорні постери й дублікати відфільтровано", run: async (h) => {
+    name: "стрічка рендериться; биті чорні/пласкі постери й дублікати відфільтровано", run: async (h) => {
       await ready(h);
-      h.expect(await settles(h, 3), "фільтри не звели стрічку до 3 чистих слайдів (дубль/чорний постер лишились)");
+      h.expect(await settles(h, 3), "фільтри не звели стрічку до 3 чистих слайдів (дубль/чорний/плаский постер лишились)");
       h.expect((await h.count("video")) === 1, "активний слайд не має одного відео-елемента");
       h.expect(!/Broken clip/.test(await h.bodyText()), "битий чорний постер не відфільтрувався");
+      h.expect(!/Flat placeholder/.test(await h.bodyText()), "плаский постер-заглушка не відфільтрувався");
       h.expect(!/\bdup\b/.test(await h.bodyText()), "дублікат не відфільтрувався");
     },
   },

@@ -3,12 +3,19 @@ name: verify
 # The gate. Runtime is off-device — CI is the only place Chromium runs (visual gates need ~1GB RAM).
 # unit: browser-free logic + schema contract. verify: one Chromium job per app (axe + responsive + e2e).
 
+# push and pull_request must NOT both fire for the same commit, or verify runs TWICE in parallel: a branch
+# push and its open PR are different events with different github.ref (refs/heads/… vs refs/pull/N/merge),
+# so they land in different concurrency groups and neither cancels the other → two full Chromium matrices.
+# So: PRs are covered by `pull_request`; `push` is scoped to `main` ONLY (its verify run is also what
+# `deploy.yml` gates on via workflow_run). A feature-branch push without a PR verifies via workflow_dispatch.
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 concurrency:
+  # Per-PR (refs/pull/N/merge) and main are each a stable group, so a newer push supersedes an in-flight run.
   group: verify-${{ github.ref }}
   cancel-in-progress: true
 

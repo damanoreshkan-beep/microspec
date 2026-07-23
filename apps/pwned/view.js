@@ -50,7 +50,7 @@ export function check({ S }) {
     <div class="rounded-3xl bg-base-100/80 backdrop-blur-xl border border-base-content/10 p-2 pl-4 flex items-center gap-2">
       <input data-pw type=${reveal ? "text" : "password"} value=${pw} onInput=${(e) => setPw(e.currentTarget.value)}
         aria-label=${T(t, "pwLabel")} placeholder=${T(t, "pwPlaceholder")} autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
-        class="flex-1 bg-transparent text-base focus:outline-none" />
+        class="flex-1 min-w-0 bg-transparent text-base focus:outline-none" />
       <button data-reveal aria-label=${T(t, reveal ? "hide" : "show")} onClick=${() => setReveal((v) => !v)} class="btn btn-ghost btn-circle btn-sm text-base-content/70">${Icon(reveal ? "lucide:eye-off" : "lucide:eye", "text-lg")}</button>
     </div>
 
@@ -72,7 +72,7 @@ export function check({ S }) {
       ${Icon(res.pwned ? "lucide:shield-alert" : "lucide:shield-check", `text-4xl ${res.pwned ? "text-error" : "text-success"}`)}
       <div class="text-lg font-semibold">${T(t, res.pwned ? "vPwned" : "vClean")}</div>
       ${res.pwned
-      ? html`<div class="text-center mt-1"><div class="text-3xl font-bold tabular-nums">${fmt(res.count)}</div><div class="text-xs text-base-content/70 mt-0.5">${T(t, "vPwnedSub")}</div></div>`
+      ? html`<div class="text-center mt-1"><div class="text-2xl font-bold tabular-nums break-all">${fmt(res.count)}</div><div class="text-xs text-base-content/70 mt-0.5">${T(t, "vPwnedSub")}</div></div>`
       : html`<div class="text-sm text-base-content/80 text-center max-w-[16rem]">${T(t, "vCleanSub")}</div>`}
     </div>` : null}
     ${status === "error" ? html`<div data-error class="text-sm text-error text-center py-2">${T(t, "errMsg")}</div>` : null}

@@ -26,7 +26,7 @@ import { signOf, signPair, compat, band, ELEMENT, MODALITY } from "./synastry.js
 import { centsToRatio, semiToRatio, beatHz, chord, dbToGain, faderGain, equalPower, detune, STATIONS, LAYERS, station, reactorVoices } from "./scifi.js";
 import { sat, makeSat, parseTleText, subpoint, sunEciUnit, isSunlit, FALLBACK_TLE } from "./orbit.js";
 import { resumeAt, RESUME_MIN } from "./playback.js";
-import { logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, advanceTerrain, Parallax, seedFrame } from "./spectrum.js";
+import { logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, advanceTerrain, Parallax, seedFrame, sampleBand, idle, fib, galaxyDisc } from "./spectrum.js";
 import { RippleField, ring, RIPPLE_DEFAULTS } from "./ripple.js";
 import { iqFromBytes, firLowpass, deemphasisAlpha, fft, powerSpectrum, seedSpectrum, FmReceiver, IN_RATE, IF_RATE, OUT_RATE, MAX_DEV, OFFSET_HZ, goertzelPower, pilotRatioDb, rssiFromBytes, PILOT_COEFF } from "./fmradio.js";
 import { sampleRatePayload, setFreqPayload, clampLnaGain, clampVgaGain, roundBasebandFilter, basebandFilterParams, REQUEST, MODE, VENDOR_ID, PRODUCT_ID, TRANSFER_SIZE } from "./hackrf.js";
@@ -1408,6 +1408,38 @@ Deno.test("spectrum seedFrame: deterministic, in-range, bass-heavy", () => {
   assert(a.every((v) => v >= 0 && v <= 255), "bytes in range");
   const front = a.slice(0, 40).reduce((s, v) => s + v, 0), back = a.slice(-40).reduce((s, v) => s + v, 0);
   assert(front > back, "low frequencies carry more energy");
+});
+
+Deno.test("spectrum sampleBand: maps 0..1 across bands, clamps out-of-range", () => {
+  const lv = [0.1, 0.2, 0.3, 0.4];
+  assertEquals(sampleBand(lv, 0), 0.1, "frac 0 → first band");
+  assertEquals(sampleBand(lv, 1), 0.4, "frac 1 → last band");
+  assertEquals(sampleBand(lv, -5), 0.1, "clamps below");
+  assertEquals(sampleBand(lv, 5), 0.4, "clamps above");
+  assertEquals(sampleBand([], 0.5), 0, "empty → 0");
+});
+
+Deno.test("spectrum idle: bounded breath around the floor, non-flat", () => {
+  for (let p = 0; p < 20; p += 0.3) { const v = idle(p, 0.85, 0.15); assert(v >= 0.7 - 1e-9 && v <= 1 + 1e-9, "in [floor-amp, floor+amp]"); }
+  assert(Math.abs(idle(Math.PI / 4, 0.85, 0.15) - 1) < 1e-9, "peaks at floor+amp");
+  assert(idle(0) !== idle(1), "actually animates (not constant)");
+});
+
+Deno.test("spectrum fib: unit-length, evenly spanning the sphere, no pole clumping", () => {
+  const n = 64;
+  for (let i = 0; i < n; i++) { const [x, y, z] = fib(i, n); assert(Math.abs(Math.hypot(x, y, z) - 1) < 1e-9, "on the unit sphere"); }
+  assert(fib(0, n)[1] > 0.9 && fib(n - 1, n)[1] < -0.9, "spans top to bottom");
+  const mid = fib(Math.floor(n / 2), n)[1]; assert(Math.abs(mid) < 0.1, "middle index sits near the equator (even spacing)");
+});
+
+Deno.test("spectrum galaxyDisc: right length, inside the radius, thin disc, deterministic per rng", () => {
+  const seq = [0.1, 0.9, 0.2, 0.8, 0.3, 0.7, 0.4, 0.6, 0.5, 0.5, 0.15, 0.85]; let k = 0;
+  const rng = () => seq[k++ % seq.length];
+  const g = galaxyDisc(4, { radius: 5, branches: 4, spin: 1, randomness: 0.4, power: 3, thin: 0.5 }, rng);
+  assertEquals(g.length, 12, "n*3 floats");
+  for (let i = 0; i < 4; i++) { const r = Math.hypot(g[i * 3], g[i * 3 + 2]); assert(r <= 5 * (1 + 0.4) + 1e-6, "within radius + jitter"); assert(Math.abs(g[i * 3 + 1]) <= 5 * 0.4 * 0.5 + 1e-6, "y squashed to a thin disc"); }
+  k = 0; const g2 = galaxyDisc(4, { radius: 5, branches: 4 }, () => seq[k++ % seq.length]);
+  assertEquals([...g], [...g2], "deterministic for a fixed rng");
 });
 
 // ---- ripple.js — percussive wave-field ----

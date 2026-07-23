@@ -96,6 +96,49 @@ export function Parallax({ alpha = 0.1, maxDeg = 20, gain = 1, reduced = false }
   };
 }
 
+// ---- geometry helpers for the 3D visualiser gallery (pure, unit-tested; the app's ten three.js scenes
+// and their Canvas2D fallbacks all read these, so the layout maths is verified by `deno test`) ----
+
+// Sample the band-level array at a 0..1 fraction — the canonical "distribute the 28 log-octave bands across
+// this geometry" lookup (bar i of K reads sampleBand(levels, i/(K-1))). Clamped, so callers never index OOB.
+export function sampleBand(levels, frac) {
+  const n = levels.length; if (!n) return 0;
+  const f = frac < 0 ? 0 : frac > 1 ? 1 : frac;
+  return levels[Math.min(n - 1, Math.round(f * (n - 1)))] || 0;
+}
+
+// Idle "breath" so a scene is never a dead flatline when the beat is silent: floor + amp·sin(phase·2). The
+// research pitfall #1 — every scale/opacity term multiplies by an always-on pulse in [floor-amp, floor+amp].
+export function idle(phase, floor = 0.85, amp = 0.15) { return floor + amp * Math.sin(phase * 2); }
+
+// Even point distribution on a unit sphere via the Fibonacci lattice — no pole clumping (a UV-sphere bunches
+// spikes/particles at the poles, the #1 urchin/nebula tell). Returns [x,y,z] on the unit sphere for point i of n.
+export function fib(i, n) {
+  const y = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;           // -1..1, evenly spaced rings
+  const r = Math.sqrt(Math.max(0, 1 - y * y));
+  const a = i * 2.399963229728653;                        // golden angle (rad)
+  return [Math.cos(a) * r, y, Math.sin(a) * r];
+}
+
+// Base positions for a spiral galaxy disc (Bruno Simon's generator, params scaled for mobile): n points over
+// `branches` arms of `radius`, twisted by `spin`, jittered by pow(rng,power)·randomness·r so the arms stay
+// crisp near the core and fuzz at the rim. `rng` is a caller-owned 0..1 source (deterministic → testable).
+// Returns a Float32Array(n*3); the app breathes the cloud by MULTIPLYING these (stable, returns to rest) —
+// never by integrating velocity (drifts, blows up). y is squashed to a thin disc.
+export function galaxyDisc(n, { radius = 5, branches = 5, spin = 1, randomness = 0.4, power = 3, thin = 0.5 } = {}, rng = Math.random) {
+  const out = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const r = rng() * radius;
+    const branch = ((i % branches) / branches) * Math.PI * 2;
+    const spun = r * spin;
+    const jit = () => Math.pow(rng(), power) * (rng() < 0.5 ? 1 : -1) * randomness * r;
+    out[i * 3] = Math.cos(branch + spun) * r + jit();
+    out[i * 3 + 1] = jit() * thin;
+    out[i * 3 + 2] = Math.sin(branch + spun) * r + jit();
+  }
+  return out;
+}
+
 // Deterministic seeded FFT frame — a plausible bass-heavy descending curve with a little ripple — so the
 // headless gate shot and the Canvas2D fallback are never dead flatlines. `phase` animates it without any
 // AudioContext (the gate has none). No Math.random: the gate must be deterministic.

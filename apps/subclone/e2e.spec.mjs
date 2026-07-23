@@ -2,14 +2,12 @@ const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("
 
 export default [
   {
-    name: "клонер: частоти, кнопка запису, список сигналів, rolling-флаг", run: async (h) => {
+    name: "клонер: частоти, кнопка запису, список сигналів", run: async (h) => {
       await ready(h);
       h.expect((await h.count("[data-freq]")) === 3, "немає трьох частот");
       h.expect((await h.count("#record")) === 1, "немає кнопки запису");
       h.expect((await h.count("[data-saved]")) >= 3, "немає списку сигналів");
       h.expect((await h.count("[data-transmit]")) === 3, "передавати можна всі сигнали");
-      h.expect((await h.count("[data-rolling]")) === 1, "rolling лишається підказкою (не блок)");
-      h.expect(/rolling/i.test(await h.bodyText()), "немає позначки rolling-code");
     },
   },
   {

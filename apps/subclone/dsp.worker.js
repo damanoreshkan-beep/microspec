@@ -3,7 +3,6 @@ import { capture, isolateFrame, renderOOK } from "/_rt/ook.js";
 
 const SR = 2_000_000, TX_OFFSET = 250_000, MAX_XFER = 262144;
 const MAX_BYTES = 32_000_000;                            
-const ROLLING_MIN = 110;
 const post = (m, transfer) => self.postMessage(m, transfer || []);
 
 let rx = null, recording = false;
@@ -31,7 +30,7 @@ async function record(freq) {
     try { await rx.setMode(0); } catch {  }        
     const all = new Uint8Array(total); let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
     const iso = isolateFrame(capture(all, { fs: SR }), { gapUs: 3000 });
-    post({ type: "captured", freq, frame: iso.frame, repeats: iso.repeats, count: iso.count, entries: iso.frame.length, rolling: iso.frame.length >= ROLLING_MIN });
+    post({ type: "captured", freq, frame: iso.frame, repeats: iso.repeats, count: iso.count, entries: iso.frame.length });
   } catch (e) { post({ type: "error", message: String(e && e.message || e) }); }
 }
 
@@ -42,9 +41,11 @@ async function transmit(m) {
     await rx.setTxVgaGain(m.txGain ?? 30);
     await rx.setAmp(false);                            
     await rx.startTx();
-    const iq = renderOOK(m.frame, { fs: SR, freqOffset: TX_OFFSET, repeats: m.repeats || 5, gapUs: 12_000 });
+    const iq = renderOOK(m.frame, { fs: SR, freqOffset: TX_OFFSET, repeats: m.repeats || 8, gapUs: 15_000 });
     const buf = new Uint8Array(iq.buffer);
     for (let off = 0; off < buf.length; off += MAX_XFER) await rx.write(buf.slice(off, Math.min(buf.length, off + MAX_XFER)));
+    const burstMs = Math.ceil((iq.length / 2) / SR * 1000);
+    await new Promise((r) => setTimeout(r, burstMs + 200));
     await rx.stopTx();
     post({ type: "sent", id: m.id });
   } catch (e) { post({ type: "error", message: String(e && e.message || e) }); }

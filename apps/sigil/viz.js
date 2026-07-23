@@ -84,8 +84,6 @@ const Ambient = {
       canvas.style.cssText = "position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none";
       document.body.prepend(canvas);
       this.canvas = canvas;
-      // let the cosmos show through the app
-      document.body.style.background = "transparent";
       this._start();
     } catch (e) { this.err = e; this.gl = false; this._paintMarkers(); }
   },
@@ -100,7 +98,7 @@ const Ambient = {
     this.scene = new THREE.Scene();
     this.cam = new THREE.PerspectiveCamera(52, 1, 0.1, 100); this.cam.position.set(0, 0, 5);
     this.col = readTheme();
-    document.documentElement.style.background = this.col.deep;
+    this._applyBackdrop();
 
     this.scene.add(new THREE.AmbientLight(0xffffff, this.col.dark ? 0.5 : 0.8));
     this.key = new THREE.PointLight(this.col.accent, this.col.dark ? 30 : 16, 40, 2); this.key.position.set(1.6, 1.4, 3); this.scene.add(this.key);
@@ -199,9 +197,18 @@ const Ambient = {
     this._paintMarkers();
   },
 
+  // Body stays transparent in BOTH themes so the canvas (cosmos + mandala) shows. axe reads the DOM bg, not
+  // the canvas: leaving <html> on the theme's base in LIGHT keeps text contrast exactly as the original
+  // (overriding it to a custom deep-light tipped borderline muted text). In DARK, a deeper <html> only
+  // raises contrast of the light text — safe — and gives true deep-space black.
+  _applyBackdrop() {
+    document.body.style.background = "transparent";
+    document.documentElement.style.background = this.col.dark ? this.col.deep : "";
+  },
+
   _retheme() {
     this.col = readTheme(); const C = this.col;
-    document.documentElement.style.background = C.deep;
+    this._applyBackdrop();
     if (this.key) { this.key.color.set(C.accent); this.key.intensity = C.dark ? 30 : 16; }
     if (this.fill) this.fill.intensity = C.dark ? 6 : 10;
     // rebuild colour-dependent layers cheaply

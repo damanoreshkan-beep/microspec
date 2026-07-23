@@ -1,17 +1,13 @@
 // Sub-GHz remote cloner DSP worker. RECORDS your own fixed-code OOK remotes (envelope → timing array) and
 // REPLAYS them (timing array → offset-carrier OOK → HackRF TX). First TX in the farm. One device, switched
 // between RX (record) and TX (transmit). The OOK pipeline is the tested runtime module (/_rt/ook.js); this is
-// the glue + the WebUSB I/O. Fixed-code only — a long/rolling frame is flagged and replay refused in the UI.
+// the glue + the WebUSB I/O. Intended for your own remotes (a rolling-code remote simply won't open on replay).
 // See docs/research/subghz-ook-clone.md.
 import { HackRF } from "/_rt/hackrf.js";
 import { capture, isolateFrame, renderOOK } from "/_rt/ook.js";
 
 const SR = 2_000_000, TX_OFFSET = 250_000, MAX_XFER = 262144;
 const MAX_BYTES = 32_000_000;                            // ~8 s @ 2 MSps kept — a ring drops the oldest past this
-// A KeeLoq rolling frame is ~66 bits ≈ 132 timing entries; a fixed EV1527 (24-bit) is ~48. Flag as a HINT only
-// (never a block — a naive rolling replay is harmless, it just won't open anything). High threshold so ordinary
-// fixed-code remotes are never mislabelled.
-const ROLLING_MIN = 110;
 const post = (m, transfer) => self.postMessage(m, transfer || []);
 
 let rx = null, recording = false;
@@ -41,7 +37,7 @@ async function record(freq) {
     try { await rx.setMode(0); } catch { /* */ }        // OFF — stop RX
     const all = new Uint8Array(total); let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
     const iso = isolateFrame(capture(all, { fs: SR }), { gapUs: 3000 });
-    post({ type: "captured", freq, frame: iso.frame, repeats: iso.repeats, count: iso.count, entries: iso.frame.length, rolling: iso.frame.length >= ROLLING_MIN });
+    post({ type: "captured", freq, frame: iso.frame, repeats: iso.repeats, count: iso.count, entries: iso.frame.length });
   } catch (e) { post({ type: "error", message: String(e && e.message || e) }); }
 }
 

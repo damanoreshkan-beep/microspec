@@ -48,9 +48,13 @@ async function transmit(m) {
     await rx.setTxVgaGain(m.txGain ?? 30);
     await rx.setAmp(false);                            // keep the PA off — a few dB reaches a bench receiver
     await rx.startTx();
-    const iq = renderOOK(m.frame, { fs: SR, freqOffset: TX_OFFSET, repeats: m.repeats || 5, gapUs: 12_000 });
+    const iq = renderOOK(m.frame, { fs: SR, freqOffset: TX_OFFSET, repeats: m.repeats || 8, gapUs: 15_000 });
     const buf = new Uint8Array(iq.buffer);
     for (let off = 0; off < buf.length; off += MAX_XFER) await rx.write(buf.slice(off, Math.min(buf.length, off + MAX_XFER)));
+    // transferOut resolves when the samples are QUEUED on the USB stack, NOT when they have played on-air. Setting
+    // mode OFF right away stops the HackRF mid-burst ("cuts off instantly"). Wait out the burst duration first.
+    const burstMs = Math.ceil((iq.length / 2) / SR * 1000);
+    await new Promise((r) => setTimeout(r, burstMs + 200));
     await rx.stopTx();
     post({ type: "sent", id: m.id });
   } catch (e) { post({ type: "error", message: String(e && e.message || e) }); }

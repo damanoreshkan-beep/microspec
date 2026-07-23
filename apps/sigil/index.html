@@ -19,6 +19,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
   <style>body{font-family:'Geist',ui-sans-serif,system-ui,sans-serif}</style>
+  <!-- scrim: the runtime install card sits over the app-wide cosmos; give it an opaque backing so its text keeps contrast (axe, both themes) -->
+  <style>#p-install{background-color:var(--color-base-100)!important}</style>
   <style>
     html,body{background:var(--color-base-200,#141416)}
     #boot{position:fixed;inset:0;z-index:60;background:var(--color-base-200,#141416);opacity:1;transition:opacity .4s ease;pointer-events:none}

@@ -197,16 +197,14 @@ const Ambient = {
     this._paintMarkers();
   },
 
-  // Body stays transparent in BOTH themes so the canvas (cosmos + mandala) shows. axe reads the DOM bg, not
-  // the canvas: leaving <html> on the theme's base in LIGHT keeps text contrast exactly as the original
-  // (overriding it to a custom deep-light tipped borderline muted text). In DARK, a deeper <html> only
-  // raises contrast of the light text — safe — and gives true deep-space black.
+  // App-wide cosmos in BOTH themes: body transparent so the canvas shows through every tab. Text legibility
+  // over the cosmos is guaranteed by OPAQUE SCRIMS on the text surfaces (grimoire empty card, #p-install,
+  // item cards) — not by hiding the background. <html> goes deep-black in dark for true space; left on the
+  // theme base in light.
   _applyBackdrop() {
     if (!this.col) return;
-    const dark = this.col.dark, show = dark || this.forgeActive;   // dark: cosmos on every tab; light: only Forge (Grimoire/Me keep the opaque app bg so text passes axe)
-    document.body.style.background = show ? "transparent" : "";
-    document.documentElement.style.background = dark ? this.col.deep : "";
-    if (this.canvas) this.canvas.style.opacity = show ? "1" : "0";
+    document.body.style.background = "transparent";
+    document.documentElement.style.background = this.col.dark ? this.col.deep : "";
   },
 
   _retheme() {

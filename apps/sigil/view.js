@@ -154,15 +154,17 @@ export function grimoire({ S, toast, undo }) {
   const openItem = withSig.find((x) => x.id === openId);
 
   if (!withSig.length) {
-    return html`<div data-empty class="min-h-[60svh] flex flex-col items-center justify-center gap-3 text-base-content/60">
-      ${Icon("lucide:book-marked", "text-4xl opacity-50")}
-      <p class="text-sm">${T(t, "grimoireEmpty")}</p>
+    return html`<div data-empty class="min-h-[60svh] flex items-center justify-center px-4">
+      <div class="flex flex-col items-center gap-3 rounded-3xl bg-base-100 border border-base-content/10 px-8 py-6 shadow-sm">
+        ${Icon("lucide:book-marked", "text-4xl text-base-content/40")}
+        <p class="text-sm text-base-content/70">${T(t, "grimoireEmpty")}</p>
+      </div>
     </div>`;
   }
 
   return html`<div class="px-4 py-4">
     <div class="grid grid-cols-2 gap-3">
-      ${withSig.map((it) => html`<button data-item key=${it.id} onClick=${() => open(it)} class="group rounded-3xl bg-base-100/60 border border-base-content/10 p-3 flex flex-col items-center gap-2 active:scale-[0.98] transition">
+      ${withSig.map((it) => html`<button data-item key=${it.id} onClick=${() => open(it)} class="group rounded-3xl bg-base-100/90 border border-base-content/10 p-3 flex flex-col items-center gap-2 active:scale-[0.98] transition">
         <${SigilCanvas} sig=${it.sig} size=${132} cls="rounded-xl" />
         <div class="w-full flex items-center gap-1.5 justify-center text-base-content/70">
           <${Planet} body=${it.sig.planet} />

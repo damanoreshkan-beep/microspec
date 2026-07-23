@@ -15,6 +15,7 @@ import { createPlayer } from "/_rt/video.js";
 import { VPS_PROXY, pool } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
+import { resolveSearch, buildSearchUrl } from "/_rt/urlquery.js";
 import { uniqBy, reject } from "lodash-es";
 import { collection, idbSupported } from "/_rt/db.js";
 import { Pixels } from "/_rt/skeleton.js";
@@ -61,6 +62,13 @@ const MOCK = [
 ];
 
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
+// How to "open" a source's actual website (distinct from playing its extracted reel): in-app reverse-proxy
+// iframe overlaid on the reel, or the external browser. The reel feed is still the primary tap.
+const $openMode = persistentAtom("reel:openMode", "iframe");   // "iframe" | "browser"
+function openSite(s, S) {
+  if ($openMode.get() === "browser") { if (typeof window !== "undefined") window.open(s.url, "_blank", "noopener"); return; }
+  $frameUrl.set(s.url); S.tab.set("reel"); S.screen.set("frame");   // iframe overlay on the reel (S.screen is history-backed)
+}
 // Subscriptions live in IndexedDB (the runtime's collection() store) — a real DB, not localStorage. $subs is a
 // reactive mirror the views read; writes go to both (optimistic atom + async idb). Headless/no-idb: atom only.
 const subsDB = collection("reelSubs");
@@ -224,9 +232,14 @@ function Slide({ item, idx, active, ephemeral, t }) {
 
 function SourceSheet({ S, t }) {
   const [val, setVal] = useState("");
+  const [q, setQ] = useState("");
   const norm = () => { const u = val.trim(); return u ? (/^https?:\/\//i.test(u) ? u : "https://" + u) : ""; };
-  const load = (e) => { e?.preventDefault?.(); const url = norm(); if (!url) return S.screen.set(null); subscribe({ name: hostOf(url), url, icon: "lucide:link" }); $src.set(url); S.tab.set("reel"); S.screen.set(null); };
+  const goto = (url) => { subscribe({ name: hostOf(url), url, icon: "lucide:link" }); $src.set(url); S.tab.set("reel"); S.screen.set(null); };
+  const load = (e) => { e?.preventDefault?.(); const url = norm(); if (!url) return S.screen.set(null); goto(url); };
   const browse = () => { const url = norm(); if (url) { $frameUrl.set(url); S.screen.set("frame"); } };            // interactive reverse-proxy view
+  // A pasted results URL (`…/search?q=…`) is searchable → offer to swap the term and play those results.
+  const sr = resolveSearch(norm());
+  const search = (e) => { e?.preventDefault?.(); const url = norm(), term = q.trim(); if (url && term) goto(buildSearchUrl(url, term)); };
   return html`<div class="fixed inset-0 z-40 flex items-end" role="dialog" aria-modal="true" aria-label=${T(t, "srcTitle")}>
     <button class="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-label=${T(t, "close")} onClick=${() => S.screen.set(null)}></button>
     <form onSubmit=${load} class="relative w-full max-w-xl mx-auto bg-base-100 rounded-t-3xl p-5 flex flex-col gap-3" style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
@@ -238,6 +251,13 @@ function SourceSheet({ S, t }) {
         ${Icon("lucide:globe", "opacity-50 shrink-0")}
         <input id="src-input" type="url" inputmode="url" autocomplete="off" class="grow min-w-0" placeholder=${T(t, "srcPlaceholder")} aria-label=${T(t, "srcTitle")} value=${val} onInput=${(e) => setVal(e.target.value)} />
       </label>
+      ${sr.searchable ? html`<div class="flex gap-2">
+        <label class="input input-bordered flex items-center gap-2 rounded-2xl flex-1">
+          ${Icon("lucide:search", "opacity-50 shrink-0")}
+          <input id="sheet-search" type="search" inputmode="search" autocomplete="off" class="grow min-w-0" placeholder=${T(t, "searchPh")} aria-label=${T(t, "search")} value=${q} onInput=${(e) => setQ(e.target.value)} />
+        </label>
+        <button type="button" class="btn btn-primary rounded-2xl gap-1 shrink-0" onClick=${search}>${Icon("lucide:search")} ${T(t, "search")}</button>
+      </div>` : null}
       <div class="flex gap-2">
         <button id="src-load" type="submit" class="btn btn-primary rounded-2xl flex-1 gap-1">${Icon("lucide:play")} ${T(t, "load")}</button>
         <button id="src-browse" type="button" class="btn btn-outline rounded-2xl flex-1 gap-1" onClick=${browse}>${Icon("lucide:compass")} ${T(t, "browse")}</button>
@@ -293,10 +313,6 @@ export function reel({ S }) {
     return () => io.disconnect();
   }, [items.length]);
 
-  const rail = html`<div class="fixed right-3 z-20 flex flex-col gap-2.5" style="bottom:calc(var(--dock-h) + 1.5rem)">
-    <button id="source" class="btn btn-circle bg-black/40 border-white/15 text-white backdrop-blur-md active:scale-95" aria-label=${T(t, "changeSrc")} onClick=${() => S.tab.set("sources")}>${Icon("lucide:layout-grid", "text-xl")}</button>
-  </div>`;
-
   const body = loading
     ? html`<section class="h-[100dvh] w-full"><${Pixels} cls="w-full h-full" /></section>`
     : err
@@ -307,7 +323,6 @@ export function reel({ S }) {
 
   return html`<${Fragment}>
     <div ref=${scroller} class="fixed inset-0 z-0 bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain" style="scrollbar-width:none">${body}</div>
-    ${rail}
     ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : screen === "frame" ? html`<${FrameView} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }
@@ -320,35 +335,70 @@ function Logo({ s }) {
     ${!failed ? html`<img src=${`https://${hostOf(s.url)}/favicon.ico`} alt="" class="w-6 h-6 object-contain" onError=${() => setFailed(true)} />` : Icon(s.icon || "lucide:link", "text-2xl")}
   </div>`;
 }
-const SourceRow = ({ s, active, subbed, onPlay, onToggle, t }) => html`<div class=${`flex items-center gap-3 p-2 pr-2.5 rounded-2xl border ${active ? "border-primary bg-primary/5" : "border-base-300 bg-base-100"}`}>
-  <button data-src-row class="flex items-center gap-3 flex-1 min-w-0 text-left active:scale-[.99] transition" onClick=${() => onPlay(s)}>
-    <${Logo} s=${s} />
-    <div class="min-w-0"><div class="font-medium truncate">${s.name}</div><div class="text-xs text-base-content/70 truncate">${hostOf(s.url)}</div></div>
-  </button>
-  <button class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${subbed ? "text-primary" : "opacity-60"}`} aria-label=${T(t, subbed ? "unsub" : "sub")} data-haptic=${subbed ? "bump" : "off"} onClick=${onToggle}>${Icon(subbed ? "lucide:check" : "lucide:plus", "text-lg")}</button>
-</div>`;
+// A source row. The row body plays the extracted reel (primary). Trailing controls: search (only when the
+// URL carries a resolvable query param — swaps the term and plays the results as a reel), open-site (shows the
+// site itself, in-app iframe overlay or the browser per $openMode), and subscribe/unsubscribe. The subtitle
+// shows the FULL url (truncated), not just the host.
+function SourceRow({ s, active, subbed, onPlay, onOpen, onToggle, t }) {
+  const sr = resolveSearch(s.url);
+  const [searching, setSearching] = useState(false);
+  const [q, setQ] = useState(sr.term || "");
+  const submit = (e) => { e?.preventDefault?.(); const term = q.trim(); if (term) onPlay({ ...s, url: buildSearchUrl(s.url, term) }); };
+  return html`<div class=${`flex flex-col gap-2 p-2 pr-2.5 rounded-2xl border ${active ? "border-primary bg-primary/5" : "border-base-300 bg-base-100"}`}>
+    <div class="flex items-center gap-1.5">
+      <button data-src-row class="flex items-center gap-3 flex-1 min-w-0 text-left active:scale-[.99] transition" onClick=${() => onPlay(s)}>
+        <${Logo} s=${s} />
+        <div class="min-w-0"><div class="font-medium truncate">${s.name}</div><div class="text-xs text-base-content/70 font-mono truncate" title=${s.url}>${s.url}</div></div>
+      </button>
+      ${sr.searchable ? html`<button data-search-toggle class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${searching ? "text-primary" : "opacity-70"}`} aria-label=${T(t, "search")} aria-pressed=${searching} onClick=${() => setSearching((v) => !v)}>${Icon("lucide:search", "text-lg")}</button>` : null}
+      <button data-open-site class="btn btn-ghost btn-sm btn-circle shrink-0 opacity-70" aria-label=${T(t, "openSite")} onClick=${() => onOpen(s)}>${Icon("lucide:external-link", "text-lg")}</button>
+      <button class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${subbed ? "text-primary" : "opacity-60"}`} aria-label=${T(t, subbed ? "unsub" : "sub")} data-haptic=${subbed ? "bump" : "off"} onClick=${onToggle}>${Icon(subbed ? "lucide:check" : "lucide:plus", "text-lg")}</button>
+    </div>
+    ${searching ? html`<form onSubmit=${submit} class="flex items-center gap-2 pl-1">
+      <label class="input input-sm input-bordered flex items-center gap-2 rounded-xl flex-1">
+        ${Icon("lucide:search", "opacity-50 shrink-0 text-sm")}
+        <input data-search-input type="search" inputmode="search" autocomplete="off" class="grow min-w-0" placeholder=${T(t, "searchPh")} aria-label=${T(t, "search")} value=${q} onInput=${(e) => setQ(e.target.value)} />
+      </label>
+      <button type="submit" class="btn btn-primary btn-sm btn-circle" aria-label=${T(t, "search")}>${Icon("lucide:play")}</button>
+    </form>` : null}
+  </div>`;
+}
+
+// Segmented control for $openMode — how the "open site" action shows a source's website. A glass island
+// (matches the dock language); the two option labels are self-evident, no explanatory caption.
+function OpenModeToggle({ t }) {
+  const mode = useStore($openMode);
+  // The text label collapses to icon-only on a watch-narrow container (@max-[280px]) so the pill never
+  // overflows; aria-label keeps each option named for axe when its visible text is hidden.
+  const opt = (m, icon, label) => html`<button class=${`btn btn-sm rounded-xl gap-1.5 ${mode === m ? "btn-primary" : "btn-ghost"}`} aria-pressed=${mode === m} aria-label=${T(t, label)} onClick=${() => $openMode.set(m)}>${Icon(icon)}<span class="text-xs font-medium @max-[280px]:hidden">${T(t, label)}</span></button>`;
+  return html`<div data-openmode role="group" aria-label=${T(t, "openMode")} class="flex items-center gap-1 p-1 rounded-2xl bg-base-100/80 backdrop-blur-xl border border-base-content/10 self-start">
+    ${opt("iframe", "lucide:app-window", "openInApp")}${opt("browser", "lucide:external-link", "openInBrowser")}
+  </div>`;
+}
 
 export function sources({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const subs = useStore($subs), curSrc = useStore($src), watchedN = useStore($watched).size;
   const play = (s) => { $src.set(s.url); S.tab.set("reel"); };
+  const openSiteFn = (s) => openSite(s, S);
   const subbedUrls = new Set(subs.map((x) => x.url));
   const discover = PRESETS.filter((p) => !subbedUrls.has(p.url));
 
   return html`<${Fragment}>
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-4 @container">
       <button id="add-url" class="btn btn-primary rounded-2xl gap-2" onClick=${() => S.screen.set("source")}>${Icon("lucide:plus")} ${T(t, "addUrl")}</button>
+      <${OpenModeToggle} t=${t} />
 
       <div class="flex flex-col gap-2">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:bookmark", "text-primary")} ${T(t, "subs")}</div>
         ${subs.length
-          ? subs.map((s) => html`<${SourceRow} s=${s} active=${s.url === curSrc} subbed=${true} onPlay=${play} onToggle=${() => unsubscribe(s.url)} t=${t} key=${s.url} />`)
+          ? subs.map((s) => html`<${SourceRow} s=${s} active=${s.url === curSrc} subbed=${true} onPlay=${play} onOpen=${openSiteFn} onToggle=${() => unsubscribe(s.url)} t=${t} key=${s.url} />`)
           : html`<div class="text-sm text-base-content/70 px-1 py-3">${T(t, "noSubs")}</div>`}
       </div>
 
       ${discover.length ? html`<div class="flex flex-col gap-2">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:compass")} ${T(t, "discover")}</div>
-        ${discover.map((s) => html`<${SourceRow} s=${s} active=${s.url === curSrc} subbed=${false} onPlay=${play} onToggle=${() => subscribe(s)} t=${t} key=${s.url} />`)}
+        ${discover.map((s) => html`<${SourceRow} s=${s} active=${s.url === curSrc} subbed=${false} onPlay=${play} onOpen=${openSiteFn} onToggle=${() => subscribe(s)} t=${t} key=${s.url} />`)}
       </div>` : null}
 
       ${watchedN > 0 ? html`<button id="clear-watched" class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70 self-center mt-2" onClick=${clearWatched} data-haptic="bump">${Icon("lucide:rotate-ccw")} ${T(t, "clearWatched", { n: watchedN })}</button>` : null}

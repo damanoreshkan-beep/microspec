@@ -19,10 +19,18 @@ export default [
     },
   },
   {
-    name: "джерела: готові канали + додати-URL (Back закриває)", run: async (h) => {
+    name: "hero: дубльованої кнопки джерел нема (лишився лише таб)", run: async (h) => {
       await ready(h);
-      await h.tap("#source"); await h.wait(300);                       // reel → sources tab
+      h.expect((await h.count("#source")) === 0, "плаваюча кнопка-дубль #source не прибрана з hero");
+      h.expect((await h.count('[data-tab="sources"]')) === 1, "таб «Джерела» відсутній у доку");
+    },
+  },
+  {
+    name: "джерела: готові канали + перемикач iframe/браузер + додати-URL (Back закриває)", run: async (h) => {
+      await ready(h);
+      await h.tap('[data-tab="sources"]'); await h.wait(300);           // reel → sources tab (dock)
       h.expect((await h.count("[data-src-row]")) >= 3, "немає готових каналів");
+      h.expect((await h.count("[data-openmode] button")) === 2, "перемикач показу (iframe/браузер) відсутній або не має 2 опцій");
       await h.tap("#add-url"); await h.wait(300);
       h.expect((await h.count("#src-input")) === 1, "шит додавання URL не відкрився");
       await h.back(); await h.wait(300);
@@ -30,9 +38,30 @@ export default [
     },
   },
   {
-    name: "перегляд у рамці відкривається і Back закриває", run: async (h) => {
+    name: "джерело → «відкрити сайт» показує iframe поверх рілзу (Back закриває)", run: async (h) => {
       await ready(h);
-      await h.tap("#source"); await h.wait(300);
+      await h.tap('[data-tab="sources"]'); await h.wait(300);
+      await h.tap("[data-open-site]"); await h.wait(400);               // openMode default = iframe → overlay on reel
+      h.expect((await h.count("[data-frame]")) === 1, "iframe-оверлей не відкрився поверх рілзу");
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("[data-frame]")) === 0, "Back не закрив iframe-оверлей");
+    },
+  },
+  {
+    name: "додати-URL: поле пошуку з'являється лише коли в URL є квері-параметри", run: async (h) => {
+      await ready(h);
+      await h.tap('[data-tab="sources"]'); await h.wait(300);
+      await h.tap("#add-url"); await h.wait(300);
+      h.expect((await h.count("#sheet-search")) === 0, "поле пошуку показалось для порожнього URL");
+      await h.type("#src-input", "site.com/search?q=cats"); await h.wait(200);   // resolver finds ?q= → searchable
+      h.expect((await h.count("#sheet-search")) === 1, "поле пошуку не з'явилось для URL з квері-параметром");
+      await h.back(); await h.wait(300);
+    },
+  },
+  {
+    name: "перегляд у рамці (browse) відкривається і Back закриває", run: async (h) => {
+      await ready(h);
+      await h.tap('[data-tab="sources"]'); await h.wait(300);
       await h.tap("#add-url"); await h.wait(300);
       await h.type("#src-input", "example.com"); await h.wait(120);
       await h.tap("#src-browse"); await h.wait(400);

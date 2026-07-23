@@ -20,7 +20,7 @@
   "connectBtn": "Підключити HackRF",
   "noUsb": "Цей браузер не має WebUSB. Відкрий у Chrome на Android або десктопі.",
   "record": "Запис",
-  "recording": "Слухаю — натисни пульт",
+  "recording": "Запис — натисни пульт, тоді тисни щоб спинити",
   "capturedTitle": "Захоплений сигнал",
   "entries": "імпульсів",
   "repeats": "повторів",

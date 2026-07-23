@@ -20,7 +20,7 @@
   "connectBtn": "Connect HackRF",
   "noUsb": "This browser has no WebUSB. Open in Chrome on Android or desktop.",
   "record": "Record",
-  "recording": "Listening — press your remote",
+  "recording": "Recording — press your remote, then tap to stop",
   "capturedTitle": "Captured signal",
   "entries": "pulses",
   "repeats": "repeats",

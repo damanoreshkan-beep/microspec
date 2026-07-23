@@ -15,10 +15,13 @@ export default [
     },
   },
   {
-    name: "3D спектр: кільце-герой + фон-ландшафт", run: async (h) => {
+    name: "3D спектр: повноекранна сцена + перемикач із 10 варіантів", run: async (h) => {
       await ready(h);
-      h.expect((await h.count("[data-ring]")) === 1, "немає 3D-кільця спектра");
-      h.expect((await h.count("[data-terrain]")) === 1, "немає фонового аудіо-ландшафту");
+      h.expect((await h.count("[data-stage]")) === 1, "немає повноекранної сцени спектра");
+      h.expect((await h.count("[data-viztick]")) === 10, "перемикач не має 10 варіантів");
+      await h.tap('[data-viztick="4"]'); await h.wait(150);
+      h.expect((await h.attr('[data-viztick="4"]', "aria-current")) === "true", "варіант спектра не перемкнувся");
+      await h.tap('[data-viztick="0"]'); await h.wait(120);                 // restore default scene for later shared-page cases
     },
   },
   {

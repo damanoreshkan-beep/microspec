@@ -13,7 +13,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { useSheetDrag } from "/_rt/gesture.js";
+import { useSheetDrag, usePanX } from "/_rt/gesture.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { generateGroove, mulberry32 } from "/_rt/groove.js";
 import { collection } from "/_rt/db.js";
@@ -21,7 +21,7 @@ import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { isGate } from "/_rt/gate.js";
 import { wakeLock } from "/_rt/sensors.js";
 import { holdAudio } from "/_rt/mediasession.js";
-import { bindAudio, enableImmersion, disableImmersion, immersionState, immersionAvailable, RingViz, TerrainBg } from "./viz.js";
+import { bindAudio, enableImmersion, disableImmersion, immersionState, immersionAvailable, SpectrumStage, VIZ, VIZ_COUNT } from "./viz.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -108,6 +108,8 @@ const JC = (initial) => ({ encode: JSON.stringify, decode: (s) => { try { return
 const persisted = (key, initial) => persistentAtom(NS + key, initial, JC(initial));
 const $tracks = persisted("tracks", parse(presetById("techno"))), $bpm = persisted("bpm", 132), $fx = persisted("fx", { ...DFX }), $riff = persisted("riff", RIFF);
 const $style = persisted("style", 0);
+const $viz = persisted("viz", 0);                                // which of the ten 3D spectrum scenes is on the stage
+const vizKey = (id) => "viz" + id.charAt(0).toUpperCase() + id.slice(1);
 const $playing = atom(false), $cur = atom(-1), $sweep = atom(-1), $hist = atom({ seeds: [], idx: -1 });
 const SAVES = collection("ravePatterns");
 
@@ -248,53 +250,69 @@ const beatSig = (r) => JSON.stringify([r.tracks, r.bpm, r.riff]);
 const beatBars = (tracks) => STEPS.map((s) => TRACKS.reduce((n, tr) => n + (tracks?.[tr.id]?.[s] ? 1 : 0), 0));
 const autoName = (t, tracks, bpm, list) => { const key = JSON.stringify(tracks), pre = PRESETS.find((p) => JSON.stringify(parse(p)) === key), base = (pre ? T(t, pre.name) : T(t, "beatWord")) + " · " + bpm; let n = base, i = 2; while (list.some((it) => it.name === n)) n = `${base} (${i++})`; return n; };
 
-// ================= Beat: player + generator =================
+// ================= Beat: the full-bleed 3D spectrum stage + a floating player island =================
+// The body IS the spectrum — one of ten fundamentally different three.js scenes (viz.js) fills the screen
+// (fixed z-0). Everything you touch floats over it as glass islands: genres up top, the player down low.
+// Switch scene by swiping the field left/right, or tap a tick — the scene is its own label (no captions).
 export function rave({ S }) {
-  const t = useStore(S.t), tracks = useStore($tracks), style = useStore($style), playing = useStore($playing), fx = useStore($fx), cur = useStore($cur), bpm = useStore($bpm), sweep = useStore($sweep);
+  const t = useStore(S.t), tracks = useStore($tracks), style = useStore($style), playing = useStore($playing), fx = useStore($fx), cur = useStore($cur), bpm = useStore($bpm), sweep = useStore($sweep), viz = useStore($viz);
   // A persisted non-synth pack was only remembered, not loaded — fetch its samples once on mount so the restored
   // kit actually plays (until then playback falls back to synth; the load is silent — no buzz, no re-select).
   useEffect(() => { loadPackSamples($pack.get()); }, []);
+  // ?viz=<0..9> deep-links a scene (also how a headless shoot reviews a non-default scene — $viz is localStorage,
+  // not a URL, so the param is the only way to land the stage on a specific visual for a screenshot).
+  useEffect(() => { try { const q = new URLSearchParams(location.search).get("viz"); if (q != null) { const n = parseInt(q, 10); if (n >= 0 && n < VIZ_COUNT) $viz.set(n); } } catch { /* */ } }, []);
   const pick = (i) => { buzz(); ensure(); const [id, b] = PLAYER[i]; $style.set(i); $tracks.set(parse(presetById(id))); $bpm.set(b); $hist.set({ seeds: [], idx: -1 }); syncNP(); };
   const kickRow = tracks.kick;
-  // Immersion (gyro parallax + compass rotation) is opt-in and lives behind THIS tap — the gesture iOS needs
-  // to grant DeviceOrientation. A toggle, not a screen, so it isn't history-routed; hidden where it'd be dead.
   const [immersed, setImmersed] = useState(immersionState.on);
   const toggleImmersion = async () => { buzz(12); if (immersionState.on) { disableImmersion(); setImmersed(false); } else { setImmersed(await enableImmersion()); } };
+  // The whole field is the switcher: swipe left/right cycles scene (usePanX detects only — no paneRef, so
+  // nothing slides), and each tick is a jump. Persisted, so you reopen on the scene you left.
+  const setViz = (i) => { buzz(); $viz.set(((i % VIZ_COUNT) + VIZ_COUNT) % VIZ_COUNT); };
+  const { pan } = usePanX({ onNext: () => setViz(viz + 1), onPrev: () => setViz(viz - 1) });
 
   return html`<${Fragment}>
-    <${TerrainBg} />
-    <div class="relative z-10 flex flex-col items-center gap-5 pt-1">
-    <div class="w-full max-w-[440px] -mx-1 px-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div class="flex gap-2 w-max">
-        ${PLAYER.map(([id], i) => { const on = i === style; return html`<button data-style=${id} aria-pressed=${on} onClick=${() => pick(i)} key=${id} class=${`shrink-0 rounded-full border px-3.5 py-2 text-sm font-medium transition ${on ? "border-secondary/60 bg-secondary/12 text-secondary" : "border-base-content/12 text-base-content/70"}`}>${T(t, presetName(id))}</button>`; })}
+    <${SpectrumStage} index=${viz} />
+    <div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-[1] h-2/5 pointer-events-none bg-gradient-to-t from-base-200 via-base-200/55 to-transparent"></div>
+
+    <div class="relative z-10 min-h-[calc(100dvh-9rem)] flex flex-col gap-3">
+      <div class="flex items-center gap-2">
+        <div class="flex-1 min-w-0 rounded-full border border-base-content/10 bg-base-100/75 backdrop-blur-xl shadow-[0_6px_22px_-8px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.07)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div class="flex gap-1.5 w-max p-1.5">
+            ${PLAYER.map(([id], i) => { const on = i === style; return html`<button data-style=${id} aria-pressed=${on} onClick=${() => pick(i)} key=${id} class=${`shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition ${on ? "bg-secondary/18 text-secondary" : "text-base-content/65"}`}>${T(t, presetName(id))}</button>`; })}
+          </div>
+        </div>
+        ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`btn btn-circle btn-sm shrink-0 border-base-content/10 backdrop-blur-xl ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/60 text-base-content/60"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
       </div>
-    </div>
 
-    <div class="relative w-full max-w-[440px] -mb-1">
-      <${RingViz} />
-      ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-1 right-1 btn btn-circle btn-sm border-base-content/10 backdrop-blur-md ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/50 text-base-content/60"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
-    </div>
+      <div ...${pan} class="flex-1 min-h-[26vh] touch-pan-y" aria-hidden="true"></div>
 
-    <div data-viz class="w-full max-w-[440px] grid grid-cols-[repeat(16,minmax(0,1fr))] gap-1">
-      ${STEPS.map((i) => { const beat = i % 4 === 0, k = kickRow[i], on = i === cur, sw = i === sweep; return html`<div key=${i} class=${`h-2.5 rounded-md transition-colors ${sw ? "bg-accent" : on ? "bg-secondary" : k ? "bg-secondary/45" : beat ? "bg-base-content/20" : "bg-base-content/10"}`}></div>`; })}
-    </div>
+      <div class="flex flex-col items-center gap-1.5">
+        <div class="font-mono text-[0.62rem] uppercase tracking-[0.28em] text-base-content/55">${T(t, vizKey(VIZ[viz].id))}</div>
+        <div data-viztrack class="flex items-center gap-1">
+          ${VIZ.map((v, i) => html`<button data-viztick=${i} aria-current=${i === viz} aria-label=${`${T(t, "vizLabel")} ${i + 1}`} onClick=${() => setViz(i)} key=${v.id} class="py-2 px-0.5"><span class=${`block h-1 rounded-full transition-all ${i === viz ? "w-5 bg-secondary" : "w-2 bg-base-content/25"}`}></span></button>`)}
+        </div>
+      </div>
 
-    <div class="flex items-center gap-5">
-      <button aria-label=${T(t, "prevTrack")} onClick=${() => stepTrack(-1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:skip-back", "text-xl")}</button>
-      <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} onClick=${toggle} class="w-20 h-20 rounded-full bg-secondary text-secondary-content grid place-items-center shadow-xl active:scale-95 transition">${Icon(playing ? "lucide:square" : "lucide:play", "text-3xl")}</button>
-      <button aria-label=${T(t, "nextTrack")} onClick=${() => stepTrack(1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:skip-forward", "text-xl")}</button>
-    </div>
-    <div class="-mt-2 flex items-center gap-3">
-      <div class="font-mono text-xs uppercase tracking-[0.2em] text-base-content/55">${T(t, presetName(PLAYER[style][0]))} · ${bpm} BPM</div>
-      <button id="gen" data-gen aria-label=${T(t, "gen")} onClick=${newTrack} class=${`btn btn-sm gap-1.5 ${sweep >= 0 ? "btn-accent" : "btn-outline btn-accent"}`}>${Icon("lucide:sparkles", `text-base ${sweep >= 0 ? "animate-pulse" : ""}`)}${T(t, "gen")}</button>
-    </div>
+      <div data-viz class="grid grid-cols-[repeat(16,minmax(0,1fr))] gap-1">
+        ${STEPS.map((i) => { const beat = i % 4 === 0, k = kickRow[i], on = i === cur, sw = i === sweep; return html`<div key=${i} class=${`h-1.5 rounded-full transition-colors ${sw ? "bg-accent" : on ? "bg-secondary" : k ? "bg-secondary/45" : beat ? "bg-base-content/20" : "bg-base-content/10"}`}></div>`; })}
+      </div>
 
-    <div class="w-full max-w-[440px] flex items-center gap-3 rounded-2xl border border-base-content/10 bg-base-100/60 backdrop-blur px-4 py-3">
-      ${Icon("lucide:filter", "text-base text-base-content/60 shrink-0")}
-      <span class="text-sm font-medium w-24 shrink-0">${T(t, "fxFilter")}</span>
-      <input data-filter type="range" min="0" max="1" step="0.01" value=${fx.mfilter} aria-label=${T(t, "fxFilter")} onInput=${(e) => setFx("mfilter", Number(e.target.value))} class="range range-xs range-secondary flex-1" />
-    </div>
-    ${!audioSupported ? html`<div class="text-xs text-base-content/60">${T(t, "noAudio")}</div>` : null}
+      <div class="rounded-[1.5rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_10px_34px_-8px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.09)] p-3 pb-3.5 flex flex-col gap-3">
+        <div class="flex items-center gap-3 px-1">
+          ${Icon("lucide:filter", "text-base text-base-content/55 shrink-0")}
+          <input data-filter type="range" min="0" max="1" step="0.01" value=${fx.mfilter} aria-label=${T(t, "fxFilter")} onInput=${(e) => setFx("mfilter", Number(e.target.value))} class="range range-xs range-secondary flex-1" />
+          <span class="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-base-content/55 tabular-nums shrink-0">${bpm}</span>
+        </div>
+        <div class="flex items-center justify-center gap-4">
+          <button aria-label=${T(t, "prevTrack")} onClick=${() => stepTrack(-1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:skip-back", "text-xl")}</button>
+          <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} onClick=${toggle} class="w-16 h-16 rounded-full bg-secondary text-secondary-content grid place-items-center shadow-lg active:scale-95 transition">${Icon(playing ? "lucide:square" : "lucide:play", "text-2xl")}</button>
+          <button aria-label=${T(t, "nextTrack")} onClick=${() => stepTrack(1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:skip-forward", "text-xl")}</button>
+          <div class="w-px h-7 bg-base-content/12 mx-0.5"></div>
+          <button id="gen" data-gen aria-label=${T(t, "gen")} onClick=${newTrack} class=${`btn btn-circle btn-sm ${sweep >= 0 ? "btn-accent" : "btn-outline btn-accent"}`}>${Icon("lucide:sparkles", `text-lg ${sweep >= 0 ? "animate-pulse" : ""}`)}</button>
+        </div>
+        ${!audioSupported ? html`<div class="text-xs text-base-content/60 text-center">${T(t, "noAudio")}</div>` : null}
+      </div>
     </div>
   </${Fragment}>`;
 }

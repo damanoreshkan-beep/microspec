@@ -141,7 +141,7 @@ export function SigilStage({ sigil }) {
     const size = () => { const [w, h] = dims(), dpr = DPR(), bw = Math.round(w * dpr), bh = Math.round(h * dpr); canvas.width = bw; canvas.height = bh; store.renderer?.setSize(bw, bh, false); store.scene?.resize(bw, bh); };
     store.build = () => {
       if (!store.THREE || !store.sigil) return;
-      try { store.scene?.dispose?.(); store.scene = makeScene(store.THREE, store.sigil); const [w, h] = dims(), dpr = DPR(); store.scene.resize(Math.round(w * dpr), Math.round(h * dpr)); } catch { store.scene = null; }
+      try { store.scene?.dispose?.(); store.scene = makeScene(store.THREE, store.sigil); const [w, h] = dims(), dpr = DPR(); store.scene.resize(Math.round(w * dpr), Math.round(h * dpr)); } catch (e) { store.err = e; store.scene = null; }
     };
     (async () => {
       if (hasWebGL() && store.sigil) {
@@ -150,8 +150,10 @@ export function SigilStage({ sigil }) {
           store.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
           store.renderer.setClearColor(0x000000, 0);
           store.build();
-        } catch { store.THREE = null; store.renderer = null; }
+        } catch (e) { store.err = e; store.THREE = null; store.renderer = null; }
       }
+      // diagnostic breadcrumbs — which render path actually ran, and any WebGL init error (read by the gate)
+      try { canvas.dataset.haswebgl = hasWebGL() ? "yes" : "no"; canvas.dataset.render = store.scene ? "webgl" : (store.renderer ? "renderer-no-scene" : "2d"); if (store.err) canvas.dataset.err = String(store.err && store.err.message || store.err).slice(0, 140); } catch { /* */ }
       size();
       const loop = (ms) => {
         if (dead) return;

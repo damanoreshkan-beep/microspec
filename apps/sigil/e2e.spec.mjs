@@ -5,6 +5,15 @@ const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("
 
 export default [
   {
+    name: "DIAG-webgl-path", run: async (h) => {
+      await ready(h); await h.wait(1400);
+      const hw = await h.attr("[data-sigil]", "data-haswebgl");
+      const rm = await h.attr("[data-sigil]", "data-render");
+      const er = await h.attr("[data-sigil]", "data-err");
+      h.expect(false, `DIAG haswebgl=${hw} render=${rm} err=${er}`);
+    },
+  },
+  {
     name: "кузня: сцена + атрибуція + дії", run: async (h) => {
       await ready(h);
       h.expect((await h.count("[data-intent]")) === 1, "немає поля наміру");

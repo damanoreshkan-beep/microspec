@@ -90,7 +90,7 @@ export function check({ S }) {
 
     <!-- the hash, split: the 5 that leave vs the 35 that stay -->
     ${hex ? html`<div class="rounded-3xl bg-base-100/50 border border-base-content/10 p-4 flex flex-col gap-3 min-w-0">
-      <div class="flex items-center gap-2 text-[11px] uppercase tracking-widest text-base-content/40 font-mono">${Icon("lucide:hash", "text-sm")}SHA-1</div>
+      <div class="flex items-center gap-2 text-[11px] uppercase tracking-widest text-base-content/70 font-mono">${Icon("lucide:hash", "text-sm")}SHA-1</div>
       <div data-hash class="font-mono text-sm break-all leading-relaxed min-w-0">
         <span class="inline-flex items-center rounded-md bg-primary/15 text-primary font-bold px-1.5 py-0.5 mr-0.5 ring-1 ring-primary/30">${prefix}</span><span class="text-base-content/45 tracking-tight">${suffix}</span>
       </div>

@@ -94,36 +94,35 @@ function subscribe(fn) {
 
 const glowMat = (THREE, opacity = 0.14) => new THREE.MeshBasicMaterial({ transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
 
-// 1 · RADIAL BAR RING — 28 bars on a circle grow up from a fixed baseline, purple→cyan, wireframe icosa core.
+// 1 · RADIAL BAR RING — 28 bars on a circle grow up from a fixed baseline into an elegant purple→cyan crown,
+// seen from above so the ring reads as a disc (bars kept shorter than the radius); a wireframe icosa core.
 function makeRing(THREE) {
-  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(52, 1, 0.1, 100), group = new THREE.Group(); scene.add(group);
-  const geo = new THREE.BoxGeometry(0.16, 1, 0.16); geo.translate(0, 0.5, 0);
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(48, 1, 0.1, 100), group = new THREE.Group(); scene.add(group);
+  const geo = new THREE.BoxGeometry(0.14, 1, 0.14); geo.translate(0, 0.5, 0);
   const bars = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ toneMapped: false }), N); bars.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  const glow = new THREE.InstancedMesh(geo, glowMat(THREE, 0.16), N);
-  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3, 1), new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.4, toneMapped: false }));
-  group.add(glow, bars, core);
-  const R = 3, C = new THREE.Color(), d = new THREE.Object3D(); let spin = 0;
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.15, 1), new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.32, toneMapped: false }));
+  group.add(bars, core);
+  const R = 3.4, C = new THREE.Color(), d = new THREE.Object3D(); let spin = 0;
   for (let i = 0; i < N; i++) bars.setColorAt(i, C.setHSL(0.6, 0.7, 0.5));
   return {
     scene, cam,
     resize(w, h) { cam.aspect = w / h; cam.updateProjectionMatrix(); },
     frame(st, p) {
-      spin += 0.0016 + st.bands.treble * 0.02;
+      spin += 0.0015 + st.bands.treble * 0.015;
       const br = idle(st.phase);
       for (let i = 0; i < N; i++) {
-        const lv = st.levels[i] || 0, a = (i / N) * TAU + st.phase * 0.15;
+        const lv = st.levels[i] || 0, a = (i / N) * TAU + st.phase * 0.12;
         d.position.set(Math.cos(a) * R, 0, Math.sin(a) * R); d.rotation.set(0, -a, 0);
-        d.scale.set(1, (0.15 + lv * 3.2) * br, 1); d.updateMatrix(); bars.setMatrixAt(i, d.matrix);
-        d.scale.set(1.7, (0.15 + lv * 3.2) * br, 1.7); d.updateMatrix(); glow.setMatrixAt(i, d.matrix);
-        bars.setColorAt(i, C.setHSL(((bandHue(i / N, st)) % 360) / 360, 0.78, 0.42 + lv * 0.34));
+        d.scale.set(1, (0.12 + lv * 1.7) * br, 1); d.updateMatrix(); bars.setMatrixAt(i, d.matrix);
+        bars.setColorAt(i, C.setHSL(((bandHue(i / N, st)) % 360) / 360, 0.8, 0.4 + lv * 0.2));
       }
-      bars.instanceMatrix.needsUpdate = glow.instanceMatrix.needsUpdate = true; if (bars.instanceColor) bars.instanceColor.needsUpdate = true;
-      core.scale.setScalar((1 + st.bands.bass * 0.3) * br); core.rotation.y += 0.01 + st.bands.treble * 0.03; core.rotation.x = 0.3;
-      core.material.color.setHSL(((bandHue(0.5, st)) % 360) / 360, 0.6, 0.6); core.material.opacity = 0.22 + st.bands.mid * 0.4;
+      bars.instanceMatrix.needsUpdate = true; if (bars.instanceColor) bars.instanceColor.needsUpdate = true;
+      core.scale.setScalar((0.9 + st.bands.bass * 0.25) * br); core.rotation.y += 0.008 + st.bands.treble * 0.02; core.rotation.x = 0.28;
+      core.material.color.setHSL(((bandHue(0.5, st)) % 360) / 360, 0.6, 0.55); core.material.opacity = 0.18 + st.bands.mid * 0.3;
       group.rotation.y = spin + st.turn;
-      cam.position.set(p.x * 1.1, 2.5 - p.y * 0.7, 7); cam.lookAt(0, 0.4 + st.bands.bass * 0.3, 0);
+      cam.position.set(p.x * 1.2, 5.2 - p.y * 0.9, 7.6); cam.lookAt(0, 0.1, 0);
     },
-    dispose() { geo.dispose(); bars.material.dispose(); glow.material.dispose(); core.geometry.dispose(); core.material.dispose(); },
+    dispose() { geo.dispose(); bars.material.dispose(); core.geometry.dispose(); core.material.dispose(); },
   };
 }
 
@@ -248,12 +247,12 @@ function makeUrchin(THREE) {
     frame(st, p) {
       const br = idle(st.phase);
       for (let i = 0; i < K; i++) {
-        const band = sampleBand(st.levels, i / (K - 1)), len = (0.25 + band * 1.4 + st.bands.mid * 0.3) * br;
+        const band = sampleBand(st.levels, i / (K - 1)), len = (0.25 + band * 1.4 + st.bands.mid * 0.3) * br, hue = ((bandHue(i / (K - 1), st)) % 360) / 360;
         d.position.copy(dirs[i]); d.quaternion.setFromUnitVectors(UP, dirs[i]); d.scale.set(1, len, 1); d.updateMatrix();
-        spikes.setMatrixAt(i, d.matrix); d.scale.set(1.6, len, 1.6); d.updateMatrix(); glow.setMatrixAt(i, d.matrix);
-        spikes.setColorAt(i, C.setHSL(((bandHue(i / (K - 1), st)) % 360) / 360, 0.8, 0.4 + band * 0.4));
+        spikes.setMatrixAt(i, d.matrix); d.scale.set(1.5, len, 1.5); d.updateMatrix(); glow.setMatrixAt(i, d.matrix);
+        spikes.setColorAt(i, C.setHSL(hue, 0.8, 0.4 + band * 0.22)); glow.setColorAt(i, C.setHSL(hue, 0.85, 0.22));   // dim colour so the additive halo tints, never blows to white
       }
-      spikes.instanceMatrix.needsUpdate = glow.instanceMatrix.needsUpdate = true; if (spikes.instanceColor) spikes.instanceColor.needsUpdate = true;
+      spikes.instanceMatrix.needsUpdate = glow.instanceMatrix.needsUpdate = true; if (spikes.instanceColor) spikes.instanceColor.needsUpdate = true; if (glow.instanceColor) glow.instanceColor.needsUpdate = true;
       core.scale.setScalar((1 + st.bands.bass * 0.18) * br);
       group.rotation.y += st.turn + 0.002; group.rotation.x = Math.sin(st.phase * 0.2) * 0.15;
       cam.position.set(p.x * 0.6, p.y * -0.5, 6 - st.bands.bass * 0.5); cam.lookAt(0, 0, 0);
@@ -318,7 +317,7 @@ function makeRibbon(THREE) {
     frame(st, p) {
       const br = idle(st.phase, 0.9, 0.12);
       for (let i = 0; i < CTRL; i++) { const band = st.levels[i] || 0; pts[i].y = (band - 0.4) * A * br; pts[i].z = Math.sin(i * 0.5 + st.phase) * 1.2; }
-      for (let s = 0; s <= SAMPLES; s++) { curve.getPoint(s / SAMPLES, v); lpos[s * 3] = v.x; lpos[s * 3 + 1] = v.y; lpos[s * 3 + 2] = v.z; const band = sampleBand(st.levels, s / SAMPLES); C.setHSL(((bandHue(s / SAMPLES, st)) % 360) / 360, 0.75, 0.5 + band * 0.4); lcol[s * 3] = C.r; lcol[s * 3 + 1] = C.g; lcol[s * 3 + 2] = C.b; }
+      for (let s = 0; s <= SAMPLES; s++) { curve.getPoint(s / SAMPLES, v); lpos[s * 3] = v.x; lpos[s * 3 + 1] = v.y; lpos[s * 3 + 2] = v.z; const band = sampleBand(st.levels, s / SAMPLES); C.setHSL(((bandHue(s / SAMPLES, st)) % 360) / 360, 0.75, 0.48 + band * 0.24); lcol[s * 3] = C.r; lcol[s * 3 + 1] = C.g; lcol[s * 3 + 2] = C.b; }
       g.attributes.position.needsUpdate = g.attributes.color.needsUpdate = true;
       group.rotation.z = Math.sin(st.phase * 0.2) * 0.14 + st.turn; group.scale.y = 1 + st.bands.bass * 0.4;
       cam.position.set(p.x * 0.5, 0.5 + p.y * -0.4, 9); cam.lookAt(0, 0, 0);
@@ -376,7 +375,7 @@ function makeMatrix(THREE) {
         const gx = i % G, gz = (i / G) | 0, band = sampleBand(st.levels, frac[i]);
         const target = (0.2 + band * 6) * br; cur[i] += (target - cur[i]) * 0.25;
         d.position.set((gx - cx) * SP, cur[i] / 2, (gz - cx) * SP); d.scale.set(1, Math.max(0.2, cur[i]), 1); d.updateMatrix(); cubes.setMatrixAt(i, d.matrix);
-        cubes.setColorAt(i, C.setHSL(((bandHue(frac[i], st)) % 360) / 360, 0.7, 0.28 + band * 0.5));
+        cubes.setColorAt(i, C.setHSL(((bandHue(frac[i], st)) % 360) / 360, 0.72, 0.3 + band * 0.3));
       }
       cubes.instanceMatrix.needsUpdate = true; if (cubes.instanceColor) cubes.instanceColor.needsUpdate = true;
       group.rotation.y = st.turn * 0.5;

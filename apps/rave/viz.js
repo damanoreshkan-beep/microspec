@@ -348,7 +348,7 @@ function makeVortex(THREE) {
         for (let i = 0; i < COUNT; i++) { const r = Math.hypot(base[i * 3], base[i * 3 + 2]), t = Math.min(1, r / maxR); col[i * 3] = cIn.r + (cOut.r - cIn.r) * t; col[i * 3 + 1] = cIn.g + (cOut.g - cIn.g) * t; col[i * 3 + 2] = cIn.b + (cOut.b - cIn.b) * t; }
         geo.attributes.color.needsUpdate = true;
       }
-      coreMesh.scale.setScalar(1 + st.bands.bass * 0.9); coreMesh.material.opacity = 0.4 + st.bands.bass * 0.4;
+      coreMesh.scale.setScalar(0.8 + st.bands.bass * 0.7); coreMesh.material.opacity = 0.3 + st.bands.bass * 0.3;   // a soft bloom, not a hard white disc
       group.rotation.y += 0.0016 + st.turn * 0.5 + st.bands.treble * 0.004;
       cam.position.set(p.x, 6 - p.y * 0.8, 9); cam.lookAt(0, 0, 0);
     },

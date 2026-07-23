@@ -108,7 +108,7 @@ const JC = (initial) => ({ encode: JSON.stringify, decode: (s) => { try { return
 const persisted = (key, initial) => persistentAtom(NS + key, initial, JC(initial));
 const $tracks = persisted("tracks", parse(presetById("techno"))), $bpm = persisted("bpm", 132), $fx = persisted("fx", { ...DFX }), $riff = persisted("riff", RIFF);
 const $style = persisted("style", 0);
-const $viz = persisted("viz", 7);  // TEMP: shoot vortex in CI                                // which of the ten 3D spectrum scenes is on the stage
+const $viz = persisted("viz", 0);                                // which of the ten 3D spectrum scenes is on the stage
 const vizKey = (id) => "viz" + id.charAt(0).toUpperCase() + id.slice(1);
 const $playing = atom(false), $cur = atom(-1), $sweep = atom(-1), $hist = atom({ seeds: [], idx: -1 });
 const SAVES = collection("ravePatterns");

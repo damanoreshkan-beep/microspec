@@ -20,10 +20,10 @@ const grim = collection("sigil");
 const DEFAULT_INTENT = "I am calm and focused";     // the seed the gate forges, so the shot shows a real sigil
 
 // planet attribution chip — the astro.js shaded token + the planet's name + its kamea order (no emoji)
-const Attribution = ({ t, sig }) => html`<div class="inline-flex items-center gap-2 rounded-full bg-base-100/80 backdrop-blur-xl border border-base-content/10 px-3 py-1.5 shadow-sm">
-  <${Planet} body=${sig.planet} />
-  <span class="text-sm font-medium">${T(t, pKey(sig.planet))}</span>
-  <span class="text-xs font-mono text-base-content/60 tabular-nums">${sig.order}×${sig.order}</span>
+const Attribution = ({ t, sig }) => html`<div class="inline-flex max-w-full items-center gap-2 rounded-full bg-base-100/80 backdrop-blur-xl border border-base-content/10 px-3 py-1.5 shadow-sm">
+  <span class="shrink-0"><${Planet} body=${sig.planet} /></span>
+  <span class="text-sm font-medium truncate">${T(t, pKey(sig.planet))}</span>
+  <span class="text-xs font-mono text-base-content/60 tabular-nums shrink-0">${sig.order}×${sig.order}</span>
 </div>`;
 
 async function shareSigil(sig, t, toast) {
@@ -63,13 +63,13 @@ export function forge({ S, toast }) {
           onInput=${(e) => setIntent(e.currentTarget.value)}
           onKeyDown=${(e) => { if (e.key === "Enter") doForge(); }}
           class="input input-ghost w-full text-base focus:outline-none bg-transparent" />
-        <div class="flex items-center gap-2">
-          <button data-forge onClick=${doForge} disabled=${!intent.trim()} class="btn btn-primary rounded-2xl flex-1 gap-2">
-            ${Icon("lucide:flame", "text-lg")}${T(t, sig ? "reforgeBtn" : "forgeBtn")}
+        <div class="flex flex-wrap items-center gap-2">
+          <button data-forge onClick=${doForge} disabled=${!intent.trim()} class="btn btn-primary rounded-2xl flex-1 min-w-0 gap-2">
+            ${Icon("lucide:flame", "text-lg shrink-0")}<span class="truncate">${T(t, sig ? "reforgeBtn" : "forgeBtn")}</span>
           </button>
-          ${sig ? html`<button data-keep aria-label=${T(t, "keepBtn")} onClick=${keep} class="btn btn-ghost btn-circle border border-base-content/10">${Icon("lucide:bookmark-plus", "text-lg")}</button>` : null}
-          ${sig ? html`<button data-share aria-label=${T(t, "shareBtn")} onClick=${() => shareSigil(sig, t, toast)} class="btn btn-ghost btn-circle border border-base-content/10">${Icon("lucide:share-2", "text-lg")}</button>` : null}
-          ${sig && immersionAvailable ? html`<button data-tilt aria-label=${T(t, "immerseAria")} aria-pressed=${tilted} onClick=${toggleTilt} class=${`btn btn-circle border border-base-content/10 ${tilted ? "btn-primary" : "btn-ghost"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
+          ${sig ? html`<button data-keep aria-label=${T(t, "keepBtn")} onClick=${keep} class="btn btn-ghost btn-circle shrink-0 border border-base-content/10">${Icon("lucide:bookmark-plus", "text-lg")}</button>` : null}
+          ${sig ? html`<button data-share aria-label=${T(t, "shareBtn")} onClick=${() => shareSigil(sig, t, toast)} class="btn btn-ghost btn-circle shrink-0 border border-base-content/10">${Icon("lucide:share-2", "text-lg")}</button>` : null}
+          ${sig && immersionAvailable ? html`<button data-tilt aria-label=${T(t, "immerseAria")} aria-pressed=${tilted} onClick=${toggleTilt} class=${`btn btn-circle shrink-0 border border-base-content/10 ${tilted ? "btn-primary" : "btn-ghost"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
         </div>
       </div>
     </div>

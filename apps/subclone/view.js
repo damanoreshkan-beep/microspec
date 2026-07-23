@@ -57,7 +57,7 @@ function record() {
 function discard() { buzz(); $rec.set({ state: "idle", cap: null }); }
 function saveCap(name) {
   const c = $rec.get().cap; if (!c) return; buzz(12);
-  $saved.set([{ id: uid(), name: name || fMhz(c.freq) + " FM", freq: c.freq, frame: c.frame, entries: c.entries, rolling: c.rolling }, ...$saved.get()]);
+  $saved.set([{ id: uid(), name: name || fMhz(c.freq) + " FM", freq: c.freq, frame: c.frame, entries: c.entries }, ...$saved.get()]);
   $rec.set({ state: "idle", cap: null });
 }
 function transmit(s) { buzz(12); if (gate || !worker) { $tx.set(s.id); setTimeout(() => $tx.set(null), 900); return; } worker.postMessage({ type: "transmit", id: s.id, freq: s.freq, frame: s.frame, repeats: 5, txGain: $txGain.get() }); }
@@ -74,9 +74,9 @@ export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {
     if (!demo) return;
     $connected.set(true);
     $saved.set([
-      { id: "d1", name: "Гараж", freq: 433_920_000, frame: [400, -1200, 1200, -400], entries: 24, rolling: false },
-      { id: "d2", name: "Ворота", freq: 433_920_000, frame: [350, -1050], entries: 24, rolling: false },
-      { id: "d3", name: "Автоключ", freq: 433_920_000, frame: [], entries: 66, rolling: true },
+      { id: "d1", name: "Гараж", freq: 433_920_000, frame: [400, -1200, 1200, -400], entries: 24 },
+      { id: "d2", name: "Ворота", freq: 433_920_000, frame: [350, -1050], entries: 24 },
+      { id: "d3", name: "Розетка", freq: 433_920_000, frame: [300, -900, 900, -300], entries: 12 },
     ]);
   }, []);
 
@@ -107,7 +107,6 @@ export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {
         <div class="flex items-center gap-4 text-xs text-base-content/70 font-mono">
           <span>${rec.cap.entries} ${T(t, "entries")}</span><span>×${rec.cap.repeats} ${T(t, "repeats")}</span>
         </div>
-        ${rec.cap.rolling ? html`<div class="flex items-center gap-2 text-xs text-warning bg-warning/10 border border-warning/25 rounded-xl px-3 py-2" data-rolling>${Icon("lucide:shield-alert", "shrink-0")}${T(t, "rollingWarn")}</div>` : null}
         <div class="flex gap-2">
           <input value=${nm} onInput=${(e) => setNm(e.target.value)} placeholder=${T(t, "namePlaceholder")} class="input input-sm input-bordered flex-1 rounded-xl bg-base-100/60" />
           <button data-save class="btn btn-sm btn-primary rounded-xl gap-1.5" onClick=${() => { saveCap(nm); setNm(""); }}>${Icon("lucide:bookmark-plus")}${T(t, "save")}</button>
@@ -120,12 +119,9 @@ export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {
         ${saved.map((s) => { const sending = tx === s.id; return html`<div key=${s.id} data-saved class="flex items-center gap-3 rounded-2xl border border-base-content/10 bg-base-100/40 px-4 py-2.5">
           <div class="flex-1 min-w-0 flex flex-col">
             <span class="font-medium truncate">${s.name}</span>
-            <span class="font-mono text-[0.7rem] text-base-content/55 tabular-nums">${fMhz(s.freq)} MHz · ${s.entries}${s.rolling ? html` · <span class="text-warning">rolling</span>` : ""}</span>
+            <span class="font-mono text-[0.7rem] text-base-content/55 tabular-nums">${fMhz(s.freq)} MHz · ${s.entries}</span>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            ${s.rolling ? html`<span class="text-warning" title=${T(t, "rollingWarn")} data-rolling>${Icon("lucide:shield-alert", "text-base")}</span>` : null}
-            <button data-transmit=${s.id} aria-label=${T(t, "transmit")} disabled=${sending} onClick=${() => transmit(s)} class=${`btn btn-sm gap-1.5 ${sending ? "btn-primary" : "btn-outline border-primary/40 text-primary"}`}>${Icon("lucide:radio-tower", `text-base ${sending ? "animate-pulse" : ""}`)}<span class="@max-[340px]:hidden">${T(t, sending ? "transmitting" : "transmit")}</span></button>
-          </div>
+          <button data-transmit=${s.id} aria-label=${T(t, "transmit")} disabled=${sending} onClick=${() => transmit(s)} class=${`btn btn-sm shrink-0 gap-1.5 ${sending ? "btn-primary" : "btn-outline border-primary/40 text-primary"}`}>${Icon("lucide:radio-tower", `text-base ${sending ? "animate-pulse" : ""}`)}<span class="@max-[340px]:hidden">${T(t, sending ? "transmitting" : "transmit")}</span></button>
           <button data-del aria-label=${T(t, "del")} data-haptic="bump" class="btn btn-ghost btn-sm btn-circle text-base-content/50 shrink-0" onClick=${() => del(s, undo)}>${Icon("lucide:trash-2", "text-lg")}</button>
         </div>`; })}
       </div>` : rec.state !== "captured" ? html`<div class="flex flex-col items-center text-base-content/55 py-10 gap-2 text-center px-6">${Icon("lucide:radio-receiver", "text-3xl")}<span class="text-sm">${T(t, "savedEmpty")}</span></div>` : null}

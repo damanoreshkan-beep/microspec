@@ -16,7 +16,7 @@
   "installIosHint": "Tap Share, then Add to Home Screen.",
   "installGenericHint": "Open the browser menu and choose Install.",
   "connectTitle": "Connect your HackRF",
-  "connectBody": "Plug the HackRF into this phone with a USB-C OTG cable, then grant access. Capture and replay your own remotes on-device. A rolling-code remote (car keys, modern garages) changes every press, so a replay usually will not open anything.",
+  "connectBody": "Plug the HackRF into this phone with a USB-C OTG cable, then grant access. Capture and replay your own remotes on-device.",
   "connectBtn": "Connect HackRF",
   "noUsb": "This browser has no WebUSB. Open in Chrome on Android or desktop.",
   "record": "Record",
@@ -24,7 +24,6 @@
   "capturedTitle": "Captured signal",
   "entries": "pulses",
   "repeats": "repeats",
-  "rollingWarn": "Looks like rolling-code — a replay usually will not work",
   "namePlaceholder": "Name it",
   "save": "Save",
   "discard": "Discard",
@@ -36,5 +35,5 @@
   "settings": "Settings",
   "disconnect": "Disconnect",
   "txGain": "Transmit power",
-  "ownNote": "Transmit only to devices you own, and keep the power low. Fixed-code remotes only — rolling-code security is out of scope."
+  "ownNote": "Transmit only to devices you own, and keep the power low."
 }

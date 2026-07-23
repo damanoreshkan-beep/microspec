@@ -137,6 +137,7 @@ export function SigilStage({ sigil }) {
   const store = useRef({ renderer: null, THREE: null, scene: null, raf: null, ro: null, mo: null, t0: 0 }).current;
   useEffect(() => {
     const canvas = ref.current; if (!canvas) return; let dead = false;
+    store.sigil = sigil;   // seed from the first render — the async init below builds with it (the [sigil] effect only fires on CHANGE)
     const dims = () => { const r = canvas.getBoundingClientRect(); return [Math.max(1, Math.round(r.width)), Math.max(1, Math.round(r.height))]; };
     const size = () => { const [w, h] = dims(), dpr = DPR(), bw = Math.round(w * dpr), bh = Math.round(h * dpr); canvas.width = bw; canvas.height = bh; store.renderer?.setSize(bw, bh, false); store.scene?.resize(bw, bh); };
     store.build = () => {
@@ -144,7 +145,7 @@ export function SigilStage({ sigil }) {
       try { store.scene?.dispose?.(); store.scene = makeScene(store.THREE, store.sigil); const [w, h] = dims(), dpr = DPR(); store.scene.resize(Math.round(w * dpr), Math.round(h * dpr)); } catch (e) { store.err = e; store.scene = null; }
     };
     (async () => {
-      if (hasWebGL() && store.sigil) {
+      if (hasWebGL()) {
         try {
           const THREE = await import("three"); if (dead) return; store.THREE = THREE;
           store.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });

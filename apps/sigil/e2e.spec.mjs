@@ -5,12 +5,14 @@ const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("
 
 export default [
   {
-    name: "DIAG-webgl-path", run: async (h) => {
-      await ready(h); await h.wait(1400);
+    // regression guard: the whole point of this app is the forged 3D. If the gate has WebGL, the three.js
+    // scene MUST build — a silent fall to the 2D path (a throw in makeScene, or the data not reaching the
+    // renderer) means the hero feature is invisible on real devices too. This catches exactly that.
+    name: "3D: WebGL-шлях активний у гейті", run: async (h) => {
+      await ready(h); await h.wait(1500);
       const hw = await h.attr("[data-sigil]", "data-haswebgl");
       const rm = await h.attr("[data-sigil]", "data-render");
-      const er = await h.attr("[data-sigil]", "data-err");
-      h.expect(false, `DIAG haswebgl=${hw} render=${rm} err=${er}`);
+      if (hw === "yes") h.expect(rm === "webgl", `WebGL є, але сцена не збудувалась: render=${rm} err=${await h.attr("[data-sigil]", "data-err")}`);
     },
   },
   {

@@ -54,7 +54,7 @@ function makeScene(THREE, sigil) {
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(46, 1, 0.1, 100); cam.position.set(0, 0, 3.35);
   const group = new THREE.Group(); scene.add(group);
-  group.position.y = 0.34; group.scale.setScalar(0.84);   // centre the glyph in the open canvas above the island
+  group.position.y = 0.34; group.scale.setScalar(0.78);   // centre the glyph in the open canvas above the island
   let col = readTheme();
   const INK = new THREE.Color(col.ink), ACC = new THREE.Color(col.accent);
 
@@ -77,7 +77,6 @@ function makeScene(THREE, sigil) {
   const totalIdx = tubeGeo.index.count, glowIdx = glowGeo.index.count;
 
   // kamea lattice — a faint node grid; struck cells flare (accent), the rest are dim ink
-  const visited = new Set(sigil.cells.map(([r, c]) => `${r},${c}`));
   const nodes = sigil.nodes; const NN = nodes.length;
   const ndGeo = new THREE.SphereGeometry(1, 8, 8);
   const nodeMesh = new THREE.InstancedMesh(ndGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9, toneMapped: false }), NN);
@@ -85,7 +84,7 @@ function makeScene(THREE, sigil) {
   const d = new THREE.Object3D(), C = new THREE.Color();
   const nodeVisited = [];
   for (let i = 0; i < NN; i++) {
-    const n = nodes[i]; const isV = i < NN && visited.has(nodeCellKey(n, sigil));
+    const n = nodes[i]; const isV = !!n.on;
     nodeVisited.push(isV);
     d.position.set(n.x, n.y, -0.02); d.scale.setScalar(isV ? cellW * 0.09 : cellW * 0.05); d.updateMatrix();
     nodeMesh.setMatrixAt(i, d.matrix);
@@ -129,13 +128,6 @@ function makeScene(THREE, sigil) {
     },
     dispose() { group.traverse((o) => { o.geometry?.dispose?.(); const m = o.material; if (Array.isArray(m)) m.forEach((x) => x?.dispose?.()); else m?.dispose?.(); }); },
   };
-}
-// nodes carry {x,y,v}; map a node to its [row,col] key via its position within the order grid
-function nodeCellKey(n, sigil) {
-  const span = 1.62, cell = span / sigil.order;
-  const c = Math.round((n.x + span / 2 - cell / 2) / cell);
-  const r = Math.round((span / 2 - cell / 2 - n.y) / cell);
-  return `${r},${c}`;
 }
 
 // ========================= the full-bleed stage component =========================
@@ -186,16 +178,15 @@ export function draw2D(canvas, sigil, opts = {}) {
   if (!ctx || !sigil) return;
   const W = canvas.width || 0, H = canvas.height || 0; if (!W || !H) return;
   const theme = opts.live ? readTheme() : { ink: "#ECECEE", accent: "#8B7CF6", dark: true };
-  const R = Math.min(W, H) * 0.4, cx = W / 2, cy = H / 2;
+  const R = Math.min(W, H) * 0.4, cx = W / 2, cy = opts.live ? H * 0.42 : H / 2;   // raise the live stage clear of the island
   const to = (p) => [cx + p.x * R, cy - p.y * R];
   ctx.clearRect(0, 0, W, H);
   if (!opts.live) { ctx.fillStyle = "#0A0A0B"; ctx.fillRect(0, 0, W, H); }
 
   // faint kamea nodes
   const cellW = (1.62 / sigil.order) * R;
-  const visited = new Set(sigil.cells.map(([r, c]) => `${r},${c}`));
   for (const n of sigil.nodes) {
-    const [x, y] = to(n); const isV = visited.has(nodeCellKey(n, sigil));
+    const [x, y] = to(n); const isV = !!n.on;
     ctx.beginPath(); ctx.arc(x, y, isV ? cellW * 0.09 : cellW * 0.05, 0, Math.PI * 2);
     ctx.fillStyle = isV ? theme.accent : theme.ink; ctx.globalAlpha = isV ? 0.95 : 0.28; ctx.fill();
   }

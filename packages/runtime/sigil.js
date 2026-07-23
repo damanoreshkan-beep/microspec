@@ -160,12 +160,25 @@ export function sigilPath(intent) {
   }
   if (raw.length < 2) { raw.push({ x: 0, y: 0 }); cells.push([(order / 2) | 0, (order / 2) | 0]); }
 
-  // all cell centres — the faint kamea lattice the viz dims/flares
+  // all cell centres — the faint kamea lattice the viz dims/flares; `on` marks a cell the trace strikes
+  const cellSet = new Set(cells.map(([r, c]) => `${r},${c}`));
   const nodes = [];
-  for (let i = 0; i < order; i++) for (let j = 0; j < order; j++) nodes.push({ ...centre(i, j), v: sq[i][j] });
+  for (let i = 0; i < order; i++) for (let j = 0; j < order; j++) nodes.push({ ...centre(i, j), v: sq[i][j], on: cellSet.has(`${i},${j}`) });
 
-  // traditional marks: start ring + perpendicular end bar
-  const a = raw[raw.length - 2], b = raw[raw.length - 1];
+  // FIT the composition: centre on the path's bounding box and scale it to fill the frame, so every sigil —
+  // whatever cells its intent happens to strike — sits centred and prominent (not tucked in a corner). The
+  // lattice + marks share the transform so visited nodes stay aligned; off-frame context dots simply clip.
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of raw) { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }
+  const cX = (minX + maxX) / 2, cY = (minY + maxY) / 2;
+  const half = Math.max(0.18, (maxX - minX) / 2, (maxY - minY) / 2);
+  const scale = Math.min(1.7, 0.82 / half);                 // fill the box; cap so a 2-cell glyph doesn't over-zoom
+  const fit = (p) => ({ ...p, x: (p.x - cX) * scale, y: (p.y - cY) * scale });
+  const fRaw = raw.map(fit), fNodes = nodes.map(fit);
+  const fCell = cell * scale;
+
+  // traditional marks: start ring + perpendicular end bar (in fitted space)
+  const a = fRaw[fRaw.length - 2], b = fRaw[fRaw.length - 1];
   const endAngle = Math.atan2(b.y - a.y, b.x - a.x) + Math.PI / 2;
   return {
     intent: String(intent),
@@ -173,11 +186,11 @@ export function sigilPath(intent) {
     order,
     constant: magicConstant(order),
     letters,
-    points: raw,
+    points: fRaw,
     cells,
-    nodes,
-    start: { x: raw[0].x, y: raw[0].y, r: cell * 0.22 },
-    end: { x: b.x, y: b.y, a: endAngle, len: cell * 0.34 },
+    nodes: fNodes,
+    start: { x: fRaw[0].x, y: fRaw[0].y, r: fCell * 0.22 },
+    end: { x: b.x, y: b.y, a: endAngle, len: fCell * 0.34 },
     seed,
   };
 }

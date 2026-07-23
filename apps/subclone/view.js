@@ -24,6 +24,7 @@ const $connected = atom(false), $usbOk = atom(true), $rec = atom({ state: "idle"
 const $freq = persistentAtom("subclone:freq", 433_920_000, { encode: String, decode: Number });
 const $saved = persistentAtom("subclone:saved", [], JC([]));
 const $txGain = persistentAtom("subclone:txg", 30, { encode: String, decode: Number });
+const $repeats = persistentAtom("subclone:reps", 5, { encode: String, decode: Number });   // manual repeats per send
 
 let worker = null;
 function startWorker() {
@@ -60,7 +61,7 @@ function saveCap(name) {
   $saved.set([{ id: uid(), name: name || fMhz(c.freq) + " FM", freq: c.freq, frame: c.frame, entries: c.entries }, ...$saved.get()]);
   $rec.set({ state: "idle", cap: null });
 }
-function transmit(s) { buzz(12); if (gate || !worker) { $tx.set(s.id); setTimeout(() => $tx.set(null), 900); return; } worker.postMessage({ type: "transmit", id: s.id, freq: s.freq, frame: s.frame, repeats: 5, txGain: $txGain.get() }); }
+function transmit(s) { buzz(12); if (gate || !worker) { $tx.set(s.id); setTimeout(() => $tx.set(null), 900); return; } worker.postMessage({ type: "transmit", id: s.id, freq: s.freq, frame: s.frame, repeats: Math.max(1, $repeats.get()), txGain: $txGain.get() }); }
 function setFreq(f) { buzz(); $freq.set(f); $rec.set({ state: "idle", cap: null }); }
 
 export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {
@@ -149,10 +150,13 @@ function del(s, undo) {
 }
 
 function SettingsSheet({ open, onClose, t, demo }) {
-  const g = useStore($txGain);
+  const g = useStore($txGain), reps = useStore($repeats);
   const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
   const { boxRef, grip } = useSheetDrag(onClose);
   return html`<dialog id="rfsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col gap-4 max-w-xl mx-auto">${grip}
+    <div class="flex flex-col gap-1"><div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${T(t, "txRepeats")}</span><span class="font-mono tabular-nums text-base-content/60">×${reps}</span></div>
+      <input type="range" min="1" max="16" step="1" value=${reps} class="range range-xs range-primary" aria-label=${T(t, "txRepeats")} data-repeats onInput=${(e) => $repeats.set(Number(e.target.value))} />
+      <span class="text-[0.7rem] text-base-content/55 leading-snug">${T(t, "txRepeatsHint")}</span></div>
     <div class="flex flex-col gap-1"><div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${T(t, "txGain")}</span><span class="font-mono tabular-nums text-base-content/60">${g} dB</span></div>
       <input type="range" min="0" max="47" step="1" value=${g} class="range range-xs range-primary" aria-label=${T(t, "txGain")} onInput=${(e) => $txGain.set(Number(e.target.value))} /></div>
     <p class="text-xs text-base-content/60 leading-relaxed">${T(t, "ownNote")}</p>

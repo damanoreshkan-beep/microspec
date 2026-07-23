@@ -133,20 +133,20 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
         <span class=${`w-2.5 h-2.5 rounded-full shrink-0 ${active ? "bg-primary animate-pulse" : "bg-base-content/25"}`}></span>
         <div class="flex-1 min-w-0">
           <div class="font-semibold text-sm">${T(t, active ? "detected" : "listening")}</div>
-          ${detect ? html`<div class="font-mono text-xs text-base-content/60 tabular-nums">SF${detect.sf} · ${Math.round(detect.bw / 1000)} kHz · ${detect.count} ${T(t, "bursts")}</div>` : null}
+          ${detect ? html`<div class="font-mono text-xs text-base-content/70 tabular-nums">SF${detect.sf} · ${Math.round(detect.bw / 1000)} kHz · ${detect.count} ${T(t, "bursts")}</div>` : null}
         </div>
         <span class="font-mono text-xs text-base-content/55 tabular-nums shrink-0">${fMhz(p.freq)}</span>
       </div>
 
       <!-- decoded packets -->
       ${packets.length ? html`<div class="flex flex-col gap-1.5" data-live data-packets>
-        <div class="text-xs uppercase tracking-wide text-base-content/60 px-1">${T(t, "packets")}</div>
+        <div class="text-xs uppercase tracking-wide text-base-content/70 px-1">${T(t, "packets")}</div>
         ${packets.map((pkt) => html`<div key=${pkt.id} data-packet class="rounded-2xl border border-base-content/10 bg-base-100/40 px-4 py-2.5 flex flex-col gap-1">
           <div class="flex items-center gap-2">
             <span class=${`rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-wider border ${pkt.crcOk ? "border-primary/40 text-primary bg-primary/10" : "border-warning/40 text-warning bg-warning/10"}`}>${T(t, pkt.crcOk ? "crcOk" : "crcBad")}</span>
-            <span class="font-mono text-[0.62rem] text-base-content/45 tabular-nums">SF${pkt.sf} · ${pkt.bytes.length} B</span>
+            <span class="font-mono text-[0.62rem] text-base-content/65 tabular-nums">SF${pkt.sf} · ${pkt.bytes.length} B</span>
           </div>
-          <div class="font-mono text-[0.72rem] text-base-content/50 break-all leading-snug">${hexOf(pkt.bytes)}</div>
+          <div class="font-mono text-[0.72rem] text-base-content/70 break-all leading-snug">${hexOf(pkt.bytes)}</div>
           <div class="font-mono text-sm break-all leading-snug">${asciiOf(pkt.bytes)}</div>
         </div>`)}
       </div>` : null}

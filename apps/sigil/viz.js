@@ -54,7 +54,7 @@ function makeScene(THREE, sigil) {
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(46, 1, 0.1, 100); cam.position.set(0, 0, 3.35);
   const group = new THREE.Group(); scene.add(group);
-  group.position.y = 0.34; group.scale.setScalar(0.78);   // centre the glyph in the open canvas above the island
+  group.position.y = 0.3; group.scale.setScalar(0.62);   // centre + margin: a portrait viewport is narrow, so keep the (square-fit) glyph clear of the side edges
   let col = readTheme();
   const INK = new THREE.Color(col.ink), ACC = new THREE.Color(col.accent);
 

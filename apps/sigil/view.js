@@ -16,15 +16,43 @@ import { SigilStage, draw2D, sigilToDataURL, immersionAvailable, enableImmersion
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const pKey = (k) => "p" + k[0].toUpperCase() + k.slice(1);
+const dKey = (k) => "dom" + k[0].toUpperCase() + k.slice(1);
 const grim = collection("sigil");
 const DEFAULT_INTENT = "I am calm and focused";     // the seed the gate forges, so the shot shows a real sigil
 
-// planet attribution chip — the astro.js shaded token + the planet's name + its kamea order (no emoji)
-const Attribution = ({ t, sig }) => html`<div class="inline-flex max-w-full items-center gap-2 rounded-full bg-base-100/80 backdrop-blur-xl border border-base-content/10 px-3 py-1.5 shadow-sm">
+// planet attribution chip — the astro.js shaded token + the planet's name + its kamea order (no emoji).
+// Tappable → the meaning sheet (what the planet, the square and the traced line actually are).
+const Attribution = ({ t, sig, onOpen }) => html`<button data-about aria-label=${T(t, "aboutAria")} onClick=${onOpen} class="inline-flex max-w-full items-center gap-2 rounded-full bg-base-100/80 backdrop-blur-xl border border-base-content/10 px-3 py-1.5 shadow-sm active:scale-[0.98] transition">
   <span class="shrink-0"><${Planet} body=${sig.planet} /></span>
   <span class="text-sm font-medium truncate">${T(t, pKey(sig.planet))}</span>
   <span class="text-xs font-mono text-base-content/60 tabular-nums shrink-0">${sig.order}×${sig.order}</span>
-</div>`;
+  ${Icon("lucide:info", "text-sm text-base-content/40 shrink-0")}
+</button>`;
+
+// the meaning sheet — history-backed (Back closes). Esoteric CONTENT (like a tarot card's meaning), not a
+// how-to caption: what the seal is, what its square encodes, and that the line is your own intent.
+function AboutSheet({ t, sig, onClose }) {
+  const kamea = T(t, "kameaDesc").replace(/\{o\}/g, sig.order).replace("{c}", sig.constant);
+  return html`<div class="fixed inset-0 z-40 flex flex-col" role="dialog" aria-modal="true">
+    <button aria-label=${T(t, "close")} onClick=${onClose} class="absolute inset-0 bg-base-300/60 backdrop-blur-sm"></button>
+    <div data-about-sheet class="relative mt-auto rounded-t-[2rem] bg-base-100/90 backdrop-blur-xl border-t border-base-content/10 shadow-2xl p-6 pb-9 flex flex-col gap-4">
+      <div class="w-10 h-1 rounded-full bg-base-content/20 self-center"></div>
+      <div class="flex items-center gap-2.5">
+        <${Planet} body=${sig.planet} />
+        <span class="text-lg font-semibold">${T(t, pKey(sig.planet))}</span>
+        <span class="text-sm font-mono text-base-content/60 tabular-nums">${sig.order}×${sig.order}</span>
+      </div>
+      <p class="text-base-content/70 -mt-2">${T(t, dKey(sig.planet))}</p>
+      <div class="h-px bg-base-content/10"></div>
+      <p class="text-sm text-base-content/80 leading-relaxed">${kamea}</p>
+      <p class="text-sm text-base-content/80 leading-relaxed">${T(t, "traceDesc")}</p>
+      <div class="flex items-center gap-2.5 pt-1">
+        <span class="text-xs uppercase tracking-wide text-base-content/50 shrink-0">${T(t, "lettersLabel")}</span>
+        <span class="font-mono text-base tracking-[0.35em] text-base-content truncate">${sig.letters.join("")}</span>
+      </div>
+    </div>
+  </div>`;
+}
 
 async function shareSigil(sig, t, toast) {
   const url = sigilToDataURL(sig, 720);
@@ -42,6 +70,7 @@ async function shareSigil(sig, t, toast) {
 // ---- Forge ----
 export function forge({ S, toast }) {
   const t = useStore(S.t);
+  const scr = useStore(S.screen);
   const [intent, setIntent] = useState(gate ? DEFAULT_INTENT : "");
   const [sig, setSig] = useState(gate ? sigilPath(DEFAULT_INTENT) : null);
   const [tilted, setTilted] = useState(false);
@@ -65,7 +94,7 @@ export function forge({ S, toast }) {
   return html`<div class="contents">
     <${SigilStage} sigil=${sig} />
     <div class="relative z-10 flex flex-col min-h-[70svh] px-4 pt-3 pb-4 gap-3 pointer-events-none">
-      <div class="flex justify-center">${sig ? html`<div class="pointer-events-auto"><${Attribution} t=${t} sig=${sig} /></div>` : null}</div>
+      <div class="flex justify-center">${sig ? html`<div class="pointer-events-auto"><${Attribution} t=${t} sig=${sig} onOpen=${() => S.screen.set("about")} /></div>` : null}</div>
       <div class="flex-1"></div>
       <div class="pointer-events-auto rounded-3xl bg-base-100/80 backdrop-blur-xl border border-base-content/10 shadow-xl p-3 flex flex-col gap-2.5">
         <input data-intent aria-label=${T(t, "intentLabel")} value=${intent} placeholder=${T(t, "intentPlaceholder")}
@@ -82,6 +111,7 @@ export function forge({ S, toast }) {
         </div>
       </div>
     </div>
+    ${scr === "about" && sig ? html`<${AboutSheet} t=${t} sig=${sig} onClose=${() => S.screen.set(null)} />` : null}
   </div>`;
 }
 

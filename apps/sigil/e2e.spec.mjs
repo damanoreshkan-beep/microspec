@@ -25,6 +25,15 @@ export default [
     },
   },
   {
+    name: "значення: чіп → sheet, Back закриває", run: async (h) => {
+      await ready(h); await h.wait(300);
+      await h.tap("[data-about]"); await h.wait(250);
+      h.expect((await h.count("[data-about-sheet]")) === 1, "sheet значення не відкрився");
+      await h.back(); await h.wait(250);
+      h.expect((await h.count("[data-about-sheet]")) === 0, "Back не закрив sheet значення");
+    },
+  },
+  {
     name: "збереження → ґримуар", run: async (h) => {
       await ready(h);
       await h.tap("[data-keep]"); await h.wait(300);

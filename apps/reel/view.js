@@ -368,7 +368,9 @@ function SourceRow({ s, active, subbed, onPlay, onOpen, onToggle, t }) {
 // (matches the dock language); the two option labels are self-evident, no explanatory caption.
 function OpenModeToggle({ t }) {
   const mode = useStore($openMode);
-  const opt = (m, icon, label) => html`<button class=${`btn btn-sm rounded-xl gap-1.5 ${mode === m ? "btn-primary" : "btn-ghost"}`} aria-pressed=${mode === m} onClick=${() => $openMode.set(m)}>${Icon(icon)}<span class="text-xs font-medium">${T(t, label)}</span></button>`;
+  // The text label collapses to icon-only on a watch-narrow container (@max-[280px]) so the pill never
+  // overflows; aria-label keeps each option named for axe when its visible text is hidden.
+  const opt = (m, icon, label) => html`<button class=${`btn btn-sm rounded-xl gap-1.5 ${mode === m ? "btn-primary" : "btn-ghost"}`} aria-pressed=${mode === m} aria-label=${T(t, label)} onClick=${() => $openMode.set(m)}>${Icon(icon)}<span class="text-xs font-medium @max-[280px]:hidden">${T(t, label)}</span></button>`;
   return html`<div data-openmode role="group" aria-label=${T(t, "openMode")} class="flex items-center gap-1 p-1 rounded-2xl bg-base-100/80 backdrop-blur-xl border border-base-content/10 self-start">
     ${opt("iframe", "lucide:app-window", "openInApp")}${opt("browser", "lucide:external-link", "openInBrowser")}
   </div>`;
@@ -383,7 +385,7 @@ export function sources({ S }) {
   const discover = PRESETS.filter((p) => !subbedUrls.has(p.url));
 
   return html`<${Fragment}>
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-4 @container">
       <button id="add-url" class="btn btn-primary rounded-2xl gap-2" onClick=${() => S.screen.set("source")}>${Icon("lucide:plus")} ${T(t, "addUrl")}</button>
       <${OpenModeToggle} t=${t} />
 

@@ -46,15 +46,15 @@ export function check({ S }) {
     } catch { setStatus("error"); }
   };
 
-  return html`<div class="px-4 py-4 flex flex-col gap-4 max-w-md mx-auto">
+  return html`<div class="w-full min-w-0 py-4 flex flex-col gap-4 max-w-md mx-auto">
     <div class="rounded-3xl bg-base-100/80 backdrop-blur-xl border border-base-content/10 p-2 pl-4 flex items-center gap-2">
       <input data-pw type=${reveal ? "text" : "password"} value=${pw} onInput=${(e) => setPw(e.currentTarget.value)}
         aria-label=${T(t, "pwLabel")} placeholder=${T(t, "pwPlaceholder")} autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
-        class="flex-1 min-w-0 bg-transparent text-base focus:outline-none" />
+        class="input input-ghost flex-1 min-w-0 bg-transparent px-2 text-base focus:outline-none" />
       <button data-reveal aria-label=${T(t, reveal ? "hide" : "show")} onClick=${() => setReveal((v) => !v)} class="btn btn-ghost btn-circle btn-sm text-base-content/70">${Icon(reveal ? "lucide:eye-off" : "lucide:eye", "text-lg")}</button>
     </div>
 
-    ${hex ? html`<div class="rounded-3xl bg-base-100/60 border border-base-content/10 p-4 flex flex-col gap-3">
+    ${hex ? html`<div class="rounded-3xl bg-base-100/60 border border-base-content/10 p-4 flex flex-col gap-3 min-w-0">
       <div data-hash class="font-mono text-sm break-all leading-relaxed tracking-tight">
         <span class="text-primary font-semibold">${prefix}</span><span class="text-base-content/45">${suffix}</span>
       </div>
@@ -68,7 +68,7 @@ export function check({ S }) {
       ${Icon("lucide:shield-search", "text-lg")}${T(t, status === "checking" ? "checking" : "checkBtn")}
     </button>
 
-    ${res && status === "done" ? html`<div data-verdict data-pwned=${String(res.pwned)} class=${`rounded-3xl p-5 flex flex-col items-center gap-2 border ${res.pwned ? "bg-error/10 border-error/30" : "bg-success/10 border-success/30"}`}>
+    ${res && status === "done" ? html`<div data-verdict data-pwned=${String(res.pwned)} class=${`rounded-3xl p-5 flex flex-col items-center gap-2 border min-w-0 ${res.pwned ? "bg-error/10 border-error/30" : "bg-success/10 border-success/30"}`}>
       ${Icon(res.pwned ? "lucide:shield-alert" : "lucide:shield-check", `text-4xl ${res.pwned ? "text-error" : "text-success"}`)}
       <div class="text-lg font-semibold">${T(t, res.pwned ? "vPwned" : "vClean")}</div>
       ${res.pwned

@@ -1,0 +1,10 @@
+{
+  "id": "lorawatch",
+  "theme": "signal",
+  "category": "hackrf",
+  "tabs": [
+    { "id": "watch", "type": "tool", "icon": "lucide:radio", "label": "tabWatch", "view": "lorawatchView" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:radio", "theme": true, "lang": true, "install": true }
+}

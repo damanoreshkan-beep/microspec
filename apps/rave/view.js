@@ -302,7 +302,7 @@ export function rave({ S }) {
         <div class="flex items-center gap-3 px-1">
           ${Icon("lucide:filter", "text-base text-base-content/55 shrink-0")}
           <input data-filter type="range" min="0" max="1" step="0.01" value=${fx.mfilter} aria-label=${T(t, "fxFilter")} onInput=${(e) => setFx("mfilter", Number(e.target.value))} class="range range-xs range-secondary flex-1" />
-          <span class="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-base-content/55 tabular-nums shrink-0">${bpm}</span>
+          <span class="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-base-content/55 tabular-nums shrink-0">${bpm} BPM</span>
         </div>
         <div class="flex items-center justify-center gap-4">
           <button aria-label=${T(t, "prevTrack")} onClick=${() => stepTrack(-1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:skip-back", "text-xl")}</button>

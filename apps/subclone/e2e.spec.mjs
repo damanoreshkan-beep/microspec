@@ -35,7 +35,7 @@ export default [
       await ready(h);
       await h.tap("[data-settings]"); await h.wait(200);
       h.expect((await h.prop("#rfsheet", "open")) === true, "sheet не відкрився");
-      h.expect((await h.count('#rfsheet input[type=range]')) === 1, "немає повзунка потужності");
+      h.expect((await h.count('#rfsheet input[type=range]')) === 2, "немає повзунків повторів та потужності");
       await h.back(); await h.wait(200);
       h.expect((await h.prop("#rfsheet", "open")) !== true, "Back не закрив sheet");
     },

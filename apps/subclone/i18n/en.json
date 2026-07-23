@@ -35,5 +35,7 @@
   "settings": "Settings",
   "disconnect": "Disconnect",
   "txGain": "Transmit power",
-  "ownNote": "Transmit only to devices you own, and keep the power low."
+  "ownNote": "Transmit only to devices you own, and keep the power low.",
+  "txRepeats": "Repeats per send",
+  "txRepeatsHint": "For a toggle device (one button on/off), set this to 1"
 }

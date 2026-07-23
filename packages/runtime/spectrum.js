@@ -73,6 +73,36 @@ export function Parallax({ alpha = 0.1, maxDeg = 20, gain = 1, reduced = false }
   };
 }
 
+
+export function sampleBand(levels, frac) {
+  const n = levels.length; if (!n) return 0;
+  const f = frac < 0 ? 0 : frac > 1 ? 1 : frac;
+  return levels[Math.min(n - 1, Math.round(f * (n - 1)))] || 0;
+}
+
+export function idle(phase, floor = 0.85, amp = 0.15) { return floor + amp * Math.sin(phase * 2); }
+
+export function fib(i, n) {
+  const y = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;           
+  const r = Math.sqrt(Math.max(0, 1 - y * y));
+  const a = i * 2.399963229728653;                        
+  return [Math.cos(a) * r, y, Math.sin(a) * r];
+}
+
+export function galaxyDisc(n, { radius = 5, branches = 5, spin = 1, randomness = 0.4, power = 3, thin = 0.5 } = {}, rng = Math.random) {
+  const out = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const r = rng() * radius;
+    const branch = ((i % branches) / branches) * Math.PI * 2;
+    const spun = r * spin;
+    const jit = () => Math.pow(rng(), power) * (rng() < 0.5 ? 1 : -1) * randomness * r;
+    out[i * 3] = Math.cos(branch + spun) * r + jit();
+    out[i * 3 + 1] = jit() * thin;
+    out[i * 3 + 2] = Math.sin(branch + spun) * r + jit();
+  }
+  return out;
+}
+
 export function seedFrame(bins = 1024, phase = 0) {
   const u = new Uint8Array(bins);
   for (let i = 0; i < bins; i++) {

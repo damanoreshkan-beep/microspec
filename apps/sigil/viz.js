@@ -202,8 +202,11 @@ const Ambient = {
   // (overriding it to a custom deep-light tipped borderline muted text). In DARK, a deeper <html> only
   // raises contrast of the light text — safe — and gives true deep-space black.
   _applyBackdrop() {
-    document.body.style.background = "transparent";
-    document.documentElement.style.background = this.col.dark ? this.col.deep : "";
+    if (!this.col) return;
+    const dark = this.col.dark, show = dark || this.forgeActive;   // dark: cosmos on every tab; light: only Forge (Grimoire/Me keep the opaque app bg so text passes axe)
+    document.body.style.background = show ? "transparent" : "";
+    document.documentElement.style.background = dark ? this.col.deep : "";
+    if (this.canvas) this.canvas.style.opacity = show ? "1" : "0";
   },
 
   _retheme() {
@@ -218,7 +221,7 @@ const Ambient = {
   },
 
   setSigil(sig) { this.sigil = sig; if (this.gl) { if (sig) this._buildMandala(sig); else this._disposeMandala(); } this._paintMarkers(); },
-  setForgeActive(b) { this.forgeActive = b; if (this.mandala) this.mandala.visible = b; this._paintMarkers(); },
+  setForgeActive(b) { this.forgeActive = b; if (this.mandala) this.mandala.visible = b; this._applyBackdrop(); this._paintMarkers(); },
 
   _frame(t) {
     const red = immersion.reduced;

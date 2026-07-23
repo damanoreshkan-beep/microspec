@@ -11,7 +11,7 @@ import { T } from "/_rt/i18n.js";
 import { Planet } from "/_rt/astro.js";
 import { sigilPath } from "/_rt/sigil.js";
 import { collection } from "/_rt/db.js";
-import { isGate } from "/_rt/gate.js";
+import { gate } from "/_rt/gate.js";
 import { SigilStage, draw2D, sigilToDataURL, immersionAvailable, enableImmersion, disableImmersion } from "./viz.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -42,8 +42,8 @@ async function shareSigil(sig, t, toast) {
 // ---- Forge ----
 export function forge({ S, toast }) {
   const t = useStore(S.t);
-  const [intent, setIntent] = useState(isGate ? DEFAULT_INTENT : "");
-  const [sig, setSig] = useState(isGate ? sigilPath(DEFAULT_INTENT) : null);
+  const [intent, setIntent] = useState(gate ? DEFAULT_INTENT : "");
+  const [sig, setSig] = useState(gate ? sigilPath(DEFAULT_INTENT) : null);
   const [tilted, setTilted] = useState(false);
 
   const doForge = () => { const s = sigilPath(intent); if (s) setSig(s); };

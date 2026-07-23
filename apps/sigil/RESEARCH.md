@@ -73,6 +73,32 @@ No emoji (planet = `astro.js` token + its name word; no `♄`). No hint captions
 - **Delete safety**: removing a saved sigil uses the undo-toast (`store.undo`) — a mis-tap is recoverable.
 - i18n en+uk parity on every string; both themes pass axe (dark + light); no overflow@384.
 
+## Visual system v2 — cosmic kaleidoscope (decision log, closed)
+
+Owner brief: *mystical, mirrored like a kaleidoscope; the symbol draws itself with a cosmic-magic effect;
+a dynamic background across the whole app; 2027 quality.* Every frame designed as layers, no GLSL (keeps the
+`render=webgl` regression gate honest + screenshot-verifiable; CI Chromium DOES have WebGL — confirmed).
+
+- **One persistent, app-wide scene.** A single `<canvas>` is mounted to `document.body` (fixed z-0,
+  pointer-events-none), ONE `WebGLRenderer`, ONE rAF pump — it lives OUTSIDE the Preact view tree, so the
+  cosmic background survives every tab switch (Forge · Grimoire · Me). Body bg set transparent, `<html>` bg set
+  to the theme's deep base so the additive layers sit on solid colour. Views only push state
+  (`Ambient.setSigil`, `setForgeActive`).
+- **Background (always):** 3 parallax star layers (~2.4k additive Points) with slow drift + per-layer opacity
+  breathing + gyro parallax (near layer moves most); 2 soft nebula sprites (CanvasTexture radial gradient,
+  additive, very low opacity) drifting + breathing. **Theme-adaptive:** rich deep-space in dark; in light the
+  ambient drops to faint ink motes so text still passes axe both themes.
+- **Kaleidoscope sigil (Forge):** the tube is built once; **6-fold radial symmetry** — 6 sector groups at
+  k·60°, alternating `scale.x = ±1` (true mirror), material `side: DoubleSide` so mirrored normals still light.
+  Shared geometry ⇒ one `setDrawRange` draws all sectors in sync. The mandala slowly counter-rotates + breathes;
+  gyro tilts it.
+- **Cosmic draw-on:** an eased `drawRange` 0→1 over ~2 s; a bright **forge-head** sprite rides the curve front
+  (`curve.getPoint(reveal)`), trailing a recycled **spark sprite pool** (independent per-sprite opacity — the
+  no-per-point-alpha-without-shader constraint), then the head fades and the tube settles to metal.
+- **Perf:** shared geometries/materials across the 6 sectors, DPR ≤ 1.5, sprite pools (not per-point buffers),
+  additive back-shells for bloom, no post-processing. Falls back to a **2D kaleidoscope** (`draw2D` mirrors the
+  path 6-fold) when WebGL is absent — same look powers the grimoire thumbnails + the shared talisman PNG.
+
 ## Pitfalls captured (so the build lands once)
 
 - **Duplicate consecutive cells** collapse a Catmull curve → dedupe consecutive identical points; guarantee ≥2

@@ -14,7 +14,8 @@ import { T } from "/_rt/i18n.js";
 import { createPlayer } from "/_rt/video.js";
 import { VPS_PROXY, pool } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
-import { dedupeVideos, isBlackSample } from "/_rt/vfilter.js";
+import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
+import { uniqBy, reject } from "lodash-es";
 import { collection, idbSupported } from "/_rt/db.js";
 import { Pixels } from "/_rt/skeleton.js";
 
@@ -40,19 +41,23 @@ const PRESETS = [
   { name: "Time-lapse", url: "https://commons.wikimedia.org/wiki/Category:Time-lapse_videos", icon: "lucide:timer", color: "#FB923C" },
 ];
 const DEFAULT_SRC = PRESETS[0].url;
-// A solid-black 8×8 PNG (raster → never taints a canvas). Seeds the gate so the black-poster filter is
-// exercised end-to-end: data: posters are analysed even under the gate (no network), remote ones are not.
+// Solid 8×8 PNGs (raster → never taint a canvas) that seed the poster filter end-to-end: data: posters are
+// analysed even under the gate (no network), remote ones are not. BLACK_PX → a broken/black poster;
+// GREY_PX → a flat single-colour placeholder a CDN serves when it has no real thumbnail (isFlatSample).
 const BLACK_PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAAAAADhZOFXAAAAEklEQVR4nGJgoA4AAAAA//8DAABIAAFYHHymAAAAAElFTkSuQmCC";
+const GREY_PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFUlEQVR4nGJowAEYhpYEAAAA//8DAILzYAFRMt2JAAAAAElFTkSuQmCC";
 // Headless gate / ?mock: seed a populated reel from public-domain clips (a poster on one so the poster path is
-// exercised) — the live layout, never the empty state, is what the gate measures. The last two entries are
-// deliberately BAD: a duplicate of Big Buck Bunny (dedupe drops it) and a black/broken poster (black filter
-// drops it) — so both cleanups are provable in the gate. After filtering, three good clips remain.
+// exercised) — the live layout, never the empty state, is what the gate measures. The last three entries are
+// deliberately BAD: a duplicate of Big Buck Bunny (dedupe drops it), a black/broken poster (black filter drops
+// it) and a flat-grey placeholder poster (flat filter drops it) — so all three cleanups are provable in the
+// gate. After filtering, three good clips remain.
 const MOCK = [
   { video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", title: "Big Buck Bunny", poster: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg" },
   { video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4", title: "Elephants Dream", poster: null },
   { video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4", title: "Sintel", poster: null },
   { video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", title: "Big Buck Bunny dup", poster: null },
   { video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", title: "Broken clip", poster: BLACK_PX },
+  { video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4", title: "Flat placeholder", poster: GREY_PX },
 ];
 
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
@@ -93,15 +98,16 @@ const $active = atom(0);
 const $frameUrl = atom("");
 const $ephemeral = atom(false);   // source hands out signed/expiring URLs → show poster + "watch" link, don't play
 
-// ── black/broken-poster filter ──────────────────────────────────────────────────────────────────────────
-// A broken clip's poster renders as a solid black frame; those slides are dead weight (they don't play, and
-// for CORS-locked/ephemeral sources the poster IS the whole slide). We sample each poster into a small canvas
-// and drop the ones classified black (vfilter.isBlackSample). Remote posters are read through the /feed/frame
-// CORS proxy so the canvas isn't tainted; data: posters load directly. Fail-open: anything we can't prove
-// black is kept. Applies to EVERY item — inline-playable and ephemeral alike.
-const blackPosters = new Set();     // posters classified black/broken → filtered out (+ dropped from future loads)
+// ── blank-poster filter (black + flat placeholders) ─────────────────────────────────────────────────────
+// A broken/placeholder poster renders as a dead slide: a solid black frame OR a single flat-colour fill a CDN
+// serves when it has no real thumbnail. Both are dead weight (they don't play, and for CORS-locked/ephemeral
+// sources the poster IS the whole slide). We sample each poster into a small canvas and drop the ones a real
+// frame never produces — near-black (vfilter.isBlackSample) or uniform flat-fill (vfilter.isFlatSample). Remote
+// posters are read through the /feed/frame CORS proxy so the canvas isn't tainted; data: posters load directly.
+// Fail-open: anything we can't prove blank is kept. Applies to EVERY item — inline-playable and ephemeral alike.
+const blankPosters = new Set();     // posters classified black/flat/broken → filtered out (+ dropped from future loads)
 const checkedPosters = new Set();   // posters already analysed (don't re-fetch)
-function posterIsBlack(poster) {
+function posterIsBlank(poster) {
   const isData = poster.startsWith("data:");
   if (gate && !isData) return Promise.resolve(false);                                    // gate: no network — only inline posters
   if (typeof document === "undefined" || typeof Image === "undefined") return Promise.resolve(false);  // no DOM (preflight) → keep
@@ -112,22 +118,30 @@ function posterIsBlack(poster) {
     img.onload = () => { try {
       const c = document.createElement("canvas"); c.width = 24; c.height = 24;
       const cx = c.getContext("2d", { willReadFrequently: true }); cx.drawImage(img, 0, 0, 24, 24);
-      finish(isBlackSample(cx.getImageData(0, 0, 24, 24).data));
+      const px = cx.getImageData(0, 0, 24, 24).data;
+      finish(isBlackSample(px) || isFlatSample(px));                                       // black OR uniform flat-fill → blank
     } catch { finish(false); } };                                                          // tainted / decode error → keep
     img.onerror = () => finish(false);
     img.src = isData ? poster : framed(poster);
   });
 }
-async function checkBlackPosters() {
+async function checkBlankPosters() {
   const todo = [];
   for (const it of $items.get()) { const p = it.poster; if (p && !checkedPosters.has(p)) { checkedPosters.add(p); todo.push(p); } }
   if (!todo.length) return;
   const hits = new Set();
-  await pool(todo, 4, async (p) => { if (await posterIsBlack(p)) hits.add(p); });          // small concurrency — don't hammer the proxy
-  if (hits.size) { hits.forEach((p) => blackPosters.add(p)); $items.set($items.get().filter((i) => !(i.poster && hits.has(i.poster)))); }
+  await pool(todo, 4, async (p) => { if (await posterIsBlank(p)) hits.add(p); });          // small concurrency — don't hammer the proxy
+  if (hits.size) { hits.forEach((p) => blankPosters.add(p)); $items.set(reject($items.get(), (i) => i.poster && hits.has(i.poster))); }
 }
-// unseen (watched) → drop already-known-black → dedupe. One pipeline for every incoming batch.
-const clean = (arr) => dedupeVideos(unseen(arr).filter((i) => !(i.poster && blackPosters.has(i.poster))));
+// One pipeline for every incoming batch: unseen (watched) → drop already-known-blank posters → optionally drop
+// posterless clips → dedupe. requirePoster is set ONLY for ephemeral sources, where a clip with no poster is a
+// guaranteed-blank watch-link slide (nothing to show, won't play inline); inline sources keep posterless clips
+// (they still play, with a video backdrop). Blanks are rejected BEFORE dedupe so a blank never wins a dup's slot.
+function clean(arr, { requirePoster = false } = {}) {
+  let out = reject(unseen(arr), (i) => i.poster && blankPosters.has(i.poster));
+  if (requirePoster) out = out.filter(hasPoster);
+  return dedupeVideos(out);
+}
 
 let loadingMore = false;
 async function loadSource(url, append = false) {
@@ -137,10 +151,13 @@ async function loadSource(url, append = false) {
   try {
     const r = await fetch(`${VPS_PROXY}/videos?url=${encodeURIComponent(url)}`);
     const d = await r.json();
-    const got = clean(Array.isArray(d.items) ? d.items : []);
+    // ephemeral (signed, poster-only) is known BEFORE cleaning → require a poster so no-poster clips (dead
+    // blank watch-link slides) are dropped. On append the source doesn't change, so reuse the current flag.
+    const eph = append ? $ephemeral.get() : !!d.ephemeral;
+    const got = clean(Array.isArray(d.items) ? d.items : [], { requirePoster: eph });
     $items.set(append ? dedupeVideos([...$items.get(), ...got]) : got);                   // re-dedupe across the page boundary too
     $next.set(d.next || null);
-    if (!append) $ephemeral.set(!!d.ephemeral);        // signed/expiring source → show poster + "watch" link, don't try to play
+    if (!append) $ephemeral.set(eph);                  // signed/expiring source → show poster + "watch" link, don't try to play
   } catch { if (!append) $err.set(true); }
   finally { $loading.set(false); loadingMore = false; }
 }
@@ -239,7 +256,7 @@ function FrameView({ S, t }) {
     setHarvested([]);
     const onMsg = (e) => {
       if (!e.data || e.data.__reel !== "videos" || !Array.isArray(e.data.videos)) return;
-      setHarvested((prev) => { const seen = new Set(prev.map((x) => x.video)); const add = e.data.videos.filter((v) => typeof v === "string" && !seen.has(v)).map((v) => ({ video: v, title: hostOf(url), poster: null })); return add.length ? [...prev, ...add] : prev; });
+      setHarvested((prev) => { const merged = uniqBy([...prev, ...e.data.videos.filter((v) => typeof v === "string").map((v) => ({ video: v, title: hostOf(url), poster: null }))], "video"); return merged.length > prev.length ? merged : prev; });
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
@@ -266,7 +283,7 @@ export function reel({ S }) {
   const scroller = useRef();
 
   useEffect(() => { if (!gate) loadSource(src); }, [src]);
-  useEffect(() => { void checkBlackPosters(); }, [items]);                                 // sample new posters → drop black/broken slides (gate: inline data: posters too)
+  useEffect(() => { void checkBlankPosters(); }, [items]);                                 // sample new posters → drop black/flat/broken slides (gate: inline data: posters too)
   useEffect(() => { if (next && active >= items.length - 3) loadSource(next, true); }, [active, items.length, next]);
   useEffect(() => { const it = items[active]; if (!it || gate) return; const id = setTimeout(() => markWatched(it.orig || it.video), 2500); return () => clearTimeout(id); }, [active, items]);   // dwell → watched
   useEffect(() => {

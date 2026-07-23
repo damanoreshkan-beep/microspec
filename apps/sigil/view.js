@@ -38,6 +38,13 @@ export function forge({ S, toast }) {
   const [sig, setSig] = useState(gate ? sigilPath(DEFAULT_INTENT) : null);
   const [tilted, setTilted] = useState(false);
 
+  useEffect(() => {
+    if (!immersionAvailable) return;
+    let alive = true;
+    enableImmersion().then((ok) => { if (alive && ok) setTilted(true); });
+    return () => { alive = false; disableImmersion(); };
+  }, []);
+
   const doForge = () => { const s = sigilPath(intent); if (s) setSig(s); };
   const keep = async () => { if (!sig) return; try { await grim.put(String(sig.seed), { intent: sig.intent, seed: sig.seed, planet: sig.planet }); } catch {  } toast && toast("saved"); };
   const toggleTilt = async () => {

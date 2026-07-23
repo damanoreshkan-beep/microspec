@@ -2,6 +2,14 @@ const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("
 
 export default [
   {
+    name: "3D: WebGL-шлях активний у гейті", run: async (h) => {
+      await ready(h); await h.wait(1500);
+      const hw = await h.attr("[data-sigil]", "data-haswebgl");
+      const rm = await h.attr("[data-sigil]", "data-render");
+      if (hw === "yes") h.expect(rm === "webgl", `WebGL є, але сцена не збудувалась: render=${rm} err=${await h.attr("[data-sigil]", "data-err")}`);
+    },
+  },
+  {
     name: "кузня: сцена + атрибуція + дії", run: async (h) => {
       await ready(h);
       h.expect((await h.count("[data-intent]")) === 1, "немає поля наміру");

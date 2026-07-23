@@ -54,11 +54,12 @@ function makeScene(THREE, sigil) {
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(46, 1, 0.1, 100); cam.position.set(0, 0, 3.35);
   const group = new THREE.Group(); scene.add(group);
+  group.position.y = 0.34; group.scale.setScalar(0.84);   // centre the glyph in the open canvas above the island
   let col = readTheme();
   const INK = new THREE.Color(col.ink), ACC = new THREE.Color(col.accent);
 
   scene.add(new THREE.AmbientLight(0xffffff, col.dark ? 0.55 : 0.75));
-  const key = new THREE.PointLight(col.accent, col.dark ? 26 : 16, 40, 2); key.position.set(1.6, 1.4, 2.4); group.add(key);
+  const key = new THREE.PointLight(col.accent, col.dark ? 34 : 18, 40, 2); key.position.set(1.6, 1.4, 2.4); group.add(key);
   const fill = new THREE.PointLight(0xffffff, col.dark ? 6 : 10, 40, 2); fill.position.set(-2, -1.5, 2); group.add(fill);
 
   // 3D control points from the sigil (hash-seeded z-relief so the ribbon lives in space)
@@ -68,7 +69,7 @@ function makeScene(THREE, sigil) {
   const curve = new THREE.CatmullRomCurve3(v3, false, "catmullrom", 0.5);
   const SEG = Math.max(48, sigil.points.length * 22);
   const tubeGeo = new THREE.TubeGeometry(curve, SEG, 0.026, 10, false);
-  const tube = new THREE.Mesh(tubeGeo, new THREE.MeshStandardMaterial({ color: INK, metalness: 0.92, roughness: 0.24, envMapIntensity: 1 }));
+  const tube = new THREE.Mesh(tubeGeo, new THREE.MeshStandardMaterial({ color: INK, metalness: 0.94, roughness: 0.19, envMapIntensity: 1 }));
   // additive back-shell glow (helps on dark, negligible on light — legibility comes from the solid tube)
   const glowGeo = new THREE.TubeGeometry(curve, SEG, 0.06, 8, false);
   const glow = new THREE.Mesh(glowGeo, new THREE.MeshBasicMaterial({ color: ACC, transparent: true, opacity: col.dark ? 0.16 : 0.09, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));

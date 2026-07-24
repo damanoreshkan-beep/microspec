@@ -32,7 +32,7 @@ export function useSheetDrag(onClose) {
   return { boxRef, grip };
 }
 
-export function usePanX({ onNext, onPrev, canNext = true, canPrev = true, threshold = 52 } = {}) {
+export function usePanX({ onNext, onPrev, canNext = true, canPrev = true, threshold = 52, onDrag } = {}) {
   const paneRef = useRef();
   const s = useRef({ on: false, x0: 0, y0: 0, dx: 0, decided: 0, at: 0 }).current;
   const setX = (x, spring) => { const p = paneRef.current; if (!p) return; p.style.transition = spring ? "transform .26s cubic-bezier(.2,.85,.25,1)" : "none"; p.style.transform = x ? `translateX(${x}px)` : ""; };
@@ -45,11 +45,14 @@ export function usePanX({ onNext, onPrev, canNext = true, canPrev = true, thresh
     if (s.decided !== 1) return;                                                                     
     s.dx = dx;
     const atEdge = (dx < 0 && !canNext) || (dx > 0 && !canPrev);
-    setX(atEdge ? Math.sign(dx) * Math.min(Math.abs(dx) * 0.2, 42) : resist(dx), false);             
+    const shift = atEdge ? Math.sign(dx) * Math.min(Math.abs(dx) * 0.2, 42) : resist(dx);            
+    setX(shift, false);
+    if (onDrag) { try { onDrag(shift); } catch {  } }
   };
   const up = () => {
     if (!s.on) return; s.on = false;
     if (s.decided !== 1) return;
+    if (onDrag) { try { onDrag(0); } catch {  } }                                                
     if (Math.abs(s.dx) > 8) s.at = performance.now();                                                
     const dir = s.dx < 0 ? 1 : -1, can = dir === 1 ? canNext : canPrev;
     if (Math.abs(s.dx) > threshold && can) { try { (dir === 1 ? onNext : onPrev)?.(); } catch {  } requestAnimationFrame(() => setX(0, true)); }  

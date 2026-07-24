@@ -25,6 +25,7 @@ export function createApp(spec, dataLoad) {
     data: map({ items: [], meta: {}, loading: true, error: false, next: null, loadingMore: false, moreError: false }),
     filters: map({ ...(spec.filters?.defaults || {}), ...savedFilters }),
     toast: atom(""),
+    stack: atom([]),
     sheet: atom(false),
     detail: atom(null),
     screen: atom(null),

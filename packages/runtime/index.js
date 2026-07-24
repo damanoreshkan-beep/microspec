@@ -2,6 +2,7 @@ import { render } from "preact";
 import { html } from "htm/preact";
 import { validateSpec } from "./validate.js";
 import { createApp } from "./store.js";
+import { overlayDepth } from "./overlay.js";
 import { setApp, App } from "./render.js";
 import { haptic, hapticFor } from "./sensors.js";
 
@@ -30,6 +31,7 @@ export function start(spec, arg2) {
   S.tab.listen(() => { window.scrollTo({ top: 0 }); if (S.screen.get()) S.screen.set(null); }); 
 
   const overlays = [
+    [S.stack, () => S.stack.set(S.stack.get().slice(0, -1)), (v) => v],   
     [S.sheet, () => S.sheet.set(false), (v) => v === true],
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],
     [S.qrOpen, () => S.qrOpen.set(false), (v) => v === true],
@@ -38,22 +40,23 @@ export function start(spec, arg2) {
     [S.player, () => S.player.set(null), (v) => v != null],
     [S.confirm, () => S.confirm.set(null), (v) => v != null],   
   ];
-  const openCount = () => overlays.filter(([a, , isOpen]) => isOpen(a.get())).length;
+  const depthOf = ([a, , isOpen]) => overlayDepth(isOpen(a.get()));
+  const openCount = () => overlays.reduce((n, o) => n + depthOf(o), 0);
   const anyOpen = () => openCount() > 0;
-  let depth = 0, fromPop = false, selfBack = false, exitArmed = false, exitTimer;
+  let depth = 0, fromPop = false, selfBack = 0, exitArmed = false, exitTimer;
   for (const [a] of overlays) a.listen(() => {
     const n = openCount();
     if (fromPop) { depth = n; return; }                       
-    if (n > depth) { depth = n; history.pushState({ msOverlay: 1 }, ""); }
-    else if (n < depth) { const d = depth - n; depth = n; if (history.state?.msOverlay) { selfBack = true; history.go(-d); } } 
+    if (n > depth) { const d = n - depth; depth = n; for (let i = 0; i < d; i++) history.pushState({ msOverlay: 1 }, ""); }  
+    else if (n < depth) { const d = depth - n; depth = n; if (history.state?.msOverlay) { selfBack++; history.go(-d); } } 
   });
   history.pushState({ msRoot: 1 }, "");
   addEventListener("popstate", () => {
-    if (selfBack) { selfBack = false; return; }                                       
+    if (selfBack) { selfBack--; return; }                                       
     if (anyOpen()) {
       for (let i = overlays.length - 1; i >= 0; i--) {
-        const [a, close, isOpen] = overlays[i];
-        if (!isOpen(a.get())) continue;
+        const [, close] = overlays[i];
+        if (!depthOf(overlays[i])) continue;
         fromPop = true; try { close(); } finally { fromPop = false; }
         depth = openCount();
         break;

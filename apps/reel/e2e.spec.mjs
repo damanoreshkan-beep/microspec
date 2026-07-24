@@ -56,4 +56,12 @@ export default [
       await h.back(); await h.wait(300);
     },
   },
+  {
+    name: "таб «Лайки» є в доку і порожній за замовчуванням", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count('[data-tab="liked"]')) === 1, "таб «Лайки» відсутній у доку");
+      await h.tap('[data-tab="liked"]'); await h.wait(300);
+      h.expect((await h.count("[data-liked-tile]")) === 0, "на старті лайків не має бути");
+    },
+  },
 ];

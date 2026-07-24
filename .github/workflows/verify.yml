@@ -33,6 +33,12 @@ jobs:
           fetch-depth: 0  # need history to diff the pushed range for the changed-apps matrix
       - uses: denoland/setup-deno@v2
         with: { deno-version: v2.x }
+      - name: Cache deno deps (DENO_DIR, keyed on the lockfile)
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/deno
+          key: deno-${{ hashFiles('deno.lock', 'packages/**/deno.json') }}
+          restore-keys: deno-
       - name: Runtime unit tests (pure logic, no browser)
         run: deno test -A packages/runtime/runtime_test.js
       - name: Schema contract gate (ajv) over every app spec
@@ -90,11 +96,11 @@ jobs:
       - uses: actions/checkout@v5
       - uses: denoland/setup-deno@v2
         with: { deno-version: v2.x }
-      - name: Cache deno deps
+      - name: Cache deno deps (DENO_DIR, keyed on the lockfile)
         uses: actions/cache@v6
         with:
           path: ~/.cache/deno
-          key: deno-${{ hashFiles('packages/**/deno.json') }}
+          key: deno-${{ hashFiles('deno.lock', 'packages/**/deno.json') }}
           restore-keys: deno-
       - name: Verify ${{ matrix.app }}
         # Chrome is preinstalled on the runner (no setup-chrome download) and we run headless (no Xvfb / no

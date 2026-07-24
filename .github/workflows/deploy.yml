@@ -33,6 +33,12 @@ jobs:
           fetch-depth: 0   # full history so build.mjs can derive versions from commit counts
       - uses: denoland/setup-deno@v2
         with: { deno-version: v2.x }
+      - name: Cache deno deps (DENO_DIR, keyed on the lockfile)
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/deno
+          key: deno-${{ hashFiles('deno.lock', 'packages/**/deno.json') }}
+          restore-keys: deno-
       - name: Assemble dist/
         run: deno run -A deploy/build.mjs
       - uses: actions/upload-pages-artifact@v5

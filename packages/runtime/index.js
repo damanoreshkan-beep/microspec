@@ -5,6 +5,9 @@ import { createApp } from "./store.js";
 import { overlayDepth } from "./overlay.js";
 import { setApp, App } from "./render.js";
 import { haptic, hapticFor } from "./sensors.js";
+import { installSealedFetch } from "./sealedfetch.js";
+
+installSealedFetch();
 
 export function start(spec, arg2) {
   try { validateSpec(spec); }

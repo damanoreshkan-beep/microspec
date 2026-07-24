@@ -2,6 +2,8 @@ const isLocal = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[:
 
 export const VPS_PROXY = "https://jobs-map.mooo.com/feed";
 
+export const SEALED_KEY = "BLP-06vCYzSiakKos1Sk7Yqzneb0MrbBjozH3EQ_YRgvzqc_0hcZeeFXoDzMhHlXL3awFtjOMFg08dzcKUmbNOM";
+
 const PROXIES = [
   (u) => u,                                                            
   ...(isLocal ? [(u) => `/feed?url=${encodeURIComponent(u)}`] : []),   

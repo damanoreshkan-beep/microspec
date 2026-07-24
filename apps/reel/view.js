@@ -10,7 +10,7 @@ import { VPS_PROXY, pool } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
 import { resolveSearch, buildSearchUrl } from "/_rt/urlquery.js";
-import { uniqBy, reject } from "lodash-es";
+import { reject } from "lodash-es";
 import { collection, idbSupported } from "/_rt/db.js";
 import { Pixels } from "/_rt/skeleton.js";
 
@@ -43,11 +43,7 @@ const MOCK = [
 ];
 
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
-const $openMode = persistentAtom("reel:openMode", "iframe");   
-function openSite(s, S) {
-  if ($openMode.get() === "browser") { if (typeof window !== "undefined") window.open(s.url, "_blank", "noopener"); return; }
-  $frameUrl.set(s.url); S.tab.set("reel"); S.screen.set("frame");   
-}
+function openSite(s) { if (typeof window !== "undefined") window.open(s.url, "_blank", "noopener"); }
 const subsDB = collection("reelSubs");
 const $subs = atom([]);
 if (idbSupported && !gate) subsDB.all().then((rows) => $subs.set(rows)).catch(() => {});
@@ -78,7 +74,6 @@ const $next = atom(null);
 const $loading = atom(!gate);
 const $err = atom(false);
 const $active = atom(0);
-const $frameUrl = atom("");
 const $ephemeral = atom(false);   
 
 const blankPosters = new Set();     
@@ -189,7 +184,6 @@ function SourceSheet({ S, t }) {
   const norm = () => { const u = val.trim(); return u ? (/^https?:\/\//i.test(u) ? u : "https://" + u) : ""; };
   const goto = (url) => { subscribe({ name: hostOf(url), url, icon: "lucide:link" }); $src.set(url); S.tab.set("reel"); S.screen.set(null); };
   const load = (e) => { e?.preventDefault?.(); const url = norm(); if (!url) return S.screen.set(null); goto(url); };
-  const browse = () => { const url = norm(); if (url) { $frameUrl.set(url); S.screen.set("frame"); } };            
   const sr = resolveSearch(norm());
   const search = (e) => { e?.preventDefault?.(); const url = norm(), term = q.trim(); if (url && term) goto(buildSearchUrl(url, term)); };
   return html`<div class="fixed inset-0 z-40 flex items-end" role="dialog" aria-modal="true" aria-label=${T(t, "srcTitle")}>
@@ -210,35 +204,8 @@ function SourceSheet({ S, t }) {
         </label>
         <button type="button" class="btn btn-primary rounded-2xl gap-1 shrink-0" onClick=${search}>${Icon("lucide:search")} ${T(t, "search")}</button>
       </div>` : null}
-      <div class="flex gap-2">
-        <button id="src-load" type="submit" class="btn btn-primary rounded-2xl flex-1 gap-1">${Icon("lucide:play")} ${T(t, "load")}</button>
-        <button id="src-browse" type="button" class="btn btn-outline rounded-2xl flex-1 gap-1" onClick=${browse}>${Icon("lucide:compass")} ${T(t, "browse")}</button>
-      </div>
+      <button id="src-load" type="submit" class="btn btn-primary rounded-2xl gap-1">${Icon("lucide:play")} ${T(t, "load")}</button>
     </form>
-  </div>`;
-}
-
-function FrameView({ S, t }) {
-  const url = useStore($frameUrl);
-  const [harvested, setHarvested] = useState([]);
-  useEffect(() => {
-    setHarvested([]);
-    const onMsg = (e) => {
-      if (!e.data || e.data.__reel !== "videos" || !Array.isArray(e.data.videos)) return;
-      setHarvested((prev) => { const merged = uniqBy([...prev, ...e.data.videos.filter((v) => typeof v === "string").map((v) => ({ video: v, title: hostOf(url), poster: null }))], "video"); return merged.length > prev.length ? merged : prev; });
-    };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
-  }, [url]);
-  const use = () => { const got = clean(harvested.map((h) => ({ ...h, orig: h.video, video: framed(h.video) }))); if (got.length) { $items.set(got); $next.set(null); $active.set(0); $ephemeral.set(true); subscribe({ name: hostOf(url), url, icon: "lucide:link" }); } S.screen.set(null); S.tab.set("reel"); };
-  const iframeSrc = gate || !url ? "about:blank" : `${VPS_PROXY}/frame?url=${encodeURIComponent(url)}`;
-  return html`<div class="fixed inset-0 z-40 bg-base-300 flex flex-col" role="dialog" aria-modal="true" aria-label=${hostOf(url)}>
-    <div class="flex items-center gap-2 px-2 py-2 bg-base-100/90 backdrop-blur-md border-b border-base-300" style="padding-top:calc(env(safe-area-inset-top) + 0.5rem)">
-      <button class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, "close")} onClick=${() => S.screen.set(null)}>${Icon("lucide:x", "text-xl")}</button>
-      <div class="flex-1 min-w-0 text-sm truncate text-base-content/70 font-mono">${hostOf(url)}</div>
-      <button id="use-harvest" class=${`btn btn-sm rounded-2xl gap-1 shrink-0 ${harvested.length ? "btn-primary" : "btn-disabled opacity-50"}`} aria-label=${T(t, "openOrig")} onClick=${use}>${Icon("lucide:play")} ${harvested.length}</button>
-    </div>
-    <iframe data-frame src=${iframeSrc} sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation allow-modals" class="flex-1 w-full bg-white" title=${hostOf(url)}></iframe>
   </div>`;
 }
 
@@ -270,7 +237,7 @@ export function reel({ S }) {
 
   return html`<${Fragment}>
     <div ref=${scroller} class="fixed inset-0 z-0 bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain" style="scrollbar-width:none">${body}</div>
-    ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : screen === "frame" ? html`<${FrameView} S=${S} t=${t} />` : null}
+    ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }
 
@@ -305,26 +272,17 @@ function SourceRow({ s, active, subbed, onPlay, onOpen, onToggle, t }) {
   </div>`;
 }
 
-function OpenModeToggle({ t }) {
-  const mode = useStore($openMode);
-  const opt = (m, icon, label) => html`<button class=${`btn btn-sm rounded-xl gap-1.5 ${mode === m ? "btn-primary" : "btn-ghost"}`} aria-pressed=${mode === m} aria-label=${T(t, label)} onClick=${() => $openMode.set(m)}>${Icon(icon)}<span class="text-xs font-medium @max-[280px]:hidden">${T(t, label)}</span></button>`;
-  return html`<div data-openmode role="group" aria-label=${T(t, "openMode")} class="flex items-center gap-1 p-1 rounded-2xl bg-base-100/80 backdrop-blur-xl border border-base-content/10 self-start">
-    ${opt("iframe", "lucide:app-window", "openInApp")}${opt("browser", "lucide:external-link", "openInBrowser")}
-  </div>`;
-}
-
 export function sources({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const subs = useStore($subs), curSrc = useStore($src), watchedN = useStore($watched).size;
   const play = (s) => { $src.set(s.url); S.tab.set("reel"); };
-  const openSiteFn = (s) => openSite(s, S);
+  const openSiteFn = openSite;
   const subbedUrls = new Set(subs.map((x) => x.url));
   const discover = PRESETS.filter((p) => !subbedUrls.has(p.url));
 
   return html`<${Fragment}>
     <div class="flex flex-col gap-4 @container">
       <button id="add-url" class="btn btn-primary rounded-2xl gap-2" onClick=${() => S.screen.set("source")}>${Icon("lucide:plus")} ${T(t, "addUrl")}</button>
-      <${OpenModeToggle} t=${t} />
 
       <div class="flex flex-col gap-2">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:bookmark", "text-primary")} ${T(t, "subs")}</div>
@@ -340,6 +298,6 @@ export function sources({ S }) {
 
       ${watchedN > 0 ? html`<button id="clear-watched" class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70 self-center mt-2" onClick=${clearWatched} data-haptic="bump">${Icon("lucide:rotate-ccw")} ${T(t, "clearWatched", { n: watchedN })}</button>` : null}
     </div>
-    ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : screen === "frame" ? html`<${FrameView} S=${S} t=${t} />` : null}
+    ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }

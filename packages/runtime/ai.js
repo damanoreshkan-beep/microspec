@@ -127,3 +127,34 @@ export async function warmSummary(key, text, locale) {
   catch { /* fail-open: leave uncached so a later warm can retry */ }
   finally { pending.delete(tag); }
 }
+
+// ── interpret: like summary, but a DOMAIN reading of structured facts (astrology transits) ────────────────
+// Same on-demand, keyed-by-signature, cached, fail-open shape as summary — but a separate server mode
+// ("astro", an astrologer prompt that reads ONLY the supplied positions + aspects, inventing nothing) and its
+// own cache namespace ("astro") so an astrology reading never mixes with the tarot summarise prompt. Reusable
+// by any app that turns a structured domain state into a grounded reading (e.g. the horoscope app later).
+
+// interpret(key, locale) — synchronous. The cached reading for this input signature, or "" on a miss.
+export function interpret(key, locale) {
+  if (typeof key !== "string" || !key || !locale) return "";
+  return cacheFor("astro", locale)[key] || "";
+}
+
+// isInterpreted(key, locale) — is the reading for this signature already cached? (false while in flight).
+export function isInterpreted(key, locale) {
+  if (typeof key !== "string" || !key || !locale) return false;
+  return key in cacheFor("astro", locale);
+}
+
+// warmInterpret(key, text, locale) — interpret the structured `text` under a stable `key`, then bump aiTick.
+// Fail-open, deduped, one wire call. Like summary, `en` interprets too (the synthesis is the value).
+export async function warmInterpret(key, text, locale) {
+  if (typeof key !== "string" || !key || typeof text !== "string" || !text.trim() || !locale) return;
+  const cache = cacheFor("astro", locale);
+  const tag = "astro " + locale + " " + key;
+  if (key in cache || pending.has(tag)) return;
+  pending.add(tag);
+  try { const out = await askAI(text, locale, "astro"); if (out) { cache[key] = out; persist("astro", locale, cache); aiTick.set(aiTick.get() + 1); } }
+  catch { /* fail-open: leave uncached so a later warm can retry */ }
+  finally { pending.delete(tag); }
+}

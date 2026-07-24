@@ -14,6 +14,21 @@
 
 Add any to your home screen. They work offline. Every one is a spec + adapter that **passed the gates.**
 
+<br>
+
+**The stack at the root — zero `node_modules`, no build step, a CDN import map:**
+
+[![Deno](https://img.shields.io/badge/Deno-000000?style=for-the-badge&logo=deno&logoColor=white)](https://deno.com)
+[![Preact](https://img.shields.io/badge/Preact-673AB8?style=for-the-badge&logo=preact&logoColor=white)](https://preactjs.com)
+[![htm](https://img.shields.io/badge/htm-F0DB4F?style=for-the-badge&logo=htmlacademy&logoColor=black)](https://github.com/developit/htm)
+[![nanostores](https://img.shields.io/badge/nanostores-0B1120?style=for-the-badge&logo=redux&logoColor=white)](https://github.com/nanostores/nanostores)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![DaisyUI](https://img.shields.io/badge/DaisyUI-5A0EF8?style=for-the-badge&logo=daisyui&logoColor=white)](https://daisyui.com)
+[![esm.sh](https://img.shields.io/badge/esm.sh-CDN-0A0A0A?style=for-the-badge&logo=javascript&logoColor=F7DF1E)](https://esm.sh)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)](.github/workflows)
+
+<sub>A **Deno workspace** is the monorepo — no Turborepo / Nx. CI verifies only the apps a change actually reaches (`tools/affected.mjs`, from the real import graph), with the toolchain cached and its install retried.</sub>
+
 </div>
 
 ---

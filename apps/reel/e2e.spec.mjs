@@ -15,11 +15,11 @@ export default [
       await ready(h);
       // mock seeds 6: 3 good + a duplicate (dedupe drops) + a black-poster clip (black filter drops) +
       // a flat-grey placeholder poster (flat filter drops) → 3 clean
+      // The COUNT is the whole claim, and it has to be: a slide renders no title text (by design — the
+      // surface carries no captions), so the old `bodyText()` checks for the bad clips' names could never
+      // have failed. 6 seeded → 3 slides is what actually proves all three filters ran.
       h.expect(await settles(h, 3), "фільтри не звели стрічку до 3 чистих слайдів (дубль/чорний/плаский постер лишились)");
       h.expect((await h.count("video")) === 1, "активний слайд не має одного відео-елемента");
-      h.expect(!/Broken clip/.test(await h.bodyText()), "битий чорний постер не відфільтрувався");
-      h.expect(!/Flat placeholder/.test(await h.bodyText()), "плаский постер-заглушка не відфільтрувався");
-      h.expect(!/\bdup\b/.test(await h.bodyText()), "дублікат не відфільтрувався");
     },
   },
   {
@@ -35,13 +35,15 @@ export default [
       await settles(h, 3);
       h.expect((await h.count("[data-dive]")) >= 1, "на слайді немає цілі провалювання (data-dive)");
       h.expect((await h.count("[data-feed-back]")) === 0, "на нульовому рівні не має бути кнопки «назад»");
+      const root = await h.text("[data-island-label]");
       await h.tap("[data-dive]"); await h.wait(600);
-      h.expect(await has(h, /Deeper/), "провалювання не завантажило стрічку сторінки, на якій лежить рілз");
+      // the dived page seeds a DIFFERENT batch (2 slides) — the source label and the list both had to change
+      h.expect(await settles(h, 2), "провалювання не завантажило стрічку сторінки, на якій лежить рілз");
+      h.expect((await h.text("[data-island-label]")) !== root, `острівець лишився на «${root}» — джерело не змінилось`);
       h.expect((await h.count("[data-feed-back]")) === 1, "після провалювання немає кнопки повернення");
-      h.expect(/Abstract|Space/.test(await h.text("[data-island-label]")), "острівець не показує назву сторінки, в яку провалились");
       // …and back restores the ORIGINAL list (a restore, not a refetch)
       await h.tap("[data-feed-back]"); await h.wait(500);
-      h.expect(!(await has(h, /Deeper/)), "повернення не відновило попередню стрічку");
+      h.expect((await h.text("[data-island-label]")) === root, "повернення не відновило попереднє джерело");
       h.expect(await settles(h, 3), "повернувся не той самий список із 3 слайдів");
       h.expect((await h.count("[data-feed-back]")) === 0, "кнопка повернення лишилась на нульовому рівні");
     },
@@ -49,17 +51,17 @@ export default [
   {
     name: "провалювання: системний Back відкручує рівень (а не виходить з апки)", run: async (h) => {
       await ready(h);
+      const root = await h.text("[data-island-label]");
       await h.tap("[data-dive]"); await h.wait(600);
-      h.expect(await has(h, /Deeper/), "провалювання не спрацювало");
       const lvl1 = await h.text("[data-island-label]");
+      h.expect(lvl1 !== root, "провалювання не спрацювало");
       await h.tap("[data-dive]"); await h.wait(600);                   // другий рівень — стек, а не один прапорець
       const lvl2 = await h.text("[data-island-label]");
       h.expect(lvl2 && lvl2 !== lvl1, `другий рівень не відкрився (острівець лишився на «${lvl1}»)`);
       await h.back(); await h.wait(500);
-      h.expect(await has(h, /Deeper/), "перший системний Back мав повернути на рівень вище, а не в корінь");
-      h.expect((await h.text("[data-island-label]")) === lvl1, "Back не повернув рівно на один рівень");
+      h.expect((await h.text("[data-island-label]")) === lvl1, "перший системний Back мав відкрутити рівно один рівень, а не впасти в корінь");
       await h.back(); await h.wait(500);
-      h.expect(!(await has(h, /Deeper/)), "другий системний Back не повернув у корінь стрічки");
+      h.expect((await h.text("[data-island-label]")) === root, "другий системний Back не повернув у корінь стрічки");
       h.expect((await h.count("[data-reel]")) >= 1, "апка зникла — Back вийшов далі, ніж мав");
     },
   },

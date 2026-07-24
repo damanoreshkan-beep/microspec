@@ -181,7 +181,10 @@ const setDensity = (v) => { $density.set(v); };
 const setTone = (v) => { $tone.set(v); if (eng) try { toneFilter.frequency.setTargetAtTime(toneHz(v), eng.ctx.currentTime, 0.1); } catch { /* */ } };
 const setSpace = (v) => { $space.set(v); if (eng) try { revSend.gain.setTargetAtTime(v, eng.ctx.currentTime, 0.1); } catch { /* */ } };
 
-const hueBg = (hue, on) => (on ? `color:hsl(${hue} 72% 62%);background:hsla(${hue} 72% 55% / 0.16);border-color:hsla(${hue} 72% 60% / 0.35)` : "");
+// the hue is carried on a small filled DOT / icon (colour = meaning), never on text — arbitrary-hue text
+// fails axe contrast in one theme or the other. Active state reads via a theme-safe bg tint + bold + full-
+// contrast base-content text, so it's both distinguishable and accessible in light and dark.
+const Dot = (hue, cls = "w-2 h-2") => html`<span class=${`${cls} rounded-full shrink-0`} style=${`background:hsl(${hue} 70% 58%)`}></span>`;
 
 // ================= Play: the full-bleed ambient stage + floating islands =================
 export function drift({ S }) {
@@ -195,7 +198,7 @@ export function drift({ S }) {
     <div class="relative z-10 min-h-[calc(100dvh-9rem)] flex flex-col gap-3">
       <div class="rounded-full border border-base-content/10 bg-base-100/75 backdrop-blur-xl shadow-[0_6px_22px_-8px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.07)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div class="flex gap-1.5 w-max p-1.5">
-          ${STYLES.map((s) => { const on = s.id === style.id; return html`<button data-style=${s.id} aria-pressed=${on} onClick=${() => setStyle(s.id)} key=${s.id} style=${hueBg(s.hue, on)} class=${`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium border transition ${on ? "" : "border-transparent text-base-content/65"}`}>${T(t, s.key)}</button>`; })}
+          ${STYLES.map((s) => { const on = s.id === style.id; return html`<button data-style=${s.id} aria-pressed=${on} onClick=${() => setStyle(s.id)} key=${s.id} class=${`shrink-0 rounded-full pl-2.5 pr-3.5 py-1.5 text-sm border flex items-center gap-1.5 transition ${on ? "bg-base-content/10 border-base-content/15 text-base-content font-semibold" : "border-transparent text-base-content/60 font-medium"}`}>${Dot(s.hue)}${T(t, s.key)}</button>`; })}
         </div>
       </div>
 
@@ -204,8 +207,8 @@ export function drift({ S }) {
       <div class="rounded-3xl border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_10px_40px_-12px_rgba(0,0,0,.7),inset_0_1px_0_0_rgba(255,255,255,.08)] p-4 flex items-center gap-4">
         <button id="play" data-playing=${playing} aria-label=${playing ? T(t, "aStop") : T(t, "aPlay")} onClick=${toggle} class="btn btn-circle btn-primary btn-lg shrink-0 shadow-lg">${Icon(playing ? "lucide:pause" : "lucide:play", "text-2xl")}</button>
         <div class="flex-1 min-w-0">
-          <div class="font-semibold text-lg leading-tight truncate" style=${`color:hsl(${style.hue} 55% 72%)`}>${T(t, style.key)}</div>
-          <div class="text-sm text-base-content/60 truncate flex items-center gap-1.5">${Icon(pack.icon, "text-base")}${T(t, pack.key)}${playing ? html`<span class="inline-block w-1.5 h-1.5 rounded-full bg-primary ml-1 animate-pulse"></span>` : null}</div>
+          <div class="font-semibold text-lg leading-tight truncate flex items-center gap-2 text-base-content">${Dot(style.hue, "w-2.5 h-2.5")}${T(t, style.key)}</div>
+          <div class="text-sm text-base-content/70 truncate flex items-center gap-1.5">${Icon(pack.icon, "text-base")}${T(t, pack.key)}${playing ? html`<span class="inline-block w-1.5 h-1.5 rounded-full bg-primary ml-1 animate-pulse"></span>` : null}</div>
         </div>
         <button id="vary" aria-label=${T(t, "aVary")} data-haptic="off" onClick=${vary} disabled=${!playing} class="btn btn-circle btn-ghost shrink-0 disabled:opacity-30">${Icon("lucide:shuffle", "text-xl")}</button>
       </div>
@@ -228,8 +231,8 @@ export function driftShape({ S }) {
     <div class="flex flex-col gap-2.5">
       <div class="text-[11px] font-semibold uppercase tracking-wide text-base-content/70 px-1">${T(t, "secSound")}</div>
       <div class="grid grid-cols-2 gap-2.5">
-        ${PACKS.map((p) => { const on = p.id === pack.id; return html`<button data-pack=${p.id} aria-pressed=${on} onClick=${() => setPack(p.id)} key=${p.id} style=${hueBg(style.hue, on)} class=${`rounded-2xl border p-3 flex items-center gap-2.5 text-left transition ${on ? "" : "border-base-300 bg-base-100 text-base-content/80"}`}>
-          <span class="flex items-center justify-center w-9 h-9 rounded-full shrink-0 bg-base-200/70">${Icon(p.icon, "text-xl")}</span>
+        ${PACKS.map((p) => { const on = p.id === pack.id; return html`<button data-pack=${p.id} aria-pressed=${on} onClick=${() => setPack(p.id)} key=${p.id} class=${`rounded-2xl border p-3 flex items-center gap-2.5 text-left transition ${on ? "bg-base-content/10 border-base-content/20 text-base-content font-semibold" : "border-base-300 bg-base-100 text-base-content/80"}`}>
+          <span class="flex items-center justify-center w-9 h-9 rounded-full shrink-0 bg-base-200/70" style=${on ? `color:hsl(${style.hue} 70% 58%)` : ""}>${Icon(p.icon, "text-xl")}</span>
           <span class="font-semibold flex-1 min-w-0 truncate">${T(t, p.key)}</span>
         </button>`; })}
       </div>

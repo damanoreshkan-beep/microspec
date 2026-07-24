@@ -186,10 +186,10 @@ export function v2m({ S, toast }) {
       </div>
 
       <div class="flex items-center gap-5">
-        <button class="btn btn-ghost btn-circle" aria-label=${T(t, "aRestart")} data-haptic="off" onClick=${() => seek(0)}>
+        <button class="btn btn-ghost btn-circle" aria-label=${T(t, "aRestart")} onClick=${() => seek(0)}>
           ${Icon("lucide:rotate-ccw", "text-xl")}
         </button>
-        <button id="play" data-playing=${playing} data-haptic="off"
+        <button id="play" data-playing=${playing}
           class="btn btn-primary btn-circle w-16 h-16 shadow-lg shadow-primary/20"
           aria-label=${T(t, playing ? "aPause" : "aPlay")} onClick=${() => toggle()}>
           ${Icon(playing ? "lucide:pause" : "lucide:play", "text-3xl")}
@@ -261,7 +261,7 @@ export function v2mLibrary({ S, undo }) {
     return html`<div data-track-row=${it.id}
       class=${"card bg-base-200/60 border border-base-content/5" + (active ? " ring-1 ring-primary/50" : "")}>
       <div class="card-body flex-row items-center gap-3 p-3">
-        <button class="btn btn-circle btn-sm btn-ghost shrink-0" data-haptic="off"
+        <button class="btn btn-circle btn-sm btn-ghost shrink-0"
           aria-label=${T(t, active && playing ? "aPause" : "aPlay")}
           onClick=${() => (active ? toggle() : playRow(it))}>
           ${Icon(active && playing ? "lucide:pause" : "lucide:play", "text-lg")}

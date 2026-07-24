@@ -88,3 +88,25 @@ export async function warmSummary(key, text, locale) {
   catch {  }
   finally { pending.delete(tag); }
 }
+
+
+export function interpret(key, locale) {
+  if (typeof key !== "string" || !key || !locale) return "";
+  return cacheFor("astro", locale)[key] || "";
+}
+
+export function isInterpreted(key, locale) {
+  if (typeof key !== "string" || !key || !locale) return false;
+  return key in cacheFor("astro", locale);
+}
+
+export async function warmInterpret(key, text, locale) {
+  if (typeof key !== "string" || !key || typeof text !== "string" || !text.trim() || !locale) return;
+  const cache = cacheFor("astro", locale);
+  const tag = "astro " + locale + " " + key;
+  if (key in cache || pending.has(tag)) return;
+  pending.add(tag);
+  try { const out = await askAI(text, locale, "astro"); if (out) { cache[key] = out; persist("astro", locale, cache); aiTick.set(aiTick.get() + 1); } }
+  catch {  }
+  finally { pending.delete(tag); }
+}

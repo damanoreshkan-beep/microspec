@@ -68,3 +68,5 @@ export function eclipticPositions(date, keys = BODY_KEYS) {
 }
 
 export const sunTimes = (lat, lng, date) => SunCalc.getTimes(date, lat, lng);
+
+export { ASPECTS, aspects } from "./aspects.js";

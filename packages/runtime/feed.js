@@ -14,6 +14,13 @@ const isLocal = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[:
 // microspec-edge (feed-core.mjs), so a new CORS-blocked source needs a one-line allowlist change + a restart.
 export const VPS_PROXY = "https://jobs-map.mooo.com/feed";
 
+// The backend's long-term public key, pinned. Used by sealedfetch.js, which re-expresses every call to
+// VPS_PROXY as an encrypted envelope so a TLS-inspecting middlebox and our own nginx logs see one constant
+// URL and a padded blob instead of paths and prompts. Rotation: the server also answers /feed/pubkey, but
+// never trust that at runtime — a key fetched over the channel you are defending pins nothing; it exists so
+// CI can assert this constant still matches production.
+export const SEALED_KEY = "BLP-06vCYzSiakKos1Sk7Yqzneb0MrbBjozH3EQ_YRgvzqc_0hcZeeFXoDzMhHlXL3awFtjOMFg08dzcKUmbNOM";
+
 const PROXIES = [
   (u) => u,                                                            // direct — API sends its own CORS
   ...(isLocal ? [(u) => `/feed?url=${encodeURIComponent(u)}`] : []),   // dev server same-origin proxy

@@ -6,6 +6,12 @@ import { createApp } from "./store.js";
 import { overlayDepth } from "./overlay.js";
 import { setApp, App } from "./render.js";
 import { haptic, hapticFor } from "./sensors.js";
+import { installSealedFetch } from "./sealedfetch.js";
+
+// Wrap fetch before any app code runs, so every call to our backend travels as a sealed envelope without a
+// single app knowing. Apps keep doing plain `fetch(VPS_PROXY + …)`; see sealedfetch.js for what it does not
+// intercept and for the honest limit on what pinning a key in delivered JS can achieve.
+installSealedFetch();
 
 // start(spec, load) — data app; OR start(spec, { load?, views? }) — tool app with custom views.
 export function start(spec, arg2) {

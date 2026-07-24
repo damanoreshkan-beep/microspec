@@ -1,0 +1,11 @@
+{
+  "id": "v2m",
+  "theme": "signal",
+  "category": "sound",
+  "tabs": [
+    { "id": "play", "type": "tool", "icon": "lucide:disc-3", "label": "tabPlay", "view": "v2m" },
+    { "id": "library", "type": "tool", "icon": "lucide:list-music", "label": "tabLibrary", "view": "v2mLibrary" },
+    { "id": "me", "type": "profile", "icon": "lucide:disc-3", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": { "icon": "lucide:disc-3", "theme": true, "lang": true, "install": true }
+}

@@ -1,0 +1,43 @@
+{
+  "name": "V2 Плеєр",
+  "short_name": "V2 Плеєр",
+  "description": "Плеєр чіптюнів Farbrausch V2 (.v2m) — демосценний синтезатор, що вміщує цілі композиції в кілька кілобайтів. Синтезатор V2 працює наживо в браузері як власноруч зібраний WebAssembly-модуль, що рендерить PCM на AudioWorklet: відкрий будь-який .v2m чи .v2mz, тримай невелику бібліотеку, слухай у фоні з керуванням на локскріні. Офлайн.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0A0A0B",
+  "background_color": "#0A0A0B",
+  "lang": "uk",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

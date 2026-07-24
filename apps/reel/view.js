@@ -16,6 +16,7 @@ import { VPS_PROXY, pool } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
 import { resolveSearch, buildSearchUrl } from "/_rt/urlquery.js";
+import { useTap } from "/_rt/gesture.js";
 import { reject } from "lodash-es";
 import { collection, idbSupported } from "/_rt/db.js";
 import { Pixels } from "/_rt/skeleton.js";
@@ -195,9 +196,12 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
 // whose clips won't play here, this is the whole point: browse the previews, tap through to watch.
 // The whole slide is the tap target (browse previews → tap to watch), but the visible pill sits at the very
 // bottom (above the dock + title) so it never covers the poster preview.
-const WatchLink = ({ item, t }) => html`<a data-watch href=${item.page || item.orig || item.video} target="_blank" rel="noopener" class="absolute inset-0 z-[3] flex items-end justify-center" style="padding-bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 4.5rem)" aria-label=${T(t, "watch")}>
+// Informational "watch on the site" pill for clips that can't play inline (ephemeral / errored). It's NOT the
+// tap target — the slide's tap handler owns single-tap → open, double-tap → like (so a like never navigates).
+// The keyboard-accessible way to open the page stays the bottom-right open-original link on the slide.
+const WatchLink = ({ t }) => html`<div data-watch aria-hidden="true" class="absolute inset-0 z-[3] flex items-end justify-center pointer-events-none" style="padding-bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 4.5rem)">
   <span class="btn btn-primary rounded-full gap-2 shadow-lg pointer-events-none">${Icon("lucide:external-link", "text-lg")} ${T(t, "watch")}</span>
-</a>`;
+</div>`;
 
 // The single live <video>, mounted only in the ACTIVE slide (so exactly one plays). createPlayer handles mp4 vs
 // HLS and tears down on unmount. On failure it falls back to the poster + a "watch" link (not a dead black slide).
@@ -214,7 +218,6 @@ function VideoLayer({ item, t }) {
     if (!item.poster && bgRef.current) { const bg = bgRef.current; bg.muted = true; bg.loop = true; createPlayer(bg, item.video, { onReady: () => bg.play?.().catch(() => {}) }).then((h) => { if (dead) h?.destroy?.(); else bgHandle = h; }); }
     return () => { dead = true; handle?.destroy?.(); bgHandle?.destroy?.(); };
   }, [item.video]);
-  const toggle = () => { const v = ref.current; if (v && !errored) (v.paused ? v.play?.().catch(() => {}) : v.pause?.()); };
   return html`<${Fragment}>
     ${errored
       ? html`<${PosterFill} poster=${item.poster} />`
@@ -222,8 +225,8 @@ function VideoLayer({ item, t }) {
         ? html`<img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" onError=${(e) => e.currentTarget.remove()} />`
         : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
     <div class="absolute inset-0 bg-black/25" aria-hidden="true"></div>
-    <video ref=${ref} onClick=${toggle} playsinline loop muted class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
-    ${errored ? html`<${WatchLink} item=${item} t=${t} />` : null}
+    <video ref=${ref} data-main playsinline loop muted class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
+    ${errored ? html`<${WatchLink} t=${t} />` : null}
   </${Fragment}>`;
 }
 
@@ -246,21 +249,22 @@ function HeartBurst({ x, y, onDone }) {
 }
 
 function Slide({ item, idx, active, ephemeral, t }) {
+  const secRef = useRef();
   const [burst, setBurst] = useState(null);
-  const lastTap = useRef(0);
-  const onTap = (e) => {
-    const now = Date.now();
-    if (now - lastTap.current < 300) {                                                     // double-tap → save + heart bloom under the finger
-      lastTap.current = 0;
-      const r = e.currentTarget.getBoundingClientRect();
-      setBurst({ x: (e.clientX || r.left + r.width / 2) - r.left, y: (e.clientY || r.top + r.height / 2) - r.top, k: now });
-      addLike(item);
-      navigator.vibrate?.(12);
-    } else lastTap.current = now;
-  };
-  return html`<section data-reel data-idx=${idx} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
+  // Systemic tap dispatch (runtime useTap): SINGLE tap toggles pause on a clip that plays inline, else opens the
+  // source page; DOUBLE tap likes + blooms a heart — and never fires the single (so a like never pauses/navigates).
+  const onTap = useTap({
+    onSingle: () => {
+      const v = secRef.current?.querySelector("video[data-main]");
+      if (v && !v.error) { try { v.paused ? v.play?.().catch(() => {}) : v.pause?.(); } catch { /* */ } return; }
+      const href = item.page || item.orig || item.video;                                   // ephemeral / errored → open the source page
+      if (href && typeof window !== "undefined") window.open(href, "_blank", "noopener");
+    },
+    onDouble: (p) => { setBurst({ x: p.x, y: p.y, k: Date.now() }); addLike(item); navigator.vibrate?.(12); },
+  });
+  return html`<section ref=${secRef} data-reel data-idx=${idx} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
     ${ephemeral
-      ? html`<${Fragment}><${PosterFill} poster=${item.poster} /><${WatchLink} item=${item} t=${t} /></${Fragment}>`
+      ? html`<${Fragment}><${PosterFill} poster=${item.poster} /><${WatchLink} t=${t} /></${Fragment}>`
       : active
         ? html`<${VideoLayer} item=${item} t=${t} />`
         : item.poster
@@ -268,7 +272,7 @@ function Slide({ item, idx, active, ephemeral, t }) {
           : null}
     ${burst ? html`<${HeartBurst} x=${burst.x} y=${burst.y} key=${burst.k} onDone=${() => setBurst(null)} />` : null}
     <div class="absolute inset-x-0 bottom-0 z-[2] pointer-events-none p-4 flex justify-end" style="padding-bottom:calc(var(--dock-h) + 1rem)">
-      <a href=${item.page || item.orig || item.video} target="_blank" rel="noopener" class="pointer-events-auto shrink-0 text-white/70 active:text-white p-1" aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-lg")}</a>
+      <a href=${item.page || item.orig || item.video} target="_blank" rel="noopener" onClick=${(e) => e.stopPropagation()} class="pointer-events-auto shrink-0 text-white/70 active:text-white p-1" aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-lg")}</a>
     </div>
   </section>`;
 }

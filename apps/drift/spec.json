@@ -1,0 +1,16 @@
+{
+  "id": "drift",
+  "theme": "signal",
+  "category": "sound",
+  "tabs": [
+    { "id": "play", "type": "tool", "icon": "lucide:audio-waveform", "label": "tabPlay", "view": "drift" },
+    { "id": "shape", "type": "tool", "icon": "lucide:sliders-horizontal", "label": "tabShape", "view": "driftShape" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:audio-waveform",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

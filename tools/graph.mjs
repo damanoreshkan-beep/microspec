@@ -1,0 +1,90 @@
+
+export const RT = "packages/runtime/"; 
+
+const dirOf = (p) => {
+  const i = p.lastIndexOf("/");
+  return i < 0 ? "" : p.slice(0, i);
+};
+function normalize(p) {
+  const out = [];
+  for (const seg of p.split("/")) {
+    if (seg === "" || seg === ".") continue;
+    if (seg === "..") out.pop();
+    else out.push(seg);
+  }
+  return out.join("/");
+}
+
+export function resolveSpec(spec, fromFile) {
+  if (spec.startsWith("/_rt/")) return RT + spec.slice(5);
+  if (spec.startsWith("./") || spec.startsWith("../")) {
+    return normalize(dirOf(fromFile) + "/" + spec);
+  }
+  return null;
+}
+
+export function importSpecs(src) {
+  const out = new Set();
+  let m;
+  const from = /\bfrom\s*["']([^"']+)["']/g;
+  while ((m = from.exec(src))) out.add(m[1]);
+  const dyn = /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
+  while ((m = dyn.exec(src))) out.add(m[1]);
+  const side = /(?:^|[;\n])\s*import\s+["']([^"']+)["']/g;
+  while ((m = side.exec(src))) out.add(m[1]);
+  return [...out];
+}
+
+export function buildClosure(entry, read) {
+  const seen = new Set(), stack = [entry];
+  while (stack.length) {
+    const f = stack.pop();
+    if (seen.has(f)) continue;
+    seen.add(f);
+    const src = read(f);
+    if (src == null) continue;
+    for (const spec of importSpecs(src)) {
+      const r = resolveSpec(spec, f);
+      if (r && !seen.has(r)) stack.push(r);
+    }
+  }
+  return seen;
+}
+
+const isTest = (f) =>
+  /(?:^|\/)[^/]*_test\.[jt]sx?$/.test(f) || /\.test\.[jt]sx?$/.test(f);
+const isDoc = (f) =>
+  /\.md$/.test(f) || f.startsWith("docs/") || f === "README.md" ||
+  f === "LICENSE";
+
+export function isGlobal(f, coreSet) {
+  if (/^packages\/(gates|schema|gen)\//.test(f)) return true;
+  if (
+    /^deploy\//.test(f) || /^\.github\/workflows\//.test(f) ||
+    /^tools\//.test(f)
+  ) return true;
+  if (f === "deno.json" || f === "deno.jsonc" || f === "deno.lock") return true;
+  if (f.startsWith(RT) && !f.endsWith(".js")) return true; 
+  if (coreSet.has(f)) return true; 
+  return false;
+}
+
+export function classifyAffected(changed, apps, coreSet) {
+  const allIds = apps.map((a) => a.id).sort();
+  const hit = new Set();
+  for (const f of changed) {
+    if (isTest(f) || isDoc(f)) continue; 
+    if (isGlobal(f, coreSet)) return allIds; 
+    const am = /^apps\/([^/]+)\//.exec(f);
+    if (am) {
+      if (allIds.includes(am[1])) hit.add(am[1]);
+      continue;
+    }
+    if (f.startsWith(RT)) {
+      for (const a of apps) if (a.closure.has(f)) hit.add(a.id);
+      continue;
+    }
+    return allIds; 
+  }
+  return [...hit].sort();
+}

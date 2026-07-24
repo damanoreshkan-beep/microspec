@@ -39,7 +39,8 @@ jobs:
         run: deno run -A packages/schema/validate.mjs apps/*/spec.json
       - name: Runtime files import each other relatively (absolute /_rt/ 404s at a subpath like /microspec/)
         run: |
-          if grep -rn 'from "/_rt/' packages/runtime/*.js; then echo "::error::runtime files must use relative imports (./x.js), not /_rt/ — absolute breaks on GitHub Pages"; exit 1; fi
+          # runtime MODULES must import relatively; *_test.js is exempt (fixtures legitimately embed "/_rt/…" strings).
+          if grep -rn 'from "/_rt/' packages/runtime/*.js | grep -v '_test\.js:'; then echo "::error::runtime files must use relative imports (./x.js), not /_rt/ — absolute breaks on GitHub Pages"; exit 1; fi
       - name: Gate efficacy (mutation-test the preflight gate — fail on any escape)
         run: deno run -A packages/gates/efficacy.mjs --ci
       - name: Authorless conformance (a deterministic no-LLM generator produces a passing app)
@@ -48,14 +49,13 @@ jobs:
         run: deno run -A deploy/counts.mjs --check
       - name: Build check (dist assembles)
         run: deno run -A deploy/build.mjs
-      - name: Discover apps to verify (changed apps; whole farm on a shared change)
+      - name: Discover apps to verify (affected-only, from the REAL import graph — tools/affected.mjs)
         id: discover
         run: |
-          apps_with_gate() { for d in apps/*/; do [ -f "${d}spec.json" ] && [ -f "${d}e2e.spec.mjs" ] && basename "$d"; done; }
-          ALL=$(apps_with_gate)
-
-          # Diff base: PR → base sha; push → event.before. Empty/zero/unknown (new branch, force-push,
-          # manual dispatch) → no usable base → verify the whole farm to be safe.
+          # Deno-native affected detection: an app is verified only if a changed file is in its actual import
+          # closure (view.js → /_rt/… it imports) or its own dir. A shared-bootstrap / harness / config change
+          # widens to the whole farm; a runtime module only reverifies the apps that import it. No node_modules,
+          # no Turborepo/Nx — the farm IS the framework. See tools/graph.mjs (unit-tested in runtime_test.js).
           BEFORE="${{ github.event.pull_request.base.sha || github.event.before }}"
           RANGE=""
           if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
@@ -64,24 +64,13 @@ jobs:
 
           if [ -z "$RANGE" ]; then
             echo "no usable diff base ('$BEFORE') → whole farm"
-            SEL="$ALL"
+            APPS=$(deno run -A tools/affected.mjs --all)
           else
-            FILES=$(git diff --name-only "$RANGE")
-            echo "changed files:"; echo "$FILES" | sed 's/^/  /'
-            if echo "$FILES" | grep -qE '^(packages/|\.github/workflows/)'; then
-              echo "shared change (packages/** or workflow) → whole farm"
-              SEL="$ALL"
-            else
-              # only apps/<id>/ files changed → verify just those (that have a spec + e2e)
-              SEL=$(echo "$FILES" | sed -nE 's#^apps/([^/]+)/.*#\1#p' | sort -u | while read -r a; do [ -f "apps/$a/spec.json" ] && [ -f "apps/$a/e2e.spec.mjs" ] && echo "$a"; done)
-            fi
+            echo "changed files:"; git diff --name-only "$RANGE" | sed 's/^/  /'
+            APPS=$(git diff --name-only "$RANGE" | deno run -A tools/affected.mjs)
           fi
 
-          if [ -z "$(printf '%s' "$SEL" | tr -d '[:space:]')" ]; then
-            APPS="[]"  # nothing app-relevant changed (e.g. docs/deploy only) → empty matrix, verify job skips
-          else
-            APPS=$(printf '%s\n' "$SEL" | grep -v '^$' | jq -R . | jq -cs .)
-          fi
+          [ -z "$APPS" ] && APPS="[]"   # empty → verify job skips (nothing app-relevant changed)
           echo "verify matrix → $APPS"
           echo "apps=$APPS" >> "$GITHUB_OUTPUT"
 

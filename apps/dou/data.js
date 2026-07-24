@@ -1,7 +1,7 @@
 // DOU data adapter. Returns { items (tagged bron), meta:{bron,rest,categories} }.
 //
 // DOU sends NO CORS, so it routes through a proxy we control: the dev `/feed` on localhost, and our own
-// hardened proxy on the VPS in production (see proxy/feed-proxy.mjs + deploy notes). The URL comes from the
+// hardened proxy on the VPS in production (its source lives in the private microspec-edge repo). The URL comes from the
 // runtime so there is one place to change it, not one per app.
 import { VPS_PROXY } from "/_rt/feed.js";
 const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);

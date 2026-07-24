@@ -79,4 +79,16 @@ export default [
       h.expect((await h.prop("#install", "open")) !== true, "Back не закрив");
     },
   },
+  {
+    name: "аспекти + AI-трактовка: аркуш історія-backed (Back закриває), рендерить текст", run: async (h) => {
+      await ready(h);
+      await h.click('[data-tab="wheel"]'); await h.wait(150);
+      h.expect((await h.count("[data-interp]")) === 1, "немає кнопки трактовки");
+      await h.click("[data-interp]"); await h.wait(200);
+      h.expect((await h.prop("#interpsheet", "open")) === true, "аркуш трактовки не відкрився");
+      h.expect((await h.text("[data-interp-text]")).trim().length > 40, "порожня трактовка");
+      await h.back(); await h.wait(200);
+      h.expect((await h.prop("#interpsheet", "open")) !== true, "Back не закрив аркуш трактовки");
+    },
+  },
 ];

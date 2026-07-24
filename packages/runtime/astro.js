@@ -85,3 +85,7 @@ export function eclipticPositions(date, keys = BODY_KEYS) {
 
 // sunrise / sunset / golden-hour times for the day.
 export const sunTimes = (lat, lng, date) => SunCalc.getTimes(date, lat, lng);
+
+// aspect math (the angular relationships between planets) lives in the pure ./aspects.js — no UI deps, so
+// it unit-tests without an import map. Re-exported here for convenience alongside the position helpers.
+export { ASPECTS, aspects } from "./aspects.js";

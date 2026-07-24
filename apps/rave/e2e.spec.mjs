@@ -66,6 +66,17 @@ export default [
     },
   },
   {
+    name: "збереження генерованого біта названо за жанром, не «Біт»", run: async (h) => {
+      await ready(h);
+      await h.tap("#gen"); await h.wait(700);          // generate → archetype provenance is set
+      await h.tap("#save"); await h.wait(250);
+      await h.click('[data-tab="saved"]'); await h.wait(300);
+      const name = (await h.text("[data-saved] .font-semibold")).trim();
+      h.expect(name.includes("·"), "автоназва без bpm-суфікса: " + name);
+      h.expect(!/^Біт\b/.test(name) && !/^Beat\b/.test(name), "генерований біт названо загальним «Біт», а не жанром: " + name);
+    },
+  },
+  {
     name: "налаштування: sheet, Back закриває", run: async (h) => {
       await h.click('[data-tab="pads"]'); await h.wait(200);
       await h.tap("[data-settings]"); await h.wait(200);

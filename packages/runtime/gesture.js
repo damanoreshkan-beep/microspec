@@ -6,11 +6,27 @@
 //     also swallows the tap the same drag would otherwise fire (so a swipe never also opens the card under it).
 // Pointer Events cover mouse + touch in one path. Everything is guarded so a gesture can never throw into
 // the render. The dismiss decision is a PURE function so it can be unit-tested (see runtime_test.js).
-import { useRef } from "preact/hooks";
+import { useRef, useEffect } from "preact/hooks";
 import { html } from "htm/preact";
 
 // Dismiss when dragged far, or flicked down fast from a shorter distance. dy in px (down +), vy in px/ms.
 export const pastDismiss = (dy, vy) => dy > 96 || (dy > 24 && vy > 0.5);
+
+// useTap — single-vs-double tap discriminator for ONE element. A single tap fires only after `delay` ms with no
+// second tap; a second tap inside that window fires onDouble and CANCELS the pending single — so a double-tap
+// never also triggers the single action (e.g. like without pausing / without following a link). Both callbacks
+// receive {x,y} relative to the tapped element (for a ripple/heart at the finger). Bind to onClick (covers mouse
+// + touch); the element's own child links/buttons should stopPropagation so they aren't also counted as taps.
+export function useTap({ onSingle, onDouble, delay = 260 } = {}) {
+  const s = useRef({ t: 0 }).current;
+  useEffect(() => () => { if (s.t) clearTimeout(s.t); }, []);
+  return (e) => {
+    let x = 0, y = 0;
+    try { const r = e.currentTarget.getBoundingClientRect(); x = (e.clientX || r.left + r.width / 2) - r.left; y = (e.clientY || r.top + r.height / 2) - r.top; } catch { /* */ }
+    if (s.t) { clearTimeout(s.t); s.t = 0; try { onDouble && onDouble({ x, y }); } catch { /* */ } }
+    else { s.t = setTimeout(() => { s.t = 0; try { onSingle && onSingle({ x, y }); } catch { /* */ } }, delay); }
+  };
+}
 
 export function useSheetDrag(onClose) {
   const boxRef = useRef();

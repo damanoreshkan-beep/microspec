@@ -1,0 +1,11 @@
+{
+  "//": "Farm workspace root. The farm IS its own monorepo framework — Deno workspaces + a tiny affected orchestrator (tools/affected.mjs) — so there is NO Turborepo/Nx and NO node_modules. Packages below are workspace members; apps stay pure Deno (resolved at serve time by each index.html import map); CI verifies only the apps a change actually reaches.",
+  "workspace": ["./packages/runtime", "./packages/schema", "./packages/gen", "./packages/gates"],
+  "tasks": {
+    "test": "deno test -A packages/runtime/runtime_test.js",
+    "affected": "deno run -A tools/affected.mjs",
+    "verify": "deno run -A packages/gates/verify.mjs"
+  },
+  "lint": { "exclude": ["dist/", "apps/"] },
+  "fmt": { "exclude": ["dist/", "apps/", "packages/"] }
+}

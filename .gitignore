@@ -6,3 +6,5 @@ states/
 packages/gates/shots/
 .claude/skills/
 skills-lock.json
+# local mirror of the VPS feed-proxy — holds the host/IP + keys, never publish
+proxy/

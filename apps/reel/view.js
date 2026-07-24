@@ -202,7 +202,7 @@ function VideoLayer({ item, t }) {
         ? html`<img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" onError=${(e) => e.currentTarget.remove()} />`
         : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
     <div class="absolute inset-0 bg-black/25" aria-hidden="true"></div>
-    <video ref=${ref} onClick=${toggle} playsinline loop muted poster=${item.poster || ""} class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
+    <video ref=${ref} onClick=${toggle} playsinline loop muted class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
     ${errored ? html`<${WatchLink} item=${item} t=${t} />` : null}
   </${Fragment}>`;
 }
@@ -214,13 +214,10 @@ function Slide({ item, idx, active, ephemeral, t }) {
       : active
         ? html`<${VideoLayer} item=${item} t=${t} />`
         : item.poster
-          ? html`<${Fragment}><${PosterFill} poster=${item.poster} /><div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/85 text-5xl drop-shadow-lg")}</div></${Fragment}>`
-          : html`<div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/10 text-7xl")}</div>`}
-    <div class="absolute inset-x-0 bottom-0 z-[2] pointer-events-none p-4 pt-16 bg-gradient-to-t from-black/75 via-black/25 to-transparent" style="padding-bottom:calc(var(--dock-h) + 1rem)">
-      <div class="flex items-end gap-2">
-        <div class="min-w-0 flex-1 text-white font-semibold text-sm leading-snug line-clamp-2" style="text-shadow:0 1px 6px rgba(0,0,0,.6)">${/[a-zа-яїієґ]/i.test(item.title || "") ? item.title : ""}</div>
-        <a href=${item.page || item.orig || item.video} target="_blank" rel="noopener" class="pointer-events-auto shrink-0 text-white/70 active:text-white p-1" aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-lg")}</a>
-      </div>
+          ? html`<${PosterFill} poster=${item.poster} />`
+          : null}
+    <div class="absolute inset-x-0 bottom-0 z-[2] pointer-events-none p-4 flex justify-end" style="padding-bottom:calc(var(--dock-h) + 1rem)">
+      <a href=${item.page || item.orig || item.video} target="_blank" rel="noopener" class="pointer-events-auto shrink-0 text-white/70 active:text-white p-1" aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-lg")}</a>
     </div>
   </section>`;
 }

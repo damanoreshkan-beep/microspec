@@ -1,0 +1,34 @@
+name: Setup Deno (cached toolchain, retried install)
+description: >
+  Install a pinned Deno with the toolchain cached across runs and the download retried, so a transient CDN 5xx
+  during setup does not fail the job. Self-contained — no third-party action, no node_modules. Replaces
+  denoland/setup-deno@v2 (which caches deps but not the binary and cannot retry).
+inputs:
+  version:
+    description: Exact Deno version tag to install (pinned → reproducible CI + a stable cache key).
+    default: v2.9.0
+runs:
+  using: composite
+  steps:
+    - name: Cache Deno toolchain (~/.deno, keyed on the pinned version)
+      uses: actions/cache@v6
+      with:
+        path: ~/.deno
+        key: deno-toolchain-${{ runner.os }}-${{ inputs.version }}
+    - name: Install Deno (cache-aware, retried)
+      shell: bash
+      run: |
+        V="${{ inputs.version }}"
+        D="$HOME/.deno"
+        if [ -x "$D/bin/deno" ] && [ "$("$D/bin/deno" --version | head -1 | awk '{print $2}')" = "${V#v}" ]; then
+          echo "toolchain cache hit → deno $V (no download)"
+        else
+          ok=0
+          for i in 1 2 3 4 5; do
+            if curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 https://deno.land/install.sh | DENO_INSTALL="$D" sh -s "$V"; then ok=1; break; fi
+            echo "deno install attempt $i failed (transient CDN/network) — retrying in 15s"; sleep 15
+          done
+          [ "$ok" = 1 ] || { echo "::error::deno install failed after 5 attempts"; exit 1; }
+        fi
+        echo "$D/bin" >> "$GITHUB_PATH"
+        "$D/bin/deno" --version

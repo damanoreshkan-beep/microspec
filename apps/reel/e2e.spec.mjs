@@ -1,9 +1,13 @@
 // reel — the headless gate seeds a 3-clip public-domain mock (never the network), so the reel always renders
-// populated. We assert: the full-screen slide feed, the mute toggle, and the sources tab (ready channels +
-// the history-backed add-URL sheet, Back closes it). We never assert a stream PLAYS — headless has no video.
+// populated, and a DIVE lands on a second seeded batch ("Deeper …") so the drill-down is provable offline.
+// We assert: the slide feed + its filters, the dive (chip, island, subscribe, back — by button AND by system
+// Back), the grouped sources tab, and the Liked tab playing in place. We never assert a stream PLAYS —
+// headless has no video. Drags aren't dispatchable from this surface; every gesture has a button, and that's
+// what we tap (which is also the a11y contract: no navigation that only a finger can reach).
 const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("[data-reel]")) > 0) break; await h.wait(300); } };
 // the black-poster filter is async (loads the poster into a canvas) → poll until the feed settles
 const settles = async (h, n) => { for (let i = 0; i < 25; i++) { if ((await h.count("[data-reel]")) === n) return true; await h.wait(200); } return false; };
+const has = async (h, re) => re.test(await h.bodyText());
 
 export default [
   {
@@ -26,10 +30,60 @@ export default [
     },
   },
   {
-    name: "джерела: готові канали + додати-URL (Back закриває)", run: async (h) => {
+    name: "провалювання: свайп-чіп відкриває сторінку рілзу як нове джерело, назад — той самий список", run: async (h) => {
+      await ready(h);
+      await settles(h, 3);
+      h.expect((await h.count("[data-dive]")) >= 1, "на слайді немає цілі провалювання (data-dive)");
+      h.expect((await h.count("[data-feed-back]")) === 0, "на нульовому рівні не має бути кнопки «назад»");
+      await h.tap("[data-dive]"); await h.wait(600);
+      h.expect(await has(h, /Deeper/), "провалювання не завантажило стрічку сторінки, на якій лежить рілз");
+      h.expect((await h.count("[data-feed-back]")) === 1, "після провалювання немає кнопки повернення");
+      h.expect(/Abstract|Space/.test(await h.text("[data-island-label]")), "острівець не показує назву сторінки, в яку провалились");
+      // …and back restores the ORIGINAL list (a restore, not a refetch)
+      await h.tap("[data-feed-back]"); await h.wait(500);
+      h.expect(!(await has(h, /Deeper/)), "повернення не відновило попередню стрічку");
+      h.expect(await settles(h, 3), "повернувся не той самий список із 3 слайдів");
+      h.expect((await h.count("[data-feed-back]")) === 0, "кнопка повернення лишилась на нульовому рівні");
+    },
+  },
+  {
+    name: "провалювання: системний Back відкручує рівень (а не виходить з апки)", run: async (h) => {
+      await ready(h);
+      await h.tap("[data-dive]"); await h.wait(600);
+      h.expect(await has(h, /Deeper/), "провалювання не спрацювало");
+      const lvl1 = await h.text("[data-island-label]");
+      await h.tap("[data-dive]"); await h.wait(600);                   // другий рівень — стек, а не один прапорець
+      const lvl2 = await h.text("[data-island-label]");
+      h.expect(lvl2 && lvl2 !== lvl1, `другий рівень не відкрився (острівець лишився на «${lvl1}»)`);
+      await h.back(); await h.wait(500);
+      h.expect(await has(h, /Deeper/), "перший системний Back мав повернути на рівень вище, а не в корінь");
+      h.expect((await h.text("[data-island-label]")) === lvl1, "Back не повернув рівно на один рівень");
+      await h.back(); await h.wait(500);
+      h.expect(!(await has(h, /Deeper/)), "другий системний Back не повернув у корінь стрічки");
+      h.expect((await h.count("[data-reel]")) >= 1, "апка зникла — Back вийшов далі, ніж мав");
+    },
+  },
+  {
+    name: "провалювання: у джерело без підписки — кнопка «підписатись» додає його в таб джерел", run: async (h) => {
+      await ready(h);
+      await h.tap("[data-dive]"); await h.wait(600);
+      h.expect((await h.count("[data-subscribe]")) === 1, "на непідписаному джерелі немає кнопки підписки");
+      await h.tap("[data-subscribe]"); await h.wait(400);
+      h.expect((await h.count("[data-subscribe]")) === 0, "після підписки кнопка мала зникнути");
+      await h.tap('[data-tab="sources"]'); await h.wait(400);
+      h.expect(await has(h, /Підписки|Subscriptions/), "таб джерел не відкрився");
+      await h.tap('[data-tab="reel"]'); await h.wait(400);
+      await h.tap("[data-feed-back]"); await h.wait(400);              // прибираємо за собою — далі тести чекають корінь
+    },
+  },
+  {
+    name: "джерела: канали згруповані по сайтах з людськими назвами сторінок (Back закриває шит)", run: async (h) => {
       await ready(h);
       await h.tap('[data-tab="sources"]'); await h.wait(300);           // reel → sources tab (dock)
       h.expect((await h.count("[data-src-row]")) >= 3, "немає готових каналів");
+      const txt = await h.bodyText();
+      h.expect(/mixkit\.co/.test(txt), "картка сайту не показує домен");
+      h.expect(/Space/.test(txt) && !/free-stock-video\/space/.test(txt), "рядок сторінки має показувати назву, а не сирий URL");
       await h.tap("#add-url"); await h.wait(300);
       h.expect((await h.count("#src-input")) === 1, "шит додавання URL не відкрився");
       await h.back(); await h.wait(300);
@@ -57,11 +111,17 @@ export default [
     },
   },
   {
-    name: "таб «Лайки» є в доку і порожній за замовчуванням", run: async (h) => {
+    name: "лайки: тайл відкриває стрічку ПРЯМО в табі лайків, системний Back повертає сітку", run: async (h) => {
       await ready(h);
-      h.expect((await h.count('[data-tab="liked"]')) === 1, "таб «Лайки» відсутній у доку");
-      await h.tap('[data-tab="liked"]'); await h.wait(300);
-      h.expect((await h.count("[data-liked-tile]")) === 0, "на старті лайків не має бути");
+      await h.tap('[data-tab="liked"]'); await h.wait(400);
+      h.expect((await h.count("[data-liked-tile]")) === 3, "сітка лайків не заповнена сідованими записами");
+      await h.tap("[data-liked-tile]"); await h.wait(600);
+      h.expect((await h.count("[data-reel]")) >= 1, "тайл не відкрив стрічку");
+      h.expect((await h.count("[data-liked-tile]")) === 0, "сітка лайків лишилась під стрічкою");
+      h.expect((await h.attr('[data-tab="liked"]', "aria-current")) === "page", "стрічка перекинула нас в інший таб замість відкритись у лайках");
+      await h.back(); await h.wait(500);
+      h.expect((await h.count("[data-liked-tile]")) === 3, "системний Back не повернув сітку лайків");
+      h.expect((await h.attr('[data-tab="liked"]', "aria-current")) === "page", "Back вискочив із таба лайків");
     },
   },
 ];

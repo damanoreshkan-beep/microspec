@@ -47,7 +47,10 @@ export function useSheetDrag(onClose) {
   return { boxRef, grip };
 }
 
-export function usePanX({ onNext, onPrev, canNext = true, canPrev = true, threshold = 52 } = {}) {
+// onDrag(dx) — optional live progress of the pan, in the SAME px the pane is translated by (so a caller can
+// paint whatever the drag reveals underneath: a destination card, a peeking neighbour). Called on every move
+// and once with 0 on release, never with the axis undecided. Guarded — a painter can't throw into the drag.
+export function usePanX({ onNext, onPrev, canNext = true, canPrev = true, threshold = 52, onDrag } = {}) {
   const paneRef = useRef();
   const s = useRef({ on: false, x0: 0, y0: 0, dx: 0, decided: 0, at: 0 }).current;
   const setX = (x, spring) => { const p = paneRef.current; if (!p) return; p.style.transition = spring ? "transform .26s cubic-bezier(.2,.85,.25,1)" : "none"; p.style.transform = x ? `translateX(${x}px)` : ""; };
@@ -60,11 +63,14 @@ export function usePanX({ onNext, onPrev, canNext = true, canPrev = true, thresh
     if (s.decided !== 1) return;                                                                     // vertical → let scroll/tap through
     s.dx = dx;
     const atEdge = (dx < 0 && !canNext) || (dx > 0 && !canPrev);
-    setX(atEdge ? Math.sign(dx) * Math.min(Math.abs(dx) * 0.2, 42) : resist(dx), false);             // heavy resistance at the ends
+    const shift = atEdge ? Math.sign(dx) * Math.min(Math.abs(dx) * 0.2, 42) : resist(dx);            // heavy resistance at the ends
+    setX(shift, false);
+    if (onDrag) { try { onDrag(shift); } catch { /* a painter never breaks the gesture */ } }
   };
   const up = () => {
     if (!s.on) return; s.on = false;
     if (s.decided !== 1) return;
+    if (onDrag) { try { onDrag(0); } catch { /* */ } }                                                // the reveal fades with the pane
     if (Math.abs(s.dx) > 8) s.at = performance.now();                                                // any real drag suppresses the tap
     const dir = s.dx < 0 ? 1 : -1, can = dir === 1 ? canNext : canPrev;
     if (Math.abs(s.dx) > threshold && can) { try { (dir === 1 ? onNext : onPrev)?.(); } catch { /* */ } requestAnimationFrame(() => setX(0, true)); }  // commit: swap content, glide it home

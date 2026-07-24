@@ -150,6 +150,8 @@
     "https://esm.sh/linkedom@0.18.5/X-ZWNhbnZhcw/denonext/esm/svg/element.mjs": "62ad8f3c65303c474f17d8e1526d3278145de5c8b898808cdae67218485d75dc",
     "https://esm.sh/linkedom@0.18.5/X-ZWNhbnZhcw/denonext/linkedom.mjs": "8dcb1576862ed7a6e7001946b0900a5dcf2e7e7daa8653cdd545668ae19ed7f4",
     "https://esm.sh/linkedom@0.18.5?external=canvas": "2a31e570efc08d1268fff623cf995c4c4b36b576b6bb4fd292b2423b9b09c2ea",
+    "https://esm.sh/lodash-es@4.17.21": "1252ccd86311d14f2dd05282cf3e40e1ff76bfa79c71ca49b903e902129944cb",
+    "https://esm.sh/lodash-es@4.17.21/denonext/lodash-es.mjs": "6f7d7db2f829218b6a787d9652b7e90333a1b89e5eb3a8b4c4b9eb6de3b062ec",
     "https://esm.sh/nanostores@0.11.4": "090eb82118635dd654d2bd983741bd6dc2a809af96ea175c896da7fc1a34ebd8",
     "https://esm.sh/nanostores@0.11.4/denonext/nanostores.mjs": "0f3a82d0a93671bbb67887a02d3b1eff7fb93654add5e3d654d2278265902539",
     "https://esm.sh/nth-check@2.1.1/denonext/nth-check.mjs": "2b0541d4564b27c31b37b006329c64036bee04a4c8f14e8357037fd7d35ecfe4",

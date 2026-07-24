@@ -33,6 +33,11 @@ export function createApp(spec, dataLoad) {
     filters: map({ ...(spec.filters?.defaults || {}), ...savedFilters }),
     toast: atom(""),
     // history-backed overlays (index.js watches these for the back-button invariant)
+    // A drill-down STACK inside a tab (reel: swipe a video → its own page becomes the next feed, as deep as
+    // you like). Unlike every other overlay it is worth one history entry PER LEVEL — its length IS its
+    // depth — so Back walks the drill-down back one step at a time instead of collapsing it. The elements
+    // are the app's own (a label shown while dragging back); the runtime only counts them.
+    stack: atom([]),
     sheet: atom(false),
     detail: atom(null),
     screen: atom(null),

@@ -40,6 +40,8 @@ import { clampTxVgaGain, TX_ENDPOINT } from "./hackrf.js";
 import { capture, isolateFrame, framesEqual, renderOOK, OOK_FREQS } from "./ook.js";
 import { refDownchirp, makeUpSymbol, dechirpArgmax, detectPreamble, LORA_PRESETS, WHITENING, loraEncode, loraDecode, decodeLoraSignal } from "./lora.js";
 import { parsePrice, parseWishMeta, toNumber, sortWishes, wishTotals, fmtMoney } from "./wish.js";
+import { registrableDomain, siteName, pageLabel, groupByDomain, hostOf } from "./sitelabel.js";
+import { overlayDepth } from "./overlay.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
 const i18n = { en: { hi: "hi" }, uk: { hi: "привіт" } };
@@ -2500,4 +2502,64 @@ Deno.test("affected: shared/uncertain changes widen to the whole farm (safe dire
   assertEquals(classifyAffected([RTX + "theme.css"], apps, core).length, 2, "runtime asset → whole farm");
   assertEquals(classifyAffected(["deno.json"], apps, core).length, 2, "root config → whole farm");
   assert(isGlobal("tools/graph.mjs", core), "orchestrator change → whole farm");
+});
+
+// ── sitelabel: readable page titles + domain grouping (derived from the URL, never fetched) ─────────────
+Deno.test("registrableDomain: subdomains fold into one site, multi-label suffixes survive", () => {
+  assertEquals(registrableDomain("commons.wikimedia.org"), "wikimedia.org");
+  assertEquals(registrableDomain("www.mixkit.co"), "mixkit.co");
+  assertEquals(registrableDomain("mixkit.co"), "mixkit.co");
+  assertEquals(registrableDomain("news.bbc.co.uk"), "bbc.co.uk", "co.uk is a suffix, not a site");
+  assertEquals(registrableDomain("shop.rozetka.com.ua"), "rozetka.com.ua");
+  assertEquals(registrableDomain("localhost"), "localhost");
+});
+
+Deno.test("siteName: the label before the public suffix, capitalised", () => {
+  assertEquals(siteName("https://mixkit.co/free-stock-video/"), "Mixkit");
+  assertEquals(siteName("https://commons.wikimedia.org/wiki/Category:Animations"), "Wikimedia");
+  assertEquals(siteName("https://www.dareful.com/"), "Dareful");
+});
+
+Deno.test("pageLabel: the page's own title, derived from its URL", () => {
+  assertEquals(pageLabel("https://mixkit.co/free-stock-video/"), "Free stock video");
+  assertEquals(pageLabel("https://mixkit.co/free-stock-video/space/"), "Space");
+  assertEquals(pageLabel("https://commons.wikimedia.org/wiki/Category:Underwater_videos"), "Underwater videos", "the Category: prefix is chrome, not title");
+  assertEquals(pageLabel("https://dareful.com/"), "Dareful", "a bare root falls back to the site name");
+  assertEquals(pageLabel("https://site.com/search?q=sunset+timelapse"), "Sunset timelapse", "a results page is titled by its term");
+  assertEquals(pageLabel("https://site.com/videos/page/2"), "Site", "ids and paging noise are not titles");
+  assertEquals(pageLabel("https://site.com/clips/12345-a-slow-river.html"), "A slow river");
+  assertEquals(pageLabel("not a url at all"), "Not a url at all", "never throws on junk");
+  assertEquals(pageLabel(""), "");
+});
+
+Deno.test("pageLabel: caps length on a word boundary so a row can't be blown out", () => {
+  const long = pageLabel("https://site.com/a-very-long-page-name-that-keeps-going-and-going-forever");
+  assert(long.length <= 43, `label too long: ${long.length}`);
+  assert(long.endsWith("…"), "a truncated label must say so");
+  assert(!/\s…$/.test(long), "no dangling space before the ellipsis");
+});
+
+Deno.test("groupByDomain: pages of one site group together, first-appearance order kept", () => {
+  const g = groupByDomain([
+    { url: "https://mixkit.co/free-stock-video/" },
+    { url: "https://commons.wikimedia.org/wiki/Category:Animations" },
+    { url: "https://mixkit.co/free-stock-video/space/" },
+    { url: "https://wikimedia.org/x" },
+  ]);
+  assertEquals(g.map((x) => x.domain), ["mixkit.co", "wikimedia.org"]);
+  assertEquals(g[0].items.length, 2);
+  assertEquals(g[1].items.length, 2, "a subdomain and its apex are the same site");
+  assertEquals(g[0].name, "Mixkit");
+  assertEquals(groupByDomain([]), []);
+  assertEquals(groupByDomain([{ name: "no url" }]), [], "an entry without a url is skipped, not crashed on");
+});
+
+// ── overlayDepth: the arithmetic the Back-button routing runs on ────────────────────────────────────────
+Deno.test("overlayDepth: a stack is worth one history entry per level", () => {
+  assertEquals(overlayDepth(true), 1, "a plain open overlay");
+  assertEquals(overlayDepth({ id: 1 }), 1, "a detail object");
+  assertEquals(overlayDepth(null), 0);
+  assertEquals(overlayDepth(false), 0);
+  assertEquals(overlayDepth([]), 0, "an empty stack is closed");
+  assertEquals(overlayDepth(["a", "b", "c"]), 3, "three dives = three Backs");
 });

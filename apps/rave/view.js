@@ -96,6 +96,7 @@ const $style = persisted("style", 0);
 const $viz = persisted("viz", 0);                                
 const vizKey = (id) => "viz" + id.charAt(0).toUpperCase() + id.slice(1);
 const $playing = atom(false), $cur = atom(-1), $sweep = atom(-1), $hist = atom({ seeds: [], idx: -1 });
+const $gen = persisted("gen", null);
 const SAVES = collection("ravePatterns");
 
 let eng = null, bus = null, fxN = null, sched = null, raf = null, nextT = 0, stepN = 0, q = [], genT = null;
@@ -207,6 +208,7 @@ function generate(seed = randSeed(), animate = true) {
   if (animate) ensure();
   if (genT) { clearInterval(genT); genT = null; }
   const arch = ARCHETYPES[seed % ARCHETYPES.length];
+  $gen.set(arch.id);
   const g = generateGroove(arch.voices, { seed }), rng = mulberry32(seed ^ 0x5bf03635), full = { ...empty(), ...g.tracks };
   $riff.set(g.riff.length === N ? g.riff : RIFF);
   $bpm.set(Math.round(lerp(rng, arch.bpm)));
@@ -220,13 +222,13 @@ const stepTrack = (d) => { buzz(); let { seeds, idx } = $hist.get(); idx += d; i
 
 const beatSig = (r) => JSON.stringify([r.tracks, r.bpm, r.riff]);
 const beatBars = (tracks) => STEPS.map((s) => TRACKS.reduce((n, tr) => n + (tracks?.[tr.id]?.[s] ? 1 : 0), 0));
-const autoName = (t, tracks, bpm, list) => { const key = JSON.stringify(tracks), pre = PRESETS.find((p) => JSON.stringify(parse(p)) === key), base = (pre ? T(t, pre.name) : T(t, "beatWord")) + " · " + bpm; let n = base, i = 2; while (list.some((it) => it.name === n)) n = `${base} (${i++})`; return n; };
+const autoName = (t, tracks, bpm, list) => { const key = JSON.stringify(tracks), pre = PRESETS.find((p) => JSON.stringify(parse(p)) === key), genId = $gen.get(), label = pre ? T(t, pre.name) : (genId ? T(t, presetName(genId)) : T(t, "beatWord")), base = label + " · " + bpm; let n = base, i = 2; while (list.some((it) => it.name === n)) n = `${base} (${i++})`; return n; };
 
 export function rave({ S }) {
   const t = useStore(S.t), tracks = useStore($tracks), style = useStore($style), playing = useStore($playing), fx = useStore($fx), cur = useStore($cur), bpm = useStore($bpm), sweep = useStore($sweep), viz = useStore($viz);
   useEffect(() => { loadPackSamples($pack.get()); }, []);
   useEffect(() => { try { const q = new URLSearchParams(location.search).get("viz"); if (q != null) { const n = parseInt(q, 10); if (n >= 0 && n < VIZ_COUNT) $viz.set(n); } } catch {  } }, []);
-  const pick = (i) => { buzz(); ensure(); const [id, b] = PLAYER[i]; $style.set(i); $tracks.set(parse(presetById(id))); $bpm.set(b); $hist.set({ seeds: [], idx: -1 }); syncNP(); };
+  const pick = (i) => { buzz(); ensure(); const [id, b] = PLAYER[i]; $style.set(i); $tracks.set(parse(presetById(id))); $bpm.set(b); $hist.set({ seeds: [], idx: -1 }); $gen.set(null); syncNP(); };
   const kickRow = tracks.kick;
   const [immersed, setImmersed] = useState(immersionState.on);
   const toggleImmersion = async () => { buzz(12); if (immersionState.on) { disableImmersion(); setImmersed(false); } else { setImmersed(await enableImmersion()); } };
@@ -327,7 +329,7 @@ function FxSheet({ open, onClose, t, sweep }) {
     </div>
     <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
       <button data-gen aria-label=${T(t, "gen")} class=${`btn btn-sm shrink-0 gap-1.5 ${sweep >= 0 ? "btn-accent" : "btn-accent btn-outline"}`} onClick=${newTrack}>${Icon("lucide:sparkles", `text-base ${sweep >= 0 ? "animate-pulse" : ""}`)}<span>${T(t, "gen")}</span></button>
-      ${PRESETS.map((p) => html`<button data-preset=${p.id} aria-pressed=${activePreset === p.id} class=${`btn btn-sm shrink-0 ${activePreset === p.id ? "btn-primary" : "btn-outline"}`} onClick=${() => { ensure(); $tracks.set(parse(p)); }} key=${p.id}>${T(t, p.name)}</button>`)}
+      ${PRESETS.map((p) => html`<button data-preset=${p.id} aria-pressed=${activePreset === p.id} class=${`btn btn-sm shrink-0 ${activePreset === p.id ? "btn-primary" : "btn-outline"}`} onClick=${() => { ensure(); $tracks.set(parse(p)); $gen.set(null); }} key=${p.id}>${T(t, p.name)}</button>`)}
       <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => $tracks.set(empty())}>${Icon("lucide:eraser", "text-base")}</button>
     </div>
     <div class="flex flex-col gap-1">
@@ -350,7 +352,7 @@ export function raveSaved({ S, undo }) {
   useEffect(() => { load(); }, []);
   const curSig = beatSig({ tracks, bpm, riff });
   const isCur = (it) => playing && beatSig(it) === curSig;
-  const loadBeat = (it) => { $tracks.set({ ...empty(), ...(it.tracks || {}) }); $bpm.set(it.bpm || 130); $riff.set(it.riff?.length === N ? it.riff : RIFF); if (it.fx) { $fx.set({ ...DFX, ...it.fx }); applyFx(); } };
+  const loadBeat = (it) => { $tracks.set({ ...empty(), ...(it.tracks || {}) }); $bpm.set(it.bpm || 130); $riff.set(it.riff?.length === N ? it.riff : RIFF); if (it.fx) { $fx.set({ ...DFX, ...it.fx }); applyFx(); } $gen.set(null); };
   const open = (it) => { buzz(); loadBeat(it); S.tab.set("pads"); };
   const play = (it) => { buzz(); if (isCur(it)) { stop(); return; } loadBeat(it); start(); };
   const del = async (it) => { const { id, _ts, ...rec } = it; try { await SAVES.remove(id); } catch {  } load(); undo?.(async () => { try { await SAVES.put(id, rec); } catch {  } load(); }, it.name || T(t, "beatWord")); };

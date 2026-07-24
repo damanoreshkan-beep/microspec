@@ -214,8 +214,8 @@ function Slide({ item, idx, active, ephemeral, t }) {
       : active
         ? html`<${VideoLayer} item=${item} t=${t} />`
         : item.poster
-          ? html`<${Fragment}><${PosterFill} poster=${item.poster} /><div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/85 text-5xl drop-shadow-lg")}</div></${Fragment}>`
-          : html`<div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-white/10 text-7xl")}</div>`}
+          ? html`<${PosterFill} poster=${item.poster} />`
+          : null}
     <div class="absolute inset-x-0 bottom-0 z-[2] pointer-events-none p-4 pt-16 bg-gradient-to-t from-black/75 via-black/25 to-transparent" style="padding-bottom:calc(var(--dock-h) + 1rem)">
       <div class="flex items-end gap-2">
         <div class="min-w-0 flex-1 text-white font-semibold text-sm leading-snug line-clamp-2" style="text-shadow:0 1px 6px rgba(0,0,0,.6)">${/[a-zа-яїієґ]/i.test(item.title || "") ? item.title : ""}</div>

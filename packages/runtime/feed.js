@@ -7,11 +7,11 @@
 // they are a third party we do not control sitting in the farm's data path, and when they degrade — which
 // they do, silently and often — an app goes blank for real users AND takes the whole deploy red, because
 // `verify` is the farm gate and a data-less app fails its e2e. That is an outage we neither caused nor can
-// fix. Our proxy (proxy/feed-proxy.mjs, host-allowlisted, on the VPS behind nginx) is ours to keep up.
+// fix. Our proxy (microspec-edge, host-allowlisted, on the VPS behind nginx) is ours to keep up.
 const isLocal = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 
 // Our hardened proxy. NOT an open proxy — it only forwards to hosts in the ALLOW list in
-// proxy/feed-proxy.mjs, so a new CORS-blocked source needs a one-line allowlist change + a restart.
+// microspec-edge (feed-core.mjs), so a new CORS-blocked source needs a one-line allowlist change + a restart.
 export const VPS_PROXY = "https://jobs-map.mooo.com/feed";
 
 const PROXIES = [

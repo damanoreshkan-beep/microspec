@@ -1,6 +1,6 @@
 // horoscope — the client-side sun-sign lookup. The READING itself is no longer synthesized here: the app
 // now shows the real daily horoscope from horoscope.com (professional astrologers), fetched + parsed by our
-// VPS proxy (proxy/feed-proxy.mjs, GET /feed/horoscope) and cached per (sign, date) in the browser. All that
+// VPS proxy (microspec-edge, GET /feed/horoscope) and cached per (sign, date) in the browser. All that
 // remains on-device is mapping a birthday to its zodiac sign, so a first-launch user defaults to their own.
 
 // Calendar-ordered sign starts: a date belongs to the LAST entry whose start it is ≥ (Jan 1–19 → Capricorn,

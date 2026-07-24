@@ -5,7 +5,7 @@ The recipe the build follows. Numbers/idioms here are the contract; the code poi
 ## 1. The dive (swipe a reel → its page becomes the next source)
 
 **Ground truth (owner-verified in production):** pasting a *reel's own page URL* into the source box makes the
-VPS extractor return **similar videos from that page** (`proxy/feed-core.mjs` `parseVideos` → nearest-anchor
+VPS extractor return **similar videos from that page** (`feed-core.mjs` `parseVideos` in microspec-edge → nearest-anchor
 `item.page`). So the dive target is exactly `item.page` — never `item.video` (a raw mp4 is `not an html page`
 and returns `{items:[]}`), never `item.orig`.
 

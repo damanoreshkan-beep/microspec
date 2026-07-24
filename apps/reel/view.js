@@ -94,12 +94,32 @@ function markWatched(url) {
 function clearWatched() { $watched.set(new Set()); watchedDB.clear().catch(() => {}); }
 const unseen = (arr) => arr.filter((i) => !$watched.get().has(i.orig || i.video));         // key on the stable original URL
 
+// Liked reels (IndexedDB) — a double-tap on a slide saves it; the Liked tab lists them and is the ONLY place
+// to remove one. Keyed by the STABLE original URL (orig || video), which is globally unique across sources, so
+// likes from different sources (any tube site, mixkit, commons…) coexist and never duplicate. Each record carries its
+// host + the per-item `eph` flag so the Liked feed replays a mix of ephemeral and inline clips correctly.
+const likesDB = collection("reelLikes");
+const $likes = atom([]);
+if (idbSupported && !gate) likesDB.all().then((rows) => $likes.set(rows)).catch(() => {});
+const likeId = (i) => i.orig || i.video;
+function addLike(i) {                                                                       // double-tap → save; dedupe (never store twice)
+  const id = likeId(i); if (!id || $likes.get().some((l) => l.id === id)) return;
+  const rec = { id, video: i.video, orig: i.orig || null, poster: i.poster || null, page: i.page || null, host: hostOf(i.page || i.orig || i.video), eph: i.eph != null ? i.eph : $ephemeral.get(), ts: Date.now() };
+  $likes.set([rec, ...$likes.get()]);
+  likesDB.put(id, rec).catch(() => { /* headless / no idb — atom still holds it this session */ });
+}
+function unlike(id) {                                                                       // remove — only from the Liked tab
+  $likes.set($likes.get().filter((l) => l.id !== id));
+  likesDB.remove(id).catch(() => {});
+}
+
 const $items = atom(gate ? dedupeVideos(MOCK) : []);
 const $next = atom(null);
 const $loading = atom(!gate);
 const $err = atom(false);
 const $active = atom(0);
 const $ephemeral = atom(false);   // source hands out signed/expiring URLs → show poster + "watch" link, don't play
+const $feed = atom("source");     // "source" (auto-loaded from $src) | "liked" (pinned to the liked list — skip auto-load)
 
 // ── blank-poster filter (black + flat placeholders) ─────────────────────────────────────────────────────
 // A broken/placeholder poster renders as a dead slide: a solid black frame OR a single flat-colour fill a CDN
@@ -150,7 +170,7 @@ let loadingMore = false;
 async function loadSource(url, append = false) {
   if (gate) return;                                                                      // gate uses the seeded mock
   if (append) { if (loadingMore || !url) return; loadingMore = true; }
-  else { $loading.set(true); $err.set(false); $items.set([]); $next.set(null); $active.set(0); }
+  else { $feed.set("source"); $loading.set(true); $err.set(false); $items.set([]); $next.set(null); $active.set(0); }
   try {
     const r = await fetch(`${VPS_PROXY}/videos?url=${encodeURIComponent(url)}`);
     const d = await r.json();
@@ -207,8 +227,38 @@ function VideoLayer({ item, t }) {
   </${Fragment}>`;
 }
 
+// Heart burst — the like animation that blooms under the finger on a double-tap. There is deliberately NO
+// persistent like-state UI on slides (that would subscribe every slide to the likes store — wasteful); the
+// heart just plays once and fades, and the save is silent + deduped. Removal happens only in the Liked tab.
+function HeartBurst({ x, y, onDone }) {
+  const ref = useRef();
+  useEffect(() => {
+    const anim = ref.current?.animate?.([
+      { transform: "translate(-50%,-50%) scale(.3) rotate(-12deg)", opacity: 0 },
+      { transform: "translate(-50%,-50%) scale(1.15) rotate(-4deg)", opacity: 1, offset: .28 },
+      { transform: "translate(-50%,-50%) scale(1) rotate(0deg)", opacity: 1, offset: .62 },
+      { transform: "translate(-50%,-50%) scale(1.5) rotate(4deg)", opacity: 0 },
+    ], { duration: 720, easing: "cubic-bezier(.22,1,.36,1)" });
+    if (anim) anim.onfinish = () => onDone?.(); else onDone?.();
+    return () => { if (anim) anim.onfinish = null; };
+  }, []);
+  return html`<div ref=${ref} aria-hidden="true" class="absolute z-[5] pointer-events-none" style=${`left:${x}px;top:${y}px`}>${Icon("lucide:heart", "text-7xl text-rose-500 fill-rose-500 drop-shadow-[0_2px_16px_rgba(0,0,0,.45)]")}</div>`;
+}
+
 function Slide({ item, idx, active, ephemeral, t }) {
-  return html`<section data-reel data-idx=${idx} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
+  const [burst, setBurst] = useState(null);
+  const lastTap = useRef(0);
+  const onTap = (e) => {
+    const now = Date.now();
+    if (now - lastTap.current < 300) {                                                     // double-tap → save + heart bloom under the finger
+      lastTap.current = 0;
+      const r = e.currentTarget.getBoundingClientRect();
+      setBurst({ x: (e.clientX || r.left + r.width / 2) - r.left, y: (e.clientY || r.top + r.height / 2) - r.top, k: now });
+      addLike(item);
+      navigator.vibrate?.(12);
+    } else lastTap.current = now;
+  };
+  return html`<section data-reel data-idx=${idx} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
     ${ephemeral
       ? html`<${Fragment}><${PosterFill} poster=${item.poster} /><${WatchLink} item=${item} t=${t} /></${Fragment}>`
       : active
@@ -216,6 +266,7 @@ function Slide({ item, idx, active, ephemeral, t }) {
         : item.poster
           ? html`<${PosterFill} poster=${item.poster} />`
           : null}
+    ${burst ? html`<${HeartBurst} x=${burst.x} y=${burst.y} key=${burst.k} onDone=${() => setBurst(null)} />` : null}
     <div class="absolute inset-x-0 bottom-0 z-[2] pointer-events-none p-4 flex justify-end" style="padding-bottom:calc(var(--dock-h) + 1rem)">
       <a href=${item.page || item.orig || item.video} target="_blank" rel="noopener" class="pointer-events-auto shrink-0 text-white/70 active:text-white p-1" aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-lg")}</a>
     </div>
@@ -226,7 +277,7 @@ function SourceSheet({ S, t }) {
   const [val, setVal] = useState("");
   const [q, setQ] = useState("");
   const norm = () => { const u = val.trim(); return u ? (/^https?:\/\//i.test(u) ? u : "https://" + u) : ""; };
-  const goto = (url) => { subscribe({ name: hostOf(url), url, icon: "lucide:link" }); $src.set(url); S.tab.set("reel"); S.screen.set(null); };
+  const goto = (url) => { subscribe({ name: hostOf(url), url, icon: "lucide:link" }); $feed.set("source"); $src.set(url); S.tab.set("reel"); S.screen.set(null); };
   const load = (e) => { e?.preventDefault?.(); const url = norm(); if (!url) return S.screen.set(null); goto(url); };
   // A pasted results URL (`…/search?q=…`) is searchable → offer to swap the term and play those results.
   const sr = resolveSearch(norm());
@@ -260,9 +311,10 @@ export function reel({ S }) {
   const items = useStore($items), loading = useStore($loading), err = useStore($err);
   const active = useStore($active), next = useStore($next), ephemeral = useStore($ephemeral);
   const src = useStore($src);
+  const feed = useStore($feed);
   const scroller = useRef();
 
-  useEffect(() => { if (!gate) loadSource(src); }, [src]);
+  useEffect(() => { if (!gate && $feed.get() === "source") loadSource(src); }, [src, feed]);   // "liked" pins $items → skip auto-load
   useEffect(() => { void checkBlankPosters(); }, [items]);                                 // sample new posters → drop black/flat/broken slides (gate: inline data: posters too)
   useEffect(() => { if (next && active >= items.length - 3) loadSource(next, true); }, [active, items.length, next]);
   useEffect(() => { const it = items[active]; if (!it || gate) return; const id = setTimeout(() => markWatched(it.orig || it.video), 2500); return () => clearTimeout(id); }, [active, items]);   // dwell → watched
@@ -279,7 +331,7 @@ export function reel({ S }) {
       ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/70 px-8 text-center">${Icon("lucide:cloud-off", "text-5xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => loadSource(src)}>${T(t, "retry")}</button></section>`
       : !items.length
         ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/60 px-8 text-center">${Icon("lucide:film", "text-5xl")}<div>${T(t, "empty")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
-        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} ephemeral=${ephemeral} t=${t} key=${(it.orig || it.video) + i} />`);
+        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} ephemeral=${it.eph != null ? it.eph : ephemeral} t=${t} key=${(it.orig || it.video) + i} />`);
 
   return html`<${Fragment}>
     <div ref=${scroller} class="fixed inset-0 z-0 bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain" style="scrollbar-width:none">${body}</div>
@@ -326,7 +378,7 @@ function SourceRow({ s, active, subbed, onPlay, onOpen, onToggle, t }) {
 export function sources({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const subs = useStore($subs), curSrc = useStore($src), watchedN = useStore($watched).size;
-  const play = (s) => { $src.set(s.url); S.tab.set("reel"); };
+  const play = (s) => { $feed.set("source"); $src.set(s.url); S.tab.set("reel"); };
   const openSiteFn = openSite;
   const subbedUrls = new Set(subs.map((x) => x.url));
   const discover = PRESETS.filter((p) => !subbedUrls.has(p.url));
@@ -351,4 +403,26 @@ export function sources({ S }) {
     </div>
     ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
   </${Fragment}>`;
+}
+
+// ---- liked (saved reels) ----------------------------------------------------
+// A poster grid of the reels you double-tapped, newest first. Tapping a tile plays the liked collection as a
+// reel starting from that clip (rotated so it's first). Removal lives ONLY here — never on the slides. The feed
+// mixes sources freely: each record replays with its own `eph` flag (ephemeral → poster + watch link).
+export function liked({ S }) {
+  const t = useStore(S.t), likes = useStore($likes);
+  const sorted = [...likes].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  const playAt = (i) => { $feed.set("liked"); $items.set([...sorted.slice(i), ...sorted.slice(0, i)]); $next.set(null); $ephemeral.set(false); $active.set(0); S.tab.set("reel"); };
+  if (!sorted.length) return html`<div class="flex flex-col items-center justify-center gap-3 text-base-content/60 text-center" style="min-height:60vh">${Icon("lucide:heart", "text-6xl opacity-30")}<div class="text-sm max-w-[16rem]">${T(t, "likedEmpty")}</div></div>`;
+  return html`<div data-liked class="grid grid-cols-3 gap-1.5">
+    ${sorted.map((l, i) => html`<div class="relative aspect-[9/16] rounded-xl overflow-hidden bg-base-300" key=${l.id}>
+      <button data-liked-tile class="absolute inset-0 w-full h-full active:scale-[.98] transition" aria-label=${l.host} onClick=${() => playAt(i)}>
+        ${l.poster
+          ? html`<img src=${l.poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover" onError=${(e) => e.currentTarget.remove()} />`
+          : html`<div class="absolute inset-0 flex items-center justify-center">${Icon("lucide:play", "text-2xl opacity-40")}</div>`}
+        <div class="absolute inset-x-0 bottom-0 p-1.5 pt-6 bg-gradient-to-t from-black/70 to-transparent"><div class="text-[10px] font-mono text-white/85 truncate">${l.host}</div></div>
+      </button>
+      <button class="absolute top-1 right-1 btn btn-xs btn-circle bg-black/45 border-0 text-rose-400 hover:bg-black/70" aria-label=${T(t, "unlike")} data-haptic="bump" onClick=${() => unlike(l.id)}>${Icon("lucide:heart", "text-sm fill-current")}</button>
+    </div>`)}
+  </div>`;
 }

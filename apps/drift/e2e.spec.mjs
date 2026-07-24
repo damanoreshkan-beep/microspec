@@ -40,10 +40,10 @@ export default [
   {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
-      await h.click('[data-loc="uk"]'); await h.wait(200);
-      h.expect(/Форма|Звук|Гра/.test(await h.bodyText()), "українська не застосувалась");
-      await h.click('[data-loc="en"]'); await h.wait(200);
-      h.expect(/Shape|Play|Sound/i.test(await h.bodyText()), "англійська не застосувалась");
+      await h.click('[data-loc="en"]'); await h.wait(250);
+      h.expect(/Language|Dark theme/i.test(await h.bodyText()), "англійська не застосувалась");
+      await h.click('[data-loc="uk"]'); await h.wait(250);
+      h.expect(/Мова|Темна тема/.test(await h.bodyText()), "українська не застосувалась");
     },
   },
   {

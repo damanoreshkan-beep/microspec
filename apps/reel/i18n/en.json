@@ -1,6 +1,7 @@
 {
   "title": "Reel",
   "tabReel": "Reel",
+  "tabLiked": "Liked",
   "tabSources": "Sources",
   "tabMe": "Me",
   "srcTitle": "Source",
@@ -23,6 +24,8 @@
   "sub": "Subscribe",
   "unsub": "Unsubscribe",
   "noSubs": "Nothing subscribed yet",
+  "likedEmpty": "Double-tap a reel to save it here",
+  "unlike": "Remove from liked",
   "clearWatched": "Clear watch history ({n})",
   "profTheme": "Dark theme",
   "profLang": "Language",

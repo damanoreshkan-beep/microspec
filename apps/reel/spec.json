@@ -11,6 +11,13 @@
       "view": "reel"
     },
     {
+      "id": "liked",
+      "type": "tool",
+      "icon": "lucide:heart",
+      "label": "tabLiked",
+      "view": "liked"
+    },
+    {
       "id": "sources",
       "type": "tool",
       "icon": "lucide:layout-grid",

@@ -16,9 +16,16 @@ export const VPS_PROXY = "https://jobs-map.mooo.com/feed";
 
 // The backend's long-term public key, pinned. Used by sealedfetch.js, which re-expresses every call to
 // VPS_PROXY as an encrypted envelope so a TLS-inspecting middlebox and our own nginx logs see one constant
-// URL and a padded blob instead of paths and prompts. Rotation: the server also answers /feed/pubkey, but
-// never trust that at runtime — a key fetched over the channel you are defending pins nothing; it exists so
-// CI can assert this constant still matches production.
+// URL and a padded blob instead of paths and prompts.
+//
+// The server answers GET /feed/pubkey with this key and its SHA-256, which is how you check the pin still
+// matches production after a key rotation:
+//
+//   deno eval 'const l = await (await fetch("https://jobs-map.mooo.com/feed/pubkey")).json(); console.log(l.key)'
+//
+// Never fetch it at runtime. A key collected over the channel you are defending pins nothing — whoever could
+// swap the response could swap the key. It is deliberately NOT a CI gate either: that would make a proxy
+// outage turn the whole farm red, which is the exact failure this file's opening comment describes.
 export const SEALED_KEY = "BLP-06vCYzSiakKos1Sk7Yqzneb0MrbBjozH3EQ_YRgvzqc_0hcZeeFXoDzMhHlXL3awFtjOMFg08dzcKUmbNOM";
 
 const PROXIES = [

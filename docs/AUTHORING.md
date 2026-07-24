@@ -85,6 +85,40 @@ may still declare `spec.filters` to get the systemic filter UI + persisted state
 `useStore(S.filters)`). **Runtime-internal imports must be RELATIVE** (`./astro.js`), never `/_rt/…`: the
 build copies `packages/runtime/*` verbatim; only *app* files get the `/_rt/`→`../_rt/` base-path rewrite.
 
+### Drill-down inside a tab — `S.stack`, not your own history
+
+A tab that lets you fall *deeper* (reel: swipe a clip → the page it came from becomes the next feed, as many
+levels as you like) is not an overlay: it's N sibling levels, and Back must unwind **one**. That is
+`S.stack` — the only overlay atom whose value is an **array**, worth one history entry **per element**
+(`/_rt/overlay.js` `overlayDepth`, unit-tested; summed by `index.js`). Never call `history.*` from an app.
+
+The idiom (see `apps/reel/view.js`, `apps/reel/RESEARCH.md`):
+
+```js
+const $frames = atom([]);                                 // the states you can go BACK to, deepest last
+function push(S, label) { $frames.set([...$frames.get(), snapshot(label)]); S.stack.set([...S.stack.get(), label]); }
+function pop(S)  { const st = S.stack.get(); if (st.length) S.stack.set(st.slice(0, -1)); }
+function reset(S){ $frames.set([]); if (S.stack.get().length) S.stack.set([]); }   // frames FIRST — see below
+S.stack.listen((v) => { while ($frames.get().length > v.length) restoreTop(); });  // ONE reaction, every route in
+```
+
+Everything — system Back, an on-screen chevron, a drag — pops `S.stack`; the listener restores. Going back
+is a **restore of the captured state, never a refetch**: you land on the exact item you left, mid-list.
+Order matters in `reset()`: clear the frames *before* the stack, or the listener restores what you just
+dropped. Invalidate in-flight loads with a generation counter — a response for the level you left must never
+land in the level you're on.
+
+Rendering rule: a gesture is never the only way. Every push/pop needs a real button too (a11y, and the e2e
+surface has no drag). Live drag feedback comes from `usePanX({ onDrag })` — write styles by **ref**, since a
+re-render per `pointermove` stutters the gesture it is drawing.
+
+### Naming a page you only have a URL for — `/_rt/sitelabel.js`
+
+`pageLabel(url)` (a readable title derived from the path/search term), `siteName(url)`,
+`registrableDomain(host)` and `groupByDomain(list)` — pure, unit-tested, no round-trip, correct offline and
+in the gate. Use them instead of showing a truncated raw URL, and group a list of pages by **site** rather
+than by hostname (`commons.wikimedia.org` and `wikimedia.org` are one site).
+
 ### Haptics are systemic — do not call them for a tap
 
 The runtime delegates one `pointerdown` listener and answers every tappable element itself

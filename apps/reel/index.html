@@ -23,6 +23,13 @@
     /* A reel is the content — a scrollbar drawn over it is chrome the medium doesn't have. Hidden on the
        feed AND on the page itself (Chrome's overlay bar still paints over a full-bleed surface), while the
        scrolling itself stays completely native. */
+    /* The feed surface is always black — in ANY theme. So while it is mounted the app bar above it must
+       read light too: in signal-light the bar's own base-100 gradient never lands (the surface covers it)
+       and the title rendered near-black on black, ~1.2:1. The runtime sets nothing per-tab, so the view
+       flags the root with data-feed while the surface is up. */
+    :root[data-feed] header.navbar{background:linear-gradient(to bottom,rgba(0,0,0,.6),rgba(0,0,0,.25) 70%,transparent)}
+    :root[data-feed] header.navbar [data-title],
+    :root[data-feed] header.navbar button{color:#fff}
     html{scrollbar-width:none}
     html::-webkit-scrollbar{display:none}
     [data-scroller]{scrollbar-width:none}

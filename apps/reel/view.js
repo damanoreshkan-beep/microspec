@@ -403,7 +403,9 @@ function SourceIsland({ S, t, src, subbed, depth }) {
         <span data-island-label class="text-sm text-white truncate min-w-0">${pageLabel(src)}</span>
         <span class="text-[0.7rem] font-mono text-white/70 truncate min-w-0 hidden min-[380px]:inline">${hostOf(src)}</span>
       </span>
-      ${!subbed ? html`<button data-subscribe class="btn btn-sm btn-circle bg-primary text-primary-content border-0 shrink-0" aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: pageLabel(src), url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
+      ${/* a hairline glass circle, not a filled ink pill: on a media surface the island is a quiet identity
+            chip, and a solid white button made "subscribe" the brightest thing on a full-screen video */""}
+      ${!subbed ? html`<button data-subscribe class="btn btn-sm btn-circle bg-white/10 border border-white/20 text-white shrink-0" aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: pageLabel(src), url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
     </div>
   </div>`;
 }
@@ -453,6 +455,12 @@ function FeedSurface({ S, t }) {
     bindNav(S);
     if (!booted) { booted = true; if (!gate) loadSource($src.get()); }
     else if ($active.get() > 0) $restoreTo.set($active.get());        // re-mounted (tab switch) → keep your place
+    // Tell the document a black media surface is up: index.html restyles the app bar light for as long as
+    // it is (in signal-light the bar's own background never lands under a fixed full-bleed surface, and its
+    // near-black title sat on black at ~1.2:1 — invisible, and axe can't see a stacking-context problem).
+    const root = document.documentElement;
+    root.setAttribute("data-feed", "");
+    return () => root.removeAttribute("data-feed");
   }, [S]);
   useEffect(() => { void checkBlankPosters(); }, [items]);            // sample new posters → drop black/flat/broken slides (gate: inline data: posters too)
   useEffect(() => { if (next && active >= items.length - 3) loadSource(next, true); }, [active, items.length, next]);
@@ -509,18 +517,21 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState(sr.term || "");
   const submit = (e) => { e?.preventDefault?.(); const term = q.trim(); if (term) onPlay({ ...s, url: buildSearchUrl(s.url, term) }); };
-  return html`<li class="flex flex-col">
+  // The playing row is marked by a SHAPE, never by a luminance step: this theme's primary and base-content
+  // are the same ink, so "active = text-primary" would be 100% vs 100% — the exact trap that hid the dock's
+  // active tab for the life of the project. A filled tint + a rail you can see from across the room instead.
+  return html`<li class=${`flex flex-col ${active ? "bg-base-content/[.07]" : ""}`}>
     <div class="flex items-center gap-0.5 pr-1">
       <button data-src-row class="flex items-center gap-2.5 flex-1 min-w-0 text-left px-2.5 py-2.5 rounded-xl active:bg-base-content/5" onClick=${() => onPlay(s)}>
         ${lead}
         <span class="min-w-0">
-          <span class=${`block truncate ${active ? "text-primary font-medium" : ""}`}>${pageLabel(s.url)}</span>
+          <span class=${`block truncate ${active ? "font-semibold" : ""}`}>${pageLabel(s.url)}</span>
           ${sub ? html`<span class="block text-[0.7rem] font-mono text-base-content/70 truncate">${sub}</span>` : null}
         </span>
       </button>
       ${sr.searchable ? html`<button data-search-toggle class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${searching ? "text-primary" : "opacity-70"}`} aria-label=${T(t, "search")} aria-pressed=${searching} onClick=${() => setSearching((v) => !v)}>${Icon("lucide:search", "text-lg")}</button>` : null}
       ${onOpen ? html`<button data-open-site class="btn btn-ghost btn-sm btn-circle shrink-0 opacity-70" aria-label=${T(t, "openSite")} onClick=${() => onOpen(s)}>${Icon("lucide:external-link", "text-lg")}</button>` : null}
-      <button class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${subbed ? "text-primary" : "opacity-60"}`} aria-label=${T(t, subbed ? "unsub" : "sub")} data-haptic=${subbed ? "bump" : "off"} onClick=${onToggle}>${Icon(subbed ? "lucide:check" : "lucide:plus", "text-lg")}</button>
+      <button class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${subbed ? "text-primary" : "opacity-50"}`} aria-label=${T(t, subbed ? "unsub" : "sub")} data-haptic=${subbed ? "bump" : "off"} onClick=${onToggle}>${Icon(subbed ? "lucide:check" : "lucide:plus", "text-lg")}</button>
     </div>
     ${searching ? html`<form onSubmit=${submit} class="flex items-center gap-2 px-2.5 pb-2.5">
       <label class="input input-sm input-bordered flex items-center gap-2 rounded-xl flex-1">
@@ -552,7 +563,7 @@ function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, t }) {
       <button data-open-site class="btn btn-ghost btn-sm btn-circle shrink-0 opacity-70" aria-label=${T(t, "openSite")} onClick=${() => onOpen(g.items[0])}>${Icon("lucide:external-link", "text-lg")}</button>
     </header>
     <ul class="divide-y divide-base-300/60">
-      ${g.items.map((s) => html`<${PageRow} s=${s} active=${s.url === curSrc} subbed=${subbedUrls.has(s.url)} onPlay=${onPlay} onToggle=${() => onToggle(s)} lead=${html`<span class=${`w-1.5 h-1.5 rounded-full shrink-0 ${s.url === curSrc ? "bg-primary" : "bg-base-content/30"}`}></span>`} t=${t} key=${s.url} />`)}
+      ${g.items.map((s) => html`<${PageRow} s=${s} active=${s.url === curSrc} subbed=${subbedUrls.has(s.url)} onPlay=${onPlay} onToggle=${() => onToggle(s)} lead=${html`<span class=${`shrink-0 rounded-full ${s.url === curSrc ? "w-1.5 h-5 bg-primary" : "w-1.5 h-1.5 bg-base-content/30"}`}></span>`} t=${t} key=${s.url} />`)}
     </ul>
   </section>`;
 }

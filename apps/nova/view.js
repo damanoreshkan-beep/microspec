@@ -294,14 +294,16 @@ function DevCard({ d, t, supported, busy, onStar, onSupport }) {
       ${d.reasons.slice(0, 3).map((r) => html`<span key=${r} class="text-[0.68rem] font-medium px-2 py-0.5 rounded-full bg-secondary/12 text-secondary">${T(t, r)}</span>`)}
     </div>` : null}
 
-    <div class="flex items-center gap-2 pt-0.5">
-      <button data-star class="btn btn-sm rounded-2xl gap-1.5 flex-1 ${supported ? "btn-primary" : "btn-outline"}"
+    <!-- flex-wrap + flex-1/min-w-0: side by side on a phone, stacked on a watch-width card, never overflowing. -->
+    <div class="flex flex-wrap items-center gap-2 pt-0.5">
+      <button data-star class="btn btn-sm rounded-2xl gap-1.5 flex-1 basis-24 min-w-0 ${supported ? "btn-primary" : "btn-outline"}"
         aria-pressed=${supported} disabled=${busy} data-haptic="bump" onClick=${onStar}>
-        ${Icon("lucide:star", supported ? "text-warning" : "")}
-        ${supported ? T(t, "starred") : T(t, "starAction")}
+        ${Icon("lucide:star", supported ? "text-warning shrink-0" : "shrink-0")}
+        <span class="truncate">${supported ? T(t, "starred") : T(t, "starAction")}</span>
       </button>
-      <button data-support class="btn btn-sm btn-ghost rounded-2xl gap-1.5 border border-base-300" data-haptic="bump" onClick=${onSupport}>
-        ${Icon("lucide:heart-handshake")} ${T(t, "support")}
+      <button data-support class="btn btn-sm btn-ghost rounded-2xl gap-1.5 flex-1 basis-24 min-w-0 border border-base-300" data-haptic="bump" onClick=${onSupport}>
+        ${Icon("lucide:heart-handshake", "shrink-0")}
+        <span class="truncate">${T(t, "support")}</span>
       </button>
     </div>
   </article>`;

@@ -171,7 +171,14 @@ export async function runResponsiveMatrix(page, ev, dev) {
         for (const el of view.querySelectorAll("*")) {
           const r = el.getBoundingClientRect();
           if (r.width < 8 || r.height < 8) continue;
-          if (getComputedStyle(el).pointerEvents === "none") continue;
+          // Only IN-FLOW content counts. Three things legitimately live under the dock and all three are
+          // the farm's own idioms: the full-bleed ambient backdrop (`fixed inset-0 z-0`, aria-hidden — see
+          // drift/rave/handpan), the dock's own fade, and any scrim. A `fixed` element sits outside the
+          // layout that main's --dock-h padding protects, and aria-hidden means it is decoration, not
+          // content. What must stay visible is the flowing column — and the island that started this
+          // check is exactly that, so it is still caught.
+          const cs = getComputedStyle(el);
+          if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
           const over = Math.min(r.bottom, d.bottom) - Math.max(r.top, d.top);
           const across = Math.min(r.right, d.right) - Math.max(r.left, d.left);
           if (over > 1 && across > 1 && over > hide) { hide = over; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; hsel = el.tagName.toLowerCase() + (c ? "." + c : ""); }

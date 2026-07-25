@@ -162,7 +162,7 @@ export function Finale({ devs = [], t, onClose }) {
       <h1 class="text-2xl font-extrabold tracking-tight">${T(t, "finaleTitle").replace("{n}", String(n))}</h1>
       <p class="text-sm text-base-content/70 leading-relaxed max-w-xs mx-auto">${T(t, "finaleBody")}</p>
       <button class="btn btn-primary rounded-2xl gap-2 mt-3" data-haptic="bump" onClick=${onClose}>
-        <iconify-icon icon="lucide:arrow-left"></iconify-icon>${T(t, "finaleBack")}
+        ${T(t, "finaleBack")}<iconify-icon icon="lucide:arrow-right"></iconify-icon>
       </button>
     </div>
   </div>`;

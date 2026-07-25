@@ -211,8 +211,11 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
 }
 
 // one transit→natal contact: transiting body · aspect · natal point · applying/separating · orb
+// Exact vs merely in-range is carried by the ORB's colour, never by dimming the row. `opacity-70` over
+// `text-base-content/70` is 49% effective and axe failed 39 elements on it in the light theme — the exact
+// trap the design rules warn about. State reads through colour = meaning; contrast stays full strength.
 function ContactRow({ a, t, retro }) {
-  return html`<div data-contact class=${`flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0 ${a.exact ? "" : "opacity-70"}`}>
+  return html`<div data-contact class="flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0">
     ${dot(a.t)}
     <span class="font-medium truncate max-w-[4.6rem]">${bodyLabel(t, a.t)}${retro ? html`<span class="text-warning font-mono ml-0.5" title=${T(t, "retro")}>℞</span>` : null}</span>
     <span class="text-xs font-medium shrink-0" style=${`color:${ASPECT_HUE[a.nature]}`}>${T(t, ASPECT_KEY[a.type])}</span>
@@ -220,7 +223,7 @@ function ContactRow({ a, t, retro }) {
     <span class="font-medium truncate max-w-[4.6rem]">${bodyLabel(t, a.n)}</span>
     <div class="ml-auto flex items-center gap-1.5 shrink-0">
       ${a.applying != null ? html`<span class=${`text-[0.6rem] font-medium ${a.applying ? "text-primary" : "text-base-content/70"}`}>${T(t, a.applying ? "aspApplying" : "aspSeparating")}</span>` : null}
-      <span class="tabular-nums text-base-content/70 text-xs w-9 text-right">${a.orb.toFixed(1)}°</span>
+      <span class=${`tabular-nums text-xs w-9 text-right ${a.exact ? "text-primary font-semibold" : "text-base-content/70"}`}>${a.orb.toFixed(1)}°</span>
     </div>
   </div>`;
 }

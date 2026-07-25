@@ -11,7 +11,7 @@ export default [
       h.expect((await h.count('[data-angle="asc"]')) === 1, "немає позначки ASC на колесі");
       h.expect((await h.count('[data-angle="mc"]')) === 1, "немає позначки MC на колесі");
       h.expect((await h.count("[data-date]")) === 1, "немає дати транзиту");
-      h.expect(/Овен|Телець|Близнюки|Рак|Лев|Діва|Терези|Скорпіон|Стрілець|Козоріг|Водолій|Риби/.test(await h.bodyText()), "немає знаків зодіаку");
+      h.expect((await h.count("[data-contact]")) >= 1, "немає жодного контакту транзит→натал");
     },
   },
   {
@@ -22,6 +22,7 @@ export default [
       h.expect((await h.count('[data-angle-row="angAsc"]')) === 1, "немає рядка ASC");
       h.expect((await h.count('[data-angle-row="angMc"]')) === 1, "немає рядка MC");
       h.expect((await h.count('[data-angle-row="angVertex"]')) === 1, "немає рядка вертекса");
+      h.expect(/Овен|Телець|Близнюки|Рак|Лев|Діва|Терези|Скорпіон|Стрілець|Козоріг|Водолій|Риби/.test(await h.bodyText()), "немає знаків зодіаку");
       h.expect(/Плацидус/i.test(await h.text("[data-house-system]")), "не показано систему домів");
       // Kyiv is far from the polar circle, so Placidus must NOT fall back
       h.expect((await h.count("[data-house-fallback]")) === 0, "несподіваний відкат системи домів");
@@ -40,16 +41,19 @@ export default [
   },
   {
     name: "система домів перемикається фільтром (Плацидус → Цілий знак)", run: async (h) => {
-      await h.click('[data-tab="chart"]'); await h.wait(250);
+      // NB: #f-apply always returns to the FIRST tab (render.js), so navigate back before asserting.
       await h.click("#filter-btn"); await h.wait(250);
       await h.click('#f-houseSystem [data-val="whole"]'); await h.wait(150);
-      await h.click("#f-apply"); await h.wait(400);
+      await h.click("#f-apply"); await h.wait(300);
+      await h.click('[data-tab="chart"]'); await h.wait(400);
       h.expect(/Цілий знак/i.test(await h.text("[data-house-system]")), "система домів не змінилась");
       // whole-sign cusps always start at 0 of a sign
       h.expect(/0°00'/.test(await h.text('[data-cusp="1"]')), "куспід цілого знака не на 0°");
       await h.click("#filter-btn"); await h.wait(250);
       await h.click('#f-houseSystem [data-val="placidus"]'); await h.wait(150);
-      await h.click("#f-apply"); await h.wait(400);
+      await h.click("#f-apply"); await h.wait(300);
+      await h.click('[data-tab="chart"]'); await h.wait(400);
+      h.expect(/Плацидус/i.test(await h.text("[data-house-system]")), "не повернулось на Плацидус");
     },
   },
   {

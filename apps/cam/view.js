@@ -10,6 +10,7 @@ import { Fragment } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Segmented } from "/_rt/ui.js";
 import { CameraPrime } from "/_rt/camprime.js";
 import { gate } from "/_rt/gate.js";
 
@@ -151,11 +152,9 @@ export function cam({ S }) {
         <!-- deck -->
         <div class="shrink-0 flex flex-col gap-3">
           <!-- filters -->
-          <div class="-mx-1 px-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div class="flex gap-1.5 w-max">
-              ${FX.map(([k], i) => html`<button data-fx=${i} aria-pressed=${fx === i} class=${`shrink-0 rounded-full border px-3 py-1 text-[0.72rem] font-medium transition ${fx === i ? "border-secondary bg-secondary/15 text-secondary" : "border-base-content/12 text-base-content/70"}`} onClick=${() => { buzz(); setFx(i); }} key=${k}>${T(t, k)}</button>`)}
-            </div>
-          </div>
+          <${Segmented} attr="data-fx" scroll variant="outline" size="sm" label=${T(t, "fxTitle")}
+            items=${FX.map(([k], i) => ({ id: String(i), label: T(t, k) }))}
+            value=${String(fx)} onChange=${(id) => { buzz(); setFx(Number(id)); }} />
           <!-- exposure + zoom -->
           <div class="flex items-center gap-3">
             ${Icon("lucide:sun", "text-sm text-base-content/55 shrink-0")}

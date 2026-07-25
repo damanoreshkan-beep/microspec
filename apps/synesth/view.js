@@ -8,6 +8,7 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef, useMemo } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Segmented } from "/_rt/ui.js";
 import { camera } from "/_rt/sensors.js";
 import { CameraPrime } from "/_rt/camprime.js";
 import { palette, avgColor, luminance, rgbToHsl, rgbToHex, ink } from "/_rt/colour.js";
@@ -119,9 +120,8 @@ export function synesth({ S }) {
     </div>
 
     <div class="shrink-0 bg-base-100 border-t border-base-300 px-4 pt-3 pb-3 flex flex-col gap-3 max-w-md w-full mx-auto">
-      <div class="flex flex-wrap items-center gap-2 justify-center">
-        ${SCALE_KEYS.map(([s, k]) => html`<button data-scale=${s} aria-pressed=${scale === s} class=${`btn btn-xs rounded-full ${scale === s ? "btn-primary" : "btn-ghost"}`} onClick=${() => setScale(s)} key=${s}>${T(t, k)}</button>`)}
-      </div>
+      <${Segmented} attr="data-scale" scroll size="sm"
+        items=${SCALE_KEYS.map(([s, k]) => ({ id: s, label: T(t, k) }))} value=${scale} onChange=${setScale} />
       <div class="flex items-center gap-3">
         <button data-play aria-label=${T(t, playing ? "pause" : "play")} onClick=${toggle} class=${`btn btn-circle shrink-0 ${playing ? "btn-secondary" : "btn-primary"}`}>${Icon(playing ? "lucide:pause" : "lucide:play", "text-xl")}</button>
         <div class="flex-1 min-w-0 font-mono text-sm text-base-content/70 truncate">${notes.length ? notes.map(noteName).join(" · ") : "—"}</div>

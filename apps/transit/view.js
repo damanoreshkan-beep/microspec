@@ -28,7 +28,7 @@ import { searchPlaces, placeLabel, formatCoords } from "/_rt/places.js";
 import { interpret, warmInterpret, isInterpreted, aiTick } from "/_rt/ai.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
-import { Sheet } from "/_rt/ui.js";
+import { Sheet, Segmented } from "/_rt/ui.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const DAY = 86400000;
@@ -443,11 +443,9 @@ function BirthSheet({ open, onClose, t, locale }) {
           <div class="text-[0.66rem] font-mono text-base-content/70 truncate">${formatCoords(draft.place.lat, draft.place.lng)} · ${draft.place.zone}</div>
         </div>` : null}
 
-        ${field(T(t, "zoneMode"), html`<div class="grid grid-cols-3 gap-1.5">
-          ${MODES.map(([v, k]) => html`<button data-zone-mode=${v} aria-pressed=${(draft.zoneMode || "place") === v}
-            class=${`rounded-xl border py-2 text-xs font-medium transition ${(draft.zoneMode || "place") === v ? "border-primary bg-primary/10" : "border-base-300"}`}
-            onClick=${() => set({ zoneMode: v })} key=${v}>${T(t, k)}</button>`)}
-        </div>`)}
+        ${field(T(t, "zoneMode"), html`<${Segmented} attr="data-zone-mode" size="sm" label=${T(t, "zoneMode")}
+          items=${MODES.map(([v, k]) => ({ id: v, label: T(t, k) }))}
+          value=${draft.zoneMode || "place"} onChange=${(v) => set({ zoneMode: v })} />`)}
 
         ${(draft.zoneMode === "manual") ? field(T(t, "zmManual"), html`<input data-birth-offset type="text" inputmode="text" value=${draft.offset}
           placeholder="+02:00" onInput=${(e) => set({ offset: e.target.value })} class="input input-bordered rounded-2xl h-11 w-full text-sm font-mono" />`) : null}

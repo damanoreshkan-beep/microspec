@@ -13,7 +13,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet } from "/_rt/ui.js";
+import { Sheet, Segmented } from "/_rt/ui.js";
 import { wakeLock } from "/_rt/sensors.js";
 import { holdAudio } from "/_rt/mediasession.js";
 import { gate } from "/_rt/gate.js";
@@ -240,9 +240,9 @@ function SettingsSheet({ open, onClose, t, demo }) {
       <input type="checkbox" class="toggle toggle-primary toggle-sm" checked=${amp} aria-label=${T(t, "gainAmp")} onChange=${(e) => { $amp.set(e.target.checked); pushGain(); }} /></label>
     <div class="flex flex-col gap-1">
       <span class="text-xs uppercase tracking-wide text-base-content/70">${T(t, "deemph")}</span>
-      <div class="grid grid-cols-2 gap-2">
-        ${[[50, "deemphEu"], [75, "deemphUs"]].map(([v, k]) => html`<button key=${v} data-tc=${v} aria-pressed=${tc === v} onClick=${() => setTc(v)} class=${`btn btn-sm ${tc === v ? "btn-primary" : "btn-outline border-base-content/20"}`}>${T(t, k)}</button>`)}
-      </div>
+      <${Segmented} attr="data-tc" size="sm" label=${T(t, "deemph")}
+        items=${[[50, "deemphEu"], [75, "deemphUs"]].map(([v, k]) => ({ id: String(v), label: T(t, k) }))}
+        value=${String(tc)} onChange=${(id) => setTc(Number(id))} />
     </div>
     ${!demo ? html`<button data-disconnect class="btn btn-ghost btn-sm gap-2 text-base-content/60 self-start" onClick=${() => { disconnect(); onClose(); }}>${Icon("lucide:power")}${T(t, "disconnect")}</button>` : null}
   </${Sheet}>`;

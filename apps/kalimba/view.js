@@ -8,6 +8,7 @@ import { html } from "htm/preact";
 import { useState, useRef, useEffect, useMemo } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Segmented } from "/_rt/ui.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { generateMelody } from "/_rt/melody.js";
 
@@ -123,13 +124,17 @@ export function kalimba({ S }) {
 
   return html`<div class="fixed left-0 right-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <div class="shrink-0 flex flex-col gap-1 px-2 py-2 border-b border-base-300">
-      <div class="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div class="flex items-center gap-1.5 min-w-0">
         <span class="shrink-0 grid place-items-center text-base-content/60" title=${T(t, "voice")}>${Icon("lucide:music", "text-sm")}</span>
-        ${VOICES.map((v) => html`<button data-voice=${v.id} aria-pressed=${voice === v.id} class=${`btn btn-xs shrink-0 ${voice === v.id ? "btn-secondary" : "btn-ghost"}`} onClick=${() => { setVoice(v.id); const e = ensure(); if (e && tines[8]) e.strike(tines[8].freq, voiceById(v.id).t); flash(8); }} key=${v.id}>${T(t, v.name)}</button>`)}
+        <div class="flex-1 min-w-0"><${Segmented} attr="data-voice" scroll size="sm" label=${T(t, "voice")}
+          items=${VOICES.map((v) => ({ id: v.id, label: T(t, v.name) }))} value=${voice}
+          onChange=${(id) => { setVoice(id); const e = ensure(); if (e && tines[8]) e.strike(tines[8].freq, voiceById(id).t); flash(8); }} /></div>
+      </div>
+      <div class="flex items-center gap-1.5 min-w-0">
+        <div class="shrink-0 max-w-[55%]"><${Segmented} attr="data-scale" scroll size="sm" label=${T(t, "scale")}
+          items=${SCALES.map((s) => ({ id: s.id, label: T(t, s.name) }))} value=${scale} onChange=${setScale} /></div>
       </div>
       <div class="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        ${SCALES.map((s) => html`<button data-scale=${s.id} aria-pressed=${scale === s.id} class=${`btn btn-xs shrink-0 ${scale === s.id ? "btn-primary" : "btn-ghost"}`} onClick=${() => setScale(s.id)} key=${s.id}>${T(t, s.name)}</button>`)}
-        <span class="w-px self-stretch bg-base-300 mx-0.5 shrink-0"></span>
         <button data-flow aria-pressed=${playing === "flow"} class=${`btn btn-xs shrink-0 gap-1 ${playing === "flow" ? "btn-secondary" : "btn-outline btn-secondary"}`} onClick=${() => (playing === "flow" ? stop() : flow())}>${Icon(playing === "flow" ? "lucide:square" : "lucide:sparkles")}${T(t, "sFlow")}</button>
         ${SONGS.map((s) => html`<button data-song=${s.id} class=${`btn btn-xs shrink-0 gap-1 ${playing === s.id ? "btn-primary" : "btn-outline"}`} onClick=${() => (playing === s.id ? stop() : play(s))} key=${s.id}>${Icon(playing === s.id ? "lucide:square" : "lucide:play")}${T(t, s.name)}</button>`)}
       </div>

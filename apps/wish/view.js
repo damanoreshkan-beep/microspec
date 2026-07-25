@@ -11,6 +11,7 @@ import { useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
+import { Segmented } from "/_rt/ui.js";
 import { collection, idbSupported } from "/_rt/db.js";
 import { isGate } from "/_rt/gate.js";
 import { sortWishes, wishTotals, fmtMoney, fetchWishMeta, CURRENCIES } from "/_rt/wish.js";
@@ -143,10 +144,9 @@ const WantPips = ({ level, t }) => html`<span class="inline-flex items-center ga
   ${[1, 2, 3].map((i) => html`<span key=${i} class=${`w-1.5 h-1.5 rounded-full ${i <= level ? "bg-primary" : "bg-base-content/25"}`}></span>`)}
 </span>`;
 
-const WantSelect = ({ value, onChange, t }) => html`<div role="group" aria-label=${T(t, "want")} class="grid grid-cols-3 gap-1.5">
-  ${[1, 2, 3].map((l) => html`<button key=${l} type="button" aria-pressed=${value === l} onClick=${() => onChange(l)}
-    class=${`btn btn-sm rounded-xl ${value === l ? "btn-primary" : "btn-ghost border border-base-content/15"}`}>${T(t, WANT_KEYS[l - 1])}</button>`)}
-</div>`;
+const WantSelect = ({ value, onChange, t }) => html`<${Segmented} size="sm" label=${T(t, "want")} attr="data-want"
+  items=${[1, 2, 3].map((l) => ({ id: String(l), label: T(t, WANT_KEYS[l - 1]) }))}
+  value=${String(value)} onChange=${(id) => onChange(Number(id))} />`;
 
 const Thumb = ({ w, list, size }) => {
   const s = size || "w-11 h-11";
@@ -290,17 +290,10 @@ function WishDetail({ id, S, t, closeScreen, undo }) {
 }
 
 // ---- list switcher ----------------------------------------------------------
-const ListSwitcher = ({ lists, wishes, active, t, onAdd }) => html`<div class="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-1" role="group" aria-label=${T(t, "tabLists")}>
-  ${lists.map((l) => {
-    const n = wishes.filter((w) => w.listId === l.id && !w.granted).length;
-    const on = l.id === active;
-    return html`<button key=${l.id} data-list=${l.id} aria-pressed=${on} onClick=${() => setActive(l.id)}
-      class=${`shrink-0 h-9 px-3 rounded-full border flex items-center gap-2 transition ${on ? "bg-primary/15 border-primary/40 text-base-content" : "border-base-content/15 text-base-content/70"}`}>
-      <span style=${`color:${l.color}`}>${Icon(l.icon, "text-base")}</span>
-      <span class="font-medium text-sm whitespace-nowrap">${l.name}</span>
-      <span class="text-xs tabular-nums text-base-content/70">${n}</span>
-    </button>`;
-  })}
+const ListSwitcher = ({ lists, wishes, active, t, onAdd }) => html`<div class="flex items-center gap-2 min-w-0">
+  <div class="flex-1 min-w-0"><${Segmented} attr="data-list" scroll variant="outline" label=${T(t, "tabLists")}
+    items=${lists.map((l) => ({ id: l.id, label: l.name, icon: l.icon, dot: l.color, meta: wishes.filter((w) => w.listId === l.id && !w.granted).length }))}
+    value=${active} onChange=${setActive} /></div>
   <button id="add-list" class="shrink-0 w-9 h-9 rounded-full border border-base-content/15 flex items-center justify-center text-base-content/70 active:scale-90" aria-label=${T(t, "addList")}
     onClick=${onAdd}>${Icon("lucide:plus", "text-lg")}</button>
 </div>`;

@@ -15,7 +15,7 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet } from "/_rt/ui.js";
+import { Sheet, Segmented } from "/_rt/ui.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { generateMelody } from "/_rt/melody.js";
 import { collection } from "/_rt/db.js";
@@ -250,8 +250,9 @@ export function handpan({ S }) {
     <${RippleBg} />
     ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-14 right-3 z-20 btn btn-circle btn-sm border-base-content/10 backdrop-blur-md ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/50 text-base-content/60"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
     <div class="relative z-10 flex flex-col flex-1 min-h-0">
-    <div class="shrink-0 flex items-center gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      ${SCALES.map((sc) => { const on = sc.id === scaleId; return html`<button data-scale=${sc.id} aria-pressed=${on} onClick=${() => pick(sc.id)} key=${sc.id} class=${`shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium transition ${on ? "border-secondary/60 bg-secondary/12 text-secondary" : "border-base-content/12 text-base-content/70"}`}>${T(t, sc.name)}</button>`; })}
+    <div class="shrink-0 px-3 py-2">
+      <${Segmented} attr="data-scale" scroll variant="outline" label=${T(t, "scale")}
+        items=${SCALES.map((sc) => ({ id: sc.id, label: T(t, sc.name), title: T(t, sc.mood) }))} value=${scaleId} onChange=${pick} />
     </div>
 
     <div class="flex-1 min-h-0 relative grid place-items-center px-3">
@@ -342,15 +343,15 @@ function SettingsSheet({ open, onClose, t }) {
     </div>
     <div class="flex flex-col gap-1">
       <div class="text-[0.6rem] uppercase tracking-wide text-base-content/70 flex items-center gap-1">${Icon("lucide:music", "text-[0.85em]")}${T(t, "timbre")}</div>
-      <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-        ${TIMBRES.map((tb) => { const on = timbre === tb.id; return html`<button data-tb=${tb.id} aria-pressed=${on} onClick=${() => { buzz(); ensure(); $timbre.set(tb.id); }} key=${tb.id} class=${`btn btn-sm shrink-0 ${on ? "btn-primary" : "btn-outline"}`}>${T(t, tb.name)}</button>`; })}
-      </div>
+      <${Segmented} attr="data-tb" scroll size="sm" label=${T(t, "timbre")}
+        items=${TIMBRES.map((tb) => ({ id: tb.id, label: T(t, tb.name) }))} value=${timbre}
+        onChange=${(id) => { buzz(); ensure(); $timbre.set(id); }} />
     </div>
     <div class="flex flex-col gap-1">
       <div class="text-[0.6rem] uppercase tracking-wide text-base-content/70 flex items-center gap-1">${Icon("lucide:disc-3", "text-[0.85em]")}${T(t, "scale")}</div>
-      <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-        ${SCALES.map((sc) => { const on = sc.id === scaleId; return html`<button data-setscale=${sc.id} aria-pressed=${on} title=${T(t, sc.mood)} onClick=${() => { buzz(); ensure(); $scale.set(sc.id); applyDrone(); }} key=${sc.id} class=${`btn btn-sm shrink-0 ${on ? "btn-secondary" : "btn-outline"}`}>${T(t, sc.name)}</button>`; })}
-      </div>
+      <${Segmented} attr="data-setscale" scroll size="sm" label=${T(t, "scale")}
+        items=${SCALES.map((sc) => ({ id: sc.id, label: T(t, sc.name), title: T(t, sc.mood) }))} value=${scaleId}
+        onChange=${(id) => { buzz(); ensure(); $scale.set(id); applyDrone(); }} />
     </div>
     ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
   </${Sheet}>`;

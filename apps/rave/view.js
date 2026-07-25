@@ -14,7 +14,7 @@ import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { usePanX } from "/_rt/gesture.js";
-import { Sheet } from "/_rt/ui.js";
+import { Sheet, Segmented } from "/_rt/ui.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { generateGroove, mulberry32 } from "/_rt/groove.js";
 import { collection } from "/_rt/db.js";
@@ -283,10 +283,10 @@ export function rave({ S }) {
 
     <div class="relative z-10 min-h-[calc(100dvh-9rem)] flex flex-col gap-3">
       <div class="flex items-center gap-2">
-        <div class="flex-1 min-w-0 rounded-full border border-base-content/10 bg-base-100/75 backdrop-blur-xl shadow-[0_6px_22px_-8px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.07)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div class="flex gap-1.5 w-max p-1.5">
-            ${PLAYER.map(([id], i) => { const on = i === style; return html`<button data-style=${id} aria-pressed=${on} onClick=${() => pick(i)} key=${id} class=${`shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition ${on ? "bg-secondary/18 text-secondary" : "text-base-content/65"}`}>${T(t, presetName(id))}</button>`; })}
-          </div>
+        <div class="flex-1 min-w-0">
+          <${Segmented} attr="data-style" scroll variant="outline" label=${T(t, "tabPads")}
+            items=${PLAYER.map(([id]) => ({ id, label: T(t, presetName(id)) }))} value=${PLAYER[style]?.[0]}
+            onChange=${(id) => pick(PLAYER.findIndex(([x]) => x === id))} />
         </div>
         ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`btn btn-circle btn-sm shrink-0 border-base-content/10 backdrop-blur-xl ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/60 text-base-content/60"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
       </div>
@@ -372,14 +372,16 @@ function FxSheet({ open, onClose, t, sweep }) {
     </div>
     <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
       <button data-gen aria-label=${T(t, "gen")} class=${`btn btn-sm shrink-0 gap-1.5 ${sweep >= 0 ? "btn-accent" : "btn-accent btn-outline"}`} onClick=${newTrack}>${Icon("lucide:sparkles", `text-base ${sweep >= 0 ? "animate-pulse" : ""}`)}<span>${T(t, "gen")}</span></button>
-      ${PRESETS.map((p) => html`<button data-preset=${p.id} aria-pressed=${activePreset === p.id} class=${`btn btn-sm shrink-0 ${activePreset === p.id ? "btn-primary" : "btn-outline"}`} onClick=${() => { ensure(); $tracks.set(parse(p)); $gen.set(null); }} key=${p.id}>${T(t, p.name)}</button>`)}
+      <${Segmented} attr="data-preset" scroll size="sm"
+        items=${PRESETS.map((p) => ({ id: p.id, label: T(t, p.name) }))} value=${activePreset}
+        onChange=${(id) => { ensure(); const p = PRESETS.find((x) => x.id === id); $tracks.set(parse(p)); $gen.set(null); }} />
       <button data-preset="clear" aria-label=${T(t, "clear")} class="btn btn-sm btn-square btn-ghost shrink-0" onClick=${() => $tracks.set(empty())}>${Icon("lucide:eraser", "text-base")}</button>
     </div>
     <div class="flex flex-col gap-1">
       <div class="text-[0.6rem] uppercase tracking-wide text-base-content/70 flex items-center gap-1">${Icon("lucide:package", "text-[0.85em]")}${T(t, "packs")}</div>
-      <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-        ${[{ id: "synth", label: T(t, "packSynth") }, ...PACKS].map((p) => { const on = pack === p.id, busy = loading === p.id; return html`<button data-pack=${p.id} aria-pressed=${on} aria-busy=${busy} onClick=${() => selectPack(p.id)} key=${p.id} class=${`btn btn-sm shrink-0 ${on ? "btn-secondary" : "btn-outline"} ${busy ? "animate-pulse" : ""}`}>${p.label}</button>`; })}
-      </div>
+      <${Segmented} attr="data-pack" scroll size="sm" label=${T(t, "packs")}
+        items=${[{ id: "synth", label: T(t, "packSynth") }, ...PACKS].map((p) => ({ id: p.id, label: p.label, busy: loading === p.id }))}
+        value=${pack} onChange=${selectPack} />
     </div>
     ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
   </${Sheet}>`;

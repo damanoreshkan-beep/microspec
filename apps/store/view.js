@@ -11,6 +11,12 @@ import { iconTint } from "/_rt/colour.js";
 import apps from "./apps.json" with { type: "json" };
 
 const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls || ""} style=${style || ""}></iconify-icon>`;
+// The app's REAL icon: its brand.svg paths rendered inline, inheriting stroke from `currentColor` so the
+// theme-adapted `color` (from iconTint) tints it — right in both light and dark. `size` is a CSS length.
+// Falls back to the flat iconify glyph for any app that has no brand art.
+const AppArt = (a, color, size) => a.art
+  ? html`<svg viewBox="0 0 24 24" style=${`width:${size};height:${size};color:${color}`} fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" dangerouslySetInnerHTML=${{ __html: a.art }}></svg>`
+  : Icon(a.glyph, "", `font-size:${size};color:${color}`);
 const SEEN = collection("seen");   // { id → { v: lastSeenVersion } } — powers NEW / update badges
 const appUrl = (id) => `../${id}/`;   // store is /…/store/, apps are siblings /…/<id>/
 // Section order: everyday utilities first. Each app declares its own `category` in spec.json (carried into
@@ -35,7 +41,7 @@ export function store({ S, openScreen, closeScreen }) {
   if (sel) return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto flex flex-col" style="padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)">
     <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "close")} onClick=${closeScreen}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${sel.title}</div></header>
     <div class="flex-1 flex flex-col items-center gap-5 px-6 py-8 max-w-xl mx-auto w-full">
-      ${(() => { const it = iconTint(sel.bg, sel.fg, dark); return html`<div class="w-24 h-24 rounded-[24%] flex items-center justify-center shadow-lg border border-base-content/10 shrink-0" style=${`background:${it.tile}`}>${Icon(sel.glyph, "text-5xl", `color:${it.glyph}`)}</div>`; })()}
+      ${(() => { const it = iconTint(sel.bg, sel.fg, dark); return html`<div class="w-24 h-24 rounded-[24%] flex items-center justify-center shadow-lg border border-base-content/10 shrink-0" style=${`background:${it.tile}`}>${AppArt(sel, it.glyph, "3rem")}</div>`; })()}
       <div class="flex items-center gap-2 flex-wrap justify-center"><h1 class="text-2xl font-bold text-center">${sel.title}</h1>${tag(badgeOf(sel), true)}</div>
       <p class="text-base-content/70 text-center leading-relaxed break-words">${sel.tagline}</p>
       <button id="open-app" class="btn btn-primary btn-lg rounded-2xl gap-2 w-full max-w-xs mt-1" onClick=${() => launch(sel)}>${Icon("lucide:external-link")}${T(t, "openApp")}</button>
@@ -48,7 +54,7 @@ export function store({ S, openScreen, closeScreen }) {
   // description first, so the detail screen stays a discovery surface. Installed apps carry a quiet corner check.
   const card = (a) => { const it = iconTint(a.bg, a.fg, dark), b = badgeOf(a), inst = installed(a); return html`<button data-app=${a.id} aria-label=${a.title} class="group flex flex-col items-center gap-1.5 min-w-0" onClick=${() => (inst ? launch(a) : openScreen(a.id))} key=${a.id}>
     <div class="relative aspect-square w-full rounded-[26%] flex items-center justify-center border border-base-content/10 shadow-sm transition-transform duration-150 group-active:scale-90" style=${`background:${it.tile}`}>
-      ${Icon(a.glyph, "text-3xl", `color:${it.glyph}`)}
+      ${AppArt(a, it.glyph, "1.9rem")}
       ${b ? html`<span class="absolute top-1 right-1">${tag(b)}</span>`
           : inst ? html`<span data-installed class="absolute bottom-1 right-1 grid place-items-center w-[18px] h-[18px] rounded-full bg-base-100/90 border border-base-content/15 shadow-sm" title=${T(t, "installed")}>${Icon("lucide:check", "text-[0.66rem] text-success")}</span>` : null}
     </div>

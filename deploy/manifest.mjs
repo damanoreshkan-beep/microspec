@@ -23,11 +23,15 @@ export async function buildManifest() {
     const i18n = await readLocales(`apps/${a.name}`);
     const d = i18n.uk || i18n.en || {};
     const brand = (await has(`apps/${a.name}/brand.json`)) ? await readJson(`apps/${a.name}/brand.json`) : { bg: "#1f2430", fg: "#a78bfa" };
+    // The app's REAL icon paths (lucide-stroke, inheriting stroke → theme-adaptive in the store tile). `glyph`
+    // stays as a fallback for any app without a brand.svg.
+    const art = (await has(`apps/${a.name}/brand.svg`)) ? (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim() : "";
     apps.push({
       id: a.name,
       title: d.title || a.name,
       tagline: d.profTagline || "",
       glyph: spec.profile?.icon || spec.tabs?.[0]?.icon || "lucide:box",
+      art,
       bg: brand.bg,
       fg: brand.fg,
       href: `./${a.name}/`,

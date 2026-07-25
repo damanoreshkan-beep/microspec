@@ -12,6 +12,13 @@
       "needs": ["auth"]
     },
     {
+      "id": "lifted",
+      "type": "tool",
+      "icon": "lucide:star",
+      "label": "tabLifted",
+      "view": "nova"
+    },
+    {
       "id": "me",
       "type": "profile",
       "icon": "lucide:user",

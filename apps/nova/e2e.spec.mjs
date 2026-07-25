@@ -10,16 +10,6 @@ export default [
     },
   },
   {
-    name: "зірка — свідома дія, що перемикає стан і лічильник", run: async (h) => {
-      await ready(h);
-      const btn = "[data-dev] [data-star]";
-      h.expect((await h.attr(btn, "aria-pressed")) === "false", "перша картка вже позначена — стан не з нуля");
-      await h.click(btn); await h.wait(500);
-      h.expect((await h.attr(btn, "aria-pressed")) === "true", "клік по «Зірці» не перемкнув стан");
-      h.expect(/1\s+(lifted|піднято)/.test(await h.bodyText()), "лічильник підтриманих не оновився");
-    },
-  },
-  {
     name: "підтримка: аркуш зі спонсорськими посиланнями, Back закриває", run: async (h) => {
       await ready(h);
       await h.click("[data-dev] [data-support]"); await h.wait(500);
@@ -30,27 +20,40 @@ export default [
     },
   },
   {
-    name: "фінал: зіркове поле з підтриманими девами, Back закриває", run: async (h) => {
+    name: "зірка прибирає дева зі стрічки й додає його в таб «Зірки»", run: async (h) => {
       await ready(h);
-      const b = "[data-dev]:nth-of-type(2) [data-star]";
-      if ((await h.attr(b, "aria-pressed")) !== "true") { await h.click(b); await h.wait(500); }
-      h.expect((await h.prop("#reveal", "disabled")) !== true, "«Фінал» лишився неактивним після зірки");
+      const before = await h.count("[data-dev]");
+      h.expect(before >= 3, `стрічка замала: ${before}`);
+      await h.click("[data-dev] [data-star]"); await h.wait(500);
+      h.expect((await h.count("[data-dev]")) === before - 1, "зірка не прибрала дева з головної стрічки");
+      await h.click('[data-tab="lifted"]'); await h.wait(300);
+      h.expect((await h.count("[data-lifted]")) >= 1, "підтриманий дев не зʼявився в табі «Зірки»");
+      h.expect((await h.count("[data-lifted] a[href*='github.com']")) >= 1, "у списку «Зірки» немає посилання на GitHub");
+      await h.click('[data-tab="discover"]'); await h.wait(200);
+    },
+  },
+  {
+    name: "фінал: зіркове поле з підтриманими девами з табу «Зірки», Back закриває", run: async (h) => {
+      await ready(h);
+      await h.click("[data-dev] [data-star]"); await h.wait(500);   
+      await h.click('[data-tab="lifted"]'); await h.wait(300);
+      h.expect((await h.count("#reveal")) === 1, "немає кнопки фіналу в табі «Зірки»");
       await h.click("#reveal"); await h.wait(600);
       h.expect((await h.count("[data-live]")) === 1, "фінал не відкрився");
       h.expect((await h.count("canvas[data-render='2d']")) === 1, "немає canvas зіркового поля");
       h.expect((await h.count("[data-live] img")) >= 1, "у фіналі не виведено підтриманих людей");
-      h.expect(/\d/.test(await h.text("[data-live]")), "фінал без лічильника підтриманих");
       await h.back(); await h.wait(400);
       h.expect((await h.count("[data-live]")) === 0, "Back не закрив фінал");
+      await h.click('[data-tab="discover"]'); await h.wait(200);
     },
   },
   {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(200);
       await h.click('[data-loc="en"]'); await h.wait(300);
-      h.expect(/Discover|Language|Install/i.test(await h.bodyText()), "не EN");
+      h.expect(/Discover|Lifted|Language|Install/i.test(await h.bodyText()), "не EN");
       await h.click('[data-loc="uk"]'); await h.wait(300);
-      h.expect(/Пошук|Мова|Встанови/.test(await h.bodyText()), "не UA");
+      h.expect(/Пошук|Зірки|Мова|Встанови/.test(await h.bodyText()), "не UA");
       await h.click('[data-tab="discover"]'); await h.wait(200);
     },
   },

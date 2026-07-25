@@ -1,5 +1,6 @@
 import { html } from "htm/preact";
 import { Fragment } from "preact";
+import { atom } from "nanostores";
 import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
@@ -14,30 +15,28 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 const repoKey = (d) => `${d.owner}/${d.repo}`;
 const num = (n) => { const v = Number(n) || 0; return v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}k` : String(v); };
 const avatarSized = (u, s = 160) => (u ? `${u}${u.includes("?") ? "&" : "?"}size=${s}` : "");
+const liftedRecord = (d) => ({ owner: d.owner, repo: d.repo, name: d.name, avatar: d.avatar, url: d.url });
+
+const SUP_KEY = "nova:supported";
+const initSupported = () => { if (gate) return {}; try { return JSON.parse(localStorage.getItem(SUP_KEY) || "{}"); } catch { return {}; } };
+export const supportedStore = atom(initSupported());
+function writeSupported(map) { supportedStore.set(map); if (!gate) { try { localStorage.setItem(SUP_KEY, JSON.stringify(map)); } catch {  } } }
 
 const API = "https://api.github.com/search/repositories";
 const daysAgoISO = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
-function query() {
-  return `good-first-issues:>1 stars:5..90 pushed:>${daysAgoISO(60)} fork:false archived:false`;
-}
+const query = () => `good-first-issues:>1 stars:5..90 pushed:>${daysAgoISO(60)} fork:false archived:false`;
 
 function toDev(it) {
   const owner = it.owner?.login || "";
+  const { score, reasons } = scoreRepo({
+    stars: it.stargazers_count, forks: it.forks_count, pushedAt: it.pushed_at, createdAt: it.created_at,
+    ownerType: it.owner?.type, openIssues: it.open_issues_count, goodFirst: 2, hasIssues: it.has_issues,
+    description: it.description, language: it.language,
+  });
   return {
-    owner, repo: it.name, name: owner,
-    avatar: avatarSized(it.owner?.avatar_url),
-    url: it.html_url,
-    desc: (it.description || "").trim().slice(0, 220),
-    stars: it.stargazers_count || 0, forks: it.forks_count || 0,
-    lang: it.language || "",
-    ...(() => {
-      const { score, reasons } = scoreRepo({
-        stars: it.stargazers_count, forks: it.forks_count, pushedAt: it.pushed_at, createdAt: it.created_at,
-        ownerType: it.owner?.type, openIssues: it.open_issues_count, goodFirst: 2, hasIssues: it.has_issues,
-        description: it.description, language: it.language,
-      });
-      return { score, reasons };
-    })(),
+    owner, repo: it.name, name: owner, avatar: avatarSized(it.owner?.avatar_url), url: it.html_url,
+    desc: (it.description || "").trim().slice(0, 220), stars: it.stargazers_count || 0, forks: it.forks_count || 0,
+    lang: it.language || "", score, reasons,
   };
 }
 
@@ -53,27 +52,23 @@ const MOCK_FUNDING = {
   "noor-b": [{ platform: "github", label: "GitHub Sponsors", handle: "noor-b", url: "https://github.com/sponsors/noor-b" }],
 };
 
-const SUP_KEY = "nova:supported";
-const loadSupported = () => { if (gate) return {}; try { return JSON.parse(localStorage.getItem(SUP_KEY) || "{}"); } catch { return {}; } };
-const saveSupported = (m) => { if (gate) return; try { localStorage.setItem(SUP_KEY, JSON.stringify(m)); } catch {  } };
-
 const Avatar = ({ src, seed, size = 52 }) => {
-  const fallback = () => letterTile(seed || "?", { w: size, h: size, light: 30 });   
+  const fallback = () => letterTile(seed || "?", { w: size, h: size, light: 30 });
   return html`<img src=${src || fallback()} alt="" width=${size} height=${size} loading="lazy"
     onError=${(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = "1"; e.currentTarget.src = fallback(); } }}
     class="rounded-full object-cover bg-base-300 shrink-0" style=${`width:${size}px;height:${size}px`} />`;
 };
 
-export function nova({ S, toast, openScreen, closeScreen }) {
+export function nova({ S, tab, toast, openScreen, closeScreen }) {
   const t = useStore(S.t);
   const screen = useStore(S.screen);
   const sess = useStore(session);
+  const supported = useStore(supportedStore);
   const user = sess?.user || (gate ? MOCK_USER : null);
   const loggedIn = !!user;
 
   const [devs, setDevs] = useState(gate ? MOCK_DEVS : null);
   const [err, setErr] = useState(false);
-  const [supported, setSupported] = useState(loadSupported);
   const [target, setTarget] = useState(null);       
   const [funding, setFunding] = useState(null);      
   const [busy, setBusy] = useState({});              
@@ -111,11 +106,15 @@ export function nova({ S, toast, openScreen, closeScreen }) {
     if (busy[key]) return;
     const on = !isSupported(d);
     setBusy((b) => ({ ...b, [key]: true }));
-    setSupported((m) => { const n = { ...m }; if (on) n[key] = { owner: d.owner, repo: d.repo, name: d.name, avatar: d.avatar, url: d.url }; else delete n[key]; saveSupported(n); return n; });
+    const optimistic = { ...supportedStore.get() };
+    if (on) optimistic[key] = liftedRecord(d); else delete optimistic[key];
+    writeSupported(optimistic);
     const ok = await star(d.owner, d.repo, on);
     setBusy((b) => { const n = { ...b }; delete n[key]; return n; });
     if (!ok) {
-      setSupported((m) => { const n = { ...m }; if (on) delete n[key]; else n[key] = { owner: d.owner, repo: d.repo, name: d.name, avatar: d.avatar, url: d.url }; saveSupported(n); return n; });
+      const revert = { ...supportedStore.get() };
+      if (on) delete revert[key]; else revert[key] = liftedRecord(d);
+      writeSupported(revert);
       toast(T(t, "starFailed"));
     }
   };
@@ -138,9 +137,7 @@ export function nova({ S, toast, openScreen, closeScreen }) {
     setFunding(links);
   };
 
-  if (screen === "finale") {
-    return html`<${Finale} devs=${supportedList} t=${t} onClose=${closeScreen} />`;
-  }
+  if (screen === "finale") return html`<${Finale} devs=${supportedList} t=${t} onClose=${closeScreen} />`;
 
   if (screen === "support" && target) {
     const links = Array.isArray(funding) ? funding : [];
@@ -157,7 +154,7 @@ export function nova({ S, toast, openScreen, closeScreen }) {
           <a href=${target.url} target="_blank" rel="noopener" class="text-sm text-secondary font-mono">${repoKey(target)}</a>
         </div>
         ${loading
-          ? html`<div class="w-full flex flex-col gap-2" aria-hidden="true">${[0, 1].map((i) => html`<div key=${i} class="h-12 rounded-2xl bg-base-200 animate-pulse"></div>`)}</div>`
+          ? html`<div class="w-full flex flex-col gap-2" aria-hidden="true">${[0, 1].map((i) => html`<div key=${i} class="card h-12 rounded-2xl bg-base-200 animate-pulse"></div>`)}</div>`
           : links.length
             ? html`<${Fragment}>
                 <p class="text-sm text-base-content/70 text-center leading-relaxed">${T(t, "supportBody")}</p>
@@ -165,15 +162,15 @@ export function nova({ S, toast, openScreen, closeScreen }) {
                   ${links.map((l) => html`<a key=${l.url} href=${l.url} target="_blank" rel="noopener" data-fund
                     class="flex items-center gap-3 px-4 h-13 rounded-2xl border border-base-300 bg-base-200 hover:bg-base-300 transition-colors">
                     ${Icon(l.platform === "github" ? "lucide:heart" : "lucide:external-link", "text-lg text-secondary")}
-                    <span class="font-semibold flex-1">${l.label || T(t, "supportGeneric")}</span>
+                    <span class="font-semibold flex-1 min-w-0 truncate">${l.label || T(t, "supportGeneric")}</span>
                     ${Icon("lucide:chevron-right", "text-base-content/40")}
                   </a>`)}
                 </div>`
             : html`<div class="flex flex-col items-center gap-3 text-center pt-2">
                 ${Icon("lucide:star", "text-3xl text-secondary")}
                 <p class="text-sm text-base-content/70 leading-relaxed max-w-xs">${T(t, "noFunding")}</p>
-                <button class="btn btn-primary rounded-2xl gap-2 mt-1" data-haptic="bump" onClick=${() => { toggleStar(target); }}>
-                  ${Icon(isSupported(target) ? "lucide:star" : "lucide:star", isSupported(target) ? "text-warning" : "")}
+                <button class="btn btn-primary rounded-2xl gap-2 mt-1" data-haptic="bump" onClick=${() => toggleStar(target)}>
+                  ${Icon("lucide:star", isSupported(target) ? "text-warning" : "")}
                   ${isSupported(target) ? T(t, "starred") : T(t, "starAction")}
                 </button>
               </div>`}
@@ -199,15 +196,45 @@ export function nova({ S, toast, openScreen, closeScreen }) {
     </div>`;
   }
 
-  const n = supportedList.length;
-  return html`<div class="flex flex-col gap-4 pb-28">
+  if (tab?.id === "lifted") {
+    return html`<div class="flex flex-col gap-4">
+      <div>
+        <h1 class="text-xl font-extrabold tracking-tight">${T(t, "liftedTitle")}</h1>
+        <p class="text-xs text-base-content/60 mt-0.5">${T(t, "liftedSub").replace("{n}", String(supportedList.length))}</p>
+      </div>
+      ${supportedList.length === 0
+        ? html`<div class="flex flex-col items-center text-center gap-3 py-16 px-6">
+            ${Icon("lucide:star", "text-4xl text-base-content/25")}
+            <p class="text-sm text-base-content/60 leading-relaxed max-w-xs">${T(t, "liftedEmpty")}</p>
+          </div>`
+        : html`<${Fragment}>
+            <button id="reveal" class="btn btn-primary rounded-2xl gap-2 w-full" data-haptic="bump" onClick=${() => openScreen("finale")}>
+              ${Icon("lucide:sparkles")} ${T(t, "reveal")}
+            </button>
+            <div class="flex flex-col gap-2.5">
+              ${supportedList.map((d) => html`<article data-lifted key=${repoKey(d)} class="card @container flex-row items-center gap-3 rounded-2xl border border-base-300 bg-base-200/60 p-3">
+                <${Avatar} src=${avatarSized(d.avatar, 96)} seed=${d.owner} size=${42} />
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold tracking-tight truncate">${d.name}</div>
+                  <a href=${d.url} target="_blank" rel="noopener" class="text-xs text-secondary font-mono truncate block">${repoKey(d)}</a>
+                </div>
+                <button data-unstar class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, "unstar")} data-haptic="bump"
+                  disabled=${!!busy[repoKey(d)]} onClick=${() => toggleStar(d)}>${Icon("lucide:star", "text-warning")}</button>
+              </article>`)}
+            </div>
+          </${Fragment}>`}
+    </div>`;
+  }
+
+  const visible = (devs || []).filter((d) => !isSupported(d));
+  return html`<div class="flex flex-col gap-4">
     <header class="flex items-center gap-3 pt-1">
       <${Avatar} src=${avatarSized(user.avatar, 96)} seed=${user.login} size=${36} />
       <div class="flex-1 min-w-0">
         <div class="text-xs text-base-content/55 leading-none">${T(t, "signedInAs")}</div>
         <div class="font-semibold truncate">${user.name || user.login}</div>
       </div>
-      <button class="btn btn-ghost btn-xs rounded-full" onClick=${() => logout()}>${T(t, "signOut")}</button>
+      <button class="btn btn-ghost btn-xs rounded-full shrink-0" onClick=${() => logout()}>${T(t, "signOut")}</button>
     </header>
 
     <div>
@@ -219,31 +246,25 @@ export function nova({ S, toast, openScreen, closeScreen }) {
       ? html`<div class="flex flex-col gap-3" aria-hidden="true">${[0, 1, 2].map((i) => html`<div key=${i} class="card h-40 rounded-3xl bg-base-200 animate-pulse"></div>`)}</div>`
       : err && !devs.length
         ? html`<div class="text-center py-16 text-sm text-base-content/60">${T(t, "feedError")}</div>`
-        : html`<div class="flex flex-col gap-3.5">
-            ${devs.map((d) => html`<${DevCard} key=${repoKey(d)} d=${d} t=${t} supported=${isSupported(d)} busy=${!!busy[repoKey(d)]}
-              onStar=${() => toggleStar(d)} onSupport=${() => openSupport(d)} />`)}
-          </div>`}
-
-    <!-- floating glass island: the running tally + the finale trigger. Capped to the viewport so it never
-         adds horizontal overflow on a narrow (watch ~200px) screen; the tally truncates, the button holds. -->
-    <div data-island class="fixed left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 pl-4 pr-2 py-2 rounded-full border border-base-300 bg-base-100/80 backdrop-blur-md shadow-lg max-w-[calc(100vw-1.5rem)]"
-      style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.75rem)">
-      <span class="text-sm font-semibold tabular-nums truncate min-w-0">${Icon("lucide:star", "text-warning align-[-2px]")} ${T(t, "tally").replace("{n}", String(n))}</span>
-      <button id="reveal" class="btn btn-primary btn-sm rounded-full gap-1.5 shrink-0" disabled=${n === 0} data-haptic="bump" onClick=${() => openScreen("finale")}>
-        ${Icon("lucide:sparkles")} ${T(t, "reveal")}
-      </button>
-    </div>
+        : visible.length === 0
+          ? html`<div class="flex flex-col items-center text-center gap-3 py-16 px-6">
+              ${Icon("lucide:check-check", "text-4xl text-base-content/25")}
+              <p class="text-sm text-base-content/60 leading-relaxed max-w-xs">${T(t, "feedEmpty")}</p>
+            </div>`
+          : html`<div class="flex flex-col gap-3.5">
+              ${visible.map((d) => html`<${DevCard} key=${repoKey(d)} d=${d} t=${t} busy=${!!busy[repoKey(d)]}
+                onStar=${() => toggleStar(d)} onSupport=${() => openSupport(d)} />`)}
+            </div>`}
   </div>`;
 }
 
-function DevCard({ d, t, supported, busy, onStar, onSupport }) {
+function DevCard({ d, t, busy, onStar, onSupport }) {
   return html`<article data-dev class="card @container rounded-3xl border border-base-300 bg-base-200/60 p-4 flex flex-col gap-3">
     <div class="flex items-start gap-3">
       <${Avatar} src=${d.avatar} seed=${d.owner} size=${52} />
       <div class="flex-1 min-w-0">
         <div class="font-bold tracking-tight truncate">${d.name}</div>
         <a href=${d.url} target="_blank" rel="noopener" class="text-xs text-secondary font-mono truncate block">${d.owner}/${d.repo}</a>
-        <!-- secondary meta: wraps + truncates so it can't overflow, and collapses out on a watch-width card. -->
         <div class="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-1 text-xs text-base-content/55 tabular-nums min-w-0 @max-[280px]:hidden">
           <span class="inline-flex items-center gap-1 shrink-0">${Icon("lucide:star", "align-[-2px]")}${num(d.stars)}</span>
           ${d.lang ? html`<span class="inline-flex items-center gap-1 min-w-0 max-w-full">${Icon("lucide:circle", "text-[0.55rem] align-[-1px] shrink-0")}<span class="truncate">${d.lang}</span></span>` : null}
@@ -257,16 +278,13 @@ function DevCard({ d, t, supported, busy, onStar, onSupport }) {
       ${d.reasons.slice(0, 3).map((r) => html`<span key=${r} class="text-[0.68rem] font-medium px-2 py-0.5 rounded-full bg-secondary/12 text-secondary">${T(t, r)}</span>`)}
     </div>` : null}
 
-    <!-- flex-wrap + flex-1/min-w-0: side by side on a phone, stacked on a watch-width card, never overflowing. -->
     <div class="flex flex-wrap items-center gap-2 pt-0.5">
-      <button data-star class="btn btn-sm rounded-2xl gap-1.5 flex-1 basis-24 min-w-0 ${supported ? "btn-primary" : "btn-outline"}"
-        aria-pressed=${supported} disabled=${busy} data-haptic="bump" onClick=${onStar}>
-        ${Icon("lucide:star", supported ? "text-warning shrink-0" : "shrink-0")}
-        <span class="truncate">${supported ? T(t, "starred") : T(t, "starAction")}</span>
+      <button data-star class="btn btn-sm btn-primary rounded-2xl gap-1.5 flex-1 basis-24 min-w-0"
+        disabled=${busy} data-haptic="bump" onClick=${onStar}>
+        ${Icon("lucide:star", "shrink-0")}<span class="truncate">${T(t, "starAction")}</span>
       </button>
       <button data-support class="btn btn-sm btn-ghost rounded-2xl gap-1.5 flex-1 basis-24 min-w-0 border border-base-300" data-haptic="bump" onClick=${onSupport}>
-        ${Icon("lucide:heart-handshake", "shrink-0")}
-        <span class="truncate">${T(t, "support")}</span>
+        ${Icon("lucide:heart-handshake", "shrink-0")}<span class="truncate">${T(t, "support")}</span>
       </button>
     </div>
   </article>`;

@@ -1,6 +1,7 @@
 {
   "title": "nova",
   "tabDiscover": "Discover",
+  "tabLifted": "Lifted",
   "tabMe": "Me",
 
   "heroTitle": "Lift up a developer",
@@ -14,8 +15,12 @@
   "feedTitle": "Developers to lift",
   "feedSub": "Underrated makers, freshest first. Star the ones you truly value.",
   "feedError": "Couldn't load developers right now. Try again in a moment.",
-  "tally": "{n} lifted today",
-  "reveal": "Reveal",
+  "feedEmpty": "You've lifted everyone here. Refresh for new developers, or open Lifted.",
+  "liftedTitle": "Lifted",
+  "liftedSub": "{n} developers you've supported",
+  "liftedEmpty": "No one lifted yet. Star a developer in Discover, and they'll gather here.",
+  "unstar": "Remove star",
+  "reveal": "Reveal the finale",
 
   "support": "Support",
   "starAction": "Star",

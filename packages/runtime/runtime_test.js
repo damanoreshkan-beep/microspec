@@ -3172,3 +3172,16 @@ Deno.test("responsive matrix: the gate sweeps both orientations and the small-ph
   assert(bps.some((b) => b.h >= 900), "no tall breakpoint");
   assert(bps.some((b) => b.w >= 1024), "no desktop/tablet-landscape breakpoint");
 });
+
+Deno.test("dock height is MEASURED, not a constant — nothing may sit under the dock", async () => {
+  const render = await Deno.readTextFile(new URL("./render.js", import.meta.url));
+  assert(/ResizeObserver/.test(render) && /setProperty\("--dock-h"/.test(render),
+    "the runtime must measure the dock and publish --dock-h; a hand-written constant is wrong the moment the dock's metrics move (and it fails by COVERING content, which no overflow check can see)");
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  // exactly one declaration — the first-paint fallback at :root. A second one in a media query is the
+  // guess this measurement exists to delete.
+  assertEquals([...css.matchAll(/--dock-h:/g)].length, 1, "--dock-h must be declared once (the :root fallback); the live value comes from the measurement");
+  const lib = await Deno.readTextFile(new URL("../gates/browser-lib.mjs", import.meta.url));
+  assert(/nav\[data-dock\]/.test(lib) && /pointerEvents/.test(lib),
+    "the matrix must check dock/content collision (excluding pointer-events:none decoration) — overlap is not overflow");
+});

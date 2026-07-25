@@ -153,7 +153,26 @@ export async function runResponsiveMatrix(page, ev, dev) {
         oy = v ? Math.max(v.scrollHeight - v.clientHeight, de.scrollHeight - window.innerHeight) : 0;
         if (oy > 1 && v) { const lim = v.getBoundingClientRect().bottom; let low = lim; for (const el of v.querySelectorAll("*")) { const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom > low + 0.5) { low = r.bottom; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; vsel = el.tagName.toLowerCase() + (c ? "." + c : ""); } } }
       }
-      return { ox, sel, fit, oy, vsel };
+      // The dock is `fixed`, so anything it covers is NOT an overflow — the page measures perfectly while
+      // the bottom control sits under the bar. Nothing caught that: axe compares text to its background,
+      // the fit check compares content to its box, and neither compares two boxes to each other. So:
+      // does the dock's rect intersect a real element inside #view? (Decorative fixed layers — the dock
+      // fade, the stage scrim — are pointer-events-none and excluded; they are MEANT to overlap.)
+      let hide = 0, hsel = "?";
+      const nav = document.querySelector("nav[data-dock]");
+      const view = document.getElementById("view");
+      if (nav && view) {
+        const d = nav.getBoundingClientRect();
+        for (const el of view.querySelectorAll("*")) {
+          const r = el.getBoundingClientRect();
+          if (r.width < 8 || r.height < 8) continue;
+          if (getComputedStyle(el).pointerEvents === "none") continue;
+          const over = Math.min(r.bottom, d.bottom) - Math.max(r.top, d.top);
+          const across = Math.min(r.right, d.right) - Math.max(r.left, d.left);
+          if (over > 1 && across > 1 && over > hide) { hide = over; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; hsel = el.tagName.toLowerCase() + (c ? "." + c : ""); }
+        }
+      }
+      return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel };
     });
     const label = `${bp.id} ${bp.w}×${bp.h}`;
     out.push(m.ox <= 1
@@ -164,6 +183,9 @@ export async function runResponsiveMatrix(page, ev, dev) {
         ? { name: `${label}: один екран без скролу (fit)`, ok: true }
         : { name: `${label}: fit-екран не вміщується`, ok: false, msg: `+${m.oy}px по висоті — винуватець: ${m.vsel}. Ущільніть через --ms-* або перенесіть у Sheet` });
     }
+    out.push(m.hide <= 1
+      ? { name: `${label}: док нічого не перекриває`, ok: true }
+      : { name: `${label}: док перекриває контент`, ok: false, msg: `${m.hide}px — під доком: ${m.hsel}. --dock-h має міряти реальну висоту доку` });
   }
   await page.setViewportSize({ width: dev.width, height: dev.height });
   await sleep(260);

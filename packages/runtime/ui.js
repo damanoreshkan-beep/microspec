@@ -64,14 +64,20 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
   const btns = items.map((it) => {
     const on = it.id === value;
     const props = { [attr]: it.id };
+    if (it.busy) props["aria-busy"] = "true";
+    if (it.title) props.title = it.title;
     return html`<button ...${props} key=${it.id} type="button" aria-pressed=${on} onClick=${() => onChange(it.id)}
-      class=${`rounded-full border flex items-center justify-center gap-1.5 transition-colors ${pad} ${txt} ${skin(on)}`}>
-      ${it.dot ? html`<span class="w-2 h-2 rounded-full shrink-0" style=${`background:${it.dot === true ? "var(--app-accent)" : it.dot}`}></span>` : null}
-      ${it.icon ? Icon(it.icon, "text-[var(--ms-icon)] shrink-0") : null}
+      class=${`rounded-full border flex items-center justify-center gap-1.5 transition-colors ${pad} ${txt} ${skin(on)} ${it.busy ? "animate-pulse" : ""}`}>
+      ${
+        it.dot && !it.icon ? html`<span class="w-2 h-2 rounded-full shrink-0" style=${`background:${it.dot === true ? "var(--app-accent)" : it.dot}`}></span>` : null}
+      ${it.icon ? Icon(it.icon, "text-[var(--ms-icon)] shrink-0", it.dot ? `color:${it.dot === true ? "var(--app-accent)" : it.dot}` : "") : null}
       ${it.label ? html`<span class="truncate">${it.label}</span>` : null}
+      ${it.meta != null && it.meta !== "" ? html`<span class="font-mono tabular-nums text-[0.85em] opacity-70 shrink-0">${it.meta}</span>` : null}
     </button>`;
   });
   const rail = html`<div class=${`flex gap-1 p-1 ${scroll ? "w-max [&>button]:shrink-0" : "w-full [&>button]:flex-1 [&>button]:min-w-0"}`} role="group" aria-label=${label || null}>${btns}</div>`;
+  
+  
   return scroll
     ? html`<div class="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-full border border-base-content/10 bg-base-100/70 backdrop-blur-xl">${rail}</div>`
     : html`<div class="rounded-full border border-base-content/10 bg-base-100/70">${rail}</div>`;

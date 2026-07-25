@@ -34,5 +34,6 @@
   "close": "Close",
   "refresh": "Refresh",
   "toastSaved": "Saved",
-  "toastRemoved": "Removed"
+  "toastRemoved": "Removed",
+  "scale": "Tuning"
 }

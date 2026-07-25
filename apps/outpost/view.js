@@ -16,6 +16,7 @@ import { Fragment } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Segmented } from "/_rt/ui.js";
 import { createEngine, audioSupported, noiseSource as src, filter as bqf, lfo, noteFreq } from "/_rt/audio.js";
 import { STATIONS, LAYERS, station, reactorVoices, faderGain, semiToRatio } from "/_rt/scifi.js";
 
@@ -109,10 +110,10 @@ export function outpost({ S }) {
 
     <div class="relative z-10 flex flex-col items-center gap-6 pt-1 pb-2">
       <!-- station selector -->
-      <div class="w-full max-w-[440px] -mx-1 px-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div class="flex gap-2 w-max">
-          ${STATIONS.map((s) => { const on = s.id === stId; return html`<button data-station=${s.id} aria-pressed=${on} onClick=${() => pickStation(s.id)} key=${s.id} class=${`shrink-0 flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition ${on ? "border-primary/60 bg-primary/12 text-primary" : "border-base-content/12 text-base-content/70 hover:border-base-content/25"}`}>${Icon(s.icon, "text-base")}<span>${T(t, NAME[s.id])}</span></button>`; })}
-        </div>
+      <div class="w-full max-w-[440px]">
+        <${Segmented} attr="data-station" scroll variant="outline"
+          items=${STATIONS.map((s) => ({ id: s.id, label: T(t, NAME[s.id]), icon: s.icon }))}
+          value=${stId} onChange=${pickStation} />
       </div>
 
       <!-- the core: transport + live cue -->

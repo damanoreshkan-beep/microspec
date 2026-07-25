@@ -5,6 +5,7 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Segmented } from "/_rt/ui.js";
 import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { animate, stagger } from "motion";
 import { isGate, MOCK } from "/_rt/gate.js";
@@ -79,9 +80,8 @@ export function onthisday({ S }) {
 
   return html`<div class="flex flex-col gap-3">
     <div class="text-2xl font-bold text-center">${dateStr}</div>
-    <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-      ${CATS.map((k) => html`<button data-cat=${k} aria-pressed=${k === cat} class=${`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border transition ${k === cat ? "border-primary bg-primary/10" : "border-base-300"}`} onClick=${() => setCat(k)} key=${k}>${T(t, LABEL[k])}</button>`)}
-    </div>
+    <${Segmented} attr="data-cat" scroll variant="outline"
+      items=${CATS.map((k) => ({ id: k, label: T(t, LABEL[k]) }))} value=${cat} onChange=${setCat} />
     <div ref=${listRef} class="flex flex-col gap-2">
       ${err ? html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`
         : !ready ? Array.from({ length: 5 }, (_, i) => skel(i))

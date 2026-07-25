@@ -1,0 +1,57 @@
+{
+  "title": "nova",
+  "tabDiscover": "Discover",
+  "tabMe": "Me",
+
+  "heroTitle": "Lift up a developer",
+  "heroBody": "Discover underrated people building real things — and support them with a deliberate star and a real sponsorship.",
+  "signIn": "Continue with GitHub",
+  "scopeNote": "We request the minimum access needed to star on your behalf. Your token stays on our server, never in the app.",
+  "loginFailed": "Sign-in didn't complete",
+
+  "signedInAs": "Account",
+  "signOut": "Sign out",
+  "feedTitle": "Developers to lift",
+  "feedSub": "Underrated makers, freshest first. Star the ones you truly value.",
+  "feedError": "Couldn't load developers right now. Try again in a moment.",
+  "tally": "{n} lifted today",
+  "reveal": "Reveal",
+
+  "support": "Support",
+  "starAction": "Star",
+  "starred": "Starred",
+  "starFailed": "Couldn't star — try again",
+
+  "supportTitle": "Support",
+  "supportBody": "Back this developer directly — the real way to help.",
+  "supportGeneric": "Support link",
+  "noFunding": "This developer hasn't set up sponsorship yet. Your star is the support — and it counts more when it's chosen.",
+
+  "reasonFresh": "Actively shipping",
+  "reasonActive": "Still maintained",
+  "reasonFewStars": "Under the radar",
+  "reasonNeedsHelp": "Welcomes help",
+  "reasonSolo": "Solo maker",
+  "reasonDocumented": "Real project",
+  "reasonRising": "Quietly used",
+
+  "finaleTitle": "You lifted {n} developers",
+  "finaleBody": "Every star was a choice. Thank you for making today a little brighter for them.",
+  "finaleBack": "Keep going",
+  "andMore": "+{n} more",
+
+  "refresh": "Refresh",
+  "close": "Close",
+  "toastSaved": "Saved",
+  "toastRemoved": "Removed",
+  "profTheme": "Dark theme",
+  "profLang": "Language",
+  "profTagline": "Lift up underrated developers",
+  "profSource": "Source — github.com/microspec",
+  "install": "Install app",
+  "installTitle": "Install",
+  "installBtn": "Install",
+  "installDesc": "Works offline, opens like an app",
+  "installIosHint": "In Safari: tap Share, then 'Add to Home Screen'.",
+  "installGenericHint": "In your browser menu choose 'Install' or 'Add to Home Screen'."
+}

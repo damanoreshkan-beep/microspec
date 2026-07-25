@@ -81,7 +81,7 @@ const saveSupported = (m) => { if (gate) return; try { localStorage.setItem(SUP_
 
 // Avatar with a graceful letterTile fallback (a GitHub avatar can 404 or be blocked). Round, glowing.
 const Avatar = ({ src, seed, size = 52 }) => {
-  const fallback = () => `data:image/svg+xml;utf8,${encodeURIComponent(letterTile(seed || "?", { w: size, h: size, light: 30 }))}`;
+  const fallback = () => letterTile(seed || "?", { w: size, h: size, light: 30 });   // already returns a data URI
   return html`<img src=${src || fallback()} alt="" width=${size} height=${size} loading="lazy"
     onError=${(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = "1"; e.currentTarget.src = fallback(); } }}
     class="rounded-full object-cover bg-base-300 shrink-0" style=${`width:${size}px;height:${size}px`} />`;

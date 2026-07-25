@@ -125,7 +125,7 @@ export function Finale({ devs = [], t, onClose }) {
   const extra = n - shown.length;
   const avatarSrc = (d) => (d.avatar
     ? `${d.avatar}${d.avatar.includes("?") ? "&" : "?"}size=120`
-    : `data:image/svg+xml;utf8,${encodeURIComponent(letterTile(d.name || d.owner || "?", { w: 96, h: 96, light: 32 }))}`);
+    : letterTile(d.name || d.owner || "?", { w: 96, h: 96, light: 32 }));   // letterTile already returns a data URI
 
   return html`<div data-live role="dialog" aria-modal="true"
     class="fixed inset-0 z-40 bg-base-100 overflow-hidden flex flex-col"

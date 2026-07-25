@@ -252,7 +252,7 @@ export function nova({ S, toast, openScreen, closeScreen }) {
     </div>
 
     ${devs == null
-      ? html`<div class="flex flex-col gap-3" aria-hidden="true">${[0, 1, 2].map((i) => html`<div key=${i} class="h-40 rounded-3xl bg-base-200 animate-pulse"></div>`)}</div>`
+      ? html`<div class="flex flex-col gap-3" aria-hidden="true">${[0, 1, 2].map((i) => html`<div key=${i} class="card h-40 rounded-3xl bg-base-200 animate-pulse"></div>`)}</div>`
       : err && !devs.length
         ? html`<div class="text-center py-16 text-sm text-base-content/60">${T(t, "feedError")}</div>`
         : html`<div class="flex flex-col gap-3.5">
@@ -275,7 +275,7 @@ export function nova({ S, toast, openScreen, closeScreen }) {
 // One developer card — avatar, identity, the repo, WHY they're underrated (reason chips = the "analyze"
 // surface), and the two deliberate actions: Star (support with a star) and Support (open funding links).
 function DevCard({ d, t, supported, busy, onStar, onSupport }) {
-  return html`<article data-dev class="rounded-3xl border border-base-300 bg-base-200/60 p-4 flex flex-col gap-3">
+  return html`<article data-dev class="card @container rounded-3xl border border-base-300 bg-base-200/60 p-4 flex flex-col gap-3">
     <div class="flex items-start gap-3">
       <${Avatar} src=${d.avatar} seed=${d.owner} size=${52} />
       <div class="flex-1 min-w-0">

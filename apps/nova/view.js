@@ -260,11 +260,12 @@ export function nova({ S, toast, openScreen, closeScreen }) {
               onStar=${() => toggleStar(d)} onSupport=${() => openSupport(d)} />`)}
           </div>`}
 
-    <!-- floating glass island: the running tally + the finale trigger -->
-    <div data-island class="fixed left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-2 pl-4 py-2 rounded-full border border-base-300 bg-base-100/80 backdrop-blur-md shadow-lg"
+    <!-- floating glass island: the running tally + the finale trigger. Capped to the viewport so it never
+         adds horizontal overflow on a narrow (watch ~200px) screen; the tally truncates, the button holds. -->
+    <div data-island class="fixed left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 pl-4 pr-2 py-2 rounded-full border border-base-300 bg-base-100/80 backdrop-blur-md shadow-lg max-w-[calc(100vw-1.5rem)]"
       style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.75rem)">
-      <span class="text-sm font-semibold tabular-nums whitespace-nowrap">${Icon("lucide:star", "text-warning align-[-2px]")} ${T(t, "tally").replace("{n}", String(n))}</span>
-      <button id="reveal" class="btn btn-primary btn-sm rounded-full gap-1.5" disabled=${n === 0} data-haptic="bump" onClick=${() => openScreen("finale")}>
+      <span class="text-sm font-semibold tabular-nums truncate min-w-0">${Icon("lucide:star", "text-warning align-[-2px]")} ${T(t, "tally").replace("{n}", String(n))}</span>
+      <button id="reveal" class="btn btn-primary btn-sm rounded-full gap-1.5 shrink-0" disabled=${n === 0} data-haptic="bump" onClick=${() => openScreen("finale")}>
         ${Icon("lucide:sparkles")} ${T(t, "reveal")}
       </button>
     </div>

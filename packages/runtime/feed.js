@@ -12,7 +12,7 @@ const isLocal = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[:
 
 // Our hardened proxy. NOT an open proxy — it only forwards to hosts in the ALLOW list in
 // microspec-edge (feed-core.mjs), so a new CORS-blocked source needs a one-line allowlist change + a restart.
-export const VPS_PROXY = "https://jobs-map.mooo.com/feed";
+export const VPS_PROXY = "https://dreamstudio.mooo.com/feed";
 
 // The backend's long-term public key, pinned. Used by sealedfetch.js, which re-expresses every call to
 // VPS_PROXY as an encrypted envelope so a TLS-inspecting middlebox and our own nginx logs see one constant
@@ -21,7 +21,7 @@ export const VPS_PROXY = "https://jobs-map.mooo.com/feed";
 // The server answers GET /feed/pubkey with this key and its SHA-256, which is how you check the pin still
 // matches production after a key rotation:
 //
-//   deno eval 'const l = await (await fetch("https://jobs-map.mooo.com/feed/pubkey")).json(); console.log(l.key)'
+//   deno eval 'const l = await (await fetch("https://dreamstudio.mooo.com/feed/pubkey")).json(); console.log(l.key)'
 //
 // Never fetch it at runtime. A key collected over the channel you are defending pins nothing — whoever could
 // swap the response could swap the key. It is deliberately NOT a CI gate either: that would make a proxy

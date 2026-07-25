@@ -155,13 +155,18 @@ export async function runResponsiveMatrix(page, ev, dev) {
       }
       // The dock is `fixed`, so anything it covers is NOT an overflow — the page measures perfectly while
       // the bottom control sits under the bar. Nothing caught that: axe compares text to its background,
-      // the fit check compares content to its box, and neither compares two boxes to each other. So:
-      // does the dock's rect intersect a real element inside #view? (Decorative fixed layers — the dock
-      // fade, the stage scrim — are pointer-events-none and excluded; they are MEANT to overlap.)
+      // the fit check compares content to its box, and neither compares two boxes to each other.
+      //
+      // FIT SCREENS ONLY, and that distinction is the whole check. In a scrolling app the dock is a
+      // floating island that content passes UNDER by design — whatever it covers at this scroll position
+      // scrolls clear a moment later, and `main`'s --dock-h bottom padding guarantees the end of the list
+      // can be reached. On a fit screen nothing scrolls, so anything under the dock is hidden forever.
+      // (Decorative fixed layers — the dock fade, the stage scrim — are pointer-events-none and excluded;
+      // they are MEANT to overlap.)
       let hide = 0, hsel = "?";
       const nav = document.querySelector("nav[data-dock]");
       const view = document.getElementById("view");
-      if (nav && view) {
+      if (fit && nav && view) {
         const d = nav.getBoundingClientRect();
         for (const el of view.querySelectorAll("*")) {
           const r = el.getBoundingClientRect();
@@ -183,9 +188,11 @@ export async function runResponsiveMatrix(page, ev, dev) {
         ? { name: `${label}: один екран без скролу (fit)`, ok: true }
         : { name: `${label}: fit-екран не вміщується`, ok: false, msg: `+${m.oy}px по висоті — винуватець: ${m.vsel}. Ущільніть через --ms-* або перенесіть у Sheet` });
     }
-    out.push(m.hide <= 1
-      ? { name: `${label}: док нічого не перекриває`, ok: true }
-      : { name: `${label}: док перекриває контент`, ok: false, msg: `${m.hide}px — під доком: ${m.hsel}. --dock-h має міряти реальну висоту доку` });
+    if (m.fit) {
+      out.push(m.hide <= 1
+        ? { name: `${label}: док нічого не перекриває (fit)`, ok: true }
+        : { name: `${label}: док ховає контент назавжди (fit)`, ok: false, msg: `${m.hide}px — під доком: ${m.hsel}. На fit-екрані ніщо не скролиться, тож це сховано назавжди — --dock-h має міряти реальну висоту доку` });
+    }
   }
   await page.setViewportSize({ width: dev.width, height: dev.height });
   await sleep(260);

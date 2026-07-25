@@ -25,7 +25,9 @@ export default [
     name: "зміна ладу", run: async (h) => {
       await ready(h);
       await h.tap('[data-scale="minor"]'); await h.wait(150);
-      h.expect((await h.count('[data-scale="minor"].btn-primary')) === 1, "лад не перемкнувся");
+      // assert the STATE, not a framework class: the scale strip is the shared kit component now, and a
+      // test pinned to `.btn-primary` was testing DaisyUI's markup rather than whether the mode changed.
+      h.expect((await h.attr('[data-scale="minor"]', "aria-pressed")) === "true", "лад не перемкнувся");
       await h.tap('[data-scale="penta"]'); await h.wait(120);
     },
   },

@@ -18,10 +18,12 @@ for (const b of chosen) if (!BP[b]) { console.error(`unknown --bp "${b}" — one
 if (!apps.length) { console.error("usage: shoot.mjs <appId...> [--seed] [--bp <id|all>] [--out dir] [--base url]"); Deno.exit(2); }
 await Deno.mkdir(out, { recursive: true });
 
+const fresh = args.includes("--fresh");
+
 async function shoot(app, bp) {
   const [W, H] = BP[bp];
   const url = `${base}${app}/${seed ? "?seed" : ""}`;
-  const api = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&waitUntil=networkidle2&viewport.width=${W}&viewport.height=${H}&viewport.deviceScaleFactor=2`;
+  const api = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&waitUntil=networkidle2&viewport.width=${W}&viewport.height=${H}&viewport.deviceScaleFactor=2${fresh ? "&force=true" : ""}`;
   const r = await fetch(api);
   const j = await r.json();
   const shotUrl = j?.data?.screenshot?.url;

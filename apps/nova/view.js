@@ -281,9 +281,10 @@ function DevCard({ d, t, supported, busy, onStar, onSupport }) {
       <div class="flex-1 min-w-0">
         <div class="font-bold tracking-tight truncate">${d.name}</div>
         <a href=${d.url} target="_blank" rel="noopener" class="text-xs text-secondary font-mono truncate block">${d.owner}/${d.repo}</a>
-        <div class="flex items-center gap-2.5 mt-1 text-xs text-base-content/55 tabular-nums">
-          <span class="inline-flex items-center gap-1">${Icon("lucide:star", "align-[-2px]")}${num(d.stars)}</span>
-          ${d.lang ? html`<span class="inline-flex items-center gap-1">${Icon("lucide:circle", "text-[0.55rem] align-[-1px]")}${d.lang}</span>` : null}
+        <!-- secondary meta: wraps + truncates so it can't overflow, and collapses out on a watch-width card. -->
+        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-1 text-xs text-base-content/55 tabular-nums min-w-0 @max-[280px]:hidden">
+          <span class="inline-flex items-center gap-1 shrink-0">${Icon("lucide:star", "align-[-2px]")}${num(d.stars)}</span>
+          ${d.lang ? html`<span class="inline-flex items-center gap-1 min-w-0 max-w-full">${Icon("lucide:circle", "text-[0.55rem] align-[-1px] shrink-0")}<span class="truncate">${d.lang}</span></span>` : null}
         </div>
       </div>
     </div>

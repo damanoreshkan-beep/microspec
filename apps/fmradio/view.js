@@ -13,7 +13,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { useSheetDrag } from "/_rt/gesture.js";
+import { Sheet } from "/_rt/ui.js";
 import { wakeLock } from "/_rt/sensors.js";
 import { holdAudio } from "/_rt/mediasession.js";
 import { gate } from "/_rt/gate.js";
@@ -231,10 +231,8 @@ function SignalBars({ level, label }) {
 // settings island → history-backed bottom sheet (S.screen="rf"): gains, de-emphasis, volume, disconnect.
 function SettingsSheet({ open, onClose, t, demo }) {
   const vol = useStore($vol), lna = useStore($lna), vga = useStore($vga), amp = useStore($amp), tc = useStore($tc);
-  const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
-  const { boxRef, grip } = useSheetDrag(onClose);
   const Row = (label, node) => html`<div class="flex flex-col gap-1"><div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${label}</span></div>${node}</div>`;
-  return html`<dialog id="rfsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col gap-4 max-w-xl mx-auto">${grip}
+  return html`<${Sheet} id="rfsheet" open=${open} onClose=${onClose} title=${T(t, "settings")} icon="lucide:sliders-horizontal">
     ${Row(html`${T(t, "volume")} <span class="font-mono tabular-nums text-base-content/50">${Math.round(vol * 100)}</span>`, html`<input type="range" min="0" max="1" step="0.01" value=${vol} class="range range-xs range-primary" aria-label=${T(t, "volume")} onInput=${(e) => setVol(Number(e.target.value))} />`)}
     ${Row(html`${T(t, "gainLna")} <span class="font-mono tabular-nums text-base-content/50">${lna} dB</span>`, html`<input type="range" min="0" max="40" step="8" value=${lna} class="range range-xs range-secondary" aria-label=${T(t, "gainLna")} onInput=${(e) => { $lna.set(Number(e.target.value)); pushGain(); }} />`)}
     ${Row(html`${T(t, "gainVga")} <span class="font-mono tabular-nums text-base-content/50">${vga} dB</span>`, html`<input type="range" min="0" max="62" step="2" value=${vga} class="range range-xs range-secondary" aria-label=${T(t, "gainVga")} onInput=${(e) => { $vga.set(Number(e.target.value)); pushGain(); }} />`)}
@@ -247,7 +245,7 @@ function SettingsSheet({ open, onClose, t, demo }) {
       </div>
     </div>
     ${!demo ? html`<button data-disconnect class="btn btn-ghost btn-sm gap-2 text-base-content/60 self-start" onClick=${() => { disconnect(); onClose(); }}>${Icon("lucide:power")}${T(t, "disconnect")}</button>` : null}
-  </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
+  </${Sheet}>`;
 }
 
 // Saved tab — the user's favourite stations. Tap opens on the Radio tab; delete is reversible (undo-toast).

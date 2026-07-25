@@ -7,7 +7,75 @@
    toast, and the tool apps that pin themselves between the header and the dock. Each used to carry its
    own guess (6rem / 5.5rem / 4rem / 4rem) — four constants for one measurement, silently drifting apart
    the moment the dock changed shape. Consumers add env(safe-area-inset-bottom) themselves. */
-:root { --dock-h: 4.25rem; }
+:root { --dock-h: 4.25rem; --hdr-h: 3.5rem; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════
+   THE DESIGN SYSTEM — two token families every shared component reads.
+
+   1) --app-accent — the per-app palette. Every app in this farm has its own hue (drift is violet, rave
+      magenta, handpan brass); before this it lived only in brand.json, i.e. only in the icon generator,
+      so an app's identity stopped at its launcher tile and every screen inside was the same grey. The
+      accent is declared once (spec.accent, mirrored from brand.json) and the runtime writes it here at
+      boot — so a shared component can carry an app's colour without a single app hardcoding a hex.
+      It is a MARK colour: fills, dots, rings, glows. NEVER text, never a background behind text — an
+      arbitrary hue fails contrast in one theme or the other, and that is exactly the failure this
+      farm has been burned by. --app-tint is the one safe surface use: a wash so faint that
+      base-content text keeps its full contrast on top of it.
+
+   2) --ms-* — density. ONE dial for the whole farm's rhythm, stepped by VIEWPORT HEIGHT. A phone in
+      landscape is 390px tall; the same padding that breathes on a 915px screen turns that into a
+      scrolling tunnel. Components never hardcode a gap or a control height — they read these, so a
+      single height breakpoint compacts every screen at once instead of 55 apps each guessing.
+      The control floor stays ≥36px (WCAG 2.2 target-size is 24px) even in the tightest step.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+:root {
+  --app-accent: var(--color-secondary);
+  --app-tint: color-mix(in oklch, var(--app-accent) 16%, transparent);
+
+  --ms-gap: 0.75rem;     /* rhythm between blocks */
+  --ms-pad: 1rem;        /* panel padding */
+  --ms-r: 1.25rem;       /* panel radius */
+  --ms-ctl: 2.75rem;     /* control height (44px — the comfortable tap target) */
+  --ms-icon: 1.25rem;    /* glyph size inside a control */
+  --ms-title: 1.0625rem; /* panel/sheet title */
+  --ms-label: 0.68rem;   /* mono micro-label */
+}
+@media (max-height: 780px) {
+  :root { --ms-gap: 0.625rem; --ms-pad: 0.875rem; --ms-r: 1.125rem; --ms-title: 1rem; }
+}
+@media (max-height: 670px) {
+  :root { --ms-gap: 0.5rem; --ms-pad: 0.75rem; --ms-r: 1rem; --ms-ctl: 2.5rem; --ms-icon: 1.125rem; --ms-title: 0.95rem; }
+}
+@media (max-height: 560px) {
+  /* Landscape phones and split-screen. The dock compacts with everything else — it is the one piece of
+     chrome that costs vertical space on every single screen, so leaving it at full height here would
+     undo the rest of the step. --dock-h moves with it, and every consumer of that number follows. */
+  :root { --ms-gap: 0.375rem; --ms-pad: 0.625rem; --ms-ctl: 2.25rem; --ms-icon: 1rem; --ms-title: 0.9rem; --ms-label: 0.62rem; --dock-h: 3.6rem; }
+  nav[data-dock] button { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+  nav[data-dock] button > span { font-size: 0.54rem; }
+}
+
+/* .ms-cols — a stack that becomes a ROW when vertical space runs out. The one layout move the density
+   tokens cannot make: three stacked sliders are ~126px however tight the padding gets, three columns are
+   ~42px. Set the count with --ms-cols (default 3). This is the systemic answer to "compact on a short
+   screen" — an app must never reach for its own height media query to do it. */
+@media (max-height: 620px) {
+  .ms-cols { display: grid; grid-template-columns: repeat(var(--ms-cols, 3), minmax(0, 1fr)); gap: var(--ms-gap); align-items: start; }
+}
+
+/* Single-screen (fit) apps — an instrument, not a document. A tab that declares `fit` in its spec gets
+   .ms-fit on <html> while it is active, and the page IS the viewport: it can never scroll, at any
+   height. Anything that would overflow compacts (the --ms-* step above) or moves into a sheet. The
+   gate measures this at every breakpoint, so "it fits on my phone" is no longer the standard.
+   Height math is the two chrome constants, never a local guess: --hdr-h + --dock-h. */
+html.ms-fit, html.ms-fit body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+html.ms-fit main#view {
+  height: calc(100dvh - var(--hdr-h) - env(safe-area-inset-top));
+  padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom));
+  padding-top: var(--ms-gap);
+  gap: var(--ms-gap);
+  overflow: hidden;
+}
 
 [data-theme="signal"] {
   color-scheme: dark;

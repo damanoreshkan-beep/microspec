@@ -771,13 +771,24 @@ function TabView({ tab }) {
 export function App() {
   const cur = useStore(A.S.tab), screen = useStore(A.S.screen);
   const tab = A.spec.tabs.find((x) => x.id === cur) || A.spec.tabs[0];
+  // FIT MODE — a tab that declares `fit` is a single screen, not a document: the page never scrolls, at
+  // any viewport height. The flag lands on <html> (theme.css owns the layout math off --hdr-h/--dock-h)
+  // rather than on <main>, because the page-level `overflow:hidden` has to reach html AND body — a
+  // scroll container you only half-disable still bounces. It is per-TAB, so an instrument's profile tab
+  // scrolls normally the moment you switch to it, and the class comes off with it.
+  const fit = !!tab.fit;
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.toggle("ms-fit", fit);
+    return () => el.classList.remove("ms-fit");
+  }, [fit]);
   return html`<${Fragment}>
     <${AppBar} />
     ${tab.type === "list" && tab.search ? html`<${SearchBar} tab=${tab} />` : null}
     ${A.spec.filters ? html`<${FilterChips} />` : null}
     ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
     ${tab.type === "list" && tab.sort ? html`<${SortBar} tab=${tab} />` : null}
-    <main id="view" class="px-4 pt-4 max-w-xl mx-auto flex flex-col gap-3" style="padding-bottom:calc(var(--dock-h) + 1.5rem)">
+    <main id="view" class="px-4 pt-4 max-w-xl mx-auto flex flex-col gap-3" style=${fit ? null : "padding-bottom:calc(var(--dock-h) + 1.5rem)"}>
       <${TabView} tab=${tab} />
     </main>
     ${A.spec.detail ? html`<${DetailView} />` : null}

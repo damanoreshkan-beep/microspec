@@ -9,7 +9,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { useSheetDrag } from "/_rt/gesture.js";
+import { Sheet } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { OOK_FREQS } from "/_rt/ook.js";
 import { usbSupported, USB_FILTERS } from "/_rt/hackrf.js";
@@ -151,9 +151,7 @@ function del(s, undo) {
 
 function SettingsSheet({ open, onClose, t, demo }) {
   const g = useStore($txGain), reps = useStore($repeats);
-  const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
-  const { boxRef, grip } = useSheetDrag(onClose);
-  return html`<dialog id="rfsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col gap-4 max-w-xl mx-auto">${grip}
+  return html`<${Sheet} id="rfsheet" open=${open} onClose=${onClose} title=${T(t, "settings")} icon="lucide:sliders-horizontal">
     <div class="flex flex-col gap-1"><div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${T(t, "txRepeats")}</span><span class="font-mono tabular-nums text-base-content/60">×${reps}</span></div>
       <input type="range" min="1" max="16" step="1" value=${reps} class="range range-xs range-primary" aria-label=${T(t, "txRepeats")} data-repeats onInput=${(e) => $repeats.set(Number(e.target.value))} />
       <span class="text-[0.7rem] text-base-content/55 leading-snug">${T(t, "txRepeatsHint")}</span></div>
@@ -161,5 +159,5 @@ function SettingsSheet({ open, onClose, t, demo }) {
       <input type="range" min="0" max="47" step="1" value=${g} class="range range-xs range-primary" aria-label=${T(t, "txGain")} onInput=${(e) => $txGain.set(Number(e.target.value))} /></div>
     <p class="text-xs text-base-content/60 leading-relaxed">${T(t, "ownNote")}</p>
     ${!demo ? html`<button data-disconnect class="btn btn-ghost btn-sm gap-2 text-base-content/60 self-start" onClick=${() => { disconnect(); onClose(); }}>${Icon("lucide:power")}${T(t, "disconnect")}</button>` : null}
-  </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
+  </${Sheet}>`;
 }

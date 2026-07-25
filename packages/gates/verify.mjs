@@ -9,7 +9,7 @@
  *
  * Exit code = total failures (0 = green). --shots writes <appdir>/states/{main,tab-*,light}.png.
  */
-import { ensureDisplayUp, serveLocal, bootBrowser, makeHelpers, gotoAndSettle, runDesignChecks, DEVICES } from "./browser-lib.mjs";
+import { ensureDisplayUp, serveLocal, bootBrowser, makeHelpers, gotoAndSettle, runDesignChecks, runResponsiveMatrix, DEVICES } from "./browser-lib.mjs";
 
 const appdir = (Deno.args[0] ?? ".").replace(/\/$/, "");
 const opt = (n, d) => { const i = Deno.args.indexOf("--" + n); return i >= 0 ? Deno.args[i + 1] : d; };
@@ -68,6 +68,11 @@ try {
     const lbl = tabList.length > 1 && tb ? ` [${tb}]` : "";
     console.log(`  ${C.d}design${lbl}${C.x}`);
     for (const c of await runDesignChecks(ev)) c.ok ? ok(c.name + lbl, c.msg) : no(c.name + lbl, c.msg, c.detail);
+    // Responsive matrix — the SAME tab re-measured at every breakpoint and aspect ratio. Per tab, not
+    // once per app: a fit instrument and its scrolling profile are different layouts with different
+    // failure modes, and only one of them is on screen at a time.
+    console.log(`  ${C.d}responsive${lbl}${C.x}`);
+    for (const c of await runResponsiveMatrix(page, ev, dev)) c.ok ? ok(c.name + lbl, c.msg) : no(c.name + lbl, c.msg, c.detail);
     if (wantShots) await Deno.writeFile(`${appdir}/states/${ti === 0 ? "main" : "tab-" + tb}.png`, await page.screenshot());
   }
   if (tabList.length > 1) { await h.click(`[data-tab="${tabList[0]}"]`); await h.wait(300); }

@@ -8,7 +8,7 @@
 import { html } from "htm/preact";
 import { Fragment } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
-import { useSheetDrag } from "/_rt/gesture.js";
+import { Sheet } from "/_rt/ui.js";
 import { useStore } from "@nanostores/preact";
 import { persistentAtom } from "@nanostores/persistent";
 import { T } from "/_rt/i18n.js";
@@ -139,20 +139,13 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
 }
 
 function SignSheet({ open, onClose, t, signIdx }) {
-  const ref = useRef();
-  useEffect(() => { const d = ref.current; if (!d) return; if (open) { if (!d.open) d.showModal?.(); } else d.close?.(); }, [open]);
-  const { boxRef, grip } = useSheetDrag(onClose);
   const choose = (i) => { $sign.set(String(i)); onClose(); };
-  return html`<dialog id="signsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}>
-    <div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 max-w-xl mx-auto">${grip}
-      <h3 class="font-bold text-lg mb-3">${T(t, "pickSign")}</h3>
+  return html`<${Sheet} id="signsheet" open=${open} onClose=${onClose} title=${T(t, "pickSign")} icon="lucide:sparkles">
       <div class="grid grid-cols-3 gap-2">
         ${Array.from({ length: 12 }, (_, i) => html`<button data-signpick=${i} aria-pressed=${i === signIdx} class=${`flex flex-col items-center gap-1.5 py-3 rounded-2xl border transition active:scale-95 ${i === signIdx ? "border-secondary bg-secondary/10 text-secondary" : "border-base-300 text-base-content/80"}`} onClick=${() => choose(i)} key=${i}>
           <${Sign} i=${i} cls="w-6 h-6" />
           <span class="text-xs truncate max-w-full">${(t.signs || "").split("|")[i] || ""}</span>
         </button>`)}
       </div>
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
-  </dialog>`;
+  </${Sheet}>`;
 }

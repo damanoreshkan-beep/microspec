@@ -9,7 +9,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet } from "/_rt/ui.js";
+import { Sheet, Segmented } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { OOK_FREQS } from "/_rt/ook.js";
 import { usbSupported, USB_FILTERS } from "/_rt/hackrf.js";
@@ -97,10 +97,9 @@ export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {
   return html`<${Fragment}>
     <div class="@container flex flex-col gap-3 max-w-[440px] mx-auto w-full pb-32">
       <!-- frequency selector -->
-      <div class="flex gap-1.5 pt-0.5">
-        ${OOK_FREQS.map((f) => html`<button key=${f} data-freq=${f} aria-pressed=${freq === f} onClick=${() => setFreq(f)}
-          class=${`flex-1 min-w-0 rounded-xl border px-2 @max-[300px]:px-1 py-1.5 font-mono text-sm @max-[300px]:text-[0.7rem] transition ${freq === f ? "border-primary/50 bg-primary/12 text-primary" : "border-base-content/15 text-base-content/60"}`}>${fMhz(f)}</button>`)}
-      </div>
+      <div class="pt-0.5"><${Segmented} attr="data-freq" size="sm"
+        items=${OOK_FREQS.map((f) => ({ id: String(f), label: fMhz(f) }))}
+        value=${String(freq)} onChange=${(id) => setFreq(Number(id))} /></div>
 
       <!-- just-captured signal, pending save -->
       ${rec.state === "captured" && rec.cap ? html`<div class="rounded-3xl border border-primary/30 bg-primary/5 p-4 flex flex-col gap-3" data-captured>

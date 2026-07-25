@@ -15,7 +15,8 @@
         "uranus",
         "neptune",
         "pluto"
-      ]
+      ],
+      "houseSystem": "placidus"
     },
     "controls": [
       {
@@ -65,6 +66,30 @@
             "bPluto"
           ]
         ]
+      },
+      {
+        "type": "segment",
+        "key": "houseSystem",
+        "label": "fHouses",
+        "icon": "lucide:layout-grid",
+        "options": [
+          [
+            "placidus",
+            "hsPlacidus"
+          ],
+          [
+            "whole",
+            "hsWhole"
+          ],
+          [
+            "equal",
+            "hsEqual"
+          ],
+          [
+            "porphyry",
+            "hsPorphyry"
+          ]
+        ]
       }
     ]
   },
@@ -74,14 +99,23 @@
       "type": "tool",
       "icon": "lucide:orbit",
       "label": "tabWheel",
-      "view": "transit"
+      "view": "wheel"
     },
     {
-      "id": "rulers",
+      "id": "hits",
       "type": "tool",
-      "icon": "lucide:layout-grid",
-      "label": "tabRulers",
-      "view": "rulers"
+      "icon": "lucide:crosshair",
+      "label": "tabHits",
+      "titleKey": "tabHits",
+      "view": "hits"
+    },
+    {
+      "id": "chart",
+      "type": "tool",
+      "icon": "lucide:table-2",
+      "label": "tabChart",
+      "titleKey": "tabChart",
+      "view": "chart"
     },
     {
       "id": "me",

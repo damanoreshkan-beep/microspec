@@ -125,7 +125,8 @@ export async function runResponsiveMatrix(page, ev, dev) {
         for (const el of view.querySelectorAll("*")) {
           const r = el.getBoundingClientRect();
           if (r.width < 8 || r.height < 8) continue;
-          if (getComputedStyle(el).pointerEvents === "none") continue;
+          const cs = getComputedStyle(el);
+          if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
           const over = Math.min(r.bottom, d.bottom) - Math.max(r.top, d.top);
           const across = Math.min(r.right, d.right) - Math.max(r.left, d.left);
           if (over > 1 && across > 1 && over > hide) { hide = over; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; hsel = el.tagName.toLowerCase() + (c ? "." + c : ""); }

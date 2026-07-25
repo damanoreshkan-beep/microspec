@@ -44,8 +44,20 @@ async function assertInstallable(outDir, id) {
   }
   // Chrome will not offer install without a service worker that has a fetch handler, and the page must link
   // the manifest.
+  // The worker is a generated stub (deploy/sw.mjs) that importScripts the shared core, so the fetch handler
+  // Chrome requires lives one hop away — follow it, and fail if the hop is broken. A stub pointing at a
+  // missing core would install, serve nothing, and quietly un-installable every app in the farm at once.
   const sw = await Deno.readTextFile(`${outDir}/sw.js`).catch(() => "");
-  if (!/addEventListener\(\s*["']fetch["']/.test(sw)) throw new Error(`${id}: sw.js is missing a fetch handler — not installable`);
+  if (!sw) throw new Error(`${id}: sw.js missing — not installable`);
+  let swBody = sw;
+  const imported = /importScripts\(\s*["']([^"']+)["']\s*\)/.exec(sw);
+  if (imported) {
+    const core = `${outDir}/${imported[1]}`;
+    swBody = await Deno.readTextFile(core).catch(() => "");
+    if (!swBody) throw new Error(`${id}: sw.js importScripts("${imported[1]}") but that file is not in the build`);
+  }
+  if (!/addEventListener\(\s*["']fetch["']/.test(swBody)) throw new Error(`${id}: sw.js is missing a fetch handler — not installable`);
+  if (!/self\.MS\s*=/.test(sw)) throw new Error(`${id}: sw.js carries no precache manifest — run deploy/sw.mjs`);
   const html = await Deno.readTextFile(`${outDir}/index.html`);
   if (!/rel=["']manifest["']/.test(html)) throw new Error(`${id}: index.html does not link the manifest`);
 }

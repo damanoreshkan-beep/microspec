@@ -49,6 +49,7 @@ export function createApp(spec, dataLoad) {
     qrOpen: atom(false),          // desktop "open on phone" self-QR (history-backed like the others)
     confirm: atom(null),          // { title, body?, verb, onConfirm } — danger-confirm sheet (history-backed)
     undo: atom(null),             // { fn, label } — interactive undo snackbar; NOT history-backed (transient)
+    update: atom(false),          // a newer build is cached and ready — offer a restart (see index.js)
   };
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
   // persist filter selections as JSON (keeps booleans intact, unlike per-key string storage)

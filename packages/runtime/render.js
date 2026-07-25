@@ -655,7 +655,7 @@ function Dock() {
 }
 
 function Toast() {
-  const key = useStore(A.S.toast), undo = useStore(A.S.undo), t = useStore(A.S.t), loc = useStore(A.S.locale);
+  const key = useStore(A.S.toast), undo = useStore(A.S.undo), t = useStore(A.S.t), loc = useStore(A.S.locale), update = useStore(A.S.update);
   const band = "position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:calc(var(--dock-h) + 0.75rem)";
   // Interactive undo snackbar (reversible deletes). The outer band stays pointer-events-none so it never eats
   // a tap meant for the content beneath; only the snackbar itself is tappable, and it sits ABOVE the dock.
@@ -665,6 +665,18 @@ function Toast() {
       <div class="pointer-events-auto alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-2 pl-4 pr-2 font-medium flex items-center gap-2 w-max max-w-[calc(100vw-1.5rem)] ms-reveal">
         ${Icon("lucide:trash-2", "text-base-content/55 text-lg shrink-0")}<span class="truncate">${label}${sys("deleted", loc)}</span>
         <button data-undo class="btn btn-sm btn-ghost text-primary font-semibold rounded-xl gap-1.5 shrink-0" onClick=${() => { const fn = A.S.undo.get()?.fn; A.S.undo.set(null); fn?.(); }}>${Icon("lucide:undo-2", "text-base")}${sys("undo", loc)}</button>
+      </div>
+    </div>`;
+  }
+  // The freshness half of a cache-first service worker: a newer build is already cached, and applying it
+  // costs a reload the user has to consent to. Persistent (no timer) but dismissable, and it yields to the
+  // undo snackbar above, which is time-critical.
+  if (update && !key) {
+    return html`<div data-toast class="pointer-events-none" style=${band}>
+      <div data-update class="pointer-events-auto alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-2 pl-4 pr-2 font-medium flex items-center gap-2 w-max max-w-[calc(100vw-1.5rem)] ms-reveal">
+        ${Icon("lucide:sparkles", "text-base-content/55 text-lg shrink-0")}<span class="truncate">${sys("updateReady", loc)}</span>
+        <button data-update-apply class="btn btn-sm btn-ghost text-primary font-semibold rounded-xl gap-1.5 shrink-0" onClick=${() => { A.S.update.set(false); A.applyUpdate?.(); }}>${Icon("lucide:rotate-cw", "text-base")}${sys("restart", loc)}</button>
+        <button data-update-dismiss class="btn btn-sm btn-ghost btn-circle shrink-0" aria-label=${sys("cancel", loc)} onClick=${() => A.S.update.set(false)}>${Icon("lucide:x", "text-base")}</button>
       </div>
     </div>`;
   }

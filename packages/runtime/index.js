@@ -13,6 +13,41 @@ import { installSealedFetch } from "./sealedfetch.js";
 // intercept and for the honest limit on what pinning a key in delivered JS can achieve.
 installSealedFetch();
 
+// The service worker (sw-core.js) is cache-first, so a fresh deploy lands on the NEXT launch rather than
+// mid-session. That trade buys an app that opens instantly offline and on a weak link — but the freshness
+// half still has to be honest, so when a new version is ready we say so and offer the restart. We never take
+// it: skipWaiting behind the user's back swaps the caches under running code.
+// `updateViaCache: "none"` makes the browser re-check sw.js AND the imported core past its own HTTP cache,
+// so a deploy is noticed on the next launch instead of up to GitHub Pages' max-age later.
+function registerWorker(app) {
+  if (!("serviceWorker" in navigator)) return;
+  const S = app.S;
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+    const offer = () => S.update.set(true);
+    // A worker already parked in `waiting` means an update installed during an earlier visit.
+    if (reg.waiting && navigator.serviceWorker.controller) offer();
+    reg.addEventListener("updatefound", () => {
+      const w = reg.installing;
+      if (!w) return;
+      // `controller` guards the first-ever install, which is not an "update" and must not nag.
+      w.addEventListener("statechange", () => { if (w.state === "installed" && navigator.serviceWorker.controller) offer(); });
+    });
+    // The worker also tells us when a background revalidation found a changed shell file.
+    navigator.serviceWorker.addEventListener("message", (e) => { if (e.data?.type === "ms-update") offer(); });
+    let asked = false;
+    app.applyUpdate = () => {
+      asked = true;
+      if (reg.waiting) reg.waiting.postMessage("ms-skip-waiting");   // → controllerchange → reload
+      else location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!asked) return;   // a claim() we didn't ask for must never yank the page out from under the user
+      asked = false;
+      location.reload();
+    });
+  }).catch(() => {});
+}
+
 // start(spec, load) — data app; OR start(spec, { load?, views? }) — tool app with custom views.
 export function start(spec, arg2) {
   try { validateSpec(spec); }
@@ -106,7 +141,7 @@ export function start(spec, arg2) {
 
   addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); S.installEvent.set(e); });
   addEventListener("appinstalled", () => { S.installEvent.set(null); S.installOpen.set(false); });
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  registerWorker(app);
 
   // Test hook (gate only): ?__hold freezes the app in its LOADING state so the skeleton gate can inspect it.
   const hold = typeof location !== "undefined" && location.search.includes("__hold");

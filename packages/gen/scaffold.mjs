@@ -1,7 +1,8 @@
 // microspec — app scaffolder (the deterministic half of authoring). The agent (LLM) writes only the
 // app-specific files — spec.json (structure) + i18n/<locale>.json (translations, one file per language)
 // + data.js (or view.js for a tool) — and this emits the identical boilerplate every app needs:
-// index.html (composes spec + locale files, wired by mode), manifest.json, sw.js (network-first),
+// index.html (composes spec + locale files, wired by mode), manifest.json, sw.js (placeholder — deploy/sw.mjs
+// generates the real offline-first worker from the finished import graph),
 // icon.svg (from brand). It never overwrites the authored files unless --force.
 //
 //   deno run -A scaffold.mjs <appdir> [--force]
@@ -126,22 +127,11 @@ const manifest = JSON.stringify({
   display: "standalone", orientation: "portrait", theme_color: themeColor, background_color: bg, lang, icons,
 }, null, 2) + "\n";
 
-const sw = `const CACHE = "${spec.id}-v2";
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) => e.waitUntil((async () => { for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k); await self.clients.claim(); })()));
-// Network-first with REVALIDATION: fetch({cache:"no-cache"}) bypasses the browser HTTP cache (GitHub Pages
-// sets max-age=600), so a fresh runtime/app deploy reaches installed PWAs immediately (304 when unchanged).
-// Offline → fall back to the cached copy.
-self.addEventListener("fetch", (e) => {
-  const u = new URL(e.request.url);
-  if (e.request.method !== "GET" || u.origin !== location.origin) return;
-  e.respondWith((async () => {
-    const c = await caches.open(CACHE);
-    try { const r = await fetch(e.request, { cache: "no-cache" }); if (r && r.ok) c.put(e.request, r.clone()); return r; }
-    catch { return (await c.match(e.request)) || Response.error(); }
-  })());
-});
-`;
+// A placeholder worker, replaced the moment `deploy/sw.mjs` runs (which is gated in CI): the real precache
+// manifest is derived from the app's finished import graph, which does not exist yet at scaffold time.
+const sw = `// PLACEHOLDER — run \`deno run -A deploy/sw.mjs\` to generate the real worker for this app.\n` +
+  `self.MS = { app: ${JSON.stringify(spec.id)}, version: "scaffold", precache: ["./", "./index.html"] };\n` +
+  `importScripts("/_rt/sw-core.js");\n`;
 
 // icon.svg: brand paths on a rounded tile (matches the hand-authored icons; PNGs are a CI concern)
 const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="104" fill="${brand.bg}"/><g transform="translate(81.92,81.92) scale(14.506666666666666)" fill="none" stroke="${brand.fg}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${brandPaths}</g></svg>\n`;

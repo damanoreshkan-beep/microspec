@@ -138,6 +138,14 @@ and would land in the middle of a feature push — but it is cheap and it closes
 - **The subpath, still.** The guard forbids absolute `/_rt/` imports, but `verify` still serves from the
   root. The *class* of path bugs remains invisible; only that one instance is fenced off. Serving the gate
   under `/microspec/` would close it.
+- **The CDN half of the offline precache.** `verify` now waits for the service worker to activate AND for
+  its precache to hold the document, so "registered but caching nothing" can no longer ship (it did — for
+  every app, for months; see `research/offline-first-sw.md`). But `sw-core.js` deliberately skips the
+  cross-origin half of the precache on localhost: 57 matrix jobs each pulling tailwind and the whole esm.sh
+  graph would buy CI minutes and third-party load, not confidence. So the **module walk** — the part that
+  turns an esm.sh re-export stub into the real module — is covered by unit tests against a stubbed `fetch`
+  and by checking every manifest URL resolves on production, never by a browser. A cold offline launch on a
+  real device remains the only full proof.
 
 ---
 

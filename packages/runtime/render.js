@@ -618,6 +618,25 @@ function Dock() {
   // In Ukrainian that silently misspells the app: "ЛІНІЙКА" rendered as "ЛІНІИКА" and "НАЙБЛИЖЧІ" as
   // "НАИБЛИЖЧІ" (Й lost its breve). Any language with diacritics above the caps (Й, Ї, Ё, Ā, Ő…) hits this.
   const t = useStore(A.S.t), cur = useStore(A.S.tab);
+  // --dock-h is MEASURED, never guessed. It is the one number four other things clear (the padding under
+  // <main>, the toast, the dock fade, every pinned tool panel), and it was a hand-written constant — so the
+  // moment the dock's own metrics changed it was wrong, silently, in the direction that overlaps content.
+  // That is not hypothetical: compacting the dock for short screens moved its real footprint ~4px past the
+  // constant, and drift's transport island ended up under it in landscape with every gate green (nothing
+  // OVERFLOWED — the dock is fixed, so it just covered what was beneath it).
+  // The element knows its own height; ask it. This also absorbs what a constant never could: a longer
+  // locale's labels wrapping, a user's larger font scale, a future change to the dock's padding.
+  const navRef = useRef();
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const GAP = 12;   // the 0.75rem the island floats above the safe area (its inline `bottom`)
+    const apply = () => { const h = el.offsetHeight; if (h) document.documentElement.style.setProperty("--dock-h", `${h + GAP}px`); };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   // An island, not a bar welded to the screen edge: a floating pill that the content passes under, blurred
   // rather than opaque. `data-dock` is the hook theme.css styles the labels through — deliberately an
   // attribute and not a class, because the old selector was `nav.fixed.bottom-0` and this very redesign
@@ -651,7 +670,7 @@ function Dock() {
   // (17.6:1 in signal-light), the label on it 16.8:1, and inactive labels stay at their full 10.6:1 — the
   // active state is now unmissable without dimming anything or spending colour, which this theme reserves
   // for meaning.
-  return html`<nav data-dock class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary text-primary-content" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
+  return html`<nav data-dock ref=${navRef} class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary text-primary-content" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
 }
 
 function Toast() {

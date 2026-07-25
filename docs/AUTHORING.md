@@ -43,7 +43,13 @@ prompt → probe source → author spec.json (ajv-gated) → author data.js|view
    `deno run -A packages/gen/scaffold.mjs apps/<id>` (index.html + manifest + sw + icon.svg). Mode auto:
    `tool` if `view.js`, `stream` if `stream.js`, else `data`. Provide `brand.json` `{bg,fg}` + `brand.svg`
    (lucide **stroke** paths — the icon wraps them in `fill:none;stroke:fg`). After adding an app, rerun
-   `deno run -A deploy/manifest.mjs` → regenerates the launcher list `apps/home/apps.json`.
+   `deno run -A deploy/manifest.mjs` → regenerates the launcher list `apps/home/apps.json`, **and**
+   `deno run -A deploy/sw.mjs` → regenerates every app's service-worker precache manifest from the real
+   import graph. Scaffold only writes a `sw.js` *placeholder*: the shell an app must cache to open offline
+   isn't knowable until its imports exist. `deploy/sw.mjs --check` gates this in CI, and it is part of the
+   local gate set — run it whenever you change what an app imports or what index.html loads. Never
+   hand-edit `apps/<id>/sw.js`; the logic lives once in `packages/runtime/sw-core.js`
+   (see [research/offline-first-sw.md](research/offline-first-sw.md)).
 
 5. **Author `e2e.spec.mjs`** — `export default [{ name, run(h) }]`. Poll on a *real* content marker, not
    `.card` (the skeleton is also `.card`): `[data-fav]` for data feeds, or the tool's own marker

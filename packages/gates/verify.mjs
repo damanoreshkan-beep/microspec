@@ -105,10 +105,25 @@ try {
     if (!mf.name && !mf.short_name) return "manifest has no name/short_name";
     if (!["standalone", "fullscreen", "minimal-ui"].includes(mf.display)) return `manifest display="${mf.display}" is not installable`;
     if (!("serviceWorker" in navigator)) return "no serviceWorker support";
-    for (let i = 0; i < 20; i++) { if (await navigator.serviceWorker.getRegistration()) return null; await new Promise((r) => setTimeout(r, 300)); }
-    return "service worker never registered (Chrome offers no install)";
+    let reg = null;
+    for (let i = 0; i < 20 && !reg; i++) { reg = await navigator.serviceWorker.getRegistration(); if (!reg) await new Promise((r) => setTimeout(r, 300)); }
+    if (!reg) return "service worker never registered (Chrome offers no install)";
+    // Registering is not the same as WORKING. The farm shipped a registered worker that cached nothing
+    // reachable, so every app was "installable" and none of them opened offline. Wait for it to activate and
+    // for its precache to hold the document — the one thing that makes a cold offline launch possible.
+    for (let i = 0; i < 40; i++) {
+      if (reg.active) {
+        const mine = (await caches.keys()).find((n) => n.startsWith("ms-") && n !== "ms-cdn-v1");
+        if (mine) {
+          const c = await caches.open(mine);
+          if (await c.match("./") || await c.match("./index.html")) return null;
+        }
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    return "service worker activated but its precache holds no document — the app cannot open offline";
   });
-  pwa === null ? ok("PWA: манифест + service worker → встановлюється") : no("PWA: не встановлюється як застосунок", pwa);
+  pwa === null ? ok("PWA: манифест + service worker + офлайн-кеш → встановлюється") : no("PWA: не встановлюється як застосунок", pwa);
 
   if (wantShots) {
     const baseTheme = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");

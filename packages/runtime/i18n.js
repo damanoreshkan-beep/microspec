@@ -22,6 +22,8 @@ export const SYS = {
   cancel: { en: "Cancel", uk: "Скасувати" },
   share: { en: "Share app", uk: "Поділитися" },
   shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
+  updateReady: { en: "New version ready", uk: "Нова версія готова" },
+  restart: { en: "Restart", uk: "Перезапустити" },
 };
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 

@@ -49,6 +49,46 @@ export function importSpecs(src) {
   return [...out];
 }
 
+// The specifiers a file reaches STATICALLY (`from "x"`, side-effect `import "x"`) — i.e. what must exist for
+// the module to evaluate at all. Deliberately excludes dynamic `import("x")`: those are the farm's lazy,
+// guarded, fallback-having heavy deps (three), which the service worker precache must NOT pull in.
+export function staticSpecs(src) {
+  const out = new Set();
+  let m;
+  const from = /\bfrom\s*["']([^"']+)["']/g;
+  while ((m = from.exec(src))) out.add(m[1]);
+  const side = /(?:^|[;\n])\s*import\s+["']([^"']+)["']/g;
+  while ((m = side.exec(src))) out.add(m[1]);
+  return [...out];
+}
+
+// Every URL an index.html actually LOADS: <script src> and <link rel=stylesheet|preload|icon href>. Excludes
+// rel=preconnect/dns-prefetch, whose href is an origin hint rather than a fetch, and rel=manifest (which the
+// precache lists explicitly). Returns them verbatim (absolute CDN URLs and same-origin paths alike).
+export function htmlAssets(html) {
+  const out = new Set();
+  const tag = /<(script|link)\b([^>]*)>/gi;
+  let m;
+  while ((m = tag.exec(html))) {
+    const attrs = m[2];
+    if (m[1].toLowerCase() === "link") {
+      const rel = (/\brel\s*=\s*["']?([^"'\s>]+)/i.exec(attrs) || [])[1] || "";
+      if (!/^(stylesheet|preload|icon|apple-touch-icon)$/i.test(rel)) continue;
+    }
+    const url = (/\b(?:src|href)\s*=\s*["']([^"']+)["']/i.exec(attrs) || [])[1];
+    if (url) out.add(url);
+  }
+  return [...out];
+}
+
+// The page's import map, as { bareSpecifier: url }. Bare specifiers resolve through it, so this is how a
+// static `import "preact"` becomes a precacheable esm.sh URL.
+export function importMapOf(html) {
+  const m = /<script\b[^>]*type\s*=\s*["']importmap["'][^>]*>([\s\S]*?)<\/script>/i.exec(html);
+  if (!m) return {};
+  try { return JSON.parse(m[1]).imports || {}; } catch { return {}; }
+}
+
 // Transitive local closure of an entry file (includes the entry). `read(path) → string | null` (null when a
 // file is missing — a dangling import is simply a leaf). External specifiers are ignored.
 export function buildClosure(entry, read) {
@@ -87,6 +127,8 @@ export function isGlobal(f, coreSet) {
   ) return true;
   if (f === "deno.json" || f === "deno.jsonc" || f === "deno.lock") return true;
   if (f.startsWith(RT) && !f.endsWith(".js")) return true; // runtime CSS / config / asset → all apps
+  if (f === RT + "sw-core.js") return true; // the shared service worker: every app importScripts it, but no
+  // app's IMPORT graph reaches it (a worker isn't imported), so closure attribution would miss it entirely
   if (coreSet.has(f)) return true; // shared bootstrap module → all apps
   return false;
 }

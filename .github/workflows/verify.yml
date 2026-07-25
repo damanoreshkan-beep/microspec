@@ -52,6 +52,8 @@ jobs:
         run: deno run -A packages/gen/authorless.mjs recipes/books.json --check
       - name: App-count claims match the farm (a stale README is a claim nobody measured)
         run: deno run -A deploy/counts.mjs --check
+      - name: Service-worker precache manifests match the real import graph (offline is a gate, not a hope)
+        run: deno run -A deploy/sw.mjs --check
       - name: Build check (dist assembles)
         run: deno run -A deploy/build.mjs
       - name: Discover apps to verify (affected-only, from the REAL import graph — tools/affected.mjs)

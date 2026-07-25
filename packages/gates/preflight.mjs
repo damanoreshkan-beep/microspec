@@ -124,6 +124,15 @@ async function preflight(appdir) {
   // Pixels) instead. DaisyUI loading spinners are banned in app source.
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
+  // ONE bottom sheet for the whole farm. Eight apps had hand-rolled the same <dialog class="modal
+  // modal-bottom"> + grip + close, and they had already drifted: different max-widths, different title
+  // sizes, some with a close button and some only the drag. Nothing a gate could see — a copied component
+  // fails by divergence, silently, which is why this is a static ban rather than a review note. The kit's
+  // Sheet is the shell only; everything inside it is still the app's.
+  if (/modal-bottom/.test(src)) {
+    errs.push(`hand-rolled bottom sheet (\`modal-bottom\`) in ${srcFile} — import { Sheet } from "/_rt/ui.js" instead. The kit owns the shell (glass, drag-to-dismiss, title row, close, backdrop); pass open/onClose from your S.screen atom so Back still closes it.`);
+  }
+
   // No emoji anywhere in app source — they render as OS-specific colour clip-art (cheap, inconsistent, off-brand)
   // and can't be themed. Use a crafted vector instead: an iconify glyph (lucide:*, mdi:*), a runtime SVG
   // (e.g. /_rt/zodiac.js `Sign`), or — where the render context can't hold a component (a native <option>,

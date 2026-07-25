@@ -3103,3 +3103,72 @@ Deno.test("sw: a media Range request is passed straight through — cache.put re
   const req = swReq(url, { headers: new Headers({ range: "bytes=0-1" }) });
   assertEquals(await fire(req), null, "respondWith must not be called at all");
 });
+
+// ── the design system ───────────────────────────────────────────────────────────────────────────────────
+// The kit is CSS + JSX, so most of it is only measurable in a browser. What IS testable browser-free is the
+// part that decays silently: the token contract. Every shared component sizes itself off --ms-*, so a
+// deleted breakpoint or a renamed token doesn't throw anywhere — it just quietly un-compacts the whole farm
+// and nothing fails until someone opens an app in landscape. These tests are that alarm.
+
+Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit consumes", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
+  const declared = new Set([...css.matchAll(/(--(?:ms|app|dock|hdr)-[a-z-]+)\s*:/g)].map((m) => m[1]));
+  const used = new Set([...ui.matchAll(/var\((--[a-z-]+)\)/g)].map((m) => m[1]));
+  for (const v of used) assert(declared.has(v), `ui.js reads ${v} but theme.css never declares it`);
+  for (const v of ["--ms-gap", "--ms-pad", "--ms-r", "--ms-ctl", "--ms-icon", "--ms-title", "--ms-label", "--app-accent", "--app-tint"]) {
+    assert(declared.has(v), `theme.css lost the ${v} token — every component sizes off these`);
+  }
+});
+
+Deno.test("design tokens: density steps DOWN as the viewport gets shorter (landscape must compact)", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  // each `@media (max-height: N)` block, smallest N last — read --ms-gap out of every one
+  const steps = [...css.matchAll(/@media \(max-height:\s*(\d+)px\)\s*\{([\s\S]*?)\n\}/g)]
+    .map((m) => ({ h: Number(m[1]), gap: /--ms-gap:\s*([\d.]+)rem/.exec(m[2])?.[1] }))
+    .filter((s) => s.gap != null)
+    .sort((a, b) => b.h - a.h);
+  assert(steps.length >= 3, "the height scale needs at least three steps (tall phone → short phone → landscape)");
+  const base = Number(/:root\s*\{[^}]*--ms-gap:\s*([\d.]+)rem/.exec(css)[1]);
+  let prev = base;
+  for (const s of steps) {
+    assert(Number(s.gap) < prev, `@media (max-height:${s.h}px) must be TIGHTER than the step above it (${s.gap}rem vs ${prev}rem)`);
+    prev = Number(s.gap);
+  }
+  // the tap target never collapses below the WCAG 2.2 target-size floor, however short the screen
+  for (const m of css.matchAll(/--ms-ctl:\s*([\d.]+)rem/g)) assert(Number(m[1]) * 16 >= 36, `--ms-ctl: ${m[1]}rem is below the 36px tap floor`);
+});
+
+Deno.test("design system: the fit contract disables page scroll on BOTH html and body", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const rule = /html\.ms-fit,\s*html\.ms-fit body\s*\{([^}]*)\}/.exec(css);
+  assert(rule, "html.ms-fit + body rule is gone — a fit screen would scroll again");
+  assert(/overflow:\s*hidden/.test(rule[1]), "a fit page must not scroll");
+  // #view is sized off the two chrome constants, never a magic number
+  const view = /html\.ms-fit main#view\s*\{([^}]*)\}/.exec(css);
+  assert(view, "html.ms-fit main#view sizing rule is gone");
+  assert(view[1].includes("var(--hdr-h)") && view[1].includes("var(--dock-h)"), "fit height must derive from --hdr-h/--dock-h, not a hardcoded rem");
+});
+
+Deno.test("design system: the UI kit imports relatively and owns its own chrome strings", async () => {
+  const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
+  assert(!/from\s+["']\/_rt\//.test(ui), "runtime-internal imports must be relative (./gesture.js), never /_rt/");
+  assert(/sys\(\s*["']close["']/.test(ui), "the Sheet's close button must read a SYS string, not demand an i18n key from every app");
+  const i18n = await Deno.readTextFile(new URL("./i18n.js", import.meta.url));
+  const sys = /export const SYS = \{([\s\S]*?)\n\};/.exec(i18n)[1];
+  for (const k of ["close"]) {
+    const line = new RegExp(`\\b${k}:\\s*\\{[^}]*\\ben:[^}]*\\buk:`).test(sys);
+    assert(line, `SYS.${k} must carry BOTH locales — a systemic string with no uk ships English into a Ukrainian UI`);
+  }
+});
+
+Deno.test("responsive matrix: the gate sweeps both orientations and the small-phone floor", async () => {
+  const lib = await Deno.readTextFile(new URL("../gates/browser-lib.mjs", import.meta.url));
+  const block = /export const BREAKPOINTS = \[([\s\S]*?)\n\];/.exec(lib);
+  assert(block, "BREAKPOINTS is gone — verify would stop measuring anything but the reference device");
+  const bps = [...block[1].matchAll(/w:\s*(\d+),\s*h:\s*(\d+)/g)].map((m) => ({ w: +m[1], h: +m[2] }));
+  assert(bps.some((b) => b.w <= 320), "no small-phone width in the matrix (320px is still the market floor)");
+  assert(bps.some((b) => b.w > b.h), "no LANDSCAPE breakpoint — the short-viewport case is the one that breaks fit screens");
+  assert(bps.some((b) => b.h >= 900), "no tall breakpoint");
+  assert(bps.some((b) => b.w >= 1024), "no desktop/tablet-landscape breakpoint");
+});

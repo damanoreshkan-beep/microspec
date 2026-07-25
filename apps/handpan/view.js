@@ -15,7 +15,7 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { useSheetDrag } from "/_rt/gesture.js";
+import { Sheet } from "/_rt/ui.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { generateMelody } from "/_rt/melody.js";
 import { collection } from "/_rt/db.js";
@@ -325,9 +325,7 @@ export function handpanWeave({ S, toast, screen, openScreen, closeScreen }) {
 // voice ("add-on sound modes") and the scale — the whole sound-design surface, out of the way while you weave.
 function SettingsSheet({ open, onClose, t }) {
   const bpm = useStore($bpm), space = useStore($space), shimmer = useStore($shimmer), drone = useStore($drone), timbre = useStore($timbre), scaleId = useStore($scale);
-  const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
-  const { boxRef, grip } = useSheetDrag(onClose);
-  return html`<dialog id="setsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col gap-3 max-w-xl mx-auto">${grip}
+  return html`<${Sheet} id="setsheet" open=${open} onClose=${onClose} title=${T(t, "settings")} icon="lucide:sliders-horizontal">
     <div class="grid grid-cols-2 gap-x-4 gap-y-2">
       <div class="flex flex-col gap-0.5">
         <div class="flex items-center justify-between text-[0.6rem] uppercase tracking-wide text-base-content/70"><span>${T(t, "tempo")}</span><span class="font-semibold tabular-nums">${bpm}</span></div>
@@ -355,7 +353,7 @@ function SettingsSheet({ open, onClose, t }) {
       </div>
     </div>
     ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
-  </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
+  </${Sheet}>`;
 }
 
 // ================= Saved =================

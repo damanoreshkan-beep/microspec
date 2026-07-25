@@ -75,6 +75,40 @@ A `type:"tool"` tab renders the `view.js` export named by its `view` key. Props:
 screen, openScreen, closeScreen }`; read reactive state with `useStore(S.t | S.filters | S.locale)`.
 Compose the shared runtime components instead of writing geometry/astronomy from scratch:
 
+- **`/_rt/ui.js` — the UI kit. Use it; do not build a second one.** Five nodes, and each of them replaced a
+  pattern that eight apps had already copied and quietly diverged on:
+  - `<Sheet id open onClose title subtitle icon>…</Sheet>` — the ONE bottom sheet. Owns the glass shell,
+    drag-to-dismiss, the title row + close, the backdrop, and a `max-h-88dvh` inner scroll (the only
+    sanctioned nested scroll — it is what a fit screen overflows *into*). Preflight **fails** any app source
+    containing `modal-bottom`. Drive `open`/`onClose` from `S.screen` so Back still closes it.
+  - `<Segmented items value onChange variant="solid|outline" size scroll attr="data-x"/>` — the ONE
+    tab/option strip. `items: [{id,label,icon?,dot?}]`; every button gets `aria-pressed` and your `attr`,
+    so e2e hooks stay yours. `solid` = filled ink pill (primary mode), `outline` = hairline tint (over
+    content). `dot` is the only place colour enters.
+  - `<Island/>` floating glass over content · `<Panel title/>` solid surface in flow ·
+    `<Slider id label value onInput/>` labelled range.
+
+  Components size themselves from the **design tokens** in `theme.css` — `--ms-gap/-pad/-r/-ctl/-icon/`
+  `-title/-label`, which **step by viewport HEIGHT** (780/670/560px). Never hardcode a gap or a control
+  height in an app: one token step compacts the entire farm, including a phone in landscape.
+  Padding alone can't save a tall stack, so there is one layout primitive for that: **`.ms-cols`** turns a
+  stacked group into a row below 620px of height (`style="--ms-cols:3"`). Three stacked sliders are ~126px
+  at any density; three columns are ~42px. Reach for it instead of writing an app-local height media query.
+
+  Per-app colour is `spec.accent` (`#rrggbb`, mirroring `brand.json` `fg`) → the `--app-accent` token. It is
+  a **MARK** colour — dots, rings, fills, glow — **never text and never a background under text**. That is
+  what lets 56 apps share one component set and still each look like themselves. An app may re-point it at
+  runtime for a per-state hue (`drift` follows the active world: one `setProperty`, every shared component
+  on screen re-tints).
+
+- **Single-screen tabs — `"fit": true`.** An instrument is not a document. A `fit` tab gets `.ms-fit` on
+  `<html>`, `#view` is sized off `--hdr-h`/`--dock-h`, and the page **cannot scroll at any viewport height**.
+  The verify gate measures it across the whole breakpoint matrix (320×568 → 1280×900, landscape included)
+  and names the offending element. Content that doesn't fit compacts through the tokens or moves into a
+  `Sheet` — it does not become a scroll and it does not get clipped. Layout inside a fit view: `h-full
+  min-h-0 flex flex-col`, fixed pieces `shrink-0`, and one `flex-1 min-h-0` void that absorbs the height.
+  Reference consumer: **`drift`** (stage + transport island; packs + macros).
+
 - `/_rt/globe.js` — `<Globe onPick marker focus points spin/>`: canvas orthographic Earth, **no WebGL so
   it renders in the headless gate**. Location picker / country explorer.
 - `/_rt/astro.js` — `BODIES`, `Planet({body})` (shaded micro-sphere, ring/glow), `skyPositions()` (horizon

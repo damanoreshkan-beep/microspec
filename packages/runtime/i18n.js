@@ -20,6 +20,10 @@ export const SYS = {
   deleted: { en: "Deleted", uk: "Видалено" },
   undo: { en: "Undo", uk: "Скасувати" },
   cancel: { en: "Cancel", uk: "Скасувати" },
+  // The UI kit's own chrome (a Sheet's close button). Systemic strings live HERE, never in an app dict —
+  // a shared component that demands an i18n key from every app that mounts it is a component that ships
+  // the raw key the first time someone forgets (which is how "profTheme" reached a real screen).
+  close: { en: "Close", uk: "Закрити" },
   share: { en: "Share app", uk: "Поділитися" },
   shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
   updateReady: { en: "New version ready", uk: "Нова версія готова" },

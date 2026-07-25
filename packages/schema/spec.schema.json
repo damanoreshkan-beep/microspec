@@ -25,6 +25,11 @@
       "enum": ["feeds", "money", "science", "tools", "sound", "hackrf", "creative", "play", "wellness", "esoterica"],
       "description": "Store category — the launcher sections and filter-chips group apps by this."
     },
+    "accent": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "description": "The app's identity hue as #rrggbb — mirror of brand.json `fg`. The runtime publishes it as the --app-accent CSS token, which the shared UI kit (/_rt/ui.js) uses for MARKS ONLY: dots, rings, fills, glow. Never text and never a background behind text (an arbitrary hue fails contrast in one theme or the other). Omit and the farm's secondary is used."
+    },
     "version": {
       "type": "string",
       "minLength": 1,
@@ -492,6 +497,10 @@
               "type": "string"
             },
             "description": "tool only (OPTIONAL) — hardware capabilities the view uses (e.g. ['haptic','geo','camera']); documents intent / drives permission priming."
+          },
+          "fit": {
+            "type": "boolean",
+            "description": "Single-screen tab: the page must NEVER scroll while it is active, at any viewport height. The runtime puts .ms-fit on <html> (theme.css sizes #view off --hdr-h/--dock-h) and the verify gate asserts zero vertical overflow across the whole breakpoint matrix, including landscape. Use for instruments/tools whose controls belong on one screen; content that cannot fit compacts via the --ms-* density tokens or moves into a Sheet. Do NOT set it on a tab that renders a list."
           },
           "icon": {
             "type": "string",

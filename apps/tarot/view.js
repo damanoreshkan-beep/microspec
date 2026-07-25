@@ -22,6 +22,7 @@ import { DECK } from "./deck.js";
 import { gate } from "/_rt/gate.js";
 import { animate, stagger } from "motion";
 import { useSheetDrag, usePanX } from "/_rt/gesture.js";
+import { Sheet } from "/_rt/ui.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const QS = new URLSearchParams(location.search);
@@ -154,10 +155,8 @@ function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
 // gate a fixed reading renders so the shot + e2e are deterministic and offline. Fail-open.
 const GATE_SUMMARY = { uk: "Розклад радить довіритися внутрішньому чуттю: минуле поступово відпускає, теперішнє прояснюється, а майбутнє винагородить терпіння й чесність із собою. Дій виважено — рівновага вже поруч.", en: "The spread counsels trust in your own instinct: the past is loosening its grip, the present is clearing, and the future rewards patience and honesty with yourself. Move deliberately — the balance you seek is already near." };
 function SynthSheet({ open, onClose, sig, input, t, loc, spreadName }) {
-  const ref = useRef();
   useStore(aiTick);
   const [failed, setFailed] = useState(false);
-  useEffect(() => { const el = ref.current; if (!el) return; if (open) { if (!el.open) el.showModal?.(); } else el.close?.(); }, [open]);
   // Request the synthesis; fail-open — if it hasn't landed in ~12s (offline / the free tier rate-limited), stop
   // the skeleton and offer a retry rather than spinning forever (the RPM window clears within ~a minute).
   const run = () => { setFailed(false); warmSummary(sig, input, loc); return setTimeout(() => setFailed(!isSummarized(sig, loc)), 12000); };
@@ -166,26 +165,15 @@ function SynthSheet({ open, onClose, sig, input, t, loc, spreadName }) {
     const timer = run();
     return () => clearTimeout(timer);
   }, [open, sig, loc]);
-  const { boxRef, grip } = useSheetDrag(onClose);
   const done = gate || isSummarized(sig, loc);
   const text = gate ? (GATE_SUMMARY[loc] || GATE_SUMMARY.en) : summary(sig, loc);
-  return html`<dialog id="synthsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}>
-    <div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 max-w-xl mx-auto">${grip}
-      <div class="flex items-center gap-2 mb-3">
-        ${Icon("lucide:scroll-text", "text-secondary")}
-        <div class="min-w-0">
-          <div class="font-bold text-lg leading-tight truncate">${T(t, "synthTitle")}</div>
-          <div class="text-[0.68rem] font-mono uppercase tracking-wide text-base-content/50 truncate">${spreadName}</div>
-        </div>
-      </div>
+  return html`<${Sheet} id="synthsheet" open=${open} onClose=${onClose} locale=${loc} title=${T(t, "synthTitle")} subtitle=${spreadName} icon="lucide:scroll-text">
       ${done
         ? html`<p data-synth-text class="text-[0.97rem] leading-relaxed text-base-content/90">${text}</p>`
         : failed
           ? html`<button data-synth-retry class="btn btn-sm btn-ghost gap-2 border border-base-300 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "synthRetry")}</span></button>`
           : html`<div class="flex flex-col gap-2 text-base-content/55">${[30, 34, 28, 20].map((n, i) => html`<div class="text-[0.95rem]" key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>${T(t, "close")}</button></form>
-  </dialog>`;
+  </${Sheet}>`;
 }
 
 // The reading, fit to the viewport: rows share the height (flex-1) and each card scales to the smaller of
@@ -355,14 +343,10 @@ function Solo({ d, pos, t, loc, onOpen }) {
 
 // full-screen-ish detail sheet — big art + arcana/suit + orientation + full meaning. History-backed.
 function CardSheet({ open, onClose, d, pos, t, loc }) {
-  const ref = useRef();
   useStore(trTick);
-  useEffect(() => { const el = ref.current; if (!el) return; if (open) { if (!el.open) el.showModal?.(); } else el.close?.(); }, [open]);
-  const { boxRef, grip } = useSheetDrag(onClose);
   const c = d ? DECK[d.card] : null;
   const kind = c ? (c.arcana === "major" ? T(t, "arcanaMajor") : `${T(t, "arcanaMinor")} · ${T(t, SUIT_KEY[c.suit])}`) : "";
-  return html`<dialog id="cardsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}>
-    <div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 max-w-xl mx-auto">${grip}
+  return html`<${Sheet} id="cardsheet" open=${open} onClose=${onClose} locale=${loc}>
       ${c ? html`<div class="flex flex-col items-center gap-4">
         <div class="text-[0.6rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${T(t, pos)}</div>
         <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-40 aspect-[350/600] object-cover rounded-xl border border-base-300 shadow-lg ${d.reversed ? "rotate-180" : ""}`} />
@@ -373,7 +357,5 @@ function CardSheet({ open, onClose, d, pos, t, loc }) {
         </div>
         <p class="text-[0.95rem] leading-relaxed text-base-content/90">${tr(meaningOf(d), loc)}</p>
       </div>` : null}
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>${T(t, "close")}</button></form>
-  </dialog>`;
+  </${Sheet}>`;
 }

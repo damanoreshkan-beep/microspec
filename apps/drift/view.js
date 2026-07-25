@@ -23,6 +23,7 @@ import {
   STYLES, styleById, CHORDS, voiceLead, chordRoot, pickChord, sparkleNote,
   enoLoops, loopsForDensity, dwellSeconds, mulberry32, midiToFreq,
 } from "/_rt/ambient.js";
+import { Segmented, Island, Panel, Slider } from "/_rt/ui.js";
 import { PACKS, packById, padVoice, textureVoice, droneVoice, sparkle, makeIR } from "./synth.js";
 import { Field, bindAudio } from "./viz.js";
 
@@ -174,75 +175,82 @@ function repack() {
   voicePad(curVoicing, eng.ctx.currentTime);
 }
 
-const setStyle = (id) => { buzz(); const s = styleById(id); $style.set(id); $pack.set(""); $density.set(s.density); $tone.set(cutoffToMacro(s.cutoff)); $space.set(s.reverb); restyle(); };
+// The app's accent token follows the active world. --app-accent is a MARK colour (dots, rings, glow), so
+// re-pointing it at the current style's hue is safe in both themes — no text and no text-bearing surface
+// is ever painted with it. This is what the token layer buys: one property write re-tints every shared
+// component on screen, and not one of them knows drift exists.
+const applyAccent = (s) => { try { document.documentElement.style.setProperty("--app-accent", `hsl(${s.hue} 70% 58%)`); } catch { /* */ } };
+applyAccent(curStyle());   // the PERSISTED world owns the accent from the first paint, not from the first tap
+
+const setStyle = (id) => { buzz(); const s = styleById(id); $style.set(id); $pack.set(""); $density.set(s.density); $tone.set(cutoffToMacro(s.cutoff)); $space.set(s.reverb); applyAccent(s); restyle(); };
 const cycleStyle = (d) => { const i = STYLES.findIndex((s) => s.id === $style.get()); setStyle(STYLES[(i + d + STYLES.length) % STYLES.length].id); };
 const setPack = (id) => { buzz(); $pack.set(id); repack(); };
 const setDensity = (v) => { $density.set(v); };
 const setTone = (v) => { $tone.set(v); if (eng) try { toneFilter.frequency.setTargetAtTime(toneHz(v), eng.ctx.currentTime, 0.1); } catch { /* */ } };
 const setSpace = (v) => { $space.set(v); if (eng) try { revSend.gain.setTargetAtTime(v, eng.ctx.currentTime, 0.1); } catch { /* */ } };
 
-// the hue is carried on a small filled DOT / icon (colour = meaning), never on text — arbitrary-hue text
-// fails axe contrast in one theme or the other. Active state reads via a theme-safe bg tint + bold + full-
-// contrast base-content text, so it's both distinguishable and accessible in light and dark.
+// the hue is carried on a small filled DOT (colour = meaning), never on text — arbitrary-hue text fails
+// axe contrast in one theme or the other.
 const Dot = (hue, cls = "w-2 h-2") => html`<span class=${`${cls} rounded-full shrink-0`} style=${`background:hsl(${hue} 70% 58%)`}></span>`;
 
 // ================= Play: the full-bleed ambient stage + floating islands =================
+// A FIT screen (spec: tabs[].fit): the page owns exactly one viewport and can never scroll, so the stage
+// stays a stage instead of becoming the top of a document. The three parts are a rail, an elastic void,
+// and the transport — the void is what absorbs a 915px phone and a 390px landscape alike, and everything
+// else compacts through the --ms-* tokens without a single breakpoint written here.
 export function drift({ S }) {
   const t = useStore(S.t); curT = t;
   const playing = useStore($playing); useStore($tick);
   const style = curStyle(), pack = curPack();
+  const worlds = STYLES.map((s) => ({ id: s.id, label: T(t, s.key), dot: `hsl(${s.hue} 70% 58%)` }));
   return html`<${Fragment}>
     <${Field} hue=${style.hue} />
     <div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-[1] h-2/5 pointer-events-none bg-gradient-to-t from-black/55 via-black/15 to-transparent"></div>
 
-    <div class="relative z-10 min-h-[calc(100dvh-9rem)] flex flex-col gap-3">
-      <div class="rounded-full border border-base-content/10 bg-base-100/75 backdrop-blur-xl shadow-[0_6px_22px_-8px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.07)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div class="flex gap-1.5 w-max p-1.5">
-          ${STYLES.map((s) => { const on = s.id === style.id; return html`<button data-style=${s.id} aria-pressed=${on} onClick=${() => setStyle(s.id)} key=${s.id} class=${`shrink-0 rounded-full pl-2.5 pr-3.5 py-1.5 text-sm border flex items-center gap-1.5 transition ${on ? "bg-base-content/10 border-base-content/15 text-base-content font-semibold" : "border-transparent text-base-content/60 font-medium"}`}>${Dot(s.hue)}${T(t, s.key)}</button>`; })}
-        </div>
-      </div>
+    <div class="relative z-10 h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
+      <div class="shrink-0"><${Segmented} attr="data-style" scroll variant="outline" label=${T(t, "tabPlay")}
+        items=${worlds} value=${style.id} onChange=${setStyle} /></div>
 
-      <div class="flex-1"></div>
+      <div class="flex-1 min-h-0"></div>
 
-      <div class="rounded-3xl border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_10px_40px_-12px_rgba(0,0,0,.7),inset_0_1px_0_0_rgba(255,255,255,.08)] p-4 flex items-center gap-4">
-        <button id="play" data-playing=${playing} aria-label=${playing ? T(t, "aStop") : T(t, "aPlay")} onClick=${toggle} class="btn btn-circle btn-primary btn-lg shrink-0 shadow-lg">${Icon(playing ? "lucide:pause" : "lucide:play", "text-2xl")}</button>
+      <${Island} className="shrink-0 flex items-center gap-[var(--ms-gap)]">
+        <button id="play" data-playing=${playing} aria-label=${playing ? T(t, "aStop") : T(t, "aPlay")} onClick=${toggle}
+          class="btn btn-circle btn-primary shrink-0 shadow-lg h-[calc(var(--ms-ctl)*1.15)] w-[calc(var(--ms-ctl)*1.15)] min-h-0">${Icon(playing ? "lucide:pause" : "lucide:play", "text-2xl")}</button>
         <div class="flex-1 min-w-0">
-          <div class="font-semibold text-lg leading-tight truncate flex items-center gap-2 text-base-content">${Dot(style.hue, "w-2.5 h-2.5")}${T(t, style.key)}</div>
+          <div class="font-semibold text-[var(--ms-title)] leading-tight truncate flex items-center gap-2 text-base-content">${Dot(style.hue, "w-2.5 h-2.5")}${T(t, style.key)}</div>
           <div class="text-sm text-base-content/70 truncate flex items-center gap-1.5">${Icon(pack.icon, "text-base")}${T(t, pack.key)}${playing ? html`<span class="inline-block w-1.5 h-1.5 rounded-full bg-primary ml-1 animate-pulse"></span>` : null}</div>
         </div>
         <button id="vary" aria-label=${T(t, "aVary")} data-haptic="off" onClick=${vary} disabled=${!playing} class="btn btn-circle btn-ghost shrink-0 disabled:opacity-30">${Icon("lucide:shuffle", "text-xl")}</button>
-      </div>
-      ${!audioSupported ? html`<div class="text-xs text-center text-base-content/70">${T(t, "noAudio")}</div>` : null}
+      </${Island}>
+      ${!audioSupported ? html`<div class="shrink-0 text-xs text-center text-base-content/70">${T(t, "noAudio")}</div>` : null}
     </div>
   </${Fragment}>`;
 }
 
 // ================= Shape: sound-pack + the three macros =================
-const Slider = ({ id, label, value, on }) => html`<label data-macro=${id} class="flex flex-col gap-1.5">
-  <span class="text-[11px] font-semibold uppercase tracking-wide text-base-content/70">${label}</span>
-  <input type="range" min="0" max="1" step="0.02" value=${value} aria-label=${label} onInput=${(e) => on(Number(e.target.value))} class="range range-sm range-primary" />
-</label>`;
-
+// Also a FIT screen. The ten packs used to be a 2-column grid of 5 rows — 340px of tiles that pushed the
+// macros off a short screen and made the tab a scroller. As a rail they cost ONE row at every height, and
+// the choice reads better besides: a sound-pack is a timbre you flick through, not a menu you audit.
 export function driftShape({ S }) {
   const t = useStore(S.t);
-  const style = curStyle(), pack = curPack();
+  const pack = curPack();
   useStore($tick); useStore($density); useStore($tone); useStore($space);
-  return html`<div class="flex flex-col gap-6 pt-1">
-    <div class="flex flex-col gap-2.5">
-      <div class="text-[11px] font-semibold uppercase tracking-wide text-base-content/70 px-1">${T(t, "secSound")}</div>
-      <div class="grid grid-cols-2 gap-2.5">
-        ${PACKS.map((p) => { const on = p.id === pack.id; return html`<button data-pack=${p.id} aria-pressed=${on} onClick=${() => setPack(p.id)} key=${p.id} class=${`rounded-2xl border p-3 flex items-center gap-2.5 text-left transition ${on ? "bg-base-content/10 border-base-content/20 text-base-content font-semibold" : "border-base-300 bg-base-100 text-base-content/80"}`}>
-          <span class="flex items-center justify-center w-9 h-9 rounded-full shrink-0 bg-base-200/70" style=${on ? `color:hsl(${style.hue} 70% 58%)` : ""}>${Icon(p.icon, "text-xl")}</span>
-          <span class="font-semibold flex-1 min-w-0 truncate">${T(t, p.key)}</span>
-        </button>`; })}
-      </div>
+  const packs = PACKS.map((p) => ({ id: p.id, label: T(t, p.key), icon: p.icon }));
+  return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
+    <div class="shrink-0 flex flex-col gap-1.5">
+      <div class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70 px-1">${T(t, "secSound")}</div>
+      <${Segmented} attr="data-pack" scroll variant="outline" label=${T(t, "secSound")}
+        items=${packs} value=${pack.id} onChange=${setPack} />
     </div>
 
-    <div class="flex flex-col gap-4 rounded-2xl border border-base-300 bg-base-100 p-4">
-      <div class="text-[11px] font-semibold uppercase tracking-wide text-base-content/70">${T(t, "secShape")}</div>
-      <${Slider} id="density" label=${T(t, "mDensity")} value=${$density.get()} on=${setDensity} />
-      <${Slider} id="tone" label=${T(t, "mTone")} value=${$tone.get()} on=${setTone} />
-      <${Slider} id="space" label=${T(t, "mSpace")} value=${$space.get()} on=${setSpace} />
-    </div>
+    <${Panel} title=${T(t, "secShape")} className="shrink-0">
+      <div class="flex flex-col gap-[var(--ms-gap)] ms-cols" style="--ms-cols:3">
+        <${Slider} id="density" label=${T(t, "mDensity")} value=${$density.get()} onInput=${setDensity} />
+        <${Slider} id="tone" label=${T(t, "mTone")} value=${$tone.get()} onInput=${setTone} />
+        <${Slider} id="space" label=${T(t, "mSpace")} value=${$space.get()} onInput=${setSpace} />
+      </div>
+    </${Panel}>
+
+    <div class="flex-1 min-h-0"></div>
   </div>`;
 }

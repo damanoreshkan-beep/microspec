@@ -28,7 +28,7 @@ import { searchPlaces, placeLabel, formatCoords } from "/_rt/places.js";
 import { interpret, warmInterpret, isInterpreted, aiTick } from "/_rt/ai.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
-import { useSheetDrag } from "/_rt/gesture.js";
+import { Sheet } from "/_rt/ui.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const DAY = 86400000;
@@ -388,13 +388,11 @@ export function chart({ S, screen, openScreen, closeScreen }) {
 // one thing the user can actually verify is "does that UTC moment match my birth certificate?". The two
 // time-zone traps (an hour that ran twice, an hour that never ran) are shown rather than silently resolved.
 function BirthSheet({ open, onClose, t, locale }) {
-  const ref = useRef();
   const stored = useStore($birth);
   const [draft, setDraft] = useState(stored || EMPTY);
   const [q, setQ] = useState("");
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
-  useEffect(() => { const el = ref.current; if (!el) return; if (open) { if (!el.open) el.showModal?.(); } else el.close?.(); }, [open]);
   useEffect(() => { if (open) { setDraft(stored || EMPTY); setQ(""); setResults(null); } }, [open]);
 
   // debounced place search; an in-flight request is abandoned when the query moves on
@@ -412,7 +410,6 @@ function BirthSheet({ open, onClose, t, locale }) {
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
   const r = resolve(draft);
   const complete = isComplete(draft) && r.ok;
-  const { boxRef, grip } = useSheetDrag(onClose);
   const save = () => { if (complete) { $birth.set(draft); onClose(); } };
 
   const field = (label, node) => html`<label class="flex flex-col gap-1 min-w-0">
@@ -421,13 +418,7 @@ function BirthSheet({ open, onClose, t, locale }) {
   </label>`;
   const MODES = [["place", "zmPlace"], ["lmt", "zmLmt"], ["manual", "zmManual"]];
 
-  return html`<dialog id="birthsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}>
-    <div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 max-w-xl mx-auto">${grip}
-      <div class="flex items-center gap-2 mb-4">
-        ${Icon("lucide:calendar-clock", "text-primary")}
-        <div class="font-bold text-lg leading-tight">${T(t, "birthTitle")}</div>
-      </div>
-
+  return html`<${Sheet} id="birthsheet" open=${open} onClose=${onClose} title=${T(t, "birthTitle")} icon="lucide:calendar-clock">
       <div class="flex flex-col gap-3">
         <div class="grid grid-cols-2 gap-3">
           ${field(T(t, "birthDate"), html`<input data-birth-date type="date" value=${draft.date} min="1500-01-01" max="2100-12-31"
@@ -474,9 +465,7 @@ function BirthSheet({ open, onClose, t, locale }) {
 
         <button data-birth-save disabled=${!complete} class="btn btn-primary rounded-2xl h-12 mt-1" onClick=${save}>${T(t, "birthSave")}</button>
       </div>
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>${T(t, "close")}</button></form>
-  </dialog>`;
+  </${Sheet}>`;
 }
 
 // ── the AI reading of the transits against the chart ───────────────────────────────────────────────────
@@ -484,10 +473,8 @@ function BirthSheet({ open, onClose, t, locale }) {
 // The model interprets ONLY the structured facts below — natal placements, the angles, and the transit
 // contacts with their orbs — in canonical English, so the cache signature is locale-independent.
 function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
-  const ref = useRef();
   useStore(aiTick);
   const [failed, setFailed] = useState(false);
-  useEffect(() => { const el = ref.current; if (!el) return; if (open) { if (!el.open) el.showModal?.(); } else el.close?.(); }, [open]);
 
   const name = (k) => k === "asc" ? "the Ascendant" : k === "mc" ? "the Midheaven" : (BODIES[k]?.name || k);
   const natalLine = (p) => `${name(p.key)} in ${SIGN_EN[signOf(p.lon)]} ${Math.floor(degIn(p.lon))}° (house ${houseOf(p.lon, C.H.cusps)})`;
@@ -502,27 +489,16 @@ function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
     const timer = run();
     return () => clearTimeout(timer);
   }, [open, sig, loc]);
-  const { boxRef, grip } = useSheetDrag(onClose);
   const done = gate || isInterpreted(sig, loc);
   const text = gate ? (GATE_INTERP[loc] || GATE_INTERP.en) : interpret(sig, loc);
 
-  return html`<dialog id="interpsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}>
-    <div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 max-w-xl mx-auto">${grip}
-      <div class="flex items-center gap-2 mb-3">
-        ${Icon("lucide:sparkles", "text-primary")}
-        <div class="min-w-0">
-          <div class="font-bold text-lg leading-tight truncate">${T(t, "interpTitle")}</div>
-          <div class="text-[0.68rem] font-mono uppercase tracking-wide text-base-content/70 truncate">${dateLabel}</div>
-        </div>
-      </div>
+  return html`<${Sheet} id="interpsheet" open=${open} onClose=${onClose} title=${T(t, "interpTitle")} subtitle=${dateLabel} icon="lucide:sparkles">
       ${done
         ? html`<p data-interp-text class="text-[0.97rem] leading-relaxed text-base-content/90">${text}</p>`
         : failed
           ? html`<button data-interp-retry class="btn btn-sm btn-ghost gap-2 border border-base-300 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "interpRetry")}</span></button>`
           : html`<div class="flex flex-col gap-2 text-base-content/70">${[30, 34, 28, 20].map((n, i) => html`<div class="text-[0.95rem]" key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>${T(t, "close")}</button></form>
-  </dialog>`;
+  </${Sheet}>`;
 }
 
 // a uniform little planet dot (shaded + hairline) for the contact rows — the real spheres, size-scaled,

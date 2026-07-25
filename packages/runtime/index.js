@@ -65,6 +65,22 @@ export function start(spec, arg2) {
   applyTheme(S.theme.get());
   S.theme.listen(applyTheme);
 
+  // The app's own hue, published as ONE token the shared UI kit reads (--app-accent in theme.css). Each
+  // app in this farm has an identity colour, but it used to exist only in brand.json — a build input for
+  // the icon generator — so it reached the launcher tile and stopped there, and every screen inside every
+  // app was the same grey. Declaring it in the spec puts it in the runtime with no extra request and no
+  // per-app CSS. It is a MARK colour (dots, rings, fills, glow); the kit never puts text or text-bearing
+  // backgrounds on it, so an arbitrary brand hex can't break contrast in either theme.
+  if (spec.accent) document.documentElement.style.setProperty("--app-accent", spec.accent);
+
+  // <html lang> follows the UI locale. Every app's index.html ships lang="uk" hardcoded, so switching to
+  // English left the document still declaring Ukrainian — a screen reader then pronounces English text
+  // with Ukrainian phonemes, and it is the correct source of truth for anything that needs the locale
+  // without a prop (the UI kit's own chrome reads it).
+  const applyLang = (l) => { try { document.documentElement.lang = l; } catch { /* */ } };
+  applyLang(S.locale.get());
+  S.locale.listen(applyLang);
+
   // Touch feedback, for the whole farm, from one place. These are apps, not pages: a tap that answers
   // is most of what separates the two, and a runtime that leaves it to each view ships a dock that
   // buzzes next to buttons that don't. `pointerdown`, not click — the answer has to land under the

@@ -9,6 +9,7 @@
 import { html } from "htm/preact";
 import _SunCalc from "https://esm.sh/suncalc@1.9.0";
 import * as Astro from "https://esm.sh/astronomy-engine@2";
+import { houses as Houses, exactHits, SCAN_STEP, HIT_WINDOW } from "./natal.js";
 const SunCalc = _SunCalc.default || _SunCalc;
 
 // name (astronomy-engine body) · colour · size (≈ relative scale, compressed) · ring · glow
@@ -89,3 +90,44 @@ export const sunTimes = (lat, lng, date) => SunCalc.getTimes(date, lat, lng);
 // aspect math (the angular relationships between planets) lives in the pure ./aspects.js — no UI deps, so
 // it unit-tests without an import map. Re-exported here for convenience alongside the position helpers.
 export { ASPECTS, aspects } from "./aspects.js";
+
+// ── the natal chart ───────────────────────────────────────────────────────────────────────────────────
+// ./natal.js owns the trigonometry and stays dependency-free so it unit-tests offline. These wrappers are
+// the only place the ephemeris meets it: they supply the two numbers that define the frame at an instant.
+
+// The chart frame at an instant and place: { ramc, eps }.
+//   ramc — right ascension of the Midheaven = Greenwich APPARENT sidereal time × 15 + east longitude.
+//          SiderealTime() already carries nutation (verified: it differs from GMST by the equation of the
+//          equinoxes, RESEARCH.md §2), so this is the apparent frame tropical astrology wants.
+//   eps  — TRUE obliquity of date (mean + nutation in obliquity), matching the ECT frame eclipticPositions
+//          returns, so angles and planets live in one coordinate system.
+export function chartFrame(date, lng) {
+  const t = new Astro.AstroTime(date);
+  return { ramc: (((Astro.SiderealTime(t) * 15 + lng) % 360) + 360) % 360, eps: Astro.e_tilt(t).tobl };
+}
+
+// The full house layout for a birth moment + place. See natal.houses for the return shape; `system` falls
+// back to Porphyry above the polar circle and says so.
+export function natalHouses(date, lat, lng, system = "placidus") {
+  const { ramc, eps } = chartFrame(date, lng);
+  return { ...Houses(ramc, eps, lat, system), ramc, eps };
+}
+
+// A single body's ecliptic longitude as a function of epoch-ms — the ephemeris callback exactHits() needs.
+export const bodyLonAt = (key) => (ms) => {
+  const b = BODIES[key];
+  if (!b) return NaN;
+  return (Astro.Ecliptic(Astro.GeoVector(b.name, new Astro.AstroTime(new Date(ms)), true)).elon + 360) % 360;
+};
+
+// When a transiting body perfects an aspect to a fixed natal longitude. Searches a window scaled to the
+// body's speed (HIT_WINDOW) around `aroundMs`, because a fixed window either misses a slow planet's hit
+// entirely or drowns the Moon's in a month of them. Returns epoch-ms instants — a list, not a value, since
+// a retrograde body crosses the same aspect up to three times.
+export function hitTimes(key, natalLon, angle, aroundMs, opts = {}) {
+  const w = HIT_WINDOW[key] || 400 * 864e5;
+  return exactHits(bodyLonAt(key), natalLon, angle, aroundMs - w, aroundMs + w,
+    { step: SCAN_STEP[key] || 864e5, ...opts });
+}
+
+export * from "./natal.js";

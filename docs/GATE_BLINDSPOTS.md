@@ -111,7 +111,26 @@ so anything reaching above cap height was clipped and **Й lost its breve**. No 
 Any language with diacritics above the caps (Й, Ї, Ё, Ā, Ő) was affected.
 **Closed:** `leading-[1.4]`.
 
-### 10. OPEN — some things no gate can reach
+### 10. OPEN — preflight mounts only the FIRST tab
+`preflight.mjs` calls `start(composed, {views})` and reads the rendered HTML, which renders whichever tab is
+first. A **second or third tool tab is never mounted**, so the whole reason preflight exists — a view that
+throws on an undefined variable, a missing i18n key, an unclosed tag — is invisible for every tab but one.
+**9 of 57 apps** have more than one tool tab (`transit`, `rave`, `reel`, `handpan`, `fmradio`, `sigil`,
+`drift`, `v2m`, `nova`), so this is a sixth of the farm authoring against no local floor; the defect only
+surfaces in Chromium e2e, a ~1 min round trip away, and only if a test happens to visit that tab.
+
+Workaround used while authoring `transit`'s three tool tabs — rotate each tab to the front and re-run:
+
+```sh
+# for each tool tab id: put it first in spec.json, preflight, restore
+deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/<id>
+```
+
+The fix is to loop `S.tab.set(...)` over every `type:"tool"` tab inside preflight and assert each render,
+rather than trusting the default. Not done here because it is a shared-harness change (whole-farm verify)
+and would land in the middle of a feature push — but it is cheap and it closes a real hole.
+
+### 11. OPEN — some things no gate can reach
 - **Real upstreams.** `btcflow`'s e2e runs against a *synthetic* stream because a raw WebSocket from a CI IP
   is nondeterministic. A green `verify (btcflow)` says nothing about whether the real feed works.
 - **Device capabilities.** AR was removed partly for this: headless Chromium has no XR device, so WebXR

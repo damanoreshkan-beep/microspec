@@ -79,15 +79,25 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
     : (on ? "bg-primary border-primary text-primary-content font-semibold" : "border-transparent text-base-content/70 font-medium");
   const btns = items.map((it) => {
     const on = it.id === value;
+    // `busy` is a real state of this node, not an app's decoration: rave's sound-packs fetch samples on
+    // pick, and the option has to say so between the tap and the sound. `title` carries a one-word gloss
+    // some option sets need (handpan's scales name a mood). Both live here so the next app that needs
+    // them finds them instead of forking the component — which is how the farm got eight sheets.
     const props = { [attr]: it.id };
+    if (it.busy) props["aria-busy"] = "true";
+    if (it.title) props.title = it.title;
     // NB: no `shrink-0` in the base class. A fitted (non-scroll) strip divides the row between its options,
     // and a button that cannot shrink turns a long label into horizontal overflow — the exact failure the
     // dock hit. The scrolling rail re-adds it below, where not shrinking is the whole point.
     return html`<button ...${props} key=${it.id} type="button" aria-pressed=${on} onClick=${() => onChange(it.id)}
-      class=${`rounded-full border flex items-center justify-center gap-1.5 transition-colors ${pad} ${txt} ${skin(on)}`}>
-      ${it.dot ? html`<span class="w-2 h-2 rounded-full shrink-0" style=${`background:${it.dot === true ? "var(--app-accent)" : it.dot}`}></span>` : null}
-      ${it.icon ? Icon(it.icon, "text-[var(--ms-icon)] shrink-0") : null}
+      class=${`rounded-full border flex items-center justify-center gap-1.5 transition-colors ${pad} ${txt} ${skin(on)} ${it.busy ? "animate-pulse" : ""}`}>
+      ${/* One rule, not two props: an option's colour paints its MARK, whichever mark it has. With an icon
+            it tints the glyph (a user's list colour, a station's band); without one it becomes a disc. Colour
+            never reaches the label either way, which is what keeps an arbitrary hue safe in both themes. */
+        it.dot && !it.icon ? html`<span class="w-2 h-2 rounded-full shrink-0" style=${`background:${it.dot === true ? "var(--app-accent)" : it.dot}`}></span>` : null}
+      ${it.icon ? Icon(it.icon, "text-[var(--ms-icon)] shrink-0", it.dot ? `color:${it.dot === true ? "var(--app-accent)" : it.dot}` : "") : null}
       ${it.label ? html`<span class="truncate">${it.label}</span>` : null}
+      ${it.meta != null && it.meta !== "" ? html`<span class="font-mono tabular-nums text-[0.85em] opacity-70 shrink-0">${it.meta}</span>` : null}
     </button>`;
   });
   const rail = html`<div class=${`flex gap-1 p-1 ${scroll ? "w-max [&>button]:shrink-0" : "w-full [&>button]:flex-1 [&>button]:min-w-0"}`} role="group" aria-label=${label || null}>${btns}</div>`;

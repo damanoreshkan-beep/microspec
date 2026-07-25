@@ -22,7 +22,7 @@ import { DECK } from "./deck.js";
 import { gate } from "/_rt/gate.js";
 import { animate, stagger } from "motion";
 import { useSheetDrag, usePanX } from "/_rt/gesture.js";
-import { Sheet } from "/_rt/ui.js";
+import { Sheet, Segmented } from "/_rt/ui.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const QS = new URLSearchParams(location.search);
@@ -124,13 +124,10 @@ function defaultRows(n) {
 function Picker({ t, spreadId, onPick }) {
   const wrapRef = useRef();
   useEffect(() => { wrapRef.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView?.({ inline: "center", block: "nearest", behavior: "smooth" }); }, [spreadId]);
-  return html`<div ref=${wrapRef} class="shrink-0 -mx-4 px-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-    <div class="flex gap-2 w-max pb-0.5">
-      ${SPREADS.map((s) => html`<button data-spread=${s.id} aria-pressed=${spreadId === s.id} class=${`shrink-0 flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition active:scale-95 ${spreadId === s.id ? "border-secondary bg-secondary/15 text-secondary" : "border-base-300 bg-base-100 text-base-content/75"}`} onClick=${() => onPick(s.id)} key=${s.id}>
-        <span class="text-xs font-medium whitespace-nowrap">${T(t, SPREAD_KEY[s.id])}</span>
-        <span class="text-[0.6rem] font-mono tabular-nums opacity-70">${s.pos.length}</span>
-      </button>`)}
-    </div>
+  return html`<div ref=${wrapRef} class="shrink-0">
+    <${Segmented} attr="data-spread" scroll variant="outline" size="sm" label=${T(t, "pickSpread")}
+      items=${SPREADS.map((s) => ({ id: s.id, label: T(t, SPREAD_KEY[s.id]), meta: s.pos.length }))}
+      value=${spreadId} onChange=${onPick} />
   </div>`;
 }
 

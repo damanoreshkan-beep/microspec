@@ -101,7 +101,7 @@ routes on error — that turns the whole thing into a one-header downgrade for t
   MitM appearing *later* cannot swap it for that session. Note it is a **delay, not a defence**: browsers
   re-fetch the SW script bypassing HTTP cache at least every 24 h, so a persistent MitM eventually wins.
 - **CSP + SRI** on the esm.sh / Tailwind CDN tags — closes a *third-party* compromise, not the CA MitM.
-- **HSTS + preload** on `jobs-map.mooo.com` — closes downgrade/stripping.
+- **HSTS + preload** on the proxy domain — closes downgrade/stripping.
 - **DoH + ECH** in the browser — hides SNI/DNS from the passive observer. Neither is under our control from a
   web page; ECH also needs the CDN/host to publish an HTTPS RR.
 

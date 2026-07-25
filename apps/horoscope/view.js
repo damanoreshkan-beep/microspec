@@ -8,6 +8,7 @@ import { T } from "/_rt/i18n.js";
 import { Sign } from "/_rt/zodiac.js";
 import { sunSign } from "/_rt/horoscope.js";
 import { useLocalized } from "/_rt/localize.js";
+import { VPS_PROXY } from "/_rt/feed.js";
 import { Scramble, Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 
@@ -15,7 +16,7 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 const QS = new URLSearchParams(location.search);
 const SIGN_OVERRIDE = QS.get("sign"); 
 
-const API = "https://jobs-map.mooo.com/feed/horoscope";
+const API = `${VPS_PROXY}/horoscope`;
 const DAY_IDS = ["yesterday", "today", "tomorrow"], DAY_KEYS = ["dYesterday", "dToday", "dTomorrow"];
 
 const RATINGS = [["love", "sex", "#FB7185"], ["work", "hustle", "#60A5FA"], ["vibe", "vibe", "#A78BFA"], ["success", "success", "#34D399"]];

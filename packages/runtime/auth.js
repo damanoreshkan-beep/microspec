@@ -18,6 +18,8 @@ import { gate } from "./gate.js";
 
 const GH = `${VPS_PROXY}/gh`;
 const SID_KEY = "ms:gh:sid";
+const USER_KEY = "ms:gh:user";   // last-known profile, so a restart shows signed-in instantly and a transient
+                                 // me() hiccup never flashes (or sticks at) logged-out.
 const PWA_ORIGIN = typeof location !== "undefined" ? location.origin : "";
 const EDGE_ORIGIN = (() => { try { return new URL(VPS_PROXY).origin; } catch { return ""; } })();
 
@@ -40,6 +42,10 @@ export const isLoggedIn = () => !!session.get();
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* quota / private mode */ } };
 const lsDel = (k) => { try { localStorage.removeItem(k); } catch { /* private mode */ } };
+const lsGetJSON = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } };
+const lsSetJSON = (k, o) => { try { localStorage.setItem(k, JSON.stringify(o)); } catch { /* quota / private mode */ } };
+// Forget the session everywhere (both keys), used only on an explicit logout or a DEFINITIVE 401.
+const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); };
 
 // Trim a raw GitHub /user payload to what the UI shows — never hold more than needed.
 const trimUser = (u) => (u && u.login ? {
@@ -47,7 +53,9 @@ const trimUser = (u) => (u && u.login ? {
 } : null);
 
 // One authenticated wire call to the edge, sealed-tunnelled. `path` is the /feed/gh/<path> leaf. Always POSTs
-// JSON (the sealed tunnel only envelopes JSON POSTs). Throws on a non-ok / network failure — callers fail open.
+// JSON (the sealed tunnel only envelopes JSON POSTs). Throws an Error carrying `.status` — the HTTP status on a
+// non-ok response, or 0 on a network/timeout failure — so callers can tell a DEFINITIVE 401 (log out) apart
+// from a TRANSIENT hiccup (keep the session). Only 401 means "this session is dead".
 async function edge(path, body, timeout = 12000) {
   const ctrl = new AbortController();
   const to = setTimeout(() => ctrl.abort(), timeout);
@@ -56,25 +64,36 @@ async function edge(path, body, timeout = 12000) {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify(body), signal: ctrl.signal,
     });
-    if (!r.ok) throw new Error(`gh/${path} ${r.status}`);
+    if (!r.ok) { const e = new Error(`gh/${path} ${r.status}`); e.status = r.status; throw e; }
     return await r.json();
+  } catch (e) {
+    if (e && typeof e.status === "number") throw e;
+    const err = new Error(`gh/${path} network`); err.status = 0; throw err;   // network / timeout / abort → transient
   } finally { clearTimeout(to); }
 }
 
-// restore() — rehydrate the session on app boot. Gate → mock. Else: if a sid is stored, ask the edge who it
-// belongs to; a dead/expired sid is cleared silently (signed-out is a valid, usable state).
+// restore() — rehydrate the session on app boot. Gate → mock. Else: if a sid is stored, show the cached profile
+// IMMEDIATELY (optimistic — a restart never flashes logged-out), then revalidate in the background. The session
+// is dropped ONLY on a DEFINITIVE 401 (the edge says the sid/token is dead). Every transient failure — network
+// down, timeout, edge 5xx, GitHub rate-limited — KEEPS the session: this was the bug that logged users out on a
+// restart when me() so much as hiccuped.
 export async function restore() {
   if (gate) { session.set(MOCK_SESSION); return MOCK_SESSION; }
   const sid = lsGet(SID_KEY);
   if (!sid) { session.set(null); return null; }
+  const cached = lsGetJSON(USER_KEY);
+  if (cached) session.set({ sid, user: cached });         // optimistic: stay signed-in across the revalidation
   try {
     const j = await edge("me", { sid });
     const user = trimUser(j && j.user);
-    if (!user) throw new Error("no user");
-    const s = { sid, user };
-    session.set(s);
-    return s;
-  } catch { lsDel(SID_KEY); session.set(null); return null; }
+    if (user) { lsSetJSON(USER_KEY, user); const s = { sid, user }; session.set(s); return s; }
+    // 200 without a user shouldn't happen (the edge now answers 401 for a dead token, 5xx for a transient one)
+    // — treat it as transient and KEEP the session rather than risk a false logout.
+    return session.get();
+  } catch (e) {
+    if (e && e.status === 401) { dropStored(); session.set(null); return null; }   // definitively invalid → sign out
+    return session.get();                                                          // transient → keep the session
+  }
 }
 
 // login() — open the GitHub consent popup and resolve when the edge posts back an opaque sid. Gate → mock,
@@ -96,10 +115,12 @@ export function login() {
       if (e.origin !== EDGE_ORIGIN) return;
       const d = e.data;
       if (!d || d.source !== "microspec-gh" || typeof d.sid !== "string") return;
-      lsSet(SID_KEY, d.sid);
+      lsSet(SID_KEY, d.sid);                              // store the sid first — a later restore() can recover it
       try {
         const j = await edge("me", { sid: d.sid });
-        const user = trimUser(j && j.user) || MOCK_USER;
+        const user = trimUser(j && j.user);
+        if (!user) throw new Error("no-profile");
+        lsSetJSON(USER_KEY, user);
         const s = { sid: d.sid, user };
         session.set(s);
         finish(resolve, s);
@@ -126,7 +147,7 @@ export async function star(owner, repo, on = true) {
 // logout() — drop the local sid + session and best-effort tell the edge to forget the server-side token.
 export async function logout() {
   const s = session.get();
-  lsDel(SID_KEY);
+  dropStored();
   session.set(null);
   if (!gate && s) { try { await edge("logout", { sid: s.sid }); } catch { /* best effort */ } }
 }

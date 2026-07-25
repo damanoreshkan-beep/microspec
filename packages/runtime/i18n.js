@@ -12,6 +12,7 @@ export const SYS = {
   deleted: { en: "Deleted", uk: "Видалено" },
   undo: { en: "Undo", uk: "Скасувати" },
   cancel: { en: "Cancel", uk: "Скасувати" },
+  close: { en: "Close", uk: "Закрити" },
   share: { en: "Share app", uk: "Поділитися" },
   shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
   updateReady: { en: "New version ready", uk: "Нова версія готова" },

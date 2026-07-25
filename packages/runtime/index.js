@@ -49,6 +49,12 @@ export function start(spec, arg2) {
   applyTheme(S.theme.get());
   S.theme.listen(applyTheme);
 
+  if (spec.accent) document.documentElement.style.setProperty("--app-accent", spec.accent);
+
+  const applyLang = (l) => { try { document.documentElement.lang = l; } catch {  } };
+  applyLang(S.locale.get());
+  S.locale.listen(applyLang);
+
   addEventListener("pointerdown", (e) => {
     const pattern = hapticFor(e.target);
     if (pattern) haptic[pattern]?.();

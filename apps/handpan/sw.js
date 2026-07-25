@@ -1,6 +1,6 @@
 self.MS = {
   app: "handpan",
-  version: "29caf9177f",
+  version: "a2f158342e",
   precache: [
     "./",
     "./i18n/en.json",
@@ -40,6 +40,7 @@ self.MS = {
     "/_rt/store.js",
     "/_rt/theme.css",
     "/_rt/translate.js",
+    "/_rt/ui.js",
     "/_rt/validate.js",
     "/_rt/version.js",
     "/_rt/video.js",

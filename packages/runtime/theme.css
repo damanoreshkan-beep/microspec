@@ -1,4 +1,41 @@
-:root { --dock-h: 4.25rem; }
+:root { --dock-h: 4.25rem; --hdr-h: 3.5rem; }
+:root {
+  --app-accent: var(--color-secondary);
+  --app-tint: color-mix(in oklch, var(--app-accent) 16%, transparent);
+
+  --ms-gap: 0.75rem;     
+  --ms-pad: 1rem;        
+  --ms-r: 1.25rem;       
+  --ms-ctl: 2.75rem;     
+  --ms-icon: 1.25rem;    
+  --ms-title: 1.0625rem; 
+  --ms-label: 0.68rem;   
+}
+@media (max-height: 780px) {
+  :root { --ms-gap: 0.625rem; --ms-pad: 0.875rem; --ms-r: 1.125rem; --ms-title: 1rem; }
+}
+@media (max-height: 670px) {
+  :root { --ms-gap: 0.5rem; --ms-pad: 0.75rem; --ms-r: 1rem; --ms-ctl: 2.5rem; --ms-icon: 1.125rem; --ms-title: 0.95rem; }
+}
+@media (max-height: 560px) {
+  :root { --ms-gap: 0.375rem; --ms-pad: 0.625rem; --ms-ctl: 2.25rem; --ms-icon: 1rem; --ms-title: 0.9rem; --ms-label: 0.62rem; --dock-h: 3.6rem; }
+  nav[data-dock] button { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+  nav[data-dock] button > span { font-size: 0.54rem; }
+}
+
+
+@media (max-height: 620px) {
+  .ms-cols { display: grid; grid-template-columns: repeat(var(--ms-cols, 3), minmax(0, 1fr)); gap: var(--ms-gap); align-items: start; }
+}
+html.ms-fit, html.ms-fit body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+html.ms-fit main#view {
+  height: calc(100dvh - var(--hdr-h) - env(safe-area-inset-top));
+  padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom));
+  padding-top: var(--ms-gap);
+  gap: var(--ms-gap);
+  overflow: hidden;
+}
+
 [data-theme="signal"] {
   color-scheme: dark;
   --color-base-100: #0A0A0B; --color-base-200: #141416; --color-base-300: #222225;
@@ -44,6 +81,7 @@ body { letter-spacing: -0.006em; }
   font-size: 1.02rem;
 }
 
+
 .badge {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -75,6 +113,7 @@ nav[data-dock] button > span {
   font-size: .58rem;
 }
 
+
 .modal-box {
   background: color-mix(in oklch, var(--color-base-100) 82%, transparent);
   backdrop-filter: blur(22px) saturate(150%);
@@ -88,6 +127,8 @@ nav[data-dock] button > span {
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
+
+
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
 .overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }

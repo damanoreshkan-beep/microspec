@@ -5,7 +5,8 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { useSheetDrag, usePanX } from "/_rt/gesture.js";
+import { usePanX } from "/_rt/gesture.js";
+import { Sheet } from "/_rt/ui.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { generateGroove, mulberry32 } from "/_rt/groove.js";
 import { collection } from "/_rt/db.js";
@@ -316,10 +317,8 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
 
 function FxSheet({ open, onClose, t, sweep }) {
   const fx = useStore($fx), bpm = useStore($bpm), tracks = useStore($tracks), pack = useStore($pack), loading = useStore($loading);
-  const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
-  const { boxRef, grip } = useSheetDrag(onClose);
   const activePreset = PRESETS.find((p) => JSON.stringify(parse(p)) === JSON.stringify(tracks))?.id;
-  return html`<dialog id="fxsheet" ref=${ref} class="modal modal-bottom" onClose=${onClose}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col gap-3 max-w-xl mx-auto">${grip}
+  return html`<${Sheet} id="fxsheet" open=${open} onClose=${onClose} title=${T(t, "settings")} icon="lucide:sliders-horizontal">
     <div class="flex flex-col gap-0.5">
       <div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${T(t, "tempo")}</span><span class="font-semibold tabular-nums">${bpm} BPM</span></div>
       <input type="range" min="90" max="150" value=${bpm} class="range range-xs range-primary w-full" aria-label=${T(t, "tempo")} onInput=${(e) => { $bpm.set(Number(e.target.value)); applyFx(); }} />
@@ -339,7 +338,7 @@ function FxSheet({ open, onClose, t, sweep }) {
       </div>
     </div>
     ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}
-  </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
+  </${Sheet}>`;
 }
 
 const Spectrum = ({ tracks, live, cur }) => { const bars = beatBars(tracks), mx = Math.max(1, ...bars); return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-secondary" : v ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}</span>`; };

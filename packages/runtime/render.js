@@ -611,13 +611,19 @@ function TabView({ tab }) {
 export function App() {
   const cur = useStore(A.S.tab), screen = useStore(A.S.screen);
   const tab = A.spec.tabs.find((x) => x.id === cur) || A.spec.tabs[0];
+  const fit = !!tab.fit;
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.toggle("ms-fit", fit);
+    return () => el.classList.remove("ms-fit");
+  }, [fit]);
   return html`<${Fragment}>
     <${AppBar} />
     ${tab.type === "list" && tab.search ? html`<${SearchBar} tab=${tab} />` : null}
     ${A.spec.filters ? html`<${FilterChips} />` : null}
     ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
     ${tab.type === "list" && tab.sort ? html`<${SortBar} tab=${tab} />` : null}
-    <main id="view" class="px-4 pt-4 max-w-xl mx-auto flex flex-col gap-3" style="padding-bottom:calc(var(--dock-h) + 1.5rem)">
+    <main id="view" class="px-4 pt-4 max-w-xl mx-auto flex flex-col gap-3" style=${fit ? null : "padding-bottom:calc(var(--dock-h) + 1.5rem)"}>
       <${TabView} tab=${tab} />
     </main>
     ${A.spec.detail ? html`<${DetailView} />` : null}

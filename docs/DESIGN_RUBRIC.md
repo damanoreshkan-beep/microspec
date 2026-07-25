@@ -16,8 +16,15 @@ criteria below and emit the verdict.
 - **No rim-hugging / clipping** — nothing touches or is cut off by the screen edge; consistent gutters.
 - **Readable** — no low-contrast or cramped text. (axe catches most; the eye catches the rest.)
 - **No overlap / collision** — elements don't visually stack or crowd into each other.
+- **A one-screen app does not scroll** — an instrument whose controls run off the bottom is broken, not
+  "scrollable". Check the compact states, not just the tall one: `shoot.mjs <app> --bp phone-land`.
 
 **Coherence (orange — fix before shipping):**
+- **Composed, not squashed** — at a short height the layout should read as a *denser version of itself*
+  (tighter rhythm, smaller glyphs), never as the same layout crushed: no collapsed labels, no controls
+  pushed under the dock, no element that only fits because it clipped.
+- **Kit, not clones** — sheets/strips/panels look identical across apps because they ARE the same
+  component. A screen whose sheet or tab strip is subtly its own is a divergence, not a personality.
 - **One geometry per concept** — don't mix shapes for the same idea (e.g. a circle toggle beside square
   day-cells for the same "done" state).
 - **One representation per state** — never draw the same state twice (e.g. "today" as both a toggle and a
@@ -45,7 +52,12 @@ a standing assumption, not a per-task ask.)
 - **Floating glass islands:** dock + header are `bg-base-100/80 backdrop-blur-xl` + hairline + rim; a tool
   app's persistent controls become islands like them.
 - **One page scroll:** content flows in `<main>`; no `position:fixed` panel with a nested `overflow-y-auto`.
-  Overflow → a history-backed sheet (`S.screen`).
+  Overflow → a history-backed sheet (`S.screen`). A **single-screen** tab declares `"fit": true` and then
+  must not scroll *at all*, at any viewport height — the verify gate enforces it across the matrix.
+- **One kit, not fifty:** `/_rt/ui.js` — Sheet · Segmented · Island · Panel · Slider. A bespoke copy of any
+  of them is a defect (preflight bans a hand-rolled `modal-bottom`). Components size off the `--ms-*`
+  density tokens, which step by viewport HEIGHT, and carry the app's own hue via `--app-accent`
+  (`spec.accent`) — a MARK colour for dots/rings/fills, never text.
 - **Instant app-shell** (`#boot`), **liquid-glass sheets** (`.modal-box`), rounder radii, **haptics** on tap.
 - **Delete safety:** reversible → `store.undo` (undo-toast); severe → `store.confirm` (danger sheet).
 - **Floors that are also gates:** no spinners (skeletons), installable (build + verify PWA gates),

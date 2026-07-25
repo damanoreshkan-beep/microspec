@@ -90,6 +90,50 @@ export async function gotoAndSettle(page, url, settle = 3500) {
   await sleep(settle);
 }
 
+export const BREAKPOINTS = [
+  { id: "phone-sm",    w: 320,  h: 568,  note: "9:16 · small-phone floor" },
+  { id: "phone",       w: 384,  h: 832,  note: "20:9 · reference device" },
+  { id: "phone-tall",  w: 412,  h: 915,  note: "9:19.5 · tall phone" },
+  { id: "phone-land",  w: 844,  h: 390,  note: "19.5:9 · rotated — the height test" },
+  { id: "tablet",      w: 768,  h: 1024, note: "3:4 · tablet portrait" },
+  { id: "tablet-land", w: 1024, h: 768,  note: "4:3 · tablet landscape" },
+  { id: "desktop",     w: 1280, h: 900,  note: "16:10 · desktop" },
+];
+
+export async function runResponsiveMatrix(page, ev, dev) {
+  const out = [];
+  for (const bp of BREAKPOINTS) {
+    await page.setViewportSize({ width: bp.w, height: bp.h });
+    await sleep(260);                                   
+    const m = await ev(() => {
+      const de = document.documentElement;
+      const ox = de.scrollWidth - window.innerWidth;
+      let sel = "?";
+      if (ox > 1) { let far = window.innerWidth; for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; sel = el.tagName.toLowerCase() + (c ? "." + c : ""); } } }
+      const fit = de.classList.contains("ms-fit");
+      let oy = 0, vsel = "?";
+      if (fit) {
+        const v = document.getElementById("view");
+        oy = v ? Math.max(v.scrollHeight - v.clientHeight, de.scrollHeight - window.innerHeight) : 0;
+        if (oy > 1 && v) { const lim = v.getBoundingClientRect().bottom; let low = lim; for (const el of v.querySelectorAll("*")) { const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom > low + 0.5) { low = r.bottom; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; vsel = el.tagName.toLowerCase() + (c ? "." + c : ""); } } }
+      }
+      return { ox, sel, fit, oy, vsel };
+    });
+    const label = `${bp.id} ${bp.w}×${bp.h}`;
+    out.push(m.ox <= 1
+      ? { name: `${label}: без горизонтального overflow`, ok: true, msg: bp.note }
+      : { name: `${label}: горизонтальний overflow`, ok: false, msg: `+${m.ox}px — винуватець: ${m.sel}` });
+    if (m.fit) {
+      out.push(m.oy <= 1
+        ? { name: `${label}: один екран без скролу (fit)`, ok: true }
+        : { name: `${label}: fit-екран не вміщується`, ok: false, msg: `+${m.oy}px по висоті — винуватець: ${m.vsel}. Ущільніть через --ms-* або перенесіть у Sheet` });
+    }
+  }
+  await page.setViewportSize({ width: dev.width, height: dev.height });
+  await sleep(260);
+  return out;
+}
+
 export async function runDesignChecks(ev) {
   const out = [];
   await ev(() => { const s = document.createElement("style"); s.id = "__freeze"; s.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}"; document.head.appendChild(s); });

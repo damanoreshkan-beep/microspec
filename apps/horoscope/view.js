@@ -1,6 +1,6 @@
 // Horoscope — the REAL daily reading for your sign, yesterday · today · tomorrow, from horoscope.com
 // (professional astrologers), plus the day's four star ratings (love/work/vibe/success). Fetched through
-// our allowlisted VPS proxy (jobs-map.mooo.com/feed/horoscope → parsed compact JSON, CORS *), then cached
+// our allowlisted VPS proxy (VPS_PROXY + /horoscope → parsed compact JSON, CORS *), then cached
 // per (sign, day) in localStorage so the last reading stays instant and readable offline. English prose is
 // translated to the active locale AND lightly rewritten into natural prose via the systemic /_rt/localize.js
 // hook, which holds a skeleton until the FINAL text is ready (never the wooden intermediate). Fail-open.
@@ -15,6 +15,7 @@ import { T } from "/_rt/i18n.js";
 import { Sign } from "/_rt/zodiac.js";
 import { sunSign } from "/_rt/horoscope.js";
 import { useLocalized } from "/_rt/localize.js";
+import { VPS_PROXY } from "/_rt/feed.js";
 import { Scramble, Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 
@@ -22,7 +23,9 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 const QS = new URLSearchParams(location.search);
 const SIGN_OVERRIDE = QS.get("sign"); // ?sign=0..11 previews any sign (for a phone/mock check)
 
-const API = "https://jobs-map.mooo.com/feed/horoscope";
+// From the runtime, not a literal: the proxy domain has now moved once, and a hardcoded host here would have
+// kept working right up until the old vhost was retired, then broken this app alone.
+const API = `${VPS_PROXY}/horoscope`;
 const DAY_IDS = ["yesterday", "today", "tomorrow"], DAY_KEYS = ["dYesterday", "dToday", "dTomorrow"];
 
 // The four real ratings horoscope.com publishes per day → [i18n label, response key, colour(=meaning)].

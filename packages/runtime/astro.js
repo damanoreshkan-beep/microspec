@@ -1,6 +1,7 @@
 import { html } from "htm/preact";
 import _SunCalc from "https://esm.sh/suncalc@1.9.0";
 import * as Astro from "https://esm.sh/astronomy-engine@2";
+import { houses as Houses, exactHits, SCAN_STEP, HIT_WINDOW } from "./natal.js";
 const SunCalc = _SunCalc.default || _SunCalc;
 
 export const BODIES = {
@@ -70,3 +71,28 @@ export function eclipticPositions(date, keys = BODY_KEYS) {
 export const sunTimes = (lat, lng, date) => SunCalc.getTimes(date, lat, lng);
 
 export { ASPECTS, aspects } from "./aspects.js";
+
+
+export function chartFrame(date, lng) {
+  const t = new Astro.AstroTime(date);
+  return { ramc: (((Astro.SiderealTime(t) * 15 + lng) % 360) + 360) % 360, eps: Astro.e_tilt(t).tobl };
+}
+
+export function natalHouses(date, lat, lng, system = "placidus") {
+  const { ramc, eps } = chartFrame(date, lng);
+  return { ...Houses(ramc, eps, lat, system), ramc, eps };
+}
+
+export const bodyLonAt = (key) => (ms) => {
+  const b = BODIES[key];
+  if (!b) return NaN;
+  return (Astro.Ecliptic(Astro.GeoVector(b.name, new Astro.AstroTime(new Date(ms)), true)).elon + 360) % 360;
+};
+
+export function hitTimes(key, natalLon, angle, aroundMs, opts = {}) {
+  const w = HIT_WINDOW[key] || 400 * 864e5;
+  return exactHits(bodyLonAt(key), natalLon, angle, aroundMs - w, aroundMs + w,
+    { step: SCAN_STEP[key] || 864e5, ...opts });
+}
+
+export * from "./natal.js";

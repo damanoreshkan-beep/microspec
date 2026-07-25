@@ -9,6 +9,32 @@ import { installSealedFetch } from "./sealedfetch.js";
 
 installSealedFetch();
 
+function registerWorker(app) {
+  if (!("serviceWorker" in navigator)) return;
+  const S = app.S;
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+    const offer = () => S.update.set(true);
+    if (reg.waiting && navigator.serviceWorker.controller) offer();
+    reg.addEventListener("updatefound", () => {
+      const w = reg.installing;
+      if (!w) return;
+      w.addEventListener("statechange", () => { if (w.state === "installed" && navigator.serviceWorker.controller) offer(); });
+    });
+    navigator.serviceWorker.addEventListener("message", (e) => { if (e.data?.type === "ms-update") offer(); });
+    let asked = false;
+    app.applyUpdate = () => {
+      asked = true;
+      if (reg.waiting) reg.waiting.postMessage("ms-skip-waiting");   
+      else location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!asked) return;   
+      asked = false;
+      location.reload();
+    });
+  }).catch(() => {});
+}
+
 export function start(spec, arg2) {
   try { validateSpec(spec); }
   catch (e) { console.error("%c⛔ Invalid spec.json — app not started\n%c" + e.message, "font-weight:bold;color:#f87171", "color:#fca5a5"); throw e; }
@@ -75,7 +101,7 @@ export function start(spec, arg2) {
 
   addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); S.installEvent.set(e); });
   addEventListener("appinstalled", () => { S.installEvent.set(null); S.installOpen.set(false); });
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  registerWorker(app);
 
   const hold = typeof location !== "undefined" && location.search.includes("__hold");
   if (opts.stream) {

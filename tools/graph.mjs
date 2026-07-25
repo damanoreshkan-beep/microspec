@@ -35,6 +35,38 @@ export function importSpecs(src) {
   return [...out];
 }
 
+export function staticSpecs(src) {
+  const out = new Set();
+  let m;
+  const from = /\bfrom\s*["']([^"']+)["']/g;
+  while ((m = from.exec(src))) out.add(m[1]);
+  const side = /(?:^|[;\n])\s*import\s+["']([^"']+)["']/g;
+  while ((m = side.exec(src))) out.add(m[1]);
+  return [...out];
+}
+
+export function htmlAssets(html) {
+  const out = new Set();
+  const tag = /<(script|link)\b([^>]*)>/gi;
+  let m;
+  while ((m = tag.exec(html))) {
+    const attrs = m[2];
+    if (m[1].toLowerCase() === "link") {
+      const rel = (/\brel\s*=\s*["']?([^"'\s>]+)/i.exec(attrs) || [])[1] || "";
+      if (!/^(stylesheet|preload|icon|apple-touch-icon)$/i.test(rel)) continue;
+    }
+    const url = (/\b(?:src|href)\s*=\s*["']([^"']+)["']/i.exec(attrs) || [])[1];
+    if (url) out.add(url);
+  }
+  return [...out];
+}
+
+export function importMapOf(html) {
+  const m = /<script\b[^>]*type\s*=\s*["']importmap["'][^>]*>([\s\S]*?)<\/script>/i.exec(html);
+  if (!m) return {};
+  try { return JSON.parse(m[1]).imports || {}; } catch { return {}; }
+}
+
 export function buildClosure(entry, read) {
   const seen = new Set(), stack = [entry];
   while (stack.length) {
@@ -65,6 +97,7 @@ export function isGlobal(f, coreSet) {
   ) return true;
   if (f === "deno.json" || f === "deno.jsonc" || f === "deno.lock") return true;
   if (f.startsWith(RT) && !f.endsWith(".js")) return true; 
+  if (f === RT + "sw-core.js") return true; 
   if (coreSet.has(f)) return true; 
   return false;
 }

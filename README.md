@@ -189,6 +189,19 @@ The runtime renders it — accessible, responsive, installable, i18n, history-ro
 it. There is **no build step:** the runtime is browser-native ESM (Preact + htm + nanostores) from a CDN
 import map; styling is Tailwind + DaisyUI; the type system is the Geist superfamily.
 
+### Offline is a property of the runtime, not of each app
+
+No build step means an app's own *code* is cross-origin — preact/htm/nanostores on esm.sh, Tailwind and
+DaisyUI on jsDelivr, the icon element, the fonts. So "works offline" cannot mean "caches its own folder":
+`packages/runtime/sw-core.js` is one service worker, shared by every app, that precaches the app's **whole
+shell** at install — its files, the `/_rt/` modules its import graph actually reaches, and the pinned CDN
+URLs behind them (module-walked, because an esm.sh entry URL is a re-export stub, not the code). Each app's
+`sw.js` is a generated stub carrying only that manifest, derived from the real import graph by
+`deploy/sw.mjs` and gated in CI. Serving is **stale-while-revalidate**: the cache answers immediately and
+the refresh happens behind it, so an unplugged network and a 2G one take the same instant path, and a newer
+build lands on the next launch (or right away, if you take the restart the app offers). See
+[docs/research/offline-first-sw.md](docs/research/offline-first-sw.md) for the four defects this replaced.
+
 ## Layers
 
 | Package | Role |

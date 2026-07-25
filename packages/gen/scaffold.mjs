@@ -109,19 +109,9 @@ const manifest = JSON.stringify({
   display: "standalone", orientation: "portrait", theme_color: themeColor, background_color: bg, lang, icons,
 }, null, 2) + "\n";
 
-const sw = `const CACHE = "${spec.id}-v2";
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) => e.waitUntil((async () => { for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k); await self.clients.claim(); })()));
-self.addEventListener("fetch", (e) => {
-  const u = new URL(e.request.url);
-  if (e.request.method !== "GET" || u.origin !== location.origin) return;
-  e.respondWith((async () => {
-    const c = await caches.open(CACHE);
-    try { const r = await fetch(e.request, { cache: "no-cache" }); if (r && r.ok) c.put(e.request, r.clone()); return r; }
-    catch { return (await c.match(e.request)) || Response.error(); }
-  })());
-});
-`;
+const sw = `// PLACEHOLDER — run \`deno run -A deploy/sw.mjs\` to generate the real worker for this app.\n` +
+  `self.MS = { app: ${JSON.stringify(spec.id)}, version: "scaffold", precache: ["./", "./index.html"] };\n` +
+  `importScripts("/_rt/sw-core.js");\n`;
 
 const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="104" fill="${brand.bg}"/><g transform="translate(81.92,81.92) scale(14.506666666666666)" fill="none" stroke="${brand.fg}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${brandPaths}</g></svg>\n`;
 

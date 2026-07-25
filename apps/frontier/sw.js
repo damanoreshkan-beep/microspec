@@ -1,12 +1,51 @@
-const CACHE = "frontier-v2";
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) => e.waitUntil((async () => { for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k); await self.clients.claim(); })()));
-self.addEventListener("fetch", (e) => {
-  const u = new URL(e.request.url);
-  if (e.request.method !== "GET" || u.origin !== location.origin) return;
-  e.respondWith((async () => {
-    const c = await caches.open(CACHE);
-    try { const r = await fetch(e.request, { cache: "no-cache" }); if (r && r.ok) c.put(e.request, r.clone()); return r; }
-    catch { return (await c.match(e.request)) || Response.error(); }
-  })());
-});
+self.MS = {
+  app: "frontier",
+  version: "842eb5cdd3",
+  precache: [
+    "./",
+    "./data.js",
+    "./i18n/en.json",
+    "./i18n/uk.json",
+    "./icon.svg",
+    "./icons/apple-touch-icon.png",
+    "./index.html",
+    "./manifest.json",
+    "./spec.json",
+    "/_rt/build.js",
+    "/_rt/db.js",
+    "/_rt/enrich.js",
+    "/_rt/feed.js",
+    "/_rt/geomag.js",
+    "/_rt/gesture.js",
+    "/_rt/i18n.js",
+    "/_rt/index.js",
+    "/_rt/overlay.js",
+    "/_rt/permissions.js",
+    "/_rt/playback.js",
+    "/_rt/qrcode.js",
+    "/_rt/qrgen.vendor.js",
+    "/_rt/render.js",
+    "/_rt/sealed.js",
+    "/_rt/sealedfetch.js",
+    "/_rt/sensors.js",
+    "/_rt/skeleton.js",
+    "/_rt/store.js",
+    "/_rt/theme.css",
+    "/_rt/translate.js",
+    "/_rt/validate.js",
+    "/_rt/version.js",
+    "/_rt/video.js",
+    "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4",
+    "https://cdn.jsdelivr.net/npm/daisyui@5",
+    "https://cdn.jsdelivr.net/npm/daisyui@5/themes.css",
+    "https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js",
+    "https://esm.sh/@nanostores/persistent@0.10.2?external=nanostores",
+    "https://esm.sh/@nanostores/preact@0.5.2?external=preact,nanostores",
+    "https://esm.sh/htm@3.1.1/preact?external=preact",
+    "https://esm.sh/nanostores@0.11.4",
+    "https://esm.sh/preact@10.27.1",
+    "https://esm.sh/preact@10.27.1/hooks",
+    "https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap",
+  ],
+};
+importScripts("/_rt/sw-core.js");

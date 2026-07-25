@@ -120,7 +120,7 @@ export async function runResponsiveMatrix(page, ev, dev) {
       let hide = 0, hsel = "?";
       const nav = document.querySelector("nav[data-dock]");
       const view = document.getElementById("view");
-      if (nav && view) {
+      if (fit && nav && view) {
         const d = nav.getBoundingClientRect();
         for (const el of view.querySelectorAll("*")) {
           const r = el.getBoundingClientRect();
@@ -142,9 +142,11 @@ export async function runResponsiveMatrix(page, ev, dev) {
         ? { name: `${label}: один екран без скролу (fit)`, ok: true }
         : { name: `${label}: fit-екран не вміщується`, ok: false, msg: `+${m.oy}px по висоті — винуватець: ${m.vsel}. Ущільніть через --ms-* або перенесіть у Sheet` });
     }
-    out.push(m.hide <= 1
-      ? { name: `${label}: док нічого не перекриває`, ok: true }
-      : { name: `${label}: док перекриває контент`, ok: false, msg: `${m.hide}px — під доком: ${m.hsel}. --dock-h має міряти реальну висоту доку` });
+    if (m.fit) {
+      out.push(m.hide <= 1
+        ? { name: `${label}: док нічого не перекриває (fit)`, ok: true }
+        : { name: `${label}: док ховає контент назавжди (fit)`, ok: false, msg: `${m.hide}px — під доком: ${m.hsel}. На fit-екрані ніщо не скролиться, тож це сховано назавжди — --dock-h має міряти реальну висоту доку` });
+    }
   }
   await page.setViewportSize({ width: dev.width, height: dev.height });
   await sleep(260);

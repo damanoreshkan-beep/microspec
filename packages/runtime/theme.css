@@ -123,6 +123,11 @@
    gate measures this at every breakpoint, so "it fits on my phone" is no longer the standard.
    Height math is the two chrome constants, never a local guess: --hdr-h + --dock-h. */
 html.ms-fit, html.ms-fit body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+/* The last thing in a fit column must not end flush with the padding edge. The padding is arithmetic —
+   --dock-h plus a safe area — and arithmetic is exactly what put rave's transport 6px from the tab bar
+   while every check passed. A margin on the last child is not arithmetic: it is air that cannot be
+   cancelled by a measurement being slightly off. */
+html.ms-fit main#view > *:last-child { margin-bottom: var(--ms-gap); }
 html.ms-fit main#view {
   height: calc(100dvh - var(--hdr-h));
   padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom));

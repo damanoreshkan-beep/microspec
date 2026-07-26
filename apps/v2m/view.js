@@ -157,6 +157,9 @@ function syncHold() {
 function releaseHold() { try { wl?.release?.(); } catch { /* */ } wl = null; }
 
 async function selectAndPlay(track) {
+  // Selecting is not playing: the picked tune becomes the current one immediately, so the player shows what
+  // you chose even if the audio device never comes up (and then shows why).
+  $track.set(track); $posMs.set(0); $durMs.set(0); $err.set("");
   if (!audioSupported) { $err.set("noAudio"); return false; }
   $playing.set(true);
   const n = await ensureNode(); if (!n) { $playing.set(false); return false; }
@@ -319,11 +322,11 @@ export function v2mStore({ S, toast }) {
   const play = async (tune) => {
     const id = trackId(tune.author, tune.file);
     setBusy(id);
-    const ok = await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
+    S.tab.set("play");                                 // the tap's answer is the player, right away
+    await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
     setBusy("");
-    if (!ok) return;
-    S.tab.set("play");                                 // the tune is playing — go to it now
-    // keeping the copy is a few KB, so it happens in the background rather than holding up the player
+    // The download is a download — it does not hinge on the audio device coming up, and at a few KB it
+    // happens in the background rather than holding up the player.
     (async () => {
       try {
         const raw = await bytesFor(tune.bytes ? tune : { author: tune.author, file: tune.file });

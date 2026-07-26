@@ -58,6 +58,18 @@
   nav[data-dock] button > span { font-size: 0.54rem; }
 }
 
+/* ── The TV end (≥120rem) — the half a compaction ladder always forgets ────────────────────────────
+   Every --ms-* step so far makes things SMALLER, which quietly assumes the screen is always a phone or less.
+   A 10-foot UI is the opposite problem: at 3m a 44px target is not a 44px target, and 0.68rem of mono label
+   is unreadable. So the ladder is symmetric around the reference device — the same tokens, moving up.
+   Width-based, because a TV is defined by viewing distance and that correlates with width, not height. */
+@media (min-width: 120rem) {
+  :root {
+    --ms-gap: 1.1rem; --ms-pad: 1.5rem; --ms-r: 1.75rem; --ms-ctl: 3.5rem;
+    --ms-icon: 1.75rem; --ms-title: 1.5rem; --ms-label: 0.95rem;
+  }
+}
+
 /* ── Split-screen and floating windows ─────────────────────────────────────────────────────────────
    A phone running two apps at once is not an edge case on a 6.9" device — it is a Tuesday. It leaves a
    viewport ~200px tall AFTER the header and dock, which no amount of padding survives. Two systemic moves:
@@ -81,23 +93,24 @@
   nav[data-dock] button > span { display: none; }
 }
 
-/* .ms-cols — a stack that becomes a ROW when vertical space runs out. The one layout move the density
-   tokens cannot make: three stacked sliders are ~126px however tight the padding gets, three columns are
-   ~42px. Set the count with --ms-cols (default 3). This is the systemic answer to "compact on a short
-   screen" — an app must never reach for its own height media query to do it. */
-@media (max-height: 620px) {
-  /* The count is DERIVED, not declared. --ms-cols is a ceiling ("at most three"), and --ms-col-min is the
-     floor a column stops being readable below; auto-fit then fits as many as the real width allows and
-     silently drops to two, or one, when it cannot. Fixed at three, a 200px-wide screen gives ~60px columns,
-     every label wraps, and the group ends up TALLER than the stack it replaced — which is the opposite of
-     what this rule is for. Turning it off below a width would be the same surrender by another route: the
-     mechanism has to keep working at the size that needs it most, not step aside there. */
-  .ms-cols.ms-cols {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(var(--ms-col-min, 3rem), 100%), 1fr));
-    gap: var(--ms-gap);
-    align-items: start;
-  }
+/* .ms-cols — a stack that becomes a ROW when there is room for one.
+   It answers "what fits inside ME", so it reads its own container and not the window: a group of sliders can
+   be in a panel, a sheet, a 38% side column or a 200px watch screen, and the viewport is evidence about none
+   of them. The farm already had this rule and followed it in Transport; this was the one place that did not,
+   which is exactly why it was unpredictable.
+
+   Explicit steps, not intrinsic arithmetic. `repeat(auto-fit, minmax(X, 1fr))` derives its count from X —
+   a number someone guessed — against a container width nobody measured, and collapses to ONE track in
+   silence when the container is intrinsically sized (CSS Grid §7.2.3.1). Three commits went into making
+   that behave. Saying "two here, three there" is readable, testable, and can be proved wrong.
+
+   The parent declares the container (Panel does, and any app wrapping a group can add `@container`). */
+.ms-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ms-gap); align-items: start; }
+@container (min-width: 11rem) {
+  .ms-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (min-width: 16rem) {
+  .ms-cols { grid-template-columns: repeat(var(--ms-cols, 3), minmax(0, 1fr)); }
 }
 
 /* Single-screen (fit) apps — an instrument, not a document. A tab that declares `fit` in its spec gets

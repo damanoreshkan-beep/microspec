@@ -292,16 +292,16 @@ export function rave({ S }) {
         ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`btn btn-circle btn-sm shrink-0 border-base-content/10 backdrop-blur-xl ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/60 text-base-content/60"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
       </div>
 
-      <div ...${pan} class="flex-1 min-h-[26vh] touch-pan-y" aria-hidden="true"></div>
+      <div ...${pan} class="flex-1 min-h-0 touch-pan-y" aria-hidden="true"></div>
 
-      <div class="flex flex-col items-center gap-1.5">
+      <div class="ms-decor flex flex-col items-center gap-1.5">
         <div class="font-mono text-[0.62rem] uppercase tracking-[0.28em] text-base-content/55">${T(t, vizKey(VIZ[viz].id))}</div>
         <div data-viztrack class="flex items-center gap-1">
           ${VIZ.map((v, i) => html`<button data-viztick=${i} aria-current=${i === viz} aria-label=${`${T(t, "vizLabel")} ${i + 1}`} onClick=${() => setViz(i)} key=${v.id} class="py-2 px-0.5"><span class=${`block h-1 rounded-full transition-all ${i === viz ? "w-5 bg-secondary" : "w-2 bg-base-content/25"}`}></span></button>`)}
         </div>
       </div>
 
-      <div data-viz class="grid grid-cols-[repeat(16,minmax(0,1fr))] gap-1">
+      <div data-viz class="ms-decor grid grid-cols-[repeat(16,minmax(0,1fr))] gap-1">
         ${STEPS.map((i) => { const beat = i % 4 === 0, k = kickRow[i], on = i === cur, sw = i === sweep; return html`<div key=${i} class=${`h-1.5 rounded-full transition-colors ${sw ? "bg-accent" : on ? "bg-secondary" : k ? "bg-secondary/45" : beat ? "bg-base-content/20" : "bg-base-content/10"}`}></div>`; })}
       </div>
 

@@ -183,6 +183,17 @@ export async function runResponsiveMatrix(page, ev, dev) {
           // as a wide one, and the two cases need opposite fixes (shrink it vs. stop pushing it).
           const b = el.getBoundingClientRect();
           chain.push(`${el.tagName.toLowerCase()}${c ? "." + c : ""}[w${Math.round(b.width)}→x${Math.round(b.right)}]`);
+          // On the FIRST parent, list the siblings with their widths. A row overflows because of what is in
+          // it, and "this child sticks out" never says which of its neighbours refuses to give up space —
+          // which is the whole question when several are shrink-0.
+          if (chain.length === 2) {
+            const sibs = [...el.children].slice(0, 6).map((k) => {
+              const kb = k.getBoundingClientRect();
+              const kc = typeof k.className === "string" ? k.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
+              return `${k.tagName.toLowerCase()}${kc ? "." + kc : ""}:${Math.round(kb.width)}`;
+            });
+            if (sibs.length) chain.push(`⟨${sibs.join(" ")}⟩`);
+          }
         }
         sel = chain.join(" ◂ ");
       }

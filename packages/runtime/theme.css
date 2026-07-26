@@ -94,8 +94,7 @@
      mechanism has to keep working at the size that needs it most, not step aside there. */
   .ms-cols {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(max(var(--ms-col-min, 3rem),
-      calc((100% - (var(--ms-cols, 3) - 1) * var(--ms-gap)) / var(--ms-cols, 3))), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(var(--ms-col-min, 3rem), 100%), 1fr));
     gap: var(--ms-gap);
     align-items: start;
   }

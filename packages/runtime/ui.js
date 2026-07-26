@@ -155,10 +155,15 @@ export function Panel({ title, children, className = "" }) {
  */
 export function Slider({ id, label, value, onInput, min = 0, max = 1, step = 0.02, attr = "data-macro" }) {
   const props = { [attr]: id };
-  return html`<label ...${props} class="@container/sl flex flex-col gap-1 @max-[9rem]/sl:flex-row @max-[9rem]/sl:items-center @max-[9rem]/sl:gap-2">
-    <span class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70 truncate">${label}</span>
-    <input type="range" min=${min} max=${max} step=${step} value=${value} aria-label=${label}
-      onInput=${(e) => onInput(Number(e.target.value))} class="range range-sm range-primary" />
+  
+  
+  
+  return html`<label ...${props} class="@container/sl block">
+    <span class="flex flex-col gap-1 @max-[9rem]/sl:flex-row @max-[9rem]/sl:items-center @max-[9rem]/sl:gap-2">
+      <span class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70 truncate">${label}</span>
+      <input type="range" min=${min} max=${max} step=${step} value=${value} aria-label=${label}
+        onInput=${(e) => onInput(Number(e.target.value))} class="range range-sm range-primary min-w-0 flex-1" />
+    </span>
   </label>`;
 }
 

@@ -114,7 +114,22 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
 // The dock's material, reusable: a tool app's persistent controls are islands like it, not bars welded to
 // an edge. Opacity stays high (80%) so text contrast over whatever scrolls beneath is deterministic — the
 // blur does the glass. Translucency you can't predict is a contrast bug waiting for one screen to break.
-export function Island({ children, className = "", tag = "div", ...rest }) {
+// `pinned` — the island that floats between the content and the dock. Six apps had written the same
+// positioner by hand (`fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none` plus a
+// `bottom: calc(var(--dock-h) + env(safe-area-inset-bottom) + …)`), and they had already drifted: four used
+// a 0.4rem gap and two used 0.5rem, for one measurement. The POSITION and the MATERIAL are the kit's; the
+// width, the radius and the row inside stay the app's, through className.
+export function Island({ children, className = "", tag = "div", pinned = false, ...rest }) {
+  if (pinned) {
+    return html`<div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none"
+      style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)">
+      <${Island} className=${`pointer-events-auto ${className}`} tag=${tag} ...${rest}>${children}<//>
+    </div>`;
+  }
+  return IslandBox({ children, className, tag, ...rest });
+}
+
+function IslandBox({ children, className = "", tag = "div", ...rest }) {
   // A floating panel IS the raised surface: it declares sf-raised/sf-e3 rather than carrying its own shadow
   // triple, so a change to what "raised" means reaches the dock, the sheet and every island at once.
   const cls = `sf-raised sf-e3 rounded-[var(--ms-r)] bg-base-100/80 backdrop-blur-xl p-[var(--ms-pad)] ${className}`;

@@ -167,7 +167,10 @@ export async function runResponsiveMatrix(page, ev, dev) {
         const chain = [];
         for (let el = node; el && el !== document.body && chain.length < 5; el = el.parentElement) {
           const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
-          chain.push(`${el.tagName.toLowerCase()}${c ? "." + c : ""}[${Math.round(el.getBoundingClientRect().width)}]`);
+          // width AND right edge: a link that is narrow but sits far to the right overflows just as surely
+          // as a wide one, and the two cases need opposite fixes (shrink it vs. stop pushing it).
+          const b = el.getBoundingClientRect();
+          chain.push(`${el.tagName.toLowerCase()}${c ? "." + c : ""}[w${Math.round(b.width)}→x${Math.round(b.right)}]`);
         }
         sel = chain.join(" ◂ ");
       }

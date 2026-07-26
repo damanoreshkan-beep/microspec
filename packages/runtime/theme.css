@@ -94,7 +94,7 @@
      mechanism has to keep working at the size that needs it most, not step aside there. */
   .ms-cols {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(max(var(--ms-col-min, 5.5rem),
+    grid-template-columns: repeat(auto-fit, minmax(max(var(--ms-col-min, 3rem),
       calc((100% - (var(--ms-cols, 3) - 1) * var(--ms-gap)) / var(--ms-cols, 3))), 1fr));
     gap: var(--ms-gap);
     align-items: start;
@@ -169,6 +169,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   .btn { --btn-p: 0.45rem; max-width: 100%; }
   html:not(.ms-fit) .btn { flex-shrink: 1; white-space: normal; }
   .btn > * { min-width: 0; }
+  .join > .btn, .join > * { flex-shrink: 1; min-width: 0; }
   /* A mono string with wide tracking is the other rigid box — a hash, a ticker, a code. At this width it
      must be allowed to break mid-token; the alternative is a guaranteed overflow. */
   .font-mono { overflow-wrap: anywhere; }

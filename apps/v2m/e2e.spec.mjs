@@ -65,6 +65,24 @@ export default [
     },
   },
   {
+    name: "магазин: скрол до кінця дотягує наступні сторінки", run: async (h) => {
+      await h.click('[data-tab="store"]'); await h.wait(400);
+      const first = await h.count("[data-tune]");
+      h.expect(first >= 40, "перша сторінка не показалась: " + first);
+      let cur = first;
+      for (let round = 0; round < 8; round++) {
+        await h.scrollTo(999999);
+        let grew = cur;
+        for (let i = 0; i < 12; i++) { grew = await h.count("[data-tune]"); if (grew > cur) break; await h.wait(250); }
+        if (grew === cur) break;
+        cur = grew;
+      }
+      h.expect(cur > first, "скрол до кінця не підвантажив наступну сторінку (" + first + " → " + cur + ")");
+      h.expect(cur === 96, "дотягнув не всі треки фікстури: " + cur);
+      await h.scrollTo(0); await h.wait(150);
+    },
+  },
+  {
     name: "магазин → трек грає й лягає в бібліотеку", run: async (h) => {
       await h.click('[data-tab="store"]'); await h.wait(400);
       const id = await h.attr("[data-tune]", "data-tune");

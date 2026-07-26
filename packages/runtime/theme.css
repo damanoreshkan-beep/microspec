@@ -294,9 +294,12 @@ nav[data-dock] button > span {
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
 
+.truncate { min-width: 0; }
+
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
 .overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
+
 
 @media (prefers-reduced-motion: reduce) {
   .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }

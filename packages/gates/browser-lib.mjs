@@ -138,7 +138,15 @@ export async function runResponsiveMatrix(page, ev, dev) {
       if (fit) {
         const v = document.getElementById("view");
         oy = v ? Math.max(v.scrollHeight - v.clientHeight, de.scrollHeight - window.innerHeight) : 0;
-        if (oy > 1 && v) { const lim = v.getBoundingClientRect().bottom; let low = lim; for (const el of v.querySelectorAll("*")) { const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom > low + 0.5) { low = r.bottom; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; vsel = el.tagName.toLowerCase() + (c ? "." + c : ""); } } }
+        if (oy > 1 && v) {
+          let low = v.getBoundingClientRect().bottom, node = null;
+          for (const el of v.querySelectorAll("*")) { const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom > low + 0.5) { low = r.bottom; node = el; } }
+          const name = (el) => { const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; return el.tagName.toLowerCase() + (c ? "." + c : ""); };
+          if (node) {
+            const kids = [...node.children].map((k) => `${name(k)}[h${Math.round(k.getBoundingClientRect().height)}]`).slice(0, 4);
+            vsel = `${name(node)}[h${Math.round(node.getBoundingClientRect().height)}]` + (kids.length ? ` ▾ ${kids.join(" + ")}` : "");
+          }
+        }
       }
       let hide = 0, hsel = "?";
       const nav = document.querySelector("nav[data-dock]");

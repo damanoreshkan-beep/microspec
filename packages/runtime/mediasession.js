@@ -69,6 +69,15 @@ export function holdAudio({ title = "microspec", artist = "microspec", artwork =
     setPlaying(t) { play(); setMeta(t); setState("playing"); },
     setPaused() { setState("paused"); },              // keep el playing → session (and lock-screen ▶) survive
     meta(t) { setMeta(t); },
+    // Feed the OS the real timeline so the lock screen shows a progress bar and a scrubber instead of a
+    // dead 0:00 — and so pressing skip there lands on a session that knows where it is. Silently ignored
+    // where unsupported; a bad duration/position throws in some browsers, hence the guard.
+    position(durationMs, positionMs, rate = 1) {
+      if (!ms || typeof ms.setPositionState !== "function") return;
+      const duration = Math.max(0, (durationMs || 0) / 1000);
+      const position = Math.min(Math.max(0, (positionMs || 0) / 1000), duration);
+      try { ms.setPositionState(duration > 0 ? { duration, position, playbackRate: rate } : {}); } catch { /* */ }
+    },
     release() {
       live = false;
       document.removeEventListener("visibilitychange", onVis);

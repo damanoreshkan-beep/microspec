@@ -68,13 +68,12 @@ async function ensureNode() {
   if (!audioSupported) { $err.set("noAudio"); return null; }
   try {
     if (!ctx) ctx = makeCtx();
-    // A suspended context that has no user activation to spend leaves resume() PENDING — not rejected,
-    // pending, forever. Awaiting it bare stalls everything downstream of this call (it silently swallowed
-    // the store's whole download path). Race it and carry on: the graph is built either way and starts
-    // sounding the moment the context does resume.
-    if (ctx.state === "suspended") {
-      await Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
-    }
+    // NEVER await resume(). Two separate ways it stalls the whole queue: with no user activation it stays
+    // PENDING forever (it does not reject), and the timeout that used to race it is a setTimeout — which a
+    // BACKGROUNDED tab throttles to as much as a minute, so a track that ended while the phone was locked
+    // sat here waiting instead of loading the next one. Ask for the resume, build the graph, post play; the
+    // sound starts the moment the context is allowed to run.
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
     if (!node) {
       if (!moduleAdded) { await ctx.audioWorklet.addModule(assetURL("v2synth.worklet.js")); moduleAdded = true; }
       if (!wasmBytes) wasmBytes = await (await fetch(assetURL("v2synth.wasm"))).arrayBuffer();
@@ -84,7 +83,7 @@ async function ensureNode() {
       });
       node.port.onmessage = (e) => {
         const m = e.data;
-        if (m.type === "duration") $durMs.set(m.ms);
+        if (m.type === "duration") { $durMs.set(m.ms); np?.position?.(m.ms, $posMs.get()); }
         else if (m.type === "position") { if (!scrubbing) $posMs.set(m.ms); }
         else if (m.type === "ended") {
           $playing.set(false); $posMs.set($durMs.get()); releaseHold();
@@ -181,11 +180,16 @@ function syncHold() {
       title: $track.get()?.name, artist: "microspec",
       onPlay: () => { if (!$playing.get()) resume(); },
       onPause: () => pause(),
+      // Without these the lock-screen / headset skip buttons are dead, which reads exactly like "the queue
+      // froze while the app was in the background" — the app was fine, nothing was listening.
+      onPrev: () => playPrev(),
+      onNext: () => playNext(true),
       resumeCtx: () => ctx?.resume(),
     });
   }
   np.meta?.($track.get()?.name);
   np.setPlaying?.($track.get()?.name);
+  np.position?.($durMs.get(), $posMs.get());
   try { wl = wl || wakeLock.acquire?.(); } catch { /* */ }
 }
 function releaseHold() { try { wl?.release?.(); } catch { /* */ } wl = null; }

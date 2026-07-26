@@ -26,6 +26,7 @@ const $posMs = atom(0);
 const $durMs = atom(0);
 const $size = atom(0);          
 const $err = atom("");
+const $saved = atom("");
 
 let ctx = null, node = null, preGain = null, analyser = null, timeBuf = null;
 let wasmBytes = null, moduleAdded = false, loadedId = null, np = null, wl = null, levelTimer = null;
@@ -193,11 +194,12 @@ export function v2m({ S }) {
   const dur = useStore($durMs);
   const size = useStore($size);
   const err = useStore($err);
+  const saveState = useStore($saved);
   const ratio = mp3Ratio(size, dur / 1000);
   useEffect(() => { primeDemo(); }, []);
 
   return html`
-    <div class="relative h-full min-h-0 flex flex-col" data-track=${track?.id || ""}>
+    <div class="relative h-full min-h-0 flex flex-col" data-track=${track?.id || ""} data-saved=${saveState}>
       <${ByteStage} />
 
       <div class="relative z-10 flex-1 min-h-0 flex flex-col justify-end pb-[var(--ms-gap)]">
@@ -307,11 +309,13 @@ export function v2mStore({ S, toast }) {
     setBusy("");
     (async () => {
       try {
+        $saved.set("fetching");
         const raw = await bytesFor({ author: tune.author, file: tune.file });
         await SAVES.put(id, { name: titleOf(tune.file), author: tune.author, size: raw.byteLength, dur: $durMs.get(), data: new Uint8Array(raw) });
+        $saved.set("ok");
         setOwned((s) => new Set(s).add(id));
         toast?.(T(t, "toastSaved"));
-      } catch {  }
+      } catch (e) { $saved.set("err:" + String((e && e.message) || e).slice(0, 60)); }
     })();
   };
 

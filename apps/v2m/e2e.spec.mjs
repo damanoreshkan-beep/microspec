@@ -57,6 +57,9 @@ export default [
       for (let i = 0; i < 20; i++) { cur = await h.attr("[data-track]", "data-track"); if (cur === id) break; await h.wait(250); }
       h.expect((await h.count("[data-track]")) === 1, "не повернувся на плеєр");
       h.expect(cur === id, "плеєр не перемкнувся на обраний трек: " + cur + " ≠ " + id);
+      let saved = "";
+      for (let i = 0; i < 24; i++) { saved = await h.attr("[data-track]", "data-saved"); if (saved === "ok" || saved.startsWith("err")) break; await h.wait(250); }
+      h.expect(saved === "ok", "копія в бібліотеку не зробилась: data-saved=" + (saved || "(порожньо)"));
       await h.click('[data-tab="library"]');
       let rows = 0;
       for (let i = 0; i < 20; i++) { rows = await h.count("[data-track-row]"); if (rows > 0) break; await h.wait(250); }

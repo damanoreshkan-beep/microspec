@@ -1,4 +1,8 @@
-const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("[data-track]")) > 0) break; await h.wait(250); } };
+const ready = async (h) => {
+  await h.click('[data-tab="play"]');
+  for (let i = 0; i < 20; i++) { if ((await h.attr("[data-track]", "data-track")) !== "") return; await h.wait(250); }
+  h.expect(false, "плеєр не змонтувався");
+};
 
 export default [
   {

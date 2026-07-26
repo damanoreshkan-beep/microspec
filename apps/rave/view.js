@@ -14,7 +14,7 @@ import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { usePanX } from "/_rt/gesture.js";
-import { Sheet, Segmented } from "/_rt/ui.js";
+import { Sheet, Segmented, Transport } from "/_rt/ui.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { generateGroove, mulberry32 } from "/_rt/groove.js";
 import { collection } from "/_rt/db.js";
@@ -262,6 +262,7 @@ const autoName = (t, tracks, bpm, list) => { const key = JSON.stringify(tracks),
 // Switch scene by swiping the field left/right, or tap a tick — the scene is its own label (no captions).
 export function rave({ S }) {
   const t = useStore(S.t), tracks = useStore($tracks), style = useStore($style), playing = useStore($playing), fx = useStore($fx), cur = useStore($cur), bpm = useStore($bpm), sweep = useStore($sweep), viz = useStore($viz);
+  const loc = useStore(S.locale);
   // A persisted non-synth pack was only remembered, not loaded — fetch its samples once on mount so the restored
   // kit actually plays (until then playback falls back to synth; the load is silent — no buzz, no re-select).
   useEffect(() => { loadPackSamples($pack.get()); }, []);
@@ -310,13 +311,9 @@ export function rave({ S }) {
           <input data-filter type="range" min="0" max="1" step="0.01" value=${fx.mfilter} aria-label=${T(t, "fxFilter")} onInput=${(e) => setFx("mfilter", Number(e.target.value))} class="range range-xs range-secondary flex-1" />
           <span class="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-base-content/55 tabular-nums shrink-0">${bpm} BPM</span>
         </div>
-        <div class="flex items-center justify-center gap-4">
-          <button aria-label=${T(t, "prevTrack")} onClick=${() => stepTrack(-1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:skip-back", "text-xl")}</button>
-          <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} onClick=${toggle} class="w-16 h-16 rounded-full bg-secondary text-secondary-content grid place-items-center shadow-lg active:scale-95 transition">${Icon(playing ? "lucide:square" : "lucide:play", "text-2xl")}</button>
-          <button aria-label=${T(t, "nextTrack")} onClick=${() => stepTrack(1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:skip-forward", "text-xl")}</button>
-          <div class="w-px h-7 bg-base-content/12 mx-0.5"></div>
-          <button id="gen" data-gen aria-label=${T(t, "gen")} onClick=${newTrack} class=${`btn btn-circle btn-sm ${sweep >= 0 ? "btn-accent" : "btn-outline btn-accent"}`}>${Icon("lucide:sparkles", `text-lg ${sweep >= 0 ? "animate-pulse" : ""}`)}</button>
-        </div>
+        <${Transport} locale=${loc} playing=${playing} stopIcon onToggle=${toggle}
+          onPrev=${() => stepTrack(-1)} onNext=${() => stepTrack(1)}
+          extra=${html`<button id="gen" data-gen aria-label=${T(t, "gen")} onClick=${newTrack} class=${`btn btn-circle btn-sm ${sweep >= 0 ? "btn-accent" : "btn-outline btn-accent"}`}>${Icon("lucide:sparkles", `text-lg ${sweep >= 0 ? "animate-pulse" : ""}`)}</button>`} />
         ${!audioSupported ? html`<div class="text-xs text-base-content/60 text-center">${T(t, "noAudio")}</div>` : null}
       </div>
     </div>

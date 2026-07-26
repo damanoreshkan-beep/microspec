@@ -2,7 +2,8 @@
 //   deno test -A packages/runtime/runtime_test.js
 import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { validateSpec } from "./validate.js";
-import { MIRRORS as v2mMIRRORS, parseAuthors as v2mParseAuthors, parseListing as v2mParseListing, titleOf as v2mTitleOf, trackId as v2mTrackId, trackURL as v2mTrackURL, mp3Ratio as v2mMp3Ratio, normGain as v2mNormGain, byteCloud as v2mByteCloud, seedBytes as v2mSeedBytes } from "./v2m.js";
+import { cycleRepeat as tpCycleRepeat, advance as tpAdvance, clock as tpClock } from "./player.js";
+import { MIRRORS as v2mMIRRORS, parseAuthors as v2mParseAuthors, parseListing as v2mParseListing, titleOf as v2mTitleOf, trackId as v2mTrackId, trackURL as v2mTrackURL, mp3Ratio as v2mMp3Ratio, normGain as v2mNormGain, byteCloud as v2mByteCloud, helixStrand as v2mHelixStrand, helixAt as v2mHelixAt, seedBytes as v2mSeedBytes } from "./v2m.js";
 import { T, dictFor, ago, whenLabel } from "./i18n.js";
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "./groove.js";
 import { generateMelody, scoreMelody } from "./melody.js";
@@ -3255,4 +3256,95 @@ Deno.test("v2m byteCloud — the point count IS the file size", () => {
   const distinct = new Set();
   for (let i = 0; i < cloud.length; i += 3) distinct.add(cloud[i].toFixed(4) + "," + cloud[i + 1].toFixed(4));
   assert(distinct.size > 3900, "a uniform file collapsed to " + distinct.size + " visible points of 4000");
+});
+
+// ── player: the shared transport's queue logic ──────────────────────────────────────────────────
+Deno.test("player cycleRepeat — off → all → one → off", () => {
+  assertEquals(tpCycleRepeat("off"), "all");
+  assertEquals(tpCycleRepeat("all"), "one");
+  assertEquals(tpCycleRepeat("one"), "off");
+  assertEquals(tpCycleRepeat(undefined), "all", "an unset mode starts the cycle, never crashes");
+});
+
+Deno.test("player advance — repeat off stops at the end when a track ENDS, wraps when you press next", () => {
+  assertEquals(tpAdvance(0, 5, { repeat: "off" }), 1);
+  assertEquals(tpAdvance(4, 5, { repeat: "off" }), -1, "auto-advance past the last track stops");
+  assertEquals(tpAdvance(4, 5, { repeat: "off", manual: true }), 0, "pressing next at the end wraps");
+});
+
+Deno.test("player advance — repeat one holds on END but never traps a manual press", () => {
+  assertEquals(tpAdvance(2, 5, { repeat: "one" }), 2, "a finished track plays again");
+  assertEquals(tpAdvance(2, 5, { repeat: "one", manual: true }), 3,
+    "pressing next under repeat-one must move on — the bug hand-written players ship");
+  assertEquals(tpAdvance(4, 5, { repeat: "all" }), 0, "repeat all wraps on its own");
+});
+
+Deno.test("player advance — previous, single track, empty queue", () => {
+  assertEquals(tpAdvance(3, 5, { step: -1 }), 2);
+  assertEquals(tpAdvance(0, 5, { step: -1 }), 4, "previous from the first track wraps to the end");
+  assertEquals(tpAdvance(0, 1, { repeat: "off" }), -1, "one track, played out → stop");
+  assertEquals(tpAdvance(0, 1, { repeat: "all" }), 0);
+  assertEquals(tpAdvance(0, 0), -1, "nothing queued → nothing to play");
+  assertEquals(tpAdvance(0, 0, { manual: true }), -1);
+});
+
+Deno.test("player advance — shuffle never repeats the current track and stays in range", () => {
+  for (const r of [0, 0.001, 0.4, 0.5, 0.999]) {
+    for (const i of [0, 3, 7]) {
+      const n = tpAdvance(i, 8, { shuffle: true, rng: () => r });
+      assert(n >= 0 && n < 8, `out of range: ${n}`);
+      assert(n !== i, `shuffle returned the track already playing (i=${i}, rng=${r})`);
+    }
+  }
+});
+
+Deno.test("player clock — mm:ss, and never NaN", () => {
+  assertEquals(tpClock(0), "0:00");
+  assertEquals(tpClock(61000), "1:01");
+  assertEquals(tpClock(3599000), "59:59");
+  assertEquals(tpClock(-5), "0:00");
+  assertEquals(tpClock(undefined), "0:00");
+});
+
+Deno.test("player transport strings are SYSTEMIC — an app must not have to restate them", async () => {
+  const i18n = await import("./i18n.js");
+  for (const k of ["aPlay", "aPause", "aStop", "aPrev", "aNext", "aSeek", "aRepeat"]) {
+    assert(i18n.SYS[k]?.en && i18n.SYS[k]?.uk, `SYS.${k} missing a locale — the widget would ship a raw key`);
+  }
+});
+
+Deno.test("v2m helixStrand — one point per byte, ordered along the strand, value only modulates radius", () => {
+  const bytes = v2mSeedBytes(600);
+  const { pos, n } = v2mHelixStrand(bytes);
+  assertEquals(n, 600, "one point per byte");
+  assertEquals(pos.length, 600 * 3);
+  // y is monotonic: the strand must READ end to end, or a transcription head means nothing
+  for (let k = 1; k < n; k++) {
+    assert(pos[k * 3 + 1] >= pos[(k - 1) * 3 + 1] - 1e-6, "strand doubles back at " + k);
+  }
+  assertEquals(pos[1].toFixed(4), (-1.2).toFixed(4), "starts at the bottom of the span");
+  assert(Math.abs(pos[(n - 1) * 3 + 1] - 1.2) < 1e-6, "ends at the top of the span");
+  // radius stays inside the band the byte value can reach
+  for (let k = 0; k < n; k++) {
+    const r = Math.hypot(pos[k * 3], pos[k * 3 + 2]);
+    assert(r >= 0.42 * 0.72 - 1e-6 && r <= 0.42 + 1e-6, "radius out of band: " + r);
+  }
+  // a file of identical bytes must still draw a full strand (the collapse trap, again)
+  const flat = v2mHelixStrand(new Uint8Array(500));
+  const ys = new Set();
+  for (let k = 0; k < flat.n; k++) ys.add(flat.pos[k * 3 + 1].toFixed(5));
+  assert(ys.size > 480, "uniform bytes collapsed the strand: " + ys.size);
+  assertEquals(v2mHelixStrand(new Uint8Array(0)).n, 0);
+  // sub-sampled above the cap, still one strand
+  assertEquals(v2mHelixStrand(v2mSeedBytes(50000), { max: 1000 }).n, 1000);
+});
+
+Deno.test("v2m helixAt — the read head follows the same curve, clamped", () => {
+  const [x0, y0] = v2mHelixAt(0);
+  assertEquals(y0.toFixed(4), (-1.2).toFixed(4));
+  assertEquals(x0.toFixed(4), (0.42).toFixed(4), "t=0 starts at angle 0");
+  assertEquals(v2mHelixAt(1)[1].toFixed(4), (1.2).toFixed(4));
+  assertEquals(v2mHelixAt(-5)[1], v2mHelixAt(0)[1], "clamped low");
+  assertEquals(v2mHelixAt(9)[1], v2mHelixAt(1)[1], "clamped high");
+  assertEquals(v2mHelixAt(undefined)[1], v2mHelixAt(0)[1], "no progress yet → the start, not NaN");
 });

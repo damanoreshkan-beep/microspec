@@ -1,5 +1,5 @@
-// microspec runtime — the UI kit. FIVE interaction nodes, and every app in the farm uses these and not
-// its own: Sheet, Segmented, Island, Panel, Slider.
+// microspec runtime — the UI kit. SIX interaction nodes, and every app in the farm uses these and not
+// its own: Sheet, Segmented, Island, Panel, Slider, Transport.
 //
 // Why a kit at all, in a farm whose whole philosophy is "micro". Because "micro" is about what an app
 // DOES, never about how many times the farm reimplements a bottom sheet. Eight apps had hand-rolled one
@@ -20,6 +20,7 @@ import { Fragment } from "preact";
 import { useRef, useEffect } from "preact/hooks";
 import { useSheetDrag } from "./gesture.js";
 import { sys } from "./i18n.js";
+import { REPEAT_ICON, clock } from "./player.js";
 
 const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls || ""} style=${style || ""}></iconify-icon>`;
 
@@ -145,3 +146,96 @@ export function Slider({ id, label, value, onInput, min = 0, max = 1, step = 0.0
 // Row — the one-line flex used inside Panels/Sheets (label left, control right). Not a component so much
 // as the shape they all share; exported so a caller never re-guesses the gap.
 export const Row = ({ children, className = "" }) => html`<${Fragment}><div class=${`flex items-center gap-[var(--ms-gap)] ${className}`}>${children}</div></${Fragment}>`;
+
+// ── Transport — the widget ────────────────────────────────────────────────────────────────────────────
+// Every piece is opt-in: no `onNext` → no skip button; no `dur` → no seek bar; no `onRepeat` → no repeat
+// control. So a one-button ambient player and a full queue player are the same component, and a fix to the
+// scrub interaction or the a11y labels lands in all of them at once.
+//
+// Localisation: the runtime's SYS dictionary carries the transport strings (aPlay/aPause/aPrev/aNext/
+// aSeek/aRepeat…), so an app adopting this does not restate them — pass `locale`, not a dict.
+export function Transport({
+  locale = "en",                                       // SYS carries the transport strings; see i18n.js
+  playing = false,
+  onToggle,
+  onPrev, onNext,
+  pos = 0, dur = 0, onSeek,                            // seek bar appears when onSeek is given
+  repeat, onRepeat,                                    // repeat button appears when onRepeat is given
+  title, subtitle,                                     // optional now-playing block
+  lead, trail,                                         // optional slots either side of the title row
+  stopIcon = false,                                    // rave-style square instead of a pause bar
+  size = "md",                                         // "md" | "sm"
+  disabled = false,
+  className = "",
+  extra,                                               // an app-specific control after the skip row (rave's generate)
+  // scrub lifecycle: start (grabbed) → scrub (dragging, so the app can show the position it is heading to)
+  // → end + onSeek (committed). Apps need all three: the position readout must follow the thumb, but the
+  // engine must only be told once, on release.
+  onScrubStart, onScrub, onScrubEnd,
+}) {
+  const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
+  const big = size === "sm" ? "w-12 h-12" : "w-[var(--ms-ctl)] h-[var(--ms-ctl)]";
+  const side = size === "sm" ? "btn-sm" : "";
+  const max = Math.max(1000, dur || 0);
+
+  const head = (title != null || lead || trail) ? html`
+    <div class="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-1">
+      <span class="justify-self-start">${lead || null}</span>
+      <div class="text-center min-w-0">
+        ${title != null ? html`<div data-tp-title class="text-[length:var(--ms-title)] font-semibold truncate leading-tight">${title}</div>` : null}
+        ${subtitle != null ? html`<div class="mt-0.5 font-mono text-xs tabular-nums text-base-content/70 truncate">${subtitle}</div>` : null}
+      </div>
+      <span class="justify-self-end">${trail || null}</span>
+    </div>` : null;
+
+  const scrub = onSeek ? html`
+    <div class="flex flex-col gap-1">
+      <input type="range" class="range range-primary range-xs w-full" aria-label=${sys("aSeek", locale)}
+        min="0" max=${max} step="250" value=${Math.min(pos, max)} data-haptic="off" data-tp-seek
+        disabled=${disabled || !dur}
+        onPointerdown=${() => onScrubStart?.()}
+        onInput=${(e) => onScrub?.(Number(e.target.value))}
+        onChange=${(e) => { onScrubEnd?.(); onSeek(Number(e.target.value)); }} />
+      <div class="flex justify-between font-mono text-xs tabular-nums text-base-content/70">
+        <span data-time>${clock(pos)}</span><span>${clock(dur)}</span>
+      </div>
+    </div>` : null;
+
+  return html`
+    <div data-transport class=${`flex flex-col gap-2 ${className}`}>
+      ${head}
+      ${scrub}
+      <div class="flex items-center justify-center gap-4">
+        ${onRepeat ? html`
+          <button id="repeat" data-repeat=${repeat || "off"} aria-label=${sys("aRepeat", locale)}
+            aria-pressed=${repeat && repeat !== "off" ? "true" : "false"}
+            class=${`btn btn-ghost btn-circle btn-sm ${repeat && repeat !== "off" ? "text-primary" : "text-base-content/70"}`}
+            onClick=${onRepeat}>${Icon(REPEAT_ICON[repeat] || REPEAT_ICON.off, "text-lg")}</button>` : null}
+        ${onPrev ? html`
+          <button id="prev" class=${`btn btn-ghost btn-circle ${side}`} aria-label=${sys("aPrev", locale)}
+            disabled=${disabled} onClick=${onPrev}>${Icon("lucide:skip-back", "text-xl")}</button>` : null}
+        <button id="play" data-playing=${playing} disabled=${disabled}
+          class=${`btn btn-primary btn-circle ${big} shadow-lg shadow-primary/20`}
+          aria-label=${sys(playing ? (stopIcon ? "aStop" : "aPause") : "aPlay", locale)} onClick=${onToggle}>
+          ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", "text-2xl")}
+        </button>
+        ${onNext ? html`
+          <button id="next" class=${`btn btn-ghost btn-circle ${side}`} aria-label=${sys("aNext", locale)}
+            disabled=${disabled} onClick=${onNext}>${Icon("lucide:skip-forward", "text-xl")}</button>` : null}
+        ${extra ? html`<span class="w-px h-7 bg-base-content/12 mx-0.5" aria-hidden="true"></span>${extra}` : null}
+      </div>
+    </div>`;
+}
+
+// ── Stage — where a visualiser lives ──────────────────────────────────────────────────────────────────
+// A full-bleed `absolute inset-0` canvas centres its subject on the SCREEN, which is the wrong centre: the
+// header sits over the top of it and the transport island over the bottom, so the object reads as pushed
+// up and off-balance on every phone. A visualiser belongs in the box that is actually visible — the flex
+// void between the chrome — and then its own geometry centring is correct for free, at every breakpoint,
+// with no measuring and no magic numbers.
+//
+// Use it as the `flex-1 min-h-0` void of a fit view: header · <Stage> · controls. The canvas inside is
+// `absolute inset-0` relative to THIS box, not the screen.
+export function Stage({ children, className = "" }) {
+  return html`<div data-stage-box class=${`relative flex-1 min-h-0 ${className}`}>${children}</div>`;
+}

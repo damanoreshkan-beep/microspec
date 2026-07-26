@@ -34,10 +34,14 @@ const env = Envelope(0.55, 0.12, N);
 const subs = new Set();
 const SILENT = new Uint8Array(1024);
 let pumpRaf = null, phase = 0, resting = false;
+let lastGen = -1, lastProgress = -1;
 function pump() {
   const live = (_getBytes && _getBytes()) || null;
+  const progress = (_getProgress && _getProgress()) || 0;
+  const changed = _cloudGen !== lastGen || Math.abs(progress - lastProgress) > 0.0005;
   if (live) { resting = false; phase += reducedMotion ? 0.012 : 0.04; }
-  else if (resting) { pumpRaf = requestAnimationFrame(pump); return; }
+  else if (resting && !changed) { pumpRaf = requestAnimationFrame(pump); return; }
+  lastGen = _cloudGen; lastProgress = progress;
   const u8 = live || SILENT;
   const st = {
     levels: env.update(bandLevels(u8, EDGES)),

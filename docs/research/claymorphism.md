@@ -66,9 +66,13 @@ typography or geometry is taken from it. Palette and the page/surface/shadow del
 
 ### What the numbers actually say
 
-- **A surface sits ~14 luminance BELOW its page.** Measured 231 → 217 here, and the earlier reference
-  measured the same −14. Two independent files agreeing makes this a rule, not a coincidence. Note this is
-  the opposite of the naive instinct to lighten a raised card.
+- **There are THREE levels, not two — and reading it as two is what failed the gate in all 58 apps.**
+  Outer canvas 231 → board/container 217 → the cards *on* the board, lighter again. A **container** sits
+  below its page; a **card** sits above its container. The −14 is real, but it describes the *board*, not
+  a card. I first applied the board's colour to `base-100` (the farm's card), which darkened every
+  surface in the farm and cost `text-base-content/60` its contrast — 4.57:1 → 3.72:1, axe-serious in
+  every app at once. In the farm's two levels: `base-100` (card) is the LIGHTER, `base-200` (page)
+  carries the cream.
 - **Volume is edge contrast, not fill.** The green button's face barely moves (209→200) while the inner
   highlight jumps to **235 (+35)** and the bottom shade drops to **155 (−45)**. Lightening the *face* is
   what flattens clay — the farm's surface system already encodes this ("a raised surface is not a lighter
@@ -88,8 +92,14 @@ of the style. Where the farm puts text on a coloured surface, apply it deliberat
 
 ## Pitfalls
 
-1. **Pastel + soft shadows pull text under 4.5:1.** The style does not break contrast; it *tempts* you to
-   make the label pale. The axe gate catches it, but only after the fact.
+1. **Pastel + soft shadows pull text under 4.5:1 — and the failure arrives through ALPHA, not colour.**
+   Every *solid* content-on-surface pair can pass (they did: tightest 4.91:1) while the farm still fails
+   axe in all 58 apps, because what it renders is `text-base-content/60` — an alpha composited over the
+   surface. 60% of a warm ink on a cream card is **3.72:1** where the same ink at 100% is 11:1. Muted
+   text is the binding constraint of ANY light theme: the old ink theme cleared it by 0.07 (4.57:1).
+   **The warmth budget of a light clay theme is set by that number, not by taste.**
+   `runtime_test.js` now computes the composited pair locally — it reproduces axe's 3.72 exactly, so this
+   never needs a CI round to discover again.
 2. **A grey shadow kills the effect.** Tint it with the surface hue.
 3. **Radius is half the effect.** Below ~20px the volume reads as an ordinary drop shadow.
 4. **Near-black cannot be clay.** Give the dark theme a hue (aubergine/warm brown) and L≈35-55.

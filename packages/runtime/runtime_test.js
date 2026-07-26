@@ -3124,6 +3124,58 @@ Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit
   }
 });
 
+// THE class of bug this closes, and it cost a full 58-job CI matrix to learn. A palette change repainted
+// both themes; every solid pair (content-on-surface) was computed browser-free first and passed. All 58
+// apps still failed axe on ONE selector: `.text-base-content/60`. Solid pairs are not what the farm
+// renders — muted text is an ALPHA over a surface, and 60% of a warm ink on a cream card is 3.72:1 where
+// the same ink at 100% is 11:1. The contrast that matters is the COMPOSITED one.
+//
+// Calibration matters as much as the maths. The first version of this check tested every alpha against
+// every surface and "failed" the OLD ink theme too — a theme that had been green in CI for months. That
+// proved the check, not the theme, was wrong: the cartesian product includes pairs the farm never renders
+// (muted text on base-300, for one). So the binding set below is exactly the pairs on which the old
+// known-green theme cleared 4.5 — anything it did not clear demonstrably does not occur.
+Deno.test("a11y: MUTED text (an alpha over a surface) clears 4.5:1 — the pair axe actually measures", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const tokens = (theme) => {
+    const i = css.indexOf(`[data-theme="${theme}"] {`);
+    const out = {};
+    for (const m of css.slice(i, css.indexOf("}", i)).matchAll(/(--color-[a-z0-9-]+):\s*(#[0-9A-Fa-f]{6})/g)) out[m[1]] = m[2];
+    return out;
+  };
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const lin = (v) => (v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  const relLum = (p) => 0.2126 * lin(p[0]) + 0.7152 * lin(p[1]) + 0.0722 * lin(p[2]);
+  const ratio = (a, b) => { const [x, y] = [relLum(a), relLum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  const over = (fg, a, bg) => fg.map((v, i) => a * v + (1 - a) * bg[i]);   // sRGB compositing, what Chrome does
+
+  for (const theme of ["signal", "signal-light"]) {
+    const t = tokens(theme);
+    const bed = {
+      "base-100": rgb(t["--color-base-100"]),
+      "base-200": rgb(t["--color-base-200"]),
+      "base-300": rgb(t["--color-base-300"]),
+    };
+    // `bg-primary/10` is a real tinted backdrop in the farm — text sits on it, so it is a surface too.
+    bed["primary/10 on base-100"] = over(rgb(t["--color-primary"]), 0.10, bed["base-100"]);
+    bed["primary/10 on base-200"] = over(rgb(t["--color-primary"]), 0.10, bed["base-200"]);
+    const ink = rgb(t["--color-base-content"]);
+    const binding = [
+      ["base-100", 0.60], ["base-200", 0.60], ["base-100", 0.70], ["base-200", 0.70],
+      ["base-300", 0.70], ["base-300", 0.80], ["primary/10 on base-100", 0.70], ["primary/10 on base-200", 0.70],
+    ];
+    for (const [surface, alpha] of binding) {
+      const r = ratio(over(ink, alpha, bed[surface]), bed[surface]);
+      assert(
+        r >= 4.5,
+        `${theme}: base-content at ${alpha * 100}% over ${surface} is ${r.toFixed(2)}:1, under the 4.5 floor — ` +
+          `this is what axe reports as color-contrast on .text-base-content\\/${alpha * 100}, in EVERY app at once. ` +
+          `Darkening a surface to make it "look like clay" is the move that spends this margin.`,
+      );
+    }
+  }
+});
+
 Deno.test("design tokens: density steps DOWN as the viewport gets shorter (landscape must compact)", async () => {
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   // each `@media (max-height: N)` block, smallest N last — read --ms-gap out of every one

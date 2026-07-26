@@ -196,6 +196,14 @@ export async function runResponsiveMatrix(page, ev, dev) {
             !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.backgroundColor) ||
             cs.boxShadow !== "none" || parseFloat(cs.borderTopWidth) > 0;
           if (!painted) continue;
+          let skip = false;
+          for (let q = el.parentElement; q && q !== document.body; q = q.parentElement) {
+            const qs = getComputedStyle(q);
+            if (!/auto|scroll|hidden|clip/.test(qs.overflowX + qs.overflowY)) continue;
+            const qr = q.getBoundingClientRect();
+            if (r.right > qr.right - 0.5 || r.left < qr.left + 0.5) { skip = true; break; }
+          }
+          if (skip) continue;
           const gap = vertical ? d.left - r.right : d.top - r.bottom;
           const crosses = vertical
             ? (r.bottom > d.top && r.top < d.bottom)

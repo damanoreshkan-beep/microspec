@@ -129,6 +129,20 @@ export default [
     },
   },
   {
+    name: "повтор: off → all → one → off", run: async (h) => {
+      await ready(h);
+      h.expect((await h.attr("#repeat", "data-repeat")) === "off", "повтор має починатися вимкненим");
+      await h.tap("#repeat"); await h.wait(150);
+      h.expect((await h.attr("#repeat", "data-repeat")) === "all", "не перемкнувся на «весь список»");
+      h.expect((await h.attr("#repeat", "aria-pressed")) === "true", "активний стан не позначено");
+      await h.tap("#repeat"); await h.wait(150);
+      h.expect((await h.attr("#repeat", "data-repeat")) === "one", "не перемкнувся на «один трек»");
+      await h.tap("#repeat"); await h.wait(150);
+      h.expect((await h.attr("#repeat", "data-repeat")) === "off", "цикл не замкнувся");
+      h.expect((await h.attr("#repeat", "aria-pressed")) === "false", "вимкнений стан не позначено");
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

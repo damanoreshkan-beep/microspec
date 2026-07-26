@@ -1,9 +1,14 @@
-// apps/v2m/viz.js — the hero: THE TUNE'S OWN BYTES, in 3D.
+// apps/v2m/viz.js — the hero: THE TUNE'S OWN BYTES BECOMING MUSIC.
 //
-// Every point is three bytes of the .v2m file mapped to a spherical coordinate (maths + tests in
-// /_rt/v2m.js `byteCloud`), so the object you see IS the file: a 9 KB tune is a sparse constellation, a
-// 90 KB one is a dense globe. That is the app's whole argument — a few kilobytes hold a whole song — made
-// literal instead of captioned. The cloud then breathes on the live FFT tapped off the synth.
+// One point per byte of the .v2m, laid out as a DOUBLE HELIX in file order (maths + tests in /_rt/v2m.js
+// `helixStrand`), because a .v2m is not a recording — it is a score the synth executes. A read head runs
+// along the strand at the playback position: everything behind it has been transcribed into sound (bright,
+// wider, hue following the spectral centroid), everything ahead is still data (dim, thin). So the screen
+// shows the mechanism, not a still life — a few kilobytes of instructions turning into a whole song — and
+// the strand's length and density are still literally the file size.
+//
+// The split is a draw RANGE over one shared position buffer, not a per-frame recolour: 16k points restyled
+// every frame would not survive a phone, one index does.
 //
 // Per reference_webgl_threejs_in_farm: three is LAZY-imported inside the effect and init is PROBE-guarded on
 // getContext('webgl') — never gate-guarded — so CI's headless Chrome renders the real 3D while preflight's
@@ -13,7 +18,7 @@
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
 import { DEFAULTS, logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, seedFrame, idle } from "/_rt/spectrum.js";
-import { byteCloud, seedBytes } from "/_rt/v2m.js";
+import { byteCloud, seedBytes, helixStrand, helixAt } from "/_rt/v2m.js";
 
 const N = DEFAULTS.bars;
 const DPR = () => Math.min(1.5, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1);
@@ -31,12 +36,18 @@ const H_LOW = 262, H_HIGH = 190;
 let _getBytes = null;
 export function bindAudio(fn) { _getBytes = fn; }
 
+// ---- playback progress 0..1: where the transcription head sits on the strand ----
+let _getProgress = null;
+export function bindProgress(fn) { _getProgress = fn; }
+
 // ---- the tune's bytes: view.js pushes them the moment a tune loads; scenes rebuild their geometry ----
 let _cloud = byteCloud(seedBytes());
+let _strand = helixStrand(seedBytes());
 let _cloudGen = 0;
 export function setTuneBytes(buf) {
-  const next = buf && buf.byteLength ? byteCloud(new Uint8Array(buf)) : byteCloud(seedBytes());
-  if (next.length) { _cloud = next; _cloudGen++; }
+  const u8 = buf && buf.byteLength ? new Uint8Array(buf) : seedBytes();
+  const next = byteCloud(u8);
+  if (next.length) { _cloud = next; _strand = helixStrand(u8); _cloudGen++; }
 }
 
 // ---- one rAF pump: one FFT read per frame, shared by the WebGL stage and the 2D fallback ----
@@ -52,6 +63,7 @@ function pump() {
     bands: splitBands(u8),
     hue: spectralCentroid(u8).hue,
     phase,
+    progress: (_getProgress && _getProgress()) || 0,
   };
   for (const fn of subs) { try { fn(st); } catch { /* a dead surface must not stall the pump */ } }
   pumpRaf = requestAnimationFrame(pump);
@@ -91,25 +103,41 @@ function makeScene(THREE) {
   const group = new THREE.Group();
   scene.add(group);
 
-  const geo = new THREE.BufferGeometry();
-  const mat = new THREE.PointsMaterial({
-    size: 0.035, sizeAttenuation: true, transparent: true, opacity: 0.9,
-    blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
-  });
-  const pts = new THREE.Points(geo, mat);
+  // ONE position buffer, TWO geometries over it. The strand is ordered along its length, so "already
+  // transcribed" is simply a draw RANGE — the split moves with playback at zero cost per frame, where
+  // recolouring 16k points every frame would not survive a phone.
+  const attr = { current: null };
+  const geoDone = new THREE.BufferGeometry();
+  const geoTodo = new THREE.BufferGeometry();
+  const matDone = new THREE.PointsMaterial({ size: 0.038, sizeAttenuation: true, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const matTodo = new THREE.PointsMaterial({ size: 0.022, sizeAttenuation: true, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const done = new THREE.Points(geoDone, matDone);
+  const todo = new THREE.Points(geoTodo, matTodo);
+
+  // the read head — where data is becoming sound right now
+  const headGeo = new THREE.IcosahedronGeometry(0.075, 1);
+  const headMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.95, toneMapped: false });
+  const head = new THREE.Mesh(headGeo, headMat);
+  const haloGeo = new THREE.IcosahedronGeometry(0.16, 1);
+  const haloMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const halo = new THREE.Mesh(haloGeo, haloMat);
 
   const shellGeo = new THREE.IcosahedronGeometry(SHELL_R, 1);
   const shellMat = new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.12, toneMapped: false });
   const shell = new THREE.Mesh(shellGeo, shellMat);
-  group.add(pts, shell);
+  group.add(todo, done, halo, head, shell);
   let light = null;
 
-  let gen = -1;
+  let gen = -1, n = 0;
   const sync = () => {
     if (gen === _cloudGen) return;
     gen = _cloudGen;
-    geo.setAttribute("position", new THREE.BufferAttribute(_cloud.slice(), 3));
-    geo.computeBoundingSphere();
+    n = _strand.n;
+    attr.current = new THREE.BufferAttribute(_strand.pos.slice(), 3);
+    geoDone.setAttribute("position", attr.current);
+    geoTodo.setAttribute("position", attr.current);
+    geoDone.computeBoundingSphere();
+    geoTodo.computeBoundingSphere();
   };
   sync();
 
@@ -125,23 +153,50 @@ function makeScene(THREE) {
       const lt = isLight();
       if (lt !== light) {                              // blending is a material rebuild — only on a real flip
         light = lt;
-        mat.blending = lt ? THREE.NormalBlending : THREE.AdditiveBlending;
-        mat.needsUpdate = true;
+        const mode = lt ? THREE.NormalBlending : THREE.AdditiveBlending;
+        matDone.blending = matTodo.blending = mode;
+        matDone.needsUpdate = matTodo.needsUpdate = true;
       }
       const br = idle(st.phase);
       const hue = (H_LOW + (H_HIGH - H_LOW) * Math.min(1, st.bands.treble * 1.6) + (st.hue - 235) * 0.1) / 360;
-      const scale = (1 + st.bands.bass * 0.22) * br;
-      group.scale.setScalar(scale);
-      group.rotation.y += 0.0016 + st.bands.mid * 0.006;
-      group.rotation.x = Math.sin(st.phase * 0.08) * 0.18;
-      mat.size = 0.026 + st.bands.treble * 0.03;
-      mat.opacity = lt ? 0.75 + st.bands.mid * 0.25 : 0.55 + st.bands.mid * 0.4;
-      mat.color.setHSL(((hue % 1) + 1) % 1, lt ? 0.68 : 0.72, lt ? 0.42 : 0.62);
+      const h01 = ((hue % 1) + 1) % 1;
+
+      // the transcription split
+      const k = Math.max(0, Math.min(n, Math.round(st.progress * n)));
+      geoDone.setDrawRange(0, k);
+      geoTodo.setDrawRange(k, Math.max(0, n - k));
+
+      group.scale.setScalar((1 + st.bands.bass * 0.16) * br);
+      group.rotation.y += 0.0022 + st.bands.mid * 0.005;
+      group.rotation.x = Math.sin(st.phase * 0.06) * 0.14;
+
+      matDone.size = 0.03 + st.bands.treble * 0.03;
+      matDone.opacity = lt ? 0.9 : 0.7 + st.bands.mid * 0.3;
+      matDone.color.setHSL(h01, lt ? 0.7 : 0.75, lt ? 0.42 : 0.64);
+      matTodo.size = 0.018 + st.bands.treble * 0.012;
+      matTodo.opacity = lt ? 0.5 : 0.3;
+      matTodo.color.setHSL(H_LOW / 360, lt ? 0.4 : 0.45, lt ? 0.55 : 0.5);
+
+      const [hx, hy, hz] = helixAt(st.progress);
+      head.position.set(hx, hy, hz);
+      halo.position.set(hx, hy, hz);
+      const pulse = 0.85 + st.bands.bass * 0.9;
+      head.scale.setScalar(pulse);
+      halo.scale.setScalar(0.9 + st.bands.bass * 1.6);
+      head.rotation.y += 0.05;
+      headMat.color.setHSL(h01, lt ? 0.75 : 0.8, lt ? 0.45 : 0.72);
+      haloMat.color.setHSL(h01, 0.8, lt ? 0.5 : 0.6);
+      haloMat.opacity = (lt ? 0.12 : 0.14) + st.bands.bass * 0.25;
+
       shell.rotation.y -= 0.0012;
-      shellMat.opacity = (lt ? 0.14 : 0.07) + st.bands.bass * 0.13;
+      shellMat.opacity = (lt ? 0.13 : 0.06) + st.bands.bass * 0.1;
       shellMat.color.setHSL(H_LOW / 360, 0.5, lt ? 0.42 : 0.6);
     },
-    dispose() { geo.dispose(); mat.dispose(); shellGeo.dispose(); shellMat.dispose(); },
+    dispose() {
+      geoDone.dispose(); geoTodo.dispose(); matDone.dispose(); matTodo.dispose();
+      headGeo.dispose(); headMat.dispose(); haloGeo.dispose(); haloMat.dispose();
+      shellGeo.dispose(); shellMat.dispose();
+    },
   };
 }
 

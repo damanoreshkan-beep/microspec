@@ -28,6 +28,15 @@ export const SYS = {
   shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
   updateReady: { en: "New version ready", uk: "Нова версія готова" },
   restart: { en: "Restart", uk: "Перезапустити" },
+  // The transport widget's chrome (/_rt/player.js). Same rule as `close`: the component that renders these
+  // labels owns them, so no music app has to restate the word "Play" in two locales to mount a play button.
+  aPlay: { en: "Play", uk: "Грати" },
+  aPause: { en: "Pause", uk: "Пауза" },
+  aStop: { en: "Stop", uk: "Стоп" },
+  aPrev: { en: "Previous track", uk: "Попередній трек" },
+  aNext: { en: "Next track", uk: "Наступний трек" },
+  aSeek: { en: "Seek", uk: "Перемотати" },
+  aRepeat: { en: "Repeat", uk: "Повтор" },
 };
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 

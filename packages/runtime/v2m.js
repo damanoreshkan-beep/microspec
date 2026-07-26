@@ -109,6 +109,46 @@ export function byteCloud(bytes, max = 16384) {
   return out;
 }
 
+/**
+ * The transcription strand: the tune's bytes laid out as a DOUBLE HELIX, in file order.
+ *
+ * This is the app's argument as a mechanism rather than a still life. A `.v2m` is not a recording, it is a
+ * SCORE the synth executes — so the bytes are drawn as a strand you read end to end, and the player runs a
+ * head along it at the playback position: everything behind the head has been transcribed into sound,
+ * everything ahead is still data. Same honesty as `byteCloud` — one point per byte, so the strand's length
+ * and density ARE the file size — but now the order carries meaning too.
+ *
+ * Position from the point's INDEX (never from the value — see byteCloud for why that collapses); the byte's
+ * VALUE modulates the strand's radius, so the helix visibly thickens and thins with the data.
+ *
+ * Returns `{ pos, n }` — interleaved xyz, ordered along the strand, so a renderer can draw the transcribed
+ * prefix and the untranscribed remainder as two draw ranges over one buffer instead of recolouring per frame.
+ */
+export function helixStrand(bytes, { max = 16384, turns = 9, radius = 0.42, span = 2.4 } = {}) {
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || 0);
+  if (u8.length < 1) return { pos: new Float32Array(0), n: 0 };
+  const stride = Math.max(1, Math.ceil(u8.length / max));
+  const n = Math.ceil(u8.length / stride);
+  const pos = new Float32Array(n * 3);
+  for (let k = 0, i = 0; k < n; k++, i += stride) {
+    const t = n === 1 ? 0 : k / (n - 1);
+    // the two strands of the helix, alternating byte by byte — a rung's worth apart
+    const a = t * turns * Math.PI * 2 + (k & 1 ? Math.PI : 0);
+    const r = radius * (0.72 + 0.28 * (u8[i] / 255));
+    pos[k * 3] = Math.cos(a) * r;
+    pos[k * 3 + 1] = (t - 0.5) * span;
+    pos[k * 3 + 2] = Math.sin(a) * r;
+  }
+  return { pos, n };
+}
+
+/** Where the read head sits at playback progress `t` (0..1) — the same curve, sampled continuously. */
+export function helixAt(t, { turns = 9, radius = 0.42, span = 2.4 } = {}) {
+  const c = Math.max(0, Math.min(1, t || 0));
+  const a = c * turns * Math.PI * 2;
+  return [Math.cos(a) * radius, (c - 0.5) * span, Math.sin(a) * radius];
+}
+
 /** A deterministic stand-in cloud, so the hero is never an empty stage (headless gate, nothing loaded yet). */
 export function seedBytes(n = 6144, seed = 0x5eed) {
   const u8 = new Uint8Array(n);

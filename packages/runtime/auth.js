@@ -99,10 +99,15 @@ export async function restore() {
 // login() — open the GitHub consent popup and resolve when the edge posts back an opaque sid. Gate → mock,
 // resolves immediately (no popup, no network). Rejects on a closed/blocked popup or timeout so the UI can
 // surface an error rather than hang.
-export function login() {
+// `scope` is a per-app argument rather than one farm-wide constant: starring a public repo needs
+// `public_repo`, but reading the Actions runs of a PRIVATE repo needs `repo`, and it would be wrong to make
+// every app that only stars things ask for the wider one. Each app asks for what it actually needs, and the
+// login sheet discloses it. (An existing session keeps the scope it was minted with — an app that needs more
+// has to have the user sign in again, which is the honest behaviour.)
+export function login({ scope = SCOPE } = {}) {
   if (gate) { session.set(MOCK_SESSION); return Promise.resolve(MOCK_SESSION); }
   return new Promise((resolve, reject) => {
-    const url = `${GH}/authorize?scope=${encodeURIComponent(SCOPE)}&origin=${encodeURIComponent(PWA_ORIGIN)}`;
+    const url = `${GH}/authorize?scope=${encodeURIComponent(scope)}&origin=${encodeURIComponent(PWA_ORIGIN)}`;
     const w = 640, h = 720;
     const left = (screen.width - w) / 2, top = (screen.height - h) / 2;
     const popup = window.open(url, "gh-oauth", `width=${w},height=${h},left=${left},top=${top}`);
@@ -142,6 +147,88 @@ export async function star(owner, repo, on = true) {
   if (!s || !owner || !repo) return false;
   try { const j = await edge("star", { sid: s.sid, owner, repo, on: !!on }); return !!(j && j.ok); }
   catch { return false; }
+}
+
+// ── GitHub Actions, read-only ────────────────────────────────────────────────────────────────────────────
+// Three narrow reads, not a passthrough. The token lives on the edge precisely so the browser cannot spend
+// it freely, and a generic "proxy any GitHub path" route would hand that back — so each of these maps to one
+// upstream GET with validated arguments. Everything is shaped here (not in the app) because the next app that
+// wants CI status should not re-derive "which of the 40 fields matter".
+//
+// A run's shape: GitHub reports `status` (queued|in_progress|completed) and, only once completed,
+// `conclusion` (success|failure|cancelled|…). Collapsing those two into one word is the single thing every
+// CI UI has to get right, and it is why `state` exists below — a run that is still going has NO conclusion,
+// and reading `conclusion` alone makes a running build look cancelled.
+export const runState = (r) => (r.status !== "completed" ? (r.status === "queued" ? "queued" : "running") : (r.conclusion || "unknown"));
+
+const trimRepo = (r) => ({
+  id: r.id, name: r.name, full: r.full_name, owner: r.owner?.login || r.full_name?.split("/")[0] || "",
+  private: !!r.private, pushed: r.pushed_at || r.updated_at || "", url: r.html_url || "",
+});
+const trimRun = (r) => ({
+  id: r.id, n: r.run_number, name: r.name || r.display_title || "", title: r.display_title || "",
+  state: runState(r), event: r.event || "", branch: r.head_branch || "", sha: (r.head_sha || "").slice(0, 7),
+  started: r.run_started_at || r.created_at || "", updated: r.updated_at || "", url: r.html_url || "",
+});
+const trimJob = (j) => ({
+  id: j.id, name: j.name || "", state: runState(j), started: j.started_at || "", completed: j.completed_at || "",
+  steps: (j.steps || []).map((s) => ({ name: s.name || "", state: runState(s), n: s.number })),
+});
+
+// Deterministic fixtures — the gate has no network and no session, and the shot must show a POPULATED
+// board rather than a sign-in wall. Same reason MOCK_USER exists.
+export const MOCK_REPOS = [
+  { id: 1, name: "microspec", full: "octocat/microspec", owner: "octocat", private: false, pushed: "2026-07-26T10:00:00Z", url: "" },
+  { id: 2, name: "microspec-edge", full: "octocat/microspec-edge", owner: "octocat", private: true, pushed: "2026-07-25T18:20:00Z", url: "" },
+  { id: 3, name: "anubis-launcher", full: "octocat/anubis-launcher", owner: "octocat", private: false, pushed: "2026-07-24T09:05:00Z", url: "" },
+];
+export const MOCK_RUNS = {
+  "octocat/microspec": [
+    { id: 11, n: 412, name: "verify", title: "watch mode — the dock turns 90°", state: "failure", event: "push", branch: "main", sha: "950be55", started: "2026-07-26T10:01:00Z", updated: "2026-07-26T10:07:00Z", url: "" },
+    { id: 12, n: 411, name: "verify", title: "the seek bar lost its groove", state: "running", event: "push", branch: "main", sha: "f8a52fd", started: "2026-07-26T09:40:00Z", updated: "2026-07-26T09:46:00Z", url: "" },
+    { id: 13, n: 410, name: "deploy", title: "ambient's offline precache", state: "success", event: "push", branch: "main", sha: "de46fa5", started: "2026-07-26T09:20:00Z", updated: "", url: "" },
+  ],
+  "octocat/microspec-edge": [
+    { id: 21, n: 87, name: "test", title: "gh: actions routes", state: "success", event: "push", branch: "main", sha: "a1b2c3d", started: "2026-07-25T18:22:00Z", updated: "2026-07-25T18:24:00Z", url: "" },
+  ],
+  "octocat/anubis-launcher": [],
+};
+export const MOCK_JOBS = [
+  { id: 101, name: "unit", state: "success", started: "2026-07-26T10:01:10Z", completed: "2026-07-26T10:02:40Z",
+    steps: [{ n: 1, name: "Checkout", state: "success" }, { n: 2, name: "Setup Deno", state: "success" }, { n: 3, name: "deno test", state: "success" }] },
+  { id: 102, name: "verify (v2m)", state: "failure", started: "2026-07-26T10:02:45Z", completed: "2026-07-26T10:06:10Z",
+    steps: [{ n: 1, name: "Checkout", state: "success" }, { n: 2, name: "Verify v2m", state: "failure" }] },
+];
+
+/** The user's repositories, most recently pushed first — which is the order you actually think about them in. */
+export async function repos() {
+  if (gate) return MOCK_REPOS;
+  const s = session.get();
+  if (!s) return [];
+  const j = await edge("repos", { sid: s.sid });
+  return (j?.repos || []).map(trimRepo);
+}
+
+/**
+ * The latest workflow runs for one repository, newest first. `per` exists because the board needs exactly
+ * ONE run per repository to draw a status dot — asking for twenty there is twenty times the payload across
+ * the whole list, for rows nobody has opened.
+ */
+export async function runs(owner, repo, per) {
+  if (gate) { const all = MOCK_RUNS[`${owner}/${repo}`] || []; return per ? all.slice(0, per) : all; }
+  const s = session.get();
+  if (!s || !owner || !repo) return [];
+  const j = await edge("runs", { sid: s.sid, owner, repo, ...(per ? { per } : {}) });
+  return (j?.runs || []).map(trimRun);
+}
+
+/** The jobs (and their steps) of one run — the "what actually broke" view. */
+export async function jobs(owner, repo, id) {
+  if (gate) return MOCK_JOBS;
+  const s = session.get();
+  if (!s || !owner || !repo || !id) return [];
+  const j = await edge("jobs", { sid: s.sid, owner, repo, id });
+  return (j?.jobs || []).map(trimJob);
 }
 
 // logout() — drop the local sid + session and best-effort tell the edge to forget the server-side token.

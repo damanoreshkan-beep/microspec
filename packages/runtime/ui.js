@@ -142,7 +142,7 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
  * for grouped controls; use Island only where the panel floats OVER content.
  */
 export function Panel({ title, children, className = "" }) {
-  return html`<div class=${`sf-e2 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
+  return html`<div class=${`@container sf-e2 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
     ${title ? html`<div class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${title}</div>` : null}
     ${children}
   </div>`;

@@ -3124,13 +3124,20 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
   }
 });
 
-Deno.test(".ms-cols derives its count from width — it never switches off, and never over-splits", async () => {
+Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts out loud", async () => {
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
-  const m = /\.ms-cols\.ms-cols \{([\s\S]*?)\n  \}/.exec(css);
-  assert(m, ".ms-cols must stay doubled — at equal specificity the CDN wins and the rule does nothing");
-  assert(/auto-fit/.test(m[1]), "the column count is fixed — it cannot answer to the real width");
-  assert(/--ms-col-min/.test(m[1]), "no readable floor: auto-fit alone will happily make 40px columns");
-  assert(!/620px\)\s*and\s*\(min-width/.test(css), "a min-width gate turns the rule off where it is needed most");
+  const at = css.indexOf(".ms-cols {");
+  assert(at > 0, ".ms-cols rule is gone");
+
+  const region = css.slice(at - 900, at + 700);
+  assert(/@container \(min-width/.test(region), ".ms-cols must respond to its container");
+  assert(!/@media \([^)]*height[^)]*\)\s*\{[^}]*\.ms-cols/.test(css), ".ms-cols is back on a viewport height query");
+
+  assert(!/grid-template-columns:[^;]*auto-fit/.test(css), "auto-fit is back — the count must be stated, not derived");
+  assert(/repeat\(var\(--ms-cols, 3\), minmax\(0, 1fr\)\)/.test(region), "--ms-cols must still name the widest count");
+
+  const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
+  assert(/@container sf-e2/.test(ui), "Panel no longer establishes a container — the queries have nothing to read");
 });
 
 Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager, the tap floor holds", async () => {

@@ -279,14 +279,23 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --border: 1px; --depth: 0;
 }
 
-/* CLAY — light. The measured relationship, and the one that is counter-intuitive: a raised surface sits
-   ~14 luminance BELOW its page, not above it. Two independent references agree on −14 (page 231 → face
-   217), so base-200 (the page, via `body class="bg-base-200"`) is the LIGHTER of the pair. */
+/* CLAY — light. The reference has THREE levels, and reading it as two is what broke this the first time:
+   outer canvas 231 → board/container 217 → the cards ON the board, lighter again. A *container* sits
+   below its page; a *card* sits above its container. The farm has two levels, so base-100 (the card) is
+   the LIGHTER one and base-200 (the page, via `body class="bg-base-200"`) carries the cream.
+
+   The warmth budget is set by contrast, not taste. `text-base-content/60` is used in 66 files, and at
+   60% alpha it is the binding constraint in ANY light theme — the old ink theme cleared it by 0.07
+   (4.57:1). Darkening the surfaces to "look like clay" spent that margin and failed axe in all 58 apps.
+   These values are the warmest page (R−B = 19) that still clears 4.80:1 on every pair the farm actually
+   renders; the unit test in runtime_test.js holds the line. Clay reads as clay through the tinted
+   shadow, the radius and the terracotta accent — NOT through darkening the surfaces, which is the one
+   move that cannot survive the gate. */
 [data-theme="signal-light"] {
   color-scheme: light;
-  --color-base-100: #E4DACA; --color-base-200: #EDE6DE; --color-base-300: #D6C9B4;
-  --color-base-content: #2A2320;
-  --color-primary: #2A2320;   --color-primary-content: #F5EFE6;
+  --color-base-100: #FFFAF2; --color-base-200: #F7F0E4; --color-base-300: #E9DFCF;
+  --color-base-content: #120F0D;
+  --color-primary: #120F0D;   --color-primary-content: #FFFAF2;
   --color-secondary: #8A4A2A; --color-secondary-content: #FFF8F0; /* бронювання */
   --color-accent: #8A4A2A;    --color-accent-content: #FFF8F0;    /* terracotta, deepened to clear 4.5:1 */
   --color-neutral: #2A2320;   --color-neutral-content: #F0EAE0;

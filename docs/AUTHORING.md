@@ -75,7 +75,7 @@ A `type:"tool"` tab renders the `view.js` export named by its `view` key. Props:
 screen, openScreen, closeScreen }`; read reactive state with `useStore(S.t | S.filters | S.locale)`.
 Compose the shared runtime components instead of writing geometry/astronomy from scratch:
 
-- **`/_rt/ui.js` — the UI kit. Use it; do not build a second one.** Five nodes, and each of them replaced a
+- **`/_rt/ui.js` — the UI kit. Use it; do not build a second one.** Six nodes, and each of them replaced a
   pattern that eight apps had already copied and quietly diverged on:
   - `<Sheet id open onClose title subtitle icon>…</Sheet>` — the ONE bottom sheet. Owns the glass shell,
     drag-to-dismiss, the title row + close, the backdrop, and a `max-h-88dvh` inner scroll (the only
@@ -87,6 +87,19 @@ Compose the shared runtime components instead of writing geometry/astronomy from
     content). `dot` is the only place colour enters.
   - `<Island/>` floating glass over content · `<Panel title/>` solid surface in flow ·
     `<Slider id label value onInput/>` labelled range.
+  - `<Transport playing onToggle …/>` — the ONE play control; preflight **fails** a hand-rolled play/pause
+    toggle. Everything is opt-in by handler, so the same node is a bare ambient toggle and a full queue
+    player: `onPrev`/`onNext`, `onSeek` + `pos`/`dur` (the scrub bar, with `onScrubStart`/`onScrub`/
+    `onScrubEnd` for a readout that follows the thumb while the engine is told once, on release), `repeat`
+    + `onRepeat`, `shuffle` + `onShuffle`, `title`/`subtitle`, `stopIcon`, `size="md|sm|hero"`. Its a11y
+    labels come from the runtime's SYS dictionary in both locales — an app adopting it restates nothing.
+    Your own controls go in `actions: [{id, icon, label, onClick, active?, tone?, pulse?, attr?}]`; past
+    `keep` they demote into an overflow `Sheet` **with their words** (wire `moreOpen`/`onMore`/`onMoreClose`
+    to an `S.screen` value, so Back closes it like every other screen).
+    Where the queue goes next is **not** in the widget — it is `advance()` in `/_rt/player.js`, pure and
+    unit-tested, and auto-advance is wiring your engine's `ended` event to `advance(…, {manual: false})`.
+    Pass `manual: true` for a button press: repeat-one replays a track that ended, but must never trap a
+    listener who pressed skip.
 
   Components size themselves from the **design tokens** in `theme.css` — `--ms-gap/-pad/-r/-ctl/-icon/`
   `-title/-label`, which **step by viewport HEIGHT** (780/670/560px). Never hardcode a gap or a control

@@ -9,16 +9,18 @@ export default [
       h.expect((await h.count("[data-live]")) === 1, "немає сцени");
       h.expect((await h.count("[data-orb]")) === 5, "немає 5 нот-орбів");
       h.expect((await h.count("[data-scale]")) === 7, "немає 7 ладів");
-      h.expect((await h.count("[data-play]")) === 1, "немає play");
+      h.expect((await h.count("#play")) === 1, "немає play");
     },
   },
   {
     name: "play → pause стан", run: async (h) => {
       await ready(h);
-      await h.tap("[data-play]"); await h.wait(200);
-      h.expect((await h.count("[data-play].btn-secondary")) === 1, "play не запустився");
-      await h.tap("[data-play]"); await h.wait(200);
-      h.expect((await h.count("[data-play].btn-primary")) === 1, "pause не зупинив");
+      // State, not classes: the play control is the kit's Transport now, and a check pinned to
+      // `.btn-secondary` was asserting DaisyUI's markup rather than whether the sound started.
+      await h.tap("#play"); await h.wait(200);
+      h.expect((await h.attr("#play", "data-playing")) === "true", "play не запустився");
+      await h.tap("#play"); await h.wait(200);
+      h.expect((await h.attr("#play", "data-playing")) !== "true", "pause не зупинив");
     },
   },
   {

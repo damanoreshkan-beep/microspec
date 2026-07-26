@@ -23,7 +23,7 @@ import {
   STYLES, styleById, CHORDS, voiceLead, chordRoot, pickChord, sparkleNote,
   enoLoops, loopsForDensity, dwellSeconds, mulberry32, midiToFreq,
 } from "/_rt/ambient.js";
-import { Segmented, Island, Panel, Slider } from "/_rt/ui.js";
+import { Segmented, Island, Panel, Slider, Transport } from "/_rt/ui.js";
 import { PACKS, packById, padVoice, textureVoice, droneVoice, sparkle, makeIR } from "./synth.js";
 import { Field, bindAudio } from "./viz.js";
 
@@ -200,6 +200,7 @@ const Dot = (hue, cls = "w-2 h-2") => html`<span class=${`${cls} rounded-full sh
 // else compacts through the --ms-* tokens without a single breakpoint written here.
 export function drift({ S }) {
   const t = useStore(S.t); curT = t;
+  const loc = useStore(S.locale);
   const playing = useStore($playing); useStore($tick);
   const style = curStyle(), pack = curPack();
   const worlds = STYLES.map((s) => ({ id: s.id, label: T(t, s.key), dot: `hsl(${s.hue} 70% 58%)` }));
@@ -213,14 +214,13 @@ export function drift({ S }) {
 
       <div class="flex-1 min-h-0"></div>
 
-      <${Island} className="shrink-0 flex items-center gap-[var(--ms-gap)]">
-        <button id="play" data-playing=${playing} aria-label=${playing ? T(t, "aStop") : T(t, "aPlay")} onClick=${toggle}
-          class="btn btn-circle btn-primary shrink-0 shadow-lg h-[calc(var(--ms-ctl)*1.15)] w-[calc(var(--ms-ctl)*1.15)] min-h-0">${Icon(playing ? "lucide:pause" : "lucide:play", "text-2xl")}</button>
-        <div class="flex-1 min-w-0">
-          <div class="font-semibold text-[var(--ms-title)] leading-tight truncate flex items-center gap-2 text-base-content">${Dot(style.hue, "w-2.5 h-2.5")}${T(t, style.key)}</div>
-          <div class="text-sm text-base-content/70 truncate flex items-center gap-1.5">${Icon(pack.icon, "text-base")}${T(t, pack.key)}${playing ? html`<span class="inline-block w-1.5 h-1.5 rounded-full bg-primary ml-1 animate-pulse"></span>` : null}</div>
-        </div>
-        <button id="vary" aria-label=${T(t, "aVary")} data-haptic="off" onClick=${vary} disabled=${!playing} class="btn btn-circle btn-ghost shrink-0 disabled:opacity-30">${Icon("lucide:shuffle", "text-xl")}</button>
+      ${/* The transport is the kit's, not this app's: the world/pack pair IS the now-playing line, and
+           "vary" is an app action the widget carries (and demotes) rather than a button bolted beside it. */""}
+      <${Island} className="shrink-0">
+        <${Transport} locale=${loc} playing=${playing} onToggle=${toggle}
+          title=${html`<span class="inline-flex items-center gap-2">${Dot(style.hue, "w-2.5 h-2.5")}${T(t, style.key)}</span>`}
+          subtitle=${html`<span class="inline-flex items-center gap-1.5">${Icon(pack.icon, "text-base")}${T(t, pack.key)}${playing ? html`<span class="inline-block w-1.5 h-1.5 rounded-full bg-primary ml-1 animate-pulse"></span>` : null}</span>`}
+          actions=${[{ id: "vary", icon: "lucide:shuffle", label: T(t, "aVary"), onClick: vary, disabled: !playing, haptic: "off" }]} />
       </${Island}>
       ${!audioSupported ? html`<div class="shrink-0 text-xs text-center text-base-content/70">${T(t, "noAudio")}</div>` : null}
     </div>

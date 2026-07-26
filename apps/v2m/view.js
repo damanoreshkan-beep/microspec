@@ -185,14 +185,15 @@ function pause() {
 async function toggle() { if ($playing.get()) pause(); else await resume(); }
 function seek(ms) { $posMs.set(ms); if (node) node.port.postMessage({ cmd: "seek", ms: Math.round(ms) }); }
 
-const GATE_TUNES = [
-  { author: "Jandor", file: "stars.v2m", size: 9216 },
-  { author: "Dafunk", file: "the abandoned ones.v2m", size: 16881 },
-  { author: "KB", file: "fr-024 welcome to breakpoint.v2m", size: 27112 },
-  { author: "Kaktusen", file: "klaxton.v2m", size: 51521 },
-  { author: "Dalezy", file: "blackout in mordor.v2m", size: 83421 },
-  { author: "Quickyman", file: "arcane remix.v2m", size: 100352 },
-];
+const GATE_AUTHORS = ["Jandor", "Dafunk", "KB", "Kaktusen", "Dalezy", "Quickyman", "Dubmood", "Chip (ES)"];
+const GATE_TITLES = ["stars", "the abandoned ones", "fr-024 welcome to breakpoint", "klaxton",
+  "blackout in mordor", "arcane remix", "the scene is dead", "invasors from the planet disco",
+  "supersonic (shortmix)", "thesis", "crystal gate - loader", "nostalgy"];
+const GATE_TUNES = Array.from({ length: 96 }, (_, i) => ({
+  author: GATE_AUTHORS[i % GATE_AUTHORS.length],
+  file: `${GATE_TITLES[i % GATE_TITLES.length]}${i < GATE_TITLES.length ? "" : " " + (1 + Math.floor(i / GATE_TITLES.length))}.v2m`,
+  size: 2048 + ((i * 7919) % 120000),
+}));
 
 async function fetchText(pathFor) {
   for (let m = 0; m < MIRRORS.length; m++) {
@@ -382,13 +383,13 @@ export function v2mStore({ S, toast }) {
 
   useEffect(() => {
     const el = moreRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
+    if (!el || shown >= list.length || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver((es) => {
-      if (es.some((e) => e.isIntersecting)) setShown((n) => (n < list.length ? n + PAGE : n));
+      if (es.some((e) => e.isIntersecting)) setShown((n) => Math.min(n + PAGE, list.length));
     }, { rootMargin: "600px" });
     io.observe(el);
     return () => io.disconnect();
-  }, [list.length]);
+  }, [shown, list.length]);
 
   const play = (tune) => {
     S.tab.set("play");                                 

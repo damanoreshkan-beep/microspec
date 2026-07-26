@@ -2914,7 +2914,43 @@ Deno.test("a11y: MUTED text (an alpha over a surface) clears 4.5:1 — the pair 
           `Darkening a surface to make it "look like clay" is the move that spends this margin.`,
       );
     }
+
+    const muted = rgb(t["--color-base-muted"]);
+    for (const [surface, px] of Object.entries(bed)) {
+      const r = ratio(muted, px);
+      assert(
+        r >= 4.5,
+        `${theme}: --color-base-muted on ${surface} is ${r.toFixed(2)}:1, under the 4.5 floor. ` +
+          `This token is the farm's secondary text colour in 66 files — it is a DESIGNED colour precisely ` +
+          `so its contrast is checked once here instead of being an accident of whatever it lands on.`,
+      );
+    }
   }
+});
+
+Deno.test("a11y: muted text is the TOKEN, never an alpha — .text-base-content/60 may not return", async () => {
+  const root = new URL("../../", import.meta.url);
+  const offenders = [];
+  const walk = async (dir) => {
+    for await (const e of Deno.readDir(dir)) {
+      const p = new URL(e.name + (e.isDirectory ? "/" : ""), dir);
+      if (e.isDirectory) {
+        if (["node_modules", ".git", "dist", "states"].includes(e.name)) continue;
+        await walk(p);
+      } else if (/\.(js|mjs|html|css)$/.test(e.name) && !/_test\.js$/.test(e.name)) {
+        const src = await Deno.readTextFile(p);
+        if (src.includes("text-base-content/60")) offenders.push(p.pathname.replace(root.pathname, ""));
+      }
+    }
+  };
+  for (const d of ["packages/", "apps/"]) await walk(new URL(d, root));
+  assertEquals(
+    offenders,
+    [],
+    `muted text must use .text-muted (--color-base-muted), not a 60% alpha. At 60% the contrast is whatever ` +
+      `the palette happens to composite to — it measured 3.72:1 after the clay repaint and failed axe in all ` +
+      `58 apps at once. Offenders: ${offenders.join(", ")}`,
+  );
 });
 
 Deno.test("design tokens: density steps DOWN as the viewport gets shorter (landscape must compact)", async () => {

@@ -66,7 +66,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   .btn { --btn-p: 0.45rem; max-width: 100%; flex-shrink: 1; white-space: normal; }
   .btn > * { min-width: 0; }
   .font-mono { overflow-wrap: anywhere; }
-  .flex:has(> .btn) { flex-wrap: wrap; }
+  html:not(.ms-fit) .flex:has(> .btn) { flex-wrap: wrap; }
   html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
 
   
@@ -142,7 +142,6 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   background: var(--sf-press-face);
   box-shadow: inset 0 3px 7px -1px var(--sf-press-top), inset 0 -1px 0 0 var(--sf-lip);
 }
-
 .sf-e1 { box-shadow: none; }
 .sf-e2 { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 6px -2px var(--sf-shadow); }
 .sf-e3 { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
@@ -154,14 +153,13 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --r-1: 4px; --r-2: 8px; --r-3: 12px; --r-4: 16px; --r-5: 24px;
   --bw-1: 1px; --bw-2: 2px; --bw-3: 4px;
 }
+
 [data-theme="signal"] {
-  
   --sf-rim:        rgba(255, 255, 255, .08);
   --sf-edge:       rgba(255, 255, 255, .10);
   --sf-lip:        rgba(255, 255, 255, .05);
   --sf-shadow:     rgba(0, 0, 0, .55);
   --sf-drop:       0 8px 18px -6px rgba(0, 0, 0, .55);
-  
   --sf-inset-face: var(--color-base-200);
   --sf-inset-top:  rgba(0, 0, 0, .55);
   --sf-press-face: var(--color-base-300);
@@ -172,8 +170,6 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --ms-vol-rim:    rgba(255, 255, 255, .07);    
   --ms-vol-sheen:  rgba(255, 255, 255, .05);
   --ms-vol-shade:  rgba(0, 0, 0, .85);          
-  --ms-trough-in:  rgba(0, 0, 0, .55);
-  --ms-trough-lip: rgba(255, 255, 255, .045);
 }
 [data-theme="signal-light"] {
   
@@ -193,9 +189,8 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --ms-vol-rim:    rgba(24, 24, 27, .07);
   --ms-vol-sheen:  rgba(255, 255, 255, .8);
   --ms-vol-shade:  rgba(24, 24, 27, .13);
-  --ms-trough-in:  rgba(24, 24, 27, .14);
-  --ms-trough-lip: rgba(255, 255, 255, .7);
 }
+
 
 body {
   background-image:
@@ -220,9 +215,18 @@ body::after {
     inset 16px 0 26px -24px var(--ms-vol-shade),
     inset -16px 0 26px -24px var(--ms-vol-shade);
 }
-.ms-trough {
-  box-shadow: inset 0 1px 2px 0 var(--ms-trough-in), inset 0 0 0 1px var(--ms-trough-lip);
+.sf-inset [aria-pressed="true"] { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
+.btn:active:not(:disabled), [aria-pressed]:active {
+  box-shadow: inset 0 3px 7px -1px var(--sf-press-top), inset 0 -1px 0 0 var(--sf-lip);
 }
+.sf-track, .range { --range-bg: var(--sf-inset-face); }
+.input, .textarea, .select, .file-input {
+  background: var(--sf-inset-face);
+  box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), inset 0 -1px 0 0 var(--sf-lip);
+}
+.skeleton, [data-skeleton] { background: var(--sf-inset-face); box-shadow: inset 0 2px 5px -1px var(--sf-inset-top); }
+.modal-box { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 -10px 44px -12px var(--sf-shadow); }
+[data-toast] .alert, .alert.shadow-xl { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }
 :root { --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
 body { letter-spacing: -0.006em; }
 [data-title] {
@@ -232,6 +236,8 @@ body { letter-spacing: -0.006em; }
   font-weight: 700;
   font-size: 1.02rem;
 }
+
+
 .badge {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -248,8 +254,6 @@ body { letter-spacing: -0.006em; }
   border: 1px solid var(--color-base-300);
   color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
 }
-
-
 #status {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -262,7 +266,6 @@ nav[data-dock] button > span {
   letter-spacing: .03em;
   font-size: .58rem;
 }
-
 
 .modal-box {
   background: color-mix(in oklch, var(--color-base-100) 82%, transparent);
@@ -277,9 +280,11 @@ nav[data-dock] button > span {
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
 
+
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
 .overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
+
 
 @media (prefers-reduced-motion: reduce) {
   .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }

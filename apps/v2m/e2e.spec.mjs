@@ -47,6 +47,11 @@ export default [
       h.expect(n > 1, "магазин порожній");
       h.expect(/KB|MB/.test(await h.bodyText()), "на плитках немає розміру — головної цифри застосунку");
       h.expect((await h.count("[data-sort]")) >= 3, "немає перемикача сортування");
+      // the catalogue is cached in a module atom — coming back must not re-run the skeletons
+      await h.click('[data-tab="play"]'); await h.wait(200);
+      await h.click('[data-tab="store"]'); await h.wait(150);
+      h.expect((await h.count("[data-skel]")) === 0, "магазин перезавантажується при поверненні");
+      h.expect((await h.count("[data-tune]")) === n, "кешований список не віддався одразу");
       await h.type('input[type="search"]', "zzzznomatch"); await h.wait(300);
       h.expect((await h.count("[data-tune]")) === 0, "пошук не фільтрує");
       await h.type('input[type="search"]', ""); await h.wait(300);
@@ -73,6 +78,21 @@ export default [
       let rows = 0;
       for (let i = 0; i < 20; i++) { rows = await h.count("[data-track-row]"); if (rows > 0) break; await h.wait(250); }
       h.expect(rows === 1, "завантажений трек не з'явився в бібліотеці (" + rows + ")");
+    },
+  },
+  {
+    name: "наступний трек — наступна пісня з магазину", run: async (h) => {
+      await ready(h);
+      const first = await h.attr("[data-track]", "data-track");
+      await h.tap("#next");
+      let next = first;
+      for (let i = 0; i < 20; i++) { next = await h.attr("[data-track]", "data-track"); if (next !== first) break; await h.wait(250); }
+      h.expect(next !== first, "трек не змінився: " + next);
+      h.expect(next.startsWith("V2/"), "наступний трек не з магазину: " + next);
+      const second = next;
+      await h.tap("#next");
+      for (let i = 0; i < 20; i++) { next = await h.attr("[data-track]", "data-track"); if (next !== second) break; await h.wait(250); }
+      h.expect(next !== second, "друге натискання не перемкнуло трек");
     },
   },
   {

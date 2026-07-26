@@ -10,6 +10,8 @@
   "aStop": "Stop",
   "aRestart": "Restart",
   "aSeek": "Seek",
+  "aPrev": "Previous track",
+  "aNext": "Next track",
   "aStore": "Store",
   "aSearch": "Search the archive",
   "aSort": "Sort",

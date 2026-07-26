@@ -1,5 +1,5 @@
 import { html } from "htm/preact";
-import { useState, useEffect } from "preact/hooks";
+import { useState, useEffect, useRef } from "preact/hooks";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
@@ -31,6 +31,22 @@ const $err = atom("");
 // breadcrumb: how the last offline copy went. A failed download used to be swallowed entirely — it is a
 // real outcome the player should be able to show, and it is what makes the store→library path diagnosable.
 const $saved = atom("");
+
+// ── the archive, cached ──────────────────────────────────────────────────────────────────────────
+// Re-reading 81 listings every time the store tab mounts is both slow and rude to the mirrors, so the
+// catalogue lives in a module atom (survives tab switches) backed by IndexedDB (survives restarts). The
+// cached copy renders instantly and a refresh only runs when it has gone stale.
+const CATALOG = collection("v2mCatalog");
+const CATALOG_KEY = "modland-v2";
+const CATALOG_TTL = 12 * 60 * 60 * 1000;
+
+const $tunes = atom(null);
+const $syncing = atom(false);
+const $owned = atom(new Set());
+// What "next" means: the store list in the order you were looking at when you started playing.
+const $queue = atom([]);
+const $qIndex = atom(-1);
+let notify = null;                                     // the mounted view's toast, if there is one
 
 // ── audio-engine singletons ──
 let ctx = null, node = null, preGain = null, analyser = null, timeBuf = null;
@@ -68,7 +84,10 @@ async function ensureNode() {
         const m = e.data;
         if (m.type === "duration") $durMs.set(m.ms);
         else if (m.type === "position") { if (!scrubbing) $posMs.set(m.ms); }
-        else if (m.type === "ended") { $playing.set(false); $posMs.set($durMs.get()); releaseHold(); }
+        else if (m.type === "ended") {
+          $playing.set(false); $posMs.set($durMs.get()); releaseHold();
+          if (queueList().length) playNext();          // a player plays on
+        }
         else if (m.type === "error") $err.set("loadError");
       };
       preGain = ctx.createGain();
@@ -193,6 +212,105 @@ function pause() {
 async function toggle() { if ($playing.get()) pause(); else await resume(); }
 function seek(ms) { $posMs.set(ms); if (node) node.port.postMessage({ cmd: "seek", ms: Math.round(ms) }); }
 
+// ── the archive: cache first, refresh only when stale ─────────────────────────────────────────────
+const GATE_TUNES = [
+  { author: "Jandor", file: "stars.v2m", size: 9216 },
+  { author: "Dafunk", file: "the abandoned ones.v2m", size: 16881 },
+  { author: "KB", file: "fr-024 welcome to breakpoint.v2m", size: 27112 },
+  { author: "Kaktusen", file: "klaxton.v2m", size: 51521 },
+  { author: "Dalezy", file: "blackout in mordor.v2m", size: 83421 },
+  { author: "Quickyman", file: "arcane remix.v2m", size: 100352 },
+];
+
+async function fetchText(pathFor) {
+  for (let m = 0; m < MIRRORS.length; m++) {
+    try { const r = await fetch(pathFor(m)); if (r.ok) return await r.text(); } catch { /* next mirror */ }
+  }
+  return null;
+}
+
+async function refreshCatalog() {
+  if ($syncing.get() || gate) return;
+  $syncing.set(true);
+  try {
+    const root = await fetchText((m) => MIRRORS[m]);
+    if (!root) return;
+    const authors = parseAuthors(root);
+    const queue = [...authors];
+    const acc = [];
+    const cold = !($tunes.get() || []).length;         // nothing cached → stream it in as it arrives
+    await Promise.all(Array.from({ length: 6 }, async () => {
+      while (queue.length) {
+        const a = queue.shift();
+        const html = await fetchText((m) => authorURL(a, m));
+        if (!html) continue;
+        for (const e of parseListing(html)) acc.push({ author: a, ...e });
+        if (cold) $tunes.set([...acc]);
+      }
+    }));
+    if (acc.length) {                                  // warm → swap in one go, no flicker mid-scroll
+      $tunes.set(acc);
+      try { await CATALOG.put(CATALOG_KEY, { tunes: acc }); } catch { /* a cache miss is not a failure */ }
+    } else if (cold) $tunes.set([]);
+  } finally { $syncing.set(false); }
+}
+
+let catalogStarted = false;
+async function loadCatalog() {
+  if (catalogStarted) return;
+  catalogStarted = true;
+  if (gate) { $tunes.set(GATE_TUNES); return; }
+  let ts = 0;
+  try {
+    const rec = idbSupported ? await CATALOG.get(CATALOG_KEY) : null;
+    if (rec?.tunes?.length) { $tunes.set(rec.tunes); ts = rec._ts || 0; }
+  } catch { /* no cache yet */ }
+  if (Date.now() - ts < CATALOG_TTL) return;
+  await refreshCatalog();
+}
+
+async function loadOwned() {
+  try {
+    const rows = idbSupported ? await SAVES.all() : [];
+    $owned.set(new Set(rows.map((r) => r.id)));
+  } catch { /* an empty library is a fine starting point */ }
+}
+
+// The offline copy: a download, independent of whether the audio device ever came up.
+async function downloadCopy(tune, id, toastText) {
+  try {
+    $saved.set("fetching");
+    const raw = await bytesFor({ author: tune.author, file: tune.file });
+    await SAVES.put(id, { name: titleOf(tune.file), author: tune.author, size: raw.byteLength, dur: $durMs.get(), data: new Uint8Array(raw) });
+    $saved.set("ok");
+    $owned.set(new Set($owned.get()).add(id));
+    if (toastText) notify?.(toastText);
+  } catch (e) { $saved.set("err:" + String((e && e.message) || e).slice(0, 60)); }
+}
+
+// ── the queue: "next" is the next tune in the store, in the order you were looking at ─────────────
+const bySize = (a, b) => a.size - b.size;
+function queueList() {
+  const q = $queue.get();
+  if (q.length) return q;
+  const all = $tunes.get() || [];                      // never opened the store → the archive, smallest first
+  return [...all].sort(bySize);
+}
+
+async function playAt(i, toastText) {
+  const q = queueList();
+  if (!q.length) return false;
+  const idx = ((i % q.length) + q.length) % q.length;
+  const tune = q[idx];
+  const id = trackId(tune.author, tune.file);
+  $queue.set(q); $qIndex.set(idx);
+  downloadCopy(tune, id, toastText);                   // alongside playback, never behind it
+  return await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
+}
+const playNext = () => playAt($qIndex.get() + 1);
+// Classic transport: part-way through a tune, "previous" means "start this one again".
+const playPrev = () => ($posMs.get() > 3000 ? seek(0) : playAt($qIndex.get() - 1));
+
 // The app's whole argument is a number, so it must be on screen before anything is played: read the bundled
 // demo's byte length at mount and hand the hero its real bytes (no AudioContext — that waits for a gesture).
 let primed = false;
@@ -223,7 +341,9 @@ export function v2m({ S }) {
   const err = useStore($err);
   const saveState = useStore($saved);
   const ratio = mp3Ratio(size, dur / 1000);
-  useEffect(() => { primeDemo(); }, []);
+  const tunes = useStore($tunes);
+  const hasQueue = ($queue.get().length || (tunes || []).length) > 0;
+  useEffect(() => { primeDemo(); loadCatalog(); }, []);   // so skip-forward works before the store is opened
 
   return html`
     <div class="relative h-full min-h-0 flex flex-col" data-track=${track?.id || ""} data-saved=${saveState}>
@@ -248,16 +368,19 @@ export function v2m({ S }) {
             <span data-time>${fmt(pos)}</span><span>${fmt(dur)}</span>
           </div>
           <div class="flex items-center justify-center gap-5">
-            <button class="btn btn-ghost btn-circle" aria-label=${T(t, "aRestart")} onClick=${() => seek(0)}>
-              ${Icon("lucide:rotate-ccw", "text-xl")}
+            <button id="prev" class="btn btn-ghost btn-circle" aria-label=${T(t, "aPrev")}
+              disabled=${!hasQueue} onClick=${() => playPrev()}>
+              ${Icon("lucide:skip-back", "text-xl")}
             </button>
             <button id="play" data-playing=${playing}
               class="btn btn-primary btn-circle w-[var(--ms-ctl)] h-[var(--ms-ctl)] shadow-lg shadow-primary/20"
               aria-label=${T(t, playing ? "aPause" : "aPlay")} onClick=${() => toggle()}>
               ${Icon(playing ? "lucide:pause" : "lucide:play", "text-2xl")}
             </button>
-            <button class="btn btn-ghost btn-circle" aria-label=${T(t, "aStore")}
-              onClick=${() => S.tab.set("store")}>${Icon("lucide:store", "text-xl")}</button>
+            <button id="next" class="btn btn-ghost btn-circle" aria-label=${T(t, "aNext")}
+              disabled=${!hasQueue} onClick=${() => playNext()}>
+              ${Icon("lucide:skip-forward", "text-xl")}
+            </button>
           </div>
           ${err && html`<p role="alert" class="text-error text-xs text-center">${T(t, err)}</p>`}
         <//>
@@ -266,91 +389,27 @@ export function v2m({ S }) {
 }
 
 // ─────────────────────────────  STORE  ─────────────────────────────
-// Live: modland's V2 tree is fetched straight from the browser (three mirrors, all `ACAO: *`, no proxy).
-// The listing carries a filename and a byte size — which is exactly what a store built around SIZE needs.
-const GATE_TUNES = [
-  { author: "Jandor", file: "stars.v2m", size: 9216 },
-  { author: "Dafunk", file: "the abandoned ones.v2m", size: 16881 },
-  { author: "KB", file: "fr-024 welcome to breakpoint.v2m", size: 27112 },
-  { author: "Kaktusen", file: "klaxton.v2m", size: 51521 },
-  { author: "Dalezy", file: "blackout in mordor.v2m", size: 83421 },
-  { author: "Quickyman", file: "arcane remix.v2m", size: 100352 },
-];
-
-async function fetchText(pathFor) {
-  for (let m = 0; m < MIRRORS.length; m++) {
-    try { const r = await fetch(pathFor(m)); if (r.ok) return await r.text(); } catch { /* next mirror */ }
-  }
-  return null;
-}
-
+// A LIST, not a grid: the size is the column you scan down, and a row can hold a real title. The catalogue
+// comes from the module cache (instant on every visit) and refreshes in the background only when stale.
 const SORTS = [
-  { id: "size", key: (a, b) => a.size - b.size },
+  { id: "size", key: bySize },
   { id: "name", key: (a, b) => titleOf(a.file).localeCompare(titleOf(b.file)) },
-  { id: "author", key: (a, b) => a.author.localeCompare(b.author) || a.size - b.size },
+  { id: "author", key: (a, b) => a.author.localeCompare(b.author) || bySize(a, b) },
 ];
-const PAGE = 60;
+const PAGE = 40;
 
 export function v2mStore({ S, toast }) {
   const t = useStore(S.t);
   const cur = useStore($track);
-  const [tunes, setTunes] = useState(gate ? GATE_TUNES : null);
-  const [done, setDone] = useState(gate);
+  const tunes = useStore($tunes);
+  const syncing = useStore($syncing);
+  const owned = useStore($owned);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("size");
   const [shown, setShown] = useState(PAGE);
-  const [busy, setBusy] = useState("");
-  const [owned, setOwned] = useState(() => new Set());
+  const moreRef = useRef();
 
-  useEffect(() => {
-    (idbSupported ? SAVES.all() : Promise.resolve([]))
-      .then((rows) => setOwned(new Set(rows.map((r) => r.id))))
-      .catch(() => { /* an empty library is a fine starting point */ });
-  }, []);
-
-  useEffect(() => {
-    if (gate) return;                                  // the gate never touches the network
-    let dead = false;
-    const acc = [];
-    (async () => {
-      const root = await fetchText((m) => MIRRORS[m]);
-      if (dead || !root) { setTunes([]); setDone(true); return; }
-      const authors = parseAuthors(root);
-      const queue = [...authors];
-      await Promise.all(Array.from({ length: 6 }, async () => {
-        while (queue.length && !dead) {
-          const a = queue.shift();
-          const html = await fetchText((m) => authorURL(a, m));
-          if (!html || dead) continue;
-          for (const e of parseListing(html)) acc.push({ author: a, ...e });
-          setTunes([...acc]);
-        }
-      }));
-      if (!dead) setDone(true);
-    })();
-    return () => { dead = true; };
-  }, []);
-
-  const play = async (tune) => {
-    const id = trackId(tune.author, tune.file);
-    setBusy(id);
-    S.tab.set("play");                                 // the tap's answer is the player, right away
-    // The download is a download — started alongside playback, never behind it. Sequencing it after the
-    // audio path meant one stalled promise in the device handshake was enough for nothing to be saved.
-    (async () => {
-      try {
-        $saved.set("fetching");
-        const raw = await bytesFor({ author: tune.author, file: tune.file });
-        await SAVES.put(id, { name: titleOf(tune.file), author: tune.author, size: raw.byteLength, dur: $durMs.get(), data: new Uint8Array(raw) });
-        $saved.set("ok");
-        setOwned((s) => new Set(s).add(id));
-        toast?.(T(t, "toastSaved"));
-      } catch (e) { $saved.set("err:" + String((e && e.message) || e).slice(0, 60)); }
-    })();
-    selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" })
-      .catch(() => $err.set("loadError"))
-      .finally(() => setBusy(""));
-  };
+  useEffect(() => { notify = toast; loadCatalog(); loadOwned(); return () => { notify = null; }; }, []);
 
   const list = (tunes || []).filter((x) => {
     if (!q) return true;
@@ -358,34 +417,50 @@ export function v2mStore({ S, toast }) {
     return x.file.toLowerCase().includes(s) || x.author.toLowerCase().includes(s);
   }).sort(SORTS.find((s) => s.id === sort).key);
 
+  // infinite scroll — a sentinel below the last row asks for the next page as it comes into view
+  useEffect(() => {
+    const el = moreRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((es) => {
+      if (es.some((e) => e.isIntersecting)) setShown((n) => (n < list.length ? n + PAGE : n));
+    }, { rootMargin: "600px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [list.length]);
+
+  const play = (tune) => {
+    S.tab.set("play");                                 // the tap's answer is the player, right away
+    const i = list.findIndex((x) => x.author === tune.author && x.file === tune.file);
+    $queue.set(list);                                  // "next" follows the order you are looking at
+    playAt(i < 0 ? 0 : i, T(t, "toastSaved"));
+  };
+
   const total = (tunes || []).reduce((n, x) => n + x.size, 0);
 
   return html`
     <div class="flex flex-col gap-[var(--ms-gap)] pt-2 pb-2">
-      <div class="flex items-center gap-2">
-        <label class="input input-sm flex-1 flex items-center gap-2">
-          ${Icon("lucide:search", "opacity-60")}
-          <input type="search" class="grow" value=${q} aria-label=${T(t, "aSearch")}
-            placeholder=${T(t, "searchPh")} onInput=${(e) => { setQ(e.target.value); setShown(PAGE); }} />
-        </label>
-      </div>
+      <label class="input input-sm flex items-center gap-2">
+        ${Icon("lucide:search", "opacity-60")}
+        <input type="search" class="grow" value=${q} aria-label=${T(t, "aSearch")}
+          placeholder=${T(t, "searchPh")} onInput=${(e) => { setQ(e.target.value); setShown(PAGE); }} />
+      </label>
 
       <div class="flex items-center justify-between gap-2">
         <${Segmented} variant="outline" size="sm" scroll attr="data-sort" label=${T(t, "aSort")}
           items=${SORTS.map((s) => ({ id: s.id, label: T(t, "sort_" + s.id) }))}
           value=${sort} onChange=${(v) => { setSort(v); setShown(PAGE); }} />
         <span data-catalog class="font-mono text-xs tabular-nums text-base-content/70 shrink-0">
-          ${(tunes || []).length}${done ? "" : "…"} · ${kb(total)}
+          ${(tunes || []).length}${syncing ? "…" : ""} · ${kb(total)}
         </span>
       </div>
 
       ${!useReveal(tunes !== null) ? html`
-        <div class="grid grid-cols-2 gap-[var(--ms-gap)]">${[0, 1, 2, 3, 4, 5].map(() => html`
-          <div data-skel class="card bg-base-200/60 border border-base-content/5">
-            <div class="card-body p-3 gap-1">
-              <div class="font-mono text-lg"><${Scramble} len=${5} /></div>
-              <div class="truncate text-sm"><${Scramble} len=${16} /></div>
-              <div class="text-xs"><${Scramble} len=${9} /></div>
+        <div class="flex flex-col gap-1">${[0, 1, 2, 3, 4, 5, 6, 7].map(() => html`
+          <div data-skel class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-base-200/60">
+            <div class="font-mono text-sm w-14 shrink-0"><${Scramble} len=${5} /></div>
+            <div class="flex-1 min-w-0">
+              <div class="truncate text-sm"><${Scramble} len=${20} /></div>
+              <div class="text-xs"><${Scramble} len=${10} /></div>
             </div>
           </div>`)}</div>` : list.length === 0 ? html`
         <div class="min-h-[40vh] grid place-items-center text-center text-base-content/70">
@@ -394,31 +469,25 @@ export function v2mStore({ S, toast }) {
             <p>${T(t, q ? "storeNoMatch" : "storeEmpty")}</p>
           </div>
         </div>` : html`
-        <div class="grid grid-cols-2 gap-[var(--ms-gap)]">
+        <div class="flex flex-col gap-1">
           ${list.slice(0, shown).map((x) => {
             const id = trackId(x.author, x.file);
             const active = cur?.id === id;
             return html`
-              <button data-tune=${id} data-busy=${busy === id ? "true" : "false"}
-                class=${"card text-left bg-base-200/60 border transition-colors " +
-                  (active ? "border-primary/60" : "border-base-content/5 hover:border-base-content/20")}
-                onClick=${() => play(x)}>
-                <div class="card-body p-3 gap-1">
-                  <div class="flex items-baseline justify-between gap-2">
-                    <span class="font-mono text-lg tabular-nums leading-none">${kb(x.size)}</span>
-                    ${owned.has(id) && html`<span class="text-primary shrink-0" aria-label=${T(t, "owned")}>
-                      ${Icon("lucide:check", "text-sm")}</span>`}
-                  </div>
-                  <div class="truncate text-sm font-medium">${titleOf(x.file)}</div>
-                  <div class="truncate text-xs text-base-content/70">${x.author}</div>
-                </div>
+              <button data-tune=${id} onClick=${() => play(x)}
+                class=${"flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors " +
+                  (active ? "bg-primary/10 ring-1 ring-primary/40" : "bg-base-200/60 hover:bg-base-200")}>
+                <span class="font-mono text-sm tabular-nums w-14 shrink-0 ${active ? "text-primary" : ""}">${kb(x.size)}</span>
+                <span class="flex-1 min-w-0">
+                  <span class="block truncate text-sm font-medium">${titleOf(x.file)}</span>
+                  <span class="block truncate text-xs text-base-content/70">${x.author}</span>
+                </span>
+                ${owned.has(id) && html`<span class="text-primary shrink-0" aria-label=${T(t, "owned")}>
+                  ${Icon("lucide:check", "text-base")}</span>`}
               </button>`;
           })}
         </div>
-        ${shown < list.length && html`
-          <button class="btn btn-sm btn-outline w-full" onClick=${() => setShown((n) => n + PAGE)}>
-            ${T(t, "more")}
-          </button>`}`}
+        <div ref=${moreRef} aria-hidden="true" class="h-4"></div>`}
     </div>`;
 }
 

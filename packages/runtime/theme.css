@@ -24,6 +24,18 @@
 }
 
 
+@media (max-height: 520px) and (min-width: 340px) {
+  .ms-side { flex-direction: row; align-items: stretch; }
+  .ms-side > [data-stage-box] { flex: 0 0 38%; min-width: 0; }
+  .ms-side > .ms-side-main { flex: 1 1 auto; min-width: 0; justify-content: center; }
+}
+@media (max-height: 440px) {
+  :root { --ms-gap: 0.3rem; --ms-pad: 0.5rem; --ms-r: 0.875rem; --ms-ctl: 2.25rem; --ms-icon: 0.95rem; --ms-title: 0.85rem; }
+  nav[data-dock] button { padding: 0.3rem 0.55rem; }
+  nav[data-dock] button > span { display: none; }
+}
+
+
 @media (max-height: 620px) {
   .ms-cols { display: grid; grid-template-columns: repeat(var(--ms-cols, 3), minmax(0, 1fr)); gap: var(--ms-gap); align-items: start; }
 }
@@ -51,6 +63,7 @@ html.ms-fit main#view {
   --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
   --border: 1px; --depth: 0;
 }
+
 [data-theme="signal-light"] {
   color-scheme: light;
   --color-base-100: #FFFFFF; --color-base-200: #FAFAF9; --color-base-300: #E7E7E3;
@@ -66,11 +79,8 @@ html.ms-fit main#view {
   --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
   --border: 1px; --depth: 0;
 }
-
-
 :root { --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
 body { letter-spacing: -0.006em; }
-
 
 [data-title] {
   font-family: var(--font-mono);
@@ -120,6 +130,7 @@ nav[data-dock] button > span {
   transition-timing-function: cubic-bezier(.22, 1, .3, 1.12);
 }
 @media (prefers-reduced-motion: reduce) { .modal-box { transition-timing-function: ease-out; } }
+
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
@@ -128,8 +139,6 @@ nav[data-dock] button > span {
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
 .overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
-
-
 @media (prefers-reduced-motion: reduce) {
   .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }
 }

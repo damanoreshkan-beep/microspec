@@ -144,7 +144,9 @@ async function loadInto(track) {
   try { raw = await bytesFor(track); data = await maybeGunzip(raw); }
   catch { $err.set("loadError"); return false; }
   $size.set(raw.byteLength);
-  setTuneBytes(data);                                  // the hero renders the tune's OWN bytes
+  setTuneBytes(raw);                                   // the hero draws the bytes you DOWNLOADED — the
+                                                       // same number the screen claims (raw is `data` for a
+                                                       // plain .v2m, and this runs before the transfer)
   loadedId = track.id;
   node.port.postMessage({ cmd: "load", bytes: data }, [data]);
   return true;
@@ -199,7 +201,7 @@ async function primeDemo() {
   primed = true;
   try {
     const raw = await (await fetch(assetURL(DEMO.src))).arrayBuffer();
-    if ($size.get() === 0) { $size.set(raw.byteLength); setTuneBytes(await maybeGunzip(raw)); }
+    if ($size.get() === 0) { $size.set(raw.byteLength); setTuneBytes(raw); }
   } catch { primed = false; }
 }
 

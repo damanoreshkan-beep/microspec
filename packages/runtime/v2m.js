@@ -9,6 +9,8 @@
 // Three mirrors serve the same tree with `Access-Control-Allow-Origin: *`, so the app fetches them directly
 // (no proxy) and fails over between them.
 
+import { fib } from "./spectrum.js";
+
 export const MIRRORS = [
   "https://modland.com/pub/modules/V2/",
   "https://ftp.modland.com/pub/modules/V2/",
@@ -82,26 +84,27 @@ export function normGain(rms, { min = 0.25, max = 2.5 } = {}) {
 }
 
 /**
- * The hero: the tune's OWN BYTES as a point cloud. Byte triples become spherical coordinates, so the number
- * of points IS the file size (one point per 3 bytes, sub-sampled by a stride above `max`) and a 9 KB tune is
- * visibly a sparser object than a 90 KB one. Returns interleaved xyz in a Float32Array, radius ≤ 1.
+ * The hero: the tune's OWN BYTES as a point cloud — ONE POINT PER BYTE, so the object's density IS the file
+ * size and a 9 KB tune is visibly sparser than a 90 KB one. Sub-sampled by a stride above `max`.
+ *
+ * Direction comes from a Fibonacci sphere (the point's INDEX), radius from the byte's VALUE. The first cut
+ * derived the whole position from byte triples, which reads beautifully on random data and collapses on real
+ * data: a .v2m is full of repeated bytes and long zero runs, and every identical triple lands on the exact
+ * same coordinate — thousands of points stacked into a few dozen visible specks. Indexing the direction
+ * keeps the count honest and lets the byte values shape the surface as radial relief instead.
  */
 export function byteCloud(bytes, max = 16384) {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || 0);
-  const triples = Math.floor(u8.length / 3);
-  if (triples < 1) return new Float32Array(0);
-  const stride = Math.max(1, Math.ceil(triples / max));
-  const n = Math.floor((triples + stride - 1) / stride);
+  if (u8.length < 1) return new Float32Array(0);
+  const stride = Math.max(1, Math.ceil(u8.length / max));
+  const n = Math.ceil(u8.length / stride);
   const out = new Float32Array(n * 3);
   for (let k = 0, i = 0; k < n; k++, i += stride) {
-    const o = i * 3;
-    const theta = (u8[o] / 255) * Math.PI * 2;
-    const phi = Math.acos(2 * (u8[o + 1] / 255) - 1);
-    const r = 0.55 + 0.45 * (u8[o + 2] / 255);
-    const s = Math.sin(phi);
-    out[k * 3] = r * s * Math.cos(theta);
-    out[k * 3 + 1] = r * Math.cos(phi);
-    out[k * 3 + 2] = r * s * Math.sin(theta);
+    const [x, y, z] = fib(k, n);
+    const r = 0.5 + 0.5 * (u8[i] / 255);
+    out[k * 3] = x * r;
+    out[k * 3 + 1] = y * r;
+    out[k * 3 + 2] = z * r;
   }
   return out;
 }

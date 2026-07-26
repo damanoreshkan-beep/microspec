@@ -477,6 +477,29 @@ body::after {
 /* A skeleton row is a value-shaped hole waiting to be filled — recessed, by definition. */
 .skeleton, [data-skeleton] { background: var(--sf-inset-face); box-shadow: inset 0 2px 5px -1px var(--sf-inset-top); }
 
+/* ── Navigation — a rail is a groove, the choice is raised out of it ──────────────────────────────
+   The reference's own detail, and the opposite of the obvious guess: the strip is INSET and the selected
+   pill sits proud inside it. The dock is the same object at page level, so it gets the same treatment —
+   which also fixes a long-standing readability problem, because "which tab am I on" stops depending on a
+   luminance step between two shades of ink and becomes a difference in SHAPE. */
+nav[data-dock] button[aria-current="page"] {
+  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 3px 8px -2px var(--sf-shadow);
+}
+.tabs .tab-active, .steps .step-primary .step-icon, .join > .btn-active {
+  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 6px -2px var(--sf-shadow);
+}
+
+/* ── Cards in flow — base, with the ambient drop the reference gives its BASE layer (measured −54) ─── */
+.card, [data-card] {
+  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 6px -2px var(--sf-shadow);
+}
+
+/* ── Alerts sit on content, so they are raised; a menu/dropdown is a popover (L5) ─────────────────── */
+.alert { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
+.dropdown-content, .menu.bg-base-100, [role="menu"] {
+  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow);
+}
+
 /* Things that float OVER content, on the one elevation ladder: sheet = L4 (modal), toast = L5 (popover). */
 .modal-box { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 -10px 44px -12px var(--sf-shadow); }
 [data-toast] .alert { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }

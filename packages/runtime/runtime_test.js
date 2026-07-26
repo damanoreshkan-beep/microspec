@@ -3582,3 +3582,46 @@ Deno.test("pinterest readPins — one reader for a board and for a single pin", 
   assertEquals(pinRatio({ w: 99, h: 1 }), 0.5);
   assertEquals(pinRatio(null), 1);
 });
+
+Deno.test("the surface system: every interactive node declares a state, and none draws its own shadow", async () => {
+  // BLOCK 7 — the contract. The system is only a system if a widget's volume comes from a NAMED state
+  // rather than a shadow someone wrote in place. Two halves: the kit must not hardcode shadows, and every
+  // node the reference enumerates must have a rule.
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
+  const render = await Deno.readTextFile(new URL("./render.js", import.meta.url));
+
+  // no literal shadows left in the kit or the shell — they declare `sf-*` instead
+  for (const [name, src] of [["ui.js", ui], ["render.js", render]]) {
+    const lits = [...src.matchAll(/shadow-\[[^\]]+\]|shadow-(?:sm|md|lg|xl|2xl)\b/g)].map((m) => m[0]);
+    assertEquals(lits, [], `${name} still writes its own shadows instead of declaring a surface`);
+  }
+
+  // the four states exist, in both themes, and are RELATIVE moves rather than borrowed palette entries
+  // Defined TWICE each — once per theme. Slicing "the block after the selector" is unreliable here because
+  // a theme is declared in more than one place; counting definitions asks the real question.
+  for (const v of ["--sf-rim", "--sf-drop", "--sf-inset-face", "--sf-inset-top", "--sf-press-face", "--sf-press-top"]) {
+    const defs = (css.match(new RegExp(v.replace(/-/g, "\\-") + ":", "g")) || []).length;
+    assert(defs >= 2, `${v} is defined ${defs}× — a state that exists in one theme only is not a state`);
+  }
+
+  // every node the reference enumerates has a rule. If one is added to the kit and not here, this fails.
+  const nodes = [
+    [".btn:not(.btn-ghost)", "buttons raise at rest"],
+    [":not(:disabled):active", "buttons press under a finger"],
+    [".input, .textarea", "fields are recessed"],
+    [".toggle, .checkbox, .radio", "switches are a slot with something in it"],
+    [".progress", "a progress bar is a value in a trough"],
+    ['nav[data-dock] button[aria-current="page"]', "the active tab lifts out of the rail"],
+    [".card, [data-card]", "cards carry the base ambient drop"],
+    [".alert", "an alert sits on content"],
+    [".modal-box", "a sheet is L4"],
+    ["[data-toast] .alert", "a toast is L5"],
+  ];
+  for (const [sel, why] of nodes) assert(css.includes(sel), `no surface rule for ${sel} — ${why}`);
+
+  // and the accent never becomes a FILL behind text: focus is a ring
+  const focus = css.slice(css.indexOf(".input:focus"), css.indexOf("}", css.indexOf(".input:focus")));
+  assert(/0 0 0 \d+px var\(--app-accent\)/.test(focus), "focus must be a ring — an arbitrary hue behind text fails contrast in one theme");
+  assert(!/background:\s*var\(--app-accent\)/.test(focus), "focus fills the field with the accent");
+});

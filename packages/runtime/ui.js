@@ -159,9 +159,9 @@ export function Transport({
   
   
   const big = size === "sm"
-    ? "w-11 h-11 min-[380px]:w-12 min-[380px]:h-12"
-    : "w-11 h-11 min-[380px]:w-[var(--ms-ctl)] min-[380px]:h-[var(--ms-ctl)]";
-  const side = "btn-sm min-[380px]:btn-md";
+    ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
+    : "w-[var(--ms-ctl)] h-[var(--ms-ctl)] @max-[300px]:w-11 @max-[300px]:h-11";
+  const side = "btn-sm";
   const max = Math.max(1000, dur || 0);
 
   const head = (title != null || lead || trail) ? html`
@@ -188,10 +188,10 @@ export function Transport({
     </div>` : null;
 
   return html`
-    <div data-transport class=${`flex flex-col gap-2 ${className}`}>
+    <div data-transport class=${`@container flex flex-col gap-2 ${className}`}>
       ${head}
       ${scrub}
-      <div class="flex items-center justify-center gap-1 min-[380px]:gap-4">
+      <div class="flex items-center justify-center gap-4 @max-[300px]:gap-1">
         ${onRepeat ? html`
           <button id="repeat" data-repeat=${repeat || "off"} aria-label=${sys("aRepeat", locale)}
             aria-pressed=${repeat && repeat !== "off" ? "true" : "false"}

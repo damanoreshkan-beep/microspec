@@ -103,6 +103,71 @@ html.ms-fit main#view {
   overflow: hidden;
 }
 
+/* ── Watch mode (≤300px wide) — the last step of the ladder ────────────────────────────────────────
+   208×248 (Apple Watch 46mm) or 227×227 (Wear OS round). At that size the farm's own chrome is 124px of
+   the 248 — half the screen — before a single pixel of app. Two moves, and both are trades rather than
+   deletions, because the rule at every step is that a function may be demoted but never removed:
+
+   1) THE DOCK TURNS 90°. Horizontal, it costs 68px of HEIGHT on every screen forever; vertical it costs
+      40px of WIDTH once. Height is the axis a watch has least of — content that runs out of width can wrap,
+      content that runs out of height is simply gone. Icons only (the ≤440px step already dropped captions),
+      centred rather than full-height, and every button keeps its aria-label and its 36px target.
+      --dock-h collapses to 0 and --dock-w appears; render.js measures and publishes both.
+
+   2) A SIDE-BY-SIDE BECOMES A PAGER. .ms-side splits a stage from its controls at ≤520px of height; at
+      208px wide that split would give the stage 79px and the transport 129px, so the next step down is not
+      a smaller split, it is no split — each becomes a full-width page you swipe between. Which is what
+      Wear OS 6 / M3 Expressive does, and what watchOS does.
+      The app writes nothing new: .ms-side ALREADY names its two halves ([data-stage-box] + .ms-side-main),
+      so they are the two pages. Watch mode is inherited, not authored.
+
+   The mechanism is CSS Overflow 5 — scroll-snap for the gesture, ::scroll-marker for the dots — so there is
+   no pager state, no resize listener, no index to keep in sync, and the gesture (momentum, keyboard, RTL,
+   a11y) is the browser's. Markers are @supports-gated: without them the swipe is identical, minus dots. */
+/* The dock floats 0.75rem above the safe area. This lives HERE rather than in an inline style on the
+   element, because an inline style is unbeatable by a stylesheet — and watch mode has to move the dock. */
+nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
+
+@media (max-width: 300px) {
+  :root { --hdr-h: 2.25rem; --ms-gap: 0.25rem; --ms-pad: 0.4rem; --ms-r: 0.75rem; --ms-ctl: 2.25rem; --ms-icon: 0.9rem; --ms-title: 0.8rem; --ms-label: 0.58rem; }
+
+  /* the rail */
+  nav[data-dock] {
+    left: auto; right: 0.35rem; bottom: auto; top: 50%; transform: translateY(-50%);
+    grid-auto-flow: row; margin: 0;
+  }
+  nav[data-dock] button { padding: 0.3rem; min-width: 0; }
+  nav[data-dock] button > span { display: none; }
+  /* the header keeps its controls and loses its ornament: an app's NAME is not information at 208px wide. */
+  [data-title] { display: none; }
+  html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
+
+  /* the pager */
+  .ms-side {
+    flex-direction: row; align-items: stretch;
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .ms-side::-webkit-scrollbar { display: none; }
+  .ms-side > [data-stage-box], .ms-side > .ms-side-main {
+    flex: 0 0 100%; min-width: 0; scroll-snap-align: center; scroll-snap-stop: always;
+  }
+}
+@supports selector(::scroll-marker) {
+  @media (max-width: 300px) {
+    .ms-side { scroll-marker-group: after; }
+    .ms-side > [data-stage-box]::scroll-marker, .ms-side > .ms-side-main::scroll-marker {
+      content: ""; width: 5px; height: 5px; margin: 0 3px; border-radius: 50%;
+      background: color-mix(in oklch, var(--color-base-content) 25%, transparent);
+    }
+    .ms-side > [data-stage-box]::scroll-marker:target-current, .ms-side > .ms-side-main::scroll-marker:target-current {
+      background: var(--color-base-content);
+    }
+    .ms-side::scroll-marker-group { display: flex; justify-content: center; padding-top: 2px; }
+  }
+}
+
 [data-theme="signal"] {
   color-scheme: dark;
   --color-base-100: #0A0A0B; --color-base-200: #141416; --color-base-300: #222225;

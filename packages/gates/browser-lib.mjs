@@ -126,6 +126,21 @@ export const BREAKPOINTS = [
   { id: "phone-land",  w: 844,  h: 390,  note: "19.5:9 · rotated — the height test" },
   { id: "split",       w: 412,  h: 430,  note: "split-screen — two apps stacked on a tall phone" },
   { id: "split-sm",    w: 360,  h: 340,  note: "floating window — the height floor" },
+  // A REAL watch viewport (Apple Watch 46mm; Wear OS round is 227×227). The long-standing "watch ~200px"
+  // check below narrows #view with an inline style inside a 384px window — so no media query fires, the
+  // density tokens never step and the dock never becomes a rail. It tests a narrow ELEMENT; this tests the
+  // screen, which is the only way the chrome itself is ever measured.
+  // `soft` — measured and reported, but not fatal YET. The farm was never designed at this size, so making
+  // it fatal on the day it lands turns main red across dozens of apps at once, and there is no local
+  // Chromium here to find out which ones first. So it reports, the apps get fixed against real numbers,
+  // and then this flag comes off. A gate that is switched on before the work is done is a gate that gets
+  // switched off again.
+  { id: "watch",       w: 208,  h: 248,  note: "watch — the smallest real screen", soft: true },
+  // The SQUARE watch is a different test, not a rounding of the one above: Wear OS round is 227×227 and
+  // the floor is ~200×200, so the height drops from 248 to 200 while the width barely moves. Everything
+  // that fails at this size fails VERTICALLY — which is exactly the axis the rail was meant to buy back,
+  // so this is the shape that proves the trade actually worked.
+  { id: "watch-sq",    w: 200,  h: 200,  note: "square watch (Wear OS round) — the vertical floor", soft: true },
   { id: "tablet",      w: 768,  h: 1024, note: "3:4 · tablet portrait" },
   { id: "tablet-land", w: 1024, h: 768,  note: "4:3 · tablet landscape" },
   { id: "desktop",     w: 1280, h: 900,  note: "16:10 · desktop" },
@@ -189,18 +204,22 @@ export async function runResponsiveMatrix(page, ev, dev) {
       return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel };
     });
     const label = `${bp.id} ${bp.w}×${bp.h}`;
-    out.push(m.ox <= 1
-      ? { name: `${label}: без горизонтального overflow`, ok: true, msg: bp.note }
-      : { name: `${label}: горизонтальний overflow`, ok: false, msg: `+${m.ox}px — винуватець: ${m.sel}` });
+    // A soft breakpoint still MEASURES everything; it just reports a failure as a warning instead of a
+    // red build. The number in the message is identical either way, so the work list is the same.
+    const push = (pass, failed) => out.push(pass ? failed.pass : (bp.soft ? { ...failed.fail, ok: true, name: `⚠ ${failed.fail.name} (поки не блокує)` } : failed.fail));
+    push(m.ox <= 1, {
+      pass: { name: `${label}: без горизонтального overflow`, ok: true, msg: bp.note },
+      fail: { name: `${label}: горизонтальний overflow`, ok: false, msg: `+${m.ox}px — винуватець: ${m.sel}` },
+    });
     if (m.fit) {
-      out.push(m.oy <= 1
-        ? { name: `${label}: один екран без скролу (fit)`, ok: true }
-        : { name: `${label}: fit-екран не вміщується`, ok: false, msg: `+${m.oy}px по висоті — винуватець: ${m.vsel}. Ущільніть через --ms-* або перенесіть у Sheet` });
-    }
-    if (m.fit) {
-      out.push(m.hide <= 1
-        ? { name: `${label}: док нічого не перекриває (fit)`, ok: true }
-        : { name: `${label}: док ховає контент назавжди (fit)`, ok: false, msg: `${m.hide}px — під доком: ${m.hsel}. На fit-екрані ніщо не скролиться, тож це сховано назавжди — --dock-h має міряти реальну висоту доку` });
+      push(m.oy <= 1, {
+        pass: { name: `${label}: один екран без скролу (fit)`, ok: true },
+        fail: { name: `${label}: fit-екран не вміщується`, ok: false, msg: `+${m.oy}px по висоті — винуватець: ${m.vsel}. Ущільніть через --ms-* або перенесіть у Sheet` },
+      });
+      push(m.hide <= 1, {
+        pass: { name: `${label}: док нічого не перекриває (fit)`, ok: true },
+        fail: { name: `${label}: док ховає контент назавжди (fit)`, ok: false, msg: `${m.hide}px — під доком: ${m.hsel}. На fit-екрані ніщо не скролиться, тож це сховано назавжди — --dock-h має міряти реальну висоту доку` },
+      });
     }
   }
   await page.setViewportSize({ width: dev.width, height: dev.height });

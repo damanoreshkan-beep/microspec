@@ -3376,6 +3376,48 @@ Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable
   assert(!/\bid=\$\{a\.id/.test(row) && !/\.\.\.\$\{a\.attr/.test(row), "sheet row duplicates the inline hooks");
 });
 
+Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager, the tap floor holds", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const at = css.indexOf("@media (max-width: 300px)");
+  assert(at > 0, "no watch breakpoint — the farm's smallest screen is 208px, not 320px");
+  const block = css.slice(at, css.indexOf("\n}\n", css.indexOf(".ms-side >", at)));
+
+  // 1) the dock is a RAIL: row flow, off the bottom, and its captions gone. Trading 40px of width once
+  //    beats 68px of height forever on a 248px-tall screen.
+  assert(/grid-auto-flow:\s*row/.test(block), "the dock must turn 90° — horizontal it costs 27% of the height");
+  assert(/nav\[data-dock\] button > span\s*\{\s*display:\s*none/.test(block), "dock captions must go at watch size");
+  // …but never its targets. --ms-ctl is the tap floor and it is the one token that may not shrink.
+  const ctl = /--ms-ctl:\s*([\d.]+)rem/.exec(block);
+  assert(ctl && parseFloat(ctl[1]) * 16 >= 36, `watch --ms-ctl is ${ctl?.[1]}rem — below the 36px tap floor`);
+
+  // 2) .ms-side becomes a snap PAGER, and its two halves are full-width pages. The app writes nothing new:
+  //    [data-stage-box] + .ms-side-main already name the two things, so watch mode is inherited.
+  assert(/scroll-snap-type:\s*x mandatory/.test(block), ".ms-side must become a horizontal snap pager");
+  assert(/flex:\s*0 0 100%/.test(block), "a page must be a full-width snap target, not a narrower column");
+  assert(/scroll-snap-align/.test(block), "snap targets need an alignment or the pager free-scrolls");
+
+  // 3) the markers are an ENHANCEMENT, never a dependency: Firefox is still partial as of mid-2026, and
+  //    without them the swipe must be identical, minus dots.
+  const markers = css.indexOf("::scroll-marker");
+  assert(markers > 0, "no scroll markers — the pager has no indicator where the browser supports one");
+  assert(/@supports selector\(::scroll-marker\)/.test(css), "scroll markers must be @supports-gated");
+  assert(css.lastIndexOf("@supports selector(::scroll-marker)", markers) > css.lastIndexOf("scroll-snap-type", markers) - 4000 ||
+    css.indexOf("scroll-marker-group") > css.indexOf("@supports selector(::scroll-marker)"),
+    "the marker group must live inside the @supports block, not beside it");
+});
+
+Deno.test("watch mode — the dock's own position is styleable (no inline style can outrank it)", async () => {
+  // The rail moves the dock to the right edge. An inline `style="bottom:…"` on the element would win over
+  // any stylesheet, so the dock would stay pinned to the bottom AND get a top — stretching it full height.
+  const render = await Deno.readTextFile(new URL("./render.js", import.meta.url));
+  const nav = render.slice(render.indexOf("<nav data-dock"), render.indexOf("</nav>", render.indexOf("<nav data-dock")));
+  assert(!/style="[^"]*bottom:/.test(nav), "the dock's `bottom` is an inline style — watch mode cannot move it");
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  assert(/nav\[data-dock\]\s*\{\s*bottom:/.test(css), "…and nothing in theme.css positions it instead");
+  // --dock-w is the rail's footprint; content clears it the way it cleared --dock-h.
+  assert(/--dock-w/.test(render) && /--dock-w/.test(css), "the rail's width must be published and consumed");
+});
+
 Deno.test("no app passes the Transport a prop it does not accept (a silent prop is a lost button)", async () => {
   // How rave lost its generate button: the widget's single `extra` slot became the `actions` array, rave's
   // pads tab was migrated and its BEAT tab was not — so it kept passing `extra=`, JSX-style props being

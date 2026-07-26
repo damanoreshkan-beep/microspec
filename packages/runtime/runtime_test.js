@@ -3097,7 +3097,9 @@ Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable
   const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
   const tp = ui.slice(ui.indexOf("export function Transport("));
   const sheet = tp.slice(tp.indexOf("data-tp-sheet"));
-  assert(/actions\.map\(/.test(sheet), "the overflow sheet must list every action, not the demoted subset");
+  assert(/\.\.\.actions,/.test(sheet), "the sheet must spread every action, not a demoted subset");
+  for (const k of ["aPrev", "aNext", "aShuffle", "aRepeat"])
+    assert(sheet.includes(k), `the sheet does not carry ${k} — a key hidden at 230px would be unreachable`);
   assert(!/overflow\.map\(/.test(sheet), "the sheet lists a different set depending on width — unlearnable");
   assert(/overflow\.map\(.{0,60}@max-\[\d+px\]:hidden/.test(tp.replace(/\n\s*/g, " ")),
     "demoted actions must be hidden by a container query, not dropped from the tree");

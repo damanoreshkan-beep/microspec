@@ -174,8 +174,13 @@ export function Transport({
   onScrubStart, onScrub, onScrubEnd,
 }) {
   const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-  const big = size === "sm" ? "w-12 h-12" : "w-[var(--ms-ctl)] h-[var(--ms-ctl)]";
-  const side = size === "sm" ? "btn-sm" : "";
+  // A transport is a ROW, so unlike the rest of the kit it has to answer to WIDTH as well as height: at
+  // 200px the full-size circles plus gap-4 overflow, which is how rave first failed the watch breakpoint.
+  // Secondary controls and the gap step up at 380px; the primary button keeps the height token above that.
+  const big = size === "sm"
+    ? "w-11 h-11 min-[380px]:w-12 min-[380px]:h-12"
+    : "w-11 h-11 min-[380px]:w-[var(--ms-ctl)] min-[380px]:h-[var(--ms-ctl)]";
+  const side = "btn-sm min-[380px]:btn-md";
   const max = Math.max(1000, dur || 0);
 
   const head = (title != null || lead || trail) ? html`
@@ -205,7 +210,7 @@ export function Transport({
     <div data-transport class=${`flex flex-col gap-2 ${className}`}>
       ${head}
       ${scrub}
-      <div class="flex items-center justify-center gap-4">
+      <div class="flex items-center justify-center gap-2 min-[380px]:gap-4">
         ${onRepeat ? html`
           <button id="repeat" data-repeat=${repeat || "off"} aria-label=${sys("aRepeat", locale)}
             aria-pressed=${repeat && repeat !== "off" ? "true" : "false"}

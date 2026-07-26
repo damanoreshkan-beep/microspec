@@ -128,11 +128,11 @@ export function sopilka({ S }) {
 
   return html`<div class="flex flex-col items-center gap-4">
     <div class="text-center min-h-16">
-      <div class="text-[0.62rem] font-mono uppercase text-base-content/60">${T(t, "note")}</div>
+      <div class="text-[0.62rem] font-mono uppercase text-muted">${T(t, "note")}</div>
       <div class="text-4xl font-bold leading-none tabular-nums" style="color:light-dark(#7a5c1f,#e8c874)">
         ${semi == null ? "—" : NAMES[semi]}
       </div>
-      <div class="text-xs text-base-content/60 mt-1 font-mono h-4">${semi == null ? "" : `${LAT[semi]}${oct}`}</div>
+      <div class="text-xs text-muted mt-1 font-mono h-4">${semi == null ? "" : `${LAT[semi]}${oct}`}</div>
     </div>
 
     <div ref=${pipe} data-pipe

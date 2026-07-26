@@ -25,7 +25,7 @@ const DEFAULT_INTENT = "I am calm and focused";     // the seed the gate forges,
 const Attribution = ({ t, sig, onOpen }) => html`<button data-about aria-label=${T(t, "aboutAria")} onClick=${onOpen} class="inline-flex max-w-full items-center gap-2 rounded-full bg-base-100/80 backdrop-blur-xl border border-base-content/10 px-3 py-1.5 shadow-sm active:scale-[0.98] transition">
   <span class="shrink-0"><${Planet} body=${sig.planet} /></span>
   <span class="text-sm font-medium truncate">${T(t, pKey(sig.planet))}</span>
-  <span class="text-xs font-mono text-base-content/60 tabular-nums shrink-0">${sig.order}×${sig.order}</span>
+  <span class="text-xs font-mono text-muted tabular-nums shrink-0">${sig.order}×${sig.order}</span>
   ${Icon("lucide:info", "text-sm text-base-content/40 shrink-0")}
 </button>`;
 
@@ -40,7 +40,7 @@ function AboutSheet({ t, sig, onClose }) {
       <div class="flex items-center gap-2.5">
         <${Planet} body=${sig.planet} />
         <span class="text-lg font-semibold">${T(t, pKey(sig.planet))}</span>
-        <span class="text-sm font-mono text-base-content/60 tabular-nums">${sig.order}×${sig.order}</span>
+        <span class="text-sm font-mono text-muted tabular-nums">${sig.order}×${sig.order}</span>
       </div>
       <p class="text-base-content/70 -mt-2">${T(t, dKey(sig.planet))}</p>
       <div class="h-px bg-base-content/10"></div>
@@ -187,7 +187,7 @@ function DetailSheet({ t, it, onClose, onShare, onRemove }) {
       <div class="flex items-center gap-2">
         <${Planet} body=${it.sig.planet} />
         <span class="font-medium">${T(t, pKey(it.sig.planet))}</span>
-        <span class="text-xs font-mono text-base-content/60 tabular-nums">${it.sig.order}×${it.sig.order}</span>
+        <span class="text-xs font-mono text-muted tabular-nums">${it.sig.order}×${it.sig.order}</span>
       </div>
       <p class="text-center text-base-content/80">${it.intent}</p>
       <div class="flex items-center gap-2 w-full max-w-xs">

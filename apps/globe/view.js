@@ -34,7 +34,7 @@ export function globe({ S }) {
 
     ${f
       ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 gap-1">
-          <div class="flex items-center gap-3"><span class="text-4xl leading-none">${f.flag}</span><div class="min-w-0"><div class="font-bold text-lg leading-tight break-words">${f.n}</div><div class="text-sm text-base-content/60">${f.reg}${f.sub ? " · " + f.sub : ""}</div></div></div>
+          <div class="flex items-center gap-3"><span class="text-4xl leading-none">${f.flag}</span><div class="min-w-0"><div class="font-bold text-lg leading-tight break-words">${f.n}</div><div class="text-sm text-muted">${f.reg}${f.sub ? " · " + f.sub : ""}</div></div></div>
           <div class="mt-1">
             ${row("lucide:landmark", "fCapital", f.cap)}
             ${row("lucide:users", "fPopulation", num(f.pop))}

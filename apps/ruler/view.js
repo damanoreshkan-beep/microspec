@@ -171,15 +171,15 @@ export function ruler({ S, toast }) {
       </div>
       <div class="flex items-end justify-between gap-3 px-1">
         <div class="min-w-0">
-          <div class="text-[0.62rem] font-mono uppercase text-base-content/60">${T(t, "total")}</div>
+          <div class="text-[0.62rem] font-mono uppercase text-muted">${T(t, "total")}</div>
           <div class="flex items-baseline gap-2 flex-wrap">
             <div class="text-3xl font-bold tabular-nums leading-none">${pts.length >= 2 ? fmt(total) : (ready || err) ? "—" : html`<${Scramble} len=${5} />`}</div>
-            ${tErr != null ? html`<span data-err class="text-xs font-mono tabular-nums text-base-content/60">${fmtErr(tErr)}</span>` : null}
+            ${tErr != null ? html`<span data-err class="text-xs font-mono tabular-nums text-muted">${fmtErr(tErr)}</span>` : null}
           </div>
           ${area != null ? html`<div class="text-xs text-base-content/70 mt-1 tabular-nums">${T(t, "area")}: ${fmtArea(area)}</div>` : null}
         </div>
         <div class="text-right shrink-0">
-          <div class="text-[0.62rem] font-mono uppercase text-base-content/60">${live != null ? T(t, "live") : T(t, "points")}</div>
+          <div class="text-[0.62rem] font-mono uppercase text-muted">${live != null ? T(t, "live") : T(t, "points")}</div>
           <div class="text-lg font-semibold tabular-nums" style="color:light-dark(#0b6e4a,#34d399)">${live != null ? fmt(live) : String(pts.length)}</div>
         </div>
       </div>
@@ -190,7 +190,7 @@ export function ruler({ S, toast }) {
               ±${shownAcc < 10 ? Math.round(shownAcc * 10) / 10 : Math.round(shownAcc)} ${T(t, "uM")}
               ${depth >= 2 ? html`<span class="text-[0.9em]">${depth}×</span>` : null}
             </span>`
-          : html`<span class="text-base-content/60 flex items-center gap-1.5">${Icon("lucide:loader-circle")}${T(t, "locating")}</span>`}
+          : html`<span class="text-muted flex items-center gap-1.5">${Icon("lucide:loader-circle")}${T(t, "locating")}</span>`}
         ${ready ? html`<button id="coords" data-coords aria-label=${T(t, "copyCoords")} class="font-mono tabular-nums text-base-content/70 flex items-center gap-1.5 min-w-0 active:opacity-60" onClick=${copyCoords}>
           <span class="truncate">${coordStr(cur)}</span>${Icon("lucide:copy", "text-[0.9em] shrink-0 opacity-60")}
         </button>` : null}

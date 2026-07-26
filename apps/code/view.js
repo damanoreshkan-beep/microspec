@@ -87,7 +87,7 @@ export function code({ S }) {
     <!-- board: past guesses, newest at the bottom -->
     <div class="flex-1 min-h-0 overflow-y-auto px-4 py-3 flex flex-col gap-2.5 max-w-md w-full mx-auto">
       <div class="flex items-center justify-between sticky top-0 bg-base-200 pb-1 z-[1]">
-        <span class="text-[0.62rem] font-mono uppercase tracking-wide text-base-content/60">${T(t, "attemptsLeft", { n: MAX - rows.length })}</span>
+        <span class="text-[0.62rem] font-mono uppercase tracking-wide text-muted">${T(t, "attemptsLeft", { n: MAX - rows.length })}</span>
         <div class="flex items-center gap-0.5">
           <button data-help aria-label=${T(t, "rulesTitle")} onClick=${() => S.screen.set("rules")} class="btn btn-ghost btn-xs btn-circle text-base-content/70">${Icon("lucide:circle-help", "text-base")}</button>
           <button aria-label=${T(t, "newGame")} data-haptic="bump" onClick=${newGame} class="btn btn-ghost btn-xs btn-circle text-base-content/70">${Icon("lucide:rotate-ccw", "text-base")}</button>
@@ -123,7 +123,7 @@ export function code({ S }) {
     ${scr === "over" ? html`<div class="absolute inset-0 z-30 bg-base-100/95 backdrop-blur-sm flex flex-col items-center justify-center gap-5 px-8 text-center">
       <div class="text-2xl font-bold">${won ? T(t, "titleWon", { n: rows.length }) : T(t, "titleLost")}</div>
       <div class="flex flex-col items-center gap-2">
-        <span class="text-[0.62rem] font-mono uppercase tracking-wide text-base-content/60">${T(t, "theCode")}</span>
+        <span class="text-[0.62rem] font-mono uppercase tracking-wide text-muted">${T(t, "theCode")}</span>
         <div class="flex gap-2">${secret.map((ci) => disc(ci, true))}</div>
       </div>
       <div class="text-xs font-mono text-base-content/50">#${seed}</div>
@@ -142,7 +142,7 @@ export function code({ S }) {
         <div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full bg-base-content shrink-0"></span><span class="text-sm text-base-content/80">${T(t, "rulesExact")}</span></div>
         <div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full border-2 border-base-content shrink-0"></span><span class="text-sm text-base-content/80">${T(t, "rulesNear")}</span></div>
       </div>
-      <p class="text-xs text-base-content/60 max-w-[16rem]">${T(t, "rulesCount")}</p>
+      <p class="text-xs text-muted max-w-[16rem]">${T(t, "rulesCount")}</p>
       <button class="btn btn-primary rounded-2xl w-full max-w-[16rem]" onClick=${() => S.screen.set(null)}>${T(t, "close")}</button>
     </div>` : null}
   </div>`;

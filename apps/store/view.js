@@ -61,7 +61,7 @@ export function store({ S, openScreen, closeScreen }) {
     <div class="text-[0.72rem] leading-tight text-center line-clamp-2 break-words w-full text-base-content/90">${a.title}</div>
   </button>`; };
   const grid = (items) => html`<div class="grid grid-cols-4 gap-x-3 gap-y-4 @max-[300px]:grid-cols-3">${items.map(card)}</div>`;
-  const noResults = html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-2 text-center px-6">${Icon("lucide:search-x", "text-4xl")}<span>${T(t, "noResults")}</span></div>`;
+  const noResults = html`<div class="flex flex-col items-center text-muted py-16 gap-2 text-center px-6">${Icon("lucide:search-x", "text-4xl")}<span>${T(t, "noResults")}</span></div>`;
   const searchBar = html`<div class="relative">
     <input value=${q} onInput=${(e) => setQ(e.target.value)} placeholder=${T(t, "search")} aria-label=${T(t, "search")} class="input input-bordered w-full rounded-2xl pl-10" />
     ${Icon("lucide:search", "absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50 text-lg pointer-events-none")}
@@ -84,7 +84,7 @@ export function store({ S, openScreen, closeScreen }) {
         const items = apps.filter((a) => a.category === c);
         if (!items.length) return null;
         return html`<div class="flex flex-col gap-2" key=${c}>
-          <div class="text-[0.62rem] font-mono uppercase tracking-wide text-base-content/60 px-1 flex items-center gap-1.5">${T(t, catKey(c))}<span class="text-base-content/60 normal-case tabular-nums">${items.length}</span></div>
+          <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center gap-1.5">${T(t, catKey(c))}<span class="text-muted normal-case tabular-nums">${items.length}</span></div>
           ${grid(items)}
         </div>`;
       })}

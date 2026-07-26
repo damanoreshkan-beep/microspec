@@ -91,8 +91,8 @@ export function iptv({ S }) {
       </div>` : null}
 
       ${loading ? html`<div class="grid grid-cols-3 gap-2.5">${Array.from({ length: 12 }).map((_, i) => html`<div key=${i} class="flex flex-col gap-1"><div class="aspect-video rounded-lg overflow-hidden"><${Pixels} cls="w-full h-full" /></div></div>`)}</div>`
-        : err ? html`<div class="flex flex-col items-center gap-2 py-16 text-base-content/60">${Icon("lucide:cloud-off", "text-4xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline rounded-2xl" onClick=${() => loadCountry(country)}>${T(t, "retry")}</button></div>`
-        : !filtered.length ? html`<div class="flex flex-col items-center gap-2 py-16 text-base-content/60">${Icon("lucide:tv-minimal", "text-4xl")}<div>${T(t, "noChannels")}</div></div>`
+        : err ? html`<div class="flex flex-col items-center gap-2 py-16 text-muted">${Icon("lucide:cloud-off", "text-4xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline rounded-2xl" onClick=${() => loadCountry(country)}>${T(t, "retry")}</button></div>`
+        : !filtered.length ? html`<div class="flex flex-col items-center gap-2 py-16 text-muted">${Icon("lucide:tv-minimal", "text-4xl")}<div>${T(t, "noChannels")}</div></div>`
         : html`<${Fragment}>
           <div class="text-xs text-base-content/70 px-0.5">${T(t, "count", { n: filtered.length })}</div>
           <div class="grid grid-cols-3 gap-2.5 @max-[260px]:grid-cols-2">${shown.map((ch) => html`<${Tile} ch=${ch} onPlay=${play} key=${ch.id} />`)}</div>

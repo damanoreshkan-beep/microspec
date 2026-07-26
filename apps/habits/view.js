@@ -136,7 +136,7 @@ function Heatmap({ h, marks, onToggle, t }) {
 // text fails contrast on the light theme. Stats stay in the accessible base-content ink.
 const Stat = ({ n, label }) => html`<div class="flex-1 text-center">
   <div class="text-2xl font-bold tabular-nums">${n}</div>
-  <div class="text-xs text-base-content/60 mt-0.5">${label}</div></div>`;
+  <div class="text-xs text-muted mt-0.5">${label}</div></div>`;
 
 // ---- add / edit sheet -------------------------------------------------------
 function AddSheet({ S, t }) {
@@ -150,12 +150,12 @@ function AddSheet({ S, t }) {
         <button class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "close")} onClick=${close}>${Icon("lucide:x", "text-xl")}</button></div>
       <input id="h-name" class="input input-bordered rounded-2xl w-full" placeholder=${T(t, "namePh")} value=${draft.name}
         maxlength="40" onInput=${(e) => $draft.set({ ...draft, name: e.target.value })} />
-      <div><div class="text-xs text-base-content/60 mb-1.5">${T(t, "icon")}</div>
+      <div><div class="text-xs text-muted mb-1.5">${T(t, "icon")}</div>
         <div class="flex flex-wrap gap-2" id="h-icons">${ICONS.map((ic) => html`<button key=${ic} aria-label=${ic} aria-pressed=${draft.icon === ic}
           onClick=${() => $draft.set({ ...draft, icon: ic })}
           class=${`w-10 h-10 rounded-xl border flex items-center justify-center ${draft.icon === ic ? "border-2" : "border-base-300"}`}
           style=${draft.icon === ic ? `border-color:${draft.color};color:${draft.color}` : ""}>${Icon(ic, "text-lg")}</button>`)}</div></div>
-      <div><div class="text-xs text-base-content/60 mb-1.5">${T(t, "color")}</div>
+      <div><div class="text-xs text-muted mb-1.5">${T(t, "color")}</div>
         <div class="flex flex-wrap gap-2">${COLORS.map((c) => html`<button key=${c} aria-label=${c} aria-pressed=${draft.color === c}
           onClick=${() => $draft.set({ ...draft, color: c })}
           class=${`w-8 h-8 rounded-full ${draft.color === c ? "ring-2 ring-offset-2 ring-offset-base-100" : ""}`}
@@ -217,7 +217,7 @@ export function habits({ S, closeScreen, confirm }) {
               <button data-open class="flex items-center gap-3 flex-1 min-w-0 text-left active:opacity-70" aria-label=${`${h.name} — ${T(t, "open")}`} onClick=${() => S.screen.set("habit:" + h.id)}>
                 <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style=${`background:${h.color}1a;color:${h.color}`}>${Icon(h.icon, "text-lg")}</span>
                 <span class="min-w-0"><span class="font-semibold block truncate">${h.name}</span>
-                  <span class="text-xs text-base-content/60 flex items-center gap-1">${s > 0 ? html`${Icon("lucide:flame", "text-[0.9em]")} ${T(t, "dayStreak", { n: s })}` : T(t, "noStreak")}</span></span>
+                  <span class="text-xs text-muted flex items-center gap-1">${s > 0 ? html`${Icon("lucide:flame", "text-[0.9em]")} ${T(t, "dayStreak", { n: s })}` : T(t, "noStreak")}</span></span>
               </button>
               <button data-today class=${`w-9 h-9 rounded-full shrink-0 border-2 flex items-center justify-center active:scale-90 transition`}
                 aria-pressed=${!!marks[h.id + "|" + today()]} aria-label=${`${h.name} ${T(t, "todayToggle")}`}

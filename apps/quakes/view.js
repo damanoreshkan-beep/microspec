@@ -72,7 +72,7 @@ export function quakes({ S }) {
   if (!ready) return html`<div class="flex flex-col gap-4 items-center">
     <div class="w-full flex justify-center"><${Globe} points=${[]} spin=${true} height=${300} /></div>
     <div class="flex flex-col items-center gap-1 -mt-1"><div class="text-4xl font-bold tabular-nums text-base-content/40"><${Scramble} len=${5} /></div><div class="text-sm text-base-content/50"><${Scramble} len=${20} /></div></div>
-    <div class="w-full flex flex-col gap-2">${[0, 1, 2, 3, 4].map((i) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-base-content/60"><div class="shrink-0 font-bold text-base-content/50"><${Scramble} len=${4} /></div><div class="flex-1 min-w-0 truncate"><${Scramble} len=${26} /></div></div></div>`)}</div>
+    <div class="w-full flex flex-col gap-2">${[0, 1, 2, 3, 4].map((i) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="shrink-0 font-bold text-base-content/50"><${Scramble} len=${4} /></div><div class="flex-1 min-w-0 truncate"><${Scramble} len=${26} /></div></div></div>`)}</div>
   </div>`;
 
   const rtf = new Intl.RelativeTimeFormat(locale === "en" ? "en" : locale || "uk", { numeric: "auto" });

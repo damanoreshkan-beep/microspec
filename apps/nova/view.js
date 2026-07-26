@@ -222,12 +222,12 @@ export function nova({ S, tab, toast, openScreen, closeScreen }) {
     return html`<div class="flex flex-col gap-4">
       <div>
         <h1 class="text-xl font-extrabold tracking-tight">${T(t, "liftedTitle")}</h1>
-        <p class="text-xs text-base-content/60 mt-0.5">${T(t, "liftedSub").replace("{n}", String(supportedList.length))}</p>
+        <p class="text-xs text-muted mt-0.5">${T(t, "liftedSub").replace("{n}", String(supportedList.length))}</p>
       </div>
       ${supportedList.length === 0
         ? html`<div class="flex flex-col items-center text-center gap-3 py-16 px-6">
             ${Icon("lucide:star", "text-4xl text-base-content/25")}
-            <p class="text-sm text-base-content/60 leading-relaxed max-w-xs">${T(t, "liftedEmpty")}</p>
+            <p class="text-sm text-muted leading-relaxed max-w-xs">${T(t, "liftedEmpty")}</p>
           </div>`
         : html`<${Fragment}>
             <button id="reveal" class="btn btn-primary rounded-2xl gap-2 w-full" data-haptic="bump" onClick=${() => openScreen("finale")}>
@@ -262,17 +262,17 @@ export function nova({ S, tab, toast, openScreen, closeScreen }) {
 
     <div>
       <h1 class="text-xl font-extrabold tracking-tight">${T(t, "feedTitle")}</h1>
-      <p class="text-xs text-base-content/60 mt-0.5">${T(t, "feedSub")}</p>
+      <p class="text-xs text-muted mt-0.5">${T(t, "feedSub")}</p>
     </div>
 
     ${devs == null
       ? html`<div class="flex flex-col gap-3" aria-hidden="true">${[0, 1, 2].map((i) => html`<div key=${i} class="card h-40 rounded-3xl bg-base-200 animate-pulse"></div>`)}</div>`
       : err && !devs.length
-        ? html`<div class="text-center py-16 text-sm text-base-content/60">${T(t, "feedError")}</div>`
+        ? html`<div class="text-center py-16 text-sm text-muted">${T(t, "feedError")}</div>`
         : visible.length === 0
           ? html`<div class="flex flex-col items-center text-center gap-3 py-16 px-6">
               ${Icon("lucide:check-check", "text-4xl text-base-content/25")}
-              <p class="text-sm text-base-content/60 leading-relaxed max-w-xs">${T(t, "feedEmpty")}</p>
+              <p class="text-sm text-muted leading-relaxed max-w-xs">${T(t, "feedEmpty")}</p>
             </div>`
           : html`<div class="flex flex-col gap-3.5">
               ${visible.map((d) => html`<${DevCard} key=${repoKey(d)} d=${d} t=${t} busy=${!!busy[repoKey(d)]}

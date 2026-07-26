@@ -126,14 +126,14 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
       <!-- band spectrum -->
       <div class="w-full rounded-3xl border border-base-content/10 bg-base-100/50 overflow-hidden backdrop-blur">
         <canvas ref=${useCanvas((cv) => drawSpectrum(cv, $spectrum.get()), [spectrum, theme])} class="block w-full h-24" role="img" aria-label=${T(t, "spectrum")} data-spectrum></canvas>
-        <div class="flex justify-between px-3 py-1 font-mono text-[0.6rem] text-base-content/60 tabular-nums border-t border-base-content/10">
+        <div class="flex justify-between px-3 py-1 font-mono text-[0.6rem] text-muted tabular-nums border-t border-base-content/10">
           <span>${fMhz(BANDS[band].dlLo)}</span><span class="uppercase tracking-wider">${BANDS[band].label}</span><span>${fMhz(BANDS[band].dlHi)} MHz</span>
         </div>
       </div>
 
       <!-- active carriers -->
       <div class="flex items-center justify-between px-1">
-        <span class="text-xs uppercase tracking-wide text-base-content/60">${T(t, "carriers")}</span>
+        <span class="text-xs uppercase tracking-wide text-muted">${T(t, "carriers")}</span>
         <span class="font-mono text-xs tabular-nums text-base-content/65" data-count>${arfcns.length}</span>
       </div>
       <div class="flex flex-col gap-1.5" data-live data-carriers>
@@ -144,7 +144,7 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
             ${a.bcch ? html`<span class="text-[0.6rem] uppercase tracking-wider text-secondary" data-bcch>BCCH · C0</span>` : null}
           </div>
           <${Bars} level=${norm(a.db)} label=${T(t, "sigLabel")} />
-          <span class="font-mono tabular-nums text-xs text-base-content/60 w-14 text-right shrink-0 @max-[300px]:hidden">${a.db} dBm</span>
+          <span class="font-mono tabular-nums text-xs text-muted w-14 text-right shrink-0 @max-[300px]:hidden">${a.db} dBm</span>
         </div>`)
       : html`<div class="flex flex-col items-center text-base-content/55 py-10 gap-2 text-center px-6">${Icon("lucide:radio-tower", "text-3xl")}<span class="text-sm">${T(t, sweep.active ? "scanning" : "noCarriers")}</span></div>`}
       </div>
@@ -176,6 +176,6 @@ function SettingsSheet({ open, onClose, t, demo }) {
   return html`<${Sheet} id="rfsheet" open=${open} onClose=${onClose} title=${T(t, "settings")} icon="lucide:sliders-horizontal">
     ${Row(html`${T(t, "gainLna")} <span class="font-mono tabular-nums text-base-content/50">${lna} dB</span>`, html`<input type="range" min="0" max="40" step="8" value=${lna} class="range range-xs range-primary" aria-label=${T(t, "gainLna")} onInput=${(e) => { $lna.set(Number(e.target.value)); pushGain(); }} />`)}
     ${Row(html`${T(t, "gainVga")} <span class="font-mono tabular-nums text-base-content/50">${vga} dB</span>`, html`<input type="range" min="0" max="62" step="2" value=${vga} class="range range-xs range-primary" aria-label=${T(t, "gainVga")} onInput=${(e) => { $vga.set(Number(e.target.value)); pushGain(); }} />`)}
-    ${!demo ? html`<button data-disconnect class="btn btn-ghost btn-sm gap-2 text-base-content/60 self-start" onClick=${() => { disconnect(); onClose(); }}>${Icon("lucide:power")}${T(t, "disconnect")}</button>` : null}
+    ${!demo ? html`<button data-disconnect class="btn btn-ghost btn-sm gap-2 text-muted self-start" onClick=${() => { disconnect(); onClose(); }}>${Icon("lucide:power")}${T(t, "disconnect")}</button>` : null}
   </${Sheet}>`;
 }

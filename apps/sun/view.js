@@ -83,7 +83,7 @@ export function sun({ S, openScreen, closeScreen }) {
         <${Globe} marker=${tmp ? { lat: tmp.lat, lon: tmp.lng } : null} focus=${focus} spin=${!tmp} onPick=${({ lat, lon, name }) => setTmp({ lat, lng: lon, name })} height=${320} />
         <div class="text-center min-h-10">
           <div class="font-semibold">${tmp?.name || T(t, "tapGlobe")}</div>
-          <div class="text-xs text-base-content/60 tabular-nums">${tmp ? `${tmp.lat.toFixed(2)}°, ${tmp.lng.toFixed(2)}°` : ""}</div>
+          <div class="text-xs text-muted tabular-nums">${tmp ? `${tmp.lat.toFixed(2)}°, ${tmp.lng.toFixed(2)}°` : ""}</div>
         </div>
         <div class="flex flex-wrap gap-1.5 justify-center px-4">${PRESETS.map(([n, la, lo]) => html`<button class="btn btn-xs btn-ghost border border-base-300 rounded-full" data-city=${n} key=${n} onClick=${() => { setTmp({ lat: la, lng: lo, name: n }); setFocus({ lat: la, lon: lo }); }}>${n}</button>`)}</div>
         <button id="pick-here" class="btn btn-primary rounded-2xl gap-2" disabled=${!tmp} onClick=${() => { setPicked(tmp); closeScreen(); }}>${Icon("lucide:map-pin")}${T(t, "pickHere")}</button>
@@ -117,7 +117,7 @@ export function sun({ S, openScreen, closeScreen }) {
   const center = html`<div class="contents">
     <div data-bearing class="text-5xl font-bold tabular-nums"><${Scramble} text=${ready ? Math.round(bearing) + "°" : null} len=${4} /></div>
     <div class="text-base font-medium"><${Scramble} text=${ready ? dirName(bearing) : null} len=${6} /></div>
-    <div class="text-sm text-base-content/60 tabular-nums"><${Scramble} text=${ready ? (up ? `${T(t, "alt")} ${Math.round(alt)}°` : T(t, "belowHorizon")) : null} len=${9} /></div>
+    <div class="text-sm text-muted tabular-nums"><${Scramble} text=${ready ? (up ? `${T(t, "alt")} ${Math.round(alt)}°` : T(t, "belowHorizon")) : null} len=${9} /></div>
   </div>`;
 
   const anchors = [
@@ -136,14 +136,14 @@ export function sun({ S, openScreen, closeScreen }) {
         overlay=${html`<${Fragment}>${SKY_RINGS}<div class="absolute left-1/2 -top-1 -translate-x-1/2 text-base-content/50">${Icon("lucide:chevron-up", "text-xl")}</div></${Fragment}>`} />
     </div>
 
-    ${heading == null ? html`<div class="text-xs text-base-content/60 flex items-center gap-1.5">${Icon("lucide:compass")}${needPerm ? "" : T(t, "noCompass")}</div>` : null}
+    ${heading == null ? html`<div class="text-xs text-muted flex items-center gap-1.5">${Icon("lucide:compass")}${needPerm ? "" : T(t, "noCompass")}</div>` : null}
     ${needPerm ? html`<button id="grant" class="btn btn-primary btn-sm rounded-2xl gap-2" onClick=${grant}>${Icon("lucide:compass")}${T(t, "enableCompass")}</button>` : null}
     <div class="flex flex-col items-center gap-1.5">
       <button id="open-globe" class="btn btn-ghost btn-sm rounded-2xl gap-2" onClick=${openGlobe}>${Icon("lucide:globe")}${T(t, "pickOnGlobe")}</button>
       ${picked
         ? html`<button id="clear-pick" class="text-xs text-primary flex items-center gap-1" onClick=${() => setPicked(null)}>${Icon("lucide:map-pin")}${picked.name || `${picked.lat.toFixed(1)}°, ${picked.lng.toFixed(1)}°`} · ${T(t, "myLocation")}</button>`
         : ready ? (pos?.approx ? html`<div class="text-xs text-base-content/70">${T(t, "approxKyiv")}</div>` : null)
-        : html`<div class="text-xs text-base-content/60 flex items-center gap-1.5">${Icon("lucide:map-pin")}${T(t, "locating")}</div>`}
+        : html`<div class="text-xs text-muted flex items-center gap-1.5">${Icon("lucide:map-pin")}${T(t, "locating")}</div>`}
     </div>
 
     ${polarisAlt != null ? html`<div data-polaris-info class="flex items-center gap-1.5 text-xs text-base-content/65 font-mono tabular-nums"><${PoleStar} size=${13} />${T(t, "bPolaris")} · ${polarisAlt}°</div>` : null}

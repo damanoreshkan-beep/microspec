@@ -100,11 +100,11 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
 
       <!-- day segmented -->
       <div role="tablist" class="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-base-100 border border-base-300">
-        ${[0, 1, 2].map((i) => html`<button role="tab" data-day=${DAY_IDS[i]} aria-selected=${day === i} class=${`min-w-0 truncate py-2 rounded-xl text-sm font-medium transition-colors ${day === i ? "bg-primary text-primary-content" : "text-base-content/60"}`} onClick=${() => setDay(i)} key=${i}>${T(t, DAY_KEYS[i])}</button>`)}
+        ${[0, 1, 2].map((i) => html`<button role="tab" data-day=${DAY_IDS[i]} aria-selected=${day === i} class=${`min-w-0 truncate py-2 rounded-xl text-sm font-medium transition-colors ${day === i ? "bg-primary text-primary-content" : "text-muted"}`} onClick=${() => setDay(i)} key=${i}>${T(t, DAY_KEYS[i])}</button>`)}
       </div>
 
       ${err && !data
-      ? html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-3 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span class="text-sm">${T(t, "noConnection")}</span></div>`
+      ? html`<div class="flex flex-col items-center text-muted py-16 gap-3 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span class="text-sm">${T(t, "noConnection")}</span></div>`
       : !data
         ? html`<!-- structure-shaped skeleton (date · prose lines · ratings) — never a bare spinner -->
           <div class="flex flex-col gap-4">

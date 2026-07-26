@@ -135,11 +135,11 @@ export function pulse({ S }) {
       <div id="rate" class="text-6xl font-bold tabular-nums leading-none mt-1 @max-[240px]:text-5xl">${num(s.perMin)}</div>
       <div class="text-sm text-base-content/80">${T(t, "perMin")}</div>
       <div class="w-full mt-3">
-        <div class="flex justify-between text-xs mb-1"><span class="flex items-center gap-1">${Icon("lucide:user", "text-primary")}${T(t, "humans")} ${s.humanPct}%</span><span class="flex items-center gap-1 text-base-content/60">${T(t, "bots")} ${100 - s.humanPct}% ${Icon("lucide:bot")}</span></div>
+        <div class="flex justify-between text-xs mb-1"><span class="flex items-center gap-1">${Icon("lucide:user", "text-primary")}${T(t, "humans")} ${s.humanPct}%</span><span class="flex items-center gap-1 text-muted">${T(t, "bots")} ${100 - s.humanPct}% ${Icon("lucide:bot")}</span></div>
         <div class="h-2 rounded-full bg-base-300 overflow-hidden"><div class="h-full bg-primary transition-all duration-500" style=${`width:${s.humanPct}%`}></div></div>
       </div>
       ${scope === "all" && s.top.length ? html`<div class="flex flex-wrap gap-1 justify-center mt-3">${s.top.map((c) => html`<button class="badge badge-ghost gap-1 cursor-pointer hover:badge-primary" key=${c} onClick=${() => setScope(c)}>${Icon("lucide:globe", "text-[0.85em] opacity-70")}${c}</button>`)}</div>` : null}
-      <div class="text-xs text-base-content/60 mt-2">${T(t, "total", { n: num(s.total) })}</div>
+      <div class="text-xs text-muted mt-2">${T(t, "total", { n: num(s.total) })}</div>
     </div></div>
 
     <div class="flex flex-col gap-2">
@@ -156,7 +156,7 @@ export function pulse({ S }) {
     </div>
 
     ${s.big && !ql ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 px-4 gap-0.5">
-      <div class="text-xs text-base-content/60 flex items-center gap-1">${Icon("lucide:flame", "text-primary")}${T(t, "biggest")}</div>
+      <div class="text-xs text-muted flex items-center gap-1">${Icon("lucide:flame", "text-primary")}${T(t, "biggest")}</div>
       <div class="flex items-center gap-2"><span class="font-semibold truncate flex-1">${s.big.title}</span><span class=${`font-bold tabular-nums shrink-0 ${s.big.delta >= 0 ? "text-success" : "text-error"}`}>${signed(s.big.delta)}</span></div>
     </div></div>` : null}
 
@@ -165,7 +165,7 @@ export function pulse({ S }) {
         ? html`<div class="text-center text-base-content/50 py-10 text-sm flex flex-col items-center gap-2">${Icon(ql ? "lucide:search-x" : "lucide:radio", "text-3xl opacity-40")}${T(t, ql ? "noMatch" : "waiting")}</div>`
         : shown.map((it) => html`<a href=${it.url} target="_blank" rel="noopener" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" key=${it.id}><div class="card-body p-3 px-4 flex-row items-center gap-3">
             ${Icon(it.bot ? "lucide:bot" : "lucide:user", "text-lg shrink-0 " + (it.bot ? "text-base-content/40" : "text-primary"))}
-            <div class="flex-1 min-w-0"><div class="font-medium truncate">${it.title}</div><div class="text-xs text-base-content/60 truncate">${it.code}${it.user ? " · " + it.user : ""}</div></div>
+            <div class="flex-1 min-w-0"><div class="font-medium truncate">${it.title}</div><div class="text-xs text-muted truncate">${it.code}${it.user ? " · " + it.user : ""}</div></div>
             <span class=${`text-xs font-semibold tabular-nums shrink-0 ${it.delta >= 0 ? "text-success" : "text-error"}`}>${signed(it.delta)}</span>
           </div></a>`)}
     </div>

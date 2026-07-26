@@ -150,7 +150,7 @@ export function Finale({ devs = [], t, onClose }) {
           </span>
           <span class="text-[0.6rem] font-mono text-base-content/75 max-w-[5rem] truncate">${d.name || d.owner}</span>
         </a>`)}
-        ${extra > 0 ? html`<div class="absolute left-1/2 bottom-0 -translate-x-1/2 text-xs font-medium text-base-content/60">${T(t, "andMore").replace("{n}", String(extra))}</div>` : null}
+        ${extra > 0 ? html`<div class="absolute left-1/2 bottom-0 -translate-x-1/2 text-xs font-medium text-muted">${T(t, "andMore").replace("{n}", String(extra))}</div>` : null}
       </div>
     </div>
 

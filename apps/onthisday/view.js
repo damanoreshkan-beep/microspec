@@ -83,12 +83,12 @@ export function onthisday({ S }) {
     <${Segmented} attr="data-cat" scroll variant="outline"
       items=${CATS.map((k) => ({ id: k, label: T(t, LABEL[k]) }))} value=${cat} onChange=${setCat} />
     <div ref=${listRef} class="flex flex-col gap-2">
-      ${err ? html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`
+      ${err ? html`<div class="flex flex-col items-center text-muted py-16 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`
         : !ready ? Array.from({ length: 5 }, (_, i) => skel(i))
         : items.length ? items.map((it, i) => it.url
           ? html`<a data-otd href=${it.url} target="_blank" rel="noopener" class="otd card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" key=${i}>${body(it)}</a>`
           : html`<div data-otd class="otd card bg-base-100 border border-base-300 rounded-2xl" key=${i}>${body(it)}</div>`)
-        : html`<div class="text-center text-base-content/60 py-10">${T(t, "empty")}</div>`}
+        : html`<div class="text-center text-muted py-10">${T(t, "empty")}</div>`}
     </div>
   </div>`;
 }

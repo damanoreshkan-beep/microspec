@@ -1,5 +1,5 @@
 import { html } from "htm/preact";
-import { useState, useEffect, useRef } from "preact/hooks";
+import { useState, useEffect } from "preact/hooks";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
@@ -371,7 +371,10 @@ export function v2mStore({ S, toast }) {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("size");
   const [shown, setShown] = useState(PAGE);
-  const moreRef = useRef();
+  const [sentinel, setSentinel] = useState(null);
+  const [cold] = useState(() => $tunes.get() === null);
+  const revealed = useReveal(tunes !== null);
+  const showSkel = cold ? !revealed : tunes === null;
 
   useEffect(() => { notify = toast; loadCatalog(); loadOwned(); return () => { notify = null; }; }, []);
 
@@ -382,14 +385,13 @@ export function v2mStore({ S, toast }) {
   }).sort(SORTS.find((s) => s.id === sort).key);
 
   useEffect(() => {
-    const el = moreRef.current;
-    if (!el || shown >= list.length || typeof IntersectionObserver === "undefined") return;
+    if (!sentinel || shown >= list.length || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver((es) => {
       if (es.some((e) => e.isIntersecting)) setShown((n) => Math.min(n + PAGE, list.length));
     }, { rootMargin: "600px" });
-    io.observe(el);
+    io.observe(sentinel);
     return () => io.disconnect();
-  }, [shown, list.length]);
+  }, [sentinel, shown, list.length]);
 
   const play = (tune) => {
     S.tab.set("play");                                 
@@ -417,7 +419,7 @@ export function v2mStore({ S, toast }) {
         </span>
       </div>
 
-      ${!useReveal(tunes !== null) ? html`
+      ${showSkel ? html`
         <div class="flex flex-col gap-1">${[0, 1, 2, 3, 4, 5, 6, 7].map(() => html`
           <div data-skel class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-base-200/60">
             <div class="font-mono text-sm w-14 shrink-0"><${Scramble} len=${5} /></div>
@@ -450,7 +452,7 @@ export function v2mStore({ S, toast }) {
               </button>`;
           })}
         </div>
-        <div ref=${moreRef} aria-hidden="true" class="h-4"></div>`}
+        <div ref=${setSentinel} aria-hidden="true" class="h-4"></div>`}
     </div>`;
 }
 

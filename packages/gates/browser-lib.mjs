@@ -124,6 +124,8 @@ export const BREAKPOINTS = [
   { id: "phone",       w: 384,  h: 832,  note: "20:9 · reference device" },
   { id: "phone-tall",  w: 412,  h: 915,  note: "9:19.5 · tall phone" },
   { id: "phone-land",  w: 844,  h: 390,  note: "19.5:9 · rotated — the height test" },
+  { id: "split",       w: 412,  h: 430,  note: "split-screen — two apps stacked on a tall phone" },
+  { id: "split-sm",    w: 360,  h: 340,  note: "floating window — the height floor" },
   { id: "tablet",      w: 768,  h: 1024, note: "3:4 · tablet portrait" },
   { id: "tablet-land", w: 1024, h: 768,  note: "4:3 · tablet landscape" },
   { id: "desktop",     w: 1280, h: 900,  note: "16:10 · desktop" },

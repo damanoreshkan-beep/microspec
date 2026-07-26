@@ -58,6 +58,29 @@
   nav[data-dock] button > span { font-size: 0.54rem; }
 }
 
+/* ── Split-screen and floating windows ─────────────────────────────────────────────────────────────
+   A phone running two apps at once is not an edge case on a 6.9" device — it is a Tuesday. It leaves a
+   viewport ~200px tall AFTER the header and dock, which no amount of padding survives. Two systemic moves:
+
+   .ms-side — a stage stacked ABOVE its controls becomes a stage BESIDE them. A visualiser and a transport
+   cannot share 200px vertically, and dropping either one is not adaptation, it is amputation: side by side
+   both keep every control they had. Wrap the fit view in .ms-side; the Stage (data-stage-box) goes left.
+
+   And the dock drops its labels rather than its targets: the glyph and the 44px hit area stay, the caption
+   goes. Each dock button carries an aria-label (render.js) precisely so this is legal — hiding the only
+   accessible name would trade a layout bug for a critical a11y one. */
+@media (max-height: 520px) and (min-width: 340px) {
+  .ms-side { flex-direction: row; align-items: stretch; }
+  .ms-side > [data-stage-box] { flex: 0 0 38%; min-width: 0; }
+  .ms-side > .ms-side-main { flex: 1 1 auto; min-width: 0; justify-content: center; }
+}
+@media (max-height: 440px) {
+  /* --ms-ctl holds at the 36px tap floor: a split-screen window is still a finger-driven screen. */
+  :root { --ms-gap: 0.3rem; --ms-pad: 0.5rem; --ms-r: 0.875rem; --ms-ctl: 2.25rem; --ms-icon: 0.95rem; --ms-title: 0.85rem; }
+  nav[data-dock] button { padding: 0.3rem 0.55rem; }
+  nav[data-dock] button > span { display: none; }
+}
+
 /* .ms-cols — a stack that becomes a ROW when vertical space runs out. The one layout move the density
    tokens cannot make: three stacked sliders are ~126px however tight the padding gets, three columns are
    ~42px. Set the count with --ms-cols (default 3). This is the systemic answer to "compact on a short

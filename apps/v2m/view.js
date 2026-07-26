@@ -401,10 +401,10 @@ export function v2m({ S, toast, undo }) {
   };
 
   return html`
-    <div class="relative h-full min-h-0 flex flex-col" data-track=${track?.id || ""} data-saved=${saveState}>
+    <div class="relative h-full min-h-0 flex flex-col ms-side" data-track=${track?.id || ""} data-saved=${saveState}>
       <${Stage}><${ByteStage} /><//>
 
-      <div class="relative z-10 flex flex-col justify-end pb-[var(--ms-gap)]">
+      <div class="ms-side-main relative z-10 flex flex-col justify-end pb-[var(--ms-gap)]">
         <${Island} className="mx-[var(--ms-gap)] px-[var(--ms-pad)] py-[var(--ms-pad)] flex flex-col gap-2">
           <${Transport}
             locale=${loc}

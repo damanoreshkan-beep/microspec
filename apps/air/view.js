@@ -20,18 +20,24 @@ const urlFor = (lat, lng) =>
 
 // per band 0..5: [dark-theme bright (SVG fills — saturated, visible on both), light-theme dark (text)]
 // good green → fair lime → moderate yellow → poor orange → very-poor red → extreme purple (EEA ramp)
-// Retuned for the clay repaint. The old ramp was drawn against a near-black page (#0A0A0B) and cleared
-// 4.5:1 by 0.15 even there; on an aubergine base it measured 4.20 / 3.71 / 3.15 for poor / very-poor /
-// extreme. Each value here is the SMALLEST lightness shift that clears 4.7:1 on the worst bed the farm
-// renders — base-100, base-200, and both of those under a `bg-primary/10` tint (a selected row moves the
-// bed toward the text in BOTH themes, so it, not the plain surface, is the binding one).
-// Known trade, chosen deliberately: in the dark theme the top bands go pale, so the ramp reads gentler
-// exactly where it is most severe. Colour-as-text has no headroom left for escalation on a mid-dark
-// page — the farm's own rule is that colour is a MARK (fills, dots, rings), never text.
-const AQ = [["#60CA86", "#136A3B"], ["#9BCB3C", "#486410"], ["#E4C13A", "#725A00"], ["#EFA577", "#99440F"], ["#F4A198", "#AC2E23"], ["#E2A0DA", "#8E2A86"]];
+// FILLS keep the original saturated ramp. A fill is a MARK — the farm's rule — so it answers to the 3:1
+// non-text floor, not 4.5:1, and every band clears that on the clay page (worst 3.15). Muting these
+// would have thrown away the gauge, the bars and the dots for nothing.
+const AQ = [["#41C06F", "#177F46"], ["#9BCB3C", "#5A7D14"], ["#E4C13A", "#8A6D00"], ["#E7742E", "#A24810"], ["#EC5A4A", "#B63125"], ["#C94BBA", "#8E2A86"]];
+// TEXT is a separate ramp, because text is where contrast bites. The old ink ramp was drawn against a
+// near-black page and measured 4.20 / 3.71 / 3.15 for poor / very-poor / extreme on an aubergine base.
+//
+// The first retune simply lightened the failing bands, and the screenshot showed why that was wrong:
+// "very poor" came out a soft salmon while a perfectly good NO2 reading stayed vivid green, so the safe
+// values shouted and the dangerous one whispered. On a dark page you cannot make a colour more urgent by
+// darkening it, so urgency rides SATURATION instead: calm sage at band 0 (17%) climbing to 70% at
+// very-poor. Each value is then the smallest lightness shift that clears 4.7:1 on the worst bed the farm
+// renders — base-100, base-200, and both under a `bg-primary/10` tint, which moves the bed toward the
+// text in BOTH themes and is therefore the binding one, not the plain page.
+const AQ_INK = [["#A1BCAB", "#395D49"], ["#ABBC8A", "#516130"], ["#C8B56C", "#6D5C1B"], ["#E0AB8A", "#8D4C23"], ["#EDA29A", "#A4362C"], ["#E2A0DA", "#8E2A86"]];
 const clamp = (b, n) => Math.max(0, Math.min(n, b));
 const fillFor = (b) => AQ[clamp(b, 5)][0];                                   // SVG shapes
-const inkFor = (b) => `light-dark(${AQ[clamp(b, 5)][1]},${AQ[clamp(b, 5)][0]})`; // text
+const inkFor = (b) => `light-dark(${AQ_INK[clamp(b, 5)][1]},${AQ_INK[clamp(b, 5)][0]})`; // text
 const AQI_KEYS = ["aqiGood", "aqiFair", "aqiModerate", "aqiPoor", "aqiVeryPoor", "aqiExtreme"];
 // pollen band 0..4 → an AQ colour (none = muted, no colour); low green, moderate yellow, high orange, v.high red
 const POLLEN_INK = [null, inkFor(0), inkFor(2), inkFor(3), inkFor(4)];

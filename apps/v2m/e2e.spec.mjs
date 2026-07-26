@@ -2,12 +2,26 @@ const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("
 
 export default [
   {
-    name: "плеєр: диск, транспорт, seek", run: async (h) => {
+    name: "плеєр: сцена, транспорт, seek", run: async (h) => {
       await ready(h);
       h.expect((await h.count("[data-track]")) === 1, "плеєр не змонтувався");
       h.expect((await h.count("#play")) === 1, "немає кнопки play");
       h.expect((await h.count("[data-time]")) === 1, "немає індикатора часу");
       h.expect((await h.count('input[type="range"]')) === 1, "немає seek-повзунка");
+      h.expect((await h.count("[data-stage]")) === 1, "немає 3D-сцени");
+    },
+  },
+  {
+    name: "hero: якщо є WebGL — рендериться WebGL, не запасний 2D", run: async (h) => {
+      await ready(h);
+      await h.wait(600);
+      const has = await h.attr("[data-stage]", "data-haswebgl");
+      const mode = await h.attr("[data-stage]", "data-render");
+      h.expect(mode === "webgl" || mode === "2d", "сцена не ініціалізувалась: " + mode);
+      if (has === "yes") {
+        h.expect(mode === "webgl",
+          "WebGL доступний, але сцена мовчки впала у 2D (data-err=" + (await h.attr("[data-stage]", "data-err")) + ")");
+      }
     },
   },
   {
@@ -22,12 +36,26 @@ export default [
     },
   },
   {
-    name: "бібліотека: порожній стан", run: async (h) => {
-      await h.click('[data-tab="library"]'); await h.wait(300);
-      h.expect((await h.count("[data-track-row]")) === 0, "бібліотека мала б бути порожня");
-      h.expect(/saved|треків/i.test(await h.bodyText()), "немає порожнього стану");
-      await h.click('[data-tab="play"]'); await h.wait(150);
+    name: "магазин: плитки з розміром, пошук, сортування", run: async (h) => {
+      await h.click('[data-tab="store"]'); await h.wait(400);
+      const n = await h.count("[data-tune]");
+      h.expect(n > 1, "магазин порожній");
+      h.expect(/KB|MB/.test(await h.bodyText()), "на плитках немає розміру — головної цифри застосунку");
+      h.expect((await h.count("[data-sort]")) >= 3, "немає перемикача сортування");
+      await h.type('input[type="search"]', "zzzznomatch"); await h.wait(300);
+      h.expect((await h.count("[data-tune]")) === 0, "пошук не фільтрує");
+      await h.type('input[type="search"]', ""); await h.wait(300);
+      h.expect((await h.count("[data-tune]")) === n, "список не відновився після очищення пошуку");
+    },
+  },
+  {
+    name: "магазин → трек грає й лягає в бібліотеку", run: async (h) => {
+      await h.click('[data-tab="store"]'); await h.wait(400);
+      await h.tap("[data-tune]"); await h.wait(1200);
       h.expect((await h.count("[data-track]")) === 1, "не повернувся на плеєр");
+      h.expect((await h.attr("#play", "data-playing")) === "true", "трек із магазину не заграв");
+      await h.click('[data-tab="library"]'); await h.wait(400);
+      h.expect((await h.count("[data-track-row]")) === 1, "завантажений трек не з'явився в бібліотеці");
     },
   },
   {

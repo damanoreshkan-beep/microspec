@@ -74,7 +74,11 @@ class V2MProcessor extends AudioWorkletProcessor {
     const F = this.heapF32;
     const base = this.bufPtr >> 2;
     const still = X.v2m_render(this.bufPtr, n); 
-    for (let i = 0, j = base; i < n; i++, j += 2) { L[i] = F[j]; R[i] = F[j + 1]; }
+    for (let i = 0, j = base; i < n; i++, j += 2) {
+      const l = F[j], r = F[j + 1];
+      L[i] = l >= -4 ? (l <= 4 ? l : 4) : (l >= -Infinity ? -4 : 0);
+      R[i] = r >= -4 ? (r <= 4 ? r : 4) : (r >= -Infinity ? -4 : 0);
+    }
     this.frames += n;
     if ((this.tick = (this.tick + 1) & 63) === 0) {
       this.port.postMessage({ type: "position", ms: (this.frames / sampleRate) * 1000 });

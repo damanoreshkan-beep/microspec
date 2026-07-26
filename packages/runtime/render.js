@@ -593,7 +593,10 @@ function usePublishedChrome(kind) {
       const h = el.offsetHeight;
       if (kind === "header") { if (h) s.setProperty("--hdr-h", `${h}px`); return; }
       const rail = (getComputedStyle(el).gridAutoFlow || "").includes("row");
-      s.setProperty("--dock-h", rail ? "0px" : `${h + 12}px`);   // +12 = the 0.75rem it floats above
+      // The dock floats 0.75rem above the safe area, and content must clear the dock PLUS enough air to
+      // read as a separate object. 12px was the float alone: measured on a shot, rave's transport sat 12px
+      // from the tab bar and the two glass panels read as one stack. 24px is the float plus a real gap.
+      s.setProperty("--dock-h", rail ? "0px" : `${h + 24}px`);
       s.setProperty("--dock-w", rail ? `${el.offsetWidth}px` : "0px");
     };
     apply();

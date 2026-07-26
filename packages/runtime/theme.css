@@ -130,9 +130,9 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 }
 [data-theme="signal-light"] {
   color-scheme: light;
-  --color-base-100: #E4DACA; --color-base-200: #EDE6DE; --color-base-300: #D6C9B4;
-  --color-base-content: #2A2320;
-  --color-primary: #2A2320;   --color-primary-content: #F5EFE6;
+  --color-base-100: #FFFAF2; --color-base-200: #F7F0E4; --color-base-300: #E9DFCF;
+  --color-base-content: #120F0D;
+  --color-primary: #120F0D;   --color-primary-content: #FFFAF2;
   --color-secondary: #8A4A2A; --color-secondary-content: #FFF8F0; 
   --color-accent: #8A4A2A;    --color-accent-content: #FFF8F0;    
   --color-neutral: #2A2320;   --color-neutral-content: #F0EAE0;
@@ -239,8 +239,6 @@ body::after {
 .btn:active:not(:disabled), [aria-pressed]:active {
   box-shadow: inset 0 3px 7px -1px var(--sf-press-top), inset 0 -1px 0 0 var(--sf-lip);
 }
-
-
 .btn:not(.btn-ghost):not(.btn-link):not(:disabled) {
   box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop);
 }
@@ -253,12 +251,12 @@ body::after {
 
 .badge:not(.badge-ghost) { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 1px 3px -1px var(--sf-shadow); }
 
-
 .sf-track, .range { --range-bg: var(--sf-inset-face); }
 .input, .textarea, .select, .file-input {
   background: var(--sf-inset-face);
   box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), inset 0 -1px 0 0 var(--sf-lip);
 }
+
 .input:focus, .input:focus-within, .textarea:focus, .select:focus, .file-input:focus {
   box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), 0 0 0 2px var(--app-tint), 0 0 0 3px var(--app-accent);
   outline: none;
@@ -285,14 +283,10 @@ nav[data-dock] button[aria-current="page"] {
 .card, [data-card] {
   box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 6px -2px var(--sf-shadow);
 }
-
-
 .alert { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
 .dropdown-content, .menu.bg-base-100, [role="menu"] {
   box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow);
 }
-
-
 .modal-box { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 -10px 44px -12px var(--sf-shadow); }
 [data-toast] .alert { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }
 
@@ -301,6 +295,7 @@ nav[data-dock] button[aria-current="page"] {
 :root { --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
 body { letter-spacing: -0.006em; }
 
+
 [data-title] {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -308,7 +303,6 @@ body { letter-spacing: -0.006em; }
   font-weight: 700;
   font-size: 1.02rem;
 }
-
 
 .badge {
   font-family: var(--font-mono);
@@ -361,6 +355,7 @@ nav[data-dock] button > span {
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
 .overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }
 }

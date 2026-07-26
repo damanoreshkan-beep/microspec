@@ -82,8 +82,11 @@ a standing assumption, not a per-task ask.)
   `packages/runtime/theme.css`.
 - **The palette is CLAY, not ink** (`docs/research/claymorphism.md`). Three measured rules, and the first
   two are the ones that get violated by instinct:
-  1. **A raised surface sits ~14 luminance BELOW its page**, never above it. `base-200` is the page and is
-     the *lighter* of the pair. Lightening a raised card is what flattens clay.
+  1. **Clay has three levels: canvas → container → card.** The container sits ~14 below its page; the
+     card sits *above* its container. In the farm's two levels that makes `base-100` (card) the LIGHTER
+     and `base-200` (page) the cream. Applying the container's colour to the card darkens every surface
+     and costs `text-base-content/60` its contrast — that is an axe-serious failure in all 58 apps at
+     once, and it is the single most expensive mistake made in this migration.
   2. **Volume is edge contrast, not fill** — the face barely moves; the inner top highlight and the bottom
      shade do all the work.
   3. **The cast shadow carries the surface hue**, never neutral black — `--sf-drop`/`--sf-shadow`
@@ -91,8 +94,11 @@ a standing assumption, not a per-task ask.)
      reads as "a card with a shadow"; that one substitution is the whole style, lost.
   Dark clay is **aubergine at L≈40-50**, not near-black: clay fails on `#0A0A0B` (grey inflated buttons),
   not on darkness. Radius stays in the clay band — below ~20px the volume reads as an ordinary drop shadow.
-  Pastel + soft shadow *tempts* pale text; the palette itself is safe (tightest pair 4.91:1) but any
-  `opacity` on top of a semantic colour eats the margin.
+  **Check the COMPOSITED pair, never the solid one.** The farm renders `text-base-content/60` in 66
+  files; an alpha over a surface is what axe measures, and 60% of a warm ink on a cream card is 3.72:1
+  where the same ink at 100% is 11:1. Every solid pair passing tells you nothing. Muted text is the
+  binding constraint of any light theme (the old ink theme cleared it by 0.07) — so the **warmth budget
+  is set by contrast, not by taste**. `runtime_test.js` computes it locally and matches axe exactly.
 - **Floating glass islands:** dock + header are `bg-base-100/80 backdrop-blur-xl` + hairline + rim; a tool
   app's persistent controls become islands like them.
 - **One page scroll:** content flows in `<main>`; no `position:fixed` panel with a nested `overflow-y-auto`.

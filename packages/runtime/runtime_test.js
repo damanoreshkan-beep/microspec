@@ -3409,6 +3409,20 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
   }
 });
 
+Deno.test(".ms-cols derives its count from width — it never switches off, and never over-splits", async () => {
+  // The rule exists to trade HEIGHT for WIDTH. Declared as a fixed three, it does the trade even when there
+  // is no width to trade with: at 200px a column is ~60px, every label wraps, and the group ends up TALLER
+  // than the stack it replaced. Gating it behind a min-width would be the same surrender by another route —
+  // the mechanism has to keep working at the size that needs it most.
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const m = /\.ms-cols \{([\s\S]*?)\n  \}/.exec(css);
+  assert(m, ".ms-cols rule is gone");
+  assert(/auto-fit/.test(m[1]), "the column count is fixed — it cannot answer to the real width");
+  assert(/--ms-col-min/.test(m[1]), "no readable floor: auto-fit alone will happily make 40px columns");
+  assert(/--ms-cols/.test(m[1]), "--ms-cols must survive as the CEILING (at most N), not be dropped");
+  assert(!/620px\)\s*and\s*\(min-width/.test(css), "a min-width gate turns the rule off where it is needed most");
+});
+
 Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager, the tap floor holds", async () => {
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   const at = css.indexOf("@media (max-width: 300px)");

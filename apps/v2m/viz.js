@@ -34,6 +34,7 @@ const env = Envelope(0.55, 0.12, N);
 const subs = new Set();
 const SILENT = new Uint8Array(1024);
 let pumpRaf = null, phase = 0, resting = false;
+export const invalidate = () => { resting = false; };
 let lastGen = -1, lastProgress = -1;
 function pump() {
   const live = (_getBytes && _getBytes()) || null;
@@ -207,6 +208,7 @@ export function ByteStage() {
       canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
       store.renderer?.setSize(canvas.width, canvas.height, false);
       store.scene?.resize(canvas.width, canvas.height);
+      invalidate();                                    
     };
     const webgl = hasWebGL();
     canvas.setAttribute("data-haswebgl", webgl ? "yes" : "no");

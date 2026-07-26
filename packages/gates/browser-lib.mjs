@@ -269,14 +269,34 @@ export async function runDesignChecks(ev) {
   await sleep(250);
   // cards (data apps) → check each card collapses; no cards (tool/custom view) → check the view container doesn't overflow
   const watch = await ev(() => {
+    // Name the offender. Without this the check reports "+17px" and nothing else, which turns a fix into
+    // guesswork — and guessing cost two wrong commits before this line existed. Same scan the responsive
+    // matrix does: the element whose right edge reaches furthest past the box.
+    const widest = (box) => {
+      let far = box.getBoundingClientRect().right, sel = "?";
+      for (const el of box.querySelectorAll("*")) {
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.right > far + 0.5) {
+          far = r.right;
+          const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 3).join(".") : "";
+          sel = el.tagName.toLowerCase() + (c ? "." + c : "");
+        }
+      }
+      return sel;
+    };
     const cards = [...document.querySelectorAll(".card")];
-    if (cards.length) { let m = 0; cards.forEach((c) => { m = Math.max(m, c.scrollWidth - c.clientWidth); }); return { mode: "card", o: m }; }
-    const v = document.getElementById("view"); return { mode: "view", o: v ? v.scrollWidth - v.clientWidth : 0 };
+    if (cards.length) {
+      let m = 0, sel = "?";
+      cards.forEach((c) => { const o = c.scrollWidth - c.clientWidth; if (o > m) { m = o; sel = widest(c); } });
+      return { mode: "card", o: m, sel };
+    }
+    const v = document.getElementById("view");
+    return { mode: "view", o: v ? v.scrollWidth - v.clientWidth : 0, sel: v ? widest(v) : "?" };
   });
   await ev(() => { const v = document.getElementById("view"); if (v) v.style.maxWidth = ""; });   // restore for subsequent shots
   out.push(watch.o <= 2
     ? { name: `watch ~200px: ${watch.mode === "card" ? "контент уміщується (container query)" : "без overflow (custom view)"}`, ok: true }
-    : { name: "watch ~200px: контент не вміщується", ok: false, msg: `+${watch.o}px overflow${watch.mode === "card" ? " у картці" : ""}` });
+    : { name: "watch ~200px: контент не вміщується", ok: false, msg: `+${watch.o}px overflow${watch.mode === "card" ? " у картці" : ""} — винуватець: ${watch.sel}` });
   await ev(() => document.getElementById("__freeze")?.remove());
   return out;
 }

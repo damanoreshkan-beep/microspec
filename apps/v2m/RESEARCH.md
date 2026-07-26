@@ -70,18 +70,36 @@ Rendering throughput, if a future offline pass is ever wanted again: **27–92×
 
 ## 3. The hero — the tune's own bytes
 
-`byteCloud(bytes)` in `/_rt/v2m.js`: every three bytes become one point in spherical coordinates
-(`theta = b0`, `phi = acos(2·b1−1)`, `r = 0.55 + 0.45·b2`), sub-sampled by a stride above 16 384 points.
-So the **point count is the file size** — a 9 KB tune is a visibly sparser object than a 90 KB one, and the
-app's argument needs no caption. Audio-reactive via the shared `/_rt/spectrum.js` maths (bass → scale,
-treble → point size, centroid → hue nudge, violet 262° → cyan 190°).
+`byteCloud(bytes)` in `/_rt/v2m.js`: **one point per byte**, direction from the point's INDEX (Fibonacci
+sphere) and radius from the byte's VALUE, sub-sampled by a stride above 16 384 points. So the **point count
+is the file size** — a 9 KB tune is a visibly sparser object than a 90 KB one, and the app's argument needs
+no caption. Audio-reactive via the shared `/_rt/spectrum.js` maths (bass → scale, treble → point size,
+centroid → hue nudge, violet 262° → cyan 190°).
+
+**The first cut derived the whole position from byte TRIPLES and had to be thrown away** — it renders
+beautifully on random bytes and collapses on real ones. A `.v2m` is full of repeated values and long zero
+runs, every identical triple maps to the identical coordinate, and the 7 KB demo drew as a few dozen visible
+specks with thousands of points stacked underneath them. **Take position from the index and let the data
+modulate it**; a unit test now feeds a file of identical bytes and requires distinct points to track the
+count. Seeded noise is the worst possible fixture for a data visualisation — it is the one input that has no
+structure to collapse.
 
 Integration follows `[[reference_webgl_threejs_in_farm]]`: `three` in the app's import map only, lazy import
 inside the effect, **probe-guarded on `getContext('webgl')`** (never gate-guarded, so CI's headless Chrome
 renders the real thing), Canvas2D orthographic projection as the fallback, `data-haswebgl` / `data-render` /
 `data-err` breadcrumbs, and an e2e guard that turns "silently fell back to 2D" into a red gate.
 
-## 4. What the gate does instead of the network
+## 4. `ctx.resume()` does not reject — it hangs
+
+Worth its own heading because it cost three CI rounds and would have been invisible on a device. A suspended
+`AudioContext` with no user activation to spend leaves `resume()` **pending indefinitely** — Chrome does not
+reject it. Anything sequenced behind `await ctx.resume()` therefore never runs at all: here it was the
+store's entire download path, which looked exactly like a failing IndexedDB write. The breadcrumb that
+settled it (`data-saved` = `""`, not `err:…` — never started, rather than failed) cost one run and was
+exact, after two wrong guesses cost two. **Race `resume()` against a timeout, and never sequence unrelated
+work behind the audio handshake.**
+
+## 5. What the gate does instead of the network
 
 `gate` (headless or `?mock`) seeds a six-tune fixture and makes `bytesFor` return the bundled
 `demo.v2mz`, so the whole store → play → library flow is exercised end to end without a single request to

@@ -30,11 +30,16 @@ export function parseAuthors(html) {
   return out;
 }
 
-/** Tunes in one author's listing: `<a href="x.v2m" …>…</a> … <td class="size">  12345</td>`. */
+/**
+ * Tunes in one author's listing: `<a href="x.v2m" …>…</a> … <td class="size">  12345</td>`.
+ * `size` is the byte COUNT. It is deliberately NOT called `bytes` — a track record's `bytes` is the audio
+ * buffer, and the one time the two shared a name, `9216.slice()` threw into a swallowing catch and the
+ * library silently never saved anything.
+ */
 export function parseListing(html) {
   const out = [];
   for (const m of String(html).matchAll(/<a href="([^"]+\.v2mz?)"[^>]*>[\s\S]*?<td class="size">\s*([0-9]+)/g)) {
-    out.push({ file: decodeURIComponent(m[1]), bytes: +m[2] });
+    out.push({ file: decodeURIComponent(m[1]), size: +m[2] });
   }
   return out;
 }

@@ -3199,8 +3199,8 @@ Deno.test("v2m parseListing — filename + byte size, .v2m and .v2mz", () => {
     <tr><td class="link"><a href="the%202nd%20movement.v2mz" title="x">the 2nd…</a></td><td class="size">  64267</td></tr>
     <tr><td class="link"><a href="readme.txt">readme.txt</a></td><td class="size">    12</td></tr>`;
   assertEquals(v2mParseListing(html), [
-    { file: "stars.v2m", bytes: 9216 },
-    { file: "the 2nd movement.v2mz", bytes: 64267 },
+    { file: "stars.v2m", size: 9216 },
+    { file: "the 2nd movement.v2mz", size: 64267 },
   ]);
 });
 

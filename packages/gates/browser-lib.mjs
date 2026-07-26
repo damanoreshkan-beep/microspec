@@ -131,8 +131,16 @@ export async function runResponsiveMatrix(page, ev, dev) {
           if (r.width < 8 || r.height < 8) continue;
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
-          const over = Math.min(r.bottom, d.bottom) - Math.max(r.top, d.top);
-          const across = Math.min(r.right, d.right) - Math.max(r.left, d.left);
+          let vr = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+          for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            const pcs = getComputedStyle(p);
+            if (!/auto|scroll|hidden|clip/.test(pcs.overflowX + pcs.overflowY)) continue;
+            const pr = p.getBoundingClientRect();
+            vr = { top: Math.max(vr.top, pr.top), bottom: Math.min(vr.bottom, pr.bottom), left: Math.max(vr.left, pr.left), right: Math.min(vr.right, pr.right) };
+          }
+          if (vr.right - vr.left <= 1 || vr.bottom - vr.top <= 1) continue;   
+          const over = Math.min(vr.bottom, d.bottom) - Math.max(vr.top, d.top);
+          const across = Math.min(vr.right, d.right) - Math.max(vr.left, d.left);
           if (over > 1 && across > 1 && over > hide) { hide = over; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; hsel = el.tagName.toLowerCase() + (c ? "." + c : ""); }
         }
       }

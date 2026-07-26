@@ -257,12 +257,12 @@ export function v2m({ S }) {
 // Live: modland's V2 tree is fetched straight from the browser (three mirrors, all `ACAO: *`, no proxy).
 // The listing carries a filename and a byte size — which is exactly what a store built around SIZE needs.
 const GATE_TUNES = [
-  { author: "Jandor", file: "stars.v2m", bytes: 9216 },
-  { author: "Dafunk", file: "the abandoned ones.v2m", bytes: 16881 },
-  { author: "KB", file: "fr-024 welcome to breakpoint.v2m", bytes: 27112 },
-  { author: "Kaktusen", file: "klaxton.v2m", bytes: 51521 },
-  { author: "Dalezy", file: "blackout in mordor.v2m", bytes: 83421 },
-  { author: "Quickyman", file: "arcane remix.v2m", bytes: 100352 },
+  { author: "Jandor", file: "stars.v2m", size: 9216 },
+  { author: "Dafunk", file: "the abandoned ones.v2m", size: 16881 },
+  { author: "KB", file: "fr-024 welcome to breakpoint.v2m", size: 27112 },
+  { author: "Kaktusen", file: "klaxton.v2m", size: 51521 },
+  { author: "Dalezy", file: "blackout in mordor.v2m", size: 83421 },
+  { author: "Quickyman", file: "arcane remix.v2m", size: 100352 },
 ];
 
 async function fetchText(pathFor) {
@@ -273,9 +273,9 @@ async function fetchText(pathFor) {
 }
 
 const SORTS = [
-  { id: "size", key: (a, b) => a.bytes - b.bytes },
+  { id: "size", key: (a, b) => a.size - b.size },
   { id: "name", key: (a, b) => titleOf(a.file).localeCompare(titleOf(b.file)) },
-  { id: "author", key: (a, b) => a.author.localeCompare(b.author) || a.bytes - b.bytes },
+  { id: "author", key: (a, b) => a.author.localeCompare(b.author) || a.size - b.size },
 ];
 const PAGE = 60;
 
@@ -329,7 +329,7 @@ export function v2mStore({ S, toast }) {
     // happens in the background rather than holding up the player.
     (async () => {
       try {
-        const raw = await bytesFor(tune.bytes ? tune : { author: tune.author, file: tune.file });
+        const raw = await bytesFor({ author: tune.author, file: tune.file });
         await SAVES.put(id, { name: titleOf(tune.file), author: tune.author, size: raw.byteLength, dur: $durMs.get(), data: new Uint8Array(raw) });
         setOwned((s) => new Set(s).add(id));
         toast?.(T(t, "toastSaved"));
@@ -343,7 +343,7 @@ export function v2mStore({ S, toast }) {
     return x.file.toLowerCase().includes(s) || x.author.toLowerCase().includes(s);
   }).sort(SORTS.find((s) => s.id === sort).key);
 
-  const total = (tunes || []).reduce((n, x) => n + x.bytes, 0);
+  const total = (tunes || []).reduce((n, x) => n + x.size, 0);
 
   return html`
     <div class="flex flex-col gap-[var(--ms-gap)] pt-2 pb-2">
@@ -390,7 +390,7 @@ export function v2mStore({ S, toast }) {
                 onClick=${() => play(x)}>
                 <div class="card-body p-3 gap-1">
                   <div class="flex items-baseline justify-between gap-2">
-                    <span class="font-mono text-lg tabular-nums leading-none">${kb(x.bytes)}</span>
+                    <span class="font-mono text-lg tabular-nums leading-none">${kb(x.size)}</span>
                     ${owned.has(id) && html`<span class="text-primary shrink-0" aria-label=${T(t, "owned")}>
                       ${Icon("lucide:check", "text-sm")}</span>`}
                   </div>

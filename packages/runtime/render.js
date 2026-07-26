@@ -490,7 +490,7 @@ function usePublishedChrome(kind) {
       const h = el.offsetHeight;
       if (kind === "header") { if (h) s.setProperty("--hdr-h", `${h}px`); return; }
       const rail = (getComputedStyle(el).gridAutoFlow || "").includes("row");
-      s.setProperty("--dock-h", rail ? "0px" : `${h + 12}px`);   
+      s.setProperty("--dock-h", rail ? "0px" : `${h + 24}px`);
       s.setProperty("--dock-w", rail ? `${el.offsetWidth}px` : "0px");
     };
     apply();

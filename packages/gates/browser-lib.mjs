@@ -212,7 +212,7 @@ export async function runResponsiveMatrix(page, ev, dev) {
           if (gap < clear) { clear = gap; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; csel = el.tagName.toLowerCase() + (c ? "." + c : ""); }
         }
       }
-      const minGap = Math.max(4, parseFloat(getComputedStyle(de).getPropertyValue("--ms-gap")) * 16 || 8);
+      const minGap = Math.max(10, (parseFloat(getComputedStyle(de).getPropertyValue("--ms-gap")) * 16 || 8) * 1.5);
       return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel, clear: clear === 999 ? -1 : Math.round(clear), minGap: Math.round(minGap), csel };
     });
     const label = `${bp.id} ${bp.w}×${bp.h}`;

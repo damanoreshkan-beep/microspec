@@ -113,9 +113,8 @@ const back = (S) => S.stack.set(S.stack.get().slice(0, -1));
 
 // ── rows ─────────────────────────────────────────────────────────────────────────────────────────────
 const RepoRow = ({ r, run, t, loc, onOpen }) => html`
-  ${/* @container, and every fixed-width child answers to it. A row of four shrink-0 children plus a
-       flex-1 name adds up to more than a 200px column can hold, and the last one — the chevron — was the
-       part that stuck out. Measured, not guessed: the watch check names the offender now. */""}
+  ${/* @container: four shrink-0 children plus a flex-1 name is wider than a 200px column, so each fixed
+       child answers to the ROW's width — the timestamp truncates, the chevron goes. */""}
   <button data-repo=${r.full} onClick=${onOpen}
     class="@container w-full text-left flex items-center gap-3 @max-[260px]:gap-2 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] active:scale-[.99] transition-transform">
     <${Mark} state=${run ? run.state : "queued"} />

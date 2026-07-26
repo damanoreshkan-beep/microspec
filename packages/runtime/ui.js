@@ -187,9 +187,8 @@ export function Transport({
   // narrows #view to 200px while the window stays 384px (so a min-[380px] rule still matched and the row
   // kept its wide gaps — that is exactly how this shipped 4px over twice), and .ms-side puts the transport
   // in a narrow column on a full-width phone. Both are container-narrow and viewport-wide.
-  // "hero" is the third size because some apps ARE their play button: outpost's core sits inside a stack of
-  // halo rings and is the screen's subject, not a control in a row. Without it in the kit that app keeps a
-  // hand-rolled button forever — the variant costs one line here and stops a fork.
+  // "hero" — for an app that IS its play button (outpost's core sits inside a stack of halo rings and is
+  // the screen's subject, not a control in a row). In the kit, so that app never forks one.
   const hero = size === "hero";
   const big = hero
     ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 !bg-base-100/70 backdrop-blur-xl border border-base-content/15 !text-base-content shadow-xl"

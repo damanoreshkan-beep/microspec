@@ -96,7 +96,7 @@
    Height math is the two chrome constants, never a local guess: --hdr-h + --dock-h. */
 html.ms-fit, html.ms-fit body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 html.ms-fit main#view {
-  height: calc(100dvh - var(--hdr-h) - env(safe-area-inset-top));
+  height: calc(100dvh - var(--hdr-h));
   padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom));
   padding-top: var(--ms-gap);
   gap: var(--ms-gap);
@@ -129,7 +129,7 @@ html.ms-fit main#view {
 nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 
 @media (max-width: 300px) {
-  :root { --hdr-h: 2.25rem; --ms-gap: 0.25rem; --ms-pad: 0.4rem; --ms-r: 0.75rem; --ms-ctl: 2.25rem; --ms-icon: 0.9rem; --ms-title: 0.8rem; --ms-label: 0.58rem; }
+  :root { --ms-gap: 0.25rem; --ms-pad: 0.4rem; --ms-r: 0.75rem; --ms-ctl: 2.25rem; --ms-icon: 0.9rem; --ms-title: 0.8rem; --ms-label: 0.58rem; }
 
   /* the rail */
   nav[data-dock] {
@@ -138,8 +138,17 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   }
   nav[data-dock] button { padding: 0.3rem; min-width: 0; }
   nav[data-dock] button > span { display: none; }
-  /* the header keeps its controls and loses its ornament: an app's NAME is not information at 208px wide. */
+  /* The header keeps its controls and loses its ornament: an app's NAME is not information at 208px wide.
+     Compact the ELEMENT, never --hdr-h — that number is measured off this element (see the chrome contract
+     in render.js), so styling the element moves the math by itself. */
+  header.navbar { min-height: 2.25rem; }
   [data-title] { display: none; }
+
+  /* A row of buttons cannot fit at 200px, and the labels are not why: DaisyUI's .btn is `flex-shrink: 0`
+     with `--btn-p: 1rem`, so three of them are ~150px of padding before a single glyph. Compacted through
+     the component's own knob; the 36px target (--size) is untouched and no control is dropped. */
+  .btn { --btn-p: 0.45rem; max-width: 100%; }
+  .btn > * { min-width: 0; }
   html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
 
   /* the pager */
@@ -150,12 +159,9 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
     scrollbar-width: none;
   }
   .ms-side::-webkit-scrollbar { display: none; }
-  /* 88%, not 100%, and that 12% is the entire affordance. A full-width page leaves a watch screen with NO
-     evidence that a second page exists — and `::scroll-marker` cannot be the answer, because it is exactly
-     the thing that is missing where it is unsupported. A peeking edge is CSS that works everywhere and, more
-     to the point, is self-evident: you can SEE the next page, so nobody has to be told to swipe.
-     (Shot at 208×248 with the markers absent: the pager was an empty black screen with no way to know the
-     transport was one swipe away. Every function reachable is the rule; invisible is unreachable.) */
+  /* 88%, and that 12% is the whole affordance: the next page PEEKS. A full-width page leaves no evidence
+     that a second one exists, and `::scroll-marker` cannot cover for that — being unsupported is precisely
+     the case needing cover. A peeking edge is self-evident and works everywhere; invisible is unreachable. */
   .ms-side > [data-stage-box], .ms-side > .ms-side-main {
     flex: 0 0 88%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always;
   }
@@ -284,11 +290,8 @@ body::after {
 .ms-trough {
   box-shadow: inset 0 1px 2px 0 var(--ms-trough-in), inset 0 0 0 1px var(--ms-trough-lip);
 }
-/* NOT applied to `.range`, and the reason is worth keeping: DaisyUI 5 paints the range's track with
-   `--range-bg: color-mix(in oklab, currentColor 10%, #0000)` — that variable IS the groove. Overriding it
-   to "transparent" to make room for an inset shadow deleted the track outright and left the seek bar as a
-   lone floating dot. The trough is for surfaces we own; a component that already draws its own recess is
-   not one of them. (Read the component's CSS before styling it — this cost a shot to find.) */
+/* Deliberately NOT applied to `.range`: DaisyUI paints the track with `--range-bg`, so styling over it
+   removes the groove rather than deepening it. The trough is for surfaces we own. */
 
 /* Signal conventions that ride on top of DaisyUI, farm-wide.
    Type system = the Geist superfamily (loaded per app in the head): Geist for body/UI, Geist Mono for every

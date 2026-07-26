@@ -260,7 +260,7 @@ const autoName = (t, tracks, bpm, list) => { const key = JSON.stringify(tracks),
 // The body IS the spectrum — one of ten fundamentally different three.js scenes (viz.js) fills the screen
 // (fixed z-0). Everything you touch floats over it as glass islands: genres up top, the player down low.
 // Switch scene by swiping the field left/right, or tap a tick — the scene is its own label (no captions).
-export function rave({ S }) {
+export function rave({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t), tracks = useStore($tracks), style = useStore($style), playing = useStore($playing), fx = useStore($fx), cur = useStore($cur), bpm = useStore($bpm), sweep = useStore($sweep), viz = useStore($viz);
   const loc = useStore(S.locale);
   // A persisted non-synth pack was only remembered, not loaded — fetch its samples once on mount so the restored
@@ -313,6 +313,7 @@ export function rave({ S }) {
         </div>
         <${Transport} locale=${loc} playing=${playing} stopIcon onToggle=${toggle}
           onPrev=${() => stepTrack(-1)} onNext=${() => stepTrack(1)}
+          keep=${1} moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
           actions=${[{ id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } }]} />
         ${!audioSupported ? html`<div class="text-xs text-base-content/60 text-center">${T(t, "noAudio")}</div>` : null}
       <//>

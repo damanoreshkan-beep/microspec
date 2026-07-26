@@ -289,10 +289,10 @@ export function Transport({
   const inline = onMore ? actions.slice(0, keep) : actions;
   const acts = actions.length ? html`
     <span class="w-px h-7 bg-base-content/12 mx-0.5 shrink-0" aria-hidden="true"></span>
-    ${inline.map((a) => actionBtn(a))}
+    ${inline.map((a) => actionBtn(a, onMore ? "@max-[230px]:hidden" : ""))}
     ${overflow.map((a) => actionBtn(a, "@max-[340px]:hidden"))}
-    ${overflow.length ? html`<button data-tp-more aria-label=${sys("more", locale)} onClick=${onMore}
-      class="btn btn-circle btn-sm btn-ghost text-base-content/70 shrink-0 hidden @max-[340px]:inline-flex">
+    ${onMore && actions.length ? html`<button data-tp-more aria-label=${sys("more", locale)} onClick=${onMore}
+      class=${`btn btn-circle btn-sm btn-ghost text-base-content/70 shrink-0 hidden ${overflow.length ? "@max-[340px]:inline-flex" : "@max-[230px]:inline-flex"}`}>
       ${Icon("lucide:ellipsis", "text-lg")}</button>` : null}` : null;
 
   return html`
@@ -325,7 +325,7 @@ export function Transport({
             onClick=${onRepeat}>${Icon(REPEAT_ICON[repeat] || REPEAT_ICON.off, "text-lg")}</button>` : null}
         ${acts}
       </div>
-      ${overflow.length ? html`<${Sheet} id="tp-more" open=${!!moreOpen} onClose=${onMoreClose}
+      ${onMore && actions.length ? html`<${Sheet} id="tp-more" open=${!!moreOpen} onClose=${onMoreClose}
         title=${sys("more", locale)} icon="lucide:ellipsis" locale=${locale}>
         <div class="flex flex-col gap-1" data-tp-sheet>
           ${/* Every action, not just the demoted ones: a menu that lists a different set depending on how wide

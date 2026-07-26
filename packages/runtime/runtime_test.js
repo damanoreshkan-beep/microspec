@@ -3367,7 +3367,12 @@ Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable
   // The failure this guards: an action row that simply hides what does not fit. A control the narrow window
   // cannot show must still be REACHABLE — the overflow sheet lists `actions` (all of them), never `overflow`.
   const sheet = tp.slice(tp.indexOf("data-tp-sheet"));
-  assert(/actions\.map\(/.test(sheet), "the overflow sheet must list every action, not the demoted subset");
+  // The sheet now carries the transport KEYS as well as the actions — at the narrowest the row keeps only
+  // PLAY, so prev/next/shuffle/repeat have to be reachable there too. Assert it spreads the full action
+  // list rather than a slice, and that the keys are in it.
+  assert(/\.\.\.actions,/.test(sheet), "the sheet must spread every action, not a demoted subset");
+  for (const k of ["aPrev", "aNext", "aShuffle", "aRepeat"])
+    assert(sheet.includes(k), `the sheet does not carry ${k} — a key hidden at 230px would be unreachable`);
   assert(!/overflow\.map\(/.test(sheet), "the sheet lists a different set depending on width — unlearnable");
   // …and the demoted icons are hidden by the CONTAINER, so `keep` is a floor on what stays inline, not a cap.
   assert(/overflow\.map\(.{0,60}@max-\[\d+px\]:hidden/.test(tp.replace(/\n\s*/g, " ")),

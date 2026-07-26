@@ -50,7 +50,13 @@ async function ensureNode() {
   if (!audioSupported) { $err.set("noAudio"); return null; }
   try {
     if (!ctx) ctx = makeCtx();
-    if (ctx.state === "suspended") await ctx.resume();
+    // A suspended context that has no user activation to spend leaves resume() PENDING — not rejected,
+    // pending, forever. Awaiting it bare stalls everything downstream of this call (it silently swallowed
+    // the store's whole download path). Race it and carry on: the graph is built either way and starts
+    // sounding the moment the context does resume.
+    if (ctx.state === "suspended") {
+      await Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
+    }
     if (!node) {
       if (!moduleAdded) { await ctx.audioWorklet.addModule(assetURL("v2synth.worklet.js")); moduleAdded = true; }
       if (!wasmBytes) wasmBytes = await (await fetch(assetURL("v2synth.wasm"))).arrayBuffer();
@@ -327,10 +333,8 @@ export function v2mStore({ S, toast }) {
     const id = trackId(tune.author, tune.file);
     setBusy(id);
     S.tab.set("play");                                 // the tap's answer is the player, right away
-    await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
-    setBusy("");
-    // The download is a download — it does not hinge on the audio device coming up, and at a few KB it
-    // happens in the background rather than holding up the player.
+    // The download is a download — started alongside playback, never behind it. Sequencing it after the
+    // audio path meant one stalled promise in the device handshake was enough for nothing to be saved.
     (async () => {
       try {
         $saved.set("fetching");
@@ -341,6 +345,9 @@ export function v2mStore({ S, toast }) {
         toast?.(T(t, "toastSaved"));
       } catch (e) { $saved.set("err:" + String((e && e.message) || e).slice(0, 60)); }
     })();
+    selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" })
+      .catch(() => $err.set("loadError"))
+      .finally(() => setBusy(""));
   };
 
   const list = (tunes || []).filter((x) => {

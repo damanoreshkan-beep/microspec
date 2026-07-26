@@ -87,7 +87,15 @@ class V2MProcessor extends AudioWorkletProcessor {
     const F = this.heapF32;
     const base = this.bufPtr >> 2;
     const still = X.v2m_render(this.bufPtr, n); // interleaved stereo float
-    for (let i = 0, j = base; i < n; i++, j += 2) { L[i] = F[j]; R[i] = F[j + 1]; }
+    // Sanitise before the graph sees it: the synth genuinely overshoots (tunes measured up to 15x full
+    // scale) and diverges into NaN at some sample rates. A NaN reaching the destination can poison the
+    // whole audio graph, so clamp to a sane range and map non-finite to silence — the comparison form
+    // below is NaN-safe (both tests fail → 0). Musical level control is the limiter's job downstream.
+    for (let i = 0, j = base; i < n; i++, j += 2) {
+      const l = F[j], r = F[j + 1];
+      L[i] = l >= -4 ? (l <= 4 ? l : 4) : (l >= -Infinity ? -4 : 0);
+      R[i] = r >= -4 ? (r <= 4 ? r : 4) : (r >= -Infinity ? -4 : 0);
+    }
     this.frames += n;
     if ((this.tick = (this.tick + 1) & 63) === 0) {
       this.port.postMessage({ type: "position", ms: (this.frames / sampleRate) * 1000 });

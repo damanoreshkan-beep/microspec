@@ -2,8 +2,10 @@
   "id": "v2m",
   "theme": "signal",
   "category": "sound",
+  "accent": "#C4B5FD",
   "tabs": [
-    { "id": "play", "type": "tool", "icon": "lucide:disc-3", "label": "tabPlay", "view": "v2m" },
+    { "id": "play", "type": "tool", "icon": "lucide:disc-3", "label": "tabPlay", "view": "v2m", "fit": true },
+    { "id": "store", "type": "tool", "icon": "lucide:store", "label": "tabStore", "view": "v2mStore" },
     { "id": "library", "type": "tool", "icon": "lucide:list-music", "label": "tabLibrary", "view": "v2mLibrary" },
     { "id": "me", "type": "profile", "icon": "lucide:disc-3", "label": "tabMe", "titleKey": "tabMe" }
   ],

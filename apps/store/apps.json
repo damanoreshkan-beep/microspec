@@ -20,7 +20,7 @@
     "bg": "#0d1117",
     "fg": "#7c9cf7",
     "href": "./openapps/",
-    "version": "1.10",
+    "version": "1.11",
     "category": "feeds"
   },
   {
@@ -32,7 +32,7 @@
     "bg": "#202122",
     "fg": "#ffffff",
     "href": "./wiki/",
-    "version": "1.14",
+    "version": "1.15",
     "category": "feeds"
   },
   {
@@ -44,7 +44,7 @@
     "bg": "#0A0A0B",
     "fg": "#5BA6E8",
     "href": "./globe/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "science"
   },
   {
@@ -80,7 +80,7 @@
     "bg": "#0A0A0B",
     "fg": "#40C173",
     "href": "./actions/",
-    "version": "1.0",
+    "version": "1.4",
     "category": "tools"
   },
   {
@@ -92,7 +92,7 @@
     "bg": "#0d1512",
     "fg": "#10b981",
     "href": "./habits/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "wellness"
   },
   {
@@ -116,7 +116,7 @@
     "bg": "#0C0F14",
     "fg": "#E0463A",
     "href": "./quakes/",
-    "version": "1.12",
+    "version": "1.13",
     "category": "science"
   },
   {
@@ -128,7 +128,7 @@
     "bg": "#0A0A0B",
     "fg": "#4ADE80",
     "href": "./pwned/",
-    "version": "1.3",
+    "version": "1.4",
     "category": "tools"
   },
   {
@@ -152,7 +152,7 @@
     "bg": "#0B0B10",
     "fg": "#E7E7EA",
     "href": "./cam/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "creative"
   },
   {
@@ -164,7 +164,7 @@
     "bg": "#0f0f12",
     "fg": "#f4b942",
     "href": "./cinema/",
-    "version": "1.10",
+    "version": "1.11",
     "category": "feeds"
   },
   {
@@ -176,7 +176,7 @@
     "bg": "#0A0A0B",
     "fg": "#F0A868",
     "href": "./subclone/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "hackrf"
   },
   {
@@ -188,7 +188,7 @@
     "bg": "#1c1917",
     "fg": "#d6b370",
     "href": "./books/",
-    "version": "1.11",
+    "version": "1.12",
     "category": "feeds"
   },
   {
@@ -200,7 +200,7 @@
     "bg": "#0B0A12",
     "fg": "#B98BEA",
     "href": "./code/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "play"
   },
   {
@@ -212,7 +212,7 @@
     "bg": "#0B1220",
     "fg": "#7DD3FC",
     "href": "./compass/",
-    "version": "1.11",
+    "version": "1.12",
     "category": "tools"
   },
   {
@@ -224,7 +224,7 @@
     "bg": "#0A0A0B",
     "fg": "#9F8CF6",
     "href": "./launches/",
-    "version": "1.12",
+    "version": "1.13",
     "category": "science"
   },
   {
@@ -236,7 +236,7 @@
     "bg": "#0A0A0B",
     "fg": "#F0A93B",
     "href": "./crypto/",
-    "version": "1.7",
+    "version": "1.8",
     "category": "money"
   },
   {
@@ -248,7 +248,7 @@
     "bg": "#1f2430",
     "fg": "#f0b429",
     "href": "./rates/",
-    "version": "1.11",
+    "version": "1.12",
     "category": "money"
   },
   {
@@ -260,7 +260,7 @@
     "bg": "#120A08",
     "fg": "#E2932F",
     "href": "./kp/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "science"
   },
   {
@@ -272,7 +272,7 @@
     "bg": "#0A0A0F",
     "fg": "#9F8CF6",
     "href": "./pendulum/",
-    "version": "1.14",
+    "version": "1.15",
     "category": "esoterica"
   },
   {
@@ -284,7 +284,7 @@
     "bg": "#0A0F1E",
     "fg": "#7CC7FF",
     "href": "./iss/",
-    "version": "1.11",
+    "version": "1.12",
     "category": "science"
   },
   {
@@ -296,7 +296,7 @@
     "bg": "#1a1a1a",
     "fg": "#FFD21E",
     "href": "./hf/",
-    "version": "1.12",
+    "version": "1.13",
     "category": "feeds"
   },
   {
@@ -308,8 +308,20 @@
     "bg": "#0A0A0F",
     "fg": "#5EEAD4",
     "href": "./retouch/",
-    "version": "1.3",
+    "version": "1.4",
     "category": "creative"
+  },
+  {
+    "id": "pins",
+    "title": "піни",
+    "tagline": "Прямі посилання з Pinterest",
+    "glyph": "lucide:link",
+    "art": "<path d=\"M12 3a7 7 0 0 0-2.6 13.5c-.1-.9-.2-2.3.1-3.3l1.2-5s-.3-.6-.3-1.5c0-1.4.8-2.4 1.8-2.4.9 0 1.3.6 1.3 1.5 0 .9-.6 2.3-.9 3.6-.3 1 .6 1.9 1.6 1.9 1.9 0 3.2-2.4 3.2-5.2 0-2.2-1.5-3.8-4.1-3.8-3 0-4.9 2.2-4.9 4.6 0 .9.3 1.5.7 2 .2.2.2.3.1.6l-.2.8c-.1.3-.3.4-.5.3-1.4-.6-2-2.1-2-3.9C7.5 5.7 9.6 3 12 3Z\" fill=\"currentColor\"/>",
+    "bg": "#0A0A0B",
+    "fg": "#E8574B",
+    "href": "./pins/",
+    "version": "1.0",
+    "category": "tools"
   },
   {
     "id": "pipette",
@@ -320,7 +332,7 @@
     "bg": "#0A0A0B",
     "fg": "#3FC7C0",
     "href": "./pipette/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "tools"
   },
   {
@@ -332,7 +344,7 @@
     "bg": "#1f2430",
     "fg": "#38bdf8",
     "href": "./weather/",
-    "version": "1.13",
+    "version": "1.14",
     "category": "science"
   },
   {
@@ -344,7 +356,7 @@
     "bg": "#0A0A0F",
     "fg": "#5FD0F0",
     "href": "./flux/",
-    "version": "1.7",
+    "version": "1.8",
     "category": "creative"
   },
   {
@@ -356,7 +368,7 @@
     "bg": "#0A0A0B",
     "fg": "#F7931A",
     "href": "./btcflow/",
-    "version": "1.11",
+    "version": "1.12",
     "category": "money"
   },
   {
@@ -368,7 +380,7 @@
     "bg": "#0A0A0B",
     "fg": "#40C173",
     "href": "./pulse/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "feeds"
   },
   {
@@ -380,7 +392,7 @@
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.61",
+    "version": "1.68",
     "category": "sound"
   },
   {
@@ -392,7 +404,7 @@
     "bg": "#0A0A0B",
     "fg": "#C6B6FF",
     "href": "./sigil/",
-    "version": "1.5",
+    "version": "1.6",
     "category": "esoterica"
   },
   {
@@ -416,7 +428,7 @@
     "bg": "#0A0A0B",
     "fg": "#F5B94D",
     "href": "./sun/",
-    "version": "1.34",
+    "version": "1.35",
     "category": "science"
   },
   {
@@ -428,7 +440,7 @@
     "bg": "#231708",
     "fg": "#e8c874",
     "href": "./sopilka/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "sound"
   },
   {
@@ -452,7 +464,7 @@
     "bg": "#0A0A0F",
     "fg": "#9F8CF6",
     "href": "./compat/",
-    "version": "1.4",
+    "version": "1.5",
     "category": "esoterica"
   },
   {
@@ -476,7 +488,7 @@
     "bg": "#0E0B1A",
     "fg": "#C0A9F5",
     "href": "./transit/",
-    "version": "1.16",
+    "version": "1.17",
     "category": "science"
   },
   {
@@ -488,7 +500,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./imagine/",
-    "version": "1.10",
+    "version": "1.11",
     "category": "creative"
   },
   {
@@ -500,7 +512,7 @@
     "bg": "#0d1117",
     "fg": "#3fb950",
     "href": "./frontier/",
-    "version": "1.7",
+    "version": "1.8",
     "category": "feeds"
   },
   {
@@ -512,7 +524,7 @@
     "bg": "#0C1014",
     "fg": "#E0B24E",
     "href": "./handpan/",
-    "version": "1.18",
+    "version": "1.20",
     "category": "sound"
   },
   {
@@ -536,7 +548,7 @@
     "bg": "#08120F",
     "fg": "#41C06F",
     "href": "./air/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "science"
   },
   {
@@ -548,7 +560,7 @@
     "bg": "#1f2430",
     "fg": "#7ee0a6",
     "href": "./dou/",
-    "version": "1.14",
+    "version": "1.15",
     "category": "feeds"
   },
   {
@@ -572,7 +584,7 @@
     "bg": "#0A0A0B",
     "fg": "#B7ADEB",
     "href": "./fmradio/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "hackrf"
   },
   {
@@ -584,7 +596,7 @@
     "bg": "#1f2430",
     "fg": "#34d399",
     "href": "./ruler/",
-    "version": "1.25",
+    "version": "1.26",
     "category": "tools"
   },
   {
@@ -596,7 +608,7 @@
     "bg": "#0A0A0B",
     "fg": "#93C5FD",
     "href": "./gsmscan/",
-    "version": "1.5",
+    "version": "1.6",
     "category": "hackrf"
   },
   {
@@ -608,7 +620,7 @@
     "bg": "#1f2430",
     "fg": "#ff6600",
     "href": "./hn/",
-    "version": "1.15",
+    "version": "1.16",
     "category": "feeds"
   },
   {
@@ -620,7 +632,7 @@
     "bg": "#141414",
     "fg": "#ef4444",
     "href": "./iptv/",
-    "version": "1.7",
+    "version": "1.8",
     "category": "feeds"
   },
   {
@@ -632,7 +644,7 @@
     "bg": "#0A0A0B",
     "fg": "#7FD6A8",
     "href": "./lorawatch/",
-    "version": "1.5",
+    "version": "1.6",
     "category": "hackrf"
   },
   {
@@ -644,7 +656,7 @@
     "bg": "#0A0A0B",
     "fg": "#9F8CF6",
     "href": "./nova/",
-    "version": "1.10",
+    "version": "1.11",
     "category": "feeds"
   },
   {
@@ -656,7 +668,7 @@
     "bg": "#0A0A0F",
     "fg": "#34D399",
     "href": "./qr/",
-    "version": "1.5",
+    "version": "1.6",
     "category": "tools"
   },
   {
@@ -668,7 +680,7 @@
     "bg": "#0B0B0D",
     "fg": "#ECECEE",
     "href": "./reel/",
-    "version": "1.26",
+    "version": "1.28",
     "category": "feeds"
   },
   {
@@ -680,7 +692,7 @@
     "bg": "#0B0B10",
     "fg": "#C4B5FD",
     "href": "./v2m/",
-    "version": "1.20",
+    "version": "1.22",
     "category": "sound"
   }
 ]

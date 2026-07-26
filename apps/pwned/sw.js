@@ -1,6 +1,6 @@
 self.MS = {
   app: "pwned",
-  version: "80eec1090a",
+  version: "862e346324",
   precache: [
     "./",
     "./i18n/en.json",
@@ -23,6 +23,7 @@ self.MS = {
     "/_rt/overlay.js",
     "/_rt/permissions.js",
     "/_rt/playback.js",
+    "/_rt/player.js",
     "/_rt/pwned.js",
     "/_rt/qrcode.js",
     "/_rt/qrgen.vendor.js",
@@ -34,6 +35,7 @@ self.MS = {
     "/_rt/store.js",
     "/_rt/theme.css",
     "/_rt/translate.js",
+    "/_rt/ui.js",
     "/_rt/validate.js",
     "/_rt/version.js",
     "/_rt/video.js",

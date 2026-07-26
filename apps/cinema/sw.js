@@ -1,6 +1,6 @@
 self.MS = {
   app: "cinema",
-  version: "a4a43c21e8",
+  version: "371fabdc47",
   precache: [
     "./",
     "./data.js",
@@ -23,6 +23,7 @@ self.MS = {
     "/_rt/overlay.js",
     "/_rt/permissions.js",
     "/_rt/playback.js",
+    "/_rt/player.js",
     "/_rt/qrcode.js",
     "/_rt/qrgen.vendor.js",
     "/_rt/render.js",
@@ -34,6 +35,7 @@ self.MS = {
     "/_rt/theme.css",
     "/_rt/tile.js",
     "/_rt/translate.js",
+    "/_rt/ui.js",
     "/_rt/validate.js",
     "/_rt/version.js",
     "/_rt/video.js",

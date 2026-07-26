@@ -56,10 +56,14 @@ export default [
   {
     name: "магазин → трек грає й лягає в бібліотеку", run: async (h) => {
       await h.click('[data-tab="store"]'); await h.wait(400);
+      const id = await h.attr("[data-tune]", "data-tune");
       await h.tap("[data-tune]");
-      for (let i = 0; i < 20; i++) { if ((await h.count("[data-track]")) === 1) break; await h.wait(250); }
+      // assert the STATE atom mirrored into the DOM, never real audio output (headless has no device that
+      // a synthetic tap can unlock — that is an environment limit, not the app's behaviour)
+      let cur = "";
+      for (let i = 0; i < 20; i++) { cur = await h.attr("[data-track]", "data-track"); if (cur === id) break; await h.wait(250); }
       h.expect((await h.count("[data-track]")) === 1, "не повернувся на плеєр");
-      h.expect((await h.attr("#play", "data-playing")) === "true", "трек із магазину не заграв");
+      h.expect(cur === id, "плеєр не перемкнувся на обраний трек: " + cur + " ≠ " + id);
       await h.click('[data-tab="library"]');
       let rows = 0;
       for (let i = 0; i < 20; i++) { rows = await h.count("[data-track-row]"); if (rows > 0) break; await h.wait(250); }

@@ -285,6 +285,10 @@ export function Transport({
   // the decision is CSS's (it knows the real width; JS at render does not) and nothing has to be measured.
   // Without `onMore` an app gets no overflow at all and every action stays inline: the sheet is history-backed
   // routing, and routing is the caller's atom (S.screen), never a component's private state.
+  // Below ~230px of ROW width, three transport keys plus one action is already 40px over — so at that
+  // size the row keeps PLAY and everything else moves into the sheet WITH ITS WORD. Only where the app
+  // wired a sheet: without one nothing may hide, because hidden and unreachable are the same thing.
+  const narrowHide = onMore ? "@max-[230px]:hidden" : "";
   const overflow = onMore ? actions.slice(keep) : [];
   const inline = onMore ? actions.slice(0, keep) : actions;
   const acts = actions.length ? html`
@@ -305,10 +309,10 @@ export function Transport({
           onShuffle ? html`
           <button id="shuffle" data-shuffle=${shuffle ? "on" : "off"} aria-label=${sys("aShuffle", locale)}
             aria-pressed=${shuffle ? "true" : "false"}
-            class=${`btn btn-ghost btn-circle btn-sm ${shuffle ? "text-primary" : "text-base-content/70"}`}
+            class=${`btn btn-ghost btn-circle btn-sm ${narrowHide} ${shuffle ? "text-primary" : "text-base-content/70"}`}
             onClick=${onShuffle}>${Icon("lucide:shuffle", "text-lg")}</button>` : null}
         ${onPrev ? html`
-          <button id="prev" class=${`btn btn-ghost btn-circle ${side}`} aria-label=${sys("aPrev", locale)}
+          <button id="prev" class=${`btn btn-ghost btn-circle ${side} ${narrowHide}`} aria-label=${sys("aPrev", locale)}
             disabled=${disabled} onClick=${onPrev}>${Icon("lucide:skip-back", "text-xl")}</button>` : null}
         <button id="play" data-playing=${playing} disabled=${disabled}
           class=${`btn btn-primary btn-circle ${big} sf-e3`}
@@ -316,12 +320,12 @@ export function Transport({
           ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", hero ? "text-3xl" : "text-2xl")}
         </button>
         ${onNext ? html`
-          <button id="next" class=${`btn btn-ghost btn-circle ${side}`} aria-label=${sys("aNext", locale)}
+          <button id="next" class=${`btn btn-ghost btn-circle ${side} ${narrowHide}`} aria-label=${sys("aNext", locale)}
             disabled=${disabled} onClick=${onNext}>${Icon("lucide:skip-forward", "text-xl")}</button>` : null}
         ${onRepeat ? html`
           <button id="repeat" data-repeat=${repeat || "off"} aria-label=${sys("aRepeat", locale)}
             aria-pressed=${repeat && repeat !== "off" ? "true" : "false"}
-            class=${`btn btn-ghost btn-circle btn-sm ${repeat && repeat !== "off" ? "text-primary" : "text-base-content/70"}`}
+            class=${`btn btn-ghost btn-circle btn-sm ${narrowHide} ${repeat && repeat !== "off" ? "text-primary" : "text-base-content/70"}`}
             onClick=${onRepeat}>${Icon(REPEAT_ICON[repeat] || REPEAT_ICON.off, "text-lg")}</button>` : null}
         ${acts}
       </div>
@@ -332,7 +336,13 @@ export function Transport({
                the window happens to be is a menu you cannot learn. The icons above are a shortcut to it.
                No `id`/`attr` down here — those hooks belong to the inline button, and duplicating them would
                give every e2e selector two matches and the document two elements with one id. */
-            actions.map((a) => html`<button key=${a.id} data-tp-act=${a.id || null}
+            [
+            ...(onPrev ? [{ id: "prev", icon: "lucide:skip-back", label: sys("aPrev", locale), onClick: onPrev }] : []),
+            ...(onNext ? [{ id: "next", icon: "lucide:skip-forward", label: sys("aNext", locale), onClick: onNext }] : []),
+            ...(onShuffle ? [{ id: "shuffle", icon: "lucide:shuffle", label: sys("aShuffle", locale), onClick: onShuffle, active: shuffle }] : []),
+            ...(onRepeat ? [{ id: "repeat", icon: REPEAT_ICON[repeat] || REPEAT_ICON.off, label: sys("aRepeat", locale), onClick: onRepeat, active: !!(repeat && repeat !== "off") }] : []),
+            ...actions,
+            ].map((a) => html`<button key=${a.id} data-tp-act=${a.id || null}
             disabled=${a.disabled || false} data-haptic=${a.haptic || null}
             onClick=${() => { onMoreClose?.(); a.onClick?.(); }}
             class=${`btn btn-ghost justify-start gap-3 h-[var(--ms-ctl)] min-h-0 ${a.active ? "text-primary" : ""}`}>

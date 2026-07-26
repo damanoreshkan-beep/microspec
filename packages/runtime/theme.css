@@ -40,7 +40,7 @@
   
   .ms-cols {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(max(var(--ms-col-min, 5.5rem),
+    grid-template-columns: repeat(auto-fit, minmax(max(var(--ms-col-min, 3rem),
       calc((100% - (var(--ms-cols, 3) - 1) * var(--ms-gap)) / var(--ms-cols, 3))), 1fr));
     gap: var(--ms-gap);
     align-items: start;
@@ -75,7 +75,9 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   .btn { --btn-p: 0.45rem; max-width: 100%; }
   html:not(.ms-fit) .btn { flex-shrink: 1; white-space: normal; }
   .btn > * { min-width: 0; }
+  .join > .btn, .join > * { flex-shrink: 1; min-width: 0; }
   .font-mono { overflow-wrap: anywhere; }
+  
   
   
   html:not(.ms-fit) .flex:not(.flex-col):has(> .btn) { flex-wrap: wrap; }
@@ -89,6 +91,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
     scrollbar-width: none;
   }
   .ms-side::-webkit-scrollbar { display: none; }
+  
   .ms-side > [data-stage-box], .ms-side > .ms-side-main {
     flex: 0 0 88%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always;
   }
@@ -138,7 +141,6 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
   --border: 1px; --depth: 0;
 }
-
 .sf-raised {
   background: var(--color-base-100);
   box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop);

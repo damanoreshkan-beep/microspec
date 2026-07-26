@@ -3409,25 +3409,27 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
   }
 });
 
-Deno.test(".ms-cols derives its count from width — it never switches off, and never over-splits", async () => {
-  // The rule exists to trade HEIGHT for WIDTH. Declared as a fixed three, it does the trade even when there
-  // is no width to trade with: at 200px a column is ~60px, every label wraps, and the group ends up TALLER
-  // than the stack it replaced. Gating it behind a min-width would be the same surrender by another route —
-  // the mechanism has to keep working at the size that needs it most.
+Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts out loud", async () => {
+  // The rule answers "what fits inside me", so its input is the component's own box: a slider group can sit
+  // in a panel, a sheet, a 38% side column or a 200px watch screen, and the viewport describes none of them.
+  // Driving it from a viewport HEIGHT query is what made it unpredictable for three commits.
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
-  const m = /\.ms-cols\.ms-cols \{([\s\S]*?)\n  \}/.exec(css);
-  // Doubled on purpose: .ms-cols and Tailwind's .flex are both (0,1,0), and the CDN injects its stylesheet
-  // AFTER this file — so a tie goes to display:flex and the grid silently never applies. It did not apply
-  // for two rounds while I reasoned about which column count it was choosing.
-  assert(m, ".ms-cols must stay doubled — at equal specificity the CDN wins and the rule does nothing");
-  assert(/auto-fit/.test(m[1]), "the column count is fixed — it cannot answer to the real width");
-  assert(/--ms-col-min/.test(m[1]), "no readable floor: auto-fit alone will happily make 40px columns");
-  // The ceiling is auto-fit itself: it collapses tracks it has no items for, so N items never make more
-  // than N columns. Expressing the cap as calc((100% - gaps) / var(--ms-cols)) inside minmax() was clever
-  // and WRONG — Chrome dropped the declaration, the group stayed a single column, and drift measured
-  // Panel[h135] ▾ cols[h99] instead of the ~32px a real 3-track grid gives. A rule the browser refuses is
-  // worth less than a simpler one it honours.
-  assert(!/620px\)\s*and\s*\(min-width/.test(css), "a min-width gate turns the rule off where it is needed most");
+  const at = css.indexOf(".ms-cols {");
+  assert(at > 0, ".ms-cols rule is gone");
+
+  // container queries, and no viewport query anywhere near it
+  const region = css.slice(at - 900, at + 700);
+  assert(/@container \(min-width/.test(region), ".ms-cols must respond to its container");
+  assert(!/@media \([^)]*height[^)]*\)\s*\{[^}]*\.ms-cols/.test(css), ".ms-cols is back on a viewport height query");
+
+  // explicit steps rather than intrinsic arithmetic: auto-fit derives the count from a guessed floor and
+  // collapses to ONE track in silence when the container is intrinsically sized (CSS Grid §7.2.3.1)
+  assert(!/grid-template-columns:[^;]*auto-fit/.test(css), "auto-fit is back — the count must be stated, not derived");
+  assert(/repeat\(var\(--ms-cols, 3\), minmax\(0, 1fr\)\)/.test(region), "--ms-cols must still name the widest count");
+
+  // and something has to BE the container, or every query above reads nothing
+  const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
+  assert(/@container sf-e2/.test(ui), "Panel no longer establishes a container — the queries have nothing to read");
 });
 
 Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager, the tap floor holds", async () => {

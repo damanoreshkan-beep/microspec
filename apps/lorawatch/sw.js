@@ -1,6 +1,6 @@
 self.MS = {
   app: "lorawatch",
-  version: "07dc847bd9",
+  version: "dc3b88899c",
   precache: [
     "./",
     "./i18n/en.json",
@@ -36,6 +36,7 @@ self.MS = {
     "/_rt/store.js",
     "/_rt/theme.css",
     "/_rt/translate.js",
+    "/_rt/ui.js",
     "/_rt/validate.js",
     "/_rt/version.js",
     "/_rt/video.js",

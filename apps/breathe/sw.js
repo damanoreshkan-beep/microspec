@@ -1,6 +1,6 @@
 self.MS = {
   app: "breathe",
-  version: "6f4b890c6f",
+  version: "235730b2b9",
   precache: [
     "./",
     "./i18n/en.json",
@@ -32,6 +32,7 @@ self.MS = {
     "/_rt/store.js",
     "/_rt/theme.css",
     "/_rt/translate.js",
+    "/_rt/ui.js",
     "/_rt/validate.js",
     "/_rt/version.js",
     "/_rt/video.js",

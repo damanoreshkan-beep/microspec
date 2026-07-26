@@ -150,9 +150,18 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
     scrollbar-width: none;
   }
   .ms-side::-webkit-scrollbar { display: none; }
+  /* 88%, not 100%, and that 12% is the entire affordance. A full-width page leaves a watch screen with NO
+     evidence that a second page exists — and `::scroll-marker` cannot be the answer, because it is exactly
+     the thing that is missing where it is unsupported. A peeking edge is CSS that works everywhere and, more
+     to the point, is self-evident: you can SEE the next page, so nobody has to be told to swipe.
+     (Shot at 208×248 with the markers absent: the pager was an empty black screen with no way to know the
+     transport was one swipe away. Every function reachable is the rule; invisible is unreachable.) */
   .ms-side > [data-stage-box], .ms-side > .ms-side-main {
-    flex: 0 0 100%; min-width: 0; scroll-snap-align: center; scroll-snap-stop: always;
+    flex: 0 0 88%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always;
   }
+  /* You land on the CONTROLS, not the visualiser. On a 208px screen the reason you opened a player is to
+     press play; the stage is the thing you swipe TO. Order, not DOM changes, so no app is rewritten. */
+  .ms-side > .ms-side-main { order: -1; }
 }
 @supports selector(::scroll-marker) {
   @media (max-width: 300px) {

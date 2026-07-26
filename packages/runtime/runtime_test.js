@@ -3393,8 +3393,16 @@ Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager,
   // 2) .ms-side becomes a snap PAGER, and its two halves are full-width pages. The app writes nothing new:
   //    [data-stage-box] + .ms-side-main already name the two things, so watch mode is inherited.
   assert(/scroll-snap-type:\s*x mandatory/.test(block), ".ms-side must become a horizontal snap pager");
-  assert(/flex:\s*0 0 100%/.test(block), "a page must be a full-width snap target, not a narrower column");
+  // A page PEEKS (<100%) so the next one is visible. A full-width page on a watch is an empty screen with no
+  // evidence anything else exists, and ::scroll-marker cannot cover for it — being unsupported is precisely
+  // the case that needs covering. Found on a 208×248 shot: the transport was one swipe away and invisible.
+  const page = /flex:\s*0 0 (\d+)%/.exec(block);
+  assert(page, "the pager's pages have no width");
+  assert(Number(page[1]) < 100 && Number(page[1]) >= 80,
+    `a page is ${page[1]}% — at 100% nothing hints the next page exists; below ~80% it stops being a page`);
   assert(/scroll-snap-align/.test(block), "snap targets need an alignment or the pager free-scrolls");
+  // …and you land on the CONTROLS. On a watch the reason you opened a player is to press play.
+  assert(/\.ms-side > \.ms-side-main\s*\{\s*order:\s*-1/.test(block), "the transport must be the first page");
 
   // 3) the markers are an ENHANCEMENT, never a dependency: Firefox is still partial as of mid-2026, and
   //    without them the swipe must be identical, minus dots.

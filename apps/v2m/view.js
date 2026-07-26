@@ -310,13 +310,16 @@ export function v2mStore({ S, toast }) {
     const ok = await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
     setBusy("");
     if (!ok) return;
-    try {                                              // a few KB — keeping it is free, so the tune goes offline
-      const raw = await bytesFor(tune.bytes ? tune : { author: tune.author, file: tune.file });
-      await SAVES.put(id, { name: titleOf(tune.file), author: tune.author, size: raw.byteLength, dur: $durMs.get(), data: new Uint8Array(raw) });
-      setOwned((s) => new Set(s).add(id));
-      toast?.(T(t, "toastSaved"));
-    } catch { /* playing already worked; the offline copy is a bonus */ }
-    S.tab.set("play");
+    S.tab.set("play");                                 // the tune is playing — go to it now
+    // keeping the copy is a few KB, so it happens in the background rather than holding up the player
+    (async () => {
+      try {
+        const raw = await bytesFor(tune.bytes ? tune : { author: tune.author, file: tune.file });
+        await SAVES.put(id, { name: titleOf(tune.file), author: tune.author, size: raw.byteLength, dur: $durMs.get(), data: new Uint8Array(raw) });
+        setOwned((s) => new Set(s).add(id));
+        toast?.(T(t, "toastSaved"));
+      } catch { /* playing already worked; the offline copy is a bonus */ }
+    })();
   };
 
   const list = (tunes || []).filter((x) => {

@@ -14,7 +14,7 @@ import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { usePanX } from "/_rt/gesture.js";
-import { Sheet, Segmented, Transport } from "/_rt/ui.js";
+import { Sheet, Segmented, Transport, Island } from "/_rt/ui.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { generateGroove, mulberry32 } from "/_rt/groove.js";
 import { collection } from "/_rt/db.js";
@@ -305,7 +305,7 @@ export function rave({ S }) {
         ${STEPS.map((i) => { const beat = i % 4 === 0, k = kickRow[i], on = i === cur, sw = i === sweep; return html`<div key=${i} class=${`h-1.5 rounded-full transition-colors ${sw ? "bg-accent" : on ? "bg-secondary" : k ? "bg-secondary/45" : beat ? "bg-base-content/20" : "bg-base-content/10"}`}></div>`; })}
       </div>
 
-      <div class="rounded-[1.5rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_10px_34px_-8px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.09)] p-3 pb-3.5 flex flex-col gap-3">
+      <${Island} className="flex flex-col gap-3">
         <div class="flex items-center gap-3 px-1">
           ${Icon("lucide:filter", "text-base text-base-content/55 shrink-0")}
           <input data-filter type="range" min="0" max="1" step="0.01" value=${fx.mfilter} aria-label=${T(t, "fxFilter")} onInput=${(e) => setFx("mfilter", Number(e.target.value))} class="range range-xs range-secondary flex-1" />
@@ -315,7 +315,7 @@ export function rave({ S }) {
           onPrev=${() => stepTrack(-1)} onNext=${() => stepTrack(1)}
           actions=${[{ id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } }]} />
         ${!audioSupported ? html`<div class="text-xs text-base-content/60 text-center">${T(t, "noAudio")}</div>` : null}
-      </div>
+      <//>
     </div>
   </${Fragment}>`;
 }

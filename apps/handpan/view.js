@@ -15,7 +15,7 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet, Segmented, Transport } from "/_rt/ui.js";
+import { Sheet, Segmented, Transport, Island } from "/_rt/ui.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { generateMelody } from "/_rt/melody.js";
 import { collection } from "/_rt/db.js";
@@ -272,7 +272,7 @@ export function handpan({ S }) {
     </div>
 
     <div class="shrink-0 px-3 pb-2 pt-1 flex justify-center">
-      <div class="w-full max-w-md flex items-center gap-2 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2">
+      <${Island} className="w-full max-w-md flex items-center gap-2">
         ${/* The transport is the kit's; `space` stays beside it because reverb on a hand instrument is an
              expressive control you reach for mid-phrase, not a setting you go and find. */""}
         <${Transport} className="shrink-0" locale=${loc} stopIcon playing=${playing} onToggle=${toggle}
@@ -284,7 +284,7 @@ export function handpan({ S }) {
           ${Icon("lucide:cloudy", "text-base text-base-content/60 shrink-0")}
           <input data-space type="range" min="0" max="1" step="0.02" value=${space} aria-label=${T(t, "space")} onInput=${(e) => { $space.set(Number(e.target.value)); applySpace(); }} class="range range-xs range-secondary flex-1 min-w-0" />
         </label>
-      </div>
+      <//>
     </div>
     ${!audioSupported ? html`<div class="shrink-0 text-center text-xs text-base-content/70 pb-1">${T(t, "noAudio")}</div>` : null}
     </div>

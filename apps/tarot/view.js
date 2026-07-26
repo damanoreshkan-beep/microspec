@@ -277,7 +277,7 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
         ${grip}
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-[0.62rem] font-mono uppercase tracking-[0.16em] text-base-content/60">${T(t, "ritual")}</div>
+            <div class="text-[0.62rem] font-mono uppercase tracking-[0.16em] text-muted">${T(t, "ritual")}</div>
             <div class="font-bold text-lg leading-tight">${spreadName}</div>
           </div>
           <button data-ritual-close aria-label=${T(t, "close")} class="btn btn-sm btn-circle btn-ghost" onClick=${onClose}>${Icon("lucide:x", "text-lg")}</button>
@@ -303,13 +303,13 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
             </svg>
             <div class="text-center">
               <div class="text-[2.6rem] font-bold tabular-nums leading-none" style=${`color:${rgba(col, 1)}`}>${num}</div>
-              <div class="text-[0.55rem] font-mono uppercase tracking-widest text-base-content/60 mt-1">0–${deckLen - 1}</div>
+              <div class="text-[0.55rem] font-mono uppercase tracking-widest text-muted mt-1">0–${deckLen - 1}</div>
             </div>
           </div>
         </div>
 
         <div class="flex flex-col gap-4">
-          <p class="text-center text-[0.72rem] leading-relaxed text-base-content/60 max-w-sm mx-auto">${T(t, "ritualHow")}</p>
+          <p class="text-center text-[0.72rem] leading-relaxed text-muted max-w-sm mx-auto">${T(t, "ritualHow")}</p>
           <div class="flex justify-center gap-3">
             ${RIT_COLORS.map((c, i) => html`<button data-color=${i} aria-label=${`${T(t, "colorPick")} ${i + 1}`} aria-pressed=${color === i} class=${`h-8 w-8 rounded-full transition ${color === i ? "ring-2 ring-offset-2 ring-offset-base-100 scale-110" : "opacity-60"}`} style=${`background:${rgba(c, 1)};--tw-ring-color:${rgba(c, 1)}`} onClick=${() => setColor(i)} key=${i}></button>`)}
           </div>

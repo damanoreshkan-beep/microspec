@@ -249,7 +249,7 @@ export function handpan({ S }) {
 
   return html`<div class="fixed left-0 right-0 z-20 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <${RippleBg} />
-    ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-14 right-3 z-20 btn btn-circle btn-sm border-base-content/10 backdrop-blur-md ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/50 text-base-content/60"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
+    ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-14 right-3 z-20 btn btn-circle btn-sm border-base-content/10 backdrop-blur-md ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/50 text-muted"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
     <div class="relative z-10 flex flex-col flex-1 min-h-0">
     <div class="shrink-0 px-3 py-2">
       <${Segmented} attr="data-scale" scroll variant="outline" label=${T(t, "scale")}
@@ -281,7 +281,7 @@ export function handpan({ S }) {
             { id: "rec", icon: "lucide:circle-dot", label: T(t, "rec"), onClick: toggleRec, tone: "error", active: recording, pulse: recording, pressed: recording, attr: { "data-rec": true } },
           ]} />
         <label class="flex items-center gap-1.5 flex-1 min-w-0">
-          ${Icon("lucide:cloudy", "text-base text-base-content/60 shrink-0")}
+          ${Icon("lucide:cloudy", "text-base text-muted shrink-0")}
           <input data-space type="range" min="0" max="1" step="0.02" value=${space} aria-label=${T(t, "space")} onInput=${(e) => { $space.set(Number(e.target.value)); applySpace(); }} class="range range-xs range-secondary flex-1 min-w-0" />
         </label>
       <//>
@@ -383,7 +383,7 @@ export function handpanSaved({ S, undo }) {
   const play = (it) => { buzz(); if (isCur(it)) { stop(); return; } loadLoop(it); start(); };
   const del = async (it) => { const { id, _ts, ...rec } = it; try { await SAVES.remove(id); } catch { /* */ } load(); undo?.(async () => { try { await SAVES.put(id, rec); } catch { /* */ } load(); }, it.name || T(t, "loopWord")); };
 
-  if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-base-content/60"><div class="w-9 h-9 rounded-full bg-base-300 shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
+  if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full bg-base-300 shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
   if (!list.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:bookmark", "text-4xl")}<span>${T(t, "savedEmpty")}</span></div>`;
 
   return html`<div class="flex flex-col gap-2">
@@ -394,7 +394,7 @@ export function handpanSaved({ S, undo }) {
           <span class="flex items-baseline justify-between gap-2"><span class="font-semibold truncate">${it.name || T(t, "loopWord")}</span><span class="text-xs text-base-content/70 tabular-nums shrink-0">${it.bpm || 80} BPM</span></span>
           <${Spectrum} loop=${it.loop} live=${on} cur=${cur} />
         </button>
-        <button data-del aria-label=${T(t, "del")} data-haptic="bump" class="btn btn-ghost btn-sm btn-circle text-base-content/60" onClick=${() => del(it)}>${Icon("lucide:trash-2", "text-lg")}</button>
+        <button data-del aria-label=${T(t, "del")} data-haptic="bump" class="btn btn-ghost btn-sm btn-circle text-muted" onClick=${() => del(it)}>${Icon("lucide:trash-2", "text-lg")}</button>
       </div>
     </div>`; })}
   </div>`;

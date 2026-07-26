@@ -68,7 +68,7 @@ export function compassView({ S }) {
 
   return html`<div class="flex flex-col items-center gap-4">
     <div class="text-center min-h-20">
-      <div class="text-[0.62rem] font-mono uppercase text-base-content/60">${T(t, isTrue ? "trueHdg" : "magHdg")}</div>
+      <div class="text-[0.62rem] font-mono uppercase text-muted">${T(t, isTrue ? "trueHdg" : "magHdg")}</div>
       <div class="text-5xl font-bold tabular-nums leading-none" data-hdg>
         ${shown == null ? html`<${Scramble} len=${4} />` : `${Math.round(shown)}°`}
       </div>

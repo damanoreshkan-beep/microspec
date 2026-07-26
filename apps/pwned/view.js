@@ -85,7 +85,7 @@ export function check({ S }) {
       <input data-pw type=${reveal ? "text" : "password"} value=${pw} onInput=${(e) => setPw(e.currentTarget.value)}
         aria-label=${T(t, "pwLabel")} placeholder=${T(t, "pwPlaceholder")} autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
         class="input input-ghost flex-1 min-w-0 bg-transparent px-1 text-base focus:outline-none" />
-      <button data-reveal aria-label=${T(t, reveal ? "hide" : "show")} onClick=${() => setReveal((v) => !v)} class="btn btn-ghost btn-circle btn-sm text-base-content/60">${Icon(reveal ? "lucide:eye-off" : "lucide:eye", "text-lg")}</button>
+      <button data-reveal aria-label=${T(t, reveal ? "hide" : "show")} onClick=${() => setReveal((v) => !v)} class="btn btn-ghost btn-circle btn-sm text-muted">${Icon(reveal ? "lucide:eye-off" : "lucide:eye", "text-lg")}</button>
     </div>
 
     <!-- the hash, split: the 5 that leave vs the 35 that stay -->
@@ -125,7 +125,7 @@ export function check({ S }) {
         </div>
         <div class=${`text-lg font-semibold mt-1 ${res.pwned ? "text-error" : "text-success"}`}>${T(t, res.pwned ? "vPwned" : "vClean")}</div>
         ${res.pwned
-      ? html`<div class="text-center"><div data-count class="text-3xl font-bold tabular-nums tracking-tight break-all">${fmt(display)}</div><div class="text-xs text-base-content/60 mt-0.5">${T(t, "vPwnedSub")}</div></div>`
+      ? html`<div class="text-center"><div data-count class="text-3xl font-bold tabular-nums tracking-tight break-all">${fmt(display)}</div><div class="text-xs text-muted mt-0.5">${T(t, "vPwnedSub")}</div></div>`
       : html`<div class="text-sm text-base-content/75 text-center max-w-[15rem]">${T(t, "vCleanSub")}</div>`}
       </div>
     </div>` : null}

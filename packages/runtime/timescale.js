@@ -31,7 +31,7 @@ export function TimeScale({ value, now, onChange, t, sunrise = null, sunset = nu
       <div class="absolute -top-0.5 h-3.5 w-0.5 rounded bg-base-content/80 -translate-x-1/2" style=${`left:${pct(now).toFixed(1)}%`} title=${T(t, "nowLabel")}></div>
     </div>
     <input id="scrub" type="range" min="0" max="1439" step="5" value=${selMin} class="range range-xs range-primary -mt-1" aria-label=${T(t, aria)} onInput=${(e) => onChange(Number(e.target.value))} />
-    <div class="relative h-3 text-[0.55rem] font-mono text-base-content/60 select-none">
+    <div class="relative h-3 text-[0.55rem] font-mono text-muted select-none">
       ${[0, 6, 12, 18, 24].map((h) => html`<span class="absolute -translate-x-1/2" style=${`left:${((h * 60) / 1439 * 100).toFixed(1)}%`} key=${h}>${String(h).padStart(2, "0")}:00</span>`)}
     </div>
     <div class="grid grid-cols-4 gap-2 text-center">

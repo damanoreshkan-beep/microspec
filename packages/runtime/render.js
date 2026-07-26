@@ -92,7 +92,7 @@ const heatInk = (x) => (x >= 0.5 ? `light-dark(#7a4a00,rgba(240,169,59,${(0.55 +
 let _searchT;
 const debouncedLoad = () => { clearTimeout(_searchT); _searchT = setTimeout(() => A.load(), 350); };
 
-const Empty = (icon, text, hint) => html`<div class="flex flex-col items-center text-base-content/60 py-16 gap-2 text-center px-6">${Icon(icon, "text-4xl")}<span class="font-medium">${text}</span>${hint && html`<span class="text-sm text-base-content/60">${hint}</span>`}</div>`;
+const Empty = (icon, text, hint) => html`<div class="flex flex-col items-center text-muted py-16 gap-2 text-center px-6">${Icon(icon, "text-4xl")}<span class="font-medium">${text}</span>${hint && html`<span class="text-sm text-muted">${hint}</span>`}</div>`;
 
 // Loading placeholder: decoding cards (scramble text + blinking-pixel image) — never a spinner. The
 // placeholder must match the layout it stands in, or it misreports the shape of what is coming and guarantees
@@ -174,7 +174,7 @@ function Card({ item: it, card, hide }) {
       ${art}
       <div class="min-w-0">
         <div class="text-sm font-semibold leading-tight line-clamp-2 break-words">${field(it, card.title, loc)}</div>
-        ${gsub ? html`<div class="text-xs text-base-content/60 truncate mt-0.5">${gsub}</div>` : null}
+        ${gsub ? html`<div class="text-xs text-muted truncate mt-0.5">${gsub}</div>` : null}
         ${card.badges?.length ? html`<div class="flex flex-wrap gap-1 mt-1.5"><${Badges} item=${it} badges=${card.badges} /></div>` : null}
       </div>
       <button class="aw-tap absolute inset-0 z-[1] rounded-2xl" aria-label=${`${field(it, card.title, loc) ?? ""} — ${T(t, card.more || "title")}`} onClick=${() => A.S.detail.set(it)}></button>
@@ -245,7 +245,7 @@ function InfiniteTail({ count, total, grow, paginate }) {
   }, [count, total, data.next, data.loadingMore]);
   const btn = (cls, icon) => html`<button id="loadmore" class=${`btn btn-ghost btn-sm gap-2 ${cls}`} onClick=${grow}>${Icon(icon)} ${T(t, "loadMore")}</button>`;
   return html`<div ref=${ref} class="flex justify-center py-4 min-h-8" aria-live="polite">
-    ${data.loadingMore ? html`<div class="text-base-content/60 text-sm" role="status" aria-label=${T(t, "statusLoading")}><${Scramble} len=${10} /></div>`
+    ${data.loadingMore ? html`<div class="text-muted text-sm" role="status" aria-label=${T(t, "statusLoading")}><${Scramble} len=${10} /></div>`
       : data.moreError && !hasLocal ? btn("text-error", "lucide:rotate-cw")
       : hasMore ? btn("text-base-content/70", "lucide:chevron-down")
       : null}
@@ -265,7 +265,7 @@ function Chart({ tab }) {
   const max = sorted[Math.floor(sorted.length * 0.92)] || sorted[sorted.length - 1] || 1; // stable y-scale (92nd pct over the whole buffer → no rescaling jump)
   const W = 320, H = 56, bw = W / plot.length, seq = plot.slice().reverse();    // oldest → newest, L → R
   return html`<div class="px-4 pt-3 max-w-xl mx-auto w-full"><div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-1.5">
-    ${cfg.label ? html`<div class="text-xs text-base-content/60 px-1 font-medium">${T(t, cfg.label)}</div>` : null}
+    ${cfg.label ? html`<div class="text-xs text-muted px-1 font-medium">${T(t, cfg.label)}</div>` : null}
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="w-full" style="height:52px" role="img" aria-label=${T(t, cfg.label || "title")}>
       ${seq.map((it, i) => { const h = Math.max(1.5, Math.min(1, (Math.max(0, Number(it[cfg.field]) || 0)) / max) * (H - 3)); return html`<rect x=${(i * bw + bw * 0.14).toFixed(2)} y=${(H - h).toFixed(2)} width=${(bw * 0.72).toFixed(2)} height=${h.toFixed(2)} fill=${heatBg(heat.get(it))} key=${i}></rect>`; })}
     </svg>
@@ -378,7 +378,7 @@ function Profile({ tab }) {
   };
   return html`<div class="flex flex-col gap-3 pt-1">
     ${p.install && !isStandalone() ? html`<button id="p-install" class="card bg-primary/10 border border-primary/25 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.installOpen.set(true)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:download", "text-xl text-primary")}<span class="flex-1 min-w-0 truncate font-medium text-left text-primary">${T(t, "install")}</span>${Icon("lucide:chevron-right", "text-primary opacity-60")}</div></button>` : null}
-    <div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-5 items-center text-center gap-1">${Icon(p.icon || "lucide:box", "text-4xl text-primary")}<div class="font-bold text-lg mt-1">${T(t, "title")}</div><div class="text-sm text-base-content/60">${T(t, "profTagline")}</div></div></div>
+    <div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-5 items-center text-center gap-1">${Icon(p.icon || "lucide:box", "text-4xl text-primary")}<div class="font-bold text-lg mt-1">${T(t, "title")}</div><div class="text-sm text-muted">${T(t, "profTagline")}</div></div></div>
     <button id="p-share" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${shareApp}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:share-2", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("share", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></button>
     ${savedTab ? html`<button class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
     ${p.theme ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:moon", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profTheme")}</span><input id="p-theme" type="checkbox" class="toggle toggle-primary" aria-label=${T(t, "profTheme")} checked=${theme === "signal"} onChange=${(e) => A.S.theme.set(e.target.checked ? "signal" : "signal-light")} /></div></div>` : null}
@@ -412,7 +412,7 @@ function PermissionsScreen() {
       <div class="flex-1 font-bold tracking-tight px-1">${L.title}</div>
     </header>
     <div class="px-4 pt-3 pb-8 flex flex-col gap-2 max-w-xl mx-auto">
-      <p class="text-sm text-base-content/60 px-1 mb-1">${L.intro}</p>
+      <p class="text-sm text-muted px-1 mb-1">${L.intro}</p>
       ${keys.map((k) => { const st = states[k] || "unknown", on = st === "granted", off = st === "unsupported"; return html`<${Fragment} key=${k}>
         <div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">
           ${Icon(PERMISSIONS[k].icon, "text-xl")}
@@ -421,7 +421,7 @@ function PermissionsScreen() {
             : st === "denied" ? html`<span class="badge badge-error badge-sm">${L.denied}</span>`
             : html`<input id=${"perm-" + k} type="checkbox" class="toggle toggle-primary" checked=${on} aria-label=${L[k]} onChange=${() => toggle(k, st)} />`}
         </div></div>
-        ${st === "denied" ? html`<div class="text-xs text-base-content/60 px-2 -mt-1 flex items-start gap-1.5">${Icon("lucide:info", "mt-0.5 shrink-0")}${L.deniedHint}</div>` : null}
+        ${st === "denied" ? html`<div class="text-xs text-muted px-2 -mt-1 flex items-start gap-1.5">${Icon("lucide:info", "mt-0.5 shrink-0")}${L.deniedHint}</div>` : null}
       </${Fragment}>`; })}
     </div>
   </div>`;
@@ -443,7 +443,7 @@ function DetailView() {
     // a row with a date `format` is locale-formatted from the raw timestamp; otherwise the resolved
     // (enrich/translate-aware) field value.
     const v = r.format === "when" ? whenLabel(t, it[r.field], loc) : r.format === "ago" ? ago(t, it[r.field], loc) : r.format === "since" ? sinceLabel(t, it[r.field], loc) : field(it, r.field, loc);
-    return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-base-content/60">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
+    return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-muted">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
   const actions = (d.actions || []).map((a) => {
     // `play` keeps the viewer in the app: the runtime's player, stacked over this detail, so Back returns
     // here rather than to the list. No arrow-up-right — that glyph promises you are being thrown out.

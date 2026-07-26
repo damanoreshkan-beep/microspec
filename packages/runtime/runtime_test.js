@@ -3126,7 +3126,7 @@ Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit
 
 // THE class of bug this closes, and it cost a full 58-job CI matrix to learn. A palette change repainted
 // both themes; every solid pair (content-on-surface) was computed browser-free first and passed. All 58
-// apps still failed axe on ONE selector: `.text-base-content/60`. Solid pairs are not what the farm
+// apps still failed axe on ONE selector: `.text-muted`. Solid pairs are not what the farm
 // renders — muted text is an ALPHA over a surface, and 60% of a warm ink on a cream card is 3.72:1 where
 // the same ink at 100% is 11:1. The contrast that matters is the COMPOSITED one.
 //
@@ -3173,7 +3173,51 @@ Deno.test("a11y: MUTED text (an alpha over a surface) clears 4.5:1 — the pair 
           `Darkening a surface to make it "look like clay" is the move that spends this margin.`,
       );
     }
+
+    // The muted token is SOLID, so it is checked directly — no compositing, which is the entire point of
+    // it existing. It must clear the floor on every surface INCLUDING the tinted ones, because those are
+    // where alpha-derived muted text died: a 10% primary wash moves the bed toward the text in BOTH
+    // themes (it darkens a light page and lightens a dark one), so no single alpha can survive both.
+    const muted = rgb(t["--color-base-muted"]);
+    for (const [surface, px] of Object.entries(bed)) {
+      const r = ratio(muted, px);
+      assert(
+        r >= 4.5,
+        `${theme}: --color-base-muted on ${surface} is ${r.toFixed(2)}:1, under the 4.5 floor. ` +
+          `This token is the farm's secondary text colour in 66 files — it is a DESIGNED colour precisely ` +
+          `so its contrast is checked once here instead of being an accident of whatever it lands on.`,
+      );
+    }
   }
+});
+
+// The anti-regression half of the token: a token nobody uses is a token that rots. `.text-muted` only
+// pays for itself if the fragile pattern cannot come back, and it comes back by muscle memory — the
+// class is short, familiar, and looks harmless in a diff.
+Deno.test("a11y: muted text is the TOKEN, never an alpha — .text-base-content/60 may not return", async () => {
+  const root = new URL("../../", import.meta.url);
+  const offenders = [];
+  const walk = async (dir) => {
+    for await (const e of Deno.readDir(dir)) {
+      const p = new URL(e.name + (e.isDirectory ? "/" : ""), dir);
+      if (e.isDirectory) {
+        if (["node_modules", ".git", "dist", "states"].includes(e.name)) continue;
+        await walk(p);
+      } else if (/\.(js|mjs|html|css)$/.test(e.name) && !/_test\.js$/.test(e.name)) {
+        // a test file names the banned pattern on purpose — this one does, three lines down
+        const src = await Deno.readTextFile(p);
+        if (src.includes("text-base-content/60")) offenders.push(p.pathname.replace(root.pathname, ""));
+      }
+    }
+  };
+  for (const d of ["packages/", "apps/"]) await walk(new URL(d, root));
+  assertEquals(
+    offenders,
+    [],
+    `muted text must use .text-muted (--color-base-muted), not a 60% alpha. At 60% the contrast is whatever ` +
+      `the palette happens to composite to — it measured 3.72:1 after the clay repaint and failed axe in all ` +
+      `58 apps at once. Offenders: ${offenders.join(", ")}`,
+  );
 });
 
 Deno.test("design tokens: density steps DOWN as the viewport gets shorter (landscape must compact)", async () => {

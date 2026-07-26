@@ -125,7 +125,7 @@ export function kalimba({ S }) {
   return html`<div class="fixed left-0 right-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <div class="shrink-0 flex flex-col gap-1 px-2 py-2 border-b border-base-300">
       <div class="flex items-center gap-1.5 min-w-0">
-        <span class="shrink-0 grid place-items-center text-base-content/60" title=${T(t, "voice")}>${Icon("lucide:music", "text-sm")}</span>
+        <span class="shrink-0 grid place-items-center text-muted" title=${T(t, "voice")}>${Icon("lucide:music", "text-sm")}</span>
         <div class="flex-1 min-w-0"><${Segmented} attr="data-voice" scroll size="sm" label=${T(t, "voice")}
           items=${VOICES.map((v) => ({ id: v.id, label: T(t, v.name) }))} value=${voice}
           onChange=${(id) => { setVoice(id); const e = ensure(); if (e && tines[8]) e.strike(tines[8].freq, voiceById(id).t); flash(8); }} /></div>

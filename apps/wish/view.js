@@ -334,7 +334,7 @@ export function wish({ S, closeScreen, confirm, undo }) {
             <div class="flex items-center gap-2">
               <span style=${`color:${activeList.color}`}>${Icon(activeList.icon, "text-xl")}</span>
               <h2 class="text-xl font-bold truncate">${activeList.name}</h2>
-              <button id="edit-list" class="btn btn-ghost btn-xs btn-circle text-base-content/60" aria-label=${T(t, "editList")} onClick=${openListEdit}>${Icon("lucide:pencil", "text-sm")}</button>
+              <button id="edit-list" class="btn btn-ghost btn-xs btn-circle text-muted" aria-label=${T(t, "editList")} onClick=${openListEdit}>${Icon("lucide:pencil", "text-sm")}</button>
             </div>
             <div class="text-sm text-base-content/70 mt-0.5 flex flex-wrap items-center gap-x-2">
               <span>${T(t, "nWishes", { n: pending.length })}</span>

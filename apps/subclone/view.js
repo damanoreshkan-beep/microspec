@@ -112,7 +112,7 @@ export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {
           <button data-save class="btn btn-sm btn-primary rounded-xl gap-1.5" onClick=${() => { saveCap(nm); setNm(""); }}>${Icon("lucide:bookmark-plus")}${T(t, "save")}</button>
           <button data-discard aria-label=${T(t, "discard")} class="btn btn-sm btn-ghost btn-circle" onClick=${discard}>${Icon("lucide:x", "text-lg")}</button>
         </div>
-      </div>` : rec.state === "empty" ? html`<div class="flex items-center gap-2 text-sm text-base-content/60 bg-base-100/40 border border-base-content/10 rounded-2xl px-4 py-3" data-empty>${Icon("lucide:radio-receiver")}${T(t, "nothingCaptured")}</div>` : null}
+      </div>` : rec.state === "empty" ? html`<div class="flex items-center gap-2 text-sm text-muted bg-base-100/40 border border-base-content/10 rounded-2xl px-4 py-3" data-empty>${Icon("lucide:radio-receiver")}${T(t, "nothingCaptured")}</div>` : null}
 
       <!-- saved signals -->
       ${saved.length ? html`<div class="flex flex-col gap-1.5" data-live data-saved-list>
@@ -150,12 +150,12 @@ function del(s, undo) {
 function SettingsSheet({ open, onClose, t, demo }) {
   const g = useStore($txGain), reps = useStore($repeats);
   return html`<${Sheet} id="rfsheet" open=${open} onClose=${onClose} title=${T(t, "settings")} icon="lucide:sliders-horizontal">
-    <div class="flex flex-col gap-1"><div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${T(t, "txRepeats")}</span><span class="font-mono tabular-nums text-base-content/60">×${reps}</span></div>
+    <div class="flex flex-col gap-1"><div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${T(t, "txRepeats")}</span><span class="font-mono tabular-nums text-muted">×${reps}</span></div>
       <input type="range" min="1" max="16" step="1" value=${reps} class="range range-xs range-primary" aria-label=${T(t, "txRepeats")} data-repeats onInput=${(e) => $repeats.set(Number(e.target.value))} />
       <span class="text-[0.7rem] text-base-content/55 leading-snug">${T(t, "txRepeatsHint")}</span></div>
-    <div class="flex flex-col gap-1"><div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${T(t, "txGain")}</span><span class="font-mono tabular-nums text-base-content/60">${g} dB</span></div>
+    <div class="flex flex-col gap-1"><div class="flex items-center justify-between text-xs"><span class="uppercase tracking-wide text-base-content/70">${T(t, "txGain")}</span><span class="font-mono tabular-nums text-muted">${g} dB</span></div>
       <input type="range" min="0" max="47" step="1" value=${g} class="range range-xs range-primary" aria-label=${T(t, "txGain")} onInput=${(e) => $txGain.set(Number(e.target.value))} /></div>
-    <p class="text-xs text-base-content/60 leading-relaxed">${T(t, "ownNote")}</p>
-    ${!demo ? html`<button data-disconnect class="btn btn-ghost btn-sm gap-2 text-base-content/60 self-start" onClick=${() => { disconnect(); onClose(); }}>${Icon("lucide:power")}${T(t, "disconnect")}</button>` : null}
+    <p class="text-xs text-muted leading-relaxed">${T(t, "ownNote")}</p>
+    ${!demo ? html`<button data-disconnect class="btn btn-ghost btn-sm gap-2 text-muted self-start" onClick=${() => { disconnect(); onClose(); }}>${Icon("lucide:power")}${T(t, "disconnect")}</button>` : null}
   </${Sheet}>`;
 }

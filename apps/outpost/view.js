@@ -144,11 +144,11 @@ export function outpost({ S }) {
 
       <!-- sleep timer -->
       <div class="flex items-center gap-2 text-sm flex-wrap justify-center">
-        <span class="text-base-content/60 flex items-center gap-1.5">${Icon("lucide:moon")}${T(t, "sleep")}</span>
+        <span class="text-muted flex items-center gap-1.5">${Icon("lucide:moon")}${T(t, "sleep")}</span>
         ${TIMERS.map((m) => html`<button data-timer=${m} key=${m} class=${`px-2.5 py-1 rounded-full text-xs font-medium border transition ${timerMin === m ? "border-primary bg-primary/12 text-primary" : "border-base-content/12 text-base-content/70"}`} onClick=${() => { buzz(); setTimerMin((c) => (c === m ? 0 : m)); }}>${m}${T(t, "min")}</button>`)}
       </div>
 
-      ${!audioSupported ? html`<div class="text-xs text-base-content/60">${T(t, "noAudio")}</div>` : null}
+      ${!audioSupported ? html`<div class="text-xs text-muted">${T(t, "noAudio")}</div>` : null}
     </div>
   </${Fragment}>`;
 }

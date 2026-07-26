@@ -183,7 +183,7 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
         <span class="flex-1 min-w-0 truncate text-sm ${on && rds.ps ? "text-base-content" : "text-base-content/55"}">${on && rds.ps ? rds.ps : s.ps || (s.stereo ? T(t, "stereo") : T(t, "mono"))}</span>
         ${s.stereo ? Icon("lucide:radio", "text-base-content/40 text-base shrink-0") : null}
       </button>`;
-  }) : html`<button data-scan-empty onClick=${scan} disabled=${scanSt.active} class="btn btn-ghost btn-sm justify-start gap-2 text-base-content/60 mt-1">${Icon("lucide:radar")}${T(t, "scanHint")}</button>`}
+  }) : html`<button data-scan-empty onClick=${scan} disabled=${scanSt.active} class="btn btn-ghost btn-sm justify-start gap-2 text-muted mt-1">${Icon("lucide:radar")}${T(t, "scanHint")}</button>`}
     </div>
 
     <!-- floating player island: now-playing + transport + settings + power, all in one compact bar -->
@@ -197,7 +197,7 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
               <span data-stereo class=${`shrink-0 ${stereo ? "text-primary" : "text-base-content/30"}`} title=${T(t, stereo ? "stereo" : "mono")}>${Icon("lucide:radio", "text-sm")}</span>
               ${genre ? html`<span class="shrink-0 rounded-full px-1.5 py-px text-[0.55rem] uppercase tracking-wider bg-secondary/12 text-secondary border border-secondary/25 truncate max-w-[6rem]" data-genre>${genre}</span>` : null}
             </div>
-            ${info ? html`<div class="text-[0.72rem] text-base-content/60 leading-snug truncate mt-0.5" data-rt>${info}</div>` : null}
+            ${info ? html`<div class="text-[0.72rem] text-muted leading-snug truncate mt-0.5" data-rt>${info}</div>` : null}
           </div>
           <${SignalBars} level=${signal} label=${T(t, "sigLabel")} />
           <button data-save aria-pressed=${savedNow} aria-label=${T(t, "save")} onClick=${() => toggleSave(undo)} class=${`btn btn-circle btn-sm shrink-0 ${savedNow ? "bg-primary/15 text-primary border border-primary/30" : "btn-ghost text-base-content/45"}`}>${Icon(savedNow ? "lucide:bookmark-check" : "lucide:bookmark", "text-base")}</button>
@@ -235,7 +235,7 @@ function SettingsSheet({ open, onClose, t, demo }) {
     ${Row(html`${T(t, "volume")} <span class="font-mono tabular-nums text-base-content/50">${Math.round(vol * 100)}</span>`, html`<input type="range" min="0" max="1" step="0.01" value=${vol} class="range range-xs range-primary" aria-label=${T(t, "volume")} onInput=${(e) => setVol(Number(e.target.value))} />`)}
     ${Row(html`${T(t, "gainLna")} <span class="font-mono tabular-nums text-base-content/50">${lna} dB</span>`, html`<input type="range" min="0" max="40" step="8" value=${lna} class="range range-xs range-secondary" aria-label=${T(t, "gainLna")} onInput=${(e) => { $lna.set(Number(e.target.value)); pushGain(); }} />`)}
     ${Row(html`${T(t, "gainVga")} <span class="font-mono tabular-nums text-base-content/50">${vga} dB</span>`, html`<input type="range" min="0" max="62" step="2" value=${vga} class="range range-xs range-secondary" aria-label=${T(t, "gainVga")} onInput=${(e) => { $vga.set(Number(e.target.value)); pushGain(); }} />`)}
-    <label class="flex items-center justify-between text-sm"><span class="flex items-center gap-2">${Icon("lucide:zap", "text-base text-base-content/60")}${T(t, "gainAmp")} <span class="text-base-content/55 font-mono text-xs">+14 dB</span></span>
+    <label class="flex items-center justify-between text-sm"><span class="flex items-center gap-2">${Icon("lucide:zap", "text-base text-muted")}${T(t, "gainAmp")} <span class="text-base-content/55 font-mono text-xs">+14 dB</span></span>
       <input type="checkbox" class="toggle toggle-primary toggle-sm" checked=${amp} aria-label=${T(t, "gainAmp")} onChange=${(e) => { $amp.set(e.target.checked); pushGain(); }} /></label>
     <div class="flex flex-col gap-1">
       <span class="text-xs uppercase tracking-wide text-base-content/70">${T(t, "deemph")}</span>
@@ -243,7 +243,7 @@ function SettingsSheet({ open, onClose, t, demo }) {
         items=${[[50, "deemphEu"], [75, "deemphUs"]].map(([v, k]) => ({ id: String(v), label: T(t, k) }))}
         value=${String(tc)} onChange=${(id) => setTc(Number(id))} />
     </div>
-    ${!demo ? html`<button data-disconnect class="btn btn-ghost btn-sm gap-2 text-base-content/60 self-start" onClick=${() => { disconnect(); onClose(); }}>${Icon("lucide:power")}${T(t, "disconnect")}</button>` : null}
+    ${!demo ? html`<button data-disconnect class="btn btn-ghost btn-sm gap-2 text-muted self-start" onClick=${() => { disconnect(); onClose(); }}>${Icon("lucide:power")}${T(t, "disconnect")}</button>` : null}
   </${Sheet}>`;
 }
 
@@ -252,7 +252,7 @@ export function savedView({ S, undo }) {
   const t = useStore(S.t), saved = useStore($saved), freq = useStore($freq), known = useStore($known);
   const open = (s) => { buzz(); setFreq(s.freq); S.tab.set("tune"); };
   const del = (i) => { buzz(); const removed = saved[i]; $saved.set(saved.filter((_, k) => k !== i)); undo?.(() => $saved.set([...$saved.get(), removed].sort((a, b) => a.freq - b.freq)), removed.ps || fmMhz(removed.freq)); };
-  if (!saved.length) return html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-3 text-center px-6"><iconify-icon icon="lucide:bookmark" class="text-4xl"></iconify-icon><span>${T(t, "savedEmpty")}</span></div>`;
+  if (!saved.length) return html`<div class="flex flex-col items-center text-muted py-20 gap-3 text-center px-6"><iconify-icon icon="lucide:bookmark" class="text-4xl"></iconify-icon><span>${T(t, "savedEmpty")}</span></div>`;
   return html`<div class="flex flex-col gap-2 max-w-[440px] mx-auto w-full pb-6">
     ${saved.map((s, i) => {
     const on = Math.abs(s.freq - freq) < STEP_HZ / 2, nm = s.ps || known[s.freq]?.ps || "";

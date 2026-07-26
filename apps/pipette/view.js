@@ -94,8 +94,8 @@ export function pipette({ S }) {
         <button aria-label=${hex} onClick=${() => picked && copy(picked)} class="w-14 h-14 rounded-2xl shrink-0 border border-base-300 active:scale-95 transition" style=${picked ? `background:${hex}` : ""}></button>
         <div class="flex-1 min-w-0">
           <div data-live class="text-2xl font-bold font-mono tabular-nums leading-tight">${hex}</div>
-          <div class="text-[0.7rem] text-base-content/60 font-mono leading-snug truncate">${rgbStr}</div>
-          ${hslStr ? html`<div class="text-[0.7rem] text-base-content/60 font-mono leading-snug truncate">${hslStr}</div>` : null}
+          <div class="text-[0.7rem] text-muted font-mono leading-snug truncate">${rgbStr}</div>
+          ${hslStr ? html`<div class="text-[0.7rem] text-muted font-mono leading-snug truncate">${hslStr}</div>` : null}
         </div>
         <button data-freeze aria-label=${T(t, frozen ? "live" : "freeze")} aria-pressed=${frozen} onClick=${() => setFrozen((f) => !f)} class=${`btn btn-circle btn-sm ${frozen ? "btn-primary" : "btn-ghost"}`}>${Icon(frozen ? "lucide:play" : "lucide:snowflake", "text-lg")}</button>
       </div>

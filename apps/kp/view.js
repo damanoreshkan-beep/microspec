@@ -62,13 +62,13 @@ export function kp({ S }) {
   }, []);
 
   const ready = useReveal(!!data);   // hold the skeleton ≥1s so a fast load doesn't flash
-  if (err && !data) return html`<div class="flex flex-col items-center text-base-content/60 py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`;
+  if (err && !data) return html`<div class="flex flex-col items-center text-muted py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`;
   // structure-shaped skeleton (gauge ring + chart + stat cards) with decoding value slots — never a bare block
   if (!ready) return html`<div class="flex flex-col gap-4 items-center">
     <div class="w-36 h-36 rounded-full border-[6px] border-base-300 flex items-center justify-center"><span class="text-4xl font-bold tabular-nums text-base-content/40"><${Scramble} len=${3} /></span></div>
     <div class="text-lg font-bold text-base-content/50"><${Scramble} len=${9} /></div>
     <div class="w-full h-24 rounded-2xl overflow-hidden border border-base-300"><${Pixels} /></div>
-    <div class="grid grid-cols-2 gap-2 w-full">${[0, 1].map((i) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 gap-1 text-base-content/60"><div class="text-[0.62rem] truncate"><${Scramble} len=${7} /></div><div class="text-xl font-bold truncate"><${Scramble} len=${4} /></div></div></div>`)}</div>
+    <div class="grid grid-cols-2 gap-2 w-full">${[0, 1].map((i) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 gap-1 text-muted"><div class="text-[0.62rem] truncate"><${Scramble} len=${7} /></div><div class="text-xl font-bold truncate"><${Scramble} len=${4} /></div></div></div>`)}</div>
   </div>`;
 
   const entries = (data.entries || []).filter((e) => e && e.kp != null);
@@ -84,8 +84,8 @@ export function kp({ S }) {
   win.forEach((e, i) => { const d = parseUTC(e.time_tag); const k = d.toISOString().slice(0, 10); if (k !== last) { days.push({ x: (i + 0.5) * bw, label: d.toLocaleDateString(locale === "en" ? "en-GB" : locale || "uk", { weekday: "short", day: "numeric" }) }); last = k; } });
 
   const stat = (icon, label, value, unit) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-0.5">
-    <div class="text-[0.62rem] font-mono uppercase text-base-content/60 flex items-center gap-1">${Icon(icon)}${T(t, label)}</div>
-    <div class="text-xl font-bold tabular-nums">${value}<span class="text-sm font-medium text-base-content/60 ml-1">${unit ? T(t, unit) : ""}</span></div>
+    <div class="text-[0.62rem] font-mono uppercase text-muted flex items-center gap-1">${Icon(icon)}${T(t, label)}</div>
+    <div class="text-xl font-bold tabular-nums">${value}<span class="text-sm font-medium text-muted ml-1">${unit ? T(t, unit) : ""}</span></div>
   </div></div>`;
 
   return html`<div class="flex flex-col gap-4 items-center">
@@ -94,22 +94,22 @@ export function kp({ S }) {
       ${gauge(kpNow)}
       <div class="absolute flex flex-col items-center">
         <div data-kp class="text-4xl font-bold tabular-nums leading-none" style=${`color:${kpColor(kpNow)}`}>${kpNow.toFixed(1)}</div>
-        <div class="text-[0.6rem] font-mono uppercase text-base-content/60 mt-1">Kp</div>
+        <div class="text-[0.6rem] font-mono uppercase text-muted mt-1">Kp</div>
       </div>
     </div>
     <div class="flex flex-col items-center gap-0.5 -mt-1">
       <div class="text-lg font-bold">${g > 0 ? html`<span style=${`color:${kpColor(kpNow)}`}>G${g}</span> · ${T(t, SEV[g])}` : T(t, kpNow >= 4 ? "stActive" : "stQuiet")}</div>
-      <div class="text-xs text-base-content/60">${T(t, "updated")} ${hhmm(parseUTC(cur.time_tag))}</div>
+      <div class="text-xs text-muted">${T(t, "updated")} ${hhmm(parseUTC(cur.time_tag))}</div>
     </div>
 
     <!-- 3-day Kp forecast -->
     <div class="w-full max-w-[420px] flex flex-col gap-1">
-      <div class="text-[0.62rem] font-mono uppercase text-base-content/60 px-1">${T(t, "forecast")}</div>
+      <div class="text-[0.62rem] font-mono uppercase text-muted px-1">${T(t, "forecast")}</div>
       <svg viewBox=${`0 0 100 ${H}`} class="w-full" style="height:120px" preserveAspectRatio="none">
         <line x1="0" y1=${yOf(5).toFixed(1)} x2="100" y2=${yOf(5).toFixed(1)} stroke="currentColor" stroke-width="0.4" stroke-dasharray="1.5 1.5" class="text-base-content/30"></line>
         ${win.map((e, i) => html`<rect x=${(i * bw + bw * 0.12).toFixed(2)} y=${yOf(e.kp).toFixed(2)} width=${(bw * 0.76).toFixed(2)} height=${Math.max(0.6, H - yOf(e.kp)).toFixed(2)} rx="0.5" fill=${kpFill(e.kp)} opacity=${e.observed === "observed" ? "0.5" : "1"} key=${i}></rect>`)}
       </svg>
-      <div class="relative h-4 text-[0.55rem] font-mono text-base-content/60">
+      <div class="relative h-4 text-[0.55rem] font-mono text-muted">
         ${days.map((d, i) => html`<span class="absolute -translate-x-1/2 whitespace-nowrap" style=${`left:${Math.min(94, Math.max(6, d.x)).toFixed(1)}%`} key=${i}>${d.label}</span>`)}
       </div>
     </div>

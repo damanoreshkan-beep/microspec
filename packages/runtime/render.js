@@ -710,7 +710,7 @@ function Toast() {
   if (undo) {
     const label = undo.label ? `«${undo.label}» ` : "";
     return html`<div data-toast class="pointer-events-none" style=${band}>
-      <div class="pointer-events-auto alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-2 pl-4 pr-2 font-medium flex items-center gap-2 w-max max-w-[calc(100vw-1.5rem)] ms-reveal">
+      <div class="pointer-events-auto alert bg-neutral text-neutral-content border-0 rounded-2xl sf-e5 py-2 pl-4 pr-2 font-medium flex items-center gap-2 w-max max-w-[calc(100vw-1.5rem)] ms-reveal">
         ${Icon("lucide:trash-2", "text-base-content/55 text-lg shrink-0")}<span class="truncate">${label}${sys("deleted", loc)}</span>
         <button data-undo class="btn btn-sm btn-ghost text-primary font-semibold rounded-xl gap-1.5 shrink-0" onClick=${() => { const fn = A.S.undo.get()?.fn; A.S.undo.set(null); fn?.(); }}>${Icon("lucide:undo-2", "text-base")}${sys("undo", loc)}</button>
       </div>
@@ -721,7 +721,7 @@ function Toast() {
   // undo snackbar above, which is time-critical.
   if (update && !key) {
     return html`<div data-toast class="pointer-events-none" style=${band}>
-      <div data-update class="pointer-events-auto alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-2 pl-4 pr-2 font-medium flex items-center gap-2 w-max max-w-[calc(100vw-1.5rem)] ms-reveal">
+      <div data-update class="pointer-events-auto alert bg-neutral text-neutral-content border-0 rounded-2xl sf-e5 py-2 pl-4 pr-2 font-medium flex items-center gap-2 w-max max-w-[calc(100vw-1.5rem)] ms-reveal">
         ${Icon("lucide:sparkles", "text-base-content/55 text-lg shrink-0")}<span class="truncate">${sys("updateReady", loc)}</span>
         <button data-update-apply class="btn btn-sm btn-ghost text-primary font-semibold rounded-xl gap-1.5 shrink-0" onClick=${() => { A.S.update.set(false); A.applyUpdate?.(); }}>${Icon("lucide:rotate-cw", "text-base")}${sys("restart", loc)}</button>
         <button data-update-dismiss class="btn btn-sm btn-ghost btn-circle shrink-0" aria-label=${sys("cancel", loc)} onClick=${() => A.S.update.set(false)}>${Icon("lucide:x", "text-base")}</button>
@@ -731,7 +731,7 @@ function Toast() {
   const isExit = key === "__exit__";
   const text = isExit ? sys("exit", loc) : key === "saved" ? T(t, "toastSaved") : key === "removed" ? T(t, "toastRemoved") : key;
   const icon = isExit ? Icon("lucide:log-out", "text-base-content/70 text-lg") : Icon("lucide:check-circle", "text-success text-lg");
-  return html`<div data-toast class="pointer-events-none" style=${band}><div class=${`alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-3 px-5 font-medium flex items-center gap-2 w-max transition-opacity duration-200 ${key ? "opacity-100" : "opacity-0"}`}>${icon}${text || ""}</div></div>`;
+  return html`<div data-toast class="pointer-events-none" style=${band}><div class=${`alert bg-neutral text-neutral-content border-0 rounded-2xl sf-e5 py-3 px-5 font-medium flex items-center gap-2 w-max transition-opacity duration-200 ${key ? "opacity-100" : "opacity-0"}`}>${icon}${text || ""}</div></div>`;
 }
 
 // Danger-confirm sheet — the irreversible half of delete safety. History-backed via S.confirm (Back = cancel,

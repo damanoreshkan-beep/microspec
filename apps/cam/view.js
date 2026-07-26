@@ -118,7 +118,7 @@ export function cam({ S }) {
   return html`<${Fragment}>
     <div class="fixed inset-x-0 z-20 flex items-stretch justify-center px-3 py-2" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
       <!-- the console body -->
-      <div class="w-full max-w-sm mx-auto flex flex-col gap-3 rounded-[1.9rem] border border-base-content/10 bg-gradient-to-b from-base-100 to-base-200 p-4 shadow-[0_10px_40px_-12px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.06)]">
+      <div class="w-full max-w-sm mx-auto flex flex-col gap-3 rounded-[1.9rem] border border-base-content/10 bg-gradient-to-b from-base-100 to-base-200 p-4 sf-e3">
         <div class="shrink-0 flex items-center justify-between px-0.5">
           <div class="flex items-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-primary/85 shadow-[0_0_7px] shadow-primary/60"></span>

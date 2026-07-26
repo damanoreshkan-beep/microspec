@@ -35,6 +35,12 @@ const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls |
 // screen the system Back button couldn't reach.
 // `locale` defaults to <html lang>, which the runtime keeps pointed at the UI locale — so a shared
 // component never has to demand a prop (or an i18n key) from every app that mounts it.
+// The box, as one exported string. The shell has four dialogs of its own (the filter sheet, the install
+// modal, the QR invite, the danger confirm) that predate this kit and each wrote their own box classes —
+// which is how three apps ended up overflowing at 208px through a sheet none of them wrote: no width
+// ceiling, no min-w-0, so a control inside pushed the DOCUMENT wide. One definition, one place.
+export const SHEET_BOX = "modal-box rounded-t-[1.75rem] max-w-[min(36rem,100vw)] mx-auto min-w-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)] pb-8 max-h-[88dvh]";
+
 export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size = "md", children }) {
   const loc = locale || (typeof document !== "undefined" ? document.documentElement.lang : "") || "en";
   const ref = useRef();
@@ -43,7 +49,7 @@ export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size =
   // A sheet is never taller than the screen it slides over: past 88dvh its own content scrolls, the page
   // behind it never does (overscroll-behavior is contained farm-wide in theme.css). This is the ONE
   // sanctioned nested scroll — the escape hatch a fit screen overflows INTO.
-  const box = `modal-box rounded-t-[1.75rem] max-w-[min(36rem,100vw)] mx-auto flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)] pb-8 max-h-[88dvh] ${size === "lg" ? "min-h-[50dvh]" : ""}`;
+  const box = `${SHEET_BOX} ${size === "lg" ? "min-h-[50dvh]" : ""}`;
   return html`<dialog id=${id} ref=${ref} class="modal modal-bottom" onClose=${onClose}>
     <div ref=${boxRef} class=${box}>${grip}
       ${title ? html`<div class="flex items-center gap-2 shrink-0">

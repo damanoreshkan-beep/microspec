@@ -115,7 +115,9 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
 // an edge. Opacity stays high (80%) so text contrast over whatever scrolls beneath is deterministic — the
 // blur does the glass. Translucency you can't predict is a contrast bug waiting for one screen to break.
 export function Island({ children, className = "", tag = "div", ...rest }) {
-  const cls = `rounded-[var(--ms-r)] border border-base-content/10 bg-base-100/80 backdrop-blur-xl p-[var(--ms-pad)] shadow-[0_10px_40px_-12px_rgba(0,0,0,.7),inset_0_1px_0_0_rgba(255,255,255,.08)] ${className}`;
+  // A floating panel IS the raised surface: it declares sf-raised/sf-e3 rather than carrying its own shadow
+  // triple, so a change to what "raised" means reaches the dock, the sheet and every island at once.
+  const cls = `sf-raised sf-e3 rounded-[var(--ms-r)] bg-base-100/80 backdrop-blur-xl p-[var(--ms-pad)] ${className}`;
   return tag === "section"
     ? html`<section class=${cls} ...${rest}>${children}</section>`
     : html`<div class=${cls} ...${rest}>${children}</div>`;
@@ -125,7 +127,7 @@ export function Island({ children, className = "", tag = "div", ...rest }) {
 // What a card is in the list family: solid ink, hairline border, optional mono micro-label header. Use it
 // for grouped controls; use Island only where the panel floats OVER content.
 export function Panel({ title, children, className = "" }) {
-  return html`<div class=${`rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
+  return html`<div class=${`sf-e2 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
     ${title ? html`<div class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${title}</div>` : null}
     ${children}
   </div>`;

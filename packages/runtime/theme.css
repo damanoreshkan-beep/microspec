@@ -131,7 +131,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 @media (max-width: 300px) {
   /* --ms-ctl holds at the 36px tap floor; everything else is what gives a fit screen its last few pixels.
      This is the ladder's own answer to "does not fit" — compact, or move into a Sheet. Never clip. */
-  :root { --ms-gap: 0.2rem; --ms-pad: 0.3rem; --ms-r: 0.75rem; --ms-ctl: 2.25rem; --ms-icon: 0.9rem; --ms-title: 0.8rem; --ms-label: 0.58rem; }
+  :root { --ms-gap: 0.18rem; --ms-pad: 0.25rem; --ms-r: 0.75rem; --ms-ctl: 2.25rem; --ms-icon: 0.9rem; --ms-title: 0.8rem; --ms-label: 0.58rem; }
 
   /* the rail */
   nav[data-dock] {
@@ -149,8 +149,16 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   /* A row of buttons cannot fit at 200px, and the labels are not why: DaisyUI's .btn is `flex-shrink: 0`
      with `--btn-p: 1rem`, so three of them are ~150px of padding before a single glyph. Compacted through
      the component's own knob; the 36px target (--size) is untouched and no control is dropped. */
-  .btn { --btn-p: 0.45rem; max-width: 100%; }
+  /* Three separate things stop a control from fitting 200px, and padding is only the first: DaisyUI's .btn
+     is flex-shrink:0 (it cannot give up width in a row) and its label cannot break (so a long caption makes
+     a rigid wide box). All three are lifted here, and the label wraps to a second line rather than the
+     button spilling — height for width, the same trade the row wrap makes. Target height (--size) is
+     untouched, so nothing drops below the tap floor. */
+  .btn { --btn-p: 0.45rem; max-width: 100%; flex-shrink: 1; white-space: normal; }
   .btn > * { min-width: 0; }
+  /* A mono string with wide tracking is the other rigid box — a hash, a ticker, a code. At this width it
+     must be allowed to break mid-token; the alternative is a guaranteed overflow. */
+  .font-mono { overflow-wrap: anywhere; }
   /* …and past a point padding is not the answer: a label and a button do not fit 200px side by side, never
      mind two buttons. So the rule is the honest general one — at this width no row may be FORBIDDEN from
      wrapping — scoped to rows that actually contain a control, which is where the overflow comes from.
@@ -242,7 +250,67 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
        That is where the "alive" comes from: it is per-app and it costs nothing to animate, because it
        does not animate. A full-viewport layer repainting forever is a battery bill, not a design.
    ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════
+   THE SURFACE SYSTEM — four states, one light source, and every widget declares one.
+
+   Measured off the reference styleguide rather than described (docs/research/surface-system.md). The
+   numbers that matter, as luminance against the page behind them:
+
+     BASE     face +2.5   top edge +15   bottom −54     the page, with a soft ambient drop
+     RAISED   face +0.6   top edge +17   bottom −57     the face does NOT lighten; the EDGES lift it
+     INSET    face −12.6  inner top −36  bottom lip +13 the face genuinely darkens
+     PRESSED  face −33.2  inner top −63  bottom lip +10 ~1.75× inset — a real step, not a firmer hover
+
+   Two of those are the whole reason an earlier attempt read as nothing: a raised surface is not a lighter
+   fill (lightening it flattens the material instantly), and a recessed one is not merely an edge shadow —
+   it is genuinely darker than its parent. Light comes from directly above in all four, with no exceptions.
+
+   The reference is cream and teal; the farm is ink. What transfers is the STRUCTURE, because every move is
+   relative — so the same four states invert into a dark theme without carrying a palette that does not
+   belong here. Elevation is the same idea with a number, so a sheet can never sit under a dock.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+.sf-raised {
+  background: var(--color-base-100);
+  box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop);
+  border: 1px solid var(--sf-edge);
+}
+.sf-inset {
+  background: var(--sf-inset-face);
+  box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), inset 0 -1px 0 0 var(--sf-lip);
+  border: 1px solid var(--sf-edge);
+}
+.sf-pressed, .sf-press:active {
+  background: var(--sf-press-face);
+  box-shadow: inset 0 3px 7px -1px var(--sf-press-top), inset 0 -1px 0 0 var(--sf-lip);
+}
+/* Elevation — L1 flat · L2 hover · L3 raised · L4 modal · L5 popover. One ladder, so two floating things
+   can never disagree about which is in front. */
+.sf-e1 { box-shadow: none; }
+.sf-e2 { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 6px -2px var(--sf-shadow); }
+.sf-e3 { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
+.sf-e4 { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 -10px 44px -12px var(--sf-shadow); }
+.sf-e5 { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }
+
+/* The radius and border scales the reference also enumerates — 4/8/12/16/24 and 1/2/4px. --ms-r stays the
+   density-stepped default; these are the fixed rungs a component picks from deliberately. */
+:root {
+  --r-1: 4px; --r-2: 8px; --r-3: 12px; --r-4: 16px; --r-5: 24px;
+  --bw-1: 1px; --bw-2: 2px; --bw-3: 4px;
+}
+
 [data-theme="signal"] {
+  /* raised lifts by its edges: the face stays base-100, a hairline of light sits on top, the drop is deep */
+  --sf-rim:        rgba(255, 255, 255, .08);
+  --sf-edge:       rgba(255, 255, 255, .10);
+  --sf-lip:        rgba(255, 255, 255, .05);
+  --sf-shadow:     rgba(0, 0, 0, .55);
+  --sf-drop:       0 8px 18px -6px rgba(0, 0, 0, .55);
+  /* recessed surfaces genuinely darken — base-200/300 against a base-100 parent */
+  --sf-inset-face: var(--color-base-200);
+  --sf-inset-top:  rgba(0, 0, 0, .55);
+  --sf-press-face: var(--color-base-300);
+  --sf-press-top:  rgba(0, 0, 0, .70);
+
   --ms-vol-key:    rgba(255, 255, 255, .055);   /* key light entering the top of the box */
   --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 13%, transparent);
   --ms-vol-rim:    rgba(255, 255, 255, .07);    /* where the wall catches the light */
@@ -252,6 +320,18 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --ms-trough-lip: rgba(255, 255, 255, .045);
 }
 [data-theme="signal-light"] {
+  /* Same structure, inverted: on a light surface the rim is white and the recess is a grey face. The Δ
+     values follow the measurement — inset −5%, pressed −13% of the parent's luminance. */
+  --sf-rim:        rgba(255, 255, 255, .75);
+  --sf-edge:       rgba(24, 24, 27, .10);
+  --sf-lip:        rgba(255, 255, 255, .8);
+  --sf-shadow:     rgba(24, 24, 27, .18);
+  --sf-drop:       0 6px 14px -4px rgba(24, 24, 27, .18);
+  --sf-inset-face: var(--color-base-200);
+  --sf-inset-top:  rgba(24, 24, 27, .14);
+  --sf-press-face: var(--color-base-300);
+  --sf-press-top:  rgba(24, 24, 27, .25);
+
   /* A light room is lit the other way round: the wash is white and the walls are grey. Weaker than the dark
      theme on purpose — a dark band over dark text is the one place this style eats legibility. */
   --ms-vol-key:    rgba(255, 255, 255, .85);

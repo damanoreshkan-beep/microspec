@@ -280,16 +280,32 @@ async function loadOwned() {
   } catch { /* an empty library is a fine starting point */ }
 }
 
-// The offline copy: a download, independent of whether the audio device ever came up.
-async function downloadCopy(tune, id, toastText) {
+// The offline copy — explicit only. Playing a tune streams it; keeping it is the listener's decision, taken
+// with the save button in the player, so the library stays a shelf rather than a history log.
+async function saveCurrent(toastText) {
+  const tr = $track.get();
+  if (!tr || $owned.get().has(tr.id)) return false;
   try {
     $saved.set("fetching");
-    const raw = await bytesFor({ author: tune.author, file: tune.file });
-    await SAVES.put(id, { name: titleOf(tune.file), author: tune.author, size: raw.byteLength, dur: $durMs.get(), data: new Uint8Array(raw) });
+    const raw = await bytesFor(tr);
+    await SAVES.put(tr.id, {
+      name: tr.name, author: tr.author || "", size: raw.byteLength, dur: $durMs.get(), data: new Uint8Array(raw),
+    });
     $saved.set("ok");
-    $owned.set(new Set($owned.get()).add(id));
+    $owned.set(new Set($owned.get()).add(tr.id));
     if (toastText) notify?.(toastText);
-  } catch (e) { $saved.set("err:" + String((e && e.message) || e).slice(0, 60)); }
+    return true;
+  } catch (e) { $saved.set("err:" + String((e && e.message) || e).slice(0, 60)); return false; }
+}
+
+async function forgetCurrent() {
+  const tr = $track.get();
+  if (!tr) return null;
+  let rec = null;
+  try { rec = await SAVES.get(tr.id); await SAVES.remove(tr.id); } catch { return null; }
+  const next = new Set($owned.get()); next.delete(tr.id); $owned.set(next);
+  $saved.set("");
+  return rec;                                          // handed back so the caller can offer an undo
 }
 
 // ── the queue: "next" is the next tune in the store, in the order you were looking at ─────────────
@@ -301,14 +317,13 @@ function queueList() {
   return [...all].sort(bySize);
 }
 
-async function playAt(i, toastText) {
+async function playAt(i) {
   const q = queueList();
   if (!q.length) return false;
   const idx = ((i % q.length) + q.length) % q.length;
   const tune = q[idx];
   const id = trackId(tune.author, tune.file);
   $queue.set(q); $qIndex.set(idx);
-  downloadCopy(tune, id, toastText);                   // alongside playback, never behind it
   return await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
 }
 const playNext = () => playAt($qIndex.get() + 1);
@@ -335,7 +350,7 @@ const kb = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1,
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
 // ─────────────────────────────  PLAYER  ─────────────────────────────
-export function v2m({ S }) {
+export function v2m({ S, toast, undo }) {
   const t = useStore(S.t);
   const track = useStore($track);
   const playing = useStore($playing);
@@ -346,8 +361,25 @@ export function v2m({ S }) {
   const saveState = useStore($saved);
   const ratio = mp3Ratio(size, dur / 1000);
   const tunes = useStore($tunes);
+  const owned = useStore($owned);
   const hasQueue = ($queue.get().length || (tunes || []).length) > 0;
-  useEffect(() => { primeDemo(); loadCatalog(); }, []);   // so skip-forward works before the store is opened
+  const inLibrary = owned.has(track?.id);
+  useEffect(() => {                                    // skip-forward works before the store is opened
+    notify = toast; primeDemo(); loadCatalog(); loadOwned();
+    return () => { notify = null; };
+  }, []);
+
+  // Keeping a tune is an explicit act. Un-keeping it is a delete, so it comes back the farm's way — with
+  // an undo, not a confirm: the whole thing is a few kilobytes and re-downloading is instant.
+  const onSave = async () => {
+    if (!inLibrary) { await saveCurrent(T(t, "toastSaved")); return; }
+    const rec = await forgetCurrent();
+    if (!rec) return;
+    const { id, _ts, ...rest } = rec;
+    undo?.(async () => {
+      try { await SAVES.put(id, rest); $owned.set(new Set($owned.get()).add(id)); } catch { /* */ }
+    }, rec.name || T(t, "trackWord"));
+  };
 
   return html`
     <div class="relative h-full min-h-0 flex flex-col" data-track=${track?.id || ""} data-saved=${saveState}>
@@ -355,13 +387,22 @@ export function v2m({ S }) {
 
       <div class="relative z-10 flex-1 min-h-0 flex flex-col justify-end pb-[var(--ms-gap)]">
         <${Island} className="mx-[var(--ms-gap)] px-[var(--ms-pad)] py-[var(--ms-pad)] flex flex-col gap-2">
-          <div class="text-center">
-            <div class="text-[length:var(--ms-title)] font-semibold truncate leading-tight">${titleOf(track?.name || "")}</div>
-            ${size > 0 && html`
-              <div class="mt-0.5 flex items-center justify-center gap-2 font-mono text-xs tabular-nums text-base-content/70">
-                <span data-size class="text-base-content">${kb(size)}</span>
-                ${ratio >= 2 && html`<span aria-hidden="true">·</span><span data-ratio>${T(t, "smallerThanMp3").replace("{n}", Math.round(ratio))}</span>`}
-              </div>`}
+          <div class="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-1">
+            <span aria-hidden="true"></span>
+            <div class="text-center min-w-0">
+              <div class="text-[length:var(--ms-title)] font-semibold truncate leading-tight">${titleOf(track?.name || "")}</div>
+              ${size > 0 && html`
+                <div class="mt-0.5 flex items-center justify-center gap-2 font-mono text-xs tabular-nums text-base-content/70">
+                  <span data-size class="text-base-content">${kb(size)}</span>
+                  ${ratio >= 2 && html`<span aria-hidden="true">·</span><span data-ratio>${T(t, "smallerThanMp3").replace("{n}", Math.round(ratio))}</span>`}
+                </div>`}
+            </div>
+            <button id="save" data-saved-track=${inLibrary ? "true" : "false"}
+              class=${"btn btn-ghost btn-circle btn-sm justify-self-end " + (inLibrary ? "text-primary" : "text-base-content/70")}
+              aria-pressed=${inLibrary ? "true" : "false"} data-haptic=${inLibrary ? "bump" : null}
+              aria-label=${T(t, inLibrary ? "owned" : "aSave")} onClick=${onSave}>
+              ${Icon(inLibrary ? "lucide:bookmark-check" : "lucide:bookmark-plus", "text-lg")}
+            </button>
           </div>
           <input type="range" class="range range-primary range-xs w-full" aria-label=${T(t, "aSeek")}
             min="0" max=${Math.max(1000, dur)} step="250" value=${Math.min(pos, Math.max(1000, dur))} data-haptic="off"
@@ -447,7 +488,7 @@ export function v2mStore({ S, toast }) {
     S.tab.set("play");                                 // the tap's answer is the player, right away
     const i = list.findIndex((x) => x.author === tune.author && x.file === tune.file);
     $queue.set(list);                                  // "next" follows the order you are looking at
-    playAt(i < 0 ? 0 : i, T(t, "toastSaved"));
+    playAt(i < 0 ? 0 : i);
   };
 
   const total = (tunes || []).reduce((n, x) => n + x.size, 0);

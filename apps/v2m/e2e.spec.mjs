@@ -85,7 +85,7 @@ export default [
     },
   },
   {
-    name: "магазин → трек грає й лягає в бібліотеку", run: async (h) => {
+    name: "магазин грає трек; у бібліотеку — лише кнопкою", run: async (h) => {
       await h.click('[data-tab="store"]'); await h.wait(400);
       const id = await h.attr("[data-tune]", "data-tune");
       await h.tap("[data-tune]");
@@ -95,15 +95,22 @@ export default [
       for (let i = 0; i < 20; i++) { cur = await h.attr("[data-track]", "data-track"); if (cur === id) break; await h.wait(250); }
       h.expect((await h.count("[data-track]")) === 1, "не повернувся на плеєр");
       h.expect(cur === id, "плеєр не перемкнувся на обраний трек: " + cur + " ≠ " + id);
-      // the offline copy runs in the background — wait for its outcome ON THE PLAYER, where the breadcrumb
-      // lives, before leaving for the library (and report it if it went wrong)
+      // playing must NOT keep anything: the library is a shelf, not a history log
+      h.expect((await h.attr("#save", "data-saved-track")) === "false", "трек зберігся сам, без кнопки");
+      await h.click('[data-tab="library"]'); await h.wait(400);
+      h.expect((await h.count("[data-track-row]")) === 0, "відтворення саме поклало трек у бібліотеку");
+
+      await h.click('[data-tab="play"]'); await h.wait(200);
+      await h.tap("#save");
       let saved = "";
       for (let i = 0; i < 24; i++) { saved = await h.attr("[data-track]", "data-saved"); if (saved === "ok" || saved.startsWith("err")) break; await h.wait(250); }
-      h.expect(saved === "ok", "копія в бібліотеку не зробилась: data-saved=" + (saved || "(порожньо)"));
+      h.expect(saved === "ok", "кнопка не зберегла: data-saved=" + (saved || "(порожньо)"));
+      h.expect((await h.attr("#save", "data-saved-track")) === "true", "кнопка не показує, що трек у бібліотеці");
+
       await h.click('[data-tab="library"]');
       let rows = 0;
       for (let i = 0; i < 20; i++) { rows = await h.count("[data-track-row]"); if (rows > 0) break; await h.wait(250); }
-      h.expect(rows === 1, "завантажений трек не з'явився в бібліотеці (" + rows + ")");
+      h.expect(rows === 1, "збережений трек не з'явився в бібліотеці (" + rows + ")");
     },
   },
   {

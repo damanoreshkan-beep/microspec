@@ -19,6 +19,7 @@ import { useStore } from "@nanostores/preact";
 import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { T } from "/_rt/i18n.js";
+import { Island } from "/_rt/ui.js";
 import { createPlayer } from "/_rt/video.js";
 import { VPS_PROXY, pool } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
@@ -395,8 +396,7 @@ function SourceSheet({ S, t }) {
 // so an ordinary subscribed feed stays a clean full-bleed surface. It sits UNDER the app bar, not over it.
 function SourceIsland({ S, t, src, subbed, depth }) {
   if (!depth && subbed) return null;
-  return html`<div class="fixed left-3 right-3 z-20 flex justify-center pointer-events-none" style="top:calc(env(safe-area-inset-top) + 3.6rem)">
-    <div class="pointer-events-auto flex items-center gap-1.5 min-w-0 max-w-full rounded-full border border-white/15 bg-black/60 backdrop-blur-xl p-1 shadow-[0_8px_28px_-6px_rgba(0,0,0,.6)]">
+  return html`<${Island} pinned at="top" tone="dark" className="flex items-center gap-1.5 min-w-0 max-w-full rounded-full">
       ${depth ? html`<button data-feed-back class="btn btn-ghost btn-sm btn-circle text-white shrink-0" aria-label=${T(t, "back")} onClick=${() => popFrame(S)}>${Icon("lucide:chevron-left", "text-xl")}</button>` : null}
       <${Favicon} url=${src} size="w-6 h-6" />
       <span class="min-w-0 flex items-baseline gap-1.5 pl-0.5 pr-1">
@@ -406,8 +406,8 @@ function SourceIsland({ S, t, src, subbed, depth }) {
       ${/* a hairline glass circle, not a filled ink pill: on a media surface the island is a quiet identity
             chip, and a solid white button made "subscribe" the brightest thing on a full-screen video */""}
       ${!subbed ? html`<button data-subscribe class="btn btn-sm btn-circle bg-white/10 border border-white/20 text-white shrink-0" aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: pageLabel(src), url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
-    </div>
-  </div>`;
+    <//>
+  `;
 }
 
 // What the drag reveals underneath the feed: the destination, on the side the finger is uncovering. Painted

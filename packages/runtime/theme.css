@@ -254,35 +254,49 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   }
 }
 
+/* CLAY — dark. The keys stay `signal` / `signal-light` because they are MODE identifiers, not palette
+   names: renaming would touch 59 spec.json files, 7 runtime/gate fallbacks, and would strand every
+   persisted localStorage value on a data-theme that no longer exists (unstyled first load) for zero
+   visual gain. See docs/research/claymorphism.md.
+
+   Dark clay is AUBERGINE, not ink. Measured off the reference board pair: face L=45, inner card L=35,
+   with pastel marks on top. Clay fails on NEAR-BLACK (a #0A0A0B base gives grey inflated buttons), not on
+   darkness — so the base carries a hue and sits at L≈40-50. */
 [data-theme="signal"] {
   color-scheme: dark;
-  --color-base-100: #0A0A0B; --color-base-200: #141416; --color-base-300: #222225;
-  --color-base-content: #ECECEE;
-  --color-primary: #ECECEE;   --color-primary-content: #0A0A0B;   /* ink = brand */
-  --color-secondary: #9F8CF6; --color-secondary-content: #0A0A0B; /* бронювання */
-  --color-accent: #9F8CF6;    --color-accent-content: #0A0A0B;
-  --color-neutral: #1B1B1E;   --color-neutral-content: #ECECEE;
-  --color-success: #40C173;   --color-success-content: #06120B;
-  --color-error: #F0655E;     --color-error-content: #180605;
-  --color-warning: #D9973A;   --color-warning-content: #160D02;
-  --color-info: #9AA0A6;      --color-info-content: #0A0A0B;
-  --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
+  --color-base-100: #2E2630; --color-base-200: #38303A; --color-base-300: #4A4050;
+  --color-base-content: #F0E7E4;
+  --color-primary: #F0E7E4;   --color-primary-content: #2E2630;   /* ink = brand */
+  --color-secondary: #E8AD70; --color-secondary-content: #2A2018; /* бронювання */
+  --color-accent: #E8AD70;    --color-accent-content: #2A2018;    /* terracotta — the reference CTA */
+  --color-neutral: #3A3038;   --color-neutral-content: #F0E7E4;
+  --color-success: #93C9A4;   --color-success-content: #0E2416;
+  --color-error: #E8877E;     --color-error-content: #2A0D0A;
+  --color-warning: #E0A455;   --color-warning-content: #251705;
+  --color-info: #B8A6B4;      --color-info-content: #2E2630;
+  /* radius is half the effect — below ~20px the volume reads as an ordinary drop shadow */
+  --radius-box: 1.75rem; --radius-field: 1rem; --radius-selector: 0.75rem;
   --border: 1px; --depth: 0;
 }
 
+/* CLAY — light. The measured relationship, and the one that is counter-intuitive: a raised surface sits
+   ~14 luminance BELOW its page, not above it. Two independent references agree on −14 (page 231 → face
+   217), so base-200 (the page, via `body class="bg-base-200"`) is the LIGHTER of the pair. */
 [data-theme="signal-light"] {
   color-scheme: light;
-  --color-base-100: #FFFFFF; --color-base-200: #FAFAF9; --color-base-300: #E7E7E3;
-  --color-base-content: #18181B;
-  --color-primary: #18181B;   --color-primary-content: #FFFFFF;
-  --color-secondary: #4B45B8; --color-secondary-content: #FFFFFF; /* бронювання */
-  --color-accent: #4B45B8;    --color-accent-content: #FFFFFF;
-  --color-neutral: #18181B;   --color-neutral-content: #FAFAF9;
-  --color-success: #157F45;   --color-success-content: #FFFFFF;
-  --color-error: #BE2F2A;     --color-error-content: #FFFFFF;
-  --color-warning: #8A5A00;   --color-warning-content: #FFFFFF;
-  --color-info: #6E6E76;      --color-info-content: #FFFFFF;
-  --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
+  --color-base-100: #E4DACA; --color-base-200: #EDE6DE; --color-base-300: #D6C9B4;
+  --color-base-content: #2A2320;
+  --color-primary: #2A2320;   --color-primary-content: #F5EFE6;
+  --color-secondary: #8A4A2A; --color-secondary-content: #FFF8F0; /* бронювання */
+  --color-accent: #8A4A2A;    --color-accent-content: #FFF8F0;    /* terracotta, deepened to clear 4.5:1 */
+  --color-neutral: #2A2320;   --color-neutral-content: #F0EAE0;
+  /* deepened past the 4.5 line on purpose: on base-100 these land at ~4.58 at their "natural" lightness,
+     and any component that puts opacity on the text eats that 2% margin and fails axe. */
+  --color-success: #2A6140;   --color-success-content: #FFFFFF;
+  --color-error: #9C332C;     --color-error-content: #FFFFFF;
+  --color-warning: #6E4A15;   --color-warning-content: #FFFFFF;
+  --color-info: #6B6169;      --color-info-content: #FFFFFF;
+  --radius-box: 1.75rem; --radius-field: 1rem; --radius-selector: 0.75rem;
   --border: 1px; --depth: 0;
 }
 
@@ -355,43 +369,51 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 
 [data-theme="signal"] {
   /* raised lifts by its edges: the face stays base-100, a hairline of light sits on top, the drop is deep */
-  --sf-rim:        rgba(255, 255, 255, .14);
-  --sf-edge:       rgba(255, 255, 255, .10);
-  --sf-lip:        rgba(255, 255, 255, .07);
-  --sf-shadow:     rgba(0, 0, 0, .75);
-  --sf-drop:       0 10px 24px -6px rgba(0, 0, 0, .78), 0 2px 6px -2px rgba(0, 0, 0, .6);
-  /* recessed surfaces genuinely darken — measured −12.6 (inset) and −33.2 (pressed) of the parent */
-  --sf-inset-face: color-mix(in oklch, var(--color-base-100) 84%, #000);
-  --sf-inset-top:  rgba(0, 0, 0, .8);
-  --sf-press-face: color-mix(in oklch, var(--color-base-100) 66%, #000);
-  --sf-press-top:  rgba(0, 0, 0, .92);
+  --sf-rim:        rgba(255, 240, 228, .13);
+  --sf-edge:       rgba(255, 240, 228, .10);
+  --sf-lip:        rgba(255, 240, 228, .07);
+  /* THE clay move: the cast shadow carries the SURFACE HUE, never neutral black. A grey shadow under a
+     warm surface reads as "a card with a shadow"; a hue-matched one reads as clay. Measured off the
+     reference: the shadow under the light board is #715a48 (warm brown), not grey. --app-accent is each
+     app's own hue, so every app casts its own colour. */
+  --sf-shadow:     color-mix(in oklch, var(--app-accent, #E8AD70) 16%, rgba(20, 13, 17, .78));
+  --sf-drop:       0 12px 28px -7px color-mix(in oklch, var(--app-accent, #E8AD70) 22%, rgba(20, 13, 17, .82)),
+                   0 3px 8px -3px  color-mix(in oklch, var(--app-accent, #E8AD70) 14%, rgba(20, 13, 17, .62));
+  /* recessed surfaces genuinely darken — measured −12.6 (inset) and −33.2 (pressed) of the parent.
+     They darken toward a warm brown, not #000, or the recess goes grey and the clay dies in the hole. */
+  --sf-inset-face: color-mix(in oklch, var(--color-base-100) 84%, #1A1218);
+  --sf-inset-top:  rgba(18, 11, 15, .8);
+  --sf-press-face: color-mix(in oklch, var(--color-base-100) 66%, #1A1218);
+  --sf-press-top:  rgba(18, 11, 15, .92);
 
-  --ms-vol-key:    rgba(255, 255, 255, .055);   /* key light entering the top of the box */
-  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 13%, transparent);
-  --ms-vol-rim:    rgba(255, 255, 255, .07);    /* where the wall catches the light */
-  --ms-vol-sheen:  rgba(255, 255, 255, .05);
-  --ms-vol-shade:  rgba(0, 0, 0, .85);          /* the wall's own shadow */
+  --ms-vol-key:    rgba(255, 240, 228, .055);   /* key light entering the top of the box */
+  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 14%, transparent);
+  --ms-vol-rim:    rgba(255, 240, 228, .08);    /* where the wall catches the light */
+  --ms-vol-sheen:  rgba(255, 240, 228, .055);
+  --ms-vol-shade:  rgba(20, 13, 17, .85);       /* the wall's own shadow */
 }
 [data-theme="signal-light"] {
   /* Same structure, inverted: on a light surface the rim is white and the recess is a grey face. The Δ
      values follow the measurement — inset −5%, pressed −13% of the parent's luminance. */
-  --sf-rim:        rgba(255, 255, 255, .95);
-  --sf-edge:       rgba(24, 24, 27, .09);
-  --sf-lip:        rgba(255, 255, 255, .9);
-  --sf-shadow:     rgba(24, 24, 27, .22);
-  --sf-drop:       0 8px 18px -4px rgba(24, 24, 27, .22), 0 2px 5px -2px rgba(24, 24, 27, .12);
-  --sf-inset-face: color-mix(in oklch, var(--color-base-100) 95%, #18181B);
-  --sf-inset-top:  rgba(24, 24, 27, .2);
-  --sf-press-face: color-mix(in oklch, var(--color-base-100) 87%, #18181B);
-  --sf-press-top:  rgba(24, 24, 27, .32);
+  --sf-rim:        rgba(255, 251, 244, .95);
+  --sf-edge:       rgba(74, 58, 44, .13);
+  --sf-lip:        rgba(255, 251, 244, .9);
+  /* the measured shadow, #715a48 — warm brown, hue-matched, then pulled toward the app's own accent */
+  --sf-shadow:     color-mix(in oklch, var(--app-accent, #9A5430) 18%, rgba(113, 90, 72, .30));
+  --sf-drop:       0 12px 26px -6px color-mix(in oklch, var(--app-accent, #9A5430) 22%, rgba(113, 90, 72, .34)),
+                   0 3px 8px -3px  color-mix(in oklch, var(--app-accent, #9A5430) 14%, rgba(113, 90, 72, .22));
+  --sf-inset-face: color-mix(in oklch, var(--color-base-100) 94%, #5E4630);
+  --sf-inset-top:  rgba(94, 70, 48, .22);
+  --sf-press-face: color-mix(in oklch, var(--color-base-100) 85%, #5E4630);
+  --sf-press-top:  rgba(94, 70, 48, .34);
 
   /* A light room is lit the other way round: the wash is white and the walls are grey. Weaker than the dark
      theme on purpose — a dark band over dark text is the one place this style eats legibility. */
-  --ms-vol-key:    rgba(255, 255, 255, .85);
-  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 9%, transparent);
-  --ms-vol-rim:    rgba(24, 24, 27, .07);
-  --ms-vol-sheen:  rgba(255, 255, 255, .8);
-  --ms-vol-shade:  rgba(24, 24, 27, .13);
+  --ms-vol-key:    rgba(255, 250, 242, .85);
+  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 10%, transparent);
+  --ms-vol-rim:    rgba(94, 70, 48, .09);
+  --ms-vol-sheen:  rgba(255, 250, 242, .8);
+  --ms-vol-shade:  rgba(94, 70, 48, .15);
 }
 
 /* The volume itself — painted as body's own background rather than a layer, so it is underneath every

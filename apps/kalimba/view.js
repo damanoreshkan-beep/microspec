@@ -134,10 +134,13 @@ export function kalimba({ S }) {
         <div class="shrink-0 max-w-[55%]"><${Segmented} attr="data-scale" scroll size="sm" label=${T(t, "scale")}
           items=${SCALES.map((s) => ({ id: s.id, label: T(t, s.name) }))} value=${scale} onChange=${setScale} /></div>
       </div>
-      <div class="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <button data-flow aria-pressed=${playing === "flow"} class=${`btn btn-xs shrink-0 gap-1 ${playing === "flow" ? "btn-secondary" : "btn-outline btn-secondary"}`} onClick=${() => (playing === "flow" ? stop() : flow())}>${Icon(playing === "flow" ? "lucide:square" : "lucide:sparkles")}${T(t, "sFlow")}</button>
-        ${SONGS.map((s) => html`<button data-song=${s.id} class=${`btn btn-xs shrink-0 gap-1 ${playing === s.id ? "btn-primary" : "btn-outline"}`} onClick=${() => (playing === s.id ? stop() : play(s))} key=${s.id}>${Icon(playing === s.id ? "lucide:square" : "lucide:play")}${T(t, s.name)}</button>`)}
-      </div>
+      ${/* A demo is a one-of-N CHOICE, not a transport: the rail says which piece the board is playing, and
+           picking the one already playing stops it. That is the kit's Segmented — the per-song play/square
+           icons were a play control the farm would have had to maintain in a tenth place. */""}
+      <${Segmented} attr="data-song" scroll size="sm" label=${T(t, "sFlow")} value=${playing || ""}
+        items=${[{ id: "flow", label: T(t, "sFlow"), icon: "lucide:sparkles", dot: playing === "flow" || undefined },
+                 ...SONGS.map((s) => ({ id: s.id, label: T(t, s.name) }))]}
+        onChange=${(id) => (playing === id ? stop() : id === "flow" ? flow() : play(SONGS.find((s) => s.id === id)))} />
     </div>
 
     <div ref=${region} class="flex-1 min-h-0 relative overflow-hidden">

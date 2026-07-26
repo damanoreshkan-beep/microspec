@@ -322,7 +322,7 @@ export function rave({ S }) {
 
 // ================= Pads: the matrix + settings sheet =================
 export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
-  const t = useStore(S.t), tracks = useStore($tracks), bpm = useStore($bpm), playing = useStore($playing), cur = useStore($cur), sweep = useStore($sweep);
+  const t = useStore(S.t), loc = useStore(S.locale), tracks = useStore($tracks), bpm = useStore($bpm), playing = useStore($playing), cur = useStore($cur), sweep = useStore($sweep);
   const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
   const save = async () => { try { const list = await SAVES.all(); const rec = { tracks, bpm, riff: $riff.get() }; if (list.find((it) => beatSig(it) === beatSig(rec))) { buzz(); toast?.(T(t, "toastDup", { name: autoName(t, tracks, bpm, list) })); return; } await SAVES.put("p" + Date.now(), { name: autoName(t, tracks, bpm, list), ...rec, fx: $fx.get() }); toast?.(T(t, "toastSaved")); } catch { /* */ } };
 
@@ -340,13 +340,18 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
     </div>
 
     <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)">
-      <div class="pointer-events-auto w-full max-w-xl flex items-center gap-2 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2">
-        <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} class=${`btn btn-circle shadow-lg shrink-0 ${playing ? "btn-secondary" : "btn-primary"}`} onClick=${toggle}>${Icon(playing ? "lucide:square" : "lucide:play", "text-xl")}</button>
-        <button data-gen aria-label=${T(t, "gen")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${newTrack}>${Icon("lucide:sparkles", `text-lg ${sweep >= 0 ? "animate-pulse text-accent" : ""}`)}</button>
-        <span class="flex-1 min-w-0 font-mono text-xs tabular-nums text-base-content/70 truncate text-center">${bpm} BPM</span>
-        <button data-clear aria-label=${T(t, "clear")} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => { buzz(); $tracks.set(empty()); }}>${Icon("lucide:eraser", "text-lg")}</button>
-        <button id="save" data-save aria-label=${T(t, "aSave")} class="btn btn-circle btn-outline btn-sm shrink-0" onClick=${save}>${Icon("lucide:save", "text-lg")}</button>
-        <button data-settings aria-label=${T(t, "settings")} aria-expanded=${screen === "fx"} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => openScreen("fx")}>${Icon("lucide:sliders-horizontal", "text-lg")}</button>
+      <div class="pointer-events-auto w-full max-w-xl rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2">
+        ${/* Same bar, now the kit's: the tempo is the now-playing line and the four tools are `actions`,
+             which demote into the overflow sheet with their words when the window gets narrow. */""}
+        <${Transport} locale=${loc} stopIcon playing=${playing} onToggle=${toggle} keep=${1}
+          subtitle=${`${bpm} BPM`}
+          moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
+          actions=${[
+            { id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } },
+            { id: "clear", icon: "lucide:eraser", label: T(t, "clear"), onClick: () => { buzz(); $tracks.set(empty()); }, attr: { "data-clear": true } },
+            { id: "save", icon: "lucide:save", label: T(t, "aSave"), onClick: save, attr: { "data-save": true } },
+            { id: "settings", icon: "lucide:sliders-horizontal", label: T(t, "settings"), onClick: () => openScreen("fx"), attr: { "data-settings": true } },
+          ]} />
       </div>
     </div>
 

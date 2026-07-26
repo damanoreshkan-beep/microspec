@@ -37,6 +37,8 @@ export const SYS = {
   aNext: { en: "Next track", uk: "Наступний трек" },
   aSeek: { en: "Seek", uk: "Перемотати" },
   aRepeat: { en: "Repeat", uk: "Повтор" },
+  aShuffle: { en: "Shuffle", uk: "Перемішати" },
+  more: { en: "More", uk: "Ще" },
 };
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 

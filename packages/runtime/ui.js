@@ -161,13 +161,21 @@ export function Transport({
   onPrev, onNext,
   pos = 0, dur = 0, onSeek,                            // seek bar appears when onSeek is given
   repeat, onRepeat,                                    // repeat button appears when onRepeat is given
+  shuffle = false, onShuffle,                          // shuffle button appears when onShuffle is given
   title, subtitle,                                     // optional now-playing block
   lead, trail,                                         // optional slots either side of the title row
   stopIcon = false,                                    // rave-style square instead of a pause bar
   size = "md",                                         // "md" | "sm"
   disabled = false,
   className = "",
-  extra,                                               // an app-specific control after the skip row (rave's generate)
+  // The app's OWN controls — rave's generate, handpan's record, fmradio's power. One slot was never enough
+  // (rave's pad row carries four, handpan five), and an app that cannot express its controls through the kit
+  // keeps its hand-rolled row instead — which is how the farm ended up with six transports.
+  //   { id, icon, label, onClick, active, tone: "accent"|"error", pulse, pressed, disabled, attr: {…} }
+  // `label` is the accessible name AND the word shown in the overflow sheet, so it is required.
+  actions = [],
+  keep = 2,                                            // how many actions stay inline in a narrow container
+  moreOpen, onMore, onMoreClose,                        // history-backed overflow (S.screen) — see below
   // scrub lifecycle: start (grabbed) → scrub (dragging, so the app can show the position it is heading to)
   // → end + onSeek (committed). Apps need all three: the position readout must follow the thumb, but the
   // engine must only be told once, on release.
@@ -179,13 +187,19 @@ export function Transport({
   // narrows #view to 200px while the window stays 384px (so a min-[380px] rule still matched and the row
   // kept its wide gaps — that is exactly how this shipped 4px over twice), and .ms-side puts the transport
   // in a narrow column on a full-width phone. Both are container-narrow and viewport-wide.
-  const big = size === "sm"
-    ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
-    : "w-[var(--ms-ctl)] h-[var(--ms-ctl)] @max-[300px]:w-11 @max-[300px]:h-11";
+  // "hero" is the third size because some apps ARE their play button: outpost's core sits inside a stack of
+  // halo rings and is the screen's subject, not a control in a row. Without it in the kit that app keeps a
+  // hand-rolled button forever — the variant costs one line here and stops a fork.
+  const hero = size === "hero";
+  const big = hero
+    ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 !bg-base-100/70 backdrop-blur-xl border border-base-content/15 !text-base-content shadow-xl"
+    : size === "sm"
+      ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
+      : "w-[var(--ms-ctl)] h-[var(--ms-ctl)] @max-[300px]:w-11 @max-[300px]:h-11";
   const side = "btn-sm";
   const max = Math.max(1000, dur || 0);
 
-  const head = (title != null || lead || trail) ? html`
+  const head = (title != null || subtitle != null || lead || trail) ? html`
     <div class="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-1">
       <span class="justify-self-start">${lead || null}</span>
       <div class="text-center min-w-0">
@@ -208,29 +222,76 @@ export function Transport({
       </div>
     </div>` : null;
 
+  // An app's control, as an icon button. The SAME node is what the overflow sheet lists with its word, so a
+  // demoted control keeps its identity (and its `attr` hooks, which the e2e tests are pinned to).
+  const actionBtn = (a, cls) => html`<button key=${a.id} ...${a.attr || {}} id=${a.id || null}
+    aria-label=${a.label} aria-pressed=${a.pressed == null ? null : String(!!a.pressed)}
+    disabled=${a.disabled || false} data-haptic=${a.haptic || null} onClick=${a.onClick}
+    class=${`btn btn-circle btn-sm shrink-0 ${cls || ""} ${a.pulse ? "animate-pulse" : ""} ${
+      a.active
+        ? (a.tone === "error" ? "btn-error" : a.tone === "accent" ? "btn-accent" : "bg-primary/15 text-primary border border-primary/30")
+        : (a.tone === "accent" ? "btn-outline btn-accent" : "btn-ghost text-base-content/70")}`}>
+    ${Icon(a.icon, "text-lg")}</button>`;
+
+  // Compact by DEMOTION, never deletion. Past `keep`, an action is hidden by a CONTAINER query and the same
+  // control reappears — with its word this time — inside the overflow sheet. Both branches are in the DOM, so
+  // the decision is CSS's (it knows the real width; JS at render does not) and nothing has to be measured.
+  // Without `onMore` an app gets no overflow at all and every action stays inline: the sheet is history-backed
+  // routing, and routing is the caller's atom (S.screen), never a component's private state.
+  const overflow = onMore ? actions.slice(keep) : [];
+  const inline = onMore ? actions.slice(0, keep) : actions;
+  const acts = actions.length ? html`
+    <span class="w-px h-7 bg-base-content/12 mx-0.5 shrink-0" aria-hidden="true"></span>
+    ${inline.map((a) => actionBtn(a))}
+    ${overflow.map((a) => actionBtn(a, "@max-[340px]:hidden"))}
+    ${overflow.length ? html`<button data-tp-more aria-label=${sys("more", locale)} onClick=${onMore}
+      class="btn btn-circle btn-sm btn-ghost text-base-content/70 shrink-0 hidden @max-[340px]:inline-flex">
+      ${Icon("lucide:ellipsis", "text-lg")}</button>` : null}` : null;
+
   return html`
     <div data-transport class=${`@container flex flex-col gap-2 ${className}`}>
       ${head}
       ${scrub}
-      <div class="flex items-center justify-center gap-4 @max-[300px]:gap-1">
-        ${onRepeat ? html`
-          <button id="repeat" data-repeat=${repeat || "off"} aria-label=${sys("aRepeat", locale)}
-            aria-pressed=${repeat && repeat !== "off" ? "true" : "false"}
-            class=${`btn btn-ghost btn-circle btn-sm ${repeat && repeat !== "off" ? "text-primary" : "text-base-content/70"}`}
-            onClick=${onRepeat}>${Icon(REPEAT_ICON[repeat] || REPEAT_ICON.off, "text-lg")}</button>` : null}
+      <div data-tp-row class="flex flex-wrap items-center justify-center gap-4 @max-[340px]:gap-1.5 @max-[300px]:gap-1">
+        ${/* Canonical order, the one every phone player has taught the thumb: shuffle · prev · PLAY · next ·
+             repeat. The two mode toggles sit on the outside, the three transport keys in the middle. */
+          onShuffle ? html`
+          <button id="shuffle" data-shuffle=${shuffle ? "on" : "off"} aria-label=${sys("aShuffle", locale)}
+            aria-pressed=${shuffle ? "true" : "false"}
+            class=${`btn btn-ghost btn-circle btn-sm ${shuffle ? "text-primary" : "text-base-content/70"}`}
+            onClick=${onShuffle}>${Icon("lucide:shuffle", "text-lg")}</button>` : null}
         ${onPrev ? html`
           <button id="prev" class=${`btn btn-ghost btn-circle ${side}`} aria-label=${sys("aPrev", locale)}
             disabled=${disabled} onClick=${onPrev}>${Icon("lucide:skip-back", "text-xl")}</button>` : null}
         <button id="play" data-playing=${playing} disabled=${disabled}
           class=${`btn btn-primary btn-circle ${big} shadow-lg shadow-primary/20`}
           aria-label=${sys(playing ? (stopIcon ? "aStop" : "aPause") : "aPlay", locale)} onClick=${onToggle}>
-          ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", "text-2xl")}
+          ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", hero ? "text-3xl" : "text-2xl")}
         </button>
         ${onNext ? html`
           <button id="next" class=${`btn btn-ghost btn-circle ${side}`} aria-label=${sys("aNext", locale)}
             disabled=${disabled} onClick=${onNext}>${Icon("lucide:skip-forward", "text-xl")}</button>` : null}
-        ${extra ? html`<span class="w-px h-7 bg-base-content/12 mx-0.5" aria-hidden="true"></span>${extra}` : null}
+        ${onRepeat ? html`
+          <button id="repeat" data-repeat=${repeat || "off"} aria-label=${sys("aRepeat", locale)}
+            aria-pressed=${repeat && repeat !== "off" ? "true" : "false"}
+            class=${`btn btn-ghost btn-circle btn-sm ${repeat && repeat !== "off" ? "text-primary" : "text-base-content/70"}`}
+            onClick=${onRepeat}>${Icon(REPEAT_ICON[repeat] || REPEAT_ICON.off, "text-lg")}</button>` : null}
+        ${acts}
       </div>
+      ${overflow.length ? html`<${Sheet} id="tp-more" open=${!!moreOpen} onClose=${onMoreClose}
+        title=${sys("more", locale)} icon="lucide:ellipsis" locale=${locale}>
+        <div class="flex flex-col gap-1" data-tp-sheet>
+          ${/* Every action, not just the demoted ones: a menu that lists a different set depending on how wide
+               the window happens to be is a menu you cannot learn. The icons above are a shortcut to it.
+               No `id`/`attr` down here — those hooks belong to the inline button, and duplicating them would
+               give every e2e selector two matches and the document two elements with one id. */
+            actions.map((a) => html`<button key=${a.id} data-tp-act=${a.id || null}
+            disabled=${a.disabled || false} data-haptic=${a.haptic || null}
+            onClick=${() => { onMoreClose?.(); a.onClick?.(); }}
+            class=${`btn btn-ghost justify-start gap-3 h-[var(--ms-ctl)] min-h-0 ${a.active ? "text-primary" : ""}`}>
+            ${Icon(a.icon, "text-[var(--ms-icon)] shrink-0")}<span class="truncate">${a.label}</span></button>`)}
+        </div>
+      <//>` : null}
     </div>`;
 }
 

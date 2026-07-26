@@ -5,8 +5,8 @@ export default [
     name: "мікшер: 6 шарів + пауза + таймер рендеряться", run: async (h) => {
       await ready(h); await h.wait(300);
       h.expect((await h.count("[data-layer]")) === 20, "немає 20 шарів звуку");
-      h.expect((await h.count("#pause")) === 1, "немає кнопки пауза/плей");
-      h.expect((await h.prop("#pause", "disabled")) === true, "пауза активна без звуків (нічого не грає)");
+      h.expect((await h.count("#play")) === 1, "немає кнопки пауза/плей");
+      h.expect((await h.prop("#play", "disabled")) === true, "пауза активна без звуків (нічого не грає)");
       h.expect((await h.count("[data-timer]")) === 3, "немає чипів таймера сну");
     },
   },
@@ -24,11 +24,11 @@ export default [
     name: "пауза активна коли грає і перемикає стан", run: async (h) => {
       await ready(h);
       await h.click('[data-layer="ocean"] button'); await h.wait(200);
-      h.expect((await h.prop("#pause", "disabled")) !== true, "пауза не активувалась при звуку");
-      const a0 = await h.attr("#pause", "aria-label");
-      await h.click("#pause"); await h.wait(150);
-      h.expect(a0 !== (await h.attr("#pause", "aria-label")), "пауза не перемкнула стан");
-      await h.click("#pause"); await h.wait(150);
+      h.expect((await h.prop("#play", "disabled")) !== true, "пауза не активувалась при звуку");
+      const a0 = await h.attr("#play", "aria-label");
+      await h.click("#play"); await h.wait(150);
+      h.expect(a0 !== (await h.attr("#play", "aria-label")), "пауза не перемкнула стан");
+      await h.click("#play"); await h.wait(150);
     },
   },
   {

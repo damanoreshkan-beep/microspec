@@ -133,6 +133,20 @@ async function preflight(appdir) {
     errs.push(`hand-rolled bottom sheet (\`modal-bottom\`) in ${srcFile} — import { Sheet } from "/_rt/ui.js" instead. The kit owns the shell (glass, drag-to-dismiss, title row, close, backdrop); pass open/onClose from your S.screen atom so Back still closes it.`);
   }
 
+  // ONE transport for the whole farm, same argument as the sheet above and the same static ban. Six apps had
+  // hand-rolled a play control (rave's pad row, handpan twice, fmradio, drift, ambient, synesth, kalimba,
+  // breathe) and they had already drifted: some square-stop and some pause-bar, some with a seek bar and some
+  // without, three different a11y labels for "Play". A play/pause toggle is the one control whose behaviour
+  // (auto-advance, repeat modes, scrub lifecycle, the compact ladder) is worth getting right ONCE.
+  //   A per-item play button in a LIST is not a transport — it plays row N, it has no state to keep — so the
+  // ban is scoped to a control that toggles between the two icons, which only a transport does.
+  if (/lucide:play/.test(src) && /lucide:(pause|square)/.test(src)) {
+    const toggles = /\?\s*"lucide:(pause|square)"\s*:\s*"lucide:play"|\?\s*"lucide:play"\s*:\s*"lucide:(pause|square)"/.test(src);
+    if (toggles && !/\bTransport\b/.test(src)) {
+      errs.push(`hand-rolled play/pause control in ${srcFile} — import { Transport } from "/_rt/ui.js" instead. Every control is opt-in (pass onPrev/onNext/onSeek/onRepeat/onShuffle and it appears), it carries its own a11y labels in both locales, and it is the only one that compacts correctly in a split-screen window.`);
+    }
+  }
+
   // No emoji anywhere in app source — they render as OS-specific colour clip-art (cheap, inconsistent, off-brand)
   // and can't be themed. Use a crafted vector instead: an iconify glyph (lucide:*, mdi:*), a runtime SVG
   // (e.g. /_rt/zodiac.js `Sign`), or — where the render context can't hold a component (a native <option>,

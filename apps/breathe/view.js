@@ -5,7 +5,7 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Segmented } from "/_rt/ui.js";
+import { Segmented, Transport } from "/_rt/ui.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 // seconds: inhale · hold · exhale · hold
@@ -21,6 +21,7 @@ const readTech = () => { try { const k = localStorage.getItem("breathe.tech"); r
 
 export function breathe({ S }) {
   const t = useStore(S.t);
+  const loc = useStore(S.locale);
   const [tech, setTech] = useState(readTech);
   const [playing, setPlaying] = useState(true);
   const orbRef = useRef(), phaseRef = useRef(), countRef = useRef();
@@ -69,7 +70,7 @@ export function breathe({ S }) {
     <div class="flex flex-col items-center gap-3 -mt-4">
       <div ref=${phaseRef} data-phase class="text-xl font-semibold text-base-content/80 h-7"></div>
       <div ref=${countRef} class="text-6xl font-bold tabular-nums leading-none h-14"></div>
-      <button id="play" aria-label=${playing ? T(t, "aPause") : T(t, "aStart")} class="btn btn-circle btn-primary btn-lg shadow-lg" onClick=${() => setPlaying((p) => !p)}>${Icon(playing ? "lucide:pause" : "lucide:play", "text-2xl")}</button>
+      <${Transport} locale=${loc} size="sm" playing=${playing} onToggle=${() => setPlaying((p) => !p)} />
     </div>
   </div>`;
 }

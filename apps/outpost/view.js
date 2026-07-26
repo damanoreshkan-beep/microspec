@@ -16,7 +16,7 @@ import { Fragment } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Segmented } from "/_rt/ui.js";
+import { Segmented, Transport } from "/_rt/ui.js";
 import { createEngine, audioSupported, noiseSource as src, filter as bqf, lfo, noteFreq } from "/_rt/audio.js";
 import { STATIONS, LAYERS, station, reactorVoices, faderGain, semiToRatio } from "/_rt/scifi.js";
 
@@ -74,6 +74,7 @@ function buildEngine(st) {
 
 export function outpost({ S }) {
   const t = useStore(S.t);
+  const loc = useStore(S.locale);
   const [stId, setStId] = useState("bridge");           // a balanced station makes the seeded still self-evident
   const [faders, setFaders] = useState(() => ({ ...station("bridge").levels }));
   const [playing, setPlaying] = useState(false);
@@ -121,9 +122,8 @@ export function outpost({ S }) {
         <div class=${`absolute w-44 h-44 rounded-full transition-opacity duration-700 ${playing ? "opacity-100 animate-pulse" : "opacity-0"}`} style="background:radial-gradient(closest-side, rgba(159,140,246,.35), transparent 72%)"></div>
         <div class="absolute w-40 h-40 rounded-full border border-base-content/10"></div>
         <div class=${`absolute w-32 h-32 rounded-full border ${playing ? "border-primary/40" : "border-base-content/10"}`}></div>
-        <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aPause" : "aPlay")} onClick=${toggle} disabled=${!audioSupported} class="relative w-24 h-24 rounded-full bg-base-100/70 backdrop-blur-xl border border-base-content/15 grid place-items-center shadow-xl active:scale-95 transition disabled:opacity-40">
-          ${Icon(playing ? "lucide:pause" : "lucide:play", "text-3xl text-base-content")}
-        </button>
+        ${/* The core is the kit's Transport at its `hero` size — the halo rings above stay this app's own. */""}
+        <${Transport} locale=${loc} size="hero" playing=${playing} onToggle=${toggle} disabled=${!audioSupported} />
       </div>
       <div class="-mt-3 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-base-content/55">
         <span class=${`w-1.5 h-1.5 rounded-full ${playing ? "bg-primary animate-pulse" : "bg-base-content/30"}`}></span>

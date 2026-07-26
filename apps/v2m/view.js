@@ -10,7 +10,7 @@ import { wakeLock } from "/_rt/sensors.js";
 import { gate } from "/_rt/gate.js";
 import { Island, Segmented, Transport, Stage } from "/_rt/ui.js";
 import { advance, cycleRepeat } from "/_rt/player.js";
-import { MIRRORS, parseAuthors, parseListing, titleOf, trackId, trackURL, authorURL, mp3Ratio, normGain } from "/_rt/v2m.js";
+import { MIRRORS, parseAuthors, parseListing, titleOf, trackId, trackURL, authorURL, normGain } from "/_rt/v2m.js";
 import { ByteStage, bindAudio, bindProgress, setTuneBytes } from "./viz.js";
 
 // ── audio capability (guarded so the headless gate + unsupported browsers still render) ──
@@ -48,6 +48,7 @@ const $owned = atom(new Set());
 const $queue = atom([]);
 const $qIndex = atom(-1);
 const $repeat = atom("off");                           // off → all → one, the standard cycle
+const $shuffle = atom(false);                          // the logic has always been in advance(); this is its switch
 let notify = null;                                     // the mounted view's toast, if there is one
 
 // ── audio-engine singletons ──
@@ -339,7 +340,7 @@ async function playIndex(idx) {
 // and still moves on when you press it. Unit-tested there; this file only says what to play.
 function step(dir, manual) {
   const q = queueList();
-  const next = advance($qIndex.get(), q.length, { step: dir, repeat: $repeat.get(), manual });
+  const next = advance($qIndex.get(), q.length, { step: dir, repeat: $repeat.get(), shuffle: $shuffle.get(), manual });
   if (next < 0) { pause(); return false; }
   return playIndex(next);
 }
@@ -376,11 +377,11 @@ export function v2m({ S, toast, undo }) {
   const size = useStore($size);
   const err = useStore($err);
   const saveState = useStore($saved);
-  const ratio = mp3Ratio(size, dur / 1000);
   const tunes = useStore($tunes);
   const owned = useStore($owned);
   const loc = useStore(S.locale);
   const repeat = useStore($repeat);
+  const shuffle = useStore($shuffle);
   const hasQueue = ($queue.get().length || (tunes || []).length) > 0;
   const inLibrary = owned.has(track?.id);
   useEffect(() => {                                    // skip-forward works before the store is opened
@@ -414,11 +415,15 @@ export function v2m({ S, toast, undo }) {
             onNext=${hasQueue ? () => playNext() : null}
             repeat=${repeat}
             onRepeat=${() => $repeat.set(cycleRepeat($repeat.get()))}
+            shuffle=${shuffle}
+            onShuffle=${hasQueue ? () => $shuffle.set(!$shuffle.get()) : null}
             pos=${pos} dur=${dur} onSeek=${(v) => { scrubbing = false; seek(v); }}
             onScrubStart=${() => { scrubbing = true; }}
             onScrub=${(v) => { scrubbing = true; $posMs.set(v); }}
             title=${titleOf(track?.name || "")}
-            subtitle=${size > 0 ? html`<span data-size>${kb(size)}</span>${ratio >= 2 ? html` · <span data-ratio>${T(t, "smallerThanMp3").replace("{n}", Math.round(ratio))}</span>` : null}` : null}
+            ${/* Just the kilobytes. "×40 smaller than MP3" was the app explaining its own joke — the number
+                 is the wow, and a caption telling you to be impressed is the hand-holding rule's whole point. */""}
+            subtitle=${size > 0 ? html`<span data-size>${kb(size)}</span>` : null}
             trail=${html`
               <button id="save" data-saved-track=${inLibrary ? "true" : "false"}
                 class=${"btn btn-ghost btn-circle btn-sm " + (inLibrary ? "text-primary" : "text-base-content/70")}

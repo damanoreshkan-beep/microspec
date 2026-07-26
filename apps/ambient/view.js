@@ -7,6 +7,7 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Transport } from "/_rt/ui.js";
 import { audioSupported, noiseSource as src, filter as bqf, lfo, strike, createEngine } from "/_rt/audio.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -107,6 +108,7 @@ function startLayer(eng, key) {
 
 export function ambient({ S }) {
   const t = useStore(S.t);
+  const loc = useStore(S.locale);
   const [active, setActive] = useState(() => new Set());
   const [vols, setVols] = useState({});
   const [paused, setPaused] = useState(false);
@@ -145,10 +147,11 @@ export function ambient({ S }) {
   const anyOn = active.size > 0;
 
   return html`<div class="flex flex-col items-center gap-4 pt-1">
-    <div class="flex items-center gap-3">
-      <button id="pause" aria-label=${paused ? T(t, "aResume") : T(t, "aPause")} disabled=${!anyOn} class="btn btn-circle btn-primary btn-lg shadow-lg disabled:opacity-40" onClick=${() => { ensure(); setPaused((p) => !p); }}>${Icon(paused || !anyOn ? "lucide:play" : "lucide:pause", "text-2xl")}</button>
-      ${anyOn ? html`<span class="text-sm text-base-content/70 tabular-nums">${active.size} · ${paused ? T(t, "aResume") : T(t, "playing")}</span>` : null}
-    </div>
+    ${/* One mixer, one transport: how many layers are running is the now-playing line. Disabled until a
+         layer is on — a play button that starts silence is a lie the old row told with a dimmed icon. */""}
+    <${Transport} locale=${loc} size="sm" playing=${anyOn && !paused} disabled=${!anyOn}
+      onToggle=${() => { ensure(); setPaused((p) => !p); }}
+      subtitle=${anyOn ? `${active.size} · ${paused ? T(t, "aResume") : T(t, "playing")}` : null} />
 
     <div class="flex flex-col gap-4 w-full max-w-[420px]">
       ${GROUPS.map(({ cat, items }) => html`<div class="flex flex-col gap-2" key=${cat}>

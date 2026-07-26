@@ -56,11 +56,14 @@ export default [
   {
     name: "магазин → трек грає й лягає в бібліотеку", run: async (h) => {
       await h.click('[data-tab="store"]'); await h.wait(400);
-      await h.tap("[data-tune]"); await h.wait(1200);
+      await h.tap("[data-tune]");
+      for (let i = 0; i < 20; i++) { if ((await h.count("[data-track]")) === 1) break; await h.wait(250); }
       h.expect((await h.count("[data-track]")) === 1, "не повернувся на плеєр");
       h.expect((await h.attr("#play", "data-playing")) === "true", "трек із магазину не заграв");
-      await h.click('[data-tab="library"]'); await h.wait(400);
-      h.expect((await h.count("[data-track-row]")) === 1, "завантажений трек не з'явився в бібліотеці");
+      await h.click('[data-tab="library"]');
+      let rows = 0;
+      for (let i = 0; i < 20; i++) { rows = await h.count("[data-track-row]"); if (rows > 0) break; await h.wait(250); }
+      h.expect(rows === 1, "завантажений трек не з'явився в бібліотеці (" + rows + ")");
     },
   },
   {

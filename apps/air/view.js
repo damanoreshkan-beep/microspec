@@ -14,10 +14,11 @@ const urlFor = (lat, lng) =>
   "&current=european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,ragweed_pollen,olive_pollen" +
   "&hourly=european_aqi&timezone=auto&forecast_days=2";
 
-const AQ = [["#60CA86", "#136A3B"], ["#9BCB3C", "#486410"], ["#E4C13A", "#725A00"], ["#EFA577", "#99440F"], ["#F4A198", "#AC2E23"], ["#E2A0DA", "#8E2A86"]];
+const AQ = [["#41C06F", "#177F46"], ["#9BCB3C", "#5A7D14"], ["#E4C13A", "#8A6D00"], ["#E7742E", "#A24810"], ["#EC5A4A", "#B63125"], ["#C94BBA", "#8E2A86"]];
+const AQ_INK = [["#A1BCAB", "#395D49"], ["#ABBC8A", "#516130"], ["#C8B56C", "#6D5C1B"], ["#E0AB8A", "#8D4C23"], ["#EDA29A", "#A4362C"], ["#E2A0DA", "#8E2A86"]];
 const clamp = (b, n) => Math.max(0, Math.min(n, b));
 const fillFor = (b) => AQ[clamp(b, 5)][0];                                   
-const inkFor = (b) => `light-dark(${AQ[clamp(b, 5)][1]},${AQ[clamp(b, 5)][0]})`; 
+const inkFor = (b) => `light-dark(${AQ_INK[clamp(b, 5)][1]},${AQ_INK[clamp(b, 5)][0]})`; 
 const AQI_KEYS = ["aqiGood", "aqiFair", "aqiModerate", "aqiPoor", "aqiVeryPoor", "aqiExtreme"];
 const POLLEN_INK = [null, inkFor(0), inkFor(2), inkFor(3), inkFor(4)];
 const POLLEN_DOT = [null, fillFor(0), fillFor(2), fillFor(3), fillFor(4)];

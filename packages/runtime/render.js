@@ -568,15 +568,51 @@ const QR_LBL = {
   uk: { open: "Відкрити на телефоні", title: "Відкрити на телефоні", stay: "Залишитись на десктопі" },
 };
 
+// ── the chrome contract ───────────────────────────────────────────────────────────────────────────────
+// --hdr-h and --dock-h/--dock-w are the numbers every fit screen's height math is built from, and they must
+// be MEASURED rather than declared. The dock learned this the expensive way (a hand-written 4.25rem drifted
+// past the real footprint and put drift's transport island under the bar, with every gate green). The
+// header had NOT learned it: --hdr-h was a constant in theme.css while the element's height came from a
+// Tailwind class, so the two were connected by nothing but intention — and watch mode broke on exactly that
+// seam. Setting --hdr-h to 2.25rem compacted the MATH while the element stayed 56px, and every fit screen
+// on a watch was 20px too tall: the transport was cut off the bottom, and no gate could see it because
+// nothing overflowed — the page was simply the wrong size.
+//
+// One mechanism for both, so there is no second thing to remember: CSS decides how the chrome LOOKS, the
+// element reports what it MEASURES, everything else consumes the published number.
+// The header's value includes its safe-area padding (offsetHeight does), so the fit math subtracts --hdr-h
+// alone — one term, not two that can disagree.
+function usePublishedChrome(kind) {
+  const ref = useRef();
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const apply = () => {
+      const s = document.documentElement.style;
+      const h = el.offsetHeight;
+      if (kind === "header") { if (h) s.setProperty("--hdr-h", `${h}px`); return; }
+      const rail = (getComputedStyle(el).gridAutoFlow || "").includes("row");
+      s.setProperty("--dock-h", rail ? "0px" : `${h + 12}px`);   // +12 = the 0.75rem it floats above
+      s.setProperty("--dock-w", rail ? `${el.offsetWidth}px` : "0px");
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return ref;
+}
+
 function AppBar() {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
   const qL = QR_LBL[loc] || QR_LBL.en;
+  const hdrRef = usePublishedChrome("header");
   // Modern header: NO bar, NO border — a top-down gradient scrim (base bg → transparent) with a light blur,
   // so the title floats and content fades UP into it on scroll instead of hitting a welded hairline. The
   // title is the app's wordmark (mono/uppercase/heavy, styled via [data-title]). Height min-h-14 (3.5rem).
   // The "open on phone" trigger is desktop-only (hidden lg:) — a QR of THIS page to hop to your phone; it
   // stays in the DOM on mobile (display:none) so nothing needs a special build, and it's harmless there.
-  return html`<header class="navbar bg-gradient-to-b from-base-100 via-base-100/85 to-transparent backdrop-blur-sm sticky top-0 z-30 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+  return html`<header ref=${hdrRef} class="navbar bg-gradient-to-b from-base-100 via-base-100/85 to-transparent backdrop-blur-sm sticky top-0 z-30 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 
 // Desktop "open on phone": a QR of the current URL so you can continue on a phone, with an explicit "stay on
@@ -594,7 +630,10 @@ function QrModal() {
   const { boxRef, grip } = useSheetDrag(close);
   return html`<dialog id="qr-invite" ref=${ref} class="modal modal-bottom" onClose=${close}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col items-center gap-4">${grip}
     <div class="flex items-center justify-between w-full"><h3 class="font-bold text-lg flex items-center gap-2">${Icon("lucide:smartphone", "text-primary")} ${L.title}</h3><button aria-label=${L.stay} class="btn btn-ghost btn-sm btn-circle" onClick=${close}>${Icon("lucide:x", "text-xl")}</button></div>
-    <div class="rounded-2xl bg-white p-3">${uri ? html`<img data-qr src=${uri} alt="" width="216" height="216" class="block w-52 h-52" />` : html`<div class="w-52 h-52"></div>`}</div>
+    ${/* 13rem is a comfortable QR on a phone and 232px of hard minimum on a watch, where the whole screen is
+         208. A square that cannot shrink is the one shape guaranteed to overflow the smallest viewport, so
+         the size is a CEILING (max-w-full + h-auto) rather than a fixed pair. */""}
+    <div class="rounded-2xl bg-white p-3 max-w-full">${uri ? html`<img data-qr src=${uri} alt="" width="216" height="216" class="block w-52 h-auto max-w-full" />` : html`<div class="w-52 max-w-full aspect-square"></div>`}</div>
     <div class="font-mono text-xs text-base-content/55 break-all text-center max-w-full">${url}</div>
     <button data-qr-stay class="btn btn-primary rounded-2xl w-full" onClick=${close}>${L.stay}</button>
   </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
@@ -626,31 +665,7 @@ function Dock() {
   // OVERFLOWED — the dock is fixed, so it just covered what was beneath it).
   // The element knows its own height; ask it. This also absorbs what a constant never could: a longer
   // locale's labels wrapping, a user's larger font scale, a future change to the dock's padding.
-  const navRef = useRef();
-  useEffect(() => {
-    const el = navRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const GAP = 12;   // the 0.75rem the island floats above the safe area (its inline `bottom`)
-    // Watch mode turns the dock into a vertical RAIL on the right (theme.css, ≤300px wide). Then its
-    // footprint is a width, not a height — and --dock-h must go to 0, or every consumer of that number
-    // keeps reserving 68px of a 248px screen for a dock that is no longer at the bottom. Both numbers are
-    // measured from the element for the same reason the height always was: the element knows, a constant
-    // guesses. Orientation is read off the computed style rather than a second media query, so there is one
-    // place that decides what "watch" means and it is the stylesheet.
-    const apply = () => {
-      const h = el.offsetHeight, w = el.offsetWidth;
-      // `|| ""` because this also runs under linkedom in preflight, whose getComputedStyle returns a bag
-      // with no layout properties in it at all — and an undefined there took the whole app down at boot.
-      const rail = (getComputedStyle(el).gridAutoFlow || "").includes("row");
-      const s = document.documentElement.style;
-      s.setProperty("--dock-h", rail ? "0px" : `${h + GAP}px`);
-      s.setProperty("--dock-w", rail ? `${w}px` : "0px");
-    };
-    apply();
-    const ro = new ResizeObserver(apply);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const navRef = usePublishedChrome("dock");
   // An island, not a bar welded to the screen edge: a floating pill that the content passes under, blurred
   // rather than opaque. `data-dock` is the hook theme.css styles the labels through — deliberately an
   // attribute and not a class, because the old selector was `nav.fixed.bottom-0` and this very redesign

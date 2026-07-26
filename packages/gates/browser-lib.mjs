@@ -282,9 +282,8 @@ export async function runDesignChecks(ev) {
   await sleep(250);
   // cards (data apps) → check each card collapses; no cards (tool/custom view) → check the view container doesn't overflow
   const watch = await ev(() => {
-    // Name the offender. Without this the check reports "+17px" and nothing else, which turns a fix into
-    // guesswork — and guessing cost two wrong commits before this line existed. Same scan the responsive
-    // matrix does: the element whose right edge reaches furthest past the box.
+    // Name the offender — a check that reports a magnitude with no subject turns every fix into guesswork.
+    // Same scan the responsive matrix does: the element whose right edge reaches furthest past the box.
     const widest = (box) => {
       let far = box.getBoundingClientRect().right, sel = "?";
       for (const el of box.querySelectorAll("*")) {

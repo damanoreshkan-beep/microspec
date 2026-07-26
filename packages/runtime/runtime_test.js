@@ -3376,6 +3376,38 @@ Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable
   assert(!/\bid=\$\{a\.id/.test(row) && !/\.\.\.\$\{a\.attr/.test(row), "sheet row duplicates the inline hooks");
 });
 
+Deno.test("the chrome contract: a measured number may never be overwritten by a declared one", async () => {
+  // THE class of bug this closes, and it has now bitten twice. --dock-h and --hdr-h are what every fit
+  // screen's height math is built from. The dock is MEASURED (render.js publishes its real footprint); the
+  // header was DECLARED in theme.css while its actual height came from a Tailwind class — two facts joined
+  // by nothing but intention. Watch mode then compacted the token to 2.25rem, the element stayed 56px, and
+  // every fit screen on a watch was 20px too tall with its transport cut off the bottom. No gate could see
+  // it: nothing overflowed, nothing was hidden under the dock — the page was simply the wrong size.
+  //
+  // The rule that makes it impossible rather than merely remembered: a media query may compact the ELEMENT,
+  // never the published number. Write the token and the two disagree; style the element and the measurement
+  // follows on its own.
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const render = await Deno.readTextFile(new URL("./render.js", import.meta.url));
+
+  for (const v of ["--hdr-h", "--dock-h", "--dock-w"]) {
+    assert(render.includes(`setProperty("${v}"`), `${v} is not measured — render.js never publishes it`);
+  }
+  // Both chrome elements report through ONE mechanism, so there is no second thing to remember.
+  assert(/function usePublishedChrome/.test(render), "the two chrome measurements have drifted into two mechanisms");
+  assert((render.match(/usePublishedChrome\(/g) || []).length >= 3, "a chrome element is not wired to the measurement");
+  assert(/<header ref=\$\{/.test(render), "the header is not measured — its height is a guess again");
+
+  // …and no media query re-declares one of them. Outside a media query they are the pre-JS FALLBACK, which
+  // is legitimate and is why :root still carries them.
+  for (const m of css.matchAll(/@media[^{]+\{([\s\S]*?)\n\}/g)) {
+    for (const v of ["--hdr-h", "--dock-h", "--dock-w"]) {
+      assert(!new RegExp(`${v}\\s*:`).test(m[1]),
+        `a media query sets ${v} — that overwrites a MEASURED number with a guess. Compact the element instead.`);
+    }
+  }
+});
+
 Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager, the tap floor holds", async () => {
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   const at = css.indexOf("@media (max-width: 300px)");

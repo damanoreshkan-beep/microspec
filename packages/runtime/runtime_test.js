@@ -3104,6 +3104,25 @@ Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable
   assert(!/\bid=\$\{a\.id/.test(row) && !/\.\.\.\$\{a\.attr/.test(row), "sheet row duplicates the inline hooks");
 });
 
+Deno.test("the chrome contract: a measured number may never be overwritten by a declared one", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const render = await Deno.readTextFile(new URL("./render.js", import.meta.url));
+
+  for (const v of ["--hdr-h", "--dock-h", "--dock-w"]) {
+    assert(render.includes(`setProperty("${v}"`), `${v} is not measured — render.js never publishes it`);
+  }
+  assert(/function usePublishedChrome/.test(render), "the two chrome measurements have drifted into two mechanisms");
+  assert((render.match(/usePublishedChrome\(/g) || []).length >= 3, "a chrome element is not wired to the measurement");
+  assert(/<header ref=\$\{/.test(render), "the header is not measured — its height is a guess again");
+
+  for (const m of css.matchAll(/@media[^{]+\{([\s\S]*?)\n\}/g)) {
+    for (const v of ["--hdr-h", "--dock-h", "--dock-w"]) {
+      assert(!new RegExp(`${v}\\s*:`).test(m[1]),
+        `a media query sets ${v} — that overwrites a MEASURED number with a guess. Compact the element instead.`);
+    }
+  }
+});
+
 Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager, the tap floor holds", async () => {
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   const at = css.indexOf("@media (max-width: 300px)");

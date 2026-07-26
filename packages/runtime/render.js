@@ -479,10 +479,32 @@ const QR_LBL = {
   uk: { open: "Відкрити на телефоні", title: "Відкрити на телефоні", stay: "Залишитись на десктопі" },
 };
 
+function usePublishedChrome(kind) {
+  const ref = useRef();
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const apply = () => {
+      const s = document.documentElement.style;
+      const h = el.offsetHeight;
+      if (kind === "header") { if (h) s.setProperty("--hdr-h", `${h}px`); return; }
+      const rail = (getComputedStyle(el).gridAutoFlow || "").includes("row");
+      s.setProperty("--dock-h", rail ? "0px" : `${h + 12}px`);   
+      s.setProperty("--dock-w", rail ? `${el.offsetWidth}px` : "0px");
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return ref;
+}
+
 function AppBar() {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
   const qL = QR_LBL[loc] || QR_LBL.en;
-  return html`<header class="navbar bg-gradient-to-b from-base-100 via-base-100/85 to-transparent backdrop-blur-sm sticky top-0 z-30 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+  const hdrRef = usePublishedChrome("header");
+  return html`<header ref=${hdrRef} class="navbar bg-gradient-to-b from-base-100 via-base-100/85 to-transparent backdrop-blur-sm sticky top-0 z-30 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 
 function QrModal() {
@@ -496,40 +518,32 @@ function QrModal() {
   const { boxRef, grip } = useSheetDrag(close);
   return html`<dialog id="qr-invite" ref=${ref} class="modal modal-bottom" onClose=${close}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col items-center gap-4">${grip}
     <div class="flex items-center justify-between w-full"><h3 class="font-bold text-lg flex items-center gap-2">${Icon("lucide:smartphone", "text-primary")} ${L.title}</h3><button aria-label=${L.stay} class="btn btn-ghost btn-sm btn-circle" onClick=${close}>${Icon("lucide:x", "text-xl")}</button></div>
-    <div class="rounded-2xl bg-white p-3">${uri ? html`<img data-qr src=${uri} alt="" width="216" height="216" class="block w-52 h-52" />` : html`<div class="w-52 h-52"></div>`}</div>
+    <div class="rounded-2xl bg-white p-3 max-w-full">${uri ? html`<img data-qr src=${uri} alt="" width="216" height="216" class="block w-52 h-auto max-w-full" />` : html`<div class="w-52 max-w-full aspect-square"></div>`}</div>
     <div class="font-mono text-xs text-base-content/55 break-all text-center max-w-full">${url}</div>
     <button data-qr-stay class="btn btn-primary rounded-2xl w-full" onClick=${close}>${L.stay}</button>
   </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
 }
 
+
+
 const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
   style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 38%, transparent)"></div>`;
 
 function Dock() {
+  
+  
   const t = useStore(A.S.t), cur = useStore(A.S.tab);
-  const navRef = useRef();
-  useEffect(() => {
-    const el = navRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const GAP = 12;   
-    const apply = () => {
-      const h = el.offsetHeight, w = el.offsetWidth;
-      const rail = (getComputedStyle(el).gridAutoFlow || "").includes("row");
-      const s = document.documentElement.style;
-      s.setProperty("--dock-h", rail ? "0px" : `${h + GAP}px`);
-      s.setProperty("--dock-w", rail ? `${w}px` : "0px");
-    };
-    apply();
-    const ro = new ResizeObserver(apply);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  
+  const navRef = usePublishedChrome("dock");
+  
   return html`<nav data-dock ref=${navRef} class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)]">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-label=${T(t, tab.label)} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary text-primary-content" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
 }
 
 function Toast() {
   const key = useStore(A.S.toast), undo = useStore(A.S.undo), t = useStore(A.S.t), loc = useStore(A.S.locale), update = useStore(A.S.update);
   const band = "position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:calc(var(--dock-h) + 0.75rem)";
+  
+  
   if (undo) {
     const label = undo.label ? `«${undo.label}» ` : "";
     return html`<div data-toast class="pointer-events-none" style=${band}>
@@ -539,6 +553,8 @@ function Toast() {
       </div>
     </div>`;
   }
+  
+  
   if (update && !key) {
     return html`<div data-toast class="pointer-events-none" style=${band}>
       <div data-update class="pointer-events-auto alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-2 pl-4 pr-2 font-medium flex items-center gap-2 w-max max-w-[calc(100vw-1.5rem)] ms-reveal">
@@ -553,6 +569,8 @@ function Toast() {
   const icon = isExit ? Icon("lucide:log-out", "text-base-content/70 text-lg") : Icon("lucide:check-circle", "text-success text-lg");
   return html`<div data-toast class="pointer-events-none" style=${band}><div class=${`alert bg-neutral text-neutral-content border-0 rounded-2xl shadow-xl py-3 px-5 font-medium flex items-center gap-2 w-max transition-opacity duration-200 ${key ? "opacity-100" : "opacity-0"}`}>${icon}${text || ""}</div></div>`;
 }
+
+
 
 function ConfirmSheet() {
   const c = useStore(A.S.confirm), loc = useStore(A.S.locale);
@@ -569,6 +587,8 @@ function ConfirmSheet() {
     </div>
   </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
 }
+
+
 
 function ConverterView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), loc = useStore(A.S.locale);
@@ -594,11 +614,15 @@ function ConverterView({ tab }) {
   </div>`;
 }
 
+
+
 function DashboardView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), loc = useStore(A.S.locale);
   if (!useReveal(!data.loading)) return html`<div data-skel class="flex flex-col gap-4"><figure class="aspect-video rounded-2xl overflow-hidden border border-base-300"><${Pixels} /></figure><div class="text-2xl font-bold text-base-content/70 truncate"><${Scramble} len=${18} /></div><div class="flex flex-col gap-2 text-base-content/70"><div class="truncate"><${Scramble} len=${30} /></div><div class="truncate"><${Scramble} len=${22} /></div></div></div>`;
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
   const m = data.meta || {}, h = tab.hero;
+  
+  
   const placeText = h.place && m[h.place] ? T(t, m[h.place]) : null;
   const place = placeText ? (A.spec.filters
     ? html`<button class="inline-flex items-center gap-1 text-sm text-base-content/80" onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:map-pin", "text-xs")}${placeText} ${Icon("lucide:chevron-down", "text-xs")}</button>`
@@ -628,6 +652,8 @@ function TabView({ tab }) {
 export function App() {
   const cur = useStore(A.S.tab), screen = useStore(A.S.screen);
   const tab = A.spec.tabs.find((x) => x.id === cur) || A.spec.tabs[0];
+  
+  
   const fit = !!tab.fit;
   useEffect(() => {
     const el = document.documentElement;

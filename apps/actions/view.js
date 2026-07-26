@@ -138,7 +138,6 @@ export function actions({ S }) {
   const err = useStore($err);
   const busy = useStore($busy);
   
-  
   const runs = useStore($runs);
   const jobs = useStore($jobs);
   const [signing, setSigning] = useState(false);
@@ -146,7 +145,6 @@ export function actions({ S }) {
 
   useEffect(() => { wire(S); restore().then(() => { if (session.get()) loadBoard(); }); }, []);
 
-  
   
   useEffect(() => {
     let live = true;
@@ -208,7 +206,6 @@ export function actions({ S }) {
     </div>`;
   }
 
-  
   
   const rank = (r) => { const s = latest[r.full]?.state; return s === "failure" ? 0 : s === "running" ? 1 : 2; };
   const sorted = (list || []).slice().sort((a, b) => rank(a) - rank(b));

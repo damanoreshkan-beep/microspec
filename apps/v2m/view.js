@@ -41,7 +41,9 @@ async function ensureNode() {
   if (!audioSupported) { $err.set("noAudio"); return null; }
   try {
     if (!ctx) ctx = makeCtx();
-    if (ctx.state === "suspended") await ctx.resume();
+    if (ctx.state === "suspended") {
+      await Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
+    }
     if (!node) {
       if (!moduleAdded) { await ctx.audioWorklet.addModule(assetURL("v2synth.worklet.js")); moduleAdded = true; }
       if (!wasmBytes) wasmBytes = await (await fetch(assetURL("v2synth.wasm"))).arrayBuffer();
@@ -305,8 +307,6 @@ export function v2mStore({ S, toast }) {
     const id = trackId(tune.author, tune.file);
     setBusy(id);
     S.tab.set("play");                                 
-    await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
-    setBusy("");
     (async () => {
       try {
         $saved.set("fetching");
@@ -317,6 +317,9 @@ export function v2mStore({ S, toast }) {
         toast?.(T(t, "toastSaved"));
       } catch (e) { $saved.set("err:" + String((e && e.message) || e).slice(0, 60)); }
     })();
+    selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" })
+      .catch(() => $err.set("loadError"))
+      .finally(() => setBusy(""));
   };
 
   const list = (tunes || []).filter((x) => {

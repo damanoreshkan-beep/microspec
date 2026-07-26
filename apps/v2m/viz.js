@@ -60,6 +60,10 @@ const env = Envelope(0.55, 0.12, N);
 const subs = new Set();
 const SILENT = new Uint8Array(1024);
 let pumpRaf = null, phase = 0, resting = false;
+// A RESIZE changes what should be on screen just as much as new bytes do. The canvas is sized from its box
+// at mount and again on every ResizeObserver tick, and the first tick usually lands AFTER the resting frame
+// was already drawn into a 1×1 buffer — so without this the hero stays blank until something plays.
+export const invalidate = () => { resting = false; };
 // "Silence is still" must mean "nothing MOVES", not "nothing is ever drawn again". The resting latch had no
 // invalidation, so anything that changed WHAT is on screen while the audio was quiet never reached the
 // canvas — and the normal boot order is exactly that: the stage mounts and draws silence, then the demo's
@@ -258,6 +262,7 @@ export function ByteStage() {
       canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
       store.renderer?.setSize(canvas.width, canvas.height, false);
       store.scene?.resize(canvas.width, canvas.height);
+      invalidate();                                    // a new buffer needs a new frame drawn into it
     };
     const webgl = hasWebGL();
     canvas.setAttribute("data-haswebgl", webgl ? "yes" : "no");

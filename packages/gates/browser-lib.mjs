@@ -198,6 +198,13 @@ export async function runResponsiveMatrix(page, ev, dev) {
         sel = chain.join(" ◂ ");
       }
       const fit = de.classList.contains("ms-fit");
+      // A tab that never declared `fit` is EXEMPT from the vertical check — which means an instrument screen
+      // that simply forgot the flag scrolls freely and the gate says nothing. rave's hero did exactly that
+      // for the life of the app, while hand-rolling `min-h-[calc(100dvh-9rem)]` to approximate the contract
+      // it had not declared. So measure the undeclared ones too: a page that scrolls only a LITTLE is not a
+      // list, it is a single screen that overflowed. A real list scrolls by multiples.
+      const ratio = de.scrollHeight / Math.max(1, window.innerHeight);
+      const nearFit = !fit && ratio > 1.02 && ratio < 1.5 ? Math.round(de.scrollHeight - window.innerHeight) : 0;
       let oy = 0, vsel = "?";
       if (fit) {
         const v = document.getElementById("view");
@@ -268,7 +275,7 @@ export async function runResponsiveMatrix(page, ev, dev) {
           if (over > 1 && across > 1 && over > hide) { hide = over; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; hsel = el.tagName.toLowerCase() + (c ? "." + c : ""); }
         }
       }
-      return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel };
+      return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel, nearFit };
     });
     const label = `${bp.id} ${bp.w}×${bp.h}`;
     const push = (pass, failed) => out.push(pass ? failed.pass : failed.fail);
@@ -276,6 +283,11 @@ export async function runResponsiveMatrix(page, ev, dev) {
       pass: { name: `${label}: без горизонтального overflow`, ok: true, msg: bp.note },
       fail: { name: `${label}: горизонтальний overflow`, ok: false, msg: `+${m.ox}px — винуватець: ${m.sel}` },
     });
+    // the undeclared near-miss: reported on every tab, so a hero screen cannot hide behind a missing flag
+    if (m.nearFit) {
+      out.push({ name: `${label}: екран майже вміщується, але скролиться`, ok: false,
+        msg: `+${m.nearFit}px — це односкрановий екран без "fit": true у spec.json. Оголосіть fit (тоді ущільнення й Sheet стають обовʼязковими) або зробіть його справжнім списком` });
+    }
     if (m.fit) {
       push(m.oy <= 1, {
         pass: { name: `${label}: один екран без скролу (fit)`, ok: true },

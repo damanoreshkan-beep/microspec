@@ -9,7 +9,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet } from "/_rt/ui.js";
+import { Sheet, Segmented } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { BANDS, arfcnToFreq } from "/_rt/gsmband.js";
 import { usbSupported, USB_FILTERS } from "/_rt/hackrf.js";
@@ -119,10 +119,8 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
     <div class="@container flex flex-col gap-3 max-w-[440px] mx-auto w-full pb-24">
       <!-- band selector -->
       <div class="flex items-center gap-2 pt-0.5">
-        <div class="flex gap-1.5 flex-1">
-          ${BAND_KEYS.map((k) => html`<button key=${k} data-band=${k} aria-pressed=${band === k} onClick=${() => setBand(k)}
-            class=${`flex-1 rounded-xl border px-3 py-1.5 text-sm font-medium transition ${band === k ? "border-primary/50 bg-primary/12 text-primary" : "border-base-content/15 text-base-content/60"}`}>${BANDS[k].label}</button>`)}
-        </div>
+        <div class="flex-1 min-w-0"><${Segmented} attr="data-band" size="sm"
+          items=${BAND_KEYS.map((k) => ({ id: k, label: BANDS[k].label }))} value=${band} onChange=${setBand} /></div>
       </div>
 
       <!-- band spectrum -->

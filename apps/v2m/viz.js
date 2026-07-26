@@ -60,10 +60,20 @@ const env = Envelope(0.55, 0.12, N);
 const subs = new Set();
 const SILENT = new Uint8Array(1024);
 let pumpRaf = null, phase = 0, resting = false;
+// "Silence is still" must mean "nothing MOVES", not "nothing is ever drawn again". The resting latch had no
+// invalidation, so anything that changed WHAT is on screen while the audio was quiet never reached the
+// canvas — and the normal boot order is exactly that: the stage mounts and draws silence, then the demo's
+// bytes arrive a moment later and the cloud they describe was never rendered. The hero shipped empty, at
+// every size, with every gate green (a blank canvas overflows nothing and fails no contrast check).
+// So a frame is also drawn when the SUBJECT changes: new bytes, or the read head moving under a scrub.
+let lastGen = -1, lastProgress = -1;
 function pump() {
   const live = (_getBytes && _getBytes()) || null;
+  const progress = (_getProgress && _getProgress()) || 0;
+  const changed = _cloudGen !== lastGen || Math.abs(progress - lastProgress) > 0.0005;
   if (live) { resting = false; phase += reducedMotion ? 0.012 : 0.04; }
-  else if (resting) { pumpRaf = requestAnimationFrame(pump); return; }
+  else if (resting && !changed) { pumpRaf = requestAnimationFrame(pump); return; }
+  lastGen = _cloudGen; lastProgress = progress;
   const u8 = live || SILENT;
   const st = {
     levels: env.update(bandLevels(u8, EDGES)),

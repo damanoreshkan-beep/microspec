@@ -398,7 +398,7 @@ body::after {
 
 /* Things that float OVER content, on the one elevation ladder: sheet = L4 (modal), toast = L5 (popover). */
 .modal-box { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 -10px 44px -12px var(--sf-shadow); }
-[data-toast] .alert, .alert.shadow-xl { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }
+[data-toast] .alert { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }
 /* Deliberately NOT applied to `.range`: DaisyUI paints the track with `--range-bg`, so styling over it
    removes the groove rather than deepening it. The trough is for surfaces we own. */
 

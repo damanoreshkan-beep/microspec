@@ -3348,3 +3348,14 @@ Deno.test("v2m helixAt — the read head follows the same curve, clamped", () =>
   assertEquals(v2mHelixAt(9)[1], v2mHelixAt(1)[1], "clamped high");
   assertEquals(v2mHelixAt(undefined)[1], v2mHelixAt(0)[1], "no progress yet → the start, not NaN");
 });
+
+Deno.test("Transport compacts on its CONTAINER, never on the viewport", async () => {
+  const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
+  const tp = ui.slice(ui.indexOf("export function Transport("));
+  assert(/@container/.test(tp), "the transport must establish a container — it is sized by the space IT has");
+  assert(/@max-\[\d+px\]:/.test(tp), "no container-query compaction: the row will overflow where it is narrow");
+  // The trap this test exists for: the watch gate narrows #view to 200px while the WINDOW stays 384px, and
+  // .ms-side puts the transport in a narrow column on a wide phone. A viewport media query is blind to both.
+  assert(!/\bmin-\[\d+px\]:|\bmax-\[\d+px\]:/.test(tp.replace(/@(max|min)-\[\d+px\]:/g, "")),
+    "viewport width variants in the transport — use @container variants instead");
+});

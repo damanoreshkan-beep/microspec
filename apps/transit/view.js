@@ -292,7 +292,7 @@ export function hits({ S, screen, openScreen, closeScreen }) {
         <div class="flex items-center gap-2">
           ${dot(a.t)}
           <span class="font-semibold truncate">${bodyLabel(t, a.t)}</span>
-          <span class="text-xs font-semibold shrink-0" style=${`color:${ASPECT_HUE[a.nature]}`}>${T(t, ASPECT_KEY[a.type])}</span>
+          <span class="text-xs font-semibold truncate" style=${`color:${ASPECT_HUE[a.nature]}`}>${T(t, ASPECT_KEY[a.type])}</span>
           <span class="text-base-content/70 shrink-0 text-xs">${T(t, "natalMark")}</span>
           <span class="font-semibold truncate">${bodyLabel(t, a.n)}</span>
           <span class="ml-auto tabular-nums text-xs text-base-content/70 shrink-0">${a.orb.toFixed(2)}°</span>

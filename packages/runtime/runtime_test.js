@@ -3415,8 +3415,11 @@ Deno.test(".ms-cols derives its count from width — it never switches off, and 
   // than the stack it replaced. Gating it behind a min-width would be the same surrender by another route —
   // the mechanism has to keep working at the size that needs it most.
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
-  const m = /\.ms-cols \{([\s\S]*?)\n  \}/.exec(css);
-  assert(m, ".ms-cols rule is gone");
+  const m = /\.ms-cols\.ms-cols \{([\s\S]*?)\n  \}/.exec(css);
+  // Doubled on purpose: .ms-cols and Tailwind's .flex are both (0,1,0), and the CDN injects its stylesheet
+  // AFTER this file — so a tie goes to display:flex and the grid silently never applies. It did not apply
+  // for two rounds while I reasoned about which column count it was choosing.
+  assert(m, ".ms-cols must stay doubled — at equal specificity the CDN wins and the rule does nothing");
   assert(/auto-fit/.test(m[1]), "the column count is fixed — it cannot answer to the real width");
   assert(/--ms-col-min/.test(m[1]), "no readable floor: auto-fit alone will happily make 40px columns");
   // The ceiling is auto-fit itself: it collapses tracks it has no items for, so N items never make more

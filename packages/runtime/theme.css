@@ -92,7 +92,7 @@
      every label wraps, and the group ends up TALLER than the stack it replaced — which is the opposite of
      what this rule is for. Turning it off below a width would be the same surrender by another route: the
      mechanism has to keep working at the size that needs it most, not step aside there. */
-  .ms-cols {
+  .ms-cols.ms-cols {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(var(--ms-col-min, 3rem), 100%), 1fr));
     gap: var(--ms-gap);

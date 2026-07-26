@@ -77,8 +77,22 @@ established language; match it and push it forward, never regress to generic. (M
 a standing assumption, not a per-task ask.)
 
 - **Type:** the Geist superfamily (Geist + Geist Mono, Cyrillic) — never Inter/system defaults.
-- **Ink is the brand:** near-white primary; colour (purple secondary/accent, success/warning/error) is for
-  *meaning* only. `packages/runtime/theme.css`.
+- **Ink is the brand:** primary IS base-content — warm off-white `#F0E7E4` dark / warm near-black `#2A2320`
+  light; colour (terracotta secondary/accent, success/warning/error) is for *meaning* only.
+  `packages/runtime/theme.css`.
+- **The palette is CLAY, not ink** (`docs/research/claymorphism.md`). Three measured rules, and the first
+  two are the ones that get violated by instinct:
+  1. **A raised surface sits ~14 luminance BELOW its page**, never above it. `base-200` is the page and is
+     the *lighter* of the pair. Lightening a raised card is what flattens clay.
+  2. **Volume is edge contrast, not fill** — the face barely moves; the inner top highlight and the bottom
+     shade do all the work.
+  3. **The cast shadow carries the surface hue**, never neutral black — `--sf-drop`/`--sf-shadow`
+     `color-mix` with `--app-accent`, so each app casts its own colour. A grey shadow under a warm surface
+     reads as "a card with a shadow"; that one substitution is the whole style, lost.
+  Dark clay is **aubergine at L≈40-50**, not near-black: clay fails on `#0A0A0B` (grey inflated buttons),
+  not on darkness. Radius stays in the clay band — below ~20px the volume reads as an ordinary drop shadow.
+  Pastel + soft shadow *tempts* pale text; the palette itself is safe (tightest pair 4.91:1) but any
+  `opacity` on top of a semantic colour eats the margin.
 - **Floating glass islands:** dock + header are `bg-base-100/80 backdrop-blur-xl` + hairline + rim; a tool
   app's persistent controls become islands like them.
 - **One page scroll:** content flows in `<main>`; no `position:fixed` panel with a nested `overflow-y-auto`.

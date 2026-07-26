@@ -6,8 +6,18 @@ generic, incoherent, or cluttered. This rubric is the fourth gate: an **agent** 
 headless CI step) reads server-rendered screenshots (`packages/gates/shoot.mjs` — no local Chromium, no API
 key) and judges them here. It's the "VLM" of the farm.
 
-Run: `deno run -A packages/gates/shoot.mjs <app…> --seed`, then have the agent review the PNGs against the
-criteria below and emit the verdict.
+Run — **three shapes, both themes, every time**. One reference shot is not a taste pass: the defects this
+rubric exists to catch (amputation, squashing, a transport that collapses into a stub) only appear in the
+short window, and the ones axe cannot see only appear in the *other* theme.
+
+```
+deno run -A packages/gates/shoot.mjs <app…> --seed                 # the reference device (384×832)
+deno run -A packages/gates/shoot.mjs <app…> --seed --bp split      # 412×430 — two apps on one phone
+deno run -A packages/gates/shoot.mjs <app…> --seed --bp split-sm   # 360×340 — the floating-window floor
+```
+
+Then download `main.png` **and** `light.png` for each and review them against the criteria below. A verdict
+that cites only the tall dark shot is not a verdict — say which shape and which theme each finding came from.
 
 ## Criteria
 
@@ -24,6 +34,12 @@ criteria below and emit the verdict.
   "fits" because its save button, its repeat mode or its visualiser quietly stopped rendering is a fail, and
   no overflow check can see it — only the eye can. The dock may drop its labels; it may not drop its
   targets or its accessible names.
+- **A player is the player** — anything that plays uses the kit's `Transport` (`/_rt/ui.js`), never a
+  hand-rolled play button (preflight bans the toggle; the eye catches the rest). At `split` check the whole
+  ladder in one look: the play key still reads as the primary control, prev/next/repeat/shuffle are all
+  present, the app's own tools are icons (or an `⋯` that opens them **with their words**), and the seek bar
+  still has both timestamps. A transport that lost its repeat mode to fit is the amputation above, in the
+  one component where it is easiest to miss.
 
 **Coherence (orange — fix before shipping):**
 - **Composed, not squashed** — at a short height the layout should read as a *denser version of itself*
@@ -60,10 +76,16 @@ a standing assumption, not a per-task ask.)
 - **One page scroll:** content flows in `<main>`; no `position:fixed` panel with a nested `overflow-y-auto`.
   Overflow → a history-backed sheet (`S.screen`). A **single-screen** tab declares `"fit": true` and then
   must not scroll *at all*, at any viewport height — the verify gate enforces it across the matrix.
-- **One kit, not fifty:** `/_rt/ui.js` — Sheet · Segmented · Island · Panel · Slider. A bespoke copy of any
-  of them is a defect (preflight bans a hand-rolled `modal-bottom`). Components size off the `--ms-*`
-  density tokens, which step by viewport HEIGHT, and carry the app's own hue via `--app-accent`
-  (`spec.accent`) — a MARK colour for dots/rings/fills, never text.
+- **One kit, not fifty:** `/_rt/ui.js` — Sheet · Segmented · Island · Panel · Slider · **Transport**. A
+  bespoke copy of any of them is a defect (preflight bans a hand-rolled `modal-bottom` **and a hand-rolled
+  play/pause toggle**). Components size off the `--ms-*` density tokens, which step by viewport HEIGHT, and
+  carry the app's own hue via `--app-accent` (`spec.accent`) — a MARK colour for dots/rings/fills, never text.
+- **The screen is a lit volume, not a flat sheet** (`theme.css` — "the enclosure"). A viewport-fixed wash
+  lights the box from above, the app's accent bounces off the bottom, and the walls are an edge-only inner
+  shadow + rim. Surfaces then MEAN something: **raised** (dock, sheet, island — a lip catching that light)
+  vs **recessed** (`.ms-trough` — a slider track, a rail, a field: something a value sits in). The light
+  never touches type, never sits behind text, and never animates — a full-viewport layer repainting forever
+  is a battery bill, not a design.
 - **Instant app-shell** (`#boot`), **liquid-glass sheets** (`.modal-box`), rounder radii, **haptics** on tap.
 - **Delete safety:** reversible → `store.undo` (undo-toast); severe → `store.confirm` (danger sheet).
 - **Floors that are also gates:** no spinners (skeletons), installable (build + verify PWA gates),

@@ -10,7 +10,7 @@ import { wakeLock } from "/_rt/sensors.js";
 import { gate } from "/_rt/gate.js";
 import { Island, Segmented, Transport, Stage } from "/_rt/ui.js";
 import { advance, cycleRepeat } from "/_rt/player.js";
-import { MIRRORS, parseAuthors, parseListing, titleOf, trackId, trackURL, authorURL, mp3Ratio, normGain } from "/_rt/v2m.js";
+import { MIRRORS, parseAuthors, parseListing, titleOf, trackId, trackURL, authorURL, normGain } from "/_rt/v2m.js";
 import { ByteStage, bindAudio, bindProgress, setTuneBytes } from "./viz.js";
 
 const AC = typeof AudioContext !== "undefined" ? AudioContext
@@ -39,6 +39,7 @@ const $owned = atom(new Set());
 const $queue = atom([]);
 const $qIndex = atom(-1);
 const $repeat = atom("off");                           
+const $shuffle = atom(false);                          
 let notify = null;                                     
 
 let ctx = null, node = null, preGain = null, analyser = null, timeBuf = null;
@@ -298,7 +299,7 @@ async function playIndex(idx) {
 
 function step(dir, manual) {
   const q = queueList();
-  const next = advance($qIndex.get(), q.length, { step: dir, repeat: $repeat.get(), manual });
+  const next = advance($qIndex.get(), q.length, { step: dir, repeat: $repeat.get(), shuffle: $shuffle.get(), manual });
   if (next < 0) { pause(); return false; }
   return playIndex(next);
 }
@@ -331,11 +332,11 @@ export function v2m({ S, toast, undo }) {
   const size = useStore($size);
   const err = useStore($err);
   const saveState = useStore($saved);
-  const ratio = mp3Ratio(size, dur / 1000);
   const tunes = useStore($tunes);
   const owned = useStore($owned);
   const loc = useStore(S.locale);
   const repeat = useStore($repeat);
+  const shuffle = useStore($shuffle);
   const hasQueue = ($queue.get().length || (tunes || []).length) > 0;
   const inLibrary = owned.has(track?.id);
   useEffect(() => {                                    
@@ -367,11 +368,13 @@ export function v2m({ S, toast, undo }) {
             onNext=${hasQueue ? () => playNext() : null}
             repeat=${repeat}
             onRepeat=${() => $repeat.set(cycleRepeat($repeat.get()))}
+            shuffle=${shuffle}
+            onShuffle=${hasQueue ? () => $shuffle.set(!$shuffle.get()) : null}
             pos=${pos} dur=${dur} onSeek=${(v) => { scrubbing = false; seek(v); }}
             onScrubStart=${() => { scrubbing = true; }}
             onScrub=${(v) => { scrubbing = true; $posMs.set(v); }}
             title=${titleOf(track?.name || "")}
-            subtitle=${size > 0 ? html`<span data-size>${kb(size)}</span>${ratio >= 2 ? html` · <span data-ratio>${T(t, "smallerThanMp3").replace("{n}", Math.round(ratio))}</span>` : null}` : null}
+            subtitle=${size > 0 ? html`<span data-size>${kb(size)}</span>` : null}
             trail=${html`
               <button id="save" data-saved-track=${inLibrary ? "true" : "false"}
                 class=${"btn btn-ghost btn-circle btn-sm " + (inLibrary ? "text-primary" : "text-base-content/70")}
@@ -384,6 +387,7 @@ export function v2m({ S, toast, undo }) {
       </div>
     </div>`;
 }
+
 
 const SORTS = [
   { id: "size", key: bySize },
@@ -401,7 +405,9 @@ export function v2mStore({ S, toast }) {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("size");
   const [shown, setShown] = useState(PAGE);
+  
   const [sentinel, setSentinel] = useState(null);
+  
   const [cold] = useState(() => $tunes.get() === null);
   const revealed = useReveal(tunes !== null);
   const showSkel = cold ? !revealed : tunes === null;
@@ -414,6 +420,7 @@ export function v2mStore({ S, toast }) {
     return x.file.toLowerCase().includes(s) || x.author.toLowerCase().includes(s);
   }).sort(SORTS.find((s) => s.id === sort).key);
 
+  
   useEffect(() => {
     if (!sentinel || shown >= list.length || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver((es) => {
@@ -485,6 +492,7 @@ export function v2mStore({ S, toast }) {
         <div ref=${setSentinel} aria-hidden="true" class="h-4"></div>`}
     </div>`;
 }
+
 
 export function v2mLibrary({ S, undo }) {
   const t = useStore(S.t);

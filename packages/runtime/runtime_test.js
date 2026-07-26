@@ -3091,3 +3091,27 @@ Deno.test("Transport compacts on its CONTAINER, never on the viewport", async ()
   assert(!/\bmin-\[\d+px\]:|\bmax-\[\d+px\]:/.test(tp.replace(/@(max|min)-\[\d+px\]:/g, "")),
     "viewport width variants in the transport — use @container variants instead");
 });
+
+Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable, with its word", async () => {
+  const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
+  const tp = ui.slice(ui.indexOf("export function Transport("));
+  const sheet = tp.slice(tp.indexOf("data-tp-sheet"));
+  assert(/actions\.map\(/.test(sheet), "the overflow sheet must list every action, not the demoted subset");
+  assert(!/overflow\.map\(/.test(sheet), "the sheet lists a different set depending on width — unlearnable");
+  assert(/overflow\.map\(.{0,60}@max-\[\d+px\]:hidden/.test(tp.replace(/\n\s*/g, " ")),
+    "demoted actions must be hidden by a container query, not dropped from the tree");
+  const row = sheet.slice(0, sheet.indexOf("</button>"));
+  assert(!/\bid=\$\{a\.id/.test(row) && !/\.\.\.\$\{a\.attr/.test(row), "sheet row duplicates the inline hooks");
+});
+
+Deno.test("Transport — every control is opt-in, and the mode toggles frame the transport keys", async () => {
+  const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
+  const tp = ui.slice(ui.indexOf("export function Transport("));
+  for (const [h, id] of [["onShuffle", "shuffle"], ["onRepeat", "repeat"], ["onPrev", "prev"], ["onNext", "next"]])
+    assert(new RegExp(`\\$\\{\\s*${h}\\s*\\?`).test(tp) || new RegExp(`${h}\\s*\\?`).test(tp),
+      `${id} is not gated on ${h} — an app that never passes it still gets the button`);
+  const at = (needle) => tp.indexOf(needle);
+  const [sh, pv, pl, nx, rp] = ['id="shuffle"', 'id="prev"', 'id="play"', 'id="next"', 'id="repeat"'].map(at);
+  assert(sh > 0 && pv > 0 && pl > 0 && nx > 0 && rp > 0, "a transport key went missing");
+  assert(sh < pv && pv < pl && pl < nx && nx < rp, "control order must be shuffle · prev · play · next · repeat");
+});

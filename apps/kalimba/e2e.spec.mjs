@@ -6,8 +6,8 @@ export default [
       await ready(h); await h.wait(200);
       h.expect((await h.count("[data-tine]")) === 17, "немає 17 пелюсток");
       h.expect((await h.count("[data-scale]")) === 6, "немає 6 ладів");
-      h.expect((await h.count("[data-song]")) === 5, "немає 5 пісень");
-      h.expect((await h.count("[data-flow]")) === 1, "немає кнопки Flow");
+      h.expect((await h.count("[data-song]")) === 6, "немає 5 пісень + Flow у рейлі");
+      h.expect((await h.count('[data-song="flow"]')) === 1, "немає Flow");
       h.expect((await h.count("[data-voice]")) === 6, "немає 6 голосів");
       h.expect((await h.attr('[data-tine="8"]', "aria-label")) === "C4", "центральна пелюстка не C4 (tonic)");
     },
@@ -24,10 +24,10 @@ export default [
   {
     name: "Flow генерує і грає, потім зупиняється", run: async (h) => {
       await ready(h);
-      await h.tap("[data-flow]"); await h.wait(120);
-      h.expect((await h.attr("[data-flow]", "class")).includes("btn-secondary"), "Flow не почав грати");
-      await h.tap("[data-flow]"); await h.wait(120);
-      h.expect(!(await h.attr("[data-flow]", "aria-pressed")) || (await h.attr("[data-flow]", "aria-pressed")) === "false", "Flow не зупинився");
+      await h.tap('[data-song="flow"]'); await h.wait(120);
+      h.expect((await h.attr('[data-song="flow"]', "aria-pressed")) === "true", "Flow не почав грати");
+      await h.tap('[data-song="flow"]'); await h.wait(120);
+      h.expect(!(await h.attr('[data-song="flow"]', "aria-pressed")) || (await h.attr('[data-song="flow"]', "aria-pressed")) === "false", "Flow не зупинився");
     },
   },
   {
@@ -63,9 +63,9 @@ export default [
     name: "демо-мелодія вмикається і зупиняється", run: async (h) => {
       await ready(h);
       await h.click('[data-song="twinkle"]'); await h.wait(90);
-      h.expect((await h.attr('[data-song="twinkle"]', "class")).includes("btn-primary"), "мелодія не почала грати");
+      h.expect((await h.attr('[data-song="twinkle"]', "aria-pressed")) === "true", "мелодія не почала грати");
       await h.click('[data-song="twinkle"]'); await h.wait(90);
-      h.expect(!(await h.attr('[data-song="twinkle"]', "class")).includes("btn-primary"), "мелодія не зупинилась");
+      h.expect((await h.attr('[data-song="twinkle"]', "aria-pressed")) !== "true", "мелодія не зупинилась");
     },
   },
   {

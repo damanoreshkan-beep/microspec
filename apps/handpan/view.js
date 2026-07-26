@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet, Segmented } from "/_rt/ui.js";
+import { Sheet, Segmented, Transport } from "/_rt/ui.js";
 import { audioSupported, midiToFreq, createEngine } from "/_rt/audio.js";
 import { generateMelody } from "/_rt/melody.js";
 import { collection } from "/_rt/db.js";
@@ -182,6 +182,7 @@ const autoName = (t, scaleId, loop, list) => { const base = `${T(t, scaleById(sc
 
 export function handpan({ S }) {
   const t = useStore(S.t); _dict = t;
+  const loc = useStore(S.locale);
   const scaleId = useStore($scale), playing = useStore($playing), recording = useStore($recording), lit = useStore($lit), sweep = useStore($sweep), space = useStore($space);
   const s = scaleById(scaleId), n = s.midi.length - 1;              
   const ptr = useRef(new Map()), usingPtr = useRef(false), panRef = useRef();
@@ -238,9 +239,11 @@ export function handpan({ S }) {
 
     <div class="shrink-0 px-3 pb-2 pt-1 flex justify-center">
       <div class="w-full max-w-md flex items-center gap-2 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2">
-        <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} onClick=${toggle} class=${`btn btn-circle shrink-0 ${playing ? "btn-secondary" : "btn-primary"}`}>${Icon(playing ? "lucide:square" : "lucide:play", "text-xl")}</button>
-        <button data-flow id="flow" aria-label=${T(t, "genFlow")} onClick=${newFlow} class=${`btn btn-circle btn-sm shrink-0 ${sweep >= 0 ? "btn-accent animate-pulse" : "btn-outline btn-accent"}`}>${Icon("lucide:sparkles", "text-lg")}</button>
-        <button data-rec aria-pressed=${recording} aria-label=${T(t, "rec")} onClick=${toggleRec} class=${`btn btn-circle btn-sm shrink-0 ${recording ? "btn-error text-error-content animate-pulse" : "btn-ghost"}`}>${Icon("lucide:circle-dot", "text-lg")}</button>
+        <${Transport} className="shrink-0" locale=${loc} stopIcon playing=${playing} onToggle=${toggle}
+          actions=${[
+            { id: "flow", icon: "lucide:sparkles", label: T(t, "genFlow"), onClick: newFlow, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-flow": true } },
+            { id: "rec", icon: "lucide:circle-dot", label: T(t, "rec"), onClick: toggleRec, tone: "error", active: recording, pulse: recording, pressed: recording, attr: { "data-rec": true } },
+          ]} />
         <label class="flex items-center gap-1.5 flex-1 min-w-0">
           ${Icon("lucide:cloudy", "text-base text-base-content/60 shrink-0")}
           <input data-space type="range" min="0" max="1" step="0.02" value=${space} aria-label=${T(t, "space")} onInput=${(e) => { $space.set(Number(e.target.value)); applySpace(); }} class="range range-xs range-secondary flex-1 min-w-0" />
@@ -252,13 +255,14 @@ export function handpan({ S }) {
   </div>`;
 }
 
+
 export function handpanWeave({ S, toast, screen, openScreen, closeScreen }) {
   const t = useStore(S.t); _dict = t;
+  const loc = useStore(S.locale);
   const scaleId = useStore($scale), loop = useStore($loop), playing = useStore($playing), cur = useStore($cur), sweep = useStore($sweep);
   const s = scaleById(scaleId), rows = s.midi.map((m, i) => ({ i, m })).reverse();   
   const cellToggle = (i, step) => { ensure(); const cell = loop[step] || []; const has = cell.includes(i); const next = loop.slice(); next[step] = has ? cell.filter((x) => x !== i) : [...cell, i]; $loop.set(next); if (!has) strike(i); };
   const save = async () => { try { const list = await SAVES.all(); const rec = { loop, scaleId, bpm: $bpm.get() }; if (loopCount(loop) === 0) { buzz(); return; } if (list.find((it) => loopSig(it) === loopSig(rec))) { buzz(); toast?.(T(t, "toastDup", { name: autoName(t, scaleId, loop, list) })); return; } await SAVES.put("l" + Date.now(), { name: autoName(t, scaleId, loop, list), ...rec, timbreId: $timbre.get(), space: $space.get() }); toast?.(T(t, "toastSaved")); } catch {  } };
-
   return html`<${Fragment}>
     <div class="pb-40 flex flex-col gap-[3px]">
       <div class="sticky z-10 -mx-4 px-4 bg-base-200/85 backdrop-blur flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
@@ -273,19 +277,25 @@ export function handpanWeave({ S, toast, screen, openScreen, closeScreen }) {
     </div>
 
     <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)">
-      <div class="pointer-events-auto w-full max-w-xl flex items-center gap-2 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2">
-        <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} class=${`btn btn-circle shadow-lg shrink-0 ${playing ? "btn-secondary" : "btn-primary"}`} onClick=${toggle}>${Icon(playing ? "lucide:square" : "lucide:play", "text-xl")}</button>
-        <button data-flow aria-label=${T(t, "genFlow")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${newFlow}>${Icon("lucide:sparkles", `text-lg ${sweep >= 0 ? "animate-pulse text-accent" : ""}`)}</button>
-        <span class="flex-1 min-w-0 font-mono text-xs tabular-nums text-base-content/70 truncate text-center">${T(t, scaleById(scaleId).name)}</span>
-        <button data-clear aria-label=${T(t, "clear")} data-haptic="bump" class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => { buzz(); $loop.set(emptyLoop()); }}>${Icon("lucide:eraser", "text-lg")}</button>
-        <button id="save" data-save aria-label=${T(t, "aSave")} class="btn btn-circle btn-outline btn-sm shrink-0" onClick=${save}>${Icon("lucide:save", "text-lg")}</button>
-        <button data-settings aria-label=${T(t, "settings")} aria-expanded=${screen === "set"} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => openScreen("set")}>${Icon("lucide:sliders-horizontal", "text-lg")}</button>
+      <div class="pointer-events-auto w-full max-w-xl rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2">
+        
+        <${Transport} locale=${loc} stopIcon playing=${playing} onToggle=${toggle} keep=${1}
+          subtitle=${T(t, scaleById(scaleId).name)}
+          moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
+          actions=${[
+            { id: "flow", icon: "lucide:sparkles", label: T(t, "genFlow"), onClick: newFlow, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-flow": true } },
+            { id: "clear", icon: "lucide:eraser", label: T(t, "clear"), onClick: () => { buzz(); $loop.set(emptyLoop()); }, haptic: "bump", attr: { "data-clear": true } },
+            { id: "save", icon: "lucide:save", label: T(t, "aSave"), onClick: save, attr: { "data-save": true } },
+            { id: "settings", icon: "lucide:sliders-horizontal", label: T(t, "settings"), onClick: () => openScreen("set"), attr: { "data-settings": true } },
+          ]} />
       </div>
     </div>
 
     <${SettingsSheet} open=${screen === "set"} onClose=${closeScreen} t=${t} />
   </${Fragment}>`;
 }
+
+
 
 function SettingsSheet({ open, onClose, t }) {
   const bpm = useStore($bpm), space = useStore($space), shimmer = useStore($shimmer), drone = useStore($drone), timbre = useStore($timbre), scaleId = useStore($scale);
@@ -320,8 +330,8 @@ function SettingsSheet({ open, onClose, t }) {
   </${Sheet}>`;
 }
 
-const Spectrum = ({ loop, live, cur }) => { const bars = (loop || emptyLoop()).map((c) => (c ? c.length : 0)), mx = Math.max(1, ...bars); return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-secondary" : v ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}</span>`; };
 
+const Spectrum = ({ loop, live, cur }) => { const bars = (loop || emptyLoop()).map((c) => (c ? c.length : 0)), mx = Math.max(1, ...bars); return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-secondary" : v ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}</span>`; };
 export function handpanSaved({ S, undo }) {
   const t = useStore(S.t); _dict = t;
   const [list, setList] = useState(null);

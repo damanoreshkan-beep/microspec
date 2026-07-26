@@ -280,7 +280,7 @@ export function rave({ S }) {
 }
 
 export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
-  const t = useStore(S.t), tracks = useStore($tracks), bpm = useStore($bpm), playing = useStore($playing), cur = useStore($cur), sweep = useStore($sweep);
+  const t = useStore(S.t), loc = useStore(S.locale), tracks = useStore($tracks), bpm = useStore($bpm), playing = useStore($playing), cur = useStore($cur), sweep = useStore($sweep);
   const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
   const save = async () => { try { const list = await SAVES.all(); const rec = { tracks, bpm, riff: $riff.get() }; if (list.find((it) => beatSig(it) === beatSig(rec))) { buzz(); toast?.(T(t, "toastDup", { name: autoName(t, tracks, bpm, list) })); return; } await SAVES.put("p" + Date.now(), { name: autoName(t, tracks, bpm, list), ...rec, fx: $fx.get() }); toast?.(T(t, "toastSaved")); } catch {  } };
 
@@ -298,19 +298,23 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
     </div>
 
     <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)">
-      <div class="pointer-events-auto w-full max-w-xl flex items-center gap-2 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2">
-        <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} class=${`btn btn-circle shadow-lg shrink-0 ${playing ? "btn-secondary" : "btn-primary"}`} onClick=${toggle}>${Icon(playing ? "lucide:square" : "lucide:play", "text-xl")}</button>
-        <button data-gen aria-label=${T(t, "gen")} class="btn btn-circle btn-sm btn-ghost shrink-0" onClick=${newTrack}>${Icon("lucide:sparkles", `text-lg ${sweep >= 0 ? "animate-pulse text-accent" : ""}`)}</button>
-        <span class="flex-1 min-w-0 font-mono text-xs tabular-nums text-base-content/70 truncate text-center">${bpm} BPM</span>
-        <button data-clear aria-label=${T(t, "clear")} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => { buzz(); $tracks.set(empty()); }}>${Icon("lucide:eraser", "text-lg")}</button>
-        <button id="save" data-save aria-label=${T(t, "aSave")} class="btn btn-circle btn-outline btn-sm shrink-0" onClick=${save}>${Icon("lucide:save", "text-lg")}</button>
-        <button data-settings aria-label=${T(t, "settings")} aria-expanded=${screen === "fx"} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => openScreen("fx")}>${Icon("lucide:sliders-horizontal", "text-lg")}</button>
+      <div class="pointer-events-auto w-full max-w-xl rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2">
+        <${Transport} locale=${loc} stopIcon playing=${playing} onToggle=${toggle} keep=${1}
+          subtitle=${`${bpm} BPM`}
+          moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
+          actions=${[
+            { id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } },
+            { id: "clear", icon: "lucide:eraser", label: T(t, "clear"), onClick: () => { buzz(); $tracks.set(empty()); }, attr: { "data-clear": true } },
+            { id: "save", icon: "lucide:save", label: T(t, "aSave"), onClick: save, attr: { "data-save": true } },
+            { id: "settings", icon: "lucide:sliders-horizontal", label: T(t, "settings"), onClick: () => openScreen("fx"), attr: { "data-settings": true } },
+          ]} />
       </div>
     </div>
 
     <${FxSheet} open=${screen === "fx"} onClose=${closeScreen} t=${t} sweep=${sweep} />
   </${Fragment}>`;
 }
+
 
 function FxSheet({ open, onClose, t, sweep }) {
   const fx = useStore($fx), bpm = useStore($bpm), tracks = useStore($tracks), pack = useStore($pack), loading = useStore($loading);
@@ -340,6 +344,7 @@ function FxSheet({ open, onClose, t, sweep }) {
   </${Sheet}>`;
 }
 
+
 const Spectrum = ({ tracks, live, cur }) => { const bars = beatBars(tracks), mx = Math.max(1, ...bars); return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-secondary" : v ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}</span>`; };
 
 export function raveSaved({ S, undo }) {
@@ -354,7 +359,6 @@ export function raveSaved({ S, undo }) {
   const open = (it) => { buzz(); loadBeat(it); S.tab.set("pads"); };
   const play = (it) => { buzz(); if (isCur(it)) { stop(); return; } loadBeat(it); start(); };
   const del = async (it) => { const { id, _ts, ...rec } = it; try { await SAVES.remove(id); } catch {  } load(); undo?.(async () => { try { await SAVES.put(id, rec); } catch {  } load(); }, it.name || T(t, "beatWord")); };
-
   if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-base-content/60"><div class="w-9 h-9 rounded-full bg-base-300 shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
   if (!list.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:bookmark", "text-4xl")}<span>${T(t, "savedEmpty")}</span></div>`;
 

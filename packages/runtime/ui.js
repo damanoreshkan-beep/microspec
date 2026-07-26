@@ -145,26 +145,33 @@ export function Transport({
   onPrev, onNext,
   pos = 0, dur = 0, onSeek,                            
   repeat, onRepeat,                                    
+  shuffle = false, onShuffle,                          
   title, subtitle,                                     
   lead, trail,                                         
   stopIcon = false,                                    
   size = "md",                                         
   disabled = false,
   className = "",
-  extra,                                               
   
+  
+  actions = [],
+  keep = 2,                                            
+  moreOpen, onMore, onMoreClose,                        
   onScrubStart, onScrub, onScrubEnd,
 }) {
   const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
   
   
-  const big = size === "sm"
-    ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
-    : "w-[var(--ms-ctl)] h-[var(--ms-ctl)] @max-[300px]:w-11 @max-[300px]:h-11";
+  const hero = size === "hero";
+  const big = hero
+    ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 !bg-base-100/70 backdrop-blur-xl border border-base-content/15 !text-base-content shadow-xl"
+    : size === "sm"
+      ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
+      : "w-[var(--ms-ctl)] h-[var(--ms-ctl)] @max-[300px]:w-11 @max-[300px]:h-11";
   const side = "btn-sm";
   const max = Math.max(1000, dur || 0);
 
-  const head = (title != null || lead || trail) ? html`
+  const head = (title != null || subtitle != null || lead || trail) ? html`
     <div class="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-1">
       <span class="justify-self-start">${lead || null}</span>
       <div class="text-center min-w-0">
@@ -187,29 +194,69 @@ export function Transport({
       </div>
     </div>` : null;
 
+  
+  
+  const actionBtn = (a, cls) => html`<button key=${a.id} ...${a.attr || {}} id=${a.id || null}
+    aria-label=${a.label} aria-pressed=${a.pressed == null ? null : String(!!a.pressed)}
+    disabled=${a.disabled || false} data-haptic=${a.haptic || null} onClick=${a.onClick}
+    class=${`btn btn-circle btn-sm shrink-0 ${cls || ""} ${a.pulse ? "animate-pulse" : ""} ${
+      a.active
+        ? (a.tone === "error" ? "btn-error" : a.tone === "accent" ? "btn-accent" : "bg-primary/15 text-primary border border-primary/30")
+        : (a.tone === "accent" ? "btn-outline btn-accent" : "btn-ghost text-base-content/70")}`}>
+    ${Icon(a.icon, "text-lg")}</button>`;
+
+  
+  
+  const overflow = onMore ? actions.slice(keep) : [];
+  const inline = onMore ? actions.slice(0, keep) : actions;
+  const acts = actions.length ? html`
+    <span class="w-px h-7 bg-base-content/12 mx-0.5 shrink-0" aria-hidden="true"></span>
+    ${inline.map((a) => actionBtn(a))}
+    ${overflow.map((a) => actionBtn(a, "@max-[340px]:hidden"))}
+    ${overflow.length ? html`<button data-tp-more aria-label=${sys("more", locale)} onClick=${onMore}
+      class="btn btn-circle btn-sm btn-ghost text-base-content/70 shrink-0 hidden @max-[340px]:inline-flex">
+      ${Icon("lucide:ellipsis", "text-lg")}</button>` : null}` : null;
+
   return html`
     <div data-transport class=${`@container flex flex-col gap-2 ${className}`}>
       ${head}
       ${scrub}
-      <div class="flex items-center justify-center gap-4 @max-[300px]:gap-1">
-        ${onRepeat ? html`
-          <button id="repeat" data-repeat=${repeat || "off"} aria-label=${sys("aRepeat", locale)}
-            aria-pressed=${repeat && repeat !== "off" ? "true" : "false"}
-            class=${`btn btn-ghost btn-circle btn-sm ${repeat && repeat !== "off" ? "text-primary" : "text-base-content/70"}`}
-            onClick=${onRepeat}>${Icon(REPEAT_ICON[repeat] || REPEAT_ICON.off, "text-lg")}</button>` : null}
+      <div data-tp-row class="flex flex-wrap items-center justify-center gap-4 @max-[340px]:gap-1.5 @max-[300px]:gap-1">
+        ${
+          onShuffle ? html`
+          <button id="shuffle" data-shuffle=${shuffle ? "on" : "off"} aria-label=${sys("aShuffle", locale)}
+            aria-pressed=${shuffle ? "true" : "false"}
+            class=${`btn btn-ghost btn-circle btn-sm ${shuffle ? "text-primary" : "text-base-content/70"}`}
+            onClick=${onShuffle}>${Icon("lucide:shuffle", "text-lg")}</button>` : null}
         ${onPrev ? html`
           <button id="prev" class=${`btn btn-ghost btn-circle ${side}`} aria-label=${sys("aPrev", locale)}
             disabled=${disabled} onClick=${onPrev}>${Icon("lucide:skip-back", "text-xl")}</button>` : null}
         <button id="play" data-playing=${playing} disabled=${disabled}
           class=${`btn btn-primary btn-circle ${big} shadow-lg shadow-primary/20`}
           aria-label=${sys(playing ? (stopIcon ? "aStop" : "aPause") : "aPlay", locale)} onClick=${onToggle}>
-          ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", "text-2xl")}
+          ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", hero ? "text-3xl" : "text-2xl")}
         </button>
         ${onNext ? html`
           <button id="next" class=${`btn btn-ghost btn-circle ${side}`} aria-label=${sys("aNext", locale)}
             disabled=${disabled} onClick=${onNext}>${Icon("lucide:skip-forward", "text-xl")}</button>` : null}
-        ${extra ? html`<span class="w-px h-7 bg-base-content/12 mx-0.5" aria-hidden="true"></span>${extra}` : null}
+        ${onRepeat ? html`
+          <button id="repeat" data-repeat=${repeat || "off"} aria-label=${sys("aRepeat", locale)}
+            aria-pressed=${repeat && repeat !== "off" ? "true" : "false"}
+            class=${`btn btn-ghost btn-circle btn-sm ${repeat && repeat !== "off" ? "text-primary" : "text-base-content/70"}`}
+            onClick=${onRepeat}>${Icon(REPEAT_ICON[repeat] || REPEAT_ICON.off, "text-lg")}</button>` : null}
+        ${acts}
       </div>
+      ${overflow.length ? html`<${Sheet} id="tp-more" open=${!!moreOpen} onClose=${onMoreClose}
+        title=${sys("more", locale)} icon="lucide:ellipsis" locale=${locale}>
+        <div class="flex flex-col gap-1" data-tp-sheet>
+          ${
+            actions.map((a) => html`<button key=${a.id} data-tp-act=${a.id || null}
+            disabled=${a.disabled || false} data-haptic=${a.haptic || null}
+            onClick=${() => { onMoreClose?.(); a.onClick?.(); }}
+            class=${`btn btn-ghost justify-start gap-3 h-[var(--ms-ctl)] min-h-0 ${a.active ? "text-primary" : ""}`}>
+            ${Icon(a.icon, "text-[var(--ms-icon)] shrink-0")}<span class="truncate">${a.label}</span></button>`)}
+        </div>
+      <//>` : null}
     </div>`;
 }
 

@@ -168,6 +168,11 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   }
   nav[data-dock] button { padding: 0.3rem; min-width: 0; }
   nav[data-dock] button > span { display: none; }
+  /* A panel CAPTION is ornament here for the same reason the header wordmark is: the controls under it are
+     already on screen, and 24px of title is a sixth of the display. Height is what a watch has least of, so
+     this is where the pixels come from — not from a control. */
+  [data-panel-title] { display: none; }
+
   /* The header keeps its controls and loses its ornament: an app's NAME is not information at 208px wide.
      Compact the ELEMENT, never --hdr-h — that number is measured off this element (see the chrome contract
      in render.js), so styling the element moves the math by itself. */

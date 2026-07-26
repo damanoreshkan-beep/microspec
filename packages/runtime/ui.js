@@ -169,7 +169,7 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
 // for grouped controls; use Island only where the panel floats OVER content.
 export function Panel({ title, children, className = "" }) {
   return html`<div class=${`@container sf-e2 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
-    ${title ? html`<div class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${title}</div>` : null}
+    ${title ? html`<div data-panel-title class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${title}</div>` : null}
     ${children}
   </div>`;
 }
@@ -179,7 +179,7 @@ export function Panel({ title, children, className = "" }) {
 // and a readout the user cannot act on is hint text with extra steps (the farm's no-hand-holding rule).
 export function Slider({ id, label, value, onInput, min = 0, max = 1, step = 0.02, attr = "data-macro" }) {
   const props = { [attr]: id };
-  return html`<label ...${props} class="flex flex-col gap-1">
+  return html`<label ...${props} class="@container/sl flex flex-col gap-1 @max-[9rem]/sl:flex-row @max-[9rem]/sl:items-center @max-[9rem]/sl:gap-2">
     <span class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70 truncate">${label}</span>
     <input type="range" min=${min} max=${max} step=${step} value=${value} aria-label=${label}
       onInput=${(e) => onInput(Number(e.target.value))} class="range range-sm range-primary" />

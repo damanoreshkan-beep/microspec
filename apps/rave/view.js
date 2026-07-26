@@ -343,7 +343,6 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
         ${/* Same bar, now the kit's: the tempo is the now-playing line and the four tools are `actions`,
              which demote into the overflow sheet with their words when the window gets narrow. */""}
         <${Transport} locale=${loc} stopIcon playing=${playing} onToggle=${toggle} keep=${1}
-          subtitle=${`${bpm} BPM`}
           moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
           actions=${[
             { id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } },

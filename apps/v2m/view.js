@@ -1,5 +1,5 @@
 import { html } from "htm/preact";
-import { useState, useEffect, useRef } from "preact/hooks";
+import { useState, useEffect } from "preact/hooks";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
@@ -7,6 +7,10 @@ import { collection, idbSupported } from "/_rt/db.js";
 import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { holdAudio } from "/_rt/mediasession.js";
 import { wakeLock } from "/_rt/sensors.js";
+import { gate } from "/_rt/gate.js";
+import { Island, Segmented } from "/_rt/ui.js";
+import { MIRRORS, parseAuthors, parseListing, titleOf, trackId, trackURL, authorURL, mp3Ratio, normGain } from "/_rt/v2m.js";
+import { ByteStage, bindAudio, setTuneBytes } from "./viz.js";
 
 // ── audio capability (guarded so the headless gate + unsupported browsers still render) ──
 const AC = typeof AudioContext !== "undefined" ? AudioContext
@@ -15,23 +19,34 @@ const audioSupported = !!AC && typeof AudioWorkletNode !== "undefined";
 
 const SAVES = collection("v2mTracks");
 const assetURL = (f) => new URL(`./assets/${f}`, import.meta.url).href;
-const DEMO = { id: "demo", name: "Dafunk — breeze", src: "demo.v2mz", origin: "demo" };
+const DEMO = { id: "demo", name: "Dafunk — breeze", src: "demo.v2mz", origin: "demo", bytes: null };
 
 // ── shared player state (module-scope: survives tab switches, shared by both views + lock screen) ──
 const $track = atom(DEMO);
 const $playing = atom(false);
 const $posMs = atom(0);
 const $durMs = atom(0);
+const $size = atom(0);          // bytes of the loaded tune — the app's headline number
 const $err = atom("");
 
 // ── audio-engine singletons ──
-let ctx = null, node = null, wasmBytes = null, moduleAdded = false, loadedId = null, np = null, wl = null;
+let ctx = null, node = null, preGain = null, analyser = null, timeBuf = null;
+let wasmBytes = null, moduleAdded = false, loadedId = null, np = null, wl = null, levelTimer = null;
 let scrubbing = false;
+
+// The V2 synth clips: measured across the archive most tunes peak above 1.0 and one reached 15.5, and at
+// 32 kHz the filters diverge into NaN outright. So the rate is PINNED at 44.1 kHz (V2's native rate, and the
+// tamer of the two on every outlier measured), loudness is normalised live off the analyser, and a limiter
+// catches whatever peak survives. See packages/runtime/v2m.js.
+function makeCtx() {
+  try { return new AC({ sampleRate: 44100, latencyHint: "playback" }); }
+  catch { return new AC(); }
+}
 
 async function ensureNode() {
   if (!audioSupported) { $err.set("noAudio"); return null; }
   try {
-    if (!ctx) ctx = new AC({ latencyHint: "playback" });
+    if (!ctx) ctx = makeCtx();
     if (ctx.state === "suspended") await ctx.resume();
     if (!node) {
       if (!moduleAdded) { await ctx.audioWorklet.addModule(assetURL("v2synth.worklet.js")); moduleAdded = true; }
@@ -47,15 +62,61 @@ async function ensureNode() {
         else if (m.type === "ended") { $playing.set(false); $posMs.set($durMs.get()); releaseHold(); }
         else if (m.type === "error") $err.set("loadError");
       };
-      node.connect(ctx.destination);
+      preGain = ctx.createGain();
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -10; limiter.knee.value = 6; limiter.ratio.value = 12;
+      limiter.attack.value = 0.003; limiter.release.value = 0.25;
+      analyser = ctx.createAnalyser();
+      analyser.fftSize = 2048; analyser.smoothingTimeConstant = 0.7;
+      timeBuf = new Uint8Array(analyser.fftSize);
+      node.connect(preGain);            // analyser observes the RAW synth output, so rms drives the gain
+      node.connect(analyser);
+      preGain.connect(limiter);
+      limiter.connect(ctx.destination);
+      startLevelWatch();
     }
     return node;
   } catch { $err.set("noAudio"); return null; }
 }
 
+// live loudness normalisation — rms of the raw synth output → gain, eased so it never pumps
+function startLevelWatch() {
+  if (levelTimer || typeof setInterval === "undefined") return;
+  levelTimer = setInterval(() => {
+    if (!analyser || !preGain || !$playing.get()) return;
+    analyser.getByteTimeDomainData(timeBuf);
+    let sum = 0;
+    for (let i = 0; i < timeBuf.length; i++) { const v = (timeBuf[i] - 128) / 128; sum += v * v; }
+    const rms = Math.sqrt(sum / timeBuf.length);
+    if (rms > 0.002) {
+      const g = normGain(rms);
+      preGain.gain.setTargetAtTime(g, ctx.currentTime, 0.4);
+    }
+  }, 500);
+}
+
+const freqBuf = () => {
+  if (!analyser) return null;
+  const a = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(a);
+  return a;
+};
+bindAudio(() => ($playing.get() && analyser ? freqBuf() : null));
+
 async function bytesFor(track) {
   if (track.bytes) return track.bytes.slice(0);
-  return await (await fetch(assetURL(track.src))).arrayBuffer();
+  if (track.src) return await (await fetch(assetURL(track.src))).arrayBuffer();
+  // headless never reaches modland — the bundled demo stands in, so the whole store→play→library flow is
+  // still exercised end to end against a deterministic fixture
+  if (gate) return await (await fetch(assetURL(DEMO.src))).arrayBuffer();
+  // a store tune: try each mirror in turn
+  for (let m = 0; m < MIRRORS.length; m++) {
+    try {
+      const r = await fetch(trackURL(track.author, track.file, m));
+      if (r.ok) return await r.arrayBuffer();
+    } catch { /* next mirror */ }
+  }
+  throw new Error("unreachable");
 }
 
 // .v2mz is gzip — decompress client-side before handing bytes to the synth
@@ -70,9 +131,11 @@ async function maybeGunzip(buf) {
 
 async function loadInto(track) {
   $track.set(track); $posMs.set(0); $durMs.set(0); $err.set("");
-  let data;
-  try { data = await maybeGunzip(await bytesFor(track)); }
+  let raw, data;
+  try { raw = await bytesFor(track); data = await maybeGunzip(raw); }
   catch { $err.set("loadError"); return false; }
+  $size.set(raw.byteLength);
+  setTuneBytes(data);                                  // the hero renders the tune's OWN bytes
   loadedId = track.id;
   node.port.postMessage({ cmd: "load", bytes: data }, [data]);
   return true;
@@ -94,11 +157,12 @@ function syncHold() {
 function releaseHold() { try { wl?.release?.(); } catch { /* */ } wl = null; }
 
 async function selectAndPlay(track) {
-  if (!audioSupported) { $err.set("noAudio"); return; }
+  if (!audioSupported) { $err.set("noAudio"); return false; }
   $playing.set(true);
-  const n = await ensureNode(); if (!n) { $playing.set(false); return; }
-  if (!(await loadInto(track))) { $playing.set(false); return; }
+  const n = await ensureNode(); if (!n) { $playing.set(false); return false; }
+  if (!(await loadInto(track))) { $playing.set(false); return false; }
   n.port.postMessage({ cmd: "play" }); syncHold();
+  return true;
 }
 async function resume() {
   if (!audioSupported) { $err.set("noAudio"); return; }
@@ -113,108 +177,215 @@ function pause() {
   $playing.set(false); np?.setPaused?.(); releaseHold();
 }
 async function toggle() { if ($playing.get()) pause(); else await resume(); }
-function stop() {
-  if (node) node.port.postMessage({ cmd: "stop" });
-  $playing.set(false); $posMs.set(0); np?.setPaused?.(); releaseHold();
-}
 function seek(ms) { $posMs.set(ms); if (node) node.port.postMessage({ cmd: "seek", ms: Math.round(ms) }); }
 
 const fmt = (ms) => {
   const s = Math.max(0, Math.round((ms || 0) / 1000));
   return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
 };
+const kb = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round((b || 0) / 1024)) + " KB");
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
-const DISC_CSS = ".v2m-disc.is-playing{animation:spin 6s linear infinite}@media(prefers-reduced-motion:reduce){.v2m-disc{animation:none!important}}";
-// A minimalist record. SVG fill/stroke are driven by currentColor + native opacity attrs
-// (Tailwind fill-*/stroke-* colour utilities aren't reliably generated by the CDN build);
-// text-base-content / text-primary / text-base-100 make every shape theme-aware in both modes.
-const Disc = ({ playing }) => html`
-  <div class="grid place-items-center w-40 sm:w-48 aspect-square text-base-content">
-    <svg viewBox="0 0 100 100" class=${"w-full h-full v2m-disc" + (playing ? " is-playing" : "")} aria-hidden="true">
-      <circle cx="50" cy="50" r="47" fill="currentColor" opacity="0.05" />
-      <circle cx="50" cy="50" r="47" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.22" />
-      ${[39, 32, 25].map((r) => html`<circle cx="50" cy="50" r=${r} fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.13" />`)}
-      <circle cx="50" cy="50" r="15" fill="currentColor" class="text-primary" opacity="0.92" />
-      <circle cx="50" cy="50" r="5.6" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.2" />
-      <circle cx="50" cy="50" r="2.2" fill="currentColor" class="text-base-100" />
-    </svg>
-  </div>`;
-
 // ─────────────────────────────  PLAYER  ─────────────────────────────
-export function v2m({ S, toast }) {
+export function v2m({ S }) {
   const t = useStore(S.t);
   const track = useStore($track);
   const playing = useStore($playing);
   const pos = useStore($posMs);
   const dur = useStore($durMs);
+  const size = useStore($size);
   const err = useStore($err);
-  const fileRef = useRef();
-
-  const onFile = async (e) => {
-    const f = e.target.files && e.target.files[0]; e.target.value = "";
-    if (!f) return;
-    const name = f.name.replace(/\.(v2mz?)$/i, "");
-    try { await selectAndPlay({ id: "up-" + Date.now(), name, bytes: await f.arrayBuffer(), origin: "upload" }); }
-    catch { $err.set("loadError"); }
-  };
-
-  const save = async () => {
-    const tr = $track.get(); if (!tr || tr.origin !== "upload") return;
-    try {
-      const buf = await bytesFor(tr);
-      const id = "tr" + Date.now();
-      await SAVES.put(id, { name: tr.name, dur: $durMs.get(), data: new Uint8Array(buf) });
-      $track.set({ ...tr, id, origin: "library" }); loadedId = id;
-      toast?.(T(t, "toastSaved"));
-    } catch { /* */ }
-  };
+  const ratio = mp3Ratio(size, dur / 1000);
 
   return html`
-    <style>${DISC_CSS}</style>
-    <div class="flex flex-col items-center gap-6 pt-4 pb-2" data-track=${track?.id || ""}>
-      <${Disc} playing=${playing} />
-      <div class="w-full max-w-sm text-center px-2">
-        <div class="text-lg font-semibold truncate">${track?.name}</div>
-      </div>
+    <div class="relative h-full min-h-0 flex flex-col" data-track=${track?.id || ""}>
+      <${ByteStage} />
 
-      <div class="w-full max-w-sm px-2">
-        <input type="range" class="range range-primary range-xs w-full" aria-label=${T(t, "aSeek")}
-          min="0" max=${Math.max(1000, dur)} step="250" value=${Math.min(pos, Math.max(1000, dur))} data-haptic="off"
-          onPointerdown=${() => { scrubbing = true; }}
-          onInput=${(e) => { scrubbing = true; $posMs.set(+e.target.value); }}
-          onChange=${(e) => { scrubbing = false; seek(+e.target.value); }} />
-        <div class="flex justify-between font-mono text-xs tabular-nums text-base-content/70 mt-1">
-          <span data-time>${fmt(pos)}</span><span>${fmt(dur)}</span>
+      <div class="relative z-10 flex-1 min-h-0 flex flex-col justify-end gap-[var(--ms-gap)] pb-[var(--ms-gap)]">
+        <div class="text-center px-4">
+          <div class="text-[length:var(--ms-title)] font-semibold truncate">${titleOf(track?.name || "")}</div>
+          ${size > 0 && html`
+            <div class="mt-1 flex items-center justify-center gap-2 font-mono text-xs tabular-nums text-base-content/70">
+              <span data-size class="text-base-content">${kb(size)}</span>
+              ${ratio >= 2 && html`<span aria-hidden="true">·</span><span data-ratio>${T(t, "smallerThanMp3").replace("{n}", Math.round(ratio))}</span>`}
+            </div>`}
         </div>
+
+        <${Island} className="mx-[var(--ms-gap)] px-[var(--ms-pad)] py-[var(--ms-pad)] flex flex-col gap-2">
+          <input type="range" class="range range-primary range-xs w-full" aria-label=${T(t, "aSeek")}
+            min="0" max=${Math.max(1000, dur)} step="250" value=${Math.min(pos, Math.max(1000, dur))} data-haptic="off"
+            onPointerdown=${() => { scrubbing = true; }}
+            onInput=${(e) => { scrubbing = true; $posMs.set(+e.target.value); }}
+            onChange=${(e) => { scrubbing = false; seek(+e.target.value); }} />
+          <div class="flex justify-between font-mono text-xs tabular-nums text-base-content/70">
+            <span data-time>${fmt(pos)}</span><span>${fmt(dur)}</span>
+          </div>
+          <div class="flex items-center justify-center gap-5">
+            <button class="btn btn-ghost btn-circle" aria-label=${T(t, "aRestart")} onClick=${() => seek(0)}>
+              ${Icon("lucide:rotate-ccw", "text-xl")}
+            </button>
+            <button id="play" data-playing=${playing}
+              class="btn btn-primary btn-circle w-[var(--ms-ctl)] h-[var(--ms-ctl)] shadow-lg shadow-primary/20"
+              aria-label=${T(t, playing ? "aPause" : "aPlay")} onClick=${() => toggle()}>
+              ${Icon(playing ? "lucide:pause" : "lucide:play", "text-2xl")}
+            </button>
+            <button class="btn btn-ghost btn-circle" aria-label=${T(t, "aStore")}
+              onClick=${() => S.tab.set("store")}>${Icon("lucide:store", "text-xl")}</button>
+          </div>
+          ${err && html`<p role="alert" class="text-error text-xs text-center">${T(t, err)}</p>`}
+        <//>
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────  STORE  ─────────────────────────────
+// Live: modland's V2 tree is fetched straight from the browser (three mirrors, all `ACAO: *`, no proxy).
+// The listing carries a filename and a byte size — which is exactly what a store built around SIZE needs.
+const GATE_TUNES = [
+  { author: "Jandor", file: "stars.v2m", bytes: 9216 },
+  { author: "Dafunk", file: "the abandoned ones.v2m", bytes: 16881 },
+  { author: "KB", file: "fr-024 welcome to breakpoint.v2m", bytes: 27112 },
+  { author: "Kaktusen", file: "klaxton.v2m", bytes: 51521 },
+  { author: "Dalezy", file: "blackout in mordor.v2m", bytes: 83421 },
+  { author: "Quickyman", file: "arcane remix.v2m", bytes: 100352 },
+];
+
+async function fetchText(pathFor) {
+  for (let m = 0; m < MIRRORS.length; m++) {
+    try { const r = await fetch(pathFor(m)); if (r.ok) return await r.text(); } catch { /* next mirror */ }
+  }
+  return null;
+}
+
+const SORTS = [
+  { id: "size", key: (a, b) => a.bytes - b.bytes },
+  { id: "name", key: (a, b) => titleOf(a.file).localeCompare(titleOf(b.file)) },
+  { id: "author", key: (a, b) => a.author.localeCompare(b.author) || a.bytes - b.bytes },
+];
+const PAGE = 60;
+
+export function v2mStore({ S, toast }) {
+  const t = useStore(S.t);
+  const cur = useStore($track);
+  const [tunes, setTunes] = useState(gate ? GATE_TUNES : null);
+  const [done, setDone] = useState(gate);
+  const [q, setQ] = useState("");
+  const [sort, setSort] = useState("size");
+  const [shown, setShown] = useState(PAGE);
+  const [busy, setBusy] = useState("");
+  const [owned, setOwned] = useState(() => new Set());
+
+  useEffect(() => {
+    (idbSupported ? SAVES.all() : Promise.resolve([]))
+      .then((rows) => setOwned(new Set(rows.map((r) => r.id))))
+      .catch(() => { /* an empty library is a fine starting point */ });
+  }, []);
+
+  useEffect(() => {
+    if (gate) return;                                  // the gate never touches the network
+    let dead = false;
+    const acc = [];
+    (async () => {
+      const root = await fetchText((m) => MIRRORS[m]);
+      if (dead || !root) { setTunes([]); setDone(true); return; }
+      const authors = parseAuthors(root);
+      const queue = [...authors];
+      await Promise.all(Array.from({ length: 6 }, async () => {
+        while (queue.length && !dead) {
+          const a = queue.shift();
+          const html = await fetchText((m) => authorURL(a, m));
+          if (!html || dead) continue;
+          for (const e of parseListing(html)) acc.push({ author: a, ...e });
+          setTunes([...acc]);
+        }
+      }));
+      if (!dead) setDone(true);
+    })();
+    return () => { dead = true; };
+  }, []);
+
+  const play = async (tune) => {
+    const id = trackId(tune.author, tune.file);
+    setBusy(id);
+    const ok = await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
+    setBusy("");
+    if (!ok) return;
+    try {                                              // a few KB — keeping it is free, so the tune goes offline
+      const raw = await bytesFor(tune.bytes ? tune : { author: tune.author, file: tune.file });
+      await SAVES.put(id, { name: titleOf(tune.file), author: tune.author, size: raw.byteLength, dur: $durMs.get(), data: new Uint8Array(raw) });
+      setOwned((s) => new Set(s).add(id));
+      toast?.(T(t, "toastSaved"));
+    } catch { /* playing already worked; the offline copy is a bonus */ }
+    S.tab.set("play");
+  };
+
+  const list = (tunes || []).filter((x) => {
+    if (!q) return true;
+    const s = q.toLowerCase();
+    return x.file.toLowerCase().includes(s) || x.author.toLowerCase().includes(s);
+  }).sort(SORTS.find((s) => s.id === sort).key);
+
+  const total = (tunes || []).reduce((n, x) => n + x.bytes, 0);
+
+  return html`
+    <div class="flex flex-col gap-[var(--ms-gap)] pt-2 pb-2">
+      <div class="flex items-center gap-2">
+        <label class="input input-sm flex-1 flex items-center gap-2">
+          ${Icon("lucide:search", "opacity-60")}
+          <input type="search" class="grow" value=${q} aria-label=${T(t, "aSearch")}
+            placeholder=${T(t, "searchPh")} onInput=${(e) => { setQ(e.target.value); setShown(PAGE); }} />
+        </label>
       </div>
 
-      <div class="flex items-center gap-5">
-        <button class="btn btn-ghost btn-circle" aria-label=${T(t, "aRestart")} onClick=${() => seek(0)}>
-          ${Icon("lucide:rotate-ccw", "text-xl")}
-        </button>
-        <button id="play" data-playing=${playing}
-          class="btn btn-primary btn-circle w-16 h-16 shadow-lg shadow-primary/20"
-          aria-label=${T(t, playing ? "aPause" : "aPlay")} onClick=${() => toggle()}>
-          ${Icon(playing ? "lucide:pause" : "lucide:play", "text-3xl")}
-        </button>
-        <button class="btn btn-ghost btn-circle" aria-label=${T(t, "aStop")} data-haptic="bump" onClick=${() => stop()}>
-          ${Icon("lucide:square", "text-xl")}
-        </button>
+      <div class="flex items-center justify-between gap-2">
+        <${Segmented} variant="outline" size="sm" scroll attr="data-sort" label=${T(t, "aSort")}
+          items=${SORTS.map((s) => ({ id: s.id, label: T(t, "sort_" + s.id) }))}
+          value=${sort} onChange=${(v) => { setSort(v); setShown(PAGE); }} />
+        <span data-catalog class="font-mono text-xs tabular-nums text-base-content/70 shrink-0">
+          ${(tunes || []).length}${done ? "" : "…"} · ${kb(total)}
+        </span>
       </div>
 
-      ${err && html`<p role="alert" class="text-error text-sm">${T(t, err)}</p>`}
-
-      <div class="flex flex-wrap justify-center gap-2 mt-1">
-        <button class="btn btn-sm btn-outline gap-2" onClick=${() => fileRef.current?.click()}>
-          ${Icon("lucide:folder-open")}${T(t, "openBtn")}
-        </button>
-        ${track?.origin === "upload" && html`
-          <button class="btn btn-sm btn-outline gap-2" onClick=${save}>
-            ${Icon("lucide:bookmark-plus")}${T(t, "saveBtn")}
-          </button>`}
-        <input ref=${fileRef} type="file" accept=".v2m,.v2mz" class="hidden" aria-label=${T(t, "aOpen")} onChange=${onFile} />
-      </div>
+      ${!useReveal(tunes !== null) ? html`
+        <div class="grid grid-cols-2 gap-[var(--ms-gap)]">${[0, 1, 2, 3, 4, 5].map(() => html`
+          <div data-skel class="card bg-base-200/60 border border-base-content/5">
+            <div class="card-body p-3 gap-1">
+              <div class="font-mono text-lg"><${Scramble} len=${5} /></div>
+              <div class="truncate text-sm"><${Scramble} len=${16} /></div>
+              <div class="text-xs"><${Scramble} len=${9} /></div>
+            </div>
+          </div>`)}</div>` : list.length === 0 ? html`
+        <div class="min-h-[40vh] grid place-items-center text-center text-base-content/70">
+          <div class="flex flex-col items-center gap-3">
+            ${Icon("lucide:store", "text-4xl opacity-40")}
+            <p>${T(t, q ? "storeNoMatch" : "storeEmpty")}</p>
+          </div>
+        </div>` : html`
+        <div class="grid grid-cols-2 gap-[var(--ms-gap)]">
+          ${list.slice(0, shown).map((x) => {
+            const id = trackId(x.author, x.file);
+            const active = cur?.id === id;
+            return html`
+              <button data-tune=${id} data-busy=${busy === id ? "true" : "false"}
+                class=${"card text-left bg-base-200/60 border transition-colors " +
+                  (active ? "border-primary/60" : "border-base-content/5 hover:border-base-content/20")}
+                onClick=${() => play(x)}>
+                <div class="card-body p-3 gap-1">
+                  <div class="flex items-baseline justify-between gap-2">
+                    <span class="font-mono text-lg tabular-nums leading-none">${kb(x.bytes)}</span>
+                    ${owned.has(id) && html`<span class="text-primary shrink-0" aria-label=${T(t, "owned")}>
+                      ${Icon("lucide:check", "text-sm")}</span>`}
+                  </div>
+                  <div class="truncate text-sm font-medium">${titleOf(x.file)}</div>
+                  <div class="truncate text-xs text-base-content/70">${x.author}</div>
+                </div>
+              </button>`;
+          })}
+        </div>
+        ${shown < list.length && html`
+          <button class="btn btn-sm btn-outline w-full" onClick=${() => setShown((n) => n + PAGE)}>
+            ${T(t, "more")}
+          </button>`}`}
     </div>`;
 }
 
@@ -239,7 +410,7 @@ export function v2mLibrary({ S, undo }) {
   };
 
   if (!useReveal(list !== null)) {
-    return html`<div class="flex flex-col gap-2 pt-2">${[0, 1, 2].map((i) => html`
+    return html`<div class="flex flex-col gap-2 pt-2">${[0, 1, 2].map(() => html`
       <div data-skel class="card bg-base-200/60">
         <div class="card-body flex-row items-center gap-3 p-3">
           <div class="w-9 h-9 rounded-lg bg-base-300 shrink-0"></div>
@@ -252,10 +423,13 @@ export function v2mLibrary({ S, undo }) {
   }
 
   if (!list.length) {
-    return html`<div class="min-h-[50vh] grid place-items-center text-center text-base-content/60">
+    return html`<div class="min-h-[50vh] grid place-items-center text-center text-base-content/70">
       <div class="flex flex-col items-center gap-3">
         ${Icon("lucide:list-music", "text-4xl opacity-40")}
         <p>${T(t, "libraryEmpty")}</p>
+        <button class="btn btn-sm btn-outline gap-2" onClick=${() => S.tab.set("store")}>
+          ${Icon("lucide:store")}${T(t, "tabStore")}
+        </button>
       </div>
     </div>`;
   }
@@ -272,9 +446,11 @@ export function v2mLibrary({ S, undo }) {
         </button>
         <button class="flex-1 min-w-0 text-left" onClick=${() => playRow(it)}>
           <div class="truncate font-semibold">${it.name}</div>
-          <div class="font-mono text-xs text-base-content/70">${fmt(it.dur)}</div>
+          <div class="font-mono text-xs text-base-content/70">
+            ${it.size ? kb(it.size) + " · " : ""}${fmt(it.dur)}
+          </div>
         </button>
-        <button class="btn btn-circle btn-sm btn-ghost text-base-content/60 shrink-0" data-haptic="bump"
+        <button class="btn btn-circle btn-sm btn-ghost text-base-content/70 shrink-0" data-haptic="bump"
           aria-label=${T(t, "del")} onClick=${() => del(it)}>${Icon("lucide:trash-2")}</button>
       </div>
     </div>`;

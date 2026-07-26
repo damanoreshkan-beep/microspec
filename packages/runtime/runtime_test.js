@@ -2,6 +2,7 @@
 //   deno test -A packages/runtime/runtime_test.js
 import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { validateSpec } from "./validate.js";
+import { MIRRORS as v2mMIRRORS, parseAuthors as v2mParseAuthors, parseListing as v2mParseListing, titleOf as v2mTitleOf, trackId as v2mTrackId, trackURL as v2mTrackURL, mp3Ratio as v2mMp3Ratio, normGain as v2mNormGain, byteCloud as v2mByteCloud, seedBytes as v2mSeedBytes } from "./v2m.js";
 import { T, dictFor, ago, whenLabel } from "./i18n.js";
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "./groove.js";
 import { generateMelody, scoreMelody } from "./melody.js";
@@ -3184,4 +3185,64 @@ Deno.test("dock height is MEASURED, not a constant — nothing may sit under the
   const lib = await Deno.readTextFile(new URL("../gates/browser-lib.mjs", import.meta.url));
   assert(/nav\[data-dock\]/.test(lib) && /pointerEvents/.test(lib),
     "the matrix must check dock/content collision (excluding pointer-events:none decoration) — overlap is not overflow");
+});
+
+// ── v2m: the V2 archive's parsing + the size maths ──────────────────────────────────────────────
+Deno.test("v2m parseAuthors — directories only, no sort links, no parent", () => {
+  const html = `<a href="?C=N&amp;O=A">Name</a><a href="../">../</a>
+    <a href="Dafunk/">Dafunk/</a><a href="Chip%20%28ES%29/">Chip (ES)/</a><a href="stars.v2m">stars.v2m</a>`;
+  assertEquals(v2mParseAuthors(html), ["Dafunk", "Chip (ES)"]);
+});
+
+Deno.test("v2m parseListing — filename + byte size, .v2m and .v2mz", () => {
+  const html = `<tr><td class="link"><a href="stars.v2m" title="stars.v2m">stars.v2m</a></td><td class="size">   9216</td></tr>
+    <tr><td class="link"><a href="the%202nd%20movement.v2mz" title="x">the 2nd…</a></td><td class="size">  64267</td></tr>
+    <tr><td class="link"><a href="readme.txt">readme.txt</a></td><td class="size">    12</td></tr>`;
+  assertEquals(v2mParseListing(html), [
+    { file: "stars.v2m", bytes: 9216 },
+    { file: "the 2nd movement.v2mz", bytes: 64267 },
+  ]);
+});
+
+Deno.test("v2m URLs are mirror-indexed and percent-encoded", () => {
+  const u = v2mTrackURL("Chip (ES)", "invasors from the planet disco.v2m", 0);
+  assert(u.startsWith(v2mMIRRORS[0]), "mirror 0");
+  assert(u.includes("Chip%20(ES)") && u.includes("planet%20disco.v2m"), "spaces encoded: " + u);
+  assert(!u.includes(" "), "no raw spaces");
+  // the index wraps, so a caller fails over by incrementing
+  assertEquals(v2mTrackURL("A", "b.v2m", v2mMIRRORS.length), v2mTrackURL("A", "b.v2m", 0));
+  assertEquals(v2mTitleOf("the abandoned ones.v2m"), "the abandoned ones");
+  assertEquals(v2mTrackId("Dafunk", "breeze.v2m"), "V2/Dafunk/breeze.v2m");
+});
+
+Deno.test("v2m mp3Ratio — the store's headline number", () => {
+  // 9216 bytes of music that plays 157 s = 2 512 000 bytes as a 128 kbit/s MP3
+  assertEquals(Math.round(v2mMp3Ratio(9216, 157)), 273);
+  assertEquals(v2mMp3Ratio(0, 100), 0, "unknown size → no claim");
+  assertEquals(v2mMp3Ratio(1000, 0), 0, "unknown duration → no claim");
+});
+
+Deno.test("v2m normGain — loudness, not peak (a 15× peak must stay audible)", () => {
+  assertEquals(v2mNormGain(0.1), 1, "already at target");
+  assert(v2mNormGain(0.28) < 1 && v2mNormGain(0.28) > 0.3, "loud tune is turned down, not muted");
+  assert(v2mNormGain(0.02) > 1, "quiet tune is lifted");
+  assert(v2mNormGain(0.0001) <= 2.5 && v2mNormGain(9) >= 0.25, "clamped both ways");
+  assertEquals(v2mNormGain(0), 1, "no reading yet → leave it alone");
+});
+
+Deno.test("v2m byteCloud — the point count IS the file size", () => {
+  const small = v2mByteCloud(v2mSeedBytes(300));
+  const big = v2mByteCloud(v2mSeedBytes(3000));
+  assertEquals(small.length, 100 * 3, "one point per 3 bytes");
+  assert(big.length > small.length, "a bigger file is a denser object");
+  assertEquals(v2mByteCloud(new Uint8Array(2)).length, 0, "nothing to draw");
+  // sub-sampled above the cap, and every point stays inside the unit sphere
+  const capped = v2mByteCloud(v2mSeedBytes(30000), 1000);
+  assertEquals(capped.length / 3, 1000);
+  for (let i = 0; i < capped.length; i += 3) {
+    const r = Math.hypot(capped[i], capped[i + 1], capped[i + 2]);
+    assert(r <= 1.0001 && r >= 0.549, "radius out of range: " + r);
+  }
+  // deterministic — the same tune always renders the same object
+  assertEquals([...v2mByteCloud(v2mSeedBytes(90))], [...v2mByteCloud(v2mSeedBytes(90))]);
 });

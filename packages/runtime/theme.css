@@ -127,7 +127,10 @@ html.ms-fit, html.ms-fit body { height: 100%; overflow: hidden; overscroll-behav
    --dock-h plus a safe area — and arithmetic is exactly what put rave's transport 6px from the tab bar
    while every check passed. A margin on the last child is not arithmetic: it is air that cannot be
    cancelled by a measurement being slightly off. */
-html.ms-fit main#view > *:last-child { margin-bottom: var(--ms-gap); }
+/* An island on a fit screen keeps its own air from the dock, whatever the padding above it worked out to.
+   Targeting #view's last child was wrong: that is usually a full-height WRAPPER, and the island sits
+   inside it — the margin landed on a box whose height was already fixed and moved nothing. */
+html.ms-fit [data-island] { margin-bottom: calc(var(--ms-gap) * 1.5); }
 html.ms-fit main#view {
   height: calc(100dvh - var(--hdr-h));
   padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom));

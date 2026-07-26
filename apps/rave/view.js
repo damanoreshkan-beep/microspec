@@ -299,7 +299,6 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
 
     <${Island} pinned className="w-full max-w-xl">
         <${Transport} locale=${loc} stopIcon playing=${playing} onToggle=${toggle} keep=${1}
-          subtitle=${`${bpm} BPM`}
           moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
           actions=${[
             { id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } },

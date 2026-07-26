@@ -67,19 +67,23 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   nav[data-dock] button { padding: 0.3rem; min-width: 0; }
   nav[data-dock] button > span { display: none; }
   
+  .ms-decor { display: none !important; }
+
+  
   [data-panel-title] { display: none; }
 
   
   header.navbar { min-height: 2.25rem; }
   [data-title] { display: none; }
-
   .btn { --btn-p: 0.45rem; max-width: 100%; }
   html:not(.ms-fit) .btn { flex-shrink: 1; white-space: normal; }
   .btn > * { min-width: 0; }
   .join > .btn, .join > * { flex-shrink: 1; min-width: 0; }
   .font-mono { overflow-wrap: anywhere; }
+  
   html:not(.ms-fit) .flex:not(.flex-col):has(> .btn) { flex-wrap: wrap; }
   html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
+  
   .ms-side {
     flex-direction: row; align-items: stretch;
     overflow-x: auto; overflow-y: hidden;
@@ -87,10 +91,10 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
     scrollbar-width: none;
   }
   .ms-side::-webkit-scrollbar { display: none; }
-  
   .ms-side > [data-stage-box], .ms-side > .ms-side-main {
     flex: 0 0 88%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always;
   }
+  
   .ms-side > .ms-side-main { order: -1; }
 }
 @supports selector(::scroll-marker) {
@@ -121,6 +125,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
   --border: 1px; --depth: 0;
 }
+
 [data-theme="signal-light"] {
   color-scheme: light;
   --color-base-100: #FFFFFF; --color-base-200: #FAFAF9; --color-base-300: #E7E7E3;
@@ -136,6 +141,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
   --border: 1px; --depth: 0;
 }
+
 
 .sf-raised {
   background: var(--color-base-100);
@@ -157,6 +163,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 .sf-e4 { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 -10px 44px -12px var(--sf-shadow); }
 .sf-e5 { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }
 
+
 :root {
   --r-1: 4px; --r-2: 8px; --r-3: 12px; --r-4: 16px; --r-5: 24px;
   --bw-1: 1px; --bw-2: 2px; --bw-3: 4px;
@@ -171,6 +178,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --sf-inset-top:  rgba(0, 0, 0, .8);
   --sf-press-face: color-mix(in oklch, var(--color-base-100) 66%, #000);
   --sf-press-top:  rgba(0, 0, 0, .92);
+
   --ms-vol-key:    rgba(255, 255, 255, .055);   
   --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 13%, transparent);
   --ms-vol-rim:    rgba(255, 255, 255, .07);    
@@ -178,6 +186,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --ms-vol-shade:  rgba(0, 0, 0, .85);          
 }
 [data-theme="signal-light"] {
+  
   --sf-rim:        rgba(255, 255, 255, .95);
   --sf-edge:       rgba(24, 24, 27, .09);
   --sf-lip:        rgba(255, 255, 255, .9);
@@ -205,6 +214,7 @@ body {
   background-repeat: no-repeat;
 }
 
+
 body::after {
   content: "";
   position: fixed;
@@ -222,7 +232,6 @@ body::after {
 
 
 .sf-inset [aria-pressed="true"] { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
-
 
 .btn:active:not(:disabled), [aria-pressed]:active {
   box-shadow: inset 0 3px 7px -1px var(--sf-press-top), inset 0 -1px 0 0 var(--sf-lip);
@@ -260,8 +269,6 @@ body::after {
 .progress::-webkit-progress-value { box-shadow: inset 0 1px 0 0 var(--sf-rim); }
 .progress::-moz-progress-bar { box-shadow: inset 0 1px 0 0 var(--sf-rim); }
 .skeleton, [data-skeleton] { background: var(--sf-inset-face); box-shadow: inset 0 2px 5px -1px var(--sf-inset-top); }
-
-
 nav[data-dock] button[aria-current="page"] {
   box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 3px 8px -2px var(--sf-shadow);
 }
@@ -274,6 +281,7 @@ nav[data-dock] button[aria-current="page"] {
   box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 6px -2px var(--sf-shadow);
 }
 
+
 .alert { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
 .dropdown-content, .menu.bg-base-100, [role="menu"] {
   box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow);
@@ -282,7 +290,6 @@ nav[data-dock] button[aria-current="page"] {
 
 .modal-box { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 -10px 44px -12px var(--sf-shadow); }
 [data-toast] .alert { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }
-
 
 :root { --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
 body { letter-spacing: -0.006em; }
@@ -295,7 +302,6 @@ body { letter-spacing: -0.006em; }
   font-weight: 700;
   font-size: 1.02rem;
 }
-
 
 .badge {
   font-family: var(--font-mono);
@@ -328,6 +334,7 @@ nav[data-dock] button > span {
   font-size: .58rem;
 }
 
+
 .modal-box {
   background: color-mix(in oklch, var(--color-base-100) 82%, transparent);
   backdrop-filter: blur(22px) saturate(150%);
@@ -341,8 +348,6 @@ nav[data-dock] button > span {
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
-
-
 .truncate { min-width: 0; }
 
 

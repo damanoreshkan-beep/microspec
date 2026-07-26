@@ -342,16 +342,16 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 
 [data-theme="signal"] {
   /* raised lifts by its edges: the face stays base-100, a hairline of light sits on top, the drop is deep */
-  --sf-rim:        rgba(255, 255, 255, .08);
+  --sf-rim:        rgba(255, 255, 255, .14);
   --sf-edge:       rgba(255, 255, 255, .10);
-  --sf-lip:        rgba(255, 255, 255, .05);
-  --sf-shadow:     rgba(0, 0, 0, .55);
-  --sf-drop:       0 8px 18px -6px rgba(0, 0, 0, .55);
-  /* recessed surfaces genuinely darken — base-200/300 against a base-100 parent */
-  --sf-inset-face: var(--color-base-200);
-  --sf-inset-top:  rgba(0, 0, 0, .55);
-  --sf-press-face: var(--color-base-300);
-  --sf-press-top:  rgba(0, 0, 0, .70);
+  --sf-lip:        rgba(255, 255, 255, .07);
+  --sf-shadow:     rgba(0, 0, 0, .75);
+  --sf-drop:       0 10px 24px -6px rgba(0, 0, 0, .78), 0 2px 6px -2px rgba(0, 0, 0, .6);
+  /* recessed surfaces genuinely darken — measured −12.6 (inset) and −33.2 (pressed) of the parent */
+  --sf-inset-face: color-mix(in oklch, var(--color-base-100) 84%, #000);
+  --sf-inset-top:  rgba(0, 0, 0, .8);
+  --sf-press-face: color-mix(in oklch, var(--color-base-100) 66%, #000);
+  --sf-press-top:  rgba(0, 0, 0, .92);
 
   --ms-vol-key:    rgba(255, 255, 255, .055);   /* key light entering the top of the box */
   --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 13%, transparent);
@@ -362,15 +362,15 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 [data-theme="signal-light"] {
   /* Same structure, inverted: on a light surface the rim is white and the recess is a grey face. The Δ
      values follow the measurement — inset −5%, pressed −13% of the parent's luminance. */
-  --sf-rim:        rgba(255, 255, 255, .75);
-  --sf-edge:       rgba(24, 24, 27, .10);
-  --sf-lip:        rgba(255, 255, 255, .8);
-  --sf-shadow:     rgba(24, 24, 27, .18);
-  --sf-drop:       0 6px 14px -4px rgba(24, 24, 27, .18);
-  --sf-inset-face: var(--color-base-200);
-  --sf-inset-top:  rgba(24, 24, 27, .14);
-  --sf-press-face: var(--color-base-300);
-  --sf-press-top:  rgba(24, 24, 27, .25);
+  --sf-rim:        rgba(255, 255, 255, .95);
+  --sf-edge:       rgba(24, 24, 27, .09);
+  --sf-lip:        rgba(255, 255, 255, .9);
+  --sf-shadow:     rgba(24, 24, 27, .22);
+  --sf-drop:       0 8px 18px -4px rgba(24, 24, 27, .22), 0 2px 5px -2px rgba(24, 24, 27, .12);
+  --sf-inset-face: color-mix(in oklch, var(--color-base-100) 95%, #18181B);
+  --sf-inset-top:  rgba(24, 24, 27, .2);
+  --sf-press-face: color-mix(in oklch, var(--color-base-100) 87%, #18181B);
+  --sf-press-top:  rgba(24, 24, 27, .32);
 
   /* A light room is lit the other way round: the wash is white and the walls are grey. Weaker than the dark
      theme on purpose — a dark band over dark text is the one place this style eats legibility. */
@@ -424,6 +424,24 @@ body::after {
   box-shadow: inset 0 3px 7px -1px var(--sf-press-top), inset 0 -1px 0 0 var(--sf-lip);
 }
 
+/* ── Buttons — the four states the reference names, applied to every button in the farm ────────────
+   RAISED at rest: the face keeps its own colour and the EDGES do the lifting (measured: face Δ+0.6, rim
+   +17, drop −57). Lightening the fill is the classic mistake and flattens the material instantly.
+   PRESSED under a finger: face −33, inner shadow −63 — the strongest state in the kit, and rightly so,
+   because it is the only one you cause by touching. DISABLED is flat: no volume on something inert.
+   `.btn-ghost` stays flat until hovered/pressed — it is a text button, not an object. */
+.btn:not(.btn-ghost):not(.btn-link):not(:disabled) {
+  box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop);
+}
+.btn:not(.btn-link):not(:disabled):active {
+  box-shadow: inset 0 3px 7px -1px var(--sf-press-top), inset 0 -1px 0 0 var(--sf-lip);
+  transform: translateY(0.5px);
+}
+.btn:disabled, .btn[disabled] { box-shadow: none; }
+
+/* Chips and badges are small raised objects too — a count or a tag sits ON the surface, not in it. */
+.badge:not(.badge-ghost) { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 1px 3px -1px var(--sf-shadow); }
+
 /* Things a value sits IN. DaisyUI paints the range's groove with --range-bg, so the inset is expressed
    through that variable rather than over the top of it — the same knob, moved down instead of deleted. */
 .sf-track, .range { --range-bg: var(--sf-inset-face); }
@@ -431,6 +449,31 @@ body::after {
   background: var(--sf-inset-face);
   box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), inset 0 -1px 0 0 var(--sf-lip);
 }
+/* Focus is a RING, not a fill: --app-accent is a mark colour and must never end up behind text. The recess
+   stays, so a focused field still reads as a field rather than becoming a raised object. */
+.input:focus, .input:focus-within, .textarea:focus, .select:focus, .file-input:focus {
+  box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), 0 0 0 2px var(--app-tint), 0 0 0 3px var(--app-accent);
+  outline: none;
+}
+.input-error, .textarea-error, .select-error {
+  box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), 0 0 0 2px color-mix(in oklch, var(--color-error) 35%, transparent);
+}
+
+/* ── Switches — a slot with something raised in it ────────────────────────────────────────────────
+   Off is an empty recess; on is the same recess with the accent filling it. The knob is raised in both,
+   because the thing you drag is an object and the thing it slides in is a groove. Same for a checkbox: the
+   box is inset when empty and raised when it carries a mark. */
+.toggle, .checkbox, .radio {
+  box-shadow: inset 0 2px 4px -1px var(--sf-inset-top), inset 0 -1px 0 0 var(--sf-lip);
+}
+.toggle:checked, .checkbox:checked, .radio:checked {
+  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 5px -2px var(--sf-shadow);
+}
+
+/* ── Progress — a value in a trough, exactly like a range ─────────────────────────────────────────── */
+.progress { background: var(--sf-inset-face); box-shadow: inset 0 2px 4px -1px var(--sf-inset-top); }
+.progress::-webkit-progress-value { box-shadow: inset 0 1px 0 0 var(--sf-rim); }
+.progress::-moz-progress-bar { box-shadow: inset 0 1px 0 0 var(--sf-rim); }
 /* A skeleton row is a value-shaped hole waiting to be filled — recessed, by definition. */
 .skeleton, [data-skeleton] { background: var(--sf-inset-face); box-shadow: inset 0 2px 5px -1px var(--sf-inset-top); }
 

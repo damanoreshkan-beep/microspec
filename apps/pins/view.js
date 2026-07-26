@@ -169,10 +169,10 @@ export function pins({ S, toast }) {
   const onSave = async (pin, url) => {
     const has = owned.has(pin.id);
     try {
-      if (has) { await SAVED.del(pin.id); toast?.(T(t, "removed")); }
+      if (has) { await SAVED.remove(pin.id); toast?.(T(t, "removed")); }
       else { await SAVED.put(pin.id, { ...pin, full: url, _ts: Date.now() }); toast?.(T(t, "saved")); }
       await loadOwned();
-    } catch { /* */ }
+    } catch (e) { console.error("save failed", e); }
   };
 
   return html`<div class="flex flex-col gap-[var(--ms-gap)]">
@@ -214,7 +214,7 @@ export function pinsSaved({ S, toast }) {
   useEffect(() => { reload(); loadOwned(); }, []);
 
   const onCopy = async (url) => { try { await navigator.clipboard.writeText(url); toast?.(T(t, "copied")); } catch { toast?.(url); } };
-  const onSave = async (pin) => { try { await SAVED.del(pin.id); toast?.(T(t, "removed")); await reload(); await loadOwned(); } catch { /* */ } };
+  const onSave = async (pin) => { try { await SAVED.remove(pin.id); toast?.(T(t, "removed")); await reload(); await loadOwned(); } catch (e) { console.error("remove failed", e); } };
 
   if (list && list.length === 0) {
     return html`<${Panel}><span class="text-base-content/70">${T(t, "savedEmpty")}</span><//>`;

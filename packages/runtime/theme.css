@@ -85,7 +85,11 @@
    tokens cannot make: three stacked sliders are ~126px however tight the padding gets, three columns are
    ~42px. Set the count with --ms-cols (default 3). This is the systemic answer to "compact on a short
    screen" — an app must never reach for its own height media query to do it. */
-@media (max-height: 620px) {
+@media (max-height: 620px) and (min-width: 340px) {
+  /* The min-width guard is the same one .ms-side carries, and for the same reason: this rule trades HEIGHT
+     for WIDTH, and below ~340px there is no width to trade with. Three columns in 200px are ~60px each, so
+     every label wraps and the group ends up TALLER than the stack it replaced — drift's shape tab was
+     +48px for exactly this, through every unrelated fix. */
   .ms-cols { display: grid; grid-template-columns: repeat(var(--ms-cols, 3), minmax(0, 1fr)); gap: var(--ms-gap); align-items: start; }
 }
 

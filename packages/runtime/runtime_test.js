@@ -2978,14 +2978,20 @@ Deno.test("v2m normGain — loudness, not peak (a 15× peak must stay audible)",
 Deno.test("v2m byteCloud — the point count IS the file size", () => {
   const small = v2mByteCloud(v2mSeedBytes(300));
   const big = v2mByteCloud(v2mSeedBytes(3000));
-  assertEquals(small.length, 100 * 3, "one point per 3 bytes");
+  assertEquals(small.length, 300 * 3, "one point per byte");
   assert(big.length > small.length, "a bigger file is a denser object");
-  assertEquals(v2mByteCloud(new Uint8Array(2)).length, 0, "nothing to draw");
+  assertEquals(v2mByteCloud(new Uint8Array(0)).length, 0, "nothing to draw");
   const capped = v2mByteCloud(v2mSeedBytes(30000), 1000);
   assertEquals(capped.length / 3, 1000);
   for (let i = 0; i < capped.length; i += 3) {
     const r = Math.hypot(capped[i], capped[i + 1], capped[i + 2]);
-    assert(r <= 1.0001 && r >= 0.549, "radius out of range: " + r);
+    assert(r <= 1.0001 && r >= 0.499, "radius out of range: " + r);
   }
   assertEquals([...v2mByteCloud(v2mSeedBytes(90))], [...v2mByteCloud(v2mSeedBytes(90))]);
+
+  const flat = new Uint8Array(4000);            
+  const cloud = v2mByteCloud(flat);
+  const distinct = new Set();
+  for (let i = 0; i < cloud.length; i += 3) distinct.add(cloud[i].toFixed(4) + "," + cloud[i + 1].toFixed(4));
+  assert(distinct.size > 3900, "a uniform file collapsed to " + distinct.size + " visible points of 4000");
 });

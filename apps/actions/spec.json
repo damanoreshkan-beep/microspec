@@ -1,0 +1,34 @@
+{
+  "id": "actions",
+  "theme": "signal",
+  "accent": "#40C173",
+  "category": "tools",
+  "tabs": [
+    {
+      "id": "board",
+      "type": "tool",
+      "icon": "lucide:activity",
+      "label": "tabBoard",
+      "view": "actions",
+      "needs": ["auth"]
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:activity",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": {
+      "label": "profSource",
+      "url": "https://github.com/damanoreshkan-beep/microspec",
+      "icon": "lucide:github"
+    }
+  }
+}

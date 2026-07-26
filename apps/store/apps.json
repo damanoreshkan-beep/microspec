@@ -8,7 +8,7 @@
     "bg": "#07070C",
     "fg": "#9F8CF6",
     "href": "./outpost/",
-    "version": "1.4",
+    "version": "1.6",
     "category": "sound"
   },
   {
@@ -56,7 +56,7 @@
     "bg": "#0A0A0F",
     "fg": "#A78BFA",
     "href": "./horoscope/",
-    "version": "1.13",
+    "version": "1.14",
     "category": "esoterica"
   },
   {
@@ -68,8 +68,20 @@
     "bg": "#0A1413",
     "fg": "#4FC2B3",
     "href": "./breathe/",
-    "version": "1.10",
+    "version": "1.12",
     "category": "wellness"
+  },
+  {
+    "id": "actions",
+    "title": "екшени",
+    "tagline": "Стан CI в один тап",
+    "glyph": "lucide:activity",
+    "art": "<path d=\"M4 12h4l2.5-6 3 12 2.5-6h4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
+    "bg": "#0A0A0B",
+    "fg": "#40C173",
+    "href": "./actions/",
+    "version": "1.0",
+    "category": "tools"
   },
   {
     "id": "habits",
@@ -92,7 +104,7 @@
     "bg": "#0E1120",
     "fg": "#A5B4FC",
     "href": "./ambient/",
-    "version": "1.9",
+    "version": "1.11",
     "category": "sound"
   },
   {
@@ -128,7 +140,7 @@
     "bg": "#1A1410",
     "fg": "#E0A94B",
     "href": "./kalimba/",
-    "version": "1.14",
+    "version": "1.16",
     "category": "sound"
   },
   {
@@ -140,7 +152,7 @@
     "bg": "#0B0B10",
     "fg": "#E7E7EA",
     "href": "./cam/",
-    "version": "1.7",
+    "version": "1.8",
     "category": "creative"
   },
   {
@@ -164,7 +176,7 @@
     "bg": "#0A0A0B",
     "fg": "#F0A868",
     "href": "./subclone/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "hackrf"
   },
   {
@@ -368,7 +380,7 @@
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.58",
+    "version": "1.61",
     "category": "sound"
   },
   {
@@ -392,7 +404,7 @@
     "bg": "#0A0A0F",
     "fg": "#9F8CF6",
     "href": "./synesth/",
-    "version": "1.10",
+    "version": "1.12",
     "category": "sound"
   },
   {
@@ -428,7 +440,7 @@
     "bg": "#17111a",
     "fg": "#fb7185",
     "href": "./wish/",
-    "version": "1.4",
+    "version": "1.5",
     "category": "tools"
   },
   {
@@ -452,7 +464,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./tarot/",
-    "version": "1.23",
+    "version": "1.24",
     "category": "esoterica"
   },
   {
@@ -464,7 +476,7 @@
     "bg": "#0E0B1A",
     "fg": "#C0A9F5",
     "href": "./transit/",
-    "version": "1.15",
+    "version": "1.16",
     "category": "science"
   },
   {
@@ -500,7 +512,7 @@
     "bg": "#0C1014",
     "fg": "#E0B24E",
     "href": "./handpan/",
-    "version": "1.16",
+    "version": "1.18",
     "category": "sound"
   },
   {
@@ -512,7 +524,7 @@
     "bg": "#14100A",
     "fg": "#D4A84B",
     "href": "./onthisday/",
-    "version": "1.11",
+    "version": "1.12",
     "category": "feeds"
   },
   {
@@ -548,7 +560,7 @@
     "bg": "#0E1022",
     "fg": "#8B7CF6",
     "href": "./drift/",
-    "version": "1.3",
+    "version": "1.5",
     "category": "sound"
   },
   {
@@ -560,7 +572,7 @@
     "bg": "#0A0A0B",
     "fg": "#B7ADEB",
     "href": "./fmradio/",
-    "version": "1.7",
+    "version": "1.8",
     "category": "hackrf"
   },
   {
@@ -584,7 +596,7 @@
     "bg": "#0A0A0B",
     "fg": "#93C5FD",
     "href": "./gsmscan/",
-    "version": "1.4",
+    "version": "1.5",
     "category": "hackrf"
   },
   {
@@ -620,7 +632,7 @@
     "bg": "#0A0A0B",
     "fg": "#7FD6A8",
     "href": "./lorawatch/",
-    "version": "1.4",
+    "version": "1.5",
     "category": "hackrf"
   },
   {
@@ -668,7 +680,7 @@
     "bg": "#0B0B10",
     "fg": "#C4B5FD",
     "href": "./v2m/",
-    "version": "1.2",
+    "version": "1.20",
     "category": "sound"
   }
 ]

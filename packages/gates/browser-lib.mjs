@@ -268,7 +268,28 @@ export async function runResponsiveMatrix(page, ev, dev) {
           if (over > 1 && across > 1 && over > hide) { hide = over; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; hsel = el.tagName.toLowerCase() + (c ? "." + c : ""); }
         }
       }
-      return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel };
+      // CLEARANCE — how much air is left between the flowing content and the chrome. Overlap is a bug;
+      // zero clearance is a design failure the overlap test cannot see, and it is what makes a transport
+      // look welded to the tab bar. Measured against --ms-gap so it follows the density ladder.
+      let clear = 999, csel = "?";
+      if (nav && view) {
+        const d = nav.getBoundingClientRect();
+        const vertical = d.width < window.innerWidth * 0.9;      // the watch rail is a column, not a bar
+        for (const el of view.querySelectorAll("*")) {
+          const r = el.getBoundingClientRect();
+          if (r.width < 24 || r.height < 12) continue;
+          const cs = getComputedStyle(el);
+          if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
+          const gap = vertical ? d.left - r.right : d.top - r.bottom;
+          const crosses = vertical
+            ? (r.bottom > d.top && r.top < d.bottom)
+            : (r.right > d.left && r.left < d.right);
+          if (!crosses || gap < 0) continue;
+          if (gap < clear) { clear = gap; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; csel = el.tagName.toLowerCase() + (c ? "." + c : ""); }
+        }
+      }
+      const minGap = Math.max(4, parseFloat(getComputedStyle(de).getPropertyValue("--ms-gap")) * 16 || 8);
+      return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel, clear: clear === 999 ? -1 : Math.round(clear), minGap: Math.round(minGap), csel };
     });
     const label = `${bp.id} ${bp.w}×${bp.h}`;
     const push = (pass, failed) => out.push(pass ? failed.pass : failed.fail);
@@ -281,6 +302,11 @@ export async function runResponsiveMatrix(page, ev, dev) {
         pass: { name: `${label}: один екран без скролу (fit)`, ok: true },
         fail: { name: `${label}: fit-екран не вміщується`, ok: false, msg: `+${m.oy}px по висоті — винуватець: ${m.vsel}. Ущільніть через --ms-* або перенесіть у Sheet` },
       });
+      // zero clearance passes the overlap test and still looks welded — so it is its own check
+      if (m.clear >= 0 && m.clear < m.minGap) {
+        out.push({ name: `${label}: контент притиснутий до хрому (fit)`, ok: false,
+          msg: `${m.clear}px замість ${m.minGap}px — ${m.csel}. Просвіт має бути щонайменше --ms-gap: інакше віджет читається як приварений до таб-бару` });
+      }
       push(m.hide <= 1, {
         pass: { name: `${label}: док нічого не перекриває (fit)`, ok: true },
         fail: { name: `${label}: док ховає контент назавжди (fit)`, ok: false, msg: `${m.hide}px — під доком: ${m.hsel}. На fit-екрані ніщо не скролиться, тож це сховано назавжди — --dock-h має міряти реальну висоту доку` },

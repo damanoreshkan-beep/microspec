@@ -3116,8 +3116,12 @@ Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager,
   assert(ctl && parseFloat(ctl[1]) * 16 >= 36, `watch --ms-ctl is ${ctl?.[1]}rem — below the 36px tap floor`);
 
   assert(/scroll-snap-type:\s*x mandatory/.test(block), ".ms-side must become a horizontal snap pager");
-  assert(/flex:\s*0 0 100%/.test(block), "a page must be a full-width snap target, not a narrower column");
+  const page = /flex:\s*0 0 (\d+)%/.exec(block);
+  assert(page, "the pager's pages have no width");
+  assert(Number(page[1]) < 100 && Number(page[1]) >= 80,
+    `a page is ${page[1]}% — at 100% nothing hints the next page exists; below ~80% it stops being a page`);
   assert(/scroll-snap-align/.test(block), "snap targets need an alignment or the pager free-scrolls");
+  assert(/\.ms-side > \.ms-side-main\s*\{\s*order:\s*-1/.test(block), "the transport must be the first page");
 
   const markers = css.indexOf("::scroll-marker");
   assert(markers > 0, "no scroll markers — the pager has no indicator where the browser supports one");

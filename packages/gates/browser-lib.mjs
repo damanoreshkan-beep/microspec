@@ -280,6 +280,12 @@ export async function runResponsiveMatrix(page, ev, dev) {
           if (r.width < 24 || r.height < 12) continue;
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
+          // Only PAINTED boxes count. A layout wrapper has no surface, so its edge is not something the eye
+          // can see resting against the bar — measuring it just reports every full-height container.
+          const painted = cs.backgroundImage !== "none" ||
+            !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.backgroundColor) ||
+            cs.boxShadow !== "none" || parseFloat(cs.borderTopWidth) > 0;
+          if (!painted) continue;
           const gap = vertical ? d.left - r.right : d.top - r.bottom;
           const crosses = vertical
             ? (r.bottom > d.top && r.top < d.bottom)

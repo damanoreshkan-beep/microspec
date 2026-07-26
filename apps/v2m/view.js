@@ -294,13 +294,15 @@ export function v2mStore({ S, toast }) {
     const ok = await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
     setBusy("");
     if (!ok) return;
-    try {                                              
-      const raw = await bytesFor(tune.bytes ? tune : { author: tune.author, file: tune.file });
-      await SAVES.put(id, { name: titleOf(tune.file), author: tune.author, size: raw.byteLength, dur: $durMs.get(), data: new Uint8Array(raw) });
-      setOwned((s) => new Set(s).add(id));
-      toast?.(T(t, "toastSaved"));
-    } catch {  }
-    S.tab.set("play");
+    S.tab.set("play");                                 
+    (async () => {
+      try {
+        const raw = await bytesFor(tune.bytes ? tune : { author: tune.author, file: tune.file });
+        await SAVES.put(id, { name: titleOf(tune.file), author: tune.author, size: raw.byteLength, dur: $durMs.get(), data: new Uint8Array(raw) });
+        setOwned((s) => new Set(s).add(id));
+        toast?.(T(t, "toastSaved"));
+      } catch {  }
+    })();
   };
 
   const list = (tunes || []).filter((x) => {

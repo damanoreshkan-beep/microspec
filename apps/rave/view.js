@@ -313,7 +313,7 @@ export function rave({ S }) {
         </div>
         <${Transport} locale=${loc} playing=${playing} stopIcon onToggle=${toggle}
           onPrev=${() => stepTrack(-1)} onNext=${() => stepTrack(1)}
-          extra=${html`<button id="gen" data-gen aria-label=${T(t, "gen")} onClick=${newTrack} class=${`btn btn-circle btn-sm ${sweep >= 0 ? "btn-accent" : "btn-outline btn-accent"}`}>${Icon("lucide:sparkles", `text-lg ${sweep >= 0 ? "animate-pulse" : ""}`)}</button>`} />
+          actions=${[{ id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } }]} />
         ${!audioSupported ? html`<div class="text-xs text-base-content/60 text-center">${T(t, "noAudio")}</div>` : null}
       </div>
     </div>

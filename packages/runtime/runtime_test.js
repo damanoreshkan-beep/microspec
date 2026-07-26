@@ -3376,6 +3376,44 @@ Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable
   assert(!/\bid=\$\{a\.id/.test(row) && !/\.\.\.\$\{a\.attr/.test(row), "sheet row duplicates the inline hooks");
 });
 
+Deno.test("no app passes the Transport a prop it does not accept (a silent prop is a lost button)", async () => {
+  // How rave lost its generate button: the widget's single `extra` slot became the `actions` array, rave's
+  // pads tab was migrated and its BEAT tab was not — so it kept passing `extra=`, JSX-style props being
+  // silently ignored when unknown. Every gate stayed green and the control simply stopped existing. Nothing
+  // but the eye caught it, on a screenshot, two commits later. This makes it mechanical.
+  const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
+  const sig = ui.slice(ui.indexOf("export function Transport("), ui.indexOf("}) {", ui.indexOf("export function Transport(")));
+  // the destructured names, read off the signature with comments and default values removed first
+  const bare = sig.replace(/\/\/[^\n]*/g, "").replace(/"[^"]*"|'[^']*'|`[^`]*`/g, "0");
+  const accepted = new Set([...bare.matchAll(/(?:^|[,{])\s*([a-zA-Z][a-zA-Z0-9]*)\s*(?=[,=}]|$)/gm)].map((m) => m[1]));
+  accepted.add("children"); accepted.add("key");
+  assert(accepted.has("actions") && accepted.has("onToggle"), "could not read the Transport signature");
+
+  const appsDir = new URL("../../apps/", import.meta.url);
+  const offenders = [];
+  for await (const e of Deno.readDir(appsDir)) {
+    if (!e.isDirectory) continue;
+    let src = "";
+    try { src = await Deno.readTextFile(new URL(`${e.name}/view.js`, appsDir)); } catch { continue; }
+    // Each `<${Transport} … />` call site. A prop may itself hold markup (drift's subtitle is an html`…`
+    // containing another html`…`), so depth is tracked properly rather than by backtick parity: an opening
+    // backtick is the one that follows `html`, any other closes. Only props at depth 0 are the Transport's.
+    for (const call of src.matchAll(/<\$\{Transport\}/g)) {
+      const from = call.index + call[0].length;
+      const region = src.slice(from, from + 4000);
+      let depth = 0;
+      for (let k = 0; k < region.length; k++) {
+        if (region[k] === "`") { depth += region.slice(k - 4, k) === "html" ? 1 : -1; continue; }
+        if (depth > 0) continue;
+        if (region[k] === "/" && region[k + 1] === ">") break;
+        const m = /^([a-zA-Z][a-zA-Z0-9]*)=/.exec(region.slice(k, k + 40));
+        if (m && /[\s{]/.test(region[k - 1] || " ")) { if (!accepted.has(m[1])) offenders.push(`${e.name}: ${m[1]}`); k += m[1].length; }
+      }
+    }
+  }
+  assertEquals(offenders, [], "Transport props that the kit ignores — the control they carry does not render");
+});
+
 Deno.test("Transport — every control is opt-in, and the mode toggles frame the transport keys", async () => {
   const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
   const tp = ui.slice(ui.indexOf("export function Transport("));

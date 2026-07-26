@@ -225,7 +225,7 @@ const beatSig = (r) => JSON.stringify([r.tracks, r.bpm, r.riff]);
 const beatBars = (tracks) => STEPS.map((s) => TRACKS.reduce((n, tr) => n + (tracks?.[tr.id]?.[s] ? 1 : 0), 0));
 const autoName = (t, tracks, bpm, list) => { const key = JSON.stringify(tracks), pre = PRESETS.find((p) => JSON.stringify(parse(p)) === key), genId = $gen.get(), label = pre ? T(t, pre.name) : (genId ? T(t, presetName(genId)) : T(t, "beatWord")), base = label + " · " + bpm; let n = base, i = 2; while (list.some((it) => it.name === n)) n = `${base} (${i++})`; return n; };
 
-export function rave({ S }) {
+export function rave({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t), tracks = useStore($tracks), style = useStore($style), playing = useStore($playing), fx = useStore($fx), cur = useStore($cur), bpm = useStore($bpm), sweep = useStore($sweep), viz = useStore($viz);
   const loc = useStore(S.locale);
   useEffect(() => { loadPackSamples($pack.get()); }, []);
@@ -272,6 +272,7 @@ export function rave({ S }) {
         </div>
         <${Transport} locale=${loc} playing=${playing} stopIcon onToggle=${toggle}
           onPrev=${() => stepTrack(-1)} onNext=${() => stepTrack(1)}
+          keep=${1} moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
           actions=${[{ id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } }]} />
         ${!audioSupported ? html`<div class="text-xs text-base-content/60 text-center">${T(t, "noAudio")}</div>` : null}
       <//>

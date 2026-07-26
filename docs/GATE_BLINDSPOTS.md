@@ -165,6 +165,30 @@ and would land in the middle of a feature push — but it is cheap and it closes
   and by checking every manifest URL resolves on production, never by a browser. A cold offline launch on a
   real device remains the only full proof.
 
+## A ramp can pass every check and still read backwards (clay repaint, 2026-07-26) — FIXED
+
+`air` paints its AQI band onto the text. The clay repaint darkened nothing about that logic, but the page
+moved from near-black to aubergine, and the first retune fixed the failures the only way a checker can
+suggest: it **lightened** the failing bands until they cleared 4.5:1.
+
+Every gate went green. The screenshot showed AQI 88 "дуже погана" as a soft salmon while a perfectly
+healthy NO₂ reading stayed vivid green — the safe values shouting, the dangerous one whispering. Contrast
+is a per-element property; **severity is a relationship between elements**, and no per-element check can
+see it. Fixed by ramping *saturation* with danger instead of lightness, and by splitting fills (a MARK,
+3:1) from text (4.5:1) so the gauge could stay vivid.
+
+**Still open — two findings from the same repaint, recorded rather than fixed:**
+
+- **Store tiles are darker than the page in the dark theme.** The tile art was drawn against `#0A0A0B`;
+  on an aubergine page it reads as a hole punched in the surface rather than a raised object — an
+  inversion of the depth the whole surface system is built on. Contrast is fine, so nothing flags it.
+  Needs the tiles regenerated against a warm page.
+- **`?theme=light` does not drive `S.theme`.** The URL override sets `data-theme` only (deliberately — it
+  must not persist, `index.js`), but `apps/store/view.js` derives its light/dark tile choice from the
+  *store*. So the light shot renders dark tiles on a cream page, and **the farm's light screenshots of
+  the store cannot be trusted for tiles** — which also means anyone opening a `?theme=light` link sees
+  the same mismatch.
+
 ---
 
 ## What follows from this

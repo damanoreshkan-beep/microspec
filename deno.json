@@ -10,7 +10,8 @@
     "test": "deno test -A packages/runtime/runtime_test.js",
     "affected": "deno run -A tools/affected.mjs",
     "verify": "deno run -A packages/gates/verify.mjs",
-    "gates": "deno run -A packages/schema/validate.mjs apps/*/spec.json && deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/* && deno test -A packages/runtime/runtime_test.js && deno run -A deploy/sw.mjs --check && deno run -A deploy/counts.mjs --check"
+    "gates": "deno run -A packages/schema/validate.mjs apps/*/spec.json && deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/* && deno test -A packages/runtime/runtime_test.js && deno run -A deploy/sw.mjs --check && deno run -A deploy/counts.mjs --check",
+    "red": "gh run view $(gh run list --workflow=verify.yml --limit 1 --json databaseId --jq '.[0].databaseId') --log-failed | sed 's/\\x1b\\[[0-9;]*m//g' | grep -E '✗'"
   },
   "lint": {
     "exclude": [
@@ -25,5 +26,6 @@
       "packages/"
     ]
   },
-  "//gates": "THE pre-push block, as one command. Running four of the five is how a stale service-worker manifest reached CI twice: the fifth is the one that depends on the LAST edit (an import graph changes when a view adopts a kit component), so it must run after everything else, every time."
+  "//gates": "THE pre-push block, as one command. Running four of the five is how a stale service-worker manifest reached CI twice: the fifth is the one that depends on the LAST edit (an import graph changes when a view adopts a kit component), so it must run after everything else, every time.",
+  "//red": "Print CI failures IN FULL. Never pipe this through `cut` or `head -c`: the gate names the offending element and its geometry, and truncating that turns a measurement back into a guess — three commits were spent moving the wrong element because its class name was cut at 170 characters."
 }

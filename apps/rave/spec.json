@@ -3,10 +3,35 @@
   "theme": "signal",
   "category": "sound",
   "tabs": [
-    { "id": "beat", "type": "tool", "icon": "lucide:audio-waveform", "label": "tabBeat", "view": "rave" },
-    { "id": "pads", "type": "tool", "icon": "lucide:grid-3x3", "label": "tabPads", "view": "ravePads" },
-    { "id": "saved", "type": "tool", "icon": "lucide:bookmark", "label": "tabSaved", "view": "raveSaved" },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "beat",
+      "type": "tool",
+      "icon": "lucide:audio-waveform",
+      "label": "tabBeat",
+      "view": "rave",
+      "fit": true
+    },
+    {
+      "id": "pads",
+      "type": "tool",
+      "icon": "lucide:grid-3x3",
+      "label": "tabPads",
+      "view": "ravePads"
+    },
+    {
+      "id": "saved",
+      "type": "tool",
+      "icon": "lucide:bookmark",
+      "label": "tabSaved",
+      "view": "raveSaved"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
   "profile": {
     "icon": "lucide:audio-waveform",

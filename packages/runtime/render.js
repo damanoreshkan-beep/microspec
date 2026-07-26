@@ -7,6 +7,7 @@ import { useRef, useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
 import { T, ago, whenLabel, sinceLabel, sys } from "./i18n.js";
+import { SHEET_BOX } from "./ui.js";
 import { CORE, BUILD, appVersion } from "./version.js";
 import { PERMISSIONS, permLabels } from "./permissions.js";
 import { tr, warm, trTick, CONTENT_LANG } from "./translate.js";
@@ -488,7 +489,7 @@ function FilterSheet() {
   const f = A.spec.filters; if (!f) return null;
   const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
   const { boxRef, grip } = useSheetDrag(() => A.S.sheet.set(false));
-  return html`<dialog id="sheet" ref=${ref} class="modal modal-bottom" onClose=${() => A.S.sheet.set(false)}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col gap-3">${grip}
+  return html`<dialog id="sheet" ref=${ref} class="modal modal-bottom" onClose=${() => A.S.sheet.set(false)}><div ref=${boxRef} class=${`${SHEET_BOX} pb-8 flex flex-col gap-3`}>${grip}
     <div class="flex items-center justify-between"><h3 class="font-bold text-lg">${T(t, "filterTitle")}</h3><button aria-label=${T(t, "close")} class="btn btn-ghost btn-sm btn-circle" onClick=${() => A.S.sheet.set(false)}>${Icon("lucide:x", "text-xl")}</button></div>
     ${(f.controls || []).map((c) => {
       if (c.type === "select") {
@@ -537,7 +538,7 @@ function InstallModal() {
   const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
   const go = async () => { if (ev) { ev.prompt(); await ev.userChoice; A.S.installEvent.set(null); } A.S.installOpen.set(false); };
   const { boxRef, grip } = useSheetDrag(() => A.S.installOpen.set(false));
-  return html`<dialog id="install" ref=${ref} class="modal modal-bottom" onClose=${() => A.S.installOpen.set(false)}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8">${grip}
+  return html`<dialog id="install" ref=${ref} class="modal modal-bottom" onClose=${() => A.S.installOpen.set(false)}><div ref=${boxRef} class=${`${SHEET_BOX} pb-8`}>${grip}
     <div class="flex items-center justify-between mb-3"><h3 class="font-bold text-lg flex items-center gap-2">${Icon("lucide:download", "text-primary")} ${T(t, "installTitle")}</h3><button aria-label=${T(t, "close")} class="btn btn-ghost btn-sm btn-circle" onClick=${() => A.S.installOpen.set(false)}>${Icon("lucide:x", "text-xl")}</button></div>
     <div class="text-sm text-base-content/70 mb-4">${T(t, "installDesc")}</div>
     ${ev ? html`<button id="install-go" class="btn btn-primary rounded-2xl w-full gap-2" onClick=${go}>${Icon("lucide:download")} ${T(t, "installBtn")}</button>` : html`<div class="flex items-start gap-2 bg-base-200 rounded-2xl px-3 py-3 text-sm">${Icon(isIOS() ? "lucide:share" : "lucide:menu", "text-lg mt-0.5")}<span>${isIOS() ? T(t, "installIosHint") : T(t, "installGenericHint")}</span></div>`}
@@ -628,7 +629,7 @@ function QrModal() {
   useEffect(() => { if (!open) return; let live = true; import("./qrcode.js").then((m) => { if (live) setUri(m.qrDataUri(url, { margin: 3 })); }).catch(() => { /* offline first-open before cache → the URL text is the fallback */ }); return () => { live = false; }; }, [open, url]);
   const close = () => A.S.qrOpen.set(false);
   const { boxRef, grip } = useSheetDrag(close);
-  return html`<dialog id="qr-invite" ref=${ref} class="modal modal-bottom" onClose=${close}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8 flex flex-col items-center gap-4">${grip}
+  return html`<dialog id="qr-invite" ref=${ref} class="modal modal-bottom" onClose=${close}><div ref=${boxRef} class=${`${SHEET_BOX} pb-8 flex flex-col items-center gap-4`}>${grip}
     <div class="flex items-center justify-between w-full"><h3 class="font-bold text-lg flex items-center gap-2">${Icon("lucide:smartphone", "text-primary")} ${L.title}</h3><button aria-label=${L.stay} class="btn btn-ghost btn-sm btn-circle" onClick=${close}>${Icon("lucide:x", "text-xl")}</button></div>
     ${/* 13rem is a comfortable QR on a phone and 232px of hard minimum on a watch, where the whole screen is
          208. A square that cannot shrink is the one shape guaranteed to overflow the smallest viewport, so
@@ -743,7 +744,7 @@ function ConfirmSheet() {
   const close = () => A.S.confirm.set(null);
   const go = () => { const fn = c?.onConfirm; close(); fn?.(); };
   const { boxRef, grip } = useSheetDrag(close);
-  return html`<dialog id="confirm" ref=${ref} class="modal modal-bottom" onClose=${close}><div ref=${boxRef} class="modal-box rounded-t-3xl pb-8">${grip}
+  return html`<dialog id="confirm" ref=${ref} class="modal modal-bottom" onClose=${close}><div ref=${boxRef} class=${`${SHEET_BOX} pb-8`}>${grip}
     <h3 class="font-bold text-lg flex items-start gap-2">${Icon("lucide:triangle-alert", "text-error text-xl shrink-0 mt-0.5")}<span>${c?.title || ""}</span></h3>
     ${c?.body ? html`<p class="text-sm text-base-content/70 mt-2 pl-8">${c.body}</p>` : null}
     <div class="flex gap-2 mt-5">

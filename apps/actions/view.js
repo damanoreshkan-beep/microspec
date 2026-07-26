@@ -230,7 +230,7 @@ export function actions({ S }) {
           ${Icon("lucide:external-link", "text-lg")}</a>` : null}
       </div>
       ${rows == null
-        ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2].map((i) => html`<${Panel} key=${i}><${Scramble} text="────────────────" /><//>`)}</div>`
+        ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2].map((i) => html`<${Panel} key=${i} className="flex-row items-center gap-3 overflow-hidden"><span class="shrink-0 w-7 h-7 rounded-full bg-base-300"></span><span class="flex-1 min-w-0 truncate"><${Scramble} text="────────" /></span><//>`)}</div>`
         : rows.length === 0
           ? html`<${Panel}><span class="text-base-content/70">${T(t, isJobs ? "jobsOf" : "noRuns")}</span><//>`
           : html`<div class="flex flex-col gap-[var(--ms-gap)]">
@@ -263,7 +263,7 @@ export function actions({ S }) {
     ${err ? html`<p role="alert" class="text-error text-sm px-1">${T(t, err)}</p>` : null}
 
     ${list == null || !ready
-      ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2, 3, 4].map((i) => html`<${Panel} key=${i}><${Scramble} text="────────────────────" /><//>`)}</div>`
+      ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2, 3, 4].map((i) => html`<${Panel} key=${i} className="flex-row items-center gap-3 overflow-hidden"><span class="shrink-0 w-7 h-7 rounded-full bg-base-300"></span><span class="flex-1 min-w-0 truncate"><${Scramble} text="────────" /></span><//>`)}</div>`
       : list.length === 0
         ? html`<${Panel}><span class="text-base-content/70">${T(t, "boardEmpty")}</span><//>`
         : html`<div class="flex flex-col gap-[var(--ms-gap)]">

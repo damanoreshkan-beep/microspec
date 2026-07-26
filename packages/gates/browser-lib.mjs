@@ -157,7 +157,20 @@ export async function runResponsiveMatrix(page, ev, dev) {
       const de = document.documentElement;
       const ox = de.scrollWidth - window.innerWidth;
       let sel = "?";
-      if (ox > 1) { let far = window.innerWidth; for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; sel = el.tagName.toLowerCase() + (c ? "." + c : ""); } } }
+      if (ox > 1) {
+        let far = window.innerWidth, node = null;
+        for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; node = el; } }
+        // The CHAIN, not just the furthest element. Three rounds were spent fixing "a button sticks out"
+        // when the button was only the last thing in a container that was already too wide — the widest
+        // ancestor is the one that has to change, and it is invisible if the check names a leaf. Each link
+        // reports its own width so the first one wider than the viewport is the actual subject.
+        const chain = [];
+        for (let el = node; el && el !== document.body && chain.length < 5; el = el.parentElement) {
+          const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
+          chain.push(`${el.tagName.toLowerCase()}${c ? "." + c : ""}[${Math.round(el.getBoundingClientRect().width)}]`);
+        }
+        sel = chain.join(" ◂ ");
+      }
       const fit = de.classList.contains("ms-fit");
       let oy = 0, vsel = "?";
       if (fit) {

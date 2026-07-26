@@ -106,8 +106,8 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
   // — the pills are visibly cut at the edge), and the scroll is contained so flicking through styles can
   // never rubber-band the page behind it.
   return scroll
-    ? html`<div class="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-full border border-base-content/10 bg-base-100/70 backdrop-blur-xl">${rail}</div>`
-    : html`<div class="rounded-full border border-base-content/10 bg-base-100/70">${rail}</div>`;
+    ? html`<div class="sf-inset overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-full backdrop-blur-xl">${rail}</div>`
+    : html`<div class="sf-inset rounded-full">${rail}</div>`;
 }
 
 // ── Island — the floating glass panel ─────────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ export function Transport({
   // the screen's subject, not a control in a row). In the kit, so that app never forks one.
   const hero = size === "hero";
   const big = hero
-    ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 !bg-base-100/70 backdrop-blur-xl border border-base-content/15 !text-base-content shadow-xl"
+    ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 !bg-base-100/70 backdrop-blur-xl !text-base-content sf-raised sf-e3"
     : size === "sm"
       ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
       : "w-[var(--ms-ctl)] h-[var(--ms-ctl)] @max-[300px]:w-11 @max-[300px]:h-11";
@@ -212,7 +212,7 @@ export function Transport({
 
   const scrub = onSeek ? html`
     <div class="flex flex-col gap-1">
-      <input type="range" class="range range-primary range-xs w-full" aria-label=${sys("aSeek", locale)}
+      <input type="range" class="range range-primary range-xs w-full sf-track" aria-label=${sys("aSeek", locale)}
         min="0" max=${max} step="250" value=${Math.min(pos, max)} data-haptic="off" data-tp-seek
         disabled=${disabled || !dur}
         onPointerdown=${() => onScrubStart?.()}
@@ -265,7 +265,7 @@ export function Transport({
           <button id="prev" class=${`btn btn-ghost btn-circle ${side}`} aria-label=${sys("aPrev", locale)}
             disabled=${disabled} onClick=${onPrev}>${Icon("lucide:skip-back", "text-xl")}</button>` : null}
         <button id="play" data-playing=${playing} disabled=${disabled}
-          class=${`btn btn-primary btn-circle ${big} shadow-lg shadow-primary/20`}
+          class=${`btn btn-primary btn-circle ${big} sf-e3`}
           aria-label=${sys(playing ? (stopIcon ? "aStop" : "aPause") : "aPlay", locale)} onClick=${onToggle}>
           ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", hero ? "text-3xl" : "text-2xl")}
         </button>

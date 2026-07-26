@@ -52,10 +52,14 @@ export function breathe({ S }) {
   }, [tech, playing, t]);
 
   return html`<div class="flex flex-col items-center gap-5 pt-2">
-    <div class="flex flex-col items-center gap-1">
-      <div class="px-4 w-full"><${Segmented} attr="data-tech" scroll
-        items=${ORDER.map((k) => ({ id: k, label: T(t, TECHS[k].name) }))} value=${tech} onChange=${choose} /></div>
-      <div class="text-xs text-base-content/70">${T(t, TECHS[tech].sub)}</div>
+    <div class="flex flex-col gap-1 self-stretch min-w-0 px-4">
+      ${/* self-stretch, not w-full: this column is align-items:center, so a child's width is shrink-to-fit
+           — `w-full` resolves against a content-sized parent and the rail's w-max row simply pushes it
+           wider, overflowing at 320px instead of scrolling. Stretching gives the rail a definite width
+           to scroll inside. */""}
+      <${Segmented} attr="data-tech" scroll
+        items=${ORDER.map((k) => ({ id: k, label: T(t, TECHS[k].name) }))} value=${tech} onChange=${choose} />
+      <div class="text-xs text-base-content/70 text-center">${T(t, TECHS[tech].sub)}</div>
     </div>
 
     <div class="w-full flex justify-center py-3">

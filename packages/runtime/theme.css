@@ -48,6 +48,44 @@ html.ms-fit main#view {
   overflow: hidden;
 }
 
+nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
+@media (max-width: 300px) {
+  :root { --hdr-h: 2.25rem; --ms-gap: 0.25rem; --ms-pad: 0.4rem; --ms-r: 0.75rem; --ms-ctl: 2.25rem; --ms-icon: 0.9rem; --ms-title: 0.8rem; --ms-label: 0.58rem; }
+  nav[data-dock] {
+    left: auto; right: 0.35rem; bottom: auto; top: 50%; transform: translateY(-50%);
+    grid-auto-flow: row; margin: 0;
+  }
+  nav[data-dock] button { padding: 0.3rem; min-width: 0; }
+  nav[data-dock] button > span { display: none; }
+  
+  [data-title] { display: none; }
+  html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
+  
+  .ms-side {
+    flex-direction: row; align-items: stretch;
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .ms-side::-webkit-scrollbar { display: none; }
+  .ms-side > [data-stage-box], .ms-side > .ms-side-main {
+    flex: 0 0 100%; min-width: 0; scroll-snap-align: center; scroll-snap-stop: always;
+  }
+}
+@supports selector(::scroll-marker) {
+  @media (max-width: 300px) {
+    .ms-side { scroll-marker-group: after; }
+    .ms-side > [data-stage-box]::scroll-marker, .ms-side > .ms-side-main::scroll-marker {
+      content: ""; width: 5px; height: 5px; margin: 0 3px; border-radius: 50%;
+      background: color-mix(in oklch, var(--color-base-content) 25%, transparent);
+    }
+    .ms-side > [data-stage-box]::scroll-marker:target-current, .ms-side > .ms-side-main::scroll-marker:target-current {
+      background: var(--color-base-content);
+    }
+    .ms-side::scroll-marker-group { display: flex; justify-content: center; padding-top: 2px; }
+  }
+}
+
 [data-theme="signal"] {
   color-scheme: dark;
   --color-base-100: #0A0A0B; --color-base-200: #141416; --color-base-300: #222225;
@@ -63,7 +101,6 @@ html.ms-fit main#view {
   --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
   --border: 1px; --depth: 0;
 }
-
 [data-theme="signal-light"] {
   color-scheme: light;
   --color-base-100: #FFFFFF; --color-base-200: #FAFAF9; --color-base-300: #E7E7E3;
@@ -79,6 +116,8 @@ html.ms-fit main#view {
   --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
   --border: 1px; --depth: 0;
 }
+
+
 [data-theme="signal"] {
   --ms-vol-key:    rgba(255, 255, 255, .055);   
   --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 13%, transparent);
@@ -123,11 +162,17 @@ body::after {
     inset 16px 0 26px -24px var(--ms-vol-shade),
     inset -16px 0 26px -24px var(--ms-vol-shade);
 }
+
+
 .ms-trough {
   box-shadow: inset 0 1px 2px 0 var(--ms-trough-in), inset 0 0 0 1px var(--ms-trough-lip);
 }
+
+
+
 :root { --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
 body { letter-spacing: -0.006em; }
+
 [data-title] {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -135,6 +180,7 @@ body { letter-spacing: -0.006em; }
   font-weight: 700;
   font-size: 1.02rem;
 }
+
 
 .badge {
   font-family: var(--font-mono);
@@ -152,8 +198,6 @@ body { letter-spacing: -0.006em; }
   border: 1px solid var(--color-base-300);
   color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
 }
-
-
 #status {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -166,6 +210,7 @@ nav[data-dock] button > span {
   letter-spacing: .03em;
   font-size: .58rem;
 }
+
 .modal-box {
   background: color-mix(in oklch, var(--color-base-100) 82%, transparent);
   backdrop-filter: blur(22px) saturate(150%);
@@ -174,8 +219,6 @@ nav[data-dock] button > span {
   transition-timing-function: cubic-bezier(.22, 1, .3, 1.12);
 }
 @media (prefers-reduced-motion: reduce) { .modal-box { transition-timing-function: ease-out; } }
-
-
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }

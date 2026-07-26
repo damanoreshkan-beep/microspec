@@ -10,7 +10,7 @@ const theme = flag("--theme", "");
 
 const BP = {
   "phone-sm": [320, 568], "phone": [384, 832], "default": [390, 844], "phone-tall": [412, 915],
-  "phone-land": [844, 390], "split": [412, 430], "split-sm": [360, 340],
+  "phone-land": [844, 390], "split": [412, 430], "split-sm": [360, 340], "watch": [208, 248], "watch-sq": [200, 200],
   "tablet": [768, 1024], "tablet-land": [1024, 768], "desktop": [1280, 900],
 };
 const bpArg = flag("--bp", "default");

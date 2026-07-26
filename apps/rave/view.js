@@ -289,7 +289,6 @@ export function rave({ S, screen, openScreen, closeScreen }) {
             items=${PLAYER.map(([id]) => ({ id, label: T(t, presetName(id)) }))} value=${PLAYER[style]?.[0]}
             onChange=${(id) => pick(PLAYER.findIndex(([x]) => x === id))} />
         </div>
-        ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`btn btn-circle btn-sm shrink-0 border-base-content/10 backdrop-blur-xl ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/60 text-base-content/60"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
       </div>
 
       <div ...${pan} class="flex-1 min-h-0 touch-pan-y" aria-hidden="true"></div>
@@ -314,7 +313,9 @@ export function rave({ S, screen, openScreen, closeScreen }) {
         <${Transport} locale=${loc} playing=${playing} stopIcon onToggle=${toggle}
           onPrev=${() => stepTrack(-1)} onNext=${() => stepTrack(1)}
           keep=${1} moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
-          actions=${[{ id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } }]} />
+          actions=${[
+            ...(immersionAvailable ? [{ id: "immersion", icon: "lucide:orbit", label: T(t, "immersion"), onClick: toggleImmersion, active: immersed, pressed: immersed, attr: { "data-immersion": true } }] : []),
+            { id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } }]} />
         ${!audioSupported ? html`<div class="text-xs text-base-content/60 text-center">${T(t, "noAudio")}</div>` : null}
       <//>
     </div>

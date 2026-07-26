@@ -168,6 +168,11 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   }
   nav[data-dock] button { padding: 0.3rem; min-width: 0; }
   nav[data-dock] button > span { display: none; }
+  /* .ms-decor — content that is DECORATION, not function: a pattern mirror, a scene name, a swipe hint.
+     At 208px every row must earn its pixels, and these do not. Marked by the app, dropped by the ladder —
+     never a control, never a label a control needs. */
+  .ms-decor { display: none !important; }
+
   /* A panel CAPTION is ornament here for the same reason the header wordmark is: the controls under it are
      already on screen, and 24px of title is a sixth of the display. Height is what a watch has least of, so
      this is where the pixels come from — not from a control. */

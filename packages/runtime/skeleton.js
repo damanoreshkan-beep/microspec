@@ -51,7 +51,7 @@ export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) 
     tick();
     return () => clearTimeout(timer);
   }, [text, len]);
-  return html`<span ref=${ref} aria-hidden=${ph ? "true" : null} class=${`${ph ? "font-mono tracking-tight" : ""} ${cls}`}></span>`;
+  return html`<span ref=${ref} aria-hidden=${ph ? "true" : null} class=${`${ph ? "font-mono tracking-tight [overflow-wrap:anywhere] min-w-0" : ""} ${cls}`}></span>`;
 }
 
 // Pixels — a blinking-pixel image placeholder on a <canvas>, sized to its box. Neutral grey (both themes).

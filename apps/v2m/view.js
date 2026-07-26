@@ -145,6 +145,7 @@ function syncHold() {
 function releaseHold() { try { wl?.release?.(); } catch {  } wl = null; }
 
 async function selectAndPlay(track) {
+  $track.set(track); $posMs.set(0); $durMs.set(0); $err.set("");
   if (!audioSupported) { $err.set("noAudio"); return false; }
   $playing.set(true);
   const n = await ensureNode(); if (!n) { $playing.set(false); return false; }
@@ -301,10 +302,9 @@ export function v2mStore({ S, toast }) {
   const play = async (tune) => {
     const id = trackId(tune.author, tune.file);
     setBusy(id);
-    const ok = await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
-    setBusy("");
-    if (!ok) return;
     S.tab.set("play");                                 
+    await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
+    setBusy("");
     (async () => {
       try {
         const raw = await bytesFor(tune.bytes ? tune : { author: tune.author, file: tune.file });

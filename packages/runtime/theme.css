@@ -164,7 +164,10 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
      wrapping — scoped to rows that actually contain a control, which is where the overflow comes from.
      Every label stays readable and every target stays at its floor; the cost is height, and the screens this
      hits are scrolling lists rather than fit instruments, where height is free. */
-  .flex:has(> .btn) { flex-wrap: wrap; }
+  /* …but NOT on a fit screen. Wrapping trades width for HEIGHT, and that trade is only free where the page
+     scrolls — on a single-screen instrument it just moves the overflow to the other axis (drift went from
+     +2px of height to +48px the moment this applied there). */
+  html:not(.ms-fit) .flex:has(> .btn) { flex-wrap: wrap; }
   html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
 
   /* the pager */
@@ -238,7 +241,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
    with a drop shadow. The move here is the opposite and it is systemic — the viewport itself becomes a
    shallow box with walls, lit from above, and every surface inside it is then either RAISED (dock, sheet,
    island — they already carry `inset 0 1px 0 rgba(255,255,255,.09)`, which is a lip catching that light)
-   or RECESSED (a slider track, a strip, a field — see `.ms-trough`). Once the room has a light source,
+   or RECESSED (a slider track, a strip, a field — see the surface system below). Once the room has a light source,
    those two existing vocabularies stop being decoration and start meaning something.
 
    Three deliberate limits, because this is the one style that fails LOUDLY when overdone (neumorphism's
@@ -316,8 +319,6 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --ms-vol-rim:    rgba(255, 255, 255, .07);    /* where the wall catches the light */
   --ms-vol-sheen:  rgba(255, 255, 255, .05);
   --ms-vol-shade:  rgba(0, 0, 0, .85);          /* the wall's own shadow */
-  --ms-trough-in:  rgba(0, 0, 0, .55);
-  --ms-trough-lip: rgba(255, 255, 255, .045);
 }
 [data-theme="signal-light"] {
   /* Same structure, inverted: on a light surface the rim is white and the recess is a grey face. The Δ
@@ -339,8 +340,6 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --ms-vol-rim:    rgba(24, 24, 27, .07);
   --ms-vol-sheen:  rgba(255, 255, 255, .8);
   --ms-vol-shade:  rgba(24, 24, 27, .13);
-  --ms-trough-in:  rgba(24, 24, 27, .14);
-  --ms-trough-lip: rgba(255, 255, 255, .7);
 }
 
 /* The volume itself — painted as body's own background rather than a layer, so it is underneath every
@@ -372,12 +371,33 @@ body::after {
     inset -16px 0 26px -24px var(--ms-vol-shade);
 }
 
-/* .ms-trough — the counterpart to the island: a surface CARVED INTO the room instead of floating over it.
-   A track, a rail, a field: things a value sits in. One class, so "recessed" is a farm-wide material and
-   not eight approximations of an inset shadow. */
-.ms-trough {
-  box-shadow: inset 0 1px 2px 0 var(--ms-trough-in), inset 0 0 0 1px var(--ms-trough-lip);
+/* Every remaining node, by ROLE. This is the half that makes it a system rather than a token file:
+   a widget does not choose a shadow, it declares what it IS.
+
+   The selected tab is the reference's own detail and it is the opposite of the obvious guess: the rail is
+   INSET and the active pill is RAISED inside it — the choice lifts out of the groove rather than sinking
+   into it. One rule covers every strip in the farm because they are all one component. */
+.sf-inset [aria-pressed="true"] { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
+
+/* PRESSED is the only state you cause by touching, and the measurement made it the strongest in the kit
+   (~1.75× inset). Applied to every button at once, so no control has to remember to have one. */
+.btn:active:not(:disabled), [aria-pressed]:active {
+  box-shadow: inset 0 3px 7px -1px var(--sf-press-top), inset 0 -1px 0 0 var(--sf-lip);
 }
+
+/* Things a value sits IN. DaisyUI paints the range's groove with --range-bg, so the inset is expressed
+   through that variable rather than over the top of it — the same knob, moved down instead of deleted. */
+.sf-track, .range { --range-bg: var(--sf-inset-face); }
+.input, .textarea, .select, .file-input {
+  background: var(--sf-inset-face);
+  box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), inset 0 -1px 0 0 var(--sf-lip);
+}
+/* A skeleton row is a value-shaped hole waiting to be filled — recessed, by definition. */
+.skeleton, [data-skeleton] { background: var(--sf-inset-face); box-shadow: inset 0 2px 5px -1px var(--sf-inset-top); }
+
+/* Things that float OVER content, on the one elevation ladder: sheet = L4 (modal), toast = L5 (popover). */
+.modal-box { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 -10px 44px -12px var(--sf-shadow); }
+[data-toast] .alert, .alert.shadow-xl { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }
 /* Deliberately NOT applied to `.range`: DaisyUI paints the track with `--range-bg`, so styling over it
    removes the groove rather than deepening it. The trough is for surfaces we own. */
 

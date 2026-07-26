@@ -14,13 +14,19 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 const USGS = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson";
 
 // magnitude → colour [dark-theme bright, light-theme dark]; text uses light-dark(), shapes the bright one
-// Retuned for the clay repaint — same reasoning as apps/air/view.js. The magnitude chip sits on a
-// `bg-primary/10` row when selected, which is the binding bed: a 10% tint moves the surface toward the
-// text in both themes, so the plain page was never the worst case. Smallest shift that clears 4.7:1.
-const MAG = [["#60CA86", "#136B3A"], ["#98C354", "#3C6622"], ["#D8B23C", "#6E5200"], ["#E8A95A", "#884F00"], ["#EFA577", "#99440F"], ["#F4A198", "#AC2E23"], ["#E2A0DA", "#8E2A86"]];
+// Same split as apps/air/view.js, and for the same measured reason. FILLS keep the original saturated
+// ramp — a fill is a MARK, so it answers to 3:1, not 4.5:1, and the globe dots and chip borders are the
+// whole point of the colour.
+const MAG = [["#41C06F", "#136B3A"], ["#8FBE45", "#3F6B24"], ["#D8B23C", "#6E5200"], ["#E2932F", "#985800"], ["#E7742E", "#A24810"], ["#EC5A4A", "#B63125"], ["#C94BBA", "#8E2A86"]];
+// TEXT rides SATURATION rather than lightness: on a dark page a colour cannot be made more urgent by
+// darkening it, and lightening the severe bands is what made air's "very poor" read as a soft salmon
+// while a good reading stayed vivid green. Calm sage at M2 climbing to 72% saturation at M7.
+// The magnitude chip sits on a `bg-primary/10` row when selected, and that tint — not the plain page —
+// is the binding bed, because it moves the surface toward the text in both themes.
+const MAG_INK = [["#A1BCAB", "#304E3D"], ["#ACBB95", "#445738"], ["#C6B581", "#564618"], ["#D5AF7F", "#7F5419"], ["#E3A986", "#8F4A1F"], ["#EFA39B", "#A6352B"], ["#E2A0DA", "#8E2A86"]];
 const magI = (m) => Math.max(0, Math.min(6, Math.floor(m) - 2));
 const magFill = (m) => MAG[magI(m)][0];
-const magColor = (m) => `light-dark(${MAG[magI(m)][1]},${MAG[magI(m)][0]})`;
+const magColor = (m) => `light-dark(${MAG_INK[magI(m)][1]},${MAG_INK[magI(m)][0]})`;
 const magSize = (m) => 2 + Math.max(0, m - 2.5) * 1.5;
 
 const parse = (geo) => (geo.features || []).filter((f) => f && f.properties && f.properties.mag != null && f.geometry).map((f) => ({ id: f.id, mag: f.properties.mag, place: f.properties.place || "", time: f.properties.time, lon: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], depth: f.geometry.coordinates[2] }));

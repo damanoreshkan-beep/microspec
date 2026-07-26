@@ -44,6 +44,12 @@ export function holdAudio({ title = "microspec", artist = "microspec", artwork =
     setPlaying(t) { play(); setMeta(t); setState("playing"); },
     setPaused() { setState("paused"); },              
     meta(t) { setMeta(t); },
+    position(durationMs, positionMs, rate = 1) {
+      if (!ms || typeof ms.setPositionState !== "function") return;
+      const duration = Math.max(0, (durationMs || 0) / 1000);
+      const position = Math.min(Math.max(0, (positionMs || 0) / 1000), duration);
+      try { ms.setPositionState(duration > 0 ? { duration, position, playbackRate: rate } : {}); } catch {  }
+    },
     release() {
       live = false;
       document.removeEventListener("visibilitychange", onVis);

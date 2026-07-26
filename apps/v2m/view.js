@@ -54,9 +54,7 @@ async function ensureNode() {
   if (!audioSupported) { $err.set("noAudio"); return null; }
   try {
     if (!ctx) ctx = makeCtx();
-    if (ctx.state === "suspended") {
-      await Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
-    }
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
     if (!node) {
       if (!moduleAdded) { await ctx.audioWorklet.addModule(assetURL("v2synth.worklet.js")); moduleAdded = true; }
       if (!wasmBytes) wasmBytes = await (await fetch(assetURL("v2synth.wasm"))).arrayBuffer();
@@ -66,7 +64,7 @@ async function ensureNode() {
       });
       node.port.onmessage = (e) => {
         const m = e.data;
-        if (m.type === "duration") $durMs.set(m.ms);
+        if (m.type === "duration") { $durMs.set(m.ms); np?.position?.(m.ms, $posMs.get()); }
         else if (m.type === "position") { if (!scrubbing) $posMs.set(m.ms); }
         else if (m.type === "ended") {
           $playing.set(false); $posMs.set($durMs.get()); releaseHold();
@@ -155,11 +153,14 @@ function syncHold() {
       title: $track.get()?.name, artist: "microspec",
       onPlay: () => { if (!$playing.get()) resume(); },
       onPause: () => pause(),
+      onPrev: () => playPrev(),
+      onNext: () => playNext(true),
       resumeCtx: () => ctx?.resume(),
     });
   }
   np.meta?.($track.get()?.name);
   np.setPlaying?.($track.get()?.name);
+  np.position?.($durMs.get(), $posMs.get());
   try { wl = wl || wakeLock.acquire?.(); } catch {  }
 }
 function releaseHold() { try { wl?.release?.(); } catch {  } wl = null; }

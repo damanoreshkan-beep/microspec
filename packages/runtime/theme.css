@@ -106,10 +106,14 @@
 
    The parent declares the container (Panel does, and any app wrapping a group can add `@container`). */
 .ms-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ms-gap); align-items: start; }
-@container (min-width: 11rem) {
+/* The thresholds come from the measurement, not from taste. At a 200px screen: main takes 2×16px, the
+   panel 2×4px, so the group has ~160px. DaisyUI gives a range `width: clamp(3rem, …)` — a 48px floor — so
+   three tracks need 3×48 + 2×gap ≈ 150px, and two need ≈ 99px. 11rem (176px) never matched anything in the
+   watch band, which is why it read `grid 1tr`. */
+@container (min-width: 6.5rem) {
   .ms-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@container (min-width: 16rem) {
+@container (min-width: 9.5rem) {
   .ms-cols { grid-template-columns: repeat(var(--ms-cols, 3), minmax(0, 1fr)); }
 }
 

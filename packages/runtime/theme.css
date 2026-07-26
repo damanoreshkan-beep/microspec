@@ -180,7 +180,11 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   /* …but NOT on a fit screen. Wrapping trades width for HEIGHT, and that trade is only free where the page
      scrolls — on a single-screen instrument it just moves the overflow to the other axis (drift went from
      +2px of height to +48px the moment this applied there). */
-  html:not(.ms-fit) .flex:has(> .btn) { flex-wrap: wrap; }
+  /* ROWS only. `flex-wrap: wrap` on a flex-COLUMN does not wrap lines — it wraps into a second COLUMN, to
+     the right, outside the box. That is what put the QR panel at x407 inside a 208px sheet and made three
+     apps look like they were overflowing: the sheet is a column and it contains a button, so this rule was
+     matching it. A rule written for one axis must say which axis it means. */
+  html:not(.ms-fit) .flex:not(.flex-col):has(> .btn) { flex-wrap: wrap; }
   html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
 
   /* the pager */

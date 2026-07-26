@@ -1,7 +1,7 @@
 
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
-import { DEFAULTS, logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, seedFrame, idle } from "/_rt/spectrum.js";
+import { DEFAULTS, logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope } from "/_rt/spectrum.js";
 import { byteCloud, seedBytes, helixStrand, helixAt } from "/_rt/v2m.js";
 
 const N = DEFAULTS.bars;
@@ -32,18 +32,23 @@ export function setTuneBytes(buf) {
 const EDGES = logBandEdges();
 const env = Envelope(0.55, 0.12, N);
 const subs = new Set();
-let pumpRaf = null, phase = 0;
+const SILENT = new Uint8Array(1024);
+let pumpRaf = null, phase = 0, resting = false;
 function pump() {
-  phase += reducedMotion ? 0.012 : 0.04;
-  const u8 = (_getBytes && _getBytes()) || seedFrame(1024, phase);
+  const live = (_getBytes && _getBytes()) || null;
+  if (live) { resting = false; phase += reducedMotion ? 0.012 : 0.04; }
+  else if (resting) { pumpRaf = requestAnimationFrame(pump); return; }
+  const u8 = live || SILENT;
   const st = {
     levels: env.update(bandLevels(u8, EDGES)),
     bands: splitBands(u8),
     hue: spectralCentroid(u8).hue,
     phase,
+    live: !!live,
     progress: (_getProgress && _getProgress()) || 0,
   };
   for (const fn of subs) { try { fn(st); } catch {  } }
+  if (!live) resting = true;                           
   pumpRaf = requestAnimationFrame(pump);
 }
 function subscribe(fn) {
@@ -122,7 +127,6 @@ function makeScene(THREE) {
         matDone.blending = matTodo.blending = mode;
         matDone.needsUpdate = matTodo.needsUpdate = true;
       }
-      const br = idle(st.phase);
       const hue = (H_LOW + (H_HIGH - H_LOW) * Math.min(1, st.bands.treble * 1.6) + (st.hue - 235) * 0.1) / 360;
       const h01 = ((hue % 1) + 1) % 1;
 
@@ -130,9 +134,9 @@ function makeScene(THREE) {
       geoDone.setDrawRange(0, k);
       geoTodo.setDrawRange(k, Math.max(0, n - k));
 
-      group.scale.setScalar((1 + st.bands.bass * 0.16) * br);
-      group.rotation.y += 0.0022 + st.bands.mid * 0.005;
-      group.rotation.x = Math.sin(st.phase * 0.06) * 0.14;
+      group.scale.setScalar(1 + st.bands.bass * 0.2);
+      group.rotation.y += st.bands.mid * 0.014 + st.bands.treble * 0.006;
+      group.rotation.x = -0.12 + st.bands.bass * 0.16;
 
       matDone.size = 0.03 + st.bands.treble * 0.03;
       matDone.opacity = lt ? 0.9 : 0.7 + st.bands.mid * 0.3;
@@ -147,12 +151,12 @@ function makeScene(THREE) {
       const pulse = 0.85 + st.bands.bass * 0.9;
       head.scale.setScalar(pulse);
       halo.scale.setScalar(0.9 + st.bands.bass * 1.6);
-      head.rotation.y += 0.05;
+      head.rotation.y += st.bands.treble * 0.12;
       headMat.color.setHSL(h01, lt ? 0.75 : 0.8, lt ? 0.45 : 0.72);
       haloMat.color.setHSL(h01, 0.8, lt ? 0.5 : 0.6);
       haloMat.opacity = (lt ? 0.12 : 0.14) + st.bands.bass * 0.25;
 
-      shell.rotation.y -= 0.0012;
+      shell.rotation.y -= st.bands.mid * 0.006;
       shellMat.opacity = (lt ? 0.13 : 0.06) + st.bands.bass * 0.1;
       shellMat.color.setHSL(H_LOW / 360, 0.5, lt ? 0.42 : 0.6);
     },
@@ -171,7 +175,7 @@ function drawFallback(canvas, st) {
   const g = ctx2d(canvas); if (!g) return;
   const w = canvas.width, h = canvas.height, cx = w / 2, cy = h / 2;
   const R = Math.min(w, h) * 0.3 * (1 + st.bands.bass * 0.25);
-  const a = st.phase * 0.25, ca = Math.cos(a), sa = Math.sin(a);
+  const a = st.phase * 0.25, ca = Math.cos(a), sa = Math.sin(a);   
   g.clearRect(0, 0, w, h);
   const hue = H_LOW + (H_HIGH - H_LOW) * Math.min(1, st.bands.treble * 1.6);
   const lt = isLight();

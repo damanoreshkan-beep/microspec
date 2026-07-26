@@ -8,9 +8,10 @@ import { Scramble, useReveal } from "/_rt/skeleton.js";
 import { holdAudio } from "/_rt/mediasession.js";
 import { wakeLock } from "/_rt/sensors.js";
 import { gate } from "/_rt/gate.js";
-import { Island, Segmented } from "/_rt/ui.js";
+import { Island, Segmented, Transport, Stage } from "/_rt/ui.js";
+import { advance, cycleRepeat } from "/_rt/player.js";
 import { MIRRORS, parseAuthors, parseListing, titleOf, trackId, trackURL, authorURL, mp3Ratio, normGain } from "/_rt/v2m.js";
-import { ByteStage, bindAudio, setTuneBytes } from "./viz.js";
+import { ByteStage, bindAudio, bindProgress, setTuneBytes } from "./viz.js";
 
 const AC = typeof AudioContext !== "undefined" ? AudioContext
   : typeof webkitAudioContext !== "undefined" ? webkitAudioContext : null;
@@ -37,6 +38,7 @@ const $syncing = atom(false);
 const $owned = atom(new Set());
 const $queue = atom([]);
 const $qIndex = atom(-1);
+const $repeat = atom("off");                           
 let notify = null;                                     
 
 let ctx = null, node = null, preGain = null, analyser = null, timeBuf = null;
@@ -68,7 +70,7 @@ async function ensureNode() {
         else if (m.type === "position") { if (!scrubbing) $posMs.set(m.ms); }
         else if (m.type === "ended") {
           $playing.set(false); $posMs.set($durMs.get()); releaseHold();
-          if (queueList().length) playNext();          
+          playNext(false);                             
         }
         else if (m.type === "error") $err.set("loadError");
       };
@@ -111,6 +113,7 @@ const freqBuf = () => {
   return a;
 };
 bindAudio(() => ($playing.get() && analyser ? freqBuf() : null));
+bindProgress(() => { const d = $durMs.get(); return d > 0 ? Math.min(1, $posMs.get() / d) : 0; });
 
 async function bytesFor(track) {
   if (track.bytes) return track.bytes.slice(0);
@@ -283,17 +286,23 @@ function queueList() {
   return [...all].sort(bySize);
 }
 
-async function playAt(i) {
+async function playIndex(idx) {
   const q = queueList();
-  if (!q.length) return false;
-  const idx = ((i % q.length) + q.length) % q.length;
+  if (idx < 0 || idx >= q.length) return false;
   const tune = q[idx];
   const id = trackId(tune.author, tune.file);
   $queue.set(q); $qIndex.set(idx);
   return await selectAndPlay({ id, name: titleOf(tune.file), author: tune.author, file: tune.file, origin: "store" });
 }
-const playNext = () => playAt($qIndex.get() + 1);
-const playPrev = () => ($posMs.get() > 3000 ? seek(0) : playAt($qIndex.get() - 1));
+
+function step(dir, manual) {
+  const q = queueList();
+  const next = advance($qIndex.get(), q.length, { step: dir, repeat: $repeat.get(), manual });
+  if (next < 0) { pause(); return false; }
+  return playIndex(next);
+}
+const playNext = (manual = true) => step(1, manual);
+const playPrev = () => ($posMs.get() > 3000 ? seek(0) : step(-1, true));
 
 let primed = false;
 async function primeDemo() {
@@ -324,6 +333,8 @@ export function v2m({ S, toast, undo }) {
   const ratio = mp3Ratio(size, dur / 1000);
   const tunes = useStore($tunes);
   const owned = useStore($owned);
+  const loc = useStore(S.locale);
+  const repeat = useStore($repeat);
   const hasQueue = ($queue.get().length || (tunes || []).length) > 0;
   const inLibrary = owned.has(track?.id);
   useEffect(() => {                                    
@@ -343,50 +354,30 @@ export function v2m({ S, toast, undo }) {
 
   return html`
     <div class="relative h-full min-h-0 flex flex-col" data-track=${track?.id || ""} data-saved=${saveState}>
-      <${ByteStage} />
+      <${Stage}><${ByteStage} /><//>
 
-      <div class="relative z-10 flex-1 min-h-0 flex flex-col justify-end pb-[var(--ms-gap)]">
+      <div class="relative z-10 flex flex-col justify-end pb-[var(--ms-gap)]">
         <${Island} className="mx-[var(--ms-gap)] px-[var(--ms-pad)] py-[var(--ms-pad)] flex flex-col gap-2">
-          <div class="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-1">
-            <span aria-hidden="true"></span>
-            <div class="text-center min-w-0">
-              <div class="text-[length:var(--ms-title)] font-semibold truncate leading-tight">${titleOf(track?.name || "")}</div>
-              ${size > 0 && html`
-                <div class="mt-0.5 flex items-center justify-center gap-2 font-mono text-xs tabular-nums text-base-content/70">
-                  <span data-size class="text-base-content">${kb(size)}</span>
-                  ${ratio >= 2 && html`<span aria-hidden="true">·</span><span data-ratio>${T(t, "smallerThanMp3").replace("{n}", Math.round(ratio))}</span>`}
-                </div>`}
-            </div>
-            <button id="save" data-saved-track=${inLibrary ? "true" : "false"}
-              class=${"btn btn-ghost btn-circle btn-sm justify-self-end " + (inLibrary ? "text-primary" : "text-base-content/70")}
-              aria-pressed=${inLibrary ? "true" : "false"} data-haptic=${inLibrary ? "bump" : null}
-              aria-label=${T(t, inLibrary ? "owned" : "aSave")} onClick=${onSave}>
-              ${Icon(inLibrary ? "lucide:bookmark-check" : "lucide:bookmark-plus", "text-lg")}
-            </button>
-          </div>
-          <input type="range" class="range range-primary range-xs w-full" aria-label=${T(t, "aSeek")}
-            min="0" max=${Math.max(1000, dur)} step="250" value=${Math.min(pos, Math.max(1000, dur))} data-haptic="off"
-            onPointerdown=${() => { scrubbing = true; }}
-            onInput=${(e) => { scrubbing = true; $posMs.set(+e.target.value); }}
-            onChange=${(e) => { scrubbing = false; seek(+e.target.value); }} />
-          <div class="flex justify-between font-mono text-xs tabular-nums text-base-content/70">
-            <span data-time>${fmt(pos)}</span><span>${fmt(dur)}</span>
-          </div>
-          <div class="flex items-center justify-center gap-5">
-            <button id="prev" class="btn btn-ghost btn-circle" aria-label=${T(t, "aPrev")}
-              disabled=${!hasQueue} onClick=${() => playPrev()}>
-              ${Icon("lucide:skip-back", "text-xl")}
-            </button>
-            <button id="play" data-playing=${playing}
-              class="btn btn-primary btn-circle w-[var(--ms-ctl)] h-[var(--ms-ctl)] shadow-lg shadow-primary/20"
-              aria-label=${T(t, playing ? "aPause" : "aPlay")} onClick=${() => toggle()}>
-              ${Icon(playing ? "lucide:pause" : "lucide:play", "text-2xl")}
-            </button>
-            <button id="next" class="btn btn-ghost btn-circle" aria-label=${T(t, "aNext")}
-              disabled=${!hasQueue} onClick=${() => playNext()}>
-              ${Icon("lucide:skip-forward", "text-xl")}
-            </button>
-          </div>
+          <${Transport}
+            locale=${loc}
+            playing=${playing}
+            onToggle=${() => toggle()}
+            onPrev=${hasQueue ? () => playPrev() : null}
+            onNext=${hasQueue ? () => playNext() : null}
+            repeat=${repeat}
+            onRepeat=${() => $repeat.set(cycleRepeat($repeat.get()))}
+            pos=${pos} dur=${dur} onSeek=${(v) => { scrubbing = false; seek(v); }}
+            onScrubStart=${() => { scrubbing = true; }}
+            onScrub=${(v) => { scrubbing = true; $posMs.set(v); }}
+            title=${titleOf(track?.name || "")}
+            subtitle=${size > 0 ? html`<span data-size>${kb(size)}</span>${ratio >= 2 ? html` · <span data-ratio>${T(t, "smallerThanMp3").replace("{n}", Math.round(ratio))}</span>` : null}` : null}
+            trail=${html`
+              <button id="save" data-saved-track=${inLibrary ? "true" : "false"}
+                class=${"btn btn-ghost btn-circle btn-sm " + (inLibrary ? "text-primary" : "text-base-content/70")}
+                aria-pressed=${inLibrary ? "true" : "false"} data-haptic=${inLibrary ? "bump" : null}
+                aria-label=${T(t, inLibrary ? "owned" : "aSave")} onClick=${onSave}>
+                ${Icon(inLibrary ? "lucide:bookmark-check" : "lucide:bookmark-plus", "text-lg")}
+              </button>`} />
           ${err && html`<p role="alert" class="text-error text-xs text-center">${T(t, err)}</p>`}
         <//>
       </div>
@@ -435,7 +426,7 @@ export function v2mStore({ S, toast }) {
     S.tab.set("play");                                 
     const i = list.findIndex((x) => x.author === tune.author && x.file === tune.file);
     $queue.set(list);                                  
-    playAt(i < 0 ? 0 : i);
+    playIndex(i < 0 ? 0 : i);
   };
 
   const total = (tunes || []).reduce((n, x) => n + x.size, 0);

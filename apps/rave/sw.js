@@ -1,6 +1,6 @@
 self.MS = {
   app: "rave",
-  version: "3a1aaf68a0",
+  version: "fed2d17fe5",
   precache: [
     "./",
     "./i18n/en.json",
@@ -27,6 +27,7 @@ self.MS = {
     "/_rt/overlay.js",
     "/_rt/permissions.js",
     "/_rt/playback.js",
+    "/_rt/player.js",
     "/_rt/qrcode.js",
     "/_rt/qrgen.vendor.js",
     "/_rt/render.js",

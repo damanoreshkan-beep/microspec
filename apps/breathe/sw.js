@@ -1,6 +1,6 @@
 self.MS = {
   app: "breathe",
-  version: "235730b2b9",
+  version: "76da02ef62",
   precache: [
     "./",
     "./i18n/en.json",
@@ -22,6 +22,7 @@ self.MS = {
     "/_rt/overlay.js",
     "/_rt/permissions.js",
     "/_rt/playback.js",
+    "/_rt/player.js",
     "/_rt/qrcode.js",
     "/_rt/qrgen.vendor.js",
     "/_rt/render.js",

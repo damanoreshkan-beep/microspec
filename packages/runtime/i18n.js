@@ -17,6 +17,13 @@ export const SYS = {
   shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
   updateReady: { en: "New version ready", uk: "Нова версія готова" },
   restart: { en: "Restart", uk: "Перезапустити" },
+  aPlay: { en: "Play", uk: "Грати" },
+  aPause: { en: "Pause", uk: "Пауза" },
+  aStop: { en: "Stop", uk: "Стоп" },
+  aPrev: { en: "Previous track", uk: "Попередній трек" },
+  aNext: { en: "Next track", uk: "Наступний трек" },
+  aSeek: { en: "Seek", uk: "Перемотати" },
+  aRepeat: { en: "Repeat", uk: "Повтор" },
 };
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 

@@ -1,6 +1,6 @@
 self.MS = {
   app: "gsmscan",
-  version: "4d94c22f95",
+  version: "a15b2a43f5",
   precache: [
     "./",
     "./i18n/en.json",
@@ -25,6 +25,7 @@ self.MS = {
     "/_rt/overlay.js",
     "/_rt/permissions.js",
     "/_rt/playback.js",
+    "/_rt/player.js",
     "/_rt/qrcode.js",
     "/_rt/qrgen.vendor.js",
     "/_rt/render.js",

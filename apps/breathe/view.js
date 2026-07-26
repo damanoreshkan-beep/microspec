@@ -5,6 +5,7 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Segmented } from "/_rt/ui.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 // seconds: inhale · hold · exhale · hold
@@ -52,9 +53,8 @@ export function breathe({ S }) {
 
   return html`<div class="flex flex-col items-center gap-5 pt-2">
     <div class="flex flex-col items-center gap-1">
-      <div class="flex gap-1.5 flex-wrap justify-center px-4">
-        ${ORDER.map((k) => html`<button data-tech=${k} aria-pressed=${k === tech} class=${`px-3.5 py-1.5 rounded-full text-sm font-medium border transition ${k === tech ? "border-primary bg-primary text-primary-content" : "border-base-300"}`} onClick=${() => choose(k)} key=${k}>${T(t, TECHS[k].name)}</button>`)}
-      </div>
+      <div class="px-4 w-full"><${Segmented} attr="data-tech" scroll
+        items=${ORDER.map((k) => ({ id: k, label: T(t, TECHS[k].name) }))} value=${tech} onChange=${choose} /></div>
       <div class="text-xs text-base-content/70">${T(t, TECHS[tech].sub)}</div>
     </div>
 

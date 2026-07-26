@@ -9,6 +9,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Segmented } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { LORA_PRESETS } from "/_rt/lora.js";
 import { usbSupported, USB_FILTERS } from "/_rt/hackrf.js";
@@ -118,10 +119,8 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
   return html`<${Fragment}>
     <div class="@container flex flex-col gap-3 max-w-[440px] mx-auto w-full pb-40">
       <!-- preset selector -->
-      <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-        ${LORA_PRESETS.map((pp) => html`<button key=${pp.key} data-preset=${pp.key} aria-pressed=${pk === pp.key} onClick=${() => setPreset(pp.key)}
-          class=${`shrink-0 rounded-xl border px-3 py-1.5 text-sm font-medium transition ${pk === pp.key ? "border-primary/50 bg-primary/12 text-primary" : "border-base-content/15 text-base-content/60"}`}>${pp.label}</button>`)}
-      </div>
+      <${Segmented} attr="data-preset" scroll variant="outline" size="sm"
+        items=${LORA_PRESETS.map((pp) => ({ id: pp.key, label: pp.label }))} value=${pk} onChange=${setPreset} />
 
       <!-- waterfall (chirps) -->
       <div class="w-full rounded-3xl border border-base-content/10 overflow-hidden bg-[#08090e]">

@@ -154,7 +154,8 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
      a rigid wide box). All three are lifted here, and the label wraps to a second line rather than the
      button spilling — height for width, the same trade the row wrap makes. Target height (--size) is
      untouched, so nothing drops below the tap floor. */
-  .btn { --btn-p: 0.45rem; max-width: 100%; flex-shrink: 1; white-space: normal; }
+  .btn { --btn-p: 0.45rem; max-width: 100%; }
+  html:not(.ms-fit) .btn { flex-shrink: 1; white-space: normal; }
   .btn > * { min-width: 0; }
   /* A mono string with wide tracking is the other rigid box — a hash, a ticker, a code. At this width it
      must be allowed to break mid-token; the alternative is a guaranteed overflow. */

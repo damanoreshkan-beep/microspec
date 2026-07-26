@@ -158,8 +158,20 @@ export async function runResponsiveMatrix(page, ev, dev) {
       const ox = de.scrollWidth - window.innerWidth;
       let sel = "?";
       if (ox > 1) {
+        // Only elements that are actually ON SCREEN can be the reason the DOCUMENT is too wide. Anything
+        // parked inside a horizontal scroller is clipped by it — the sheet's own inner scroll reported a
+        // button at x736 in a 200px viewport, which is 536px of pure red herring.
+        const clipped = (el) => {
+          for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            const cs = getComputedStyle(p);
+            if (!/auto|scroll|hidden|clip/.test(cs.overflowX)) continue;
+            const pr = p.getBoundingClientRect(), r = el.getBoundingClientRect();
+            if (r.left > pr.right - 0.5 || r.right < pr.left + 0.5) return true;
+          }
+          return false;
+        };
         let far = window.innerWidth, node = null;
-        for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; node = el; } }
+        for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5 && !clipped(el)) { far = r.right; node = el; } }
         // The CHAIN, not just the furthest element. Three rounds were spent fixing "a button sticks out"
         // when the button was only the last thing in a container that was already too wide — the widest
         // ancestor is the one that has to change, and it is invisible if the check names a leaf. Each link

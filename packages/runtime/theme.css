@@ -40,8 +40,7 @@
   
   .ms-cols {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(max(var(--ms-col-min, 3rem),
-      calc((100% - (var(--ms-cols, 3) - 1) * var(--ms-gap)) / var(--ms-cols, 3))), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(var(--ms-col-min, 3rem), 100%), 1fr));
     gap: var(--ms-gap);
     align-items: start;
   }
@@ -71,13 +70,11 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   
   header.navbar { min-height: 2.25rem; }
   [data-title] { display: none; }
-  
   .btn { --btn-p: 0.45rem; max-width: 100%; }
   html:not(.ms-fit) .btn { flex-shrink: 1; white-space: normal; }
   .btn > * { min-width: 0; }
   .join > .btn, .join > * { flex-shrink: 1; min-width: 0; }
   .font-mono { overflow-wrap: anywhere; }
-  
   
   
   html:not(.ms-fit) .flex:not(.flex-col):has(> .btn) { flex-wrap: wrap; }

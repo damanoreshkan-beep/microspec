@@ -130,6 +130,14 @@ export async function runResponsiveMatrix(page, ev, dev) {
           const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
           const b = el.getBoundingClientRect();
           chain.push(`${el.tagName.toLowerCase()}${c ? "." + c : ""}[w${Math.round(b.width)}→x${Math.round(b.right)}]`);
+          if (chain.length === 2) {
+            const sibs = [...el.children].slice(0, 6).map((k) => {
+              const kb = k.getBoundingClientRect();
+              const kc = typeof k.className === "string" ? k.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
+              return `${k.tagName.toLowerCase()}${kc ? "." + kc : ""}:${Math.round(kb.width)}`;
+            });
+            if (sibs.length) chain.push(`⟨${sibs.join(" ")}⟩`);
+          }
         }
         sel = chain.join(" ◂ ");
       }

@@ -13,7 +13,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet, Segmented } from "/_rt/ui.js";
+import { Sheet, Segmented, Island } from "/_rt/ui.js";
 import { wakeLock } from "/_rt/sensors.js";
 import { holdAudio } from "/_rt/mediasession.js";
 import { gate } from "/_rt/gate.js";
@@ -187,8 +187,7 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
     </div>
 
     <!-- floating player island: now-playing + transport + settings + power, all in one compact bar -->
-    <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.4rem)">
-      <div data-player class="pointer-events-auto w-full max-w-[440px] flex flex-col gap-2 rounded-[1.5rem] border border-base-content/10 bg-base-100/85 backdrop-blur-xl shadow-[0_10px_30px_-8px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2.5">
+    <${Island} pinned data-player className="w-full max-w-[440px] flex flex-col gap-2 rounded-[1.5rem] p-2">
         <div class="flex items-center gap-2.5" data-live data-nowplaying>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5 min-w-0">
@@ -214,8 +213,8 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
           <button data-settings aria-label=${T(t, "settings")} aria-expanded=${screen === "rf"} class="btn btn-circle btn-ghost btn-sm" onClick=${() => { buzz(); openScreen("rf"); }}>${Icon("lucide:sliders-horizontal", "text-lg")}</button>
           <button data-disconnect aria-label=${T(t, "disconnect")} class="btn btn-circle btn-ghost btn-sm text-base-content/55" onClick=${() => { if (!demo) disconnect(); }}>${Icon("lucide:power", "text-lg")}</button>
         </div>
-      </div>
-    </div>
+      <//>
+    
 
     <${SettingsSheet} open=${screen === "rf"} onClose=${closeScreen} t=${t} demo=${demo} />
   </${Fragment}>`;

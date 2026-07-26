@@ -9,7 +9,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet, Segmented } from "/_rt/ui.js";
+import { Sheet, Segmented, Island } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { OOK_FREQS } from "/_rt/ook.js";
 import { usbSupported, USB_FILTERS } from "/_rt/hackrf.js";
@@ -128,14 +128,13 @@ export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {
     </div>
 
     <!-- record island: the big capture button + freq + settings/power -->
-    <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.4rem)">
-      <div data-player class="pointer-events-auto w-full max-w-[440px] flex items-center gap-3 rounded-[1.5rem] border border-base-content/10 bg-base-100/85 backdrop-blur-xl shadow-[0_10px_30px_-8px_rgba(0,0,0,.6),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2.5">
+    <${Island} pinned data-player className="w-full max-w-[440px] flex items-center gap-3 rounded-[1.5rem] p-2">
         <button id="record" data-recording=${recording} aria-label=${T(t, recording ? "recording" : "record")} onClick=${record} class=${`w-12 h-12 rounded-full grid place-items-center shadow-lg active:scale-95 transition shrink-0 ${recording ? "bg-error text-error-content animate-pulse" : "bg-primary text-primary-content"}`}>${Icon(recording ? "lucide:square" : "lucide:circle-dot", "text-2xl")}</button>
         <span class="flex-1 min-w-0 text-sm font-medium truncate">${T(t, recording ? "recording" : "record")} <span class="text-base-content/70 font-mono text-xs">${fMhz(freq)}</span></span>
         <button data-settings aria-label=${T(t, "settings")} aria-expanded=${screen === "rf"} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => { buzz(); openScreen("rf"); }}>${Icon("lucide:sliders-horizontal", "text-lg")}</button>
         <button data-disconnect aria-label=${T(t, "disconnect")} class="btn btn-circle btn-ghost btn-sm text-base-content/55 shrink-0" onClick=${() => { if (!demo) disconnect(); }}>${Icon("lucide:power", "text-lg")}</button>
-      </div>
-    </div>
+      <//>
+    
 
     <${SettingsSheet} open=${screen === "rf"} onClose=${closeScreen} t=${t} demo=${demo} />
   </${Fragment}>`;

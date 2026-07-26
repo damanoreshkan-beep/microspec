@@ -135,6 +135,87 @@ html.ms-fit main#view {
   --border: 1px; --depth: 0;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════
+   THE ENCLOSURE — the screen is a lit VOLUME, not a flat sheet.
+
+   Everything in this farm has been drawn on one plane: a flat base colour, and depth faked per component
+   with a drop shadow. The move here is the opposite and it is systemic — the viewport itself becomes a
+   shallow box with walls, lit from above, and every surface inside it is then either RAISED (dock, sheet,
+   island — they already carry `inset 0 1px 0 rgba(255,255,255,.09)`, which is a lip catching that light)
+   or RECESSED (a slider track, a strip, a field — see `.ms-trough`). Once the room has a light source,
+   those two existing vocabularies stop being decoration and start meaning something.
+
+   Three deliberate limits, because this is the one style that fails LOUDLY when overdone (neumorphism's
+   whole problem was low-contrast text on a soft-gel surface — the farm's axiom is still "ink is the brand"):
+     • the light never touches type. It is a background wash and an edge rim; no text sits on a gradient.
+     • the walls are EDGE-only (big negative spread), so the middle of the screen — where content is —
+       keeps exactly the contrast the axe gate measured.
+     • the bottom bounce is tinted with --app-accent, so each app lights its own room in its own colour.
+       That is where the "alive" comes from: it is per-app and it costs nothing to animate, because it
+       does not animate. A full-viewport layer repainting forever is a battery bill, not a design.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+[data-theme="signal"] {
+  --ms-vol-key:    rgba(255, 255, 255, .055);   /* key light entering the top of the box */
+  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 13%, transparent);
+  --ms-vol-rim:    rgba(255, 255, 255, .07);    /* where the wall catches the light */
+  --ms-vol-sheen:  rgba(255, 255, 255, .05);
+  --ms-vol-shade:  rgba(0, 0, 0, .85);          /* the wall's own shadow */
+  --ms-trough-in:  rgba(0, 0, 0, .55);
+  --ms-trough-lip: rgba(255, 255, 255, .045);
+}
+[data-theme="signal-light"] {
+  /* A light room is lit the other way round: the wash is white and the walls are grey. Weaker than the dark
+     theme on purpose — a dark band over dark text is the one place this style eats legibility. */
+  --ms-vol-key:    rgba(255, 255, 255, .85);
+  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 9%, transparent);
+  --ms-vol-rim:    rgba(24, 24, 27, .07);
+  --ms-vol-sheen:  rgba(255, 255, 255, .8);
+  --ms-vol-shade:  rgba(24, 24, 27, .13);
+  --ms-trough-in:  rgba(24, 24, 27, .14);
+  --ms-trough-lip: rgba(255, 255, 255, .7);
+}
+
+/* The volume itself — painted as body's own background rather than a layer, so it is underneath every
+   app's content by construction, with no z-index to lose an argument with. `fixed` anchors it to the
+   VIEWPORT, which is the whole point: the light stays where the eye is while the page scrolls past it. */
+body {
+  background-image:
+    radial-gradient(140% 88% at 50% -18%, var(--ms-vol-key), transparent 62%),
+    radial-gradient(125% 72% at 50% 116%, var(--ms-vol-bounce), transparent 64%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* The walls. A fixed overlay that draws ONLY at the edges (blur 30 against spread −24 keeps it off the
+   middle) and never takes a tap. z-45 puts it over the dock and the detail overlay — a bezel is in front
+   of the screen, not behind it — while <dialog> lives in the top layer and stays crisp above it. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px var(--ms-vol-rim),
+    inset 0 1px 0 0 var(--ms-vol-sheen),
+    inset 0 20px 30px -24px var(--ms-vol-shade),
+    inset 0 -22px 34px -24px var(--ms-vol-shade),
+    inset 16px 0 26px -24px var(--ms-vol-shade),
+    inset -16px 0 26px -24px var(--ms-vol-shade);
+}
+
+/* .ms-trough — the counterpart to the island: a surface CARVED INTO the room instead of floating over it.
+   A track, a rail, a field: things a value sits in. One class, so "recessed" is a farm-wide material and
+   not eight approximations of an inset shadow. */
+.ms-trough {
+  box-shadow: inset 0 1px 2px 0 var(--ms-trough-in), inset 0 0 0 1px var(--ms-trough-lip);
+}
+/* The one control that is a trough by definition — a value slides along it. DaisyUI draws the range's
+   track with a shadow variable, so this reaches it without fighting the component's own styling. */
+.range { --range-bg: transparent; }
+.range::-webkit-slider-runnable-track { box-shadow: inset 0 1px 2px 0 var(--ms-trough-in); }
+.range::-moz-range-track { box-shadow: inset 0 1px 2px 0 var(--ms-trough-in); }
+
 /* Signal conventions that ride on top of DaisyUI, farm-wide.
    Type system = the Geist superfamily (loaded per app in the head): Geist for body/UI, Geist Mono for every
    mono role below — one designed superfamily instead of Inter + an unrelated system-mono stack. Both carry

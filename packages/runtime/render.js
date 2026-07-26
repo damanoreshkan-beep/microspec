@@ -631,7 +631,21 @@ function Dock() {
     const el = navRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const GAP = 12;   // the 0.75rem the island floats above the safe area (its inline `bottom`)
-    const apply = () => { const h = el.offsetHeight; if (h) document.documentElement.style.setProperty("--dock-h", `${h + GAP}px`); };
+    // Watch mode turns the dock into a vertical RAIL on the right (theme.css, ≤300px wide). Then its
+    // footprint is a width, not a height — and --dock-h must go to 0, or every consumer of that number
+    // keeps reserving 68px of a 248px screen for a dock that is no longer at the bottom. Both numbers are
+    // measured from the element for the same reason the height always was: the element knows, a constant
+    // guesses. Orientation is read off the computed style rather than a second media query, so there is one
+    // place that decides what "watch" means and it is the stylesheet.
+    const apply = () => {
+      const h = el.offsetHeight, w = el.offsetWidth;
+      // `|| ""` because this also runs under linkedom in preflight, whose getComputedStyle returns a bag
+      // with no layout properties in it at all — and an undefined there took the whole app down at boot.
+      const rail = (getComputedStyle(el).gridAutoFlow || "").includes("row");
+      const s = document.documentElement.style;
+      s.setProperty("--dock-h", rail ? "0px" : `${h + GAP}px`);
+      s.setProperty("--dock-w", rail ? `${w}px` : "0px");
+    };
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(el);
@@ -670,7 +684,7 @@ function Dock() {
   // (17.6:1 in signal-light), the label on it 16.8:1, and inactive labels stay at their full 10.6:1 — the
   // active state is now unmissable without dimming anything or spending colour, which this theme reserves
   // for meaning.
-  return html`<nav data-dock ref=${navRef} class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)]" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-label=${T(t, tab.label)} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary text-primary-content" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
+  return html`<nav data-dock ref=${navRef} class="fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)]">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-label=${T(t, tab.label)} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary text-primary-content" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
 }
 
 function Toast() {

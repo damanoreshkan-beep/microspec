@@ -299,7 +299,7 @@ export function Transport({
     <div data-transport class=${`@container flex flex-col gap-2 ${className}`}>
       ${head}
       ${scrub}
-      <div data-tp-row class="flex flex-wrap items-center justify-center gap-4 @max-[340px]:gap-1.5 @max-[300px]:gap-1">
+      <div data-tp-row class="flex items-center justify-center gap-4 @max-[340px]:gap-1.5 @max-[300px]:gap-1 @max-[230px]:gap-0.5">
         ${/* Canonical order, the one every phone player has taught the thumb: shuffle · prev · PLAY · next ·
              repeat. The two mode toggles sit on the outside, the three transport keys in the middle. */
           onShuffle ? html`

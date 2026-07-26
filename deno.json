@@ -1,11 +1,29 @@
 {
   "//": "Farm workspace root. The farm IS its own monorepo framework — Deno workspaces + a tiny affected orchestrator (tools/affected.mjs) — so there is NO Turborepo/Nx and NO node_modules. Packages below are workspace members; apps stay pure Deno (resolved at serve time by each index.html import map); CI verifies only the apps a change actually reaches.",
-  "workspace": ["./packages/runtime", "./packages/schema", "./packages/gen", "./packages/gates"],
+  "workspace": [
+    "./packages/runtime",
+    "./packages/schema",
+    "./packages/gen",
+    "./packages/gates"
+  ],
   "tasks": {
     "test": "deno test -A packages/runtime/runtime_test.js",
     "affected": "deno run -A tools/affected.mjs",
-    "verify": "deno run -A packages/gates/verify.mjs"
+    "verify": "deno run -A packages/gates/verify.mjs",
+    "gates": "deno run -A packages/schema/validate.mjs apps/*/spec.json && deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/* && deno test -A packages/runtime/runtime_test.js && deno run -A deploy/sw.mjs --check && deno run -A deploy/counts.mjs --check"
   },
-  "lint": { "exclude": ["dist/", "apps/"] },
-  "fmt": { "exclude": ["dist/", "apps/", "packages/"] }
+  "lint": {
+    "exclude": [
+      "dist/",
+      "apps/"
+    ]
+  },
+  "fmt": {
+    "exclude": [
+      "dist/",
+      "apps/",
+      "packages/"
+    ]
+  },
+  "//gates": "THE pre-push block, as one command. Running four of the five is how a stale service-worker manifest reached CI twice: the fifth is the one that depends on the LAST edit (an import graph changes when a view adopts a kit component), so it must run after everything else, every time."
 }

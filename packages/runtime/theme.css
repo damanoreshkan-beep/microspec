@@ -212,7 +212,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
      apps look like they were overflowing: the sheet is a column and it contains a button, so this rule was
      matching it. A rule written for one axis must say which axis it means. */
   html:not(.ms-fit) .flex:not(.flex-col):has(> .btn) { flex-wrap: wrap; }
-  html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
+  html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.5rem); }
 
   /* the pager */
   .ms-side {

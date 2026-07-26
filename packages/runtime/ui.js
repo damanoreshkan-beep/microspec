@@ -132,8 +132,8 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
     : "sf-raised sf-e3 bg-base-100/80";
   const cls = `${surface} rounded-[var(--ms-r)] backdrop-blur-xl p-[var(--ms-pad)] ${className}`;
   return tag === "section"
-    ? html`<section class=${cls} ...${rest}>${children}</section>`
-    : html`<div class=${cls} ...${rest}>${children}</div>`;
+    ? html`<section data-island class=${cls} ...${rest}>${children}</section>`
+    : html`<div data-island class=${cls} ...${rest}>${children}</div>`;
 }
 
 /**

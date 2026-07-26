@@ -129,7 +129,9 @@ html.ms-fit main#view {
 nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 
 @media (max-width: 300px) {
-  :root { --ms-gap: 0.25rem; --ms-pad: 0.4rem; --ms-r: 0.75rem; --ms-ctl: 2.25rem; --ms-icon: 0.9rem; --ms-title: 0.8rem; --ms-label: 0.58rem; }
+  /* --ms-ctl holds at the 36px tap floor; everything else is what gives a fit screen its last few pixels.
+     This is the ladder's own answer to "does not fit" — compact, or move into a Sheet. Never clip. */
+  :root { --ms-gap: 0.2rem; --ms-pad: 0.3rem; --ms-r: 0.75rem; --ms-ctl: 2.25rem; --ms-icon: 0.9rem; --ms-title: 0.8rem; --ms-label: 0.58rem; }
 
   /* the rail */
   nav[data-dock] {
@@ -149,6 +151,12 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
      the component's own knob; the 36px target (--size) is untouched and no control is dropped. */
   .btn { --btn-p: 0.45rem; max-width: 100%; }
   .btn > * { min-width: 0; }
+  /* …and past a point padding is not the answer: two labelled buttons simply do not fit 200px side by side.
+     A row of them WRAPS rather than shrinking further, which keeps every label readable and every target at
+     its floor. `:has()` targets exactly that shape — a flex row holding two or more buttons — so nothing
+     else in the farm changes. Height is the cost, and on the screens this hits (scrolling lists, not fit
+     instruments) height is free. */
+  .flex:has(> .btn + .btn) { flex-wrap: wrap; }
   html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
 
   /* the pager */

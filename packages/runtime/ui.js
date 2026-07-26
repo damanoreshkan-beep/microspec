@@ -105,7 +105,7 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
         it.dot && !it.icon ? html`<span class="w-2 h-2 rounded-full shrink-0" style=${`background:${it.dot === true ? "var(--app-accent)" : it.dot}`}></span>` : null}
       ${it.icon ? Icon(it.icon, "text-[var(--ms-icon)] shrink-0", it.dot ? `color:${it.dot === true ? "var(--app-accent)" : it.dot}` : "") : null}
       ${it.label ? html`<span class="truncate">${it.label}</span>` : null}
-      ${it.meta != null && it.meta !== "" ? html`<span class="font-mono tabular-nums text-[0.85em] opacity-70 shrink-0">${it.meta}</span>` : null}
+      ${it.meta != null && it.meta !== "" ? html`<span class="font-mono tabular-nums text-[0.85em] shrink-0">${it.meta}</span>` : null}
     </button>`;
   });
   const rail = html`<div class=${`flex gap-1 p-1 ${scroll ? "w-max [&>button]:shrink-0" : "w-full [&>button]:flex-1 [&>button]:min-w-0"}`} role="group" aria-label=${label || null}>${btns}</div>`;

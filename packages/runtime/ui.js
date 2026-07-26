@@ -25,7 +25,7 @@ export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size =
   const ref = useRef();
   useEffect(() => { const d = ref.current; if (!d) return; if (open) { if (!d.open) d.showModal?.(); } else d.close?.(); }, [open]);
   const { boxRef, grip } = useSheetDrag(onClose);
-  const box = `modal-box rounded-t-[1.75rem] max-w-xl mx-auto flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)] pb-8 max-h-[88dvh] ${size === "lg" ? "min-h-[50dvh]" : ""}`;
+  const box = `modal-box rounded-t-[1.75rem] max-w-[min(36rem,100vw)] mx-auto flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)] pb-8 max-h-[88dvh] ${size === "lg" ? "min-h-[50dvh]" : ""}`;
   return html`<dialog id=${id} ref=${ref} class="modal modal-bottom" onClose=${onClose}>
     <div ref=${boxRef} class=${box}>${grip}
       ${title ? html`<div class="flex items-center gap-2 shrink-0">
@@ -36,12 +36,11 @@ export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size =
         </div>
         <button aria-label=${sys("close", loc)} class="btn btn-ghost btn-sm btn-circle shrink-0" onClick=${onClose}>${Icon("lucide:x", "text-xl")}</button>
       </div>` : null}
-      <div class="flex flex-col gap-[var(--ms-gap)] min-h-0 overflow-y-auto">${children}</div>
+      <div class="flex flex-col gap-[var(--ms-gap)] min-h-0 min-w-0 overflow-y-auto overflow-x-auto">${children}</div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>${sys("close", loc)}</button></form>
   </dialog>`;
 }
-
 /**
  * ── Segmented — the farm's ONE tab / option strip ─────────────────────────────────────────────────────
  * One geometry, two skins, and the choice between them is semantic rather than decorative:
@@ -64,6 +63,10 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
     : (on ? "bg-primary border-primary text-primary-content font-semibold" : "border-transparent text-base-content/70 font-medium");
   const btns = items.map((it) => {
     const on = it.id === value;
+    
+    
+    
+    
     const props = { [attr]: it.id };
     if (it.busy) props["aria-busy"] = "true";
     if (it.title) props.title = it.title;
@@ -169,8 +172,6 @@ export function Transport({
   size = "md",                                         
   disabled = false,
   className = "",
-  
-  
   actions = [],
   keep = 2,                                            
   moreOpen, onMore, onMoreClose,                        
@@ -222,6 +223,9 @@ export function Transport({
         : (a.tone === "accent" ? "btn-outline btn-accent" : "btn-ghost text-base-content/70")}`}>
     ${Icon(a.icon, "text-lg")}</button>`;
 
+  
+  
+  
   
   
   const overflow = onMore ? actions.slice(keep) : [];
@@ -276,7 +280,6 @@ export function Transport({
       <//>` : null}
     </div>`;
 }
-
 /**
  * ── Stage — where a visualiser lives ──────────────────────────────────────────────────────────────────
  * A full-bleed `absolute inset-0` canvas centres its subject on the SCREEN, which is the wrong centre: the

@@ -151,12 +151,12 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
      the component's own knob; the 36px target (--size) is untouched and no control is dropped. */
   .btn { --btn-p: 0.45rem; max-width: 100%; }
   .btn > * { min-width: 0; }
-  /* …and past a point padding is not the answer: two labelled buttons simply do not fit 200px side by side.
-     A row of them WRAPS rather than shrinking further, which keeps every label readable and every target at
-     its floor. `:has()` targets exactly that shape — a flex row holding two or more buttons — so nothing
-     else in the farm changes. Height is the cost, and on the screens this hits (scrolling lists, not fit
-     instruments) height is free. */
-  .flex:has(> .btn + .btn) { flex-wrap: wrap; }
+  /* …and past a point padding is not the answer: a label and a button do not fit 200px side by side, never
+     mind two buttons. So the rule is the honest general one — at this width no row may be FORBIDDEN from
+     wrapping — scoped to rows that actually contain a control, which is where the overflow comes from.
+     Every label stays readable and every target stays at its floor; the cost is height, and the screens this
+     hits are scrolling lists rather than fit instruments, where height is free. */
+  .flex:has(> .btn) { flex-wrap: wrap; }
   html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
 
   /* the pager */

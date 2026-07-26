@@ -170,8 +170,8 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
 // ── Panel — the solid surface ─────────────────────────────────────────────────────────────────────────
 // What a card is in the list family: solid ink, hairline border, optional mono micro-label header. Use it
 // for grouped controls; use Island only where the panel floats OVER content.
-export function Panel({ title, children, className = "" }) {
-  return html`<div class=${`@container sf-e2 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
+export function Panel({ title, children, className = "", ...rest }) {
+  return html`<div ...${rest} class=${`@container sf-e2 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
     ${title ? html`<div data-panel-title class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${title}</div>` : null}
     ${children}
   </div>`;

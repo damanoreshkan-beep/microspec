@@ -211,7 +211,15 @@ export async function runResponsiveMatrix(page, ev, dev) {
           for (const el of v.querySelectorAll("*")) { const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom > low + 0.5) { low = r.bottom; node = el; } }
           const name = (el) => { const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; return el.tagName.toLowerCase() + (c ? "." + c : ""); };
           if (node) {
-            const kids = [...node.children].map((k) => `${name(k)}[h${Math.round(k.getBoundingClientRect().height)}]`).slice(0, 4);
+            // …and the COMPUTED display/tracks of each child. Three rounds went into why `.ms-cols` was
+            // "choosing one column" before the measurement showed the grid had never applied at all — a
+            // rule can be present, correct and matched, and still lose a cascade fight it never reports.
+            // Geometry says what happened; computed style says what the browser decided.
+            const kids = [...node.children].slice(0, 4).map((k) => {
+              const cs = getComputedStyle(k);
+              const tracks = cs.display.includes("grid") ? ` ${cs.gridTemplateColumns.split(" ").length}tr` : "";
+              return `${name(k)}[h${Math.round(k.getBoundingClientRect().height)} ${cs.display}${tracks}]`;
+            });
             vsel = `${name(node)}[h${Math.round(node.getBoundingClientRect().height)}]` + (kids.length ? ` ▾ ${kids.join(" + ")}` : "");
           }
         }

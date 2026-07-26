@@ -65,10 +65,29 @@ function subscribe(fn) {
 // ======================= the scene =======================
 // Points (the file) inside a wireframe icosahedron (the file's boundary). No GLSL, no post-processing:
 // size/opacity/colour are plain material properties driven CPU-side, so a screenshot verifies it.
+const SHELL_R = 1.34;
+const FOV = 46;
+// A portrait phone is far narrower than it is tall, so a distance chosen for the vertical FOV clips the
+// object left and right — which is exactly how the first build shipped: the shell ran off all four edges and
+// read as stray lines rather than the file's boundary. Frame on whichever axis is tighter.
+function fitDistance(aspect) {
+  const vHalf = (FOV / 2) * (Math.PI / 180);
+  const hHalf = Math.atan(Math.tan(vHalf) * Math.max(0.2, aspect));
+  const need = SHELL_R * 1.22;
+  return Math.max(need / Math.tan(vHalf), need / Math.tan(hHalf));
+}
+
+// Additive blending is a dark-theme technique — on the light theme it washes the cloud out to nothing (the
+// first build's light shot was pale blue on white). The scene is redrawn every frame, so unlike CSS it can
+// simply read the live theme and switch blending + lightness with it.
+const isLight = () => {
+  try { return /light/.test(document.documentElement.getAttribute("data-theme") || ""); } catch { return false; }
+};
+
 function makeScene(THREE) {
   const scene = new THREE.Scene();
-  const cam = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
-  cam.position.set(0, 0, 4.6);
+  const cam = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
+  cam.position.set(0, 0, fitDistance(1));
   const group = new THREE.Group();
   scene.add(group);
 
@@ -79,10 +98,11 @@ function makeScene(THREE) {
   });
   const pts = new THREE.Points(geo, mat);
 
-  const shellGeo = new THREE.IcosahedronGeometry(1.5, 1);
+  const shellGeo = new THREE.IcosahedronGeometry(SHELL_R, 1);
   const shellMat = new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.12, toneMapped: false });
   const shell = new THREE.Mesh(shellGeo, shellMat);
   group.add(pts, shell);
+  let light = null;
 
   let gen = -1;
   const sync = () => {
@@ -95,20 +115,31 @@ function makeScene(THREE) {
 
   return {
     scene, cam,
-    resize(w, h) { cam.aspect = w / h; cam.updateProjectionMatrix(); },
+    resize(w, h) {
+      cam.aspect = w / h;
+      cam.position.z = fitDistance(cam.aspect);
+      cam.updateProjectionMatrix();
+    },
     frame(st) {
       sync();
+      const lt = isLight();
+      if (lt !== light) {                              // blending is a material rebuild — only on a real flip
+        light = lt;
+        mat.blending = lt ? THREE.NormalBlending : THREE.AdditiveBlending;
+        mat.needsUpdate = true;
+      }
       const br = idle(st.phase);
       const hue = (H_LOW + (H_HIGH - H_LOW) * Math.min(1, st.bands.treble * 1.6) + (st.hue - 235) * 0.1) / 360;
-      group.scale.setScalar((1 + st.bands.bass * 0.28) * br);
+      const scale = (1 + st.bands.bass * 0.22) * br;
+      group.scale.setScalar(scale);
       group.rotation.y += 0.0016 + st.bands.mid * 0.006;
       group.rotation.x = Math.sin(st.phase * 0.08) * 0.18;
       mat.size = 0.026 + st.bands.treble * 0.03;
-      mat.opacity = 0.55 + st.bands.mid * 0.4;
-      mat.color.setHSL(((hue % 1) + 1) % 1, 0.72, 0.62);
+      mat.opacity = lt ? 0.75 + st.bands.mid * 0.25 : 0.55 + st.bands.mid * 0.4;
+      mat.color.setHSL(((hue % 1) + 1) % 1, lt ? 0.68 : 0.72, lt ? 0.42 : 0.62);
       shell.rotation.y -= 0.0012;
-      shellMat.opacity = 0.07 + st.bands.bass * 0.13;
-      shellMat.color.setHSL(H_LOW / 360, 0.5, 0.6);
+      shellMat.opacity = (lt ? 0.14 : 0.07) + st.bands.bass * 0.13;
+      shellMat.color.setHSL(H_LOW / 360, 0.5, lt ? 0.42 : 0.6);
     },
     dispose() { geo.dispose(); mat.dispose(); shellGeo.dispose(); shellMat.dispose(); },
   };
@@ -127,7 +158,8 @@ function drawFallback(canvas, st) {
   const a = st.phase * 0.25, ca = Math.cos(a), sa = Math.sin(a);
   g.clearRect(0, 0, w, h);
   const hue = H_LOW + (H_HIGH - H_LOW) * Math.min(1, st.bands.treble * 1.6);
-  g.fillStyle = `hsl(${hue} 70% ${55 + st.bands.mid * 15}%)`;
+  const lt = isLight();
+  g.fillStyle = `hsl(${hue} 70% ${(lt ? 40 : 55) + st.bands.mid * 15}%)`;
   const r = Math.max(1, w * 0.0035);
   const step = Math.max(3, Math.ceil(_cloud.length / 3 / 2200) * 3);
   for (let i = 0; i < _cloud.length; i += step) {

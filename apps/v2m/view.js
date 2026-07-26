@@ -179,6 +179,18 @@ function pause() {
 async function toggle() { if ($playing.get()) pause(); else await resume(); }
 function seek(ms) { $posMs.set(ms); if (node) node.port.postMessage({ cmd: "seek", ms: Math.round(ms) }); }
 
+// The app's whole argument is a number, so it must be on screen before anything is played: read the bundled
+// demo's byte length at mount and hand the hero its real bytes (no AudioContext — that waits for a gesture).
+let primed = false;
+async function primeDemo() {
+  if (primed) return;
+  primed = true;
+  try {
+    const raw = await (await fetch(assetURL(DEMO.src))).arrayBuffer();
+    if ($size.get() === 0) { $size.set(raw.byteLength); setTuneBytes(await maybeGunzip(raw)); }
+  } catch { primed = false; }
+}
+
 const fmt = (ms) => {
   const s = Math.max(0, Math.round((ms || 0) / 1000));
   return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
@@ -196,22 +208,22 @@ export function v2m({ S }) {
   const size = useStore($size);
   const err = useStore($err);
   const ratio = mp3Ratio(size, dur / 1000);
+  useEffect(() => { primeDemo(); }, []);
 
   return html`
     <div class="relative h-full min-h-0 flex flex-col" data-track=${track?.id || ""}>
       <${ByteStage} />
 
-      <div class="relative z-10 flex-1 min-h-0 flex flex-col justify-end gap-[var(--ms-gap)] pb-[var(--ms-gap)]">
-        <div class="text-center px-4">
-          <div class="text-[length:var(--ms-title)] font-semibold truncate">${titleOf(track?.name || "")}</div>
-          ${size > 0 && html`
-            <div class="mt-1 flex items-center justify-center gap-2 font-mono text-xs tabular-nums text-base-content/70">
-              <span data-size class="text-base-content">${kb(size)}</span>
-              ${ratio >= 2 && html`<span aria-hidden="true">·</span><span data-ratio>${T(t, "smallerThanMp3").replace("{n}", Math.round(ratio))}</span>`}
-            </div>`}
-        </div>
-
+      <div class="relative z-10 flex-1 min-h-0 flex flex-col justify-end pb-[var(--ms-gap)]">
         <${Island} className="mx-[var(--ms-gap)] px-[var(--ms-pad)] py-[var(--ms-pad)] flex flex-col gap-2">
+          <div class="text-center">
+            <div class="text-[length:var(--ms-title)] font-semibold truncate leading-tight">${titleOf(track?.name || "")}</div>
+            ${size > 0 && html`
+              <div class="mt-0.5 flex items-center justify-center gap-2 font-mono text-xs tabular-nums text-base-content/70">
+                <span data-size class="text-base-content">${kb(size)}</span>
+                ${ratio >= 2 && html`<span aria-hidden="true">·</span><span data-ratio>${T(t, "smallerThanMp3").replace("{n}", Math.round(ratio))}</span>`}
+              </div>`}
+          </div>
           <input type="range" class="range range-primary range-xs w-full" aria-label=${T(t, "aSeek")}
             min="0" max=${Math.max(1000, dur)} step="250" value=${Math.min(pos, Math.max(1000, dur))} data-haptic="off"
             onPointerdown=${() => { scrubbing = true; }}

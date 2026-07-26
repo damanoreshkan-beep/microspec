@@ -65,7 +65,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   .btn { --btn-p: 0.45rem; max-width: 100%; }
   .btn > * { min-width: 0; }
   
-  .flex:has(> .btn + .btn) { flex-wrap: wrap; }
+  .flex:has(> .btn) { flex-wrap: wrap; }
   html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
   .ms-side {
     flex-direction: row; align-items: stretch;

@@ -97,8 +97,8 @@ export const BREAKPOINTS = [
   { id: "phone-land",  w: 844,  h: 390,  note: "19.5:9 · rotated — the height test" },
   { id: "split",       w: 412,  h: 430,  note: "split-screen — two apps stacked on a tall phone" },
   { id: "split-sm",    w: 360,  h: 340,  note: "floating window — the height floor" },
-  { id: "watch",       w: 208,  h: 248,  note: "watch — the smallest real screen", soft: true },
-  { id: "watch-sq",    w: 200,  h: 200,  note: "square watch (Wear OS round) — the vertical floor", soft: true },
+  { id: "watch",       w: 208,  h: 248,  note: "watch — the smallest real screen" },
+  { id: "watch-sq",    w: 200,  h: 200,  note: "square watch (Wear OS round) — the vertical floor" },
   { id: "tablet",      w: 768,  h: 1024, note: "3:4 · tablet portrait" },
   { id: "tablet-land", w: 1024, h: 768,  note: "4:3 · tablet landscape" },
   { id: "desktop",     w: 1280, h: 900,  note: "16:10 · desktop" },
@@ -147,7 +147,7 @@ export async function runResponsiveMatrix(page, ev, dev) {
       return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel };
     });
     const label = `${bp.id} ${bp.w}×${bp.h}`;
-    const push = (pass, failed) => out.push(pass ? failed.pass : (bp.soft ? { ...failed.fail, ok: true, name: `⚠ ${failed.fail.name} (поки не блокує)` } : failed.fail));
+    const push = (pass, failed) => out.push(pass ? failed.pass : failed.fail);
     push(m.ox <= 1, {
       pass: { name: `${label}: без горизонтального overflow`, ok: true, msg: bp.note },
       fail: { name: `${label}: горизонтальний overflow`, ok: false, msg: `+${m.ox}px — винуватець: ${m.sel}` },

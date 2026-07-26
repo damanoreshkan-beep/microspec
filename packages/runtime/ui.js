@@ -210,7 +210,7 @@ export function Transport({
     <div data-transport class=${`flex flex-col gap-2 ${className}`}>
       ${head}
       ${scrub}
-      <div class="flex items-center justify-center gap-2 min-[380px]:gap-4">
+      <div class="flex items-center justify-center gap-1 min-[380px]:gap-4">
         ${onRepeat ? html`
           <button id="repeat" data-repeat=${repeat || "off"} aria-label=${sys("aRepeat", locale)}
             aria-pressed=${repeat && repeat !== "off" ? "true" : "false"}

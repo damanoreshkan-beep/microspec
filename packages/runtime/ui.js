@@ -159,9 +159,12 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
     ? "sf-e3 border border-white/15 bg-black/60 text-white"
     : "sf-raised sf-e3 bg-base-100/80";
   const cls = `${surface} rounded-[var(--ms-r)] backdrop-blur-xl p-[var(--ms-pad)] ${className}`;
+  // data-island is the hook the ladder needs: an island floating at the bottom of a fit screen must keep
+  // its own air from the dock, and it cannot rely on the padding arithmetic above it — that chain put
+  // rave's transport 6px from the tab bar with every number technically correct.
   return tag === "section"
-    ? html`<section class=${cls} ...${rest}>${children}</section>`
-    : html`<div class=${cls} ...${rest}>${children}</div>`;
+    ? html`<section data-island class=${cls} ...${rest}>${children}</section>`
+    : html`<div data-island class=${cls} ...${rest}>${children}</div>`;
 }
 
 // ── Panel — the solid surface ─────────────────────────────────────────────────────────────────────────

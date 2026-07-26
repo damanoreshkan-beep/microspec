@@ -113,8 +113,11 @@ const back = (S) => S.stack.set(S.stack.get().slice(0, -1));
 
 // ── rows ─────────────────────────────────────────────────────────────────────────────────────────────
 const RepoRow = ({ r, run, t, loc, onOpen }) => html`
+  ${/* @container, and every fixed-width child answers to it. A row of four shrink-0 children plus a
+       flex-1 name adds up to more than a 200px column can hold, and the last one — the chevron — was the
+       part that stuck out. Measured, not guessed: the watch check names the offender now. */""}
   <button data-repo=${r.full} onClick=${onOpen}
-    class="w-full text-left flex items-center gap-3 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] active:scale-[.99] transition-transform">
+    class="@container w-full text-left flex items-center gap-3 @max-[260px]:gap-2 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] active:scale-[.99] transition-transform">
     <${Mark} state=${run ? run.state : "queued"} />
     <span class="flex-1 min-w-0">
       <span class="flex items-center gap-1.5 min-w-0">
@@ -125,8 +128,8 @@ const RepoRow = ({ r, run, t, loc, onOpen }) => html`
         ${run ? `${run.name || run.branch} · ${T(t, stateOf(run.state).key)}` : T(t, "noRuns")}
       </span>
     </span>
-    ${run ? html`<span class="shrink-0 font-mono text-[var(--ms-label)] text-base-content/70 tabular-nums">${sinceLabel(t, ts(run), loc)}</span>` : null}
-    ${Icon("lucide:chevron-right", "shrink-0 text-base-content/70")}
+    ${run ? html`<span class="min-w-0 truncate font-mono text-[var(--ms-label)] text-base-content/70 tabular-nums">${sinceLabel(t, ts(run), loc)}</span>` : null}
+    ${Icon("lucide:chevron-right", "shrink-0 text-base-content/70 @max-[260px]:hidden")}
   </button>`;
 
 const RunRow = ({ run, t, loc, onOpen }) => html`

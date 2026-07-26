@@ -43,7 +43,7 @@ export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size =
   // A sheet is never taller than the screen it slides over: past 88dvh its own content scrolls, the page
   // behind it never does (overscroll-behavior is contained farm-wide in theme.css). This is the ONE
   // sanctioned nested scroll — the escape hatch a fit screen overflows INTO.
-  const box = `modal-box rounded-t-[1.75rem] max-w-xl mx-auto flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)] pb-8 max-h-[88dvh] ${size === "lg" ? "min-h-[50dvh]" : ""}`;
+  const box = `modal-box rounded-t-[1.75rem] max-w-[min(36rem,100vw)] mx-auto flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)] pb-8 max-h-[88dvh] ${size === "lg" ? "min-h-[50dvh]" : ""}`;
   return html`<dialog id=${id} ref=${ref} class="modal modal-bottom" onClose=${onClose}>
     <div ref=${boxRef} class=${box}>${grip}
       ${title ? html`<div class="flex items-center gap-2 shrink-0">
@@ -54,7 +54,14 @@ export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size =
         </div>
         <button aria-label=${sys("close", loc)} class="btn btn-ghost btn-sm btn-circle shrink-0" onClick=${onClose}>${Icon("lucide:x", "text-xl")}</button>
       </div>` : null}
-      <div class="flex flex-col gap-[var(--ms-gap)] min-h-0 overflow-y-auto">${children}</div>
+      ${/* min-w-0 is load-bearing, not tidiness. A flex item defaults to `min-width: auto`, so this column
+           cannot shrink below the min-content width of whatever an app puts in it — one long unbreakable
+           mono string, or a row of rigid buttons, and the column grows past the box. And since DaisyUI
+           gives `.modal-bottom > .modal-box` `width: 100%`, that growth pushes the DOCUMENT past the
+           viewport: the sheet is where four separate apps' "horizontal overflow at 208px" actually came
+           from, none of them in app code. Wide content scrolls inside the sheet instead — which the sheet
+           already is: the farm's one sanctioned nested scroll. */""}
+      <div class="flex flex-col gap-[var(--ms-gap)] min-h-0 min-w-0 overflow-y-auto overflow-x-auto">${children}</div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>${sys("close", loc)}</button></form>
   </dialog>`;

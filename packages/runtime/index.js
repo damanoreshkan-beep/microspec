@@ -62,8 +62,17 @@ export function start(spec, arg2) {
   const { S, load } = app;
 
   const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
-  applyTheme(S.theme.get());
-  S.theme.listen(applyTheme);
+  // `?theme=light` — a URL override, and the reason it exists is the taste gate rather than the product.
+  // Half of every design review is "and now look at it in the other theme", but the only thing that could
+  // produce a light-theme still was verify.mjs --shots, i.e. a local Chromium — which this project may
+  // never run (proot takes the terminal down with it). So the rule was unenforceable by the person meant
+  // to enforce it. One query param makes the screenshot service able to shoot both themes.
+  // It does NOT persist: nothing writes S.theme, so a shared link cannot silently change someone's setting.
+  const urlTheme = (() => {
+    try { const q = new URLSearchParams(location.search).get("theme"); return q ? (q.includes("light") ? "signal-light" : "signal") : null; } catch { return null; }
+  })();
+  applyTheme(urlTheme || S.theme.get());
+  S.theme.listen((t) => applyTheme(urlTheme || t));
 
   // The app's own hue, published as ONE token the shared UI kit reads (--app-accent in theme.css). Each
   // app in this farm has an identity colour, but it used to exist only in brand.json — a build input for

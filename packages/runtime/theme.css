@@ -491,6 +491,12 @@ nav[data-dock] button > span {
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
 
+/* `truncate` without `min-w-0` is a no-op in a flex row, and it is the single most repeated layout bug in
+   this farm: a flex item defaults to min-width:auto, so a span that says "I may be cut" still refuses to
+   shrink below its text. Every fix so far has been per-row (the sheet column, transit's aspect row). It is
+   one declaration: asking to truncate IS asking to be shrinkable. */
+.truncate { min-width: 0; }
+
 /* Native-app touch feel, farm-wide. The Web Interface Guidelines floor no axe/overflow gate can see:
    - kill the grey iOS/Android tap-flash (we own every :active state ourselves),
    - `manipulation` drops the legacy double-tap-zoom delay on anything tappable,

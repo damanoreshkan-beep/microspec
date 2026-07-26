@@ -149,7 +149,7 @@ function Card({ item: it, card, hide }) {
   if (card.layout === "grid") {
     const href = card.href ? safeHref(it[card.href]) : null;
     const bg = card.bg ? it[card.bg] : null, fg = card.fg ? it[card.fg] : null;
-    const tile = html`<div class="aspect-square w-full rounded-[24%] flex items-center justify-center overflow-hidden border border-base-content/10 shadow-sm" style=${bg ? `background-color:${bg}` : ""}>
+    const tile = html`<div class="aspect-square w-full rounded-[24%] flex items-center justify-center overflow-hidden border border-base-content/10 sf-e2" style=${bg ? `background-color:${bg}` : ""}>
       ${card.image && it[card.image]
         ? html`<img src=${it[card.image]} alt="" loading="lazy" class="w-full h-full object-cover"/>`
         : html`<iconify-icon icon=${(card.icon && it[card.icon]) || "lucide:box"} class="text-3xl" style=${fg ? `color:${fg}` : ""}></iconify-icon>`}

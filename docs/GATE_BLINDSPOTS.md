@@ -67,6 +67,24 @@ and the fallback chain took that as the truth. Measured: Zurich 50 · Geneva 50 
 **Closed** (the app was later removed for unrelated reasons): a `200` with zero elements is *unconfirmed*,
 not *empty* — the two are indistinguishable from a single source. Ask the next one.
 
+### 4b. A helper that short-circuits under `isGate` cannot be tested through
+`v2m`'s store re-ran its skeletons every time the tab was opened, even though the catalogue was already in
+memory, and its infinite scroll never armed at all. **One cause:** `useReveal(ready, minMs = 1000)` holds the
+skeleton for a fixed second **from mount**, regardless of whether the data is already there — so re-entering
+looked like a reload, and because the list is not rendered during that second, the `IntersectionObserver`
+effect ran against a `null` sentinel and its dependencies (`shown`, `list.length`) never changed afterwards,
+so it was never re-armed.
+
+The gate could not see either one: `useReveal`'s **first line** is `if (isGate || reduced()) return !!ready`.
+Headless never sits through the hold, so the delayed-render window in which both bugs live **does not exist
+in CI**. An e2e asserting "coming back shows no skeleton" passes identically before and after the fix — it
+proves nothing, which is worse than having no test, because it reads like coverage.
+
+Two rules out of it: **hold a skeleton on the first, genuinely empty load only** — never on a mount that
+already has its data; and **make "the node exists" a dependency** (hold the sentinel in state, not a ref) so
+an observer cannot be armed against something that has not rendered yet. When a shared helper branches on
+`isGate`, everything downstream of that branch is untested by construction — say so at the assertion.
+
 ### 5. The gate's environment is not the user's
 - `iptv` rendered a grey screen in production while CI was green: `video.js` imported siblings with
   absolute `/_rt/` paths, which 404 at the `/microspec/` subpath. **The gate serves from localhost root**,

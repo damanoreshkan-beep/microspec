@@ -53,7 +53,9 @@ export default [
       h.expect(n > 1, "магазин порожній");
       h.expect(/KB|MB/.test(await h.bodyText()), "на плитках немає розміру — головної цифри застосунку");
       h.expect((await h.count("[data-sort]")) >= 3, "немає перемикача сортування");
-      // the catalogue is cached in a module atom — coming back must not re-run the skeletons
+      // Coming back must not re-run the skeletons. NOTE this assertion is weak on purpose-of-record:
+      // useReveal short-circuits under `isGate`, so headless never sits through its 1 s hold and cannot
+      // reproduce the "re-enters and reloads" bug this is written for. See docs/GATE_BLINDSPOTS.md.
       await h.click('[data-tab="play"]'); await h.wait(200);
       await h.click('[data-tab="store"]'); await h.wait(150);
       h.expect((await h.count("[data-skel]")) === 0, "магазин перезавантажується при поверненні");

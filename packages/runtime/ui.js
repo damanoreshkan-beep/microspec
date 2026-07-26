@@ -126,20 +126,33 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
 // `bottom: calc(var(--dock-h) + env(safe-area-inset-bottom) + …)`), and they had already drifted: four used
 // a 0.4rem gap and two used 0.5rem, for one measurement. The POSITION and the MATERIAL are the kit's; the
 // width, the radius and the row inside stay the app's, through className.
-export function Island({ children, className = "", tag = "div", pinned = false, ...rest }) {
+// `at` — which edge it clears: "bottom" floats above the dock, "top" hangs under the header. Both are the
+// same idea (a bar that clears the chrome without an app knowing the chrome's height), and both read the
+// MEASURED numbers rather than restating them.
+// `tone` — what it floats ON. "glass" is the farm's base-100 material; "dark" is for a bar over arbitrary
+// media, where a light-surface island simply disappears against a bright video frame. That is a material
+// decision with a reason, not a per-app taste, which is why it belongs here.
+export function Island({ children, className = "", tag = "div", pinned = false, at = "bottom", tone = "glass", ...rest }) {
   if (pinned) {
-    return html`<div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none"
-      style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)">
-      <${Island} className=${`pointer-events-auto ${className}`} tag=${tag} ...${rest}>${children}<//>
+    const pos = at === "top"
+      ? "top:calc(var(--hdr-h) + env(safe-area-inset-top) + 0.25rem)"
+      : "bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)";
+    return html`<div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style=${pos}>
+      <${Island} className=${`pointer-events-auto ${className}`} tag=${tag} tone=${tone} ...${rest}>${children}<//>
     </div>`;
   }
-  return IslandBox({ children, className, tag, ...rest });
+  return IslandBox({ children, className, tag, tone, ...rest });
 }
 
-function IslandBox({ children, className = "", tag = "div", ...rest }) {
+function IslandBox({ children, className = "", tag = "div", tone = "glass", ...rest }) {
   // A floating panel IS the raised surface: it declares sf-raised/sf-e3 rather than carrying its own shadow
   // triple, so a change to what "raised" means reaches the dock, the sheet and every island at once.
-  const cls = `sf-raised sf-e3 rounded-[var(--ms-r)] bg-base-100/80 backdrop-blur-xl p-[var(--ms-pad)] ${className}`;
+  // "dark" keeps the raised geometry and swaps only the material — a light island over a bright video frame
+  // is invisible, which is not a style preference but a legibility fact.
+  const surface = tone === "dark"
+    ? "sf-e3 border border-white/15 bg-black/60 text-white"
+    : "sf-raised sf-e3 bg-base-100/80";
+  const cls = `${surface} rounded-[var(--ms-r)] backdrop-blur-xl p-[var(--ms-pad)] ${className}`;
   return tag === "section"
     ? html`<section class=${cls} ...${rest}>${children}</section>`
     : html`<div class=${cls} ...${rest}>${children}</div>`;

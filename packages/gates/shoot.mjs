@@ -20,6 +20,9 @@ const apps = args.filter((a) => !a.startsWith("--") && !isFlagVal(a));
 const base = flag("--base", "https://damanoreshkan-beep.github.io/microspec/").replace(/\/?$/, "/");
 const out = flag("--out", "packages/gates/shots");
 const seed = args.includes("--seed");
+// A TOOL app seeds its fixture off /_rt/gate.js, which flips on ?mock — not ?seed. Shooting one with
+// --seed photographs its EMPTY state and calls it the app: pins was judged on 80% of void that way.
+const mock = args.includes("--mock");
 // --theme light shoots the OTHER theme. Half of every taste review is "and now look at it light", and the
 // only thing that could produce that still was verify.mjs --shots, i.e. a local Chromium — which this
 // project never runs. The runtime honours ?theme= for exactly this (it does not persist).
@@ -36,7 +39,7 @@ const bpArg = flag("--bp", "default");
 const chosen = bpArg === "all" ? Object.keys(BP).filter((k) => k !== "default") : [bpArg];
 for (const b of chosen) if (!BP[b]) { console.error(`unknown --bp "${b}" — one of: ${Object.keys(BP).join(", ")}, all`); Deno.exit(2); }
 
-if (!apps.length) { console.error("usage: shoot.mjs <appId...> [--seed] [--bp <id|all>] [--theme light] [--out dir] [--base url]"); Deno.exit(2); }
+if (!apps.length) { console.error("usage: shoot.mjs <appId...> [--seed] [--mock] [--bp <id|all>] [--theme light] [--out dir] [--base url]"); Deno.exit(2); }
 await Deno.mkdir(out, { recursive: true });
 
 // microlink caches per URL, so the shot you get right after a deploy is usually the app you just
@@ -46,7 +49,7 @@ const fresh = args.includes("--fresh");
 
 async function shoot(app, bp) {
   const [W, H] = BP[bp];
-  const q = [seed ? "seed" : "", theme ? `theme=${theme}` : ""].filter(Boolean).join("&");
+  const q = [seed ? "seed" : "", mock ? "mock" : "", theme ? `theme=${theme}` : ""].filter(Boolean).join("&");
   const url = `${base}${app}/${q ? "?" + q : ""}`;
   const api = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&waitUntil=networkidle2&viewport.width=${W}&viewport.height=${H}&viewport.deviceScaleFactor=2${fresh ? "&force=true" : ""}`;
   const r = await fetch(api);

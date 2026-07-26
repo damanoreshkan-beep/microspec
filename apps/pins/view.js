@@ -139,6 +139,32 @@ const PinCard = ({ pin, t, full, owned, onSave, onCopy, compact }) => {
   <//>`;
 };
 
+// Nothing resolved yet. The screen shows what you already grabbed — continuity, and the reason to come
+// back — and if there is nothing yet, the three shapes it accepts, as chips that FILL the field when
+// tapped. A tappable example is an affordance; the same text as a sentence would be hint text, which the
+// farm bans for good reason.
+const SHAPES = ["https://pin.it/", "https://www.pinterest.com/pin/", "https://www.pinterest.com/user/board/"];
+function Idle({ t }) {
+  const owned = useStore($owned);
+  const [recent, setRecent] = useState(null);
+  useEffect(() => { SAVED.all().then((a) => setRecent(a.sort((x, y) => (y._ts || 0) - (x._ts || 0)).slice(0, 6))).catch(() => setRecent([])); }, [owned]);
+  if (recent && recent.length) {
+    return html`<div class="flex flex-col gap-[var(--ms-gap)]">
+      <div class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70 px-1">${T(t, "tabSaved")}</div>
+      <div data-recent class="columns-2 gap-[var(--ms-gap)] [&>*]:mb-[var(--ms-gap)] [&>*]:break-inside-avoid">
+        ${recent.map((pn) => html`<a key=${pn.id} data-pin=${pn.id} href=${pn.full || pn.src} target="_blank" rel="noopener"
+          class="block overflow-hidden rounded-[var(--ms-r)]" style=${`aspect-ratio:1/${ratio(pn)};background:${pn.color}`}>
+          <img src=${pn.src} alt="" loading="lazy" class="block w-full h-full object-cover" />
+        </a>`)}
+      </div>
+    </div>`;
+  }
+  return html`<div data-idle class="flex flex-wrap gap-2 px-1">
+    ${SHAPES.map((sh) => html`<button key=${sh} data-shape class="btn btn-sm btn-outline rounded-2xl font-mono text-[var(--ms-label)] normal-case"
+      onClick=${() => $q.set(sh)}>${sh.replace("https://", "")}</button>`)}
+  </div>`;
+}
+
 // ── grab ─────────────────────────────────────────────────────────────────────────────────────────────
 export function pins({ S, toast }) {
   const t = useStore(S.t);
@@ -177,12 +203,12 @@ export function pins({ S, toast }) {
 
   return html`<div class="flex flex-col gap-[var(--ms-gap)]">
     <${Island} className="flex flex-col gap-2">
-      <form class="flex items-center gap-2" onSubmit=${(e) => { e.preventDefault(); grab(q); }}>
+      <form class="@container flex flex-col @min-[26rem]:flex-row @min-[26rem]:items-center gap-2" onSubmit=${(e) => { e.preventDefault(); grab(q); }}>
         <input id="q" data-q type="url" inputmode="url" autocomplete="off" value=${q}
           aria-label=${T(t, "inputLabel")} placeholder=${T(t, "inputPlaceholder")}
           onInput=${(e) => $q.set(e.target.value)}
-          class="input input-bordered flex-1 min-w-0 rounded-2xl" />
-        <button id="grab" type="submit" disabled=${busy} class="btn btn-primary rounded-2xl gap-1.5">
+          class="input input-bordered w-full flex-1 min-w-0 rounded-2xl" />
+        <button id="grab" type="submit" disabled=${busy} class="btn btn-primary rounded-2xl gap-1.5 shrink-0">
           ${Icon(busy ? "lucide:loader" : "lucide:arrow-down-to-line", `text-base ${busy ? "animate-spin" : ""}`)}
           <span class="truncate">${T(t, busy ? "grabbing" : "grab")}</span>
         </button>
@@ -191,7 +217,7 @@ export function pins({ S, toast }) {
     <//>
 
     ${items.length === 0 && !err
-      ? null
+      ? html`<${Idle} t=${t} />`
       : kind === "board"
         ? html`<div data-board class="columns-2 gap-[var(--ms-gap)] [&>*]:mb-[var(--ms-gap)] [&>*]:break-inside-avoid">
             ${items.map((p) => html`<${PinCard} key=${p.id} pin=${p} t=${t} full=${full} owned=${owned}

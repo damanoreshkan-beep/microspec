@@ -46,8 +46,11 @@ export function start(spec, arg2) {
   const { S, load } = app;
 
   const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
-  applyTheme(S.theme.get());
-  S.theme.listen(applyTheme);
+  const urlTheme = (() => {
+    try { const q = new URLSearchParams(location.search).get("theme"); return q ? (q.includes("light") ? "signal-light" : "signal") : null; } catch { return null; }
+  })();
+  applyTheme(urlTheme || S.theme.get());
+  S.theme.listen((t) => applyTheme(urlTheme || t));
 
   if (spec.accent) document.documentElement.style.setProperty("--app-accent", spec.accent);
 

@@ -10,7 +10,7 @@ import { isGate, MOCK } from "/_rt/gate.js";
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const USGS = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson";
 
-const MAG = [["#41C06F", "#136B3A"], ["#8FBE45", "#3F6B24"], ["#D8B23C", "#6E5200"], ["#E2932F", "#985800"], ["#E7742E", "#A24810"], ["#EC5A4A", "#B63125"], ["#C94BBA", "#8E2A86"]];
+const MAG = [["#60CA86", "#136B3A"], ["#98C354", "#3C6622"], ["#D8B23C", "#6E5200"], ["#E8A95A", "#884F00"], ["#EFA577", "#99440F"], ["#F4A198", "#AC2E23"], ["#E2A0DA", "#8E2A86"]];
 const magI = (m) => Math.max(0, Math.min(6, Math.floor(m) - 2));
 const magFill = (m) => MAG[magI(m)][0];
 const magColor = (m) => `light-dark(${MAG[magI(m)][1]},${MAG[magI(m)][0]})`;

@@ -14,7 +14,7 @@ const urlFor = (lat, lng) =>
   "&current=european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,ragweed_pollen,olive_pollen" +
   "&hourly=european_aqi&timezone=auto&forecast_days=2";
 
-const AQ = [["#41C06F", "#177F46"], ["#9BCB3C", "#5A7D14"], ["#E4C13A", "#8A6D00"], ["#E7742E", "#A24810"], ["#EC5A4A", "#B63125"], ["#C94BBA", "#8E2A86"]];
+const AQ = [["#60CA86", "#136A3B"], ["#9BCB3C", "#486410"], ["#E4C13A", "#725A00"], ["#EFA577", "#99440F"], ["#F4A198", "#AC2E23"], ["#E2A0DA", "#8E2A86"]];
 const clamp = (b, n) => Math.max(0, Math.min(n, b));
 const fillFor = (b) => AQ[clamp(b, 5)][0];                                   
 const inkFor = (b) => `light-dark(${AQ[clamp(b, 5)][1]},${AQ[clamp(b, 5)][0]})`; 

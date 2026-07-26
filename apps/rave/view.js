@@ -282,7 +282,7 @@ export function rave({ S }) {
     <${SpectrumStage} index=${viz} />
     <div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-[1] h-2/5 pointer-events-none bg-gradient-to-t from-base-200 via-base-200/55 to-transparent"></div>
 
-    <div class="relative z-10 min-h-[calc(100dvh-9rem)] flex flex-col gap-3">
+    <div class="relative z-10 h-full min-h-0 flex flex-col gap-3">
       <div class="flex items-center gap-2">
         <div class="flex-1 min-w-0">
           <${Segmented} attr="data-style" scroll variant="outline" label=${T(t, "tabPads")}

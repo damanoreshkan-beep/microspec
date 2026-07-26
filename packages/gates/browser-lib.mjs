@@ -196,8 +196,21 @@ export async function runResponsiveMatrix(page, ev, dev) {
           // check is exactly that, so it is still caught.
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
-          const over = Math.min(r.bottom, d.bottom) - Math.max(r.top, d.top);
-          const across = Math.min(r.right, d.right) - Math.max(r.left, d.left);
+          // Compare the VISIBLE part of the element, not its raw rect. A page parked off-screen inside a
+          // horizontal snap pager still has a bounding box out there to the right, and that box overlaps a
+          // right-hand dock rail perfectly — so the check reported the watch pager as "content hidden under
+          // the dock forever" when the page in question was simply the one you have not swiped to yet.
+          // Clip against every scroll-clipping ancestor; nothing outside those is on screen at all.
+          let vr = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+          for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            const pcs = getComputedStyle(p);
+            if (!/auto|scroll|hidden|clip/.test(pcs.overflowX + pcs.overflowY)) continue;
+            const pr = p.getBoundingClientRect();
+            vr = { top: Math.max(vr.top, pr.top), bottom: Math.min(vr.bottom, pr.bottom), left: Math.max(vr.left, pr.left), right: Math.min(vr.right, pr.right) };
+          }
+          if (vr.right - vr.left <= 1 || vr.bottom - vr.top <= 1) continue;   // clipped away → not on screen
+          const over = Math.min(vr.bottom, d.bottom) - Math.max(vr.top, d.top);
+          const across = Math.min(vr.right, d.right) - Math.max(vr.left, d.left);
           if (over > 1 && across > 1 && over > hide) { hide = over; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; hsel = el.tagName.toLowerCase() + (c ? "." + c : ""); }
         }
       }

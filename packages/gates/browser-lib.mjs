@@ -114,8 +114,17 @@ export async function runResponsiveMatrix(page, ev, dev) {
       const ox = de.scrollWidth - window.innerWidth;
       let sel = "?";
       if (ox > 1) {
+        const clipped = (el) => {
+          for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            const cs = getComputedStyle(p);
+            if (!/auto|scroll|hidden|clip/.test(cs.overflowX)) continue;
+            const pr = p.getBoundingClientRect(), r = el.getBoundingClientRect();
+            if (r.left > pr.right - 0.5 || r.right < pr.left + 0.5) return true;
+          }
+          return false;
+        };
         let far = window.innerWidth, node = null;
-        for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; node = el; } }
+        for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5 && !clipped(el)) { far = r.right; node = el; } }
         const chain = [];
         for (let el = node; el && el !== document.body && chain.length < 5; el = el.parentElement) {
           const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";

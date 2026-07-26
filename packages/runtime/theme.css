@@ -63,13 +63,14 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 
   
   
-  .btn { --btn-p: 0.45rem; max-width: 100%; flex-shrink: 1; white-space: normal; }
+  .btn { --btn-p: 0.45rem; max-width: 100%; }
+  html:not(.ms-fit) .btn { flex-shrink: 1; white-space: normal; }
   .btn > * { min-width: 0; }
   .font-mono { overflow-wrap: anywhere; }
+  
   html:not(.ms-fit) .flex:has(> .btn) { flex-wrap: wrap; }
   html.ms-fit main#view { padding-bottom: var(--ms-gap); padding-right: calc(var(--dock-w, 3rem) + 0.35rem); }
 
-  
   .ms-side {
     flex-direction: row; align-items: stretch;
     overflow-x: auto; overflow-y: hidden;
@@ -112,7 +113,6 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --radius-box: 1rem; --radius-field: 0.7rem; --radius-selector: 0.5rem;
   --border: 1px; --depth: 0;
 }
-
 [data-theme="signal-light"] {
   color-scheme: light;
   --color-base-100: #FFFFFF; --color-base-200: #FAFAF9; --color-base-300: #E7E7E3;

@@ -339,8 +339,7 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
       </div>`; })}
     </div>
 
-    <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)">
-      <div class="pointer-events-auto w-full max-w-xl rounded-[1.35rem] border border-base-content/10 bg-base-100/80 backdrop-blur-xl shadow-[0_8px_28px_-6px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.09)] px-3 py-2">
+    <${Island} pinned className="w-full max-w-xl">
         ${/* Same bar, now the kit's: the tempo is the now-playing line and the four tools are `actions`,
              which demote into the overflow sheet with their words when the window gets narrow. */""}
         <${Transport} locale=${loc} stopIcon playing=${playing} onToggle=${toggle} keep=${1}
@@ -352,8 +351,8 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
             { id: "save", icon: "lucide:save", label: T(t, "aSave"), onClick: save, attr: { "data-save": true } },
             { id: "settings", icon: "lucide:sliders-horizontal", label: T(t, "settings"), onClick: () => openScreen("fx"), attr: { "data-settings": true } },
           ]} />
-      </div>
-    </div>
+      <//>
+    
 
     <${FxSheet} open=${screen === "fx"} onClose=${closeScreen} t=${t} sweep=${sweep} />
   </${Fragment}>`;

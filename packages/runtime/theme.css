@@ -262,9 +262,26 @@ body::after {
 .skeleton, [data-skeleton] { background: var(--sf-inset-face); box-shadow: inset 0 2px 5px -1px var(--sf-inset-top); }
 
 
+nav[data-dock] button[aria-current="page"] {
+  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 3px 8px -2px var(--sf-shadow);
+}
+.tabs .tab-active, .steps .step-primary .step-icon, .join > .btn-active {
+  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 6px -2px var(--sf-shadow);
+}
+
+
+.card, [data-card] {
+  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 6px -2px var(--sf-shadow);
+}
+
+.alert { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
+.dropdown-content, .menu.bg-base-100, [role="menu"] {
+  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow);
+}
+
+
 .modal-box { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 -10px 44px -12px var(--sf-shadow); }
 [data-toast] .alert { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }
-
 
 
 :root { --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
@@ -297,6 +314,7 @@ body { letter-spacing: -0.006em; }
   color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
 }
 
+
 #status {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -318,6 +336,7 @@ nav[data-dock] button > span {
   transition-timing-function: cubic-bezier(.22, 1, .3, 1.12);
 }
 @media (prefers-reduced-motion: reduce) { .modal-box { transition-timing-function: ease-out; } }
+
 
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }

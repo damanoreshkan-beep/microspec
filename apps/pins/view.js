@@ -120,7 +120,7 @@ const PinCard = ({ pin, t, full, owned, onSave, onCopy, compact }) => {
     ${pin.board && !compact ? html`<div class="font-mono text-[var(--ms-label)] text-base-content/70 truncate">
       ${pin.board}${pin.author ? ` · ${T(t, "byAuthor", { n: pin.author })}` : ""}</div>` : null}
     <div class="flex items-center gap-2">
-      <button data-copy class="btn btn-primary btn-sm flex-1 gap-1.5 rounded-2xl" onClick=${() => onCopy(url)}>
+      <button data-copy class="btn btn-primary btn-sm flex-1 shrink min-w-0 gap-1.5 rounded-2xl" onClick=${() => onCopy(url)}>
         ${Icon("lucide:link", "text-base")}<span class="truncate">${T(t, "copyLink")}</span>
       </button>
       <a data-download href=${url} download target="_blank" rel="noopener"

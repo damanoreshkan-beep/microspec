@@ -3,7 +3,13 @@
 // point cloud + transport island; Store = the modland V2 archive read live (headless uses a fixture and the
 // bundled demo, so nothing here touches the network); Library = IndexedDB downloads with undo-delete.
 // Playing state is optimistic so the button reacts instantly and headless can assert it without real audio.
-const ready = async (h) => { for (let i = 0; i < 20; i++) { if ((await h.count("[data-track]")) > 0) break; await h.wait(250); } };
+// Tests share one page, so a previous case may have left another tab open — go to the player, then wait for
+// it. (Without the tab click this polled for an element that was never going to appear and read "" from it.)
+const ready = async (h) => {
+  await h.click('[data-tab="play"]');
+  for (let i = 0; i < 20; i++) { if ((await h.attr("[data-track]", "data-track")) !== "") return; await h.wait(250); }
+  h.expect(false, "плеєр не змонтувався");
+};
 
 export default [
   {

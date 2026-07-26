@@ -3126,8 +3126,8 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
 
 Deno.test(".ms-cols derives its count from width — it never switches off, and never over-splits", async () => {
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
-  const m = /\.ms-cols \{([\s\S]*?)\n  \}/.exec(css);
-  assert(m, ".ms-cols rule is gone");
+  const m = /\.ms-cols\.ms-cols \{([\s\S]*?)\n  \}/.exec(css);
+  assert(m, ".ms-cols must stay doubled — at equal specificity the CDN wins and the rule does nothing");
   assert(/auto-fit/.test(m[1]), "the column count is fixed — it cannot answer to the real width");
   assert(/--ms-col-min/.test(m[1]), "no readable floor: auto-fit alone will happily make 40px columns");
   assert(!/620px\)\s*and\s*\(min-width/.test(css), "a min-width gate turns the rule off where it is needed most");

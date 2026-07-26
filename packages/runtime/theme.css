@@ -38,7 +38,7 @@
 
 @media (max-height: 620px) {
   
-  .ms-cols {
+  .ms-cols.ms-cols {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(var(--ms-col-min, 3rem), 100%), 1fr));
     gap: var(--ms-gap);

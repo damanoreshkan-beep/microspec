@@ -174,13 +174,15 @@ export function Transport({
   onScrubStart, onScrub, onScrubEnd,
 }) {
   const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-  // A transport is a ROW, so unlike the rest of the kit it has to answer to WIDTH as well as height: at
-  // 200px the full-size circles plus gap-4 overflow, which is how rave first failed the watch breakpoint.
-  // Secondary controls and the gap step up at 380px; the primary button keeps the height token above that.
+  // A transport is a ROW, so unlike the rest of the kit it answers to WIDTH as well as height — and it must
+  // answer to the width IT has, not the window's. CONTAINER queries, never viewport ones: the watch gate
+  // narrows #view to 200px while the window stays 384px (so a min-[380px] rule still matched and the row
+  // kept its wide gaps — that is exactly how this shipped 4px over twice), and .ms-side puts the transport
+  // in a narrow column on a full-width phone. Both are container-narrow and viewport-wide.
   const big = size === "sm"
-    ? "w-11 h-11 min-[380px]:w-12 min-[380px]:h-12"
-    : "w-11 h-11 min-[380px]:w-[var(--ms-ctl)] min-[380px]:h-[var(--ms-ctl)]";
-  const side = "btn-sm min-[380px]:btn-md";
+    ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
+    : "w-[var(--ms-ctl)] h-[var(--ms-ctl)] @max-[300px]:w-11 @max-[300px]:h-11";
+  const side = "btn-sm";
   const max = Math.max(1000, dur || 0);
 
   const head = (title != null || lead || trail) ? html`
@@ -207,10 +209,10 @@ export function Transport({
     </div>` : null;
 
   return html`
-    <div data-transport class=${`flex flex-col gap-2 ${className}`}>
+    <div data-transport class=${`@container flex flex-col gap-2 ${className}`}>
       ${head}
       ${scrub}
-      <div class="flex items-center justify-center gap-1 min-[380px]:gap-4">
+      <div class="flex items-center justify-center gap-4 @max-[300px]:gap-1">
         ${onRepeat ? html`
           <button id="repeat" data-repeat=${repeat || "off"} aria-label=${sys("aRepeat", locale)}
             aria-pressed=${repeat && repeat !== "off" ? "true" : "false"}

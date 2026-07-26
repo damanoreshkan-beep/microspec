@@ -18,6 +18,12 @@ criteria below and emit the verdict.
 - **No overlap / collision** — elements don't visually stack or crowd into each other.
 - **A one-screen app does not scroll** — an instrument whose controls run off the bottom is broken, not
   "scrollable". Check the compact states, not just the tall one: `shoot.mjs <app> --bp phone-land`.
+- **Split-screen keeps every function** — at `412×430` and `360×340` (two apps on one phone; in the matrix)
+  nothing may be dropped to make room. A control that no longer fits becomes an **icon**, or moves into a
+  Sheet; a stage moves BESIDE its controls (`.ms-side`), not away. Look for the amputation: a screen that
+  "fits" because its save button, its repeat mode or its visualiser quietly stopped rendering is a fail, and
+  no overflow check can see it — only the eye can. The dock may drop its labels; it may not drop its
+  targets or its accessible names.
 
 **Coherence (orange — fix before shipping):**
 - **Composed, not squashed** — at a short height the layout should read as a *denser version of itself*

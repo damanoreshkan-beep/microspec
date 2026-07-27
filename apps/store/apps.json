@@ -8,7 +8,7 @@
     "bg": "#07070C",
     "fg": "#9F8CF6",
     "href": "./outpost/",
-    "version": "1.6",
+    "version": "1.7",
     "category": "sound"
   },
   {
@@ -44,7 +44,7 @@
     "bg": "#0A0A0B",
     "fg": "#5BA6E8",
     "href": "./globe/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "science"
   },
   {
@@ -56,7 +56,7 @@
     "bg": "#0A0A0F",
     "fg": "#A78BFA",
     "href": "./horoscope/",
-    "version": "1.14",
+    "version": "1.15",
     "category": "esoterica"
   },
   {
@@ -92,7 +92,7 @@
     "bg": "#0d1512",
     "fg": "#10b981",
     "href": "./habits/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "wellness"
   },
   {
@@ -116,7 +116,7 @@
     "bg": "#0C0F14",
     "fg": "#E0463A",
     "href": "./quakes/",
-    "version": "1.13",
+    "version": "1.16",
     "category": "science"
   },
   {
@@ -128,7 +128,7 @@
     "bg": "#0A0A0B",
     "fg": "#4ADE80",
     "href": "./pwned/",
-    "version": "1.4",
+    "version": "1.5",
     "category": "tools"
   },
   {
@@ -140,7 +140,7 @@
     "bg": "#1A1410",
     "fg": "#E0A94B",
     "href": "./kalimba/",
-    "version": "1.16",
+    "version": "1.17",
     "category": "sound"
   },
   {
@@ -152,7 +152,7 @@
     "bg": "#0B0B10",
     "fg": "#E7E7EA",
     "href": "./cam/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "creative"
   },
   {
@@ -176,7 +176,7 @@
     "bg": "#0A0A0B",
     "fg": "#F0A868",
     "href": "./subclone/",
-    "version": "1.10",
+    "version": "1.11",
     "category": "hackrf"
   },
   {
@@ -200,7 +200,7 @@
     "bg": "#0B0A12",
     "fg": "#B98BEA",
     "href": "./code/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "play"
   },
   {
@@ -212,7 +212,7 @@
     "bg": "#0B1220",
     "fg": "#7DD3FC",
     "href": "./compass/",
-    "version": "1.12",
+    "version": "1.13",
     "category": "tools"
   },
   {
@@ -260,7 +260,7 @@
     "bg": "#120A08",
     "fg": "#E2932F",
     "href": "./kp/",
-    "version": "1.10",
+    "version": "1.11",
     "category": "science"
   },
   {
@@ -284,7 +284,7 @@
     "bg": "#0A0F1E",
     "fg": "#7CC7FF",
     "href": "./iss/",
-    "version": "1.12",
+    "version": "1.13",
     "category": "science"
   },
   {
@@ -320,7 +320,7 @@
     "bg": "#0A0A0B",
     "fg": "#E8574B",
     "href": "./pins/",
-    "version": "1.0",
+    "version": "1.4",
     "category": "tools"
   },
   {
@@ -332,7 +332,7 @@
     "bg": "#0A0A0B",
     "fg": "#3FC7C0",
     "href": "./pipette/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "tools"
   },
   {
@@ -380,7 +380,7 @@
     "bg": "#0A0A0B",
     "fg": "#40C173",
     "href": "./pulse/",
-    "version": "1.10",
+    "version": "1.11",
     "category": "feeds"
   },
   {
@@ -392,7 +392,7 @@
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.68",
+    "version": "1.69",
     "category": "sound"
   },
   {
@@ -404,7 +404,7 @@
     "bg": "#0A0A0B",
     "fg": "#C6B6FF",
     "href": "./sigil/",
-    "version": "1.6",
+    "version": "1.7",
     "category": "esoterica"
   },
   {
@@ -428,7 +428,7 @@
     "bg": "#0A0A0B",
     "fg": "#F5B94D",
     "href": "./sun/",
-    "version": "1.35",
+    "version": "1.36",
     "category": "science"
   },
   {
@@ -440,7 +440,7 @@
     "bg": "#231708",
     "fg": "#e8c874",
     "href": "./sopilka/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "sound"
   },
   {
@@ -452,7 +452,7 @@
     "bg": "#17111a",
     "fg": "#fb7185",
     "href": "./wish/",
-    "version": "1.5",
+    "version": "1.6",
     "category": "tools"
   },
   {
@@ -476,7 +476,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./tarot/",
-    "version": "1.24",
+    "version": "1.25",
     "category": "esoterica"
   },
   {
@@ -524,7 +524,7 @@
     "bg": "#0C1014",
     "fg": "#E0B24E",
     "href": "./handpan/",
-    "version": "1.20",
+    "version": "1.21",
     "category": "sound"
   },
   {
@@ -536,7 +536,7 @@
     "bg": "#14100A",
     "fg": "#D4A84B",
     "href": "./onthisday/",
-    "version": "1.12",
+    "version": "1.13",
     "category": "feeds"
   },
   {
@@ -548,8 +548,20 @@
     "bg": "#08120F",
     "fg": "#41C06F",
     "href": "./air/",
-    "version": "1.10",
+    "version": "1.13",
     "category": "science"
+  },
+  {
+    "id": "apkforge",
+    "title": "APK Forge",
+    "tagline": "Перетвори будь-який веб-застосунок на встановлюваний Android-APK — прямо тут, без сервера збірки. Введи URL і отримай підписаний WebView-APK з назвою та іконкою сайту, готовий до sideload.",
+    "glyph": "lucide:package",
+    "art": "<path d=\"m7.5 4.27 9 5.15\"/>\n<path d=\"M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z\"/>\n<path d=\"m3.3 7 8.7 5 8.7-5\"/>\n<path d=\"M12 22V12\"/>",
+    "bg": "#0A0A0F",
+    "fg": "#7C3AED",
+    "href": "./apkforge/",
+    "version": "1.0",
+    "category": "tools"
   },
   {
     "id": "dou",
@@ -584,7 +596,7 @@
     "bg": "#0A0A0B",
     "fg": "#B7ADEB",
     "href": "./fmradio/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "hackrf"
   },
   {
@@ -596,7 +608,7 @@
     "bg": "#1f2430",
     "fg": "#34d399",
     "href": "./ruler/",
-    "version": "1.26",
+    "version": "1.27",
     "category": "tools"
   },
   {
@@ -608,7 +620,7 @@
     "bg": "#0A0A0B",
     "fg": "#93C5FD",
     "href": "./gsmscan/",
-    "version": "1.6",
+    "version": "1.7",
     "category": "hackrf"
   },
   {
@@ -632,7 +644,7 @@
     "bg": "#141414",
     "fg": "#ef4444",
     "href": "./iptv/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "feeds"
   },
   {
@@ -656,7 +668,7 @@
     "bg": "#0A0A0B",
     "fg": "#9F8CF6",
     "href": "./nova/",
-    "version": "1.11",
+    "version": "1.12",
     "category": "feeds"
   },
   {
@@ -680,7 +692,7 @@
     "bg": "#0B0B0D",
     "fg": "#ECECEE",
     "href": "./reel/",
-    "version": "1.28",
+    "version": "1.29",
     "category": "feeds"
   },
   {

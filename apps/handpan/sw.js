@@ -1,6 +1,6 @@
 self.MS = {
   app: "handpan",
-  version: "efdf091f6a",
+  version: "734f84bff3",
   precache: [
     "./",
     "./i18n/en.json",
@@ -12,6 +12,7 @@ self.MS = {
     "./spec.json",
     "./view.js",
     "./viz.js",
+    "/_rt/apk.js",
     "/_rt/audio.js",
     "/_rt/build.js",
     "/_rt/db.js",

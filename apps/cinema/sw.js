@@ -1,6 +1,6 @@
 self.MS = {
   app: "cinema",
-  version: "371fabdc47",
+  version: "f89f0e2290",
   precache: [
     "./",
     "./data.js",
@@ -11,6 +11,7 @@ self.MS = {
     "./index.html",
     "./manifest.json",
     "./spec.json",
+    "/_rt/apk.js",
     "/_rt/build.js",
     "/_rt/db.js",
     "/_rt/enrich.js",

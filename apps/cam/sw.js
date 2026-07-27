@@ -1,6 +1,6 @@
 self.MS = {
   app: "cam",
-  version: "3fe3ecf0d1",
+  version: "d4987197c0",
   precache: [
     "./",
     "./i18n/en.json",
@@ -11,6 +11,7 @@ self.MS = {
     "./manifest.json",
     "./spec.json",
     "./view.js",
+    "/_rt/apk.js",
     "/_rt/build.js",
     "/_rt/camprime.js",
     "/_rt/db.js",

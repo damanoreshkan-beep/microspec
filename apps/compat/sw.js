@@ -1,6 +1,6 @@
 self.MS = {
   app: "compat",
-  version: "978c0241af",
+  version: "cc34598099",
   precache: [
     "./",
     "./i18n/en.json",
@@ -11,6 +11,7 @@ self.MS = {
     "./manifest.json",
     "./spec.json",
     "./view.js",
+    "/_rt/apk.js",
     "/_rt/aspects.js",
     "/_rt/astro.js",
     "/_rt/build.js",

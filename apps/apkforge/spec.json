@@ -1,0 +1,30 @@
+{
+  "id": "apkforge",
+  "theme": "signal",
+  "category": "tools",
+  "accent": "#7C3AED",
+  "tabs": [
+    {
+      "id": "forge",
+      "type": "tool",
+      "view": "forge",
+      "fit": true,
+      "icon": "lucide:package",
+      "label": "tabForge",
+      "titleKey": "title"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:package",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

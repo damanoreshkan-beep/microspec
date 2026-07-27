@@ -216,7 +216,8 @@ function fire(step, time) {
 const tick = () => { const e = eng; if (!e) return; const spb = 60 / $bpm.get() / 4, sw = $fx.get().swing; if (nextT < e.ctx.currentTime) nextT = e.ctx.currentTime; while (nextT < e.ctx.currentTime + 0.1) { const s = stepN; fire(s, nextT + (s % 2 ? sw * spb : 0)); nextT += spb; stepN = (s + 1) % N; } };
 const draw = () => { const e = eng; if (e) { const now = e.ctx.currentTime; while (q.length && q[0].time <= now) $cur.set(q.shift().step); } raf = requestAnimationFrame(draw); };
 function start() {
-  const e = ensure(); $playing.set(true); if (!e) return;
+  const e = ensure(); if (!e) return;                                // no engine, no sound — so nothing may flip to "playing" and lie about it
+  $playing.set(true);
   wl = wakeLock.acquire();                                          // screen stays on while it plays
   if (np) np.release();                                            // one live session; a lingering one is a phantom notification
   np = holdAudio({ title: npTitle(), artist: "microspec", artwork: artUrl(),
@@ -313,9 +314,9 @@ export function rave({ S, screen, openScreen, closeScreen }) {
           <input data-filter type="range" min="0" max="1" step="0.01" value=${fx.mfilter} aria-label=${T(t, "fxFilter")} onInput=${(e) => setFx("mfilter", Number(e.target.value))} class="range range-xs range-secondary flex-1" />
           <span class="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-base-content/55 tabular-nums shrink-0">${bpm} BPM</span>
         </div>
-        <${Transport} locale=${loc} playing=${playing} stopIcon onToggle=${toggle}
+        <${Transport} locale=${loc} playing=${playing} stopIcon onToggle=${toggle} disabled=${!audioSupported}
           onPrev=${() => stepTrack(-1)} onNext=${() => stepTrack(1)}
-          keep=${1} moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
+          keep=${2} moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
           actions=${[
             ...(immersionAvailable ? [{ id: "immersion", icon: "lucide:orbit", label: T(t, "immersion"), onClick: toggleImmersion, active: immersed, pressed: immersed, attr: { "data-immersion": true } }] : []),
             { id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } }]} />
@@ -350,15 +351,16 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
            at ~20px wide, and the full pair on an object that size is a shadow bigger than the thing. */""}
       ${TRACKS.map((tr) => { const live = tracks[tr.id].some(Boolean); return html`<div class="flex items-center gap-[3px]" key=${tr.id}>
         <div class=${`w-7 shrink-0 flex items-center justify-center ${live ? "text-base-content" : "text-base-content/40"}`} title=${T(t, tr.name)}>${Icon(tr.icon, "text-base")}</div>
-        ${STEPS.map((s) => { const on = tracks[tr.id][s]; return html`<button data-cell=${`${tr.id}-${s}`} aria-pressed=${on} aria-label=${`${T(t, tr.name)} ${s + 1}`} onClick=${() => cellToggle(tr.id, s)} key=${s}
-          class=${`flex-1 min-w-0 h-8 rounded touch-manipulation transition-all duration-150 ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? `${tr.on} sf-e2` : "sf-inset"} ${s === sweep ? "ring-2 ring-accent scale-105" : s === cur ? "ring-2 ring-base-content/50" : ""}`}></button>`; })}
+        ${STEPS.map((s) => { const on = tracks[tr.id][s], sw = s === sweep, playhead = sw || s === cur; return html`<button data-cell=${`${tr.id}-${s}`} data-current=${s === cur || null} data-sweep=${sw || null} aria-pressed=${on} aria-label=${`${T(t, tr.name)} ${s + 1}`} onClick=${() => cellToggle(tr.id, s)} key=${s}
+          class=${`relative overflow-hidden flex-1 min-w-0 h-8 rounded touch-manipulation transition-all duration-150 ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? `${tr.on} sf-e2` : "sf-inset"} ${sw ? "scale-105" : ""}`}
+          >${playhead ? html`<span class=${`pointer-events-none absolute inset-y-1 left-1/2 -translate-x-1/2 w-1 rounded-full ${sw ? "bg-accent" : "bg-secondary"}`}></span>` : null}</button>`; })}
       </div>`; })}
     </div>
 
     <${Island} pinned className="w-full max-w-xl">
         ${/* Same bar, now the kit's: the tempo is the now-playing line and the four tools are `actions`,
              which demote into the overflow sheet with their words when the window gets narrow. */""}
-        <${Transport} locale=${loc} stopIcon playing=${playing} onToggle=${toggle} keep=${1}
+        <${Transport} locale=${loc} stopIcon playing=${playing} onToggle=${toggle} disabled=${!audioSupported} keep=${4}
           moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
           actions=${[
             { id: "gen", icon: "lucide:sparkles", label: T(t, "gen"), onClick: newTrack, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-gen": true } },
@@ -430,7 +432,7 @@ export function raveSaved({ S, undo }) {
          avatar slot is a WELL the artwork drops into rather than a step-darker rectangle. */""}
     ${list.map((it) => { const on = isCur(it); return html`<div data-saved class="card bg-base-100 rounded-2xl transition" key=${it.id}>
       <div class="card-body p-3 flex-row items-center gap-3">
-        <button data-play aria-label=${on ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle btn-sm shrink-0 ${on ? "btn-secondary" : "btn-primary"}`} onClick=${() => play(it)}>${Icon(on ? "lucide:square" : "lucide:play", "text-base")}</button>
+        <button data-play disabled=${!audioSupported} aria-label=${on ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle btn-sm shrink-0 ${on ? "btn-secondary" : "btn-primary"}`} onClick=${() => play(it)}>${Icon(on ? "lucide:square" : "lucide:play", "text-base")}</button>
         <button data-load class="flex-1 min-w-0 text-left flex flex-col gap-1.5" onClick=${() => open(it)}>
           <span class="flex items-baseline justify-between gap-2"><span class="font-semibold truncate">${it.name || T(t, "beatWord")}</span><span class="text-xs text-base-content/70 tabular-nums shrink-0">${it.bpm || 130} BPM</span></span>
           <${Spectrum} tracks=${it.tracks} live=${on} cur=${cur} />

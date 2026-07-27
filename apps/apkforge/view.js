@@ -64,7 +64,7 @@ export function forge({ S, toast }) {
     } finally { setBusy(false); }
   };
 
-  return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)] max-w-md w-full mx-auto">
+  return html`<div class="flex flex-col gap-3 max-w-md w-full mx-auto">
     <div data-forge class="flex items-center gap-3 rounded-2xl border border-base-content/10 bg-base-100 p-3 shrink-0">
       <div class="size-14 rounded-2xl overflow-hidden bg-base-200 shrink-0 grid place-items-center ring-1 ring-base-content/10">
         ${icon
@@ -84,8 +84,6 @@ export function forge({ S, toast }) {
     <input type="text" value=${name} onInput=${(e) => { editedName.current = true; setName(e.target.value); }}
       placeholder=${T(t, "forgeNamePlaceholder")} aria-label=${T(t, "forgeNameLabel")}
       class="input input-bordered w-full rounded-xl text-sm shrink-0" />
-
-    <div class="flex-1 min-h-0"></div>
 
     ${done
       ? html`<div data-built class="shrink-0 flex items-start gap-2 rounded-xl bg-base-200 px-3 py-2.5 text-xs leading-snug text-base-content/70">

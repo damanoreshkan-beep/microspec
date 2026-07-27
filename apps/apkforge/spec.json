@@ -8,7 +8,6 @@
       "id": "forge",
       "type": "tool",
       "view": "forge",
-      "fit": true,
       "icon": "lucide:package",
       "label": "tabForge",
       "titleKey": "title"

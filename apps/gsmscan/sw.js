@@ -3,7 +3,7 @@
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
   app: "gsmscan",
-  version: "a15b2a43f5",
+  version: "8fb1a00f4b",
   precache: [
     "./",
     "./i18n/en.json",
@@ -14,6 +14,7 @@ self.MS = {
     "./manifest.json",
     "./spec.json",
     "./view.js",
+    "/_rt/apk.js",
     "/_rt/build.js",
     "/_rt/db.js",
     "/_rt/enrich.js",

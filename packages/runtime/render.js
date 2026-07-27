@@ -7,6 +7,8 @@ import { useRef, useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
 import { T, ago, whenLabel, sinceLabel, sys } from "./i18n.js";
+import { buildApk, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
+import { gate } from "./gate.js";
 import { SHEET_BOX } from "./ui.js";
 import { CORE, BUILD, appVersion } from "./version.js";
 import { PERMISSIONS, permLabels } from "./permissions.js";
@@ -380,6 +382,7 @@ function Profile({ tab }) {
     ${p.install && !isStandalone() ? html`<button id="p-install" class="card bg-primary/10 border border-primary/25 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.installOpen.set(true)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:download", "text-xl text-primary")}<span class="flex-1 min-w-0 truncate font-medium text-left text-primary">${T(t, "install")}</span>${Icon("lucide:chevron-right", "text-primary opacity-60")}</div></button>` : null}
     <div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-5 items-center text-center gap-1">${Icon(p.icon || "lucide:box", "text-4xl text-primary")}<div class="font-bold text-lg mt-1">${T(t, "title")}</div><div class="text-sm text-muted">${T(t, "profTagline")}</div></div></div>
     <button id="p-share" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${shareApp}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:share-2", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("share", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></button>
+    <button id="p-apk" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.screen.set("apk")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:smartphone", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("apkRow", loc)}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>
     ${savedTab ? html`<button class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
     ${p.theme ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:moon", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profTheme")}</span><input id="p-theme" type="checkbox" class="toggle toggle-primary" aria-label=${T(t, "profTheme")} checked=${theme === "signal"} onChange=${(e) => A.S.theme.set(e.target.checked ? "signal" : "signal-light")} /></div></div>` : null}
     ${p.lang ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
@@ -423,6 +426,58 @@ function PermissionsScreen() {
         </div></div>
         ${st === "denied" ? html`<div class="text-xs text-muted px-2 -mt-1 flex items-start gap-1.5">${Icon("lucide:info", "mt-0.5 shrink-0")}${L.deniedHint}</div>` : null}
       </${Fragment}>`; })}
+    </div>
+  </div>`;
+}
+
+// ---- APK screen (history-backed, opened from the profile) -------------------
+// Systemic: every app can emit ITSELF as a sideloadable Android APK. Name = the app title, url = this page,
+// icon = a crafted brand tile (accent + initial — reliable across all apps, no asset dependency). The
+// patch + v1-sign is pure-Deno on the edge; the gate short-circuits the network. See apps/apkforge/RESEARCH.md.
+function ApkScreen() {
+  const t = useStore(A.S.t), loc = useStore(A.S.locale);
+  const name = T(t, "title");
+  const url = location.href.split("#")[0];
+  const accent = () => (getComputedStyle(document.documentElement).getPropertyValue("--app-accent").trim() || "#7C3AED");
+  const [icon, setIcon] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    (async () => { try { const png = await letterTilePng(name, accent()); if (live) setIcon(png); } catch { /* no canvas (preflight) */ } })();
+    return () => { live = false; };
+  }, []);
+
+  const generate = async () => {
+    if (busy) return;
+    setBusy(true); setErr(false); setDone(false);
+    try {
+      let iconB64 = icon;
+      if (!iconB64) { try { iconB64 = await letterTilePng(name, accent()); } catch { /* no icon */ } }
+      if (!gate) { const blob = await buildApk({ url, name, iconB64 }); downloadBlob(blob, apkFilename(name)); }
+      setDone(true); A.toast(sys("apkDone", loc));
+    } catch { setErr(true); } finally { setBusy(false); }
+  };
+
+  return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
+    <header class="navbar bg-gradient-to-b from-base-200 via-base-200/85 to-transparent backdrop-blur-sm sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
+      <button id="apk-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${sys("back", loc)} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
+      <div class="flex-1 font-bold tracking-tight px-1">${sys("apkTitle", loc)}</div>
+    </header>
+    <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">
+      <div data-apk class="flex items-center gap-3 rounded-2xl border border-base-content/10 bg-base-100 p-3">
+        <div class="size-14 rounded-2xl overflow-hidden bg-base-200 shrink-0 grid place-items-center ring-1 ring-base-content/10">
+          ${icon ? html`<img src=${`data:image/png;base64,${icon}`} class="size-full object-cover" alt="" />` : Icon(A.spec.profile?.icon || "lucide:box", "text-2xl text-base-content/40")}
+        </div>
+        <div class="min-w-0 flex-1"><div class="font-semibold truncate">${name}</div><div class="font-mono text-xs text-base-content/55 truncate">${url}</div></div>
+      </div>
+      ${done ? html`<div data-apk-note class="flex items-start gap-2 rounded-xl bg-base-200 px-3 py-2.5 text-xs leading-snug text-base-content/70">${Icon("lucide:shield-alert", "text-sm mt-px shrink-0 text-primary")}<span>${sys("apkNote", loc)}</span></div>` : null}
+      <button id="apk-go" disabled=${busy} onClick=${generate} class="btn btn-primary rounded-2xl w-full gap-2">
+        ${busy ? html`<span class="animate-pulse">${sys("apkGenerating", loc)}</span>` : html`${Icon("lucide:download")}<span>${done ? sys("apkDone", loc) : sys("apkGenerate", loc)}</span>`}
+      </button>
+      ${err ? html`<div class="text-center text-xs text-error">${sys("apkErr", loc)}</div>` : null}
     </div>
   </div>`;
 }
@@ -847,6 +902,7 @@ export function App() {
     <${PlayerHost} />
     ${A.spec.filters ? html`<${FilterSheet} />` : null}
     ${screen === "perms" ? html`<${PermissionsScreen} />` : null}
+    ${screen === "apk" ? html`<${ApkScreen} />` : null}
     <${DockFade} />
     <${InstallModal} />
     <${QrModal} />

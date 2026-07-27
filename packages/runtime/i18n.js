@@ -39,6 +39,18 @@ export const SYS = {
   aRepeat: { en: "Repeat", uk: "Повтор" },
   aShuffle: { en: "Shuffle", uk: "Перемішати" },
   more: { en: "More", uk: "Ще" },
+  back: { en: "Back", uk: "Назад" },
+  // Systemic "Download APK" — every app can emit itself as a sideloadable Android APK (edge-signed).
+  apkRow: { en: "Download APK", uk: "Завантажити APK" },
+  apkTitle: { en: "Download as APK", uk: "Завантажити як APK" },
+  apkGenerate: { en: "Generate APK", uk: "Згенерувати APK" },
+  apkGenerating: { en: "Signing…", uk: "Підписую…" },
+  apkDone: { en: "APK ready", uk: "APK готовий" },
+  apkErr: { en: "Couldn't build the APK", uk: "Не вдалося зібрати APK" },
+  apkNote: {
+    en: "Sideload only. On Samsung, turn Auto Blocker off (Settings → Security & privacy) or install over adb, then allow unknown sources.",
+    uk: "Лише sideload. На Samsung вимкни Auto Blocker (Налаштування → Безпека і приватність) або встанови через adb, тоді дозволь невідомі джерела.",
+  },
 };
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 

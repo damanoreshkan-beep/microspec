@@ -2,8 +2,8 @@
 // Scope comes from this file's own path, so every app needs its own worker; the logic lives once in
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
-  app: "habits",
-  version: "84dd90a839",
+  app: "apkforge",
+  version: "58a9cd6b1c",
   precache: [
     "./",
     "./i18n/en.json",
@@ -34,11 +34,13 @@ self.MS = {
     "/_rt/sealed.js",
     "/_rt/sealedfetch.js",
     "/_rt/sensors.js",
+    "/_rt/sitelabel.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
     "/_rt/theme.css",
     "/_rt/translate.js",
     "/_rt/ui.js",
+    "/_rt/urlquery.js",
     "/_rt/validate.js",
     "/_rt/version.js",
     "/_rt/video.js",

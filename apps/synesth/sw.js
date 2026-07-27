@@ -3,7 +3,7 @@
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
   app: "synesth",
-  version: "7657795672",
+  version: "906abbf73b",
   precache: [
     "./",
     "./i18n/en.json",
@@ -14,6 +14,7 @@ self.MS = {
     "./manifest.json",
     "./spec.json",
     "./view.js",
+    "/_rt/apk.js",
     "/_rt/audio.js",
     "/_rt/build.js",
     "/_rt/camprime.js",

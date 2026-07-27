@@ -3,7 +3,7 @@
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
   app: "nova",
-  version: "c2d304167a",
+  version: "92098be0da",
   precache: [
     "./",
     "./finale.js",
@@ -15,6 +15,7 @@ self.MS = {
     "./manifest.json",
     "./spec.json",
     "./view.js",
+    "/_rt/apk.js",
     "/_rt/auth.js",
     "/_rt/build.js",
     "/_rt/db.js",

@@ -18,7 +18,8 @@ const catKey = (c) => "cat" + c[0].toUpperCase() + c.slice(1);
 
 export function store({ S, openScreen, closeScreen }) {
   const t = useStore(S.t), screen = useStore(S.screen), theme = useStore(S.theme);
-  const dark = theme !== "signal-light";   
+  void theme;
+  const dark = !(typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light"));
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");   
   const [seen, setSeen] = useState(null);   

@@ -80,7 +80,7 @@ export function check({ S }) {
   return html`<div class="w-full min-w-0 py-5 flex flex-col gap-5 max-w-md mx-auto">
 
     <!-- input -->
-    <div class="group rounded-3xl bg-base-100/70 backdrop-blur-xl border border-base-content/10 focus-within:border-primary/50 transition-colors p-1.5 pl-4 flex items-center gap-2 shadow-lg shadow-black/5">
+    <div class="group rounded-3xl sf-inset p-1.5 pl-4 flex items-center gap-2">
       ${Icon("lucide:key-round", "text-lg text-base-content/40 shrink-0")}
       <input data-pw type=${reveal ? "text" : "password"} value=${pw} onInput=${(e) => setPw(e.currentTarget.value)}
         aria-label=${T(t, "pwLabel")} placeholder=${T(t, "pwPlaceholder")} autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
@@ -89,7 +89,7 @@ export function check({ S }) {
     </div>
 
     <!-- the hash, split: the 5 that leave vs the 35 that stay -->
-    ${hex ? html`<div class="rounded-3xl bg-base-100/50 border border-base-content/10 p-4 flex flex-col gap-3 min-w-0">
+    ${hex ? html`<div class="rounded-3xl sf-raised p-4 flex flex-col gap-3 min-w-0">
       <div class="flex items-center gap-2 text-[11px] uppercase tracking-widest text-base-content/70 font-mono">${Icon("lucide:hash", "text-sm")}SHA-1</div>
       <div data-hash class="font-mono text-sm break-all leading-relaxed min-w-0">
         <span class="inline-flex items-center rounded-md bg-primary/15 text-primary font-bold px-1.5 py-0.5 mr-0.5 ring-1 ring-primary/30">${prefix}</span><span class="text-base-content/45 tracking-tight">${suffix}</span>
@@ -100,17 +100,17 @@ export function check({ S }) {
       </div>
     </div>` : null}
 
-    <button data-check onClick=${run} disabled=${!hex || status === "checking"} class="btn btn-primary rounded-2xl h-12 gap-2 shadow-lg shadow-primary/20 disabled:shadow-none">
+    <button data-check onClick=${run} disabled=${!hex || status === "checking"} class="btn btn-primary rounded-2xl h-12 gap-2">
       ${Icon("lucide:shield-search", "text-lg")}${T(t, status === "checking" ? "checking" : "checkBtn")}
     </button>
 
     <!-- the k-anonymity pipeline (the motion hero) -->
-    <div ref=${pipeRef} class="relative rounded-3xl bg-base-100/40 border border-base-content/10 p-4 pl-3 min-w-0 overflow-hidden">
+    <div ref=${pipeRef} class="relative rounded-3xl sf-raised p-4 pl-3 min-w-0 overflow-hidden">
       <div class="absolute left-[1.85rem] top-6 bottom-6 w-px bg-base-content/12"></div>
       <div ref=${beamRef} class="absolute left-[1.85rem] -translate-x-1/2 w-1 h-10 rounded-full bg-gradient-to-b from-transparent via-primary to-transparent blur-[1px] pointer-events-none" style="top:4%"></div>
       <div class="flex flex-col gap-3.5 relative">
         ${NODES.map(([ic, k], i) => html`<div data-node class="flex items-center gap-3 min-w-0" key=${k}>
-          <span class="w-9 h-9 rounded-full bg-base-200 border border-base-content/10 text-base-content/70 flex items-center justify-center shrink-0 shadow-sm">${Icon(ic, "text-base")}</span>
+          <span class="w-9 h-9 rounded-full sf-raised sf-e2 text-base-content/70 flex items-center justify-center shrink-0">${Icon(ic, "text-base")}</span>
           <div class="text-sm text-base-content/80 min-w-0">${T(t, k)}</div>
         </div>`)}
       </div>

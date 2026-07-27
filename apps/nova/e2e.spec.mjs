@@ -17,10 +17,12 @@ export default [
     name: "підтримка: аркуш зі спонсорськими посиланнями, Back закриває", run: async (h) => {
       await ready(h);
       await h.click("[data-dev] [data-support]"); await h.wait(500);
-      h.expect((await h.count("#support-back")) === 1, "аркуш підтримки не відкрився");
+      // The shell is the kit's Sheet now, so the assertion is the dialog's STATE (open), not a class or a
+      // back-button the kit doesn't draw.
+      h.expect((await h.prop("#support-sheet", "open")) === true, "аркуш підтримки не відкрився");
       h.expect((await h.count("[data-fund][href*='sponsors']")) >= 1, "немає посилання на GitHub Sponsors");
       await h.back(); await h.wait(400);
-      h.expect((await h.count("#support-back")) === 0, "Back не закрив аркуш підтримки");
+      h.expect((await h.prop("#support-sheet", "open")) !== true, "Back не закрив аркуш підтримки");
     },
   },
   {

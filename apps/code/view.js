@@ -120,7 +120,7 @@ export function code({ S }) {
     </div>
 
     <!-- win / lose — a history-backed screen (Back closes it) -->
-    ${scr === "over" ? html`<div class="absolute inset-0 z-30 bg-base-100/95 backdrop-blur-sm flex flex-col items-center justify-center gap-5 px-8 text-center">
+    ${scr === "over" ? html`<div class="absolute inset-0 z-30 bg-base-100 flex flex-col items-center justify-center gap-5 px-8 text-center">
       <div class="text-2xl font-bold">${won ? T(t, "titleWon", { n: rows.length }) : T(t, "titleLost")}</div>
       <div class="flex flex-col items-center gap-2">
         <span class="text-[0.62rem] font-mono uppercase tracking-wide text-muted">${T(t, "theCode")}</span>
@@ -135,7 +135,7 @@ export function code({ S }) {
 
     <!-- rules — opened on demand from the "?" (history-backed; Back or Close dismisses). The pip legend
          reuses the board's own pips, so the feedback is learned once and recognised on the board. -->
-    ${scr === "rules" ? html`<div data-rules class="absolute inset-0 z-30 bg-base-100/95 backdrop-blur-sm flex flex-col items-center justify-center gap-5 px-8 text-center">
+    ${scr === "rules" ? html`<div data-rules class="absolute inset-0 z-30 bg-base-100 flex flex-col items-center justify-center gap-5 px-8 text-center">
       <div class="text-xl font-bold">${T(t, "rulesTitle")}</div>
       <p class="text-sm text-base-content/80 max-w-[18rem] leading-relaxed">${T(t, "rulesGoal")}</p>
       <div class="flex flex-col gap-3 items-start">

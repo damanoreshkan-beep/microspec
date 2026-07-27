@@ -222,7 +222,7 @@ export function retouch({ S, toast }) {
         <div class="flex flex-col gap-2.5 w-full">
           <button data-src-upload class="btn btn-primary rounded-2xl gap-2.5 justify-start px-5" onClick=${() => { buzz(); fileRef.current?.click(); }}>${Icon("lucide:upload", "text-lg")}${T(t, "srcUpload")}</button>
           <button data-src-camera class="btn btn-outline rounded-2xl gap-2.5 justify-start px-5" onClick=${() => { buzz(); setCamErr(null); setPhase("camera"); }}>${Icon("lucide:camera", "text-lg")}${T(t, "srcCamera")}</button>
-          ${hasLast ? html`<button data-src-last class="btn btn-ghost rounded-2xl gap-2.5 justify-start px-5 border border-base-content/10" onClick=${() => { buzz(); fromLast(); }}>${Icon("lucide:sparkles", "text-lg text-secondary")}${T(t, "srcLast")}</button>` : null}
+          ${hasLast ? html`<button data-src-last class="btn btn-ghost rounded-2xl gap-2.5 justify-start px-5" onClick=${() => { buzz(); fromLast(); }}>${Icon("lucide:sparkles", "text-lg text-secondary")}${T(t, "srcLast")}</button>` : null}
         </div>
       </div>` : null}
 
@@ -250,18 +250,20 @@ export function retouch({ S, toast }) {
     </div>
 
     <!-- ── composer / actions ── -->
-    ${phase === "ready" || phase === "editing" || phase === "error" ? html`<div class="shrink-0 bg-base-100 border-t border-base-300 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
+    ${/* The composer is the page, extruded — the stage above it is black, so the boundary is a colour change
+         and never needed a hairline on top of it (the neumorphic material makes one read as a sticker seam). */""}
+    ${phase === "ready" || phase === "editing" || phase === "error" ? html`<div class="shrink-0 bg-base-100 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
       <div class="relative">
         <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey} disabled=${phase === "editing"}></textarea>
         <button data-dream aria-label=${T(t, "dream")} disabled=${suggesting || phase === "editing"} onClick=${() => { buzz(); dream(); }} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
       </div>
       <div class="flex gap-2">
-        <button data-new class="btn btn-ghost rounded-2xl gap-2 shrink-0 border border-base-content/10" aria-label=${T(t, "newImg")} disabled=${phase === "editing"} onClick=${backToChooser}>${Icon("lucide:image", "text-lg")}</button>
+        <button data-new class="btn btn-ghost rounded-2xl gap-2 shrink-0" aria-label=${T(t, "newImg")} disabled=${phase === "editing"} onClick=${backToChooser}>${Icon("lucide:image", "text-lg")}</button>
         <button data-edit class="btn btn-primary flex-1 rounded-2xl gap-2" disabled=${phase === "editing" || !prompt.trim()} onClick=${edit}>${Icon("lucide:wand-sparkles", "text-lg")}${T(t, phase === "error" ? "again" : "editBtn")}</button>
       </div>
     </div>` : null}
 
-    ${isDone ? html`<div class="shrink-0 bg-base-100 border-t border-base-300 px-3 py-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
+    ${isDone ? html`<div class="shrink-0 bg-base-100 px-3 py-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
       <div class="flex gap-2">
         <button data-keep class="btn btn-primary flex-1 rounded-2xl gap-2" onClick=${keep}>${Icon("lucide:wand-sparkles", "text-lg")}${T(t, "keep")}</button>
         <button data-save class="btn btn-outline rounded-2xl gap-2 shrink-0" onClick=${save}>${Icon("lucide:download", "text-lg")}${T(t, "save")}</button>

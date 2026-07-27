@@ -15,16 +15,19 @@ export default [
   {
     name: "ghost тогл", run: async (h) => {
       await ready(h);
+      // STATE, not skin: the toggle is asserted through aria-pressed, so a material change (btn-ghost →
+      // a surface class) can never turn a passing test red for a reason the user cannot see.
+      h.expect((await h.count('[data-ghost][aria-pressed="true"]')) === 1, "ghost не увімкнений спочатку");
       await h.tap("[data-ghost]"); await h.wait(150);
-      h.expect((await h.count("[data-ghost].btn-ghost")) === 1, "ghost не перемкнувся");
+      h.expect((await h.count('[data-ghost][aria-pressed="false"]')) === 1, "ghost не перемкнувся");
     },
   },
   {
     name: "звук тогл", run: async (h) => {
       await ready(h);
-      h.expect((await h.count("[data-sound]")) === 1, "немає кнопки звуку");
+      h.expect((await h.count('[data-sound][aria-pressed="false"]')) === 1, "немає кнопки звуку");
       await h.tap("[data-sound]"); await h.wait(200);
-      h.expect((await h.count("[data-sound].btn-primary")) === 1, "звук не увімкнувся");
+      h.expect((await h.count('[data-sound][aria-pressed="true"]')) === 1, "звук не увімкнувся");
     },
   },
   {

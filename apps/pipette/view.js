@@ -11,6 +11,7 @@ import { T } from "/_rt/i18n.js";
 import { camera } from "/_rt/sensors.js";
 import { avgColor, palette, rgbToHex, rgbToHsl } from "/_rt/colour.js";
 import { CameraPrime } from "/_rt/camprime.js";
+import { Panel } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -79,6 +80,10 @@ export function pipette({ S }) {
       ${enabled && !err && !gate ? html`<video ref=${videoRef} autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover"></video>` : null}
       ${gate ? html`<div class="absolute inset-0" style=${`background:${grad}`}></div>` : null}
       <canvas ref=${canvasRef} class="hidden"></canvas>
+      ${/* The reticle KEEPS its rings. They are not a surface hairline on one of our panels — they sit on a
+           live camera frame (foreign content), where a white/dark ring pair is the only thing that stays
+           legible over an arbitrary image. The extrusion cannot do that job: it reads against OUR page tone,
+           and there is no page here. Same reason the theme bans glass on base-* but allows it over video. */""}
       ${enabled && !err ? html`<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div class="w-16 h-16 rounded-full border-2 border-white/90" style="box-shadow:0 0 0 2px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.35)">
           <div class="w-full h-full rounded-full flex items-center justify-center">
@@ -88,22 +93,31 @@ export function pipette({ S }) {
       </div>` : null}
     </div>
 
-    <!-- readout -->
-    <div class="shrink-0 bg-base-100 border-t border-base-300 px-4 pt-3 pb-3 flex flex-col gap-3 max-w-md w-full mx-auto">
-      <div class="flex items-center gap-3">
-        <button aria-label=${hex} onClick=${() => picked && copy(picked)} class="w-14 h-14 rounded-2xl shrink-0 border border-base-300 active:scale-95 transition" style=${picked ? `background:${hex}` : ""}></button>
-        <div class="flex-1 min-w-0">
-          <div data-live class="text-2xl font-bold font-mono tabular-nums leading-tight">${hex}</div>
-          <div class="text-[0.7rem] text-muted font-mono leading-snug truncate">${rgbStr}</div>
-          ${hslStr ? html`<div class="text-[0.7rem] text-muted font-mono leading-snug truncate">${hslStr}</div>` : null}
+    ${/* readout — the kit's Panel: a solid surface in flow (it is a sibling of the preview and shortens it,
+         it does not float over it, so this is a Panel and not an Island). The material carries the edge now:
+         the deck is the page EXTRUDED, so the old border-t hairline and the two chip outlines are gone. */""}
+    <div class="shrink-0 p-3">
+      <${Panel} className="max-w-md w-full mx-auto">
+        <div class="flex items-center gap-3">
+          ${/* The chip's face is an arbitrary sampled colour, so it declares only the extrusion — the inline
+               background wins over sf-raised's base-100 face, and the shadow pair still reads in both themes
+               (a hairline could not: on a light chip in the light theme it vanished). */""}
+          <button aria-label=${hex} onClick=${() => picked && copy(picked)} class="w-14 h-14 rounded-2xl shrink-0 sf-raised active:scale-95 transition" style=${picked ? `background:${hex}` : ""}></button>
+          <div class="flex-1 min-w-0">
+            <div data-live class="text-2xl font-bold font-mono tabular-nums leading-tight">${hex}</div>
+            <div class="text-[0.7rem] text-muted font-mono leading-snug truncate">${rgbStr}</div>
+            ${hslStr ? html`<div class="text-[0.7rem] text-muted font-mono leading-snug truncate">${hslStr}</div>` : null}
+          </div>
+          <button data-freeze aria-label=${T(t, frozen ? "live" : "freeze")} aria-pressed=${frozen} onClick=${() => setFrozen((f) => !f)} class=${`btn btn-circle btn-sm ${frozen ? "btn-primary" : "btn-ghost"}`}>${Icon(frozen ? "lucide:play" : "lucide:snowflake", "text-lg")}</button>
         </div>
-        <button data-freeze aria-label=${T(t, frozen ? "live" : "freeze")} aria-pressed=${frozen} onClick=${() => setFrozen((f) => !f)} class=${`btn btn-circle btn-sm ${frozen ? "btn-primary" : "btn-ghost"}`}>${Icon(frozen ? "lucide:play" : "lucide:snowflake", "text-lg")}</button>
-      </div>
-      <div class="flex gap-2">
-        ${(pal.length ? pal : Array(5).fill(null)).map((c, i) => c
-          ? html`<button data-swatch aria-label=${rgbToHex(c)} onClick=${() => copy(c)} class="flex-1 h-9 rounded-lg border border-base-300 active:scale-95 transition" style=${`background:${rgbToHex(c)}`} key=${i}></button>`
-          : html`<div class="flex-1 h-9 rounded-lg bg-base-300/40" key=${i}></div>`)}
-      </div>
+        <div class="flex gap-2">
+          ${/* A filled swatch is a raised tile (sf-e2 — the smaller rung, proportionate to a 36px object);
+               an empty slot is the WELL it will land in, which is what sf-inset means. */""}
+          ${(pal.length ? pal : Array(5).fill(null)).map((c, i) => c
+            ? html`<button data-swatch aria-label=${rgbToHex(c)} onClick=${() => copy(c)} class="flex-1 h-9 rounded-lg sf-e2 active:scale-95 transition" style=${`background:${rgbToHex(c)}`} key=${i}></button>`
+            : html`<div class="flex-1 h-9 rounded-lg sf-inset" key=${i}></div>`)}
+        </div>
+      <//>
     </div>
     ${!enabled || err ? html`<${CameraPrime} loc=${loc} reason=${T(t, "primeReason")} onEnable=${() => setEnabled(true)} onSettings=${() => S.screen.set("perms")} denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />` : null}
   </div>`;

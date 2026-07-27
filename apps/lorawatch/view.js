@@ -106,12 +106,14 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
   if (!connected) {
     const supported = usbSupported() && usbOk;
     return html`<div class="flex flex-col items-center justify-center text-center gap-5 pt-10 px-2 max-w-sm mx-auto">
-      <div class="w-20 h-20 rounded-3xl grid place-items-center bg-primary/12 text-primary border border-primary/25">${Icon("lucide:radio", "text-4xl")}</div>
+      ${/* A raised plaque, not a tinted box with a hairline: the material says "object", the colour stays on
+           the MARK (the glyph) where an arbitrary hue is safe in both themes. */""}
+      <div class="w-20 h-20 rounded-3xl grid place-items-center sf-raised sf-e3 text-primary">${Icon("lucide:radio", "text-4xl")}</div>
       <h2 class="text-2xl font-semibold">${T(t, "connectTitle")}</h2>
       <p class="text-base-content/70 leading-relaxed">${T(t, "connectBody")}</p>
       ${supported
         ? html`<button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2 mt-1" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
-        : html`<div class="alert bg-warning/12 text-warning border border-warning/25 rounded-2xl text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
+        : html`<div class="alert bg-warning/12 text-warning rounded-2xl text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
     </div>`;
   }
 
@@ -122,13 +124,16 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
       <${Segmented} attr="data-preset" scroll variant="outline" size="sm"
         items=${LORA_PRESETS.map((pp) => ({ id: pp.key, label: pp.label }))} value=${pk} onChange=${setPreset} />
 
-      <!-- waterfall (chirps) -->
-      <div class="w-full rounded-3xl border border-base-content/10 overflow-hidden bg-[#08090e]">
+      ${/* waterfall (chirps) — the hairline was framing FOREIGN content whose own near-black already draws the
+           edge against either theme's page. It is a slab on the page now, so the shadow pair does the edge. */""}
+      <div class="w-full rounded-3xl overflow-hidden bg-[#08090e] sf-e2">
         <canvas ref=${wfRef} class="block w-full h-64" role="img" aria-label=${T(t, "waterfall")} data-waterfall></canvas>
       </div>
 
-      <!-- activity -->
-      <div class="rounded-2xl border px-4 py-3 flex items-center gap-3 ${active ? "border-primary/50 bg-primary/10" : "border-base-content/10 bg-base-100/40"}" data-live data-activity>
+      ${/* activity — the ring of primary hairline + tint was a THIRD drawing of "detected", which the pulsing
+           dot and the headline already say. The panel now answers with the material instead: it stands
+           further off the page while there is something to hear (e3) and settles back to e2 when idle. */""}
+      <div class=${`rounded-2xl px-4 py-3 flex items-center gap-3 sf-raised ${active ? "sf-e3" : "sf-e2"}`} data-live data-activity>
         <span class=${`w-2.5 h-2.5 rounded-full shrink-0 ${active ? "bg-primary animate-pulse" : "bg-base-content/25"}`}></span>
         <div class="flex-1 min-w-0">
           <div class="font-semibold text-sm">${T(t, active ? "detected" : "listening")}</div>
@@ -140,9 +145,11 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
       <!-- decoded packets -->
       ${packets.length ? html`<div class="flex flex-col gap-1.5" data-live data-packets>
         <div class="text-xs uppercase tracking-wide text-base-content/70 px-1">${T(t, "packets")}</div>
-        ${packets.map((pkt) => html`<div key=${pkt.id} data-packet class="rounded-2xl border border-base-content/10 bg-base-100/40 px-4 py-2.5 flex flex-col gap-1">
+        ${packets.map((pkt) => html`<div key=${pkt.id} data-packet class="rounded-2xl sf-raised sf-e2 px-4 py-2.5 flex flex-col gap-1">
+          ${/* The CRC pill keeps its hue (that IS the meaning) and loses its outline — a badge is a small
+               raised object, so it takes the shallow pair theme.css already gives every `.badge`. */""}
           <div class="flex items-center gap-2">
-            <span class=${`rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-wider border ${pkt.crcOk ? "border-primary/40 text-primary bg-primary/10" : "border-warning/40 text-warning bg-warning/10"}`}>${T(t, pkt.crcOk ? "crcOk" : "crcBad")}</span>
+            <span class=${`rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-wider sf-e2 ${pkt.crcOk ? "text-primary bg-primary/10" : "text-warning bg-warning/10"}`}>${T(t, pkt.crcOk ? "crcOk" : "crcBad")}</span>
             <span class="font-mono text-[0.62rem] text-base-content/65 tabular-nums">SF${pkt.sf} · ${pkt.bytes.length} B</span>
           </div>
           <div class="font-mono text-[0.72rem] text-base-content/70 break-all leading-snug">${hexOf(pkt.bytes)}</div>

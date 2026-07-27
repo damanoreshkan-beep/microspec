@@ -11,8 +11,12 @@ import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
 import { haptic } from "/_rt/sensors.js";
 import { collection, idbSupported } from "/_rt/db.js";
+import { Panel, Sheet } from "/_rt/ui.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
+// The kit's micro-label (Panel/Slider use the same one) — a field caption is a label, not a caption a
+// good UI would need explained.
+const LABEL = "font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70";
 
 const habitsColl = collection("habits");
 const marksColl = collection("marks");
@@ -107,10 +111,12 @@ const Dots = ({ h, marks, onToggle, t }) => {
   const days = []; for (let i = 7; i >= 1; i--) days.push(ymd(addDays(new Date(), -i)));
   return html`<div class="overflow-x-auto -mx-0.5 px-0.5"><div class="flex gap-1.5 w-max pt-0.5" role="group" aria-label=${T(t, "week")}>${days.map((d) => {
     const on = !!marks[h.id + "|" + d];
-    return html`<button key=${d} onClick=${() => onToggle(h.id, d)} aria-pressed=${on}
+    // No outline: a done day is a small RAISED chip carrying the habit's colour, an empty one is a flat
+    // slot in the page. The old hairline + transparent fill was an edge drawn on top of an extrusion.
+    return html`<button key=${d} type="button" onClick=${() => onToggle(h.id, d)} aria-pressed=${on}
       aria-label=${`${d} ${on ? T(t, "done") : T(t, "notDone")}`}
-      class="w-6 h-6 rounded-md shrink-0 border transition active:scale-90"
-      style=${`border-color:${on ? h.color : "var(--fallback-b3,#3a3f4b)"};background:${on ? h.color : "transparent"}`}></button>`;
+      class=${`w-6 h-6 rounded-md shrink-0 transition active:scale-90 ${on ? "sf-e2" : "bg-base-content/10"}`}
+      style=${on ? `background:${h.color}` : ""}></button>`;
   })}</div></div>`;
 };
 
@@ -122,10 +128,12 @@ function Heatmap({ h, marks, onToggle, t }) {
     const cells = [];
     for (let r = 0; r < 7; r++) {
       const d = ymd(addDays(start, w * 7 + r)), future = between(today(), d) > 0, on = !!marks[h.id + "|" + d];
-      cells.push(html`<button key=${d} disabled=${future} onClick=${() => onToggle(h.id, d)}
+      // An empty cell is a theme-aware tint, not a hardcoded `--fallback-b2` grey — that literal #e5e7eb
+      // painted the whole grid near-white on the dark page. Same rule as the week strip: colour = done.
+      cells.push(html`<button key=${d} type="button" disabled=${future} onClick=${() => onToggle(h.id, d)}
         aria-label=${`${d} ${on ? T(t, "done") : T(t, "notDone")}`}
-        class=${`w-3.5 h-3.5 rounded-[3px] ${future ? "opacity-0" : "active:scale-90"} ${d === today() ? "ring-1" : ""}`}
-        style=${`background:${on ? h.color : "var(--fallback-b2,#e5e7eb)"};${d === today() ? "--tw-ring-color:" + h.color : ""}`}></button>`);
+        class=${`w-3.5 h-3.5 rounded-[3px] ${future ? "opacity-0" : "active:scale-90"} ${on ? "" : "bg-base-content/10"} ${d === today() ? "ring-1" : ""}`}
+        style=${`${on ? "background:" + h.color + ";" : ""}${d === today() ? "--tw-ring-color:" + h.color : ""}`}></button>`);
     }
     cols.push(html`<div class="flex flex-col gap-[3px]" key=${w}>${cells}</div>`);
   }
@@ -139,60 +147,70 @@ const Stat = ({ n, label }) => html`<div class="flex-1 text-center">
   <div class="text-xs text-muted mt-0.5">${label}</div></div>`;
 
 // ---- add / edit sheet -------------------------------------------------------
-function AddSheet({ S, t }) {
+// The kit's Sheet owns the shell (drag-dismiss, title row, close, backdrop, its own inner scroll); only the
+// fields below are the app's. `open`/`onClose` come from S.sheet — the runtime's history-backed atom — so
+// the system Back button closes it instead of exiting the PWA.
+//
+// Neither palette became a Segmented. A strip is a ONE-OF-N choice laid out as one row; these are grids of
+// 12 icons and 8 colours whose wrapping geometry IS the affordance (you scan a palette, you don't tab
+// through it). What they DO adopt is the farm's selection convention — the rail is a groove (`sf-inset`)
+// and the chosen cell lifts out of it, which theme.css applies to any `[aria-pressed="true"]` inside one.
+function AddSheet({ open, onClose, t }) {
   const draft = useStore($draft);
-  const close = () => S.sheet.set(false);
-  const save = async () => { if (!draft.name.trim()) return; await addHabit(draft.name, draft.icon, draft.color); $draft.set({ name: "", icon: "lucide:check", color: "#10b981" }); close(); };
-  return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 flex items-end" style="padding-bottom:env(safe-area-inset-bottom)">
-    <button class="absolute inset-0 bg-black/40" aria-label=${T(t, "close")} onClick=${close}></button>
-    <div class="relative w-full max-w-xl mx-auto bg-base-100 rounded-t-3xl border-t border-base-300 p-5 pb-8 flex flex-col gap-4">
-      <div class="flex items-center justify-between"><h2 class="font-bold text-lg">${T(t, "newHabit")}</h2>
-        <button class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "close")} onClick=${close}>${Icon("lucide:x", "text-xl")}</button></div>
-      <input id="h-name" class="input input-bordered rounded-2xl w-full" placeholder=${T(t, "namePh")} value=${draft.name}
-        maxlength="40" onInput=${(e) => $draft.set({ ...draft, name: e.target.value })} />
-      <div><div class="text-xs text-muted mb-1.5">${T(t, "icon")}</div>
-        <div class="flex flex-wrap gap-2" id="h-icons">${ICONS.map((ic) => html`<button key=${ic} aria-label=${ic} aria-pressed=${draft.icon === ic}
-          onClick=${() => $draft.set({ ...draft, icon: ic })}
-          class=${`w-10 h-10 rounded-xl border flex items-center justify-center ${draft.icon === ic ? "border-2" : "border-base-300"}`}
-          style=${draft.icon === ic ? `border-color:${draft.color};color:${draft.color}` : ""}>${Icon(ic, "text-lg")}</button>`)}</div></div>
-      <div><div class="text-xs text-muted mb-1.5">${T(t, "color")}</div>
-        <div class="flex flex-wrap gap-2">${COLORS.map((c) => html`<button key=${c} aria-label=${c} aria-pressed=${draft.color === c}
-          onClick=${() => $draft.set({ ...draft, color: c })}
-          class=${`w-8 h-8 rounded-full ${draft.color === c ? "ring-2 ring-offset-2 ring-offset-base-100" : ""}`}
-          style=${`background:${c};${draft.color === c ? "--tw-ring-color:" + c : ""}`}></button>`)}</div></div>
-      <button id="h-save" class="btn btn-primary rounded-2xl mt-1" disabled=${!draft.name.trim()} onClick=${save}>${T(t, "add")}</button>
-    </div></div>`;
+  const save = async () => { if (!draft.name.trim()) return; await addHabit(draft.name, draft.icon, draft.color); $draft.set({ name: "", icon: "lucide:check", color: "#10b981" }); onClose(); };
+  return html`<${Sheet} id="h-add" open=${open} onClose=${onClose} title=${T(t, "newHabit")} icon="lucide:plus">
+    <input id="h-name" class="input rounded-2xl w-full" placeholder=${T(t, "namePh")} value=${draft.name}
+      maxlength="40" onInput=${(e) => $draft.set({ ...draft, name: e.target.value })} />
+    <div class="flex flex-col gap-1.5">
+      <div class=${LABEL}>${T(t, "icon")}</div>
+      <div class="sf-inset rounded-2xl p-2 flex flex-wrap gap-2" id="h-icons">${ICONS.map((ic) => html`<button key=${ic} type="button" aria-label=${ic} aria-pressed=${draft.icon === ic}
+        onClick=${() => $draft.set({ ...draft, icon: ic })}
+        class="w-10 h-10 rounded-xl flex items-center justify-center transition"
+        style=${draft.icon === ic ? `color:${draft.color}` : ""}>${Icon(ic, "text-lg")}</button>`)}</div>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <div class=${LABEL}>${T(t, "color")}</div>
+      ${/* `outline`, not Tailwind's `ring`: a ring IS a box-shadow, and the groove's raise rule sets
+           box-shadow on the selected cell — the two would overwrite each other and the selection would
+           silently vanish. An outline is a separate property, so the mark and the extrusion coexist. */""}
+      <div class="sf-inset rounded-2xl p-2 flex flex-wrap gap-2">${COLORS.map((c) => html`<button key=${c} type="button" aria-label=${c} aria-pressed=${draft.color === c}
+        onClick=${() => $draft.set({ ...draft, color: c })}
+        class="w-8 h-8 rounded-full transition"
+        style=${`background:${c};${draft.color === c ? `outline:2px solid ${c};outline-offset:2px` : ""}`}></button>`)}</div>
+    </div>
+    <button id="h-save" class="btn btn-primary rounded-2xl mt-1" disabled=${!draft.name.trim()} onClick=${save}>${T(t, "add")}</button>
+  </${Sheet}>`;
 }
 
-// ---- habit detail screen ----------------------------------------------------
-function Detail({ id, S, t, closeScreen, confirm }) {
+// ---- habit detail -----------------------------------------------------------
+// Was a full-screen `fixed inset-0` overlay with its own navbar, its own back button and — worse — its own
+// nested `overflow-y-auto`, i.e. the farm's Sheet rebuilt by hand one layer below the class-name ban. It is
+// the kit's Sheet now: the title row carries the habit's icon and name, the close is the kit's, and the
+// sheet's max-h-88dvh scroll is the one sanctioned nested scroll. Routing is unchanged (S.screen via
+// closeScreen), so Back still closes it and the danger-confirm still stacks on top of it.
+function DetailSheet({ open, id, t, onClose, confirm }) {
   const habits = useStore($habits), marks = useStore($marks);
   const h = habits.find((x) => x.id === id);
-  if (!h) return null;
   // High-consequence (drops the habit + its whole history, unrecoverable) → a danger-confirm, not undo.
-  const askDelete = () => confirm({
+  const askDelete = () => h && confirm({
     title: T(t, "delHabitTitle", { name: h.name }),
     body: T(t, "delHabitBody", { n: Object.keys(marks).filter((k) => k.startsWith(h.id + "|")).length }),
     verb: T(t, "delete"),
-    onConfirm: async () => { await removeHabit(h.id); closeScreen(); },
+    onConfirm: async () => { await removeHabit(h.id); onClose(); },
   });
-  return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
-      <button id="d-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${closeScreen}>${Icon("lucide:arrow-left", "text-xl")}</button>
-      <div class="flex-1 font-bold truncate px-1 flex items-center gap-2"><span style=${`color:${h.color}`}>${Icon(h.icon, "text-xl")}</span> <span class="truncate">${h.name}</span></div>
-    </header>
-    <div class="px-4 pt-4 pb-8 flex flex-col gap-3 max-w-xl mx-auto">
-      <div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row">
+  return html`<${Sheet} id="h-detail" open=${open && !!h} onClose=${onClose} title=${h ? h.name : null} icon=${h ? h.icon : null}>
+    ${h ? html`<${Fragment}>
+      <${Panel}><div class="flex">
         <${Stat} n=${streak(h.id, marks)} label=${T(t, "streak")} />
         <${Stat} n=${longest(h.id, marks)} label=${T(t, "best")} />
         <${Stat} n=${monthRate(h.id, marks) + "%"} label=${T(t, "month")} />
-      </div></div>
-      <div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 gap-2">
-        <div class="text-sm font-semibold">${T(t, "last13")}</div>
+      </div></${Panel}>
+      <${Panel} title=${T(t, "last13")}>
         <${Heatmap} h=${h} marks=${marks} onToggle=${toggle} t=${t} />
-      </div></div>
-      <button id="d-del" data-haptic="bump" class="btn btn-ghost text-error rounded-2xl border border-base-300 gap-2" onClick=${askDelete}>${Icon("lucide:trash-2")} ${T(t, "delete")}</button>
-    </div></div>`;
+      </${Panel}>
+      <button id="d-del" data-haptic="bump" class="btn text-error rounded-2xl gap-2" onClick=${askDelete}>${Icon("lucide:trash-2")} ${T(t, "delete")}</button>
+    </${Fragment}>` : null}
+  </${Sheet}>`;
 }
 
 // ---- main tool view ---------------------------------------------------------
@@ -211,31 +229,38 @@ export function habits({ S, closeScreen, confirm }) {
         ${idbSupported ? null : html`<div class="text-xs text-warning mt-2">${T(t, "noStore")}</div>`}
       </div>` : html`
       <div class="flex flex-col gap-2.5">
-        ${hs.map((h) => { const s = streak(h.id, marks); return html`<div key=${h.id} data-habit=${h.id} class="card bg-base-100 border border-base-300 rounded-2xl">
-          <div class="card-body p-3.5 gap-3">
+        ${hs.map((h) => { const done = !!marks[h.id + "|" + today()]; const s = streak(h.id, marks); return html`<${Panel} key=${h.id} data-habit=${h.id}>
             <div class="flex items-center gap-3">
-              <button data-open class="flex items-center gap-3 flex-1 min-w-0 text-left active:opacity-70" aria-label=${`${h.name} — ${T(t, "open")}`} onClick=${() => S.screen.set("habit:" + h.id)}>
+              <button data-open type="button" class="flex items-center gap-3 flex-1 min-w-0 text-left active:opacity-70" aria-label=${`${h.name} — ${T(t, "open")}`} onClick=${() => S.screen.set("habit:" + h.id)}>
                 <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style=${`background:${h.color}1a;color:${h.color}`}>${Icon(h.icon, "text-lg")}</span>
                 <span class="min-w-0"><span class="font-semibold block truncate">${h.name}</span>
                   <span class="text-xs text-muted flex items-center gap-1">${s > 0 ? html`${Icon("lucide:flame", "text-[0.9em]")} ${T(t, "dayStreak", { n: s })}` : T(t, "noStreak")}</span></span>
               </button>
-              <button data-today class=${`w-9 h-9 rounded-full shrink-0 border-2 flex items-center justify-center active:scale-90 transition`}
-                aria-pressed=${!!marks[h.id + "|" + today()]} aria-label=${`${h.name} ${T(t, "todayToggle")}`}
-                style=${`border-color:${h.color};${marks[h.id + "|" + today()] ? "background:" + h.color + ";color:#fff" : "color:" + h.color}`}
+              ${/* A boolean check-in, not a one-of-N strip: it stays a single circular target. What changed is
+                   the material — the ring came off and the two states are the two things this material has to
+                   say, an extruded blank vs a filled chip in the habit's colour. */""}
+              ${/* sf-e3 is the same pair as sf-raised, on purpose: only the FILL changes between the two
+                   states, never the depth — a toggle that also shrinks its extrusion reads as two objects. */""}
+              <button data-today type="button" class=${`w-9 h-9 rounded-full shrink-0 flex items-center justify-center active:scale-90 transition ${done ? "sf-e3" : "sf-raised"}`}
+                aria-pressed=${done} aria-label=${`${h.name} ${T(t, "todayToggle")}`}
+                style=${done ? `background:${h.color};color:#fff` : `color:${h.color}`}
                 data-haptic="off" onClick=${() => toggle(h.id, today())}>${Icon("lucide:check", "text-lg")}</button>
             </div>
             <${Dots} h=${h} marks=${marks} onToggle=${toggle} t=${t} />
-          </div></div>`; })}
+          </${Panel}>`; })}
 
         <div class="flex items-center gap-2 mt-1">
           <button id="add-habit" class="btn btn-primary rounded-2xl flex-1 gap-2" onClick=${() => S.sheet.set(true)}>${Icon("lucide:plus")} ${T(t, "newHabit")}</button>
-          <button class="btn btn-ghost btn-square rounded-2xl border border-base-300" aria-label=${T(t, "export")} onClick=${exportData}>${Icon("lucide:download")}</button>
-          <label class="btn btn-ghost btn-square rounded-2xl border border-base-300" aria-label=${T(t, "import")}>${Icon("lucide:upload")}
+          <button class="btn btn-square rounded-2xl" aria-label=${T(t, "export")} onClick=${exportData}>${Icon("lucide:download")}</button>
+          <label class="btn btn-square rounded-2xl" aria-label=${T(t, "import")}>${Icon("lucide:upload")}
             <input type="file" accept="application/json" class="hidden" onChange=${(e) => e.target.files[0] && importData(e.target.files[0])} /></label>
         </div>
       </div>`}
 
-    ${sheet ? html`<${AddSheet} S=${S} t=${t} />` : null}
-    ${detailId ? html`<${Detail} id=${detailId} S=${S} t=${t} closeScreen=${closeScreen} confirm=${confirm} />` : null}
+    ${/* Both sheets stay mounted and are driven by their routing atom — S.sheet for the composer, S.screen
+         for the detail — which is what lets the kit run its open/close transition instead of the node
+         appearing and vanishing, and keeps Back closing the top one. */""}
+    <${AddSheet} open=${!!sheet} onClose=${() => S.sheet.set(false)} t=${t} />
+    <${DetailSheet} open=${!!detailId} id=${detailId} t=${t} onClose=${closeScreen} confirm=${confirm} />
   </${Fragment}>`;
 }

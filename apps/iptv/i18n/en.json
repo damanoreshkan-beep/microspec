@@ -5,6 +5,7 @@
   "country": "Country",
   "search": "Search a channel…",
   "allCats": "All",
+  "aCats": "Category",
   "loadErr": "Couldn't load channels",
   "retry": "Try again",
   "noChannels": "No channels found",

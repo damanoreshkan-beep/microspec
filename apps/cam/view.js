@@ -113,12 +113,19 @@ export function cam({ S }) {
   useEffect(() => () => clearInterval(timerRef.current), []);
 
   const showMirror = mirror !== (facing === "user");   // front camera is mirrored by default; the toggle inverts it
-  const Toggle = (on, icon, label, onClick, extra) => html`<button aria-pressed=${!!on} aria-label=${label} onClick=${onClick} class=${`btn btn-circle btn-sm border ${on ? "btn-primary border-transparent" : "border-base-content/15 bg-base-100 text-base-content/80"}`}>${extra || Icon(icon, "text-base")}</button>`;
+  // No outline on either state: these sit in an sf-inset deck, and theme.css already lifts an
+  // `[aria-pressed="true"]` child out of a groove. The signal is the FILL and the extrusion — a hairline on
+  // top of that reads as a sticker glued into the well.
+  const Toggle = (on, icon, label, onClick, extra) => html`<button aria-pressed=${!!on} aria-label=${label} onClick=${onClick} class=${`btn btn-circle btn-sm ${on ? "btn-primary" : "bg-base-100 text-base-content/80"}`}>${extra || Icon(icon, "text-base")}</button>`;
 
   return html`<${Fragment}>
     <div class="fixed inset-x-0 z-20 flex items-stretch justify-center px-3 py-2" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
       <!-- the console body -->
-      <div class="w-full max-w-sm mx-auto flex flex-col gap-3 rounded-[1.9rem] border border-base-content/10 bg-gradient-to-b from-base-100 to-base-200 p-4 sf-e3">
+      ${/* The chassis is the page extruded (sf-e3), so it needs no outline — and base-100 === base-200 in
+           both themes now, which made the old from/to gradient a one-colour fill pretending to be shading.
+           The BEZEL, LED and flash ring below are a different thing: they depict a physical light source
+           and a real recess, and they keep their hand-drawn shadows on purpose. */""}
+      <div class="w-full max-w-sm mx-auto flex flex-col gap-3 rounded-[1.9rem] bg-base-100 p-4 sf-e3">
         <div class="shrink-0 flex items-center justify-between px-0.5">
           <div class="flex items-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-primary/85 shadow-[0_0_7px] shadow-primary/60"></span>
@@ -163,7 +170,7 @@ export function cam({ S }) {
             <input type="range" min="1" max="4" step="0.1" value=${zoom} aria-label=${T(t, "aZoom")} onInput=${(e) => setZoom(+e.target.value)} class="range range-xs range-primary flex-1" />
           </div>
           <!-- toggles: a recessed button deck -->
-          <div class="flex items-center justify-center gap-2 flex-wrap rounded-2xl border border-base-content/8 bg-base-300/40 px-2.5 py-2.5 shadow-[inset_0_1px_3px_rgba(0,0,0,.45)]">
+          <div class="flex items-center justify-center gap-2 flex-wrap rounded-2xl sf-inset px-2.5 py-2.5">
             ${Toggle(facing === "user", "lucide:switch-camera", T(t, "aFlip"), flip)}
             ${facing === "user"
               ? Toggle(frontFlash, "lucide:zap", T(t, "aFrontFlash"), () => { buzz(); setFrontFlash((v) => !v); })
@@ -175,8 +182,10 @@ export function cam({ S }) {
           </div>
           <!-- shutter row -->
           <div class="flex items-center justify-between px-2 pt-0.5">
-            <div class="w-11 h-11 rounded-xl border border-base-content/12 bg-base-300 overflow-hidden shrink-0">${shot ? html`<img src=${shot} alt="" class="w-full h-full object-cover" />` : null}</div>
-            <button data-shutter aria-label=${T(t, "aShutter")} onClick=${shoot} class="w-[4.6rem] h-[4.6rem] rounded-full bg-base-content/10 border border-base-content/20 flex items-center justify-center active:scale-95 transition shadow-lg">
+            ${/* The last-shot slot is a WELL the frame drops into — sf-inset, the same reading pipette's
+                 empty swatches take — not a bordered tile. */""}
+            <div class="w-11 h-11 rounded-xl sf-inset overflow-hidden shrink-0">${shot ? html`<img src=${shot} alt="" class="w-full h-full object-cover" />` : null}</div>
+            <button data-shutter aria-label=${T(t, "aShutter")} onClick=${shoot} class="w-[4.6rem] h-[4.6rem] rounded-full bg-base-content/10 flex items-center justify-center active:scale-95 transition sf-e3">
               <span class="w-[3.6rem] h-[3.6rem] rounded-full bg-primary border-4 border-base-100"></span>
             </button>
             <div class="w-11 h-11 shrink-0"></div>

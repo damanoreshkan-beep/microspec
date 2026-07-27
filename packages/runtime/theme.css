@@ -256,62 +256,71 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   }
 }
 
-/* CLAY — dark. The keys stay `signal` / `signal-light` because they are MODE identifiers, not palette
-   names: renaming would touch 59 spec.json files, 7 runtime/gate fallbacks, and would strand every
+/* NEUMORPHIC — dark. The keys stay `signal` / `signal-light` because they are MODE identifiers, not
+   palette names: renaming would touch 59 spec.json files, 7 runtime/gate fallbacks, and would strand every
    persisted localStorage value on a data-theme that no longer exists (unstyled first load) for zero
-   visual gain. See docs/research/claymorphism.md.
+   visual gain. See docs/research/neumorphism-migration.md.
 
-   Dark clay is AUBERGINE, not ink. Measured off the reference board pair: face L=45, inner card L=35,
-   with pastel marks on top. Clay fails on NEAR-BLACK (a #0A0A0B base gives grey inflated buttons), not on
-   darkness — so the base carries a hue and sits at L≈40-50. */
+   NEUTRAL GRAPHITE, zero chroma. The clay repaint before this carried a hue in the surfaces (aubergine
+   dark, cream light); the surfaces are now pure greyscale and colour is reserved for MEANING alone.
+
+   The base tone is the one hard constraint the style imposes, and it is the reason this is #2A2A2E rather
+   than the near-black the farm used to run: neumorphism extrudes by lightening AND darkening the base, so
+   a surface needs headroom in BOTH directions. On #0A0A0B there is nothing to darken toward and the whole
+   material collapses into a one-sided drop shadow — which is a card, not an extrusion.
+
+   Every value below is checked by runtime_test.js against the farm's contrast floors (measured, not
+   guessed: ink@60% clears 5.42:1 here and the muted token clears 4.55:1 on its worst bed). */
 [data-theme="signal"] {
   color-scheme: dark;
-  --color-base-100: #2E2630; --color-base-200: #38303A; --color-base-300: #4A4050;
-  --color-base-content: #F0E7E4;
-  --color-primary: #F0E7E4;   --color-primary-content: #2E2630;   /* ink = brand */
-  --color-secondary: #E8AD70; --color-secondary-content: #2A2018; /* бронювання */
-  --color-accent: #E8AD70;    --color-accent-content: #2A2018;    /* terracotta — the reference CTA */
-  --color-neutral: #3A3038;   --color-neutral-content: #F0E7E4;
-  --color-success: #93C9A4;   --color-success-content: #0E2416;
-  --color-error: #E8877E;     --color-error-content: #2A0D0A;
-  --color-warning: #E0A455;   --color-warning-content: #251705;
-  --color-info: #B8A6B4;      --color-info-content: #2E2630;
-  --color-base-muted: #C7BBC4; /* muted ink — a DESIGNED colour, not an alpha. See .text-muted below. */
+  /* base-100 === base-200 ON PURPOSE. Neumorphism's premise is that a raised object is the PAGE extruded,
+     not a lighter panel laid on top — the moment a card is a different tone, the shadows read as a drop
+     shadow under a rectangle. base-300 is the one step down, kept for borders and the deepest recesses. */
+  --color-base-100: #2A2A2E; --color-base-200: #2A2A2E; --color-base-300: #212125;
+  --color-base-content: #EDEDF0;
+  --color-primary: #EDEDF0;   --color-primary-content: #2A2A2E;   /* ink = brand */
+  --color-secondary: #8AB4F8; --color-secondary-content: #10121A; /* the system hue — CTA + default app accent */
+  --color-accent: #8AB4F8;    --color-accent-content: #10121A;
+  --color-neutral: #34343A;   --color-neutral-content: #EDEDF0;
+  --color-success: #7FCF9B;   --color-success-content: #06180E;
+  --color-error: #F08A82;     --color-error-content: #2A0A08;
+  --color-warning: #E0B057;   --color-warning-content: #241904;
+  --color-info: #A9A9B4;      --color-info-content: #17171A;
+  --color-base-muted: #A8A8B2; /* muted ink — a DESIGNED colour, not an alpha. See .text-muted below. */
   /* radius is half the effect — below ~20px the volume reads as an ordinary drop shadow */
   --radius-box: 1.75rem; --radius-field: 1rem; --radius-selector: 0.75rem;
-  --border: 1px; --depth: 0;
+  --border: 0; --depth: 0;
 }
 
-/* CLAY — light. The reference has THREE levels, and reading it as two is what broke this the first time:
-   outer canvas 231 → board/container 217 → the cards ON the board, lighter again. A *container* sits
-   below its page; a *card* sits above its container. The farm has two levels, so base-100 (the card) is
-   the LIGHTER one and base-200 (the page, via `body class="bg-base-200"`) carries the cream.
+/* NEUMORPHIC — light. #EEEEF1, the canonical soft-UI base, and chosen for the same physical reason as the
+   dark one: a NEAR-WHITE page cannot hold this material. On #FFFAF2 (the old cream) there are 5 points of
+   headroom above the base, so the light half of the shadow pair has nowhere to go and every control keeps
+   only its dark side — a bevel, not an extrusion. #EEEEF1 leaves room in both directions.
 
-   The warmth budget is set by contrast, not taste. Muted text is the binding constraint in ANY light
-   theme — the old ink theme cleared it by 0.07 (4.57:1). Darkening the surfaces to "look like clay"
-   spent that margin and failed axe in all 58 apps. Muted text is now the `--color-base-muted` token
-   rather than an alpha, for the reasons spelled out at `.text-muted` below.
-   These values are the warmest page (R−B = 19) that still clears 4.80:1 on every pair the farm actually
-   renders; the unit test in runtime_test.js holds the line. Clay reads as clay through the tinted
-   shadow, the radius and the terracotta accent — NOT through darkening the surfaces, which is the one
-   move that cannot survive the gate. */
+   base-100 === base-200 for the same reason as dark: the raised object IS the page.
+
+   The binding constraint in ANY light theme is muted/alpha text, and it bites harder here than it did on
+   cream: dropping the page from #FFFAF2 to #EEEEF1 costs contrast on every alpha the farm renders. It is
+   paid for by taking the ink to near-black (#0A0A0C) — which is what "чорно-білі, не пастельні" asks for
+   anyway. Measured: ink@60% = 5.01:1 (it was 4.45:1 with the old #17171A ink — under the floor).
+   runtime_test.js holds the line. */
 [data-theme="signal-light"] {
   color-scheme: light;
-  --color-base-100: #FFFAF2; --color-base-200: #F7F0E4; --color-base-300: #E9DFCF;
-  --color-base-content: #120F0D;
-  --color-primary: #120F0D;   --color-primary-content: #FFFAF2;
-  --color-secondary: #8A4A2A; --color-secondary-content: #FFF8F0; /* бронювання */
-  --color-accent: #8A4A2A;    --color-accent-content: #FFF8F0;    /* terracotta, deepened to clear 4.5:1 */
-  --color-neutral: #2A2320;   --color-neutral-content: #F0EAE0;
-  /* deepened past the 4.5 line on purpose: on base-100 these land at ~4.58 at their "natural" lightness,
-     and any component that puts opacity on the text eats that 2% margin and fails axe. */
-  --color-success: #2A6140;   --color-success-content: #FFFFFF;
-  --color-error: #9C332C;     --color-error-content: #FFFFFF;
-  --color-warning: #6E4A15;   --color-warning-content: #FFFFFF;
-  --color-info: #6B6169;      --color-info-content: #FFFFFF;
-  --color-base-muted: #544A43; /* muted ink — a DESIGNED colour, not an alpha. See .text-muted below. */
+  --color-base-100: #EEEEF1; --color-base-200: #EEEEF1; --color-base-300: #DCDCE2;
+  --color-base-content: #0A0A0C;
+  --color-primary: #0A0A0C;   --color-primary-content: #EEEEF1;
+  --color-secondary: #1F5FC0; --color-secondary-content: #FFFFFF; /* the system hue — CTA + default app accent */
+  --color-accent: #1F5FC0;    --color-accent-content: #FFFFFF;
+  --color-neutral: #1E1E22;   --color-neutral-content: #EEEEF1;
+  /* deepened past the 4.5 line on purpose: at their "natural" lightness these land at ~4.6 on base-100,
+     and any component that puts opacity on the text eats that margin and fails axe. */
+  --color-success: #1F6B42;   --color-success-content: #FFFFFF;
+  --color-error: #A3302A;     --color-error-content: #FFFFFF;
+  --color-warning: #6B4A12;   --color-warning-content: #FFFFFF;
+  --color-info: #5A5A63;      --color-info-content: #FFFFFF;
+  --color-base-muted: #5A5A63; /* muted ink — a DESIGNED colour, not an alpha. See .text-muted below. */
   --radius-box: 1.75rem; --radius-field: 1rem; --radius-selector: 0.75rem;
-  --border: 1px; --depth: 0;
+  --border: 0; --depth: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -365,27 +374,26 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
    nothing. runtime_test.js holds the contrast floor. */
 .text-muted { color: var(--color-base-muted); }
 
-.sf-raised {
-  background: var(--color-base-100);
-  box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop);
-  border: 1px solid var(--sf-edge);
-}
-.sf-inset {
-  background: var(--sf-inset-face);
-  box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), inset 0 -1px 0 0 var(--sf-lip);
-  border: 1px solid var(--sf-edge);
-}
-.sf-pressed, .sf-press:active {
-  background: var(--sf-press-face);
-  box-shadow: inset 0 3px 7px -1px var(--sf-press-top), inset 0 -1px 0 0 var(--sf-lip);
-}
+/* THE MATERIAL. Every surface in the farm is one of three shapes, and each is the SAME pair of shadows —
+   one dark away from the light, one light toward it. That symmetry is the whole style: a single-sided
+   shadow is a card sitting on a page, and a pair is the page itself pushed out or pressed in.
+
+   The light sits at 45° top-left, so x and y offsets are equal and the highlight is the negative of the
+   shadow. `--nm-d`/`--nm-b` step with the density ladder, so the extrusion compacts with everything else
+   instead of staying 5px deep on a 200px-tall split-screen window. */
+.sf-raised { background: var(--color-base-100); box-shadow: var(--sf-drop); }
+.sf-inset  { background: var(--sf-inset-face); box-shadow: var(--sf-sink); }
+.sf-pressed, .sf-press:active { background: var(--sf-press-face); box-shadow: var(--sf-press); }
+
 /* Elevation — L1 flat · L2 hover · L3 raised · L4 modal · L5 popover. One ladder, so two floating things
-   can never disagree about which is in front. */
+   can never disagree about which is in front. L1-L3 are the material at increasing depth; L4/L5 leave the
+   surface entirely (a sheet and a popover are ABOVE the page, not part of it), so they keep the highlight
+   but cast a real drop — a floating object has no far side to catch the counter-light. */
 .sf-e1 { box-shadow: none; }
-.sf-e2 { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 6px -2px var(--sf-shadow); }
-.sf-e3 { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
-.sf-e4 { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 -10px 44px -12px var(--sf-shadow); }
-.sf-e5 { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }
+.sf-e2 { box-shadow: var(--sf-lift2); }
+.sf-e3 { box-shadow: var(--sf-drop); }
+.sf-e4 { box-shadow: 0 -10px 44px -12px var(--nm-cast), var(--sf-drop); }
+.sf-e5 { box-shadow: 0 14px 46px -10px var(--nm-cast), var(--sf-drop); }
 
 /* The radius and border scales the reference also enumerates — 4/8/12/16/24 and 1/2/4px. --ms-r stays the
    density-stepped default; these are the fixed rungs a component picks from deliberately. */
@@ -394,53 +402,83 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --bw-1: 1px; --bw-2: 2px; --bw-3: 4px;
 }
 
-[data-theme="signal"] {
-  /* raised lifts by its edges: the face stays base-100, a hairline of light sits on top, the drop is deep */
-  --sf-rim:        rgba(255, 240, 228, .13);
-  --sf-edge:       rgba(255, 240, 228, .10);
-  --sf-lip:        rgba(255, 240, 228, .07);
-  /* THE clay move: the cast shadow carries the SURFACE HUE, never neutral black. A grey shadow under a
-     warm surface reads as "a card with a shadow"; a hue-matched one reads as clay. Measured off the
-     reference: the shadow under the light board is #715a48 (warm brown), not grey. --app-accent is each
-     app's own hue, so every app casts its own colour. */
-  --sf-shadow:     color-mix(in oklch, var(--app-accent, #E8AD70) 16%, rgba(20, 13, 17, .78));
-  --sf-drop:       0 12px 28px -7px color-mix(in oklch, var(--app-accent, #E8AD70) 22%, rgba(20, 13, 17, .82)),
-                   0 3px 8px -3px  color-mix(in oklch, var(--app-accent, #E8AD70) 14%, rgba(20, 13, 17, .62));
-  /* recessed surfaces genuinely darken — measured −12.6 (inset) and −33.2 (pressed) of the parent.
-     They darken toward a warm brown, not #000, or the recess goes grey and the clay dies in the hole. */
-  --sf-inset-face: color-mix(in oklch, var(--color-base-100) 84%, #1A1218);
-  --sf-inset-top:  rgba(18, 11, 15, .8);
-  --sf-press-face: color-mix(in oklch, var(--color-base-100) 66%, #1A1218);
-  --sf-press-top:  rgba(18, 11, 15, .92);
+/* The extrusion depth, stepped with the density ladder. `--nm-d` is the 45° offset and `--nm-b` the blur;
+   `-d2/-b2` is the shallow (hover/L2) pair and `-dp/-bp` the pressed one — tighter AND deeper, because a
+   pressed control is the strongest state in the kit and the only one you cause by touching. */
+:root {
+  --nm-d: 5px;  --nm-b: 12px;
+  --nm-d2: 3px; --nm-b2: 7px;
+  --nm-dp: 3px; --nm-bp: 8px;
+  /* The shallow pairs, composed once. These live in :root rather than per theme because a custom property
+     substitutes where it is USED — `var(--nm-dark)` inside them still resolves against whichever theme the
+     element is under, so one definition serves both instead of two that can drift. */
+  --sf-lift2: var(--nm-d2) var(--nm-d2) var(--nm-b2) var(--nm-dark),
+              calc(-1 * var(--nm-d2)) calc(-1 * var(--nm-d2)) var(--nm-b2) var(--nm-light);
+  --sf-sink2: inset var(--nm-d2) var(--nm-d2) var(--nm-b2) var(--nm-dark),
+              inset calc(-1 * var(--nm-d2)) calc(-1 * var(--nm-d2)) var(--nm-b2) var(--nm-light);
+}
+@media (max-height: 670px) { :root { --nm-d: 4px; --nm-b: 10px; --nm-d2: 2px; --nm-b2: 6px; } }
+@media (max-height: 560px) { :root { --nm-d: 3px; --nm-b: 8px;  --nm-dp: 2px; --nm-bp: 6px; } }
+@media (min-width: 120rem) { :root { --nm-d: 8px; --nm-b: 18px; --nm-d2: 4px; --nm-b2: 10px; } }
 
-  --ms-vol-key:    rgba(255, 240, 228, .055);   /* key light entering the top of the box */
-  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 14%, transparent);
-  --ms-vol-rim:    rgba(255, 240, 228, .08);    /* where the wall catches the light */
-  --ms-vol-sheen:  rgba(255, 240, 228, .055);
-  --ms-vol-shade:  rgba(20, 13, 17, .85);       /* the wall's own shadow */
+[data-theme="signal"] {
+  /* The pair. Neutral by construction — no hue in the surfaces, because colour means something here and a
+     tinted shadow would make every surface say it. On a dark base the "light" half is a LIGHTER GREY, not
+     white: a white counter-highlight on #2A2A2E reads as a chrome bevel, which is the 2020 mistake. */
+  --nm-dark:  #1A1A1E;
+  --nm-light: #3A3A3E;
+  --nm-cast:  rgba(0, 0, 0, .55);   /* what a FLOATING object drops — sheets and popovers only */
+
+  --sf-rim:        var(--nm-light);
+  --sf-shadow:     var(--nm-dark);
+  --sf-drop:       var(--nm-d) var(--nm-d) var(--nm-b) var(--nm-dark),
+                   calc(-1 * var(--nm-d)) calc(-1 * var(--nm-d)) var(--nm-b) var(--nm-light);
+  --sf-sink:       inset var(--nm-d) var(--nm-d) var(--nm-b) var(--nm-dark),
+                   inset calc(-1 * var(--nm-d)) calc(-1 * var(--nm-d)) var(--nm-b) var(--nm-light);
+  --sf-press:      inset var(--nm-dp) var(--nm-dp) var(--nm-bp) var(--nm-press-dark),
+                   inset calc(-1 * var(--nm-dp)) calc(-1 * var(--nm-dp)) var(--nm-bp) var(--nm-light);
+  --nm-press-dark: #131316;
+  /* The recess is the SAME colour as the page — that is the premise. Depth comes from the shadow pair
+     alone, never from a darker fill, which is what separates this from the panel-on-panel look. */
+  --sf-inset-face: var(--color-base-100);
+  --sf-inset-top:  var(--nm-dark);
+  --sf-press-face: var(--color-base-100);
+  --sf-press-top:  var(--nm-press-dark);
+
+  --ms-vol-key:    rgba(255, 255, 255, .04);    /* key light entering the top of the box */
+  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 10%, transparent);
+  --ms-vol-rim:    rgba(255, 255, 255, .06);    /* where the wall catches the light */
+  --ms-vol-sheen:  rgba(255, 255, 255, .05);
+  --ms-vol-shade:  rgba(0, 0, 0, .55);          /* the wall's own shadow */
 }
 [data-theme="signal-light"] {
-  /* Same structure, inverted: on a light surface the rim is white and the recess is a grey face. The Δ
-     values follow the measurement — inset −5%, pressed −13% of the parent's luminance. */
-  --sf-rim:        rgba(255, 251, 244, .95);
-  --sf-edge:       rgba(74, 58, 44, .13);
-  --sf-lip:        rgba(255, 251, 244, .9);
-  /* the measured shadow, #715a48 — warm brown, hue-matched, then pulled toward the app's own accent */
-  --sf-shadow:     color-mix(in oklch, var(--app-accent, #9A5430) 18%, rgba(113, 90, 72, .30));
-  --sf-drop:       0 12px 26px -6px color-mix(in oklch, var(--app-accent, #9A5430) 22%, rgba(113, 90, 72, .34)),
-                   0 3px 8px -3px  color-mix(in oklch, var(--app-accent, #9A5430) 14%, rgba(113, 90, 72, .22));
-  --sf-inset-face: color-mix(in oklch, var(--color-base-100) 94%, #5E4630);
-  --sf-inset-top:  rgba(94, 70, 48, .22);
-  --sf-press-face: color-mix(in oklch, var(--color-base-100) 85%, #5E4630);
-  --sf-press-top:  rgba(94, 70, 48, .34);
+  /* Same structure, inverted. Here the light half CAN be pure white — on #EEEEF1 there is headroom above
+     the base, which is the entire reason the page is not #FFFFFF. */
+  --nm-dark:  #C6C6CC;
+  --nm-light: #FFFFFF;
+  --nm-cast:  rgba(80, 80, 92, .28);
+
+  --sf-rim:        var(--nm-light);
+  --sf-shadow:     var(--nm-dark);
+  --sf-drop:       var(--nm-d) var(--nm-d) var(--nm-b) var(--nm-dark),
+                   calc(-1 * var(--nm-d)) calc(-1 * var(--nm-d)) var(--nm-b) var(--nm-light);
+  --sf-sink:       inset var(--nm-d) var(--nm-d) var(--nm-b) var(--nm-dark),
+                   inset calc(-1 * var(--nm-d)) calc(-1 * var(--nm-d)) var(--nm-b) var(--nm-light);
+  --sf-press:      inset var(--nm-dp) var(--nm-dp) var(--nm-bp) var(--nm-press-dark),
+                   inset calc(-1 * var(--nm-dp)) calc(-1 * var(--nm-dp)) var(--nm-bp) var(--nm-light);
+  --nm-press-dark: #B4B4BC;
+  --sf-inset-face: var(--color-base-100);
+  --sf-inset-top:  var(--nm-dark);
+  --sf-press-face: var(--color-base-100);
+  --sf-press-top:  var(--nm-press-dark);
 
   /* A light room is lit the other way round: the wash is white and the walls are grey. Weaker than the dark
      theme on purpose — a dark band over dark text is the one place this style eats legibility. */
-  --ms-vol-key:    rgba(255, 250, 242, .85);
-  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 10%, transparent);
-  --ms-vol-rim:    rgba(94, 70, 48, .09);
-  --ms-vol-sheen:  rgba(255, 250, 242, .8);
-  --ms-vol-shade:  rgba(94, 70, 48, .15);
+  --ms-vol-key:    rgba(255, 255, 255, .85);
+  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 8%, transparent);
+  --ms-vol-rim:    rgba(90, 90, 100, .08);
+  --ms-vol-sheen:  rgba(255, 255, 255, .9);
+  --ms-vol-shade:  rgba(90, 90, 100, .14);
 }
 
 /* The volume itself — painted as body's own background rather than a layer, so it is underneath every
@@ -478,38 +516,34 @@ body::after {
    The selected tab is the reference's own detail and it is the opposite of the obvious guess: the rail is
    INSET and the active pill is RAISED inside it — the choice lifts out of the groove rather than sinking
    into it. One rule covers every strip in the farm because they are all one component. */
-.sf-inset [aria-pressed="true"] { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
+.sf-inset [aria-pressed="true"] { box-shadow: var(--sf-drop); }
 
-/* PRESSED is the only state you cause by touching, and the measurement made it the strongest in the kit
-   (~1.75× inset). Applied to every button at once, so no control has to remember to have one. */
-.btn:active:not(:disabled), [aria-pressed]:active {
-  box-shadow: inset 0 3px 7px -1px var(--sf-press-top), inset 0 -1px 0 0 var(--sf-lip);
-}
+/* PRESSED is the only state you cause by touching, and it is the strongest state in the kit. In this
+   material the press is literal: the object stops being extruded and becomes a hole of the same colour. */
+.btn:active:not(:disabled), [aria-pressed]:active { box-shadow: var(--sf-press); }
 
-/* ── Buttons — the four states the reference names, applied to every button in the farm ────────────
-   RAISED at rest: the face keeps its own colour and the EDGES do the lifting (measured: face Δ+0.6, rim
-   +17, drop −57). Lightening the fill is the classic mistake and flattens the material instantly.
-   PRESSED under a finger: face −33, inner shadow −63 — the strongest state in the kit, and rightly so,
-   because it is the only one you cause by touching. DISABLED is flat: no volume on something inert.
-   `.btn-ghost` stays flat until hovered/pressed — it is a text button, not an object. */
-.btn:not(.btn-ghost):not(.btn-link):not(:disabled) {
-  box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop);
-}
-.btn:not(.btn-link):not(:disabled):active {
-  box-shadow: inset 0 3px 7px -1px var(--sf-press-top), inset 0 -1px 0 0 var(--sf-lip);
-  transform: translateY(0.5px);
-}
+/* ── Buttons — the material's four states, applied to every button in the farm ─────────────────────
+   RAISED at rest: the face keeps the PAGE's colour and the shadow pair does all the lifting. Lightening
+   the fill is the classic mistake and flattens the material instantly — worse here than under the old
+   clay, because a lighter face plus a symmetric pair reads as a sticker.
+   PRESSED under a finger: the same object pushed IN. DISABLED is flat: no volume on something inert.
+   `.btn-ghost` stays flat until pressed — it is a text button, not an object. */
+.btn:not(.btn-ghost):not(.btn-link):not(:disabled) { box-shadow: var(--sf-drop); }
+.btn:not(.btn-link):not(:disabled):active { box-shadow: var(--sf-press); }
 .btn:disabled, .btn[disabled] { box-shadow: none; }
+/* No transform on press. The old material moved the button 0.5px because its shadow barely changed; this
+   one inverts the whole extrusion, so a nudge on top of that reads as a glitch rather than a press. */
 
-/* Chips and badges are small raised objects too — a count or a tag sits ON the surface, not in it. */
-.badge:not(.badge-ghost) { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 1px 3px -1px var(--sf-shadow); }
+/* Chips and badges are small raised objects too — a count or a tag sits ON the surface, not in it. They get
+   the SHALLOW pair: a badge is 20px tall, and the full 5px offset on it is a shadow bigger than the thing. */
+.badge:not(.badge-ghost) { box-shadow: var(--sf-lift2); }
 
 /* Things a value sits IN. DaisyUI paints the range's groove with --range-bg, so the inset is expressed
    through that variable rather than over the top of it — the same knob, moved down instead of deleted. */
 .sf-track, .range { --range-bg: var(--sf-inset-face); }
 .input, .textarea, .select, .file-input {
   background: var(--sf-inset-face);
-  box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), inset 0 -1px 0 0 var(--sf-lip);
+  box-shadow: var(--sf-sink);
 }
 /* Canonical FIELD HEIGHT — the design system owns it, so no app hand-rolls `h-11`/`h-14` (a per-app
    height was the tell that inputs had no systemic size). One comfortable height for every text field,
@@ -519,57 +553,51 @@ body::after {
 /* Focus is a RING, not a fill: --app-accent is a mark colour and must never end up behind text. The recess
    stays, so a focused field still reads as a field rather than becoming a raised object. */
 .input:focus, .input:focus-within, .textarea:focus, .select:focus, .file-input:focus {
-  box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), 0 0 0 2px var(--app-tint), 0 0 0 3px var(--app-accent);
+  box-shadow: var(--sf-sink), 0 0 0 2px var(--app-tint), 0 0 0 3px var(--app-accent);
   outline: none;
 }
 .input-error, .textarea-error, .select-error {
-  box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), 0 0 0 2px color-mix(in oklch, var(--color-error) 35%, transparent);
+  box-shadow: var(--sf-sink), 0 0 0 2px color-mix(in oklch, var(--color-error) 35%, transparent);
 }
 
 /* ── Switches — a slot with something raised in it ────────────────────────────────────────────────
    Off is an empty recess; on is the same recess with the accent filling it. The knob is raised in both,
    because the thing you drag is an object and the thing it slides in is a groove. Same for a checkbox: the
    box is inset when empty and raised when it carries a mark. */
-.toggle, .checkbox, .radio {
-  box-shadow: inset 0 2px 4px -1px var(--sf-inset-top), inset 0 -1px 0 0 var(--sf-lip);
-}
-.toggle:checked, .checkbox:checked, .radio:checked {
-  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 5px -2px var(--sf-shadow);
-}
+.toggle, .checkbox, .radio { box-shadow: var(--sf-sink2); }
+.toggle:checked, .checkbox:checked, .radio:checked { box-shadow: var(--sf-lift2); }
 
 /* ── Progress — a value in a trough, exactly like a range ─────────────────────────────────────────── */
-.progress { background: var(--sf-inset-face); box-shadow: inset 0 2px 4px -1px var(--sf-inset-top); }
-.progress::-webkit-progress-value { box-shadow: inset 0 1px 0 0 var(--sf-rim); }
-.progress::-moz-progress-bar { box-shadow: inset 0 1px 0 0 var(--sf-rim); }
+.progress { background: var(--sf-inset-face); box-shadow: var(--sf-sink2); }
+.progress::-webkit-progress-value { box-shadow: var(--sf-lift2); }
+.progress::-moz-progress-bar { box-shadow: var(--sf-lift2); }
 /* A skeleton row is a value-shaped hole waiting to be filled — recessed, by definition. */
-.skeleton, [data-skeleton] { background: var(--sf-inset-face); box-shadow: inset 0 2px 5px -1px var(--sf-inset-top); }
+.skeleton, [data-skeleton] { background: var(--sf-inset-face); box-shadow: var(--sf-sink2); }
 
 /* ── Navigation — a rail is a groove, the choice is raised out of it ──────────────────────────────
    The reference's own detail, and the opposite of the obvious guess: the strip is INSET and the selected
    pill sits proud inside it. The dock is the same object at page level, so it gets the same treatment —
    which also fixes a long-standing readability problem, because "which tab am I on" stops depending on a
    luminance step between two shades of ink and becomes a difference in SHAPE. */
-nav[data-dock] button[aria-current="page"] {
-  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 3px 8px -2px var(--sf-shadow);
-}
-.tabs .tab-active, .steps .step-primary .step-icon, .join > .btn-active {
-  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 6px -2px var(--sf-shadow);
-}
+nav[data-dock] button[aria-current="page"] { box-shadow: var(--sf-drop); }
+.tabs .tab-active, .steps .step-primary .step-icon, .join > .btn-active { box-shadow: var(--sf-lift2); }
 
-/* ── Cards in flow — base, with the ambient drop the reference gives its BASE layer (measured −54) ─── */
-.card, [data-card] {
-  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 2px 6px -2px var(--sf-shadow);
-}
+/* ── Cards in flow — raised out of the page, on the shallow pair ──────────────────────────────────
+   A card is large and there are many per screen, so it takes the shallow extrusion: at the full 5px offset
+   a list of eight cards becomes eight competing shadows and the screen turns to gravel. */
+.card, [data-card] { box-shadow: var(--sf-lift2); }
 
 /* ── Alerts sit on content, so they are raised; a menu/dropdown is a popover (L5) ─────────────────── */
-.alert { box-shadow: inset 0 1px 0 0 var(--sf-rim), var(--sf-drop); }
+.alert { box-shadow: var(--sf-drop); }
 .dropdown-content, .menu.bg-base-100, [role="menu"] {
-  box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow);
+  box-shadow: 0 14px 46px -10px var(--nm-cast), var(--sf-drop);
 }
 
-/* Things that float OVER content, on the one elevation ladder: sheet = L4 (modal), toast = L5 (popover). */
-.modal-box { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 -10px 44px -12px var(--sf-shadow); }
-[data-toast] .alert { box-shadow: inset 0 1px 0 0 var(--sf-rim), 0 14px 46px -10px var(--sf-shadow); }
+/* Things that float OVER content, on the one elevation ladder: sheet = L4 (modal), toast = L5 (popover).
+   These are the two places a one-sided CAST shadow is correct — a sheet is not part of the page surface,
+   so it has no far side for the counter-light to catch. */
+.modal-box { box-shadow: 0 -10px 44px -12px var(--nm-cast), var(--sf-drop); }
+[data-toast] .alert { box-shadow: 0 14px 46px -10px var(--nm-cast), var(--sf-drop); }
 /* Deliberately NOT applied to `.range`: DaisyUI paints the track with `--range-bg`, so styling over it
    removes the groove rather than deepening it. The trough is for surfaces we own. */
 
@@ -625,16 +653,16 @@ nav[data-dock] button > span {
   font-size: .58rem;
 }
 
-/* Liquid glass — the bottom sheets and modals only (cards stay solid ink, colour stays meaning). The
-   material is a frosted panel: the page blurred and lifted behind it, plus a hairline top sheen so the blur
-   reads as a pane of glass rather than a flat tint. Opacity is kept high (82%) so text contrast over the
-   dimmed backdrop stays deterministic — the blur does the glass, not thin translucency the axe gate can't
-   predict. A gentle overshoot on the open gives the sheet the "liquid" settle. */
+/* The sheet is OPAQUE now, and that is a deliberate reversal of the liquid-glass rule this replaces.
+   Glass and this material are answers to the same question that cannot both be on screen: frosted glass
+   says "there is a page behind me", the extrusion says "I am the page". A translucent sheet over a
+   neumorphic surface also blurs the very shadow pair that makes the surface read, so the sheet arrived
+   looking like a smudge of the room behind it.
+   It buys back something real: text on a sheet now sits on a KNOWN colour, so its contrast is deterministic
+   instead of depending on whatever the backdrop happened to be. The overshoot stays — that was the liquid
+   part worth keeping, and it belongs to the motion, not the material. */
 .modal-box {
-  background: color-mix(in oklch, var(--color-base-100) 82%, transparent);
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
-  box-shadow: 0 -10px 44px -12px rgba(0, 0, 0, .5), inset 0 1px 0 0 rgba(255, 255, 255, .09);
+  background: var(--color-base-100);
   transition-timing-function: cubic-bezier(.22, 1, .3, 1.12);
 }
 @media (prefers-reduced-motion: reduce) { .modal-box { transition-timing-function: ease-out; } }

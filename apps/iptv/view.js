@@ -10,6 +10,7 @@ import { useStore } from "@nanostores/preact";
 import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
 import { Player } from "/_rt/video.js";
+import { Segmented } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -54,7 +55,9 @@ async function loadCountry(code) {
 }
 
 const Tile = ({ ch, onPlay }) => html`<button data-ch class="flex flex-col gap-1 min-w-0 active:scale-95 transition-transform" aria-label=${ch.name} onClick=${() => onPlay(ch)}>
-  <div class="aspect-video rounded-lg bg-base-300 overflow-hidden relative flex items-center justify-center border border-base-content/10">
+  ${/* A logo tile is a WELL the station's mark drops into — `sf-inset`, not a tinted box with a hairline
+       around it. The tint was already a no-op under the neutral palette; the outline was the whole tile. */""}
+  <div class="aspect-video rounded-lg sf-inset overflow-hidden relative flex items-center justify-center">
     ${Icon("lucide:tv", "text-2xl text-base-content/25 absolute")}
     ${ch.logo ? html`<img src=${ch.logo} alt="" loading="lazy" class="relative w-full h-full object-contain p-1" onError=${(e) => e.currentTarget.remove()} />` : null}
     <span class="absolute bottom-0 right-0 m-1 badge badge-xs bg-base-100/70 border-0">${Icon("lucide:play", "text-[0.6rem]")}</span>
@@ -85,10 +88,13 @@ export function iptv({ S }) {
         </label>
       </div></div>
 
-      ${cats.length > 1 ? html`<div class="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-0.5">
-        <button class=${`btn btn-xs rounded-full shrink-0 ${cat === "" ? "btn-primary" : "btn-ghost border border-base-300"}`} onClick=${() => $cat.set("")}>${T(t, "allCats")}</button>
-        ${cats.map((c) => html`<button key=${c} class=${`btn btn-xs rounded-full shrink-0 ${cat === c ? "btn-primary" : "btn-ghost border border-base-300"}`} onClick=${() => $cat.set(cat === c ? "" : c)}>${c}</button>`)}
-      </div>` : null}
+      ${/* A REAL one-of-N strip: the list is filtered by exactly one category at a time, and "All" is that
+           choice's zero — so it is the kit's Segmented, scrolling rail variant, and not a row of chips the
+           app draws itself. Tapping the active pill still clears back to All, which is the behaviour the
+           chips had. */""}
+      ${cats.length > 1 ? html`<${Segmented} scroll size="sm" attr="data-cat" label=${T(t, "aCats")}
+        items=${[{ id: "", label: T(t, "allCats") }, ...cats.map((c) => ({ id: c, label: c }))]}
+        value=${cat} onChange=${(id) => $cat.set(id === cat ? "" : id)} />` : null}
 
       ${loading ? html`<div class="grid grid-cols-3 gap-2.5">${Array.from({ length: 12 }).map((_, i) => html`<div key=${i} class="flex flex-col gap-1"><div class="aspect-video rounded-lg overflow-hidden"><${Pixels} cls="w-full h-full" /></div></div>`)}</div>`
         : err ? html`<div class="flex flex-col items-center gap-2 py-16 text-muted">${Icon("lucide:cloud-off", "text-4xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline rounded-2xl" onClick=${() => loadCountry(country)}>${T(t, "retry")}</button></div>`

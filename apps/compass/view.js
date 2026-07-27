@@ -85,7 +85,10 @@ export function compassView({ S }) {
            charged me 39px for it.) -->
       <div class="absolute left-1/2 -translate-x-1/2 -top-1 z-10 text-base-content">${Icon("lucide:triangle", "text-lg rotate-180")}</div>
       <div class="relative aspect-square overflow-hidden rounded-full">
-      <div class="absolute inset-0 rounded-full border border-base-content/15 bg-base-200/40"></div>
+      ${/* The dial face is a RECESS, not a ringed disc: a bearing is a value that sits IN something, and
+           `sf-inset` is the farm's word for that. The hairline+tint it replaces drew nothing under the
+           neutral palette anyway — base-200 IS base-100, so the ring was carrying the whole rose. */""}
+      <div class="absolute inset-0 rounded-full sf-inset"></div>
       <div class="absolute inset-0 transition-transform duration-100" style=${`transform:rotate(${shown == null ? 0 : -shown}deg)`}>
         ${[0, 90, 180, 270].map((a) => html`<div key=${a} class="absolute inset-0" style=${`transform:rotate(${a}deg)`}>
           <div class=${`absolute left-1/2 -translate-x-1/2 top-2 text-sm font-bold ${a === 0 ? "text-error" : "text-base-content/70"}`}>${T(t, POINTS[a / 22.5])}</div>

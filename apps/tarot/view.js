@@ -190,7 +190,7 @@ function FitTile({ d, pos, t, loc, wpct, onOpen }) {
   const c = DECK[d.card];
   return html`<button data-card class="h-full min-h-0 flex flex-col items-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
     <div class="min-h-0 flex-1 flex items-center justify-center w-full">
-      <img src=${imgURL(c.img)} alt="" loading="lazy" class=${`max-h-full max-w-full w-auto h-auto object-contain rounded-md border border-base-300 shadow-sm ${d.reversed ? "rotate-180" : ""}`} />
+      <img src=${imgURL(c.img)} alt="" loading="lazy" class=${`max-h-full max-w-full w-auto h-auto object-contain rounded-md sf-e2 ${d.reversed ? "rotate-180" : ""}`} />
     </div>
     <div class="shrink-0 text-[0.5rem] font-mono uppercase tracking-wide text-base-content/50 truncate max-w-full leading-tight">${T(t, pos)}</div>
   </button>`;
@@ -328,7 +328,7 @@ function Solo({ d, pos, t, loc, onOpen }) {
   return html`<div data-reading class="flex flex-col items-center gap-4">
     <div class="text-[0.6rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${T(t, pos)}</div>
     <button data-card class="w-[62%] max-w-[11rem] active:scale-[.99] transition" onClick=${onOpen}>
-      <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-full aspect-[350/600] object-cover rounded-xl border border-base-300 shadow-lg ${d.reversed ? "rotate-180" : ""}`} />
+      <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-full aspect-[350/600] object-cover rounded-xl sf-e3 ${d.reversed ? "rotate-180" : ""}`} />
     </button>
     <div class="text-center">
       <div class="font-bold text-xl leading-tight">${cardName(c, loc)}</div>
@@ -346,7 +346,7 @@ function CardSheet({ open, onClose, d, pos, t, loc }) {
   return html`<${Sheet} id="cardsheet" open=${open} onClose=${onClose} locale=${loc}>
       ${c ? html`<div class="flex flex-col items-center gap-4">
         <div class="text-[0.6rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${T(t, pos)}</div>
-        <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-40 aspect-[350/600] object-cover rounded-xl border border-base-300 shadow-lg ${d.reversed ? "rotate-180" : ""}`} />
+        <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-40 aspect-[350/600] object-cover rounded-xl sf-e3 ${d.reversed ? "rotate-180" : ""}`} />
         <div class="text-center">
           <div class="font-bold text-xl leading-tight">${cardName(c, loc)}</div>
           <div class="text-[0.68rem] font-mono uppercase tracking-wide text-base-content/50 mt-1">${kind}</div>

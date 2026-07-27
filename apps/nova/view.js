@@ -21,6 +21,7 @@ import { fetchJson } from "/_rt/feed.js";
 import { letterTile } from "/_rt/tile.js";
 import { scoreRepo, parseFunding } from "/_rt/underrated.js";
 import { session, MOCK_USER, login, logout, restore, star } from "/_rt/auth.js";
+import { Sheet } from "/_rt/ui.js";
 import { Finale } from "./finale.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -156,48 +157,6 @@ export function nova({ S, tab, toast, openScreen, closeScreen }) {
     setFunding(links);
   };
 
-  // ── overlays (checked before the tab branch, so they cover whichever tab is active) ────────────────────
-  if (screen === "finale") return html`<${Finale} devs=${supportedList} t=${t} onClose=${closeScreen} />`;
-
-  if (screen === "support" && target) {
-    const links = Array.isArray(funding) ? funding : [];
-    const loading = funding && funding.loading;
-    return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-100 overflow-y-auto flex flex-col" style="padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)">
-      <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1">
-        <button id="support-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "close")} onClick=${closeScreen}>${Icon("lucide:arrow-left", "text-xl")}</button>
-        <div class="flex-1 font-bold tracking-tight px-1 truncate">${T(t, "supportTitle")}</div>
-      </header>
-      <div class="flex-1 flex flex-col items-center gap-5 px-5 py-7 max-w-md mx-auto w-full">
-        <${Avatar} src=${avatarSized(target.avatar, 200)} seed=${target.owner} size=${76} />
-        <div class="text-center">
-          <div class="text-lg font-bold tracking-tight">${target.name}</div>
-          <a href=${target.url} target="_blank" rel="noopener" class="text-sm text-secondary font-mono">${repoKey(target)}</a>
-        </div>
-        ${loading
-          ? html`<div class="w-full flex flex-col gap-2" aria-hidden="true">${[0, 1].map((i) => html`<div key=${i} class="card h-12 rounded-2xl bg-base-200 animate-pulse"></div>`)}</div>`
-          : links.length
-            ? html`<${Fragment}>
-                <p class="text-sm text-base-content/70 text-center leading-relaxed">${T(t, "supportBody")}</p>
-                <div class="w-full flex flex-col gap-2.5">
-                  ${links.map((l) => html`<a key=${l.url} href=${l.url} target="_blank" rel="noopener" data-fund
-                    class="flex items-center gap-3 px-4 h-13 rounded-2xl border border-base-300 bg-base-200 hover:bg-base-300 transition-colors">
-                    ${Icon(l.platform === "github" ? "lucide:heart" : "lucide:external-link", "text-lg text-secondary")}
-                    <span class="font-semibold flex-1 min-w-0 truncate">${l.label || T(t, "supportGeneric")}</span>
-                    ${Icon("lucide:chevron-right", "text-base-content/40")}
-                  </a>`)}
-                </div>`
-            : html`<div class="flex flex-col items-center gap-3 text-center pt-2">
-                ${Icon("lucide:star", "text-3xl text-secondary")}
-                <p class="text-sm text-base-content/70 leading-relaxed max-w-xs">${T(t, "noFunding")}</p>
-                <button class="btn btn-primary rounded-2xl gap-2 mt-1" data-haptic="bump" onClick=${() => toggleStar(target)}>
-                  ${Icon("lucide:star", isSupported(target) ? "text-warning" : "")}
-                  ${isSupported(target) ? T(t, "starred") : T(t, "starAction")}
-                </button>
-              </div>`}
-      </div>
-    </div>`;
-  }
-
   // ── signed-out hero ────────────────────────────────────────────────────────────────────────────────────
   if (!loggedIn) {
     return html`<div class="min-h-[70vh] flex flex-col items-center justify-center text-center gap-6 px-8">
@@ -234,7 +193,7 @@ export function nova({ S, tab, toast, openScreen, closeScreen }) {
               ${Icon("lucide:sparkles")} ${T(t, "reveal")}
             </button>
             <div class="flex flex-col gap-2.5">
-              ${supportedList.map((d) => html`<article data-lifted key=${repoKey(d)} class="card @container flex-row items-center gap-3 rounded-2xl border border-base-300 bg-base-200/60 p-3">
+              ${supportedList.map((d) => html`<article data-lifted key=${repoKey(d)} class="card @container flex-row items-center gap-3 rounded-2xl bg-base-100 p-3">
                 <${Avatar} src=${avatarSized(d.avatar, 96)} seed=${d.owner} size=${42} />
                 <div class="flex-1 min-w-0">
                   <div class="font-bold tracking-tight truncate">${d.name}</div>
@@ -245,6 +204,10 @@ export function nova({ S, tab, toast, openScreen, closeScreen }) {
               </article>`)}
             </div>
           </${Fragment}>`}
+      ${/* The finale is MOUNTED by the routing atom, not by its own state: S.screen is history-backed, so the
+           system Back button closes it. Mounting (rather than an always-present open=false sheet) is what
+           starts and stops its rAF loop — a star-field repainting behind a closed dialog is a battery bill. */""}
+      ${screen === "finale" ? html`<${Finale} open devs=${supportedList} t=${t} onClose=${closeScreen} />` : null}
     </div>`;
   }
 
@@ -266,7 +229,7 @@ export function nova({ S, tab, toast, openScreen, closeScreen }) {
     </div>
 
     ${devs == null
-      ? html`<div class="flex flex-col gap-3" aria-hidden="true">${[0, 1, 2].map((i) => html`<div key=${i} class="card h-40 rounded-3xl bg-base-200 animate-pulse"></div>`)}</div>`
+      ? html`<div class="flex flex-col gap-3" aria-hidden="true">${[0, 1, 2].map((i) => html`<div key=${i} class="skeleton h-40 rounded-3xl"></div>`)}</div>`
       : err && !devs.length
         ? html`<div class="text-center py-16 text-sm text-muted">${T(t, "feedError")}</div>`
         : visible.length === 0
@@ -278,13 +241,64 @@ export function nova({ S, tab, toast, openScreen, closeScreen }) {
               ${visible.map((d) => html`<${DevCard} key=${repoKey(d)} d=${d} t=${t} busy=${!!busy[repoKey(d)]}
                 onStar=${() => toggleStar(d)} onSupport=${() => openSupport(d)} />`)}
             </div>`}
+
+    ${/* open/onClose come from S.screen — the farm's routing atom — so the system Back closes the sheet
+         instead of exiting the app. The kit owns the shell; the contents below stay nova's. */""}
+    <${SupportSheet} open=${screen === "support" && !!target} onClose=${closeScreen} target=${target}
+      funding=${funding} t=${t} starred=${!!target && isSupported(target)}
+      busy=${!!target && !!busy[repoKey(target)]} onStar=${() => target && toggleStar(target)} />
   </div>`;
+}
+
+// The support sheet — WHO you're backing and the funding links parsed from their FUNDING.yml. The shell is
+// the kit's Sheet (grip, drag-to-dismiss, title row, close, backdrop, its own inner scroll); everything in
+// here is the app's. Nothing about the OAuth session touches this — it reads a dev record and renders links.
+function SupportSheet({ open, onClose, target, funding, t, starred, busy, onStar }) {
+  const links = Array.isArray(funding) ? funding : [];
+  const loading = !!(funding && funding.loading);
+  // No `subtitle` on the title row: owner/repo already sits under the avatar as a LINK to the repository, and
+  // drawing the same string twice — once inert, once tappable — is two representations of one thing.
+  return html`<${Sheet} id="support-sheet" open=${open} onClose=${onClose} icon="lucide:heart-handshake"
+    title=${T(t, "supportTitle")}>
+    ${target ? html`<${Fragment}>
+      <div class="flex flex-col items-center gap-2 min-w-0">
+        <${Avatar} src=${avatarSized(target.avatar, 200)} seed=${target.owner} size=${64} />
+        <div class="text-center min-w-0 max-w-full">
+          <div class="font-bold tracking-tight truncate">${target.name}</div>
+          <a href=${target.url} target="_blank" rel="noopener" class="text-xs text-secondary font-mono truncate block">${repoKey(target)}</a>
+        </div>
+      </div>
+      ${loading
+        ? html`<div class="flex flex-col gap-2" aria-hidden="true">${[0, 1].map((i) => html`<div key=${i} class="skeleton h-13 rounded-2xl"></div>`)}</div>`
+        : links.length
+          ? html`<${Fragment}>
+              <p class="text-sm text-base-content/70 text-center leading-relaxed">${T(t, "supportBody")}</p>
+              <div class="flex flex-col gap-2.5">
+                ${links.map((l) => html`<a key=${l.url} href=${l.url} target="_blank" rel="noopener" data-fund
+                  class="card flex-row items-center gap-3 px-4 h-13 rounded-2xl bg-base-100 active:scale-[.99] transition">
+                  ${Icon(l.platform === "github" ? "lucide:heart" : "lucide:external-link", "text-lg text-secondary")}
+                  <span class="font-semibold flex-1 min-w-0 truncate">${l.label || T(t, "supportGeneric")}</span>
+                  ${Icon("lucide:chevron-right", "text-base-content/40")}
+                </a>`)}
+              </div>
+            </${Fragment}>`
+          : html`<div class="flex flex-col items-center gap-3 text-center">
+              ${Icon("lucide:star", "text-3xl text-secondary")}
+              <p class="text-sm text-base-content/70 leading-relaxed max-w-xs">${T(t, "noFunding")}</p>
+              <button data-fund-star class="btn btn-primary rounded-2xl gap-2" data-haptic="bump"
+                disabled=${busy} onClick=${onStar}>
+                ${Icon("lucide:star", starred ? "text-warning" : "")}
+                ${starred ? T(t, "starred") : T(t, "starAction")}
+              </button>
+            </div>`}
+    </${Fragment}>` : null}
+  </${Sheet}>`;
 }
 
 // One developer card in the discover feed — avatar, identity, the repo, WHY they're underrated (reason chips
 // = the "analyze" surface), and the two deliberate actions: Star (lift with a star) and Support (funding).
 function DevCard({ d, t, busy, onStar, onSupport }) {
-  return html`<article data-dev class="card @container rounded-3xl border border-base-300 bg-base-200/60 p-4 flex flex-col gap-3">
+  return html`<article data-dev class="card @container rounded-3xl bg-base-100 p-4 flex flex-col gap-3">
     <div class="flex items-start gap-3">
       <${Avatar} src=${d.avatar} seed=${d.owner} size=${52} />
       <div class="flex-1 min-w-0">
@@ -308,7 +322,7 @@ function DevCard({ d, t, busy, onStar, onSupport }) {
         disabled=${busy} data-haptic="bump" onClick=${onStar}>
         ${Icon("lucide:star", "shrink-0")}<span class="truncate">${T(t, "starAction")}</span>
       </button>
-      <button data-support class="btn btn-sm btn-ghost rounded-2xl gap-1.5 flex-1 basis-24 min-w-0 border border-base-300" data-haptic="bump" onClick=${onSupport}>
+      <button data-support class="btn btn-sm rounded-2xl gap-1.5 flex-1 basis-24 min-w-0" data-haptic="bump" onClick=${onSupport}>
         ${Icon("lucide:heart-handshake", "shrink-0")}<span class="truncate">${T(t, "support")}</span>
       </button>
     </div>

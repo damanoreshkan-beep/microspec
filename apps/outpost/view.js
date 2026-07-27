@@ -120,8 +120,14 @@ export function outpost({ S }) {
       <!-- the core: transport + live cue -->
       <div class="relative grid place-items-center py-1">
         <div class=${`absolute w-44 h-44 rounded-full transition-opacity duration-700 ${playing ? "opacity-100 animate-pulse" : "opacity-0"}`} style="background:radial-gradient(closest-side, rgba(159,140,246,.35), transparent 72%)"></div>
-        <div class="absolute w-40 h-40 rounded-full border border-base-content/10"></div>
-        <div class=${`absolute w-32 h-32 rounded-full border ${playing ? "border-primary/40" : "border-base-content/10"}`}></div>
+        ${/* The halo rings were two `border-base-content/10` hairlines. They are EMBOSSED rims now: an
+             element with no fill and only the shallow shadow pair (`sf-e2`), so the ring is the material
+             rather than a line drawn on top of it — and, being transparent, it still lets the reactor glow
+             behind it through. The inner ring also dropped its `border-primary/40` playing state: running
+             is already said by the glow, by the pulsing status dot and by the transport itself, and the
+             same state drawn a fourth time is noise, not signal. */""}
+        <div class="absolute w-40 h-40 rounded-full sf-e2"></div>
+        <div class="absolute w-32 h-32 rounded-full sf-e2"></div>
         ${/* The core is the kit's Transport at its `hero` size — the halo rings above stay this app's own. */""}
         <${Transport} locale=${loc} size="hero" playing=${playing} onToggle=${toggle} disabled=${!audioSupported} />
       </div>
@@ -135,17 +141,31 @@ export function outpost({ S }) {
         <div class="flex items-center justify-end">
           <button data-reset onClick=${resetMix} class="flex items-center gap-1.5 text-xs text-base-content/55 hover:text-base-content/80 transition">${Icon("lucide:rotate-ccw", "text-sm")}${T(t, "aReset")}</button>
         </div>
-        ${LAYERS.map((L) => html`<div data-fader=${L} key=${L} class="flex items-center gap-3 rounded-2xl border border-base-content/10 bg-base-100/60 backdrop-blur px-3.5 py-2.5">
-          <span class="flex items-center justify-center w-8 h-8 rounded-full shrink-0 bg-base-200 text-base-content/70">${Icon(LMETA[L], "text-lg")}</span>
+        ${/* Was `border-base-content/10 bg-base-100/60 backdrop-blur` — a hairline AND frosted glass over our
+             own surface, which blurs away the very extrusion it sits on. Each fader is a raised strip now,
+             on the SHALLOW pair: six of them stack, and at the full offset six shadows turn the bank to
+             gravel (the same reason theme.css gives `.card` sf-lift2). It stays a hand-rolled row rather
+             than a <${"Panel"}/> because a Panel is a flex-COLUMN on --ms-pad, and six of those inflate the
+             bank by ~4.5rem on a phone for no gain — the shared thing here is the MATERIAL, not the box.
+             The icon disc is a recess: it holds the glyph, so it is inset, not raised. */""}
+        ${LAYERS.map((L) => html`<div data-fader=${L} key=${L} class="flex items-center gap-3 rounded-2xl sf-raised sf-e2 px-3.5 py-2.5">
+          <span class="flex items-center justify-center w-8 h-8 rounded-full shrink-0 sf-inset text-base-content/70">${Icon(LMETA[L], "text-lg")}</span>
           <span class="text-sm font-medium w-28 shrink-0">${T(t, "l" + L[0].toUpperCase() + L.slice(1))}</span>
           <input type="range" min="0" max="1" step="0.02" value=${faders[L]} aria-label=${T(t, "l" + L[0].toUpperCase() + L.slice(1))} onInput=${(e) => setFader(L, Number(e.target.value))} class="range range-xs range-primary flex-1" />
         </div>`)}
       </div>
 
-      <!-- sleep timer -->
-      <div class="flex items-center gap-2 text-sm flex-wrap justify-center">
-        <span class="text-muted flex items-center gap-1.5">${Icon("lucide:moon")}${T(t, "sleep")}</span>
-        ${TIMERS.map((m) => html`<button data-timer=${m} key=${m} class=${`px-2.5 py-1 rounded-full text-xs font-medium border transition ${timerMin === m ? "border-primary bg-primary/12 text-primary" : "border-base-content/12 text-base-content/70"}`} onClick=${() => { buzz(); setTimerMin((c) => (c === m ? 0 : m)); }}>${m}${T(t, "min")}</button>`)}
+      ${/* sleep timer — a genuine one-of-N: four durations, exactly one (or none) in force, already laid out
+           as one row of pills. That is the kit's Segmented, so it becomes one; tapping the active option
+           still clears the timer, which the strip expresses as "no option pressed". */""}
+      <div class="w-full max-w-[440px] flex items-center gap-3">
+        <span class="text-muted flex items-center gap-1.5 text-sm shrink-0">${Icon("lucide:moon")}${T(t, "sleep")}</span>
+        ${/* A RAIL, not a fitted strip: fitted options divide the row, and at watch width (208px) four of
+             them leave ~16px of label each and every duration truncates to "15…". Scrolling keeps every
+             option legible and one flick away, which is what the kit's `scroll` variant is for. */""}
+        <div class="flex-1 min-w-0"><${Segmented} size="sm" scroll attr="data-timer" label=${T(t, "sleep")}
+          items=${TIMERS.map((m) => ({ id: String(m), label: `${m}${T(t, "min")}` }))}
+          value=${String(timerMin)} onChange=${(id) => { buzz(); setTimerMin((c) => (c === Number(id) ? 0 : Number(id))); }} /></div>
       </div>
 
       ${!audioSupported ? html`<div class="text-xs text-muted">${T(t, "noAudio")}</div>` : null}

@@ -153,12 +153,12 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
   if (!connected) {
     const supported = usbSupported() && usbOk;
     return html`<div class="flex flex-col items-center justify-center text-center gap-5 pt-10 px-2 max-w-sm mx-auto">
-      <div class="w-20 h-20 rounded-3xl grid place-items-center bg-primary/12 text-primary border border-primary/25">${Icon("lucide:radio-tower", "text-4xl")}</div>
+      <div class="w-20 h-20 rounded-3xl grid place-items-center bg-primary/12 text-primary sf-e2">${Icon("lucide:radio-tower", "text-4xl")}</div>
       <h2 class="text-2xl font-semibold">${T(t, "connectTitle")}</h2>
       <p class="text-base-content/70 leading-relaxed">${T(t, "connectBody")}</p>
       ${supported
         ? html`<button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2 mt-1" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
-        : html`<div class="alert bg-warning/12 text-warning border border-warning/25 rounded-2xl text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
+        : html`<div class="alert bg-warning/12 text-warning rounded-2xl text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
     </div>`;
   }
 
@@ -172,13 +172,15 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
       <div class="flex items-center gap-2 pt-0.5 pb-1">
         <input type="range" min=${FM_LO} max=${FM_HI} step="0.1" value=${(freq / 1e6).toFixed(1)} data-band
           aria-label=${T(t, "band")} onInput=${(e) => setFreq(Number(e.target.value) * 1e6)} class="range range-sm range-primary flex-1 min-w-0" />
-        <button data-scan aria-label=${T(t, "scan")} disabled=${scanSt.active} onClick=${scan} class="btn btn-sm btn-outline border-base-content/20 gap-1.5 shrink-0">${Icon("lucide:radar", `text-base ${scanSt.active ? "animate-spin" : ""}`)}${T(t, "scan")}</button>
+        <button data-scan aria-label=${T(t, "scan")} disabled=${scanSt.active} onClick=${scan} class="btn btn-sm btn-outline gap-1.5 shrink-0">${Icon("lucide:radar", `text-base ${scanSt.active ? "animate-spin" : ""}`)}${T(t, "scan")}</button>
       </div>
       ${scanSt.active ? html`<div class="w-full h-1.5 rounded-full bg-base-content/10 overflow-hidden" data-scanbar><div class="h-full bg-primary transition-[width] duration-200" style=${`width:${Math.round((scanSt.frac || 0) * 100)}%`}></div></div>` : null}
       ${stations.length ? stations.slice().sort((a, b) => a.freq - b.freq).map((s) => {
     const on = Math.abs(s.freq - freq) < STEP_HZ / 2;
+    // The tuned station is a DEEPER extrusion carrying the accent tint, not a ringed row: with the hairline
+    // gone the depth step is what separates it from its neighbours, and aria-current still carries the state.
     return html`<button key=${s.freq} data-station=${fmMhz(s.freq)} aria-current=${on} onClick=${() => setFreq(s.freq)}
-        class=${`flex items-center gap-3 rounded-2xl border px-4 py-2.5 text-left transition ${on ? "border-primary/50 bg-primary/10" : "border-base-content/10 bg-base-100/40 hover:bg-base-100/70"}`}>
+        class=${`flex items-center gap-3 rounded-2xl px-4 py-2.5 text-left transition ${on ? "bg-primary/10 sf-e3" : "sf-raised sf-e2"}`}>
         <span class="font-mono tabular-nums text-lg w-16 shrink-0 ${on ? "text-primary" : ""}">${fmMhz(s.freq)}</span>
         <span class="flex-1 min-w-0 truncate text-sm ${on && rds.ps ? "text-base-content" : "text-base-content/55"}">${on && rds.ps ? rds.ps : s.ps || (s.stereo ? T(t, "stereo") : T(t, "mono"))}</span>
         ${s.stereo ? Icon("lucide:radio", "text-base-content/40 text-base shrink-0") : null}
@@ -195,17 +197,17 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
               <span class="text-[0.6rem] uppercase tracking-wider text-base-content/55 shrink-0">${T(t, "unitMhz")}</span>
               <span class="truncate font-semibold text-sm ml-0.5">${name || html`<span class="text-base-content/35">${T(t, "tuning")}</span>`}</span>
               <span data-stereo class=${`shrink-0 ${stereo ? "text-primary" : "text-base-content/30"}`} title=${T(t, stereo ? "stereo" : "mono")}>${Icon("lucide:radio", "text-sm")}</span>
-              ${genre ? html`<span class="shrink-0 rounded-full px-1.5 py-px text-[0.55rem] uppercase tracking-wider bg-secondary/12 text-secondary border border-secondary/25 truncate max-w-[6rem]" data-genre>${genre}</span>` : null}
+              ${genre ? html`<span class="shrink-0 rounded-full px-1.5 py-px text-[0.55rem] uppercase tracking-wider bg-secondary/12 text-secondary truncate max-w-[6rem]" data-genre>${genre}</span>` : null}
             </div>
             ${info ? html`<div class="text-[0.72rem] text-muted leading-snug truncate mt-0.5" data-rt>${info}</div>` : null}
           </div>
           <${SignalBars} level=${signal} label=${T(t, "sigLabel")} />
-          <button data-save aria-pressed=${savedNow} aria-label=${T(t, "save")} onClick=${() => toggleSave(undo)} class=${`btn btn-circle btn-sm shrink-0 ${savedNow ? "bg-primary/15 text-primary border border-primary/30" : "btn-ghost text-base-content/45"}`}>${Icon(savedNow ? "lucide:bookmark-check" : "lucide:bookmark", "text-base")}</button>
+          <button data-save aria-pressed=${savedNow} aria-label=${T(t, "save")} onClick=${() => toggleSave(undo)} class=${`btn btn-circle btn-sm shrink-0 ${savedNow ? "bg-primary/15 text-primary" : "btn-ghost text-base-content/45"}`}>${Icon(savedNow ? "lucide:bookmark-check" : "lucide:bookmark", "text-base")}</button>
         </div>
         <div class="flex items-center gap-1.5">
           <button data-seek="down" aria-label=${T(t, "seekDown")} onClick=${() => seek(-1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:chevrons-left", "text-xl")}</button>
           <button id="play" data-playing=${playing} aria-label=${T(t, playing ? "aStop" : "aPlay")} onClick=${() => (playing ? pause() : play())}
-            class=${`w-12 h-12 rounded-full grid place-items-center shadow-lg active:scale-95 transition shrink-0 ${playing ? "bg-primary text-primary-content" : "bg-base-content text-base-100"}`}>
+            class=${`w-12 h-12 rounded-full grid place-items-center sf-e3 active:scale-95 transition shrink-0 ${playing ? "bg-primary text-primary-content" : "bg-base-content text-base-100"}`}>
             ${Icon(playing ? "lucide:volume-2" : "lucide:play", "text-xl")}
           </button>
           <button data-seek="up" aria-label=${T(t, "seekUp")} onClick=${() => seek(1)} class="btn btn-circle btn-ghost btn-sm">${Icon("lucide:chevrons-right", "text-xl")}</button>
@@ -256,7 +258,7 @@ export function savedView({ S, undo }) {
   return html`<div class="flex flex-col gap-2 max-w-[440px] mx-auto w-full pb-6">
     ${saved.map((s, i) => {
     const on = Math.abs(s.freq - freq) < STEP_HZ / 2, nm = s.ps || known[s.freq]?.ps || "";
-    return html`<div key=${s.freq} data-saved class=${`flex items-center gap-3 rounded-2xl border px-4 py-3 transition ${on ? "border-primary/50 bg-primary/10" : "border-base-content/10 bg-base-100/40"}`}>
+    return html`<div key=${s.freq} data-saved class=${`flex items-center gap-3 rounded-2xl px-4 py-3 transition ${on ? "bg-primary/10 sf-e3" : "sf-raised sf-e2"}`}>
       <button data-open class="flex-1 min-w-0 flex items-center gap-3 text-left" onClick=${() => open(s)}>
         <span class=${`font-mono tabular-nums text-xl w-[4.5rem] shrink-0 ${on ? "text-primary" : ""}`}>${fmMhz(s.freq)}</span>
         <span class="flex-1 min-w-0 flex flex-col">

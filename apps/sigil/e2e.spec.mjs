@@ -28,9 +28,9 @@ export default [
     name: "значення: чіп → sheet, Back закриває", run: async (h) => {
       await ready(h); await h.wait(300);
       await h.tap("[data-about]"); await h.wait(250);
-      h.expect((await h.count("[data-about-sheet]")) === 1, "sheet значення не відкрився");
+      h.expect((await h.prop("#aboutsheet", "open")) === true, "sheet значення не відкрився");
       await h.back(); await h.wait(250);
-      h.expect((await h.count("[data-about-sheet]")) === 0, "Back не закрив sheet значення");
+      h.expect((await h.prop("#aboutsheet", "open")) !== true, "Back не закрив sheet значення");
     },
   },
   {
@@ -45,9 +45,9 @@ export default [
     name: "деталь: sheet, Back закриває", run: async (h) => {
       await h.click('[data-tab="grimoire"]'); await h.wait(300);
       await h.tap("[data-item]"); await h.wait(250);
-      h.expect((await h.count("[data-detail]")) === 1, "деталь-sheet не відкрився");
+      h.expect((await h.prop("#detailsheet", "open")) === true, "деталь-sheet не відкрився");
       await h.back(); await h.wait(250);
-      h.expect((await h.count("[data-detail]")) === 0, "Back не закрив деталь-sheet");
+      h.expect((await h.prop("#detailsheet", "open")) !== true, "Back не закрив деталь-sheet");
     },
   },
   {

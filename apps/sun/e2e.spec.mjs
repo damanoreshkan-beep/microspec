@@ -54,12 +54,17 @@ export default [
       await ready(h);
       const kyiv = await h.text("[data-bearing]");
       await h.click("#open-globe"); await h.wait(300);
-      h.expect((await h.count('[role="dialog"]')) === 1, "пікер не відкрився");
+      // стан, не класи: пікер тепер — Sheet із /_rt/ui.js, тож перевіряємо відкритість <dialog>
+      h.expect((await h.prop("#globesheet", "open")) === true, "пікер не відкрився");
+      // інваріант маршрутизації: аркуш живе на S.screen, тож системний Back закриває його
+      await h.back(); await h.wait(250);
+      h.expect((await h.prop("#globesheet", "open")) !== true, "Back не закрив пікер");
+      await h.click("#open-globe"); await h.wait(300);
       h.expect((await h.count('[data-city="Tokyo"]')) === 1, "немає пресетів міст");
       await h.click('[data-city="Tokyo"]'); await h.wait(300);
       h.expect(/Tokyo/.test(await h.bodyText()), "Токіо не обрано");
       await h.click("#pick-here"); await h.wait(300);
-      h.expect((await h.count('[role="dialog"]')) === 0, "пікер не закрився");
+      h.expect((await h.prop("#globesheet", "open")) !== true, "пікер не закрився");
       h.expect((await h.count("#clear-pick")) === 1 && /Tokyo/.test(await h.text("#clear-pick")), "немає індикатора обраної точки");
       h.expect(kyiv !== (await h.text("[data-bearing]")), "азимут сонця не перерахувався для іншої точки");
       await h.click("#clear-pick"); await h.wait(200); // назад до GPS/Києва

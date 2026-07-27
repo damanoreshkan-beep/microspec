@@ -19,7 +19,7 @@ import { useStore } from "@nanostores/preact";
 import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { T } from "/_rt/i18n.js";
-import { Island } from "/_rt/ui.js";
+import { Island, Sheet } from "/_rt/ui.js";
 import { createPlayer } from "/_rt/video.js";
 import { VPS_PROXY, pool } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
@@ -278,7 +278,7 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
 // tap target — the slide's tap handler owns single-tap → open, double-tap → like (so a like never navigates).
 // The keyboard-accessible way to open the page stays the bottom-right open-original link on the slide.
 const WatchLink = ({ t }) => html`<div data-watch aria-hidden="true" class="absolute inset-0 z-[3] flex items-end justify-center pointer-events-none" style="padding-bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 4.5rem)">
-  <span class="btn btn-primary rounded-full gap-2 shadow-lg pointer-events-none">${Icon("lucide:external-link", "text-lg")} ${T(t, "watch")}</span>
+  <span class="btn btn-primary rounded-full gap-2 pointer-events-none">${Icon("lucide:external-link", "text-lg")} ${T(t, "watch")}</span>
 </div>`;
 
 // The single live <video>, mounted only in the ACTIVE slide (so exactly one plays). createPlayer handles mp4 vs
@@ -367,19 +367,18 @@ function SourceSheet({ S, t }) {
   // A pasted results URL (`…/search?q=…`) is searchable → offer to swap the term and play those results.
   const sr = resolveSearch(norm());
   const search = (e) => { e?.preventDefault?.(); const url = norm(), term = q.trim(); if (url && term) goto(buildSearchUrl(url, term)); };
-  return html`<div class="fixed inset-0 z-40 flex items-end" role="dialog" aria-modal="true" aria-label=${T(t, "srcTitle")}>
-    <button class="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-label=${T(t, "close")} onClick=${() => S.screen.set(null)}></button>
-    <form onSubmit=${load} class="relative w-full max-w-xl mx-auto bg-base-100 rounded-t-3xl p-5 flex flex-col gap-3" style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
-      <div class="flex items-center justify-between">
-        <h2 class="font-bold text-lg flex items-center gap-2">${Icon("lucide:link", "text-primary")} ${T(t, "srcTitle")}</h2>
-        <button type="button" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "close")} onClick=${() => S.screen.set(null)}>${Icon("lucide:x", "text-xl")}</button>
-      </div>
-      <label class="input input-bordered flex items-center gap-2 rounded-2xl">
+  // The shell is the kit's: drag-to-dismiss, the title row with its close button, the backdrop, and the
+  // 88dvh cap with the only sanctioned inner scroll. This app had hand-rolled all four, and had already
+  // drifted (no drag-dismiss at all, its own radius, its own backdrop opacity). `open` is derived from the
+  // same S.screen atom the close handler writes, so the system Back button still closes it.
+  return html`<${Sheet} open onClose=${() => S.screen.set(null)} title=${T(t, "srcTitle")} icon="lucide:link">
+    <form onSubmit=${load} class="flex flex-col gap-3">
+      <label class="input flex items-center gap-2 rounded-2xl">
         ${Icon("lucide:globe", "opacity-50 shrink-0")}
         <input id="src-input" type="url" inputmode="url" autocomplete="off" class="grow min-w-0" placeholder=${T(t, "srcPlaceholder")} aria-label=${T(t, "srcTitle")} value=${val} onInput=${(e) => setVal(e.target.value)} />
       </label>
       ${sr.searchable ? html`<div class="flex gap-2">
-        <label class="input input-bordered flex items-center gap-2 rounded-2xl flex-1">
+        <label class="input flex items-center gap-2 rounded-2xl flex-1">
           ${Icon("lucide:search", "opacity-50 shrink-0")}
           <input id="sheet-search" type="search" inputmode="search" autocomplete="off" class="grow min-w-0" placeholder=${T(t, "searchPh")} aria-label=${T(t, "search")} value=${q} onInput=${(e) => setQ(e.target.value)} />
         </label>
@@ -387,7 +386,7 @@ function SourceSheet({ S, t }) {
       </div>` : null}
       <button id="src-load" type="submit" class="btn btn-primary rounded-2xl gap-1">${Icon("lucide:play")} ${T(t, "load")}</button>
     </form>
-  </div>`;
+  <//>`;
 }
 
 // ---- the feed surface (shared by the Reel tab and the in-place Liked feed) ---------------------------

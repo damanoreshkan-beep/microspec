@@ -41,12 +41,14 @@ export default [
     },
   },
   {
+    // The detail is the kit's Sheet now, so the assertion is the dialog's STATE (`open`), not a class or a
+    // hand-rolled back button the kit does not have.
     name: "деталі бажання відкриваються, Back закриває", run: async (h) => {
       await h.click("[data-open]"); await h.wait(250);
-      h.expect((await h.count("#d-back")) === 1, "деталі не відкрились");
+      h.expect((await h.prop("#w-detail", "open")) === true, "деталі не відкрились");
       h.expect((await h.count("#d-del")) === 1, "немає кнопки видалення в деталях");
       await h.back(); await h.wait(250);
-      h.expect((await h.count("#d-back")) === 0, "Back не закрив деталі");
+      h.expect((await h.prop("#w-detail", "open")) !== true, "Back не закрив деталі");
     },
   },
   {
@@ -63,9 +65,10 @@ export default [
   {
     name: "редагування списку history-backed: Back закриває аркуш", run: async (h) => {
       await h.click("#edit-list"); await h.wait(200);
-      h.expect((await h.count("#l-save")) === 1, "аркуш списку не відкрився");
+      h.expect((await h.prop("#l-sheet", "open")) === true, "аркуш списку не відкрився");
+      h.expect((await h.count("#l-save")) === 1, "аркуш списку без кнопки збереження");
       await h.back(); await h.wait(200);
-      h.expect((await h.count("#l-save")) === 0, "Back не закрив аркуш списку");
+      h.expect((await h.prop("#l-sheet", "open")) !== true, "Back не закрив аркуш списку");
     },
   },
   {
@@ -79,7 +82,7 @@ export default [
       // Back cancels the confirm only — it stacks on top, so the list sheet stays open beneath it.
       await h.back(); await h.wait(200);
       h.expect((await h.prop("#confirm", "open")) !== true, "Back не закрив конфірм");
-      h.expect((await h.count("#l-save")) === 1, "Back мав скасувати лише конфірм, не аркуш списку");
+      h.expect((await h.prop("#l-sheet", "open")) === true, "Back мав скасувати лише конфірм, не аркуш списку");
       h.expect((await h.count("[data-list]")) === before, "список видалено попри скасування");
       // sheet is still open → delete again directly, then confirm
       await h.click("#l-del"); await h.wait(200);

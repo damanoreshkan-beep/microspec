@@ -24,12 +24,15 @@ export default [
     },
   },
   {
+    // Деталі — це kit-Sheet (/_rt/ui.js), тож стан читаємо з самого <dialog>, а не з наявності кнопки
+    // «назад» (її тепер малює кит). Панель має mono-заголовок, який CSS переводить в UPPERCASE — innerText
+    // віддає вже трансформований текст, тому регекс регістронезалежний.
     name: "деталі: heatmap + статистика, Back закриває", run: async (h) => {
       await h.click("[data-open]"); await h.wait(250);
-      h.expect((await h.count("#d-back")) === 1, "деталі не відкрились");
-      h.expect(/Рекорд|Останні 13/.test(await h.bodyText()), "немає статистики/heatmap");
+      h.expect((await h.prop("#h-detail", "open")) === true, "деталі не відкрились");
+      h.expect(/Рекорд|Останні 13/i.test(await h.bodyText()), "немає статистики/heatmap");
       await h.back(); await h.wait(250);
-      h.expect((await h.count("#d-back")) === 0, "Back не закрив деталі");
+      h.expect((await h.prop("#h-detail", "open")) !== true, "Back не закрив деталі");
     },
   },
   {
@@ -52,7 +55,7 @@ export default [
       h.expect((await h.prop("#confirm", "open")) === true, "конфірм не відкрився");
       await h.back(); await h.wait(200);
       h.expect((await h.prop("#confirm", "open")) !== true, "Back не закрив конфірм");
-      h.expect((await h.count("#d-back")) === 1, "деталі закрились — конфірм не мав їх чіпати");
+      h.expect((await h.prop("#h-detail", "open")) === true, "деталі закрились — конфірм не мав їх чіпати");
       h.expect((await h.count("[data-habit]")) === before, "звичку видалено попри скасування");
       await h.click("#d-del"); await h.wait(200);
       await h.click("#confirm-go"); await h.wait(300);

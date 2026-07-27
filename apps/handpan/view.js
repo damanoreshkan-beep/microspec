@@ -249,7 +249,7 @@ export function handpan({ S }) {
 
   return html`<div class="fixed left-0 right-0 z-20 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <${RippleBg} />
-    ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-14 right-3 z-20 btn btn-circle btn-sm border-base-content/10 backdrop-blur-md ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/50 text-muted"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
+    ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-14 right-3 z-20 btn btn-circle btn-sm ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/50 text-muted"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
     <div class="relative z-10 flex flex-col flex-1 min-h-0">
     <div class="shrink-0 px-3 py-2">
       <${Segmented} attr="data-scale" scroll variant="outline" label=${T(t, "scale")}
@@ -257,7 +257,7 @@ export function handpan({ S }) {
     </div>
 
     <div class="flex-1 min-h-0 relative grid place-items-center px-3">
-      <div ref=${panRef} class="relative w-[min(90vw,62vh)] aspect-square rounded-full bg-gradient-to-br from-base-300 to-base-100 border border-base-content/10 shadow-[inset_0_2px_18px_rgba(0,0,0,.5),0_10px_40px_-12px_rgba(0,0,0,.7)] select-none" style="touch-action:none"
+      <div ref=${panRef} class="relative w-[min(90vw,62vh)] aspect-square rounded-full bg-gradient-to-br from-base-300 to-base-100 sf-e3 select-none" style="touch-action:none"
         onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onLift} onPointerCancel=${onLift} onClick=${onClickBoard}>
         <!-- ding (centre) — a convex steel dome -->
         <button data-field="0" aria-label=${label(s.midi[0])} class=${`hp-field hp-ding ${lit.has(0) ? "hp-lit" : ""}`} style="left:50%;top:50%;width:27%;height:27%">

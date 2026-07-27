@@ -3530,7 +3530,12 @@ Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts o
 
   // and something has to BE the container, or every query above reads nothing
   const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
-  assert(/@container sf-e2/.test(ui), "Panel no longer establishes a container — the queries have nothing to read");
+  // Asserted on PANEL'S OWN class list, not on the adjacency of two class names: the previous form was
+  // `/@container sf-e2/`, which pinned the check to the ORDER the classes happen to be written in and
+  // failed the moment the surface gained `sf-raised` — a change that could not possibly stop a container
+  // from being a container. A check that breaks on a reorder is testing the source, not the behaviour.
+  const panelCls = /export function Panel\([^)]*\)\s*\{[\s\S]*?class=\$\{`([^`]*)`/.exec(ui)?.[1] ?? "";
+  assert(panelCls.includes("@container"), `Panel no longer establishes a container — the queries have nothing to read (its classes: ${panelCls})`);
 });
 
 Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager, the tap floor holds", async () => {
@@ -3725,4 +3730,64 @@ Deno.test("the surface system: every interactive node declares a state, and none
   const focus = css.slice(css.indexOf(".input:focus"), css.indexOf("}", css.indexOf(".input:focus")));
   assert(/0 0 0 \d+px var\(--app-accent\)/.test(focus), "focus must be a ring — an arbitrary hue behind text fails contrast in one theme");
   assert(!/background:\s*var\(--app-accent\)/.test(focus), "focus fills the field with the accent");
+});
+
+// ── The neumorphic material — the contract the repaint replaced the clay one with ──────────────────
+// Written because the four things below are exactly what a later "small tweak" silently breaks, and none
+// of them is visible to axe: a one-sided shadow still renders, a lighter card face still renders, a
+// hardcoded 5px offset still renders. They just stop being this material.
+Deno.test("the material: one light at 45°, a symmetric pair, and the surface IS the page", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  // A theme is declared in MORE THAN ONE block (the palette, then the surface tokens), so reading "the
+  // block after the selector" answers a different question than the one being asked. Collect them all.
+  const themeBlock = (t) => {
+    let out = "", i = -1;
+    while ((i = css.indexOf(`[data-theme="${t}"] {`, i + 1)) > -1) out += css.slice(i, css.indexOf("\n}", i)) + "\n";
+    return out;
+  };
+
+  for (const theme of ["signal", "signal-light"]) {
+    const b = themeBlock(theme);
+
+    // 1. The pair exists and is NAMED, so a rule composes it instead of restating two colours.
+    for (const v of ["--nm-dark", "--nm-light", "--nm-cast"]) {
+      assert(b.includes(v + ":"), `${theme} does not define ${v} — the pair is the material`);
+    }
+
+    // 2. Every composed surface carries BOTH halves. A single-sided shadow is a card sitting on a page;
+    //    the pair is the page itself pushed out or pressed in, and that difference IS the style.
+    for (const v of ["--sf-drop", "--sf-sink", "--sf-press"]) {
+      const decl = b.slice(b.indexOf(v + ":"));
+      const value = decl.slice(0, decl.indexOf(";"));
+      assert(value.includes("--nm-dark") || value.includes("--nm-press-dark"), `${theme} ${v} has no dark half`);
+      assert(value.includes("--nm-light"), `${theme} ${v} has no LIGHT half — a one-sided shadow is a drop shadow, not an extrusion`);
+    }
+
+    // 3. base-100 === base-200. The premise of the whole style: a raised object is the PAGE extruded, not
+    //    a lighter panel laid on top. The moment a card is a different tone the pair reads as a drop shadow
+    //    under a rectangle — which is the look this replaced.
+    const tok = (n) => /#[0-9A-Fa-f]{6}/.exec(b.slice(b.indexOf(`--color-${n}:`)))[0].toUpperCase();
+    assertEquals(tok("base-100"), tok("base-200"), `${theme}: base-100 and base-200 differ — a raised surface must be the same colour as the page it rises out of`);
+
+    // 4. The recess is the same colour too — depth comes from the shadow, never from a darker fill.
+    assert(/--sf-inset-face:\s*var\(--color-base-100\)/.test(b), `${theme}: the recessed face is a different colour — that is a panel, not a hole`);
+  }
+
+  // 5. The light is at 45°: x and y offsets are the same token, so there is exactly ONE light source in
+  //    the farm and it cannot drift per component. A rule that writes `0 4px` has invented a second one.
+  const pair = /var\(--nm-d\) var\(--nm-d\)|var\(--nm-d2\) var\(--nm-d2\)|var\(--nm-dp\) var\(--nm-dp\)/;
+  for (const v of ["--sf-drop", "--sf-sink", "--sf-press", "--sf-lift2", "--sf-sink2"]) {
+    const i = css.indexOf(v + ":");
+    assert(i > -1, `${v} is not defined`);
+    assert(pair.test(css.slice(i, css.indexOf(";", i))), `${v} does not offset x and y equally — the light must stay at 45°`);
+  }
+
+  // 6. The extrusion compacts with the density ladder. A 5px shadow that never steps is 5px deep on a
+  //    200px-tall split-screen window, where it is most of the control.
+  const steps = [...css.matchAll(/@media \(max-height:\s*(\d+)px\)\s*\{[^}]*--nm-d:\s*(\d+)px/g)]
+    .map((m) => ({ h: +m[1], d: +m[2] })).sort((a, b) => b.h - a.h);
+  assert(steps.length >= 2, "the extrusion depth does not step with the density ladder");
+  for (let i = 1; i < steps.length; i++) {
+    assert(steps[i].d < steps[i - 1].d, `--nm-d does not shrink at ${steps[i].h}px — depth must compact with everything else`);
+  }
 });

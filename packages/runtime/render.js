@@ -151,7 +151,7 @@ function Card({ item: it, card, hide }) {
   if (card.layout === "grid") {
     const href = card.href ? safeHref(it[card.href]) : null;
     const bg = card.bg ? it[card.bg] : null, fg = card.fg ? it[card.fg] : null;
-    const tile = html`<div class="aspect-square w-full rounded-[24%] flex items-center justify-center overflow-hidden border border-base-content/10 sf-e2" style=${bg ? `background-color:${bg}` : ""}>
+    const tile = html`<div class="aspect-square w-full rounded-[24%] flex items-center justify-center overflow-hidden sf-e2" style=${bg ? `background-color:${bg}` : ""}>
       ${card.image && it[card.image]
         ? html`<img src=${it[card.image]} alt="" loading="lazy" class="w-full h-full object-cover"/>`
         : html`<iconify-icon icon=${(card.icon && it[card.icon]) || "lucide:box"} class="text-3xl" style=${fg ? `color:${fg}` : ""}></iconify-icon>`}
@@ -410,7 +410,7 @@ function PermissionsScreen() {
     setStates((s) => ({ ...s, [k]: r }));
   };
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar bg-gradient-to-b from-base-200 via-base-200/85 to-transparent backdrop-blur-sm sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
+    <header class="navbar bg-base-100 sf-e2 sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
       <button id="perms-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${L.back} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${L.title}</div>
     </header>
@@ -462,12 +462,12 @@ function ApkScreen() {
   };
 
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar bg-gradient-to-b from-base-200 via-base-200/85 to-transparent backdrop-blur-sm sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
+    <header class="navbar bg-base-100 sf-e2 sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
       <button id="apk-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${sys("back", loc)} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${sys("apkTitle", loc)}</div>
     </header>
     <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">
-      <div data-apk class="flex items-center gap-3 rounded-2xl border border-base-content/10 bg-base-100 p-3">
+      <div data-apk class="flex items-center gap-3 rounded-2xl sf-raised sf-e2 p-3">
         <div class="size-14 rounded-2xl overflow-hidden bg-base-200 shrink-0 grid place-items-center ring-1 ring-base-content/10">
           ${icon ? html`<img src=${`data:image/png;base64,${icon}`} class="size-full object-cover" alt="" />` : Icon(A.spec.profile?.icon || "lucide:box", "text-2xl text-base-content/40")}
         </div>
@@ -517,7 +517,7 @@ function DetailView() {
   });
   const star = A.spec.fav ? html`<button id="detail-fav" aria-label=${on ? T(t, "unfavAria") : T(t, "favAria")} onClick=${() => A.toggleFav(it)} class=${`btn btn-ghost btn-sm btn-circle ${on ? "text-primary" : "opacity-60"}`}>${Icon(`lucide:bookmark${on ? "-check" : ""}`, "text-xl")}</button>` : null;
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar bg-gradient-to-b from-base-200 via-base-200/85 to-transparent backdrop-blur-sm sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${field(it, d.title, loc) ?? ""}</div>${star}</header>
+    <header class="navbar bg-base-100 sf-e2 sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${field(it, d.title, loc) ?? ""}</div>${star}</header>
     <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">${img}<div><h1 class="text-2xl font-bold leading-tight break-words">${field(it, d.title, loc) ?? ""}</h1>${d.subtitle && it[d.subtitle] ? html`<div class="text-base-content/70 mt-0.5">${field(it, d.subtitle, loc)}</div>` : null}</div>${bodyNode}${rows.some(Boolean) ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 py-1">${rows}</div></div>` : null}${actions.some(Boolean) ? html`<div class="flex flex-col gap-2">${actions}</div>` : null}</div>
   </div>`;
 }
@@ -671,7 +671,7 @@ function AppBar() {
   // title is the app's wordmark (mono/uppercase/heavy, styled via [data-title]). Height min-h-14 (3.5rem).
   // The "open on phone" trigger is desktop-only (hidden lg:) — a QR of THIS page to hop to your phone; it
   // stays in the DOM on mobile (display:none) so nothing needs a special build, and it's harmless there.
-  return html`<header ref=${hdrRef} class="navbar bg-gradient-to-b from-base-100 via-base-100/85 to-transparent backdrop-blur-sm sticky top-0 z-30 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+  return html`<header ref=${hdrRef} class="navbar bg-base-100 sf-e2 sticky top-0 z-30 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 
 // Desktop "open on phone": a QR of the current URL so you can continue on a phone, with an explicit "stay on
@@ -758,7 +758,7 @@ function Dock() {
   // (17.6:1 in signal-light), the label on it 16.8:1, and inactive labels stay at their full 10.6:1 — the
   // active state is now unmissable without dimming anything or spending colour, which this theme reserves
   // for meaning.
-  return html`<nav data-dock ref=${navRef} class="sf-raised sf-e3 fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem] bg-base-100/80 backdrop-blur-xl">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-label=${T(t, tab.label)} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary text-primary-content" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
+  return html`<nav data-dock ref=${navRef} class="sf-raised sf-e3 fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem]">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-label=${T(t, tab.label)} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary text-primary-content" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
 }
 
 function Toast() {

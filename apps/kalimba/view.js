@@ -150,7 +150,7 @@ export function kalimba({ S }) {
         <div class="flex-1 min-h-0 flex items-start justify-center gap-[3px] select-none" style="touch-action:none"
           onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onLift} onPointerCancel=${onLift} onClick=${onClickBoard}>
           ${tines.map((tn) => html`<button data-tine=${tn.pos} data-note=${tn.letter} aria-label=${label(tn.midi)}
-            class=${`relative flex-1 min-w-0 rounded-b-md bg-gradient-to-b from-zinc-100 to-zinc-400 shadow-sm transition-transform duration-100 ${lit.has(tn.pos) ? "ring-2 ring-primary translate-y-1.5 z-10 brightness-110" : ""}`}
+            class=${`relative flex-1 min-w-0 rounded-b-md bg-gradient-to-b from-zinc-100 to-zinc-400 sf-e2 transition-transform duration-100 ${lit.has(tn.pos) ? "ring-2 ring-primary translate-y-1.5 z-10 brightness-110" : ""}`}
             style=${`height:${tn.h}%`} key=${tn.pos}>
             ${tn.tonic ? html`<span class="pointer-events-none absolute inset-x-0 bottom-0 h-1.5 rounded-b-md bg-amber-400"></span>` : null}
             <span class="pointer-events-none absolute inset-x-0 bottom-1.5 text-center text-[10px] font-bold text-zinc-800">${tn.letter}</span>

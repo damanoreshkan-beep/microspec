@@ -133,6 +133,22 @@ async function preflight(appdir) {
     errs.push(`hand-rolled bottom sheet (\`modal-bottom\`) in ${srcFile} — import { Sheet } from "/_rt/ui.js" instead. The kit owns the shell (glass, drag-to-dismiss, title row, close, backdrop); pass open/onClose from your S.screen atom so Back still closes it.`);
   }
 
+  // The `modal-bottom` ban above only caught the apps that hand-rolled a sheet out of DaisyUI. Five more had
+  // built the same thing one layer lower — a bare `<div class="fixed inset-0" role="dialog">` with their own
+  // backdrop button, their own grip and their own close — so they sailed past a class-name check while being
+  // exactly the defect it exists to stop. sigil had two of them; nova had one in view.js and another in
+  // finale.js. They had already drifted apart (different radii, different backdrop opacities, two of them
+  // with no drag-to-dismiss at all), which is the failure mode: a copied component diverges silently.
+  //   Scoped to a FIXED, full-inset dialog, because that is a bottom sheet's geometry. An `absolute inset-0`
+  // overlay inside a game board (code's game-over screen) is not a sheet, and a <dialog> element driven by
+  // the kit is excluded by the Sheet import.
+  {
+    const bespokeSheet = /role=["']dialog["']/.test(src) && /fixed inset-0/.test(src);
+    if (bespokeSheet && !/\bSheet\b/.test(src)) {
+      errs.push(`hand-rolled bottom sheet in ${srcFile} — a \`fixed inset-0\` + \`role="dialog"\` is the farm's Sheet built by hand. import { Sheet } from "/_rt/ui.js": it owns the shell (glass, drag-to-dismiss, title row, close, backdrop, max-h-88dvh with the only sanctioned inner scroll) and the contents stay yours. Pass open/onClose from your S.screen atom so the system Back button still closes it.`);
+    }
+  }
+
   // ONE transport for the whole farm, same argument as the sheet above and the same static ban. Six apps had
   // hand-rolled a play control (rave's pad row, handpan twice, fmradio, drift, ambient, synesth, kalimba,
   // breathe) and they had already drifted: some square-stop and some pause-bar, some with a seek bar and some
@@ -144,6 +160,32 @@ async function preflight(appdir) {
     const toggles = /\?\s*"lucide:(pause|square)"\s*:\s*"lucide:play"|\?\s*"lucide:play"\s*:\s*"lucide:(pause|square)"/.test(src);
     if (toggles && !/\bTransport\b/.test(src)) {
       errs.push(`hand-rolled play/pause control in ${srcFile} — import { Transport } from "/_rt/ui.js" instead. Every control is opt-in (pass onPrev/onNext/onSeek/onRepeat/onShuffle and it appears), it carries its own a11y labels in both locales, and it is the only one that compacts correctly in a split-screen window.`);
+    }
+  }
+
+  // ONE material for the whole farm, and the same argument as the sheet and the transport above: an app
+  // that writes its own shadow is a second design system with a sample size of one. Twenty-seven of these
+  // had accumulated across twelve apps — `shadow-lg` on a card, `shadow-sm` on a tile, a hand-rolled
+  // `bg-base-100/80 backdrop-blur-xl border border-base-content/10` "glass island" in six different apps
+  // with six different opacities. None of it survived the repaint, because none of it was reading the
+  // theme: a fixed rgba(0,0,0,.5) drop is invisible on a dark page and a bruise on a light one.
+  //   The farm's surfaces are declared, not drawn: `sf-raised` · `sf-inset` · `sf-pressed`, or a rung of
+  // the elevation ladder `sf-e1`…`sf-e5`. Those read --nm-dark/--nm-light, so they invert with the theme
+  // and compact with the density ladder for free.
+  //   Scoped to Tailwind's SURFACE shadow utilities on purpose. `drop-shadow-*` is a filter on a glyph
+  // (legibility over arbitrary video, not a surface) and stays legal, as does an arbitrary shadow that
+  // paints a literal light source — an LED, a camera flash ring — which is depicting a thing, not a widget.
+  {
+    const surfaceShadow = /(?:^|[\s"'`])shadow-(?:sm|md|lg|xl|2xl|inner)\b/;
+    if (surfaceShadow.test(src)) {
+      errs.push(`app-authored shadow in ${srcFile} — the material is systemic. Declare what the surface IS: \`sf-raised\` / \`sf-inset\` / \`sf-pressed\`, or a rung of the ladder \`sf-e2\` (hover) … \`sf-e5\` (popover). A hardcoded shadow does not invert with the theme and does not compact with the density ladder.`);
+    }
+    // Glass over the app's OWN surface fights the extrusion it is blurring — and the sheet is opaque now.
+    // Over foreign content (a video frame, a camera feed) it is still the right call, so the ban is scoped
+    // to a blur sitting on a base-* surface, which is what every offender actually was.
+    const glassOnOurSurface = /backdrop-blur-[a-z0-9]+[^"'`]*\bbg-base-|bg-base-[0-9]+\/[0-9]+[^"'`]*\bbackdrop-blur-/;
+    if (glassOnOurSurface.test(src)) {
+      errs.push(`frosted glass over a base surface in ${srcFile} — glass and the extrusion are answers to the same question and cannot both be on screen: the blur erases the shadow pair that makes the surface read. Use \`sf-raised\`/\`sf-e4\` and an opaque bg-base-100. (Blur over a VIDEO or camera frame is still fine — that is foreign content, not our surface.)`);
     }
   }
 

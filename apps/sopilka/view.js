@@ -41,6 +41,18 @@ const HIT = 0.052;                                  // half-height of a hole's t
 const NAMES = ["До", "До♯", "Ре", "Ре♯", "Мі", "Фа", "Фа♯", "Соль", "Соль♯", "Ля", "Ля♯", "Сі"];
 const LAT = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
 
+// The pipe's MATERIAL is fixed, not themed — a wooden sopilka is the same wood under either theme, so the
+// two things drawn ON it are fixed too. This is why the holes do NOT take `sf-inset`: those tokens invert
+// with the theme (--nm-light goes #3A3A3E → #FFFFFF), which would light one unchanging brown pipe from two
+// different suns. The pipe itself sits on the PAGE, so its extrusion IS the page's — `sf-e3`, like
+// handpan's bowl.
+//   The pad also has to be fixed for a second reason: it used to be `bg-base-content`, which is near-WHITE
+// in the dark theme and near-BLACK in the light one. Against a bore that is black in both, "covered" and
+// "open" were one clear pair in dark and an indistinguishable pair in light — the dock's 1.56:1 bug, on the
+// only state this instrument shows you.
+const BORE = "rgba(0,0,0,.72)";        // an open hole: the bore, a hole in wood reads dark in any theme
+const PAD = "#F2EDE4";                 // a fingertip on it — bone, and bone under both themes
+
 // The app owns the TUNING; the runtime owns the acoustics (fingeredSemitone in /_rt/wind.js). Same split
 // as groove.js: a rule true of every fipple flute does not belong to one of them.
 const semitoneFor = (covered) => fingeredSemitone(covered, SCALE);
@@ -136,17 +148,20 @@ export function sopilka({ S }) {
     </div>
 
     <div ref=${pipe} data-pipe
-      class="relative w-24 rounded-[3rem] border border-base-content/15 touch-none select-none cursor-pointer"
+      class="relative w-24 rounded-[3rem] sf-e3 touch-none select-none cursor-pointer"
       style="height:min(60svh,29rem);background:linear-gradient(100deg,#6b4a24,#a9793d 42%,#7d5729)"
       onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onPointerCancel=${up}>
       <div class="absolute inset-x-0 flex justify-center" style="top:9%">
         <div class="w-8 h-1.5 rounded-full bg-black/45"></div>
       </div>
       ${Array.from({ length: HOLES }, (_, i) => html`<div key=${i} data-hole=${i} aria-hidden="true"
-        class=${`absolute left-1/2 -translate-x-1/2 w-7 h-7 rounded-full border transition-colors ${covered.has(i) ? "bg-base-content border-base-content/40" : "bg-black/70 border-black/50"}`}
-        style=${`top:calc(${TOP + i * GAP}% - 0.875rem)`}></div>`)}
+        class="absolute left-1/2 -translate-x-1/2 w-7 h-7 rounded-full transition-colors"
+        style=${`top:calc(${TOP + i * GAP}% - 0.875rem);background:${covered.has(i) ? PAD : BORE}`}></div>`)}
     </div>
 
+    ${/* Передування is ON or OFF — a boolean, not a one-of-N choice, so it stays a button with aria-pressed
+          and never becomes a `Segmented` strip (same call as sigil's tilt). The off face carries the raised
+          extrusion from theme.css `.btn:not(.btn-ghost)`; the on face is the filled ink pill. */""}
     <button id="over" data-over aria-pressed=${over} class=${`btn btn-sm rounded-2xl gap-2 ${over ? "btn-primary" : "btn-outline"}`}
       data-haptic="bump" onClick=${() => setOver((v) => !v)}>${Icon("lucide:wind", "text-base")}${T(t, "overblow")}</button>
     ${!audioSupported ? html`<div class="text-xs text-base-content/70 text-center">${T(t, "noAudio")}</div>` : null}

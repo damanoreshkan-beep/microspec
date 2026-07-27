@@ -14,6 +14,7 @@ import { BODY_KEYS, skyPositions, sunHorizon, sunTimes } from "/_rt/astro.js";
 import { SkyDial } from "/_rt/skydial.js";
 import { TimeScale } from "/_rt/timescale.js";
 import { Scramble } from "/_rt/skeleton.js";
+import { Sheet } from "/_rt/ui.js";
 import { isGate, MOCK, gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -75,21 +76,26 @@ export function sun({ S, openScreen, closeScreen }) {
   const grant = async () => { if (await compass.request()) setNeedPerm(false); };
   const openGlobe = () => { const l = picked || pos || KYIV; setTmp({ lat: l.lat, lng: l.lng }); setFocus({ lat: l.lat, lon: l.lng }); openScreen("globe"); };
 
-  // Location picker on the globe (history-backed screen) — tap a point → the sun math recomputes for it.
-  if (screen === "globe") {
-    return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto flex flex-col" style="padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)">
-      <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1"><button id="globe-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "close")} onClick=${closeScreen}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight px-1">${T(t, "pickTitle")}</div></header>
-      <div class="flex-1 flex flex-col items-center justify-center gap-4 px-4 py-6">
-        <${Globe} marker=${tmp ? { lat: tmp.lat, lon: tmp.lng } : null} focus=${focus} spin=${!tmp} onPick=${({ lat, lon, name }) => setTmp({ lat, lng: lon, name })} height=${320} />
-        <div class="text-center min-h-10">
-          <div class="font-semibold">${tmp?.name || T(t, "tapGlobe")}</div>
-          <div class="text-xs text-muted tabular-nums">${tmp ? `${tmp.lat.toFixed(2)}°, ${tmp.lng.toFixed(2)}°` : ""}</div>
-        </div>
-        <div class="flex flex-wrap gap-1.5 justify-center px-4">${PRESETS.map(([n, la, lo]) => html`<button class="btn btn-xs btn-ghost border border-base-300 rounded-full" data-city=${n} key=${n} onClick=${() => { setTmp({ lat: la, lng: lo, name: n }); setFocus({ lat: la, lon: lo }); }}>${n}</button>`)}</div>
-        <button id="pick-here" class="btn btn-primary rounded-2xl gap-2" disabled=${!tmp} onClick=${() => { setPicked(tmp); closeScreen(); }}>${Icon("lucide:map-pin")}${T(t, "pickHere")}</button>
+  // Location picker on the globe — the kit's Sheet, opened from the SAME history-backed S.screen atom the
+  // hand-rolled full-screen dialog used, so the system Back button still closes it. The shell (backdrop,
+  // grip/drag-dismiss, title row, close, 88dvh + inner scroll) is the kit's; the globe, the city presets and
+  // the confirm stay the app's. The Globe itself mounts only while the sheet is open — its canvas runs a rAF
+  // loop for the idle spin, and a globe turning behind a closed dialog is a battery bill with no viewer.
+  const globeSheet = html`<${Sheet} id="globesheet" open=${screen === "globe"} onClose=${closeScreen}
+    title=${T(t, "pickTitle")} icon="lucide:globe">
+    <div class="flex flex-col items-center gap-4">
+      ${screen === "globe" ? html`<${Globe} marker=${tmp ? { lat: tmp.lat, lon: tmp.lng } : null} focus=${focus} spin=${!tmp} onPick=${({ lat, lon, name }) => setTmp({ lat, lng: lon, name })} height=${300} />` : null}
+      <div class="text-center min-h-10">
+        <div class="font-semibold">${tmp?.name || T(t, "tapGlobe")}</div>
+        <div class="text-xs text-muted tabular-nums">${tmp ? `${tmp.lat.toFixed(2)}°, ${tmp.lng.toFixed(2)}°` : ""}</div>
       </div>
-    </div>`;
-  }
+      ${/* NOT a Segmented: these are JUMPS, not a one-of-N choice. The picked value is any point on the
+           globe, so most of the time none of the five is the value — a strip whose active pill is usually
+           nowhere is a strip lying about its own state. They stay a wrapping palette of raised chips. */""}
+      <div class="flex flex-wrap gap-1.5 justify-center">${PRESETS.map(([n, la, lo]) => html`<button class="btn btn-xs rounded-full" data-city=${n} key=${n} onClick=${() => { setTmp({ lat: la, lng: lo, name: n }); setFocus({ lat: la, lon: lo }); }}>${n}</button>`)}</div>
+      <button id="pick-here" class="btn btn-primary rounded-2xl gap-2" disabled=${!tmp} onClick=${() => { setPicked(tmp); closeScreen(); }}>${Icon("lucide:map-pin")}${T(t, "pickHere")}</button>
+    </div>
+  <//>`;
 
   // No spinner: the dial renders IMMEDIATELY; the centre readout + scrubber are atomic skeletons until a
   // location is known (GPS, a globe pick, or the Kyiv fallback). loc may be null for a moment on a real device.
@@ -150,5 +156,7 @@ export function sun({ S, openScreen, closeScreen }) {
 
     ${ready ? html`<${TimeScale} value=${scrub} now=${now.getHours() * 60 + now.getMinutes()} onChange=${setScrub} t=${t}
       sunrise=${minOfDay(times.sunrise)} sunset=${minOfDay(times.sunset)} anchors=${anchors} />` : null}
+
+    ${globeSheet}
   </div>`;
 }

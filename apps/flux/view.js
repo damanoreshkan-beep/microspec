@@ -146,11 +146,19 @@ export function flux({ S }) {
       </div>` : null}
     </div>
 
-    <div class="shrink-0 bg-base-100 border-t border-base-300 px-4 pt-3 pb-3 flex items-center justify-center gap-3">
+    ${/* The control deck. Not a bar with a hairline on it: the deck IS the page extruded, so it declares a
+         surface state (raised, L2 — the in-flow elevation Panel uses) and the shadow pair draws its top
+         edge. A `border-t` on top of an extrusion reads as a sticker, and against a black stage it was
+         drawing a line the material already draws. */""}
+    <div class="shrink-0 sf-raised sf-e2 px-4 pt-3 pb-3 flex items-center justify-center gap-3">
+      ${/* Two INDEPENDENT toggles (camera ghost, sound) and two actions (clear, save) — not a one-of-N
+           choice, so deliberately NOT a `Segmented`: a strip would claim the four are alternatives and that
+           picking one un-picks the rest, which is false in both directions here. `.btn` already carries the
+           raised/pressed states from theme.css, so the material needs no app class. */""}
       <button data-ghost aria-label=${T(t, "ghost")} aria-pressed=${ghost} onClick=${() => setGhost((g) => !g)} class=${`btn btn-circle btn-sm ${ghost ? "btn-primary" : "btn-ghost"}`}>${Icon(ghost ? "lucide:eye" : "lucide:eye-off", "text-lg")}</button>
       <button data-sound aria-label=${T(t, "sound")} aria-pressed=${sound} onClick=${toggleSound} class=${`btn btn-circle btn-sm ${sound ? "btn-primary" : "btn-ghost"}`}>${Icon(sound ? "lucide:volume-2" : "lucide:volume-x", "text-lg")}</button>
       <button data-clear aria-label=${T(t, "clear")} data-haptic="bump" onClick=${clear} class="btn btn-ghost btn-sm btn-circle">${Icon("lucide:trash-2", "text-lg")}</button>
-      <button data-save aria-label=${T(t, "save")} onClick=${save} class="btn btn-primary rounded-2xl gap-2 px-5">${Icon("lucide:download")}${T(t, "save")}</button>
+      <button data-save aria-label=${T(t, "save")} onClick=${save} class="btn btn-primary gap-2 px-5">${Icon("lucide:download")}${T(t, "save")}</button>
     </div>
     ${!enabled || err ? html`<${CameraPrime} loc=${loc} reason=${T(t, "primeReason")} onEnable=${() => setEnabled(true)} onSettings=${() => S.screen.set("perms")} denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />` : null}
   </div>`;

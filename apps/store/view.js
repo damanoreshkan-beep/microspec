@@ -27,7 +27,14 @@ const catKey = (c) => "cat" + c[0].toUpperCase() + c.slice(1);
 
 export function store({ S, openScreen, closeScreen }) {
   const t = useStore(S.t), screen = useStore(S.screen), theme = useStore(S.theme);
-  const dark = theme !== "signal-light";   // the accent-lit dark tile vs the pastel light tile (iconTint)
+  // `theme` is subscribed to for the RE-RENDER; the boolean is read off the DOM, which is the only source
+  // that knows the theme actually being painted. `?theme=light` (the taste gate's override) sets
+  // data-theme WITHOUT writing S.theme — deliberately, so a shared link can't change someone's setting —
+  // so keying off the atom drew 60 brand-dark tiles onto a light page in every light-theme screenshot,
+  // i.e. the review tool was lying about the one app whose whole surface is tiles. gsmscan already read
+  // the DOM for exactly this reason. With no override the two agree, so real users are unaffected.
+  void theme;
+  const dark = !(typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light"));
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");   // active category chip; "all" shows every section
   const [seen, setSeen] = useState(null);   // { id: version } last opened at (null while loading from IndexedDB)

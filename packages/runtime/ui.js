@@ -168,8 +168,9 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
 }
 
 // ── Panel — the solid surface ─────────────────────────────────────────────────────────────────────────
-// What a card is in the list family: solid ink, hairline border, optional mono micro-label header. Use it
-// for grouped controls; use Island only where the panel floats OVER content.
+// What a card is in the list family: the page EXTRUDED (sf-raised at the shallow elevation), no border, an
+// optional mono micro-label header. Use it for grouped controls; use Island only where the panel floats
+// OVER content. It has no hairline — this comment used to say it did, and app authors copied that.
 export function Panel({ title, children, className = "", ...rest }) {
   return html`<div ...${rest} class=${`@container sf-raised sf-e2 rounded-[var(--ms-r)] p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
     ${title ? html`<div data-panel-title class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${title}</div>` : null}

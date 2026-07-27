@@ -30,8 +30,11 @@ const dict = i18n.uk || i18n.en || {};
 const title = dict.title || spec.id;
 const tagline = dict.profTagline || title;
 const isLight = /light/.test(spec.theme || "");
-const themeColor = isLight ? "#FAFAF9" : "#0A0A0B";
-const bg = isLight ? "#FFFFFF" : "#0A0A0B";
+// The installed-PWA splash + Android status bar. These MUST track the theme bases: they were left at
+// the pre-redesign near-black through the neumorphic repaint, so every installed app showed a #0A0A0B
+// splash butted against a #2A2A2E page. No screenshot can catch this — microlink does not render OS chrome.
+const themeColor = isLight ? "#EEEEF1" : "#2A2A2E";
+const bg = isLight ? "#EEEEF1" : "#2A2A2E";
 const lang = i18n.uk ? "uk" : locales[0];
 
 // index.html composes the spec from spec.json + each i18n/<locale>.json (imported as JSON modules) and
@@ -56,14 +59,14 @@ const startWiring = [
 // simply fades to the live app — no blank frame, no white flash, no spinner. index.js removes #boot after
 // the first render. Plain CSS only (Tailwind utilities don't exist yet).
 const bootCss = `
-    html,body{background:var(--color-base-200,#141416)}
-    #boot{position:fixed;inset:0;z-index:60;background:var(--color-base-200,#141416);opacity:1;transition:opacity .4s ease;pointer-events:none}
+    html,body{background:var(--color-base-200,#2A2A2E)}
+    #boot{position:fixed;inset:0;z-index:60;background:var(--color-base-200,#2A2A2E);opacity:1;transition:opacity .4s ease;pointer-events:none}
     #boot.gone{opacity:0}
-    #boot .bh{height:3.5rem;padding-top:env(safe-area-inset-top);display:flex;align-items:center;padding-left:1rem;background:color-mix(in oklch,var(--color-base-100,#0a0a0b) 80%,transparent);border-bottom:1px solid color-mix(in oklch,var(--color-base-content,#ececee) 10%,transparent)}
+    #boot .bh{height:3.5rem;padding-top:env(safe-area-inset-top);display:flex;align-items:center;padding-left:1rem;background:var(--color-base-100,#2A2A2E);box-shadow:3px 3px 6px var(--nm-dark,#1A1A1E),-3px -3px 6px var(--nm-light,#3A3A3E)}
     #boot .bm{font-family:var(--font-mono,ui-monospace,monospace);text-transform:uppercase;letter-spacing:.05em;font-weight:700;font-size:1.02rem;color:var(--color-base-content,#ececee);opacity:.85}
     #boot .bb{position:absolute;left:0;right:0;top:calc(3.5rem + env(safe-area-inset-top));height:2px;overflow:hidden;background:color-mix(in oklch,var(--color-base-content,#ececee) 8%,transparent)}
     #boot .bb i{position:absolute;top:0;height:100%;width:38%;border-radius:2px;background:var(--color-primary,#ececee);animation:bootslide 1.1s cubic-bezier(.4,0,.2,1) infinite}
-    #boot .bd{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + .75rem);width:12rem;height:3.25rem;border-radius:1.35rem;background:color-mix(in oklch,var(--color-base-100,#0a0a0b) 80%,transparent);border:1px solid color-mix(in oklch,var(--color-base-content,#ececee) 10%,transparent)}
+    #boot .bd{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + .75rem);width:12rem;height:3.25rem;border-radius:1.35rem;background:var(--color-base-100,#2A2A2E);box-shadow:3px 3px 6px var(--nm-dark,#1A1A1E),-3px -3px 6px var(--nm-light,#3A3A3E)}
     @keyframes bootslide{0%{left:-38%}100%{left:100%}}
     @media(prefers-reduced-motion:reduce){#boot .bb i{animation:none;left:0;width:100%;opacity:.5}}`;
 const bootShell = `  <div id="boot" aria-hidden="true"><div class="bh"><span class="bm">${title}</span></div><div class="bb"><i></i></div><div class="bd"></div></div>`;

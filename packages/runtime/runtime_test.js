@@ -3791,3 +3791,82 @@ Deno.test("the material: one light at 45°, a symmetric pair, and the surface IS
     assert(steps[i].d < steps[i - 1].d, `--nm-d does not shrink at ${steps[i].h}px — depth must compact with everything else`);
   }
 });
+
+// The first cut of the neumorphic light theme ran a dark half 2.4x the light one (−39 against +16 on a
+// #EEEEF1 base) while the dark theme was exactly ±16. Nothing failed: the pair existed, both halves were
+// present, every earlier assertion passed — and the light theme still read as an ordinary drop shadow
+// instead of an extrusion. Two independent app reviews measured it off screenshots before anyone could
+// explain it. Symmetry is the property that makes this material read, so it is the property to assert.
+Deno.test("the material: the two halves of the pair are near-symmetric in BOTH themes", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const lum = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).reduce((a, b) => a + b) / 3;
+  const grab = (block, name) => /#[0-9A-Fa-f]{6}/.exec(block.slice(block.indexOf(name + ":")))?.[0];
+  const themeBlocks = (t) => {
+    let out = "", i = -1;
+    while ((i = css.indexOf(`[data-theme="${t}"] {`, i + 1)) > -1) out += css.slice(i, css.indexOf("\n}", i)) + "\n";
+    return out;
+  };
+
+  for (const theme of ["signal", "signal-light"]) {
+    const b = themeBlocks(theme);
+    const base = lum(grab(b, "--color-base-100"));
+    const down = base - lum(grab(b, "--nm-dark"));
+    const up = lum(grab(b, "--nm-light")) - base;
+    assert(down > 0 && up > 0, `${theme}: the pair must straddle the base — down=${down}, up=${up}`);
+    // 1.5x is the line: the dark theme sits at 1.0 and the light one at 1.3 (capped by how little headroom
+    // #EEEEF1 leaves toward white). 2.4x was visibly a drop shadow, so the gate sits between the two.
+    const ratio = Math.max(down, up) / Math.min(down, up);
+    assert(
+      ratio <= 1.5,
+      `${theme}: the shadow pair is lopsided — dark half ${down.toFixed(0)}, light half ${up.toFixed(0)} ` +
+        `(${ratio.toFixed(1)}x). One side that dominates turns the extrusion back into a drop shadow. ` +
+        `If the base has no headroom left in the weak direction, MOVE THE BASE — do not widen the strong side.`,
+    );
+  }
+
+  // Blur may not exceed 2x its offset, or each half bleeds back around the NEAR edges and draws a faint
+  // dark rim between the object and its own highlight — "the page extruded" quietly becoming "a rectangle
+  // with a border". Found by eye on a card list at 1x before it was arithmetic.
+  // EVERY declaration site, not just the base one. The first version of this check sliced from the first
+  // `:root` after `--nm-d:` and so read exactly one block — which would have passed while all four density
+  // steps were at 2.5x and 3x, i.e. it would have certified the wrong thing. The pairs are co-declared on
+  // one line at each step, so match them together and walk them all.
+  const pairs = [...css.matchAll(/--nm-(d2?|dp):\s*(\d+)px;\s*--nm-(b2?|bp):\s*(\d+)px/g)];
+  assert(pairs.length >= 4, `expected the base pair plus every density step, found ${pairs.length}`);
+  for (const m of pairs) {
+    const [off, bl] = [Number(m[2]), Number(m[4])];
+    assert(
+      bl <= off * 2,
+      `--nm-${m[3]} (${bl}px) exceeds 2x --nm-${m[1]} (${off}px) — the blur bleeds past the NEAR edge and ` +
+        `paints a faint rim between the object and its own highlight, turning "the page extruded" back into ` +
+        `"a rectangle with a border". Every density step has to hold this, not just the base one.`,
+    );
+  }
+});
+
+// The installed-PWA splash and the Android status bar are the one surface no screenshot can reach:
+// microlink renders the page, never the OS chrome around it. So they sat at the pre-redesign near-black
+// through an entire repaint — 119 files — and only a code read found them.
+Deno.test("PWA chrome colours track the theme bases — the surface no screenshot can see", async () => {
+  const root = new URL("../../", import.meta.url);
+  const css = await Deno.readTextFile(new URL("packages/runtime/theme.css", root));
+  const baseOf = (t) => {
+    const i = css.indexOf(`[data-theme="${t}"] {`);
+    return /--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(css.slice(i))[1].toUpperCase();
+  };
+  const allowed = new Set([baseOf("signal"), baseOf("signal-light")]);
+  const bad = [];
+  for await (const e of Deno.readDir(new URL("apps/", root))) {
+    if (!e.isDirectory) continue;
+    try {
+      const m = JSON.parse(await Deno.readTextFile(new URL(`apps/${e.name}/manifest.json`, root)));
+      for (const k of ["theme_color", "background_color"]) {
+        if (m[k] && !allowed.has(m[k].toUpperCase())) bad.push(`${e.name}/manifest.json ${k}=${m[k]}`);
+      }
+      const html = await Deno.readTextFile(new URL(`apps/${e.name}/index.html`, root));
+      const meta = /<meta name="theme-color" content="(#[0-9A-Fa-f]{6})"/.exec(html)?.[1];
+      if (meta && !allowed.has(meta.toUpperCase())) bad.push(`${e.name}/index.html meta theme-color=${meta}`);
+    } catch { /* an app without a manifest is another gate's problem */ }
+  }
+  assertEquals(bad, [], `PWA chrome is off-theme (allowed: ${[...allowed].join(", ")}). An installed app would show a splash and status bar from the previous design: ${bad.join(", ")}`);
+});

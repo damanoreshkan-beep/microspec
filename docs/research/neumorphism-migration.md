@@ -244,6 +244,56 @@ floor maths *before* any hex was written into `theme.css`.
 
 Local gates: ajv + preflight (60 apps) + **310** unit tests + `sw --check` + `counts --check`, all green.
 
+## 7b. The taste pass — what it found, and why it is only 1/10 done
+
+Sixty agents were fanned out, one per app, each to shoot four shapes and judge its own PNGs. **Only six
+apps were actually reviewed** (`actions`, `air`, `ambient`, `apkforge`, `books`, `breathe`). The rest saw
+nothing.
+
+**Cause, and it was mine.** I told every agent to pass `--fresh` on every shot. `--fresh` is `force=true`,
+a *paid re-render* — 60 apps × 4 shapes ≈ 240 forced renders against a free daily microlink allowance,
+which the pass exhausted around the letter `b`. The instruction was right in intent (a cache hit right
+after a deploy returns the build you just replaced) and wrong in dosage: only the apps shot *before* the
+deploy needed forcing. **Next pass: no `--fresh` by default; force only on a re-shoot of an app already
+photographed today, and run in waves.**
+
+**One agent's report had to be thrown out entirely.** `handpan` returned `shotsRead: 4`, a `broken`
+verdict and confident pixel measurements of the light theme — from files dated **five days before the
+redesign** (`handpan.png`, `handpan_mock.png`; there is no `handpan@phone~light.png` at all). A stale
+artifact read as fresh evidence is worse than no evidence, because it is *specific*. Any future fan-out
+must verify the shot's mtime, not the agent's claim.
+
+### What the six real reviews found — and it was worth the pass on its own
+
+Two systemic defects, both **measured off screenshots before anyone could explain them**, and both
+confirmed as arithmetic afterwards:
+
+1. **The light theme's pair was lopsided 2.4:1.** `--nm-dark #C6C6CC` is −39 from a `#EEEEF1` base while
+   `--nm-light #FFFFFF` is only +16. Dark was exactly ±16. That single asymmetry is why light read as an
+   ordinary drop shadow with a faint halo instead of an extrusion — the redesign's core premise, quietly
+   half-failing in one theme. Now −21/+16 (1.3×); a perfectly symmetric ±16 would be too faint to carry
+   the material, and going further requires a darker base, which is the owner's call.
+2. **Blur exceeded 2× its offset**, so each half bled back around the *near* edges and drew a 1px dark rim
+   between every card and its own highlight — "the page extruded" turning back into "a rectangle with a
+   border". Fixed at the base *and at all four density steps*, which is where the newly-written gate
+   immediately caught me: I had fixed the base pair and left the steps at 2.5× and 3×.
+
+Plus two regressions I introduced and had not seen:
+
+3. **Every range track went invisible.** `--range-bg` pointed at `--sf-inset-face`, which the repaint
+   redefined to `base-100` — the exact colour of the surface the slider sits on. A 6px track cannot hold a
+   shadow pair, so it is the one place tone must stand in for depth: `--sf-track-face` is now a real step.
+4. **119 files still carried the pre-redesign `#0A0A0B`** in `theme_color` / `background_color` / the
+   `#boot` shell, so every installed PWA showed a near-black splash and status bar against a `#2A2A2E`
+   app. The boot dock stub was outright *invisible*, because it relied on `base-100` being lighter than
+   `base-200` — which by design it no longer is. No screenshot could ever have caught this: microlink
+   renders the page, never the OS chrome around it. A code read found it.
+
+Both fixes ship with the gate that holds them: a symmetry assertion (max 1.5× ratio, both themes, and it
+says "move the base" rather than "widen the strong side"), a blur:offset check across *every* declaration
+site, and a PWA-chrome check that pins `theme_color`/`background_color`/`<meta theme-color>` to the theme
+bases.
+
 ### Still open
 
 - **Kit migration (§6 option C)** — 38 apps still do not import `/_rt/ui.js`. `sigil` alone hand-rolls two

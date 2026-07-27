@@ -511,6 +511,11 @@ body::after {
   background: var(--sf-inset-face);
   box-shadow: inset 0 2px 5px -1px var(--sf-inset-top), inset 0 -1px 0 0 var(--sf-lip);
 }
+/* Canonical FIELD HEIGHT — the design system owns it, so no app hand-rolls `h-11`/`h-14` (a per-app
+   height was the tell that inputs had no systemic size). One comfortable height for every text field,
+   matching the default control (`.btn`) so a field and a button sit level side by side. Textarea is
+   excluded — it grows with its rows. Loaded last, so this wins over DaisyUI's default and any utility. */
+.input, .select, .file-input { height: 3rem; }
 /* Focus is a RING, not a fill: --app-accent is a mark colour and must never end up behind text. The recess
    stays, so a focused field still reads as a field rather than becoming a raised object. */
 .input:focus, .input:focus-within, .textarea:focus, .select:focus, .file-input:focus {

@@ -207,8 +207,8 @@ export function pins({ S, toast }) {
         <input id="q" data-q type="url" inputmode="url" autocomplete="off" value=${q}
           aria-label=${T(t, "inputLabel")} placeholder=${T(t, "inputPlaceholder")}
           onInput=${(e) => $q.set(e.target.value)}
-          class="input input-bordered h-14 w-full flex-1 min-w-0 rounded-2xl text-base" />
-        <button id="grab" type="submit" disabled=${busy} class="btn btn-primary h-14 min-h-0 rounded-2xl gap-1.5 shrink-0">
+          class="input input-bordered w-full flex-1 min-w-0 rounded-2xl" />
+        <button id="grab" type="submit" disabled=${busy} class="btn btn-primary rounded-2xl gap-1.5 shrink-0">
           ${Icon(busy ? "lucide:loader" : "lucide:arrow-down-to-line", `text-base ${busy ? "animate-spin" : ""}`)}
           <span class="truncate">${T(t, busy ? "grabbing" : "grab")}</span>
         </button>

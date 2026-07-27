@@ -92,7 +92,9 @@ export function check({ S }) {
     ${hex ? html`<div class="rounded-3xl sf-raised p-4 flex flex-col gap-3 min-w-0">
       <div class="flex items-center gap-2 text-[11px] uppercase tracking-widest text-base-content/70 font-mono">${Icon("lucide:hash", "text-sm")}SHA-1</div>
       <div data-hash class="font-mono text-sm break-all leading-relaxed min-w-0">
-        <span class="inline-flex items-center rounded-md bg-primary/15 text-primary font-bold px-1.5 py-0.5 mr-0.5 ring-1 ring-primary/30">${prefix}</span><span class="text-base-content/45 tracking-tight">${suffix}</span>
+        ${/* The 5 chars that leave are a CHIP — a small object lifted off the hash, on the shallow pair.
+             The ring it used to carry was an outline doing the shadow's job. */""}
+        <span class="inline-flex items-center rounded-md bg-primary/15 text-primary font-bold px-1.5 py-0.5 mr-0.5 sf-e2">${prefix}</span><span class="text-base-content/45 tracking-tight">${suffix}</span>
       </div>
       <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs min-w-0">
         <div class="flex items-center gap-1.5 min-w-0"><span class="w-2 h-2 rounded-full bg-primary shrink-0"></span><span class="text-base-content/70 truncate">${T(t, "sentLabel")}</span></div>
@@ -117,10 +119,13 @@ export function check({ S }) {
     </div>
 
     <!-- verdict -->
-    ${res && status === "done" ? html`<div ref=${verdictRef} data-verdict data-pwned=${String(res.pwned)} class="relative rounded-3xl p-6 flex flex-col items-center gap-1.5 min-w-0 overflow-hidden border ${res.pwned ? "border-error/25" : "border-success/25"}">
+    ${/* The verdict is the page pushed OUT at the deepest rung the surface has (sf-e3) — it used to be a
+         tinted hairline, an outline standing in for the shadow pair. The meaning still reads in colour:
+         the aura, the icon well and the heading all carry error/success. */""}
+    ${res && status === "done" ? html`<div ref=${verdictRef} data-verdict data-pwned=${String(res.pwned)} class="relative rounded-3xl p-6 flex flex-col items-center gap-1.5 min-w-0 overflow-hidden sf-raised sf-e3">
       <div ref=${glowRef} class=${`absolute -z-0 w-40 h-40 rounded-full blur-3xl ${res.pwned ? "bg-error/25" : "bg-success/25"}`} style="opacity:.35"></div>
       <div class="relative z-10 flex flex-col items-center gap-1.5 min-w-0">
-        <div class=${`w-16 h-16 rounded-2xl flex items-center justify-center ${res.pwned ? "bg-error/15" : "bg-success/15"}`}>
+        <div class=${`w-16 h-16 rounded-2xl flex items-center justify-center sf-e2 ${res.pwned ? "bg-error/15" : "bg-success/15"}`}>
           ${Icon(res.pwned ? "lucide:shield-alert" : "lucide:shield-check", `text-4xl ${res.pwned ? "text-error" : "text-success"}`)}
         </div>
         <div class=${`text-lg font-semibold mt-1 ${res.pwned ? "text-error" : "text-success"}`}>${T(t, res.pwned ? "vPwned" : "vClean")}</div>

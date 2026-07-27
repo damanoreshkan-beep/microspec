@@ -176,15 +176,24 @@ async function preflight(appdir) {
   // (legibility over arbitrary video, not a surface) and stays legal, as does an arbitrary shadow that
   // paints a literal light source — an LED, a camera flash ring — which is depicting a thing, not a widget.
   {
+    // Scanned WITHOUT comments. These two bans match on class-name shapes, and the most likely place to
+    // write the banned shape deliberately is a comment explaining what was removed and why — outpost's
+    // note recording the hairline-plus-glass it had replaced failed its own app for describing history.
+    // A gate that punishes documentation teaches people to delete the documentation.
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
     const surfaceShadow = /(?:^|[\s"'`])shadow-(?:sm|md|lg|xl|2xl|inner)\b/;
-    if (surfaceShadow.test(src)) {
+    if (surfaceShadow.test(code)) {
       errs.push(`app-authored shadow in ${srcFile} — the material is systemic. Declare what the surface IS: \`sf-raised\` / \`sf-inset\` / \`sf-pressed\`, or a rung of the ladder \`sf-e2\` (hover) … \`sf-e5\` (popover). A hardcoded shadow does not invert with the theme and does not compact with the density ladder.`);
     }
     // Glass over the app's OWN surface fights the extrusion it is blurring — and the sheet is opaque now.
     // Over foreign content (a video frame, a camera feed) it is still the right call, so the ban is scoped
     // to a blur sitting on a base-* surface, which is what every offender actually was.
-    const glassOnOurSurface = /backdrop-blur-[a-z0-9]+[^"'`]*\bbg-base-|bg-base-[0-9]+\/[0-9]+[^"'`]*\bbackdrop-blur-/;
-    if (glassOnOurSurface.test(src)) {
+    // `backdrop-blur` with NO suffix is Tailwind's DEFAULT blur, not a typo — and the first version of this
+    // ban required the hyphen, so four sticky headers (rave, handpan, actions, outpost) sailed straight
+    // through it while being the exact defect. `-?` where the suffix is optional; `\b` so it still cannot
+    // match `backdrop-blur-none`-style words mid-token.
+    const glassOnOurSurface = /backdrop-blur(-[a-z0-9]+)?\b[^"'`]*\bbg-base-|bg-base-[0-9]+\/[0-9]+[^"'`]*\bbackdrop-blur\b/;
+    if (glassOnOurSurface.test(code)) {
       errs.push(`frosted glass over a base surface in ${srcFile} — glass and the extrusion are answers to the same question and cannot both be on screen: the blur erases the shadow pair that makes the surface read. Use \`sf-raised\`/\`sf-e4\` and an opaque bg-base-100. (Blur over a VIDEO or camera frame is still fine — that is foreign content, not our surface.)`);
     }
   }

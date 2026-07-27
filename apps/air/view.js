@@ -81,11 +81,15 @@ function makeSample() {
   };
 }
 
-// a 270° gauge arc: track (base-300) + value arc (fill), proportional to AQI/100 (capped)
+// a 270° gauge arc: track + value arc (fill), proportional to AQI/100 (capped).
+// The track is `--sf-track-face`, the design system's ONE sanctioned tone step: a groove 7px wide cannot
+// hold a shadow pair, so theme.css defines a real colour for exactly this (it is what the range and the
+// progress bar sit in). It used to be `base-300` — the right idea reached for by hand, one shade off the
+// token every other trough in the farm uses, and therefore drifting the moment the palette moves.
 const gauge = (aqi, band) => {
   const R = 42, C = 2 * Math.PI * R, ARC = 0.75, frac = Math.min(1, aqi / 100);
   return html`<svg viewBox="0 0 100 100" class="w-36 h-36" aria-hidden="true">
-    <circle cx="50" cy="50" r=${R} fill="none" class="text-base-300" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-dasharray=${`${(ARC * C).toFixed(1)} ${C.toFixed(1)}`} transform="rotate(135 50 50)"></circle>
+    <circle cx="50" cy="50" r=${R} fill="none" style="stroke:var(--sf-track-face)" stroke-width="7" stroke-linecap="round" stroke-dasharray=${`${(ARC * C).toFixed(1)} ${C.toFixed(1)}`} transform="rotate(135 50 50)"></circle>
     <circle cx="50" cy="50" r=${R} fill="none" stroke=${fillFor(band)} stroke-width="7" stroke-linecap="round" stroke-dasharray=${`${(frac * ARC * C).toFixed(1)} ${C.toFixed(1)}`} transform="rotate(135 50 50)"></circle>
   </svg>`;
 };
@@ -138,11 +142,15 @@ export function air({ S }) {
 
   const ready = useReveal(!!data);
   if (err && !data) return html`<div class="flex flex-col items-center text-muted py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`;
-  // structure-shaped skeleton: gauge ring + forecast band + two stat lists, with decoding value slots
+  // structure-shaped skeleton: gauge ring + forecast band + two stat lists, with decoding value slots.
+  // The ring is the same trough token as the live gauge above, so the skeleton and the thing it stands in
+  // for are made of one material instead of two neighbouring greys. The forecast placeholder dropped its
+  // hairline: it is the WELL the decoding chart lands in, and `sf-inset` is the farm's word for a well —
+  // the border was an edge drawn around a recess that already has one.
   if (!ready) return html`<div class="flex flex-col gap-5 items-center">
-    <div class="w-36 h-36 rounded-full border-[6px] border-base-300 flex items-center justify-center"><span class="text-5xl font-bold tabular-nums text-base-content/40"><${Scramble} len=${2} /></span></div>
+    <div class="w-36 h-36 rounded-full border-[6px] flex items-center justify-center" style="border-color:var(--sf-track-face)"><span class="text-5xl font-bold tabular-nums text-base-content/40"><${Scramble} len=${2} /></span></div>
     <div class="text-lg font-bold text-base-content/50"><${Scramble} len=${8} /></div>
-    <div class="w-full max-w-[420px] h-28 rounded-2xl overflow-hidden border border-base-300"><${Pixels} /></div>
+    <div class="w-full max-w-[420px] h-28 rounded-2xl overflow-hidden sf-inset"><${Pixels} /></div>
     <div class="w-full max-w-[420px] flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div class="flex items-center justify-between text-base-content/50 border-b border-base-300/50 pb-2" key=${i}><${Scramble} len=${7} /><${Scramble} len=${5} /></div>`)}</div>
   </div>`;
 
@@ -207,7 +215,11 @@ export function air({ S }) {
           <span class="text-sm font-semibold shrink-0" style=${POLLEN_INK[pb] ? `color:${POLLEN_INK[pb]}` : ""}>${T(t, POLLEN_KEYS[pb])}</span>
           <span class="tabular-nums text-xs text-muted text-right shrink-0 @max-[280px]:hidden">${Math.round(p.v)} ${T(t, "grains")}</span>
         </div>`;
-      }) : html`<div class="flex items-center gap-2 py-1.5 text-muted"><span class="w-2 h-2 rounded-full bg-base-content/30 shrink-0"></span><span>${T(t, "pnNone")}</span></div>`}
+      // Nothing in the air. Every other row here carries a filled dot in its band colour, so the empty one
+      // is that same slot with nothing in it — a hole (`sf-inset`), not a third, greyer band. The
+      // `bg-base-content/30` it replaces read as a fourth severity below "low", which is the one thing it
+      // must not say. Row geometry, dot size and the dividers are untouched.
+      }) : html`<div class="flex items-center gap-2 py-1.5 text-muted"><span class="w-2 h-2 rounded-full sf-inset shrink-0"></span><span>${T(t, "pnNone")}</span></div>`}
     </div>
   </div>`;
 }

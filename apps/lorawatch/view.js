@@ -113,7 +113,7 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
       <p class="text-base-content/70 leading-relaxed">${T(t, "connectBody")}</p>
       ${supported
         ? html`<button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2 mt-1" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
-        : html`<div class="alert bg-warning/12 text-warning rounded-2xl text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
+        : html`<div class="alert bg-warning/12 text-warning rounded-2xl sf-e2 text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
     </div>`;
   }
 
@@ -134,7 +134,10 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
            dot and the headline already say. The panel now answers with the material instead: it stands
            further off the page while there is something to hear (e3) and settles back to e2 when idle. */""}
       <div class=${`rounded-2xl px-4 py-3 flex items-center gap-3 sf-raised ${active ? "sf-e3" : "sf-e2"}`} data-live data-activity>
-        <span class=${`w-2.5 h-2.5 rounded-full shrink-0 ${active ? "bg-primary animate-pulse" : "bg-base-content/25"}`}></span>
+        ${/* Idle was an ink alpha (`bg-base-content/25`). A 10px LED is far too small for the shadow pair, so
+             it takes --sf-track-face — the system's one sanctioned tone step — instead of this app's own
+             guess at how dark "off" should be. Live keeps bg-primary: that is meaning, not depth. */""}
+        <span class=${`w-2.5 h-2.5 rounded-full shrink-0 ${active ? "bg-primary animate-pulse" : ""}`} style=${active ? "" : "background:var(--sf-track-face)"}></span>
         <div class="flex-1 min-w-0">
           <div class="font-semibold text-sm">${T(t, active ? "detected" : "listening")}</div>
           ${detect ? html`<div class="font-mono text-xs text-base-content/70 tabular-nums">SF${detect.sf} · ${Math.round(detect.bw / 1000)} kHz · ${detect.count} ${T(t, "bursts")}</div>` : null}

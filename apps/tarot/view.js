@@ -138,9 +138,13 @@ function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
       <div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>
       <p class="mt-0.5 text-[0.78rem] leading-snug text-base-content/55 break-words line-clamp-2">${T(t, DESC_KEY[spreadId])}</p>
     </div>
+    ${/* Two icon buttons, same size and same order as before — what changed is what they are MADE of.
+         `btn-ghost` means "a text button, not an object", so theme.css deliberately leaves it flat; these
+         two then bought their visibility back with `border border-base-300`, a hairline drawn around a
+         thing that was declaring itself flat. They are objects: plain `.btn` and the material lifts them. */""}
     ${!isDaily ? html`<div class="shrink-0 flex items-center gap-1.5">
-      <button data-synth aria-label=${T(t, "synthTitle")} class="btn btn-sm btn-ghost btn-circle border border-base-300" onClick=${onSynth}>${Icon("lucide:scroll-text", "text-base")}</button>
-      <button data-shuffle aria-label=${T(t, "redraw")} class="btn btn-sm btn-ghost btn-circle border border-base-300" onClick=${onShuffle}>${Icon("lucide:shuffle", "text-base")}</button>
+      <button data-synth aria-label=${T(t, "synthTitle")} class="btn btn-sm btn-circle" onClick=${onSynth}>${Icon("lucide:scroll-text", "text-base")}</button>
+      <button data-shuffle aria-label=${T(t, "redraw")} class="btn btn-sm btn-circle" onClick=${onShuffle}>${Icon("lucide:shuffle", "text-base")}</button>
       <button data-ritual class="btn btn-sm btn-secondary gap-1.5 rounded-full" onClick=${onRitual}>${Icon("lucide:sparkles", "text-base")}<span class="text-xs font-semibold">${T(t, "ritual")}</span></button>
     </div>` : null}
   </div>`;
@@ -168,7 +172,7 @@ function SynthSheet({ open, onClose, sig, input, t, loc, spreadName }) {
       ${done
         ? html`<p data-synth-text class="text-[0.97rem] leading-relaxed text-base-content/90">${text}</p>`
         : failed
-          ? html`<button data-synth-retry class="btn btn-sm btn-ghost gap-2 border border-base-300 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "synthRetry")}</span></button>`
+          ? html`<button data-synth-retry class="btn btn-sm gap-2 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "synthRetry")}</span></button>`
           : html`<div class="flex flex-col gap-2 text-base-content/55">${[30, 34, 28, 20].map((n, i) => html`<div class="text-[0.95rem]" key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
   </${Sheet}>`;
 }
@@ -350,7 +354,13 @@ function CardSheet({ open, onClose, d, pos, t, loc }) {
         <div class="text-center">
           <div class="font-bold text-xl leading-tight">${cardName(c, loc)}</div>
           <div class="text-[0.68rem] font-mono uppercase tracking-wide text-base-content/50 mt-1">${kind}</div>
-          <div class=${`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${d.reversed ? "bg-warning/15 text-warning" : "bg-secondary/15 text-secondary"}`}>${T(t, d.reversed ? "reversed" : "upright")}</div>
+          ${/* Upright / reversed is a TAG on the card, and the farm already has that object: `.badge`,
+               which theme.css gives the shallow pair (a 20px chip cannot carry the full extrusion). This
+               was a hand-rolled pill whose entire body was a 15% tint of its own text colour — depth
+               faked with tone, and a fill so faint that on the light theme the chip barely existed. The
+               kit's badge carries its own contrast-checked content colour, so the word stays readable in
+               both themes. Same place, same shape, same two states. */""}
+          <div class=${`mt-2 badge badge-sm font-medium ${d.reversed ? "badge-warning" : "badge-secondary"}`}>${T(t, d.reversed ? "reversed" : "upright")}</div>
         </div>
         <p class="text-[0.95rem] leading-relaxed text-base-content/90">${tr(meaningOf(d), loc)}</p>
       </div>` : null}

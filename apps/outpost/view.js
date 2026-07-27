@@ -132,14 +132,20 @@ export function outpost({ S }) {
         <${Transport} locale=${loc} size="hero" playing=${playing} onToggle=${toggle} disabled=${!audioSupported} />
       </div>
       <div class="-mt-3 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-base-content/55">
-        <span class=${`w-1.5 h-1.5 rounded-full ${playing ? "bg-primary animate-pulse" : "bg-base-content/30"}`}></span>
+        ${/* The standby dot was an ink tone step (`bg-base-content/30`). A 6px LED cannot hold the shadow
+             pair, so it takes --sf-track-face — the system's ONE sanctioned tone, the same token pulse's
+             status LED and rave's step rails use, rather than a per-app guess at an alpha. */""}
+        <span class=${`w-1.5 h-1.5 rounded-full ${playing ? "bg-primary animate-pulse" : ""}`} style=${playing ? "" : "background:var(--sf-track-face)"}></span>
         ${T(t, NAME[stId])} · ${T(t, playing ? "online" : "offline")}
       </div>
 
       <!-- fader bank -->
       <div class="w-full max-w-[440px] flex flex-col gap-2.5">
         <div class="flex items-center justify-end">
-          <button data-reset onClick=${resetMix} class="flex items-center gap-1.5 text-xs text-base-content/55 hover:text-base-content/80 transition">${Icon("lucide:rotate-ccw", "text-sm")}${T(t, "aReset")}</button>
+          ${/* Reset was a bare <button> — a control with no material state at all, so a tap said nothing.
+               `btn btn-ghost` is the kit's text button: flat at rest (it is a word, not an object) and
+               taking the systemic press from theme.css the moment a finger lands on it. */""}
+          <button data-reset onClick=${resetMix} class="btn btn-ghost btn-sm gap-1.5 text-xs text-muted">${Icon("lucide:rotate-ccw", "text-sm")}${T(t, "aReset")}</button>
         </div>
         ${/* Was `border-base-content/10 bg-base-100/60 backdrop-blur` — a hairline AND frosted glass over our
              own surface, which blurs away the very extrusion it sits on. Each fader is a raised strip now,

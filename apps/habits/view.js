@@ -111,11 +111,13 @@ const Dots = ({ h, marks, onToggle, t }) => {
   const days = []; for (let i = 7; i >= 1; i--) days.push(ymd(addDays(new Date(), -i)));
   return html`<div class="overflow-x-auto -mx-0.5 px-0.5"><div class="flex gap-1.5 w-max pt-0.5" role="group" aria-label=${T(t, "week")}>${days.map((d) => {
     const on = !!marks[h.id + "|" + d];
-    // No outline: a done day is a small RAISED chip carrying the habit's colour, an empty one is a flat
-    // slot in the page. The old hairline + transparent fill was an edge drawn on top of an extrusion.
+    // No outline: a done day is a small RAISED chip carrying the habit's colour, an empty one is an empty
+    // SLOT — `sf-inset`, the same word the sequencer grids use. The old hairline + transparent fill was an
+    // edge drawn on top of an extrusion, and the `bg-base-content/10` that replaced it was a tone step
+    // standing in for depth: a grey square that says "not done" by being greyer, not by being a hole.
     return html`<button key=${d} type="button" onClick=${() => onToggle(h.id, d)} aria-pressed=${on}
       aria-label=${`${d} ${on ? T(t, "done") : T(t, "notDone")}`}
-      class=${`w-6 h-6 rounded-md shrink-0 transition active:scale-90 ${on ? "sf-e2" : "bg-base-content/10"}`}
+      class=${`w-6 h-6 rounded-md shrink-0 transition active:scale-90 ${on ? "sf-e2" : "sf-inset"}`}
       style=${on ? `background:${h.color}` : ""}></button>`;
   })}</div></div>`;
 };
@@ -128,12 +130,20 @@ function Heatmap({ h, marks, onToggle, t }) {
     const cells = [];
     for (let r = 0; r < 7; r++) {
       const d = ymd(addDays(start, w * 7 + r)), future = between(today(), d) > 0, on = !!marks[h.id + "|" + d];
-      // An empty cell is a theme-aware tint, not a hardcoded `--fallback-b2` grey — that literal #e5e7eb
-      // painted the whole grid near-white on the dark page. Same rule as the week strip: colour = done.
+      // Same rule as the week strip, and the 13×7 geometry is untouched: an empty cell is a HOLE in the
+      // grid (`sf-inset`), a done one is that hole filled by the habit's colour. It was a tint before —
+      // first a hardcoded `--fallback-b2` grey that painted the whole grid near-white on the dark page,
+      // then `bg-base-content/10`, which is the same mistake one step quieter: tone doing depth's job.
+      //
+      // Today's marker had to stop being Tailwind's `ring-1`. A ring IS a box-shadow, and so is the
+      // material — `sf-inset` and the ring would each claim the single `box-shadow` property and the
+      // last one loaded (theme.css) would silently erase the other. `outline` is a separate property, so
+      // the recess and the marker coexist; the offset also makes today legible on a FILLED cell, where a
+      // same-coloured ring was invisible. (The add-sheet's colour palette hit this first — see below.)
       cells.push(html`<button key=${d} type="button" disabled=${future} onClick=${() => onToggle(h.id, d)}
         aria-label=${`${d} ${on ? T(t, "done") : T(t, "notDone")}`}
-        class=${`w-3.5 h-3.5 rounded-[3px] ${future ? "opacity-0" : "active:scale-90"} ${on ? "" : "bg-base-content/10"} ${d === today() ? "ring-1" : ""}`}
-        style=${`${on ? "background:" + h.color + ";" : ""}${d === today() ? "--tw-ring-color:" + h.color : ""}`}></button>`);
+        class=${`w-3.5 h-3.5 rounded-[3px] ${future ? "opacity-0" : "active:scale-90"} ${on ? "" : "sf-inset"}`}
+        style=${`${on ? "background:" + h.color + ";" : ""}${d === today() ? "outline:1px solid " + h.color + ";outline-offset:1px" : ""}`}></button>`);
     }
     cols.push(html`<div class="flex flex-col gap-[3px]" key=${w}>${cells}</div>`);
   }

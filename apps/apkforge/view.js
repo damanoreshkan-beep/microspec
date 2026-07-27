@@ -93,8 +93,12 @@ export function forge({ S, toast }) {
       placeholder=${T(t, "forgeNamePlaceholder")} aria-label=${T(t, "forgeNameLabel")}
       class="input input-bordered w-full rounded-xl text-sm shrink-0" />
 
+    ${/* The post-build note was `bg-base-200` — a tone step meaning "one shade down from the page". base-100
+         and base-200 are the SAME colour under this material by design, so the block was invisible: a
+         paragraph floating in the gap between the name field and the button. It is a WELL now (`sf-inset`):
+         the note is not an object you act on, it is something the page holds. */""}
     ${done
-      ? html`<div data-built class="shrink-0 flex items-start gap-2 rounded-xl bg-base-200 px-3 py-2.5 text-xs leading-snug text-base-content/70">
+      ? html`<div data-built class="shrink-0 flex items-start gap-2 rounded-xl sf-inset px-3 py-2.5 text-xs leading-snug text-base-content/70">
           ${Icon("lucide:shield-alert", "text-sm mt-px shrink-0 text-primary")}<span>${T(t, "forgeNote")}</span>
         </div>`
       : null}

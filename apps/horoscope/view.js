@@ -88,8 +88,9 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
 
   return html`<${Fragment}>
     <div class="flex flex-col gap-4">
-      <!-- sign card → picker -->
-      <button data-sign class="w-full flex items-center gap-4 rounded-2xl bg-base-100 border border-base-300 p-4 active:scale-[.99] transition" onClick=${() => openScreen("signs")}>
+      ${/* Sign card → picker. The page extruded (`sf-raised`) on the shallow rung, and pressed IN under a
+           finger (`sf-press`) — the material's own press, so no scale nudge on top of the extrusion. */""}
+      <button data-sign class="w-full flex items-center gap-4 rounded-2xl sf-raised sf-e2 sf-press p-4 transition" onClick=${() => openScreen("signs")}>
         <span class="shrink-0 text-secondary"><${Sign} i=${signIdx} cls="w-11 h-11" /></span>
         <span class="flex-1 min-w-0 text-left">
           <span class="block font-bold text-lg leading-tight">${(t.signs || "").split("|")[signIdx] || ""}</span>
@@ -98,9 +99,12 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
         ${Icon("lucide:chevrons-up-down", "text-base-content/35 text-xl shrink-0")}
       </button>
 
-      <!-- day segmented -->
-      <div role="tablist" class="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-base-100 border border-base-300">
-        ${[0, 1, 2].map((i) => html`<button role="tab" data-day=${DAY_IDS[i]} aria-selected=${day === i} class=${`min-w-0 truncate py-2 rounded-xl text-sm font-medium transition-colors ${day === i ? "bg-primary text-primary-content" : "text-muted"}`} onClick=${() => setDay(i)} key=${i}>${T(t, DAY_KEYS[i])}</button>`)}
+      ${/* Day segmented — the rail is a GROOVE and the chosen day lifts out of it. The 3-column geometry is
+           untouched; only the material changed. theme.css raises `[aria-pressed="true"]` inside an inset
+           rail, but a tablist must carry `aria-selected` (the e2e asserts it) — so the raise is declared
+           here as `sf-e3`, which is the same pair. Only the FILL differs between the two states. */""}
+      <div role="tablist" class="grid grid-cols-3 gap-1 p-1 rounded-2xl sf-inset">
+        ${[0, 1, 2].map((i) => html`<button role="tab" data-day=${DAY_IDS[i]} aria-selected=${day === i} class=${`min-w-0 truncate py-2 rounded-xl text-sm font-medium transition sf-press ${day === i ? "bg-primary text-primary-content sf-e3" : "text-muted"}`} onClick=${() => setDay(i)} key=${i}>${T(t, DAY_KEYS[i])}</button>`)}
       </div>
 
       ${err && !data
@@ -110,7 +114,7 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
           <div class="flex flex-col gap-4">
             <div class="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-base-content/40"><${Scramble} len=${11} /></div>
             <div class="flex flex-col gap-2 text-base-content/55">${[26, 30, 28, 18].map((n, i) => html`<div class="text-[0.97rem]" key=${i}><${Scramble} len=${n} /></div>`)}</div>
-            <div class="rounded-2xl border border-base-300 overflow-hidden h-32"><${Pixels} /></div>
+            <div class="rounded-2xl sf-inset overflow-hidden h-32"><${Pixels} /></div>
           </div>`
         : html`<!-- reading -->
           <div class="flex flex-col gap-4">
@@ -124,11 +128,15 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
       : html`<p data-reading data-live class="text-[0.97rem] leading-relaxed text-base-content/90">${readingText}</p>`}
 
             <!-- the day's four real star ratings -->
-            <div data-ratings class="flex flex-col gap-2.5 rounded-2xl bg-base-100 border border-base-300 p-4">
+            <div data-ratings class="flex flex-col gap-2.5 rounded-2xl sf-raised sf-e2 p-4">
               <div class="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-base-content/45 mb-0.5">${T(t, "ratings")}</div>
               ${RATINGS.map(([label, key, c]) => html`<div class="flex items-center gap-3" key=${key}>
                 <span class="w-16 shrink-0 text-xs text-base-content/70">${T(t, label)}</span>
-                <span class="flex-1 flex gap-1">${[0, 1, 2, 3, 4].map((n) => html`<span class="flex-1 h-1.5 rounded-full" style=${`background:${n < (data.ratings[key] || 0) ? c : "var(--color-base-300)"}`} key=${n}></span>`)}</span>
+                ${/* Five 6px segments — a track too thin to hold a shadow pair, which is the ONE place the
+                     system lets tone stand in for depth (--sf-track-face, see theme.css). The empty steps
+                     used to be base-300, which the repaint made identical to base-100: an unrated day drew
+                     four invisible bars. Filled steps keep the rating's own meaning colour. */""}
+                <span class="flex-1 flex gap-1">${[0, 1, 2, 3, 4].map((n) => html`<span class="flex-1 h-1.5 rounded-full" style=${`background:${n < (data.ratings[key] || 0) ? c : "var(--sf-track-face)"}`} key=${n}></span>`)}</span>
               </div>`)}
             </div>
           </div>`}
@@ -141,8 +149,12 @@ export function horoscope({ S, screen, openScreen, closeScreen }) {
 function SignSheet({ open, onClose, t, signIdx }) {
   const choose = (i) => { $sign.set(String(i)); onClose(); };
   return html`<${Sheet} id="signsheet" open=${open} onClose=${onClose} title=${T(t, "pickSign")} icon="lucide:sparkles">
-      <div class="grid grid-cols-3 gap-2">
-        ${Array.from({ length: 12 }, (_, i) => html`<button data-signpick=${i} aria-pressed=${i === signIdx} class=${`flex flex-col items-center gap-1.5 py-3 rounded-2xl border transition active:scale-95 ${i === signIdx ? "border-secondary bg-secondary/10 text-secondary" : "border-base-300 text-base-content/80"}`} onClick=${() => choose(i)} key=${i}>
+      ${/* A 12-cell palette you SCAN — the 3x4 geometry is the affordance and stays exactly as it was. What
+           it adopts is the farm's selection convention: the deck is a groove (sf-inset) and the chosen sign
+           lifts out of it, which theme.css already applies to any [aria-pressed="true"] inside one. The
+           hairlines are gone — the extrusion is the edge now. */""}
+      <div class="grid grid-cols-3 gap-2 sf-inset rounded-2xl p-2">
+        ${Array.from({ length: 12 }, (_, i) => html`<button data-signpick=${i} aria-pressed=${i === signIdx} class=${`flex flex-col items-center gap-1.5 py-3 rounded-2xl transition ${i === signIdx ? "bg-secondary/10 text-secondary" : "text-base-content/80"}`} onClick=${() => choose(i)} key=${i}>
           <${Sign} i=${i} cls="w-6 h-6" />
           <span class="text-xs truncate max-w-full">${(t.signs || "").split("|")[i] || ""}</span>
         </button>`)}

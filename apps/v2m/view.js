@@ -516,7 +516,10 @@ export function v2mStore({ S, toast }) {
 
       ${showSkel ? html`
         <div class="flex flex-col gap-1">${[0, 1, 2, 3, 4, 5, 6, 7].map(() => html`
-          <div data-skel class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-base-200/60">
+          ${/* A loading row is a row-shaped HOLE waiting to be filled, which is what `sf-inset` says. The
+               base-200 tint said nothing: base-200 and base-100 are the same colour in this material, so
+               the placeholder list was eight invisible rectangles with text scrambling in mid-air. */""}
+          <div data-skel class="flex items-center gap-3 px-3 py-2.5 rounded-xl sf-inset">
             <div class="font-mono text-sm w-14 shrink-0"><${Scramble} len=${5} /></div>
             <div class="flex-1 min-w-0">
               <div class="truncate text-sm"><${Scramble} len=${20} /></div>
@@ -533,10 +536,15 @@ export function v2mStore({ S, toast }) {
           ${list.slice(0, shown).map((x) => {
             const id = trackId(x.author, x.file);
             const active = cur?.id === id;
+            // The playing row LIFTS off the list (`sf-e2` — the shallow pair, because this list runs to
+            // hundreds of rows and the full extrusion on every one of them turns the screen to gravel), and
+            // it keeps the ink wash as the FILL of that raised row. The hairline ring is gone: a ring IS a
+            // box-shadow, so it and the material were overwriting each other. The resting row is the page
+            // itself — flat, not a base-200 tint, which was the same colour as the page anyway.
             return html`
-              <button data-tune=${id} onClick=${() => play(x)}
+              <button data-tune=${id} onClick=${() => play(x)} aria-current=${active ? "true" : null}
                 class=${"flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors " +
-                  (active ? "bg-primary/10 ring-1 ring-primary/40" : "bg-base-200/60 hover:bg-base-200")}>
+                  (active ? "bg-primary/10 sf-e2" : "")}>
                 <span class="font-mono text-sm tabular-nums w-14 shrink-0 ${active ? "text-primary" : ""}">${kb(x.size)}</span>
                 <span class="flex-1 min-w-0">
                   <span class="block truncate text-sm font-medium">${titleOf(x.file)}</span>
@@ -573,9 +581,12 @@ export function v2mLibrary({ S, undo }) {
 
   if (!useReveal(list !== null)) {
     return html`<div class="flex flex-col gap-2 pt-2">${[0, 1, 2].map(() => html`
-      <div data-skel class="card bg-base-200/60">
+      ${/* Same card the loaded row is (`.card` carries the shallow raise), minus the base-200 tint that was
+           painting it the exact colour of the page. The square is the empty SLOT the play button lands in,
+           so it is a recess rather than one more tone step. */""}
+      <div data-skel class="card">
         <div class="card-body flex-row items-center gap-3 p-3">
-          <div class="w-9 h-9 rounded-lg bg-base-300 shrink-0"></div>
+          <div class="w-9 h-9 rounded-lg sf-inset shrink-0"></div>
           <div class="flex-1 min-w-0">
             <div class="truncate font-semibold"><${Scramble} len=${14} /></div>
             <div class="h-4"><${Scramble} len=${6} /></div>
@@ -598,11 +609,12 @@ export function v2mLibrary({ S, undo }) {
 
   return html`<div class="flex flex-col gap-2 pt-2">${list.map((it) => {
     const active = cur?.id === it.id;
-    // `.card` already declares the shallow raised pair in theme.css — the outline and the base-200 tint were
-    // both doing nothing but flattening it (base-200 IS base-100 now). The primary ring stays: it is the
-    // SELECTED state, which is meaning, not material.
+    // `.card` already declares the shallow raised pair in theme.css. The selected row used to add a hairline
+    // ring on top of that — but a ring IS a box-shadow, so the ring and the extrusion were competing for the
+    // same property and one of them always lost. Selection is now the ink wash FILLING the raised card, the
+    // same move (and the same class) the store list makes, so one convention covers both lists.
     return html`<div data-track-row=${it.id}
-      class=${"card" + (active ? " ring-1 ring-primary/50" : "")}>
+      class=${"card" + (active ? " bg-primary/10" : "")}>
       <div class="card-body flex-row items-center gap-3 p-3">
         <button class="btn btn-circle btn-sm btn-ghost shrink-0"
           aria-label=${T(t, active && playing ? "aPause" : "aPlay")}

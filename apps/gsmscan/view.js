@@ -111,7 +111,7 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
       <p class="text-base-content/70 leading-relaxed">${T(t, "connectBody")}</p>
       ${supported
         ? html`<button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2 mt-1" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
-        : html`<div class="alert bg-warning/12 text-warning rounded-2xl text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
+        : html`<div class="alert bg-warning/12 text-warning rounded-2xl sf-e2 text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
     </div>`;
   }
 
@@ -166,10 +166,14 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
   </${Fragment}>`;
 }
 
+// Four bars, same widths and same 40/60/80/100% ladder — only what the UNLIT bar is made of changed. It was
+// `bg-base-content/15`, an ink alpha standing in for an empty slot; a 6px-wide bar cannot hold the shadow
+// pair, so it takes --sf-track-face, the system's one sanctioned tone step (pulse's LED, rave's step rails,
+// air's gauge groove all read the same token). Lit stays bg-primary — that one IS meaning.
 function Bars({ level, label }) {
   const bars = 4, lit = Math.round(level * bars);
   return html`<div class="flex items-end gap-[3px] h-6 shrink-0" role="img" aria-label=${label} data-signal>
-    ${[...Array(bars)].map((_, i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${40 + i * 20}%`}></span>`)}
+    ${[...Array(bars)].map((_, i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : ""}`} style=${`height:${40 + i * 20}%${i < lit ? "" : ";background:var(--sf-track-face)"}`}></span>`)}
   </div>`;
 }
 

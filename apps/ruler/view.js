@@ -166,7 +166,12 @@ export function ruler({ S, toast }) {
   const tErr = pts.length >= 2 ? totalErr(pts.slice(1).map((p, i) => segErr(pts[i], p))) : null;
 
   return html`<div class="flex flex-col gap-3">
-      <div class="rounded-2xl border border-base-300 bg-base-200/40 overflow-hidden">
+      ${/* The plot is something you look INTO — the page pressed in, with the polyline lying at the bottom
+           of it. It used to be `border border-base-300 bg-base-200/40`, which is now literally nothing:
+           base-200 IS base-100 in this material, so the only thing left drawing the frame was the hairline.
+           `sf-inset` is the farm's word for a well, and the canvas is transparent so the sink reads
+           through it. */""}
+      <div class="rounded-2xl sf-inset overflow-hidden">
         <canvas ref=${cv} aria-hidden="true" class="w-full h-[52svh] min-h-[280px] max-h-[460px] block text-base-content"></canvas>
       </div>
       <div class="flex items-end justify-between gap-3 px-1">

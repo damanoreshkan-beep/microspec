@@ -95,7 +95,7 @@ function useChart(S) {
 // ── the empty state — no chart without a birth moment ──────────────────────────────────────────────────
 
 const NeedBirth = ({ t, onOpen }) => html`<div data-need-birth class="flex flex-col items-center gap-4 py-14 px-6 text-center">
-  <div class="rounded-full border border-base-300 p-4 text-base-content/70">${Icon("lucide:calendar-clock", "text-3xl")}</div>
+  <div class="rounded-full sf-raised sf-e3 p-4 text-base-content/70">${Icon("lucide:calendar-clock", "text-3xl")}</div>
   <div class="text-base font-semibold max-w-[22rem]">${T(t, "needBirth")}</div>
   <button data-open-birth class="btn btn-primary rounded-full gap-2" onClick=${onOpen}>
     ${Icon("lucide:plus", "text-base")}<span>${T(t, "birthSet")}</span>
@@ -171,7 +171,8 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
       </div>
 
       <!-- the birth moment this whole chart hangs on, and the date being transited -->
-      <button data-birth-row class="w-full max-w-[420px] rounded-2xl border border-base-300 bg-base-100 px-4 py-3 flex items-center gap-3 text-left active:scale-[.99] transition" onClick=${() => openScreen("birth")}>
+      <!-- the page extruded, pressed IN under a finger — the material's own press, so no scale nudge on top -->
+      <button data-birth-row class="w-full max-w-[420px] rounded-2xl sf-raised sf-e2 sf-press px-4 py-3 flex items-center gap-3 text-left transition" onClick=${() => openScreen("birth")}>
         <div class="min-w-0 flex-1">
           <div class="text-sm font-semibold truncate">${placeLabel(b.place)}</div>
           <div class="text-[0.68rem] font-mono text-base-content/70 truncate">${C.rec.date} ${C.rec.time} ${b.offsetLabel} · ${formatCoords(b.lat, b.lng)}</div>
@@ -185,13 +186,17 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
           ${offset === 0 ? html`<span class="text-xs text-primary ml-2 align-middle">● ${T(t, "today")}</span>` : null}
         </div>
         <input id="scrub" type="range" min="-365" max="365" step="1" value=${offset} class="range range-xs range-primary" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
+        ${/* The five-column geometry is untouched; only what the chips are MADE of changed. An unchosen
+             preset is an empty slot in the row (`sf-inset`) and the chosen one lifts out of it on the
+             shallow rung, keeping the primary tint as its FILL. The pair of hairlines it replaces
+             (border-primary vs border-base-300) was a colour step standing in for depth. */""}
         <div class="grid grid-cols-5 gap-1.5 text-center">
-          ${CHIPS.map(([o, lbl]) => html`<button data-chip=${lbl} class=${`rounded-xl border py-1.5 text-xs font-medium transition ${offset === o ? "border-primary bg-primary/10" : "border-base-300"}`} onClick=${() => $offset.set(o)} key=${lbl}>${T(t, lbl)}</button>`)}
+          ${CHIPS.map(([o, lbl]) => html`<button data-chip=${lbl} aria-pressed=${offset === o} class=${`rounded-xl py-1.5 text-xs font-medium transition ${offset === o ? "sf-e2 bg-primary/10 text-primary font-semibold" : "sf-inset"}`} onClick=${() => $offset.set(o)} key=${lbl}>${T(t, lbl)}</button>`)}
         </div>
       </div>
 
       <!-- the contacts themselves, tightest first; the header opens the grounded AI reading -->
-      <div class="w-full max-w-[420px] rounded-2xl border border-base-300 bg-base-100 overflow-hidden">
+      <div class="w-full max-w-[420px] rounded-2xl sf-raised overflow-hidden">
         <div class="flex items-center justify-between gap-2 px-4 pt-2.5 pb-1.5">
           <div class="text-[0.62rem] font-mono uppercase text-base-content/70">${T(t, "contactsTitle")}</div>
           <button data-interp class="btn btn-sm btn-primary gap-1.5 rounded-full" onClick=${() => openScreen("interp")}>
@@ -288,7 +293,9 @@ export function hits({ S, screen, openScreen, closeScreen }) {
         const times = solved[hitKey(a)];
         const prec = HIT_PRECISION[a.t] || "minute";
         const nearest = times && times.length ? times.reduce((best, x) => Math.abs(x - C.when) < Math.abs(best - C.when) ? x : best) : null;
-        return html`<div data-hit class="rounded-2xl border border-base-300 bg-base-100 px-4 py-3 flex flex-col gap-2" key=${i}>
+        // A card in a long list gets the SHALLOW rung: twenty contacts each casting the full 5px pair is a
+        // stack of plates rather than a list.
+        return html`<div data-hit class="rounded-2xl sf-raised sf-e2 px-4 py-3 flex flex-col gap-2" key=${i}>
         <div class="flex items-center gap-2">
           ${dot(a.t)}
           <span class="font-semibold truncate">${bodyLabel(t, a.t)}</span>
@@ -307,7 +314,7 @@ export function hits({ S, screen, openScreen, closeScreen }) {
             </div>`)}
           </div>` : html`<div class="text-[0.8rem] text-base-content/70">${T(t, "noExactHit")}</div>`}
       </div>`;
-      }) : html`<div class="rounded-2xl border border-base-300 bg-base-100 px-4 py-6 text-sm text-base-content/70 text-center">${T(t, "noContacts")}</div>`}
+      }) : html`<div class="rounded-2xl sf-raised px-4 py-6 text-sm text-base-content/70 text-center">${T(t, "noContacts")}</div>`}
     </div>
     <${BirthSheet} open=${screen === "birth"} onClose=${closeScreen} t=${t} locale=${locale} />
   </${Fragment}>`;
@@ -337,7 +344,7 @@ export function chart({ S, screen, openScreen, closeScreen }) {
 
   return html`<${Fragment}>
     <div class="flex flex-col gap-3">
-      <button data-birth-row class="rounded-2xl border border-base-300 bg-base-100 px-4 py-3 flex items-center gap-3 text-left active:scale-[.99] transition" onClick=${() => openScreen("birth")}>
+      <button data-birth-row class="rounded-2xl sf-raised sf-e2 sf-press px-4 py-3 flex items-center gap-3 text-left transition" onClick=${() => openScreen("birth")}>
         <div class="min-w-0 flex-1">
           <div class="text-sm font-semibold truncate">${placeLabel(b.place)}</div>
           <div class="text-[0.68rem] font-mono text-base-content/70 truncate">${b.date.toISOString().replace(".000Z", "Z")} · ${T(t, "utcMark")} ${b.offsetLabel}</div>
@@ -345,7 +352,7 @@ export function chart({ S, screen, openScreen, closeScreen }) {
         ${Icon("lucide:pencil", "text-base text-base-content/70")}
       </button>
 
-      <div class="rounded-2xl border border-base-300 bg-base-100 overflow-x-auto">
+      <div class="rounded-2xl sf-raised overflow-x-auto">
         <div class="min-w-[300px] px-4 py-1.5">
           <div class="text-[0.62rem] font-mono uppercase text-base-content/70 py-1.5">${T(t, "natalTitle")}</div>
           ${angleRow("angAsc", H.asc)}${angleRow("angMc", H.mc)}${angleRow("angVertex", H.vertex)}
@@ -363,12 +370,12 @@ export function chart({ S, screen, openScreen, closeScreen }) {
         </div>
       </div>
 
-      <div class="rounded-2xl border border-base-300 bg-base-100 overflow-hidden">
+      <div class="rounded-2xl sf-raised overflow-hidden">
         <div class="px-4 pt-2.5 pb-1.5 flex items-center justify-between gap-2">
           <div class="text-[0.62rem] font-mono uppercase text-base-content/70">${T(t, "cuspsTitle")}</div>
           <span data-house-system class="text-[0.6rem] font-mono uppercase text-base-content/70">${T(t, "hs" + C.system[0].toUpperCase() + C.system.slice(1))}</span>
         </div>
-        ${H.fallback ? html`<div data-house-fallback class="mx-4 mb-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-[0.72rem] text-base-content">${T(t, "hsFallback")}</div>` : null}
+        ${H.fallback ? html`<div data-house-fallback class="mx-4 mb-2 rounded-xl sf-e2 bg-warning/10 px-3 py-2 text-[0.72rem] text-base-content">${T(t, "hsFallback")}</div>` : null}
         <div class="px-4 pb-3 grid grid-cols-2 gap-x-4">
           ${H.cusps.map((c, i) => html`<div data-cusp=${i + 1} class="flex items-center gap-2 py-1 border-b border-base-300/40 last:border-0" key=${i}>
             <span class="w-5 text-xs font-mono text-base-content/70 tabular-nums">${i + 1}</span>
@@ -431,14 +438,17 @@ function BirthSheet({ open, onClose, t, locale }) {
           onInput=${(e) => setQ(e.target.value)} class="input input-bordered rounded-2xl h-11 w-full text-sm" />`)}
 
         ${searching ? html`<div class="flex flex-col gap-2 px-1">${[26, 22, 24].map((n, i) => html`<div class="text-sm text-base-content/70" key=${i}><${Scramble} len=${n} /></div>`)}</div>` : null}
-        ${results && !searching ? (results.length ? html`<div class="flex flex-col rounded-2xl border border-base-300 overflow-hidden">
+        ${results && !searching ? (results.length ? html`<div class="flex flex-col rounded-2xl sf-raised sf-e2 overflow-hidden">
           ${results.map((p) => html`<button data-place-hit class="px-3 py-2.5 text-left border-b border-base-300/50 last:border-0 active:bg-primary/10 transition" onClick=${() => { set({ place: p }); setQ(""); setResults(null); }} key=${p.id}>
             <div class="text-sm font-medium truncate">${placeLabel(p)}</div>
             <div class="text-[0.66rem] font-mono text-base-content/70 truncate">${formatCoords(p.lat, p.lng)} · ${p.zone}</div>
           </button>`)}
         </div>` : html`<div class="text-sm text-base-content/70 px-1">${T(t, "placeNone")}</div>`) : null}
 
-        ${draft.place ? html`<div data-birth-chosen class="rounded-2xl border border-base-300 bg-base-200/40 px-3 py-2">
+        ${/* Two readouts, and both used to be `border-base-300 bg-base-200/NN` — a tone step that the repaint
+             turned into nothing at all, since base-200 and base-100 are now the same colour. A value the app
+             hands BACK to you sits IN the sheet, so both are wells. */""}
+        ${draft.place ? html`<div data-birth-chosen class="rounded-2xl sf-inset px-3 py-2">
           <div class="text-sm font-medium truncate">${placeLabel(draft.place)}</div>
           <div class="text-[0.66rem] font-mono text-base-content/70 truncate">${formatCoords(draft.place.lat, draft.place.lng)} · ${draft.place.zone}</div>
         </div>` : null}
@@ -451,15 +461,17 @@ function BirthSheet({ open, onClose, t, locale }) {
           placeholder="+02:00" onInput=${(e) => set({ offset: e.target.value })} class="input input-bordered rounded-2xl h-11 w-full text-sm font-mono" />`) : null}
 
         <!-- the one thing the user can actually check against a birth certificate -->
-        <div data-birth-resolved class=${`rounded-2xl border px-3 py-2.5 ${r.ok ? "border-base-300 bg-base-200/40" : "border-base-300 bg-base-200/20"}`}>
+        <div data-birth-resolved class="rounded-2xl sf-inset px-3 py-2.5">
           <div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "resolved")}</div>
           ${r.ok ? html`<div class="font-mono text-sm tabular-nums mt-0.5">${r.date.toISOString().replace(".000Z", "Z")}</div>
             <div class="text-[0.68rem] font-mono text-base-content/70">${T(t, "utcMark")} ${r.offsetLabel}${r.zone ? " · " + r.zone : ""}</div>`
             : html`<div class="text-sm text-base-content/70 mt-0.5">${T(t, "need_" + r.reason)}</div>`}
         </div>
 
-        ${r.ok && r.ambiguous ? html`<div data-birth-warn class="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-[0.74rem]">${T(t, "warnAmbiguous")}</div>` : null}
-        ${r.ok && r.nonexistent ? html`<div data-birth-warn class="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-[0.74rem]">${T(t, "warnNonexistent")}</div>` : null}
+        ${/* The tint carries the meaning; the shadow pair carries the edge. The warning hairline these two
+             (and the house-system fallback) drew was the object's outline, which the material now owns. */""}
+        ${r.ok && r.ambiguous ? html`<div data-birth-warn class="rounded-xl sf-e2 bg-warning/10 px-3 py-2 text-[0.74rem]">${T(t, "warnAmbiguous")}</div>` : null}
+        ${r.ok && r.nonexistent ? html`<div data-birth-warn class="rounded-xl sf-e2 bg-warning/10 px-3 py-2 text-[0.74rem]">${T(t, "warnNonexistent")}</div>` : null}
 
         <button data-birth-save disabled=${!complete} class="btn btn-primary rounded-2xl h-12 mt-1" onClick=${save}>${T(t, "birthSave")}</button>
       </div>
@@ -494,13 +506,18 @@ function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
       ${done
         ? html`<p data-interp-text class="text-[0.97rem] leading-relaxed text-base-content/90">${text}</p>`
         : failed
-          ? html`<button data-interp-retry class="btn btn-sm btn-ghost gap-2 border border-base-300 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "interpRetry")}</span></button>`
+          ? html`<button data-interp-retry class="btn btn-sm gap-2 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "interpRetry")}</span></button>`
           : html`<div class="flex flex-col gap-2 text-base-content/70">${[30, 34, 28, 20].map((n, i) => html`<div class="text-[0.95rem]" key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
   </${Sheet}>`;
 }
 
-// a uniform little planet dot (shaded + hairline) for the contact rows — the real spheres, size-scaled,
-// live on the wheel. The two angles are not bodies, so they get a hollow primary ring instead.
+// a uniform little planet dot for the contact rows — the real spheres, size-scaled, live on the wheel.
+// This one DEPICTS a sphere rather than declaring a surface (a 10px mark cannot hold the shadow pair), but
+// the two colours it shaded with were literals: rgba(0,0,0,.35) is a bruise on a light page and rgba(130,
+// 130,130,.4) is a hairline that belongs to neither theme. Both are theme tokens now — --nm-cast stays a
+// shade in both modes and --sf-rim is the material's own counter-light, so a dark planet still lifts off a
+// dark page. The two angles are not bodies, so they get a hollow primary ring instead: hollow vs filled is
+// MEANING, not an outline, and it stays.
 const dot = (p) => BODIES[p]
-  ? html`<span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" style=${`background:${BODIES[p].color};box-shadow:inset -0.5px -0.5px 1px rgba(0,0,0,.35),0 0 0 0.5px rgba(130,130,130,.4)`}></span>`
+  ? html`<span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" style=${`background:${BODIES[p].color};box-shadow:inset -0.5px -0.5px 1px var(--nm-cast),0 0 0 0.5px var(--sf-rim)`}></span>`
   : html`<span class="inline-block w-2.5 h-2.5 rounded-full shrink-0 border-2 border-primary"></span>`;

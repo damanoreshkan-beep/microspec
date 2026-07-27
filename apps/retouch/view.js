@@ -211,11 +211,15 @@ export function retouch({ S, toast }) {
   const stageImg = result?.url || srcUrl;                                         // the image shown in the stage right now
   const isDone = phase === "done" && result;
 
-  return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+  return html`<div class="fixed inset-x-0 z-20 bg-base-100 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <input ref=${fileRef} type="file" accept="image/*" class="hidden" aria-hidden="true" onChange=${onFile} />
 
     <!-- ── the image stage (contain, so an editor never crops what you're working on) ── -->
-    <div class="relative flex-1 min-h-0 overflow-hidden bg-black flex items-center justify-center">
+    ${/* The black is a MEDIA backdrop — it belongs under a photo or a camera feed, which is foreign content.
+         With nothing loaded there is no foreign content, and the source chooser was being drawn on it in
+         base-content ink: on the light theme that is #0A0A0C on black, i.e. an invisible screen. Empty, the
+         stage is simply the page, so the chooser's buttons read against the material they were built for. */""}
+    <div class=${`relative flex-1 min-h-0 overflow-hidden flex items-center justify-center ${phase === "empty" ? "bg-base-100" : "bg-black"}`}>
       ${phase === "empty" ? html`<div data-source class="flex flex-col items-center gap-6 px-8 w-full max-w-xs">
         <div class="text-base-content/30">${Icon("lucide:image-plus", "text-5xl")}</div>
         <div class="text-base font-semibold text-base-content/85">${T(t, "pick")}</div>
@@ -229,8 +233,11 @@ export function retouch({ S, toast }) {
       ${phase === "camera" ? html`<${Fragment}>
         <video ref=${videoRef} autoplay muted playsinline class=${`absolute inset-0 w-full h-full object-cover ${enabled && !camErr ? "" : "opacity-0"}`}></video>
         ${enabled && !camErr ? html`<${Fragment}>
-          <button data-cam-back aria-label=${T(t, "newImg")} class="absolute top-3 left-3 btn btn-circle btn-sm bg-black/50 border-white/15 text-white" onClick=${backToChooser}>${Icon("lucide:x", "text-base")}</button>
-          <button data-shutter aria-label=${T(t, "capture")} onClick=${capture} class="absolute left-1/2 -translate-x-1/2 bottom-6 w-[4.6rem] h-[4.6rem] rounded-full bg-white/10 border border-white/25 flex items-center justify-center active:scale-95 transition">
+          <button data-cam-back aria-label=${T(t, "newImg")} class="absolute top-3 left-3 btn btn-circle btn-sm bg-black/50 text-white" onClick=${backToChooser}>${Icon("lucide:x", "text-base")}</button>
+          ${/* The shutter is the farm's shutter (apps/cam): a raised ring with the primary disc set in a collar.
+               It sits over the camera feed, so the dark scrim stays for legibility — but the EDGE is the
+               material now (sf-e3), not a hand-drawn white hairline. */""}
+          <button data-shutter aria-label=${T(t, "capture")} onClick=${capture} class="absolute left-1/2 -translate-x-1/2 bottom-6 w-[4.6rem] h-[4.6rem] rounded-full bg-white/10 sf-e3 flex items-center justify-center active:scale-95 transition">
             <span class="w-[3.6rem] h-[3.6rem] rounded-full bg-primary border-4 border-base-100"></span>
           </button>
         </${Fragment}>` : null}
@@ -238,7 +245,7 @@ export function retouch({ S, toast }) {
 
       ${(phase === "ready" || phase === "editing" || phase === "done" || phase === "error") && stageImg ? html`<${Fragment}>
         <img data-result src=${stageImg} alt=${isDone ? prompt : ""} class=${`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${phase === "editing" ? "opacity-30" : "opacity-100"}`} />
-        ${isDone ? html`<button data-new aria-label=${T(t, "newImg")} class="absolute top-3 left-3 btn btn-circle btn-sm bg-black/50 border-white/15 text-white" onClick=${() => { revert(); setPhase("empty"); }}>${Icon("lucide:x", "text-base")}</button>` : null}
+        ${isDone ? html`<button data-new aria-label=${T(t, "newImg")} class="absolute top-3 left-3 btn btn-circle btn-sm bg-black/50 text-white" onClick=${() => { revert(); setPhase("empty"); }}>${Icon("lucide:x", "text-base")}</button>` : null}
       </${Fragment}>` : null}
 
       ${phase === "editing" ? html`<div class="relative z-10 flex flex-col items-center gap-3 w-56 max-w-[70%]">
@@ -246,7 +253,11 @@ export function retouch({ S, toast }) {
         <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / EST * 100))}%`}></div></div>
       </div>` : null}
 
-      ${phase === "error" ? html`<div class="absolute inset-x-0 bottom-3 flex justify-center px-4"><div data-error class="flex items-center gap-2 text-sm px-3 py-2 rounded-xl bg-error/15 text-error border border-error/25">${Icon("lucide:alert-triangle", "text-base shrink-0")}${T(t, error || "eFailed")}</div></div>` : null}
+      ${/* The error chip floats over the user's PHOTO, so a 15% error wash behind error-coloured text was
+           unreadable on half the images it could land on, and the hairline around it was the object drawing
+           its own edge. It is an opaque raised chip now — the material says "on top of the picture", the
+           colour is left to carry the meaning. */""}
+      ${phase === "error" ? html`<div class="absolute inset-x-0 bottom-3 flex justify-center px-4"><div data-error class="flex items-center gap-2 text-sm px-3 py-2 rounded-xl bg-base-100 text-error sf-e3">${Icon("lucide:alert-triangle", "text-base shrink-0")}${T(t, error || "eFailed")}</div></div>` : null}
     </div>
 
     <!-- ── composer / actions ── -->

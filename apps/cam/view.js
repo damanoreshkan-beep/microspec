@@ -185,7 +185,11 @@ export function cam({ S }) {
             ${/* The last-shot slot is a WELL the frame drops into — sf-inset, the same reading pipette's
                  empty swatches take — not a bordered tile. */""}
             <div class="w-11 h-11 rounded-xl sf-inset overflow-hidden shrink-0">${shot ? html`<img src=${shot} alt="" class="w-full h-full object-cover" />` : null}</div>
-            <button data-shutter aria-label=${T(t, "aShutter")} onClick=${shoot} class="w-[4.6rem] h-[4.6rem] rounded-full bg-base-content/10 flex items-center justify-center active:scale-95 transition sf-e3">
+            ${/* The shutter is the one object on the chassis you press, so it is the chassis EXTRUDED: the
+                 ring keeps the page's own colour and sf-e3 does the lifting. It used to wash the face with
+                 `bg-base-content/10` — a tone step doing the job the material already does, and the one
+                 move that flattens an extrusion. Size, the 4px gap ring and the inner disc are untouched. */""}
+            <button data-shutter aria-label=${T(t, "aShutter")} onClick=${shoot} class="w-[4.6rem] h-[4.6rem] rounded-full sf-raised flex items-center justify-center active:scale-95 transition sf-e3">
               <span class="w-[3.6rem] h-[3.6rem] rounded-full bg-primary border-4 border-base-100"></span>
             </button>
             <div class="w-11 h-11 shrink-0"></div>

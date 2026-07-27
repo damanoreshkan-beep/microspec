@@ -64,7 +64,7 @@ export function iss({ S }) {
   if (!ready) return html`<div class="flex flex-col gap-4 items-center">
     <${Globe} points=${[]} spin=${true} height=${320} />
     <div class="flex items-center gap-2 text-sm text-muted">${Icon("lucide:satellite", "text-base")}<span class="font-semibold"><${Scramble} len=${12} /></span></div>
-    <div class="grid grid-cols-2 gap-2 w-full">${[0, 1, 2, 3].map((i) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 gap-0.5 text-muted"><div class="text-[0.62rem] truncate"><${Scramble} len=${8} /></div><div class="text-xl font-bold truncate"><${Scramble} len=${6} /></div></div></div>`)}</div>
+    <div class="grid grid-cols-2 gap-2 w-full">${[0, 1, 2, 3].map((i) => html`<div class="card bg-base-100 rounded-2xl overflow-hidden sf-e2" key=${i}><div class="card-body p-3 gap-0.5 text-muted"><div class="text-[0.62rem] truncate"><${Scramble} len=${8} /></div><div class="text-xl font-bold truncate"><${Scramble} len=${6} /></div></div></div>`)}</div>
   </div>`;
 
   const { lat, lon, altKm, velocityKmh, sunlit } = pos;
@@ -72,7 +72,10 @@ export function iss({ S }) {
   const over = country?.name || T(t, "overOcean");
   const visKey = sunlit ? "visDay" : "visEclipse";
 
-  const stat = (icon, label, value, unit) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-0.5">
+  // A stat tile is a small raised object, so it takes the SHALLOW rung: the hairline it replaces was the
+  // only thing separating it from the page (base-100 and base-300 are one step apart and the tile's own
+  // face is base-100), and the full pair under a 4-up grid of 60px cards is a shadow bigger than the card.
+  const stat = (icon, label, value, unit) => html`<div class="card bg-base-100 rounded-2xl sf-e2"><div class="card-body p-3 gap-0.5">
     <div class="text-[0.62rem] font-mono uppercase text-muted flex items-center gap-1">${Icon(icon)}${T(t, label)}</div>
     <div class="text-xl font-bold tabular-nums truncate">${value}<span class="text-sm font-medium text-muted ml-1">${T(t, unit)}</span></div>
   </div></div>`;
@@ -90,7 +93,10 @@ export function iss({ S }) {
       ${stat("lucide:gauge", "velocity", fmt(velocityKmh), "kmh")}
     </div></div>
 
-    <div class="w-full max-w-[420px] rounded-2xl border border-base-300 bg-base-100 px-4 flex flex-col divide-y divide-base-300/40">
+    ${/* The detail panel is the page extruded — `sf-raised`, not an outlined box. The `divide-y` STAYS: it
+         separates two rows INSIDE one surface, which is a divider doing a divider's job, not a hairline
+         standing in for the panel's edge. */""}
+    <div class="w-full max-w-[420px] rounded-2xl sf-raised px-4 flex flex-col divide-y divide-base-300/40">
       <div class="flex items-center justify-between py-2.5"><span class="text-base-content/70 flex items-center gap-2">${Icon("lucide:map-pin")}${T(t, "coords")}</span><span data-coords class="font-medium tabular-nums">${lat.toFixed(2)}°, ${lon.toFixed(2)}°</span></div>
       <div class="flex items-center justify-between py-2.5"><span class="text-base-content/70 flex items-center gap-2">${Icon("lucide:sun-moon")}${T(t, "visibility")}</span><span class="font-medium">${T(t, visKey)}</span></div>
     </div>

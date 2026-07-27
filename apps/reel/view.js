@@ -413,7 +413,9 @@ function SourceIsland({ S, t, src, subbed, depth }) {
 // by ref (opacity written straight to the nodes from usePanX's onDrag) — a re-render per pointermove would
 // stutter the very gesture it is drawing.
 function DragReveal({ underRef, diveRef, backRef, target, prev }) {
-  return html`<div ref=${underRef} aria-hidden="true" class="fixed inset-0 z-0 bg-base-200 opacity-0">
+  // The layer the reel slides OFF is a recess, not a darker page: base-200 and base-100 are the same colour
+  // by design, so the tone step it used to lean on painted nothing at all. `sf-inset` is the word for it.
+  return html`<div ref=${underRef} aria-hidden="true" class="fixed inset-0 z-0 sf-inset opacity-0">
     ${prev ? html`<div ref=${backRef} class="absolute inset-y-0 left-0 w-40 flex flex-col items-center justify-center gap-2 px-3 text-center opacity-0">
       ${Icon("lucide:corner-up-left", "text-2xl text-primary")}
       <span class="text-sm font-medium text-base-content truncate max-w-full">${prev.label}</span>
@@ -516,12 +518,13 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState(sr.term || "");
   const submit = (e) => { e?.preventDefault?.(); const term = q.trim(); if (term) onPlay({ ...s, url: buildSearchUrl(s.url, term) }); };
-  // The playing row is marked by a SHAPE, never by a luminance step: this theme's primary and base-content
+  // The playing row is marked by DEPTH, never by a luminance step: this theme's primary and base-content
   // are the same ink, so "active = text-primary" would be 100% vs 100% — the exact trap that hid the dock's
-  // active tab for the life of the project. A filled tint + a rail you can see from across the room instead.
-  return html`<li class=${`flex flex-col ${active ? "bg-base-content/[.07]" : ""}`}>
+  // active tab for the life of the project. The row it plays from is pressed INTO the card (`sf-inset`) —
+  // the material says "selected" without a tint — and the rail stays, readable from across the room.
+  return html`<li class=${`flex flex-col ${active ? "sf-inset rounded-2xl" : ""}`}>
     <div class="flex items-center gap-0.5 pr-1">
-      <button data-src-row class="flex items-center gap-2.5 flex-1 min-w-0 text-left px-2.5 py-2.5 rounded-xl active:bg-base-content/5" onClick=${() => onPlay(s)}>
+      <button data-src-row class="flex items-center gap-2.5 flex-1 min-w-0 text-left px-2.5 py-2.5 rounded-xl sf-press" onClick=${() => onPlay(s)}>
         ${lead}
         <span class="min-w-0">
           <span class=${`block truncate ${active ? "font-semibold" : ""}`}>${pageLabel(s.url)}</span>
@@ -533,7 +536,7 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
       <button class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${subbed ? "text-primary" : "opacity-50"}`} aria-label=${T(t, subbed ? "unsub" : "sub")} data-haptic=${subbed ? "bump" : "off"} onClick=${onToggle}>${Icon(subbed ? "lucide:check" : "lucide:plus", "text-lg")}</button>
     </div>
     ${searching ? html`<form onSubmit=${submit} class="flex items-center gap-2 px-2.5 pb-2.5">
-      <label class="input input-sm input-bordered flex items-center gap-2 rounded-xl flex-1">
+      <label class="input input-sm flex items-center gap-2 rounded-xl flex-1">
         ${Icon("lucide:search", "opacity-50 shrink-0 text-sm")}
         <input data-search-input type="search" inputmode="search" autocomplete="off" class="grow min-w-0" placeholder=${T(t, "searchPh")} aria-label=${T(t, "search")} value=${q} onInput=${(e) => setQ(e.target.value)} />
       </label>
@@ -544,9 +547,12 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
 
 // One site. A single page renders as one self-contained row (a header above its only child would be the same
 // line twice); two or more get a site header with the page count over hairline-separated page rows.
+// The card is the page extruded, on the shallow rung a long scrolling list can afford (`sf-e2`); the site
+// you are watching right now stands one rung higher (`sf-e3`) and keeps the primary tint as its FILL. The
+// `border-base-300 bg-base-100` / `border-primary/50` hairlines it replaces drew the edge the pair now owns.
 function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, t }) {
   const hot = g.items.some((s) => s.url === curSrc);
-  const shell = `rounded-2xl border ${hot ? "border-primary/50 bg-primary/5" : "border-base-300 bg-base-100"}`;
+  const shell = `rounded-2xl ${hot ? "bg-primary/10 sf-e3" : "sf-raised sf-e2"}`;
   if (g.items.length === 1) {
     const s = g.items[0];
     return html`<ul class=${shell}><${PageRow} s=${s} active=${s.url === curSrc} subbed=${subbedUrls.has(s.url)} onPlay=${onPlay} onOpen=${onOpen} onToggle=${() => onToggle(s)} lead=${html`<${Favicon} url=${s.url} size="w-10 h-10" />`} sub=${g.domain} t=${t} /></ul>`;
@@ -613,7 +619,9 @@ export function liked({ S }) {
   };
   if (!sorted.length) return html`<div class="flex flex-col items-center justify-center gap-3 text-muted text-center" style="min-height:60vh">${Icon("lucide:heart", "text-6xl opacity-30")}<div class="text-sm max-w-[16rem]">${T(t, "likedEmpty")}</div></div>`;
   return html`<div data-liked class="grid grid-cols-3 gap-1.5">
-    ${sorted.map((l, i) => html`<div class="relative aspect-[9/16] rounded-xl overflow-hidden bg-base-300" key=${l.id}>
+    ${/* A tile is a SLOT the poster drops into — `sf-inset`. It reads as an empty well until the frame
+          lands and fills it, which is what `bg-base-300` was trying to say with a tone step. */""}
+    ${sorted.map((l, i) => html`<div class="relative aspect-[9/16] rounded-xl overflow-hidden sf-inset" key=${l.id}>
       <button data-liked-tile class="absolute inset-0 w-full h-full active:scale-[.98] transition" aria-label=${l.title || l.host} onClick=${() => playAt(i)}>
         ${l.poster
           ? html`<img src=${l.poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover" onError=${(e) => e.currentTarget.remove()} />`

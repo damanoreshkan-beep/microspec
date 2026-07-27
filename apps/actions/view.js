@@ -115,8 +115,11 @@ const back = (S) => S.stack.set(S.stack.get().slice(0, -1));
 const RepoRow = ({ r, run, t, loc, onOpen }) => html`
   ${/* @container: four shrink-0 children plus a flex-1 name is wider than a 200px column, so each fixed
        child answers to the ROW's width — the timestamp truncates, the chevron goes. */""}
+  ${/* The row is the same material as the summary card above it — the page extruded, at the shallow rung a
+       long list can afford (sf-e2). It used to hand-roll `border border-base-300 bg-base-100`, so one screen
+       carried two contradictory materials: a properly extruded Island on top of a set of flat outlined boxes. */""}
   <button data-repo=${r.full} onClick=${onOpen}
-    class="@container w-full text-left flex items-center gap-3 @max-[260px]:gap-2 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] active:scale-[.99] transition-transform">
+    class="@container w-full text-left flex items-center gap-3 @max-[260px]:gap-2 sf-raised sf-e2 sf-press rounded-[var(--ms-r)] p-[var(--ms-pad)] active:scale-[.99] transition-transform">
     <${Mark} state=${run ? run.state : "queued"} />
     <span class="flex-1 min-w-0">
       <span class="flex items-center gap-1.5 min-w-0">
@@ -133,7 +136,7 @@ const RepoRow = ({ r, run, t, loc, onOpen }) => html`
 
 const RunRow = ({ run, t, loc, onOpen }) => html`
   <button data-run=${run.id} onClick=${onOpen}
-    class="w-full text-left flex items-center gap-3 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] active:scale-[.99] transition-transform">
+    class="w-full text-left flex items-center gap-3 sf-raised sf-e2 sf-press rounded-[var(--ms-r)] p-[var(--ms-pad)] active:scale-[.99] transition-transform">
     <${Mark} state=${run.state} />
     <span class="flex-1 min-w-0">
       <span class="block font-semibold truncate">${run.title || run.name}</span>
@@ -146,6 +149,22 @@ const RunRow = ({ run, t, loc, onOpen }) => html`
       <span class="block font-mono text-[0.6rem] text-base-content/70 tabular-nums">${T(t, "runNo", { n: run.n })}</span>
     </span>
   </button>`;
+
+// A skeleton is the HOLE the row will fill, so it declares `sf-inset`. It used to be built from Panel — the
+// raised surface — which made the placeholder read as more solid than the thing that replaces it, and put a
+// raised box directly under another raised box for the whole first second of the app. The disc keeps a shallow
+// lift because the one genuinely raised thing on the finished row is the status mark it stands in for.
+// Same shape for both levels: the board and a run list are the same row, so they wait the same way.
+const SkelRow = () => html`
+  <div class="sf-inset rounded-[var(--ms-r)] p-[var(--ms-pad)] flex items-center gap-3 overflow-hidden">
+    <span class="shrink-0 w-7 h-7 rounded-full sf-raised sf-e2"></span>
+    <span class="flex-1 min-w-0 truncate text-base-content/70"><${Scramble} text="────────" /></span>
+  </div>`;
+
+// "Nothing here" is an empty slot, not an object — the same recess as the skeleton, so the transition from
+// waiting to genuinely-empty does not flip the surface inside out.
+const EmptyNote = ({ children }) => html`
+  <div class="sf-inset rounded-[var(--ms-r)] p-[var(--ms-pad)] text-base-content/70">${children}</div>`;
 
 const JobCard = ({ job, t }) => html`
   <${Panel} className="gap-1">
@@ -218,7 +237,10 @@ export function actions({ S }) {
     const rows = isJobs ? jobs : runs;
     const url = isJobs ? level.run.url : level.repo.url;
     return html`<div class="flex flex-col gap-[var(--ms-gap)]">
-      <div class="flex items-center gap-2 sticky top-0 z-10 py-1 bg-base-200/85 backdrop-blur">
+      ${/* The dive header is OPAQUE, not frosted. It used to be `bg-base-200/85 backdrop-blur`, i.e. glass over
+           our own surface: the blur erases the very shadow pair that makes the rows underneath read as objects,
+           and the two are answers to the same question. It stays put by being a raised bar the list slides under. */""}
+      <div class="flex items-center gap-2 sticky top-0 z-10 p-1 sf-raised sf-e2 rounded-[var(--ms-r)]">
         <button data-back class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, "back")} onClick=${() => back(S)}>
           ${Icon("lucide:chevron-left", "text-xl")}
         </button>
@@ -232,9 +254,9 @@ export function actions({ S }) {
           ${Icon("lucide:external-link", "text-lg")}</a>` : null}
       </div>
       ${rows == null
-        ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2].map((i) => html`<${Panel} key=${i} className="flex-row items-center gap-3 overflow-hidden"><span class="shrink-0 w-7 h-7 rounded-full bg-base-300"></span><span class="flex-1 min-w-0 truncate"><${Scramble} text="────────" /></span><//>`)}</div>`
+        ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2].map((i) => html`<${SkelRow} key=${i} />`)}</div>`
         : rows.length === 0
-          ? html`<${Panel}><span class="text-base-content/70">${T(t, isJobs ? "jobsOf" : "noRuns")}</span><//>`
+          ? html`<${EmptyNote}>${T(t, isJobs ? "jobsOf" : "noRuns")}<//>`
           : html`<div class="flex flex-col gap-[var(--ms-gap)]">
               ${isJobs
                 ? rows.map((j) => html`<${JobCard} key=${j.id} job=${j} t=${t} />`)
@@ -265,9 +287,9 @@ export function actions({ S }) {
     ${err ? html`<p role="alert" class="text-error text-sm px-1">${T(t, err)}</p>` : null}
 
     ${list == null || !ready
-      ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2, 3, 4].map((i) => html`<${Panel} key=${i} className="flex-row items-center gap-3 overflow-hidden"><span class="shrink-0 w-7 h-7 rounded-full bg-base-300"></span><span class="flex-1 min-w-0 truncate"><${Scramble} text="────────" /></span><//>`)}</div>`
+      ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2, 3, 4].map((i) => html`<${SkelRow} key=${i} />`)}</div>`
       : list.length === 0
-        ? html`<${Panel}><span class="text-base-content/70">${T(t, "boardEmpty")}</span><//>`
+        ? html`<${EmptyNote}>${T(t, "boardEmpty")}<//>`
         : html`<div class="flex flex-col gap-[var(--ms-gap)]">
             ${sorted.map((r) => html`<${RepoRow} key=${r.full} r=${r} run=${latest[r.full]} t=${t} loc=${loc}
               onOpen=${() => dive(S, { kind: "runs", repo: r })} />`)}

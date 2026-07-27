@@ -6,7 +6,9 @@
 // verifiable from a screenshot — the right tool for a calm ambient wash, per reference_fullscreen_ambient_layer.
 //
 // The stage paints its OWN dark backdrop so it reads identically in light and dark themes (like rave's stage);
-// the glass islands float above it with their own themed contrast. It is aria-hidden — axe judges the islands.
+// the islands float above it as RAISED surfaces (the kit's Island is `sf-raised sf-e3` and opaque — the word
+// "glass" that used to stand here is from the material this farm replaced, and kit wording is exactly how a
+// hand-rolled blur gets copied into the next app). It is aria-hidden — axe judges the islands.
 
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";

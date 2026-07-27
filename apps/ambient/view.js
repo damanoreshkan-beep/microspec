@@ -155,11 +155,18 @@ export function ambient({ S }) {
 
     <div class="flex flex-col gap-4 w-full max-w-[420px]">
       ${GROUPS.map(({ cat, items }) => html`<div class="flex flex-col gap-2" key=${cat}>
-        <div class="text-[11px] font-semibold uppercase tracking-wide text-base-content/70 px-1">${T(t, cat)}</div>
+        <div class="text-[11px] font-semibold uppercase tracking-wide text-muted px-1">${T(t, cat)}</div>
+        ${/* A sound card is an OBJECT on the page, not a hairline box: off it is the page extruded on the
+             shallow rung (twenty of them in one scroll — the full pair on each is a shadow storm), on it is
+             the same object lifted, carrying the app's own wash. The old `border-primary bg-primary/10`
+             tinted the FACE and drew an outline, which on the light theme read as a cell pressed IN — the
+             exact opposite of what "this layer is playing" should say. The 2-column grid is untouched. */""}
         <div class="grid grid-cols-2 gap-2.5">
-          ${items.map(({ key, name, icon }) => { const on = active.has(key); return html`<div data-layer=${key} class=${`rounded-2xl border p-3 flex flex-col gap-2 transition ${on ? "border-primary bg-primary/10" : "border-base-300 bg-base-100"}`} key=${key}>
+          ${items.map(({ key, name, icon }) => { const on = active.has(key); return html`<div data-layer=${key} data-on=${on ? "1" : null} class=${`rounded-2xl p-3 flex flex-col gap-2 transition ${on ? "bg-[var(--app-tint)] sf-e3" : "sf-raised sf-e2"}`} key=${key}>
             <button aria-pressed=${on} class="flex items-center gap-2.5 text-left w-full" onClick=${() => toggle(key)}>
-              <span class=${`flex items-center justify-center w-9 h-9 rounded-full shrink-0 ${on ? "bg-primary/15 text-primary" : "bg-base-200 text-base-content/70"}`}>${Icon(icon, "text-xl")}</span>
+              ${/* The glyph sits in a WELL while the layer is silent and rises out of it when it plays —
+                   `bg-base-200` meant "a step darker than the card", and base-100/200 are one colour now. */""}
+              <span class=${`flex items-center justify-center w-9 h-9 rounded-full shrink-0 ${on ? "sf-e2 text-primary" : "sf-inset text-muted"}`}>${Icon(icon, "text-xl")}</span>
               <span class="font-semibold flex-1 min-w-0 truncate">${T(t, name)}</span>
               ${on ? Icon("lucide:volume-2", "text-primary shrink-0") : null}
             </button>
@@ -170,9 +177,12 @@ export function ambient({ S }) {
     </div>
 
     <div class="flex items-center gap-2 text-sm flex-wrap justify-center">
-      <span class="text-base-content/70 flex items-center gap-1.5">${Icon("lucide:moon")}${T(t, "sleep")}</span>
-      ${TIMERS.map((m) => html`<button data-timer=${m} class=${`px-2.5 py-1 rounded-full text-xs font-medium border transition ${timerMin === m ? "border-primary bg-primary/10" : "border-base-300"}`} onClick=${() => setTimerMin((c) => (c === m ? 0 : m))} key=${m}>${m}${T(t, "min")}</button>`)}
+      <span class="text-muted flex items-center gap-1.5">${Icon("lucide:moon")}${T(t, "sleep")}</span>
+      ${/* Three chips, not a rail: the row keeps its shape and each chip declares itself — a small raised
+           object on the shallow rung in BOTH states, because a 22px chip cannot carry the full pair. The
+           chosen one is the same object carrying the app's wash, which is what the hairline used to say. */""}
+      ${TIMERS.map((m) => html`<button data-timer=${m} aria-pressed=${timerMin === m} class=${`px-2.5 py-1 rounded-full text-xs font-medium transition sf-e2 ${timerMin === m ? "bg-[var(--app-tint)]" : "sf-raised"}`} onClick=${() => setTimerMin((c) => (c === m ? 0 : m))} key=${m}>${m}${T(t, "min")}</button>`)}
     </div>
-    ${!audioSupported ? html`<div class="text-xs text-base-content/70">${T(t, "noAudio")}</div>` : null}
+    ${!audioSupported ? html`<div class="text-xs text-muted">${T(t, "noAudio")}</div>` : null}
   </div>`;
 }

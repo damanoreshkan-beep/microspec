@@ -81,7 +81,7 @@ export function quakes({ S }) {
   if (!ready) return html`<div class="flex flex-col gap-4 items-center">
     <div class="w-full flex justify-center"><${Globe} points=${[]} spin=${true} height=${300} /></div>
     <div class="flex flex-col items-center gap-1 -mt-1"><div class="text-4xl font-bold tabular-nums text-base-content/40"><${Scramble} len=${5} /></div><div class="text-sm text-base-content/50"><${Scramble} len=${20} /></div></div>
-    <div class="w-full flex flex-col gap-2">${[0, 1, 2, 3, 4].map((i) => html`<div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="shrink-0 font-bold text-base-content/50"><${Scramble} len=${4} /></div><div class="flex-1 min-w-0 truncate"><${Scramble} len=${26} /></div></div></div>`)}</div>
+    <div class="w-full flex flex-col gap-2">${[0, 1, 2, 3, 4].map((i) => html`<div class="card bg-base-100 rounded-2xl overflow-hidden sf-e2" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="shrink-0 font-bold text-base-content/50"><${Scramble} len=${4} /></div><div class="flex-1 min-w-0 truncate"><${Scramble} len=${26} /></div></div></div>`)}</div>
   </div>`;
 
   const rtf = new Intl.RelativeTimeFormat(locale === "en" ? "en" : locale || "uk", { numeric: "auto" });
@@ -100,8 +100,15 @@ export function quakes({ S }) {
       <div class="text-xs text-base-content/70 mt-0.5">${list.length} ${T(t, "count24")}</div>
     </div>` : null}
 
-    <div ref=${rowsRef} class="w-full max-w-[420px] rounded-2xl border border-base-300 bg-base-100 overflow-hidden divide-y divide-base-300/40">
-      ${recent.map((q) => html`<button data-quake class=${`qrow w-full text-left flex items-center gap-3 px-4 py-2.5 transition ${sel && q.id === sel.id ? "bg-primary/10" : "active:bg-base-200"}`} onClick=${() => setSelId(q.id)} key=${q.id}>
+    ${/* The list is ONE raised surface with rows ruled across it, not 24 outlined boxes: `sf-raised` for the
+         panel, `divide-y` kept because it divides rows inside that surface (base-300 is a real step down,
+         unlike base-200). The row's own press was `active:bg-base-200` — a tone step for depth, and since
+         base-200 IS base-100 in this material it had stopped drawing anything at all, so tapping a quake
+         gave no feedback. `sf-press` is the material's own press: the row becomes a hole under the finger.
+         The selected row keeps `bg-primary/10`, which is MEANING (and the bed MAG_INK is contrast-checked
+         against), not depth. */""}
+    <div ref=${rowsRef} class="w-full max-w-[420px] rounded-2xl sf-raised overflow-hidden divide-y divide-base-300/40">
+      ${recent.map((q) => html`<button data-quake class=${`qrow w-full text-left flex items-center gap-3 px-4 py-2.5 transition ${sel && q.id === sel.id ? "bg-primary/10" : "sf-press"}`} onClick=${() => setSelId(q.id)} key=${q.id}>
         <div class="w-11 text-center font-bold tabular-nums rounded-lg py-1 text-sm shrink-0" style=${`color:${magColor(q.mag)};border:1.5px solid ${magFill(q.mag)}`}>${q.mag.toFixed(1)}</div>
         <div class="flex-1 min-w-0"><div class="font-medium truncate text-sm">${q.place}</div><div class="text-xs text-base-content/70 tabular-nums">${Math.round(q.depth)} ${T(t, "km")} · ${ago(q.time)}</div></div>
         ${sel && q.id === sel.id ? Icon("lucide:crosshair", "text-primary shrink-0") : null}

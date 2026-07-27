@@ -98,7 +98,13 @@ export function compassView({ S }) {
           <div class="absolute left-1/2 -translate-x-1/2 top-5 w-px h-3 bg-base-content/25"></div>
         </div>`)}
       </div>
-      <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-base-content/50"></div>
+      ${/* The pivot. The rose turns on it, so it is an OBJECT sitting in the recess — the one raised thing
+           on the dial — and it now says so: base-100 on the shallow pair. It used to be `bg-base-content/50`,
+           a mid-grey disc, i.e. the last tone step on this screen standing in for depth. The shallow rung,
+           not `sf-raised`: the cap is 8px and the full 5px extrusion is a shadow bigger than the thing.
+           The tick marks around it stay ink alphas on purpose — they are MARKS drawn on the face, not
+           surfaces, and giving a 1px hairline a shadow pair would be drawing a shadow on a line. */""}
+      <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-base-100 sf-e2"></div>
       </div>
     </div>
 

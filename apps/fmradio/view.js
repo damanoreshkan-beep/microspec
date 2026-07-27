@@ -172,9 +172,11 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
       <div class="flex items-center gap-2 pt-0.5 pb-1">
         <input type="range" min=${FM_LO} max=${FM_HI} step="0.1" value=${(freq / 1e6).toFixed(1)} data-band
           aria-label=${T(t, "band")} onInput=${(e) => setFreq(Number(e.target.value) * 1e6)} class="range range-sm range-primary flex-1 min-w-0" />
-        <button data-scan aria-label=${T(t, "scan")} disabled=${scanSt.active} onClick=${scan} class="btn btn-sm btn-outline gap-1.5 shrink-0">${Icon("lucide:radar", `text-base ${scanSt.active ? "animate-spin" : ""}`)}${T(t, "scan")}</button>
+        <button data-scan aria-label=${T(t, "scan")} disabled=${scanSt.active} onClick=${scan} class="btn btn-sm gap-1.5 shrink-0">${Icon("lucide:radar", `text-base ${scanSt.active ? "animate-spin" : ""}`)}${T(t, "scan")}</button>
       </div>
-      ${scanSt.active ? html`<div class="w-full h-1.5 rounded-full bg-base-content/10 overflow-hidden" data-scanbar><div class="h-full bg-primary transition-[width] duration-200" style=${`width:${Math.round((scanSt.frac || 0) * 100)}%`}></div></div>` : null}
+      ${/* A 6px rail cannot hold a shadow pair, so the groove takes the system's one sanctioned tone step
+           (--sf-track-face) instead of an ink alpha — the same face a range track uses. */""}
+      ${scanSt.active ? html`<div class="w-full h-1.5 rounded-full overflow-hidden" style="background:var(--sf-track-face)" data-scanbar><div class="h-full bg-primary transition-[width] duration-200" style=${`width:${Math.round((scanSt.frac || 0) * 100)}%`}></div></div>` : null}
       ${stations.length ? stations.slice().sort((a, b) => a.freq - b.freq).map((s) => {
     const on = Math.abs(s.freq - freq) < STEP_HZ / 2;
     // The tuned station is a DEEPER extrusion carrying the accent tint, not a ringed row: with the hairline
@@ -197,7 +199,9 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
               <span class="text-[0.6rem] uppercase tracking-wider text-base-content/55 shrink-0">${T(t, "unitMhz")}</span>
               <span class="truncate font-semibold text-sm ml-0.5">${name || html`<span class="text-base-content/35">${T(t, "tuning")}</span>`}</span>
               <span data-stereo class=${`shrink-0 ${stereo ? "text-primary" : "text-base-content/30"}`} title=${T(t, stereo ? "stereo" : "mono")}>${Icon("lucide:radio", "text-sm")}</span>
-              ${genre ? html`<span class="shrink-0 rounded-full px-1.5 py-px text-[0.55rem] uppercase tracking-wider bg-secondary/12 text-secondary truncate max-w-[6rem]" data-genre>${genre}</span>` : null}
+              ${/* The genre is a chip — a small object ON the bar, so it takes the SHALLOW pair; the full
+                   extrusion on a 14px tag is a shadow bigger than the thing. */""}
+              ${genre ? html`<span class="shrink-0 rounded-full px-1.5 py-px text-[0.55rem] uppercase tracking-wider bg-secondary/12 text-secondary truncate max-w-[6rem] sf-e2" data-genre>${genre}</span>` : null}
             </div>
             ${info ? html`<div class="text-[0.72rem] text-muted leading-snug truncate mt-0.5" data-rt>${info}</div>` : null}
           </div>
@@ -222,10 +226,12 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
   </${Fragment}>`;
 }
 
+// Five bars, unchanged geometry. An unlit bar is 6px wide — far too thin for the shadow pair — so it takes
+// --sf-track-face, the system's one sanctioned tone step for a thin track, rather than an ink alpha.
 function SignalBars({ level, label }) {
   const bars = 5, lit = Math.round(level * bars);
   return html`<div class="flex items-end gap-[3px] h-7" role="img" aria-label=${label} data-signal>
-    ${[...Array(bars)].map((_, i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${34 + i * 16}%`}></span>`)}
+    ${[...Array(bars)].map((_, i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : ""}`} style=${`height:${34 + i * 16}%${i < lit ? "" : ";background:var(--sf-track-face)"}`}></span>`)}
   </div>`;
 }
 

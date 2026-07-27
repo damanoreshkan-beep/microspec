@@ -52,6 +52,12 @@ const LAT = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯
 // only state this instrument shows you.
 const BORE = "rgba(0,0,0,.72)";        // an open hole: the bore, a hole in wood reads dark in any theme
 const PAD = "#F2EDE4";                 // a fingertip on it — bone, and bone under both themes
+// The labium — the fipple's window, cut into the same wood. It belongs to the PIPE's fixed palette, not to
+// the farm's material, for exactly the reason above: an `sf-inset` here would paint a base-100 face and a
+// theme-inverting sink onto a board that is brown under both themes. It was the one colour on the pipe
+// still written as a loose utility (`bg-black/45`) rather than declared with the other two; same value,
+// now named, so the whole instrument's fixed palette is these three lines and nothing else.
+const WINDOW = "rgba(0,0,0,.45)";
 
 // The app owns the TUNING; the runtime owns the acoustics (fingeredSemitone in /_rt/wind.js). Same split
 // as groove.js: a rule true of every fipple flute does not belong to one of them.
@@ -152,7 +158,7 @@ export function sopilka({ S }) {
       style="height:min(60svh,29rem);background:linear-gradient(100deg,#6b4a24,#a9793d 42%,#7d5729)"
       onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onPointerCancel=${up}>
       <div class="absolute inset-x-0 flex justify-center" style="top:9%">
-        <div class="w-8 h-1.5 rounded-full bg-black/45"></div>
+        <div class="w-8 h-1.5 rounded-full" style=${`background:${WINDOW}`}></div>
       </div>
       ${Array.from({ length: HOLES }, (_, i) => html`<div key=${i} data-hole=${i} aria-hidden="true"
         class="absolute left-1/2 -translate-x-1/2 w-7 h-7 rounded-full transition-colors"

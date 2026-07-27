@@ -249,7 +249,7 @@ export function handpan({ S }) {
 
   return html`<div class="fixed left-0 right-0 z-20 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <${RippleBg} />
-    ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-14 right-3 z-20 btn btn-circle btn-sm ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/50 text-muted"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
+    ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-14 right-3 z-20 btn btn-circle btn-sm ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100 text-muted"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
     <div class="relative z-10 flex flex-col flex-1 min-h-0">
     <div class="shrink-0 px-3 py-2">
       <${Segmented} attr="data-scale" scroll variant="outline" label=${T(t, "scale")}
@@ -257,7 +257,11 @@ export function handpan({ S }) {
     </div>
 
     <div class="flex-1 min-h-0 relative grid place-items-center px-3">
-      <div ref=${panRef} class="relative w-[min(90vw,62vh)] aspect-square rounded-full bg-gradient-to-br from-base-300 to-base-100 sf-e3 select-none" style="touch-action:none"
+      ${/* The shell of the pan is the PAGE pushed out — `sf-raised`, the same material as every other object
+           in the farm. It used to be a from-base-300→base-100 gradient over `sf-e3`: base-300 and base-100 are
+           one colour now, so the gradient painted nothing and only the shadow was doing the work. The steel
+           lives INSIDE it (the fields), which is where an instrument's own material belongs. */""}
+      <div ref=${panRef} class="relative w-[min(90vw,62vh)] aspect-square rounded-full sf-raised select-none" style="touch-action:none"
         onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onLift} onPointerCancel=${onLift} onClick=${onClickBoard}>
         <!-- ding (centre) — a convex steel dome -->
         <button data-field="0" aria-label=${label(s.midi[0])} class=${`hp-field hp-ding ${lit.has(0) ? "hp-lit" : ""}`} style="left:50%;top:50%;width:27%;height:27%">
@@ -302,14 +306,26 @@ export function handpanWeave({ S, toast, screen, openScreen, closeScreen }) {
 
   return html`<${Fragment}>
     <div class="pb-40 flex flex-col gap-[3px]">
-      <div class="sticky z-10 -mx-4 px-4 bg-base-200/85 backdrop-blur flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
+      ${/* The step rail is a real object that floats over the grid, so it is opaque and shallow-raised
+           (`sf-e2`) instead of frosted: a blur erases the very shadow pair that says "this is on top".
+           Its 4px ticks are the theme's one sanctioned exception — a rail that thin cannot hold a pair, so
+           the idle tick takes --sf-track-face, the same tone step a range groove uses. */""}
+      <div class="sticky z-10 -mx-4 px-4 bg-base-100 sf-e2 flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
         <div class="w-7 shrink-0"></div>
-        ${STEPS.map((step) => html`<div class=${`flex-1 h-1 rounded-full transition-colors ${step % 4 === 0 && step > 0 ? "ml-1" : ""} ${step === sweep ? "bg-accent" : step === cur ? "bg-secondary" : "bg-base-300"}`} key=${step}></div>`)}
+        ${STEPS.map((step) => html`<div class=${`flex-1 h-1 rounded-full transition-colors ${step % 4 === 0 && step > 0 ? "ml-1" : ""} ${step === sweep ? "bg-accent" : step === cur ? "bg-secondary" : ""}`}
+          style=${step === sweep || step === cur ? "" : "background:var(--sf-track-face)"} key=${step}></div>`)}
       </div>
       ${rows.map(({ i, m }) => { const live = loop.some((cell) => cell && cell.includes(i)); return html`<div class="flex items-center gap-[3px]" key=${i}>
         <div class=${`w-7 shrink-0 text-center text-sm font-medium tabular-nums ${i === 0 ? "text-secondary" : live ? "text-base-content" : "text-base-content/70"}`} title=${label(m)}>${letter(m)}</div>
+        ${/* A cell is a SLOT: empty it is a hole in the page (`sf-inset`), struck it is that hole filled by a
+             raised object carrying the row's colour (`sf-e2` — 144 of these, and the full pair on a 36px
+             square is a shadow bigger than the thing). Two flavours of bg-base-300 used to say beat vs
+             off-beat, and base-300 is base-100 now, so both were invisible; the 4-step `ml-1` gutters and
+             the rail above carry the beat, exactly as they did. Grid, cell height and gutters untouched.
+             The playhead/sweep marker is an `outline`, not a `ring`: a ring is painted with box-shadow and
+             would fight the material for the same property. */""}
         ${STEPS.map((step) => { const on = (loop[step] || []).includes(i); const beat = step % 4 === 0; return html`<button data-cell=${`${i}-${step}`} aria-pressed=${on} aria-label=${`${label(m)} ${step + 1}`} onClick=${() => cellToggle(i, step)} key=${step}
-          class=${`flex-1 min-w-0 h-9 rounded-md touch-manipulation transition-all duration-150 ${beat && step > 0 ? "ml-1" : ""} ${on ? (i === 0 ? "bg-secondary" : "bg-primary") : beat ? "bg-base-300/80" : "bg-base-300/55"} ${step === sweep ? "ring-2 ring-accent scale-105" : step === cur ? "ring-2 ring-base-content/50" : ""}`}></button>`; })}
+          class=${`flex-1 min-w-0 h-9 rounded-md touch-manipulation transition-all duration-150 ${beat && step > 0 ? "ml-1" : ""} ${on ? `sf-e2 ${i === 0 ? "bg-secondary" : "bg-primary"}` : "sf-inset"} ${step === sweep ? "outline-2 outline-accent scale-105" : step === cur ? "outline-2 outline-base-content/50" : ""}`}></button>`; })}
       </div>`; })}
     </div>
 
@@ -368,7 +384,10 @@ function SettingsSheet({ open, onClose, t }) {
 }
 
 // ================= Saved =================
-const Spectrum = ({ loop, live, cur }) => { const bars = (loop || emptyLoop()).map((c) => (c ? c.length : 0)), mx = Math.max(1, ...bars); return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-secondary" : v ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}</span>`; };
+// The bars are 3px wide inside a 20px strip — far under the size a shadow pair can survive, so the empty
+// step takes --sf-track-face, the same thin-track tone step as the rail on Weave. One token for every
+// too-small-to-extrude groove in the app.
+const Spectrum = ({ loop, live, cur }) => { const bars = (loop || emptyLoop()).map((c) => (c ? c.length : 0)), mx = Math.max(1, ...bars); return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-secondary" : v ? "bg-primary" : ""}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%${(live && s === cur) || v ? "" : ";background:var(--sf-track-face)"}`} key=${s}></span>`)}</span>`; };
 
 export function handpanSaved({ S, undo }) {
   const t = useStore(S.t); _dict = t;
@@ -383,11 +402,13 @@ export function handpanSaved({ S, undo }) {
   const play = (it) => { buzz(); if (isCur(it)) { stop(); return; } loadLoop(it); start(); };
   const del = async (it) => { const { id, _ts, ...rec } = it; try { await SAVES.remove(id); } catch { /* */ } load(); undo?.(async () => { try { await SAVES.put(id, rec); } catch { /* */ } load(); }, it.name || T(t, "loopWord")); };
 
-  if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full bg-base-300 shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
+  if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full sf-inset shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
   if (!list.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:bookmark", "text-4xl")}<span>${T(t, "savedEmpty")}</span></div>`;
 
   return html`<div class="flex flex-col gap-2">
-    ${list.map((it) => { const on = isCur(it); return html`<div data-saved class="card bg-base-100 border border-base-300 rounded-2xl transition" key=${it.id}>
+    ${/* No hairline on either card: `.card` already declares the shallow pair, and an outline on top of an
+         extrusion is the edge drawn twice. The skeleton's avatar slot is a WELL waiting to be filled. */""}
+    ${list.map((it) => { const on = isCur(it); return html`<div data-saved class="card bg-base-100 rounded-2xl transition" key=${it.id}>
       <div class="card-body p-3 flex-row items-center gap-3">
         <button data-play aria-label=${on ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle btn-sm shrink-0 ${on ? "btn-secondary" : "btn-primary"}`} onClick=${() => play(it)}>${Icon(on ? "lucide:square" : "lucide:play", "text-base")}</button>
         <button data-load class="flex-1 min-w-0 text-left flex flex-col gap-1.5" onClick=${() => open(it)}>

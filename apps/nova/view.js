@@ -70,11 +70,14 @@ const MOCK_FUNDING = {
 };
 
 // Avatar with a graceful letterTile fallback (letterTile already returns a data URI). Round.
+// The disc under the face is the SLOT the avatar drops into — a recess (`sf-inset`), not a tone step. On a
+// replaced element the inset pair paints beneath the bitmap, so it is visible exactly while the slot is
+// empty (fetch in flight) and gone the moment the picture fills it.
 const Avatar = ({ src, seed, size = 52 }) => {
   const fallback = () => letterTile(seed || "?", { w: size, h: size, light: 30 });
   return html`<img src=${src || fallback()} alt="" width=${size} height=${size} loading="lazy"
     onError=${(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = "1"; e.currentTarget.src = fallback(); } }}
-    class="rounded-full object-cover bg-base-300 shrink-0" style=${`width:${size}px;height:${size}px`} />`;
+    class="rounded-full object-cover sf-inset shrink-0" style=${`width:${size}px;height:${size}px`} />`;
 };
 
 export function nova({ S, tab, toast, openScreen, closeScreen }) {
@@ -313,8 +316,11 @@ function DevCard({ d, t, busy, onStar, onSupport }) {
 
     ${d.desc ? html`<p class="text-sm text-base-content/80 leading-relaxed line-clamp-2">${d.desc}</p>` : null}
 
+    ${/* The reason chips are small raised objects sitting ON the card, so they say so — `sf-e2`, the shallow
+         pair the kit gives every badge, because the full extrusion on a 20px chip is a shadow bigger than the
+         thing it belongs to. The signal wash stays: it is the FILL of a raised chip, not its depth. */""}
     ${d.reasons?.length ? html`<div class="flex flex-wrap gap-1.5">
-      ${d.reasons.slice(0, 3).map((r) => html`<span key=${r} class="text-[0.68rem] font-medium px-2 py-0.5 rounded-full bg-secondary/12 text-secondary">${T(t, r)}</span>`)}
+      ${d.reasons.slice(0, 3).map((r) => html`<span key=${r} class="text-[0.68rem] font-medium px-2 py-0.5 rounded-full bg-secondary/12 text-secondary sf-e2">${T(t, r)}</span>`)}
     </div>` : null}
 
     <div class="flex flex-wrap items-center gap-2 pt-0.5">

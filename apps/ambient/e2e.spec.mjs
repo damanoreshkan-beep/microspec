@@ -16,7 +16,7 @@ export default [
       h.expect((await h.count('[data-layer="rain"] input[type="range"]')) === 0, "повзунок є до вмикання");
       await h.click('[data-layer="rain"] button'); await h.wait(200);
       h.expect((await h.attr('[data-layer="rain"] button', "aria-pressed")) === "true", "шар не увімкнувся");
-      h.expect((await h.attr('[data-layer="rain"]', "class")).includes("border-primary"), "шар не підсвітився");
+      h.expect((await h.attr('[data-layer="rain"]', "data-on")) === "1", "шар не підсвітився");
       h.expect((await h.count('[data-layer="rain"] input[type="range"]')) === 1, "немає повзунка гучності");
     },
   },
@@ -35,9 +35,9 @@ export default [
     name: "таймер сну обирається і знімається", run: async (h) => {
       await ready(h);
       await h.click('[data-timer="30"]'); await h.wait(150);
-      h.expect((await h.attr('[data-timer="30"]', "class")).includes("border-primary"), "таймер не обрався");
+      h.expect((await h.attr('[data-timer="30"]', "aria-pressed")) === "true", "таймер не обрався");
       await h.click('[data-timer="30"]'); await h.wait(150);
-      h.expect(!(await h.attr('[data-timer="30"]', "class")).includes("border-primary"), "таймер не знявся");
+      h.expect((await h.attr('[data-timer="30"]', "aria-pressed")) !== "true", "таймер не знявся");
     },
   },
   {

@@ -121,7 +121,7 @@ export function imagine({ S, toast }) {
 
   const onKey = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); generate(); } };
 
-  return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+  return html`<div class="fixed inset-x-0 z-20 bg-base-100 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <div class="relative flex-1 min-h-0 overflow-hidden bg-black flex items-center justify-center">
       ${phase === "done" && result ? html`<${Fragment}>
         <img data-result src=${result.url} alt=${prompt} class="absolute inset-0 w-full h-full object-cover" />
@@ -130,15 +130,22 @@ export function imagine({ S, toast }) {
       ${phase === "generating" ? html`<${Fragment}>
         <div class="absolute inset-0 animate-pulse" style="background:linear-gradient(120deg,#141416,#241f36,#141416)"></div>
         <div class="relative z-10 flex flex-col items-center gap-3 w-56 max-w-[70%]">
-          <div data-gen class="font-mono text-sm uppercase tracking-wide text-base-content/70 tabular-nums">${T(t, "eGenerating")} ${fmt(elapsed)}<span class="text-base-content/40"> / ~${fmt(est)}</span></div>
-          <div class="w-full h-1 rounded-full bg-base-content/15 overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / Math.max(1, est) * 100))}%`}></div></div>
+          ${/* This block lives on the viewer PLATE, which is black in both themes — so its ink is white, not
+               base-content. `text-base-content/70` and a `bg-base-content/15` track were dark-theme-only by
+               accident: on the light theme they resolve to near-black on black and the whole progress read
+               vanished. Same treatment as Онови (apps/retouch), which shows the identical wait. */""}
+          <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}<span class="text-white/50"> / ~${fmt(est)}</span></div>
+          <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-[var(--app-accent)] rounded-full transition-all duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / Math.max(1, est) * 100))}%`}></div></div>
         </div>
       </${Fragment}>` : null}
-      ${phase === "idle" ? html`<div class="text-base-content/20">${Icon("lucide:sparkles", "text-5xl")}</div>` : null}
-      ${phase === "error" ? html`<div class="flex flex-col items-center gap-2 text-center px-8">${Icon("lucide:alert-triangle", "text-3xl text-error")}<div data-error class="text-sm text-base-content/70">${T(t, error || "eFailed")}</div></div>` : null}
+      ${phase === "idle" ? html`<div class="text-white/25">${Icon("lucide:sparkles", "text-5xl")}</div>` : null}
+      ${phase === "error" ? html`<div class="flex flex-col items-center gap-2 text-center px-8">${Icon("lucide:alert-triangle", "text-3xl text-error")}<div data-error class="text-sm text-white/85">${T(t, error || "eFailed")}</div></div>` : null}
     </div>
 
-    <div class="shrink-0 bg-base-100 border-t border-base-300 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
+    ${/* The composer is the page RAISED against the viewer plate, so the pair draws its own top edge — the
+         `border-t border-base-300` it used to carry was the object outlining itself, and a hairline is the
+         one thing this material replaces. */""}
+    <div class="shrink-0 bg-base-100 sf-e3 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
       <div class="relative">
         <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
         <button data-dream aria-label=${T(t, "dream")} disabled=${suggesting || phase === "generating"} onClick=${dream} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>

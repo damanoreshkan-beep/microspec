@@ -5,6 +5,7 @@ import { T } from "/_rt/i18n.js";
 import { camera } from "/_rt/sensors.js";
 import { avgColor, palette, rgbToHex, rgbToHsl } from "/_rt/colour.js";
 import { CameraPrime } from "/_rt/camprime.js";
+import { Panel } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -78,22 +79,25 @@ export function pipette({ S }) {
       </div>` : null}
     </div>
 
-    <!-- readout -->
-    <div class="shrink-0 bg-base-100 border-t border-base-300 px-4 pt-3 pb-3 flex flex-col gap-3 max-w-md w-full mx-auto">
-      <div class="flex items-center gap-3">
-        <button aria-label=${hex} onClick=${() => picked && copy(picked)} class="w-14 h-14 rounded-2xl shrink-0 border border-base-300 active:scale-95 transition" style=${picked ? `background:${hex}` : ""}></button>
-        <div class="flex-1 min-w-0">
-          <div data-live class="text-2xl font-bold font-mono tabular-nums leading-tight">${hex}</div>
-          <div class="text-[0.7rem] text-muted font-mono leading-snug truncate">${rgbStr}</div>
-          ${hslStr ? html`<div class="text-[0.7rem] text-muted font-mono leading-snug truncate">${hslStr}</div>` : null}
+    
+    <div class="shrink-0 p-3">
+      <${Panel} className="max-w-md w-full mx-auto">
+        <div class="flex items-center gap-3">
+          <button aria-label=${hex} onClick=${() => picked && copy(picked)} class="w-14 h-14 rounded-2xl shrink-0 sf-raised active:scale-95 transition" style=${picked ? `background:${hex}` : ""}></button>
+          <div class="flex-1 min-w-0">
+            <div data-live class="text-2xl font-bold font-mono tabular-nums leading-tight">${hex}</div>
+            <div class="text-[0.7rem] text-muted font-mono leading-snug truncate">${rgbStr}</div>
+            ${hslStr ? html`<div class="text-[0.7rem] text-muted font-mono leading-snug truncate">${hslStr}</div>` : null}
+          </div>
+          <button data-freeze aria-label=${T(t, frozen ? "live" : "freeze")} aria-pressed=${frozen} onClick=${() => setFrozen((f) => !f)} class=${`btn btn-circle btn-sm ${frozen ? "btn-primary" : "btn-ghost"}`}>${Icon(frozen ? "lucide:play" : "lucide:snowflake", "text-lg")}</button>
         </div>
-        <button data-freeze aria-label=${T(t, frozen ? "live" : "freeze")} aria-pressed=${frozen} onClick=${() => setFrozen((f) => !f)} class=${`btn btn-circle btn-sm ${frozen ? "btn-primary" : "btn-ghost"}`}>${Icon(frozen ? "lucide:play" : "lucide:snowflake", "text-lg")}</button>
-      </div>
-      <div class="flex gap-2">
-        ${(pal.length ? pal : Array(5).fill(null)).map((c, i) => c
-          ? html`<button data-swatch aria-label=${rgbToHex(c)} onClick=${() => copy(c)} class="flex-1 h-9 rounded-lg border border-base-300 active:scale-95 transition" style=${`background:${rgbToHex(c)}`} key=${i}></button>`
-          : html`<div class="flex-1 h-9 rounded-lg bg-base-300/40" key=${i}></div>`)}
-      </div>
+        <div class="flex gap-2">
+          
+          ${(pal.length ? pal : Array(5).fill(null)).map((c, i) => c
+            ? html`<button data-swatch aria-label=${rgbToHex(c)} onClick=${() => copy(c)} class="flex-1 h-9 rounded-lg sf-e2 active:scale-95 transition" style=${`background:${rgbToHex(c)}`} key=${i}></button>`
+            : html`<div class="flex-1 h-9 rounded-lg sf-inset" key=${i}></div>`)}
+        </div>
+      <//>
     </div>
     ${!enabled || err ? html`<${CameraPrime} loc=${loc} reason=${T(t, "primeReason")} onEnable=${() => setEnabled(true)} onSettings=${() => S.screen.set("perms")} denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />` : null}
   </div>`;

@@ -540,8 +540,9 @@ export function v2mLibrary({ S, undo }) {
 
   return html`<div class="flex flex-col gap-2 pt-2">${list.map((it) => {
     const active = cur?.id === it.id;
+    
     return html`<div data-track-row=${it.id}
-      class=${"card bg-base-200/60 border border-base-content/5" + (active ? " ring-1 ring-primary/50" : "")}>
+      class=${"card" + (active ? " ring-1 ring-primary/50" : "")}>
       <div class="card-body flex-row items-center gap-3 p-3">
         <button class="btn btn-circle btn-sm btn-ghost shrink-0"
           aria-label=${T(t, active && playing ? "aPause" : "aPlay")}

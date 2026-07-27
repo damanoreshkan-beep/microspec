@@ -14,7 +14,7 @@ export default [
     name: "freeze активує стан", run: async (h) => {
       await ready(h);
       await h.tap("[data-freeze]"); await h.wait(150);
-      h.expect((await h.count("[data-freeze].btn-primary")) === 1, "freeze не активувався");
+      h.expect((await h.count('[data-freeze][aria-pressed="true"]')) === 1, "freeze не активувався");
     },
   },
   {

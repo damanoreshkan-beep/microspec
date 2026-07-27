@@ -100,12 +100,12 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
   if (!connected) {
     const supported = usbSupported() && usbOk;
     return html`<div class="flex flex-col items-center justify-center text-center gap-5 pt-10 px-2 max-w-sm mx-auto">
-      <div class="w-20 h-20 rounded-3xl grid place-items-center bg-primary/12 text-primary border border-primary/25">${Icon("lucide:antenna", "text-4xl")}</div>
+      <div class="w-20 h-20 rounded-3xl grid place-items-center bg-primary/12 text-primary sf-e2">${Icon("lucide:antenna", "text-4xl")}</div>
       <h2 class="text-2xl font-semibold">${T(t, "connectTitle")}</h2>
       <p class="text-base-content/70 leading-relaxed">${T(t, "connectBody")}</p>
       ${supported
         ? html`<button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2 mt-1" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
-        : html`<div class="alert bg-warning/12 text-warning border border-warning/25 rounded-2xl text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
+        : html`<div class="alert bg-warning/12 text-warning rounded-2xl text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
     </div>`;
   }
 
@@ -118,7 +118,7 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
       </div>
 
       <!-- band spectrum -->
-      <div class="w-full rounded-3xl border border-base-content/10 bg-base-100/50 overflow-hidden backdrop-blur">
+      <div class="w-full rounded-3xl sf-raised sf-e2 overflow-hidden">
         <canvas ref=${useCanvas((cv) => drawSpectrum(cv, $spectrum.get()), [spectrum, theme])} class="block w-full h-24" role="img" aria-label=${T(t, "spectrum")} data-spectrum></canvas>
         <div class="flex justify-between px-3 py-1 font-mono text-[0.6rem] text-muted tabular-nums border-t border-base-content/10">
           <span>${fMhz(BANDS[band].dlLo)}</span><span class="uppercase tracking-wider">${BANDS[band].label}</span><span>${fMhz(BANDS[band].dlHi)} MHz</span>
@@ -131,7 +131,7 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
         <span class="font-mono text-xs tabular-nums text-base-content/65" data-count>${arfcns.length}</span>
       </div>
       <div class="flex flex-col gap-1.5" data-live data-carriers>
-        ${arfcns.length ? arfcns.map((a) => html`<div key=${a.arfcn} data-arfcn=${a.arfcn} class="flex items-center gap-3 rounded-2xl border border-base-content/10 bg-base-100/40 px-4 py-2.5">
+        ${arfcns.length ? arfcns.map((a) => html`<div key=${a.arfcn} data-arfcn=${a.arfcn} class="flex items-center gap-3 rounded-2xl sf-raised sf-e2 px-4 py-2.5">
           <span class="font-mono tabular-nums text-lg w-14 shrink-0">${a.arfcn}</span>
           <div class="flex-1 min-w-0 flex flex-col">
             <span class="font-mono tabular-nums text-sm truncate">${fMhz(a.freq)}<span class="text-base-content/45 text-xs"> MHz</span></span>

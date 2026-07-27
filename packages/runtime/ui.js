@@ -89,7 +89,7 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
   
   
   return scroll
-    ? html`<div class="sf-inset overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-full backdrop-blur-xl">${rail}</div>`
+    ? html`<div class="sf-inset overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-full">${rail}</div>`
     : html`<div class="sf-inset rounded-full">${rail}</div>`;
 }
 
@@ -129,8 +129,8 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
   
   const surface = tone === "dark"
     ? "sf-e3 border border-white/15 bg-black/60 text-white"
-    : "sf-raised sf-e3 bg-base-100/80";
-  const cls = `${surface} rounded-[var(--ms-r)] backdrop-blur-xl p-[var(--ms-pad)] ${className}`;
+    : "sf-raised sf-e3";
+  const cls = `${surface} rounded-[var(--ms-r)] p-[var(--ms-pad)] ${className}`;
   return tag === "section"
     ? html`<section data-island class=${cls} ...${rest}>${children}</section>`
     : html`<div data-island class=${cls} ...${rest}>${children}</div>`;
@@ -142,7 +142,7 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
  * for grouped controls; use Island only where the panel floats OVER content.
  */
 export function Panel({ title, children, className = "", ...rest }) {
-  return html`<div ...${rest} class=${`@container sf-e2 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
+  return html`<div ...${rest} class=${`@container sf-raised sf-e2 rounded-[var(--ms-r)] p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
     ${title ? html`<div data-panel-title class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${title}</div>` : null}
     ${children}
   </div>`;
@@ -206,7 +206,7 @@ export function Transport({
   
   const hero = size === "hero";
   const big = hero
-    ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 !bg-base-100/70 backdrop-blur-xl !text-base-content sf-raised sf-e3"
+    ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 !text-base-content sf-raised sf-e3"
     : size === "sm"
       ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
       : "w-[var(--ms-ctl)] h-[var(--ms-ctl)] @max-[300px]:w-11 @max-[300px]:h-11";

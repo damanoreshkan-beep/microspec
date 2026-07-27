@@ -3215,7 +3215,8 @@ Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts o
   assert(/repeat\(var\(--ms-cols, 3\), minmax\(0, 1fr\)\)/.test(region), "--ms-cols must still name the widest count");
 
   const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
-  assert(/@container sf-e2/.test(ui), "Panel no longer establishes a container — the queries have nothing to read");
+  const panelCls = /export function Panel\([^)]*\)\s*\{[\s\S]*?class=\$\{`([^`]*)`/.exec(ui)?.[1] ?? "";
+  assert(panelCls.includes("@container"), `Panel no longer establishes a container — the queries have nothing to read (its classes: ${panelCls})`);
 });
 
 Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager, the tap floor holds", async () => {
@@ -3368,4 +3369,47 @@ Deno.test("the surface system: every interactive node declares a state, and none
   const focus = css.slice(css.indexOf(".input:focus"), css.indexOf("}", css.indexOf(".input:focus")));
   assert(/0 0 0 \d+px var\(--app-accent\)/.test(focus), "focus must be a ring — an arbitrary hue behind text fails contrast in one theme");
   assert(!/background:\s*var\(--app-accent\)/.test(focus), "focus fills the field with the accent");
+});
+
+Deno.test("the material: one light at 45°, a symmetric pair, and the surface IS the page", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const themeBlock = (t) => {
+    let out = "", i = -1;
+    while ((i = css.indexOf(`[data-theme="${t}"] {`, i + 1)) > -1) out += css.slice(i, css.indexOf("\n}", i)) + "\n";
+    return out;
+  };
+
+  for (const theme of ["signal", "signal-light"]) {
+    const b = themeBlock(theme);
+
+    for (const v of ["--nm-dark", "--nm-light", "--nm-cast"]) {
+      assert(b.includes(v + ":"), `${theme} does not define ${v} — the pair is the material`);
+    }
+
+    for (const v of ["--sf-drop", "--sf-sink", "--sf-press"]) {
+      const decl = b.slice(b.indexOf(v + ":"));
+      const value = decl.slice(0, decl.indexOf(";"));
+      assert(value.includes("--nm-dark") || value.includes("--nm-press-dark"), `${theme} ${v} has no dark half`);
+      assert(value.includes("--nm-light"), `${theme} ${v} has no LIGHT half — a one-sided shadow is a drop shadow, not an extrusion`);
+    }
+
+    const tok = (n) => /#[0-9A-Fa-f]{6}/.exec(b.slice(b.indexOf(`--color-${n}:`)))[0].toUpperCase();
+    assertEquals(tok("base-100"), tok("base-200"), `${theme}: base-100 and base-200 differ — a raised surface must be the same colour as the page it rises out of`);
+
+    assert(/--sf-inset-face:\s*var\(--color-base-100\)/.test(b), `${theme}: the recessed face is a different colour — that is a panel, not a hole`);
+  }
+
+  const pair = /var\(--nm-d\) var\(--nm-d\)|var\(--nm-d2\) var\(--nm-d2\)|var\(--nm-dp\) var\(--nm-dp\)/;
+  for (const v of ["--sf-drop", "--sf-sink", "--sf-press", "--sf-lift2", "--sf-sink2"]) {
+    const i = css.indexOf(v + ":");
+    assert(i > -1, `${v} is not defined`);
+    assert(pair.test(css.slice(i, css.indexOf(";", i))), `${v} does not offset x and y equally — the light must stay at 45°`);
+  }
+
+  const steps = [...css.matchAll(/@media \(max-height:\s*(\d+)px\)\s*\{[^}]*--nm-d:\s*(\d+)px/g)]
+    .map((m) => ({ h: +m[1], d: +m[2] })).sort((a, b) => b.h - a.h);
+  assert(steps.length >= 2, "the extrusion depth does not step with the density ladder");
+  for (let i = 1; i < steps.length; i++) {
+    assert(steps[i].d < steps[i - 1].d, `--nm-d does not shrink at ${steps[i].h}px — depth must compact with everything else`);
+  }
 });

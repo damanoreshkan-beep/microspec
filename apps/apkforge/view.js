@@ -2,6 +2,7 @@ import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Panel } from "/_rt/ui.js";
 import { siteName } from "/_rt/sitelabel.js";
 import { buildApk, fetchSiteIconPng, letterTilePng, downloadBlob, apkFilename } from "/_rt/apk.js";
 import { gate } from "/_rt/gate.js";
@@ -58,17 +59,19 @@ export function forge({ S, toast }) {
   };
 
   return html`<div class="flex flex-col gap-3 max-w-md w-full mx-auto">
-    <div data-forge class="flex items-center gap-3 rounded-2xl border border-base-content/10 bg-base-100 p-3 shrink-0">
-      <div class="size-14 rounded-2xl overflow-hidden bg-base-200 shrink-0 grid place-items-center ring-1 ring-base-content/10">
-        ${icon
-          ? html`<img data-icon src=${`data:image/png;base64,${icon}`} class="size-full object-cover" alt="" />`
-          : Icon("lucide:package", "text-2xl text-base-content/40")}
+    <${Panel} data-forge className="shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="size-14 rounded-2xl overflow-hidden sf-inset shrink-0 grid place-items-center">
+          ${icon
+            ? html`<img data-icon src=${`data:image/png;base64,${icon}`} class="size-full object-cover" alt="" />`
+            : Icon("lucide:package", "text-2xl text-base-content/40")}
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold truncate">${name || T(t, "forgeNamePlaceholder")}</div>
+          <div class="font-mono text-xs text-base-content/55 truncate">${url || T(t, "forgeUrlPlaceholder")}</div>
+        </div>
       </div>
-      <div class="min-w-0 flex-1">
-        <div class="font-semibold truncate">${name || T(t, "forgeNamePlaceholder")}</div>
-        <div class="font-mono text-xs text-base-content/55 truncate">${url || T(t, "forgeUrlPlaceholder")}</div>
-      </div>
-    </div>
+    <//>
 
     <input type="url" inputmode="url" value=${url} onInput=${(e) => setUrl(e.target.value)}
       placeholder=${T(t, "forgeUrlPlaceholder")} aria-label=${T(t, "forgeUrlLabel")}

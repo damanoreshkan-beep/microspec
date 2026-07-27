@@ -4,6 +4,7 @@ import { T } from "/_rt/i18n.js";
 import { gate } from "/_rt/gate.js";
 import { mulberry32 } from "/_rt/groove.js";
 import { letterTile } from "/_rt/tile.js";
+import { Sheet } from "/_rt/ui.js";
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));   
 const MAX_AV = 12;                             
@@ -25,7 +26,7 @@ function constellation(n) {
   return pts;
 }
 
-export function Finale({ devs = [], t, onClose }) {
+export function Finale({ devs = [], t, open = false, onClose }) {
   const canvasRef = useRef(null);
   const n = devs.length;
 
@@ -88,18 +89,17 @@ export function Finale({ devs = [], t, onClose }) {
       }
     };
 
-    resize();
-    const onResize = () => { if (!dead) resize(); };
-    addEventListener("resize", onResize);
+    const measure = () => { if (dead) return; resize(); if (gate) draw(0.6); };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(canvas);
 
-    if (gate) {
-      draw(0.6);
-    } else {
+    if (!gate) {
       const t0 = performance.now();
       const loop = (now) => { if (dead) return; draw((now - t0) / 1000); raf = requestAnimationFrame(loop); };
       raf = requestAnimationFrame(loop);
     }
-    return () => { dead = true; cancelAnimationFrame(raf); removeEventListener("resize", onResize); };
+    return () => { dead = true; cancelAnimationFrame(raf); ro.disconnect(); };
   }, []);
 
   const shown = devs.slice(0, MAX_AV);
@@ -109,43 +109,31 @@ export function Finale({ devs = [], t, onClose }) {
     ? `${d.avatar}${d.avatar.includes("?") ? "&" : "?"}size=120`
     : letterTile(d.name || d.owner || "?", { w: 96, h: 96, light: 32 }));   
 
-  return html`<div data-live role="dialog" aria-modal="true"
-    class="fixed inset-0 z-40 bg-base-100 overflow-hidden flex flex-col"
-    style="padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)">
-    <canvas ref=${canvasRef} aria-hidden="true" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
-
-    <button id="finale-close" class="btn btn-ghost btn-sm btn-circle absolute right-3 z-20" style="top:calc(env(safe-area-inset-top) + 0.5rem)"
-      aria-label=${T(t, "close")} onClick=${onClose}>
-      <iconify-icon icon="lucide:x" class="text-xl"></iconify-icon>
-    </button>
-
-    <!-- constellation of the developers you lifted -->
-    <div class="relative z-10 flex-1 min-h-0 mx-auto w-full max-w-md">
-      <div class="absolute inset-x-4 top-[6%] bottom-[34%]">
-        ${shown.map((d, i) => html`<a key=${`${d.owner}/${d.repo}`} href=${d.url} target="_blank" rel="noopener"
-          class="ms-reveal absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1"
-          style=${`left:${pts[i].x * 100}%;top:${pts[i].y * 100}%;animation-delay:${i * 90}ms`}>
-          <span class="relative block">
-            <span class="absolute -inset-1.5 rounded-full blur-md" style="background:radial-gradient(circle,var(--color-secondary),transparent 70%);opacity:.5"></span>
-            <img src=${avatarSrc(d)} alt=${d.name || d.owner} width="44" height="44" loading="lazy"
-              class="relative w-11 h-11 rounded-full object-cover ring-2 ring-base-100 bg-base-300" />
-          </span>
-          <span class="text-[0.6rem] font-mono text-base-content/75 max-w-[5rem] truncate">${d.name || d.owner}</span>
-        </a>`)}
-        ${extra > 0 ? html`<div class="absolute left-1/2 bottom-0 -translate-x-1/2 text-xs font-medium text-muted">${T(t, "andMore").replace("{n}", String(extra))}</div>` : null}
+  return html`<${Sheet} id="finale" open=${open} onClose=${onClose} size="lg" icon="lucide:sparkles"
+    title=${T(t, "finaleTitle").replace("{n}", String(n))}>
+    <div data-live class="flex flex-col gap-[var(--ms-gap)] min-w-0">
+      <div class="sf-inset relative w-full h-[clamp(11rem,42dvh,20rem)] overflow-hidden rounded-[var(--ms-r)]">
+        <canvas ref=${canvasRef} aria-hidden="true" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+        <div class="absolute inset-x-3 inset-y-8">
+          ${shown.map((d, i) => html`<a key=${`${d.owner}/${d.repo}`} href=${d.url} target="_blank" rel="noopener"
+            class="ms-reveal absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1"
+            style=${`left:${pts[i].x * 100}%;top:${pts[i].y * 100}%;animation-delay:${i * 90}ms`}>
+            <span class="relative block">
+              <span class="absolute -inset-1.5 rounded-full blur-md" style="background:radial-gradient(circle,var(--color-secondary),transparent 70%);opacity:.5"></span>
+              <img src=${avatarSrc(d)} alt=${d.name || d.owner} width="44" height="44" loading="lazy"
+                class="relative w-11 h-11 rounded-full object-cover ring-2 ring-base-100 bg-base-300" />
+            </span>
+            <span class="text-[0.6rem] font-mono text-base-content/75 max-w-[5rem] truncate">${d.name || d.owner}</span>
+          </a>`)}
+        </div>
+        
+        ${extra > 0 ? html`<div class="absolute right-3 bottom-2 text-xs font-medium text-muted">${T(t, "andMore").replace("{n}", String(extra))}</div>` : null}
       </div>
-    </div>
 
-    <!-- the message -->
-    <div class="relative z-10 text-center px-8 pb-[env(safe-area-inset-bottom)] mb-6 space-y-2">
-      <div class="inline-flex items-center gap-2 text-secondary">
-        <iconify-icon icon="lucide:sparkles" class="text-lg"></iconify-icon>
-      </div>
-      <h1 class="text-2xl font-extrabold tracking-tight">${T(t, "finaleTitle").replace("{n}", String(n))}</h1>
-      <p class="text-sm text-base-content/70 leading-relaxed max-w-xs mx-auto">${T(t, "finaleBody")}</p>
-      <button class="btn btn-primary rounded-2xl gap-2 mt-3" data-haptic="bump" onClick=${onClose}>
+      <p class="text-sm text-base-content/70 leading-relaxed text-center max-w-xs mx-auto">${T(t, "finaleBody")}</p>
+      <button class="btn btn-primary rounded-2xl gap-2 self-center" data-haptic="bump" onClick=${onClose}>
         ${T(t, "finaleBack")}<iconify-icon icon="lucide:arrow-right"></iconify-icon>
       </button>
     </div>
-  </div>`;
+  </${Sheet}>`;
 }

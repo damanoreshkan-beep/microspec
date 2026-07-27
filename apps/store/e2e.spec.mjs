@@ -28,18 +28,23 @@ export default [
       await h.tap('[data-cat="sound"]'); await h.wait(200);
       const sound = await h.count("[data-app]");
       h.expect(sound >= 1 && sound < all, "чіп не звузив до категорії");
+      h.expect((await h.attr('[data-cat="sound"]', "aria-pressed")) === "true", "обрана категорія не має aria-pressed");
       await h.tap('[data-cat="all"]'); await h.wait(150);
       h.expect((await h.count("[data-app]")) === all, "не відновилось на «Усі»");
+      h.expect((await h.attr('[data-cat="all"]', "aria-pressed")) === "true", "«Усі» не має aria-pressed");
+      h.expect((await h.attr('[data-cat="sound"]', "aria-pressed")) === "false", "стара категорія лишилась позначеною");
     },
   },
   {
-    name: "тап по застосунку → екран опису, Back закриває", run: async (h) => {
+    name: "тап по застосунку → шитик опису, Back закриває", run: async (h) => {
       await ready(h);
       await h.click('[data-app="rave"]'); await h.wait(250);
-      h.expect((await h.count("#open-app")) === 1, "не відкрився екран опису з кнопкою Відкрити");
+      h.expect((await h.prop("#appsheet", "open")) === true, "не відкрився шитик опису");
+      h.expect((await h.count("#open-app")) === 1, "немає кнопки Відкрити в шитику");
       h.expect(/техно|techno/i.test(await h.bodyText()), "немає опису застосунку");
       await h.back(); await h.wait(250);
-      h.expect((await h.count("#open-app")) === 0, "Back не закрив екран опису");
+      h.expect((await h.prop("#appsheet", "open")) !== true, "Back не закрив шитик опису");
+      h.expect((await h.count("#open-app")) === 0, "вміст шитика лишився в DOM після закриття");
     },
   },
   {

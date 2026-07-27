@@ -134,11 +134,11 @@ export function flux({ S }) {
       </div>` : null}
     </div>
 
-    <div class="shrink-0 bg-base-100 border-t border-base-300 px-4 pt-3 pb-3 flex items-center justify-center gap-3">
+    <div class="shrink-0 sf-raised sf-e2 px-4 pt-3 pb-3 flex items-center justify-center gap-3">
       <button data-ghost aria-label=${T(t, "ghost")} aria-pressed=${ghost} onClick=${() => setGhost((g) => !g)} class=${`btn btn-circle btn-sm ${ghost ? "btn-primary" : "btn-ghost"}`}>${Icon(ghost ? "lucide:eye" : "lucide:eye-off", "text-lg")}</button>
       <button data-sound aria-label=${T(t, "sound")} aria-pressed=${sound} onClick=${toggleSound} class=${`btn btn-circle btn-sm ${sound ? "btn-primary" : "btn-ghost"}`}>${Icon(sound ? "lucide:volume-2" : "lucide:volume-x", "text-lg")}</button>
       <button data-clear aria-label=${T(t, "clear")} data-haptic="bump" onClick=${clear} class="btn btn-ghost btn-sm btn-circle">${Icon("lucide:trash-2", "text-lg")}</button>
-      <button data-save aria-label=${T(t, "save")} onClick=${save} class="btn btn-primary rounded-2xl gap-2 px-5">${Icon("lucide:download")}${T(t, "save")}</button>
+      <button data-save aria-label=${T(t, "save")} onClick=${save} class="btn btn-primary gap-2 px-5">${Icon("lucide:download")}${T(t, "save")}</button>
     </div>
     ${!enabled || err ? html`<${CameraPrime} loc=${loc} reason=${T(t, "primeReason")} onEnable=${() => setEnabled(true)} onSettings=${() => S.screen.set("perms")} denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />` : null}
   </div>`;

@@ -77,30 +77,36 @@ established language; match it and push it forward, never regress to generic. (M
 a standing assumption, not a per-task ask.)
 
 - **Type:** the Geist superfamily (Geist + Geist Mono, Cyrillic) — never Inter/system defaults.
-- **Ink is the brand:** primary IS base-content — warm off-white `#F0E7E4` dark / warm near-black `#2A2320`
-  light; colour (terracotta secondary/accent, success/warning/error) is for *meaning* only.
-  `packages/runtime/theme.css`.
-- **The palette is CLAY, not ink** (`docs/research/claymorphism.md`). Three measured rules, and the first
-  two are the ones that get violated by instinct:
-  1. **Clay has three levels: canvas → container → card.** The container sits ~14 below its page; the
-     card sits *above* its container. In the farm's two levels that makes `base-100` (card) the LIGHTER
-     and `base-200` (page) the cream. Applying the container's colour to the card darkens every surface
-     and costs `text-base-content/60` its contrast — that is an axe-serious failure in all 58 apps at
-     once, and it is the single most expensive mistake made in this migration.
-  2. **Volume is edge contrast, not fill** — the face barely moves; the inner top highlight and the bottom
-     shade do all the work.
-  3. **The cast shadow carries the surface hue**, never neutral black — `--sf-drop`/`--sf-shadow`
-     `color-mix` with `--app-accent`, so each app casts its own colour. A grey shadow under a warm surface
-     reads as "a card with a shadow"; that one substitution is the whole style, lost.
-  Dark clay is **aubergine at L≈40-50**, not near-black: clay fails on `#0A0A0B` (grey inflated buttons),
-  not on darkness. Radius stays in the clay band — below ~20px the volume reads as an ordinary drop shadow.
-  **Check the COMPOSITED pair, never the solid one.** The farm renders `text-base-content/60` in 66
-  files; an alpha over a surface is what axe measures, and 60% of a warm ink on a cream card is 3.72:1
-  where the same ink at 100% is 11:1. Every solid pair passing tells you nothing. Muted text is the
-  binding constraint of any light theme (the old ink theme cleared it by 0.07) — so the **warmth budget
-  is set by contrast, not by taste**. `runtime_test.js` computes it locally and matches axe exactly.
-- **Floating glass islands:** dock + header are `bg-base-100/80 backdrop-blur-xl` + hairline + rim; a tool
-  app's persistent controls become islands like them.
+- **Ink is the brand:** primary IS base-content — `#EDEDF0` dark / `#0A0A0C` light, both NEUTRAL; colour
+  (blue secondary/accent, success/warning/error) is for *meaning* only. `packages/runtime/theme.css`.
+- **The palette is NEUTRAL GREYSCALE and the material is NEUMORPHIC**
+  (`docs/research/neumorphism-migration.md`). This replaced the clay repaint wholesale — surfaces carry no
+  hue at all now, and the volume is a symmetric shadow pair rather than an edge treatment. Four rules, and
+  the first two get violated by instinct:
+  1. **The surface IS the page.** `base-100 === base-200`, and a recess is the same colour as what it sits
+     in. A raised object is the page *extruded*, not a lighter panel laid on top — the moment a card gets
+     its own tone the pair reads as a drop shadow under a rectangle, which is the look this replaced.
+     Lightening a face to say "raised" is the classic mistake and flattens the material instantly.
+  2. **Volume is a PAIR: one dark shadow away from the light, one light shadow toward it.** A single-sided
+     shadow is a card on a page. Both halves, always, at 45° — x and y offsets are the same token so the
+     farm has exactly one light source and no component can drift its own.
+  3. **The base tone needs headroom in BOTH directions**, which is why dark is `#2A2A2E` and light is
+     `#EEEEF1` rather than the near-black/near-white they replaced. On `#0A0A0B` there is nothing to darken
+     toward; on `#FFFAF2` nothing to lighten toward. Either way the counter-highlight dies and the
+     extrusion collapses to a bevel. **This is physics, not taste — do not "clean up" the base to pure
+     black or pure white.**
+  4. **The shadow is NEUTRAL.** The clay system tinted it with `--app-accent`; this one must not, or every
+     surface starts saying something and colour stops meaning anything. `--app-accent` stays a MARK colour.
+  **Check the COMPOSITED pair, never the solid one.** The farm renders `text-base-content/60` in 66 files;
+  an alpha over a surface is what axe measures. Dropping the light page from `#FFFAF2` to `#EEEEF1` cost
+  exactly that pair its margin (4.45:1 — under the floor), and it was paid for by taking the ink to
+  near-black. Muted text is the binding constraint of any light theme, so the **base tone is set by
+  contrast, not by taste**. `runtime_test.js` computes it locally and matches axe exactly.
+- **No glass over our own surface, and no hairlines.** Frosted glass and the extrusion answer the same
+  question and cannot both be on screen — the blur erases the very shadow pair that makes the surface read.
+  Sheets are opaque (`.modal-box`), which also makes their text contrast deterministic. Blur over FOREIGN
+  content (a video frame, a camera feed) is still correct. Preflight bans both an app-authored
+  `shadow-{sm..2xl}` and a blur sitting on a `bg-base-*` surface.
 - **One page scroll:** content flows in `<main>`; no `position:fixed` panel with a nested `overflow-y-auto`.
   Overflow → a history-backed sheet (`S.screen`). A **single-screen** tab declares `"fit": true` and then
   must not scroll *at all*, at any viewport height — the verify gate enforces it across the matrix.
@@ -109,12 +115,16 @@ a standing assumption, not a per-task ask.)
   play/pause toggle**). Components size off the `--ms-*` density tokens, which step by viewport HEIGHT, and
   carry the app's own hue via `--app-accent` (`spec.accent`) — a MARK colour for dots/rings/fills, never text.
 - **The screen is a lit volume, not a flat sheet** (`theme.css` — "the enclosure"). A viewport-fixed wash
-  lights the box from above, the app's accent bounces off the bottom, and the walls are an edge-only inner
-  shadow + rim. Surfaces then MEAN something: **raised** (dock, sheet, island — a lip catching that light)
-  vs **recessed** (`.ms-trough` — a slider track, a rail, a field: something a value sits in). The light
-  never touches type, never sits behind text, and never animates — a full-viewport layer repainting forever
-  is a battery bill, not a design.
-- **Instant app-shell** (`#boot`), **liquid-glass sheets** (`.modal-box`), rounder radii, **haptics** on tap.
+  lights the box from above and the walls are an edge-only inner shadow + rim. Surfaces then MEAN
+  something: **raised** (`sf-raised` — dock, sheet, island, button, card) vs **recessed** (`sf-inset` — a
+  slider track, a rail, a field, a skeleton: something a value sits in) vs **pressed** (`sf-pressed` — the
+  only state you cause by touching). The light never touches type, never sits behind text, and never
+  animates — a full-viewport layer repainting forever is a battery bill, not a design.
+- **A widget declares what it IS, it never draws a shadow.** `sf-raised` · `sf-inset` · `sf-pressed`, or a
+  rung of the ladder `sf-e1`…`sf-e5`. Those read `--nm-dark`/`--nm-light`, so they invert with the theme
+  and compact with the density ladder (`--nm-d`) for free. A hardcoded `rgba(0,0,0,.5)` does neither: it is
+  invisible on a dark page and a bruise on a light one. **Preflight enforces this.**
+- **Instant app-shell** (`#boot`), opaque sheets (`.modal-box`), rounder radii, **haptics** on tap.
 - **Delete safety:** reversible → `store.undo` (undo-toast); severe → `store.confirm` (danger sheet).
 - **Floors that are also gates:** no spinners (skeletons), installable (build + verify PWA gates),
   history-backed overlays, i18n parity (en + uk).

@@ -2,6 +2,7 @@ import { html } from "htm/preact";
 import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Sheet, Segmented } from "/_rt/ui.js";
 import { collection } from "/_rt/db.js";
 import { iconTint } from "/_rt/colour.js";
 import apps from "./apps.json" with { type: "json" };
@@ -28,22 +29,23 @@ export function store({ S, openScreen, closeScreen }) {
   const tag = (b, sm) => b === "new" ? html`<span class=${`badge badge-primary ${sm ? "badge-sm" : "badge-xs"} font-bold px-1 leading-none`}>${T(t, "newBadge")}</span>` : b === "upd" ? html`<span class=${`badge badge-warning ${sm ? "badge-sm" : "badge-xs"} font-bold px-1 leading-none`}>${T(t, "updBadge")}</span>` : null;
 
   const sel = screen ? apps.find((a) => a.id === screen) : null;
-  if (sel) return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto flex flex-col" style="padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar bg-base-100 sticky top-0 z-10 border-b border-base-300 px-2 min-h-14 gap-1"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "close")} onClick=${closeScreen}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${sel.title}</div></header>
-    <div class="flex-1 flex flex-col items-center gap-5 px-6 py-8 max-w-xl mx-auto w-full">
-      ${(() => { const it = iconTint(sel.bg, sel.fg, dark); return html`<div class="w-24 h-24 rounded-[24%] flex items-center justify-center shadow-lg border border-base-content/10 shrink-0" style=${`background:${it.tile}`}>${AppArt(sel, it.glyph, "3rem")}</div>`; })()}
-      <div class="flex items-center gap-2 flex-wrap justify-center"><h1 class="text-2xl font-bold text-center">${sel.title}</h1>${tag(badgeOf(sel), true)}</div>
-      <p class="text-base-content/70 text-center leading-relaxed break-words">${sel.tagline}</p>
-      <button id="open-app" class="btn btn-primary btn-lg rounded-2xl gap-2 w-full max-w-xs mt-1" onClick=${() => launch(sel)}>${Icon("lucide:external-link")}${T(t, "openApp")}</button>
-      <div class="text-xs text-base-content/50 tabular-nums flex items-center gap-1.5">v${sel.version || "1.0"}${badgeOf(sel) === "upd" ? html`<span class="text-warning font-medium">· ${T(t, "newVersion")}</span>` : null}</div>
-    </div>
-  </div>`;
+  const detail = html`<${Sheet} id="appsheet" open=${!!sel} onClose=${closeScreen} title=${sel ? sel.title : ""}>
+    ${sel ? (() => { const it = iconTint(sel.bg, sel.fg, dark), b = badgeOf(sel); return html`<div class="flex flex-col items-center gap-5 py-1 text-center">
+      <div class="relative w-24 h-24 rounded-[24%] flex items-center justify-center sf-e3 shrink-0" style=${`background:${it.tile}`}>
+        ${AppArt(sel, it.glyph, "3rem")}
+        ${b ? html`<span class="absolute top-1.5 right-1.5">${tag(b, true)}</span>` : null}
+      </div>
+      <p class="text-base-content/70 leading-relaxed break-words">${sel.tagline}</p>
+      <button id="open-app" class="btn btn-primary btn-lg rounded-2xl gap-2 w-full max-w-xs" onClick=${() => launch(sel)}>${Icon("lucide:external-link")}${T(t, "openApp")}</button>
+      <div class="text-xs text-base-content/50 tabular-nums flex items-center gap-1.5">v${sel.version || "1.0"}${b === "upd" ? html`<span class="text-warning font-medium">· ${T(t, "newVersion")}</span>` : null}</div>
+    </div>`; })() : null}
+  <//>`;
 
   const card = (a) => { const it = iconTint(a.bg, a.fg, dark), b = badgeOf(a), inst = installed(a); return html`<button data-app=${a.id} aria-label=${a.title} class="group flex flex-col items-center gap-1.5 min-w-0" onClick=${() => (inst ? launch(a) : openScreen(a.id))} key=${a.id}>
-    <div class="relative aspect-square w-full rounded-[26%] flex items-center justify-center border border-base-content/10 shadow-sm transition-transform duration-150 group-active:scale-90" style=${`background:${it.tile}`}>
+    <div class="relative aspect-square w-full rounded-[26%] flex items-center justify-center sf-e2 transition-transform duration-150 group-active:scale-90" style=${`background:${it.tile}`}>
       ${AppArt(a, it.glyph, "1.9rem")}
       ${b ? html`<span class="absolute top-1 right-1">${tag(b)}</span>`
-          : inst ? html`<span data-installed class="absolute bottom-1 right-1 grid place-items-center w-[18px] h-[18px] rounded-full bg-base-100/90 border border-base-content/15 shadow-sm" title=${T(t, "installed")}>${Icon("lucide:check", "text-[0.66rem] text-success")}</span>` : null}
+          : inst ? html`<span data-installed class="absolute bottom-1 right-1 grid place-items-center w-[18px] h-[18px] rounded-full bg-base-100 sf-e2" title=${T(t, "installed")}>${Icon("lucide:check", "text-[0.66rem] text-success")}</span>` : null}
     </div>
     <div class="text-[0.72rem] leading-tight text-center line-clamp-2 break-words w-full text-base-content/90">${a.title}</div>
   </button>`; };
@@ -57,14 +59,14 @@ export function store({ S, openScreen, closeScreen }) {
   const query = q.trim().toLowerCase();
   if (query) {
     const list = apps.filter((a) => (a.title + " " + (a.tagline || "")).toLowerCase().includes(query));
-    return html`<div class="flex flex-col gap-4">${searchBar}${list.length ? grid(list) : noResults}</div>`;
+    return html`<div class="flex flex-col gap-4">${searchBar}${list.length ? grid(list) : noResults}${detail}</div>`;
   }
 
   const shown = cat === "all" ? CATS : [cat];
   return html`<div class="flex flex-col gap-4">${searchBar}
-    <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4" role="tablist" aria-label=${T(t, "categories")}>
-      ${["all", ...CATS].map((c) => html`<button data-cat=${c} role="tab" aria-selected=${cat === c} class=${`btn btn-sm rounded-full shrink-0 ${cat === c ? "btn-primary" : "btn-ghost border border-base-300"}`} onClick=${() => setCat(c)} key=${c}>${T(t, catKey(c))}</button>`)}
-    </div>
+    <${Segmented} attr="data-cat" scroll label=${T(t, "categories")}
+      items=${["all", ...CATS].map((c) => ({ id: c, label: T(t, catKey(c)) }))}
+      value=${cat} onChange=${setCat} />
     <div class="flex flex-col gap-5">
       ${shown.map((c) => {
         const items = apps.filter((a) => a.category === c);
@@ -75,5 +77,6 @@ export function store({ S, openScreen, closeScreen }) {
         </div>`;
       })}
     </div>
+    ${detail}
   </div>`;
 }

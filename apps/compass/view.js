@@ -60,7 +60,7 @@ export function compassView({ S }) {
            charged me 39px for it.) -->
       <div class="absolute left-1/2 -translate-x-1/2 -top-1 z-10 text-base-content">${Icon("lucide:triangle", "text-lg rotate-180")}</div>
       <div class="relative aspect-square overflow-hidden rounded-full">
-      <div class="absolute inset-0 rounded-full border border-base-content/15 bg-base-200/40"></div>
+      <div class="absolute inset-0 rounded-full sf-inset"></div>
       <div class="absolute inset-0 transition-transform duration-100" style=${`transform:rotate(${shown == null ? 0 : -shown}deg)`}>
         ${[0, 90, 180, 270].map((a) => html`<div key=${a} class="absolute inset-0" style=${`transform:rotate(${a}deg)`}>
           <div class=${`absolute left-1/2 -translate-x-1/2 top-2 text-sm font-bold ${a === 0 ? "text-error" : "text-base-content/70"}`}>${T(t, POINTS[a / 22.5])}</div>
@@ -82,6 +82,8 @@ export function compassView({ S }) {
           ${Icon("lucide:magnet", "text-[0.9em]")}${T(t, "decl")} ${dec >= 0 ? "+" : "−"}${Math.abs(dec).toFixed(1)}°${dec >= 0 ? T(t, "east") : T(t, "west")}
         </span>`
         : stale ? html`<span class="text-warning flex items-center gap-1">${Icon("lucide:triangle-alert")}${T(t, "expired")}</span>`
+        
+        
         : geoState ? html`<span data-nodec class="text-warning flex items-center gap-1.5 text-center">${Icon("lucide:map-pin-off", "shrink-0")}${T(t, geoState === "denied" ? "noPerm" : "noPos")}</span>`
         : null}
 

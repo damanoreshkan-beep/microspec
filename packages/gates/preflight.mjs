@@ -97,10 +97,28 @@ async function preflight(appdir) {
     errs.push(`hand-rolled bottom sheet (\`modal-bottom\`) in ${srcFile} — import { Sheet } from "/_rt/ui.js" instead. The kit owns the shell (glass, drag-to-dismiss, title row, close, backdrop); pass open/onClose from your S.screen atom so Back still closes it.`);
   }
 
+  {
+    const bespokeSheet = /role=["']dialog["']/.test(src) && /fixed inset-0/.test(src);
+    if (bespokeSheet && !/\bSheet\b/.test(src)) {
+      errs.push(`hand-rolled bottom sheet in ${srcFile} — a \`fixed inset-0\` + \`role="dialog"\` is the farm's Sheet built by hand. import { Sheet } from "/_rt/ui.js": it owns the shell (glass, drag-to-dismiss, title row, close, backdrop, max-h-88dvh with the only sanctioned inner scroll) and the contents stay yours. Pass open/onClose from your S.screen atom so the system Back button still closes it.`);
+    }
+  }
+
   if (/lucide:play/.test(src) && /lucide:(pause|square)/.test(src)) {
     const toggles = /\?\s*"lucide:(pause|square)"\s*:\s*"lucide:play"|\?\s*"lucide:play"\s*:\s*"lucide:(pause|square)"/.test(src);
     if (toggles && !/\bTransport\b/.test(src)) {
       errs.push(`hand-rolled play/pause control in ${srcFile} — import { Transport } from "/_rt/ui.js" instead. Every control is opt-in (pass onPrev/onNext/onSeek/onRepeat/onShuffle and it appears), it carries its own a11y labels in both locales, and it is the only one that compacts correctly in a split-screen window.`);
+    }
+  }
+
+  {
+    const surfaceShadow = /(?:^|[\s"'`])shadow-(?:sm|md|lg|xl|2xl|inner)\b/;
+    if (surfaceShadow.test(src)) {
+      errs.push(`app-authored shadow in ${srcFile} — the material is systemic. Declare what the surface IS: \`sf-raised\` / \`sf-inset\` / \`sf-pressed\`, or a rung of the ladder \`sf-e2\` (hover) … \`sf-e5\` (popover). A hardcoded shadow does not invert with the theme and does not compact with the density ladder.`);
+    }
+    const glassOnOurSurface = /backdrop-blur-[a-z0-9]+[^"'`]*\bbg-base-|bg-base-[0-9]+\/[0-9]+[^"'`]*\bbackdrop-blur-/;
+    if (glassOnOurSurface.test(src)) {
+      errs.push(`frosted glass over a base surface in ${srcFile} — glass and the extrusion are answers to the same question and cannot both be on screen: the blur erases the shadow pair that makes the surface read. Use \`sf-raised\`/\`sf-e4\` and an opaque bg-base-100. (Blur over a VIDEO or camera frame is still fine — that is foreign content, not our surface.)`);
     }
   }
 

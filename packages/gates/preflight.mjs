@@ -112,12 +112,13 @@ async function preflight(appdir) {
   }
 
   {
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
     const surfaceShadow = /(?:^|[\s"'`])shadow-(?:sm|md|lg|xl|2xl|inner)\b/;
-    if (surfaceShadow.test(src)) {
+    if (surfaceShadow.test(code)) {
       errs.push(`app-authored shadow in ${srcFile} — the material is systemic. Declare what the surface IS: \`sf-raised\` / \`sf-inset\` / \`sf-pressed\`, or a rung of the ladder \`sf-e2\` (hover) … \`sf-e5\` (popover). A hardcoded shadow does not invert with the theme and does not compact with the density ladder.`);
     }
-    const glassOnOurSurface = /backdrop-blur-[a-z0-9]+[^"'`]*\bbg-base-|bg-base-[0-9]+\/[0-9]+[^"'`]*\bbackdrop-blur-/;
-    if (glassOnOurSurface.test(src)) {
+    const glassOnOurSurface = /backdrop-blur(-[a-z0-9]+)?\b[^"'`]*\bbg-base-|bg-base-[0-9]+\/[0-9]+[^"'`]*\bbackdrop-blur\b/;
+    if (glassOnOurSurface.test(code)) {
       errs.push(`frosted glass over a base surface in ${srcFile} — glass and the extrusion are answers to the same question and cannot both be on screen: the blur erases the shadow pair that makes the surface read. Use \`sf-raised\`/\`sf-e4\` and an opaque bg-base-100. (Blur over a VIDEO or camera frame is still fine — that is foreign content, not our surface.)`);
     }
   }

@@ -99,7 +99,7 @@ const Dots = ({ h, marks, onToggle, t }) => {
     const on = !!marks[h.id + "|" + d];
     return html`<button key=${d} type="button" onClick=${() => onToggle(h.id, d)} aria-pressed=${on}
       aria-label=${`${d} ${on ? T(t, "done") : T(t, "notDone")}`}
-      class=${`w-6 h-6 rounded-md shrink-0 transition active:scale-90 ${on ? "sf-e2" : "bg-base-content/10"}`}
+      class=${`w-6 h-6 rounded-md shrink-0 transition active:scale-90 ${on ? "sf-e2" : "sf-inset"}`}
       style=${on ? `background:${h.color}` : ""}></button>`;
   })}</div></div>`;
 };
@@ -114,8 +114,8 @@ function Heatmap({ h, marks, onToggle, t }) {
       const d = ymd(addDays(start, w * 7 + r)), future = between(today(), d) > 0, on = !!marks[h.id + "|" + d];
       cells.push(html`<button key=${d} type="button" disabled=${future} onClick=${() => onToggle(h.id, d)}
         aria-label=${`${d} ${on ? T(t, "done") : T(t, "notDone")}`}
-        class=${`w-3.5 h-3.5 rounded-[3px] ${future ? "opacity-0" : "active:scale-90"} ${on ? "" : "bg-base-content/10"} ${d === today() ? "ring-1" : ""}`}
-        style=${`${on ? "background:" + h.color + ";" : ""}${d === today() ? "--tw-ring-color:" + h.color : ""}`}></button>`);
+        class=${`w-3.5 h-3.5 rounded-[3px] ${future ? "opacity-0" : "active:scale-90"} ${on ? "" : "sf-inset"}`}
+        style=${`${on ? "background:" + h.color + ";" : ""}${d === today() ? "outline:1px solid " + h.color + ";outline-offset:1px" : ""}`}></button>`);
     }
     cols.push(html`<div class="flex flex-col gap-[3px]" key=${w}>${cells}</div>`);
   }

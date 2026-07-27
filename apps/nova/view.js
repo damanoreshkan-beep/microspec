@@ -57,7 +57,7 @@ const Avatar = ({ src, seed, size = 52 }) => {
   const fallback = () => letterTile(seed || "?", { w: size, h: size, light: 30 });
   return html`<img src=${src || fallback()} alt="" width=${size} height=${size} loading="lazy"
     onError=${(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = "1"; e.currentTarget.src = fallback(); } }}
-    class="rounded-full object-cover bg-base-300 shrink-0" style=${`width:${size}px;height:${size}px`} />`;
+    class="rounded-full object-cover sf-inset shrink-0" style=${`width:${size}px;height:${size}px`} />`;
 };
 
 export function nova({ S, tab, toast, openScreen, closeScreen }) {
@@ -288,10 +288,10 @@ function DevCard({ d, t, busy, onStar, onSupport }) {
 
     ${d.desc ? html`<p class="text-sm text-base-content/80 leading-relaxed line-clamp-2">${d.desc}</p>` : null}
 
+    
     ${d.reasons?.length ? html`<div class="flex flex-wrap gap-1.5">
-      ${d.reasons.slice(0, 3).map((r) => html`<span key=${r} class="text-[0.68rem] font-medium px-2 py-0.5 rounded-full bg-secondary/12 text-secondary">${T(t, r)}</span>`)}
+      ${d.reasons.slice(0, 3).map((r) => html`<span key=${r} class="text-[0.68rem] font-medium px-2 py-0.5 rounded-full bg-secondary/12 text-secondary sf-e2">${T(t, r)}</span>`)}
     </div>` : null}
-
     <div class="flex flex-wrap items-center gap-2 pt-0.5">
       <button data-star class="btn btn-sm btn-primary rounded-2xl gap-1.5 flex-1 basis-24 min-w-0"
         disabled=${busy} data-haptic="bump" onClick=${onStar}>

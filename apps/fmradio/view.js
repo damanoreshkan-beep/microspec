@@ -157,11 +157,12 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
       <div class="flex items-center gap-2 pt-0.5 pb-1">
         <input type="range" min=${FM_LO} max=${FM_HI} step="0.1" value=${(freq / 1e6).toFixed(1)} data-band
           aria-label=${T(t, "band")} onInput=${(e) => setFreq(Number(e.target.value) * 1e6)} class="range range-sm range-primary flex-1 min-w-0" />
-        <button data-scan aria-label=${T(t, "scan")} disabled=${scanSt.active} onClick=${scan} class="btn btn-sm btn-outline gap-1.5 shrink-0">${Icon("lucide:radar", `text-base ${scanSt.active ? "animate-spin" : ""}`)}${T(t, "scan")}</button>
+        <button data-scan aria-label=${T(t, "scan")} disabled=${scanSt.active} onClick=${scan} class="btn btn-sm gap-1.5 shrink-0">${Icon("lucide:radar", `text-base ${scanSt.active ? "animate-spin" : ""}`)}${T(t, "scan")}</button>
       </div>
-      ${scanSt.active ? html`<div class="w-full h-1.5 rounded-full bg-base-content/10 overflow-hidden" data-scanbar><div class="h-full bg-primary transition-[width] duration-200" style=${`width:${Math.round((scanSt.frac || 0) * 100)}%`}></div></div>` : null}
+      ${scanSt.active ? html`<div class="w-full h-1.5 rounded-full overflow-hidden" style="background:var(--sf-track-face)" data-scanbar><div class="h-full bg-primary transition-[width] duration-200" style=${`width:${Math.round((scanSt.frac || 0) * 100)}%`}></div></div>` : null}
       ${stations.length ? stations.slice().sort((a, b) => a.freq - b.freq).map((s) => {
     const on = Math.abs(s.freq - freq) < STEP_HZ / 2;
+    
     return html`<button key=${s.freq} data-station=${fmMhz(s.freq)} aria-current=${on} onClick=${() => setFreq(s.freq)}
         class=${`flex items-center gap-3 rounded-2xl px-4 py-2.5 text-left transition ${on ? "bg-primary/10 sf-e3" : "sf-raised sf-e2"}`}>
         <span class="font-mono tabular-nums text-lg w-16 shrink-0 ${on ? "text-primary" : ""}">${fmMhz(s.freq)}</span>
@@ -180,7 +181,8 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
               <span class="text-[0.6rem] uppercase tracking-wider text-base-content/55 shrink-0">${T(t, "unitMhz")}</span>
               <span class="truncate font-semibold text-sm ml-0.5">${name || html`<span class="text-base-content/35">${T(t, "tuning")}</span>`}</span>
               <span data-stereo class=${`shrink-0 ${stereo ? "text-primary" : "text-base-content/30"}`} title=${T(t, stereo ? "stereo" : "mono")}>${Icon("lucide:radio", "text-sm")}</span>
-              ${genre ? html`<span class="shrink-0 rounded-full px-1.5 py-px text-[0.55rem] uppercase tracking-wider bg-secondary/12 text-secondary truncate max-w-[6rem]" data-genre>${genre}</span>` : null}
+              
+              ${genre ? html`<span class="shrink-0 rounded-full px-1.5 py-px text-[0.55rem] uppercase tracking-wider bg-secondary/12 text-secondary truncate max-w-[6rem] sf-e2" data-genre>${genre}</span>` : null}
             </div>
             ${info ? html`<div class="text-[0.72rem] text-muted leading-snug truncate mt-0.5" data-rt>${info}</div>` : null}
           </div>
@@ -205,12 +207,15 @@ export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {
   </${Fragment}>`;
 }
 
+
+
 function SignalBars({ level, label }) {
   const bars = 5, lit = Math.round(level * bars);
   return html`<div class="flex items-end gap-[3px] h-7" role="img" aria-label=${label} data-signal>
-    ${[...Array(bars)].map((_, i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${34 + i * 16}%`}></span>`)}
+    ${[...Array(bars)].map((_, i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : ""}`} style=${`height:${34 + i * 16}%${i < lit ? "" : ";background:var(--sf-track-face)"}`}></span>`)}
   </div>`;
 }
+
 
 function SettingsSheet({ open, onClose, t, demo }) {
   const vol = useStore($vol), lna = useStore($lna), vga = useStore($vga), amp = useStore($amp), tc = useStore($tc);
@@ -230,6 +235,7 @@ function SettingsSheet({ open, onClose, t, demo }) {
     ${!demo ? html`<button data-disconnect class="btn btn-ghost btn-sm gap-2 text-muted self-start" onClick=${() => { disconnect(); onClose(); }}>${Icon("lucide:power")}${T(t, "disconnect")}</button>` : null}
   </${Sheet}>`;
 }
+
 
 export function savedView({ S, undo }) {
   const t = useStore(S.t), saved = useStore($saved), freq = useStore($freq), known = useStore($known);

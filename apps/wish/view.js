@@ -137,7 +137,7 @@ const WantSelect = ({ value, onChange, t }) => html`<${Segmented} size="sm" labe
 const Thumb = ({ w, list, size }) => {
   const s = size || "w-11 h-11";
   return w.image
-    ? html`<img src=${w.image} alt="" class=${`${s} rounded-xl object-cover shrink-0 bg-base-200`} loading="lazy" />`
+    ? html`<img src=${w.image} alt="" class=${`${s} rounded-xl object-cover shrink-0 sf-inset`} loading="lazy" />`
     : html`<span class=${`${s} rounded-xl shrink-0 flex items-center justify-center`} style=${`background:${list?.color || "#888"}1f;color:${list?.color || "#888"}`}>${Icon("lucide:gift", "text-lg")}</span>`;
 };
 

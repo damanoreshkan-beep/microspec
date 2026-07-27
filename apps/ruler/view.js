@@ -114,7 +114,7 @@ export function ruler({ S, toast }) {
   const tErr = pts.length >= 2 ? totalErr(pts.slice(1).map((p, i) => segErr(pts[i], p))) : null;
 
   return html`<div class="flex flex-col gap-3">
-      <div class="rounded-2xl border border-base-300 bg-base-200/40 overflow-hidden">
+      <div class="rounded-2xl sf-inset overflow-hidden">
         <canvas ref=${cv} aria-hidden="true" class="w-full h-[52svh] min-h-[280px] max-h-[460px] block text-base-content"></canvas>
       </div>
       <div class="flex items-end justify-between gap-3 px-1">

@@ -458,7 +458,8 @@ export function v2mStore({ S, toast }) {
 
       ${showSkel ? html`
         <div class="flex flex-col gap-1">${[0, 1, 2, 3, 4, 5, 6, 7].map(() => html`
-          <div data-skel class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-base-200/60">
+          
+          <div data-skel class="flex items-center gap-3 px-3 py-2.5 rounded-xl sf-inset">
             <div class="font-mono text-sm w-14 shrink-0"><${Scramble} len=${5} /></div>
             <div class="flex-1 min-w-0">
               <div class="truncate text-sm"><${Scramble} len=${20} /></div>
@@ -475,10 +476,13 @@ export function v2mStore({ S, toast }) {
           ${list.slice(0, shown).map((x) => {
             const id = trackId(x.author, x.file);
             const active = cur?.id === id;
+            
+            
+            
             return html`
-              <button data-tune=${id} onClick=${() => play(x)}
+              <button data-tune=${id} onClick=${() => play(x)} aria-current=${active ? "true" : null}
                 class=${"flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors " +
-                  (active ? "bg-primary/10 ring-1 ring-primary/40" : "bg-base-200/60 hover:bg-base-200")}>
+                  (active ? "bg-primary/10 sf-e2" : "")}>
                 <span class="font-mono text-sm tabular-nums w-14 shrink-0 ${active ? "text-primary" : ""}">${kb(x.size)}</span>
                 <span class="flex-1 min-w-0">
                   <span class="block truncate text-sm font-medium">${titleOf(x.file)}</span>
@@ -515,9 +519,10 @@ export function v2mLibrary({ S, undo }) {
 
   if (!useReveal(list !== null)) {
     return html`<div class="flex flex-col gap-2 pt-2">${[0, 1, 2].map(() => html`
-      <div data-skel class="card bg-base-200/60">
+      
+      <div data-skel class="card">
         <div class="card-body flex-row items-center gap-3 p-3">
-          <div class="w-9 h-9 rounded-lg bg-base-300 shrink-0"></div>
+          <div class="w-9 h-9 rounded-lg sf-inset shrink-0"></div>
           <div class="flex-1 min-w-0">
             <div class="truncate font-semibold"><${Scramble} len=${14} /></div>
             <div class="h-4"><${Scramble} len=${6} /></div>
@@ -541,8 +546,11 @@ export function v2mLibrary({ S, undo }) {
   return html`<div class="flex flex-col gap-2 pt-2">${list.map((it) => {
     const active = cur?.id === it.id;
     
+    
+    
+    
     return html`<div data-track-row=${it.id}
-      class=${"card" + (active ? " ring-1 ring-primary/50" : "")}>
+      class=${"card" + (active ? " bg-primary/10" : "")}>
       <div class="card-body flex-row items-center gap-3 p-3">
         <button class="btn btn-circle btn-sm btn-ghost shrink-0"
           aria-label=${T(t, active && playing ? "aPause" : "aPlay")}

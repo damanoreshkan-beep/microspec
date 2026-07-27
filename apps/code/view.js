@@ -59,15 +59,15 @@ export function code({ S }) {
     const p = PEGS[ci], size = big ? "w-11 h-11 text-lg" : "w-7 h-7 text-sm";
     const style = `background:${p.c};color:${p.ink}`;
     return onRemove
-      ? html`<button aria-label=${`${T(t, "remove")} — ${T(t, p.key)}`} onClick=${onRemove} class=${`${size} rounded-full inline-flex items-center justify-center font-bold shrink-0 active:scale-90 transition`} style=${style}>${p.sym}</button>`
-      : html`<span role="img" aria-label=${T(t, p.key)} class=${`${size} rounded-full inline-flex items-center justify-center font-bold shrink-0`} style=${style}>${p.sym}</span>`;
+      ? html`<button aria-label=${`${T(t, "remove")} — ${T(t, p.key)}`} onClick=${onRemove} class=${`${size} rounded-full sf-e2 inline-flex items-center justify-center font-bold shrink-0 active:scale-90 transition`} style=${style}>${p.sym}</button>`
+      : html`<span role="img" aria-label=${T(t, p.key)} class=${`${size} rounded-full sf-e2 inline-flex items-center justify-center font-bold shrink-0`} style=${style}>${p.sym}</span>`;
   };
 
   const pips = (fb) => {
     const kinds = [...Array(fb.exact).fill("e"), ...Array(fb.partial).fill("n")];
     while (kinds.length < SLOTS) kinds.push("o");
     return html`<div class="grid grid-cols-2 gap-[3px]" role="img" aria-label=${T(t, "fbAria", { exact: fb.exact, near: fb.partial })}>
-      ${kinds.map((k, i) => html`<span class=${`w-2 h-2 rounded-full ${k === "e" ? "bg-base-content" : k === "n" ? "border-2 border-base-content" : "bg-base-content/15"}`} key=${i}></span>`)}
+      ${kinds.map((k, i) => html`<span class=${`w-2 h-2 rounded-full ${k === "e" ? "bg-base-content" : k === "n" ? "border-2 border-base-content" : "sf-inset"}`} key=${i}></span>`)}
     </div>`;
   };
 
@@ -87,22 +87,23 @@ export function code({ S }) {
         return html`<div class="flex items-center justify-center gap-3" data-row=${r ? "1" : null} key=${i}>
           <div class="flex gap-2">${Array.from({ length: SLOTS }, (_, s) => r
             ? disc(r.guess[s], false)
-            : html`<span class="w-7 h-7 rounded-full border border-base-300 shrink-0" key=${s}></span>`)}</div>
+            : html`<span class="w-7 h-7 rounded-full sf-inset shrink-0" key=${s}></span>`)}</div>
           <div class="w-9 shrink-0 flex justify-center">${r ? pips(r.fb) : null}</div>
         </div>`;
       })}
     </div>
 
-    <!-- input: current guess + palette + check -->
-    <div class="shrink-0 border-t border-base-300 bg-base-100 px-4 pt-3 pb-3 flex flex-col gap-3 max-w-md w-full mx-auto">
+    <!-- input: current guess + palette + check. The deck is not a bar with a hairline on it — it is the page
+         extruded, so it declares a surface state and the shadow pair draws its own top edge. -->
+    <div class="shrink-0 sf-raised sf-e2 px-4 pt-3 pb-3 flex flex-col gap-3 max-w-md w-full mx-auto">
       <div class="flex items-center justify-center gap-2 min-h-11">
         ${Array.from({ length: SLOTS }, (_, i) => cur[i] == null
-          ? html`<span class="w-11 h-11 rounded-full border-2 border-dashed border-base-300 shrink-0" key=${i}></span>`
+          ? html`<span class="w-11 h-11 rounded-full sf-inset shrink-0" key=${i}></span>`
           : disc(cur[i], true, () => removePeg(i)))}
       </div>
       <div class="flex items-center justify-center gap-2">
         ${PEGS.map((p, ci) => html`<button data-peg=${ci} aria-label=${T(t, p.key)} disabled=${over || cur.length >= SLOTS} onClick=${() => addPeg(ci)}
-          class="w-11 h-11 rounded-full inline-flex items-center justify-center font-bold text-lg shrink-0 active:scale-90 transition disabled:opacity-30" style=${`background:${p.c};color:${p.ink}`} key=${ci}>${p.sym}</button>`)}
+          class="w-11 h-11 rounded-full sf-e2 inline-flex items-center justify-center font-bold text-lg shrink-0 active:scale-90 transition disabled:opacity-30" style=${`background:${p.c};color:${p.ink}`} key=${ci}>${p.sym}</button>`)}
       </div>
       <button data-check disabled=${cur.length < SLOTS || over} onClick=${submit} class="btn btn-primary rounded-2xl w-full disabled:opacity-40">${T(t, "check")}</button>
     </div>

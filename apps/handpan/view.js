@@ -215,7 +215,7 @@ export function handpan({ S }) {
 
   return html`<div class="fixed left-0 right-0 z-20 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
     <${RippleBg} />
-    ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-14 right-3 z-20 btn btn-circle btn-sm ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100/50 text-muted"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
+    ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-14 right-3 z-20 btn btn-circle btn-sm ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100 text-muted"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
     <div class="relative z-10 flex flex-col flex-1 min-h-0">
     <div class="shrink-0 px-3 py-2">
       <${Segmented} attr="data-scale" scroll variant="outline" label=${T(t, "scale")}
@@ -223,7 +223,7 @@ export function handpan({ S }) {
     </div>
 
     <div class="flex-1 min-h-0 relative grid place-items-center px-3">
-      <div ref=${panRef} class="relative w-[min(90vw,62vh)] aspect-square rounded-full bg-gradient-to-br from-base-300 to-base-100 sf-e3 select-none" style="touch-action:none"
+      <div ref=${panRef} class="relative w-[min(90vw,62vh)] aspect-square rounded-full sf-raised select-none" style="touch-action:none"
         onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onLift} onPointerCancel=${onLift} onClick=${onClickBoard}>
         <!-- ding (centre) — a convex steel dome -->
         <button data-field="0" aria-label=${label(s.midi[0])} class=${`hp-field hp-ding ${lit.has(0) ? "hp-lit" : ""}`} style="left:50%;top:50%;width:27%;height:27%">
@@ -239,6 +239,7 @@ export function handpan({ S }) {
 
     <div class="shrink-0 px-3 pb-2 pt-1 flex justify-center">
       <${Island} className="w-full max-w-md flex items-center gap-2">
+        
         <${Transport} className="shrink-0" locale=${loc} stopIcon playing=${playing} onToggle=${toggle}
           actions=${[
             { id: "flow", icon: "lucide:sparkles", label: T(t, "genFlow"), onClick: newFlow, tone: "accent", active: sweep >= 0, pulse: sweep >= 0, attr: { "data-flow": true } },
@@ -263,21 +264,23 @@ export function handpanWeave({ S, toast, screen, openScreen, closeScreen }) {
   const s = scaleById(scaleId), rows = s.midi.map((m, i) => ({ i, m })).reverse();   
   const cellToggle = (i, step) => { ensure(); const cell = loop[step] || []; const has = cell.includes(i); const next = loop.slice(); next[step] = has ? cell.filter((x) => x !== i) : [...cell, i]; $loop.set(next); if (!has) strike(i); };
   const save = async () => { try { const list = await SAVES.all(); const rec = { loop, scaleId, bpm: $bpm.get() }; if (loopCount(loop) === 0) { buzz(); return; } if (list.find((it) => loopSig(it) === loopSig(rec))) { buzz(); toast?.(T(t, "toastDup", { name: autoName(t, scaleId, loop, list) })); return; } await SAVES.put("l" + Date.now(), { name: autoName(t, scaleId, loop, list), ...rec, timbreId: $timbre.get(), space: $space.get() }); toast?.(T(t, "toastSaved")); } catch {  } };
+
   return html`<${Fragment}>
     <div class="pb-40 flex flex-col gap-[3px]">
-      <div class="sticky z-10 -mx-4 px-4 bg-base-200/85 backdrop-blur flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
+      <div class="sticky z-10 -mx-4 px-4 bg-base-100 sf-e2 flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
         <div class="w-7 shrink-0"></div>
-        ${STEPS.map((step) => html`<div class=${`flex-1 h-1 rounded-full transition-colors ${step % 4 === 0 && step > 0 ? "ml-1" : ""} ${step === sweep ? "bg-accent" : step === cur ? "bg-secondary" : "bg-base-300"}`} key=${step}></div>`)}
+        ${STEPS.map((step) => html`<div class=${`flex-1 h-1 rounded-full transition-colors ${step % 4 === 0 && step > 0 ? "ml-1" : ""} ${step === sweep ? "bg-accent" : step === cur ? "bg-secondary" : ""}`}
+          style=${step === sweep || step === cur ? "" : "background:var(--sf-track-face)"} key=${step}></div>`)}
       </div>
       ${rows.map(({ i, m }) => { const live = loop.some((cell) => cell && cell.includes(i)); return html`<div class="flex items-center gap-[3px]" key=${i}>
         <div class=${`w-7 shrink-0 text-center text-sm font-medium tabular-nums ${i === 0 ? "text-secondary" : live ? "text-base-content" : "text-base-content/70"}`} title=${label(m)}>${letter(m)}</div>
+        
         ${STEPS.map((step) => { const on = (loop[step] || []).includes(i); const beat = step % 4 === 0; return html`<button data-cell=${`${i}-${step}`} aria-pressed=${on} aria-label=${`${label(m)} ${step + 1}`} onClick=${() => cellToggle(i, step)} key=${step}
-          class=${`flex-1 min-w-0 h-9 rounded-md touch-manipulation transition-all duration-150 ${beat && step > 0 ? "ml-1" : ""} ${on ? (i === 0 ? "bg-secondary" : "bg-primary") : beat ? "bg-base-300/80" : "bg-base-300/55"} ${step === sweep ? "ring-2 ring-accent scale-105" : step === cur ? "ring-2 ring-base-content/50" : ""}`}></button>`; })}
+          class=${`flex-1 min-w-0 h-9 rounded-md touch-manipulation transition-all duration-150 ${beat && step > 0 ? "ml-1" : ""} ${on ? `sf-e2 ${i === 0 ? "bg-secondary" : "bg-primary"}` : "sf-inset"} ${step === sweep ? "outline-2 outline-accent scale-105" : step === cur ? "outline-2 outline-base-content/50" : ""}`}></button>`; })}
       </div>`; })}
     </div>
 
     <${Island} pinned className="w-full max-w-xl">
-        
         <${Transport} locale=${loc} stopIcon playing=${playing} onToggle=${toggle} keep=${1}
           subtitle=${T(t, scaleById(scaleId).name)}
           moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
@@ -330,7 +333,11 @@ function SettingsSheet({ open, onClose, t }) {
 }
 
 
-const Spectrum = ({ loop, live, cur }) => { const bars = (loop || emptyLoop()).map((c) => (c ? c.length : 0)), mx = Math.max(1, ...bars); return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-secondary" : v ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}</span>`; };
+
+
+
+const Spectrum = ({ loop, live, cur }) => { const bars = (loop || emptyLoop()).map((c) => (c ? c.length : 0)), mx = Math.max(1, ...bars); return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-secondary" : v ? "bg-primary" : ""}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%${(live && s === cur) || v ? "" : ";background:var(--sf-track-face)"}`} key=${s}></span>`)}</span>`; };
+
 export function handpanSaved({ S, undo }) {
   const t = useStore(S.t); _dict = t;
   const [list, setList] = useState(null);
@@ -344,11 +351,12 @@ export function handpanSaved({ S, undo }) {
   const play = (it) => { buzz(); if (isCur(it)) { stop(); return; } loadLoop(it); start(); };
   const del = async (it) => { const { id, _ts, ...rec } = it; try { await SAVES.remove(id); } catch {  } load(); undo?.(async () => { try { await SAVES.put(id, rec); } catch {  } load(); }, it.name || T(t, "loopWord")); };
 
-  if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full bg-base-300 shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
+  if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full sf-inset shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
   if (!list.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:bookmark", "text-4xl")}<span>${T(t, "savedEmpty")}</span></div>`;
 
   return html`<div class="flex flex-col gap-2">
-    ${list.map((it) => { const on = isCur(it); return html`<div data-saved class="card bg-base-100 border border-base-300 rounded-2xl transition" key=${it.id}>
+    
+    ${list.map((it) => { const on = isCur(it); return html`<div data-saved class="card bg-base-100 rounded-2xl transition" key=${it.id}>
       <div class="card-body p-3 flex-row items-center gap-3">
         <button data-play aria-label=${on ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle btn-sm shrink-0 ${on ? "btn-secondary" : "btn-primary"}`} onClick=${() => play(it)}>${Icon(on ? "lucide:square" : "lucide:play", "text-base")}</button>
         <button data-load class="flex-1 min-w-0 text-left flex flex-col gap-1.5" onClick=${() => open(it)}>

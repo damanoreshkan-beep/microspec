@@ -167,7 +167,8 @@ export function cam({ S }) {
           <div class="flex items-center justify-between px-2 pt-0.5">
             
             <div class="w-11 h-11 rounded-xl sf-inset overflow-hidden shrink-0">${shot ? html`<img src=${shot} alt="" class="w-full h-full object-cover" />` : null}</div>
-            <button data-shutter aria-label=${T(t, "aShutter")} onClick=${shoot} class="w-[4.6rem] h-[4.6rem] rounded-full bg-base-content/10 flex items-center justify-center active:scale-95 transition sf-e3">
+            
+            <button data-shutter aria-label=${T(t, "aShutter")} onClick=${shoot} class="w-[4.6rem] h-[4.6rem] rounded-full sf-raised flex items-center justify-center active:scale-95 transition sf-e3">
               <span class="w-[3.6rem] h-[3.6rem] rounded-full bg-primary border-4 border-base-100"></span>
             </button>
             <div class="w-11 h-11 shrink-0"></div>

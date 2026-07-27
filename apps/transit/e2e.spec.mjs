@@ -82,6 +82,8 @@ export default [
       h.expect(d0 !== (await h.text("[data-date]")), "дата не змінилась");
       await h.click('[data-chip="today"]'); await h.wait(250);
       h.expect(d0 === (await h.text("[data-date]")), "чип «сьогодні» не повернув на сьогодні");
+      h.expect((await h.attr('[data-chip="today"]', "aria-pressed")) === "true", "чип «сьогодні» не позначений вибраним");
+      h.expect((await h.attr('[data-chip="pWeek"]', "aria-pressed")) === "false", "невибраний чип позначений вибраним");
     },
   },
   {

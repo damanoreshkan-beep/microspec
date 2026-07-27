@@ -260,7 +260,7 @@ export function rave({ S, screen, openScreen, closeScreen }) {
       </div>
 
       <div data-viz class="ms-decor grid grid-cols-[repeat(16,minmax(0,1fr))] gap-1">
-        ${STEPS.map((i) => { const beat = i % 4 === 0, k = kickRow[i], on = i === cur, sw = i === sweep; return html`<div key=${i} class=${`h-1.5 rounded-full transition-colors ${sw ? "bg-accent" : on ? "bg-secondary" : k ? "bg-secondary/45" : beat ? "bg-base-content/20" : "bg-base-content/10"}`}></div>`; })}
+        ${STEPS.map((i) => { const beat = i % 4 === 0, k = kickRow[i], on = i === cur, sw = i === sweep; const hot = sw ? "bg-accent" : on ? "bg-secondary" : k ? "bg-secondary/45" : beat ? "bg-base-content/20" : ""; return html`<div key=${i} class=${`h-1.5 rounded-full transition-colors ${hot}`} style=${hot ? "" : "background:var(--sf-track-face)"}></div>`; })}
       </div>
 
       <${Island} className="flex flex-col gap-3">
@@ -281,6 +281,7 @@ export function rave({ S, screen, openScreen, closeScreen }) {
   </${Fragment}>`;
 }
 
+
 export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
   const t = useStore(S.t), loc = useStore(S.locale), tracks = useStore($tracks), bpm = useStore($bpm), playing = useStore($playing), cur = useStore($cur), sweep = useStore($sweep);
   const cellToggle = (tid, s) => { ensure(); $tracks.set({ ...tracks, [tid]: tracks[tid].map((v, i) => (i === s ? !v : v)) }); };
@@ -288,17 +289,17 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
 
   return html`<${Fragment}>
     <div class="pb-40 flex flex-col gap-1">
-      <div class="sticky z-10 -mx-4 px-4 bg-base-200/85 backdrop-blur flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
+      
+      <div class="sticky z-10 -mx-4 px-4 bg-base-100 sf-e2 flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
         <div class="w-7 shrink-0"></div>
-        ${STEPS.map((s) => html`<div class=${`flex-1 h-1 rounded-full transition-colors ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${s === sweep ? "bg-accent" : s === cur ? "bg-secondary" : "bg-base-300"}`} key=${s}></div>`)}
+        ${STEPS.map((s) => { const hot = s === sweep ? "bg-accent" : s === cur ? "bg-secondary" : ""; return html`<div class=${`flex-1 h-1 rounded-full transition-colors ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${hot}`} style=${hot ? "" : "background:var(--sf-track-face)"} key=${s}></div>`; })}
       </div>
       ${TRACKS.map((tr) => { const live = tracks[tr.id].some(Boolean); return html`<div class="flex items-center gap-[3px]" key=${tr.id}>
         <div class=${`w-7 shrink-0 flex items-center justify-center ${live ? "text-base-content" : "text-base-content/40"}`} title=${T(t, tr.name)}>${Icon(tr.icon, "text-base")}</div>
         ${STEPS.map((s) => { const on = tracks[tr.id][s]; return html`<button data-cell=${`${tr.id}-${s}`} aria-pressed=${on} aria-label=${`${T(t, tr.name)} ${s + 1}`} onClick=${() => cellToggle(tr.id, s)} key=${s}
-          class=${`flex-1 min-w-0 h-8 rounded touch-manipulation transition-all duration-150 ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? tr.on : live ? "bg-base-300" : "bg-base-300/25"} ${s === sweep ? "ring-2 ring-accent scale-105" : s === cur ? "ring-2 ring-base-content/50" : ""}`}></button>`; })}
+          class=${`flex-1 min-w-0 h-8 rounded touch-manipulation transition-all duration-150 ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? `${tr.on} sf-e2` : "sf-inset"} ${s === sweep ? "ring-2 ring-accent scale-105" : s === cur ? "ring-2 ring-base-content/50" : ""}`}></button>`; })}
       </div>`; })}
     </div>
-
     <${Island} pinned className="w-full max-w-xl">
         <${Transport} locale=${loc} stopIcon playing=${playing} onToggle=${toggle} keep=${1}
           moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
@@ -310,10 +311,10 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
           ]} />
       <//>
     
-
     <${FxSheet} open=${screen === "fx"} onClose=${closeScreen} t=${t} sweep=${sweep} />
   </${Fragment}>`;
 }
+
 
 
 function FxSheet({ open, onClose, t, sweep }) {
@@ -345,7 +346,9 @@ function FxSheet({ open, onClose, t, sweep }) {
 }
 
 
-const Spectrum = ({ tracks, live, cur }) => { const bars = beatBars(tracks), mx = Math.max(1, ...bars); return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">${bars.map((v, s) => html`<span class=${`flex-1 rounded-sm transition-colors ${live && s === cur ? "bg-secondary" : v ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%`} key=${s}></span>`)}</span>`; };
+
+
+const Spectrum = ({ tracks, live, cur }) => { const bars = beatBars(tracks), mx = Math.max(1, ...bars); return html`<span data-spectrum class="flex items-end gap-px h-5 w-full" aria-hidden="true">${bars.map((v, s) => { const hot = live && s === cur ? "bg-secondary" : v ? "bg-primary" : ""; return html`<span class=${`flex-1 rounded-sm transition-colors ${hot}`} style=${`height:${Math.round((v ? 0.25 + 0.75 * (v / mx) : 0.12) * 100)}%${hot ? "" : ";background:var(--sf-track-face)"}`} key=${s}></span>`; })}</span>`; };
 
 export function raveSaved({ S, undo }) {
   const t = useStore(S.t);
@@ -359,11 +362,13 @@ export function raveSaved({ S, undo }) {
   const open = (it) => { buzz(); loadBeat(it); S.tab.set("pads"); };
   const play = (it) => { buzz(); if (isCur(it)) { stop(); return; } loadBeat(it); start(); };
   const del = async (it) => { const { id, _ts, ...rec } = it; try { await SAVES.remove(id); } catch {  } load(); undo?.(async () => { try { await SAVES.put(id, rec); } catch {  } load(); }, it.name || T(t, "beatWord")); };
-  if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full bg-base-300 shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
+
+  if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full sf-inset shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
   if (!list.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:bookmark", "text-4xl")}<span>${T(t, "savedEmpty")}</span></div>`;
 
   return html`<div class="flex flex-col gap-2">
-    ${list.map((it) => { const on = isCur(it); return html`<div data-saved class="card bg-base-100 border border-base-300 rounded-2xl transition" key=${it.id}>
+    
+    ${list.map((it) => { const on = isCur(it); return html`<div data-saved class="card bg-base-100 rounded-2xl transition" key=${it.id}>
       <div class="card-body p-3 flex-row items-center gap-3">
         <button data-play aria-label=${on ? T(t, "aStop") : T(t, "aPlay")} class=${`btn btn-circle btn-sm shrink-0 ${on ? "btn-secondary" : "btn-primary"}`} onClick=${() => play(it)}>${Icon(on ? "lucide:square" : "lucide:play", "text-base")}</button>
         <button data-load class="flex-1 min-w-0 text-left flex flex-col gap-1.5" onClick=${() => open(it)}>

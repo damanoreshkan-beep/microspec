@@ -62,7 +62,7 @@ function makeSample() {
 const gauge = (aqi, band) => {
   const R = 42, C = 2 * Math.PI * R, ARC = 0.75, frac = Math.min(1, aqi / 100);
   return html`<svg viewBox="0 0 100 100" class="w-36 h-36" aria-hidden="true">
-    <circle cx="50" cy="50" r=${R} fill="none" class="text-base-300" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-dasharray=${`${(ARC * C).toFixed(1)} ${C.toFixed(1)}`} transform="rotate(135 50 50)"></circle>
+    <circle cx="50" cy="50" r=${R} fill="none" style="stroke:var(--sf-track-face)" stroke-width="7" stroke-linecap="round" stroke-dasharray=${`${(ARC * C).toFixed(1)} ${C.toFixed(1)}`} transform="rotate(135 50 50)"></circle>
     <circle cx="50" cy="50" r=${R} fill="none" stroke=${fillFor(band)} stroke-width="7" stroke-linecap="round" stroke-dasharray=${`${(frac * ARC * C).toFixed(1)} ${C.toFixed(1)}`} transform="rotate(135 50 50)"></circle>
   </svg>`;
 };
@@ -113,9 +113,9 @@ export function air({ S }) {
   const ready = useReveal(!!data);
   if (err && !data) return html`<div class="flex flex-col items-center text-muted py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`;
   if (!ready) return html`<div class="flex flex-col gap-5 items-center">
-    <div class="w-36 h-36 rounded-full border-[6px] border-base-300 flex items-center justify-center"><span class="text-5xl font-bold tabular-nums text-base-content/40"><${Scramble} len=${2} /></span></div>
+    <div class="w-36 h-36 rounded-full border-[6px] flex items-center justify-center" style="border-color:var(--sf-track-face)"><span class="text-5xl font-bold tabular-nums text-base-content/40"><${Scramble} len=${2} /></span></div>
     <div class="text-lg font-bold text-base-content/50"><${Scramble} len=${8} /></div>
-    <div class="w-full max-w-[420px] h-28 rounded-2xl overflow-hidden border border-base-300"><${Pixels} /></div>
+    <div class="w-full max-w-[420px] h-28 rounded-2xl overflow-hidden sf-inset"><${Pixels} /></div>
     <div class="w-full max-w-[420px] flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div class="flex items-center justify-between text-base-content/50 border-b border-base-300/50 pb-2" key=${i}><${Scramble} len=${7} /><${Scramble} len=${5} /></div>`)}</div>
   </div>`;
 
@@ -179,7 +179,7 @@ export function air({ S }) {
           <span class="text-sm font-semibold shrink-0" style=${POLLEN_INK[pb] ? `color:${POLLEN_INK[pb]}` : ""}>${T(t, POLLEN_KEYS[pb])}</span>
           <span class="tabular-nums text-xs text-muted text-right shrink-0 @max-[280px]:hidden">${Math.round(p.v)} ${T(t, "grains")}</span>
         </div>`;
-      }) : html`<div class="flex items-center gap-2 py-1.5 text-muted"><span class="w-2 h-2 rounded-full bg-base-content/30 shrink-0"></span><span>${T(t, "pnNone")}</span></div>`}
+      }) : html`<div class="flex items-center gap-2 py-1.5 text-muted"><span class="w-2 h-2 rounded-full sf-inset shrink-0"></span><span>${T(t, "pnNone")}</span></div>`}
     </div>
   </div>`;
 }

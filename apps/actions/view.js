@@ -81,7 +81,7 @@ const back = (S) => S.stack.set(S.stack.get().slice(0, -1));
 
 const RepoRow = ({ r, run, t, loc, onOpen }) => html`
   <button data-repo=${r.full} onClick=${onOpen}
-    class="@container w-full text-left flex items-center gap-3 @max-[260px]:gap-2 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] active:scale-[.99] transition-transform">
+    class="@container w-full text-left flex items-center gap-3 @max-[260px]:gap-2 sf-raised sf-e2 sf-press rounded-[var(--ms-r)] p-[var(--ms-pad)] active:scale-[.99] transition-transform">
     <${Mark} state=${run ? run.state : "queued"} />
     <span class="flex-1 min-w-0">
       <span class="flex items-center gap-1.5 min-w-0">
@@ -98,7 +98,7 @@ const RepoRow = ({ r, run, t, loc, onOpen }) => html`
 
 const RunRow = ({ run, t, loc, onOpen }) => html`
   <button data-run=${run.id} onClick=${onOpen}
-    class="w-full text-left flex items-center gap-3 rounded-[var(--ms-r)] border border-base-300 bg-base-100 p-[var(--ms-pad)] active:scale-[.99] transition-transform">
+    class="w-full text-left flex items-center gap-3 sf-raised sf-e2 sf-press rounded-[var(--ms-r)] p-[var(--ms-pad)] active:scale-[.99] transition-transform">
     <${Mark} state=${run.state} />
     <span class="flex-1 min-w-0">
       <span class="block font-semibold truncate">${run.title || run.name}</span>
@@ -112,6 +112,19 @@ const RunRow = ({ run, t, loc, onOpen }) => html`
     </span>
   </button>`;
 
+
+
+
+const SkelRow = () => html`
+  <div class="sf-inset rounded-[var(--ms-r)] p-[var(--ms-pad)] flex items-center gap-3 overflow-hidden">
+    <span class="shrink-0 w-7 h-7 rounded-full sf-raised sf-e2"></span>
+    <span class="flex-1 min-w-0 truncate text-base-content/70"><${Scramble} text="────────" /></span>
+  </div>`;
+
+
+
+const EmptyNote = ({ children }) => html`
+  <div class="sf-inset rounded-[var(--ms-r)] p-[var(--ms-pad)] text-base-content/70">${children}</div>`;
 const JobCard = ({ job, t }) => html`
   <${Panel} className="gap-1">
     <div class="flex items-center gap-2 min-w-0">
@@ -138,6 +151,8 @@ export function actions({ S }) {
   const err = useStore($err);
   const busy = useStore($busy);
   
+  
+  
   const runs = useStore($runs);
   const jobs = useStore($jobs);
   const [signing, setSigning] = useState(false);
@@ -145,6 +160,7 @@ export function actions({ S }) {
 
   useEffect(() => { wire(S); restore().then(() => { if (session.get()) loadBoard(); }); }, []);
 
+  
   
   useEffect(() => {
     let live = true;
@@ -180,7 +196,8 @@ export function actions({ S }) {
     const rows = isJobs ? jobs : runs;
     const url = isJobs ? level.run.url : level.repo.url;
     return html`<div class="flex flex-col gap-[var(--ms-gap)]">
-      <div class="flex items-center gap-2 sticky top-0 z-10 py-1 bg-base-200/85 backdrop-blur">
+      
+      <div class="flex items-center gap-2 sticky top-0 z-10 p-1 sf-raised sf-e2 rounded-[var(--ms-r)]">
         <button data-back class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, "back")} onClick=${() => back(S)}>
           ${Icon("lucide:chevron-left", "text-xl")}
         </button>
@@ -194,9 +211,9 @@ export function actions({ S }) {
           ${Icon("lucide:external-link", "text-lg")}</a>` : null}
       </div>
       ${rows == null
-        ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2].map((i) => html`<${Panel} key=${i} className="flex-row items-center gap-3 overflow-hidden"><span class="shrink-0 w-7 h-7 rounded-full bg-base-300"></span><span class="flex-1 min-w-0 truncate"><${Scramble} text="────────" /></span><//>`)}</div>`
+        ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2].map((i) => html`<${SkelRow} key=${i} />`)}</div>`
         : rows.length === 0
-          ? html`<${Panel}><span class="text-base-content/70">${T(t, isJobs ? "jobsOf" : "noRuns")}</span><//>`
+          ? html`<${EmptyNote}>${T(t, isJobs ? "jobsOf" : "noRuns")}<//>`
           : html`<div class="flex flex-col gap-[var(--ms-gap)]">
               ${isJobs
                 ? rows.map((j) => html`<${JobCard} key=${j.id} job=${j} t=${t} />`)
@@ -207,10 +224,11 @@ export function actions({ S }) {
   }
 
   
+  
+  
   const rank = (r) => { const s = latest[r.full]?.state; return s === "failure" ? 0 : s === "running" ? 1 : 2; };
   const sorted = (list || []).slice().sort((a, b) => rank(a) - rank(b));
   const failing = (list || []).filter((r) => latest[r.full]?.state === "failure").length;
-
   return html`<div class="flex flex-col gap-[var(--ms-gap)]">
     <${Island} className="flex items-center gap-3">
       <${Mark} state=${failing ? "failure" : "success"} />
@@ -225,9 +243,9 @@ export function actions({ S }) {
     ${err ? html`<p role="alert" class="text-error text-sm px-1">${T(t, err)}</p>` : null}
 
     ${list == null || !ready
-      ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2, 3, 4].map((i) => html`<${Panel} key=${i} className="flex-row items-center gap-3 overflow-hidden"><span class="shrink-0 w-7 h-7 rounded-full bg-base-300"></span><span class="flex-1 min-w-0 truncate"><${Scramble} text="────────" /></span><//>`)}</div>`
+      ? html`<div class="flex flex-col gap-[var(--ms-gap)]">${[0, 1, 2, 3, 4].map((i) => html`<${SkelRow} key=${i} />`)}</div>`
       : list.length === 0
-        ? html`<${Panel}><span class="text-base-content/70">${T(t, "boardEmpty")}</span><//>`
+        ? html`<${EmptyNote}>${T(t, "boardEmpty")}<//>`
         : html`<div class="flex flex-col gap-[var(--ms-gap)]">
             ${sorted.map((r) => html`<${RepoRow} key=${r.full} r=${r} run=${latest[r.full]} t=${t} loc=${loc}
               onOpen=${() => dive(S, { kind: "runs", repo: r })} />`)}

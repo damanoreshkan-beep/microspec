@@ -81,12 +81,12 @@ export function forge({ S, toast }) {
       placeholder=${T(t, "forgeNamePlaceholder")} aria-label=${T(t, "forgeNameLabel")}
       class="input input-bordered w-full rounded-xl text-sm shrink-0" />
 
+    
     ${done
-      ? html`<div data-built class="shrink-0 flex items-start gap-2 rounded-xl bg-base-200 px-3 py-2.5 text-xs leading-snug text-base-content/70">
+      ? html`<div data-built class="shrink-0 flex items-start gap-2 rounded-xl sf-inset px-3 py-2.5 text-xs leading-snug text-base-content/70">
           ${Icon("lucide:shield-alert", "text-sm mt-px shrink-0 text-primary")}<span>${T(t, "forgeNote")}</span>
         </div>`
       : null}
-
     <button data-generate disabled=${!valid || busy} onClick=${generate}
       class="btn btn-primary rounded-2xl w-full gap-2 shrink-0">
       ${busy

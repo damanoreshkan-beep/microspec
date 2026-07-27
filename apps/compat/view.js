@@ -72,7 +72,7 @@ function Ring({ score, t }) {
 }
 
 function Person({ label, P, t }) {
-  return html`<div class="rounded-2xl border border-base-300 bg-base-100 p-3 flex flex-col items-center gap-2">
+  return html`<div class="rounded-2xl sf-raised sf-e2 p-3 flex flex-col items-center gap-2">
     <div class="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${label}</div>
     <${Sign} i=${P.sun} cls="w-9 h-9 text-secondary" />
     <div class="text-sm font-semibold leading-tight">${T(t, "sign" + P.sun)}</div>
@@ -90,7 +90,7 @@ function Bars({ r, t }) {
   return html`<div class="flex flex-col gap-2.5">
     ${axes.map(([key, v]) => html`<div class="flex items-center gap-3" key=${key}>
       <div class="w-20 shrink-0 text-xs font-medium truncate">${T(t, key)}</div>
-      <div class="flex-1 h-2 rounded-full bg-base-300 overflow-hidden"><div class="h-full rounded-full" style=${`width:${v}%;background:${BAND_COLOR[band(v)]}`}></div></div>
+      <div class="flex-1 h-2 rounded-full sf-inset overflow-hidden"><div class="h-full rounded-full" style=${`width:${v}%;background:${BAND_COLOR[band(v)]}`}></div></div>
       <div class="w-8 shrink-0 text-right text-xs font-mono tabular-nums text-base-content/70">${v}</div>
     </div>`)}
   </div>`;

@@ -70,10 +70,10 @@ export function compassView({ S }) {
           <div class="absolute left-1/2 -translate-x-1/2 top-5 w-px h-3 bg-base-content/25"></div>
         </div>`)}
       </div>
-      <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-base-content/50"></div>
+      
+      <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-base-100 sf-e2"></div>
       </div>
     </div>
-
     <div class="flex flex-col items-center gap-1.5 text-xs min-h-12">
       ${needPerm ? html`<button id="perm" data-perm class="btn btn-sm btn-primary rounded-2xl gap-2" onClick=${grant}>${Icon("lucide:compass")}${T(t, "enable")}</button>`
         : !compass.supported ? html`<span class="text-error flex items-center gap-1">${Icon("lucide:compass")}${T(t, "noCompass")}</span>` : null}
@@ -82,6 +82,7 @@ export function compassView({ S }) {
           ${Icon("lucide:magnet", "text-[0.9em]")}${T(t, "decl")} ${dec >= 0 ? "+" : "−"}${Math.abs(dec).toFixed(1)}°${dec >= 0 ? T(t, "east") : T(t, "west")}
         </span>`
         : stale ? html`<span class="text-warning flex items-center gap-1">${Icon("lucide:triangle-alert")}${T(t, "expired")}</span>`
+        
         
         
         : geoState ? html`<span data-nodec class="text-warning flex items-center gap-1.5 text-center">${Icon("lucide:map-pin-off", "shrink-0")}${T(t, geoState === "denied" ? "noPerm" : "noPos")}</span>`

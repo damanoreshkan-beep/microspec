@@ -105,7 +105,7 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
       <p class="text-base-content/70 leading-relaxed">${T(t, "connectBody")}</p>
       ${supported
         ? html`<button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2 mt-1" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
-        : html`<div class="alert bg-warning/12 text-warning rounded-2xl text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
+        : html`<div class="alert bg-warning/12 text-warning rounded-2xl sf-e2 text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
     </div>`;
   }
 
@@ -123,7 +123,7 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
 
       
       <div class=${`rounded-2xl px-4 py-3 flex items-center gap-3 sf-raised ${active ? "sf-e3" : "sf-e2"}`} data-live data-activity>
-        <span class=${`w-2.5 h-2.5 rounded-full shrink-0 ${active ? "bg-primary animate-pulse" : "bg-base-content/25"}`}></span>
+        <span class=${`w-2.5 h-2.5 rounded-full shrink-0 ${active ? "bg-primary animate-pulse" : ""}`} style=${active ? "" : "background:var(--sf-track-face)"}></span>
         <div class="flex-1 min-w-0">
           <div class="font-semibold text-sm">${T(t, active ? "detected" : "listening")}</div>
           ${detect ? html`<div class="font-mono text-xs text-base-content/70 tabular-nums">SF${detect.sf} · ${Math.round(detect.bw / 1000)} kHz · ${detect.count} ${T(t, "bursts")}</div>` : null}

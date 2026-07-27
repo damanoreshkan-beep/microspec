@@ -69,7 +69,7 @@ function useChart(S) {
 
 
 const NeedBirth = ({ t, onOpen }) => html`<div data-need-birth class="flex flex-col items-center gap-4 py-14 px-6 text-center">
-  <div class="rounded-full border border-base-300 p-4 text-base-content/70">${Icon("lucide:calendar-clock", "text-3xl")}</div>
+  <div class="rounded-full sf-raised sf-e3 p-4 text-base-content/70">${Icon("lucide:calendar-clock", "text-3xl")}</div>
   <div class="text-base font-semibold max-w-[22rem]">${T(t, "needBirth")}</div>
   <button data-open-birth class="btn btn-primary rounded-full gap-2" onClick=${onOpen}>
     ${Icon("lucide:plus", "text-base")}<span>${T(t, "birthSet")}</span>
@@ -141,7 +141,8 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
       </div>
 
       <!-- the birth moment this whole chart hangs on, and the date being transited -->
-      <button data-birth-row class="w-full max-w-[420px] rounded-2xl border border-base-300 bg-base-100 px-4 py-3 flex items-center gap-3 text-left active:scale-[.99] transition" onClick=${() => openScreen("birth")}>
+      <!-- the page extruded, pressed IN under a finger — the material's own press, so no scale nudge on top -->
+      <button data-birth-row class="w-full max-w-[420px] rounded-2xl sf-raised sf-e2 sf-press px-4 py-3 flex items-center gap-3 text-left transition" onClick=${() => openScreen("birth")}>
         <div class="min-w-0 flex-1">
           <div class="text-sm font-semibold truncate">${placeLabel(b.place)}</div>
           <div class="text-[0.68rem] font-mono text-base-content/70 truncate">${C.rec.date} ${C.rec.time} ${b.offsetLabel} · ${formatCoords(b.lat, b.lng)}</div>
@@ -156,12 +157,12 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
         </div>
         <input id="scrub" type="range" min="-365" max="365" step="1" value=${offset} class="range range-xs range-primary" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
         <div class="grid grid-cols-5 gap-1.5 text-center">
-          ${CHIPS.map(([o, lbl]) => html`<button data-chip=${lbl} class=${`rounded-xl border py-1.5 text-xs font-medium transition ${offset === o ? "border-primary bg-primary/10" : "border-base-300"}`} onClick=${() => $offset.set(o)} key=${lbl}>${T(t, lbl)}</button>`)}
+          ${CHIPS.map(([o, lbl]) => html`<button data-chip=${lbl} aria-pressed=${offset === o} class=${`rounded-xl py-1.5 text-xs font-medium transition ${offset === o ? "sf-e2 bg-primary/10 text-primary font-semibold" : "sf-inset"}`} onClick=${() => $offset.set(o)} key=${lbl}>${T(t, lbl)}</button>`)}
         </div>
       </div>
 
       <!-- the contacts themselves, tightest first; the header opens the grounded AI reading -->
-      <div class="w-full max-w-[420px] rounded-2xl border border-base-300 bg-base-100 overflow-hidden">
+      <div class="w-full max-w-[420px] rounded-2xl sf-raised overflow-hidden">
         <div class="flex items-center justify-between gap-2 px-4 pt-2.5 pb-1.5">
           <div class="text-[0.62rem] font-mono uppercase text-base-content/70">${T(t, "contactsTitle")}</div>
           <button data-interp class="btn btn-sm btn-primary gap-1.5 rounded-full" onClick=${() => openScreen("interp")}>
@@ -180,6 +181,9 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
   </${Fragment}>`;
 }
 
+
+
+
 function ContactRow({ a, t, retro }) {
   return html`<div data-contact class="flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0">
     ${dot(a.t)}
@@ -193,6 +197,9 @@ function ContactRow({ a, t, retro }) {
     </div>
   </div>`;
 }
+
+
+
 
 
 const hitKey = (a) => `${a.t}|${a.n}|${a.type}`;
@@ -219,8 +226,9 @@ export function hits({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t), locale = useStore(S.locale);
   const C = useChart(S);
   const loc = locale === "en" ? "en-GB" : locale || "uk";
+  
+  
   const solved = useHitTimes(C.hits || [], C.when.getTime());
-
   if (!C.ready) {
     return html`<${Fragment}>
       <${NeedBirth} t=${t} onOpen=${() => openScreen("birth")} />
@@ -244,7 +252,9 @@ export function hits({ S, screen, openScreen, closeScreen }) {
         const times = solved[hitKey(a)];
         const prec = HIT_PRECISION[a.t] || "minute";
         const nearest = times && times.length ? times.reduce((best, x) => Math.abs(x - C.when) < Math.abs(best - C.when) ? x : best) : null;
-        return html`<div data-hit class="rounded-2xl border border-base-300 bg-base-100 px-4 py-3 flex flex-col gap-2" key=${i}>
+        
+        
+        return html`<div data-hit class="rounded-2xl sf-raised sf-e2 px-4 py-3 flex flex-col gap-2" key=${i}>
         <div class="flex items-center gap-2">
           ${dot(a.t)}
           <span class="font-semibold truncate">${bodyLabel(t, a.t)}</span>
@@ -263,11 +273,12 @@ export function hits({ S, screen, openScreen, closeScreen }) {
             </div>`)}
           </div>` : html`<div class="text-[0.8rem] text-base-content/70">${T(t, "noExactHit")}</div>`}
       </div>`;
-      }) : html`<div class="rounded-2xl border border-base-300 bg-base-100 px-4 py-6 text-sm text-base-content/70 text-center">${T(t, "noContacts")}</div>`}
+      }) : html`<div class="rounded-2xl sf-raised px-4 py-6 text-sm text-base-content/70 text-center">${T(t, "noContacts")}</div>`}
     </div>
     <${BirthSheet} open=${screen === "birth"} onClose=${closeScreen} t=${t} locale=${locale} />
   </${Fragment}>`;
 }
+
 
 
 export function chart({ S, screen, openScreen, closeScreen }) {
@@ -292,7 +303,7 @@ export function chart({ S, screen, openScreen, closeScreen }) {
 
   return html`<${Fragment}>
     <div class="flex flex-col gap-3">
-      <button data-birth-row class="rounded-2xl border border-base-300 bg-base-100 px-4 py-3 flex items-center gap-3 text-left active:scale-[.99] transition" onClick=${() => openScreen("birth")}>
+      <button data-birth-row class="rounded-2xl sf-raised sf-e2 sf-press px-4 py-3 flex items-center gap-3 text-left transition" onClick=${() => openScreen("birth")}>
         <div class="min-w-0 flex-1">
           <div class="text-sm font-semibold truncate">${placeLabel(b.place)}</div>
           <div class="text-[0.68rem] font-mono text-base-content/70 truncate">${b.date.toISOString().replace(".000Z", "Z")} · ${T(t, "utcMark")} ${b.offsetLabel}</div>
@@ -300,7 +311,7 @@ export function chart({ S, screen, openScreen, closeScreen }) {
         ${Icon("lucide:pencil", "text-base text-base-content/70")}
       </button>
 
-      <div class="rounded-2xl border border-base-300 bg-base-100 overflow-x-auto">
+      <div class="rounded-2xl sf-raised overflow-x-auto">
         <div class="min-w-[300px] px-4 py-1.5">
           <div class="text-[0.62rem] font-mono uppercase text-base-content/70 py-1.5">${T(t, "natalTitle")}</div>
           ${angleRow("angAsc", H.asc)}${angleRow("angMc", H.mc)}${angleRow("angVertex", H.vertex)}
@@ -318,12 +329,12 @@ export function chart({ S, screen, openScreen, closeScreen }) {
         </div>
       </div>
 
-      <div class="rounded-2xl border border-base-300 bg-base-100 overflow-hidden">
+      <div class="rounded-2xl sf-raised overflow-hidden">
         <div class="px-4 pt-2.5 pb-1.5 flex items-center justify-between gap-2">
           <div class="text-[0.62rem] font-mono uppercase text-base-content/70">${T(t, "cuspsTitle")}</div>
           <span data-house-system class="text-[0.6rem] font-mono uppercase text-base-content/70">${T(t, "hs" + C.system[0].toUpperCase() + C.system.slice(1))}</span>
         </div>
-        ${H.fallback ? html`<div data-house-fallback class="mx-4 mb-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-[0.72rem] text-base-content">${T(t, "hsFallback")}</div>` : null}
+        ${H.fallback ? html`<div data-house-fallback class="mx-4 mb-2 rounded-xl sf-e2 bg-warning/10 px-3 py-2 text-[0.72rem] text-base-content">${T(t, "hsFallback")}</div>` : null}
         <div class="px-4 pb-3 grid grid-cols-2 gap-x-4">
           ${H.cusps.map((c, i) => html`<div data-cusp=${i + 1} class="flex items-center gap-2 py-1 border-b border-base-300/40 last:border-0" key=${i}>
             <span class="w-5 text-xs font-mono text-base-content/70 tabular-nums">${i + 1}</span>
@@ -338,6 +349,9 @@ export function chart({ S, screen, openScreen, closeScreen }) {
 }
 
 
+
+
+
 function BirthSheet({ open, onClose, t, locale }) {
   const stored = useStore($birth);
   const [draft, setDraft] = useState(stored || EMPTY);
@@ -346,6 +360,7 @@ function BirthSheet({ open, onClose, t, locale }) {
   const [searching, setSearching] = useState(false);
   useEffect(() => { if (open) { setDraft(stored || EMPTY); setQ(""); setResults(null); } }, [open]);
 
+  
   useEffect(() => {
     if (!open || q.trim().length < 2) { setResults(null); setSearching(false); return; }
     const ctl = new AbortController();
@@ -381,18 +396,18 @@ function BirthSheet({ open, onClose, t, locale }) {
           onInput=${(e) => setQ(e.target.value)} class="input input-bordered rounded-2xl h-11 w-full text-sm" />`)}
 
         ${searching ? html`<div class="flex flex-col gap-2 px-1">${[26, 22, 24].map((n, i) => html`<div class="text-sm text-base-content/70" key=${i}><${Scramble} len=${n} /></div>`)}</div>` : null}
-        ${results && !searching ? (results.length ? html`<div class="flex flex-col rounded-2xl border border-base-300 overflow-hidden">
+        ${results && !searching ? (results.length ? html`<div class="flex flex-col rounded-2xl sf-raised sf-e2 overflow-hidden">
           ${results.map((p) => html`<button data-place-hit class="px-3 py-2.5 text-left border-b border-base-300/50 last:border-0 active:bg-primary/10 transition" onClick=${() => { set({ place: p }); setQ(""); setResults(null); }} key=${p.id}>
             <div class="text-sm font-medium truncate">${placeLabel(p)}</div>
             <div class="text-[0.66rem] font-mono text-base-content/70 truncate">${formatCoords(p.lat, p.lng)} · ${p.zone}</div>
           </button>`)}
         </div>` : html`<div class="text-sm text-base-content/70 px-1">${T(t, "placeNone")}</div>`) : null}
 
-        ${draft.place ? html`<div data-birth-chosen class="rounded-2xl border border-base-300 bg-base-200/40 px-3 py-2">
+        
+        ${draft.place ? html`<div data-birth-chosen class="rounded-2xl sf-inset px-3 py-2">
           <div class="text-sm font-medium truncate">${placeLabel(draft.place)}</div>
           <div class="text-[0.66rem] font-mono text-base-content/70 truncate">${formatCoords(draft.place.lat, draft.place.lng)} · ${draft.place.zone}</div>
         </div>` : null}
-
         ${field(T(t, "zoneMode"), html`<${Segmented} attr="data-zone-mode" size="sm" label=${T(t, "zoneMode")}
           items=${MODES.map(([v, k]) => ({ id: v, label: T(t, k) }))}
           value=${draft.zoneMode || "place"} onChange=${(v) => set({ zoneMode: v })} />`)}
@@ -401,20 +416,24 @@ function BirthSheet({ open, onClose, t, locale }) {
           placeholder="+02:00" onInput=${(e) => set({ offset: e.target.value })} class="input input-bordered rounded-2xl h-11 w-full text-sm font-mono" />`) : null}
 
         <!-- the one thing the user can actually check against a birth certificate -->
-        <div data-birth-resolved class=${`rounded-2xl border px-3 py-2.5 ${r.ok ? "border-base-300 bg-base-200/40" : "border-base-300 bg-base-200/20"}`}>
+        <div data-birth-resolved class="rounded-2xl sf-inset px-3 py-2.5">
           <div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "resolved")}</div>
           ${r.ok ? html`<div class="font-mono text-sm tabular-nums mt-0.5">${r.date.toISOString().replace(".000Z", "Z")}</div>
             <div class="text-[0.68rem] font-mono text-base-content/70">${T(t, "utcMark")} ${r.offsetLabel}${r.zone ? " · " + r.zone : ""}</div>`
             : html`<div class="text-sm text-base-content/70 mt-0.5">${T(t, "need_" + r.reason)}</div>`}
         </div>
 
-        ${r.ok && r.ambiguous ? html`<div data-birth-warn class="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-[0.74rem]">${T(t, "warnAmbiguous")}</div>` : null}
-        ${r.ok && r.nonexistent ? html`<div data-birth-warn class="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-[0.74rem]">${T(t, "warnNonexistent")}</div>` : null}
+        
+        ${r.ok && r.ambiguous ? html`<div data-birth-warn class="rounded-xl sf-e2 bg-warning/10 px-3 py-2 text-[0.74rem]">${T(t, "warnAmbiguous")}</div>` : null}
+        ${r.ok && r.nonexistent ? html`<div data-birth-warn class="rounded-xl sf-e2 bg-warning/10 px-3 py-2 text-[0.74rem]">${T(t, "warnNonexistent")}</div>` : null}
 
         <button data-birth-save disabled=${!complete} class="btn btn-primary rounded-2xl h-12 mt-1" onClick=${save}>${T(t, "birthSave")}</button>
       </div>
   </${Sheet}>`;
 }
+
+
+
 
 
 function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
@@ -441,11 +460,17 @@ function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
       ${done
         ? html`<p data-interp-text class="text-[0.97rem] leading-relaxed text-base-content/90">${text}</p>`
         : failed
-          ? html`<button data-interp-retry class="btn btn-sm btn-ghost gap-2 border border-base-300 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "interpRetry")}</span></button>`
+          ? html`<button data-interp-retry class="btn btn-sm gap-2 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "interpRetry")}</span></button>`
           : html`<div class="flex flex-col gap-2 text-base-content/70">${[30, 34, 28, 20].map((n, i) => html`<div class="text-[0.95rem]" key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
   </${Sheet}>`;
 }
 
+
+
+
+
+
+
 const dot = (p) => BODIES[p]
-  ? html`<span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" style=${`background:${BODIES[p].color};box-shadow:inset -0.5px -0.5px 1px rgba(0,0,0,.35),0 0 0 0.5px rgba(130,130,130,.4)`}></span>`
+  ? html`<span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" style=${`background:${BODIES[p].color};box-shadow:inset -0.5px -0.5px 1px var(--nm-cast),0 0 0 0.5px var(--sf-rim)`}></span>`
   : html`<span class="inline-block w-2.5 h-2.5 rounded-full shrink-0 border-2 border-primary"></span>`;

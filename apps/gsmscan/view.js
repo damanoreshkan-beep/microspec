@@ -105,7 +105,7 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
       <p class="text-base-content/70 leading-relaxed">${T(t, "connectBody")}</p>
       ${supported
         ? html`<button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2 mt-1" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
-        : html`<div class="alert bg-warning/12 text-warning rounded-2xl text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
+        : html`<div class="alert bg-warning/12 text-warning rounded-2xl sf-e2 text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
     </div>`;
   }
 
@@ -157,10 +157,12 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
   </${Fragment}>`;
 }
 
+
+
 function Bars({ level, label }) {
   const bars = 4, lit = Math.round(level * bars);
   return html`<div class="flex items-end gap-[3px] h-6 shrink-0" role="img" aria-label=${label} data-signal>
-    ${[...Array(bars)].map((_, i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${40 + i * 20}%`}></span>`)}
+    ${[...Array(bars)].map((_, i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : ""}`} style=${`height:${40 + i * 20}%${i < lit ? "" : ";background:var(--sf-track-face)"}`}></span>`)}
   </div>`;
 }
 

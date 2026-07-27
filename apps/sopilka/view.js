@@ -18,6 +18,7 @@ const LAT = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯
 
 const BORE = "rgba(0,0,0,.72)";        
 const PAD = "#F2EDE4";                 
+const WINDOW = "rgba(0,0,0,.45)";
 
 const semitoneFor = (covered) => fingeredSemitone(covered, SCALE);
 
@@ -106,7 +107,7 @@ export function sopilka({ S }) {
       style="height:min(60svh,29rem);background:linear-gradient(100deg,#6b4a24,#a9793d 42%,#7d5729)"
       onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onPointerCancel=${up}>
       <div class="absolute inset-x-0 flex justify-center" style="top:9%">
-        <div class="w-8 h-1.5 rounded-full bg-black/45"></div>
+        <div class="w-8 h-1.5 rounded-full" style=${`background:${WINDOW}`}></div>
       </div>
       ${Array.from({ length: HOLES }, (_, i) => html`<div key=${i} data-hole=${i} aria-hidden="true"
         class="absolute left-1/2 -translate-x-1/2 w-7 h-7 rounded-full transition-colors"

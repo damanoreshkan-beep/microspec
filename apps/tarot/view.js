@@ -115,17 +115,22 @@ function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
       <p class="mt-0.5 text-[0.78rem] leading-snug text-base-content/55 break-words line-clamp-2">${T(t, DESC_KEY[spreadId])}</p>
     </div>
     ${!isDaily ? html`<div class="shrink-0 flex items-center gap-1.5">
-      <button data-synth aria-label=${T(t, "synthTitle")} class="btn btn-sm btn-ghost btn-circle border border-base-300" onClick=${onSynth}>${Icon("lucide:scroll-text", "text-base")}</button>
-      <button data-shuffle aria-label=${T(t, "redraw")} class="btn btn-sm btn-ghost btn-circle border border-base-300" onClick=${onShuffle}>${Icon("lucide:shuffle", "text-base")}</button>
+      <button data-synth aria-label=${T(t, "synthTitle")} class="btn btn-sm btn-circle" onClick=${onSynth}>${Icon("lucide:scroll-text", "text-base")}</button>
+      <button data-shuffle aria-label=${T(t, "redraw")} class="btn btn-sm btn-circle" onClick=${onShuffle}>${Icon("lucide:shuffle", "text-base")}</button>
       <button data-ritual class="btn btn-sm btn-secondary gap-1.5 rounded-full" onClick=${onRitual}>${Icon("lucide:sparkles", "text-base")}<span class="text-xs font-semibold">${T(t, "ritual")}</span></button>
     </div>` : null}
   </div>`;
 }
 
+
+
+
 const GATE_SUMMARY = { uk: "Розклад радить довіритися внутрішньому чуттю: минуле поступово відпускає, теперішнє прояснюється, а майбутнє винагородить терпіння й чесність із собою. Дій виважено — рівновага вже поруч.", en: "The spread counsels trust in your own instinct: the past is loosening its grip, the present is clearing, and the future rewards patience and honesty with yourself. Move deliberately — the balance you seek is already near." };
 function SynthSheet({ open, onClose, sig, input, t, loc, spreadName }) {
   useStore(aiTick);
   const [failed, setFailed] = useState(false);
+  
+  
   const run = () => { setFailed(false); warmSummary(sig, input, loc); return setTimeout(() => setFailed(!isSummarized(sig, loc)), 12000); };
   useEffect(() => {
     if (!open || gate || isSummarized(sig, loc)) return;
@@ -138,10 +143,12 @@ function SynthSheet({ open, onClose, sig, input, t, loc, spreadName }) {
       ${done
         ? html`<p data-synth-text class="text-[0.97rem] leading-relaxed text-base-content/90">${text}</p>`
         : failed
-          ? html`<button data-synth-retry class="btn btn-sm btn-ghost gap-2 border border-base-300 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "synthRetry")}</span></button>`
+          ? html`<button data-synth-retry class="btn btn-sm gap-2 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "synthRetry")}</span></button>`
           : html`<div class="flex flex-col gap-2 text-base-content/55">${[30, 34, 28, 20].map((n, i) => html`<div class="text-[0.95rem]" key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
   </${Sheet}>`;
 }
+
+
 
 function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
   const maxCols = Math.max(...rows.map((r) => r.length));
@@ -153,6 +160,7 @@ function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
   </div>`;
 }
 
+
 function FitTile({ d, pos, t, loc, wpct, onOpen }) {
   const c = DECK[d.card];
   return html`<button data-card class="h-full min-h-0 flex flex-col items-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
@@ -163,9 +171,11 @@ function FitTile({ d, pos, t, loc, wpct, onOpen }) {
   </button>`;
 }
 
+
+
+
 const RIT_COLORS = [[159, 140, 246], [240, 101, 94], [64, 193, 115], [217, 151, 58], [90, 169, 230], [232, 160, 214]];
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
-
 function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   const dref = useRef(), cref = useRef();
   const [color, setColor] = useState(0);
@@ -174,10 +184,14 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   const [live, setLive] = useState(gate ? { tilt: 18, head: 127, time: "07:23:00" } : { tilt: 0, head: 0, time: "" });
   const S = useRef({ samples: [], heading: 0, tx: 0, ty: 0, px: 0.5, py: 0.5, touch: 0, moved: 0, color: 0, num: 0 }).current;
 
+  
+  
+  
   const recount = () => { const n = hashSeed(`${S.color}|${S.samples.join(",")}`) % deckLen; S.num = n; setNum(n); };
   useEffect(() => { const el = dref.current; if (!el) return; if (open) { if (!el.open) el.showModal?.(); } else el.close?.(); }, [open]);
   useEffect(() => { S.color = color; recount(); }, [color]);
 
+  
   useEffect(() => {
     if (!open) return;
     const cv = cref.current; if (!cv || !cv.getContext) return;
@@ -186,6 +200,7 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
     const dpr = Math.min((globalThis.devicePixelRatio || 1), 2);
     const size = () => { const r = cv.getBoundingClientRect(); cv.width = Math.max(1, (r.width || globalThis.innerWidth || 360) * dpr); cv.height = Math.max(1, (r.height || globalThis.innerHeight || 640) * dpr); };
     size();
+    
     const P = Array.from({ length: 96 }, (_, i) => ({ a: i * 2.39996, r: 0.14 + ((i * 0.61803) % 1) * 0.86, sz: 1 + ((i * 0.37) % 1) * 2.4, spd: 0.0025 + ((i * 0.113) % 1) * 0.006 }));
     const paint = (now) => {
       const w = cv.width, h = cv.height, cx = w / 2, cy = h * 0.44, R = Math.min(w, h) * 0.4, c = RIT_COLORS[S.color];
@@ -226,7 +241,6 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   const drawNow = () => { onDraw(hashSeed(`${S.color}|${S.num}`) >>> 0); };   
   const col = RIT_COLORS[color];
   const { boxRef, grip } = useSheetDrag(onClose);   
-
   return html`<dialog id="ritual" ref=${dref} class="modal" onClose=${onClose}>
     <div ref=${boxRef} class="modal-box max-w-none w-screen h-[100dvh] max-h-none rounded-none p-0 bg-base-100 overflow-hidden relative">
       <canvas ref=${cref} data-live aria-hidden="true" class="absolute inset-0 w-full h-full"></canvas>
@@ -278,6 +292,7 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   </dialog>`;
 }
 
+
 function Solo({ d, pos, t, loc, onOpen }) {
   useStore(trTick);
   const c = DECK[d.card];
@@ -294,6 +309,7 @@ function Solo({ d, pos, t, loc, onOpen }) {
   </div>`;
 }
 
+
 function CardSheet({ open, onClose, d, pos, t, loc }) {
   useStore(trTick);
   const c = d ? DECK[d.card] : null;
@@ -305,7 +321,8 @@ function CardSheet({ open, onClose, d, pos, t, loc }) {
         <div class="text-center">
           <div class="font-bold text-xl leading-tight">${cardName(c, loc)}</div>
           <div class="text-[0.68rem] font-mono uppercase tracking-wide text-base-content/50 mt-1">${kind}</div>
-          <div class=${`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${d.reversed ? "bg-warning/15 text-warning" : "bg-secondary/15 text-secondary"}`}>${T(t, d.reversed ? "reversed" : "upright")}</div>
+          
+          <div class=${`mt-2 badge badge-sm font-medium ${d.reversed ? "badge-warning" : "badge-secondary"}`}>${T(t, d.reversed ? "reversed" : "upright")}</div>
         </div>
         <p class="text-[0.95rem] leading-relaxed text-base-content/90">${tr(meaningOf(d), loc)}</p>
       </div>` : null}

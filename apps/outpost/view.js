@@ -104,14 +104,16 @@ export function outpost({ S }) {
         <${Transport} locale=${loc} size="hero" playing=${playing} onToggle=${toggle} disabled=${!audioSupported} />
       </div>
       <div class="-mt-3 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-base-content/55">
-        <span class=${`w-1.5 h-1.5 rounded-full ${playing ? "bg-primary animate-pulse" : "bg-base-content/30"}`}></span>
+        
+        <span class=${`w-1.5 h-1.5 rounded-full ${playing ? "bg-primary animate-pulse" : ""}`} style=${playing ? "" : "background:var(--sf-track-face)"}></span>
         ${T(t, NAME[stId])} · ${T(t, playing ? "online" : "offline")}
       </div>
 
       <!-- fader bank -->
       <div class="w-full max-w-[440px] flex flex-col gap-2.5">
         <div class="flex items-center justify-end">
-          <button data-reset onClick=${resetMix} class="flex items-center gap-1.5 text-xs text-base-content/55 hover:text-base-content/80 transition">${Icon("lucide:rotate-ccw", "text-sm")}${T(t, "aReset")}</button>
+          
+          <button data-reset onClick=${resetMix} class="btn btn-ghost btn-sm gap-1.5 text-xs text-muted">${Icon("lucide:rotate-ccw", "text-sm")}${T(t, "aReset")}</button>
         </div>
         
         ${LAYERS.map((L) => html`<div data-fader=${L} key=${L} class="flex items-center gap-3 rounded-2xl sf-raised sf-e2 px-3.5 py-2.5">
@@ -120,6 +122,8 @@ export function outpost({ S }) {
           <input type="range" min="0" max="1" step="0.02" value=${faders[L]} aria-label=${T(t, "l" + L[0].toUpperCase() + L.slice(1))} onInput=${(e) => setFader(L, Number(e.target.value))} class="range range-xs range-primary flex-1" />
         </div>`)}
       </div>
+
+      
       <div class="w-full max-w-[440px] flex items-center gap-3">
         <span class="text-muted flex items-center gap-1.5 text-sm shrink-0">${Icon("lucide:moon")}${T(t, "sleep")}</span>
         <div class="flex-1 min-w-0"><${Segmented} size="sm" scroll attr="data-timer" label=${T(t, "sleep")}

@@ -294,16 +294,73 @@ says "move the base" rather than "widen the strong side"), a blur:offset check a
 site, and a PWA-chrome check that pins `theme_color`/`background_color`/`<meta theme-color>` to the theme
 bases.
 
+## 7c. Material unification — every surface declares what it is
+
+78 bespoke surfaces across 32 apps had never adopted the material: still painting depth with a hairline
+or, far more often, a **tone step** — a colour standing in for a shadow. Fanned out 14 agents (one per
+heavy app, the rest batched so no two agents ever shared a file). Result: **111 surfaces converted, 60
+borders removed, 61 tone steps replaced**, the last 3 frosted-glass sticky rows gone.
+
+**The rule the pass was built on: geometry carries meaning and is not ours to touch.** rave's pads are
+the worked example — a cell said on/off with `bg-base-300` vs `bg-base-300/25` and now says it with
+material (OFF a recess, ON raised in its track's colour). The 16 columns, cell height, beat grouping and
+sweep ring are byte-identical. Nothing became a `Segmented`, `Panel` or `Island`.
+
+**The refusals were the most valuable output**, and they are the reason to keep briefing agents to stop
+rather than to comply:
+
+- **handpan's steel tone fields** look exactly like an app painting its own depth, and converting them
+  was the obvious move. The agent stopped: those shadows are a live specular driven by the gyroscope
+  (`--lx`/`--ly` written per frame), and a shadow pair cannot express a directional highlight that moves
+  with the phone. The ding is convex, the outer fields are concave dimples — the vocabulary was already
+  literal and correct. Converting would have deleted the light-reactivity.
+- **rave's pager ticks** sit over a live three.js canvas, where a near-base tone would vanish against
+  arbitrary content — ink stays.
+- **reel's scrims and chips over video** — foreign content, blur and dark tone are correct there.
+- **~12 `border-b` rules** that separate list rows rather than outline an object.
+
+Two e2e specs moved and both got **stronger**: `ambient` stopped asserting a class substring
+(`border-primary`) for `data-on`/`aria-pressed`; `transit` gained two assertions it never had. Both
+attributes were checked to render the expected values rather than trusting the agents' claim.
+
+**A gate hole found by this pass:** the glass ban only matched `backdrop-blur-<suffix>`, so four sticky
+headers using Tailwind's bare default `backdrop-blur` walked straight through the check that exists to
+catch them. Widened. Both material bans now scan **with comments stripped** — `outpost` was failing its
+own app for a note describing the hairline-and-glass it had already removed, and a gate that punishes
+documentation teaches people to delete the documentation.
+
 ### Still open
 
-- **Kit migration (§6 option C)** — 38 apps still do not import `/_rt/ui.js`. `sigil` alone hand-rolls two
-  bottom sheets that the `Sheet` component should own; preflight missed them because they are a bespoke
-  `fixed inset-0` div rather than a `modal-bottom`. This is the 4-6 cycle chunk.
-- **The 44 remaining `border-base-content/10` hairlines in app source** — the kit and shell are clean, the
-  apps are not.
-- **The taste pass.** `shoot.mjs` renders through microlink against LIVE URLs, so the screenshots do not
-  exist until this deploys. Nothing here has been judged by eye yet, and per the rulebook a green gate is a
-  floor, not a verdict — **this is the step that decides whether the depth/blur numbers are right.**
+*(Kit migration and the hairline sweep — the two items that stood here — are DONE: §7c. What follows is
+what genuinely remains.)*
+
+- **THE BIG ONE: 54 of 60 apps have never been looked at.** The screenshot quota died 6 apps in, and the
+  owner stopped the work there on cost. Everything since §7b is verified by **code and gates only**. A
+  green gate is a floor, not a verdict — `docs/GATE_BLINDSPOTS.md` is the catalogue of defects that
+  shipped with every gate green, and the two material defects this redesign actually had were both found
+  by **eye**, on screenshots, and neither was visible to any gate. Assume more are waiting.
+  When resuming: **no `--fresh` by default** (it is a paid re-render; 60 apps × 4 shapes exhausts the free
+  daily tier), force only a re-shoot of something already photographed that day, and run in waves.
+  **Verify each PNG's mtime before trusting a verdict** — one agent returned confident pixel measurements
+  read off files five days older than the redesign.
+- **Specific things a review flagged that were never confirmed or fixed** (from the 6 apps that did get
+  looked at, all still open):
+  - `--hdr-h` is a fixed 3.5rem and appears in **no** density media query, while `--dock-h` is measured
+    and does compact. At 360×340 the header still costs 56px — 16.5% of the viewport — and one app
+    measured 58% of a split-sm screen as chrome. Same class of defect as the `--dock-h` lesson.
+  - `breathe` amputates at split and split-sm: the phase label, the countdown numeral and the play key
+    are all off-screen (hardcoded `max-w-[210px]` orb + fixed `gap-5`, and the tab declares no `"fit"`,
+    which is why no gate caught it).
+  - `Transport` may collapse to zero width when placed beside something in a flex row (`@container` is
+    inline-size containment, so it contributes no intrinsic width). Reported against stale screenshots, so
+    **unconfirmed** — but it is a kit-level claim and cheap to check in code.
+  - `ambient`'s disabled Transport disc renders a face *lighter* than the page in dark — the one move the
+    material forbids — with the play glyph at 1.73:1. Disabled controls are exempt from axe, so no gate
+    sees it.
+  - `btcflow` and `crypto` gate their fixtures on their own `isLocal` check instead of `/_rt/gate.js`, so
+    `?mock` seeds nothing on the live host. Their screens can only populate from a live socket, which
+    means an empty shot there is a **failed capture, not an empty-state defect**.
+  - `air` rendered LIVE data under `?mock` — worth checking whether the flag reaches every app.
 
 ## 8. Original recommendation (superseded by §7)
 

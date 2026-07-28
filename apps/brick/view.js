@@ -19,7 +19,7 @@ import { T } from "/_rt/i18n.js";
 import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
-import { useGamePad, useKeyboardPad, PAD } from "/_rt/dpad.js";
+import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
 import { SCRW, SCRH, S, digits, betterRun } from "/_rt/brick.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
@@ -51,15 +51,20 @@ export function brick(props) {
   const eng = useRef(null), sound = useRef(null), painter = useRef(null);
   const seed = useRef(gate ? GATE_SEED : (Math.random() * 0xffffffff) >>> 0);
 
-  const { mask, padProps, buttonProps, set } = useGamePad();
+  /* One touch surface for the whole deck. `act` is what a momentary key does when the finger
+     lifts over it; the held keys need nothing here — the loop reads `mask` directly. */
+  const act = useCallback((name) => {
+    if (name === "sound") {
+      const next = $sound.get() !== "1";
+      $sound.set(next ? "1" : "0");
+      if (sound.current) sound.current.enabled = next;
+      sound.current?.arm();
+    } else if (name === "start") restartRef.current?.();
+    else if (name === "records") A.screen.set("records");
+  }, [A]);
+  const restartRef = useRef(null);
+  const { mask, deckProps, pulse } = useTouchDeck({ onAct: act });
   useKeyboardPad(mask, null);
-
-  /* A tap or a key press from an assistive technology has no pointer lifecycle, so give it a
-     short pulse instead — otherwise the pad is unusable without a finger. */
-  const pulse = useCallback((bit) => {
-    set(-1, (mask.current & bit) ? 0 : bit);
-    setTimeout(() => set(-1, 0), 130);
-  }, [set, mask]);
 
   useEffect(() => {
     let live = true, raf = 0;
@@ -129,6 +134,7 @@ export function brick(props) {
     eng.current?.init(seed.current);
     $over.set(false);
   }, []);
+  restartRef.current = restart;
 
   /* The audio context is created and resumed inside a real press, and nothing waits on it: a
      suspended context with no user activation leaves resume() pending forever rather than
@@ -150,9 +156,17 @@ export function brick(props) {
   const key = (extra = "") =>
     `sf-raised sf-press active:sf-pressed rounded-2xl grid place-items-center select-none ${extra}`;
 
-  const dpadKey = (bit, icon, label, pos) => html`
-    <button class=${`${key("bg-base-100")} ${pos}`} style="width:var(--ms-ctl);height:var(--ms-ctl)"
-      aria-label=${T(t, label)} data-pad=${label} onClick=${() => pulse(bit)}>
+  /* onClick is for KEYBOARD and assistive technology only. A real finger is already handled by
+     the deck (pointerdown holds the key, pointerup releases it), and letting the browser's click
+     fire as well would toggle sound twice per tap. `event.detail` is the discrimination: a click
+     synthesised by .click() or by Enter carries 0, one a pointer caused carries at least 1.
+     It also keeps the gate honest — its synthetic pointerdown has no coordinates, so
+     elementFromPoint never resolves a key and the click is the only thing that runs. */
+  const kb = (fn) => (e) => { if (!e.detail) fn(); };
+
+  const dpadKey = (bit, icon, label) => html`
+    <button class=${key("bg-base-100 w-full h-full")} data-bit=${bit} data-haptic="bump"
+      aria-label=${T(t, label)} data-pad=${label} onClick=${kb(() => pulse(bit))}>
       ${Icon(icon, "text-[var(--ms-icon)] opacity-80")}
     </button>`;
 
@@ -185,43 +199,48 @@ export function brick(props) {
         </div>
       </div>
 
-      <!-- the deck -->
-      <div class="ms-side-main shrink-0 flex items-center justify-between gap-[var(--ms-gap)]" onPointerDown=${arm}>
+      <!-- The deck is ONE touch surface. You rest a thumb on it and slide; whatever is under the
+           thumb is what is pressed, and every key you cross answers. Per-key handlers cannot do
+           that — the first to see pointerdown captures the pointer and the rest go deaf. -->
+      <div class="ms-side-main shrink-0 flex items-center justify-between gap-[var(--ms-gap)]"
+           ...${deckProps} onPointerDown=${(e) => { arm(); deckProps.onPointerDown(e); }}>
 
-        <!-- D-pad: the direction comes from where the finger IS, so sliding between keys works -->
         <div class="relative sf-inset rounded-[var(--ms-r)] p-1" role="group" aria-label=${T(t, "padLabel")}
-             style="width:calc(var(--ms-ctl)*3);height:calc(var(--ms-ctl)*3)" ...${padProps} data-pad-root>
+             style="width:min(calc(var(--ms-ctl)*3),46%);aspect-ratio:1" data-pad-root>
           <div class="grid h-full w-full" style="grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr)">
-            <div></div>${dpadKey(PAD.JUMP, "lucide:chevron-up", "padUp", "")}<div></div>
-            ${dpadKey(PAD.LEFT, "lucide:chevron-left", "padLeft", "")}
+            <div></div>${dpadKey(PAD.JUMP, "lucide:chevron-up", "padUp")}<div></div>
+            ${dpadKey(PAD.LEFT, "lucide:chevron-left", "padLeft")}
             <div class="grid place-items-center"><div class="sf-inset rounded-full" style="width:38%;height:38%"></div></div>
-            ${dpadKey(PAD.RIGHT, "lucide:chevron-right", "padRight", "")}
-            <div></div>${dpadKey(PAD.DOWN, "lucide:chevron-down", "padDown", "")}<div></div>
+            ${dpadKey(PAD.RIGHT, "lucide:chevron-right", "padRight")}
+            <div></div>${dpadKey(PAD.DOWN, "lucide:chevron-down", "padDown")}<div></div>
           </div>
         </div>
 
-        <!-- the middle keys: small, labelled, the way a brick game labels them -->
+        <!-- the middle keys: small, labelled, the way a brick game labels them. These are moments,
+             not holds, so they fire when the finger LIFTS over them. -->
         <div class="flex flex-col items-center gap-[calc(var(--ms-gap)*0.6)] min-w-0">
-          <button class=${key("bg-base-100 px-3 py-1")} onClick=${() => { arm(); $sound.set(soundOn ? "0" : "1"); if (sound.current) sound.current.enabled = !soundOn; }}
+          <button class=${key("bg-base-100 px-3 py-1")} data-act="sound" data-haptic="bump"
+            onClick=${kb(() => act("sound"))}
             aria-pressed=${soundOn} aria-label=${T(t, "sound")} data-sound=${soundOn ? "1" : "0"}>
             ${Icon(soundOn ? "lucide:volume-2" : "lucide:volume-x", "text-[var(--ms-icon)] opacity-80")}
           </button>
           <button class=${key("bg-base-100 px-3 py-1 font-mono uppercase tracking-widest text-[var(--ms-label)]")}
-            onClick=${restart} data-start>${T(t, "start")}</button>
+            data-act="start" data-haptic="bump" onClick=${kb(() => act("start"))} data-start>${T(t, "start")}</button>
           <button class=${key("bg-base-100 px-3 py-1 font-mono uppercase tracking-widest text-[var(--ms-label)]")}
-            onClick=${() => A.screen.set("records")} id="b-records" data-records>${digits(best?.dist ?? 0, 4)}</button>
+            data-act="records" data-haptic="bump" onClick=${kb(() => act("records"))}
+            id="b-records" data-records>${digits(best?.dist ?? 0, 4)}</button>
         </div>
 
         <!-- action keys, offset like the real thing: B sits low-left of A -->
-        <div class="relative" style="width:calc(var(--ms-ctl)*2.6);height:calc(var(--ms-ctl)*2.2)">
+        <div class="relative shrink-0" style="width:min(calc(var(--ms-ctl)*2.6),34%);aspect-ratio:2.6/2.2">
           <button class=${key("bg-base-100 absolute right-0 top-0 rounded-full")}
-            style="width:calc(var(--ms-ctl)*1.25);height:calc(var(--ms-ctl)*1.25)"
-            aria-label=${T(t, "keyJump")} data-key="a" ...${buttonProps(PAD.JUMP)}>
+            style="width:48%;aspect-ratio:1" data-bit=${PAD.JUMP} data-haptic="bump"
+            aria-label=${T(t, "keyJump")} data-key="a" onClick=${kb(() => pulse(PAD.JUMP))}>
             <span class="font-mono text-[var(--ms-label)] opacity-80">A</span>
           </button>
           <button class=${key("bg-base-100 absolute left-0 bottom-0 rounded-full")}
-            style="width:calc(var(--ms-ctl)*1.25);height:calc(var(--ms-ctl)*1.25)"
-            aria-label=${T(t, "keyRun")} data-key="b" ...${buttonProps(PAD.RUN)}>
+            style="width:48%;aspect-ratio:1" data-bit=${PAD.RUN} data-haptic="bump"
+            aria-label=${T(t, "keyRun")} data-key="b" onClick=${kb(() => pulse(PAD.RUN))}>
             <span class="font-mono text-[var(--ms-label)] opacity-80">B</span>
           </button>
         </div>

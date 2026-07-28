@@ -84,4 +84,29 @@ export default [
       h.expect((await h.count("[data-live-screen]")) === 1, "екран зник після зміни локалі");
     },
   },
+  {
+    name: "клавіатура: стрілки ведуть гравця, клавіші світяться", run: async (h) => {
+      await ready(h);
+      const before = await dist(h);
+      await h.keys(["ArrowRight", "ShiftLeft"], 900);            
+      h.expect((await dist(h)) > before, "гравець не рушив від стрілки — клавіатура не доходить до маски");
+      await h.key("ArrowLeft", 0);
+      await h.wait(120);
+      const lit = await h.hasClass('[data-pad="padLeft"]', "sf-pressed");
+      await h.wait(300);
+      h.expect(lit, "клавіша на екрані не підсвітилась під час натиску з клавіатури");
+    },
+  },
+  {
+    name: "клавіатура і палець не стирають одне одного", run: async (h) => {
+      await ready(h);
+      const a = await dist(h);
+      await h.key("ArrowRight", 0);
+      await h.tap('[data-key="a"]');
+      await h.wait(700);
+      const b = await dist(h);
+      await h.wait(50);
+      h.expect(b > a, "дотик стер утримувану клавішу — маска знову має двох власників");
+    },
+  },
 ];

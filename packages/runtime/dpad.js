@@ -2,6 +2,13 @@
 import { useRef, useEffect, useCallback } from "preact/hooks";
 import { haptic } from "./sensors.js";
 
+const pointered = new WeakMap();
+export const markPointer = (el) => { if (el) pointered.set(el, Date.now()); };
+export const fromPointer = (el, within = 500) => !!el && Date.now() - (pointered.get(el) ?? -Infinity) < within;
+
+/** The activation guard every app's onClick should use: keyboard and AT only. */
+export const keyboardOnly = (fn) => (e) => { if (!e.detail && !fromPointer(e.currentTarget)) fn(e); };
+
 /** Mirrored in tools/wasm/brick/game.c and packages/runtime/brick.js. */
 export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16 };
 
@@ -68,16 +75,16 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
     if (el.hasAttribute("data-latch")) el.setAttribute("aria-pressed", latched.current.has(el) ? "true" : "false");
     if (stay) pressed.current.add(el); else pressed.current.delete(el);
   };
+  
   const at = (e) => {
-    const hit = document.elementFromPoint(e.clientX, e.clientY);
-    return hit?.closest?.("[data-bit],[data-act]") || null;
+    const hit = (e.clientX || e.clientY) ? document.elementFromPoint(e.clientX, e.clientY) : null;
+    return hit?.closest?.("[data-bit],[data-act]") || e.target?.closest?.("[data-bit],[data-act]") || null;
   };
 
   const release = useCallback((id) => {
     const el = held.current.get(id);
     if (!el) return;
     held.current.delete(id);
-    
     if (![...held.current.values()].includes(el)) paint(el, false);
     recompute();
   }, []);
@@ -98,6 +105,7 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
   }, []);
 
   useEffect(() => () => { for (const el of pressed.current) el.classList.remove("sf-pressed"); }, []);
+
   const deckProps = {
     ref: root,
     style: { touchAction: "none" },
@@ -108,6 +116,7 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
     onPointerMove: (e) => { if (e.buttons || e.pointerType === "touch") move(e, false); },
     onPointerUp: (e) => {
       const el = held.current.get(e.pointerId);
+      markPointer(el);
       if (el?.hasAttribute("data-act")) onAct?.(el.getAttribute("data-act"), el);
       
       if (el?.hasAttribute("data-latch")) {
@@ -122,8 +131,6 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
 
   return { mask, deckProps, release, pulse, setKeys };
 }
-
-
 export const KEYS = {
   ArrowLeft: PAD.LEFT, KeyA: PAD.LEFT,
   ArrowRight: PAD.RIGHT, KeyD: PAD.RIGHT,
@@ -134,6 +141,7 @@ export const KEYS = {
 
 /** Momentary keys — the ones a console has as buttons rather than as directions. */
 export const ACTION_KEYS = { Enter: "start", KeyM: "sound" };
+
 /**
  * Feeds the deck's mask from the keyboard. It reports the WHOLE held set on every change rather
  * than toggling a bit, so the deck stays the single owner of the mask and a key held while a

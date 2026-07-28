@@ -9,7 +9,7 @@ import { T } from "/_rt/i18n.js";
 import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
-import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
+import { useTouchDeck, useKeyboardPad, keyboardOnly, PAD } from "/_rt/dpad.js";
 import { SCRW, SCRH, S, digits, betterRun } from "/_rt/brick.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
@@ -125,7 +125,7 @@ export function brick(props) {
   const key = (extra = "") =>
     `sf-raised sf-press active:sf-pressed rounded-2xl grid place-items-center select-none ${extra}`;
   
-  const kb = (fn) => (e) => { if (!e.detail) fn(); };
+  const kb = keyboardOnly;
   const dpadKey = (bit, icon, label) => html`
     <button class=${key("bg-base-100 w-full h-full")} data-bit=${bit} data-haptic="bump"
       aria-label=${T(t, label)} data-pad=${label} onClick=${kb(() => pulse(bit))}>

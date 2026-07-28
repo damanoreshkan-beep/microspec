@@ -51,9 +51,18 @@ export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16 };
  * which is exactly the documented reason an app may call `haptic.*` itself: an outcome the tap
  * could not predict. Neither fires twice, because they own different events.
  */
-export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
+/* A press must survive at least one SIMULATION STEP. The game reads the mask once a frame, so a
+   press that goes down and up inside 16 ms is invisible to it — the button did nothing, and on a
+   fast tap of a jump key that is indistinguishable from a broken control. Both games showed it at
+   once: a tapped throw that never spent a spear, and a tapped jump that never left the ground, so
+   the player ran into the first pit. Held presses are unaffected; only the short ones are extended,
+   and they are extended by the same mechanism a keyboard or a screen reader already uses. */
+const MIN_PRESS = 90;
+
+export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}) {
   const mask = useRef(0);
   const held = useRef(new Map());          // pointerId → the element it is currently pressing
+  const since = useRef(new Map());         // pointerId → when that press began
   const pressed = useRef(new Set());
   const latched = useRef(new Set());       // keys double-tapped into a hold
   const lastTap = useRef(new Map());       // element → when it was last released
@@ -145,12 +154,18 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
     style: { touchAction: "none" },
     onPointerDown: (e) => {
       try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* synthetic pointer */ }
+      since.current.set(e.pointerId, e.timeStamp);
       move(e, true);
     },
     onPointerMove: (e) => { if (e.buttons || e.pointerType === "touch") move(e, false); },
     onPointerUp: (e) => {
       const el = held.current.get(e.pointerId);
       markPointer(el);
+      // too quick for the simulation to have seen it — hold the bit a moment longer
+      const began = since.current.get(e.pointerId);
+      since.current.delete(e.pointerId);
+      const bit = bitOf(el);
+      if (bit && (began == null || e.timeStamp - began < minPress)) pulse(bit, minPress);
       if (el?.hasAttribute("data-act")) onAct?.(el.getAttribute("data-act"), el);
       /* A LATCH key (the run button) holds itself on a double tap and lets go on the next one —
          a platformer asks you to hold run for minutes at a time, and a thumb parked on B is a
@@ -163,7 +178,7 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
       }
       release(e.pointerId);
     },
-    onPointerCancel: (e) => release(e.pointerId),
+    onPointerCancel: (e) => { since.current.delete(e.pointerId); release(e.pointerId); },
   };
 
   return { mask, deckProps, release, pulse, setKeys };

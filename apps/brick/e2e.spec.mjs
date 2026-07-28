@@ -119,9 +119,13 @@ export default [
       const a = await dist(h);
       await h.keyDown("ArrowRight");
       await h.tap('[data-key="a"]');      // a pointer event lands while the key is still down
-      await h.wait(800);
+      await h.wait(600);
       const b = await dist(h);
+      const dead = await h.attr("[data-live-screen]", "data-dead");
       await h.keyUp("ArrowRight");
+      // Check the state the assertion depends on BEFORE trusting it: a run that ended measures
+      // nothing, and three tests in this file have now been wrong that way rather than the code.
+      h.expect(dead === "0", "забіг обірвався до виміру — дистанція завмерла не через маску");
       h.expect(b > a, "дотик стер утримувану клавішу — маска знову має двох власників");
     },
   },

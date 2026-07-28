@@ -149,11 +149,15 @@ export function brick(props) {
 
       <!-- the screen: a recess in the console, with the game inside it -->
       <div data-stage-box class="flex-1 min-h-0 grid place-items-center">
-        <div class="sf-inset rounded-[var(--ms-r)] p-2 max-w-full max-h-full grid place-items-center"
-             style="aspect-ratio:${SCRW}/${SCRH};height:100%;width:auto">
-          <div class="relative w-full h-full" ref=${hud} data-live-screen>
+        <!-- The canvas carries its own intrinsic 288×270 and is allowed to SHRINK, never to be
+             stretched: a fixed-ratio wrapper at height:100% derives its width from a parent that
+             has none to give, and on a 200px screen that came out 366px wide. Letting the replaced
+             element do the fitting also keeps the scale integral wherever there is room for it,
+             which for a pixel display is the difference between crisp and shimmering. -->
+        <div class="sf-inset rounded-[var(--ms-r)] p-2 max-w-full max-h-full min-w-0 min-h-0 grid place-items-center">
+          <div class="relative max-w-full max-h-full min-w-0 min-h-0" ref=${hud} data-live-screen>
             <canvas ref=${cv} width=${SCRW} height=${SCRH}
-              class="block w-full h-full rounded-[calc(var(--ms-r)-0.4rem)]"
+              class="block max-w-full max-h-full w-auto h-auto rounded-[calc(var(--ms-r)-0.4rem)]"
               style="image-rendering:pixelated"
               role="img" aria-label=${T(t, "screenAlt")}></canvas>
             ${!ready && !err ? html`<div class="absolute inset-0 grid place-items-center"><${Pixels} cls="w-full h-full" /></div>` : null}

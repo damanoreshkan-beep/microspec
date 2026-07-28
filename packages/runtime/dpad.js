@@ -57,6 +57,13 @@ export function useGamePad({ onChange } = {}) {
     return () => { removeEventListener("pointerup", clear); removeEventListener("pointercancel", clear); };
   }, [set, onChange]);
 
+  /* Capture keeps a finger that slides off the key still talking to it. It THROWS when there is
+     no live pointer for the id — which is every synthetic pointerdown, i.e. every e2e tap and
+     every assistive-technology activation. Capture is an improvement on the gesture, never a
+     requirement of it, so a failure here is nothing to report and certainly nothing to crash on.
+     (Two uncaught NotFoundErrors failed the whole gate the first time round.) */
+  const capture = (e) => { try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* no live pointer */ } };
+
   const fromEvent = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
     return padDirection(e.clientX - r.left, e.clientY - r.top, r.width, r.height);
@@ -64,7 +71,7 @@ export function useGamePad({ onChange } = {}) {
 
   const padProps = {
     style: { touchAction: "none" },
-    onPointerDown: (e) => { e.currentTarget.setPointerCapture?.(e.pointerId); set(e.pointerId, fromEvent(e)); },
+    onPointerDown: (e) => { capture(e); set(e.pointerId, fromEvent(e)); },
     onPointerMove: (e) => { if (pads.current.has(e.pointerId)) set(e.pointerId, fromEvent(e)); },
     onPointerUp: (e) => set(e.pointerId, 0),
     onPointerCancel: (e) => set(e.pointerId, 0),
@@ -73,7 +80,7 @@ export function useGamePad({ onChange } = {}) {
 
   const buttonProps = (bit) => ({
     style: { touchAction: "none" },
-    onPointerDown: (e) => { e.currentTarget.setPointerCapture?.(e.pointerId); set(e.pointerId, bit); },
+    onPointerDown: (e) => { capture(e); set(e.pointerId, bit); },
     onPointerUp: (e) => set(e.pointerId, 0),
     onPointerCancel: (e) => set(e.pointerId, 0),
   });

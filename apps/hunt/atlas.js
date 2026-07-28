@@ -66,16 +66,35 @@ export function anim(who, name) {
   return v;
 }
 
+/**
+ * Halve a cell's height by dropping every other row.
+ *
+ * This is how a crouch is drawn. The collision box halves when she ducks — that is the whole point
+ * of the button — and a full-height sprite standing on a half-height box says "upright" while the
+ * hitbox says "ducking", which is a lie the player will feel before they can name it. 2:1 is an
+ * INTEGER ratio, so the pixels stay on their grid; any other squash would smear them.
+ */
+export function squashV(c) {
+  const h = Math.ceil(c.h / 2), out = cell(c.w, h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < c.w; x++) {
+      const a = at(c, x, y * 2), b = at(c, x, y * 2 + 1);
+      out.px[y * c.w + x] = a !== TRANSPARENT ? a : b;   // keep ink over emptiness, never lose a limb
+    }
+  return out;
+}
+
 /** One frame out of a decoded animation, as its own cell. */
 const frameCache = new Map();
-export function frameCell(who, name, f) {
-  const key = `${who}:${name}:${f}`;
+export function frameCell(who, name, f, low = false) {
+  const key = `${who}:${name}:${f}:${low ? 1 : 0}`;
   if (frameCache.has(key)) return frameCache.get(key);
   const a = anim(who, name);
   let c = cell(1, 1);
   if (a) {
     const i = Math.max(0, Math.min(a.n - 1, f | 0));
     c = { px: a.px.slice(i * a.w * a.h, (i + 1) * a.w * a.h), w: a.w, h: a.h };
+    if (low) c = squashV(c);
     c = outline(c);
   }
   frameCache.set(key, c);

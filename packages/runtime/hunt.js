@@ -118,10 +118,14 @@ export const isPickup = (t) => t === T.COIN || t === T.SPEAR || t === T.HEART;
    need its own frame, and so would a throw while rising, and while falling, and while skidding.
    The body plays locomotion; the spear is drawn over it at the angle it is actually travelling.
    That is the difference between four extra sprites and forty. */
-export const POSE = { STAND: 0, WALK_A: 1, WALK_B: 2, AIR: 3, DEAD: 4, SKID: 5 };
+export const POSE = { STAND: 0, WALK_A: 1, WALK_B: 2, AIR: 3, DEAD: 4, SKID: 5, LOW: 6 };
 export const ANIM = {
   [POSE.STAND]: "idle", [POSE.WALK_A]: "run", [POSE.WALK_B]: "run",
   [POSE.AIR]: "jump", [POSE.DEAD]: "dead", [POSE.SKID]: "run",
+  /* Crouching is a smaller BODY, not a costume — the collision box halves, so the art has to come
+     down with it or the hitbox and the picture stop agreeing. The pack has no crouch, so the fall
+     pose stands in: gathered legs, low centre. Held on one frame, because a duck is a position. */
+  [POSE.LOW]: "fall",
 };
 
 /** Which animation frame to show, given the engine's pose and the frame counter. */
@@ -129,6 +133,7 @@ export function animFrame(anim, pose, frameNo) {
   if (!anim) return 0;
   if (pose === POSE.DEAD) return anim.n - 1;          // hold the last frame, do not loop a death
   if (pose === POSE.AIR) return Math.min(anim.n - 1, 1);
+  if (pose === POSE.LOW) return anim.n - 1;            // a duck is a position, not a loop
   if (pose === POSE.STAND) return (frameNo >> 3) % anim.n;
   return (frameNo >> 2) % anim.n;
 }

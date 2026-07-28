@@ -1,14 +1,17 @@
 // console — the farm's game shell, once.
 //
 // The first game grew a handheld: a body extruded from the page, a screen recessed into it, a
-// D-pad and two action keys. The second game wanted the same controls in a different frame — the
-// game full-bleed, the keys floating over it — and the honest options were to copy the first one
-// or to lift it here. A copied component fails by DIVERGENCE, silently, and no gate ever reports
-// "this app's pad is two pixels rounder than the other one's": the farm already learned that with
-// the sheet, the transport and the tab strip. So it lives here, and the frame is a parameter.
+// D-pad and two action keys. The second game wanted the same controls, and the honest options were
+// to copy the first one or to lift it here. A copied component fails by DIVERGENCE, silently, and
+// no gate ever reports "this app's pad is two pixels rounder than the other one's": the farm
+// already learned that with the sheet, the transport and the tab strip.
 //
-//   layout: "handheld"  a device you hold — body, recessed screen, deck beneath it   (apps/brick)
-//   layout: "overlay"   the game IS the screen, controls float over it               (apps/hunt)
+// There is ONE look. A second layout was written — the game full-bleed with the controls floating
+// over it — and removed: a component with two appearances is two components sharing a file, and
+// the farm's whole argument is that a console is a console. Games differ in what their keys DO,
+// not in what a console is. So the shell is fixed and the configuration is the deck: which
+// directions the pad carries, which action keys and whether one latches, what sits in the menu row
+// and in the centre column.
 //
 // It owns no input logic. The pointer behaviour — press by POSITION, a thumb that drifts keeps its
 // key, a double tap latches, a press shorter than a simulation step is extended — is dpad.js, and
@@ -93,7 +96,6 @@ function Actions({ actions, t, onKeyboard, size = "var(--ms-ctl)" }) {
 /**
  * `<GameConsole>`
  *
- * @param layout    "handheld" | "overlay"
  * @param deck      the spread from useTouchDeck() — this component never handles pointers itself
  * @param pad       [{ id, pad: "up"|"down"|"left"|"right", bit, icon, label }]
  *                  Every key exposes ONE hook, data-key=<id>, and pad keys mirror it as data-pad
@@ -102,11 +104,11 @@ function Actions({ actions, t, onKeyboard, size = "var(--ms-ctl)" }) {
  *                  a shared component owns its DOM contract too, not only its markup.
  * @param actions   [{ id, bit, icon, label, latch? }]        — up to two, offset like a real pad
  * @param menu      [{ id, act, icon, label, pressed? }]      — sound, records: momentary, small
- * @param centre    [{ id, act, text|icon, label }]           — a handheld's START row; ignored in overlay
+ * @param centre    [{ id, act, text|icon, label }]           — the START column under the menu row
  * @param onKeyboard called for keyboard / assistive activation only (the deck owns pointers)
  * @param overlay   extra nodes drawn above everything (a game-over card)
  */
-export function GameConsole({ layout = "handheld", deck, pad = [], actions = [], menu = [], centre = [],
+export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = [],
                               t, onKeyboard, onPointerDown, children, overlay = null }) {
   const spread = { ...deck };
   if (onPointerDown) {
@@ -119,26 +121,6 @@ export function GameConsole({ layout = "handheld", deck, pad = [], actions = [],
         ${menu.map((k) => html`<${Key} k=${k} t=${t} onKeyboard=${onKeyboard} cls="w-9 h-9" />`)}
       </div>`
     : null;
-
-  if (layout === "overlay") {
-    /* The game IS the screen. A phone game that spends half its height on a bezel has half a
-       screen, so the controls sit ON it — left thumb steers, right thumb acts. */
-    return html`<${Fragment}>
-      <div class="relative h-full min-h-0 w-full overflow-hidden rounded-[var(--ms-r)]" ...${spread}>
-        <div class="absolute inset-0">${children}</div>
-        ${menuRow ? html`<div class="absolute right-2 top-2">${menuRow}</div>` : null}
-        ${pad.length ? html`
-          <div class="absolute left-2 bottom-2">
-            <${Pad} pad=${pad} t=${t} onKeyboard=${onKeyboard} hub=${false} />
-          </div>` : null}
-        ${actions.length ? html`
-          <div class="absolute right-2 bottom-2 flex items-end gap-2">
-            <${Actions} actions=${actions} t=${t} onKeyboard=${onKeyboard} />
-          </div>` : null}
-        ${overlay}
-      </div>
-    </${Fragment}>`;
-  }
 
   /* A device you hold. The body is the page EXTRUDED and the screen a recess cut into it — the
      same light as everything else in the farm, one level deeper. Sized to its contents and

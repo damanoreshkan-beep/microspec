@@ -110,7 +110,7 @@ export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
     const a = anim(who, name) ?? anim(who, "idle");
     if (!a) continue;
     const cell = frameCell(who, ANIM[e.frame] && anim(who, ANIM[e.frame]) ? ANIM[e.frame] : "idle",
-                           animFrame(a, e.frame, frameNo));
+                           animFrame(a, e.frame, frameNo), e.frame === POSE.LOW);
     /* Sprites are taller than a tile: centre on the collision box and stand them on its feet, or
        the character floats. The box is what the engine simulates; the art is what you see. */
     const ox = e.x + ((TILE - cell.w) >> 1), oy = e.y + boxH(e.kind) - cell.h;

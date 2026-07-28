@@ -1,13 +1,14 @@
 
 const args = Deno.args;
 const flag = (n, d) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] ?? d) : d; };
-const isFlagVal = (a) => ["--out", "--base", "--bp", "--theme"].some((f) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] === a; });
+const isFlagVal = (a) => ["--out", "--base", "--bp", "--theme", "--locale"].some((f) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] === a; });
 const apps = args.filter((a) => !a.startsWith("--") && !isFlagVal(a));
 const base = flag("--base", "https://damanoreshkan-beep.github.io/microspec/").replace(/\/?$/, "/");
 const out = flag("--out", "packages/gates/shots");
 const seed = args.includes("--seed");
 const mock = args.includes("--mock");
 const theme = flag("--theme", "");
+const locale = flag("--locale", "");
 
 const BP = {
   "phone-sm": [320, 568], "phone": [384, 832], "default": [390, 844], "phone-tall": [412, 915],
@@ -18,14 +19,14 @@ const bpArg = flag("--bp", "default");
 const chosen = bpArg === "all" ? Object.keys(BP).filter((k) => k !== "default") : [bpArg];
 for (const b of chosen) if (!BP[b]) { console.error(`unknown --bp "${b}" — one of: ${Object.keys(BP).join(", ")}, all`); Deno.exit(2); }
 
-if (!apps.length) { console.error("usage: shoot.mjs <appId...> [--seed] [--mock] [--bp <id|all>] [--theme light] [--out dir] [--base url]"); Deno.exit(2); }
+if (!apps.length) { console.error("usage: shoot.mjs <appId...> [--seed] [--mock] [--bp <id|all>] [--theme light] [--locale en] [--out dir] [--base url]"); Deno.exit(2); }
 await Deno.mkdir(out, { recursive: true });
 
 const fresh = args.includes("--fresh");
 
 async function shoot(app, bp) {
   const [W, H] = BP[bp];
-  const q = [seed ? "seed" : "", mock ? "mock" : "", theme ? `theme=${theme}` : ""].filter(Boolean).join("&");
+  const q = [seed ? "seed" : "", mock ? "mock" : "", theme ? `theme=${theme}` : "", locale ? `locale=${locale}` : ""].filter(Boolean).join("&");
   const url = `${base}${app}/${q ? "?" + q : ""}`;
   const api = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&waitUntil=networkidle2&viewport.width=${W}&viewport.height=${H}&viewport.deviceScaleFactor=2${fresh ? "&force=true" : ""}`;
   const r = await fetch(api);
@@ -33,7 +34,7 @@ async function shoot(app, bp) {
   const shotUrl = j?.data?.screenshot?.url;
   if (j.status !== "success" || !shotUrl) throw new Error(`microlink: ${j.status} ${j.message || ""}`);
   const png = new Uint8Array(await (await fetch(shotUrl)).arrayBuffer());
-  const path = `${out}/${app}${bp === "default" ? "" : "@" + bp}${theme ? "~" + theme : ""}.png`;
+  const path = `${out}/${app}${bp === "default" ? "" : "@" + bp}${theme ? "~" + theme : ""}${locale ? "." + locale : ""}.png`;
   await Deno.writeFile(path, png);
   return { app, path, bytes: png.length };
 }

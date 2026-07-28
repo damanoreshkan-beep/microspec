@@ -12,8 +12,15 @@ export function createApp(spec, dataLoad) {
   let savedFilters = {};
   try { savedFilters = JSON.parse(localStorage.getItem(FKEY) || "{}"); } catch {  }
 
+  const urlLocale = (() => {
+    try {
+      const q = new URLSearchParams(location.search).get("locale");
+      return q && spec.i18n?.[q] ? q : null;
+    } catch { return null; }
+  })();
+
   const S = {
-    locale: persistentAtom(ns + "locale", "uk"),
+    locale: urlLocale ? atom(urlLocale) : persistentAtom(ns + "locale", "uk"),
     theme: persistentAtom(ns + "theme", spec.theme || "dim"),
     fav: persistentAtom(ns + "fav", {}, JSON_CODEC),
     amount: persistentAtom(ns + "amount", "100"),

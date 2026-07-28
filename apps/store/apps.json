@@ -420,6 +420,26 @@
     "category": "money"
   },
   {
+    "id": "hunt",
+    "title": "Лови",
+    "titles": {
+      "en": "Hunt",
+      "uk": "Лови"
+    },
+    "tagline": "Скінченний сагайдак і ліс, що не закінчується",
+    "taglines": {
+      "en": "A finite quiver and a forest that keeps coming",
+      "uk": "Скінченний сагайдак і ліс, що не закінчується"
+    },
+    "glyph": "lucide:crosshair",
+    "art": "<path d=\"M12 2v20M5 6c4 2 4 10 0 12M19 6c-4 2-4 10 0 12\"/><path d=\"M12 12h9M18 9l3 3-3 3\"/>",
+    "bg": "#1b2430",
+    "fg": "#6d9150",
+    "href": "./hunt/",
+    "version": "1.2",
+    "category": "play"
+  },
+  {
     "id": "kp",
     "title": "Магнітні бурі",
     "titles": {
@@ -896,7 +916,7 @@
     "bg": "#101014",
     "fg": "#8FA05C",
     "href": "./brick/",
-    "version": "1.0",
+    "version": "1.13",
     "category": "play"
   },
   {

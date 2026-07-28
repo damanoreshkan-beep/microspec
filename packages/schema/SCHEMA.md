@@ -23,6 +23,14 @@ A micro-app = `spec.json` (declarative UI) + `data.js` (`export async function l
 
 - `fav` is required for: a `source:"fav"` tab, and any `fav` / `!fav` predicate. Omit it and cards show no star.
 - Default locale is `uk`; the profile language switch is hardcoded to **uk / en**, so always supply both.
+- `minWidth` (OPTIONAL, integer, default **200**) — the narrowest viewport the app HONESTLY works at.
+  200 is the watch floor and the right answer for anything made of text, which is nearly everything
+  here. Declare a wider floor only when the app is *physically* unable to go narrower: `brick` is a
+  game console whose D-pad and action keys are five tap targets in a row, and five times the 36px tap
+  floor is 180px before a single gap — 200px cannot hold it however it is laid out. Below the declared
+  floor the glance check still narrows `#view`, still measures, and still prints its number and the
+  offending element; it reports a **warning** instead of a failure. An app that has stated its limits
+  is not hiding a defect — but reaching for this to quiet a layout you could have compacted is.
 
 ---
 

@@ -171,6 +171,10 @@ Each row is a real finding no axe/overflow/e2e check could see. 🔴 fixed (hard
 | ruler | 🟠 | a GPS instrument that never showed a coordinate — distance, area and ±accuracy were all there; "where am I" was not. Every gate checked the DERIVED numbers | fixed — lat/lng at 5 decimals, tap to copy, guarded by an e2e |
 | frontier · hf | 🟡 | two cards show identical `14K★` — `compact()` rounded away the difference | fixed — 1 decimal through 99.9K (14.2K vs 13.6K) |
 | frontier | 🟡 | "Деталі ↗" used an external-link arrow for an in-app drill-down | fixed — runtime uses a chevron when the card drills into a detail view |
+| brick | 🔴 | the density hierarchy was **inverted**: the source art's outlines all landed on the densest ink, so the ground was heavier than the character standing on it and the first frame read as a picture of a floor. On a display whose only variable is how dark a segment is, **density IS attention** | fixed — every class of thing is remapped into its own band (backdrop 1 · terrain 1-3 · objects 2-3 · actors 2-4), so the one thing you control is the one thing you can always find |
+| brick | 🔴 | every block in the game was lit from the **wrong side** — the extrusion let the source art's own contour serve as the lit edge, and Kenney draws contours dark, so the face turned toward the light was the heavy one | fixed — the lit edge is drawn by `extrude()`, never inherited. The same rule as `--nm-light` in theme.css: a widget declares what it IS and the material draws the light |
+| brick | 🟠 | six brick tiles in a row merged into one dark bar — extruded edge-to-edge, adjacent blocks butt together with no seam | fixed — one row and one column of each cell are cleared. Note the first attempt shrank the art to make room and **resampled the crate into a blank slab**: it solved the separation and destroyed the texture, which is a trade nobody asked for |
+| brick | 🟡 | clouds drawn as rectangles read as a rendering artefact rather than as sky | fixed — three rounded lobes per cloud, flattened underneath |
 
 Every finding fixed. The taste gate now has zero open debt on the reviewed apps.
 

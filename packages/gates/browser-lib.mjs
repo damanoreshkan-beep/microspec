@@ -241,7 +241,7 @@ export async function runResponsiveMatrix(page, ev, dev) {
   return out;
 }
 
-export async function runDesignChecks(ev) {
+export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
   const out = [];
   await ev(() => { const s = document.createElement("style"); s.id = "__freeze"; s.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}"; document.head.appendChild(s); });
   const runAxe = () => ev(async () => {
@@ -298,9 +298,13 @@ export async function runDesignChecks(ev) {
     return { mode: "view", o: v ? v.scrollWidth - v.clientWidth : 0, sel: v ? widest(v) : "?" };
   });
   await ev(() => { const v = document.getElementById("view"); if (v) v.style.maxWidth = ""; });   
+  const soft = minWidth > 200;
   out.push(watch.o <= 2
     ? { name: `watch ~200px: ${watch.mode === "card" ? "контент уміщується (container query)" : "без overflow (custom view)"}`, ok: true }
-    : { name: "watch ~200px: контент не вміщується", ok: false, msg: `+${watch.o}px overflow${watch.mode === "card" ? " у картці" : ""} — винуватець: ${watch.sel}` });
+    : soft
+      ? { name: `watch ~200px: нижче оголошеної підлоги ${minWidth}px`, ok: true, soft: true,
+          msg: `+${watch.o}px overflow — винуватець: ${watch.sel} (spec.minWidth=${minWidth})` }
+      : { name: "watch ~200px: контент не вміщується", ok: false, msg: `+${watch.o}px overflow${watch.mode === "card" ? " у картці" : ""} — винуватець: ${watch.sel}` });
   await ev(() => document.getElementById("__freeze")?.remove());
   return out;
 }

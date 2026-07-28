@@ -165,6 +165,40 @@ and would land in the middle of a feature push — but it is cheap and it closes
   and by checking every manifest URL resolves on production, never by a browser. A cold offline launch on a
   real device remains the only full proof.
 
+### 12. A check that switches modes silently is only running where you didn't look
+The watch~200px check narrows `#view` and measures the overflow — **unless the screen carries a
+`.card`, in which case it measures the cards instead and never looks at `#view` at all**. Almost
+every app in this farm renders cards, so for most of its life that branch has been measuring card
+internals; the `#view` branch was effectively dormant. `brick` is the first app with no card on
+screen at all (it is a console), and it lit up immediately with two things that had been true the
+whole time:
+
+- a **closed** `Sheet` is not an absent one — DaisyUI keeps `.modal` in the layout (hidden, not
+  removed), so a dialog nobody opened still has a box for the check to find;
+- a `1fr` grid column carries a floor of its own min-content, so one uppercase letter-spaced word
+  (`ВІДСТАНЬ`) refused to shrink below a third of a 200px screen.
+
+Neither is exotic and neither is new. They were simply in the half of the check that nothing
+exercised. **A gate with two modes has two coverage stories, and the quiet one is the one to
+distrust** — when you add a mode, ask which apps actually reach it, and if the answer is "none",
+the mode is documentation rather than a gate.
+*Open:* the mode split itself is still there, and it is still the case that no card-bearing app
+ever has its `#view` measured at 200px.
+
+### 13. A canvas is opaque to every gate here
+`brick` draws its entire game — terrain, character, score readout, game-over state — into a
+`<canvas>`. axe cannot read it, the overflow scan sees one rectangle, and the screenshot diff has
+no idea whether it is showing a level or a blank plate. Everything the gates know about that app,
+they know because the view **mirrors the engine's state into `data-*` attributes** and the e2e
+asserts on those.
+
+That is a contract, not a convenience: it means a rendering bug inside the canvas — a sprite drawn
+at the wrong depth, a tile that vanished, the whole scene one pixel off — is invisible to CI by
+construction. The only checks on it are the offline PNG preview (`tools/art/` + the renderer's
+painter abstraction, which is why the browser and the preview must share one pass order) and the
+eye. **Do not read a green `verify (brick)` as "the game looks right".** It means the app mounted,
+the numbers moved, and nothing threw.
+
 ## A ramp can pass every check and still read backwards (clay repaint, 2026-07-26) — FIXED
 
 `air` paints its AQI band onto the text. The clay repaint darkened nothing about that logic, but the page

@@ -388,7 +388,7 @@ static void collect_coins(Ent *p) {
 static void throw_spear(Ent *p) {
   if (shoot_cd > 0) return;
   if (ammo <= 0) { sfx |= SFX_EMPTY; shoot_cd = 8; return; }
-  Ent *s = spawn(K_SPEAR, (p->x >> FP) + (p->dir ? -6 : PW - 6), (p->y >> FP) + PH / 3);
+  Ent *s = spawn(K_SPEAR, (p->x >> FP) + (p->dir ? -18 : PW + 2), (p->y >> FP) + PH / 3);
   if (!s) return;                                   /* pool full: no shot, and no ammo spent */
   s->dir = p->dir;
   s->vx = (p->dir ? -SPEAR_V : SPEAR_V) + p->vx / 3;
@@ -565,7 +565,12 @@ static void collide_player(void) {
   int32_t px = p->x >> FP, py = p->y >> FP;
   for (int i = 1; i < MAXENT; i++) {
     Ent *e = &ents[i];
-    if (!e->alive || e->kind == K_POP || e->kind == K_DEBRIS) continue;
+    /* Only the things that can actually hurt you. Listing what to SKIP was the bug: particles were
+       excluded and the player's own spear was not, so a thrown spear — which leaves from inside her
+       own box, and on a run travels alongside her — counted as a hit on herself. Name the threats
+       instead; a list of exceptions grows a hole every time a kind is added. */
+    if (!e->alive) continue;
+    if (e->kind != K_WALKER && e->kind != K_HOPPER && e->kind != K_HERO) continue;
     int32_t ex = e->x >> FP, ey = e->y >> FP;
     if (px + PW <= ex || ex + EW <= px || py + PH <= ey || ey + EH <= py) continue;
     /* Falling onto the top third is a stomp; anything else is a death. The band matters:

@@ -416,7 +416,7 @@
     "bg": "#1f2430",
     "fg": "#f0b429",
     "href": "./rates/",
-    "version": "1.14",
+    "version": "1.15",
     "category": "money"
   },
   {
@@ -878,6 +878,26 @@
     "href": "./handpan/",
     "version": "1.25",
     "category": "sound"
+  },
+  {
+    "id": "brick",
+    "title": "Цеглинка",
+    "titles": {
+      "en": "Brick",
+      "uk": "Цеглинка"
+    },
+    "tagline": "Кишенькова консоль, що вміщається у вкладку",
+    "taglines": {
+      "en": "A pocket console that fits in a tab",
+      "uk": "Кишенькова консоль, що вміщається у вкладку"
+    },
+    "glyph": "lucide:gamepad-2",
+    "art": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"3\"/><rect x=\"7\" y=\"5\" width=\"10\" height=\"8\" rx=\"1\"/><path d=\"M9 17h1M8 18h3M9.5 16.5v3\"/><circle cx=\"16\" cy=\"17\" r=\"1\"/><circle cx=\"18.5\" cy=\"19\" r=\"1\"/>",
+    "bg": "#101014",
+    "fg": "#8FA05C",
+    "href": "./brick/",
+    "version": "1.0",
+    "category": "play"
   },
   {
     "id": "onthisday",

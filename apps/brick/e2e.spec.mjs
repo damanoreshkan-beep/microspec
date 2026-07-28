@@ -114,10 +114,11 @@ export default [
   {
     name: "камера: можна повернутись назад", run: async (h) => {
       await ready(h);
-      await h.keys(["ArrowRight", "ShiftLeft"], 1200);          
+      await h.key("ArrowRight", 700);
+      h.expect((await h.attr("[data-live-screen]", "data-dead")) === "0", "забіг обірвався до виміру камери");
       const far = +(await h.attr("[data-live-screen]", "data-camx"));
       h.expect(far > 0, "камера не рушила вперед");
-      await h.key("ArrowLeft", 1600);                            
+      await h.key("ArrowLeft", 900);                             
       const back = +(await h.attr("[data-live-screen]", "data-camx"));
       h.expect(back < far, "камера не відкотилась — пропущену монету не повернути");
       h.expect(back >= 0, "камера пішла за початок світу");

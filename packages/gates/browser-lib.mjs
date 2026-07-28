@@ -160,7 +160,7 @@ export async function runResponsiveMatrix(page, ev, dev) {
           }
         }
       }
-      let hide = 0, hsel = "?";
+      let hide = 0, hsel = "?", hgeo = "";
       const nav = document.querySelector("nav[data-dock]");
       const view = document.getElementById("view");
       if (fit && nav && view) {
@@ -180,9 +180,23 @@ export async function runResponsiveMatrix(page, ev, dev) {
           if (vr.right - vr.left <= 1 || vr.bottom - vr.top <= 1) continue;   
           const over = Math.min(vr.bottom, d.bottom) - Math.max(vr.top, d.top);
           const across = Math.min(vr.right, d.right) - Math.max(vr.left, d.left);
-          if (over > 1 && across > 1 && over > hide) { hide = over; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; hsel = el.tagName.toLowerCase() + (c ? "." + c : ""); }
+          if (over > 1 && across > 1 && over > hide) {
+            hide = over;
+            const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
+            hsel = el.tagName.toLowerCase() + (c ? "." + c : "");
+            const chain = [];
+            for (let q = el; q && q !== document.body && chain.length < 4; q = q.parentElement) {
+              const qs = getComputedStyle(q), qr = q.getBoundingClientRect();
+              const cls = typeof q.className === "string" ? q.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
+              chain.push(`${q.tagName.toLowerCase()}${cls ? "." + cls : ""}[${Math.round(qr.top)}→${Math.round(qr.bottom)} ${qs.display}/${qs.flexDirection} h${Math.round(qr.height)}]`);
+            }
+            hgeo = `el ${Math.round(vr.top)}→${Math.round(vr.bottom)} · dock ${Math.round(d.top)}→${Math.round(d.bottom)} · view ${Math.round(view.getBoundingClientRect().bottom)} · ${chain.join(" ◂ ")}`;
+          }
         }
       }
+      
+      
+      
       let clear = 999, csel = "?";
       if (nav && view) {
         const d = nav.getBoundingClientRect();
@@ -192,10 +206,14 @@ export async function runResponsiveMatrix(page, ev, dev) {
           if (r.width < 24 || r.height < 12) continue;
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
+          
+          
           const painted = cs.backgroundImage !== "none" ||
             !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.backgroundColor) ||
             cs.boxShadow !== "none" || parseFloat(cs.borderTopWidth) > 0;
           if (!painted) continue;
+          
+          
           let skip = false;
           for (let q = el.parentElement; q && q !== document.body; q = q.parentElement) {
             const qs = getComputedStyle(q);
@@ -212,8 +230,10 @@ export async function runResponsiveMatrix(page, ev, dev) {
           if (gap < clear) { clear = gap; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; csel = el.tagName.toLowerCase() + (c ? "." + c : ""); }
         }
       }
+      
+      
       const minGap = Math.max(10, (parseFloat(getComputedStyle(de).getPropertyValue("--ms-gap")) * 16 || 8) * 1.5);
-      return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel, clear: clear === 999 ? -1 : Math.round(clear), minGap: Math.round(minGap), csel };
+      return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel, hgeo, clear: clear === 999 ? -1 : Math.round(clear), minGap: Math.round(minGap), csel };
     });
     const label = `${bp.id} ${bp.w}×${bp.h}`;
     const push = (pass, failed) => out.push(pass ? failed.pass : failed.fail);
@@ -226,13 +246,14 @@ export async function runResponsiveMatrix(page, ev, dev) {
         pass: { name: `${label}: один екран без скролу (fit)`, ok: true },
         fail: { name: `${label}: fit-екран не вміщується`, ok: false, msg: `+${m.oy}px по висоті — винуватець: ${m.vsel}. Ущільніть через --ms-* або перенесіть у Sheet` },
       });
+      
       if (m.clear >= 0 && m.clear < m.minGap) {
         out.push({ name: `${label}: контент притиснутий до хрому (fit)`, ok: false,
           msg: `${m.clear}px замість ${m.minGap}px — ${m.csel}. Просвіт має бути щонайменше --ms-gap: інакше віджет читається як приварений до таб-бару` });
       }
       push(m.hide <= 1, {
         pass: { name: `${label}: док нічого не перекриває (fit)`, ok: true },
-        fail: { name: `${label}: док ховає контент назавжди (fit)`, ok: false, msg: `${m.hide}px — під доком: ${m.hsel}. На fit-екрані ніщо не скролиться, тож це сховано назавжди — --dock-h має міряти реальну висоту доку` },
+        fail: { name: `${label}: док ховає контент назавжди (fit)`, ok: false, msg: `${m.hide}px — під доком: ${m.hsel}. На fit-екрані ніщо не скролиться, тож це сховано назавжди — --dock-h має міряти реальну висоту доку`, detail: m.hgeo ? [m.hgeo] : [] },
       });
     }
   }
@@ -240,6 +261,11 @@ export async function runResponsiveMatrix(page, ev, dev) {
   await sleep(260);
   return out;
 }
+
+
+
+
+
 
 export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
   const out = [];
@@ -257,6 +283,8 @@ export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
   try {
     await ev(async (src) => { await new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }, AXE);
     out.push(axeResult(await runAxe(), "(dark)"));
+    
+    
     const base = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
     const flipped = await ev((th) => { const t = th.includes("light") ? th : th + "-light"; document.documentElement.setAttribute("data-theme", t); return t; }, base);
     await sleep(200);
@@ -264,6 +292,7 @@ export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
     await ev((th) => document.documentElement.setAttribute("data-theme", th), base);
   } catch (e) { out.push({ name: "a11y (axe)", ok: false, msg: "не вдалось завантажити axe: " + e.message }); }
 
+  
   const ovi = await ev(() => {
     const ov = document.documentElement.scrollWidth - window.innerWidth;
     if (ov <= 1) return { ov: 0 };
@@ -275,7 +304,10 @@ export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
 
   await ev(() => { const v = document.getElementById("view"); if (v) v.style.maxWidth = "200px"; });
   await sleep(250);
+  
   const watch = await ev(() => {
+    
+    
     const widest = (box) => {
       let far = box.getBoundingClientRect().right, sel = "?";
       for (const el of box.querySelectorAll("*")) {

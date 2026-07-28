@@ -135,6 +135,18 @@ export function brick(props) {
      rejecting, so anything sequenced behind it never runs at all. */
   const arm = useCallback(() => { sound.current?.arm(); }, []);
 
+  /* Two things about the records sheet, both learned from the gate rather than from a stylesheet:
+     ── A CLOSED sheet is not an absent one. DaisyUI keeps `.modal` in the layout (hidden, not
+        removed), so a dialog nobody opened still has a box. And the watch-200px check only measures
+        `#view` at all when the screen carries no `.card` — which is true of a console and of almost
+        nothing else in the farm, so this app is the first place that branch has ever really run.
+        Hence: mount the sheet when it opens, not before.
+     ── Every cell inside it needs `min-w-0`. A `1fr` grid column carries a floor of its own
+        min-content, and one uppercase letter-spaced word (ВІДСТАНЬ) is wider than a third of a
+        200px screen, so the column refuses to shrink and the sheet pushes 24px past the view. The
+        farm has paid for this exact shape once already, with `flex-1` in the dock.
+     No comments about either inside the template below: an htm template IS a template literal, so a
+     backtick in an HTML comment closes it and the whole view stops parsing. */
   const key = (extra = "") =>
     `sf-raised sf-press active:sf-pressed rounded-2xl grid place-items-center select-none ${extra}`;
 
@@ -216,13 +228,13 @@ export function brick(props) {
       </div>
     </div>
 
-    <${Sheet} id="records" open=${screen === "records"} onClose=${() => A.screen.set(null)}
+    ${screen === "records" ? html`<${Sheet} id="records" open=${true} onClose=${() => A.screen.set(null)}
       title=${T(t, "records")} icon="lucide:trophy" locale=${loc}>
       <div class="grid grid-cols-3 gap-[var(--ms-gap)] text-center">
         ${[["distance", best?.dist ?? 0], ["coins", best?.coins ?? 0], ["runs", +runs || 0]].map(([k, v]) => html`
-          <div class="sf-inset rounded-2xl p-3">
-            <div class="font-mono text-[var(--ms-title)]" data-stat=${k}>${v}</div>
-            <div class="text-[var(--ms-label)] uppercase tracking-widest opacity-70 mt-1">${T(t, k)}</div>
+          <div class="sf-inset rounded-2xl p-3 min-w-0">
+            <div class="font-mono text-[var(--ms-title)] truncate" data-stat=${k}>${v}</div>
+            <div class="text-[var(--ms-label)] uppercase tracking-wide opacity-70 mt-1 leading-[1.4] break-words">${T(t, k)}</div>
           </div>`)}
       </div>
       <button class="btn btn-ghost rounded-2xl w-full" data-haptic="bump" id="records-reset"
@@ -230,6 +242,6 @@ export function brick(props) {
           title: T(t, "resetTitle"), body: T(t, "resetBody"), verb: T(t, "resetVerb"),
           onConfirm: () => { $best.set(null); $runs.set("0"); A.screen.set(null); },
         })}>${T(t, "resetTitle")}</button>
-    </${Sheet}>
+    </${Sheet}>` : null}
   </${Fragment}>`;
 }

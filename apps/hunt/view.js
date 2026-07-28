@@ -89,7 +89,7 @@ export function hunt(props) {
 
       const paint = () => {
         const st = E.state(), { dl, n } = E.list();
-        renderFrame(painter.current, dl, n, st);
+        renderFrame(painter.current, dl, n, st, { box: E.box });
         const h = hud.current;
         if (h) {
           h.dataset.dist = st[S.DIST]; h.dataset.score = st[S.SCORE];

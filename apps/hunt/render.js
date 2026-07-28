@@ -65,7 +65,11 @@ function ellipse(p, cx, cy, rx, ry, alpha) {
 /** Which decoded animation a sprite kind uses. */
 const whoOf = (kind) => (kind === K.PLAYER ? "hero" : kind === K.HERO || kind === K.WALKER || kind === K.HOPPER ? "foe" : null);
 
-export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
+export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
+  /* The height of the thing the simulation collides with. It comes from the engine (game_box) —
+     standing a sprite on the bottom of a TILE was one pixel out in brick and twelve here, and
+     twelve pixels is a character hovering above the ground. */
+  const boxH = (kind) => (box ? box(kind).h : TILE);
   const camx = st[S.CAMX], frameNo = st[S.FRAME];
   backdrop(p, camx);
 
@@ -86,7 +90,7 @@ export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
     if (!who) continue;
     const a = anim(who, "idle");
     const w = a ? a.w : TILE;
-    const feet = e.y + TILE;
+    const feet = e.y + boxH(e.kind);
     const gy = floorUnder(floors, e.x, feet);
     if (gy == null) continue;
     const sh = shadowFor(gy - feet, w);
@@ -109,7 +113,7 @@ export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
                            animFrame(a, e.frame, frameNo));
     /* Sprites are taller than a tile: centre on the collision box and stand them on its feet, or
        the character floats. The box is what the engine simulates; the art is what you see. */
-    const ox = e.x + ((TILE - cell.w) >> 1), oy = e.y + TILE - cell.h;
+    const ox = e.x + ((TILE - cell.w) >> 1), oy = e.y + boxH(e.kind) - cell.h;
     /* Invulnerability blinks, but it must never make the player DISAPPEAR. Skipping the draw on
        alternate frames is the usual trick and it is a trap here: the gate photographs a random
        frame, so the app's own screenshot — the one in the store, the one the taste pass judges —

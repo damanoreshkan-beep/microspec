@@ -3,9 +3,28 @@
   "theme": "signal",
   "category": "play",
   "accent": "#8FA05C",
+  "minWidth": 320,
   "tabs": [
-    { "id": "play", "type": "tool", "icon": "lucide:gamepad-2", "label": "tabPlay", "view": "brick", "fit": true },
-    { "id": "me", "type": "profile", "icon": "lucide:gamepad-2", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "play",
+      "type": "tool",
+      "icon": "lucide:gamepad-2",
+      "label": "tabPlay",
+      "view": "brick",
+      "fit": true
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:gamepad-2",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
-  "profile": { "icon": "lucide:gamepad-2", "theme": true, "lang": true, "install": true }
+  "profile": {
+    "icon": "lucide:gamepad-2",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
 }

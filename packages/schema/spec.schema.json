@@ -30,6 +30,13 @@
       "pattern": "^#[0-9a-fA-F]{6}$",
       "description": "The app's identity hue as #rrggbb — mirror of brand.json `fg`. The runtime publishes it as the --app-accent CSS token, which the shared UI kit (/_rt/ui.js) uses for MARKS ONLY: dots, rings, fills, glow. Never text and never a background behind text (an arbitrary hue fails contrast in one theme or the other). Omit and the farm's secondary is used."
     },
+    "minWidth": {
+      "type": "integer",
+      "minimum": 200,
+      "maximum": 420,
+      "description": "The narrowest viewport this app HONESTLY works at, in CSS px. Default 200 — the watch floor, and the answer for anything made of text. Declare a wider floor only when the app is physically unable to go narrower: `brick` is a game console whose D-pad and two action keys are 5 tap targets side by side, and 5 × the 36px tap floor is 180px before a single gap, so 200px cannot hold it however it is laid out. Below the declared floor the glance check still MEASURES and still prints its number — it just reports it as a warning instead of a failure, because an app that has stated its limits is not hiding a defect. Never reach for this to quiet a layout you could compact.",
+      "default": 200
+    },
     "version": {
       "type": "string",
       "minLength": 1,

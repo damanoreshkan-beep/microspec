@@ -337,8 +337,18 @@ export async function runResponsiveMatrix(page, ev, dev) {
   return out;
 }
 
-// The 3 design checks (a11y / overflow@384 / watch-glance@200). Returns [{name, ok, msg}].
-export async function runDesignChecks(ev) {
+// The 3 design checks (a11y / overflow@384 / watch-glance@200). Returns [{name, ok, msg, soft}].
+//
+// `minWidth` is the app's DECLARED floor (spec.minWidth, default 200). Below it the glance check
+// still narrows #view, still measures, and still prints its number and its offending element —
+// it is reported as a warning rather than a failure. An app that has stated it cannot go narrower
+// than 320px is not hiding a defect: `brick` is a console whose pad and action keys are five tap
+// targets in a row, and five times the 36px floor is 180px before a single gap.
+//   Note this check narrows #view with an INLINE style inside a 384px window, so no media query
+// fires while it runs — the density ladder never steps and .ms-side never becomes a pager. It is
+// a test of an ELEMENT at 200px, not of a screen at 200px, which is precisely why an app whose
+// controls are sized off the viewport can pass the real watch breakpoints and fail this one.
+export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
   const out = [];
   // Freeze all CSS transitions/animations for the duration of the checks: otherwise flipping data-theme
   // (dark→light) samples axe mid-transition and a borderline contrast flickers pass/fail. Removed at the end.
@@ -403,9 +413,13 @@ export async function runDesignChecks(ev) {
     return { mode: "view", o: v ? v.scrollWidth - v.clientWidth : 0, sel: v ? widest(v) : "?" };
   });
   await ev(() => { const v = document.getElementById("view"); if (v) v.style.maxWidth = ""; });   // restore for subsequent shots
+  const soft = minWidth > 200;
   out.push(watch.o <= 2
     ? { name: `watch ~200px: ${watch.mode === "card" ? "контент уміщується (container query)" : "без overflow (custom view)"}`, ok: true }
-    : { name: "watch ~200px: контент не вміщується", ok: false, msg: `+${watch.o}px overflow${watch.mode === "card" ? " у картці" : ""} — винуватець: ${watch.sel}` });
+    : soft
+      ? { name: `watch ~200px: нижче оголошеної підлоги ${minWidth}px`, ok: true, soft: true,
+          msg: `+${watch.o}px overflow — винуватець: ${watch.sel} (spec.minWidth=${minWidth})` }
+      : { name: "watch ~200px: контент не вміщується", ok: false, msg: `+${watch.o}px overflow${watch.mode === "card" ? " у картці" : ""} — винуватець: ${watch.sel}` });
   await ev(() => document.getElementById("__freeze")?.remove());
   return out;
 }

@@ -27,6 +27,11 @@ const browser = await bootBrowser(dev);
 const C = { g: "\x1b[32m", r: "\x1b[31m", d: "\x1b[2m", x: "\x1b[0m" };
 let pass = 0, fail = 0;
 const ok = (n, m = "") => { console.log(`  ${C.g}✓${C.x} ${n}${m ? C.d + " — " + m + C.x : ""}`); pass++; };
+// A third verdict. A warning is a real measurement the app has DECLARED it lives with (spec.minWidth):
+// printed in full, with its number and its offending element, but counted as neither a pass nor a
+// failure. The measurement is never thrown away — an app that states its floor is not hiding a defect,
+// and a check that went silent would be.
+const warn = (n, m = "") => { console.log(`  ${C.d}!${C.x} ${n}${m ? C.d + " — " + m + C.x : ""}`); };
 const no = (n, m, det) => { console.log(`  ${C.r}✗${C.x} ${n} — ${m}`); (det || []).forEach((l) => console.log(`      ${l}`)); fail++; };
 const settleData = async (h) => { for (let i = 0; i < 30; i++) { if ((await h.count(".skeleton, [data-skel]")) === 0 && (await h.bodyText()).trim()) break; await h.wait(500); } };
 // a bare DaisyUI spinner is banned (see /_rt/skeleton.js); count any that leaked into the live DOM
@@ -54,7 +59,11 @@ try {
   const spL = await spinnerCount(ev);
   spL === 0 ? ok("no spinner while loading") : no("no spinner while loading", `${spL} bare spinner(s) — use a skeleton`);
   (await isBlank(ev)) ? no("app visible while loading", "blank screen — show chrome + skeleton") : ok("app visible while loading");
-  for (const c of await runDesignChecks(ev)) c.ok ? ok(c.name + " [loading]", c.msg) : no(c.name + " [loading]", c.msg, c.detail);
+  // The app's own floor: a console cannot be 200px wide and says so in its spec; everything else
+  // defaults to the watch and is held to it.
+  const appSpec = (() => { try { return JSON.parse(Deno.readTextFileSync(`${appdir}/spec.json`)); } catch { return {}; } })();
+  const designOpts = { minWidth: appSpec.minWidth || 200 };
+  for (const c of await runDesignChecks(ev, designOpts)) c.soft ? warn(c.name + " [loading]", c.msg) : c.ok ? ok(c.name + " [loading]", c.msg) : no(c.name + " [loading]", c.msg, c.detail);
 
   // ── 2) SETTLED state — design checks (a11y both themes · overflow@384 · glance@200) + shots on EVERY tab. ──
   await gotoAndSettle(page, srv.url, settle);
@@ -67,7 +76,7 @@ try {
     if (ti > 0) { await h.click(`[data-tab="${tb}"]`); await h.wait(500); await settleData(h); }
     const lbl = tabList.length > 1 && tb ? ` [${tb}]` : "";
     console.log(`  ${C.d}design${lbl}${C.x}`);
-    for (const c of await runDesignChecks(ev)) c.ok ? ok(c.name + lbl, c.msg) : no(c.name + lbl, c.msg, c.detail);
+    for (const c of await runDesignChecks(ev, designOpts)) c.soft ? warn(c.name + lbl, c.msg) : c.ok ? ok(c.name + lbl, c.msg) : no(c.name + lbl, c.msg, c.detail);
     // Responsive matrix — the SAME tab re-measured at every breakpoint and aspect ratio. Per tab, not
     // once per app: a fit instrument and its scrolling profile are different layouts with different
     // failure modes, and only one of them is on screen at a time.

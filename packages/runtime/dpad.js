@@ -40,6 +40,7 @@ export function useGamePad({ onChange } = {}) {
     return () => { removeEventListener("pointerup", clear); removeEventListener("pointercancel", clear); };
   }, [set, onChange]);
 
+  const capture = (e) => { try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch {  } };
   const fromEvent = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
     return padDirection(e.clientX - r.left, e.clientY - r.top, r.width, r.height);
@@ -47,7 +48,7 @@ export function useGamePad({ onChange } = {}) {
 
   const padProps = {
     style: { touchAction: "none" },
-    onPointerDown: (e) => { e.currentTarget.setPointerCapture?.(e.pointerId); set(e.pointerId, fromEvent(e)); },
+    onPointerDown: (e) => { capture(e); set(e.pointerId, fromEvent(e)); },
     onPointerMove: (e) => { if (pads.current.has(e.pointerId)) set(e.pointerId, fromEvent(e)); },
     onPointerUp: (e) => set(e.pointerId, 0),
     onPointerCancel: (e) => set(e.pointerId, 0),
@@ -56,7 +57,7 @@ export function useGamePad({ onChange } = {}) {
 
   const buttonProps = (bit) => ({
     style: { touchAction: "none" },
-    onPointerDown: (e) => { e.currentTarget.setPointerCapture?.(e.pointerId); set(e.pointerId, bit); },
+    onPointerDown: (e) => { capture(e); set(e.pointerId, bit); },
     onPointerUp: (e) => set(e.pointerId, 0),
     onPointerCancel: (e) => set(e.pointerId, 0),
   });

@@ -102,7 +102,7 @@ export function brick(props) {
         const h = hud.current;
         if (h) {
           h.dataset.dist = st[S.DIST]; h.dataset.score = st[S.SCORE];
-          h.dataset.coins = st[S.COINS]; h.dataset.frame = st[S.FRAME];
+          h.dataset.coins = st[S.COINS]; h.dataset.frame = st[S.FRAME]; h.dataset.camx = st[S.CAMX];
           h.dataset.dead = st[S.DEAD] ? "1" : "0";
         }
         if (st[S.DEAD] && !$over.get()) {

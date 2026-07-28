@@ -94,16 +94,19 @@ export function makeHelpers(page) {
        "it works with a keyboard" was an assertion nobody could check — and a game is the one app
        where that claim is load-bearing. `code` is the physical key (ArrowRight, KeyZ, ShiftLeft),
        which is what a game listens to; dispatching on window matches where the handler lives. */
-    key: async (code, ms = 250) => {
-      await ev((code) => dispatchEvent(new KeyboardEvent("keydown", { code, key: code, bubbles: true })), code);
-      await sleep(ms);
-      await ev((code) => dispatchEvent(new KeyboardEvent("keyup", { code, key: code, bubbles: true })), code);
-    },
+    /* keyDown/keyUp are separate on purpose: a HELD key is a state, and the interesting assertions
+       (does the on-screen key light up, does a tap erase what the keyboard is holding) can only be
+       made while it is still down. A press-and-release helper cannot express that, and a test
+       written against one silently checks the moment AFTER the release — which is how the first
+       version of these cases failed against perfectly good code. */
+    keyDown: (code) => ev((code) => dispatchEvent(new KeyboardEvent("keydown", { code, key: code, bubbles: true })), code),
+    keyUp: (code) => ev((code) => dispatchEvent(new KeyboardEvent("keyup", { code, key: code, bubbles: true })), code),
+    key: async (code, ms = 250) => { await h.keyDown(code); await sleep(ms); await h.keyUp(code); },
     /** Press several keys together and release them — running and jumping is two keys at once. */
     keys: async (codes, ms = 250) => {
-      for (const c of codes) await ev((c) => dispatchEvent(new KeyboardEvent("keydown", { code: c, key: c, bubbles: true })), c);
+      for (const c of codes) await h.keyDown(c);
       await sleep(ms);
-      for (const c of codes) await ev((c) => dispatchEvent(new KeyboardEvent("keyup", { code: c, key: c, bubbles: true })), c);
+      for (const c of codes) await h.keyUp(c);
     },
     hasClass: (s, c) => ev((s, c) => !!document.querySelector(s)?.classList.contains(c), s, c),
     scrollTo: (y) => ev((y) => window.scrollTo(0, y), y),

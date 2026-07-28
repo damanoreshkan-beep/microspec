@@ -101,11 +101,14 @@ export default [
       await h.keys(["ArrowRight", "ShiftLeft"], 900);            // run right, both keys at once
       h.expect((await dist(h)) > before, "гравець не рушив від стрілки — клавіатура не доходить до маски");
       // The on-screen key must SHOW the press: it is the only feedback a keyboard player gets.
-      await h.key("ArrowLeft", 0);
-      await h.wait(120);
+      // Assert while it is still HELD — the first version of this checked after the release.
+      await h.keyDown("ArrowLeft");
+      await h.wait(150);
       const lit = await h.hasClass('[data-pad="padLeft"]', "sf-pressed");
-      await h.wait(300);
+      await h.keyUp("ArrowLeft");
+      await h.wait(150);
       h.expect(lit, "клавіша на екрані не підсвітилась під час натиску з клавіатури");
+      h.expect(!(await h.hasClass('[data-pad="padLeft"]', "sf-pressed")), "клавіша лишилась підсвіченою після відпускання");
     },
   },
   {
@@ -114,12 +117,24 @@ export default [
       // The mask had two writers once: a pointer event recomputed it from scratch and wiped a held
       // key. Hold a direction on the keyboard, tap the pad, and the run must continue.
       const a = await dist(h);
-      await h.key("ArrowRight", 0);
-      await h.tap('[data-key="a"]');
-      await h.wait(700);
+      await h.keyDown("ArrowRight");
+      await h.tap('[data-key="a"]');      // a pointer event lands while the key is still down
+      await h.wait(800);
       const b = await dist(h);
-      await h.wait(50);
+      await h.keyUp("ArrowRight");
       h.expect(b > a, "дотик стер утримувану клавішу — маска знову має двох власників");
+    },
+  },
+  {
+    name: "камера: можна повернутись назад", run: async (h) => {
+      await ready(h);
+      await h.keys(["ArrowRight", "ShiftLeft"], 1200);          // get well down the track
+      const far = +(await h.attr("[data-live-screen]", "data-camx"));
+      h.expect(far > 0, "камера не рушила вперед");
+      await h.key("ArrowLeft", 1600);                            // now walk back
+      const back = +(await h.attr("[data-live-screen]", "data-camx"));
+      h.expect(back < far, "камера не відкотилась — пропущену монету не повернути");
+      h.expect(back >= 0, "камера пішла за початок світу");
     },
   },
 ];

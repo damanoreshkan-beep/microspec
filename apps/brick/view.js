@@ -253,8 +253,8 @@ export function brick(props) {
             <span class="font-mono text-[var(--ms-label)] opacity-80">A</span>
           </button>
           <button class=${key("bg-base-100 absolute left-0 bottom-0 rounded-full")}
-            style="width:52%;aspect-ratio:1" data-bit=${PAD.RUN} data-haptic="bump"
-            aria-label=${T(t, "keyRun")} data-key="b" onClick=${kb(() => pulse(PAD.RUN))}>
+            style="width:52%;aspect-ratio:1" data-bit=${PAD.RUN} data-haptic="bump" data-latch
+            aria-label=${T(t, "keyRun")} aria-pressed="false" data-key="b" onClick=${kb(() => pulse(PAD.RUN))}>
             <span class="font-mono text-[var(--ms-label)] opacity-80">B</span>
           </button>
         </div>

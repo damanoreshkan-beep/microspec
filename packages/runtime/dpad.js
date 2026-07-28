@@ -40,15 +40,19 @@ export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16 };
  * which is exactly the documented reason an app may call `haptic.*` itself: an outcome the tap
  * could not predict. Neither fires twice, because they own different events.
  */
-export function useTouchDeck({ onAct } = {}) {
+export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
   const mask = useRef(0);
   const held = useRef(new Map());          // pointerId → the element it is currently pressing
   const pressed = useRef(new Set());
+  const latched = useRef(new Set());       // keys double-tapped into a hold
+  const lastTap = useRef(new Map());       // element → when it was last released
 
   const synth = useRef(0);                 // keyboard / assistive-technology presses
+  const bitOf = (el) => +el?.getAttribute("data-bit") || 0;
   const recompute = () => {
     let m = synth.current;
-    for (const el of held.current.values()) m |= +el?.getAttribute("data-bit") || 0;
+    for (const el of held.current.values()) m |= bitOf(el);
+    for (const el of latched.current) m |= bitOf(el);
     mask.current = m;
   };
   /** A click from a keyboard or a screen reader has no pointer lifecycle, so give it a moment of
@@ -59,8 +63,10 @@ export function useTouchDeck({ onAct } = {}) {
   }, []);
   const paint = (el, on) => {
     if (!el) return;
-    el.classList.toggle("sf-pressed", on);
-    if (on) pressed.current.add(el); else pressed.current.delete(el);
+    const stay = on || latched.current.has(el);
+    el.classList.toggle("sf-pressed", stay);
+    if (el.hasAttribute("data-latch")) el.setAttribute("aria-pressed", latched.current.has(el) ? "true" : "false");
+    if (stay) pressed.current.add(el); else pressed.current.delete(el);
   };
   const at = (e) => {
     const hit = document.elementFromPoint(e.clientX, e.clientY);
@@ -76,9 +82,14 @@ export function useTouchDeck({ onAct } = {}) {
     recompute();
   }, []);
 
+  /* A thumb that drifts off a key onto bare deck must NOT let go: on a physical pad your thumb
+     rides the plastic, and only another key takes the press away from the one you are on. So an
+     empty hit keeps the current key, and the press changes only when the finger reaches a
+     different control. (This is also why the deck, not the key, owns the pointer.) */
   const move = useCallback((e, first) => {
-    const el = at(e);
+    const found = at(e);
     const was = held.current.get(e.pointerId) || null;
+    const el = found || (first ? null : was);
     if (el === was) return;
     if (el) held.current.set(e.pointerId, el); else held.current.delete(e.pointerId);
     if (was && ![...held.current.values()].includes(was)) paint(was, false);   // no finger left on it
@@ -101,6 +112,15 @@ export function useTouchDeck({ onAct } = {}) {
     onPointerUp: (e) => {
       const el = held.current.get(e.pointerId);
       if (el?.hasAttribute("data-act")) onAct?.(el.getAttribute("data-act"), el);
+      /* A LATCH key (the run button) holds itself on a double tap and lets go on the next one —
+         a platformer asks you to hold run for minutes at a time, and a thumb parked on B is a
+         thumb that cannot steer. The interval is measured from the EVENT timestamps rather than
+         from a clock read, so it tracks the gesture that produced it. */
+      if (el?.hasAttribute("data-latch")) {
+        if (latched.current.has(el)) { latched.current.delete(el); haptic.tick(); }
+        else if (e.timeStamp - (lastTap.current.get(el) ?? -Infinity) < latchMs) { latched.current.add(el); haptic.ok(); }
+        lastTap.current.set(el, e.timeStamp);
+      }
       release(e.pointerId);
     },
     onPointerCancel: (e) => release(e.pointerId),

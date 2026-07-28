@@ -12,6 +12,7 @@ export default [
     name: "пошук валюти звужує і відновлює", run: async (h) => {
       await load(h);
       const base = await h.count(".card");
+      h.expect(base > 3, `нема з чого фільтрувати — ${base} карток`); // 0 === 0 passed this test while the list was empty
       await h.type("#filter", "zzzz"); await h.wait(250);
       h.expect((await h.count(".card")) === 0, "очікував 0");
       await h.type("#filter", ""); await h.wait(250);

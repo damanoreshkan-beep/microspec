@@ -181,12 +181,12 @@ export function brick(props) {
                 min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]">
 
       <!-- the screen: a recess in the console, with the game inside it -->
-      <!-- flex-1 min-h-0 is not decoration: it is what gives the canvas a parent with a DEFINITE
-           height, and `max-h-full` has nothing to resolve against without one. Removing it to kill
-           a dead band left the canvas holding all 270px at every size, and the deck slid under the
-           dock — 21px of overflow at 360×340 and 38px hidden behind the bar. The band is gone for
-           the other reason: the console body is sized to its contents now, so flex-1 distributes
-           space that only exists when the screen is short enough to need the shrink. -->
+      <!-- flex-1 min-h-0 is not decoration: it gives the canvas a parent with a DEFINITE height,
+           and max-h-full has nothing to resolve against without one. Removing it to kill a dead
+           band left the canvas holding all 270px at every size, and the deck slid under the dock —
+           21px of overflow at 360x340 and 38px hidden behind the bar. The band stays gone for the
+           other reason: the console body is sized to its contents now, so flex-1 only distributes
+           space that exists when the screen is genuinely short. -->
       <div data-stage-box class="flex-1 min-h-0 grid place-items-center">
         <!-- The canvas carries its own intrinsic 288×270 and is allowed to SHRINK, never to be
              stretched: a fixed-ratio wrapper at height:100% derives its width from a parent that

@@ -105,9 +105,11 @@ export default [
       const a = await dist(h);
       await h.keyDown("ArrowRight");
       await h.tap('[data-key="a"]');      
-      await h.wait(800);
+      await h.wait(600);
       const b = await dist(h);
+      const dead = await h.attr("[data-live-screen]", "data-dead");
       await h.keyUp("ArrowRight");
+      h.expect(dead === "0", "забіг обірвався до виміру — дистанція завмерла не через маску");
       h.expect(b > a, "дотик стер утримувану клавішу — маска знову має двох власників");
     },
   },

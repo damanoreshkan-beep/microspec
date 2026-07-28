@@ -29,9 +29,13 @@ export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16 };
  * which is exactly the documented reason an app may call `haptic.*` itself: an outcome the tap
  * could not predict. Neither fires twice, because they own different events.
  */
-export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
+
+const MIN_PRESS = 90;
+
+export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}) {
   const mask = useRef(0);
   const held = useRef(new Map());          
+  const since = useRef(new Map());         
   const pressed = useRef(new Set());
   const latched = useRef(new Set());       
   const lastTap = useRef(new Map());       
@@ -40,6 +44,7 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
   const keys = useRef(0);                  
   const root = useRef(null);               
   const bitOf = (el) => +el?.getAttribute("data-bit") || 0;
+  
   const recompute = () => {
     let m = synth.current | keys.current;
     for (const el of held.current.values()) m |= bitOf(el);
@@ -85,11 +90,10 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
     const el = held.current.get(id);
     if (!el) return;
     held.current.delete(id);
+    
     if (![...held.current.values()].includes(el)) paint(el, false);
     recompute();
   }, []);
-
-  
   const move = useCallback((e, first) => {
     const found = at(e);
     const was = held.current.get(e.pointerId) || null;
@@ -105,18 +109,23 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
   }, []);
 
   useEffect(() => () => { for (const el of pressed.current) el.classList.remove("sf-pressed"); }, []);
-
   const deckProps = {
     ref: root,
     style: { touchAction: "none" },
     onPointerDown: (e) => {
       try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch {  }
+      since.current.set(e.pointerId, e.timeStamp);
       move(e, true);
     },
     onPointerMove: (e) => { if (e.buttons || e.pointerType === "touch") move(e, false); },
     onPointerUp: (e) => {
       const el = held.current.get(e.pointerId);
       markPointer(el);
+      
+      const began = since.current.get(e.pointerId);
+      since.current.delete(e.pointerId);
+      const bit = bitOf(el);
+      if (bit && (began == null || e.timeStamp - began < minPress)) pulse(bit, minPress);
       if (el?.hasAttribute("data-act")) onAct?.(el.getAttribute("data-act"), el);
       
       if (el?.hasAttribute("data-latch")) {
@@ -126,11 +135,13 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
       }
       release(e.pointerId);
     },
-    onPointerCancel: (e) => release(e.pointerId),
+    onPointerCancel: (e) => { since.current.delete(e.pointerId); release(e.pointerId); },
   };
 
   return { mask, deckProps, release, pulse, setKeys };
 }
+
+
 export const KEYS = {
   ArrowLeft: PAD.LEFT, KeyA: PAD.LEFT,
   ArrowRight: PAD.RIGHT, KeyD: PAD.RIGHT,

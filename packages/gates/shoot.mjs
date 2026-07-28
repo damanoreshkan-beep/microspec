@@ -6,6 +6,7 @@
 //
 //   deno run -A packages/gates/shoot.mjs habits rave ruler --seed
 //   deno run -A packages/gates/shoot.mjs drift --bp phone-land          # one breakpoint
+//   deno run -A packages/gates/shoot.mjs rave v2m --locale en --fresh   # English chrome (README stills)
 //   deno run -A packages/gates/shoot.mjs drift --bp all --seed          # the whole matrix, one PNG each
 //   deno run -A packages/gates/shoot.mjs hf --out /tmp/shots --base https://damanoreshkan-beep.github.io/microspec/
 //
@@ -15,7 +16,7 @@
 
 const args = Deno.args;
 const flag = (n, d) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] ?? d) : d; };
-const isFlagVal = (a) => ["--out", "--base", "--bp", "--theme"].some((f) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] === a; });
+const isFlagVal = (a) => ["--out", "--base", "--bp", "--theme", "--locale"].some((f) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] === a; });
 const apps = args.filter((a) => !a.startsWith("--") && !isFlagVal(a));
 const base = flag("--base", "https://damanoreshkan-beep.github.io/microspec/").replace(/\/?$/, "/");
 const out = flag("--out", "packages/gates/shots");
@@ -27,6 +28,10 @@ const mock = args.includes("--mock");
 // only thing that could produce that still was verify.mjs --shots, i.e. a local Chromium — which this
 // project never runs. The runtime honours ?theme= for exactly this (it does not persist).
 const theme = flag("--theme", "");
+// --locale en shoots the OTHER language. The farm's stored default is `uk`, so every still this tool could
+// produce — including the ones in the public README — shipped Cyrillic chrome. The runtime honours
+// ?locale= for exactly this (validated against the app's own dicts; it does not persist).
+const locale = flag("--locale", "");
 
 // Kept in sync with packages/gates/browser-lib.mjs BREAKPOINTS (that file is the gate's copy; this one is
 // the eye's). `default` is the historical single shot, so an existing invocation is unchanged.
@@ -39,7 +44,7 @@ const bpArg = flag("--bp", "default");
 const chosen = bpArg === "all" ? Object.keys(BP).filter((k) => k !== "default") : [bpArg];
 for (const b of chosen) if (!BP[b]) { console.error(`unknown --bp "${b}" — one of: ${Object.keys(BP).join(", ")}, all`); Deno.exit(2); }
 
-if (!apps.length) { console.error("usage: shoot.mjs <appId...> [--seed] [--mock] [--bp <id|all>] [--theme light] [--out dir] [--base url]"); Deno.exit(2); }
+if (!apps.length) { console.error("usage: shoot.mjs <appId...> [--seed] [--mock] [--bp <id|all>] [--theme light] [--locale en] [--out dir] [--base url]"); Deno.exit(2); }
 await Deno.mkdir(out, { recursive: true });
 
 // microlink caches per URL, so the shot you get right after a deploy is usually the app you just
@@ -49,7 +54,7 @@ const fresh = args.includes("--fresh");
 
 async function shoot(app, bp) {
   const [W, H] = BP[bp];
-  const q = [seed ? "seed" : "", mock ? "mock" : "", theme ? `theme=${theme}` : ""].filter(Boolean).join("&");
+  const q = [seed ? "seed" : "", mock ? "mock" : "", theme ? `theme=${theme}` : "", locale ? `locale=${locale}` : ""].filter(Boolean).join("&");
   const url = `${base}${app}/${q ? "?" + q : ""}`;
   const api = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&waitUntil=networkidle2&viewport.width=${W}&viewport.height=${H}&viewport.deviceScaleFactor=2${fresh ? "&force=true" : ""}`;
   const r = await fetch(api);
@@ -57,7 +62,7 @@ async function shoot(app, bp) {
   const shotUrl = j?.data?.screenshot?.url;
   if (j.status !== "success" || !shotUrl) throw new Error(`microlink: ${j.status} ${j.message || ""}`);
   const png = new Uint8Array(await (await fetch(shotUrl)).arrayBuffer());
-  const path = `${out}/${app}${bp === "default" ? "" : "@" + bp}${theme ? "~" + theme : ""}.png`;
+  const path = `${out}/${app}${bp === "default" ? "" : "@" + bp}${theme ? "~" + theme : ""}${locale ? "." + locale : ""}.png`;
   await Deno.writeFile(path, png);
   return { app, path, bytes: png.length };
 }

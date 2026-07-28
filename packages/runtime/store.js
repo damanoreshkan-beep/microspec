@@ -16,9 +16,23 @@ export function createApp(spec, dataLoad) {
   let savedFilters = {};
   try { savedFilters = JSON.parse(localStorage.getItem(FKEY) || "{}"); } catch { /* bad/empty */ }
 
+  // `?locale=en` — a URL override, and it exists for the same reason `?theme=` does (see index.js): the
+  // screenshot service is the only browser this project has, and the farm's stored default is `uk`, so
+  // EVERY still it could produce shipped Cyrillic chrome — including the ones in the public README. The
+  // override is validated against the app's OWN dicts, so an unknown value falls through to the stored
+  // preference rather than rendering raw keys.
+  // It does NOT persist: under override the atom is a plain one, nothing reaches localStorage, so a shared
+  // link cannot silently change someone's language (the same promise the theme override makes).
+  const urlLocale = (() => {
+    try {
+      const q = new URLSearchParams(location.search).get("locale");
+      return q && spec.i18n?.[q] ? q : null;
+    } catch { return null; }
+  })();
+
   const S = {
     // persisted preferences
-    locale: persistentAtom(ns + "locale", "uk"),
+    locale: urlLocale ? atom(urlLocale) : persistentAtom(ns + "locale", "uk"),
     theme: persistentAtom(ns + "theme", spec.theme || "dim"),
     fav: persistentAtom(ns + "fav", {}, JSON_CODEC),
     amount: persistentAtom(ns + "amount", "100"),

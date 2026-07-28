@@ -18,7 +18,7 @@ import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
-import { GameConsole } from "/_rt/console.js";
+import { GameConsole, ShellPicker, SHELL_IDS } from "/_rt/console.js";
 import { SCRW, SCRH, S, IN, digits, betterRun } from "/_rt/hunt.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
@@ -185,4 +185,26 @@ export function hunt(props) {
         })}>${T(t, "resetTitle")}</button>
     </${Sheet}>` : null}
   </${Fragment}>`;
+}
+
+/**
+ * The console picker, as its own tab.
+ *
+ * It lives in the game rather than in the profile because it is a thing you SEE change: pick a
+ * shell, go back one tab, and the same game is in a different device. And the preference is stored
+ * without an app prefix, so the shell chosen here is the shell brick wears too — one console, many
+ * games, which is the whole reason the catalogue is in the runtime and not in this file.
+ */
+export function huntShell(props) {
+  const { t } = props;
+  return html`
+    <div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]" data-shell-tab>
+      <${ShellPicker} t=${t} />
+      <div class="sf-inset rounded-[var(--ms-r)] p-[var(--ms-pad)] flex-1 min-h-0 grid place-items-center">
+        <div class="text-center">
+          <div class="font-mono text-[var(--ms-title)]" data-shell-count>${SHELL_IDS.length}</div>
+          <div class="text-[var(--ms-label)] uppercase tracking-wide opacity-70 mt-1">${T(t, "shellPick")}</div>
+        </div>
+      </div>
+    </div>`;
 }

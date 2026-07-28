@@ -5,8 +5,34 @@
   "accent": "#6d9150",
   "minWidth": 320,
   "tabs": [
-    { "id": "play", "type": "tool", "icon": "lucide:crosshair", "label": "tabPlay", "view": "hunt", "fit": true },
-    { "id": "me", "type": "profile", "icon": "lucide:crosshair", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "play",
+      "type": "tool",
+      "icon": "lucide:crosshair",
+      "label": "tabPlay",
+      "view": "hunt",
+      "fit": true
+    },
+    {
+      "id": "shell",
+      "type": "tool",
+      "icon": "lucide:gamepad",
+      "label": "tabShell",
+      "view": "huntShell",
+      "fit": true
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:crosshair",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
-  "profile": { "icon": "lucide:crosshair", "theme": true, "lang": true, "install": true }
+  "profile": {
+    "icon": "lucide:crosshair",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
 }

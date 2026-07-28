@@ -29,5 +29,13 @@
   "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».",
   "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
   "close": "Закрити",
-  "keyCrouch": "Присісти"
+  "keyCrouch": "Присісти",
+  "shellPick": "Консоль",
+  "shellBrick": "Цеглинка",
+  "shellPocket": "Кишенькова",
+  "shellSlab": "Пластина",
+  "shellWide": "Широка",
+  "shellArcade": "Аркада",
+  "shellBare": "Без корпусу",
+  "tabShell": "Консоль"
 }

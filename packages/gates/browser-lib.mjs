@@ -73,16 +73,14 @@ export function makeHelpers(page) {
       e.click();
       return true;
     }, s),
-    key: async (code, ms = 250) => {
-      await ev((code) => dispatchEvent(new KeyboardEvent("keydown", { code, key: code, bubbles: true })), code);
-      await sleep(ms);
-      await ev((code) => dispatchEvent(new KeyboardEvent("keyup", { code, key: code, bubbles: true })), code);
-    },
+    keyDown: (code) => ev((code) => dispatchEvent(new KeyboardEvent("keydown", { code, key: code, bubbles: true })), code),
+    keyUp: (code) => ev((code) => dispatchEvent(new KeyboardEvent("keyup", { code, key: code, bubbles: true })), code),
+    key: async (code, ms = 250) => { await h.keyDown(code); await sleep(ms); await h.keyUp(code); },
     /** Press several keys together and release them — running and jumping is two keys at once. */
     keys: async (codes, ms = 250) => {
-      for (const c of codes) await ev((c) => dispatchEvent(new KeyboardEvent("keydown", { code: c, key: c, bubbles: true })), c);
+      for (const c of codes) await h.keyDown(c);
       await sleep(ms);
-      for (const c of codes) await ev((c) => dispatchEvent(new KeyboardEvent("keyup", { code: c, key: c, bubbles: true })), c);
+      for (const c of codes) await h.keyUp(c);
     },
     hasClass: (s, c) => ev((s, c) => !!document.querySelector(s)?.classList.contains(c), s, c),
     scrollTo: (y) => ev((y) => window.scrollTo(0, y), y),
@@ -108,6 +106,10 @@ export async function gotoAndSettle(page, url, settle = 3500) {
 
 
 
+
+
+
+
 export const BREAKPOINTS = [
   { id: "phone-sm",    w: 320,  h: 568,  note: "9:16 · small-phone floor" },
   { id: "phone",       w: 384,  h: 832,  note: "20:9 · reference device" },
@@ -118,13 +120,17 @@ export const BREAKPOINTS = [
   
   
   
+  
   { id: "watch",       w: 208,  h: 248,  note: "watch — the smallest real screen" },
+  
   
   { id: "watch-sq",    w: 200,  h: 200,  note: "square watch (Wear OS round) — the vertical floor" },
   { id: "tablet",      w: 768,  h: 1024, note: "3:4 · tablet portrait" },
   { id: "tablet-land", w: 1024, h: 768,  note: "4:3 · tablet landscape" },
   { id: "desktop",     w: 1280, h: 900,  note: "16:10 · desktop" },
 ];
+
+
 
 
 
@@ -141,7 +147,6 @@ export async function runResponsiveMatrix(page, ev, dev) {
       if (ox > 1) {
         
         
-        
         const clipped = (el) => {
           for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
             const cs = getComputedStyle(p);
@@ -156,13 +161,13 @@ export async function runResponsiveMatrix(page, ev, dev) {
         
         
         
+        
         const chain = [];
         for (let el = node; el && el !== document.body && chain.length < 5; el = el.parentElement) {
           const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
-          
-          
           const b = el.getBoundingClientRect();
           chain.push(`${el.tagName.toLowerCase()}${c ? "." + c : ""}[w${Math.round(b.width)}→x${Math.round(b.right)}]`);
+          
           
           
           if (chain.length === 2) {
@@ -184,12 +189,12 @@ export async function runResponsiveMatrix(page, ev, dev) {
         
         
         
+        
         if (oy > 1 && v) {
           let low = v.getBoundingClientRect().bottom, node = null;
           for (const el of v.querySelectorAll("*")) { const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom > low + 0.5) { low = r.bottom; node = el; } }
           const name = (el) => { const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; return el.tagName.toLowerCase() + (c ? "." + c : ""); };
           if (node) {
-            
             
             
             const kids = [...node.children].slice(0, 4).map((k) => {
@@ -204,6 +209,10 @@ export async function runResponsiveMatrix(page, ev, dev) {
       
       
       
+      
+      
+      
+      
       let hide = 0, hsel = "?", hgeo = "";
       const nav = document.querySelector("nav[data-dock]");
       const view = document.getElementById("view");
@@ -215,10 +224,11 @@ export async function runResponsiveMatrix(page, ev, dev) {
           
           
           
+          
+          
+          
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
-          
-          
           let vr = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
           for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
             const pcs = getComputedStyle(p);
@@ -233,7 +243,6 @@ export async function runResponsiveMatrix(page, ev, dev) {
             hide = over;
             const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
             hsel = el.tagName.toLowerCase() + (c ? "." + c : "");
-            
             const chain = [];
             for (let q = el; q && q !== document.body && chain.length < 4; q = q.parentElement) {
               const qs = getComputedStyle(q), qr = q.getBoundingClientRect();
@@ -245,8 +254,6 @@ export async function runResponsiveMatrix(page, ev, dev) {
         }
       }
       
-      
-      
       let clear = 999, csel = "?";
       if (nav && view) {
         const d = nav.getBoundingClientRect();
@@ -256,8 +263,6 @@ export async function runResponsiveMatrix(page, ev, dev) {
           if (r.width < 24 || r.height < 12) continue;
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
-          
-          
           const painted = cs.backgroundImage !== "none" ||
             !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.backgroundColor) ||
             cs.boxShadow !== "none" || parseFloat(cs.borderTopWidth) > 0;
@@ -320,6 +325,9 @@ export async function runResponsiveMatrix(page, ev, dev) {
 
 
 
+
+
+
 export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
   const out = [];
   await ev(() => { const s = document.createElement("style"); s.id = "__freeze"; s.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}"; document.head.appendChild(s); });
@@ -344,6 +352,8 @@ export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
     out.push(axeResult(await runAxe(), `light (${flipped})`));
     await ev((th) => document.documentElement.setAttribute("data-theme", th), base);
   } catch (e) { out.push({ name: "a11y (axe)", ok: false, msg: "не вдалось завантажити axe: " + e.message }); }
+
+  
   const ovi = await ev(() => {
     const ov = document.documentElement.scrollWidth - window.innerWidth;
     if (ov <= 1) return { ov: 0 };
@@ -355,7 +365,6 @@ export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
 
   await ev(() => { const v = document.getElementById("view"); if (v) v.style.maxWidth = "200px"; });
   await sleep(250);
-  
   const watch = await ev(() => {
     
     

@@ -100,7 +100,7 @@ static int16_t  dl[MAXDL * 4];
 static int32_t  dln;
 static int32_t  st[16];           /* the exported state block — see game_state() */
 static uint32_t rng;
-static int32_t  camx;             /* world px, never decreases */
+static int32_t  camx, cam_far;    /* cam_far is the furthest the camera has ever reached */
 static int32_t  gen_col;          /* next absolute column to generate */
 static int32_t  seg_left, seg_type, seg_dir, ground_row, safe_left, pending_gap;
 static int32_t  score, coins, best_col, frame_no, sfx;
@@ -162,6 +162,7 @@ static Ent *spawn(uint8_t kind, int32_t px, int32_t py) {
    never arise. runtime_test.js re-measures all of this against the shipped binary. */
 #define MAX_GAP     3
 #define GAP_RUNWAY  3
+#define CAM_BACK   (SCRW * 2)      /* how far the camera may retreat */
 #define GROUND_MIN  8
 #define GROUND_MAX  13
 
@@ -498,7 +499,7 @@ void game_init(uint32_t seed) {
   rng = seed ? seed : 0x9E3779B9u;
   for (int i = 0; i < MAXENT; i++) ents[i].alive = 0;
   for (int r = 0; r < ROWS; r++) for (int c = 0; c < COLS; c++) map[r][c] = T_EMPTY;
-  camx = 0; gen_col = 0; seg_left = 0; seg_type = SEG_FLAT; seg_dir = 1; ground_row = 12;
+  camx = 0; cam_far = 0; gen_col = 0; seg_left = 0; seg_type = SEG_FLAT; seg_dir = 1; ground_row = 12;
   safe_left = 24; pending_gap = 0;                                  /* a calm opening: no gap, no enemy, and long
                                                       enough to measure a full run-up jump on */
   score = 0; coins = 0; best_col = 0; frame_no = 0; sfx = 0; dead = 0; last_in = 0; dln = 0;
@@ -525,8 +526,19 @@ void game_step(uint32_t input) {
   for (int i = 1; i < MAXENT; i++) if (ents[i].alive) step_enemy(&ents[i]);
   collide_player();
 
-  int32_t want = (ents[0].x >> FP) - 96;
-  if (want > camx) camx = want;                    /* the camera never scrolls back */
+  /* The camera may fall BACK, but only two screens. A one-way camera turns every missed coin and
+     every unopened block into a permanent loss, which in an endless runner is just a punishment for
+     looking around; a camera with no floor at all would ask the ring buffer for columns it has
+     already overwritten. Two screens is 32 columns against a 128-column ring, so the window from
+     the oldest visible column to the furthest generated one is ~53 — comfortably inside it. */
+  int32_t want = (ents[0].x >> FP) - SCRW / 3;
+  if (want > camx) camx = want;
+  else if (want < camx) {
+    int32_t back = cam_far - CAM_BACK;
+    camx = want < back ? back : want;
+    if (camx < 0) camx = 0;
+  }
+  if (camx > cam_far) cam_far = camx;
   gen_ahead();
 
   int32_t col = (ents[0].x >> FP) / TILE;

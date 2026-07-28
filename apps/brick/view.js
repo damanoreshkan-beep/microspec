@@ -171,10 +171,17 @@ export function brick(props) {
     </button>`;
 
   return html`<${Fragment}>
-    <div class="ms-side h-full min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]">
+    <!-- THE CONSOLE ITSELF. Without this the app is a screen and some keys lying on a page, which
+         is exactly how the first live shot read: the whole premise of the design — the console is
+         the page EXTRUDED, the screen is a recess cut into the console — was simply not on screen.
+         It is sized to its contents and centred rather than stretched, so it reads as an object you
+         are holding instead of as a layout that filled the window. -->
+    <div class="h-full min-h-0 grid place-items-center py-[var(--ms-gap)]">
+    <div class="ms-side sf-raised bg-base-100 rounded-[calc(var(--ms-r)*1.5)] w-full max-w-[26rem] max-h-full
+                min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]">
 
       <!-- the screen: a recess in the console, with the game inside it -->
-      <div data-stage-box class="flex-1 min-h-0 grid place-items-center">
+      <div data-stage-box class="min-h-0 grid place-items-center">
         <!-- The canvas carries its own intrinsic 288×270 and is allowed to SHRINK, never to be
              stretched: a fixed-ratio wrapper at height:100% derives its width from a parent that
              has none to give, and on a 200px screen that came out 366px wide. Letting the replaced
@@ -202,11 +209,12 @@ export function brick(props) {
       <!-- The deck is ONE touch surface. You rest a thumb on it and slide; whatever is under the
            thumb is what is pressed, and every key you cross answers. Per-key handlers cannot do
            that — the first to see pointerdown captures the pointer and the rest go deaf. -->
-      <div class="ms-side-main shrink-0 flex items-center justify-between gap-[var(--ms-gap)]"
+      <div class="ms-side-main shrink-0 grid items-center gap-[var(--ms-gap)] min-w-0"
+           style="grid-template-columns:auto minmax(0,1fr) auto"
            ...${deckProps} onPointerDown=${(e) => { arm(); deckProps.onPointerDown(e); }}>
 
         <div class="relative sf-inset rounded-[var(--ms-r)] p-1" role="group" aria-label=${T(t, "padLabel")}
-             style="width:min(calc(var(--ms-ctl)*3),46%);aspect-ratio:1" data-pad-root>
+             style="width:calc(var(--ms-ctl)*3);aspect-ratio:1" data-pad-root>
           <div class="grid h-full w-full" style="grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr)">
             <div></div>${dpadKey(PAD.JUMP, "lucide:chevron-up", "padUp")}<div></div>
             ${dpadKey(PAD.LEFT, "lucide:chevron-left", "padLeft")}
@@ -218,33 +226,34 @@ export function brick(props) {
 
         <!-- the middle keys: small, labelled, the way a brick game labels them. These are moments,
              not holds, so they fire when the finger LIFTS over them. -->
-        <div class="flex flex-col items-center gap-[calc(var(--ms-gap)*0.6)] min-w-0">
+        <div class="flex flex-col items-center gap-[calc(var(--ms-gap)*0.6)] min-w-0 w-full">
           <button class=${key("bg-base-100 px-3 py-1")} data-act="sound" data-haptic="bump"
             onClick=${kb(() => act("sound"))}
             aria-pressed=${soundOn} aria-label=${T(t, "sound")} data-sound=${soundOn ? "1" : "0"}>
             ${Icon(soundOn ? "lucide:volume-2" : "lucide:volume-x", "text-[var(--ms-icon)] opacity-80")}
           </button>
-          <button class=${key("bg-base-100 px-3 py-1 font-mono uppercase tracking-widest text-[var(--ms-label)]")}
+          <button class=${key("bg-base-100 px-2 py-1 w-full max-w-[7rem] font-mono uppercase tracking-wide text-[var(--ms-label)] truncate")}
             data-act="start" data-haptic="bump" onClick=${kb(() => act("start"))} data-start>${T(t, "start")}</button>
-          <button class=${key("bg-base-100 px-3 py-1 font-mono uppercase tracking-widest text-[var(--ms-label)]")}
+          <button class=${key("bg-base-100 px-2 py-1 w-full max-w-[7rem] font-mono uppercase tracking-wide text-[var(--ms-label)] truncate")}
             data-act="records" data-haptic="bump" onClick=${kb(() => act("records"))}
             id="b-records" data-records>${digits(best?.dist ?? 0, 4)}</button>
         </div>
 
         <!-- action keys, offset like the real thing: B sits low-left of A -->
-        <div class="relative shrink-0" style="width:min(calc(var(--ms-ctl)*2.6),34%);aspect-ratio:2.6/2.2">
+        <div class="relative shrink-0" style="width:calc(var(--ms-ctl)*2.5);aspect-ratio:2.5/2.1">
           <button class=${key("bg-base-100 absolute right-0 top-0 rounded-full")}
-            style="width:48%;aspect-ratio:1" data-bit=${PAD.JUMP} data-haptic="bump"
+            style="width:56%;aspect-ratio:1" data-bit=${PAD.JUMP} data-haptic="bump"
             aria-label=${T(t, "keyJump")} data-key="a" onClick=${kb(() => pulse(PAD.JUMP))}>
             <span class="font-mono text-[var(--ms-label)] opacity-80">A</span>
           </button>
           <button class=${key("bg-base-100 absolute left-0 bottom-0 rounded-full")}
-            style="width:48%;aspect-ratio:1" data-bit=${PAD.RUN} data-haptic="bump"
+            style="width:56%;aspect-ratio:1" data-bit=${PAD.RUN} data-haptic="bump"
             aria-label=${T(t, "keyRun")} data-key="b" onClick=${kb(() => pulse(PAD.RUN))}>
             <span class="font-mono text-[var(--ms-label)] opacity-80">B</span>
           </button>
         </div>
       </div>
+    </div>
     </div>
 
     ${screen === "records" ? html`<${Sheet} id="records" open=${true} onClose=${() => A.screen.set(null)}

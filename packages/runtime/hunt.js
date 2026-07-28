@@ -81,10 +81,12 @@ export const isBackdrop = (t) => t === T.BUSH || t === T.HILL || t === T.CLOUD;
 export const isPickup = (t) => t === T.COIN || t === T.SPEAR || t === T.HEART;
 
 
-export const POSE = { STAND: 0, WALK_A: 1, WALK_B: 2, AIR: 3, DEAD: 4, SKID: 5 };
+export const POSE = { STAND: 0, WALK_A: 1, WALK_B: 2, AIR: 3, DEAD: 4, SKID: 5, LOW: 6 };
 export const ANIM = {
   [POSE.STAND]: "idle", [POSE.WALK_A]: "run", [POSE.WALK_B]: "run",
   [POSE.AIR]: "jump", [POSE.DEAD]: "dead", [POSE.SKID]: "run",
+  
+  [POSE.LOW]: "fall",
 };
 
 /** Which animation frame to show, given the engine's pose and the frame counter. */
@@ -92,9 +94,12 @@ export function animFrame(anim, pose, frameNo) {
   if (!anim) return 0;
   if (pose === POSE.DEAD) return anim.n - 1;          
   if (pose === POSE.AIR) return Math.min(anim.n - 1, 1);
+  if (pose === POSE.LOW) return anim.n - 1;            
   if (pose === POSE.STAND) return (frameNo >> 3) % anim.n;
   return (frameNo >> 2) % anim.n;
 }
+
+
 export function digits(value, width) {
   const n = Math.max(0, Math.floor(value || 0));
   const s = String(n);

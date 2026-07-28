@@ -119,7 +119,6 @@ export function hunt(props) {
 
   return html`<${Fragment}>
     <${GameConsole}
-      layout="overlay"
       deck=${deckProps}
       onPointerDown=${arm}
       t=${t}
@@ -128,6 +127,8 @@ export function hunt(props) {
         { id: "padUp", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
         { id: "padLeft", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
         { id: "padRight", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
+        
+        { id: "padDown", pad: "down", bit: PAD.DOWN, icon: "lucide:chevrons-down", label: "keyCrouch" },
       ]}
       actions=${[
         { id: "throw", bit: IN.SHOOT, icon: "lucide:send", iconCls: "-rotate-45", label: "keyThrow" },
@@ -146,10 +147,10 @@ export function hunt(props) {
           </button>
         </div>` : null}
     >
-      <div class="absolute inset-0" ref=${hud} data-live-screen>
+      <div class="relative w-full h-full" ref=${hud} data-live-screen>
         <canvas ref=${cv} width=${SCRW} height=${SCRH}
-          class="block w-full h-full"
-          style="image-rendering:pixelated;object-fit:contain"
+          class="block max-w-full max-h-full w-auto h-auto rounded-[calc(var(--ms-r)-0.4rem)]"
+          style="image-rendering:pixelated"
           role="img" aria-label=${T(t, "screenAlt")}></canvas>
         ${!ready && !err ? html`<div class="absolute inset-0 grid place-items-center"><${Pixels} cls="w-full h-full" /></div>` : null}
         ${err ? html`<div class="absolute inset-0 grid place-items-center text-center text-[var(--ms-label)] px-3 text-base-content/70" data-err>${T(t, "noEngine")}</div>` : null}

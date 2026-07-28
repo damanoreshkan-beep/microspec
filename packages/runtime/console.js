@@ -74,7 +74,6 @@ function Actions({ actions, t, onKeyboard, size = "var(--ms-ctl)" }) {
 /**
  * `<GameConsole>`
  *
- * @param layout    "handheld" | "overlay"
  * @param deck      the spread from useTouchDeck() — this component never handles pointers itself
  * @param pad       [{ id, pad: "up"|"down"|"left"|"right", bit, icon, label }]
  *                  Every key exposes ONE hook, data-key=<id>, and pad keys mirror it as data-pad
@@ -83,11 +82,11 @@ function Actions({ actions, t, onKeyboard, size = "var(--ms-ctl)" }) {
  *                  a shared component owns its DOM contract too, not only its markup.
  * @param actions   [{ id, bit, icon, label, latch? }]        — up to two, offset like a real pad
  * @param menu      [{ id, act, icon, label, pressed? }]      — sound, records: momentary, small
- * @param centre    [{ id, act, text|icon, label }]           — a handheld's START row; ignored in overlay
+ * @param centre    [{ id, act, text|icon, label }]           — the START column under the menu row
  * @param onKeyboard called for keyboard / assistive activation only (the deck owns pointers)
  * @param overlay   extra nodes drawn above everything (a game-over card)
  */
-export function GameConsole({ layout = "handheld", deck, pad = [], actions = [], menu = [], centre = [],
+export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = [],
                               t, onKeyboard, onPointerDown, children, overlay = null }) {
   const spread = { ...deck };
   if (onPointerDown) {
@@ -101,25 +100,6 @@ export function GameConsole({ layout = "handheld", deck, pad = [], actions = [],
       </div>`
     : null;
 
-  if (layout === "overlay") {
-    return html`<${Fragment}>
-      <div class="relative h-full min-h-0 w-full overflow-hidden rounded-[var(--ms-r)]" ...${spread}>
-        <div class="absolute inset-0">${children}</div>
-        ${menuRow ? html`<div class="absolute right-2 top-2">${menuRow}</div>` : null}
-        ${pad.length ? html`
-          <div class="absolute left-2 bottom-2">
-            <${Pad} pad=${pad} t=${t} onKeyboard=${onKeyboard} hub=${false} />
-          </div>` : null}
-        ${actions.length ? html`
-          <div class="absolute right-2 bottom-2 flex items-end gap-2">
-            <${Actions} actions=${actions} t=${t} onKeyboard=${onKeyboard} />
-          </div>` : null}
-        ${overlay}
-      </div>
-    </${Fragment}>`;
-  }
-
-  
   return html`
     <div class="h-full min-h-0 flex flex-col justify-center items-center">
       <div class="ms-side sf-raised bg-base-100 rounded-[calc(var(--ms-r)*1.5)] w-full max-w-[26rem]

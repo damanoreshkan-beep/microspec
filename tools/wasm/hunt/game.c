@@ -115,6 +115,7 @@
 
 #define PW 16                     /* player box — narrower than the art, as a hitbox should be */
 #define PH 36
+#define PH_LOW 20                 /* crouched: low enough to duck a spear or a shoulder */
 #define EW 20                     /* enemy box */
 #define EH 36
 
@@ -141,6 +142,10 @@ static int32_t  gen_col;          /* next absolute column to generate */
 static int32_t  seg_left, seg_type, seg_dir, ground_row, safe_left, pending_gap;
 static int32_t  score, coins, best_col, frame_no, sfx;
 static int32_t  ammo, hp, invuln, shoot_cd, kills;
+/* The player's CURRENT box height. Crouching is not a pose, it is a smaller body — that is the
+   whole point of the button, and it is also why the height cannot be a constant any more. The
+   renderer asks for it (game_box) rather than keeping its own copy. */
+static int32_t  pbox = PH;
 static uint32_t last_in;          /* this frame's input, for the skid pose */
 static uint8_t  dead;
 
@@ -362,7 +367,7 @@ static void hit_block(int32_t c, int32_t r) {
 
 static void collect_coins(Ent *p) {
   int32_t x0 = tcol(p->x >> FP), x1 = tcol((p->x >> FP) + PW - 1);
-  int32_t y0 = tcol(p->y >> FP), y1 = tcol((p->y >> FP) + PH - 1);
+  int32_t y0 = tcol(p->y >> FP), y1 = tcol((p->y >> FP) + pbox - 1);
   for (int32_t c = x0; c <= x1; c++)
     for (int32_t r = y0; r <= y1; r++)
       {
@@ -439,6 +444,19 @@ static void step_player(uint32_t in) {
   Ent *p = &ents[0];
   if (shoot_cd > 0) shoot_cd--;
   if (invuln > 0) invuln--;
+
+  /* Crouch. Standing up is not free: if something is directly overhead the body stays low, or a
+     player could stand INSIDE a ceiling and be pushed out of the world by the resolver. Check the
+     space the taller box would need before granting it. */
+  if (!dead) {
+    int32_t want_low = (in & IN_DOWN) && p->onground;
+    if (want_low) { p->y += (pbox - PH_LOW) << FP; pbox = PH_LOW; }
+    else if (pbox != PH) {
+      int32_t px = p->x >> FP, top = (p->y >> FP) - (PH - PH_LOW);
+      if (!solid_px(px, top) && !solid_px(px + PW - 1, top)) { p->y -= (PH - PH_LOW) << FP; pbox = PH; }
+    }
+    if (pbox == PH_LOW) { p->vx = p->vx * 7 / 8; }     /* a crouch is not a sprint */
+  }
   if (dead) {                          /* the death arc still plays; nothing else moves */
     p->vy += GRAV_FALL; if (p->vy > MAX_FALL) p->vy = MAX_FALL;
     p->y += p->vy;
@@ -475,11 +493,11 @@ static void step_player(uint32_t in) {
   int32_t px = p->x >> FP, py = p->y >> FP;
   if (p->vx > 0) {
     int32_t e = px + PW - 1;
-    if (solid_px(e, py) || solid_px(e, py + PH / 2) || solid_px(e, py + PH - 1)) {
+    if (solid_px(e, py) || solid_px(e, py + pbox / 2) || solid_px(e, py + pbox - 1)) {
       p->x = (tsnap(e) - PW) << FP; p->vx = 0;
     }
   } else if (p->vx < 0) {
-    if (solid_px(px, py) || solid_px(px, py + PH / 2) || solid_px(px, py + PH - 1)) {
+    if (solid_px(px, py) || solid_px(px, py + pbox / 2) || solid_px(px, py + pbox - 1)) {
       p->x = ((tcol(px) + 1) * TILE) << FP; p->vx = 0;
     }
   }
@@ -493,9 +511,9 @@ static void step_player(uint32_t in) {
        at the last free row, so a check against the box's own edge is true on the landing
        frame and false every frame after it — the player stands on the floor permanently
        airborne, and the jump key does nothing. Cost: every jump in the first build. */
-    int32_t b = py + PH;
+    int32_t b = py + pbox;
     if (solid_px(px, b) || solid_px(px + PW - 1, b)) {
-      p->y = (tsnap(b) - PH) << FP; p->vy = 0; p->onground = 1;
+      p->y = (tsnap(b) - pbox) << FP; p->vy = 0; p->onground = 1;
     }
   } else if (p->vy < 0) {
     if (solid_px(px, py) || solid_px(px + PW - 1, py)) {
@@ -572,10 +590,10 @@ static void collide_player(void) {
     if (!e->alive) continue;
     if (e->kind != K_WALKER && e->kind != K_HOPPER && e->kind != K_HERO) continue;
     int32_t ex = e->x >> FP, ey = e->y >> FP;
-    if (px + PW <= ex || ex + EW <= px || py + PH <= ey || ey + EH <= py) continue;
+    if (px + PW <= ex || ex + EW <= px || py + pbox <= ey || ey + EH <= py) continue;
     /* Falling onto the top third is a stomp; anything else is a death. The band matters:
        measured off the boxes, not guessed, or a fast fall clips straight past it. */
-    if (p->vy > 0 && py + PH - 1 < ey + EH / 2 + 2 && e->kind != K_HERO) {
+    if (p->vy > 0 && py + pbox - 1 < ey + EH / 2 + 2 && e->kind != K_HERO) {
       e->alive = 0; kills++; p->vy = BOUNCE_V; score += 100; sfx |= SFX_STOMP;
     } else {
       hurt(ex > px);                       /* shove away from whatever hit you */
@@ -615,6 +633,7 @@ static void build_dl(void) {
          by exactly this, so a pose added here is a pose added there. Skid gets its own
          number rather than borrowing walk-b: sharing them made the character moonwalk. */
       if (dead) frame = 4;
+      else if (pbox == PH_LOW) frame = 6;              /* crouched — its own pose, its own art */
       else if (!e->onground) frame = 3;
       else if (skid) frame = 5;
       else if (e->vx) frame = (int16_t)(((frame_no >> 2) & 1) + 1);
@@ -636,7 +655,7 @@ void game_init(uint32_t seed) {
   safe_left = 24; pending_gap = 0;                                  /* a calm opening: no gap, no enemy, and long
                                                       enough to measure a full run-up jump on */
   score = 0; coins = 0; best_col = 0; frame_no = 0; sfx = 0; dead = 0; last_in = 0; dln = 0;
-  ammo = START_AMMO; hp = START_HP; invuln = 0; shoot_cd = 0; kills = 0;
+  ammo = START_AMMO; hp = START_HP; invuln = 0; shoot_cd = 0; kills = 0; pbox = PH;
   gen_ahead();
   /* Stand the player on the ground that is actually THERE, probed from the map, not on the
      generator's `ground_row` — that variable holds the height of the LAST column generated
@@ -718,7 +737,7 @@ __attribute__((export_name("game_max_gap")))  int32_t game_max_gap(void) { retur
    huntress floated. Packed as (w << 16) | h. */
 __attribute__((export_name("game_box")))
 int32_t game_box(int32_t kind) {
-  if (kind == K_PLAYER) return (PW << 16) | PH;
+  if (kind == K_PLAYER) return (PW << 16) | pbox;
   if (kind == K_SPEAR)  return (8 << 16) | 8;
   return (EW << 16) | EH;
 }

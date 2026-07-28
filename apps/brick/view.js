@@ -176,9 +176,9 @@ export function brick(props) {
          the page EXTRUDED, the screen is a recess cut into the console — was simply not on screen.
          It is sized to its contents and centred rather than stretched, so it reads as an object you
          are holding instead of as a layout that filled the window. -->
-    <div class="h-full min-h-0 grid place-items-center py-[var(--ms-gap)]">
-    <div class="ms-side sf-raised bg-base-100 rounded-[calc(var(--ms-r)*1.5)] w-full max-w-[26rem] max-h-full
-                min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]">
+    <div class="h-full min-h-0 flex flex-col justify-center items-center">
+    <div class="ms-side sf-raised bg-base-100 rounded-[calc(var(--ms-r)*1.5)] w-full max-w-[26rem]
+                min-h-0 shrink flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]">
 
       <!-- the screen: a recess in the console, with the game inside it -->
       <!-- flex-1 min-h-0 is not decoration: it gives the canvas a parent with a DEFINITE height,
@@ -246,14 +246,14 @@ export function brick(props) {
         </div>
 
         <!-- action keys, offset like the real thing: B sits low-left of A -->
-        <div class="relative shrink-0" style="width:calc(var(--ms-ctl)*2.5);aspect-ratio:2.5/2.1">
+        <div class="relative shrink-0" style="width:calc(var(--ms-ctl)*2.4);aspect-ratio:2.4/1.7">
           <button class=${key("bg-base-100 absolute right-0 top-0 rounded-full")}
-            style="width:56%;aspect-ratio:1" data-bit=${PAD.JUMP} data-haptic="bump"
+            style="width:52%;aspect-ratio:1" data-bit=${PAD.JUMP} data-haptic="bump"
             aria-label=${T(t, "keyJump")} data-key="a" onClick=${kb(() => pulse(PAD.JUMP))}>
             <span class="font-mono text-[var(--ms-label)] opacity-80">A</span>
           </button>
           <button class=${key("bg-base-100 absolute left-0 bottom-0 rounded-full")}
-            style="width:56%;aspect-ratio:1" data-bit=${PAD.RUN} data-haptic="bump"
+            style="width:52%;aspect-ratio:1" data-bit=${PAD.RUN} data-haptic="bump"
             aria-label=${T(t, "keyRun")} data-key="b" onClick=${kb(() => pulse(PAD.RUN))}>
             <span class="font-mono text-[var(--ms-label)] opacity-80">B</span>
           </button>

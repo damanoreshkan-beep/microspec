@@ -87,9 +87,44 @@ export function sliceOffsets(n) {
   return out;
 }
 
-/* A contact shadow is what actually says "this sprite is in FRONT of that wall". Hard edged
-   and small: a blurred shadow at 256×240 is four muddy pixels, not depth. */
-export const SHADOW = Object.freeze({ dx: 2, dy: 2, alpha: 0.28 });
+/* ── the shadow, projected rather than offset ─────────────────────────────────────────────
+   The first cut took the sprite's own silhouette and moved it (+2,+2). That is a sticker: the
+   offset never changes, so it says nothing about how far the thing is from anything, it survives
+   over a pit where there is no surface to fall on, and a jumping character carries it along like
+   a cape. Depth is not a constant.
+
+   The real thing is a projection, and at a 45° light it is the simplest projection there is: a
+   point `h` pixels above the ground lands on the ground `h` pixels along the light — tan 45° = 1.
+   So the displacement IS the height, and the shadow stays on the floor while the character leaves
+   it. That separation is the whole cue; everything else is just making it read at 18px.
+
+   Size and weight fall off with height because a directional source is not a point one in practice
+   — the penumbra widens and the core fades. Kept deliberately shallow (never below FLOOR) so the
+   shadow is always a mark and never a smudge. */
+export const SHADOW = Object.freeze({
+  alpha: 0.34,      // directly under the feet
+  reach: 54,        // px of height at which it has faded to FLOOR
+  floor: 0.06,      // it never disappears entirely; a lost shadow reads as a bug, not as height
+  flat: 0.34,       // ellipse ry/rx — a footprint on the ground plane, not a disc facing us
+  wide: 0.40,       // rx as a fraction of the sprite's width, at contact
+});
+
+/**
+ * Where a sprite's ground shadow goes and how heavy it is.
+ * @param h      pixels between the sprite's feet and the ground below it (0 = standing)
+ * @param w      sprite width in px
+ * @returns {{dx, rx, ry, alpha}} — dx is along the light, i.e. to the RIGHT as it rises
+ */
+export function shadowFor(h, w) {
+  const t = Math.max(0, Math.min(1, h / SHADOW.reach));
+  const rx = Math.max(1, Math.round((w * SHADOW.wide) * (1 - 0.45 * t)));
+  return {
+    dx: Math.round(Math.max(0, h)),                       // tan 45° = 1: the offset IS the height
+    rx,
+    ry: Math.max(1, Math.round(rx * SHADOW.flat)),
+    alpha: SHADOW.alpha + (SHADOW.floor - SHADOW.alpha) * t,
+  };
+}
 
 /**
  * Parallax: how far a background layer has moved for a given camera position. Depth 0 is

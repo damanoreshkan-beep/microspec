@@ -94,8 +94,8 @@ export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
     
     const ox = e.x + ((TILE - cell.w) >> 1), oy = e.y + TILE - cell.h;
     
-    if (e.kind === K.PLAYER && st[S.INVULN] > 0 && (frameNo >> 2) % 2) continue;
-    p.cell(cell, ox, oy, { flip: e.flip });
+    const blink = e.kind === K.PLAYER && st[S.INVULN] > 0 && (frameNo >> 2) % 2 ? 0.4 : 1;
+    p.cell(cell, ox, oy, { flip: e.flip, alpha: blink });
   }
   if (hud) {
     for (let i = 0; i < st[S.HP]; i++) p.cell(tileCell(T.HEART), 4 + i * 18, -4);

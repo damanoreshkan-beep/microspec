@@ -49,7 +49,7 @@ function Key({ k, t, round = true, style = "", cls = "", onKeyboard }) {
       aria-pressed=${k.latch ? "false" : k.pressed != null ? String(k.pressed) : null}
       aria-label=${label}
       data-key=${k.id}
-      data-pad=${k.pad ?? null}
+      data-pad=${k.pad ? k.id : null}
       title=${k.text ? label : null}
       onClick=${keyboardOnly(() => onKeyboard?.(k))}
     >
@@ -96,6 +96,10 @@ function Actions({ actions, t, onKeyboard, size = "var(--ms-ctl)" }) {
  * @param layout    "handheld" | "overlay"
  * @param deck      the spread from useTouchDeck() — this component never handles pointers itself
  * @param pad       [{ id, pad: "up"|"down"|"left"|"right", bit, icon, label }]
+ *                  Every key exposes ONE hook, data-key=<id>, and pad keys mirror it as data-pad
+ *                  so a test can count the cross without knowing what the app called its keys.
+ *                  Lifting this shell out of brick changed those hooks and broke three e2e cases:
+ *                  a shared component owns its DOM contract too, not only its markup.
  * @param actions   [{ id, bit, icon, label, latch? }]        — up to two, offset like a real pad
  * @param menu      [{ id, act, icon, label, pressed? }]      — sound, records: momentary, small
  * @param centre    [{ id, act, text|icon, label }]           — a handheld's START row; ignored in overlay

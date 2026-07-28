@@ -167,10 +167,10 @@ export function brick(props) {
       t=${t}
       onKeyboard=${(k) => (k.bit ? pulse(k.bit) : act(k.act))}
       pad=${[
-        { id: "up", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
-        { id: "left", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
-        { id: "right", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
-        { id: "down", pad: "down", bit: PAD.DOWN, icon: "lucide:chevron-down", label: "padDown" },
+        { id: "padUp", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
+        { id: "padLeft", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
+        { id: "padRight", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
+        { id: "padDown", pad: "down", bit: PAD.DOWN, icon: "lucide:chevron-down", label: "padDown" },
       ]}
       actions=${[
         { id: "a", bit: PAD.JUMP, text: "A", label: "keyJump" },

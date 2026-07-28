@@ -67,16 +67,16 @@ export default [
   {
     name: "звук: перемикач тримає стан", run: async (h) => {
       await ready(h);
-      const before = await h.attr("[data-sound]", "aria-pressed");
-      await h.tap("[data-sound]");
+      const before = await h.attr('[data-key="sound"]', "aria-pressed");
+      await h.tap('[data-key="sound"]');
       await h.wait(200);
-      h.expect((await h.attr("[data-sound]", "aria-pressed")) !== before, "перемикач звуку не змінив стан");
+      h.expect((await h.attr('[data-key="sound"]', "aria-pressed")) !== before, "перемикач звуку не змінив стан");
     },
   },
   {
     name: "рекорди: аркуш відкривається, Back закриває (історія-backed)", run: async (h) => {
       await ready(h);
-      await h.tap("#b-records");
+      await h.tap('[data-key="records"]');
       await h.wait(350);
       h.expect((await h.count("[data-stat]")) === 3, "аркуш рекордів не показав три показники");
       await h.back();

@@ -136,9 +136,9 @@ export function hunt(props) {
       t=${t}
       onKeyboard=${(k) => (k.bit ? pulse(k.bit) : act(k.act))}
       pad=${[
-        { id: "up", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
-        { id: "left", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
-        { id: "right", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
+        { id: "padUp", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
+        { id: "padLeft", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
+        { id: "padRight", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
       ]}
       actions=${[
         { id: "throw", bit: IN.SHOOT, icon: "lucide:send", iconCls: "-rotate-45", label: "keyThrow" },

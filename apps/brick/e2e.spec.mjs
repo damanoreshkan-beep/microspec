@@ -31,7 +31,7 @@ export default [
       h.expect((await h.count("[data-pad]")) === 4, "хрестовина не має чотирьох напрямків");
       h.expect((await h.count('[data-key="a"]')) === 1, "немає клавіші A");
       h.expect((await h.count('[data-key="b"]')) === 1, "немає клавіші B");
-      h.expect((await h.count("[data-start]")) === 1, "немає клавіші START");
+      h.expect((await h.count('[data-key="start"]')) === 1, "немає клавіші START");
     },
   },
   {
@@ -49,16 +49,16 @@ export default [
   {
     name: "звук: перемикач тримає стан", run: async (h) => {
       await ready(h);
-      const before = await h.attr("[data-sound]", "aria-pressed");
-      await h.tap("[data-sound]");
+      const before = await h.attr('[data-key="sound"]', "aria-pressed");
+      await h.tap('[data-key="sound"]');
       await h.wait(200);
-      h.expect((await h.attr("[data-sound]", "aria-pressed")) !== before, "перемикач звуку не змінив стан");
+      h.expect((await h.attr('[data-key="sound"]', "aria-pressed")) !== before, "перемикач звуку не змінив стан");
     },
   },
   {
     name: "рекорди: аркуш відкривається, Back закриває (історія-backed)", run: async (h) => {
       await ready(h);
-      await h.tap("#b-records");
+      await h.tap('[data-key="records"]');
       await h.wait(350);
       h.expect((await h.count("[data-stat]")) === 3, "аркуш рекордів не показав три показники");
       await h.back();
@@ -69,7 +69,7 @@ export default [
   {
     name: "старт: перезапуск лишає гру живою", run: async (h) => {
       await ready(h);
-      await h.tap("[data-start]");
+      await h.tap('[data-key="start"]');
       await h.wait(600);
       h.expect((await h.count("[data-err]")) === 0, "після рестарту рушій впав");
       const a = await frame(h);

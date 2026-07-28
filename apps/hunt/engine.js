@@ -80,9 +80,11 @@ export function canvasPainter(ctx) {
       ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
       ctx.globalAlpha = 1;
     },
-    cell(cell, ox, oy, { flip = false } = {}) {
+    cell(cell, ox, oy, { flip = false, alpha = 1 } = {}) {
       if (!cell.w) return;
+      if (alpha !== 1) ctx.globalAlpha = alpha;
       ctx.drawImage(baked(cell, flip), Math.round(ox), Math.round(oy));
+      if (alpha !== 1) ctx.globalAlpha = 1;
     },
     glyph(ch, ox, oy) {
       ctx.fillStyle = "#f0f0f5";

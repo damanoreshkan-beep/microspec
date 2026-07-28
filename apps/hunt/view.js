@@ -141,11 +141,14 @@ export function hunt(props) {
     <div class="relative h-full min-h-0 w-full overflow-hidden rounded-[var(--ms-r)]" ...${deckProps}
          onPointerDown=${(e) => { arm(); deckProps.onPointerDown(e); }}>
 
-      <!-- the game fills the view; the canvas keeps its own pixels and is only ever scaled DOWN -->
-      <div class="absolute inset-0 grid place-items-center" ref=${hud} data-live-screen>
+      <!-- The game FILLS the view. Capping the canvas at its intrinsic size was brick's rule, and
+           brick is a device with a small screen in it — here it left a 384x264 strip marooned in
+           the middle of a phone with two thirds of the page grey and the controls stranded below
+           it. object-fit keeps the aspect and the pixels; the element is allowed to grow. -->
+      <div class="absolute inset-0" ref=${hud} data-live-screen>
         <canvas ref=${cv} width=${SCRW} height=${SCRH}
-          class="block max-w-full max-h-full w-auto h-auto"
-          style="image-rendering:pixelated"
+          class="block w-full h-full"
+          style="image-rendering:pixelated;object-fit:contain"
           role="img" aria-label=${T(t, "screenAlt")}></canvas>
         ${!ready && !err ? html`<div class="absolute inset-0 grid place-items-center"><${Pixels} cls="w-full h-full" /></div>` : null}
         ${err ? html`<div class="absolute inset-0 grid place-items-center text-center text-[var(--ms-label)] px-3 text-base-content/70" data-err>${T(t, "noEngine")}</div>` : null}

@@ -110,9 +110,12 @@ export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
     /* Sprites are taller than a tile: centre on the collision box and stand them on its feet, or
        the character floats. The box is what the engine simulates; the art is what you see. */
     const ox = e.x + ((TILE - cell.w) >> 1), oy = e.y + TILE - cell.h;
-    // A hit grants invulnerability; blinking is how a player knows the frames are still running.
-    if (e.kind === K.PLAYER && st[S.INVULN] > 0 && (frameNo >> 2) % 2) continue;
-    p.cell(cell, ox, oy, { flip: e.flip });
+    /* Invulnerability blinks, but it must never make the player DISAPPEAR. Skipping the draw on
+       alternate frames is the usual trick and it is a trap here: the gate photographs a random
+       frame, so the app's own screenshot — the one in the store, the one the taste pass judges —
+       can come back with no character on screen at all. Fade instead of hide. */
+    const blink = e.kind === K.PLAYER && st[S.INVULN] > 0 && (frameNo >> 2) % 2 ? 0.4 : 1;
+    p.cell(cell, ox, oy, { flip: e.flip, alpha: blink });
   }
 
   if (hud) {

@@ -60,8 +60,30 @@ export function sliceOffsets(n) {
 }
 
 
-export const SHADOW = Object.freeze({ dx: 2, dy: 2, alpha: 0.28 });
+export const SHADOW = Object.freeze({
+  alpha: 0.34,      
+  reach: 54,        
+  floor: 0.06,      
+  flat: 0.34,       
+  wide: 0.40,       
+});
 
+/**
+ * Where a sprite's ground shadow goes and how heavy it is.
+ * @param h      pixels between the sprite's feet and the ground below it (0 = standing)
+ * @param w      sprite width in px
+ * @returns {{dx, rx, ry, alpha}} — dx is along the light, i.e. to the RIGHT as it rises
+ */
+export function shadowFor(h, w) {
+  const t = Math.max(0, Math.min(1, h / SHADOW.reach));
+  const rx = Math.max(1, Math.round((w * SHADOW.wide) * (1 - 0.45 * t)));
+  return {
+    dx: Math.round(Math.max(0, h)),                       
+    rx,
+    ry: Math.max(1, Math.round(rx * SHADOW.flat)),
+    alpha: SHADOW.alpha + (SHADOW.floor - SHADOW.alpha) * t,
+  };
+}
 /**
  * Parallax: how far a background layer has moved for a given camera position. Depth 0 is
  * infinitely far (never moves), 1 is the play plane. The result is INTEGER — a fractional
@@ -71,7 +93,6 @@ export function parallaxX(camx, depth) {
   return Math.round(camx * depth) | 0;
 }
 export const LAYERS = Object.freeze([0.15, 0.35, 0.6]);
-
 
 export function decodeEntry(dl, i) {
   const o = i * 4, id = dl[o], attr = dl[o + 3];
@@ -100,7 +121,6 @@ export function digits(value, width) {
   const s = String(n);
   return s.length >= width ? s.slice(-width) : "0".repeat(width - s.length) + s;
 }
-
 
 export function betterRun(prev, run) {
   if (!run) return prev ?? null;

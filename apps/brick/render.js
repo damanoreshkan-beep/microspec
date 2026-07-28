@@ -1,5 +1,5 @@
 
-import { SCRW, SCRH, TILE, ROWS, LCD, SHADOW, LAYERS, SPRITE, T, K, decodeEntry, digits, parallaxX, isBackdrop } from "/_rt/brick.js";
+import { SCRW, SCRH, TILE, ROWS, LCD, SHADOW, shadowFor, LAYERS, SPRITE, T, K, decodeEntry, digits, parallaxX, isBackdrop } from "/_rt/brick.js";
 import { tileCell, spriteCell } from "./atlas.js";
 
 const hash = (n) => { let x = (n * 2654435761) >>> 0; x ^= x >>> 15; x = (x * 2246822519) >>> 0; x ^= x >>> 13; return x; };
@@ -42,6 +42,31 @@ function backdrop(p, camx) {
   }
 }
 
+
+function groundMap(dl, dln) {
+  const cols = new Int16Array(SCRW / TILE + 4).fill(32767);
+  for (let i = 0; i < dln; i++) {
+    const e = decodeEntry(dl, i);
+    if (e.isSprite || e.tile < T.SOLID) continue;
+    const c = Math.round(e.x / TILE) + 1;                       
+    if (c >= 0 && c < cols.length && e.y < cols[c]) cols[c] = e.y;
+  }
+  return cols;
+}
+const floorUnder = (cols, x, feet) => {
+  const c = Math.round(x / TILE) + 1;
+  const y = c >= 0 && c < cols.length ? cols[c] : 32767;
+  return y === 32767 || y < feet - 2 ? null : y;                
+};
+
+/** A hard-edged ellipse, drawn as rows. No blur: at this size a blur is four muddy pixels. */
+function ellipse(p, cx, cy, rx, ry, alpha) {
+  for (let dy = -ry; dy <= ry; dy++) {
+    const half = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy / ry) ** 2)));
+    if (half > 0) p.rect(cx - half, cy + dy, half * 2, 1, 4, alpha);
+  }
+}
+
 /**
  * Draw one frame.
  *
@@ -58,6 +83,7 @@ export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
   p.ghost(LCD.ghost);               
   backdrop(p, camx);
 
+  
   const solids = [];
   for (let i = 0; i < dln; i++) {
     const e = decodeEntry(dl, i);
@@ -74,11 +100,16 @@ export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
   }
 
   
+  const floors = groundMap(dl, dln);
   for (const e of solids) {
     if (!e.isSprite || e.kind === K.POP || e.kind === K.DEBRIS) continue;
     const cell = spriteCell(e.kind, e.frame);
     if (!cell.w) continue;
-    p.cell(cell, e.x + SHADOW.dx, e.y + SHADOW.dy, { level: 4, alpha: SHADOW.alpha, flip: e.flip });
+    const feet = e.y + TILE;
+    const gy = floorUnder(floors, e.x, feet);
+    if (gy == null) continue;
+    const sh = shadowFor(gy - feet, cell.w);
+    ellipse(p, e.x + TILE / 2 + sh.dx, gy + sh.ry, sh.rx, sh.ry, sh.alpha);
   }
   for (const e of solids) {
     if (!e.isSprite) continue;
@@ -88,6 +119,7 @@ export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
     
     p.cell(cell, e.x + ((TILE - cell.w) >> 1), e.y + TILE - cell.h, { flip: e.flip });
   }
+
   if (hud) {
     const glyph = (ch, x, y) => p.glyph(ch, x, y);
     let x = 6;
@@ -99,6 +131,7 @@ export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
   p.grid(LCD.grid);                 
   p.sheen(LCD.sheen);               
 }
+
 
 const FONT = {
   "0": ["111", "101", "101", "101", "111"], "1": ["010", "110", "010", "010", "111"],

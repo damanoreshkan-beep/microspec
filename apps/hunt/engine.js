@@ -20,6 +20,7 @@ export async function loadEngine(url = WASM_URL) {
     step: (mask) => E.game_step(mask >>> 0),
     state: () => new Int32Array(E.memory.buffer, E.game_state(), S.COUNT),
     list: () => ({ dl: new Int16Array(E.memory.buffer, E.game_dl(), E.game_dl_count() * 4), n: E.game_dl_count() }),
+    box: (kind) => { const v = E.game_box(kind | 0); return { w: (v >> 16) & 0xffff, h: v & 0xffff }; },
   };
 }
 

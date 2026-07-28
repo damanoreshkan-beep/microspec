@@ -711,6 +711,18 @@ uintptr_t game_state(void) {
    the player actually travelled. runtime_test.js asserts MAX_GAP stays under it. */
 __attribute__((export_name("game_max_gap")))  int32_t game_max_gap(void) { return MAX_GAP; }
 
+/* The collision box, ASKED FOR rather than assumed. The renderer has to stand a sprite on the
+   thing the simulation actually collides with, and the only other way to know it is to copy PW/PH
+   into JS — where it is right until someone changes it here. The first cut stood sprites on the
+   bottom of a TILE, which in brick was one pixel out and invisible and here is twelve, so the
+   huntress floated. Packed as (w << 16) | h. */
+__attribute__((export_name("game_box")))
+int32_t game_box(int32_t kind) {
+  if (kind == K_PLAYER) return (PW << 16) | PH;
+  if (kind == K_SPEAR)  return (8 << 16) | 8;
+  return (EW << 16) | EH;
+}
+
 /* Terrain inspection, for the solvability test only. The generator is the one part of this
    engine whose failure mode is invisible to every rendering gate — an unjumpable gap looks
    exactly like a jumpable one in a screenshot — so runtime_test.js walks the real track and

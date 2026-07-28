@@ -52,10 +52,11 @@ function ellipse(p, cx, cy, rx, ry, alpha) {
 /** Which decoded animation a sprite kind uses. */
 const whoOf = (kind) => (kind === K.PLAYER ? "hero" : kind === K.HERO || kind === K.WALKER || kind === K.HOPPER ? "foe" : null);
 
-export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
+export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
+  
+  const boxH = (kind) => (box ? box(kind).h : TILE);
   const camx = st[S.CAMX], frameNo = st[S.FRAME];
   backdrop(p, camx);
-
   const sprites = [];
   for (let i = 0; i < dln; i++) {
     const e = decodeEntry(dl, i);
@@ -71,7 +72,7 @@ export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
     if (!who) continue;
     const a = anim(who, "idle");
     const w = a ? a.w : TILE;
-    const feet = e.y + TILE;
+    const feet = e.y + boxH(e.kind);
     const gy = floorUnder(floors, e.x, feet);
     if (gy == null) continue;
     const sh = shadowFor(gy - feet, w);
@@ -92,11 +93,12 @@ export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
     const cell = frameCell(who, ANIM[e.frame] && anim(who, ANIM[e.frame]) ? ANIM[e.frame] : "idle",
                            animFrame(a, e.frame, frameNo));
     
-    const ox = e.x + ((TILE - cell.w) >> 1), oy = e.y + TILE - cell.h;
+    const ox = e.x + ((TILE - cell.w) >> 1), oy = e.y + boxH(e.kind) - cell.h;
     
     const blink = e.kind === K.PLAYER && st[S.INVULN] > 0 && (frameNo >> 2) % 2 ? 0.4 : 1;
     p.cell(cell, ox, oy, { flip: e.flip, alpha: blink });
   }
+
   if (hud) {
     for (let i = 0; i < st[S.HP]; i++) p.cell(tileCell(T.HEART), 4 + i * 18, -4);
     p.cell(tileCell(T.SPEAR), SCRW - 76, -2);

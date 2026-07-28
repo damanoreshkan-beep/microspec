@@ -26,7 +26,15 @@ const CATS = ["science", "feeds", "tools", "sound", "hackrf", "creative", "money
 const catKey = (c) => "cat" + c[0].toUpperCase() + c.slice(1);
 
 export function store({ S, openScreen, closeScreen }) {
-  const t = useStore(S.t), screen = useStore(S.screen), theme = useStore(S.theme);
+  const t = useStore(S.t), screen = useStore(S.screen), theme = useStore(S.theme), locale = useStore(S.locale);
+  // The tile text is the APP's string, not the store's, so it cannot live in this app's dict — the manifest
+  // carries every locale and the view picks one. Without this the chrome switched to English and sixty tiles
+  // stayed Ukrainian, which is the farm's only surface with no locale parity.
+  const nameOf = (a) => a.titles?.[locale] || a.title;
+  const taglineOf = (a) => a.taglines?.[locale] || a.tagline || "";
+  // The manifest bakes ONE order (uk-collated), which is the wrong alphabet the moment the names change
+  // language — so the sort belongs to the render, beside the names it sorts.
+  const byName = (x, y) => nameOf(x).localeCompare(nameOf(y), locale);
   // `theme` is subscribed to for the RE-RENDER; the boolean is read off the DOM, which is the only source
   // that knows the theme actually being painted. `?theme=light` (the taste gate's override) sets
   // data-theme WITHOUT writing S.theme — deliberately, so a shared link can't change someone's setting —
@@ -50,14 +58,14 @@ export function store({ S, openScreen, closeScreen }) {
   // rather than a navigation. `open` is driven by the routing atom the store already had; only the CONTENTS
   // are mounted conditionally, so `#open-app` genuinely leaves the DOM when the sheet is closed.
   const sel = screen ? apps.find((a) => a.id === screen) : null;
-  const detail = html`<${Sheet} id="appsheet" open=${!!sel} onClose=${closeScreen} title=${sel ? sel.title : ""}>
+  const detail = html`<${Sheet} id="appsheet" open=${!!sel} onClose=${closeScreen} title=${sel ? nameOf(sel) : ""}>
     ${sel ? (() => { const it = iconTint(sel.bg, sel.fg, dark), b = badgeOf(sel); return html`<div class="flex flex-col items-center gap-5 py-1 text-center">
       ${/* same tile geometry as the grid, badge in the same corner — one representation of "new" per app */""}
       <div class="relative w-24 h-24 rounded-[24%] flex items-center justify-center sf-e3 shrink-0" style=${`background:${it.tile}`}>
         ${AppArt(sel, it.glyph, "3rem")}
         ${b ? html`<span class="absolute top-1.5 right-1.5">${tag(b, true)}</span>` : null}
       </div>
-      <p class="text-base-content/70 leading-relaxed break-words">${sel.tagline}</p>
+      <p class="text-base-content/70 leading-relaxed break-words">${taglineOf(sel)}</p>
       <button id="open-app" class="btn btn-primary btn-lg rounded-2xl gap-2 w-full max-w-xs" onClick=${() => launch(sel)}>${Icon("lucide:external-link")}${T(t, "openApp")}</button>
       <div class="text-xs text-base-content/50 tabular-nums flex items-center gap-1.5">v${sel.version || "1.0"}${b === "upd" ? html`<span class="text-warning font-medium">· ${T(t, "newVersion")}</span>` : null}</div>
     </div>`; })() : null}
@@ -66,13 +74,13 @@ export function store({ S, openScreen, closeScreen }) {
   // ── search + category chips + sectioned icon grid ──
   // Tap: an app you've already opened launches straight away (no detail sheet); one you haven't opens its
   // description first, so the detail sheet stays a discovery surface. Installed apps carry a quiet corner check.
-  const card = (a) => { const it = iconTint(a.bg, a.fg, dark), b = badgeOf(a), inst = installed(a); return html`<button data-app=${a.id} aria-label=${a.title} class="group flex flex-col items-center gap-1.5 min-w-0" onClick=${() => (inst ? launch(a) : openScreen(a.id))} key=${a.id}>
+  const card = (a) => { const it = iconTint(a.bg, a.fg, dark), b = badgeOf(a), inst = installed(a); return html`<button data-app=${a.id} aria-label=${nameOf(a)} class="group flex flex-col items-center gap-1.5 min-w-0" onClick=${() => (inst ? launch(a) : openScreen(a.id))} key=${a.id}>
     <div class="relative aspect-square w-full rounded-[26%] flex items-center justify-center sf-e2 transition-transform duration-150 group-active:scale-90" style=${`background:${it.tile}`}>
       ${AppArt(a, it.glyph, "1.9rem")}
       ${b ? html`<span class="absolute top-1 right-1">${tag(b)}</span>`
           : inst ? html`<span data-installed class="absolute bottom-1 right-1 grid place-items-center w-[18px] h-[18px] rounded-full bg-base-100 sf-e2" title=${T(t, "installed")}>${Icon("lucide:check", "text-[0.66rem] text-success")}</span>` : null}
     </div>
-    <div class="text-[0.72rem] leading-tight text-center line-clamp-2 break-words w-full text-base-content/90">${a.title}</div>
+    <div class="text-[0.72rem] leading-tight text-center line-clamp-2 break-words w-full text-base-content/90">${nameOf(a)}</div>
   </button>`; };
   const grid = (items) => html`<div class="grid grid-cols-4 gap-x-3 gap-y-4 @max-[300px]:grid-cols-3">${items.map(card)}</div>`;
   const noResults = html`<div class="flex flex-col items-center text-muted py-16 gap-2 text-center px-6">${Icon("lucide:search-x", "text-4xl")}<span>${T(t, "noResults")}</span></div>`;
@@ -84,7 +92,7 @@ export function store({ S, openScreen, closeScreen }) {
   // search wins: a flat, un-sectioned result set across the whole farm
   const query = q.trim().toLowerCase();
   if (query) {
-    const list = apps.filter((a) => (a.title + " " + (a.tagline || "")).toLowerCase().includes(query));
+    const list = apps.filter((a) => (nameOf(a) + " " + taglineOf(a)).toLowerCase().includes(query)).sort(byName);
     return html`<div class="flex flex-col gap-4">${searchBar}${list.length ? grid(list) : noResults}${detail}</div>`;
   }
 
@@ -97,7 +105,7 @@ export function store({ S, openScreen, closeScreen }) {
       value=${cat} onChange=${setCat} />
     <div class="flex flex-col gap-5">
       ${shown.map((c) => {
-        const items = apps.filter((a) => a.category === c);
+        const items = apps.filter((a) => a.category === c).sort(byName);
         if (!items.length) return null;
         return html`<div class="flex flex-col gap-2" key=${c}>
           <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center gap-1.5">${T(t, catKey(c))}<span class="text-muted normal-case tabular-nums">${items.length}</span></div>

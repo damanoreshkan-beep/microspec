@@ -2,709 +2,1181 @@
   {
     "id": "outpost",
     "title": "Аванпости і станції",
+    "titles": {
+      "en": "Outposts & Stations",
+      "uk": "Аванпости і станції"
+    },
     "tagline": "Програмний генератор саундскейпів космічних станцій для фокусу та сну. Ступи на реакторне ядро, командний місток, кріовідсік чи покинутий фрахтовик — гул корпусу, вентиляція, розстроєний дрон реактора, сервоприводи, телеметрія й сигнал далекого космосу синтезуються наживо з рівномірно-темперованих строїв, без файлів, офлайн. Шість макро-фейдерів формують мікс; станції плавно перетікають одна в одну.",
+    "taglines": {
+      "en": "A software generator of sci-fi station ambience for focus and sleep. Board a reactor core, a command bridge, a cryo bay or a derelict freighter — its hull rumble, ventilation, detuned reactor drone, servos, telemetry and deep-space signal are synthesised live from equal-temperament tunings, no files, offline. Six macro faders shape the mix; stations morph seamlessly.",
+      "uk": "Програмний генератор саундскейпів космічних станцій для фокусу та сну. Ступи на реакторне ядро, командний місток, кріовідсік чи покинутий фрахтовик — гул корпусу, вентиляція, розстроєний дрон реактора, сервоприводи, телеметрія й сигнал далекого космосу синтезуються наживо з рівномірно-темперованих строїв, без файлів, офлайн. Шість макро-фейдерів формують мікс; станції плавно перетікають одна в одну."
+    },
     "glyph": "lucide:orbit",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"2.4\"/>\n<ellipse cx=\"12\" cy=\"12\" rx=\"10\" ry=\"4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" opacity=\"0.7\"/>\n<ellipse cx=\"12\" cy=\"12\" rx=\"10\" ry=\"4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" opacity=\"0.4\" transform=\"rotate(60 12 12)\"/>",
     "bg": "#07070C",
     "fg": "#9F8CF6",
     "href": "./outpost/",
-    "version": "1.7",
+    "version": "1.11",
     "category": "sound"
   },
   {
     "id": "openapps",
     "title": "Відкриті застосунки",
+    "titles": {
+      "en": "Open apps",
+      "uk": "Відкриті застосунки"
+    },
     "tagline": "Відкриті застосунки з GitHub за платформами — Windows, macOS, Linux, Android: зірки, мова, ліцензія",
+    "taglines": {
+      "en": "Open-source apps from GitHub, by platform — Windows, macOS, Linux, Android: stars, language, license",
+      "uk": "Відкриті застосунки з GitHub за платформами — Windows, macOS, Linux, Android: зірки, мова, ліцензія"
+    },
     "glyph": "lucide:layout-grid",
     "art": "<rect x=\"3\" y=\"3\" width=\"8\" height=\"8\" rx=\"2.2\"/><rect x=\"13\" y=\"3\" width=\"8\" height=\"8\" rx=\"2.2\" opacity=\".7\"/><rect x=\"3\" y=\"13\" width=\"8\" height=\"8\" rx=\"2.2\" opacity=\".7\"/><rect x=\"13\" y=\"13\" width=\"8\" height=\"8\" rx=\"2.2\"/>",
     "bg": "#0d1117",
     "fg": "#7c9cf7",
     "href": "./openapps/",
-    "version": "1.11",
+    "version": "1.13",
     "category": "feeds"
   },
   {
     "id": "wiki",
     "title": "Вікіпедія",
+    "titles": {
+      "uk": "Вікіпедія",
+      "en": "Wikipedia"
+    },
     "tagline": "Швидкий пошук по Вікіпедії",
+    "taglines": {
+      "uk": "Швидкий пошук по Вікіпедії",
+      "en": "Fast search across Wikipedia"
+    },
     "glyph": "lucide:book-open-text",
     "art": "<path d=\"M12 7v14\"/><path d=\"M16 12h2\"/><path d=\"M16 8h2\"/><path d=\"M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z\"/><path d=\"M6 12h2\"/><path d=\"M6 8h2\"/>",
     "bg": "#202122",
     "fg": "#ffffff",
     "href": "./wiki/",
-    "version": "1.15",
+    "version": "1.17",
     "category": "feeds"
   },
   {
     "id": "globe",
     "title": "Глобус",
+    "titles": {
+      "uk": "Глобус",
+      "en": "Globe"
+    },
     "tagline": "Інтерактивний глобус — крути Землю, обирай країни та дивись факти",
+    "taglines": {
+      "uk": "Інтерактивний глобус — крути Землю, обирай країни та дивись факти",
+      "en": "An interactive globe — spin the Earth, pick countries, see the facts"
+    },
     "glyph": "lucide:globe",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/><path d=\"M2 12h20\"/>",
     "bg": "#0A0A0B",
     "fg": "#5BA6E8",
     "href": "./globe/",
-    "version": "1.10",
+    "version": "1.12",
     "category": "science"
   },
   {
     "id": "horoscope",
     "title": "Гороскоп",
+    "titles": {
+      "en": "Horoscope",
+      "uk": "Гороскоп"
+    },
     "tagline": "Справжній щоденний гороскоп твого знака — вчора, сьогодні й завтра — із зоряними рейтингами дня, від horoscope.com. Кешується на пристрої, тож останнє читання лишається доступним офлайн. Обери знак один раз — решту зроблять зорі.",
+    "taglines": {
+      "en": "Your sign's real daily reading — yesterday, today and tomorrow — with the day's star ratings, from horoscope.com. Cached on your device, so the last reading stays readable offline. Pick your sign once; the stars do the rest.",
+      "uk": "Справжній щоденний гороскоп твого знака — вчора, сьогодні й завтра — із зоряними рейтингами дня, від horoscope.com. Кешується на пристрої, тож останнє читання лишається доступним офлайн. Обери знак один раз — решту зроблять зорі."
+    },
     "glyph": "lucide:moon-star",
     "art": "<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/>\n<path d=\"M20 3v4\"/>\n<path d=\"M22 5h-4\"/>",
     "bg": "#0A0A0F",
     "fg": "#A78BFA",
     "href": "./horoscope/",
-    "version": "1.15",
+    "version": "1.18",
     "category": "esoterica"
   },
   {
     "id": "breathe",
     "title": "Дихання",
+    "titles": {
+      "uk": "Дихання",
+      "en": "Breathe"
+    },
     "tagline": "Спокійне дихання за технікою — коробка, 4-7-8, когерентне, спокій",
+    "taglines": {
+      "uk": "Спокійне дихання за технікою — коробка, 4-7-8, когерентне, спокій",
+      "en": "Calm guided breathing — box, 4-7-8, coherent, calm"
+    },
     "glyph": "lucide:wind",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"3.5\"/>",
     "bg": "#0A1413",
     "fg": "#4FC2B3",
     "href": "./breathe/",
-    "version": "1.12",
+    "version": "1.14",
     "category": "wellness"
   },
   {
     "id": "actions",
     "title": "екшени",
+    "titles": {
+      "en": "actions",
+      "uk": "екшени"
+    },
     "tagline": "Стан CI в один тап",
+    "taglines": {
+      "en": "CI status, one tap away",
+      "uk": "Стан CI в один тап"
+    },
     "glyph": "lucide:activity",
     "art": "<path d=\"M4 12h4l2.5-6 3 12 2.5-6h4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
     "bg": "#0A0A0B",
     "fg": "#40C173",
     "href": "./actions/",
-    "version": "1.4",
+    "version": "1.7",
     "category": "tools"
   },
   {
     "id": "habits",
     "title": "Звички",
+    "titles": {
+      "en": "Habits",
+      "uk": "Звички"
+    },
     "tagline": "Трекер звичок — серії, календарний heatmap і повний офлайн; дані лишаються на пристрої",
+    "taglines": {
+      "en": "A habit tracker — streaks, a calendar heatmap and full offline; your data stays on the device",
+      "uk": "Трекер звичок — серії, календарний heatmap і повний офлайн; дані лишаються на пристрої"
+    },
     "glyph": "lucide:sprout",
     "art": "<rect x=\"4\" y=\"4\" width=\"4.5\" height=\"4.5\" rx=\"1.3\"/><rect x=\"10\" y=\"4\" width=\"4.5\" height=\"4.5\" rx=\"1.3\"/><rect x=\"16\" y=\"4\" width=\"4.5\" height=\"4.5\" rx=\"1.3\"/><rect x=\"4\" y=\"10\" width=\"4.5\" height=\"4.5\" rx=\"1.3\"/><rect x=\"10\" y=\"10\" width=\"4.5\" height=\"4.5\" rx=\"1.3\"/><rect x=\"16\" y=\"10\" width=\"4.5\" height=\"4.5\" rx=\"1.3\"/><rect x=\"4\" y=\"16\" width=\"4.5\" height=\"4.5\" rx=\"1.3\"/><rect x=\"10\" y=\"16\" width=\"4.5\" height=\"4.5\" rx=\"1.3\"/><rect x=\"16\" y=\"16\" width=\"4.5\" height=\"4.5\" rx=\"1.3\"/>",
     "bg": "#0d1512",
     "fg": "#10b981",
     "href": "./habits/",
-    "version": "1.10",
+    "version": "1.14",
     "category": "wellness"
   },
   {
     "id": "ambient",
     "title": "Звуки",
+    "titles": {
+      "uk": "Звуки",
+      "en": "Ambient"
+    },
     "tagline": "20 ambient-звуків для сну й фокусу — вода, погода, природа, тони, шум, машини — усе синтезується наживо, без файлів, офлайн",
+    "taglines": {
+      "uk": "20 ambient-звуків для сну й фокусу — вода, погода, природа, тони, шум, машини — усе синтезується наживо, без файлів, офлайн",
+      "en": "20 ambient sounds for sleep and focus — water, weather, nature, tones, noise, machines — all synthesised live, no files, offline"
+    },
     "glyph": "lucide:audio-lines",
     "art": "<line x1=\"5\" y1=\"10\" x2=\"5\" y2=\"14\"/><line x1=\"9.5\" y1=\"6\" x2=\"9.5\" y2=\"18\"/><line x1=\"14.5\" y1=\"8.5\" x2=\"14.5\" y2=\"15.5\"/><line x1=\"19\" y1=\"11\" x2=\"19\" y2=\"13\"/>",
     "bg": "#0E1120",
     "fg": "#A5B4FC",
     "href": "./ambient/",
-    "version": "1.11",
+    "version": "1.14",
     "category": "sound"
   },
   {
     "id": "quakes",
     "title": "Землетруси",
+    "titles": {
+      "uk": "Землетруси",
+      "en": "Earthquakes"
+    },
     "tagline": "Землетруси світу онлайн — магнітуда, місце, глибина на живому глобусі",
+    "taglines": {
+      "uk": "Землетруси світу онлайн — магнітуда, місце, глибина на живому глобусі",
+      "en": "Earthquakes worldwide, live — magnitude, place and depth on a spinning globe"
+    },
     "glyph": "lucide:waves",
     "art": "<path d=\"M2 12h3l2-6 3 14 3-10 2 4 2-2h3\"/>",
     "bg": "#0C0F14",
     "fg": "#E0463A",
     "href": "./quakes/",
-    "version": "1.16",
+    "version": "1.19",
     "category": "science"
   },
   {
     "id": "pwned",
     "title": "Зламано?",
+    "titles": {
+      "en": "Pwned?",
+      "uk": "Зламано?"
+    },
     "tagline": "Перевір, чи пароль у витоку — не надсилаючи його (k-анонімність)",
+    "taglines": {
+      "en": "Check if a password leaked — without ever sending it (k-anonymity)",
+      "uk": "Перевір, чи пароль у витоку — не надсилаючи його (k-анонімність)"
+    },
     "glyph": "lucide:shield-check",
     "art": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/><path d=\"m9 12 2 2 4-4\"/>",
     "bg": "#0A0A0B",
     "fg": "#4ADE80",
     "href": "./pwned/",
-    "version": "1.5",
+    "version": "1.9",
     "category": "tools"
   },
   {
     "id": "kalimba",
     "title": "Калімба",
+    "titles": {
+      "uk": "Калімба",
+      "en": "Kalimba"
+    },
     "tagline": "Калімба на 17 пелюсток на весь екран — грай горизонтально, перемикай лади й обирай із 6 різних голосів (класик, скринька, скло, марімба, дзвін, електро). Грай готові пісні (Аватар: «Листя з лози») або дай Потоку згенерувати мелодію (науково обґрунтований мелодичний пошук: консонанс, голосоведення, розв'язання). Кожна нота синтезується наживо, без файлів, офлайн.",
+    "taglines": {
+      "uk": "Калімба на 17 пелюсток на весь екран — грай горизонтально, перемикай лади й обирай із 6 різних голосів (класик, скринька, скло, марімба, дзвін, електро). Грай готові пісні (Аватар: «Листя з лози») або дай Потоку згенерувати мелодію (науково обґрунтований мелодичний пошук: консонанс, голосоведення, розв'язання). Кожна нота синтезується наживо, без файлів, офлайн.",
+      "en": "A full-screen 17-tine thumb piano — play in landscape, switch tunings, and pick from 6 distinct voices (classic, music box, glass, marimba, bell, electric). Play ready songs (Avatar: Leaves from the Vine) or let Flow auto-generate a melody (a research-backed melodic search: consonance, voice-leading, resolution). Every note synthesised live, no files, offline."
+    },
     "glyph": "lucide:piano",
     "art": "<rect x=\"4\" y=\"11\" width=\"16\" height=\"9\" rx=\"2.5\"/><line x1=\"7\" y1=\"13\" x2=\"7\" y2=\"7\"/><line x1=\"9.5\" y1=\"13\" x2=\"9.5\" y2=\"5\"/><line x1=\"12\" y1=\"13\" x2=\"12\" y2=\"3.5\"/><line x1=\"14.5\" y1=\"13\" x2=\"14.5\" y2=\"5\"/><line x1=\"17\" y1=\"13\" x2=\"17\" y2=\"7\"/>",
     "bg": "#1A1410",
     "fg": "#E0A94B",
     "href": "./kalimba/",
-    "version": "1.17",
+    "version": "1.20",
     "category": "sound"
   },
   {
     "id": "cam",
     "title": "Камера",
+    "titles": {
+      "en": "Camera",
+      "uk": "Камера"
+    },
     "tagline": "Кишенькова камера-консоль, напхана налаштуваннями — фільтри, експозиція, зум, ліхтарик, таймер, сітка, дзеркало, передня/задня та кадр 1:1 / 4:3 / повний — за одним квадратним видошукачем і великою кнопкою затвора. Знімки лишаються на пристрої, нічого не вивантажується.",
+    "taglines": {
+      "en": "A pocket camera console, loaded with controls — filters, exposure, zoom, torch, timer, grid, mirror, front/back and a 1:1 / 4:3 / full frame — behind a single square viewfinder and a big shutter. Capture stays on your device; nothing is uploaded.",
+      "uk": "Кишенькова камера-консоль, напхана налаштуваннями — фільтри, експозиція, зум, ліхтарик, таймер, сітка, дзеркало, передня/задня та кадр 1:1 / 4:3 / повний — за одним квадратним видошукачем і великою кнопкою затвора. Знімки лишаються на пристрої, нічого не вивантажується."
+    },
     "glyph": "lucide:camera",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"8.4\" opacity=\"0.24\"/>\n<circle cx=\"12\" cy=\"12\" r=\"4.6\"/>\n<circle cx=\"12\" cy=\"12\" r=\"1.7\" opacity=\"0.55\"/>",
     "bg": "#0B0B10",
     "fg": "#E7E7EA",
     "href": "./cam/",
-    "version": "1.10",
+    "version": "1.14",
     "category": "creative"
   },
   {
     "id": "cinema",
     "title": "Кіно",
+    "titles": {
+      "uk": "Кіно",
+      "en": "Cinema"
+    },
     "tagline": "Кіно — фільми суспільного надбання з Internet Archive: дивись просто в застосунку, продовжуй з того місця, де зупинився",
+    "taglines": {
+      "uk": "Кіно — фільми суспільного надбання з Internet Archive: дивись просто в застосунку, продовжуй з того місця, де зупинився",
+      "en": "Cinema — public-domain feature films from the Internet Archive: watch right in the app, pick up where you left off"
+    },
     "glyph": "lucide:clapperboard",
     "art": "<path d=\"M3.2 6.4 20.1 3.1a1.6 1.6 0 0 1 1.9 1.3l.5 2.6L4.6 10.6 3.2 6.4z\"/><path d=\"M2.4 12h19.2v7.3a1.7 1.7 0 0 1-1.7 1.7H4.1a1.7 1.7 0 0 1-1.7-1.7V12z\" opacity=\".55\"/><path d=\"m7.9 4.6 1.8 4.3-2.3.5-1.8-4.4zM13 3.6l1.8 4.3-2.3.5-1.8-4.4z\"/><path d=\"M10.2 14.4 15.6 17l-5.4 2.6z\"/>",
     "bg": "#0f0f12",
     "fg": "#f4b942",
     "href": "./cinema/",
-    "version": "1.11",
+    "version": "1.13",
     "category": "feeds"
   },
   {
     "id": "subclone",
     "title": "Клонер пультів",
+    "titles": {
+      "en": "Remote Cloner",
+      "uk": "Клонер пультів"
+    },
     "tagline": "Захопи та відтвори свої фіксовані-код пульти через HackRF",
+    "taglines": {
+      "en": "Capture and replay your own fixed-code remotes with a HackRF",
+      "uk": "Захопи та відтвори свої фіксовані-код пульти через HackRF"
+    },
     "glyph": "lucide:radio-receiver",
     "art": "<path d=\"M5 16v2\"/><path d=\"M19 16v2\"/><rect x=\"2\" y=\"8\" width=\"20\" height=\"8\" rx=\"2\"/><path d=\"M18 12h.01\"/>",
     "bg": "#0A0A0B",
     "fg": "#F0A868",
     "href": "./subclone/",
-    "version": "1.11",
+    "version": "1.14",
     "category": "hackrf"
   },
   {
     "id": "books",
     "title": "Книги",
+    "titles": {
+      "uk": "Книги",
+      "en": "Books"
+    },
     "tagline": "Каталог безкоштовних книг Project Gutenberg — 78 000+ творів, опис українською",
+    "taglines": {
+      "uk": "Каталог безкоштовних книг Project Gutenberg — 78 000+ творів, опис українською",
+      "en": "A catalog of free Project Gutenberg books — 78,000+ works, summaries translated"
+    },
     "glyph": "lucide:book-open",
     "art": "<path d=\"M12 7v14\" /><path d=\"M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z\" />",
     "bg": "#1c1917",
     "fg": "#d6b370",
     "href": "./books/",
-    "version": "1.12",
+    "version": "1.14",
     "category": "feeds"
   },
   {
     "id": "code",
     "title": "Код",
+    "titles": {
+      "en": "Code",
+      "uk": "Код"
+    },
     "tagline": "Зламай прихований кольоровий код",
+    "taglines": {
+      "en": "Crack the hidden colour code",
+      "uk": "Зламай прихований кольоровий код"
+    },
     "glyph": "lucide:puzzle",
     "art": "<path d=\"M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z\"/>",
     "bg": "#0B0A12",
     "fg": "#B98BEA",
     "href": "./code/",
-    "version": "1.10",
+    "version": "1.14",
     "category": "play"
   },
   {
     "id": "compass",
     "title": "Компас",
+    "titles": {
+      "uk": "Компас",
+      "en": "Compass"
+    },
     "tagline": "Компас, що показує ІСТИННУ північ, а не магнітну. Схилення рахується на пристрої за World Magnetic Model 2025 (NGA/NOAA) — 90 коефіцієнтів, звірених зі 100 еталонами NOAA. Без інтернету, без ключів",
+    "taglines": {
+      "uk": "Компас, що показує ІСТИННУ північ, а не магнітну. Схилення рахується на пристрої за World Magnetic Model 2025 (NGA/NOAA) — 90 коефіцієнтів, звірених зі 100 еталонами NOAA. Без інтернету, без ключів",
+      "en": "A compass that points at TRUE north, not magnetic. Declination is computed on-device from the World Magnetic Model 2025 (NGA/NOAA) — 90 coefficients, checked against NOAA's own 100 test points. No internet, no keys"
+    },
     "glyph": "lucide:compass",
     "art": "<path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\" /><circle cx=\"12\" cy=\"12\" r=\"10\" />",
     "bg": "#0B1220",
     "fg": "#7DD3FC",
     "href": "./compass/",
-    "version": "1.13",
+    "version": "1.17",
     "category": "tools"
   },
   {
     "id": "launches",
     "title": "Космічні запуски",
+    "titles": {
+      "uk": "Космічні запуски",
+      "en": "Space Launches"
+    },
     "tagline": "Зворотний відлік до найближчих космічних запусків",
+    "taglines": {
+      "uk": "Зворотний відлік до найближчих космічних запусків",
+      "en": "Countdown to the next rocket launches"
+    },
     "glyph": "lucide:rocket",
     "art": "<path d=\"M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z\"/><path d=\"m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z\"/><path d=\"M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0\"/><path d=\"M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5\"/>",
     "bg": "#0A0A0B",
     "fg": "#9F8CF6",
     "href": "./launches/",
-    "version": "1.13",
+    "version": "1.15",
     "category": "science"
   },
   {
     "id": "crypto",
     "title": "Крипто-тікер",
+    "titles": {
+      "uk": "Крипто-тікер",
+      "en": "Crypto Ticker"
+    },
     "tagline": "Живі ціни топ-криптовалют у реальному часі — WebSocket, без затримок",
+    "taglines": {
+      "uk": "Живі ціни топ-криптовалют у реальному часі — WebSocket, без затримок",
+      "en": "Live top-crypto prices in real time — WebSocket, no polling"
+    },
     "glyph": "lucide:candlestick-chart",
     "art": "<path d=\"M9 5v4\"/><rect width=\"4\" height=\"6\" x=\"7\" y=\"9\" rx=\"1\"/><path d=\"M9 15v2\"/><path d=\"M17 3v2\"/><rect width=\"4\" height=\"8\" x=\"15\" y=\"5\" rx=\"1\"/><path d=\"M17 13v3\"/><path d=\"M3 3v18h18\"/>",
     "bg": "#0A0A0B",
     "fg": "#F0A93B",
     "href": "./crypto/",
-    "version": "1.8",
+    "version": "1.10",
     "category": "money"
   },
   {
     "id": "rates",
     "title": "Курси валют",
+    "titles": {
+      "uk": "Курси валют",
+      "en": "Exchange rates"
+    },
     "tagline": "Курси валют і конвертер",
+    "taglines": {
+      "uk": "Курси валют і конвертер",
+      "en": "Currency rates and converter"
+    },
     "glyph": "lucide:coins",
     "art": "<path d=\"M8 14v.5\"/><path d=\"M8 9.5V9\"/><path d=\"M12 6.5v.5\"/><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 17v.5\"/>",
     "bg": "#1f2430",
     "fg": "#f0b429",
     "href": "./rates/",
-    "version": "1.12",
+    "version": "1.14",
     "category": "money"
   },
   {
     "id": "kp",
     "title": "Магнітні бурі",
+    "titles": {
+      "uk": "Магнітні бурі",
+      "en": "Geomagnetic Storms"
+    },
     "tagline": "Геомагнітна активність онлайн — індекс Kp, шкала штормів G, прогноз і сонячний вітер",
+    "taglines": {
+      "uk": "Геомагнітна активність онлайн — індекс Kp, шкала штормів G, прогноз і сонячний вітер",
+      "en": "Geomagnetic activity live — the Kp index, the G storm scale, forecast and solar wind"
+    },
     "glyph": "lucide:activity",
     "art": "<path d=\"M22 12h-4l-3 9L9 3l-3 9H2\"/>",
     "bg": "#120A08",
     "fg": "#E2932F",
     "href": "./kp/",
-    "version": "1.11",
+    "version": "1.13",
     "category": "science"
   },
   {
     "id": "pendulum",
     "title": "Маятник",
+    "titles": {
+      "en": "Pendulum",
+      "uk": "Маятник"
+    },
     "tagline": "Споглядальний маятник, що гойдається між протилежностями — один подих на кожен змах. Втягуєш думку — викидаєш; воля до життя і воля до смерті, створення і руйнування, усе і ніщо. Дихай разом із ним. Повністю на пристрої та офлайн.",
+    "taglines": {
+      "en": "A contemplative pendulum that swings between opposites — one breath to each swing. Draw a thought in, cast it out; will to life and will to death, creation and ruin, everything and nothing. Breathe with it. Entirely on your device and offline.",
+      "uk": "Споглядальний маятник, що гойдається між протилежностями — один подих на кожен змах. Втягуєш думку — викидаєш; воля до життя і воля до смерті, створення і руйнування, усе і ніщо. Дихай разом із ним. Повністю на пристрої та офлайн."
+    },
     "glyph": "lucide:infinity",
     "art": "<circle cx=\"12\" cy=\"4.4\" r=\"1.05\"/>\n<path d=\"M12 5 L16.7 17.2\"/>\n<circle cx=\"16.9\" cy=\"17.8\" r=\"2.6\"/>\n<path d=\"M12 5 L7.3 17.2\" opacity=\"0.34\"/>\n<path d=\"M6.6 19.4 Q12 22.2 17.4 19.4\" opacity=\"0.3\"/>",
     "bg": "#0A0A0F",
     "fg": "#9F8CF6",
     "href": "./pendulum/",
-    "version": "1.15",
+    "version": "1.17",
     "category": "esoterica"
   },
   {
     "id": "iss",
     "title": "МКС",
+    "titles": {
+      "uk": "МКС",
+      "en": "ISS"
+    },
     "tagline": "Де Міжнародна космічна станція просто зараз — її позиція наживо на глобусі, пропагована з орбітальних елементів (SGP4), з висотою, швидкістю та освітленням Сонцем. Тягне TLE один раз, далі працює офлайн.",
+    "taglines": {
+      "uk": "Де Міжнародна космічна станція просто зараз — її позиція наживо на глобусі, пропагована з орбітальних елементів (SGP4), з висотою, швидкістю та освітленням Сонцем. Тягне TLE один раз, далі працює офлайн.",
+      "en": "Where the International Space Station is right now — its position propagated live on the globe from orbital elements (SGP4), with altitude, speed and sunlight. Fetches the TLE once, then runs offline."
+    },
     "glyph": "lucide:satellite",
     "art": "<path d=\"M13 7 9 3 5 7l4 4\"/><path d=\"m17 11 4 4-4 4-4-4\"/><path d=\"m8 12 4 4 6-6-4-4Z\"/><path d=\"m16 8 3-3\"/><path d=\"M9 21a6 6 0 0 0-6-6\"/>",
     "bg": "#0A0F1E",
     "fg": "#7CC7FF",
     "href": "./iss/",
-    "version": "1.13",
+    "version": "1.16",
     "category": "science"
   },
   {
     "id": "hf",
     "title": "Нейронки",
+    "titles": {
+      "uk": "Нейронки",
+      "en": "Neural Nets"
+    },
     "tagline": "Каталог свіжих моделей і Spaces з Hugging Face — тип, завантаження, вподобання й опис українською",
+    "taglines": {
+      "uk": "Каталог свіжих моделей і Spaces з Hugging Face — тип, завантаження, вподобання й опис українською",
+      "en": "A catalog of fresh Hugging Face models & Spaces — kind, downloads, likes and a translated description"
+    },
     "glyph": "lucide:sparkles",
     "art": "<path d=\"M13 2c.35 4.2 2.95 6.8 7.15 7.15C15.95 9.5 13.35 12.1 13 16.3c-.35-4.2-2.95-6.8-7.15-7.15C10.05 8.8 12.65 6.2 13 2z\"/><path d=\"M6.5 14.5c.2 2.4 1.7 3.9 4.1 4.1-2.4.2-3.9 1.7-4.1 4.1-.2-2.4-1.7-3.9-4.1-4.1 2.4-.2 3.9-1.7 4.1-4.1z\"/>",
     "bg": "#1a1a1a",
     "fg": "#FFD21E",
     "href": "./hf/",
-    "version": "1.13",
+    "version": "1.15",
     "category": "feeds"
   },
   {
     "id": "retouch",
     "title": "Онови",
+    "titles": {
+      "en": "Retouch",
+      "uk": "Онови"
+    },
     "tagline": "Дай фото інструкцію — «додай сніг», «прибери дроти», «як олійна картина» — і ШІ перемалює зображення. Твоє фото завантажується на безкоштовний сервіс редагування лише коли ти застосовуєш зміну.",
+    "taglines": {
+      "en": "Give a photo an instruction — \"make it snowy\", \"remove the wires\", \"as an oil painting\" — and AI rewrites the image. Your photo is uploaded to a free, keyless editing service only when you apply an edit.",
+      "uk": "Дай фото інструкцію — «додай сніг», «прибери дроти», «як олійна картина» — і ШІ перемалює зображення. Твоє фото завантажується на безкоштовний сервіс редагування лише коли ти застосовуєш зміну."
+    },
     "glyph": "lucide:wand-sparkles",
     "art": "<path d=\"m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z\"/>\n<path d=\"m14 7 3 3\"/>\n<path d=\"M5 6v4\"/>\n<path d=\"M19 14v4\"/>\n<path d=\"M10 2v2\"/>\n<path d=\"M7 8H3\"/>\n<path d=\"M21 16h-4\"/>\n<path d=\"M11 3H9\"/>",
     "bg": "#0A0A0F",
     "fg": "#5EEAD4",
     "href": "./retouch/",
-    "version": "1.4",
+    "version": "1.8",
     "category": "creative"
   },
   {
     "id": "pins",
     "title": "піни",
+    "titles": {
+      "en": "pins",
+      "uk": "піни"
+    },
     "tagline": "Прямі посилання з Pinterest",
+    "taglines": {
+      "en": "Direct links out of Pinterest",
+      "uk": "Прямі посилання з Pinterest"
+    },
     "glyph": "lucide:link",
     "art": "<path d=\"M12 3a7 7 0 0 0-2.6 13.5c-.1-.9-.2-2.3.1-3.3l1.2-5s-.3-.6-.3-1.5c0-1.4.8-2.4 1.8-2.4.9 0 1.3.6 1.3 1.5 0 .9-.6 2.3-.9 3.6-.3 1 .6 1.9 1.6 1.9 1.9 0 3.2-2.4 3.2-5.2 0-2.2-1.5-3.8-4.1-3.8-3 0-4.9 2.2-4.9 4.6 0 .9.3 1.5.7 2 .2.2.2.3.1.6l-.2.8c-.1.3-.3.4-.5.3-1.4-.6-2-2.1-2-3.9C7.5 5.7 9.6 3 12 3Z\" fill=\"currentColor\"/>",
     "bg": "#0A0A0B",
     "fg": "#E8574B",
     "href": "./pins/",
-    "version": "1.4",
+    "version": "1.9",
     "category": "tools"
   },
   {
     "id": "pipette",
     "title": "Піпетка",
+    "titles": {
+      "en": "Eyedropper",
+      "uk": "Піпетка"
+    },
     "tagline": "Наведи камеру — і зчитай будь-який колір",
+    "taglines": {
+      "en": "Point the camera, read any colour",
+      "uk": "Наведи камеру — і зчитай будь-який колір"
+    },
     "glyph": "lucide:pipette",
     "art": "<path d=\"m2 22 1-1h3l9-9\"/><path d=\"M3 21v-3l9-9\"/><path d=\"m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z\"/>",
     "bg": "#0A0A0B",
     "fg": "#3FC7C0",
     "href": "./pipette/",
-    "version": "1.10",
+    "version": "1.13",
     "category": "tools"
   },
   {
     "id": "weather",
     "title": "Погода",
+    "titles": {
+      "uk": "Погода",
+      "en": "Weather"
+    },
     "tagline": "Погода зараз і прогноз",
+    "taglines": {
+      "uk": "Погода зараз і прогноз",
+      "en": "Current weather and forecast"
+    },
     "glyph": "lucide:cloud-sun",
     "art": "<path d=\"M13 22H7a4 4 0 0 1-.5-7.969A5.5 5.5 0 0 1 18 12.5a4.5 4.5 0 0 1-.5 8.977\"/>",
     "bg": "#1f2430",
     "fg": "#38bdf8",
     "href": "./weather/",
-    "version": "1.14",
+    "version": "1.16",
     "category": "science"
   },
   {
     "id": "flux",
     "title": "Потік",
+    "titles": {
+      "en": "Flux",
+      "uk": "Потік"
+    },
     "tagline": "Малюй рухом — твій жест лишає світло і звук",
+    "taglines": {
+      "en": "Paint with motion — your movement leaves light and sound",
+      "uk": "Малюй рухом — твій жест лишає світло і звук"
+    },
     "glyph": "lucide:sparkles",
     "art": "<path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\"/><path d=\"M20 3v4\"/><path d=\"M22 5h-4\"/><path d=\"M4 17v2\"/><path d=\"M5 18H3\"/>",
     "bg": "#0A0A0F",
     "fg": "#5FD0F0",
     "href": "./flux/",
-    "version": "1.8",
+    "version": "1.11",
     "category": "creative"
   },
   {
     "id": "btcflow",
     "title": "Потік біткоїна",
+    "titles": {
+      "en": "Bitcoin Flow",
+      "uk": "Потік біткоїна"
+    },
     "tagline": "Живий потік біткоїн-транзакцій — хто скільки переводить, у реальному часі",
+    "taglines": {
+      "en": "Live Bitcoin transaction flow — who moves how much, in real time",
+      "uk": "Живий потік біткоїн-транзакцій — хто скільки переводить, у реальному часі"
+    },
     "glyph": "lucide:bitcoin",
     "art": "<path d=\"M11.767 19.089c4.924.868 6.14-6.025 1.216-6.894m-1.216 6.894L5.86 18.047m5.908 1.042-.347 1.97m1.563-8.864c4.924.869 6.14-6.025 1.215-6.893m-1.215 6.893-3.94-.694m5.155-6.2L8.29 4.26m5.908 1.042.348-1.97M7.48 20.364l3.126-17.727\"/>",
     "bg": "#0A0A0B",
     "fg": "#F7931A",
     "href": "./btcflow/",
-    "version": "1.12",
+    "version": "1.14",
     "category": "money"
   },
   {
     "id": "pulse",
     "title": "Пульс Вікіпедії",
+    "titles": {
+      "en": "Wikipedia Pulse",
+      "uk": "Пульс Вікіпедії"
+    },
     "tagline": "Редагування Вікіпедії з усього світу в реальному часі — пульс людських знань",
+    "taglines": {
+      "en": "Wikipedia edits from around the world in real time — the pulse of human knowledge",
+      "uk": "Редагування Вікіпедії з усього світу в реальному часі — пульс людських знань"
+    },
     "glyph": "lucide:activity",
     "art": "<path d=\"M22 12h-4l-3 9L9 3l-3 9H2\"/>",
     "bg": "#0A0A0B",
     "fg": "#40C173",
     "href": "./pulse/",
-    "version": "1.11",
+    "version": "1.14",
     "category": "feeds"
   },
   {
     "id": "rave",
     "title": "Рейв",
+    "titles": {
+      "en": "Rave",
+      "uk": "Рейв"
+    },
     "tagline": "Техно-грув-бокс: плеєр із науково обґрунтованим генератором (евклідові ритми, синкопа, оцінка груву), повна матриця 22 голоси x 16 кроків, спільний FX-рек (drive, crush, delay, reverb, майстер-фільтр, swing) і збережені біти. Тіло — повноекранний 3D-спектр: десять сцен, які гортаєш, і кожна реагує на живий мікс. Синтез наживо легкими голосами, без семплів, офлайн.",
+    "taglines": {
+      "en": "A techno groove box: a player with a research-backed generator (Euclidean rhythms, syncopation, groove scoring), a full 22-voice x 16-step pad matrix, a shared FX rack (drive, crush, delay, reverb, master filter, swing) and saved beats. The body is a full-bleed 3D spectrum — ten scenes you swipe between, reacting to the live mix. Synthesised live with light voices, no samples, offline.",
+      "uk": "Техно-грув-бокс: плеєр із науково обґрунтованим генератором (евклідові ритми, синкопа, оцінка груву), повна матриця 22 голоси x 16 кроків, спільний FX-рек (drive, crush, delay, reverb, майстер-фільтр, swing) і збережені біти. Тіло — повноекранний 3D-спектр: десять сцен, які гортаєш, і кожна реагує на живий мікс. Синтез наживо легкими голосами, без семплів, офлайн."
+    },
     "glyph": "lucide:audio-waveform",
     "art": "<path d=\"M2 12 L6 12 L6 6 L10 6 L10 18 L14 18 L14 9 L18 9 L18 12 L22 12\"/>",
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.69",
+    "version": "1.73",
     "category": "sound"
   },
   {
     "id": "sigil",
     "title": "Сигіл",
+    "titles": {
+      "en": "Sigil",
+      "uk": "Сигіл"
+    },
     "tagline": "Викуй особистий сигіл із наміру — камеа Агриппи, накреслена живим металом",
+    "taglines": {
+      "en": "Forge a personal sigil from your intent — an Agrippa kamea traced in living metal",
+      "uk": "Викуй особистий сигіл із наміру — камеа Агриппи, накреслена живим металом"
+    },
     "glyph": "lucide:flame",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"9.5\"/><path d=\"M7.2 8 L14 6.8 L9.8 13 L16.2 12 L8.8 17\"/><circle cx=\"7.2\" cy=\"8\" r=\"1.5\"/>",
     "bg": "#0A0A0B",
     "fg": "#C6B6FF",
     "href": "./sigil/",
-    "version": "1.7",
+    "version": "1.10",
     "category": "esoterica"
   },
   {
     "id": "synesth",
     "title": "Синестезія",
+    "titles": {
+      "en": "Synesthesia",
+      "uk": "Синестезія"
+    },
     "tagline": "Наведи камеру — і почуй кольори",
+    "taglines": {
+      "en": "Point the camera and hear the colours",
+      "uk": "Наведи камеру — і почуй кольори"
+    },
     "glyph": "lucide:audio-lines",
     "art": "<path d=\"M2 10v3\"/><path d=\"M6 6v11\"/><path d=\"M10 3v18\"/><path d=\"M14 8v7\"/><path d=\"M18 5v13\"/><path d=\"M22 10v3\"/>",
     "bg": "#0A0A0F",
     "fg": "#9F8CF6",
     "href": "./synesth/",
-    "version": "1.12",
+    "version": "1.14",
     "category": "sound"
   },
   {
     "id": "sun",
     "title": "Сонячний компас",
+    "titles": {
+      "uk": "Сонячний компас",
+      "en": "Sun Compass"
+    },
     "tagline": "Де сонце зараз і о будь-якій годині — компас, азимут, золота година",
+    "taglines": {
+      "uk": "Де сонце зараз і о будь-якій годині — компас, азимут, золота година",
+      "en": "Where the sun is now and at any hour — compass, azimuth, golden hour"
+    },
     "glyph": "lucide:sun",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41\"/>",
     "bg": "#0A0A0B",
     "fg": "#F5B94D",
     "href": "./sun/",
-    "version": "1.36",
+    "version": "1.39",
     "category": "science"
   },
   {
     "id": "sopilka",
     "title": "Сопілка",
+    "titles": {
+      "uk": "Сопілка",
+      "en": "Sopilka"
+    },
     "tagline": "Українська сопілка-прима — діатонічна, 6 отворів, до-мажор. Аплікатура як на справжній: закриваєш отвори згори, ковзаєш пальцем — і нота тягнеться легато. Синтезується наживо, без семплів, офлайн",
+    "taglines": {
+      "uk": "Українська сопілка-прима — діатонічна, 6 отворів, до-мажор. Аплікатура як на справжній: закриваєш отвори згори, ковзаєш пальцем — і нота тягнеться легато. Синтезується наживо, без семплів, офлайн",
+      "en": "The Ukrainian sopilka — diatonic prima, six holes, C major. Real fingering: cover the holes from the top, slide a finger and the note glides legato. Synthesised live, no samples, offline"
+    },
     "glyph": "lucide:audio-lines",
     "art": "<path d=\"M2 10v3\" /><path d=\"M6 6v11\" /><path d=\"M10 3v18\" /><path d=\"M14 8v7\" /><path d=\"M18 5v13\" /><path d=\"M22 10v3\" />",
     "bg": "#231708",
     "fg": "#e8c874",
     "href": "./sopilka/",
-    "version": "1.10",
+    "version": "1.14",
     "category": "sound"
   },
   {
     "id": "wish",
     "title": "Список бажань",
+    "titles": {
+      "uk": "Список бажань",
+      "en": "Wishlist"
+    },
     "tagline": "Список бажань — кілька списків, ціни й пріоритети, повний офлайн; дані лишаються на пристрої",
+    "taglines": {
+      "uk": "Список бажань — кілька списків, ціни й пріоритети, повний офлайн; дані лишаються на пристрої",
+      "en": "A wishlist — multiple lists, prices and priorities, full offline; your data stays on the device"
+    },
     "glyph": "lucide:sparkles",
     "art": "<rect x=\"3\" y=\"8\" width=\"18\" height=\"4\" rx=\"1\"/><path d=\"M12 8v13\"/><path d=\"M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7\"/><path d=\"M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5\"/>",
     "bg": "#17111a",
     "fg": "#fb7185",
     "href": "./wish/",
-    "version": "1.6",
+    "version": "1.10",
     "category": "tools"
   },
   {
     "id": "compat",
     "title": "Сумісність",
+    "titles": {
+      "en": "Compatibility",
+      "uk": "Сумісність"
+    },
     "tagline": "Справжня астрологічна сумісність двох людей — порахована на пристрої за реальними положеннями Сонця, Місяця, Венери й Марса на дати народження (справжня ефемерида), а тоді оцінена як синастрія за п'ятьма осями. Без вигаданих чисел, повністю офлайн.",
+    "taglines": {
+      "en": "Real astrological compatibility between two people — computed on your device from the true positions of the Sun, Moon, Venus and Mars on your birth dates (a real ephemeris), then scored as a synastry across five axes. No made-up numbers, fully offline.",
+      "uk": "Справжня астрологічна сумісність двох людей — порахована на пристрої за реальними положеннями Сонця, Місяця, Венери й Марса на дати народження (справжня ефемерида), а тоді оцінена як синастрія за п'ятьма осями. Без вигаданих чисел, повністю офлайн."
+    },
     "glyph": "lucide:heart-handshake",
     "art": "<circle cx=\"9.4\" cy=\"12\" r=\"6.3\"/>\n<circle cx=\"14.6\" cy=\"12\" r=\"6.3\"/>",
     "bg": "#0A0A0F",
     "fg": "#9F8CF6",
     "href": "./compat/",
-    "version": "1.5",
+    "version": "1.8",
     "category": "esoterica"
   },
   {
     "id": "tarot",
     "title": "Таро",
+    "titles": {
+      "en": "Tarot",
+      "uk": "Таро"
+    },
     "tagline": "Витягни карти колоди Райдера-Вейта-Сміт для розкладу — карта дня або один із дев'яти розкладів: від швидкого трикартового до Вибору, Зірки, Піраміди душі зі старших арканів і повного Кельтського хреста. Кожен розклад просто пояснює, на що відповідає. Класичні ілюстрації 1909 року й канонічні значення, повністю на пристрої та офлайн.",
+    "taglines": {
+      "en": "Draw the Rider-Waite-Smith deck for a reading — a card of the day or one of nine spreads, from a quick three-card to the crossroads, the star, the Major-Arcana Soul Pyramid and the full Celtic Cross. Each spread says plainly what it answers. Classic 1909 imagery and canonical meanings, entirely on your device and offline.",
+      "uk": "Витягни карти колоди Райдера-Вейта-Сміт для розкладу — карта дня або один із дев'яти розкладів: від швидкого трикартового до Вибору, Зірки, Піраміди душі зі старших арканів і повного Кельтського хреста. Кожен розклад просто пояснює, на що відповідає. Класичні ілюстрації 1909 року й канонічні значення, повністю на пристрої та офлайн."
+    },
     "glyph": "lucide:sparkles",
     "art": "<g transform=\"rotate(-15 12 13)\"><rect x=\"4\" y=\"6.5\" width=\"9\" height=\"12.5\" rx=\"1.6\"/></g>\n<rect x=\"10.5\" y=\"5\" width=\"9\" height=\"14\" rx=\"1.7\"/>\n<path d=\"M15 9v3.4\"/>\n<path d=\"M13.3 10.7h3.4\"/>",
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./tarot/",
-    "version": "1.25",
+    "version": "1.29",
     "category": "esoterica"
   },
   {
     "id": "transit",
     "title": "Транзити",
+    "titles": {
+      "en": "Transits",
+      "uk": "Транзити"
+    },
     "tagline": "Справжні транзити до твоєї натальної карти — точна мить народження, доми і момент, коли аспект стає точним",
+    "taglines": {
+      "en": "Real transits to your natal chart — exact birth moment, houses, and the instant each aspect perfects",
+      "uk": "Справжні транзити до твоєї натальної карти — точна мить народження, доми і момент, коли аспект стає точним"
+    },
     "glyph": "lucide:orbit",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"5\"/><ellipse cx=\"12\" cy=\"12\" rx=\"10\" ry=\"3.6\" transform=\"rotate(-20 12 12)\"/>",
     "bg": "#0E0B1A",
     "fg": "#C0A9F5",
     "href": "./transit/",
-    "version": "1.17",
+    "version": "1.20",
     "category": "science"
   },
   {
     "id": "imagine",
     "title": "Уяви",
+    "titles": {
+      "en": "Imagine",
+      "uk": "Уяви"
+    },
     "tagline": "Введи опис — отримай зображення в точних пропорціях твого екрана й найвищій роздільності, яку дозволяє FLUX.2: шпалери саме під цей телефон. Ключ живе на нашому сервері, ніколи не в застосунку.",
+    "taglines": {
+      "en": "Type a prompt, get an image at your screen's exact proportions and the highest resolution FLUX.2 allows — a wallpaper made for this phone. The key lives on our server, never in the app.",
+      "uk": "Введи опис — отримай зображення в точних пропорціях твого екрана й найвищій роздільності, яку дозволяє FLUX.2: шпалери саме під цей телефон. Ключ живе на нашому сервері, ніколи не в застосунку."
+    },
     "glyph": "lucide:sparkles",
     "art": "<path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\"/>\n<path d=\"M20 3v4\"/>\n<path d=\"M22 5h-4\"/>\n<path d=\"M4 17v2\"/>\n<path d=\"M5 18H3\"/>",
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./imagine/",
-    "version": "1.11",
+    "version": "1.14",
     "category": "creative"
   },
   {
     "id": "frontier",
     "title": "Фронтир",
+    "titles": {
+      "uk": "Фронтир",
+      "en": "Frontier"
+    },
     "tagline": "Фронтир OSS — свіжі проривні проєкти з GitHub: мова, зорі, форки й опис українською",
+    "taglines": {
+      "uk": "Фронтир OSS — свіжі проривні проєкти з GitHub: мова, зорі, форки й опис українською",
+      "en": "OSS frontier — fresh breakthrough GitHub projects: language, stars, forks and a translated description"
+    },
     "glyph": "lucide:git-branch",
     "art": "<path d=\"M13.6 2.3c3.6 2.9 5.4 6.7 5.4 11.2L16.7 16H10l-2.3-2.5c0-4.5 1.8-8.3 5.5-11.2a.6.6 0 0 1 .4 0zM8.7 17.7 6 22l4.3-1.7zM17.3 17.7 20 22l-4.3-1.7z\"/>",
     "bg": "#0d1117",
     "fg": "#3fb950",
     "href": "./frontier/",
-    "version": "1.8",
+    "version": "1.10",
     "category": "feeds"
   },
   {
     "id": "handpan",
     "title": "Хендпан",
+    "titles": {
+      "en": "Handpan",
+      "uk": "Хендпан"
+    },
     "tagline": "Хендпан, на якому можна грати: удар по тон-полю дає солодкий гармонічний дзвін 1:2:3 (основна, октава, дуодецима), 10 налаштованих строїв і 5 голосів, Потік автоматично генерує медитативну лінію (науково обґрунтований мелодичний пошук — консонанс, голосоведення, розв'язання), запиши власні лупи ударами й тчи їх на сітці. Синтез наживо, без семплів, офлайн.",
+    "taglines": {
+      "en": "A playable handpan: strike the tone fields for the sweet 1:2:3 harmonic ring (fundamental, octave, twelfth), pick from 10 tuned scales and 5 voices, let Flow auto-generate a meditative line (a research-backed melodic search — consonance, voice-leading, resolution), record your own loops by striking, and weave them on a grid. Synthesised live, no samples, offline.",
+      "uk": "Хендпан, на якому можна грати: удар по тон-полю дає солодкий гармонічний дзвін 1:2:3 (основна, октава, дуодецима), 10 налаштованих строїв і 5 голосів, Потік автоматично генерує медитативну лінію (науково обґрунтований мелодичний пошук — консонанс, голосоведення, розв'язання), запиши власні лупи ударами й тчи їх на сітці. Синтез наживо, без семплів, офлайн."
+    },
     "glyph": "lucide:disc-3",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"9.3\"/><circle cx=\"12\" cy=\"12\" r=\"2.15\"/><circle cx=\"12\" cy=\"4.7\" r=\"1.15\"/><circle cx=\"18\" cy=\"9.1\" r=\"1.15\"/><circle cx=\"16.2\" cy=\"16.7\" r=\"1.15\"/><circle cx=\"7.8\" cy=\"16.7\" r=\"1.15\"/><circle cx=\"6\" cy=\"9.1\" r=\"1.15\"/>",
     "bg": "#0C1014",
     "fg": "#E0B24E",
     "href": "./handpan/",
-    "version": "1.21",
+    "version": "1.25",
     "category": "sound"
   },
   {
     "id": "onthisday",
     "title": "Цей день",
+    "titles": {
+      "uk": "Цей день",
+      "en": "On This Day"
+    },
     "tagline": "Що сталося в цей день — події, народження та свята з історії",
+    "taglines": {
+      "uk": "Що сталося в цей день — події, народження та свята з історії",
+      "en": "What happened on this day — events, births and holidays from history"
+    },
     "glyph": "lucide:history",
     "art": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/><path d=\"M12 7v5l4 2\"/>",
     "bg": "#14100A",
     "fg": "#D4A84B",
     "href": "./onthisday/",
-    "version": "1.13",
+    "version": "1.15",
     "category": "feeds"
   },
   {
     "id": "air",
     "title": "Якість повітря",
+    "titles": {
+      "en": "Air Quality",
+      "uk": "Якість повітря"
+    },
     "tagline": "Якість повітря наживо — європейський індекс, ключові забрудники та прогноз пилку",
+    "taglines": {
+      "en": "Live air quality — the European AQI, key pollutants and the pollen forecast",
+      "uk": "Якість повітря наживо — європейський індекс, ключові забрудники та прогноз пилку"
+    },
     "glyph": "lucide:wind",
     "art": "<path d=\"M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2\"/><path d=\"M9.6 4.6A2 2 0 1 1 11 8H2\"/><path d=\"M12.6 19.4A2 2 0 1 0 14 16H2\"/>",
     "bg": "#08120F",
     "fg": "#41C06F",
     "href": "./air/",
-    "version": "1.13",
+    "version": "1.16",
     "category": "science"
   },
   {
     "id": "apkforge",
     "title": "APK Forge",
+    "titles": {
+      "en": "APK Forge",
+      "uk": "APK Forge"
+    },
     "tagline": "Перетвори будь-який веб-застосунок на встановлюваний Android-APK — прямо тут, без сервера збірки. Введи URL і отримай підписаний WebView-APK з назвою та іконкою сайту, готовий до sideload.",
+    "taglines": {
+      "en": "Turn any web app into an installable Android APK — right here, no build server. Enter a URL, get a signed WebView-wrapper APK with the site's name and icon, ready to sideload.",
+      "uk": "Перетвори будь-який веб-застосунок на встановлюваний Android-APK — прямо тут, без сервера збірки. Введи URL і отримай підписаний WebView-APK з назвою та іконкою сайту, готовий до sideload."
+    },
     "glyph": "lucide:package",
     "art": "<path d=\"m7.5 4.27 9 5.15\"/>\n<path d=\"M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z\"/>\n<path d=\"m3.3 7 8.7 5 8.7-5\"/>\n<path d=\"M12 22V12\"/>",
     "bg": "#0A0A0F",
     "fg": "#7C3AED",
     "href": "./apkforge/",
-    "version": "1.0",
+    "version": "1.5",
     "category": "tools"
   },
   {
     "id": "dou",
     "title": "DOU · бронювання",
+    "titles": {
+      "uk": "DOU · бронювання",
+      "en": "DOU · deferment"
+    },
     "tagline": "Вакансії з бронюванням від мобілізації",
+    "taglines": {
+      "uk": "Вакансії з бронюванням від мобілізації",
+      "en": "Jobs with deferment from mobilization"
+    },
     "glyph": "lucide:user",
     "art": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/><path d=\"m9 12 2 2 4-4\"/>",
     "bg": "#1f2430",
     "fg": "#7ee0a6",
     "href": "./dou/",
-    "version": "1.15",
+    "version": "1.17",
     "category": "feeds"
   },
   {
     "id": "drift",
     "title": "Drift",
+    "titles": {
+      "en": "Drift",
+      "uk": "Drift"
+    },
     "tagline": "Генеративний ембієнт-двигун — нескінченні, неповторювані, математично консонансні треки, що складаються наживо в браузері. Десять різних світів (глибокий космічний дрон, теплий плівковий луп, кришталеве скло, океанічний свел, дзен-щипок, космічний хор, тампура в чистому строї, неокласичні струнні, лоу-фай пил, лідійське мерехтіння), десять змінних звукових пакетів і три макроси. Консонанс — через прості цілочисельні співвідношення, акорди ведуться голосами задля «утримуваного дрону», а копрайм-лупи Браяна Іно роблять так, що воно ніколи не повторюється. Усе синтезовано, без файлів, офлайн.",
+    "taglines": {
+      "en": "A generative ambient engine — endless, never-repeating, mathematically consonant tracks composed live in the browser. Ten distinct worlds (deep-space drone, warm tape loop, crystalline glass, oceanic swell, zen pluck, cosmic choir, just-intoned tanpura, neo-classical strings, lo-fi dust, Lydian shimmer), ten swappable sound-packs, and three macros. Consonance by small-integer ratios, chords voice-led for a held-drone glue, Brian-Eno coprime loops so it never loops. All synthesised, no files, offline.",
+      "uk": "Генеративний ембієнт-двигун — нескінченні, неповторювані, математично консонансні треки, що складаються наживо в браузері. Десять різних світів (глибокий космічний дрон, теплий плівковий луп, кришталеве скло, океанічний свел, дзен-щипок, космічний хор, тампура в чистому строї, неокласичні струнні, лоу-фай пил, лідійське мерехтіння), десять змінних звукових пакетів і три макроси. Консонанс — через прості цілочисельні співвідношення, акорди ведуться голосами задля «утримуваного дрону», а копрайм-лупи Браяна Іно роблять так, що воно ніколи не повторюється. Усе синтезовано, без файлів, офлайн."
+    },
     "glyph": "lucide:audio-waveform",
     "art": "<path d=\"M2 9 C5 5.5, 7 5.5, 10 9 S15 12.5, 18 9 S21 5.5, 22 7\"/><path d=\"M2 13 C5 9.5, 7 9.5, 10 13 S15 16.5, 18 13 S21 9.5, 22 11\"/><path d=\"M2 17 C5 13.5, 7 13.5, 10 17 S15 20.5, 18 17 S21 13.5, 22 15\"/>",
     "bg": "#0E1022",
     "fg": "#8B7CF6",
     "href": "./drift/",
-    "version": "1.5",
+    "version": "1.8",
     "category": "sound"
   },
   {
     "id": "fmradio",
     "title": "FM-радіо",
+    "titles": {
+      "en": "FM Radio",
+      "uk": "FM-радіо"
+    },
     "tagline": "Живе FM, декодоване на пристрої з твого HackRF",
+    "taglines": {
+      "en": "Live FM, decoded on-device from your HackRF",
+      "uk": "Живе FM, декодоване на пристрої з твого HackRF"
+    },
     "glyph": "lucide:radio",
     "art": "<path d=\"M4.9 16.1C1 12.2 1 5.8 4.9 1.9\"/><path d=\"M7.8 4.7a6.14 6.14 0 0 0-.8 7.5\"/><circle cx=\"12\" cy=\"9\" r=\"2\"/><path d=\"M16.2 4.8c2 2 2.26 5.11 .8 7.47\"/><path d=\"M19.1 1.9c3.9 3.9 3.9 10.3 0 14.2\"/><path d=\"M9.5 18h5\"/><path d=\"m8 22 4-11 4 11\"/>",
     "bg": "#0A0A0B",
     "fg": "#B7ADEB",
     "href": "./fmradio/",
-    "version": "1.10",
+    "version": "1.14",
     "category": "hackrf"
   },
   {
     "id": "ruler",
     "title": "GPS-лінійка",
+    "titles": {
+      "uk": "GPS-лінійка",
+      "en": "GPS Ruler"
+    },
     "tagline": "GPS-лінійка — вимірюй відстані й площі ламаною по координатах: сегменти, загальна довжина, площа, точність GPS",
+    "taglines": {
+      "uk": "GPS-лінійка — вимірюй відстані й площі ламаною по координатах: сегменти, загальна довжина, площа, точність GPS",
+      "en": "GPS ruler — measure distances and areas as a coordinate polyline: segments, total length, area, GPS accuracy"
+    },
     "glyph": "lucide:ruler",
     "art": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2\"/><path d=\"m11.5 9.5 2-2\"/><path d=\"m8.5 6.5 2-2\"/><path d=\"m17.5 15.5 2-2\"/>",
     "bg": "#1f2430",
     "fg": "#34d399",
     "href": "./ruler/",
-    "version": "1.27",
+    "version": "1.30",
     "category": "tools"
   },
   {
     "id": "gsmscan",
     "title": "GSM-сканер",
+    "titles": {
+      "en": "GSM Scanner",
+      "uk": "GSM-сканер"
+    },
     "tagline": "Скануй GSM-діапазон навколо тебе своїм HackRF",
+    "taglines": {
+      "en": "Sweep the GSM band around you with your HackRF",
+      "uk": "Скануй GSM-діапазон навколо тебе своїм HackRF"
+    },
     "glyph": "lucide:antenna",
     "art": "<path d=\"M2 12 7 2\"/><path d=\"m7 12 5-10\"/><path d=\"m12 12 5-10\"/><path d=\"m17 12 5-10\"/><path d=\"M4.5 7h15\"/><path d=\"M12 16v6\"/>",
     "bg": "#0A0A0B",
     "fg": "#93C5FD",
     "href": "./gsmscan/",
-    "version": "1.7",
+    "version": "1.11",
     "category": "hackrf"
   },
   {
     "id": "hn",
     "title": "Hacker News",
+    "titles": {
+      "uk": "Hacker News",
+      "en": "Hacker News"
+    },
     "tagline": "Головна Hacker News",
+    "taglines": {
+      "uk": "Головна Hacker News",
+      "en": "Hacker News front page"
+    },
     "glyph": "lucide:flame",
     "art": "<path d=\"M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z\"/>",
     "bg": "#1f2430",
     "fg": "#ff6600",
     "href": "./hn/",
-    "version": "1.16",
+    "version": "1.18",
     "category": "feeds"
   },
   {
     "id": "iptv",
     "title": "IPTV",
+    "titles": {
+      "uk": "IPTV",
+      "en": "IPTV"
+    },
     "tagline": "Прямий ефір публічних IPTV-каналів зі списку iptv-org — за країнами й категоріями, з плеєром",
+    "taglines": {
+      "uk": "Прямий ефір публічних IPTV-каналів зі списку iptv-org — за країнами й категоріями, з плеєром",
+      "en": "Live public IPTV channels from the iptv-org index — by country and category, with a player"
+    },
     "glyph": "lucide:tv",
     "art": "<path d=\"M4 5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H4zm6.2 3.1 4.6 2.9-4.6 2.9V8.1z\"/><path d=\"M8 20h8v1.4H8z\"/>",
     "bg": "#141414",
     "fg": "#ef4444",
     "href": "./iptv/",
-    "version": "1.9",
+    "version": "1.12",
     "category": "feeds"
   },
   {
     "id": "lorawatch",
     "title": "LoRa Watch",
+    "titles": {
+      "en": "LoRa Watch",
+      "uk": "LoRa Watch"
+    },
     "tagline": "Дивись і декодуй LoRa у діапазоні 868 МГц своїм HackRF",
+    "taglines": {
+      "en": "See and decode LoRa in the 868 MHz band with your HackRF",
+      "uk": "Дивись і декодуй LoRa у діапазоні 868 МГц своїм HackRF"
+    },
     "glyph": "lucide:radio",
     "art": "<path d=\"M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\"/><path d=\"M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\"/><path d=\"M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\"/>",
     "bg": "#0A0A0B",
     "fg": "#7FD6A8",
     "href": "./lorawatch/",
-    "version": "1.6",
+    "version": "1.10",
     "category": "hackrf"
   },
   {
     "id": "nova",
     "title": "nova",
+    "titles": {
+      "en": "nova",
+      "uk": "nova"
+    },
     "tagline": "Підіймай недооцінених розробників",
+    "taglines": {
+      "en": "Lift up underrated developers",
+      "uk": "Підіймай недооцінених розробників"
+    },
     "glyph": "lucide:sparkles",
     "art": "<g transform=\"translate(-1.8 3) scale(0.78)\" stroke-width=\"2.69\"><path d=\"M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C4 2 3 2 3 2c-.28 1.15-.28 2.35 0 3.5A5.403 5.403 0 0 0 2 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4\"/><path d=\"M9 18c-4.51 2-5-2-7-2\"/></g><path d=\"M18 1.5 L18.94 4.21 L21.8 4.26 L19.52 5.99 L20.35 8.74 L18 7.1 L15.65 8.74 L16.48 5.99 L14.2 4.26 L17.06 4.21 Z\"/>",
     "bg": "#0A0A0B",
     "fg": "#9F8CF6",
     "href": "./nova/",
-    "version": "1.12",
+    "version": "1.16",
     "category": "feeds"
   },
   {
     "id": "qr",
     "title": "QR-сканер",
+    "titles": {
+      "en": "QR Scanner",
+      "uk": "QR-сканер"
+    },
     "tagline": "Скануй QR і бач, куди веде посилання — хост, повний URL і вердикт безпеки — ще до того, як тапнеш. Ловить прийоми квішингу: скорочені посилання, схожі (гомографні) домени, приховані справжні хости, незахищені коди й коди, що виконують дію. Задня камера, на пристрої, офлайн; працює з нативним сканером або вбудованим резервним.",
+    "taglines": {
+      "en": "Scan a QR and see where the link goes — the host, the full URL and a safety verdict — before you ever tap it. Catches quishing tricks: shortened links, look-alike (homograph) domains, hidden real hosts, insecure and code-running codes. Rear camera, on-device, offline; works with the native scanner or a bundled fallback.",
+      "uk": "Скануй QR і бач, куди веде посилання — хост, повний URL і вердикт безпеки — ще до того, як тапнеш. Ловить прийоми квішингу: скорочені посилання, схожі (гомографні) домени, приховані справжні хости, незахищені коди й коди, що виконують дію. Задня камера, на пристрої, офлайн; працює з нативним сканером або вбудованим резервним."
+    },
     "glyph": "lucide:scan-line",
     "art": "<path d=\"M3 7V5a2 2 0 0 1 2-2h2\"/>\n<path d=\"M17 3h2a2 2 0 0 1 2 2v2\"/>\n<path d=\"M21 17v2a2 2 0 0 1-2 2h-2\"/>\n<path d=\"M7 21H5a2 2 0 0 1-2-2v-2\"/>\n<path d=\"M7 12h10\"/>",
     "bg": "#0A0A0F",
     "fg": "#34D399",
     "href": "./qr/",
-    "version": "1.6",
+    "version": "1.8",
     "category": "tools"
   },
   {
     "id": "reel",
     "title": "Reel",
+    "titles": {
+      "en": "Reel",
+      "uk": "Reel"
+    },
     "tagline": "Встав будь-який URL сторінки — і кожне відео на ній стає повноекранною стрічкою, що гортається сама; наступні сторінки підвантажуються, поки ти свайпаєш.",
+    "taglines": {
+      "en": "Paste any page URL and every video on it becomes a full-screen, auto-scrolling reel — the next pages load themselves as you swipe.",
+      "uk": "Встав будь-який URL сторінки — і кожне відео на ній стає повноекранною стрічкою, що гортається сама; наступні сторінки підвантажуються, поки ти свайпаєш."
+    },
     "glyph": "lucide:clapperboard",
     "art": "<path d=\"M9 6.3v11.4a1 1 0 0 0 1.53.85l9-5.7a1 1 0 0 0 0-1.7l-9-5.7A1 1 0 0 0 9 6.3z\"/>",
     "bg": "#0B0B0D",
     "fg": "#ECECEE",
     "href": "./reel/",
-    "version": "1.29",
+    "version": "1.33",
     "category": "feeds"
   },
   {
     "id": "v2m",
     "title": "V2 Плеєр",
+    "titles": {
+      "en": "V2 Player",
+      "uk": "V2 Плеєр"
+    },
     "tagline": "Плеєр чіптюнів Farbrausch V2 (.v2m) — демосценний синтезатор, що вміщує цілі композиції в кілька кілобайтів. Магазин читає архів modland V2 наживо: трек зазвичай 20–60 КБ, у десятки разів менше за ту саму музику в MP3, тому качається миттєво й лишається назавжди. Синтезатор V2 працює в браузері як власноруч зібраний WebAssembly-модуль, що рендерить PCM на AudioWorklet; плеєр малює власні байти треку в 3D. Фонове відтворення з керуванням на локскріні. Офлайн.",
+    "taglines": {
+      "en": "A player for Farbrausch V2 (.v2m) chiptunes — the demoscene synth that packs whole songs into a few kilobytes. The store reads the modland V2 archive live: a tune is typically 20–60 KB, tens of times smaller than the same music as an MP3, so it downloads instantly and stays for good. The V2 synthesizer runs in the browser as a hand-built WebAssembly module rendering PCM on an AudioWorklet; the player draws the tune's own bytes in 3D. Background playback with lock-screen controls. Offline.",
+      "uk": "Плеєр чіптюнів Farbrausch V2 (.v2m) — демосценний синтезатор, що вміщує цілі композиції в кілька кілобайтів. Магазин читає архів modland V2 наживо: трек зазвичай 20–60 КБ, у десятки разів менше за ту саму музику в MP3, тому качається миттєво й лишається назавжди. Синтезатор V2 працює в браузері як власноруч зібраний WebAssembly-модуль, що рендерить PCM на AudioWorklet; плеєр малює власні байти треку в 3D. Фонове відтворення з керуванням на локскріні. Офлайн."
+    },
     "glyph": "lucide:disc-3",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M6 12c0-1.657.672-3.157 1.757-4.243\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/><path d=\"M18 12c0 1.657-.672 3.157-1.757 4.243\"/>",
     "bg": "#0B0B10",
     "fg": "#C4B5FD",
     "href": "./v2m/",
-    "version": "1.22",
+    "version": "1.26",
     "category": "sound"
   }
 ]

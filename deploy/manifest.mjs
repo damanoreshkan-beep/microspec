@@ -22,14 +22,23 @@ export async function buildManifest() {
     const spec = await readJson(`apps/${a.name}/spec.json`);
     const i18n = await readLocales(`apps/${a.name}`);
     const d = i18n.uk || i18n.en || {};
+    // Every OTHER string in the farm has en+uk parity — the preflight gate fails a build that drops one.
+    // The launcher was the exception, and it is the farm's front door: one title was baked per app here,
+    // so an English store listed sixty Ukrainian names under English chrome. The tile text is app-authored
+    // and therefore cannot live in the store's own dict, so the manifest carries BOTH and the view picks.
+    const byLocale = (key) => Object.fromEntries(
+      Object.entries(i18n).map(([l, dict]) => [l, dict?.[key]]).filter(([, v]) => v),
+    );
     const brand = (await has(`apps/${a.name}/brand.json`)) ? await readJson(`apps/${a.name}/brand.json`) : { bg: "#1f2430", fg: "#a78bfa" };
     // The app's REAL icon paths (lucide-stroke, inheriting stroke → theme-adaptive in the store tile). `glyph`
     // stays as a fallback for any app without a brand.svg.
     const art = (await has(`apps/${a.name}/brand.svg`)) ? (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim() : "";
     apps.push({
       id: a.name,
-      title: d.title || a.name,
+      title: d.title || a.name,                  // the fallback the view falls back TO (uk-first, unchanged)
+      titles: byLocale("title"),
       tagline: d.profTagline || "",
+      taglines: byLocale("profTagline"),
       glyph: spec.profile?.icon || spec.tabs?.[0]?.icon || "lucide:box",
       art,
       bg: brand.bg,

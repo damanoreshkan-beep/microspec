@@ -19,7 +19,7 @@ import { T } from "/_rt/i18n.js";
 import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
-import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
+import { useTouchDeck, useKeyboardPad, keyboardOnly, PAD } from "/_rt/dpad.js";
 import { SCRW, SCRH, S, digits, betterRun } from "/_rt/brick.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
@@ -162,7 +162,7 @@ export function brick(props) {
      synthesised by .click() or by Enter carries 0, one a pointer caused carries at least 1.
      It also keeps the gate honest — its synthetic pointerdown has no coordinates, so
      elementFromPoint never resolves a key and the click is the only thing that runs. */
-  const kb = (fn) => (e) => { if (!e.detail) fn(); };
+  const kb = keyboardOnly;
 
   const dpadKey = (bit, icon, label) => html`
     <button class=${key("bg-base-100 w-full h-full")} data-bit=${bit} data-haptic="bump"

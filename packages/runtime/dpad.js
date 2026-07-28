@@ -20,6 +20,17 @@
 import { useRef, useEffect, useCallback } from "preact/hooks";
 import { haptic } from "./sensors.js";
 
+/* Which controls a pointer gesture has just handled. A key can be activated two ways — a finger
+   (the deck, by position) and a click (keyboard, assistive technology, a synthetic tap) — and
+   without a record of the first, a real tap fires both and the sound toggles twice. Kept module-
+   level and weak so it costs nothing and holds no element alive. */
+const pointered = new WeakMap();
+export const markPointer = (el) => { if (el) pointered.set(el, Date.now()); };
+export const fromPointer = (el, within = 500) => !!el && Date.now() - (pointered.get(el) ?? -Infinity) < within;
+
+/** The activation guard every app's onClick should use: keyboard and AT only. */
+export const keyboardOnly = (fn) => (e) => { if (!e.detail && !fromPointer(e.currentTarget)) fn(e); };
+
 /** Mirrored in tools/wasm/brick/game.c and packages/runtime/brick.js. */
 export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16 };
 
@@ -90,9 +101,14 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
     if (el.hasAttribute("data-latch")) el.setAttribute("aria-pressed", latched.current.has(el) ? "true" : "false");
     if (stay) pressed.current.add(el); else pressed.current.delete(el);
   };
+  /* Position first, TARGET second. Resolving by position is what makes sliding work; but a
+     synthetic pointerdown carries no coordinates, so elementFromPoint answers with whatever sits
+     at 0,0 and the deck sees nothing at all. That is every assistive-technology activation and
+     every tap the gate makes — which is how a latch that works under a thumb can fail a test that
+     is right. Fall back to the element the event was dispatched on. */
   const at = (e) => {
-    const hit = document.elementFromPoint(e.clientX, e.clientY);
-    return hit?.closest?.("[data-bit],[data-act]") || null;
+    const hit = (e.clientX || e.clientY) ? document.elementFromPoint(e.clientX, e.clientY) : null;
+    return hit?.closest?.("[data-bit],[data-act]") || e.target?.closest?.("[data-bit],[data-act]") || null;
   };
 
   const release = useCallback((id) => {
@@ -134,6 +150,7 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
     onPointerMove: (e) => { if (e.buttons || e.pointerType === "touch") move(e, false); },
     onPointerUp: (e) => {
       const el = held.current.get(e.pointerId);
+      markPointer(el);
       if (el?.hasAttribute("data-act")) onAct?.(el.getAttribute("data-act"), el);
       /* A LATCH key (the run button) holds itself on a double tap and lets go on the next one —
          a platformer asks you to hold run for minutes at a time, and a thumb parked on B is a

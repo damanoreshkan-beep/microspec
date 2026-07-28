@@ -17,7 +17,7 @@ import { T } from "/_rt/i18n.js";
 import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
-import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
+import { useTouchDeck, useKeyboardPad, keyboardOnly, PAD } from "/_rt/dpad.js";
 import { SCRW, SCRH, S, IN, digits, betterRun } from "/_rt/hunt.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
@@ -55,8 +55,8 @@ export function hunt(props) {
     } else if (name === "start") restartRef.current?.();
     else if (name === "records") A.screen.set("records");
   }, [A]);
-  const { mask, deckProps, pulse } = useTouchDeck({ onAct: act });
-  useKeyboardPad(mask, act);
+  const { mask, deckProps, pulse, setKeys } = useTouchDeck({ onAct: act });
+  useKeyboardPad(setKeys, act);
 
   useEffect(() => {
     let live = true, raf = 0;
@@ -129,7 +129,7 @@ export function hunt(props) {
 
   const key = (extra = "") =>
     `sf-raised sf-press active:sf-pressed rounded-full grid place-items-center select-none bg-base-100 ${extra}`;
-  const kb = (fn) => (e) => { if (!e.detail) fn(); };   // keyboard/AT only — the deck owns pointers
+  const kb = keyboardOnly;   // keyboard/AT only — the deck owns anything a pointer touched
 
   const dirKey = (bit, icon, label) => html`
     <button class=${key("w-full h-full")} data-bit=${bit} data-haptic="bump"

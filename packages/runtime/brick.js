@@ -1,0 +1,146 @@
+// brick — the pure half of the handheld: geometry, the light model, the LCD material.
+//
+// The engine (apps/brick/assets/brick.wasm) simulates and knows nothing about pixels; the
+// renderer (apps/brick/render.js) draws and owns no numbers. Everything both of them agree
+// on lives here, unit-tested in runtime_test.js, so a constant can never drift between the
+// C side, the renderer, the input module and the e2e.
+//
+// Runtime-internal imports must be RELATIVE — this file has none, and wants none.
+
+/* ── geometry ─────────────────────────────────────────────────────────────────────────
+   The internal buffer is NES-sized. It is scaled up by CSS, never rendered at device
+   resolution: on the reference phone the LCD is ~200×180 CSS px at DPR 3.5 = 700×630
+   physical, and rasterising 700×630 to then draw 16-px tiles into it would cost 7× the
+   fill for a blurrier picture. Render small, scale with `image-rendering: pixelated`. */
+export const TILE = 18;              // the vendored CC0 art is 18px (apps/brick/assets/NOTICE.md)
+export const SCRW = 288;
+export const SCRH = 270;
+export const ROWS = 15;
+export const COLS = SCRW / TILE;          // 16 columns on screen
+
+/* ── the ABI, in one place ───────────────────────────────────────────────────────────
+   Mirrored in tools/wasm/brick/game.c. Two copies of a bitmask is one bitmask and one
+   bug, so if you add a bit, add it in both and add a test below. */
+export const IN = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16 };
+export const SFX = { JUMP: 1, COIN: 2, STOMP: 4, BRICK: 8, BUMP: 16, DEATH: 32 };
+export const S = {
+  FRAME: 0, SCORE: 1, COINS: 2, DIST: 3, CAMX: 4, PX: 5, PY: 6,
+  PSTATE: 7, PDIR: 8, DEAD: 9, SFX: 10, DLN: 11, GROUND: 12, COUNT: 13,
+};
+export const T = {
+  EMPTY: 0x00, COIN: 0x01, BUSH: 0x02, HILL: 0x03, CLOUD: 0x04,
+  SOLID: 0x10, GROUND: 0x10, DIRT: 0x11, BRICK: 0x12, QUESTION: 0x13, USED: 0x14,
+  PIPE_TOP: 0x15, PIPE_BOD: 0x16, STONE: 0x19,
+};
+export const K = { PLAYER: 0, WALKER: 1, HOPPER: 2, POP: 3, DEBRIS: 4 };
+export const SPRITE = 0x100;              // display-list ids at or above this are sprites
+
+/* ── the light ────────────────────────────────────────────────────────────────────────
+   ONE light for the whole app, and it is the farm's. theme.css puts `--nm-dark` at +d,+d
+   and `--nm-light` at −d,−d, i.e. the source is upper-left at 45°. The console is the page
+   extruded under that light; the LCD is a recess in the console; and the tiles inside the
+   game carry the same bevel at pixel scale. That is what makes the game read as part of
+   the object rather than as a picture pasted onto it. */
+export const LIGHT = Object.freeze({ x: -1, y: -1 });
+
+/* ── the LCD material ─────────────────────────────────────────────────────────────────
+   A passive-matrix LCD has no colours — it has a backplate and a polariser, and a segment
+   is only ever more or less opaque. So the game's whole palette is five DENSITIES of one
+   ink, which is why the volume below is physical rather than painted: a lit face is a
+   THINNER segment and a shaded face a DENSER one, exactly as a real panel would show it. */
+export const LCD = Object.freeze({
+  plate: "#b4bc96",                       // reflective olive backplate
+  plateLight: "#c3c9a6",                  // …under the polariser's brighter corner
+  ink: "#23281c",
+  grid: 0.09,                             // unlit segment lattice, always faintly visible
+  ghost: 0.12,                            // previous frame — passive-matrix persistence
+  sheen: 0.06,                            // polariser, a diagonal wash
+});
+
+/* Five ink densities: 0 is bare plate, 4 is a fully driven segment. Anything drawn in the
+   game picks a level, then the light model shifts it per face. */
+export const INK = Object.freeze([0, 0.16, 0.34, 0.58, 0.86]);
+
+/** Clamp a density level into the ramp. */
+export const clampLevel = (l) => (l < 0 ? 0 : l > INK.length - 1 ? INK.length - 1 : l | 0);
+
+/**
+ * The light model, in LCD terms. A face pointing at the light is driven LESS (it reads as
+ * highlight against the plate); a face pointing away is driven MORE. `front` is the flat
+ * face and never shifts, which is what keeps a tile's identity readable at 16 px.
+ */
+export const FACE = Object.freeze({ top: -1, left: -1, front: 0, right: 1, bottom: 1 });
+export function lit(level, face = "front") {
+  return INK[clampLevel(level + (FACE[face] ?? 0))];
+}
+
+/**
+ * Z-slice offsets for an extruded object, stacked TOWARD the light so the faces you see are
+ * the lit ones. Index 0 is the deepest slice and the last is the top — draw them in order
+ * and the silhouette grows up-left, which is the same direction `--nm-light` throws.
+ * Reserved for objects that ARE boxes (blocks, pipes, coins); a 16-px enemy stacked this way
+ * turns its own outline into noise.
+ */
+export function sliceOffsets(n) {
+  const out = [];
+  for (let i = 0; i < n; i++) out.push({ dx: LIGHT.x * i, dy: LIGHT.y * i });
+  return out;
+}
+
+/* A contact shadow is what actually says "this sprite is in FRONT of that wall". Hard edged
+   and small: a blurred shadow at 256×240 is four muddy pixels, not depth. */
+export const SHADOW = Object.freeze({ dx: 2, dy: 2, alpha: 0.28 });
+
+/**
+ * Parallax: how far a background layer has moved for a given camera position. Depth 0 is
+ * infinitely far (never moves), 1 is the play plane. The result is INTEGER — a fractional
+ * offset resamples the layer and turns crisp pixel art into porridge.
+ */
+export function parallaxX(camx, depth) {
+  return Math.round(camx * depth) | 0;
+}
+export const LAYERS = Object.freeze([0.15, 0.35, 0.6]);
+
+/* ── display list ─────────────────────────────────────────────────────────────────────
+   Four int16 per entry: id, x, y, attr. The renderer walks this instead of reading a
+   framebuffer out of wasm — 576 bytes on a populated frame against 245 760, and, far more
+   importantly, it leaves every question of LOOK on this side of the boundary. */
+export function decodeEntry(dl, i) {
+  const o = i * 4, id = dl[o], attr = dl[o + 3];
+  return {
+    id,
+    x: dl[o + 1],
+    y: dl[o + 2],
+    tile: id < SPRITE ? id : 0,
+    kind: id >= SPRITE ? id - SPRITE : -1,
+    isSprite: id >= SPRITE,
+    flip: (attr & 1) === 1,
+    frame: (attr >> 1) & 7,
+  };
+}
+
+/** Is this tile drawn behind everything, with no collision and no shadow? */
+export const isBackdrop = (t) => t === T.BUSH || t === T.HILL || t === T.CLOUD;
+/** Is this tile a box worth extruding? */
+export const isBox = (t) =>
+  t === T.BRICK || t === T.QUESTION || t === T.USED || t === T.STONE ||
+  t === T.PIPE_TOP || t === T.PIPE_BOD;
+
+/* ── HUD ──────────────────────────────────────────────────────────────────────────────
+   A brick game shows leading zeros, because the segments exist whether they are driven or
+   not — the unlit ones are part of the object. Fixed width also means the readout never
+   reflows, which at this size is the difference between a display and a jitter. */
+export function digits(value, width) {
+  const n = Math.max(0, Math.floor(value || 0));
+  const s = String(n);
+  return s.length >= width ? s.slice(-width) : "0".repeat(width - s.length) + s;
+}
+
+/* ── run bookkeeping ──────────────────────────────────────────────────────────────────
+   A run is over when the engine says so; the record is the host's business, and "is this a
+   record" must be answered on the value that was just achieved, never on the live one. */
+export function betterRun(prev, run) {
+  if (!run) return prev ?? null;
+  if (!prev) return { ...run };
+  return run.dist > prev.dist ? { ...run } : prev;
+}

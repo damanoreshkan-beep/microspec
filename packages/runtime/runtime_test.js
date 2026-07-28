@@ -27,6 +27,7 @@ import { sha1hex, splitHash, parseRange, lookup, checkPassword } from "./pwned.j
 import { sunSign } from "./horoscope.js";
 import { SPREADS, spreadById, hashSeed, draw } from "./tarot.js";
 import { silentWav } from "./mediasession.js";
+import { lit as brickLit, INK as BRICK_INK, LIGHT as BRICK_LIGHT, sliceOffsets as brickSliceOffsets, parallaxX as brickParallaxX, decodeEntry as brickDecode, digits as brickDigits, betterRun as brickBetterRun, S as BRICK_S, IN as BRICK_IN, SFX as BRICK_SFX } from "./brick.js";
 import { phase as penPhase, swing as penSwing, state as penState } from "./pendulum.js";
 import { signOf, signPair, compat, band, ELEMENT, MODALITY } from "./synastry.js";
 import { centsToRatio, semiToRatio, beatHz, chord, dbToGain, faderGain, equalPower, detune, STATIONS, LAYERS, station, reactorVoices } from "./scifi.js";
@@ -3869,4 +3870,203 @@ Deno.test("PWA chrome colours track the theme bases — the surface no screensho
     } catch { /* an app without a manifest is another gate's problem */ }
   }
   assertEquals(bad, [], `PWA chrome is off-theme (allowed: ${[...allowed].join(", ")}). An installed app would show a splash and status bar from the previous design: ${bad.join(", ")}`);
+});
+
+// ── brick — the handheld ──────────────────────────────────────────────────────────────────
+// Two halves. First the pure module: the light model, the extrusion, the HUD. Then the SHIPPED
+// wasm itself, because the one defect this app can have that no rendering gate could ever see
+// is a generated gap wider than the player can jump — a screenshot of an unwinnable track looks
+// exactly like a screenshot of a winnable one.
+
+Deno.test("brick · the light model shifts density by face and never leaves the ramp", () => {
+  // A face turned toward the light is driven LESS (it reads as highlight against the plate),
+  // a face turned away is driven MORE. front never shifts, which is what keeps a 16px tile
+  // identifiable at all.
+  assert(brickLit(2, "top") < brickLit(2, "front"), "the lit face must be thinner than the flat one");
+  assert(brickLit(2, "bottom") > brickLit(2, "front"), "the shaded face must be denser");
+  assertEquals(brickLit(2, "left"), brickLit(2, "top"), "one light source: top and left agree");
+  assertEquals(brickLit(2, "right"), brickLit(2, "bottom"), "…and so do right and bottom");
+  // Clamping, at both ends: an object at the extremes must not wrap around into its opposite.
+  assertEquals(brickLit(0, "top"), BRICK_INK[0]);
+  assertEquals(brickLit(BRICK_INK.length - 1, "bottom"), BRICK_INK[BRICK_INK.length - 1]);
+  for (let l = 0; l < BRICK_INK.length; l++)
+    for (const f of ["top", "left", "front", "right", "bottom"])
+      assert(BRICK_INK.includes(brickLit(l, f)), `face ${f} at level ${l} left the ramp`);
+});
+
+Deno.test("brick · z-slices stack toward the light, in whole pixels", () => {
+  const s = brickSliceOffsets(4);
+  assertEquals(s.length, 4);
+  assertEquals(s[0], { dx: 0, dy: 0 }, "slice 0 is the object itself");
+  for (const o of s) {
+    assert(Number.isInteger(o.dx) && Number.isInteger(o.dy), "a fractional slice resamples the art");
+    assert(o.dx <= 0 && o.dy <= 0, "the stack must grow toward the light, i.e. up-left");
+  }
+  // The extrusion direction IS the theme's light vector — not a lookalike constant.
+  assertEquals(s[1], { dx: BRICK_LIGHT.x, dy: BRICK_LIGHT.y });
+  assertEquals(brickSliceOffsets(0), []);
+});
+
+Deno.test("brick · parallax offsets are integers and ordered by depth", () => {
+  for (const camx of [0, 1, 7, 133, 4001]) {
+    let prev = -1;
+    for (const d of [0.15, 0.35, 0.6, 1]) {
+      const x = brickParallaxX(camx, d);
+      assert(Number.isInteger(x), `depth ${d} at camx ${camx} produced ${x} — a fractional layer blurs`);
+      assert(x >= prev, "a nearer layer must never lag a farther one");
+      prev = x;
+    }
+  }
+  assertEquals(brickParallaxX(1000, 0), 0, "depth 0 is infinitely far and never moves");
+});
+
+Deno.test("brick · the HUD keeps a fixed width, with the unlit segments showing", () => {
+  assertEquals(brickDigits(0, 6), "000000");
+  assertEquals(brickDigits(4212, 6), "004212");
+  assertEquals(brickDigits(1234567, 6), "234567", "overflow keeps the low digits, never reflows");
+  assertEquals(brickDigits(-5, 3), "000");
+  assertEquals(brickDigits(undefined, 3), "000");
+});
+
+Deno.test("brick · decodeEntry splits tiles from sprites", () => {
+  const dl = new Int16Array([0x12, 32, 48, 0, 0x101, 60, 100, 1 | (3 << 1)]);
+  const t = brickDecode(dl, 0);
+  assertEquals([t.isSprite, t.tile, t.x, t.y], [false, 0x12, 32, 48]);
+  const s = brickDecode(dl, 1);
+  assertEquals([s.isSprite, s.kind, s.flip, s.frame], [true, 1, true, 3]);
+});
+
+Deno.test("brick · a record only falls to a longer run", () => {
+  assertEquals(brickBetterRun(null, { dist: 10, coins: 0 }).dist, 10);
+  assertEquals(brickBetterRun({ dist: 10 }, { dist: 4 }).dist, 10);
+  assertEquals(brickBetterRun({ dist: 10 }, { dist: 11 }).dist, 11);
+  assertEquals(brickBetterRun({ dist: 10 }, null).dist, 10, "an abandoned run must not clear the record");
+});
+
+// ── the shipped engine ────────────────────────────────────────────────────────────────────
+const BRICK_WASM = new URL("../../apps/brick/assets/brick.wasm", import.meta.url);
+async function brickEngine() {
+  const { instance } = await WebAssembly.instantiate(await Deno.readFile(BRICK_WASM), {});
+  const E = instance.exports;
+  return { E, st: () => new Int32Array(E.memory.buffer, E.game_state(), 13) };
+}
+const BRICK_SOLID = 0x10;
+// The FLOOR is what you can stand on and walk along: the top of the solid stack that reaches
+// the bottom of the map. A floating ledge is not a floor — counting it as one reports step-ups
+// the player never has to climb, and hides the ones it does.
+function brickFloorOf(E, c) {
+  let r = 14;
+  if (E.game_tile(c, r) < BRICK_SOLID) return -1;
+  while (r > 0 && E.game_tile(c, r - 1) >= BRICK_SOLID) r--;
+  return r;
+}
+
+Deno.test("brick engine · the shipped wasm is a zero-import reactor", async () => {
+  const mod = new WebAssembly.Module(await Deno.readFile(BRICK_WASM));
+  assertEquals(WebAssembly.Module.imports(mod), [],
+    "brick.wasm must instantiate with `{}` — engine.js passes no import object, and an AudioWorklet-style zero-import binary is what makes that safe");
+  const ex = WebAssembly.Module.exports(mod).map((e) => e.name);
+  for (const need of ["memory", "game_init", "game_step", "game_dl", "game_dl_count", "game_state"])
+    assert(ex.includes(need), `missing export ${need}`);
+});
+
+Deno.test("brick engine · the ABI in brick.js matches the binary", async () => {
+  const { E, st } = await brickEngine();
+  E.game_init(0xB21C);
+  const a = st();
+  assertEquals(a[BRICK_S.FRAME], 0, "S.FRAME");
+  assertEquals(a[BRICK_S.DEAD], 0, "S.DEAD");
+  assertEquals(a[BRICK_S.DLN], E.game_dl_count(), "S.DLN must agree with game_dl_count()");
+  // The input bits are checked by their EFFECT, which is the only way a bitmask can lie:
+  // a wrong constant still produces a plausible-looking number.
+  const x0 = a[BRICK_S.CAMX] + a[BRICK_S.PX];
+  for (let i = 0; i < 20; i++) E.game_step(BRICK_IN.RIGHT);
+  const b = st();
+  assert(b[BRICK_S.CAMX] + b[BRICK_S.PX] > x0, "IN.RIGHT must move the player right");
+  E.game_init(0xB21C);
+  E.game_step(BRICK_IN.JUMP);
+  assert((st()[BRICK_S.SFX] & BRICK_SFX.JUMP) !== 0, "IN.JUMP must raise SFX.JUMP on the take-off frame");
+});
+
+Deno.test("brick engine · a seed is reproducible", async () => {
+  const run = async (seed) => {
+    const { E, st } = await brickEngine();
+    E.game_init(seed);
+    for (let f = 0; f < 400; f++) E.game_step(BRICK_IN.RIGHT | BRICK_IN.RUN | ((f % 30) < 12 ? BRICK_IN.JUMP : 0));
+    return Array.from(st()).join(",") + "|" + Array.from(new Int16Array(E.memory.buffer, E.game_dl(), E.game_dl_count() * 4)).join(",");
+  };
+  assertEquals(await run(0xB21C), await run(0xB21C), "same seed, same track — the gate's fixture depends on it");
+  assert(await run(0xB21C) !== await run(1), "different seeds must actually differ");
+});
+
+// THE one that matters. An endless generator is the only part of this app whose failure mode is
+// invisible to every other gate: a gap one tile too wide renders perfectly and ends the run every
+// time. So measure the jump off the engine itself — never derive it from the constants, which is
+// how you end up validating a typo against itself — and then walk the real track.
+Deno.test("brick engine · every generated gap is inside the MEASURED jump reach", async () => {
+  const { E, st } = await brickEngine();
+
+  // Reach, measured on the flat opening: run up, hold jump, and see how far it actually got.
+  // Walking (no RUN) is the conservative case — the player is never forced to use the run key.
+  const reachAfter = (runupTiles, run) => {
+    E.game_init(0xB21C);
+    const speed = run ? BRICK_IN.RUN : 0;
+    const startX = st()[BRICK_S.CAMX] + st()[BRICK_S.PX];
+    for (let i = 0; i < 400; i++) {
+      const s = st();
+      if (s[BRICK_S.CAMX] + s[BRICK_S.PX] - startX >= runupTiles * 16) break;
+      E.game_step(BRICK_IN.RIGHT | speed);
+    }
+    let s = st();
+    const x0 = s[BRICK_S.CAMX] + s[BRICK_S.PX], y0 = s[BRICK_S.PY];
+    let top = y0;
+    E.game_step(BRICK_IN.RIGHT | speed | BRICK_IN.JUMP);
+    for (let f = 0; f < 200; f++) {
+      E.game_step(BRICK_IN.RIGHT | speed | BRICK_IN.JUMP);
+      s = st();
+      if (s[BRICK_S.PY] < top) top = s[BRICK_S.PY];
+      if (s[BRICK_S.PSTATE] !== 3) break;
+    }
+    s = st();
+    return { dx: s[BRICK_S.CAMX] + s[BRICK_S.PX] - x0, rise: y0 - top };
+  };
+
+  const standing = reachAfter(0, false);
+  const walking = reachAfter(3, false);          // 3 = GAP_RUNWAY: what the generator guarantees
+  assert(walking.dx >= standing.dx, "a run-up cannot make the jump shorter");
+  assert(walking.rise >= 3 * 16, `the jump must clear three tiles; measured ${walking.rise}px`);
+
+  const maxGap = E.game_max_gap();
+  // Crossing N empty columns means travelling N+1 tiles: off the last solid tile and onto the
+  // next one. Half a tile of slack on top, because a player is not frame-perfect.
+  const needed = (maxGap + 1) * 16 + 8;
+  assert(walking.dx >= needed,
+    `MAX_GAP is ${maxGap} tiles, which needs ${needed}px of reach, but a WALKING player only makes ${walking.dx}px. Either narrow the gap in game.c or lengthen the runway — do not raise this number.`);
+
+  // …and the generator must actually honour its own clamp, over a lot of track.
+  let widest = 0, tallestStep = 0, gaps = 0, runwayFails = 0;
+  for (let i = 0; i < 20; i++) {
+    E.game_init(1 + i * 104729);
+    let run = 0, prevFloor = -1, flatBefore = 0;
+    for (let c = 1; c <= 4000; c++) {
+      E.game_gen_ahead(c + 1);               // one column at a time: the ring is only 128 wide
+      const g = brickFloorOf(E, c);
+      if (g < 0) {
+        if (++run === 1) { gaps++; if (flatBefore < 3) runwayFails++; }
+        if (run > widest) widest = run;
+      } else {
+        if (run > 0) flatBefore = 0; else flatBefore++;
+        run = 0;
+        if (prevFloor >= 0 && prevFloor - g > tallestStep) tallestStep = prevFloor - g;
+        prevFloor = g;
+      }
+    }
+  }
+  assert(gaps > 200, `only ${gaps} gaps in 80 000 columns — the scan is not exercising the generator`);
+  assertEquals(widest > maxGap, false,
+    `the generator authored a ${widest}-tile gap against its own MAX_GAP of ${maxGap}`);
+  assertEquals(runwayFails, 0,
+    `${runwayFails} of ${gaps} gaps had under three flat columns of run-up — those are standing jumps, measured at ${standing.dx}px against the ${needed}px needed`);
+  assert(tallestStep * 16 <= walking.rise,
+    `a ${tallestStep}-tile step up needs ${tallestStep * 16}px of rise; measured ${walking.rise}px`);
 });

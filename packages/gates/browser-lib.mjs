@@ -90,6 +90,21 @@ export function makeHelpers(page) {
       e.click();
       return true;
     }, s),
+    /* Hold a key, then let go. Until this existed no gate in the farm could press a key at all, so
+       "it works with a keyboard" was an assertion nobody could check — and a game is the one app
+       where that claim is load-bearing. `code` is the physical key (ArrowRight, KeyZ, ShiftLeft),
+       which is what a game listens to; dispatching on window matches where the handler lives. */
+    key: async (code, ms = 250) => {
+      await ev((code) => dispatchEvent(new KeyboardEvent("keydown", { code, key: code, bubbles: true })), code);
+      await sleep(ms);
+      await ev((code) => dispatchEvent(new KeyboardEvent("keyup", { code, key: code, bubbles: true })), code);
+    },
+    /** Press several keys together and release them — running and jumping is two keys at once. */
+    keys: async (codes, ms = 250) => {
+      for (const c of codes) await ev((c) => dispatchEvent(new KeyboardEvent("keydown", { code: c, key: c, bubbles: true })), c);
+      await sleep(ms);
+      for (const c of codes) await ev((c) => dispatchEvent(new KeyboardEvent("keyup", { code: c, key: c, bubbles: true })), c);
+    },
     hasClass: (s, c) => ev((s, c) => !!document.querySelector(s)?.classList.contains(c), s, c),
     scrollTo: (y) => ev((y) => window.scrollTo(0, y), y),
     scrollY: () => ev(() => window.scrollY),

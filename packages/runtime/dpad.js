@@ -47,14 +47,36 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
   const latched = useRef(new Set());       // keys double-tapped into a hold
   const lastTap = useRef(new Map());       // element → when it was last released
 
-  const synth = useRef(0);                 // keyboard / assistive-technology presses
+  const synth = useRef(0);                 // assistive-technology / click pulses
+  const keys = useRef(0);                  // whatever the keyboard is holding down
+  const root = useRef(null);               // the deck element, so a key press can be SEEN
   const bitOf = (el) => +el?.getAttribute("data-bit") || 0;
+  /* One writer. The keyboard used to assign mask.current itself while touch recomputed it from
+     scratch, so any pointer event wiped a held key and any key wiped a held finger — two owners of
+     one ref, last write wins, and the bug only shows when you use both at once. Every source is an
+     input to this function now and nothing else assigns the mask. */
   const recompute = () => {
-    let m = synth.current;
+    let m = synth.current | keys.current;
     for (const el of held.current.values()) m |= bitOf(el);
     for (const el of latched.current) m |= bitOf(el);
     mask.current = m;
   };
+  /** What the keyboard is holding. It also PAINTS the matching keys: a console whose buttons do
+      not move when you press the arrows looks broken, and the press state is the only feedback a
+      keyboard player gets — there is no finger on the glass to watch. */
+  const setKeys = useCallback((bits) => {
+    if (bits === keys.current) return;
+    const before = keys.current;
+    keys.current = bits;
+    const deck = root.current;
+    if (deck) for (const el of deck.querySelectorAll("[data-bit]")) {
+      const b = bitOf(el);
+      if (((before & b) !== 0) === ((bits & b) !== 0)) continue;
+      paint(el, (bits & b) !== 0 || [...held.current.values()].includes(el));
+    }
+    recompute();
+  }, []);
+
   /** A click from a keyboard or a screen reader has no pointer lifecycle, so give it a moment of
       press instead — otherwise the pad is unusable without a finger. */
   const pulse = useCallback((bit, ms = 140) => {
@@ -103,6 +125,7 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
   useEffect(() => () => { for (const el of pressed.current) el.classList.remove("sf-pressed"); }, []);
 
   const deckProps = {
+    ref: root,
     style: { touchAction: "none" },
     onPointerDown: (e) => {
       try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* synthetic pointer */ }
@@ -126,10 +149,12 @@ export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
     onPointerCancel: (e) => release(e.pointerId),
   };
 
-  return { mask, deckProps, release, pulse };
+  return { mask, deckProps, release, pulse, setKeys };
 }
 
-/** Keyboard, for the breakpoints that have one. Free, and it is what makes the gate playable. */
+/* Keyboard is not a fallback here — a console on a desktop is played with two hands on the keys,
+   and the arrows are the pad. Both layouts every platformer player already has in their fingers:
+   arrows or WASD to move, Z/Space to jump, X/Shift to run. */
 export const KEYS = {
   ArrowLeft: PAD.LEFT, KeyA: PAD.LEFT,
   ArrowRight: PAD.RIGHT, KeyD: PAD.RIGHT,
@@ -138,18 +163,40 @@ export const KEYS = {
   ShiftLeft: PAD.RUN, ShiftRight: PAD.RUN, KeyX: PAD.RUN,
 };
 
-export function useKeyboardPad(mask, onChange) {
+/** Momentary keys — the ones a console has as buttons rather than as directions. */
+export const ACTION_KEYS = { Enter: "start", KeyM: "sound" };
+
+/**
+ * Feeds the deck's mask from the keyboard. It reports the WHOLE held set on every change rather
+ * than toggling a bit, so the deck stays the single owner of the mask and a key held while a
+ * finger is also down cannot erase it.
+ *
+ * A key event goes to the focused element, and nothing here is focused when the page loads, so
+ * this listens on the window — but it steps aside for text entry, or typing in any field anywhere
+ * in the app would drive the player.
+ */
+export function useKeyboardPad(setKeys, onAction) {
   useEffect(() => {
-    const apply = (code, down) => {
-      const bit = KEYS[code];
-      if (!bit) return;
-      const next = down ? mask.current | bit : mask.current & ~bit;
-      if (next !== mask.current) { mask.current = next; onChange?.(next); }
+    const down = new Set();
+    const typing = (t) => t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
+    const apply = () => { let m = 0; for (const c of down) m |= KEYS[c] || 0; setKeys(m); };
+    const dn = (e) => {
+      if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (ACTION_KEYS[e.code] && !e.repeat) { e.preventDefault(); onAction?.(ACTION_KEYS[e.code]); return; }
+      if (!KEYS[e.code]) return;
+      e.preventDefault();                       // arrows and space scroll the page otherwise
+      if (!e.repeat) { down.add(e.code); apply(); }
     };
-    const dn = (e) => { if (KEYS[e.code]) { e.preventDefault(); apply(e.code, true); } };
-    const up = (e) => apply(e.code, false);
+    const up = (e) => { if (down.delete(e.code)) apply(); };
+    // Losing focus with a key held would leave the player walking into a wall forever.
+    const drop = () => { if (down.size) { down.clear(); apply(); } };
     addEventListener("keydown", dn);
     addEventListener("keyup", up);
-    return () => { removeEventListener("keydown", dn); removeEventListener("keyup", up); };
-  }, [mask, onChange]);
+    addEventListener("blur", drop);
+    document.addEventListener("visibilitychange", drop);
+    return () => {
+      removeEventListener("keydown", dn); removeEventListener("keyup", up);
+      removeEventListener("blur", drop); document.removeEventListener("visibilitychange", drop);
+    };
+  }, [setKeys, onAction]);
 }

@@ -63,8 +63,8 @@ export function brick(props) {
     else if (name === "records") A.screen.set("records");
   }, [A]);
   const restartRef = useRef(null);
-  const { mask, deckProps, pulse } = useTouchDeck({ onAct: act });
-  useKeyboardPad(mask, null);
+  const { mask, deckProps, pulse, setKeys } = useTouchDeck({ onAct: act });
+  useKeyboardPad(setKeys, act);
 
   useEffect(() => {
     let live = true, raf = 0;
@@ -215,8 +215,7 @@ export function brick(props) {
       <!-- The deck is ONE touch surface. You rest a thumb on it and slide; whatever is under the
            thumb is what is pressed, and every key you cross answers. Per-key handlers cannot do
            that — the first to see pointerdown captures the pointer and the rest go deaf. -->
-      <div class="ms-side-main shrink-0 grid items-center gap-[var(--ms-gap)] min-w-0"
-           style="grid-template-columns:auto minmax(0,1fr) auto"
+      <div class="ms-side-main shrink-0 grid items-center gap-[var(--ms-gap)] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto]"
            ...${deckProps} onPointerDown=${(e) => { arm(); deckProps.onPointerDown(e); }}>
 
         <div class="relative sf-inset rounded-[var(--ms-r)] p-1" role="group" aria-label=${T(t, "padLabel")}

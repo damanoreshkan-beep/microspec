@@ -8,3 +8,6 @@ packages/gates/shots/
 skills-lock.json
 # local mirror of the VPS feed-proxy — holds the host/IP + keys, never publish
 proxy/
+# agent bridge files — machine-local mirrors of the owner's private skill rules
+# (absolute home paths, private-repo references); same reason as .claude/skills/
+AGENTS.md

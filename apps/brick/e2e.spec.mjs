@@ -128,10 +128,13 @@ export default [
   {
     name: "камера: можна повернутись назад", run: async (h) => {
       await ready(h);
-      await h.keys(["ArrowRight", "ShiftLeft"], 1200);          // get well down the track
+      // WALK, and not for long: a 1.2s run with no jumps reaches the first gap and dies, and a dead
+      // player moves no camera — the first version of this test was measuring a corpse.
+      await h.key("ArrowRight", 700);
+      h.expect((await h.attr("[data-live-screen]", "data-dead")) === "0", "забіг обірвався до виміру камери");
       const far = +(await h.attr("[data-live-screen]", "data-camx"));
       h.expect(far > 0, "камера не рушила вперед");
-      await h.key("ArrowLeft", 1600);                            // now walk back
+      await h.key("ArrowLeft", 900);                             // now walk back
       const back = +(await h.attr("[data-live-screen]", "data-camx"));
       h.expect(back < far, "камера не відкотилась — пропущену монету не повернути");
       h.expect(back >= 0, "камера пішла за початок світу");

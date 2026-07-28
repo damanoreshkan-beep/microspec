@@ -19,7 +19,8 @@ import { T } from "/_rt/i18n.js";
 import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
-import { useTouchDeck, useKeyboardPad, keyboardOnly, PAD } from "/_rt/dpad.js";
+import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
+import { GameConsole } from "/_rt/console.js";
 import { SCRW, SCRH, S, digits, betterRun } from "/_rt/brick.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
@@ -153,113 +154,51 @@ export function brick(props) {
         farm has paid for this exact shape once already, with `flex-1` in the dock.
      No comments about either inside the template below: an htm template IS a template literal, so a
      backtick in an HTML comment closes it and the whole view stops parsing. */
-  const key = (extra = "") =>
-    `sf-raised sf-press active:sf-pressed rounded-2xl grid place-items-center select-none ${extra}`;
-
-  /* onClick is for KEYBOARD and assistive technology only. A real finger is already handled by
-     the deck (pointerdown holds the key, pointerup releases it), and letting the browser's click
-     fire as well would toggle sound twice per tap. `event.detail` is the discrimination: a click
-     synthesised by .click() or by Enter carries 0, one a pointer caused carries at least 1.
-     It also keeps the gate honest — its synthetic pointerdown has no coordinates, so
-     elementFromPoint never resolves a key and the click is the only thing that runs. */
-  const kb = keyboardOnly;
-
-  const dpadKey = (bit, icon, label) => html`
-    <button class=${key("bg-base-100 w-full h-full")} data-bit=${bit} data-haptic="bump"
-      aria-label=${T(t, label)} data-pad=${label} onClick=${kb(() => pulse(bit))}>
-      ${Icon(icon, "text-[var(--ms-icon)] opacity-80")}
-    </button>`;
-
   return html`<${Fragment}>
     <!-- THE CONSOLE ITSELF. Without this the app is a screen and some keys lying on a page, which
          is exactly how the first live shot read: the whole premise of the design — the console is
          the page EXTRUDED, the screen is a recess cut into the console — was simply not on screen.
          It is sized to its contents and centred rather than stretched, so it reads as an object you
          are holding instead of as a layout that filled the window. -->
-    <div class="h-full min-h-0 flex flex-col justify-center items-center">
-    <div class="ms-side sf-raised bg-base-100 rounded-[calc(var(--ms-r)*1.5)] w-full max-w-[26rem]
-                min-h-0 shrink flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]">
-
-      <!-- the screen: a recess in the console, with the game inside it -->
-      <!-- flex-1 min-h-0 is not decoration: it gives the canvas a parent with a DEFINITE height,
-           and max-h-full has nothing to resolve against without one. Removing it to kill a dead
-           band left the canvas holding all 270px at every size, and the deck slid under the dock —
-           21px of overflow at 360x340 and 38px hidden behind the bar. The band stays gone for the
-           other reason: the console body is sized to its contents now, so flex-1 only distributes
-           space that exists when the screen is genuinely short. -->
-      <div data-stage-box class="flex-1 min-h-0 grid place-items-center">
-        <!-- The canvas carries its own intrinsic 288×270 and is allowed to SHRINK, never to be
-             stretched: a fixed-ratio wrapper at height:100% derives its width from a parent that
-             has none to give, and on a 200px screen that came out 366px wide. Letting the replaced
-             element do the fitting also keeps the scale integral wherever there is room for it,
-             which for a pixel display is the difference between crisp and shimmering. -->
-        <div class="sf-inset rounded-[var(--ms-r)] p-2 max-w-full max-h-full min-w-0 min-h-0 grid place-items-center">
-          <div class="relative max-w-full max-h-full min-w-0 min-h-0" ref=${hud} data-live-screen>
-            <canvas ref=${cv} width=${SCRW} height=${SCRH}
-              class="block max-w-full max-h-full w-auto h-auto rounded-[calc(var(--ms-r)-0.4rem)]"
-              style="image-rendering:pixelated"
-              role="img" aria-label=${T(t, "screenAlt")}></canvas>
-            ${!ready && !err ? html`<div class="absolute inset-0 grid place-items-center"><${Pixels} cls="w-full h-full" /></div>` : null}
-            ${err ? html`<div class="absolute inset-0 grid place-items-center text-center text-[var(--ms-label)] px-3 text-base-content/70" data-err>${T(t, "noEngine")}</div>` : null}
-            ${over ? html`
-              <div class="absolute inset-0 grid place-items-center bg-base-100/0" data-over>
-                <button class=${key("bg-base-100 px-4 py-3 gap-1 flex flex-col")} onClick=${restart} data-restart>
-                  <span class="font-mono uppercase tracking-widest text-[var(--ms-label)] opacity-80">${T(t, "gameOver")}</span>
-                  <span class="font-mono text-[var(--ms-title)]">${digits(best?.dist ?? 0, 4)}</span>
-                </button>
-              </div>` : null}
-          </div>
-        </div>
+    <${GameConsole}
+      layout="handheld"
+      deck=${deckProps}
+      onPointerDown=${arm}
+      t=${t}
+      onKeyboard=${(k) => (k.bit ? pulse(k.bit) : act(k.act))}
+      pad=${[
+        { id: "up", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
+        { id: "left", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
+        { id: "right", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
+        { id: "down", pad: "down", bit: PAD.DOWN, icon: "lucide:chevron-down", label: "padDown" },
+      ]}
+      actions=${[
+        { id: "a", bit: PAD.JUMP, text: "A", label: "keyJump" },
+        { id: "b", bit: PAD.RUN, text: "B", label: "keyRun", latch: true },
+      ]}
+      menu=${[{ id: "sound", act: "sound", icon: soundOn ? "lucide:volume-2" : "lucide:volume-x", label: "sound", pressed: soundOn }]}
+      centre=${[
+        { id: "start", act: "start", text: T(t, "start"), label: "start" },
+        { id: "records", act: "records", text: digits(best?.dist ?? 0, 4), label: "records" },
+      ]}
+      overlay=${over ? html`
+        <div class="absolute inset-0 grid place-items-center" data-over>
+          <button class="sf-raised sf-press active:sf-pressed bg-base-100 rounded-2xl px-4 py-3 gap-1 flex flex-col items-center"
+                  onClick=${restart} data-restart>
+            <span class="font-mono uppercase tracking-widest text-[var(--ms-label)] opacity-80">${T(t, "gameOver")}</span>
+            <span class="font-mono text-[var(--ms-title)]">${digits(best?.dist ?? 0, 4)}</span>
+          </button>
+        </div>` : null}
+    >
+      <div class="relative w-full h-full" ref=${hud} data-live-screen>
+        <canvas ref=${cv} width=${SCRW} height=${SCRH}
+          class="block max-w-full max-h-full w-auto h-auto rounded-[calc(var(--ms-r)-0.4rem)]"
+          style="image-rendering:pixelated"
+          role="img" aria-label=${T(t, "screenAlt")}></canvas>
+        ${!ready && !err ? html`<div class="absolute inset-0 grid place-items-center"><${Pixels} cls="w-full h-full" /></div>` : null}
+        ${err ? html`<div class="absolute inset-0 grid place-items-center text-center text-[var(--ms-label)] px-3 text-base-content/70" data-err>${T(t, "noEngine")}</div>` : null}
       </div>
-
-      <!-- The deck is ONE touch surface. You rest a thumb on it and slide; whatever is under the
-           thumb is what is pressed, and every key you cross answers. Per-key handlers cannot do
-           that — the first to see pointerdown captures the pointer and the rest go deaf. -->
-      <div class="ms-side-main shrink-0 grid items-center gap-[var(--ms-gap)] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto]"
-           ...${deckProps} onPointerDown=${(e) => { arm(); deckProps.onPointerDown(e); }}>
-
-        <div class="relative sf-inset rounded-[var(--ms-r)] p-1" role="group" aria-label=${T(t, "padLabel")}
-             style="width:calc(var(--ms-ctl)*3);aspect-ratio:1" data-pad-root>
-          <div class="grid h-full w-full" style="grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr)">
-            <div></div>${dpadKey(PAD.JUMP, "lucide:chevron-up", "padUp")}<div></div>
-            ${dpadKey(PAD.LEFT, "lucide:chevron-left", "padLeft")}
-            <div class="grid place-items-center"><div class="sf-inset rounded-full" style="width:38%;height:38%"></div></div>
-            ${dpadKey(PAD.RIGHT, "lucide:chevron-right", "padRight")}
-            <div></div>${dpadKey(PAD.DOWN, "lucide:chevron-down", "padDown")}<div></div>
-          </div>
-        </div>
-
-        <!-- the middle keys: small, labelled, the way a brick game labels them. These are moments,
-             not holds, so they fire when the finger LIFTS over them. -->
-        <div class="flex flex-col items-center gap-[calc(var(--ms-gap)*0.6)] min-w-0 w-full">
-          <button class=${key("bg-base-100 px-3 py-1")} data-act="sound" data-haptic="bump"
-            onClick=${kb(() => act("sound"))}
-            aria-pressed=${soundOn} aria-label=${T(t, "sound")} data-sound=${soundOn ? "1" : "0"}>
-            ${Icon(soundOn ? "lucide:volume-2" : "lucide:volume-x", "text-[var(--ms-icon)] opacity-80")}
-          </button>
-          <button class=${key("bg-base-100 px-2 py-1 w-full max-w-[7rem] font-mono uppercase tracking-wide text-[var(--ms-label)] truncate")}
-            data-act="start" data-haptic="bump" onClick=${kb(() => act("start"))} data-start>${T(t, "start")}</button>
-          <button class=${key("bg-base-100 px-2 py-1 w-full max-w-[7rem] font-mono uppercase tracking-wide text-[var(--ms-label)] truncate")}
-            data-act="records" data-haptic="bump" onClick=${kb(() => act("records"))}
-            id="b-records" data-records>${digits(best?.dist ?? 0, 4)}</button>
-        </div>
-
-        <!-- action keys, offset like the real thing: B sits low-left of A -->
-        <div class="relative shrink-0" style="width:calc(var(--ms-ctl)*2.4);aspect-ratio:2.4/1.7">
-          <button class=${key("bg-base-100 absolute right-0 top-0 rounded-full")}
-            style="width:52%;aspect-ratio:1" data-bit=${PAD.JUMP} data-haptic="bump"
-            aria-label=${T(t, "keyJump")} data-key="a" onClick=${kb(() => pulse(PAD.JUMP))}>
-            <span class="font-mono text-[var(--ms-label)] opacity-80">A</span>
-          </button>
-          <button class=${key("bg-base-100 absolute left-0 bottom-0 rounded-full")}
-            style="width:52%;aspect-ratio:1" data-bit=${PAD.RUN} data-haptic="bump" data-latch
-            aria-label=${T(t, "keyRun")} aria-pressed="false" data-key="b" onClick=${kb(() => pulse(PAD.RUN))}>
-            <span class="font-mono text-[var(--ms-label)] opacity-80">B</span>
-          </button>
-        </div>
-      </div>
-    </div>
-    </div>
+    </${GameConsole}>
 
     ${screen === "records" ? html`<${Sheet} id="records" open=${true} onClose=${() => A.screen.set(null)}
       title=${T(t, "records")} icon="lucide:trophy" locale=${loc}>

@@ -17,7 +17,8 @@ import { T } from "/_rt/i18n.js";
 import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
-import { useTouchDeck, useKeyboardPad, keyboardOnly, PAD } from "/_rt/dpad.js";
+import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
+import { GameConsole } from "/_rt/console.js";
 import { SCRW, SCRH, S, IN, digits, betterRun } from "/_rt/hunt.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
@@ -127,24 +128,35 @@ export function hunt(props) {
   restartRef.current = restart;
   const arm = useCallback(() => { sound.current?.arm(); }, []);
 
-  const key = (extra = "") =>
-    `sf-raised sf-press active:sf-pressed rounded-full grid place-items-center select-none bg-base-100 ${extra}`;
-  const kb = keyboardOnly;   // keyboard/AT only — the deck owns anything a pointer touched
-
-  const dirKey = (bit, icon, label) => html`
-    <button class=${key("w-full h-full")} data-bit=${bit} data-haptic="bump"
-      aria-label=${T(t, label)} data-pad=${label} onClick=${kb(() => pulse(bit))}>
-      ${Icon(icon, "text-[var(--ms-icon)] opacity-90")}
-    </button>`;
-
   return html`<${Fragment}>
-    <div class="relative h-full min-h-0 w-full overflow-hidden rounded-[var(--ms-r)]" ...${deckProps}
-         onPointerDown=${(e) => { arm(); deckProps.onPointerDown(e); }}>
-
-      <!-- The game FILLS the view. Capping the canvas at its intrinsic size was brick's rule, and
-           brick is a device with a small screen in it — here it left a 384x264 strip marooned in
-           the middle of a phone with two thirds of the page grey and the controls stranded below
-           it. object-fit keeps the aspect and the pixels; the element is allowed to grow. -->
+    <${GameConsole}
+      layout="overlay"
+      deck=${deckProps}
+      onPointerDown=${arm}
+      t=${t}
+      onKeyboard=${(k) => (k.bit ? pulse(k.bit) : act(k.act))}
+      pad=${[
+        { id: "up", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
+        { id: "left", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
+        { id: "right", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
+      ]}
+      actions=${[
+        { id: "throw", bit: IN.SHOOT, icon: "lucide:send", iconCls: "-rotate-45", label: "keyThrow" },
+        { id: "run", bit: PAD.RUN, icon: "lucide:wind", label: "keyRun", latch: true },
+      ]}
+      menu=${[
+        { id: "sound", act: "sound", icon: soundOn ? "lucide:volume-2" : "lucide:volume-x", label: "sound", pressed: soundOn },
+        { id: "records", act: "records", icon: "lucide:trophy", label: "records" },
+      ]}
+      overlay=${over ? html`
+        <div class="absolute inset-0 grid place-items-center" data-over>
+          <button class="sf-raised sf-press active:sf-pressed bg-base-100 rounded-[var(--ms-r)] px-5 py-4 gap-1 flex flex-col items-center"
+                  onClick=${restart} data-restart>
+            <span class="font-mono uppercase tracking-widest text-[var(--ms-label)] opacity-80">${T(t, "gameOver")}</span>
+            <span class="font-mono text-[var(--ms-title)]">${digits(best?.dist ?? 0, 4)}</span>
+          </button>
+        </div>` : null}
+    >
       <div class="absolute inset-0" ref=${hud} data-live-screen>
         <canvas ref=${cv} width=${SCRW} height=${SCRH}
           class="block w-full h-full"
@@ -153,48 +165,7 @@ export function hunt(props) {
         ${!ready && !err ? html`<div class="absolute inset-0 grid place-items-center"><${Pixels} cls="w-full h-full" /></div>` : null}
         ${err ? html`<div class="absolute inset-0 grid place-items-center text-center text-[var(--ms-label)] px-3 text-base-content/70" data-err>${T(t, "noEngine")}</div>` : null}
       </div>
-
-      <!-- controls float OVER the game: a phone game that spends half its height on a bezel has
-           half a screen. Left thumb steers, right thumb throws and jumps. -->
-      <div class="absolute left-2 bottom-2 grid gap-1" style="grid-template-columns:repeat(3,var(--ms-ctl));grid-template-rows:repeat(2,var(--ms-ctl))">
-        <div></div>${dirKey(PAD.JUMP, "lucide:chevron-up", "padUp")}<div></div>
-        ${dirKey(PAD.LEFT, "lucide:chevron-left", "padLeft")}
-        <div></div>
-        ${dirKey(PAD.RIGHT, "lucide:chevron-right", "padRight")}
-      </div>
-
-      <div class="absolute right-2 bottom-2 flex items-end gap-2">
-        <button class=${key("")} style="width:var(--ms-ctl);height:var(--ms-ctl)"
-          data-bit=${PAD.RUN} data-haptic="bump" data-latch aria-pressed="false"
-          aria-label=${T(t, "keyRun")} data-key="run" onClick=${kb(() => pulse(PAD.RUN))}>
-          ${Icon("lucide:wind", "text-[var(--ms-icon)] opacity-90")}
-        </button>
-        <button class=${key("")} style="width:calc(var(--ms-ctl)*1.5);height:calc(var(--ms-ctl)*1.5)"
-          data-bit=${IN.SHOOT} data-haptic="bump"
-          aria-label=${T(t, "keyThrow")} data-key="throw" onClick=${kb(() => pulse(IN.SHOOT))}>
-          ${Icon("lucide:send", "text-[var(--ms-icon)] opacity-90 -rotate-45")}
-        </button>
-      </div>
-
-      <div class="absolute right-2 top-2 flex gap-1">
-        <button class=${key("w-9 h-9")} data-act="sound" data-haptic="bump" onClick=${kb(() => act("sound"))}
-          aria-pressed=${soundOn} aria-label=${T(t, "sound")} data-sound=${soundOn ? "1" : "0"}>
-          ${Icon(soundOn ? "lucide:volume-2" : "lucide:volume-x", "text-[var(--ms-icon)] opacity-90")}
-        </button>
-        <button class=${key("w-9 h-9")} data-act="records" data-haptic="bump" onClick=${kb(() => act("records"))}
-          id="b-records" aria-label=${T(t, "records")} data-records>
-          ${Icon("lucide:trophy", "text-[var(--ms-icon)] opacity-90")}
-        </button>
-      </div>
-
-      ${over ? html`
-        <div class="absolute inset-0 grid place-items-center" data-over>
-          <button class=${key("px-5 py-4 gap-1 flex flex-col rounded-[var(--ms-r)]")} onClick=${restart} data-restart>
-            <span class="font-mono uppercase tracking-widest text-[var(--ms-label)] opacity-80">${T(t, "gameOver")}</span>
-            <span class="font-mono text-[var(--ms-title)]">${digits(best?.dist ?? 0, 4)}</span>
-          </button>
-        </div>` : null}
-    </div>
+    </${GameConsole}>
 
     ${screen === "records" ? html`<${Sheet} id="records" open=${true} onClose=${() => A.screen.set(null)}
       title=${T(t, "records")} icon="lucide:trophy" locale=${loc}>

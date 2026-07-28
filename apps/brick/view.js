@@ -115,6 +115,7 @@ export function brick(props) {
   
   const arm = useCallback(() => { sound.current?.arm(); }, []);
 
+  
   const key = (extra = "") =>
     `sf-raised sf-press active:sf-pressed rounded-2xl grid place-items-center select-none ${extra}`;
   const dpadKey = (bit, icon, label, pos) => html`
@@ -122,10 +123,8 @@ export function brick(props) {
       aria-label=${T(t, label)} data-pad=${label} onClick=${() => pulse(bit)}>
       ${Icon(icon, "text-[var(--ms-icon)] opacity-80")}
     </button>`;
-
   return html`<${Fragment}>
     <div class="ms-side h-full min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]">
-
       <!-- the screen: a recess in the console, with the game inside it -->
       <div data-stage-box class="flex-1 min-h-0 grid place-items-center">
         <!-- The canvas carries its own intrinsic 288×270 and is allowed to SHRINK, never to be
@@ -195,13 +194,13 @@ export function brick(props) {
       </div>
     </div>
 
-    <${Sheet} id="records" open=${screen === "records"} onClose=${() => A.screen.set(null)}
+    ${screen === "records" ? html`<${Sheet} id="records" open=${true} onClose=${() => A.screen.set(null)}
       title=${T(t, "records")} icon="lucide:trophy" locale=${loc}>
       <div class="grid grid-cols-3 gap-[var(--ms-gap)] text-center">
         ${[["distance", best?.dist ?? 0], ["coins", best?.coins ?? 0], ["runs", +runs || 0]].map(([k, v]) => html`
-          <div class="sf-inset rounded-2xl p-3">
-            <div class="font-mono text-[var(--ms-title)]" data-stat=${k}>${v}</div>
-            <div class="text-[var(--ms-label)] uppercase tracking-widest opacity-70 mt-1">${T(t, k)}</div>
+          <div class="sf-inset rounded-2xl p-3 min-w-0">
+            <div class="font-mono text-[var(--ms-title)] truncate" data-stat=${k}>${v}</div>
+            <div class="text-[var(--ms-label)] uppercase tracking-wide opacity-70 mt-1 leading-[1.4] break-words">${T(t, k)}</div>
           </div>`)}
       </div>
       <button class="btn btn-ghost rounded-2xl w-full" data-haptic="bump" id="records-reset"
@@ -209,6 +208,6 @@ export function brick(props) {
           title: T(t, "resetTitle"), body: T(t, "resetBody"), verb: T(t, "resetVerb"),
           onConfirm: () => { $best.set(null); $runs.set("0"); A.screen.set(null); },
         })}>${T(t, "resetTitle")}</button>
-    </${Sheet}>
+    </${Sheet}>` : null}
   </${Fragment}>`;
 }

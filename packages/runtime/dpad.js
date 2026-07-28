@@ -22,15 +22,19 @@ export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16 };
  * which is exactly the documented reason an app may call `haptic.*` itself: an outcome the tap
  * could not predict. Neither fires twice, because they own different events.
  */
-export function useTouchDeck({ onAct } = {}) {
+export function useTouchDeck({ onAct, latchMs = 320 } = {}) {
   const mask = useRef(0);
   const held = useRef(new Map());          
   const pressed = useRef(new Set());
+  const latched = useRef(new Set());       
+  const lastTap = useRef(new Map());       
 
   const synth = useRef(0);                 
+  const bitOf = (el) => +el?.getAttribute("data-bit") || 0;
   const recompute = () => {
     let m = synth.current;
-    for (const el of held.current.values()) m |= +el?.getAttribute("data-bit") || 0;
+    for (const el of held.current.values()) m |= bitOf(el);
+    for (const el of latched.current) m |= bitOf(el);
     mask.current = m;
   };
   /** A click from a keyboard or a screen reader has no pointer lifecycle, so give it a moment of
@@ -41,8 +45,10 @@ export function useTouchDeck({ onAct } = {}) {
   }, []);
   const paint = (el, on) => {
     if (!el) return;
-    el.classList.toggle("sf-pressed", on);
-    if (on) pressed.current.add(el); else pressed.current.delete(el);
+    const stay = on || latched.current.has(el);
+    el.classList.toggle("sf-pressed", stay);
+    if (el.hasAttribute("data-latch")) el.setAttribute("aria-pressed", latched.current.has(el) ? "true" : "false");
+    if (stay) pressed.current.add(el); else pressed.current.delete(el);
   };
   const at = (e) => {
     const hit = document.elementFromPoint(e.clientX, e.clientY);
@@ -58,8 +64,9 @@ export function useTouchDeck({ onAct } = {}) {
   }, []);
 
   const move = useCallback((e, first) => {
-    const el = at(e);
+    const found = at(e);
     const was = held.current.get(e.pointerId) || null;
+    const el = found || (first ? null : was);
     if (el === was) return;
     if (el) held.current.set(e.pointerId, el); else held.current.delete(e.pointerId);
     if (was && ![...held.current.values()].includes(was)) paint(was, false);   
@@ -82,6 +89,12 @@ export function useTouchDeck({ onAct } = {}) {
     onPointerUp: (e) => {
       const el = held.current.get(e.pointerId);
       if (el?.hasAttribute("data-act")) onAct?.(el.getAttribute("data-act"), el);
+      
+      if (el?.hasAttribute("data-latch")) {
+        if (latched.current.has(el)) { latched.current.delete(el); haptic.tick(); }
+        else if (e.timeStamp - (lastTap.current.get(el) ?? -Infinity) < latchMs) { latched.current.add(el); haptic.ok(); }
+        lastTap.current.set(el, e.timeStamp);
+      }
       release(e.pointerId);
     },
     onPointerCancel: (e) => release(e.pointerId),

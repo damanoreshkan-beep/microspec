@@ -25,7 +25,7 @@ import { sha1hex, splitHash, parseRange, lookup, checkPassword } from "./pwned.j
 import { sunSign } from "./horoscope.js";
 import { SPREADS, spreadById, hashSeed, draw } from "./tarot.js";
 import { silentWav } from "./mediasession.js";
-import { lit as brickLit, INK as BRICK_INK, LIGHT as BRICK_LIGHT, sliceOffsets as brickSliceOffsets, parallaxX as brickParallaxX, decodeEntry as brickDecode, digits as brickDigits, betterRun as brickBetterRun, S as BRICK_S, IN as BRICK_IN, SFX as BRICK_SFX } from "./brick.js";
+import { lit as brickLit, INK as BRICK_INK, LIGHT as BRICK_LIGHT, sliceOffsets as brickSliceOffsets, parallaxX as brickParallaxX, decodeEntry as brickDecode, digits as brickDigits, betterRun as brickBetterRun, shadowFor as brickShadowFor, S as BRICK_S, IN as BRICK_IN, SFX as BRICK_SFX } from "./brick.js";
 import { phase as penPhase, swing as penSwing, state as penState } from "./pendulum.js";
 import { signOf, signPair, compat, band, ELEMENT, MODALITY } from "./synastry.js";
 import { centsToRatio, semiToRatio, beatHz, chord, dbToGain, faderGain, equalPower, detune, STATIONS, LAYERS, station, reactorVoices } from "./scifi.js";
@@ -3649,4 +3649,22 @@ Deno.test("brick engine · every generated gap is inside the MEASURED jump reach
     `${runwayFails} of ${gaps} gaps had under three flat columns of run-up — those are standing jumps, measured at ${standing.dx}px against the ${needed}px needed`);
   assert(tallestStep * 16 <= walking.rise,
     `a ${tallestStep}-tile step up needs ${tallestStep * 16}px of rise; measured ${walking.rise}px`);
+});
+
+Deno.test("brick · the shadow is a 45° PROJECTION, not an offset", () => {
+  for (const h of [0, 1, 7, 23, 60, 200]) assertEquals(brickShadowFor(h, 24).dx, h, `dx must equal the height at ${h}`);
+  assertEquals(brickShadowFor(-5, 24).dx, 0, "a negative height is a bug upstream, not a shadow behind the sprite");
+
+  const on = brickShadowFor(0, 24);
+  assert(on.ry < on.rx, "the ellipse must be flattened — a round shadow is a ball, not a floor");
+
+  let prevA = Infinity, prevR = Infinity;
+  for (const h of [0, 10, 20, 40, 80, 400]) {
+    const s = brickShadowFor(h, 24);
+    assert(s.alpha <= prevA + 1e-9, `alpha must not grow with height (at ${h})`);
+    assert(s.rx <= prevR, `the shadow must not widen with height (at ${h})`);
+    assert(s.alpha > 0 && s.rx >= 1 && s.ry >= 1, `the shadow vanished at ${h}`);
+    prevA = s.alpha; prevR = s.rx;
+  }
+  assert(brickShadowFor(0, 40).rx > brickShadowFor(0, 20).rx, "shadow width must track the sprite");
 });

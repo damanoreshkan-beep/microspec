@@ -171,12 +171,24 @@ spinner — and results cache permanently in `localStorage` per (book, level, lo
 
 ---
 
-## OPEN / UNVERIFIED — the build must not lean on these
+## 4. How the requirement is enforced, not just intended
 
-- **The 3-screen budget is not yet measured against a real render.** Every character number above is an
-  AI-output measurement, not a layout measurement. The final calibration of `ACT_BUDGET` must come from
-  shooting the built screen at 384×832 and counting actual screens — not from the estimate that three
-  screens hold ~3000 chars. Until then, level 3's total (3895) is *assumed* to be roughly one screen over.
+"Maximum three phone screens" is the owner's requirement, and a requirement nobody measures drifts. So it
+is a **gate**, in `e2e.spec.mjs`, measured off the live document in the only real browser this project has:
+
+```js
+const screens = (await h.prop("html", "scrollHeight")) / (await h.prop("html", "clientHeight"));
+h.expect(screens <= 3.05, `переказ займає ${screens.toFixed(2)} екрана …`);
+```
+
+It runs against the **fixture**, which is a real captured level-3 reply — the longest state the app can
+produce — so the bound is on the worst case rather than a typical one. The failure message carries the
+actual ratio and both raw pixel numbers, so one CI round returns the number to calibrate with rather than
+a bare pass/fail. **If it fails, the fix is `ACT_BUDGET` in the edge prompt, never a smaller font.**
+
+The ≥4-sentence floor is gated the same way, per act, including the revealed ending.
+
+## OPEN / UNVERIFIED — the build must not lean on these
 - Act 3 at level 3 drifts to ~2x its siblings (16 sentences vs 8). Balanced at levels 1–2. Revisit only
   after the render measurement, so the fix is calibrated against a real number.
 - uk plot coverage (64%) was measured by Codex and **not re-verified by me**; it does not matter, because

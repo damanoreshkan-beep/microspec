@@ -35,7 +35,10 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 const $query = atom("");
 const $results = atom([]);
 const $status = atom("idle");          // idle | loading | done | error
-const $book = atom(null);              // the book currently open in the reader
+// The open book is PER TAB, not global. Sharing one slot meant opening a book from the shelf and then
+// tapping Books showed you the same reader instead of your search results — the two tabs stopped being
+// two places. Keyed by tab id, each tab keeps whatever it had open, which is the point of the whole module.
+const $books = atom({});               // tabId → book | null
 const $level = atom(2);                // 1 brief · 2 normal · 3 full
 const $plot = atom({});                // pageid → { plot, heading } — fetched once per book, then reused
 const $revealed = atom(loadRevealed()); // pageid → true, persisted: a finale you already read stays open
@@ -51,10 +54,24 @@ function reveal(pageid) {
 
 const LEVELS = [null, "lvlBrief", "lvlNormal", "lvlFull"];
 
+const bookIn = (tabId) => $books.get()[tabId] || null;
+const setBook = (tabId, b) => $books.set({ ...$books.get(), [tabId]: b });
+
+// The runtime has ONE drill-down stack but this app has two tabs that can each hold a reader, so the stack
+// has to be re-pointed at whichever tab is now on screen. Without this, a book left open in Books would
+// keep its history entry while you were looking at Saved, and Back would close a screen you cannot see.
+// Called on mount — i.e. on every tab switch, since the runtime renders only the active tab.
+function syncStack(S, tabId) {
+  const mine = bookIn(tabId);
+  const want = mine ? [mine.title] : [];
+  if (S.stack.get().length !== want.length) S.stack.set(want);
+}
+
 // ── the search + results tab ─────────────────────────────────────────────────────────────────────────────
-export function arc({ S, toast }) {
+export function arc({ S, tab, toast }) {
   const t = useStore(S.t);
-  const book = useStore($book);
+  const books = useStore($books);
+  const book = books[tab.id] || null;
   const stack = useStore(S.stack);
   const results = useStore($results);
   const status = useStore($status);
@@ -63,23 +80,24 @@ export function arc({ S, toast }) {
 
   // ONE reaction to the routing atom, as the drill-down idiom requires: everything (system Back, the
   // chevron, a swipe) pops S.stack, and this is what unwinds the view. Never call history.* from an app.
-  useEffect(() => { if (!stack.length && $book.get()) $book.set(null); }, [stack.length]);
-  // Leaving the tab closes the reader. The runtime has ONE drill-down stack, so a book left open in one tab
-  // would still own that stack entry while you are looking at another — and Back would then close a screen
-  // you cannot see. Tabs are top-level navigation: walking away from one exits what it had open. The search
-  // results, the shelf and the chosen length all survive regardless; they live in the atoms above.
-  useEffect(() => () => { if ($book.get()) { $book.set(null); if (S.stack.get().length) S.stack.set([]); } }, []);
+  useEffect(() => { if (!stack.length && bookIn(tab.id)) setBook(tab.id, null); }, [stack.length]);
 
   // The gate never reaches the network, so seed the fixture — and open the reader on top of it, because the
   // reader IS the app and a shot of a search list would be judging the wrong screen. The results stay
   // underneath, so system Back reveals them: the drill-down invariant gets exercised by the e2e for free.
   // Level 3 and a LOCKED ending are deliberate: the widest prose, in the state a reader actually meets first.
+  //
+  // Each clause guards ITSELF. They used to share one `$results.length` guard, and that shipped a real bug:
+  // the gate walks every tab for a11y, which unmounts this view, and on the way back the shared guard was
+  // already satisfied — so the reader never reopened and all seven e2e tests failed on a screen that was
+  // simply not there. A seeding step must be idempotent, not one-shot.
   useEffect(() => {
-    if (!gate || $results.get().length) return;
-    $query.set("Dune"); $results.set(FIXTURE); $status.set("done"); $level.set(3);
-    $book.set(FIXTURE[0]); S.stack.set([FIXTURE[0].title]);
-    // a seeded shelf so the Saved tab is shot populated too, not as an empty state
-    if (!Object.keys(S.fav.get()).length) S.fav.set(Object.fromEntries(FIXTURE.map((b) => [b.id, b])));
+    if (gate) {
+      if (!$results.get().length) { $query.set("Dune"); $results.set(FIXTURE); $status.set("done"); $level.set(3); }
+      if (!Object.keys(S.fav.get()).length) S.fav.set(Object.fromEntries(FIXTURE.map((b) => [b.id, b])));
+      if (!bookIn(tab.id)) setBook(tab.id, FIXTURE[0]);
+    }
+    syncStack(S, tab.id);
   }, []);
 
   const run = async (value) => {
@@ -95,7 +113,7 @@ export function arc({ S, toast }) {
     } catch { if (mine === gen.current) $status.set("error"); }
   };
 
-  const open = (b) => { $book.set(b); S.stack.set([...S.stack.get(), b.title]); };
+  const open = (b) => { setBook(tab.id, b); S.stack.set([...S.stack.get(), b.title]); };
 
   if (book) return html`<${Reader} S=${S} t=${t} book=${book} toast=${toast} />`;
 
@@ -113,20 +131,17 @@ export function arc({ S, toast }) {
 }
 
 // ── the saved tab — the same reader, reached from your own shelf ─────────────────────────────────────────
-export function saved({ S, toast }) {
+export function saved({ S, tab, toast }) {
   const t = useStore(S.t);
   const fav = useStore(S.fav);
-  const book = useStore($book);
+  const books = useStore($books);
+  const book = books[tab.id] || null;
   const stack = useStore(S.stack);
-  useEffect(() => { if (!stack.length && $book.get()) $book.set(null); }, [stack.length]);
-  // Leaving the tab closes the reader. The runtime has ONE drill-down stack, so a book left open in one tab
-  // would still own that stack entry while you are looking at another — and Back would then close a screen
-  // you cannot see. Tabs are top-level navigation: walking away from one exits what it had open. The search
-  // results, the shelf and the chosen length all survive regardless; they live in the atoms above.
-  useEffect(() => () => { if ($book.get()) { $book.set(null); if (S.stack.get().length) S.stack.set([]); } }, []);
+  useEffect(() => { if (!stack.length && bookIn(tab.id)) setBook(tab.id, null); }, [stack.length]);
+  useEffect(() => { syncStack(S, tab.id); }, []);
 
   const items = Object.values(fav).filter((b) => b && b.title);
-  const open = (b) => { $book.set(b); S.stack.set([...S.stack.get(), b.title]); };
+  const open = (b) => { setBook(tab.id, b); S.stack.set([...S.stack.get(), b.title]); };
 
   if (book) return html`<${Reader} S=${S} t=${t} book=${book} toast=${toast} />`;
   if (!items.length) return html`<${Blank} t=${t} icon="lucide:bookmark" text="emptySaved" />`;

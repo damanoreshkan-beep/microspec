@@ -1,6 +1,7 @@
 // reel — paste any page URL and every video on it becomes a full-screen, vertically-swiped feed (tiktok-style),
 // with the next pages loading themselves as you approach the end. Three views:
-//   • reel    — the full-bleed media surface (autoplay-the-visible-slide, poster, tap-to-pause, error state)
+//   • reel    — the full-bleed media surface (autoplay-the-visible-slide, poster, tap-to-pause, error state);
+//               the slide itself carries NO chrome — every control is one bottom island (see SourceIsland)
 //   • liked   — the poster grid of what you double-tapped; a tile opens the feed RIGHT HERE, in this tab
 //   • sources — your subscribed pages, grouped by site, + ready-made channels; tap to play, subscribe
 // Heavy lifting is systemic: /_rt/video.js createPlayer() owns mp4-vs-HLS attach+teardown+errors; the VPS
@@ -301,24 +302,23 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
   <img src=${poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-55" onError=${(e) => e.currentTarget.remove()} />
   <img src=${poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain" onError=${(e) => e.currentTarget.remove()} />
 </${Fragment}>` : null;
-// Informational "watch on the site" pill for clips that can't play inline (ephemeral / errored). It's NOT the
-// tap target — the slide's tap handler owns single-tap → open, double-tap → like (so a like never navigates).
-// The keyboard-accessible way to open the page stays the bottom-right open-original link on the slide.
-const WatchLink = ({ t }) => html`<div data-watch aria-hidden="true" class="absolute inset-0 z-[3] flex items-end justify-center pointer-events-none" style="padding-bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 4.5rem)">
-  <span class="btn btn-primary rounded-full gap-2 pointer-events-none">${Icon("lucide:external-link", "text-lg")} ${T(t, "watch")}</span>
-</div>`;
+// Whether the ACTIVE clip refuses to play inline. Only one VideoLayer is ever mounted, so a plain atom is the
+// whole truth — and it has to be an atom now: the island is the one place that says "watch this on the site",
+// and it lives outside the slide that discovers the failure.
+const $playErr = atom(false);
 
 // The single live <video>, mounted only in the ACTIVE slide (so exactly one plays). createPlayer handles mp4 vs
-// HLS and tears down on unmount. On failure it falls back to the poster + a "watch" link (not a dead black slide).
-function VideoLayer({ item, t }) {
+// HLS and tears down on unmount. On failure it falls back to the poster, and the island turns into the way out.
+function VideoLayer({ item }) {
   const ref = useRef(), bgRef = useRef();
   const [errored, setErrored] = useState(false);
+  const fail = () => { setErrored(true); $playErr.set(true); };                           // …and the island offers the site
   useEffect(() => {
-    setErrored(false);
+    setErrored(false); $playErr.set(false);
     const v = ref.current; if (!v) return;
     v.muted = true; v.loop = true;                                                        // muted → browsers allow autoplay
     let handle, bgHandle, dead = false;
-    createPlayer(v, item.video, { onReady: () => v.play?.().catch(() => {}), onError: () => setErrored(true) }).then((h) => { if (dead) h?.destroy?.(); else handle = h; });
+    createPlayer(v, item.video, { onReady: () => v.play?.().catch(() => {}), onError: fail }).then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     // ambient backdrop: when there's no poster to blur, a muted copy of the video fills the letterbox area.
     if (!item.poster && bgRef.current) { const bg = bgRef.current; bg.muted = true; bg.loop = true; createPlayer(bg, item.video, { onReady: () => bg.play?.().catch(() => {}) }).then((h) => { if (dead) h?.destroy?.(); else bgHandle = h; }); }
     return () => { dead = true; handle?.destroy?.(); bgHandle?.destroy?.(); };
@@ -331,7 +331,6 @@ function VideoLayer({ item, t }) {
         : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
     <div class="absolute inset-0 bg-black/25" aria-hidden="true"></div>
     <video ref=${ref} data-main playsinline loop muted class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
-    ${errored ? html`<${WatchLink} t=${t} />` : null}
   </${Fragment}>`;
 }
 
@@ -353,7 +352,10 @@ function HeartBurst({ x, y, onDone }) {
   return html`<div ref=${ref} aria-hidden="true" class="absolute z-[5] pointer-events-none" style=${`left:${x}px;top:${y}px`}>${Icon("lucide:heart", "text-7xl text-rose-500 fill-rose-500 drop-shadow-[0_2px_16px_rgba(0,0,0,.45)]")}</div>`;
 }
 
-function Slide({ item, idx, active, ephemeral, dive, t }) {
+// A slide is the clip and NOTHING else — no chip, no link, no pill. Every affordance it used to carry (dive,
+// open the page, "watch on the site") is one control in the island below, where it is stated once instead of
+// once per slide, and where a keyboard can reach it. The surface is the video.
+function Slide({ item, idx, active, ephemeral }) {
   const secRef = useRef();
   const [burst, setBurst] = useState(null);
   // Systemic tap dispatch (runtime useTap): SINGLE tap toggles pause on a clip that plays inline, else opens the
@@ -369,19 +371,13 @@ function Slide({ item, idx, active, ephemeral, dive, t }) {
   });
   return html`<section ref=${secRef} data-reel data-idx=${idx} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
     ${ephemeral
-      ? html`<${Fragment}><${PosterFill} poster=${item.poster} /><${WatchLink} t=${t} /></${Fragment}>`
+      ? html`<${PosterFill} poster=${item.poster} />`
       : active
-        ? html`<${VideoLayer} item=${item} t=${t} />`
+        ? html`<${VideoLayer} item=${item} />`
         : item.poster
           ? html`<${PosterFill} poster=${item.poster} />`
           : null}
     ${burst ? html`<${HeartBurst} x=${burst.x} y=${burst.y} key=${burst.k} onDone=${() => setBurst(null)} />` : null}
-    <div class="absolute inset-x-0 bottom-0 z-[2] pointer-events-none p-4 flex items-end justify-between gap-2" style="padding-bottom:calc(var(--dock-h) + 1rem)">
-      ${dive ? html`<button data-dive class="pointer-events-auto flex items-center gap-1.5 min-w-0 max-w-[70%] rounded-full bg-black/45 backdrop-blur-md border border-white/10 pl-2.5 pr-2 py-1 text-white/90 active:bg-black/65" aria-label=${T(t, "dive")} onClick=${(e) => { e.stopPropagation(); dive.go(); }}>
-        <span class="text-xs truncate">${dive.label}</span>${Icon("lucide:chevron-right", "text-base opacity-70 shrink-0")}
-      </button>` : html`<span></span>`}
-      <a href=${item.page || item.orig || item.video} target="_blank" rel="noopener" onClick=${(e) => e.stopPropagation()} class="pointer-events-auto shrink-0 text-white/70 active:text-white p-1" aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-lg")}</a>
-    </div>
   </section>`;
 }
 
@@ -417,12 +413,17 @@ function SourceSheet({ S, t }) {
 }
 
 // ---- the feed surface (shared by the Reel tab and the in-place Liked feed) ---------------------------
-// The source island: who am I watching, one level back, and — when you've dived somewhere you don't follow —
-// the one-tap subscribe. It only exists when it has something to say (you're deep, or this source is new),
-// so an ordinary subscribed feed stays a clean full-bleed surface. It sits UNDER the app bar, not over it.
-function SourceIsland({ S, t, src, title, subbed, depth }) {
-  if (!depth && subbed) return null;
-  return html`<${Island} pinned at="top" tone="dark" className="flex items-center gap-1.5 min-w-0 max-w-full rounded-full">
+// The island is the reel's ONLY chrome, and it sits at the bottom — where the thumb is, above the dock, on
+// the systemic rung (`Island pinned at="bottom"` owns the arithmetic; nothing here hardcodes a height).
+// It answers the three questions a full-screen feed leaves open — where am I, how do I get back, where does
+// this clip go — and it carries the one action a clip that won't play inline needs. Left half is identity,
+// right half is actions; both halves shrink before the title does anything but truncate.
+//
+// It is ALWAYS present now. It used to hide itself on a subscribed root feed "for a clean surface", which
+// was affordable only while every control also existed on the slide. It is the controls now.
+function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, cantPlay }) {
+  const act = "btn btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
+  return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
       ${depth ? html`<button data-feed-back class="btn btn-ghost btn-sm btn-circle text-white shrink-0" aria-label=${T(t, "back")} onClick=${() => popFrame(S)}>${Icon("lucide:chevron-left", "text-xl")}</button>` : null}
       <${Favicon} url=${src} size="w-6 h-6" />
       <span class="min-w-0 flex items-baseline gap-1.5 pl-0.5 pr-1">
@@ -431,7 +432,16 @@ function SourceIsland({ S, t, src, title, subbed, depth }) {
       </span>
       ${/* a hairline glass circle, not a filled ink pill: on a media surface the island is a quiet identity
             chip, and a solid white button made "subscribe" the brightest thing on a full-screen video */""}
-      ${!subbed ? html`<button data-subscribe class="btn btn-sm btn-circle bg-white/10 border border-white/20 text-white shrink-0" aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: title, url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
+      ${!subbed ? html`<button data-subscribe class=${act} aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: title, url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
+      ${/* the white "Watch" pill that used to float over the video, absorbed. It only raises its voice —
+            filled, and with the word — when the clip genuinely cannot play here; otherwise it is the quiet
+            way out to the page, which is all the old bottom-right link ever was. */""}
+      ${watch ? (cantPlay
+        ? html`<a data-watch href=${watch} target="_blank" rel="noopener" class="btn btn-sm btn-primary rounded-full gap-1.5 shrink-0">${Icon("lucide:external-link", "text-base")}<span class="text-xs">${T(t, "watch")}</span></a>`
+        : html`<a data-watch href=${watch} target="_blank" rel="noopener" class=${act} aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-base")}</a>`) : null}
+      ${/* forward is the mirror of back: the page this clip lives on. The destination's NAME is not written
+            here — it is what the drag reveals under the finger — so the label rides the a11y name instead. */""}
+      ${dive ? html`<button data-dive class=${act} aria-label=${`${T(t, "dive")}: ${dive.label}`} onClick=${dive.go}>${Icon("lucide:chevron-right", "text-lg")}</button>` : null}
     <//>
   `;
 }
@@ -459,7 +469,7 @@ function FeedSurface({ S, t }) {
   const items = useStore($items), loading = useStore($loading), err = useStore($err);
   const active = useStore($active), next = useStore($next), ephemeral = useStore($ephemeral);
   const src = useStore($src), frames = useStore($frames), subs = useStore($subs), restoreTo = useStore($restoreTo);
-  const title = useStore($srcTitle);
+  const title = useStore($srcTitle), playErr = useStore($playErr);
   const underRef = useRef(), diveRef = useRef(), backRef = useRef();
   const target = diveTarget(items[active], src);
   // The destination is named by the clip you're leaving on — the reveal under the finger says where you land,
@@ -518,16 +528,21 @@ function FeedSurface({ S, t }) {
       ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/70 px-8 text-center">${Icon("lucide:cloud-off", "text-5xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => loadSource(src)}>${T(t, "retry")}</button></section>`
       : !items.length
         ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/60 px-8 text-center">${Icon("lucide:film", "text-5xl")}<div>${T(t, "empty")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
-        : items.map((it, i) => {
-            const to = diveTarget(it, src);                                     // the page this clip lives on → the next feed
-            const dive = to ? { to, label: sourceTitle(to, { hint: it.title }), go: () => diveTo(S, to, it.title) } : null;
-            return html`<${Slide} item=${it} idx=${i} active=${i === active} ephemeral=${it.eph != null ? it.eph : ephemeral} dive=${dive} t=${t} key=${(it.orig || it.video) + i} />`;
-          });
+        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} ephemeral=${it.eph != null ? it.eph : ephemeral} key=${(it.orig || it.video) + i} />`);
+
+  // The island's controls belong to the ACTIVE clip, so they are derived here, once, from `items[active]` —
+  // never per slide. `cantPlay` is why the way out is loud: an ephemeral (signed-URL) source or a clip whose
+  // player errored shows a poster and nothing more, and the site is the only place it exists.
+  const cur = items[active];
+  const watch = cur ? (cur.page || cur.orig || cur.video) : null;
+  const cantPlay = !!cur && ((cur.eph != null ? cur.eph : ephemeral) || playErr);
+  const dive = target ? { label: targetLabel, go: () => diveTo(S, target, cur?.title) } : null;
 
   return html`<${Fragment}>
     <${DragReveal} underRef=${underRef} diveRef=${diveRef} backRef=${backRef} target=${target} targetLabel=${targetLabel} prev=${prev} />
     <div ref=${paneRef} ...${pan} data-scroller class="fixed inset-0 z-[1] bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain touch-pan-y will-change-transform">${body}</div>
-    <${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length} />
+    <${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
+      dive=${dive} watch=${watch} cantPlay=${cantPlay} />
   </${Fragment}>`;
 }
 

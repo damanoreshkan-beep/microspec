@@ -242,7 +242,11 @@ function Chat({ item, t, loc, level, plot, locked, undo }) {
             ${Icon("lucide:eraser", "text-[0.95rem]")}</button>`
         : null} />
 
-    ${thread.map((turn, i) => html`<div data-turn=${i} key=${i} class="flex flex-col gap-2">
+    ${/* The gap BETWEEN turns has to beat the gap inside one, or an answer and the next question read as one
+          paragraph. The reader's line is marked by a rule in the app's accent — colour on a MARK, never on
+          type — which is also what makes a long thread scannable at a glance. */
+      thread.length ? html`<div class="flex flex-col gap-5">
+    ${thread.map((turn, i) => html`<div data-turn=${i} key=${i} class="flex flex-col gap-1.5">
       <p data-ask-q class="text-[0.9rem] text-base-content/75 border-l-2 pl-3" style="border-color:var(--app-accent)">${turn.q}</p>
       ${turn.a
         ? html`<p data-ask-a class="text-[0.97rem] leading-relaxed text-base-content/90">${turn.a}</p>`
@@ -253,6 +257,7 @@ function Chat({ item, t, loc, level, plot, locked, undo }) {
               ${[30, 26, 20].map((w, k) => html`<div class="text-[0.97rem]" key=${k}><${Scramble} len=${w} /></div>`)}
             </div>`}
     </div>`)}
+      </div>` : null}
 
     ${/* The openers are the empty state of the thread, not a caption: three taps that each open a DIFFERENT
           kind of conversation, and they are gone the moment there is one. Static, not generated — an opener
@@ -264,7 +269,7 @@ function Chat({ item, t, loc, level, plot, locked, undo }) {
       thread.length ? null : html`<div class="flex flex-wrap gap-1.5">
         ${["askChipVoice", "askChipSelf", "askChipWhat"].map((k) => html`<button data-ask-chip=${k} key=${k} type="button"
           onClick=${() => send(T(t, k))}
-          class="rounded-full border border-base-content/15 px-3 py-1.5 text-[0.85rem] text-base-content/80 active:scale-[0.98] transition-transform">
+          class="sf-raised rounded-full px-3.5 py-2 text-left text-[0.85rem] leading-snug text-base-content/85 active:sf-pressed transition-transform">
           ${T(t, k)}</button>`)}
       </div>`}
 

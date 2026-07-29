@@ -4159,3 +4159,25 @@ Deno.test("hunt engine · the collision box it reports IS the one it stands on",
   assert(ground >= 0, "she is not standing over any ground — the fixture moved");
   assertEquals(feet, ground, `feet at ${feet} against a surface at ${ground} — the box the renderer is given is not the box she rests on`);
 });
+
+Deno.test("shells · the console choice is shared, not per app", async () => {
+  // Both games ship a tab whose entire claim is that picking a shell in one changes the other.
+  // That rests on one thing: the stored key carries no app prefix. If either app ever namespaces
+  // it the setting silently splits in two, and the only symptom is two consoles — nothing throws,
+  // nothing renders wrong, and no other gate here can see it.
+  const src = await Deno.readTextFile(new URL("./shells.js", import.meta.url));
+  const key = /persistentAtom\(\s*"([^"]+)"/.exec(src)?.[1];
+  assert(key, "shells.js no longer stores the choice through persistentAtom");
+  assert(!/^(brick|hunt|[a-z]+):/.test(key) || key.startsWith("ms:"),
+    `the shell preference is namespaced to an app ("${key}") — it must be shared across games`);
+  const ids = [...src.matchAll(/^  (\w+): \{$/gm)].map((m) => m[1]);
+  assert(ids.length >= 4, `only ${ids.length} shells — the catalogue is the feature`);
+  /* A shell may not know anything about a particular game: that would be a shell that fits one.
+     Scanned WITHOUT comments, and that is not fastidiousness — the first version of this check
+     failed on the doc comment that EXPLAINS the rule, by naming "crouch" as an example of what a
+     shell must not know. preflight learned the same thing about its shadow ban: a gate that
+     punishes documentation teaches people to delete the documentation. */
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  for (const forbidden of ["brick.wasm", "hunt.wasm", "SCRW", "ammo", "spear", "crouch"])
+    assert(!code.includes(forbidden), `shells.js references "${forbidden}" in CODE — a shell must be game-agnostic`);
+});

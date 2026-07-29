@@ -20,7 +20,7 @@ import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
-import { GameConsole } from "/_rt/console.js";
+import { GameConsole, ShellPicker, SHELL_IDS } from "/_rt/console.js";
 import { SCRW, SCRH, S, digits, betterRun } from "/_rt/brick.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
@@ -216,4 +216,24 @@ export function brick(props) {
         })}>${T(t, "resetTitle")}</button>
     </${Sheet}>` : null}
   </${Fragment}>`;
+}
+
+/**
+ * The console picker, as its own tab — the same component and the same stored choice as hunt's.
+ * Two tabs, one preference: pick a shell here and the huntress is holding it too. That is the
+ * whole point of the catalogue living in the runtime, and the reason this file adds a tab rather
+ * than a picker.
+ */
+export function brickShell(props) {
+  const { t } = props;
+  return html`
+    <div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]" data-shell-tab>
+      <${ShellPicker} t=${t} />
+      <div class="sf-inset rounded-[var(--ms-r)] p-[var(--ms-pad)] flex-1 min-h-0 grid place-items-center">
+        <div class="text-center">
+          <div class="font-mono text-[var(--ms-title)]" data-shell-count>${SHELL_IDS.length}</div>
+          <div class="text-[var(--ms-label)] uppercase tracking-wide opacity-70 mt-1">${T(t, "shellPick")}</div>
+        </div>
+      </div>
+    </div>`;
 }

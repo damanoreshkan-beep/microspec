@@ -180,6 +180,9 @@ function Card({ item: it, card, hide }) {
     const gsub = card.subtitle ? field(it, card.subtitle, loc) : null;
     return html`<div class="relative flex flex-col gap-2 min-w-0 active:scale-[.97] transition-transform">
       ${art}
+      ${/* A catalogue you cannot save from is a catalogue you have to re-find. The star sits over the art's
+            corner, above the stretched tap target, exactly as it does on a feed card. */
+        star ? html`<div class="absolute top-1 right-1 z-[2]">${star}</div>` : null}
       <div class="min-w-0">
         <div class="text-sm font-semibold leading-tight line-clamp-2 break-words">${field(it, card.title, loc)}</div>
         ${gsub ? html`<div class="text-xs text-muted truncate mt-0.5">${gsub}</div>` : null}
@@ -215,16 +218,38 @@ function Card({ item: it, card, hide }) {
     : html`<div class=${cls}>${img}${body}</div>`;
 }
 
-function Section({ sec, items, card }) {
-  const t = useStore(A.S.t), filters = useStore(A.S.filters);
-  return html`<${Fragment}>
-    <div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span>${sec.accent
-      ? html`<span class="badge badge-sm badge-primary">${items.length}</span>`
+// GRID_FOR — a tiled layout keeps its geometry when it is grouped. Sections used to be stacked-only, so
+// choosing `gallery` silently threw the section headers away: the branch below returned before it ever
+// reached them. A catalogue is exactly the thing you want to group ("Ukrainian", "classics"), so the
+// grouping and the tiling have to compose.
+const GRID_FOR = {
+  gallery: "grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5",
+  grid: "grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5",
+};
+
+// One section header, shared by the stacked and the tiled section — two copies would have diverged the
+// first time one of them was restyled.
+function SectionHead({ sec, t, filters, n }) {
+  return html`<div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span>${sec.accent
+      ? html`<span class="badge badge-sm badge-primary">${n}</span>`
       /* NOT a `badge-ghost`. DaisyUI colours it through `.badge.badge-ghost` — two classes — so a
          `text-muted` alongside it loses on specificity and the count stayed at axe-serious contrast in
          dark. Overriding a component's own colour is a fight you win only until it restyles; the farm's
          mono micro-label owes DaisyUI nothing and is the house idiom for a number anyway. */
-      : html`<span class="font-mono text-[var(--ms-label)] text-muted tabular-nums">${items.length}</span>`}<span class="flex-1 h-px bg-base-300"></span></div>
+      : html`<span class="font-mono text-[var(--ms-label)] text-muted tabular-nums">${n}</span>`}<span class="flex-1 h-px bg-base-300"></span></div>`;
+}
+
+function Section({ sec, items, card }) {
+  const t = useStore(A.S.t), filters = useStore(A.S.filters);
+  const grid = GRID_FOR[card.layout];
+  if (grid) {
+    return html`<${Fragment}>
+      ${SectionHead({ sec, t, filters, n: items.length })}
+      <div class="@container"><div class=${grid}>${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}</div></div>
+    </${Fragment}>`;
+  }
+  return html`<${Fragment}>
+    ${SectionHead({ sec, t, filters, n: items.length })}
     ${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}
   </${Fragment}>`;
 }
@@ -365,6 +390,12 @@ function ListView({ tab }) {
   const tail = html`<${InfiniteTail} count=${vis} total=${items.length} grow=${grow} paginate=${paginate} key="tail" />`;
   // grid layout lays its tiles out in an Android-style grid; other layouts stack in the flex-col main.
   // @container wrapper so the grid drops to 3 columns on a watch-narrow width (4 on a phone).
+  // A tiled layout that declares `sections` is grouped FIRST and tiled inside each group — the two compose
+  // through GRID_FOR. Returning the flat grid here regardless is what silently ate arc's shelf headings.
+  const sectioned = tab.sections
+    ? Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })])
+    : null;
+  if (GRID_FOR[tab.card.layout] && sectioned) return sectioned;
   if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
   // Three columns on a phone — a store shelf, not a two-up feed: the icon carries the recognition and the
   // caption is one line under it. Drops to two on a watch, climbs to four on a tablet.

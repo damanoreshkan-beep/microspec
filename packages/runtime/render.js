@@ -176,10 +176,13 @@ function Card({ item: it, card, hide }) {
 function Section({ sec, items, card }) {
   const t = useStore(A.S.t), filters = useStore(A.S.filters);
   return html`<${Fragment}>
-    <div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span><span class=${`badge badge-sm ${sec.accent ? "badge-primary" : "badge-ghost text-muted"}`}>${items.length}</span><span class="flex-1 h-px bg-base-300"></span></div>
+    <div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span>${sec.accent
+      ? html`<span class="badge badge-sm badge-primary">${items.length}</span>`
+      : html`<span class="font-mono text-[var(--ms-label)] text-muted tabular-nums">${items.length}</span>`}<span class="flex-1 h-px bg-base-300"></span></div>
     ${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}
   </${Fragment}>`;
 }
+
 
 function Banner({ banner }) {
   const t = useStore(A.S.t);
@@ -188,6 +191,9 @@ function Banner({ banner }) {
     <div class="text-base-content"><span class="font-semibold">${T(t, banner.titleKey)}</span><span class="text-base-content/80">${T(t, banner.bodyKey)}</span></div>
   </div>`;
 }
+
+
+
 
 const WINDOW_PAGE = 24;   
 function InfiniteTail({ count, total, grow, paginate }) {
@@ -211,6 +217,9 @@ function InfiniteTail({ count, total, grow, paginate }) {
   </div>`;
 }
 
+
+
+
 function Chart({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data);
   const cfg = tab.chart, all = data.items || [];
@@ -227,6 +236,8 @@ function Chart({ tab }) {
     </svg>
   </div></div></div>`;
 }
+
+
 
 const TABLE_CAP = 120; 
 function Table({ items, tab }) {
@@ -251,6 +262,8 @@ function ListView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters), loc = useStore(A.S.locale), sortKey = useStore(A.S.sort);
   const mt = useStore(metaTick);
   const [vis, setVis] = useState(WINDOW_PAGE);   
+  
+  
   useEffect(() => {
     const src = tab.source === "fav" ? Object.values(fav) : (data.items || []);
     if (A.spec.enrich) warmMeta(src.map((it) => it[A.spec.enrich.url]));
@@ -261,11 +274,14 @@ function ListView({ tab }) {
   if (!tab.card) return Empty("lucide:alert-triangle", T(t, tab.empty?.text || "noResults"), null);
   if (!useReveal(!data.loading)) return Skeleton(tab.card);
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
+  
+  
+  
   if (tab.searchFetch && !q && !tab.browse) return Empty(tab.prompt?.icon || "lucide:search", T(t, tab.prompt?.text || "searchPrompt"), T(t, tab.prompt?.hint || "searchPromptHint"));
-
   let items = tab.source === "fav" ? Object.values(fav) : data.items;
   if (q && !tab.searchFetch) items = items.filter((it) => searchText(it).includes(q));  
   for (const cf of (tab.clientFilters || [])) if (filters[cf.key]) items = items.filter((it) => test(it, fav, cf.when));
+  
   for (const c of (A.spec.filters?.controls || [])) if (c.type === "range" && filters[c.key]) {
     const r = filters[c.key];
     items = items.filter((it) => { const v = Number(it[c.field]); return !isNaN(v) && (r.from == null || r.from === "" || v >= +r.from) && (r.to == null || r.to === "" || v <= +r.to); });
@@ -286,10 +302,14 @@ function ListView({ tab }) {
 
   const banner = tab.banner ? html`<${Banner} banner=${tab.banner} key="banner" />` : null;
   const paginate = !!tab.paginate && tab.source !== "fav";
+  
+  
   const grow = () => { if (vis < items.length) setVis((c) => Math.min(items.length, c + WINDOW_PAGE)); else if (paginate) { setVis((c) => c + WINDOW_PAGE); A.loadMore(); } };
   const shown = items.slice(0, vis);
   const cards = shown.map((it) => html`<${Card} item=${it} card=${tab.card} key=${A.favKey(it) || it[tab.card.title]} />`);
   const tail = html`<${InfiniteTail} count=${vis} total=${items.length} grow=${grow} paginate=${paginate} key="tail" />`;
+  
+  
   if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
   if (tab.card.layout === "gallery") return Frag([banner, html`<div class="@container pt-2" key="gallery"><div class="grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
   if (tab.card.layout === "table") return Frag([banner, html`<${Table} items=${items} tab=${tab} key="tbl" />`, html`<${InfiniteTail} count=${items.length} total=${items.length} grow=${() => paginate && A.loadMore()} paginate=${paginate} key="tail" />`]);
@@ -297,10 +317,13 @@ function ListView({ tab }) {
   return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })]);
 }
 
+
 function Profile({ tab }) {
   const t = useStore(A.S.t), theme = useStore(A.S.theme), loc = useStore(A.S.locale), fav = useStore(A.S.fav);
   const p = A.spec.profile || {};
   const savedTab = A.spec.tabs.find((x) => x.source === "fav");
+  
+  
   const shareApp = async () => {
     const url = location.href.split("#")[0];
     if (navigator.share) {
@@ -322,6 +345,7 @@ function Profile({ tab }) {
     <div data-version class="text-center text-[11px] text-base-content/70 pt-1 tabular-nums">v${appVersion(A.spec)} · core ${CORE}${BUILD && BUILD !== "dev" ? ` · ${BUILD}` : ""}</div>
   </div>`;
 }
+
 
 function PermissionsScreen() {
   const loc = useStore(A.S.locale), L = permLabels(loc);
@@ -360,6 +384,9 @@ function PermissionsScreen() {
   </div>`;
 }
 
+
+
+
 function ApkScreen() {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
   const name = T(t, "title");
@@ -375,7 +402,6 @@ function ApkScreen() {
     (async () => { try { const png = await letterTilePng(name, accent()); if (live) setIcon(png); } catch {  } })();
     return () => { live = false; };
   }, []);
-
   const generate = async () => {
     if (busy) return;
     setBusy(true); setErr(false); setDone(false);
@@ -408,21 +434,31 @@ function ApkScreen() {
   </div>`;
 }
 
+
 function DetailView() {
   const t = useStore(A.S.t), it = useStore(A.S.detail), fav = useStore(A.S.fav), loc = useStore(A.S.locale);
   useStore(trTick); useStore(metaTick); 
   if (!it) return null;
   const d = A.spec.detail, on = !!fav[A.favKey(it)], close = () => A.S.detail.set(null);
   const img = d.image && it[d.image] ? html`<figure class="aspect-video bg-base-300 rounded-2xl overflow-hidden border border-base-300"><img src=${it[d.image]} alt="" class=${`w-full h-full ${d.imageFit === "cover" ? "object-cover" : "object-contain"}`}/></figure>` : null;
+  
+  
+  
   const bodyTxt = d.body ? field(it, d.body, loc) : null;
   const bodyNode = bodyTxt ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4"><p class="text-[0.95rem] leading-relaxed whitespace-pre-line break-words">${fieldNode(it, d.body, loc)}</p></div></div>` : null;
+  
+  
   const CustomBody = d.view && VIEWS[d.view];
   const customNode = CustomBody
     ? html`<${CustomBody} item=${it} t=${t} loc=${loc} S=${A.S} toast=${A.toast} />` : null;
   const rows = (d.rows || []).map((r) => {
+    
+    
     const v = r.format === "when" ? whenLabel(t, it[r.field], loc) : r.format === "ago" ? ago(t, it[r.field], loc) : r.format === "since" ? sinceLabel(t, it[r.field], loc) : field(it, r.field, loc);
     return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-muted">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
   const actions = (d.actions || []).map((a) => {
+    
+    
     if (a.play) {
       const url = safeHref(it[a.play]);
       if (!url) return null;
@@ -442,6 +478,7 @@ function DetailView() {
     <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">${img}<div><h1 class="text-2xl font-bold leading-tight break-words">${field(it, d.title, loc) ?? ""}</h1>${d.subtitle && it[d.subtitle] ? html`<div class="text-base-content/70 mt-0.5">${field(it, d.subtitle, loc)}</div>` : null}</div>${bodyNode}${customNode}${rows.some(Boolean) ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 py-1">${rows}</div></div>` : null}${actions.some(Boolean) ? html`<div class="flex flex-col gap-2">${actions}</div>` : null}</div>
   </div>`;
 }
+
 
 function FilterChips() {
   const t = useStore(A.S.t), filters = useStore(A.S.filters);
@@ -468,6 +505,8 @@ function FilterSheet() {
     <div class="flex items-center justify-between"><h3 class="font-bold text-lg">${T(t, "filterTitle")}</h3><button aria-label=${T(t, "close")} class="btn btn-ghost btn-sm btn-circle" onClick=${() => A.S.sheet.set(false)}>${Icon("lucide:x", "text-xl")}</button></div>
     ${(f.controls || []).map((c) => {
       if (c.type === "select") {
+        
+        
         const opts = c.options ? c.options.map(([v, l]) => ({ v, l: T(t, l) })) : (data.meta[c.optionsFrom] || []);
         return html`<label class="form-control" key=${c.key}><span class="text-sm flex items-center gap-2 mb-1">${c.icon ? Icon(c.icon) : null} ${T(t, c.label)}</span><select id=${"f-" + c.key} class="select select-bordered rounded-2xl w-full" value=${filters[c.key] || ""} onChange=${(e) => A.S.filters.setKey(c.key, e.target.value)}>${opts.map((o) => html`<option value=${o.v} key=${o.v}>${o.l}</option>`)}</select></label>`;
       }
@@ -486,6 +525,9 @@ function FilterSheet() {
   </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
 }
 
+
+
+
 const PLAYPOS = collection("playPos");
 function PlayerHost() {
   const p = useStore(A.S.player), loc = useStore(A.S.locale);
@@ -501,7 +543,6 @@ function PlayerHost() {
     onTime=${(t, d) => PLAYPOS.put(p.key, { t, d }).catch(() => {  })}
     onClose=${() => A.S.player.set(null)} />`;
 }
-
 function InstallModal() {
   const t = useStore(A.S.t), open = useStore(A.S.installOpen), ev = useStore(A.S.installEvent);
   const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
@@ -514,6 +555,7 @@ function InstallModal() {
   </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
 }
 
+
 function SearchBar({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query), fav = useStore(A.S.fav);
   const status = tab.source === "fav" ? T(t, "savedCount", { n: Object.keys(fav).length })
@@ -522,6 +564,8 @@ function SearchBar({ tab }) {
   return html`<div class="sticky top-14 z-20 bg-base-200 border-b border-base-300/50 px-4 pt-3 pb-2"><label class="input input-bordered flex items-center gap-2 h-11 rounded-2xl">${Icon("lucide:search", "text-lg opacity-50")}<input id="filter" type="search" class="grow" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /></label><div id="status" class="text-xs text-base-content/70 mt-1 min-h-4 px-1">${status}</div></div>`;
 }
 
+
+
 function SortBar({ tab }) {
   const t = useStore(A.S.t), cur = useStore(A.S.sort);
   return html`<div class="px-4 pt-3 max-w-xl mx-auto w-full"><div class="join w-full" id="sort" role="group" aria-label=${T(t, "sortAria")}>
@@ -529,10 +573,14 @@ function SortBar({ tab }) {
   </div></div>`;
 }
 
+
 const QR_LBL = {
   en: { open: "Open on phone", title: "Open on your phone", stay: "Stay on desktop" },
   uk: { open: "Відкрити на телефоні", title: "Відкрити на телефоні", stay: "Залишитись на десктопі" },
 };
+
+
+
 
 function usePublishedChrome(kind) {
   const ref = useRef();
@@ -544,6 +592,9 @@ function usePublishedChrome(kind) {
       const h = el.offsetHeight;
       if (kind === "header") { if (h) s.setProperty("--hdr-h", `${h}px`); return; }
       const rail = (getComputedStyle(el).gridAutoFlow || "").includes("row");
+      
+      
+      
       s.setProperty("--dock-h", rail ? "0px" : `${h + 24}px`);
       s.setProperty("--dock-w", rail ? `${el.offsetWidth}px` : "0px");
     };
@@ -559,8 +610,13 @@ function AppBar() {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
   const qL = QR_LBL[loc] || QR_LBL.en;
   const hdrRef = usePublishedChrome("header");
+  
+  
+  
   return html`<header ref=${hdrRef} class="navbar bg-base-100 sf-e2 sticky top-0 z-30 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
+
+
 
 function QrModal() {
   const open = useStore(A.S.qrOpen), loc = useStore(A.S.locale);
@@ -573,6 +629,7 @@ function QrModal() {
   const { boxRef, grip } = useSheetDrag(close);
   return html`<dialog id="qr-invite" ref=${ref} class="modal modal-bottom" onClose=${close}><div ref=${boxRef} class=${`${SHEET_BOX} pb-8 flex flex-col items-center gap-4`}>${grip}
     <div class="flex items-center justify-between w-full"><h3 class="font-bold text-lg flex items-center gap-2">${Icon("lucide:smartphone", "text-primary")} ${L.title}</h3><button aria-label=${L.stay} class="btn btn-ghost btn-sm btn-circle" onClick=${close}>${Icon("lucide:x", "text-xl")}</button></div>
+    
     <div class="rounded-2xl bg-white p-3 max-w-full">${uri ? html`<img data-qr src=${uri} alt="" width="216" height="216" class="block w-52 h-auto max-w-full" />` : html`<div class="w-52 max-w-full aspect-square"></div>`}</div>
     <div class="font-mono text-xs text-base-content/55 break-all text-center max-w-full">${url}</div>
     <button data-qr-stay class="btn btn-primary rounded-2xl w-full" onClick=${close}>${L.stay}</button>
@@ -581,10 +638,14 @@ function QrModal() {
 
 
 
+
+
+
 const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
   style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 38%, transparent)"></div>`;
-
 function Dock() {
+  
+  
   
   
   const t = useStore(A.S.t), cur = useStore(A.S.tab);
@@ -593,7 +654,6 @@ function Dock() {
   
   return html`<nav data-dock ref=${navRef} class="sf-raised sf-e3 fixed left-3 right-3 mx-auto w-fit z-30 grid grid-flow-col gap-1 p-1 rounded-[1.35rem]">${A.spec.tabs.map((tab) => html`<button data-tab=${tab.id} key=${tab.id} aria-label=${T(t, tab.label)} aria-current=${cur === tab.id ? "page" : null} class=${`flex flex-col items-center gap-0.5 px-3.5 py-1.5 min-w-14 rounded-[1rem] transition-colors ${cur === tab.id ? "bg-primary text-primary-content" : "text-base-content/80"}`} onClick=${() => A.S.tab.set(tab.id)}>${Icon(tab.icon, "text-xl")}<span class="text-[0.7rem] leading-[1.4] truncate max-w-full">${T(t, tab.label)}</span></button>`)}</nav>`;
 }
-
 function Toast() {
   const key = useStore(A.S.toast), undo = useStore(A.S.undo), t = useStore(A.S.t), loc = useStore(A.S.locale), update = useStore(A.S.update);
   const band = "position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:calc(var(--dock-h) + 0.75rem)";
@@ -608,6 +668,7 @@ function Toast() {
       </div>
     </div>`;
   }
+  
   
   
   if (update && !key) {
@@ -627,6 +688,7 @@ function Toast() {
 
 
 
+
 function ConfirmSheet() {
   const c = useStore(A.S.confirm), loc = useStore(A.S.locale);
   const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; c ? d.showModal?.() : d.close?.(); }, [c]);
@@ -642,6 +704,7 @@ function ConfirmSheet() {
     </div>
   </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
 }
+
 
 
 
@@ -668,6 +731,7 @@ function ConverterView({ tab }) {
     <div class="flex flex-wrap gap-2 justify-center">${quick.map((q) => html`<button class="btn btn-sm btn-outline rounded-full" key=${q} onClick=${() => A.S.amount.set(q)}>${q}</button>`)}</div>
   </div>`;
 }
+
 
 
 
@@ -707,6 +771,9 @@ function TabView({ tab }) {
 export function App() {
   const cur = useStore(A.S.tab), screen = useStore(A.S.screen);
   const tab = A.spec.tabs.find((x) => x.id === cur) || A.spec.tabs[0];
+  
+  
+  
   
   
   const fit = !!tab.fit;

@@ -28,6 +28,13 @@ export function siteName(url) {
 const NOISE = /^(?:index|default|home|main|page|pages|p|pg|paged|list|browse|view|watch|embed|media|videos?|clips?|en|uk|ua|ru|de|pl|www|html?|php)$/i;
 const isId = (s) => /^[0-9]+$/.test(s) || /^[0-9a-f]{8,}$/i.test(s);   
 
+const WEAK_WORD = /^(?:a|the|view|views|watch|watching|play|player|preview|video|videos|vid|clip|clips|movie|movies|film|films|media|stream|streams|embed|item|page|show|new|hot|best|top|free|online|hd|sd|full)$/i;
+const isWeakToken = (w) => WEAK_WORD.test(w) || /^\d+$/.test(w) || (/[A-Za-z]/.test(w) && /\d/.test(w)) || w.length < 2;
+export function isWeakLabel(label) {
+  const toks = String(label || "").split(/[\s.,:;/|–—-]+/).filter(Boolean);
+  return !toks.length || toks.every(isWeakToken);
+}
+
 const prettify = (raw, max) => {
   let s = String(raw || "")
     .replace(/\.(?:html?|php|aspx?|jsp)$/i, "")          
@@ -44,21 +51,52 @@ const prettify = (raw, max) => {
   return (sp > max * 0.6 ? cut.slice(0, sp) : cut).trimEnd() + "…";
 };
 
-export function pageLabel(url, { max = 42 } = {}) {
+export function pageLabelInfo(url, { max = 42 } = {}) {
   const raw = String(url || "").trim();
-  if (!raw) return "";
+  if (!raw) return { label: "", weak: true };
   let u;
-  try { u = new URL(raw); } catch { return prettify(raw, max) || raw; }
+  try { u = new URL(raw); } catch { const l = prettify(raw, max) || raw; return { label: l, weak: isWeakLabel(l) }; }
   const sr = resolveSearch(raw);                                     
-  if (sr.searchable && sr.term.trim()) return prettify(sr.term.trim(), max);
+  if (sr.searchable && sr.term.trim()) { const l = prettify(sr.term.trim(), max); return { label: l, weak: isWeakLabel(l) }; }
   const segs = decodeURIComponent(u.pathname).split("/").map((s) => s.trim()).filter(Boolean);
   for (let i = segs.length - 1; i >= 0; i--) {
     const seg = segs[i];
     if (isId(seg) || NOISE.test(seg.replace(/\.(?:html?|php|aspx?|jsp)$/i, ""))) continue;
     const out = prettify(seg, max);
-    if (out) return out;
+    if (out) return { label: out, weak: isWeakLabel(out) };
   }
-  return siteName(raw);
+  return { label: siteName(raw), weak: segs.length > 0 };
+}
+
+export function pageLabel(url, opts) { return pageLabelInfo(url, opts).label; }
+
+const SEP = /\s+[-–—|·•:»«]+\s+|\s+[-–—|·•»«]\s*$|^\s*[-–—|·•»«]\s+/;
+export function cleanPageTitle(raw, url, { max = 64 } = {}) {
+  let s = String(raw || "").replace(/[\s ]+/g, " ").trim();
+  if (!s) return "";
+  const site = siteName(url).toLowerCase(), host = hostOf(url).toLowerCase();
+  const key = (x) => x.toLowerCase().replace(/[^a-z0-9а-яїієґ]+/gi, "");
+  const isSite = (chunk) => {
+    const k = key(chunk); if (!k || k.length > 40) return false;
+    return k === key(site) || k === key(host) || k === key(registrableDomain(host)) ||
+      (site.length >= 4 && (k.startsWith(key(site)) || k.endsWith(key(site))));
+  };
+  const parts = s.split(SEP).map((p) => p.trim()).filter(Boolean);
+  if (parts.length > 1) {
+    while (parts.length > 1 && isSite(parts[parts.length - 1])) parts.pop();
+    while (parts.length > 1 && isSite(parts[0])) parts.shift();
+    s = parts.join(" – ");
+  }
+  s = s.replace(/^["'“”«»\s]+|["'“”«»\s]+$/g, "").trim();
+  if (!s || isWeakLabel(s) || isSite(s)) return "";                  
+  if (s.length > max) { const cut = s.slice(0, max), sp = cut.lastIndexOf(" "); s = (sp > max * 0.6 ? cut.slice(0, sp) : cut).trimEnd() + "…"; }
+  return s;
+}
+
+export function sourceTitle(url, { pageTitle = "", hint = "" } = {}) {
+  const { label, weak } = pageLabelInfo(url);
+  if (!weak) return label;
+  return cleanPageTitle(pageTitle, url) || cleanPageTitle(hint, url) || label;
 }
 
 export function groupByDomain(list) {

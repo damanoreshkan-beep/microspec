@@ -132,7 +132,7 @@ function Card({ item: it, card, hide }) {
 
   if (card.layout === "gallery") {
     const ratio = card.aspect === "portrait" ? "aspect-[2/3]" : "aspect-square";
-    const art = html`<div class=${`${ratio} w-full rounded-[var(--ms-r)] flex items-center justify-center overflow-hidden sf-inset bg-base-200/60 shrink-0`}>
+    const art = html`<div class=${`${ratio} w-full rounded-[var(--ms-r)] flex items-center justify-center overflow-hidden sf-raised sf-e2 shrink-0`}>
       ${card.image && it[card.image]
         ? html`<img src=${it[card.image]} alt="" loading="lazy" class=${`w-full h-full ${card.imageFit === "cover" ? "object-cover" : "object-contain p-3"}`}/>`
         : html`<iconify-icon icon=${(card.icon && it[card.icon]) || "lucide:package"} class="text-3xl opacity-60"></iconify-icon>`}

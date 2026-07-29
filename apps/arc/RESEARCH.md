@@ -193,6 +193,34 @@ have been evidence about one frozen string, not about the app.
 So the length ladder aims at roughly one / two / three screens and the numbers below record where it
 actually lands. If a level needs to move, move `s` (sentences) in `ACT_BUDGET`, not `c`.
 
+## 5. The landing screen — four shelves, and the one that was measured and dropped
+
+Before anything is typed the app shows stock, not an instruction. The runtime already had this
+(`browse: true` on a `searchFetch` tab) and the groups are the systemic `sections` — no new component.
+
+41 books, curated and committed, each verified before it entered the file: exists, passes `isBook`, and
+carries a plot section of **at least 1500 characters**. A book whose article has no plot is a dead end the
+moment somebody taps it.
+
+| Shelf | Books | Covers |
+|---|---:|---:|
+| Ukrainian stories (first — this farm's reader is Ukrainian) | 12 | 50% |
+| World classics (deliberately not Anglo-heavy) | 10 | 70% |
+| Where a genre starts | 10 | 30% |
+| The book behind the film | 9 | 20% |
+
+**Titles are disambiguated on purpose.** Looked up by plain title, **four of twelve** Ukrainian entries
+resolved to the WRONG WORK: `Shadows of Forgotten Ancestors` → Paradjanov's film, `The City` and
+`Felix Austria` → other subjects entirely. The file carries pageids as well as `(novel)`-qualified titles.
+This is the adaptation trap from §1 reappearing inside a hand-curated list.
+
+**"Recent releases" was requested and is NOT shipped.** Measured twice, independently: the 2025 and 2026
+novel categories hold **35 articles**, of which **6 (17.1%)** have a usable plot and **0** have a cover. A
+shelf of mostly-empty tiles under a label promising novelty is worse than no shelf. A frozen list is not an
+option either — a group called "recent" starts lying the moment it stops moving.
+
+Cost: **one batched request** for all four shelves, failing open to generated tiles.
+
 ## OPEN / UNVERIFIED — the build must not lean on these
 - Act 3 at level 3 drifts to ~2x its siblings (16 sentences vs 8). Balanced at levels 1–2. Revisit only
   after the render measurement, so the fix is calibrated against a real number.

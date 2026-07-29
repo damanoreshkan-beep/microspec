@@ -849,6 +849,14 @@
                 ],
                 "description": "image fit (default 'cover' = fill+crop; 'contain' = whole image matted, for art/posters)."
               },
+              "aspect": {
+                "type": "string",
+                "enum": [
+                  "square",
+                  "portrait"
+                ],
+                "description": "gallery only — the SHAPE of the pictured thing. Default 'square' (an app icon, a logo). 'portrait' is 2:3, the shape of a book cover or a film poster: forcing one into a square marooned a small picture in a band of dead space. The layout should not assume the shape of a thing only the app knows."
+              },
               "href": {
                 "type": "string",
                 "minLength": 1,

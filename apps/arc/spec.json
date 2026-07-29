@@ -26,7 +26,6 @@
       "searchFetch": true,
       "browse": true,
       "searchKey": "search",
-      "statusKey": "status",
       "empty": {
         "icon": "lucide:search-x",
         "text": "noResults",
@@ -39,12 +38,12 @@
         { "filter": "g_screen", "icon": "lucide:clapperboard", "label": "shelfScreen" }
       ],
       "card": {
-        "layout": "feed",
+        "layout": "gallery",
         "image": "cover",
-        "imageFit": "contain",
+        "imageFit": "cover",
+        "aspect": "portrait",
         "title": "title",
-        "subtitle": "byline",
-        "more": "more"
+        "subtitle": "byline"
       }
     },
     {
@@ -62,12 +61,12 @@
         "hint": "emptySavedHint"
       },
       "card": {
-        "layout": "feed",
+        "layout": "gallery",
         "image": "cover",
-        "imageFit": "contain",
+        "imageFit": "cover",
+        "aspect": "portrait",
         "title": "title",
-        "subtitle": "byline",
-        "more": "more"
+        "subtitle": "byline"
       }
     },
     {

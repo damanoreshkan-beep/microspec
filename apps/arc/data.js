@@ -30,9 +30,19 @@ const jget = async (url, timeout = 10000) => {
   } finally { clearTimeout(t); }
 };
 
+// A placeholder is BOARD, not decoration. letterTile defaults to a hue hashed across the full 360 and
+// 30% saturation, which put six loud unrelated colours on one shelf — and colour in this farm means
+// something, so six meaningless hues is noise. One quiet hue near the app accent, low saturation, and only
+// the LIGHTNESS varies per title: enough texture to tell two spines apart, never a false signal. The letter
+// drops to a spine-sized glyph instead of filling half the tile.
+const spine = (title) => {
+  let h = 0; for (const c of title) h = (h * 31 + c.charCodeAt(0)) % 100;
+  return letterTile(title, { w: 300, h: 450, hue: 24, sat: 12, light: 18 + (h % 9), fontSize: 84 });
+};
+
 // A book with no cover must still look like a book — Wikidata P18 is present on only 64% of them and the
 // search thumbnail on fewer still, so the placeholder is not an edge case, it is the common path.
-const coverFor = (title, thumb) => thumb || letterTile(title, { w: 300, h: 450 });
+const coverFor = (title, thumb) => thumb || spine(title);
 
 export async function load(filters) {
   const q = (filters?.q || "").trim();
@@ -120,7 +130,7 @@ async function loadShelves() {
     // carried in both locales so a Ukrainian reader does not meet "Panas Myrnyi" on a Ukrainian shelf.
     byline: b.uk,
     bylineEn: b.en,
-    cover: thumbs[b.pageid] || letterTile(b.title, { w: 300, h: 450 }),
+    cover: thumbs[b.pageid] || spine(b.title),
     hasCover: !!thumbs[b.pageid],
     url: `https://en.wikipedia.org/?curid=${b.pageid}`,
     // one truthy flag per shelf — `sections` selects on a predicate, and a predicate is a truthy item key

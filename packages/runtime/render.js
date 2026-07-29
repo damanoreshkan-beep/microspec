@@ -656,6 +656,10 @@ function SearchBar({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query), fav = useStore(A.S.fav);
   const status = tab.source === "fav" ? T(t, "savedCount", { n: Object.keys(fav).length })
     : data.loading ? T(t, "statusLoading") : data.error ? T(t, "statusError")
+    // A browse screen has not searched for anything, so a result count is a lie with a number in it
+    // ("found: 41" over a shelf nobody queried). The line stays in the DOM — it reserves its own height,
+    // so the list does not jump the moment a query does produce a count.
+    : (tab.browse && !q) ? ""
     : T(t, tab.statusKey || "status", { ...(data.meta || {}) });
   return html`<div class="sticky top-14 z-20 bg-base-200 border-b border-base-300/50 px-4 pt-3 pb-2"><label class="input input-bordered flex items-center gap-2 h-11 rounded-2xl">${Icon("lucide:search", "text-lg opacity-50")}<input id="filter" type="search" class="grow" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /></label><div id="status" class="text-xs text-base-content/70 mt-1 min-h-4 px-1">${status}</div></div>`;
 }

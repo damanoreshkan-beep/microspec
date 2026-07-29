@@ -116,17 +116,19 @@ export default [
       await ready(h);
       // The mask had two writers once: a pointer event recomputed it from scratch and wiped a held
       // key. Hold a direction on the keyboard, tap the pad, and the run must continue.
-      const a = await dist(h);
+      // Measure the MASK, not the distance. The mask had two writers once — a pointer event
+      // recomputed it from scratch and wiped a held key — and the question is only ever "is RIGHT
+      // still set". Distance was a proxy for that, and one the terrain can veto: she can be alive,
+      // still holding right, and simply pressed against a two-tile step.
+      const RIGHT = 2;
       await h.keyDown("ArrowRight");
+      await h.wait(120);
+      h.expect((+(await h.attr("[data-live-screen]", "data-mask")) & RIGHT) !== 0, "клавіатура не дійшла до маски");
       await h.tap('[data-key="a"]');      // a pointer event lands while the key is still down
-      await h.wait(600);
-      const b = await dist(h);
-      const dead = await h.attr("[data-live-screen]", "data-dead");
+      await h.wait(200);
+      const held = +(await h.attr("[data-live-screen]", "data-mask"));
       await h.keyUp("ArrowRight");
-      // Check the state the assertion depends on BEFORE trusting it: a run that ended measures
-      // nothing, and three tests in this file have now been wrong that way rather than the code.
-      h.expect(dead === "0", "забіг обірвався до виміру — дистанція завмерла не через маску");
-      h.expect(b > a, "дотик стер утримувану клавішу — маска знову має двох власників");
+      h.expect((held & RIGHT) !== 0, "дотик стер утримувану клавішу — маска знову має двох власників");
     },
   },
   {

@@ -97,6 +97,10 @@ export function hunt(props) {
           h.dataset.frame = st[S.FRAME]; h.dataset.dead = st[S.DEAD] ? "1" : "0";
           h.dataset.ammo = st[S.AMMO]; h.dataset.hp = st[S.HP]; h.dataset.kills = st[S.KILLS];
           h.dataset.camx = st[S.CAMX];
+          /* The live input mask. A test about INPUT should measure input: asserting that a held key
+             survives a tap by watching the player's distance lets the terrain veto the answer — she
+             can be alive, still holding right, and simply pressed against a step. */
+          h.dataset.mask = mask.current;
         }
         if (st[S.DEAD] && !$over.get()) {
           $over.set(true);

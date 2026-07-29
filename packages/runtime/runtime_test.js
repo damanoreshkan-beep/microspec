@@ -1,3 +1,4 @@
+import { clusterMetrics, hubOfCross, DIAMOND, DIAMOND_KEY, DIAMOND_BOX, PAIR, PAIR_KEY, PAIR_BOX } from "./deck.js";
 import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { validateSpec } from "./validate.js";
 import { cycleRepeat as tpCycleRepeat, advance as tpAdvance, clock as tpClock } from "./player.js";
@@ -3760,7 +3761,26 @@ Deno.test("hunt engine · the collision box it reports IS the one it stands on",
   assertEquals(feet, ground, `feet at ${feet} against a surface at ${ground} — the box the renderer is given is not the box she rests on`);
 });
 
+Deno.test("deck · a cluster is measured back out of its own layout, never trusted as a literal", () => {
+  const pair = clusterMetrics(PAIR[0], PAIR[1], PAIR_KEY, PAIR_BOX);
+  assert(Math.abs(pair.span - 1.6) < 0.03, `the two action keys sit ${pair.span.toFixed(2)} D apart — a real pair is 1.60 D (1.45–1.75), and 1.0 D means their rims touch`);
+  assert(Math.abs(pair.angle - 22) < 2, `the pair axis is ${pair.angle.toFixed(1)}° — a handheld pair rises 15–28° to the right`);
+  const across = clusterMetrics(DIAMOND.right, DIAMOND.left, DIAMOND_KEY, DIAMOND_BOX);
+  const down = clusterMetrics(DIAMOND.down, DIAMOND.up, DIAMOND_KEY, DIAMOND_BOX);
+  for (const [name, m] of [["horizontal", across], ["vertical", down]])
+    assert(Math.abs(m.span - 1.92) < 0.05, `the ${name} diagonal of the four-key cluster is ${m.span.toFixed(2)} D — 1.80–2.10 D, below 1.6 they merge into a flower and above 2.3 they stop being one node`);
+  assert(Math.abs(across.angle) < 3, `the four-key cluster is rotated ${across.angle.toFixed(1)}° — a real one is axis-aligned within 3°, and a decorative 15–25° twist is the commonest way to draw one wrong`);
+
+  
+  const css = Deno.readTextFileSync(new URL("./theme.css", import.meta.url));
+  const cell = +/\.ms-pad-hub\s*\{[^}]*width:\s*([\d.]+)%/.exec(css)?.[1];
+  assert(cell, "theme.css no longer sizes .ms-pad-hub — the cross has no hub");
+  const whole = hubOfCross(cell);
+  assert(whole > 25 && whole < 40, `the pad hub is ${whole.toFixed(1)}% of the whole cross — a real one is ~34%, and the alpha\u2019s 38%-of-the-centre-cell was 12.7%`);
+});
 Deno.test("shells · the console choice is shared, not per app", async () => {
+  
+  
   const src = await Deno.readTextFile(new URL("./shells.js", import.meta.url));
   const key = /persistentAtom\(\s*"([^"]+)"/.exec(src)?.[1];
   assert(key, "shells.js no longer stores the choice through persistentAtom");
@@ -3793,14 +3813,12 @@ Deno.test("isBook: a film adaptation shares the title and must never win", () =>
   
   assert(!actsIsBook({ p31: ["Q11424", "Q7725634"] }), "typed as both → the film reading must lose");
 });
-
 Deno.test("isBook: untyped works fall back to author+date, which films do not have", () => {
   assert(actsIsBook({ p31: [], hasAuthor: true, hasDate: true }), "P50+P577 are on 38/39 books");
   assert(!actsIsBook({ p31: [], hasAuthor: true }), "author alone is not enough");
   assert(!actsIsBook({ p31: [], hasDate: true }), "a date alone is nothing");
   assert(!actsIsBook({}), "no signal at all");
 });
-
 Deno.test("findPlotSection: resolves by NAME, never by a remembered number", () => {
   
   assertEquals(actsFindPlot([{ index: 1, line: "Origins" }, { index: 3, line: "Plot" }]).index, "3");
@@ -3824,7 +3842,6 @@ Deno.test("cleanPlotText strips what textContent leaves behind", () => {
   assertEquals(actsClean("a b   c", null), "a b c", "nbsp is not matched by \\s everywhere");
   assertEquals(actsClean("", null), "");
 });
-
 Deno.test("foldPlot keeps the ENDING — act 3 is grounded in it", () => {
   const head = "A".repeat(400) + ". ";
   const mid = "B".repeat(400) + ". ";
@@ -3896,7 +3913,9 @@ Deno.test("plotUpToClimax withholds the ending — a prompt alone did not", () =
   assertEquals(actsUpToClimax("A short plot."), "A short plot.");
   assertEquals(actsUpToClimax(""), "");
 });
+
 Deno.test("material: a SURFACE is extruded, never a fill with a line drawn round it", async () => {
+  
   
   
   

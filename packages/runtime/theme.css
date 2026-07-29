@@ -366,3 +366,49 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 @media (prefers-reduced-motion: reduce) {
   .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }
 }
+
+
+.ms-shell {
+  width: 100%;
+  max-width: var(--sh-max, 26rem);
+  padding: var(--ms-pad);
+  background: var(--sh-body, var(--color-base-100));
+  border-radius: var(--sh-r-tl, var(--ms-r)) var(--sh-r-tr, var(--ms-r))
+                 var(--sh-r-br, var(--ms-r)) var(--sh-r-bl, var(--ms-r));
+}
+[data-theme="signal"]       .ms-shell { --sh-body: var(--sh-body-d); }
+[data-theme="signal-light"] .ms-shell { --sh-body: var(--sh-body-l); }
+.ms-screen {
+  --sf-inset-face: var(--sh-tint, var(--color-base-100));
+  width: 100%;
+  padding: max(0.2rem, var(--sh-bezel, 6%));
+  border-radius: var(--ms-r);
+}
+
+@media (min-height: 521px) and (min-width: 301px) {
+  [data-deck="split"] .ms-screen, [data-deck="clam"] .ms-screen { width: var(--sh-screen-w, 100%); }
+  [data-deck="flank"] > [data-stage-box] { flex: 0 1 var(--sh-screen-w, 100%); }
+}
+
+.ms-hinge { position: relative; flex: 0 0 auto; height: 0.5rem; }
+@media (max-height: 520px), (max-width: 300px) { .ms-hinge { display: none; } }
+.ms-hinge::before {
+  content: ""; position: absolute; left: 6%; right: 6%; top: 50%; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--nm-dark) 10%, var(--nm-dark) 90%, transparent);
+  box-shadow: 0 1px 0 var(--nm-light);
+}
+.ms-pad { padding: 4%; }
+.ms-pad-hub { width: 92%; height: 92%; }
+
+.ms-pad-key { border-radius: 12%; }
+
+
+.ms-pad.ms-pad-disc { border-radius: 50%; }
+.ms-pad-disc > div { border-radius: 50%; overflow: hidden; }
+.ms-pad-disc [data-bit] { border-radius: 0; }
+.ms-pad-disc .ms-pad-hub { width: 81%; height: 81%; }
+
+
+.ms-menu { flex-wrap: wrap; justify-content: center; }
+
+

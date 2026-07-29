@@ -35,8 +35,11 @@
   "shellBrick": "Brick",
   "shellPocket": "Pocket",
   "shellSlab": "Slab",
-  "shellWide": "Wide",
   "shellArcade": "Arcade",
   "shellBare": "Bare",
-  "tabShell": "Console"
+  "tabShell": "Console",
+  "shellSlim": "Slim",
+  "shellCart": "Cartridge",
+  "shellClam": "Clamshell",
+  "shellBacklit": "Backlit"
 }

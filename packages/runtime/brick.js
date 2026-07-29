@@ -34,6 +34,17 @@ export const LCD = Object.freeze({
 });
 
 
+const chan = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const toHex = (v) => "#" + v.map((c) => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0")).join("");
+/** Move a colour k of the way to white. The polariser's bright corner is the plate at k≈0.18. */
+export const lighten = (h, k) => toHex(chan(h).map((c) => c + (255 - c) * k));
+
+/** A panel from a shell's `tint`, or the default one when the shell has no opinion. */
+export function lcdFor(tint) {
+  if (!tint?.off || !tint?.ink) return LCD;
+  return Object.freeze({ ...LCD, plate: tint.off, plateLight: lighten(tint.off, 0.18), ink: tint.ink });
+}
+
 export const INK = Object.freeze([0, 0.16, 0.34, 0.58, 0.86]);
 /** Clamp a density level into the ramp. */
 export const clampLevel = (l) => (l < 0 ? 0 : l > INK.length - 1 ? INK.length - 1 : l | 0);
@@ -46,6 +57,7 @@ export const FACE = Object.freeze({ top: -1, left: -1, front: 0, right: 1, botto
 export function lit(level, face = "front") {
   return INK[clampLevel(level + (FACE[face] ?? 0))];
 }
+
 /**
  * Z-slice offsets for an extruded object, stacked TOWARD the light so the faces you see are
  * the lit ones. Index 0 is the deepest slice and the last is the top — draw them in order
@@ -93,7 +105,6 @@ export function parallaxX(camx, depth) {
   return Math.round(camx * depth) | 0;
 }
 export const LAYERS = Object.freeze([0.15, 0.35, 0.6]);
-
 export function decodeEntry(dl, i) {
   const o = i * 4, id = dl[o], attr = dl[o + 3];
   return {
@@ -121,6 +132,7 @@ export function digits(value, width) {
   const s = String(n);
   return s.length >= width ? s.slice(-width) : "0".repeat(width - s.length) + s;
 }
+
 
 export function betterRun(prev, run) {
   if (!run) return prev ?? null;

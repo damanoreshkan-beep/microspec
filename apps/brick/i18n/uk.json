@@ -35,8 +35,11 @@
   "shellBrick": "Цеглинка",
   "shellPocket": "Кишенькова",
   "shellSlab": "Пластина",
-  "shellWide": "Широка",
   "shellArcade": "Аркада",
   "shellBare": "Без корпусу",
-  "tabShell": "Консоль"
+  "tabShell": "Консоль",
+  "shellSlim": "Тонка",
+  "shellCart": "Картриджна",
+  "shellClam": "Розкладачка",
+  "shellBacklit": "З підсвіткою"
 }

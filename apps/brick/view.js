@@ -10,8 +10,9 @@ import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
-import { GameConsole, ShellPicker, SHELL_IDS } from "/_rt/console.js";
-import { SCRW, SCRH, S, digits, betterRun } from "/_rt/brick.js";
+import { GameConsole, ShellTab } from "/_rt/console.js";
+import { SCRW, SCRH, S, digits, betterRun, lcdFor } from "/_rt/brick.js";
+import { $shell, shellOf } from "/_rt/shells.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
 
@@ -24,6 +25,18 @@ const $sound = persistentAtom(`${NS}sound`, "1");
 /** Live readouts. Kept out of the store on purpose: they change sixty times a second and nothing
     that renders should depend on them — the DOM mirrors below are updated by hand, once a frame. */
 const $over = atom(false);
+
+const DECK_PAD = [
+  { id: "padUp", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
+  { id: "padLeft", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
+  { id: "padRight", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
+  { id: "padDown", pad: "down", bit: PAD.DOWN, icon: "lucide:chevron-down", label: "padDown" },
+];
+const DECK_ACTIONS = [
+  { id: "a", bit: PAD.JUMP, text: "A", label: "keyJump" },
+  { id: "b", bit: PAD.RUN, text: "B", label: "keyRun", latch: true },
+];
+
 
 export function brick(props) {
   const { S: A, t } = props;
@@ -40,6 +53,7 @@ export function brick(props) {
   const eng = useRef(null), sound = useRef(null), painter = useRef(null);
   const seed = useRef(gate ? GATE_SEED : (Math.random() * 0xffffffff) >>> 0);
 
+  
   const act = useCallback((name) => {
     if (name === "sound") {
       const next = $sound.get() !== "1";
@@ -54,7 +68,7 @@ export function brick(props) {
   useKeyboardPad(setKeys, act);
 
   useEffect(() => {
-    let live = true, raf = 0;
+    let live = true, raf = 0, unshell = null;
     (async () => {
       let E;
       try { E = await loadEngine(); } catch (e) { if (live) setErr(String(e?.message || e)); return; }
@@ -67,7 +81,10 @@ export function brick(props) {
       const ctx = cv.current?.getContext("2d", { alpha: false });
       if (!ctx) return;
       ctx.imageSmoothingEnabled = false;
-      painter.current = canvasPainter(ctx);
+      
+      const repaint = () => { painter.current = canvasPainter(ctx, lcdFor(shellOf($shell.get()).tint)); };
+      repaint();
+      unshell = $shell.subscribe(repaint);
       setReady(true);
 
       const clock = makeClock(() => {
@@ -75,9 +92,9 @@ export function brick(props) {
         const st = E.state();
         if (st[S.SFX]) sound.current?.play(st[S.SFX]);
       });
-
       
       if (gate) for (let i = 0; i < 140; i++) E.step(PAD.RIGHT | PAD.RUN | ((i % 46) < 16 ? PAD.JUMP : 0));
+
       const paint = () => {
         const st = E.state(), { dl, n } = E.list();
         painter.current.keep();
@@ -87,7 +104,6 @@ export function brick(props) {
           h.dataset.dist = st[S.DIST]; h.dataset.score = st[S.SCORE];
           h.dataset.coins = st[S.COINS]; h.dataset.frame = st[S.FRAME]; h.dataset.camx = st[S.CAMX];
           h.dataset.dead = st[S.DEAD] ? "1" : "0";
-          
           h.dataset.mask = mask.current;
         }
         if (st[S.DEAD] && !$over.get()) {
@@ -111,7 +127,7 @@ export function brick(props) {
       document.addEventListener("visibilitychange", vis);
       return () => document.removeEventListener("visibilitychange", vis);
     })();
-    return () => { live = false; cancelAnimationFrame(raf); };
+    return () => { live = false; cancelAnimationFrame(raf); unshell?.(); };
   }, []);
 
   const restart = useCallback(() => {
@@ -132,21 +148,12 @@ export function brick(props) {
          It is sized to its contents and centred rather than stretched, so it reads as an object you
          are holding instead of as a layout that filled the window. -->
     <${GameConsole}
-      layout="handheld"
       deck=${deckProps}
       onPointerDown=${arm}
       t=${t}
       onKeyboard=${(k) => (k.bit ? pulse(k.bit) : act(k.act))}
-      pad=${[
-        { id: "padUp", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
-        { id: "padLeft", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
-        { id: "padRight", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
-        { id: "padDown", pad: "down", bit: PAD.DOWN, icon: "lucide:chevron-down", label: "padDown" },
-      ]}
-      actions=${[
-        { id: "a", bit: PAD.JUMP, text: "A", label: "keyJump" },
-        { id: "b", bit: PAD.RUN, text: "B", label: "keyRun", latch: true },
-      ]}
+      pad=${DECK_PAD}
+      actions=${DECK_ACTIONS}
       menu=${[{ id: "sound", act: "sound", icon: soundOn ? "lucide:volume-2" : "lucide:volume-x", label: "sound", pressed: soundOn }]}
       centre=${[
         { id: "start", act: "start", text: T(t, "start"), label: "start" },
@@ -197,14 +204,7 @@ export function brick(props) {
  */
 export function brickShell(props) {
   const { t } = props;
-  return html`
-    <div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]" data-shell-tab>
-      <${ShellPicker} t=${t} />
-      <div class="sf-inset rounded-[var(--ms-r)] p-[var(--ms-pad)] flex-1 min-h-0 grid place-items-center">
-        <div class="text-center">
-          <div class="font-mono text-[var(--ms-title)]" data-shell-count>${SHELL_IDS.length}</div>
-          <div class="text-[var(--ms-label)] uppercase tracking-wide opacity-70 mt-1">${T(t, "shellPick")}</div>
-        </div>
-      </div>
-    </div>`;
+  
+  const { deckProps } = useTouchDeck({});
+  return html`<${ShellTab} t=${t} deck=${deckProps} pad=${DECK_PAD} actions=${DECK_ACTIONS} />`;
 }

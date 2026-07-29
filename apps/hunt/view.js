@@ -10,13 +10,27 @@ import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
-import { GameConsole, ShellPicker, SHELL_IDS } from "/_rt/console.js";
+import { GameConsole, ShellTab } from "/_rt/console.js";
 import { SCRW, SCRH, S, IN, digits, betterRun } from "/_rt/hunt.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
+const DECK_PAD = [
+  { id: "padUp", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
+  { id: "padLeft", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
+  { id: "padRight", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
+  { id: "padDown", pad: "down", bit: PAD.DOWN, icon: "lucide:chevron-down", label: "padDown" },
+];
+
+
+const DECK_ACTIONS = [
+  { id: "jump", bit: PAD.JUMP, icon: "lucide:chevrons-up", label: "keyJump" },
+  { id: "throw", bit: IN.SHOOT, icon: "lucide:send", iconCls: "-rotate-45", label: "keyThrow" },
+  { id: "run", bit: PAD.RUN, icon: "lucide:wind", label: "keyRun", latch: true },
+  { id: "crouch", bit: PAD.DOWN, icon: "lucide:chevrons-down", label: "keyCrouch" },
+];
 const NS = "hunt:";
 const $best = persistentAtom(`${NS}best`, null, { encode: JSON.stringify, decode: JSON.parse });
 const $runs = persistentAtom(`${NS}runs`, "0");
@@ -74,6 +88,7 @@ export function hunt(props) {
         if (st[S.SFX]) sound.current?.play(st[S.SFX]);
       });
 
+      
       if (gate) for (let i = 0; i < 150; i++)
         E.step(IN.RIGHT | ((i % 60) < 16 ? IN.JUMP : 0) | ((i % 30) === 0 ? IN.SHOOT : 0));
 
@@ -125,17 +140,8 @@ export function hunt(props) {
       onPointerDown=${arm}
       t=${t}
       onKeyboard=${(k) => (k.bit ? pulse(k.bit) : act(k.act))}
-      pad=${[
-        { id: "padUp", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
-        { id: "padLeft", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
-        { id: "padRight", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
-        
-        { id: "padDown", pad: "down", bit: PAD.DOWN, icon: "lucide:chevrons-down", label: "keyCrouch" },
-      ]}
-      actions=${[
-        { id: "throw", bit: IN.SHOOT, icon: "lucide:send", iconCls: "-rotate-45", label: "keyThrow" },
-        { id: "run", bit: PAD.RUN, icon: "lucide:wind", label: "keyRun", latch: true },
-      ]}
+      pad=${DECK_PAD}
+      actions=${DECK_ACTIONS}
       menu=${[
         { id: "sound", act: "sound", icon: soundOn ? "lucide:volume-2" : "lucide:volume-x", label: "sound", pressed: soundOn },
         { id: "records", act: "records", icon: "lucide:trophy", label: "records" },
@@ -187,14 +193,7 @@ export function hunt(props) {
  */
 export function huntShell(props) {
   const { t } = props;
-  return html`
-    <div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]" data-shell-tab>
-      <${ShellPicker} t=${t} />
-      <div class="sf-inset rounded-[var(--ms-r)] p-[var(--ms-pad)] flex-1 min-h-0 grid place-items-center">
-        <div class="text-center">
-          <div class="font-mono text-[var(--ms-title)]" data-shell-count>${SHELL_IDS.length}</div>
-          <div class="text-[var(--ms-label)] uppercase tracking-wide opacity-70 mt-1">${T(t, "shellPick")}</div>
-        </div>
-      </div>
-    </div>`;
+  
+  const { deckProps } = useTouchDeck({});
+  return html`<${ShellTab} t=${t} deck=${deckProps} pad=${DECK_PAD} actions=${DECK_ACTIONS} />`;
 }

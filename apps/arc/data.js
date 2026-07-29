@@ -17,7 +17,12 @@ const jget = async (url, timeout = 10000) => {
   } finally { clearTimeout(t); }
 };
 
-const coverFor = (title, thumb) => thumb || letterTile(title, { w: 300, h: 450 });
+const spine = (title) => {
+  let h = 0; for (const c of title) h = (h * 31 + c.charCodeAt(0)) % 100;
+  return letterTile(title, { w: 300, h: 450, hue: 24, sat: 12, light: 18 + (h % 9), fontSize: 84 });
+};
+
+const coverFor = (title, thumb) => thumb || spine(title);
 
 export async function load(filters) {
   const q = (filters?.q || "").trim();
@@ -88,7 +93,7 @@ async function loadShelves() {
     title: b.title,
     byline: b.uk,
     bylineEn: b.en,
-    cover: thumbs[b.pageid] || letterTile(b.title, { w: 300, h: 450 }),
+    cover: thumbs[b.pageid] || spine(b.title),
     hasCover: !!thumbs[b.pageid],
     url: `https://en.wikipedia.org/?curid=${b.pageid}`,
     ...Object.fromEntries(SHELVES.map((g) => [`g_${g}`, g === b.group])),

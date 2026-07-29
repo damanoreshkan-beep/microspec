@@ -426,19 +426,19 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, cantPlay }
   return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
       ${depth ? html`<button data-feed-back class="btn btn-ghost btn-sm btn-circle text-white shrink-0" aria-label=${T(t, "back")} onClick=${() => popFrame(S)}>${Icon("lucide:chevron-left", "text-xl")}</button>` : null}
       <${Favicon} url=${src} size="w-6 h-6" />
-      <span class="min-w-0 flex items-baseline gap-1.5 pl-0.5 pr-1">
-        <span data-island-label class="text-sm text-white truncate min-w-0">${title}</span>
-        <span class="text-[0.7rem] font-mono text-white/70 truncate min-w-0 hidden min-[380px]:inline">${hostOf(src)}</span>
-      </span>
+      ${/* The title gets the whole middle. The host used to sit beside it and, at 384px, the two of them
+            truncated EACH OTHER — "Free stoc…" next to "mixk…", which is two half-words and no name. The
+            favicon already says which site this is; the host stays where it is precision, the sources list. */""}
+      <span data-island-label class="text-sm text-white truncate min-w-0 pl-0.5 pr-1">${title}</span>
       ${/* a hairline glass circle, not a filled ink pill: on a media surface the island is a quiet identity
             chip, and a solid white button made "subscribe" the brightest thing on a full-screen video */""}
       ${!subbed ? html`<button data-subscribe class=${act} aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: title, url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
-      ${/* the white "Watch" pill that used to float over the video, absorbed. It only raises its voice —
-            filled, and with the word — when the clip genuinely cannot play here; otherwise it is the quiet
-            way out to the page, which is all the old bottom-right link ever was. */""}
-      ${watch ? (cantPlay
-        ? html`<a data-watch href=${watch} target="_blank" rel="noopener" class="btn btn-sm btn-primary rounded-full gap-1.5 shrink-0">${Icon("lucide:external-link", "text-base")}<span class="text-xs">${T(t, "watch")}</span></a>`
-        : html`<a data-watch href=${watch} target="_blank" rel="noopener" class=${act} aria-label=${T(t, "openOrig")}>${Icon("lucide:external-link", "text-base")}</a>`) : null}
+      ${/* The white "Watch" pill, absorbed — and it exists ONLY while the clip cannot play here (a signed
+            ephemeral URL, or a player that errored). A clip that plays needs no "open" button: a tap on a
+            dead slide already opens its page. It stays a circle and never carries a word: filled with a
+            word, on a black media surface, it was the brightest thing on the screen — the exact mistake
+            the note on `subscribe` below warns about. Tinted, it reads as "the way to see this". */""}
+      ${watch && cantPlay ? html`<a data-watch href=${watch} target="_blank" rel="noopener" class="btn btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")}>${Icon("lucide:external-link", "text-base")}</a>` : null}
       ${/* forward is the mirror of back: the page this clip lives on. The destination's NAME is not written
             here — it is what the drag reveals under the finger — so the label rides the a11y name instead. */""}
       ${dive ? html`<button data-dive class=${act} aria-label=${`${T(t, "dive")}: ${dive.label}`} onClick=${dive.go}>${Icon("lucide:chevron-right", "text-lg")}</button>` : null}

@@ -129,13 +129,13 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
   const id = SHELLS[shell || shellParam || chosen] ? (shell || shellParam || chosen) : "brick";
   const sh = shellOf(id);
   const round = sh.key === "round";
-  const vars = shellVars(sh);
   const spread = { ...deck };
   if (onPointerDown) {
     const inner = deck?.onPointerDown;
     spread.onPointerDown = (e) => { onPointerDown(e); inner?.(e); };
   }
-
+  
+  const style = { ...(deck?.style || {}), ...shellVars(sh) };
   const menuRow = menu.length
     ? html`<div class="ms-menu flex gap-1">
         ${menu.map((k) => html`<${Key} k=${k} t=${t} onKeyboard=${onKeyboard} radius="rounded-full" cls="w-9 h-9" />`)}
@@ -168,7 +168,7 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
   
   if (sh.deck === "float") {
     return html`
-      <div class="relative h-full min-h-0 w-full overflow-hidden rounded-[var(--ms-r)]" data-shell-body="bare" ...${spread}>
+      <div class="relative h-full min-h-0 w-full overflow-hidden rounded-[var(--ms-r)]" data-shell-body=${id} ...${spread} style=${style}>
         <div class="absolute inset-0 grid place-items-center">${children}${overlay}</div>
         ${menuRow ? html`<div class="absolute right-2 top-2">${menuRow}</div>` : null}
         ${pad.length ? html`<div class="absolute left-2 bottom-2">${padNode}</div>` : null}
@@ -186,7 +186,7 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
   const bodyCls = `ms-shell sf-raised ms-side min-h-0 shrink flex ${flank ? "flex-row" : "flex-col"} gap-[var(--ms-gap)]`;
   return html`
     <div class="h-full min-h-0 flex flex-col justify-center items-center">
-      <div class=${bodyCls} data-shell-body=${id} data-deck=${sh.deck} style=${vars} ...${spread}>
+      <div class=${bodyCls} data-shell-body=${id} data-deck=${sh.deck} ...${spread} style=${style}>
         ${flank ? html`
           <div class="ms-side-main shrink-0 flex flex-col items-center justify-center gap-[var(--ms-gap)]">${padNode}</div>
           ${stage}

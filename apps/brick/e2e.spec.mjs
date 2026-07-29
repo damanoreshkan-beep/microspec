@@ -126,4 +126,15 @@ export default [
       h.expect(back >= 0, "камера пішла за початок світу");
     },
   },
+  {
+    name: "оболонка: геометрія і touch-action обидва доходять до корпусу", run: async (h) => {
+      await ready(h);
+      const w = await h.css("[data-shell-body]", "--sh-screen-w");
+      h.expect(/^[\d.]+%$/.test(w || ""), `апертура оболонки не доїхала до корпусу — --sh-screen-w = "${w}"`);
+      const body = await h.css("[data-shell-body]", "--sh-body");
+      h.expect(/^\s*(#|rgb)/.test(body || ""), `корпус не отримав власного кольору — --sh-body = "${body}"`);
+      const touch = await h.css("[data-shell-body]", "touch-action");
+      h.expect(touch === "none", `дека втратила touch-action під час злиття стилів — "${touch}"`);
+    },
+  },
 ];

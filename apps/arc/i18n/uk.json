@@ -4,7 +4,6 @@
   "tabSaved": "Збережене",
   "tabMe": "Профіль",
   "search": "Назва книги",
-  "searchPrompt": "Знайдіть книгу",
   "noResults": "Нічого не знайшлося",
   "emptySaved": "Тут порожньо",
   "actBegin": "Початок",
@@ -38,7 +37,6 @@
   "status": "Знайдено: {found}",
   "searchSaved": "Серед збережених",
   "more": "Читати",
-  "searchPromptHint": "За назвою або автором",
   "noResultsHint": "Спробуйте іншу назву",
   "emptySavedHint": "Збережені книги лишаються тут",
   "savedCount": "{n}",
@@ -48,5 +46,9 @@
   "loadMore": "Ще",
   "askTitle": "Запитати",
   "askPlaceholder": "Запитати про сюжет",
-  "askSend": "Надіслати запитання"
+  "askSend": "Надіслати запитання",
+  "shelfUkr": "Українські історії",
+  "shelfCanon": "Світова класика",
+  "shelfGenre": "З чого почати жанр",
+  "shelfScreen": "Книга до фільму"
 }

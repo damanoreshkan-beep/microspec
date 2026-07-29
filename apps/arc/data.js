@@ -11,7 +11,7 @@
 import { isBook } from "/_rt/acts.js";
 import { letterTile } from "/_rt/tile.js";
 import { gate } from "/_rt/gate.js";
-import { FIXTURE } from "./fixture.js";
+import { CURATED, SHELVES } from "./curated.js";
 
 const WP = "https://en.wikipedia.org/w/api.php";
 const WD = "https://www.wikidata.org/w/api.php";
@@ -36,12 +36,13 @@ const coverFor = (title, thumb) => thumb || letterTile(title, { w: 300, h: 450 }
 
 export async function load(filters) {
   const q = (filters?.q || "").trim();
-  // The gate never touches the network, and it never types either — so it gets the fixture even with an
-  // empty query. Otherwise every shot and every a11y pass would be taken of the search prompt, which is the
-  // one screen that proves nothing.
-  if (gate) return { items: FIXTURE, meta: { q, found: FIXTURE.length } };
-  // searchFetch calls load() with q:"" on boot; returning nothing is what shows the `prompt` empty-state.
-  if (!q) return { items: [], meta: {} };
+  // The gate never touches the network and never types, so it gets the SHELVES — the real landing screen,
+  // built entirely from committed data. Shooting the search prompt instead would photograph the one screen
+  // that proves nothing.
+  if (gate) return loadShelves();
+  // No query means BROWSE, not "prompt me to type": a catalogue is browsed first and searched second.
+  // `browse: true` on the tab is what tells the runtime that, and this is the stock it shows.
+  if (!q) return loadShelves();
 
   const search = await jget(`${WP}?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}`
     + `&gsrlimit=12&prop=pageprops|pageimages&ppprop=wikibase_item&piprop=thumbnail&pithumbsize=320`
@@ -94,6 +95,38 @@ export async function load(filters) {
     });
   }
   return { items, meta: { q, found: items.length } };
+}
+
+// ── the landing shelves ──────────────────────────────────────────────────────────────────────────────────
+// Everything the shelves need except the covers is already committed (title, pageid, author in both
+// locales, all pre-verified), so this is ONE batched request for every shelf at once — not one per shelf,
+// and certainly not one per book. If it fails, the shelves still render with generated tiles: a cover is an
+// enhancement, and 54% of these books have no Wikipedia thumbnail anyway.
+async function loadShelves() {
+  const flat = SHELVES.flatMap((g) => CURATED[g].map((b) => ({ ...b, group: g })));
+  let thumbs = {};
+  // The gate has no network. Generated tiles are not a degraded state here — 54% of these books have no
+  // Wikipedia thumbnail on a real device either, so this is what a real shelf largely looks like.
+  if (!gate) try {
+    const r = await jget(`${WP}?action=query&pageids=${flat.map((b) => b.pageid).join("|")}`
+      + `&prop=pageimages&piprop=thumbnail&pithumbsize=320&format=json&formatversion=2&origin=*`, 12000);
+    for (const p of r.query?.pages || []) if (p.thumbnail) thumbs[p.pageid] = p.thumbnail.source;
+  } catch { /* fail-open: generated tiles carry the shelf perfectly well */ }
+  const items = flat.map((b) => ({
+    id: b.id,
+    pageid: b.pageid,
+    title: b.title,
+    // The card subtitle is one pre-joined string (a card renders text, not fields), and the author is
+    // carried in both locales so a Ukrainian reader does not meet "Panas Myrnyi" on a Ukrainian shelf.
+    byline: b.uk,
+    bylineEn: b.en,
+    cover: thumbs[b.pageid] || letterTile(b.title, { w: 300, h: 450 }),
+    hasCover: !!thumbs[b.pageid],
+    url: `https://en.wikipedia.org/?curid=${b.pageid}`,
+    // one truthy flag per shelf — `sections` selects on a predicate, and a predicate is a truthy item key
+    ...Object.fromEntries(SHELVES.map((g) => [`g_${g}`, g === b.group])),
+  }));
+  return { items, meta: { found: items.length } };
 }
 
 // ── the plot, fetched only for the book actually opened ──────────────────────────────────────────────────

@@ -18,14 +18,27 @@ export default [
     },
   },
   {
+    name: "поверхня: на слайді нема жодного контролу — все живе в нижньому острівці", run: async (h) => {
+      await ready(h);
+      await settles(h, 3);
+      h.expect((await h.count("[data-reel] a")) === 0, "на слайді лишилось посилання (відкрити оригінал)");
+      h.expect((await h.count("[data-reel] button")) === 0, "на слайді лишилась кнопка");
+      for (const [sel, what] of [["[data-island-label]", "назва джерела"], ["[data-dive]", "провалювання"], ["[data-watch]", "відкрити сторінку рілзу"], ["[data-subscribe]", "підписка"]]) {
+        h.expect((await h.count(sel)) === 1, `в острівці немає контролу: ${what} (${sel})`);
+      }
+      const isl = await h.attr("[data-island]", "class");
+      h.expect(!/\bopacity-0\b/.test(isl || ""), "острівець не має бути прихованим");
+    },
+  },
+  {
     name: "провалювання: свайп-чіп відкриває сторінку рілзу як нове джерело, назад — той самий список", run: async (h) => {
       await ready(h);
       await settles(h, 3);
       h.expect((await h.count("[data-dive]")) >= 1, "на слайді немає цілі провалювання (data-dive)");
       h.expect((await h.count("[data-feed-back]")) === 0, "на нульовому рівні не має бути кнопки «назад»");
       const root = await h.text("[data-island-label]");
-      const chip = await h.text("[data-dive]");
-      h.expect(/Big Buck Bunny/.test(chip), `чіп провалювання підписаний «${chip}» — має нести назву самого рілзу, а не форму URL`);
+      const chip = await h.attr("[data-dive]", "aria-label");
+      h.expect(/Big Buck Bunny/.test(chip), `кнопка провалювання підписана «${chip}» — має нести назву самого рілзу, а не форму URL`);
       await h.tap("[data-dive]"); await h.wait(600);
       h.expect(await settles(h, 2), "провалювання не завантажило стрічку сторінки, на якій лежить рілз");
       h.expect((await h.text("[data-island-label]")) !== root, `острівець лишився на «${root}» — джерело не змінилось`);

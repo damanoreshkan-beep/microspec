@@ -36,10 +36,16 @@ export default [
       h.expect((await h.count("[data-dive]")) >= 1, "на слайді немає цілі провалювання (data-dive)");
       h.expect((await h.count("[data-feed-back]")) === 0, "на нульовому рівні не має бути кнопки «назад»");
       const root = await h.text("[data-island-label]");
+      const chip = await h.text("[data-dive]");
+      h.expect(/Big Buck Bunny/.test(chip), `чіп провалювання підписаний «${chip}» — має нести назву самого рілзу, а не форму URL`);
       await h.tap("[data-dive]"); await h.wait(600);
       // the dived page seeds a DIFFERENT batch (2 slides) — the source label and the list both had to change
       h.expect(await settles(h, 2), "провалювання не завантажило стрічку сторінки, на якій лежить рілз");
       h.expect((await h.text("[data-island-label]")) !== root, `острівець лишився на «${root}» — джерело не змінилось`);
+      // …and it is named by the PAGE, not by the shape of its URL. `/watch/10241/` derives only to "Mixkit";
+      // the mock's page title is "Big Buck Bunny in 4K — Mixkit", so the site chrome must come off too.
+      const lvl = await h.text("[data-island-label]");
+      h.expect(lvl === "Big Buck Bunny in 4K", `острівець показує «${lvl}» замість справжньої назви сторінки «Big Buck Bunny in 4K»`);
       h.expect((await h.count("[data-feed-back]")) === 1, "після провалювання немає кнопки повернення");
       // …and back restores the ORIGINAL list (a restore, not a refetch)
       await h.tap("[data-feed-back]"); await h.wait(500);
@@ -74,6 +80,8 @@ export default [
       h.expect((await h.count("[data-subscribe]")) === 0, "після підписки кнопка мала зникнути");
       await h.tap('[data-tab="sources"]'); await h.wait(400);
       h.expect(await has(h, /Підписки|Subscriptions/), "таб джерел не відкрився");
+      // the saved source keeps the name the page had — the whole point of naming the island properly
+      h.expect(await has(h, /Big Buck Bunny in 4K/), "збережене джерело показане не своєю назвою (лишилась форма URL)");
       await h.tap('[data-tab="reel"]'); await h.wait(400);
       await h.tap("[data-feed-back]"); await h.wait(400);              // прибираємо за собою — далі тести чекають корінь
     },

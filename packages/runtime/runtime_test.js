@@ -49,7 +49,7 @@ import { capture, isolateFrame, framesEqual, renderOOK, OOK_FREQS } from "./ook.
 import { refDownchirp, makeUpSymbol, dechirpArgmax, detectPreamble, LORA_PRESETS, WHITENING, loraEncode, loraDecode, decodeLoraSignal } from "./lora.js";
 import { parsePrice, parseWishMeta, toNumber, sortWishes, wishTotals, fmtMoney } from "./wish.js";
 import { scoreRepo, parseFunding, ageDays, hostLabel } from "./underrated.js";
-import { registrableDomain, siteName, pageLabel, groupByDomain, hostOf } from "./sitelabel.js";
+import { registrableDomain, siteName, pageLabel, pageLabelInfo, cleanPageTitle, sourceTitle, groupByDomain, hostOf } from "./sitelabel.js";
 import { overlayDepth } from "./overlay.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
@@ -2546,6 +2546,46 @@ Deno.test("pageLabel: caps length on a word boundary so a row can't be blown out
   assert(long.length <= 43, `label too long: ${long.length}`);
   assert(long.endsWith("…"), "a truncated label must say so");
   assert(!/\s…$/.test(long), "no dangling space before the ellipsis");
+});
+
+// A video PAGE is where URL-derived titling runs out: its path is a shape, not a name. These are the URL
+// SHAPES a reel dives into (hosts kept generic on purpose) — `/view_video.php` is what the owner saw as
+// "View video" in the source island.
+Deno.test("pageLabelInfo: a label that only describes the medium is weak, and says so", () => {
+  const weak = (u) => pageLabelInfo(u).weak;
+  assert(weak("https://tube.example/view_video.php?viewkey=k5f2a1b"), "view_video.php is a shape, not a title");
+  assert(weak("https://tube.example/video81234567/"), "an id with a `video` prefix names nothing");
+  assert(weak("https://tube.example/12345678"), "a path that exists and still names nothing is a page we failed to read");
+  assert(!weak("https://dareful.com/"), "a bare root IS the site — its own <title> is a marketing line, not a name");
+  assert(!weak("https://mixkit.co/free-stock-video/space/"), "Space is a name");
+  assert(!weak("https://tube.example/video.abc123/hot_summer_day"), "the slug names the page");
+  assert(!weak("https://site.com/search?q=sunset+timelapse"), "a search term names the page");
+  assertEquals(pageLabelInfo("https://tube.example/view_video.php?viewkey=x").label, "View video", "the label itself is unchanged — only the confidence is new");
+});
+
+Deno.test("cleanPageTitle: the page's own title minus the site chrome stapled to it", () => {
+  const c = cleanPageTitle;
+  assertEquals(c("Slow river in the forest - TUBE.EXAMPLE", "https://tube.example/x"), "Slow river in the forest", "the site shouts its own name in caps; that is chrome");
+  assertEquals(c("Category:Animations - Wikimedia Commons", "https://commons.wikimedia.org/wiki/x"), "Category:Animations");
+  assertEquals(c("Sunset over the pier | Coverr", "https://coverr.co/videos/x"), "Sunset over the pier");
+  assertEquals(c("Mixkit · Slow river in the forest", "https://mixkit.co/x"), "Slow river in the forest", "the chrome can lead as well as trail");
+  assertEquals(c("A day - and a night - in Kyiv – Site", "https://site.com/x"), "A day – and a night – in Kyiv", "only the SITE chunk is cut; an inner dash is part of the title");
+  assertEquals(c("Mixkit", "https://mixkit.co/x"), "", "a title that is only the site name says nothing");
+  assertEquals(c("video", "https://site.com/x"), "", "so does the extractor's own fallback");
+  assertEquals(c("Preview 1080p", "https://site.com/x"), "", "…and a humanised filename");
+  assertEquals(c("", "https://site.com/x"), "");
+  const long = c("A very long page title that simply keeps going and going and going past every sane limit", "https://site.com/x");
+  assert(long.length <= 65 && long.endsWith("…"), `title not capped: ${long}`);
+});
+
+Deno.test("sourceTitle: the URL names the page when it can, the page names itself when it can't", () => {
+  const vid = "https://tube.example/view_video.php?viewkey=k5f2a1b";
+  assertEquals(sourceTitle("https://mixkit.co/free-stock-video/space/", { pageTitle: "Free Space Stock Video Footage - Mixkit" }), "Space", "a URL that names the page is not overruled");
+  assertEquals(sourceTitle(vid, { pageTitle: "Sunrise on the roof - Tube.example" }), "Sunrise on the roof");
+  assertEquals(sourceTitle(vid, { hint: "Sunrise on the roof" }), "Sunrise on the roof", "no page title yet → the clip you dived from names it");
+  assertEquals(sourceTitle(vid, { pageTitle: "Free Online Videos - Tube", hint: "Sunrise on the roof" }), "Sunrise on the roof", "an SEO title made only of medium-words is not a title");
+  assertEquals(sourceTitle(vid, { hint: "video" }), "View video", "nothing usable anywhere → the URL's shape, unchanged");
+  assertEquals(sourceTitle(""), "");
 });
 
 Deno.test("groupByDomain: pages of one site group together, first-appearance order kept", () => {

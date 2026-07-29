@@ -8,6 +8,11 @@ packages/gates/shots/
 skills-lock.json
 # local mirror of the VPS feed-proxy — holds the host/IP + keys, never publish
 proxy/
+# LOCAL-ONLY tests. The farm's extraction is site-agnostic, but proving a labelling/extraction rule sometimes
+# needs the real hosts, titles and URL shapes of the sites people actually reel — which do not belong in a
+# public repo. Those cases live in *.local_test.js beside the module they test, and the committed suite keeps
+# the same shapes on neutral hosts. Run them by hand: `deno test -A packages/runtime/sitelabel.local_test.js`.
+*.local_test.js
 # agent bridge files — machine-local mirrors of the owner's private skill rules
 # (absolute home paths, private-repo references); same reason as .claude/skills/
 AGENTS.md

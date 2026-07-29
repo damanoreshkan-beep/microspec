@@ -69,10 +69,51 @@ a duplicated line); **2+** renders a header (logo · site name · domain · coun
 separated page rows carrying only `pageLabel` + a state dot (primary = currently playing). The raw URL is
 gone from the row — that is what "everything fits" means.
 
+## 2b. Naming the page you dived INTO (the "View video" defect)
+
+Deriving a title from the URL (§2) is right for a *list* page and useless for a *video* page — which is
+exactly what a dive lands on. Measured shapes: `/view_video.php?viewkey=…` → **"View video"**,
+`/video81234567/` → "Video81234567", `/12345678` → the site name. The island, the dive chip, the drag-reveal
+and the saved subscription all wore one of those.
+
+Three producers, and none of them is right on its own:
+
+| producer | good at | useless at |
+|---|---|---|
+| `pageLabel(url)` — the URL | category/tag/search pages (`/space/` → "Space"), offline, free | video pages: their path is a shape |
+| the page's own `<title>`/`og:title` (new: `/feed/videos` returns `title`) | video pages | front pages — an SEO sentence ("Free Stock Video & Footage \| No Watermark") |
+| the clip you dived FROM (`item.title`) | instant, no fetch, exactly the destination's name | tube grids, where extraction often only has the humanised filename ("preview 1080p") |
+
+So the runtime got **one** resolver, `sitelabel.sourceTitle(url, {pageTitle, hint})`, and the app has no
+titling logic of its own:
+
+1. `pageLabelInfo(url)` now reports **`weak`** as well as `label`. Weak = the path exists and still named
+   nothing: every token is a medium-word (`view`, `video`, `watch`, `preview`, `clip`…), a bare number, or a
+   letters+digits blob (`abC123`, `ph5f2a1b`). A **bare root is NOT weak** — a front page really is its site,
+   and that is what keeps the SEO sentence off the island.
+2. Not weak → the URL wins. Nothing overrules it.
+3. Weak → `cleanPageTitle(pageTitle, url)`, which strips only a **leading/trailing** chunk that names the
+   site ("… - TUBE.EXAMPLE", "Mixkit · …") — never an inner one, so "A day - and a night - in Kyiv" survives —
+   and returns `""` if what's left is itself weak.
+4. Then the hint (same cleaning, so a filename-title is rejected too), then the weak label, so the island
+   never goes blank or shows a placeholder while the new feed loads.
+
+The hint is what makes the dive feel instant: `diveTo(S, url, item.title)` names the destination *before* the
+fetch, and the page's own title replaces it when `/videos` answers. The title is part of the frame snapshot,
+so Back restores the name with the list.
+
+Server side (`microspec-edge`, `core.js`): `pageTitle(html)` = og:title → twitter:title → `<title>`, returned
+**raw** — stripping site chrome needs the site's name, and that judgement belongs in the unit-tested runtime,
+not in the extractor.
+
+Verified against the private repo's saved page fixtures; the real hosts/titles live in a **gitignored**
+`packages/runtime/sitelabel.local_test.js`, and the committed suite carries the same shapes on neutral hosts.
+
 ## 3. Subscribe from the reel
 Diving lands on a source you may not have. The island (top, glass, only when `depth > 0` **or** the current
-source is unsubscribed) carries: back chevron · favicon · `pageLabel` · host · **`+`**. Subscribing makes the
-`+` disappear (state is the feedback — no toast, no caption).
+source is unsubscribed) carries: back chevron · favicon · **`sourceTitle`** (§2b) · host · **`+`**.
+Subscribing makes the `+` disappear (state is the feedback — no toast, no caption) and **freezes that title**
+into the record, so the Sources tab lists the page by the name it had when you saved it.
 
 ## 4. Liked tab opens the feed *in place*
 `playAt` pushes a frame labelled "Liked" and sets `$owner = "liked"`; the liked view renders the **same**

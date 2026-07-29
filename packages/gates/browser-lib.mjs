@@ -109,6 +109,21 @@ export function makeHelpers(page) {
       for (const c of codes) await h.keyUp(c);
     },
     hasClass: (s, c) => ev((s, c) => !!document.querySelector(s)?.classList.contains(c), s, c),
+    /* The COMPUTED value, which is a different thing from the class list and a very different thing
+       from the source. The farm's own rule says "do not assert source text where you can assert the
+       computed result", and until now the harness could not: `hasClass` proves a class was written,
+       not that anything came of it.
+       It exists because of a defect that shipped with every gate green. A console's whole geometry —
+       its plastic, its aperture, its radii, its plate — travels as custom properties on one element,
+       and that element also receives a spread of props carrying a `style` of its own. The spread came
+       second, so it REPLACED the geometry rather than merging with it, and nine shells rendered as
+       one. Nothing could see it: the classes were all present, the JS-level differences still worked,
+       a11y and overflow were unaffected. `getPropertyValue` reads custom properties too, which is the
+       only way to prove a variable actually reached the element it is supposed to describe. */
+    css: (s, prop) => ev((s, prop) => {
+      const el = document.querySelector(s);
+      return el ? getComputedStyle(el).getPropertyValue(prop).trim() : null;
+    }, s, prop),
     scrollTo: (y) => ev((y) => window.scrollTo(0, y), y),
     scrollY: () => ev(() => window.scrollY),
     back: () => ev(() => history.back()),

@@ -181,7 +181,9 @@ function Chat({ item, t, loc, level, plot, locked, undo }) {
             ${Icon("lucide:eraser", "text-[0.95rem]")}</button>`
         : null} />
 
-    ${thread.map((turn, i) => html`<div data-turn=${i} key=${i} class="flex flex-col gap-2">
+    ${
+      thread.length ? html`<div class="flex flex-col gap-5">
+    ${thread.map((turn, i) => html`<div data-turn=${i} key=${i} class="flex flex-col gap-1.5">
       <p data-ask-q class="text-[0.9rem] text-base-content/75 border-l-2 pl-3" style="border-color:var(--app-accent)">${turn.q}</p>
       ${turn.a
         ? html`<p data-ask-a class="text-[0.97rem] leading-relaxed text-base-content/90">${turn.a}</p>`
@@ -192,15 +194,15 @@ function Chat({ item, t, loc, level, plot, locked, undo }) {
               ${[30, 26, 20].map((w, k) => html`<div class="text-[0.97rem]" key=${k}><${Scramble} len=${w} /></div>`)}
             </div>`}
     </div>`)}
+      </div>` : null}
 
     ${
       thread.length ? null : html`<div class="flex flex-wrap gap-1.5">
         ${["askChipVoice", "askChipSelf", "askChipWhat"].map((k) => html`<button data-ask-chip=${k} key=${k} type="button"
           onClick=${() => send(T(t, k))}
-          class="rounded-full border border-base-content/15 px-3 py-1.5 text-[0.85rem] text-base-content/80 active:scale-[0.98] transition-transform">
+          class="sf-raised rounded-full px-3.5 py-2 text-left text-[0.85rem] leading-snug text-base-content/85 active:sf-pressed transition-transform">
           ${T(t, k)}</button>`)}
       </div>`}
-
     <form onSubmit=${(e) => { e.preventDefault(); send(draft); }} class="flex items-center gap-2">
       <input data-ask type="text" value=${draft} onInput=${(e) => setDraft(e.target.value)}
         placeholder=${T(t, "askPlaceholder")} aria-label=${T(t, "askTitle")}

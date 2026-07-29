@@ -77,9 +77,9 @@ export default [
       h.expect((await h.count("[data-ask]")) === 1, "немає поля запитання");
       h.expect(((await h.attr("[data-ask]", "placeholder")) || "").trim().length > 0, "поле без плейсхолдера");
       h.expect(((await h.attr("[data-ask]", "aria-label")) || "").trim().length > 0, "поле без доступного імені");
-      h.expect((await h.attr("[data-ask-send]", "disabled")) !== null, "кнопка активна при порожньому полі");
+      h.expect((await h.prop("[data-ask-send]", "disabled")) === true, "кнопка активна при порожньому полі");
       await h.type("[data-ask]", "Чому Пол погоджується вести фременів?"); await h.wait(200);
-      h.expect((await h.attr("[data-ask-send]", "disabled")) === null, "кнопка лишилась інертною при набраному тексті");
+      h.expect((await h.prop("[data-ask-send]", "disabled")) === false, "кнопка лишилась інертною при набраному тексті");
       await h.tap("[data-ask-send]"); await h.wait(600);
       h.expect((await h.count("[data-ask-a]")) >= 1, "відповідь не з'явилась");
       h.expect((await h.text("[data-ask-a]")).trim().length > 20, "відповідь порожня");

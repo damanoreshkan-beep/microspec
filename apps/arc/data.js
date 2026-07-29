@@ -21,8 +21,8 @@ const coverFor = (title, thumb) => thumb || letterTile(title, { w: 300, h: 450 }
 
 export async function load(filters) {
   const q = (filters?.q || "").trim();
+  if (gate) return { items: FIXTURE, meta: { q, found: FIXTURE.length } };
   if (!q) return { items: [], meta: {} };
-  if (gate) return { items: FIXTURE.filter((b) => b.title.toLowerCase().includes(q.toLowerCase()) || q.length < 3), meta: { q } };
 
   const search = await jget(`${WP}?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}`
     + `&gsrlimit=12&prop=pageprops|pageimages&ppprop=wikibase_item&piprop=thumbnail&pithumbsize=320`
@@ -65,6 +65,7 @@ export async function load(filters) {
       title: p.title,
       author: (meta.author && names[meta.author]) || "",
       year: meta.year || "",
+      byline: [(meta.author && names[meta.author]) || "", meta.year || ""].filter(Boolean).join(" · "),
       cover: coverFor(p.title, p.thumbnail?.source),
       hasCover: !!p.thumbnail?.source,
       url: `https://en.wikipedia.org/?curid=${p.pageid}`,

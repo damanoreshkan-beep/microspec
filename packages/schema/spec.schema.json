@@ -182,6 +182,11 @@
           "minLength": 1,
           "description": "REQUIRED item field — page + app-bar title."
         },
+        "view": {
+          "type": "string",
+          "minLength": 1,
+          "description": "OPTIONAL key into the app's `views` map — an app-supplied component rendered as the detail BODY (after the hero/title, before rows/actions). For a drill-down whose content is genuinely interactive (a control that changes what is shown, an async synthesis) and so cannot be declared as rows. The runtime still owns the overlay, the back-routing, the app-bar and the favourite star — this is not an escape hatch from the shell, only from the body. Props: { item, t, loc, S, toast }."
+        },
         "subtitle": {
           "type": "string",
           "minLength": 1,

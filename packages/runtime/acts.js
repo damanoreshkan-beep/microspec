@@ -110,3 +110,11 @@ export function countSentences(text) {
 export function actSignature(pageid, level, locale) {
   return `${pageid}|${level}|${locale}`;
 }
+
+export function plotUpToClimax(text, share = 0.72) {
+  const s = String(text || "").trim();
+  if (s.length < 400) return s;                       
+  const cut = Math.floor(s.length * share);
+  const dot = s.lastIndexOf(". ", cut);               
+  return s.slice(0, dot > cut * 0.7 ? dot + 1 : cut).trim();
+}

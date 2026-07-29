@@ -172,7 +172,12 @@ function Card({ item: it, card, hide }) {
     // the app that knows what it is, not to the layout. `aspect` defaults to square here, so every existing
     // gallery app is untouched.
     const ratio = card.aspect === "portrait" ? "aspect-[2/3]" : "aspect-square";
-    const art = html`<div class=${`${ratio} w-full rounded-[var(--ms-r)] flex items-center justify-center overflow-hidden sf-inset bg-base-200/60 shrink-0`}>
+    // RAISED, not inset. A catalogue tile is a standalone object on the page — a book standing on a shelf,
+    // not a picture set into a well — and it is filled edge to edge with its art, so an inset shadow lands
+    // UNDER the image and is invisible: the tile reads as a flat coloured rectangle and the whole app stops
+    // looking like the rest of the farm. A recess is right INSIDE an already-raised card (the feed card's
+    // figure); it is wrong as a substitute for one. The launcher tile a few lines up had this right already.
+    const art = html`<div class=${`${ratio} w-full rounded-[var(--ms-r)] flex items-center justify-center overflow-hidden sf-raised sf-e2 shrink-0`}>
       ${card.image && it[card.image]
         ? html`<img src=${it[card.image]} alt="" loading="lazy" class=${`w-full h-full ${card.imageFit === "cover" ? "object-cover" : "object-contain p-3"}`}/>`
         : html`<iconify-icon icon=${(card.icon && it[card.icon]) || "lucide:package"} class="text-3xl opacity-60"></iconify-icon>`}

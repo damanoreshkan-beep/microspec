@@ -4,7 +4,6 @@
   "tabSaved": "Saved",
   "tabMe": "Profile",
   "search": "Book title",
-  "searchPrompt": "Find a book",
   "noResults": "Nothing found",
   "emptySaved": "Nothing here yet",
   "actBegin": "Beginning",
@@ -38,7 +37,6 @@
   "status": "Found: {found}",
   "searchSaved": "Among saved",
   "more": "Read",
-  "searchPromptHint": "By title or author",
   "noResultsHint": "Try another title",
   "emptySavedHint": "Saved books stay here",
   "savedCount": "{n}",
@@ -48,5 +46,9 @@
   "loadMore": "More",
   "askTitle": "Ask",
   "askPlaceholder": "Ask about the plot",
-  "askSend": "Send question"
+  "askSend": "Send question",
+  "shelfUkr": "Ukrainian stories",
+  "shelfCanon": "World classics",
+  "shelfGenre": "Where a genre starts",
+  "shelfScreen": "The book behind the film"
 }

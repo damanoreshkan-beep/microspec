@@ -9,6 +9,15 @@ const sentences = (s) => s.split(/(?<=[.!?…])\s+/).filter((x) => x.trim().leng
 
 export default [
   {
+    name: "до пошуку показано полиці книг, а не порожній екран з інструкцією", run: async (h) => {
+      h.expect(await list(h), "список книг не змонтувався");
+      const body = await h.bodyText();
+      for (const shelf of [/українськ/i, /класик/i, /жанр/i, /фільм/i])
+        h.expect(shelf.test(body), `на лендингу немає полиці ${shelf}`);
+      h.expect((await h.count(".aw-tap")) >= 20, `полиці майже порожні: ${await h.count(".aw-tap")} книг`);
+    },
+  },
+  {
     name: "картка книги відкриває читача з трьома діями; фінал замкнений", run: async (h) => {
       h.expect(await openBook(h), "читач не відкрився з картки");
       h.expect((await h.count("[data-act='1']")) === 1, "немає дії «Початок»");

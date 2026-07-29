@@ -1,7 +1,7 @@
 import { isBook } from "/_rt/acts.js";
 import { letterTile } from "/_rt/tile.js";
 import { gate } from "/_rt/gate.js";
-import { FIXTURE } from "./fixture.js";
+import { CURATED, SHELVES } from "./curated.js";
 
 const WP = "https://en.wikipedia.org/w/api.php";
 const WD = "https://www.wikidata.org/w/api.php";
@@ -21,8 +21,8 @@ const coverFor = (title, thumb) => thumb || letterTile(title, { w: 300, h: 450 }
 
 export async function load(filters) {
   const q = (filters?.q || "").trim();
-  if (gate) return { items: FIXTURE, meta: { q, found: FIXTURE.length } };
-  if (!q) return { items: [], meta: {} };
+  if (gate) return loadShelves();
+  if (!q) return loadShelves();
 
   const search = await jget(`${WP}?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}`
     + `&gsrlimit=12&prop=pageprops|pageimages&ppprop=wikibase_item&piprop=thumbnail&pithumbsize=320`
@@ -72,6 +72,28 @@ export async function load(filters) {
     });
   }
   return { items, meta: { q, found: items.length } };
+}
+
+async function loadShelves() {
+  const flat = SHELVES.flatMap((g) => CURATED[g].map((b) => ({ ...b, group: g })));
+  let thumbs = {};
+  if (!gate) try {
+    const r = await jget(`${WP}?action=query&pageids=${flat.map((b) => b.pageid).join("|")}`
+      + `&prop=pageimages&piprop=thumbnail&pithumbsize=320&format=json&formatversion=2&origin=*`, 12000);
+    for (const p of r.query?.pages || []) if (p.thumbnail) thumbs[p.pageid] = p.thumbnail.source;
+  } catch {  }
+  const items = flat.map((b) => ({
+    id: b.id,
+    pageid: b.pageid,
+    title: b.title,
+    byline: b.uk,
+    bylineEn: b.en,
+    cover: thumbs[b.pageid] || letterTile(b.title, { w: 300, h: 450 }),
+    hasCover: !!thumbs[b.pageid],
+    url: `https://en.wikipedia.org/?curid=${b.pageid}`,
+    ...Object.fromEntries(SHELVES.map((g) => [`g_${g}`, g === b.group])),
+  }));
+  return { items, meta: { found: items.length } };
 }
 
 import { findPlotSection, cleanPlotText, foldPlot } from "/_rt/acts.js";

@@ -24,18 +24,20 @@
       "titleKey": "tabFind",
       "search": true,
       "searchFetch": true,
+      "browse": true,
       "searchKey": "search",
       "statusKey": "status",
-      "prompt": {
-        "icon": "lucide:book-open-text",
-        "text": "searchPrompt",
-        "hint": "searchPromptHint"
-      },
       "empty": {
         "icon": "lucide:search-x",
         "text": "noResults",
         "hint": "noResultsHint"
       },
+      "sections": [
+        { "filter": "g_ukr", "icon": "lucide:landmark", "label": "shelfUkr", "accent": true },
+        { "filter": "g_canon", "icon": "lucide:globe", "label": "shelfCanon" },
+        { "filter": "g_genre", "icon": "lucide:compass", "label": "shelfGenre" },
+        { "filter": "g_screen", "icon": "lucide:clapperboard", "label": "shelfScreen" }
+      ],
       "card": {
         "layout": "feed",
         "image": "cover",

@@ -87,6 +87,8 @@ export function brick(props) {
           h.dataset.dist = st[S.DIST]; h.dataset.score = st[S.SCORE];
           h.dataset.coins = st[S.COINS]; h.dataset.frame = st[S.FRAME]; h.dataset.camx = st[S.CAMX];
           h.dataset.dead = st[S.DEAD] ? "1" : "0";
+          
+          h.dataset.mask = mask.current;
         }
         if (st[S.DEAD] && !$over.get()) {
           $over.set(true);

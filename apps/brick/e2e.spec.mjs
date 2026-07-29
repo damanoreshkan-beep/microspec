@@ -102,15 +102,15 @@ export default [
   {
     name: "клавіатура і палець не стирають одне одного", run: async (h) => {
       await ready(h);
-      const a = await dist(h);
+      const RIGHT = 2;
       await h.keyDown("ArrowRight");
+      await h.wait(120);
+      h.expect((+(await h.attr("[data-live-screen]", "data-mask")) & RIGHT) !== 0, "клавіатура не дійшла до маски");
       await h.tap('[data-key="a"]');      
-      await h.wait(600);
-      const b = await dist(h);
-      const dead = await h.attr("[data-live-screen]", "data-dead");
+      await h.wait(200);
+      const held = +(await h.attr("[data-live-screen]", "data-mask"));
       await h.keyUp("ArrowRight");
-      h.expect(dead === "0", "забіг обірвався до виміру — дистанція завмерла не через маску");
-      h.expect(b > a, "дотик стер утримувану клавішу — маска знову має двох власників");
+      h.expect((held & RIGHT) !== 0, "дотик стер утримувану клавішу — маска знову має двох власників");
     },
   },
   {

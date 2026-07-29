@@ -86,6 +86,8 @@ export function hunt(props) {
           h.dataset.frame = st[S.FRAME]; h.dataset.dead = st[S.DEAD] ? "1" : "0";
           h.dataset.ammo = st[S.AMMO]; h.dataset.hp = st[S.HP]; h.dataset.kills = st[S.KILLS];
           h.dataset.camx = st[S.CAMX];
+          
+          h.dataset.mask = mask.current;
         }
         if (st[S.DEAD] && !$over.get()) {
           $over.set(true);

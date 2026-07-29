@@ -211,6 +211,22 @@ export const SHELL_IDS = Object.keys(SHELLS);
 export const shellOf = (id) => SHELLS[id] || SHELLS.brick;
 
 /**
+ * `?shell=<id>` — wear one for this page load only, without touching the stored choice.
+ *
+ * The same affordance the runtime already gives `?theme=` and `?locale=`, and for the same reason:
+ * the review tool photographs a deployed URL, so anything it cannot reach through the address bar
+ * is a thing nobody ever looks at. A catalogue of nine devices where the screenshots only ever show
+ * the one that happens to be stored is a catalogue reviewed at 11%. It does NOT persist — a still
+ * is not a preference.
+ */
+export const shellParam = (() => {
+  try {
+    const id = new URLSearchParams(location.search).get("shell");
+    return SHELLS[id] ? id : null;
+  } catch { return null; }
+})();
+
+/**
  * The custom properties a shell publishes onto its body element.
  *
  * Both halves of every themed colour are written at once and CSS picks between them — the view

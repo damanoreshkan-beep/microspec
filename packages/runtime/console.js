@@ -42,7 +42,7 @@ import { Fragment } from "preact";
 import { useStore } from "@nanostores/preact";
 import { T } from "./i18n.js";
 import { keyboardOnly } from "./dpad.js";
-import { $shell, SHELLS, SHELL_IDS, shellOf, shellVars } from "./shells.js";
+import { $shell, SHELLS, SHELL_IDS, shellOf, shellVars, shellParam } from "./shells.js";
 import { DIAMOND, DIAMOND_ORDER, TRIANGLE_ORDER, DIAMOND_KEY, DIAMOND_BOX, PAIR, PAIR_KEY, PAIR_BOX } from "./deck.js";
 import { Segmented } from "./ui.js";
 
@@ -166,7 +166,7 @@ function Actions({ actions, t, onKeyboard, size = "var(--ms-ctl)", round = true 
 export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = [],
                               t, onKeyboard, onPointerDown, children, overlay = null, shell = null }) {
   const chosen = useStore($shell);
-  const id = SHELLS[shell || chosen] ? (shell || chosen) : "brick";
+  const id = SHELLS[shell || shellParam || chosen] ? (shell || shellParam || chosen) : "brick";
   const sh = shellOf(id);
   const round = sh.key === "round";
   const vars = shellVars(sh);

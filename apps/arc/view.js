@@ -332,15 +332,14 @@ function Header({ book, t, on, onFav }) {
 
 // Three stops, and the active one is named. The slider is the owner's ask — a length control reads as a
 // continuum even when it is discrete, and three named stops keep it honest about what it actually does.
+// The kit's Slider renders its `label` as a mono caption beside the track AND uses it as the input's
+// accessible name — so the active stop IS the label, and it updates as you drag. A separate readout of my
+// own was the same information twice, which is exactly the caption-noise this project bans.
+// Note `attr` lands on the wrapping <label>, not on the input: query `[data-level] input` for min/max.
 function LengthControl({ t, level, onLevel }) {
-  return html`<${Panel} className="flex items-center gap-3.5 py-2.5">
-    <span data-level-label class="shrink-0 font-mono text-[var(--ms-label)] uppercase tracking-wide text-base-content/70 w-[5.5rem]">
-      ${T(t, LEVELS[level])}
-    </span>
-    <div class="flex-1 min-w-0">
-      <${Slider} id="arc-level" label=${T(t, "lengthAria")} value=${level} min=${1} max=${3} step=${1}
-        attr="data-level" onInput=${(v) => onLevel(Math.round(Number(v)))} />
-    </div>
+  return html`<${Panel} className="py-2.5">
+    <${Slider} id="arc-level" label=${T(t, LEVELS[level])} value=${level} min=${1} max=${3} step=${1}
+      attr="data-level" onInput=${(v) => onLevel(Math.round(Number(v)))} />
   </${Panel}>`;
 }
 

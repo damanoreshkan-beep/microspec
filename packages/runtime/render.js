@@ -212,7 +212,7 @@ function Card({ item: it, card, hide }) {
 function Section({ sec, items, card }) {
   const t = useStore(A.S.t), filters = useStore(A.S.filters);
   return html`<${Fragment}>
-    <div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span><span class=${`badge badge-sm ${sec.accent ? "badge-primary" : "badge-ghost"}`}>${items.length}</span><span class="flex-1 h-px bg-base-300"></span></div>
+    <div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span><span class=${`badge badge-sm ${sec.accent ? "badge-primary" : "badge-ghost text-muted"}`}>${items.length}</span><span class="flex-1 h-px bg-base-300"></span></div>
     ${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}
   </${Fragment}>`;
 }

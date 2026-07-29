@@ -3859,3 +3859,19 @@ Deno.test("plotUpToClimax withholds the ending — a prompt alone did not", () =
   assertEquals(actsUpToClimax("A short plot."), "A short plot.");
   assertEquals(actsUpToClimax(""), "");
 });
+Deno.test("material: a SURFACE is extruded, never a fill with a line drawn round it", async () => {
+  
+  
+  
+  
+  const src = await Deno.readTextFile(new URL("./render.js", import.meta.url));
+  const surfaces = src.match(/card[^"'`]*border border-base-\d+/g) || [];
+  assertEquals(surfaces, [], "a card is declaring a border instead of `sf-raised` — depth is the shadow pair, not a line");
+  const wells = src.match(/aspect-(video|square)[^"'`]*border border-base-\d+/g) || [];
+  assertEquals(wells, [], "a media well is declaring a border instead of `sf-inset` — a picture sits IN the surface");
+  
+  for (const m of src.match(/border-base-\d+[^"'`]*/g) || []) {
+    const line = src.slice(Math.max(0, src.indexOf(m) - 160), src.indexOf(m) + m.length);
+    assert(/border-b|border-t|btn-ghost/.test(line), `a boxed hairline survives: …${m.slice(0, 60)}`);
+  }
+});

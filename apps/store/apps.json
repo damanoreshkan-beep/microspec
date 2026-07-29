@@ -120,6 +120,26 @@
     "category": "wellness"
   },
   {
+    "id": "arc",
+    "title": "Дуга",
+    "titles": {
+      "uk": "Дуга",
+      "en": "Arc"
+    },
+    "tagline": "Сюжет книги у трьох діях",
+    "taglines": {
+      "uk": "Сюжет книги у трьох діях",
+      "en": "A book's plot in three acts"
+    },
+    "glyph": "lucide:book-open-text",
+    "art": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M4 5.5A1.5 1.5 0 0 1 5.5 4H10a2 2 0 0 1 2 2v13a1.5 1.5 0 0 0-1.5-1.5h-5A1.5 1.5 0 0 1 4 16Z\"/><path d=\"M20 5.5A1.5 1.5 0 0 0 18.5 4H14a2 2 0 0 0-2 2v13a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 0 20 16Z\"/><path d=\"M7 9.5h2\"/><path d=\"M15 9.5h2\"/></svg>",
+    "bg": "#1A1614",
+    "fg": "#C2703A",
+    "href": "./arc/",
+    "version": "1.0",
+    "category": "feeds"
+  },
+  {
     "id": "actions",
     "title": "екшени",
     "titles": {
@@ -436,7 +456,7 @@
     "bg": "#1b2430",
     "fg": "#6d9150",
     "href": "./hunt/",
-    "version": "1.2",
+    "version": "1.12",
     "category": "play"
   },
   {
@@ -916,7 +936,7 @@
     "bg": "#101014",
     "fg": "#8FA05C",
     "href": "./brick/",
-    "version": "1.13",
+    "version": "1.20",
     "category": "play"
   },
   {

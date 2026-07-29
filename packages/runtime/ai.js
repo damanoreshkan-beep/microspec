@@ -158,3 +158,45 @@ export async function warmInterpret(key, text, locale) {
   catch { /* fail-open: leave uncached so a later warm can retry */ }
   finally { pending.delete(tag); }
 }
+
+// ── acts: a book's plot retold as three narrative acts, at a chosen length ────────────────────────────────
+// Same on-demand, keyed-by-signature, cached, fail-open shape as summary/interpret — but its own server mode
+// ("acts") and cache namespace, and one thing none of the others have: a `level`. The level changes the
+// answer without changing the input, so it MUST be inside the key on BOTH sides of the wire, or the first
+// length a book is read at gets served for all three. See packages/runtime/acts.js + apps/arc/RESEARCH.md.
+
+// acts(key, locale) — synchronous. The cached raw reply for this signature, or "" on a miss.
+export function acts(key, locale) {
+  if (typeof key !== "string" || !key || !locale) return "";
+  return cacheFor("acts", locale)[key] || "";
+}
+
+// isActed(key, locale) — is this retelling already cached? (false while in flight)
+export function isActed(key, locale) {
+  if (typeof key !== "string" || !key || !locale) return false;
+  return key in cacheFor("acts", locale);
+}
+
+// warmActs(key, text, locale, level) — ask for the retelling of `text` (real plot prose) at `level` 1|2|3,
+// cache it under `key`, bump aiTick. Fail-open and deduped like the others.
+// A reply the provider marked `truncated` (it hit the token ceiling mid-word) is NOT cached: a stump is
+// worse than a miss, because a miss retries and a cached stump is forever.
+export async function warmActs(key, text, locale, level) {
+  if (typeof key !== "string" || !key || typeof text !== "string" || !text.trim() || !locale) return;
+  const cache = cacheFor("acts", locale);
+  const tag = "acts " + locale + " " + key;
+  if (key in cache || pending.has(tag)) return;
+  pending.add(tag);
+  try {
+    const r = await fetch(AI, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "acts", text, locale, level: Math.min(3, Math.max(1, Number(level) || 2)) }),
+    });
+    if (!r.ok) throw new Error("status " + r.status);
+    const j = await r.json();
+    const out = (j && typeof j.text === "string") ? j.text.trim() : "";
+    if (out && !j.truncated) { cache[key] = out; persist("acts", locale, cache); aiTick.set(aiTick.get() + 1); }
+  } catch { /* fail-open: leave uncached so a later warm can retry */ }
+  finally { pending.delete(tag); }
+}

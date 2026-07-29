@@ -5,22 +5,68 @@
   "accent": "#C2703A",
   "localized": true,
   "fav": { "key": "id" },
+  "detail": {
+    "image": "cover",
+    "imageFit": "contain",
+    "title": "title",
+    "subtitle": "byline",
+    "view": "reader",
+    "actions": [
+      { "icon": "lucide:external-link", "label": "readOn", "href": "url" }
+    ]
+  },
   "tabs": [
     {
       "id": "find",
-      "type": "tool",
+      "type": "list",
       "icon": "lucide:book-open-text",
       "label": "tabFind",
       "titleKey": "tabFind",
-      "view": "arc"
+      "search": true,
+      "searchFetch": true,
+      "searchKey": "search",
+      "statusKey": "status",
+      "prompt": {
+        "icon": "lucide:book-open-text",
+        "text": "searchPrompt",
+        "hint": "searchPromptHint"
+      },
+      "empty": {
+        "icon": "lucide:search-x",
+        "text": "noResults",
+        "hint": "noResultsHint"
+      },
+      "card": {
+        "layout": "feed",
+        "image": "cover",
+        "imageFit": "contain",
+        "title": "title",
+        "subtitle": "byline",
+        "more": "more"
+      }
     },
     {
       "id": "saved",
-      "type": "tool",
+      "type": "list",
       "icon": "lucide:bookmark",
       "label": "tabSaved",
       "titleKey": "tabSaved",
-      "view": "saved"
+      "source": "fav",
+      "search": true,
+      "searchKey": "searchSaved",
+      "empty": {
+        "icon": "lucide:bookmark",
+        "text": "emptySaved",
+        "hint": "emptySavedHint"
+      },
+      "card": {
+        "layout": "feed",
+        "image": "cover",
+        "imageFit": "contain",
+        "title": "title",
+        "subtitle": "byline",
+        "more": "more"
+      }
     },
     {
       "id": "me",

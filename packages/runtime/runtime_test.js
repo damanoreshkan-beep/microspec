@@ -6,7 +6,7 @@ import { cycleRepeat as tpCycleRepeat, advance as tpAdvance, clock as tpClock } 
 import { parseInput as pinParse, ladder as pinLadder, readPins as pinRead, ratio as pinRatio } from "./pinterest.js";
 import { MIRRORS as v2mMIRRORS, parseAuthors as v2mParseAuthors, parseListing as v2mParseListing, titleOf as v2mTitleOf, trackId as v2mTrackId, trackURL as v2mTrackURL, mp3Ratio as v2mMp3Ratio, normGain as v2mNormGain, byteCloud as v2mByteCloud, helixStrand as v2mHelixStrand, helixAt as v2mHelixAt, seedBytes as v2mSeedBytes } from "./v2m.js";
 import { T, dictFor, ago, whenLabel } from "./i18n.js";
-import { isBook as actsIsBook, findPlotSection as actsFindPlot, cleanPlotText as actsClean, foldPlot as actsFold, parseActs as actsParse, countSentences as actsCount, actSignature as actsSig } from "./acts.js";
+import { isBook as actsIsBook, findPlotSection as actsFindPlot, cleanPlotText as actsClean, foldPlot as actsFold, parseActs as actsParse, countSentences as actsCount, actSignature as actsSig, plotUpToClimax as actsUpToClimax } from "./acts.js";
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "./groove.js";
 import { generateMelody, scoreMelody } from "./melody.js";
 import { fingeredSemitone, handCovered } from "./wind.js";
@@ -4291,4 +4291,19 @@ Deno.test("actSignature: the level is part of the cache key", () => {
   assert(actsSig(190192, 1, "uk") !== actsSig(190192, 3, "uk"), "level must vary the key");
   assert(actsSig(190192, 1, "uk") !== actsSig(190192, 1, "en"), "locale must vary the key");
   assertEquals(actsSig(190192, 2, "uk"), actsSig(190192, 2, "uk"), "and it must be stable");
+});
+
+Deno.test("plotUpToClimax withholds the ending — a prompt alone did not", () => {
+  // Measured leak this exists to close: told the ending was hidden, the model still answered indirect
+  // questions with the climax. If it never receives the last quarter, it cannot leak it.
+  const body = Array.from({ length: 60 }, (_, i) => `Event ${i} happens.`).join(" ");
+  const full = body + " AND THEN THE HERO DIES AT THE END.";
+  const cut = actsUpToClimax(full);
+  assert(!cut.includes("THE HERO DIES"), "the ending survived the cut");
+  assert(cut.length < full.length, "nothing was cut at all");
+  assert(cut.length > full.length * 0.5, `cut far too aggressive: ${cut.length}/${full.length}`);
+  assert(/\.$/.test(cut), "the cut left a half sentence");
+  // a plot too short to have a separable third act is returned whole rather than mangled
+  assertEquals(actsUpToClimax("A short plot."), "A short plot.");
+  assertEquals(actsUpToClimax(""), "");
 });

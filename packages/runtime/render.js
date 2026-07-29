@@ -494,6 +494,14 @@ function DetailView() {
   // drilled into. `whitespace-pre-line` keeps source paragraph breaks; translate/enrich resolve through field().
   const bodyTxt = d.body ? field(it, d.body, loc) : null;
   const bodyNode = bodyTxt ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4"><p class="text-[0.95rem] leading-relaxed whitespace-pre-line break-words">${fieldNode(it, d.body, loc)}</p></div></div>` : null;
+  // An app-supplied BODY for a drill-down whose content is genuinely interactive — a control that changes
+  // what is shown, an async synthesis — and therefore cannot be declared as rows. Everything around it
+  // stays the runtime's: the overlay, the history-backed routing, the app-bar, the favourite star. This
+  // exists so such an app does not reach for a `tool` tab and hand-roll the card list, the search box, the
+  // empty states, the skeleton and the star along with it. The escape hatch is the body, not the shell.
+  const CustomBody = d.view && VIEWS[d.view];
+  const customNode = CustomBody
+    ? html`<${CustomBody} item=${it} t=${t} loc=${loc} S=${A.S} toast=${A.toast} />` : null;
   const rows = (d.rows || []).map((r) => {
     // a row with a date `format` is locale-formatted from the raw timestamp; otherwise the resolved
     // (enrich/translate-aware) field value.
@@ -518,7 +526,7 @@ function DetailView() {
   const star = A.spec.fav ? html`<button id="detail-fav" aria-label=${on ? T(t, "unfavAria") : T(t, "favAria")} onClick=${() => A.toggleFav(it)} class=${`btn btn-ghost btn-sm btn-circle ${on ? "text-primary" : "opacity-60"}`}>${Icon(`lucide:bookmark${on ? "-check" : ""}`, "text-xl")}</button>` : null;
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
     <header class="navbar bg-base-100 sf-e2 sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${field(it, d.title, loc) ?? ""}</div>${star}</header>
-    <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">${img}<div><h1 class="text-2xl font-bold leading-tight break-words">${field(it, d.title, loc) ?? ""}</h1>${d.subtitle && it[d.subtitle] ? html`<div class="text-base-content/70 mt-0.5">${field(it, d.subtitle, loc)}</div>` : null}</div>${bodyNode}${rows.some(Boolean) ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 py-1">${rows}</div></div>` : null}${actions.some(Boolean) ? html`<div class="flex flex-col gap-2">${actions}</div>` : null}</div>
+    <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">${img}<div><h1 class="text-2xl font-bold leading-tight break-words">${field(it, d.title, loc) ?? ""}</h1>${d.subtitle && it[d.subtitle] ? html`<div class="text-base-content/70 mt-0.5">${field(it, d.subtitle, loc)}</div>` : null}</div>${bodyNode}${customNode}${rows.some(Boolean) ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 py-1">${rows}</div></div>` : null}${actions.some(Boolean) ? html`<div class="flex flex-col gap-2">${actions}</div>` : null}</div>
   </div>`;
 }
 

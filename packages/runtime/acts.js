@@ -160,3 +160,22 @@ export function countSentences(text) {
 export function actSignature(pageid, level, locale) {
   return `${pageid}|${level}|${locale}`;
 }
+
+// ── withholding the ending from the chat ─────────────────────────────────────────────────────────────────
+// The reader can ask questions about the book, and while the ending is still locked those answers must not
+// give it away. Instructing the model not to is NOT enough — measured: told the ending was hidden, it still
+// answered "what happens to Feyd-Rautha?" with the climactic duel and its outcome, and "the fate of Irulan"
+// with Paul taking the throne. Two of three indirect questions leaked. A prompt is a soft filter over a
+// source that contains the answer.
+//
+// So the fix is structural: while locked, the model never receives the ending at all. The cut is at 72% of
+// the plot text because the third plot point — "all is lost", where act III begins — sits at ~75% of a
+// story, and an encyclopaedic plot section is chronological, so its last quarter is the story's last
+// quarter. Cutting slightly early is the safe direction.
+export function plotUpToClimax(text, share = 0.72) {
+  const s = String(text || "").trim();
+  if (s.length < 400) return s;                       // too short to have a separable third act
+  const cut = Math.floor(s.length * share);
+  const dot = s.lastIndexOf(". ", cut);               // never end mid-sentence
+  return s.slice(0, dot > cut * 0.7 ? dot + 1 : cut).trim();
+}

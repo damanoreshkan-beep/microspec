@@ -34,5 +34,19 @@
   "installIosHint": "Поділитися, далі «На екран «Домів»»",
   "installGenericHint": "У меню браузера оберіть «Встановити застосунок»",
   "close": "Закрити",
-  "refresh": "Оновити"
+  "refresh": "Оновити",
+  "status": "Знайдено: {found}",
+  "searchSaved": "Серед збережених",
+  "more": "Читати",
+  "searchPromptHint": "За назвою або автором",
+  "noResultsHint": "Спробуйте іншу назву",
+  "emptySavedHint": "Збережені книги лишаються тут",
+  "savedCount": "{n}",
+  "statusLoading": "Шукаю…",
+  "statusError": "Не вдалося",
+  "errorHint": "Спробуйте ще раз",
+  "loadMore": "Ще",
+  "askTitle": "Запитати",
+  "askPlaceholder": "Запитати про сюжет",
+  "askSend": "Надіслати запитання"
 }

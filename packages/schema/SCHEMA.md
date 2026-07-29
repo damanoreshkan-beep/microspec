@@ -300,6 +300,13 @@ Keep `card.more` as the affordance label (e.g. "Докладніше"/"Details")
 - Needs i18n key **`back`** (overlay back button). Card open is keyboard/SR-accessible (stretched-link)
   and the favorite star still works inside cards and on the detail page.
 - `data.js` should pre-join multi-value fields to strings (e.g. `languages.join(", ")`) — rows render text.
+- **`view`** (OPTIONAL) — a key into the app's `views` map, rendered as the detail **body** (after the
+  hero/title, before rows/actions), with props `{ item, t, loc, S, toast }`. For a drill-down whose content
+  is genuinely interactive — a control that changes what is shown, an async synthesis — and so cannot be
+  expressed as `rows`. **This is the alternative to reaching for a `tool` tab.** A `tool` tab makes the
+  whole screen yours and tempts you into re-implementing the card list, the search box, the favourite star,
+  the empty states and the skeleton alongside the one piece that needed to be custom; `detail.view` gives
+  you only the body and keeps the overlay, the back-routing, the app-bar and the star. Powers `arc`.
 
 ## 9c. `tool` tab — sensor / instrument apps (escape hatch)
 

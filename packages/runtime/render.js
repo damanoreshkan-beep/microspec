@@ -140,6 +140,8 @@ function Card({ item: it, card, hide }) {
     const gsub = card.subtitle ? field(it, card.subtitle, loc) : null;
     return html`<div class="relative flex flex-col gap-2 min-w-0 active:scale-[.97] transition-transform">
       ${art}
+      ${
+        star ? html`<div class="absolute top-1 right-1 z-[2]">${star}</div>` : null}
       <div class="min-w-0">
         <div class="text-sm font-semibold leading-tight line-clamp-2 break-words">${field(it, card.title, loc)}</div>
         ${gsub ? html`<div class="text-xs text-muted truncate mt-0.5">${gsub}</div>` : null}
@@ -164,6 +166,7 @@ function Card({ item: it, card, hide }) {
   const img = card.image && it[card.image] ? html`<figure class="aspect-video bg-base-300 overflow-hidden @max-[240px]:hidden"><img src=${it[card.image]} alt="" loading="lazy" class=${`w-full h-full ${card.imageFit === "contain" ? "object-contain" : "object-cover"}`}/></figure>` : null;
   const cls = `card @container sf-raised sf-e2 rounded-[var(--ms-r)]${card.image ? " overflow-hidden" : ""}`;
 
+  
   if (A.spec.detail) {
     return html`<div class=${cls + " relative active:scale-[.99] transition"}>${img}${body}
       <button class="aw-tap absolute inset-0 z-[1] rounded-2xl" aria-label=${`${field(it, card.title, loc) ?? ""} — ${T(t, card.more || "title")}`} onClick=${() => A.S.detail.set(it)}></button></div>`;
@@ -174,12 +177,30 @@ function Card({ item: it, card, hide }) {
     : html`<div class=${cls}>${img}${body}</div>`;
 }
 
+
+const GRID_FOR = {
+  gallery: "grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5",
+  grid: "grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5",
+};
+
+
+function SectionHead({ sec, t, filters, n }) {
+  return html`<div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span>${sec.accent
+      ? html`<span class="badge badge-sm badge-primary">${n}</span>`
+      
+      : html`<span class="font-mono text-[var(--ms-label)] text-muted tabular-nums">${n}</span>`}<span class="flex-1 h-px bg-base-300"></span></div>`;
+}
 function Section({ sec, items, card }) {
   const t = useStore(A.S.t), filters = useStore(A.S.filters);
+  const grid = GRID_FOR[card.layout];
+  if (grid) {
+    return html`<${Fragment}>
+      ${SectionHead({ sec, t, filters, n: items.length })}
+      <div class="@container"><div class=${grid}>${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}</div></div>
+    </${Fragment}>`;
+  }
   return html`<${Fragment}>
-    <div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span>${sec.accent
-      ? html`<span class="badge badge-sm badge-primary">${items.length}</span>`
-      : html`<span class="font-mono text-[var(--ms-label)] text-muted tabular-nums">${items.length}</span>`}<span class="flex-1 h-px bg-base-300"></span></div>
+    ${SectionHead({ sec, t, filters, n: items.length })}
     ${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}
   </${Fragment}>`;
 }
@@ -192,6 +213,7 @@ function Banner({ banner }) {
     <div class="text-base-content"><span class="font-semibold">${T(t, banner.titleKey)}</span><span class="text-base-content/80">${T(t, banner.bodyKey)}</span></div>
   </div>`;
 }
+
 
 
 
@@ -265,6 +287,7 @@ function ListView({ tab }) {
   const [vis, setVis] = useState(WINDOW_PAGE);   
   
   
+  
   useEffect(() => {
     const src = tab.source === "fav" ? Object.values(fav) : (data.items || []);
     if (A.spec.enrich) warmMeta(src.map((it) => it[A.spec.enrich.url]));
@@ -275,7 +298,6 @@ function ListView({ tab }) {
   if (!tab.card) return Empty("lucide:alert-triangle", T(t, tab.empty?.text || "noResults"), null);
   if (!useReveal(!data.loading)) return Skeleton(tab.card);
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
-  
   
   
   if (tab.searchFetch && !q && !tab.browse) return Empty(tab.prompt?.icon || "lucide:search", T(t, tab.prompt?.text || "searchPrompt"), T(t, tab.prompt?.hint || "searchPromptHint"));
@@ -306,13 +328,22 @@ function ListView({ tab }) {
   
   
   const grow = () => { if (vis < items.length) setVis((c) => Math.min(items.length, c + WINDOW_PAGE)); else if (paginate) { setVis((c) => c + WINDOW_PAGE); A.loadMore(); } };
+  
   const shown = items.slice(0, vis);
   const cards = shown.map((it) => html`<${Card} item=${it} card=${tab.card} key=${A.favKey(it) || it[tab.card.title]} />`);
   const tail = html`<${InfiniteTail} count=${vis} total=${items.length} grow=${grow} paginate=${paginate} key="tail" />`;
   
   
+  
+  const sectioned = tab.sections
+    ? Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })])
+    : null;
+  if (GRID_FOR[tab.card.layout] && sectioned) return sectioned;
   if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
+  
+  
   if (tab.card.layout === "gallery") return Frag([banner, html`<div class="@container pt-2" key="gallery"><div class="grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
+  
   if (tab.card.layout === "table") return Frag([banner, html`<${Table} items=${items} tab=${tab} key="tbl" />`, html`<${InfiniteTail} count=${items.length} total=${items.length} grow=${() => paginate && A.loadMore()} paginate=${paginate} key="tail" />`]);
   if (!tab.sections) return Frag([banner, ...cards, tail]);
   return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })]);
@@ -388,6 +419,7 @@ function PermissionsScreen() {
 
 
 
+
 function ApkScreen() {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
   const name = T(t, "title");
@@ -403,6 +435,7 @@ function ApkScreen() {
     (async () => { try { const png = await letterTilePng(name, accent()); if (live) setIcon(png); } catch {  } })();
     return () => { live = false; };
   }, []);
+
   const generate = async () => {
     if (busy) return;
     setBusy(true); setErr(false); setDone(false);
@@ -444,7 +477,6 @@ function DetailView() {
   const img = d.image && it[d.image] ? html`<figure class="aspect-video rounded-[var(--ms-r)] overflow-hidden sf-inset"><img src=${it[d.image]} alt="" class=${`w-full h-full ${d.imageFit === "cover" ? "object-cover" : "object-contain"}`}/></figure>` : null;
   
   
-  
   const bodyTxt = d.body ? field(it, d.body, loc) : null;
   const bodyNode = bodyTxt ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4"><p class="text-[0.95rem] leading-relaxed whitespace-pre-line break-words">${fieldNode(it, d.body, loc)}</p></div></div>` : null;
   
@@ -458,7 +490,6 @@ function DetailView() {
     const v = r.format === "when" ? whenLabel(t, it[r.field], loc) : r.format === "ago" ? ago(t, it[r.field], loc) : r.format === "since" ? sinceLabel(t, it[r.field], loc) : field(it, r.field, loc);
     return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-muted">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
   const actions = (d.actions || []).map((a) => {
-    
     
     if (a.play) {
       const url = safeHref(it[a.play]);
@@ -529,6 +560,7 @@ function FilterSheet() {
 
 
 
+
 const PLAYPOS = collection("playPos");
 function PlayerHost() {
   const p = useStore(A.S.player), loc = useStore(A.S.locale);
@@ -544,6 +576,7 @@ function PlayerHost() {
     onTime=${(t, d) => PLAYPOS.put(p.key, { t, d }).catch(() => {  })}
     onClose=${() => A.S.player.set(null)} />`;
 }
+
 function InstallModal() {
   const t = useStore(A.S.t), open = useStore(A.S.installOpen), ev = useStore(A.S.installEvent);
   const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; open ? d.showModal?.() : d.close?.(); }, [open]);
@@ -583,6 +616,7 @@ const QR_LBL = {
 
 
 
+
 function usePublishedChrome(kind) {
   const ref = useRef();
   useEffect(() => {
@@ -611,6 +645,7 @@ function AppBar() {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
   const qL = QR_LBL[loc] || QR_LBL.en;
   const hdrRef = usePublishedChrome("header");
+  
   
   
   
@@ -741,7 +776,6 @@ function DashboardView({ tab }) {
   if (!useReveal(!data.loading)) return html`<div data-skel class="flex flex-col gap-4"><figure class="aspect-video rounded-[var(--ms-r)] overflow-hidden sf-inset"><${Pixels} /></figure><div class="text-2xl font-bold text-base-content/70 truncate"><${Scramble} len=${18} /></div><div class="flex flex-col gap-2 text-base-content/70"><div class="truncate"><${Scramble} len=${30} /></div><div class="truncate"><${Scramble} len=${22} /></div></div></div>`;
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
   const m = data.meta || {}, h = tab.hero;
-  
   
   const placeText = h.place && m[h.place] ? T(t, m[h.place]) : null;
   const place = placeText ? (A.spec.filters

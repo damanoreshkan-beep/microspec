@@ -101,8 +101,9 @@ const Empty = (icon, text, hint) => html`<div class="flex flex-col items-center 
 // the reflow it exists to prevent. gallery is a square-art grid, not a stack of feed cards: mirror the real
 // grid wrapper and tile (aspect-SQUARE art, one-line title + subtitle + a badge) so 3-up stays 3-up.
 const Skeleton = (card = {}) => {
-  if (card.layout === "gallery") return html`<div class="@container pt-2"><div class="grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5">${Array.from({ length: 9 }, (_, i) => html`<div data-skel class="flex flex-col gap-2 min-w-0" key=${i}>
-    <div class="aspect-square w-full rounded-[var(--ms-r)] overflow-hidden sf-inset"><${Pixels} /></div>
+  // the skeleton must take the shape the content will take, or the page jumps the moment it lands
+  if (card.layout === "gallery") return html`<div class="@container pt-2"><div class=${`grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5`}>${Array.from({ length: 9 }, (_, i) => html`<div data-skel class="flex flex-col gap-2 min-w-0" key=${i}>
+    <div class=${`${card.aspect === "portrait" ? "aspect-[2/3]" : "aspect-square"} w-full rounded-[var(--ms-r)] overflow-hidden sf-inset`}><${Pixels} /></div>
     <div class="min-w-0 text-base-content/70"><div class="text-sm font-semibold truncate"><${Scramble} len=${9} /></div><div class="text-xs truncate mt-0.5"><${Scramble} len=${7} /></div><div class="mt-1.5"><${Scramble} len=${5} cls="text-xs" /></div></div>
   </div>`)}</div></div>`;
   const row = card.layout === "row", img = !!card.image; return html`<${Fragment}>${Array.from({ length: 5 }, (_, i) => row
@@ -166,7 +167,12 @@ function Card({ item: it, card, hide }) {
   // (version, size, rating). Two columns, not four — four is a wall of 40px icons you cannot read. Whole
   // card drills into the detail; the download/install link lives THERE, never on the tile.
   if (card.layout === "gallery") {
-    const art = html`<div class="aspect-square w-full rounded-[var(--ms-r)] flex items-center justify-center overflow-hidden sf-inset bg-base-200/60 shrink-0">
+    // The art slot was hardcoded square. A book cover and a film poster are 2:3, and forcing one into a
+    // square marooned a small picture in a band of dead space — the shape of the pictured thing belongs to
+    // the app that knows what it is, not to the layout. `aspect` defaults to square here, so every existing
+    // gallery app is untouched.
+    const ratio = card.aspect === "portrait" ? "aspect-[2/3]" : "aspect-square";
+    const art = html`<div class=${`${ratio} w-full rounded-[var(--ms-r)] flex items-center justify-center overflow-hidden sf-inset bg-base-200/60 shrink-0`}>
       ${card.image && it[card.image]
         ? html`<img src=${it[card.image]} alt="" loading="lazy" class=${`w-full h-full ${card.imageFit === "cover" ? "object-cover" : "object-contain p-3"}`}/>`
         : html`<iconify-icon icon=${(card.icon && it[card.icon]) || "lucide:package"} class="text-3xl opacity-60"></iconify-icon>`}

@@ -44,11 +44,15 @@
   "statusError": "Failed",
   "errorHint": "Try again",
   "loadMore": "More",
-  "askTitle": "Ask",
-  "askPlaceholder": "Ask about the plot",
+  "askTitle": "Conversation",
+  "askPlaceholder": "Ask anything about this world",
   "askSend": "Send question",
   "shelfUkr": "Ukrainian stories",
   "shelfCanon": "World classics",
   "shelfGenre": "Where a genre starts",
-  "shelfScreen": "The book behind the film"
+  "shelfScreen": "The book behind the film",
+  "askChipVoice": "What would this book’s hero say back to me?",
+  "askChipSelf": "Who would I be in this world?",
+  "askChipWhat": "What if the key decision here had gone differently?",
+  "askClear": "Clear the conversation"
 }

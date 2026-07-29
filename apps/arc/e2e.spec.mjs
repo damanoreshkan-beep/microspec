@@ -61,18 +61,56 @@ export default [
     },
   },
   {
-    name: "запитання про сюжет: поле, відповідь, і жодного спойлера в замкненому стані", run: async (h) => {
+    name: "порожня розмова пропонує три різні входи, і вони зникають з першою реплікою", run: async (h) => {
+      h.expect(await openBook(h), "читач не відкрився з картки");
+      if ((await h.count("[data-ask-clear]")) === 1) { await h.tap("[data-ask-clear]"); await h.wait(300); }
+      h.expect((await h.count("[data-ask-chip]")) === 3, `входів у розмову ${await h.count("[data-ask-chip]")}, а не три`);
+      await h.tap("[data-ask-chip]"); await h.wait(600);
+      h.expect((await h.count("[data-ask-q]")) === 1, "натиснутий вхід не став реплікою");
+      h.expect((await h.count("[data-ask-a]")) === 1, "на натиснутий вхід немає відповіді");
+      h.expect((await h.count("[data-ask-chip]")) === 0, "входи лишились після початку розмови");
+    },
+  },
+  {
+    name: "розмова: поле, відповідь, і блок лишається в колонці читача", run: async (h) => {
       h.expect(await openBook(h), "читач не відкрився з картки");
       h.expect((await h.count("[data-ask]")) === 1, "немає поля запитання");
       h.expect(((await h.attr("[data-ask]", "placeholder")) || "").trim().length > 0, "поле без плейсхолдера");
       h.expect(((await h.attr("[data-ask]", "aria-label")) || "").trim().length > 0, "поле без доступного імені");
       h.expect((await h.attr("[data-ask-send]", "disabled")) !== null, "кнопка активна при порожньому полі");
       await h.type("[data-ask]", "Чому Пол погоджується вести фременів?"); await h.wait(200);
+      h.expect((await h.attr("[data-ask-send]", "disabled")) === null, "кнопка лишилась інертною при набраному тексті");
       await h.tap("[data-ask-send]"); await h.wait(600);
-      h.expect((await h.count("[data-ask-q]")) === 1, "запитання не показано");
-      h.expect((await h.count("[data-ask-a]")) === 1, "відповідь не з'явилась");
+      h.expect((await h.count("[data-ask-a]")) >= 1, "відповідь не з'явилась");
       h.expect((await h.text("[data-ask-a]")).trim().length > 20, "відповідь порожня");
       h.expect((await h.count("[data-reader] [data-ask]")) === 1, "блок запитання поза колонкою читача");
+    },
+  },
+  {
+    name: "розмова тримає нитку: нова репліка не витісняє попередню", run: async (h) => {
+      h.expect(await openBook(h), "читач не відкрився з картки");
+      const before = await h.count("[data-ask-q]");
+      h.expect(before >= 2, `до цього кроку в нитці мало бути ≥2 реплік, а є ${before}`);
+      await h.type("[data-ask]", "А якби я йому розповів про свій сон?"); await h.wait(200);
+      await h.tap("[data-ask-send]"); await h.wait(600);
+      h.expect((await h.count("[data-ask-q]")) === before + 1, "нитка не виросла на одну репліку");
+      h.expect((await h.count("[data-ask-a]")) === before + 1, "у нової репліки немає відповіді");
+      h.expect(/Чому Пол погоджується вести фременів\?/.test(await h.bodyText()), "попередня репліка зникла з нитки");
+      h.expect(((await h.prop("[data-ask]", "value")) || "") === "", "поле не очистилось після надсилання");
+    },
+  },
+  {
+    name: "розмову можна прибрати, і це скасовується", run: async (h) => {
+      h.expect(await openBook(h), "читач не відкрився з картки");
+      const before = await h.count("[data-ask-q]");
+      h.expect(before > 0, "нитка порожня — нема чого прибирати");
+      h.expect((await h.count("[data-ask-clear]")) === 1, "немає кнопки очищення розмови");
+      h.expect(((await h.attr("[data-ask-clear]", "aria-label")) || "").trim().length > 0, "очищення без доступного імені");
+      await h.tap("[data-ask-clear]"); await h.wait(400);
+      h.expect((await h.count("[data-ask-q]")) === 0, "розмова не очистилась");
+      h.expect((await h.count("[data-undo]")) === 1, "не запропоновано скасувати");
+      await h.tap("[data-undo]"); await h.wait(400);
+      h.expect((await h.count("[data-ask-q]")) === before, "скасування не повернуло розмову");
     },
   },
   {

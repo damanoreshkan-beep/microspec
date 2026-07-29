@@ -153,8 +153,9 @@ export function isAnswered(key, locale) {
   return key in cacheFor("ask", locale);
 }
 
-export async function warmAsk(key, text, locale, { level = 2, locked = false } = {}) {
+export async function warmAsk(key, text, turns, locale, { level = 2, locked = false } = {}) {
   if (typeof key !== "string" || !key || typeof text !== "string" || !text.trim() || !locale) return;
+  if (!Array.isArray(turns) || !turns.length) return;
   const cache = cacheFor("ask", locale);
   const tag = "ask " + locale + " " + key;
   if (key in cache || pending.has(tag)) return;
@@ -163,7 +164,7 @@ export async function warmAsk(key, text, locale, { level = 2, locked = false } =
     const r = await fetch(AI, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode: "ask", text, locale, locked, level: Math.min(3, Math.max(1, Number(level) || 2)) }),
+      body: JSON.stringify({ mode: "ask", text, turns, locale, locked, level: Math.min(3, Math.max(1, Number(level) || 2)) }),
     });
     if (!r.ok) throw new Error("status " + r.status);
     const j = await r.json();

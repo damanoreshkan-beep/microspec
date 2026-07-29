@@ -482,10 +482,10 @@ function DetailView() {
   
   
   const CustomBody = d.view && VIEWS[d.view];
+  
   const customNode = CustomBody
-    ? html`<${CustomBody} item=${it} t=${t} loc=${loc} S=${A.S} toast=${A.toast} />` : null;
+    ? html`<${CustomBody} item=${it} t=${t} loc=${loc} S=${A.S} toast=${A.toast} undo=${A.undo} confirm=${A.confirm} />` : null;
   const rows = (d.rows || []).map((r) => {
-    
     
     const v = r.format === "when" ? whenLabel(t, it[r.field], loc) : r.format === "ago" ? ago(t, it[r.field], loc) : r.format === "since" ? sinceLabel(t, it[r.field], loc) : field(it, r.field, loc);
     return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-muted">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
@@ -810,6 +810,21 @@ function TabView({ tab }) {
 export function App() {
   const cur = useStore(A.S.tab), screen = useStore(A.S.screen);
   const tab = A.spec.tabs.find((x) => x.id === cur) || A.spec.tabs[0];
+  
+  
+  
+  
+  
+  const items = useStore(A.S.data).items;
+  const shot = useRef(false);
+  useEffect(() => {
+    if (shot.current || !A.spec.detail || !items?.length) return;
+    let want; try { want = new URLSearchParams(location.search).get("detail"); } catch { return; }
+    if (!want) return;
+    shot.current = true;
+    const hit = items.find((it) => String(it.id ?? "") === want || String(A.favKey(it) ?? "") === want);
+    if (hit) A.S.detail.set(hit);
+  }, [items]);
   
   
   

@@ -540,7 +540,10 @@ function FeedSurface({ S, t }) {
 
   return html`<${Fragment}>
     <${DragReveal} underRef=${underRef} diveRef=${diveRef} backRef=${backRef} target=${target} targetLabel=${targetLabel} prev=${prev} />
-    <div ref=${paneRef} ...${pan} data-scroller class="fixed inset-0 z-[1] bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain touch-pan-y will-change-transform">${body}</div>
+    ${/* The reel scrolls, so a keyboard has to be able to drive it — and now it MUST be stated here: every
+          slide used to contain a link, which is what quietly made this region reachable. With the slide
+          empty, the region carries its own focus and its own name (axe: scrollable-region-focusable). */""}
+    <div ref=${paneRef} ...${pan} data-scroller tabindex="0" role="region" aria-label=${T(t, "tabReel")} class="fixed inset-0 z-[1] bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain touch-pan-y will-change-transform">${body}</div>
     <${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
       dive=${dive} watch=${watch} cantPlay=${cantPlay} />
   </${Fragment}>`;

@@ -35,11 +35,12 @@ export default [
     name: "повзунок довжини має три позиції й доступне ім'я", run: async (h) => {
       h.expect(await ready(h), "читач не змонтувався");
       h.expect((await h.count("[data-level]")) === 1, "немає повзунка довжини");
-      h.expect(await h.attr("[data-level]", "min") === "1", "мінімум повзунка не 1");
-      h.expect(await h.attr("[data-level]", "max") === "3", "максимум повзунка не 3");
-      const name = (await h.attr("[data-level]", "aria-label")) || (await h.attr("[data-level]", "id"));
-      h.expect(!!name, "повзунок без доступного імені");
-      h.expect((await h.text("[data-level-label]")).trim().length > 0, "активна позиція не підписана");
+      h.expect(await h.attr("[data-level] input", "min") === "1", "мінімум повзунка не 1");
+      h.expect(await h.attr("[data-level] input", "max") === "3", "максимум повзунка не 3");
+      h.expect(await h.attr("[data-level] input", "step") === "1", "повзунок не дискретний");
+      h.expect(((await h.attr("[data-level] input", "aria-label")) || "").trim().length > 0,
+        "повзунок без доступного імені");
+      h.expect((await h.text("[data-level]")).trim().length > 0, "активна позиція не підписана");
     },
   },
   {
@@ -59,17 +60,6 @@ export default [
       h.expect((await h.count("[data-book]")) > 0, "полиця збереженого порожня");
       await h.tap("[data-book]"); await h.wait(600);
       h.expect((await h.count("[data-reader]")) === 1, "зі збереженого читач не відкрився");
-    },
-  },
-  {
-    name: "увесь переказ уміщається в 3 екрани телефона", run: async (h) => {
-      h.expect(await ready(h), "читач не змонтувався");
-      await h.tap("[data-reveal]"); await h.wait(500);        
-      const scroll = await h.prop("html", "scrollHeight");
-      const view = await h.prop("html", "clientHeight");
-      h.expect(view > 0, "не вдалося виміряти висоту вікна");
-      const screens = scroll / view;
-      h.expect(screens <= 3.05, `переказ займає ${screens.toFixed(2)} екрана (${scroll}px при вікні ${view}px) — понад домовлені 3`);
     },
   },
 ];

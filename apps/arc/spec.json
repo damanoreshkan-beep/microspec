@@ -1,0 +1,44 @@
+{
+  "id": "arc",
+  "theme": "dim",
+  "category": "feeds",
+  "accent": "#C2703A",
+  "localized": true,
+  "fav": { "key": "id" },
+  "tabs": [
+    {
+      "id": "find",
+      "type": "tool",
+      "icon": "lucide:book-open-text",
+      "label": "tabFind",
+      "titleKey": "tabFind",
+      "view": "arc"
+    },
+    {
+      "id": "saved",
+      "type": "tool",
+      "icon": "lucide:bookmark",
+      "label": "tabSaved",
+      "titleKey": "tabSaved",
+      "view": "saved"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:book-open-text",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "source": {
+      "label": "profSource",
+      "url": "https://www.wikipedia.org/",
+      "icon": "lucide:database"
+    }
+  }
+}

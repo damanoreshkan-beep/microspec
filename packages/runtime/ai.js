@@ -110,3 +110,34 @@ export async function warmInterpret(key, text, locale) {
   catch {  }
   finally { pending.delete(tag); }
 }
+
+
+export function acts(key, locale) {
+  if (typeof key !== "string" || !key || !locale) return "";
+  return cacheFor("acts", locale)[key] || "";
+}
+
+export function isActed(key, locale) {
+  if (typeof key !== "string" || !key || !locale) return false;
+  return key in cacheFor("acts", locale);
+}
+
+export async function warmActs(key, text, locale, level) {
+  if (typeof key !== "string" || !key || typeof text !== "string" || !text.trim() || !locale) return;
+  const cache = cacheFor("acts", locale);
+  const tag = "acts " + locale + " " + key;
+  if (key in cache || pending.has(tag)) return;
+  pending.add(tag);
+  try {
+    const r = await fetch(AI, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "acts", text, locale, level: Math.min(3, Math.max(1, Number(level) || 2)) }),
+    });
+    if (!r.ok) throw new Error("status " + r.status);
+    const j = await r.json();
+    const out = (j && typeof j.text === "string") ? j.text.trim() : "";
+    if (out && !j.truncated) { cache[key] = out; persist("acts", locale, cache); aiTick.set(aiTick.get() + 1); }
+  } catch {  }
+  finally { pending.delete(tag); }
+}

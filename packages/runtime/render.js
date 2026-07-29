@@ -548,8 +548,12 @@ function DetailView() {
   // exists so such an app does not reach for a `tool` tab and hand-roll the card list, the search box, the
   // empty states, the skeleton and the star along with it. The escape hatch is the body, not the shell.
   const CustomBody = d.view && VIEWS[d.view];
+  // Same helper set a `tool` view gets. A detail body can hold the app's own content (arc's conversation with
+  // a book), and content the reader made is content the reader can delete — which the farm answers with
+  // `undo` (reversible) / `confirm` (severe), never a bare destructive tap. Withholding them here would have
+  // pushed the next such app back to hand-rolling one.
   const customNode = CustomBody
-    ? html`<${CustomBody} item=${it} t=${t} loc=${loc} S=${A.S} toast=${A.toast} />` : null;
+    ? html`<${CustomBody} item=${it} t=${t} loc=${loc} S=${A.S} toast=${A.toast} undo=${A.undo} confirm=${A.confirm} />` : null;
   const rows = (d.rows || []).map((r) => {
     // a row with a date `format` is locale-formatted from the raw timestamp; otherwise the resolved
     // (enrich/translate-aware) field value.
@@ -938,6 +942,21 @@ function TabView({ tab }) {
 export function App() {
   const cur = useStore(A.S.tab), screen = useStore(A.S.screen);
   const tab = A.spec.tabs.find((x) => x.id === cur) || A.spec.tabs[0];
+  // `?detail=<id>` — open one item's drill-down on load. Third of the same family as `?theme=` and
+  // `?locale=`, and for the same reason: the screenshot service is the only browser this project has, and it
+  // cannot tap. Until this existed, the detail overlay — an app's DEEPEST screen, and in `arc` the one that
+  // is the whole app — could never be looked at outside CI, which is exactly how a screen ships unseen.
+  // Validated against the loaded items, never persisted, fires once.
+  const items = useStore(A.S.data).items;
+  const shot = useRef(false);
+  useEffect(() => {
+    if (shot.current || !A.spec.detail || !items?.length) return;
+    let want; try { want = new URLSearchParams(location.search).get("detail"); } catch { return; }
+    if (!want) return;
+    shot.current = true;
+    const hit = items.find((it) => String(it.id ?? "") === want || String(A.favKey(it) ?? "") === want);
+    if (hit) A.S.detail.set(hit);
+  }, [items]);
   // FIT MODE — a tab that declares `fit` is a single screen, not a document: the page never scrolls, at
   // any viewport height. The flag lands on <html> (theme.css owns the layout math off --hdr-h/--dock-h)
   // rather than on <main>, because the page-level `overflow:hidden` has to reach html AND body — a

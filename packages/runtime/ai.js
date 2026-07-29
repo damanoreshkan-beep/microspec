@@ -201,12 +201,14 @@ export async function warmActs(key, text, locale, level) {
   finally { pending.delete(tag); }
 }
 
-// ── askBook: a narrow, grounded Q&A about ONE book ────────────────────────────────────────────────────────
-// The only capability here that takes free user text. Server-side it is a hard-scoped prompt that answers
-// questions about the supplied plot and refuses everything else (see edge/ai.js `askSystem`); client-side
-// the caller decides how much of the plot to hand over — `packages/runtime/acts.js` `plotUpToClimax` exists
-// because a locked ending must be withheld structurally, not merely asked for.
-// Answers cache like the rest, keyed by the caller's signature (book + question + level + locked + locale).
+// ── askBook: a grounded CONVERSATION inside ONE book's world ───────────────────────────────────────────────
+// The only capability here that takes free user text. Server-side it is a hard-scoped prompt that talks about
+// the supplied book — its plot, its characters in their own voice, the reader's place in its world, and the
+// branches it did not take — and refuses everything outside it (see edge/ai.js `askSystem`); client-side the
+// caller decides how much of the plot to hand over, because `packages/runtime/acts.js` `plotUpToClimax` exists
+// for a locked ending that must be withheld structurally, not merely asked for.
+// `turns` is the thread so far, folded by `packages/runtime/chat.js` — the reply depends on the whole
+// exchange, so the whole exchange is what the caller's signature (askSignature) hashes.
 
 export function answer(key, locale) {
   if (typeof key !== "string" || !key || !locale) return "";
@@ -218,10 +220,11 @@ export function isAnswered(key, locale) {
   return key in cacheFor("ask", locale);
 }
 
-// warmAsk(key, text, locale, { level, locked }) — `text` is the composed block (book header + plot +
-// question). Fail-open and deduped; a truncated reply is not cached.
-export async function warmAsk(key, text, locale, { level = 2, locked = false } = {}) {
+// warmAsk(key, text, turns, locale, { level, locked }) — `text` is the grounding block (book header + plot),
+// `turns` the folded thread ending on the reader. Fail-open and deduped; a truncated reply is not cached.
+export async function warmAsk(key, text, turns, locale, { level = 2, locked = false } = {}) {
   if (typeof key !== "string" || !key || typeof text !== "string" || !text.trim() || !locale) return;
+  if (!Array.isArray(turns) || !turns.length) return;
   const cache = cacheFor("ask", locale);
   const tag = "ask " + locale + " " + key;
   if (key in cache || pending.has(tag)) return;
@@ -230,7 +233,7 @@ export async function warmAsk(key, text, locale, { level = 2, locked = false } =
     const r = await fetch(AI, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode: "ask", text, locale, locked, level: Math.min(3, Math.max(1, Number(level) || 2)) }),
+      body: JSON.stringify({ mode: "ask", text, turns, locale, locked, level: Math.min(3, Math.max(1, Number(level) || 2)) }),
     });
     if (!r.ok) throw new Error("status " + r.status);
     const j = await r.json();

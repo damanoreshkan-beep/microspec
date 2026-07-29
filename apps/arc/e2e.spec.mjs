@@ -80,8 +80,25 @@ export default [
       }
     },
   },
+  // The four conversation checks below are ONE sequence deliberately: the whole suite shares a single page
+  // and the thread persists in localStorage, so a test that assumed an empty conversation would pass alone
+  // and fail behind its neighbours. They run in declaration order and each leaves the state the next needs.
   {
-    name: "запитання про сюжет: поле, відповідь, і жодного спойлера в замкненому стані", run: async (h) => {
+    name: "порожня розмова пропонує три різні входи, і вони зникають з першою реплікою", run: async (h) => {
+      // Not hint text — three taps, each opening a DIFFERENT kind of conversation (a character's voice, the
+      // reader inside the world, a branch the book did not take). They are the empty state, so they go.
+      h.expect(await openBook(h), "читач не відкрився з картки");
+      // The gate seeds a conversation so the SHOT shows a populated one; the empty state is what is under it.
+      if ((await h.count("[data-ask-clear]")) === 1) { await h.tap("[data-ask-clear]"); await h.wait(300); }
+      h.expect((await h.count("[data-ask-chip]")) === 3, `входів у розмову ${await h.count("[data-ask-chip]")}, а не три`);
+      await h.tap("[data-ask-chip]"); await h.wait(600);
+      h.expect((await h.count("[data-ask-q]")) === 1, "натиснутий вхід не став реплікою");
+      h.expect((await h.count("[data-ask-a]")) === 1, "на натиснутий вхід немає відповіді");
+      h.expect((await h.count("[data-ask-chip]")) === 0, "входи лишились після початку розмови");
+    },
+  },
+  {
+    name: "розмова: поле, відповідь, і блок лишається в колонці читача", run: async (h) => {
       h.expect(await openBook(h), "читач не відкрився з картки");
       h.expect((await h.count("[data-ask]")) === 1, "немає поля запитання");
       h.expect(((await h.attr("[data-ask]", "placeholder")) || "").trim().length > 0, "поле без плейсхолдера");
@@ -89,12 +106,43 @@ export default [
       // the send control must be inert until there is something to send
       h.expect((await h.attr("[data-ask-send]", "disabled")) !== null, "кнопка активна при порожньому полі");
       await h.type("[data-ask]", "Чому Пол погоджується вести фременів?"); await h.wait(200);
+      h.expect((await h.attr("[data-ask-send]", "disabled")) === null, "кнопка лишилась інертною при набраному тексті");
       await h.tap("[data-ask-send]"); await h.wait(600);
-      h.expect((await h.count("[data-ask-q]")) === 1, "запитання не показано");
-      h.expect((await h.count("[data-ask-a]")) === 1, "відповідь не з'явилась");
+      h.expect((await h.count("[data-ask-a]")) >= 1, "відповідь не з'явилась");
       h.expect((await h.text("[data-ask-a]")).trim().length > 20, "відповідь порожня");
       // the block sits BELOW the ending, continuing the same column — not floating somewhere else
       h.expect((await h.count("[data-reader] [data-ask]")) === 1, "блок запитання поза колонкою читача");
+    },
+  },
+  {
+    name: "розмова тримає нитку: нова репліка не витісняє попередню", run: async (h) => {
+      // The whole reason this stopped being a question box: "а що б він сказав, якби я йому розповів?" only
+      // means something as turn two. If a new question replaced the last one, that question could not exist.
+      h.expect(await openBook(h), "читач не відкрився з картки");
+      const before = await h.count("[data-ask-q]");
+      h.expect(before >= 2, `до цього кроку в нитці мало бути ≥2 реплік, а є ${before}`);
+      await h.type("[data-ask]", "А якби я йому розповів про свій сон?"); await h.wait(200);
+      await h.tap("[data-ask-send]"); await h.wait(600);
+      h.expect((await h.count("[data-ask-q]")) === before + 1, "нитка не виросла на одну репліку");
+      h.expect((await h.count("[data-ask-a]")) === before + 1, "у нової репліки немає відповіді");
+      h.expect(/Чому Пол погоджується вести фременів\?/.test(await h.bodyText()), "попередня репліка зникла з нитки");
+      // the composer empties on send — one that keeps the last message sends it twice
+      h.expect(((await h.prop("[data-ask]", "value")) || "") === "", "поле не очистилось після надсилання");
+    },
+  },
+  {
+    name: "розмову можна прибрати, і це скасовується", run: async (h) => {
+      // Delete safety: content the reader made is content the reader can get back (store.undo, 5 s).
+      h.expect(await openBook(h), "читач не відкрився з картки");
+      const before = await h.count("[data-ask-q]");
+      h.expect(before > 0, "нитка порожня — нема чого прибирати");
+      h.expect((await h.count("[data-ask-clear]")) === 1, "немає кнопки очищення розмови");
+      h.expect(((await h.attr("[data-ask-clear]", "aria-label")) || "").trim().length > 0, "очищення без доступного імені");
+      await h.tap("[data-ask-clear]"); await h.wait(400);
+      h.expect((await h.count("[data-ask-q]")) === 0, "розмова не очистилась");
+      h.expect((await h.count("[data-undo]")) === 1, "не запропоновано скасувати");
+      await h.tap("[data-undo]"); await h.wait(400);
+      h.expect((await h.count("[data-ask-q]")) === before, "скасування не повернуло розмову");
     },
   },
   {

@@ -102,12 +102,12 @@ const Empty = (icon, text, hint) => html`<div class="flex flex-col items-center 
 // grid wrapper and tile (aspect-SQUARE art, one-line title + subtitle + a badge) so 3-up stays 3-up.
 const Skeleton = (card = {}) => {
   if (card.layout === "gallery") return html`<div class="@container pt-2"><div class="grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5">${Array.from({ length: 9 }, (_, i) => html`<div data-skel class="flex flex-col gap-2 min-w-0" key=${i}>
-    <div class="aspect-square w-full rounded-2xl overflow-hidden border border-base-300 bg-base-200/60"><${Pixels} /></div>
+    <div class="aspect-square w-full rounded-[var(--ms-r)] overflow-hidden sf-inset"><${Pixels} /></div>
     <div class="min-w-0 text-base-content/70"><div class="text-sm font-semibold truncate"><${Scramble} len=${9} /></div><div class="text-xs truncate mt-0.5"><${Scramble} len=${7} /></div><div class="mt-1.5"><${Scramble} len=${5} cls="text-xs" /></div></div>
   </div>`)}</div></div>`;
   const row = card.layout === "row", img = !!card.image; return html`<${Fragment}>${Array.from({ length: 5 }, (_, i) => row
-  ? html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 px-4 flex-row items-center gap-3 text-base-content/70"><${Scramble} len=${2} cls="w-9 shrink-0 text-primary/60 font-bold" /><div class="flex-1 min-w-0 truncate"><${Scramble} len=${18} /></div><div class="shrink-0"><${Scramble} len=${5} /></div></div></div>`
-  : html`<div data-skel class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden" key=${i}>${img ? html`<figure class="aspect-video overflow-hidden"><${Pixels} /></figure>` : null}<div class="card-body p-4 gap-2 text-base-content/70"><div class="font-semibold truncate"><${Scramble} len=${16} /></div><div class="text-sm text-base-content/70 truncate"><${Scramble} len=${26} /></div></div></div>`)}</${Fragment}>`; };
+  ? html`<div data-skel class="card sf-raised sf-e2 rounded-[var(--ms-r)] overflow-hidden" key=${i}><div class="card-body p-3 px-4 flex-row items-center gap-3 text-base-content/70"><${Scramble} len=${2} cls="w-9 shrink-0 text-primary/60 font-bold" /><div class="flex-1 min-w-0 truncate"><${Scramble} len=${18} /></div><div class="shrink-0"><${Scramble} len=${5} /></div></div></div>`
+  : html`<div data-skel class="card sf-raised sf-e2 rounded-[var(--ms-r)] overflow-hidden" key=${i}>${img ? html`<figure class="aspect-video overflow-hidden"><${Pixels} /></figure>` : null}<div class="card-body p-4 gap-2 text-base-content/70"><div class="font-semibold truncate"><${Scramble} len=${16} /></div><div class="text-sm text-base-content/70 truncate"><${Scramble} len=${26} /></div></div></div>`)}</${Fragment}>`; };
 
 const Frag = (children) => html`<${Fragment}>${children}</${Fragment}>`;
 
@@ -138,7 +138,7 @@ function Card({ item: it, card, hide }) {
     class=${`btn btn-ghost btn-xs btn-circle relative z-[2] ${on ? "text-primary" : "opacity-50"}`}>${Icon(card.layout === "row" ? "lucide:star" : `lucide:bookmark${on ? "-check" : ""}`, "text-lg")}</button>` : null;
 
   if (card.layout === "row") {
-    return html`<div class="card @container bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 px-4 flex-row items-center gap-3 @max-[260px]:px-2.5 @max-[260px]:gap-2">
+    return html`<div class="card @container sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-3 px-4 flex-row items-center gap-3 @max-[260px]:px-2.5 @max-[260px]:gap-2">
       <div class="font-bold text-primary w-11 shrink-0 @max-[260px]:w-8 @max-[260px]:text-sm">${it[card.lead] ?? "—"}</div>
       <div class="flex-1 min-w-0 @max-[260px]:hidden"><div class="font-medium truncate text-sm">${fieldNode(it, card.title, loc)}</div></div>
       <div class="text-right @max-[260px]:text-sm"><div class="font-semibold tabular-nums">${it[card.trailing] == null ? "—" : card.unit ? it[card.trailing] + " " + card.unit : it[card.trailing]}</div>${card.trend && it[card.trend] != null ? html`<div class=${`text-xs font-medium tabular-nums ${Number(it[card.trend]) >= 0 ? "text-success" : "text-error"}`}>${Number(it[card.trend]) >= 0 ? "+" : ""}${it[card.trend]}%</div>` : null}</div>
@@ -166,7 +166,7 @@ function Card({ item: it, card, hide }) {
   // (version, size, rating). Two columns, not four — four is a wall of 40px icons you cannot read. Whole
   // card drills into the detail; the download/install link lives THERE, never on the tile.
   if (card.layout === "gallery") {
-    const art = html`<div class="aspect-square w-full rounded-2xl flex items-center justify-center overflow-hidden border border-base-300 bg-base-200/60 shrink-0">
+    const art = html`<div class="aspect-square w-full rounded-[var(--ms-r)] flex items-center justify-center overflow-hidden sf-inset bg-base-200/60 shrink-0">
       ${card.image && it[card.image]
         ? html`<img src=${it[card.image]} alt="" loading="lazy" class=${`w-full h-full ${card.imageFit === "cover" ? "object-cover" : "object-contain p-3"}`}/>`
         : html`<iconify-icon icon=${(card.icon && it[card.icon]) || "lucide:package"} class="text-3xl opacity-60"></iconify-icon>`}
@@ -196,16 +196,16 @@ function Card({ item: it, card, hide }) {
     </div></div>`;
 
   const img = card.image && it[card.image] ? html`<figure class="aspect-video bg-base-300 overflow-hidden @max-[240px]:hidden"><img src=${it[card.image]} alt="" loading="lazy" class=${`w-full h-full ${card.imageFit === "contain" ? "object-contain" : "object-cover"}`}/></figure>` : null;
-  const cls = `card @container bg-base-100 border border-base-300 rounded-2xl${card.image ? " overflow-hidden" : ""}`;
+  const cls = `card @container sf-raised sf-e2 rounded-[var(--ms-r)]${card.image ? " overflow-hidden" : ""}`;
 
   // top-level detail turns every card into a drill-down (stretched-link: full-card button UNDER the star)
   if (A.spec.detail) {
-    return html`<div class=${cls + " relative hover:border-primary/40 active:scale-[.99] transition"}>${img}${body}
+    return html`<div class=${cls + " relative active:scale-[.99] transition"}>${img}${body}
       <button class="aw-tap absolute inset-0 z-[1] rounded-2xl" aria-label=${`${field(it, card.title, loc) ?? ""} — ${T(t, card.more || "title")}`} onClick=${() => A.S.detail.set(it)}></button></div>`;
   }
   const href = card.href ? safeHref(it[card.href]) : null;
   return href
-    ? html`<a href=${href} target="_blank" rel="noopener" class=${cls + " block hover:border-primary/40 active:scale-[.99] transition"}>${img}${body}</a>`
+    ? html`<a href=${href} target="_blank" rel="noopener" class=${cls + " block active:scale-[.99] transition"}>${img}${body}</a>`
     : html`<div class=${cls}>${img}${body}</div>`;
 }
 
@@ -272,7 +272,7 @@ function Chart({ tab }) {
   const sorted = all.map((it) => Math.max(0, Number(it[cfg.field]) || 0)).sort((a, b) => a - b);
   const max = sorted[Math.floor(sorted.length * 0.92)] || sorted[sorted.length - 1] || 1; // stable y-scale (92nd pct over the whole buffer → no rescaling jump)
   const W = 320, H = 56, bw = W / plot.length, seq = plot.slice().reverse();    // oldest → newest, L → R
-  return html`<div class="px-4 pt-3 max-w-xl mx-auto w-full"><div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-1.5">
+  return html`<div class="px-4 pt-3 max-w-xl mx-auto w-full"><div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-3 gap-1.5">
     ${cfg.label ? html`<div class="text-xs text-muted px-1 font-medium">${T(t, cfg.label)}</div>` : null}
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="w-full" style="height:52px" role="img" aria-label=${T(t, cfg.label || "title")}>
       ${seq.map((it, i) => { const h = Math.max(1.5, Math.min(1, (Math.max(0, Number(it[cfg.field]) || 0)) / max) * (H - 3)); return html`<rect x=${(i * bw + bw * 0.14).toFixed(2)} y=${(H - h).toFixed(2)} width=${(bw * 0.72).toFixed(2)} height=${h.toFixed(2)} fill=${heatBg(heat.get(it))} key=${i}></rect>`; })}
@@ -292,7 +292,7 @@ function Table({ items, tab }) {
   const open = (it) => { if (A.spec.detail) A.S.detail.set(it); else if (tab.card.href) { const h = safeHref(it[tab.card.href]); if (h) window.open(h, "_blank"); } };
   return html`<div class="px-4 max-w-xl mx-auto w-full">
     <div class="flex items-center gap-3 px-3 py-1.5 text-[0.62rem] uppercase tracking-wide text-base-content/45">${cols.map((c) => html`<div class=${(c.grow ? "flex-1 min-w-0 truncate" : "shrink-0") + (c.align === "right" ? " text-right" : "")} key=${c.field}>${c.label ? T(t, c.label) : ""}</div>`)}</div>
-    <div class="flex flex-col rounded-2xl overflow-hidden border border-base-300 bg-base-100">
+    <div class="flex flex-col rounded-[var(--ms-r)] overflow-hidden sf-raised sf-e2">
       ${rows.map((it, i) => html`<button type="button" data-row=${i} class="flex items-center gap-3 pl-4 pr-3.5 py-3 text-sm border-b border-base-300/50 last:border-0 active:bg-base-200 text-left w-full relative" key=${A.favKey(it) || it[cols[0].field] || i} onClick=${() => open(it)}>
         ${heat ? html`<span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full" style=${`background:${heatBg(heat.get(it))}`}></span>` : null}
         ${cols.map((c) => html`<div class=${cls(c) + " leading-tight"} style=${c.heat && heat ? `color:${heatInk(heat.get(it))}` : ""} key=${c.field}>${fmtCell(c, it, t, loc)}${c.sub && it[c.sub] != null && it[c.sub] !== "" ? html`<div class="text-[0.7rem] font-normal text-base-content/45 tabular-nums leading-tight mt-0.5">${it[c.sub]}</div>` : null}</div>`)}
@@ -386,14 +386,14 @@ function Profile({ tab }) {
   };
   return html`<div class="flex flex-col gap-3 pt-1">
     ${p.install && !isStandalone() ? html`<button id="p-install" class="card bg-primary/10 border border-primary/25 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.installOpen.set(true)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:download", "text-xl text-primary")}<span class="flex-1 min-w-0 truncate font-medium text-left text-primary">${T(t, "install")}</span>${Icon("lucide:chevron-right", "text-primary opacity-60")}</div></button>` : null}
-    <div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-5 items-center text-center gap-1">${Icon(p.icon || "lucide:box", "text-4xl text-primary")}<div class="font-bold text-lg mt-1">${T(t, "title")}</div><div class="text-sm text-muted">${T(t, "profTagline")}</div></div></div>
-    <button id="p-share" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${shareApp}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:share-2", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("share", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></button>
-    <button id="p-apk" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.screen.set("apk")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:smartphone", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("apkRow", loc)}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>
-    ${savedTab ? html`<button class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
-    ${p.theme ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:moon", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profTheme")}</span><input id="p-theme" type="checkbox" class="toggle toggle-primary" aria-label=${T(t, "profTheme")} checked=${theme === "signal"} onChange=${(e) => A.S.theme.set(e.target.checked ? "signal" : "signal-light")} /></div></div>` : null}
-    ${p.lang ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
-    ${p.permissions?.length ? html`<button id="p-perms" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.screen.set("perms")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield-check", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${permLabels(loc).row}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>` : null}
-    ${p.source ? html`<a href=${p.source.url} target="_blank" rel="noopener" class="card bg-base-100 border border-base-300 rounded-2xl active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon(p.source.icon || "lucide:database", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, p.source.label)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
+    <div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-5 items-center text-center gap-1">${Icon(p.icon || "lucide:box", "text-4xl text-primary")}<div class="font-bold text-lg mt-1">${T(t, "title")}</div><div class="text-sm text-muted">${T(t, "profTagline")}</div></div></div>
+    <button id="p-share" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${shareApp}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:share-2", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("share", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></button>
+    <button id="p-apk" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("apk")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:smartphone", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("apkRow", loc)}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>
+    ${savedTab ? html`<button class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
+    ${p.theme ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:moon", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profTheme")}</span><input id="p-theme" type="checkbox" class="toggle toggle-primary" aria-label=${T(t, "profTheme")} checked=${theme === "signal"} onChange=${(e) => A.S.theme.set(e.target.checked ? "signal" : "signal-light")} /></div></div>` : null}
+    ${p.lang ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
+    ${p.permissions?.length ? html`<button id="p-perms" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("perms")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield-check", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${permLabels(loc).row}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>` : null}
+    ${p.source ? html`<a href=${p.source.url} target="_blank" rel="noopener" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon(p.source.icon || "lucide:database", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, p.source.label)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
     <div data-version class="text-center text-[11px] text-base-content/70 pt-1 tabular-nums">v${appVersion(A.spec)} · core ${CORE}${BUILD && BUILD !== "dev" ? ` · ${BUILD}` : ""}</div>
   </div>`;
 }
@@ -423,7 +423,7 @@ function PermissionsScreen() {
     <div class="px-4 pt-3 pb-8 flex flex-col gap-2 max-w-xl mx-auto">
       <p class="text-sm text-muted px-1 mb-1">${L.intro}</p>
       ${keys.map((k) => { const st = states[k] || "unknown", on = st === "granted", off = st === "unsupported"; return html`<${Fragment} key=${k}>
-        <div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 flex-row items-center gap-3">
+        <div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">
           ${Icon(PERMISSIONS[k].icon, "text-xl")}
           <span class="flex-1 min-w-0 truncate font-medium">${L[k]}</span>
           ${off ? html`<span class="text-xs text-base-content/50">${L.unsupported}</span>`
@@ -494,12 +494,12 @@ function DetailView() {
   useStore(trTick); useStore(metaTick); // re-render as translations / previews arrive
   if (!it) return null;
   const d = A.spec.detail, on = !!fav[A.favKey(it)], close = () => A.S.detail.set(null);
-  const img = d.image && it[d.image] ? html`<figure class="aspect-video bg-base-300 rounded-2xl overflow-hidden border border-base-300"><img src=${it[d.image]} alt="" class=${`w-full h-full ${d.imageFit === "cover" ? "object-cover" : "object-contain"}`}/></figure>` : null;
+  const img = d.image && it[d.image] ? html`<figure class="aspect-video rounded-[var(--ms-r)] overflow-hidden sf-inset"><img src=${it[d.image]} alt="" class=${`w-full h-full ${d.imageFit === "cover" ? "object-cover" : "object-contain"}`}/></figure>` : null;
   // Long-form prose (the full description/summary). The card can only ever show a 2-line clamp of it, so
   // without this slot the full text had nowhere to live and the drill-down was thinner than the thing it
   // drilled into. `whitespace-pre-line` keeps source paragraph breaks; translate/enrich resolve through field().
   const bodyTxt = d.body ? field(it, d.body, loc) : null;
-  const bodyNode = bodyTxt ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4"><p class="text-[0.95rem] leading-relaxed whitespace-pre-line break-words">${fieldNode(it, d.body, loc)}</p></div></div>` : null;
+  const bodyNode = bodyTxt ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4"><p class="text-[0.95rem] leading-relaxed whitespace-pre-line break-words">${fieldNode(it, d.body, loc)}</p></div></div>` : null;
   // An app-supplied BODY for a drill-down whose content is genuinely interactive — a control that changes
   // what is shown, an async synthesis — and therefore cannot be declared as rows. Everything around it
   // stays the runtime's: the overlay, the history-backed routing, the app-bar, the favourite star. This
@@ -532,7 +532,7 @@ function DetailView() {
   const star = A.spec.fav ? html`<button id="detail-fav" aria-label=${on ? T(t, "unfavAria") : T(t, "favAria")} onClick=${() => A.toggleFav(it)} class=${`btn btn-ghost btn-sm btn-circle ${on ? "text-primary" : "opacity-60"}`}>${Icon(`lucide:bookmark${on ? "-check" : ""}`, "text-xl")}</button>` : null;
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
     <header class="navbar bg-base-100 sf-e2 sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${field(it, d.title, loc) ?? ""}</div>${star}</header>
-    <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">${img}<div><h1 class="text-2xl font-bold leading-tight break-words">${field(it, d.title, loc) ?? ""}</h1>${d.subtitle && it[d.subtitle] ? html`<div class="text-base-content/70 mt-0.5">${field(it, d.subtitle, loc)}</div>` : null}</div>${bodyNode}${customNode}${rows.some(Boolean) ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 py-1">${rows}</div></div>` : null}${actions.some(Boolean) ? html`<div class="flex flex-col gap-2">${actions}</div>` : null}</div>
+    <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">${img}<div><h1 class="text-2xl font-bold leading-tight break-words">${field(it, d.title, loc) ?? ""}</h1>${d.subtitle && it[d.subtitle] ? html`<div class="text-base-content/70 mt-0.5">${field(it, d.subtitle, loc)}</div>` : null}</div>${bodyNode}${customNode}${rows.some(Boolean) ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 py-1">${rows}</div></div>` : null}${actions.some(Boolean) ? html`<div class="flex flex-col gap-2">${actions}</div>` : null}</div>
   </div>`;
 }
 
@@ -843,7 +843,7 @@ function ConverterView({ tab }) {
   const quick = tab.quick || ["100", "500", "1000", "5000"];
   const Sel = (id, val, onCh, aria) => html`<select id=${id} aria-label=${aria} class="select select-bordered rounded-2xl font-semibold w-24 shrink-0" value=${val} onChange=${(e) => onCh(e.target.value)}>${codes.map((c) => html`<option value=${c} key=${c}>${c}</option>`)}</select>`;
   return html`<div class="flex flex-col gap-3">
-    <div class="card @container bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-4 gap-3">
+    <div class="card @container sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 gap-3">
       <div class="flex gap-2 items-center"><input id="conv-amount" type="text" inputmode="decimal" aria-label=${T(t, "convAmount")} class="input input-bordered rounded-2xl text-lg font-semibold tabular-nums flex-1 min-w-0" value=${amount} onInput=${(e) => A.S.amount.set(e.target.value)} />${Sel("conv-from", from, (v) => A.S.from.set(v), T(t, "convFrom"))}</div>
       <div class="flex justify-center"><button id="conv-swap" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "swap")} onClick=${A.swap}>${Icon("lucide:arrow-up-down", "text-xl")}</button></div>
       <div class="flex gap-2 items-center"><div id="conv-result" class="input input-bordered rounded-2xl text-lg font-bold tabular-nums flex-1 min-w-0 flex items-center bg-base-200">${fmtNum(result, loc)}</div>${Sel("conv-to", to, (v) => A.S.to.set(v), T(t, "convTo"))}</div>
@@ -858,7 +858,7 @@ function ConverterView({ tab }) {
 // days is a vertical list over data.items.
 function DashboardView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), loc = useStore(A.S.locale);
-  if (!useReveal(!data.loading)) return html`<div data-skel class="flex flex-col gap-4"><figure class="aspect-video rounded-2xl overflow-hidden border border-base-300"><${Pixels} /></figure><div class="text-2xl font-bold text-base-content/70 truncate"><${Scramble} len=${18} /></div><div class="flex flex-col gap-2 text-base-content/70"><div class="truncate"><${Scramble} len=${30} /></div><div class="truncate"><${Scramble} len=${22} /></div></div></div>`;
+  if (!useReveal(!data.loading)) return html`<div data-skel class="flex flex-col gap-4"><figure class="aspect-video rounded-[var(--ms-r)] overflow-hidden sf-inset"><${Pixels} /></figure><div class="text-2xl font-bold text-base-content/70 truncate"><${Scramble} len=${18} /></div><div class="flex flex-col gap-2 text-base-content/70"><div class="truncate"><${Scramble} len=${30} /></div><div class="truncate"><${Scramble} len=${22} /></div></div></div>`;
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
   const m = data.meta || {}, h = tab.hero;
   // place is rendered through T() so a data.js that returns an i18n key (e.g. "place") localises reactively;
@@ -868,15 +868,15 @@ function DashboardView({ tab }) {
     ? html`<button class="inline-flex items-center gap-1 text-sm text-base-content/80" onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:map-pin", "text-xs")}${placeText} ${Icon("lucide:chevron-down", "text-xs")}</button>`
     : html`<span class="text-sm text-base-content/80 inline-flex items-center gap-1">${Icon("lucide:map-pin", "text-xs")}${placeText}</span>`) : null;
   return html`<div class="flex flex-col gap-3">
-    <div class="card @container bg-gradient-to-b from-primary/15 to-base-100 border border-base-300 rounded-2xl"><div class="card-body p-5 items-center text-center gap-1">
+    <div class="card @container bg-gradient-to-b from-primary/15 to-base-100 sf-e2 rounded-2xl"><div class="card-body p-5 items-center text-center gap-1">
       ${place}
       ${h.icon && m[h.icon] ? Icon(m[h.icon], "text-4xl text-primary my-1") : null}
       <div class="text-5xl font-bold tabular-nums @max-[240px]:text-4xl">${m[h.value] ?? "—"}${h.unit || ""}</div>
       ${h.caption && m[h.caption] ? html`<div class="text-sm text-base-content/80">${m[h.caption]}</div>` : null}
       ${h.metrics ? html`<div class="flex flex-wrap gap-1.5 justify-center mt-2 @max-[240px]:hidden">${h.metrics.map((mt) => html`<span class="badge badge-ghost gap-1" key=${mt.field}>${mt.icon ? Icon(mt.icon) : null}${T(t, mt.label)}: ${m[mt.field] ?? "—"}${mt.unit || ""}</span>`)}</div>` : null}
     </div></div>
-    ${tab.strip && Array.isArray(m[tab.strip.from]) ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-2"><div class="text-sm font-semibold px-1">${T(t, tab.strip.label)}</div><div class="flex gap-3 overflow-x-auto pb-1" tabindex="0" role="group" aria-label=${T(t, tab.strip.label)}>${m[tab.strip.from].map((s, i) => html`<div class="flex flex-col items-center gap-0.5 shrink-0 min-w-12" key=${i}><span class="text-xs text-base-content/80">${s[tab.strip.time]}</span>${tab.strip.icon && s[tab.strip.icon] ? Icon(s[tab.strip.icon], "text-lg text-primary") : null}<span class="font-semibold tabular-nums">${s[tab.strip.value]}${tab.strip.unit || ""}</span></div>`)}</div></div></div>` : null}
-    ${tab.days ? html`<div class="card bg-base-100 border border-base-300 rounded-2xl"><div class="card-body p-3 gap-1">${tab.days.label ? html`<div class="text-sm font-semibold px-1 mb-1">${T(t, tab.days.label)}</div>` : null}${data.items.map((d, i) => html`<div class="flex items-center gap-3 py-1.5 border-b border-base-300/50 last:border-0" key=${i}><span class="flex-1 min-w-0 truncate font-medium">${tab.days.weekday ? new Date(d[tab.days.day]).toLocaleDateString(loc === "en" ? "en-GB" : loc || "uk", { weekday: "short" }) : d[tab.days.day]}</span>${tab.days.icon && d[tab.days.icon] ? Icon(d[tab.days.icon], "text-lg text-primary") : null}<span class="tabular-nums font-semibold">${d[tab.days.hi]}${tab.days.unit || ""}</span>${tab.days.lo ? html`<span class="tabular-nums text-base-content/80 w-9 text-right @max-[240px]:hidden">${d[tab.days.lo]}${tab.days.unit || ""}</span>` : null}</div>`)}</div></div>` : null}
+    ${tab.strip && Array.isArray(m[tab.strip.from]) ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-3 gap-2"><div class="text-sm font-semibold px-1">${T(t, tab.strip.label)}</div><div class="flex gap-3 overflow-x-auto pb-1" tabindex="0" role="group" aria-label=${T(t, tab.strip.label)}>${m[tab.strip.from].map((s, i) => html`<div class="flex flex-col items-center gap-0.5 shrink-0 min-w-12" key=${i}><span class="text-xs text-base-content/80">${s[tab.strip.time]}</span>${tab.strip.icon && s[tab.strip.icon] ? Icon(s[tab.strip.icon], "text-lg text-primary") : null}<span class="font-semibold tabular-nums">${s[tab.strip.value]}${tab.strip.unit || ""}</span></div>`)}</div></div></div>` : null}
+    ${tab.days ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-3 gap-1">${tab.days.label ? html`<div class="text-sm font-semibold px-1 mb-1">${T(t, tab.days.label)}</div>` : null}${data.items.map((d, i) => html`<div class="flex items-center gap-3 py-1.5 border-b border-base-300/50 last:border-0" key=${i}><span class="flex-1 min-w-0 truncate font-medium">${tab.days.weekday ? new Date(d[tab.days.day]).toLocaleDateString(loc === "en" ? "en-GB" : loc || "uk", { weekday: "short" }) : d[tab.days.day]}</span>${tab.days.icon && d[tab.days.icon] ? Icon(d[tab.days.icon], "text-lg text-primary") : null}<span class="tabular-nums font-semibold">${d[tab.days.hi]}${tab.days.unit || ""}</span>${tab.days.lo ? html`<span class="tabular-nums text-base-content/80 w-9 text-right @max-[240px]:hidden">${d[tab.days.lo]}${tab.days.unit || ""}</span>` : null}</div>`)}</div></div>` : null}
   </div>`;
 }
 

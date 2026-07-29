@@ -37,7 +37,7 @@ export function SkyDial({ marks = [], radial = altRadius, opacityFor = altOpacit
     i = j;
   }
   return html`<div class="relative w-full mx-auto overflow-visible" style=${`max-width:${size}px;aspect-ratio:1`}>
-    <div class="absolute inset-0 rounded-full border border-base-300 bg-base-100"></div>
+    <div class="absolute inset-0 rounded-full sf-inset"></div>
     ${overlay}
     ${rim.map((c) => html`<span class=${`absolute ${c.cls || "text-xs font-semibold text-base-content/70"}`} style=${dialAt(c.angle + rotate, c.rimR ?? 45)} key=${c.label}>${c.label}</span>`)}
     ${ms.map((mk) => html`<div data-mark=${mk.key} ...${mk.attrs || {}} class="absolute pointer-events-none flex flex-col items-center gap-px" style=${dialAt(mk.angle + rotate, mk.r)} title=${mk.title ?? BODIES[mk.body]?.name ?? ""} key=${mk.key}>

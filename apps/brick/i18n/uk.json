@@ -37,5 +37,6 @@
   "shellSlab": "Пластина",
   "shellWide": "Широка",
   "shellArcade": "Аркада",
-  "shellBare": "Без корпусу"
+  "shellBare": "Без корпусу",
+  "tabShell": "Консоль"
 }

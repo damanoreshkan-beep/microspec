@@ -3721,3 +3721,16 @@ Deno.test("hunt engine · the collision box it reports IS the one it stands on",
   assert(ground >= 0, "she is not standing over any ground — the fixture moved");
   assertEquals(feet, ground, `feet at ${feet} against a surface at ${ground} — the box the renderer is given is not the box she rests on`);
 });
+
+Deno.test("shells · the console choice is shared, not per app", async () => {
+  const src = await Deno.readTextFile(new URL("./shells.js", import.meta.url));
+  const key = /persistentAtom\(\s*"([^"]+)"/.exec(src)?.[1];
+  assert(key, "shells.js no longer stores the choice through persistentAtom");
+  assert(!/^(brick|hunt|[a-z]+):/.test(key) || key.startsWith("ms:"),
+    `the shell preference is namespaced to an app ("${key}") — it must be shared across games`);
+  const ids = [...src.matchAll(/^  (\w+): \{$/gm)].map((m) => m[1]);
+  assert(ids.length >= 4, `only ${ids.length} shells — the catalogue is the feature`);
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  for (const forbidden of ["brick.wasm", "hunt.wasm", "SCRW", "ammo", "spear", "crouch"])
+    assert(!code.includes(forbidden), `shells.js references "${forbidden}" in CODE — a shell must be game-agnostic`);
+});

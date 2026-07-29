@@ -14,6 +14,14 @@
       "fit": true
     },
     {
+      "id": "shell",
+      "type": "tool",
+      "icon": "lucide:gamepad",
+      "label": "tabShell",
+      "view": "brickShell",
+      "fit": true
+    },
+    {
       "id": "me",
       "type": "profile",
       "icon": "lucide:gamepad-2",

@@ -18,12 +18,36 @@ import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
-import { GameConsole, ShellPicker, SHELL_IDS } from "/_rt/console.js";
+import { GameConsole, ShellTab } from "/_rt/console.js";
 import { SCRW, SCRH, S, IN, digits, betterRun } from "/_rt/hunt.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
+
+/* The deck's CONTENT, declared once. The play tab and the console tab both wear it, and a console
+   you pick on one that is not the console you play on the other is two consoles.
+
+   The cross carries DIRECTIONS and nothing else — four of them, named for where they point.
+   Pressing up still jumps and pressing down still ducks, the way every platformer has always
+   worked; what changed is that neither is the only way to do it. */
+const DECK_PAD = [
+  { id: "padUp", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
+  { id: "padLeft", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
+  { id: "padRight", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
+  { id: "padDown", pad: "down", bit: PAD.DOWN, icon: "lucide:chevron-down", label: "padDown" },
+];
+
+/* Four keys, in the order the cluster lays them out: right, down, up, left. A right thumb that is
+   jumping cannot also be steering, which is exactly why a real console puts jump under it instead
+   of on the cross — the pad was doing two jobs and one of them belonged over here. Crouch comes
+   with it for the same reason: ducking used to cost a direction you were already holding. */
+const DECK_ACTIONS = [
+  { id: "jump", bit: PAD.JUMP, icon: "lucide:chevrons-up", label: "keyJump" },
+  { id: "throw", bit: IN.SHOOT, icon: "lucide:send", iconCls: "-rotate-45", label: "keyThrow" },
+  { id: "run", bit: PAD.RUN, icon: "lucide:wind", label: "keyRun", latch: true },
+  { id: "crouch", bit: PAD.DOWN, icon: "lucide:chevrons-down", label: "keyCrouch" },
+];
 
 const NS = "hunt:";
 const $best = persistentAtom(`${NS}best`, null, { encode: JSON.stringify, decode: JSON.parse });
@@ -138,18 +162,8 @@ export function hunt(props) {
       onPointerDown=${arm}
       t=${t}
       onKeyboard=${(k) => (k.bit ? pulse(k.bit) : act(k.act))}
-      pad=${[
-        { id: "padUp", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
-        { id: "padLeft", pad: "left", bit: PAD.LEFT, icon: "lucide:chevron-left", label: "padLeft" },
-        { id: "padRight", pad: "right", bit: PAD.RIGHT, icon: "lucide:chevron-right", label: "padRight" },
-        /* Crouch is its OWN key, not the pad's south slot. On a phone the thumb that steers cannot
-           also duck without letting go of a direction, which is exactly the moment you need both. */
-        { id: "padDown", pad: "down", bit: PAD.DOWN, icon: "lucide:chevrons-down", label: "keyCrouch" },
-      ]}
-      actions=${[
-        { id: "throw", bit: IN.SHOOT, icon: "lucide:send", iconCls: "-rotate-45", label: "keyThrow" },
-        { id: "run", bit: PAD.RUN, icon: "lucide:wind", label: "keyRun", latch: true },
-      ]}
+      pad=${DECK_PAD}
+      actions=${DECK_ACTIONS}
       menu=${[
         { id: "sound", act: "sound", icon: soundOn ? "lucide:volume-2" : "lucide:volume-x", label: "sound", pressed: soundOn },
         { id: "records", act: "records", icon: "lucide:trophy", label: "records" },
@@ -201,14 +215,9 @@ export function hunt(props) {
  */
 export function huntShell(props) {
   const { t } = props;
-  return html`
-    <div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]" data-shell-tab>
-      <${ShellPicker} t=${t} />
-      <div class="sf-inset rounded-[var(--ms-r)] p-[var(--ms-pad)] flex-1 min-h-0 grid place-items-center">
-        <div class="text-center">
-          <div class="font-mono text-[var(--ms-title)]" data-shell-count>${SHELL_IDS.length}</div>
-          <div class="text-[var(--ms-label)] uppercase tracking-wide opacity-70 mt-1">${T(t, "shellPick")}</div>
-        </div>
-      </div>
-    </div>`;
+  /* A real deck, not a picture of one: the keys go down under a thumb. What they do NOT do is
+     drive the game — the simulation lives on the other tab, and a preview that also played would
+     be a second game running behind a settings screen. */
+  const { deckProps } = useTouchDeck({});
+  return html`<${ShellTab} t=${t} deck=${deckProps} pad=${DECK_PAD} actions=${DECK_ACTIONS} />`;
 }

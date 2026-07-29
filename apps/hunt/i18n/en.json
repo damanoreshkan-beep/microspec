@@ -4,7 +4,7 @@
   "tabMe": "Me",
   "screenAlt": "Game screen",
   "noEngine": "The game engine could not be loaded",
-  "padUp": "Jump",
+  "padUp": "Up",
   "padLeft": "Left",
   "padRight": "Right",
   "padDown": "Down",
@@ -34,8 +34,13 @@
   "shellBrick": "Brick",
   "shellPocket": "Pocket",
   "shellSlab": "Slab",
-  "shellWide": "Wide",
   "shellArcade": "Arcade",
   "shellBare": "Bare",
-  "tabShell": "Console"
+  "tabShell": "Console",
+  "shellSlim": "Slim",
+  "shellCart": "Cartridge",
+  "shellClam": "Clamshell",
+  "shellBacklit": "Backlit",
+  "padLabel": "Direction pad",
+  "keyJump": "Jump"
 }

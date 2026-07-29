@@ -4,7 +4,7 @@
   "tabMe": "Я",
   "screenAlt": "Ігровий екран",
   "noEngine": "Не вдалося завантажити рушій гри",
-  "padUp": "Стрибок",
+  "padUp": "Вгору",
   "padLeft": "Вліво",
   "padRight": "Вправо",
   "padDown": "Вниз",
@@ -34,8 +34,13 @@
   "shellBrick": "Цеглинка",
   "shellPocket": "Кишенькова",
   "shellSlab": "Пластина",
-  "shellWide": "Широка",
   "shellArcade": "Аркада",
   "shellBare": "Без корпусу",
-  "tabShell": "Консоль"
+  "tabShell": "Консоль",
+  "shellSlim": "Тонка",
+  "shellCart": "Картриджна",
+  "shellClam": "Розкладачка",
+  "shellBacklit": "З підсвіткою",
+  "padLabel": "Хрестовина",
+  "keyJump": "Стрибок"
 }

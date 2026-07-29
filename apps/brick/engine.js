@@ -33,7 +33,7 @@ export async function loadEngine(url = WASM_URL) {
    same silhouette every time. */
 const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 
-function bake(cell, { flip = false, level = null } = {}) {
+function bake(cell, { flip = false, level = null, lcd = LCD } = {}) {
   const c = document.createElement("canvas");
   c.width = Math.max(1, cell.w); c.height = Math.max(1, cell.h);
   if (!cell.w) return c;
@@ -43,7 +43,7 @@ function bake(cell, { flip = false, level = null } = {}) {
      that cannot bake yields a blank tile instead of throwing the whole view away on mount. */
   const img = g?.createImageData?.(cell.w, cell.h);
   if (!img?.data || !g.putImageData) return c;
-  const ink = hex(LCD.ink);
+  const ink = hex(lcd.ink);
   for (let y = 0; y < cell.h; y++)
     for (let x = 0; x < cell.w; x++) {
       const v = cell.px[y * cell.w + (flip ? cell.w - 1 - x : x)];
@@ -56,8 +56,8 @@ function bake(cell, { flip = false, level = null } = {}) {
   return c;
 }
 
-export function canvasPainter(ctx) {
-  const ink = LCD.ink;
+export function canvasPainter(ctx, lcd = LCD) {
+  const ink = lcd.ink;
   const cache = new Map();
   const baked = (cell, flip, level) => {
     let byCell = cache.get(cell);
@@ -86,14 +86,14 @@ export function canvasPainter(ctx) {
   let sheenGrad = null;
   const grad = ctx.createLinearGradient?.(0, 0, SCRW, SCRH);
   if (grad?.addColorStop) {
-    grad.addColorStop(0, `rgba(255,255,255,${LCD.sheen * 2})`);
+    grad.addColorStop(0, `rgba(255,255,255,${lcd.sheen * 2})`);
     grad.addColorStop(0.55, "rgba(255,255,255,0)");
     sheenGrad = grad;
   }
 
   return {
     keep() { pg.clearRect(0, 0, SCRW, SCRH); pg.drawImage(ctx.canvas, 0, 0); },
-    plate() { ctx.globalAlpha = 1; ctx.fillStyle = LCD.plate; ctx.fillRect(0, 0, SCRW, SCRH); },
+    plate() { ctx.globalAlpha = 1; ctx.fillStyle = lcd.plate; ctx.fillRect(0, 0, SCRW, SCRH); },
     ghost(a) { ctx.globalAlpha = a; ctx.drawImage(prev, 0, 0); ctx.globalAlpha = 1; },
     rect(x, y, w, h, level, alpha = 1) {
       ctx.globalAlpha = INK[clampLevel(level)] * alpha;

@@ -57,6 +57,27 @@ export const LCD = Object.freeze({
   sheen: 0.06,                            // polariser, a diagonal wash
 });
 
+/* ── the plate is the SHELL's, not this file's ────────────────────────────────────────
+   A tint parameter that never reaches a pixel is decoration in a table. This game is
+   monochrome — it is literally an ink density on a plate — so the console the player picked
+   can hand it its panel, and choosing the pocket shell means playing on four shades of green
+   rather than on olive. A COLOUR game cannot take this and must not: re-tinting a palette of
+   CC0 art is a filter, not a device.
+
+   `LCD` above stays exactly what it was, so a caller that asks for nothing gets the panel
+   this game shipped with. */
+const chan = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const toHex = (v) => "#" + v.map((c) => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0")).join("");
+
+/** Move a colour k of the way to white. The polariser's bright corner is the plate at k≈0.18. */
+export const lighten = (h, k) => toHex(chan(h).map((c) => c + (255 - c) * k));
+
+/** A panel from a shell's `tint`, or the default one when the shell has no opinion. */
+export function lcdFor(tint) {
+  if (!tint?.off || !tint?.ink) return LCD;
+  return Object.freeze({ ...LCD, plate: tint.off, plateLight: lighten(tint.off, 0.18), ink: tint.ink });
+}
+
 /* Five ink densities: 0 is bare plate, 4 is a fully driven segment. Anything drawn in the
    game picks a level, then the light model shifts it per face. */
 export const INK = Object.freeze([0, 0.16, 0.34, 0.58, 0.86]);

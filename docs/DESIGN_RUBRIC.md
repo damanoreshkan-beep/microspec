@@ -21,6 +21,26 @@ deno run -A packages/gates/shoot.mjs <app…> --seed --theme light   # …and an
 Then download `main.png` **and** `light.png` for each and review them against the criteria below. A verdict
 that cites only the tall dark shot is not a verdict — say which shape and which theme each finding came from.
 
+### Looking inside a canvas — `tools/art/frame.mjs`
+
+`shoot.mjs` photographs a **deployed** page, so for an app that draws into a `<canvas>` the eye test cost a
+deploy plus a microlink shot per look — one CI round per glance, which is why nobody glanced, which is why
+`brick`'s picture drifted (see [GATE_BLINDSPOTS](GATE_BLINDSPOTS.md) §13). One real frame, drawn through the
+app's own `render.js` into a PNG, with no browser and no canvas, now costs a fifth of a second:
+
+```
+deno run -A tools/art/frame.mjs brick --out /tmp/brick.png
+deno run -A tools/art/frame.mjs hunt  --out /tmp/hunt.png --frames 140 --scale 3 --seed 0xB21C
+# it re-execs itself with its import map; the explicit form is
+deno run -A --import-map=tools/art/frame.importmap.json tools/art/frame.mjs brick --out x.png
+```
+
+Defaults are the gate seed, the app's own frame count and `--scale 3`; it prints the buffer's size, seed,
+step count and **distinct colour count**, because a preview you cannot check is not evidence. It is the same
+`renderFrame()` the browser runs — a second painter against one pass order — so the two cannot diverge
+silently. It shows the **game**, never the console around it: chrome, layout, and how much of the screen the
+picture is getting are still `shoot.mjs`'s job.
+
 ## Criteria
 
 **Hard (block the merge):**
@@ -30,6 +50,13 @@ that cites only the tall dark shot is not a verdict — say which shape and whic
 - **No overlap / collision** — elements don't visually stack or crowd into each other.
 - **A one-screen app does not scroll** — an instrument whose controls run off the bottom is broken, not
   "scrollable". Check the compact states, not just the tall one: `shoot.mjs <app> --bp phone-land`.
+- **An instrument's own display gets the space; chrome and body take what is left, never the reverse.**
+  A map, a game, a visualiser, a camera view: the thing the app exists to show is sized first, and the
+  frame around it is whatever remains. Both console games shipped the other way round — the picture was
+  a fraction of a body that was itself sized to its contents, so a 390px phone showed a 155px game with
+  two thirds of the viewport empty. **No overflow check can see this**; it is the direction they do not
+  measure (GATE_BLINDSPOTS §14). If the app has one subject, assert the *share* it gets, as a fraction
+  of its container, in the e2e — a ceiling is not a floor.
 - **Split-screen keeps every function** — at `412×430` and `360×340` (two apps on one phone; in the matrix)
   nothing may be dropped to make room. A control that no longer fits becomes an **icon**, or moves into a
   Sheet; a stage moves BESIDE its controls (`.ms-side`), not away. Look for the amputation: a screen that
@@ -61,6 +88,13 @@ that cites only the tall dark shot is not a verdict — say which shape and whic
   highlighted history cell).
 - **Aligned to a grid** — consistent spacing, edges, and baselines; nothing visibly off.
 - **Chrome sanity** — no affordance that does nothing here (e.g. a refresh button on a fully offline app).
+- **A preference the user never asked for is a decision you took away from the design.** An option is
+  not generosity; it is the author declining to choose, and every branch of it is a thing that must
+  stay true. The console catalogue is the case to remember: nine device silhouettes cost each game a
+  settings tab whose content was a picture of a settings screen, and — because a table of shells has to
+  differ *somewhere* — it made the aperture a styling variable, which is nine chances to be wrong about
+  the only number a player can see. Ship the one you would defend; a variant earns its place by being
+  asked for.
 
 **Taste (yellow — raise the bar):**
 - **Restraint** (Linear / shadcn) — hairlines over heavy borders; no decorative gradients, no emoji soup,
@@ -175,6 +209,7 @@ Each row is a real finding no axe/overflow/e2e check could see. 🔴 fixed (hard
 | brick | 🔴 | every block in the game was lit from the **wrong side** — the extrusion let the source art's own contour serve as the lit edge, and Kenney draws contours dark, so the face turned toward the light was the heavy one | fixed — the lit edge is drawn by `extrude()`, never inherited. The same rule as `--nm-light` in theme.css: a widget declares what it IS and the material draws the light |
 | brick | 🟠 | six brick tiles in a row merged into one dark bar — extruded edge-to-edge, adjacent blocks butt together with no seam | fixed — one row and one column of each cell are cleared. Note the first attempt shrank the art to make room and **resampled the crate into a blank slab**: it solved the separation and destroyed the texture, which is a trade nobody asked for |
 | brick | 🟡 | clouds drawn as rectangles read as a rendering artefact rather than as sky | fixed — three rounded lobes per cloud, flattened underneath |
+| brick · hunt | 🔴 | the game was ~155px (brick) and ~115px (hunt) wide on a 390px phone, in a console body that shrink-wrapped its contents, so two thirds of the viewport was empty page. **This gate missed it too** — the shot was looked at more than once and read as "a console, a bit small", which is exactly what a taste note sounds like when the defect is a number | fixed — the nine-shell catalogue is gone, one device fills the view, the aperture takes the whole body; an e2e in each game now measures the body against `#view` and the canvas against the body in fractions |
 
 Every finding fixed. The taste gate now has zero open debt on the reviewed apps.
 

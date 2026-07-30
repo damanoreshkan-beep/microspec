@@ -21,6 +21,7 @@ CI. All but one were found by a human opening the app on a phone.
 | Does the adapter return items? | Are they the right items? |
 | Did the app call `put()`? | Is the data there when you come back? |
 | Does the card have an href? | Should a tap leave the app at all? |
+| Does the content fit the screen? | Does it use it? |
 
 Both columns are checkable. We only ever built the left one.
 
@@ -194,10 +195,42 @@ asserts on those.
 
 That is a contract, not a convenience: it means a rendering bug inside the canvas — a sprite drawn
 at the wrong depth, a tile that vanished, the whole scene one pixel off — is invisible to CI by
-construction. The only checks on it are the offline PNG preview (`tools/art/` + the renderer's
-painter abstraction, which is why the browser and the preview must share one pass order) and the
-eye. **Do not read a green `verify (brick)` as "the game looks right".** It means the app mounted,
-the numbers moved, and nothing threw.
+construction. The only checks on it are the offline PNG preview (`tools/art/frame.mjs` + the
+renderer's painter abstraction, which is why the browser and the preview must share one pass order)
+and the eye. **Do not read a green `verify (brick)` as "the game looks right".** It means the app
+mounted, the numbers moved, and nothing threw.
+
+### 14. A gate that measures overflow cannot see underuse
+`brick` and `hunt` drew their picture at roughly 155 and 115 CSS px wide on a 390px phone, inside a
+console body that shrink-wrapped its own contents, so two thirds of the viewport was empty page above
+and below a device nobody could read. Both games shipped that way with every gate green. What found it
+was the owner, in one sentence: the game is too small.
+
+Nothing in the suite could have said it. The picture does not **overflow** — it is *smaller* than its
+box, and that is the direction no check measures: the `fit` gate asks whether content **exceeds** the
+view, and a canvas using a third of its box satisfies that beautifully. axe is indifferent to the size
+of a `<canvas>` carrying a correct `aria-label`; there is no text in there to be small. And the single
+default screenshot reads as "a console, a bit small", which lands as a taste note rather than a
+failure. The e2e that did exist asserted the shell's custom properties had reached the element — it
+proved the geometry **arrived** and never asked whether the geometry was any good. A test can be
+exactly right about a mechanism and hold no opinion at all about the number the mechanism carries.
+
+The cause was upstream of the CSS and is worth naming, because it is what made the number wrong rather
+than merely unchecked: a catalogue of nine console shells has to **differ** somewhere, and the
+strongest tell in a handheld silhouette is the aperture as a fraction of the body (0.42 · 0.55 · 0.61).
+So the number that distinguishes devices and the number that decides how big the game is were one
+number, and it was spent on the first job. Nine devices was nine chances to be wrong about the only
+measurement a player can see. (`research/console-shells.md` records what the catalogue cost and which
+of its measurements survive.)
+**Closed:** one device, the body at `height: 100%`, the aperture at the full body width — and each
+game carries an e2e that measures the claim in the units the claim is made in: the body against
+`#view`, the canvas against the body, in **fractions** rather than pixels, so the check keeps meaning
+at every breakpoint instead of encoding one phone.
+
+The general form: **every fit/overflow check in this farm is one-sided.** It has a ceiling and no
+floor, so an element can be absurdly small, or a layout two thirds empty, in perfect compliance. When
+a screen exists to show one thing, assert the *share* that thing gets — a floor is a different
+assertion from a ceiling, and nothing you already own implies it.
 
 ## A ramp can pass every check and still read backwards (clay repaint, 2026-07-26) — FIXED
 

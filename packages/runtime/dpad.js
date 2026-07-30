@@ -31,8 +31,17 @@ export const fromPointer = (el, within = 500) => !!el && Date.now() - (pointered
 /** The activation guard every app's onClick should use: keyboard and AT only. */
 export const keyboardOnly = (fn) => (e) => { if (!e.detail && !fromPointer(e.currentTarget)) fn(e); };
 
-/** Mirrored in tools/wasm/brick/game.c and packages/runtime/brick.js. */
-export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16 };
+/* Mirrored in tools/wasm/brick/game.c and packages/runtime/brick.js — and, for the five bits they
+   share, in tools/wasm/hunt/game.c and packages/runtime/hunt.js.
+
+   SHOOT is here and not only in hunt's own table because of what its absence did: hunt's throw key
+   carried `IN.SHOOT` (32) from the app, `KEYS` below had no binding that could ever produce that
+   bit, and so on a desktop the ranged game — a huntress, a finite quiver, an enemy you are meant
+   to kill at distance — could not throw at all. Nothing failed. The button was on screen, the
+   touch deck drove it, the e2e tapped it and watched the quiver go down, and the one input path
+   the gate never exercised was the only one a keyboard has. A bit that an app can send but the
+   shared keyboard map cannot name is a control that exists on half the devices. */
+export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16, SHOOT: 32 };
 
 /**
  * `useTouchDeck()` — the whole control deck as ONE touch surface.
@@ -186,13 +195,18 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
 
 /* Keyboard is not a fallback here — a console on a desktop is played with two hands on the keys,
    and the arrows are the pad. Both layouts every platformer player already has in their fingers:
-   arrows or WASD to move, Z/Space to jump, X/Shift to run. */
+   arrows or WASD to move, Z/Space to jump, X/Shift to run, C/Ctrl to throw.
+
+   A game that only has four of these still only receives four: the mask is an AND of what the
+   keyboard sends and what the simulation reads, so a binding no game uses costs nothing. The
+   inverse is what cost something — see the note on SHOOT above. */
 export const KEYS = {
   ArrowLeft: PAD.LEFT, KeyA: PAD.LEFT,
   ArrowRight: PAD.RIGHT, KeyD: PAD.RIGHT,
   ArrowDown: PAD.DOWN, KeyS: PAD.DOWN,
   ArrowUp: PAD.JUMP, KeyW: PAD.JUMP, Space: PAD.JUMP, KeyZ: PAD.JUMP,
   ShiftLeft: PAD.RUN, ShiftRight: PAD.RUN, KeyX: PAD.RUN,
+  KeyC: PAD.SHOOT, ControlLeft: PAD.SHOOT, ControlRight: PAD.SHOOT,
 };
 
 /** Momentary keys — the ones a console has as buttons rather than as directions. */

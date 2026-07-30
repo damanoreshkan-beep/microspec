@@ -44,13 +44,36 @@ export default [
       await ready(h);
       const before = await num(h, "dist");
       await h.keys(["ArrowRight", "ShiftLeft"], 900);
-      h.expect((await num(h, "dist")) >= before, "дистанція не росте від клавіатури");
+      /* STRICTLY greater. `>=` was an assertion that cannot fail: it also holds when the player is
+         dead, or wedged against a wall, or when the keyboard never reached the mask at all. An
+         inequality that is true in the broken case is not a test. */
+      h.expect((await num(h, "dist")) > before, "дистанція не зросла за 0.9с утримання — клавіатура не доходить до маски");
       // assert DURING the hold — after the release there is nothing to see
       await h.keyDown("ArrowLeft");
       await h.wait(150);
       const lit = await h.hasClass('[data-pad="padLeft"]', "sf-pressed");
       await h.keyUp("ArrowLeft");
       h.expect(lit, "екранна клавіша не підсвітилась під час натиску з клавіатури");
+    },
+  },
+  {
+    /* The defect this exists for made the game's whole premise unplayable on a desktop, and every
+       gate was green. The throw key carried hunt's own SHOOT bit (32); the SHARED keyboard map in
+       dpad.js had no binding that could produce that bit, so a keyboard could move, jump, duck and
+       run, and could not throw a spear — in a game about throwing spears. The suite tapped the
+       on-screen key and watched the quiver go down, which exercises the touch path only. A control
+       is not wired until BOTH inputs reach the mask, so both are asserted here. */
+    name: "клавіатура: спис кидається з клавіатури, не лише пальцем", run: async (h) => {
+      await ready(h);
+      const SHOOT = 32;
+      const before = await num(h, "ammo");
+      h.expect(before > 0, "нічим кидати — сагайдак порожній до початку");
+      await h.keyDown("KeyC");
+      await h.wait(150);
+      h.expect((+(await live(h, "mask")) & SHOOT) !== 0, "клавіша кидка не дійшла до маски — у спільній розкладці немає біта SHOOT");
+      await h.keyUp("KeyC");
+      await h.wait(400);
+      h.expect((await num(h, "ammo")) < before, "сагайдак не зменшився від клавіатури — кидок доступний лише пальцем");
     },
   },
   {

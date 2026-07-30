@@ -37,16 +37,26 @@ const DECK_PAD = [
   { id: "padDown", pad: "down", bit: PAD.DOWN, icon: "lucide:chevron-down", label: "padDown" },
 ];
 
-/* Four keys, in the order the cluster lays them out: right, down, up, left. A right thumb that is
-   jumping cannot also be steering, which is exactly why a real console puts jump under it instead
-   of on the cross — the pad was doing two jobs and one of them belonged over here. Crouch comes
-   with it for the same reason: ducking used to cost a direction you were already holding. */
+/* THREE keys, not four. A right thumb that is jumping cannot also be steering, which is why jump
+   belongs here rather than only on the cross — that duplication is deliberate and earns its place.
+   Crouch did not. It was added "for the same reason" and the reason did not survive a measurement:
+   nothing in this game has a ranged attack to duck, the lowest ceiling the generator authors is
+   96px of clearance against a 36px standing box, and ducking under an enemy cannot work because
+   both boxes rest on the same floor. It was also an exact duplicate of the cross's own DOWN. So a
+   verb with no use case cost a key, a slot in the cluster, and a translation — and the cluster it
+   cost went from an offset triangle to a four-key diamond, which is the widest thing in the deck. */
 const DECK_ACTIONS = [
   { id: "jump", bit: PAD.JUMP, icon: "lucide:chevrons-up", label: "keyJump" },
   { id: "throw", bit: IN.SHOOT, icon: "lucide:send", iconCls: "-rotate-45", label: "keyThrow" },
   { id: "run", bit: PAD.RUN, icon: "lucide:wind", label: "keyRun", latch: true },
-  { id: "crouch", bit: PAD.DOWN, icon: "lucide:chevrons-down", label: "keyCrouch" },
 ];
+
+/* Frames between the engine reporting DEAD and the game-over card going up.
+   The simulation deliberately keeps running after death so she falls out of the world — and the
+   card used to be raised on the very same frame the flag flipped, with the clock gated on it, so
+   exactly ZERO frames of that arc were ever drawn. The engine had been animating a death nobody
+   could see for the life of the app. */
+const DEATH_ARC = 45;
 
 const NS = "hunt:";
 const $best = persistentAtom(`${NS}best`, null, { encode: JSON.stringify, decode: JSON.parse });
@@ -69,6 +79,8 @@ export function hunt(props) {
   const eng = useRef(null), sound = useRef(null), painter = useRef(null);
   const seed = useRef(gate ? GATE_SEED : (Math.random() * 0xffffffff) >>> 0);
   const restartRef = useRef(null);
+  /** The frame she died on, or null while she is alive — the death arc's clock. */
+  const fell = useRef(null);
 
   const act = useCallback((name) => {
     if (name === "sound") {
@@ -125,10 +137,17 @@ export function hunt(props) {
              can be alive, still holding right, and simply pressed against a step. */
           h.dataset.mask = mask.current;
         }
-        if (st[S.DEAD] && !$over.get()) {
-          $over.set(true);
-          $runs.set(String((+$runs.get() || 0) + 1));
-          $best.set(betterRun($best.get(), { dist: st[S.DIST], score: st[S.SCORE], kills: st[S.KILLS] }));
+        /* The run is banked at the moment of DEATH and the card goes up DEATH_ARC frames later.
+           Two separate moments on purpose: the numbers must be the ones she died with, not the
+           ones the corpse has after falling for three quarters of a second. */
+        if (st[S.DEAD]) {
+          if (fell.current == null) {
+            fell.current = st[S.FRAME];
+            $runs.set(String((+$runs.get() || 0) + 1));
+            $best.set(betterRun($best.get(), { dist: st[S.DIST], score: st[S.SCORE], kills: st[S.KILLS] }));
+          } else if (!$over.get() && st[S.FRAME] - fell.current >= DEATH_ARC) {
+            $over.set(true);
+          }
         }
       };
 
@@ -150,6 +169,7 @@ export function hunt(props) {
   const restart = useCallback(() => {
     seed.current = gate ? GATE_SEED : (Math.random() * 0xffffffff) >>> 0;
     eng.current?.init(seed.current);
+    fell.current = null;
     $over.set(false);
   }, []);
   restartRef.current = restart;

@@ -1,9 +1,9 @@
 // apps/hunt — a huntress, a finite quiver and a forest that keeps coming.
 //
-// The opposite shape to `brick` on purpose. brick is a device you hold: a console body, a screen
-// recessed into it, controls below. hunt is the screen — the game fills the view and the controls
-// float over it, because a phone game that spends half its height on a bezel is a phone game with
-// half a screen. Same engine lineage, same light, opposite frame.
+// Same device as `brick` — one console, two games (packages/runtime/console.js). What differs is
+// the deck's CONTENT and the panel behind the picture: brick is an ink density on an olive plate,
+// this is colour art in a dark well, and the well's colour is the sky's own top stop so the strip
+// the picture does not reach reads as more sky rather than as a frame.
 //
 // The simulation is wasm (tools/wasm/hunt/game.c) and knows none of this.
 
@@ -18,15 +18,14 @@ import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
-import { GameConsole, ShellTab } from "/_rt/console.js";
-import { SCRW, SCRH, S, IN, digits, betterRun } from "/_rt/hunt.js";
+import { GameConsole } from "/_rt/console.js";
+import { SCRW, SCRH, S, IN, WORLD, digits, betterRun } from "/_rt/hunt.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
-/* The deck's CONTENT, declared once. The play tab and the console tab both wear it, and a console
-   you pick on one that is not the console you play on the other is two consoles.
+/* The deck's CONTENT — the only thing this game tells the console about itself.
 
    The cross carries DIRECTIONS and nothing else — four of them, named for where they point.
    Pressing up still jumps and pressing down still ducks, the way every platformer has always
@@ -160,6 +159,7 @@ export function hunt(props) {
     <${GameConsole}
       deck=${deckProps}
       onPointerDown=${arm}
+      plate=${WORLD.sky[0]}
       t=${t}
       onKeyboard=${(k) => (k.bit ? pulse(k.bit) : act(k.act))}
       pad=${DECK_PAD}
@@ -203,21 +203,4 @@ export function hunt(props) {
         })}>${T(t, "resetTitle")}</button>
     </${Sheet}>` : null}
   </${Fragment}>`;
-}
-
-/**
- * The console picker, as its own tab.
- *
- * It lives in the game rather than in the profile because it is a thing you SEE change: pick a
- * shell, go back one tab, and the same game is in a different device. And the preference is stored
- * without an app prefix, so the shell chosen here is the shell brick wears too — one console, many
- * games, which is the whole reason the catalogue is in the runtime and not in this file.
- */
-export function huntShell(props) {
-  const { t } = props;
-  /* A real deck, not a picture of one: the keys go down under a thumb. What they do NOT do is
-     drive the game — the simulation lives on the other tab, and a preview that also played would
-     be a second game running behind a settings screen. */
-  const { deckProps } = useTouchDeck({});
-  return html`<${ShellTab} t=${t} deck=${deckProps} pad=${DECK_PAD} actions=${DECK_ACTIONS} />`;
 }

@@ -721,58 +721,59 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
   .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }
 }
 
-/* ── The game console — shells.js publishes the geometry, this consumes it ─────────────────────────
-   Every number here has a source in `docs/research/console-shells.md`. The rule that makes the whole
-   thing work is the same one the dock's `--dock-h` learned: the SHELL states what a device is, the CSS
-   states how a surface behaves, and neither hardcodes the other's number. A shell is a row in a table;
-   it is never a rule in this file. */
+/* ── The game console — ONE device, drawn as large as the viewport allows ──────────────────────────
+   Every number here has a source in `docs/research/console-shells.md`. There used to be a table of
+   nine shells in JS publishing this geometry as custom properties, and it is gone: a catalogue of
+   silhouettes is a decision the player never asked for, and every one of its numbers was in
+   competition with the only thing that matters on a phone — HOW BIG THE GAME IS. What is left is
+   the device the first game shipped with, stated once, here. */
 
-/* The plastic. Two values travel from shells.js and CSS picks between them — never JS, because the
-   view does not re-render when the theme flips and a colour chosen at mount would be the wrong one
-   half the time. Muted and mid-range by construction, so the neumorphic pair keeps headroom both ways. */
+/* The plastic. Muted and mid-range by construction, so the neumorphic pair keeps headroom both
+   ways, and stated as CSS rather than computed in JS: the view does not re-render when the theme
+   flips, so a colour chosen at mount would be the wrong one half the time.
+
+   `height: 100%` is the other half of the big-screen repair. The body used to shrink-wrap its
+   contents, so a 24rem shell around a 55%-wide aperture left two thirds of a 390×844 phone as
+   empty page above and below a game nobody could read. A handheld fills the hand. */
 .ms-shell {
   width: 100%;
-  max-width: var(--sh-max, 26rem);
+  height: 100%;
+  max-width: 30rem;
   padding: var(--ms-pad);
   background: var(--sh-body, var(--color-base-100));
-  border-radius: var(--sh-r-tl, var(--ms-r)) var(--sh-r-tr, var(--ms-r))
-                 var(--sh-r-br, var(--ms-r)) var(--sh-r-bl, var(--ms-r));
+  border-radius: calc(var(--ms-r) * 1.2);
 }
-[data-theme="signal"]       .ms-shell { --sh-body: var(--sh-body-d); }
-[data-theme="signal-light"] .ms-shell { --sh-body: var(--sh-body-l); }
+[data-theme="signal"]       .ms-shell { --sh-body: #35342C; }
+[data-theme="signal-light"] .ms-shell { --sh-body: #D8D5C2; }
 
-/* The aperture. `--sf-inset-face` is `.sf-inset`'s OWN knob for the recessed face — setting it is how
-   a plate colour reaches the screen without a second background rule fighting the component (the
-   `--range-bg` lesson: use the component's knob, never paint over it). The width fraction is the
-   single strongest tell in the catalogue; 42% and 61% are different devices. */
+/* The aperture. `--sf-inset-face` is `.sf-inset`'s OWN knob for the recessed face — setting it is
+   how a plate colour reaches the screen without a second background rule fighting the component
+   (the `--range-bg` lesson: use the component's knob, never paint over it). The plate travels from
+   the GAME (`GameConsole`'s `tint`), never from the shell: brick is an ink density on an olive
+   plate and hunt is colour art in a dark well, and a shell that owned the tint painted olive
+   around a forest for the life of the catalogue.
+
+   No width fraction any more, and no bezel fraction either. The aperture takes the whole body and
+   the canvas letterboxes inside it, so the picture is the largest one the device can show; the
+   frame is a hairline of plastic rather than a device-defining proportion, because nine
+   silhouettes no longer have to differ from each other somewhere. */
 .ms-screen {
-  --sf-inset-face: var(--sh-tint, var(--color-base-100));
+  --sf-inset-face: var(--sh-tint, var(--color-base-200));
   width: 100%;
-  padding: max(0.2rem, var(--sh-bezel, 6%));
+  padding: max(0.3rem, 2.5%);
   border-radius: var(--ms-r);
 }
 
-/* The aperture fraction applies ONLY where the console is a console. `.ms-side` takes the body over
-   at ≤520px of height (stage beside controls) and the watch pager takes it over again below 301px of
-   width, and both size `[data-stage-box]` themselves at the same specificity as anything written
-   here — so an unscoped aperture rule would silently win by source order and amputate the
-   adaptation it was never about. This is the axis-and-scope rule: state where a geometry is true.
-   Inside the guard, a split/clam body sizes the SCREEN and a flank body sizes the STAGE, because in
-   a flank the stage is a flex sibling of two control columns and a percentage there would be a
-   fraction of the leftover rather than of the device. `flex-shrink: 1` keeps 320px from overflowing. */
-@media (min-height: 521px) and (min-width: 301px) {
-  [data-deck="split"] .ms-screen, [data-deck="clam"] .ms-screen { width: var(--sh-screen-w, 100%); }
-  [data-deck="flank"] > [data-stage-box] { flex: 0 1 var(--sh-screen-w, 100%); }
-}
-
-/* The hinge of an open clamshell. A seam, not a border: the light is the farm's, one level deeper.
-   It is a horizontal thing, so it goes away when the body turns into a row. */
-.ms-hinge { position: relative; flex: 0 0 auto; height: 0.5rem; }
-@media (max-height: 520px), (max-width: 300px) { .ms-hinge { display: none; } }
-.ms-hinge::before {
-  content: ""; position: absolute; left: 6%; right: 6%; top: 50%; height: 2px; border-radius: 2px;
-  background: linear-gradient(90deg, transparent, var(--nm-dark) 10%, var(--nm-dark) 90%, transparent);
-  box-shadow: 0 1px 0 var(--nm-light);
+/* Landscape, where `.ms-side` turns the body into a row. The generic split — stage 38%, controls
+   the rest — is tuned for a visualiser beside a transport, and it is exactly backwards for a
+   console: a deck is a fixed set of keys that needs what it needs, and every pixel after that
+   belongs to the game. Left as the generic 38% the forest arrived 80px wide on a phone held
+   sideways, which is the same defect this whole pass is about, wearing landscape. The body also
+   stops being a 30rem portrait object here — a device held sideways IS wider. */
+@media (max-height: 520px) and (min-width: 301px) {
+  .ms-shell { max-width: 46rem; }
+  [data-shell-body].ms-side > [data-stage-box] { flex: 1 1 auto; }
+  [data-shell-body].ms-side > .ms-side-main { flex: 0 0 auto; }
 }
 
 /* The cross. A seat around it, and a hub that is the centre CELL — about a third of the cross, which is
@@ -782,13 +783,6 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 /* 12% of the arm’s own width. At 50% — which is what every `round` shell used to apply — the four arms
    stop being a cross and become a four-petal flower. */
 .ms-pad-key { border-radius: 12%; }
-
-/* A disc is not a clipped cross. The arms lose their radius entirely and the whole node is round, so the
-   quarters read as sectors; the dead zone is 27% of the disc, per the arcade component measurements. */
-.ms-pad.ms-pad-disc { border-radius: 50%; }
-.ms-pad-disc > div { border-radius: 50%; overflow: hidden; }
-.ms-pad-disc [data-bit] { border-radius: 0; }
-.ms-pad-disc .ms-pad-hub { width: 81%; height: 81%; }
 
 /* The centre column has to be able to get out of the way. A four-key cluster is 2.92 key-widths wide
    against the old pair's 2.4, and at 320px the deck row (pad + centre + actions) was already within a

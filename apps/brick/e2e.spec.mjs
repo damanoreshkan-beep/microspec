@@ -147,18 +147,40 @@ export default [
     },
   },
   {
+    /* THE screen test. The owner's complaint about this app was one sentence — the game is too
+       small — and the two causes were invisible to every gate the farm had: a shell catalogue that
+       wrote the aperture as 55% of the body width (nine silhouettes have to differ SOMEWHERE), and
+       a body that shrink-wrapped its own contents so two thirds of a 390×844 phone was empty page.
+       Neither overflows, neither fails a11y, and both photograph as "a console, a bit small".
+
+       So the claim is measured, in the units it is made in: the body against the view, and the
+       picture against the body. Fractions rather than pixels — a pixel budget would be a constant
+       written beside a thing it describes, which is the bug with the delay fuse. */
+    name: "екран: гра займає корпус, а корпус — увесь вигляд", run: async (h) => {
+      await ready(h);
+      const view = await h.prop("#view", "clientHeight");
+      const bodyH = await h.prop("[data-shell-body]", "clientHeight");
+      const bodyW = await h.prop("[data-shell-body]", "clientWidth");
+      const cw = await h.prop("canvas", "clientWidth");
+      h.expect(view > 0 && bodyW > 0, "нема з чим порівнювати — корпус або вигляд не змірялись");
+      h.expect(bodyH >= view * 0.9,
+        `корпус ${bodyH}px усередині вигляду ${view}px — консоль стискається до вмісту замість заповнювати екран`);
+      h.expect(cw >= bodyW * 0.78,
+        `полотно ${cw}px у корпусі ${bodyW}px — апертура забирає в гри ширину, яку нікому більше не віддає`);
+    },
+  },
+  {
     /* The defect this exists for shipped with every gate green: the console body receives both the
-       shell's geometry (custom properties) and the deck hook's own style, and one silently replaced
-       the other, so nine shells rendered as one device. Every class was present, every JS-level
-       difference still worked, and a11y and overflow were unaffected. The only proof is the
-       COMPUTED value on the element.
+       plate colour (a custom property) and the deck hook's own style, and one silently replaced
+       the other. Every class was present, every JS-level difference still worked, and a11y and
+       overflow were unaffected. The only proof is the COMPUTED value on the element.
        Both halves are asserted, deliberately — a fix that restored the geometry by dropping
        touch-action would let a thumb on the pad scroll the page instead, which is the same bug
        wearing the other hat. */
-    name: "оболонка: геометрія і touch-action обидва доходять до корпусу", run: async (h) => {
+    name: "корпус: колір панелі і touch-action обидва переживають злиття стилів", run: async (h) => {
       await ready(h);
-      const w = await h.css("[data-shell-body]", "--sh-screen-w");
-      h.expect(/^[\d.]+%$/.test(w || ""), `апертура оболонки не доїхала до корпусу — --sh-screen-w = "${w}"`);
+      const tint = await h.css("[data-shell-body]", "--sh-tint");
+      h.expect(/^\s*(#|rgb)/.test(tint || ""), `гра не передала свою панель апертурі — --sh-tint = "${tint}"`);
       const body = await h.css("[data-shell-body]", "--sh-body");
       h.expect(/^\s*(#|rgb)/.test(body || ""), `корпус не отримав власного кольору — --sh-body = "${body}"`);
       const touch = await h.css("[data-shell-body]", "touch-action");

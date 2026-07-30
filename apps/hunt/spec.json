@@ -14,14 +14,6 @@
       "fit": true
     },
     {
-      "id": "shell",
-      "type": "tool",
-      "icon": "lucide:gamepad",
-      "label": "tabShell",
-      "view": "huntShell",
-      "fit": true
-    },
-    {
       "id": "me",
       "type": "profile",
       "icon": "lucide:crosshair",

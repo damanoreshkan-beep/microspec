@@ -1,4 +1,4 @@
-// console — the farm's game shell, once.
+// console — the farm's game shell, once, and there is only ONE of it.
 //
 // The first game grew a handheld: a body extruded from the page, a screen recessed into it, a
 // D-pad and two action keys. The second game wanted the same controls, and the honest options were
@@ -6,20 +6,28 @@
 // no gate ever reports "this app's pad is two pixels rounder than the other one's": the farm
 // already learned that with the sheet, the transport and the tab strip.
 //
-// There is one look AT A TIME, and the player picks it. shells.js is the catalogue; this component
-// wears whichever is chosen and knows nothing else about it. The distinction matters: a component
-// with two appearances baked in is two components sharing a file, while a component with a chosen
-// skin is one component and a preference — and the preference is shared across every game, because
-// picking a console in one and finding another in the next is the behaviour of two apps.
+// IT THEN GREW A CATALOGUE OF NINE DEVICES, and that was the mistake this file is now the repair
+// of. A catalogue is a decision handed to the player that the player never asked for: it cost a
+// whole tab in each game (a settings screen with a picture of a settings screen), it cost every
+// game half its screen to a body that had to stay small enough for nine silhouettes to differ,
+// and it cost the colour game a yellow-green LCD plate around a forest, because the shell owned a
+// tint and one of the two games could not use it. Nine consoles is nine chances to be wrong about
+// the only thing that matters here: HOW BIG THE GAME IS. So there is one device, it is the one
+// the first game shipped with, and it is drawn as large as the viewport allows.
 //
 // What stays per-game is only the deck's CONTENT: which directions the pad carries, which action
 // keys exist and whether one latches, what sits in the menu row and the centre column. How MANY
 // action keys there are is the game's business too — a shell that demanded exactly four would be a
 // shell that fits one game. What the shell decides is how they are laid out.
 //
-// Every number in the geometry below is measured from a real device and written down in
-// `docs/research/console-shells.md` with its source. Three of them replaced values that had been
-// wrong since the alpha and that no gate could see:
+// The one thing a GAME still hands the shell is its `plate` — the backplate its aperture shows
+// where the picture does not reach. That direction matters: the game owns its own panel (brick is
+// an ink density on an olive plate; hunt is colour art in a dark well), and a shell that owned the
+// tint was a shell painting olive around a forest.
+//
+// The geometry is measured from real devices and written down in `docs/research/console-shells.md`.
+// Three numbers there replaced values that had been wrong since the alpha and that no gate could
+// see:
 //
 //   · the pad's hub was 38% of the CENTRE CELL, i.e. 12.7% of the cross — a hub you cannot find.
 //     A real one is ~34% of the whole cross, so it is the centre cell, near enough.
@@ -38,13 +46,9 @@
 // Runtime-internal imports must be RELATIVE.
 
 import { html } from "htm/preact";
-import { Fragment } from "preact";
-import { useStore } from "@nanostores/preact";
 import { T } from "./i18n.js";
 import { keyboardOnly } from "./dpad.js";
-import { $shell, SHELLS, SHELL_IDS, shellOf, shellVars, shellParam } from "./shells.js";
 import { DIAMOND, DIAMOND_ORDER, TRIANGLE_ORDER, DIAMOND_KEY, DIAMOND_BOX, PAIR, PAIR_KEY, PAIR_BOX } from "./deck.js";
-import { Segmented } from "./ui.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -89,13 +93,13 @@ function Key({ k, t, radius = "rounded-full", style = "", cls = "", onKeyboard }
  * flower, and that is what every `round` shell used to draw. The hub is the centre cell, because
  * a real one is about a third of the cross rather than an eighth of it.
  */
-function Pad({ pad, t, onKeyboard, size = "var(--ms-ctl)", disc = false }) {
+function Pad({ pad, t, onKeyboard, size = "var(--ms-ctl)" }) {
   const by = (dir) => pad.find((k) => k.pad === dir);
   const slot = (dir) => (by(dir)
     ? html`<${Key} k=${by(dir)} t=${t} onKeyboard=${onKeyboard} radius="" cls="ms-pad-key w-full h-full" />`
     : html`<div></div>`);
   return html`
-    <div class=${`ms-pad relative sf-inset rounded-[var(--ms-r)] ${disc ? "ms-pad-disc" : ""}`}
+    <div class="ms-pad relative sf-inset rounded-[var(--ms-r)]"
          role="group" aria-label=${T(t, "padLabel")} data-pad-root
          style=${`width:calc(${size}*3);aspect-ratio:1`}>
       <div class="grid h-full w-full" style="grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr)">
@@ -123,10 +127,10 @@ const at = ([x, y], d) =>
  *   3  a triangle (the diamond without its left slot)
  *   4  the diamond, axis-aligned
  */
-function Actions({ actions, t, onKeyboard, size = "var(--ms-ctl)", round = true }) {
+function Actions({ actions, t, onKeyboard, size = "var(--ms-ctl)" }) {
   const n = actions.length;
   if (!n) return null;
-  const radius = round ? "rounded-full" : "rounded-2xl";
+  const radius = "rounded-full";
   if (n === 1)
     return html`<${Key} k=${actions[0]} t=${t} onKeyboard=${onKeyboard} radius=${radius}
       style=${`width:calc(${size}*1.5);height:calc(${size}*1.5)`} />`;
@@ -160,15 +164,13 @@ function Actions({ actions, t, onKeyboard, size = "var(--ms-ctl)", round = true 
  * @param actions   [{ id, bit, icon, label, latch? }]   — 1…4; the shell decides the arrangement
  * @param menu      [{ id, act, icon, label, pressed? }] — sound, records: momentary, small
  * @param centre    [{ id, act, text|icon, label }]      — the START column under the menu row
+ * @param plate     the game's own backplate colour, shown where the picture does not reach. Omit it
+ *                  and the aperture is a neutral well, which is what a COLOUR game wants.
  * @param onKeyboard called for keyboard / assistive activation only (the deck owns pointers)
  * @param overlay   extra nodes drawn above everything (a game-over card)
  */
 export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = [],
-                              t, onKeyboard, onPointerDown, children, overlay = null, shell = null }) {
-  const chosen = useStore($shell);
-  const id = SHELLS[shell || shellParam || chosen] ? (shell || shellParam || chosen) : "brick";
-  const sh = shellOf(id);
-  const round = sh.key === "round";
+                              t, onKeyboard, onPointerDown, children, overlay = null, plate = null }) {
   const spread = { ...deck };
   if (onPointerDown) {
     const inner = deck?.onPointerDown;
@@ -178,10 +180,10 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
      thumb on the pad does not scroll the page), and it is spread onto the same element — so an
      attribute written before the spread is silently replaced by it, not combined with it. That is
      how every shell shipped with its geometry switched off while nine of nine gates stayed green:
-     the JS branches (a bodiless shell, the key count) still worked, so it looked like a catalogue,
-     and only the half that travels as custom properties — the plastic, the aperture, the radii,
-     the plate — never reached the element. A green gate is a floor. */
-  const style = { ...(deck?.style || {}), ...shellVars(sh) };
+     the JS branches still worked, so it looked like a catalogue, and only the half that travels as
+     custom properties never reached the element. A green gate is a floor. */
+  const style = { ...(deck?.style || {}) };
+  if (plate) style["--sh-tint"] = plate;
 
   const menuRow = menu.length
     ? html`<div class="ms-menu flex gap-1">
@@ -190,9 +192,9 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
     : null;
 
   const padNode = pad.length
-    ? html`<${Pad} pad=${pad} t=${t} onKeyboard=${onKeyboard} disc=${sh.pad === "disc"} />`
+    ? html`<${Pad} pad=${pad} t=${t} onKeyboard=${onKeyboard} />`
     : html`<div></div>`;
-  const actionNode = html`<${Actions} actions=${actions} t=${t} onKeyboard=${onKeyboard} round=${round} />`;
+  const actionNode = html`<${Actions} actions=${actions} t=${t} onKeyboard=${onKeyboard} />`;
   const centreNode = html`
     <div class="flex flex-col items-center gap-[calc(var(--ms-gap)*0.6)] min-w-0 w-full">
       ${menuRow}
@@ -201,11 +203,13 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
           cls="px-2 py-1 w-full max-w-[7rem] truncate" />`)}
     </div>`;
 
-  /* The aperture. Its width against the body is the shell's strongest single tell — 42% and 61%
-     are different devices — and the canvas letterboxes inside whatever it is given, so an
-     aperture never dictates a game's aspect ratio. */
+  /* The aperture, and the whole point of the repair. It is given every pixel the deck does not
+     need — full body width, all the remaining height — and the canvas letterboxes inside it
+     (`max-w-full max-h-full w-auto h-auto`), so the picture is as large as the device can show.
+     The catalogue used to write a width FRACTION here, because nine silhouettes have to differ
+     somewhere, and 55% of a 24rem body is a 155px game on a 390px phone. */
   const stage = html`
-    <div data-stage-box class="flex-1 min-h-0 grid place-items-center">
+    <div data-stage-box class="flex-1 min-h-0 min-w-0 grid place-items-center">
       <div class="ms-screen sf-inset max-w-full max-h-full min-w-0 min-h-0 grid place-items-center">
         <div class="relative max-w-full max-h-full min-w-0 min-h-0">
           ${children}
@@ -214,89 +218,23 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
       </div>
     </div>`;
 
-  /* No body at all: the game fills the view and the keys float on it. */
-  if (sh.deck === "float") {
-    return html`
-      <div class="relative h-full min-h-0 w-full overflow-hidden rounded-[var(--ms-r)]" data-shell-body=${id} ...${spread} style=${style}>
-        <div class="absolute inset-0 grid place-items-center">${children}${overlay}</div>
-        ${menuRow ? html`<div class="absolute right-2 top-2">${menuRow}</div>` : null}
-        ${pad.length ? html`<div class="absolute left-2 bottom-2">${padNode}</div>` : null}
-        ${actions.length ? html`<div class="absolute right-2 bottom-2 flex items-end gap-2">${actionNode}</div>` : null}
-      </div>`;
-  }
-
   const deckRow = html`
     <div class="ms-side-main shrink-0 grid items-center gap-[var(--ms-gap)] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto]">
       ${padNode}${centreNode}${actionNode}
     </div>`;
 
   /* The body is the page EXTRUDED and the screen a recess cut into it — the same light as
-     everything else in the farm, one level deeper. It carries its own plastic now (`--sh-body`,
-     picked per theme in CSS, never in JS: the view does not re-render on a theme toggle), and it
-     is sized to its contents and centred, so it reads as an object you are holding rather than as
-     a layout that filled the window. */
-  const flank = sh.deck === "flank";
-  const bodyCls = `ms-shell sf-raised ms-side min-h-0 shrink flex ${flank ? "flex-row" : "flex-col"} gap-[var(--ms-gap)]`;
+     everything else in the farm, one level deeper. It carries its own plastic (`--sh-body`, picked
+     per theme in CSS, never in JS: the view does not re-render on a theme toggle), and it FILLS
+     the view rather than shrink-wrapping its contents. Sizing it to its contents was the other
+     half of the small-screen bug: a body that hugs a 55%-wide aperture leaves two thirds of a
+     phone as empty page above and below a device nobody can read. */
   return html`
-    <div class="h-full min-h-0 flex flex-col justify-center items-center">
-      <div class=${bodyCls} data-shell-body=${id} data-deck=${sh.deck} ...${spread} style=${style}>
-        ${flank ? html`
-          <div class="ms-side-main shrink-0 flex flex-col items-center justify-center gap-[var(--ms-gap)]">${padNode}</div>
-          ${stage}
-          <div class="ms-side-main shrink-0 flex flex-col items-center justify-center gap-[var(--ms-gap)]">${actionNode}${menuRow}</div>
-        ` : sh.deck === "clam" ? html`
-          ${stage}
-          <div class="ms-hinge" aria-hidden="true"></div>
-          ${deckRow}
-        ` : html`
-          ${stage}
-          ${deckRow}
-        `}
+    <div class="h-full min-h-0 flex flex-col items-center">
+      <div class="ms-shell sf-raised ms-side min-h-0 flex flex-col gap-[var(--ms-gap)]"
+           data-shell-body="brick" data-deck="split" ...${spread} style=${style}>
+        ${stage}
+        ${deckRow}
       </div>
     </div>`;
 }
-
-/**
- * The picker. A tab, a sheet or a profile row can render it; the choice is systemic, so wherever it
- * lives it changes every game at once.
- */
-export function ShellPicker({ t, attr = "data-shell" }) {
-  const cur = useStore($shell);
-  return html`
-    <${Segmented}
-      items=${SHELL_IDS.map((id) => ({ id, label: T(t, SHELLS[id].label) }))}
-      value=${cur}
-      onChange=${(id) => $shell.set(id)}
-      variant="outline"
-      scroll=${true}
-      attr=${attr}
-      label=${T(t, "shellPick")} />`;
-}
-
-/**
- * The whole shell tab, once.
- *
- * Both games shipped their own copy of this screen, and both showed the same thing under the
- * picker: the NUMBER of shells in the catalogue, set large. That is a fact about a table, not
- * about a console — you cannot choose with it and you cannot see what you chose. What a picker
- * owes you is the thing being picked, so the panel is the device itself: press a key and it goes
- * down, switch a row and a different console is in your hands. No caption explains it, because
- * nothing here needs explaining.
- *
- * It lives in the runtime rather than in either app for the usual reason: two copies of a screen
- * are two screens that will drift, and no gate reports "brick's shell tab is a little different
- * from hunt's".
- */
-export function ShellTab({ t, deck, pad = [], actions = [], menu = [] }) {
-  return html`
-    <div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]" data-shell-tab>
-      <${ShellPicker} t=${t} />
-      <div class="flex-1 min-h-0" data-shell-preview>
-        <${GameConsole} deck=${deck} t=${t} pad=${pad} actions=${actions} menu=${menu}>
-          <div class="w-full h-full min-h-[2.5rem]" data-shell-plate></div>
-        </${GameConsole}>
-      </div>
-    </div>`;
-}
-
-export { SHELL_IDS, SHELLS, $shell };

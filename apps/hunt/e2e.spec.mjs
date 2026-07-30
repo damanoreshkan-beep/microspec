@@ -85,18 +85,38 @@ export default [
     },
   },
   {
-    /* The defect this exists for shipped with every gate green: the console body receives both the
-       shell's geometry (custom properties) and the deck hook's own style, and one silently replaced
-       the other, so nine shells rendered as one device. Every class was present, every JS-level
-       difference still worked, and a11y and overflow were unaffected. The only proof is the
-       COMPUTED value on the element.
-       Both halves are asserted, deliberately — a fix that restored the geometry by dropping
-       touch-action would let a thumb on the pad scroll the page instead, which is the same bug
-       wearing the other hat. */
-    name: "оболонка: геометрія і touch-action обидва доходять до корпусу", run: async (h) => {
+    /* THE screen test — the same one brick carries, because it is the same console and the same
+       complaint. The aperture used to be 55% of a body that shrink-wrapped its contents, so the
+       forest arrived at roughly 115 CSS px wide on a 390px phone and nothing in the gate suite
+       could say so: it did not overflow, it did not fail a11y, and it photographed as a console.
+       Fractions rather than pixels, so the check keeps meaning at every breakpoint. */
+    name: "екран: гра займає корпус, а корпус — увесь вигляд", run: async (h) => {
       await ready(h);
-      const w = await h.css("[data-shell-body]", "--sh-screen-w");
-      h.expect(/^[\d.]+%$/.test(w || ""), `апертура оболонки не доїхала до корпусу — --sh-screen-w = "${w}"`);
+      const view = await h.prop("#view", "clientHeight");
+      const bodyH = await h.prop("[data-shell-body]", "clientHeight");
+      const bodyW = await h.prop("[data-shell-body]", "clientWidth");
+      const cw = await h.prop("canvas", "clientWidth");
+      h.expect(view > 0 && bodyW > 0, "нема з чим порівнювати — корпус або вигляд не змірялись");
+      h.expect(bodyH >= view * 0.9,
+        `корпус ${bodyH}px усередині вигляду ${view}px — консоль стискається до вмісту замість заповнювати екран`);
+      h.expect(cw >= bodyW * 0.78,
+        `полотно ${cw}px у корпусі ${bodyW}px — апертура забирає в гри ширину, яку нікому більше не віддає`);
+    },
+  },
+  {
+    /* The defect this exists for shipped with every gate green: the console body receives both the
+       plate colour (a custom property) and the deck hook's own style, and one silently replaced
+       the other. Every class was present, every JS-level difference still worked, and a11y and
+       overflow were unaffected. The only proof is the COMPUTED value on the element.
+
+       The plate matters more here than next door: this is the COLOUR game, and for the life of the
+       shell catalogue its aperture was painted the monochrome game's yellow-green LCD, because the
+       shell owned a tint and handed the same one to both. The plate travels from the GAME now, and
+       this asserts it arrived. */
+    name: "корпус: колір панелі і touch-action обидва переживають злиття стилів", run: async (h) => {
+      await ready(h);
+      const tint = await h.css("[data-shell-body]", "--sh-tint");
+      h.expect(/^\s*(#|rgb)/.test(tint || ""), `гра не передала свою панель апертурі — --sh-tint = "${tint}"`);
       const body = await h.css("[data-shell-body]", "--sh-body");
       h.expect(/^\s*(#|rgb)/.test(body || ""), `корпус не отримав власного кольору — --sh-body = "${body}"`);
       const touch = await h.css("[data-shell-body]", "touch-action");

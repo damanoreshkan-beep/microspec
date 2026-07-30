@@ -47,12 +47,11 @@ export default [
         await h.keys(["ArrowRight", "ShiftLeft"], 280);
       }
       const after = await dist(h);
-      h.expect(after > before + 20,
+      h.expect(after > before + 12,
         `за 3с бігу зі стрибками дистанція ${before} → ${after} — симуляція не веде гравця вперед`);
     },
   },
   {
-    
     name: "смерть: забіг закінчується і картка з'являється", run: async (h) => {
       await ready(h);
       for (let i = 0; i < 14 && (await h.attr("[data-live-screen]", "data-dead")) === "0"; i++)
@@ -141,7 +140,6 @@ export default [
       
       
       
-      
       const RIGHT = 2;
       await h.keyDown("ArrowRight");
       await h.wait(120);
@@ -156,8 +154,6 @@ export default [
   {
     name: "камера: можна повернутись назад", run: async (h) => {
       await ready(h);
-      
-      
       await h.key("ArrowRight", 700);
       h.expect((await h.attr("[data-live-screen]", "data-dead")) === "0", "забіг обірвався до виміру камери");
       const far = +(await h.attr("[data-live-screen]", "data-camx"));

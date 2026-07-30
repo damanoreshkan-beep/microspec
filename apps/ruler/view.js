@@ -21,11 +21,22 @@ const hav = (a, b) => { const p = Math.PI / 180, dφ = (b.lat - a.lat) * p, dλ 
 const proj = (a, p) => ({ x: (p.lng - a.lng) * Math.cos(a.lat * Math.PI / 180) * 111320, y: -(p.lat - a.lat) * 110540 });
 const shoelace = (pts) => { const o = pts[0]; const q = pts.map((p) => proj(o, p)); let s = 0; for (let i = 0; i < q.length; i++) { const j = (i + 1) % q.length; s += q[i].x * q[j].y - q[j].x * q[i].y; } return Math.abs(s) / 2; };
 
+function fitCanvas(cv) {
+  const box = cv.parentElement; if (!box) return null;
+  const r = box.getBoundingClientRect(), W = Math.round(r.width), H = Math.round(r.height);
+  if (!W || !H) return null;                                      
+  const dpr = Math.min(3, (typeof devicePixelRatio !== "undefined" ? devicePixelRatio : 1) || 1);
+  cv.style.display = "block"; cv.style.width = `${W}px`; cv.style.height = `${H}px`;
+  const ww = W * dpr, hh = H * dpr;
+  if (cv.width !== ww || cv.height !== hh) { cv.width = ww; cv.height = hh; }   
+  return { W, H, dpr };
+}
+
 function draw(cv, pts, cur) {
   if (!cv || !cv.getContext) return; const ctx = cv.getContext("2d"); if (!ctx) return;
-  const dpr = Math.min(3, (typeof devicePixelRatio !== "undefined" ? devicePixelRatio : 1) || 1);
-  const W = cv.clientWidth || 320, H = cv.clientHeight || 260;
-  cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const fit = fitCanvas(cv); if (!fit) return;
+  const { W, H, dpr } = fit;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
   const ink = getComputedStyle(cv).color || "#888";
   const all = cur ? [...pts, cur] : pts.slice(); if (!all.length) return;
   const o = all[0], q = all.map((p) => proj(o, p));
@@ -93,7 +104,14 @@ export function ruler({ S, toast }) {
   }, []);
   useEffect(() => { if (hydrated.current) CUR.put("walk", { pts }).catch(() => {  }); }, [pts]);
   useEffect(() => { draw(cv.current, pts, cur); }, [pts, cur, t]);
-  useEffect(() => { const on = () => draw(cv.current, pts, cur); addEventListener("resize", on); return () => removeEventListener("resize", on); }, [pts, cur]);
+  const last = useRef({ pts, cur });
+  last.current = { pts, cur };
+  useEffect(() => {
+    const c = cv.current, box = c && c.parentElement; if (!c || !box) return;
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => draw(c, last.current.pts, last.current.cur)) : null;
+    ro && ro.observe(box);
+    return () => ro && ro.disconnect();
+  }, []);
 
   const copyCoords = async () => { if (!cur) return; try { await navigator.clipboard.writeText(coordStr(cur)); toast?.(T(t, "copied")); } catch {  } };
   const add = () => {
@@ -114,8 +132,8 @@ export function ruler({ S, toast }) {
   const tErr = pts.length >= 2 ? totalErr(pts.slice(1).map((p, i) => segErr(pts[i], p))) : null;
 
   return html`<div class="flex flex-col gap-3">
-      <div class="rounded-2xl sf-inset overflow-hidden">
-        <canvas ref=${cv} aria-hidden="true" class="w-full h-[52svh] min-h-[280px] max-h-[460px] block text-base-content"></canvas>
+      <div class="rounded-2xl sf-inset overflow-hidden" style="height:clamp(280px,52svh,460px)">
+        <canvas ref=${cv} aria-hidden="true" class="w-full h-full block text-base-content"></canvas>
       </div>
       <div class="flex items-end justify-between gap-3 px-1">
         <div class="min-w-0">

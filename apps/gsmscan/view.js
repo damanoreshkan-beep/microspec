@@ -65,8 +65,25 @@ function drawSpectrum(cv, bins) {
   c.strokeStyle = `rgba(${ink},0.8)`; c.lineWidth = Math.max(1, h / 90); c.stroke();
 }
 function useCanvas(draw, deps) {
-  const ref = useRef(null);
-  useEffect(() => { const cv = ref.current; if (!cv) return; const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1); const ww = (cv.clientWidth | 0) * dpr, hh = (cv.clientHeight | 0) * dpr; if (ww && (cv.width !== ww || cv.height !== hh)) { cv.width = ww; cv.height = hh; } draw(cv); }, deps);
+  const ref = useRef(null), paint = useRef(draw);
+  paint.current = draw;
+  const fit = (cv) => {
+    const box = cv.parentElement; if (!box) return false;
+    const r = box.getBoundingClientRect(), w = Math.round(r.width), h = Math.round(r.height);
+    if (!w || !h) return false;                                    
+    cv.style.display = "block"; cv.style.width = `${w}px`; cv.style.height = `${h}px`;
+    const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1);
+    const ww = w * dpr, hh = h * dpr;
+    if (cv.width !== ww || cv.height !== hh) { cv.width = ww; cv.height = hh; }   
+    return true;
+  };
+  useEffect(() => {
+    const cv = ref.current, box = cv && cv.parentElement; if (!cv || !box) return;
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => { if (fit(cv)) paint.current(cv); }) : null;
+    ro && ro.observe(box);
+    return () => ro && ro.disconnect();
+  }, []);
+  useEffect(() => { const cv = ref.current; if (cv && fit(cv)) draw(cv); }, deps);
   return ref;
 }
 
@@ -119,7 +136,9 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
 
       <!-- band spectrum -->
       <div class="w-full rounded-3xl sf-raised sf-e2 overflow-hidden">
-        <canvas ref=${useCanvas((cv) => drawSpectrum(cv, $spectrum.get()), [spectrum, theme])} class="block w-full h-24" role="img" aria-label=${T(t, "spectrum")} data-spectrum></canvas>
+        <div style="height:6rem">
+          <canvas ref=${useCanvas((cv) => drawSpectrum(cv, $spectrum.get()), [spectrum, theme])} class="block w-full h-full" role="img" aria-label=${T(t, "spectrum")} data-spectrum></canvas>
+        </div>
         <div class="flex justify-between px-3 py-1 font-mono text-[0.6rem] text-muted tabular-nums border-t border-base-content/10">
           <span>${fMhz(BANDS[band].dlLo)}</span><span class="uppercase tracking-wider">${BANDS[band].label}</span><span>${fMhz(BANDS[band].dlHi)} MHz</span>
         </div>
@@ -156,6 +175,8 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
     <${SettingsSheet} open=${screen === "rf"} onClose=${closeScreen} t=${t} demo=${demo} />
   </${Fragment}>`;
 }
+
+
 
 
 

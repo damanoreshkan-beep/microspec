@@ -179,6 +179,7 @@
     }
   },
   "redirects": {
+    "https://esm.sh/@types/suncalc@~1.9.2/index.d.ts": "https://esm.sh/@types/suncalc@1.9.2/index.d.ts",
     "https://esm.sh/astronomy-engine@2": "https://esm.sh/astronomy-engine@2.1.19",
     "https://esm.sh/boolbase@^1.0.0?target=denonext": "https://esm.sh/boolbase@1.0.0?target=denonext",
     "https://esm.sh/css-select@^5.1.0?target=denonext": "https://esm.sh/css-select@5.2.2?target=denonext",

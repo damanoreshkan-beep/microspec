@@ -15,7 +15,8 @@ import { parseHTML } from "https://esm.sh/linkedom@0.18.5?external=canvas";
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[0m" };
 const TAGS = new Set(["div", "span", "button", "svg", "section", "header", "main", "footer", "nav", "input", "select", "option", "label", "rect", "circle", "path", "line", "polyline", "polygon", "text", "iconify-icon", "img", "table"]);
 
-const URL_QUERY = (() => { const i = Deno.args.indexOf("--url"); return i >= 0 ? (Deno.args[i + 1] || "") : ""; })();
+const URL_ARG = (() => { const i = Deno.args.indexOf("--url"); return i >= 0 ? (Deno.args[i + 1] || "") : ""; })();
+let URL_QUERY = URL_ARG;   
 
 function installDom() {
   const { window, document } = parseHTML(`<!doctype html><html data-theme="signal"><head></head><body><div id="app"></div></body></html>`);
@@ -169,7 +170,7 @@ async function preflight(appdir) {
     errs.push("mount threw: " + (e?.stack?.split("\n").slice(0, 3).join(" | ") || e?.message || e));
   }
 
-  const name = appdir.replace(/\/$/, "").split("/").pop();
+  const name = appdir.replace(/\/$/, "").split("/").pop() + (URL_QUERY ? C.d + " " + URL_QUERY + C.x : "");
   if (errs.length) { console.log(`  ${C.r}✗ ${name}${C.x}`); errs.forEach((e) => console.log(`      ${C.r}${e}${C.x}`)); }
   else { console.log(`  ${C.g}✓ ${name}${C.x}${warns.length ? C.y + " (" + warns.length + " warn)" + C.x : ""}`); warns.forEach((w) => console.log(`      ${C.y}${w}${C.x}`)); }
   return errs.length;
@@ -177,10 +178,22 @@ async function preflight(appdir) {
 
 async function exists(p) { try { await Deno.stat(p); return true; } catch { return false; } }
 
-const dirs = Deno.args.filter((a) => !a.startsWith("--") && a !== URL_QUERY).map((a) => a.replace(/\/$/, ""));
+const dirs = Deno.args.filter((a) => !a.startsWith("--") && a !== URL_ARG).map((a) => a.replace(/\/$/, ""));
 if (!dirs.length) { console.error(`usage: preflight.mjs apps/<id> [apps/<id> ...] [--url "?tab=<id>&screen=<key>"]`); Deno.exit(2); }
-console.log(`\n  preflight (browser-free)${URL_QUERY ? C.d + "  " + URL_QUERY + C.x : ""}\n`);
+console.log(`\n  preflight (browser-free)${URL_ARG ? C.d + "  " + URL_ARG + C.x : ""}\n`);
 let fail = 0;
-for (const d of dirs) fail += await preflight(d);
+const toolTabsAfterFirst = (d) => {
+  if (URL_ARG) return [];
+  try {
+    const tabs = JSON.parse(Deno.readTextFileSync(`${d}/spec.json`)).tabs || [];
+    return tabs.slice(1).filter((t) => t.type === "tool" && t.id).map((t) => `?tab=${t.id}`);
+  } catch { return []; }
+};
+for (const d of dirs) {
+  URL_QUERY = URL_ARG;
+  fail += await preflight(d);
+  for (const q of toolTabsAfterFirst(d)) { URL_QUERY = q; fail += await preflight(d); }
+  URL_QUERY = URL_ARG;
+}
 console.log(`\n  ${fail ? C.r + "✗ " + fail + " app(s) failed" : C.g + "✓ all clean"}${C.x}\n`);
 Deno.exit(fail ? 1 : 0);

@@ -10,7 +10,7 @@
     "test": "deno test -A packages/runtime/runtime_test.js",
     "affected": "deno run -A tools/affected.mjs",
     "verify": "deno run -A packages/gates/verify.mjs",
-    "gates": "deno run -A packages/schema/validate.mjs apps/*/spec.json && deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/* && deno test -A packages/runtime/runtime_test.js && deno run -A deploy/sw.mjs --check && deno run -A deploy/counts.mjs --check",
+    "gates": "deno run -A packages/schema/validate.mjs apps/*/spec.json && deno run -A tools/noundef.mjs && deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/* && deno test -A packages/runtime/runtime_test.js && deno run -A deploy/sw.mjs --check && deno run -A deploy/counts.mjs --check",
     "red": "gh run view $(gh run list --workflow=verify.yml --limit 1 --json databaseId --jq '.[0].databaseId') --log-failed | sed 's/\\x1b\\[[0-9;]*m//g' | grep -E '✗'"
   },
   "lint": {

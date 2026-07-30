@@ -32,20 +32,18 @@ export const WORLD = Object.freeze({
   bark: "#171410",
   barkLit: "#282219",
   moon: "#c9d2dc",
+  moonMid: "#a8b3c0",                     
   moonDim: "#8e99a6",                     
   star: "#7f90a4",
   abyss: "#080b10",
-  grass: "#4a6b3a",
-  grassLit: "#6d9150",
-  
+  grass: "#38492f",
+  grassLit: "#4e6440",
   earth: "#4a3b2c",
   earthMid: "#403327",
   earthDark: "#33291e",
   earthDeep: "#241c14",                   
-  
   grit: "#4a4135",
   gritLit: "#5e5344",
-  
   stone: "#43464e",
   stoneLit: "#51555f",
   wood: "#5a3f28",
@@ -57,7 +55,6 @@ export const WORLD = Object.freeze({
   spearTip: "#d9dbe4",
   quiverEmpty: "#3d4653",                 
 });
-
 export const lit = (ramp, i) => (ramp[i] ? ramp[i][0] : i);
 export const shade = (ramp, i) => (ramp[i] ? ramp[i][1] : i);
 
@@ -78,10 +75,9 @@ export function shadowFor(h, w) {
     alpha: SHADOW.alpha + (SHADOW.floor - SHADOW.alpha) * t,
   };
 }
+
 export function parallaxX(camx, depth) { return Math.round(camx * depth) | 0; }
 export const LAYERS = Object.freeze([0.12, 0.3, 0.55]);
-
-
 export function decodeEntry(dl, i) {
   const o = i * 4, id = dl[o], attr = dl[o + 3];
   return {

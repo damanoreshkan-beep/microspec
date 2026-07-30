@@ -111,13 +111,26 @@ function backdrop(p, camx, crust) {
     p.rect(s % SCRW, 30 + ((s >>> 9) % 92), 1, 1, (s >>> 20) % 6 ? W.star : W.moon);
   }
   
-  for (let dy = -8; dy <= 8; dy++) {
-    const hw = Math.round(Math.sqrt(Math.max(0, 64 - dy * dy)));
-    const cut = Math.max(-hw - 1, Math.min(hw, 7 - dy));      
-    if (cut >= -hw) p.rect(88 - hw, 46 + dy, cut + hw + 1, 1, W.moon);
-    if (cut < hw) p.rect(89 + cut, 46 + dy, hw - cut, 1, W.moonDim);
+  {
+    const R = 8, cx = 88, cy = 46, K = Math.sqrt(1 / 3);       
+    for (let dy = -R; dy <= R; dy++) {
+      const hw = Math.floor(Math.sqrt(Math.max(0, R * R - dy * dy)));
+      let runFrom = -hw, runTone = null;
+      for (let dx = -hw; dx <= hw + 1; dx++) {
+        let tone = null;
+        if (dx <= hw) {
+          const nx = dx / R, ny = dy / R;
+          const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+          const lam = (-nx - ny + nz) * K;                     
+          tone = lam > 0.66 ? W.moon : lam > 0.3 ? W.moonMid : W.moonDim;
+        }
+        if (tone !== runTone) {
+          if (runTone !== null) p.rect(cx + runFrom, cy + dy, dx - runFrom, 1, runTone);
+          runFrom = dx; runTone = tone;
+        }
+      }
+    }
   }
-
   
   const roff = parallaxX(camx, DEPTH.range);
   silhouette(p, W.ridge, base, (x) => {
@@ -131,9 +144,10 @@ function backdrop(p, camx, crust) {
     depth: DEPTH.near, base, salt: 7100, period: 54, wlo: 34, wspan: 16, hlo: 46, hspan: 34,
     ink: W.canopy, litInk: W.canopyLit, trunk: 11,
   });
-
   
   silhouette(p, W.earthDeep, SCRH, (x) => (crust[colOf(x)] === 32767 ? SCRH : horizon));
+  
+  
   silhouette(p, W.earthDark, horizon + 3, (x) => {
     const c = crust[colOf(x)];
     return c !== 32767 && c > horizon ? horizon : horizon + 3;
@@ -173,7 +187,6 @@ function deepSoil(p, camx, crust) {
   silhouette(p, W.earthDeep, SCRH, (x) =>
     (crust[colOf(x)] === 32767 ? SCRH : SCRH - 20 - Math.round(vnoise(x + camx, 41, 9100) * 16)));
 }
-
 /** The floor under each column, so a shadow has something to fall on — and a pit has none. */
 function groundMap(dl, dln) {
   const cols = new Int16Array(SCRW / TILE + 4).fill(32767);
@@ -272,6 +285,7 @@ export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
   }
 
   if (hud) {
+    
     for (let i = 0; i < st[S.HP]; i++) p.cell(tileCell(T.HEART), -1 + i * 14, -3);
 
     
@@ -281,14 +295,13 @@ export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
       if (i < ammo) { p.rect(x, 16, 2, 10, W.spear); p.rect(x, 16, 2, 2, W.spearTip); }
       else p.rect(x, 18, 2, 8, W.quiverEmpty);
     }
+
     
     const score = String(Math.max(0, Math.floor(st[S.SCORE] || 0)));
     let x = SCRW - 11 - (score.length - 1) * 8;
     for (const ch of score) { p.glyph(ch, x, 5); x += 8; }
   }
 }
-
-
 const FONT = {
   "0": ["111", "101", "101", "101", "111"], "1": ["010", "110", "010", "010", "111"],
   "2": ["111", "001", "111", "100", "111"], "3": ["111", "001", "111", "001", "111"],

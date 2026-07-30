@@ -24,7 +24,7 @@ import { T } from "/_rt/i18n.js";
 import { Slider, Panel } from "/_rt/ui.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
-import { acts as cachedActs, warmActs, isActed, answer, warmAsk, aiTick } from "/_rt/ai.js";
+import { acts as cachedActs, warmActs, isActed, answer, warmAsk, aiTick } from "/_rt/ai-books.js";
 import { parseActs, actSignature, plotUpToClimax } from "/_rt/acts.js";
 import { asked, answered, foldThread, askSignature, groundBook } from "/_rt/chat.js";
 import { loadPlot } from "./data.js";

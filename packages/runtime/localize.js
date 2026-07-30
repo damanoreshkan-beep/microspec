@@ -18,7 +18,7 @@
 import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { tr, warm, trTick, isTranslated, CONTENT_LANG } from "./translate.js";
-import { polish, warmPolish, aiTick, isPolished } from "./ai.js";
+import { polish, warmPolish, aiTick, isPolished } from "./ai-text.js";
 import { gate } from "./gate.js";
 
 export function useLocalized(text, locale, { timeout = 6000 } = {}) {

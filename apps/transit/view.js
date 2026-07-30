@@ -25,7 +25,12 @@ import { Sign } from "/_rt/zodiac.js";
 import { transits, houseOf, norm360, wrap180, HIT_PRECISION, TRANSIT_ORB } from "/_rt/natal.js";
 import { resolve, isComplete, EMPTY, BIRTH_CODEC } from "/_rt/birth.js";
 import { searchPlaces, placeLabel, formatCoords } from "/_rt/places.js";
-import { interpret, warmInterpret, isInterpreted, aiTick } from "/_rt/ai.js";
+import { interpret, warmInterpret, isInterpreted, transitRead, warmTransitRead, isTransitRead,
+  placementRead, warmPlacementRead, isPlacementRead, portraitRead, warmPortraitRead, isPortraitRead, aiTick } from "/_rt/ai-astro.js";
+import { BODY, SIGN, HOUSE, ASPECT as ASPECT_MEAN, ANGLE, DIGNITY, RULERS, ELEMENT_NAME, ELEMENT_MEANS,
+  MODALITY_NAME, MODALITY_MEANS, RETRO_NOTE, dignityOf, chartRuler, balance, say,
+  groundTransit, groundPlacement, groundPortrait } from "/_rt/signif.js";
+import { ELEMENT, MODALITY } from "/_rt/synastry.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { Sheet, Segmented } from "/_rt/ui.js";
@@ -58,8 +63,13 @@ const NOW = () => (gate ? new Date("2026-07-25T12:00:00Z") : new Date());
 const $birth = persistentAtom("transit:birth", gate ? GATE_BIRTH : null, BIRTH_CODEC);
 const $offset = atom(0);                               // days from today, shared by the wheel and the hits
 
-// A fixed reading so the CI shot + e2e are deterministic and offline (live positions vary by run time).
+// Fixed readings so the CI shot, the axe pass and the e2e assertions are deterministic and offline (live
+// positions vary by run time, and the gate never reaches the network). Each is the LONGEST the prompt's
+// sentence budget allows, because the string nobody measures is the one that overflows a sheet.
 const GATE_INTERP = { uk: "Сатурн у квадратурі до натального Сонця робить цей період вимогливим: те, що ти будуєш, перевіряють на міцність, і поспіх лише додасть тертя. Транзитний Меркурій ретроградним рухом повертає до старої розмови, яку варто переписати, а не форсувати. Тригон Юпітера до натального Місяця дає тиху опору — рухайся послідовно, і обов'язок обернеться на структуру, а не на пастку.", en: "Saturn square your natal Sun makes this stretch exacting: what you are building is being tested for load, and pushing only adds friction. A retrograde Mercury turns you back to an old conversation worth rewriting rather than forcing. Jupiter's trine to your natal Moon lends quiet support — move step by step and the duty becomes structure, not a snare." };
+const GATE_TRANSIT = { uk: "Сатурн приходить повільно і не поспішає: він перевіряє на міцність те, що ти вважаєш своїм, і квадратура означає, що поступитися доведеться в чомусь одному. Він торкається натального Сонця — самої твоєї суті й того, як ти тримаєш напрям, — і робить це в десятому домі, у справі й у публічній ролі. Орб уже менший за градус і аспект сходиться, тож це не передчуття, а те, що відбувається зараз. Сатурн проходить знак за два з половиною роки, тому мірою тут є місяці, а не дні. Через ретроградність аспект стане точним ще двічі — тема повернеться, і другого разу ти вже знатимеш її ім'я.", en: "Saturn arrives slowly and is in no hurry: it tests for load whatever you have called yours, and a square means something will have to give. It touches your natal Sun — your identity and the way you hold a direction — and it does so in the tenth house, in the work and the public role. The orb is already inside a degree and the aspect is applying, so this is not a premonition but the thing itself. Saturn spends two and a half years in a sign, so the unit here is months, not days. Because it turns retrograde the aspect perfects twice more — the theme returns, and the second time you will know its name." };
+const GATE_PLACEMENT = { uk: "Місяць — це те, чим ти реагуєш раніше за думку, і в Рибах він реагує співчуттям: межа між твоїм і чужим станом тут тонка, і ти вбираєш настрій кімнати, ще не встигнувши його назвати. У пʼятому домі це виходить назовні як творення і прив'язаність — тебе живить те, що зроблено з любові й для когось конкретного. Сила цього положення в уяві та відгуку, ціна — у дрейфі й у чужому смутку, взятому за власний. Навчитися розрізняти, чиє це почуття, тут важливіше, ніж навчитися його стримувати.", en: "The Moon is what reacts in you before thought does, and in Pisces it reacts with sympathy: the line between your state and someone else's is thin here, and you absorb the mood of a room before you can name it. In the fifth house that comes out as making things and as attachment — you are fed by what is made out of love and for someone in particular. The gift of this placement is imagination and responsiveness; the cost is drift, and other people's sadness carried as your own. Learning whose feeling it is matters more here than learning to hold it in." };
+const GATE_PORTRAIT = { uk: "Сонце в Раку при Асценденті в Терезах дає поєднання обережного серця і привітної поверхні: ти зустрічаєш світ рівно й тактовно, а вирішуєш усе всередині, за зачиненими дверима. Місяць у Рибах поглиблює це — реакція йде раніше за слова, і вона майже завжди про когось іншого. Управителька карти Венера стоїть у восьмому домі, тож те, що для тебе справді важить, ніколи не лежить на видноті: близькість тут вимірюється мірою довіри, а не кількістю часу. У карті переважає вода при браку вогню, і це означає, що почати щось тобі важче, ніж витримати. Кардинальна якість дає поштовх, але поштовх цей іде від обставин, а не від нетерпіння. Найщільніший аспект — тригон Сонця до Місяця: воля і почуття тут не воюють, і саме тому ти рідко помічаєш, наскільки на них спираєшся. Сатурн у десятому домі додає до цього обовʼязок, який ти сам собі виписав. Разом це карта людини, яку легко недооцінити ззовні й важко зрушити зсередини.", en: "A Cancer Sun under a Libra Ascendant sets a careful heart behind an agreeable surface: you meet the world evenly and tactfully, and decide everything inside, behind a closed door. The Moon in Pisces deepens that — the reaction comes before the words, and it is almost always about someone else. Venus, ruler of the chart, stands in the eighth house, so what actually matters to you is never left in plain view: closeness here is measured in trust rather than in hours. Water dominates the chart and fire is thin, which means starting a thing costs you more than enduring it. The cardinal emphasis does supply a push, but the push comes from circumstance rather than impatience. The tightest aspect is the Sun trine the Moon: will and feeling are not at war here, which is exactly why you rarely notice how much you lean on them. Saturn in the tenth adds a duty you wrote for yourself. Together this is the chart of someone easy to underestimate from outside and hard to move from within." };
 
 // ── the chart, computed once and shared by all three tabs ──────────────────────────────────────────────
 
@@ -101,6 +111,235 @@ const NeedBirth = ({ t, onOpen }) => html`<div data-need-birth class="flex flex-
     ${Icon("lucide:plus", "text-base")}<span>${T(t, "birthSet")}</span>
   </button>
 </div>`;
+
+// ── the reading sheets: facts first, tradition second, AI third ────────────────────────────────────────
+//
+// Three surfaces (one contact · one placement · the whole chart) that share one shape, and the order of
+// that shape is the whole argument. A reading is only worth anything if it is TRUE, and a language model is
+// the least reliable thing in this app — so the two layers below the prose come from local data and are
+// always there:
+//
+//   the READING   — the model's synthesis. It can fail, and when it does the sheet is still complete.
+//   the FACTS     — what the ephemeris and the trigonometry computed, quoted at the precision they earn.
+//   the MEANINGS  — the sourced significations corpus (/_rt/signif.js), the same entries the model was
+//                   handed. Anyone can compare the paragraph against them, which is the point.
+//
+// The model gets exactly the third layer plus the second, and is told to add nothing (see the astro prompts
+// in the edge's ai-prompts.js). Its job here is connective prose in the reader's language, not knowledge.
+
+// `S.screen` is one string and it is history-backed by the runtime, so a sub-screen that has to remember
+// WHICH item it is showing carries the item in its own key. These prefixes are also what `?screen=` accepts,
+// which is how the reading sheets can be shot and reviewed at all (render.js).
+const READ_TRANSIT = "tr:", READ_PLACEMENT = "pl:", READ_PORTRAIT = "portrait";
+const readScreen = (screen, pfx) => (typeof screen === "string" && screen.startsWith(pfx)) ? screen.slice(pfx.length) : null;
+
+const AI_SKY = { get: interpret, has: isInterpreted, warm: warmInterpret };
+const AI_TRANSIT = { get: transitRead, has: isTransitRead, warm: warmTransitRead };
+const AI_PLACEMENT = { get: placementRead, has: isPlacementRead, warm: warmPlacementRead };
+const AI_PORTRAIT = { get: portraitRead, has: isPortraitRead, warm: warmPortraitRead };
+
+// The AI paragraph. Never a spinner — the sheet is already there and only this block is pending, so it
+// carries text-shaped skeletons at the length the answer will actually be. 12 s then a retry, fail-open.
+// `wait` holds the request back while a fact it depends on is still being computed. It matters more than it
+// looks: the exact-hit dates are part of BOTH the grounding block and its cache signature, so warming before
+// they land would spend one request on a reading of an incomplete chart and a second on the real one — and
+// cache both under different keys forever.
+function Reading({ sig, input, loc, api, gateText, lines, t, wait = false }) {
+  useStore(aiTick);
+  const [failed, setFailed] = useState(false);
+  const run = () => { setFailed(false); api.warm(sig, input, loc); return setTimeout(() => setFailed(!api.has(sig, loc)), 12000); };
+  useEffect(() => {
+    if (wait || gate || api.has(sig, loc)) return;
+    const timer = run();
+    return () => clearTimeout(timer);
+  }, [sig, loc, wait]);
+  const done = !wait && (gate || api.has(sig, loc));
+  const text = gate ? gateText : api.get(sig, loc);
+  if (done) return html`<p data-reading class="text-[0.95rem] leading-relaxed text-base-content/90">${text}</p>`;
+  if (failed && !wait) {
+    return html`<button data-reading-retry class="btn btn-sm gap-2 rounded-xl" onClick=${run}>
+      ${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "interpRetry")}</span></button>`;
+  }
+  return html`<div class="flex flex-col gap-2 text-base-content/70">${lines.map((n, i) => html`<div class="text-[0.95rem]" key=${i}><${Scramble} len=${n} /></div>`)}</div>`;
+}
+
+const Section = (label, body) => html`<div class="flex flex-col gap-1.5">
+  <div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${label}</div>
+  ${body}
+</div>`;
+
+// A computed fact: a mono label and the number or word it names. Nothing here came from a model.
+const Fact = (label, value, key) => html`<div data-fact=${key || null} class="flex items-baseline gap-3 py-1.5 border-b border-base-300/40 last:border-0">
+  <span class="text-[0.62rem] font-mono uppercase tracking-[0.08em] text-base-content/70 w-[5.5rem] shrink-0">${label}</span>
+  <span class="text-[0.84rem] min-w-0 flex-1">${value}</span>
+</div>`;
+
+// One corpus entry, attributed to the piece of the chart it belongs to — so the paragraph above can be
+// checked against it rather than taken on trust.
+const Mean = (src, text) => html`<div data-mean class="py-1.5 border-b border-base-300/40 last:border-0">
+  <div class="text-[0.58rem] font-mono uppercase tracking-[0.1em] text-primary/80">${src}</div>
+  <div class="text-[0.84rem] leading-snug text-base-content/90">${text}</div>
+</div>`;
+
+const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const signName = (t, i) => T(t, "s" + i);
+const digKey = (d) => "dig" + cap1(d);
+
+// An exact hit, quoted only as finely as the body's speed honestly allows: the Moon to the second, Saturn to
+// the minute, Pluto to the day (RESEARCH.md §5). Module-level because the Timing tab and the transit sheet
+// must never disagree about how precise a date is allowed to look.
+function fmtHitAt(ms, prec, locale) {
+  const loc = locale === "en" ? "en-GB" : locale || "uk";
+  const d = new Date(ms);
+  const date = d.toLocaleDateString(loc, { day: "numeric", month: "short", year: "numeric" });
+  if (prec === "day") return date;
+  const time = d.toLocaleTimeString(loc, prec === "second"
+    ? { hour: "2-digit", minute: "2-digit", second: "2-digit" }
+    : { hour: "2-digit", minute: "2-digit" });
+  return `${date}, ${time}`;
+}
+
+// ── the per-transit sheet ──────────────────────────────────────────────────────────────────────────────
+
+function TransitSheet({ open, onClose, C, t, loc, dateLabel }) {
+  const a = (open && C.ready) ? C.hits.find((x) => hitKey(x) === open) : null;
+  // The sheet solves its OWN contact rather than being handed the Timing tab's table: one contact is ~57 ms
+  // at worst (RESEARCH.md §6), so it is affordable anywhere, and it means the wheel tab's contact rows open
+  // the same sheet without the wheel paying for twenty root-finds it never shows.
+  const [times, setTimes] = useState(null);
+  const akey = a ? hitKey(a) : "", whenMs = C.when.getTime();
+  useEffect(() => {
+    if (!a) { setTimes(null); return; }
+    let dead = false;
+    const id = setTimeout(() => { if (!dead) setTimes(hitTimes(a.t, a.natalLon, a.signedAngle, whenMs)); }, 0);
+    return () => { dead = true; clearTimeout(id); };
+  }, [akey, whenMs]);
+  if (!a) return null;
+  const tp = C.sky.find((p) => p.key === a.t);
+  const retro = C.retro(a.t, tp.lon);
+  const house = ANGLE[a.n] ? null : houseOf(a.natalLon, C.H.cusps);
+  const prec = HIT_PRECISION[a.t] || "minute";
+  const fmt = (ms) => fmtHitAt(ms, prec, loc);
+  const dateEN = C.when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const hitList = times || [];
+  const { text: input, sig } = groundTransit({ c: a, transitLon: tp.lon, natalHouse: house,
+    houseSystem: C.system, retro, dateEN, hits: hitList.map((ms) => ({ ms, label: new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) })) });
+
+  const title = `${bodyLabel(t, a.t)} ${T(t, ASPECT_KEY[a.type])} ${T(t, "natalMark")} ${bodyLabel(t, a.n)}`;
+  const nb = BODY[a.n], na = ANGLE[a.n];
+  return html`<${Sheet} id="transitsheet" open=${true} onClose=${onClose} title=${title} subtitle=${dateLabel} icon="lucide:sparkles">
+    <div class="flex flex-col gap-4">
+      <${Reading} sig=${sig} input=${input} loc=${loc} api=${AI_TRANSIT} t=${t} wait=${times === null}
+        gateText=${GATE_TRANSIT[loc] || GATE_TRANSIT.en} lines=${[32, 34, 30, 33, 22]} />
+
+      ${Section(T(t, "factsTitle"), html`<div class="rounded-2xl sf-inset px-3 py-1">
+        ${Fact(T(t, "fOrb"), html`<span class=${`tabular-nums font-mono ${a.exact ? "text-primary font-semibold" : ""}`}>${a.orb.toFixed(2)}°</span>
+          <span class="text-base-content/70"> · ${T(t, a.exact ? "fExact" : "fInRange")}</span>
+          ${a.applying != null ? html`<span class="text-base-content/70"> · ${T(t, a.applying ? "aspApplying" : "aspSeparating")}</span>` : null}`, "orb")}
+        ${Fact(T(t, "fTransiting"), html`${signName(t, signOf(tp.lon))} ${dm(tp.lon)}${retro ? html`<span class="text-warning font-mono ml-1">℞</span>` : null}`)}
+        ${Fact(T(t, "fNatal"), html`${signName(t, signOf(a.natalLon))} ${dm(a.natalLon)}${house ? html`<span class="text-base-content/70"> · ${T(t, "houseShort")}${house} (${T(t, "hs" + cap1(C.system))})</span>` : null}`)}
+        ${hitList.length ? Fact(T(t, "fPerfects"), html`<span class="font-mono tabular-nums text-[0.78rem]">${hitList.map(fmt).join(" · ")}</span>
+          ${hitList.length > 1 ? html`<span class="text-base-content/70"> · ${T(t, "passes")} ${hitList.length}</span>` : null}`, "perfects")
+          : times === null ? Fact(T(t, "fPerfects"), html`<span class="font-mono text-[0.78rem] text-base-content/70"><${Scramble} len=${18} /></span>`, "perfects")
+          : Fact(T(t, "fPerfects"), html`<span class="text-base-content/70">${T(t, "noExactHit")}</span>`, "perfects")}
+        ${Fact(T(t, "fTempo"), say(BODY[a.t].tempo, loc), "tempo")}
+      </div>`)}
+
+      ${Section(T(t, "meansTitle"), html`<div class="rounded-2xl sf-inset px-3 py-1">
+        ${Mean(`${bodyLabel(t, a.t)} · ${T(t, "mMoving")}`, `${cap1(say(BODY[a.t].role, loc))}. ${cap1(say(BODY[a.t].act, loc))}.`)}
+        ${Mean(T(t, ASPECT_KEY[a.type]), cap1(say(ASPECT_MEAN[a.type], loc)))}
+        ${Mean(`${bodyLabel(t, a.n)} · ${T(t, "mTouched")}`, na ? cap1(say(na.topic, loc)) : cap1(say(nb.role, loc)))}
+        ${house ? Mean(`${T(t, "houseShort")}${house} · ${T(t, "mField")}`, html`${cap1(say(HOUSE[house - 1].topic, loc))}. <span class="text-base-content/70">${T(t, "mTrad")}: ${say(HOUSE[house - 1].trad, loc)}.</span>`) : null}
+        ${Mean(T(t, "mStrain"), cap1(say(BODY[a.t].strain, loc)))}
+        ${retro ? Mean("℞", cap1(say(RETRO_NOTE, loc))) : null}
+      </div>`)}
+    </div>
+  </${Sheet}>`;
+}
+
+// ── the per-placement sheet ────────────────────────────────────────────────────────────────────────────
+
+function PlacementSheet({ open, onClose, C, t, loc }) {
+  if (!open || !C.ready) return null;
+  const key = open;
+  const na = ANGLE[key];
+  const lon = na ? (key === "asc" ? C.H.asc : key === "mc" ? C.H.mc : C.H.vertex) : (C.natal.find((p) => p.key === key) || {}).lon;
+  if (lon == null) return null;
+  const s = signOf(lon);
+  const house = na ? null : houseOf(lon, C.H.cusps);
+  const retro = na ? false : C.natalRetroFor(key, lon);
+  const dig = na ? null : dignityOf(key, s);
+  const { text: input, sig } = groundPlacement({ key, lon, house, houseSystem: C.system, retro });
+  const rulers = RULERS[s];
+
+  return html`<${Sheet} id="placementsheet" open=${true} onClose=${onClose} icon="lucide:sparkles"
+      title=${`${bodyLabel(t, key)} ${T(t, "inSign")} ${signName(t, s)}`}
+      subtitle=${house ? `${dm(lon)} · ${T(t, "houseShort")}${house}` : dm(lon)}>
+    <div class="flex flex-col gap-4">
+      <${Reading} sig=${sig} input=${input} loc=${loc} api=${AI_PLACEMENT} t=${t}
+        gateText=${GATE_PLACEMENT[loc] || GATE_PLACEMENT.en} lines=${[31, 33, 29, 24]} />
+
+      ${Section(T(t, "factsTitle"), html`<div class="rounded-2xl sf-inset px-3 py-1">
+        ${Fact(T(t, "fSign"), html`${signName(t, s)} ${dm(lon)}${retro ? html`<span class="text-warning font-mono ml-1">℞</span>` : null}`)}
+        ${house ? Fact(T(t, "fHouse"), `${T(t, "houseShort")}${house} · ${T(t, "hs" + cap1(C.system))}`, "house") : null}
+        ${Fact(T(t, "fElement"), `${cap1(say(ELEMENT_NAME[ELEMENT(s)], loc))} · ${cap1(say(MODALITY_NAME[MODALITY(s)], loc))}`)}
+        ${Fact(T(t, "fRuler"), html`${bodyLabel(t, rulers[0])}${rulers[1] ? html`<span class="text-base-content/70"> · ${bodyLabel(t, rulers[1])} (${T(t, "mModern")})</span>` : null}`)}
+        ${dig ? Fact(T(t, "fDignity"), html`<span class=${dig === "none" ? "text-base-content/70" : "text-primary font-medium"}>${T(t, digKey(dig))}</span>`, "dignity") : null}
+      </div>`)}
+
+      ${Section(T(t, "meansTitle"), html`<div class="rounded-2xl sf-inset px-3 py-1">
+        ${Mean(`${bodyLabel(t, key)} · ${T(t, "mWhat")}`, na ? html`${cap1(say(na.topic, loc))}. <span class="text-base-content/70">${cap1(say(na.axis, loc))}.</span>` : cap1(say(BODY[key].role, loc)))}
+        ${Mean(`${signName(t, s)} · ${T(t, "mHow")}`, `${cap1(say(SIGN[s].mode, loc))}. ${cap1(say(SIGN[s].gift, loc))} — ${say(SIGN[s].excess, loc)}.`)}
+        ${house ? Mean(`${T(t, "houseShort")}${house} · ${T(t, "mWhere")}`, html`${cap1(say(HOUSE[house - 1].topic, loc))}. <span class="text-base-content/70">${T(t, "mTrad")}: ${say(HOUSE[house - 1].trad, loc)}.</span>`) : null}
+        ${Mean(`${cap1(say(ELEMENT_NAME[ELEMENT(s)], loc))} · ${say(MODALITY_NAME[MODALITY(s)], loc)}`, `${cap1(say(ELEMENT_MEANS[ELEMENT(s)], loc))}. ${cap1(say(MODALITY_MEANS[MODALITY(s)], loc))}.`)}
+        ${dig && dig !== "none" ? Mean(T(t, digKey(dig)), cap1(say(DIGNITY[dig], loc))) : null}
+        ${retro ? Mean("℞", cap1(say(RETRO_NOTE, loc))) : null}
+      </div>`)}
+    </div>
+  </${Sheet}>`;
+}
+
+// ── the whole-chart portrait ───────────────────────────────────────────────────────────────────────────
+
+function PortraitSheet({ open, onClose, C, t, loc }) {
+  if (!open || !C.ready) return null;
+  const points = C.natal.map((p) => ({ key: p.key, lon: p.lon, house: houseOf(p.lon, C.H.cusps), retro: C.natalRetroFor(p.key, p.lon) }));
+  const { text: input, sig } = groundPortrait({ points, asc: C.H.asc, mc: C.H.mc, houseSystem: C.system });
+  const bal = balance(points.map((p) => p.lon));
+  const ruler = chartRuler(C.H.asc);
+  const rulerPt = points.find((p) => p.key === ruler.body);
+  const co = RULERS[ruler.sign][1];
+  // Two tallies as bars rather than numbers in a row: the SHAPE of a chart's balance is the thing being
+  // read, and four counts side by side make it legible at a glance where "fire 0, earth 2…" does not.
+  const bars = (counts, names) => html`<div class="flex gap-1.5">
+    ${counts.map((n, i) => html`<div class="flex-1 flex flex-col items-center gap-1" key=${i}>
+      <div class="w-full h-1.5 rounded-full sf-inset overflow-hidden"><div class="h-full rounded-full bg-primary/70" style=${`width:${points.length ? Math.round(n / points.length * 100) : 0}%`}></div></div>
+      <div class="text-[0.58rem] font-mono uppercase text-base-content/70 truncate w-full text-center">${say(names[i], loc)}</div>
+      <div class="text-[0.7rem] font-mono tabular-nums">${n}</div>
+    </div>`)}
+  </div>`;
+
+  return html`<${Sheet} id="portraitsheet" open=${true} onClose=${onClose} title=${T(t, "portraitTitle")}
+      subtitle=${`${placeLabel(C.b.place)} · ${C.rec.date}`} icon="lucide:sparkles">
+    <div class="flex flex-col gap-4">
+      <${Reading} sig=${sig} input=${input} loc=${loc} api=${AI_PORTRAIT} t=${t}
+        gateText=${GATE_PORTRAIT[loc] || GATE_PORTRAIT.en} lines=${[33, 31, 34, 30, 32, 33, 28, 26]} />
+
+      ${Section(T(t, "factsTitle"), html`<div class="rounded-2xl sf-inset px-3 py-1">
+        ${Fact(T(t, "angAsc"), `${signName(t, signOf(C.H.asc))} ${dm(C.H.asc)}`)}
+        ${Fact(T(t, "angMc"), `${signName(t, signOf(C.H.mc))} ${dm(C.H.mc)}`)}
+        ${Fact(T(t, "fChartRuler"), html`<span data-chart-ruler>${bodyLabel(t, ruler.body)}</span>${rulerPt ? html`<span class="text-base-content/70"> · ${signName(t, signOf(rulerPt.lon))} · ${T(t, "houseShort")}${rulerPt.house}</span>` : null}
+          ${co ? html`<span class="text-base-content/70"> · ${bodyLabel(t, co)} (${T(t, "mModern")})</span>` : null}`, "ruler")}
+        ${Fact(T(t, "fHouses"), T(t, "hs" + cap1(C.system)))}
+      </div>`)}
+
+      ${Section(T(t, "fBalance"), html`<div class="rounded-2xl sf-inset px-3 py-3 flex flex-col gap-3">
+        ${bars(bal.elements, ELEMENT_NAME)}
+        ${bars(bal.modalities, MODALITY_NAME)}
+      </div>`)}
+    </div>
+  </${Sheet}>`;
+}
 
 // ── tab 1: the bi-wheel ────────────────────────────────────────────────────────────────────────────────
 
@@ -204,13 +443,15 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
           </button>
         </div>
         <div class="px-4 pb-2">
-          ${hits.length ? hits.map((a, i) => html`<${ContactRow} a=${a} t=${t} retro=${C.retro(a.t, sky.find((p) => p.key === a.t).lon)} key=${i} />`)
+          ${hits.length ? hits.map((a, i) => html`<${ContactRow} a=${a} t=${t} retro=${C.retro(a.t, sky.find((p) => p.key === a.t).lon)}
+            onOpen=${() => openScreen(READ_TRANSIT + hitKey(a))} key=${i} />`)
             : html`<div class="py-2 text-sm text-base-content/70">${T(t, "noContacts")}</div>`}
         </div>
       </div>
     </div>
 
     <${InterpSheet} open=${screen === "interp"} onClose=${closeScreen} C=${C} t=${t} loc=${locale} dateLabel=${fmtDate(C.when)} />
+    <${TransitSheet} open=${readScreen(screen, READ_TRANSIT)} onClose=${closeScreen} C=${C} t=${t} loc=${locale} dateLabel=${fmtDate(C.when)} />
     <${BirthSheet} open=${screen === "birth"} onClose=${closeScreen} t=${t} locale=${locale} />
   </${Fragment}>`;
 }
@@ -219,8 +460,8 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
 // Exact vs merely in-range is carried by the ORB's colour, never by dimming the row. `opacity-70` over
 // `text-base-content/70` is 49% effective and axe failed 39 elements on it in the light theme — the exact
 // trap the design rules warn about. State reads through colour = meaning; contrast stays full strength.
-function ContactRow({ a, t, retro }) {
-  return html`<div data-contact class="flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0">
+function ContactRow({ a, t, retro, onOpen }) {
+  return html`<button data-contact onClick=${onOpen} class="w-full text-left flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0 active:opacity-80 transition">
     ${dot(a.t)}
     <span class="font-medium truncate max-w-[4.6rem]">${bodyLabel(t, a.t)}${retro ? html`<span class="text-warning font-mono ml-0.5" title=${T(t, "retro")}>℞</span>` : null}</span>
     <span class="text-xs font-medium shrink-0" style=${`color:${ASPECT_HUE[a.nature]}`}>${T(t, ASPECT_KEY[a.type])}</span>
@@ -229,8 +470,9 @@ function ContactRow({ a, t, retro }) {
     <div class="ml-auto flex items-center gap-1.5 shrink-0">
       ${a.applying != null ? html`<span class=${`text-[0.6rem] font-medium ${a.applying ? "text-primary" : "text-base-content/70"}`}>${T(t, a.applying ? "aspApplying" : "aspSeparating")}</span>` : null}
       <span class=${`tabular-nums text-xs w-9 text-right ${a.exact ? "text-primary font-semibold" : "text-base-content/70"}`}>${a.orb.toFixed(1)}°</span>
+      ${Icon("lucide:sparkles", "text-sm text-primary")}
     </div>
-  </div>`;
+  </button>`;
 }
 
 // ── tab 2: the exact hits ──────────────────────────────────────────────────────────────────────────────
@@ -277,16 +519,6 @@ export function hits({ S, screen, openScreen, closeScreen }) {
     </${Fragment}>`;
   }
 
-  const fmtHit = (ms, prec) => {
-    const d = new Date(ms);
-    const date = d.toLocaleDateString(loc, { day: "numeric", month: "short", year: "numeric" });
-    if (prec === "day") return date;
-    const time = d.toLocaleTimeString(loc, prec === "second"
-      ? { hour: "2-digit", minute: "2-digit", second: "2-digit" }
-      : { hour: "2-digit", minute: "2-digit" });
-    return `${date}, ${time}`;
-  };
-
   return html`<${Fragment}>
     <div class="flex flex-col gap-3">
       ${C.hits.length ? C.hits.map((a, i) => {
@@ -294,8 +526,11 @@ export function hits({ S, screen, openScreen, closeScreen }) {
         const prec = HIT_PRECISION[a.t] || "minute";
         const nearest = times && times.length ? times.reduce((best, x) => Math.abs(x - C.when) < Math.abs(best - C.when) ? x : best) : null;
         // A card in a long list gets the SHALLOW rung: twenty contacts each casting the full 5px pair is a
-        // stack of plates rather than a list.
-        return html`<div data-hit class="rounded-2xl sf-raised sf-e2 px-4 py-3 flex flex-col gap-2" key=${i}>
+        // stack of plates rather than a list. The whole card is the tap target and the sparkle is its
+        // trailing affordance — one target that says what it opens, rather than a chevron plus a second
+        // little AI button competing for the same 20 rows.
+        return html`<button data-hit data-hit-key=${hitKey(a)} onClick=${() => openScreen(READ_TRANSIT + hitKey(a))}
+          class="w-full text-left rounded-2xl sf-raised sf-e2 sf-press px-4 py-3 flex flex-col gap-2 transition" key=${i}>
         <div class="flex items-center gap-2">
           ${dot(a.t)}
           <span class="font-semibold truncate">${bodyLabel(t, a.t)}</span>
@@ -303,19 +538,21 @@ export function hits({ S, screen, openScreen, closeScreen }) {
           <span class="text-base-content/70 shrink-0 text-xs">${T(t, "natalMark")}</span>
           <span class="font-semibold truncate">${bodyLabel(t, a.n)}</span>
           <span class="ml-auto tabular-nums text-xs text-base-content/70 shrink-0">${a.orb.toFixed(2)}°</span>
+          ${Icon("lucide:sparkles", "text-base text-primary shrink-0")}
         </div>
         ${times === undefined
           ? html`<div class="text-[0.8rem] text-base-content/70 font-mono"><${Scramble} len=${22} /></div>`
-          : times.length ? html`<div class="flex flex-col gap-1">
+          : times.length ? html`<div class="flex flex-col gap-1 w-full">
             ${times.map((ms, j) => html`<div class=${`flex items-center gap-2 text-[0.8rem] ${ms === nearest ? "" : "text-base-content/70"}`} key=${j}>
               ${Icon(ms === nearest ? "lucide:crosshair" : "lucide:dot", `text-sm shrink-0 ${ms === nearest ? "text-primary" : ""}`)}
-              <span data-hit-time class="font-mono tabular-nums">${fmtHit(ms, prec)}</span>
+              <span data-hit-time class="font-mono tabular-nums">${fmtHitAt(ms, prec, locale)}</span>
               ${times.length > 1 && j === 0 ? html`<span class="ml-auto text-[0.6rem] font-mono uppercase text-base-content/70 shrink-0">${T(t, "passes")} ${times.length}</span>` : null}
             </div>`)}
           </div>` : html`<div class="text-[0.8rem] text-base-content/70">${T(t, "noExactHit")}</div>`}
-      </div>`;
+      </button>`;
       }) : html`<div class="rounded-2xl sf-raised px-4 py-6 text-sm text-base-content/70 text-center">${T(t, "noContacts")}</div>`}
     </div>
+    <${TransitSheet} open=${readScreen(screen, READ_TRANSIT)} onClose=${closeScreen} C=${C} t=${t} loc=${locale} dateLabel=${C.when.toLocaleDateString(loc, { day: "numeric", month: "short", year: "numeric" })} />
     <${BirthSheet} open=${screen === "birth"} onClose=${closeScreen} t=${t} locale=${locale} />
   </${Fragment}>`;
 }
@@ -335,12 +572,18 @@ export function chart({ S, screen, openScreen, closeScreen }) {
   const { H, natal, b } = C;
   const rows = natal.slice().sort((x, y) => norm360(x.lon) - norm360(y.lon));
 
-  const angleRow = (key, lon) => html`<div data-angle-row=${key} class="flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0" key=${key}>
-    <div class="w-20 font-medium truncate text-primary">${T(t, key)}</div>
+  // Every row in this tab opens its own reading, and the sparkle is the row's trailing affordance rather
+  // than a separate little button per row: thirteen rows with two targets each is a control panel, not a
+  // chart. `data-angle-row` keeps its i18n-key value because the gate already addresses it by that name.
+  const open = (key) => openScreen(READ_PLACEMENT + key);
+  const angleRow = (key, lbl, lon) => html`<button data-angle-row=${lbl} data-place=${key} onClick=${() => open(key)}
+      class="w-full text-left flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0 active:opacity-80 transition" key=${key}>
+    <div class="w-20 font-medium truncate text-primary">${T(t, lbl)}</div>
     <div class="w-6 flex justify-center text-base-content/70"><${Sign} i=${signOf(lon)} cls="w-5 h-5" /></div>
     <div class="flex-1 min-w-0 truncate">${T(t, "s" + signOf(lon))}</div>
     <div class="tabular-nums text-base-content/70 w-12 text-right font-mono text-xs">${dm(lon)}</div>
-  </div>`;
+    ${Icon("lucide:sparkles", "text-sm text-primary shrink-0")}
+  </button>`;
 
   return html`<${Fragment}>
     <div class="flex flex-col gap-3">
@@ -354,18 +597,25 @@ export function chart({ S, screen, openScreen, closeScreen }) {
 
       <div class="rounded-2xl sf-raised overflow-x-auto">
         <div class="min-w-[300px] px-4 py-1.5">
-          <div class="text-[0.62rem] font-mono uppercase text-base-content/70 py-1.5">${T(t, "natalTitle")}</div>
-          ${angleRow("angAsc", H.asc)}${angleRow("angMc", H.mc)}${angleRow("angVertex", H.vertex)}
+          <div class="flex items-center justify-between gap-2 py-1.5">
+            <div class="text-[0.62rem] font-mono uppercase text-base-content/70">${T(t, "natalTitle")}</div>
+            <button data-portrait class="btn btn-sm btn-primary gap-1.5 rounded-full" onClick=${() => openScreen(READ_PORTRAIT)}>
+              ${Icon("lucide:sparkles", "text-base")}<span class="text-xs font-semibold">${T(t, "portraitBtn")}</span>
+            </button>
+          </div>
+          ${angleRow("asc", "angAsc", H.asc)}${angleRow("mc", "angMc", H.mc)}${angleRow("vertex", "angVertex", H.vertex)}
           ${rows.map((p) => {
             const s = signOf(p.lon), hs = houseOf(p.lon, H.cusps), r = C.natalRetroFor(p.key, p.lon);
-            return html`<div data-row=${p.key} class="flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0" key=${p.key}>
+            return html`<button data-row=${p.key} data-place=${p.key} onClick=${() => open(p.key)}
+                class="w-full text-left flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0 active:opacity-80 transition" key=${p.key}>
               <div class="w-20 font-medium truncate">${bodyLabel(t, p.key)}</div>
               <div class="w-6 flex justify-center text-base-content/70"><${Sign} i=${s} cls="w-5 h-5" /></div>
               <div class="flex-1 min-w-0 truncate">${T(t, "s" + s)}</div>
               <div class="tabular-nums text-base-content/70 w-12 text-right font-mono text-xs">${dm(p.lon)}</div>
               <div class="w-8 text-right tabular-nums text-xs text-base-content/70">${T(t, "houseShort")}${hs}</div>
               <div class="w-4 text-center">${r ? html`<span class="text-warning font-mono" title=${T(t, "retro")}>℞</span>` : null}</div>
-            </div>`;
+              ${Icon("lucide:sparkles", "text-sm text-primary shrink-0")}
+            </button>`;
           })}
         </div>
       </div>
@@ -385,6 +635,8 @@ export function chart({ S, screen, openScreen, closeScreen }) {
         </div>
       </div>
     </div>
+    <${PlacementSheet} open=${readScreen(screen, READ_PLACEMENT)} onClose=${closeScreen} C=${C} t=${t} loc=${locale} />
+    <${PortraitSheet} open=${screen === READ_PORTRAIT} onClose=${closeScreen} C=${C} t=${t} loc=${locale} />
     <${BirthSheet} open=${screen === "birth"} onClose=${closeScreen} t=${t} locale=${locale} />
   </${Fragment}>`;
 }
@@ -483,9 +735,7 @@ function BirthSheet({ open, onClose, t, locale }) {
 // The model interprets ONLY the structured facts below — natal placements, the angles, and the transit
 // contacts with their orbs — in canonical English, so the cache signature is locale-independent.
 function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
-  useStore(aiTick);
-  const [failed, setFailed] = useState(false);
-
+  if (!open) return null;
   const name = (k) => k === "asc" ? "the Ascendant" : k === "mc" ? "the Midheaven" : (BODIES[k]?.name || k);
   const natalLine = (p) => `${name(p.key)} in ${SIGN_EN[signOf(p.lon)]} ${Math.floor(degIn(p.lon))}° (house ${houseOf(p.lon, C.H.cusps)})`;
   const hitLine = (a) => `transiting ${name(a.t)} ${a.type} natal ${name(a.n)} (orb ${a.orb.toFixed(1)}°${a.applying == null ? "" : a.applying ? ", applying" : ", separating"})`;
@@ -493,21 +743,9 @@ function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
   const input = `Transits for ${dateEN}.\nNatal chart: ${C.natal.map(natalLine).join("; ")}; Ascendant in ${SIGN_EN[signOf(C.H.asc)]} ${Math.floor(degIn(C.H.asc))}°; Midheaven in ${SIGN_EN[signOf(C.H.mc)]} ${Math.floor(degIn(C.H.mc))}°.\nTransits: ${C.hits.length ? C.hits.map(hitLine).join("; ") + "." : "none within orb."}`;
   const sig = `${dateEN}|${Math.round(C.H.asc)}|${C.hits.map((a) => `${a.t}-${a.n}-${a.type}-${Math.round(a.orb)}`).join(",")}`;
 
-  const run = () => { setFailed(false); warmInterpret(sig, input, loc); return setTimeout(() => setFailed(!isInterpreted(sig, loc)), 12000); };
-  useEffect(() => {
-    if (!open || gate || isInterpreted(sig, loc)) return;
-    const timer = run();
-    return () => clearTimeout(timer);
-  }, [open, sig, loc]);
-  const done = gate || isInterpreted(sig, loc);
-  const text = gate ? (GATE_INTERP[loc] || GATE_INTERP.en) : interpret(sig, loc);
-
-  return html`<${Sheet} id="interpsheet" open=${open} onClose=${onClose} title=${T(t, "interpTitle")} subtitle=${dateLabel} icon="lucide:sparkles">
-      ${done
-        ? html`<p data-interp-text class="text-[0.97rem] leading-relaxed text-base-content/90">${text}</p>`
-        : failed
-          ? html`<button data-interp-retry class="btn btn-sm gap-2 rounded-xl" onClick=${run}>${Icon("lucide:rotate-cw", "text-base")}<span class="text-sm">${T(t, "interpRetry")}</span></button>`
-          : html`<div class="flex flex-col gap-2 text-base-content/70">${[30, 34, 28, 20].map((n, i) => html`<div class="text-[0.95rem]" key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
+  return html`<${Sheet} id="interpsheet" open=${true} onClose=${onClose} title=${T(t, "interpTitle")} subtitle=${dateLabel} icon="lucide:sparkles">
+      <${Reading} sig=${sig} input=${input} loc=${loc} api=${AI_SKY} t=${t}
+        gateText=${GATE_INTERP[loc] || GATE_INTERP.en} lines=${[30, 34, 28, 20]} />
   </${Sheet}>`;
 }
 

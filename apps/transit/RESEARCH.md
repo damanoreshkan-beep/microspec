@@ -199,6 +199,140 @@ report a Pluto conjunction as "active" for **six years**, which is why the natal
 
 ---
 
+# Part II — interpretation: what a contact and a placement MEAN (2026-07-29)
+
+The chart above is arithmetic and it is verifiable to the arcsecond. Part II is a different kind of claim,
+and the difference has to be stated before anything is built:
+
+> **Astrology is not an empirically validated causal system.** Nothing here asserts that Saturn does
+> anything to anyone. What *can* be true or false is **fidelity to the tradition**: whether "Mars rules
+> Aries", "the sixth house signifies sickness and service" and "a square is read as friction" are what the
+> tradition actually says. That is the sense of "truthful" this part is built to satisfy — a sourced corpus
+> of conventional significations, with the contested parts labelled contested, and a model that is not
+> allowed to add to it.
+
+The design follows from that: **the meanings ship as data, not as a prompt.** A verified corpus lives in
+`packages/runtime/signif.js`, the UI renders it directly (so a model outage costs the *prose*, never the
+substance), and the model receives that same corpus as grounding with one job — connective synthesis in the
+reader's language.
+
+## 8. The corpus, and what each table is sourced from
+
+| Table | Content | How it was verified |
+|---|---|---|
+| **Dignities** | domicile + exaltation per planet; detriment/fall **derived** as the opposite sign | [Wikipedia, *Essential dignity*](https://en.wikipedia.org/wiki/Essential_dignity) — full table read and transcribed; cross-checked against the ruler list already in `zodiac.js` |
+| **Rulerships** | traditional = `RULERS[i][0]`; modern co-ruler = `RULERS[i][1]` | `packages/runtime/zodiac.js:34` — verified that the array's first element is the traditional ruler for all 12 signs, so no second rulership table is introduced |
+| **Planet significations** | role, transit action, strain | [Wikipedia, *Planets in astrology*](https://en.wikipedia.org/wiki/Planets_in_astrology) — quoted wording per planet |
+| **Planet tempo** | period, time per sign, retrograde season | astronomical, cross-checked against `HIT_WINDOW`/`SCAN_STEP` in `natal.js` |
+| **Sign element / modality / polarity** | fire·earth·air·water, cardinal·fixed·mutable | [Wikipedia, *Astrological sign*](https://en.wikipedia.org/wiki/Astrological_sign); the maths already exists as `ELEMENT`/`MODALITY` in `synastry.js:9` and is reused, not re-derived |
+| **House topics** | the field of life each house governs | [Wikipedia, *House (astrology)*](https://en.wikipedia.org/wiki/House_(astrology)) for the modern formulation, cross-read against [Lilly, *Christian Astrology*, "Of the Twelve Houses"](https://www.skyscript.co.uk/lilly_houses.html) for the traditional one |
+| **Aspect natures** | conjunction/sextile/square/trine/opposition | Ptolemy's doctrine as carried by the existing `TRANSIT_ASPECTS` table (`natal.js:224`), which already assigns `soft`/`hard`/`neutral` |
+
+**Derived, never duplicated.** Detriment is the sign opposite the domicile and fall the sign opposite the
+exaltation, so the corpus stores 7 + 7 facts instead of 4 tables that can drift apart. `dignityOf()` is a
+pure lookup and is unit-tested against all 120 (body, sign) pairs.
+
+**Only the seven classical bodies carry dignity.** Uranus, Neptune and Pluto have modern *rulership*
+assignments (Aquarius, Pisces, Scorpio) but no agreed exaltation — the "Uranus exalted in Scorpio" family of
+claims is a 20th-century invention with no consensus, so it is **absent**, not guessed.
+
+### What is labelled contested, and therefore never asserted flat
+
+- **Outer-planet rulership.** Traditional astrology gives Aquarius to Saturn, Pisces to Jupiter and Scorpio
+  to Mars. The corpus carries both conventions and the UI names which one it is showing.
+- **House system.** Placidus and whole-sign disagree about which house a planet is in, and the app already
+  offers four systems. Every grounding block and every factual row **names the active system**, because
+  "Mars in the 10th" is a statement about Placidus, not about the sky.
+- **Retrograde.** Modern practice reads it as review/internalisation; traditional astrology treats it as an
+  accidental debility. The corpus states the factual condition and the modern reading, labelled.
+- **The Vertex** as "fated encounters" is a modern convention and is labelled as one.
+- **Orbs.** `1° exact / 3° range` (§7) is this app's convention, not a tradition-wide constant.
+
+## 9. The composition rules (the method, not the meanings)
+
+A reading that concatenates keywords is not a reading. The order below is the standard modern synthesis and
+it is what the prompts encode — it is a *method*, so it is stated as one rather than dressed as a fact.
+
+**A transit** — the moving body supplies the process, the natal point supplies what is being touched:
+
+```
+transiting body   → the nature and the TEMPO of what is arriving
+aspect            → how the two meet (fuse · flow · grate · oppose)
+natal point       → the function being activated
+its house         → the field of life it happens in
+orb + phase       → how close, and building or dispersing
+retrograde/passes → one contact, or a three-pass revisit
+```
+
+The tempo term is load-bearing and it is astronomy, not doctrine: a Moon square lasts hours and a Pluto
+square recurs over years. The app already knows the difference (`HIT_WINDOW`, `HIT_PRECISION`), so the
+reading is told the same thing rather than being left to imply that every contact is a day.
+
+**A natal placement** — `planet = what · sign = how · house = where`, qualified by dignity (how easily the
+planet can work in its own manner) and by retrograde. Not two canned paragraphs glued together: one
+behaviour, in one arena.
+
+**The whole chart** — luminaries + Ascendant first, then the chart ruler, then angular planets, then element
+and modality balance, then repeated themes, then the tightest aspects. Everything in that list is computable
+from data the app already has; nothing is invented to fill a heading.
+
+## 10. What stops a grounded reading from drifting
+
+Five controls, in order of how much they actually buy:
+
+1. **The facts layer is not AI.** Every sheet renders the computed configuration and the corpus keywords
+   from local data. The model's failure mode is a missing paragraph, never a wrong fact.
+2. **Closed-world prompts.** The server prompt says: use only the supplied `FACTS` and `MEANINGS`; add no
+   body, sign, house, aspect, dignity or event that is not in them; no medical, legal, financial, death or
+   pregnancy claims; no certainty language for a symbolic system.
+3. **The tempo and the orb are inputs**, so the model cannot describe a fourteen-year Neptune transit as a
+   mood that passes on Tuesday.
+4. **Sentence budgets, not character budgets** — measured in `apps/arc/RESEARCH.md` §5 and re-used:
+   transit 3–5 sentences, placement 3–4, portrait 8–12 with a stated no-dumping-ground rule.
+5. **A truncated reply is never cached** (the `acts` lesson): a stump is worse than a miss, because a miss
+   retries and a cached stump is forever. This used to be true for `acts`/`ask` only; the `reading()` factory
+   in `ai-core.js` now makes it true everywhere by construction.
+
+### Two failures the live route actually produced, and what fixed them
+
+The controls above are not theory — both of these came back from `POST /feed/ai` on the deployed edge, and
+neither would have been caught by a "do not invent" instruction alone.
+
+- **A DERIVED number.** Given three exact-hit dates and no span, the model wrote *"приблизно півтора року"*
+  for a sequence running 3 Aug 2026 → 2 May 2027 — **nine months**. Every input it used was genuinely in the
+  block, so closed-world grounding could not catch it: the invention was the *arithmetic*. Fixed twice over —
+  `spanLabel()` computes the span and states it, and the prompt now forbids deriving any figure at all
+  ("every number, date or span you state must appear verbatim in the input"). Re-measured: *"близько 9
+  місяців, з 3 серпня 2026 до 2 травня 2027"*.
+- **It assigned the reader a gender.** *"Ти схильн**а**…"* — Ukrainian marks gender in adjectives and past
+  tense, and the chart contains no such fact. A reading that misgenders the person on the first line is worse
+  than no reading. Fixed in the prompt by naming the trap and the way out: present tense, impersonal and
+  nominal constructions (*«тобі властиво», «ця позиція дає», «є схильність»*), which are gender-free in
+  Ukrainian. Re-measured across three placements: clean.
+
+Both are the same lesson in different clothes — **the model does not have to leave the grounding to say
+something untrue about you.** Whatever a reading can compute or assume for itself has to be supplied, or
+forbidden.
+
+## 11. Two structural changes this required
+
+**`/_rt/ai.js` was one file with five unrelated capabilities.** It is now four: `ai-core.js` (the wire, the
+per-namespace localStorage cache, the in-flight dedupe, the shared `aiTick`, and a `reading()` factory that
+turns a `(namespace, mode)` pair into the `get/has/warm` triple every capability was hand-repeating),
+`ai-text.js`, `ai-astro.js`, `ai-books.js`. **The build copies `packages/runtime/` flat and skips
+directories** (`deploy/build.mjs:82` — `e.isFile` is required), so a tidy `runtime/ai/` subdirectory would
+404 in production; flat siblings plus a facade is the repo's own precedent (`astro.js` re-exports
+`aspects.js` and `natal.js`). Measured blast radius:
+`printf 'packages/runtime/ai.js\n' | deno run -A tools/affected.mjs` → `["arc","horoscope","imagine","retouch","tarot","transit"]`.
+
+**`?tab=` and `?screen=`** joined `?theme=`/`?locale=`/`?detail=` in `render.js`, for the reason already
+written next to `?detail=`: the screenshot service is the only browser this project has and **it cannot
+tap**. Two of the three new surfaces live outside the first tab, and preflight only ever mounts the first
+tab (`docs/GATE_BLINDSPOTS.md:132`) — so without this the reading sheets would have shipped unseen by both
+the eye and the local gate.
+
+---
+
 ## Appendix — the earlier note (AI interpretation of the current sky)
 
 The `astro` mode on the VPS (`/feed/ai`) carries an *astrologer* system prompt in en+uk that interprets only

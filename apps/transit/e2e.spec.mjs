@@ -134,9 +134,72 @@ export default [
       h.expect((await h.count("[data-interp]")) === 1, "немає кнопки трактовки");
       await h.click("[data-interp]"); await h.wait(300);
       h.expect((await h.prop("#interpsheet", "open")) === true, "аркуш трактовки не відкрився");
-      h.expect((await h.text("[data-interp-text]")).trim().length > 40, "порожня трактовка");
+      h.expect((await h.text("[data-reading]")).trim().length > 40, "порожня трактовка");
       await h.back(); await h.wait(300);
       h.expect((await h.prop("#interpsheet", "open")) !== true, "Back не закрив аркуш трактовки");
+    },
+  },
+  {
+    // The whole point of the three sheets below: the AI paragraph is the TOP layer, and the two under it —
+    // the computed facts and the sourced significations — are local data that must be there whether the
+    // model answered or not. So each test asserts all three, not just that a sheet opened.
+    name: "трактовка одного транзиту: факти + значення + текст, Back закриває", run: async (h) => {
+      await h.click('[data-tab="hits"]'); await h.wait(400);
+      h.expect((await h.count("[data-hit]")) >= 1, "немає жодного транзиту");
+      await h.tap("[data-hit]"); await h.wait(500);
+      h.expect((await h.prop("#transitsheet", "open")) === true, "аркуш транзиту не відкрився");
+      h.expect((await h.text("[data-reading]")).trim().length > 80, "порожня трактовка транзиту");
+      // the computed layer — these come from the ephemeris, not the model
+      h.expect((await h.text('[data-fact="orb"]')).includes("°"), "немає орба");
+      const tempo = await h.text('[data-fact="tempo"]');
+      h.expect(tempo.trim().length > 10, `немає темпу тіла: ${tempo}`);
+      // the sourced layer — the corpus entries the model was handed, so the text can be checked against them
+      h.expect((await h.count("[data-mean]")) >= 4, "замало значень із корпусу");
+      await h.back(); await h.wait(350);
+      h.expect((await h.prop("#transitsheet", "open")) !== true, "Back не закрив аркуш транзиту");
+    },
+  },
+  {
+    name: "трактовка натального положення: гідність, дім, значення", run: async (h) => {
+      await h.click('[data-tab="chart"]'); await h.wait(400);
+      await h.tap('[data-row="mars"]'); await h.wait(450);
+      h.expect((await h.prop("#placementsheet", "open")) === true, "аркуш положення не відкрився");
+      h.expect((await h.text("[data-reading]")).trim().length > 80, "порожня трактовка положення");
+      h.expect(/\d/.test(await h.text('[data-fact="house"]')), "немає дому з системою");
+      // Mars is one of the seven classical bodies, so essential dignity APPLIES and must be stated
+      h.expect((await h.text('[data-fact="dignity"]')).trim().length > 0, "немає есенційної гідності");
+      h.expect((await h.count("[data-mean]")) >= 3, "замало значень із корпусу");
+      await h.back(); await h.wait(350);
+      h.expect((await h.prop("#placementsheet", "open")) !== true, "Back не закрив аркуш положення");
+      // an ANGLE is not a body: the dignity doctrine must not be applied to it
+      await h.tap('[data-place="asc"]'); await h.wait(450);
+      h.expect((await h.prop("#placementsheet", "open")) === true, "аркуш ASC не відкрився");
+      h.expect((await h.count('[data-fact="dignity"]')) === 0, "куту приписано есенційну гідність");
+      h.expect((await h.count('[data-fact="house"]')) === 0, "куту приписано дім");
+      await h.back(); await h.wait(350);
+    },
+  },
+  {
+    name: "портрет карти в цілому: управитель карти + баланс", run: async (h) => {
+      await h.click('[data-tab="chart"]'); await h.wait(400);
+      await h.tap("[data-portrait]"); await h.wait(500);
+      h.expect((await h.prop("#portraitsheet", "open")) === true, "аркуш портрета не відкрився");
+      h.expect((await h.text("[data-reading]")).trim().length > 200, "портрет закороткий");
+      h.expect((await h.text("[data-chart-ruler]")).trim().length > 0, "немає управителя карти");
+      await h.back(); await h.wait(350);
+      h.expect((await h.prop("#portraitsheet", "open")) !== true, "Back не закрив аркуш портрета");
+    },
+  },
+  {
+    // `?tab=`/`?screen=` is what makes the two tabs behind the dock reviewable at all — by the screenshot
+    // service and by preflight. If it silently stops routing, the eye goes blind again and nothing else
+    // fails, so it is asserted here rather than trusted.
+    name: "?tab= і ?screen= відкривають потрібний екран одразу", run: async (h) => {
+      await h.goto("?tab=chart&screen=portrait", 1600);
+      h.expect((await h.prop("#portraitsheet", "open")) === true, "?screen= не відкрив портрет");
+      await h.back(); await h.wait(350);
+      h.expect((await h.prop("#portraitsheet", "open")) !== true, "Back не закрив портрет, відкритий з URL");
+      await h.goto("", 1200);
     },
   },
 ];

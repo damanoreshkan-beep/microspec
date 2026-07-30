@@ -14,7 +14,7 @@ import { gate } from "/_rt/gate.js";
 import { QUALITY, DEFAULT, sizeFor, estimateSeconds } from "/_rt/imgsize.js";
 import { writeLastGen } from "/_rt/lastgen.js";
 import { toEnglish } from "/_rt/translate.js";
-import { suggest } from "/_rt/ai.js";
+import { suggest } from "/_rt/ai-text.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

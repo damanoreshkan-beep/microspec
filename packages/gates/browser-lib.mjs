@@ -131,6 +131,15 @@ export function makeHelpers(page) {
     // session: an app persisting to IndexedDB is indistinguishable from one that silently drops it until
     // you actually come back. Without this the gate could never tell "saved" from "lost".
     reload: async (settle = 1200) => { await page.reload({ waitUntil: "load" }); await sleep(settle); },
+    // Load the app AT a query — `?tab=`/`?screen=`/`?theme=`/`?locale=`/`?detail=`/`?mock`. Those params
+    // exist because the screenshot service and preflight cannot tap, so they are the only way a deep screen
+    // is ever reviewed; a gate that never exercises them lets that door rot shut without a single failure.
+    goto: async (query = "", settle = 1200) => {
+      const u = new URL(page.url());
+      u.search = query ? (query.startsWith("?") ? query.slice(1) : query) : "";
+      await page.goto(u.toString(), { waitUntil: "load" });
+      await sleep(settle);
+    },
     wait: (ms) => sleep(ms),
     expect: (cond, msg) => { if (!cond) throw new Error(msg || "assertion failed"); },
     // poll a body-text regex up to `ms` — the cold-cache settle lesson, reusable

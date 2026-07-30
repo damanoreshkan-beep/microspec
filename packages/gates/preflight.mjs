@@ -21,6 +21,15 @@ const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[
 const TAGS = new Set(["div", "span", "button", "svg", "section", "header", "main", "footer", "nav", "input", "select", "option", "label", "rect", "circle", "path", "line", "polyline", "polygon", "text", "iconify-icon", "img", "table"]);
 
 // one shared DOM + global shim, reset per app
+// `--url "?tab=hits&screen=pl:mars"` — mount the app AT a screen instead of at its landing state.
+//
+// Preflight has always mounted the FIRST tab and nothing else, so everything behind a tool tab or a
+// history-backed sheet was invisible to the fast gate and could only fail in Chromium, one CI round later.
+// The runtime already routes `?tab=`/`?screen=`/`?theme=`/`?locale=` for the screenshot service, which
+// cannot tap either — this hands the same door to the local gate. Whatever the runtime honours, preflight
+// can now mount.
+const URL_QUERY = (() => { const i = Deno.args.indexOf("--url"); return i >= 0 ? (Deno.args[i + 1] || "") : ""; })();
+
 function installDom() {
   const { window, document } = parseHTML(`<!doctype html><html data-theme="signal"><head></head><body><div id="app"></div></body></html>`);
   const noop = () => {};
@@ -36,7 +45,8 @@ function installDom() {
   g.HTMLElement = window.HTMLElement; g.customElements = window.customElements;
   g.Element = window.Element || class Element {}; g.NodeList = window.NodeList || class NodeList {}; g.HTMLCollection = window.HTMLCollection || class HTMLCollection {}; g.SVGElement = window.SVGElement || class SVGElement {}; g.Node = window.Node || class Node {};
   g.navigator = { userAgent: "preflight", language: "uk", onLine: true, permissions: { query: async () => ({ state: "prompt", onchange: null }) }, geolocation: { getCurrentPosition: noop, watchPosition: () => 0, clearWatch: noop } };
-  g.location = window.location = { hostname: "localhost", search: "", href: "http://localhost/", origin: "http://localhost", pathname: "/", protocol: "http:" };
+  const search = URL_QUERY ? (URL_QUERY.startsWith("?") ? URL_QUERY : "?" + URL_QUERY) : "";
+  g.location = window.location = { hostname: "localhost", search, href: "http://localhost/" + search, origin: "http://localhost", pathname: "/", protocol: "http:" };
   g.history = window.history = { state: null, pushState() {}, replaceState() {}, back() {}, forward() {}, go() {} };
   g.localStorage = window.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k), clear: () => store.clear(), key: () => null, length: 0 };
   g.matchMedia = window.matchMedia = () => ({ matches: false, media: "", addEventListener: noop, removeEventListener: noop, addListener: noop, removeListener: noop, onchange: null });
@@ -275,9 +285,9 @@ async function preflight(appdir) {
 
 async function exists(p) { try { await Deno.stat(p); return true; } catch { return false; } }
 
-const dirs = Deno.args.map((a) => a.replace(/\/$/, ""));
-if (!dirs.length) { console.error("usage: preflight.mjs apps/<id> [apps/<id> ...]"); Deno.exit(2); }
-console.log(`\n  preflight (browser-free)\n`);
+const dirs = Deno.args.filter((a) => !a.startsWith("--") && a !== URL_QUERY).map((a) => a.replace(/\/$/, ""));
+if (!dirs.length) { console.error(`usage: preflight.mjs apps/<id> [apps/<id> ...] [--url "?tab=<id>&screen=<key>"]`); Deno.exit(2); }
+console.log(`\n  preflight (browser-free)${URL_QUERY ? C.d + "  " + URL_QUERY + C.x : ""}\n`);
 let fail = 0;
 for (const d of dirs) fail += await preflight(d);
 console.log(`\n  ${fail ? C.r + "✗ " + fail + " app(s) failed" : C.g + "✓ all clean"}${C.x}\n`);

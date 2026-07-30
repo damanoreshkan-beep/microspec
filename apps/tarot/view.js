@@ -15,7 +15,7 @@ import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { tr, warm, trTick } from "/_rt/translate.js";
-import { summary, warmSummary, isSummarized, aiTick } from "/_rt/ai.js";
+import { summary, warmSummary, isSummarized, aiTick } from "/_rt/ai-text.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { SPREADS, spreadById, hashSeed, draw } from "/_rt/tarot.js";
 import { DECK } from "./deck.js";

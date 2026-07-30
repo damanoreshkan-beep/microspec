@@ -16,7 +16,7 @@
 
 const args = Deno.args;
 const flag = (n, d) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] ?? d) : d; };
-const isFlagVal = (a) => ["--out", "--base", "--bp", "--theme", "--locale", "--shell"].some((f) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] === a; });
+const isFlagVal = (a) => ["--out", "--base", "--bp", "--theme", "--locale", "--shell", "--query"].some((f) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] === a; });
 const apps = args.filter((a) => !a.startsWith("--") && !isFlagVal(a));
 const base = flag("--base", "https://damanoreshkan-beep.github.io/microspec/").replace(/\/?$/, "/");
 const out = flag("--out", "packages/gates/shots");
@@ -47,17 +47,21 @@ const bpArg = flag("--bp", "default");
 const chosen = bpArg === "all" ? Object.keys(BP).filter((k) => k !== "default") : [bpArg];
 for (const b of chosen) if (!BP[b]) { console.error(`unknown --bp "${b}" — one of: ${Object.keys(BP).join(", ")}, all`); Deno.exit(2); }
 
-if (!apps.length) { console.error("usage: shoot.mjs <appId...> [--seed] [--mock] [--bp <id|all>] [--theme light] [--locale en] [--shell id] [--out dir] [--base url]"); Deno.exit(2); }
+if (!apps.length) { console.error("usage: shoot.mjs <appId...> [--seed] [--mock] [--bp <id|all>] [--theme light] [--locale en] [--shell id] [--query k=v] [--out dir] [--base url]"); Deno.exit(2); }
 await Deno.mkdir(out, { recursive: true });
 
 // microlink caches per URL, so the shot you get right after a deploy is usually the app you just
 // replaced. --fresh forces a re-render. Not the default: it's slower and spends quota, and most reviews
 // are of something that shipped a while ago.
 const fresh = args.includes("--fresh");
+// --query "detail=190192" — anything else the runtime honours from the URL. The one that made this necessary
+// is `?detail=`: a drill-down is the DEEPEST screen an app has and in some apps it IS the app, and until it
+// could be addressed the eye could only ever see a landing page. A screenshot service cannot tap.
+const query = flag("--query", "");
 
 async function shoot(app, bp) {
   const [W, H] = BP[bp];
-  const q = [seed ? "seed" : "", mock ? "mock" : "", theme ? `theme=${theme}` : "", locale ? `locale=${locale}` : "", shell ? `shell=${shell}` : ""].filter(Boolean).join("&");
+  const q = [seed ? "seed" : "", mock ? "mock" : "", theme ? `theme=${theme}` : "", locale ? `locale=${locale}` : "", shell ? `shell=${shell}` : "", query].filter(Boolean).join("&");
   const url = `${base}${app}/${q ? "?" + q : ""}`;
   const api = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&waitUntil=networkidle2&viewport.width=${W}&viewport.height=${H}&viewport.deviceScaleFactor=2${fresh ? "&force=true" : ""}`;
   const r = await fetch(api);

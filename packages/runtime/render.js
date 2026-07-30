@@ -948,6 +948,21 @@ export function App() {
   // is the whole app — could never be looked at outside CI, which is exactly how a screen ships unseen.
   // Validated against the loaded items, never persisted, fires once.
   const items = useStore(A.S.data).items;
+  // `?tab=<id>&screen=<key>` — the same family as `?detail=`, and needed for the same reason: a screenshot
+  // service cannot tap, and preflight only ever mounts the FIRST tab. Everything an app puts behind a tool
+  // tab or a history-backed sheet was therefore unreachable by both the eye and the local gate — which is
+  // precisely how a screen ships unseen. `screen` is opaque on purpose: it is the app's own `S.screen` key,
+  // so an app can address any sub-screen it has without the runtime knowing what they are.
+  // Order matters: switching tabs closes the open sub-screen (index.js), so the tab has to land FIRST.
+  const routed = useRef(false);
+  useEffect(() => {
+    if (routed.current) return;
+    routed.current = true;
+    let q; try { q = new URLSearchParams(location.search); } catch { return; }
+    const wantTab = q.get("tab"), wantScreen = q.get("screen");
+    if (wantTab && A.spec.tabs.some((x) => x.id === wantTab)) A.S.tab.set(wantTab);
+    if (wantScreen) A.S.screen.set(wantScreen);
+  }, []);
   const shot = useRef(false);
   useEffect(() => {
     if (shot.current || !A.spec.detail || !items?.length) return;

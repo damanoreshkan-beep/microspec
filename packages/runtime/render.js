@@ -11,7 +11,6 @@ import { PERMISSIONS, permLabels } from "./permissions.js";
 import { tr, warm, trTick, CONTENT_LANG } from "./translate.js";
 import { Scramble, Pixels, useReveal } from "./skeleton.js";
 import { enrich, warmMeta, metaTick } from "./enrich.js";
-import { Player } from "./video.js";
 import { collection } from "./db.js";
 import { useSheetDrag } from "./gesture.js";
 
@@ -565,14 +564,24 @@ const PLAYPOS = collection("playPos");
 function PlayerHost() {
   const p = useStore(A.S.player), loc = useStore(A.S.locale);
   const [startAt, setStartAt] = useState(null);          
+  const [Video, setVideo] = useState(null);
   useEffect(() => {
     if (!p) { setStartAt(null); return; }
     let ok = true;
     PLAYPOS.get(p.key).then((v) => { if (ok) setStartAt(Number(v?.t) || 0); }).catch(() => { if (ok) setStartAt(0); });
     return () => { ok = false; };
   }, [p?.key]);
-  if (!p || startAt == null) return null;
-  return html`<${Player} url=${p.url} title=${p.title} poster=${p.poster} locale=${loc} startAt=${startAt}
+  
+  const canPlay = (A.spec.detail?.actions || []).some((a) => a.play);
+  useEffect(() => {
+    if (!canPlay && !p) return;
+    if (Video) return;
+    let ok = true;
+    import("./video.js").then((m) => { if (ok) setVideo(() => m.Player); }).catch(() => {  });
+    return () => { ok = false; };
+  }, [canPlay, !!p]);
+  if (!p || startAt == null || !Video) return null;
+  return html`<${Video} url=${p.url} title=${p.title} poster=${p.poster} locale=${loc} startAt=${startAt}
     onTime=${(t, d) => PLAYPOS.put(p.key, { t, d }).catch(() => {  })}
     onClose=${() => A.S.player.set(null)} />`;
 }
@@ -596,14 +605,10 @@ function SearchBar({ tab }) {
     : data.loading ? T(t, "statusLoading") : data.error ? T(t, "statusError")
     
     
-    
     : (tab.browse && !q) ? ""
     : T(t, tab.statusKey || "status", { ...(data.meta || {}) });
   return html`<div class="sticky top-14 z-20 bg-base-200 border-b border-base-300/50 px-4 pt-3 pb-2"><label class="input input-bordered flex items-center gap-2 h-11 rounded-2xl">${Icon("lucide:search", "text-lg opacity-50")}<input id="filter" type="search" class="grow" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /></label><div id="status" class="text-xs text-base-content/70 mt-1 min-h-4 px-1">${status}</div></div>`;
 }
-
-
-
 function SortBar({ tab }) {
   const t = useStore(A.S.t), cur = useStore(A.S.sort);
   return html`<div class="px-4 pt-3 max-w-xl mx-auto w-full"><div class="join w-full" id="sort" role="group" aria-label=${T(t, "sortAria")}>
@@ -611,11 +616,12 @@ function SortBar({ tab }) {
   </div></div>`;
 }
 
-
 const QR_LBL = {
   en: { open: "Open on phone", title: "Open on your phone", stay: "Stay on desktop" },
   uk: { open: "Відкрити на телефоні", title: "Відкрити на телефоні", stay: "Залишитись на десктопі" },
 };
+
+
 
 
 
@@ -653,11 +659,9 @@ function AppBar() {
   
   
   
+  
   return html`<header ref=${hdrRef} class="navbar bg-base-100 sf-e2 sticky top-0 z-30 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
-
-
-
 function QrModal() {
   const open = useStore(A.S.qrOpen), loc = useStore(A.S.locale);
   const L = QR_LBL[loc] || QR_LBL.en;
@@ -680,15 +684,12 @@ function QrModal() {
 
 
 
-
 const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
   style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 38%, transparent)"></div>`;
 function Dock() {
   
-  
-  
-  
   const t = useStore(A.S.t), cur = useStore(A.S.tab);
+  
   
   const navRef = usePublishedChrome("dock");
   
@@ -697,8 +698,6 @@ function Dock() {
 function Toast() {
   const key = useStore(A.S.toast), undo = useStore(A.S.undo), t = useStore(A.S.t), loc = useStore(A.S.locale), update = useStore(A.S.update);
   const band = "position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:calc(var(--dock-h) + 0.75rem)";
-  
-  
   if (undo) {
     const label = undo.label ? `«${undo.label}» ` : "";
     return html`<div data-toast class="pointer-events-none" style=${band}>
@@ -816,6 +815,8 @@ export function App() {
   
   
   const items = useStore(A.S.data).items;
+  
+  
   
   const routed = useRef(false);
   useEffect(() => {

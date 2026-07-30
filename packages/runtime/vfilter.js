@@ -6,20 +6,44 @@
 // (`…/clip.mp4?token=a` and `?token=b` are the same file). Non-URLs pass through unchanged.
 const norm = (u) => { try { const x = new URL(u); return x.origin + x.pathname; } catch { return u || ""; } };
 
-// dedupeVideos(items) — drop duplicate clips, preserving order and the FIRST occurrence (which carries the
-// best title/poster from JSON-LD, usually listed before the bare <video>). Two items are the same clip when
-// EITHER their normalised VIDEO url OR their normalised POSTER url matches: a page lists a clip twice
-// (JSON-LD + <video>, or re-signed variants) AND — the case the video-url alone misses — broken/unavailable
-// clips repeat sharing one placeholder poster thumbnail. Items with neither key are always kept.
+/* The CLIP ID — a long number that is BOTH the filename's token AND its own path segment.
+   Some sites publish one clip as two files (source asset, no poster, often unplayable + low-bitrate
+   preview with a poster) on different hosts, so url identity cannot see they are the same video.
+   Both halves are required: a path-wide scan matches the DATE in `…/<yyyymm>/<dd>/<id>/…` and fuses
+   every clip from that month. Dry-run: real duplicates collapse on 4 sources, zero on the other 5. */
+const clipId = (u) => {
+  let p;
+  try { p = new URL(u).pathname; } catch { return ""; }
+  const segs = p.split("/");
+  const m = (segs[segs.length - 1] || "").match(/(\d{6,})/);
+  return m && segs.includes(m[1]) ? m[1] : "";
+};
+
+// dedupeVideos(items) — drop duplicate clips, preserving ORDER. Two items are the same clip when their
+// CLIP ID matches, or their normalised VIDEO url, or their normalised POSTER url: a page lists a clip twice
+// (JSON-LD + <video>, or re-signed variants), broken clips repeat sharing one placeholder thumbnail, and —
+// the case the url alone misses entirely — one clip is published as two files (see `clipId`).
+//
+// Which copy SURVIVES matters: first-wins keeps the posterless source asset, i.e. the black slide, and makes
+// the bug worse. So a later copy WITH a poster replaces an earlier one without, in place. Otherwise first wins.
 export function dedupeVideos(items) {
-  const seen = new Set(), out = [];
+  const at = new Map(), out = [];
   for (const it of (Array.isArray(items) ? items : [])) {
-    const vk = norm((it && (it.orig || it.video)) || "");
-    const pk = it && it.poster ? norm(it.poster) : "";
-    if ((vk && seen.has("v:" + vk)) || (pk && seen.has("p:" + pk))) continue;
-    if (vk) seen.add("v:" + vk);
-    if (pk) seen.add("p:" + pk);
+    const src = (it && (it.orig || it.video)) || "";
+    const keys = [];
+    const cid = clipId(src); if (cid) keys.push("c:" + cid);
+    const vk = norm(src); if (vk) keys.push("v:" + vk);
+    const pk = it && it.poster ? norm(it.poster) : ""; if (pk) keys.push("p:" + pk);
+
+    const hit = keys.find((k) => at.has(k));
+    if (hit != null) {
+      const i = at.get(hit);
+      if (!out[i].poster && it && it.poster) out[i] = it;           // the copy that can actually be shown
+      for (const k of keys) if (!at.has(k)) at.set(k, i);           // …and it answers to both copies' keys
+      continue;
+    }
     out.push(it);
+    for (const k of keys) at.set(k, out.length - 1);
   }
   return out;
 }

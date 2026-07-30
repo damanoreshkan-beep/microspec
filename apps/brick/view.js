@@ -93,8 +93,19 @@ export function brick(props) {
         if (st[S.SFX]) sound.current?.play(st[S.SFX]);
       });
       
-      if (gate) for (let i = 0; i < 140; i++) E.step(PAD.RIGHT | PAD.RUN | ((i % 46) < 16 ? PAD.JUMP : 0));
-
+      if (gate) {
+        const track = (i) => PAD.RIGHT | PAD.RUN | ((i % 46) < 16 ? PAD.JUMP : 0);
+        const survives = (n) => {
+          E.init(seed.current);
+          for (let i = 0; i < n; i++) E.step(track(i));
+          for (let i = 0; i < 240; i++) { E.step(0); if (E.state()[S.DEAD]) return false; }
+          return true;
+        };
+        let best = 0;
+        for (let n = 140; n >= 20; n -= 10) if (survives(n)) { best = n; break; }
+        E.init(seed.current);
+        for (let i = 0; i < best; i++) E.step(track(i));
+      }
       const paint = () => {
         const st = E.state(), { dl, n } = E.list();
         renderFrame(painter.current, dl, n, st);
@@ -115,6 +126,7 @@ export function brick(props) {
           $best.set(betterRun(prev, run));
         }
       };
+
       const frame = (now) => {
         if (!live) return;
         if (!$over.get()) clock.tick(now);
@@ -123,6 +135,7 @@ export function brick(props) {
       };
       paint();
       raf = requestAnimationFrame(frame);
+
       
       const vis = () => { if (document.hidden) clock.reset(); };
       document.addEventListener("visibilitychange", vis);
@@ -141,6 +154,7 @@ export function brick(props) {
   
   const arm = useCallback(() => { sound.current?.arm(); }, []);
 
+  
   return html`<${Fragment}>
     <!-- THE CONSOLE ITSELF. Without this the app is a screen and some keys lying on a page, which
          is exactly how the first live shot read: the whole premise of the design — the console is
@@ -166,6 +180,7 @@ export function brick(props) {
                   onClick=${restart} data-restart>
             <span class="font-mono uppercase tracking-widest text-[var(--ms-label)] opacity-80">${T(t, "gameOver")}</span>
             <span class="font-mono text-[var(--ms-title)]" data-run>${digits(last?.dist ?? 0, 4)}</span>
+            
             <span class="font-mono text-[var(--ms-label)] opacity-70 flex items-center gap-1" data-best>
               ${Icon("lucide:trophy", `text-[var(--ms-label)] ${last?.record ? "text-[var(--app-accent)] opacity-100" : "opacity-60"}`)}
               ${digits(best?.dist ?? 0, 4)}
@@ -182,7 +197,6 @@ export function brick(props) {
         ${err ? html`<div class="absolute inset-0 grid place-items-center text-center text-[var(--ms-label)] px-3 text-base-content/70" data-err>${T(t, "noEngine")}</div>` : null}
       </div>
     </${GameConsole}>
-
     ${screen === "records" ? html`<${Sheet} id="records" open=${true} onClose=${() => A.screen.set(null)}
       title=${T(t, "records")} icon="lucide:trophy" locale=${loc}>
       <div class="grid grid-cols-3 gap-[var(--ms-gap)] text-center">

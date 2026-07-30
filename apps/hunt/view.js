@@ -91,8 +91,19 @@ export function hunt(props) {
       });
 
       
-      if (gate) for (let i = 0; i < 150; i++)
-        E.step(IN.RIGHT | ((i % 60) < 16 ? IN.JUMP : 0) | ((i % 30) === 0 ? IN.SHOOT : 0));
+      if (gate) {
+        const track = (i) => IN.RIGHT | ((i % 60) < 16 ? IN.JUMP : 0) | ((i % 30) === 0 ? IN.SHOOT : 0);
+        const survives = (n) => {
+          E.init(seed.current);
+          for (let i = 0; i < n; i++) E.step(track(i));
+          for (let i = 0; i < 240; i++) { E.step(0); if (E.state()[S.DEAD]) return false; }
+          return true;
+        };
+        let best = 0;
+        for (let n = 150; n >= 20; n -= 10) if (survives(n)) { best = n; break; }
+        E.init(seed.current);
+        for (let i = 0; i < best; i++) E.step(track(i));
+      }
 
       const paint = () => {
         const st = E.state(), { dl, n } = E.list();
@@ -103,9 +114,9 @@ export function hunt(props) {
           h.dataset.frame = st[S.FRAME]; h.dataset.dead = st[S.DEAD] ? "1" : "0";
           h.dataset.ammo = st[S.AMMO]; h.dataset.hp = st[S.HP]; h.dataset.kills = st[S.KILLS];
           h.dataset.camx = st[S.CAMX];
-          
           h.dataset.mask = mask.current;
         }
+        
         if (st[S.DEAD]) {
           if (fell.current == null) {
             fell.current = st[S.FRAME];
@@ -131,7 +142,6 @@ export function hunt(props) {
     })();
     return () => { live = false; cancelAnimationFrame(raf); };
   }, []);
-
   const restart = useCallback(() => {
     seed.current = gate ? GATE_SEED : (Math.random() * 0xffffffff) >>> 0;
     eng.current?.init(seed.current);

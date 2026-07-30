@@ -51,19 +51,53 @@ export const LIGHT = Object.freeze({ x: -1, y: -1 });
    register as the characters: deep forest earth, moss, wet stone. */
 export const WORLD = Object.freeze({
   sky: ["#1b2430", "#2c3a49"],            // top → horizon
-  hill: "#22303c",
-  far: "#1d2833",
+  /* DEPTH IS A VALUE, not only a speed. The four backdrop bands step DOWN in luminance as they come
+     forward — ridge 38, far canopy 31, mid canopy 24, near canopy 16 — against a sky that runs 36
+     at the top to 56 at the horizon. Two things had to be true and only one of them was obvious:
+     the steps must be EVEN, or two bands collapse into one distance; and every band must be DARKER
+     than the sky behind it at its own height, or "far away" turns into "glowing". The first cut put
+     the range at 47 against a local sky of 45 and it vanished. */
+  ridge: "#1d2734",                       // the far range, its detail eaten by haze
+  canopyFar: "#18202b",
+  canopyMid: "#131a23",
+  canopy: "#0d131a",                      // the near treeline: the darkest thing on screen
+  canopyLit: "#1c2622",                   // moonlight on a near crown — green enters only up close
+  bark: "#171410",
+  barkLit: "#282219",
+  moon: "#c9d2dc",
+  moonDim: "#8e99a6",                     // the terminator: a flat disc reads as a ball bearing
+  star: "#7f90a4",
+  /* Everything below the crust line, drawn before the tiles. A pit is a MISSING tile, so whatever
+     the backdrop left there is what the player falls into — and what it left was the sky gradient,
+     a bright column reading as a hole cut out of the picture rather than as a drop. */
+  abyss: "#080b10",
   grass: "#4a6b3a",
   grassLit: "#6d9150",
+  /* Four soil values, evenly spaced (luma 61 / 53 / 42 / 29). The patch texture reads as WALLPAPER
+     the moment two of them are far apart: earth over earthDark was a 19-point jump, which turned
+     every 24px tile boundary into a visible seam. Mid exists to keep each step under about 12. */
   earth: "#4a3b2c",
+  earthMid: "#403327",
   earthDark: "#33291e",
-  stone: "#4d4f57",
-  stoneLit: "#6a6d78",
+  earthDeep: "#241c14",                   // the bottom of the frame, where the soil gets heavy
+  /* Buried stone is NOT `stone`. The cold grey of a built block against warm night soil reads as a
+     foreign object dropped in, and a tile's worth of them reads as cobblestone wallpaper. These sit
+     a step off the earth's own hue, which is what a rock in the ground actually looks like. */
+  grit: "#4a4135",
+  gritLit: "#5e5344",
+  /* Ledge rock, pulled DOWN from where it was (#4d4f57 / #6a6d78). Platforms are the brightest mass
+     in a night frame and at that value they read as interface chrome laid over the picture rather
+     than as something in the world you can stand on. */
+  stone: "#43464e",
+  stoneLit: "#51555f",
   wood: "#5a3f28",
   gold: "#d8a534",
+  goldLit: "#f2d47a",
+  goldDark: "#8a6420",
   heart: "#c8434f",
   spear: "#b9743a",
   spearTip: "#d9dbe4",
+  quiverEmpty: "#3d4653",                 // a slot with nothing in it — visible, but plainly not a spear
 });
 
 /* ── the material, in colour ──────────────────────────────────────────────────────────────

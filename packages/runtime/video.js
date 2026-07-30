@@ -22,13 +22,18 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
     const mod = await import(HLS);
     const Hls = mod.default || mod;
     if (!Hls?.isSupported?.()) { video.src = url; video.addEventListener("error", () => onError(), { once: true }); return { destroy() { clearSrc(video); } }; }
-    const hls = new Hls({ maxBufferLength: 12, manifestLoadingTimeOut: 12000, manifestLoadingMaxRetry: 1 });
+    const hls = new Hls({ maxBufferLength: 12, backBufferLength: 30, manifestLoadingTimeOut: 12000, manifestLoadingMaxRetry: 1 });
     hls.on(Hls.Events.MANIFEST_PARSED, () => onReady());
     hls.on(Hls.Events.ERROR, (_e, d) => { if (d?.fatal) onError(d); });
     hls.loadSource(url); hls.attachMedia(video);
     return { destroy() { try { hls.destroy(); } catch {  } clearSrc(video); } };
   } catch (e) { onError(e); return { destroy() { clearSrc(video); } }; }
 }
+
+
+
+
+
 
 export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime }) {
   const ref = useRef(), boxRef = useRef();
@@ -43,6 +48,8 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     setState("loading");
     const ready = () => {
       if (dead) return;
+      
+      
       const at = resumeAt(startAt, v.duration);
       if (at > 0) { try { v.currentTime = at; } catch {  } }
       setState("playing");
@@ -52,11 +59,13 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     return () => { dead = true; handle?.destroy(); };
   }, [url]);
 
+  
+  
   useEffect(() => {
     const lock = wakeLock.acquire();
     return () => lock.release();
   }, []);
-
+  
   useEffect(() => {
     if (!onTime) return;
     const id = setInterval(() => {

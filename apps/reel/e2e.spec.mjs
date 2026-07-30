@@ -7,7 +7,18 @@ export default [
     name: "стрічка рендериться; биті чорні/пласкі постери й дублікати відфільтровано", run: async (h) => {
       await ready(h);
       h.expect(await settles(h, 3), "фільтри не звели стрічку до 3 чистих слайдів (дубль/чорний/плаский постер лишились)");
-      h.expect((await h.count("video")) === 1, "активний слайд не має одного відео-елемента");
+    },
+  },
+  {
+    name: "наступне відео вже змонтоване і буферизується; грає рівно одне", run: async (h) => {
+      await ready(h);
+      h.expect(await settles(h, 3), "стрічка не влаштувалась на 3 слайдах");
+      const mains = await h.count("video[data-main]");
+      h.expect(mains >= 2, `змонтовано ${mains} відео — сусідній слайд не преload-иться, свайп знову почне з нуля`);
+      h.expect(mains <= 3, `змонтовано ${mains} відео — вікно ширше за PRELOAD, це вже витрата декодерів`);
+      
+      const playing = await h.count("video[data-main][data-playing]");
+      h.expect(playing === 1, `грає ${playing} відео замість одного — вікно преload має буферизувати, а не програвати`);
     },
   },
   {
@@ -18,6 +29,9 @@ export default [
     },
   },
   {
+    
+    
+    
     name: "поверхня: на слайді нема жодного контролу — все живе в нижньому острівці", run: async (h) => {
       await ready(h);
       await settles(h, 3);
@@ -40,11 +54,15 @@ export default [
       const chip = await h.attr("[data-dive]", "aria-label");
       h.expect(/Big Buck Bunny/.test(chip), `кнопка провалювання підписана «${chip}» — має нести назву самого рілзу, а не форму URL`);
       await h.tap("[data-dive]"); await h.wait(600);
+      
       h.expect(await settles(h, 2), "провалювання не завантажило стрічку сторінки, на якій лежить рілз");
       h.expect((await h.text("[data-island-label]")) !== root, `острівець лишився на «${root}» — джерело не змінилось`);
+      
+      
       const lvl = await h.text("[data-island-label]");
       h.expect(lvl === "Big Buck Bunny in 4K", `острівець показує «${lvl}» замість справжньої назви сторінки «Big Buck Bunny in 4K»`);
       h.expect((await h.count("[data-feed-back]")) === 1, "після провалювання немає кнопки повернення");
+      
       await h.tap("[data-feed-back]"); await h.wait(500);
       h.expect((await h.text("[data-island-label]")) === root, "повернення не відновило попереднє джерело");
       h.expect(await settles(h, 3), "повернувся не той самий список із 3 слайдів");
@@ -77,6 +95,7 @@ export default [
       h.expect((await h.count("[data-subscribe]")) === 0, "після підписки кнопка мала зникнути");
       await h.tap('[data-tab="sources"]'); await h.wait(400);
       h.expect(await has(h, /Підписки|Subscriptions/), "таб джерел не відкрився");
+      
       h.expect(await has(h, /Big Buck Bunny in 4K/), "збережене джерело показане не своєю назвою (лишилась форма URL)");
       await h.tap('[data-tab="reel"]'); await h.wait(400);
       await h.tap("[data-feed-back]"); await h.wait(400);              

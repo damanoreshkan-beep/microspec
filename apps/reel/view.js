@@ -54,13 +54,17 @@ const GATE_TITLES = {
   "https://mixkit.co/watch/55013/": "Deeper two · Mixkit",
 };
 
+const PRELOAD = 1;
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
 function openSite(s) { if (typeof window !== "undefined") window.open(s.url, "_blank", "noopener"); }
+
+
 const subsDB = collection("reelSubs");
 const $subs = atom([]);
 if (idbSupported && !gate) subsDB.all().then((rows) => $subs.set(rows)).catch(() => {});
 async function subscribe(s) {
   if (!s?.url || $subs.get().some((x) => x.url === s.url)) return;
+  
   const rec = { name: s.name || sourceTitle(s.url), url: s.url };
   $subs.set([{ id: s.url, ...rec }, ...$subs.get()]);
   try { await subsDB.put(s.url, rec); } catch {  }
@@ -69,6 +73,7 @@ async function unsubscribe(url) {
   $subs.set($subs.get().filter((x) => x.url !== url));
   try { await subsDB.remove(url); } catch {  }
 }
+
 
 const watchedDB = collection("reelWatched");
 const $watched = atom(new Set());
@@ -80,6 +85,11 @@ function markWatched(url) {
 }
 function clearWatched() { $watched.set(new Set()); watchedDB.clear().catch(() => {}); }
 const unseen = (arr) => arr.filter((i) => !$watched.get().has(i.orig || i.video));         
+
+
+
+
+
 
 const likesDB = collection("reelLikes");
 const likeId = (i) => i.orig || i.video;
@@ -96,21 +106,25 @@ function unlike(id) {
   $likes.set($likes.get().filter((l) => l.id !== id));
   likesDB.remove(id).catch(() => {});
 }
-
 const $items = atom(gate ? dedupeVideos(MOCK) : []);
 const $next = atom(null);
 const $loading = atom(!gate);
 const $err = atom(false);
 const $active = atom(0);
 const $ephemeral = atom(false);   
+
+
+
+
+
 const $srcTitle = atom(sourceTitle(DEFAULT_SRC));
 const $srcHint = atom("");
 let booted = false;               
 
+
 const $frames = atom([]);
 const $restoreTo = atom(null);    
 const $owner = atom("reel");      
-
 const snapshot = (label) => ({ label, src: $src.get(), title: $srcTitle.get(), hint: $srcHint.get(), items: $items.get(), next: $next.get(), active: $active.get(), eph: $ephemeral.get(), owner: $owner.get(), err: $err.get() });
 function restoreTop() {
   const fs = $frames.get(); if (!fs.length) return;
@@ -121,16 +135,19 @@ function restoreTop() {
   $src.set(f.src); $srcTitle.set(f.title); $srcHint.set(f.hint); $items.set(f.items); $next.set(f.next); $ephemeral.set(f.eph);
   $owner.set(f.owner); $loading.set(false); $err.set(f.err);
   $active.set(f.active); $restoreTo.set(f.active);          
+  
   if (!f.items.length && !f.err && !gate) loadSource(f.src, false, f.hint);
 }
 let bound = false;
 function bindNav(S) {
   if (bound) return; bound = true;
+  
   S.stack.listen((v) => { while ($frames.get().length > (v?.length || 0)) restoreTop(); });
 }
 function pushFrame(S, label) { $frames.set([...$frames.get(), snapshot(label)]); S.stack.set([...S.stack.get(), label]); }
 function popFrame(S) { const st = S.stack.get(); if (st.length) S.stack.set(st.slice(0, -1)); }
 function resetNav(S) { $frames.set([]); if (S.stack.get().length) S.stack.set([]); }        
+
 
 function diveTarget(item, src) {
   const u = item?.page;
@@ -138,12 +155,18 @@ function diveTarget(item, src) {
   return u.replace(/#.*$/, "") === String(src).replace(/#.*$/, "") ? null : u;
 }
 function openSource(url, hint) { $src.set(url); loadSource(url, false, hint); }
+
+
 function diveTo(S, url, hint) {
   if (!url) return;
   pushFrame(S, $srcTitle.get());                             
   navigator.vibrate?.(10);                                   
   openSource(url, hint);
 }
+
+
+
+
 
 const blankPosters = new Set();     
 const checkedPosters = new Set();   
@@ -173,12 +196,14 @@ async function checkBlankPosters() {
   await pool(todo, 4, async (p) => { if (await posterIsBlank(p)) hits.add(p); });          
   if (hits.size) { hits.forEach((p) => blankPosters.add(p)); $items.set(reject($items.get(), (i) => i.poster && hits.has(i.poster))); }
 }
+
+
+
 function clean(arr, { requirePoster = false } = {}) {
   let out = reject(unseen(arr), (i) => i.poster && blankPosters.has(i.poster));
   if (requirePoster) out = out.filter(hasPoster);
   return dedupeVideos(out);
 }
-
 let loadingMore = false, gen = 0;
 async function loadSource(url, append = false, hint = "") {
   if (append) { if (loadingMore || !url) return; loadingMore = true; }
@@ -198,6 +223,8 @@ async function loadSource(url, append = false, hint = "") {
     const r = await fetch(`${VPS_PROXY}/videos?url=${encodeURIComponent(url)}`);
     const d = await r.json();
     if (g !== gen) return;                                   
+    
+    
     const eph = append ? $ephemeral.get() : !!d.ephemeral;
     const got = clean(Array.isArray(d.items) ? d.items : [], { requirePoster: eph });
     $items.set(append ? dedupeVideos([...$items.get(), ...got]) : got);                   
@@ -216,23 +243,63 @@ function Favicon({ url, size = "w-6 h-6" }) {
     : html`<img src=${`https://${hostOf(url)}/favicon.ico`} alt="" loading="lazy" class=${`${cls} bg-base-content/10`} onError=${() => setFailed(true)} />`;
 }
 
+
+
 const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
   <img src=${poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-55" onError=${(e) => e.currentTarget.remove()} />
   <img src=${poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain" onError=${(e) => e.currentTarget.remove()} />
 </${Fragment}>` : null;
-function VideoLayer({ item }) {
+
+
+
+
+function VideoLayer({ item, playing }) {
   const ref = useRef(), bgRef = useRef();
   const [errored, setErrored] = useState(false);
-  const fail = () => setErrored(true);
+  const [ready, setReady] = useState(false);
+  const wants = useRef(playing);
+  wants.current = playing;
+
   useEffect(() => {
-    setErrored(false);
+    setErrored(false); setReady(false);
     const v = ref.current; if (!v) return;
     v.muted = true; v.loop = true;                                                        
-    let handle, bgHandle, dead = false;
-    createPlayer(v, item.video, { onReady: () => v.play?.().catch(() => {}), onError: fail }).then((h) => { if (dead) h?.destroy?.(); else handle = h; });
-    if (!item.poster && bgRef.current) { const bg = bgRef.current; bg.muted = true; bg.loop = true; createPlayer(bg, item.video, { onReady: () => bg.play?.().catch(() => {}) }).then((h) => { if (dead) h?.destroy?.(); else bgHandle = h; }); }
-    return () => { dead = true; handle?.destroy?.(); bgHandle?.destroy?.(); };
+    v.preload = "auto";                                                                   
+    let handle, dead = false;
+    createPlayer(v, item.video, {
+      onReady: () => {
+        if (dead) return;
+        setReady(true);
+        if (wants.current) { v.play?.().catch(() => {}); return; }
+        
+        v.play?.().then(() => {
+          if (dead || wants.current) return;                                              
+          v.pause?.();
+          try { v.currentTime = 0; } catch {  }
+        }).catch(() => {});
+      },
+      onError: () => { if (!dead) setErrored(true); },
+    }).then((h) => { if (dead) h?.destroy?.(); else handle = h; });
+    return () => { dead = true; handle?.destroy?.(); };
   }, [item.video]);
+  
+  useEffect(() => {
+    const v = ref.current; if (!v || !ready) return;
+    if (playing) v.play?.().catch(() => {}); else v.pause?.();
+  }, [playing, ready]);
+
+  
+  
+  useEffect(() => {
+    if (!playing || !ready || item.poster || errored) return;
+    const bg = bgRef.current; if (!bg) return;
+    bg.muted = true; bg.loop = true;
+    let handle, dead = false;
+    createPlayer(bg, item.video, { onReady: () => { if (!dead) bg.play?.().catch(() => {}); } })
+      .then((h) => { if (dead) h?.destroy?.(); else handle = h; });
+    return () => { dead = true; handle?.destroy?.(); };
+  }, [playing, ready, item.video, item.poster, errored]);
+
   return html`<${Fragment}>
     ${errored
       ? html`<${PosterFill} poster=${item.poster} />`
@@ -240,9 +307,13 @@ function VideoLayer({ item }) {
         ? html`<img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" onError=${(e) => e.currentTarget.remove()} />`
         : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
     <div class="absolute inset-0 bg-black/25" aria-hidden="true"></div>
-    <video ref=${ref} data-main playsinline loop muted class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
+    
+    <video ref=${ref} data-main data-playing=${playing ? "" : null} poster=${item.poster || null} playsinline loop muted class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
   </${Fragment}>`;
 }
+
+
+
 
 function HeartBurst({ x, y, onDone }) {
   const ref = useRef();
@@ -259,9 +330,13 @@ function HeartBurst({ x, y, onDone }) {
   return html`<div ref=${ref} aria-hidden="true" class="absolute z-[5] pointer-events-none" style=${`left:${x}px;top:${y}px`}>${Icon("lucide:heart", "text-7xl text-rose-500 fill-rose-500 drop-shadow-[0_2px_16px_rgba(0,0,0,.45)]")}</div>`;
 }
 
-function Slide({ item, idx, active, ephemeral }) {
+
+
+function Slide({ item, idx, active, near, ephemeral }) {
   const secRef = useRef();
   const [burst, setBurst] = useState(null);
+  
+  
   const onTap = useTap({
     onSingle: () => {
       const v = secRef.current?.querySelector("video[data-main]");
@@ -274,8 +349,8 @@ function Slide({ item, idx, active, ephemeral }) {
   return html`<section ref=${secRef} data-reel data-idx=${idx} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
     ${ephemeral
       ? html`<${PosterFill} poster=${item.poster} />`
-      : active
-        ? html`<${VideoLayer} item=${item} />`
+      : near
+        ? html`<${VideoLayer} item=${item} playing=${active} />`
         : item.poster
           ? html`<${PosterFill} poster=${item.poster} />`
           : null}
@@ -289,8 +364,13 @@ function SourceSheet({ S, t }) {
   const norm = () => { const u = val.trim(); return u ? (/^https?:\/\//i.test(u) ? u : "https://" + u) : ""; };
   const goto = (url) => { subscribe({ name: sourceTitle(url), url }); resetNav(S); $owner.set("reel"); openSource(url); S.tab.set("reel"); S.screen.set(null); };
   const load = (e) => { e?.preventDefault?.(); const url = norm(); if (!url) return S.screen.set(null); goto(url); };
+  
   const sr = resolveSearch(norm());
   const search = (e) => { e?.preventDefault?.(); const url = norm(), term = q.trim(); if (url && term) goto(buildSearchUrl(url, term)); };
+  
+  
+  
+  
   return html`<${Sheet} open onClose=${() => S.screen.set(null)} title=${T(t, "srcTitle")} icon="lucide:link">
     <form onSubmit=${load} class="flex flex-col gap-3">
       <label class="input flex items-center gap-2 rounded-2xl">
@@ -309,22 +389,33 @@ function SourceSheet({ S, t }) {
   <//>`;
 }
 
+
+
+
+
+
+
+
+
+
 function SourceIsland({ S, t, src, title, subbed, depth, dive, watch }) {
   const act = "btn btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
   return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
       ${depth ? html`<button data-feed-back class="btn btn-ghost btn-sm btn-circle text-white shrink-0" aria-label=${T(t, "back")} onClick=${() => popFrame(S)}>${Icon("lucide:chevron-left", "text-xl")}</button>` : null}
       <${Favicon} url=${src} size="w-6 h-6" />
+      
       <span data-island-label class="text-sm text-white truncate min-w-0 pl-0.5 pr-1">${title}</span>
       ${!subbed ? html`<button data-subscribe class=${act} aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: title, url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
       ${watch ? html`<a data-watch href=${watch} target="_blank" rel="noopener" class="btn btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")}>${Icon("lucide:external-link", "text-base")}</a>` : null}
-      
       ${dive ? html`<button data-dive class=${act} aria-label=${`${T(t, "dive")}: ${dive.label}`} onClick=${dive.go}>${Icon("lucide:chevron-right", "text-lg")}</button>` : null}
     <//>
   `;
 }
 
+
+
+
 function DragReveal({ underRef, diveRef, backRef, target, targetLabel, prev }) {
-  
   return html`<div ref=${underRef} aria-hidden="true" class="fixed inset-0 z-0 sf-inset opacity-0">
     ${prev ? html`<div ref=${backRef} class="absolute inset-y-0 left-0 w-40 flex flex-col items-center justify-center gap-2 px-3 text-center opacity-0">
       ${Icon("lucide:corner-up-left", "text-2xl text-primary")}
@@ -337,7 +428,6 @@ function DragReveal({ underRef, diveRef, backRef, target, targetLabel, prev }) {
     </div>` : null}
   </div>`;
 }
-
 function FeedSurface({ S, t }) {
   const items = useStore($items), loading = useStore($loading), err = useStore($err);
   const active = useStore($active), next = useStore($next), ephemeral = useStore($ephemeral);
@@ -345,11 +435,8 @@ function FeedSurface({ S, t }) {
   const title = useStore($srcTitle);
   const underRef = useRef(), diveRef = useRef(), backRef = useRef();
   const target = diveTarget(items[active], src);
-  
-  
   const targetLabel = target ? sourceTitle(target, { hint: items[active]?.title }) : "";
   const prev = frames.length ? frames[frames.length - 1] : null;
-
   
   
   
@@ -371,8 +458,6 @@ function FeedSurface({ S, t }) {
     if (!booted) { booted = true; if (!gate) loadSource($src.get()); }
     else if ($active.get() > 0) $restoreTo.set($active.get());        
     
-    
-    
     const root = document.documentElement;
     root.setAttribute("data-feed", "");
     return () => root.removeAttribute("data-feed");
@@ -387,22 +472,20 @@ function FeedSurface({ S, t }) {
     return () => io.disconnect();
   }, [items]);                                                        
   
+  
   useLayoutEffect(() => {
     if (restoreTo == null) return;
     const el = paneRef.current;
     if (el) el.scrollTop = restoreTo * (el.clientHeight || 0);
     $restoreTo.set(null);
   }, [restoreTo, items]);
-
   const body = loading
     ? html`<section class="h-[100dvh] w-full"><${Pixels} cls="w-full h-full" /></section>`
     : err
       ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/70 px-8 text-center">${Icon("lucide:cloud-off", "text-5xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => loadSource(src)}>${T(t, "retry")}</button></section>`
       : !items.length
         ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/60 px-8 text-center">${Icon("lucide:film", "text-5xl")}<div>${T(t, "empty")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
-        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} ephemeral=${it.eph != null ? it.eph : ephemeral} key=${(it.orig || it.video) + i} />`);
-
-  
+        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} near=${Math.abs(i - active) <= PRELOAD} ephemeral=${it.eph != null ? it.eph : ephemeral} key=${(it.orig || it.video) + i} />`);
   
   
   const cur = items[active];
@@ -411,7 +494,6 @@ function FeedSurface({ S, t }) {
 
   return html`<${Fragment}>
     <${DragReveal} underRef=${underRef} diveRef=${diveRef} backRef=${backRef} target=${target} targetLabel=${targetLabel} prev=${prev} />
-    
     <div ref=${paneRef} ...${pan} data-scroller tabindex="0" role="region" aria-label=${T(t, "tabReel")} class="fixed inset-0 z-[1] bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain touch-pan-y will-change-transform">${body}</div>
     <${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
       dive=${dive} watch=${watch} />
@@ -426,8 +508,6 @@ export function reel({ S }) {
     ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }
-
-
 
 
 
@@ -461,10 +541,6 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
     </form>` : null}
   </li>`;
 }
-
-
-
-
 
 
 function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, t }) {
@@ -523,7 +599,6 @@ export function sources({ S }) {
 
 
 
-
 export function liked({ S }) {
   const t = useStore(S.t), likes = useStore($likes), owner = useStore($owner);
   const sorted = [...likes].sort((a, b) => (b.ts || 0) - (a.ts || 0));
@@ -536,6 +611,7 @@ export function liked({ S }) {
   };
   if (!sorted.length) return html`<div class="flex flex-col items-center justify-center gap-3 text-muted text-center" style="min-height:60vh">${Icon("lucide:heart", "text-6xl opacity-30")}<div class="text-sm max-w-[16rem]">${T(t, "likedEmpty")}</div></div>`;
   return html`<div data-liked class="grid grid-cols-3 gap-1.5">
+    
     ${sorted.map((l, i) => html`<div class="relative aspect-[9/16] rounded-xl overflow-hidden sf-inset" key=${l.id}>
       <button data-liked-tile class="absolute inset-0 w-full h-full active:scale-[.98] transition" aria-label=${l.title || l.host} onClick=${() => playAt(i)}>
         ${l.poster

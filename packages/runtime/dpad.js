@@ -9,8 +9,8 @@ export const fromPointer = (el, within = 500) => !!el && Date.now() - (pointered
 /** The activation guard every app's onClick should use: keyboard and AT only. */
 export const keyboardOnly = (fn) => (e) => { if (!e.detail && !fromPointer(e.currentTarget)) fn(e); };
 
-/** Mirrored in tools/wasm/brick/game.c and packages/runtime/brick.js. */
-export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16 };
+
+export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16, SHOOT: 32 };
 
 /**
  * `useTouchDeck()` — the whole control deck as ONE touch surface.
@@ -44,7 +44,6 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
   const keys = useRef(0);                  
   const root = useRef(null);               
   const bitOf = (el) => +el?.getAttribute("data-bit") || 0;
-  
   const recompute = () => {
     let m = synth.current | keys.current;
     for (const el of held.current.values()) m |= bitOf(el);
@@ -94,6 +93,8 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
     if (![...held.current.values()].includes(el)) paint(el, false);
     recompute();
   }, []);
+
+  
   const move = useCallback((e, first) => {
     const found = at(e);
     const was = held.current.get(e.pointerId) || null;
@@ -109,6 +110,7 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
   }, []);
 
   useEffect(() => () => { for (const el of pressed.current) el.classList.remove("sf-pressed"); }, []);
+
   const deckProps = {
     ref: root,
     style: { touchAction: "none" },
@@ -141,13 +143,13 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
   return { mask, deckProps, release, pulse, setKeys };
 }
 
-
 export const KEYS = {
   ArrowLeft: PAD.LEFT, KeyA: PAD.LEFT,
   ArrowRight: PAD.RIGHT, KeyD: PAD.RIGHT,
   ArrowDown: PAD.DOWN, KeyS: PAD.DOWN,
   ArrowUp: PAD.JUMP, KeyW: PAD.JUMP, Space: PAD.JUMP, KeyZ: PAD.JUMP,
   ShiftLeft: PAD.RUN, ShiftRight: PAD.RUN, KeyX: PAD.RUN,
+  KeyC: PAD.SHOOT, ControlLeft: PAD.SHOOT, ControlRight: PAD.SHOOT,
 };
 
 /** Momentary keys — the ones a console has as buttons rather than as directions. */
@@ -175,7 +177,6 @@ export function useKeyboardPad(setKeys, onAction) {
       if (!e.repeat) { down.add(e.code); apply(); }
     };
     const up = (e) => { if (down.delete(e.code)) apply(); };
-    
     const drop = () => { if (down.size) { down.clear(); apply(); } };
     addEventListener("keydown", dn);
     addEventListener("keyup", up);

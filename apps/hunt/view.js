@@ -29,8 +29,8 @@ const DECK_ACTIONS = [
   { id: "jump", bit: PAD.JUMP, icon: "lucide:chevrons-up", label: "keyJump" },
   { id: "throw", bit: IN.SHOOT, icon: "lucide:send", iconCls: "-rotate-45", label: "keyThrow" },
   { id: "run", bit: PAD.RUN, icon: "lucide:wind", label: "keyRun", latch: true },
-  { id: "crouch", bit: PAD.DOWN, icon: "lucide:chevrons-down", label: "keyCrouch" },
 ];
+const DEATH_ARC = 45;
 const NS = "hunt:";
 const $best = persistentAtom(`${NS}best`, null, { encode: JSON.stringify, decode: JSON.parse });
 const $runs = persistentAtom(`${NS}runs`, "0");
@@ -52,6 +52,8 @@ export function hunt(props) {
   const eng = useRef(null), sound = useRef(null), painter = useRef(null);
   const seed = useRef(gate ? GATE_SEED : (Math.random() * 0xffffffff) >>> 0);
   const restartRef = useRef(null);
+  /** The frame she died on, or null while she is alive — the death arc's clock. */
+  const fell = useRef(null);
 
   const act = useCallback((name) => {
     if (name === "sound") {
@@ -104,12 +106,17 @@ export function hunt(props) {
           
           h.dataset.mask = mask.current;
         }
-        if (st[S.DEAD] && !$over.get()) {
-          $over.set(true);
-          $runs.set(String((+$runs.get() || 0) + 1));
-          $best.set(betterRun($best.get(), { dist: st[S.DIST], score: st[S.SCORE], kills: st[S.KILLS] }));
+        if (st[S.DEAD]) {
+          if (fell.current == null) {
+            fell.current = st[S.FRAME];
+            $runs.set(String((+$runs.get() || 0) + 1));
+            $best.set(betterRun($best.get(), { dist: st[S.DIST], score: st[S.SCORE], kills: st[S.KILLS] }));
+          } else if (!$over.get() && st[S.FRAME] - fell.current >= DEATH_ARC) {
+            $over.set(true);
+          }
         }
       };
+
       const frame = (now) => {
         if (!live) return;
         if (!$over.get()) clock.tick(now);
@@ -128,6 +135,7 @@ export function hunt(props) {
   const restart = useCallback(() => {
     seed.current = gate ? GATE_SEED : (Math.random() * 0xffffffff) >>> 0;
     eng.current?.init(seed.current);
+    fell.current = null;
     $over.set(false);
   }, []);
   restartRef.current = restart;

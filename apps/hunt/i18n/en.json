@@ -29,7 +29,6 @@
   "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
   "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
   "close": "Close",
-  "keyCrouch": "Crouch",
   "padLabel": "Direction pad",
   "keyJump": "Jump"
 }

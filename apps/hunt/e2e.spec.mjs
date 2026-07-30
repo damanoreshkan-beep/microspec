@@ -38,12 +38,27 @@ export default [
       await ready(h);
       const before = await num(h, "dist");
       await h.keys(["ArrowRight", "ShiftLeft"], 900);
-      h.expect((await num(h, "dist")) >= before, "дистанція не росте від клавіатури");
+      h.expect((await num(h, "dist")) > before, "дистанція не зросла за 0.9с утримання — клавіатура не доходить до маски");
       await h.keyDown("ArrowLeft");
       await h.wait(150);
       const lit = await h.hasClass('[data-pad="padLeft"]', "sf-pressed");
       await h.keyUp("ArrowLeft");
       h.expect(lit, "екранна клавіша не підсвітилась під час натиску з клавіатури");
+    },
+  },
+  {
+    
+    name: "клавіатура: спис кидається з клавіатури, не лише пальцем", run: async (h) => {
+      await ready(h);
+      const SHOOT = 32;
+      const before = await num(h, "ammo");
+      h.expect(before > 0, "нічим кидати — сагайдак порожній до початку");
+      await h.keyDown("KeyC");
+      await h.wait(150);
+      h.expect((+(await live(h, "mask")) & SHOOT) !== 0, "клавіша кидка не дійшла до маски — у спільній розкладці немає біта SHOOT");
+      await h.keyUp("KeyC");
+      await h.wait(400);
+      h.expect((await num(h, "ammo")) < before, "сагайдак не зменшився від клавіатури — кидок доступний лише пальцем");
     },
   },
   {
@@ -78,8 +93,10 @@ export default [
     },
   },
   {
+    
     name: "екран: гра займає корпус, а корпус — увесь вигляд", run: async (h) => {
       await ready(h);
+      
       const box = await h.prop("#view", "clientHeight");
       const padT = parseFloat(await h.css("#view", "padding-top")) || 0;
       const padB = parseFloat(await h.css("#view", "padding-bottom")) || 0;

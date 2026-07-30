@@ -4201,12 +4201,20 @@ const QCHART = {
   ],
 };
 Deno.test("signif/QUESTIONS: a closed catalogue, and what it deliberately does NOT ask", () => {
-  assertEquals(sgQUESTIONS.length, 10);
+  assertEquals(sgQUESTIONS.length, 11);
   const ids = sgQUESTIONS.map((q) => q.id);
-  assertEquals(new Set(ids).size, 10, "duplicate question id");
+  assertEquals(new Set(ids).size, 11, "duplicate question id");
   for (const q of sgQUESTIONS) {
     assertEquals(q.label.length, 2, `${q.id}: label must be [en, uk]`);
     assert(q.label[0].trim() && q.label[1].trim() && q.label[0] !== q.label[1], `${q.id}: label halves`);
+    
+    
+    for (const l of q.label) {
+      assert(l.length <= 16 && l.split(/\s+/).length <= 2 && !/[?.]/.test(l),
+        `${q.id}: label "${l}" is a sentence again — the catalogue takes a topic, the model takes q.ask`);
+    }
+    
+    assert(q.ask && q.ask.length > 20 && q.ask.endsWith("?"), `${q.id}: ask must be the full English question`);
     assert(q.focus && q.focus.length > 80, `${q.id}: focus must state the technique, not a hint`);
     
     for (const h of q.houses || []) assert(h >= 1 && h <= 12, `${q.id}: house ${h}`);
@@ -4216,11 +4224,10 @@ Deno.test("signif/QUESTIONS: a closed catalogue, and what it deliberately does N
   }
   
   
-  
-  
   const banned = /child|pregnan|health|illness|\bdie\b|death|lawsuit|invest|wealth|дитин|дітей|вагітн|здоров|смерт|помр|позов|інвест|багатств/i;
   for (const q of sgQUESTIONS) {
-    assert(!banned.test(q.label[0]) && !banned.test(q.label[1]), `${q.id}: asks for an outcome the chart cannot establish`);
+    assert(!banned.test(q.label[0]) && !banned.test(q.label[1]) && !banned.test(q.ask),
+      `${q.id}: asks for an outcome the chart cannot establish`);
   }
   
   
@@ -4235,9 +4242,13 @@ Deno.test("signif/groundQuestion: the block contains the declared factors and NO
   const g = sgGroundQuestion({ q: money, chart: QCHART });
   assert(g.text.includes("QUESTION: What is my pattern with money"));
   assert(g.text.includes("HOW TO READ IT:"), "the technique must travel with the question");
+  const sexBlock = sgGroundQuestion({ q: sgQuestionById("sex"), chart: QCHART });
+  assert(sexBlock.text.includes("QUESTION: What is my nature in desire and intimacy?"), "ask must reach the model");
+  assert(!/QUESTION: Sex/.test(sexBlock.text), "the topic label reached the prompt instead of the question");
   assert(g.text.includes("HOUSE 2 (placidus)"), "the declared house is missing");
   assert(g.text.includes("HOUSE 8 (placidus)"));
   assert(g.text.includes("Venus") && g.text.includes("Jupiter"), "the declared bodies are missing");
+  
   
   assert(!/- Moon —/.test(g.text), "the Moon is not a money significator and must not be supplied");
   assert(!/HOUSE 7|HOUSE 10/.test(g.text), "an undeclared house leaked into the block");

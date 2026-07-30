@@ -35,7 +35,13 @@ const ASPECT_HUE = { soft: "var(--color-success)", hard: "var(--color-error)", n
 const ASPECT_DASH = { soft: "", hard: "2 2.4", neutral: "0.6 2" };
 const ASPECT_KEY = { conjunction: "aspConjunction", sextile: "aspSextile", square: "aspSquare", trine: "aspTrine", opposition: "aspOpposition" };
 const SIGN_EN = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
-const CHIPS = [[-30, "mMonth"], [-7, "mWeek"], [0, "today"], [7, "pWeek"], [30, "pMonth"]];
+const CHIPS = [[0, "today"], [1, "tomorrow"]];
+const SCRUB = 365;                                      
+const pad2 = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const dayOffset = (s, now) => { const [y, m, d] = s.split("-").map(Number); return Math.round((midnight(new Date(y, m - 1, d)) - midnight(now)) / DAY); };
+const clampScrub = (n) => Math.max(-SCRUB, Math.min(SCRUB, n));
 
 const GATE_BIRTH = { date: "1990-07-15", time: "14:32:00", zoneMode: "place", offset: "",
   place: { id: 703448, name: "Kyiv", country: "Ukraine", countryCode: "UA", region: "Kyiv", lat: 50.45466, lng: 30.5238, zone: "Europe/Kyiv" } };
@@ -350,11 +356,10 @@ function AskSheet({ open, onClose, C, t, loc }) {
   return html`<${Sheet} id="asksheet" open=${true} onClose=${onClose} title=${T(t, "askTitle")}
       subtitle=${placeLabel(C.b.place) + " · " + C.rec.date} icon="lucide:sparkles">
     <div class="flex flex-col gap-5">
-      ${rest.length ? html`<div class="flex flex-col gap-1.5">
+      ${rest.length ? html`<div class="flex flex-wrap gap-2">
         ${rest.map((q) => html`<button data-ask=${q.id} onClick=${() => $asked.set([...$asked.get(), q.id])}
-            class="w-full text-left rounded-2xl sf-raised sf-e2 sf-press px-3.5 py-2.5 flex items-center gap-2.5 transition" key=${q.id}>
-          <span class="flex-1 min-w-0 text-[0.9rem]">${say(q.label, loc)}</span>
-          ${Icon("lucide:sparkles", "text-sm text-primary shrink-0")}
+            class="rounded-full sf-raised sf-e2 sf-press px-3.5 py-2 text-[0.9rem] font-medium transition" key=${q.id}>
+          ${say(q.label, loc)}
         </button>`)}
       </div>` : null}
 
@@ -417,6 +422,9 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
   const offset = useStore($offset);
 
   const fmtDate = (d) => d.toLocaleDateString(locale === "en" ? "en-GB" : locale || "uk", { day: "numeric", month: "short", year: "numeric" });
+  
+  const shortDate = (d) => d.toLocaleDateString(locale === "en" ? "en-GB" : locale || "uk", { day: "numeric", month: "short" });
+  const picked = offset !== 0 && offset !== 1;           
 
   if (!C.ready) {
     return html`<${Fragment}>
@@ -491,12 +499,21 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
           <span data-date class="text-2xl font-bold tabular-nums">${fmtDate(C.when)}</span>
           ${offset === 0 ? html`<span class="text-xs text-primary ml-2 align-middle">● ${T(t, "today")}</span>` : null}
         </div>
-        <input id="scrub" type="range" min="-365" max="365" step="1" value=${offset} class="range range-xs range-primary" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
+        <input id="scrub" type="range" min=${-SCRUB} max=${SCRUB} step="1" value=${offset} class="range range-xs range-primary" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
         
-        <div class="grid grid-cols-5 gap-1.5 text-center">
+        <div class="grid grid-cols-3 gap-1.5 text-center">
           ${CHIPS.map(([o, lbl]) => html`<button data-chip=${lbl} aria-pressed=${offset === o} class=${`rounded-xl py-1.5 text-xs font-medium transition ${offset === o ? "sf-e2 bg-primary/10 text-primary font-semibold" : "sf-inset"}`} onClick=${() => $offset.set(o)} key=${lbl}>${T(t, lbl)}</button>`)}
+          <label data-chip="pick" data-picked=${picked ? "true" : "false"} class=${`relative flex items-center justify-center gap-1 rounded-xl py-1.5 text-xs font-medium transition cursor-pointer ${picked ? "sf-e2 bg-primary/10 text-primary font-semibold" : "sf-inset"}`}>
+            ${Icon("lucide:calendar-days", "text-sm shrink-0")}
+            <span class="truncate">${picked ? shortDate(C.when) : T(t, "pickDay")}</span>
+            <input data-pick type="date" aria-label=${T(t, "pickAria")} value=${ymd(C.when)}
+              min=${ymd(new Date(NOW().getTime() - SCRUB * DAY))} max=${ymd(new Date(NOW().getTime() + SCRUB * DAY))}
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onInput=${(e) => { const v = e.target.value; if (v) $offset.set(clampScrub(dayOffset(v, NOW()))); }} />
+          </label>
         </div>
       </div>
+
       <!-- the contacts themselves, tightest first; the header opens the grounded AI reading -->
       <div class="w-full max-w-[420px] rounded-2xl sf-raised overflow-hidden">
         <div class="flex items-center justify-between gap-2 px-4 pt-2.5 pb-1.5">
@@ -545,6 +562,8 @@ function ContactRow({ a, t, retro, onOpen }) {
 
 
 
+
+
 const hitKey = (a) => `${a.t}|${a.n}|${a.type}`;
 function useHitTimes(contacts, whenMs) {
   const [solved, setSolved] = useState({});
@@ -579,7 +598,6 @@ export function hits({ S, screen, openScreen, closeScreen }) {
       <${BirthSheet} open=${screen === "birth"} onClose=${closeScreen} t=${t} locale=${locale} />
     </${Fragment}>`;
   }
-
   return html`<${Fragment}>
     <div class="flex flex-col gap-3">
       ${C.hits.length ? C.hits.map((a, i) => {
@@ -637,6 +655,10 @@ export function chart({ S, screen, openScreen, closeScreen }) {
   
   
   const open = (key) => openScreen(READ_PLACEMENT + key);
+  
+  
+  
+  
   
   
   
@@ -727,8 +749,6 @@ function BirthSheet({ open, onClose, t, locale }) {
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
   useEffect(() => { if (open) { setDraft(stored || EMPTY); setQ(""); setResults(null); } }, [open]);
-
-  
   useEffect(() => {
     if (!open || q.trim().length < 2) { setResults(null); setSearching(false); return; }
     const ctl = new AbortController();
@@ -783,7 +803,6 @@ function BirthSheet({ open, onClose, t, locale }) {
 
         ${(draft.zoneMode === "manual") ? field(T(t, "zmManual"), html`<input data-birth-offset type="text" inputmode="text" value=${draft.offset}
           placeholder="+02:00" onInput=${(e) => set({ offset: e.target.value })} class="input input-bordered rounded-2xl h-11 w-full text-sm font-mono" />`) : null}
-
         <!-- the one thing the user can actually check against a birth certificate -->
         <div data-birth-resolved class="rounded-2xl sf-inset px-3 py-2.5">
           <div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "resolved")}</div>
@@ -803,6 +822,7 @@ function BirthSheet({ open, onClose, t, locale }) {
 
 
 
+
 function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
   if (!open) return null;
   const name = (k) => k === "asc" ? "the Ascendant" : k === "mc" ? "the Midheaven" : (BODIES[k]?.name || k);
@@ -811,6 +831,7 @@ function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
   const dateEN = C.when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   const input = `Transits for ${dateEN}.\nNatal chart: ${C.natal.map(natalLine).join("; ")}; Ascendant in ${SIGN_EN[signOf(C.H.asc)]} ${Math.floor(degIn(C.H.asc))}°; Midheaven in ${SIGN_EN[signOf(C.H.mc)]} ${Math.floor(degIn(C.H.mc))}°.\nTransits: ${C.hits.length ? C.hits.map(hitLine).join("; ") + "." : "none within orb."}`;
   const sig = `${dateEN}|${Math.round(C.H.asc)}|${C.hits.map((a) => `${a.t}-${a.n}-${a.type}-${Math.round(a.orb)}`).join(",")}`;
+
   return html`<${Sheet} id="interpsheet" open=${true} onClose=${onClose} title=${T(t, "interpTitle")} subtitle=${dateLabel} icon="lucide:sparkles">
       <${Reading} sig=${sig} input=${input} loc=${loc} api=${AI_SKY} t=${t}
         gateText=${GATE_INTERP[loc] || GATE_INTERP.en} lines=${[30, 34, 28, 20]} />

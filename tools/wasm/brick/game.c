@@ -96,7 +96,11 @@
    that nobody can name it. They are a PAIR — edge-triggering the jump without a buffer only
    moves the lost input from one end of the arc to the other. */
 #define COYOTE_F   6
-#define JBUF_F     6
+#define JBUF_F     7              /* one more than COYOTE_F, and MEASURED, not symmetry for its
+                                     own sake: `onground` is only recomputed at the END of a step,
+                                     so the earliest a buffered press can be honoured is the frame
+                                     AFTER touchdown. At 6 the player-visible window came out 5
+                                     frames (83ms); 7 makes it the 6 frames the coyote side gives. */
 
 #define PW 14                     /* player box */
 #define PH 17
@@ -185,7 +189,7 @@ static Ent *spawn(uint8_t kind, int32_t px, int32_t py) {
 #define GROUND_HIGH 5              /* the ceiling the floor may climb to once d > 128 */
 #define GROUND_MAX  13
 #define DIFF_FULL   6000           /* columns to full difficulty — see difficulty() */
-#define ENEMY_FULL  1200           /* …and the shorter clock the enemy rate was tuned on */
+#define HAZARD_FULL 1200           /* …and the shorter clock the HAZARDS were tuned on */
 
 enum { SEG_FLAT, SEG_GAP, SEG_STAIR, SEG_PIPE, SEG_BRICKS, SEG_COINS, SEG_LEDGE };
 
@@ -194,18 +198,24 @@ enum { SEG_FLAT, SEG_GAP, SEG_STAIR, SEG_PIPE, SEG_BRICKS, SEG_COINS, SEG_LEDGE 
    walk it without simulating anyone. Reading the player's progress here made the generator
    untestable — the scan never advanced it, so it only ever measured the gentlest track.
    It used to top out after 1200 columns — 125 seconds — and every dial that reads it has been
-   pinned ever since. 6000 columns gives the TRACK somewhere to keep growing.
-   The enemy rate keeps the old, shorter clock: it was tuned against 1200 and stretching it
-   fivefold would have emptied the first four minutes of the game to buy the last one. */
+   pinned ever since, so there are two clocks now and which one a dial reads is a real decision.
+
+   difficulty() is the SHAPE of the track: what a segment is, how tall a stair steps, how high
+   the floor may climb. 6000 columns of ramp gives it somewhere to keep growing.
+   hazard_d() is the SHORT clock, and it is the OLD one, unchanged. The enemy rate, the hopper
+   unlock and the gap WIDTH were all tuned against 1200 columns, and putting them on the long
+   ramp measured as a straight nerf rather than a rebalance: 3-wide gaps moved from column 1200
+   out to column 6000 and enemies per screen fell by two thirds over the first four minutes. A
+   ramp that is slower everywhere is not a harder game, it is a longer boring one. */
 static int32_t difficulty(void) {          /* 0 … 256, over DIFF_FULL columns */
   int32_t d = gen_col;
   if (d > DIFF_FULL) d = DIFF_FULL;
   return d * 256 / DIFF_FULL;
 }
-static int32_t enemy_d(void) {             /* 0 … 256, over ENEMY_FULL columns */
+static int32_t hazard_d(void) {            /* 0 … 256, over HAZARD_FULL columns */
   int32_t d = gen_col;
-  if (d > ENEMY_FULL) d = ENEMY_FULL;
-  return d * 256 / ENEMY_FULL;
+  if (d > HAZARD_FULL) d = HAZARD_FULL;
+  return d * 256 / HAZARD_FULL;
 }
 
 static void col_clear(int32_t c) {
@@ -251,7 +261,7 @@ static void seg_pick(void) {
     /* Announce the gap and lay a runway first. Without it a gap can follow a stair or a
        pipe immediately, leaving only a standing jump — 4.00 tiles against the 5.38 a
        moving player has, which is the difference between a hazard and a dead end. */
-    pending_gap = 2 + rnd(1 + d * (MAX_GAP - 2) / 256);
+    pending_gap = 2 + rnd(1 + hazard_d() * (MAX_GAP - 2) / 256);
     if (pending_gap > MAX_GAP) pending_gap = MAX_GAP;
     seg_type = SEG_FLAT; seg_left = GAP_RUNWAY;
   } else if (roll < gapHi + 14) {
@@ -337,7 +347,7 @@ static void gen_one(void) {
   /* Enemies stand on flat ground only, never in the landing zone after a gap, and never
      in the first eight columns — a run that kills you before you have touched the pad is
      not difficulty, it is a bug the player cannot tell from one. */
-  int32_t ed = enemy_d();
+  int32_t ed = hazard_d();
   if (seg_type != SEG_GAP && safe_left == 0 && c > 8 && rnd(100) < 4 + ed / 24) {
     Ent *e = spawn((ed > 140 && (xr() & 3) == 0) ? K_HOPPER : K_WALKER,
                    c * TILE + 1, ground_row * TILE - EH);
@@ -450,10 +460,15 @@ static void step_player(uint32_t in) {
   p->vy += (p->vy < 0 && (in & IN_JUMP)) ? GRAV_HOLD : GRAV_FALL;
   /* Dive. IN_DOWN was defined at the top of this file and read NOWHERE, so the app shipped a
      fourth arm on the d-pad that did nothing at all. A runner's down is not a crouch — there is
-     nothing to duck under — it is the fast way back to the floor: an extra GRAV_FALL reaches
-     terminal velocity in half the frames. It cannot cheat the ceiling, and it cannot be used to
-     shorten a jump you are still rising through, which is what the two guards are for. */
-  if ((in & IN_DOWN) && !p->onground && p->vy > 0) p->vy += GRAV_FALL;
+     nothing to duck under — it is the fast way back to the floor.
+     It goes straight to terminal velocity rather than adding gravity, and that is a measured
+     choice, not a shortcut: MAX_FALL is a CORRECTNESS ceiling (5.06 px/f against an 18px tile is
+     what keeps the floor probe from tunnelling), so the only thing any dive can ever win back is
+     the ~10 frames the fall spends accelerating up to it. Doubling gravity recovered 2 frames of
+     a 48-frame drop; going straight to the ceiling recovers 4 — the whole of what is available,
+     and it reads as a verb instead of a nudge. Guarded so it cannot cut short a jump you are
+     still rising through, and so it does nothing at all on the ground. */
+  if ((in & IN_DOWN) && !p->onground && p->vy > 0) p->vy = MAX_FALL;
   if (p->vy > MAX_FALL) p->vy = MAX_FALL;
 
   /* X first, then Y — resolving both at once turns a corner into a wall. */

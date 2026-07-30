@@ -24,6 +24,8 @@ const $sound = persistentAtom(`${NS}sound`, "1");
 /** Live readouts. Kept out of the store on purpose: they change sixty times a second and nothing
     that renders should depend on them — the DOM mirrors below are updated by hand, once a frame. */
 const $over = atom(false);
+/** The run that just ended, held only until the next one starts — see the game-over card below. */
+const $last = atom(null);
 
 const DECK_PAD = [
   { id: "padUp", pad: "up", bit: PAD.JUMP, icon: "lucide:chevron-up", label: "padUp" },
@@ -45,6 +47,7 @@ export function brick(props) {
   const runs = useStore($runs);
   const soundOn = useStore($sound) === "1";
   const over = useStore($over);
+  const last = useStore($last);
 
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState("");
@@ -89,6 +92,7 @@ export function brick(props) {
         const st = E.state();
         if (st[S.SFX]) sound.current?.play(st[S.SFX]);
       });
+      
       if (gate) for (let i = 0; i < 140; i++) E.step(PAD.RIGHT | PAD.RUN | ((i % 46) < 16 ? PAD.JUMP : 0));
 
       const paint = () => {
@@ -102,12 +106,15 @@ export function brick(props) {
           h.dataset.mask = mask.current;
         }
         if (st[S.DEAD] && !$over.get()) {
+          
+          const run = { dist: st[S.DIST], score: st[S.SCORE], coins: st[S.COINS] };
+          const prev = $best.get();
+          $last.set({ ...run, record: !prev || run.dist > prev.dist });
           $over.set(true);
           $runs.set(String((+$runs.get() || 0) + 1));
-          $best.set(betterRun($best.get(), { dist: st[S.DIST], score: st[S.SCORE], coins: st[S.COINS] }));
+          $best.set(betterRun(prev, run));
         }
       };
-
       const frame = (now) => {
         if (!live) return;
         if (!$over.get()) clock.tick(now);
@@ -116,7 +123,6 @@ export function brick(props) {
       };
       paint();
       raf = requestAnimationFrame(frame);
-
       
       const vis = () => { if (document.hidden) clock.reset(); };
       document.addEventListener("visibilitychange", vis);
@@ -135,7 +141,6 @@ export function brick(props) {
   
   const arm = useCallback(() => { sound.current?.arm(); }, []);
 
-  
   return html`<${Fragment}>
     <!-- THE CONSOLE ITSELF. Without this the app is a screen and some keys lying on a page, which
          is exactly how the first live shot read: the whole premise of the design — the console is
@@ -160,7 +165,11 @@ export function brick(props) {
           <button class="sf-raised sf-press active:sf-pressed bg-base-100 rounded-2xl px-4 py-3 gap-1 flex flex-col items-center"
                   onClick=${restart} data-restart>
             <span class="font-mono uppercase tracking-widest text-[var(--ms-label)] opacity-80">${T(t, "gameOver")}</span>
-            <span class="font-mono text-[var(--ms-title)]">${digits(best?.dist ?? 0, 4)}</span>
+            <span class="font-mono text-[var(--ms-title)]" data-run>${digits(last?.dist ?? 0, 4)}</span>
+            <span class="font-mono text-[var(--ms-label)] opacity-70 flex items-center gap-1" data-best>
+              ${Icon("lucide:trophy", `text-[var(--ms-label)] ${last?.record ? "text-[var(--app-accent)] opacity-100" : "opacity-60"}`)}
+              ${digits(best?.dist ?? 0, 4)}
+            </span>
           </button>
         </div>` : null}
     >

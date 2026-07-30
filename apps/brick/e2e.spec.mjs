@@ -39,6 +39,38 @@ export default [
     },
   },
   {
+    name: "симуляція: гравець реально долає дистанцію", run: async (h) => {
+      await ready(h);
+      const before = await dist(h);
+      for (let i = 0; i < 6; i++) {
+        await h.keys(["ArrowRight", "ShiftLeft", "ArrowUp"], 220);   
+        await h.keys(["ArrowRight", "ShiftLeft"], 280);
+      }
+      const after = await dist(h);
+      h.expect(after > before + 20,
+        `за 3с бігу зі стрибками дистанція ${before} → ${after} — симуляція не веде гравця вперед`);
+    },
+  },
+  {
+    
+    name: "смерть: забіг закінчується і картка з'являється", run: async (h) => {
+      await ready(h);
+      for (let i = 0; i < 14 && (await h.attr("[data-live-screen]", "data-dead")) === "0"; i++)
+        await h.key("ArrowRight", 500);
+      h.expect((await h.attr("[data-live-screen]", "data-dead")) === "1",
+        "сім секунд ходьби вправо без стрибка не вбили гравця — у треку немає ями, або падіння не вбиває");
+      await h.wait(600);
+      h.expect((await h.count("[data-over]")) === 1, "гравець мертвий, а картка кінця гри не з'явилась");
+      
+      const run = await h.text("[data-run]");
+      h.expect(/^\d{4}$/.test(run || ""), `картка не показала дистанцію щойно зіграного забігу — "${run}"`);
+      await h.tap("[data-restart]");
+      await h.wait(600);
+      h.expect((await h.count("[data-over]")) === 0, "після рестарту картка лишилась на екрані");
+      h.expect((await h.attr("[data-live-screen]", "data-dead")) === "0", "рестарт не оживив гравця");
+    },
+  },
+  {
     name: "звук: перемикач тримає стан", run: async (h) => {
       await ready(h);
       const before = await h.attr('[data-key="sound"]', "aria-pressed");
@@ -72,6 +104,8 @@ export default [
   {
     name: "локаль: перемикання не ламає екран", run: async (h) => {
       await ready(h);
+      
+      
       await h.tap('[data-tab="me"]'); await h.wait(300);
       await h.tap('[data-loc="en"]'); await h.wait(300);
       await h.tap('[data-tab="play"]'); await h.wait(500);
@@ -90,6 +124,8 @@ export default [
       const before = await dist(h);
       await h.keys(["ArrowRight", "ShiftLeft"], 900);            
       h.expect((await dist(h)) > before, "гравець не рушив від стрілки — клавіатура не доходить до маски");
+      
+      
       await h.keyDown("ArrowLeft");
       await h.wait(150);
       const lit = await h.hasClass('[data-pad="padLeft"]', "sf-pressed");
@@ -102,6 +138,10 @@ export default [
   {
     name: "клавіатура і палець не стирають одне одного", run: async (h) => {
       await ready(h);
+      
+      
+      
+      
       const RIGHT = 2;
       await h.keyDown("ArrowRight");
       await h.wait(120);
@@ -116,6 +156,8 @@ export default [
   {
     name: "камера: можна повернутись назад", run: async (h) => {
       await ready(h);
+      
+      
       await h.key("ArrowRight", 700);
       h.expect((await h.attr("[data-live-screen]", "data-dead")) === "0", "забіг обірвався до виміру камери");
       const far = +(await h.attr("[data-live-screen]", "data-camx"));
@@ -127,8 +169,10 @@ export default [
     },
   },
   {
+    
     name: "екран: гра займає корпус, а корпус — увесь вигляд", run: async (h) => {
       await ready(h);
+      
       const box = await h.prop("#view", "clientHeight");
       const padT = parseFloat(await h.css("#view", "padding-top")) || 0;
       const padB = parseFloat(await h.css("#view", "padding-bottom")) || 0;
@@ -144,7 +188,6 @@ export default [
     },
   },
   {
-    
     name: "корпус: колір панелі і touch-action обидва переживають злиття стилів", run: async (h) => {
       await ready(h);
       const tint = await h.css("[data-shell-body]", "--sh-tint");

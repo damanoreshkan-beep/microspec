@@ -77,6 +77,9 @@ export function hunt(props) {
       sound.current = makeSound();
       sound.current.enabled = $sound.get() === "1";
       E.init(seed.current);
+      
+      fell.current = null;
+      $over.set(false);
 
       const ctx = cv.current?.getContext("2d", { alpha: false });
       if (!ctx) return;
@@ -89,8 +92,6 @@ export function hunt(props) {
         const st = E.state();
         if (st[S.SFX]) sound.current?.play(st[S.SFX]);
       });
-
-      
       if (gate) {
         const track = (i) => IN.RIGHT | ((i % 60) < 16 ? IN.JUMP : 0) | ((i % 30) === 0 ? IN.SHOOT : 0);
         const survives = (n) => {
@@ -116,7 +117,6 @@ export function hunt(props) {
           h.dataset.camx = st[S.CAMX];
           h.dataset.mask = mask.current;
         }
-        
         if (st[S.DEAD]) {
           if (fell.current == null) {
             fell.current = st[S.FRAME];
@@ -142,6 +142,7 @@ export function hunt(props) {
     })();
     return () => { live = false; cancelAnimationFrame(raf); };
   }, []);
+
   const restart = useCallback(() => {
     seed.current = gate ? GATE_SEED : (Math.random() * 0xffffffff) >>> 0;
     eng.current?.init(seed.current);

@@ -79,19 +79,21 @@ export function brick(props) {
       sound.current = makeSound();
       sound.current.enabled = $sound.get() === "1";
       E.init(seed.current);
+      
+      $last.set(null);
+      $over.set(false);
 
       const ctx = cv.current?.getContext("2d", { alpha: false });
       if (!ctx) return;
       ctx.imageSmoothingEnabled = false;
-      
       painter.current = canvasPainter(ctx);
       setReady(true);
-
       const clock = makeClock(() => {
         E.step(mask.current);
         const st = E.state();
         if (st[S.SFX]) sound.current?.play(st[S.SFX]);
       });
+
       
       if (gate) {
         const track = (i) => PAD.RIGHT | PAD.RUN | ((i % 46) < 16 ? PAD.JUMP : 0);
@@ -106,6 +108,7 @@ export function brick(props) {
         E.init(seed.current);
         for (let i = 0; i < best; i++) E.step(track(i));
       }
+
       const paint = () => {
         const st = E.state(), { dl, n } = E.list();
         renderFrame(painter.current, dl, n, st);
@@ -117,7 +120,6 @@ export function brick(props) {
           h.dataset.mask = mask.current;
         }
         if (st[S.DEAD] && !$over.get()) {
-          
           const run = { dist: st[S.DIST], score: st[S.SCORE], coins: st[S.COINS] };
           const prev = $best.get();
           $last.set({ ...run, record: !prev || run.dist > prev.dist });
@@ -153,8 +155,6 @@ export function brick(props) {
 
   
   const arm = useCallback(() => { sound.current?.arm(); }, []);
-
-  
   return html`<${Fragment}>
     <!-- THE CONSOLE ITSELF. Without this the app is a screen and some keys lying on a page, which
          is exactly how the first live shot read: the whole premise of the design — the console is
@@ -175,7 +175,6 @@ export function brick(props) {
         { id: "records", act: "records", text: digits(best?.dist ?? 0, 4), label: "records" },
       ]}
       overlay=${over ? html`
-        
         <div class="absolute inset-0 grid place-items-center overflow-hidden" data-over>
           <button class="sf-raised sf-press active:sf-pressed bg-base-100 rounded-2xl gap-1 flex flex-col items-center max-w-full max-h-full px-[var(--ms-pad)] py-[calc(var(--ms-pad)*0.7)]"
                   onClick=${restart} data-restart>

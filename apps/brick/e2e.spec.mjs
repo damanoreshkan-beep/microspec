@@ -75,6 +75,23 @@ export default [
     },
   },
   {
+    
+    name: "смерть не переживає вкладку: повернення дає живу гру", run: async (h) => {
+      await ready(h);
+      for (let i = 0; i < 14 && (await h.attr("[data-live-screen]", "data-dead")) === "0"; i++)
+        await h.key("ArrowRight", 500);
+      h.expect((await h.attr("[data-live-screen]", "data-dead")) === "1", "не вдалося вбити гравця для перевірки");
+      await h.wait(400);
+      await h.tap('[data-tab="me"]'); await h.wait(400);
+      await h.tap('[data-tab="play"]'); await h.wait(700);
+      h.expect((await h.count("[data-over]")) === 0, "картка кінця гри пережила перемонтування — гра відкрилась уже мертвою");
+      h.expect((await h.attr("[data-live-screen]", "data-dead")) === "0", "після повернення на вкладку гравець досі мертвий");
+      const a = await frame(h);
+      await h.wait(700);
+      h.expect((await frame(h)) > a, "після повернення на вкладку годинник стоїть — гра заморожена назавжди");
+    },
+  },
+  {
     name: "звук: перемикач тримає стан", run: async (h) => {
       await ready(h);
       const before = await h.attr('[data-key="sound"]', "aria-pressed");
@@ -178,7 +195,6 @@ export default [
     },
   },
   {
-    
     name: "екран: гра отримує ширину вигляду", run: async (h) => {
       await ready(h);
       
@@ -196,7 +212,6 @@ export default [
     },
   },
   {
-    
     name: "корпус: колір панелі і touch-action обидва переживають злиття стилів", run: async (h) => {
       await ready(h);
       const tint = await h.css("[data-shell-body]", "--sh-tint");

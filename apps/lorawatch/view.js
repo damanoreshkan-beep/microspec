@@ -100,8 +100,34 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
       { id: 3, crcOk: false, sf: 11, bytes: [0xff, 0x13, 0x9c, 0x40, 0x2a] },
     ]);
   }, []);
-  const wfRef = useRef(null);
-  useEffect(() => { wfCanvas = wfRef.current; if (wfCanvas) { const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1); const ww = (wfCanvas.clientWidth | 0) * dpr, hh = (wfCanvas.clientHeight | 0) * dpr; if (ww && (wfCanvas.width !== ww || wfCanvas.height !== hh)) { wfCanvas.width = ww; wfCanvas.height = hh; } if (demo) seedWaterfall(wfCanvas); } }, [connected]);
+  const wfRef = useRef(null), wfBox = useRef(null);
+  // The waterfall takes its size from its BOX, never from itself. `clientWidth` on a canvas reports the
+  // canvas's own INTRINSIC size (its width attribute) for as long as no CSS width applies — and the utility
+  // sheet is generated in the browser here, so on a cold open there is a window where it does not. Measuring
+  // the canvas inside that window and writing back clientWidth×DPR made the element intrinsically 2× the
+  // default 300px, i.e. 600px of layout in a 384px page, and the whole document scrolled with it.
+  //   So: measure the box (a plain block with an inline height — right in every window, and its height does
+  // not depend on the canvas, so the observer below cannot feed itself), then set BOTH halves of the HiDPI
+  // pair — the CSS box in px and the backing store in device px. The canvas can no longer size anything.
+  // The observer re-fits when the sheet lands, on rotation, and when the view is narrowed.
+  useEffect(() => {
+    wfCanvas = wfRef.current; const cv = wfCanvas, box = wfBox.current;
+    if (!cv || !box) return;
+    const fit = () => {
+      const r = box.getBoundingClientRect(), w = Math.round(r.width), h = Math.round(r.height);
+      if (!w || !h) return;                                          // not laid out yet — the observer calls back
+      cv.style.display = "block"; cv.style.width = `${w}px`; cv.style.height = `${h}px`;
+      const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1);
+      const ww = w * dpr, hh = h * dpr;
+      if (cv.width === ww && cv.height === hh) return;               // resizing the store clears it — only on change
+      cv.width = ww; cv.height = hh;
+      if (demo) seedWaterfall(cv);
+    };
+    fit();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(fit) : null;
+    ro && ro.observe(box);
+    return () => ro && ro.disconnect();
+  }, [connected]);
 
   if (!connected) {
     const supported = usbSupported() && usbOk;
@@ -126,8 +152,11 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
 
       ${/* waterfall (chirps) — the hairline was framing FOREIGN content whose own near-black already draws the
            edge against either theme's page. It is a slab on the page now, so the shadow pair does the edge. */""}
-      <div class="w-full rounded-3xl overflow-hidden bg-[#08090e] sf-e2">
-        <canvas ref=${wfRef} class="block w-full h-64" role="img" aria-label=${T(t, "waterfall")} data-waterfall></canvas>
+      ${/* The height is inline, not `h-64`: this box is what the canvas is measured against, so it has to be
+           the right size from the first frame — before the generated sheet exists — and it must not take its
+           height from the thing it sizes. */""}
+      <div ref=${wfBox} class="w-full rounded-3xl overflow-hidden bg-[#08090e] sf-e2" style="height:16rem">
+        <canvas ref=${wfRef} class="block w-full h-full" role="img" aria-label=${T(t, "waterfall")} data-waterfall></canvas>
       </div>
 
       ${/* activity — the ring of primary hairline + tint was a THIRD drawing of "detected", which the pulsing

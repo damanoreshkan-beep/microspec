@@ -45,10 +45,26 @@ export function Field({ hue = 220 }) {
     try { const g = ctx.createLinearGradient(0, 0, 0, 1); if (!g || typeof g.addColorStop !== "function") return; } catch { return; }
     let raf = 0, w = 0, h = 0, phase = 0;
     const env = { bass: 0.3, mid: 0.25, treble: 0.2 };
-    const resize = () => { const d = DPR(); w = cv.clientWidth; h = cv.clientHeight; cv.width = Math.max(1, w * d); cv.height = Math.max(1, h * d); ctx.setTransform(d, 0, 0, d, 0, 0); };
+    /* The ambient field is `fixed inset-0`, so its size is the VIEWPORT's — and that is the only
+       honest thing to measure it against. It used to read its own `clientWidth` and write the
+       result back into itself, with a ResizeObserver watching the canvas: the loop fed itself.
+       That is benign only while CSS is holding the box open, and there is a window on a cold open
+       where it is not — this farm generates its utility sheet in the browser, so for a moment
+       neither `w-full` NOR `fixed` applies, the canvas falls into normal flow at its default
+       intrinsic 300px, and DPR multiplies that into the layout. lorawatch shipped exactly this and
+       pushed a 384px page out to 600px; ruler's copy reached 900. Nothing behind `fixed` can be
+       clipped by an ancestor's `overflow-hidden` either, because that has not applied yet.
+       innerWidth/innerHeight need no stylesheet and cannot be influenced by what we draw. */
+    const resize = () => {
+      const d = DPR();
+      w = Math.max(1, window.innerWidth | 0); h = Math.max(1, window.innerHeight | 0);
+      cv.style.width = `${w}px`; cv.style.height = `${h}px`;
+      cv.width = Math.max(1, w * d); cv.height = Math.max(1, h * d);
+      ctx.setTransform(d, 0, 0, d, 0, 0);
+    };
     resize();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
-    ro && ro.observe(cv);
+    ro && ro.observe(document.documentElement);
 
     const frame = () => {
       phase += reduced ? 0.0015 : 0.006;

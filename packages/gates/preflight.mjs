@@ -144,6 +144,30 @@ async function preflight(appdir) {
     errs.push(`hand-rolled bottom sheet (\`modal-bottom\`) in ${srcFile} — import { Sheet } from "/_rt/ui.js" instead. The kit owns the shell (glass, drag-to-dismiss, title row, close, backdrop); pass open/onClose from your S.screen atom so Back still closes it.`);
   }
 
+  /* A canvas may not be measured against ITSELF. Four apps shipped `x.width = x.clientWidth * dpr`,
+     and it is a race rather than a mistake you can see: `clientWidth` on a canvas reports its
+     INTRINSIC size for exactly as long as no CSS width applies, and this farm generates its utility
+     sheet in the browser. So on a cold open there is a window in which `w-full` has not applied —
+     nor `fixed`, nor an ancestor's `overflow-hidden` — the canvas reads its default 300px, writes
+     back 300×DPR, and bakes that into layout. lorawatch pushed a 384px page out to 600px this way
+     and only failed when a runtime change forced the first whole-farm verify in weeks; ruler's copy
+     multiplied by 3 and reached 900px; drift observed the canvas with a ResizeObserver, so the loop
+     fed itself. gsmscan and ruler were green in the run that caught lorawatch, which is the whole
+     argument for a static ban: three of the four were passing at the moment the bug was found.
+
+     Measure a BOX whose size cannot depend on the canvas — a wrapper with its own height, or the
+     viewport for a `fixed inset-0` field — and write both halves of the HiDPI pair. */
+  {
+    const self = new RegExp(
+      String.raw`(\w+)\.width\s*=[^;\n]*\b\1\.client(Width|Height)|` +
+      String.raw`(\w+)\.client(Width|Height)[^;\n]*;\s*[^;\n]*\b\3\.width\s*=`,
+    ).exec(src);
+    if (self) {
+      const el = self[1] || self[3];
+      errs.push(`\`${el}\` is a canvas measured against itself in ${srcFile} — \`${el}.width = ${el}.clientWidth * dpr\`. Before the browser-generated stylesheet lands, \`clientWidth\` on a canvas is its INTRINSIC size (300), so this bakes 300×DPR into layout and the page overflows on a cold open; an ancestor's \`overflow-hidden\` has not applied yet either, so nothing clips it. Measure a wrapper whose height is its own (or the viewport for a fixed field), set \`style.width\`/\`style.height\` AND the backing store, and observe the BOX — never the canvas.`);
+    }
+  }
+
   // The `modal-bottom` ban above only caught the apps that hand-rolled a sheet out of DaisyUI. Five more had
   // built the same thing one layer lower — a bare `<div class="fixed inset-0" role="dialog">` with their own
   // backdrop button, their own grip and their own close — so they sailed past a class-name check while being

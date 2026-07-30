@@ -3796,15 +3796,16 @@ Deno.test("console · one device, and the aperture is never rationed", async () 
   assert(!/--sh-screen-w/.test(css),
     "an aperture FRACTION is back in theme.css — that variable is the small-screen bug, and it is the shape of the bug rather than its value that must not return");
   const shell = /\.ms-shell\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
-  assert(/height:\s*100%/.test(shell),
-    ".ms-shell stopped filling the view — a body sized to its contents leaves two thirds of a phone as empty page");
+  assert(/max-height:\s*100%/.test(shell),
+    ".ms-shell is not capped at the view — a console taller than the viewport is a fit screen that scrolls");
+  assert(!/(^|[^-])height:\s*100%/.test(shell),
+    ".ms-shell is stretching to the view again — the canvas is width-bound, so that buys the game nothing and puts a dead band of plastic between the screen and the deck (the deployed shot, not the gate, is what caught this)");
 });
-
-
 
 
 Deno.test("isBook: the type allowlist covers what the P31 census actually found", () => {
   assert(actsIsBook({ p31: ["Q7725634"] }), "literary work is the common case (34/39)");
+  
   assert(actsIsBook({ p31: ["Q47461344"] }), "written work — Sapiens, Educated, A Room of One's Own");
   assert(actsIsBook({ p31: ["Q1667921", "Q13593966"] }), "The Hunger Games is typed as its series");
   assert(actsIsBook({ p31: ["Q7725634", "Q49100005"] }), "banned book only ever co-occurs");
@@ -3816,7 +3817,6 @@ Deno.test("isBook: a film adaptation shares the title and must never win", () =>
   assert(!actsIsBook({ p31: ["Q5"] }), "the author is not the book");
   assert(!actsIsBook({ p31: ["Q4167410"] }), "disambiguation page");
   assert(!actsIsBook({ p31: ["Q482994"] }), "soundtrack album");
-  
   assert(!actsIsBook({ p31: ["Q11424", "Q7725634"] }), "typed as both → the film reading must lose");
 });
 
@@ -3832,6 +3832,7 @@ Deno.test("findPlotSection: resolves by NAME, never by a remembered number", () 
   assertEquals(actsFindPlot([{ index: 2, line: "Plot summary" }]).index, "2");
   assertEquals(actsFindPlot([{ index: 5, line: "Synopsis" }]).index, "5");
   assertEquals(actsFindPlot([{ index: 4, line: "Storylines" }]).index, "4");
+  
   assertEquals(actsFindPlot([{ index: 7, line: "Synopsis" }, { index: 2, line: "Plot summary" }]).index, "2");
   
   assertEquals(actsFindPlot([{ index: 9, line: "PLOT  SUMMARY" }]).index, "9");
@@ -3848,6 +3849,7 @@ Deno.test("cleanPlotText strips what textContent leaves behind", () => {
   assertEquals(actsClean("a b   c", null), "a b c", "nbsp is not matched by \\s everywhere");
   assertEquals(actsClean("", null), "");
 });
+
 Deno.test("foldPlot keeps the ENDING — act 3 is grounded in it", () => {
   const head = "A".repeat(400) + ". ";
   const mid = "B".repeat(400) + ". ";
@@ -3857,7 +3859,6 @@ Deno.test("foldPlot keeps the ENDING — act 3 is grounded in it", () => {
   assert(folded.includes("THE FINALE"), "a plain slice() would have cut the ending off");
   assert(folded.startsWith("A"), "the opening survives too");
   assert(folded.includes("[…]"), "the drop is marked");
-  
   assertEquals(actsFold("short plot.", 800), "short plot.");
 });
 
@@ -3897,6 +3898,7 @@ Deno.test("countSentences counts what the length budget is measured in", () => {
   assertEquals(actsCount("One! Two? Three…"), 3);
   assertEquals(actsCount(""), 0);
 });
+
 Deno.test("actSignature: the level is part of the cache key", () => {
   
   assert(actsSig(190192, 1, "uk") !== actsSig(190192, 3, "uk"), "level must vary the key");
@@ -3931,7 +3933,6 @@ Deno.test("material: a SURFACE is extruded, never a fill with a line drawn round
   assertEquals(surfaces, [], "a card is declaring a border instead of `sf-raised` — depth is the shadow pair, not a line");
   const wells = src.match(/aspect-(video|square)[^"'`]*border border-base-\d+/g) || [];
   assertEquals(wells, [], "a media well is declaring a border instead of `sf-inset` — a picture sits IN the surface");
-  
   for (const m of src.match(/border-base-\d+[^"'`]*/g) || []) {
     const line = src.slice(Math.max(0, src.indexOf(m) - 160), src.indexOf(m) + m.length);
     assert(/border-b|border-t|btn-ghost/.test(line), `a boxed hairline survives: …${m.slice(0, 60)}`);
@@ -3942,6 +3943,8 @@ Deno.test("material: a SURFACE is extruded, never a fill with a line drawn round
 
 
 Deno.test("foldThread keeps the tail, and the tail is what carries the pronouns", () => {
+  
+  
   const turns = [];
   for (let i = 0; i < 20; i++) { turns.push(chatAsked("q" + i + " ".repeat(400))); turns.push(chatAnswered("a" + i)); }
   turns.push(chatAsked("а якби я йому це сказав?"));
@@ -3950,12 +3953,14 @@ Deno.test("foldThread keeps the tail, and the tail is what carries the pronouns"
   assertEquals(kept[0].r, "u", "the thread must open on the reader — the grounding is prepended to it");
   assert(kept.reduce((a, x) => a + x.t.length, 0) <= 2000 + 500, "the budget was not honoured");
 });
+
 Deno.test("foldThread: a thread that no longer ends on the reader is not sendable", () => {
   
   
   assertEquals(chatFold([chatAnswered("a lone reply")]), []);
   assertEquals(chatFold([]), []);
   assertEquals(chatFold(null), []);
+  
   assertEquals(chatFold([chatAsked("  "), chatAsked("real")]).length, 1);
 });
 
@@ -3970,6 +3975,7 @@ Deno.test("askSignature: the whole exchange is the key, not just the last thing 
   
   assert(chatSig(1, 2, false, "uk", a).length < 40, "the signature is not bounded");
 });
+
 Deno.test("groundBook puts the book above its plot", () => {
   const g = chatGround({ title: "Dune", byline: "Frank Herbert · 1965", plot: "  Sand.  " });
   assert(g.startsWith("КНИГА: Dune — Frank Herbert · 1965"), "the book header is missing");
@@ -3981,7 +3987,6 @@ Deno.test("groundBook puts the book above its plot", () => {
 
 
 Deno.test("signif/corpus: every leaf is an [en, uk] pair, and neither half is missing", () => {
-  
   
   const seen = { n: 0 };
   const walk = (node, path) => {
@@ -3996,6 +4001,7 @@ Deno.test("signif/corpus: every leaf is an [en, uk] pair, and neither half is mi
   };
   for (const [name, table] of Object.entries({ BODY: sgBODY, SIGN: sgSIGN, HOUSE: sgHOUSE, ASPECT: sgASPECT, ANGLE: sgANGLE, DIGNITY: sgDIGNITY })) walk(table, name);
   assert(seen.n > 100, `only ${seen.n} corpus entries walked — the tables are not being reached`);
+  
   assertEquals(Object.keys(sgBODY).length, 10);
   assertEquals(sgSIGN.length, 12);
   assertEquals(sgHOUSE.length, 12);
@@ -4021,7 +4027,6 @@ Deno.test("signif/dignityOf: the classical table, with detriment and fall DERIVE
   assertEquals(sgDignity("saturn", S.lib), "exaltation");
   assertEquals(sgDignity("mars", S.cap), "exaltation");
   assertEquals(sgDignity("venus", S.pis), "exaltation");
-  
   assertEquals(sgDignity("sun", S.lib), "fall");
   assertEquals(sgDignity("moon", S.sco), "fall");
   assertEquals(sgDignity("jupiter", S.cap), "fall");
@@ -4056,16 +4061,15 @@ Deno.test("signif/dignityOf: the classical table, with detriment and fall DERIVE
   assertEquals(sgDignity("mars", 12), "domicile");
   assertEquals(sgDignity("mars", -12), "domicile");
 });
-
 Deno.test("signif/chartRuler: the convention is a CHOICE, and the answer says which one it used", () => {
   const aqu = 10 * 30 + 5;
   assertEquals(sgChartRuler(aqu), { sign: 10, body: "saturn", modern: false });
   assertEquals(sgChartRuler(aqu, { modern: true }), { sign: 10, body: "uranus", modern: true });
+  
   assertEquals(sgChartRuler(5, { modern: true }), { sign: 0, body: "mars", modern: false });
 });
 
 Deno.test("signif/balance: a plain unweighted count over the bodies actually shown", () => {
-  
   const b = sgBalance([1, 121, 241, 95]);
   assertEquals(b.elements, [3, 0, 0, 1]);
   assertEquals(b.modalities, [2, 1, 1]);
@@ -4163,6 +4167,7 @@ Deno.test("signif/groundCusp: a house is delegated to its ruler, and an empty ho
   assert(g.text.includes("STANDING IN house 2: Venus"));
   assert(!/undefined|NaN/.test(g.text));
 
+  
   const empty = sgGroundCusp({ house: 7, cuspLon: 30, houseSystem: "whole",
     ruler: { key: "venus", lon: 200, house: 1, retro: true } });
   assert(empty.text.includes("no planet stands in house 7"));
@@ -4170,11 +4175,11 @@ Deno.test("signif/groundCusp: a house is delegated to its ruler, and an empty ho
   assert(empty.text.includes("retrograde"));
   assert(empty.sig !== g.sig);
 
+  
   const co = sgGroundCusp({ house: 5, cuspLon: 7 * 30 + 1, houseSystem: "placidus",
     ruler: { key: "mars", lon: 10, house: 9, retro: false }, coRuler: "pluto" });
   assert(co.text.includes("Pluto is the MODERN co-ruler"), "a contested convention must name itself");
   assert(co.text.includes("Mars rules Scorpio"), "the traditional ruler still leads");
-
   
   const moved = sgGroundCusp({ house: 2, cuspLon: 8 * 30 + 14, houseSystem: "placidus",
     ruler: { key: "jupiter", lon: 3 * 30 + 2, house: 9, retro: false }, tenants: [{ key: "venus", lon: 8 * 30 + 20, retro: false }] });
@@ -4182,7 +4187,6 @@ Deno.test("signif/groundCusp: a house is delegated to its ruler, and an empty ho
 });
 
 Deno.test("signif/rulerOf: the modern flag is a claim about the ANSWER, not about the request", () => {
-  
   assertEquals(sgRulerOf(10 * 30 + 5, { modern: true }), { sign: 10, body: "uranus", modern: true });
   
   
@@ -4240,29 +4244,29 @@ Deno.test("signif/QUESTIONS: a closed catalogue, and what it deliberately does N
   
   
   
-  
   assertEquals(sgQUESTIONS.filter((q) => q.transit).length, 2);
   assertEquals(sgQUESTIONS.filter((q) => q.transit).map((q) => q.id), ["workNow", "phase"]);
   assertEquals(sgQuestionById("love").id, "love");
   assertEquals(sgQuestionById("nope"), null);
 });
-
 Deno.test("signif/groundQuestion: the block contains the declared factors and NOTHING else", () => {
   const money = sgQuestionById("money");
   const g = sgGroundQuestion({ q: money, chart: QCHART });
   assert(g.text.includes("QUESTION: What is my pattern with money"));
   assert(g.text.includes("HOW TO READ IT:"), "the technique must travel with the question");
+  
+  
   const sexBlock = sgGroundQuestion({ q: sgQuestionById("sex"), chart: QCHART });
   assert(sexBlock.text.includes("QUESTION: What is my nature in desire and intimacy?"), "ask must reach the model");
   assert(!/QUESTION: Sex/.test(sexBlock.text), "the topic label reached the prompt instead of the question");
   assert(g.text.includes("HOUSE 2 (placidus)"), "the declared house is missing");
   assert(g.text.includes("HOUSE 8 (placidus)"));
   assert(g.text.includes("Venus") && g.text.includes("Jupiter"), "the declared bodies are missing");
+  
+  
   assert(!/- Moon —/.test(g.text), "the Moon is not a money significator and must not be supplied");
   assert(!/HOUSE 7|HOUSE 10/.test(g.text), "an undeclared house leaked into the block");
   assert(!/undefined|NaN/.test(g.text));
-
-  
   assert(/RULED BY \w+ \(/.test(g.text), "the house ruler must be named");
   assert(/does not stand in house \d; it stands in \w+, house \d/.test(g.text),
     "ruling a house and standing in it must be stated as different things — a model conflated them on the live route");
@@ -4289,6 +4293,7 @@ Deno.test("signif/groundQuestion: a timing question leads with transits, and say
   assert(none.text.includes("none within orb"));
   assert(none.text.includes("do not substitute another transit"));
   assert(none.sig !== g.sig, "the contact set must vary the key");
+
   
   assert(!sgGroundQuestion({ q: sgQuestionById("home"), chart: QCHART }).text.includes("TRANSITS"));
 });

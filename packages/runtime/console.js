@@ -166,7 +166,7 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
 
   
   return html`
-    <div class="h-full min-h-0 flex flex-col items-center">
+    <div class="h-full min-h-0 flex flex-col items-center justify-center">
       <div class="ms-shell sf-raised ms-side min-h-0 flex flex-col gap-[var(--ms-gap)]"
            data-shell-body="brick" data-deck="split" ...${spread} style=${style}>
         ${stage}

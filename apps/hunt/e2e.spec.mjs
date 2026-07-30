@@ -94,25 +94,23 @@ export default [
   },
   {
     
-    name: "екран: гра займає корпус, а корпус — увесь вигляд", run: async (h) => {
+    name: "екран: гра отримує ширину вигляду", run: async (h) => {
       await ready(h);
       
-      const box = await h.prop("#view", "clientHeight");
-      const padT = parseFloat(await h.css("#view", "padding-top")) || 0;
-      const padB = parseFloat(await h.css("#view", "padding-bottom")) || 0;
-      const room = box - padT - padB;
-      const bodyH = await h.prop("[data-shell-body]", "clientHeight");
+      const viewW = await h.prop("#view", "clientWidth");
+      const padL = parseFloat(await h.css("#view", "padding-left")) || 0;
+      const padR = parseFloat(await h.css("#view", "padding-right")) || 0;
+      const room = viewW - padL - padR;
       const bodyW = await h.prop("[data-shell-body]", "clientWidth");
       const cw = await h.prop("canvas", "clientWidth");
       h.expect(room > 0 && bodyW > 0, "нема з чим порівнювати — корпус або вигляд не змірялись");
-      h.expect(bodyH >= room * 0.95,
-        `корпус ${bodyH}px у доступних ${room}px (вигляд ${box} − падінги ${padT}/${padB}) — консоль стискається до вмісту замість заповнювати екран`);
+      h.expect(cw >= room * 0.8,
+        `полотно ${cw}px у доступних ${room}px (вигляд ${viewW} − падінги ${padL}/${padR}) — гра не отримує ширини екрана`);
       h.expect(cw >= bodyW * 0.78,
         `полотно ${cw}px у корпусі ${bodyW}px — апертура забирає в гри ширину, яку нікому більше не віддає`);
     },
   },
   {
-    
     name: "корпус: колір панелі і touch-action обидва переживають злиття стилів", run: async (h) => {
       await ready(h);
       const tint = await h.css("[data-shell-body]", "--sh-tint");

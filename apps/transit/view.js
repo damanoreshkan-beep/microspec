@@ -350,21 +350,22 @@ function AskSheet({ open, onClose, C, t, loc }) {
   return html`<${Sheet} id="asksheet" open=${true} onClose=${onClose} title=${T(t, "askTitle")}
       subtitle=${placeLabel(C.b.place) + " · " + C.rec.date} icon="lucide:sparkles">
     <div class="flex flex-col gap-5">
-      ${asked.length ? html`<div class="flex flex-col gap-5">
-        ${asked.map((id) => html`<${Asked} qid=${id} C=${C} t=${t} loc=${loc} chart=${chart} timingFor=${timingFor} key=${id} />`)}
-      </div>` : null}
-
       ${rest.length ? html`<div class="flex flex-col gap-1.5">
-        ${asked.length ? html`<div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "askMore")}</div>` : null}
         ${rest.map((q) => html`<button data-ask=${q.id} onClick=${() => $asked.set([...$asked.get(), q.id])}
             class="w-full text-left rounded-2xl sf-raised sf-e2 sf-press px-3.5 py-2.5 flex items-center gap-2.5 transition" key=${q.id}>
           <span class="flex-1 min-w-0 text-[0.9rem]">${say(q.label, loc)}</span>
           ${Icon("lucide:sparkles", "text-sm text-primary shrink-0")}
         </button>`)}
       </div>` : null}
+
+      ${asked.length ? html`<div class="flex flex-col gap-5">
+        ${rest.length ? html`<div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "askAnswered")}</div>` : null}
+        ${asked.slice().reverse().map((id) => html`<${Asked} qid=${id} C=${C} t=${t} loc=${loc} chart=${chart} timingFor=${timingFor} key=${id} />`)}
+      </div>` : null}
     </div>
   </${Sheet}>`;
 }
+
 
 
 function PortraitSheet({ open, onClose, C, t, loc }) {
@@ -375,6 +376,8 @@ function PortraitSheet({ open, onClose, C, t, loc }) {
   const ruler = chartRuler(C.H.asc);
   const rulerPt = points.find((p) => p.key === ruler.body);
   const co = RULERS[ruler.sign][1];
+  
+  
   const bars = (counts, names) => html`<div class="flex gap-1.5">
     ${counts.map((n, i) => html`<div class="flex-1 flex flex-col items-center gap-1" key=${i}>
       <div class="w-full h-1.5 rounded-full sf-inset overflow-hidden"><div class="h-full rounded-full bg-primary/70" style=${`width:${points.length ? Math.round(n / points.length * 100) : 0}%`}></div></div>
@@ -406,6 +409,7 @@ function PortraitSheet({ open, onClose, C, t, loc }) {
 }
 
 
+
 export function wheel({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t), locale = useStore(S.locale);
   useStore(aiTick);
@@ -424,6 +428,7 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
   const { H, natal, sky, hits, b } = C;
   const lonOf = Object.fromEntries([...C.targets].map((p) => [p.key, p.lon]));
 
+  
   const cuspLines = H.cusps.map((c, i) => {
     const [x1, y1] = pt(wheelAngle(c), 17), [x2, y2] = pt(wheelAngle(c), 40);
     const angular = i === 0 || i === 9;                      
@@ -452,6 +457,8 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
     ${chords}
   </svg>`;
 
+  
+  
   const marks = sky.map((p) => ({ key: p.key, body: p.key, angle: wheelAngle(p.lon), value: norm360(p.lon), label: bodyLabel(t, p.key) }));
   const rim = Array.from({ length: 12 }, (_, i) => ({ label: html`<${Sign} i=${i} cls="w-[18px] h-[18px]" />`, angle: wheelAngle(i * 30 + 15), cls: "text-base-content/70", rimR: 43 }));
   const natalRing = html`<div class="absolute inset-0 pointer-events-none">
@@ -485,11 +492,11 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
           ${offset === 0 ? html`<span class="text-xs text-primary ml-2 align-middle">● ${T(t, "today")}</span>` : null}
         </div>
         <input id="scrub" type="range" min="-365" max="365" step="1" value=${offset} class="range range-xs range-primary" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
+        
         <div class="grid grid-cols-5 gap-1.5 text-center">
           ${CHIPS.map(([o, lbl]) => html`<button data-chip=${lbl} aria-pressed=${offset === o} class=${`rounded-xl py-1.5 text-xs font-medium transition ${offset === o ? "sf-e2 bg-primary/10 text-primary font-semibold" : "sf-inset"}`} onClick=${() => $offset.set(o)} key=${lbl}>${T(t, lbl)}</button>`)}
         </div>
       </div>
-
       <!-- the contacts themselves, tightest first; the header opens the grounded AI reading -->
       <div class="w-full max-w-[420px] rounded-2xl sf-raised overflow-hidden">
         <div class="flex items-center justify-between gap-2 px-4 pt-2.5 pb-1.5">
@@ -515,6 +522,7 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
 
 
 
+
 function ContactRow({ a, t, retro, onOpen }) {
   return html`<button data-contact onClick=${onOpen} class="w-full text-left flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0 active:opacity-80 transition">
     ${dot(a.t)}
@@ -529,6 +537,9 @@ function ContactRow({ a, t, retro, onOpen }) {
     </div>
   </button>`;
 }
+
+
+
 
 
 
@@ -561,6 +572,7 @@ export function hits({ S, screen, openScreen, closeScreen }) {
   
   
   const solved = useHitTimes(C.hits || [], C.when.getTime());
+
   if (!C.ready) {
     return html`<${Fragment}>
       <${NeedBirth} t=${t} onOpen=${() => openScreen("birth")} />
@@ -574,6 +586,7 @@ export function hits({ S, screen, openScreen, closeScreen }) {
         const times = solved[hitKey(a)];
         const prec = HIT_PRECISION[a.t] || "minute";
         const nearest = times && times.length ? times.reduce((best, x) => Math.abs(x - C.when) < Math.abs(best - C.when) ? x : best) : null;
+        
         
         
         
@@ -624,6 +637,8 @@ export function chart({ S, screen, openScreen, closeScreen }) {
   
   
   const open = (key) => openScreen(READ_PLACEMENT + key);
+  
+  
   
   const mark = () => Icon("lucide:sparkles", "text-xs text-primary shrink-0 w-3.5");
   const ROW = "w-full text-left flex items-center gap-1.5 py-1.5 border-b border-base-300/40 last:border-0 active:opacity-80 transition";
@@ -704,6 +719,7 @@ export function chart({ S, screen, openScreen, closeScreen }) {
 
 
 
+
 function BirthSheet({ open, onClose, t, locale }) {
   const stored = useStore($birth);
   const [draft, setDraft] = useState(stored || EMPTY);
@@ -760,6 +776,7 @@ function BirthSheet({ open, onClose, t, locale }) {
           <div class="text-sm font-medium truncate">${placeLabel(draft.place)}</div>
           <div class="text-[0.66rem] font-mono text-base-content/70 truncate">${formatCoords(draft.place.lat, draft.place.lng)} · ${draft.place.zone}</div>
         </div>` : null}
+
         ${field(T(t, "zoneMode"), html`<${Segmented} attr="data-zone-mode" size="sm" label=${T(t, "zoneMode")}
           items=${MODES.map(([v, k]) => ({ id: v, label: T(t, k) }))}
           value=${draft.zoneMode || "place"} onChange=${(v) => set({ zoneMode: v })} />`)}
@@ -786,8 +803,6 @@ function BirthSheet({ open, onClose, t, locale }) {
 
 
 
-
-
 function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
   if (!open) return null;
   const name = (k) => k === "asc" ? "the Ascendant" : k === "mc" ? "the Midheaven" : (BODIES[k]?.name || k);
@@ -796,12 +811,12 @@ function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
   const dateEN = C.when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   const input = `Transits for ${dateEN}.\nNatal chart: ${C.natal.map(natalLine).join("; ")}; Ascendant in ${SIGN_EN[signOf(C.H.asc)]} ${Math.floor(degIn(C.H.asc))}°; Midheaven in ${SIGN_EN[signOf(C.H.mc)]} ${Math.floor(degIn(C.H.mc))}°.\nTransits: ${C.hits.length ? C.hits.map(hitLine).join("; ") + "." : "none within orb."}`;
   const sig = `${dateEN}|${Math.round(C.H.asc)}|${C.hits.map((a) => `${a.t}-${a.n}-${a.type}-${Math.round(a.orb)}`).join(",")}`;
-
   return html`<${Sheet} id="interpsheet" open=${true} onClose=${onClose} title=${T(t, "interpTitle")} subtitle=${dateLabel} icon="lucide:sparkles">
       <${Reading} sig=${sig} input=${input} loc=${loc} api=${AI_SKY} t=${t}
         gateText=${GATE_INTERP[loc] || GATE_INTERP.en} lines=${[30, 34, 28, 20]} />
   </${Sheet}>`;
 }
+
 
 
 

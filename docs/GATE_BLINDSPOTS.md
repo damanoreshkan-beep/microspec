@@ -6,6 +6,11 @@ and it is real — but it has an edge, and this file is where the edge is writte
 **The pattern, in one line:** *a gate verifies that a mechanism exists; it does not ask whether the mechanism
 achieves its purpose.*
 
+> The entries below that name it are kept exactly as written: every one is a lesson about a GATE rather than
+> about that app, and each was paid for once already. Read `brick` in them as "the monochrome console game
+> that used to live here". `hunt` still carries the shared console, the deck and the preview tooling those
+> entries describe, so the blind spots they record are all still live.
+
 Every entry below is a real defect that shipped to production **with every gate green**. None was found by
 CI. All but one were found by a human opening the app on a phone.
 

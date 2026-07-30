@@ -111,8 +111,8 @@ function Actions({ actions, t, onKeyboard, size = "var(--ms-ctl)" }) {
  * @param pad       [{ id, pad: "up"|"down"|"left"|"right", bit, icon, label }]
  *                  Every key exposes ONE hook, data-key=<id>, and pad keys mirror it as data-pad
  *                  so a test can count the cross without knowing what the app called its keys.
- *                  Lifting this shell out of brick changed those hooks and broke three e2e cases:
- *                  a shared component owns its DOM contract too, not only its markup.
+ *                  Lifting this shell out of its first game changed those hooks and broke three
+ *                  e2e cases: a shared component owns its DOM contract too, not only its markup.
  * @param actions   [{ id, bit, icon, label, latch? }]   — 1…4; the shell decides the arrangement
  * @param menu      [{ id, act, icon, label, pressed? }] — sound, records: momentary, small
  * @param centre    [{ id, act, text|icon, label }]      — the START column under the menu row
@@ -168,7 +168,7 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
   return html`
     <div class="h-full min-h-0 flex flex-col items-center justify-center">
       <div class="ms-shell sf-raised ms-side min-h-0 flex flex-col gap-[var(--ms-gap)]"
-           data-shell-body="brick" data-deck="split" ...${spread} style=${style}>
+           data-shell-body="handheld" data-deck="split" ...${spread} style=${style}>
         ${stage}
         ${deckRow}
       </div>

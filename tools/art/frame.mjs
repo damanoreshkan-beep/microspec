@@ -4,7 +4,7 @@ import { encodePNG } from "./png.mjs";
 const HERE = new URL(".", import.meta.url);
 const MAP = new URL("./frame.importmap.json", HERE);
 
-if (!import.meta.resolve("/_rt/brick.js").includes("/packages/runtime/")) {
+if (!import.meta.resolve("/_rt/hunt.js").includes("/packages/runtime/")) {
   const cmd = new Deno.Command(Deno.execPath(), {
     args: ["run", "-A", `--import-map=${MAP.href}`, new URL(import.meta.url).pathname, ...Deno.args],
     stdout: "inherit", stderr: "inherit",
@@ -50,47 +50,12 @@ function flipCell(cell) {
 }
 
 
-function brickPainter(s, rt, atlas, glyphRects, lcd) {
-  const { clampLevel, segmentRGB, SCRW, SCRH } = rt;
-  const ink = hex(lcd.ink), plate = hex(lcd.plate);
-  
-  const seg = [0, 1, 2, 3, 4].map((l) => segmentRGB(l, lcd.plate, lcd.ink).map(Math.round));
-
-  return {
-    plate() { s.rect(0, 0, s.W, s.H, plate, 1); },
-    rect(x, y, w, h, level, alpha = 1) { s.rect(x, y, w, h, seg[clampLevel(level)], alpha); },
-    cell(cell, ox, oy, { level = null, alpha = 1, flip = false } = {}) {
-      if (!cell.w) return;
-      atlas.paint(s.buf, s.W, s.H, flip ? flipCell(cell) : cell, Math.round(ox), Math.round(oy),
-        { plate: lcd.plate, ink: lcd.ink, alphaScale: alpha, level });
-    },
-    glyph(ch, ox, oy) {
-      for (const [x, y] of glyphRects(ch)) s.rect(ox + x * 2, oy + y * 2, 2, 2, seg[4], 1);
-    },
-    
-    grid(a) {
-      for (let y = 0; y < s.H; y += 2)
-        for (let x = 0; x < s.W; x++) s.px((y * s.W + x) * 4, ink[0], ink[1], ink[2], a);
-    },
-    
-    
-    sheen() {
-      const a0 = lcd.sheen * 2, d = SCRW * SCRW + SCRH * SCRH;
-      for (let y = 0; y < s.H; y++)
-        for (let x = 0; x < s.W; x++) {
-          const t = ((x + 0.5) * SCRW + (y + 0.5) * SCRH) / d;     
-          if (t >= 0.55) continue;
-          s.px((y * s.W + x) * 4, 255, 255, 255, a0 * (1 - Math.max(0, t) / 0.55));
-        }
-    },
-  };
-}
-
 function huntPainter(s, rt, PAL, glyphRects) {
   const { SCRH, WORLD } = rt;
   const TRANSPARENT = 255;
   const sky0 = hex(WORLD.sky[0]), sky1 = hex(WORLD.sky[1]);
   const glyphInk = hex("#f0f0f5");
+
   return {
     keep() {},                                   
     sky() {
@@ -134,27 +99,7 @@ async function loadEngine(wasmPath, S, withBox) {
     box: withBox ? (kind) => { const v = E.game_box(kind | 0); return { w: (v >> 16) & 0xffff, h: v & 0xffff }; } : null,
   };
 }
-
-
 const APPS = {
-  brick: {
-    frames: 140,
-    async build(seedOverride) {
-      const rt = await import("/_rt/brick.js");
-      const atlas = await import(new URL("../../apps/brick/atlas.js", HERE).href);
-      const render = await import(new URL("../../apps/brick/render.js", HERE).href);
-      const { GATE_SEED } = await import(new URL("../../apps/brick/engine.js", HERE).href);
-      const E = await loadEngine(new URL("../../apps/brick/assets/brick.wasm", HERE).pathname, rt.S, false);
-      const s = surface(rt.SCRW, rt.SCRH);
-      return {
-        E, s, seed: seedOverride ?? GATE_SEED,
-        
-        track: (i) => rt.IN.RIGHT | rt.IN.RUN | ((i % 46) < 16 ? rt.IN.JUMP : 0),
-        p: brickPainter(s, rt, atlas, render.glyphRects, rt.LCD),
-        draw: (p, dl, n, st) => render.renderFrame(p, dl, n, st, {}),
-      };
-    },
-  },
   hunt: {
     frames: 150,
     async build(seedOverride) {
@@ -189,6 +134,7 @@ function upscale(buf, W, H, k) {
   return { buf: out, W: W * k, H: H * k };
 }
 
+
 function args(argv) {
   const o = { app: null, out: null, scale: 3, frames: null, seed: null };
   for (let i = 0; i < argv.length; i++) {
@@ -210,13 +156,14 @@ if (!app) {
 }
 const out = opt.out ?? `${opt.app}.png`;
 const N = opt.frames ?? app.frames;
+
 const { E, s, p, seed, track, draw } = await app.build(opt.seed);
 E.init(seed);
-
 
 const frame = () => { const { dl, n } = E.list(); draw(p, dl, n, E.state()); };
 for (let i = 0; i < N; i++) E.step(track(i));
 frame();
+
 const up = upscale(s.buf, s.W, s.H, opt.scale);
 await Deno.writeFile(out, await encodePNG(up.buf, up.W, up.H));
 

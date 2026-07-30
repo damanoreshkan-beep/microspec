@@ -23,28 +23,45 @@ export const SPRITE = 0x100;
 export const LIGHT = Object.freeze({ x: -1, y: -1 });
 export const WORLD = Object.freeze({
   sky: ["#1b2430", "#2c3a49"],            
-  hill: "#22303c",
-  far: "#1d2833",
+  
+  ridge: "#1d2734",                       
+  canopyFar: "#18202b",
+  canopyMid: "#131a23",
+  canopy: "#0d131a",                      
+  canopyLit: "#1c2622",                   
+  bark: "#171410",
+  barkLit: "#282219",
+  moon: "#c9d2dc",
+  moonDim: "#8e99a6",                     
+  star: "#7f90a4",
+  abyss: "#080b10",
   grass: "#4a6b3a",
   grassLit: "#6d9150",
+  
   earth: "#4a3b2c",
+  earthMid: "#403327",
   earthDark: "#33291e",
-  stone: "#4d4f57",
-  stoneLit: "#6a6d78",
+  earthDeep: "#241c14",                   
+  
+  grit: "#4a4135",
+  gritLit: "#5e5344",
+  
+  stone: "#43464e",
+  stoneLit: "#51555f",
   wood: "#5a3f28",
   gold: "#d8a534",
+  goldLit: "#f2d47a",
+  goldDark: "#8a6420",
   heart: "#c8434f",
   spear: "#b9743a",
   spearTip: "#d9dbe4",
+  quiverEmpty: "#3d4653",                 
 });
-
 
 export const lit = (ramp, i) => (ramp[i] ? ramp[i][0] : i);
 export const shade = (ramp, i) => (ramp[i] ? ramp[i][1] : i);
 
-
 export const SHADOW = Object.freeze({ alpha: 0.42, reach: 60, floor: 0.08, flat: 0.34, wide: 0.42 });
-
 /**
  * Where a sprite's ground shadow goes and how heavy it is. Identical maths to brick, and for the
  * identical reason: at a 45° light a point `h` above the ground lands `h` along it, because
@@ -61,7 +78,6 @@ export function shadowFor(h, w) {
     alpha: SHADOW.alpha + (SHADOW.floor - SHADOW.alpha) * t,
   };
 }
-
 export function parallaxX(camx, depth) { return Math.round(camx * depth) | 0; }
 export const LAYERS = Object.freeze([0.12, 0.3, 0.55]);
 

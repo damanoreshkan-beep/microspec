@@ -169,26 +169,100 @@ const seam = (c, by = 1) => {
 
 
 const speck = (x, y, s) => (((x * 73856093) ^ (y * 19349663) ^ (s * 83492791)) >>> 0) % 11;
+const rnd = (x, y, s) => ((x * 73856093) ^ (y * 19349663) ^ (s * 83492791)) >>> 0;
+
+/**
+ * A stone in the soil: an ellipse, capped by the lamp and shaded on the face that turns away.
+ *
+ * Drawn rather than embossed because `emboss` works off the SILHOUETTE of the whole cell, and a
+ * stone buried in earth has no silhouette — its edges are interior pixels, so emboss would light
+ * the tile's own border instead and leave the stone flat.
+ */
+function pebble(c, cx, cy, rx, ry) {
+  for (let dy = -ry; dy <= ry; dy++) {
+    const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (dy / (ry + 0.5)) ** 2)));
+    for (let dx = -hw; dx <= hw; dx++) {
+      const lit = dy === -ry || (dx === -hw && dy < 0);              
+      const dark = dy >= ry - 1 || dx >= hw - 1;
+      put(c, cx + dx, cy + dy, lit ? W.gritLit : dark ? W.earthDeep : W.grit);
+    }
+  }
+}
+
+/** A root, wandering down and sideways one pixel at a time. Straight lines do not grow. */
+function root(c, x, y, len, ink, v) {
+  let cx = x;
+  for (let j = 0; j < len; j++) {
+    put(c, cx, y + j, ink);
+    if (j > 3 && speck(cx, y + j, v + 40) === 0) put(c, cx + 1, y + j, ink);      
+    cx += (rnd(cx, y + j, v + 7) % 3) - 1;
+    if (cx < 0 || cx >= TILE) return;
+  }
+}
+
+/**
+ * Soil, at two scales. Fine per-pixel speckle alone is sandpaper — it has no features, so a 24px
+ * tile of it reads as one flat value no matter how much of it there is. The coarse pass works on
+ * 3×3 blocks, which is what gives the mass its patches of wetter and drier ground.
+ */
+function soil(c, base, patch, grain, v) {
+  fill(c, 0, 0, TILE, TILE, base);
+  for (let j = 0; j < TILE; j++)
+    for (let i = 0; i < TILE; i++) {
+      if (speck(i >> 1, j >> 1, v + 60) > 6) put(c, i, j, patch);
+      if (speck(i, j, v + 2) === 0) put(c, i, j, grain);
+    }
+}
+
+/**
+ * A terrain tile. `variant` exists because every ground tile in the level is the SAME cached cell,
+ * so any texture inside it repeats every 24px and the eye locks onto that grid — the renderer picks
+ * a variant from world position, which turns a 24px period into an irregular one for four cells.
+ */
 const tileCache = new Map();
-export function tileCell(id) {
-  if (tileCache.has(id)) return tileCache.get(id);
+export function tileCell(id, variant = 0) {
+  const v = variant & 3, key = id * 4 + v;
+  if (tileCache.has(key)) return tileCache.get(key);
   let c = cell(TILE, TILE);
   switch (id) {
-    case T.GROUND:                                   
-      fill(c, 0, 0, TILE, TILE, W.earth);
-      fill(c, 0, 0, TILE, 5, W.grass);
-      for (let i = 0; i < TILE; i++) put(c, i, 0, W.grassLit);
-      for (let j = 5; j < TILE; j++) for (let i = 0; i < TILE; i++) if (speck(i, j, 1) === 0) put(c, i, j, W.earthDark);
-      c = emboss(c, { surface: true, tiling: true });
+    case T.GROUND: {
+      
+      soil(c, W.earth, W.earthMid, W.earthDark, v);
+      for (let i = 0; i < TILE; i++) {
+        const d = 4 + speck(i, 0, v + 11) % 3;                            
+        fill(c, i, 0, 1, d, W.grass);
+        put(c, i, 0, speck(i, 1, v + 5) % 3 ? W.grassLit : W.grass);      
+        put(c, i, d, W.earthDark);                                        
+        if (speck(i, 2, v + 17) === 0) fill(c, i, d, 1, 2, W.grass);      
+      }
+      
+      for (let j = 7; j < TILE; j++)
+        for (let i = 0; i < TILE; i++)
+          if (speck(i, j, v + 30) < ((j - 7) * 11) / (TILE - 7)) put(c, i, j, W.earthDark);
+      if (v === 1) root(c, 7, 8, 12, W.earthDark, v);                     
       break;
+    }
     case T.DIRT:
-      fill(c, 0, 0, TILE, TILE, W.earth);
-      for (let j = 0; j < TILE; j++) for (let i = 0; i < TILE; i++) if (speck(i, j, 2) === 0) put(c, i, j, W.earthDark);
+      soil(c, W.earthDark, W.earthMid, W.earthDeep, v);
+      if (v === 0) pebble(c, 7, 14, 3, 2);
+      if (v === 2) pebble(c, 17, 5, 2, 2);
+      if (v === 1) root(c, 9, 0, 15, W.earthDeep, v);
       break;
     case T.BRICK: case T.STONE: case T.USED:
+      
       fill(c, 0, 0, TILE, TILE, W.stone);
-      for (let i = 0; i < TILE; i++) { put(c, i, 0, W.stoneLit); put(c, i, TILE / 2, W.earthDark); }
-      c = seam(extrude(c, 2), 1);
+      for (let j = 0; j < TILE; j++)
+        for (let i = 0; i < TILE; i++) {
+          if (speck(i >> 1, j >> 1, v + 70) > 9) put(c, i, j, W.stoneLit);   
+          if (speck(i, j, v + 6) === 0) put(c, i, j, W.earthDark);           
+        }
+      for (let i = 0; i < TILE; i++) {
+        const d = 2 + speck(i, 0, v + 21) % 3;
+        fill(c, i, 0, 1, d, W.grass);
+        put(c, i, 0, speck(i, 1, v + 9) % 3 ? W.grassLit : W.grass);
+        put(c, i, d, W.earthDark);
+        put(c, i, TILE - 1, W.earthDeep);                                    
+      }
       break;
     case T.QUESTION:
       fill(c, 0, 0, TILE, TILE, W.wood);
@@ -204,8 +278,15 @@ export function tileCell(id) {
       break;
     }
     case T.COIN:
-      for (let j = 6; j < 18; j++) { const r = Math.round(Math.sqrt(36 - (j - 12) ** 2)); fill(c, 12 - r, j, r * 2, 1, W.gold); }
-      c = emboss(c);
+      
+      for (let j = 6; j < 18; j++) {
+        const r = Math.round(Math.sqrt(36 - (j - 12) ** 2));
+        fill(c, 12 - r, j, r * 2, 1, W.gold);
+        put(c, 12 - r, j, W.goldDark); put(c, 11 + r, j, W.goldDark);      
+        
+        if (j < 12) { put(c, 13 - r, j, W.goldLit); put(c, 14 - r, j, W.goldLit); }
+      }
+      for (let i = 9; i < 15; i++) { put(c, i, 6, W.goldDark); put(c, i, 17, W.goldDark); }
       break;
     case T.SPEAR:                                    
       fill(c, 3, 13, 18, 2, W.spear);
@@ -226,7 +307,7 @@ export function tileCell(id) {
     default:
       c = cell(0, 0);
   }
-  tileCache.set(id, c);
+  tileCache.set(key, c);
   return c;
 }
 

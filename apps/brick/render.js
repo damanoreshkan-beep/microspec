@@ -19,7 +19,40 @@ const hash = (n) => { let x = (n * 2654435761) >>> 0; x ^= x >>> 15; x = (x * 22
 
 function backdrop(p, camx) {
   const horizon = ROWS * TILE - TILE * 2;
-  // far hills
+
+  /* THE RANGE. Everything below used to live in the bottom third: two bands of low hills sitting
+     on the horizon and a thin line of clouds pinned under the HUD, which left the middle 130px of
+     a 270px screen — half the picture — as bare plate. A platformer's play plane is at the bottom
+     by definition, so the sky is not spare room, it is most of the frame, and an empty half-frame
+     reads as an unfinished game rather than as air.
+
+     Peaks rather than more mounds, because the void is TALL and a ridge of domes cannot reach into
+     it without becoming domes the size of the level. Drawn as a silhouette by COLUMN so the ridge
+     is continuous — a mountain range has no gaps between its mountains — and as TWO ranges of
+     different period, taking whichever is higher per column. One range is a row of triangles, and
+     that is what the first cut looked like: three identical cones evenly spaced. Overlapping
+     silhouettes at different spacings is what a range actually is, and it costs one more term.
+     A pixel of hash jitter along the slope keeps the edges from reading as drawn with a ruler.
+     Depth 0.05–0.07 — nearly fixed, which is what "far away" means. */
+  const base = horizon - TILE;
+  const range = (x, off, period, salt, lo, span) => {
+    const wx = x + off;
+    const i = Math.floor(wx / period), u = (((wx % period) + period) % period) / period;
+    const seed = hash(salt + i);
+    const h = lo + (seed >> 4) % span;
+    const skew = 0.34 + ((seed >> 12) % 30) / 100;         // where the summit sits along the base
+    const up = u < skew ? u / skew : (1 - u) / (1 - skew); // a ridge, not a cone: two slopes
+    if (up <= 0) return base;
+    const rough = (hash(salt * 7 + (wx | 0)) % 3) - 1;     // ±1px of rock, not a ruled line
+    return base - Math.round(h * up ** 1.15) + rough;
+  };
+  for (let x = -1; x < SCRW + 1; x++) {
+    const top = Math.min(range(x, parallaxX(camx, 0.05), 137, 2000, 58, 46),
+                         range(x, parallaxX(camx, 0.07), 91, 3000, 44, 40));
+    if (top < base) p.rect(x, top, 1, base - top, 1);
+  }
+
+  // far hills, on the range's feet
   const off0 = parallaxX(camx, LAYERS[0]);
   for (let i = -1; i < 8; i++) {
     const seed = hash(i + ((off0 / 96) | 0));
@@ -38,14 +71,16 @@ function backdrop(p, camx) {
     const w = 58 + (seed >> 8) % 40, h = 20 + (seed >> 16) % 18;
     for (let dy = 0; dy < h; dy++) {
       const half = Math.round((w / 2) * Math.sqrt(1 - (dy / h) ** 2));
-      p.rect(x + w / 2 - half, horizon - dy + TILE, half * 2, 1, 1);
+      p.rect(x + w / 2 - half, horizon - dy + TILE, half * 2, 1, 2);
     }
   }
-  // clouds, nearer and thinner
+  /* Clouds, spread across the upper half rather than crowded into one 44px lane under the HUD.
+     They start below the readout (y ≥ 34) and never reach the range, so the two layers read as
+     two distances instead of as one texture. */
   const off1 = parallaxX(camx, LAYERS[1]);
-  for (let i = -1; i < 6; i++) {
-    const seed = hash(1000 + i + ((off1 / 150) | 0));
-    const x = i * 150 - (off1 % 150) + (seed % 60), y = 16 + (seed >> 9) % 44;
+  for (let i = -1; i < 9; i++) {
+    const seed = hash(1000 + i + ((off1 / 104) | 0));
+    const x = i * 104 - (off1 % 104) + (seed % 48), y = 28 + (seed >> 9) % 52;
     // Rounded, not rectangular: three stacked rows per lobe. A cloud drawn as a rect reads as
     // a rendering artefact, which is exactly how the first frame looked.
     for (const [cx, cy, r] of [[x + 10, y, 10], [x + 22, y - 3, 8], [x + 32, y + 1, 6]])
@@ -87,7 +122,7 @@ function ellipse(p, cx, cy, rx, ry, alpha) {
 /**
  * Draw one frame.
  *
- * @param p       a painter: plate · ghost · rect · cell · grid · sheen
+ * @param p       a painter: plate · rect · cell · glyph · grid · sheen
  * @param dl      Int16Array display list from the engine
  * @param dln     entry count
  * @param st      Int32Array state block
@@ -96,8 +131,11 @@ function ellipse(p, cx, cy, rx, ry, alpha) {
 export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
   const camx = st[4];
 
+  /* No persistence pass. A `ghost(0.12)` of the previous frame used to go down here, and it was
+     the single loudest source of the translucent look: it composites a second, offset copy of the
+     whole scene under everything that follows, so a moving character is always half a character
+     one frame behind. A real panel smears; a 60 Hz canvas pretending to smear just looks unfinished. */
   p.plate();
-  p.ghost(LCD.ghost);               // passive-matrix persistence: the frame before, faintly
   backdrop(p, camx);
 
   // Backdrop tiles sit behind the play plane; solids and their shadows in front of it.

@@ -50,37 +50,60 @@ export const LIGHT = Object.freeze({ x: -1, y: -1 });
    THINNER segment and a shaded face a DENSER one, exactly as a real panel would show it. */
 export const LCD = Object.freeze({
   plate: "#b4bc96",                       // reflective olive backplate
-  plateLight: "#c3c9a6",                  // …under the polariser's brighter corner
   ink: "#23281c",
-  grid: 0.09,                             // unlit segment lattice, always faintly visible
-  ghost: 0.12,                            // previous frame — passive-matrix persistence
-  sheen: 0.06,                            // polariser, a diagonal wash
+  grid: 0.05,                             // unlit segment lattice, always faintly visible
+  sheen: 0.05,                            // polariser, a diagonal wash
 });
 
-/* ── the plate is the SHELL's, not this file's ────────────────────────────────────────
-   A tint parameter that never reaches a pixel is decoration in a table. This game is
-   monochrome — it is literally an ink density on a plate — so the console the player picked
-   can hand it its panel, and choosing the pocket shell means playing on four shades of green
-   rather than on olive. A COLOUR game cannot take this and must not: re-tinting a palette of
-   CC0 art is a filter, not a device.
+/* ── the picture must be OPAQUE ───────────────────────────────────────────────────────
+   The whole game is drawn in five densities of one ink, and the first cut set the top of
+   that ramp at 0.86 with a 0.12 ghost of the previous frame composited over every one of
+   them. The arithmetic nobody did: a fully driven segment let 14% of the plate through,
+   the ghost added a second translucent copy of the scene one frame behind, and the grid
+   and the sheen put two more veils on top. Four transparent layers is not an LCD, it is a
+   photograph of an LCD taken through a window — the ground read as see-through, the hills
+   showed through the ground and the player was a suggestion.
 
-   `LCD` above stays exactly what it was, so a caller that asks for nothing gets the panel
-   this game shipped with. */
+   So: the ramp TOPS OUT OPAQUE. A driven segment is a driven segment; a real passive-matrix
+   panel at full contrast does not show you its backplate. The intermediate steps were also
+   too close together to separate a sprite from the tile behind it, so the ramp is spread —
+   the gap between "terrain" (2) and "the thing standing on it" (4) is now 0.55 rather than
+   0.28. The persistence is gone entirely rather than reduced: a smear behind a moving
+   character is exactly the artefact that reads as transparency, and it never bought
+   anything a 60 Hz display needed.
+
+   0 is bare plate, 4 is a fully driven segment. Anything drawn in the game picks a level,
+   then the light model shifts it per face. */
+export const INK = Object.freeze([0, 0.2, 0.45, 0.72, 1]);
+
+/* ── a driven segment REPLACES the plate; it never stacks with what is behind it ───────
+   The other half of the same bug, and the bigger half. The renderer composited every cell
+   onto whatever was already in the buffer, so a terrain tile at 45% density let the
+   parallax hill behind it through, the player let the ground through, and the frame read
+   as a stack of transparencies rather than as a picture — which is exactly the complaint.
+
+   It was also wrong about the thing it claims to model. A passive-matrix panel is ONE
+   layer of segments over ONE backplate: there is no "behind a segment", and two shapes
+   that overlap do not add up, the front one is simply what is driven there. So a level
+   resolves to an OPAQUE colour — the plate mixed with ink at that density — and the
+   density hierarchy (backdrop 1 · terrain 1–3 · objects 2–4 · the actor 2–4) survives
+   untouched, because it was always a hierarchy of VALUE and never one of see-through.
+
+   Partial alpha stays available and means the one thing it should: a mark that genuinely
+   darkens what is under it, i.e. the ground shadow. */
 const chan = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-const toHex = (v) => "#" + v.map((c) => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0")).join("");
+const hex2 = (c) => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0");
 
-/** Move a colour k of the way to white. The polariser's bright corner is the plate at k≈0.18. */
-export const lighten = (h, k) => toHex(chan(h).map((c) => c + (255 - c) * k));
-
-/** A panel from a shell's `tint`, or the default one when the shell has no opinion. */
-export function lcdFor(tint) {
-  if (!tint?.off || !tint?.ink) return LCD;
-  return Object.freeze({ ...LCD, plate: tint.off, plateLight: lighten(tint.off, 0.18), ink: tint.ink });
+/** The RGB a level resolves to on a given panel. Pure, so both painters can agree on it. */
+export function segmentRGB(level, plate = LCD.plate, ink = LCD.ink) {
+  const a = INK[clampLevel(level)];
+  const p = chan(plate), k = chan(ink);
+  return [0, 1, 2].map((i) => p[i] + (k[i] - p[i]) * a);
 }
-
-/* Five ink densities: 0 is bare plate, 4 is a fully driven segment. Anything drawn in the
-   game picks a level, then the light model shifts it per face. */
-export const INK = Object.freeze([0, 0.16, 0.34, 0.58, 0.86]);
+/** The same, as a CSS colour — what a Canvas2D `fillStyle` wants. */
+export function segment(level, plate = LCD.plate, ink = LCD.ink) {
+  return "#" + segmentRGB(level, plate, ink).map(hex2).join("");
+}
 
 /** Clamp a density level into the ramp. */
 export const clampLevel = (l) => (l < 0 ? 0 : l > INK.length - 1 ? INK.length - 1 : l | 0);

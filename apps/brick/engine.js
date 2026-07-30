@@ -4,7 +4,7 @@
 // to load. Everything time-shaped lives here, because a fixed timestep is the only way a jump
 // arc stays the same height on a 60, 90 and 120 Hz display.
 
-import { SCRW, SCRH, INK, LCD, S, SFX, clampLevel } from "/_rt/brick.js";
+import { SCRW, SCRH, LCD, S, SFX, clampLevel, segment, segmentRGB } from "/_rt/brick.js";
 import { renderFrame, glyphRects } from "./render.js";
 import { TRANSPARENT } from "./atlas.js";
 import { createEngine } from "/_rt/audio.js";
@@ -31,8 +31,12 @@ export async function loadEngine(url = WASM_URL) {
    rather than 78 000 per-pixel writes. The FLIPPED and SILHOUETTE variants are baked too: a
    per-frame ctx.scale(-1,1) costs a state change on every sprite, and the contact shadow is the
    same silhouette every time. */
-const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-
+/* A cell bakes OPAQUE. Every non-transparent pixel becomes the colour its density resolves to on
+   this panel (`segmentRGB`) at alpha 255 — never ink at a partial alpha, which is what it used to
+   be and what made the whole picture see-through: a level-2 terrain tile drawn over the parallax
+   hills showed 55% of them. A segment does not stack with what is behind it, because on a panel
+   there is nothing behind it. `segmentRGB` is shared with the browser-free painter so both agree
+   pixel for pixel. */
 function bake(cell, { flip = false, level = null, lcd = LCD } = {}) {
   const c = document.createElement("canvas");
   c.width = Math.max(1, cell.w); c.height = Math.max(1, cell.h);
@@ -43,14 +47,15 @@ function bake(cell, { flip = false, level = null, lcd = LCD } = {}) {
      that cannot bake yields a blank tile instead of throwing the whole view away on mount. */
   const img = g?.createImageData?.(cell.w, cell.h);
   if (!img?.data || !g.putImageData) return c;
-  const ink = hex(lcd.ink);
+  const lut = [0, 1, 2, 3, 4].map((l) => segmentRGB(l, lcd.plate, lcd.ink));
   for (let y = 0; y < cell.h; y++)
     for (let x = 0; x < cell.w; x++) {
       const v = cell.px[y * cell.w + (flip ? cell.w - 1 - x : x)];
       if (v === TRANSPARENT) continue;
+      const rgb = lut[clampLevel(level == null ? v : level)];
       const o = (y * cell.w + x) * 4;
-      img.data[o] = ink[0]; img.data[o + 1] = ink[1]; img.data[o + 2] = ink[2];
-      img.data[o + 3] = Math.round(INK[clampLevel(level == null ? v : level)] * 255);
+      img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2];
+      img.data[o + 3] = 255;
     }
   g.putImageData(img, 0, 0);
   return c;
@@ -58,6 +63,10 @@ function bake(cell, { flip = false, level = null, lcd = LCD } = {}) {
 
 export function canvasPainter(ctx, lcd = LCD) {
   const ink = lcd.ink;
+  /* The five colours a density can BE on this panel, resolved once. `rect` and `glyph` fill with
+     one of these rather than with ink at a partial globalAlpha, for the same reason `bake` does:
+     the mark must replace the plate, not be blended over whatever the pass before it drew. */
+  const seg = [0, 1, 2, 3, 4].map((l) => segment(l, lcd.plate, lcd.ink));
   const cache = new Map();
   const baked = (cell, flip, level) => {
     let byCell = cache.get(cell);
@@ -67,11 +76,6 @@ export function canvasPainter(ctx, lcd = LCD) {
     if (!c) { c = bake(cell, { flip, level }); byCell.set(k, c); }
     return c;
   };
-
-  // the previous frame, for the passive-matrix persistence
-  const prev = document.createElement("canvas");
-  prev.width = SCRW; prev.height = SCRH;
-  const pg = prev.getContext("2d");
 
   /* The lattice and the polariser are the two passes that need a pattern and a gradient, and the
      browser-free preflight runs against a stub canvas that has neither. They are the *finish* on
@@ -92,12 +96,12 @@ export function canvasPainter(ctx, lcd = LCD) {
   }
 
   return {
-    keep() { pg.clearRect(0, 0, SCRW, SCRH); pg.drawImage(ctx.canvas, 0, 0); },
     plate() { ctx.globalAlpha = 1; ctx.fillStyle = lcd.plate; ctx.fillRect(0, 0, SCRW, SCRH); },
-    ghost(a) { ctx.globalAlpha = a; ctx.drawImage(prev, 0, 0); ctx.globalAlpha = 1; },
+    /* `alpha` is partial COVERAGE, and it has exactly one honest caller: the ground shadow, which
+       does darken what is under it. Everything else passes 1 and replaces. */
     rect(x, y, w, h, level, alpha = 1) {
-      ctx.globalAlpha = INK[clampLevel(level)] * alpha;
-      ctx.fillStyle = ink;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = seg[clampLevel(level)];
       ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
       ctx.globalAlpha = 1;
     },
@@ -108,9 +112,8 @@ export function canvasPainter(ctx, lcd = LCD) {
       if (alpha !== 1) ctx.globalAlpha = 1;
     },
     glyph(ch, ox, oy) {
-      ctx.fillStyle = ink; ctx.globalAlpha = INK[4];
+      ctx.fillStyle = seg[4];
       for (const [x, y] of glyphRects(ch)) ctx.fillRect(ox + x * 2, oy + y * 2, 2, 2);
-      ctx.globalAlpha = 1;
     },
     grid(a) { if (!pattern) return; ctx.globalAlpha = a; ctx.fillStyle = pattern; ctx.fillRect(0, 0, SCRW, SCRH); ctx.globalAlpha = 1; },
     sheen() { if (!sheenGrad) return; ctx.fillStyle = sheenGrad; ctx.fillRect(0, 0, SCRW, SCRH); },

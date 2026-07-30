@@ -13,7 +13,7 @@
 // Pure: every function returns ink levels, never a canvas. That is what lets the browser, the
 // gate and the offline PNG preview all get identical pixels.
 
-import { INK, T, K, clampLevel, LIGHT } from "/_rt/brick.js";
+import { T, K, clampLevel, LIGHT, LCD, segmentRGB } from "/_rt/brick.js";
 /* Not under assets/: deploy/sw.mjs deliberately keeps apps/<id>/assets/* OUT of the offline
    precache (media is fetched on first use), and this is SHELL — a static import the view cannot
    render without. The wasm stays in assets/ because it genuinely is a binary fetched at runtime. */
@@ -160,15 +160,28 @@ const BACKDROP = new Set([T.BUSH, T.HILL, T.CLOUD]);
    to the densest mark on the plate, and everything else is read relative to it. The first cut
    ignored this — the source art's outlines all landed on level 4, so the ground was heavier
    than the character standing on it and the frame read as a picture of a floor.
-   So each class of thing is remapped into its own band, deepest last:
-     backdrop 1 · terrain 1-3 · objects 2-4 · the player 2-4 and never lighter than the ground.
-   This is the in-game half of "colour = meaning": the one thing you control is the one thing
-   you can always find. */
+
+   The SECOND cut over-corrected and produced the picture the owner rejected. Measured off the
+   real cells rather than off the intent: the ground came out at a mean density of 1.98 with 30%
+   of it at level 1, i.e. a floor that is barely a stain on the plate; the huntress' cousin here
+   came out at 2.52, half a step from the ground she stands on; and the ENEMIES landed at 3.51,
+   the densest marks in the frame. The eye went to the walker, then to nothing.
+
+   So, deepest last, and every band is a range a whole CLASS occupies rather than a nudge:
+     backdrop 1 · terrain 2-3 · objects 3-4 · figures 3-4
+   Terrain is matter and reads as matter. Figures are not separated from it by being darker —
+   there is no room left above "objects" for that, and value alone was never going to carry it at
+   18px. They are separated by a HALO (see `pose` below), which is the trick every monochrome
+   handheld platformer used and the one thing the alpha did not try. */
 const BANDS = {
   backdrop: [1, 1],
-  terrain: [1, 3],
-  object: [2, 3],   // the LIT edge and the WALL are drawn by extrude(), not inherited
-  actor: [2, 4],
+  terrain: [2, 3],
+  /* Objects span the WHOLE upper ramp rather than its top two rungs. The source crates are
+     bimodal — an outline and a fill — so a two-rung band crushed 80% of every brick onto level 4
+     and a row of them read as six black holes punched in the sky. Given three rungs the texture
+     survives and a brick is a brick. The LIT edge and the WALL are drawn by extrude(). */
+  object: [2, 4],
+  actor: [3, 4],
 };
 function band(cell, [lo, hi]) {
   const out = clone(cell);
@@ -223,7 +236,13 @@ export function spriteCell(kind, frame) {
     cell = emboss(band(half, BANDS.object));
   } else if (!art) cell = { px: new Uint8Array(0), w: 0, h: 0 };
   else {
-    const pose = (rows) => emboss(outline(band(parse(rows), BANDS.actor)));
+    /* Contour, then HALO. The inner ring is the dark silhouette a figure needs to be one shape at
+       18px; the outer ring is drawn at level 0, which on this panel is the bare plate — and a
+       plate-coloured ring is opaque now, so it CARVES the figure out of whatever she is standing
+       on. Without it a dark character on solid dark ground is one dark mass, which is exactly
+       what raising the terrain band would otherwise have cost. Two pixels of growth per side; the
+       renderer already centres a sprite on its collision box, so the halo costs no alignment. */
+    const pose = (rows) => emboss(outline(outline(band(parse(rows), BANDS.actor), 4), 0));
     const idle = pose(art[0]), walk = pose(art[1]);
     cell = frame === 1 ? walk : frame === 2 ? idle : frame === 3 ? walk
          : frame === 4 ? flipY(idle) : frame === 5 ? flipX(walk) : idle;
@@ -233,8 +252,21 @@ export function spriteCell(kind, frame) {
 }
 
 /* ── painting ─────────────────────────────────────────────────────────────────────────── */
-/** Paint a cell into an RGBA buffer as ink over whatever is already there. */
-export function paint(rgba, W, H, cell, ox, oy, { ink = [0x23, 0x28, 0x1c], alphaScale = 1, level = null } = {}) {
+/**
+ * Paint a cell into an RGBA buffer.
+ *
+ * A pixel resolves to the OPAQUE colour its density means on this panel (`segmentRGB`) and
+ * replaces what was there — it does not blend with it. That is the whole repair of the
+ * translucent look: this function used to composite ink at `INK[level]` over the buffer, so a
+ * terrain tile at level 2 let 55% of the parallax hill behind it through. A panel has one layer
+ * of segments over one backplate; there is nothing behind a segment to show through.
+ *
+ * `alphaScale` survives as the one honest use of partial coverage — a mark that genuinely
+ * darkens what is under it, i.e. the ground shadow — and at its default of 1 the write is a
+ * straight replace.
+ */
+export function paint(rgba, W, H, cell, ox, oy, { plate = LCD.plate, ink = LCD.ink, alphaScale = 1, level = null } = {}) {
+  const lut = [0, 1, 2, 3, 4].map((l) => segmentRGB(l, plate, ink));
   for (let y = 0; y < cell.h; y++) {
     const py = oy + y;
     if (py < 0 || py >= H) continue;
@@ -243,12 +275,10 @@ export function paint(rgba, W, H, cell, ox, oy, { ink = [0x23, 0x28, 0x1c], alph
       if (v === TRANSPARENT) continue;
       const px = ox + x;
       if (px < 0 || px >= W) continue;
-      const a = (level == null ? INK[clampLevel(v)] : INK[clampLevel(level)]) * alphaScale;
-      if (a <= 0) continue;
+      if (alphaScale <= 0) continue;
+      const c = lut[clampLevel(level == null ? v : level)];
       const o = (py * W + px) * 4;
-      rgba[o] = rgba[o] * (1 - a) + ink[0] * a;
-      rgba[o + 1] = rgba[o + 1] * (1 - a) + ink[1] * a;
-      rgba[o + 2] = rgba[o + 2] * (1 - a) + ink[2] * a;
+      for (let i = 0; i < 3; i++) rgba[o + i] = rgba[o + i] * (1 - alphaScale) + c[i] * alphaScale;
       rgba[o + 3] = 255;
     }
   }

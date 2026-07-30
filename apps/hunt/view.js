@@ -119,9 +119,27 @@ export function hunt(props) {
 
       /* The gate has no finger. Seed a fixed track and run it forward so a11y, overflow, the
          screenshots and the taste pass all measure a POPULATED screen — with a spear in the air,
-         because a game photographed at rest is a photograph of a background. */
-      if (gate) for (let i = 0; i < 150; i++)
-        E.step(IN.RIGHT | ((i % 60) < 16 ? IN.JUMP : 0) | ((i % 30) === 0 ? IN.SHOOT : 0));
+         because a game photographed at rest is a photograph of a background.
+
+         The length is SEARCHED rather than written, and this app is the one that did NOT break —
+         it is here because brick's identical literal did. A track length is tuned once against
+         one build of the wasm and then silently owns every check that needs a live game: a dead
+         player stops the clock, and "frames are not moving" is what four unrelated-looking checks
+         report when the fixture drifted by ten frames. Today this picks 150, the same number that
+         was written here; tomorrow, after an engine change, it picks whatever is still true. */
+      if (gate) {
+        const track = (i) => IN.RIGHT | ((i % 60) < 16 ? IN.JUMP : 0) | ((i % 30) === 0 ? IN.SHOOT : 0);
+        const survives = (n) => {
+          E.init(seed.current);
+          for (let i = 0; i < n; i++) E.step(track(i));
+          for (let i = 0; i < 240; i++) { E.step(0); if (E.state()[S.DEAD]) return false; }
+          return true;
+        };
+        let best = 0;
+        for (let n = 150; n >= 20; n -= 10) if (survives(n)) { best = n; break; }
+        E.init(seed.current);
+        for (let i = 0; i < best; i++) E.step(track(i));
+      }
 
       const paint = () => {
         const st = E.state(), { dl, n } = E.list();

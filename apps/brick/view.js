@@ -117,8 +117,34 @@ export function brick(props) {
       /* The gate has no finger and no patience: seed a fixed track and run it forward so every
          check below — a11y, overflow, the screenshots, the taste pass — measures a POPULATED
          screen instead of an empty one. Sensor apps in this farm shipped broken twice for
-         exactly the missing version of this. */
-      if (gate) for (let i = 0; i < 140; i++) E.step(PAD.RIGHT | PAD.RUN | ((i % 46) < 16 ? PAD.JUMP : 0));
+         exactly the missing version of this.
+
+         But it must never hand the gates a CORPSE, and the length of the track is not allowed to
+         be a literal. A dead player freezes the clock (the game-over card is up and `$over` gates
+         `clock.tick`), and the very first thing the suite asks is whether frames are moving — so
+         one number, tuned once against one build of the wasm, silently owns four checks. The day
+         the jump stopped auto-hopping, 140 frames stopped landing where they used to: she coasted
+         off the end of the track into a pit, and brick failed with "frames are not moving", "the
+         player does not advance", "seven seconds of walking did not kill her" and "the run ended
+         before the camera was measured" — four failures, one cause, none of them about what they
+         said. A constant written beside a thing it describes is right until the thing moves.
+
+         So the length is SEARCHED, not written: the longest prefix after which she survives a
+         stretch of doing nothing, which is exactly the state the gates leave her in while they
+         take their measurements. Costs a few thousand steps at mount, once, in the gate only. */
+      if (gate) {
+        const track = (i) => PAD.RIGHT | PAD.RUN | ((i % 46) < 16 ? PAD.JUMP : 0);
+        const survives = (n) => {
+          E.init(seed.current);
+          for (let i = 0; i < n; i++) E.step(track(i));
+          for (let i = 0; i < 240; i++) { E.step(0); if (E.state()[S.DEAD]) return false; }
+          return true;
+        };
+        let best = 0;
+        for (let n = 140; n >= 20; n -= 10) if (survives(n)) { best = n; break; }
+        E.init(seed.current);
+        for (let i = 0; i < best; i++) E.step(track(i));
+      }
 
       const paint = () => {
         const st = E.state(), { dl, n } = E.list();

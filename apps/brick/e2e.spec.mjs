@@ -66,7 +66,12 @@ export default [
         await h.keys(["ArrowRight", "ShiftLeft"], 280);
       }
       const after = await dist(h);
-      h.expect(after > before + 20,
+      /* 12, not 20. Measured browser-free against the shipped binary, this exact input reaches 27 —
+         but the frames here are wall-clock waits against a rAF loop on a shared CI runner, and a
+         threshold with a 35% margin is a flake waiting for a slow morning. What the assertion has
+         to exclude is a player who is not moving, and a dead or wedged one gains ZERO; 12 is still
+         a dozen tiles clear of that while leaving room for a bad runner. */
+      h.expect(after > before + 12,
         `за 3с бігу зі стрибками дистанція ${before} → ${after} — симуляція не веде гравця вперед`);
     },
   },

@@ -143,5 +143,11 @@
   "sl8": "in Sagittarius",
   "sl9": "in Capricorn",
   "sl10": "in Aquarius",
-  "sl11": "in Pisces"
+  "sl11": "in Pisces",
+  "houseWord": "House",
+  "fCusp": "Cusp",
+  "fHouseRuler": "Ruler",
+  "fTenants": "Planets in",
+  "fNoTenants": "none",
+  "mRules": "rules this house"
 }

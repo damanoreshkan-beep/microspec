@@ -36,6 +36,12 @@ export const placementRead = PLACEMENT.get;
 export const isPlacementRead = PLACEMENT.has;
 export const warmPlacementRead = PLACEMENT.warm;
 
+// one house, read from its cusp — the sign on it, and where its RULER lives
+const HOUSE = reading("astro-h", "astroHouse");
+export const houseRead = HOUSE.get;
+export const isHouseRead = HOUSE.has;
+export const warmHouseRead = HOUSE.warm;
+
 // the natal chart as a whole
 const PORTRAIT = reading("astro-c", "astroChart");
 export const portraitRead = PORTRAIT.get;

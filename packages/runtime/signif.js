@@ -330,12 +330,18 @@ export const RETRO_NOTE = [
 
 // ── derived chart indicators ─────────────────────────────────────────────────────────────────────────────
 
-// chartRuler(ascLon, { modern }) → the ruler of the rising sign. Which convention is in force is the
-// caller's choice and must be shown, never assumed: traditional gives Aquarius to Saturn, modern to Uranus.
-export function chartRuler(ascLon, { modern = false } = {}) {
-  const s = signOf(ascLon), r = RULERS[s];
+// rulerOf(lon, { modern }) → the planet that rules the sign a longitude falls in. Which convention is in
+// force is the caller's choice and must be SHOWN, never assumed: traditional gives Aquarius to Saturn,
+// modern to Uranus. `modern: true` falls back to the traditional ruler for the nine signs that never
+// acquired an outer co-ruler, and reports `modern: false` when it does — a claim about a convention has to
+// be true of the specific answer, not of the request.
+export function rulerOf(lon, { modern = false } = {}) {
+  const s = signOf(lon), r = RULERS[s];
   return { sign: s, body: modern && r[1] ? r[1] : r[0], modern: !!(modern && r[1]) };
 }
+// The ruler of the rising sign is just the ruler of a particular longitude; the name is kept because that
+// is what an astrologer calls it, and because "chart ruler" appears in the portrait as a heading.
+export const chartRuler = rulerOf;
 
 // balance(lons) → { elements: [4], modalities: [3], topElement, topModality } — a plain count over the
 // bodies the user has switched on. Deliberately unweighted: schemes that weight the luminaries double are
@@ -432,6 +438,43 @@ MEANINGS (the app's sourced corpus):
 ${lines.join("\n")}
 Read this as ONE behaviour in ONE arena, not as two separate paragraphs about the sign and the house.`;
   const sig = `p${CORPUS}|${key}|${s}|${house || 0}|${houseSystem}|${retro ? "r" : ""}|${dig || "-"}`;
+  return { text, sig };
+}
+
+// One HOUSE, read from its cusp. This is the reading with the most actual technique in it, and the least
+// obvious to someone looking at a table of twelve degrees: a house is not only its own topic, it is
+// coloured by the sign on its cusp, and — the part that carries most of the meaning — it is DELEGATED to
+// the ruler of that sign, which lives somewhere else in the chart entirely. "Your second house is in
+// Sagittarius, and Jupiter, which rules it, sits in the eighth" is a real statement about money and other
+// people's resources, and it is the one thing a degree column can never tell you.
+//
+//   ruler   { key, lon, house, retro } — the traditional ruler of the sign on the cusp, and where it lives.
+//           null only if the caller could not resolve it (never expected: all twelve signs have one).
+//   coRuler the modern outer co-ruler's key, or null. Passed separately and LABELLED, never merged in.
+//   tenants [{ key, lon, retro }] — natal bodies that fall inside the house. Often empty, and an empty
+//           house is not a silent house: the tradition reads it through the ruler, which is why the prompt
+//           is told so explicitly rather than left to infer it from an absent list.
+export function groundCusp({ house, cuspLon, houseSystem, ruler, coRuler = null, tenants = [] }) {
+  const s = signOf(cuspLon), H = HOUSE[house - 1];
+  const rSign = ruler ? signOf(ruler.lon) : null;
+  const rDig = ruler ? dignityOf(ruler.key, rSign) : null;
+  const lines = [
+    `- house ${house}, the field of life: ${H.topic[en]}; traditionally "${H.trad[en]}".`,
+    `- ${SIGN_EN[s]} on the cusp — the manner this area is approached in: it ${SIGN[s].mode[en]}. At its best: ${SIGN[s].gift[en]}. At its worst: ${SIGN[s].excess[en]}.`,
+    ruler
+      ? `- ${nameEN(ruler.key)} rules ${SIGN_EN[s]} and therefore rules this house. It is itself in ${SIGN_EN[rSign]}, in house ${ruler.house}${ruler.retro ? ", retrograde" : ""}${rDig && rDig !== "none" ? `, in ${rDig}` : ""}. ${nameEN(ruler.key)}: ${BODY[ruler.key].role[en]}. Where the ruler sits is where the affairs of house ${house} are carried out.`
+      : null,
+    coRuler ? `- ${nameEN(coRuler)} is the MODERN co-ruler of ${SIGN_EN[s]}; traditional astrology does not assign it. Say so if you use it.` : null,
+    tenants.length
+      ? `- planets standing IN house ${house}: ${tenants.map((p) => `${nameEN(p.key)} in ${SIGN_EN[signOf(p.lon)]}${p.retro ? " retrograde" : ""} (${BODY[p.key].role[en]})`).join("; ")}.`
+      : `- no planet stands in house ${house}. In the tradition that is NOT an empty or inactive area — the house is read through its ruler, above. Do not describe it as lacking anything.`,
+  ].filter(Boolean);
+  const text = `${HEAD}
+HOUSE ${house} (${houseSystem} houses), cusp at ${deg(cuspLon)}.
+MEANINGS (the app's sourced corpus):
+${lines.join("\n")}
+Write about this ONE area of life: what it is, the manner the sign brings to it, and — the part that carries the most weight — where its ruler sits, because that is what connects this area to the rest of the chart.`;
+  const sig = `h${CORPUS}|${house}|${s}|${houseSystem}|${ruler ? `${ruler.key}${rSign}${ruler.house}${ruler.retro ? "r" : ""}` : "-"}|${tenants.map((p) => p.key).join("")}`;
   return { text, sig };
 }
 

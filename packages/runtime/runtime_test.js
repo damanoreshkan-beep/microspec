@@ -39,7 +39,7 @@ import { aspects, ASPECTS } from "./aspects.js";
 import { resolve, isComplete, parseDate, parseTime, EMPTY } from "./birth.js";
 import { translit, isCyrillic, toPlace, placeLabel, formatCoords } from "./places.js";
 import { zoneOffset, knownZone, zonedToUTC, parseOffset, formatOffset, lmtOffset, houses, houseOf, HOUSE_SYSTEMS, placidusDefined, transits, transitAspect, separation, exactHits, TRANSIT_ORB, TRANSIT_ASPECTS, HIT_PRECISION, norm360, wrap180 } from "./natal.js";
-import { BODY as sgBODY, SIGN as sgSIGN, HOUSE as sgHOUSE, ASPECT as sgASPECT, ANGLE as sgANGLE, DIGNITY as sgDIGNITY, dignityOf as sgDignity, chartRuler as sgChartRuler, balance as sgBalance, groundTransit as sgGroundTransit, groundPlacement as sgGroundPlacement, groundPortrait as sgGroundPortrait, spanLabel as sgSpan } from "./signif.js";
+import { BODY as sgBODY, SIGN as sgSIGN, HOUSE as sgHOUSE, ASPECT as sgASPECT, ANGLE as sgANGLE, DIGNITY as sgDIGNITY, dignityOf as sgDignity, chartRuler as sgChartRuler, balance as sgBalance, groundTransit as sgGroundTransit, groundPlacement as sgGroundPlacement, groundPortrait as sgGroundPortrait, groundCusp as sgGroundCusp, rulerOf as sgRulerOf, spanLabel as sgSpan } from "./signif.js";
 import { resumeAt, RESUME_MIN } from "./playback.js";
 import { logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, advanceTerrain, Parallax, seedFrame, sampleBand, idle, fib, galaxyDisc } from "./spectrum.js";
 import { RippleField, ring, RIPPLE_DEFAULTS } from "./ripple.js";
@@ -4625,4 +4625,45 @@ Deno.test("signif/spanLabel: days, months or years — the unit the reader would
   assertEquals(sgSpan(0, d(547)), "about 1.5 years");
   assertEquals(sgSpan(0, d(365)), "about 12 months");
   assertEquals(sgSpan(0, d(2557)), "about 7 years");
+});
+
+Deno.test("signif/groundCusp: a house is delegated to its ruler, and an empty house is not a silent one", () => {
+  // 2nd house in Sagittarius, ruled by Jupiter, and Jupiter lives in the 8th — the delegation IS the reading
+  const g = sgGroundCusp({ house: 2, cuspLon: 8 * 30 + 14, houseSystem: "placidus",
+    ruler: { key: "jupiter", lon: 3 * 30 + 2, house: 8, retro: false }, coRuler: null,
+    tenants: [{ key: "venus", lon: 8 * 30 + 20, retro: false }] });
+  assert(g.text.includes("HOUSE 2 (placidus houses)"), "the house and its system must be named");
+  assert(g.text.includes("Jupiter rules Sagittarius and therefore rules this house"));
+  assert(g.text.includes("in house 8"), "where the ruler LIVES is the point of this reading");
+  assert(g.text.includes("in exaltation"), "Jupiter is exalted in Cancer and the ruler's dignity should carry");
+  assert(g.text.includes("planets standing IN house 2: Venus"));
+  assert(!/undefined|NaN/.test(g.text));
+
+  // An empty house must be stated as read-through-the-ruler, not left for the model to call "empty".
+  const empty = sgGroundCusp({ house: 7, cuspLon: 30, houseSystem: "whole",
+    ruler: { key: "venus", lon: 200, house: 1, retro: true } });
+  assert(empty.text.includes("no planet stands in house 7"));
+  assert(empty.text.includes("Do not describe it as lacking anything"), "the empty-house trap must be closed explicitly");
+  assert(empty.text.includes("retrograde"));
+  assert(empty.sig !== g.sig);
+
+  // the modern co-ruler is offered LABELLED or not at all
+  const co = sgGroundCusp({ house: 5, cuspLon: 7 * 30 + 1, houseSystem: "placidus",
+    ruler: { key: "mars", lon: 10, house: 9, retro: false }, coRuler: "pluto" });
+  assert(co.text.includes("Pluto is the MODERN co-ruler"), "a contested convention must name itself");
+  assert(co.text.includes("Mars rules Scorpio"), "the traditional ruler still leads");
+
+  // the signature must move with every fact the block carries
+  const moved = sgGroundCusp({ house: 2, cuspLon: 8 * 30 + 14, houseSystem: "placidus",
+    ruler: { key: "jupiter", lon: 3 * 30 + 2, house: 9, retro: false }, tenants: [{ key: "venus", lon: 8 * 30 + 20, retro: false }] });
+  assert(moved.sig !== g.sig, "the ruler's own house must vary the key");
+});
+
+Deno.test("signif/rulerOf: the modern flag is a claim about the ANSWER, not about the request", () => {
+  // Aquarius has an outer co-ruler, so modern:true really is modern
+  assertEquals(sgRulerOf(10 * 30 + 5, { modern: true }), { sign: 10, body: "uranus", modern: true });
+  // Aries never acquired one — asking for modern must fall back AND stop claiming to be modern, or the UI
+  // would print "(modern)" next to Mars, which no school says.
+  assertEquals(sgRulerOf(5, { modern: true }), { sign: 0, body: "mars", modern: false });
+  assertEquals(sgRulerOf(5), { sign: 0, body: "mars", modern: false });
 });

@@ -26,10 +26,11 @@ import { transits, houseOf, norm360, wrap180, HIT_PRECISION, TRANSIT_ORB } from 
 import { resolve, isComplete, EMPTY, BIRTH_CODEC } from "/_rt/birth.js";
 import { searchPlaces, placeLabel, formatCoords } from "/_rt/places.js";
 import { interpret, warmInterpret, isInterpreted, transitRead, warmTransitRead, isTransitRead,
-  placementRead, warmPlacementRead, isPlacementRead, portraitRead, warmPortraitRead, isPortraitRead, aiTick } from "/_rt/ai-astro.js";
+  placementRead, warmPlacementRead, isPlacementRead, portraitRead, warmPortraitRead, isPortraitRead,
+  houseRead, warmHouseRead, isHouseRead, aiTick } from "/_rt/ai-astro.js";
 import { BODY, SIGN, HOUSE, ASPECT as ASPECT_MEAN, ANGLE, DIGNITY, RULERS, ELEMENT_NAME, ELEMENT_MEANS,
-  MODALITY_NAME, MODALITY_MEANS, RETRO_NOTE, dignityOf, chartRuler, balance, say,
-  groundTransit, groundPlacement, groundPortrait } from "/_rt/signif.js";
+  MODALITY_NAME, MODALITY_MEANS, RETRO_NOTE, dignityOf, chartRuler, rulerOf, balance, say,
+  groundTransit, groundPlacement, groundPortrait, groundCusp } from "/_rt/signif.js";
 import { ELEMENT, MODALITY } from "/_rt/synastry.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
@@ -69,6 +70,7 @@ const $offset = atom(0);                               // days from today, share
 const GATE_INTERP = { uk: "Сатурн у квадратурі до натального Сонця робить цей період вимогливим: те, що ти будуєш, перевіряють на міцність, і поспіх лише додасть тертя. Транзитний Меркурій ретроградним рухом повертає до старої розмови, яку варто переписати, а не форсувати. Тригон Юпітера до натального Місяця дає тиху опору — рухайся послідовно, і обов'язок обернеться на структуру, а не на пастку.", en: "Saturn square your natal Sun makes this stretch exacting: what you are building is being tested for load, and pushing only adds friction. A retrograde Mercury turns you back to an old conversation worth rewriting rather than forcing. Jupiter's trine to your natal Moon lends quiet support — move step by step and the duty becomes structure, not a snare." };
 const GATE_TRANSIT = { uk: "Сатурн приходить повільно і не поспішає: він перевіряє на міцність те, що ти вважаєш своїм, і квадратура означає, що поступитися доведеться в чомусь одному. Він торкається натального Сонця — самої твоєї суті й того, як ти тримаєш напрям, — і робить це в десятому домі, у справі й у публічній ролі. Орб уже менший за градус і аспект сходиться, тож це не передчуття, а те, що відбувається зараз. Сатурн проходить знак за два з половиною роки, тому мірою тут є місяці, а не дні. Через ретроградність аспект стане точним ще двічі — тема повернеться, і другого разу ти вже знатимеш її ім'я.", en: "Saturn arrives slowly and is in no hurry: it tests for load whatever you have called yours, and a square means something will have to give. It touches your natal Sun — your identity and the way you hold a direction — and it does so in the tenth house, in the work and the public role. The orb is already inside a degree and the aspect is applying, so this is not a premonition but the thing itself. Saturn spends two and a half years in a sign, so the unit here is months, not days. Because it turns retrograde the aspect perfects twice more — the theme returns, and the second time you will know its name." };
 const GATE_PLACEMENT = { uk: "Місяць — це те, чим ти реагуєш раніше за думку, і в Рибах він реагує співчуттям: межа між твоїм і чужим станом тут тонка, і ти вбираєш настрій кімнати, ще не встигнувши його назвати. У пʼятому домі це виходить назовні як творення і прив'язаність — тебе живить те, що зроблено з любові й для когось конкретного. Сила цього положення в уяві та відгуку, ціна — у дрейфі й у чужому смутку, взятому за власний. Навчитися розрізняти, чиє це почуття, тут важливіше, ніж навчитися його стримувати.", en: "The Moon is what reacts in you before thought does, and in Pisces it reacts with sympathy: the line between your state and someone else's is thin here, and you absorb the mood of a room before you can name it. In the fifth house that comes out as making things and as attachment — you are fed by what is made out of love and for someone in particular. The gift of this placement is imagination and responsiveness; the cost is drift, and other people's sadness carried as your own. Learning whose feeling it is matters more here than learning to hold it in." };
+const GATE_HOUSE = { uk: "Другий дім — це те, що ти вважаєш своїм: гроші, речі, здатність заробити і власне відчуття вартості. Стрілець на куспіді додає сюди широти й віри в те, що вистачить, — ти радше ризикнеш і доробиш, ніж будеш рахувати наперед. Управитель цього дому Юпітер стоїть у восьмому, а це означає, що твої ресурси майже завжди переплетені з чужими: спільні бюджети, борги, спадок, домовленості на довіру. Планет у самому домі немає, і в традиції це не порожнеча — просто справи цього дому робляться там, де стоїть його управитель. Тож питання не в тому, скільки в тебе є, а з ким це «є» пов’язане.", en: "The second house is what you count as yours: money, possessions, the ability to earn, and your own sense of worth. Sagittarius on the cusp brings width and a working faith that there will be enough — you would rather take the risk and make it up afterwards than count in advance. Jupiter rules this house and stands in the eighth, which means your resources are almost always tangled with someone else’s: shared budgets, debts, inheritance, arrangements held together by trust. No planet stands in the house itself, and in the tradition that is not emptiness — the affairs of the house are simply carried out where its ruler sits. So the question is less how much you have than whose it is bound up with." };
 const GATE_PORTRAIT = { uk: "Сонце в Раку при Асценденті в Терезах дає поєднання обережного серця і привітної поверхні: ти зустрічаєш світ рівно й тактовно, а вирішуєш усе всередині, за зачиненими дверима. Місяць у Рибах поглиблює це — реакція йде раніше за слова, і вона майже завжди про когось іншого. \n\nУправителька карти Венера стоїть у восьмому домі, тож те, що для тебе справді важить, ніколи не лежить на видноті: близькість тут вимірюється мірою довіри, а не кількістю часу. У карті переважає вода при браку вогню, і це означає, що почати щось тобі важче, ніж витримати. Кардинальна якість дає поштовх, але поштовх цей іде від обставин, а не від нетерпіння. \n\nНайщільніший аспект — тригон Сонця до Місяця: воля і почуття тут не воюють, і саме тому ти рідко помічаєш, наскільки на них спираєшся. Сатурн у десятому домі додає до цього обовʼязок, який ти сам собі виписав. Разом це карта людини, яку легко недооцінити ззовні й важко зрушити зсередини.", en: "A Cancer Sun under a Libra Ascendant sets a careful heart behind an agreeable surface: you meet the world evenly and tactfully, and decide everything inside, behind a closed door. The Moon in Pisces deepens that — the reaction comes before the words, and it is almost always about someone else. \n\nVenus, ruler of the chart, stands in the eighth house, so what actually matters to you is never left in plain view: closeness here is measured in trust rather than in hours. Water dominates the chart and fire is thin, which means starting a thing costs you more than enduring it. The cardinal emphasis does supply a push, but the push comes from circumstance rather than impatience. \n\nThe tightest aspect is the Sun trine the Moon: will and feeling are not at war here, which is exactly why you rarely notice how much you lean on them. Saturn in the tenth adds a duty you wrote for yourself. Together this is the chart of someone easy to underestimate from outside and hard to move from within." };
 
 // ── the chart, computed once and shared by all three tabs ──────────────────────────────────────────────
@@ -130,13 +132,14 @@ const NeedBirth = ({ t, onOpen }) => html`<div data-need-birth class="flex flex-
 // `S.screen` is one string and it is history-backed by the runtime, so a sub-screen that has to remember
 // WHICH item it is showing carries the item in its own key. These prefixes are also what `?screen=` accepts,
 // which is how the reading sheets can be shot and reviewed at all (render.js).
-const READ_TRANSIT = "tr:", READ_PLACEMENT = "pl:", READ_PORTRAIT = "portrait";
+const READ_TRANSIT = "tr:", READ_PLACEMENT = "pl:", READ_CUSP = "cu:", READ_PORTRAIT = "portrait";
 const readScreen = (screen, pfx) => (typeof screen === "string" && screen.startsWith(pfx)) ? screen.slice(pfx.length) : null;
 
 const AI_SKY = { get: interpret, has: isInterpreted, warm: warmInterpret };
 const AI_TRANSIT = { get: transitRead, has: isTransitRead, warm: warmTransitRead };
 const AI_PLACEMENT = { get: placementRead, has: isPlacementRead, warm: warmPlacementRead };
 const AI_PORTRAIT = { get: portraitRead, has: isPortraitRead, warm: warmPortraitRead };
+const AI_HOUSE = { get: houseRead, has: isHouseRead, warm: warmHouseRead };
 
 // The AI paragraph. Never a spinner — the sheet is already there and only this block is pending, so it
 // carries text-shaped skeletons at the length the answer will actually be. 12 s then a retry, fail-open.
@@ -294,6 +297,53 @@ function PlacementSheet({ open, onClose, C, t, loc }) {
         ${Mean(`${cap1(say(ELEMENT_NAME[ELEMENT(s)], loc))} · ${say(MODALITY_NAME[MODALITY(s)], loc)}`, `${cap1(say(ELEMENT_MEANS[ELEMENT(s)], loc))}. ${cap1(say(MODALITY_MEANS[MODALITY(s)], loc))}.`)}
         ${dig && dig !== "none" ? Mean(T(t, digKey(dig)), cap1(say(DIGNITY[dig], loc))) : null}
         ${retro ? Mean("℞", cap1(say(RETRO_NOTE, loc))) : null}
+      </div>`)}
+    </div>
+  </${Sheet}>`;
+}
+
+// ── the per-house sheet, opened from a cusp ────────────────────────────────────────────────────────────
+
+// The reading with the most technique in it. A cusp row shows a number, a glyph and a degree; what it
+// cannot show is that the house is DELEGATED to the ruler of the sign on it, and that the ruler lives
+// somewhere else in the chart. That sentence is the whole reason this sheet exists.
+function CuspSheet({ open, onClose, C, t, loc }) {
+  if (open == null || !C.ready) return null;
+  const house = Number(open);
+  if (!(house >= 1 && house <= 12)) return null;
+  const cuspLon = C.H.cusps[house - 1];
+  const s = signOf(cuspLon);
+  const r = rulerOf(cuspLon);
+  const co = RULERS[s][1] || null;
+  const rp = C.natal.find((p) => p.key === r.body);
+  const ruler = rp ? { key: r.body, lon: rp.lon, house: houseOf(rp.lon, C.H.cusps), retro: C.natalRetroFor(r.body, rp.lon) } : null;
+  const tenants = C.natal.filter((p) => houseOf(p.lon, C.H.cusps) === house)
+    .map((p) => ({ key: p.key, lon: p.lon, retro: C.natalRetroFor(p.key, p.lon) }));
+  const { text: input, sig } = groundCusp({ house, cuspLon, houseSystem: C.system, ruler, coRuler: co, tenants });
+  const rDig = ruler ? dignityOf(ruler.key, signOf(ruler.lon)) : null;
+
+  return html`<${Sheet} id="cuspsheet" open=${true} onClose=${onClose} icon="lucide:sparkles"
+      title=${`${T(t, "houseWord")} ${house}`} subtitle=${`${signName(t, s)} ${dm(cuspLon)}`}>
+    <div class="flex flex-col gap-4">
+      <${Reading} sig=${sig} input=${input} loc=${loc} api=${AI_HOUSE} t=${t}
+        gateText=${GATE_HOUSE[loc] || GATE_HOUSE.en} lines=${[32, 30, 33, 29, 21]} />
+
+      ${Section(T(t, "factsTitle"), html`<div class="rounded-2xl sf-inset px-3 py-1">
+        ${Fact(T(t, "fCusp"), `${signName(t, s)} ${dm(cuspLon)} · ${T(t, "hs" + cap1(C.system))}`, "cusp")}
+        ${ruler ? Fact(T(t, "fHouseRuler"), html`<span data-cusp-ruler>${bodyLabel(t, ruler.key)}</span>
+          <span class="text-base-content/70"> · ${signName(t, signOf(ruler.lon))} · ${T(t, "houseShort")}${ruler.house}</span>
+          ${ruler.retro ? html`<span class="text-warning font-mono ml-1">℞</span>` : null}
+          ${rDig && rDig !== "none" ? html`<span class="text-primary"> · ${T(t, digKey(rDig))}</span>` : null}`, "houseRuler") : null}
+        ${co ? Fact(T(t, "mModern"), bodyLabel(t, co)) : null}
+        ${Fact(T(t, "fTenants"), tenants.length
+          ? html`${tenants.map((p) => bodyLabel(t, p.key)).join(" · ")}`
+          : html`<span class="text-base-content/70">${T(t, "fNoTenants")}</span>`, "tenants")}
+      </div>`)}
+
+      ${Section(T(t, "meansTitle"), html`<div class="rounded-2xl sf-inset px-3 py-1">
+        ${Mean(`${T(t, "houseWord")} ${house}`, html`${cap1(say(HOUSE[house - 1].topic, loc))}. <span class="text-base-content/70">${T(t, "mTrad")}: ${say(HOUSE[house - 1].trad, loc)}.</span>`)}
+        ${Mean(`${signName(t, s)} · ${T(t, "mHow")}`, `${cap1(say(SIGN[s].mode, loc))} ${cap1(say(SIGN[s].gift, loc))} — ${say(SIGN[s].excess, loc)}.`)}
+        ${ruler ? Mean(`${bodyLabel(t, ruler.key)} · ${T(t, "mRules")}`, cap1(say(BODY[ruler.key].role, loc))) : null}
       </div>`)}
     </div>
   </${Sheet}>`;
@@ -637,15 +687,18 @@ export function chart({ S, screen, openScreen, closeScreen }) {
         </div>
         ${H.fallback ? html`<div data-house-fallback class="mx-4 mb-2 rounded-xl sf-e2 bg-warning/10 px-3 py-2 text-[0.72rem] text-base-content">${T(t, "hsFallback")}</div>` : null}
         <div class="px-4 pb-3 grid grid-cols-2 gap-x-4">
-          ${H.cusps.map((c, i) => html`<div data-cusp=${i + 1} class="flex items-center gap-2 py-1 border-b border-base-300/40 last:border-0" key=${i}>
-            <span class="w-5 text-xs font-mono text-base-content/70 tabular-nums">${i + 1}</span>
+          ${H.cusps.map((c, i) => html`<button data-cusp=${i + 1} onClick=${() => openScreen(READ_CUSP + (i + 1))}
+              class="w-full text-left flex items-center gap-1.5 py-1 border-b border-base-300/40 last:border-0 active:opacity-80 transition" key=${i}>
+            <span class="w-4 text-xs font-mono text-base-content/70 tabular-nums">${i + 1}</span>
             <${Sign} i=${signOf(c)} cls="w-4 h-4 text-base-content/70 shrink-0" />
             <span class="ml-auto font-mono text-xs tabular-nums">${dm(c)}</span>
-          </div>`)}
+            ${mark()}
+          </button>`)}
         </div>
       </div>
     </div>
     <${PlacementSheet} open=${readScreen(screen, READ_PLACEMENT)} onClose=${closeScreen} C=${C} t=${t} loc=${locale} />
+    <${CuspSheet} open=${readScreen(screen, READ_CUSP)} onClose=${closeScreen} C=${C} t=${t} loc=${locale} />
     <${PortraitSheet} open=${screen === READ_PORTRAIT} onClose=${closeScreen} C=${C} t=${t} loc=${locale} />
     <${BirthSheet} open=${screen === "birth"} onClose=${closeScreen} t=${t} locale=${locale} />
   </${Fragment}>`;

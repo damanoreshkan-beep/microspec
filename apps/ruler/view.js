@@ -39,11 +39,32 @@ const hav = (a, b) => { const p = Math.PI / 180, dφ = (b.lat - a.lat) * p, dλ 
 const proj = (a, p) => ({ x: (p.lng - a.lng) * Math.cos(a.lat * Math.PI / 180) * 111320, y: -(p.lat - a.lat) * 110540 });
 const shoelace = (pts) => { const o = pts[0]; const q = pts.map((p) => proj(o, p)); let s = 0; for (let i = 0; i < q.length; i++) { const j = (i + 1) % q.length; s += q[i].x * q[j].y - q[j].x * q[i].y; } return Math.abs(s) / 2; };
 
+// fitCanvas — size the plot from its BOX (its parent), never from itself, and hand back the CSS box it now
+// occupies. A canvas's own `clientWidth` reports its INTRINSIC size — the `width` attribute — for as long as
+// no CSS width applies, and this farm generates its utility sheet in the browser, so on a cold open there is
+// a window where none does. Measuring the canvas inside that window and writing back clientWidth×DPR made
+// this plot intrinsically 900px wide (the 300px default × dpr 3) inside a 384px page; the `|| 320` fallback
+// this replaces covered a ZERO box, which is not the case that bites. (lorawatch failed exactly that way, at
+// 384px and at the 200px glance — and the parent's `overflow-hidden` has not applied in that window either,
+// so nothing clips it.) The box is a plain block carrying the height, so it is the right size in that window
+// too, and its height never comes back from the canvas it sizes.
+//   Both halves of the HiDPI pair are set here: the CSS box in px, the backing store in device px.
+function fitCanvas(cv) {
+  const box = cv.parentElement; if (!box) return null;
+  const r = box.getBoundingClientRect(), W = Math.round(r.width), H = Math.round(r.height);
+  if (!W || !H) return null;                                      // not laid out yet — the observer redraws
+  const dpr = Math.min(3, (typeof devicePixelRatio !== "undefined" ? devicePixelRatio : 1) || 1);
+  cv.style.display = "block"; cv.style.width = `${W}px`; cv.style.height = `${H}px`;
+  const ww = W * dpr, hh = H * dpr;
+  if (cv.width !== ww || cv.height !== hh) { cv.width = ww; cv.height = hh; }   // resizing the store clears it
+  return { W, H, dpr };
+}
+
 function draw(cv, pts, cur) {
   if (!cv || !cv.getContext) return; const ctx = cv.getContext("2d"); if (!ctx) return;
-  const dpr = Math.min(3, (typeof devicePixelRatio !== "undefined" ? devicePixelRatio : 1) || 1);
-  const W = cv.clientWidth || 320, H = cv.clientHeight || 260;
-  cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const fit = fitCanvas(cv); if (!fit) return;
+  const { W, H, dpr } = fit;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
   const ink = getComputedStyle(cv).color || "#888";
   const all = cur ? [...pts, cur] : pts.slice(); if (!all.length) return;
   const o = all[0], q = all.map((p) => proj(o, p));
@@ -134,8 +155,18 @@ export function ruler({ S, toast }) {
   }, []);
   useEffect(() => { if (hydrated.current) CUR.put("walk", { pts }).catch(() => { /* quota / no idb */ }); }, [pts]);
   useEffect(() => { draw(cv.current, pts, cur); }, [pts, cur, t]);
-  // The canvas is sized in vh now, so a rotate changes its box — redraw or the polyline stays at the old scale.
-  useEffect(() => { const on = () => draw(cv.current, pts, cur); addEventListener("resize", on); return () => removeEventListener("resize", on); }, [pts, cur]);
+  // The plot is sized in `svh`, so a rotate changes its box — redraw or the polyline stays at the old scale.
+  // The observer watches the BOX rather than the window: that catches the rotate, and also the two moments a
+  // resize event never fires — the generated utility sheet landing after first paint, and the view being
+  // narrowed around it. `last` keeps the newest walk without re-registering the observer on every fix.
+  const last = useRef({ pts, cur });
+  last.current = { pts, cur };
+  useEffect(() => {
+    const c = cv.current, box = c && c.parentElement; if (!c || !box) return;
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => draw(c, last.current.pts, last.current.cur)) : null;
+    ro && ro.observe(box);
+    return () => ro && ro.disconnect();
+  }, []);
 
   const copyCoords = async () => { if (!cur) return; try { await navigator.clipboard.writeText(coordStr(cur)); toast?.(T(t, "copied")); } catch { /* no clipboard permission → the value is on screen anyway */ } };
   // Drop a vertex — the averaged one where we have it. The tail is the fixes taken while you stood at
@@ -152,7 +183,7 @@ export function ruler({ S, toast }) {
   // would have if the browser's address bar were already retracted — so on a phone with the bar showing,
   // 52vh is more than 52% of what you can actually see and the readout gets pushed under the fold on load.
   // `svh` is the small viewport: it fits from the first paint. Not `dvh` either — that one tracks the bar
-  // live, and draw() is wired to resize, so scrolling would repaint the polyline on every gesture.
+  // live, and draw() is wired to the box's size, so scrolling would repaint the polyline on every gesture.
   const total = pts.reduce((s, p, i) => (i ? s + hav(pts[i - 1], p) : 0), 0);
   const live = pts.length && cur ? hav(pts[pts.length - 1], cur) : null;
   const area = pts.length >= 3 ? shoelace(pts) : null;
@@ -171,8 +202,12 @@ export function ruler({ S, toast }) {
            base-200 IS base-100 in this material, so the only thing left drawing the frame was the hairline.
            `sf-inset` is the farm's word for a well, and the canvas is transparent so the sink reads
            through it. */""}
-      <div class="rounded-2xl sf-inset overflow-hidden">
-        <canvas ref=${cv} aria-hidden="true" class="w-full h-[52svh] min-h-[280px] max-h-[460px] block text-base-content"></canvas>
+      ${/* The height lives on the WELL, not on the canvas: this box is what the plot is measured against, so
+           it has to be the right size from the first frame — before the generated sheet exists — and it must
+           not take its height from the thing it sizes. `clamp()` is the same flexible height the canvas used
+           to carry as `h-[52svh] min-h-[280px] max-h-[460px]`, in one property that needs no sheet. */""}
+      <div class="rounded-2xl sf-inset overflow-hidden" style="height:clamp(280px,52svh,460px)">
+        <canvas ref=${cv} aria-hidden="true" class="w-full h-full block text-base-content"></canvas>
       </div>
       <div class="flex items-end justify-between gap-3 px-1">
         <div class="min-w-0">

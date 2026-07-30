@@ -69,9 +69,37 @@ function drawSpectrum(cv, bins) {
   for (let x = 0; x <= w; x++) { const v = norm(bins[Math.min(n - 1, (x / w * n) | 0)]); const y = h - v * h; x ? c.lineTo(x, y) : c.moveTo(x, y); }
   c.strokeStyle = `rgba(${ink},0.8)`; c.lineWidth = Math.max(1, h / 90); c.stroke();
 }
+// The canvas is sized from its BOX (its parent), never from itself. A canvas's own `clientWidth` reports its
+// INTRINSIC size — the `width` attribute — for as long as no CSS width applies, and this farm generates its
+// utility sheet in the browser, so on a cold open there is a window where none does. Measuring the canvas
+// inside that window and writing back clientWidth×DPR makes the element intrinsically 2× the 300px default:
+// 600px of layout in a 384px page, and the document scrolls with it. (lorawatch failed exactly that way, at
+// 384px and at the 200px glance; the parent's `overflow-hidden` has not applied in that window either, so
+// nothing clips it.) The box is a plain block with an inline height — right in that window too, and its
+// height does not come from the canvas, so the observer cannot feed itself.
+//   Both halves of the HiDPI pair are set: the CSS box in px, the backing store in device px.
 function useCanvas(draw, deps) {
-  const ref = useRef(null);
-  useEffect(() => { const cv = ref.current; if (!cv) return; const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1); const ww = (cv.clientWidth | 0) * dpr, hh = (cv.clientHeight | 0) * dpr; if (ww && (cv.width !== ww || cv.height !== hh)) { cv.width = ww; cv.height = hh; } draw(cv); }, deps);
+  const ref = useRef(null), paint = useRef(draw);
+  paint.current = draw;
+  const fit = (cv) => {
+    const box = cv.parentElement; if (!box) return false;
+    const r = box.getBoundingClientRect(), w = Math.round(r.width), h = Math.round(r.height);
+    if (!w || !h) return false;                                    // not laid out yet — the observer calls back
+    cv.style.display = "block"; cv.style.width = `${w}px`; cv.style.height = `${h}px`;
+    const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1);
+    const ww = w * dpr, hh = h * dpr;
+    if (cv.width !== ww || cv.height !== hh) { cv.width = ww; cv.height = hh; }   // resizing the store clears it
+    return true;
+  };
+  // Re-fit when the generated sheet lands, on rotation, and when the view is narrowed — the old code sized
+  // once and never again, so a rotate left the plot stretched at the old scale.
+  useEffect(() => {
+    const cv = ref.current, box = cv && cv.parentElement; if (!cv || !box) return;
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => { if (fit(cv)) paint.current(cv); }) : null;
+    ro && ro.observe(box);
+    return () => ro && ro.disconnect();
+  }, []);
+  useEffect(() => { const cv = ref.current; if (cv && fit(cv)) draw(cv); }, deps);
   return ref;
 }
 
@@ -128,7 +156,13 @@ export function gsmscanView({ S, screen, openScreen, closeScreen }) {
            erased the very shadow pair that makes the surface read. The scale strip below keeps its rule —
            that one is a STRUCTURAL divider between the plot and its axis, not the card's outline. */""}
       <div class="w-full rounded-3xl sf-raised sf-e2 overflow-hidden">
-        <canvas ref=${useCanvas((cv) => drawSpectrum(cv, $spectrum.get()), [spectrum, theme])} class="block w-full h-24" role="img" aria-label=${T(t, "spectrum")} data-spectrum></canvas>
+        ${/* The plot's height is inline, not `h-24`: this box is what the canvas is measured against, so it
+             has to be the right size from the first frame — before the generated sheet exists — and it must
+             not take its height from the thing it sizes. The card cannot serve as that box: it also holds
+             the scale strip below, so its height comes back from its own content. */""}
+        <div style="height:6rem">
+          <canvas ref=${useCanvas((cv) => drawSpectrum(cv, $spectrum.get()), [spectrum, theme])} class="block w-full h-full" role="img" aria-label=${T(t, "spectrum")} data-spectrum></canvas>
+        </div>
         <div class="flex justify-between px-3 py-1 font-mono text-[0.6rem] text-muted tabular-nums border-t border-base-content/10">
           <span>${fMhz(BANDS[band].dlLo)}</span><span class="uppercase tracking-wider">${BANDS[band].label}</span><span>${fMhz(BANDS[band].dlHi)} MHz</span>
         </div>

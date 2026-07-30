@@ -93,19 +93,17 @@ export function makeHelpers(page) {
     back: () => ev(() => history.back()),
     reload: async (settle = 1200) => { await page.reload({ waitUntil: "load" }); await sleep(settle); },
     goto: async (query = "", settle = 1200) => {
-      const u = new URL(page.url());
+      const u = new URL(await ev(() => location.href));
       u.search = query ? (query.startsWith("?") ? query.slice(1) : query) : "";
       await page.goto(u.toString(), { waitUntil: "load" });
       await sleep(settle);
     },
     wait: (ms) => sleep(ms),
     expect: (cond, msg) => { if (!cond) throw new Error(msg || "assertion failed"); },
-    
     waitFor: async (re, ms = 12000, step = 500) => { let t = ""; for (let i = 0; i < Math.ceil(ms / step); i++) { t = await ev(() => document.body.innerText); if (re.test(t)) return true; await sleep(step); } return re.test(t); },
   };
   return { h, ev };
 }
-
 export async function gotoAndSettle(page, url, settle = 3500) {
   await page.goto(url, { waitUntil: "load" });
   await sleep(settle);

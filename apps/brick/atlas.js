@@ -170,8 +170,6 @@ export function tileCell(id) {
   tileCache.set(id, cell);
   return cell;
 }
-
-
 const flipX = (c) => { const o = clone(c); for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) o.px[y * c.w + x] = c.px[y * c.w + (c.w - 1 - x)]; return o; };
 const flipY = (c) => { const o = clone(c); for (let y = 0; y < c.h; y++) o.px.set(c.px.subarray((c.h - 1 - y) * c.w, (c.h - y) * c.w), y * c.w); return o; };
 
@@ -191,7 +189,8 @@ export function spriteCell(kind, frame) {
   } else if (!art) cell = { px: new Uint8Array(0), w: 0, h: 0 };
   else {
     
-    const pose = (rows) => emboss(outline(outline(band(parse(rows), BANDS.actor), 4), 0));
+    const bnd = kind === K.PLAYER ? BANDS.actor : BANDS.foe;
+    const pose = (rows) => emboss(outline(outline(band(parse(rows), bnd), 4), 0));
     const idle = pose(art[0]), walk = pose(art[1]);
     cell = frame === 1 ? walk : frame === 2 ? idle : frame === 3 ? walk
          : frame === 4 ? flipY(idle) : frame === 5 ? flipX(walk) : idle;
@@ -199,6 +198,8 @@ export function spriteCell(kind, frame) {
   spriteCache.set(key, cell);
   return spriteCache.get(key) ?? cell;
 }
+
+
 /**
  * Paint a cell into an RGBA buffer.
  *

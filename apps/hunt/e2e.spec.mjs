@@ -80,13 +80,16 @@ export default [
   {
     name: "екран: гра займає корпус, а корпус — увесь вигляд", run: async (h) => {
       await ready(h);
-      const view = await h.prop("#view", "clientHeight");
+      const box = await h.prop("#view", "clientHeight");
+      const padT = parseFloat(await h.css("#view", "padding-top")) || 0;
+      const padB = parseFloat(await h.css("#view", "padding-bottom")) || 0;
+      const room = box - padT - padB;
       const bodyH = await h.prop("[data-shell-body]", "clientHeight");
       const bodyW = await h.prop("[data-shell-body]", "clientWidth");
       const cw = await h.prop("canvas", "clientWidth");
-      h.expect(view > 0 && bodyW > 0, "нема з чим порівнювати — корпус або вигляд не змірялись");
-      h.expect(bodyH >= view * 0.9,
-        `корпус ${bodyH}px усередині вигляду ${view}px — консоль стискається до вмісту замість заповнювати екран`);
+      h.expect(room > 0 && bodyW > 0, "нема з чим порівнювати — корпус або вигляд не змірялись");
+      h.expect(bodyH >= room * 0.95,
+        `корпус ${bodyH}px у доступних ${room}px (вигляд ${box} − падінги ${padT}/${padB}) — консоль стискається до вмісту замість заповнювати екран`);
       h.expect(cw >= bodyW * 0.78,
         `полотно ${cw}px у корпусі ${bodyW}px — апертура забирає в гри ширину, яку нікому більше не віддає`);
     },

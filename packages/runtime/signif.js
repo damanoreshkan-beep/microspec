@@ -267,10 +267,11 @@ export const RETRO_NOTE = [
 ];
 
 
-export function chartRuler(ascLon, { modern = false } = {}) {
-  const s = signOf(ascLon), r = RULERS[s];
+export function rulerOf(lon, { modern = false } = {}) {
+  const s = signOf(lon), r = RULERS[s];
   return { sign: s, body: modern && r[1] ? r[1] : r[0], modern: !!(modern && r[1]) };
 }
+export const chartRuler = rulerOf;
 
 export function balance(lons) {
   const elements = [0, 0, 0, 0], modalities = [0, 0, 0];
@@ -342,6 +343,30 @@ MEANINGS (the app's sourced corpus):
 ${lines.join("\n")}
 Read this as ONE behaviour in ONE arena, not as two separate paragraphs about the sign and the house.`;
   const sig = `p${CORPUS}|${key}|${s}|${house || 0}|${houseSystem}|${retro ? "r" : ""}|${dig || "-"}`;
+  return { text, sig };
+}
+
+export function groundCusp({ house, cuspLon, houseSystem, ruler, coRuler = null, tenants = [] }) {
+  const s = signOf(cuspLon), H = HOUSE[house - 1];
+  const rSign = ruler ? signOf(ruler.lon) : null;
+  const rDig = ruler ? dignityOf(ruler.key, rSign) : null;
+  const lines = [
+    `- house ${house}, the field of life: ${H.topic[en]}; traditionally "${H.trad[en]}".`,
+    `- ${SIGN_EN[s]} on the cusp — the manner this area is approached in: it ${SIGN[s].mode[en]}. At its best: ${SIGN[s].gift[en]}. At its worst: ${SIGN[s].excess[en]}.`,
+    ruler
+      ? `- ${nameEN(ruler.key)} rules ${SIGN_EN[s]} and therefore rules this house. It is itself in ${SIGN_EN[rSign]}, in house ${ruler.house}${ruler.retro ? ", retrograde" : ""}${rDig && rDig !== "none" ? `, in ${rDig}` : ""}. ${nameEN(ruler.key)}: ${BODY[ruler.key].role[en]}. Where the ruler sits is where the affairs of house ${house} are carried out.`
+      : null,
+    coRuler ? `- ${nameEN(coRuler)} is the MODERN co-ruler of ${SIGN_EN[s]}; traditional astrology does not assign it. Say so if you use it.` : null,
+    tenants.length
+      ? `- planets standing IN house ${house}: ${tenants.map((p) => `${nameEN(p.key)} in ${SIGN_EN[signOf(p.lon)]}${p.retro ? " retrograde" : ""} (${BODY[p.key].role[en]})`).join("; ")}.`
+      : `- no planet stands in house ${house}. In the tradition that is NOT an empty or inactive area — the house is read through its ruler, above. Do not describe it as lacking anything.`,
+  ].filter(Boolean);
+  const text = `${HEAD}
+HOUSE ${house} (${houseSystem} houses), cusp at ${deg(cuspLon)}.
+MEANINGS (the app's sourced corpus):
+${lines.join("\n")}
+Write about this ONE area of life: what it is, the manner the sign brings to it, and — the part that carries the most weight — where its ruler sits, because that is what connects this area to the rest of the chart.`;
+  const sig = `h${CORPUS}|${house}|${s}|${houseSystem}|${ruler ? `${ruler.key}${rSign}${ruler.house}${ruler.retro ? "r" : ""}` : "-"}|${tenants.map((p) => p.key).join("")}`;
   return { text, sig };
 }
 

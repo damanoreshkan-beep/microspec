@@ -15,6 +15,11 @@ export const placementRead = PLACEMENT.get;
 export const isPlacementRead = PLACEMENT.has;
 export const warmPlacementRead = PLACEMENT.warm;
 
+const HOUSE = reading("astro-h", "astroHouse");
+export const houseRead = HOUSE.get;
+export const isHouseRead = HOUSE.has;
+export const warmHouseRead = HOUSE.warm;
+
 const PORTRAIT = reading("astro-c", "astroChart");
 export const portraitRead = PORTRAIT.get;
 export const isPortraitRead = PORTRAIT.has;

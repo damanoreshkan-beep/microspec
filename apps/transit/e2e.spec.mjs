@@ -166,6 +166,20 @@ export default [
     },
   },
   {
+    name: "трактовка дому з куспіда: управитель дому і де він стоїть", run: async (h) => {
+      await h.click('[data-tab="chart"]'); await h.wait(400);
+      h.expect((await h.count("[data-cusp]")) === 12, "немає 12 куспідів");
+      await h.tap('[data-cusp="7"]'); await h.wait(450);
+      h.expect((await h.prop("#cuspsheet", "open")) === true, "аркуш дому не відкрився");
+      h.expect((await h.text("[data-reading]")).trim().length > 80, "порожня трактовка дому");
+      h.expect((await h.text('[data-cusp-ruler]')).trim().length > 0, "не показано управителя дому");
+      h.expect(/\d/.test(await h.text('[data-fact="houseRuler"]')), "не показано, у якому домі стоїть управитель");
+      h.expect((await h.count('[data-fact="tenants"]')) === 1, "немає рядка планет у домі");
+      await h.back(); await h.wait(350);
+      h.expect((await h.prop("#cuspsheet", "open")) !== true, "Back не закрив аркуш дому");
+    },
+  },
+  {
     name: "портрет карти в цілому: управитель карти + баланс", run: async (h) => {
       await h.click('[data-tab="chart"]'); await h.wait(400);
       await h.tap("[data-portrait]"); await h.wait(500);

@@ -19,6 +19,9 @@ export default [
       
       const playing = await h.count("video[data-main][data-playing]");
       h.expect(playing === 1, `грає ${playing} відео замість одного — вікно преload має буферизувати, а не програвати`);
+      
+      const neighbourPaused = await h.prop("video[data-main]:not([data-playing])", "paused");
+      h.expect(neighbourPaused !== false, "сусідній слайд реально ГРАЄ — прогрів не повернув паузу, і у вікні тепер два відтворення");
     },
   },
   {
@@ -37,6 +40,7 @@ export default [
       await settles(h, 3);
       h.expect((await h.count("[data-reel] a")) === 0, "на слайді лишилось посилання (відкрити оригінал)");
       h.expect((await h.count("[data-reel] button")) === 0, "на слайді лишилась кнопка");
+      
       for (const [sel, what] of [["[data-island-label]", "назва джерела"], ["[data-dive]", "провалювання"], ["[data-watch]", "відкрити сторінку рілзу"], ["[data-subscribe]", "підписка"]]) {
         h.expect((await h.count(sel)) === 1, `в острівці немає контролу: ${what} (${sel})`);
       }

@@ -273,7 +273,7 @@ function PlacementSheet({ open, onClose, C, t, loc }) {
   const rulers = RULERS[s];
 
   return html`<${Sheet} id="placementsheet" open=${true} onClose=${onClose} icon="lucide:sparkles"
-      title=${`${bodyLabel(t, key)} ${T(t, "inSign")} ${signName(t, s)}`}
+      title=${`${bodyLabel(t, key)} ${T(t, "sl" + s)}`}
       subtitle=${house ? `${dm(lon)} · ${T(t, "houseShort")}${house}` : dm(lon)}>
     <div class="flex flex-col gap-4">
       <${Reading} sig=${sig} input=${input} loc=${loc} api=${AI_PLACEMENT} t=${t}

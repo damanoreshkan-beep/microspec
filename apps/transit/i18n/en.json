@@ -127,10 +127,21 @@
   "mWhere": "where it acts",
   "mTrad": "traditionally",
   "mModern": "modern",
-  "inSign": "in",
   "digDomicile": "Domicile",
   "digExaltation": "Exaltation",
   "digDetriment": "Detriment",
   "digFall": "Fall",
-  "digNone": "—"
+  "digNone": "—",
+  "sl0": "in Aries",
+  "sl1": "in Taurus",
+  "sl2": "in Gemini",
+  "sl3": "in Cancer",
+  "sl4": "in Leo",
+  "sl5": "in Virgo",
+  "sl6": "in Libra",
+  "sl7": "in Scorpio",
+  "sl8": "in Sagittarius",
+  "sl9": "in Capricorn",
+  "sl10": "in Aquarius",
+  "sl11": "in Pisces"
 }

@@ -732,12 +732,22 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
    ways, and stated as CSS rather than computed in JS: the view does not re-render when the theme
    flips, so a colour chosen at mount would be the wrong one half the time.
 
-   `height: 100%` is the other half of the big-screen repair. The body used to shrink-wrap its
-   contents, so a 24rem shell around a 55%-wide aperture left two thirds of a 390×844 phone as
-   empty page above and below a game nobody could read. A handheld fills the hand. */
+   The body HUGS its contents and is capped at the view, and getting here took two goes. It used
+   to shrink-wrap a 24rem shell around a 55%-wide aperture, which left two thirds of a 390×844
+   phone as empty page around a game nobody could read — so the first repair made it `height:
+   100%`, and the deployed screenshot was worse in the other direction: the aperture is
+   width-bound (the game is 1.07:1 and a phone is 0.5:1), so filling the view just moved 300px of
+   emptiness INSIDE the device, as a dead band of plastic between the screen and the deck. The
+   gate was happy — it had been told to check that the body fills the view — and the picture was
+   plainly wrong, which is the whole reason the eye is a required test.
+
+   Hugging costs the game NOTHING, because the canvas is bound by width in both layouts: it is
+   the same number of pixels either way, with the dead plastic removed and the deck sitting under
+   the screen where a handheld's deck belongs. `max-height` rather than `height` so a short
+   viewport still constrains it, and the stage still shrinks first. */
 .ms-shell {
   width: 100%;
-  height: 100%;
+  max-height: 100%;
   max-width: 30rem;
   padding: var(--ms-pad);
   background: var(--sh-body, var(--color-base-100));

@@ -113,22 +113,27 @@ export default [
        forest arrived at roughly 115 CSS px wide on a 390px phone and nothing in the gate suite
        could say so: it did not overflow, it did not fail a11y, and it photographed as a console.
        Fractions rather than pixels, so the check keeps meaning at every breakpoint. */
-    name: "екран: гра займає корпус, а корпус — увесь вигляд", run: async (h) => {
+    name: "екран: гра отримує ширину вигляду", run: async (h) => {
       await ready(h);
-      /* The ROOM, not the box. #view's clientHeight includes its own padding — and that padding is
-         the dock's height, which is space the console can never occupy. Measuring against it made
-         a body that was filling 100% of what it had report 88% and fail, which is the denominator
-         being wrong rather than the layout. Read the padding and subtract it. */
-      const box = await h.prop("#view", "clientHeight");
-      const padT = parseFloat(await h.css("#view", "padding-top")) || 0;
-      const padB = parseFloat(await h.css("#view", "padding-bottom")) || 0;
-      const room = box - padT - padB;
-      const bodyH = await h.prop("[data-shell-body]", "clientHeight");
+      /* The claim is about the PICTURE, not about the body — and the first version of this check
+         got that wrong in a way that a screenshot exposed and no measurement could. It asserted
+         that the console body fills the view, the body duly filled it, and the deployed shot
+         showed 300px of dead plastic between the screen and the deck: the canvas is bound by
+         WIDTH (the game is roughly square, a phone is not), so a taller body buys the game
+         nothing at all and only moves the emptiness inside the device. A gate that agrees with a
+         bad screenshot is set too low.
+         So: what share of the view's own width does the game actually get. That is the number the
+         complaint was about, it is true in both layouts, and it keeps meaning at every
+         breakpoint. Fractions, never pixels. */
+      const viewW = await h.prop("#view", "clientWidth");
+      const padL = parseFloat(await h.css("#view", "padding-left")) || 0;
+      const padR = parseFloat(await h.css("#view", "padding-right")) || 0;
+      const room = viewW - padL - padR;
       const bodyW = await h.prop("[data-shell-body]", "clientWidth");
       const cw = await h.prop("canvas", "clientWidth");
       h.expect(room > 0 && bodyW > 0, "нема з чим порівнювати — корпус або вигляд не змірялись");
-      h.expect(bodyH >= room * 0.95,
-        `корпус ${bodyH}px у доступних ${room}px (вигляд ${box} − падінги ${padT}/${padB}) — консоль стискається до вмісту замість заповнювати екран`);
+      h.expect(cw >= room * 0.8,
+        `полотно ${cw}px у доступних ${room}px (вигляд ${viewW} − падінги ${padL}/${padR}) — гра не отримує ширини екрана`);
       h.expect(cw >= bodyW * 0.78,
         `полотно ${cw}px у корпусі ${bodyW}px — апертура забирає в гри ширину, яку нікому більше не віддає`);
     },

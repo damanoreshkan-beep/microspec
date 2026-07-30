@@ -4270,8 +4270,16 @@ Deno.test("console · one device, and the aperture is never rationed", async () 
   assert(!/--sh-screen-w/.test(css),
     "an aperture FRACTION is back in theme.css — that variable is the small-screen bug, and it is the shape of the bug rather than its value that must not return");
   const shell = /\.ms-shell\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
-  assert(/height:\s*100%/.test(shell),
-    ".ms-shell stopped filling the view — a body sized to its contents leaves two thirds of a phone as empty page");
+  /* CAPPED, not stretched — and the distinction is the whole lesson, so the assertion has to be
+     able to tell them apart. `height: 100%` was the first repair and the deployed screenshot
+     killed it: the aperture is bound by WIDTH, so a full-height body buys the game nothing and
+     only moves the emptiness inside the device as a dead band of plastic. Note that a naive
+     /height:\s*100%/ matches `max-height: 100%` as a substring and would have passed either way,
+     which is a check that cannot see the thing it is about. */
+  assert(/max-height:\s*100%/.test(shell),
+    ".ms-shell is not capped at the view — a console taller than the viewport is a fit screen that scrolls");
+  assert(!/(^|[^-])height:\s*100%/.test(shell),
+    ".ms-shell is stretching to the view again — the canvas is width-bound, so that buys the game nothing and puts a dead band of plastic between the screen and the deck (the deployed shot, not the gate, is what caught this)");
 });
 
 // ── acts.js — the pure logic behind `arc` ────────────────────────────────────────────────────────────────

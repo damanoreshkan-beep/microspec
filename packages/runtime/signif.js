@@ -1,6 +1,6 @@
 import { signOf, ELEMENT, MODALITY } from "./synastry.js";
 
-export const CORPUS = 2;
+export const CORPUS = 3;
 
 export const RULERS = [
   ["mars"], ["venus"], ["mercury"], ["moon"], ["sun"], ["mercury"],

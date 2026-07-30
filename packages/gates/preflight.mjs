@@ -102,40 +102,67 @@ async function preflight(appdir) {
   }
 
   {
+    const self = new RegExp(
+      String.raw`(\w+)\.width\s*=[^;\n]*\b\1\.client(Width|Height)|` +
+      String.raw`(\w+)\.client(Width|Height)[^;\n]*;\s*[^;\n]*\b\3\.width\s*=`,
+    ).exec(src);
+    if (self) {
+      const el = self[1] || self[3];
+      errs.push(`\`${el}\` is a canvas measured against itself in ${srcFile} — \`${el}.width = ${el}.clientWidth * dpr\`. Before the browser-generated stylesheet lands, \`clientWidth\` on a canvas is its INTRINSIC size (300), so this bakes 300×DPR into layout and the page overflows on a cold open; an ancestor's \`overflow-hidden\` has not applied yet either, so nothing clips it. Measure a wrapper whose height is its own (or the viewport for a fixed field), set \`style.width\`/\`style.height\` AND the backing store, and observe the BOX — never the canvas.`);
+    }
+  }
+  
+  
+  
+  
+  
+  
+  
+  
+  {
     const bespokeSheet = /role=["']dialog["']/.test(src) && /fixed inset-0/.test(src);
     if (bespokeSheet && !/\bSheet\b/.test(src)) {
       errs.push(`hand-rolled bottom sheet in ${srcFile} — a \`fixed inset-0\` + \`role="dialog"\` is the farm's Sheet built by hand. import { Sheet } from "/_rt/ui.js": it owns the shell (glass, drag-to-dismiss, title row, close, backdrop, max-h-88dvh with the only sanctioned inner scroll) and the contents stay yours. Pass open/onClose from your S.screen atom so the system Back button still closes it.`);
     }
   }
-
+  
+  
   if (/lucide:play/.test(src) && /lucide:(pause|square)/.test(src)) {
     const toggles = /\?\s*"lucide:(pause|square)"\s*:\s*"lucide:play"|\?\s*"lucide:play"\s*:\s*"lucide:(pause|square)"/.test(src);
     if (toggles && !/\bTransport\b/.test(src)) {
       errs.push(`hand-rolled play/pause control in ${srcFile} — import { Transport } from "/_rt/ui.js" instead. Every control is opt-in (pass onPrev/onNext/onSeek/onRepeat/onShuffle and it appears), it carries its own a11y labels in both locales, and it is the only one that compacts correctly in a split-screen window.`);
     }
   }
-
+  
+  
+  
+  
+  
+  
+  
   {
     const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
     const surfaceShadow = /(?:^|[\s"'`])shadow-(?:sm|md|lg|xl|2xl|inner)\b/;
     if (surfaceShadow.test(code)) {
       errs.push(`app-authored shadow in ${srcFile} — the material is systemic. Declare what the surface IS: \`sf-raised\` / \`sf-inset\` / \`sf-pressed\`, or a rung of the ladder \`sf-e2\` (hover) … \`sf-e5\` (popover). A hardcoded shadow does not invert with the theme and does not compact with the density ladder.`);
     }
+    
     const glassOnOurSurface = /backdrop-blur(-[a-z0-9]+)?\b[^"'`]*\bbg-base-|bg-base-[0-9]+\/[0-9]+[^"'`]*\bbackdrop-blur\b/;
     if (glassOnOurSurface.test(code)) {
       errs.push(`frosted glass over a base surface in ${srcFile} — glass and the extrusion are answers to the same question and cannot both be on screen: the blur erases the shadow pair that makes the surface read. Use \`sf-raised\`/\`sf-e4\` and an opaque bg-base-100. (Blur over a VIDEO or camera frame is still fine — that is foreign content, not our surface.)`);
     }
   }
-
   { const emojiRe = /\p{Emoji_Presentation}/gu;
     const scan = (label, text) => { const m = text.match(emojiRe); if (m) errs.push(`emoji ${[...new Set(m)].join(" ")} in ${label} — emoji are banned farm-wide; use a crafted vector (iconify lucide:*/mdi:*, an /_rt SVG like Sign) or plain words, never an emoji`); };
     scan(srcFile, src);
     scan("spec.json", JSON.stringify(spec));
     for (const l of locales) scan(`i18n/${l}.json`, JSON.stringify(i18n[l])); }
 
+  
   { const m = src.match(/\.toLocale(?:Date|Time)?String\(\s*(?:undefined\b|\))/);
     if (m) errs.push(`locale-blind \`${m[0]}…\` — pass the app locale, or return a raw value for the renderer to format (never bake a locale-frozen string in an adapter/view)`); }
 
+  
   const { document, rafErr, uncaught } = installDom();
   try {
     const views = mode === "tool" ? await import(`file://${await Deno.realPath(`${appdir}/view.js`)}`) : {};
@@ -150,11 +177,22 @@ async function preflight(appdir) {
     const htmlOut = app?.innerHTML || "";
     if (!htmlOut.trim() || htmlOut.length < 30) errs.push("render produced (almost) no output — blank/crashed view");
 
+    
     const strays = new Set();
     const walk = (n) => { for (const c of n.childNodes || []) { if (c.nodeType === 3) { const v = (c.textContent || "").trim(); if (v.length >= 3 && TAGS.has(v)) strays.add(v); } else walk(c); } };
     walk(app);
     if (strays.size) errs.push(`stray tag-name text ${[...strays].map((s) => `"${s}"`).join(", ")} — likely an UNCLOSED tag in ${srcFile}`);
-
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const sensorImport = src.match(/import\s*\{([^}]*)\}\s*from\s*["']\/_rt\/sensors\.js["']/);
     const reads = sensorImport && /\b(geo|compass|motion|mic|camera)\b/.test(sensorImport[1]);
     if (reads && !app?.querySelector("[data-live]")) {
@@ -163,13 +201,11 @@ async function preflight(appdir) {
     if (sensorImport && /\bcamera\b/.test(sensorImport[1]) && !/CameraPrime/.test(src)) {
       errs.push(`imports the camera but never renders <${"CameraPrime"}/> — a camera view must PRIME the permission with a custom "why + processed on your device" screen before the native getUserMedia prompt, never open the stream cold. Import { CameraPrime } from "/_rt/camprime.js" and show it until the user opts in.`);
     }
-
     for (const e of rafErr) errs.push("render loop threw: " + (e?.message || e));
     for (const m of uncaught) errs.push("async/effect threw: " + m);
   } catch (e) {
     errs.push("mount threw: " + (e?.stack?.split("\n").slice(0, 3).join(" | ") || e?.message || e));
   }
-
   const name = appdir.replace(/\/$/, "").split("/").pop() + (URL_QUERY ? C.d + " " + URL_QUERY + C.x : "");
   if (errs.length) { console.log(`  ${C.r}✗ ${name}${C.x}`); errs.forEach((e) => console.log(`      ${C.r}${e}${C.x}`)); }
   else { console.log(`  ${C.g}✓ ${name}${C.x}${warns.length ? C.y + " (" + warns.length + " warn)" + C.x : ""}`); warns.forEach((w) => console.log(`      ${C.y}${w}${C.x}`)); }
@@ -182,6 +218,9 @@ const dirs = Deno.args.filter((a) => !a.startsWith("--") && a !== URL_ARG).map((
 if (!dirs.length) { console.error(`usage: preflight.mjs apps/<id> [apps/<id> ...] [--url "?tab=<id>&screen=<key>"]`); Deno.exit(2); }
 console.log(`\n  preflight (browser-free)${URL_ARG ? C.d + "  " + URL_ARG + C.x : ""}\n`);
 let fail = 0;
+
+
+
 const toolTabsAfterFirst = (d) => {
   if (URL_ARG) return [];
   try {

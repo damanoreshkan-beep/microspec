@@ -30,25 +30,34 @@ export function Field({ hue = 220 }) {
     try { const g = ctx.createLinearGradient(0, 0, 0, 1); if (!g || typeof g.addColorStop !== "function") return; } catch { return; }
     let raf = 0, w = 0, h = 0, phase = 0;
     const env = { bass: 0.3, mid: 0.25, treble: 0.2 };
-    const resize = () => { const d = DPR(); w = cv.clientWidth; h = cv.clientHeight; cv.width = Math.max(1, w * d); cv.height = Math.max(1, h * d); ctx.setTransform(d, 0, 0, d, 0, 0); };
+    const resize = () => {
+      const d = DPR();
+      w = Math.max(1, window.innerWidth | 0); h = Math.max(1, window.innerHeight | 0);
+      cv.style.width = `${w}px`; cv.style.height = `${h}px`;
+      cv.width = Math.max(1, w * d); cv.height = Math.max(1, h * d);
+      ctx.setTransform(d, 0, 0, d, 0, 0);
+    };
     resize();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
-    ro && ro.observe(cv);
+    ro && ro.observe(document.documentElement);
 
     const frame = () => {
       phase += reduced ? 0.0015 : 0.006;
       const live = _get && !gate ? _get() : null;
       const u8 = live || seedFrame(1024, phase * 0.6);
       const b = splitBands(u8, 44100, 2048);
+      
       for (const k of ["bass", "mid", "treble"]) { const v = Math.min(1, (b[k] || 0)); env[k] += (v - env[k]) * (v > env[k] ? 0.2 : 0.04); }
 
       const H = hueRef.current;
+      
       ctx.globalCompositeOperation = "source-over";
       const bg = ctx.createLinearGradient(0, 0, 0, h);
       bg.addColorStop(0, `hsl(${H}, 32%, 5%)`);
       bg.addColorStop(1, `hsl(${(H + 20) % 360}, 40%, 8%)`);
       ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
 
+      
       ctx.globalCompositeOperation = "lighter";
       const base = Math.min(w, h);
       for (const bl of BLOBS) {
@@ -63,6 +72,7 @@ export function Field({ hue = 220 }) {
         g.addColorStop(1, `hsla(${(H + bl.dh + 360) % 360}, 70%, ${light}%, 0)`);
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill();
       }
+      
       const hz = ctx.createRadialGradient(w * 0.5, h * 1.02, 0, w * 0.5, h * 1.02, base * 0.9);
       hz.addColorStop(0, `hsla(${H}, 80%, 60%, ${0.10 + env.mid * 0.12})`);
       hz.addColorStop(1, `hsla(${H}, 80%, 60%, 0)`);

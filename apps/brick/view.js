@@ -235,8 +235,15 @@ export function brick(props) {
         { id: "records", act: "records", text: digits(best?.dist ?? 0, 4), label: "records" },
       ]}
       overlay=${over ? html`
-        <div class="absolute inset-0 grid place-items-center" data-over>
-          <button class="sf-raised sf-press active:sf-pressed bg-base-100 rounded-2xl px-4 py-3 gap-1 flex flex-col items-center"
+        ${/* `overflow-hidden`, and the padding comes from the density ladder rather than from
+             fixed Tailwind steps. The card grew a third line (the record) and at 360x340 the
+             aperture is small enough that a fixed px-4/py-3 box centred in it reaches past the
+             bottom — an absolutely-positioned child larger than its box overflows symmetrically,
+             so it escaped the screen and landed under the dock. On a fit screen nothing scrolls,
+             so that is content hidden forever. It compacts with everything else now, and cannot
+             leave the aperture even if a future line makes it taller again. */""}
+        <div class="absolute inset-0 grid place-items-center overflow-hidden" data-over>
+          <button class="sf-raised sf-press active:sf-pressed bg-base-100 rounded-2xl gap-1 flex flex-col items-center max-w-full max-h-full px-[var(--ms-pad)] py-[calc(var(--ms-pad)*0.7)]"
                   onClick=${restart} data-restart>
             <span class="font-mono uppercase tracking-widest text-[var(--ms-label)] opacity-80">${T(t, "gameOver")}</span>
             <span class="font-mono text-[var(--ms-title)]" data-run>${digits(last?.dist ?? 0, 4)}</span>

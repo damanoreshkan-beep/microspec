@@ -495,12 +495,16 @@ export function chart({ S, screen, openScreen, closeScreen }) {
   
   
   const open = (key) => openScreen(READ_PLACEMENT + key);
-  const angleRow = (key, lbl, lon) => html`<button data-angle-row=${lbl} data-place=${key} onClick=${() => open(key)}
-      class="w-full text-left flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0 active:opacity-80 transition" key=${key}>
-    <div class="w-20 font-medium truncate text-primary">${T(t, lbl)}</div>
-    <div class="w-6 flex justify-center text-base-content/70"><${Sign} i=${signOf(lon)} cls="w-5 h-5" /></div>
+  
+  const mark = () => Icon("lucide:sparkles", "text-xs text-primary shrink-0 w-3.5");
+  const ROW = "w-full text-left flex items-center gap-1.5 py-1.5 border-b border-base-300/40 last:border-0 active:opacity-80 transition";
+  const angleRow = (key, lbl, lon) => html`<button data-angle-row=${lbl} data-place=${key} onClick=${() => open(key)} class=${ROW} key=${key}>
+    <div class="flex-[1.1] min-w-0 font-medium truncate text-primary">${T(t, lbl)}</div>
+    <div class="w-5 flex justify-center text-base-content/70 shrink-0"><${Sign} i=${signOf(lon)} cls="w-5 h-5" /></div>
     <div class="flex-1 min-w-0 truncate">${T(t, "s" + signOf(lon))}</div>
-    <div class="tabular-nums text-base-content/70 w-12 text-right font-mono text-xs">${dm(lon)}</div>
+    <div class="tabular-nums text-base-content/70 w-[2.9rem] text-right font-mono text-xs shrink-0">${dm(lon)}</div>
+    <div class="w-[2.75rem] shrink-0"></div>
+    ${mark()}
   </button>`;
 
   return html`<${Fragment}>
@@ -524,14 +528,13 @@ export function chart({ S, screen, openScreen, closeScreen }) {
           ${angleRow("asc", "angAsc", H.asc)}${angleRow("mc", "angMc", H.mc)}${angleRow("vertex", "angVertex", H.vertex)}
           ${rows.map((p) => {
             const s = signOf(p.lon), hs = houseOf(p.lon, H.cusps), r = C.natalRetroFor(p.key, p.lon);
-            return html`<button data-row=${p.key} data-place=${p.key} onClick=${() => open(p.key)}
-                class="w-full text-left flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0 active:opacity-80 transition" key=${p.key}>
-              <div class="w-20 font-medium truncate">${bodyLabel(t, p.key)}</div>
-              <div class="w-6 flex justify-center text-base-content/70"><${Sign} i=${s} cls="w-5 h-5" /></div>
+            return html`<button data-row=${p.key} data-place=${p.key} onClick=${() => open(p.key)} class=${ROW} key=${p.key}>
+              <div class="flex-[1.1] min-w-0 font-medium truncate">${bodyLabel(t, p.key)}</div>
+              <div class="w-5 flex justify-center text-base-content/70 shrink-0"><${Sign} i=${s} cls="w-5 h-5" /></div>
               <div class="flex-1 min-w-0 truncate">${T(t, "s" + s)}</div>
-              <div class="tabular-nums text-base-content/70 w-12 text-right font-mono text-xs">${dm(p.lon)}</div>
-              <div class="w-8 text-right tabular-nums text-xs text-base-content/70">${T(t, "houseShort")}${hs}</div>
-              <div class="w-4 text-center">${r ? html`<span class="text-warning font-mono" title=${T(t, "retro")}>℞</span>` : null}</div>
+              <div class="tabular-nums text-base-content/70 w-[2.9rem] text-right font-mono text-xs shrink-0">${dm(p.lon)}</div>
+              <div class="w-[2.75rem] text-right tabular-nums text-xs text-base-content/70 shrink-0">${T(t, "houseShort")}${hs}${r ? html`<span class="text-warning font-mono ml-0.5" title=${T(t, "retro")}>℞</span>` : null}</div>
+              ${mark()}
             </button>`;
           })}
         </div>

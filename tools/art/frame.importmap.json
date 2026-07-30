@@ -1,0 +1,6 @@
+{
+  "//": "Import map for the browser-free frame preview (tools/art/frame.mjs). The app's render.js and atlas.js import '/_rt/…' exactly as the browser resolves it from each index.html — the same trick packages/gates/preflight.importmap.json plays, kept as a separate file so a change here can never move the pre-flight gate.",
+  "imports": {
+    "/_rt/": "../../packages/runtime/"
+  }
+}

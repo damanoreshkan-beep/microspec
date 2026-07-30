@@ -15,7 +15,6 @@ import { PERMISSIONS, permLabels } from "./permissions.js";
 import { tr, warm, trTick, CONTENT_LANG } from "./translate.js";
 import { Scramble, Pixels, useReveal } from "./skeleton.js";
 import { enrich, warmMeta, metaTick } from "./enrich.js";
-import { Player } from "./video.js";
 import { collection } from "./db.js";
 import { useSheetDrag } from "./gesture.js";
 
@@ -632,18 +631,34 @@ function FilterSheet() {
 // declares `play` gets resume for free and no app writes storage for it (the whole point of the contract).
 // It waits for the stored position before mounting: mounting at 0 and seeking a moment later is exactly the
 // yank that makes resume feel broken, and the wait is one IndexedDB read.
+// The player itself is LOADED ON DEMAND, like the farm's other heavy leaves (geomag, qrcode, qrgen). It was
+// a static import, so 9 KB of video player evaluated in all 60 apps to render `null` — 8 declare `play`.
+// Measured: the eager bootstrap every app ships is 24 files / 229 KB, and this was in it.
 const PLAYPOS = collection("playPos");
 function PlayerHost() {
   const p = useStore(A.S.player), loc = useStore(A.S.locale);
   const [startAt, setStartAt] = useState(null);          // null = still reading; a number = ready to mount
+  const [Video, setVideo] = useState(null);
   useEffect(() => {
     if (!p) { setStartAt(null); return; }
     let ok = true;
     PLAYPOS.get(p.key).then((v) => { if (ok) setStartAt(Number(v?.t) || 0); }).catch(() => { if (ok) setStartAt(0); });
     return () => { ok = false; };
   }, [p?.key]);
-  if (!p || startAt == null) return null;
-  return html`<${Player} url=${p.url} title=${p.title} poster=${p.poster} locale=${loc} startAt=${startAt}
+  /* Fetched when the app is one that CAN play, not when the user finally clicks — otherwise opening the
+     player races a module fetch against an IndexedDB read, and the thing that loses is the first tap.
+     `detail.actions[].play` is the runtime's own contract for "this app has a player", so the 52 apps
+     without one still pay nothing. setState treats a bare function as an updater, hence the extra arrow. */
+  const canPlay = (A.spec.detail?.actions || []).some((a) => a.play);
+  useEffect(() => {
+    if (!canPlay && !p) return;
+    if (Video) return;
+    let ok = true;
+    import("./video.js").then((m) => { if (ok) setVideo(() => m.Player); }).catch(() => { /* offline first-open → nothing to mount */ });
+    return () => { ok = false; };
+  }, [canPlay, !!p]);
+  if (!p || startAt == null || !Video) return null;
+  return html`<${Video} url=${p.url} title=${p.title} poster=${p.poster} locale=${loc} startAt=${startAt}
     onTime=${(t, d) => PLAYPOS.put(p.key, { t, d }).catch(() => { /* quota / no idb → resume is a nicety */ })}
     onClose=${() => A.S.player.set(null)} />`;
 }

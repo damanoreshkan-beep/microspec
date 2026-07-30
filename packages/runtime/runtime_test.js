@@ -37,7 +37,7 @@ import { aspects, ASPECTS } from "./aspects.js";
 import { resolve, isComplete, parseDate, parseTime, EMPTY } from "./birth.js";
 import { translit, isCyrillic, toPlace, placeLabel, formatCoords } from "./places.js";
 import { zoneOffset, knownZone, zonedToUTC, parseOffset, formatOffset, lmtOffset, houses, houseOf, HOUSE_SYSTEMS, placidusDefined, transits, transitAspect, separation, exactHits, TRANSIT_ORB, TRANSIT_ASPECTS, HIT_PRECISION, norm360, wrap180 } from "./natal.js";
-import { BODY as sgBODY, SIGN as sgSIGN, HOUSE as sgHOUSE, ASPECT as sgASPECT, ANGLE as sgANGLE, DIGNITY as sgDIGNITY, dignityOf as sgDignity, chartRuler as sgChartRuler, balance as sgBalance, groundTransit as sgGroundTransit, groundPlacement as sgGroundPlacement, groundPortrait as sgGroundPortrait, groundCusp as sgGroundCusp, rulerOf as sgRulerOf, spanLabel as sgSpan } from "./signif.js";
+import { BODY as sgBODY, SIGN as sgSIGN, HOUSE as sgHOUSE, ASPECT as sgASPECT, ANGLE as sgANGLE, DIGNITY as sgDIGNITY, dignityOf as sgDignity, chartRuler as sgChartRuler, balance as sgBalance, groundTransit as sgGroundTransit, groundPlacement as sgGroundPlacement, groundPortrait as sgGroundPortrait, groundCusp as sgGroundCusp, rulerOf as sgRulerOf, spanLabel as sgSpan, QUESTIONS as sgQUESTIONS, questionById as sgQuestionById, groundQuestion as sgGroundQuestion } from "./signif.js";
 import { resumeAt, RESUME_MIN } from "./playback.js";
 import { logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, advanceTerrain, Parallax, seedFrame, sampleBand, idle, fib, galaxyDisc } from "./spectrum.js";
 import { RippleField, ring, RIPPLE_DEFAULTS } from "./ripple.js";
@@ -4152,10 +4152,11 @@ Deno.test("signif/groundCusp: a house is delegated to its ruler, and an empty ho
     ruler: { key: "jupiter", lon: 3 * 30 + 2, house: 8, retro: false }, coRuler: null,
     tenants: [{ key: "venus", lon: 8 * 30 + 20, retro: false }] });
   assert(g.text.includes("HOUSE 2 (placidus houses)"), "the house and its system must be named");
-  assert(g.text.includes("Jupiter rules Sagittarius and therefore rules this house"));
+  assert(g.text.includes("Jupiter rules Sagittarius and therefore RULES this house"));
   assert(g.text.includes("in house 8"), "where the ruler LIVES is the point of this reading");
+  assert(g.text.includes("which is not the same as standing in it"), "the rules/stands-in distinction must be explicit");
   assert(g.text.includes("in exaltation"), "Jupiter is exalted in Cancer and the ruler's dignity should carry");
-  assert(g.text.includes("planets standing IN house 2: Venus"));
+  assert(g.text.includes("STANDING IN house 2: Venus"));
   assert(!/undefined|NaN/.test(g.text));
 
   
@@ -4166,7 +4167,6 @@ Deno.test("signif/groundCusp: a house is delegated to its ruler, and an empty ho
   assert(empty.text.includes("retrograde"));
   assert(empty.sig !== g.sig);
 
-  
   const co = sgGroundCusp({ house: 5, cuspLon: 7 * 30 + 1, houseSystem: "placidus",
     ruler: { key: "mars", lon: 10, house: 9, retro: false }, coRuler: "pluto" });
   assert(co.text.includes("Pluto is the MODERN co-ruler"), "a contested convention must name itself");
@@ -4184,4 +4184,94 @@ Deno.test("signif/rulerOf: the modern flag is a claim about the ANSWER, not abou
   
   assertEquals(sgRulerOf(5, { modern: true }), { sign: 0, body: "mars", modern: false });
   assertEquals(sgRulerOf(5), { sign: 0, body: "mars", modern: false });
+});
+
+const QCHART = {
+  houseSystem: "placidus",
+  asc: 7 * 30 + 3, mc: 4 * 30 + 14,
+  cusps: [213, 240, 275, 314, 348, 18, 33, 60, 95, 134, 168, 190],
+  points: [
+    { key: "sun", lon: 3 * 30 + 22, house: 9, retro: false },
+    { key: "moon", lon: 22, house: 6, retro: false },
+    { key: "mercury", lon: 4 * 30 + 6, house: 9, retro: false },
+    { key: "venus", lon: 2 * 30 + 24, house: 8, retro: false },
+    { key: "mars", lon: 30 + 1, house: 6, retro: false },
+    { key: "jupiter", lon: 3 * 30 + 22, house: 9, retro: false },
+    { key: "saturn", lon: 9 * 30 + 21, house: 3, retro: true },
+  ],
+};
+Deno.test("signif/QUESTIONS: a closed catalogue, and what it deliberately does NOT ask", () => {
+  assertEquals(sgQUESTIONS.length, 10);
+  const ids = sgQUESTIONS.map((q) => q.id);
+  assertEquals(new Set(ids).size, 10, "duplicate question id");
+  for (const q of sgQUESTIONS) {
+    assertEquals(q.label.length, 2, `${q.id}: label must be [en, uk]`);
+    assert(q.label[0].trim() && q.label[1].trim() && q.label[0] !== q.label[1], `${q.id}: label halves`);
+    assert(q.focus && q.focus.length > 80, `${q.id}: focus must state the technique, not a hint`);
+    
+    for (const h of q.houses || []) assert(h >= 1 && h <= 12, `${q.id}: house ${h}`);
+    for (const k of q.bodies || []) assert(sgBODY[k], `${q.id}: unknown body ${k}`);
+    for (const a of q.angles || []) assert(sgANGLE[a], `${q.id}: unknown angle ${a}`);
+    assert((q.houses?.length || 0) + (q.bodies?.length || 0) + (q.angles?.length || 0) > 0, `${q.id}: no significators`);
+  }
+  
+  
+  
+  
+  const banned = /child|pregnan|health|illness|\bdie\b|death|lawsuit|invest|wealth|дитин|дітей|вагітн|здоров|смерт|помр|позов|інвест|багатств/i;
+  for (const q of sgQUESTIONS) {
+    assert(!banned.test(q.label[0]) && !banned.test(q.label[1]), `${q.id}: asks for an outcome the chart cannot establish`);
+  }
+  
+  
+  
+  assertEquals(sgQUESTIONS.filter((q) => q.transit).length, 2);
+  assertEquals(sgQUESTIONS.filter((q) => q.transit).map((q) => q.id), ["workNow", "phase"]);
+  assertEquals(sgQuestionById("love").id, "love");
+  assertEquals(sgQuestionById("nope"), null);
+});
+Deno.test("signif/groundQuestion: the block contains the declared factors and NOTHING else", () => {
+  const money = sgQuestionById("money");
+  const g = sgGroundQuestion({ q: money, chart: QCHART });
+  assert(g.text.includes("QUESTION: What is my pattern with money"));
+  assert(g.text.includes("HOW TO READ IT:"), "the technique must travel with the question");
+  assert(g.text.includes("HOUSE 2 (placidus)"), "the declared house is missing");
+  assert(g.text.includes("HOUSE 8 (placidus)"));
+  assert(g.text.includes("Venus") && g.text.includes("Jupiter"), "the declared bodies are missing");
+  
+  assert(!/- Moon —/.test(g.text), "the Moon is not a money significator and must not be supplied");
+  assert(!/HOUSE 7|HOUSE 10/.test(g.text), "an undeclared house leaked into the block");
+  assert(!/undefined|NaN/.test(g.text));
+
+  
+  assert(/RULED BY \w+ \(/.test(g.text), "the house ruler must be named");
+  assert(/does not stand in house \d; it stands in \w+, house \d/.test(g.text),
+    "ruling a house and standing in it must be stated as different things — a model conflated them on the live route");
+  assert(/No planet stands in it, which the tradition reads through the ruler/.test(g.text) || /STANDING IN house \d:/.test(g.text));
+
+  
+  assertEquals(sgGroundQuestion({ q: money, chart: QCHART }).sig, g.sig);
+  assert(sgGroundQuestion({ q: sgQuestionById("love"), chart: QCHART }).sig !== g.sig, "question must vary the key");
+  const moved = { ...QCHART, cusps: QCHART.cusps.map((c, i) => (i === 1 ? c + 40 : c)) };
+  assert(sgGroundQuestion({ q: money, chart: moved }).sig !== g.sig, "a cusp moving sign must vary the key");
+});
+
+Deno.test("signif/groundQuestion: a timing question leads with transits, and says so when there are none", () => {
+  const phase = sgQuestionById("phase");
+  const c = { t: "saturn", n: "sun", type: "square", nature: "hard", angle: 90, natalLon: 112, orb: 0.4, exact: true, applying: true };
+  const g = sgGroundQuestion({ q: phase, chart: QCHART,
+    timing: { dateEN: "25 Jul 2026", contacts: [{ c, transitLon: 22, retro: false, hits: ["3 Aug 2026"] }] } });
+  assert(g.text.includes("TRANSITS on 25 Jul 2026"));
+  assert(g.text.includes("transiting Saturn in Aries square natal Sun"));
+  assert(g.text.includes("29 and a half years"), "the tempo must travel, or a slow transit reads as a mood");
+  assert(g.text.includes("Exact: 3 Aug 2026"));
+
+  
+  const none = sgGroundQuestion({ q: phase, chart: QCHART, timing: { dateEN: "25 Jul 2026", contacts: [] } });
+  assert(none.text.includes("none within orb"));
+  assert(none.text.includes("do not substitute another transit"));
+  assert(none.sig !== g.sig, "the contact set must vary the key");
+
+  
+  assert(!sgGroundQuestion({ q: sgQuestionById("home"), chart: QCHART }).text.includes("TRANSITS"));
 });

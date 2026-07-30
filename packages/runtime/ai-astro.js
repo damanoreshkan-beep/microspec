@@ -20,6 +20,11 @@ export const houseRead = HOUSE.get;
 export const isHouseRead = HOUSE.has;
 export const warmHouseRead = HOUSE.warm;
 
+const ASKED = reading("astro-q", "astroAsk");
+export const askedRead = ASKED.get;
+export const isAskedRead = ASKED.has;
+export const warmAskedRead = ASKED.warm;
+
 const PORTRAIT = reading("astro-c", "astroChart");
 export const portraitRead = PORTRAIT.get;
 export const isPortraitRead = PORTRAIT.has;

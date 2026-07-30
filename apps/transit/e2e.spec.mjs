@@ -191,6 +191,30 @@ export default [
     },
   },
   {
+    name: "питання до карти: тап додає відповідь, вона переживає перезавантаження", run: async (h) => {
+      await h.click('[data-tab="chart"]'); await h.wait(400);
+      await h.tap("[data-ask-open]"); await h.wait(450);
+      h.expect((await h.prop("#asksheet", "open")) === true, "аркуш питань не відкрився");
+      const seeded = await h.count("[data-asked]");
+      h.expect(seeded === 2, `очікував 2 засіяні питання, а не ${seeded}`);
+      h.expect((await h.count("[data-reading]")) === seeded, "не в кожного питання є відповідь");
+      h.expect((await h.text("[data-reading]")).trim().length > 100, "порожня відповідь");
+      const rest = await h.count("[data-ask]");
+      h.expect(rest === 8, `у каталозі має лишитись 8 питань, а не ${rest}`);
+
+      await h.tap('[data-ask="money"]'); await h.wait(400);
+      h.expect((await h.count("[data-asked]")) === 3, "питання не додалось у стрічку");
+      h.expect((await h.count("[data-ask]")) === 7, "запитане питання не зникло з каталогу");
+
+      await h.goto("?tab=chart&screen=ask", 1600);
+      h.expect((await h.prop("#asksheet", "open")) === true, "?screen=ask не відкрив каталог");
+      h.expect((await h.count("[data-asked]")) === 3, "стрічка не пережила перезавантаження");
+      await h.back(); await h.wait(350);
+      h.expect((await h.prop("#asksheet", "open")) !== true, "Back не закрив каталог");
+      await h.goto("", 1200);
+    },
+  },
+  {
     name: "?tab= і ?screen= відкривають потрібний екран одразу", run: async (h) => {
       await h.goto("?tab=chart&screen=portrait", 1600);
       h.expect((await h.prop("#portraitsheet", "open")) === true, "?screen= не відкрив портрет");

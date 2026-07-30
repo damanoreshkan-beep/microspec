@@ -32,9 +32,15 @@
 // blocks are always built in English — the model renders the reader's locale from them.
 import { signOf, ELEMENT, MODALITY } from "./synastry.js";
 
-// Bump when a MEANING changes. It rides in every reading's cache signature, so a corpus edit expires the
-// readings built on the old wording instead of serving them forever.
-export const CORPUS = 2;
+// Bump when a MEANING changes — or when the VOICE does. It rides in every reading's cache signature, so an
+// edit expires the readings built on the old wording instead of serving them forever.
+//
+// 3: the astrology prompts were rewritten (microspec-edge ai-prompts.js). The old rules mandated hedges
+// («традиційно читається як», «схиляє до») and bought gender-neutrality with verbal nouns («є схильність»),
+// which together produced the flat, could-be-anyone register the owner called out. Nothing about the corpus
+// or the facts changed, so the signature inputs would not have moved on their own — and every reading
+// already cached in a browser would have kept its old voice forever.
+export const CORPUS = 3;
 
 // Planetary rulership, index 0=Aries..11=Pisces: the traditional ruler FIRST, then the modern outer
 // co-ruler where one is assigned — Scorpio = Mars & Pluto, Aquarius = Saturn & Uranus, Pisces = Jupiter &

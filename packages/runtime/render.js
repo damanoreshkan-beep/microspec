@@ -816,6 +816,16 @@ export function App() {
   
   
   const items = useStore(A.S.data).items;
+  
+  const routed = useRef(false);
+  useEffect(() => {
+    if (routed.current) return;
+    routed.current = true;
+    let q; try { q = new URLSearchParams(location.search); } catch { return; }
+    const wantTab = q.get("tab"), wantScreen = q.get("screen");
+    if (wantTab && A.spec.tabs.some((x) => x.id === wantTab)) A.S.tab.set(wantTab);
+    if (wantScreen) A.S.screen.set(wantScreen);
+  }, []);
   const shot = useRef(false);
   useEffect(() => {
     if (shot.current || !A.spec.detail || !items?.length) return;

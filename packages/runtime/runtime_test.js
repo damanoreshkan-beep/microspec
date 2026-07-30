@@ -36,7 +36,8 @@ import { sat, makeSat, parseTleText, subpoint, sunEciUnit, isSunlit, FALLBACK_TL
 import { aspects, ASPECTS } from "./aspects.js";
 import { resolve, isComplete, parseDate, parseTime, EMPTY } from "./birth.js";
 import { translit, isCyrillic, toPlace, placeLabel, formatCoords } from "./places.js";
-import { zoneOffset, knownZone, zonedToUTC, parseOffset, formatOffset, lmtOffset, houses, houseOf, HOUSE_SYSTEMS, placidusDefined, transits, transitAspect, separation, exactHits, TRANSIT_ORB, HIT_PRECISION, norm360, wrap180 } from "./natal.js";
+import { zoneOffset, knownZone, zonedToUTC, parseOffset, formatOffset, lmtOffset, houses, houseOf, HOUSE_SYSTEMS, placidusDefined, transits, transitAspect, separation, exactHits, TRANSIT_ORB, TRANSIT_ASPECTS, HIT_PRECISION, norm360, wrap180 } from "./natal.js";
+import { BODY as sgBODY, SIGN as sgSIGN, HOUSE as sgHOUSE, ASPECT as sgASPECT, ANGLE as sgANGLE, DIGNITY as sgDIGNITY, dignityOf as sgDignity, chartRuler as sgChartRuler, balance as sgBalance, groundTransit as sgGroundTransit, groundPlacement as sgGroundPlacement, groundPortrait as sgGroundPortrait, spanLabel as sgSpan } from "./signif.js";
 import { resumeAt, RESUME_MIN } from "./playback.js";
 import { logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, advanceTerrain, Parallax, seedFrame, sampleBand, idle, fib, galaxyDisc } from "./spectrum.js";
 import { RippleField, ring, RIPPLE_DEFAULTS } from "./ripple.js";
@@ -3971,4 +3972,176 @@ Deno.test("groundBook puts the book above its plot", () => {
   const g = chatGround({ title: "Dune", byline: "Frank Herbert · 1965", plot: "  Sand.  " });
   assert(g.startsWith("КНИГА: Dune — Frank Herbert · 1965"), "the book header is missing");
   assert(g.trimEnd().endsWith("Sand."), "the plot is missing or untrimmed");
+});
+
+
+
+
+
+
+Deno.test("signif/corpus: every leaf is an [en, uk] pair, and neither half is missing", () => {
+  
+  
+  const seen = { n: 0 };
+  const walk = (node, path) => {
+    if (Array.isArray(node) && typeof node[0] === "string") {
+      seen.n++;
+      assertEquals(node.length, 2, `${path}: a leaf must be exactly [en, uk]`);
+      assert(node[0].trim() && node[1].trim(), `${path}: an empty half`);
+      assert(node[0] !== node[1], `${path}: the Ukrainian half is a copy of the English`);
+      return;
+    }
+    if (node && typeof node === "object") for (const k of Object.keys(node)) walk(node[k], `${path}.${k}`);
+  };
+  for (const [name, table] of Object.entries({ BODY: sgBODY, SIGN: sgSIGN, HOUSE: sgHOUSE, ASPECT: sgASPECT, ANGLE: sgANGLE, DIGNITY: sgDIGNITY })) walk(table, name);
+  assert(seen.n > 100, `only ${seen.n} corpus entries walked — the tables are not being reached`);
+  assertEquals(Object.keys(sgBODY).length, 10);
+  assertEquals(sgSIGN.length, 12);
+  assertEquals(sgHOUSE.length, 12);
+  assertEquals(Object.keys(sgASPECT).length, 5);
+  for (const k of ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"]) assert(sgBODY[k], `no corpus entry for ${k}`);
+  for (const a of TRANSIT_ASPECTS) assert(sgASPECT[a.type], `no corpus entry for ${a.type}`);
+});
+
+Deno.test("signif/dignityOf: the classical table, with detriment and fall DERIVED", () => {
+  const S = { ari: 0, tau: 1, gem: 2, can: 3, leo: 4, vir: 5, lib: 6, sco: 7, sag: 8, cap: 9, aqu: 10, pis: 11 };
+  
+  assertEquals(sgDignity("mars", S.ari), "domicile");
+  assertEquals(sgDignity("mars", S.sco), "domicile", "Scorpio is Mars's by tradition; Pluto is only a modern co-ruler");
+  assertEquals(sgDignity("saturn", S.aqu), "domicile", "Aquarius is Saturn's by tradition, not Uranus's");
+  assertEquals(sgDignity("jupiter", S.pis), "domicile");
+  
+  assertEquals(sgDignity("mars", S.lib), "detriment");
+  assertEquals(sgDignity("sun", S.aqu), "detriment");
+  assertEquals(sgDignity("moon", S.cap), "detriment");
+  
+  assertEquals(sgDignity("sun", S.ari), "exaltation");
+  assertEquals(sgDignity("moon", S.tau), "exaltation");
+  assertEquals(sgDignity("jupiter", S.can), "exaltation");
+  assertEquals(sgDignity("saturn", S.lib), "exaltation");
+  assertEquals(sgDignity("mars", S.cap), "exaltation");
+  assertEquals(sgDignity("venus", S.pis), "exaltation");
+  
+  assertEquals(sgDignity("sun", S.lib), "fall");
+  assertEquals(sgDignity("moon", S.sco), "fall");
+  assertEquals(sgDignity("jupiter", S.cap), "fall");
+  assertEquals(sgDignity("saturn", S.ari), "fall");
+  assertEquals(sgDignity("mars", S.can), "fall");
+  assertEquals(sgDignity("venus", S.vir), "fall");
+  
+  assertEquals(sgDignity("mercury", S.vir), "domicile");
+  assertEquals(sgDignity("mercury", S.pis), "detriment");
+  assertEquals(sgDignity("mercury", S.gem), "domicile");
+  
+  assertEquals(sgDignity("sun", S.gem), "none");
+  
+  for (const b of ["uranus", "neptune", "pluto"]) {
+    for (let s = 0; s < 12; s++) assertEquals(sgDignity(b, s), null, `${b} must carry no essential dignity`);
+  }
+  
+  for (const b of ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn"]) {
+    const tally = {};
+    for (let s = 0; s < 12; s++) { const d = sgDignity(b, s); tally[d] = (tally[d] || 0) + 1; }
+    assert((tally.domicile || 0) >= 1 && (tally.domicile || 0) <= 2, `${b}: ${tally.domicile} domiciles`);
+    assertEquals(tally.domicile, tally.detriment, `${b}: detriment must mirror domicile exactly`);
+    
+    
+    
+    const masked = b === "mercury";
+    assertEquals(tally.exaltation || 0, masked ? 0 : 1, `${b}: exaltation count`);
+    assertEquals(tally.fall || 0, masked ? 0 : 1, `${b}: fall count`);
+  }
+  
+  assertEquals(sgDignity("mars", 12), "domicile");
+  assertEquals(sgDignity("mars", -12), "domicile");
+});
+
+Deno.test("signif/chartRuler: the convention is a CHOICE, and the answer says which one it used", () => {
+  const aqu = 10 * 30 + 5;
+  assertEquals(sgChartRuler(aqu), { sign: 10, body: "saturn", modern: false });
+  assertEquals(sgChartRuler(aqu, { modern: true }), { sign: 10, body: "uranus", modern: true });
+  assertEquals(sgChartRuler(5, { modern: true }), { sign: 0, body: "mars", modern: false });
+});
+
+Deno.test("signif/balance: a plain unweighted count over the bodies actually shown", () => {
+  
+  const b = sgBalance([1, 121, 241, 95]);
+  assertEquals(b.elements, [3, 0, 0, 1]);
+  assertEquals(b.modalities, [2, 1, 1]);
+  assertEquals(b.topElement, 0);
+  assertEquals(b.topModality, 0);
+  assertEquals(sgBalance([]).elements, [0, 0, 0, 0]);
+});
+
+Deno.test("signif/groundTransit: the block is closed-world, and the signature moves with the facts", () => {
+  const c = { t: "saturn", n: "sun", type: "square", nature: "hard", angle: 90, natalLon: 112.4, orb: 0.42, exact: true, applying: true };
+  const g = sgGroundTransit({ c, transitLon: 22.7, natalHouse: 10, houseSystem: "placidus", retro: false, dateEN: "3 Aug 2026", hits: ["3 Aug 2026"] });
+  assert(g.text.includes("Use ONLY the facts and meanings below"), "the closed-world instruction is missing");
+  assert(g.text.includes("transiting Saturn square natal Sun"), "the configuration line is missing");
+  assert(g.text.includes("applying"), "the phase must reach the model");
+  assert(g.text.includes("house 10 (placidus)"), "the house system must be named — Placidus and whole-sign disagree");
+  assert(/29 and a half years/.test(g.text), "the tempo must reach the model, or a Saturn transit reads like a mood");
+  assert(g.text.includes("Under strain"), "the corpus's cost side must be present so the reading cannot be one-sided");
+
+  
+  const ms = (d) => Date.parse(d);
+  const many = sgGroundTransit({ c, transitLon: 22.7, natalHouse: 10, houseSystem: "placidus", retro: true, dateEN: "3 Aug 2026",
+    hits: [{ ms: ms("2026-08-03"), label: "3 Aug 2026" }, { ms: ms("2026-11-19"), label: "19 Nov 2026" }, { ms: ms("2027-05-02"), label: "2 May 2027" }] });
+  assert(many.text.includes("perfects 3 times"), "the multi-pass fact is missing");
+  
+  
+  assert(many.text.includes("about 9 months"), `the span must be stated, not left to be derived: ${many.text}`);
+  assert(many.text.includes("retrograde"), "retrograde must be stated");
+  assert(many.sig !== g.sig, "retrograde and the passes must change the cache key");
+
+  
+  const whole = sgGroundTransit({ c, transitLon: 22.7, natalHouse: 9, houseSystem: "whole", retro: false, dateEN: "3 Aug 2026", hits: ["3 Aug 2026"] });
+  assert(whole.sig !== g.sig, "the house system must vary the key");
+  assertEquals(sgGroundTransit({ c, transitLon: 22.7, natalHouse: 10, houseSystem: "placidus", retro: false, dateEN: "3 Aug 2026", hits: ["3 Aug 2026"] }).sig, g.sig, "and the key must be stable");
+  
+  const ang = sgGroundTransit({ c: { ...c, n: "asc" }, transitLon: 22.7, natalHouse: null, houseSystem: "placidus", retro: false, dateEN: "3 Aug 2026", hits: [] });
+  assert(ang.text.includes("natal Ascendant"), "the angle is missing");
+  assert(!ang.text.includes("house null"), "an angle must not print a null house");
+});
+Deno.test("signif/groundPlacement: what · how · where, plus dignity when the doctrine applies", () => {
+  const g = sgGroundPlacement({ key: "mars", lon: 9 * 30 + 12, house: 4, houseSystem: "placidus", retro: false });
+  assert(g.text.includes("Mars is the WHAT"));
+  assert(g.text.includes("Capricorn is the HOW"));
+  assert(g.text.includes("house 4 is the WHERE"));
+  assert(g.text.includes("in exaltation"), "Mars is exalted in Capricorn and the reading should know it");
+  assert(g.text.includes("ONE behaviour in ONE arena"), "the anti-two-paragraphs instruction is missing");
+  
+  const nep = sgGroundPlacement({ key: "neptune", lon: 300, house: 11, houseSystem: "whole", retro: true });
+  assert(!/essential dignity/.test(nep.text), "Neptune must not be given a dignity it has no consensus for");
+  assert(/retrograde at birth/.test(nep.text));
+  assert(nep.sig !== sgGroundPlacement({ key: "neptune", lon: 300, house: 11, houseSystem: "whole", retro: false }).sig);
+});
+
+Deno.test("signif/groundPortrait: angles, chart ruler and balance, with the synthesis order stated", () => {
+  const points = [
+    { key: "sun", lon: 112, house: 10, retro: false },
+    { key: "moon", lon: 300, house: 5, retro: false },
+    { key: "mercury", lon: 120, house: 11, retro: true },
+  ];
+  const g = sgGroundPortrait({ points, asc: 95, mc: 355, houseSystem: "placidus", aspects: [{ a: "sun", b: "moon", type: "trine", orb: 1.2 }] });
+  assert(g.text.includes("CHART RULER: Moon"), "Cancer rising is ruled by the Moon");
+  assert(g.text.includes("BALANCE across 3 bodies"));
+  assert(g.text.includes("Synthesise in this order"), "the method must be stated or the model just lists placements");
+  assert(g.text.includes("natal Sun trine Moon"), "the tightest aspects are missing");
+  assert(!/undefined|NaN/.test(g.text), "a hole in the block reads to the model as a fact");
+  
+  const m = sgGroundPortrait({ points, asc: 10 * 30 + 5, mc: 355, houseSystem: "placidus", modernRulers: true });
+  assert(m.text.includes("modern ruler; traditionally Saturn"), "a contested convention must name itself");
+  assert(m.sig !== g.sig);
+});
+
+Deno.test("signif/spanLabel: days, months or years — the unit the reader would actually use", () => {
+  const d = (n) => n * 86400000;
+  assertEquals(sgSpan(0, d(12)), "12 days");
+  assertEquals(sgSpan(0, d(44)), "44 days");
+  assertEquals(sgSpan(0, d(45)), "about 1 month");      
+  assertEquals(sgSpan(0, d(273)), "about 9 months");    
+  assertEquals(sgSpan(0, d(547)), "about 1.5 years");
+  assertEquals(sgSpan(0, d(365)), "about 12 months");
+  assertEquals(sgSpan(0, d(2557)), "about 7 years");
 });

@@ -32,7 +32,14 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
     const mod = await import(HLS);
     const Hls = mod.default || mod;
     if (!Hls?.isSupported?.()) { video.src = url; video.addEventListener("error", () => onError(), { once: true }); return { destroy() { clearSrc(video); } }; }
-    const hls = new Hls({ maxBufferLength: 12, manifestLoadingTimeOut: 12000, manifestLoadingMaxRetry: 1 });
+    /* `backBufferLength` is hls.js's own default of Infinity — every second already played is KEPT, for the
+       life of the instance. That was survivable while a video app meant one player at a time; it stopped
+       being survivable when reel began holding a window of three so the next clip is ready before you swipe
+       to it. Three unbounded back buffers on a long stream is a memory leak with a polite name. 30s is
+       enough to scrub back into and is a number rather than a promise.
+       The forward side is already capped at 12s — and note hls.js treats `maxBufferLength` as a minimum
+       TARGET it will reach regardless of `maxBufferSize`, so the duration cap is the one that binds. */
+    const hls = new Hls({ maxBufferLength: 12, backBufferLength: 30, manifestLoadingTimeOut: 12000, manifestLoadingMaxRetry: 1 });
     hls.on(Hls.Events.MANIFEST_PARSED, () => onReady());
     hls.on(Hls.Events.ERROR, (_e, d) => { if (d?.fatal) onError(d); });
     hls.loadSource(url); hls.attachMedia(video);

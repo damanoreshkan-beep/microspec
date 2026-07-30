@@ -89,6 +89,15 @@ const GATE_TITLES = {
   "https://mixkit.co/watch/55013/": "Deeper two · Mixkit",
 };
 
+/* How many slides EITHER SIDE of the active one keep a live <video>. 1, so three exist at once, and the
+   number is small on purpose: there is no documented cap on concurrent media elements. Android's own
+   `getMaxSupportedInstances()` is described by Android as a HINT for an upper bound that real resources may
+   undercut, Chrome documents nothing at the web layer, and — the part that decides it — nothing specifies
+   what HAPPENS at the limit: not a dropped `src`, not a rejected `play()`, not a `MediaError`. A budget whose
+   failure mode is undefined is a budget you stay well inside.
+   One ahead is also all a feed needs: you swipe forward, and one behind makes going back free too. */
+const PRELOAD = 1;
+
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
 // "Open site" opens the source's real website in the external browser. (The in-app reverse-proxy iframe was
 // removed — heavy/anti-bot sites never rendered reliably through the datacenter-IP proxy.) The reel is the tap.
@@ -302,23 +311,83 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
   <img src=${poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-55" onError=${(e) => e.currentTarget.remove()} />
   <img src=${poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain" onError=${(e) => e.currentTarget.remove()} />
 </${Fragment}>` : null;
-// The single live <video>, mounted only in the ACTIVE slide (so exactly one plays). createPlayer handles mp4 vs
-// HLS and tears down on unmount. On failure it falls back to the poster — the island's way out is already
-// there either way, so no failure flag has to travel upwards for it.
-function VideoLayer({ item }) {
+// A live <video>, mounted for the active slide AND its neighbours (see PRELOAD). Exactly one PLAYS; the rest
+// are attached and buffering, paused. createPlayer handles mp4 vs HLS and tears down on unmount. On failure it
+// falls back to the poster — the island's way out is already there either way, so no failure flag has to
+// travel upwards for it.
+//
+// THE BLINK. This used to mount only in the ACTIVE slide, and that is what the owner was seeing: every swipe
+// destroyed one element and built another, so the new clip started from nothing — a fresh element, a fresh
+// connection, a wait for `loadeddata`, and only then a frame. The gap between the old video going away and the
+// new one having a pixel to show IS the flash, and no amount of styling closes it, because there is genuinely
+// nothing to display in the middle. So the element for the next clip now exists BEFORE you swipe to it and has
+// been buffering while you watched the current one; becoming active is a play() on data that is already here.
+//
+// Three things make that safe rather than just eager:
+//   · attach and PLAY are separate effects. The element is built once per clip URL and never rebuilt for a
+//     change of active — which is the whole point, since rebuilding it is the bug.
+//   · the ambient backdrop copy waits for the main video to have data. It is a SECOND fetch of the same URL,
+//     and starting it in parallel (as it used to) makes the thing you are actually watching arrive later.
+//     It is also the active slide's alone: at three slides it would otherwise be six decoders.
+//   · `poster` on the element itself, so a cold slide shows the still instead of black while it loads. The
+//     blurred fill behind it is a different job (filling the letterbox) and stays a separate node.
+function VideoLayer({ item, playing }) {
   const ref = useRef(), bgRef = useRef();
   const [errored, setErrored] = useState(false);
-  const fail = () => setErrored(true);
+  const [ready, setReady] = useState(false);
+  // The active flag as the ATTACH effect will see it whenever it finally resolves. `onReady` fires after an
+  // await, so reading `playing` from the closure would play whichever slide was active when the fetch started.
+  const wants = useRef(playing);
+  wants.current = playing;
+
   useEffect(() => {
-    setErrored(false);
+    setErrored(false); setReady(false);
     const v = ref.current; if (!v) return;
     v.muted = true; v.loop = true;                                                        // muted → browsers allow autoplay
-    let handle, bgHandle, dead = false;
-    createPlayer(v, item.video, { onReady: () => v.play?.().catch(() => {}), onError: fail }).then((h) => { if (dead) h?.destroy?.(); else handle = h; });
-    // ambient backdrop: when there's no poster to blur, a muted copy of the video fills the letterbox area.
-    if (!item.poster && bgRef.current) { const bg = bgRef.current; bg.muted = true; bg.loop = true; createPlayer(bg, item.video, { onReady: () => bg.play?.().catch(() => {}) }).then((h) => { if (dead) h?.destroy?.(); else bgHandle = h; }); }
-    return () => { dead = true; handle?.destroy?.(); bgHandle?.destroy?.(); };
+    v.preload = "auto";                                                                   // a neighbour exists to BUFFER; metadata is not enough
+    let handle, dead = false;
+    createPlayer(v, item.video, {
+      onReady: () => {
+        if (dead) return;
+        setReady(true);
+        if (wants.current) { v.play?.().catch(() => {}); return; }
+        /* PRIME. `preload` is a hint the spec explicitly lets a UA ignore, and Chrome's own guidance says
+           it downgrades `auto` to `metadata` on cellular (`none` under Data Saver) — i.e. exactly on the
+           phone this is for. Metadata is not a picture, so a neighbour could still arrive with nothing to
+           show and the blink would survive the rewrite. A muted play() is permitted without a gesture, so
+           one is taken and immediately given back: that forces the decode of frame 0, which is the thing
+           we actually want buffered. Rewound afterwards so the clip still starts at its beginning, and
+           swallowed on failure — an interrupted play() rejects, and that is not an error here. */
+        v.play?.().then(() => {
+          if (dead || wants.current) return;                                              // it became active mid-prime — let it run
+          v.pause?.();
+          try { v.currentTime = 0; } catch { /* not seekable yet */ }
+        }).catch(() => {});
+      },
+      onError: () => { if (!dead) setErrored(true); },
+    }).then((h) => { if (dead) h?.destroy?.(); else handle = h; });
+    return () => { dead = true; handle?.destroy?.(); };
   }, [item.video]);
+
+  // Play follows the ACTIVE flag and nothing else — the element is never rebuilt for it. A manual pause (tap)
+  // survives, because this only runs when `playing` or `ready` actually changes.
+  useEffect(() => {
+    const v = ref.current; if (!v || !ready) return;
+    if (playing) v.play?.().catch(() => {}); else v.pause?.();
+  }, [playing, ready]);
+
+  // The ambient backdrop, for clips with no poster: a muted copy of the same video, blurred, filling the
+  // letterbox. Active slide only, and only once the main one has data — see the note above.
+  useEffect(() => {
+    if (!playing || !ready || item.poster || errored) return;
+    const bg = bgRef.current; if (!bg) return;
+    bg.muted = true; bg.loop = true;
+    let handle, dead = false;
+    createPlayer(bg, item.video, { onReady: () => { if (!dead) bg.play?.().catch(() => {}); } })
+      .then((h) => { if (dead) h?.destroy?.(); else handle = h; });
+    return () => { dead = true; handle?.destroy?.(); };
+  }, [playing, ready, item.video, item.poster, errored]);
+
   return html`<${Fragment}>
     ${errored
       ? html`<${PosterFill} poster=${item.poster} />`
@@ -326,7 +395,11 @@ function VideoLayer({ item }) {
         ? html`<img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" onError=${(e) => e.currentTarget.remove()} />`
         : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
     <div class="absolute inset-0 bg-black/25" aria-hidden="true"></div>
-    <video ref=${ref} data-main playsinline loop muted class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
+    ${/* `data-playing` mirrors which element owns playback. A <video> is opaque to every gate this farm has
+          — `paused` is a property, not an attribute, so no selector can see it — and the whole claim of the
+          preload window is "several are mounted, exactly ONE plays". State the claim in the DOM or it
+          cannot be tested, and a window that quietly plays all three is the regression to catch. */""}
+    <video ref=${ref} data-main data-playing=${playing ? "" : null} poster=${item.poster || null} playsinline loop muted class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
   </${Fragment}>`;
 }
 
@@ -351,7 +424,7 @@ function HeartBurst({ x, y, onDone }) {
 // A slide is the clip and NOTHING else — no chip, no link, no pill. Every affordance it used to carry (dive,
 // open the page, "watch on the site") is one control in the island below, where it is stated once instead of
 // once per slide, and where a keyboard can reach it. The surface is the video.
-function Slide({ item, idx, active, ephemeral }) {
+function Slide({ item, idx, active, near, ephemeral }) {
   const secRef = useRef();
   const [burst, setBurst] = useState(null);
   // Systemic tap dispatch (runtime useTap): SINGLE tap toggles pause on a clip that plays inline, else opens the
@@ -368,8 +441,8 @@ function Slide({ item, idx, active, ephemeral }) {
   return html`<section ref=${secRef} data-reel data-idx=${idx} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
     ${ephemeral
       ? html`<${PosterFill} poster=${item.poster} />`
-      : active
-        ? html`<${VideoLayer} item=${item} />`
+      : near
+        ? html`<${VideoLayer} item=${item} playing=${active} />`
         : item.poster
           ? html`<${PosterFill} poster=${item.poster} />`
           : null}
@@ -526,7 +599,7 @@ function FeedSurface({ S, t }) {
       ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/70 px-8 text-center">${Icon("lucide:cloud-off", "text-5xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => loadSource(src)}>${T(t, "retry")}</button></section>`
       : !items.length
         ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/60 px-8 text-center">${Icon("lucide:film", "text-5xl")}<div>${T(t, "empty")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
-        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} ephemeral=${it.eph != null ? it.eph : ephemeral} key=${(it.orig || it.video) + i} />`);
+        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} near=${Math.abs(i - active) <= PRELOAD} ephemeral=${it.eph != null ? it.eph : ephemeral} key=${(it.orig || it.video) + i} />`);
 
   // The island's controls belong to the ACTIVE clip, so they are derived here, once, from `items[active]` —
   // never per slide. The way out is unconditional: whether the clip plays inline is a browser/CORS verdict

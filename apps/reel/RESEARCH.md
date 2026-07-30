@@ -127,3 +127,59 @@ The gate never touches the network, so `loadSource` under `gate` serves a determ
 `Deeper …`) for anything else — which is what makes dive/back provable in CI. `$likes` is seeded with 2
 records under the gate so the Liked tab is measured **populated** (and the in-tab feed is testable without a
 double-tap, which the e2e surface cannot dispatch inside the 260 ms `useTap` window).
+
+## 6. Playback continuity — why the swipe blinked, and what the platform actually guarantees
+
+**The symptom (owner, 2026-07-30):** a visible flash on every swipe.
+
+**The cause is structural, not cosmetic.** `Slide` mounted `VideoLayer` only when the slide was `active`, so a
+swipe *destroyed* one `<video>` and *built* another: new element → new connection → wait for `loadeddata` →
+first frame. Between the old element leaving and the new one having a pixel there is genuinely nothing to
+display. No styling closes that gap; only removing the teardown does.
+
+**The fix:** a window of `PRELOAD = 1` slides either side keeps a live element, so the next clip has been
+buffering while you watched the current one. Attach and play are separate effects — the element is built once
+per clip URL and never rebuilt for a change of `active`, which is the entire point.
+
+### What the specs guarantee (researched before building; Codex read, claims re-checked here)
+
+- **`preload` is a HINT, not an instruction.** WHATWG states a UA may ignore the value entirely on user
+  preference or connectivity, and may suspend the download at any time
+  ([spec](https://html.spec.whatwg.org/multipage/media.html#attr-media-preload)). Chrome's own guidance says
+  `auto` is downgraded to `metadata` on cellular and to `none` under Data Saver
+  ([web.dev](https://web.dev/articles/fast-playback-with-preload#video_preload_attribute) — note this article
+  is old; treat it as evidence the downgrade EXISTS, not as today's exact rule).
+  **Therefore `preload="auto"` alone cannot be the mechanism** — on a phone, the one device this is for, it is
+  the case most likely to be downgraded. Metadata is not a picture.
+- **So the first frame is forced, not requested.** A muted `play()` needs no gesture
+  ([WebKit](https://webkit.org/blog/6784/new-video-policies-for-ios/)); a neighbour takes one and gives it
+  straight back, then rewinds. That decodes frame 0 — the thing actually needed — regardless of how the hint
+  was treated. An interrupted `play()` rejects; that is expected and swallowed.
+- **A paused element does show its frame once it has one.** After `loadeddata` (`readyState ≥ 2 =
+  HAVE_CURRENT_DATA`) the element renders the frame at the current position; before that it is transparent
+  black unless a `poster` is set ([rendering](https://html.spec.whatwg.org/multipage/media.html#the-video-element),
+  [ready states](https://html.spec.whatwg.org/multipage/media.html#ready-states)). Hence `poster` on the
+  element itself. Caveat, verified: the show-poster flag is cleared by the play() steps, so `poster` covers
+  the *load*, not the moment of starting.
+
+### What is UNKNOWN, and what that decided
+
+- **There is no documented cap on concurrent media elements.** Android's `getMaxSupportedInstances()` is
+  described by Android itself as a *hint* for an upper bound that real resources may undercut
+  ([Android](https://developer.android.com/reference/android/media/MediaCodecInfo.CodecCapabilities#getMaxSupportedInstances())),
+  and Chrome documents nothing at the web layer. Worse, **nothing specifies what happens at the limit** — not a
+  dropped `src`, not a rejected `play()`, not a `MediaError`.
+  → A budget whose failure mode is undefined is one to stay well inside: `PRELOAD = 1`, three elements.
+- **Two `<video>`s with the same `src` are not guaranteed to share one transfer.** The HTML fetch model is
+  per-element and byte ranges are implementation-defined; HTTP caches are permitted but never obliged to reuse
+  a response ([RFC 9111 §2](https://www.rfc-editor.org/rfc/rfc9111.html#section-2)).
+  → The ambient backdrop copy (a second element on posterless clips) is **active-slide only** and waits for the
+  main video to have data. It used to start in parallel, which made the clip you are actually watching arrive
+  later. At three slides it would also have meant six decoders.
+- **hls.js keeps `backBufferLength: Infinity` by default** — every played second retained for the instance's
+  life. Survivable at one player; not at three. `/_rt/video.js` now caps it at 30s. (`maxBufferLength` is a
+  minimum *target* hls.js reaches regardless of `maxBufferSize`, so the duration cap is the one that binds.)
+
+**Not verified here, and only the phone can settle it:** whether three elements is comfortably inside the real
+decoder budget on the target device, and how much of the next clip actually buffers on a cellular connection.
+Both are device/network-dependent and the specs decline to say.

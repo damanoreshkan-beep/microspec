@@ -1,5 +1,5 @@
 
-import { INK, T, K, clampLevel, LIGHT } from "/_rt/brick.js";
+import { T, K, clampLevel, LIGHT, LCD, segmentRGB } from "/_rt/brick.js";
 import { TILE_ART, CHAR_ART } from "./art.js";
 export const TRANSPARENT = 255;
 
@@ -136,9 +136,10 @@ const BACKDROP = new Set([T.BUSH, T.HILL, T.CLOUD]);
 
 const BANDS = {
   backdrop: [1, 1],
-  terrain: [1, 3],
-  object: [2, 3],   
-  actor: [2, 4],
+  terrain: [2, 3],
+  
+  object: [2, 4],
+  actor: [3, 4],
 };
 function band(cell, [lo, hi]) {
   const out = clone(cell);
@@ -152,7 +153,6 @@ function band(cell, [lo, hi]) {
   }
   return out;
 }
-
 const tileCache = new Map();
 export function tileCell(id) {
   if (tileCache.has(id)) return tileCache.get(id);
@@ -190,7 +190,8 @@ export function spriteCell(kind, frame) {
     cell = emboss(band(half, BANDS.object));
   } else if (!art) cell = { px: new Uint8Array(0), w: 0, h: 0 };
   else {
-    const pose = (rows) => emboss(outline(band(parse(rows), BANDS.actor)));
+    
+    const pose = (rows) => emboss(outline(outline(band(parse(rows), BANDS.actor), 4), 0));
     const idle = pose(art[0]), walk = pose(art[1]);
     cell = frame === 1 ? walk : frame === 2 ? idle : frame === 3 ? walk
          : frame === 4 ? flipY(idle) : frame === 5 ? flipX(walk) : idle;
@@ -198,10 +199,21 @@ export function spriteCell(kind, frame) {
   spriteCache.set(key, cell);
   return spriteCache.get(key) ?? cell;
 }
-
-
-/** Paint a cell into an RGBA buffer as ink over whatever is already there. */
-export function paint(rgba, W, H, cell, ox, oy, { ink = [0x23, 0x28, 0x1c], alphaScale = 1, level = null } = {}) {
+/**
+ * Paint a cell into an RGBA buffer.
+ *
+ * A pixel resolves to the OPAQUE colour its density means on this panel (`segmentRGB`) and
+ * replaces what was there — it does not blend with it. That is the whole repair of the
+ * translucent look: this function used to composite ink at `INK[level]` over the buffer, so a
+ * terrain tile at level 2 let 55% of the parallax hill behind it through. A panel has one layer
+ * of segments over one backplate; there is nothing behind a segment to show through.
+ *
+ * `alphaScale` survives as the one honest use of partial coverage — a mark that genuinely
+ * darkens what is under it, i.e. the ground shadow — and at its default of 1 the write is a
+ * straight replace.
+ */
+export function paint(rgba, W, H, cell, ox, oy, { plate = LCD.plate, ink = LCD.ink, alphaScale = 1, level = null } = {}) {
+  const lut = [0, 1, 2, 3, 4].map((l) => segmentRGB(l, plate, ink));
   for (let y = 0; y < cell.h; y++) {
     const py = oy + y;
     if (py < 0 || py >= H) continue;
@@ -210,12 +222,10 @@ export function paint(rgba, W, H, cell, ox, oy, { ink = [0x23, 0x28, 0x1c], alph
       if (v === TRANSPARENT) continue;
       const px = ox + x;
       if (px < 0 || px >= W) continue;
-      const a = (level == null ? INK[clampLevel(v)] : INK[clampLevel(level)]) * alphaScale;
-      if (a <= 0) continue;
+      if (alphaScale <= 0) continue;
+      const c = lut[clampLevel(level == null ? v : level)];
       const o = (py * W + px) * 4;
-      rgba[o] = rgba[o] * (1 - a) + ink[0] * a;
-      rgba[o + 1] = rgba[o + 1] * (1 - a) + ink[1] * a;
-      rgba[o + 2] = rgba[o + 2] * (1 - a) + ink[2] * a;
+      for (let i = 0; i < 3; i++) rgba[o + i] = rgba[o + i] * (1 - alphaScale) + c[i] * alphaScale;
       rgba[o + 3] = 255;
     }
   }

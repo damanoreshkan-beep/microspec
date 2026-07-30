@@ -26,26 +26,24 @@ export const LIGHT = Object.freeze({ x: -1, y: -1 });
 
 export const LCD = Object.freeze({
   plate: "#b4bc96",                       
-  plateLight: "#c3c9a6",                  
   ink: "#23281c",
-  grid: 0.09,                             
-  ghost: 0.12,                            
-  sheen: 0.06,                            
+  grid: 0.05,                             
+  sheen: 0.05,                            
 });
-
+export const INK = Object.freeze([0, 0.2, 0.45, 0.72, 1]);
 
 const chan = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-const toHex = (v) => "#" + v.map((c) => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0")).join("");
-/** Move a colour k of the way to white. The polariser's bright corner is the plate at k≈0.18. */
-export const lighten = (h, k) => toHex(chan(h).map((c) => c + (255 - c) * k));
-
-/** A panel from a shell's `tint`, or the default one when the shell has no opinion. */
-export function lcdFor(tint) {
-  if (!tint?.off || !tint?.ink) return LCD;
-  return Object.freeze({ ...LCD, plate: tint.off, plateLight: lighten(tint.off, 0.18), ink: tint.ink });
+const hex2 = (c) => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0");
+/** The RGB a level resolves to on a given panel. Pure, so both painters can agree on it. */
+export function segmentRGB(level, plate = LCD.plate, ink = LCD.ink) {
+  const a = INK[clampLevel(level)];
+  const p = chan(plate), k = chan(ink);
+  return [0, 1, 2].map((i) => p[i] + (k[i] - p[i]) * a);
 }
-
-export const INK = Object.freeze([0, 0.16, 0.34, 0.58, 0.86]);
+/** The same, as a CSS colour — what a Canvas2D `fillStyle` wants. */
+export function segment(level, plate = LCD.plate, ink = LCD.ink) {
+  return "#" + segmentRGB(level, plate, ink).map(hex2).join("");
+}
 /** Clamp a density level into the ramp. */
 export const clampLevel = (l) => (l < 0 ? 0 : l > INK.length - 1 ? INK.length - 1 : l | 0);
 /**
@@ -57,7 +55,6 @@ export const FACE = Object.freeze({ top: -1, left: -1, front: 0, right: 1, botto
 export function lit(level, face = "front") {
   return INK[clampLevel(level + (FACE[face] ?? 0))];
 }
-
 /**
  * Z-slice offsets for an extruded object, stacked TOWARD the light so the faces you see are
  * the lit ones. Index 0 is the deepest slice and the last is the top — draw them in order
@@ -70,8 +67,6 @@ export function sliceOffsets(n) {
   for (let i = 0; i < n; i++) out.push({ dx: LIGHT.x * i, dy: LIGHT.y * i });
   return out;
 }
-
-
 export const SHADOW = Object.freeze({
   alpha: 0.34,      
   reach: 54,        
@@ -96,6 +91,7 @@ export function shadowFor(h, w) {
     alpha: SHADOW.alpha + (SHADOW.floor - SHADOW.alpha) * t,
   };
 }
+
 /**
  * Parallax: how far a background layer has moved for a given camera position. Depth 0 is
  * infinitely far (never moves), 1 is the play plane. The result is INTEGER — a fractional
@@ -105,6 +101,8 @@ export function parallaxX(camx, depth) {
   return Math.round(camx * depth) | 0;
 }
 export const LAYERS = Object.freeze([0.15, 0.35, 0.6]);
+
+
 export function decodeEntry(dl, i) {
   const o = i * 4, id = dl[o], attr = dl[o + 3];
   return {
@@ -118,22 +116,17 @@ export function decodeEntry(dl, i) {
     frame: (attr >> 1) & 7,
   };
 }
-
 /** Is this tile drawn behind everything, with no collision and no shadow? */
 export const isBackdrop = (t) => t === T.BUSH || t === T.HILL || t === T.CLOUD;
 /** Is this tile a box worth extruding? */
 export const isBox = (t) =>
   t === T.BRICK || t === T.QUESTION || t === T.USED || t === T.STONE ||
   t === T.PIPE_TOP || t === T.PIPE_BOD;
-
-
 export function digits(value, width) {
   const n = Math.max(0, Math.floor(value || 0));
   const s = String(n);
   return s.length >= width ? s.slice(-width) : "0".repeat(width - s.length) + s;
 }
-
-
 export function betterRun(prev, run) {
   if (!run) return prev ?? null;
   if (!prev) return { ...run };

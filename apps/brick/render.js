@@ -5,6 +5,26 @@ import { tileCell, spriteCell } from "./atlas.js";
 const hash = (n) => { let x = (n * 2654435761) >>> 0; x ^= x >>> 15; x = (x * 2246822519) >>> 0; x ^= x >>> 13; return x; };
 function backdrop(p, camx) {
   const horizon = ROWS * TILE - TILE * 2;
+
+  
+  const base = horizon - TILE;
+  const range = (x, off, period, salt, lo, span) => {
+    const wx = x + off;
+    const i = Math.floor(wx / period), u = (((wx % period) + period) % period) / period;
+    const seed = hash(salt + i);
+    const h = lo + (seed >> 4) % span;
+    const skew = 0.34 + ((seed >> 12) % 30) / 100;         
+    const up = u < skew ? u / skew : (1 - u) / (1 - skew); 
+    if (up <= 0) return base;
+    const rough = (hash(salt * 7 + (wx | 0)) % 3) - 1;     
+    return base - Math.round(h * up ** 1.15) + rough;
+  };
+  for (let x = -1; x < SCRW + 1; x++) {
+    const top = Math.min(range(x, parallaxX(camx, 0.05), 137, 2000, 58, 46),
+                         range(x, parallaxX(camx, 0.07), 91, 3000, 44, 40));
+    if (top < base) p.rect(x, top, 1, base - top, 1);
+  }
+
   
   const off0 = parallaxX(camx, LAYERS[0]);
   for (let i = -1; i < 8; i++) {
@@ -24,15 +44,14 @@ function backdrop(p, camx) {
     const w = 58 + (seed >> 8) % 40, h = 20 + (seed >> 16) % 18;
     for (let dy = 0; dy < h; dy++) {
       const half = Math.round((w / 2) * Math.sqrt(1 - (dy / h) ** 2));
-      p.rect(x + w / 2 - half, horizon - dy + TILE, half * 2, 1, 1);
+      p.rect(x + w / 2 - half, horizon - dy + TILE, half * 2, 1, 2);
     }
   }
   
   const off1 = parallaxX(camx, LAYERS[1]);
-  for (let i = -1; i < 6; i++) {
-    const seed = hash(1000 + i + ((off1 / 150) | 0));
-    const x = i * 150 - (off1 % 150) + (seed % 60), y = 16 + (seed >> 9) % 44;
-    
+  for (let i = -1; i < 9; i++) {
+    const seed = hash(1000 + i + ((off1 / 104) | 0));
+    const x = i * 104 - (off1 % 104) + (seed % 48), y = 28 + (seed >> 9) % 52;
     
     for (const [cx, cy, r] of [[x + 10, y, 10], [x + 22, y - 3, 8], [x + 32, y + 1, 6]])
       for (let dy = -r; dy <= r; dy++) {
@@ -70,7 +89,7 @@ function ellipse(p, cx, cy, rx, ry, alpha) {
 /**
  * Draw one frame.
  *
- * @param p       a painter: plate · ghost · rect · cell · grid · sheen
+ * @param p       a painter: plate · rect · cell · glyph · grid · sheen
  * @param dl      Int16Array display list from the engine
  * @param dln     entry count
  * @param st      Int32Array state block
@@ -79,8 +98,8 @@ function ellipse(p, cx, cy, rx, ry, alpha) {
 export function renderFrame(p, dl, dln, st, { hud = true } = {}) {
   const camx = st[4];
 
+  
   p.plate();
-  p.ghost(LCD.ghost);               
   backdrop(p, camx);
 
   

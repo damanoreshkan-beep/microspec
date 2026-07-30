@@ -1,5 +1,5 @@
 
-import { SCRW, SCRH, INK, LCD, S, SFX, clampLevel } from "/_rt/brick.js";
+import { SCRW, SCRH, LCD, S, SFX, clampLevel, segment, segmentRGB } from "/_rt/brick.js";
 import { renderFrame, glyphRects } from "./render.js";
 import { TRANSPARENT } from "./atlas.js";
 import { createEngine } from "/_rt/audio.js";
@@ -20,23 +20,22 @@ export async function loadEngine(url = WASM_URL) {
   };
 }
 
-const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 function bake(cell, { flip = false, level = null, lcd = LCD } = {}) {
   const c = document.createElement("canvas");
   c.width = Math.max(1, cell.w); c.height = Math.max(1, cell.h);
   if (!cell.w) return c;
   const g = c.getContext("2d");
-  
   const img = g?.createImageData?.(cell.w, cell.h);
   if (!img?.data || !g.putImageData) return c;
-  const ink = hex(lcd.ink);
+  const lut = [0, 1, 2, 3, 4].map((l) => segmentRGB(l, lcd.plate, lcd.ink));
   for (let y = 0; y < cell.h; y++)
     for (let x = 0; x < cell.w; x++) {
       const v = cell.px[y * cell.w + (flip ? cell.w - 1 - x : x)];
       if (v === TRANSPARENT) continue;
+      const rgb = lut[clampLevel(level == null ? v : level)];
       const o = (y * cell.w + x) * 4;
-      img.data[o] = ink[0]; img.data[o + 1] = ink[1]; img.data[o + 2] = ink[2];
-      img.data[o + 3] = Math.round(INK[clampLevel(level == null ? v : level)] * 255);
+      img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2];
+      img.data[o + 3] = 255;
     }
   g.putImageData(img, 0, 0);
   return c;
@@ -44,6 +43,8 @@ function bake(cell, { flip = false, level = null, lcd = LCD } = {}) {
 
 export function canvasPainter(ctx, lcd = LCD) {
   const ink = lcd.ink;
+  
+  const seg = [0, 1, 2, 3, 4].map((l) => segment(l, lcd.plate, lcd.ink));
   const cache = new Map();
   const baked = (cell, flip, level) => {
     let byCell = cache.get(cell);
@@ -53,18 +54,12 @@ export function canvasPainter(ctx, lcd = LCD) {
     if (!c) { c = bake(cell, { flip, level }); byCell.set(k, c); }
     return c;
   };
-
-  
-  const prev = document.createElement("canvas");
-  prev.width = SCRW; prev.height = SCRH;
-  const pg = prev.getContext("2d");
-
-  
   const lat = document.createElement("canvas");
   lat.width = 1; lat.height = 2;
   const lg = lat.getContext("2d");
   if (lg?.fillRect) { lg.fillStyle = ink; lg.fillRect(0, 0, 1, 1); }
   const pattern = ctx.createPattern ? ctx.createPattern(lat, "repeat") : null;
+
   let sheenGrad = null;
   const grad = ctx.createLinearGradient?.(0, 0, SCRW, SCRH);
   if (grad?.addColorStop) {
@@ -72,14 +67,12 @@ export function canvasPainter(ctx, lcd = LCD) {
     grad.addColorStop(0.55, "rgba(255,255,255,0)");
     sheenGrad = grad;
   }
-
   return {
-    keep() { pg.clearRect(0, 0, SCRW, SCRH); pg.drawImage(ctx.canvas, 0, 0); },
     plate() { ctx.globalAlpha = 1; ctx.fillStyle = lcd.plate; ctx.fillRect(0, 0, SCRW, SCRH); },
-    ghost(a) { ctx.globalAlpha = a; ctx.drawImage(prev, 0, 0); ctx.globalAlpha = 1; },
+    
     rect(x, y, w, h, level, alpha = 1) {
-      ctx.globalAlpha = INK[clampLevel(level)] * alpha;
-      ctx.fillStyle = ink;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = seg[clampLevel(level)];
       ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
       ctx.globalAlpha = 1;
     },
@@ -90,9 +83,8 @@ export function canvasPainter(ctx, lcd = LCD) {
       if (alpha !== 1) ctx.globalAlpha = 1;
     },
     glyph(ch, ox, oy) {
-      ctx.fillStyle = ink; ctx.globalAlpha = INK[4];
+      ctx.fillStyle = seg[4];
       for (const [x, y] of glyphRects(ch)) ctx.fillRect(ox + x * 2, oy + y * 2, 2, 2);
-      ctx.globalAlpha = 1;
     },
     grid(a) { if (!pattern) return; ctx.globalAlpha = a; ctx.fillStyle = pattern; ctx.fillRect(0, 0, SCRW, SCRH); ctx.globalAlpha = 1; },
     sheen() { if (!sheenGrad) return; ctx.fillStyle = sheenGrad; ctx.fillRect(0, 0, SCRW, SCRH); },
@@ -118,8 +110,6 @@ export function makeClock(step) {
     },
   };
 }
-
-
 export function makeSound() {
   let eng = null, on = true;
   const ensure = () => {

@@ -27,10 +27,10 @@ import { resolve, isComplete, EMPTY, BIRTH_CODEC } from "/_rt/birth.js";
 import { searchPlaces, placeLabel, formatCoords } from "/_rt/places.js";
 import { interpret, warmInterpret, isInterpreted, transitRead, warmTransitRead, isTransitRead,
   placementRead, warmPlacementRead, isPlacementRead, portraitRead, warmPortraitRead, isPortraitRead,
-  houseRead, warmHouseRead, isHouseRead, aiTick } from "/_rt/ai-astro.js";
+  houseRead, warmHouseRead, isHouseRead, askedRead, warmAskedRead, isAskedRead, aiTick } from "/_rt/ai-astro.js";
 import { BODY, SIGN, HOUSE, ASPECT as ASPECT_MEAN, ANGLE, DIGNITY, RULERS, ELEMENT_NAME, ELEMENT_MEANS,
   MODALITY_NAME, MODALITY_MEANS, RETRO_NOTE, dignityOf, chartRuler, rulerOf, balance, say,
-  groundTransit, groundPlacement, groundPortrait, groundCusp } from "/_rt/signif.js";
+  groundTransit, groundPlacement, groundPortrait, groundCusp, groundQuestion, QUESTIONS, questionById } from "/_rt/signif.js";
 import { ELEMENT, MODALITY } from "/_rt/synastry.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
@@ -132,7 +132,7 @@ const NeedBirth = ({ t, onOpen }) => html`<div data-need-birth class="flex flex-
 // `S.screen` is one string and it is history-backed by the runtime, so a sub-screen that has to remember
 // WHICH item it is showing carries the item in its own key. These prefixes are also what `?screen=` accepts,
 // which is how the reading sheets can be shot and reviewed at all (render.js).
-const READ_TRANSIT = "tr:", READ_PLACEMENT = "pl:", READ_CUSP = "cu:", READ_PORTRAIT = "portrait";
+const READ_TRANSIT = "tr:", READ_PLACEMENT = "pl:", READ_CUSP = "cu:", READ_PORTRAIT = "portrait", READ_ASK = "ask";
 const readScreen = (screen, pfx) => (typeof screen === "string" && screen.startsWith(pfx)) ? screen.slice(pfx.length) : null;
 
 const AI_SKY = { get: interpret, has: isInterpreted, warm: warmInterpret };
@@ -140,6 +140,7 @@ const AI_TRANSIT = { get: transitRead, has: isTransitRead, warm: warmTransitRead
 const AI_PLACEMENT = { get: placementRead, has: isPlacementRead, warm: warmPlacementRead };
 const AI_PORTRAIT = { get: portraitRead, has: isPortraitRead, warm: warmPortraitRead };
 const AI_HOUSE = { get: houseRead, has: isHouseRead, warm: warmHouseRead };
+const AI_ASK = { get: askedRead, has: isAskedRead, warm: warmAskedRead };
 
 // The AI paragraph. Never a spinner — the sheet is already there and only this block is pending, so it
 // carries text-shaped skeletons at the length the answer will actually be. 12 s then a retry, fail-open.
@@ -345,6 +346,104 @@ function CuspSheet({ open, onClose, C, t, loc }) {
         ${Mean(`${signName(t, s)} · ${T(t, "mHow")}`, `${cap1(say(SIGN[s].mode, loc))} ${cap1(say(SIGN[s].gift, loc))} — ${say(SIGN[s].excess, loc)}.`)}
         ${ruler ? Mean(`${bodyLabel(t, ruler.key)} · ${T(t, "mRules")}`, cap1(say(BODY[ruler.key].role, loc))) : null}
       </div>`)}
+    </div>
+  </${Sheet}>`;
+}
+
+// ── the ten questions ──────────────────────────────────────────────────────────────────────────────────
+//
+// A chat with no text field. Ten questions, tapped rather than typed, and that is a feature three times over:
+// each question declares the significators it may be answered from (so the grounding is exact rather than
+// "here is the whole chart, good luck"), there is no user text to smuggle instructions in, and ten questions
+// against one chart is ten cached answers rather than an unbounded bill.
+//
+// The thread is a log, not a conversation: every answer is an independent grounded reading, so there is no
+// history to fold and no follow-up to resolve. Asking is append-only and the asked list persists, because
+// the answers are the point of coming back.
+
+const $asked = persistentAtom("transit:asked", gate ? ["love", "workNow"] : [], {
+  encode: JSON.stringify,
+  decode: (s) => { try { const a = JSON.parse(s); return Array.isArray(a) ? a.filter((x) => questionById(x)) : []; } catch { return []; } },
+});
+
+const GATE_ASK = {
+  love: { uk: "Тебе тягне до людей, з якими спокійно і надійно: сьомий дім у Тельці, а це не про іскру, а про те, щоб поруч було відчутно і не хитало. Управителька дому Венера стоїть у восьмому, тож зближення в тебе відбувається не на видноті — через довіру, спільні справи й те, що не розповідають третім. Венера у Близнюках додає до цього розмову: тебе притягує той, з ким цікаво говорити, і охолоджує той, з ким нема про що. Пʼятий дім тут окремо — легкий флірт і закоханість живуть за іншими правилами, ніж те, що ти справді шукаєш. Традиційно це читається як потяг до повільного зближення, де перевірка часом важить більше за перше враження.", en: "You are drawn to people who feel steady: the seventh house is in Taurus, which is less about the spark than about the ground not moving underfoot. Venus, its ruler, stands in the eighth, so closeness happens out of public view — through trust, shared undertakings and the things not told to third parties. Venus in Gemini adds talk to that: you are drawn to someone worth talking to and cooled by someone there is nothing to say to. The fifth house is a separate matter here — flirtation and infatuation run by different rules than what you are actually looking for. Traditionally this reads as a pull toward slow approach, where being tested by time counts for more than a first impression." },
+  workNow: { uk: "Зараз у роботі рухається одне: транзитний Сатурн у тригоні до твого Середини Неба, орб 0.63° і аспект розходиться. Сатурн перевіряє на міцність те, що вже збудовано, а тригон означає, що перевірка йде без опору — радше визнання, ніж тиск. Він стає точним тричі: 29 червня 2026, 23 серпня 2026 і 10 березня 2027, бо між ними Сатурн повертає назад. Сатурн проходить знак за два з половиною роки, тож мірою тут є місяці: це не тиждень, коли щось вирішиться, а період, у який твоя публічна роль набуває форми. Що з цим робити — те, що вже робиш, тільки не кидати на середині.", en: "One thing is moving in your work right now: transiting Saturn trine your Midheaven, orb 0.63°, and separating. Saturn tests what has already been built for load, and a trine means the test comes without resistance — recognition rather than pressure. It perfects three times: 29 June 2026, 23 August 2026 and 10 March 2027, because Saturn turns back between them. Saturn spends two and a half years in a sign, so the unit here is months: this is not a week in which something is decided but a period in which your public role takes its shape. What to do with it is what you are already doing, only without abandoning it halfway." },
+};
+
+// One question in the thread: what was asked, then the answer under it.
+function Asked({ qid, C, t, loc, chart, timingFor }) {
+  const q = questionById(qid);
+  if (!q) return null;
+  const timing = q.transit ? timingFor(q) : null;
+  const { text: input, sig } = groundQuestion({ q, chart, timing });
+  return html`<div data-asked=${qid} class="flex flex-col gap-2">
+    <div class="self-end max-w-[85%] rounded-2xl rounded-br-md sf-e2 bg-primary/10 px-3.5 py-2">
+      <span class="text-[0.9rem] font-medium text-primary">${say(q.label, loc)}</span>
+    </div>
+    <div class="self-start w-full rounded-2xl rounded-bl-md sf-inset px-3.5 py-3">
+      <${Reading} sig=${sig} input=${input} loc=${loc} api=${AI_ASK} t=${t}
+        wait=${!!(q.transit && timing === null)}
+        gateText=${(GATE_ASK[qid] || GATE_ASK.love)[loc] || (GATE_ASK[qid] || GATE_ASK.love).en}
+        lines=${[31, 34, 30, 32, 24]} />
+    </div>
+  </div>`;
+}
+
+function AskSheet({ open, onClose, C, t, loc }) {
+  const asked = useStore($asked);
+  // Exact dates for the timing questions. One root-find per contact is ~57ms (RESEARCH.md §6), so it is
+  // done off the render in its own task and capped at the four tightest — a timing answer needs the dates
+  // that are actually near, not every contact in the chart.
+  const [hits, setHits] = useState(null);
+  const wantsTiming = open && C.ready && asked.some((id) => questionById(id)?.transit);
+  const contactSig = C.ready ? C.hits.slice(0, 4).map(hitKey).join(",") : "";
+  const whenMs = C.ready ? C.when.getTime() : 0;
+  useEffect(() => {
+    if (!wantsTiming) { setHits(null); return; }
+    let dead = false;
+    const id = setTimeout(() => {
+      if (dead) return;
+      const out = {};
+      for (const a of C.hits.slice(0, 4)) out[hitKey(a)] = hitTimes(a.t, a.natalLon, a.signedAngle, whenMs);
+      setHits(out);
+    }, 0);
+    return () => { dead = true; clearTimeout(id); };
+  }, [wantsTiming, contactSig, whenMs]);
+
+  if (!open || !C.ready) return null;
+
+  const chart = { cusps: C.H.cusps, houseSystem: C.system, asc: C.H.asc, mc: C.H.mc,
+    points: C.natal.map((p) => ({ key: p.key, lon: p.lon, house: houseOf(p.lon, C.H.cusps), retro: C.natalRetroFor(p.key, p.lon) })) };
+  const dateEN = C.when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  // A transit question is fed only the contacts that touch ITS points — a Saturn transit to the natal Moon
+  // has nothing to do with a question about work, and handing it over invites the model to use it.
+  const timingFor = (q) => {
+    if (hits === null) return null;
+    const want = new Set([...(q.bodies || []), ...(q.angles || [])]);
+    const contacts = C.hits.slice(0, 4).filter((a) => want.has(a.n)).map((a) => ({
+      c: a, transitLon: C.sky.find((p) => p.key === a.t).lon, retro: C.retro(a.t, C.sky.find((p) => p.key === a.t).lon),
+      hits: (hits[hitKey(a)] || []).map((ms) => fmtHitAt(ms, HIT_PRECISION[a.t] || "minute", "en")),
+    }));
+    return { dateEN, contacts };
+  };
+  const rest = QUESTIONS.filter((q) => !asked.includes(q.id));
+
+  return html`<${Sheet} id="asksheet" open=${true} onClose=${onClose} title=${T(t, "askTitle")}
+      subtitle=${placeLabel(C.b.place) + " · " + C.rec.date} icon="lucide:sparkles">
+    <div class="flex flex-col gap-5">
+      ${asked.length ? html`<div class="flex flex-col gap-5">
+        ${asked.map((id) => html`<${Asked} qid=${id} C=${C} t=${t} loc=${loc} chart=${chart} timingFor=${timingFor} key=${id} />`)}
+      </div>` : null}
+
+      ${rest.length ? html`<div class="flex flex-col gap-1.5">
+        ${asked.length ? html`<div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "askMore")}</div>` : null}
+        ${rest.map((q) => html`<button data-ask=${q.id} onClick=${() => $asked.set([...$asked.get(), q.id])}
+            class="w-full text-left rounded-2xl sf-raised sf-e2 sf-press px-3.5 py-2.5 flex items-center gap-2.5 transition" key=${q.id}>
+          <span class="flex-1 min-w-0 text-[0.9rem]">${say(q.label, loc)}</span>
+          ${Icon("lucide:sparkles", "text-sm text-primary shrink-0")}
+        </button>`)}
+      </div>` : null}
     </div>
   </${Sheet}>`;
 }
@@ -657,6 +756,12 @@ export function chart({ S, screen, openScreen, closeScreen }) {
         ${Icon("lucide:pencil", "text-base text-base-content/70")}
       </button>
 
+      <button data-ask-open class="rounded-2xl sf-raised sf-e2 sf-press px-4 py-3.5 flex items-center gap-3 text-left transition" onClick=${() => openScreen(READ_ASK)}>
+        <div class="rounded-full sf-inset p-2 text-primary shrink-0">${Icon("lucide:sparkles", "text-lg")}</div>
+        <span class="flex-1 min-w-0 font-semibold">${T(t, "askTitle")}</span>
+        ${Icon("lucide:chevron-right", "text-base text-base-content/70 shrink-0")}
+      </button>
+
       <div class="rounded-2xl sf-raised overflow-x-auto">
         <div class="min-w-[300px] px-4 py-1.5">
           <div class="flex items-center justify-between gap-2 py-1.5">
@@ -699,6 +804,7 @@ export function chart({ S, screen, openScreen, closeScreen }) {
     </div>
     <${PlacementSheet} open=${readScreen(screen, READ_PLACEMENT)} onClose=${closeScreen} C=${C} t=${t} loc=${locale} />
     <${CuspSheet} open=${readScreen(screen, READ_CUSP)} onClose=${closeScreen} C=${C} t=${t} loc=${locale} />
+    <${AskSheet} open=${screen === READ_ASK} onClose=${closeScreen} C=${C} t=${t} loc=${locale} />
     <${PortraitSheet} open=${screen === READ_PORTRAIT} onClose=${closeScreen} C=${C} t=${t} loc=${locale} />
     <${BirthSheet} open=${screen === "birth"} onClose=${closeScreen} t=${t} locale=${locale} />
   </${Fragment}>`;

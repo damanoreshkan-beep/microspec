@@ -208,6 +208,35 @@ export default [
     },
   },
   {
+    // The catalogue is a chat with no text field: ten questions, tapped. The properties worth pinning are
+    // that tapping one appends an answered pair, that the answer survives a reload (it is cached, and a
+    // reading you have to pay for twice is a reading you stop asking for), and that a question leaves the
+    // catalogue once asked so it cannot be double-billed.
+    name: "питання до карти: тап додає відповідь, вона переживає перезавантаження", run: async (h) => {
+      await h.click('[data-tab="chart"]'); await h.wait(400);
+      await h.tap("[data-ask-open]"); await h.wait(450);
+      h.expect((await h.prop("#asksheet", "open")) === true, "аркуш питань не відкрився");
+      // the gate seeds two asked questions so the populated state is what CI and the shots see
+      const seeded = await h.count("[data-asked]");
+      h.expect(seeded === 2, `очікував 2 засіяні питання, а не ${seeded}`);
+      h.expect((await h.count("[data-reading]")) === seeded, "не в кожного питання є відповідь");
+      h.expect((await h.text("[data-reading]")).trim().length > 100, "порожня відповідь");
+      const rest = await h.count("[data-ask]");
+      h.expect(rest === 8, `у каталозі має лишитись 8 питань, а не ${rest}`);
+
+      await h.tap('[data-ask="money"]'); await h.wait(400);
+      h.expect((await h.count("[data-asked]")) === 3, "питання не додалось у стрічку");
+      h.expect((await h.count("[data-ask]")) === 7, "запитане питання не зникло з каталогу");
+
+      await h.goto("?tab=chart&screen=ask", 1600);
+      h.expect((await h.prop("#asksheet", "open")) === true, "?screen=ask не відкрив каталог");
+      h.expect((await h.count("[data-asked]")) === 3, "стрічка не пережила перезавантаження");
+      await h.back(); await h.wait(350);
+      h.expect((await h.prop("#asksheet", "open")) !== true, "Back не закрив каталог");
+      await h.goto("", 1200);
+    },
+  },
+  {
     // `?tab=`/`?screen=` is what makes the two tabs behind the dock reviewable at all — by the screenshot
     // service and by preflight. If it silently stops routing, the eye goes blind again and nothing else
     // fails, so it is asserted here rather than trusted.

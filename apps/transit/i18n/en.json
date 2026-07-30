@@ -149,5 +149,7 @@
   "fHouseRuler": "Ruler",
   "fTenants": "Planets in",
   "fNoTenants": "none",
-  "mRules": "rules this house"
+  "mRules": "rules this house",
+  "askTitle": "Ask your chart",
+  "askMore": "Ask something else"
 }

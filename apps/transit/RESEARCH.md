@@ -333,6 +333,92 @@ the eye and the local gate.
 
 ---
 
+# Part III — the houses, and the ten questions (2026-07-30)
+
+## 12. A house is not its cusp — it is delegated to its ruler
+
+The cusps panel showed twelve degrees. The thing it could not show is the technique that makes a house
+readable at all: **a house is handed to the ruler of the sign on its cusp, and that ruler lives somewhere
+else in the chart.** "Your second house is in Sagittarius, and Jupiter, which rules it, sits in the eighth"
+is a statement about money and other people's resources, and no degree column can carry it.
+
+`groundCusp()` therefore supplies, per house: the cusp sign, the traditional ruler **with its own sign,
+house, dignity and retrograde state**, the modern co-ruler labelled as modern, and the planets tenanting the
+house. Two traps are closed in the data rather than left to the model:
+
+- **The empty house.** An absent tenant list reads to a model as "this area of your life is empty". The
+  tradition says the opposite — an untenanted house is read through its ruler — so the block says that
+  outright and the prompt repeats it.
+- **Ruling vs standing in.** See §14; this one cost a live answer.
+
+## 13. Ten questions, and the six that were dropped
+
+The catalogue (`QUESTIONS` in `signif.js`) is **closed**, and that is the design rather than a limitation:
+
+- **It is the only honest way to be grounded.** Each question declares the significators it may be answered
+  from — `love` sees the 7th, the 5th, Venus and the Ascendant, and nothing else. A free-text box has no such
+  set, so it would be a wishing well with a language model at the bottom.
+- **It removes the injection surface entirely.** There is no user text. Compare `ask` in `ai-books.js`, which
+  takes free text and needs a whole prompt section to defend itself.
+- **It caches.** Ten questions × one chart = ten answers, permanently.
+
+Ranking evidence is **thin and I will not pretend otherwise.** Consultation-topic lists
+([Vedicfeed](https://vedicfeed.com/questions-to-ask-astrologer/),
+[AstroPush](https://astropush.com/blog/what-to-ask-an-astrologer)) agree on the *set* of topics, and Lilly's
+*Christian Astrology* Book II is organised by question type — a 1647 FAQ, and the same topics — but neither
+establishes a *frequency order*. The ordering here is a reasoned synthesis, not a measurement.
+
+**Two of the ten are timing-shaped** (`workNow`, `phase`) and are fed real transits with exact dates; the
+other eight are natal dispositions that do not change week to week. The distinction is unit-tested, because
+flipping a question's `transit` flag without giving the caller a contact set would silently answer a timing
+question from a birth chart.
+
+**What was dropped, and why no reframing rescued it:** will I have children · am I pregnant · what is wrong
+with my health · when will I die · will I win the case · should I invest. Every one asks for an outcome a
+birth chart does not establish, and the person wants *the outcome* — a symbolic answer to "when will I die"
+is a worse answer, not a safer one. A unit test fails if one is ever added back, so it has to be argued for
+in a diff rather than slipped in.
+
+**One gap the catalogue exposed, and the fix.** Asked "what work suits me", the first live answer never named
+a kind of work — it paraphrased "identity, vitality and conscious purpose". That was the closed-world rule
+behaving *correctly* on missing data: naming an occupation not in the grounding would be invention. So the
+occupations went into the corpus. The tradition really does assign trades to planets (Lilly gives each planet
+its professions), so `BODY[k].work` leads with the modern reading and keeps the classical list behind it —
+and the three modern bodies say plainly that they have no classical list. The re-measured answer names
+representing and leading (Sun on the MC) against building, land and administration (Saturn in Capricorn), and
+notes the tension between them. That is an answer.
+
+## 14. The third way a grounded model still lies: it misreads
+
+§10 recorded two failures — a **derived** number, and an **assumed** gender. This part found a third, and it
+is the most insidious because the fact was right there:
+
+> The block said `Its ruler Moon … is in Aries, house 6`. The answer said **«у дев'ятому домі знаходиться
+> Місяць»** — the Moon is in the ninth house. It is not; it rules the ninth and stands in the sixth.
+
+Not invention, not arithmetic — **a conflation of two relations**, rulership and placement. Fixed in both
+places, because either alone leaves the ambiguity: the block now says `RULED BY Moon. Moon does not stand in
+house 9; it stands in Aries, house 6`, and a ground rule spells out that a planet may be called "in" a house
+only if it is listed after `STANDING IN`. `CORPUS` went to 2 so every answer built on the old wording expires
+— the wording changed while the signature inputs did not, and without the bump the wrong answer would have
+been served forever.
+
+**A fourth thing worth recording about measurement itself.** The no-gender rule held on `gemini-2.5-flash`
+and was ignored by `gemini-2.5-flash-lite`, which is in the same rotation — so "it worked when I tested it"
+was a statement about which daily bucket had quota that minute. Rules are now placed **first and repeated
+last**, and verified against the *weak* model specifically. Any prompt rule tested on one provider is untested.
+
+## 15. Why there is no fifth tab
+
+The catalogue is the app's headline feature and it still does not get a dock tab. Measured, not assumed: the
+dock is content-sized with `min-w-14` per button inside `left-3 right-3`, so at the 384px reference each of
+five buttons gets ~72px, minus `px-3.5` either side leaves ~44px of label — and **«МОМЕНТИ» truncates**. No
+app in the farm ships five tabs (max is four: transit, rave, reel, handpan, v2m). A new feature that damages
+the labels of the four that already exist is not worth a tab, so it opens from the Chart tab, which is where
+the natal chart lives — and these answers are the natal chart asked a question.
+
+---
+
 ## Appendix — the earlier note (AI interpretation of the current sky)
 
 The `astro` mode on the VPS (`/feed/ai`) carries an *astrologer* system prompt in en+uk that interprets only

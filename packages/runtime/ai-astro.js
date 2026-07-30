@@ -42,6 +42,12 @@ export const houseRead = HOUSE.get;
 export const isHouseRead = HOUSE.has;
 export const warmHouseRead = HOUSE.warm;
 
+// one of the ten fixed life questions, answered against the chart
+const ASKED = reading("astro-q", "astroAsk");
+export const askedRead = ASKED.get;
+export const isAskedRead = ASKED.has;
+export const warmAskedRead = ASKED.warm;
+
 // the natal chart as a whole
 const PORTRAIT = reading("astro-c", "astroChart");
 export const portraitRead = PORTRAIT.get;

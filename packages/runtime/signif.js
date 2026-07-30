@@ -34,7 +34,7 @@ import { signOf, ELEMENT, MODALITY } from "./synastry.js";
 
 // Bump when a MEANING changes. It rides in every reading's cache signature, so a corpus edit expires the
 // readings built on the old wording instead of serving them forever.
-export const CORPUS = 1;
+export const CORPUS = 2;
 
 // Planetary rulership, index 0=Aries..11=Pisces: the traditional ruler FIRST, then the modern outer
 // co-ruler where one is assigned — Scorpio = Mars & Pluto, Aquarius = Saturn & Uranus, Pisces = Jupiter &
@@ -62,6 +62,8 @@ export const BODY = {
       "освітлює те, чого торкається, і ненадовго робить це центром подій"],
     strain: ["pride, over-identification, spending vitality faster than it returns",
       "гордість, ототожнення себе зі справою, витрата сил швидше, ніж вони повертаються"],
+    work: ["leading, representing, being the face of something; traditionally goldsmiths, minters and those who work in gold and in the presence of power",
+      "керувати, представляти, бути обличчям справи; у давніх списках — золотарі, карбівники, ті, хто при владі"],
     tempo: ["a year round the chart, a month in a sign, a day on a degree",
       "рік по всій карті, місяць у знаку, доба на градусі"],
   },
@@ -72,6 +74,8 @@ export const BODY = {
       "забарвлює настрій дня і виносить реакцію наперед думки"],
     strain: ["moodiness, clinging to the familiar, reacting instead of choosing",
       "мінливість, чіпляння за звичне, реакція замість вибору"],
+    work: ["care, nursing, food, and anything that serves the public or moves with a tide or a season; traditionally sailors, fishermen, midwives, nurses, brewers",
+      "догляд, медсестринство, їжа і все, що служить загалу або йде припливами й сезонами; у давніх списках — моряки, рибалки, повитухи, доглядальниці, пивовари"],
     tempo: ["27 days round the chart, two and a half in a sign — hours on a degree",
       "27 днів по всій карті, двоє з половиною діб у знаку — години на градусі"],
   },
@@ -82,6 +86,8 @@ export const BODY = {
       "приносить розмову, повідомлення, папери — і другий погляд на зроблене"],
     strain: ["nervous haste, cleverness in place of judgement, talking past the point",
       "нервова поспішність, спритність замість розсудливості, розмова повз суть"],
+    work: ["writing, teaching, trade, records, code — anything that moves information; traditionally scribes, merchants, schoolmasters, accountants, messengers",
+      "писати, вчити, торгувати, вести облік, програмувати — усе, що рухає інформацію; у давніх списках — писарі, купці, вчителі, рахівники, гінці"],
     tempo: ["about a year round the chart; retrograde three times a year for some three weeks",
       "приблизно рік по всій карті; ретроградний тричі на рік по три тижні"],
   },
@@ -92,6 +98,8 @@ export const BODY = {
       "згладжує, підсолоджує і зближує; робить згоду легкою"],
     strain: ["indulgence, appeasement, valuing being liked over being right",
       "потурання, догоджання, бажання подобатися замість бути правим"],
+    work: ["design, music, clothing, beauty, hospitality — anything made pleasant to be around; traditionally musicians, painters, jewellers, embroiderers, drapers",
+      "дизайн, музика, одяг, краса, гостинність — усе, що робить приємним; у давніх списках — музиканти, малярі, ювеліри, вишивальники, крамарі тканин"],
     tempo: ["about a year round the chart; retrograde every 18 months for six weeks",
       "приблизно рік по всій карті; ретроградна раз на 18 місяців на шість тижнів"],
   },
@@ -102,6 +110,8 @@ export const BODY = {
       "розігріває, підганяє і загострює — бійка або зусилля"],
     strain: ["haste, friction, force where patience would have done",
       "поспіх, тертя, сила там, де вистачило б терпіння"],
+    work: ["tools, surgery, engineering, emergency work, sport — anything with iron, heat or risk in it; traditionally soldiers, surgeons, butchers, smiths, cutlers",
+      "інструменти, хірургія, інженерія, робота на надзвичайних, спорт — усе, де залізо, жар і ризик; у давніх списках — воїни, хірурги, різники, ковалі, ножарі"],
     tempo: ["two years round the chart, six weeks in a sign; retrograde every two years for two months",
       "два роки по всій карті, шість тижнів у знаку; ретроградний раз на два роки на два місяці"],
   },
@@ -112,6 +122,8 @@ export const BODY = {
       "відкриває, збільшує і дає дозвіл — зокрема й тому, що мало лишитися малим"],
     strain: ["overreach, excess, promising more than the ground will hold",
       "переоцінка сил, надмір, обіцянки, яких ґрунт не витримає"],
+    work: ["law, teaching at height, publishing, religion, advising — anything that grants, interprets or vouches; traditionally judges, lawyers, clergy, scholars",
+      "право, викладання, видавництво, віра, дорадництво — усе, що надає, тлумачить або ручається; у давніх списках — судді, правники, духівництво, вчені"],
     tempo: ["12 years round the chart, a year in a sign; retrograde four months a year",
       "12 років по всій карті, рік у знаку; ретроградний по чотири місяці щороку"],
   },
@@ -122,6 +134,8 @@ export const BODY = {
       "перевіряє на міцність — збудоване стоїть, решта показує тріщини"],
     strain: ["fear, hardness, mistaking delay for defeat",
       "страх, черствість, сприймання затримки за поразку"],
+    work: ["building, land, structure, maintenance, administration — anything that endures and is measured in time; traditionally husbandmen, miners, masons, tanners, day-labourers",
+      "будівництво, земля, структура, обслуговування, адміністрування — усе, що триває і міряється часом; у давніх списках — хлібороби, гірники, мулярі, чинбарі, поденники"],
     tempo: ["29 and a half years round the chart, two and a half in a sign — the first return near 29",
       "29 з половиною років по всій карті, два з половиною у знаку — перше повернення близько 29"],
   },
@@ -132,6 +146,8 @@ export const BODY = {
       "ламає усталене й не дає йому скластися так само"],
     strain: ["restlessness, rupture for its own sake, cutting what could have been changed",
       "неспокій, розрив заради розриву, обрубування того, що можна було змінити"],
+    work: ["technology, research, reform, anything that breaks the existing pattern — a modern body, with no classical trade list behind it",
+      "технології, дослідження, реформа, усе, що ламає усталене — сучасна планета, класичного переліку ремесел за нею немає"],
     tempo: ["84 years round the chart, seven years in a sign",
       "84 роки по всій карті, сім років у знаку"],
   },
@@ -142,6 +158,8 @@ export const BODY = {
       "розмʼякшує обриси — натхнення й омана заходять одними дверима"],
     strain: ["confusion, self-deception, escape",
       "сплутаність, самообман, втеча"],
+    work: ["image, film, music, care of the vulnerable, anything with soft edges — a modern body, with no classical trade list behind it",
+      "образ, кіно, музика, догляд за вразливими, усе з розмитими краями — сучасна планета, класичного переліку ремесел за нею немає"],
     tempo: ["165 years round the chart, fourteen years in a sign",
       "165 років по всій карті, чотирнадцять років у знаку"],
   },
@@ -152,6 +170,8 @@ export const BODY = {
       "діє повільно й не торгується — завершене забирається"],
     strain: ["obsession, control, holding on to the crisis",
       "одержимість, контроль, утримування кризи"],
+    work: ["investigation, crisis work, depth finance, anything hidden that has to be turned over — a modern body, with no classical trade list behind it",
+      "розслідування, робота з кризами, фінанси на глибині, усе приховане, що треба підняти — сучасна планета, класичного переліку ремесел за нею немає"],
     tempo: ["248 years round the chart, twelve to thirty years in a sign",
       "248 років по всій карті, від дванадцяти до тридцяти років у знаку"],
   },
@@ -353,6 +373,66 @@ export function balance(lons) {
   return { elements, modalities, topElement: top(elements), topModality: top(modalities) };
 }
 
+// ── the fixed question catalogue ─────────────────────────────────────────────────────────────────────────
+//
+// The ten things people actually bring to an astrologer, as a CLOSED list. Closed is the whole design:
+//
+//   • it is the only honest way to be grounded. Each question declares exactly which houses, bodies and
+//     angles it may be answered from — the significators a competent astrologer would read for it — so the
+//     app computes those and nothing else reaches the model. A free-text box has no such set, which is why
+//     it would be a wishing well with a language model at the bottom.
+//   • it removes the injection surface entirely. There is no user text, so there is nothing to smuggle
+//     instructions in. Compare `ask` in ai-books.js, which takes free text and needs a whole prompt section
+//     to defend itself.
+//   • it caches. Ten questions × one chart = ten answers, forever.
+//
+// WHAT IS NOT HERE, AND WHY. The most-asked list also contains "will I have children", "am I pregnant",
+// "what is wrong with my health", "when will I die", "will I win the case", "should I invest". Every one is
+// a claim about a real outcome that a birth chart does not establish, and no reframing rescues them — the
+// person wants the outcome, and a symbolic answer to "when will I die" is a worse answer, not a safer one.
+// They are dropped rather than softened. Better eight honest questions than ten with two that promise.
+//
+// `focus` is an instruction to the model, not UI, so it is English-only. It states the technique for that
+// question — which factor leads and what an answer may NOT contain — because "answer using the facts below"
+// leaves the model to guess whether the seventh house or Venus is the point.
+//
+//   houses  — read as: cusp sign + its ruler + where that ruler lives + the planets tenanting it
+//   bodies  — read as: sign, house, dignity, retrograde
+//   transit — true → the question is about "now", so the current contacts to those points come too
+export const QUESTIONS = [
+  { id: "love", houses: [7, 5], bodies: ["venus"], angles: ["asc"], transit: false,
+    label: ["Who am I drawn to, and what draws them to me?", "До кого мене тягне і що притягує до мене?"],
+    focus: "The seventh house — the sign on its cusp, and above all where its ruler lives — describes partnership and the kind of person sought. The fifth is courtship and play, not commitment; keep them distinct. Venus describes what is found beautiful and worth having. Answer with the KIND of person and the CONTEXT the tradition associates with these placements. Never a place, a date, a name, or a promise that it happens." },
+  { id: "bond", houses: [7], bodies: ["moon", "saturn", "venus"], angles: [], transit: false,
+    label: ["What do I actually need for a relationship to last?", "Що мені насправді потрібно, щоб стосунки тривали?"],
+    focus: "What this person needs in order to stay, not who they attract. The Moon is what must feel safe; Saturn is what they will and will not commit to; Venus is what they value. The seventh house ruler's condition says where the strain in partnership tends to come from. Describe needs and frictions, not a verdict on any relationship." },
+  { id: "work", houses: [10, 6, 2], bodies: ["sun", "saturn"], angles: ["mc"], transit: false, fields: ["work"],
+    label: ["What kind of work suits me?", "Яка робота мені підходить?"],
+    focus: "The tenth house and the Midheaven are the public role and the direction; the sixth is the daily labour and the conditions of it, which is a different question and often a different answer. The Sun is what the person is for; Saturn is what they will do the hard part of. Name actual KINDS of work, drawn from the Work lines supplied — that is what was asked, and a paragraph about identity and purpose is not an answer to it. Use only the kinds listed; do not invent an occupation. Never a job title as a prediction, and never an income." },
+  { id: "workNow", houses: [10], bodies: ["sun", "saturn"], angles: ["mc"], transit: true, fields: ["work"],
+    label: ["What is moving in my work right now?", "Що зараз рухається в моїй роботі?"],
+    focus: "This one is about TIMING, so lead with the transits supplied and their exact dates, and use the natal factors only to say what is being touched. Quote the dates exactly as given and derive no new ones. A transit describes a season and a pressure, never an event that will occur." },
+  { id: "money", houses: [2, 8], bodies: ["venus", "jupiter"], angles: [], transit: false,
+    label: ["What is my pattern with money and security?", "Як я поводжуся з грішми й відчуттям безпеки?"],
+    focus: "The second house is what is one's own — earning, holding, and the sense of being worth something. The eighth is what is shared, owed, inherited or held on trust, which is a different matter entirely. Describe the PATTERN and the relationship to security. Never a forecast of wealth or poverty, never advice about an investment or a decision involving money." },
+  { id: "phase", houses: [], bodies: ["sun", "moon", "saturn"], angles: ["asc", "mc"], transit: true,
+    label: ["What phase of life am I in now?", "Який період життя я зараз проходжу?"],
+    focus: "Answer from the transits supplied: which slow bodies are contacting the luminaries and the angles, how long each lasts (use the tempo given), and what that season asks for. The natal points say what is being pressed on. This is the one question where the answer is legitimately about time — so be precise about duration and quote only the dates given." },
+  { id: "strength", houses: [], bodies: ["sun", "moon"], angles: ["asc"], transit: false,
+    label: ["Where is my strength, and what keeps repeating as difficulty?", "У чому моя сила і що повторюється як труднощі?"],
+    focus: "Lead with essential dignity: a planet in its own sign or exaltation works easily, one in detriment or fall has to work in terms that are not its own — that is the honest version of strength and difficulty. Then the tightest natal aspects, soft and hard. Name a real cost, not a flattering one, and never call any of it a flaw in the person." },
+  { id: "home", houses: [4], bodies: ["moon"], angles: [], transit: false,
+    label: ["What gives me a sense of home?", "Що дає мені відчуття дому?"],
+    focus: "The fourth house is the private base, the family one comes from and the ground one stands on; its ruler's placement says where that ground is actually found. The Moon is what soothes. Describe what home means for this person and what unsettles it — not a place to live and not a prediction about family." },
+  { id: "learn", houses: [9, 3], bodies: ["mercury", "jupiter"], angles: [], transit: false,
+    label: ["How do I learn and get beyond the familiar?", "Як я вчуся і виходжу за межі звичного?"],
+    focus: "The third is how the near world is taken in — talking, reading, the short trip; the ninth is the long reach — belief, study, distance. Mercury is the method, Jupiter the appetite. Say how this person learns and what widens them. Never predict a journey or a qualification." },
+  { id: "people", houses: [11], bodies: ["mercury", "venus"], angles: [], transit: false,
+    label: ["Where do friendship and community fit in my life?", "Яке місце в моєму житті мають дружба і спільнота?"],
+    focus: "The eleventh is friends, allies, the group and what one hopes for; its ruler says where those people are found. Distinguish it from the seventh, which is one-to-one. Describe how this person belongs to a group and what they want from it." },
+];
+export const questionById = (id) => QUESTIONS.find((q) => q.id === id) || null;
+
 // ── grounding blocks ─────────────────────────────────────────────────────────────────────────────────────
 //
 // Each builder returns { text, sig }: the closed-world block the model may use, and the cache signature for
@@ -462,11 +542,11 @@ export function groundCusp({ house, cuspLon, houseSystem, ruler, coRuler = null,
     `- house ${house}, the field of life: ${H.topic[en]}; traditionally "${H.trad[en]}".`,
     `- ${SIGN_EN[s]} on the cusp — the manner this area is approached in: it ${SIGN[s].mode[en]}. At its best: ${SIGN[s].gift[en]}. At its worst: ${SIGN[s].excess[en]}.`,
     ruler
-      ? `- ${nameEN(ruler.key)} rules ${SIGN_EN[s]} and therefore rules this house. It is itself in ${SIGN_EN[rSign]}, in house ${ruler.house}${ruler.retro ? ", retrograde" : ""}${rDig && rDig !== "none" ? `, in ${rDig}` : ""}. ${nameEN(ruler.key)}: ${BODY[ruler.key].role[en]}. Where the ruler sits is where the affairs of house ${house} are carried out.`
+      ? `- ${nameEN(ruler.key)} rules ${SIGN_EN[s]} and therefore RULES this house — which is not the same as standing in it. ${nameEN(ruler.key)} itself stands in ${SIGN_EN[rSign]}, in house ${ruler.house}${ruler.retro ? ", retrograde" : ""}${rDig && rDig !== "none" ? `, in ${rDig}` : ""}. ${nameEN(ruler.key)}: ${BODY[ruler.key].role[en]}. Where the ruler sits is where the affairs of house ${house} are carried out.`
       : null,
     coRuler ? `- ${nameEN(coRuler)} is the MODERN co-ruler of ${SIGN_EN[s]}; traditional astrology does not assign it. Say so if you use it.` : null,
     tenants.length
-      ? `- planets standing IN house ${house}: ${tenants.map((p) => `${nameEN(p.key)} in ${SIGN_EN[signOf(p.lon)]}${p.retro ? " retrograde" : ""} (${BODY[p.key].role[en]})`).join("; ")}.`
+      ? `- STANDING IN house ${house}: ${tenants.map((p) => `${nameEN(p.key)} in ${SIGN_EN[signOf(p.lon)]}${p.retro ? " retrograde" : ""} (${BODY[p.key].role[en]})`).join("; ")}.`
       : `- no planet stands in house ${house}. In the tradition that is NOT an empty or inactive area — the house is read through its ruler, above. Do not describe it as lacking anything.`,
   ].filter(Boolean);
   const text = `${HEAD}
@@ -475,6 +555,55 @@ MEANINGS (the app's sourced corpus):
 ${lines.join("\n")}
 Write about this ONE area of life: what it is, the manner the sign brings to it, and — the part that carries the most weight — where its ruler sits, because that is what connects this area to the rest of the chart.`;
   const sig = `h${CORPUS}|${house}|${s}|${houseSystem}|${ruler ? `${ruler.key}${rSign}${ruler.house}${ruler.retro ? "r" : ""}` : "-"}|${tenants.map((p) => p.key).join("")}`;
+  return { text, sig };
+}
+
+// One catalogue question, answered from ONLY the factors it declares.
+//
+// The block is assembled from the question's own `houses`/`bodies`/`angles` lists rather than from the whole
+// chart, and that is the point: a model handed an entire chart and asked about money will find something to
+// say about the Moon, because there is always something to say. Handed the second house, its ruler, the
+// eighth, Venus and Jupiter, it has to answer from those or say less.
+//
+//   chart  { cusps, houseSystem, points: [{key, lon, house, retro}], asc, mc }
+//   timing null, or { dateEN, contacts: [{ c, transitLon, retro, hits: [label] }] } for a transit question.
+//          The caller filters the contacts to the ones touching this question's points — the builder does
+//          not, because only the caller knows what "touching" cost to compute.
+const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+export function groundQuestion({ q, chart, timing = null }) {
+  const { cusps, houseSystem, points, asc, mc } = chart;
+  const at = (key) => points.find((p) => p.key === key);
+  const lines = [];
+
+  for (const h of q.houses || []) {
+    const cuspLon = cusps[h - 1], s = signOf(cuspLon);
+    const r = rulerOf(cuspLon), rp = at(r.body);
+    const tenants = points.filter((p) => p.house === h);
+    lines.push(`- HOUSE ${h} (${houseSystem}) — ${HOUSE[h - 1].topic[en]}. ${SIGN_EN[s]} on the cusp: it ${SIGN[s].mode[en]}.` +
+      (rp ? ` RULED BY ${nameEN(r.body)} (${BODY[r.body].role[en]}). ${nameEN(r.body)} does not stand in house ${h}; it stands in ${SIGN_EN[signOf(rp.lon)]}, house ${rp.house}${rp.retro ? ", retrograde" : ""}${dignityOf(r.body, signOf(rp.lon)) && dignityOf(r.body, signOf(rp.lon)) !== "none" ? `, in ${dignityOf(r.body, signOf(rp.lon))}` : ""} — and that is where the affairs of house ${h} are carried out.` : "") +
+      (tenants.length ? ` STANDING IN house ${h}: ${tenants.map((p) => `${nameEN(p.key)} in ${SIGN_EN[signOf(p.lon)]}`).join(", ")}.` : ` No planet stands in it, which the tradition reads through the ruler above — not as an absence.`));
+  }
+  for (const k of q.bodies || []) {
+    const p = at(k);
+    if (!p) continue;
+    const s = signOf(p.lon), d = dignityOf(k, s);
+    lines.push(`- ${nameEN(k)} — ${BODY[k].role[en]}. In ${SIGN_EN[s]} (it ${SIGN[s].mode[en]}), house ${p.house}${p.retro ? ", retrograde" : ""}${d && d !== "none" ? `, in ${d} — ${DIGNITY[d][en]}` : ""}. Under strain: ${BODY[k].strain[en]}.` +
+      (q.fields || []).map((f) => BODY[k][f] ? ` ${cap(f)}: ${BODY[k][f][en]}.` : "").join(""));
+  }
+  for (const a of q.angles || []) {
+    const lon = a === "mc" ? mc : asc;
+    lines.push(`- ${nameEN(a)} at ${deg(lon)} — ${ANGLE[a].topic[en]}. ${SIGN_EN[signOf(lon)]}: it ${SIGN[signOf(lon)].mode[en]}.`);
+  }
+  const tLines = (timing?.contacts || []).map(({ c, transitLon, retro, hits = [] }) =>
+    `- transiting ${nameEN(c.t)}${retro ? " (retrograde)" : ""} in ${SIGN_EN[signOf(transitLon)]} ${c.type} natal ${nameEN(c.n)}, orb ${c.orb.toFixed(2)}°${c.applying == null ? "" : c.applying ? ", applying" : ", separating"}. ${nameEN(c.t)} as a transit ${BODY[c.t].act[en]}; it lasts ${BODY[c.t].tempo[en]}.${hits.length ? ` Exact: ${hits.join("; ")}.` : ""}`);
+
+  const text = `${HEAD}
+QUESTION: ${q.label[en]}
+HOW TO READ IT: ${q.focus}
+${timing ? `TRANSITS on ${timing.dateEN}:\n${tLines.length ? tLines.join("\n") : "- none within orb to the points below right now. Say so plainly; do not substitute another transit."}\n` : ""}NATAL FACTORS (the app's sourced corpus):
+${lines.join("\n")}
+Answer the question directly, in 4–6 sentences. Do not restate the placements as a list — say what they mean for this question.`;
+  const sig = `q${CORPUS}|${q.id}|${houseSystem}|${(q.houses || []).map((h) => signOf(cusps[h - 1])).join(",")}|${(q.bodies || []).map((k) => { const p = at(k); return p ? `${k}${signOf(p.lon)}${p.house}${p.retro ? "r" : ""}` : k; }).join(",")}|${(q.angles || []).map((a) => signOf(a === "mc" ? mc : asc)).join(",")}${timing ? `|${timing.dateEN}|${(timing.contacts || []).map(({ c }) => `${c.t}${c.type}${c.n}${Math.round(c.orb)}`).join(",")}` : ""}`;
   return { text, sig };
 }
 

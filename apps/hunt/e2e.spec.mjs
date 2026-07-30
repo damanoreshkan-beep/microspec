@@ -92,13 +92,20 @@ export default [
        Fractions rather than pixels, so the check keeps meaning at every breakpoint. */
     name: "екран: гра займає корпус, а корпус — увесь вигляд", run: async (h) => {
       await ready(h);
-      const view = await h.prop("#view", "clientHeight");
+      /* The ROOM, not the box. #view's clientHeight includes its own padding — and that padding is
+         the dock's height, which is space the console can never occupy. Measuring against it made
+         a body that was filling 100% of what it had report 88% and fail, which is the denominator
+         being wrong rather than the layout. Read the padding and subtract it. */
+      const box = await h.prop("#view", "clientHeight");
+      const padT = parseFloat(await h.css("#view", "padding-top")) || 0;
+      const padB = parseFloat(await h.css("#view", "padding-bottom")) || 0;
+      const room = box - padT - padB;
       const bodyH = await h.prop("[data-shell-body]", "clientHeight");
       const bodyW = await h.prop("[data-shell-body]", "clientWidth");
       const cw = await h.prop("canvas", "clientWidth");
-      h.expect(view > 0 && bodyW > 0, "нема з чим порівнювати — корпус або вигляд не змірялись");
-      h.expect(bodyH >= view * 0.9,
-        `корпус ${bodyH}px усередині вигляду ${view}px — консоль стискається до вмісту замість заповнювати екран`);
+      h.expect(room > 0 && bodyW > 0, "нема з чим порівнювати — корпус або вигляд не змірялись");
+      h.expect(bodyH >= room * 0.95,
+        `корпус ${bodyH}px у доступних ${room}px (вигляд ${box} − падінги ${padT}/${padB}) — консоль стискається до вмісту замість заповнювати екран`);
       h.expect(cw >= bodyW * 0.78,
         `полотно ${cw}px у корпусі ${bodyW}px — апертура забирає в гри ширину, яку нікому більше не віддає`);
     },

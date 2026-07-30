@@ -96,7 +96,7 @@
     "bg": "#0A0A0F",
     "fg": "#A78BFA",
     "href": "./horoscope/",
-    "version": "1.18",
+    "version": "1.19",
     "category": "esoterica"
   },
   {
@@ -136,7 +136,7 @@
     "bg": "#1A1614",
     "fg": "#C2703A",
     "href": "./arc/",
-    "version": "1.3",
+    "version": "1.11",
     "category": "feeds"
   },
   {
@@ -456,7 +456,7 @@
     "bg": "#1b2430",
     "fg": "#6d9150",
     "href": "./hunt/",
-    "version": "1.12",
+    "version": "1.24",
     "category": "play"
   },
   {
@@ -556,7 +556,7 @@
     "bg": "#0A0A0F",
     "fg": "#5EEAD4",
     "href": "./retouch/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "creative"
   },
   {
@@ -836,7 +836,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./tarot/",
-    "version": "1.29",
+    "version": "1.30",
     "category": "esoterica"
   },
   {
@@ -856,7 +856,7 @@
     "bg": "#0E0B1A",
     "fg": "#C0A9F5",
     "href": "./transit/",
-    "version": "1.20",
+    "version": "1.32",
     "category": "science"
   },
   {
@@ -876,7 +876,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./imagine/",
-    "version": "1.14",
+    "version": "1.15",
     "category": "creative"
   },
   {
@@ -918,26 +918,6 @@
     "href": "./handpan/",
     "version": "1.25",
     "category": "sound"
-  },
-  {
-    "id": "brick",
-    "title": "Цеглинка",
-    "titles": {
-      "en": "Brick",
-      "uk": "Цеглинка"
-    },
-    "tagline": "Кишенькова консоль, що вміщається у вкладку",
-    "taglines": {
-      "en": "A pocket console that fits in a tab",
-      "uk": "Кишенькова консоль, що вміщається у вкладку"
-    },
-    "glyph": "lucide:gamepad-2",
-    "art": "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"3\"/><rect x=\"7\" y=\"5\" width=\"10\" height=\"8\" rx=\"1\"/><path d=\"M9 17h1M8 18h3M9.5 16.5v3\"/><circle cx=\"16\" cy=\"17\" r=\"1\"/><circle cx=\"18.5\" cy=\"19\" r=\"1\"/>",
-    "bg": "#101014",
-    "fg": "#8FA05C",
-    "href": "./brick/",
-    "version": "1.20",
-    "category": "play"
   },
   {
     "id": "onthisday",
@@ -1036,7 +1016,7 @@
     "bg": "#0E1022",
     "fg": "#8B7CF6",
     "href": "./drift/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "sound"
   },
   {
@@ -1076,7 +1056,7 @@
     "bg": "#1f2430",
     "fg": "#34d399",
     "href": "./ruler/",
-    "version": "1.30",
+    "version": "1.31",
     "category": "tools"
   },
   {
@@ -1096,7 +1076,7 @@
     "bg": "#0A0A0B",
     "fg": "#93C5FD",
     "href": "./gsmscan/",
-    "version": "1.11",
+    "version": "1.12",
     "category": "hackrf"
   },
   {
@@ -1156,7 +1136,7 @@
     "bg": "#0A0A0B",
     "fg": "#7FD6A8",
     "href": "./lorawatch/",
-    "version": "1.10",
+    "version": "1.11",
     "category": "hackrf"
   },
   {
@@ -1216,7 +1196,7 @@
     "bg": "#0B0B0D",
     "fg": "#ECECEE",
     "href": "./reel/",
-    "version": "1.33",
+    "version": "1.37",
     "category": "feeds"
   },
   {

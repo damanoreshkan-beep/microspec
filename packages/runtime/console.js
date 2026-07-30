@@ -21,9 +21,9 @@
 // shell that fits one game. What the shell decides is how they are laid out.
 //
 // The one thing a GAME still hands the shell is its `plate` — the backplate its aperture shows
-// where the picture does not reach. That direction matters: the game owns its own panel (brick is
-// an ink density on an olive plate; hunt is colour art in a dark well), and a shell that owned the
-// tint was a shell painting olive around a forest.
+// where the picture does not reach. That direction matters: the game owns its own panel — a
+// monochrome game is an ink density on a tinted plate, a colour game is art in a dark well — and a
+// shell that owned the tint painted one game’s plate around the other one’s picture.
 //
 // The geometry is measured from real devices and written down in `docs/research/console-shells.md`.
 // Three numbers there replaced values that had been wrong since the alpha and that no gate could
@@ -159,8 +159,8 @@ function Actions({ actions, t, onKeyboard, size = "var(--ms-ctl)" }) {
  * @param pad       [{ id, pad: "up"|"down"|"left"|"right", bit, icon, label }]
  *                  Every key exposes ONE hook, data-key=<id>, and pad keys mirror it as data-pad
  *                  so a test can count the cross without knowing what the app called its keys.
- *                  Lifting this shell out of brick changed those hooks and broke three e2e cases:
- *                  a shared component owns its DOM contract too, not only its markup.
+ *                  Lifting this shell out of its first game changed those hooks and broke three
+ *                  e2e cases: a shared component owns its DOM contract too, not only its markup.
  * @param actions   [{ id, bit, icon, label, latch? }]   — 1…4; the shell decides the arrangement
  * @param menu      [{ id, act, icon, label, pressed? }] — sound, records: momentary, small
  * @param centre    [{ id, act, text|icon, label }]      — the START column under the menu row
@@ -232,7 +232,7 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
   return html`
     <div class="h-full min-h-0 flex flex-col items-center justify-center">
       <div class="ms-shell sf-raised ms-side min-h-0 flex flex-col gap-[var(--ms-gap)]"
-           data-shell-body="brick" data-deck="split" ...${spread} style=${style}>
+           data-shell-body="handheld" data-deck="split" ...${spread} style=${style}>
         ${stage}
         ${deckRow}
       </div>

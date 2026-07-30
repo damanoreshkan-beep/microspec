@@ -1,14 +1,13 @@
-// Offline frame preview — one real frame of brick or hunt, as a PNG, with no browser.
+// Offline frame preview — one real frame of a game, as a PNG, with no browser.
 //
-//   deno run -A tools/art/frame.mjs brick --out /tmp/brick.png
-//   deno run -A tools/art/frame.mjs hunt  --out /tmp/hunt.png
-//   deno run -A tools/art/frame.mjs brick --frames 140 --scale 3 --seed 0xB21C --out x.png
+//   deno run -A tools/art/frame.mjs hunt --out /tmp/hunt.png
+//   deno run -A tools/art/frame.mjs hunt --frames 150 --scale 3 --seed 0xA17C --out x.png
 //
 // The `/_rt/…` specifiers the app files use need an import map, so the tool RE-EXECS itself with
 // tools/art/frame.importmap.json when it notices the map is not active. If you would rather be
 // explicit, this is the invocation it runs for you:
 //
-//   deno run -A --import-map=tools/art/frame.importmap.json tools/art/frame.mjs brick --out x.png
+//   deno run -A --import-map=tools/art/frame.importmap.json tools/art/frame.mjs hunt --out x.png
 //
 // WHY this exists at all: the eye test is a required gate, and the only honest preview is one that
 // draws through the code that ships. apps/<id>/render.js owns the pass ORDER and draws against a
@@ -29,7 +28,7 @@ const MAP = new URL("./frame.importmap.json", HERE);
    `import.meta.resolve` answers with file:///_rt/… when no map is in play — a path that exists
    nowhere. Re-exec rather than fail: a preview tool that only runs when you remember a flag is a
    preview tool nobody runs. */
-if (!import.meta.resolve("/_rt/brick.js").includes("/packages/runtime/")) {
+if (!import.meta.resolve("/_rt/hunt.js").includes("/packages/runtime/")) {
   const cmd = new Deno.Command(Deno.execPath(), {
     args: ["run", "-A", `--import-map=${MAP.href}`, new URL(import.meta.url).pathname, ...Deno.args],
     stdout: "inherit", stderr: "inherit",
@@ -41,7 +40,7 @@ if (!import.meta.resolve("/_rt/brick.js").includes("/packages/runtime/")) {
    Canvas2D rounds fill geometry (fillRect takes device pixels but snaps nothing itself — the
    painters in engine.js do the rounding, and they round the same way here) and composites
    source-over: dst = dst*(1-a) + src*a. The buffer is always opaque, because both games mount
-   their canvas with { alpha: false }. */
+   its canvas with { alpha: false }. */
 function surface(W, H) {
   const buf = new Uint8ClampedArray(W * H * 4);
   for (let i = 3; i < buf.length; i += 4) buf[i] = 255;      // opaque, like an alpha:false canvas
@@ -79,49 +78,6 @@ function flipCell(cell) {
   f = { px, w: cell.w, h: cell.h };
   flipped.set(cell, f);
   return f;
-}
-
-/* ── brick: an ink density on an LCD plate ────────────────────────────────────────────────
-   Method for method against canvasPainter() in apps/brick/engine.js. `cell` delegates to the
-   atlas's own paint(), which is already the pixel-for-pixel definition of a baked tile. */
-function brickPainter(s, rt, atlas, glyphRects, lcd) {
-  const { clampLevel, segmentRGB, SCRW, SCRH } = rt;
-  const ink = hex(lcd.ink), plate = hex(lcd.plate);
-  /* The five colours a density resolves to on this panel, exactly as canvasPainter caches them.
-     A mark REPLACES the plate rather than blending over what the pass before it drew — see the
-     `segment` note in /_rt/brick.js. `alpha` below is coverage, and the ground shadow is its
-     only caller. */
-  const seg = [0, 1, 2, 3, 4].map((l) => segmentRGB(l, lcd.plate, lcd.ink).map(Math.round));
-
-  return {
-    plate() { s.rect(0, 0, s.W, s.H, plate, 1); },
-    rect(x, y, w, h, level, alpha = 1) { s.rect(x, y, w, h, seg[clampLevel(level)], alpha); },
-    cell(cell, ox, oy, { level = null, alpha = 1, flip = false } = {}) {
-      if (!cell.w) return;
-      atlas.paint(s.buf, s.W, s.H, flip ? flipCell(cell) : cell, Math.round(ox), Math.round(oy),
-        { plate: lcd.plate, ink: lcd.ink, alphaScale: alpha, level });
-    },
-    glyph(ch, ox, oy) {
-      for (const [x, y] of glyphRects(ch)) s.rect(ox + x * 2, oy + y * 2, 2, 2, seg[4], 1);
-    },
-    // The unlit segment lattice: a 1×2 repeating pattern, one ink row then one empty row, aligned
-    // to the canvas origin. A pattern fill does no filtering, so this is exact.
-    grid(a) {
-      for (let y = 0; y < s.H; y += 2)
-        for (let x = 0; x < s.W; x++) s.px((y * s.W + x) * 4, ink[0], ink[1], ink[2], a);
-    },
-    // The polariser: white at `sheen*2` on the (0,0)→(W,H) diagonal, gone by 55% along it. The
-    // argument renderFrame passes is LCD.sheen — the same number the browser closes over.
-    sheen() {
-      const a0 = lcd.sheen * 2, d = SCRW * SCRW + SCRH * SCRH;
-      for (let y = 0; y < s.H; y++)
-        for (let x = 0; x < s.W; x++) {
-          const t = ((x + 0.5) * SCRW + (y + 0.5) * SCRH) / d;     // gradients sample pixel centres
-          if (t >= 0.55) continue;
-          s.px((y * s.W + x) * 4, 255, 255, 255, a0 * (1 - Math.max(0, t) / 0.55));
-        }
-    },
-  };
 }
 
 /* ── hunt: the same abstraction, in colour ────────────────────────────────────────────────
@@ -180,29 +136,11 @@ async function loadEngine(wasmPath, S, withBox) {
   };
 }
 
-/* ── the two apps ─────────────────────────────────────────────────────────────────────────
+/* ── the apps ─────────────────────────────────────────────────────────────────────────────
    `track` is the gate's input track, copied from each view.js. It has to be the SAME track: the
    screenshots, the a11y sweep and the taste pass all photograph the frame it produces, and a
    preview of a different frame is a preview of a different game. */
 const APPS = {
-  brick: {
-    frames: 140,
-    async build(seedOverride) {
-      const rt = await import("/_rt/brick.js");
-      const atlas = await import(new URL("../../apps/brick/atlas.js", HERE).href);
-      const render = await import(new URL("../../apps/brick/render.js", HERE).href);
-      const { GATE_SEED } = await import(new URL("../../apps/brick/engine.js", HERE).href);
-      const E = await loadEngine(new URL("../../apps/brick/assets/brick.wasm", HERE).pathname, rt.S, false);
-      const s = surface(rt.SCRW, rt.SCRH);
-      return {
-        E, s, seed: seedOverride ?? GATE_SEED,
-        // apps/brick/view.js: E.step(PAD.RIGHT | PAD.RUN | ((i % 46) < 16 ? PAD.JUMP : 0))
-        track: (i) => rt.IN.RIGHT | rt.IN.RUN | ((i % 46) < 16 ? rt.IN.JUMP : 0),
-        p: brickPainter(s, rt, atlas, render.glyphRects, rt.LCD),
-        draw: (p, dl, n, st) => render.renderFrame(p, dl, n, st, {}),
-      };
-    },
-  },
   hunt: {
     frames: 150,
     async build(seedOverride) {
@@ -263,9 +201,9 @@ const N = opt.frames ?? app.frames;
 const { E, s, p, seed, track, draw } = await app.build(opt.seed);
 E.init(seed);
 
-/* One pass draws the whole frame. Neither game carries a persistence pass any more — brick's
-   ghost() was a translucent copy of the previous frame under every mark, and it was the single
-   loudest source of the see-through look this tool was built to look at. */
+/* One pass draws the whole frame. No persistence pass: a `ghost()` that composited the previous
+   frame under every mark once existed here, and it was the loudest single source of the
+   see-through look this tool was built to find. */
 const frame = () => { const { dl, n } = E.list(); draw(p, dl, n, E.state()); };
 for (let i = 0; i < N; i++) E.step(track(i));
 frame();

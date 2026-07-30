@@ -31,8 +31,8 @@ export const fromPointer = (el, within = 500) => !!el && Date.now() - (pointered
 /** The activation guard every app's onClick should use: keyboard and AT only. */
 export const keyboardOnly = (fn) => (e) => { if (!e.detail && !fromPointer(e.currentTarget)) fn(e); };
 
-/* Mirrored in tools/wasm/brick/game.c and packages/runtime/brick.js — and, for the five bits they
-   share, in tools/wasm/hunt/game.c and packages/runtime/hunt.js.
+/* Mirrored in tools/wasm/hunt/game.c and packages/runtime/hunt.js. Any game added to the farm
+   mirrors these same bits — the mask is the contract between a deck and a simulation.
 
    SHOOT is here and not only in hunt's own table because of what its absence did: hunt's throw key
    carried `IN.SHOOT` (32) from the app, `KEYS` below had no binding that could ever produce that

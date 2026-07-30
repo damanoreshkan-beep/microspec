@@ -403,7 +403,7 @@ export async function runResponsiveMatrix(page, ev, dev) {
 // `minWidth` is the app's DECLARED floor (spec.minWidth, default 200). Below it the glance check
 // still narrows #view, still measures, and still prints its number and its offending element —
 // it is reported as a warning rather than a failure. An app that has stated it cannot go narrower
-// than 320px is not hiding a defect: `brick` is a console whose pad and action keys are five tap
+// than 320px is not hiding a defect: a game console whose pad and action keys are five tap
 // targets in a row, and five times the 36px floor is 180px before a single gap.
 //   Note this check narrows #view with an INLINE style inside a 384px window, so no media query
 // fires while it runs — the density ladder never steps and .ms-side never becomes a pager. It is

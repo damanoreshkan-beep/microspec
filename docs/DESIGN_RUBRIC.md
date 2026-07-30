@@ -2,7 +2,8 @@
 
 The automated gates (axe, overflow@384, watch@200, e2e) prove an app is **correct, accessible, and
 responsive**. They cannot see whether it's **well-designed** — a screen can pass every check and still look
-generic, incoherent, or cluttered. This rubric is the fourth gate: an **agent** (Claude, in a session or a
+generic, incoherent, or cluttered. (`brick`, named in several examples below, was deleted on
+2026-07-30; the examples stay, because what they teach does not depend on the app still existing.) This rubric is the fourth gate: an **agent** (Claude, in a session or a
 headless CI step) reads server-rendered screenshots (`packages/gates/shoot.mjs` — no local Chromium, no API
 key) and judges them here. It's the "VLM" of the farm.
 

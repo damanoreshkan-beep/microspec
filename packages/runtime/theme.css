@@ -759,9 +759,9 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 /* The aperture. `--sf-inset-face` is `.sf-inset`'s OWN knob for the recessed face — setting it is
    how a plate colour reaches the screen without a second background rule fighting the component
    (the `--range-bg` lesson: use the component's knob, never paint over it). The plate travels from
-   the GAME (`GameConsole`'s `tint`), never from the shell: brick is an ink density on an olive
-   plate and hunt is colour art in a dark well, and a shell that owned the tint painted olive
-   around a forest for the life of the catalogue.
+   the GAME (`GameConsole`'s `plate`), never from the shell: a monochrome game is an ink density on
+   a tinted plate and a colour game is art in a dark well, and a shell that owned the tint painted
+   one game’s panel around the other one’s picture for the life of the catalogue.
 
    No width fraction any more, and no bezel fraction either. The aperture takes the whole body and
    the canvas letterboxes inside it, so the picture is the largest one the device can show; the

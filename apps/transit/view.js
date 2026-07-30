@@ -495,12 +495,11 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
       </button>
 
       <div class="w-full max-w-[420px] flex flex-col gap-2">
+        
         <div class="text-center">
           <span data-date class="text-2xl font-bold tabular-nums">${fmtDate(C.when)}</span>
-          ${offset === 0 ? html`<span class="text-xs text-primary ml-2 align-middle">● ${T(t, "today")}</span>` : null}
         </div>
         <input id="scrub" type="range" min=${-SCRUB} max=${SCRUB} step="1" value=${offset} class="range range-xs range-primary" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
-        
         <div class="grid grid-cols-3 gap-1.5 text-center">
           ${CHIPS.map(([o, lbl]) => html`<button data-chip=${lbl} aria-pressed=${offset === o} class=${`rounded-xl py-1.5 text-xs font-medium transition ${offset === o ? "sf-e2 bg-primary/10 text-primary font-semibold" : "sf-inset"}`} onClick=${() => $offset.set(o)} key=${lbl}>${T(t, lbl)}</button>`)}
           <label data-chip="pick" data-picked=${picked ? "true" : "false"} class=${`relative flex items-center justify-center gap-1 rounded-xl py-1.5 text-xs font-medium transition cursor-pointer ${picked ? "sf-e2 bg-primary/10 text-primary font-semibold" : "sf-inset"}`}>
@@ -598,6 +597,7 @@ export function hits({ S, screen, openScreen, closeScreen }) {
       <${BirthSheet} open=${screen === "birth"} onClose=${closeScreen} t=${t} locale=${locale} />
     </${Fragment}>`;
   }
+
   return html`<${Fragment}>
     <div class="flex flex-col gap-3">
       ${C.hits.length ? C.hits.map((a, i) => {
@@ -672,7 +672,6 @@ export function chart({ S, screen, openScreen, closeScreen }) {
     <div class="w-[2.75rem] shrink-0"></div>
     ${mark()}
   </button>`;
-
   return html`<${Fragment}>
     <div class="flex flex-col gap-3">
       <button data-birth-row class="rounded-2xl sf-raised sf-e2 sf-press px-4 py-3 flex items-center gap-3 text-left transition" onClick=${() => openScreen("birth")}>
@@ -749,6 +748,7 @@ function BirthSheet({ open, onClose, t, locale }) {
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
   useEffect(() => { if (open) { setDraft(stored || EMPTY); setQ(""); setResults(null); } }, [open]);
+
   useEffect(() => {
     if (!open || q.trim().length < 2) { setResults(null); setSearching(false); return; }
     const ctl = new AbortController();
@@ -759,7 +759,6 @@ function BirthSheet({ open, onClose, t, locale }) {
     }, 350);
     return () => { clearTimeout(id); ctl.abort(); setSearching(false); };
   }, [q, open]);
-
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
   const r = resolve(draft);
   const complete = isComplete(draft) && r.ok;
@@ -819,6 +818,7 @@ function BirthSheet({ open, onClose, t, locale }) {
       </div>
   </${Sheet}>`;
 }
+
 
 
 

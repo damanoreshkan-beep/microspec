@@ -15,6 +15,15 @@ const ready = async (h) => {
 const frame = async (h) => +(await h.attr("[data-live-screen]", "data-frame"));
 const dist = async (h) => +(await h.attr("[data-live-screen]", "data-dist"));
 
+/* Every case after the first shares ONE page and ONE running simulation, and the game does not
+   pause between them: a momentary tap of RIGHT in an earlier case leaves her coasting, seconds
+   pass while the next case sets up, and she can be at the bottom of a pit with the clock frozen
+   before it takes its first measurement. That is what "distance 28 -> 28" means — not a broken
+   simulation, a dead one.
+   So a case that needs a LIVE run establishes one. That is what START is for, and it is
+   deterministic under the gate: the same seed, from the beginning, standing still. */
+const restart = async (h) => { await h.tap('[data-key="start"]'); await h.wait(400); };
+
 export default [
   {
     name: "рушій: wasm завантажився і кадри йдуть", run: async (h) => {
@@ -60,6 +69,7 @@ export default [
        loop so the run survives the first gap. */
     name: "симуляція: гравець реально долає дистанцію", run: async (h) => {
       await ready(h);
+      await restart(h);
       const before = await dist(h);
       for (let i = 0; i < 6; i++) {
         await h.keys(["ArrowRight", "ShiftLeft", "ArrowUp"], 220);   // run and jump
@@ -186,9 +196,18 @@ export default [
   {
     name: "камера: можна повернутись назад", run: async (h) => {
       await ready(h);
-      // WALK, and not for long: a 1.2s run with no jumps reaches the first gap and dies, and a dead
-      // player moves no camera — the first version of this test was measuring a corpse.
-      await h.key("ArrowRight", 700);
+      /* From a RESTART, not from wherever the previous cases left her — and running with jumps,
+         not walking. Both halves are measured. The camera does not begin to move until she passes
+         SCRW/3 = 96px, and 700ms of walking covers 73, so a walk from the start line moves the
+         camera exactly nothing and "the camera did not advance" would be the truth about a
+         perfectly good camera. Jumps are in the loop because a run that does not jump reaches the
+         first gap and ends, and a dead player moves no camera either — this test has been
+         measuring a corpse once before. */
+      await restart(h);
+      for (let i = 0; i < 4; i++) {
+        await h.keys(["ArrowRight", "ShiftLeft", "ArrowUp"], 150);
+        await h.keys(["ArrowRight", "ShiftLeft"], 150);
+      }
       h.expect((await h.attr("[data-live-screen]", "data-dead")) === "0", "забіг обірвався до виміру камери");
       const far = +(await h.attr("[data-live-screen]", "data-camx"));
       h.expect(far > 0, "камера не рушила вперед");

@@ -152,13 +152,35 @@ function backdrop(p, camx, crust) {
   }
   /* The moon, and it is where the light comes FROM: every surface in this game (and in the page
      around it) is lit from the upper left at 45°, so the source belongs in the upper left of the
-     frame rather than wherever it looked prettiest. Its own terminator obeys the same lamp — the
-     first cut was one flat disc and it read as a ball bearing pasted on the sky. */
-  for (let dy = -8; dy <= 8; dy++) {
-    const hw = Math.round(Math.sqrt(Math.max(0, 64 - dy * dy)));
-    const cut = Math.max(-hw - 1, Math.min(hw, 7 - dy));      // where the terminator crosses this row
-    if (cut >= -hw) p.rect(88 - hw, 46 + dy, cut + hw + 1, 1, W.moon);
-    if (cut < hw) p.rect(89 + cut, 46 + dy, hw - cut, 1, W.moonDim);
+     frame rather than wherever it looked prettiest.
+
+     Its terminator is SHADED FROM THE NORMAL rather than drawn. The two cuts before this both
+     placed the boundary with a straight line (`cut = 7 - dy`), and a straight terminator is a
+     CHORD — it reads as a bite taken out of a disc, which is exactly how it kept photographing:
+     the brightest object in the frame and the worst-drawn one. A real terminator is the
+     projection of a great circle onto the disc, so it curves, and the honest way to get that
+     curve at 16px is not to derive its ellipse but to ask each pixel which way it faces and let
+     the shape fall out. Three tones, because a sphere with one boundary is a pac-man and the limb
+     needs somewhere to go. Runs per row rather than per pixel: same result, a third of the calls. */
+  {
+    const R = 8, cx = 88, cy = 46, K = Math.sqrt(1 / 3);       // the farm's 45° lamp, toward the viewer
+    for (let dy = -R; dy <= R; dy++) {
+      const hw = Math.floor(Math.sqrt(Math.max(0, R * R - dy * dy)));
+      let runFrom = -hw, runTone = null;
+      for (let dx = -hw; dx <= hw + 1; dx++) {
+        let tone = null;
+        if (dx <= hw) {
+          const nx = dx / R, ny = dy / R;
+          const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+          const lam = (-nx - ny + nz) * K;                     // Lambert against (-1,-1,1)/√3
+          tone = lam > 0.66 ? W.moon : lam > 0.3 ? W.moonMid : W.moonDim;
+        }
+        if (tone !== runTone) {
+          if (runTone !== null) p.rect(cx + runFrom, cy + dy, dx - runFrom, 1, runTone);
+          runFrom = dx; runTone = tone;
+        }
+      }
+    }
   }
 
   /* THE RANGE. Value noise at two periods, not peaks: this is old worn country under a forest, and

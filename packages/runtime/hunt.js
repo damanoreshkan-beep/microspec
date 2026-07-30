@@ -65,14 +65,20 @@ export const WORLD = Object.freeze({
   bark: "#171410",
   barkLit: "#282219",
   moon: "#c9d2dc",
-  moonDim: "#8e99a6",                     // the terminator: a flat disc reads as a ball bearing
+  moonMid: "#a8b3c0",                     // the limb — a 16px sphere with ONE boundary is a pac-man
+  moonDim: "#8e99a6",                     // the far side, still lit by the sky it sits in
   star: "#7f90a4",
   /* Everything below the crust line, drawn before the tiles. A pit is a MISSING tile, so whatever
      the backdrop left there is what the player falls into — and what it left was the sky gradient,
      a bright column reading as a hole cut out of the picture rather than as a drop. */
   abyss: "#080b10",
-  grass: "#4a6b3a",
-  grassLit: "#6d9150",
+  /* Moonlit, not daylit. These were a daytime green (#4a6b3a / #6d9150) and in a night frame the
+     crust came out as the second brightest thing after the moon — a saturated band along the very
+     bottom edge, pulling the eye down and away from the play plane. Scotopic vision desaturates
+     hard toward blue, so moonlit vegetation reads as a cool near-grey that only admits it is green
+     where a highlight catches it. Enough hue survives to say grass; not enough to compete. */
+  grass: "#38492f",
+  grassLit: "#4e6440",
   /* Four soil values, evenly spaced (luma 61 / 53 / 42 / 29). The patch texture reads as WALLPAPER
      the moment two of them are far apart: earth over earthDark was a 19-point jump, which turned
      every 24px tile boundary into a visible seam. Mid exists to keep each step under about 12. */

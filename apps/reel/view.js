@@ -302,19 +302,15 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
   <img src=${poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-55" onError=${(e) => e.currentTarget.remove()} />
   <img src=${poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain" onError=${(e) => e.currentTarget.remove()} />
 </${Fragment}>` : null;
-// Whether the ACTIVE clip refuses to play inline. Only one VideoLayer is ever mounted, so a plain atom is the
-// whole truth — and it has to be an atom now: the island is the one place that says "watch this on the site",
-// and it lives outside the slide that discovers the failure.
-const $playErr = atom(false);
-
 // The single live <video>, mounted only in the ACTIVE slide (so exactly one plays). createPlayer handles mp4 vs
-// HLS and tears down on unmount. On failure it falls back to the poster, and the island turns into the way out.
+// HLS and tears down on unmount. On failure it falls back to the poster — the island's way out is already
+// there either way, so no failure flag has to travel upwards for it.
 function VideoLayer({ item }) {
   const ref = useRef(), bgRef = useRef();
   const [errored, setErrored] = useState(false);
-  const fail = () => { setErrored(true); $playErr.set(true); };                           // …and the island offers the site
+  const fail = () => setErrored(true);
   useEffect(() => {
-    setErrored(false); $playErr.set(false);
+    setErrored(false);
     const v = ref.current; if (!v) return;
     v.muted = true; v.loop = true;                                                        // muted → browsers allow autoplay
     let handle, bgHandle, dead = false;
@@ -421,7 +417,7 @@ function SourceSheet({ S, t }) {
 //
 // It is ALWAYS present now. It used to hide itself on a subscribed root feed "for a clean surface", which
 // was affordable only while every control also existed on the slide. It is the controls now.
-function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, cantPlay }) {
+function SourceIsland({ S, t, src, title, subbed, depth, dive, watch }) {
   const act = "btn btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
   return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
       ${depth ? html`<button data-feed-back class="btn btn-ghost btn-sm btn-circle text-white shrink-0" aria-label=${T(t, "back")} onClick=${() => popFrame(S)}>${Icon("lucide:chevron-left", "text-xl")}</button>` : null}
@@ -433,12 +429,14 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, cantPlay }
       ${/* a hairline glass circle, not a filled ink pill: on a media surface the island is a quiet identity
             chip, and a solid white button made "subscribe" the brightest thing on a full-screen video */""}
       ${!subbed ? html`<button data-subscribe class=${act} aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: title, url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
-      ${/* The white "Watch" pill, absorbed — and it exists ONLY while the clip cannot play here (a signed
-            ephemeral URL, or a player that errored). A clip that plays needs no "open" button: a tap on a
-            dead slide already opens its page. It stays a circle and never carries a word: filled with a
-            word, on a black media surface, it was the brightest thing on the screen — the exact mistake
-            the note on `subscribe` below warns about. Tinted, it reads as "the way to see this". */""}
-      ${watch && cantPlay ? html`<a data-watch href=${watch} target="_blank" rel="noopener" class="btn btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")}>${Icon("lucide:external-link", "text-base")}</a>` : null}
+      ${/* The white "Watch" pill, absorbed. It used to appear ONLY while the clip could not play here (a
+            signed ephemeral URL, or a player that errored) — on the theory that a clip which plays needs no
+            way out. That theory read the failure backwards: "it plays" is decided by the browser, in a CORS
+            check we cannot see from here, so the condition hid the escape hatch exactly when the surface was
+            blank. The page is always worth reaching, so the control is always there. It stays a circle and
+            never carries a word: filled with a word, on a black media surface, it was the brightest thing on
+            the screen — the exact mistake the note on `subscribe` above warns about. */""}
+      ${watch ? html`<a data-watch href=${watch} target="_blank" rel="noopener" class="btn btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")}>${Icon("lucide:external-link", "text-base")}</a>` : null}
       ${/* forward is the mirror of back: the page this clip lives on. The destination's NAME is not written
             here — it is what the drag reveals under the finger — so the label rides the a11y name instead. */""}
       ${dive ? html`<button data-dive class=${act} aria-label=${`${T(t, "dive")}: ${dive.label}`} onClick=${dive.go}>${Icon("lucide:chevron-right", "text-lg")}</button>` : null}
@@ -469,7 +467,7 @@ function FeedSurface({ S, t }) {
   const items = useStore($items), loading = useStore($loading), err = useStore($err);
   const active = useStore($active), next = useStore($next), ephemeral = useStore($ephemeral);
   const src = useStore($src), frames = useStore($frames), subs = useStore($subs), restoreTo = useStore($restoreTo);
-  const title = useStore($srcTitle), playErr = useStore($playErr);
+  const title = useStore($srcTitle);
   const underRef = useRef(), diveRef = useRef(), backRef = useRef();
   const target = diveTarget(items[active], src);
   // The destination is named by the clip you're leaving on — the reveal under the finger says where you land,
@@ -531,11 +529,10 @@ function FeedSurface({ S, t }) {
         : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} ephemeral=${it.eph != null ? it.eph : ephemeral} key=${(it.orig || it.video) + i} />`);
 
   // The island's controls belong to the ACTIVE clip, so they are derived here, once, from `items[active]` —
-  // never per slide. `cantPlay` is why the way out is loud: an ephemeral (signed-URL) source or a clip whose
-  // player errored shows a poster and nothing more, and the site is the only place it exists.
+  // never per slide. The way out is unconditional: whether the clip plays inline is a browser/CORS verdict
+  // this code never sees, so gating the link on it hid the link precisely when the slide was a dead poster.
   const cur = items[active];
   const watch = cur ? (cur.page || cur.orig || cur.video) : null;
-  const cantPlay = !!cur && ((cur.eph != null ? cur.eph : ephemeral) || playErr);
   const dive = target ? { label: targetLabel, go: () => diveTo(S, target, cur?.title) } : null;
 
   return html`<${Fragment}>
@@ -545,7 +542,7 @@ function FeedSurface({ S, t }) {
           empty, the region carries its own focus and its own name (axe: scrollable-region-focusable). */""}
     <div ref=${paneRef} ...${pan} data-scroller tabindex="0" role="region" aria-label=${T(t, "tabReel")} class="fixed inset-0 z-[1] bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain touch-pan-y will-change-transform">${body}</div>
     <${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
-      dive=${dive} watch=${watch} cantPlay=${cantPlay} />
+      dive=${dive} watch=${watch} />
   </${Fragment}>`;
 }
 

@@ -165,8 +165,9 @@ export function hunt(props) {
         { id: "records", act: "records", icon: "lucide:trophy", label: "records" },
       ]}
       overlay=${over ? html`
-        <div class="absolute inset-0 grid place-items-center" data-over>
-          <button class="sf-raised sf-press active:sf-pressed bg-base-100 rounded-[var(--ms-r)] px-5 py-4 gap-1 flex flex-col items-center"
+        
+        <div class="absolute inset-0 grid place-items-center overflow-hidden" data-over>
+          <button class="sf-raised sf-press active:sf-pressed bg-base-100 rounded-[var(--ms-r)] gap-1 flex flex-col items-center max-w-full max-h-full px-[var(--ms-pad)] py-[calc(var(--ms-pad)*0.7)]"
                   onClick=${restart} data-restart>
             <span class="font-mono uppercase tracking-widest text-[var(--ms-label)] opacity-80">${T(t, "gameOver")}</span>
             <span class="font-mono text-[var(--ms-title)]">${digits(best?.dist ?? 0, 4)}</span>

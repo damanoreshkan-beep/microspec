@@ -9,6 +9,7 @@ const ready = async (h) => {
 const frame = async (h) => +(await h.attr("[data-live-screen]", "data-frame"));
 const dist = async (h) => +(await h.attr("[data-live-screen]", "data-dist"));
 
+const restart = async (h) => { await h.tap('[data-key="start"]'); await h.wait(400); };
 export default [
   {
     name: "рушій: wasm завантажився і кадри йдуть", run: async (h) => {
@@ -32,6 +33,8 @@ export default [
     name: "ввід: утримання ВПРАВО просуває гравця", run: async (h) => {
       await ready(h);
       const before = await dist(h);
+      
+      
       await h.prop("body", "clientWidth");
       await h.tap('[data-pad="padRight"]');
       await h.wait(900);
@@ -39,8 +42,10 @@ export default [
     },
   },
   {
+    
     name: "симуляція: гравець реально долає дистанцію", run: async (h) => {
       await ready(h);
+      await restart(h);
       const before = await dist(h);
       for (let i = 0; i < 6; i++) {
         await h.keys(["ArrowRight", "ShiftLeft", "ArrowUp"], 220);   
@@ -140,6 +145,9 @@ export default [
       
       
       
+      
+      
+      
       const RIGHT = 2;
       await h.keyDown("ArrowRight");
       await h.wait(120);
@@ -154,7 +162,12 @@ export default [
   {
     name: "камера: можна повернутись назад", run: async (h) => {
       await ready(h);
-      await h.key("ArrowRight", 700);
+      
+      await restart(h);
+      for (let i = 0; i < 4; i++) {
+        await h.keys(["ArrowRight", "ShiftLeft", "ArrowUp"], 150);
+        await h.keys(["ArrowRight", "ShiftLeft"], 150);
+      }
       h.expect((await h.attr("[data-live-screen]", "data-dead")) === "0", "забіг обірвався до виміру камери");
       const far = +(await h.attr("[data-live-screen]", "data-camx"));
       h.expect(far > 0, "камера не рушила вперед");
@@ -184,6 +197,7 @@ export default [
     },
   },
   {
+    
     name: "корпус: колір панелі і touch-action обидва переживають злиття стилів", run: async (h) => {
       await ready(h);
       const tint = await h.css("[data-shell-body]", "--sh-tint");

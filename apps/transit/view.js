@@ -53,7 +53,19 @@ const ASPECT_HUE = { soft: "var(--color-success)", hard: "var(--color-error)", n
 const ASPECT_DASH = { soft: "", hard: "2 2.4", neutral: "0.6 2" };
 const ASPECT_KEY = { conjunction: "aspConjunction", sextile: "aspSextile", square: "aspSquare", trine: "aspTrine", opposition: "aspOpposition" };
 const SIGN_EN = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
-const CHIPS = [[-30, "mMonth"], [-7, "mWeek"], [0, "today"], [7, "pWeek"], [30, "pMonth"]];
+// Two presets and a calendar. A ±week/±month jump is a guess at which day someone means; the two days that
+// are named in a language ("today", "tomorrow") are the ones worth a chip, and everything else is a DATE —
+// so the third control is the platform's own picker rather than a fourth approximation.
+const CHIPS = [[0, "today"], [1, "tomorrow"]];
+const SCRUB = 365;                                      // the window the slider covers, and the picker with it
+const pad2 = (n) => String(n).padStart(2, "0");
+// LOCAL calendar day, never toISOString() — a UTC ISO string names yesterday for anyone west of Greenwich.
+const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+// A picked calendar day → the offset in whole days, measured between local midnights and rounded: a DST
+// hour inside the span would otherwise make 20 days 19.96 and floor it to 19.
+const dayOffset = (s, now) => { const [y, m, d] = s.split("-").map(Number); return Math.round((midnight(new Date(y, m - 1, d)) - midnight(now)) / DAY); };
+const clampScrub = (n) => Math.max(-SCRUB, Math.min(SCRUB, n));
 
 // Under the gate everything is pinned — a fixed birth record AND a fixed "now" — so the CI shot, the axe
 // pass and the e2e assertions see the same sky on every run. A live clock would make the shot a lottery.
@@ -436,11 +448,13 @@ function AskSheet({ open, onClose, C, t, loc }) {
          questions the catalogue sat two full essays down the scroll — and asking the next one is the
          thing you most want to reach. Seen on the shot, not deduced. */""}
     <div class="flex flex-col gap-5">
-      ${rest.length ? html`<div class="flex flex-col gap-1.5">
+      ${/* Topics, not sentences — so the catalogue is a row of pills you scan, not eleven full-width rows you
+           read. The sparkle went with the sentences: one mark per row was an affordance, eleven is wallpaper,
+           and the sheet's own title already says what these do. */""}
+      ${rest.length ? html`<div class="flex flex-wrap gap-2">
         ${rest.map((q) => html`<button data-ask=${q.id} onClick=${() => $asked.set([...$asked.get(), q.id])}
-            class="w-full text-left rounded-2xl sf-raised sf-e2 sf-press px-3.5 py-2.5 flex items-center gap-2.5 transition" key=${q.id}>
-          <span class="flex-1 min-w-0 text-[0.9rem]">${say(q.label, loc)}</span>
-          ${Icon("lucide:sparkles", "text-sm text-primary shrink-0")}
+            class="rounded-full sf-raised sf-e2 sf-press px-3.5 py-2 text-[0.9rem] font-medium transition" key=${q.id}>
+          ${say(q.label, loc)}
         </button>`)}
       </div>` : null}
 
@@ -503,6 +517,9 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
   const offset = useStore($offset);
 
   const fmtDate = (d) => d.toLocaleDateString(locale === "en" ? "en-GB" : locale || "uk", { day: "numeric", month: "short", year: "numeric" });
+  // the chip has no room for the year the readout above it already carries
+  const shortDate = (d) => d.toLocaleDateString(locale === "en" ? "en-GB" : locale || "uk", { day: "numeric", month: "short" });
+  const picked = offset !== 0 && offset !== 1;           // any day the two words cannot name is the picker's
 
   if (!C.ready) {
     return html`<${Fragment}>
@@ -577,13 +594,23 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
           <span data-date class="text-2xl font-bold tabular-nums">${fmtDate(C.when)}</span>
           ${offset === 0 ? html`<span class="text-xs text-primary ml-2 align-middle">● ${T(t, "today")}</span>` : null}
         </div>
-        <input id="scrub" type="range" min="-365" max="365" step="1" value=${offset} class="range range-xs range-primary" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
-        ${/* The five-column geometry is untouched; only what the chips are MADE of changed. An unchosen
-             preset is an empty slot in the row (`sf-inset`) and the chosen one lifts out of it on the
-             shallow rung, keeping the primary tint as its FILL. The pair of hairlines it replaces
-             (border-primary vs border-base-300) was a colour step standing in for depth. */""}
-        <div class="grid grid-cols-5 gap-1.5 text-center">
+        <input id="scrub" type="range" min=${-SCRUB} max=${SCRUB} step="1" value=${offset} class="range range-xs range-primary" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
+        ${/* An unchosen preset is an empty slot in the row (`sf-inset`) and the chosen one lifts out of it on
+             the shallow rung, keeping the primary tint as its FILL. The third slot is the same slot and the
+             same two states — it just holds a day the row cannot name, so it SHOWS that day instead of a
+             word. Its native input covers the cell at opacity 0 so the tap reaches the picker directly:
+             showPicker() needs a transient activation and is not on every engine, and a chip that opens the
+             calendar only on some phones is worse than no chip. */""}
+        <div class="grid grid-cols-3 gap-1.5 text-center">
           ${CHIPS.map(([o, lbl]) => html`<button data-chip=${lbl} aria-pressed=${offset === o} class=${`rounded-xl py-1.5 text-xs font-medium transition ${offset === o ? "sf-e2 bg-primary/10 text-primary font-semibold" : "sf-inset"}`} onClick=${() => $offset.set(o)} key=${lbl}>${T(t, lbl)}</button>`)}
+          <label data-chip="pick" data-picked=${picked ? "true" : "false"} class=${`relative flex items-center justify-center gap-1 rounded-xl py-1.5 text-xs font-medium transition cursor-pointer ${picked ? "sf-e2 bg-primary/10 text-primary font-semibold" : "sf-inset"}`}>
+            ${Icon("lucide:calendar-days", "text-sm shrink-0")}
+            <span class="truncate">${picked ? shortDate(C.when) : T(t, "pickDay")}</span>
+            <input data-pick type="date" aria-label=${T(t, "pickAria")} value=${ymd(C.when)}
+              min=${ymd(new Date(NOW().getTime() - SCRUB * DAY))} max=${ymd(new Date(NOW().getTime() + SCRUB * DAY))}
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onInput=${(e) => { const v = e.target.value; if (v) $offset.set(clampScrub(dayOffset(v, NOW()))); }} />
+          </label>
         </div>
       </div>
 

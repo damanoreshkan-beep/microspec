@@ -351,7 +351,7 @@ house. Two traps are closed in the data rather than left to the model:
   outright and the prompt repeats it.
 - **Ruling vs standing in.** See §14; this one cost a live answer.
 
-## 13. Ten questions, and the six that were dropped
+## 13. Eleven questions, and the six that were dropped
 
 The catalogue (`QUESTIONS` in `signif.js`) is **closed**, and that is the design rather than a limitation:
 
@@ -368,8 +368,23 @@ Ranking evidence is **thin and I will not pretend otherwise.** Consultation-topi
 *Christian Astrology* Book II is organised by question type — a 1647 FAQ, and the same topics — but neither
 establishes a *frequency order*. The ordering here is a reasoned synthesis, not a measurement.
 
-**Two of the ten are timing-shaped** (`workNow`, `phase`) and are fed real transits with exact dates; the
-other eight are natal dispositions that do not change week to week. The distinction is unit-tested, because
+**A topic is not a phrasing (2026-07-30).** The catalogue first shipped its full questions as the buttons —
+«До кого мене тягне і що притягує до мене?» and ten more. Read on the phone that is a page of prose you have
+to work through *before* you can choose, and what a person actually arrives with is a **topic**: work, love,
+sex, money. So the entry splits in two: `label` is the topic in en + uk (a word, at most two, no question
+mark — the unit gate pins that shape, because the essay is what grows back one "slightly more precise" label
+at a time), and `ask` is the precise English question the **model** is handed, where the phrasing is the
+difference between an answer and a meditation. The prompt is byte-identical to what it was — `ask` carries
+the old sentence — so `CORPUS` did **not** move and every cached reading stays valid.
+
+The blunt list also exposed a gap the sentences had hidden: there was no **sex** question. It is one of the
+topics people actually bring, it is not an outcome claim (§ the six dropped below), and the tradition reads
+it — Mars for desire, Venus for what attracts, the fifth for pleasure and the eighth for intimacy proper.
+Its `focus` bounds it the same way the others are bounded: temperament, pace and terms; never an act, a
+partner, an event, advice or a prediction. Eleven now, and the catalogue reads as a row of pills.
+
+**Two of the eleven are timing-shaped** (`workNow`, `phase`) and are fed real transits with exact dates; the
+other nine are natal dispositions that do not change week to week. The distinction is unit-tested, because
 flipping a question's `transit` flag without giving the caller a contact set would silently answer a timing
 question from a birth chart.
 
@@ -416,6 +431,29 @@ five buttons gets ~72px, minus `px-3.5` either side leaves ~44px of label — an
 app in the farm ships five tabs (max is four: transit, rave, reel, handpan, v2m). A new feature that damages
 the labels of the four that already exist is not worth a tab, so it opens from the Chart tab, which is where
 the natal chart lives — and these answers are the natal chart asked a question.
+
+## 16. Two named days and a calendar, not five approximations
+
+The scrubber's preset row was `−1 mo · −1 wk · today · +1 wk · +1 mo`. Four of those five are **guesses at
+which day someone means**: nobody wants the sky of "seven days from now", they want a day they can name — a
+date, an appointment, a birthday. Only two days have names in a language, so only two get a chip
+(**today · tomorrow**), and the whole rest of the year goes to the platform's own **date picker**, which is
+the one control that can express "the 14th".
+
+Three details are load-bearing:
+
+- **The offset is measured between local midnights and rounded** (`dayOffset`), not divided out of a
+  millisecond difference. A DST hour inside the span turns 20 days into 19.96, and `Math.floor` would then
+  show the 13th for a picked 14th — once a year, in one timezone, which is exactly the bug that never gets
+  reproduced. `ymd()` is built from the local getters for the same reason: `toISOString()` names *yesterday*
+  for everyone west of Greenwich.
+- **The picker's window is the slider's window** (±365 days, one `SCRUB` constant), so a chosen day can
+  never land outside the range the slider can represent — a value the control cannot show is a lie about
+  state.
+- **The native input covers its chip at `opacity: 0`** rather than being opened by `showPicker()`. That call
+  needs a transient activation and is not on every engine; a chip that opens the calendar on some phones and
+  does nothing on others is worse than no chip. The chip stays the row's third slot and its two material
+  states, and shows the chosen day instead of a word it does not have.
 
 ---
 

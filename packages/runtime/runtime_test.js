@@ -4688,12 +4688,20 @@ const QCHART = {
 };
 
 Deno.test("signif/QUESTIONS: a closed catalogue, and what it deliberately does NOT ask", () => {
-  assertEquals(sgQUESTIONS.length, 10);
+  assertEquals(sgQUESTIONS.length, 11);
   const ids = sgQUESTIONS.map((q) => q.id);
-  assertEquals(new Set(ids).size, 10, "duplicate question id");
+  assertEquals(new Set(ids).size, 11, "duplicate question id");
   for (const q of sgQUESTIONS) {
     assertEquals(q.label.length, 2, `${q.id}: label must be [en, uk]`);
     assert(q.label[0].trim() && q.label[1].trim() && q.label[0] !== q.label[1], `${q.id}: label halves`);
+    // The catalogue shows TOPICS, not phrasings: eleven sentences is a page to read before you can choose.
+    // Pinned because the essay is the shape that grows back — one "just a bit more precise" label at a time.
+    for (const l of q.label) {
+      assert(l.length <= 16 && l.split(/\s+/).length <= 2 && !/[?.]/.test(l),
+        `${q.id}: label "${l}" is a sentence again — the catalogue takes a topic, the model takes q.ask`);
+    }
+    // ...and the model still gets the full question, because "Sex" alone is not one.
+    assert(q.ask && q.ask.length > 20 && q.ask.endsWith("?"), `${q.id}: ask must be the full English question`);
     assert(q.focus && q.focus.length > 80, `${q.id}: focus must state the technique, not a hint`);
     // every declared factor must exist in the corpus, or the block would carry an undefined
     for (const h of q.houses || []) assert(h >= 1 && h <= 12, `${q.id}: house ${h}`);
@@ -4707,7 +4715,8 @@ Deno.test("signif/QUESTIONS: a closed catalogue, and what it deliberately does N
   // "stu-die-s" — a guard that fires on the wrong thing gets deleted by the next person, not fixed.
   const banned = /child|pregnan|health|illness|\bdie\b|death|lawsuit|invest|wealth|дитин|дітей|вагітн|здоров|смерт|помр|позов|інвест|багатств/i;
   for (const q of sgQUESTIONS) {
-    assert(!banned.test(q.label[0]) && !banned.test(q.label[1]), `${q.id}: asks for an outcome the chart cannot establish`);
+    assert(!banned.test(q.label[0]) && !banned.test(q.label[1]) && !banned.test(q.ask),
+      `${q.id}: asks for an outcome the chart cannot establish`);
   }
   // Two of them are about "now" and must therefore be fed real transits — the rest are natal dispositions
   // that do not change from one week to the next. Pinned because the two kinds need DIFFERENT grounding:
@@ -4724,6 +4733,11 @@ Deno.test("signif/groundQuestion: the block contains the declared factors and NO
   const g = sgGroundQuestion({ q: money, chart: QCHART });
   assert(g.text.includes("QUESTION: What is my pattern with money"));
   assert(g.text.includes("HOW TO READ IT:"), "the technique must travel with the question");
+  // the catalogue's topic word is a UI affordance; handing it to the model instead of the question would
+  // turn a grounded reading into a free essay on the theme
+  const sexBlock = sgGroundQuestion({ q: sgQuestionById("sex"), chart: QCHART });
+  assert(sexBlock.text.includes("QUESTION: What is my nature in desire and intimacy?"), "ask must reach the model");
+  assert(!/QUESTION: Sex/.test(sexBlock.text), "the topic label reached the prompt instead of the question");
   assert(g.text.includes("HOUSE 2 (placidus)"), "the declared house is missing");
   assert(g.text.includes("HOUSE 8 (placidus)"));
   assert(g.text.includes("Venus") && g.text.includes("Jupiter"), "the declared bodies are missing");

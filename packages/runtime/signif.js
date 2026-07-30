@@ -375,7 +375,7 @@ export function balance(lons) {
 
 // ── the fixed question catalogue ─────────────────────────────────────────────────────────────────────────
 //
-// The ten things people actually bring to an astrologer, as a CLOSED list. Closed is the whole design:
+// The eleven things people actually bring to an astrologer, as a CLOSED list. Closed is the whole design:
 //
 //   • it is the only honest way to be grounded. Each question declares exactly which houses, bodies and
 //     angles it may be answered from — the significators a competent astrologer would read for it — so the
@@ -384,7 +384,7 @@ export function balance(lons) {
 //   • it removes the injection surface entirely. There is no user text, so there is nothing to smuggle
 //     instructions in. Compare `ask` in ai-books.js, which takes free text and needs a whole prompt section
 //     to defend itself.
-//   • it caches. Ten questions × one chart = ten answers, forever.
+//   • it caches. Eleven questions × one chart = eleven answers, forever.
 //
 // WHAT IS NOT HERE, AND WHY. The most-asked list also contains "will I have children", "am I pregnant",
 // "what is wrong with my health", "when will I die", "will I win the case", "should I invest". Every one is
@@ -396,40 +396,62 @@ export function balance(lons) {
 // question — which factor leads and what an answer may NOT contain — because "answer using the facts below"
 // leaves the model to guess whether the seventh house or Venus is the point.
 //
+// LABEL vs ASK, and why they are two fields. The catalogue used to show the full question — "Who am I drawn
+// to, and what draws them to me?" — and eleven of those is a wall of sentences you have to READ before you
+// can choose. What a person arrives with is a topic, not a phrasing: work, love, sex, money. So `label` is
+// the topic, in the two locales, blunt enough to be scanned in a glance; `ask` is the precise English
+// question the MODEL is handed, where the phrasing is the difference between an answer and an essay. The
+// unit gate pins both shapes — a label that grows back into a sentence fails, and so does an `ask` that is
+// not a question.
+//
 //   houses  — read as: cusp sign + its ruler + where that ruler lives + the planets tenanting it
 //   bodies  — read as: sign, house, dignity, retrograde
 //   transit — true → the question is about "now", so the current contacts to those points come too
 export const QUESTIONS = [
-  { id: "love", houses: [7, 5], bodies: ["venus"], angles: ["asc"], transit: false,
-    label: ["Who am I drawn to, and what draws them to me?", "До кого мене тягне і що притягує до мене?"],
-    focus: "The seventh house — the sign on its cusp, and above all where its ruler lives — describes partnership and the kind of person sought. The fifth is courtship and play, not commitment; keep them distinct. Venus describes what is found beautiful and worth having. Answer with the KIND of person and the CONTEXT the tradition associates with these placements. Never a place, a date, a name, or a promise that it happens." },
-  { id: "bond", houses: [7], bodies: ["moon", "saturn", "venus"], angles: [], transit: false,
-    label: ["What do I actually need for a relationship to last?", "Що мені насправді потрібно, щоб стосунки тривали?"],
-    focus: "What this person needs in order to stay, not who they attract. The Moon is what must feel safe; Saturn is what they will and will not commit to; Venus is what they value. The seventh house ruler's condition says where the strain in partnership tends to come from. Describe needs and frictions, not a verdict on any relationship." },
   { id: "work", houses: [10, 6, 2], bodies: ["sun", "saturn"], angles: ["mc"], transit: false, fields: ["work"],
-    label: ["What kind of work suits me?", "Яка робота мені підходить?"],
+    label: ["Work", "Робота"],
+    ask: "What kind of work suits me?",
     focus: "The tenth house and the Midheaven are the public role and the direction; the sixth is the daily labour and the conditions of it, which is a different question and often a different answer. The Sun is what the person is for; Saturn is what they will do the hard part of. Name actual KINDS of work, drawn from the Work lines supplied — that is what was asked, and a paragraph about identity and purpose is not an answer to it. Use only the kinds listed; do not invent an occupation. Never a job title as a prediction, and never an income." },
   { id: "workNow", houses: [10], bodies: ["sun", "saturn"], angles: ["mc"], transit: true, fields: ["work"],
-    label: ["What is moving in my work right now?", "Що зараз рухається в моїй роботі?"],
+    label: ["Work now", "Робота зараз"],
+    ask: "What is moving in my work right now?",
     focus: "This one is about TIMING, so lead with the transits supplied and their exact dates, and use the natal factors only to say what is being touched. Quote the dates exactly as given and derive no new ones. A transit describes a season and a pressure, never an event that will occur." },
+  { id: "love", houses: [7, 5], bodies: ["venus"], angles: ["asc"], transit: false,
+    label: ["Love", "Кохання"],
+    ask: "Who am I drawn to, and what draws them to me?",
+    focus: "The seventh house — the sign on its cusp, and above all where its ruler lives — describes partnership and the kind of person sought. The fifth is courtship and play, not commitment; keep them distinct. Venus describes what is found beautiful and worth having. Answer with the KIND of person and the CONTEXT the tradition associates with these placements. Never a place, a date, a name, or a promise that it happens." },
+  { id: "bond", houses: [7], bodies: ["moon", "saturn", "venus"], angles: [], transit: false,
+    label: ["Relationships", "Стосунки"],
+    ask: "What do I actually need for a relationship to last?",
+    focus: "What this person needs in order to stay, not who they attract. The Moon is what must feel safe; Saturn is what they will and will not commit to; Venus is what they value. The seventh house ruler's condition says where the strain in partnership tends to come from. Describe needs and frictions, not a verdict on any relationship." },
+  { id: "sex", houses: [8, 5], bodies: ["mars", "venus"], angles: [], transit: false,
+    label: ["Sex", "Секс"],
+    ask: "What is my nature in desire and intimacy?",
+    focus: "Mars is desire — how it approaches, at what pace, and what it actually wants; Venus is what is found attractive and how closeness is offered. The fifth house is pleasure, play and attraction; the eighth is intimacy proper — merging, exposure, what is shared with one person only — and the sign on its cusp with its ruler's placement says how readily that door opens and on what terms. Describe TEMPERAMENT: pace, appetite, what has to be true before someone can let go. Keep it adult and plain but never explicit: name no act, no body part, no partner and no event, and never give advice or a prediction." },
   { id: "money", houses: [2, 8], bodies: ["venus", "jupiter"], angles: [], transit: false,
-    label: ["What is my pattern with money and security?", "Як я поводжуся з грішми й відчуттям безпеки?"],
+    label: ["Money", "Гроші"],
+    ask: "What is my pattern with money and security?",
     focus: "The second house is what is one's own — earning, holding, and the sense of being worth something. The eighth is what is shared, owed, inherited or held on trust, which is a different matter entirely. Describe the PATTERN and the relationship to security. Never a forecast of wealth or poverty, never advice about an investment or a decision involving money." },
-  { id: "phase", houses: [], bodies: ["sun", "moon", "saturn"], angles: ["asc", "mc"], transit: true,
-    label: ["What phase of life am I in now?", "Який період життя я зараз проходжу?"],
-    focus: "Answer from the transits supplied: which slow bodies are contacting the luminaries and the angles, how long each lasts (use the tempo given), and what that season asks for. The natal points say what is being pressed on. This is the one question where the answer is legitimately about time — so be precise about duration and quote only the dates given." },
-  { id: "strength", houses: [], bodies: ["sun", "moon"], angles: ["asc"], transit: false,
-    label: ["Where is my strength, and what keeps repeating as difficulty?", "У чому моя сила і що повторюється як труднощі?"],
-    focus: "Lead with essential dignity: a planet in its own sign or exaltation works easily, one in detriment or fall has to work in terms that are not its own — that is the honest version of strength and difficulty. Then the tightest natal aspects, soft and hard. Name a real cost, not a flattering one, and never call any of it a flaw in the person." },
+  { id: "people", houses: [11], bodies: ["mercury", "venus"], angles: [], transit: false,
+    label: ["Friends", "Друзі"],
+    ask: "Where do friendship and community fit in my life?",
+    focus: "The eleventh is friends, allies, the group and what one hopes for; its ruler says where those people are found. Distinguish it from the seventh, which is one-to-one. Describe how this person belongs to a group and what they want from it." },
   { id: "home", houses: [4], bodies: ["moon"], angles: [], transit: false,
-    label: ["What gives me a sense of home?", "Що дає мені відчуття дому?"],
+    label: ["Home", "Дім"],
+    ask: "What gives me a sense of home?",
     focus: "The fourth house is the private base, the family one comes from and the ground one stands on; its ruler's placement says where that ground is actually found. The Moon is what soothes. Describe what home means for this person and what unsettles it — not a place to live and not a prediction about family." },
   { id: "learn", houses: [9, 3], bodies: ["mercury", "jupiter"], angles: [], transit: false,
-    label: ["How do I learn and get beyond the familiar?", "Як я вчуся і виходжу за межі звичного?"],
+    label: ["Learning", "Навчання"],
+    ask: "How do I learn and get beyond the familiar?",
     focus: "The third is how the near world is taken in — talking, reading, the short trip; the ninth is the long reach — belief, study, distance. Mercury is the method, Jupiter the appetite. Say how this person learns and what widens them. Never predict a journey or a qualification." },
-  { id: "people", houses: [11], bodies: ["mercury", "venus"], angles: [], transit: false,
-    label: ["Where do friendship and community fit in my life?", "Яке місце в моєму житті мають дружба і спільнота?"],
-    focus: "The eleventh is friends, allies, the group and what one hopes for; its ruler says where those people are found. Distinguish it from the seventh, which is one-to-one. Describe how this person belongs to a group and what they want from it." },
+  { id: "strength", houses: [], bodies: ["sun", "moon"], angles: ["asc"], transit: false,
+    label: ["Strengths", "Сильні сторони"],
+    ask: "Where is my strength, and what keeps repeating as difficulty?",
+    focus: "Lead with essential dignity: a planet in its own sign or exaltation works easily, one in detriment or fall has to work in terms that are not its own — that is the honest version of strength and difficulty. Then the tightest natal aspects, soft and hard. Name a real cost, not a flattering one, and never call any of it a flaw in the person." },
+  { id: "phase", houses: [], bodies: ["sun", "moon", "saturn"], angles: ["asc", "mc"], transit: true,
+    label: ["Life phase", "Період життя"],
+    ask: "What phase of life am I in now?",
+    focus: "Answer from the transits supplied: which slow bodies are contacting the luminaries and the angles, how long each lasts (use the tempo given), and what that season asks for. The natal points say what is being pressed on. This is the one question where the answer is legitimately about time — so be precise about duration and quote only the dates given." },
 ];
 export const questionById = (id) => QUESTIONS.find((q) => q.id === id) || null;
 
@@ -597,8 +619,10 @@ export function groundQuestion({ q, chart, timing = null }) {
   const tLines = (timing?.contacts || []).map(({ c, transitLon, retro, hits = [] }) =>
     `- transiting ${nameEN(c.t)}${retro ? " (retrograde)" : ""} in ${SIGN_EN[signOf(transitLon)]} ${c.type} natal ${nameEN(c.n)}, orb ${c.orb.toFixed(2)}°${c.applying == null ? "" : c.applying ? ", applying" : ", separating"}. ${nameEN(c.t)} as a transit ${BODY[c.t].act[en]}; it lasts ${BODY[c.t].tempo[en]}.${hits.length ? ` Exact: ${hits.join("; ")}.` : ""}`);
 
+  // The model gets the full question (`ask`), never the topic word the catalogue shows: "Sex" as a prompt is
+  // an invitation to write about whatever it likes, and the phrasing is what holds the answer to the chart.
   const text = `${HEAD}
-QUESTION: ${q.label[en]}
+QUESTION: ${q.ask || q.label[en]}
 HOW TO READ IT: ${q.focus}
 ${timing ? `TRANSITS on ${timing.dateEN}:\n${tLines.length ? tLines.join("\n") : "- none within orb to the points below right now. Say so plainly; do not substitute another transit."}\n` : ""}NATAL FACTORS (the app's sourced corpus):
 ${lines.join("\n")}

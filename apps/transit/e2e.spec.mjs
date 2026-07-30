@@ -90,7 +90,34 @@ export default [
       h.expect(d0 === (await h.text("[data-date]")), "чип «сьогодні» не повернув на сьогодні");
       // the chosen preset lifts out of the row (material), so its selection reads as STATE, not a border colour
       h.expect((await h.attr('[data-chip="today"]', "aria-pressed")) === "true", "чип «сьогодні» не позначений вибраним");
-      h.expect((await h.attr('[data-chip="pWeek"]', "aria-pressed")) === "false", "невибраний чип позначений вибраним");
+      h.expect((await h.attr('[data-chip="tomorrow"]', "aria-pressed")) === "false", "невибраний чип позначений вибраним");
+      await h.click('[data-chip="tomorrow"]'); await h.wait(250);
+      h.expect(d0 !== (await h.text("[data-date]")), "чип «завтра» не зрушив дату");
+      h.expect((await h.attr('[data-chip="tomorrow"]', "aria-pressed")) === "true", "чип «завтра» не позначився вибраним");
+      h.expect((await h.attr('[data-chip="today"]', "aria-pressed")) === "false", "«сьогодні» лишився вибраним разом із «завтра»");
+      await h.click('[data-chip="today"]'); await h.wait(250);
+    },
+  },
+  {
+    // The third slot is the whole rest of the year: a native date input, so the day comes from the platform
+    // calendar rather than from counting slider steps. Asserted through the input's own value change (which
+    // is what a picked day does), not through the OS picker, which no headless browser can open.
+    name: "конкретний день з календаря", run: async (h) => {
+      await h.click('[data-tab="wheel"]'); await h.wait(250);
+      await ready(h);
+      const d0 = await h.text("[data-date]");
+      h.expect((await h.attr('[data-chip="pick"]', "data-picked")) === "false", "чип дати позначений до вибору");
+      // the gate pins «now» to 25 Jul 2026, so this is a fixed 20 days ahead
+      await h.type("[data-pick]", "2026-08-14"); await h.wait(350);
+      const d1 = await h.text("[data-date]");
+      h.expect(d0 !== d1, "обраний день не змінив дату транзиту");
+      h.expect(/14/.test(d1), `дата транзиту не 14 число: ${d1}`);
+      h.expect((await h.attr('[data-chip="pick"]', "data-picked")) === "true", "чип дати не позначився вибраним");
+      h.expect(/14/.test(await h.text('[data-chip="pick"]')), "чип не показує обраний день");
+      // and the presets take the row back
+      await h.click('[data-chip="today"]'); await h.wait(250);
+      h.expect(d0 === (await h.text("[data-date]")), "«сьогодні» не повернуло на сьогодні після вибору дня");
+      h.expect((await h.attr('[data-chip="pick"]', "data-picked")) === "false", "чип дати лишився вибраним");
     },
   },
   {
@@ -222,11 +249,14 @@ export default [
       h.expect((await h.count("[data-reading]")) === seeded, "не в кожного питання є відповідь");
       h.expect((await h.text("[data-reading]")).trim().length > 100, "порожня відповідь");
       const rest = await h.count("[data-ask]");
-      h.expect(rest === 8, `у каталозі має лишитись 8 питань, а не ${rest}`);
+      h.expect(rest === 9, `у каталозі має лишитись 9 питань, а не ${rest}`);
+      // the catalogue shows TOPICS: a chip is a word, and the whole question lives in the prompt
+      const chip = (await h.text('[data-ask="money"]')).trim();
+      h.expect(chip.length <= 16 && !/\?/.test(chip), `чип каталогу знову речення: ${chip}`);
 
       await h.tap('[data-ask="money"]'); await h.wait(400);
       h.expect((await h.count("[data-asked]")) === 3, "питання не додалось у стрічку");
-      h.expect((await h.count("[data-ask]")) === 7, "запитане питання не зникло з каталогу");
+      h.expect((await h.count("[data-ask]")) === 8, "запитане питання не зникло з каталогу");
 
       await h.goto("?tab=chart&screen=ask", 1600);
       h.expect((await h.prop("#asksheet", "open")) === true, "?screen=ask не відкрив каталог");

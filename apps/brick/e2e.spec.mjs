@@ -109,6 +109,30 @@ export default [
     },
   },
   {
+    /* Reported by the owner as "the game crashes — she runs and disappears", and it is neither a
+       crash nor a rendering fault: `$over` is a module-level atom, so it OUTLIVES the component.
+       Die, step across to the profile tab, come back — the view remounts and inits a brand new
+       level, while `$over` is still true from the run before. The loop is
+       `if (!$over.get()) clock.tick(now)`, so the clock never ticks again: a fresh level, frozen
+       forever, under a card about a run that ended two screens ago.
+       No gate could see it, because every case here had been living inside one mount. The tab
+       round-trip is the whole test. */
+    name: "смерть не переживає вкладку: повернення дає живу гру", run: async (h) => {
+      await ready(h);
+      for (let i = 0; i < 14 && (await h.attr("[data-live-screen]", "data-dead")) === "0"; i++)
+        await h.key("ArrowRight", 500);
+      h.expect((await h.attr("[data-live-screen]", "data-dead")) === "1", "не вдалося вбити гравця для перевірки");
+      await h.wait(400);
+      await h.tap('[data-tab="me"]'); await h.wait(400);
+      await h.tap('[data-tab="play"]'); await h.wait(700);
+      h.expect((await h.count("[data-over]")) === 0, "картка кінця гри пережила перемонтування — гра відкрилась уже мертвою");
+      h.expect((await h.attr("[data-live-screen]", "data-dead")) === "0", "після повернення на вкладку гравець досі мертвий");
+      const a = await frame(h);
+      await h.wait(700);
+      h.expect((await frame(h)) > a, "після повернення на вкладку годинник стоїть — гра заморожена назавжди");
+    },
+  },
+  {
     name: "звук: перемикач тримає стан", run: async (h) => {
       await ready(h);
       const before = await h.attr('[data-key="sound"]', "aria-pressed");

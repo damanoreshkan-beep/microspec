@@ -97,6 +97,16 @@ export function brick(props) {
       sound.current = makeSound();
       sound.current.enabled = $sound.get() === "1";
       E.init(seed.current);
+      /* A FRESH engine needs a fresh over-state, and forgetting that froze the game permanently.
+         `$over` is a module-level atom, so it outlives the component: die, switch to the profile
+         tab, come back, and the view remounts with a brand new level — while `$over` is still
+         true from the run before. The loop is `if (!$over.get()) clock.tick(now)`, so the clock
+         never ticks again. The game sits there, on a level that never starts, and the only way
+         out is the restart button on a card about a run that ended two screens ago.
+         The atom outlives the mount because two tabs must agree about it; the STATE it describes
+         does not, so it is reset where the engine is. */
+      $last.set(null);
+      $over.set(false);
 
       const ctx = cv.current?.getContext("2d", { alpha: false });
       if (!ctx) return;

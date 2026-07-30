@@ -104,6 +104,15 @@ export function hunt(props) {
       sound.current = makeSound();
       sound.current.enabled = $sound.get() === "1";
       E.init(seed.current);
+      /* A FRESH engine needs a fresh over-state. `$over` is module-level, so it outlives the
+         component: die, leave for the profile tab, come back, and this remounts with a new level
+         while `$over` is still true from the run before — and the loop is
+         `if (!$over.get()) clock.tick(now)`, so the clock never ticks again and the game sits
+         frozen on a level that never starts. brick shipped that; this is the same shape, fixed in
+         both. The atom outlives the mount because two tabs must agree about it; the STATE it
+         describes does not, so it is reset where the engine is. */
+      fell.current = null;
+      $over.set(false);
 
       const ctx = cv.current?.getContext("2d", { alpha: false });
       if (!ctx) return;

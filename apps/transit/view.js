@@ -590,9 +590,10 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
       </button>
 
       <div class="w-full max-w-[420px] flex flex-col gap-2">
+        ${/* The «● Сьогодні» badge that used to sit beside the date is gone: with the two named days now
+             holding the row below, a lit chip and a badge 40px apart were the same fact said twice. */""}
         <div class="text-center">
           <span data-date class="text-2xl font-bold tabular-nums">${fmtDate(C.when)}</span>
-          ${offset === 0 ? html`<span class="text-xs text-primary ml-2 align-middle">● ${T(t, "today")}</span>` : null}
         </div>
         <input id="scrub" type="range" min=${-SCRUB} max=${SCRUB} step="1" value=${offset} class="range range-xs range-primary" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
         ${/* An unchosen preset is an empty slot in the row (`sf-inset`) and the chosen one lifts out of it on

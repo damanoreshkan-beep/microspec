@@ -35,10 +35,10 @@ const $sound = persistentAtom(`${NS}sound`, "1");
 /** Live readouts. Kept out of the store on purpose: they change sixty times a second and nothing
     that renders should depend on them — the DOM mirrors below are updated by hand, once a frame. */
 const $over = atom(false);
+/** The run that just ended, held only until the next one starts — see the game-over card below. */
+const $last = atom(null);
 
-/* The deck's CONTENT, declared once and worn by both tabs — the play screen and the console
-   picker. Two lists would be two consoles, and the picker would be showing you something other
-   than what you are about to hold.
+/* The deck's CONTENT.
 
    Two action keys, not four: this game's simulation takes five inputs and four of them are the
    cross. How many keys there are is the GAME's business; how they are laid out is the shell's,
@@ -64,6 +64,7 @@ export function brick(props) {
   const runs = useStore($runs);
   const soundOn = useStore($sound) === "1";
   const over = useStore($over);
+  const last = useStore($last);
 
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState("");
@@ -133,9 +134,17 @@ export function brick(props) {
           h.dataset.mask = mask.current;
         }
         if (st[S.DEAD] && !$over.get()) {
+          /* The run she just played, kept separately from the record. The card used to show
+             `best.dist` — so you died at 40 and were shown 221, the number from a different
+             afternoon. A game-over screen answers "how did I do", and the record is the second
+             question, not the first. Captured BEFORE betterRun, or "is this a record" would be
+             asked of a value that already includes the answer. */
+          const run = { dist: st[S.DIST], score: st[S.SCORE], coins: st[S.COINS] };
+          const prev = $best.get();
+          $last.set({ ...run, record: !prev || run.dist > prev.dist });
           $over.set(true);
           $runs.set(String((+$runs.get() || 0) + 1));
-          $best.set(betterRun($best.get(), { dist: st[S.DIST], score: st[S.SCORE], coins: st[S.COINS] }));
+          $best.set(betterRun(prev, run));
         }
       };
 
@@ -204,7 +213,14 @@ export function brick(props) {
           <button class="sf-raised sf-press active:sf-pressed bg-base-100 rounded-2xl px-4 py-3 gap-1 flex flex-col items-center"
                   onClick=${restart} data-restart>
             <span class="font-mono uppercase tracking-widest text-[var(--ms-label)] opacity-80">${T(t, "gameOver")}</span>
-            <span class="font-mono text-[var(--ms-title)]">${digits(best?.dist ?? 0, 4)}</span>
+            <span class="font-mono text-[var(--ms-title)]" data-run>${digits(last?.dist ?? 0, 4)}</span>
+            ${/* The record, second and quieter. The trophy takes the app's accent ONLY when this
+                 run set it — a mark, never text, which is the one thing an arbitrary hue may
+                 colour. No caption: a number under a trophy is not ambiguous. */""}
+            <span class="font-mono text-[var(--ms-label)] opacity-70 flex items-center gap-1" data-best>
+              ${Icon("lucide:trophy", `text-[var(--ms-label)] ${last?.record ? "text-[var(--app-accent)] opacity-100" : "opacity-60"}`)}
+              ${digits(best?.dist ?? 0, 4)}
+            </span>
           </button>
         </div>` : null}
     >

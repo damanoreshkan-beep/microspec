@@ -47,6 +47,53 @@ export default [
     },
   },
   {
+    /* The suite asserted twelve things and not one of them was a fact about the GAME. It checked
+       that the wasm loaded, that frames advanced, that keys existed and lit up, that sheets opened
+       — the wiring, all of it, and none of the simulation. A jump that does nothing, a player
+       frozen against a pipe, a score that never increments and a game-over card that never appears
+       all ship green through it, and one of those (a permanently airborne player) has already
+       happened once in this app's history.
+
+       The movement case above is the shape of the problem: `dist >= before` is true of a corpse.
+       It stays, because a camera that runs BACKWARDS is its own bug and worth pinning — but it is
+       not evidence that the player moves, so that claim is made here, strictly, with a jump in the
+       loop so the run survives the first gap. */
+    name: "симуляція: гравець реально долає дистанцію", run: async (h) => {
+      await ready(h);
+      const before = await dist(h);
+      for (let i = 0; i < 6; i++) {
+        await h.keys(["ArrowRight", "ShiftLeft", "ArrowUp"], 220);   // run and jump
+        await h.keys(["ArrowRight", "ShiftLeft"], 280);
+      }
+      const after = await dist(h);
+      h.expect(after > before + 20,
+        `за 3с бігу зі стрибками дистанція ${before} → ${after} — симуляція не веде гравця вперед`);
+    },
+  },
+  {
+    /* The other end of the same hole: nothing ever asserted that a run can END. `data-dead` and
+       the overlay were mirrored into the DOM and read by no test, so a game that could not kill
+       you — or one whose card never appeared — was indistinguishable from a working one. Walk
+       right without jumping: the track's first gap is a few seconds away and there is no way
+       across it on foot. */
+    name: "смерть: забіг закінчується і картка з'являється", run: async (h) => {
+      await ready(h);
+      for (let i = 0; i < 14 && (await h.attr("[data-live-screen]", "data-dead")) === "0"; i++)
+        await h.key("ArrowRight", 500);
+      h.expect((await h.attr("[data-live-screen]", "data-dead")) === "1",
+        "сім секунд ходьби вправо без стрибка не вбили гравця — у треку немає ями, або падіння не вбиває");
+      await h.wait(600);
+      h.expect((await h.count("[data-over]")) === 1, "гравець мертвий, а картка кінця гри не з'явилась");
+      /* The card must show the run you just played, not a record from another afternoon. */
+      const run = await h.text("[data-run]");
+      h.expect(/^\d{4}$/.test(run || ""), `картка не показала дистанцію щойно зіграного забігу — "${run}"`);
+      await h.tap("[data-restart]");
+      await h.wait(600);
+      h.expect((await h.count("[data-over]")) === 0, "після рестарту картка лишилась на екрані");
+      h.expect((await h.attr("[data-live-screen]", "data-dead")) === "0", "рестарт не оживив гравця");
+    },
+  },
+  {
     name: "звук: перемикач тримає стан", run: async (h) => {
       await ready(h);
       const before = await h.attr('[data-key="sound"]', "aria-pressed");

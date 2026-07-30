@@ -30,7 +30,7 @@ import { sha1hex, splitHash, parseRange, lookup, checkPassword } from "./pwned.j
 import { sunSign } from "./horoscope.js";
 import { SPREADS, spreadById, hashSeed, draw } from "./tarot.js";
 import { silentWav } from "./mediasession.js";
-import { lit as brickLit, INK as BRICK_INK, LIGHT as BRICK_LIGHT, sliceOffsets as brickSliceOffsets, parallaxX as brickParallaxX, decodeEntry as brickDecode, digits as brickDigits, betterRun as brickBetterRun, shadowFor as brickShadowFor, S as BRICK_S, IN as BRICK_IN, SFX as BRICK_SFX } from "./brick.js";
+import { lit as brickLit, INK as BRICK_INK, LIGHT as BRICK_LIGHT, sliceOffsets as brickSliceOffsets, parallaxX as brickParallaxX, decodeEntry as brickDecode, digits as brickDigits, betterRun as brickBetterRun, shadowFor as brickShadowFor, S as BRICK_S, IN as BRICK_IN, SFX as BRICK_SFX, TILE as BRICK_TILE } from "./brick.js";
 import { phase as penPhase, swing as penSwing, state as penState } from "./pendulum.js";
 import { signOf, signPair, compat, band, ELEMENT, MODALITY } from "./synastry.js";
 import { centsToRatio, semiToRatio, beatHz, chord, dbToGain, faderGain, equalPower, detune, STATIONS, LAYERS, station, reactorVoices } from "./scifi.js";
@@ -4047,6 +4047,13 @@ Deno.test("brick engine · a seed is reproducible", async () => {
 // invisible to every other gate: a gap one tile too wide renders perfectly and ends the run every
 // time. So measure the jump off the engine itself — never derive it from the constants, which is
 // how you end up validating a typo against itself — and then walk the real track.
+//
+// Every distance below is in BRICK_TILE, and that is not tidiness. This test spent its whole life
+// writing the tile as 16 while `TILE` is 18, and it passed the entire time by arithmetic accident:
+// (3+1)*16+8 and (3+1)*18 are both 72. The step-up threshold was quietly 2px per tile too
+// generous, and the day anyone touched MAX_GAP or TILE the only gate in the farm that can catch an
+// unsolvable level would have started lying instead of failing. A constant written beside the
+// thing it describes is right until the thing moves.
 Deno.test("brick engine · every generated gap is inside the MEASURED jump reach", async () => {
   const { E, st } = await brickEngine();
 
@@ -4058,7 +4065,7 @@ Deno.test("brick engine · every generated gap is inside the MEASURED jump reach
     const startX = st()[BRICK_S.CAMX] + st()[BRICK_S.PX];
     for (let i = 0; i < 400; i++) {
       const s = st();
-      if (s[BRICK_S.CAMX] + s[BRICK_S.PX] - startX >= runupTiles * 16) break;
+      if (s[BRICK_S.CAMX] + s[BRICK_S.PX] - startX >= runupTiles * BRICK_TILE) break;
       E.game_step(BRICK_IN.RIGHT | speed);
     }
     let s = st();
@@ -4078,12 +4085,12 @@ Deno.test("brick engine · every generated gap is inside the MEASURED jump reach
   const standing = reachAfter(0, false);
   const walking = reachAfter(3, false);          // 3 = GAP_RUNWAY: what the generator guarantees
   assert(walking.dx >= standing.dx, "a run-up cannot make the jump shorter");
-  assert(walking.rise >= 3 * 16, `the jump must clear three tiles; measured ${walking.rise}px`);
+  assert(walking.rise >= 3 * BRICK_TILE, `the jump must clear three tiles; measured ${walking.rise}px`);
 
   const maxGap = E.game_max_gap();
   // Crossing N empty columns means travelling N+1 tiles: off the last solid tile and onto the
   // next one. Half a tile of slack on top, because a player is not frame-perfect.
-  const needed = (maxGap + 1) * 16 + 8;
+  const needed = (maxGap + 1) * BRICK_TILE + BRICK_TILE / 2;
   assert(walking.dx >= needed,
     `MAX_GAP is ${maxGap} tiles, which needs ${needed}px of reach, but a WALKING player only makes ${walking.dx}px. Either narrow the gap in game.c or lengthen the runway — do not raise this number.`);
 
@@ -4111,8 +4118,8 @@ Deno.test("brick engine · every generated gap is inside the MEASURED jump reach
     `the generator authored a ${widest}-tile gap against its own MAX_GAP of ${maxGap}`);
   assertEquals(runwayFails, 0,
     `${runwayFails} of ${gaps} gaps had under three flat columns of run-up — those are standing jumps, measured at ${standing.dx}px against the ${needed}px needed`);
-  assert(tallestStep * 16 <= walking.rise,
-    `a ${tallestStep}-tile step up needs ${tallestStep * 16}px of rise; measured ${walking.rise}px`);
+  assert(tallestStep * BRICK_TILE <= walking.rise,
+    `a ${tallestStep}-tile step up needs ${tallestStep * BRICK_TILE}px of rise; measured ${walking.rise}px`);
 });
 
 Deno.test("brick · the shadow is a 45° PROJECTION, not an offset", () => {

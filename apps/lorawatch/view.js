@@ -94,8 +94,25 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
       { id: 3, crcOk: false, sf: 11, bytes: [0xff, 0x13, 0x9c, 0x40, 0x2a] },
     ]);
   }, []);
-  const wfRef = useRef(null);
-  useEffect(() => { wfCanvas = wfRef.current; if (wfCanvas) { const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1); const ww = (wfCanvas.clientWidth | 0) * dpr, hh = (wfCanvas.clientHeight | 0) * dpr; if (ww && (wfCanvas.width !== ww || wfCanvas.height !== hh)) { wfCanvas.width = ww; wfCanvas.height = hh; } if (demo) seedWaterfall(wfCanvas); } }, [connected]);
+  const wfRef = useRef(null), wfBox = useRef(null);
+  useEffect(() => {
+    wfCanvas = wfRef.current; const cv = wfCanvas, box = wfBox.current;
+    if (!cv || !box) return;
+    const fit = () => {
+      const r = box.getBoundingClientRect(), w = Math.round(r.width), h = Math.round(r.height);
+      if (!w || !h) return;                                          
+      cv.style.display = "block"; cv.style.width = `${w}px`; cv.style.height = `${h}px`;
+      const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1);
+      const ww = w * dpr, hh = h * dpr;
+      if (cv.width === ww && cv.height === hh) return;               
+      cv.width = ww; cv.height = hh;
+      if (demo) seedWaterfall(cv);
+    };
+    fit();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(fit) : null;
+    ro && ro.observe(box);
+    return () => ro && ro.disconnect();
+  }, [connected]);
 
   if (!connected) {
     const supported = usbSupported() && usbOk;
@@ -117,12 +134,12 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
         items=${LORA_PRESETS.map((pp) => ({ id: pp.key, label: pp.label }))} value=${pk} onChange=${setPreset} />
 
       
-      <div class="w-full rounded-3xl overflow-hidden bg-[#08090e] sf-e2">
-        <canvas ref=${wfRef} class="block w-full h-64" role="img" aria-label=${T(t, "waterfall")} data-waterfall></canvas>
+      <div ref=${wfBox} class="w-full rounded-3xl overflow-hidden bg-[#08090e] sf-e2" style="height:16rem">
+        <canvas ref=${wfRef} class="block w-full h-full" role="img" aria-label=${T(t, "waterfall")} data-waterfall></canvas>
       </div>
-
       
       <div class=${`rounded-2xl px-4 py-3 flex items-center gap-3 sf-raised ${active ? "sf-e3" : "sf-e2"}`} data-live data-activity>
+        
         <span class=${`w-2.5 h-2.5 rounded-full shrink-0 ${active ? "bg-primary animate-pulse" : ""}`} style=${active ? "" : "background:var(--sf-track-face)"}></span>
         <div class="flex-1 min-w-0">
           <div class="font-semibold text-sm">${T(t, active ? "detected" : "listening")}</div>
@@ -130,7 +147,6 @@ export function lorawatchView({ S, screen, openScreen, closeScreen }) {
         </div>
         <span class="font-mono text-xs text-base-content/55 tabular-nums shrink-0">${fMhz(p.freq)}</span>
       </div>
-
       <!-- decoded packets -->
       ${packets.length ? html`<div class="flex flex-col gap-1.5" data-live data-packets>
         <div class="text-xs uppercase tracking-wide text-base-content/70 px-1">${T(t, "packets")}</div>

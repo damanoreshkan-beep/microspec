@@ -57,7 +57,7 @@
 /* ── entity kinds ──────────────────────────────────────────────────────────────────── */
 #define K_PLAYER   0
 #define K_WALKER   1              /* patrols, dies to a stomp */
-#define K_HOPPER   2              /* the same, but it jumps */
+#define K_HOPPER   2              /* 3/5 of a walker's ground speed, but it leaps into your airspace */
 #define K_POP      3              /* coin popping out of a struck block (no collision) */
 #define K_DEBRIS   4              /* shards (no collision) */
 #define K_SPEAR    5              /* the thrown spear — the whole point of this game */
@@ -85,19 +85,37 @@
 
 /* ── physics, 8.8 px/frame @60Hz ───────────────────────────────────────────────────────
    Two gravities are the whole feel: holding the button rises slowly, releasing it drops
-   fast, and that difference is what makes the jump controllable rather than ballistic. */
-#define ACC_WALK   21             /* 0.0547 px/f²  */
-#define MAX_WALK   600            /* 1.5625 px/f   */
-#define MAX_RUN    984            /* 2.5625 px/f   */
-#define FRICTION   20             /* 0.0508 px/f²  */
-#define SKID       59             /* 0.1523 px/f²  — turning against your own momentum */
-#define JUMP_V     (-1536)        /* -4.0 px/f     */
-#define GRAV_HOLD  45             /* 0.1172 px/f²  */
-#define GRAV_FALL  168            /* 0.4375 px/f²  */
-#define MAX_FALL   1728           /* 4.5 px/f      */
-#define BOUNCE_V   (-931)         /* the hop after a stomp */
-#define WALKER_V   108             /* 0.28 px/f     */
-#define HERO_V     150
+   fast, and that difference is what makes the jump controllable rather than ballistic.
+
+   FP is 8, so every value here is ÷256 to read it in pixels — and every one of these comments
+   used to say otherwise. They were the 16px-tile ancestor's figures, carried through brick
+   (18px, ×1.125) and this fork (24px, ×1.333) without ever being recomputed, so MAX_WALK was
+   labelled 1.5625 px/f while actually moving 2.344. The second figure is the one worth
+   keeping: divided by TILE every constant is the same number in all three games, which is why
+   the scaling was right — measured reach in tiles is within 2% of brick's (4.00 · 5.38 · 8.75
+   here against 3.94 · 5.28 · 8.61 there). */
+#define ACC_WALK   21             /* 0.082 px/f²  · 0.0034 tile/f² */
+#define MAX_WALK   600            /* 2.344 px/f   · 0.0977 tile/f  */
+#define MAX_RUN    984            /* 3.844 px/f   · 0.1602 tile/f  */
+#define FRICTION   20             /* 0.078 px/f²  */
+#define SKID       59             /* 0.230 px/f²  — turning against your own momentum */
+#define JUMP_V     (-1536)        /* -6.0 px/f    · -0.25 tile/f   */
+#define GRAV_HOLD  45             /* 0.176 px/f²  */
+#define GRAV_FALL  168            /* 0.656 px/f²  */
+#define MAX_FALL   1728           /* 6.75 px/f    — 0.28 tile/f, under the 24px tile: no tunnelling */
+#define BOUNCE_V   (-931)         /* -3.64 px/f — the hop after a stomp */
+/* Coyote time and the input buffer. A jump refused because the key landed one frame after the
+   ledge, or one frame before the landing, is read by a player as the game dropping the input —
+   never as their own timing. Six frames each: at MAX_RUN that is 23px of grace, just under one
+   tile of travel past the edge, which is forgiveness you can see rather than flight. */
+#define COYOTE      6
+#define JUMP_BUF    6
+#define WALKER_V   108            /* 0.422 px/f — patrols, and the yardstick for the others */
+#define HOPPER_V    64            /* 0.250 px/f — deliberately slower on the ground (see step_enemy) */
+#define HOP_V     (-1560)         /* -6.09 px/f → a MEASURED 26px apex: it arrives at head height,
+                                     not at your shins, which is what makes it worth spearing */
+#define HOP_EVERY   40            /* grounded frames between hops, phased PER ENTITY */
+#define HERO_V     150            /* 0.586 px/f — the swordsman patrols ~40% faster than a walker */
 /* The spear. 6 px/frame is deliberately BELOW the tunnelling threshold for a 20px enemy box
    (a projectile misses when |dx| exceeds target width + its own), but the sweep below does not
    rely on that — it is the belt to the braces, because the generator is free to place narrower
@@ -147,6 +165,8 @@ static int32_t  ammo, hp, invuln, shoot_cd, kills;
    renderer asks for it (game_box) rather than keeping its own copy. */
 static int32_t  pbox = PH;
 static uint32_t last_in;          /* this frame's input, for the skid pose */
+static uint32_t prev_jump;        /* LAST frame's jump bit — the jump is an edge, not a level */
+static int32_t  coyote, jump_buf;
 static uint8_t  dead;
 
 
@@ -193,10 +213,10 @@ static Ent *spawn(uint8_t kind, int32_t px, int32_t py) {
    clamped to MAX_GAP and always followed by flat landing room — an endless generator that
    can author an unjumpable gap is an unwinnable game, and no rendering gate would see it.
    MAX_GAP is validated against the engine's MEASURED jump reach in runtime_test.js. */
-/* MEASURED off this engine (tools/wasm/brick/README.md · apps/brick/RESEARCH.md §1.3):
-   a jump from a standstill reaches 4.00 tiles, and two tiles of run-up already saturate it
-   at 5.38 walking / 8.81 running. Crossing N empty columns costs N+1 tiles of travel, so a
-   3-wide gap needs 4.00 and the walking player has 5.38 — a full tile of margin, and the
+/* MEASURED off THIS engine, not off brick's docs — the running figure said 8.81, which is brick's
+   and is now 8.61 there anyway; a jump from a standstill reaches 4.00 tiles, and three tiles of
+   run-up saturate it at 5.38 walking / 8.75 running. Crossing N empty columns costs N+1 tiles of
+   travel, so a 3-wide gap needs 4.00 and the walking player has 5.38 — a full tile of margin, and the
    run button turns it into a stroll. Every gap gets a runway so the standing-jump case can
    never arise. runtime_test.js re-measures all of this against the shipped binary. */
 #define MAX_GAP     3
@@ -211,10 +231,17 @@ enum { SEG_FLAT, SEG_GAP, SEG_STAIR, SEG_PIPE, SEG_BRICKS, SEG_COINS, SEG_LEDGE,
    generated, so the same seed always produces the same level and the solvability test can
    walk it without simulating anyone. Reading the player's progress here made the generator
    untestable — the scan never advanced it, so it only ever measured the gentlest track. */
+/* Saturating at 1200 columns was writing a curve nobody could reach: a competent bot over 12 seeds
+   died at a mean of 259 columns and a best of 605, so four fifths of the ramp was dead code and the
+   part that was reachable moved gap chance by 8 points across a whole run — imperceptible. 300 puts
+   the WHOLE curve inside a good run, which also un-strands everything else keyed off d: the
+   swordsman now appears around column 70 and the hopper around 118 instead of 282 and 469, and
+   `pending_gap` finally reaches its 3-tile clamp at 300 rather than at a column no one sees. The
+   later half of a run is a different track, not the same track with a bigger percentage. */
 static int32_t difficulty(void) {          /* 0 … 256 */
   int32_t d = gen_col;
-  if (d > 1200) d = 1200;
-  return d * 256 / 1200;
+  if (d > 300) d = 300;
+  return d * 256 / 300;
 }
 
 static void col_clear(int32_t c) {
@@ -235,7 +262,11 @@ static void col_decor(int32_t c, int32_t top) {
 
 static void seg_pick(void) {
   int32_t d = difficulty();
-  if (safe_left > 0) { seg_type = SEG_FLAT; seg_left = safe_left; safe_left = 0; return; }
+  /* The safe run is FLAT for as long as safe_left says — and safe_left is NOT cleared here. Clearing
+     it was the bug: it made the enemy roll in gen_one, which skips a column when safe_left is set,
+     see zero for every column of the landing zone it was written to protect. Only gen_one may spend
+     it, one column at a time, after that roll. */
+  if (safe_left > 0) { seg_type = SEG_FLAT; seg_left = safe_left; return; }
   if (pending_gap > 0) {                               /* the runway is behind us: dig it */
     seg_type = SEG_GAP; seg_left = pending_gap; pending_gap = 0;
     safe_left = 5;                                     /* landing room is not optional */
@@ -335,8 +366,18 @@ static void gen_one(void) {
     if (d > 100 && (xr() & 3) == 0) kind = K_HOPPER;
     else if (d > 60 && (xr() & 7) == 0) kind = K_HERO;
     Ent *e = spawn(kind, c * TILE + 1, ground_row * TILE - EH);
-    if (e) { e->dir = 0; e->vx = kind == K_HERO ? -HERO_V : -WALKER_V; e->timer = kind == K_HERO ? 1 : 0; }
+    if (e) {
+      e->dir = 0;
+      e->vx = kind == K_HERO ? -HERO_V : kind == K_HOPPER ? -HOPPER_V : -WALKER_V;
+      /* timer is health for the swordsman and the hop PHASE for the hopper — a random phase is the
+         whole difference between several hoppers and one many-bodied hopper. */
+      e->timer = kind == K_HERO ? 1 : kind == K_HOPPER ? (int16_t)(1 + rnd(HOP_EVERY)) : 0;
+    }
   }
+  /* Spend the safe run here, not in seg_pick, and never across the gap itself: the five columns are
+     landing room AFTER the hole, so counting them down while the hole is still being dug would leave
+     two by the time the player touches ground again. */
+  if (seg_type != SEG_GAP && safe_left > 0) safe_left--;
   gen_col++;
 }
 
@@ -444,6 +485,12 @@ static void step_player(uint32_t in) {
   Ent *p = &ents[0];
   if (shoot_cd > 0) shoot_cd--;
   if (invuln > 0) invuln--;
+  /* The PRESS, not the held bit. Reading the level made holding the button a continuous auto-hop
+     (measured: 10 jumps in 600 held frames), so you could never hold for height and then land
+     quietly, and every landing bounced. Captured before the dead-branch return so a death cannot
+     leave a stale edge behind. */
+  int32_t jump_pressed = (in & IN_JUMP) && !prev_jump;
+  prev_jump = in & IN_JUMP;
 
   /* Crouch. Standing up is not free: if something is directly overhead the body stays low, or a
      player could stand INSIDE a ceiling and be pushed out of the world by the resolver. Check the
@@ -480,7 +527,16 @@ static void step_player(uint32_t in) {
     }
   }
 
-  if ((in & IN_JUMP) && p->onground) { p->vy = JUMP_V; p->onground = 0; sfx |= SFX_JUMP; }
+  /* Coyote time and the jump buffer. `onground` here is LAST frame's — the resolver below sets it —
+     which is exactly the state a player is reacting to. The old test was `held && onground` on this
+     same line, and measured zero frames of grace: a jump pressed even ONE frame after walking off a
+     ledge was refused outright, which is the defect a player feels first and blames on themselves. */
+  if (p->onground) coyote = COYOTE; else if (coyote > 0) coyote--;
+  if (jump_pressed) jump_buf = JUMP_BUF; else if (jump_buf > 0) jump_buf--;
+  if (jump_buf > 0 && coyote > 0) {
+    /* Both are spent, or the same press would fire again next frame off the leftover grace. */
+    p->vy = JUMP_V; p->onground = 0; jump_buf = 0; coyote = 0; sfx |= SFX_JUMP;
+  }
   /* Throwing does not interrupt anything: you can throw while running, rising or falling, which is
      the whole reason the weapon is drawn as an overlay rather than as its own body pose. */
   if (in & IN_SHOOT) throw_spear(p);
@@ -570,7 +626,11 @@ static void step_enemy(Ent *e) {
     int32_t b = py + EH;                    /* one pixel below the box — see step_player */
     if (solid_px(px, b) || solid_px(px + EW - 1, b)) {
       e->y = (tsnap(b) - EH) << FP; e->vy = 0; e->onground = 1;
-      if (e->kind == K_HOPPER && (frame_no & 63) < 2) e->vy = -1013;
+      /* The hop runs off the entity's OWN clock, and only counts down while it is standing. The test
+         used to be (frame_no & 63) < 2 — a GLOBAL frame counter — so every hopper alive left the
+         ground on the same two frames of every sixty-four: a chorus line rather than three animals.
+         One that happened to be airborne on those two frames then waited a further 1.07 s. */
+      if (e->kind == K_HOPPER && --e->timer <= 0) { e->vy = HOP_V; e->timer = HOP_EVERY; }
     }
   }
   if ((e->y >> FP) > SCRH + 32) e->alive = 0;
@@ -655,6 +715,7 @@ void game_init(uint32_t seed) {
   safe_left = 24; pending_gap = 0;                                  /* a calm opening: no gap, no enemy, and long
                                                       enough to measure a full run-up jump on */
   score = 0; coins = 0; best_col = 0; frame_no = 0; sfx = 0; dead = 0; last_in = 0; dln = 0;
+  prev_jump = 0; coyote = COYOTE; jump_buf = 0;
   ammo = START_AMMO; hp = START_HP; invuln = 0; shoot_cd = 0; kills = 0; pbox = PH;
   gen_ahead();
   /* Stand the player on the ground that is actually THERE, probed from the map, not on the

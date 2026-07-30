@@ -1,6 +1,6 @@
 self.MS = {
   app: "brick",
-  version: "ce18953b4d",
+  version: "d8b977dde2",
   precache: [
     "./",
     "./art.js",
@@ -40,7 +40,6 @@ self.MS = {
     "/_rt/sealed.js",
     "/_rt/sealedfetch.js",
     "/_rt/sensors.js",
-    "/_rt/shells.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
     "/_rt/theme.css",

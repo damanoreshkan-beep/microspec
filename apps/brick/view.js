@@ -10,9 +10,8 @@ import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
-import { GameConsole, ShellTab } from "/_rt/console.js";
-import { SCRW, SCRH, S, digits, betterRun, lcdFor } from "/_rt/brick.js";
-import { $shell, shellOf } from "/_rt/shells.js";
+import { GameConsole } from "/_rt/console.js";
+import { SCRW, SCRH, S, LCD, digits, betterRun } from "/_rt/brick.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
 
@@ -68,7 +67,7 @@ export function brick(props) {
   useKeyboardPad(setKeys, act);
 
   useEffect(() => {
-    let live = true, raf = 0, unshell = null;
+    let live = true, raf = 0;
     (async () => {
       let E;
       try { E = await loadEngine(); } catch (e) { if (live) setErr(String(e?.message || e)); return; }
@@ -82,9 +81,7 @@ export function brick(props) {
       if (!ctx) return;
       ctx.imageSmoothingEnabled = false;
       
-      const repaint = () => { painter.current = canvasPainter(ctx, lcdFor(shellOf($shell.get()).tint)); };
-      repaint();
-      unshell = $shell.subscribe(repaint);
+      painter.current = canvasPainter(ctx);
       setReady(true);
 
       const clock = makeClock(() => {
@@ -92,12 +89,10 @@ export function brick(props) {
         const st = E.state();
         if (st[S.SFX]) sound.current?.play(st[S.SFX]);
       });
-      
       if (gate) for (let i = 0; i < 140; i++) E.step(PAD.RIGHT | PAD.RUN | ((i % 46) < 16 ? PAD.JUMP : 0));
 
       const paint = () => {
         const st = E.state(), { dl, n } = E.list();
-        painter.current.keep();
         renderFrame(painter.current, dl, n, st);
         const h = hud.current;
         if (h) {
@@ -127,7 +122,7 @@ export function brick(props) {
       document.addEventListener("visibilitychange", vis);
       return () => document.removeEventListener("visibilitychange", vis);
     })();
-    return () => { live = false; cancelAnimationFrame(raf); unshell?.(); };
+    return () => { live = false; cancelAnimationFrame(raf); };
   }, []);
 
   const restart = useCallback(() => {
@@ -150,6 +145,7 @@ export function brick(props) {
     <${GameConsole}
       deck=${deckProps}
       onPointerDown=${arm}
+      plate=${LCD.plate}
       t=${t}
       onKeyboard=${(k) => (k.bit ? pulse(k.bit) : act(k.act))}
       pad=${DECK_PAD}
@@ -194,17 +190,4 @@ export function brick(props) {
         })}>${T(t, "resetTitle")}</button>
     </${Sheet}>` : null}
   </${Fragment}>`;
-}
-
-/**
- * The console picker, as its own tab — the same component and the same stored choice as hunt's.
- * Two tabs, one preference: pick a shell here and the huntress is holding it too. That is the
- * whole point of the catalogue living in the runtime, and the reason this file adds a tab rather
- * than a picker.
- */
-export function brickShell(props) {
-  const { t } = props;
-  
-  const { deckProps } = useTouchDeck({});
-  return html`<${ShellTab} t=${t} deck=${deckProps} pad=${DECK_PAD} actions=${DECK_ACTIONS} />`;
 }

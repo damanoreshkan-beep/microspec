@@ -3780,21 +3780,25 @@ Deno.test("deck · a cluster is measured back out of its own layout, never trust
   const whole = hubOfCross(cell);
   assert(whole > 25 && whole < 40, `the pad hub is ${whole.toFixed(1)}% of the whole cross — a real one is ~34%, and the alpha\u2019s 38%-of-the-centre-cell was 12.7%`);
 });
-Deno.test("shells · the console choice is shared, not per app", async () => {
+Deno.test("console · one device, and the aperture is never rationed", async () => {
   
-  
-  const src = await Deno.readTextFile(new URL("./shells.js", import.meta.url));
-  const key = /persistentAtom\(\s*"([^"]+)"/.exec(src)?.[1];
-  assert(key, "shells.js no longer stores the choice through persistentAtom");
-  assert(!/^(brick|hunt|[a-z]+):/.test(key) || key.startsWith("ms:"),
-    `the shell preference is namespaced to an app ("${key}") — it must be shared across games`);
-  const ids = [...src.matchAll(/^  (\w+): \{$/gm)].map((m) => m[1]);
-  assert(ids.length >= 4, `only ${ids.length} shells — the catalogue is the feature`);
+  const src = await Deno.readTextFile(new URL("./console.js", import.meta.url));
   const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  for (const gone of ["SHELLS", "ShellPicker", "ShellTab", "persistentAtom", "shellVars", "./shells.js"])
+    assert(!code.includes(gone), `console.js is growing a shell catalogue again ("${gone}") — there is one device`);
+  
   for (const forbidden of ["brick.wasm", "hunt.wasm", "SCRW", "ammo", "spear", "crouch"])
-    assert(!code.includes(forbidden), `shells.js references "${forbidden}" in CODE — a shell must be game-agnostic`);
-});
+    assert(!code.includes(forbidden), `console.js references "${forbidden}" in CODE — the shell must be game-agnostic`);
 
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const screen = /\.ms-screen\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+  assert(/width:\s*100%/.test(screen), ".ms-screen no longer takes the whole body width");
+  assert(!/--sh-screen-w/.test(css),
+    "an aperture FRACTION is back in theme.css — that variable is the small-screen bug, and it is the shape of the bug rather than its value that must not return");
+  const shell = /\.ms-shell\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+  assert(/height:\s*100%/.test(shell),
+    ".ms-shell stopped filling the view — a body sized to its contents leaves two thirds of a phone as empty page");
+});
 
 
 
@@ -3815,6 +3819,7 @@ Deno.test("isBook: a film adaptation shares the title and must never win", () =>
   
   assert(!actsIsBook({ p31: ["Q11424", "Q7725634"] }), "typed as both → the film reading must lose");
 });
+
 Deno.test("isBook: untyped works fall back to author+date, which films do not have", () => {
   assert(actsIsBook({ p31: [], hasAuthor: true, hasDate: true }), "P50+P577 are on 38/39 books");
   assert(!actsIsBook({ p31: [], hasAuthor: true }), "author alone is not enough");
@@ -3827,7 +3832,6 @@ Deno.test("findPlotSection: resolves by NAME, never by a remembered number", () 
   assertEquals(actsFindPlot([{ index: 2, line: "Plot summary" }]).index, "2");
   assertEquals(actsFindPlot([{ index: 5, line: "Synopsis" }]).index, "5");
   assertEquals(actsFindPlot([{ index: 4, line: "Storylines" }]).index, "4");
-  
   assertEquals(actsFindPlot([{ index: 7, line: "Synopsis" }, { index: 2, line: "Plot summary" }]).index, "2");
   
   assertEquals(actsFindPlot([{ index: 9, line: "PLOT  SUMMARY" }]).index, "9");
@@ -3893,7 +3897,6 @@ Deno.test("countSentences counts what the length budget is measured in", () => {
   assertEquals(actsCount("One! Two? Three…"), 3);
   assertEquals(actsCount(""), 0);
 });
-
 Deno.test("actSignature: the level is part of the cache key", () => {
   
   assert(actsSig(190192, 1, "uk") !== actsSig(190192, 3, "uk"), "level must vary the key");
@@ -3922,6 +3925,7 @@ Deno.test("material: a SURFACE is extruded, never a fill with a line drawn round
   
   
   
+  
   const src = await Deno.readTextFile(new URL("./render.js", import.meta.url));
   const surfaces = src.match(/card[^"'`]*border border-base-\d+/g) || [];
   assertEquals(surfaces, [], "a card is declaring a border instead of `sf-raised` — depth is the shadow pair, not a line");
@@ -3934,9 +3938,10 @@ Deno.test("material: a SURFACE is extruded, never a fill with a line drawn round
   }
 });
 
+
+
+
 Deno.test("foldThread keeps the tail, and the tail is what carries the pronouns", () => {
-  
-  
   const turns = [];
   for (let i = 0; i < 20; i++) { turns.push(chatAsked("q" + i + " ".repeat(400))); turns.push(chatAnswered("a" + i)); }
   turns.push(chatAsked("а якби я йому це сказав?"));
@@ -3947,16 +3952,14 @@ Deno.test("foldThread keeps the tail, and the tail is what carries the pronouns"
 });
 Deno.test("foldThread: a thread that no longer ends on the reader is not sendable", () => {
   
+  
   assertEquals(chatFold([chatAnswered("a lone reply")]), []);
   assertEquals(chatFold([]), []);
   assertEquals(chatFold(null), []);
-  
   assertEquals(chatFold([chatAsked("  "), chatAsked("real")]).length, 1);
 });
 
 Deno.test("askSignature: the whole exchange is the key, not just the last thing said", () => {
-  
-  
   const a = [chatAsked("хто такий Пол?"), chatAnswered("син герцога"), chatAsked("а далі?")];
   const b = [chatAsked("хто така Джессіка?"), chatAnswered("його мати"), chatAsked("а далі?")];
   assert(chatSig(1, 2, false, "uk", a) !== chatSig(1, 2, false, "uk", b), "the prefix must vary the key");
@@ -3967,13 +3970,11 @@ Deno.test("askSignature: the whole exchange is the key, not just the last thing 
   
   assert(chatSig(1, 2, false, "uk", a).length < 40, "the signature is not bounded");
 });
-
 Deno.test("groundBook puts the book above its plot", () => {
   const g = chatGround({ title: "Dune", byline: "Frank Herbert · 1965", plot: "  Sand.  " });
   assert(g.startsWith("КНИГА: Dune — Frank Herbert · 1965"), "the book header is missing");
   assert(g.trimEnd().endsWith("Sand."), "the plot is missing or untrimmed");
 });
-
 
 
 
@@ -4002,7 +4003,6 @@ Deno.test("signif/corpus: every leaf is an [en, uk] pair, and neither half is mi
   for (const k of ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"]) assert(sgBODY[k], `no corpus entry for ${k}`);
   for (const a of TRANSIT_ASPECTS) assert(sgASPECT[a.type], `no corpus entry for ${a.type}`);
 });
-
 Deno.test("signif/dignityOf: the classical table, with detriment and fall DERIVED", () => {
   const S = { ari: 0, tau: 1, gem: 2, can: 3, leo: 4, vir: 5, lib: 6, sco: 7, sag: 8, cap: 9, aqu: 10, pis: 11 };
   
@@ -4028,6 +4028,7 @@ Deno.test("signif/dignityOf: the classical table, with detriment and fall DERIVE
   assertEquals(sgDignity("saturn", S.ari), "fall");
   assertEquals(sgDignity("mars", S.can), "fall");
   assertEquals(sgDignity("venus", S.vir), "fall");
+  
   
   assertEquals(sgDignity("mercury", S.vir), "domicile");
   assertEquals(sgDignity("mercury", S.pis), "detriment");
@@ -4072,7 +4073,6 @@ Deno.test("signif/balance: a plain unweighted count over the bodies actually sho
   assertEquals(b.topModality, 0);
   assertEquals(sgBalance([]).elements, [0, 0, 0, 0]);
 });
-
 Deno.test("signif/groundTransit: the block is closed-world, and the signature moves with the facts", () => {
   const c = { t: "saturn", n: "sun", type: "square", nature: "hard", angle: 90, natalLon: 112.4, orb: 0.42, exact: true, applying: true };
   const g = sgGroundTransit({ c, transitLon: 22.7, natalHouse: 10, houseSystem: "placidus", retro: false, dateEN: "3 Aug 2026", hits: ["3 Aug 2026"] });
@@ -4098,11 +4098,13 @@ Deno.test("signif/groundTransit: the block is closed-world, and the signature mo
   const whole = sgGroundTransit({ c, transitLon: 22.7, natalHouse: 9, houseSystem: "whole", retro: false, dateEN: "3 Aug 2026", hits: ["3 Aug 2026"] });
   assert(whole.sig !== g.sig, "the house system must vary the key");
   assertEquals(sgGroundTransit({ c, transitLon: 22.7, natalHouse: 10, houseSystem: "placidus", retro: false, dateEN: "3 Aug 2026", hits: ["3 Aug 2026"] }).sig, g.sig, "and the key must be stable");
+
   
   const ang = sgGroundTransit({ c: { ...c, n: "asc" }, transitLon: 22.7, natalHouse: null, houseSystem: "placidus", retro: false, dateEN: "3 Aug 2026", hits: [] });
   assert(ang.text.includes("natal Ascendant"), "the angle is missing");
   assert(!ang.text.includes("house null"), "an angle must not print a null house");
 });
+
 Deno.test("signif/groundPlacement: what · how · where, plus dignity when the doctrine applies", () => {
   const g = sgGroundPlacement({ key: "mars", lon: 9 * 30 + 12, house: 4, houseSystem: "placidus", retro: false });
   assert(g.text.includes("Mars is the WHAT"));
@@ -4154,12 +4156,13 @@ Deno.test("signif/groundCusp: a house is delegated to its ruler, and an empty ho
   assert(g.text.includes("HOUSE 2 (placidus houses)"), "the house and its system must be named");
   assert(g.text.includes("Jupiter rules Sagittarius and therefore RULES this house"));
   assert(g.text.includes("in house 8"), "where the ruler LIVES is the point of this reading");
+  
+  
   assert(g.text.includes("which is not the same as standing in it"), "the rules/stands-in distinction must be explicit");
   assert(g.text.includes("in exaltation"), "Jupiter is exalted in Cancer and the ruler's dignity should carry");
   assert(g.text.includes("STANDING IN house 2: Venus"));
   assert(!/undefined|NaN/.test(g.text));
 
-  
   const empty = sgGroundCusp({ house: 7, cuspLon: 30, houseSystem: "whole",
     ruler: { key: "venus", lon: 200, house: 1, retro: true } });
   assert(empty.text.includes("no planet stands in house 7"));
@@ -4182,9 +4185,11 @@ Deno.test("signif/rulerOf: the modern flag is a claim about the ANSWER, not abou
   
   assertEquals(sgRulerOf(10 * 30 + 5, { modern: true }), { sign: 10, body: "uranus", modern: true });
   
+  
   assertEquals(sgRulerOf(5, { modern: true }), { sign: 0, body: "mars", modern: false });
   assertEquals(sgRulerOf(5), { sign: 0, body: "mars", modern: false });
 });
+
 
 const QCHART = {
   houseSystem: "placidus",
@@ -4200,6 +4205,7 @@ const QCHART = {
     { key: "saturn", lon: 9 * 30 + 21, house: 3, retro: true },
   ],
 };
+
 Deno.test("signif/QUESTIONS: a closed catalogue, and what it deliberately does NOT ask", () => {
   assertEquals(sgQUESTIONS.length, 11);
   const ids = sgQUESTIONS.map((q) => q.id);
@@ -4224,6 +4230,8 @@ Deno.test("signif/QUESTIONS: a closed catalogue, and what it deliberately does N
   }
   
   
+  
+  
   const banned = /child|pregnan|health|illness|\bdie\b|death|lawsuit|invest|wealth|дитин|дітей|вагітн|здоров|смерт|помр|позов|інвест|багатств/i;
   for (const q of sgQUESTIONS) {
     assert(!banned.test(q.label[0]) && !banned.test(q.label[1]) && !banned.test(q.ask),
@@ -4232,11 +4240,13 @@ Deno.test("signif/QUESTIONS: a closed catalogue, and what it deliberately does N
   
   
   
+  
   assertEquals(sgQUESTIONS.filter((q) => q.transit).length, 2);
   assertEquals(sgQUESTIONS.filter((q) => q.transit).map((q) => q.id), ["workNow", "phase"]);
   assertEquals(sgQuestionById("love").id, "love");
   assertEquals(sgQuestionById("nope"), null);
 });
+
 Deno.test("signif/groundQuestion: the block contains the declared factors and NOTHING else", () => {
   const money = sgQuestionById("money");
   const g = sgGroundQuestion({ q: money, chart: QCHART });
@@ -4248,8 +4258,6 @@ Deno.test("signif/groundQuestion: the block contains the declared factors and NO
   assert(g.text.includes("HOUSE 2 (placidus)"), "the declared house is missing");
   assert(g.text.includes("HOUSE 8 (placidus)"));
   assert(g.text.includes("Venus") && g.text.includes("Jupiter"), "the declared bodies are missing");
-  
-  
   assert(!/- Moon —/.test(g.text), "the Moon is not a money significator and must not be supplied");
   assert(!/HOUSE 7|HOUSE 10/.test(g.text), "an undeclared house leaked into the block");
   assert(!/undefined|NaN/.test(g.text));
@@ -4276,13 +4284,11 @@ Deno.test("signif/groundQuestion: a timing question leads with transits, and say
   assert(g.text.includes("transiting Saturn in Aries square natal Sun"));
   assert(g.text.includes("29 and a half years"), "the tempo must travel, or a slow transit reads as a mood");
   assert(g.text.includes("Exact: 3 Aug 2026"));
-
   
   const none = sgGroundQuestion({ q: phase, chart: QCHART, timing: { dateEN: "25 Jul 2026", contacts: [] } });
   assert(none.text.includes("none within orb"));
   assert(none.text.includes("do not substitute another transit"));
   assert(none.sig !== g.sig, "the contact set must vary the key");
-
   
   assert(!sgGroundQuestion({ q: sgQuestionById("home"), chart: QCHART }).text.includes("TRANSITS"));
 });

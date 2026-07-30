@@ -370,45 +370,27 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 
 .ms-shell {
   width: 100%;
-  max-width: var(--sh-max, 26rem);
+  height: 100%;
+  max-width: 30rem;
   padding: var(--ms-pad);
   background: var(--sh-body, var(--color-base-100));
-  border-radius: var(--sh-r-tl, var(--ms-r)) var(--sh-r-tr, var(--ms-r))
-                 var(--sh-r-br, var(--ms-r)) var(--sh-r-bl, var(--ms-r));
+  border-radius: calc(var(--ms-r) * 1.2);
 }
-[data-theme="signal"]       .ms-shell { --sh-body: var(--sh-body-d); }
-[data-theme="signal-light"] .ms-shell { --sh-body: var(--sh-body-l); }
+[data-theme="signal"]       .ms-shell { --sh-body: #35342C; }
+[data-theme="signal-light"] .ms-shell { --sh-body: #D8D5C2; }
 .ms-screen {
-  --sf-inset-face: var(--sh-tint, var(--color-base-100));
+  --sf-inset-face: var(--sh-tint, var(--color-base-200));
   width: 100%;
-  padding: max(0.2rem, var(--sh-bezel, 6%));
+  padding: max(0.3rem, 2.5%);
   border-radius: var(--ms-r);
 }
 
-@media (min-height: 521px) and (min-width: 301px) {
-  [data-deck="split"] .ms-screen, [data-deck="clam"] .ms-screen { width: var(--sh-screen-w, 100%); }
-  [data-deck="flank"] > [data-stage-box] { flex: 0 1 var(--sh-screen-w, 100%); }
-}
-
-.ms-hinge { position: relative; flex: 0 0 auto; height: 0.5rem; }
-@media (max-height: 520px), (max-width: 300px) { .ms-hinge { display: none; } }
-.ms-hinge::before {
-  content: ""; position: absolute; left: 6%; right: 6%; top: 50%; height: 2px; border-radius: 2px;
-  background: linear-gradient(90deg, transparent, var(--nm-dark) 10%, var(--nm-dark) 90%, transparent);
-  box-shadow: 0 1px 0 var(--nm-light);
+@media (max-height: 520px) and (min-width: 301px) {
+  .ms-shell { max-width: 46rem; }
+  [data-shell-body].ms-side > [data-stage-box] { flex: 1 1 auto; }
+  [data-shell-body].ms-side > .ms-side-main { flex: 0 0 auto; }
 }
 .ms-pad { padding: 4%; }
 .ms-pad-hub { width: 92%; height: 92%; }
-
 .ms-pad-key { border-radius: 12%; }
-
-
-.ms-pad.ms-pad-disc { border-radius: 50%; }
-.ms-pad-disc > div { border-radius: 50%; overflow: hidden; }
-.ms-pad-disc [data-bit] { border-radius: 0; }
-.ms-pad-disc .ms-pad-hub { width: 81%; height: 81%; }
-
-
 .ms-menu { flex-wrap: wrap; justify-content: center; }
-
-

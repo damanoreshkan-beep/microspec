@@ -30,16 +30,5 @@
   "installBtn": "Встановити",
   "installDesc": "Працює офлайн, відкривається як застосунок",
   "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».",
-  "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
-  "shellPick": "Консоль",
-  "shellBrick": "Цеглинка",
-  "shellPocket": "Кишенькова",
-  "shellSlab": "Пластина",
-  "shellArcade": "Аркада",
-  "shellBare": "Без корпусу",
-  "tabShell": "Консоль",
-  "shellSlim": "Тонка",
-  "shellCart": "Картриджна",
-  "shellClam": "Розкладачка",
-  "shellBacklit": "З підсвіткою"
+  "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран»."
 }

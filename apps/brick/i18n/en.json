@@ -30,16 +30,5 @@
   "installBtn": "Install",
   "installDesc": "Works offline, opens like an app",
   "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
-  "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
-  "shellPick": "Console",
-  "shellBrick": "Brick",
-  "shellPocket": "Pocket",
-  "shellSlab": "Slab",
-  "shellArcade": "Arcade",
-  "shellBare": "Bare",
-  "tabShell": "Console",
-  "shellSlim": "Slim",
-  "shellCart": "Cartridge",
-  "shellClam": "Clamshell",
-  "shellBacklit": "Backlit"
+  "installGenericHint": "In the browser menu choose Install or Add to Home Screen."
 }

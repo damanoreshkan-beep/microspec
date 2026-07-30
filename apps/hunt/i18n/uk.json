@@ -30,17 +30,6 @@
   "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
   "close": "Закрити",
   "keyCrouch": "Присісти",
-  "shellPick": "Консоль",
-  "shellBrick": "Цеглинка",
-  "shellPocket": "Кишенькова",
-  "shellSlab": "Пластина",
-  "shellArcade": "Аркада",
-  "shellBare": "Без корпусу",
-  "tabShell": "Консоль",
-  "shellSlim": "Тонка",
-  "shellCart": "Картриджна",
-  "shellClam": "Розкладачка",
-  "shellBacklit": "З підсвіткою",
   "padLabel": "Хрестовина",
   "keyJump": "Стрибок"
 }

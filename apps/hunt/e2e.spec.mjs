@@ -78,10 +78,25 @@ export default [
     },
   },
   {
-    name: "оболонка: геометрія і touch-action обидва доходять до корпусу", run: async (h) => {
+    name: "екран: гра займає корпус, а корпус — увесь вигляд", run: async (h) => {
       await ready(h);
-      const w = await h.css("[data-shell-body]", "--sh-screen-w");
-      h.expect(/^[\d.]+%$/.test(w || ""), `апертура оболонки не доїхала до корпусу — --sh-screen-w = "${w}"`);
+      const view = await h.prop("#view", "clientHeight");
+      const bodyH = await h.prop("[data-shell-body]", "clientHeight");
+      const bodyW = await h.prop("[data-shell-body]", "clientWidth");
+      const cw = await h.prop("canvas", "clientWidth");
+      h.expect(view > 0 && bodyW > 0, "нема з чим порівнювати — корпус або вигляд не змірялись");
+      h.expect(bodyH >= view * 0.9,
+        `корпус ${bodyH}px усередині вигляду ${view}px — консоль стискається до вмісту замість заповнювати екран`);
+      h.expect(cw >= bodyW * 0.78,
+        `полотно ${cw}px у корпусі ${bodyW}px — апертура забирає в гри ширину, яку нікому більше не віддає`);
+    },
+  },
+  {
+    
+    name: "корпус: колір панелі і touch-action обидва переживають злиття стилів", run: async (h) => {
+      await ready(h);
+      const tint = await h.css("[data-shell-body]", "--sh-tint");
+      h.expect(/^\s*(#|rgb)/.test(tint || ""), `гра не передала свою панель апертурі — --sh-tint = "${tint}"`);
       const body = await h.css("[data-shell-body]", "--sh-body");
       h.expect(/^\s*(#|rgb)/.test(body || ""), `корпус не отримав власного кольору — --sh-body = "${body}"`);
       const touch = await h.css("[data-shell-body]", "touch-action");

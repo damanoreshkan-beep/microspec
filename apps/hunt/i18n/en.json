@@ -30,17 +30,6 @@
   "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
   "close": "Close",
   "keyCrouch": "Crouch",
-  "shellPick": "Console",
-  "shellBrick": "Brick",
-  "shellPocket": "Pocket",
-  "shellSlab": "Slab",
-  "shellArcade": "Arcade",
-  "shellBare": "Bare",
-  "tabShell": "Console",
-  "shellSlim": "Slim",
-  "shellCart": "Cartridge",
-  "shellClam": "Clamshell",
-  "shellBacklit": "Backlit",
   "padLabel": "Direction pad",
   "keyJump": "Jump"
 }

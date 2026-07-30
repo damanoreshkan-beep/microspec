@@ -10,8 +10,8 @@ import { Sheet } from "/_rt/ui.js";
 import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
-import { GameConsole, ShellTab } from "/_rt/console.js";
-import { SCRW, SCRH, S, IN, digits, betterRun } from "/_rt/hunt.js";
+import { GameConsole } from "/_rt/console.js";
+import { SCRW, SCRH, S, IN, WORLD, digits, betterRun } from "/_rt/hunt.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
 
@@ -110,7 +110,6 @@ export function hunt(props) {
           $best.set(betterRun($best.get(), { dist: st[S.DIST], score: st[S.SCORE], kills: st[S.KILLS] }));
         }
       };
-
       const frame = (now) => {
         if (!live) return;
         if (!$over.get()) clock.tick(now);
@@ -138,6 +137,7 @@ export function hunt(props) {
     <${GameConsole}
       deck=${deckProps}
       onPointerDown=${arm}
+      plate=${WORLD.sky[0]}
       t=${t}
       onKeyboard=${(k) => (k.bit ? pulse(k.bit) : act(k.act))}
       pad=${DECK_PAD}
@@ -181,19 +181,4 @@ export function hunt(props) {
         })}>${T(t, "resetTitle")}</button>
     </${Sheet}>` : null}
   </${Fragment}>`;
-}
-
-/**
- * The console picker, as its own tab.
- *
- * It lives in the game rather than in the profile because it is a thing you SEE change: pick a
- * shell, go back one tab, and the same game is in a different device. And the preference is stored
- * without an app prefix, so the shell chosen here is the shell brick wears too — one console, many
- * games, which is the whole reason the catalogue is in the runtime and not in this file.
- */
-export function huntShell(props) {
-  const { t } = props;
-  
-  const { deckProps } = useTouchDeck({});
-  return html`<${ShellTab} t=${t} deck=${deckProps} pad=${DECK_PAD} actions=${DECK_ACTIONS} />`;
 }

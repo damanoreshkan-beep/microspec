@@ -431,18 +431,22 @@ function AskSheet({ open, onClose, C, t, loc }) {
 
   return html`<${Sheet} id="asksheet" open=${true} onClose=${onClose} title=${T(t, "askTitle")}
       subtitle=${placeLabel(C.b.place) + " · " + C.rec.date} icon="lucide:sparkles">
+    ${/* Catalogue FIRST, then answers newest-first. A messenger puts the input at the bottom because its
+         history is skimmable one-liners; here every entry is a five-sentence reading, so after two
+         questions the catalogue sat two full essays down the scroll — and asking the next one is the
+         thing you most want to reach. Seen on the shot, not deduced. */""}
     <div class="flex flex-col gap-5">
-      ${asked.length ? html`<div class="flex flex-col gap-5">
-        ${asked.map((id) => html`<${Asked} qid=${id} C=${C} t=${t} loc=${loc} chart=${chart} timingFor=${timingFor} key=${id} />`)}
-      </div>` : null}
-
       ${rest.length ? html`<div class="flex flex-col gap-1.5">
-        ${asked.length ? html`<div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "askMore")}</div>` : null}
         ${rest.map((q) => html`<button data-ask=${q.id} onClick=${() => $asked.set([...$asked.get(), q.id])}
             class="w-full text-left rounded-2xl sf-raised sf-e2 sf-press px-3.5 py-2.5 flex items-center gap-2.5 transition" key=${q.id}>
           <span class="flex-1 min-w-0 text-[0.9rem]">${say(q.label, loc)}</span>
           ${Icon("lucide:sparkles", "text-sm text-primary shrink-0")}
         </button>`)}
+      </div>` : null}
+
+      ${asked.length ? html`<div class="flex flex-col gap-5">
+        ${rest.length ? html`<div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "askAnswered")}</div>` : null}
+        ${asked.slice().reverse().map((id) => html`<${Asked} qid=${id} C=${C} t=${t} loc=${loc} chart=${chart} timingFor=${timingFor} key=${id} />`)}
       </div>` : null}
     </div>
   </${Sheet}>`;

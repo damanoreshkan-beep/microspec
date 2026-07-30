@@ -134,8 +134,10 @@ export function makeHelpers(page) {
     // Load the app AT a query — `?tab=`/`?screen=`/`?theme=`/`?locale=`/`?detail=`/`?mock`. Those params
     // exist because the screenshot service and preflight cannot tap, so they are the only way a deep screen
     // is ever reviewed; a gate that never exercises them lets that door rot shut without a single failure.
+    // The current URL comes from INSIDE the page (`location.href`), not from a `page.url()` accessor — this
+    // driver has no such method, and reaching for the Puppeteer name cost a CI round.
     goto: async (query = "", settle = 1200) => {
-      const u = new URL(page.url());
+      const u = new URL(await ev(() => location.href));
       u.search = query ? (query.startsWith("?") ? query.slice(1) : query) : "";
       await page.goto(u.toString(), { waitUntil: "load" });
       await sleep(settle);

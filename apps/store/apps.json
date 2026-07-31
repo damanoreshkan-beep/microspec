@@ -220,6 +220,26 @@
     "category": "science"
   },
   {
+    "id": "grain",
+    "title": "Зерно",
+    "titles": {
+      "en": "Grain",
+      "uk": "Зерно"
+    },
+    "tagline": "Запиши дві секунди світу — двері, чашку, дощ, власний голос — і грай ним. Зерно ріже запис на короткі зерна у вікні Ганна й повертає їх хмарою, яку ти вдаряєш на восьми полях у своєму ладі: коренем є сам запис, тож безтоновий удар працює як чаша і йому ніколи не приписують ноту, якої немає. Нахил гне розмір зерна й тон, Потік пише фразу, а почуте експортується у WAV. Запис і обробка на твоєму пристрої, офлайн.",
+    "taglines": {
+      "en": "Record two seconds of the world — a door, a cup, rain, your own voice — and play it. Grain slices the take into short windowed grains and streams them back as a cloud you strike on eight fields, tuned to your scale: the recording itself is the root, so an unpitched slam works like a struck bowl and is never given a note it does not have. Tilt bends grain size and tone, Flow writes a phrase, and what you hear exports as a WAV. Recorded and processed on your device, offline.",
+      "uk": "Запиши дві секунди світу — двері, чашку, дощ, власний голос — і грай ним. Зерно ріже запис на короткі зерна у вікні Ганна й повертає їх хмарою, яку ти вдаряєш на восьми полях у своєму ладі: коренем є сам запис, тож безтоновий удар працює як чаша і йому ніколи не приписують ноту, якої немає. Нахил гне розмір зерна й тон, Потік пише фразу, а почуте експортується у WAV. Запис і обробка на твоєму пристрої, офлайн."
+    },
+    "glyph": "lucide:mic",
+    "art": "<path d=\"M3 12h1.6\"/><path d=\"M7 8.2v7.6\"/><path d=\"M10.4 4.6v14.8\"/><path d=\"M13.8 7v10\"/><path d=\"M17.2 9.6v4.8\"/><path d=\"M20.6 11.4v1.2\"/>",
+    "bg": "#0E1416",
+    "fg": "#57C4C0",
+    "href": "./grain/",
+    "version": "1.0",
+    "category": "sound"
+  },
+  {
     "id": "pwned",
     "title": "Зламано?",
     "titles": {
@@ -1196,7 +1216,7 @@
     "bg": "#0B0B0D",
     "fg": "#ECECEE",
     "href": "./reel/",
-    "version": "1.37",
+    "version": "1.40",
     "category": "feeds"
   },
   {

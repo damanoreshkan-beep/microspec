@@ -295,6 +295,10 @@ async function preflight(appdir) {
     if (sensorImport && /\bcamera\b/.test(sensorImport[1]) && !/CameraPrime/.test(src)) {
       errs.push(`imports the camera but never renders <${"CameraPrime"}/> — a camera view must PRIME the permission with a custom "why + processed on your device" screen before the native getUserMedia prompt, never open the stream cold. Import { CameraPrime } from "/_rt/camprime.js" and show it until the user opts in.`);
     }
+    // The microphone is the same policy, and worse if skipped: a cold prompt for the mic reads as spyware.
+    if (sensorImport && /\bmic\b/.test(sensorImport[1]) && !/MicPrime/.test(src)) {
+      errs.push(`imports the microphone but never renders <${"MicPrime"}/> — a mic view must PRIME the permission with a custom "why + processed on your device" screen before the native getUserMedia prompt. Import { MicPrime } from "/_rt/camprime.js" and show it until the user opts in.`);
+    }
 
     for (const e of rafErr) errs.push("render loop threw: " + (e?.message || e));
     for (const m of uncaught) errs.push("async/effect threw: " + m);

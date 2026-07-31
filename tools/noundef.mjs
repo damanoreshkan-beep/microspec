@@ -21,7 +21,7 @@
 const BROWSER = new Set([
   "document", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "devicePixelRatio",
   "matchMedia", "Image", "DOMParser", "IntersectionObserver", "ResizeObserver", "MutationObserver",
-  "DeviceOrientationEvent", "AudioContext", "webkitAudioContext", "AudioWorkletNode",
+  "DeviceOrientationEvent", "AudioContext", "webkitAudioContext", "AudioWorkletNode", "OfflineAudioContext",
 ]);
 
 const entries = [];

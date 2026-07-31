@@ -327,26 +327,28 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
       unavailable=${err === "unavailable" || err === "unsupported" || !mic.supported}
       onEnable=${rec} onSettings=${() => S.screen.set("perms")} />` : null}
 
-    <div class="flex flex-col flex-1 min-h-0 px-3 pb-2 gap-2">
-      <div class="shrink-0 flex items-center gap-2 pt-1">
+    <div class="flex flex-col flex-1 min-h-0 gap-[var(--ms-gap)]" style="padding:var(--ms-gap) var(--ms-pad)">
+      <div class="shrink-0 flex items-center gap-[var(--ms-gap)]">
         <${Segmented} attr="data-scale" scroll variant="outline" label=${T(t, "scale")}
           items=${SCALES.map((s) => ({ id: s.id, label: T(t, s.name) }))} value=${scaleId} onChange=${(id) => { buzz(); $scale.set(id); }} />
       </div>
 
-      <div class="shrink-0 rounded-2xl sf-inset px-2 py-2 h-16 flex items-center">
-        <${Wave} take=${take} pos=${pos} onSeek=${(v) => $pos.set(v)} className="h-full" />
-      </div>
-      <div class="shrink-0 flex items-center justify-between text-xs text-base-content/70">
-        <span class="tabular-nums">${take ? `${take.dur.toFixed(1)} s` : "—"}</span>
-        <span data-pitch class="font-medium">${take ? (take.pitched ? take.name : T(t, "unpitched")) : T(t, "noTake")}</span>
+      
+      <div class="shrink-0 relative rounded-[var(--ms-r)] sf-inset px-2 flex items-center h-[clamp(1.75rem,9vh,3.75rem)]">
+        <${Wave} take=${take} pos=${pos} onSeek=${(v) => $pos.set(v)} className="h-[70%]" />
+        <span class="absolute right-2 top-0 bottom-0 flex items-center gap-1.5 pl-2 text-[var(--ms-label)] text-base-content/70 pointer-events-none">
+          <span class="tabular-nums">${take ? `${take.dur.toFixed(1)}s` : "—"}</span>
+          <span data-pitch class="font-semibold text-base-content">${take ? (take.pitched ? take.name : T(t, "unpitched")) : T(t, "noTake")}</span>
+        </span>
       </div>
 
-      <div ref=${padRef} class="flex-1 min-h-0 grid grid-cols-2 gap-2" style="touch-action:none"
+      
+      <div ref=${padRef} class="flex-1 min-h-0 grid grid-cols-2 [@media(max-height:430px)]:grid-cols-4 auto-rows-fr gap-[var(--ms-gap)]" style="touch-action:none"
         onPointerDown=${down} onPointerUp=${up} onPointerCancel=${up} onPointerLeave=${up}>
         ${offs.map((o, i) => html`<button key=${i} data-field=${i} disabled=${!take}
           aria-label=${take?.pitched ? noteName(take.hz * semisToRate(o)) : `${T(t, "field")} ${i + 1}`}
-          class=${`rounded-2xl sf-raised flex items-end justify-start p-2 transition-transform duration-150 ${lit.has(i) ? "outline-2 outline-secondary scale-[1.02]" : ""} ${take ? "" : "opacity-40"}`}>
-          <span class="text-xs font-semibold tabular-nums text-base-content/70">${take?.pitched ? noteName(take.hz * semisToRate(o)) : `${o > 0 ? "+" : ""}${o}`}</span>
+          class=${`min-h-0 overflow-hidden rounded-[var(--ms-r)] sf-raised flex items-end justify-start p-1.5 transition-transform duration-150 ${lit.has(i) ? "outline-2 outline-secondary scale-[1.02]" : ""} ${take ? "" : "opacity-40"}`}>
+          <span class="text-[var(--ms-label)] font-semibold tabular-nums text-base-content/70 truncate">${take?.pitched ? noteName(take.hz * semisToRate(o)) : `${o > 0 ? "+" : ""}${o}`}</span>
         </button>`)}
       </div>
 
@@ -437,6 +439,7 @@ export function grainShape({ S, screen, openScreen, closeScreen }) {
 }
 
 
+
 const PRESETS = [
   { id: "tone", name: "psTone", hint: "psToneHint", icon: "lucide:audio-waveform", size: 60, spray: 20, density: 4, drift: 0.2 },
   { id: "cloud", name: "psCloud", hint: "psCloudHint", icon: "lucide:cloudy", size: 240, spray: 180, density: 6, drift: 0.05 },
@@ -450,11 +453,11 @@ function gateTake() {
   const loop = emptyLoop(); [0, 3, 5, 7, 10, 12].forEach((s, k) => { loop[s] = [0, 2, 4, 1, 5, 3][k]; });
   return { id: "gate-take", name: "A3", pcm, sr, dur: pcm.length / sr, hz: 220, pitched: true, scaleId: "pent", bpm: 84, loop };
 }
-
 export function grainTakes({ S, undo, toast }) {
   const t = useStore(S.t); _dict = t;
   const [list, setList] = useState(null);
   const take = useStore($take), busy = useStore($busy);
+  
   
   const load = () => TAKES.all().then((l) => setList(gate ? [gateTake(), ...l] : l)).catch(() => setList(gate ? [gateTake()] : []));
   useEffect(() => { load(); }, []);

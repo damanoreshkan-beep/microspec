@@ -139,6 +139,23 @@ html.ms-fit, html.ms-fit body { height: 100%; overflow: hidden; overscroll-behav
    Targeting #view's last child was wrong: that is usually a full-height WRAPPER, and the island sits
    inside it — the margin landed on a box whose height was already fixed and moved nothing. */
 html.ms-fit [data-island] { margin-bottom: calc(var(--ms-gap) * 1.5); }
+
+/* .ms-stage — a full-bleed stage pinned between the chrome. A `position: fixed` box escapes #view's padding,
+   so it has to consume the chrome contract itself, and eleven apps had all hand-written the same two terms:
+   `top:calc(3.5rem + safe-area)` and `bottom:calc(var(--dock-h) + safe-area)`. Both were wrong in the same
+   two ways and nobody could see it: 3.5rem is a GUESS at a header that compacts to 2.25rem on a watch (the
+   number is measured and published as --hdr-h), and on a watch the dock is a RIGHT-HAND RAIL — --dock-h
+   collapses to 0 and --dock-w appears — so a stage running to the right edge slides straight under it. That
+   is what the fit gate caught on `grain`: 137px of content under the rail, on a screen where nothing scrolls.
+   The `min()` is what lets one rule serve both: no rail means --dock-w is 0px, so both terms vanish and a
+   phone is untouched; a rail means its width plus 1rem of air, the same clearance #view gives itself. */
+.ms-stage {
+  position: fixed;
+  left: 0;
+  right: calc(var(--dock-w, 0px) + min(var(--dock-w, 0px), 1rem));
+  top: calc(var(--hdr-h) + env(safe-area-inset-top));
+  bottom: calc(var(--dock-h) + env(safe-area-inset-bottom));
+}
 html.ms-fit main#view {
   height: calc(100dvh - var(--hdr-h));
   padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom));

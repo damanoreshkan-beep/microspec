@@ -340,7 +340,7 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
            over foreign content (a video, a camera frame), never over base. The idle segments take
            --sf-track-face: a 4px rail cannot hold a shadow pair, and this is the system's one sanctioned
            place for tone to stand in for depth (see theme.css). */""}
-      <div class="sticky z-10 -mx-4 px-4 bg-base-100 sf-e2 flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
+      <div class="sticky z-10 -mx-4 px-4 bg-base-100 sf-e2 flex items-center gap-[3px] py-1" style="top:calc(var(--hdr-h) + env(safe-area-inset-top))">
         <div class="w-7 shrink-0"></div>
         ${STEPS.map((s) => { const hot = s === sweep ? "bg-accent" : s === cur ? "bg-secondary" : ""; return html`<div class=${`flex-1 h-1 rounded-full transition-colors ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${hot}`} style=${hot ? "" : "background:var(--sf-track-face)"} key=${s}></div>`; })}
       </div>

@@ -121,7 +121,7 @@ export function imagine({ S, toast }) {
 
   const onKey = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); generate(); } };
 
-  return html`<div class="fixed inset-x-0 z-20 bg-base-100 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+  return html`<div class="ms-stage z-20 bg-base-100 flex flex-col">
     <div class="relative flex-1 min-h-0 overflow-hidden bg-black flex items-center justify-center">
       ${phase === "done" && result ? html`<${Fragment}>
         <img data-result src=${result.url} alt=${prompt} class="absolute inset-0 w-full h-full object-cover" />

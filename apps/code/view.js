@@ -91,7 +91,7 @@ export function code({ S }) {
     </div>`;
   };
 
-  return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+  return html`<div class="ms-stage z-20 bg-base-200 flex flex-col">
     <!-- board: past guesses, newest at the bottom -->
     <div class="flex-1 min-h-0 overflow-y-auto px-4 py-3 flex flex-col gap-2.5 max-w-md w-full mx-auto">
       <div class="flex items-center justify-between sticky top-0 bg-base-200 pb-1 z-[1]">

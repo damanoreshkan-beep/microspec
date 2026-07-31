@@ -122,7 +122,7 @@ export function kalimba({ S }) {
   useEffect(() => { const el = region.current; if (!el) return; const apply = () => setDim({ w: el.clientWidth, h: el.clientHeight }); apply(); const ro = new ResizeObserver(apply); ro.observe(el); return () => ro.disconnect(); }, []);
   useEffect(() => () => { flashes.current.forEach(clearTimeout); song.current.forEach(clearTimeout); if (eng.current) eng.current.close(); }, []);
 
-  return html`<div class="fixed left-0 right-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+  return html`<div class="ms-stage z-20 bg-base-200 flex flex-col">
     <div class="shrink-0 flex flex-col gap-1 px-2 py-2 border-b border-base-300">
       <div class="flex items-center gap-1.5 min-w-0">
         <span class="shrink-0 grid place-items-center text-muted" title=${T(t, "voice")}>${Icon("lucide:music", "text-sm")}</span>

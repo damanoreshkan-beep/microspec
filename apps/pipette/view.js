@@ -74,7 +74,7 @@ export function pipette({ S }) {
   const hslStr = picked ? (([h, s, l]) => `hsl(${h} ${s}% ${l}%)`)(rgbToHsl(picked)) : "";
   const grad = pal.length ? `linear-gradient(135deg, ${pal.map(rgbToHex).join(", ")})` : "#18181b";
 
-  return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+  return html`<div class="ms-stage z-20 bg-base-200 flex flex-col">
     <!-- preview -->
     <div class="relative flex-1 min-h-0 overflow-hidden bg-black">
       ${enabled && !err && !gate ? html`<video ref=${videoRef} autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover"></video>` : null}

@@ -211,7 +211,7 @@ export function retouch({ S, toast }) {
   const stageImg = result?.url || srcUrl;                                         // the image shown in the stage right now
   const isDone = phase === "done" && result;
 
-  return html`<div class="fixed inset-x-0 z-20 bg-base-100 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+  return html`<div class="ms-stage z-20 bg-base-100 flex flex-col">
     <input ref=${fileRef} type="file" accept="image/*" class="hidden" aria-hidden="true" onChange=${onFile} />
 
     <!-- ── the image stage (contain, so an editor never crops what you're working on) ── -->

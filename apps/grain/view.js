@@ -370,7 +370,7 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
   // watch the dock is a right-hand RAIL (--dock-h collapses to 0, --dock-w appears), which a `right-0` stage
   // runs straight underneath. 137px of this column sat under that rail, and the magnitude never moved while
   // I compacted the content — the overlap was horizontal all along.
-  return html`<div class="fixed left-0 z-20 flex flex-col" style="top:calc(var(--hdr-h) + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom));right:calc(var(--dock-w, 0px) + min(var(--dock-w, 0px), 1rem))">
+  return html`<div class="ms-stage z-20 flex flex-col">
     ${!take && !gate ? html`<${MicPrime} loc=${loc} reason=${T(t, "primeWhy")} denied=${denied}
       unavailable=${err === "unavailable" || err === "unsupported" || !mic.supported}
       onEnable=${rec} onSettings=${() => S.screen.set("perms")} />` : null}
@@ -420,9 +420,11 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
       </div>
 
       <div class="shrink-0 flex justify-center">
-        ${/* The island HUGS the transport (drift's shape): stretched to max-w-md it left the controls in the
-             left third with a hand's width of empty glass beside them. */""}
-        <${Island}>
+        ${/* The transport is an @container: it compacts by ITS OWN width, and its keys are shrink-0. So it
+             needs a box with a real width and no siblings — a `shrink-0` transport beside a flex-1 meter
+             spilled off the screen, and an island hugging its content starved it below the 230px step and
+             demoted every action into "…". Same shape as the Shape tab, which never looked wrong. */""}
+        <${Island} className="w-full max-w-md">
           <${Transport} locale=${loc} stopIcon playing=${playing} disabled=${!take} onToggle=${toggle} keep=${2}
             moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
             subtitle=${recording ? T(t, "recording") : working ? T(t, "working") : null}

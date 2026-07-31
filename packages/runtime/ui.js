@@ -304,7 +304,13 @@ export function Transport({
       ${Icon("lucide:ellipsis", "text-lg")}</button>` : null}` : null;
 
   return html`
-    <div data-transport class=${`@container flex flex-col gap-2 ${className}`}>
+    ${/* min-w-0 + max-w-full: a widget that can silently walk off the screen is a WIDGET bug, not a caller
+         mistake. Its keys are shrink-0 and callers legitimately put it in a flex row (handpan's reverb slider,
+         rave's two), so without a cap its max-content width wins, the box never reaches the container steps
+         below, and the row — which is justify-center — spills out of BOTH sides of its island: grain's play
+         button ended up half off the left edge of the display with every check green. Capped, the box can only
+         be as wide as what holds it, so it demotes into "…" the way it was designed to. */""}
+    <div data-transport class=${`@container min-w-0 max-w-full flex flex-col gap-2 ${className}`}>
       ${head}
       ${scrub}
       <div data-tp-row class="flex items-center justify-center gap-4 @max-[340px]:gap-1.5 @max-[300px]:gap-1 @max-[230px]:gap-0.5">

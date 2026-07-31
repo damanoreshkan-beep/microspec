@@ -78,7 +78,7 @@ export function qr({ S, toast }) {
   const openable = result && OPENABLE.has(result.kind);
   const edge = V ? V.edge : "rgba(255,255,255,.9)";
 
-  return html`<div class="fixed inset-x-0 z-20 bg-base-200 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+  return html`<div class="ms-stage z-20 bg-base-200 flex flex-col">
     <!-- camera aperture -->
     <div class="relative flex-1 min-h-0 overflow-hidden bg-black flex items-center justify-center">
       ${enabled && !err && !gate ? html`<video ref=${videoRef} autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover"></video>` : null}

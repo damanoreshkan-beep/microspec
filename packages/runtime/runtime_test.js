@@ -4699,3 +4699,38 @@ Deno.test("grain/wav: the canonical 44-byte 16-bit PCM header", () => {
   // full scale must not wrap to -32768
   assertEquals(new DataView(grWav([new Float32Array([1, -1])], sr).buffer).getInt16(44, true), 32767);
 });
+
+Deno.test(".ms-stage — a fixed stage consumes the chrome contract, and nobody hand-writes it", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const at = css.indexOf(".ms-stage {");
+  assert(at > 0, "no .ms-stage — a fixed stage has nothing to consume but hand-written numbers");
+  const rule = css.slice(at, css.indexOf("}", at));
+
+  // both chrome numbers are MEASURED ones, never a literal: --hdr-h compacts to 2.25rem on a watch, and a
+  // 3.5rem guess is 20px of content off the bottom of every fit screen there.
+  assert(/top:\s*calc\(var\(--hdr-h\)/.test(rule), "the stage's top must come from --hdr-h, not a literal");
+  assert(/bottom:\s*calc\(var\(--dock-h\)/.test(rule), "the stage's bottom must come from --dock-h");
+  assert(!/3\.5rem/.test(rule), "the header height is measured, not declared");
+  // …and the watch's dock is a RAIL, so a stage that only clears --dock-h slides under it (grain: 137px).
+  assert(/right:\s*calc\(var\(--dock-w/.test(rule), "the stage must clear the watch rail (--dock-w), not just the bar");
+  assert(/min\(var\(--dock-w/.test(rule), "the rail clearance must switch itself off when --dock-w is 0 — else every phone is inset");
+
+  // The enforcement half: eleven apps had each hand-written the same two terms, all eleven wrong in the same
+  // two ways, and no gate could see it because the geometry was inline. One class, or the farm drifts again.
+  const offenders = [];
+  for await (const e of Deno.readDir(new URL("../../apps", import.meta.url))) {
+    if (!e.isDirectory) continue;
+    let src;
+    try { src = await Deno.readTextFile(new URL(`../../apps/${e.name}/view.js`, import.meta.url)); } catch { continue; }
+    if (/bottom:\s*calc\(var\(--dock-h\)/.test(src) || /top:\s*calc\(3\.5rem/.test(src)) offenders.push(e.name);
+  }
+  assertEquals(offenders, [], `these apps hand-write the chrome geometry instead of using .ms-stage: ${offenders.join(", ")}`);
+});
+
+Deno.test("Transport cannot leave its container — the cap is the widget's, not the caller's", async () => {
+  const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
+  const root = /<div data-transport class=\$\{`([^`]*)`/.exec(ui)?.[1] ?? "";
+  assert(root.includes("@container"), "the transport must query its OWN width — a viewport query reads the window, and .ms-side / the watch rail both narrow the box while the window stays wide");
+  assert(root.includes("max-w-full"), `the transport must be capped by whatever holds it (its classes: ${root}) — its keys are shrink-0 and its row is justify-center, so an uncapped box spills out of BOTH sides of its island instead of demoting into the overflow sheet`);
+  assert(root.includes("min-w-0"), "…and it must be allowed to shrink inside a flex row, or the cap never binds");
+});

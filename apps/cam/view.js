@@ -119,7 +119,7 @@ export function cam({ S }) {
   const Toggle = (on, icon, label, onClick, extra) => html`<button aria-pressed=${!!on} aria-label=${label} onClick=${onClick} class=${`btn btn-circle btn-sm ${on ? "btn-primary" : "bg-base-100 text-base-content/80"}`}>${extra || Icon(icon, "text-base")}</button>`;
 
   return html`<${Fragment}>
-    <div class="fixed inset-x-0 z-20 flex items-stretch justify-center px-3 py-2" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+    <div class="ms-stage z-20 flex items-stretch justify-center px-3 py-2">
       <!-- the console body -->
       ${/* The chassis is the page extruded (sf-e3), so it needs no outline — and base-100 === base-200 in
            both themes now, which made the old from/to gradient a one-colour fill pretending to be shading.

@@ -247,7 +247,7 @@ export function handpan({ S }) {
   // field geometry: ding in the centre, fields evenly around a ring starting from the top, ascending clockwise
   const fields = s.midi.slice(1).map((m, k) => { const ang = -Math.PI / 2 + (k / n) * Math.PI * 2; const R = 37; return { idx: k + 1, m, x: 50 + R * Math.cos(ang), y: 50 + R * Math.sin(ang), size: clamp(24 - (m - s.midi[0]) * 0.32, 15, 23) }; });
 
-  return html`<div class="fixed left-0 right-0 z-20 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+  return html`<div class="ms-stage z-20 flex flex-col">
     <${RippleBg} />
     ${immersionAvailable ? html`<button data-immersion aria-pressed=${immersed} aria-label=${T(t, "immersion")} onClick=${toggleImmersion} class=${`absolute top-14 right-3 z-20 btn btn-circle btn-sm ${immersed ? "bg-secondary/25 text-secondary" : "bg-base-100 text-muted"}`}>${Icon("lucide:orbit", "text-lg")}</button>` : null}
     <div class="relative z-10 flex flex-col flex-1 min-h-0">
@@ -310,7 +310,7 @@ export function handpanWeave({ S, toast, screen, openScreen, closeScreen }) {
            (`sf-e2`) instead of frosted: a blur erases the very shadow pair that says "this is on top".
            Its 4px ticks are the theme's one sanctioned exception — a rail that thin cannot hold a pair, so
            the idle tick takes --sf-track-face, the same tone step a range groove uses. */""}
-      <div class="sticky z-10 -mx-4 px-4 bg-base-100 sf-e2 flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
+      <div class="sticky z-10 -mx-4 px-4 bg-base-100 sf-e2 flex items-center gap-[3px] py-1" style="top:calc(var(--hdr-h) + env(safe-area-inset-top))">
         <div class="w-7 shrink-0"></div>
         ${STEPS.map((step) => html`<div class=${`flex-1 h-1 rounded-full transition-colors ${step % 4 === 0 && step > 0 ? "ml-1" : ""} ${step === sweep ? "bg-accent" : step === cur ? "bg-secondary" : ""}`}
           style=${step === sweep || step === cur ? "" : "background:var(--sf-track-face)"} key=${step}></div>`)}

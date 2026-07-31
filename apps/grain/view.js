@@ -358,7 +358,12 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
   };
 
   const recording = cap === "recording", arming = cap === "arming", working = cap === "working";
-  return html`<div class="fixed left-0 right-0 z-20 flex flex-col" style="top:calc(3.5rem + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))">
+  // A fixed stage escapes #view's padding, so it consumes the chrome contract itself — and both numbers are
+  // MEASURED by render.js, never guessed here: a hardcoded 3.5rem ignores a header that compacts, and on a
+  // watch the dock is a right-hand RAIL (--dock-h collapses to 0, --dock-w appears), which a `right-0` stage
+  // runs straight underneath. 137px of this column sat under that rail, and the magnitude never moved while
+  // I compacted the content — the overlap was horizontal all along.
+  return html`<div class="fixed left-0 z-20 flex flex-col" style="top:calc(var(--hdr-h) + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom));right:var(--dock-w, 0px)">
     ${!take && !gate ? html`<${MicPrime} loc=${loc} reason=${T(t, "primeWhy")} denied=${denied}
       unavailable=${err === "unavailable" || err === "unsupported" || !mic.supported}
       onEnable=${rec} onSettings=${() => S.screen.set("perms")} />` : null}

@@ -201,11 +201,16 @@ async function preflight(appdir) {
     if (sensorImport && /\bcamera\b/.test(sensorImport[1]) && !/CameraPrime/.test(src)) {
       errs.push(`imports the camera but never renders <${"CameraPrime"}/> — a camera view must PRIME the permission with a custom "why + processed on your device" screen before the native getUserMedia prompt, never open the stream cold. Import { CameraPrime } from "/_rt/camprime.js" and show it until the user opts in.`);
     }
+    if (sensorImport && /\bmic\b/.test(sensorImport[1]) && !/MicPrime/.test(src)) {
+      errs.push(`imports the microphone but never renders <${"MicPrime"}/> — a mic view must PRIME the permission with a custom "why + processed on your device" screen before the native getUserMedia prompt. Import { MicPrime } from "/_rt/camprime.js" and show it until the user opts in.`);
+    }
+
     for (const e of rafErr) errs.push("render loop threw: " + (e?.message || e));
     for (const m of uncaught) errs.push("async/effect threw: " + m);
   } catch (e) {
     errs.push("mount threw: " + (e?.stack?.split("\n").slice(0, 3).join(" | ") || e?.message || e));
   }
+
   const name = appdir.replace(/\/$/, "").split("/").pop() + (URL_QUERY ? C.d + " " + URL_QUERY + C.x : "");
   if (errs.length) { console.log(`  ${C.r}✗ ${name}${C.x}`); errs.forEach((e) => console.log(`      ${C.r}${e}${C.x}`)); }
   else { console.log(`  ${C.g}✓ ${name}${C.x}${warns.length ? C.y + " (" + warns.length + " warn)" + C.x : ""}`); warns.forEach((w) => console.log(`      ${C.y}${w}${C.x}`)); }

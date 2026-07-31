@@ -1,0 +1,19 @@
+{
+  "id": "grain",
+  "theme": "signal",
+  "category": "sound",
+  "accent": "#57C4C0",
+  "tabs": [
+    { "id": "play", "type": "tool", "icon": "lucide:grid-2x2", "label": "tabPlay", "view": "grain", "fit": true, "needs": ["microphone", "motion"] },
+    { "id": "shape", "type": "tool", "icon": "lucide:audio-waveform", "label": "tabShape", "view": "grainShape" },
+    { "id": "takes", "type": "tool", "icon": "lucide:mic", "label": "tabTakes", "view": "grainTakes" },
+    { "id": "me", "type": "profile", "icon": "lucide:mic", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:mic",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "permissions": ["microphone", "motion"]
+  }
+}

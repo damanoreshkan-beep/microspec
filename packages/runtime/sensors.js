@@ -146,3 +146,51 @@ export const camera = {
     };
   },
 };
+
+export const MIC_MIMES = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+const MIC_CONSTRAINTS = { audio: { channelCount: { ideal: 1 }, echoCancellation: { ideal: false }, noiseSuppression: { ideal: false }, autoGainControl: { ideal: false } }, video: false };
+const micErr = (e) => {
+  const n = e && e.name;
+  if (n === "NotAllowedError" || n === "SecurityError") return "denied";
+  if (n === "NotFoundError" || n === "NotReadableError" || n === "OverconstrainedError") return "unavailable";
+  return "error";
+};
+
+export const mic = {
+  supported: typeof navigator !== "undefined" && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && typeof MediaRecorder !== "undefined",
+  mime() { try { return MIC_MIMES.find((m) => MediaRecorder.isTypeSupported?.(m)) || ""; } catch { return ""; } },
+  record({ seconds = 2, timeoutMs = 10000, bitsPerSecond = 128000, onStream, onErr } = {}) {
+    if (!this.supported) { onErr?.("unsupported"); return { done: Promise.resolve(null), stop() {}, cancel() {} }; }
+    let stream = null, rec = null, take = 0, dead = false, settle = null;
+    const done = new Promise((res) => { settle = res; });
+    const finish = (v) => {
+      if (dead) return;
+      dead = true; clearTimeout(take);
+      try { stream?.getTracks().forEach((tr) => tr.stop()); } catch {  }
+      stream = null; settle(v);
+    };
+    const fail = (kind) => { onErr?.(kind); finish(null); };
+    const guard = setTimeout(() => fail("timeout"), timeoutMs);
+    navigator.mediaDevices.getUserMedia(MIC_CONSTRAINTS).then((s) => {
+      clearTimeout(guard);
+      if (dead) { s.getTracks().forEach((tr) => tr.stop()); return; }        
+      stream = s; onStream?.(s);
+      const mime = this.mime(), chunks = [];
+      try { rec = new MediaRecorder(s, mime ? { mimeType: mime, audioBitsPerSecond: bitsPerSecond } : { audioBitsPerSecond: bitsPerSecond }); }
+      catch { fail("error"); return; }                                        
+      const settings = () => { try { return s.getAudioTracks()[0]?.getSettings?.() || {}; } catch { return {}; } };
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onerror = () => fail("error");
+      rec.onstop = () => finish(chunks.length ? { blob: new Blob(chunks, { type: rec.mimeType || mime || "audio/webm" }), mime: rec.mimeType || mime, settings: settings() } : null);
+      try { rec.start(); } catch { fail("error"); return; }
+      take = setTimeout(() => { try { if (rec.state !== "inactive") rec.stop(); } catch { finish(null); } }, seconds * 1000);
+    }).catch((e) => { clearTimeout(guard); fail(micErr(e)); });
+    const halt = (keep) => {
+      clearTimeout(guard);
+      if (rec && keep) { try { if (rec.state !== "inactive") { rec.stop(); return; } } catch {  } }
+      try { if (rec && rec.state !== "inactive") rec.stop(); } catch {  }
+      finish(null);
+    };
+    return { done, stop: () => halt(true), cancel: () => halt(false) };
+  },
+};

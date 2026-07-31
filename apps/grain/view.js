@@ -322,7 +322,7 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
   };
 
   const recording = cap === "recording", arming = cap === "arming", working = cap === "working";
-  return html`<div class="fixed left-0 z-20 flex flex-col" style="top:calc(var(--hdr-h) + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom));right:calc(var(--dock-w, 0px) + min(var(--dock-w, 0px), 1rem))">
+  return html`<div class="ms-stage z-20 flex flex-col">
     ${!take && !gate ? html`<${MicPrime} loc=${loc} reason=${T(t, "primeWhy")} denied=${denied}
       unavailable=${err === "unavailable" || err === "unsupported" || !mic.supported}
       onEnable=${rec} onSettings=${() => S.screen.set("perms")} />` : null}
@@ -357,7 +357,7 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
       </div>
 
       <div class="shrink-0 flex justify-center">
-        <${Island}>
+        <${Island} className="w-full max-w-md">
           <${Transport} locale=${loc} stopIcon playing=${playing} disabled=${!take} onToggle=${toggle} keep=${2}
             moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
             subtitle=${recording ? T(t, "recording") : working ? T(t, "working") : null}
@@ -454,6 +454,7 @@ function gateTake() {
   const loop = emptyLoop(); [0, 3, 5, 7, 10, 12].forEach((s, k) => { loop[s] = [0, 2, 4, 1, 5, 3][k]; });
   return { id: "gate-take", name: "A3", pcm, sr, dur: pcm.length / sr, hz: 220, pitched: true, scaleId: "pent", bpm: 84, loop };
 }
+
 export function grainTakes({ S, undo, toast }) {
   const t = useStore(S.t); _dict = t;
   const [list, setList] = useState(null);

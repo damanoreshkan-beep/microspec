@@ -268,7 +268,8 @@ export function Transport({
       ${Icon("lucide:ellipsis", "text-lg")}</button>` : null}` : null;
 
   return html`
-    <div data-transport class=${`@container flex flex-col gap-2 ${className}`}>
+    
+    <div data-transport class=${`@container min-w-0 max-w-full flex flex-col gap-2 ${className}`}>
       ${head}
       ${scrub}
       <div data-tp-row class="flex items-center justify-center gap-4 @max-[340px]:gap-1.5 @max-[300px]:gap-1 @max-[230px]:gap-0.5">
@@ -315,7 +316,6 @@ export function Transport({
       <//>` : null}
     </div>`;
 }
-
 /**
  * ── Stage — where a visualiser lives ──────────────────────────────────────────────────────────────────
  * A full-bleed `absolute inset-0` canvas centres its subject on the SCREEN, which is the wrong centre: the

@@ -291,7 +291,7 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
   return html`<${Fragment}>
     <div class="pb-40 flex flex-col gap-1">
       
-      <div class="sticky z-10 -mx-4 px-4 bg-base-100 sf-e2 flex items-center gap-[3px] py-1" style="top:calc(3.5rem + env(safe-area-inset-top))">
+      <div class="sticky z-10 -mx-4 px-4 bg-base-100 sf-e2 flex items-center gap-[3px] py-1" style="top:calc(var(--hdr-h) + env(safe-area-inset-top))">
         <div class="w-7 shrink-0"></div>
         ${STEPS.map((s) => { const hot = s === sweep ? "bg-accent" : s === cur ? "bg-secondary" : ""; return html`<div class=${`flex-1 h-1 rounded-full transition-colors ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${hot}`} style=${hot ? "" : "background:var(--sf-track-face)"} key=${s}></div>`; })}
       </div>

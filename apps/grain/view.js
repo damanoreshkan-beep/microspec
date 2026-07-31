@@ -258,14 +258,14 @@ function peaks(pcm, n) {
   const w = Math.floor(pcm.length / n) || 1;
   for (let i = 0; i < n; i++) { let p = 0; for (let j = i * w, e = Math.min(pcm.length, j + w); j < e; j++) { const a = Math.abs(pcm[j]); if (a > p) p = a; } out[i] = p; }
   const mx = Math.max(0.001, ...out);
-  return out.map((v) => v / mx);
+  return out.map((v) => Math.sqrt(v / mx));
 }
-function Wave({ take, pos, onSeek, bars = 56, className = "" }) {
+function Wave({ take, pos = 0, onSeek, bars = 56, dim = false, className = "" }) {
   const p = useMemo(() => peaks(take?.pcm, bars), [take, bars]);
   const hit = (e) => { if (!onSeek) return; const r = e.currentTarget.getBoundingClientRect(); onSeek(clamp((e.clientX - r.left) / Math.max(1, r.width), 0, 1)); };
   return html`<div data-live data-wave class=${`relative flex items-center gap-px w-full ${className}`} onPointerDown=${hit}>
-    ${p.map((v, i) => html`<span key=${i} class=${`flex-1 rounded-full ${i / bars <= pos ? "bg-primary" : ""}`}
-      style=${`height:${Math.max(6, Math.round(v * 100))}%${i / bars <= pos ? "" : ";background:var(--sf-track-face)"}`}></span>`)}
+    ${p.map((v, i) => { const played = !dim && i / bars <= pos; return html`<span key=${i} class=${`flex-1 rounded-full ${played ? "bg-primary" : dim ? "bg-base-content/40" : ""}`}
+      style=${`height:${Math.max(6, Math.round(v * 100))}%${played || dim ? "" : ";background:var(--sf-track-face)"}`}></span>`; })}
   </div>`;
 }
 
@@ -357,7 +357,7 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
       </div>
 
       <div class="shrink-0 flex justify-center">
-        <${Island} className="w-full max-w-md">
+        <${Island}>
           <${Transport} locale=${loc} stopIcon playing=${playing} disabled=${!take} onToggle=${toggle} keep=${2}
             moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
             subtitle=${recording ? T(t, "recording") : working ? T(t, "working") : null}
@@ -454,7 +454,6 @@ function gateTake() {
   const loop = emptyLoop(); [0, 3, 5, 7, 10, 12].forEach((s, k) => { loop[s] = [0, 2, 4, 1, 5, 3][k]; });
   return { id: "gate-take", name: "A3", pcm, sr, dur: pcm.length / sr, hz: 220, pitched: true, scaleId: "pent", bpm: 84, loop };
 }
-
 export function grainTakes({ S, undo, toast }) {
   const t = useStore(S.t); _dict = t;
   const [list, setList] = useState(null);
@@ -490,13 +489,14 @@ export function grainTakes({ S, undo, toast }) {
     return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 rounded-2xl" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full sf-inset shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${10} /></div><div class="h-5"><${Scramble} len=${18} /></div></div></div></div>`)}</div>`;
   }
   if (!list.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:mic", "text-4xl")}<span>${T(t, "takesEmpty")}</span></div>`;
+
   return html`<div class="flex flex-col gap-2">
     ${list.map((it) => html`<div data-take class="card bg-base-100 rounded-2xl" key=${it.id}>
       <div class="card-body p-3 flex-row items-center gap-3">
         <button data-open aria-label=${T(t, "aPlay")} class=${`btn btn-circle btn-sm shrink-0 ${take?.name === it.name ? "btn-secondary" : "btn-primary"}`} onClick=${() => open(it)}>${Icon("lucide:play", "text-base")}</button>
         <button class="flex-1 min-w-0 text-left flex flex-col gap-1.5" onClick=${() => open(it)}>
           <span class="flex items-baseline justify-between gap-2"><span class="font-semibold truncate">${it.name}</span><span class="text-xs text-base-content/70 tabular-nums shrink-0">${(it.dur || 0).toFixed(1)} s</span></span>
-          <span class="h-5 w-full"><${Wave} take=${it} pos=${0} bars=${40} className="h-5" /></span>
+          <span class="h-5 w-full"><${Wave} take=${it} dim bars=${40} className="h-5" /></span>
         </button>
         <button data-share aria-label=${T(t, "export")} class="btn btn-ghost btn-sm btn-circle text-muted" onClick=${() => share(it)}>${Icon("lucide:share-2", "text-lg")}</button>
         <button data-del aria-label=${T(t, "del")} data-haptic="bump" class="btn btn-ghost btn-sm btn-circle text-muted" onClick=${() => del(it)}>${Icon("lucide:trash-2", "text-lg")}</button>

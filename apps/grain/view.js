@@ -166,18 +166,18 @@ function stop() {
 const toggle = () => { buzz(12); $playing.get() ? stop() : start(); };
 const takeTitle = () => { const tk = $take.get(); return tk ? tk.name : "Grain"; };
 
-function flow(seed = randSeed()) {
+function flow(seed = randSeed(), { play = true } = {}) {
   const offs = scaleById($scale.get()).offs;
   const g = generateMelody(offs, { seed, len: N, restP: 0.3, tries: 240 });
   const next = emptyLoop();
   g.notes.forEach((n, i) => { if (!n.rest && n.i < offs.length) next[i] = n.i; });
   $loop.set(next);
-  if (!$playing.get()) start();
+  if (play && !$playing.get()) start();
 }
 
 let live = null;
 async function capture(onDone) {
-  if (gate) { adopt(syntheticSample(48000, 1.6), 48000, true); onDone?.(); return; }
+  if (gate) { adopt(syntheticSample(48000, 1.6), 48000, true); flow(20260731, { play: false }); onDone?.(); return; }
   $err.set(null); $capture.set("arming");
   const h = mic.record({
     seconds: TAKE_SECONDS,
@@ -334,12 +334,14 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
       </div>
 
       
-      <div class="shrink-0 relative rounded-[var(--ms-r)] sf-inset px-2 flex items-center h-[clamp(1.75rem,9vh,3.75rem)]">
+      <div class="shrink-0 relative rounded-[var(--ms-r)] sf-inset px-2 flex items-center h-[clamp(1.75rem,9vh,3.75rem)] overflow-hidden">
         <${Wave} take=${take} pos=${pos} onSeek=${(v) => $pos.set(v)} className="h-[70%]" />
         <span class="absolute right-2 top-0 bottom-0 flex items-center gap-1.5 pl-2 text-[var(--ms-label)] text-base-content/70 pointer-events-none">
           <span class="tabular-nums">${take ? `${take.dur.toFixed(1)}s` : "—"}</span>
           <span data-pitch class="font-semibold text-base-content">${take ? (take.pitched ? take.name : T(t, "unpitched")) : T(t, "noTake")}</span>
         </span>
+        
+        ${recording ? html`<span data-level class="absolute left-0 bottom-0 h-1 bg-error transition-all duration-100" style=${`width:${Math.round(level * 100)}%`}></span>` : null}
       </div>
 
       
@@ -347,14 +349,16 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
         onPointerDown=${down} onPointerUp=${up} onPointerCancel=${up} onPointerLeave=${up}>
         ${offs.map((o, i) => html`<button key=${i} data-field=${i} disabled=${!take}
           aria-label=${take?.pitched ? noteName(take.hz * semisToRate(o)) : `${T(t, "field")} ${i + 1}`}
-          class=${`min-h-0 overflow-hidden rounded-[var(--ms-r)] sf-raised flex items-end justify-start p-1.5 transition-transform duration-150 ${lit.has(i) ? "outline-2 outline-secondary scale-[1.02]" : ""} ${take ? "" : "opacity-40"}`}>
-          <span class="text-[var(--ms-label)] font-semibold tabular-nums text-base-content/70 truncate">${take?.pitched ? noteName(take.hz * semisToRate(o)) : `${o > 0 ? "+" : ""}${o}`}</span>
+          class=${`relative min-h-0 overflow-hidden rounded-[var(--ms-r)] sf-raised flex flex-col justify-end items-start gap-0.5 p-[var(--ms-pad)] transition-transform duration-150 ${lit.has(i) ? "outline-2 outline-secondary scale-[1.02]" : ""} ${take ? "" : "opacity-40"}`}>
+          <span class=${`absolute top-[var(--ms-pad)] right-[var(--ms-pad)] w-1.5 h-1.5 rounded-full transition-opacity duration-150 ${lit.has(i) ? "opacity-100" : "opacity-35"}`} style="background:var(--app-accent)"></span>
+          <span class="text-[var(--ms-label)] font-mono tabular-nums text-base-content/70 leading-none">${o > 0 ? `+${o}` : o}</span>
+          <span class="text-[var(--ms-title)] font-semibold tabular-nums leading-none truncate max-w-full">${take?.pitched ? noteName(take.hz * semisToRate(o)) : `${T(t, "field")} ${i + 1}`}</span>
         </button>`)}
       </div>
 
       <div class="shrink-0 flex justify-center">
-        <${Island} className="w-full max-w-md flex items-center gap-2">
-          <${Transport} className="shrink-0" locale=${loc} stopIcon playing=${playing} disabled=${!take} onToggle=${toggle} keep=${2}
+        <${Island} className="w-full max-w-md">
+          <${Transport} locale=${loc} stopIcon playing=${playing} disabled=${!take} onToggle=${toggle} keep=${2}
             moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
             subtitle=${recording ? T(t, "recording") : working ? T(t, "working") : null}
             actions=${[
@@ -364,9 +368,6 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
               { id: "share", icon: "lucide:share-2", label: T(t, "export"), onClick: exportWav, attr: { "data-export": true } },
               { id: "clear", icon: "lucide:eraser", label: T(t, "clear"), onClick: () => { buzz(); $loop.set(emptyLoop()); }, haptic: "bump", attr: { "data-clear": true } },
             ]} />
-          <div class="flex-1 min-w-0 h-2 rounded-full sf-inset overflow-hidden">
-            <div class="h-full rounded-full bg-error transition-all duration-100" style=${`width:${Math.round((recording ? level : 0) * 100)}%`}></div>
-          </div>
         <//>
       </div>
       ${err && err !== "denied" ? html`<div data-err class="shrink-0 text-center text-xs text-base-content/70">${T(t, "err" + err[0].toUpperCase() + err.slice(1))}</div>` : null}
@@ -446,6 +447,8 @@ const PRESETS = [
   { id: "stutter", name: "psStutter", hint: "psStutterHint", icon: "lucide:zap", size: 28, spray: 0, density: 2, drift: 0.9 },
   { id: "freeze", name: "psFreeze", hint: "psFreezeHint", icon: "lucide:snowflake", size: 120, spray: 8, density: 7, drift: 0 },
 ];
+
+
 function gateTake() {
   const sr = 48000, pcm = syntheticSample(sr, 1.6);
   const loop = emptyLoop(); [0, 3, 5, 7, 10, 12].forEach((s, k) => { loop[s] = [0, 2, 4, 1, 5, 3][k]; });
@@ -482,11 +485,11 @@ export function grainTakes({ S, undo, toast }) {
     catch { toast?.(T(t, "toastExportFail")); }
     $busy.set(false);
   };
+
   if (!useReveal(list !== null)) {
     return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 rounded-2xl" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full sf-inset shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${10} /></div><div class="h-5"><${Scramble} len=${18} /></div></div></div></div>`)}</div>`;
   }
   if (!list.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:mic", "text-4xl")}<span>${T(t, "takesEmpty")}</span></div>`;
-
   return html`<div class="flex flex-col gap-2">
     ${list.map((it) => html`<div data-take class="card bg-base-100 rounded-2xl" key=${it.id}>
       <div class="card-body p-3 flex-row items-center gap-3">

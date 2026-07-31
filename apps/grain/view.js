@@ -288,19 +288,24 @@ async function shareWav(bytes, name, t) {
 
 // ---- waveform: peaks as flex bars. No canvas — linkedom has none and the headless gate would measure a
 // blank box, so the shape of the sound must be real DOM. ----
+// Amplitude is displayed on a SQUARE ROOT, not linearly: a struck sample decays exponentially, so a linear
+// bar chart puts ~90% of the take on the 6px floor and the tail reads as a dotted line rather than a sound
+// (measured on the takes row — the 1.6 s fixture rendered as five bars and a row of dots).
 function peaks(pcm, n) {
   const out = new Array(n).fill(0); if (!pcm?.length) return out;
   const w = Math.floor(pcm.length / n) || 1;
   for (let i = 0; i < n; i++) { let p = 0; for (let j = i * w, e = Math.min(pcm.length, j + w); j < e; j++) { const a = Math.abs(pcm[j]); if (a > p) p = a; } out[i] = p; }
   const mx = Math.max(0.001, ...out);
-  return out.map((v) => v / mx);
+  return out.map((v) => Math.sqrt(v / mx));
 }
-function Wave({ take, pos, onSeek, bars = 56, className = "" }) {
+// `dim` = a portrait of the take with no read head: in a list the split would claim a playing position that
+// list has no concept of.
+function Wave({ take, pos = 0, onSeek, bars = 56, dim = false, className = "" }) {
   const p = useMemo(() => peaks(take?.pcm, bars), [take, bars]);
   const hit = (e) => { if (!onSeek) return; const r = e.currentTarget.getBoundingClientRect(); onSeek(clamp((e.clientX - r.left) / Math.max(1, r.width), 0, 1)); };
   return html`<div data-live data-wave class=${`relative flex items-center gap-px w-full ${className}`} onPointerDown=${hit}>
-    ${p.map((v, i) => html`<span key=${i} class=${`flex-1 rounded-full ${i / bars <= pos ? "bg-primary" : ""}`}
-      style=${`height:${Math.max(6, Math.round(v * 100))}%${i / bars <= pos ? "" : ";background:var(--sf-track-face)"}`}></span>`)}
+    ${p.map((v, i) => { const played = !dim && i / bars <= pos; return html`<span key=${i} class=${`flex-1 rounded-full ${played ? "bg-primary" : dim ? "bg-base-content/40" : ""}`}
+      style=${`height:${Math.max(6, Math.round(v * 100))}%${played || dim ? "" : ";background:var(--sf-track-face)"}`}></span>`; })}
   </div>`;
 }
 
@@ -415,7 +420,9 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
       </div>
 
       <div class="shrink-0 flex justify-center">
-        <${Island} className="w-full max-w-md">
+        ${/* The island HUGS the transport (drift's shape): stretched to max-w-md it left the controls in the
+             left third with a hand's width of empty glass beside them. */""}
+        <${Island}>
           <${Transport} locale=${loc} stopIcon playing=${playing} disabled=${!take} onToggle=${toggle} keep=${2}
             moreOpen=${screen === "more"} onMore=${() => openScreen("more")} onMoreClose=${closeScreen}
             subtitle=${recording ? T(t, "recording") : working ? T(t, "working") : null}
@@ -555,7 +562,7 @@ export function grainTakes({ S, undo, toast }) {
         <button data-open aria-label=${T(t, "aPlay")} class=${`btn btn-circle btn-sm shrink-0 ${take?.name === it.name ? "btn-secondary" : "btn-primary"}`} onClick=${() => open(it)}>${Icon("lucide:play", "text-base")}</button>
         <button class="flex-1 min-w-0 text-left flex flex-col gap-1.5" onClick=${() => open(it)}>
           <span class="flex items-baseline justify-between gap-2"><span class="font-semibold truncate">${it.name}</span><span class="text-xs text-base-content/70 tabular-nums shrink-0">${(it.dur || 0).toFixed(1)} s</span></span>
-          <span class="h-5 w-full"><${Wave} take=${it} pos=${0} bars=${40} className="h-5" /></span>
+          <span class="h-5 w-full"><${Wave} take=${it} dim bars=${40} className="h-5" /></span>
         </button>
         <button data-share aria-label=${T(t, "export")} class="btn btn-ghost btn-sm btn-circle text-muted" onClick=${() => share(it)}>${Icon("lucide:share-2", "text-lg")}</button>
         <button data-del aria-label=${T(t, "del")} data-haptic="bump" class="btn btn-ghost btn-sm btn-circle text-muted" onClick=${() => del(it)}>${Icon("lucide:trash-2", "text-lg")}</button>

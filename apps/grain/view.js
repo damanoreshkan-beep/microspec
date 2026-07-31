@@ -322,7 +322,7 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
   };
 
   const recording = cap === "recording", arming = cap === "arming", working = cap === "working";
-  return html`<div class="fixed left-0 z-20 flex flex-col" style="top:calc(var(--hdr-h) + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom));right:var(--dock-w, 0px)">
+  return html`<div class="fixed left-0 z-20 flex flex-col" style="top:calc(var(--hdr-h) + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom));right:calc(var(--dock-w, 0px) + min(var(--dock-w, 0px), 1rem))">
     ${!take && !gate ? html`<${MicPrime} loc=${loc} reason=${T(t, "primeWhy")} denied=${denied}
       unavailable=${err === "unavailable" || err === "unsupported" || !mic.supported}
       onEnable=${rec} onSettings=${() => S.screen.set("perms")} />` : null}
@@ -343,7 +343,7 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
       </div>
 
       
-      <div ref=${padRef} class="flex-1 min-h-0 grid grid-cols-2 [@media(max-height:430px)]:grid-cols-4 auto-rows-fr gap-[var(--ms-gap)]" style="touch-action:none"
+      <div ref=${padRef} class="flex-1 min-h-0 grid grid-cols-2 auto-rows-fr gap-[var(--ms-gap)]" style="touch-action:none"
         onPointerDown=${down} onPointerUp=${up} onPointerCancel=${up} onPointerLeave=${up}>
         ${offs.map((o, i) => html`<button key=${i} data-field=${i} disabled=${!take}
           aria-label=${take?.pitched ? noteName(take.hz * semisToRate(o)) : `${T(t, "field")} ${i + 1}`}
@@ -446,13 +446,12 @@ const PRESETS = [
   { id: "stutter", name: "psStutter", hint: "psStutterHint", icon: "lucide:zap", size: 28, spray: 0, density: 2, drift: 0.9 },
   { id: "freeze", name: "psFreeze", hint: "psFreezeHint", icon: "lucide:snowflake", size: 120, spray: 8, density: 7, drift: 0 },
 ];
-
-
 function gateTake() {
   const sr = 48000, pcm = syntheticSample(sr, 1.6);
   const loop = emptyLoop(); [0, 3, 5, 7, 10, 12].forEach((s, k) => { loop[s] = [0, 2, 4, 1, 5, 3][k]; });
   return { id: "gate-take", name: "A3", pcm, sr, dur: pcm.length / sr, hz: 220, pitched: true, scaleId: "pent", bpm: 84, loop };
 }
+
 export function grainTakes({ S, undo, toast }) {
   const t = useStore(S.t); _dict = t;
   const [list, setList] = useState(null);
@@ -483,7 +482,6 @@ export function grainTakes({ S, undo, toast }) {
     catch { toast?.(T(t, "toastExportFail")); }
     $busy.set(false);
   };
-
   if (!useReveal(list !== null)) {
     return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 rounded-2xl" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full sf-inset shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${10} /></div><div class="h-5"><${Scramble} len=${18} /></div></div></div></div>`)}</div>`;
   }

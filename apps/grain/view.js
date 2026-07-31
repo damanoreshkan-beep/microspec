@@ -363,7 +363,7 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
   // watch the dock is a right-hand RAIL (--dock-h collapses to 0, --dock-w appears), which a `right-0` stage
   // runs straight underneath. 137px of this column sat under that rail, and the magnitude never moved while
   // I compacted the content — the overlap was horizontal all along.
-  return html`<div class="fixed left-0 z-20 flex flex-col" style="top:calc(var(--hdr-h) + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom));right:var(--dock-w, 0px)">
+  return html`<div class="fixed left-0 z-20 flex flex-col" style="top:calc(var(--hdr-h) + env(safe-area-inset-top));bottom:calc(var(--dock-h) + env(safe-area-inset-bottom));right:calc(var(--dock-w, 0px) + min(var(--dock-w, 0px), 1rem))">
     ${!take && !gate ? html`<${MicPrime} loc=${loc} reason=${T(t, "primeWhy")} denied=${denied}
       unavailable=${err === "unavailable" || err === "unsupported" || !mic.supported}
       onEnable=${rec} onSettings=${() => S.screen.set("perms")} />` : null}
@@ -389,9 +389,11 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
         </span>
       </div>
 
-      ${/* Two columns of four on a phone; below 430px of height the same eight fields lie down into four
-           columns of two, so a rotated phone and a watch keep a tappable pad instead of a sliver. */""}
-      <div ref=${padRef} class="flex-1 min-h-0 grid grid-cols-2 [@media(max-height:430px)]:grid-cols-4 auto-rows-fr gap-[var(--ms-gap)]" style="touch-action:none"
+      ${/* Two columns, and the rows take whatever height is left — auto-rows-fr plus min-h-0 pads is what
+           makes the grid the absorbing void. A `[@media…]` Tailwind variant was here to lay the fields down
+           at short heights; it was the only arbitrary media variant in the farm, i.e. an unproven mechanism
+           carrying a fix, so it is gone until something needs it enough to prove it. */""}
+      <div ref=${padRef} class="flex-1 min-h-0 grid grid-cols-2 auto-rows-fr gap-[var(--ms-gap)]" style="touch-action:none"
         onPointerDown=${down} onPointerUp=${up} onPointerCancel=${up} onPointerLeave=${up}>
         ${offs.map((o, i) => html`<button key=${i} data-field=${i} disabled=${!take}
           aria-label=${take?.pitched ? noteName(take.hz * semisToRate(o)) : `${T(t, "field")} ${i + 1}`}

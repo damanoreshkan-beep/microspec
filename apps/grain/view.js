@@ -363,28 +363,35 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
       unavailable=${err === "unavailable" || err === "unsupported" || !mic.supported}
       onEnable=${rec} onSettings=${() => S.screen.set("perms")} />` : null}
 
-    <div class="flex flex-col flex-1 min-h-0 px-3 pb-2 gap-2">
-      <div class="shrink-0 flex items-center gap-2 pt-1">
+    ${/* A fit screen has ONE void that absorbs the height — here the field grid — and everything else is
+         shrink-0 sized off the density tokens. The grid earns that role only because its buttons carry
+         `min-h-0` and no intrinsic padding floor: with `p-2` and a text line they refused to compress and
+         pushed themselves under the dock (17px landscape, 137px on a watch — the gate named the button). */""}
+    <div class="flex flex-col flex-1 min-h-0 gap-[var(--ms-gap)]" style="padding:var(--ms-gap) var(--ms-pad)">
+      <div class="shrink-0 flex items-center gap-[var(--ms-gap)]">
         <${Segmented} attr="data-scale" scroll variant="outline" label=${T(t, "scale")}
           items=${SCALES.map((s) => ({ id: s.id, label: T(t, s.name) }))} value=${scaleId} onChange=${(id) => { buzz(); $scale.set(id); }} />
       </div>
 
       ${/* The take itself is the stage: its shape is the only thing on screen that is genuinely YOURS, so it
-           gets the width, and tapping it moves the read head. */""}
-      <div class="shrink-0 rounded-2xl sf-inset px-2 py-2 h-16 flex items-center">
-        <${Wave} take=${take} pos=${pos} onSeek=${(v) => $pos.set(v)} className="h-full" />
-      </div>
-      <div class="shrink-0 flex items-center justify-between text-xs text-base-content/70">
-        <span class="tabular-nums">${take ? `${take.dur.toFixed(1)} s` : "—"}</span>
-        <span data-pitch class="font-medium">${take ? (take.pitched ? take.name : T(t, "unpitched")) : T(t, "noTake")}</span>
+           gets the width, and tapping it moves the read head. The readout sits INSIDE it — a separate line
+           costs a row plus a gap on every screen, to say two short words. */""}
+      <div class="shrink-0 relative rounded-[var(--ms-r)] sf-inset px-2 flex items-center h-[clamp(1.75rem,9vh,3.75rem)]">
+        <${Wave} take=${take} pos=${pos} onSeek=${(v) => $pos.set(v)} className="h-[70%]" />
+        <span class="absolute right-2 top-0 bottom-0 flex items-center gap-1.5 pl-2 text-[var(--ms-label)] text-base-content/70 pointer-events-none">
+          <span class="tabular-nums">${take ? `${take.dur.toFixed(1)}s` : "—"}</span>
+          <span data-pitch class="font-semibold text-base-content">${take ? (take.pitched ? take.name : T(t, "unpitched")) : T(t, "noTake")}</span>
+        </span>
       </div>
 
-      <div ref=${padRef} class="flex-1 min-h-0 grid grid-cols-2 gap-2" style="touch-action:none"
+      ${/* Two columns of four on a phone; below 430px of height the same eight fields lie down into four
+           columns of two, so a rotated phone and a watch keep a tappable pad instead of a sliver. */""}
+      <div ref=${padRef} class="flex-1 min-h-0 grid grid-cols-2 [@media(max-height:430px)]:grid-cols-4 auto-rows-fr gap-[var(--ms-gap)]" style="touch-action:none"
         onPointerDown=${down} onPointerUp=${up} onPointerCancel=${up} onPointerLeave=${up}>
         ${offs.map((o, i) => html`<button key=${i} data-field=${i} disabled=${!take}
           aria-label=${take?.pitched ? noteName(take.hz * semisToRate(o)) : `${T(t, "field")} ${i + 1}`}
-          class=${`rounded-2xl sf-raised flex items-end justify-start p-2 transition-transform duration-150 ${lit.has(i) ? "outline-2 outline-secondary scale-[1.02]" : ""} ${take ? "" : "opacity-40"}`}>
-          <span class="text-xs font-semibold tabular-nums text-base-content/70">${take?.pitched ? noteName(take.hz * semisToRate(o)) : `${o > 0 ? "+" : ""}${o}`}</span>
+          class=${`min-h-0 overflow-hidden rounded-[var(--ms-r)] sf-raised flex items-end justify-start p-1.5 transition-transform duration-150 ${lit.has(i) ? "outline-2 outline-secondary scale-[1.02]" : ""} ${take ? "" : "opacity-40"}`}>
+          <span class="text-[var(--ms-label)] font-semibold tabular-nums text-base-content/70 truncate">${take?.pitched ? noteName(take.hz * semisToRate(o)) : `${o > 0 ? "+" : ""}${o}`}</span>
         </button>`)}
       </div>
 

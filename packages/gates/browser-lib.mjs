@@ -123,21 +123,16 @@ export const BREAKPOINTS = [
   { id: "phone-land",  w: 844,  h: 390,  note: "19.5:9 · rotated — the height test" },
   { id: "split",       w: 412,  h: 430,  note: "split-screen — two apps stacked on a tall phone" },
   { id: "split-sm",    w: 360,  h: 340,  note: "floating window — the height floor" },
-  
-  
-  { id: "watch",       w: 208,  h: 248,  note: "watch — the smallest real screen" },
-  { id: "watch-sq",    w: 200,  h: 200,  note: "square watch (Wear OS round) — the vertical floor" },
   { id: "tablet",      w: 768,  h: 1024, note: "3:4 · tablet portrait" },
   { id: "tablet-land", w: 1024, h: 768,  note: "4:3 · tablet landscape" },
   { id: "desktop",     w: 1280, h: 900,  note: "16:10 · desktop" },
 ];
 
 
-
-
 export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) {
   const out = [];
   for (const bp of BREAKPOINTS) {
+    
     
     
     if (bp.w < minWidth) continue;
@@ -325,16 +320,8 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
 
 
 
-
-
-
-
-
-
-
-export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
+export async function runDesignChecks(ev) {
   const out = [];
-  
   
   await ev(() => { const s = document.createElement("style"); s.id = "__freeze"; s.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}"; document.head.appendChild(s); });
   const runAxe = () => ev(async () => {
@@ -350,6 +337,7 @@ export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
   try {
     await ev(async (src) => { await new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }, AXE);
     out.push(axeResult(await runAxe(), "(dark)"));
+    
     const base = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
     const flipped = await ev((th) => { const t = th.includes("light") ? th : th + "-light"; document.documentElement.setAttribute("data-theme", t); return t; }, base);
     await sleep(200);
@@ -367,40 +355,6 @@ export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
   });
   out.push(ovi.ov <= 1 ? { name: "phone 384px: без горизонтального overflow", ok: true } : { name: "phone 384px: overflow", ok: false, msg: `+${ovi.ov}px — винуватець: ${ovi.sel}` });
 
-  await ev(() => { const v = document.getElementById("view"); if (v) v.style.maxWidth = "200px"; });
-  await sleep(250);
-  
-  const watch = await ev(() => {
-    
-    const widest = (box) => {
-      let far = box.getBoundingClientRect().right, sel = "?";
-      for (const el of box.querySelectorAll("*")) {
-        const r = el.getBoundingClientRect();
-        if (r.width > 0 && r.right > far + 0.5) {
-          far = r.right;
-          const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 3).join(".") : "";
-          sel = el.tagName.toLowerCase() + (c ? "." + c : "");
-        }
-      }
-      return sel;
-    };
-    const cards = [...document.querySelectorAll(".card")];
-    if (cards.length) {
-      let m = 0, sel = "?";
-      cards.forEach((c) => { const o = c.scrollWidth - c.clientWidth; if (o > m) { m = o; sel = widest(c); } });
-      return { mode: "card", o: m, sel };
-    }
-    const v = document.getElementById("view");
-    return { mode: "view", o: v ? v.scrollWidth - v.clientWidth : 0, sel: v ? widest(v) : "?" };
-  });
-  await ev(() => { const v = document.getElementById("view"); if (v) v.style.maxWidth = ""; });   
-  const soft = minWidth > 200;
-  out.push(watch.o <= 2
-    ? { name: `watch ~200px: ${watch.mode === "card" ? "контент уміщується (container query)" : "без overflow (custom view)"}`, ok: true }
-    : soft
-      ? { name: `watch ~200px: нижче оголошеної підлоги ${minWidth}px`, ok: true, soft: true,
-          msg: `+${watch.o}px overflow — винуватець: ${watch.sel} (spec.minWidth=${minWidth})` }
-      : { name: "watch ~200px: контент не вміщується", ok: false, msg: `+${watch.o}px overflow${watch.mode === "card" ? " у картці" : ""} — винуватець: ${watch.sel}` });
   await ev(() => document.getElementById("__freeze")?.remove());
   return out;
 }

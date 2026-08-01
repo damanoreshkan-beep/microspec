@@ -34,13 +34,14 @@ search, filters, i18n, offline, and PWA install. Then hard CI gates run each cha
 Chromium and **fail the build** on:
 
 - any axe-core accessibility violation (critical/serious), in both light and dark themes
-- any horizontal overflow at 384px (phone) or a smartwatch-width container at 200px
+- any horizontal overflow at 384px (phone), and a fit screen that overflows or hides content under the dock
+  at any breakpoint in the matrix (portrait, landscape, split-screen, tablet, desktop)
 - the app's own end-to-end assertions, and any uncaught error / console.error in any state
 - render-integrity issues (blank render, unclosed tags, missing translation keys, content-less spinners)
   — via a browser-free preflight that runs in ~2s
 
 Red gate → no merge. Green gate → auto-deploy to GitHub Pages. So an agent that introduces a low-contrast
-button or an element that overruns the watch simply can't land the PR — no human has to catch it.
+button or an element that overruns the phone simply can't land the PR — no human has to catch it.
 
 The whole thing is the proof: 63 apps live on plain Pages, no backend, each built this way. Try a few —
 Frontier (fresh GitHub OSS, descriptions translated on-device), a Hugging Face models+Spaces catalog, a
@@ -64,9 +65,9 @@ A few things that surprised me building this:
 - **The constraint is the feature.** I kept wanting to let the spec do more; every time I widened it, the
   gates got weaker and the apps got worse. The narrow family set is exactly what makes "an AI can't ship
   broken" a provable statement rather than a slogan.
-- **Gates catch things review misses.** The responsive check runs at *true* 384px and a 200px
-  watch-width container — a surprising number of "looks fine on my laptop" layouts fail there. Same for
-  contrast in the light theme when you only eyeballed dark.
+- **Gates catch things review misses.** The responsive check runs at *true* 384px and across a matrix of
+  real screens down to the small-phone floor — a surprising number of "looks fine on my laptop" layouts fail
+  there. Same for contrast in the light theme when you only eyeballed dark.
 - **Two-tier gating pays off.** A browser-free `preflight` (linkedom mount, ~2s) catches render throws,
   unclosed tags, and missing i18n keys before the ~90s Chromium job even starts — so the slow gate almost
   never fails on dumb mistakes.

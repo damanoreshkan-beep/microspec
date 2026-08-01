@@ -139,9 +139,9 @@ export function listenView({ S, screen, openScreen, closeScreen }) {
       ${LISTEN_PRESETS.map((b) => {
     const on = preset === b.id;
     return html`<button key=${b.id} data-preset=${b.id} aria-pressed=${on} onClick=${() => listen(t, b.id)}
-        class=${`flex items-center gap-2.5 rounded-[var(--ms-r)] px-3.5 py-3 text-left transition ${on ? "sf-e3 bg-primary/10 ring-1 ring-primary/40" : "sf-raised sf-e2"}`}>
+        class=${`flex items-center gap-2.5 rounded-[var(--ms-r)] px-3.5 py-3 text-left transition min-w-0 ${on ? "sf-e3 bg-primary/10 ring-1 ring-primary/40" : "sf-raised sf-e2"}`}>
         ${Icon(b.icon, `text-2xl shrink-0 ${on ? "text-primary" : "text-muted"}`)}
-        <span class=${`font-medium leading-tight ${on ? "" : "text-base-content/80"}`}>${T(t, b.key)}</span>
+        <span class=${`font-medium leading-tight min-w-0 ${on ? "" : "text-base-content/80"}`}>${T(t, b.key)}</span>
       </button>`;
   })}
     </div>
@@ -175,6 +175,7 @@ export function listenView({ S, screen, openScreen, closeScreen }) {
         onNext=${p ? nextChannel : undefined}
         title=${p ? T(t, p.key) : T(t, "listenPick")}
         subtitle=${p ? T(t, state === "live" ? "listening" : state === "silent" ? "silent" : "searching") : null}
+        moreOpen=${screen === "more"} onMore=${() => { buzz(); openScreen("more"); }} onMoreClose=${closeScreen}
         actions=${[
     { id: "squelch", icon: squelch ? "lucide:volume-1" : "lucide:volume-2", label: T(t, "squelch"), onClick: toggleSquelch, active: squelch, pressed: squelch },
     { id: "opts", icon: "lucide:sliders-horizontal", label: T(t, "volume"), onClick: () => { buzz(); openScreen("opts"); }, pressed: screen === "opts" },

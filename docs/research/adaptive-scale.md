@@ -1,4 +1,8 @@
-# Adaptive from 200×200 to a TV — which mechanism answers which question
+# Adaptive from the small-phone floor to a TV — which mechanism answers which question
+
+> Historical note: the farm previously targeted smartwatch viewports (200–300px). That was dropped —
+> the gate no longer sweeps below the small-phone floor (320px). The mechanism lessons below stand
+> regardless of where the bottom of the ladder sits.
 
 Research note for: *"you are making crutches at random without even researching the problem. Research how our
 adaptivity requirements are properly built on Tailwind, from watch 200×200 up to TV."*
@@ -52,7 +56,6 @@ One scale, two mechanisms, no gaps. Sizes in CSS px.
 
 | Band | Shape | Decided by | What changes |
 |---|---|---|---|
-| **200×200 – 300 wide** | watch | **media** (device fact) | dock becomes a rail, header sheds its wordmark, `.ms-side` becomes a pager |
 | ≤440 tall | split-screen / floating window | **media** | fourth density step, dock drops captions |
 | ≤520 tall (≥340 wide) | landscape phone, split | **media** | `.ms-side`: stage moves beside its controls |
 | 320–430 wide | phones | **container** | component internals: strips, transports, groups |

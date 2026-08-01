@@ -37,7 +37,7 @@ text → raise opacity (`/80`); a scrollable region → add `tabindex="0"`.
 - Every UI string goes through i18n `T()` (base `en` + `uk`); no static text in the render layer.
 - Every dismissable overlay/sub-screen is **history-backed** — system Back closes it, never exits the
   app. Route via a runtime atom (`S.detail`/`S.sheet`/`S.screen`), never local state; add a `h.back()` test.
-- DaisyUI components only (no custom CSS); container queries for watch→phone. Service worker is
+- DaisyUI components only (no custom CSS); container queries for narrow→phone. Service worker is
   network-first. No Chromium on the dev device — CI is the gate.
 
 By contributing you agree your work is licensed under the [MIT License](LICENSE).

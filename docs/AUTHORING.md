@@ -198,7 +198,7 @@ radius. For anything measured, `/_rt/geofix.js` averages a stationary series int
 error into a total — a distance printed without its `±` is not a measurement.
 
 **The gate has no hardware.** Left alone your app renders "locating…" forever, and that empty branch is
-what a11y, overflow@384 and watch@200 then measure — so the live layout (a rotated dial's bounding box, the
+what a11y and overflow@384 then measure — so the live layout (a rotated dial's bounding box, the
 readout at its widest) is checked by nobody and breaks only on a real phone. This has shipped twice.
 
 So: seed a plausible reading when `isGate || MOCK` (see `apps/ruler` — `SAMPLE_FIXES` is a stationary burst,
@@ -219,7 +219,7 @@ Layouts `feed`/`row`/`grid`/`table` · `detail` · `search`/`searchFetch` · `pa
 
 CI: `unit` (runtime tests + ajv over every spec) → a Chromium `verify` job per changed app
 (packages/ change → whole farm). On **every tab** (not just the default) each verify runs:
-**axe 0 critical/serious in DARK *and* LIGHT** · no overflow@384 · glance@200; plus e2e and shots
+**axe 0 critical/serious in DARK *and* LIGHT** · no overflow@384 · the responsive matrix per tab; plus e2e and shots
 (`main.png` · `tab-<id>.png` per tab · `light.png`).
 
 - **Accessible names.** Every form control (`input`/`select`/`toggle`) needs an accessible name — an

@@ -119,23 +119,21 @@ settled, and animated** states, and watched for runtime errors the whole time:
 
 ### Eight viewports, not two
 
-"Responsive" used to mean 384px and a 200px-wide *element*. It now means eight real screens, each of which
-breaks something different:
+"Responsive" used to mean 384px. It now means a matrix of real screens, each of which breaks something
+different:
 
 | | | |
 |---|---|---|
-| `phone-sm` 320×568 | `phone` 384×832 — the reference | `phone-tall` 412×915 |
+| `phone-sm` 320×568 — the small-phone floor | `phone` 384×832 — the reference | `phone-tall` 412×915 |
 | `phone-land` 844×390 — the height test | `split` 412×430 — two apps stacked | `split-sm` 360×340 — a floating window |
-| `watch` 208×248 — the smallest real screen | `watch-sq` 200×200 — fails *vertically* | |
+| `tablet` 768×1024 | `tablet-land` 1024×768 | `desktop` 1280×900 |
 
-At watch size the runtime doesn't shrink the phone layout — it changes shape. The bottom dock rotates into a
-**40px vertical rail** (width once, instead of 68px of height forever), captions drop, side-by-side panels
-become a scroll-snap pager, and the density ladder steps down. See
-[docs/research/watch-mode.md](docs/research/watch-mode.md) and
+Below the small-phone floor the runtime doesn't shrink the phone layout — it changes shape (the density
+ladder steps down, side-by-side panels become a scroll-snap pager). See
 [docs/research/adaptive-scale.md](docs/research/adaptive-scale.md) for which mechanism answers which
 question — media query, container query, or `svh`.
 
-An agent that introduces an inaccessible contrast pair, an element that overflows the watch, or a view that
+An agent that introduces an inaccessible contrast pair, an element that overflows the phone, or a view that
 throws **cannot get its change onto the site.** No human has to catch it.
 
 ## Measured, not claimed

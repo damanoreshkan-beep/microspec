@@ -3,7 +3,6 @@
   "theme": "signal",
   "category": "hackrf",
   "accent": "#38bdf8",
-  "minWidth": 320,
   "tabs": [
     {
       "id": "listen",

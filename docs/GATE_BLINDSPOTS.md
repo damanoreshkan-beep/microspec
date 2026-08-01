@@ -103,8 +103,8 @@ an observer cannot be armed against something that has not rendered yet. When a 
   measured.** The compass rose overflowed by 39px at 384px and 132px at 200px: a rotated square's bounding
   box grows √2, but with no magnetometer the dial sat at 0° and never rotated. The ruler's fix readout
   failed contrast in both themes at an effective 39% opacity — invisible to axe, because with no GPS the
-  element never mounted. Both were green. Both were broken only on a phone. The a11y sweep, overflow@384
-  and watch@200 all passed a screen no user will ever see. *Closed: preflight fails any app importing a
+  element never mounted. Both were green. Both were broken only on a phone. The a11y sweep and overflow@384
+  all passed a screen no user will ever see. *Closed: preflight fails any app importing a
   reading capability (`geo`/`compass`/`motion`/`mic`/`camera`) that mounts no `[data-live]` element — the
   mock must seed a plausible reading, and the live UI must exist for the checks below it to mean anything.
   Measured by `efficacy.mjs/sensor-mock-unseeded`, which disables the gate detection so the mock stops
@@ -173,24 +173,16 @@ and would land in the middle of a feature push — but it is cheap and it closes
   real device remains the only full proof.
 
 ### 12. A check that switches modes silently is only running where you didn't look
-The watch~200px check narrows `#view` and measures the overflow — **unless the screen carries a
-`.card`, in which case it measures the cards instead and never looks at `#view` at all**. Almost
-every app in this farm renders cards, so for most of its life that branch has been measuring card
-internals; the `#view` branch was effectively dormant. `brick` is the first app with no card on
-screen at all (it is a console), and it lit up immediately with two things that had been true the
-whole time:
-
-- a **closed** `Sheet` is not an absent one — DaisyUI keeps `.modal` in the layout (hidden, not
-  removed), so a dialog nobody opened still has a box for the check to find;
-- a `1fr` grid column carries a floor of its own min-content, so one uppercase letter-spaced word
-  (`ВІДСТАНЬ`) refused to shrink below a third of a 200px screen.
-
-Neither is exotic and neither is new. They were simply in the half of the check that nothing
-exercised. **A gate with two modes has two coverage stories, and the quiet one is the one to
-distrust** — when you add a mode, ask which apps actually reach it, and if the answer is "none",
-the mode is documentation rather than a gate.
-*Open:* the mode split itself is still there, and it is still the case that no card-bearing app
-ever has its `#view` measured at 200px.
+A gate that branches on the DOM it finds — measuring cards where there are cards, the `#view`
+container where there are none — has two coverage stories, and only one of them runs on any given
+app. Almost every app in this farm renders cards, so a `#view`-only branch can sit effectively
+dormant for the life of the project while every run reports green. **When a check has two modes, ask
+which apps actually reach each one; if the answer for a branch is "none", that branch is
+documentation, not a gate.** Two defects that hid in exactly such a dormant branch, both true the
+whole time nothing exercised it: a **closed** `Sheet` is not an absent one (DaisyUI keeps `.modal`
+in the layout, hidden not removed, so a dialog nobody opened still has a box the check finds), and a
+`1fr` grid column carries a floor of its own min-content (one uppercase letter-spaced word refuses
+to shrink). Neither is exotic; both were simply in the half of the check nothing ran.
 
 ### 13. A canvas is opaque to every gate here
 `brick` draws its entire game — terrain, character, score readout, game-over state — into a

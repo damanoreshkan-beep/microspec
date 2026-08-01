@@ -1,6 +1,6 @@
 # Design taste gate — rubric
 
-The automated gates (axe, overflow@384, watch@200, e2e) prove an app is **correct, accessible, and
+The automated gates (axe, overflow@384, the responsive matrix, e2e) prove an app is **correct, accessible, and
 responsive**. They cannot see whether it's **well-designed** — a screen can pass every check and still look
 generic, incoherent, or cluttered. (`brick`, named in several examples below, was deleted on
 2026-07-30; the examples stay, because what they teach does not depend on the app still existing.) This rubric is the fourth gate: an **agent** (Claude, in a session or a
@@ -15,7 +15,6 @@ short window, and the ones axe cannot see only appear in the *other* theme.
 deno run -A packages/gates/shoot.mjs <app…> --seed                 # the reference device (384×832)
 deno run -A packages/gates/shoot.mjs <app…> --seed --bp split      # 412×430 — two apps on one phone
 deno run -A packages/gates/shoot.mjs <app…> --seed --bp split-sm   # 360×340 — the floating-window floor
-deno run -A packages/gates/shoot.mjs <app…> --seed --bp watch      # 208×248 — watch mode (rail + pager)
 deno run -A packages/gates/shoot.mjs <app…> --seed --theme light   # …and any of the above in the other theme
 ```
 
@@ -64,12 +63,6 @@ picture is getting are still `shoot.mjs`'s job.
   "fits" because its save button, its repeat mode or its visualiser quietly stopped rendering is a fail, and
   no overflow check can see it — only the eye can. The dock may drop its labels; it may not drop its
   targets or its accessible names.
-- **Watch mode reaches everything** — at `208×248` and `200×200` the dock is a vertical **rail** on the
-  right (icons only, targets intact, every tab one tap away) and a `.ms-side` layout is a **swipe pager**,
-  not a squeezed split. Check that: both pages are reachable, the indicator says which one you are on, the
-  header kept its controls and lost only its wordmark, and nothing is under the rail. A watch screen that
-  "works" because half its controls are off-canvas with no way back is the amputation rule again, at the
-  size where it is most tempting.
 - **A player is the player** — anything that plays uses the kit's `Transport` (`/_rt/ui.js`), never a
   hand-rolled play button (preflight bans the toggle; the eye catches the rest). At `split` check the whole
   ladder in one look: the play key still reads as the primary control, prev/next/repeat/shuffle are all

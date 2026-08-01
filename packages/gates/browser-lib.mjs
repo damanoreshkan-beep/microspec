@@ -170,16 +170,6 @@ export const BREAKPOINTS = [
   { id: "phone-land",  w: 844,  h: 390,  note: "19.5:9 · rotated — the height test" },
   { id: "split",       w: 412,  h: 430,  note: "split-screen — two apps stacked on a tall phone" },
   { id: "split-sm",    w: 360,  h: 340,  note: "floating window — the height floor" },
-  // A REAL watch viewport (Apple Watch 46mm; Wear OS round is 227×227). The long-standing "watch ~200px"
-  // check below narrows #view with an inline style inside a 384px window — so no media query fires, the
-  // density tokens never step and the dock never becomes a rail. It tests a narrow ELEMENT; this tests the
-  // screen, which is the only way the chrome itself is ever measured.
-  { id: "watch",       w: 208,  h: 248,  note: "watch — the smallest real screen" },
-  // The SQUARE watch is a different test, not a rounding of the one above: Wear OS round is 227×227 and
-  // the floor is ~200×200, so the height drops from 248 to 200 while the width barely moves. Everything
-  // that fails at this size fails VERTICALLY — which is exactly the axis the rail was meant to buy back,
-  // so this is the shape that proves the trade actually worked.
-  { id: "watch-sq",    w: 200,  h: 200,  note: "square watch (Wear OS round) — the vertical floor" },
   { id: "tablet",      w: 768,  h: 1024, note: "3:4 · tablet portrait" },
   { id: "tablet-land", w: 1024, h: 768,  note: "4:3 · tablet landscape" },
   { id: "desktop",     w: 1280, h: 900,  note: "16:10 · desktop" },
@@ -402,18 +392,10 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
   return out;
 }
 
-// The 3 design checks (a11y / overflow@384 / watch-glance@200). Returns [{name, ok, msg, soft}].
-//
-// `minWidth` is the app's DECLARED floor (spec.minWidth, default 200). Below it the glance check
-// still narrows #view, still measures, and still prints its number and its offending element —
-// it is reported as a warning rather than a failure. An app that has stated it cannot go narrower
-// than 320px is not hiding a defect: a game console whose pad and action keys are five tap
-// targets in a row, and five times the 36px floor is 180px before a single gap.
-//   Note this check narrows #view with an INLINE style inside a 384px window, so no media query
-// fires while it runs — the density ladder never steps and .ms-side never becomes a pager. It is
-// a test of an ELEMENT at 200px, not of a screen at 200px, which is precisely why an app whose
-// controls are sized off the viewport can pass the real watch breakpoints and fail this one.
-export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
+// The design checks (a11y in both themes / horizontal overflow@384). Returns [{name, ok, msg}].
+// The declared floor (spec.minWidth) is applied by the responsive matrix, which skips any breakpoint
+// narrower than an app's stated minimum — see runResponsiveMatrix.
+export async function runDesignChecks(ev) {
   const out = [];
   // Freeze all CSS transitions/animations for the duration of the checks: otherwise flipping data-theme
   // (dark→light) samples axe mid-transition and a borderline contrast flickers pass/fail. Removed at the end.
@@ -450,41 +432,6 @@ export async function runDesignChecks(ev, { minWidth = 200 } = {}) {
   });
   out.push(ovi.ov <= 1 ? { name: "phone 384px: без горизонтального overflow", ok: true } : { name: "phone 384px: overflow", ok: false, msg: `+${ovi.ov}px — винуватець: ${ovi.sel}` });
 
-  await ev(() => { const v = document.getElementById("view"); if (v) v.style.maxWidth = "200px"; });
-  await sleep(250);
-  // cards (data apps) → check each card collapses; no cards (tool/custom view) → check the view container doesn't overflow
-  const watch = await ev(() => {
-    // Name the offender — a check that reports a magnitude with no subject turns every fix into guesswork.
-    // Same scan the responsive matrix does: the element whose right edge reaches furthest past the box.
-    const widest = (box) => {
-      let far = box.getBoundingClientRect().right, sel = "?";
-      for (const el of box.querySelectorAll("*")) {
-        const r = el.getBoundingClientRect();
-        if (r.width > 0 && r.right > far + 0.5) {
-          far = r.right;
-          const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 3).join(".") : "";
-          sel = el.tagName.toLowerCase() + (c ? "." + c : "");
-        }
-      }
-      return sel;
-    };
-    const cards = [...document.querySelectorAll(".card")];
-    if (cards.length) {
-      let m = 0, sel = "?";
-      cards.forEach((c) => { const o = c.scrollWidth - c.clientWidth; if (o > m) { m = o; sel = widest(c); } });
-      return { mode: "card", o: m, sel };
-    }
-    const v = document.getElementById("view");
-    return { mode: "view", o: v ? v.scrollWidth - v.clientWidth : 0, sel: v ? widest(v) : "?" };
-  });
-  await ev(() => { const v = document.getElementById("view"); if (v) v.style.maxWidth = ""; });   // restore for subsequent shots
-  const soft = minWidth > 200;
-  out.push(watch.o <= 2
-    ? { name: `watch ~200px: ${watch.mode === "card" ? "контент уміщується (container query)" : "без overflow (custom view)"}`, ok: true }
-    : soft
-      ? { name: `watch ~200px: нижче оголошеної підлоги ${minWidth}px`, ok: true, soft: true,
-          msg: `+${watch.o}px overflow — винуватець: ${watch.sel} (spec.minWidth=${minWidth})` }
-      : { name: "watch ~200px: контент не вміщується", ok: false, msg: `+${watch.o}px overflow${watch.mode === "card" ? " у картці" : ""} — винуватець: ${watch.sel}` });
   await ev(() => document.getElementById("__freeze")?.remove());
   return out;
 }

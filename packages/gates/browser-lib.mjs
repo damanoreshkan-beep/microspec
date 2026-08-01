@@ -192,9 +192,13 @@ export const BREAKPOINTS = [
 //     page sets overflow:hidden — so content that does not fit is CLIPPED rather than scrollable, and a
 //     document-level scroll check would call that a pass while the bottom control sits off-screen.
 // Restores the original viewport before returning, so shots after it are still the reference device.
-export async function runResponsiveMatrix(page, ev, dev) {
+export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) {
   const out = [];
   for (const bp of BREAKPOINTS) {
+    // An app may DECLARE a floor (spec.minWidth) — a width below which it does not claim to run (a
+    // USB-tethered SDR is never opened on a watch). Below that floor we don't assert the layout, the same
+    // way the glance check goes soft. Default 0 → every app is still swept down to the watch, unchanged.
+    if (bp.w < minWidth) continue;
     await page.setViewportSize({ width: bp.w, height: bp.h });
     await sleep(260);                                   // let the height-token step + container queries settle
     const m = await ev(() => {

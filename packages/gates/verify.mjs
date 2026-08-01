@@ -81,7 +81,7 @@ try {
     // once per app: a fit instrument and its scrolling profile are different layouts with different
     // failure modes, and only one of them is on screen at a time.
     console.log(`  ${C.d}responsive${lbl}${C.x}`);
-    for (const c of await runResponsiveMatrix(page, ev, dev)) c.ok ? ok(c.name + lbl, c.msg) : no(c.name + lbl, c.msg, c.detail);
+    for (const c of await runResponsiveMatrix(page, ev, dev, designOpts)) c.ok ? ok(c.name + lbl, c.msg) : no(c.name + lbl, c.msg, c.detail);
     if (wantShots) await Deno.writeFile(`${appdir}/states/${ti === 0 ? "main" : "tab-" + tb}.png`, await page.screenshot());
   }
   if (tabList.length > 1) { await h.click(`[data-tab="${tabList[0]}"]`); await h.wait(300); }

@@ -135,9 +135,12 @@ export const BREAKPOINTS = [
 
 
 
-export async function runResponsiveMatrix(page, ev, dev) {
+export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) {
   const out = [];
   for (const bp of BREAKPOINTS) {
+    
+    
+    if (bp.w < minWidth) continue;
     await page.setViewportSize({ width: bp.w, height: bp.h });
     await sleep(260);                                   
     const m = await ev(() => {

@@ -1,0 +1,36 @@
+{
+  "id": "ether",
+  "theme": "signal",
+  "category": "hackrf",
+  "accent": "#38bdf8",
+  "tabs": [
+    {
+      "id": "listen",
+      "type": "tool",
+      "icon": "lucide:radio-tower",
+      "label": "tabListen",
+      "view": "listenView",
+      "fit": true
+    },
+    {
+      "id": "radar",
+      "type": "tool",
+      "icon": "lucide:radar",
+      "label": "tabRadar",
+      "view": "radarView"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:radio-tower",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

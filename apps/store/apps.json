@@ -160,6 +160,26 @@
     "category": "tools"
   },
   {
+    "id": "ether",
+    "title": "Ефір",
+    "titles": {
+      "en": "Ether",
+      "uk": "Ефір"
+    },
+    "tagline": "Почуй невидимий світ навколо — наживо з твого HackRF",
+    "taglines": {
+      "en": "Hear the invisible world around you, live from your HackRF",
+      "uk": "Почуй невидимий світ навколо — наживо з твого HackRF"
+    },
+    "glyph": "lucide:radio-tower",
+    "art": "<path d=\"M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2\"/>",
+    "bg": "#0A0A0B",
+    "fg": "#38bdf8",
+    "href": "./ether/",
+    "version": "1.0",
+    "category": "hackrf"
+  },
+  {
     "id": "habits",
     "title": "Звички",
     "titles": {
@@ -236,7 +256,7 @@
     "bg": "#0E1416",
     "fg": "#57C4C0",
     "href": "./grain/",
-    "version": "1.0",
+    "version": "1.7",
     "category": "sound"
   },
   {
@@ -276,7 +296,7 @@
     "bg": "#1A1410",
     "fg": "#E0A94B",
     "href": "./kalimba/",
-    "version": "1.20",
+    "version": "1.21",
     "category": "sound"
   },
   {
@@ -296,7 +316,7 @@
     "bg": "#0B0B10",
     "fg": "#E7E7EA",
     "href": "./cam/",
-    "version": "1.14",
+    "version": "1.15",
     "category": "creative"
   },
   {
@@ -376,7 +396,7 @@
     "bg": "#0B0A12",
     "fg": "#B98BEA",
     "href": "./code/",
-    "version": "1.14",
+    "version": "1.15",
     "category": "play"
   },
   {
@@ -576,7 +596,7 @@
     "bg": "#0A0A0F",
     "fg": "#5EEAD4",
     "href": "./retouch/",
-    "version": "1.9",
+    "version": "1.10",
     "category": "creative"
   },
   {
@@ -616,7 +636,7 @@
     "bg": "#0A0A0B",
     "fg": "#3FC7C0",
     "href": "./pipette/",
-    "version": "1.13",
+    "version": "1.14",
     "category": "tools"
   },
   {
@@ -656,7 +676,7 @@
     "bg": "#0A0A0F",
     "fg": "#5FD0F0",
     "href": "./flux/",
-    "version": "1.11",
+    "version": "1.12",
     "category": "creative"
   },
   {
@@ -716,7 +736,7 @@
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.73",
+    "version": "1.74",
     "category": "sound"
   },
   {
@@ -756,7 +776,7 @@
     "bg": "#0A0A0F",
     "fg": "#9F8CF6",
     "href": "./synesth/",
-    "version": "1.14",
+    "version": "1.15",
     "category": "sound"
   },
   {
@@ -896,7 +916,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./imagine/",
-    "version": "1.15",
+    "version": "1.16",
     "category": "creative"
   },
   {
@@ -936,7 +956,7 @@
     "bg": "#0C1014",
     "fg": "#E0B24E",
     "href": "./handpan/",
-    "version": "1.25",
+    "version": "1.26",
     "category": "sound"
   },
   {
@@ -1196,7 +1216,7 @@
     "bg": "#0A0A0F",
     "fg": "#34D399",
     "href": "./qr/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "tools"
   },
   {

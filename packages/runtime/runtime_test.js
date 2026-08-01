@@ -49,6 +49,9 @@ import { sampleRatePayload, setFreqPayload, clampLnaGain, clampVgaGain, roundBas
 import { syndrome, OFFSET, ptyName, rdsChar, RdsBlockSync, RdsParser, Rds } from "./rds.js";
 import { BANDS, arfcnToFreq, freqToArfcn, arfcnPowers, activeArfcns, steadyScore, CHAN_HZ } from "./gsmband.js";
 import { clampTxVgaGain, TX_ENDPOINT } from "./hackrf.js";
+import { SWEEP_REQUEST, MODE_RX_SWEEP, BYTES_PER_BLOCK, SWEEP_STYLE, TUNE_STEP_HZ, SWEEP_OFFSET, initSweepTransfer, planRange, bytesPerSweep, sweepBlocks, blockSpectrum, binFrequencyLow, noiseFloor, peaks, strongestBin } from "./sweep.js";
+import { Demodulator, squelchOpen, MODE_PARAMS } from "./demod.js";
+import { bandAt, BANDS as ETHER_BANDS, LISTEN_PRESETS, RADAR_SPAN, UNKNOWN } from "./bandplan.js";
 import { capture, isolateFrame, framesEqual, renderOOK, OOK_FREQS } from "./ook.js";
 import { refDownchirp, makeUpSymbol, dechirpArgmax, detectPreamble, LORA_PRESETS, WHITENING, loraEncode, loraDecode, decodeLoraSignal } from "./lora.js";
 import { parsePrice, parseWishMeta, toNumber, sortWishes, wishTotals, fmtMoney } from "./wish.js";
@@ -1794,6 +1797,73 @@ Deno.test("FmReceiver: an FM tone demodulates to that audio tone (end-to-end DSP
   assert(Math.abs(detected - fAudio) < 80, `demodulated tone ${detected.toFixed(0)} Hz ≈ ${fAudio} Hz`);
 });
 
+// ---- Demodulator (demod.js): NFM + AM round-trips, same synthetic-signal tactic as the FM test ----
+// Feed a HackRF-style int8 IQ block with the modulated carrier at the OFFSET (the front-end shifts it to
+// baseband), then assert the recovered audio's dominant bin ≈ the modulating tone.
+function dominantAudioHz(audioAll, size = 4096) {
+  const a = audioAll.slice(-size * 2);
+  const re = new Float32Array(size), im = new Float32Array(size);
+  for (let k = 0; k < size; k++) re[k] = a[a.length - size + k] || 0;
+  fft(re, im);
+  let peak = 1; for (let b = 2; b < size / 2; b++) if (Math.hypot(re[b], im[b]) > Math.hypot(re[peak], im[peak])) peak = b;
+  return peak * OUT_RATE / size;
+}
+
+Deno.test("Demodulator NFM: a narrowband-FM tone demodulates to that audio tone", () => {
+  const fAudio = 1200, dev = MODE_PARAMS.nfm.dev, blocks = 5, per = 65536;
+  const rx = new Demodulator({ mode: "nfm" });
+  let phase = 0, nAll = 0; const audioAll = [];
+  for (let b = 0; b < blocks; b++) {
+    const bytes = new Uint8Array(per * 2);
+    for (let n = 0; n < per; n++, nAll++) {
+      const msg = Math.sin(2 * Math.PI * fAudio * nAll / IN_RATE);
+      phase += 2 * Math.PI * (OFFSET_HZ + dev * msg) / IN_RATE;
+      bytes[2 * n] = (Math.max(-127, Math.min(127, Math.round(Math.cos(phase) * 120))) + 256) & 0xff;
+      bytes[2 * n + 1] = (Math.max(-127, Math.min(127, Math.round(Math.sin(phase) * 120))) + 256) & 0xff;
+    }
+    for (const s of rx.process(bytes).audio) audioAll.push(s);
+  }
+  const detected = dominantAudioHz(audioAll);
+  assert(Math.abs(detected - fAudio) < 80, `NFM tone ${detected.toFixed(0)} Hz ≈ ${fAudio} Hz`);
+});
+
+Deno.test("Demodulator AM: an amplitude-modulated carrier recovers the audio tone", () => {
+  const fAudio = 1000, m = 0.6, blocks = 5, per = 65536;
+  const rx = new Demodulator({ mode: "am" });
+  let phase = 0, nAll = 0; const audioAll = [];
+  for (let b = 0; b < blocks; b++) {
+    const bytes = new Uint8Array(per * 2);
+    for (let n = 0; n < per; n++, nAll++) {
+      const env = 1 + m * Math.sin(2 * Math.PI * fAudio * nAll / IN_RATE);   // AM envelope
+      phase += 2 * Math.PI * OFFSET_HZ / IN_RATE;                            // steady carrier at the offset
+      const amp = 90 * env / (1 + m);
+      bytes[2 * n] = (Math.max(-127, Math.min(127, Math.round(Math.cos(phase) * amp))) + 256) & 0xff;
+      bytes[2 * n + 1] = (Math.max(-127, Math.min(127, Math.round(Math.sin(phase) * amp))) + 256) & 0xff;
+    }
+    for (const s of rx.process(bytes).audio) audioAll.push(s);
+  }
+  const detected = dominantAudioHz(audioAll);
+  assert(Math.abs(detected - fAudio) < 80, `AM tone ${detected.toFixed(0)} Hz ≈ ${fAudio} Hz`);
+});
+
+Deno.test("squelchOpen: opens above threshold, hysteresis holds it open until it drops well below", () => {
+  assertEquals(squelchOpen(-40, -50, false), true);    // strong signal opens
+  assertEquals(squelchOpen(-60, -50, false), false);   // noise stays closed
+  assertEquals(squelchOpen(-52, -50, true, 3), true);  // was open, -52 > -53 → stays open (hysteresis)
+  assertEquals(squelchOpen(-54, -50, true, 3), false); // dropped below -53 → closes
+});
+
+Deno.test("bandplan: classifies known peaks to human bands, unknown otherwise; presets are analog-only", () => {
+  assertEquals(bandAt(2_450_000_000).id, "ism24");     // microwave / wifi / bluetooth
+  assertEquals(bandAt(433_920_000).id, "ism433");      // a car remote
+  assertEquals(bandAt(124_000_000).id, "air");         // aircraft voice
+  assertEquals(bandAt(1_575_420_000).id, "gps");       // GPS L1
+  assertEquals(bandAt(3_000_000_000), UNKNOWN);        // nothing allocated here → unknown
+  for (const b of ETHER_BANDS) assert(b.hi > b.lo, `${b.id} range ordered`);
+  for (const p of LISTEN_PRESETS) assert(["am", "nfm", "wfm"].includes(p.mode), `${p.id} is analog voice`);
+  assert(RADAR_SPAN.every(([a, z]) => z > a));
+});
+
 Deno.test("seedSpectrum: deterministic, finite, station peak in the centre", () => {
   const a = seedSpectrum(256, 10), b = seedSpectrum(256, 10);
   assertEquals([...a], [...b], "no Math.random → stable for shoots/e2e");
@@ -1806,7 +1876,8 @@ Deno.test("seedSpectrum: deterministic, finite, station peak in the centre", () 
 
 Deno.test("hackrf request codes + ids match libhackrf", () => {
   assertEquals([REQUEST.SET_TRANSCEIVER_MODE, REQUEST.SAMPLE_RATE_SET, REQUEST.BASEBAND_FILTER_BANDWIDTH_SET, REQUEST.SET_FREQ, REQUEST.AMP_ENABLE, REQUEST.SET_LNA_GAIN, REQUEST.SET_VGA_GAIN], [1, 6, 7, 16, 17, 19, 20]);
-  assertEquals([MODE.OFF, MODE.RECEIVE, MODE.TRANSMIT], [0, 1, 2]);
+  assertEquals([MODE.OFF, MODE.RECEIVE, MODE.TRANSMIT, MODE.RX_SWEEP], [0, 1, 2, 5]);
+  assertEquals(REQUEST.INIT_SWEEP, 26);   // hackrf_init_sweep, used by the wideband sweep
   assertEquals([VENDOR_ID, PRODUCT_ID], [0x1d50, 0x6089]);
   assertEquals(TRANSFER_SIZE, 262144);
 });
@@ -1839,6 +1910,101 @@ Deno.test("baseband filter rounds down to a valid MAX2837 bandwidth, packed low1
   assertEquals(roundBasebandFilter(28_000_000), 28_000_000);
   const p = basebandFilterParams(1_750_000);
   assertEquals((p.index << 16) | p.value, 1_750_000);
+});
+
+// ================= HackRF wideband SWEEP (sweep.js) =================
+// The device byte-layout is pinned literally (it is the contract firmware enforces), and the block→spectrum
+// maths is proven the same way the FM chain is: synth a tone at a KNOWN fft bin, demod, assert it lands at the
+// expected absolute frequency. Recipe + cited lines: apps/ether/RESEARCH.md.
+
+Deno.test("initSweepTransfer: constants + LE byte layout match hackrf_init_sweep", () => {
+  assertEquals([SWEEP_REQUEST, MODE_RX_SWEEP], [26, 5]);
+  const t = initSweepTransfer({ ranges: [[88, 108], [430, 450]], numBytes: BYTES_PER_BLOCK });
+  assertEquals(t.request, 26);
+  assertEquals(t.value, BYTES_PER_BLOCK & 0xffff);         // num_bytes low16 → value
+  assertEquals(t.index, (BYTES_PER_BLOCK >>> 16) & 0xffff); // num_bytes high16 → index
+  const v = new DataView(t.data);
+  assertEquals(v.getUint32(0, true), TUNE_STEP_HZ);        // step_width Hz LE
+  assertEquals(v.getUint32(4, true), SWEEP_OFFSET);        // offset Hz LE
+  assertEquals(v.getUint8(8), SWEEP_STYLE.INTERLEAVED);
+  assertEquals(v.getUint16(9, true), 88);                  // range0 start MHz LE
+  assertEquals(v.getUint16(11, true), 108);                // range0 stop MHz LE
+  assertEquals(v.getUint16(13, true), 430);                // range1 start MHz LE
+  assertEquals(v.byteLength, 9 + 2 * 4);                   // 9 + num_ranges pairs
+});
+
+Deno.test("initSweepTransfer: mirrors host-side validation (+ interleave-clean step)", () => {
+  assertThrows(() => initSweepTransfer({ ranges: [] }));                              // < 1 range
+  assertThrows(() => initSweepTransfer({ ranges: Array(11).fill([1, 2]) }));          // > 10 ranges
+  assertThrows(() => initSweepTransfer({ ranges: [[1, 2]], numBytes: 16384 + 1 }));   // not a block multiple
+  assertThrows(() => initSweepTransfer({ ranges: [[1, 2]], numBytes: 0 }));           // below one block
+  assertThrows(() => initSweepTransfer({ ranges: [[1, 2]], stepWidthHz: 3, style: SWEEP_STYLE.INTERLEAVED })); // 3 % 4 ≠ 0
+});
+
+Deno.test("planRange: stop rounds up to a whole number of 20 MHz hops (min 1)", () => {
+  assertEquals(planRange(88, 108), { startMHz: 88, stopMHz: 108, steps: 1 });   // exactly one step
+  assertEquals(planRange(100, 105), { startMHz: 100, stopMHz: 120, steps: 1 }); // rounds up to 1 step
+  assertEquals(planRange(100, 141), { startMHz: 100, stopMHz: 160, steps: 3 }); // 41 MHz → 3 hops
+});
+
+Deno.test("bytesPerSweep: full 1M–6G ≈ 9.83 MB per pass (interleaved)", () => {
+  const bytes = bytesPerSweep([[1, 6000]]);
+  assertEquals(bytes, 300 * 2 * BYTES_PER_BLOCK);   // 300 hops · 2 blocks · 16384
+  assert(Math.abs(bytes - 9.83e6) < 0.02e6);
+});
+
+// Build a 16384-byte sweep block: magic + u64-LE header freq + a complex tone at fft bin `bin` in the tail.
+function sweepBlockWithTone(headerHz, bin, N, amp = 100) {
+  const blk = new Uint8Array(BYTES_PER_BLOCK);
+  blk[0] = 0x7f; blk[1] = 0x7f;
+  const hv = new DataView(blk.buffer);
+  hv.setBigUint64(2, BigInt(headerHz), true);           // sweep_freq, u64 LE at byte 2
+  const s = BYTES_PER_BLOCK - 2 * N;                     // the last 2N bytes are what blockSpectrum reads
+  for (let n = 0; n < N; n++) {
+    const ph = (2 * Math.PI * bin * n) / N;
+    const I = Math.round(amp * Math.cos(ph)), Q = Math.round(amp * Math.sin(ph));
+    blk[s + n * 2] = I & 0xff;                           // int8 stored as byte
+    blk[s + n * 2 + 1] = Q & 0xff;
+  }
+  return blk;
+}
+
+Deno.test("sweepBlocks: reads magic + u64-LE header, skips bad magic, drops a partial tail", () => {
+  const N = 16;
+  const a = sweepBlockWithTone(100_000_000, 13, N);
+  const b = sweepBlockWithTone(120_000_000, 13, N);
+  const bad = new Uint8Array(BYTES_PER_BLOCK);           // no magic → skipped
+  const partial = new Uint8Array(5000);                  // < one block → dropped
+  const stream = new Uint8Array(a.length + bad.length + b.length + partial.length);
+  stream.set(a, 0); stream.set(bad, a.length); stream.set(b, a.length + bad.length);
+  stream.set(partial, a.length + bad.length + b.length);
+  const got = [...sweepBlocks(stream)];
+  assertEquals(got.length, 2);                           // bad magic skipped, partial dropped
+  assertEquals(got.map((g) => g.headerHz), [100_000_000, 120_000_000]);
+  assertEquals(got[0].iq.length, BYTES_PER_BLOCK - 10);  // post-header region
+});
+
+Deno.test("blockSpectrum: a tone at a known bin lands at the expected absolute frequency", () => {
+  const N = 16, bin = 13, header = 100_000_000;          // bin 13 = low-slice index 2 (1 + 5N/8 + 2)
+  const [{ headerHz, iq }] = [...sweepBlocks(sweepBlockWithTone(header, bin, N))];
+  const { hz, db } = blockSpectrum(iq, N);
+  let at = 0; for (let i = 1; i < db.length; i++) if (db[i] > db[at]) at = i;
+  assertEquals(at, 2);                                   // peak is low-slice index 2
+  const abs = headerHz + hz[at];
+  assertEquals(abs, header + binFrequencyLow(0, 2, 20_000_000, N)); // 100 MHz + 3·1.25 MHz = 103.75 MHz
+  assertEquals(abs, 103_750_000);
+  assert(db[at] > noiseFloor(db) + 12);                  // the carrier stands well clear of the floor
+});
+
+Deno.test("peaks / strongestBin: a lone carrier is one peak; a quiet band tunes to nothing", () => {
+  const freqs = Float64Array.from({ length: 8 }, (_, i) => 100e6 + i * 1e6);
+  const quiet = new Float32Array([-80, -81, -79, -80, -82, -80, -81, -80]);
+  const withTone = quiet.slice(); withTone[4] = -40;
+  const p = peaks(freqs, withTone, { marginDb: 6 });
+  assertEquals(p.length, 1);
+  assertEquals(p[0].hz, 104e6);
+  assertEquals(strongestBin(freqs, withTone).hz, 104e6);
+  assertEquals(strongestBin(freqs, quiet), null);        // nothing stands above the floor → no channel
 });
 
 // ================= RDS (rds.js) =================

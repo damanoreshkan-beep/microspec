@@ -23,8 +23,9 @@ export const REQUEST = {
   SET_LNA_GAIN: 19,
   SET_VGA_GAIN: 20,
   SET_TXVGA_GAIN: 21,
+  INIT_SWEEP: 26,                          // hackrf_init_sweep — see sweep.js / apps/ether/RESEARCH.md
 };
-export const MODE = { OFF: 0, RECEIVE: 1, TRANSMIT: 2 };
+export const MODE = { OFF: 0, RECEIVE: 1, TRANSMIT: 2, RX_SWEEP: 5 };
 
 // ---- pure payload builders ----
 
@@ -101,6 +102,12 @@ export class HackRF {
   async read() { const r = await this.dev.transferIn(RX_ENDPOINT, TRANSFER_SIZE); return r.data ? new Uint8Array(r.data.buffer) : new Uint8Array(0); }
 
   async startRx() { await this.setMode(MODE.RECEIVE); }
+
+  // ---- wideband sweep (RX_SWEEP): configure the firmware sweep, then enter mode 5. `transfer` is the pure
+  // INIT_SWEEP descriptor built by sweep.js `initSweepTransfer` ({ request, value, index, data }). After this
+  // the bulk-IN stream is 16384-byte blocks (0x7f 0x7f + u64 header + IQ) — read()/TRANSFER_SIZE unchanged. ----
+  initSweep(transfer) { return this._out(transfer.request, transfer.value, transfer.index, transfer.data); }
+  async startRxSweep() { await this.setMode(MODE.RX_SWEEP); }
   async stop() {
     try { await this.setMode(MODE.OFF); } catch { /* device may be gone */ }
     try { await this.dev.releaseInterface(0); } catch { /* */ }

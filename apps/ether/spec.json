@@ -9,8 +9,7 @@
       "type": "tool",
       "icon": "lucide:radio-tower",
       "label": "tabListen",
-      "view": "listenView",
-      "fit": true
+      "view": "listenView"
     },
     {
       "id": "radar",

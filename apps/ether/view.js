@@ -131,7 +131,9 @@ export function listenView({ S, screen, openScreen, closeScreen }) {
   if (!connected) return html`<${ConnectPrime} t=${t} usbOk=${usbOk} />`;
 
   const p = presetOf(preset);
-  return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] max-w-[440px] mx-auto w-full">
+  return html`<${Fragment}>
+    <!-- scrolling body (like fmradio): band tiles + the listening stage; the transport is a pinned island below -->
+    <div class="flex flex-col gap-[var(--ms-gap)] max-w-[440px] mx-auto w-full pb-[8.5rem]">
     <!-- band tiles: tap one to hear it. The active tile carries the accent as a MARK (ring + tint), not text. -->
     <div class="grid grid-cols-2 gap-[var(--ms-gap)] shrink-0" role="group" aria-label=${T(t, "listenPick")}>
       ${LISTEN_PRESETS.map((b) => {
@@ -144,8 +146,8 @@ export function listenView({ S, screen, openScreen, closeScreen }) {
   })}
     </div>
 
-    <!-- stage: the current listening state. flex-1 void absorbs the height (fit view, no scroll). -->
-    <div class="flex-1 min-h-0 grid place-items-center text-center px-4">
+    <!-- stage: the current listening state, given presence with a min-height so it centres its subject -->
+    <div class="min-h-[34vh] grid place-items-center text-center px-4">
       ${!p ? html`<div class="flex flex-col items-center gap-3 text-muted">
           ${Icon("lucide:radio-tower", "text-5xl")}<span>${T(t, "listenPick")}</span></div>`
     : state === "searching" ? html`<div class="flex flex-col items-center gap-4" data-searching>
@@ -163,8 +165,9 @@ export function listenView({ S, screen, openScreen, closeScreen }) {
           <${Equalizer} level=${signal} />
         </div>`}
     </div>
+    </div>
 
-    <!-- transport island: play/pause · next channel · squelch · record · volume in a sheet -->
+    <!-- transport island: play/pause · next channel · squelch · volume in a sheet -->
     <${Island} pinned data-player className="w-full max-w-[440px] rounded-[1.5rem] p-2">
       <${Transport} locale=${S.locale.get?.() || "en"} size="md"
         playing=${playing} onToggle=${() => (playing ? pause() : play(t))}
@@ -179,7 +182,7 @@ export function listenView({ S, screen, openScreen, closeScreen }) {
     <//>
 
     <${OptsSheet} open=${screen === "opts"} onClose=${closeScreen} t=${t} vol=${vol} squelch=${squelch} demo=${demo} />
-  </div>`;
+  </${Fragment}>`;
 }
 
 // A compact five-bar equalizer that breathes with the signal level — the "there is a voice here" cue, driven
@@ -260,7 +263,7 @@ export function radarView({ S, screen, openScreen, closeScreen }) {
 }
 
 function StrengthBar({ level }) {
-  return html`<div class="h-1.5 rounded-full overflow-hidden mt-1.5" style="background:var(--sf-track-face)" role="img">
+  return html`<div class="h-1.5 rounded-full overflow-hidden mt-1.5" style="background:var(--sf-track-face)" aria-hidden="true">
     <div class="h-full bg-primary transition-[width] duration-300" style=${`width:${Math.round(Math.max(0.05, Math.min(1, level)) * 100)}%`}></div>
   </div>`;
 }

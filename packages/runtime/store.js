@@ -42,6 +42,8 @@ export function createApp(spec, dataLoad) {
     query: atom(""),
     tab: atom(spec.tabs?.[0]?.id),
     sort: persistentAtom(ns + "sort", sortTab?.sort?.[0]?.key || ""),
+    toggles: persistentAtom(ns + "toggles", {}, JSON_CODEC),   // pinned per-tab multi-toggle strip (tab.toggles); {} = all on
+
     // next = opaque cursor for the following page (null = no more); loadingMore/moreError = paging state
     data: map({ items: [], meta: {}, loading: true, error: false, next: null, loadingMore: false, moreError: false }),
     filters: map({ ...(spec.filters?.defaults || {}), ...savedFilters }),

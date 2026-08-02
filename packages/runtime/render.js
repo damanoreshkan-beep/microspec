@@ -233,29 +233,39 @@ const GRID_FOR = {
 
 // One section header, shared by the stacked and the tiled section — two copies would have diverged the
 // first time one of them was restyled.
-function SectionHead({ sec, t, filters, n }) {
-  return html`<div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span>${sec.accent
-      ? html`<span class="badge badge-sm badge-primary">${n}</span>`
-      /* NOT a `badge-ghost`. DaisyUI colours it through `.badge.badge-ghost` — two classes — so a
-         `text-muted` alongside it loses on specificity and the count stayed at axe-serious contrast in
-         dark. Overriding a component's own colour is a fight you win only until it restyles; the farm's
-         mono micro-label owes DaisyUI nothing and is the house idiom for a number anyway. */
-      : html`<span class="font-mono text-[var(--ms-label)] text-muted tabular-nums">${n}</span>`}<span class="flex-1 h-px bg-base-300"></span></div>`;
+function SectionHead({ sec, t, filters, n, collapsible = false, open = true, onToggle }) {
+  const label = html`<span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span>`;
+  const count = sec.accent
+    ? html`<span class="badge badge-sm badge-primary">${n}</span>`
+    /* NOT a `badge-ghost`. DaisyUI colours it through `.badge.badge-ghost` — two classes — so a
+       `text-muted` alongside it loses on specificity and the count stayed at axe-serious contrast in
+       dark. Overriding a component's own colour is a fight you win only until it restyles; the farm's
+       mono micro-label owes DaisyUI nothing and is the house idiom for a number anyway. */
+    : html`<span class="font-mono text-[var(--ms-label)] text-muted tabular-nums">${n}</span>`;
+  const rule = html`<span class="flex-1 h-px bg-base-300"></span>`;
+  // collapsible → the whole head is a toggle button with a chevron; every app that declares `collapsible`
+  // on a section gets an accordion, no bespoke code (systemic).
+  if (collapsible) {
+    return html`<button type="button" data-section=${sec.filter} aria-expanded=${open} onClick=${onToggle}
+      class="flex items-center gap-2 mt-3 mb-1 px-1 w-full text-left active:opacity-80">
+      ${Icon(open ? "lucide:chevron-down" : "lucide:chevron-right", "text-base-content/45 shrink-0")}${label}${count}${rule}</button>`;
+  }
+  return html`<div class="flex items-center gap-2 mt-3 mb-1 px-1">${label}${count}${rule}</div>`;
 }
 
-function Section({ sec, items, card }) {
+function Section({ sec, items, card, tab }) {
   const t = useStore(A.S.t), filters = useStore(A.S.filters);
+  const [open, setOpen] = useState(sec.open !== false);
+  const collapsible = !!sec.collapsible;
+  const head = SectionHead({ sec, t, filters, n: items.length, collapsible, open, onToggle: () => setOpen((o) => !o) });
+  if (collapsible && !open) return head;                 // collapsed: header only
   const grid = GRID_FOR[card.layout];
-  if (grid) {
-    return html`<${Fragment}>
-      ${SectionHead({ sec, t, filters, n: items.length })}
-      <div class="@container"><div class=${grid}>${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}</div></div>
-    </${Fragment}>`;
-  }
-  return html`<${Fragment}>
-    ${SectionHead({ sec, t, filters, n: items.length })}
-    ${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}
-  </${Fragment}>`;
+  const body = grid
+    ? html`<div class="@container"><div class=${grid}>${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}</div></div>`
+    : card.layout === "table"
+      ? html`<${Table} items=${items} tab=${tab} />`
+      : items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`);
+  return html`<${Fragment}>${head}${body}</${Fragment}>`;
 }
 
 // dismissible info banner atop a list (e.g. dou explains "бронювання")
@@ -396,18 +406,17 @@ function ListView({ tab }) {
   // @container wrapper so the grid drops to 3 columns on a watch-narrow width (4 on a phone).
   // A tiled layout that declares `sections` is grouped FIRST and tiled inside each group — the two compose
   // through GRID_FOR. Returning the flat grid here regardless is what silently ate arc's shelf headings.
-  const sectioned = tab.sections
-    ? Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })])
-    : null;
-  if (GRID_FOR[tab.card.layout] && sectioned) return sectioned;
+  // Grouping (optional): each section is its OWN list — a grid/table/feed body per group, collapsible when
+  // the section declares it. Sections take precedence over the flat layout returns and work for EVERY layout
+  // (table included), so an app groups its rows by declaring `sections` — no bespoke code.
+  if (tab.sections) return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} tab=${tab} key=${sec.label} />` : null; })]);
   if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
   // Three columns on a phone — a store shelf, not a two-up feed: the icon carries the recognition and the
   // caption is one line under it. Drops to two on a watch, climbs to four on a tablet.
   if (tab.card.layout === "gallery") return Frag([banner, html`<div class="@container pt-2" key="gallery"><div class="grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
   // table has its own row cap and isn't a row/grid scroll surface — keep it on server paging only.
   if (tab.card.layout === "table") return Frag([banner, html`<${Table} items=${items} tab=${tab} key="tbl" />`, html`<${InfiniteTail} count=${items.length} total=${items.length} grow=${() => paginate && A.loadMore()} paginate=${paginate} key="tail" />`]);
-  if (!tab.sections) return Frag([banner, ...cards, tail]);
-  return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })]);
+  return Frag([banner, ...cards, tail]);
 }
 
 // ---- profile ----------------------------------------------------------------
@@ -694,6 +703,16 @@ function SortBar({ tab }) {
   const t = useStore(A.S.t), cur = useStore(A.S.sort);
   return html`<div class="px-4 pt-3 max-w-xl mx-auto w-full"><div class="join w-full" id="sort" role="group" aria-label=${T(t, "sortAria")}>
     ${tab.sort.map((o) => html`<button class=${`btn btn-sm join-item flex-1 ${cur === o.key ? "btn-active btn-primary" : ""}`} data-sort=${o.key} key=${o.key} aria-pressed=${cur === o.key} onClick=${() => A.S.sort.set(o.key)}>${T(t, o.label)}</button>`)}
+  </div></div>`;
+}
+
+// Pinned multi-toggle strip (tab.toggles). ANY subset on (unlike sort's one-of-N); state persisted in
+// S.toggles ({} = all on). The app reads S.toggles to act on it — e.g. which bands to scan. Systemic.
+function TogglesBar({ tab }) {
+  const t = useStore(A.S.t), tog = useStore(A.S.toggles);
+  const on = (k) => tog[k] !== false;
+  return html`<div class="px-4 pt-2 max-w-xl mx-auto w-full"><div class="flex gap-1.5 overflow-x-auto" id="toggles" role="group" aria-label=${T(t, "scanAria")}>
+    ${tab.toggles.map((o) => html`<button class=${`btn btn-xs gap-1 shrink-0 rounded-full ${on(o.key) ? "btn-primary" : "btn-ghost sf-inset text-base-content/70"}`} data-toggle=${o.key} aria-pressed=${on(o.key)} key=${o.key} onClick=${() => A.S.toggles.set({ ...A.S.toggles.get(), [o.key]: !on(o.key) })}>${o.icon ? Icon(o.icon, "text-sm") : null}${T(t, o.label)}</button>`)}
   </div></div>`;
 }
 
@@ -1004,6 +1023,7 @@ export function App() {
     ${A.spec.filters ? html`<${FilterChips} />` : null}
     ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
     ${tab.type === "list" && tab.sort ? html`<${SortBar} tab=${tab} />` : null}
+    ${tab.type === "list" && tab.toggles ? html`<${TogglesBar} tab=${tab} />` : null}
     <main id="view" class="px-4 pt-4 max-w-xl mx-auto flex flex-col gap-3" style=${fit ? null : "padding-bottom:calc(var(--dock-h) + 1.5rem)"}>
       <${TabView} tab=${tab} />
     </main>

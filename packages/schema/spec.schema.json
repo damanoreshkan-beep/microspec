@@ -617,6 +617,36 @@
               }
             }
           },
+          "toggles": {
+            "type": "array",
+            "minItems": 1,
+            "description": "list only — a pinned multi-toggle strip above the list (all ON by default, state PERSISTED in S.toggles). Each chip flips a boolean the app reads (e.g. which bands to scan). Unlike `sort` (one-of-N), any subset can be on.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "key",
+                "label"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Stable id for this toggle (persisted; the app reads S.toggles[key])."
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "i18n key for the chip label."
+                },
+                "icon": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Iconify icon for the chip."
+                }
+              }
+            }
+          },
           "prompt": {
             "type": "object",
             "additionalProperties": false,
@@ -736,6 +766,14 @@
                 "accent": {
                   "type": "boolean",
                   "description": "Highlight the section header/count in primary color."
+                },
+                "collapsible": {
+                  "type": "boolean",
+                  "description": "Make the section an accordion — its header toggles its list open/closed."
+                },
+                "open": {
+                  "type": "boolean",
+                  "description": "For a collapsible section, whether it starts expanded (default true)."
                 },
                 "hideBadge": {
                   "type": "string",

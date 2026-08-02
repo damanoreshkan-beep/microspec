@@ -29,10 +29,74 @@ const MUX_CFGS = [[0, 0x08, 0x02, 0xdf], [50, 0x08, 0x02, 0xbe], [55, 0x08, 0x02
 const le = (v, n) => { const b = new DataView(new ArrayBuffer(n)); if (n === 1) b.setUint8(0, v); else if (n === 2) b.setUint16(0, v, true); else b.setUint32(0, v, true); return b.buffer; };
 const be = (v, n) => { const b = new DataView(new ArrayBuffer(n)); if (n === 1) b.setUint8(0, v); else if (n === 2) b.setUint16(0, v, false); else b.setUint32(0, v, false); return b.buffer; };
 
+// ---- pure builders ----
+// Everything below is the arithmetic the device enforces, lifted out of the I/O class so a headless Deno
+// test can pin it. The class calls these; it never re-derives a number inline.
+
+// Demod DDC word (rtlsdr_set_if_freq): shift `hz` to baseband. Written as three 6/8/8-bit registers.
+export function ifFreqWord(hz, xtal = XTAL_FREQ) {
+  const v = -1 * Math.floor(hz * (1 << 22) / xtal);
+  return { hi: (v >> 16) & 0x3f, mid: (v >> 8) & 0xff, lo: v & 0xff };
+}
+
+// Resampler ratio (rtlsdr_set_sample_rate): the low 2 bits are cleared — the demod ignores them, so the
+// ACHIEVED rate is not always the requested one. `achieved` is what the app must label a spectrum axis with.
+export function sampleRateRatio(rateHz, xtal = XTAL_FREQ) {
+  const ratio = Math.floor(xtal * (1 << 22) / rateHz) & 0x0ffffffc;
+  return { ratio, hi: (ratio >> 16) & 0xffff, lo: ratio & 0xffff, achieved: (xtal * (1 << 22)) / ratio };
+}
+
+// R820T2 tracking-filter MUX band for an RF frequency — the last row whose threshold (MHz) is <= freq.
+export function muxConfigFor(hz) {
+  const mhz = hz / 1e6;
+  let i = 0;
+  for (; i < MUX_CFGS.length - 1; i++) if (mhz < MUX_CFGS[i + 1][0]) break;
+  return MUX_CFGS[i];
+}
+
+// R820T2 PLL: mixer divider selection, then the integer/fractional split of the VCO.
+export function pllDivider(hz) {
+  const divNum = Math.min(6, Math.floor(Math.log(1_770_000_000 / hz) / Math.LN2));
+  return { divNum, mixDiv: 1 << (divNum + 1) };
+}
+export function pllWords(hz, mixDiv, xtal = XTAL_FREQ) {
+  const vco = hz * mixDiv, nint = Math.floor(vco / (2 * xtal)), fra = vco % (2 * xtal);
+  const sdm = Math.min(65535, Math.floor(32768 * fra / xtal));
+  return { vco, nint, fra, sdm, ni: Math.floor((nint - 13) / 4), si: (nint - 13) % 4, valid: nint <= 63 };
+}
+
+// R820T2 gain. There is ONE gain control on this tuner (LNA + mixer, driven together) — it is NOT the
+// HackRF's independent LNA/VGA pair, and summing them is what made every call saturate. 0–49 dB is the
+// hardware range (librtlsdr's r82xx_gains table tops out at 49.6 dB); the polynomial is transcribed from
+// rtlsdrjs lib/r820t.js setManualGain.
+export function gainSplit(db) {
+  const gain = Math.max(0, Math.min(49, db));
+  let step = gain <= 15
+    ? Math.round(1.36 + gain * (1.1118 + gain * (-0.0786 + gain * 0.0027)))
+    : Math.round(1.2068 + gain * (0.6875 + gain * (-0.01011 + gain * 0.0001587)));
+  step = Math.max(0, Math.min(30, step));
+  return { step, lnaV: Math.floor(step / 2), mixV: Math.floor((step - 1) / 2) };
+}
+
+// Where the centre (DC) artifact lands on a channelizer's bin grid, as a FRACTIONAL bin index — the whole
+// point is to see whether it sits ON a channel centre (integer) or BETWEEN two (…​.5). Offset-tuning moves
+// the tuner and compensates in the DDC, so the digital grid stays aligned while DC steps off a live channel.
+// The right offset is a HARDWARE measurement (docs/research/homin-433.md §2); this only says where it lands.
+export function dcBin(offsetHz, binHz, binCount) {
+  return binCount / 2 + offsetHz / binHz;
+}
+
+// RTL delivers offset-binary uint8 (DC at 127.5); the farm's demods read signed-in-uint8 (`if (b>127) b-=256`,
+// fmradio.js / ook.js). One XOR converts, in place, so every existing demodulator works unchanged.
+export function offsetBinaryToSigned(u8) {
+  for (let i = 0; i < u8.length; i++) u8[i] ^= 0x80;
+  return u8;
+}
+
 export const usbSupported = () => typeof navigator !== "undefined" && !!navigator.usb;
 
 export class RtlSdr {
-  constructor(device) { this.dev = device; this._shadow = new Uint8Array(R_REGS); this._lna = 0; this._vga = 0; this._ds = false; }
+  constructor(device) { this.dev = device; this._shadow = new Uint8Array(R_REGS); this._gain = 0; this._agc = false; this._ds = false; this.sampleRate = 0; }
 
   static async fromGranted() {
     if (!usbSupported()) return null;
@@ -68,8 +132,8 @@ export class RtlSdr {
     for (const [p, a, v, n] of D) await this._wDemod(p, a, v, n || 1);
     await this._i2cOpen();
     if ((await this._i2cRead(TUNER, 0)) !== 0x69) { await this._i2cClose(); throw new Error("RTL-SDR: unsupported tuner (need R820T2)"); }
-    const mult = -1 * Math.floor(IF_FREQ * (1 << 22) / XTAL_FREQ);
-    const F = [[1, 0xb1, 0x1a], [0, 0x08, 0x4d], [1, 0x19, (mult >> 16) & 0x3f], [1, 0x1a, (mult >> 8) & 0xff], [1, 0x1b, mult & 0xff], [1, 0x15, 0x01]];
+    const m = ifFreqWord(IF_FREQ);
+    const F = [[1, 0xb1, 0x1a], [0, 0x08, 0x4d], [1, 0x19, m.hi], [1, 0x1a, m.mid], [1, 0x1b, m.lo], [1, 0x15, 0x01]];
     for (const [p, a, v] of F) await this._wDemod(p, a, v, 1);
     await this._tunerInit();
     await this.setLnaGain(0);
@@ -90,33 +154,28 @@ export class RtlSdr {
     let cap = arr[4] & 0x0f; if (cap === 0x0f) cap = 0; return cap;
   }
   async _setMux(freq) {
-    const mhz = freq / 1e6; let i = 0;
-    for (; i < MUX_CFGS.length - 1; i++) if (mhz < MUX_CFGS[i + 1][0]) break;
-    const c = MUX_CFGS[i];
+    const c = muxConfigFor(freq);
     await this._rEach([[0x17, c[1], 0x08], [0x1a, c[2], 0xc3], [0x1b, c[3], 0xff], [0x10, 0x00, 0x0b], [0x08, 0x00, 0x3f], [0x09, 0x00, 0x3f]]);
   }
   async _setPll(freq) {
-    const ref = XTAL_FREQ;
     await this._rEach([[0x10, 0x00, 0x10], [0x1a, 0x00, 0x0c], [0x12, 0x80, 0xe0]]);
-    let divNum = Math.min(6, Math.floor(Math.log(1_770_000_000 / freq) / Math.LN2));
-    const mixDiv = 1 << (divNum + 1);
-    const fine = ((await this._i2cReadBuf(TUNER, 0x00, 5))[4] & 0x30) >> 4;
+    let { divNum, mixDiv } = pllDivider(freq);
+    const fine = ((await this._i2cReadBuf(TUNER, 0x00, 5))[4] & 0x30) >> 4;   // VCO fine-tune reading
     if (fine > 2) divNum--; else if (fine < 2) divNum++;
     await this._rMask(0x10, divNum << 5, 0xe0);
-    const vco = freq * mixDiv, nint = Math.floor(vco / (2 * ref)), fra = vco % (2 * ref);
-    if (nint > 63) return;
-    const ni = Math.floor((nint - 13) / 4), si = (nint - 13) % 4;
+    const { nint, fra, sdm, ni, si, valid } = pllWords(freq, mixDiv);
+    if (!valid) return;                                                       // nint > 63: out of PLL range
     await this._rEach([[0x14, ni + (si << 6), 0xff], [0x12, fra === 0 ? 0x08 : 0x00, 0x08]]);
-    const sdm = Math.min(65535, Math.floor(32768 * fra / ref));
     await this._rEach([[0x16, sdm >> 8, 0xff], [0x15, sdm & 0xff, 0xff]]);
     await this._rMask(0x1a, 0x08, 0x08);
   }
 
   // ---- HackRF-shaped public API ----
   async setSampleRate(rateHz) {
-    const ratio = Math.floor(XTAL_FREQ * (1 << 22) / rateHz) & 0x0ffffffc;
-    await this._wDemod(1, 0x9f, (ratio >> 16) & 0xffff, 2);
-    await this._wDemod(1, 0xa1, ratio & 0xffff, 2);
+    const { hi, lo, achieved } = sampleRateRatio(rateHz);
+    this.sampleRate = achieved;                        // the ACHIEVED rate — label axes with this, not the request
+    await this._wDemod(1, 0x9f, hi, 2);
+    await this._wDemod(1, 0xa1, lo, 2);
     await this._wDemod(1, 0x3e, 0x00, 1); await this._wDemod(1, 0x3f, 0x00, 1);
     await this._wDemod(1, 0x01, 0x14, 1); await this._wDemod(1, 0x01, 0x10, 1);
   }
@@ -126,10 +185,10 @@ export class RtlSdr {
   }
   // Program the demod DDC (rtlsdr_set_if_freq): shift `hz` to baseband. Same math open() uses for the R820T2 IF.
   async _setIfFreq(hz) {
-    const v = -1 * Math.floor(hz * (1 << 22) / XTAL_FREQ);
-    await this._wDemod(1, 0x19, (v >> 16) & 0x3f, 1);
-    await this._wDemod(1, 0x1a, (v >> 8) & 0xff, 1);
-    await this._wDemod(1, 0x1b, v & 0xff, 1);
+    const { hi, mid, lo } = ifFreqWord(hz);
+    await this._wDemod(1, 0x19, hi, 1);
+    await this._wDemod(1, 0x1a, mid, 1);
+    await this._wDemod(1, 0x1b, lo, 1);
   }
   // HF DIRECT SAMPLING (rtlsdr_set_direct_sampling) — the v3's built-in mod. Reads the ADC's Q-branch (0x90;
   // I-branch is 0x80) so the dongle hears 0.5–~14.4 MHz with no tuner. Tuner-standby is omitted: it only saves
@@ -159,16 +218,28 @@ export class RtlSdr {
   }
   setBasebandFilter() { return Promise.resolve(); }     // R820T2 IF bw fixed at init — no-op
   setAmp() { return Promise.resolve(); }                // v3 has no RF amp (GPIO0 = bias-tee) — no-op
-  async setLnaGain(db) { this._lna = db; return this._applyGain(); }
-  async setVgaGain(db) { this._vga = db; return this._applyGain(); }
-  setGain(db) { this._lna = db; this._vga = 0; return this._applyGain(); }
+  // THE gain control. The R820T2 has ONE gain (LNA + mixer moved together), so the HackRF's independent
+  // LNA/VGA pair does not map onto it — summing them is what pinned every caller at maximum gain and would
+  // overload the front end whenever a handheld transmits nearby. Both compat setters therefore route here
+  // and SET, never accumulate; `setVgaGain` is a no-op because there is no second stage to set.
+  setGain(db) { this._gain = db; this._agc = false; return this._applyGain(); }
+  setLnaGain(db) { return this.setGain(db); }
+  setVgaGain() { return Promise.resolve(); }
+  gain() { return this._agc ? "auto" : this._gain; }
+
+  // Tuner AGC (r820t.js setAutoGain) + the RTL2832U's own digital AGC (rtlsdr_set_agc_mode, demod page 0
+  // reg 0x19: 0x25 on / 0x05 off). Correct default for a band holding both a metre-away handheld and a
+  // distant sensor; manual gain is for when the user pins it.
+  async setAgc(on) {
+    this._agc = !!on;
+    await this._wDemod(0, 0x19, on ? 0x25 : 0x05, 1);
+    if (!on) return this._applyGain();
+    await this._i2cOpen();
+    await this._rEach([[0x05, 0x00, 0x10], [0x07, 0x10, 0x10], [0x0c, 0x0b, 0x9f]]);
+    await this._i2cClose();
+  }
   async _applyGain() {
-    const gain = Math.max(0, Math.min(49, this._lna + this._vga));
-    let step = gain <= 15
-      ? Math.round(1.36 + gain * (1.1118 + gain * (-0.0786 + gain * 0.0027)))
-      : Math.round(1.2068 + gain * (0.6875 + gain * (-0.01011 + gain * 0.0001587)));
-    step = Math.max(0, Math.min(30, step));
-    const lnaV = Math.floor(step / 2), mixV = Math.floor((step - 1) / 2);
+    const { lnaV, mixV } = gainSplit(this._gain);
     await this._i2cOpen();
     await this._rEach([[0x05, 0x10, 0x10], [0x07, 0x00, 0x10], [0x0c, 0x08, 0x9f], [0x05, lnaV, 0x0f], [0x07, mixV, 0x0f]]);
     await this._i2cClose();
@@ -178,9 +249,7 @@ export class RtlSdr {
   async read() {
     const r = await this.dev.transferIn(RX_ENDPOINT, TRANSFER_SIZE);
     if (!r.data) return new Uint8Array(0);
-    const out = new Uint8Array(r.data.buffer);
-    for (let i = 0; i < out.length; i++) out[i] ^= 0x80;   // uint8 offset-binary → signed-in-uint8 (HackRF layout)
-    return out;
+    return offsetBinaryToSigned(new Uint8Array(r.data.buffer));
   }
   initSweep() { throw new Error("RtlSdr: no hardware sweep"); }
   startRxSweep() { throw new Error("RtlSdr: no hardware sweep"); }

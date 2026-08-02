@@ -122,10 +122,7 @@ export function band({ t, screen, openScreen, closeScreen, toast }) {
   stateRef.current = { events: sorted, now: Date.now(), freshAt: $freshAt.get() };
   const webgl = useDial(canvasRef, () => stateRef.current);
 
-  const voices = sorted.filter((e) => e.kind === "voice");
-  const tuned = listening != null
-    ? sorted.find((e) => e.channel === listening)
-    : voices[0];
+  const tuned = listening != null ? sorted.find((e) => e.channel === listening) : sorted[0];
   const row = tuned ? describe(tuned, t) : null;
 
   return html`

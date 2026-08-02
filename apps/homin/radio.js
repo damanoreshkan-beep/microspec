@@ -88,8 +88,10 @@ export async function requestReceiver() {
 export async function listen(channel) {
   const cur = $listening.get();
   if (cur === channel) return stopListening();
-  const c = audio();
-  if (c && c.state === "suspended") { try { await c.resume(); } catch {  } }
+  try {
+    const c = audio();
+    if (c && c.state === "suspended") await c.resume();
+  } catch {  }
   nextAt = 0;
   $listening.set(channel);
   ensureWorker()?.postMessage({ type: "listen", channel });

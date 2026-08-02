@@ -290,7 +290,7 @@ function Table({ items, tab }) {
 }
 
 function ListView({ tab }) {
-  const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters), loc = useStore(A.S.locale), sortKey = useStore(A.S.sort);
+  const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query).trim().toLowerCase(), fav = useStore(A.S.fav), filters = useStore(A.S.filters), loc = useStore(A.S.locale), sortKey = useStore(A.S.sort), segKey = useStore(A.S.seg);
   const mt = useStore(metaTick);
   const [vis, setVis] = useState(WINDOW_PAGE);   
   
@@ -302,7 +302,7 @@ function ListView({ tab }) {
     const fields = A.spec.translate;
     if (fields?.length && loc !== "en") warm(src.flatMap((it) => fields.map((f) => field(it, f, "en"))), loc);
   }, [data.items, fav, loc, tab.source, mt]);
-  useEffect(() => { setVis(WINDOW_PAGE); }, [tab, q, sortKey, filters]);   
+  useEffect(() => { setVis(WINDOW_PAGE); }, [tab, q, sortKey, segKey, filters]);   
   if (!tab.card) return Empty("lucide:alert-triangle", T(t, tab.empty?.text || "noResults"), null);
   if (!useReveal(!data.loading)) return Skeleton(tab.card);
   if (data.error) return Empty("lucide:cloud-off", T(t, "statusError"), T(t, "errorHint"));
@@ -310,9 +310,10 @@ function ListView({ tab }) {
   
   if (tab.searchFetch && !q && !tab.browse) return Empty(tab.prompt?.icon || "lucide:search", T(t, tab.prompt?.text || "searchPrompt"), T(t, tab.prompt?.hint || "searchPromptHint"));
   let items = tab.source === "fav" ? Object.values(fav) : data.items;
+  if (tab.filter) items = items.filter((it) => test(it, fav, tab.filter));   
+  if (tab.segments) { const s = tab.segments.find((x) => x.key === segKey) || tab.segments[0]; if (s && s.filter) items = items.filter((it) => test(it, fav, s.filter)); }   
   if (q && !tab.searchFetch) items = items.filter((it) => searchText(it).includes(q));  
   for (const cf of (tab.clientFilters || [])) if (filters[cf.key]) items = items.filter((it) => test(it, fav, cf.when));
-  
   for (const c of (A.spec.filters?.controls || [])) if (c.type === "range" && filters[c.key]) {
     const r = filters[c.key];
     items = items.filter((it) => { const v = Number(it[c.field]); return !isNaN(v) && (r.from == null || r.from === "" || v >= +r.from) && (r.to == null || r.to === "" || v <= +r.to); });
@@ -611,12 +612,24 @@ function SearchBar({ tab }) {
     : T(t, tab.statusKey || "status", { ...(data.meta || {}) });
   return html`<div class="sticky top-14 z-20 bg-base-200 border-b border-base-300/50 px-4 pt-3 pb-2"><label class="input input-bordered flex items-center gap-2 h-11 rounded-2xl">${Icon("lucide:search", "text-lg opacity-50")}<input id="filter" type="search" class="grow" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /></label><div id="status" class="text-xs text-base-content/70 mt-1 min-h-4 px-1">${status}</div></div>`;
 }
+
+
+
+function SegmentBar({ tab }) {
+  const t = useStore(A.S.t), cur = useStore(A.S.seg);
+  const active = tab.segments.some((s) => s.key === cur) ? cur : tab.segments[0].key;
+  return html`<div class="px-4 pt-3 max-w-xl mx-auto w-full"><div class="join w-full" id="segments" role="tablist" aria-label=${T(t, "segAria")}>
+    ${tab.segments.map((s) => html`<button class=${`btn btn-sm join-item flex-1 gap-1.5 ${active === s.key ? "btn-active btn-primary" : ""}`} data-seg=${s.key} role="tab" aria-selected=${active === s.key} key=${s.key} onClick=${() => A.S.seg.set(s.key)}>${s.icon ? Icon(s.icon) : null}${T(t, s.label)}</button>`)}
+  </div></div>`;
+}
+
 function SortBar({ tab }) {
   const t = useStore(A.S.t), cur = useStore(A.S.sort);
   return html`<div class="px-4 pt-3 max-w-xl mx-auto w-full"><div class="join w-full" id="sort" role="group" aria-label=${T(t, "sortAria")}>
     ${tab.sort.map((o) => html`<button class=${`btn btn-sm join-item flex-1 ${cur === o.key ? "btn-active btn-primary" : ""}`} data-sort=${o.key} key=${o.key} aria-pressed=${cur === o.key} onClick=${() => A.S.sort.set(o.key)}>${T(t, o.label)}</button>`)}
   </div></div>`;
 }
+
 
 
 function TogglesBar({ tab }) {
@@ -864,6 +877,7 @@ export function App() {
     ${tab.type === "list" && tab.search ? html`<${SearchBar} tab=${tab} />` : null}
     ${A.spec.filters ? html`<${FilterChips} />` : null}
     ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
+    ${tab.type === "list" && tab.segments ? html`<${SegmentBar} tab=${tab} />` : null}
     ${tab.type === "list" && tab.sort ? html`<${SortBar} tab=${tab} />` : null}
     ${tab.type === "list" && tab.toggles ? html`<${TogglesBar} tab=${tab} />` : null}
     <main id="view" class="px-4 pt-4 max-w-xl mx-auto flex flex-col gap-3" style=${fit ? null : "padding-bottom:calc(var(--dock-h) + 1.5rem)"}>

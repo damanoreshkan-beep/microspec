@@ -617,6 +617,27 @@
               }
             }
           },
+          "filter": {
+            "type": "string",
+            "minLength": 1,
+            "description": "list only — a test() expression pinning this tab to a subset of the shared item set ('field', '!field', 'fav'). E.g. one tab per band."
+          },
+          "segments": {
+            "type": "array",
+            "minItems": 2,
+            "description": "list only — a one-of-N filter strip at the TOP of the list (the primary switcher; selected key PERSISTED in S.seg). Each segment applies its `filter` test() to the shared set — e.g. FM / 433 / GSM tabs over one list.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["key", "label", "filter"],
+              "properties": {
+                "key": { "type": "string", "minLength": 1, "description": "Stable id for this segment (persisted)." },
+                "label": { "type": "string", "minLength": 1, "description": "i18n key for the segment label." },
+                "filter": { "type": "string", "minLength": 1, "description": "test() expression selecting this segment's items ('field', '!field', 'fav')." },
+                "icon": { "type": "string", "minLength": 1, "description": "Iconify icon for the segment." }
+              }
+            }
+          },
           "toggles": {
             "type": "array",
             "minItems": 1,

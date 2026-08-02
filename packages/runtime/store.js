@@ -8,6 +8,7 @@ export function createApp(spec, dataLoad) {
   const ns = (spec.id || "app") + ":";
   const conv = spec.tabs.find((t) => t.type === "converter");
   const sortTab = spec.tabs.find((t) => Array.isArray(t.sort) && t.sort.length);
+  const segTab = spec.tabs.find((t) => Array.isArray(t.segments) && t.segments.length);
   const FKEY = ns + "filters";
   let savedFilters = {};
   try { savedFilters = JSON.parse(localStorage.getItem(FKEY) || "{}"); } catch {  }
@@ -29,6 +30,7 @@ export function createApp(spec, dataLoad) {
     query: atom(""),
     tab: atom(spec.tabs?.[0]?.id),
     sort: persistentAtom(ns + "sort", sortTab?.sort?.[0]?.key || ""),
+    seg: persistentAtom(ns + "seg", segTab?.segments?.[0]?.key || ""),   
     toggles: persistentAtom(ns + "toggles", {}, JSON_CODEC),   
 
     data: map({ items: [], meta: {}, loading: true, error: false, next: null, loadingMore: false, moreError: false }),

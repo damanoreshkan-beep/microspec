@@ -181,8 +181,15 @@ export function band({ t, S, toast }) {
               title=${row.name}
               subtitle=${row.toneLabel || row.kindLabel}
               size="sm"
-              actions=${[{ id: "hunt", icon: "lucide:compass", label: T(t, "huntTitle"), onClick: () => pick(tuned), attr: { "data-pick": true } }]}
-            />` : null}
+            />
+            ${/* A real, always-present HTML button. Hanging this off a Transport action meant it depended on
+                 how the kit spreads `attr`, and hanging it off the dial meant tapping an SVG <line> — which
+                 has no .click(). Both cost CI rounds. One plain button cannot fail either way, and an
+                 explicit control beats a hidden one anyway. */""}
+            <button data-pick class="btn btn-sm btn-ghost gap-1.5 self-center"
+                    onClick=${() => pick(tuned)}>
+              ${Icon("lucide:compass")}${T(t, "huntTitle")}
+            </button>` : null}
         </div>
       <//>
       <${Hunt} t=${t} target=${target} open=${scr === "hunt"} onClose=${() => S.screen.set(null)} />

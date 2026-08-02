@@ -38,13 +38,7 @@ export default [
 
       await h.tap("[data-pick]"); await h.wait(400);
       const afterPick = await state("afterPick");
-
-      // If the transport action did not carry, the dial mark is the other path to the same handler — trying
-      // it in the SAME round tells me which of the two is broken instead of costing another push.
-      if ((await h.prop("#hunt", "open")) !== true) { await h.tap("[data-mark]"); await h.wait(400); }
-      const afterMark = await state("afterMark");
-
-      h.expect((await h.prop("#hunt", "open")) === true, `пеленг не відкрився ${before} ${afterPick} ${afterMark}`);
+      h.expect((await h.prop("#hunt", "open")) === true, `пеленг не відкрився ${before} ${afterPick}`);
       await h.back(); await h.wait(400);
       h.expect((await h.prop("#hunt", "open")) !== true, `системний Назад не закрив пеленг ${await state("afterBack")}`);
       h.expect((await h.count("[data-mark]")) > 0, "Назад вийшов з апки замість закрити екран");
@@ -56,7 +50,6 @@ export default [
     name: "пеленг: без напрямленої антени азимут не показується", run: async (h) => {
       await ready(h);
       await h.tap("[data-pick]"); await h.wait(400);
-      if ((await h.prop("#hunt", "open")) !== true) { await h.tap("[data-mark]"); await h.wait(400); }
       h.expect((await h.prop("#hunt", "open")) === true, "пеленг не відкрився — читати показник немає сенсу");
       const b = await h.text("[data-bearing]");
       h.expect(b.trim() === "—", `штатна антена не дає азимута, а показано "${b}"`);

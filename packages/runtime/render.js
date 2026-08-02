@@ -183,25 +183,34 @@ const GRID_FOR = {
 };
 
 
-function SectionHead({ sec, t, filters, n }) {
-  return html`<div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span>${sec.accent
-      ? html`<span class="badge badge-sm badge-primary">${n}</span>`
-      
-      : html`<span class="font-mono text-[var(--ms-label)] text-muted tabular-nums">${n}</span>`}<span class="flex-1 h-px bg-base-300"></span></div>`;
-}
-function Section({ sec, items, card }) {
-  const t = useStore(A.S.t), filters = useStore(A.S.filters);
-  const grid = GRID_FOR[card.layout];
-  if (grid) {
-    return html`<${Fragment}>
-      ${SectionHead({ sec, t, filters, n: items.length })}
-      <div class="@container"><div class=${grid}>${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}</div></div>
-    </${Fragment}>`;
+function SectionHead({ sec, t, filters, n, collapsible = false, open = true, onToggle }) {
+  const label = html`<span class=${`text-sm font-semibold flex items-center gap-1.5 ${sec.accent ? "text-primary" : ""}`}>${sec.icon ? Icon(sec.icon) : null}${T(t, sec.label, sec.labelParams ? { cat: filters[sec.labelParams] } : null)}</span>`;
+  const count = sec.accent
+    ? html`<span class="badge badge-sm badge-primary">${n}</span>`
+    
+    : html`<span class="font-mono text-[var(--ms-label)] text-muted tabular-nums">${n}</span>`;
+  const rule = html`<span class="flex-1 h-px bg-base-300"></span>`;
+  if (collapsible) {
+    return html`<button type="button" data-section=${sec.filter} aria-expanded=${open} onClick=${onToggle}
+      class="flex items-center gap-2 mt-3 mb-1 px-1 w-full text-left active:opacity-80">
+      ${Icon(open ? "lucide:chevron-down" : "lucide:chevron-right", "text-base-content/45 shrink-0")}${label}${count}${rule}</button>`;
   }
-  return html`<${Fragment}>
-    ${SectionHead({ sec, t, filters, n: items.length })}
-    ${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}
-  </${Fragment}>`;
+  return html`<div class="flex items-center gap-2 mt-3 mb-1 px-1">${label}${count}${rule}</div>`;
+}
+
+function Section({ sec, items, card, tab }) {
+  const t = useStore(A.S.t), filters = useStore(A.S.filters);
+  const [open, setOpen] = useState(sec.open !== false);
+  const collapsible = !!sec.collapsible;
+  const head = SectionHead({ sec, t, filters, n: items.length, collapsible, open, onToggle: () => setOpen((o) => !o) });
+  if (collapsible && !open) return head;                 
+  const grid = GRID_FOR[card.layout];
+  const body = grid
+    ? html`<div class="@container"><div class=${grid}>${items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`)}</div></div>`
+    : card.layout === "table"
+      ? html`<${Table} items=${items} tab=${tab} />`
+      : items.map((it) => html`<${Card} item=${it} card=${card} hide=${sec.hideBadge} key=${A.favKey(it) || it[card.title]} />`);
+  return html`<${Fragment}>${head}${body}</${Fragment}>`;
 }
 
 
@@ -334,20 +343,13 @@ function ListView({ tab }) {
   
   
   
-  const sectioned = tab.sections
-    ? Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })])
-    : null;
-  if (GRID_FOR[tab.card.layout] && sectioned) return sectioned;
+  if (tab.sections) return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} tab=${tab} key=${sec.label} />` : null; })]);
   if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
-  
-  
   if (tab.card.layout === "gallery") return Frag([banner, html`<div class="@container pt-2" key="gallery"><div class="grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
   
   if (tab.card.layout === "table") return Frag([banner, html`<${Table} items=${items} tab=${tab} key="tbl" />`, html`<${InfiniteTail} count=${items.length} total=${items.length} grow=${() => paginate && A.loadMore()} paginate=${paginate} key="tail" />`]);
-  if (!tab.sections) return Frag([banner, ...cards, tail]);
-  return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} key=${sec.label} />` : null; })]);
+  return Frag([banner, ...cards, tail]);
 }
-
 
 function Profile({ tab }) {
   const t = useStore(A.S.t), theme = useStore(A.S.theme), loc = useStore(A.S.locale), fav = useStore(A.S.fav);
@@ -616,6 +618,16 @@ function SortBar({ tab }) {
   </div></div>`;
 }
 
+
+function TogglesBar({ tab }) {
+  const t = useStore(A.S.t), tog = useStore(A.S.toggles);
+  const on = (k) => tog[k] !== false;
+  return html`<div class="px-4 pt-2 max-w-xl mx-auto w-full"><div class="flex gap-1.5 overflow-x-auto" id="toggles" role="group" aria-label=${T(t, "scanAria")}>
+    ${tab.toggles.map((o) => html`<button class=${`btn btn-xs gap-1 shrink-0 rounded-full ${on(o.key) ? "btn-primary" : "btn-ghost sf-inset text-base-content/70"}`} data-toggle=${o.key} aria-pressed=${on(o.key)} key=${o.key} onClick=${() => A.S.toggles.set({ ...A.S.toggles.get(), [o.key]: !on(o.key) })}>${o.icon ? Icon(o.icon, "text-sm") : null}${T(t, o.label)}</button>`)}
+  </div></div>`;
+}
+
+
 const QR_LBL = {
   en: { open: "Open on phone", title: "Open on your phone", stay: "Stay on desktop" },
   uk: { open: "Відкрити на телефоні", title: "Відкрити на телефоні", stay: "Залишитись на десктопі" },
@@ -853,6 +865,7 @@ export function App() {
     ${A.spec.filters ? html`<${FilterChips} />` : null}
     ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
     ${tab.type === "list" && tab.sort ? html`<${SortBar} tab=${tab} />` : null}
+    ${tab.type === "list" && tab.toggles ? html`<${TogglesBar} tab=${tab} />` : null}
     <main id="view" class="px-4 pt-4 max-w-xl mx-auto flex flex-col gap-3" style=${fit ? null : "padding-bottom:calc(var(--dock-h) + 1.5rem)"}>
       <${TabView} tab=${tab} />
     </main>

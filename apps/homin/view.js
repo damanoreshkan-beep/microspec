@@ -150,8 +150,11 @@ export function band({ t, S, toast }) {
               title=${row.name}
               subtitle=${row.toneLabel || row.kindLabel}
               size="sm"
-              actions=${[{ id: "hunt", icon: "lucide:compass", label: T(t, "huntTitle"), onClick: () => pick(tuned), attr: { "data-pick": true } }]}
-            />` : null}
+            />
+            <button data-pick class="btn btn-sm btn-ghost gap-1.5 self-center"
+                    onClick=${() => pick(tuned)}>
+              ${Icon("lucide:compass")}${T(t, "huntTitle")}
+            </button>` : null}
         </div>
       <//>
       <${Hunt} t=${t} target=${target} open=${scr === "hunt"} onClose=${() => S.screen.set(null)} />

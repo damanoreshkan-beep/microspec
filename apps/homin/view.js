@@ -8,6 +8,7 @@ import { compass } from "/_rt/sensors.js";
 import { newRose, addSample, roseStats, hasBearing } from "/_rt/df.js";
 import { LPD433, channelCentre } from "/_rt/chan433.js";
 import { gate } from "/_rt/gate.js";
+import { USB_FILTERS, usbSupported } from "/_rt/rtlsdr.js";
 import { useDial } from "./viz.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -23,6 +24,19 @@ const SEED = [
   { id: "seed-burst-58", channel: 58, kind: "burst", strength: 0.3, toneHz: null, count: 1, src: "seed" },
 ];
 const NO_WORKER = typeof Worker === "undefined";
+let worker = null;
+
+export async function requestReceiver() {
+  if (!usbSupported()) return "unsupported";
+  try {
+    const dev = await navigator.usb.requestDevice({ filters: USB_FILTERS });
+    if (!dev) return "none";
+  } catch {
+    return "none";                      
+  }
+  worker?.postMessage({ type: "start", gate });
+  return "ok";
+}
 const seeded = () => SEED.map((e) => ({ ...e, lastSeen: Date.now() }));
 const $events = atom(gate || NO_WORKER ? seeded() : []);
 const $connected = atom(false);
@@ -32,7 +46,7 @@ function useRadio() {
   useEffect(() => {
     if (NO_WORKER) return;
     let w;
-    try { w = new Worker(new URL("./radio.worker.js", import.meta.url), { type: "module" }); }
+    try { w = new Worker(new URL("./radio.worker.js", import.meta.url), { type: "module" }); worker = w; }
     catch { return; }
     w.onmessage = (e) => {
       const d = e.data || {};
@@ -48,7 +62,7 @@ function useRadio() {
     };
     w.postMessage({ type: "start", gate });
     if (gate) $connected.set(true);
-    return () => { try { w.postMessage({ type: "stop" }); w.terminate(); } catch {  } };
+    return () => { try { w.postMessage({ type: "stop" }); w.terminate(); } catch {  } worker = null; };
   }, []);
 }
 
@@ -129,7 +143,7 @@ function Hunt({ t, target, onClose, open }) {
     <//>`;
 }
 
-export function band({ t, S, screen, openScreen, closeScreen }) {
+export function band({ t, S, screen, openScreen, closeScreen, toast }) {
   useRadio();
   const events = useStore($events);
   const connected = useStore($connected);
@@ -160,7 +174,10 @@ export function band({ t, S, screen, openScreen, closeScreen }) {
         <div class="flex items-center gap-[var(--ms-gap)] justify-center">
           ${connected ? null : html`
             <button class="btn btn-sm btn-primary gap-1.5" data-connect
-                    onClick=${() => location.reload()}>
+                    onClick=${async () => {
+                      const r = await requestReceiver();
+                      if (r !== "ok") toast(T(t, r === "unsupported" ? "noWebusb" : "noDevice"));
+                    }}>
               ${Icon("lucide:usb")}${T(t, "connect")}
             </button>`}
           ${sorted.slice(0, 3).map((e) => html`

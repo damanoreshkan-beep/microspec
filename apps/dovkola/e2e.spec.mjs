@@ -9,7 +9,7 @@ export default [
       await seed(h);
       h.expect((await h.count("[data-row]")) > 5, "замало сигналів у списку");
       const t = await h.bodyText();
-      h.expect(/MHz|GHz/.test(t), "немає частот на картках");
+      h.expect(/МГц|ГГц|MHz|GHz/.test(t), "немає діапазонів/частот у списку");
       h.expect(/Промінь|Xiaomi|Toyota|вежа/i.test(t), "немає названих сигналів");
     },
   },

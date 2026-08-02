@@ -45,5 +45,15 @@
   "installIosHint": "Share, then Add to Home Screen.",
   "installGenericHint": "Open the browser menu and choose Install.",
   "noDevice": "No receiver chosen",
-  "noWebusb": "This browser cannot reach USB devices"
+  "noWebusb": "This browser cannot reach USB devices",
+  "tabLive": "Live",
+  "searchLive": "Search signals",
+  "statusLive": "Everything on the air now",
+  "emptyLive": "Nothing on the air",
+  "emptyLiveHint": "Connect the receiver to start listening",
+  "colRaw": "Raw",
+  "colSeen": "Seen",
+  "rowProto": "Protocol",
+  "rowPayload": "Reading",
+  "rowRaw": "Raw bytes"
 }

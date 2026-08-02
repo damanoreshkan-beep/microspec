@@ -33,4 +33,22 @@ export default [
       h.expect(b.trim() === "—", `штатна антена не дає азимута, а показано "${b}"`);
     },
   },
+  {
+    name: "ефір: список показує сигнали з сирими даними", run: async (h) => {
+      await ready(h);
+      await h.click('[data-tab="live"]'); await h.wait(400);
+      h.expect((await h.count("[data-fav]")) >= 2, "у списку менше двох сигналів");
+      const body = await h.bodyText();
+      h.expect(/[0-9a-f]{2}\s+[0-9a-f]{2}/i.test(body), "у списку немає сирих байтів жодного пристрою");
+    },
+  },
+  {
+    name: "прослуховування: транспорт вмикається і вимикається", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-transport]")) === 1, "немає транспорту для прослуховування");
+      const btn = "[data-transport] button[aria-pressed], [data-transport] button";
+      await h.tap(btn); await h.wait(300);
+      h.expect((await h.count("[data-transport]")) === 1, "транспорт зник після натискання");
+    },
+  },
 ];

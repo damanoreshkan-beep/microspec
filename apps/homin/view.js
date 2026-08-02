@@ -101,7 +101,8 @@ function Hunt({ t, target, onClose, open }) {
     <//>`;
 }
 
-export function band({ t, screen, openScreen, closeScreen, toast }) {
+export function band({ t, S, toast }) {
+  const scr = useStore(S.screen);
   useEffect(() => { ensureWorker(); }, []);
   const events = useStore($events);
   const connected = useStore($connected);
@@ -115,7 +116,7 @@ export function band({ t, screen, openScreen, closeScreen, toast }) {
   }, []);
 
   const sorted = [...events].sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
-  const pick = (e) => { setTarget(e); openScreen("hunt"); };
+  const pick = (e) => { setTarget(e); S.screen.set("hunt"); };
 
   const canvasRef = useRef();
   const stateRef = useRef({ events: sorted, now, freshAt: 0 });
@@ -153,6 +154,6 @@ export function band({ t, screen, openScreen, closeScreen, toast }) {
             />` : null}
         </div>
       <//>
-      <${Hunt} t=${t} target=${target} open=${screen === "hunt"} onClose=${closeScreen} />
+      <${Hunt} t=${t} target=${target} open=${scr === "hunt"} onClose=${() => S.screen.set(null)} />
     </div>`;
 }

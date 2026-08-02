@@ -158,7 +158,7 @@ export function band({ t, S, toast }) {
   const row = tuned ? describe(tuned, t) : null;
 
   return html`
-    <div class="h-full min-h-0 flex flex-col">
+    <div class="h-full min-h-0 flex flex-col" data-scr=${scr || "none"}>
       <div class="flex-1 min-h-0 relative">
         <canvas ref=${canvasRef} aria-hidden="true"
                 class="absolute inset-0 w-full h-full pointer-events-none"></canvas>

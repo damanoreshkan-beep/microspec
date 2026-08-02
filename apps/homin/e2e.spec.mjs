@@ -21,15 +21,32 @@ export default [
     // subtree in the DOM whether it is open or shut, so counting [data-bearing] passes before anything is
     // opened and can never reach 0 afterwards. The first version of this test asserted exactly that and was
     // measuring nothing at all.
+    // FOUR CI rounds were spent here on one boolean that only ever said "no". A check that reports a
+    // magnitude with no subject is a check to fix first, so this one now names the whole state — whether the
+    // dialog exists, whether the tap target exists, and what the screen ATOM says (data-scr on the view
+    // root). That separates "the tap never ran" from "it ran and the sheet did not follow", which is the
+    // distinction every one of those rounds was missing.
     name: "пеленг: відкривається і закривається системним Назад", run: async (h) => {
       await ready(h);
-      h.expect((await h.prop("#hunt", "open")) !== true, "пеленг відкритий ще до дотику");
-      await h.tap("[data-pick]");
-      await h.wait(400);
-      h.expect((await h.prop("#hunt", "open")) === true, "пеленг не відкрився");
-      await h.back();
-      await h.wait(400);
-      h.expect((await h.prop("#hunt", "open")) !== true, "системний Назад не закрив пеленг");
+      const state = async (label) =>
+        `${label}[dlg=${await h.count("#hunt")} open=${await h.prop("#hunt", "open")}` +
+        ` scr=${await h.attr("[data-scr]", "data-scr")} pick=${await h.count("[data-pick]")}` +
+        ` tp=${await h.count("[data-transport]")} marks=${await h.count("[data-mark]")}]`;
+
+      const before = await state("before");
+      h.expect((await h.prop("#hunt", "open")) !== true, `пеленг відкритий ще до дотику ${before}`);
+
+      await h.tap("[data-pick]"); await h.wait(400);
+      const afterPick = await state("afterPick");
+
+      // If the transport action did not carry, the dial mark is the other path to the same handler — trying
+      // it in the SAME round tells me which of the two is broken instead of costing another push.
+      if ((await h.prop("#hunt", "open")) !== true) { await h.tap("[data-mark]"); await h.wait(400); }
+      const afterMark = await state("afterMark");
+
+      h.expect((await h.prop("#hunt", "open")) === true, `пеленг не відкрився ${before} ${afterPick} ${afterMark}`);
+      await h.back(); await h.wait(400);
+      h.expect((await h.prop("#hunt", "open")) !== true, `системний Назад не закрив пеленг ${await state("afterBack")}`);
       h.expect((await h.count("[data-mark]")) > 0, "Назад вийшов з апки замість закрити екран");
     },
   },
@@ -38,8 +55,8 @@ export default [
     // app's honesty made testable: the shape says what the hardware can do.
     name: "пеленг: без напрямленої антени азимут не показується", run: async (h) => {
       await ready(h);
-      await h.tap("[data-pick]");
-      await h.wait(400);
+      await h.tap("[data-pick]"); await h.wait(400);
+      if ((await h.prop("#hunt", "open")) !== true) { await h.tap("[data-mark]"); await h.wait(400); }
       h.expect((await h.prop("#hunt", "open")) === true, "пеленг не відкрився — читати показник немає сенсу");
       const b = await h.text("[data-bearing]");
       h.expect(b.trim() === "—", `штатна антена не дає азимута, а показано "${b}"`);

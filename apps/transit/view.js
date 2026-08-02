@@ -510,6 +510,18 @@ function PortraitSheet({ open, onClose, C, t, loc }) {
 
 // ── tab 1: the bi-wheel ────────────────────────────────────────────────────────────────────────────────
 
+// One day back / forward, flanking the scrub track. A ±1 step is the move the slider is worst at — one day
+// out of 730 is under a pixel of travel — so these are not a shortcut for the track, they are the only
+// control that can name a single day. At either end of the ±SCRUB window the button goes to the row's empty
+// slot (`sf-inset`, the chips' own unchosen state) rather than vanishing: a control that disappears moves
+// everything beside it.
+function DayStep({ dir, t, offset }) {
+  const to = clampScrub(offset + (dir === "prev" ? -1 : 1)), end = to === offset;
+  return html`<button data-step=${dir} aria-label=${T(t, dir === "prev" ? "prevDay" : "nextDay")} disabled=${end}
+    class=${`shrink-0 w-[var(--ms-ctl)] h-[var(--ms-ctl)] rounded-xl grid place-items-center transition ${end ? "sf-inset text-base-content/40" : "sf-raised sf-e2 sf-press"}`}
+    onClick=${() => $offset.set(to)}>${Icon(dir === "prev" ? "lucide:chevron-left" : "lucide:chevron-right", "text-lg")}</button>`;
+}
+
 export function wheel({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t), locale = useStore(S.locale);
   useStore(aiTick);
@@ -595,7 +607,15 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
         <div class="text-center">
           <span data-date class="text-2xl font-bold tabular-nums">${fmtDate(C.when)}</span>
         </div>
-        <input id="scrub" type="range" min=${-SCRUB} max=${SCRUB} step="1" value=${offset} class="range range-xs range-primary" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
+        ${/* One row: a day back, the year-wide scrub, a day forward. A ±1 step is the move the slider is
+             worst at — one day out of 730 is under a pixel of travel — so the arrows are not a shortcut for
+             the track, they are the only control that can name a single day. `.btn` is shrink-0 by rule, so
+             the arrows keep --ms-ctl and the track takes what is left (`min-w-0 flex-1`). */""}
+        <div class="flex items-center gap-2">
+          <${DayStep} dir="prev" t=${t} offset=${offset} />
+          <input id="scrub" type="range" min=${-SCRUB} max=${SCRUB} step="1" value=${offset} class="range range-xs range-primary min-w-0 flex-1" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
+          <${DayStep} dir="next" t=${t} offset=${offset} />
+        </div>
         ${/* An unchosen preset is an empty slot in the row (`sf-inset`) and the chosen one lifts out of it on
              the shallow rung, keeping the primary tint as its FILL. The third slot is the same slot and the
              same two states — it just holds a day the row cannot name, so it SHOWS that day instead of a

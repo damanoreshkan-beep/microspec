@@ -99,6 +99,39 @@ export default [
     },
   },
   {
+    // The arrows are the only control that can name a SINGLE day (one day is under a pixel of slider
+    // travel), so ±1 is asserted through the date readout, and the row is asserted by GEOMETRY: three
+    // controls on one line means three vertical centres within a couple of pixels. A structural check
+    // ("they share a parent") would pass a stack.
+    name: "стрілки дня по боках слайдера", run: async (h) => {
+      await h.click('[data-tab="wheel"]'); await h.wait(250);
+      await ready(h);
+      const d0 = await h.text("[data-date]");
+      const mid = async (s) => (await h.prop(s, "offsetTop")) + (await h.prop(s, "offsetHeight")) / 2;
+      const [prev, scrub, next] = [await mid('[data-step="prev"]'), await mid("#scrub"), await mid('[data-step="next"]')];
+      h.expect(Math.abs(prev - scrub) <= 2 && Math.abs(next - scrub) <= 2,
+        `стрілки не в одному ряду зі слайдером: prev ${prev}, scrub ${scrub}, next ${next}`);
+      const [xPrev, xScrub, xNext] = [await h.prop('[data-step="prev"]', "offsetLeft"), await h.prop("#scrub", "offsetLeft"), await h.prop('[data-step="next"]', "offsetLeft")];
+      h.expect(xPrev < xScrub && xScrub < xNext, `порядок у ряду не «‹ слайдер ›»: ${xPrev} / ${xScrub} / ${xNext}`);
+
+      await h.tap('[data-step="next"]'); await h.wait(300);
+      const d1 = await h.text("[data-date]");
+      h.expect(d0 !== d1, "стрілка вперед не зрушила день");
+      h.expect((await h.attr('[data-chip="tomorrow"]', "aria-pressed")) === "true", "крок уперед на день не дорівнює «завтра»");
+      await h.tap('[data-step="prev"]'); await h.wait(300);
+      h.expect(d0 === (await h.text("[data-date]")), "стрілка назад не повернула на сьогодні");
+      h.expect((await h.attr('[data-chip="today"]', "aria-pressed")) === "true", "після кроку назад «сьогодні» не позначене");
+
+      // At the end of the ±365-day window the step has nowhere to go: it must go INERT, not disappear —
+      // a control that vanishes moves the two beside it.
+      await h.type("#scrub", "365"); await h.wait(300);
+      h.expect((await h.prop('[data-step="next"]', "disabled")) === true, "стрілка вперед активна на межі вікна");
+      h.expect((await h.prop('[data-step="prev"]', "disabled")) === false, "стрілка назад вимкнена не на межі");
+      h.expect((await h.count('[data-step="next"]')) === 1, "стрілка зникла замість того, щоб згаснути");
+      await h.click('[data-chip="today"]'); await h.wait(250);
+    },
+  },
+  {
     // The third slot is the whole rest of the year: a native date input, so the day comes from the platform
     // calendar rather than from counting slider steps. Asserted through the input's own value change (which
     // is what a picked day does), not through the OS picker, which no headless browser can open.

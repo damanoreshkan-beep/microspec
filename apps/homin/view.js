@@ -10,18 +10,21 @@
 // is measured while you sweep. With the stock omnidirectional whip the petal comes out CIRCULAR and no
 // arrow is offered — the instrument shows its own limit by its shape instead of by a caption.
 //
-// The DSP is not here: /_rt/scan433.js does it, unit-tested, driven by ./radio.worker.js. This file draws.
+// The radio, the stores and the audio are radio.js — shared with the live list, so both are one source.
+// The DSP is /_rt/scan433.js, unit-tested. This file draws.
 import { html } from "htm/preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
-import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
-import { Sheet, Island } from "/_rt/ui.js";
+import { Sheet, Island, Transport } from "/_rt/ui.js";
 import { compass } from "/_rt/sensors.js";
 import { newRose, addSample, roseStats, hasBearing } from "/_rt/df.js";
-import { LPD433, channelCentre } from "/_rt/chan433.js";
+import { LPD433 } from "/_rt/chan433.js";
 import { gate } from "/_rt/gate.js";
-import { USB_FILTERS, usbSupported } from "/_rt/rtlsdr.js";
+import {
+  $events, $connected, $freshAt, $listening,
+  ensureWorker, requestReceiver, listen, stopListening, describe,
+} from "./radio.js";
 import { useDial } from "./viz.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -29,68 +32,6 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 const R_OUT = 92, R_IN = 34, AGE_MS = 60_000;
 const angleOf = (ch) => ((ch - 1) / LPD433.count) * 360 - 90;
 const pol = (deg, r) => [100 + r * Math.cos(deg * Math.PI / 180), 100 + r * Math.sin(deg * Math.PI / 180)];
-
-// Preflight has no Worker, and a blank dial is the one state whose layout nobody measures — every check
-// (a11y, overflow, the breakpoint matrix) would be reading an empty waiting screen no user ever sees. So the
-// dial renders populated from the first frame.
-//
-// These are NOT the gate's data. The gate runs radio.worker.js over fixture BYTES through the real DSP, and
-// its events arrive marked `src:"radio"` — which is what e2e asserts on, so a seed can never be mistaken for
-// a working pipeline. Seeded marks carry the WIDEST states (a long tone label, the crowded channel), because
-// the string nobody measures is the one that overflows.
-const SEED = [
-  { id: "seed-voice-12", channel: 12, kind: "voice", strength: 0.8, toneHz: 100.0, count: 3, src: "seed" },
-  { id: "seed-burst-35", channel: 35, kind: "burst", strength: 0.62, toneHz: null, count: 11, crowded: true, src: "seed" },
-  { id: "seed-voice-47", channel: 47, kind: "voice", strength: 0.45, toneHz: 118.8, count: 2, src: "seed" },
-  { id: "seed-burst-58", channel: 58, kind: "burst", strength: 0.3, toneHz: null, count: 1, src: "seed" },
-];
-const NO_WORKER = typeof Worker === "undefined";
-let worker = null;
-
-// WebUSB only ever hands over a device the user picked from Chrome's chooser, and that chooser can ONLY be
-// opened from inside a user gesture — navigator.usb.getDevices() (which the worker calls) returns nothing but
-// devices already granted in an earlier session. So without this call there is no grant, ever, and the worker
-// sits on an empty list forever. This is what the Receiver button is for.
-export async function requestReceiver() {
-  if (!usbSupported()) return "unsupported";
-  try {
-    const dev = await navigator.usb.requestDevice({ filters: USB_FILTERS });
-    if (!dev) return "none";
-  } catch {
-    return "none";                      // the chooser was dismissed, or nothing matched the filters
-  }
-  worker?.postMessage({ type: "start", gate });
-  return "ok";
-}
-const seeded = () => SEED.map((e) => ({ ...e, lastSeen: Date.now() }));
-const $events = atom(gate || NO_WORKER ? seeded() : []);
-const $connected = atom(false);
-const $freshAt = atom(0);
-
-function useRadio() {
-  useEffect(() => {
-    if (NO_WORKER) return;
-    let w;
-    try { w = new Worker(new URL("./radio.worker.js", import.meta.url), { type: "module" }); worker = w; }
-    catch { return; }
-    w.onmessage = (e) => {
-      const d = e.data || {};
-      if (d.type === "events" && d.events?.length) {
-        // The first real packet retires the seed entirely: a screen showing both would be half honest.
-        const prev = $events.get().filter((x) => x.src === "radio");
-        const by = new Map(prev.map((x) => [x.id, x]));
-        for (const ev of d.events) {
-          if (!by.has(ev.id)) $freshAt.set(Date.now());     // a genuinely NEW signal — the sonar ring fires
-          by.set(ev.id, { ...ev, src: "radio" });
-        }
-        $events.set([...by.values()]);
-      } else if (d.type === "state") $connected.set(!!d.connected);
-    };
-    w.postMessage({ type: "start", gate });
-    if (gate) $connected.set(true);
-    return () => { try { w.postMessage({ type: "stop" }); w.terminate(); } catch { /* */ } worker = null; };
-  }, []);
-}
 
 // ---- the dial ----
 // Two layers over one map. The canvas is the PICTURE (viz.js, three.js, lazy and probe-guarded); the SVG is
@@ -159,8 +100,9 @@ function Hunt({ t, target, onClose, open }) {
     pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
   }
   const bearing = hasBearing(stats);
+  const row = target ? describe(target, t) : null;
   return html`
-    <${Sheet} id="hunt" open=${open} onClose=${onClose} title=${T(t, "huntTitle")} subtitle=${target?.name || ""}>
+    <${Sheet} id="hunt" open=${open} onClose=${onClose} title=${T(t, "huntTitle")} subtitle=${row?.name || ""}>
       <div class="flex flex-col items-center gap-[var(--ms-gap)]">
         <svg viewBox="0 0 200 200" class="w-full max-w-[15rem] text-base-content" role="img" aria-label=${T(t, "roseAria")}>
           <circle cx="100" cy="100" r=${R_OUT} fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.3" />
@@ -173,14 +115,19 @@ function Hunt({ t, target, onClose, open }) {
         <div data-bearing class="font-mono text-[length:var(--ms-label)] text-base-content/70">
           ${bearing ? Math.round(stats.bearingDeg) + "°" : "—"}
         </div>
+        ${row?.rawHex ? html`
+          <div data-raw class="w-full font-mono text-[length:var(--ms-label)] text-base-content/70 break-all">
+            ${row.rawHex}
+          </div>` : null}
       </div>
     <//>`;
 }
 
-export function band({ t, S, screen, openScreen, closeScreen, toast }) {
-  useRadio();
+export function band({ t, screen, openScreen, closeScreen, toast }) {
+  useEffect(() => { ensureWorker(); }, []);
   const events = useStore($events);
   const connected = useStore($connected);
+  const listening = useStore($listening);
   const [target, setTarget] = useState(null);
   const [now, setNow] = useState(() => Date.now());
   const tick = useRef(0);
@@ -199,6 +146,14 @@ export function band({ t, S, screen, openScreen, closeScreen, toast }) {
   stateRef.current = { events: sorted, now: Date.now(), freshAt: $freshAt.get() };
   const webgl = useDial(canvasRef, () => stateRef.current);
 
+  // Listening follows the loudest voice unless one has been chosen, because a transport with nothing behind
+  // it is a dead control.
+  const voices = sorted.filter((e) => e.kind === "voice");
+  const tuned = listening != null
+    ? sorted.find((e) => e.channel === listening)
+    : voices[0];
+  const row = tuned ? describe(tuned, t) : null;
+
   return html`
     <div class="h-full min-h-0 flex flex-col">
       <div class="flex-1 min-h-0 relative">
@@ -207,25 +162,26 @@ export function band({ t, S, screen, openScreen, closeScreen, toast }) {
         <${Dial} events=${sorted} t=${t} now=${now} onPick=${pick} webgl=${webgl} />
       </div>
       <${Island}>
-        <div class="flex items-center gap-[var(--ms-gap)] justify-center">
+        <div class="flex flex-col gap-[var(--ms-gap)]">
           ${connected ? null : html`
-            <button class="btn btn-sm btn-primary gap-1.5" data-connect
+            <button class="btn btn-sm btn-primary gap-1.5 self-center" data-connect
                     onClick=${async () => {
                       const r = await requestReceiver();
                       if (r !== "ok") toast(T(t, r === "unsupported" ? "noWebusb" : "noDevice"));
                     }}>
               ${Icon("lucide:usb")}${T(t, "connect")}
             </button>`}
-          ${sorted.slice(0, 3).map((e) => html`
-            <button key=${e.id} data-pick class="btn btn-sm btn-ghost gap-1.5 font-mono"
-                    onClick=${() => pick(e)}>
-              ${Icon(e.kind === "voice" ? "lucide:mic" : "lucide:radio-tower")}
-              ${e.channel}
-            </button>`)}
+          ${row ? html`
+            <${Transport}
+              playing=${listening != null}
+              onToggle=${() => (listening != null ? stopListening() : listen(tuned.channel))}
+              title=${row.name}
+              subtitle=${row.toneLabel || row.kindLabel}
+              size="sm"
+              actions=${[{ id: "hunt", icon: "lucide:compass", label: T(t, "huntTitle"), onClick: () => pick(tuned), attr: "data-pick" }]}
+            />` : null}
         </div>
       <//>
       <${Hunt} t=${t} target=${target} open=${screen === "hunt"} onClose=${closeScreen} />
     </div>`;
 }
-
-export const _channelCentre = channelCentre;   // re-exported so the band plan stays one source of truth

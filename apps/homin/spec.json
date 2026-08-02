@@ -12,6 +12,9 @@
       { "icon": "lucide:activity", "label": "rowFreq", "field": "freqLabel" },
       { "icon": "lucide:waveform", "label": "rowKind", "field": "kindLabel" },
       { "icon": "lucide:key-round", "label": "rowTone", "field": "toneLabel" },
+      { "icon": "lucide:cpu", "label": "rowProto", "field": "proto" },
+      { "icon": "lucide:thermometer", "label": "rowPayload", "field": "payload" },
+      { "icon": "lucide:binary", "label": "rowRaw", "field": "rawHex" },
       { "icon": "lucide:repeat", "label": "rowSeen", "field": "countLabel" },
       { "icon": "lucide:clock", "label": "rowLast", "field": "lastSeen", "format": "since" }
     ]
@@ -26,6 +29,26 @@
       "view": "band",
       "fit": true,
       "needs": ["compass", "haptic"]
+    },
+    {
+      "id": "live",
+      "type": "list",
+      "icon": "lucide:list",
+      "label": "tabLive",
+      "titleKey": "tabLive",
+      "search": true,
+      "searchKey": "searchLive",
+      "statusKey": "statusLive",
+      "empty": { "icon": "lucide:antenna", "text": "emptyLive", "hint": "emptyLiveHint" },
+      "card": {
+        "layout": "table",
+        "columns": [
+          { "field": "name", "label": "colName", "grow": true, "lg": true, "sub": "detail" },
+          { "field": "rawHex", "label": "colRaw", "grow": true, "muted": true, "mono": true },
+          { "field": "countLabel", "label": "colSeen", "align": "right", "mono": true, "heat": "strength" },
+          { "field": "lastSeen", "label": "colWhen", "align": "right", "mono": true, "muted": true, "format": "since" }
+        ]
+      }
     },
     {
       "id": "saved",

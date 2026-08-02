@@ -54,8 +54,9 @@
     import en from "./i18n/en.json" with { type: "json" };
     import uk from "./i18n/uk.json" with { type: "json" };
     import * as views from "./view.js";
+    import { stream } from "./stream.js";
     import { start } from "/_rt/index.js";
-    start({ ...spec, i18n: { en, uk } }, { views });
+    start({ ...spec, i18n: { en, uk } }, { views, stream });
   </script>
 </body>
 </html>

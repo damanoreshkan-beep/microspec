@@ -43,22 +43,47 @@ export function magnitude(re, im) {
 // pulse at m≈1 contributes 1, so the gaps drop out by orders of magnitude on their own. The `floor` cut is
 // belt-and-braces on top of that, for the case where the "gap" is not near-zero but a weak interferer — then
 // power weighting alone would still let it in.
+// The spread is measured ROBUSTLY (a weighted median absolute deviation), not as a standard deviation, and
+// that is not fastidiousness — a standard deviation gets the answer wrong.
+//
+// Measured on a filtered 18 ms OOK frame: 20 samples out of 450 carried 68.7% of the variance and 50 carried
+// 96.5%. Those samples are the keying EDGES, where a band-limited filter rings and the phase lurches (the
+// excursions sat at -0.388 rad/sample against a true carrier of -0.628). So a standard deviation ends up
+// measuring how many times the transmitter switched on, which is the opposite of the question — and it read
+// 0.0061 against a 0.004 threshold, i.e. it filed a doorbell as "not clearly a device".
+//
+// A median ignores a handful of outliers by construction. Voice deviates on essentially EVERY sample;
+// keyed carriers deviate on a few. 1.4826 rescales MAD to be comparable with a standard deviation.
 export function fmActivity(re, im, { floor = 0.25 } = {}) {
   const f = instantFreq(re, im), mag = magnitude(re, im);
   let peak = 0;
   for (let i = 0; i < mag.length; i++) if (mag[i] > peak) peak = mag[i];
   if (peak <= 0 || f.length === 0) return 0;
   const cut = peak * floor;
-  let w = 0, sum = 0, sumSq = 0;
+  const vals = [], wts = [];
   for (let i = 0; i < f.length; i++) {
     const m = Math.min(mag[i], mag[i + 1]);                // both endpoints must be real signal
     if (m < cut) continue;
-    const p = m * m;
-    w += p; sum += p * f[i]; sumSq += p * f[i] * f[i];
+    vals.push(f[i]); wts.push(m * m);                      // weight by power
   }
-  if (w <= 0) return 0;
-  const mean = sum / w;
-  return Math.sqrt(Math.max(0, sumSq / w - mean * mean)) / TAU;   // cycles/sample, so it is scale-free
+  if (!vals.length) return 0;
+  const med = weightedMedian(vals, wts);
+  const mad = weightedMedian(vals.map((v) => Math.abs(v - med)), wts);
+  return 1.4826 * mad / TAU;                               // cycles/sample, so it is scale-free
+}
+
+// Weighted median: the value at which half the WEIGHT has accumulated.
+export function weightedMedian(values, weights) {
+  const idx = values.map((_, i) => i).sort((a, b) => values[a] - values[b]);
+  let total = 0;
+  for (const w of weights) total += w;
+  if (total <= 0) return 0;
+  let acc = 0;
+  for (const i of idx) {
+    acc += weights[i];
+    if (acc >= total / 2) return values[i];
+  }
+  return values[idx[idx.length - 1]];
 }
 
 // Count envelope on/off edges with hysteresis — OOK keying produces many, speech produces almost none.

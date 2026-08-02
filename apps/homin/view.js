@@ -177,7 +177,7 @@ export function band({ t, screen, openScreen, closeScreen, toast }) {
               title=${row.name}
               subtitle=${row.toneLabel || row.kindLabel}
               size="sm"
-              actions=${[{ id: "hunt", icon: "lucide:compass", label: T(t, "huntTitle"), onClick: () => pick(tuned), attr: "data-pick" }]}
+              actions=${[{ id: "hunt", icon: "lucide:compass", label: T(t, "huntTitle"), onClick: () => pick(tuned), attr: { "data-pick": true } }]}
             />` : null}
         </div>
       <//>

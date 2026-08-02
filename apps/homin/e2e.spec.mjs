@@ -59,6 +59,8 @@ export default [
   {
     // Listening is the whole point of the walkie-talkie half: a transport that cannot be armed is a prop.
     name: "прослуховування: транспорт вмикається і вимикається", run: async (h) => {
+      // The previous test left us on the live tab; the transport lives on the band tab, so go back first.
+      await h.click('[data-tab="band"]'); await h.wait(300);
       await ready(h);
       h.expect((await h.count("[data-transport]")) === 1, "немає транспорту для прослуховування");
       const btn = "[data-transport] button[aria-pressed], [data-transport] button";

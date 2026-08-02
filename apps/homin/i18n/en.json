@@ -1,0 +1,54 @@
+{
+  "title": "Homin",
+  "refresh": "Refresh",
+  "close": "Close",
+  "back": "Back",
+  "toastSaved": "Saved",
+  "toastRemoved": "Removed",
+  "favAria": "Save",
+  "unfavAria": "Remove from saved",
+
+  "tabBand": "Band",
+  "tabSaved": "Saved",
+  "tabMe": "Profile",
+
+  "bandAria": "The 433 MHz band as a dial: angle is frequency, radius is time",
+  "roseAria": "Measured signal strength against compass heading",
+  "connect": "Receiver",
+  "huntTitle": "Bearing",
+
+  "searchSaved": "Search saved",
+  "savedCount": "{n} saved",
+  "emptySaved": "Nothing saved",
+  "emptySavedHint": "Tap a signal on the dial to keep it",
+  "noResults": "Nothing found",
+  "noResultsHint": "Try another word",
+  "statusLoading": "Listening",
+  "statusError": "Receiver unavailable",
+  "errorHint": "Reconnect the receiver and try again",
+
+  "colName": "Signal",
+  "colChannel": "Channel",
+  "colWhen": "Heard",
+
+  "rowChannel": "Channel",
+  "rowFreq": "Frequency",
+  "rowKind": "Kind",
+  "rowTone": "Tone",
+  "rowSeen": "Times heard",
+  "rowLast": "Last heard",
+
+  "kindVoice": "Voice",
+  "kindBurst": "Device",
+  "kindUnknown": "Unclassified",
+
+  "profTagline": "Everything talking on 433 MHz",
+  "profTheme": "Dark theme",
+  "profLang": "Language",
+  "install": "Install",
+  "installTitle": "Install Homin",
+  "installBtn": "Install",
+  "installDesc": "Homin runs as its own app, offline.",
+  "installIosHint": "Share, then Add to Home Screen.",
+  "installGenericHint": "Open the browser menu and choose Install."
+}

@@ -1,0 +1,9 @@
+{
+  "//": "Project-scoped MCP servers for this repo. `microspec` serves the UI kit (generated from packages/runtime/ui.js by tools/kit-manifest.mjs) plus the authoring docs, so an agent gets a component's real signature and the reasoning behind it without reading the runtime. Zero npm: the server is hand-rolled JSON-RPC over stdio in Deno.",
+  "mcpServers": {
+    "microspec": {
+      "command": "deno",
+      "args": ["run", "-A", "tools/mcp/server.mjs"]
+    }
+  }
+}

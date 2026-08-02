@@ -43,13 +43,13 @@
     "id": "wiki",
     "title": "Вікіпедія",
     "titles": {
-      "en": "Wikipedia",
-      "uk": "Вікіпедія"
+      "uk": "Вікіпедія",
+      "en": "Wikipedia"
     },
     "tagline": "Швидкий пошук по Вікіпедії",
     "taglines": {
-      "en": "Fast search across Wikipedia",
-      "uk": "Швидкий пошук по Вікіпедії"
+      "uk": "Швидкий пошук по Вікіпедії",
+      "en": "Fast search across Wikipedia"
     },
     "glyph": "lucide:book-open-text",
     "art": "<path d=\"M12 7v14\"/><path d=\"M16 12h2\"/><path d=\"M16 8h2\"/><path d=\"M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z\"/><path d=\"M6 12h2\"/><path d=\"M6 8h2\"/>",
@@ -63,13 +63,13 @@
     "id": "globe",
     "title": "Глобус",
     "titles": {
-      "en": "Globe",
-      "uk": "Глобус"
+      "uk": "Глобус",
+      "en": "Globe"
     },
     "tagline": "Інтерактивний глобус — крути Землю, обирай країни та дивись факти",
     "taglines": {
-      "en": "An interactive globe — spin the Earth, pick countries, see the facts",
-      "uk": "Інтерактивний глобус — крути Землю, обирай країни та дивись факти"
+      "uk": "Інтерактивний глобус — крути Землю, обирай країни та дивись факти",
+      "en": "An interactive globe — spin the Earth, pick countries, see the facts"
     },
     "glyph": "lucide:globe",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/><path d=\"M2 12h20\"/>",
@@ -78,6 +78,26 @@
     "href": "./globe/",
     "version": "1.12",
     "category": "science"
+  },
+  {
+    "id": "homin",
+    "title": "Гомін",
+    "titles": {
+      "en": "Homin",
+      "uk": "Гомін"
+    },
+    "tagline": "Усе, що говорить на 433 МГц",
+    "taglines": {
+      "en": "Everything talking on 433 MHz",
+      "uk": "Усе, що говорить на 433 МГц"
+    },
+    "glyph": "lucide:radar",
+    "art": "<circle cx=\"12\" cy=\"12\" r=\"1.6\"/><path d=\"M12 6.5a5.5 5.5 0 0 1 5.5 5.5\"/><path d=\"M12 2.5A9.5 9.5 0 0 1 21.5 12\"/><path d=\"M12 17.5A5.5 5.5 0 0 1 6.5 12\"/><path d=\"M12 21.5A9.5 9.5 0 0 1 2.5 12\"/>",
+    "bg": "#1c1a17",
+    "fg": "#E9A23B",
+    "href": "./homin/",
+    "version": "1.0",
+    "category": "hackrf"
   },
   {
     "id": "horoscope",
@@ -103,13 +123,13 @@
     "id": "breathe",
     "title": "Дихання",
     "titles": {
-      "en": "Breathe",
-      "uk": "Дихання"
+      "uk": "Дихання",
+      "en": "Breathe"
     },
     "tagline": "Спокійне дихання за технікою — коробка, 4-7-8, когерентне, спокій",
     "taglines": {
-      "en": "Calm guided breathing — box, 4-7-8, coherent, calm",
-      "uk": "Спокійне дихання за технікою — коробка, 4-7-8, когерентне, спокій"
+      "uk": "Спокійне дихання за технікою — коробка, 4-7-8, когерентне, спокій",
+      "en": "Calm guided breathing — box, 4-7-8, coherent, calm"
     },
     "glyph": "lucide:wind",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"3.5\"/>",
@@ -123,13 +143,13 @@
     "id": "arc",
     "title": "Дуга",
     "titles": {
-      "en": "Arc",
-      "uk": "Дуга"
+      "uk": "Дуга",
+      "en": "Arc"
     },
     "tagline": "Сюжет книги у трьох діях",
     "taglines": {
-      "en": "A book's plot in three acts",
-      "uk": "Сюжет книги у трьох діях"
+      "uk": "Сюжет книги у трьох діях",
+      "en": "A book's plot in three acts"
     },
     "glyph": "lucide:book-open-text",
     "art": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M4 5.5A1.5 1.5 0 0 1 5.5 4H10a2 2 0 0 1 2 2v13a1.5 1.5 0 0 0-1.5-1.5h-5A1.5 1.5 0 0 1 4 16Z\"/><path d=\"M20 5.5A1.5 1.5 0 0 0 18.5 4H14a2 2 0 0 0-2 2v13a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 0 20 16Z\"/><path d=\"M7 9.5h2\"/><path d=\"M15 9.5h2\"/></svg>",
@@ -176,7 +196,7 @@
     "bg": "#0A0A0B",
     "fg": "#38bdf8",
     "href": "./ether/",
-    "version": "1.6",
+    "version": "1.7",
     "category": "hackrf"
   },
   {
@@ -203,13 +223,13 @@
     "id": "ambient",
     "title": "Звуки",
     "titles": {
-      "en": "Ambient",
-      "uk": "Звуки"
+      "uk": "Звуки",
+      "en": "Ambient"
     },
     "tagline": "20 ambient-звуків для сну й фокусу — вода, погода, природа, тони, шум, машини — усе синтезується наживо, без файлів, офлайн",
     "taglines": {
-      "en": "20 ambient sounds for sleep and focus — water, weather, nature, tones, noise, machines — all synthesised live, no files, offline",
-      "uk": "20 ambient-звуків для сну й фокусу — вода, погода, природа, тони, шум, машини — усе синтезується наживо, без файлів, офлайн"
+      "uk": "20 ambient-звуків для сну й фокусу — вода, погода, природа, тони, шум, машини — усе синтезується наживо, без файлів, офлайн",
+      "en": "20 ambient sounds for sleep and focus — water, weather, nature, tones, noise, machines — all synthesised live, no files, offline"
     },
     "glyph": "lucide:audio-lines",
     "art": "<line x1=\"5\" y1=\"10\" x2=\"5\" y2=\"14\"/><line x1=\"9.5\" y1=\"6\" x2=\"9.5\" y2=\"18\"/><line x1=\"14.5\" y1=\"8.5\" x2=\"14.5\" y2=\"15.5\"/><line x1=\"19\" y1=\"11\" x2=\"19\" y2=\"13\"/>",
@@ -223,13 +243,13 @@
     "id": "quakes",
     "title": "Землетруси",
     "titles": {
-      "en": "Earthquakes",
-      "uk": "Землетруси"
+      "uk": "Землетруси",
+      "en": "Earthquakes"
     },
     "tagline": "Землетруси світу онлайн — магнітуда, місце, глибина на живому глобусі",
     "taglines": {
-      "en": "Earthquakes worldwide, live — magnitude, place and depth on a spinning globe",
-      "uk": "Землетруси світу онлайн — магнітуда, місце, глибина на живому глобусі"
+      "uk": "Землетруси світу онлайн — магнітуда, місце, глибина на живому глобусі",
+      "en": "Earthquakes worldwide, live — magnitude, place and depth on a spinning globe"
     },
     "glyph": "lucide:waves",
     "art": "<path d=\"M2 12h3l2-6 3 14 3-10 2 4 2-2h3\"/>",
@@ -283,13 +303,13 @@
     "id": "kalimba",
     "title": "Калімба",
     "titles": {
-      "en": "Kalimba",
-      "uk": "Калімба"
+      "uk": "Калімба",
+      "en": "Kalimba"
     },
     "tagline": "Калімба на 17 пелюсток на весь екран — грай горизонтально, перемикай лади й обирай із 6 різних голосів (класик, скринька, скло, марімба, дзвін, електро). Грай готові пісні (Аватар: «Листя з лози») або дай Потоку згенерувати мелодію (науково обґрунтований мелодичний пошук: консонанс, голосоведення, розв'язання). Кожна нота синтезується наживо, без файлів, офлайн.",
     "taglines": {
-      "en": "A full-screen 17-tine thumb piano — play in landscape, switch tunings, and pick from 6 distinct voices (classic, music box, glass, marimba, bell, electric). Play ready songs (Avatar: Leaves from the Vine) or let Flow auto-generate a melody (a research-backed melodic search: consonance, voice-leading, resolution). Every note synthesised live, no files, offline.",
-      "uk": "Калімба на 17 пелюсток на весь екран — грай горизонтально, перемикай лади й обирай із 6 різних голосів (класик, скринька, скло, марімба, дзвін, електро). Грай готові пісні (Аватар: «Листя з лози») або дай Потоку згенерувати мелодію (науково обґрунтований мелодичний пошук: консонанс, голосоведення, розв'язання). Кожна нота синтезується наживо, без файлів, офлайн."
+      "uk": "Калімба на 17 пелюсток на весь екран — грай горизонтально, перемикай лади й обирай із 6 різних голосів (класик, скринька, скло, марімба, дзвін, електро). Грай готові пісні (Аватар: «Листя з лози») або дай Потоку згенерувати мелодію (науково обґрунтований мелодичний пошук: консонанс, голосоведення, розв'язання). Кожна нота синтезується наживо, без файлів, офлайн.",
+      "en": "A full-screen 17-tine thumb piano — play in landscape, switch tunings, and pick from 6 distinct voices (classic, music box, glass, marimba, bell, electric). Play ready songs (Avatar: Leaves from the Vine) or let Flow auto-generate a melody (a research-backed melodic search: consonance, voice-leading, resolution). Every note synthesised live, no files, offline."
     },
     "glyph": "lucide:piano",
     "art": "<rect x=\"4\" y=\"11\" width=\"16\" height=\"9\" rx=\"2.5\"/><line x1=\"7\" y1=\"13\" x2=\"7\" y2=\"7\"/><line x1=\"9.5\" y1=\"13\" x2=\"9.5\" y2=\"5\"/><line x1=\"12\" y1=\"13\" x2=\"12\" y2=\"3.5\"/><line x1=\"14.5\" y1=\"13\" x2=\"14.5\" y2=\"5\"/><line x1=\"17\" y1=\"13\" x2=\"17\" y2=\"7\"/>",
@@ -323,13 +343,13 @@
     "id": "cinema",
     "title": "Кіно",
     "titles": {
-      "en": "Cinema",
-      "uk": "Кіно"
+      "uk": "Кіно",
+      "en": "Cinema"
     },
     "tagline": "Кіно — фільми суспільного надбання з Internet Archive: дивись просто в застосунку, продовжуй з того місця, де зупинився",
     "taglines": {
-      "en": "Cinema — public-domain feature films from the Internet Archive: watch right in the app, pick up where you left off",
-      "uk": "Кіно — фільми суспільного надбання з Internet Archive: дивись просто в застосунку, продовжуй з того місця, де зупинився"
+      "uk": "Кіно — фільми суспільного надбання з Internet Archive: дивись просто в застосунку, продовжуй з того місця, де зупинився",
+      "en": "Cinema — public-domain feature films from the Internet Archive: watch right in the app, pick up where you left off"
     },
     "glyph": "lucide:clapperboard",
     "art": "<path d=\"M3.2 6.4 20.1 3.1a1.6 1.6 0 0 1 1.9 1.3l.5 2.6L4.6 10.6 3.2 6.4z\"/><path d=\"M2.4 12h19.2v7.3a1.7 1.7 0 0 1-1.7 1.7H4.1a1.7 1.7 0 0 1-1.7-1.7V12z\" opacity=\".55\"/><path d=\"m7.9 4.6 1.8 4.3-2.3.5-1.8-4.4zM13 3.6l1.8 4.3-2.3.5-1.8-4.4z\"/><path d=\"M10.2 14.4 15.6 17l-5.4 2.6z\"/>",
@@ -363,13 +383,13 @@
     "id": "books",
     "title": "Книги",
     "titles": {
-      "en": "Books",
-      "uk": "Книги"
+      "uk": "Книги",
+      "en": "Books"
     },
     "tagline": "Каталог безкоштовних книг Project Gutenberg — 78 000+ творів, опис українською",
     "taglines": {
-      "en": "A catalog of free Project Gutenberg books — 78,000+ works, summaries translated",
-      "uk": "Каталог безкоштовних книг Project Gutenberg — 78 000+ творів, опис українською"
+      "uk": "Каталог безкоштовних книг Project Gutenberg — 78 000+ творів, опис українською",
+      "en": "A catalog of free Project Gutenberg books — 78,000+ works, summaries translated"
     },
     "glyph": "lucide:book-open",
     "art": "<path d=\"M12 7v14\" /><path d=\"M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z\" />",
@@ -403,13 +423,13 @@
     "id": "compass",
     "title": "Компас",
     "titles": {
-      "en": "Compass",
-      "uk": "Компас"
+      "uk": "Компас",
+      "en": "Compass"
     },
     "tagline": "Компас, що показує ІСТИННУ північ, а не магнітну. Схилення рахується на пристрої за World Magnetic Model 2025 (NGA/NOAA) — 90 коефіцієнтів, звірених зі 100 еталонами NOAA. Без інтернету, без ключів",
     "taglines": {
-      "en": "A compass that points at TRUE north, not magnetic. Declination is computed on-device from the World Magnetic Model 2025 (NGA/NOAA) — 90 coefficients, checked against NOAA's own 100 test points. No internet, no keys",
-      "uk": "Компас, що показує ІСТИННУ північ, а не магнітну. Схилення рахується на пристрої за World Magnetic Model 2025 (NGA/NOAA) — 90 коефіцієнтів, звірених зі 100 еталонами NOAA. Без інтернету, без ключів"
+      "uk": "Компас, що показує ІСТИННУ північ, а не магнітну. Схилення рахується на пристрої за World Magnetic Model 2025 (NGA/NOAA) — 90 коефіцієнтів, звірених зі 100 еталонами NOAA. Без інтернету, без ключів",
+      "en": "A compass that points at TRUE north, not magnetic. Declination is computed on-device from the World Magnetic Model 2025 (NGA/NOAA) — 90 coefficients, checked against NOAA's own 100 test points. No internet, no keys"
     },
     "glyph": "lucide:compass",
     "art": "<path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\" /><circle cx=\"12\" cy=\"12\" r=\"10\" />",
@@ -423,13 +443,13 @@
     "id": "launches",
     "title": "Космічні запуски",
     "titles": {
-      "en": "Space Launches",
-      "uk": "Космічні запуски"
+      "uk": "Космічні запуски",
+      "en": "Space Launches"
     },
     "tagline": "Зворотний відлік до найближчих космічних запусків",
     "taglines": {
-      "en": "Countdown to the next rocket launches",
-      "uk": "Зворотний відлік до найближчих космічних запусків"
+      "uk": "Зворотний відлік до найближчих космічних запусків",
+      "en": "Countdown to the next rocket launches"
     },
     "glyph": "lucide:rocket",
     "art": "<path d=\"M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z\"/><path d=\"m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z\"/><path d=\"M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0\"/><path d=\"M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5\"/>",
@@ -443,13 +463,13 @@
     "id": "crypto",
     "title": "Крипто-тікер",
     "titles": {
-      "en": "Crypto Ticker",
-      "uk": "Крипто-тікер"
+      "uk": "Крипто-тікер",
+      "en": "Crypto Ticker"
     },
     "tagline": "Живі ціни топ-криптовалют у реальному часі — WebSocket, без затримок",
     "taglines": {
-      "en": "Live top-crypto prices in real time — WebSocket, no polling",
-      "uk": "Живі ціни топ-криптовалют у реальному часі — WebSocket, без затримок"
+      "uk": "Живі ціни топ-криптовалют у реальному часі — WebSocket, без затримок",
+      "en": "Live top-crypto prices in real time — WebSocket, no polling"
     },
     "glyph": "lucide:candlestick-chart",
     "art": "<path d=\"M9 5v4\"/><rect width=\"4\" height=\"6\" x=\"7\" y=\"9\" rx=\"1\"/><path d=\"M9 15v2\"/><path d=\"M17 3v2\"/><rect width=\"4\" height=\"8\" x=\"15\" y=\"5\" rx=\"1\"/><path d=\"M17 13v3\"/><path d=\"M3 3v18h18\"/>",
@@ -463,13 +483,13 @@
     "id": "rates",
     "title": "Курси валют",
     "titles": {
-      "en": "Exchange rates",
-      "uk": "Курси валют"
+      "uk": "Курси валют",
+      "en": "Exchange rates"
     },
     "tagline": "Курси валют і конвертер",
     "taglines": {
-      "en": "Currency rates and converter",
-      "uk": "Курси валют і конвертер"
+      "uk": "Курси валют і конвертер",
+      "en": "Currency rates and converter"
     },
     "glyph": "lucide:coins",
     "art": "<path d=\"M8 14v.5\"/><path d=\"M8 9.5V9\"/><path d=\"M12 6.5v.5\"/><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 17v.5\"/>",
@@ -503,13 +523,13 @@
     "id": "kp",
     "title": "Магнітні бурі",
     "titles": {
-      "en": "Geomagnetic Storms",
-      "uk": "Магнітні бурі"
+      "uk": "Магнітні бурі",
+      "en": "Geomagnetic Storms"
     },
     "tagline": "Геомагнітна активність онлайн — індекс Kp, шкала штормів G, прогноз і сонячний вітер",
     "taglines": {
-      "en": "Geomagnetic activity live — the Kp index, the G storm scale, forecast and solar wind",
-      "uk": "Геомагнітна активність онлайн — індекс Kp, шкала штормів G, прогноз і сонячний вітер"
+      "uk": "Геомагнітна активність онлайн — індекс Kp, шкала штормів G, прогноз і сонячний вітер",
+      "en": "Geomagnetic activity live — the Kp index, the G storm scale, forecast and solar wind"
     },
     "glyph": "lucide:activity",
     "art": "<path d=\"M22 12h-4l-3 9L9 3l-3 9H2\"/>",
@@ -543,13 +563,13 @@
     "id": "iss",
     "title": "МКС",
     "titles": {
-      "en": "ISS",
-      "uk": "МКС"
+      "uk": "МКС",
+      "en": "ISS"
     },
     "tagline": "Де Міжнародна космічна станція просто зараз — її позиція наживо на глобусі, пропагована з орбітальних елементів (SGP4), з висотою, швидкістю та освітленням Сонцем. Тягне TLE один раз, далі працює офлайн.",
     "taglines": {
-      "en": "Where the International Space Station is right now — its position propagated live on the globe from orbital elements (SGP4), with altitude, speed and sunlight. Fetches the TLE once, then runs offline.",
-      "uk": "Де Міжнародна космічна станція просто зараз — її позиція наживо на глобусі, пропагована з орбітальних елементів (SGP4), з висотою, швидкістю та освітленням Сонцем. Тягне TLE один раз, далі працює офлайн."
+      "uk": "Де Міжнародна космічна станція просто зараз — її позиція наживо на глобусі, пропагована з орбітальних елементів (SGP4), з висотою, швидкістю та освітленням Сонцем. Тягне TLE один раз, далі працює офлайн.",
+      "en": "Where the International Space Station is right now — its position propagated live on the globe from orbital elements (SGP4), with altitude, speed and sunlight. Fetches the TLE once, then runs offline."
     },
     "glyph": "lucide:satellite",
     "art": "<path d=\"M13 7 9 3 5 7l4 4\"/><path d=\"m17 11 4 4-4 4-4-4\"/><path d=\"m8 12 4 4 6-6-4-4Z\"/><path d=\"m16 8 3-3\"/><path d=\"M9 21a6 6 0 0 0-6-6\"/>",
@@ -563,13 +583,13 @@
     "id": "hf",
     "title": "Нейронки",
     "titles": {
-      "en": "Neural Nets",
-      "uk": "Нейронки"
+      "uk": "Нейронки",
+      "en": "Neural Nets"
     },
     "tagline": "Каталог свіжих моделей і Spaces з Hugging Face — тип, завантаження, вподобання й опис українською",
     "taglines": {
-      "en": "A catalog of fresh Hugging Face models & Spaces — kind, downloads, likes and a translated description",
-      "uk": "Каталог свіжих моделей і Spaces з Hugging Face — тип, завантаження, вподобання й опис українською"
+      "uk": "Каталог свіжих моделей і Spaces з Hugging Face — тип, завантаження, вподобання й опис українською",
+      "en": "A catalog of fresh Hugging Face models & Spaces — kind, downloads, likes and a translated description"
     },
     "glyph": "lucide:sparkles",
     "art": "<path d=\"M13 2c.35 4.2 2.95 6.8 7.15 7.15C15.95 9.5 13.35 12.1 13 16.3c-.35-4.2-2.95-6.8-7.15-7.15C10.05 8.8 12.65 6.2 13 2z\"/><path d=\"M6.5 14.5c.2 2.4 1.7 3.9 4.1 4.1-2.4.2-3.9 1.7-4.1 4.1-.2-2.4-1.7-3.9-4.1-4.1 2.4-.2 3.9-1.7 4.1-4.1z\"/>",
@@ -643,13 +663,13 @@
     "id": "weather",
     "title": "Погода",
     "titles": {
-      "en": "Weather",
-      "uk": "Погода"
+      "uk": "Погода",
+      "en": "Weather"
     },
     "tagline": "Погода зараз і прогноз",
     "taglines": {
-      "en": "Current weather and forecast",
-      "uk": "Погода зараз і прогноз"
+      "uk": "Погода зараз і прогноз",
+      "en": "Current weather and forecast"
     },
     "glyph": "lucide:cloud-sun",
     "art": "<path d=\"M13 22H7a4 4 0 0 1-.5-7.969A5.5 5.5 0 0 1 18 12.5a4.5 4.5 0 0 1-.5 8.977\"/>",
@@ -783,13 +803,13 @@
     "id": "sun",
     "title": "Сонячний компас",
     "titles": {
-      "en": "Sun Compass",
-      "uk": "Сонячний компас"
+      "uk": "Сонячний компас",
+      "en": "Sun Compass"
     },
     "tagline": "Де сонце зараз і о будь-якій годині — компас, азимут, золота година",
     "taglines": {
-      "en": "Where the sun is now and at any hour — compass, azimuth, golden hour",
-      "uk": "Де сонце зараз і о будь-якій годині — компас, азимут, золота година"
+      "uk": "Де сонце зараз і о будь-якій годині — компас, азимут, золота година",
+      "en": "Where the sun is now and at any hour — compass, azimuth, golden hour"
     },
     "glyph": "lucide:sun",
     "art": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41\"/>",
@@ -803,13 +823,13 @@
     "id": "sopilka",
     "title": "Сопілка",
     "titles": {
-      "en": "Sopilka",
-      "uk": "Сопілка"
+      "uk": "Сопілка",
+      "en": "Sopilka"
     },
     "tagline": "Українська сопілка-прима — діатонічна, 6 отворів, до-мажор. Аплікатура як на справжній: закриваєш отвори згори, ковзаєш пальцем — і нота тягнеться легато. Синтезується наживо, без семплів, офлайн",
     "taglines": {
-      "en": "The Ukrainian sopilka — diatonic prima, six holes, C major. Real fingering: cover the holes from the top, slide a finger and the note glides legato. Synthesised live, no samples, offline",
-      "uk": "Українська сопілка-прима — діатонічна, 6 отворів, до-мажор. Аплікатура як на справжній: закриваєш отвори згори, ковзаєш пальцем — і нота тягнеться легато. Синтезується наживо, без семплів, офлайн"
+      "uk": "Українська сопілка-прима — діатонічна, 6 отворів, до-мажор. Аплікатура як на справжній: закриваєш отвори згори, ковзаєш пальцем — і нота тягнеться легато. Синтезується наживо, без семплів, офлайн",
+      "en": "The Ukrainian sopilka — diatonic prima, six holes, C major. Real fingering: cover the holes from the top, slide a finger and the note glides legato. Synthesised live, no samples, offline"
     },
     "glyph": "lucide:audio-lines",
     "art": "<path d=\"M2 10v3\" /><path d=\"M6 6v11\" /><path d=\"M10 3v18\" /><path d=\"M14 8v7\" /><path d=\"M18 5v13\" /><path d=\"M22 10v3\" />",
@@ -823,13 +843,13 @@
     "id": "wish",
     "title": "Список бажань",
     "titles": {
-      "en": "Wishlist",
-      "uk": "Список бажань"
+      "uk": "Список бажань",
+      "en": "Wishlist"
     },
     "tagline": "Список бажань — кілька списків, ціни й пріоритети, повний офлайн; дані лишаються на пристрої",
     "taglines": {
-      "en": "A wishlist — multiple lists, prices and priorities, full offline; your data stays on the device",
-      "uk": "Список бажань — кілька списків, ціни й пріоритети, повний офлайн; дані лишаються на пристрої"
+      "uk": "Список бажань — кілька списків, ціни й пріоритети, повний офлайн; дані лишаються на пристрої",
+      "en": "A wishlist — multiple lists, prices and priorities, full offline; your data stays on the device"
     },
     "glyph": "lucide:sparkles",
     "art": "<rect x=\"3\" y=\"8\" width=\"18\" height=\"4\" rx=\"1\"/><path d=\"M12 8v13\"/><path d=\"M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7\"/><path d=\"M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5\"/>",
@@ -923,13 +943,13 @@
     "id": "frontier",
     "title": "Фронтир",
     "titles": {
-      "en": "Frontier",
-      "uk": "Фронтир"
+      "uk": "Фронтир",
+      "en": "Frontier"
     },
     "tagline": "Фронтир OSS — свіжі проривні проєкти з GitHub: мова, зорі, форки й опис українською",
     "taglines": {
-      "en": "OSS frontier — fresh breakthrough GitHub projects: language, stars, forks and a translated description",
-      "uk": "Фронтир OSS — свіжі проривні проєкти з GitHub: мова, зорі, форки й опис українською"
+      "uk": "Фронтир OSS — свіжі проривні проєкти з GitHub: мова, зорі, форки й опис українською",
+      "en": "OSS frontier — fresh breakthrough GitHub projects: language, stars, forks and a translated description"
     },
     "glyph": "lucide:git-branch",
     "art": "<path d=\"M13.6 2.3c3.6 2.9 5.4 6.7 5.4 11.2L16.7 16H10l-2.3-2.5c0-4.5 1.8-8.3 5.5-11.2a.6.6 0 0 1 .4 0zM8.7 17.7 6 22l4.3-1.7zM17.3 17.7 20 22l-4.3-1.7z\"/>",
@@ -963,13 +983,13 @@
     "id": "onthisday",
     "title": "Цей день",
     "titles": {
-      "en": "On This Day",
-      "uk": "Цей день"
+      "uk": "Цей день",
+      "en": "On This Day"
     },
     "tagline": "Що сталося в цей день — події, народження та свята з історії",
     "taglines": {
-      "en": "What happened on this day — events, births and holidays from history",
-      "uk": "Що сталося в цей день — події, народження та свята з історії"
+      "uk": "Що сталося в цей день — події, народження та свята з історії",
+      "en": "What happened on this day — events, births and holidays from history"
     },
     "glyph": "lucide:history",
     "art": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/><path d=\"M12 7v5l4 2\"/>",
@@ -1023,13 +1043,13 @@
     "id": "dou",
     "title": "DOU · бронювання",
     "titles": {
-      "en": "DOU · deferment",
-      "uk": "DOU · бронювання"
+      "uk": "DOU · бронювання",
+      "en": "DOU · deferment"
     },
     "tagline": "Вакансії з бронюванням від мобілізації",
     "taglines": {
-      "en": "Jobs with deferment from mobilization",
-      "uk": "Вакансії з бронюванням від мобілізації"
+      "uk": "Вакансії з бронюванням від мобілізації",
+      "en": "Jobs with deferment from mobilization"
     },
     "glyph": "lucide:user",
     "art": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/><path d=\"m9 12 2 2 4-4\"/>",
@@ -1083,13 +1103,13 @@
     "id": "ruler",
     "title": "GPS-лінійка",
     "titles": {
-      "en": "GPS Ruler",
-      "uk": "GPS-лінійка"
+      "uk": "GPS-лінійка",
+      "en": "GPS Ruler"
     },
     "tagline": "GPS-лінійка — вимірюй відстані й площі ламаною по координатах: сегменти, загальна довжина, площа, точність GPS",
     "taglines": {
-      "en": "GPS ruler — measure distances and areas as a coordinate polyline: segments, total length, area, GPS accuracy",
-      "uk": "GPS-лінійка — вимірюй відстані й площі ламаною по координатах: сегменти, загальна довжина, площа, точність GPS"
+      "uk": "GPS-лінійка — вимірюй відстані й площі ламаною по координатах: сегменти, загальна довжина, площа, точність GPS",
+      "en": "GPS ruler — measure distances and areas as a coordinate polyline: segments, total length, area, GPS accuracy"
     },
     "glyph": "lucide:ruler",
     "art": "<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\"/><path d=\"m14.5 12.5 2-2\"/><path d=\"m11.5 9.5 2-2\"/><path d=\"m8.5 6.5 2-2\"/><path d=\"m17.5 15.5 2-2\"/>",
@@ -1123,13 +1143,13 @@
     "id": "hn",
     "title": "Hacker News",
     "titles": {
-      "en": "Hacker News",
-      "uk": "Hacker News"
+      "uk": "Hacker News",
+      "en": "Hacker News"
     },
     "tagline": "Головна Hacker News",
     "taglines": {
-      "en": "Hacker News front page",
-      "uk": "Головна Hacker News"
+      "uk": "Головна Hacker News",
+      "en": "Hacker News front page"
     },
     "glyph": "lucide:flame",
     "art": "<path d=\"M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z\"/>",
@@ -1143,13 +1163,13 @@
     "id": "iptv",
     "title": "IPTV",
     "titles": {
-      "en": "IPTV",
-      "uk": "IPTV"
+      "uk": "IPTV",
+      "en": "IPTV"
     },
     "tagline": "Прямий ефір публічних IPTV-каналів зі списку iptv-org — за країнами й категоріями, з плеєром",
     "taglines": {
-      "en": "Live public IPTV channels from the iptv-org index — by country and category, with a player",
-      "uk": "Прямий ефір публічних IPTV-каналів зі списку iptv-org — за країнами й категоріями, з плеєром"
+      "uk": "Прямий ефір публічних IPTV-каналів зі списку iptv-org — за країнами й категоріями, з плеєром",
+      "en": "Live public IPTV channels from the iptv-org index — by country and category, with a player"
     },
     "glyph": "lucide:tv",
     "art": "<path d=\"M4 5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H4zm6.2 3.1 4.6 2.9-4.6 2.9V8.1z\"/><path d=\"M8 20h8v1.4H8z\"/>",

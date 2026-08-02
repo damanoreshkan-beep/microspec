@@ -1,9 +1,7 @@
 # ether — FROZEN (2026-08-02)
 
 `ether` is **frozen**: it stays built, gated and deployed, but is no longer iterated on.
-Its successor is **`dovkola`** (`apps/dovkola/`) — a single living list of the real signals
-transmitting around you (FM+RDS names, band presence, ISM devices, BLE vendors, GSM presence),
-each a named card with live decoded data, instead of ether's tap-a-band-hear-a-voice model.
+(A `dovkola` successor app was started and then removed — do not point new work at it.)
 
 The farm has no formal freeze flag (schema is `additionalProperties:false`), so "frozen" here means:
 leave the files untouched — affected-CI only re-runs an app a change reaches, so an untouched app

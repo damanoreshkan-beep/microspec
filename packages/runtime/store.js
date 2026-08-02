@@ -11,6 +11,7 @@ export function createApp(spec, dataLoad) {
   const ns = (spec.id || "app") + ":";
   const conv = spec.tabs.find((t) => t.type === "converter");
   const sortTab = spec.tabs.find((t) => Array.isArray(t.sort) && t.sort.length);
+  const segTab = spec.tabs.find((t) => Array.isArray(t.segments) && t.segments.length);
   // filters + sort persist across sessions (declared at the schema level; the runtime remembers the choice)
   const FKEY = ns + "filters";
   let savedFilters = {};
@@ -42,6 +43,7 @@ export function createApp(spec, dataLoad) {
     query: atom(""),
     tab: atom(spec.tabs?.[0]?.id),
     sort: persistentAtom(ns + "sort", sortTab?.sort?.[0]?.key || ""),
+    seg: persistentAtom(ns + "seg", segTab?.segments?.[0]?.key || ""),   // one-of-N top filter strip (tab.segments)
     toggles: persistentAtom(ns + "toggles", {}, JSON_CODEC),   // pinned per-tab multi-toggle strip (tab.toggles); {} = all on
 
     // next = opaque cursor for the following page (null = no more); loadingMore/moreError = paging state

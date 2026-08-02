@@ -16,3 +16,4 @@ proxy/
 # agent bridge files — machine-local mirrors of the owner's private skill rules
 # (absolute home paths, private-repo references); same reason as .claude/skills/
 AGENTS.md
+.serena/

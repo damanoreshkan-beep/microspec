@@ -49,6 +49,11 @@ import { sampleRatePayload, setFreqPayload, clampLnaGain, clampVgaGain, roundBas
 import { syndrome, OFFSET, ptyName, rdsChar, RdsBlockSync, RdsParser, Rds } from "./rds.js";
 import { BANDS, arfcnToFreq, freqToArfcn, arfcnPowers, activeArfcns, steadyScore, CHAN_HZ } from "./gsmband.js";
 import { clampTxVgaGain, TX_ENDPOINT } from "./hackrf.js";
+import { CTCSS_TONES, minToneGap, windowSamples, detectCtcss } from "./ctcss.js";
+import { newRose, addSample, roseStats, hasBearing } from "./df.js";
+import { instantFreq, magnitude, fmActivity, envelopeTransitions, classifyEvent, CLASSIFY } from "./burst.js";
+import { squelchOpen as levelSquelch } from "./demod.js";
+import { LPD433, PMR446, ISM433, TUNE_HZ, planSpanHz, channelCentre, channelAt, binOf, channelBins, integrateChannels } from "./chan433.js";
 import { ifFreqWord, sampleRateRatio, muxConfigFor, pllDivider, pllWords, gainSplit, dcBin, offsetBinaryToSigned, supportsSweep as RTL_SWEEP, VENDOR_ID as RTL_VID, TRANSFER_SIZE as RTL_XFER } from "./rtlsdr.js";
 import { SWEEP_REQUEST, MODE_RX_SWEEP, BYTES_PER_BLOCK, SWEEP_STYLE, TUNE_STEP_HZ, SWEEP_OFFSET, initSweepTransfer, planRange, bytesPerSweep, sweepBlocks, blockSpectrum, binFrequencyLow, noiseFloor, peaks, strongestBin } from "./sweep.js";
 import { Demodulator, squelchOpen, MODE_PARAMS } from "./demod.js";
@@ -5110,4 +5115,214 @@ Deno.test("offsetBinaryToSigned: RTL's uint8 DC maps to zero in the farm's signe
   const out = offsetBinaryToSigned(Uint8Array.from([0, 127, 128, 255]));
   const asSigned = [...out].map((b) => (b > 127 ? b - 256 : b));
   assertEquals(asSigned, [-128, -1, 0, 127]);            // 128 (the RTL's DC) must become 0
+});
+
+// ================= 433 MHz channel grids (chan433.js) =================
+
+Deno.test("channel plans: 1-based centres round-trip, and reject anything off-plan", () => {
+  assertEquals(channelCentre(LPD433, 1), 433_075_000);
+  assertEquals(channelCentre(LPD433, 69), 434_775_000);
+  assertEquals(channelCentre(PMR446, 1), 446_006_250);
+  assertEquals(channelCentre(PMR446, 16), 446_193_750);
+  assertEquals(channelCentre(LPD433, 0), null);
+  assertEquals(channelCentre(LPD433, 70), null);
+  for (const plan of [LPD433, PMR446]) {
+    for (let n = 1; n <= plan.count; n++) assertEquals(channelAt(plan, channelCentre(plan, n)), n);
+  }
+  assertEquals(channelAt(LPD433, 400_000_000), null);
+  // The tune centre IS a live channel — the reason DC must be offset away from it (rtlsdr.js dcBin).
+  assertEquals(channelCentre(LPD433, 35), TUNE_HZ);
+});
+
+Deno.test("the whole LPD433 plan fits inside one 2.4 MS/s window, and PMR446 does not", () => {
+  assertEquals(planSpanHz(LPD433), 1_700_000);
+  assert(planSpanHz(LPD433) < 2_400_000, "the single-tune claim: the plan must fit the window");
+  assert(ISM433.hiHz - ISM433.loHz < 2_400_000, "…and so must the ISM device band around it");
+  const geom = { fftSize: 2048, sampleRate: 2_400_000, centreHz: TUNE_HZ };
+  assert(channelBins(LPD433, geom).every((c) => c.inWindow), "every LPD channel must be in view at once");
+  // PMR446 is 11 MHz away: it is a RETUNE, and the mapping must say so rather than silently report noise.
+  assert(channelBins(PMR446, geom).every((c) => !c.inWindow), "PMR446 cannot be in the LPD window");
+});
+
+Deno.test("binOf: the tune centre lands on the middle bin, and the grid is symmetric", () => {
+  const geom = { fftSize: 2048, sampleRate: 2_400_000, centreHz: TUNE_HZ };
+  assertEquals(binOf(TUNE_HZ, geom), 1024);
+  assertEquals(binOf(TUNE_HZ - 1_200_000, geom), 0);          // lower window edge
+  assertEquals(binOf(TUNE_HZ + 1_200_000, geom), 2048);       // upper window edge
+  const c35 = channelBins(LPD433, geom)[34];
+  assert(c35.lo < 1024 && c35.hi > 1024, "channel 35 straddles the DC bin — the defect dcBin() pins");
+});
+
+Deno.test("integrateChannels: energy lands in its own channel and nowhere else", () => {
+  const geom = { fftSize: 2048, sampleRate: 2_400_000, centreHz: TUNE_HZ };
+  const bins = channelBins(LPD433, geom);
+  const power = new Float32Array(geom.fftSize);
+  const target = bins[19];                                     // channel 20
+  for (let b = Math.ceil(target.lo); b <= Math.floor(target.hi) - 1; b++) power[b] = 1;
+  const out = integrateChannels(power, bins);
+  assert(out[19] > 0.9, `channel 20 must hold the energy, got ${out[19]}`);
+  assertEquals(out[18], 0);
+  assertEquals(out[20], 0);
+  // A flat spectrum must integrate to exactly the flat level in every channel — this is what makes the
+  // fractional edge weights honest, and what lets channels be compared to one noise floor.
+  const flat = new Float32Array(geom.fftSize).fill(2);
+  for (const v of integrateChannels(flat, bins)) assert(Math.abs(v - 2) < 1e-5, `flat spectrum drifted: ${v}`);
+});
+
+// ================= burst vs voice on one channel (burst.js) =================
+// Synthesises the two things that share the 433 band and proves the level squelch cannot separate them.
+
+function synthOok({ fs = 25_000, pulses = 8, pulseMs = 1, offsetHz = 500, noise = 0.005 } = {}) {
+  const per = Math.round(fs * pulseMs / 1000), n = pulses * 2 * per;
+  const re = new Float32Array(n), im = new Float32Array(n);
+  let seed = 12345;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return (seed / 0xffffffff - 0.5) * 2; };
+  for (let i = 0; i < n; i++) {
+    const on = Math.floor(i / per) % 2 === 0;
+    const a = (on ? Math.SQRT2 : 0);                    // √2 so MEAN power matches the voice case at 50% duty
+    const ph = 2 * Math.PI * offsetHz * i / fs;         // a CONSTANT frequency error must not look like FM
+    re[i] = a * Math.cos(ph) + rnd() * noise;
+    im[i] = a * Math.sin(ph) + rnd() * noise;
+  }
+  return { re, im, durationMs: n * 1000 / fs };
+}
+
+function synthNfm({ fs = 25_000, ms = 500, toneHz = 1000, devHz = 2500, noise = 0.005 } = {}) {
+  const n = Math.round(fs * ms / 1000);
+  const re = new Float32Array(n), im = new Float32Array(n);
+  let seed = 999, ph = 0;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return (seed / 0xffffffff - 0.5) * 2; };
+  for (let i = 0; i < n; i++) {
+    ph += 2 * Math.PI * devHz * Math.sin(2 * Math.PI * toneHz * i / fs) / fs;
+    re[i] = Math.cos(ph) + rnd() * noise;
+    im[i] = Math.sin(ph) + rnd() * noise;
+  }
+  return { re, im, durationMs: ms };
+}
+
+const meanPowerDb = (re, im) => {
+  let p = 0;
+  for (let i = 0; i < re.length; i++) p += re[i] * re[i] + im[i] * im[i];
+  return 10 * Math.log10(p / re.length);
+};
+
+Deno.test("a LEVEL squelch cannot tell a doorbell from a voice — they carry the same power", () => {
+  const ook = synthOok(), voice = synthNfm();
+  const a = meanPowerDb(ook.re, ook.im), b = meanPowerDb(voice.re, voice.im);
+  assert(Math.abs(a - b) < 0.5, `the two events must be power-matched for this to prove anything (${a} vs ${b})`);
+  // demod.js squelchOpen is correct for what it does — and it opens on BOTH. This is the defect burst.js fixes.
+  assertEquals(levelSquelch(a, a - 3, false), true);
+  assertEquals(levelSquelch(b, b - 3, false), true);
+});
+
+Deno.test("fmActivity separates them, and a constant frequency error does NOT look like modulation", () => {
+  const ook = synthOok(), voice = synthNfm();
+  const fOok = fmActivity(ook.re, ook.im), fVoice = fmActivity(voice.re, voice.im);
+  assert(fVoice > fOok * 5, `voice must show far more frequency movement (voice ${fVoice}, ook ${fOok})`);
+  assert(fOok < CLASSIFY.fmBurst, `a 500 Hz offset carrier must read as unmodulated, got ${fOok}`);
+  assert(fVoice >= CLASSIFY.fmVoice, `NFM at 2.5 kHz deviation must read as modulated, got ${fVoice}`);
+  // The power weighting is load-bearing. Measured as a PLAIN standard deviation the way one would write it
+  // first, the undefined phase inside the OOK gaps reads as violent modulation, and every burst in the band
+  // would be misfiled as speech. (Note it is the weighting that does this, not the `floor` cut: a gap at
+  // m≈0 contributes m²≈0 regardless of the floor.)
+  const f = instantFreq(ook.re, ook.im);
+  let s = 0, ss = 0;
+  for (const v of f) { s += v; ss += v * v; }
+  const plain = Math.sqrt(Math.max(0, ss / f.length - (s / f.length) ** 2)) / (2 * Math.PI);
+  assert(plain > fOok * 50, `naive unweighted variance must be wildly misleading here (plain ${plain}, weighted ${fOok})`);
+  assert(plain > CLASSIFY.fmVoice, `…misleading enough to cross the voice threshold, which is the actual trap (${plain})`);
+});
+
+Deno.test("classifyEvent labels both correctly, and refuses to guess when it matches neither", () => {
+  const ook = synthOok(), voice = synthNfm();
+  const ookEv = { durationMs: ook.durationMs, fmActivity: fmActivity(ook.re, ook.im), transitions: envelopeTransitions(magnitude(ook.re, ook.im)) };
+  const voiceEv = { durationMs: voice.durationMs, fmActivity: fmActivity(voice.re, voice.im), transitions: envelopeTransitions(magnitude(voice.re, voice.im)) };
+  assertEquals(classifyEvent(ookEv), "burst");
+  assertEquals(classifyEvent(voiceEv), "voice");
+  assert(ookEv.transitions >= 8, `8 keyed pulses must show as edges, got ${ookEv.transitions}`);
+  assertEquals(voiceEv.transitions, 0);                 // constant envelope
+  assertEquals(classifyEvent({ durationMs: 50, fmActivity: 0.05, transitions: 0 }), "unknown");
+});
+
+Deno.test("instantFreq: a pure tone reads as one constant frequency", () => {
+  const fs = 25_000, hz = 2_000, n = 256;
+  const re = new Float32Array(n), im = new Float32Array(n);
+  for (let i = 0; i < n; i++) { re[i] = Math.cos(2 * Math.PI * hz * i / fs); im[i] = Math.sin(2 * Math.PI * hz * i / fs); }
+  const f = instantFreq(re, im);
+  const expect = 2 * Math.PI * hz / fs;
+  for (const v of f) assert(Math.abs(v - expect) < 1e-4, `constant tone drifted: ${v} vs ${expect}`);
+});
+
+// ================= CTCSS sub-audible tones (ctcss.js) =================
+
+Deno.test("CTCSS: the tightest tone pair sets the integration window — it is not a taste choice", () => {
+  assertEquals(CTCSS_TONES.length, 38);
+  assert(Math.abs(minToneGap() - 2.5) < 1e-6, `closest pair is 71.9/74.4 Hz, got ${minToneGap()}`);
+  // Resolving 2.5 Hz needs at least 1/2.5 = 0.4 s of audio; with headroom, half a second.
+  assertEquals(windowSamples(8000), 4000);
+  assert(windowSamples(8000) / 8000 >= 0.4, "a tone cannot be identified faster than its own resolution");
+  for (let i = 1; i < CTCSS_TONES.length; i++) assert(CTCSS_TONES[i] > CTCSS_TONES[i - 1], "tones must be ascending");
+});
+
+Deno.test("CTCSS: finds a weak tone buried under much louder speech, and refuses when there is none", () => {
+  const fs = 8000, n = Math.round(fs * 0.6);
+  const mk = (toneHz) => {
+    const a = new Float32Array(n);
+    let seed = 7;
+    for (let i = 0; i < n; i++) {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const noise = (seed / 0xffffffff - 0.5) * 0.04;
+      const voice = Math.sin(2 * Math.PI * 1200 * i / fs);              // speech, ~7x the tone's amplitude
+      a[i] = (toneHz ? 0.15 * Math.sin(2 * Math.PI * toneHz * i / fs) : 0) + voice + noise;
+    }
+    return a;
+  };
+  const got = detectCtcss(mk(100.0), fs);
+  assert(got, "a 100.0 Hz tone under speech must be found — that is what the low-pass is for");
+  assertEquals(got.toneHz, 100.0);
+  const adj = detectCtcss(mk(103.5), fs);                                // the neighbouring standard tone
+  assertEquals(adj?.toneHz, 103.5, "adjacent tones must not be confused with each other");
+  assertEquals(detectCtcss(mk(null), fs), null, "speech with no tone must return null, not a nearest guess");
+  assertEquals(detectCtcss(mk(100.0).slice(0, 1000), fs), null, "too short to resolve → null, never a guess");
+});
+
+// ================= hunt-mode direction finding (df.js) =================
+
+Deno.test("df: an omnidirectional antenna produces a CIRCLE and no bearing is offered", () => {
+  const rose = newRose(72);
+  for (let h = 0; h < 360; h += 5) addSample(rose, h, 0.7);              // same strength whichever way you point
+  const s = roseStats(rose);
+  assert(s.r < 0.01, `a uniform sweep must have near-zero concentration, got ${s.r}`);
+  assertEquals(hasBearing(s), false, "the stock whip must never produce an arrow");
+  assertEquals(s.coverage, 1);
+});
+
+Deno.test("df: a directional lobe earns a bearing, and points where the signal actually peaked", () => {
+  const rose = newRose(72);
+  for (let h = 0; h < 360; h += 5) {
+    const lobe = Math.max(0, Math.cos((h - 90) * Math.PI / 180)) ** 2;   // a Yagi-ish pattern facing east
+    addSample(rose, h, lobe);
+  }
+  const s = roseStats(rose);
+  assert(s.r > 0.3, `a lobe must concentrate, got ${s.r}`);
+  assert(Math.abs(s.bearingDeg - 90) < 5, `bearing should be ~90 deg, got ${s.bearingDeg}`);
+  assertEquals(hasBearing(s), true);
+});
+
+Deno.test("df: headings wrap — 350 and 10 average to 0, not 180", () => {
+  const rose = newRose(72);
+  addSample(rose, 350, 1); addSample(rose, 10, 1);
+  const s = roseStats(rose);
+  assert(s.bearingDeg < 5 || s.bearingDeg > 355, `circular mean broken: got ${s.bearingDeg}`);
+  // …but two samples is not a sweep, so no arrow is offered yet.
+  assertEquals(hasBearing(s), false, "coverage gate must reject an unfinished sweep even when r is high");
+});
+
+Deno.test("df: an unswept arc is not a null — unvisited bins stay distinguishable from measured silence", () => {
+  const rose = newRose(72);
+  for (let h = 0; h < 90; h += 5) addSample(rose, h, 1);                 // swept only a quarter of the circle
+  const s = roseStats(rose);
+  assert(s.coverage < 0.3, `coverage must report the truth, got ${s.coverage}`);
+  assertEquals(hasBearing(s), false);
+  assertEquals(rose.count[40], 0);                                       // never visited
 });

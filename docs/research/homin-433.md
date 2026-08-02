@@ -66,37 +66,47 @@ The requirement: from one 2.4 MS/s complex stream, simultaneously and in realtim
 S25 Ultra — (a) monitor 69 × 25 kHz voice channels for activity, (b) demodulate one to audio, (c) detect
 OOK bursts across the whole span.
 
-**[V-self, arithmetic] A polyphase filterbank is the answer, and it is not close.**
+**SUPERSEDED DURING THE BUILD.** The first answer here was a 96-channel polyphase filterbank, on the
+grounds that `2.4e6 / 25e3 = 96` makes the decimation factor exactly the channel count. **It does not
+survive contact with the farm's FFT:** `fmradio.js:51` is radix-2, and **96 = 2⁵·3 is not a power of two**.
+Replacing the transform with a naive 96-point DFT costs `96² × 8 × 25 000 ≈ 1.8 GFLOP/s` and destroys the
+entire advantage; a mixed-radix FFT would work but is code we do not need, because —
 
-`2.4e6 / 25e3 = 96` — the decimation factor is exactly 96, so a **96-channel polyphase FFT filterbank**
-falls out of the sample rate with no resampling. Prototype filter at 12 taps per branch = 1152 taps.
+**the filterbank was solving a problem nobody has.** A critically-sampled bank yields complex samples for
+*every* channel simultaneously, which is only worth paying for if you demodulate them all. You cannot listen
+to 69 conversations. Activity indication needs **power**, not samples.
 
-    output block rate            2.4e6 / 96            = 25 000 blocks/s
-    polyphase filtering          1152 taps × 2 flops   = 2 304 flops/block
-    96-point complex FFT         ≈ 5·N·log₂N           ≈ 3 161 flops/block
-    total                        25 000 × 5 465        ≈ 137 MFLOP/s
+**[V-self] The architecture that ships:**
 
-The naive alternative — mix and decimate each channel independently:
+| path | method | cost |
+|---|---|---|
+| 69 channel activity + OOK burst detection | overlapped FFT (N=2048, Hann, 50%) → power → per-channel integration | measured below |
+| audio for the ONE selected channel | NCO mix + decimating FIR (`fmradio.js` `firLowpass`, `demod.js` `Demodulator`) | ≈34 MFLOP/s |
 
-    NCO mix at input rate        2.4e6 × 6 flops       = 14.4 MFLOP/s per channel
-    polyphase decimating FIR     25e3 × 96 × 8 flops   = 19.2 MFLOP/s per channel
-    × 69 channels                                      ≈ 2.3 GFLOP/s
+**[V-self, measured on the reference device] 192 ms to process 1.0 s of 2.4 MS/s — 19.2% of one core.**
+2342 frames of 2048. Measured in Deno under proot on the S25 Ultra itself, i.e. on the same silicon and the
+same V8 the browser runs, so this is a real number rather than an estimate. My arithmetic had predicted ~10%;
+the truth is roughly twice that, which is the reason to measure. It still leaves ample headroom for the
+WebGL dial. **[UNK]** the browser-Worker figure, which adds WebUSB transfer and postMessage.
 
-**~17× cheaper.** **[INF]** ~140 MFLOP/s on Float32Array loops is roughly 10% of one core on this class of
-phone, which leaves the headroom the WebGL dial needs. Not measured — the first thing to instrument.
+Cost of the simplification: channel edges no longer land on integer bins, because
+`25 kHz / (2.4 MHz / 2ᵏ) = 2ᵏ/96` is never an integer for a radix-2 transform. Channel power is therefore
+integrated with **fractional edge weights** (`chan433.js integrateChannels`, unit-tested so that a flat
+spectrum integrates to exactly the flat level in every channel). That is precise enough to say "this channel
+is active" — the analogue channel filter is not a brick wall either — and the channel we actually demodulate
+never goes through this mapping.
 
-### The grid alignment is exact, and it is a gift
+### What survives of the "exact grid" finding
 
-**[V-arith]** Tune centre `433.925 MHz` (the midpoint of ch1..ch69). With 96 bins of 25 kHz:
+**[V-arith]** The commensurability is real and is why the app is cheap: `2.4 MHz / 25 kHz = 96` exactly, so
+the LPD plan and the hardware window are whole multiples of each other and the 69 channels sit inside one
+tune with margin.
 
-    bin 48  = 433.925 MHz  (centre)
-    ch1     = 433.075      → 48 − 34 = bin 14
-    ch69    = 434.775      → 48 + 34 = bin 82
-    bins 14..82 = 69 bins  = 69 channels, exactly
-
-**The hardware sample rate and the LPD channel plan are commensurate.** No interpolation, no fractional
-resampling, no per-channel NCO — channel *k* IS bin *k+13*. This is the single most valuable finding in the
-note and it is why this app is cheap where it should have been expensive.
+**[V-arith] The corollary does not survive.** I had written that "channel *k* IS bin *k+13*" and called it
+the most valuable finding in the note. That is only true for a 96-point transform, which we cannot use.
+With the radix-2 FFT the mapping is fractional, and the elegance was in the arithmetic, not in the code that
+was going to be written. Recorded here rather than deleted, because the failure mode — falling for a tidy
+number and designing around it — is the one worth remembering.
 
 **[V-arith] The DC bin lands on a live channel, and this must be designed around.** Bin 48 = 433.925 MHz,
 and `(433.925 − 433.075) / 0.025 = 34` exactly — so the centre bin *is* LPD channel 35. Any DC offset
@@ -259,8 +269,14 @@ with unit tests, and this file currently violates the spirit of it.
 | `packages/runtime/sensors.js` | the compass for hunt mode |
 | `/_rt/ui.js` kit | Sheet · Segmented · Island · Panel · Transport — never hand-roll |
 
-New pure modules required: a polyphase channelizer, the burst/voice discriminator, CTCSS Goertzel, and the
-hunt-mode polar accumulator. All browser-free, all unit-tested, all in `packages/runtime/`.
+New pure modules, all browser-free, all unit-tested, all in `packages/runtime/` — **built, Phase 1**:
+
+| module | what it owns |
+|---|---|
+| `chan433.js` | LPD433 / PMR446 channel grids, the single-tune geometry, fractional per-channel FFT integration |
+| `burst.js` | the OOK-vs-voice discriminator a level squelch cannot do |
+| `ctcss.js` | the 38-tone table, the window the tone spacing forces, Goertzel detection under speech |
+| `df.js` | the hunt-mode polar accumulator and the circular statistics that refuse a bearing without one |
 
 ---
 
@@ -279,7 +295,8 @@ the farm's only TX app and this is not it.
 - **[UNK]** R820T2 usable bandwidth and passband flatness at 2.4 MS/s; DC-spike magnitude and where it lands.
 - **[UNK]** R820T2 PLL retune settling time — decides whether the PMR446 hop is instant or visible.
 - **[UNK]** Sustained WebUSB throughput at 4.8 MB/s on Chrome/Android, and dropped-sample behaviour.
-- **[UNK]** Measured JS throughput for the filterbank on the S25 Ultra (the ~140 MFLOP/s estimate is
-  arithmetic, not a benchmark).
+- ~~**[UNK]** Measured JS throughput~~ — **RESOLVED**: 19.2% of one core for the detection path, measured on
+  the S25 Ultra's own CPU (§2). The browser-Worker figure, with WebUSB transfer and postMessage on top,
+  remains **[UNK]**.
 - **[UNK]** Squelch and CTCSS thresholds — synthetic tests prove the maths; the numbers tune on hardware.
 - **[UNK]** DCS decode feasibility.

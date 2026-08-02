@@ -23,16 +23,29 @@ export function fmActivity(re, im, { floor = 0.25 } = {}) {
   for (let i = 0; i < mag.length; i++) if (mag[i] > peak) peak = mag[i];
   if (peak <= 0 || f.length === 0) return 0;
   const cut = peak * floor;
-  let w = 0, sum = 0, sumSq = 0;
+  const vals = [], wts = [];
   for (let i = 0; i < f.length; i++) {
     const m = Math.min(mag[i], mag[i + 1]);                
     if (m < cut) continue;
-    const p = m * m;
-    w += p; sum += p * f[i]; sumSq += p * f[i] * f[i];
+    vals.push(f[i]); wts.push(m * m);                      
   }
-  if (w <= 0) return 0;
-  const mean = sum / w;
-  return Math.sqrt(Math.max(0, sumSq / w - mean * mean)) / TAU;   
+  if (!vals.length) return 0;
+  const med = weightedMedian(vals, wts);
+  const mad = weightedMedian(vals.map((v) => Math.abs(v - med)), wts);
+  return 1.4826 * mad / TAU;                               
+}
+
+export function weightedMedian(values, weights) {
+  const idx = values.map((_, i) => i).sort((a, b) => values[a] - values[b]);
+  let total = 0;
+  for (const w of weights) total += w;
+  if (total <= 0) return 0;
+  let acc = 0;
+  for (const i of idx) {
+    acc += weights[i];
+    if (acc >= total / 2) return values[i];
+  }
+  return values[idx[idx.length - 1]];
 }
 
 export function envelopeTransitions(mag, { hi = 0.6, lo = 0.3 } = {}) {

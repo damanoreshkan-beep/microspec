@@ -44,6 +44,7 @@ export default [
   },
   {
     name: "прослуховування: транспорт вмикається і вимикається", run: async (h) => {
+      await h.click('[data-tab="band"]'); await h.wait(300);
       await ready(h);
       h.expect((await h.count("[data-transport]")) === 1, "немає транспорту для прослуховування");
       const btn = "[data-transport] button[aria-pressed], [data-transport] button";

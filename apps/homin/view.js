@@ -21,6 +21,7 @@ import { compass } from "/_rt/sensors.js";
 import { newRose, addSample, roseStats, hasBearing } from "/_rt/df.js";
 import { LPD433, channelCentre } from "/_rt/chan433.js";
 import { gate } from "/_rt/gate.js";
+import { useDial } from "./viz.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -46,6 +47,7 @@ const NO_WORKER = typeof Worker === "undefined";
 const seeded = () => SEED.map((e) => ({ ...e, lastSeen: Date.now() }));
 const $events = atom(gate || NO_WORKER ? seeded() : []);
 const $connected = atom(false);
+const $freshAt = atom(0);
 
 function useRadio() {
   useEffect(() => {
@@ -59,7 +61,10 @@ function useRadio() {
         // The first real packet retires the seed entirely: a screen showing both would be half honest.
         const prev = $events.get().filter((x) => x.src === "radio");
         const by = new Map(prev.map((x) => [x.id, x]));
-        for (const ev of d.events) by.set(ev.id, { ...ev, src: "radio" });
+        for (const ev of d.events) {
+          if (!by.has(ev.id)) $freshAt.set(Date.now());     // a genuinely NEW signal — the sonar ring fires
+          by.set(ev.id, { ...ev, src: "radio" });
+        }
         $events.set([...by.values()]);
       } else if (d.type === "state") $connected.set(!!d.connected);
     };
@@ -70,20 +75,27 @@ function useRadio() {
 }
 
 // ---- the dial ----
-function Dial({ events, t, onPick, now }) {
+// Two layers over one map. The canvas is the PICTURE (viz.js, three.js, lazy and probe-guarded); the SVG is
+// the MEANING — it always renders, always owns data-mark / the aria label / the tap targets, so e2e, axe and
+// preflight never depend on WebGL existing. When the 3D does come up the SVG's own ink steps aside and its
+// marks stay as invisible, comfortably-wide hit lines over the spikes they correspond to.
+function Dial({ events, t, onPick, now, webgl }) {
   const spokes = [];
-  for (let n = 1; n <= LPD433.count; n++) {
-    const a = angleOf(n), major = (n - 1) % 5 === 0;
-    const [x1, y1] = pol(a, major ? R_IN - 4 : R_IN);
-    const [x2, y2] = pol(a, R_OUT);
-    spokes.push(html`<line key=${"s" + n} x1=${x1} y1=${y1} x2=${x2} y2=${y2}
-      stroke="currentColor" stroke-width=${major ? 0.6 : 0.3} opacity=${major ? 0.28 : 0.12} />`);
+  if (!webgl) {
+    for (let n = 1; n <= LPD433.count; n++) {
+      const a = angleOf(n), major = (n - 1) % 5 === 0;
+      const [x1, y1] = pol(a, major ? R_IN - 4 : R_IN);
+      const [x2, y2] = pol(a, R_OUT);
+      spokes.push(html`<line key=${"s" + n} x1=${x1} y1=${y1} x2=${x2} y2=${y2}
+        stroke="currentColor" stroke-width=${major ? 0.6 : 0.3} opacity=${major ? 0.28 : 0.12} />`);
+    }
   }
   return html`
-    <svg viewBox="0 0 200 200" class="w-full h-full text-base-content" role="img"
+    <svg viewBox="0 0 200 200" class="absolute inset-0 w-full h-full text-base-content" role="img"
          aria-label=${T(t, "bandAria")} data-live=${events.length ? true : null}>
-      <circle cx="100" cy="100" r=${R_OUT} fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.35" />
-      <circle cx="100" cy="100" r=${R_IN} fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.2" />
+      ${webgl ? null : html`
+        <circle cx="100" cy="100" r=${R_OUT} fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.35" />
+        <circle cx="100" cy="100" r=${R_IN} fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.2" />`}
       ${spokes}
       ${events.map((e) => {
         const a = angleOf(e.channel);
@@ -94,8 +106,9 @@ function Dial({ events, t, onPick, now }) {
         const [x2, y2] = pol(a, rOuter);
         const voice = e.kind === "voice";
         return html`<line key=${e.id} data-mark data-kind=${e.kind} data-src=${e.src || "radio"} x1=${x1} y1=${y1} x2=${x2} y2=${y2}
-          stroke=${voice ? "var(--app-accent)" : "currentColor"} stroke-width=${voice ? 3 : 2}
-          stroke-linecap="round" opacity=${(1 - age * 0.75).toFixed(2)}
+          stroke=${webgl ? "transparent" : (voice ? "var(--app-accent)" : "currentColor")}
+          stroke-width=${webgl ? 8 : (voice ? 3 : 2)}
+          stroke-linecap="round" opacity=${webgl ? 1 : (1 - age * 0.75).toFixed(2)}
           class="cursor-pointer" onClick=${() => onPick(e)} />`;
       })}
     </svg>`;
@@ -161,10 +174,19 @@ export function band({ t, S, screen, openScreen, closeScreen }) {
   const sorted = [...events].sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
   const pick = (e) => { setTarget(e); openScreen("hunt"); };
 
+  // The scene reads this once per frame and must never make the renderer wait on a re-render, so the live
+  // values go through a ref rather than props.
+  const canvasRef = useRef();
+  const stateRef = useRef({ events: sorted, now, freshAt: 0 });
+  stateRef.current = { events: sorted, now: Date.now(), freshAt: $freshAt.get() };
+  const webgl = useDial(canvasRef, () => stateRef.current);
+
   return html`
     <div class="h-full min-h-0 flex flex-col">
-      <div class="flex-1 min-h-0 flex items-center justify-center">
-        <${Dial} events=${sorted} t=${t} now=${now} onPick=${pick} />
+      <div class="flex-1 min-h-0 relative">
+        <canvas ref=${canvasRef} aria-hidden="true"
+                class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+        <${Dial} events=${sorted} t=${t} now=${now} onPick=${pick} webgl=${webgl} />
       </div>
       <${Island}>
         <div class="flex items-center gap-[var(--ms-gap)] justify-center">

@@ -17,14 +17,19 @@ export default [
   {
     // The routing invariant: every dismissable screen is history-backed, so system Back closes it and never
     // exits the app.
+    // Assert the dialog's live `open` PROPERTY, never the presence of its children: a <dialog> keeps its
+    // subtree in the DOM whether it is open or shut, so counting [data-bearing] passes before anything is
+    // opened and can never reach 0 afterwards. The first version of this test asserted exactly that and was
+    // measuring nothing at all.
     name: "пеленг: відкривається і закривається системним Назад", run: async (h) => {
       await ready(h);
+      h.expect((await h.prop("#hunt", "open")) !== true, "пеленг відкритий ще до дотику");
       await h.tap("[data-pick]");
       await h.wait(400);
-      h.expect((await h.count("[data-bearing]")) === 1, "пеленг не відкрився");
+      h.expect((await h.prop("#hunt", "open")) === true, "пеленг не відкрився");
       await h.back();
       await h.wait(400);
-      h.expect((await h.count("[data-bearing]")) === 0, "системний Назад не закрив пеленг");
+      h.expect((await h.prop("#hunt", "open")) !== true, "системний Назад не закрив пеленг");
       h.expect((await h.count("[data-mark]")) > 0, "Назад вийшов з апки замість закрити екран");
     },
   },
@@ -35,6 +40,7 @@ export default [
       await ready(h);
       await h.tap("[data-pick]");
       await h.wait(400);
+      h.expect((await h.prop("#hunt", "open")) === true, "пеленг не відкрився — читати показник немає сенсу");
       const b = await h.text("[data-bearing]");
       h.expect(b.trim() === "—", `штатна антена не дає азимута, а показано "${b}"`);
     },

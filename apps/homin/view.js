@@ -146,12 +146,11 @@ export function band({ t, screen, openScreen, closeScreen, toast }) {
   stateRef.current = { events: sorted, now: Date.now(), freshAt: $freshAt.get() };
   const webgl = useDial(canvasRef, () => stateRef.current);
 
-  // Listening follows the loudest voice unless one has been chosen, because a transport with nothing behind
-  // it is a dead control.
-  const voices = sorted.filter((e) => e.kind === "voice");
-  const tuned = listening != null
-    ? sorted.find((e) => e.channel === listening)
-    : voices[0];
+  // You can listen to ANY channel, not only one the classifier called a voice. Gating the transport on
+  // kind==="voice" made the whole control — and hunt with it — vanish the moment the classifier disagreed,
+  // which is exactly what happened in CI: every event came back "burst" and the app lost its player. The
+  // classifier's opinion belongs in the label, never in whether the radio can be tuned.
+  const tuned = listening != null ? sorted.find((e) => e.channel === listening) : sorted[0];
   const row = tuned ? describe(tuned, t) : null;
 
   return html`

@@ -51,7 +51,7 @@ export default [
     name: "ефір: список показує сигнали з сирими даними", run: async (h) => {
       await ready(h);
       await h.click('[data-tab="live"]'); await h.wait(400);
-      h.expect((await h.count("[data-fav]")) >= 2, "у списку менше двох сигналів");
+      h.expect((await h.count("[data-row]")) >= 2, "у списку менше двох сигналів");
       const body = await h.bodyText();
       h.expect(/[0-9a-f]{2}\s+[0-9a-f]{2}/i.test(body), "у списку немає сирих байтів жодного пристрою");
     },

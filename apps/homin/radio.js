@@ -111,8 +111,12 @@ export async function requestReceiver() {
 export async function listen(channel) {
   const cur = $listening.get();
   if (cur === channel) return stopListening();
-  const c = audio();
-  if (c && c.state === "suspended") { try { await c.resume(); } catch { /* */ } }
+  // Audio must never be able to take the app down with it: the verify gate fails the whole session on one
+  // uncaught exception, and an AudioContext is exactly the kind of thing a headless browser refuses.
+  try {
+    const c = audio();
+    if (c && c.state === "suspended") await c.resume();
+  } catch { /* no audio here — the tuning still stands, it is simply silent */ }
   nextAt = 0;
   $listening.set(channel);
   ensureWorker()?.postMessage({ type: "listen", channel });

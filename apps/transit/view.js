@@ -415,6 +415,17 @@ function PortraitSheet({ open, onClose, C, t, loc }) {
 
 
 
+
+
+
+
+function DayStep({ dir, t, offset }) {
+  const to = clampScrub(offset + (dir === "prev" ? -1 : 1)), end = to === offset;
+  return html`<button data-step=${dir} aria-label=${T(t, dir === "prev" ? "prevDay" : "nextDay")} disabled=${end}
+    class=${`shrink-0 w-[var(--ms-ctl)] h-[var(--ms-ctl)] rounded-xl grid place-items-center transition ${end ? "sf-inset text-base-content/40" : "sf-raised sf-e2 sf-press"}`}
+    onClick=${() => $offset.set(to)}>${Icon(dir === "prev" ? "lucide:chevron-left" : "lucide:chevron-right", "text-lg")}</button>`;
+}
+
 export function wheel({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t), locale = useStore(S.locale);
   useStore(aiTick);
@@ -499,7 +510,12 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
         <div class="text-center">
           <span data-date class="text-2xl font-bold tabular-nums">${fmtDate(C.when)}</span>
         </div>
-        <input id="scrub" type="range" min=${-SCRUB} max=${SCRUB} step="1" value=${offset} class="range range-xs range-primary" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
+        
+        <div class="flex items-center gap-2">
+          <${DayStep} dir="prev" t=${t} offset=${offset} />
+          <input id="scrub" type="range" min=${-SCRUB} max=${SCRUB} step="1" value=${offset} class="range range-xs range-primary min-w-0 flex-1" aria-label=${T(t, "dateAria")} onInput=${(e) => $offset.set(Number(e.target.value))} />
+          <${DayStep} dir="next" t=${t} offset=${offset} />
+        </div>
         <div class="grid grid-cols-3 gap-1.5 text-center">
           ${CHIPS.map(([o, lbl]) => html`<button data-chip=${lbl} aria-pressed=${offset === o} class=${`rounded-xl py-1.5 text-xs font-medium transition ${offset === o ? "sf-e2 bg-primary/10 text-primary font-semibold" : "sf-inset"}`} onClick=${() => $offset.set(o)} key=${lbl}>${T(t, lbl)}</button>`)}
           <label data-chip="pick" data-picked=${picked ? "true" : "false"} class=${`relative flex items-center justify-center gap-1 rounded-xl py-1.5 text-xs font-medium transition cursor-pointer ${picked ? "sf-e2 bg-primary/10 text-primary font-semibold" : "sf-inset"}`}>
@@ -512,7 +528,6 @@ export function wheel({ S, screen, openScreen, closeScreen }) {
           </label>
         </div>
       </div>
-
       <!-- the contacts themselves, tightest first; the header opens the grounded AI reading -->
       <div class="w-full max-w-[420px] rounded-2xl sf-raised overflow-hidden">
         <div class="flex items-center justify-between gap-2 px-4 pt-2.5 pb-1.5">
@@ -650,11 +665,13 @@ export function chart({ S, screen, openScreen, closeScreen }) {
   }
   const { H, natal, b } = C;
   const rows = natal.slice().sort((x, y) => norm360(x.lon) - norm360(y.lon));
-
   
   
   
   const open = (key) => openScreen(READ_PLACEMENT + key);
+  
+  
+  
   
   
   
@@ -749,6 +766,7 @@ function BirthSheet({ open, onClose, t, locale }) {
   const [searching, setSearching] = useState(false);
   useEffect(() => { if (open) { setDraft(stored || EMPTY); setQ(""); setResults(null); } }, [open]);
 
+  
   useEffect(() => {
     if (!open || q.trim().length < 2) { setResults(null); setSearching(false); return; }
     const ctl = new AbortController();
@@ -759,6 +777,7 @@ function BirthSheet({ open, onClose, t, locale }) {
     }, 350);
     return () => { clearTimeout(id); ctl.abort(); setSearching(false); };
   }, [q, open]);
+
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
   const r = resolve(draft);
   const complete = isComplete(draft) && r.ok;
@@ -802,6 +821,7 @@ function BirthSheet({ open, onClose, t, locale }) {
 
         ${(draft.zoneMode === "manual") ? field(T(t, "zmManual"), html`<input data-birth-offset type="text" inputmode="text" value=${draft.offset}
           placeholder="+02:00" onInput=${(e) => set({ offset: e.target.value })} class="input input-bordered rounded-2xl h-11 w-full text-sm font-mono" />`) : null}
+
         <!-- the one thing the user can actually check against a birth certificate -->
         <div data-birth-resolved class="rounded-2xl sf-inset px-3 py-2.5">
           <div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "resolved")}</div>
@@ -837,8 +857,6 @@ function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
         gateText=${GATE_INTERP[loc] || GATE_INTERP.en} lines=${[30, 34, 28, 20]} />
   </${Sheet}>`;
 }
-
-
 
 
 

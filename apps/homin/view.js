@@ -123,7 +123,11 @@ function Hunt({ t, target, onClose, open }) {
     <//>`;
 }
 
-export function band({ t, screen, openScreen, closeScreen, toast }) {
+export function band({ t, S, toast }) {
+  // The `screen` prop is a SNAPSHOT — render.js:985 passes A.S.screen.get(), not the atom — so a view that
+  // trusts it never re-renders when the screen changes and its sheet can never open. Subscribe, as apps/code
+  // does, and drive the atom directly.
+  const scr = useStore(S.screen);
   useEffect(() => { ensureWorker(); }, []);
   const events = useStore($events);
   const connected = useStore($connected);
@@ -137,7 +141,7 @@ export function band({ t, screen, openScreen, closeScreen, toast }) {
   }, []);
 
   const sorted = [...events].sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
-  const pick = (e) => { setTarget(e); openScreen("hunt"); };
+  const pick = (e) => { setTarget(e); S.screen.set("hunt"); };
 
   // The scene reads this once per frame and must never make the renderer wait on a re-render, so the live
   // values go through a ref rather than props.
@@ -181,6 +185,6 @@ export function band({ t, screen, openScreen, closeScreen, toast }) {
             />` : null}
         </div>
       <//>
-      <${Hunt} t=${t} target=${target} open=${screen === "hunt"} onClose=${closeScreen} />
+      <${Hunt} t=${t} target=${target} open=${scr === "hunt"} onClose=${() => S.screen.set(null)} />
     </div>`;
 }

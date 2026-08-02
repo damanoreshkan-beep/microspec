@@ -133,3 +133,19 @@ readout was checked on a closed sheet, and only the "Back closed it" assertion c
 idiom is `h.prop("#id", "open")` (see `apps/rave`, `apps/drift`, `apps/hunt`), and it is now used here.
 
 **A green suite is not evidence that a suite is testing anything.**
+
+---
+
+## Runtime gotcha found the expensive way (three CI rounds)
+
+**A `tool` view's `screen` / `openScreen` / `closeScreen` props are a SNAPSHOT, not a subscription.**
+`render.js:985` passes `screen=${A.S.screen.get()}` — a value read once at the parent's render. A view that
+drives a `Sheet` from that prop can set the atom all it likes and never re-render, so the sheet never opens
+and there is no error anywhere to find. The working idiom, which `apps/code/view.js:39` uses, is to subscribe
+yourself — `const scr = useStore(S.screen)` — and drive `S.screen.set(...)` directly.
+
+Three red rounds were spent on the layers above this one, and all three were my own: a `<dialog>` keeps its
+subtree in the DOM whether open or shut (so counting children proved nothing), a `table` card renders
+`[data-row]` and never `[data-fav]`, and `Transport`'s `attr` is spread as an object (`...${a.attr || {}}`)
+so a string scatters into character indices. Each was fixable in seconds by opening the component first.
+The rule was already written down, and quoting it is evidently not the same as following it.

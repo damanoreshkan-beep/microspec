@@ -46,6 +46,10 @@ jobs:
         run: |
           # runtime MODULES must import relatively; *_test.js is exempt (fixtures legitimately embed "/_rt/…" strings).
           if grep -rn 'from "/_rt/' packages/runtime/*.js | grep -v '_test\.js:'; then echo "::error::runtime files must use relative imports (./x.js), not /_rt/ — absolute breaks on GitHub Pages"; exit 1; fi
+      - name: UI kit manifest matches the kit (agents read the manifest, so a stale one is a wrong signature)
+        run: deno run -A tools/kit-manifest.mjs --check
+      - name: MCP server contract (driven over real stdio, as a client does)
+        run: deno test -A tools/mcp/server_test.js
       - name: Gate efficacy (mutation-test the preflight gate — fail on any escape)
         run: deno run -A packages/gates/efficacy.mjs --ci
       - name: Authorless conformance (a deterministic no-LLM generator produces a passing app)

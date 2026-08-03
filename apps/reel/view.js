@@ -351,7 +351,9 @@ async function openFull(S, item) {
     // link instead of us committing to a height on the viewer's behalf. A progressive file is the fallback.
     const pick = list.find((s) => s.format === "hls") || list[0];
     if (!pick) return settle({ err: true });
-    settle({ url: await sealedFrameUrl(pick.url, page), title: d.title || title });
+    // The format is KNOWN here, and the proxied URL it is about to become carries no extension to recover it
+    // from — so it travels with the url rather than being guessed at the player.
+    settle({ url: await sealedFrameUrl(pick.url, page), type: pick.format === "hls" ? "hls" : "progressive", title: d.title || title });
   } catch { settle({ err: true }); }
 }
 
@@ -362,7 +364,7 @@ function FullClip({ S, t }) {
   const full = useStore($full), locale = useStore(S.locale);
   if (!full) return null;
   const close = () => { S.screen.set(null); $full.set(null); };
-  if (full.url) return html`<${Player} url=${full.url} title=${full.title} locale=${locale} onClose=${close} />`;
+  if (full.url) return html`<${Player} url=${full.url} type=${full.type} title=${full.title} locale=${locale} onClose=${close} />`;
   return html`<div data-full role="dialog" aria-modal="true" aria-label=${full.title || T(t, "watch")}
       class="fixed inset-0 z-40 bg-black flex flex-col" style="padding-top:env(safe-area-inset-top)">
     <header class="flex items-center gap-1 px-2 py-1.5 text-white bg-black/70">
@@ -446,7 +448,10 @@ function VideoLayer({ item, playing, ephemeral }) {
     v.muted = true; v.loop = true;                                                        // muted → browsers allow autoplay
     v.preload = "auto";                                                                   // a neighbour exists to BUFFER; metadata is not enough
     let handle, dead = false;
+    // The ORIGINAL url still has its extension; `src` may be the proxied one, which has none. Sniff the thing
+    // that can still be sniffed.
     createPlayer(v, src, {
+      type: /\.m3u8(\?|#|$)/i.test(item.video) ? "hls" : "progressive",
       onReady: () => {
         if (dead) return;
         setReady(true);

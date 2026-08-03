@@ -19,19 +19,38 @@ const clearSrc = (v) => { try { v.removeAttribute("src"); v.load(); } catch { /*
 // channels or closing the player never leaks a buffer or a background fetch). onReady fires on first frame /
 // manifest; onError on a FATAL failure (dead stream, CORS-blocked segments, unsupported) → the caller shows
 // its fallback. Never throws — every failure routes through onError.
-export async function createPlayer(video, url, { onReady = () => {}, onError = () => {} } = {}) {
-  const progressive = /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(url);
-  const nativeHls = video.canPlayType?.("application/vnd.apple.mpegurl");
-  if (progressive || nativeHls) {
+/* `type` ("hls" | "progressive") beats sniffing, and sniffing used to be all there was. Two ways that failed:
+   · a URL through the reverse proxy has NO file extension — the real target sits inside an opaque envelope —
+     so every proxied MP4 sniffed as "not progressive" and got handed to an HLS parser;
+   · `canPlayType("application/vnd.apple.mpegurl")` answers "maybe" on Android Chrome, which is truthy, so the
+     old `progressive || nativeHls` branch gave a manifest to the bare element on the one platform this farm
+     targets — and Android does not play HLS natively. Both sites reported "unavailable" for exactly this.
+   Hence the order below: hls.js is asked FIRST whenever it is supported, and the native element is the
+   fallback for Safari/iOS, where hls.js is unsupported and the element genuinely does play HLS. That is the
+   order hls.js's own guidance gives, and the reverse of what this used to do. */
+export async function createPlayer(video, url, { onReady = () => {}, onError = () => {}, type = null } = {}) {
+  const kind = type
+    || (/\.m3u8(\?|#|$)/i.test(url) ? "hls" : /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(url) ? "progressive" : null);
+  const attach = (fallback) => {
     video.src = url;
     video.addEventListener("loadeddata", onReady, { once: true });
-    video.addEventListener("error", () => onError(), { once: true });
+    video.addEventListener("error", () => (fallback ? fallback() : onError()), { once: true });
     return { destroy() { clearSrc(video); } };
+  };
+  if (kind !== "hls") {
+    /* Unknown means "no extension and nobody said" — a proxied URL. The element sniffs the content-type
+       itself and is right most of the time, so it goes first; if it fails, the stream is retried as HLS
+       rather than written off, which is the case an extension would have told us about for free. */
+    let handle = attach(kind === "progressive" ? null : () => {
+      createPlayer(video, url, { onReady, onError, type: "hls" }).then((h) => { handle = h; });
+    });
+    return { destroy() { handle?.destroy?.(); } };
   }
   try {
     const mod = await import(HLS);
     const Hls = mod.default || mod;
-    if (!Hls?.isSupported?.()) { video.src = url; video.addEventListener("error", () => onError(), { once: true }); return { destroy() { clearSrc(video); } }; }
+    // No hls.js (Safari/iOS) → the element itself is the HLS player there, and a good one.
+    if (!Hls?.isSupported?.()) return attach(null);
     /* `backBufferLength` is hls.js's own default of Infinity — every second already played is KEPT, for the
        life of the instance. That was survivable while a video app meant one player at a time; it stopped
        being survivable when reel began holding a window of three so the next clip is ready before you swipe
@@ -56,7 +75,7 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
 // it plays (the OS blanks on "no touches", and watching IS no touches), picture-in-picture, fullscreen, and
 // seeking to where you left. Persistence is NOT here — the app owns its storage, so it passes `startAt` and
 // gets `onTime(t, duration)`; video.js never imports a database.
-export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime }) {
+export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime, type = null }) {
   const ref = useRef(), boxRef = useRef();
   const [state, setState] = useState("loading");   // loading | playing | error
   const [fs, setFs] = useState(false);
@@ -75,10 +94,10 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
       if (at > 0) { try { v.currentTime = at; } catch { /* not seekable */ } }
       setState("playing");
     };
-    createPlayer(v, url, { onReady: ready, onError: () => { if (!dead) setState("error"); } })
+    createPlayer(v, url, { type, onReady: ready, onError: () => { if (!dead) setState("error"); } })
       .then((h) => { handle = h; if (dead) h.destroy(); });
     return () => { dead = true; handle?.destroy(); };
-  }, [url]);
+  }, [url, type]);
 
   // The screen must not die mid-film. Held only while the overlay is open, released on close — a lock left
   // behind is a battery bug nobody connects back to the video app they closed an hour ago.

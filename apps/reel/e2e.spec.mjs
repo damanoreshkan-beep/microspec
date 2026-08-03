@@ -25,6 +25,20 @@ export default [
     },
   },
   {
+    name: "тап по рілзу відкриває повний кліп поверх стрічки, і Back його закриває", run: async (h) => {
+      await ready(h);
+      h.expect(await settles(h, 3), "стрічка не влаштувалась на 3 слайдах");
+      h.expect((await h.count('[role="dialog"]')) === 0, "оверлей уже відкритий до тапу");
+      await h.tap("[data-reel]"); await h.wait(500);
+      h.expect((await h.count('[role="dialog"]')) === 1, "тап по слайду не відкрив повний кліп");
+      
+      h.expect((await h.count("video[data-main][data-playing]")) === 0, "стрічка продовжує грати під відкритим кліпом");
+      await h.back(); await h.wait(500);
+      h.expect((await h.count('[role="dialog"]')) === 0, "системний Back не закрив повний кліп");
+      h.expect((await h.count("[data-reel]")) >= 1, "Back вийшов з апки замість закрити оверлей");
+    },
+  },
+  {
     name: "hero: дубльованої кнопки джерел нема (лишився лише таб)", run: async (h) => {
       await ready(h);
       h.expect((await h.count("#source")) === 0, "плаваюча кнопка-дубль #source не прибрана з hero");

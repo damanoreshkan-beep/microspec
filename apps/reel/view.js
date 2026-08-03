@@ -23,6 +23,7 @@ import { T } from "/_rt/i18n.js";
 import { Island, Sheet } from "/_rt/ui.js";
 import { createPlayer } from "/_rt/video.js";
 import { VPS_PROXY, pool } from "/_rt/feed.js";
+import { sealedFrameUrl } from "/_rt/sealedfetch.js";
 import { gate } from "/_rt/gate.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
 import { resolveSearch, buildSearchUrl } from "/_rt/urlquery.js";
@@ -42,8 +43,12 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
    document's URL, which Referrer-Policy can only shorten, never move to another origin. So the proxy is not a
    CORS workaround; it is the only party that can state the referer the source asks for.
    The earlier note here claimed the token was bound to the VPS's IP. It is not: the same token served a
-   different address fine. It was the referer all along, and the proxy was sending the asset's own origin. */
-const framed = (u, ref) => `${VPS_PROXY}/frame?url=${encodeURIComponent(u)}${ref ? `&ref=${encodeURIComponent(ref)}` : ""}`;
+   different address fine. It was the referer all along, and the proxy was sending the asset's own origin.
+   SEALED, and async because of it. Both the clip URL and the page it came from now travel inside the envelope
+   (`sealedFrameUrl`), not in the query string — for this app the destination is the part worth hiding, and it
+   was the one thing the tunnel still left in the clear. The cost is that a proxied src can no longer be
+   computed while rendering; it is resolved in an effect and the slide waits a beat for it. */
+const framed = (u, ref) => sealedFrameUrl(u, ref);
 
 // Ready-made channels — ONLY sources verified to extract THROUGH THE PROXY (the VPS datacenter IP matters:
 // Cloudflare-guarded sites like Pexels return nothing from it, exactly like the AliExpress lesson). They are
@@ -230,35 +235,50 @@ function diveTo(S, url, hint) {
 // A broken/placeholder poster renders as a dead slide: a solid black frame OR a single flat-colour fill a CDN
 // serves when it has no real thumbnail. Both are dead weight (they don't play, and for CORS-locked/ephemeral
 // sources the poster IS the whole slide). We sample each poster into a small canvas and drop the ones a real
-// frame never produces — near-black (vfilter.isBlackSample) or uniform flat-fill (vfilter.isFlatSample). Remote
-// posters are read through the /feed/frame CORS proxy so the canvas isn't tainted; data: posters load directly.
+// frame never produces — near-black (vfilter.isBlackSample) or uniform flat-fill (vfilter.isFlatSample).
 // Fail-open: anything we can't prove blank is kept. Applies to EVERY item — inline-playable and ephemeral alike.
+//
+// These used to go through /feed/frame unconditionally, to keep the canvas untainted. Measured across three
+// source CDNs: every poster answers 200 with `access-control-allow-origin: *`, and none of them hotlink-checks
+// images the way the video hosts do. So the proxy was buying nothing and costing our bandwidth plus a URL in
+// our logs on every thumbnail. Direct with crossOrigin="anonymous" is the path now; the sealed proxy stays as
+// the fallback for a host that does lock its images, and it is sealed like everything else.
 const blankPosters = new Set();     // posters classified black/flat/broken → filtered out (+ dropped from future loads)
 const checkedPosters = new Set();   // posters already analysed (don't re-fetch)
-function posterIsBlank(poster) {
+function posterIsBlank(poster, page) {
   const isData = poster.startsWith("data:");
   if (gate && !isData) return Promise.resolve(false);                                    // gate: no network — only inline posters
   if (typeof document === "undefined" || typeof Image === "undefined") return Promise.resolve(false);  // no DOM (preflight) → keep
   return new Promise((resolve) => {
-    const img = new Image(); if (!isData) img.crossOrigin = "anonymous";
     let done = false; const finish = (v) => { if (!done) { done = true; clearTimeout(to); resolve(v); } };
     const to = setTimeout(() => finish(false), 6000);                                     // slow poster → keep (fail-open)
-    img.onload = () => { try {
-      const c = document.createElement("canvas"); c.width = 24; c.height = 24;
-      const cx = c.getContext("2d", { willReadFrequently: true }); cx.drawImage(img, 0, 0, 24, 24);
-      const px = cx.getImageData(0, 0, 24, 24).data;
-      finish(isBlackSample(px) || isFlatSample(px));                                       // black OR uniform flat-fill → blank
-    } catch { finish(false); } };                                                          // tainted / decode error → keep
-    img.onerror = () => finish(false);
-    img.src = isData ? poster : framed(poster);
+    const sample = (src) => {
+      const img = new Image(); if (!isData) img.crossOrigin = "anonymous";
+      img.onload = () => { try {
+        const c = document.createElement("canvas"); c.width = 24; c.height = 24;
+        const cx = c.getContext("2d", { willReadFrequently: true }); cx.drawImage(img, 0, 0, 24, 24);
+        const px = cx.getImageData(0, 0, 24, 24).data;
+        finish(isBlackSample(px) || isFlatSample(px));                                     // black OR uniform flat-fill → blank
+      } catch { finish(false); } };                                                        // tainted / decode error → keep
+      img.onerror = () => {
+        // Direct refused (locked host, or no ACAO so the load itself failed) → one retry through the sealed
+        // proxy, which can state a referer and always answers with CORS. A second failure is fail-open.
+        if (isData || src !== poster) return finish(false);
+        framed(poster, page).then(sample).catch(() => finish(false));
+      };
+      img.src = src;
+    };
+    sample(poster);
   });
 }
 async function checkBlankPosters() {
   const todo = [];
-  for (const it of $items.get()) { const p = it.poster; if (p && !checkedPosters.has(p)) { checkedPosters.add(p); todo.push(p); } }
+  // The page travels with the poster now: it is what the sealed-proxy retry needs for a referer, on the hosts
+  // that lock their images. Keyed on the poster still — the page is only carried alongside.
+  for (const it of $items.get()) { const p = it.poster; if (p && !checkedPosters.has(p)) { checkedPosters.add(p); todo.push([p, it.page || null]); } }
   if (!todo.length) return;
   const hits = new Set();
-  await pool(todo, 4, async (p) => { if (await posterIsBlank(p)) hits.add(p); });          // small concurrency — don't hammer the proxy
+  await pool(todo, 4, async ([p, pg]) => { if (await posterIsBlank(p, pg)) hits.add(p); }); // small concurrency — don't hammer the proxy
   if (hits.size) { hits.forEach((p) => blankPosters.add(p)); $items.set(reject($items.get(), (i) => i.poster && hits.has(i.poster))); }
 }
 // One pipeline for every incoming batch: unseen (watched) → drop already-known-blank posters → optionally drop
@@ -346,7 +366,16 @@ function VideoLayer({ item, playing, ephemeral }) {
   const ref = useRef(), bgRef = useRef();
   const [errored, setErrored] = useState(false);
   const [viaProxy, setViaProxy] = useState(!!ephemeral);
-  const src = viaProxy ? framed(item.video, item.page) : item.video;
+  // Sealing is WebCrypto, so a proxied src cannot be derived during render any more. Direct stays synchronous
+  // (the common path pays nothing); only the proxied one resolves in an effect, and `src` is null until it
+  // does — which the attach effect below treats as "not ready yet" rather than as a failure.
+  const [src, setSrc] = useState(ephemeral ? null : item.video);
+  useEffect(() => {
+    if (!viaProxy) { setSrc(item.video); return; }
+    let dead = false;
+    framed(item.video, item.page).then((s) => { if (!dead) setSrc(s); }).catch(() => { if (!dead) setErrored(true); });
+    return () => { dead = true; };
+  }, [viaProxy, item.video, item.page]);
   const [ready, setReady] = useState(false);
   // The active flag as the ATTACH effect will see it whenever it finally resolves. `onReady` fires after an
   // await, so reading `playing` from the closure would play whichever slide was active when the fetch started.
@@ -355,7 +384,7 @@ function VideoLayer({ item, playing, ephemeral }) {
 
   useEffect(() => {
     setErrored(false); setReady(false);
-    const v = ref.current; if (!v) return;
+    const v = ref.current; if (!v || !src) return;                                        // no src yet → the seal is still resolving
     v.muted = true; v.loop = true;                                                        // muted → browsers allow autoplay
     v.preload = "auto";                                                                   // a neighbour exists to BUFFER; metadata is not enough
     let handle, dead = false;

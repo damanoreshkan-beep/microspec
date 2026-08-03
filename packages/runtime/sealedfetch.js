@@ -10,8 +10,9 @@
 // tunnel off is deleting one import — not unpicking an integration.
 //
 // WHAT IS DELIBERATELY NOT INTERCEPTED
-//   • /feed/frame — that URL is an <iframe src>, i.e. browser navigation, not fetch. A POST envelope cannot
-//     express it. It stays plaintext and it is the one route whose destination remains visible.
+//   • /feed/frame — that URL is loaded by an ELEMENT (<iframe src>, <video src>), i.e. navigation, not fetch.
+//     A POST envelope cannot express it, so this wrapper never sees it. Its DESTINATION is sealed anyway, by
+//     `sealedFrameUrl` below — same envelope, carried as an opaque `?s=` on a plain GET.
 //   • anything not on VPS_PROXY — direct calls to CORS-friendly APIs are not ours to encrypt, and routing
 //     them through our VPS would tell the server more, not less.
 //
@@ -20,7 +21,22 @@
 // traffic" to "tamper with the app"; it is not immunity. See docs/research/e2e-envelope-and-transport.md.
 
 import { VPS_PROXY, SEALED_KEY } from "./feed.js";
-import { seal, openResponse, unb64u } from "./sealed.js";
+import { seal, openResponse, b64u, unb64u } from "./sealed.js";
+
+/* sealedFrameUrl(url, ref) → `${VPS_PROXY}/frame?s=<envelope>` — a plain GET an ELEMENT can load, whose
+   destination is nevertheless inside the envelope. This is the half of the tunnel `installSealedFetch` cannot
+   reach: a <video src> or <iframe src> is fetched by the browser itself, so no wrapper around `fetch` will
+   ever see it, and the target URL used to travel in the query string in the clear — visible to our own nginx
+   logs and to anything inspecting TLS. For a feed app the destination IS the sensitive part; the bytes are
+   opaque either way.
+   The REPLY is deliberately NOT sealed. It goes straight into a media element, and an element cannot
+   decrypt — only a service worker could, and paying AES-GCM over a whole video stream on a 1-vCPU box would
+   cost more than it buys when TLS already carries those bytes. So: destination sealed, payload on TLS.
+   `resKey` is therefore discarded here, which is why this does not use the POST path. */
+export async function sealedFrameUrl(url, ref) {
+  const { wire } = await seal(SEALED_KEY, { p: "/feed/frame", u: url, r: ref || null });
+  return `${VPS_PROXY}/frame?s=${b64u(wire)}`;
+}
 
 const PLAIN = [`${VPS_PROXY}/frame`];                 // iframe navigation — cannot be tunnelled
 const TUNNEL = `${VPS_PROXY}/f`;

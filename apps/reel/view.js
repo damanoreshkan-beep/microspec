@@ -21,7 +21,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { T } from "/_rt/i18n.js";
 import { Island, Sheet } from "/_rt/ui.js";
-import { createPlayer } from "/_rt/video.js";
+import { createPlayer, Player } from "/_rt/video.js";
 import { VPS_PROXY, pool } from "/_rt/feed.js";
 import { sealedFrameUrl } from "/_rt/sealedfetch.js";
 import { gate } from "/_rt/gate.js";
@@ -322,6 +322,64 @@ async function loadSource(url, append = false, hint = "") {
   finally { if (g === gen) $loading.set(false); if (append) loadingMore = false; }
 }
 
+/* ── the FULL clip, over the reel ──────────────────────────────────────────────────────────────────────────
+   A slide plays the site's PREVIEW: short, small, often 240p. The clip's own page carries the real thing, and
+   `/feed/stream` takes the quality ladder out of that page on the server — which is the only place it can be
+   taken. Two measurements decided the whole shape of this:
+     · a segment fetched straight from the browser is 412; the same segment through our proxy is 206. The
+       token answers to whoever was handed the page, and that is the VPS.
+     · rendering the page instead would be 988 KB of HTML and 462 subresources per open, every one of them a
+       request through our box, to reach a handful of URLs already sitting in the markup.
+   So: parse on the server, play here, and the page stops being somewhere you GO. It is where the clip comes
+   from. The button that used to leave the app for a browser tab is now this, and so is a tap on the reel. */
+const $full = atom(null);                                  // null | {page, title, url, err}
+
+async function openFull(S, item) {
+  const page = item?.page || item?.orig || item?.video;
+  if (!page) return;
+  const title = item.title || "";
+  $full.set({ page, title, url: null, err: false });
+  S.screen.set("full");                                    // history-backed: the system Back closes it
+  // Only ever write back onto the clip we were opening — a fast second tap must not be overwritten by the
+  // first one's late answer.
+  const settle = (patch) => { const cur = $full.get(); if (cur && cur.page === page) $full.set({ ...cur, ...patch }); };
+  if (gate) return settle({ url: item.video });             // the gate never fetches; the preview stands in
+  try {
+    const d = await (await fetch(`${VPS_PROXY}/stream?url=${encodeURIComponent(page)}`)).json();
+    const list = (Array.isArray(d.sources) ? d.sources : []).filter((s) => !s.remote);
+    // HLS first, and not because it is taller: ONE master carries every rendition, so the player adapts to the
+    // link instead of us committing to a height on the viewer's behalf. A progressive file is the fallback.
+    const pick = list.find((s) => s.format === "hls") || list[0];
+    if (!pick) return settle({ err: true });
+    settle({ url: await sealedFrameUrl(pick.url, page), title: d.title || title });
+  } catch { settle({ err: true }); }
+}
+
+// The overlay itself. While the ladder is being fetched there is a real wait (a page fetch on the server, then
+// one more hop), so this is a skeleton and never a spinner — and it carries the way out from the first frame,
+// because a screen you cannot leave while it loads is the worst version of this.
+function FullClip({ S, t }) {
+  const full = useStore($full), locale = useStore(S.locale);
+  if (!full) return null;
+  const close = () => { S.screen.set(null); $full.set(null); };
+  if (full.url) return html`<${Player} url=${full.url} title=${full.title} locale=${locale} onClose=${close} />`;
+  return html`<div data-full role="dialog" aria-modal="true" aria-label=${full.title || T(t, "watch")}
+      class="fixed inset-0 z-40 bg-black flex flex-col" style="padding-top:env(safe-area-inset-top)">
+    <header class="flex items-center gap-1 px-2 py-1.5 text-white bg-black/70">
+      <button data-full-back class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button>
+      <span class="flex-1 min-w-0 truncate font-medium">${full.title || ""}</span>
+    </header>
+    <div class="flex-1 relative">
+      ${full.err
+        ? html`<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/70 p-6 text-center">
+            ${Icon("lucide:tv-minimal-play", "text-5xl opacity-40")}<div>${T(t, "videoErr")}</div>
+            <a href=${full.page} target="_blank" rel="noopener" class="btn btn-sm btn-outline text-white border-white/30 gap-2">${Icon("lucide:external-link")}${T(t, "openSite")}</a>
+          </div>`
+        : html`<${Pixels} cls="w-full h-full" />`}
+    </div>
+  </div>`;
+}
+
 // The site's real favicon, falling back to a deterministic letter tile (a data-URI SVG — no fetch, so it is
 // identical offline and in the gate). Never an emoji, never a coloured blob per source.
 function Favicon({ url, size = "w-6 h-6" }) {
@@ -468,18 +526,18 @@ function HeartBurst({ x, y, onDone }) {
 // A slide is the clip and NOTHING else — no chip, no link, no pill. Every affordance it used to carry (dive,
 // open the page, "watch on the site") is one control in the island below, where it is stated once instead of
 // once per slide, and where a keyboard can reach it. The surface is the video.
-function Slide({ item, idx, active, near, ephemeral }) {
+function Slide({ S, item, idx, active, near, ephemeral }) {
   const secRef = useRef();
   const [burst, setBurst] = useState(null);
   // Systemic tap dispatch (runtime useTap): SINGLE tap toggles pause on a clip that plays inline, else opens the
   // source page; DOUBLE tap likes + blooms a heart — and never fires the single (so a like never pauses/navigates).
+  /* SINGLE tap opens the full clip — for every slide, not just a dead one. It used to toggle pause, and to
+     open the page in a browser tab only when the clip could not play here; that made the most valuable action
+     on the surface reachable only by failure. The reel is the trailer and the tap is how you watch the thing.
+     Pause is not lost: the reel suspends by itself while the overlay is up (see FeedSurface), and swiping away
+     is what "not this one" already meant. */
   const onTap = useTap({
-    onSingle: () => {
-      const v = secRef.current?.querySelector("video[data-main]");
-      if (v && !v.error) { try { v.paused ? v.play?.().catch(() => {}) : v.pause?.(); } catch { /* */ } return; }
-      const href = item.page || item.orig || item.video;                                   // ephemeral / errored → open the source page
-      if (href && typeof window !== "undefined") window.open(href, "_blank", "noopener");
-    },
+    onSingle: () => openFull(S, item),
     onDouble: (p) => { setBurst({ x: p.x, y: p.y, k: Date.now() }); addLike(item); navigator.vibrate?.(12); },
   });
   return html`<section ref=${secRef} data-reel data-idx=${idx} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
@@ -555,7 +613,9 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch }) {
             blank. The page is always worth reaching, so the control is always there. It stays a circle and
             never carries a word: filled with a word, on a black media surface, it was the brightest thing on
             the screen — the exact mistake the note on `subscribe` above warns about. */""}
-      ${watch ? html`<a data-watch href=${watch} target="_blank" rel="noopener" class="btn btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")}>${Icon("lucide:external-link", "text-base")}</a>` : null}
+      ${/* It plays HERE now, so the icon stops promising a trip outside: an external-link glyph on a control
+            that opens an in-app player is the icon lying about where the tap goes. */""}
+      ${watch ? html`<button data-watch class="btn btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")} onClick=${watch}>${Icon("lucide:play", "text-base")}</button>` : null}
       ${/* forward is the mirror of back: the page this clip lives on. The destination's NAME is not written
             here — it is what the drag reveals under the finger — so the label rides the a11y name instead. */""}
       ${dive ? html`<button data-dive class=${act} aria-label=${`${T(t, "dive")}: ${dive.label}`} onClick=${dive.go}>${Icon("lucide:chevron-right", "text-lg")}</button>` : null}
@@ -587,6 +647,12 @@ function FeedSurface({ S, t }) {
   const active = useStore($active), next = useStore($next), ephemeral = useStore($ephemeral);
   const src = useStore($src), frames = useStore($frames), subs = useStore($subs), restoreTo = useStore($restoreTo);
   const title = useStore($srcTitle);
+  /* While the full clip is up, the reel underneath must stop. Two elements playing at once is two soundtracks
+     and two decoders, and the preview is the last thing anyone wants to hear over the thing they opened. It
+     rides the ACTIVE flag rather than a new mechanism, so the existing play effect handles it and the element
+     is never torn down — swiping back finds the slide exactly where it was left. */
+  const screen = useStore(S.screen);
+  const suspended = screen === "full";
   const underRef = useRef(), diveRef = useRef(), backRef = useRef();
   const target = diveTarget(items[active], src);
   // The destination is named by the clip you're leaving on — the reveal under the finger says where you land,
@@ -645,7 +711,7 @@ function FeedSurface({ S, t }) {
       ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/70 px-8 text-center">${Icon("lucide:cloud-off", "text-5xl")}<div>${T(t, "loadErr")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => loadSource(src)}>${T(t, "retry")}</button></section>`
       : !items.length
         ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/60 px-8 text-center">${Icon("lucide:film", "text-5xl")}<div>${T(t, "empty")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
-        : items.map((it, i) => html`<${Slide} item=${it} idx=${i} active=${i === active} near=${Math.abs(i - active) <= PRELOAD} ephemeral=${it.eph != null ? it.eph : ephemeral} key=${(it.orig || it.video) + i} />`);
+        : items.map((it, i) => html`<${Slide} S=${S} item=${it} idx=${i} active=${i === active && !suspended} near=${Math.abs(i - active) <= PRELOAD} ephemeral=${it.eph != null ? it.eph : ephemeral} key=${(it.orig || it.video) + i} />`);
 
   // The island's controls belong to the ACTIVE clip, so they are derived here, once, from `items[active]` —
   // never per slide. The way out is unconditional: whether the clip plays inline is a browser/CORS verdict
@@ -661,7 +727,9 @@ function FeedSurface({ S, t }) {
           empty, the region carries its own focus and its own name (axe: scrollable-region-focusable). */""}
     <div ref=${paneRef} ...${pan} data-scroller tabindex="0" role="region" aria-label=${T(t, "tabReel")} class="fixed inset-0 z-[1] bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain touch-pan-y will-change-transform">${body}</div>
     <${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
-      dive=${dive} watch=${watch} />
+      dive=${dive} watch=${watch ? () => openFull(S, cur) : null} />
+    ${/* Lives with the feed, not with the tab, so it works identically from Liked — one engine, one overlay. */""}
+    ${suspended ? html`<${FullClip} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }
 

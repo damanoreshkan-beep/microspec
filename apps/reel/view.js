@@ -279,14 +279,14 @@ async function openFull(S, item) {
     
     const pick = list.find((s) => s.format === "hls") || list[0];
     if (!pick) return settle({ err: true });
-    settle({ url: await sealedFrameUrl(pick.url, page), title: d.title || title });
+    settle({ url: await sealedFrameUrl(pick.url, page), type: pick.format === "hls" ? "hls" : "progressive", title: d.title || title });
   } catch { settle({ err: true }); }
 }
 function FullClip({ S, t }) {
   const full = useStore($full), locale = useStore(S.locale);
   if (!full) return null;
   const close = () => { S.screen.set(null); $full.set(null); };
-  if (full.url) return html`<${Player} url=${full.url} title=${full.title} locale=${locale} onClose=${close} />`;
+  if (full.url) return html`<${Player} url=${full.url} type=${full.type} title=${full.title} locale=${locale} onClose=${close} />`;
   return html`<div data-full role="dialog" aria-modal="true" aria-label=${full.title || T(t, "watch")}
       class="fixed inset-0 z-40 bg-black flex flex-col" style="padding-top:env(safe-area-inset-top)">
     <header class="flex items-center gap-1 px-2 py-1.5 text-white bg-black/70">
@@ -360,11 +360,14 @@ function VideoLayer({ item, playing, ephemeral }) {
     v.muted = true; v.loop = true;                                                        
     v.preload = "auto";                                                                   
     let handle, dead = false;
+    
     createPlayer(v, src, {
+      type: /\.m3u8(\?|#|$)/i.test(item.video) ? "hls" : "progressive",
       onReady: () => {
         if (dead) return;
         setReady(true);
         if (wants.current) { v.play?.().catch(() => {}); return; }
+        
         v.play?.().then(() => {
           if (dead || wants.current) return;                                              
           v.pause?.();
@@ -372,13 +375,11 @@ function VideoLayer({ item, playing, ephemeral }) {
         }).catch(() => {});
       },
       
-      
       onError: () => { if (dead) return; if (viaProxy) setErrored(true); else setViaProxy(true); },
     }).then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     return () => { dead = true; handle?.destroy?.(); };
   }, [src]);
 
-  
   
   useEffect(() => {
     const v = ref.current; if (!v || !ready) return;

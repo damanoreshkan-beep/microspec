@@ -9,19 +9,27 @@ export { resumeAt, RESUME_MIN, RESUME_TAIL } from "./playback.js";
 const HLS = "https://esm.sh/hls.js@1.5.17";
 const clearSrc = (v) => { try { v.removeAttribute("src"); v.load(); } catch {  } };
 
-export async function createPlayer(video, url, { onReady = () => {}, onError = () => {} } = {}) {
-  const progressive = /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(url);
-  const nativeHls = video.canPlayType?.("application/vnd.apple.mpegurl");
-  if (progressive || nativeHls) {
+export async function createPlayer(video, url, { onReady = () => {}, onError = () => {}, type = null } = {}) {
+  const kind = type
+    || (/\.m3u8(\?|#|$)/i.test(url) ? "hls" : /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(url) ? "progressive" : null);
+  const attach = (fallback) => {
     video.src = url;
     video.addEventListener("loadeddata", onReady, { once: true });
-    video.addEventListener("error", () => onError(), { once: true });
+    video.addEventListener("error", () => (fallback ? fallback() : onError()), { once: true });
     return { destroy() { clearSrc(video); } };
+  };
+  if (kind !== "hls") {
+    
+    let handle = attach(kind === "progressive" ? null : () => {
+      createPlayer(video, url, { onReady, onError, type: "hls" }).then((h) => { handle = h; });
+    });
+    return { destroy() { handle?.destroy?.(); } };
   }
   try {
     const mod = await import(HLS);
     const Hls = mod.default || mod;
-    if (!Hls?.isSupported?.()) { video.src = url; video.addEventListener("error", () => onError(), { once: true }); return { destroy() { clearSrc(video); } }; }
+    if (!Hls?.isSupported?.()) return attach(null);
+    
     const hls = new Hls({ maxBufferLength: 12, backBufferLength: 30, manifestLoadingTimeOut: 12000, manifestLoadingMaxRetry: 1 });
     hls.on(Hls.Events.MANIFEST_PARSED, () => onReady());
     hls.on(Hls.Events.ERROR, (_e, d) => { if (d?.fatal) onError(d); });
@@ -31,11 +39,7 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
 }
 
 
-
-
-
-
-export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime }) {
+export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime, type = null }) {
   const ref = useRef(), boxRef = useRef();
   const [state, setState] = useState("loading");   
   const [fs, setFs] = useState(false);
@@ -48,16 +52,14 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     setState("loading");
     const ready = () => {
       if (dead) return;
-      
-      
       const at = resumeAt(startAt, v.duration);
       if (at > 0) { try { v.currentTime = at; } catch {  } }
       setState("playing");
     };
-    createPlayer(v, url, { onReady: ready, onError: () => { if (!dead) setState("error"); } })
+    createPlayer(v, url, { type, onReady: ready, onError: () => { if (!dead) setState("error"); } })
       .then((h) => { handle = h; if (dead) h.destroy(); });
     return () => { dead = true; handle?.destroy(); };
-  }, [url]);
+  }, [url, type]);
 
   
   

@@ -8,6 +8,7 @@ import { T } from "/_rt/i18n.js";
 import { Island, Sheet } from "/_rt/ui.js";
 import { createPlayer } from "/_rt/video.js";
 import { VPS_PROXY, pool } from "/_rt/feed.js";
+import { sealedFrameUrl } from "/_rt/sealedfetch.js";
 import { gate } from "/_rt/gate.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
 import { resolveSearch, buildSearchUrl } from "/_rt/urlquery.js";
@@ -19,7 +20,7 @@ import { collection, idbSupported } from "/_rt/db.js";
 import { Pixels } from "/_rt/skeleton.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const framed = (u, ref) => `${VPS_PROXY}/frame?url=${encodeURIComponent(u)}${ref ? `&ref=${encodeURIComponent(ref)}` : ""}`;
+const framed = (u, ref) => sealedFrameUrl(u, ref);
 const PRESETS = [
   { name: "Mixkit", url: "https://mixkit.co/free-stock-video/" },
   { name: "Space", url: "https://mixkit.co/free-stock-video/space/" },
@@ -43,6 +44,8 @@ const GREY_PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLb
 
 
 
+
+
 const GV = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/";
 const MOCK = [
   { video: GV + "BigBuckBunny.mp4", title: "Big Buck Bunny", poster: GV + "images/BigBuckBunny.jpg", page: "https://mixkit.co/watch/10241/" },
@@ -52,8 +55,6 @@ const MOCK = [
   { video: GV + "ForBiggerBlazes.mp4", title: "Broken clip", poster: BLACK_PX, page: "https://mixkit.co/watch/10244/" },
   { video: GV + "ForBiggerEscapes.mp4", title: "Flat placeholder", poster: GREY_PX, page: "https://mixkit.co/watch/10245/" },
 ];
-
-
 const MOCK_DEEP = [
   { video: GV + "ForBiggerFun.mp4", title: "Deeper one", poster: null, page: "https://mixkit.co/watch/55012/" },
   { video: GV + "ForBiggerJoyrides.mp4", title: "Deeper two", poster: null, page: "https://mixkit.co/watch/55013/" },
@@ -64,20 +65,18 @@ const GATE_TITLES = {
   "https://mixkit.co/watch/10241/": "Big Buck Bunny in 4K — Mixkit",
   "https://mixkit.co/watch/55013/": "Deeper two · Mixkit",
 };
-
-
 const PRELOAD = 1;
+
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
 
-
 function openSite(s) { if (typeof window !== "undefined") window.open(s.url, "_blank", "noopener"); }
+
 
 const subsDB = collection("reelSubs");
 const $subs = atom([]);
 if (idbSupported && !gate) subsDB.all().then((rows) => $subs.set(rows)).catch(() => {});
 async function subscribe(s) {
   if (!s?.url || $subs.get().some((x) => x.url === s.url)) return;
-  
   const rec = { name: s.name || sourceTitle(s.url), url: s.url };
   $subs.set([{ id: s.url, ...rec }, ...$subs.get()]);
   try { await subsDB.put(s.url, rec); } catch {  }
@@ -86,8 +85,6 @@ async function unsubscribe(url) {
   $subs.set($subs.get().filter((x) => x.url !== url));
   try { await subsDB.remove(url); } catch {  }
 }
-
-
 
 const watchedDB = collection("reelWatched");
 const $watched = atom(new Set());
@@ -119,13 +116,13 @@ function unlike(id) {
   $likes.set($likes.get().filter((l) => l.id !== id));
   likesDB.remove(id).catch(() => {});
 }
-
 const $items = atom(gate ? dedupeVideos(MOCK) : []);
 const $next = atom(null);
 const $loading = atom(!gate);
 const $err = atom(false);
 const $active = atom(0);
 const $ephemeral = atom(false);   
+
 
 
 
@@ -140,6 +137,7 @@ let booted = false;
 const $frames = atom([]);
 const $restoreTo = atom(null);    
 const $owner = atom("reel");      
+
 const snapshot = (label) => ({ label, src: $src.get(), title: $srcTitle.get(), hint: $srcHint.get(), items: $items.get(), next: $next.get(), active: $active.get(), eph: $ephemeral.get(), owner: $owner.get(), err: $err.get() });
 function restoreTop() {
   const fs = $frames.get(); if (!fs.length) return;
@@ -150,19 +148,18 @@ function restoreTop() {
   $src.set(f.src); $srcTitle.set(f.title); $srcHint.set(f.hint); $items.set(f.items); $next.set(f.next); $ephemeral.set(f.eph);
   $owner.set(f.owner); $loading.set(false); $err.set(f.err);
   $active.set(f.active); $restoreTo.set(f.active);          
-  
   if (!f.items.length && !f.err && !gate) loadSource(f.src, false, f.hint);
 }
 let bound = false;
 function bindNav(S) {
   if (bound) return; bound = true;
   
-  
   S.stack.listen((v) => { while ($frames.get().length > (v?.length || 0)) restoreTop(); });
 }
 function pushFrame(S, label) { $frames.set([...$frames.get(), snapshot(label)]); S.stack.set([...S.stack.get(), label]); }
 function popFrame(S) { const st = S.stack.get(); if (st.length) S.stack.set(st.slice(0, -1)); }
 function resetNav(S) { $frames.set([]); if (S.stack.get().length) S.stack.set([]); }        
+
 
 function diveTarget(item, src) {
   const u = item?.page;
@@ -184,34 +181,46 @@ function diveTo(S, url, hint) {
 
 
 
+
+
 const blankPosters = new Set();     
 const checkedPosters = new Set();   
-function posterIsBlank(poster) {
+function posterIsBlank(poster, page) {
   const isData = poster.startsWith("data:");
   if (gate && !isData) return Promise.resolve(false);                                    
   if (typeof document === "undefined" || typeof Image === "undefined") return Promise.resolve(false);  
   return new Promise((resolve) => {
-    const img = new Image(); if (!isData) img.crossOrigin = "anonymous";
     let done = false; const finish = (v) => { if (!done) { done = true; clearTimeout(to); resolve(v); } };
     const to = setTimeout(() => finish(false), 6000);                                     
-    img.onload = () => { try {
-      const c = document.createElement("canvas"); c.width = 24; c.height = 24;
-      const cx = c.getContext("2d", { willReadFrequently: true }); cx.drawImage(img, 0, 0, 24, 24);
-      const px = cx.getImageData(0, 0, 24, 24).data;
-      finish(isBlackSample(px) || isFlatSample(px));                                       
-    } catch { finish(false); } };                                                          
-    img.onerror = () => finish(false);
-    img.src = isData ? poster : framed(poster);
+    const sample = (src) => {
+      const img = new Image(); if (!isData) img.crossOrigin = "anonymous";
+      img.onload = () => { try {
+        const c = document.createElement("canvas"); c.width = 24; c.height = 24;
+        const cx = c.getContext("2d", { willReadFrequently: true }); cx.drawImage(img, 0, 0, 24, 24);
+        const px = cx.getImageData(0, 0, 24, 24).data;
+        finish(isBlackSample(px) || isFlatSample(px));                                     
+      } catch { finish(false); } };                                                        
+      img.onerror = () => {
+        if (isData || src !== poster) return finish(false);
+        framed(poster, page).then(sample).catch(() => finish(false));
+      };
+      img.src = src;
+    };
+    sample(poster);
   });
 }
 async function checkBlankPosters() {
   const todo = [];
-  for (const it of $items.get()) { const p = it.poster; if (p && !checkedPosters.has(p)) { checkedPosters.add(p); todo.push(p); } }
+  
+  
+  for (const it of $items.get()) { const p = it.poster; if (p && !checkedPosters.has(p)) { checkedPosters.add(p); todo.push([p, it.page || null]); } }
   if (!todo.length) return;
   const hits = new Set();
-  await pool(todo, 4, async (p) => { if (await posterIsBlank(p)) hits.add(p); });          
+  await pool(todo, 4, async ([p, pg]) => { if (await posterIsBlank(p, pg)) hits.add(p); }); 
   if (hits.size) { hits.forEach((p) => blankPosters.add(p)); $items.set(reject($items.get(), (i) => i.poster && hits.has(i.poster))); }
 }
+
+
 
 
 function clean(arr, { requirePoster = false } = {}) {
@@ -240,6 +249,7 @@ async function loadSource(url, append = false, hint = "") {
     const d = await r.json();
     if (g !== gen) return;                                   
     
+    
     const eph = append ? $ephemeral.get() : !!d.ephemeral;
     const got = clean(Array.isArray(d.items) ? d.items : [], { requirePoster: eph });
     $items.set(append ? dedupeVideos([...$items.get(), ...got]) : got);                   
@@ -249,6 +259,7 @@ async function loadSource(url, append = false, hint = "") {
   } catch { if (g === gen && !append) $err.set(true); }
   finally { if (g === gen) $loading.set(false); if (append) loadingMore = false; }
 }
+
 
 
 function Favicon({ url, size = "w-6 h-6" }) {
@@ -276,17 +287,26 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
 
 
 
+
+
 function VideoLayer({ item, playing, ephemeral }) {
   const ref = useRef(), bgRef = useRef();
   const [errored, setErrored] = useState(false);
   const [viaProxy, setViaProxy] = useState(!!ephemeral);
-  const src = viaProxy ? framed(item.video, item.page) : item.video;
+  const [src, setSrc] = useState(ephemeral ? null : item.video);
+  useEffect(() => {
+    if (!viaProxy) { setSrc(item.video); return; }
+    let dead = false;
+    framed(item.video, item.page).then((s) => { if (!dead) setSrc(s); }).catch(() => { if (!dead) setErrored(true); });
+    return () => { dead = true; };
+  }, [viaProxy, item.video, item.page]);
   const [ready, setReady] = useState(false);
   const wants = useRef(playing);
   wants.current = playing;
+
   useEffect(() => {
     setErrored(false); setReady(false);
-    const v = ref.current; if (!v) return;
+    const v = ref.current; if (!v || !src) return;                                        
     v.muted = true; v.loop = true;                                                        
     v.preload = "auto";                                                                   
     let handle, dead = false;
@@ -303,16 +323,18 @@ function VideoLayer({ item, playing, ephemeral }) {
         }).catch(() => {});
       },
       
+      
       onError: () => { if (dead) return; if (viaProxy) setErrored(true); else setViaProxy(true); },
     }).then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     return () => { dead = true; handle?.destroy?.(); };
   }, [src]);
 
+  
+  
   useEffect(() => {
     const v = ref.current; if (!v || !ready) return;
     if (playing) v.play?.().catch(() => {}); else v.pause?.();
   }, [playing, ready]);
-  
   useEffect(() => {
     if (!playing || !ready || item.poster || errored) return;
     const bg = bgRef.current; if (!bg) return;
@@ -322,7 +344,6 @@ function VideoLayer({ item, playing, ephemeral }) {
       .then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     return () => { dead = true; handle?.destroy?.(); };
   }, [playing, ready, src, item.poster, errored]);
-
   return html`<${Fragment}>
     ${errored
       ? html`<${PosterFill} poster=${item.poster} />`
@@ -334,8 +355,6 @@ function VideoLayer({ item, playing, ephemeral }) {
     <video ref=${ref} data-main data-playing=${playing ? "" : null} poster=${item.poster || null} playsinline loop muted class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
   </${Fragment}>`;
 }
-
-
 
 
 function HeartBurst({ x, y, onDone }) {
@@ -357,6 +376,8 @@ function HeartBurst({ x, y, onDone }) {
 function Slide({ item, idx, active, near, ephemeral }) {
   const secRef = useRef();
   const [burst, setBurst] = useState(null);
+  
+  
   const onTap = useTap({
     onSingle: () => {
       const v = secRef.current?.querySelector("video[data-main]");
@@ -376,7 +397,6 @@ function Slide({ item, idx, active, near, ephemeral }) {
     ${burst ? html`<${HeartBurst} x=${burst.x} y=${burst.y} key=${burst.k} onDone=${() => setBurst(null)} />` : null}
   </section>`;
 }
-
 function SourceSheet({ S, t }) {
   const [val, setVal] = useState("");
   const [q, setQ] = useState("");
@@ -385,8 +405,6 @@ function SourceSheet({ S, t }) {
   const load = (e) => { e?.preventDefault?.(); const url = norm(); if (!url) return S.screen.set(null); goto(url); };
   const sr = resolveSearch(norm());
   const search = (e) => { e?.preventDefault?.(); const url = norm(), term = q.trim(); if (url && term) goto(buildSearchUrl(url, term)); };
-  
-  
   
   
   return html`<${Sheet} open onClose=${() => S.screen.set(null)} title=${T(t, "srcTitle")} icon="lucide:link">
@@ -411,6 +429,9 @@ function SourceSheet({ S, t }) {
 
 
 
+
+
+
 function SourceIsland({ S, t, src, title, subbed, depth, dive, watch }) {
   const act = "btn btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
   return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
@@ -427,6 +448,9 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch }) {
     <//>
   `;
 }
+
+
+
 
 function DragReveal({ underRef, diveRef, backRef, target, targetLabel, prev }) {
   return html`<div ref=${underRef} aria-hidden="true" class="fixed inset-0 z-0 sf-inset opacity-0">
@@ -450,8 +474,6 @@ function FeedSurface({ S, t }) {
   const target = diveTarget(items[active], src);
   const targetLabel = target ? sourceTitle(target, { hint: items[active]?.title }) : "";
   const prev = frames.length ? frames[frames.length - 1] : null;
-  
-  
   
   const { paneRef, pan } = usePanX({
     threshold: 64,                                                   
@@ -486,13 +508,13 @@ function FeedSurface({ S, t }) {
     root.querySelectorAll("[data-idx]").forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, [items]);                                                        
+  
   useLayoutEffect(() => {
     if (restoreTo == null) return;
     const el = paneRef.current;
     if (el) el.scrollTop = restoreTo * (el.clientHeight || 0);
     $restoreTo.set(null);
   }, [restoreTo, items]);
-
   const body = loading
     ? html`<section class="h-[100dvh] w-full"><${Pixels} cls="w-full h-full" /></section>`
     : err
@@ -503,19 +525,17 @@ function FeedSurface({ S, t }) {
 
   
   
+  
   const cur = items[active];
   const watch = cur ? (cur.page || cur.orig || cur.video) : null;
   const dive = target ? { label: targetLabel, go: () => diveTo(S, target, cur?.title) } : null;
-
   return html`<${Fragment}>
     <${DragReveal} underRef=${underRef} diveRef=${diveRef} backRef=${backRef} target=${target} targetLabel=${targetLabel} prev=${prev} />
-    
     <div ref=${paneRef} ...${pan} data-scroller tabindex="0" role="region" aria-label=${T(t, "tabReel")} class="fixed inset-0 z-[1] bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain touch-pan-y will-change-transform">${body}</div>
     <${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
       dive=${dive} watch=${watch} />
   </${Fragment}>`;
 }
-
 
 export function reel({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
@@ -529,12 +549,14 @@ export function reel({ S }) {
 
 
 
-
 function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) {
   const sr = resolveSearch(s.url);
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState(sr.term || "");
   const submit = (e) => { e?.preventDefault?.(); const term = q.trim(); if (term) onPlay({ ...s, url: buildSearchUrl(s.url, term) }); };
+  
+  
+  
   
   return html`<li class=${`flex flex-col ${active ? "sf-inset rounded-2xl" : ""}`}>
     <div class="flex items-center gap-0.5 pr-1">
@@ -559,6 +581,10 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
     </form>` : null}
   </li>`;
 }
+
+
+
+
 
 function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, t }) {
   const hot = g.items.some((s) => s.url === curSrc);
@@ -594,13 +620,13 @@ export function sources({ S }) {
   return html`<${Fragment}>
     <div class="flex flex-col gap-4 @container">
       <button id="add-url" class="btn btn-primary rounded-2xl gap-2" onClick=${() => S.screen.set("source")}>${Icon("lucide:plus")} ${T(t, "addUrl")}</button>
+
       <div class="flex flex-col gap-2.5">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:bookmark", "text-primary")} ${T(t, "subs")}</div>
         ${mine.length
           ? mine.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => unsubscribe(s.url)} t=${t} key=${g.domain} />`)
           : html`<div class="text-sm text-base-content/70 px-1 py-3">${T(t, "noSubs")}</div>`}
       </div>
-
       ${discover.length ? html`<div class="flex flex-col gap-2.5">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:compass")} ${T(t, "discover")}</div>
         ${discover.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => subscribe(s)} t=${t} key=${g.domain} />`)}
@@ -628,7 +654,6 @@ export function liked({ S }) {
   };
   if (!sorted.length) return html`<div class="flex flex-col items-center justify-center gap-3 text-muted text-center" style="min-height:60vh">${Icon("lucide:heart", "text-6xl opacity-30")}<div class="text-sm max-w-[16rem]">${T(t, "likedEmpty")}</div></div>`;
   return html`<div data-liked class="grid grid-cols-3 gap-1.5">
-    
     ${sorted.map((l, i) => html`<div class="relative aspect-[9/16] rounded-xl overflow-hidden sf-inset" key=${l.id}>
       <button data-liked-tile class="absolute inset-0 w-full h-full active:scale-[.98] transition" aria-label=${l.title || l.host} onClick=${() => playAt(i)}>
         ${l.poster

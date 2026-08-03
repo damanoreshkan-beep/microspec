@@ -204,11 +204,17 @@ rebuild to regenerate `template.b64.js`. Plus `apps/apkforge/RESEARCH.md` in the
 there until removed by hand. Only the owner's own test installs are affected, so the cost is one
 manual uninstall, but it is worth doing before any APK is handed to anyone else.
 
-Remaining checks before building on it (**UNKNOWN**):
+**MEASURED, 2026-08-03 — the arsc question is closed, and the assumption was wrong.**
+`resources.arsc` carries the **applicationId**, not the gradle namespace: its `RES_TABLE_PACKAGE`
+chunk read back `apk.microspec.a0000000000000000`. The field is a fixed 128×uint16 array, so the same
+fixed-length overwrite applies, and the builder now patches **both** containers rather than gambling
+on how much Android cares that they disagree. Verified end to end through the public production URL:
+habits → `apk.microspec.adf7bd3a0d9afba32`, cam → `apk.microspec.a67487317a1e20723`, each matching the
+digest computed independently, and `aapt2 badging` in CI resolves
+`launchable-activity: name='apk.microspec.MainActivity'` despite the differing identity — which is
+what the fully-qualified activity name was for.
 
-- Does `resources.arsc` also need its package name rewritten, or does Android take identity from the
-  manifest alone? The arsc field is a fixed 128×uint16 array, so if it does, it is another in-place
-  write — an hour, not a redesign. **Measure on device.**
+Remaining check (**UNKNOWN**):
 - The `full` template must avoid anything else that embeds the applicationId — provider authorities,
   custom permission names. If `files.share` later wants a `FileProvider`, its authority must be
   derived from the same padded sentinel, or per-app packages break the moment two are installed.
@@ -319,8 +325,8 @@ feeds.
 
 | # | Work | Depends on | Size |
 |---|---|---|---|
-| **0** | Shell survival kit: `onPermissionRequest`, `onGeolocationPermissionsShowPrompt`, `onShowFileChooser`, `setDownloadListener` | — | small; fixes every existing APK |
-| **1** | Rename to `apk.microspec` (§4.2) + per-app package: padded sentinel + in-place AXML patch + arsc check on device (§4.1) | — | small; one template rebuild does both |
+| **0** ✅ | Shell survival kit: `onPermissionRequest`, `onGeolocationPermissionsShowPrompt`, `onShowFileChooser`, `setDownloadListener` + web-parity manifest (§4.3) + blob downloads (§4.4) | — | **done 2026-08-03** — deployed; unverified on device |
+| **1** ✅ | Rename to `apk.microspec` (§4.2) + per-app identity in manifest **and** arsc (§4.1) | — | **done 2026-08-03** — verified through the production URL |
 | **2** | Catalogue + generator + `shell.js` facade + version negotiation, **zero capabilities** | 1 | medium; the SDK skeleton |
 | **3** | `full` template + origin-locked bridge + `notify` + `alarm` | 2 | medium; first real power |
 | **4** | Permissions registry + grouped screen + schema enum + uk/en | 3 | medium; whole-farm verify |

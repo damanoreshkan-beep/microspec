@@ -58,6 +58,17 @@ export async function buildApk({ url, name, iconB64 }) {
 }
 
 export function downloadBlob(blob, filename) {
+  const shell = typeof window !== "undefined" && window.__msDownload;
+  if (shell && typeof shell.save === "function") {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const dataUrl = String(fr.result);
+      try { shell.save(filename, blob.type || "application/octet-stream", dataUrl.slice(dataUrl.indexOf(",") + 1)); }
+      catch {  }
+    };
+    fr.readAsDataURL(blob);
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

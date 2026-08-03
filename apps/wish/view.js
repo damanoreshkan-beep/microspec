@@ -6,6 +6,7 @@ import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
 import { Segmented, Sheet, Panel } from "/_rt/ui.js";
 import { collection, idbSupported } from "/_rt/db.js";
+import { downloadBlob } from "/_rt/apk.js";
 import { isGate } from "/_rt/gate.js";
 import { sortWishes, wishTotals, fmtMoney, fetchWishMeta, CURRENCIES } from "/_rt/wish.js";
 
@@ -96,7 +97,7 @@ async function prefill() {
 
 function exportData() {
   const blob = new Blob([JSON.stringify({ lists: $lists.get(), wishes: $wishes.get() }, null, 2)], { type: "application/json" });
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "wishlist.json"; a.click(); URL.revokeObjectURL(a.href);
+  downloadBlob(blob, "wishlist.json");   
 }
 async function importData(file) {
   try {

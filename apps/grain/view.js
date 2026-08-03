@@ -6,6 +6,7 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { Sheet, Segmented, Transport, Island, Slider } from "/_rt/ui.js";
 import { AC, audioSupported, createEngine, midiToFreq } from "/_rt/audio.js";
+import { downloadBlob } from "/_rt/apk.js";
 import { hannCurve, planGrains, conditionSample, detectPitch, encodeWav, syntheticSample, semisToRate, grainRate } from "/_rt/grain.js";
 import { generateMelody } from "/_rt/melody.js";
 import { Parallax } from "/_rt/spectrum.js";
@@ -247,9 +248,7 @@ async function shareWav(bytes, name, t) {
   try {
     if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: name }); return "shared"; }
   } catch { return "cancel"; }                                
-  const url = URL.createObjectURL(blob), a = document.createElement("a");
-  a.href = url; a.download = `${name}.wav`; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  downloadBlob(blob, `${name}.wav`);   
   return "saved";
 }
 

@@ -101,6 +101,17 @@ const GATE_TITLES = {
   "https://mixkit.co/watch/55013/": "Deeper two · Mixkit",
 };
 
+/* Where a slide STARTS, once. Sources splice a branded intro onto the front of the preview they hand out, so
+   frame 0 is a watermark rather than the clip. Applied on the FIRST play only — `loop` then wraps to 0 like
+   any video, deliberately: catching the wrap to re-skip means fighting the element on every pass, and a
+   second of intro on a repeat you have already chosen to keep watching is not worth that.
+   Skipped on a clip too short to spare it: seeking past the head of a 2-second preview leaves nothing to
+   watch, so the guard is on DURATION rather than on the offset. */
+const START_AT = 1.23;
+const seekStart = (v) => {
+  try { if (!isFinite(v.duration) || v.duration > START_AT * 2) v.currentTime = START_AT; } catch { /* not seekable yet */ }
+};
+
 /* How many slides EITHER SIDE of the active one keep a live <video>. 1, so three exist at once, and the
    number is small on purpose: there is no documented cap on concurrent media elements. Android's own
    `getMaxSupportedInstances()` is described by Android as a HINT for an upper bound that real resources may
@@ -455,18 +466,19 @@ function VideoLayer({ item, playing, ephemeral }) {
       onReady: () => {
         if (dead) return;
         setReady(true);
+        seekStart(v);                                                                     // past the source's intro, before the first frame is shown
         if (wants.current) { v.play?.().catch(() => {}); return; }
         /* PRIME. `preload` is a hint the spec explicitly lets a UA ignore, and Chrome's own guidance says
            it downgrades `auto` to `metadata` on cellular (`none` under Data Saver) — i.e. exactly on the
            phone this is for. Metadata is not a picture, so a neighbour could still arrive with nothing to
            show and the blink would survive the rewrite. A muted play() is permitted without a gesture, so
            one is taken and immediately given back: that forces the decode of frame 0, which is the thing
-           we actually want buffered. Rewound afterwards so the clip still starts at its beginning, and
+           we actually want buffered. Rewound afterwards to START_AT so the clip still starts where it should, and
            swallowed on failure — an interrupted play() rejects, and that is not an error here. */
         v.play?.().then(() => {
           if (dead || wants.current) return;                                              // it became active mid-prime — let it run
           v.pause?.();
-          try { v.currentTime = 0; } catch { /* not seekable yet */ }
+          seekStart(v);                                                                   // rewound to the START, not to 0 — priming must not undo the skip
         }).catch(() => {});
       },
       // A direct failure is a question, not a verdict: the CDN may simply want a referer we cannot send. Swap

@@ -275,8 +275,9 @@ export function handpanWeave({ S, toast, screen, openScreen, closeScreen }) {
       ${rows.map(({ i, m }) => { const live = loop.some((cell) => cell && cell.includes(i)); return html`<div class="flex items-center gap-[3px]" key=${i}>
         <div class=${`w-7 shrink-0 text-center text-sm font-medium tabular-nums ${i === 0 ? "text-secondary" : live ? "text-base-content" : "text-base-content/70"}`} title=${label(m)}>${letter(m)}</div>
         
+        
         ${STEPS.map((step) => { const on = (loop[step] || []).includes(i); const beat = step % 4 === 0; return html`<button data-cell=${`${i}-${step}`} aria-pressed=${on} aria-label=${`${label(m)} ${step + 1}`} onClick=${() => cellToggle(i, step)} key=${step}
-          class=${`flex-1 min-w-0 h-9 rounded-md touch-manipulation transition-all duration-150 ${beat && step > 0 ? "ml-1" : ""} ${on ? `sf-e2 ${i === 0 ? "bg-secondary" : "bg-primary"}` : "sf-inset"} ${step === sweep ? "outline-2 outline-accent scale-105" : step === cur ? "outline-2 outline-base-content/50" : ""}`}></button>`; })}
+          class=${`flex-1 min-w-0 h-9 rounded-md touch-manipulation transition-[box-shadow,background-color,transform,scale] duration-150 ${beat && step > 0 ? "ml-1" : ""} ${on ? `sf-e2 ${i === 0 ? "bg-secondary" : "bg-primary"}` : "sf-inset"} ${step === sweep ? "outline-2 outline-accent scale-105" : step === cur ? "outline-2 outline-base-content/50" : ""}`}></button>`; })}
       </div>`; })}
     </div>
 
@@ -296,8 +297,6 @@ export function handpanWeave({ S, toast, screen, openScreen, closeScreen }) {
     <${SettingsSheet} open=${screen === "set"} onClose=${closeScreen} t=${t} />
   </${Fragment}>`;
 }
-
-
 
 function SettingsSheet({ open, onClose, t }) {
   const bpm = useStore($bpm), space = useStore($space), shimmer = useStore($shimmer), drone = useStore($drone), timbre = useStore($timbre), scaleId = useStore($scale);
@@ -350,7 +349,6 @@ export function handpanSaved({ S, undo }) {
   const open = (it) => { buzz(); loadLoop(it); S.tab.set("weave"); };
   const play = (it) => { buzz(); if (isCur(it)) { stop(); return; } loadLoop(it); start(); };
   const del = async (it) => { const { id, _ts, ...rec } = it; try { await SAVES.remove(id); } catch {  } load(); undo?.(async () => { try { await SAVES.put(id, rec); } catch {  } load(); }, it.name || T(t, "loopWord")); };
-
   if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full sf-inset shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
   if (!list.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:bookmark", "text-4xl")}<span>${T(t, "savedEmpty")}</span></div>`;
 

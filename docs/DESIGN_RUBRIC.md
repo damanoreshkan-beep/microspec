@@ -90,6 +90,23 @@ picture is getting are still `shoot.mjs`'s job.
   the only number a player can see. Ship the one you would defend; a variant earns its place by being
   asked for.
 
+**Craft (orange — the details that compound):**
+- **Concentric radius** — a rounded rectangle nested inside a padded surface takes `--ms-r-in`
+  (`outer − padding`), never its parent's radius. Equal radii across a gap make the bezel thicken at the
+  corners and thin along the edges; it reads as "off" without naming itself. Pills (`rounded-full`) and
+  surfaces more than ~24px apart are exempt. Pinned by `runtime_test.js`.
+- **A transition names its properties** — `transition-all` is banned (preflight + unit sweep). The material
+  is box-shadow, so `all` cross-fades the extrusion itself on every state change, and it animates layout
+  properties off the compositor. A playhead or step marker stays OUT of the transition set, or it smears
+  across the row instead of stepping.
+- **One icon set** — `lucide:` only (preflight + unit sweep). Mixed libraries differ in stroke weight and
+  optical size on the same row, which reads as sloppiness rather than variety. Missing shape → a runtime
+  SVG, never a second library.
+- **The words are part of the interface** — verb-first buttons, a confirm button that repeats the
+  consequence ("Delete project", never "OK"), empty states that orient and point forward, errors that say
+  how to fix it, one vocabulary per concept in BOTH locales. No gate can see any of it; it is read on the
+  shot, and `--locale en` is the one nobody looks at by accident. Full rules in the skill's `rules/copy.md`.
+
 **Taste (yellow — raise the bar):**
 - **Restraint** (Linear / shadcn) — hairlines over heavy borders; no decorative gradients, no emoji soup,
   no purple-AI cliché.

@@ -3315,6 +3315,126 @@ Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit
 
 
 
+Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and stays sane at every step", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  const decl = /--ms-r-in:\s*([^;]+);/.exec(css);
+  assert(decl, "theme.css lost --ms-r-in — the concentric radius every nested surface reads");
+  for (const dep of ["--ms-r", "--ms-pad", "--r-1"]) {
+    assert(decl[1].includes(dep), `--ms-r-in must be derived from ${dep}, not written as a constant — a hand-written inner radius is right until the ladder moves and silently wrong after (got: ${decl[1].trim()})`);
+  }
+  assert(/--r-1:\s*4px/.test(css), "--ms-r-in floors on --r-1; theme.css must still declare it");
+
+  
+  
+  
+  
+  
+  const at = (idx) => {
+    const before = css.slice(0, idx);
+    const m = [...before.matchAll(/@media\s*\(([^{]*)\)\s*\{/g)].pop();
+    if (!m) return "base";
+    const between = before.slice(m.index + m[0].length);
+    
+    return (between.split("}").length - 1) > (between.split("{").length - 1) ? "base" : `@media (${m[1].trim()})`;
+  };
+  const steps = [...css.matchAll(/:root\s*\{([^}]*)\}/g)]
+    .map((m) => ({ at: at(m.index), body: m[1] }))
+    .filter((b) => /--ms-(?:r|pad):/.test(b.body));
+  assert(steps.length >= 6, `expected the base :root plus the density steps, found ${steps.length}`);
+  assert(steps.some((s) => /max-width/.test(s.at)), "the narrow-width step must be in the walk — it carries the tightest --ms-r/--ms-pad pair in the ladder");
+
+  const rem = (v) => Number(v) * 16;
+  let r = null, pad = null, checked = [];
+  for (const b of steps) {
+    const nr = /--ms-r:\s*([\d.]+)rem/.exec(b.body);
+    const np = /--ms-pad:\s*([\d.]+)rem/.exec(b.body);
+    if (nr) r = rem(nr[1]);
+    if (np) pad = rem(np[1]);
+    if (r == null || pad == null) continue;
+    
+    const inner = Math.max(4, r - pad);
+    assert(r > pad, `${b.at}: --ms-pad (${pad}px) has caught up with --ms-r (${r}px), so every nested surface's concentric radius clamps to the 4px floor at once. Compact the two together.`);
+    assert(inner < r, `${b.at}: derived inner radius ${inner}px is not smaller than the outer ${r}px (pad ${pad}px)`);
+    checked.push(`${b.at} r=${r} pad=${pad} in=${inner}`);
+  }
+  assert(checked.length >= 6, `only ${checked.length} steps carried both --ms-r and --ms-pad; the ladder has more. Walked: ${checked.join(" | ")}`);
+
+  
+  
+  const screen = /\.ms-screen\s*\{[^}]*border-radius:\s*([^;]+);/.exec(css);
+  assert(screen, "theme.css lost .ms-screen's border-radius");
+  assert(
+    /--sh-r-in|--ms-r-in/.test(screen[1]),
+    `.ms-screen must take the concentric radius (--sh-r-in), not restate a radius beside its shell — got "${screen[1].trim()}"`,
+  );
+  assert(/--sh-r-in:\s*[^;]*--sh-r[^;]*--ms-pad/.test(css), "--sh-r-in must be --sh-r minus --ms-pad — the shell's OWN outer radius, not --ms-r, since the shell scales its own by 1.2");
+});
+
+
+
+
+
+
+Deno.test("motion: no `transition-all` — a transition names the properties it animates", async () => {
+  const root = new URL("../../", import.meta.url);
+  const offenders = [];
+  const walk = async (dir) => {
+    for await (const e of Deno.readDir(dir)) {
+      const p = new URL(e.name + (e.isDirectory ? "/" : ""), dir);
+      if (e.isDirectory) {
+        if (["node_modules", ".git", "dist", "states"].includes(e.name)) continue;
+        await walk(p);
+      } else if (/\.(js|mjs|html|css)$/.test(e.name) && !/_test\.js$/.test(e.name) && !/gates\/preflight\.mjs$/.test(p.pathname)) {
+        
+        const src = await Deno.readTextFile(p);
+        if (/(?:^|[\s"'`])transition-all\b/.test(src)) offenders.push(p.pathname.replace(root.pathname, ""));
+      }
+    }
+  };
+  for (const d of ["packages/", "apps/"]) await walk(new URL(d, root));
+  assertEquals(
+    offenders,
+    [],
+    `\`transition-all\` animates the material (sf-* are box-shadow pairs) and layout properties off the ` +
+      `compositor. Name them: transition-colors / -opacity / -shadow / -transform, or transition-[width], ` +
+      `transition-[box-shadow,background-color,scale]. Offenders: ${offenders.join(", ")}`,
+  );
+});
+
+
+
+
+
+Deno.test("icons: the farm draws from ONE set (lucide) — a second library is a visible seam", async () => {
+  const root = new URL("../../", import.meta.url);
+  const FOREIGN = /["'](mdi|ph|tabler|carbon|ri|material-symbols|simple-icons|logos|bi|heroicons|solar|iconoir|fluent|octicon|codicon|fa6-[a-z]+|ic|majesticons|mingcute|hugeicons|akar-icons):[a-z0-9-]+["']/;
+  const offenders = [];
+  const walk = async (dir) => {
+    for await (const e of Deno.readDir(dir)) {
+      const p = new URL(e.name + (e.isDirectory ? "/" : ""), dir);
+      if (e.isDirectory) {
+        if (["node_modules", ".git", "dist", "states"].includes(e.name)) continue;
+        await walk(p);
+      } else if (/\.(js|mjs|json|html)$/.test(e.name) && !/_test\.js$/.test(e.name) && !/gates\/preflight\.mjs$/.test(p.pathname)) {
+        const m = FOREIGN.exec(await Deno.readTextFile(p));
+        if (m) offenders.push(`${p.pathname.replace(root.pathname, "")} (${m[1]})`);
+      }
+    }
+  };
+  for (const d of ["packages/", "apps/"]) await walk(new URL(d, root));
+  assertEquals(
+    offenders,
+    [],
+    `every glyph in the farm is \`lucide:*\`. If lucide genuinely lacks the shape, draw a runtime SVG (the ` +
+      `/_rt/zodiac.js \`Sign\` precedent) so it is ours and matches the set. Offenders: ${offenders.join(", ")}`,
+  );
+});
+
+
+
+
+
+
 Deno.test("a11y: MUTED text (an alpha over a surface) clears 4.5:1 — the pair axe actually measures", async () => {
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   const tokens = (theme) => {

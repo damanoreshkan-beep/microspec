@@ -341,7 +341,7 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
           <span data-pitch class="font-semibold text-base-content">${take ? (take.pitched ? take.name : T(t, "unpitched")) : T(t, "noTake")}</span>
         </span>
         
-        ${recording ? html`<span data-level class="absolute left-0 bottom-0 h-1 bg-error transition-all duration-100" style=${`width:${Math.round(level * 100)}%`}></span>` : null}
+        ${recording ? html`<span data-level class="absolute left-0 bottom-0 h-1 bg-error transition-[width] duration-100" style=${`width:${Math.round(level * 100)}%`}></span>` : null}
       </div>
 
       

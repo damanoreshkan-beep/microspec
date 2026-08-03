@@ -15,6 +15,10 @@ import { parseHTML } from "https://esm.sh/linkedom@0.18.5?external=canvas";
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[0m" };
 const TAGS = new Set(["div", "span", "button", "svg", "section", "header", "main", "footer", "nav", "input", "select", "option", "label", "rect", "circle", "path", "line", "polyline", "polygon", "text", "iconify-icon", "img", "table"]);
 
+const ICON_SETS = new Set(["mdi", "ph", "tabler", "carbon", "ri", "material-symbols", "simple-icons", "logos",
+  "bi", "heroicons", "solar", "iconoir", "fluent", "octicon", "codicon", "fa6-solid", "fa6-regular",
+  "fa6-brands", "ic", "majesticons", "gravity-ui", "hugeicons", "streamline", "mingcute", "akar-icons"]);
+
 const URL_ARG = (() => { const i = Deno.args.indexOf("--url"); return i >= 0 ? (Deno.args[i + 1] || "") : ""; })();
 let URL_QUERY = URL_ARG;   
 
@@ -151,7 +155,21 @@ async function preflight(appdir) {
     if (glassOnOurSurface.test(code)) {
       errs.push(`frosted glass over a base surface in ${srcFile} — glass and the extrusion are answers to the same question and cannot both be on screen: the blur erases the shadow pair that makes the surface read. Use \`sf-raised\`/\`sf-e4\` and an opaque bg-base-100. (Blur over a VIDEO or camera frame is still fine — that is foreign content, not our surface.)`);
     }
+
+    
+    
+    
+    if (/(?:^|[\s"'`])transition-all\b/.test(code)) {
+      errs.push(`\`transition-all\` in ${srcFile} — name the properties instead. It animates the material too: sf-raised/sf-inset are box-shadow pairs, so the extrusion cross-fades on every state change, and layout properties (width/margin) re-layout each frame off the compositor. Use \`transition-colors\`/\`transition-opacity\`/\`transition-shadow\`/\`transition-transform\`, or an arbitrary set like \`transition-[width]\` / \`transition-[box-shadow,background-color,scale]\`.`);
+    }
+    { const foreign = [...code.matchAll(/["']([a-z0-9-]+):[a-z0-9-]+["']/g)]
+        .map((m) => m[1])
+        .filter((p) => p !== "lucide" && ICON_SETS.has(p));
+      if (foreign.length) {
+        errs.push(`non-lucide icon set (${[...new Set(foreign)].join(", ")}) in ${srcFile} — the farm draws from ONE set. Mixed sets differ in stroke weight and optical size on the same row, which reads as sloppiness rather than variety. Use a \`lucide:*\` glyph, or draw a runtime SVG if lucide genuinely lacks the shape.`);
+      } }
   }
+  
   { const emojiRe = /\p{Emoji_Presentation}/gu;
     const scan = (label, text) => { const m = text.match(emojiRe); if (m) errs.push(`emoji ${[...new Set(m)].join(" ")} in ${label} — emoji are banned farm-wide; use a crafted vector (iconify lucide:*/mdi:*, an /_rt SVG like Sign) or plain words, never an emoji`); };
     scan(srcFile, src);

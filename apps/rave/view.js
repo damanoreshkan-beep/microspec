@@ -256,7 +256,7 @@ export function rave({ S, screen, openScreen, closeScreen }) {
       <div class="ms-decor flex flex-col items-center gap-1.5">
         <div class="font-mono text-[0.62rem] uppercase tracking-[0.28em] text-base-content/55">${T(t, vizKey(VIZ[viz].id))}</div>
         <div data-viztrack class="flex items-center gap-1">
-          ${VIZ.map((v, i) => html`<button data-viztick=${i} aria-current=${i === viz} aria-label=${`${T(t, "vizLabel")} ${i + 1}`} onClick=${() => setViz(i)} key=${v.id} class="py-2 px-0.5"><span class=${`block h-1 rounded-full transition-all ${i === viz ? "w-5 bg-secondary" : "w-2 bg-base-content/25"}`}></span></button>`)}
+          ${VIZ.map((v, i) => html`<button data-viztick=${i} aria-current=${i === viz} aria-label=${`${T(t, "vizLabel")} ${i + 1}`} onClick=${() => setViz(i)} key=${v.id} class="py-2 px-0.5"><span class=${`block h-1 rounded-full transition-[width,background-color] ${i === viz ? "w-5 bg-secondary" : "w-2 bg-base-content/25"}`}></span></button>`)}
         </div>
       </div>
 
@@ -297,8 +297,9 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
       </div>
       ${TRACKS.map((tr) => { const live = tracks[tr.id].some(Boolean); return html`<div class="flex items-center gap-[3px]" key=${tr.id}>
         <div class=${`w-7 shrink-0 flex items-center justify-center ${live ? "text-base-content" : "text-base-content/40"}`} title=${T(t, tr.name)}>${Icon(tr.icon, "text-base")}</div>
+        
         ${STEPS.map((s) => { const on = tracks[tr.id][s], sw = s === sweep, playhead = sw || s === cur; return html`<button data-cell=${`${tr.id}-${s}`} data-current=${s === cur || null} data-sweep=${sw || null} aria-pressed=${on} aria-label=${`${T(t, tr.name)} ${s + 1}`} onClick=${() => cellToggle(tr.id, s)} key=${s}
-          class=${`relative overflow-hidden flex-1 min-w-0 h-8 rounded touch-manipulation transition-all duration-150 ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? `${tr.on} sf-e2` : "sf-inset"} ${sw ? "scale-105" : ""}`}
+          class=${`relative overflow-hidden flex-1 min-w-0 h-8 rounded touch-manipulation transition-[box-shadow,background-color,transform,scale] duration-150 ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? `${tr.on} sf-e2` : "sf-inset"} ${sw ? "scale-105" : ""}`}
           >${playhead ? html`<span class=${`pointer-events-none absolute inset-y-1 left-1/2 -translate-x-1/2 w-1 rounded-full ${sw ? "bg-accent" : "bg-secondary"}`}></span>` : null}</button>`; })}
       </div>`; })}
     </div>
@@ -313,10 +314,10 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
           ]} />
       <//>
     
+
     <${FxSheet} open=${screen === "fx"} onClose=${closeScreen} t=${t} sweep=${sweep} />
   </${Fragment}>`;
 }
-
 
 
 function FxSheet({ open, onClose, t, sweep }) {
@@ -364,7 +365,6 @@ export function raveSaved({ S, undo }) {
   const open = (it) => { buzz(); loadBeat(it); S.tab.set("pads"); };
   const play = (it) => { buzz(); if (isCur(it)) { stop(); return; } loadBeat(it); start(); };
   const del = async (it) => { const { id, _ts, ...rec } = it; try { await SAVES.remove(id); } catch {  } load(); undo?.(async () => { try { await SAVES.put(id, rec); } catch {  } load(); }, it.name || T(t, "beatWord")); };
-
   if (!useReveal(list !== null)) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel class="card bg-base-100 rounded-2xl overflow-hidden" key=${i}><div class="card-body p-3 flex-row items-center gap-3 text-muted"><div class="w-9 h-9 rounded-full sf-inset shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="truncate font-semibold"><${Scramble} len=${12} /></div><div class="h-5"><${Scramble} len=${16} /></div></div></div></div>`)}</div>`;
   if (!list.length) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:bookmark", "text-4xl")}<span>${T(t, "savedEmpty")}</span></div>`;
 

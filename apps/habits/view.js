@@ -11,6 +11,7 @@ import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
 import { haptic } from "/_rt/sensors.js";
 import { collection, idbSupported } from "/_rt/db.js";
+import { downloadBlob } from "/_rt/apk.js";
 import { Panel, Sheet } from "/_rt/ui.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -93,7 +94,7 @@ async function seed() {
 }
 function exportData() {
   const blob = new Blob([JSON.stringify({ habits: $habits.get(), marks: Object.keys($marks.get()) }, null, 2)], { type: "application/json" });
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "habits.json"; a.click(); URL.revokeObjectURL(a.href);
+  downloadBlob(blob, "habits.json");   // shell-aware: a bare <a download> saves nothing inside the APK
 }
 async function importData(file) {
   try {

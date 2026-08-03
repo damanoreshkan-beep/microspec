@@ -68,6 +68,19 @@ export async function buildApk({ url, name, iconB64 }) {
 }
 
 export function downloadBlob(blob, filename) {
+  // Inside our Android shell an <a download> with a blob: URL does nothing at all — WebView has no blob
+  // download path — so hand the bytes over instead. Absent (every browser), fall through to the anchor.
+  const shell = typeof window !== "undefined" && window.__msDownload;
+  if (shell && typeof shell.save === "function") {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const dataUrl = String(fr.result);
+      try { shell.save(filename, blob.type || "application/octet-stream", dataUrl.slice(dataUrl.indexOf(",") + 1)); }
+      catch { /* shell refused — nothing better to try */ }
+    };
+    fr.readAsDataURL(blob);
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

@@ -34,9 +34,16 @@ import { collection, idbSupported } from "/_rt/db.js";
 import { Pixels } from "/_rt/skeleton.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-// Route playback through the reverse proxy: a signed/expiring URL was signed for the VPS IP (that fetched the
-// page), so re-fetching it from the VPS (within its window) keeps the token valid — where a direct hit fails.
-const framed = (u) => `${VPS_PROXY}/frame?url=${encodeURIComponent(u)}`;
+/* Route an asset through the reverse proxy. `ref` is the PAGE the asset was found on, and it is the whole
+   reason this works: what blocks a guarded clip is hotlink protection, not CORS. Measured against a live
+   signed clip with the browser UA held constant — no referer 404, the CDN's own origin 404, the page's origin
+   206 — and the CDN grants CORS freely either way (206 with our github.io Origin present). A browser cannot
+   send that header itself: `Referer` is a forbidden header name for fetch, and a <video> element sends its own
+   document's URL, which Referrer-Policy can only shorten, never move to another origin. So the proxy is not a
+   CORS workaround; it is the only party that can state the referer the source asks for.
+   The earlier note here claimed the token was bound to the VPS's IP. It is not: the same token served a
+   different address fine. It was the referer all along, and the proxy was sending the asset's own origin. */
+const framed = (u, ref) => `${VPS_PROXY}/frame?url=${encodeURIComponent(u)}${ref ? `&ref=${encodeURIComponent(ref)}` : ""}`;
 
 // Ready-made channels — ONLY sources verified to extract THROUGH THE PROXY (the VPS datacenter IP matters:
 // Cloudflare-guarded sites like Pexels return nothing from it, exactly like the AliExpress lesson). They are
@@ -331,9 +338,15 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
 //     It is also the active slide's alone: at three slides it would otherwise be six decoders.
 //   · `poster` on the element itself, so a cold slide shows the still instead of black while it loads. The
 //     blurred fill behind it is a different job (filling the letterbox) and stays a separate node.
-function VideoLayer({ item, playing }) {
+//   · a clip the CDN refuses to hand this origin is RETRIED through the proxy rather than written off. Direct
+//     first, because most sources need no help and every proxied byte crosses our own box; the proxy only on
+//     failure, or immediately for a source already known to hand out guarded URLs (`ephemeral`), where the
+//     direct attempt is a round trip we know the answer to. One retry, then the poster — never a loop.
+function VideoLayer({ item, playing, ephemeral }) {
   const ref = useRef(), bgRef = useRef();
   const [errored, setErrored] = useState(false);
+  const [viaProxy, setViaProxy] = useState(!!ephemeral);
+  const src = viaProxy ? framed(item.video, item.page) : item.video;
   const [ready, setReady] = useState(false);
   // The active flag as the ATTACH effect will see it whenever it finally resolves. `onReady` fires after an
   // await, so reading `playing` from the closure would play whichever slide was active when the fetch started.
@@ -346,7 +359,7 @@ function VideoLayer({ item, playing }) {
     v.muted = true; v.loop = true;                                                        // muted → browsers allow autoplay
     v.preload = "auto";                                                                   // a neighbour exists to BUFFER; metadata is not enough
     let handle, dead = false;
-    createPlayer(v, item.video, {
+    createPlayer(v, src, {
       onReady: () => {
         if (dead) return;
         setReady(true);
@@ -364,10 +377,12 @@ function VideoLayer({ item, playing }) {
           try { v.currentTime = 0; } catch { /* not seekable yet */ }
         }).catch(() => {});
       },
-      onError: () => { if (!dead) setErrored(true); },
+      // A direct failure is a question, not a verdict: the CDN may simply want a referer we cannot send. Swap
+      // to the proxied URL once and let this effect run again; only a proxied failure is really the end.
+      onError: () => { if (dead) return; if (viaProxy) setErrored(true); else setViaProxy(true); },
     }).then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     return () => { dead = true; handle?.destroy?.(); };
-  }, [item.video]);
+  }, [src]);
 
   // Play follows the ACTIVE flag and nothing else — the element is never rebuilt for it. A manual pause (tap)
   // survives, because this only runs when `playing` or `ready` actually changes.
@@ -383,10 +398,10 @@ function VideoLayer({ item, playing }) {
     const bg = bgRef.current; if (!bg) return;
     bg.muted = true; bg.loop = true;
     let handle, dead = false;
-    createPlayer(bg, item.video, { onReady: () => { if (!dead) bg.play?.().catch(() => {}); } })
+    createPlayer(bg, src, { onReady: () => { if (!dead) bg.play?.().catch(() => {}); } })
       .then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     return () => { dead = true; handle?.destroy?.(); };
-  }, [playing, ready, item.video, item.poster, errored]);
+  }, [playing, ready, src, item.poster, errored]);
 
   return html`<${Fragment}>
     ${errored
@@ -439,13 +454,15 @@ function Slide({ item, idx, active, near, ephemeral }) {
     onDouble: (p) => { setBurst({ x: p.x, y: p.y, k: Date.now() }); addLike(item); navigator.vibrate?.(12); },
   });
   return html`<section ref=${secRef} data-reel data-idx=${idx} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
-    ${ephemeral
-      ? html`<${PosterFill} poster=${item.poster} />`
-      : near
-        ? html`<${VideoLayer} item=${item} playing=${active} />`
-        : item.poster
-          ? html`<${PosterFill} poster=${item.poster} />`
-          : null}
+    ${/* `ephemeral` used to mean "do not even try" — a poster and a link out to the site. It meant that because
+          a guarded clip looked unplayable, and it looked unplayable because the proxy was sending the wrong
+          referer and the HTML branch was reporting the rejection as 200. Both are fixed, so the flag now means
+          what it should have meant all along: START on the proxy instead of discovering the need to. */""}
+    ${near
+      ? html`<${VideoLayer} item=${item} playing=${active} ephemeral=${ephemeral} />`
+      : item.poster
+        ? html`<${PosterFill} poster=${item.poster} />`
+        : null}
     ${burst ? html`<${HeartBurst} x=${burst.x} y=${burst.y} key=${burst.k} onDone=${() => setBurst(null)} />` : null}
   </section>`;
 }

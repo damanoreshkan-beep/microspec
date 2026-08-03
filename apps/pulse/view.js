@@ -144,7 +144,7 @@ export function pulse({ S }) {
         <div class="flex justify-between text-xs mb-1"><span class="flex items-center gap-1">${Icon("lucide:user", "text-primary")}${T(t, "humans")} ${s.humanPct}%</span><span class="flex items-center gap-1 text-muted">${T(t, "bots")} ${100 - s.humanPct}% ${Icon("lucide:bot")}</span></div>
         ${/* base-300 and base-100 are the SAME colour under this material, so this trough was painting
              nothing at all. An 8px rail cannot hold the pair either — it takes --sf-track-face. */""}
-        <div class="h-2 rounded-full overflow-hidden" style="background:var(--sf-track-face)"><div class="h-full bg-primary transition-all duration-500" style=${`width:${s.humanPct}%`}></div></div>
+        <div class="h-2 rounded-full overflow-hidden" style="background:var(--sf-track-face)"><div class="h-full bg-primary transition-[width] duration-500" style=${`width:${s.humanPct}%`}></div></div>
       </div>
       ${scope === "all" && s.top.length ? html`<div class="flex flex-wrap gap-1 justify-center mt-3">${s.top.map((c) => html`<button class="badge gap-1 cursor-pointer hover:badge-primary" key=${c} onClick=${() => setScope(c)}>${Icon("lucide:globe", "text-[0.85em] opacity-70")}${c}</button>`)}</div>` : null}
       <div class="text-xs text-muted mt-2">${T(t, "total", { n: num(s.total) })}</div>

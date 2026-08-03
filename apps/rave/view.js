@@ -297,7 +297,7 @@ export function rave({ S, screen, openScreen, closeScreen }) {
       <div class="ms-decor flex flex-col items-center gap-1.5">
         <div class="font-mono text-[0.62rem] uppercase tracking-[0.28em] text-base-content/55">${T(t, vizKey(VIZ[viz].id))}</div>
         <div data-viztrack class="flex items-center gap-1">
-          ${VIZ.map((v, i) => html`<button data-viztick=${i} aria-current=${i === viz} aria-label=${`${T(t, "vizLabel")} ${i + 1}`} onClick=${() => setViz(i)} key=${v.id} class="py-2 px-0.5"><span class=${`block h-1 rounded-full transition-all ${i === viz ? "w-5 bg-secondary" : "w-2 bg-base-content/25"}`}></span></button>`)}
+          ${VIZ.map((v, i) => html`<button data-viztick=${i} aria-current=${i === viz} aria-label=${`${T(t, "vizLabel")} ${i + 1}`} onClick=${() => setViz(i)} key=${v.id} class="py-2 px-0.5"><span class=${`block h-1 rounded-full transition-[width,background-color] ${i === viz ? "w-5 bg-secondary" : "w-2 bg-base-content/25"}`}></span></button>`)}
         </div>
       </div>
 
@@ -351,8 +351,12 @@ export function ravePads({ S, toast, screen, openScreen, closeScreen }) {
            at ~20px wide, and the full pair on an object that size is a shadow bigger than the thing. */""}
       ${TRACKS.map((tr) => { const live = tracks[tr.id].some(Boolean); return html`<div class="flex items-center gap-[3px]" key=${tr.id}>
         <div class=${`w-7 shrink-0 flex items-center justify-center ${live ? "text-base-content" : "text-base-content/40"}`} title=${T(t, tr.name)}>${Icon(tr.icon, "text-base")}</div>
+        ${/* The cell names its transition properties rather than taking `all`: what actually changes here is
+             the material (sf-e2 ↔ sf-inset is a box-shadow PAIR), the track's fill, and the sweep's scale.
+             `all` also animated the cell's WIDTH — these are flex-1 in a row that reflows — so every resize
+             re-laid-out 22x16 cells for 150ms, off the compositor, for something nobody can see. */""}
         ${STEPS.map((s) => { const on = tracks[tr.id][s], sw = s === sweep, playhead = sw || s === cur; return html`<button data-cell=${`${tr.id}-${s}`} data-current=${s === cur || null} data-sweep=${sw || null} aria-pressed=${on} aria-label=${`${T(t, tr.name)} ${s + 1}`} onClick=${() => cellToggle(tr.id, s)} key=${s}
-          class=${`relative overflow-hidden flex-1 min-w-0 h-8 rounded touch-manipulation transition-all duration-150 ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? `${tr.on} sf-e2` : "sf-inset"} ${sw ? "scale-105" : ""}`}
+          class=${`relative overflow-hidden flex-1 min-w-0 h-8 rounded touch-manipulation transition-[box-shadow,background-color,transform,scale] duration-150 ${s % 4 === 0 && s > 0 ? "ml-1" : ""} ${on ? `${tr.on} sf-e2` : "sf-inset"} ${sw ? "scale-105" : ""}`}
           >${playhead ? html`<span class=${`pointer-events-none absolute inset-y-1 left-1/2 -translate-x-1/2 w-1 rounded-full ${sw ? "bg-accent" : "bg-secondary"}`}></span>` : null}</button>`; })}
       </div>`; })}
     </div>

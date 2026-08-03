@@ -324,8 +324,12 @@ export function handpanWeave({ S, toast, screen, openScreen, closeScreen }) {
              the rail above carry the beat, exactly as they did. Grid, cell height and gutters untouched.
              The playhead/sweep marker is an `outline`, not a `ring`: a ring is painted with box-shadow and
              would fight the material for the same property. */""}
+        ${/* The cell names its transition properties, never `all` — and the OUTLINE is deliberately not in
+             the set. It is the playhead, moving one cell per sixteenth: a transitioned outline would still
+             be fading in on cell N when cell N+1 lit, so the marker smears across the row instead of
+             stepping. The material (box-shadow), the fill and the sweep's scale are what should ease. */""}
         ${STEPS.map((step) => { const on = (loop[step] || []).includes(i); const beat = step % 4 === 0; return html`<button data-cell=${`${i}-${step}`} aria-pressed=${on} aria-label=${`${label(m)} ${step + 1}`} onClick=${() => cellToggle(i, step)} key=${step}
-          class=${`flex-1 min-w-0 h-9 rounded-md touch-manipulation transition-all duration-150 ${beat && step > 0 ? "ml-1" : ""} ${on ? `sf-e2 ${i === 0 ? "bg-secondary" : "bg-primary"}` : "sf-inset"} ${step === sweep ? "outline-2 outline-accent scale-105" : step === cur ? "outline-2 outline-base-content/50" : ""}`}></button>`; })}
+          class=${`flex-1 min-w-0 h-9 rounded-md touch-manipulation transition-[box-shadow,background-color,transform,scale] duration-150 ${beat && step > 0 ? "ml-1" : ""} ${on ? `sf-e2 ${i === 0 ? "bg-secondary" : "bg-primary"}` : "sf-inset"} ${step === sweep ? "outline-2 outline-accent scale-105" : step === cur ? "outline-2 outline-base-content/50" : ""}`}></button>`; })}
       </div>`; })}
     </div>
 

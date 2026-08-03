@@ -48,6 +48,22 @@
   --ms-title: 1.0625rem; /* panel/sheet title */
   --ms-label: 0.68rem;   /* mono micro-label */
 }
+
+/* --ms-r-in — the CONCENTRIC radius: what a rounded box nested inside a padded surface must use.
+   Two rounded rectangles separated by padding share ONE corner arc, so their radii are not a taste
+   pair — they are related by the gap between them: outer = inner + padding, i.e. inner = outer − pad.
+   Give the inner box the SAME radius as its parent and its corner is tighter than the arc running
+   around it, which reads as a pinched, slightly-wrong box that nothing can name. It is the most common
+   source of "this feels off" in a surface-heavy material like ours, and no gate can see it.
+
+   DERIVED, never written twice: --ms-r and --ms-pad both step with the density ladder, so this follows
+   both for free and there is exactly one place that knows the relation. The floor is --r-1 (4px) so the
+   tightest step cannot produce a negative or hairline-square corner.
+
+   Scope: a rounded RECTANGLE directly inside a Panel / Island / Sheet / .ms-shell. A pill (rounded-full)
+   is exempt — a full round has no corner to reconcile — and so is a box separated by more than ~24px of
+   padding, where the two surfaces read as independent rather than nested. */
+:root { --ms-r-in: max(var(--r-1), calc(var(--ms-r) - var(--ms-pad))); }
 @media (max-height: 780px) {
   :root { --ms-gap: 0.625rem; --ms-pad: 0.875rem; --ms-r: 1.125rem; --ms-title: 1rem; }
 }
@@ -763,12 +779,16 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
    the screen where a handheld's deck belongs. `max-height` rather than `height` so a short
    viewport still constrains it, and the stage still shrinks first. */
 .ms-shell {
+  /* The shell's own radius, named once so the aperture inside it can be derived from it rather than
+     guessed alongside it (see --sh-r-in below). */
+  --sh-r: calc(var(--ms-r) * 1.2);
+  --sh-r-in: max(var(--r-1), calc(var(--sh-r) - var(--ms-pad)));
   width: 100%;
   max-height: 100%;
   max-width: 30rem;
   padding: var(--ms-pad);
   background: var(--sh-body, var(--color-base-100));
-  border-radius: calc(var(--ms-r) * 1.2);
+  border-radius: var(--sh-r);
 }
 [data-theme="signal"]       .ms-shell { --sh-body: #35342C; }
 [data-theme="signal-light"] .ms-shell { --sh-body: #D8D5C2; }
@@ -784,11 +804,16 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
    the canvas letterboxes inside it, so the picture is the largest one the device can show; the
    frame is a hairline of plastic rather than a device-defining proportion, because nine
    silhouettes no longer have to differ from each other somewhere. */
+/* The aperture is CONCENTRIC with the shell around it, not independently rounded. It used to carry
+   --ms-r (20px) inside a shell of --ms-r * 1.2 (24px) with --ms-pad (16px) between them: 24 ≠ 20 + 16,
+   so the plastic's corner arc and the screen's corner arc did not share a centre and the bezel visibly
+   thickened at the corners while staying thin along the edges. Deriving it from --sh-r closes that, and
+   a squarer aperture is also what a real handheld's LCD looks like. */
 .ms-screen {
   --sf-inset-face: var(--sh-tint, var(--color-base-200));
   width: 100%;
   padding: max(0.3rem, 2.5%);
-  border-radius: var(--ms-r);
+  border-radius: var(--sh-r-in, var(--ms-r-in));
 }
 
 /* Landscape, where `.ms-side` turns the body into a row. The generic split — stage 38%, controls

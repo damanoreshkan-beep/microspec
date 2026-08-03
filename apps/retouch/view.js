@@ -250,7 +250,7 @@ export function retouch({ S, toast }) {
 
       ${phase === "editing" ? html`<div class="relative z-10 flex flex-col items-center gap-3 w-56 max-w-[70%]">
         <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eEditing")} ${fmt(elapsed)}<span class="text-white/50"> / ~${fmt(EST)}</span></div>
-        <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-primary rounded-full transition-all duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / EST * 100))}%`}></div></div>
+        <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-primary rounded-full transition-[width] duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / EST * 100))}%`}></div></div>
       </div>` : null}
 
       ${/* The error chip floats over the user's PHOTO, so a 15% error wash behind error-coloured text was

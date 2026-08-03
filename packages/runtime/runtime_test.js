@@ -3499,6 +3499,140 @@ Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit
   }
 });
 
+// CONCENTRIC RADIUS. Two rounded rectangles separated by padding share one corner arc, so their radii are
+// related, not independently chosen: outer = inner + padding. Give a nested box its parent's radius and the
+// inner corner is tighter than the arc around it — the bezel visibly thickens at the corners and thins along
+// the edges. It is the single most common "this feels off" in a surface-heavy material, and nothing
+// automated can see it: it is not overflow, not contrast, not a missing name.
+//
+// The defect this pins is the one that shipped: .ms-screen carried --ms-r (20px) inside an .ms-shell of
+// --ms-r * 1.2 (24px) with --ms-pad (16px) between them. 24 ≠ 20 + 16.
+//
+// Assert the RELATION at every density step, not the strings. --ms-r and --ms-pad both move with the ladder,
+// and the failure mode is a future step that compacts padding without compacting the radius (or vice versa)
+// until r - pad goes negative and the derived inner corner clamps flat everywhere at once.
+Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and stays sane at every step", async () => {
+  const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+
+  const decl = /--ms-r-in:\s*([^;]+);/.exec(css);
+  assert(decl, "theme.css lost --ms-r-in — the concentric radius every nested surface reads");
+  for (const dep of ["--ms-r", "--ms-pad", "--r-1"]) {
+    assert(decl[1].includes(dep), `--ms-r-in must be derived from ${dep}, not written as a constant — a hand-written inner radius is right until the ladder moves and silently wrong after (got: ${decl[1].trim()})`);
+  }
+  assert(/--r-1:\s*4px/.test(css), "--ms-r-in floors on --r-1; theme.css must still declare it");
+
+  // Walk the ladder in SOURCE ORDER and accumulate, because the steps cascade: a 430px-tall viewport
+  // matches 780, 670, 560 and 440 at once, and a step that sets only --ms-pad (560px does) inherits the
+  // --ms-r above it. Checking each block in isolation would pass a pair that never co-occurs.
+  //
+  // Every step is LABELLED with its real at-rule. The first version of this parser matched the @media
+  // prefix only when `:root` followed it immediately, so the `max-width: 300px` step — the one with the
+  // tightest pair in the whole ladder — reported as "base", and a failure would have named the wrong
+  // breakpoint. A check that reports a number without the right subject is the defect it is meant to catch.
+  const at = (idx) => {
+    const before = css.slice(0, idx);
+    const m = [...before.matchAll(/@media\s*\(([^{]*)\)\s*\{/g)].pop();
+    if (!m) return "base";
+    const between = before.slice(m.index + m[0].length);
+    // Only the enclosing at-rule counts: if its block already closed, this :root is at top level.
+    return (between.split("}").length - 1) > (between.split("{").length - 1) ? "base" : `@media (${m[1].trim()})`;
+  };
+  const steps = [...css.matchAll(/:root\s*\{([^}]*)\}/g)]
+    .map((m) => ({ at: at(m.index), body: m[1] }))
+    .filter((b) => /--ms-(?:r|pad):/.test(b.body));
+  assert(steps.length >= 6, `expected the base :root plus the density steps, found ${steps.length}`);
+  assert(steps.some((s) => /max-width/.test(s.at)), "the narrow-width step must be in the walk — it carries the tightest --ms-r/--ms-pad pair in the ladder");
+
+  const rem = (v) => Number(v) * 16;
+  let r = null, pad = null, checked = [];
+  for (const b of steps) {
+    const nr = /--ms-r:\s*([\d.]+)rem/.exec(b.body);
+    const np = /--ms-pad:\s*([\d.]+)rem/.exec(b.body);
+    if (nr) r = rem(nr[1]);
+    if (np) pad = rem(np[1]);
+    if (r == null || pad == null) continue;
+    // The TV end steps UP rather than down; it is the same relation, so it is checked the same way.
+    const inner = Math.max(4, r - pad);
+    assert(r > pad, `${b.at}: --ms-pad (${pad}px) has caught up with --ms-r (${r}px), so every nested surface's concentric radius clamps to the 4px floor at once. Compact the two together.`);
+    assert(inner < r, `${b.at}: derived inner radius ${inner}px is not smaller than the outer ${r}px (pad ${pad}px)`);
+    checked.push(`${b.at} r=${r} pad=${pad} in=${inner}`);
+  }
+  assert(checked.length >= 6, `only ${checked.length} steps carried both --ms-r and --ms-pad; the ladder has more. Walked: ${checked.join(" | ")}`);
+
+  // The console shell is the worked example and the one that was wrong. Its aperture must derive from the
+  // shell's own radius, never restate --ms-r beside it.
+  const screen = /\.ms-screen\s*\{[^}]*border-radius:\s*([^;]+);/.exec(css);
+  assert(screen, "theme.css lost .ms-screen's border-radius");
+  assert(
+    /--sh-r-in|--ms-r-in/.test(screen[1]),
+    `.ms-screen must take the concentric radius (--sh-r-in), not restate a radius beside its shell — got "${screen[1].trim()}"`,
+  );
+  assert(/--sh-r-in:\s*[^;]*--sh-r[^;]*--ms-pad/.test(css), "--sh-r-in must be --sh-r minus --ms-pad — the shell's OWN outer radius, not --ms-r, since the shell scales its own by 1.2");
+});
+
+// `transition-all` is banned farm-wide, and the farm-wide sweep is the point: preflight is affected-scoped,
+// so a CI run that verified six apps says nothing about the other fifty-one. This test runs in the unit job,
+// which always runs, over every app at once.
+//
+// The reason it is a defect here and not merely a style nit: the material is box-shadow. sf-raised, sf-inset
+// and the sf-e* ladder are shadow PAIRS, so `all` cross-fades the extrusion on every state change — a
+// sequencer cell melts between raised and recessed instead of snapping, sixteen at a time. It also animates
+// layout properties (width, margin), which the compositor cannot take, so each frame is a full re-layout.
+Deno.test("motion: no `transition-all` — a transition names the properties it animates", async () => {
+  const root = new URL("../../", import.meta.url);
+  const offenders = [];
+  const walk = async (dir) => {
+    for await (const e of Deno.readDir(dir)) {
+      const p = new URL(e.name + (e.isDirectory ? "/" : ""), dir);
+      if (e.isDirectory) {
+        if (["node_modules", ".git", "dist", "states"].includes(e.name)) continue;
+        await walk(p);
+      } else if (/\.(js|mjs|html|css)$/.test(e.name) && !/_test\.js$/.test(e.name) && !/gates\/preflight\.mjs$/.test(p.pathname)) {
+        // preflight.mjs is exempt: it names the banned class in the ban's own message.
+        const src = await Deno.readTextFile(p);
+        if (/(?:^|[\s"'`])transition-all\b/.test(src)) offenders.push(p.pathname.replace(root.pathname, ""));
+      }
+    }
+  };
+  for (const d of ["packages/", "apps/"]) await walk(new URL(d, root));
+  assertEquals(
+    offenders,
+    [],
+    `\`transition-all\` animates the material (sf-* are box-shadow pairs) and layout properties off the ` +
+      `compositor. Name them: transition-colors / -opacity / -shadow / -transform, or transition-[width], ` +
+      `transition-[box-shadow,background-color,scale]. Offenders: ${offenders.join(", ")}`,
+  );
+});
+
+// ONE icon set. Two libraries on one row never read as variety — they read as sloppiness, because they
+// differ in exactly what the eye scores as craft: stroke weight, corner radius, optical size, how much of
+// the 24-unit box the glyph fills. The farm is 100% lucide today; this is the alarm that keeps it that way,
+// because the first foreign glyph always arrives as "the one icon lucide doesn't have".
+Deno.test("icons: the farm draws from ONE set (lucide) — a second library is a visible seam", async () => {
+  const root = new URL("../../", import.meta.url);
+  const FOREIGN = /["'](mdi|ph|tabler|carbon|ri|material-symbols|simple-icons|logos|bi|heroicons|solar|iconoir|fluent|octicon|codicon|fa6-[a-z]+|ic|majesticons|mingcute|hugeicons|akar-icons):[a-z0-9-]+["']/;
+  const offenders = [];
+  const walk = async (dir) => {
+    for await (const e of Deno.readDir(dir)) {
+      const p = new URL(e.name + (e.isDirectory ? "/" : ""), dir);
+      if (e.isDirectory) {
+        if (["node_modules", ".git", "dist", "states"].includes(e.name)) continue;
+        await walk(p);
+      } else if (/\.(js|mjs|json|html)$/.test(e.name) && !/_test\.js$/.test(e.name) && !/gates\/preflight\.mjs$/.test(p.pathname)) {
+        const m = FOREIGN.exec(await Deno.readTextFile(p));
+        if (m) offenders.push(`${p.pathname.replace(root.pathname, "")} (${m[1]})`);
+      }
+    }
+  };
+  for (const d of ["packages/", "apps/"]) await walk(new URL(d, root));
+  assertEquals(
+    offenders,
+    [],
+    `every glyph in the farm is \`lucide:*\`. If lucide genuinely lacks the shape, draw a runtime SVG (the ` +
+      `/_rt/zodiac.js \`Sign\` precedent) so it is ours and matches the set. Offenders: ${offenders.join(", ")}`,
+  );
+});
+
 // THE class of bug this closes, and it cost a full 58-job CI matrix to learn. A palette change repainted
 // both themes; every solid pair (content-on-surface) was computed browser-free first and passed. All 58
 // apps still failed axe on ONE selector: `.text-muted`. Solid pairs are not what the farm

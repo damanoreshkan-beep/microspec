@@ -397,7 +397,7 @@ export function grain({ S, screen, openScreen, closeScreen, toast }) {
         ${/* The input level belongs to the RECORDING, so it lives on the take's own box — as a sibling of the
              transport it was a flex-1 next to a shrink-0 widget, and the widget spilled out of the island
              and off the left edge of the screen. Every gate passed that; the screenshot did not. */""}
-        ${recording ? html`<span data-level class="absolute left-0 bottom-0 h-1 bg-error transition-all duration-100" style=${`width:${Math.round(level * 100)}%`}></span>` : null}
+        ${recording ? html`<span data-level class="absolute left-0 bottom-0 h-1 bg-error transition-[width] duration-100" style=${`width:${Math.round(level * 100)}%`}></span>` : null}
       </div>
 
       ${/* Two columns, and the rows take whatever height is left — auto-rows-fr plus min-h-0 pads is what

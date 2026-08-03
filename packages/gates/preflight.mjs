@@ -20,6 +20,15 @@ const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[
 // <a>/<tr>). The walk enforces the length floor too, so this set stays self-documenting.
 const TAGS = new Set(["div", "span", "button", "svg", "section", "header", "main", "footer", "nav", "input", "select", "option", "label", "rect", "circle", "path", "line", "polyline", "polygon", "text", "iconify-icon", "img", "table"]);
 
+// Iconify prefixes that are plausibly reachable from the CDN we load. A WHITELIST rather than "anything
+// shaped like prefix:name", because that shape also matches `"data:image"`, a bare `"uk:UA"`, and any
+// two-part id an app happens to store — a gate that fires on those would be teaching people to work around
+// it. Only `lucide` is legal (see the ban below); the rest of the list exists so the ban can NAME what it
+// caught instead of saying "something looked like an icon".
+const ICON_SETS = new Set(["mdi", "ph", "tabler", "carbon", "ri", "material-symbols", "simple-icons", "logos",
+  "bi", "heroicons", "solar", "iconoir", "fluent", "octicon", "codicon", "fa6-solid", "fa6-regular",
+  "fa6-brands", "ic", "majesticons", "gravity-ui", "hugeicons", "streamline", "mingcute", "akar-icons"]);
+
 // one shared DOM + global shim, reset per app
 // `--url "?tab=hits&screen=pl:mars"` — mount the app AT a screen instead of at its landing state.
 //
@@ -231,6 +240,34 @@ async function preflight(appdir) {
     if (glassOnOurSurface.test(code)) {
       errs.push(`frosted glass over a base surface in ${srcFile} — glass and the extrusion are answers to the same question and cannot both be on screen: the blur erases the shadow pair that makes the surface read. Use \`sf-raised\`/\`sf-e4\` and an opaque bg-base-100. (Blur over a VIDEO or camera frame is still fine — that is foreign content, not our surface.)`);
     }
+
+    // `transition-all` animates EVERY animatable property, including the ones you did not mean and the ones
+    // the material owns. On this farm that is not a style nit: `sf-raised`/`sf-inset`/`sf-e2` are box-shadow
+    // pairs, so a state change under `transition-all` cross-fades the extrusion itself — the surface visibly
+    // melts between raised and recessed instead of snapping, and on a sequencer running at tempo it smears
+    // sixteen cells at once. It also animates layout properties (width, margin, padding), which is the
+    // expensive half: the compositor cannot take those, so every frame is a full re-layout.
+    //   The fix is always the same and always cheap: name the properties. Tailwind ships `transition-colors`,
+    // `transition-opacity`, `transition-shadow` and `transition-transform` (which covers transform, translate,
+    // scale and rotate); anything else is an arbitrary value — `transition-[width]`,
+    // `transition-[box-shadow,background-color,scale]`.
+    if (/(?:^|[\s"'`])transition-all\b/.test(code)) {
+      errs.push(`\`transition-all\` in ${srcFile} — name the properties instead. It animates the material too: sf-raised/sf-inset are box-shadow pairs, so the extrusion cross-fades on every state change, and layout properties (width/margin) re-layout each frame off the compositor. Use \`transition-colors\`/\`transition-opacity\`/\`transition-shadow\`/\`transition-transform\`, or an arbitrary set like \`transition-[width]\` / \`transition-[box-shadow,background-color,scale]\`.`);
+    }
+
+    // ONE icon set for the whole farm. Two libraries on one surface never look like two libraries — they look
+    // like sloppiness, because they differ in exactly the ways the eye reads as craft: stroke weight, corner
+    // radius, optical size, how much of the 24-unit box the glyph fills. The farm is 100% `lucide:` today
+    // (1114 references, zero mixing) and that is worth PINNING rather than rediscovering: the first `mdi:`
+    // glyph beside a lucide one is a hairline next to a 2px stroke, and it will be added by someone reaching
+    // for the one icon lucide happens not to have. If lucide genuinely lacks it, draw it as a runtime SVG
+    // (the /_rt/zodiac.js `Sign` precedent) so it is OURS and matches the set, or pick a different metaphor.
+    { const foreign = [...code.matchAll(/["']([a-z0-9-]+):[a-z0-9-]+["']/g)]
+        .map((m) => m[1])
+        .filter((p) => p !== "lucide" && ICON_SETS.has(p));
+      if (foreign.length) {
+        errs.push(`non-lucide icon set (${[...new Set(foreign)].join(", ")}) in ${srcFile} — the farm draws from ONE set. Mixed sets differ in stroke weight and optical size on the same row, which reads as sloppiness rather than variety. Use a \`lucide:*\` glyph, or draw a runtime SVG if lucide genuinely lacks the shape.`);
+      } }
   }
 
   // No emoji anywhere in app source — they render as OS-specific colour clip-art (cheap, inconsistent, off-brand)

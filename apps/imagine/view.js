@@ -135,7 +135,7 @@ export function imagine({ S, toast }) {
                accident: on the light theme they resolve to near-black on black and the whole progress read
                vanished. Same treatment as Онови (apps/retouch), which shows the identical wait. */""}
           <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}<span class="text-white/50"> / ~${fmt(est)}</span></div>
-          <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-[var(--app-accent)] rounded-full transition-all duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / Math.max(1, est) * 100))}%`}></div></div>
+          <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-[var(--app-accent)] rounded-full transition-[width] duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / Math.max(1, est) * 100))}%`}></div></div>
         </div>
       </${Fragment}>` : null}
       ${phase === "idle" ? html`<div class="text-white/25">${Icon("lucide:sparkles", "text-5xl")}</div>` : null}

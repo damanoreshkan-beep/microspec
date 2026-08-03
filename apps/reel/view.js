@@ -101,15 +101,17 @@ const GATE_TITLES = {
   "https://mixkit.co/watch/55013/": "Deeper two · Mixkit",
 };
 
-/* Where a slide STARTS, once. Sources splice a branded intro onto the front of the preview they hand out, so
-   frame 0 is a watermark rather than the clip. Applied on the FIRST play only — `loop` then wraps to 0 like
-   any video, deliberately: catching the wrap to re-skip means fighting the element on every pass, and a
-   second of intro on a repeat you have already chosen to keep watching is not worth that.
-   Skipped on a clip too short to spare it: seeking past the head of a 2-second preview leaves nothing to
-   watch, so the guard is on DURATION rather than on the offset. */
-const START_AT = 1.23;
+/* Where a slide STARTS, once. Sources put a branded card on the front of the preview they hand out, so frame 0
+   is a watermark rather than the clip. A fixed offset was the first attempt and it is the wrong shape: these
+   previews run anywhere from a few seconds to half a minute, so any constant is too deep into a short one and
+   not past the card on a long one. A FRACTION scales with whatever arrives, and needs no number per source.
+   Applied on the first play only — `loop` then wraps to 0 like any video. That is deliberate: catching the
+   wrap to re-skip means fighting the element every pass, and on a repeat you have already chosen to keep
+   watching, the opening is no longer the thing standing between you and the clip. */
+const START_FRACTION = 1 / 8;
 const seekStart = (v) => {
-  try { if (!isFinite(v.duration) || v.duration > START_AT * 2) v.currentTime = START_AT; } catch { /* not seekable yet */ }
+  // Unknown duration (a manifest that has not said yet) → leave it at 0 rather than guess a second into it.
+  try { if (isFinite(v.duration) && v.duration > 0) v.currentTime = v.duration * START_FRACTION; } catch { /* not seekable yet */ }
 };
 
 /* How many slides EITHER SIDE of the active one keep a live <video>. 1, so three exist at once, and the
@@ -473,7 +475,7 @@ function VideoLayer({ item, playing, ephemeral }) {
            phone this is for. Metadata is not a picture, so a neighbour could still arrive with nothing to
            show and the blink would survive the rewrite. A muted play() is permitted without a gesture, so
            one is taken and immediately given back: that forces the decode of frame 0, which is the thing
-           we actually want buffered. Rewound afterwards to START_AT so the clip still starts where it should, and
+           we actually want buffered. Rewound afterwards to the START, not to 0, so the clip still opens where it should, and
            swallowed on failure — an interrupted play() rejects, and that is not an error here. */
         v.play?.().then(() => {
           if (dead || wants.current) return;                                              // it became active mid-prime — let it run

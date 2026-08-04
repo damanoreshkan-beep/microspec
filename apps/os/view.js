@@ -385,6 +385,7 @@ export function radar({ S, t, toast }) {
   const loc = useStore(S.locale);
   const [devices, setDevices] = useState(() => (gate ? GATE_DEVICES.map((d) => ({ ...d, at: Date.now() })) : []));
   const [scanning, setScanning] = useState(gate);
+  const [err, setErr] = useState(null);
   const stopRef = useRef(null);
   const why = shell.whyCapability("ble");
 
@@ -397,7 +398,8 @@ export function radar({ S, t, toast }) {
   const start = () => {
     if (scanning || why) return;
     setScanning(true);
-    stopRef.current = shell.subscribe("ble.scan", {}, upsert);
+    setErr(null);
+    stopRef.current = shell.subscribe("ble.scan", {}, upsert, (e) => { setErr(e?.code || ERR.failed); setScanning(false); });
   };
   const stop = () => {
     setScanning(false);
@@ -441,7 +443,8 @@ export function radar({ S, t, toast }) {
           disabled=${!!why} data-scanning=${scanning} onClick=${() => (scanning ? stop() : start())}>
         ${Icon(scanning ? "lucide:square" : "lucide:radar")}<span>${T(t, scanning ? "radarStop" : "radarStart")}</span>
       </button>
-      ${why ? html`<div class="pt-2 text-sm text-muted">${why === ERR.staleBridge ? T(t, "stStale") : T(t, "stNone")}</div>` : null}
+      ${why ? html`<div class="pt-2 text-sm text-muted">${why === ERR.staleBridge ? T(t, "stStale") : T(t, "stNone")}</div>`
+        : err ? html`<div data-radar-err class="pt-2 text-sm text-error">${err === ERR.denied ? T(t, "radarDenied") : err === ERR.unavailable ? T(t, "radarOff") : err}</div>` : null}
     <//>
 
     ${devices.length ? html`<${Panel} title=${T(t, "radarSeen")}>

@@ -149,16 +149,20 @@ export const shell = {
    * A native-pushed stream. Returns a cancel function — always call it, or the shell keeps a scanner
    * (and a wakelock, and a battery) running behind a screen nobody is looking at.
    */
-  subscribe(id, args, onEvent) {
+  subscribe(id, args, onEvent, onError) {
     const a = ACTIONS[id];
     if (!a || a.kind !== "subscribe" || typeof onEvent !== "function") return () => {};
     if (gate) { onEvent(structuredCloneish(a.mock)); return () => {}; }
-    if (shell.why(id)) return () => {};
+    // A stream that FAILS must say so. This swallowed every rejection, so a scan the OS refused looked
+    // exactly like a scan that found nothing — the screen sat empty with no way to tell which.
+    const fail = (e) => { try { onError?.(e); } catch { /* the caller's problem, not ours */ } };
+    const why = shell.why(id);
+    if (why) { fail(new ShellError(why, id)); return () => {}; }
     listen();
     const reqId = `${++seq}`;
-    pending.set(reqId, { onEvent, resolve: () => {}, reject: () => {} });
+    pending.set(reqId, { onEvent, resolve: () => {}, reject: fail });
     try { native().subscribe(reqId, id, JSON.stringify(args || {})); }
-    catch { pending.delete(reqId); return () => {}; }
+    catch (e) { pending.delete(reqId); fail(new ShellError(ERR.failed, String(e && e.message || e))); return () => {}; }
     return () => {
       pending.delete(reqId);
       try { native().cancel(reqId); } catch { /* the shell went away; nothing to cancel */ }

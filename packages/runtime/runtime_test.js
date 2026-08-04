@@ -5638,3 +5638,26 @@ Deno.test("permissions: every entry has a group, and every group is one the scre
     assert(def.query || def.capability, `${name} has neither a browser backend nor a capability`);
   }
 });
+
+Deno.test("shell: a subscription that fails tells the caller, instead of looking empty", async () => {
+  globalThis.window = globalThis;
+  const sent = [];
+  globalThis.__msShell = {
+    version: () => 99,
+    call: () => {}, cancel: () => {},
+    subscribe: (id, action) => { sent.push({ id, action }); },
+  };
+  try {
+    let events = 0, failed = null;
+    shell.subscribe("ble.scan", {}, () => events++, (e) => { failed = e; });
+    globalThis.dispatchEvent(new CustomEvent("msShell:reply", { detail: { id: sent[0].id, ok: false, code: ERR.denied } }));
+    assertEquals(events, 0);
+    assertEquals(failed?.code, ERR.denied, "a refused stream must reach onError, not vanish");
+
+    // An action this shell is too old for must also report, rather than returning a silent no-op.
+    globalThis.__msShell.version = () => 1;
+    let stale = null;
+    shell.subscribe("ble.scan", {}, () => {}, (e) => { stale = e; });
+    assertEquals(stale?.code, ERR.staleBridge);
+  } finally { delete globalThis.__msShell; delete globalThis.window; }
+});

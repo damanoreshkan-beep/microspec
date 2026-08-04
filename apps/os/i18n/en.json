@@ -65,5 +65,7 @@
   "radarStart": "Scan",
   "radarStop": "Stop",
   "radarSeen": "In range",
-  "radarUnnamed": "Unnamed device"
+  "radarUnnamed": "Unnamed device",
+  "radarDenied": "Location permission is required to scan",
+  "radarOff": "Bluetooth is off"
 }

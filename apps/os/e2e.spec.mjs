@@ -38,8 +38,10 @@ export default [
       const tiles = await h.count("[data-perm]");
       h.expect(tiles >= 6, `очікував плитку на кожен дозвіл реєстру, знайшов ${tiles}`);
       // The state lives on the tile, not in a caption — the grid must never explain itself in words.
-      const st = await h.prop("[data-perm=\"alarm\"]", "dataset");
-      h.expect(st && typeof st.state === "string" && st.state.length > 0, "плитка без стану");
+      // Assert the attribute EXISTS on every tile rather than reading dataset: a DOMStringMap does not
+      // survive serialisation, so the previous version tested the bridge to the browser, not the app.
+      const stated = await h.count("[data-perm][data-state]");
+      h.expect(stated === tiles, `${tiles - stated} плитк(и) без стану`);
     },
   },
   {

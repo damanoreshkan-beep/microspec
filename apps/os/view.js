@@ -163,6 +163,76 @@ export function caps({ S, t, toast }) {
   </div>`;
 }
 
+// ---- alarms: the capability the web cannot have, as something you can actually use ----
+// A checklist proves an action returns ok. It cannot show that an alarm SURVIVES — that it is still
+// pending a minute later, still there after the app is closed, still listed after a reboot. The shell
+// owns that state, so this tab reads it back rather than trusting what the page remembers.
+const MINUTES = [1, 5, 15, 60];
+
+export function alarms({ S, t, toast }) {
+  const loc = useStore(S.locale);
+  const [list, setList] = useState(null);
+  const [mins, setMins] = useState(5);
+  const [busy, setBusy] = useState(false);
+  const why = shell.whyCapability("alarm");
+
+  const refresh = async () => {
+    if (why) { setList([]); return; }
+    try { const r = await shell.call("alarm.list", {}); setList(r.alarms || []); }
+    catch { setList([]); }
+  };
+  useEffect(() => { refresh(); }, []);
+
+  const schedule = async () => {
+    if (busy || why) return;
+    setBusy(true);
+    try {
+      const at = Date.now() + mins * 60_000;
+      const r = await shell.call("alarm.set", { id: `os-${at}`, at, title: T(t, "probeAlarmTitle"), body: T(t, "probeAlarmBody") });
+      // exact is the one field worth surfacing: an inexact alarm may drift by minutes under Doze, and a
+      // screen that shows a time must not quietly promise precision it did not get.
+      toast?.(r.exact ? T(t, "alExact") : T(t, "alInexact"));
+      await refresh();
+    } catch (e) { toast?.(e?.code || T(t, "alFailed")); } finally { setBusy(false); }
+  };
+
+  const drop = async (id) => {
+    try { await shell.call("alarm.cancel", { id }); await refresh(); } catch { toast?.(T(t, "alFailed")); }
+  };
+
+  return html`<div class="flex flex-col gap-3 pt-1">
+    ${why ? html`<div data-alarm-blocked class="flex items-center gap-3 rounded-[var(--ms-r)] sf-raised sf-e2 p-4">
+      ${Icon("lucide:smartphone", "text-xl text-base-content/50")}
+      <span class="text-sm text-muted">${why === ERR.staleBridge ? T(t, "stStale") : T(t, "stNone")}</span>
+    </div>` : html`<${Panel} title=${T(t, "alNew")}>
+      <div class="flex items-center gap-2 pt-1">
+        ${MINUTES.map((m) => html`<button key=${m} data-min=${m} aria-pressed=${mins === m}
+            class=${`btn btn-sm flex-1 tabular-nums ${mins === m ? "btn-primary" : "btn-ghost"}`}
+            onClick=${() => setMins(m)}>${m}${T(t, "alMin")}</button>`)}
+      </div>
+      <button id="al-set" class="btn btn-sm btn-primary w-full gap-2 mt-3" disabled=${busy} onClick=${schedule}>
+        ${Icon("lucide:alarm-clock-plus")}<span>${T(t, "alSet")}</span>
+      </button>
+    <//>`}
+
+    <${Panel} title=${T(t, "alPending")}>
+      ${list === null ? null
+        : list.length === 0 ? html`<div data-alarm-empty class="py-3 text-sm text-muted">${T(t, "alNone")}</div>`
+        : list.map((a) => html`<div key=${a.id} data-alarm=${a.id} class="flex items-center gap-3 py-2.5 border-b border-base-content/10 last:border-0">
+            ${Icon("lucide:alarm-clock", "text-base text-primary shrink-0")}
+            <div class="min-w-0 flex-1">
+              <div class="text-sm truncate">${a.title}</div>
+              <div class="font-mono text-xs text-muted tabular-nums">${new Date(a.at).toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" })}</div>
+            </div>
+            <button class="btn btn-sm btn-circle btn-ghost shrink-0" data-drop=${a.id}
+                aria-label=${`${T(t, "alDrop")} ${a.title}`} onClick=${() => drop(a.id)}>
+              ${Icon("lucide:x", "text-base")}
+            </button>
+          </div>`)}
+    <//>
+  </div>`;
+}
+
 // ---- report: what this device is, as text you can send ----------------------
 export function report({ t, toast }) {
   const runs = useStore($runs);

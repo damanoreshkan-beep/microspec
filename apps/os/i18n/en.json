@@ -42,5 +42,15 @@
   "close": "Close",
   "runAll": "Run all",
   "ranAll": "Checklist complete",
-  "noProbe": "no probe"
+  "noProbe": "no probe",
+  "tabAlarms": "Alarms",
+  "alNew": "New alarm",
+  "alPending": "Scheduled",
+  "alNone": "Nothing scheduled",
+  "alSet": "Schedule",
+  "alDrop": "Cancel",
+  "alMin": "m",
+  "alExact": "Scheduled, exact",
+  "alInexact": "Scheduled — the system may shift it",
+  "alFailed": "Could not schedule"
 }

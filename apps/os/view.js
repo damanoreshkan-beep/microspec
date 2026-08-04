@@ -50,6 +50,9 @@ const PROBE = {
   "bg.start": (t) => ({ title: T(t, "probeBgTitle"), body: T(t, "probeBgBody") }),
   "bg.stop": () => ({}),
   "bg.status": () => ({}),
+  "wifi.scan": () => ({}),
+  "wifi.info": () => ({}),
+  "cell.info": () => ({}),
   // location.watch is a subscribe, not a call — it has no probe by design; the row says so.
 };
 
@@ -85,6 +88,9 @@ function summarise(id, v, loc) {
   if (id === "system.info") return `bridge ${v.bridge} · SDK ${v.sdk} · ${v.model}`;
   if (id === "alarm.set") return `${new Date(v.at).toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" })} · ${v.exact ? "exact" : "inexact"}`;
   if (id === "alarm.list") return `${(v.alarms || []).length}`;
+  if (id === "wifi.scan") return `${(v.networks || []).length}${v.throttled ? " · throttled" : ""}`;
+  if (id === "wifi.info") return v.connected ? `${v.ssid || "?"} ${v.rssi}dBm` : "—";
+  if (id === "cell.info") return `${(v.cells || []).length}`;
   if (v.id) return v.id;
   if ("ok" in v) return String(v.ok);
   return JSON.stringify(v);

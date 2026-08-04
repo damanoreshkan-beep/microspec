@@ -127,7 +127,9 @@
               "microphone",
               "alarm",
               "background",
-              "backgroundLocation"
+              "backgroundLocation",
+              "wifi",
+              "cell"
             ]
           }
         },

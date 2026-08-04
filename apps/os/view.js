@@ -413,6 +413,15 @@ export function caps({ S, t, toast }) {
   const fs = useStore($fs);
   const present = shell.present;
 
+  // A screen that only exists after a tap cannot be photographed, and an unphotographed screen is one
+  // nobody has looked at. Under the gate ?fs opens it at mount, so the breakpoint and contrast matrix can
+  // reach the explorer the same way it reaches a tab. Gate-only: it must never be a URL a user can land on.
+  useEffect(() => {
+    if (!gate || !new URLSearchParams(location.search).has("fs")) return;
+    setFs({ open: true, root: null, trail: [], entries: [], preview: null, error: "" });
+    syncStack(S);
+  }, []);
+
   // ONE reaction for every way back — the system button, a gesture, the runtime popping the stack. The
   // explorer never pops its own levels; it changes state and lets this listener bring the screen along,
   // which is why a folder, a preview and the whole explorer all close with one press each.

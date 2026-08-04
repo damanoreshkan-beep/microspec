@@ -102,6 +102,9 @@ export const PERMISSIONS = {
  * browser. It is the line that explains what the APK is FOR, and stating it is not hand-holding —
  * "unsupported" would be a lie on a phone that can do it.
  */
+/** The raw held-permission map, for a screen that must show WHICH one is missing rather than a verdict. */
+export const heldPermissions = () => HELD;
+
 export async function permState(name) {
   const def = PERMISSIONS[name];
   if (!def) return { state: "unsupported", via: "" };

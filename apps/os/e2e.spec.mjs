@@ -83,8 +83,12 @@ export default [
   },
   {
     name: "files: the tile opens the explorer, and a file opens its preview", run: async (h) => {
-      await h.click('[data-perm="files"]'); await h.wait(300);
-      h.expect((await h.count("[data-fs-list]")) === 1, "плитка Файлів не відкрила провідник");
+      h.expect((await h.count('[data-perm="files"]')) === 1, "немає плитки Файлів");
+      await h.click('[data-perm="files"]'); await h.wait(400);
+      const seen = `launcher=${await h.count("[data-launcher]")} roots=${await h.count("[data-fs-roots]")} `
+        + `list=${await h.count("[data-fs-list]")} entries=${await h.count("[data-fs-entry]")} `
+        + `body=${JSON.stringify((await h.bodyText()).slice(0, 160))}`;
+      h.expect((await h.count("[data-fs-list]")) === 1, `плитка Файлів не відкрила провідник — ${seen}`);
       h.expect((await h.count("[data-fs-entry]")) >= 2, "тека порожня під гейтом");
       await h.click('[data-fs-entry="notes"]'); await h.wait(300);
       h.expect((await h.text("[data-fs-trail]")).includes("notes"), "шлях не показує вкладену теку");

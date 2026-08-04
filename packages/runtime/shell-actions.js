@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 9;
+export const CATALOGUE_BRIDGE = 10;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -27,7 +27,8 @@ export const ACTIONS = {
         "BLUETOOTH_ADMIN": true,
         "BLUETOOTH_SCAN": false,
         "REQUEST_INSTALL_PACKAGES": true
-      }
+      },
+      "locationOn": true
     }
   },
   "notify.show": {

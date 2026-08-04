@@ -323,7 +323,11 @@ export function radar({ S, t, toast }) {
   const [held, setHeld] = useState(null);
   const [events, setEvents] = useState(0);
   const stopRef = useRef(null);
-  useEffect(() => { refreshHeld().then(() => setHeld(heldPermissions())); }, []);
+  const [locOn, setLocOn] = useState(null);
+  useEffect(() => {
+    refreshHeld().then(() => setHeld(heldPermissions()));
+    if (shell.has("system.info")) shell.call("system.info", {}).then((i) => setLocOn(i.locationOn)).catch(() => {});
+  }, []);
   const why = shell.whyCapability("ble");
 
   const upsert = (d) => { setEvents((n) => n + 1); setDevices((prev) => {
@@ -379,6 +383,7 @@ export function radar({ S, t, toast }) {
       </button>
       ${held && shell.present ? html`<div data-ble-perms class="flex flex-wrap gap-x-3 gap-y-1 pt-2 font-mono text-[11px]">
         ${shell.androidFor("ble").map((p) => html`<span key=${p} class=${held[p] ? "text-success" : "text-error"}>${held[p] ? "+" : "−"} ${p}</span>`)}
+        ${locOn === false ? html`<span class="text-error">− LOCATION SERVICES</span>` : null}
         <span class="text-muted">rx ${events}</span>
       </div>` : null}
       ${why ? html`<div class="pt-2 text-sm text-muted">${why === ERR.staleBridge ? T(t, "stStale") : T(t, "stNone")}</div>`

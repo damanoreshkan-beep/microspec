@@ -89,8 +89,11 @@ export default [
       h.expect(/Доступ|Звіт|Мова/.test(await h.bodyText()), "не UA");
       // No dock label may be truncated: five tabs share the bar, and an ellipsis there is a name that
       // was too long to begin with, not a layout to fix.
-      for (const label of ["Доступ", "Радар", "Сигнали", "Звіт", "Профіль"]) {
-        h.expect((await h.bodyText()).includes(label), `підпис вкладки обрізано або зник: ${label}`);
+      // Case-insensitive: the dock uppercases its labels in CSS and the helper reads innerText, which
+      // applies text-transform — the exact trap AUTHORING.md warns about for badges.
+      const body = (await h.bodyText()).toLowerCase();
+      for (const label of ["доступ", "радар", "сигнали", "звіт", "профіль"]) {
+        h.expect(body.includes(label), `підпис вкладки обрізано або зник: ${label}`);
       }
     },
   },

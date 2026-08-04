@@ -6,6 +6,7 @@ import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
 import { Panel } from "/_rt/ui.js";
 import { shell, ERR } from "/_rt/shell.js";
+import { buildApk, apkFilename } from "/_rt/apk.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -106,7 +107,28 @@ export function caps({ S, t, toast }) {
     toast?.(T(t, "ranAll"));
   };
 
+  const [upd, setUpd] = useState(false);
+  const update = async () => {
+    if (upd) return;
+    setUpd(true);
+    try {
+      const url = location.href.split("#")[0].split("?")[0];
+      const blob = await buildApk({ url, name: T(t, "title") });
+      const b64 = await new Promise((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result).split(",")[1]); f.onerror = rej; f.readAsDataURL(blob); });
+      await shell.call("system.update", { name: apkFilename(T(t, "title")), base64: b64 });
+      toast?.(T(t, "updStarted"));   
+    } catch (e) { toast?.(e?.code || T(t, "updFailed")); } finally { setUpd(false); }
+  };
+
   return html`<div class="flex flex-col gap-3 pt-1">
+    ${shell.updateAvailable ? html`<div data-update class="flex items-center gap-3 rounded-[var(--ms-r)] border border-warning/40 bg-warning/10 p-4">
+      ${Icon("lucide:download", "text-xl text-warning shrink-0")}
+      <div class="min-w-0 flex-1">
+        <div class="font-medium truncate">${T(t, "updTitle")}</div>
+        <div class="font-mono text-xs text-muted truncate">bridge ${shell.version} → ${shell.catalogueVersion}</div>
+      </div>
+      <button id="do-update" class="btn btn-sm btn-warning shrink-0" disabled=${upd} onClick=${update}>${T(t, "updBtn")}</button>
+    </div>` : null}
     <div data-bridge class="flex flex-col gap-3 rounded-[var(--ms-r)] sf-raised sf-e2 p-4">
       <div class="flex items-center gap-3">
         <span class=${`size-2.5 rounded-full shrink-0 ${present ? "bg-success" : "bg-base-content/25"}`} aria-hidden="true"></span>

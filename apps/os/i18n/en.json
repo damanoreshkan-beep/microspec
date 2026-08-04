@@ -52,5 +52,9 @@
   "alMin": "m",
   "alExact": "Scheduled, exact",
   "alInexact": "Scheduled — the system may shift it",
-  "alFailed": "Could not schedule"
+  "alFailed": "Could not schedule",
+  "updTitle": "App update available",
+  "updBtn": "Update",
+  "updStarted": "Android will ask to confirm",
+  "updFailed": "Could not build the update"
 }

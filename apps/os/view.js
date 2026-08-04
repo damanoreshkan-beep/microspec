@@ -8,7 +8,7 @@ import { Panel } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { shell, ERR } from "/_rt/shell.js";
 import { buildApk, apkFilename } from "/_rt/apk.js";
-import { PERMISSIONS, GROUPS, permLabels, permState, permRequest } from "/_rt/permissions.js";
+import { PERMISSIONS, GROUPS, permLabels, permState, permRequest, refreshHeld } from "/_rt/permissions.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -81,7 +81,7 @@ function summarise(id, v, loc) {
   return JSON.stringify(v);
 }
 
-const TILE_DOT = { granted: "bg-success", denied: "bg-error", needsApp: "bg-base-content/30", staleApp: "bg-warning", prompt: "", unsupported: "", unknown: "" };
+const TILE_DOT = { granted: "bg-success", partial: "bg-warning", denied: "bg-error", needsApp: "bg-base-content/30", staleApp: "bg-warning", prompt: "", unsupported: "", unknown: "" };
 
 function Launcher({ loc, t, toast }) {
   const L = permLabels(loc);
@@ -89,6 +89,7 @@ function Launcher({ loc, t, toast }) {
   const keys = Object.keys(PERMISSIONS);
 
   const refresh = async () => {
+    await refreshHeld();          
     const out = {};
     for (const k of keys) out[k] = (await permState(k)).state;
     setStates(out);

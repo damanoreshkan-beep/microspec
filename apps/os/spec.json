@@ -46,6 +46,8 @@
       "background",
       "wifi",
       "cell",
+      "ble",
+      "usb",
       "motion",
       "camera",
       "microphone"

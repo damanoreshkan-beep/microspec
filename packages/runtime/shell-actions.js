@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 5;
+export const CATALOGUE_BRIDGE = 6;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -225,6 +225,51 @@ export const ACTIONS = {
     "android": [],
     "mock": {
       "state": "granted"
+    }
+  },
+  "ble.state": {
+    "capability": "ble",
+    "kind": "call",
+    "minBridge": 6,
+    "android": [
+      "BLUETOOTH"
+    ],
+    "mock": {
+      "supported": true,
+      "on": true
+    }
+  },
+  "ble.scan": {
+    "capability": "ble",
+    "kind": "subscribe",
+    "minBridge": 6,
+    "android": [
+      "BLUETOOTH",
+      "BLUETOOTH_ADMIN",
+      "BLUETOOTH_SCAN",
+      "ACCESS_FINE_LOCATION"
+    ],
+    "mock": {
+      "addr": "02:00:00:00:AA:01",
+      "name": "Gate Beacon",
+      "rssi": -62,
+      "at": 1893479400000
+    }
+  },
+  "usb.list": {
+    "capability": "usb",
+    "kind": "call",
+    "minBridge": 6,
+    "android": [],
+    "mock": {
+      "devices": [
+        {
+          "vid": 7504,
+          "pid": 24596,
+          "name": "HackRF One",
+          "cls": 255
+        }
+      ]
     }
   }
 };

@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 5,
+  "bridgeVersion": 6,
   "actions": [
     {
       "id": "system.info",
@@ -794,6 +794,147 @@
       },
       "mock": {
         "state": "granted"
+      }
+    },
+    {
+      "id": "ble.state",
+      "capability": "ble",
+      "kind": "call",
+      "minBridge": 6,
+      "android": [
+        "BLUETOOTH"
+      ],
+      "summary": "Is there a Bluetooth radio and is it on. Web Bluetooth cannot answer this — it can only open a chooser.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "supported",
+          "on"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "supported": {
+            "type": "boolean"
+          },
+          "on": {
+            "type": "boolean"
+          }
+        }
+      },
+      "mock": {
+        "supported": true,
+        "on": true
+      }
+    },
+    {
+      "id": "ble.scan",
+      "capability": "ble",
+      "kind": "subscribe",
+      "minBridge": 6,
+      "android": [
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_SCAN",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "summary": "Every advertising device around you, as they appear. Web Bluetooth shows a chooser and returns the ONE device the user picks — it can never enumerate, which is exactly what a scanner needs.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "addr",
+          "rssi"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "addr": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rssi": {
+            "type": "integer"
+          },
+          "at": {
+            "type": "integer"
+          }
+        }
+      },
+      "mock": {
+        "addr": "02:00:00:00:AA:01",
+        "name": "Gate Beacon",
+        "rssi": -62,
+        "at": 1893479400000
+      }
+    },
+    {
+      "id": "usb.list",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 6,
+      "android": [],
+      "summary": "Attached USB devices. Needs no permission to ENUMERATE — unlike WebUSB, which cannot see a device until the user has picked it from a chooser.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "devices"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "devices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "vid",
+                "pid"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "vid": {
+                  "type": "integer"
+                },
+                "pid": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "serial": {
+                  "type": "string"
+                },
+                "cls": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "mock": {
+        "devices": [
+          {
+            "vid": 7504,
+            "pid": 24596,
+            "name": "HackRF One",
+            "cls": 255
+          }
+        ]
       }
     }
   ]

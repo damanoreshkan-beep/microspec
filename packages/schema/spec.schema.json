@@ -129,7 +129,9 @@
               "background",
               "backgroundLocation",
               "wifi",
-              "cell"
+              "cell",
+              "ble",
+              "usb"
             ]
           }
         },

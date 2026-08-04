@@ -351,7 +351,7 @@ feeds.
 | **7** | `files`, `system` | 3 | small |
 | **8** | `server` (LAN) | 5 | large; new product surface |
 | **9** | Skill + docs + memory (§7) | 3 | small, but do it *with* 3, not after |
-| **∥** | **`os` — the capability console (§6)** | 3 | parallel track: born with 3, extended by every phase after |
+| **∥** ✅ | **`os` — the capability console (§6)** | 3 | **done 2026-08-04** — one merged console (capabilities and probes were the same list twice), generated from the catalogue, mock-populated under the gate, with a sequential "run all" that walks the checklist. Extended by every phase after. |
 
 Phase 0 is independent and worth doing regardless. Phases 2–3 are the SDK proper; everything after is
 adding rows to a catalogue, which is exactly the point — and `os` is how we see that each new row

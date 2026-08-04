@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 13,
+  "bridgeVersion": 14,
   "actions": [
     {
       "id": "system.info",
@@ -824,7 +824,7 @@
       "kind": "call",
       "minBridge": 6,
       "android": [
-        "BLUETOOTH"
+        "BLUETOOTH_CONNECT"
       ],
       "summary": "Is there a Bluetooth radio and is it on. Web Bluetooth cannot answer this — it can only open a chooser.",
       "args": {
@@ -859,9 +859,8 @@
       "kind": "subscribe",
       "minBridge": 6,
       "android": [
-        "BLUETOOTH",
-        "BLUETOOTH_ADMIN",
         "BLUETOOTH_SCAN",
+        "BLUETOOTH_CONNECT",
         "ACCESS_FINE_LOCATION"
       ],
       "summary": "Every advertising device around you, as they appear. Web Bluetooth shows a chooser and returns the ONE device the user picks — it can never enumerate, which is exactly what a scanner needs.",

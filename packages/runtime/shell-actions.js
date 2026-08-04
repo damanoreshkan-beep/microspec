@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 13;
+export const CATALOGUE_BRIDGE = 14;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -246,7 +246,7 @@ export const ACTIONS = {
     "kind": "call",
     "minBridge": 6,
     "android": [
-      "BLUETOOTH"
+      "BLUETOOTH_CONNECT"
     ],
     "mock": {
       "supported": true,
@@ -258,9 +258,8 @@ export const ACTIONS = {
     "kind": "subscribe",
     "minBridge": 6,
     "android": [
-      "BLUETOOTH",
-      "BLUETOOTH_ADMIN",
       "BLUETOOTH_SCAN",
+      "BLUETOOTH_CONNECT",
       "ACCESS_FINE_LOCATION"
     ],
     "mock": {

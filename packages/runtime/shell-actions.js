@@ -16,7 +16,20 @@ export const ACTIONS = {
       "caps": "alarm,background,location,notify,system",
       "version": "1.0",
       "build": 1,
-      "installed": 1893479400000
+      "installed": 1893479400000,
+      "perms": {
+        "POST_NOTIFICATIONS": true,
+        "RECEIVE_BOOT_COMPLETED": true,
+        "FOREGROUND_SERVICE": true,
+        "ACCESS_FINE_LOCATION": true,
+        "ACCESS_BACKGROUND_LOCATION": false,
+        "ACCESS_WIFI_STATE": true,
+        "READ_PHONE_STATE": true,
+        "BLUETOOTH": true,
+        "BLUETOOTH_ADMIN": true,
+        "BLUETOOTH_SCAN": false,
+        "REQUEST_INSTALL_PACKAGES": true
+      }
     }
   },
   "notify.show": {

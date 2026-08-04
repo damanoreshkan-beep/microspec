@@ -10,6 +10,15 @@
 // Labels are built in (uk/en) rather than per-app i18n because this is cross-cutting.
 import { shell, ERR } from "./shell.js";
 
+// Android permissions this app actually holds, filled from system.info. Until it arrives a shell
+// capability can only be reported as present, which is the lie every tile was telling.
+let HELD = null;
+export async function refreshHeld() {
+  if (!shell.has("system.info")) { HELD = null; return null; }
+  try { HELD = (await shell.call("system.info", {})).perms || null; } catch { HELD = null; }
+  return HELD;
+}
+
 const q = (name) => async () => { try { return (await navigator.permissions.query({ name })).state; } catch { return "unknown"; } };
 async function gum(c) {
   try { const s = await navigator.mediaDevices.getUserMedia(c); s.getTracks().forEach((t) => t.stop()); return "granted"; }
@@ -100,7 +109,17 @@ export async function permState(name) {
   if (def.capability && shell.present) {
     const why = shell.whyCapability(def.capability);
     if (why === ERR.staleBridge) return { state: "staleApp", via: "shell" };
-    if (!why) return { state: "granted", via: "shell" };
+    if (!why) {
+      // Green means the OS granted everything this capability rests on — not merely that the bridge
+      // carries it. Partial is its own state: some of it works and some of it will refuse.
+      const need = shell.androidFor(def.capability);
+      if (HELD && need.length) {
+        const held = need.filter((p) => HELD[p]);
+        if (!held.length) return { state: "denied", via: "shell" };
+        if (held.length < need.length) return { state: "partial", via: "shell" };
+      }
+      return { state: "granted", via: "shell" };
+    }
     // The bridge is here but does not carry this capability — fall through to the browser backend.
   }
   if (def.query) return { state: await def.query(), via: "browser" };
@@ -137,7 +156,7 @@ const L = {
     geolocation: "Геолокація", notifications: "Сповіщення", motion: "Рух і компас", camera: "Камера", microphone: "Мікрофон", alarm: "Будильники",
     background: "Фонова робота", backgroundLocation: "Трек у фоні", wifi: "Wi-Fi", cell: "Мобільна мережа", ble: "Bluetooth", usb: "USB",
     gSense: "Довкола", gMedia: "Медіа", gBackground: "Фонова робота", gRadios: "Радіо і пристрої", gSystem: "Система",
-    granted: "Дозволено", denied: "Заблоковано", unsupported: "Недоступно", needsApp: "Потрібен застосунок", staleApp: "Застосунок застарів",
+    partial: "Частково", granted: "Дозволено", denied: "Заблоковано", unsupported: "Недоступно", needsApp: "Потрібен застосунок", staleApp: "Застосунок застарів",
     deniedHint: "Заблоковано. Увімкни в налаштуваннях браузера для цього сайту.",
     revokeHint: "Вимкнути можна лише в налаштуваннях браузера.",
     needsAppHint: "Цей пристрій це вміє, браузер — ні. Встанови застосунок з профілю.",
@@ -148,7 +167,7 @@ const L = {
     geolocation: "Location", notifications: "Notifications", motion: "Motion & compass", camera: "Camera", microphone: "Microphone", alarm: "Alarms",
     background: "Background work", backgroundLocation: "Background track", wifi: "Wi-Fi", cell: "Cellular", ble: "Bluetooth", usb: "USB",
     gSense: "Around you", gMedia: "Media", gBackground: "Background work", gRadios: "Radios & devices", gSystem: "System",
-    granted: "Allowed", denied: "Blocked", unsupported: "Unavailable", needsApp: "Needs the app", staleApp: "App too old",
+    partial: "Partial", granted: "Allowed", denied: "Blocked", unsupported: "Unavailable", needsApp: "Needs the app", staleApp: "App too old",
     deniedHint: "Blocked. Enable it in your browser settings for this site.",
     revokeHint: "You can turn it off only in browser settings.",
     needsAppHint: "This device can do it, the browser cannot. Install the app from the profile.",

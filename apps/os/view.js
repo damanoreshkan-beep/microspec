@@ -22,7 +22,7 @@ import { Panel } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { shell, ERR } from "/_rt/shell.js";
 import { buildApk, apkFilename } from "/_rt/apk.js";
-import { PERMISSIONS, GROUPS, permLabels, permState, permRequest } from "/_rt/permissions.js";
+import { PERMISSIONS, GROUPS, permLabels, permState, permRequest, refreshHeld } from "/_rt/permissions.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -110,7 +110,9 @@ function summarise(id, v, loc) {
 // A permission is a thing you grant, so the honest shape is the one the OS itself uses for things you
 // own: an icon grid. State is a dot on the tile — the badge language a launcher already speaks — never a
 // caption, because a grid that explains itself in words is a list wearing a costume.
-const TILE_DOT = { granted: "bg-success", denied: "bg-error", needsApp: "bg-base-content/30", staleApp: "bg-warning", prompt: "", unsupported: "", unknown: "" };
+// Colour is the whole readout here: full access, some of it, none. A tile that shows green while the
+// action behind it is refused is worse than no dot at all.
+const TILE_DOT = { granted: "bg-success", partial: "bg-warning", denied: "bg-error", needsApp: "bg-base-content/30", staleApp: "bg-warning", prompt: "", unsupported: "", unknown: "" };
 
 function Launcher({ loc, t, toast }) {
   const L = permLabels(loc);
@@ -118,6 +120,7 @@ function Launcher({ loc, t, toast }) {
   const keys = Object.keys(PERMISSIONS);
 
   const refresh = async () => {
+    await refreshHeld();          // ask the shell what the OS actually granted, then colour from that
     const out = {};
     for (const k of keys) out[k] = (await permState(k)).state;
     setStates(out);

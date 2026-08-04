@@ -72,9 +72,12 @@ export default [
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);
-      h.expect(/Capabilities|Report|Language/i.test(await h.bodyText()), "не EN");
+      h.expect(/Access|Report|Language/i.test(await h.bodyText()), "не EN");
       await h.click('[data-loc="uk"]'); await h.wait(250);
-      h.expect(/Можливості|Звіт|Мова/.test(await h.bodyText()), "не UA");
+      h.expect(/Доступ|Звіт|Мова/.test(await h.bodyText()), "не UA");
+      for (const label of ["Доступ", "Радар", "Сигнали", "Звіт", "Профіль"]) {
+        h.expect((await h.bodyText()).includes(label), `підпис вкладки обрізано або зник: ${label}`);
+      }
     },
   },
   {

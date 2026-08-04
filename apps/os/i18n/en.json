@@ -1,9 +1,9 @@
 {
   "title": "microspec OS",
   "profTagline": "What this device lets an app do",
-  "tabCaps": "Capabilities",
+  "tabCaps": "Access",
   "tabReport": "Report",
-  "tabMe": "Settings",
+  "tabMe": "Profile",
   "bridgeOn": "Shell bridge connected",
   "bridgeOff": "No shell bridge",
   "bridgeOffHint": "browser · install the app to extend",

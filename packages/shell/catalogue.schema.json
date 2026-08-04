@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://microspec.dev/shell-actions.schema.json",
+  "title": "microspec shell action catalogue",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bridgeVersion", "actions"],
+  "properties": {
+    "$comment": { "type": "string" },
+    "bridgeVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The bridge version the CURRENT template implements. A shell reports its own; the facade compares the two, because the web ships in minutes and an APK ships when the user reinstalls it."
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "capability", "kind", "minBridge", "android", "summary", "args", "result", "mock"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z]+\\.[a-zA-Z]+$",
+            "description": "capability.method — the wire name and the facade key."
+          },
+          "capability": {
+            "type": "string",
+            "enum": ["notify", "alarm", "background", "wifi", "cell", "ble", "usb", "location", "files", "system", "server"],
+            "description": "Permission group and bridge flag. The registry in docs/research/apk-sdk-plan.md §3."
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["call", "subscribe"],
+            "description": "call = request/response. subscribe = a native-pushed stream until cancelled; without it every streaming capability degenerates into polling across the bridge."
+          },
+          "minBridge": { "type": "integer", "minimum": 1, "description": "Oldest shell that implements this action." },
+          "android": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Z_]+$" },
+            "description": "Android permissions the action needs, unprefixed (CAMERA, ACCESS_FINE_LOCATION)."
+          },
+          "summary": { "type": "string", "minLength": 1 },
+          "args": { "type": "object", "description": "JSON Schema for the argument object." },
+          "result": { "type": "object", "description": "JSON Schema for the resolved value." },
+          "mock": {
+            "description": "Deterministic value the facade returns under the gate, so the has-bridge branch of every app is exercised in Chromium — which never runs the APK."
+          }
+        }
+      }
+    }
+  }
+}

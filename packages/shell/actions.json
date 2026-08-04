@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 14,
+  "bridgeVersion": 15,
   "actions": [
     {
       "id": "system.info",
@@ -891,6 +891,10 @@
           "started": {
             "type": "boolean",
             "description": "Emitted once when startScan returned without throwing. Without it, a scan that never began and a scan that found nothing are the same empty screen."
+          },
+          "ack": {
+            "type": "boolean",
+            "description": "The bridge received the subscribe call, emitted before any logic runs — so a call that never arrived stops looking like one that was swallowed."
           }
         }
       },

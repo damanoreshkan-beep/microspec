@@ -69,5 +69,11 @@
   "radarDenied": "Location permission is required to scan",
   "radarOff": "Bluetooth is off",
   "radarTooOften": "Android is throttling scans — wait ~30s",
-  "radarUnsupported": "This device cannot scan"
+  "radarUnsupported": "This device cannot scan",
+  "fsTitle": "Files",
+  "fsGrant": "Choose a folder",
+  "fsEmpty": "Empty",
+  "fsNoPreview": "No preview",
+  "fsSaveLog": "Save the log",
+  "fsSaved": "Saved"
 }

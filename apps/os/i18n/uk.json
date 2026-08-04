@@ -69,5 +69,11 @@
   "radarDenied": "Для сканування потрібен дозвіл на локацію",
   "radarOff": "Bluetooth вимкнено",
   "radarTooOften": "Android тимчасово блокує сканування — зачекай ~30с",
-  "radarUnsupported": "Пристрій не вміє сканувати"
+  "radarUnsupported": "Пристрій не вміє сканувати",
+  "fsTitle": "Файли",
+  "fsGrant": "Обрати теку",
+  "fsEmpty": "Порожньо",
+  "fsNoPreview": "Перегляд недоступний",
+  "fsSaveLog": "Зберегти лог",
+  "fsSaved": "Збережено"
 }

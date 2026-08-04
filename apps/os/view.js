@@ -39,6 +39,7 @@ const PROBE = {
   "ble.state": () => ({}),
   "usb.list": () => ({}),
   "system.logs": () => ({}),
+  "files.roots": () => ({}),
   "server.start": () => ({ port: 8080 }),
   "server.put": (t) => ({ path: "/", contentType: "text/html; charset=utf-8",
     base64: btoa(unescape(encodeURIComponent(`<!doctype html><meta charset=utf-8><title>${T(t, "title")}</title><h1>${T(t, "title")}</h1>`))) }),
@@ -83,6 +84,8 @@ function summarise(id, v, loc) {
   if (id === "ble.state") return v.supported ? (v.on ? "on" : "off") : "—";
   if (id === "usb.list") return `${(v.devices || []).length}`;
   if (id === "system.logs") return `${(v.lines || []).length}`;
+  if (id === "files.roots") return `${(v.roots || []).length}`;
+  if (id === "files.list") return `${(v.entries || []).length}`;
   if (id.startsWith("server.")) return v.url || (v.running === false ? "off" : v.path || String(v.running));
   if (v.id) return v.id;
   if ("ok" in v) return String(v.ok);
@@ -91,7 +94,7 @@ function summarise(id, v, loc) {
 
 const TILE_DOT = { granted: "bg-success", partial: "bg-warning", denied: "bg-error", needsApp: "bg-base-content/30", staleApp: "bg-warning", prompt: "", unsupported: "", unknown: "" };
 
-function Launcher({ loc, t, toast }) {
+function Launcher({ S, loc, t, toast }) {
   const L = permLabels(loc);
   const [states, setStates] = useState({});
   const keys = Object.keys(PERMISSIONS);
@@ -106,6 +109,12 @@ function Launcher({ loc, t, toast }) {
 
   const tap = async (k) => {
     const st = states[k];
+    if (k === "files") {
+      if (!shell.hasCapability("files")) { toast?.(st === "staleApp" ? L.staleAppHint : L.needsAppHint); return; }
+      setFs({ open: true, root: null, trail: [], entries: [], preview: null, error: "" });
+      syncStack(S);
+      return;
+    }
     if (PERMISSIONS[k]?.capability && shell.present) { await permRequest(k); await refresh(); return; }
     if (st === "granted") { toast?.(L.revokeHint); return; }
     if (st === "needsApp") { toast?.(L.needsAppHint); return; }
@@ -138,6 +147,165 @@ function Launcher({ loc, t, toast }) {
           <span class=${`text-[11px] leading-tight text-center line-clamp-2 ${dim ? "text-base-content/50" : "text-base-content/80"}`}>${L[k]}</span>
         </button>`;
       })}
+    </div>
+  <//>`;
+}
+
+const $fs = atom({ open: false, root: null, trail: [], entries: [], preview: null, busy: false, error: "" });
+const setFs = (patch) => $fs.set({ ...$fs.get(), ...patch });
+
+const fsDepth = (fs) => (fs.open ? 1 + Math.max(0, fs.trail.length - 1) + (fs.preview ? 1 : 0) : 0);
+const syncStack = (S) => {
+  const want = fsDepth($fs.get());
+  if (S.stack.get().length !== want) S.stack.set(Array.from({ length: want }, (_, i) => `fs${i}`));
+};
+
+const FILE_ICON = (mime, dir) => {
+  if (dir) return "lucide:folder";
+  const m = mime || "";
+  if (m.startsWith("image/")) return "lucide:image";
+  if (m.startsWith("audio/")) return "lucide:file-audio";
+  if (m.startsWith("video/")) return "lucide:file-video";
+  if (m.startsWith("text/") || m.includes("json") || m.includes("xml")) return "lucide:file-text";
+  if (m.includes("zip") || m.includes("compressed")) return "lucide:file-archive";
+  if (m.includes("pdf")) return "lucide:file-type";
+  return "lucide:file";
+};
+
+const KB = 1024;
+const size = (n, loc) => {
+  if (!n) return "";
+  const u = n < KB ? [n, "B"] : n < KB * KB ? [n / KB, "KB"] : [n / KB / KB, "MB"];
+  return `${u[0].toLocaleString(loc, { maximumFractionDigits: u[0] < 10 && u[1] !== "B" ? 1 : 0 })} ${u[1]}`;
+};
+
+const ordered = (entries, loc) => [...entries].sort((a, b) =>
+  a.dir === b.dir ? a.name.localeCompare(b.name, loc) : (a.dir ? -1 : 1));
+
+const bytesOf = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+const previewable = (mime) => (mime || "").startsWith("image/")
+  || (mime || "").startsWith("text/") || (mime || "").includes("json") || (mime || "").includes("xml");
+
+async function fsOpenFolder(S, root, trail) {
+  setFs({ open: true, root, trail, preview: null, busy: true, error: "" });
+  syncStack(S);
+  try {
+    const r = await shell.call("files.list", { uri: root.uri, docId: trail[trail.length - 1].docId });
+    setFs({ entries: r.entries || [], busy: false });
+  } catch (e) {
+    setFs({ entries: [], busy: false, error: e?.code || String(e) });
+  }
+}
+
+async function fsEnterRoot(S, root) {
+  await fsOpenFolder(S, root, [{ docId: null, name: root.name }]);
+}
+
+async function fsGrant(S) {
+  setFs({ busy: true, error: "" });
+  try {
+    const r = await shell.call("files.grant", {});
+    if (r?.granted) { await fsEnterRoot(S, { uri: r.uri, name: r.name }); return; }
+    setFs({ busy: false });
+  } catch (e) { setFs({ busy: false, error: e?.code || String(e) }); }
+}
+
+function Explorer({ S, t, loc, toast }) {
+  const fs = useStore($fs);
+  const [roots, setRoots] = useState(null);
+
+  const loadRoots = async () => {
+    try {
+      const r = await shell.call("files.roots", {});
+      const list = r.roots || [];
+      setRoots(list);
+      if (list.length === 1) await fsEnterRoot(S, list[0]);
+    } catch { setRoots([]); }
+  };
+  useEffect(() => { if (fs.open && !fs.root) loadRoots(); }, [fs.open, fs.root]);
+
+  const enter = async (e) => {
+    if (e.dir) { await fsOpenFolder(S, fs.root, [...fs.trail, { docId: e.docId, name: e.name }]); return; }
+    setFs({ busy: true, error: "" });
+    try {
+      const r = await shell.call("files.read", { uri: fs.root.uri, docId: e.docId });
+      const bytes = bytesOf(r.base64);
+      const text = (e.mime || "").startsWith("image/") ? null : new TextDecoder().decode(bytes);
+      const src = (e.mime || "").startsWith("image/") ? `data:${e.mime};base64,${r.base64}` : null;
+      setFs({ busy: false, preview: { name: e.name, mime: e.mime, bytes: r.bytes, text, src } });
+      syncStack(S);
+    } catch (e2) { setFs({ busy: false, error: e2?.code === ERR.failed ? e2.detail : (e2?.code || String(e2)) }); }
+  };
+
+  const saveLog = async () => {
+    try {
+      const r = await shell.call("system.logs", {});
+      const body = (r.lines || []).join("\n");
+      const b64 = btoa(unescape(encodeURIComponent(body)));
+      const at = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const out = await shell.call("files.write", {
+        uri: fs.root.uri, docId: fs.trail[fs.trail.length - 1].docId,
+        name: `microspec-${at}.log`, mime: "text/plain", base64: b64,
+      });
+      toast?.(`${T(t, "fsSaved")} · ${size(out.bytes, loc)}`);
+      await fsOpenFolder(S, fs.root, fs.trail);
+    } catch (e) { toast?.(e?.code || String(e)); }
+  };
+
+  if (fs.preview) {
+    const p = fs.preview;
+    return html`<${Panel} title=${p.name}>
+      <div data-fs-preview class="flex flex-col gap-2 pt-1">
+        <div class="font-mono text-xs text-muted">${p.mime || "?"} · ${size(p.bytes, loc)}</div>
+        ${p.src ? html`<img src=${p.src} alt=${p.name} class="w-full rounded-[var(--ms-r-in)] bg-base-200" />`
+          : p.text != null ? html`<pre class="font-mono text-xs whitespace-pre-wrap break-all max-h-[60vh] overflow-y-auto rounded-[var(--ms-r-in)] bg-base-200 p-3">${p.text}</pre>`
+          : html`<div class="text-sm text-muted">${T(t, "fsNoPreview")}</div>`}
+      </div>
+    <//>`;
+  }
+
+  if (!fs.root) {
+    return html`<${Panel} title=${T(t, "fsTitle")}>
+      <div data-fs-roots class="flex flex-col gap-2 pt-1">
+        ${(roots || []).map((r) => html`<button key=${r.uri} data-fs-root=${r.name}
+            class="flex items-center gap-3 py-2.5 border-b border-base-content/10 last:border-0 text-left"
+            onClick=${() => fsEnterRoot(S, r)}>
+          ${Icon("lucide:folder", "text-xl text-primary shrink-0")}
+          <span class="min-w-0 flex-1 truncate">${r.name}</span>
+          ${Icon("lucide:chevron-right", "text-base text-base-content/40 shrink-0")}
+        </button>`)}
+        <button id="fs-grant" data-fs-grant class="btn btn-sm btn-primary w-full gap-2 mt-1"
+            disabled=${fs.busy} onClick=${() => fsGrant(S)}>
+          ${Icon("lucide:folder-plus")}<span>${T(t, "fsGrant")}</span>
+        </button>
+        ${fs.error ? html`<div class="text-xs text-error">${fs.error}</div>` : null}
+      </div>
+    <//>`;
+  }
+
+  const trail = fs.trail.map((f) => f.name).join(" / ");
+  return html`<${Panel}>
+    <div class="flex items-center gap-2 pb-1">
+      ${Icon("lucide:folder-open", "text-base text-primary shrink-0")}
+      <span data-fs-trail class="font-mono text-xs text-muted min-w-0 flex-1 truncate" dir="rtl">${trail}</span>
+      <button class="btn btn-xs btn-ghost btn-circle shrink-0" aria-label=${T(t, "fsSaveLog")} onClick=${saveLog}>
+        ${Icon("lucide:save", "text-base")}
+      </button>
+      <button class="btn btn-xs btn-ghost btn-circle shrink-0" aria-label=${T(t, "fsGrant")} onClick=${() => fsGrant(S)}>
+        ${Icon("lucide:folder-plus", "text-base")}
+      </button>
+    </div>
+    <div data-fs-list>
+      ${fs.error ? html`<div class="py-3 text-xs text-error">${fs.error}</div>` : null}
+      ${!fs.error && !fs.busy && !fs.entries.length ? html`<div class="py-3 text-sm text-muted">${T(t, "fsEmpty")}</div>` : null}
+      ${ordered(fs.entries, loc).map((e) => html`<button key=${e.docId} data-fs-entry=${e.name}
+          class="flex items-center gap-3 py-2.5 w-full border-b border-base-content/10 last:border-0 text-left"
+          onClick=${() => enter(e)}>
+        ${Icon(FILE_ICON(e.mime, e.dir), `text-xl shrink-0 ${e.dir ? "text-primary" : "text-muted"}`)}
+        <span class="min-w-0 flex-1 truncate">${e.name}</span>
+        ${e.dir ? Icon("lucide:chevron-right", "text-base text-base-content/40 shrink-0")
+          : html`<span class="text-xs tabular-nums text-base-content/45 shrink-0">${size(e.size, loc)}</span>`}
+      </button>`)}
     </div>
   <//>`;
 }
@@ -175,7 +343,19 @@ export function caps({ S, t, toast }) {
   const loc = useStore(S.locale);
   const runs = useStore($runs);
   const [all, setAll] = useState(false);
+  const fs = useStore($fs);
   const present = shell.present;
+
+  useEffect(() => S.stack.listen((v) => {
+    const cur = $fs.get();
+    const want = fsDepth(cur);
+    const now = v?.length || 0;
+    if (now >= want) return;
+    if (now === 0) { setFs({ open: false, root: null, trail: [], entries: [], preview: null, error: "" }); return; }
+    if (cur.preview) { setFs({ preview: null }); return; }
+    const trail = cur.trail.slice(0, Math.max(1, now));
+    fsOpenFolder(S, cur.root, trail);
+  }), []);
   const ids = shell.actions;
   const done = ids.filter((id) => runs[id]).length;
   const failed = ids.filter((id) => runs[id] && !runs[id].ok).length;
@@ -200,6 +380,8 @@ export function caps({ S, t, toast }) {
       toast?.(T(t, "updStarted"));   
     } catch (e) { toast?.(e?.code || T(t, "updFailed")); } finally { setUpd(false); }
   };
+
+  if (fs.open) return html`<div class="flex flex-col gap-3 pt-1"><${Explorer} S=${S} t=${t} loc=${loc} toast=${toast} /></div>`;
 
   return html`<div class="flex flex-col gap-3 pt-1">
     ${shell.updateAvailable ? html`<div data-update class="flex items-center gap-3 rounded-[var(--ms-r)] border border-warning/40 bg-warning/10 p-4">
@@ -230,7 +412,7 @@ export function caps({ S, t, toast }) {
       <span>${done}/${ids.length}</span>${failed ? html`<span class="text-error">${failed}</span>` : null}
     </div>` : null}
 
-    <${Launcher} loc=${loc} t=${t} toast=${toast} />
+    <${Launcher} S=${S} loc=${loc} t=${t} toast=${toast} />
 
     ${groups().map(([cap, ids2]) => html`<${Panel} key=${cap}>
       <div class="flex items-center gap-2 pb-1">

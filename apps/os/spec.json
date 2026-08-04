@@ -58,7 +58,8 @@
       "motion",
       "camera",
       "microphone",
-      "server"
+      "server",
+      "files"
     ]
   }
 }

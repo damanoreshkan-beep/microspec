@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 19,
+  "bridgeVersion": 20,
   "actions": [
     {
       "id": "system.info",
@@ -1177,6 +1177,291 @@
         "url": "http://192.168.1.42:8080/",
         "hits": 3,
         "routes": 1
+      }
+    },
+    {
+      "id": "files.grant",
+      "capability": "files",
+      "kind": "call",
+      "minBridge": 20,
+      "android": [],
+      "summary": "Ask the user for a folder. This is why the capability needs no storage permission at all: the scope is what they picked, not what we claimed, and MANAGE_EXTERNAL_STORAGE — the one that hands over the whole device — is never declared.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "granted"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "granted": {
+            "type": "boolean"
+          },
+          "uri": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "mock": {
+        "granted": true,
+        "uri": "content://gate/tree/Documents",
+        "name": "Documents"
+      }
+    },
+    {
+      "id": "files.roots",
+      "capability": "files",
+      "kind": "call",
+      "minBridge": 20,
+      "android": [],
+      "summary": "Every folder already granted, kept across restarts — so a folder is chosen once rather than on every launch.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "roots"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "roots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "uri",
+                "name"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "uri": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "mock": {
+        "roots": [
+          {
+            "uri": "content://gate/tree/Documents",
+            "name": "Documents"
+          }
+        ]
+      }
+    },
+    {
+      "id": "files.list",
+      "capability": "files",
+      "kind": "call",
+      "minBridge": 20,
+      "android": [],
+      "summary": "Children of one folder inside a granted tree. The page walks by passing back a docId a previous listing returned; it never builds a path itself.",
+      "args": {
+        "type": "object",
+        "required": [
+          "uri"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "docId": {
+            "type": "string"
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "uri",
+          "docId",
+          "entries"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "docId": {
+            "type": "string"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "docId",
+                "name",
+                "dir"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "docId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "mime": {
+                  "type": "string"
+                },
+                "dir": {
+                  "type": "boolean"
+                },
+                "size": {
+                  "type": "integer"
+                },
+                "at": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "mock": {
+        "uri": "content://gate/tree/Documents",
+        "docId": "Documents",
+        "entries": [
+          {
+            "docId": "Documents/notes",
+            "name": "notes",
+            "mime": "vnd.android.document/directory",
+            "dir": true,
+            "size": 0,
+            "at": 1893479400000
+          },
+          {
+            "docId": "Documents/readme.txt",
+            "name": "readme.txt",
+            "mime": "text/plain",
+            "dir": false,
+            "size": 128,
+            "at": 1893479400000
+          }
+        ]
+      }
+    },
+    {
+      "id": "files.read",
+      "capability": "files",
+      "kind": "call",
+      "minBridge": 20,
+      "android": [],
+      "summary": "One document's bytes, base64. Capped at 8MB because the whole body crosses the bridge in a single frame.",
+      "args": {
+        "type": "object",
+        "required": [
+          "uri",
+          "docId"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "docId": {
+            "type": "string"
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "docId",
+          "bytes",
+          "base64"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "docId": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer"
+          },
+          "base64": {
+            "type": "string"
+          }
+        }
+      },
+      "mock": {
+        "docId": "Documents/readme.txt",
+        "bytes": 11,
+        "base64": "Z2F0ZSBzYW1wbGU="
+      }
+    },
+    {
+      "id": "files.write",
+      "capability": "files",
+      "kind": "call",
+      "minBridge": 20,
+      "android": [],
+      "summary": "Create a file in a granted folder and fill it. A real save, to a place the user chose — not the Downloads dead-drop every browser is limited to.",
+      "args": {
+        "type": "object",
+        "required": [
+          "uri",
+          "name",
+          "base64"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "docId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "mime": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "base64": {
+            "type": "string"
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "docId",
+          "bytes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "docId": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer"
+          }
+        }
+      },
+      "mock": {
+        "docId": "Documents/note.txt",
+        "bytes": 11
       }
     }
   ]

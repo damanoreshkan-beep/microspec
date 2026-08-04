@@ -1,0 +1,28 @@
+{
+  "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
+  "bridgeVersion": 1,
+  "actions": [
+    {
+      "id": "system.info",
+      "capability": "system",
+      "kind": "call",
+      "minBridge": 1,
+      "android": [],
+      "summary": "What the shell is and what it runs on — the one action that needs no permission, so it is also how a page proves the bridge works end to end.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": {
+        "type": "object",
+        "required": ["bridge", "sdk", "model"],
+        "additionalProperties": false,
+        "properties": {
+          "bridge": { "type": "integer", "description": "Bridge version this shell implements." },
+          "sdk": { "type": "integer", "description": "Build.VERSION.SDK_INT." },
+          "release": { "type": "string", "description": "Build.VERSION.RELEASE, e.g. '16'." },
+          "model": { "type": "string", "description": "Build.MODEL." },
+          "pkg": { "type": "string", "description": "This APK's patched package name." }
+        }
+      },
+      "mock": { "bridge": 1, "sdk": 36, "release": "16", "model": "Gate Device", "pkg": "apk.microspec.a0000000000000000" }
+    }
+  ]
+}

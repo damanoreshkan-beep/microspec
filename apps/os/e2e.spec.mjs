@@ -35,15 +35,15 @@ export default [
   },
   {
     name: "alarms: the shell owns the list, and scheduling reads it back", run: async (h) => {
-      await h.click(String.raw`[data-tab="alarms"]`); await h.wait(250);
+      await h.click('[data-tab="alarms"]'); await h.wait(250);
       // The gate mock returns one pending alarm, so the tab must render it rather than the empty state.
       h.expect((await h.count("[data-alarm]")) >= 1, "список запланованого порожній під гейтом");
       h.expect((await h.count("[data-alarm-empty]")) === 0, "показано порожній стан попри наявний будильник");
-      await h.click("[data-min="15"]"); await h.wait(120);
-      h.expect((await h.prop("[data-min="15"]", "ariaPressed")) === "true", "вибір інтервалу не тримається");
+      await h.click('[data-min="15"]'); await h.wait(120);
+      h.expect((await h.prop('[data-min="15"]', "ariaPressed")) === "true", "вибір інтервалу не тримається");
       await h.click("#al-set"); await h.wait(300);
       h.expect((await h.count("[data-alarm]")) >= 1, "після постановки список зник");
-      await h.click(String.raw`[data-tab="caps"]`); await h.wait(120);
+      await h.click('[data-tab="caps"]'); await h.wait(120);
     },
   },
   {

@@ -247,6 +247,22 @@ The web half of this deploys **without a reinstall**: the page inside the shell 
 github.io, so a runtime fix reaches every already-installed APK on the next farm deploy. Worth
 remembering when weighing what to put in Java versus in the runtime — Java is the expensive half.
 
+### 4.5 The catalogue crosses the repo boundary by GENERATION, and publishes first
+
+Phase 2 left this open. The answer: the catalogue stays in the **public** farm (it drives the runtime
+facade, the gate mocks and the permissions screen), and `apk/java-gen.mjs` in the private edge repo
+generates `Catalogue.java` from it — locally from the checkout next door, in CI with `--remote` from
+`raw.githubusercontent.com`, and `--check` fails the template build if the committed copy has drifted.
+
+Only the action **table** is generated. `ShellBridge` dispatches by hand — pretending Java can be
+written from a JSON schema would buy nothing — and `system.info` returns every catalogue action this
+build does not answer, so a mismatch is visible in `os` on the device instead of being found by a user.
+
+**Order of operations, learned by tripping over it:** the catalogue must be **published before** a
+template is built from it. The first two-flavour build failed exactly here — Java knew six actions, the
+public `main` still had one — which is the gate doing its job rather than shipping a shell that claimed
+actions the runtime had never heard of.
+
 ## 5. How any of this gets tested
 
 Blunt truth: **CI runs headless Chromium and will never run our APK.** So:
@@ -328,7 +344,7 @@ feeds.
 | **0** ✅ | Shell survival kit: `onPermissionRequest`, `onGeolocationPermissionsShowPrompt`, `onShowFileChooser`, `setDownloadListener` + web-parity manifest (§4.3) + blob downloads (§4.4) | — | **done 2026-08-03** — deployed; unverified on device |
 | **1** ✅ | Rename to `apk.microspec` (§4.2) + per-app identity in manifest **and** arsc (§4.1) | — | **done 2026-08-03** — verified through the production URL |
 | **2** ✅ | Catalogue + generator + `shell.js` facade + version negotiation | 1 | **done 2026-08-04** — `packages/shell/actions.json`, `tools/shell-gen.mjs` (`--check` in the gate chain), `packages/runtime/shell.js`. One capability-free action (`system.info`) rather than literally zero, so the chain is exercised end to end instead of asserted in the abstract. **Open:** the Java registry is not generated — it crosses a repo boundary (catalogue is public, template is private) and is decided in phase 3. |
-| **3** | `full` template + origin-locked bridge + `notify` + `alarm` | 2 | medium; first real power |
+| **3** ✅ | `full` template + origin-locked bridge + `notify` + `alarm` | 2 | **done 2026-08-04** — gradle flavours, one `@JavascriptInterface`, three gates in `assets/bridge.json`; `Catalogue.java` generated from the public catalogue (§4.5). Verified through production: our origin gets `full`, anything else gets `lite` whose dex contains no `__msShell` at all. **Unverified on device.** |
 | **4** | Permissions registry + grouped screen + schema enum + uk/en | 3 | medium; whole-farm verify |
 | **5** | `background` (foreground service) + `location.watchBackground` | 3 | medium |
 | **6** | Radios: `wifi`, `cell`, `ble`, `usb` — the pay-off for gsmscan / lorawatch / hf | 5 | large |

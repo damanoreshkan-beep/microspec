@@ -270,3 +270,21 @@ see it. Fixed by ramping *saturation* with danger instead of lightness, and by s
 5. **Prefer contracts to conventions.** Every "the mechanism existed, nothing required it" entry above
    (translate, drill-down, icons) was closed by making the contract refuse the bad state — not by fixing the
    app. The apps were symptoms.
+
+## The gate cannot see the APK at all
+
+CI runs headless Chromium. It has never executed the Android shell and never will, so every Java
+behaviour — the permission callbacks, notifications, alarms, the download bridge — is invisible to a
+green run. Two concrete failures already came from exactly this: a stock WebView denies camera, mic,
+geolocation, file input and downloads by default, and a hand-rolled `<a download>` saves nothing at all
+inside the APK; both were green in every gate for as long as they existed.
+
+What partially covers it:
+
+- **the mock bridge** — `packages/runtime/shell.js` answers from the catalogue's `mock` under the gate,
+  so the *has-bridge* branch of an app is at least exercised in Chromium;
+- **`apksigner` + `aapt2 badging`** in the edge repo — authoritative for the signature and the manifest,
+  both flavours;
+- **`apps/os`** — the capability console, which is the device checklist as code rather than a document.
+
+What is left: a real device. Treat "the gates are green" as saying nothing whatsoever about the shell.

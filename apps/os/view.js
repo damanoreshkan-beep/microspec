@@ -394,7 +394,12 @@ export function radar({ S, t, toast }) {
   const stopRef = useRef(null);
   // A scan that is refused and a scan that finds nothing look identical on an empty radar, so the screen
   // shows which permissions the OS actually granted and how many advertisements have arrived.
-  useEffect(() => { refreshHeld().then(() => setHeld(heldPermissions())); }, []);
+  const [locOn, setLocOn] = useState(null);
+  useEffect(() => {
+    refreshHeld().then(() => setHeld(heldPermissions()));
+    // Location services OFF is the one failure that looks like success everywhere else.
+    if (shell.has("system.info")) shell.call("system.info", {}).then((i) => setLocOn(i.locationOn)).catch(() => {});
+  }, []);
   const why = shell.whyCapability("ble");
 
   // One entry per address: a beacon advertising ten times a second is one device, not ten.
@@ -453,6 +458,7 @@ export function radar({ S, t, toast }) {
       </button>
       ${held && shell.present ? html`<div data-ble-perms class="flex flex-wrap gap-x-3 gap-y-1 pt-2 font-mono text-[11px]">
         ${shell.androidFor("ble").map((p) => html`<span key=${p} class=${held[p] ? "text-success" : "text-error"}>${held[p] ? "+" : "−"} ${p}</span>`)}
+        ${locOn === false ? html`<span class="text-error">− LOCATION SERVICES</span>` : null}
         <span class="text-muted">rx ${events}</span>
       </div>` : null}
       ${why ? html`<div class="pt-2 text-sm text-muted">${why === ERR.staleBridge ? T(t, "stStale") : T(t, "stNone")}</div>`

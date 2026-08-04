@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 15,
+  "bridgeVersion": 16,
   "actions": [
     {
       "id": "system.info",
@@ -962,6 +962,44 @@
             "name": "HackRF One",
             "cls": 255
           }
+        ]
+      }
+    },
+    {
+      "id": "system.logs",
+      "capability": "system",
+      "kind": "call",
+      "minBridge": 16,
+      "android": [],
+      "summary": "The last lines the bridge wrote about its own behaviour. Every failure so far cost a reinstall to learn one bit, because the shell could report a result but never what it did on the way there.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "lines"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "mock": {
+        "lines": [
+          "0.4s subscribe id=1 action=ble.scan",
+          "0.4s ack sent id=1",
+          "0.5s withPermissions ble.scan need=3",
+          "0.6s permissions granted=true",
+          "0.6s startStream ble.scan live=true caps=alarm,background,ble",
+          "0.7s scan started"
         ]
       }
     }

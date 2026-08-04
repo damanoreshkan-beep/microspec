@@ -427,12 +427,14 @@ export function radar({ S, t, toast }) {
 export function report({ S, t, toast }) {
   const loc = useStore(S.locale);
   const runs = useStore($runs);
+  const [logs, setLogs] = useState([]);
   const [info, setInfo] = useState(null);
   const [err, setErr] = useState(null);
 
   const load = async () => {
     try { setInfo(await shell.call("system.info", {})); setErr(null); }
     catch (e) { setErr(e?.code || ERR.failed); setInfo(null); }
+    try { setLogs((await shell.call("system.logs", {})).lines || []); } catch { setLogs([]); }
   };
   useEffect(() => { load(); }, []);
 
@@ -450,6 +452,7 @@ export function report({ S, t, toast }) {
       ["missing", info?.missing?.length ? info.missing.join(",") : "—"],
     ];
     for (const [id, r] of Object.entries(runs)) rows.push([id, `${r.ok ? "ok" : "fail"} ${r.text} (${r.ms}ms)`]);
+    for (const line of logs) rows.push(["log", line]);
     return rows;
   };
 

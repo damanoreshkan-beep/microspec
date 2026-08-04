@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 15;
+export const CATALOGUE_BRIDGE = 16;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -282,6 +282,22 @@ export const ACTIONS = {
           "name": "HackRF One",
           "cls": 255
         }
+      ]
+    }
+  },
+  "system.logs": {
+    "capability": "system",
+    "kind": "call",
+    "minBridge": 16,
+    "android": [],
+    "mock": {
+      "lines": [
+        "0.4s subscribe id=1 action=ble.scan",
+        "0.4s ack sent id=1",
+        "0.5s withPermissions ble.scan need=3",
+        "0.6s permissions granted=true",
+        "0.6s startStream ble.scan live=true caps=alarm,background,ble",
+        "0.7s scan started"
       ]
     }
   }

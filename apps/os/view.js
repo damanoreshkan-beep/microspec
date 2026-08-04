@@ -34,6 +34,7 @@ const PROBE = {
   "wifi.scan": () => ({}),
   "wifi.info": () => ({}),
   "cell.info": () => ({}),
+  "system.grant": () => ({ permission: "READ_PHONE_STATE" }),
 };
 
 const stateOf = (id) => (shell.has(id) ? "ok" : shell.why(id) === ERR.staleBridge ? "stale" : "none");
@@ -69,6 +70,7 @@ function summarise(id, v, loc) {
   if (id === "wifi.scan") return `${(v.networks || []).length}${v.throttled ? " · throttled" : ""}`;
   if (id === "wifi.info") return v.connected ? `${v.ssid || "?"} ${v.rssi}dBm` : "—";
   if (id === "cell.info") return `${(v.cells || []).length}`;
+  if (id === "system.grant") return v.state;
   if (v.id) return v.id;
   if ("ok" in v) return String(v.ok);
   return JSON.stringify(v);
@@ -90,6 +92,7 @@ function Launcher({ loc, t, toast }) {
 
   const tap = async (k) => {
     const st = states[k];
+    if (PERMISSIONS[k]?.capability && shell.present) { await permRequest(k); await refresh(); return; }
     if (st === "granted") { toast?.(L.revokeHint); return; }
     if (st === "needsApp") { toast?.(L.needsAppHint); return; }
     if (st === "staleApp") { toast?.(L.staleAppHint); return; }

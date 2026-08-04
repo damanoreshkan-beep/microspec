@@ -1,6 +1,6 @@
 self.MS = {
   app: "cam",
-  version: "d4987197c0",
+  version: "f8cc8e24f3",
   precache: [
     "./",
     "./i18n/en.json",
@@ -32,6 +32,8 @@ self.MS = {
     "/_rt/sealed.js",
     "/_rt/sealedfetch.js",
     "/_rt/sensors.js",
+    "/_rt/shell-actions.js",
+    "/_rt/shell.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
     "/_rt/theme.css",

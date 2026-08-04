@@ -34,6 +34,7 @@
     "permissions": [
       "geolocation",
       "notifications",
+      "alarm",
       "motion",
       "camera",
       "microphone"

@@ -1,6 +1,6 @@
 self.MS = {
   app: "rave",
-  version: "d85bb320de",
+  version: "d0bb97dd55",
   precache: [
     "./",
     "./i18n/en.json",
@@ -35,6 +35,8 @@ self.MS = {
     "/_rt/sealed.js",
     "/_rt/sealedfetch.js",
     "/_rt/sensors.js",
+    "/_rt/shell-actions.js",
+    "/_rt/shell.js",
     "/_rt/skeleton.js",
     "/_rt/spectrum.js",
     "/_rt/store.js",

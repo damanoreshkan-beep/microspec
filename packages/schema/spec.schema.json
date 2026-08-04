@@ -124,7 +124,8 @@
               "notifications",
               "motion",
               "camera",
-              "microphone"
+              "microphone",
+              "alarm"
             ]
           }
         },

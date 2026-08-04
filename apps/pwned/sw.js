@@ -1,6 +1,6 @@
 self.MS = {
   app: "pwned",
-  version: "6b08eabd42",
+  version: "752331641d",
   precache: [
     "./",
     "./i18n/en.json",
@@ -32,6 +32,8 @@ self.MS = {
     "/_rt/sealed.js",
     "/_rt/sealedfetch.js",
     "/_rt/sensors.js",
+    "/_rt/shell-actions.js",
+    "/_rt/shell.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
     "/_rt/theme.css",

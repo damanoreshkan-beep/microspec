@@ -1,6 +1,6 @@
 self.MS = {
   app: "grain",
-  version: "aaf0860e16",
+  version: "5b73fa59be",
   precache: [
     "./",
     "./i18n/en.json",
@@ -37,6 +37,8 @@ self.MS = {
     "/_rt/sealed.js",
     "/_rt/sealedfetch.js",
     "/_rt/sensors.js",
+    "/_rt/shell-actions.js",
+    "/_rt/shell.js",
     "/_rt/skeleton.js",
     "/_rt/spectrum.js",
     "/_rt/store.js",

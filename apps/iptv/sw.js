@@ -1,6 +1,6 @@
 self.MS = {
   app: "iptv",
-  version: "84dd90a839",
+  version: "0f3ec8d2f5",
   precache: [
     "./",
     "./i18n/en.json",
@@ -31,6 +31,8 @@ self.MS = {
     "/_rt/sealed.js",
     "/_rt/sealedfetch.js",
     "/_rt/sensors.js",
+    "/_rt/shell-actions.js",
+    "/_rt/shell.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
     "/_rt/theme.css",

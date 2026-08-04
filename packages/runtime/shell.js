@@ -94,6 +94,16 @@ export const shell = {
     return bridgeVersion() >= a.minBridge ? "" : ERR.staleBridge;
   },
 
+  /** What the PAGE was built against — compare with .version to see whether the app is behind. */
+  get catalogueVersion() { return CATALOGUE_BRIDGE; },
+
+  /**
+   * Is the installed shell older than the page? The web deploys in minutes and an APK when the user
+   * reinstalls, so this is the normal state after any bridge bump — not an error, just a prompt worth
+   * showing once. False in a browser: there is nothing to update.
+   */
+  get updateAvailable() { return !gate && !!native() && bridgeVersion() < CATALOGUE_BRIDGE; },
+
   /** The catalogue entry (capability, android permissions, summary) — for the permissions screen. */
   action(id) { return ACTIONS[id] || null; },
 

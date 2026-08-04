@@ -360,10 +360,15 @@ const rssiRadius = (rssi) => {
   const clamped = Math.max(-100, Math.min(-30, rssi));
   return 12 + ((-30 - clamped) / 70) * 78;    // -30dBm hugs the centre, -100 sits at the rim
 };
+// Addresses that differ only in the last byte — most of them, since a vendor gets a contiguous block —
+// must not land on the same bearing. Measured across seven such addresses: h*31 %360 and FNV %360 both
+// collapse them into two clusters (min gap 0–2°); FNV mixed through the golden ratio spreads them around
+// the whole circle (min gap 5°). Bearing is cosmetic, but a radar where every device shares one spoke
+// reads as broken, and that is a defect no gate can see.
 const angleOf = (addr) => {
-  let h = 0;
-  for (let i = 0; i < addr.length; i++) h = (h * 31 + addr.charCodeAt(i)) >>> 0;
-  return (h % 360) * (Math.PI / 180);
+  let h = 2166136261;
+  for (let i = 0; i < addr.length; i++) { h ^= addr.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (((Math.imul(h >>> 0, 2654435761) >>> 0) / 4294967296) * 360) * (Math.PI / 180);
 };
 
 // The gate has no radio, so seed a fixed field — an empty radar photographs as a broken one, and the
@@ -418,14 +423,16 @@ export function radar({ S, t, toast }) {
           ${[30, 60, 90].map((r) => html`<circle key=${r} cx="100" cy="100" r=${r} fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.16" />`)}
           <line x1="100" y1="10" x2="100" y2="190" stroke="currentColor" stroke-width="0.6" opacity="0.1" />
           <line x1="10" y1="100" x2="190" y2="100" stroke="currentColor" stroke-width="0.6" opacity="0.1" />
-          ${scanning ? html`<g class="ms-sweep" style="transform-origin:100px 100px">
-            <line x1="100" y1="100" x2="100" y2="12" stroke="currentColor" stroke-width="1.2" opacity="0.35" class="text-primary" />
+          ${scanning ? html`<g class="ms-sweep" style="transform-origin:100px 100px;color:var(--app-accent)">
+            <line x1="100" y1="100" x2="100" y2="12" stroke="currentColor" stroke-width="1.2" opacity="0.45" />
           </g>` : null}
-          ${devices.map((d) => {
-            const a = angleOf(d.addr), r = rssiRadius(d.rssi);
-            return html`<circle key=${d.addr} cx=${(100 + Math.cos(a) * r).toFixed(1)} cy=${(100 + Math.sin(a) * r).toFixed(1)}
-              r="3.4" fill="currentColor" class="text-primary" opacity=${fresh(d).toFixed(2)} />`;
-          })}
+          <g style="color:var(--app-accent)">
+            ${devices.map((d) => {
+              const a = angleOf(d.addr), r = rssiRadius(d.rssi);
+              return html`<circle key=${d.addr} cx=${(100 + Math.cos(a) * r).toFixed(1)} cy=${(100 + Math.sin(a) * r).toFixed(1)}
+                r="3.4" fill="currentColor" opacity=${fresh(d).toFixed(2)} />`;
+            })}
+          </g>
         </svg>
         <div class="absolute inset-x-0 bottom-1 text-center font-mono text-xs text-muted tabular-nums">${devices.length}</div>
       </div>

@@ -100,6 +100,17 @@ export async function permState(name) {
 /** Trigger the native prompt where one exists. Shell-only permissions have nothing to ask for. */
 export async function permRequest(name) {
   const def = PERMISSIONS[name];
+  // In the shell, ask Android directly for every permission the capability rests on. Before this, wifi
+  // and cell sat refused forever because the permission they needed was only ever requested by a
+  // different tile (geolocation) — or, for READ_PHONE_STATE, by nothing at all.
+  if (def?.capability && shell.present && shell.has("system.grant")) {
+    let last = "granted";
+    for (const p of shell.androidFor(def.capability)) {
+      try { last = (await shell.call("system.grant", { permission: p })).state; }
+      catch { last = "denied"; }
+    }
+    return last;
+  }
   if (!def?.request) return (await permState(name)).state;
   return await def.request();
 }

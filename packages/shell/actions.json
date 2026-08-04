@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 4,
+  "bridgeVersion": 5,
   "actions": [
     {
       "id": "system.info",
@@ -755,6 +755,45 @@
             "serving": false
           }
         ]
+      }
+    },
+    {
+      "id": "system.grant",
+      "capability": "system",
+      "kind": "call",
+      "minBridge": 5,
+      "android": [],
+      "summary": "Ask Android for a runtime permission. Without it a capability can be granted to the page, compiled into the shell, and still refused forever — cell.info needs READ_PHONE_STATE and no web callback ever asks for it.",
+      "args": {
+        "type": "object",
+        "required": [
+          "permission"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "permission": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Unprefixed, e.g. READ_PHONE_STATE."
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "type": "string",
+            "description": "granted | denied — denied covers both a refusal and a permission the user has told Android to stop asking about."
+          }
+        }
+      },
+      "mock": {
+        "state": "granted"
       }
     }
   ]

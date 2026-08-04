@@ -42,6 +42,22 @@
           "pkg": {
             "type": "string",
             "description": "This APK's patched package name."
+          },
+          "caps": {
+            "type": "string",
+            "description": "Capabilities THIS APK grants the page, read from its baked-in bridge.json. Without it a refusal is indistinguishable from a missing implementation."
+          },
+          "version": {
+            "type": "string",
+            "description": "versionName of the installed APK."
+          },
+          "build": {
+            "type": "integer",
+            "description": "versionCode."
+          },
+          "installed": {
+            "type": "integer",
+            "description": "When this copy was installed or last updated — the only way to tell which build you are holding."
           }
         }
       },
@@ -50,7 +66,11 @@
         "sdk": 36,
         "release": "16",
         "model": "Gate Device",
-        "pkg": "apk.microspec.a0000000000000000"
+        "pkg": "apk.microspec.a0000000000000000",
+        "caps": "alarm,background,location,notify,system",
+        "version": "1.0",
+        "build": 1,
+        "installed": 1893479400000
       }
     },
     {

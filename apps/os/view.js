@@ -281,7 +281,8 @@ export function alarms({ S, t, toast }) {
   </div>`;
 }
 
-export function report({ t, toast }) {
+export function report({ S, t, toast }) {
+  const loc = useStore(S.locale);
   const runs = useStore($runs);
   const [info, setInfo] = useState(null);
   const [err, setErr] = useState(null);
@@ -296,6 +297,9 @@ export function report({ t, toast }) {
     const rows = [
       ["bridge", shell.present ? String(shell.version) : "—"],
       ["catalogue", `${shell.actions.length}`],
+      ["version", info ? `${info.version || "?"} (${info.build ?? "?"})` : "—"],
+      ["installed", info?.installed ? new Date(info.installed).toLocaleString(loc) : "—"],
+      ["granted", info?.caps || "—"],
       ["sdk", info ? String(info.sdk) : "—"],
       ["release", info?.release || "—"],
       ["model", info?.model || "—"],

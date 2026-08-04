@@ -14,5 +14,68 @@ export const ACTIONS = {
       "model": "Gate Device",
       "pkg": "apk.microspec.a0000000000000000"
     }
+  },
+  "notify.show": {
+    "capability": "notify",
+    "kind": "call",
+    "minBridge": 1,
+    "android": [
+      "POST_NOTIFICATIONS"
+    ],
+    "mock": {
+      "id": "gate-note"
+    }
+  },
+  "notify.cancel": {
+    "capability": "notify",
+    "kind": "call",
+    "minBridge": 1,
+    "android": [
+      "POST_NOTIFICATIONS"
+    ],
+    "mock": {
+      "ok": true
+    }
+  },
+  "alarm.set": {
+    "capability": "alarm",
+    "kind": "call",
+    "minBridge": 1,
+    "android": [
+      "RECEIVE_BOOT_COMPLETED"
+    ],
+    "mock": {
+      "id": "gate-alarm",
+      "at": 1893456000000,
+      "exact": true
+    }
+  },
+  "alarm.cancel": {
+    "capability": "alarm",
+    "kind": "call",
+    "minBridge": 1,
+    "android": [
+      "RECEIVE_BOOT_COMPLETED"
+    ],
+    "mock": {
+      "ok": true
+    }
+  },
+  "alarm.list": {
+    "capability": "alarm",
+    "kind": "call",
+    "minBridge": 1,
+    "android": [
+      "RECEIVE_BOOT_COMPLETED"
+    ],
+    "mock": {
+      "alarms": [
+        {
+          "id": "gate-alarm",
+          "at": 1893456000000,
+          "title": "Gate alarm"
+        }
+      ]
+    }
   }
 };

@@ -39,7 +39,12 @@ const native = () => (typeof window === "undefined" ? null : window.__msShell ||
 function bridgeVersion() {
   if (gate) return CATALOGUE_BRIDGE;
   const n = native();
-  const v = n && Number(n.version);
+  if (!n) return 0;
+  // @JavascriptInterface exposes METHODS, not fields — `n.version` is undefined across a real bridge.
+  // Accept both so a test double can be a plain object without lying about the shape.
+  let v;
+  try { v = typeof n.version === "function" ? n.version() : n.version; } catch { return 0; }
+  v = Number(v);
   return Number.isFinite(v) && v > 0 ? v : 0;
 }
 

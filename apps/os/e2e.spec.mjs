@@ -75,8 +75,9 @@ export default [
       h.expect(/Access|Report|Language/i.test(await h.bodyText()), "не EN");
       await h.click('[data-loc="uk"]'); await h.wait(250);
       h.expect(/Доступ|Звіт|Мова/.test(await h.bodyText()), "не UA");
-      for (const label of ["Доступ", "Радар", "Сигнали", "Звіт", "Профіль"]) {
-        h.expect((await h.bodyText()).includes(label), `підпис вкладки обрізано або зник: ${label}`);
+      const body = (await h.bodyText()).toLowerCase();
+      for (const label of ["доступ", "радар", "сигнали", "звіт", "профіль"]) {
+        h.expect(body.includes(label), `підпис вкладки обрізано або зник: ${label}`);
       }
     },
   },

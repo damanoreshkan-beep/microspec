@@ -23,7 +23,7 @@ import { shell, ERR } from "/_rt/shell.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
-// Last outcome per action id: { ok, text, ms }. One atom so a probe run shows up on every tab at once.
+// Last outcome per action id: { ok, text, ms }. One atom so a run shows up on every tab at once.
 const $runs = atom({});
 const record = (id, v) => $runs.set({ ...$runs.get(), [id]: v });
 
@@ -60,7 +60,7 @@ function groups() {
 
 async function run(id, t, loc) {
   const args = PROBE[id] ? PROBE[id](t) : null;
-  if (!args) { record(id, { ok: false, text: "no probe", ms: 0 }); return; }
+  if (!args) { record(id, { ok: false, text: T(t, "noProbe"), ms: 0 }); return; }
   const t0 = Date.now();
   try {
     const value = await shell.call(id, args);
@@ -82,8 +82,8 @@ function summarise(id, v, loc) {
   return JSON.stringify(v);
 }
 
-// ---- shared row -------------------------------------------------------------
-function Row({ id, t, loc, runnable }) {
+// ---- one action ------------------------------------------------------------
+function Row({ id, t, loc }) {
   const runs = useStore($runs);
   const a = shell.action(id);
   const st = stateOf(id);
@@ -98,43 +98,64 @@ function Row({ id, t, loc, runnable }) {
         ${st === "none" ? T(t, "stNone") : st === "stale" ? T(t, "stStale") : a.android.length ? a.android.join(" · ") : T(t, "noPerm")}
       </div>
     </div>
-    ${last ? html`<div class=${`text-xs text-right tabular-nums shrink-0 ${last.ok ? "" : "text-error"}`}>
-      <div data-result=${id} class="truncate max-w-[9rem]">${last.text}</div>
-      <div class="text-base-content/50">${last.ms} ms</div>
+    ${last ? html`<div class=${`text-xs text-right tabular-nums shrink-0 ${last.ok ? "text-base-content/80" : "text-error"}`}>
+      <div data-result=${id} class="font-mono truncate max-w-[8.5rem]">${last.text}</div>
+      <div class="text-base-content/45">${last.ms} ms</div>
     </div>` : null}
-    ${runnable ? html`<button class="btn btn-xs btn-ghost shrink-0" disabled=${busy || !PROBE[id]}
+    <button class="btn btn-sm btn-circle btn-ghost shrink-0" disabled=${busy || !PROBE[id]}
         data-run=${id} aria-label=${`${T(t, "run")} ${id}`} onClick=${press}>
       ${Icon(PROBE[id] ? "lucide:play" : "lucide:minus", "text-base")}
-    </button>` : null}
+    </button>
   </div>`;
 }
 
-// ---- capabilities: the catalogue as a live matrix ---------------------------
-export function caps({ S, t }) {
+// ---- the console: the catalogue, live, and every row runnable ---------------
+// Capabilities and probes were two tabs of the same list — one of them with a button. Merging them is
+// what makes this an instrument instead of two thirds of a screen listing the same six lines twice.
+export function caps({ S, t, toast }) {
   const loc = useStore(S.locale);
+  const runs = useStore($runs);
+  const [all, setAll] = useState(false);
   const present = shell.present;
+  const ids = shell.actions;
+  const done = ids.filter((id) => runs[id]).length;
+  const failed = ids.filter((id) => runs[id] && !runs[id].ok).length;
+
+  // The whole point of a checklist: one press walks it. Sequential, because a notification and an alarm
+  // firing at once on a real device tells you nothing about which one worked.
+  const runAll = async () => {
+    if (all) return;
+    setAll(true);
+    for (const id of ids) await run(id, t, loc);
+    setAll(false);
+    toast?.(T(t, "ranAll"));
+  };
+
   return html`<div class="flex flex-col gap-3 pt-1 pb-6">
     <div data-bridge class="flex items-center gap-3 rounded-[var(--ms-r)] sf-raised sf-e2 p-4">
       <span class=${`size-2.5 rounded-full shrink-0 ${present ? "bg-success" : "bg-base-content/25"}`} aria-hidden="true"></span>
       <div class="min-w-0 flex-1">
-        <div class="font-medium">${present ? T(t, "bridgeOn") : T(t, "bridgeOff")}</div>
-        <div class="font-mono text-xs text-muted">${present ? `bridge ${shell.version}` : T(t, "bridgeOffHint")}</div>
+        <div class="font-medium truncate">${present ? T(t, "bridgeOn") : T(t, "bridgeOff")}</div>
+        <div class="font-mono text-xs text-muted truncate">${present ? `bridge ${shell.version} · ${ids.length}` : T(t, "bridgeOffHint")}</div>
       </div>
+      <button id="run-all" class="btn btn-sm btn-primary gap-2" disabled=${all} data-run-all onClick=${runAll}>
+        ${Icon("lucide:list-checks")}<span>${T(t, "runAll")}</span>
+      </button>
     </div>
-    ${groups().map(([cap, ids]) => html`<${Panel} key=${cap} title=${T(t, `cap_${cap}`)}>
-      <div class="flex items-center gap-2 -mt-1 mb-1 text-xs text-muted">${Icon(CAP_ICON[cap] || "lucide:box", "text-base")}<span class="font-mono">${cap}</span></div>
-      ${ids.map((id) => html`<${Row} key=${id} id=${id} t=${t} loc=${loc} runnable=${false} />`)}
-    <//>`)}
-  </div>`;
-}
 
-// ---- probes: the same catalogue, but every row is a real action -------------
-export function probes({ S, t }) {
-  const loc = useStore(S.locale);
-  return html`<div class="flex flex-col gap-3 pt-1 pb-6">
-    <${Panel} title=${T(t, "probesTitle")}>
-      ${shell.actions.map((id) => html`<${Row} key=${id} id=${id} t=${t} loc=${loc} runnable=${true} />`)}
-    <//>
+    ${done ? html`<div data-tally class="flex items-center gap-2 px-1 text-xs tabular-nums text-muted">
+      <span class=${`size-1.5 rounded-full ${failed ? "bg-error" : "bg-success"}`} aria-hidden="true"></span>
+      <span>${done}/${ids.length}</span>${failed ? html`<span class="text-error">${failed}</span>` : null}
+    </div>` : null}
+
+    ${groups().map(([cap, ids2]) => html`<${Panel} key=${cap}>
+      <div class="flex items-center gap-2 pb-1">
+        ${Icon(CAP_ICON[cap] || "lucide:box", "text-base text-primary")}
+        <span class="font-semibold text-sm">${T(t, `cap_${cap}`)}</span>
+        <span class="font-mono text-[11px] text-base-content/45 ml-auto">${cap}</span>
+      </div>
+      ${ids2.map((id) => html`<${Row} key=${id} id=${id} t=${t} loc=${loc} />`)}
+    <//>`)}
   </div>`;
 }
 
@@ -152,7 +173,7 @@ export function report({ t, toast }) {
   const lines = () => {
     const rows = [
       ["bridge", shell.present ? String(shell.version) : "—"],
-      ["catalogue", shell.actions.length + " actions"],
+      ["catalogue", `${shell.actions.length}`],
       ["sdk", info ? String(info.sdk) : "—"],
       ["release", info?.release || "—"],
       ["model", info?.model || "—"],
@@ -172,7 +193,7 @@ export function report({ t, toast }) {
     <${Panel} title=${T(t, "reportTitle")}>
       <div data-report class="flex flex-col">
         ${lines().map(([k, v]) => html`<div key=${k} class="flex items-baseline gap-3 py-1.5 border-b border-base-content/10 last:border-0">
-          <span class="font-mono text-xs text-muted w-24 shrink-0 truncate">${k}</span>
+          <span class="font-mono text-xs text-muted w-20 shrink-0 truncate">${k}</span>
           <span class="font-mono text-sm min-w-0 flex-1 break-all">${v}</span>
         </div>`)}
       </div>

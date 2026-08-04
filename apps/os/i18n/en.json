@@ -2,7 +2,6 @@
   "title": "microspec OS",
   "profTagline": "What this device lets an app do",
   "tabCaps": "Capabilities",
-  "tabProbes": "Probes",
   "tabReport": "Report",
   "tabMe": "Settings",
   "bridgeOn": "Shell bridge connected",
@@ -23,7 +22,6 @@
   "stStale": "App too old",
   "noPerm": "No permission needed",
   "run": "Run",
-  "probesTitle": "Run it for real",
   "probeNoteTitle": "microspec OS",
   "probeNoteBody": "A notification posted from the shell.",
   "probeAlarmTitle": "Probe alarm",
@@ -41,5 +39,8 @@
   "installDesc": "Works offline, opens like an app",
   "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
   "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
-  "close": "Close"
+  "close": "Close",
+  "runAll": "Run all",
+  "ranAll": "Checklist complete",
+  "noProbe": "no probe"
 }

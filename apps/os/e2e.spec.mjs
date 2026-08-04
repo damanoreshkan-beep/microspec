@@ -15,7 +15,6 @@ export default [
   },
   {
     name: "probe: running an action records a result and a duration", run: async (h) => {
-      await h.click('[data-tab="probes"]'); await h.wait(150);
       await h.click('[data-run="alarm.set"]'); await h.wait(250);
       const out = (await h.text('[data-result="alarm.set"]')).trim();
       h.expect(out.length > 0, "проба не записала результат");
@@ -23,6 +22,15 @@ export default [
       h.expect(/exact|inexact/i.test(out), `результат не повідомляє точність: ${out}`);
       await h.click('[data-run="alarm.list"]'); await h.wait(250);
       h.expect((await h.text('[data-result="alarm.list"]')).trim().length > 0, "alarm.list без результату");
+    },
+  },
+  {
+    name: "run all: one press walks the whole checklist and tallies it", run: async (h) => {
+      await h.click("#run-all"); await h.wait(900);
+      const tally = (await h.text("[data-tally]")).trim();
+      h.expect(/\d+\s*\/\s*\d+/.test(tally), `лічильник не показує прогін: ${tally}`);
+      const results = await h.count("[data-result]");
+      h.expect(results >= 6, `очікував результат на кожну дію, знайшов ${results}`);
     },
   },
   {
@@ -38,9 +46,9 @@ export default [
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);
-      h.expect(/Capabilities|Probes|Language/i.test(await h.bodyText()), "не EN");
+      h.expect(/Capabilities|Report|Language/i.test(await h.bodyText()), "не EN");
       await h.click('[data-loc="uk"]'); await h.wait(250);
-      h.expect(/Можливості|Проби|Мова/.test(await h.bodyText()), "не UA");
+      h.expect(/Можливості|Звіт|Мова/.test(await h.bodyText()), "не UA");
     },
   },
   {

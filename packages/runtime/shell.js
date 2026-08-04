@@ -97,6 +97,28 @@ export const shell = {
   /** The catalogue entry (capability, android permissions, summary) — for the permissions screen. */
   action(id) { return ACTIONS[id] || null; },
 
+  /**
+   * Is a whole CAPABILITY usable here? The permissions screen asks about "notifications", not about
+   * notify.show — a user does not grant a method. True when the bridge can run at least one of its
+   * actions; `whyCapability` says which of the three reasons it cannot.
+   */
+  hasCapability(cap) { return shell.actions.some((id) => ACTIONS[id].capability === cap && shell.has(id)); },
+
+  whyCapability(cap) {
+    const ids = shell.actions.filter((id) => ACTIONS[id].capability === cap);
+    if (!ids.length) return ERR.unsupported;                    // nothing in the catalogue claims it
+    if (ids.some((id) => shell.has(id))) return "";
+    // Every action exists but none runs: either there is no bridge, or this shell predates them.
+    return ids.some((id) => shell.why(id) === ERR.staleBridge) ? ERR.staleBridge : ERR.unsupported;
+  },
+
+  /** Android permissions a capability depends on, deduped — what a row shows under its name. */
+  androidFor(cap) {
+    const out = new Set();
+    for (const id of shell.actions) if (ACTIONS[id].capability === cap) for (const p of ACTIONS[id].android) out.add(p);
+    return [...out];
+  },
+
   /** Request/response. Rejects with a ShellError whose `code` is one of ERR.*. */
   call(id, args) {
     const a = ACTIONS[id];

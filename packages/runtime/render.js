@@ -11,7 +11,7 @@ import { buildApk, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
 import { gate } from "./gate.js";
 import { SHEET_BOX } from "./ui.js";
 import { CORE, BUILD, appVersion } from "./version.js";
-import { PERMISSIONS, permLabels } from "./permissions.js";
+import { PERMISSIONS, GROUPS, permLabels, permState, permRequest, permAndroid } from "./permissions.js";
 import { tr, warm, trTick, CONTENT_LANG } from "./translate.js";
 import { Scramble, Pixels, useReveal } from "./skeleton.js";
 import { enrich, warmMeta, metaTick } from "./enrich.js";
@@ -455,7 +455,7 @@ function PermissionsScreen() {
   const loc = useStore(A.S.locale), L = permLabels(loc);
   const keys = (A.spec.profile?.permissions || []).filter((k) => PERMISSIONS[k]);
   const [states, setStates] = useState({});
-  const refresh = async () => { const s = {}; for (const k of keys) s[k] = await PERMISSIONS[k].query(); setStates(s); };
+  const refresh = async () => { const s = {}; for (const k of keys) s[k] = await permState(k); setStates(s); };
   useEffect(() => {
     refresh();
     const subs = [];
@@ -464,9 +464,15 @@ function PermissionsScreen() {
   }, []);
   const toggle = async (k, st) => {
     if (st === "granted") { A.toast(L.revokeHint); return; }               // can't revoke from script
-    const r = await PERMISSIONS[k].request();                              // native prompt (only fires from "prompt")
-    setStates((s) => ({ ...s, [k]: r }));
+    if (st === "needsApp") { A.toast(L.needsAppHint); return; }            // no prompt exists to fire
+    if (st === "staleApp") { A.toast(L.staleAppHint); return; }
+    const r = await permRequest(k);                                        // native prompt (only fires from "prompt")
+    setStates((s) => ({ ...s, [k]: { state: r, via: "browser" } }));
   };
+  // Grouped, because a flat registry becomes a wall as capabilities land. An empty group renders nothing,
+  // so this reads as a short list today and as five sections once the radios arrive.
+  const grouped = GROUPS.map((g) => [g, keys.filter((k) => PERMISSIONS[k].group === g)]).filter(([, ks]) => ks.length);
+  const GROUP_LABEL = { sense: L.gSense, media: L.gMedia, background: L.gBackground, radios: L.gRadios, system: L.gSystem };
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
     <header class="navbar bg-base-100 sf-e2 sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
       <button id="perms-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${L.back} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
@@ -474,16 +480,31 @@ function PermissionsScreen() {
     </header>
     <div class="px-4 pt-3 pb-8 flex flex-col gap-2 max-w-xl mx-auto">
       <p class="text-sm text-muted px-1 mb-1">${L.intro}</p>
-      ${keys.map((k) => { const st = states[k] || "unknown", on = st === "granted", off = st === "unsupported"; return html`<${Fragment} key=${k}>
-        <div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">
-          ${Icon(PERMISSIONS[k].icon, "text-xl")}
-          <span class="flex-1 min-w-0 truncate font-medium">${L[k]}</span>
-          ${off ? html`<span class="text-xs text-base-content/50">${L.unsupported}</span>`
-            : st === "denied" ? html`<span class="badge badge-error badge-sm">${L.denied}</span>`
-            : html`<input id=${"perm-" + k} type="checkbox" class="toggle toggle-primary" checked=${on} aria-label=${L[k]} onChange=${() => toggle(k, st)} />`}
-        </div></div>
-        ${st === "denied" ? html`<div class="text-xs text-muted px-2 -mt-1 flex items-start gap-1.5">${Icon("lucide:info", "mt-0.5 shrink-0")}${L.deniedHint}</div>` : null}
-      </${Fragment}>`; })}
+      ${grouped.map(([g, ks]) => html`<${Fragment} key=${g}>
+        <div class="px-2 pt-2 pb-0.5 text-xs font-semibold tracking-wide text-base-content/55">${GROUP_LABEL[g]}</div>
+        ${ks.map((k) => {
+          const st = states[k]?.state || "unknown", via = states[k]?.via || "";
+          const on = st === "granted", off = st === "unsupported";
+          const android = via === "shell" ? permAndroid(k) : [];
+          return html`<${Fragment} key=${k}>
+            <div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">
+              ${Icon(PERMISSIONS[k].icon, "text-xl")}
+              <div class="flex-1 min-w-0">
+                <div class="truncate font-medium">${L[k]}</div>
+                ${android.length ? html`<div class="font-mono text-[11px] text-base-content/45 truncate">${android.join(" · ")}</div>` : null}
+              </div>
+              ${off ? html`<span class="text-xs text-base-content/50">${L.unsupported}</span>`
+                : st === "denied" ? html`<span class="badge badge-error badge-sm">${L.denied}</span>`
+                : st === "needsApp" ? html`<span data-needs-app class="badge badge-ghost badge-sm">${L.needsApp}</span>`
+                : st === "staleApp" ? html`<span class="badge badge-warning badge-sm">${L.staleApp}</span>`
+                : html`<input id=${"perm-" + k} type="checkbox" class="toggle toggle-primary" checked=${on} aria-label=${L[k]} onChange=${() => toggle(k, st)} />`}
+            </div></div>
+            ${st === "denied" ? html`<div class="text-xs text-muted px-2 -mt-1 flex items-start gap-1.5">${Icon("lucide:info", "mt-0.5 shrink-0")}${L.deniedHint}</div>` : null}
+            ${st === "needsApp" ? html`<div class="text-xs text-muted px-2 -mt-1 flex items-start gap-1.5">${Icon("lucide:smartphone", "mt-0.5 shrink-0")}${L.needsAppHint}</div>` : null}
+            ${st === "staleApp" ? html`<div class="text-xs text-muted px-2 -mt-1 flex items-start gap-1.5">${Icon("lucide:download", "mt-0.5 shrink-0")}${L.staleAppHint}</div>` : null}
+          </${Fragment}>`;
+        })}
+      </${Fragment}>`)}
     </div>
   </div>`;
 }

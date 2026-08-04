@@ -461,7 +461,7 @@ export function radar({ S, t, toast }) {
         ${Icon(scanning ? "lucide:square" : "lucide:radar")}<span>${T(t, scanning ? "radarStop" : "radarStart")}</span>
       </button>
       ${held && shell.present ? html`<div data-ble-perms class="flex flex-wrap gap-x-3 gap-y-1 pt-2 font-mono text-[11px]">
-        ${shell.androidFor("ble").map((p) => html`<span key=${p} class=${held[p] ? "text-success" : "text-error"}>${held[p] ? "+" : "−"} ${p}</span>`)}
+        ${shell.androidFor("ble").filter((p) => p in held).map((p) => html`<span key=${p} class=${held[p] ? "text-success" : "text-error"}>${held[p] ? "+" : "−"} ${p}</span>`)}
         ${locOn === false ? html`<span class="text-error">− LOCATION SERVICES</span>` : null}
         <span class=${started ? "text-success" : "text-error"}>${started ? "+" : "−"} STARTED</span>
         <span class="text-muted">rx ${events}</span>

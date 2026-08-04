@@ -493,11 +493,13 @@ function PermissionsScreen() {
                 <div class="truncate font-medium">${L[k]}</div>
                 ${android.length ? html`<div class="font-mono text-[11px] text-base-content/45 truncate">${android.join(" · ")}</div>` : null}
               </div>
-              ${off ? html`<span class="text-xs text-base-content/50">${L.unsupported}</span>`
-                : st === "denied" ? html`<span class="badge badge-error badge-sm">${L.denied}</span>`
-                : st === "needsApp" ? html`<span data-needs-app class="badge badge-ghost badge-sm">${L.needsApp}</span>`
-                : st === "staleApp" ? html`<span class="badge badge-warning badge-sm">${L.staleApp}</span>`
-                : html`<input id=${"perm-" + k} type="checkbox" class="toggle toggle-primary" checked=${on} aria-label=${L[k]} onChange=${() => toggle(k, st)} />`}
+              <!-- shrink-0 on every one of them: the name block is flex-1, and without it the control is
+                   squeezed to a sliver against the card edge (which is exactly how it shipped for one shot). -->
+              ${off ? html`<span class="text-xs text-base-content/50 shrink-0">${L.unsupported}</span>`
+                : st === "denied" ? html`<span class="badge badge-error badge-sm shrink-0">${L.denied}</span>`
+                : st === "needsApp" ? html`<span data-needs-app class="badge badge-ghost badge-sm shrink-0">${L.needsApp}</span>`
+                : st === "staleApp" ? html`<span class="badge badge-warning badge-sm shrink-0">${L.staleApp}</span>`
+                : html`<input id=${"perm-" + k} type="checkbox" class="toggle toggle-primary shrink-0" checked=${on} aria-label=${L[k]} onChange=${() => toggle(k, st)} />`}
             </div></div>
             ${st === "denied" ? html`<div class="text-xs text-muted px-2 -mt-1 flex items-start gap-1.5">${Icon("lucide:info", "mt-0.5 shrink-0")}${L.deniedHint}</div>` : null}
             ${st === "needsApp" ? html`<div class="text-xs text-muted px-2 -mt-1 flex items-start gap-1.5">${Icon("lucide:smartphone", "mt-0.5 shrink-0")}${L.needsAppHint}</div>` : null}

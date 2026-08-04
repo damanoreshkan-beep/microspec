@@ -52,18 +52,23 @@ let seq = 0;
 const pending = new Map();
 
 // Native replies land as one event carrying {id, ok, value, code, detail}; correlate and settle.
+function deliver(msg) {
+  const entry = msg && pending.get(msg.id);
+  if (!entry) return;
+  if (msg.stream) { entry.onEvent?.(msg.value); return; }     // subscribe: many values, never settles
+  pending.delete(msg.id);
+  if (msg.ok) entry.resolve(msg.value);
+  else entry.reject(new ShellError(msg.code || ERR.failed, msg.detail));
+}
+
 function listen() {
   if (typeof window === "undefined" || listen.done) return;
   listen.done = true;
-  window.addEventListener("msShell:reply", (e) => {
-    const msg = e && e.detail;
-    const entry = msg && pending.get(msg.id);
-    if (!entry) return;
-    if (msg.stream) { entry.onEvent?.(msg.value); return; }   // subscribe: many values, never settles
-    pending.delete(msg.id);
-    if (msg.ok) entry.resolve(msg.value);
-    else entry.reject(new ShellError(msg.code || ERR.failed, msg.detail));
-  });
+  // A DIRECT function, not only an event. The shell logged every frame as sent — ack, started, dozens of
+  // devices, subs=1, web=true — and not one arrived, which leaves the event dispatch itself as the only
+  // suspect. A plain call has nothing in between to lose it.
+  window.__msShellReply = deliver;
+  window.addEventListener("msShell:reply", (e) => deliver(e && e.detail));   // kept for older shells
 }
 
 export const shell = {

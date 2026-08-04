@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 2,
+  "bridgeVersion": 3,
   "actions": [
     {
       "id": "system.info",
@@ -349,6 +349,173 @@
       },
       "mock": {
         "started": true
+      }
+    },
+    {
+      "id": "bg.start",
+      "capability": "background",
+      "kind": "call",
+      "minBridge": 3,
+      "android": [
+        "FOREGROUND_SERVICE",
+        "POST_NOTIFICATIONS"
+      ],
+      "summary": "Start a foreground service so work survives the screen going off. Android requires a persistent notification for it — that is the deal, and the user can always see what is running.",
+      "args": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "location": {
+            "type": "boolean",
+            "description": "Also stream positions while it runs — needs background location."
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "running"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "running": {
+            "type": "boolean"
+          }
+        }
+      },
+      "mock": {
+        "running": true
+      }
+    },
+    {
+      "id": "bg.stop",
+      "capability": "background",
+      "kind": "call",
+      "minBridge": 3,
+      "android": [
+        "FOREGROUND_SERVICE"
+      ],
+      "summary": "Stop it. Nothing here holds a wakelock past this call.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "running"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "running": {
+            "type": "boolean"
+          }
+        }
+      },
+      "mock": {
+        "running": false
+      }
+    },
+    {
+      "id": "bg.status",
+      "capability": "background",
+      "kind": "call",
+      "minBridge": 3,
+      "android": [],
+      "summary": "Is it running, and since when — the shell owns this, so a reloaded page rediscovers it.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "running"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "running": {
+            "type": "boolean"
+          },
+          "since": {
+            "type": "integer"
+          },
+          "fixes": {
+            "type": "integer"
+          }
+        }
+      },
+      "mock": {
+        "running": true,
+        "since": 1893479400000,
+        "fixes": 12
+      }
+    },
+    {
+      "id": "location.watch",
+      "capability": "location",
+      "kind": "subscribe",
+      "minBridge": 3,
+      "android": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "summary": "Positions while the app is closed. The web geolocation API stops the moment the page is backgrounded; this does not, which is the whole point.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "minMs": {
+            "type": "integer",
+            "description": "Minimum gap between fixes."
+          },
+          "minM": {
+            "type": "number",
+            "description": "Minimum movement, metres."
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "lat": {
+            "type": "number"
+          },
+          "lon": {
+            "type": "number"
+          },
+          "acc": {
+            "type": "number"
+          },
+          "at": {
+            "type": "integer"
+          }
+        }
+      },
+      "mock": {
+        "lat": 50.4501,
+        "lon": 30.5234,
+        "acc": 12.5,
+        "at": 1893479400000
       }
     }
   ]

@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 2;
+export const CATALOGUE_BRIDGE = 3;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -85,6 +85,55 @@ export const ACTIONS = {
     ],
     "mock": {
       "started": true
+    }
+  },
+  "bg.start": {
+    "capability": "background",
+    "kind": "call",
+    "minBridge": 3,
+    "android": [
+      "FOREGROUND_SERVICE",
+      "POST_NOTIFICATIONS"
+    ],
+    "mock": {
+      "running": true
+    }
+  },
+  "bg.stop": {
+    "capability": "background",
+    "kind": "call",
+    "minBridge": 3,
+    "android": [
+      "FOREGROUND_SERVICE"
+    ],
+    "mock": {
+      "running": false
+    }
+  },
+  "bg.status": {
+    "capability": "background",
+    "kind": "call",
+    "minBridge": 3,
+    "android": [],
+    "mock": {
+      "running": true,
+      "since": 1893479400000,
+      "fixes": 12
+    }
+  },
+  "location.watch": {
+    "capability": "location",
+    "kind": "subscribe",
+    "minBridge": 3,
+    "android": [
+      "ACCESS_FINE_LOCATION",
+      "ACCESS_BACKGROUND_LOCATION"
+    ],
+    "mock": {
+      "lat": 50.4501,
+      "lon": 30.5234,
+      "acc": 12.5,
+      "at": 1893479400000
     }
   }
 };

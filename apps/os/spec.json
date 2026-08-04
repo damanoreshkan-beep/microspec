@@ -40,8 +40,10 @@
     "install": true,
     "permissions": [
       "geolocation",
+      "backgroundLocation",
       "notifications",
       "alarm",
+      "background",
       "motion",
       "camera",
       "microphone"

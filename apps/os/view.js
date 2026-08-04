@@ -14,7 +14,7 @@
 // Chromium — an empty screen would make the shot meaningless and hide a broken row.
 import { html } from "htm/preact";
 import { Fragment } from "preact";
-import { useState } from "preact/hooks";
+import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
@@ -131,7 +131,7 @@ export function caps({ S, t, toast }) {
     toast?.(T(t, "ranAll"));
   };
 
-  return html`<div class="flex flex-col gap-3 pt-1 pb-6">
+  return html`<div class="flex flex-col gap-3 pt-1">
     <div data-bridge class="flex flex-col gap-3 rounded-[var(--ms-r)] sf-raised sf-e2 p-4">
       <div class="flex items-center gap-3">
         <span class=${`size-2.5 rounded-full shrink-0 ${present ? "bg-success" : "bg-base-content/25"}`} aria-hidden="true"></span>
@@ -173,6 +173,9 @@ export function report({ t, toast }) {
     try { setInfo(await shell.call("system.info", {})); setErr(null); }
     catch (e) { setErr(e?.code || ERR.failed); setInfo(null); }
   };
+  // Read on open. A report that greets you with five em-dashes and a button is asking the user to press
+  // something to see the obvious; the button stays, for re-reading after a probe changed something.
+  useEffect(() => { load(); }, []);
 
   const lines = () => {
     const rows = [
@@ -193,7 +196,7 @@ export function report({ t, toast }) {
     try { await navigator.clipboard.writeText(text); toast?.(T(t, "copied")); } catch { toast?.(T(t, "copyFail")); }
   };
 
-  return html`<div class="flex flex-col gap-3 pt-1 pb-6">
+  return html`<div class="flex flex-col gap-3 pt-1">
     <${Panel} title=${T(t, "reportTitle")}>
       <div data-report class="flex flex-col">
         ${lines().map(([k, v]) => html`<div key=${k} class="flex items-baseline gap-3 py-1.5 border-b border-base-content/10 last:border-0">

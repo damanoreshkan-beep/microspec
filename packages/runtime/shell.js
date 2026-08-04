@@ -23,7 +23,10 @@ const native = () => (typeof window === "undefined" ? null : window.__msShell ||
 function bridgeVersion() {
   if (gate) return CATALOGUE_BRIDGE;
   const n = native();
-  const v = n && Number(n.version);
+  if (!n) return 0;
+  let v;
+  try { v = typeof n.version === "function" ? n.version() : n.version; } catch { return 0; }
+  v = Number(v);
   return Number.isFinite(v) && v > 0 ? v : 0;
 }
 

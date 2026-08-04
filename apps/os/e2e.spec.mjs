@@ -83,6 +83,7 @@ export default [
   },
   {
     name: "files: the tile opens the explorer, and a file opens its preview", run: async (h) => {
+      await h.click('[data-tab="caps"]'); await h.wait(150);
       h.expect((await h.count('[data-perm="files"]')) === 1, "немає плитки Файлів");
       await h.click('[data-perm="files"]'); await h.wait(400);
       const seen = `launcher=${await h.count("[data-launcher]")} roots=${await h.count("[data-fs-roots]")} `
@@ -104,6 +105,7 @@ export default [
   },
   {
     name: "routing: Back walks out of the explorer to the launcher", run: async (h) => {
+      await h.click('[data-tab="caps"]'); await h.wait(150);
       await h.click('[data-perm="files"]'); await h.wait(300);
       h.expect((await h.count("[data-launcher]")) === 0, "провідник не зайняв екран");
       await h.back(); await h.wait(300);

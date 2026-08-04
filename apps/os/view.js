@@ -114,43 +114,32 @@ function Launcher({ loc, t, toast }) {
 
   // Grouped the way a home screen is: sections, not a wall. An empty group renders nothing, so the grid
   // grows itself as capabilities land rather than needing a layout decision each time.
-  const grouped = GROUPS.map((g) => [g, keys.filter((k) => PERMISSIONS[k].group === g)]).filter(([, ks]) => ks.length);
-  const GROUP_LABEL = { sense: L.gSense, media: L.gMedia, background: L.gBackground, radios: L.gRadios, system: L.gSystem };
+  const ordered = GROUPS.flatMap((g) => keys.filter((k) => PERMISSIONS[k].group === g));
 
+  // ONE grid, no section headings: with seven icons the groups left two of four columns empty in every
+  // row, which reads as a broken layout rather than a home screen. A launcher groups into folders once it
+  // has enough to fill them; until then the registry order carries the grouping on its own.
   return html`<${Panel} title=${L.title}>
-    <div data-launcher class="flex flex-col gap-4 pt-1">
-      <!-- The store is where the apps of this OS come from, so on a home screen it is simply another
-           icon. A relative href keeps it same-origin, which is also what keeps the bridge alive. -->
-      <div>
-        <div class="text-[11px] font-semibold tracking-wide text-base-content/55 pb-2">${T(t, "gApps")}</div>
-        <div class="grid grid-cols-4 @min-[520px]:grid-cols-6 gap-x-2 gap-y-4">
-          <a data-store href="../store/" class="flex flex-col items-center gap-1.5 min-w-0">
-            <span class="grid place-items-center aspect-square w-full max-w-[3.5rem] rounded-[var(--ms-r-in)] sf-raised sf-e2">
-              ${Icon("lucide:layout-grid", "text-xl text-primary")}
-            </span>
-            <span class="text-[11px] leading-tight text-center line-clamp-2 text-base-content/80">${T(t, "storeTile")}</span>
-          </a>
-        </div>
-      </div>
-
-      ${grouped.map(([g, ks]) => html`<div key=${g}>
-        <div class="text-[11px] font-semibold tracking-wide text-base-content/55 pb-2">${GROUP_LABEL[g]}</div>
-        <div class="grid grid-cols-4 @min-[520px]:grid-cols-6 gap-x-2 gap-y-4">
-          ${ks.map((k) => {
-            const st = states[k] || "unknown";
-            const dim = st === "needsApp" || st === "unsupported";
-            return html`<button key=${k} data-perm=${k} data-state=${st} onClick=${() => tap(k)}
-                class="flex flex-col items-center gap-1.5 min-w-0 transition-opacity"
-                aria-label=${`${L[k]} — ${L[st] || st}`}>
-              <span class=${`relative grid place-items-center aspect-square w-full max-w-[3.5rem] rounded-[var(--ms-r-in)] sf-raised sf-e2 ${dim ? "opacity-45" : ""}`}>
-                ${Icon(PERMISSIONS[k].icon, "text-xl text-base-content")}
-                ${TILE_DOT[st] ? html`<span class=${`absolute -top-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-base-100 ${TILE_DOT[st]}`} aria-hidden="true"></span>` : null}
-              </span>
-              <span class=${`text-[11px] leading-tight text-center line-clamp-2 ${dim ? "text-base-content/50" : "text-base-content/80"}`}>${L[k]}</span>
-            </button>`;
-          })}
-        </div>
-      </div>`)}
+    <div data-launcher class="grid grid-cols-4 @min-[520px]:grid-cols-6 gap-x-3 gap-y-4 pt-2">
+      <a data-store href="../store/" class="flex flex-col items-center gap-1.5 min-w-0">
+        <span class="grid place-items-center aspect-square w-full rounded-[var(--ms-r-in)] sf-raised sf-e2">
+          ${Icon("lucide:layout-grid", "text-2xl text-primary")}
+        </span>
+        <span class="text-[11px] leading-tight text-center line-clamp-2 text-base-content/80">${T(t, "storeTile")}</span>
+      </a>
+      ${ordered.map((k) => {
+        const st = states[k] || "unknown";
+        const dim = st === "needsApp" || st === "unsupported";
+        return html`<button key=${k} data-perm=${k} data-state=${st} onClick=${() => tap(k)}
+            class="flex flex-col items-center gap-1.5 min-w-0 transition-opacity"
+            aria-label=${`${L[k]} — ${L[st] || st}`}>
+          <span class=${`relative grid place-items-center aspect-square w-full rounded-[var(--ms-r-in)] sf-raised sf-e2 ${dim ? "opacity-45" : ""}`}>
+            ${Icon(PERMISSIONS[k].icon, "text-2xl text-base-content")}
+            ${TILE_DOT[st] ? html`<span class=${`absolute -top-1 -right-1 size-2.5 rounded-full ring-2 ring-base-100 ${TILE_DOT[st]}`} aria-hidden="true"></span>` : null}
+          </span>
+          <span class=${`text-[11px] leading-tight text-center line-clamp-2 ${dim ? "text-base-content/50" : "text-base-content/80"}`}>${L[k]}</span>
+        </button>`;
+      })}
     </div>
   <//>`;
 }

@@ -465,6 +465,10 @@ export function radar({ S, t, toast }) {
         ${locOn === false ? html`<span class="text-error">− LOCATION SERVICES</span>` : null}
         <span class=${started ? "text-success" : "text-error"}>${started ? "+" : "−"} STARTED</span>
         <span class="text-muted">rx ${events}</span>
+        <!-- The reason belongs NEXT TO the fact it explains. On its own line below it was missed twice,
+             which left "no error was shown" and "no error happened" indistinguishable — the one
+             distinction this whole diagnostic exists to make. -->
+        ${err ? html`<span data-radar-reason class="text-error break-all">${String(err)}</span>` : null}
       </div>` : null}
       ${why ? html`<div class="pt-2 text-sm text-muted">${why === ERR.staleBridge ? T(t, "stStale") : T(t, "stNone")}</div>`
         : err ? html`<div data-radar-err class="pt-2 text-sm text-error">${

@@ -8,7 +8,7 @@ import { Panel } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { shell, ERR } from "/_rt/shell.js";
 import { buildApk, apkFilename } from "/_rt/apk.js";
-import { PERMISSIONS, GROUPS, permLabels, permState, permRequest, refreshHeld } from "/_rt/permissions.js";
+import { PERMISSIONS, GROUPS, permLabels, permState, permRequest, refreshHeld, heldPermissions } from "/_rt/permissions.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -320,13 +320,16 @@ export function radar({ S, t, toast }) {
   const [devices, setDevices] = useState(() => (gate ? GATE_DEVICES.map((d) => ({ ...d, at: Date.now() })) : []));
   const [scanning, setScanning] = useState(gate);
   const [err, setErr] = useState(null);
+  const [held, setHeld] = useState(null);
+  const [events, setEvents] = useState(0);
   const stopRef = useRef(null);
+  useEffect(() => { refreshHeld().then(() => setHeld(heldPermissions())); }, []);
   const why = shell.whyCapability("ble");
 
-  const upsert = (d) => setDevices((prev) => {
+  const upsert = (d) => { setEvents((n) => n + 1); setDevices((prev) => {
     const rest = prev.filter((x) => x.addr !== d.addr);
     return [...rest, { ...d, at: Date.now() }].sort((a, b) => b.rssi - a.rssi);
-  });
+  }); };
 
   const start = () => {
     if (scanning || why) return;
@@ -374,6 +377,10 @@ export function radar({ S, t, toast }) {
           disabled=${!!why} data-scanning=${scanning} onClick=${() => (scanning ? stop() : start())}>
         ${Icon(scanning ? "lucide:square" : "lucide:radar")}<span>${T(t, scanning ? "radarStop" : "radarStart")}</span>
       </button>
+      ${held && shell.present ? html`<div data-ble-perms class="flex flex-wrap gap-x-3 gap-y-1 pt-2 font-mono text-[11px]">
+        ${shell.androidFor("ble").map((p) => html`<span key=${p} class=${held[p] ? "text-success" : "text-error"}>${held[p] ? "+" : "−"} ${p}</span>`)}
+        <span class="text-muted">rx ${events}</span>
+      </div>` : null}
       ${why ? html`<div class="pt-2 text-sm text-muted">${why === ERR.staleBridge ? T(t, "stStale") : T(t, "stNone")}</div>`
         : err ? html`<div data-radar-err class="pt-2 text-sm text-error">${err === ERR.denied ? T(t, "radarDenied") : err === ERR.unavailable ? T(t, "radarOff") : err}</div>` : null}
     <//>

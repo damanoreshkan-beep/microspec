@@ -503,12 +503,16 @@ export function radar({ S, t, toast }) {
 export function report({ S, t, toast }) {
   const loc = useStore(S.locale);
   const runs = useStore($runs);
+  const [logs, setLogs] = useState([]);
   const [info, setInfo] = useState(null);
   const [err, setErr] = useState(null);
 
   const load = async () => {
     try { setInfo(await shell.call("system.info", {})); setErr(null); }
     catch (e) { setErr(e?.code || ERR.failed); setInfo(null); }
+    // What the bridge DID, not just what it returned. Copy takes it along, so one paste carries the
+    // whole chain instead of one bit per reinstall.
+    try { setLogs((await shell.call("system.logs", {})).lines || []); } catch { setLogs([]); }
   };
   // Read on open. A report that greets you with five em-dashes and a button is asking the user to press
   // something to see the obvious; the button stays, for re-reading after a probe changed something.
@@ -530,6 +534,7 @@ export function report({ S, t, toast }) {
       ["missing", info?.missing?.length ? info.missing.join(",") : "—"],
     ];
     for (const [id, r] of Object.entries(runs)) rows.push([id, `${r.ok ? "ok" : "fail"} ${r.text} (${r.ms}ms)`]);
+    for (const line of logs) rows.push(["log", line]);
     return rows;
   };
 

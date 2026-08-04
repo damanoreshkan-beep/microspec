@@ -29,6 +29,14 @@ export default [
     },
   },
   {
+    name: "launcher: every permission is a tile, and a tile carries its state", run: async (h) => {
+      const tiles = await h.count("[data-perm]");
+      h.expect(tiles >= 6, `очікував плитку на кожен дозвіл реєстру, знайшов ${tiles}`);
+      const st = await h.prop("[data-perm=\"alarm\"]", "dataset");
+      h.expect(st && typeof st.state === "string" && st.state.length > 0, "плитка без стану");
+    },
+  },
+  {
     name: "alarms: the shell owns the list, and scheduling reads it back", run: async (h) => {
       await h.click('[data-tab="alarms"]'); await h.wait(250);
       h.expect((await h.count("[data-alarm]")) >= 1, "список запланованого порожній під гейтом");

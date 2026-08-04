@@ -67,5 +67,7 @@
   "radarSeen": "Поруч",
   "radarUnnamed": "Без назви",
   "radarDenied": "Для сканування потрібен дозвіл на локацію",
-  "radarOff": "Bluetooth вимкнено"
+  "radarOff": "Bluetooth вимкнено",
+  "radarTooOften": "Android тимчасово блокує сканування — зачекай ~30с",
+  "radarUnsupported": "Пристрій не вміє сканувати"
 }

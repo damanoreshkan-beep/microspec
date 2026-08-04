@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 10;
+export const CATALOGUE_BRIDGE = 11;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",

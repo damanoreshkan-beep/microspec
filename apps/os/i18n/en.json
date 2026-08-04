@@ -67,5 +67,7 @@
   "radarSeen": "In range",
   "radarUnnamed": "Unnamed device",
   "radarDenied": "Location permission is required to scan",
-  "radarOff": "Bluetooth is off"
+  "radarOff": "Bluetooth is off",
+  "radarTooOften": "Android is throttling scans — wait ~30s",
+  "radarUnsupported": "This device cannot scan"
 }

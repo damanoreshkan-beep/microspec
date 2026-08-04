@@ -33,18 +33,20 @@ function bridgeVersion() {
 let seq = 0;
 const pending = new Map();
 
+function deliver(msg) {
+  const entry = msg && pending.get(msg.id);
+  if (!entry) return;
+  if (msg.stream) { entry.onEvent?.(msg.value); return; }     
+  pending.delete(msg.id);
+  if (msg.ok) entry.resolve(msg.value);
+  else entry.reject(new ShellError(msg.code || ERR.failed, msg.detail));
+}
+
 function listen() {
   if (typeof window === "undefined" || listen.done) return;
   listen.done = true;
-  window.addEventListener("msShell:reply", (e) => {
-    const msg = e && e.detail;
-    const entry = msg && pending.get(msg.id);
-    if (!entry) return;
-    if (msg.stream) { entry.onEvent?.(msg.value); return; }   
-    pending.delete(msg.id);
-    if (msg.ok) entry.resolve(msg.value);
-    else entry.reject(new ShellError(msg.code || ERR.failed, msg.detail));
-  });
+  window.__msShellReply = deliver;
+  window.addEventListener("msShell:reply", (e) => deliver(e && e.detail));   
 }
 
 export const shell = {

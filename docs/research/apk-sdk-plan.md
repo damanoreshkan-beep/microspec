@@ -30,7 +30,24 @@ One real advantage of never publishing: **Play's policy restrictions do not appl
 call log, `QUERY_ALL_PACKAGES`, exact alarms — all of these are gated by *Play review*, not by the OS.
 We sideload, so the OS rules are the only rules.
 
-### 1.1 DECIDED: the widest OS-legal set
+### 1.1 REVERSED on a device (2026-08-04): declare what a phase implements
+
+**The widest OS-legal set is not an installable one.** Play Protect **blocks a sideloaded install
+outright** when the manifest declares `READ_SMS`/`RECEIVE_SMS` (with notification listener and
+accessibility, the four that payment fraud abuses — ~95% of such installs arrive by sideloading). SMS
+and `CALL_LOG` are additionally **hard-restricted**: past the installer they are never granted without
+installer allowlisting, and since Android 13 a sideloaded app is told the setting is unavailable. The
+owner hit this on the S25 before I did.
+
+So the rule is: **a permission arrives WITH the phase that implements it.** `full` now declares 18
+permissions — the normal tier, which costs nothing, plus what `notify` and `alarm` actually use;
+`ACCESS_BACKGROUND_LOCATION` waits for phase 5 and `READ_PHONE_STATE` for phase 6. SMS, call log,
+contacts, calendar, body sensors and activity recognition are gone. The runtime gates (lite default,
+origin lock, capability list) still carry the safety — they are now simply not carrying it alone.
+
+The superseded reasoning, kept because the trade-off it names is real:
+
+### 1.1a SUPERSEDED: the widest OS-legal set
 
 Since the manifest is baked at build time (binary, unpatchable per request — `system-bridge.md` §3),
 the `full` template declares **every normal and every dangerous permission the OS allows a sideloaded

@@ -32,8 +32,8 @@ export default [
     name: "launcher: every permission is a tile, and a tile carries its state", run: async (h) => {
       const tiles = await h.count("[data-perm]");
       h.expect(tiles >= 6, `очікував плитку на кожен дозвіл реєстру, знайшов ${tiles}`);
-      const st = await h.prop("[data-perm=\"alarm\"]", "dataset");
-      h.expect(st && typeof st.state === "string" && st.state.length > 0, "плитка без стану");
+      const stated = await h.count("[data-perm][data-state]");
+      h.expect(stated === tiles, `${tiles - stated} плитк(и) без стану`);
     },
   },
   {

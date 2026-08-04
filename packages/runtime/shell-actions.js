@@ -12,7 +12,11 @@ export const ACTIONS = {
       "sdk": 36,
       "release": "16",
       "model": "Gate Device",
-      "pkg": "apk.microspec.a0000000000000000"
+      "pkg": "apk.microspec.a0000000000000000",
+      "caps": "alarm,background,location,notify,system",
+      "version": "1.0",
+      "build": 1,
+      "installed": 1893479400000
     }
   },
   "notify.show": {

@@ -199,11 +199,14 @@ function Row({ id, t, loc }) {
       <div class="text-xs text-muted truncate">
         ${st === "none" ? T(t, "stNone") : st === "stale" ? T(t, "stStale") : a.android.length ? a.android.join(" · ") : T(t, "noPerm")}
       </div>
+      <!-- The result goes UNDER the name, across the full width. On the right it had ~8.5rem and
+           truncated anything real: a LAN URL, a permission name, an exception. A result you cannot read
+           is the same as no result — and this console exists to be read. -->
+      ${last ? html`<div class=${`mt-1 flex items-baseline gap-2 text-xs tabular-nums ${last.ok ? "text-base-content/80" : "text-error"}`}>
+        <span data-result=${id} class="font-mono break-all min-w-0">${last.text}</span>
+        <span class="text-base-content/45 shrink-0">${last.ms} ms</span>
+      </div>` : null}
     </div>
-    ${last ? html`<div class=${`text-xs text-right tabular-nums shrink-0 ${last.ok ? "text-base-content/80" : "text-error"}`}>
-      <div data-result=${id} class="font-mono truncate max-w-[8.5rem]">${last.text}</div>
-      <div class="text-base-content/45">${last.ms} ms</div>
-    </div>` : null}
     <button class="btn btn-sm btn-circle btn-ghost shrink-0" disabled=${busy || !PROBE[id]}
         data-run=${id} aria-label=${`${T(t, "run")} ${id}`} onClick=${press}>
       ${Icon(PROBE[id] ? "lucide:play" : "lucide:minus", "text-base")}

@@ -42,6 +42,8 @@ export default [
       // survive serialisation, so the previous version tested the bridge to the browser, not the app.
       const stated = await h.count("[data-perm][data-state]");
       h.expect(stated === tiles, `${tiles - stated} плитк(и) без стану`);
+      // The OS has a way back to where its apps come from.
+      h.expect((await h.count("[data-store]")) === 1, "немає плитки магазину");
     },
   },
   {

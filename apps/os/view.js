@@ -90,7 +90,7 @@ function summarise(id, v, loc) {
 // caption, because a grid that explains itself in words is a list wearing a costume.
 const TILE_DOT = { granted: "bg-success", denied: "bg-error", needsApp: "bg-base-content/30", staleApp: "bg-warning", prompt: "", unsupported: "", unknown: "" };
 
-function Launcher({ loc, toast }) {
+function Launcher({ loc, t, toast }) {
   const L = permLabels(loc);
   const [states, setStates] = useState({});
   const keys = Object.keys(PERMISSIONS);
@@ -119,6 +119,20 @@ function Launcher({ loc, toast }) {
 
   return html`<${Panel} title=${L.title}>
     <div data-launcher class="flex flex-col gap-4 pt-1">
+      <!-- The store is where the apps of this OS come from, so on a home screen it is simply another
+           icon. A relative href keeps it same-origin, which is also what keeps the bridge alive. -->
+      <div>
+        <div class="text-[11px] font-semibold tracking-wide text-base-content/55 pb-2">${T(t, "gApps")}</div>
+        <div class="grid grid-cols-4 @min-[520px]:grid-cols-6 gap-x-2 gap-y-4">
+          <a data-store href="../store/" class="flex flex-col items-center gap-1.5 min-w-0">
+            <span class="grid place-items-center aspect-square w-full max-w-[3.5rem] rounded-[var(--ms-r-in)] sf-raised sf-e2">
+              ${Icon("lucide:layout-grid", "text-xl text-primary")}
+            </span>
+            <span class="text-[11px] leading-tight text-center line-clamp-2 text-base-content/80">${T(t, "storeTile")}</span>
+          </a>
+        </div>
+      </div>
+
       ${grouped.map(([g, ks]) => html`<div key=${g}>
         <div class="text-[11px] font-semibold tracking-wide text-base-content/55 pb-2">${GROUP_LABEL[g]}</div>
         <div class="grid grid-cols-4 @min-[520px]:grid-cols-6 gap-x-2 gap-y-4">
@@ -235,7 +249,7 @@ export function caps({ S, t, toast }) {
       <span>${done}/${ids.length}</span>${failed ? html`<span class="text-error">${failed}</span>` : null}
     </div>` : null}
 
-    <${Launcher} loc=${loc} toast=${toast} />
+    <${Launcher} loc=${loc} t=${t} toast=${toast} />
 
     ${groups().map(([cap, ids2]) => html`<${Panel} key=${cap}>
       <div class="flex items-center gap-2 pb-1">

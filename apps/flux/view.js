@@ -12,6 +12,7 @@ import { CameraPrime } from "/_rt/camprime.js";
 import { motionCells, motionEnergy, centroidOf } from "/_rt/motion.js";
 import { createEngine, midiToFreq, filter } from "/_rt/audio.js";
 import { gate } from "/_rt/gate.js";
+import { downloadUrl } from "/_rt/apk.js";
 
 // C major pentatonic over two octaves — the vertical position of the movement picks a note, so it always
 // sounds musical. Top of frame = high.
@@ -116,7 +117,7 @@ export function flux({ S }) {
     try {
       const out = document.createElement("canvas"); out.width = c.width; out.height = c.height;
       const o = out.getContext("2d"); o.fillStyle = "#0a0a0f"; o.fillRect(0, 0, out.width, out.height); o.drawImage(c, 0, 0);
-      const a = document.createElement("a"); a.href = out.toDataURL("image/png"); a.download = "flux.png"; a.click();
+      downloadUrl(out.toDataURL("image/png"), "flux.png");
       S.toast?.(T(t, "toastSaved"));
     } catch { /* export blocked */ }
   };

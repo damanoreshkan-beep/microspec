@@ -15,6 +15,7 @@ import { QUALITY, DEFAULT, sizeFor, estimateSeconds } from "/_rt/imgsize.js";
 import { writeLastGen } from "/_rt/lastgen.js";
 import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
+import { downloadUrl } from "/_rt/apk.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -113,8 +114,7 @@ export function imagine({ S, toast }) {
   const save = () => {
     if (!result?.url) return;
     try {
-      const a = document.createElement("a"); a.href = result.url; a.download = `imagine-${result.seed}.jpg`;
-      document.body.appendChild(a); a.click(); a.remove();
+      downloadUrl(result.url, `imagine-${result.seed}.jpg`);
       toast?.(T(t, "saved"));
     } catch { toast?.(T(t, "eNetwork")); }
   };

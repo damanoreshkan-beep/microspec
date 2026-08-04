@@ -14,6 +14,7 @@ import { collection } from "/_rt/db.js";
 import { gate } from "/_rt/gate.js";
 import { Sheet, Island, Panel } from "/_rt/ui.js";
 import { SigilStage, draw2D, sigilToDataURL, immersionAvailable, enableImmersion, disableImmersion } from "./viz.js";
+import { downloadUrl } from "/_rt/apk.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const pKey = (k) => "p" + k[0].toUpperCase() + k.slice(1);
@@ -64,7 +65,7 @@ async function shareSigil(sig, t, toast) {
       const file = new File([blob], "sigil.png", { type: "image/png" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: T(t, "title") }); return; }
     } catch { /* fall through to download */ }
-    try { const a = document.createElement("a"); a.href = url; a.download = "sigil.png"; a.click(); return; } catch { /* */ }
+    try { await downloadUrl(url, "sigil.png"); return; } catch { /* */ }
   }
   toast && toast(T(t, "shareFail"));
 }

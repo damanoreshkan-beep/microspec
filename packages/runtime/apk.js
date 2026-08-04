@@ -91,6 +91,15 @@ export function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
+// downloadUrl(url, filename) — same contract as downloadBlob for a blob:/data: URL you already hold.
+// Anything that saves a file must come through here: a bare <a download> is silently dead in the shell,
+// and each app inventing its own anchor is how five of them ended up broken at once.
+export async function downloadUrl(url, filename) {
+  if (!url) return;
+  try { downloadBlob(await (await fetch(url)).blob(), filename); }
+  catch { /* revoked or unreadable — nothing to save */ }
+}
+
 // A safe .apk filename from a display name.
 export function apkFilename(name) {
   const base = (name || "app").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "app";

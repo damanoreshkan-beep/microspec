@@ -20,6 +20,7 @@ import { CameraPrime } from "/_rt/camprime.js";
 import { readLastGen } from "/_rt/lastgen.js";
 import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
+import { downloadUrl } from "/_rt/apk.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -201,8 +202,7 @@ export function retouch({ S, toast }) {
   const save = () => {
     const url = result?.url; if (!url) return;
     try {
-      const a = document.createElement("a"); a.href = url; a.download = `retouch-${Date.now()}.jpg`;
-      document.body.appendChild(a); a.click(); a.remove(); toast?.(T(t, "saved"));
+      downloadUrl(url, `retouch-${Date.now()}.jpg`); toast?.(T(t, "saved"));
     } catch { toast?.(T(t, "eNetwork")); }
   };
 

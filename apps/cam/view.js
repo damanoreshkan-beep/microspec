@@ -13,6 +13,7 @@ import { T } from "/_rt/i18n.js";
 import { Segmented } from "/_rt/ui.js";
 import { CameraPrime } from "/_rt/camprime.js";
 import { gate } from "/_rt/gate.js";
+import { downloadBlob } from "/_rt/apk.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -95,7 +96,7 @@ export function cam({ S }) {
         if (!blob) return; const url = URL.createObjectURL(blob); setShot((prev) => { if (prev) URL.revokeObjectURL(prev); return url; });
         const file = new File([blob], `cam-${Date.now()}.jpg`, { type: "image/jpeg" });
         if (navigator.canShare?.({ files: [file] })) { navigator.share({ files: [file] }).catch(() => {}); }
-        else { const a = document.createElement("a"); a.href = url; a.download = file.name; a.click(); S.toast?.(T(t, "aSaved")); }
+        else { downloadBlob(blob, file.name); S.toast?.(T(t, "aSaved")); }
       }, "image/jpeg", 0.92);
     } catch { /* capture blocked */ }
     setFlash(true); setTimeout(() => setFlash(false), 160);

@@ -141,6 +141,15 @@ export function start(spec, arg2) {
     if (n > depth) { const d = n - depth; depth = n; for (let i = 0; i < d; i++) history.pushState({ msOverlay: 1 }, ""); }  // a stack can grow by more than one
     else if (n < depth) { const d = depth - n; depth = n; if (history.state?.msOverlay) { selfBack++; history.go(-d); } } // closing via UI balances history
   });
+  // A sub-screen is ADDRESSABLE: ?screen=perms opens it on load. A screenshot service cannot tap, so
+  // until an overlay could be reached from the URL the eye could only ever review a landing page —
+  // exactly the gap ?detail= closed for drill-downs. Set after the listeners are wired, so the history
+  // entry is pushed by the same path a tap takes and Back stays balanced.
+  try {
+    const want = new URLSearchParams(location.search).get("screen");
+    if (want) S.screen.set(want);
+  } catch { /* no URL access — nothing to open */ }
+
   // Double-Back-to-exit at the app ROOT (TikTok-style). A persistent guard entry makes the first hardware/
   // browser Back at root catchable: we cancel it and warn, then allow a second Back within ~2s to leave.
   history.pushState({ msRoot: 1 }, "");

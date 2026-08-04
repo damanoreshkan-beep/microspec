@@ -9,7 +9,9 @@ catalogue, so that turning any farm PWA into a system-capable APK is routine rat
 **Non-goal:** a framework. No UI in Java, no state in Java, no per-app Android code. If an app needs
 Java written for it, the SDK has failed.
 
-**Status: nothing is implemented.** This document is the agreed shape and the work list.
+**Status (2026-08-04): phases 0–3 and the `os` console are shipped**; phases 4–8 are not. Every section
+below is the agreed shape, with the decisions and the measurements that changed them folded back in —
+see the phase table in §8 for what is done. **Nothing Java has been verified on a device yet.**
 
 ---
 

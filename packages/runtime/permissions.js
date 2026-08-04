@@ -83,6 +83,11 @@ export const PERMISSIONS = {
     group: "radios",
     capability: "usb",          // same for WebUSB
   },
+  server: {
+    icon: "lucide:server",
+    group: "system",
+    capability: "server",       // the phone as a station: a browser can be a client, never a server
+  },
   motion: {
     icon: "lucide:compass",
     group: "sense",
@@ -157,7 +162,7 @@ const L = {
   uk: {
     title: "Дозволи", row: "Дозволи", back: "Назад", intro: "Увімкни, щоб застосунок міг цим користуватись. Дозвіл питає сам браузер.",
     geolocation: "Геолокація", notifications: "Сповіщення", motion: "Рух і компас", camera: "Камера", microphone: "Мікрофон", alarm: "Будильники",
-    background: "Фонова робота", backgroundLocation: "Трек у фоні", wifi: "Wi-Fi", cell: "Мобільна мережа", ble: "Bluetooth", usb: "USB",
+    background: "Фонова робота", backgroundLocation: "Трек у фоні", wifi: "Wi-Fi", cell: "Мобільна мережа", ble: "Bluetooth", usb: "USB", server: "Сервер",
     gSense: "Довкола", gMedia: "Медіа", gBackground: "Фонова робота", gRadios: "Радіо і пристрої", gSystem: "Система",
     partial: "Частково", granted: "Дозволено", denied: "Заблоковано", unsupported: "Недоступно", needsApp: "Потрібен застосунок", staleApp: "Застосунок застарів",
     deniedHint: "Заблоковано. Увімкни в налаштуваннях браузера для цього сайту.",
@@ -168,7 +173,7 @@ const L = {
   en: {
     title: "Permissions", row: "Permissions", back: "Back", intro: "Enable so the app can use these. The browser itself asks.",
     geolocation: "Location", notifications: "Notifications", motion: "Motion & compass", camera: "Camera", microphone: "Microphone", alarm: "Alarms",
-    background: "Background work", backgroundLocation: "Background track", wifi: "Wi-Fi", cell: "Cellular", ble: "Bluetooth", usb: "USB",
+    background: "Background work", backgroundLocation: "Background track", wifi: "Wi-Fi", cell: "Cellular", ble: "Bluetooth", usb: "USB", server: "Server",
     gSense: "Around you", gMedia: "Media", gBackground: "Background work", gRadios: "Radios & devices", gSystem: "System",
     partial: "Partial", granted: "Allowed", denied: "Blocked", unsupported: "Unavailable", needsApp: "Needs the app", staleApp: "App too old",
     deniedHint: "Blocked. Enable it in your browser settings for this site.",

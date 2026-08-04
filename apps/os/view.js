@@ -60,6 +60,13 @@ const PROBE = {
   "ble.state": () => ({}),
   "usb.list": () => ({}),
   "system.logs": () => ({}),
+  // start, publish a page, read it back, stop — in catalogue order, so a run proves the station comes
+  // up AND goes away rather than leaving a socket listening after the checklist ends.
+  "server.start": () => ({ port: 8080 }),
+  "server.put": (t) => ({ path: "/", contentType: "text/html; charset=utf-8",
+    base64: btoa(unescape(encodeURIComponent(`<!doctype html><meta charset=utf-8><title>${T(t, "title")}</title><h1>${T(t, "title")}</h1>`))) }),
+  "server.status": () => ({}),
+  "server.stop": () => ({}),
   // ble.scan is a subscribe — no probe, same as location.watch.
   // location.watch is a subscribe, not a call — it has no probe by design; the row says so.
 };
@@ -103,6 +110,7 @@ function summarise(id, v, loc) {
   if (id === "ble.state") return v.supported ? (v.on ? "on" : "off") : "—";
   if (id === "usb.list") return `${(v.devices || []).length}`;
   if (id === "system.logs") return `${(v.lines || []).length}`;
+  if (id.startsWith("server.")) return v.url || (v.running === false ? "off" : v.path || String(v.running));
   if (v.id) return v.id;
   if ("ok" in v) return String(v.ok);
   return JSON.stringify(v);

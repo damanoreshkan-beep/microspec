@@ -131,7 +131,8 @@
               "wifi",
               "cell",
               "ble",
-              "usb"
+              "usb",
+              "server"
             ]
           }
         },

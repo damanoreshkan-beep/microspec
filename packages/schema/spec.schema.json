@@ -125,7 +125,9 @@
               "motion",
               "camera",
               "microphone",
-              "alarm"
+              "alarm",
+              "background",
+              "backgroundLocation"
             ]
           }
         },

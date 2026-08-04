@@ -44,6 +44,16 @@ export const PERMISSIONS = {
     group: "background",
     capability: "alarm",           // shell only: the web has had no local scheduled notification since
   },                               // Chrome abandoned Notification Triggers
+  background: {
+    icon: "lucide:activity",
+    group: "background",
+    capability: "background",   // shell only: a browser tab stops when the screen does
+  },
+  backgroundLocation: {
+    icon: "lucide:route",
+    group: "sense",
+    capability: "location",     // web geolocation dies when the page is backgrounded; this does not
+  },
   motion: {
     icon: "lucide:compass",
     group: "sense",
@@ -94,6 +104,7 @@ const L = {
   uk: {
     title: "Дозволи", row: "Дозволи", back: "Назад", intro: "Увімкни, щоб застосунок міг цим користуватись. Дозвіл питає сам браузер.",
     geolocation: "Геолокація", notifications: "Сповіщення", motion: "Рух і компас", camera: "Камера", microphone: "Мікрофон", alarm: "Будильники",
+    background: "Фонова робота", backgroundLocation: "Трек у фоні",
     gSense: "Довкола", gMedia: "Медіа", gBackground: "Фонова робота", gRadios: "Радіо і пристрої", gSystem: "Система",
     granted: "Дозволено", denied: "Заблоковано", unsupported: "Недоступно", needsApp: "Потрібен застосунок", staleApp: "Застосунок застарів",
     deniedHint: "Заблоковано. Увімкни в налаштуваннях браузера для цього сайту.",
@@ -104,6 +115,7 @@ const L = {
   en: {
     title: "Permissions", row: "Permissions", back: "Back", intro: "Enable so the app can use these. The browser itself asks.",
     geolocation: "Location", notifications: "Notifications", motion: "Motion & compass", camera: "Camera", microphone: "Microphone", alarm: "Alarms",
+    background: "Background work", backgroundLocation: "Background track",
     gSense: "Around you", gMedia: "Media", gBackground: "Background work", gRadios: "Radios & devices", gSystem: "System",
     granted: "Allowed", denied: "Blocked", unsupported: "Unavailable", needsApp: "Needs the app", staleApp: "App too old",
     deniedHint: "Blocked. Enable it in your browser settings for this site.",

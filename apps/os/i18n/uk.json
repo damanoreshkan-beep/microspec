@@ -58,5 +58,7 @@
   "updStarted": "Android попросить підтвердити",
   "updFailed": "Не вдалося зібрати оновлення",
   "gApps": "Застосунки",
-  "storeTile": "Магазин"
+  "storeTile": "Магазин",
+  "probeBgTitle": "microspec OS",
+  "probeBgBody": "Проба фонової служби."
 }

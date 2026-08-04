@@ -28,6 +28,9 @@ const PROBE = {
   "alarm.set": (t) => ({ id: "os-probe", at: Date.now() + 60_000, title: T(t, "probeAlarmTitle"), body: T(t, "probeAlarmBody") }),
   "alarm.cancel": () => ({ id: "os-probe" }),
   "alarm.list": () => ({}),
+  "bg.start": (t) => ({ title: T(t, "probeBgTitle"), body: T(t, "probeBgBody") }),
+  "bg.stop": () => ({}),
+  "bg.status": () => ({}),
 };
 
 const stateOf = (id) => (shell.has(id) ? "ok" : shell.why(id) === ERR.staleBridge ? "stale" : "none");

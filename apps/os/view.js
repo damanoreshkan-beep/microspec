@@ -21,6 +21,7 @@ import { T } from "/_rt/i18n.js";
 import { Panel } from "/_rt/ui.js";
 import { shell, ERR } from "/_rt/shell.js";
 import { buildApk, apkFilename } from "/_rt/apk.js";
+import { PERMISSIONS, GROUPS, permLabels, permState, permRequest } from "/_rt/permissions.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -81,6 +82,63 @@ function summarise(id, v, loc) {
   if (v.id) return v.id;
   if ("ok" in v) return String(v.ok);
   return JSON.stringify(v);
+}
+
+// ---- the launcher: every permission as a home-screen tile -------------------
+// A permission is a thing you grant, so the honest shape is the one the OS itself uses for things you
+// own: an icon grid. State is a dot on the tile — the badge language a launcher already speaks — never a
+// caption, because a grid that explains itself in words is a list wearing a costume.
+const TILE_DOT = { granted: "bg-success", denied: "bg-error", needsApp: "bg-base-content/30", staleApp: "bg-warning", prompt: "", unsupported: "", unknown: "" };
+
+function Launcher({ loc, toast }) {
+  const L = permLabels(loc);
+  const [states, setStates] = useState({});
+  const keys = Object.keys(PERMISSIONS);
+
+  const refresh = async () => {
+    const out = {};
+    for (const k of keys) out[k] = (await permState(k)).state;
+    setStates(out);
+  };
+  useEffect(() => { refresh(); }, []);
+
+  const tap = async (k) => {
+    const st = states[k];
+    if (st === "granted") { toast?.(L.revokeHint); return; }
+    if (st === "needsApp") { toast?.(L.needsAppHint); return; }
+    if (st === "staleApp") { toast?.(L.staleAppHint); return; }
+    if (st === "denied") { toast?.(L.deniedHint); return; }
+    await permRequest(k);
+    await refresh();
+  };
+
+  // Grouped the way a home screen is: sections, not a wall. An empty group renders nothing, so the grid
+  // grows itself as capabilities land rather than needing a layout decision each time.
+  const grouped = GROUPS.map((g) => [g, keys.filter((k) => PERMISSIONS[k].group === g)]).filter(([, ks]) => ks.length);
+  const GROUP_LABEL = { sense: L.gSense, media: L.gMedia, background: L.gBackground, radios: L.gRadios, system: L.gSystem };
+
+  return html`<${Panel} title=${L.title}>
+    <div data-launcher class="flex flex-col gap-4 pt-1">
+      ${grouped.map(([g, ks]) => html`<div key=${g}>
+        <div class="text-[11px] font-semibold tracking-wide text-base-content/55 pb-2">${GROUP_LABEL[g]}</div>
+        <div class="grid grid-cols-4 @min-[520px]:grid-cols-6 gap-x-2 gap-y-4">
+          ${ks.map((k) => {
+            const st = states[k] || "unknown";
+            const dim = st === "needsApp" || st === "unsupported";
+            return html`<button key=${k} data-perm=${k} data-state=${st} onClick=${() => tap(k)}
+                class="flex flex-col items-center gap-1.5 min-w-0 transition-opacity"
+                aria-label=${`${L[k]} — ${L[st] || st}`}>
+              <span class=${`relative grid place-items-center aspect-square w-full max-w-[3.5rem] rounded-[var(--ms-r-in)] sf-raised sf-e2 ${dim ? "opacity-45" : ""}`}>
+                ${Icon(PERMISSIONS[k].icon, "text-xl text-base-content")}
+                ${TILE_DOT[st] ? html`<span class=${`absolute -top-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-base-100 ${TILE_DOT[st]}`} aria-hidden="true"></span>` : null}
+              </span>
+              <span class=${`text-[11px] leading-tight text-center line-clamp-2 ${dim ? "text-base-content/50" : "text-base-content/80"}`}>${L[k]}</span>
+            </button>`;
+          })}
+        </div>
+      </div>`)}
+    </div>
+  <//>`;
 }
 
 // ---- one action ------------------------------------------------------------
@@ -176,6 +234,8 @@ export function caps({ S, t, toast }) {
       <span class=${`size-1.5 rounded-full ${failed ? "bg-error" : "bg-success"}`} aria-hidden="true"></span>
       <span>${done}/${ids.length}</span>${failed ? html`<span class="text-error">${failed}</span>` : null}
     </div>` : null}
+
+    <${Launcher} loc=${loc} toast=${toast} />
 
     ${groups().map(([cap, ids2]) => html`<${Panel} key=${cap}>
       <div class="flex items-center gap-2 pb-1">

@@ -46,7 +46,7 @@ export const ACTIONS = {
     ],
     "mock": {
       "id": "gate-alarm",
-      "at": 1893456000000,
+      "at": 1893479400000,
       "exact": true
     }
   },
@@ -72,7 +72,7 @@ export const ACTIONS = {
       "alarms": [
         {
           "id": "gate-alarm",
-          "at": 1893456000000,
+          "at": 1893479400000,
           "title": "Gate alarm"
         }
       ]

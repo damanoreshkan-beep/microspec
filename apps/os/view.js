@@ -208,7 +208,7 @@ export function alarms({ S, t, toast }) {
       <div class="flex items-center gap-2 pt-1">
         ${MINUTES.map((m) => html`<button key=${m} data-min=${m} aria-pressed=${mins === m}
             class=${`btn btn-sm flex-1 tabular-nums ${mins === m ? "btn-primary" : "btn-ghost"}`}
-            onClick=${() => setMins(m)}>${m}${T(t, "alMin")}</button>`)}
+            onClick=${() => setMins(m)}>${m} ${T(t, "alMin")}</button>`)}
       </div>
       <button id="al-set" class="btn btn-sm btn-primary w-full gap-2 mt-3" disabled=${busy} onClick=${schedule}>
         ${Icon("lucide:alarm-clock-plus")}<span>${T(t, "alSet")}</span>

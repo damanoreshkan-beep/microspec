@@ -86,7 +86,7 @@
           "exact": { "type": "boolean", "description": "False when the OS would only take an inexact alarm — Doze may shift it by minutes, and a screen that promises a time must say so." }
         }
       },
-      "mock": { "id": "gate-alarm", "at": 1893456000000, "exact": true }
+      "mock": { "id": "gate-alarm", "at": 1893479400000, "exact": true }
     },
     {
       "id": "alarm.cancel",
@@ -123,7 +123,7 @@
           }
         }
       },
-      "mock": { "alarms": [{ "id": "gate-alarm", "at": 1893456000000, "title": "Gate alarm" }] }
+      "mock": { "alarms": [{ "id": "gate-alarm", "at": 1893479400000, "title": "Gate alarm" }] }
     }
   ]
 }

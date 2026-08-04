@@ -327,7 +327,7 @@ feeds.
 |---|---|---|---|
 | **0** ✅ | Shell survival kit: `onPermissionRequest`, `onGeolocationPermissionsShowPrompt`, `onShowFileChooser`, `setDownloadListener` + web-parity manifest (§4.3) + blob downloads (§4.4) | — | **done 2026-08-03** — deployed; unverified on device |
 | **1** ✅ | Rename to `apk.microspec` (§4.2) + per-app identity in manifest **and** arsc (§4.1) | — | **done 2026-08-03** — verified through the production URL |
-| **2** | Catalogue + generator + `shell.js` facade + version negotiation, **zero capabilities** | 1 | medium; the SDK skeleton |
+| **2** ✅ | Catalogue + generator + `shell.js` facade + version negotiation | 1 | **done 2026-08-04** — `packages/shell/actions.json`, `tools/shell-gen.mjs` (`--check` in the gate chain), `packages/runtime/shell.js`. One capability-free action (`system.info`) rather than literally zero, so the chain is exercised end to end instead of asserted in the abstract. **Open:** the Java registry is not generated — it crosses a repo boundary (catalogue is public, template is private) and is decided in phase 3. |
 | **3** | `full` template + origin-locked bridge + `notify` + `alarm` | 2 | medium; first real power |
 | **4** | Permissions registry + grouped screen + schema enum + uk/en | 3 | medium; whole-farm verify |
 | **5** | `background` (foreground service) + `location.watchBackground` | 3 | medium |

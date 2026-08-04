@@ -59,6 +59,7 @@ const PROBE = {
   "system.grant": () => ({ permission: "READ_PHONE_STATE" }),
   "ble.state": () => ({}),
   "usb.list": () => ({}),
+  "system.logs": () => ({}),
   // ble.scan is a subscribe — no probe, same as location.watch.
   // location.watch is a subscribe, not a call — it has no probe by design; the row says so.
 };
@@ -101,6 +102,7 @@ function summarise(id, v, loc) {
   if (id === "system.grant") return v.state;
   if (id === "ble.state") return v.supported ? (v.on ? "on" : "off") : "—";
   if (id === "usb.list") return `${(v.devices || []).length}`;
+  if (id === "system.logs") return `${(v.lines || []).length}`;
   if (v.id) return v.id;
   if ("ok" in v) return String(v.ok);
   return JSON.stringify(v);

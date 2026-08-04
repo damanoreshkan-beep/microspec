@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 4;
+export const CATALOGUE_BRIDGE = 5;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -216,6 +216,15 @@ export const ACTIONS = {
           "serving": false
         }
       ]
+    }
+  },
+  "system.grant": {
+    "capability": "system",
+    "kind": "call",
+    "minBridge": 5,
+    "android": [],
+    "mock": {
+      "state": "granted"
     }
   }
 };

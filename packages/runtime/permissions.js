@@ -86,6 +86,14 @@ export async function permState(name) {
 /** Trigger the native prompt where one exists. Shell-only permissions have nothing to ask for. */
 export async function permRequest(name) {
   const def = PERMISSIONS[name];
+  if (def?.capability && shell.present && shell.has("system.grant")) {
+    let last = "granted";
+    for (const p of shell.androidFor(def.capability)) {
+      try { last = (await shell.call("system.grant", { permission: p })).state; }
+      catch { last = "denied"; }
+    }
+    return last;
+  }
   if (!def?.request) return (await permState(name)).state;
   return await def.request();
 }

@@ -38,6 +38,7 @@ const PROBE = {
   "system.grant": () => ({ permission: "READ_PHONE_STATE" }),
   "ble.state": () => ({}),
   "usb.list": () => ({}),
+  "system.logs": () => ({}),
 };
 
 const stateOf = (id) => (shell.has(id) ? "ok" : shell.why(id) === ERR.staleBridge ? "stale" : "none");
@@ -76,6 +77,7 @@ function summarise(id, v, loc) {
   if (id === "system.grant") return v.state;
   if (id === "ble.state") return v.supported ? (v.on ? "on" : "off") : "—";
   if (id === "usb.list") return `${(v.devices || []).length}`;
+  if (id === "system.logs") return `${(v.lines || []).length}`;
   if (v.id) return v.id;
   if ("ok" in v) return String(v.ok);
   return JSON.stringify(v);

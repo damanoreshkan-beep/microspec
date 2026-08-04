@@ -60,5 +60,10 @@
   "gApps": "Застосунки",
   "storeTile": "Магазин",
   "probeBgTitle": "microspec OS",
-  "probeBgBody": "Проба фонової служби."
+  "probeBgBody": "Проба фонової служби.",
+  "tabRadar": "Радар",
+  "radarStart": "Сканувати",
+  "radarStop": "Спинити",
+  "radarSeen": "Поруч",
+  "radarUnnamed": "Без назви"
 }

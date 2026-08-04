@@ -60,5 +60,10 @@
   "gApps": "Apps",
   "storeTile": "Store",
   "probeBgTitle": "microspec OS",
-  "probeBgBody": "Background service probe."
+  "probeBgBody": "Background service probe.",
+  "tabRadar": "Radar",
+  "radarStart": "Scan",
+  "radarStop": "Stop",
+  "radarSeen": "In range",
+  "radarUnnamed": "Unnamed device"
 }

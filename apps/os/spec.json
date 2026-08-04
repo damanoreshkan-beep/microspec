@@ -12,6 +12,13 @@
       "view": "caps"
     },
     {
+      "id": "radar",
+      "type": "tool",
+      "icon": "lucide:radar",
+      "label": "tabRadar",
+      "view": "radar"
+    },
+    {
       "id": "alarms",
       "type": "tool",
       "icon": "lucide:alarm-clock",

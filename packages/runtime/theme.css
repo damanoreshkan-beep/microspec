@@ -408,3 +408,7 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 
 .ms-menu { flex-wrap: wrap; justify-content: center; }
 
+
+.ms-sweep { animation: ms-sweep 4s linear infinite; }
+@keyframes ms-sweep { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ms-sweep { animation: none; } }

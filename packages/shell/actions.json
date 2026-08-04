@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 3,
+  "bridgeVersion": 4,
   "actions": [
     {
       "id": "system.info",
@@ -536,6 +536,225 @@
         "lon": 30.5234,
         "acc": 12.5,
         "at": 1893479400000
+      }
+    },
+    {
+      "id": "wifi.scan",
+      "capability": "wifi",
+      "kind": "call",
+      "minBridge": 4,
+      "android": [
+        "ACCESS_WIFI_STATE",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "summary": "Nearby networks. No web API exists for this in any browser. Android throttles scans hard (4 per 2 minutes in the foreground) and returns the LAST results when it refuses, so a caller must not read a repeat as movement.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "networks"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "networks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "rssi"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "ssid": {
+                  "type": "string"
+                },
+                "bssid": {
+                  "type": "string"
+                },
+                "rssi": {
+                  "type": "integer",
+                  "description": "dBm."
+                },
+                "freq": {
+                  "type": "integer",
+                  "description": "MHz."
+                },
+                "caps": {
+                  "type": "string",
+                  "description": "Security capabilities as the driver reports them."
+                }
+              }
+            }
+          },
+          "throttled": {
+            "type": "boolean",
+            "description": "The OS refused a fresh scan; these are the previous results."
+          }
+        }
+      },
+      "mock": {
+        "networks": [
+          {
+            "ssid": "Gate-AP",
+            "bssid": "02:00:00:00:00:01",
+            "rssi": -47,
+            "freq": 5180,
+            "caps": "[WPA2-PSK-CCMP][ESS]"
+          },
+          {
+            "ssid": "Gate-Guest",
+            "bssid": "02:00:00:00:00:02",
+            "rssi": -71,
+            "freq": 2437,
+            "caps": "[ESS]"
+          }
+        ],
+        "throttled": false
+      }
+    },
+    {
+      "id": "wifi.info",
+      "capability": "wifi",
+      "kind": "call",
+      "minBridge": 4,
+      "android": [
+        "ACCESS_WIFI_STATE",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "summary": "The connection this device is on, if any.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "connected"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "ssid": {
+            "type": "string"
+          },
+          "bssid": {
+            "type": "string"
+          },
+          "rssi": {
+            "type": "integer"
+          },
+          "freq": {
+            "type": "integer"
+          },
+          "ip": {
+            "type": "string"
+          }
+        }
+      },
+      "mock": {
+        "connected": true,
+        "ssid": "Gate-AP",
+        "bssid": "02:00:00:00:00:01",
+        "rssi": -47,
+        "freq": 5180,
+        "ip": "192.168.1.42"
+      }
+    },
+    {
+      "id": "cell.info",
+      "capability": "cell",
+      "kind": "call",
+      "minBridge": 4,
+      "android": [
+        "READ_PHONE_STATE",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "summary": "The cells this radio can see, serving one included. The web has nothing remotely like it — gsmscan has been guessing until now.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "cells"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "cells": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "gsm | wcdma | lte | nr"
+                },
+                "mcc": {
+                  "type": "integer"
+                },
+                "mnc": {
+                  "type": "integer"
+                },
+                "lac": {
+                  "type": "integer"
+                },
+                "cid": {
+                  "type": "integer"
+                },
+                "pci": {
+                  "type": "integer"
+                },
+                "arfcn": {
+                  "type": "integer"
+                },
+                "rssi": {
+                  "type": "integer",
+                  "description": "dBm."
+                },
+                "serving": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      },
+      "mock": {
+        "cells": [
+          {
+            "type": "lte",
+            "mcc": 255,
+            "mnc": 1,
+            "lac": 4102,
+            "cid": 27183,
+            "pci": 301,
+            "arfcn": 1300,
+            "rssi": -89,
+            "serving": true
+          },
+          {
+            "type": "lte",
+            "mcc": 255,
+            "mnc": 1,
+            "pci": 118,
+            "arfcn": 1300,
+            "rssi": -104,
+            "serving": false
+          }
+        ]
       }
     }
   ]

@@ -132,13 +132,17 @@ export function caps({ S, t, toast }) {
   };
 
   return html`<div class="flex flex-col gap-3 pt-1 pb-6">
-    <div data-bridge class="flex items-center gap-3 rounded-[var(--ms-r)] sf-raised sf-e2 p-4">
-      <span class=${`size-2.5 rounded-full shrink-0 ${present ? "bg-success" : "bg-base-content/25"}`} aria-hidden="true"></span>
-      <div class="min-w-0 flex-1">
-        <div class="font-medium truncate">${present ? T(t, "bridgeOn") : T(t, "bridgeOff")}</div>
-        <div class="font-mono text-xs text-muted truncate">${present ? `bridge ${shell.version} · ${ids.length}` : T(t, "bridgeOffHint")}</div>
+    <div data-bridge class="flex flex-col gap-3 rounded-[var(--ms-r)] sf-raised sf-e2 p-4">
+      <div class="flex items-center gap-3">
+        <span class=${`size-2.5 rounded-full shrink-0 ${present ? "bg-success" : "bg-base-content/25"}`} aria-hidden="true"></span>
+        <div class="min-w-0 flex-1">
+          <div class="font-medium truncate">${present ? T(t, "bridgeOn") : T(t, "bridgeOff")}</div>
+          <div class="font-mono text-xs text-muted truncate">${present ? `bridge ${shell.version}` : T(t, "bridgeOffHint")}</div>
+        </div>
       </div>
-      <button id="run-all" class="btn btn-sm btn-primary gap-2" disabled=${all} data-run-all onClick=${runAll}>
+      <!-- The checklist walk is the whole point of the app, so it gets its own full-width row rather than
+           competing with the status line for it — which truncated the status on a 360px phone. -->
+      <button id="run-all" class="btn btn-sm btn-primary w-full gap-2" disabled=${all} data-run-all onClick=${runAll}>
         ${Icon("lucide:list-checks")}<span>${T(t, "runAll")}</span>
       </button>
     </div>

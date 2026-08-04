@@ -34,6 +34,7 @@ export default [
       h.expect(tiles >= 6, `очікував плитку на кожен дозвіл реєстру, знайшов ${tiles}`);
       const stated = await h.count("[data-perm][data-state]");
       h.expect(stated === tiles, `${tiles - stated} плитк(и) без стану`);
+      h.expect((await h.count("[data-store]")) === 1, "немає плитки магазину");
     },
   },
   {

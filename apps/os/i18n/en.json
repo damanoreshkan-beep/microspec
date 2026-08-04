@@ -56,5 +56,7 @@
   "updTitle": "App update available",
   "updBtn": "Update",
   "updStarted": "Android will ask to confirm",
-  "updFailed": "Could not build the update"
+  "updFailed": "Could not build the update",
+  "gApps": "Apps",
+  "storeTile": "Store"
 }

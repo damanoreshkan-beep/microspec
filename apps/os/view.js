@@ -346,6 +346,12 @@ export function caps({ S, t, toast }) {
   const fs = useStore($fs);
   const present = shell.present;
 
+  useEffect(() => {
+    if (!gate || !new URLSearchParams(location.search).has("fs")) return;
+    setFs({ open: true, root: null, trail: [], entries: [], preview: null, error: "" });
+    syncStack(S);
+  }, []);
+
   useEffect(() => S.stack.listen((v) => {
     const cur = $fs.get();
     const want = fsDepth(cur);

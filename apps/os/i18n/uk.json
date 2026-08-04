@@ -65,5 +65,7 @@
   "radarStart": "Сканувати",
   "radarStop": "Спинити",
   "radarSeen": "Поруч",
-  "radarUnnamed": "Без назви"
+  "radarUnnamed": "Без назви",
+  "radarDenied": "Для сканування потрібен дозвіл на локацію",
+  "radarOff": "Bluetooth вимкнено"
 }

@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 17,
+  "bridgeVersion": 19,
   "actions": [
     {
       "id": "system.info",
@@ -1001,6 +1001,182 @@
           "0.6s startStream ble.scan live=true caps=alarm,background,ble",
           "0.7s scan started"
         ]
+      }
+    },
+    {
+      "id": "server.start",
+      "capability": "server",
+      "kind": "call",
+      "minBridge": 19,
+      "android": [
+        "ACCESS_WIFI_STATE"
+      ],
+      "summary": "Listen on the local network so other devices can open this phone. The one capability that is not about reading the device but about the device being REACHABLE — which a browser can never be.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "port": {
+            "type": "integer",
+            "description": "0 lets the OS choose."
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "running"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "running": {
+            "type": "boolean"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string",
+            "description": "The address another device can actually reach — the wifi one, not loopback."
+          },
+          "hits": {
+            "type": "integer"
+          },
+          "routes": {
+            "type": "integer"
+          }
+        }
+      },
+      "mock": {
+        "running": true,
+        "port": 8080,
+        "url": "http://192.168.1.42:8080/",
+        "hits": 0,
+        "routes": 1
+      }
+    },
+    {
+      "id": "server.put",
+      "capability": "server",
+      "kind": "call",
+      "minBridge": 19,
+      "android": [],
+      "summary": "Place one resource in memory for the server to hand out. The page supplies every byte; the shell never invents content, and there is no filesystem behind this.",
+      "args": {
+        "type": "object",
+        "required": [
+          "path",
+          "base64"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "contentType": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "base64": {
+            "type": "string"
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "path",
+          "bytes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer"
+          }
+        }
+      },
+      "mock": {
+        "path": "/",
+        "bytes": 128
+      }
+    },
+    {
+      "id": "server.stop",
+      "capability": "server",
+      "kind": "call",
+      "minBridge": 19,
+      "android": [],
+      "summary": "Close the socket. Nothing keeps listening after this.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "running"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "running": {
+            "type": "boolean"
+          }
+        }
+      },
+      "mock": {
+        "running": false
+      }
+    },
+    {
+      "id": "server.status",
+      "capability": "server",
+      "kind": "call",
+      "minBridge": 19,
+      "android": [
+        "ACCESS_WIFI_STATE"
+      ],
+      "summary": "Where it is reachable and how many requests it has served.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "running"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "running": {
+            "type": "boolean"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          },
+          "hits": {
+            "type": "integer"
+          },
+          "routes": {
+            "type": "integer"
+          }
+        }
+      },
+      "mock": {
+        "running": true,
+        "port": 8080,
+        "url": "http://192.168.1.42:8080/",
+        "hits": 3,
+        "routes": 1
       }
     }
   ]

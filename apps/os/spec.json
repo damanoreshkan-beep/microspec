@@ -57,7 +57,8 @@
       "usb",
       "motion",
       "camera",
-      "microphone"
+      "microphone",
+      "server"
     ]
   }
 }

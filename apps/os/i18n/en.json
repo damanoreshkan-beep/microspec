@@ -58,5 +58,7 @@
   "updStarted": "Android will ask to confirm",
   "updFailed": "Could not build the update",
   "gApps": "Apps",
-  "storeTile": "Store"
+  "storeTile": "Store",
+  "probeBgTitle": "microspec OS",
+  "probeBgBody": "Background service probe."
 }

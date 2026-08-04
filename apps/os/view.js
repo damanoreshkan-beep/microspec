@@ -45,6 +45,12 @@ const PROBE = {
   "alarm.set": (t) => ({ id: "os-probe", at: Date.now() + 60_000, title: T(t, "probeAlarmTitle"), body: T(t, "probeAlarmBody") }),
   "alarm.cancel": () => ({ id: "os-probe" }),
   "alarm.list": () => ({}),
+  // start then stop, in catalogue order, so the checklist proves the service both comes up and goes away
+  // rather than leaving a notification pinned to the status bar after a run.
+  "bg.start": (t) => ({ title: T(t, "probeBgTitle"), body: T(t, "probeBgBody") }),
+  "bg.stop": () => ({}),
+  "bg.status": () => ({}),
+  // location.watch is a subscribe, not a call — it has no probe by design; the row says so.
 };
 
 const stateOf = (id) => (shell.has(id) ? "ok" : shell.why(id) === ERR.staleBridge ? "stale" : "none");

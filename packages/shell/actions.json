@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 1,
+  "bridgeVersion": 2,
   "actions": [
     {
       "id": "system.info",
@@ -9,121 +9,347 @@
       "minBridge": 1,
       "android": [],
       "summary": "What the shell is and what it runs on — the one action that needs no permission, so it is also how a page proves the bridge works end to end.",
-      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
       "result": {
         "type": "object",
-        "required": ["bridge", "sdk", "model"],
+        "required": [
+          "bridge",
+          "sdk",
+          "model"
+        ],
         "additionalProperties": false,
         "properties": {
-          "bridge": { "type": "integer", "description": "Bridge version this shell implements." },
-          "sdk": { "type": "integer", "description": "Build.VERSION.SDK_INT." },
-          "release": { "type": "string", "description": "Build.VERSION.RELEASE, e.g. '16'." },
-          "model": { "type": "string", "description": "Build.MODEL." },
-          "pkg": { "type": "string", "description": "This APK's patched package name." }
+          "bridge": {
+            "type": "integer",
+            "description": "Bridge version this shell implements."
+          },
+          "sdk": {
+            "type": "integer",
+            "description": "Build.VERSION.SDK_INT."
+          },
+          "release": {
+            "type": "string",
+            "description": "Build.VERSION.RELEASE, e.g. '16'."
+          },
+          "model": {
+            "type": "string",
+            "description": "Build.MODEL."
+          },
+          "pkg": {
+            "type": "string",
+            "description": "This APK's patched package name."
+          }
         }
       },
-      "mock": { "bridge": 1, "sdk": 36, "release": "16", "model": "Gate Device", "pkg": "apk.microspec.a0000000000000000" }
+      "mock": {
+        "bridge": 1,
+        "sdk": 36,
+        "release": "16",
+        "model": "Gate Device",
+        "pkg": "apk.microspec.a0000000000000000"
+      }
     },
-
     {
       "id": "notify.show",
       "capability": "notify",
       "kind": "call",
       "minBridge": 1,
-      "android": ["POST_NOTIFICATIONS"],
+      "android": [
+        "POST_NOTIFICATIONS"
+      ],
       "summary": "Post a system notification. WebView has no Notification API at all, so this is the only way an app inside the shell can show one.",
       "args": {
         "type": "object",
-        "required": ["title"],
+        "required": [
+          "title"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "maxLength": 64, "description": "Reuse an id to REPLACE that notification rather than stack another." },
-          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
-          "body": { "type": "string", "maxLength": 1000 },
-          "ongoing": { "type": "boolean", "description": "Not dismissable by swipe — for something actually in progress." }
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Reuse an id to REPLACE that notification rather than stack another."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "ongoing": {
+            "type": "boolean",
+            "description": "Not dismissable by swipe — for something actually in progress."
+          }
         }
       },
-      "result": { "type": "object", "required": ["id"], "additionalProperties": false, "properties": { "id": { "type": "string" } } },
-      "mock": { "id": "gate-note" }
+      "result": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      "mock": {
+        "id": "gate-note"
+      }
     },
     {
       "id": "notify.cancel",
       "capability": "notify",
       "kind": "call",
       "minBridge": 1,
-      "android": ["POST_NOTIFICATIONS"],
+      "android": [
+        "POST_NOTIFICATIONS"
+      ],
       "summary": "Dismiss a notification this app posted.",
-      "args": { "type": "object", "required": ["id"], "additionalProperties": false, "properties": { "id": { "type": "string", "maxLength": 64 } } },
-      "result": { "type": "object", "required": ["ok"], "additionalProperties": false, "properties": { "ok": { "type": "boolean" } } },
-      "mock": { "ok": true }
+      "args": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
+      "mock": {
+        "ok": true
+      }
     },
-
     {
       "id": "alarm.set",
       "capability": "alarm",
       "kind": "call",
       "minBridge": 1,
-      "android": ["RECEIVE_BOOT_COMPLETED"],
+      "android": [
+        "RECEIVE_BOOT_COMPLETED"
+      ],
       "summary": "Fire a notification at a wall-clock time, offline, with the app closed — and again after a reboot. The web cannot do this at all since Notification Triggers was abandoned; it is the reason the APK exists.",
       "args": {
         "type": "object",
-        "required": ["id", "at", "title"],
+        "required": [
+          "id",
+          "at",
+          "title"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "minLength": 1, "maxLength": 64, "description": "Yours to choose; setting the same id again replaces that alarm." },
-          "at": { "type": "integer", "description": "Epoch milliseconds. In the past = fire now." },
-          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
-          "body": { "type": "string", "maxLength": 1000 }
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Yours to choose; setting the same id again replaces that alarm."
+          },
+          "at": {
+            "type": "integer",
+            "description": "Epoch milliseconds. In the past = fire now."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 1000
+          }
         }
       },
       "result": {
         "type": "object",
-        "required": ["id", "at", "exact"],
+        "required": [
+          "id",
+          "at",
+          "exact"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string" },
-          "at": { "type": "integer" },
-          "exact": { "type": "boolean", "description": "False when the OS would only take an inexact alarm — Doze may shift it by minutes, and a screen that promises a time must say so." }
+          "id": {
+            "type": "string"
+          },
+          "at": {
+            "type": "integer"
+          },
+          "exact": {
+            "type": "boolean",
+            "description": "False when the OS would only take an inexact alarm — Doze may shift it by minutes, and a screen that promises a time must say so."
+          }
         }
       },
-      "mock": { "id": "gate-alarm", "at": 1893479400000, "exact": true }
+      "mock": {
+        "id": "gate-alarm",
+        "at": 1893479400000,
+        "exact": true
+      }
     },
     {
       "id": "alarm.cancel",
       "capability": "alarm",
       "kind": "call",
       "minBridge": 1,
-      "android": ["RECEIVE_BOOT_COMPLETED"],
+      "android": [
+        "RECEIVE_BOOT_COMPLETED"
+      ],
       "summary": "Cancel a scheduled alarm.",
-      "args": { "type": "object", "required": ["id"], "additionalProperties": false, "properties": { "id": { "type": "string", "maxLength": 64 } } },
-      "result": { "type": "object", "required": ["ok"], "additionalProperties": false, "properties": { "ok": { "type": "boolean" } } },
-      "mock": { "ok": true }
+      "args": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
+      "mock": {
+        "ok": true
+      }
     },
     {
       "id": "alarm.list",
       "capability": "alarm",
       "kind": "call",
       "minBridge": 1,
-      "android": ["RECEIVE_BOOT_COMPLETED"],
+      "android": [
+        "RECEIVE_BOOT_COMPLETED"
+      ],
       "summary": "Everything currently scheduled — the shell owns this state, so a reinstalled page can rediscover it.",
-      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
       "result": {
         "type": "object",
-        "required": ["alarms"],
+        "required": [
+          "alarms"
+        ],
         "additionalProperties": false,
         "properties": {
           "alarms": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["id", "at", "title"],
+              "required": [
+                "id",
+                "at",
+                "title"
+              ],
               "additionalProperties": false,
-              "properties": { "id": { "type": "string" }, "at": { "type": "integer" }, "title": { "type": "string" }, "body": { "type": "string" } }
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "at": {
+                  "type": "integer"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
       },
-      "mock": { "alarms": [{ "id": "gate-alarm", "at": 1893479400000, "title": "Gate alarm" }] }
+      "mock": {
+        "alarms": [
+          {
+            "id": "gate-alarm",
+            "at": 1893479400000,
+            "title": "Gate alarm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "system.update",
+      "capability": "system",
+      "kind": "call",
+      "minBridge": 2,
+      "android": [
+        "REQUEST_INSTALL_PACKAGES"
+      ],
+      "summary": "Install an APK the page just built for this same app. The package name is a digest of the start URL, so it is an UPDATE of this app, never a second copy. Android always shows its own confirmation — a normal app cannot install silently, and pretending otherwise would be a lie.",
+      "args": {
+        "type": "object",
+        "required": [
+          "name",
+          "base64"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "base64": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The APK bytes. The page fetched them; the shell never fetches."
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "started"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "started": {
+            "type": "boolean"
+          }
+        }
+      },
+      "mock": {
+        "started": true
+      }
     }
   ]
 }

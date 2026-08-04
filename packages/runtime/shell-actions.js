@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 1;
+export const CATALOGUE_BRIDGE = 2;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -74,6 +74,17 @@ export const ACTIONS = {
           "title": "Gate alarm"
         }
       ]
+    }
+  },
+  "system.update": {
+    "capability": "system",
+    "kind": "call",
+    "minBridge": 2,
+    "android": [
+      "REQUEST_INSTALL_PACKAGES"
+    ],
+    "mock": {
+      "started": true
     }
   }
 };

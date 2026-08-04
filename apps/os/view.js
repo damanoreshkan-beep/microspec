@@ -412,7 +412,7 @@ export function radar({ S, t, toast }) {
     if (scanning || why) return;
     setScanning(true);
     setErr(null);
-    stopRef.current = shell.subscribe("ble.scan", {}, upsert, (e) => { setErr(e?.code || ERR.failed); setScanning(false); });
+    stopRef.current = shell.subscribe("ble.scan", {}, upsert, (e) => { setErr(e?.detail || e?.code || ERR.failed); setScanning(false); });
   };
   const stop = () => {
     setScanning(false);
@@ -462,7 +462,12 @@ export function radar({ S, t, toast }) {
         <span class="text-muted">rx ${events}</span>
       </div>` : null}
       ${why ? html`<div class="pt-2 text-sm text-muted">${why === ERR.staleBridge ? T(t, "stStale") : T(t, "stNone")}</div>`
-        : err ? html`<div data-radar-err class="pt-2 text-sm text-error">${err === ERR.denied ? T(t, "radarDenied") : err === ERR.unavailable ? T(t, "radarOff") : err}</div>` : null}
+        : err ? html`<div data-radar-err class="pt-2 text-sm text-error">${
+            err === ERR.denied ? T(t, "radarDenied")
+            : err === ERR.unavailable ? T(t, "radarOff")
+            : /scanFailed:6/.test(String(err)) ? T(t, "radarTooOften")
+            : /scanFailed:4/.test(String(err)) ? T(t, "radarUnsupported")
+            : err}</div>` : null}
     <//>
 
     ${devices.length ? html`<${Panel} title=${T(t, "radarSeen")}>

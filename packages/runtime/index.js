@@ -88,6 +88,11 @@ export function start(spec, arg2) {
     if (n > depth) { const d = n - depth; depth = n; for (let i = 0; i < d; i++) history.pushState({ msOverlay: 1 }, ""); }  
     else if (n < depth) { const d = depth - n; depth = n; if (history.state?.msOverlay) { selfBack++; history.go(-d); } } 
   });
+  try {
+    const want = new URLSearchParams(location.search).get("screen");
+    if (want) S.screen.set(want);
+  } catch {  }
+
   history.pushState({ msRoot: 1 }, "");
   addEventListener("popstate", () => {
     if (selfBack) { selfBack--; return; }                                       

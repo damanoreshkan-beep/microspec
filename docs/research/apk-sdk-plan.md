@@ -286,7 +286,15 @@ template is built from it. The first two-flavour build failed exactly here — J
 public `main` still had one — which is the gate doing its job rather than shipping a shell that claimed
 actions the runtime had never heard of.
 
-### 5.0 The hole the checklist cannot cover: subscriptions
+### 5.0 CLOSED (bridge 18): the subscription hole
+
+`ble.scan` is verified on the S25 — real devices, live RSSI. It took the shell learning to log its own
+behaviour (`system.logs`), because the cause was invisible from both ends: a mangled apostrophe made
+every stream frame invalid JavaScript, thrown inside `evaluateJavascript` where nothing reports it. Calls
+worked; subscriptions went silent. `location.watch` is the same wire and now the same code path, so the
+remaining risk there is the fix, not the mechanism.
+
+### 5.0a The hole as it was: subscriptions
 
 `location.watch` and `ble.scan` are the only two actions never exercised on a device, and it is structural
 rather than an oversight — a checklist runs calls, and a `subscribe` never settles. Verifying them needs a

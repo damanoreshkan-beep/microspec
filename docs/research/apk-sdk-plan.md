@@ -286,6 +286,13 @@ template is built from it. The first two-flavour build failed exactly here — J
 public `main` still had one — which is the gate doing its job rather than shipping a shell that claimed
 actions the runtime had never heard of.
 
+### 5.0 The hole the checklist cannot cover: subscriptions
+
+`location.watch` and `ble.scan` are the only two actions never exercised on a device, and it is structural
+rather than an oversight — a checklist runs calls, and a `subscribe` never settles. Verifying them needs a
+SCREEN that listens: a radar of BLE devices as they appear, a track that fills in as you walk. Until one
+exists, two of eighteen actions are compiled, deployed, granted — and unproven.
+
 ## 5. How any of this gets tested
 
 Blunt truth: **CI runs headless Chromium and will never run our APK.** So:
@@ -370,7 +377,7 @@ feeds.
 | **3** ✅ | `full` template + origin-locked bridge + `notify` + `alarm` | 2 | **done 2026-08-04** — gradle flavours, one `@JavascriptInterface`, three gates in `assets/bridge.json`; `Catalogue.java` generated from the public catalogue (§4.5). Verified through production: our origin gets `full`, anything else gets `lite` whose dex contains no `__msShell` at all. **VERIFIED ON DEVICE 2026-08-04** — S25 Ultra, `os` → Run all: all six actions green, so the origin lock, the capability list, the JSON wire, notifications and alarms all work in the shell. |
 | **4** | Permissions registry + grouped screen + schema enum + uk/en | 3 | medium; whole-farm verify |
 | **5** ✅ | `background` (foreground service) + `location.watch` | 3 | **done 2026-08-04** — bridge 3. First real `subscribe`: same envelope, same id, one `stream` flag. ACCESS_BACKGROUND_LOCATION returned WITH the capability that uses it. Both appear in the launcher automatically. **Unverified on device.** |
-| **6** ✅ | Radios: `wifi` + `cell` **verified on device** at bridge 5 (S25: 9–14 networks, 8 cells); `ble` + `usb` at bridge 6 (2026-08-04). The web-facing point: Web Bluetooth and WebUSB work through a CHOOSER and can never enumerate, which is exactly what a scanner needs. | 5 | done — split so the device could verify half of it early |
+| **6** ✅ | Radios: `wifi` + `cell` **verified on device** at bridge 5 (S25: 9–14 networks, 8 cells); `ble` + `usb` **verified on device** at bridge 6 (S25: ble on, usb 0 with nothing attached). The web-facing point: Web Bluetooth and WebUSB work through a CHOOSER and can never enumerate, which is exactly what a scanner needs. | 5 | done — split so the device could verify half of it early |
 | **7** | `files`, `system` | 3 | small |
 | **8** | `server` (LAN) | 5 | large; new product surface |
 | **9** | Skill + docs + memory (§7) | 3 | small, but do it *with* 3, not after |

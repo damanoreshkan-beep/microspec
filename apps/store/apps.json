@@ -96,7 +96,7 @@
     "bg": "#1c1a17",
     "fg": "#E9A23B",
     "href": "./homin/",
-    "version": "1.4",
+    "version": "1.10",
     "category": "hackrf"
   },
   {
@@ -216,7 +216,7 @@
     "bg": "#0d1512",
     "fg": "#10b981",
     "href": "./habits/",
-    "version": "1.14",
+    "version": "1.15",
     "category": "wellness"
   },
   {
@@ -276,7 +276,7 @@
     "bg": "#0E1416",
     "fg": "#57C4C0",
     "href": "./grain/",
-    "version": "1.7",
+    "version": "1.9",
     "category": "sound"
   },
   {
@@ -336,7 +336,7 @@
     "bg": "#0B0B10",
     "fg": "#E7E7EA",
     "href": "./cam/",
-    "version": "1.15",
+    "version": "1.16",
     "category": "creative"
   },
   {
@@ -616,7 +616,7 @@
     "bg": "#0A0A0F",
     "fg": "#5EEAD4",
     "href": "./retouch/",
-    "version": "1.10",
+    "version": "1.12",
     "category": "creative"
   },
   {
@@ -696,7 +696,7 @@
     "bg": "#0A0A0F",
     "fg": "#5FD0F0",
     "href": "./flux/",
-    "version": "1.12",
+    "version": "1.13",
     "category": "creative"
   },
   {
@@ -736,7 +736,7 @@
     "bg": "#0A0A0B",
     "fg": "#40C173",
     "href": "./pulse/",
-    "version": "1.14",
+    "version": "1.15",
     "category": "feeds"
   },
   {
@@ -756,7 +756,7 @@
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
-    "version": "1.74",
+    "version": "1.75",
     "category": "sound"
   },
   {
@@ -776,7 +776,7 @@
     "bg": "#0A0A0B",
     "fg": "#C6B6FF",
     "href": "./sigil/",
-    "version": "1.10",
+    "version": "1.11",
     "category": "esoterica"
   },
   {
@@ -856,7 +856,7 @@
     "bg": "#17111a",
     "fg": "#fb7185",
     "href": "./wish/",
-    "version": "1.10",
+    "version": "1.11",
     "category": "tools"
   },
   {
@@ -936,7 +936,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./imagine/",
-    "version": "1.16",
+    "version": "1.18",
     "category": "creative"
   },
   {
@@ -976,7 +976,7 @@
     "bg": "#0C1014",
     "fg": "#E0B24E",
     "href": "./handpan/",
-    "version": "1.26",
+    "version": "1.27",
     "category": "sound"
   },
   {
@@ -1200,6 +1200,26 @@
     "category": "hackrf"
   },
   {
+    "id": "os",
+    "title": "microspec OS",
+    "titles": {
+      "en": "microspec OS",
+      "uk": "microspec OS"
+    },
+    "tagline": "Що цей пристрій дозволяє застосунку",
+    "taglines": {
+      "en": "What this device lets an app do",
+      "uk": "Що цей пристрій дозволяє застосунку"
+    },
+    "glyph": "lucide:cpu",
+    "art": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><rect x=\"9\" y=\"9\" width=\"6\" height=\"6\"/><path d=\"M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2\"/></svg>",
+    "bg": "#0A0A0F",
+    "fg": "#5EC8A8",
+    "href": "./os/",
+    "version": "1.0",
+    "category": "tools"
+  },
+  {
     "id": "nova",
     "title": "nova",
     "titles": {
@@ -1256,7 +1276,7 @@
     "bg": "#0B0B0D",
     "fg": "#ECECEE",
     "href": "./reel/",
-    "version": "1.40",
+    "version": "1.46",
     "category": "feeds"
   },
   {

@@ -1,0 +1,19 @@
+{
+  "id": "os",
+  "theme": "signal",
+  "category": "tools",
+  "accent": "#5EC8A8",
+  "tabs": [
+    { "id": "caps", "type": "tool", "icon": "lucide:layers", "label": "tabCaps", "view": "caps" },
+    { "id": "probes", "type": "tool", "icon": "lucide:play-circle", "label": "tabProbes", "view": "probes" },
+    { "id": "report", "type": "tool", "icon": "lucide:clipboard-list", "label": "tabReport", "view": "report" },
+    { "id": "me", "type": "profile", "icon": "lucide:settings", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:cpu",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "permissions": ["geolocation", "notifications", "motion", "camera", "microphone"]
+  }
+}

@@ -1,0 +1,56 @@
+// The bridge does not exist in Chromium, so the gate mocks it from the same catalogue the app renders
+// from. That is the point: without it every row would read "needs the app", the screen would be empty of
+// anything meaningful, and a broken row would be invisible in the shot as well as in the test.
+export default [
+  {
+    name: "matrix: every catalogue action gets a row, and the bridge reads as connected", run: async (h) => {
+      const rows = await h.count("[data-action]");
+      h.expect(rows >= 6, `очікував рядок на кожну дію каталогу, знайшов ${rows}`);
+      const bridge = await h.text("[data-bridge]");
+      h.expect(/bridge \d+/i.test(bridge), `панель мосту не показує версію: ${bridge}`);
+      // The catalogue is grouped by capability, so the three that exist at bridge 1 must all be named.
+      const body = await h.bodyText();
+      for (const cap of ["system", "notify", "alarm"]) h.expect(body.includes(cap), `немає групи ${cap}`);
+    },
+  },
+  {
+    name: "probe: running an action records a result and a duration", run: async (h) => {
+      await h.click('[data-tab="probes"]'); await h.wait(150);
+      await h.click('[data-run="alarm.set"]'); await h.wait(250);
+      const out = (await h.text('[data-result="alarm.set"]')).trim();
+      h.expect(out.length > 0, "проба не записала результат");
+      // alarm.set must say whether the alarm is EXACT — a screen promising a time cannot hide that.
+      h.expect(/exact|inexact/i.test(out), `результат не повідомляє точність: ${out}`);
+      await h.click('[data-run="alarm.list"]'); await h.wait(250);
+      h.expect((await h.text('[data-result="alarm.list"]')).trim().length > 0, "alarm.list без результату");
+    },
+  },
+  {
+    name: "report: reading the device fills the table", run: async (h) => {
+      await h.click('[data-tab="report"]'); await h.wait(150);
+      await h.click("#rep-load"); await h.wait(250);
+      const text = await h.text("[data-report]");
+      h.expect(/sdk/i.test(text) && /model/i.test(text), "звіт без sdk/model");
+      h.expect(/\d/.test(text), "у звіті немає жодного числа — system.info не відповів");
+    },
+  },
+  {
+    name: "i18n EN/UA", run: async (h) => {
+      await h.click('[data-tab="me"]'); await h.wait(150);
+      await h.click('[data-loc="en"]'); await h.wait(250);
+      h.expect(/Capabilities|Probes|Language/i.test(await h.bodyText()), "не EN");
+      await h.click('[data-loc="uk"]'); await h.wait(250);
+      h.expect(/Можливості|Проби|Мова/.test(await h.bodyText()), "не UA");
+    },
+  },
+  {
+    name: "routing: permissions screen opens and Back closes it", run: async (h) => {
+      await h.click('[data-tab="me"]'); await h.wait(150);
+      await h.click("#p-perms"); await h.wait(200);
+      h.expect((await h.count('[role="dialog"]')) === 1, "екран дозволів не відкрився");
+      await h.back(); await h.wait(250);
+      h.expect((await h.count('[role="dialog"]')) === 0, "Back не закрив екран дозволів");
+      await h.click('[data-tab="caps"]'); await h.wait(120);
+    },
+  },
+];

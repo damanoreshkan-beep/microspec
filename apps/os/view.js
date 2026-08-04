@@ -53,6 +53,9 @@ const PROBE = {
   "wifi.scan": () => ({}),
   "wifi.info": () => ({}),
   "cell.info": () => ({}),
+  // Asking for a permission the shell already holds answers instantly and shows no dialog, so this is
+  // safe inside a checklist run — and it is the one probe that can UNBLOCK the two rows above it.
+  "system.grant": () => ({ permission: "READ_PHONE_STATE" }),
   // location.watch is a subscribe, not a call — it has no probe by design; the row says so.
 };
 
@@ -91,6 +94,7 @@ function summarise(id, v, loc) {
   if (id === "wifi.scan") return `${(v.networks || []).length}${v.throttled ? " · throttled" : ""}`;
   if (id === "wifi.info") return v.connected ? `${v.ssid || "?"} ${v.rssi}dBm` : "—";
   if (id === "cell.info") return `${(v.cells || []).length}`;
+  if (id === "system.grant") return v.state;
   if (v.id) return v.id;
   if ("ok" in v) return String(v.ok);
   return JSON.stringify(v);
@@ -116,6 +120,11 @@ function Launcher({ loc, t, toast }) {
 
   const tap = async (k) => {
     const st = states[k];
+    // A shell capability reports "granted" as soon as the bridge carries it — which says nothing about
+    // the Android permission underneath. cell.info sat refused while its tile showed green, because the
+    // tap answered "revoke it in settings" instead of asking. In the shell the tap always asks; an
+    // already-held permission answers instantly, so there is no dialog to annoy anyone with.
+    if (PERMISSIONS[k]?.capability && shell.present) { await permRequest(k); await refresh(); return; }
     if (st === "granted") { toast?.(L.revokeHint); return; }
     if (st === "needsApp") { toast?.(L.needsAppHint); return; }
     if (st === "staleApp") { toast?.(L.staleAppHint); return; }

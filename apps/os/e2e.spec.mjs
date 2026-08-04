@@ -99,6 +99,9 @@ export default [
   },
   {
     name: "files: the tile opens the explorer, and a file opens its preview", run: async (h) => {
+      // The test before this one ends on the profile tab, so the launcher is not on screen. Every test
+      // here starts where it needs to be rather than inheriting where the last one stopped.
+      await h.click('[data-tab="caps"]'); await h.wait(150);
       h.expect((await h.count('[data-perm="files"]')) === 1, "немає плитки Файлів");
       await h.click('[data-perm="files"]'); await h.wait(400);
       // Name what IS on screen, not just what is missing: launcher still up means the tap did nothing,
@@ -125,6 +128,7 @@ export default [
   },
   {
     name: "routing: Back walks out of the explorer to the launcher", run: async (h) => {
+      await h.click('[data-tab="caps"]'); await h.wait(150);
       await h.click('[data-perm="files"]'); await h.wait(300);
       h.expect((await h.count("[data-launcher]")) === 0, "провідник не зайняв екран");
       await h.back(); await h.wait(300);

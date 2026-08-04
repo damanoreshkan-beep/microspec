@@ -60,6 +60,9 @@ const PROBE = {
   "ble.state": () => ({}),
   "usb.list": () => ({}),
   "system.logs": () => ({}),
+  // Only roots is probeable: grant opens a system picker (a checklist walk must never do that), and
+  // list/read/write need a folder the user has actually handed over. The explorer is their real test.
+  "files.roots": () => ({}),
   // start, publish a page, read it back, stop — in catalogue order, so a run proves the station comes
   // up AND goes away rather than leaving a socket listening after the checklist ends.
   "server.start": () => ({ port: 8080 }),
@@ -110,6 +113,8 @@ function summarise(id, v, loc) {
   if (id === "ble.state") return v.supported ? (v.on ? "on" : "off") : "—";
   if (id === "usb.list") return `${(v.devices || []).length}`;
   if (id === "system.logs") return `${(v.lines || []).length}`;
+  if (id === "files.roots") return `${(v.roots || []).length}`;
+  if (id === "files.list") return `${(v.entries || []).length}`;
   if (id.startsWith("server.")) return v.url || (v.running === false ? "off" : v.path || String(v.running));
   if (v.id) return v.id;
   if ("ok" in v) return String(v.ok);
@@ -124,7 +129,7 @@ function summarise(id, v, loc) {
 // action behind it is refused is worse than no dot at all.
 const TILE_DOT = { granted: "bg-success", partial: "bg-warning", denied: "bg-error", needsApp: "bg-base-content/30", staleApp: "bg-warning", prompt: "", unsupported: "", unknown: "" };
 
-function Launcher({ loc, t, toast }) {
+function Launcher({ S, loc, t, toast }) {
   const L = permLabels(loc);
   const [states, setStates] = useState({});
   const keys = Object.keys(PERMISSIONS);
@@ -139,6 +144,14 @@ function Launcher({ loc, t, toast }) {
 
   const tap = async (k) => {
     const st = states[k];
+    // Files is the one tile that opens something instead of asking for something — SAF has no permission
+    // to grant up front, so the grant IS the first screen of the explorer.
+    if (k === "files") {
+      if (!shell.hasCapability("files")) { toast?.(st === "staleApp" ? L.staleAppHint : L.needsAppHint); return; }
+      setFs({ open: true, root: null, trail: [], entries: [], preview: null, error: "" });
+      syncStack(S);
+      return;
+    }
     // A shell capability reports "granted" as soon as the bridge carries it — which says nothing about
     // the Android permission underneath. cell.info sat refused while its tile showed green, because the
     // tap answered "revoke it in settings" instead of asking. In the shell the tap always asks; an
@@ -184,6 +197,182 @@ function Launcher({ loc, t, toast }) {
   <//>`;
 }
 
+// ---- the file explorer -----------------------------------------------------
+// It opens from the Files tile, because a launcher icon opening a thing IS the metaphor this screen is
+// built on — and the dock is full at five tabs.
+//
+// There is no storage permission behind any of this. MANAGE_EXTERNAL_STORAGE would hand over the whole
+// device in one declaration and read as spyware; SAF asks the user for a folder instead, and what we can
+// walk is exactly what they picked. So the empty state is not an error — it is the permission model.
+const $fs = atom({ open: false, root: null, trail: [], entries: [], preview: null, busy: false, error: "" });
+const setFs = (patch) => $fs.set({ ...$fs.get(), ...patch });
+
+// One number decides every history question: how many levels are showing. Folders and a preview are both
+// levels, so Back walks out of a preview, up the tree, and finally out of the explorer — one press each.
+const fsDepth = (fs) => (fs.open ? 1 + Math.max(0, fs.trail.length - 1) + (fs.preview ? 1 : 0) : 0);
+const syncStack = (S) => {
+  const want = fsDepth($fs.get());
+  if (S.stack.get().length !== want) S.stack.set(Array.from({ length: want }, (_, i) => `fs${i}`));
+};
+
+const FILE_ICON = (mime, dir) => {
+  if (dir) return "lucide:folder";
+  const m = mime || "";
+  if (m.startsWith("image/")) return "lucide:image";
+  if (m.startsWith("audio/")) return "lucide:file-audio";
+  if (m.startsWith("video/")) return "lucide:file-video";
+  if (m.startsWith("text/") || m.includes("json") || m.includes("xml")) return "lucide:file-text";
+  if (m.includes("zip") || m.includes("compressed")) return "lucide:file-archive";
+  if (m.includes("pdf")) return "lucide:file-type";
+  return "lucide:file";
+};
+
+const KB = 1024;
+const size = (n, loc) => {
+  if (!n) return "";
+  const u = n < KB ? [n, "B"] : n < KB * KB ? [n / KB, "KB"] : [n / KB / KB, "MB"];
+  return `${u[0].toLocaleString(loc, { maximumFractionDigits: u[0] < 10 && u[1] !== "B" ? 1 : 0 })} ${u[1]}`;
+};
+
+// Folders first, then by name — the order every file manager has, and the one that makes a deep tree
+// walkable. The shell returns whatever the provider's cursor happened to hold.
+const ordered = (entries, loc) => [...entries].sort((a, b) =>
+  a.dir === b.dir ? a.name.localeCompare(b.name, loc) : (a.dir ? -1 : 1));
+
+const bytesOf = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+const previewable = (mime) => (mime || "").startsWith("image/")
+  || (mime || "").startsWith("text/") || (mime || "").includes("json") || (mime || "").includes("xml");
+
+async function fsOpenFolder(S, root, trail) {
+  setFs({ open: true, root, trail, preview: null, busy: true, error: "" });
+  syncStack(S);
+  try {
+    const r = await shell.call("files.list", { uri: root.uri, docId: trail[trail.length - 1].docId });
+    setFs({ entries: r.entries || [], busy: false });
+  } catch (e) {
+    setFs({ entries: [], busy: false, error: e?.code || String(e) });
+  }
+}
+
+async function fsEnterRoot(S, root) {
+  await fsOpenFolder(S, root, [{ docId: null, name: root.name }]);
+}
+
+// The one place the folder is chosen. It resolves granted:false when the user backs out of the system
+// picker, which is a normal answer and not a failure — nothing is recorded and the screen does not move.
+async function fsGrant(S) {
+  setFs({ busy: true, error: "" });
+  try {
+    const r = await shell.call("files.grant", {});
+    if (r?.granted) { await fsEnterRoot(S, { uri: r.uri, name: r.name }); return; }
+    setFs({ busy: false });
+  } catch (e) { setFs({ busy: false, error: e?.code || String(e) }); }
+}
+
+function Explorer({ S, t, loc, toast }) {
+  const fs = useStore($fs);
+  const [roots, setRoots] = useState(null);
+
+  const loadRoots = async () => {
+    try {
+      const r = await shell.call("files.roots", {});
+      const list = r.roots || [];
+      setRoots(list);
+      // One folder is the normal case, and a list of one is a tap that asks nothing. Straight in.
+      if (list.length === 1) await fsEnterRoot(S, list[0]);
+    } catch { setRoots([]); }
+  };
+  useEffect(() => { if (fs.open && !fs.root) loadRoots(); }, [fs.open, fs.root]);
+
+  const enter = async (e) => {
+    if (e.dir) { await fsOpenFolder(S, fs.root, [...fs.trail, { docId: e.docId, name: e.name }]); return; }
+    setFs({ busy: true, error: "" });
+    try {
+      const r = await shell.call("files.read", { uri: fs.root.uri, docId: e.docId });
+      const bytes = bytesOf(r.base64);
+      const text = (e.mime || "").startsWith("image/") ? null : new TextDecoder().decode(bytes);
+      const src = (e.mime || "").startsWith("image/") ? `data:${e.mime};base64,${r.base64}` : null;
+      setFs({ busy: false, preview: { name: e.name, mime: e.mime, bytes: r.bytes, text, src } });
+      syncStack(S);
+    } catch (e2) { setFs({ busy: false, error: e2?.code === ERR.failed ? e2.detail : (e2?.code || String(e2)) }); }
+  };
+
+  // Writing needs to prove itself on something real. The bridge log is the one thing this app owns that
+  // is worth having outside it — and it lands in the folder you are looking at, not a Downloads dead-drop.
+  const saveLog = async () => {
+    try {
+      const r = await shell.call("system.logs", {});
+      const body = (r.lines || []).join("\n");
+      const b64 = btoa(unescape(encodeURIComponent(body)));
+      const at = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const out = await shell.call("files.write", {
+        uri: fs.root.uri, docId: fs.trail[fs.trail.length - 1].docId,
+        name: `microspec-${at}.log`, mime: "text/plain", base64: b64,
+      });
+      toast?.(`${T(t, "fsSaved")} · ${size(out.bytes, loc)}`);
+      await fsOpenFolder(S, fs.root, fs.trail);
+    } catch (e) { toast?.(e?.code || String(e)); }
+  };
+
+  if (fs.preview) {
+    const p = fs.preview;
+    return html`<${Panel} title=${p.name}>
+      <div data-fs-preview class="flex flex-col gap-2 pt-1">
+        <div class="font-mono text-xs text-muted">${p.mime || "?"} · ${size(p.bytes, loc)}</div>
+        ${p.src ? html`<img src=${p.src} alt=${p.name} class="w-full rounded-[var(--ms-r-in)] bg-base-200" />`
+          : p.text != null ? html`<pre class="font-mono text-xs whitespace-pre-wrap break-all max-h-[60vh] overflow-y-auto rounded-[var(--ms-r-in)] bg-base-200 p-3">${p.text}</pre>`
+          : html`<div class="text-sm text-muted">${T(t, "fsNoPreview")}</div>`}
+      </div>
+    <//>`;
+  }
+
+  // No folder yet: the grant button IS the screen. Nothing to explain — the system picker says the rest.
+  if (!fs.root) {
+    return html`<${Panel} title=${T(t, "fsTitle")}>
+      <div data-fs-roots class="flex flex-col gap-2 pt-1">
+        ${(roots || []).map((r) => html`<button key=${r.uri} data-fs-root=${r.name}
+            class="flex items-center gap-3 py-2.5 border-b border-base-content/10 last:border-0 text-left"
+            onClick=${() => fsEnterRoot(S, r)}>
+          ${Icon("lucide:folder", "text-xl text-primary shrink-0")}
+          <span class="min-w-0 flex-1 truncate">${r.name}</span>
+          ${Icon("lucide:chevron-right", "text-base text-base-content/40 shrink-0")}
+        </button>`)}
+        <button id="fs-grant" data-fs-grant class="btn btn-sm btn-primary w-full gap-2 mt-1"
+            disabled=${fs.busy} onClick=${() => fsGrant(S)}>
+          ${Icon("lucide:folder-plus")}<span>${T(t, "fsGrant")}</span>
+        </button>
+        ${fs.error ? html`<div class="text-xs text-error">${fs.error}</div>` : null}
+      </div>
+    <//>`;
+  }
+
+  const trail = fs.trail.map((f) => f.name).join(" / ");
+  return html`<${Panel}>
+    <div class="flex items-center gap-2 pb-1">
+      ${Icon("lucide:folder-open", "text-base text-primary shrink-0")}
+      <span data-fs-trail class="font-mono text-xs text-muted min-w-0 flex-1 truncate" dir="rtl">${trail}</span>
+      <button class="btn btn-xs btn-ghost btn-circle shrink-0" aria-label=${T(t, "fsSaveLog")} onClick=${saveLog}>
+        ${Icon("lucide:save", "text-base")}
+      </button>
+      <button class="btn btn-xs btn-ghost btn-circle shrink-0" aria-label=${T(t, "fsGrant")} onClick=${() => fsGrant(S)}>
+        ${Icon("lucide:folder-plus", "text-base")}
+      </button>
+    </div>
+    <div data-fs-list>
+      ${fs.error ? html`<div class="py-3 text-xs text-error">${fs.error}</div>` : null}
+      ${!fs.error && !fs.busy && !fs.entries.length ? html`<div class="py-3 text-sm text-muted">${T(t, "fsEmpty")}</div>` : null}
+      ${ordered(fs.entries, loc).map((e) => html`<button key=${e.docId} data-fs-entry=${e.name}
+          class="flex items-center gap-3 py-2.5 w-full border-b border-base-content/10 last:border-0 text-left"
+          onClick=${() => enter(e)}>
+        ${Icon(FILE_ICON(e.mime, e.dir), `text-xl shrink-0 ${e.dir ? "text-primary" : "text-muted"}`)}
+        <span class="min-w-0 flex-1 truncate">${e.name}</span>
+        ${e.dir ? Icon("lucide:chevron-right", "text-base text-base-content/40 shrink-0")
+          : html`<span class="text-xs tabular-nums text-base-content/45 shrink-0">${size(e.size, loc)}</span>`}
+      </button>`)}
+    </div>
+  <//>`;
+}
+
 // ---- one action ------------------------------------------------------------
 function Row({ id, t, loc }) {
   const runs = useStore($runs);
@@ -221,7 +410,22 @@ export function caps({ S, t, toast }) {
   const loc = useStore(S.locale);
   const runs = useStore($runs);
   const [all, setAll] = useState(false);
+  const fs = useStore($fs);
   const present = shell.present;
+
+  // ONE reaction for every way back — the system button, a gesture, the runtime popping the stack. The
+  // explorer never pops its own levels; it changes state and lets this listener bring the screen along,
+  // which is why a folder, a preview and the whole explorer all close with one press each.
+  useEffect(() => S.stack.listen((v) => {
+    const cur = $fs.get();
+    const want = fsDepth(cur);
+    const now = v?.length || 0;
+    if (now >= want) return;
+    if (now === 0) { setFs({ open: false, root: null, trail: [], entries: [], preview: null, error: "" }); return; }
+    if (cur.preview) { setFs({ preview: null }); return; }
+    const trail = cur.trail.slice(0, Math.max(1, now));
+    fsOpenFolder(S, cur.root, trail);
+  }), []);
   const ids = shell.actions;
   const done = ids.filter((id) => runs[id]).length;
   const failed = ids.filter((id) => runs[id] && !runs[id].ok).length;
@@ -252,6 +456,11 @@ export function caps({ S, t, toast }) {
     } catch (e) { toast?.(e?.code || T(t, "updFailed")); } finally { setUpd(false); }
   };
 
+  // A launcher icon opens a thing and the thing takes the screen. Rendering the explorer over the console
+  // rather than under it is what keeps that true — a file manager wedged into a page of probe rows would
+  // be a panel, not an app.
+  if (fs.open) return html`<div class="flex flex-col gap-3 pt-1"><${Explorer} S=${S} t=${t} loc=${loc} toast=${toast} /></div>`;
+
   return html`<div class="flex flex-col gap-3 pt-1">
     ${shell.updateAvailable ? html`<div data-update class="flex items-center gap-3 rounded-[var(--ms-r)] border border-warning/40 bg-warning/10 p-4">
       ${Icon("lucide:download", "text-xl text-warning shrink-0")}
@@ -281,7 +490,7 @@ export function caps({ S, t, toast }) {
       <span>${done}/${ids.length}</span>${failed ? html`<span class="text-error">${failed}</span>` : null}
     </div>` : null}
 
-    <${Launcher} loc=${loc} t=${t} toast=${toast} />
+    <${Launcher} S=${S} loc=${loc} t=${t} toast=${toast} />
 
     ${groups().map(([cap, ids2]) => html`<${Panel} key=${cap}>
       <div class="flex items-center gap-2 pb-1">

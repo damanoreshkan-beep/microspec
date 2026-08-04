@@ -132,7 +132,8 @@
               "cell",
               "ble",
               "usb",
-              "server"
+              "server",
+              "files"
             ]
           }
         },

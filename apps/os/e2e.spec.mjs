@@ -98,6 +98,34 @@ export default [
     },
   },
   {
+    name: "files: the tile opens the explorer, and a file opens its preview", run: async (h) => {
+      await h.click('[data-perm="files"]'); await h.wait(300);
+      h.expect((await h.count("[data-fs-list]")) === 1, "плитка Файлів не відкрила провідник");
+      h.expect((await h.count("[data-fs-entry]")) >= 2, "тека порожня під гейтом");
+      // A folder is a level, so the trail must name where you are — a file manager without a path is a
+      // list you cannot navigate by.
+      await h.click('[data-fs-entry="notes"]'); await h.wait(300);
+      h.expect((await h.text("[data-fs-trail]")).includes("notes"), "шлях не показує вкладену теку");
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("[data-fs-list]")) === 1, "Back вийшов із провідника замість теки вгору");
+      // Reading is the half of the capability a listing cannot prove.
+      await h.click('[data-fs-entry="readme.txt"]'); await h.wait(300);
+      h.expect((await h.count("[data-fs-preview]")) === 1, "файл не відкрив перегляд");
+      h.expect((await h.text("[data-fs-preview]")).includes("gate sample"), "перегляд не показав вміст файлу");
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("[data-fs-preview]")) === 0, "Back не закрив перегляд");
+      await h.back(); await h.wait(250);   // leave the console as we found it, for the tests after this one
+    },
+  },
+  {
+    name: "routing: Back walks out of the explorer to the launcher", run: async (h) => {
+      await h.click('[data-perm="files"]'); await h.wait(300);
+      h.expect((await h.count("[data-launcher]")) === 0, "провідник не зайняв екран");
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("[data-launcher]")) === 1, "Back не повернув до лаунчера");
+    },
+  },
+  {
     name: "routing: permissions screen opens and Back closes it", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click("#p-perms"); await h.wait(200);

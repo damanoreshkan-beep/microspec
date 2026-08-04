@@ -331,8 +331,10 @@ export function radar({ S, t, toast }) {
   const why = shell.whyCapability("ble");
 
   const [started, setStarted] = useState(false);
+  const [ack, setAck] = useState(false);
   const upsert = (d) => {
-    if (d && d.started) { setStarted(true); return; }   
+    if (d && d.ack) { setAck(true); return; }            
+    if (d && d.started) { setStarted(true); return; }    
     setEvents((n) => n + 1); setDevices((prev) => {
     const rest = prev.filter((x) => x.addr !== d.addr);
     return [...rest, { ...d, at: Date.now() }].sort((a, b) => b.rssi - a.rssi);
@@ -343,6 +345,7 @@ export function radar({ S, t, toast }) {
     setScanning(true);
     setErr(null);
     setStarted(false);
+    setAck(false);
     stopRef.current = shell.subscribe("ble.scan", {}, upsert, (e) => { setErr(e?.detail || e?.code || ERR.failed); setScanning(false); });
   };
   const stop = () => {
@@ -388,6 +391,7 @@ export function radar({ S, t, toast }) {
       ${held && shell.present ? html`<div data-ble-perms class="flex flex-wrap gap-x-3 gap-y-1 pt-2 font-mono text-[11px]">
         ${shell.androidFor("ble").filter((p) => p in held).map((p) => html`<span key=${p} class=${held[p] ? "text-success" : "text-error"}>${held[p] ? "+" : "−"} ${p}</span>`)}
         ${locOn === false ? html`<span class="text-error">− LOCATION SERVICES</span>` : null}
+        <span class=${ack ? "text-success" : "text-error"}>${ack ? "+" : "−"} ACK</span>
         <span class=${started ? "text-success" : "text-error"}>${started ? "+" : "−"} STARTED</span>
         <span class="text-muted">rx ${events}</span>
         <!-- The reason belongs NEXT TO the fact it explains. On its own line below it was missed twice,

@@ -11,7 +11,7 @@ Java written for it, the SDK has failed.
 
 **Status (2026-08-04): phases 0–3 and the `os` console are shipped**; phases 4–8 are not. Every section
 below is the agreed shape, with the decisions and the measurements that changed them folded back in —
-see the phase table in §8 for what is done. **Nothing Java has been verified on a device yet.**
+see the phase table in §8 for what is done. **The shell is verified on a device** (S25, 2026-08-04): all six bridge-1 actions run green through `os`.
 
 ---
 
@@ -363,7 +363,7 @@ feeds.
 | **0** ✅ | Shell survival kit: `onPermissionRequest`, `onGeolocationPermissionsShowPrompt`, `onShowFileChooser`, `setDownloadListener` + web-parity manifest (§4.3) + blob downloads (§4.4) | — | **done 2026-08-03** — deployed; unverified on device |
 | **1** ✅ | Rename to `apk.microspec` (§4.2) + per-app identity in manifest **and** arsc (§4.1) | — | **done 2026-08-03** — verified through the production URL |
 | **2** ✅ | Catalogue + generator + `shell.js` facade + version negotiation | 1 | **done 2026-08-04** — `packages/shell/actions.json`, `tools/shell-gen.mjs` (`--check` in the gate chain), `packages/runtime/shell.js`. One capability-free action (`system.info`) rather than literally zero, so the chain is exercised end to end instead of asserted in the abstract. **Open:** the Java registry is not generated — it crosses a repo boundary (catalogue is public, template is private) and is decided in phase 3. |
-| **3** ✅ | `full` template + origin-locked bridge + `notify` + `alarm` | 2 | **done 2026-08-04** — gradle flavours, one `@JavascriptInterface`, three gates in `assets/bridge.json`; `Catalogue.java` generated from the public catalogue (§4.5). Verified through production: our origin gets `full`, anything else gets `lite` whose dex contains no `__msShell` at all. **Unverified on device.** |
+| **3** ✅ | `full` template + origin-locked bridge + `notify` + `alarm` | 2 | **done 2026-08-04** — gradle flavours, one `@JavascriptInterface`, three gates in `assets/bridge.json`; `Catalogue.java` generated from the public catalogue (§4.5). Verified through production: our origin gets `full`, anything else gets `lite` whose dex contains no `__msShell` at all. **VERIFIED ON DEVICE 2026-08-04** — S25 Ultra, `os` → Run all: all six actions green, so the origin lock, the capability list, the JSON wire, notifications and alarms all work in the shell. |
 | **4** | Permissions registry + grouped screen + schema enum + uk/en | 3 | medium; whole-farm verify |
 | **5** | `background` (foreground service) + `location.watchBackground` | 3 | medium |
 | **6** | Radios: `wifi`, `cell`, `ble`, `usb` — the pay-off for gsmscan / lorawatch / hf | 5 | large |

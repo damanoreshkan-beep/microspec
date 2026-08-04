@@ -79,6 +79,12 @@ export function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
+export async function downloadUrl(url, filename) {
+  if (!url) return;
+  try { downloadBlob(await (await fetch(url)).blob(), filename); }
+  catch {  }
+}
+
 export function apkFilename(name) {
   const base = (name || "app").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "app";
   return `${base}.apk`;

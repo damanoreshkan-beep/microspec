@@ -330,7 +330,10 @@ export function radar({ S, t, toast }) {
   }, []);
   const why = shell.whyCapability("ble");
 
-  const upsert = (d) => { setEvents((n) => n + 1); setDevices((prev) => {
+  const [started, setStarted] = useState(false);
+  const upsert = (d) => {
+    if (d && d.started) { setStarted(true); return; }   
+    setEvents((n) => n + 1); setDevices((prev) => {
     const rest = prev.filter((x) => x.addr !== d.addr);
     return [...rest, { ...d, at: Date.now() }].sort((a, b) => b.rssi - a.rssi);
   }); };
@@ -339,6 +342,7 @@ export function radar({ S, t, toast }) {
     if (scanning || why) return;
     setScanning(true);
     setErr(null);
+    setStarted(false);
     stopRef.current = shell.subscribe("ble.scan", {}, upsert, (e) => { setErr(e?.detail || e?.code || ERR.failed); setScanning(false); });
   };
   const stop = () => {
@@ -384,6 +388,7 @@ export function radar({ S, t, toast }) {
       ${held && shell.present ? html`<div data-ble-perms class="flex flex-wrap gap-x-3 gap-y-1 pt-2 font-mono text-[11px]">
         ${shell.androidFor("ble").map((p) => html`<span key=${p} class=${held[p] ? "text-success" : "text-error"}>${held[p] ? "+" : "−"} ${p}</span>`)}
         ${locOn === false ? html`<span class="text-error">− LOCATION SERVICES</span>` : null}
+        <span class=${started ? "text-success" : "text-error"}>${started ? "+" : "−"} STARTED</span>
         <span class="text-muted">rx ${events}</span>
       </div>` : null}
       ${why ? html`<div class="pt-2 text-sm text-muted">${why === ERR.staleBridge ? T(t, "stStale") : T(t, "stNone")}</div>`

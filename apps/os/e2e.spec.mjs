@@ -47,6 +47,18 @@ export default [
     },
   },
   {
+    name: "radar: the subscribe a checklist cannot run, exercised by a screen that listens", run: async (h) => {
+      await h.click(String.raw`[data-tab="radar"]`); await h.wait(300);
+      h.expect((await h.count("[data-radar]")) === 1, "радар не намальовано");
+      // The gate seeds a fixed field, because an empty radar photographs as a broken one.
+      const devs = await h.count("[data-dev]");
+      h.expect(devs >= 5, `очікував засіяне поле пристроїв, знайшов ${devs}`);
+      // Stopping must be reachable: a scan left running costs battery behind a screen nobody watches.
+      h.expect((await h.count("#radar-toggle")) === 1, "немає кнопки сканування");
+      await h.click(String.raw`[data-tab="caps"]`); await h.wait(120);
+    },
+  },
+  {
     name: "alarms: the shell owns the list, and scheduling reads it back", run: async (h) => {
       await h.click('[data-tab="alarms"]'); await h.wait(250);
       // The gate mock returns one pending alarm, so the tab must render it rather than the empty state.

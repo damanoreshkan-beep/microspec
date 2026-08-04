@@ -849,3 +849,9 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
    and no gate can see that — overlap is not overflow. Reserving the room needs a constant written beside
    an element it describes, which is the bug with a delay fuse this project keeps relearning. The class
    stays as a hook; the shells have enough real signal without it. */
+
+/* A radar sweep — the one motion in the farm that is a READOUT rather than decoration: it says the scan
+   is live. Transform only, so the compositor takes it, and 4s is calm enough to sit under content. */
+.ms-sweep { animation: ms-sweep 4s linear infinite; }
+@keyframes ms-sweep { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ms-sweep { animation: none; } }

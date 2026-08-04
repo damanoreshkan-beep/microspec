@@ -14,11 +14,12 @@
 // Chromium — an empty screen would make the shot meaningless and hide a broken row.
 import { html } from "htm/preact";
 import { Fragment } from "preact";
-import { useState, useEffect } from "preact/hooks";
+import { useState, useEffect, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
 import { Panel } from "/_rt/ui.js";
+import { gate } from "/_rt/gate.js";
 import { shell, ERR } from "/_rt/shell.js";
 import { buildApk, apkFilename } from "/_rt/apk.js";
 import { PERMISSIONS, GROUPS, permLabels, permState, permRequest } from "/_rt/permissions.js";
@@ -344,6 +345,108 @@ export function alarms({ S, t, toast }) {
             </button>
           </div>`)}
     <//>
+  </div>`;
+}
+
+// ---- radar: the subscribe a checklist can never run -------------------------
+// `Run all` executes calls; a subscribe never settles, so location.watch and ble.scan were the only two
+// actions that shipped unproven. This screen is their test, and the thing Web Bluetooth cannot be: it
+// shows EVERYTHING advertising nearby, as it appears, instead of the one device a chooser returns.
+//
+// Angle is a hash of the address, so a device keeps its place between frames instead of jumping; radius
+// is signal strength, which is the only distance a radio can honestly claim.
+const SEEN_MS = 20_000;                       // older than this and it is gone, not "maybe still there"
+const rssiRadius = (rssi) => {
+  const clamped = Math.max(-100, Math.min(-30, rssi));
+  return 12 + ((-30 - clamped) / 70) * 78;    // -30dBm hugs the centre, -100 sits at the rim
+};
+const angleOf = (addr) => {
+  let h = 0;
+  for (let i = 0; i < addr.length; i++) h = (h * 31 + addr.charCodeAt(i)) >>> 0;
+  return (h % 360) * (Math.PI / 180);
+};
+
+// The gate has no radio, so seed a fixed field — an empty radar photographs as a broken one, and the
+// e2e would be asserting nothing.
+const GATE_DEVICES = [
+  { addr: "02:00:00:00:AA:01", name: "Gate Beacon", rssi: -52 },
+  { addr: "02:00:00:00:AA:02", name: "Watch", rssi: -67 },
+  { addr: "02:00:00:00:AA:03", name: "", rssi: -78 },
+  { addr: "02:00:00:00:AA:04", name: "Earbuds", rssi: -44 },
+  { addr: "02:00:00:00:AA:05", name: "", rssi: -91 },
+];
+
+export function radar({ S, t, toast }) {
+  const loc = useStore(S.locale);
+  const [devices, setDevices] = useState(() => (gate ? GATE_DEVICES.map((d) => ({ ...d, at: Date.now() })) : []));
+  const [scanning, setScanning] = useState(gate);
+  const stopRef = useRef(null);
+  const why = shell.whyCapability("ble");
+
+  // One entry per address: a beacon advertising ten times a second is one device, not ten.
+  const upsert = (d) => setDevices((prev) => {
+    const rest = prev.filter((x) => x.addr !== d.addr);
+    return [...rest, { ...d, at: Date.now() }].sort((a, b) => b.rssi - a.rssi);
+  });
+
+  const start = () => {
+    if (scanning || why) return;
+    setScanning(true);
+    stopRef.current = shell.subscribe("ble.scan", {}, upsert);
+  };
+  const stop = () => {
+    setScanning(false);
+    // Always cancel: a scan left running costs battery behind a screen nobody is looking at.
+    try { stopRef.current?.(); } catch { /* already gone */ }
+    stopRef.current = null;
+  };
+  useEffect(() => () => { try { stopRef.current?.(); } catch { /* */ } }, []);
+
+  // Drop what has gone quiet, so the screen states what is there NOW rather than what ever was.
+  useEffect(() => {
+    if (gate) return;
+    const id = setInterval(() => setDevices((prev) => prev.filter((d) => Date.now() - d.at < SEEN_MS)), 2000);
+    return () => clearInterval(id);
+  }, []);
+
+  const fresh = (d) => Math.max(0.25, 1 - (Date.now() - d.at) / SEEN_MS);
+
+  return html`<div class="flex flex-col gap-3 pt-1">
+    <${Panel}>
+      <div data-radar class="relative mx-auto w-full max-w-[20rem] aspect-square">
+        <svg viewBox="0 0 200 200" class="w-full h-full text-base-content" aria-hidden="true">
+          ${[30, 60, 90].map((r) => html`<circle key=${r} cx="100" cy="100" r=${r} fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.16" />`)}
+          <line x1="100" y1="10" x2="100" y2="190" stroke="currentColor" stroke-width="0.6" opacity="0.1" />
+          <line x1="10" y1="100" x2="190" y2="100" stroke="currentColor" stroke-width="0.6" opacity="0.1" />
+          ${scanning ? html`<g class="ms-sweep" style="transform-origin:100px 100px">
+            <line x1="100" y1="100" x2="100" y2="12" stroke="currentColor" stroke-width="1.2" opacity="0.35" class="text-primary" />
+          </g>` : null}
+          ${devices.map((d) => {
+            const a = angleOf(d.addr), r = rssiRadius(d.rssi);
+            return html`<circle key=${d.addr} cx=${(100 + Math.cos(a) * r).toFixed(1)} cy=${(100 + Math.sin(a) * r).toFixed(1)}
+              r="3.4" fill="currentColor" class="text-primary" opacity=${fresh(d).toFixed(2)} />`;
+          })}
+        </svg>
+        <div class="absolute inset-x-0 bottom-1 text-center font-mono text-xs text-muted tabular-nums">${devices.length}</div>
+      </div>
+
+      <button id="radar-toggle" class=${`btn btn-sm w-full gap-2 mt-2 ${scanning ? "" : "btn-primary"}`}
+          disabled=${!!why} data-scanning=${scanning} onClick=${() => (scanning ? stop() : start())}>
+        ${Icon(scanning ? "lucide:square" : "lucide:radar")}<span>${T(t, scanning ? "radarStop" : "radarStart")}</span>
+      </button>
+      ${why ? html`<div class="pt-2 text-sm text-muted">${why === ERR.staleBridge ? T(t, "stStale") : T(t, "stNone")}</div>` : null}
+    <//>
+
+    ${devices.length ? html`<${Panel} title=${T(t, "radarSeen")}>
+      ${devices.map((d) => html`<div key=${d.addr} data-dev=${d.addr} class="flex items-center gap-3 py-2 border-b border-base-content/10 last:border-0">
+        ${Icon("lucide:bluetooth", "text-base text-primary shrink-0")}
+        <div class="min-w-0 flex-1">
+          <div class="text-sm truncate">${d.name || T(t, "radarUnnamed")}</div>
+          <div class="font-mono text-[11px] text-muted truncate">${d.addr}</div>
+        </div>
+        <div class="font-mono text-xs tabular-nums shrink-0">${d.rssi}<span class="text-base-content/45">dBm</span></div>
+      </div>`)}
+    <//>` : null}
   </div>`;
 }
 

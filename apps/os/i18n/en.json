@@ -79,5 +79,6 @@
   "fsShare": "Share",
   "radarHidden": "Hidden network",
   "radarHosts": "On this network",
-  "hostQuiet": "Answered ping only"
+  "hostQuiet": "Answered ping only",
+  "cap_lan": "Network"
 }

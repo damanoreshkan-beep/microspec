@@ -34,7 +34,7 @@ const CAP_ICON = {
   system: "lucide:cpu", notify: "lucide:bell", alarm: "lucide:alarm-clock",
   background: "lucide:activity", wifi: "lucide:wifi", cell: "lucide:radio-tower",
   ble: "lucide:bluetooth", usb: "lucide:usb", location: "lucide:map-pin",
-  files: "lucide:folder", server: "lucide:server",
+  files: "lucide:folder", server: "lucide:server", lan: "lucide:network",
 };
 
 // Probe recipes: what to send so an action is worth pressing. Actions absent from here are still LISTED
@@ -879,28 +879,6 @@ export function radar({ S, t, toast }) {
             : err}</div>` : null}
     <//>
 
-    <!-- The network is a different question from the radar above it — not "what is radiating near me" but
-         "who shares this wire" — so it gets its own list rather than a shape on a circle it does not fit. -->
-    ${hosts.length || sweep ? html`<${Panel}>
-      <div class="flex items-center gap-2 pb-1">
-        ${Icon("lucide:network", "text-base text-primary shrink-0")}
-        <span class="font-semibold text-sm min-w-0 flex-1 truncate">${T(t, "radarHosts")}</span>
-        <!-- "6 of 254" rather than a count alone: a sweep that ended having looked at everything and one
-             that is still a third of the way through produce the same six rows otherwise. -->
-        <span data-lan-sweep class="font-mono text-[11px] text-base-content/45 tabular-nums shrink-0">
-          ${sweep ? `${sweep.found}/${sweep.scanned}` : hosts.length}
-        </span>
-      </div>
-      ${hosts.map((h) => html`<div key=${h.ip} data-host=${h.ip}
-          class="flex items-center gap-3 py-2 border-b border-base-content/10 last:border-0">
-        ${Icon(h.via.includes("ssdp") ? "lucide:tv-minimal" : "lucide:hard-drive", "text-base text-muted shrink-0")}
-        <div class="min-w-0 flex-1">
-          <div class="text-sm truncate">${h.name || h.ip}</div>
-          <div class="font-mono text-[11px] text-muted truncate">${h.name ? `${h.ip}${h.ports ? ` · ${h.ports}` : ""}` : (h.ports || T(t, "hostQuiet"))}</div>
-        </div>
-      </div>`)}
-    <//>` : null}
-
     <!-- ONE list for one radar. Sorted by signal across both radios, because "what is closest" is the
          question the screen answers and splitting it in two would make that unanswerable at a glance. -->
     ${devices.length + nets.length + cells.length ? html`<${Panel} title=${T(t, "radarSeen")}>
@@ -928,6 +906,28 @@ export function radar({ S, t, toast }) {
         <div class="font-mono text-xs tabular-nums shrink-0">${e.rssi}<span class="text-base-content/45">dBm</span></div>
       </div>`)}
     <//>` : null}
+    <!-- The network is a different question from the radar above it — not "what is radiating near me" but
+         "who shares this wire" — so it gets its own list rather than a shape on a circle it does not fit. -->
+    ${hosts.length || sweep ? html`<${Panel}>
+      <div class="flex items-center gap-2 pb-1">
+        ${Icon("lucide:network", "text-base text-primary shrink-0")}
+        <span class="font-semibold text-sm min-w-0 flex-1 truncate">${T(t, "radarHosts")}</span>
+        <!-- "6 of 254" rather than a count alone: a sweep that ended having looked at everything and one
+             that is still a third of the way through produce the same six rows otherwise. -->
+        <span data-lan-sweep class="font-mono text-[11px] text-base-content/45 tabular-nums shrink-0">
+          ${sweep ? `${sweep.found}/${sweep.scanned}` : hosts.length}
+        </span>
+      </div>
+      ${hosts.map((h) => html`<div key=${h.ip} data-host=${h.ip}
+          class="flex items-center gap-3 py-2 border-b border-base-content/10 last:border-0">
+        ${Icon(h.via.includes("ssdp") ? "lucide:tv-minimal" : "lucide:hard-drive", "text-base text-muted shrink-0")}
+        <div class="min-w-0 flex-1">
+          <div class="text-sm truncate">${h.name || h.ip}</div>
+          <div class="font-mono text-[11px] text-muted truncate">${h.name ? `${h.ip}${h.ports ? ` · ${h.ports}` : ""}` : (h.ports || T(t, "hostQuiet"))}</div>
+        </div>
+      </div>`)}
+    <//>` : null}
+
   </div>`;
 }
 

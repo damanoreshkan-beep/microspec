@@ -79,5 +79,6 @@
   "fsShare": "Поділитись",
   "radarHidden": "Прихована мережа",
   "radarHosts": "У мережі",
-  "hostQuiet": "Відповів на ping"
+  "hostQuiet": "Відповів на ping",
+  "cap_lan": "Мережа"
 }

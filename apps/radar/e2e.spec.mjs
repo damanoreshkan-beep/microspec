@@ -56,7 +56,7 @@ export default [
       await h.click('[data-loc="en"]'); await h.wait(250);
       h.expect(/Dome|Hunt|Guard/i.test(await h.bodyText()), "не EN");
       await h.click('[data-loc="uk"]'); await h.wait(250);
-      h.expect(/Купол|Пошук|Вартовий/.test(await h.bodyText()), "не UA");
+      h.expect(/Купол|Пошук|Вартовий/i.test(await h.bodyText()), "не UA");
       const body = (await h.bodyText()).toLowerCase();
       for (const label of ["купол", "пошук", "вартовий"]) {
         h.expect(body.includes(label), `підпис вкладки обрізано або зник: ${label}`);

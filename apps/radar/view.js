@@ -188,12 +188,11 @@ export function domeView({ S, t, screen, openScreen, closeScreen }) {
   return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
     <${Stage}>
       ${webgl ? html`<canvas ref=${canvas} class="absolute inset-0 w-full h-full" aria-hidden="true"></canvas>` : null}
-      <div data-mark data-live class="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
-        <div class="font-mono tabular-nums text-[var(--ms-title)] text-base-content">${field.length}</div>
-        <div class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
-          ${counts.ble} ${T(t, "ble")} · ${counts.wifi} ${T(t, "wifi")}
-        </div>
-        ${scanning ? null : html`<div class="text-[var(--ms-label)] text-base-content/70">${T(t, "idle")}</div>`}
+      <div data-mark data-live class="absolute inset-x-0 top-0 flex items-baseline justify-center gap-2 pointer-events-none">
+        <span class="font-mono tabular-nums text-[var(--ms-title)] text-base-content">${field.length}</span>
+        <span class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
+          ${counts.ble} ${T(t, "ble")} · ${counts.wifi} ${T(t, "wifi")}${scanning ? "" : " · " + T(t, "idle")}
+        </span>
       </div>
     <//>
 
@@ -231,6 +230,7 @@ export function domeView({ S, t, screen, openScreen, closeScreen }) {
 }
 
 
+
 export function huntView({ S, t, screen, openScreen, closeScreen }) {
   const field = useField();
   const target = useStore($target);
@@ -243,6 +243,7 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
   let max = 0;
   for (let i = 0; i < p.length; i++) max = Math.max(max, p[i]);
 
+  
   
   const path = [];
   for (let i = 0; i < p.length; i++) {
@@ -258,6 +259,16 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
           aria-label=${T(t, locked ? "aLobe" : "aCircle")}>
           <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.18" />
           <circle cx="50" cy="50" r="12" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.18" />
+          ${
+            Array.from({ length: 36 }, (_, i) => {
+              const a = (i * 10 * Math.PI) / 180 - Math.PI / 2;
+              const major = i % 9 === 0;
+              const r0 = major ? 36 : 39.5;
+              return html`<line key=${i} x1=${(50 + Math.cos(a) * r0).toFixed(2)} y1=${(50 + Math.sin(a) * r0).toFixed(2)}
+                x2=${(50 + Math.cos(a) * 42).toFixed(2)} y2=${(50 + Math.sin(a) * 42).toFixed(2)}
+                stroke="currentColor" stroke-width=${major ? 0.7 : 0.35} opacity=${major ? 0.45 : 0.2}
+                class=${i === 0 ? "text-[var(--app-accent)]" : ""} />`;
+            })}
           ${max > 0 ? html`<path data-petal d=${path.join(" ") + " Z"} fill="currentColor" fill-opacity="0.12"
             stroke="currentColor" stroke-width="0.7" class="text-[var(--app-accent)]" />` : null}
           ${locked ? html`<line data-bearing x1="50" y1="50"
@@ -277,12 +288,15 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
         </button>
       </div>
       
-      <div data-live class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
-        <span class="text-base-content">${locked
+      
+      <div data-live class="font-mono uppercase tracking-wide text-[var(--ms-label)]">
+        <div class="text-base-content truncate">${locked
           ? T(t, "strongestAt").replace("{deg}", Math.round(stats.bearingDeg))
-          : T(t, "coverage").replace("{pct}", Math.round(stats.coverage * 100))}</span>
-        · ${T(t, "concentration")} ${stats.r.toFixed(2)} · ${stats.samples}
-        ${stats.coverage < BEARING_MIN_COVERAGE && stats.samples > 0 ? " · " + T(t, "keepSweeping") : ""}
+          : T(t, "coverage").replace("{pct}", Math.round(stats.coverage * 100))}${
+            stats.coverage < BEARING_MIN_COVERAGE && stats.samples > 0 ? " · " + T(t, "keepSweeping") : ""}</div>
+        <div class="text-base-content/70 truncate">
+          ${T(t, "concentration")} ${stats.r.toFixed(2)} · ${T(t, "samples")} ${stats.samples}
+        </div>
       </div>
     <//>
 
@@ -327,7 +341,6 @@ export function guardView({ S, t }) {
           .replace("{m}", GUARD.minDisplacementM)}
       </div>
     <//>
-
     ${flagged.length ? html`<${Panel} title=${T(t, "possible")}>
       ${flagged.map(({ d }) => html`<div key=${d.addr} data-flag=${d.addr} class="flex items-center gap-3">
         ${Icon("lucide:shield-alert", "text-[var(--ms-icon)] text-[var(--app-accent)] shrink-0")}
@@ -353,6 +366,7 @@ export function guardView({ S, t }) {
                   class="shrink-0 font-mono uppercase tracking-wide text-[var(--ms-label)] px-1.5 rounded-full border border-[var(--app-accent)] text-base-content">
                   ${T(t, "sepTag")}</span>` : null}
             </span>
+            
             <span class="block font-mono text-[var(--ms-label)] text-base-content/70">
               ${s.reasons.length ? s.reasons.map((r) => T(t, "why_" + r)).join(" · ") : T(t, "allMet")}
             </span>
@@ -360,10 +374,10 @@ export function guardView({ S, t }) {
         </div>`)}
       </div>
     <//>
+
     ${!fix && scanning && !gate ? html`<div data-nofix class="text-[var(--ms-label)] text-base-content/70">${T(t, "needFix")}</div>` : null}
   </div>`;
 }
-
 
 
 if (gate) startScan();

@@ -68,9 +68,12 @@ export async function mount(canvas, getState) {
     }
     enclosure.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mats.dome));
   }
-  const north = [];
-  for (let i = 0; i <= 8; i++) north.push(new THREE.Vector3(0, 0, -1.02 - (i % 2) * 0.06));
-  enclosure.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(north), mats.arc));
+  enclosure.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, -1.0), new THREE.Vector3(0, 0, -1.2),
+  ]), mats.mark));
+  enclosure.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-0.075, 0, -1.13), new THREE.Vector3(0, 0, -1.2), new THREE.Vector3(0.075, 0, -1.13),
+  ]), mats.mark));
   world.add(enclosure);
 
   const shells = new Map();   
@@ -130,10 +133,11 @@ export async function mount(canvas, getState) {
     const st = getState() || {};
     resize();
 
-    const pitch = 0.62 + (st.pitch || 0) * 0.12;
+    const lean = Math.min(1, Math.max(0, (camera.aspect - 0.45) / 1.15));
+    const pitch = (1.16 - 0.5 * lean) + (st.pitch || 0) * 0.1;
     const half = Math.tan((camera.fov * Math.PI) / 360);
-    const R = 1.08;                                        
-    const dist = 1.12 * Math.max(R / (half * camera.aspect), (R * Math.sin(pitch) + 0.34) / half);
+    const R = 1.24;                                        
+    const dist = 1.05 * Math.max(R / (half * camera.aspect), (R * Math.sin(pitch) + 0.3) / half);
     camera.position.set(0, Math.sin(pitch) * dist, Math.cos(pitch) * dist);
     camera.lookAt(0, 0, 0);
     world.rotation.y = ((st.heading || 0) * Math.PI) / 180;

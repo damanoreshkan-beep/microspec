@@ -120,8 +120,10 @@ export default [
       h.expect(rows >= 5, `очікував заповнений список портів під гейтом, знайшов ${rows}`);
       h.expect((await h.count('[data-port="8080"]')) === 1, "кадр із каталогу не дійшов через subscribe");
 
-      const body = await h.text("[data-ports-tally]");
-      h.expect(/\d+ · \d+/.test(body), `лічильник не показує відкриті · названі: ${body}`);
+      const tally = (await h.text("[data-ports-tally]")).trim();
+      h.expect(String(rows) === tally, `лічильник ${tally} не збігається з ${rows} рядками`);
+      const scope = await h.text("[data-ports-scope]");
+      h.expect(/127\.0\.0\.1/.test(scope) && /\d{4,}/.test(scope), `панель обсягу без адрес і числа: ${scope}`);
       const text = await h.bodyText();
       h.expect(/OpenSSH_9\.6/.test(text), "банер SSH не показано як доказ");
       h.expect((await h.count('[data-port="5432"][data-conf="conventional"]')) === 1,

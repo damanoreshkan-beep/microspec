@@ -142,12 +142,14 @@ export async function mount(canvas, getState) {
     for (let i = n; i < pool.length; i++) if (pool[i]) pool[i].visible = false;
     for (const k of [...grown.keys()]) if (!cells.some((c) => c.key === k)) grown.delete(k);
 
-    const pitch = 0.72;
+    const lean = Math.min(1, Math.max(0, (camera.aspect - 0.45) / 1.15));
+    const pitch = 1.02 - 0.40 * lean;
     const half = Math.tan((camera.fov * Math.PI) / 360);
-    const R = spread * 1.08;
-    const dist = 1.06 * Math.max(R / (half * camera.aspect), (R * Math.sin(pitch) + 0.9) / half);
+    const R = spread * 1.06;
+    const vert = R * Math.sin(pitch) + 1.56 * Math.cos(pitch) * 0.5 + 0.35;
+    const dist = 1.04 * Math.max(R / (half * camera.aspect), vert / half);
     camera.position.set(0, Math.sin(pitch) * dist, Math.cos(pitch) * dist);
-    camera.lookAt(0, 0.25, 0);
+    camera.lookAt(0, 0.42, 0);   
     renderer.render(scene, camera);
   }
   raf = requestAnimationFrame(frame);

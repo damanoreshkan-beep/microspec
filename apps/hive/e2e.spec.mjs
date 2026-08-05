@@ -4,6 +4,10 @@ export default [
       await h.click('[data-tab="hive"]'); await h.wait(500);
       h.expect((await h.count("[data-mark]")) === 1, "соти не змонтувались");
       h.expect((await h.count("[data-live]")) >= 1, "немає елемента, який не існує без показань");
+      h.expect((await h.count("[data-cell]")) === 8, `очікував 8 комірок, знайшов ${await h.count("[data-cell]")}`);
+      for (const k of ["ble", "wifi", "lte"]) {
+        h.expect((await h.count(`[data-cell][data-kind="${k}"]`)) >= 1, `у сітці немає ${k}`);
+      }
       for (const k of ["ble", "wifi", "lte"]) {
         h.expect((await h.count(`[data-legend-kind="${k}"]`)) === 1, `у легенді немає ${k}`);
       }

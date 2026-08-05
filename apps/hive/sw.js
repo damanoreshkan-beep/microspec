@@ -1,9 +1,8 @@
 self.MS = {
   app: "hive",
-  version: "28c0b39e70",
+  version: "c94802ff12",
   precache: [
     "./",
-    "./hive.js",
     "./i18n/en.json",
     "./i18n/uk.json",
     "./icon.svg",

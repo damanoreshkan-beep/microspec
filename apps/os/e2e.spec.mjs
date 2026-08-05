@@ -141,8 +141,12 @@ export default [
       // dead while the seeded fixture still photographed perfectly.
       h.expect((await h.count('[data-port="8080"]')) === 1, "кадр із каталогу не дійшов через subscribe");
 
-      const body = await h.text("[data-ports-tally]");
-      h.expect(/\d+ · \d+/.test(body), `лічильник не показує відкриті · названі: ${body}`);
+      const tally = (await h.text("[data-ports-tally]")).trim();
+      h.expect(String(rows) === tally, `лічильник ${tally} не збігається з ${rows} рядками`);
+      // The scope panel is what makes an empty list readable: it says how many ports were asked, and on
+      // which addresses. Without it "nothing answered" could mean ten ports or all 65535.
+      const scope = await h.text("[data-ports-scope]");
+      h.expect(/127\.0\.0\.1/.test(scope) && /\d{4,}/.test(scope), `панель обсягу без адрес і числа: ${scope}`);
       const text = await h.bodyText();
       // The two halves of the screen's job, both asserted: something identified itself by its banner, and
       // something else is admitted to be a guess rather than dressed up as an answer.

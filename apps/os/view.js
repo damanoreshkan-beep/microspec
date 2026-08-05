@@ -1086,6 +1086,12 @@ export function home({ S, t, toast }) {
   };
   useEffect(() => {
     read();
+    // A screen that only exists after a tap cannot be photographed, and an unphotographed screen is one
+    // nobody has looked at. Gate-only, exactly like the explorer's ?fs — never a URL a user can land on.
+    if (gate) {
+      const want = new URLSearchParams(location.search).get("home");
+      if (want && ["perms", "console", "station"].includes(want)) { $home.set(want); S.stack.set([want]); }
+    }
     const id = setInterval(read, HOME_MS);
     // Leaving home must leave its history behind with it, or Back would pop a level whose screen is gone.
     return () => { clearInterval(id); $home.set(null); if (S.stack.get().length) S.stack.set([]); };
@@ -1150,8 +1156,10 @@ export function home({ S, t, toast }) {
         <${Field} label=${T(t, "secNetwork")} value=${netLine} sub=${netSub} />
         <${Field} label=${T(t, "secRadio")} value=${radioLine} mono />
         <${Field} label=${T(t, "secStorage")} value=${roots == null ? "—" : roots.length ? roots.map((r) => r.name).join(" · ") : T(t, "secNoFolder")} />
+        <!-- The address, and nothing else. "3 · 1" was hits and routes — the same two-bare-numbers defect
+             the bridge line had, and those belong to the station screen where they are labelled. -->
         <${Field} label=${T(t, "secStation")} value=${srv?.running ? (srv.url || T(t, "srvOn")) : T(t, "srvOff")} mono
-          tone=${srv?.running ? "ok" : ""} sub=${srv?.running ? `${srv.hits ?? 0} · ${srv.routes ?? 0}` : ""} />
+          tone=${srv?.running ? "ok" : ""} />
         <${Field} label=${T(t, "secAlarms")} value=${alarms == null ? "—" : String(alarms.length)} mono
           sub=${alarms?.length ? new Date(Math.min(...alarms.map((a) => a.at))).toLocaleString(loc, { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : ""} />
         <!-- The bridge's own line carries only what is WRONG. "32 · —" said the catalogue has 32 actions

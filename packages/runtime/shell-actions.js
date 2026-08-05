@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 23;
+export const CATALOGUE_BRIDGE = 24;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -266,7 +266,13 @@ export const ACTIONS = {
       "addr": "02:00:00:00:AA:01",
       "name": "Gate Beacon",
       "rssi": -62,
-      "at": 1893479400000
+      "at": 1893479400000,
+      "raw": "0201060303b2fc0716b2fc41424344",
+      "tx": -8,
+      "tns": 41000000000,
+      "dstat": 0,
+      "legacy": true,
+      "conn": true
     }
   },
   "usb.list": {

@@ -698,7 +698,9 @@ export function radar({ S, t, toast }) {
   // something the other does not: one has the open ports, the other the model name. Merge, never replace.
   const upsertHost = (h) => {
     if (!h) return;
-    if (h.done) { setSweep({ scanned: h.scanned, found: h.found }); return; }
+    if (h.done) { setSweep({ scanned: h.scanned, found: h.found, sources: h.sources, done: true }); return; }
+    // Progress is not a host. Without it the fifteen seconds before the first answer look like a hang.
+    if (h.progress) { setSweep((s) => (s?.done ? s : { scanned: h.scanned, total: h.total })); return; }
     if (h.started || h.ack || !h.ip) return;
     setHosts((prev) => {
       const at = prev.find((x) => x.ip === h.ip);
@@ -890,8 +892,11 @@ export function radar({ S, t, toast }) {
         <!-- The sweep gets the same treatment as the scan above it. Without SWEEP, "the OS refused it",
              "it is still running" and "it finished empty" were one absent panel with nothing to read. -->
         <span data-lan-flag class=${lanErr ? "text-error" : lanOn || sweep ? "text-success" : "text-error"}>
-          ${lanErr || !(lanOn || sweep) ? "−" : "+"} SWEEP${sweep ? ` ${sweep.found}/${sweep.scanned}` : ""}
+          ${lanErr || !(lanOn || sweep) ? "−" : "+"} SWEEP${sweep?.done ? ` ${sweep.found}/${sweep.scanned}` : sweep ? ` ${sweep.scanned}/${sweep.total}` : ""}
         </span>
+        <!-- WHICH probe found things, not just how many. "ping=0 udp=0 tcp=1" and "ping=9 tcp=1" are
+             different faults, and a host count alone reads the same for both. -->
+        ${sweep?.sources ? html`<span data-lan-sources class="text-muted">${sweep.sources}</span>` : null}
         <span class="text-muted">rx ${events}</span>
         <!-- The reason belongs NEXT TO the fact it explains. On its own line below it was missed twice,
              which left "no error was shown" and "no error happened" indistinguishable — the one
@@ -944,7 +949,7 @@ export function radar({ S, t, toast }) {
         <!-- "6 of 254" rather than a count alone: a sweep that ended having looked at everything and one
              that is still a third of the way through produce the same six rows otherwise. -->
         <span data-lan-sweep class="font-mono text-[11px] text-base-content/45 tabular-nums shrink-0">
-          ${sweep ? `${sweep.found}/${sweep.scanned}` : hosts.length}
+          ${sweep?.done ? `${sweep.found}/${sweep.scanned}` : sweep ? `${sweep.scanned}/${sweep.total}` : hosts.length}
         </span>
       </div>
       <!-- The panel exists from the moment the sweep starts, so the ten seconds before the first host are

@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 22,
+  "bridgeVersion": 23,
   "actions": [
     {
       "id": "system.info",
@@ -1623,7 +1623,7 @@
         "ACCESS_WIFI_STATE",
         "CHANGE_WIFI_MULTICAST_STATE"
       ],
-      "summary": "Who else is on this network. A browser has no raw sockets, no ARP and no way to probe an unknown host, so this exists nowhere on the web. Three independent sources: a TCP connect sweep of the subnet (the reliable one — isReachable needs a raw socket a normal app cannot open and is known to ignore its own timeout), an SSDP multicast that routers and TVs answer with a model name, and reverse DNS for the hosts that answered.",
+      "summary": "Who else is on this network. A browser has no raw sockets, no ARP and no way to probe an unknown host, so this exists nowhere on the web. FIVE independent sources, because ports alone found only the router on a real network: UDP to a closed port (the host answers ICMP unreachable — it proves itself BY refusing, which is how a firewalled laptop is found at all), /system/bin/ping (isReachable falls back to TCP port 7 and ignores its own timeout), a TCP connect sweep, and SSDP + mDNS multicast, whose replies identify a host by the address they come from. Reverse DNS names whatever answered.",
       "args": {
         "type": "object",
         "additionalProperties": false,
@@ -1646,7 +1646,7 @@
           },
           "via": {
             "type": "string",
-            "description": "tcp | ssdp — which source saw it. The same host usually arrives twice."
+            "description": "udp | ping | tcp | ssdp | mdns — which source saw it. A host usually arrives more than once."
           },
           "at": {
             "type": "integer"
@@ -1666,6 +1666,17 @@
           },
           "ack": {
             "type": "boolean"
+          },
+          "progress": {
+            "type": "boolean",
+            "description": "The sweep is partway through. Fifteen seconds of nothing reads as broken."
+          },
+          "total": {
+            "type": "integer"
+          },
+          "sources": {
+            "type": "string",
+            "description": "Per-probe tally, e.g. tcp=1 udp=4 ping=6 ssdp=2 mdns=3. A bare host count cannot say WHICH probe is dead."
           }
         }
       },

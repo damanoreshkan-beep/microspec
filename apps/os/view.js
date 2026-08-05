@@ -283,11 +283,12 @@ function Explorer({ S, t, loc, toast }) {
     <//>`;
   }
 
-  const trail = fs.trail.map((f) => f.name).join(" / ");
+  const trail = fs.trail.length <= 2
+    ? fs.trail.map((f) => f.name).join(" / ")
+    : `… / ${fs.trail.slice(-2).map((f) => f.name).join(" / ")}`;
   return html`<${Panel}>
     <div class="flex items-center gap-2 pb-1">
-      ${Icon("lucide:folder-open", "text-base text-primary shrink-0")}
-      <span data-fs-trail class="font-mono text-xs text-muted min-w-0 flex-1 truncate" dir="rtl">${trail}</span>
+      <span data-fs-trail class="font-mono text-sm min-w-0 flex-1 truncate">${trail}</span>
       <button class="btn btn-xs btn-ghost btn-circle shrink-0" aria-label=${T(t, "fsSaveLog")} onClick=${saveLog}>
         ${Icon("lucide:save", "text-base")}
       </button>

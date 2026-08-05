@@ -1,0 +1,51 @@
+{
+  "id": "radar",
+  "theme": "signal",
+  "category": "tools",
+  "accent": "#D9548E",
+  "tabs": [
+    {
+      "id": "dome",
+      "type": "tool",
+      "icon": "lucide:radar",
+      "label": "tabDome",
+      "view": "domeView",
+      "fit": true
+    },
+    {
+      "id": "hunt",
+      "type": "tool",
+      "icon": "lucide:crosshair",
+      "label": "tabHunt",
+      "view": "huntView",
+      "fit": true
+    },
+    {
+      "id": "guard",
+      "type": "tool",
+      "icon": "lucide:shield-alert",
+      "label": "tabGuard",
+      "view": "guardView"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:settings",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:radar",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "permissions": [
+      "ble",
+      "wifi",
+      "geolocation",
+      "motion",
+      "notifications"
+    ]
+  }
+}

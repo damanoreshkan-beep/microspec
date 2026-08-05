@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 23,
+  "bridgeVersion": 24,
   "actions": [
     {
       "id": "system.info",
@@ -608,6 +608,22 @@
                 "caps": {
                   "type": "string",
                   "description": "Security capabilities as the driver reports them."
+                },
+                "ftm": {
+                  "type": "boolean",
+                  "description": "is80211mcResponder — this AP answers a Wi-Fi RTT ranging request, which is the only REAL distance any radio on this phone can produce (Android documents 1-2 m). False on most home routers, so a screen must never offer ranging until a scan has said true."
+                },
+                "std": {
+                  "type": "integer",
+                  "description": "getWifiStandard — 1 legacy, 4 11n, 5 11ac, 6 11ax, 8 11be. API 30+, absent below it."
+                },
+                "width": {
+                  "type": "integer",
+                  "description": "channelWidth — 0 is 20MHz, 1 is 40, 2 is 80, 3 is 160, 4 is 80+80, 5 is 320. API 23+."
+                },
+                "at": {
+                  "type": "integer",
+                  "description": "ScanResult.timestamp in microseconds since boot. A scan is a statement about WHEN; without it a throttled repeat is indistinguishable from a fresh look."
                 }
               }
             }
@@ -895,6 +911,33 @@
           "ack": {
             "type": "boolean",
             "description": "The bridge received the subscribe call, emitted before any logic runs — so a call that never arrived stops looking like one that was swallowed."
+          },
+          "raw": {
+            "type": "string",
+            "description": "The complete advertisement as lowercase hex. CANONICAL: a reduced schema cannot classify a protocol invented after this catalogue was written, and Android's own parser drops malformed structures. Absent on a shell older than bridge 24, which is how a page tells the difference between 'no payload' and 'this shell cannot send one'."
+          },
+          "tx": {
+            "type": "integer",
+            "description": "Advertised transmit power in dBm (AD type 0x0A, or getTxPower on extended advertising). Absent means not advertised — it must NOT be defaulted, because an assumed reference power at 1 m is where an RSSI distance estimate becomes fiction."
+          },
+          "tns": {
+            "type": "integer",
+            "description": "getTimestampNanos — monotonic since boot. Ordering and inter-advertisement intervals survive a wall-clock adjustment; `at` does not."
+          },
+          "sid": {
+            "type": "integer",
+            "description": "Advertising SID, 0-15, extended advertising only. A fingerprint clue WITHIN one address epoch — never a durable identity."
+          },
+          "dstat": {
+            "type": "integer",
+            "description": "getDataStatus — 0 complete, 1 truncated, 2 more-to-come. Parsing `raw` without checking this reads a fragment as a whole advertisement."
+          },
+          "legacy": {
+            "type": "boolean"
+          },
+          "conn": {
+            "type": "boolean",
+            "description": "Connectable. The non-owner GATT service (identify, play sound, disablement instructions) is only reachable when this is true."
           }
         }
       },
@@ -902,7 +945,13 @@
         "addr": "02:00:00:00:AA:01",
         "name": "Gate Beacon",
         "rssi": -62,
-        "at": 1893479400000
+        "at": 1893479400000,
+        "raw": "0201060303b2fc0716b2fc41424344",
+        "tx": -8,
+        "tns": 41000000000,
+        "dstat": 0,
+        "legacy": true,
+        "conn": true
       }
     },
     {

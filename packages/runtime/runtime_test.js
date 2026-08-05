@@ -12,6 +12,7 @@ import { asked as chatAsked, answered as chatAnswered, foldThread as chatFold, a
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "./groove.js";
 import { generateMelody, scoreMelody } from "./melody.js";
 import { shell, ERR } from "./shell.js";
+import { parseAd as rdParseAd, classify as rdClassify, addrKind as rdAddrKind, rotates as rdRotates, band as rdBand, bandFraction as rdBandFraction, smooth as rdSmooth, estimateDistance as rdEstimateDistance, guardScore as rdGuardScore, GUARD as rdGUARD } from "./radar.js";
 import { PERMISSIONS, GROUPS, permState, permAndroid } from "./permissions.js";
 import { hannCurve as grHann, grainRate as grGrainRate, overlapOf as grOverlapOf, cloudGain as grCloudGain, planGrains as grPlan, conditionSample as grCondition, dcOffset as grDcOffset, clipRatio as grClipRatio, trimBounds as grTrim, detectPitch as grPitch, CENTS as grCENTS, encodeWav as grWav, syntheticSample as grSynth, MIN_KEEP as grMIN_KEEP } from "./grain.js";
 import { mulberry32 as grRng } from "./groove.js";
@@ -5660,4 +5661,146 @@ Deno.test("shell: a subscription that fails tells the caller, instead of looking
     shell.subscribe("ble.scan", {}, () => {}, (e) => { stale = e; });
     assertEquals(stale?.code, ERR.staleBridge);
   } finally { delete globalThis.__msShell; delete globalThis.window; }
+});
+
+// ── radar ─────────────────────────────────────────────────────────────────────────────────────────────
+Deno.test("radar: an AD walk stops at a structure that would read past the end", () => {
+  // The catalogue's own gate mock: flags, complete 16-bit UUID 0xFCB2, service data for 0xFCB2.
+  const ok = rdParseAd("0201060303b2fc0716b2fc41424344");
+  assertEquals(ok.truncated, false);
+  assertEquals(ok.error, null);
+  assertEquals(ok.structures.length, 3);
+  assertEquals(ok.structures[0].type, 0x01);
+  assertEquals(ok.structures[2].value.length, 6, "service data keeps its UUID plus 4 payload bytes");
+
+  // The off-by-one that silently shortens a value instead of reporting it: the last structure claims one
+  // more byte than the frame holds. slice() would clamp and hand back a short value with no complaint.
+  const short = rdParseAd("0201060303b2fc0816b2fc41424344");
+  assertEquals(short.truncated, true, "a structure running past the end is truncated, never quietly clipped");
+  assertEquals(short.structures.length, 2, "the overrunning structure is dropped, not half-parsed");
+
+  assertEquals(rdParseAd("0201060").error, "notHex", "an odd-length string is not a frame");
+  assertEquals(rdParseAd("").structures.length, 0);
+  assertEquals(rdParseAd(undefined).structures.length, 0);
+});
+
+Deno.test("radar: a DULT accessory announces that it is separated from its owner", () => {
+  // Draft Table 1: after the 2-byte service UUID come the Network ID, then a byte whose LEAST significant
+  // bit is the near-owner bit. 0 means separated — the state that justifies telling the user anything.
+  const sep = rdClassify({ addr: "4C:11:22:33:44:55", raw: "0201060516b2fc0700" });
+  assertEquals(sep.tracker, "separated");
+  assertEquals(sep.separated, true);
+  assert(sep.why.includes("dultSeparated"));
+
+  const near = rdClassify({ addr: "4C:11:22:33:44:55", raw: "0201060516b2fc0701" });
+  assertEquals(near.tracker, "nearOwner");
+  assertEquals(near.separated, false, "its owner is right there — this is the commonest false positive");
+});
+
+Deno.test("radar: a vendor is not a device class, and a pairing protocol is not a tracker", () => {
+  // Apple company data covers phones, watches and earbuds. Classifying on it is a false-positive machine.
+  const airpods = rdClassify({ addr: "5A:00:00:00:00:01", raw: "05ff4c00070f" });
+  assertEquals(airpods.vendor, "Apple");
+  assertEquals(airpods.tracker, "none", "a company ID alone must never read as a tracker");
+
+  // Fast Pair is how headphones pair; Eddystone is a generic beacon protocol. Neither is evidence.
+  for (const uuid of ["03032cfe", "0303aafe"]) {
+    const c = rdClassify({ addr: "5A:00:00:00:00:02", raw: "020106" + uuid });
+    assertEquals(c.tracker, "none", `${uuid} is an ordinary accessory protocol, not a tracker marker`);
+  }
+
+  const tile = rdClassify({ addr: "5A:00:00:00:00:03", raw: "0201060303edfe" });
+  assertEquals(tile.tracker, "possible");
+  assert(tile.protocols.includes("tile"));
+});
+
+Deno.test("radar: an address says whether it can be followed at all", () => {
+  assertEquals(rdAddrKind("4C:11:22:33:44:55"), "resolvable");   // 0x4C -> 0b01
+  assertEquals(rdAddrKind("0A:11:22:33:44:55"), "nonResolvable"); // 0x0A -> 0b00
+  assertEquals(rdAddrKind("C3:11:22:33:44:55"), "staticRandom");  // 0xC3 -> 0b11
+  assertEquals(rdAddrKind("8F:11:22:33:44:55"), "reserved");
+  assertEquals(rdAddrKind("zz"), "unknown");
+  assert(rdRotates("4C:11:22:33:44:55"), "a resolvable private address rotates, so a trail must end at it");
+});
+
+Deno.test("radar: strength is a band in dBm, and metres need calibration the caller must supply", () => {
+  assertEquals(rdBand(-40), "immediate");
+  assertEquals(rdBand(-60), "near");
+  assertEquals(rdBand(-80), "far");
+  assertEquals(rdBand(-95), "faint");
+  assertEquals(rdBand(NaN), "unknown");
+
+  // The whole point: no default calibration exists, so an uncalibrated call returns null rather than a
+  // confident number. -59/2 is a beacon profile, not a Bluetooth constant.
+  assertEquals(rdEstimateDistance({ rssi: -70 }), null);
+  assertEquals(rdEstimateDistance({ rssi: -70, referenceRssi: -59 }), null);
+  const d = rdEstimateDistance({ rssi: -70, referenceRssi: -59, pathLossExponent: 2 });
+  assert(Math.abs(d - 10 ** (11 / 20)) < 1e-9);
+
+  // A 10 dB reference error at n=2 is a x3.16 distance error — the number that makes metres indefensible.
+  const off = rdEstimateDistance({ rssi: -70, referenceRssi: -49, pathLossExponent: 2 });
+  assert(Math.abs(off / d - 3.1622776) < 1e-4, "10 dB of reference error is a 3.16x distance error");
+
+  assert(rdBandFraction(-40) < rdBandFraction(-100), "a stronger signal sits nearer the centre");
+  assertEquals(rdBandFraction(-20), 0, "clamped, so an absurd reading cannot leave the scene");
+  assertEquals(rdBandFraction(-140), 1);
+});
+
+Deno.test("radar: smoothing is time-based, because advertising intervals are not constant", () => {
+  assertEquals(rdSmooth(NaN, -60, 500), -60, "the first sample IS the estimate");
+  // The same alpha applied to a slower stream would mean a different memory. Twice the gap must move the
+  // estimate further, which a fixed per-sample alpha cannot express.
+  const fast = rdSmooth(-60, -80, 500);
+  const slow = rdSmooth(-60, -80, 3000);
+  assert(slow < fast, "a longer gap trusts the new sample more");
+  assert(fast > -80 && fast < -60);
+  assertEquals(rdSmooth(-60, NaN, 500), -60, "a missing reading leaves the estimate alone");
+});
+
+Deno.test("radar: guard needs every criterion, and says which one is missing", () => {
+  const near = { lat: 50.45, lon: 30.52 };
+  const far = { lat: 50.47, lon: 30.52 };          // ~2.2 km north
+  const t0 = 1_700_000_000_000;
+  const sightings = [
+    { at: t0, rssi: -60, fix: near },
+    { at: t0 + 6 * 60_000, rssi: -62, fix: near },
+    { at: t0 + 14 * 60_000, rssi: -58, fix: far },
+    { at: t0 + 21 * 60_000, rssi: -61, fix: far },
+    { at: t0 + 26 * 60_000, rssi: -59, fix: far },
+  ];
+  const good = rdGuardScore({ sightings, separated: true, classifiable: true });
+  assertEquals(good.reasons, []);
+  assertEquals(good.meets, true);
+  assertEquals(good.confidence, 1);
+  assert(good.displacement > 1500, "displacement is real metres, not a degree delta");
+  assert(good.segments >= 2);
+
+  // A device whose owner is nearby is the commonest false positive of all — it must never alert.
+  const owned = rdGuardScore({ sightings, separated: false, classifiable: true });
+  assertEquals(owned.meets, false);
+  assert(owned.reasons.includes("notSeparated"));
+
+  // Standing still with a neighbour's beacon: plenty of sightings, no journey.
+  const still = rdGuardScore({
+    sightings: sightings.map((s) => ({ ...s, fix: near })), separated: true, classifiable: true,
+  });
+  assertEquals(still.meets, false);
+  assert(still.reasons.includes("noDisplacement"));
+
+  // A pre-24 shell sends no payload, so nothing is classifiable and Guard must stay silent rather than
+  // guess from co-motion alone.
+  const blind = rdGuardScore({ sightings, separated: true, classifiable: false });
+  assertEquals(blind.meets, false);
+  assert(blind.reasons.includes("noPayload"));
+
+  assertEquals(rdGuardScore({}).meets, false, "an empty track alerts nobody");
+});
+
+Deno.test("radar: the guard thresholds are ours, and are not DULT's accessory constants", () => {
+  // The draft's 30 minutes is when an ACCESSORY switches to separated mode. Reusing it as an alert
+  // threshold would be inventing standards compliance the draft explicitly does not provide: its §6
+  // "Platform Support for Unwanted Tracking" reads "TODO".
+  assert(rdGUARD.minSpanMs !== 30 * 60_000, "do not borrow the accessory's state constant as a policy");
+  assert(rdGUARD.minDisplacementM >= 100, "a GPS accuracy radius is 5-30 m; the floor must clear jitter");
+  assert(rdGUARD.minSegments >= 2);
 });

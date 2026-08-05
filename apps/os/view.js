@@ -1124,7 +1124,9 @@ function Ports({ S, t, toast }) {
     if (r.confidence === "gone") return T(t, "portGone");
     if (r.detail) return r.detail;
     if (r.confidence === "protocol" || r.confidence === "ambiguous") return T(t, "portProto");
-    return [T(t, r.probe === "silent" || !r.hex ? "portSilent" : "portNoise"), r.hint ? `${T(t, "portGuess")}: ${r.hint}` : ""].filter(Boolean).join(" · ");
+    // "postgres?" and not "by port number: postgres" — the question mark says the same thing in one
+    // character, and the sentence version wrapped the row onto a second line to say it.
+    return [T(t, r.probe === "silent" || !r.hex ? "portSilent" : "portNoise"), r.hint ? `${r.hint}?` : ""].filter(Boolean).join(" · ");
   };
 
   return html`<div class="flex flex-col gap-3 pt-1">
@@ -1153,7 +1155,9 @@ function Ports({ S, t, toast }) {
           <div class=${`text-sm truncate ${r.confidence === "gone" ? "text-muted" : ""}`}>${SERVICE_NAME[r.service] || T(t, "portUnknown")}</div>
           <!-- Two lines, not one: the evidence IS the row, and a certificate subject cut off after
                "CN=localhost, O=micros…" is the half that carries no information. -->
-          <div class="font-mono text-[11px] text-muted line-clamp-2 break-all">${evidence(r)}</div>
+          <!-- break-words, never break-all: break-all split "номером" across two lines and left a lone
+               "00" under a 200, which reads as corrupted output rather than a wrapped line. -->
+          <div class="font-mono text-[11px] text-muted line-clamp-2 break-words">${evidence(r)}</div>
         </div>
         <!-- The port, and only for ::1 the family beside it — a "v4" on every row would be a column that
              is the same in all but a handful of them. -->

@@ -1,6 +1,6 @@
 self.MS = {
   app: "os",
-  version: "0f3ec8d2f5",
+  version: "3387079b97",
   precache: [
     "./",
     "./i18n/en.json",
@@ -25,6 +25,7 @@ self.MS = {
     "/_rt/permissions.js",
     "/_rt/playback.js",
     "/_rt/player.js",
+    "/_rt/portid.js",
     "/_rt/qrcode.js",
     "/_rt/qrgen.vendor.js",
     "/_rt/render.js",

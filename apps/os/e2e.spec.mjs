@@ -6,7 +6,7 @@ export default [
       for (const want of [/gate device/i, /android/i, /%/, /bridge \d+/]) {
         h.expect(want.test(state), `панель пристрою без ${want}: ${state.slice(0, 200)}`);
       }
-      h.expect((await h.count("[data-tiles] [data-go]")) === 4, "очікував чотири плитки входу");
+      h.expect((await h.count("[data-tiles] [data-go]")) === 5, "очікував п’ять плиток входу");
       h.expect((await h.count("[data-go][data-store]")) === 1, "немає плитки магазину");
     },
   },
@@ -110,6 +110,28 @@ export default [
       for (const label of ["пристрій", "радар", "файли", "сигнали", "профіль"]) {
         h.expect(body.includes(label), `підпис вкладки обрізано або зник: ${label}`);
       }
+    },
+  },
+  {
+    name: "ports: a claim carries the evidence that earned it", run: async (h) => {
+      await h.click('[data-tab="home"]'); await h.wait(200);
+      await h.click('[data-go="ports"]'); await h.wait(400);
+      const rows = await h.count("[data-port]");
+      h.expect(rows >= 5, `очікував заповнений список портів під гейтом, знайшов ${rows}`);
+      h.expect((await h.count('[data-port="8080"]')) === 1, "кадр із каталогу не дійшов через subscribe");
+
+      const body = await h.text("[data-ports-tally]");
+      h.expect(/\d+ · \d+/.test(body), `лічильник не показує відкриті · названі: ${body}`);
+      const text = await h.bodyText();
+      h.expect(/OpenSSH_9\.6/.test(text), "банер SSH не показано як доказ");
+      h.expect((await h.count('[data-port="5432"][data-conf="conventional"]')) === 1,
+        "мовчазний порт подано не як здогад");
+      h.expect((await h.count('[data-port="22"][data-conf="product"]')) === 1, "банер не дав найвищої певності");
+      h.expect((await h.count('[data-port="21"][data-conf="ambiguous"]')) === 1, "спільний банер розв’язано на один протокол");
+      h.expect(/SMTP \/ FTP/.test(text), "неоднозначність не названо обома іменами");
+
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("[data-tiles]")) === 1, "Back не повернув до панелі пристрою");
     },
   },
   {

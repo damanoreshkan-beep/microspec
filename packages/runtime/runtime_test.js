@@ -13,7 +13,7 @@ import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, 
 import { generateMelody, scoreMelody } from "./melody.js";
 import { shell, ERR } from "./shell.js";
 import { parseOui as ouiParse, vendorOf as ouiVendorOf, prefixOf as ouiPrefixOf, locallyAdministered as ouiLocallyAdministered } from "./oui.js";
-import { parseAd as rdParseAd, classify as rdClassify, addrKind as rdAddrKind, rotates as rdRotates, band as rdBand, bandFraction as rdBandFraction, smooth as rdSmooth, estimateDistance as rdEstimateDistance, guardScore as rdGuardScore, GUARD as rdGUARD, signalPercent as rdSignalPercent, orderDevices as rdOrderDevices, hexSpiral as rdHexSpiral, hexToXY as rdHexToXY, hexDistance as rdHexDistance } from "./radar.js";
+import { parseAd as rdParseAd, classify as rdClassify, addrKind as rdAddrKind, rotates as rdRotates, band as rdBand, bandFraction as rdBandFraction, smooth as rdSmooth, estimateDistance as rdEstimateDistance, guardScore as rdGuardScore, GUARD as rdGUARD, signalPercent as rdSignalPercent, orderDevices as rdOrderDevices, hexSpiral as rdHexSpiral, hexToXY as rdHexToXY, hexDistance as rdHexDistance, combSize as rdCombSize } from "./radar.js";
 import { PERMISSIONS, GROUPS, permState, permAndroid } from "./permissions.js";
 import { hannCurve as grHann, grainRate as grGrainRate, overlapOf as grOverlapOf, cloudGain as grCloudGain, planGrains as grPlan, conditionSample as grCondition, dcOffset as grDcOffset, clipRatio as grClipRatio, trimBounds as grTrim, detectPitch as grPitch, CENTS as grCENTS, encodeWav as grWav, syntheticSample as grSynth, MIN_KEEP as grMIN_KEEP } from "./grain.js";
 import { mulberry32 as grRng } from "./groove.js";
@@ -5906,4 +5906,21 @@ Deno.test("oui: a vendor is named only where the address actually has one", () =
   assertEquals(ouiPrefixOf("AC:DE"), null);
   assertEquals(ouiParse("").size, 0);
   assertEquals(ouiParse("garbage").size, 0);
+});
+
+Deno.test("radar: the comb rounds up to a COMPLETE ring, never a lopsided spiral", () => {
+  assertEquals(rdCombSize(0), 1);
+  assertEquals(rdCombSize(1), 1);
+  for (const n of [2, 5, 7]) assertEquals(rdCombSize(n), 7, `${n} should fill the first ring`);
+  for (const n of [8, 12, 19]) assertEquals(rdCombSize(n), 19, `${n} should fill the second ring`);
+  assertEquals(rdCombSize(20), 37);
+  // Every answer is a real centred-hexagonal number, so the drawn shape is always symmetric.
+  for (let n = 0; n <= 60; n++) {
+    const s = rdCombSize(n);
+    assert(s >= Math.max(1, n), `comb ${s} cannot hold ${n}`);
+    const rings = rdHexSpiral(s).map(rdHexDistance);
+    const outer = Math.max(...rings);
+    assertEquals(rings.filter((r) => r === outer).length, outer === 0 ? 1 : 6 * outer,
+      `n=${n} left the outer ring incomplete`);
+  }
 });

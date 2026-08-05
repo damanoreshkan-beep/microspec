@@ -1,7 +1,7 @@
 // microspec runtime — what a phone can honestly say about the radio around it.
 //
 // The whole module exists to refuse three tempting lies, each of which the app above it would otherwise
-// invent (see apps/radar/RESEARCH.md for the sources):
+// invent (see apps/hive/RESEARCH.md for the sources):
 //   · RSSI is NOT a distance. A ±10 dB reference-power error at n=2 is a ×3.16 distance error, while
 //     doubling the true distance moves RSSI only 6.02 dB — the nuisance is larger than the signal. So
 //     strength resolves to a BAND in dBm, and metres are available only behind explicit calibration.
@@ -105,8 +105,8 @@ export function band(rssi) {
   return (BANDS.find((b) => rssi >= b.floor) || BANDS[BANDS.length - 1]).id;
 }
 
-/** 0..1 across the band ladder — what the dome uses as a radius. Clamped, so an absurd RSSI cannot
- *  place a ring outside the scene. */
+/** 0..1 across the band ladder, clamped. Kept as runtime API for any view that wants a radius rather
+ *  than a percentage; the hive itself uses signalPercent. */
 export function bandFraction(rssi) {
   if (!Number.isFinite(rssi)) return 1;
   const hi = -40, lo = -100;
@@ -323,4 +323,18 @@ export const hexDistance = ({ q, r }) => (Math.abs(q) + Math.abs(q + r) + Math.a
 /** Axial -> world, pointy-top. `size` is the hex circumradius. */
 export function hexToXY({ q, r }, size = 1) {
   return { x: size * Math.sqrt(3) * (q + r / 2), y: size * 1.5 * r };
+}
+
+/**
+ * How many cells to DRAW for n devices: the next complete hexagonal ring.
+ *
+ * A spiral truncated mid-ring is lopsided — 8 cells is a full first ring plus one lone neighbour poking
+ * into the second, and it reads as a rendering accident rather than a hive. Rounding up to 1, 7, 19, 37…
+ * always yields a balanced hexagon; the surplus cells draw as empty comb, which is also the honest
+ * picture of a field that has room in it.
+ */
+export function combSize(n) {
+  let ring = 0;
+  while (1 + 3 * ring * (ring + 1) < Math.max(0, n)) ring++;
+  return 1 + 3 * ring * (ring + 1);
 }

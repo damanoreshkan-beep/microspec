@@ -23,7 +23,7 @@ import { gate } from "/_rt/gate.js";
 import { compass, geo, wakeLock } from "/_rt/sensors.js";
 import { newRose, addSample, roseStats, hasBearing, petal, BEARING_MIN_COVERAGE } from "/_rt/df.js";
 import {
-  classify, band, smooth, guardScore, rotates, GUARD, signalPercent, orderDevices, hexSpiral, hexToXY,
+  classify, band, smooth, guardScore, rotates, GUARD, signalPercent, orderDevices, hexSpiral, hexToXY, combSize,
 } from "/_rt/radar.js";
 import { parseOui, vendorOf } from "/_rt/oui.js";
 
@@ -255,8 +255,10 @@ export function hiveView({ S, t }) {
   const scanning = useStore($scanning);
   const target = useStore($target);
 
-  // Always at least one full ring of empty comb, so the screen reads as a hive before anything is found.
-  const coords = hexSpiral(Math.max(7, field.length));
+  // Round UP to a complete ring. A spiral truncated mid-ring is lopsided — eight cells is a full first
+  // ring plus one lone neighbour poking into the second — and reads as a rendering accident rather than a
+  // hive. The surplus draws as empty comb, which is also the honest picture of a field with room in it.
+  const coords = hexSpiral(combSize(Math.max(1, field.length)));
   const pts = coords.map((c) => hexToXY(c, HEX));
   const pad = HEX * 1.3;
   const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);

@@ -27,7 +27,7 @@ import { sealedFrameUrl } from "/_rt/sealedfetch.js";
 import { gate } from "/_rt/gate.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
 import { resolveSearch, buildSearchUrl } from "/_rt/urlquery.js";
-import { hostOf, siteName, sourceTitle, groupByDomain } from "/_rt/sitelabel.js";
+import { hostOf, siteName, sourceTitle, groupByDomain, humanText } from "/_rt/sitelabel.js";
 import { useTap, usePanX } from "/_rt/gesture.js";
 import { letterTile } from "/_rt/tile.js";
 import { reject } from "lodash-es";
@@ -97,9 +97,13 @@ const MOCK_DEEP = [
 // …and what each of those pages calls ITSELF — the `title` the /videos endpoint now returns. Wrapped in site
 // chrome on purpose, so the gate proves cleanPageTitle strips it in a real browser, not only in the unit suite.
 const GATE_TITLES = {
-  "https://mixkit.co/watch/10241/": "Big Buck Bunny in 4K — Mixkit",
+  // Deliberately MACHINE TEXT, not a clean string: a percent-escape and an HTML entity, which is how a real
+  // page title arrives (a filename-derived title is encoded, a scraped <title> still carries its entities).
+  // The gate therefore proves the decode in a real browser, on the path a page title actually travels —
+  // island, sources row and all — and not only in the unit suite.
+  "https://mixkit.co/watch/10241/": "Big%20Buck%20Bunny in 4K &amp; Friends — Mixkit",
   "https://mixkit.co/watch/55013/": "Deeper two · Mixkit",
-};
+};                                    // …it must reach the screen as: Big Buck Bunny in 4K & Friends
 
 /* Where a slide STARTS, once. Sources put a branded card on the front of the preview they hand out, so frame 0
    is a watermark rather than the clip. A fixed offset was the first attempt and it is the wrong shape: these
@@ -130,7 +134,16 @@ function openSite(s) { if (typeof window !== "undefined") window.open(s.url, "_b
 // Subscriptions live in IndexedDB (the runtime's collection() store) — a real DB, not localStorage. $subs is a
 // reactive mirror the views read; writes go to both (optimistic atom + async idb). Headless/no-idb: atom only.
 const subsDB = collection("reelSubs");
-const $subs = atom([]);
+// SEEDED under the gate, like the likes grid. Everything above the "Discover" heading was otherwise only ever
+// measured — and only ever photographed — as its empty state, so the one row shape that carries a real page's
+// name (a `/watch/<id>/` URL names nothing, so the saved title IS the row) had no populated screen at all.
+// These two are what a subscription actually looks like: a long one, because that is the case the row has to
+// survive, and a short one beside it. Their pages are never opened by the mock feed, so nothing renames them.
+const GATE_SUBS = [
+  { id: "https://mixkit.co/watch/70001/", url: "https://mixkit.co/watch/70001/", name: "Fog over the Carpathians at first light, in one long slow take" },
+  { id: "https://mixkit.co/watch/70002/", url: "https://mixkit.co/watch/70002/", name: "Night city" },
+];
+const $subs = atom(gate ? GATE_SUBS : []);
 if (idbSupported && !gate) subsDB.all().then((rows) => $subs.set(rows)).catch(() => {});
 async function subscribe(s) {
   if (!s?.url || $subs.get().some((x) => x.url === s.url)) return;
@@ -143,6 +156,17 @@ async function subscribe(s) {
 async function unsubscribe(url) {
   $subs.set($subs.get().filter((x) => x.url !== url));
   try { await subsDB.remove(url); } catch { /* */ }
+}
+// …and the frozen name is CORRECTED the moment the page itself answers. That freeze is what made the sources
+// tab a second, worse answer to "what is this page called": you can subscribe from the add-URL sheet, where
+// nothing but the URL is known yet, and the row then kept that guess forever while the island — which had
+// since been handed the page's own <title> — showed the real name. A source resolves its title on every load
+// anyway, so the row costs one write and no round-trip. Same input, same function, one string.
+function renameSub(url, title) {
+  const cur = $subs.get().find((x) => x.url === url);
+  if (!cur || !title || cur.name === title) return;
+  $subs.set($subs.get().map((x) => (x.url === url ? { ...x, name: title } : x)));
+  subsDB.put(url, { name: title, url }).catch(() => { /* no idb (headless) — the atom still holds it */ });
 }
 
 // Watch history (IndexedDB) — a video counts as watched after it dwells as the active slide (not a fly-by), and
@@ -193,6 +217,14 @@ const $ephemeral = atom(false);   // source hands out signed/expiring URLs → s
 // is the one that exists INSTANTLY, so the island never shows a placeholder while the new feed loads.
 const $srcTitle = atom(sourceTitle(DEFAULT_SRC));
 const $srcHint = atom("");
+// The ONE place a source's name is decided, so the island and the sources list can't drift apart: whatever
+// this writes is what the row for that URL shows (see renameSub).
+function setSrcTitle(url, opts) {
+  const title = sourceTitle(url, opts);
+  $srcTitle.set(title);
+  renameSub(url, title);
+  return title;
+}
 let booted = false;               // the very first feed load happens once, on the first mount — never on a re-mount
 
 // ── navigation: the dive stack ──────────────────────────────────────────────────────────────────────────
@@ -299,7 +331,12 @@ async function checkBlankPosters() {
 // guaranteed-blank watch-link slide (nothing to show, won't play inline); inline sources keep posterless clips
 // (they still play, with a video backdrop). Blanks are rejected BEFORE dedupe so a blank never wins a dup's slot.
 function clean(arr, { requirePoster = false } = {}) {
+  // A clip's title is decoded ONCE, here, on the way in — not at each place that draws it. It arrives as
+  // machine text (a percent-encoded filename, a scraped title still carrying `&amp;`/`&#8217;`), and it then
+  // travels: it names the island after a dive, it is the hint the next page is titled by, it is saved with a
+  // like, it captions the full clip. Decoding at render would leave each of those free to disagree.
   let out = reject(unseen(arr), (i) => i.poster && blankPosters.has(i.poster));
+  out = out.map((i) => (i.title ? { ...i, title: humanText(i.title) } : i));
   if (requirePoster) out = out.filter(hasPoster);
   return dedupeVideos(out);
 }
@@ -309,13 +346,13 @@ async function loadSource(url, append = false, hint = "") {
   if (append) { if (loadingMore || !url) return; loadingMore = true; }
   else {
     $loading.set(true); $err.set(false); $items.set([]); $next.set(null); $active.set(0); $restoreTo.set(0);   // a new source starts at its top, wherever you dived from
-    $srcHint.set(hint || ""); $srcTitle.set(sourceTitle(url, { hint }));                                       // named from the first frame, upgraded when the page answers
+    $srcHint.set(hint || ""); setSrcTitle(url, { hint });                                                      // named from the first frame, upgraded when the page answers
   }
   const g = append ? gen : ++gen;                            // a dive/back mid-flight makes this response stale
   if (gate) {                                                // the gate never fetches: a deterministic batch per source
     if (!append) {
       $items.set(clean(url === DEFAULT_SRC ? MOCK : MOCK_DEEP)); $ephemeral.set(false); $loading.set(false);
-      $srcTitle.set(sourceTitle(url, { pageTitle: GATE_TITLES[url] || "", hint }));
+      setSrcTitle(url, { pageTitle: GATE_TITLES[url] || "", hint });
     }
     loadingMore = false; return;
   }
@@ -329,7 +366,7 @@ async function loadSource(url, append = false, hint = "") {
     const got = clean(Array.isArray(d.items) ? d.items : [], { requirePoster: eph });
     $items.set(append ? dedupeVideos([...$items.get(), ...got]) : got);                   // re-dedupe across the page boundary too
     $next.set(d.next || null);
-    if (!append) $srcTitle.set(sourceTitle(url, { pageTitle: d.title || "", hint }));      // the page has now told us its own name
+    if (!append) setSrcTitle(url, { pageTitle: d.title || "", hint });                     // the page has now told us its own name
     if (!append) $ephemeral.set(eph);                  // signed/expiring source → show poster + "watch" link, don't try to play
   } catch { if (g === gen && !append) $err.set(true); }
   finally { if (g === gen) $loading.set(false); if (append) loadingMore = false; }
@@ -366,7 +403,10 @@ async function openFull(S, item) {
     if (!pick) return settle({ err: true });
     // The format is KNOWN here, and the proxied URL it is about to become carries no extension to recover it
     // from — so it travels with the url rather than being guessed at the player.
-    settle({ url: await sealedFrameUrl(pick.url, page), type: pick.format === "hls" ? "hls" : "progressive", title: d.title || title });
+    // /stream answers with the page's own title — scraped HTML, so it carries entities like every other
+    // title in this app. It goes through the same decode as the feed's, and for the same reason: it is a
+    // caption AND the dialog's accessible name.
+    settle({ url: await sealedFrameUrl(pick.url, page), type: pick.format === "hls" ? "hls" : "progressive", title: humanText(d.title) || title });
   } catch { settle({ err: true }); }
 }
 
@@ -766,6 +806,9 @@ export function reel({ S }) {
 // another channel. Rows carry the page's TITLE (sitelabel.sourceTitle: derived from the URL where the URL
 // names the page, else the real title saved when you subscribed — no round-trip either way), because a
 // truncated raw URL told you nothing and cost a whole line doing it.
+// How much name a ROW may show. Not a layout number — the row wraps, so it fits whatever it is given — but a
+// ceiling on how much of the screen ONE source may take before it stops being a list. ~2½ lines at 384 px.
+const ROW_MAX = 120;
 function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) {
   const sr = resolveSearch(s.url);
   const [searching, setSearching] = useState(false);
@@ -779,10 +822,18 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
     <div class="flex items-center gap-0.5 pr-1">
       <button data-src-row class="flex items-center gap-2.5 flex-1 min-w-0 text-left px-2.5 py-2.5 rounded-xl sf-press" onClick=${() => onPlay(s)}>
         ${lead}
-        <span class="min-w-0">
-          ${/* the saved name is the page's real title, kept from the moment you subscribed — it only wins
-                where the URL itself names nothing, so a category page stays "Space", not "Mixkit". */""}
-          <span class=${`block truncate ${active ? "font-semibold" : ""}`}>${sourceTitle(s.url, { hint: s.name })}</span>
+        <span class="min-w-0 flex-1">
+          ${/* the saved name is the page's real title — the string the island resolved and renameSub wrote
+                back — and it only wins where the URL itself names nothing, so a category page stays "Space",
+                not "Mixkit". Fed in as the page's OWN title (which is what it is), the row runs the identical
+                priority chain the island ran, on the identical inputs: two surfaces, one answer.
+                And it WRAPS. A row is the one place with room for the whole name — the island is a chip
+                beside four controls and has to cut, this has a full-width line and can spend two of them —
+                so the cap is the row's own (ROW_MAX), not the island's, and there is no `truncate` to cut
+                what the cap let through. `break-words` is for the pathological case: a title that is one
+                unbroken 60-character token has to break somewhere, and the alternative is a horizontal
+                overflow the gates would (rightly) fail. */""}
+          <span data-src-title class=${`block break-words leading-snug ${active ? "font-semibold" : ""}`}>${sourceTitle(s.url, { pageTitle: s.name, max: ROW_MAX })}</span>
           ${sub ? html`<span class="block text-[0.7rem] font-mono text-base-content/70 truncate">${sub}</span>` : null}
         </span>
       </button>

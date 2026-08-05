@@ -109,6 +109,45 @@ not in the extractor.
 Verified against the private repo's saved page fixtures; the real hosts/titles live in a **gitignored**
 `packages/runtime/sitelabel.local_test.js`, and the committed suite carries the same shapes on neutral hosts.
 
+## 2c. The same name on every screen — decode, then room (the sources-list defect)
+
+The island was right and the sources list was wrong about the *same page*, in three separate ways. All three
+were measured browser-free against the shipped code before anything was changed:
+
+| symptom in the sources list | cause | measurement |
+|---|---|---|
+| `Big%20Buck%20Bunny`, `Rock &amp; Roll` | a page name arrives as **machine text** — a path is percent-encoded, a scraped `<title>` still carries entities. The extractor decodes one short named list (`&amp;`, `&quot;`, `&#39;`…) and nothing numeric; nothing decoded the URL path except one bare `decodeURIComponent` | `sourceTitle("…/clip/%2520double%2520encoded/")` → `"%20double%20encoded"` |
+| a row **vanished**, or the whole tab went blank | `decodeURIComponent` throws `URIError` for the **entire string** over one bad escape — and a literal `%` in a path is a bad escape | `sourceTitle("https://tube.example/a-100%-sure-thing/")` → *throws* |
+| the row's name ≠ the island's name | a subscription's name is **frozen** at subscribe time. Subscribe from the add-URL sheet and the row keeps a guess made from the URL alone, forever — while the island, handed the page's own `<title>` a second later, shows the real name | `subscribe({name: sourceTitle(url)})` vs `$srcTitle` after `/videos` answers |
+| a name ending in `…` with half a line spare | the caps are the **producers'** (42 from a URL, 64 from a page title) and no caller could state its own room | `sourceTitle(vid, {pageTitle: <88 chars>})` → 39 chars + `…` |
+
+Fixes, in the layer each belongs to:
+
+1. **`sitelabel.humanText(raw)`** — the one decoder, applied where text *enters* a label (never at render, which
+   is how two screens disagree). Percent-decode that never throws: try the whole string, and on `URIError` fall
+   back to decoding each **run** of valid escapes on its own (runs, because a multi-byte character is several
+   `%XX` together), so a malformed escape costs only itself. Twice at most — `%2520` → `%20` → `" "` — and the
+   second pass only if the first left something encoded. Then entities: a named table plus **generic numeric,
+   decimal and hex** (that is where the extractor's list ran out), an unknown entity left as it came. Then
+   control characters, zero-widths, whitespace collapse.
+   Applied in `prettify` (every URL-derived label), per **path segment** after the split (decoding the whole
+   path first would let `%2F` invent a separator), and at the top of `cleanPageTitle`.
+2. **`renameSub(url, title)`** — the frozen name is corrected the moment the page answers. `setSrcTitle` is the
+   single place a source's name is decided: it writes the atom the island reads *and* the subscription row,
+   from one string. Costs one IndexedDB write, no round-trip, since a source resolves its title on every load.
+3. **`sourceTitle(url, {…, max})`** — room is the **caller's** to state, and overrides both producers with the
+   same number so the two truncations cannot disagree. Omitted, each keeps the cap it always had.
+4. **The row wraps.** `ROW_MAX = 120` (~2½ lines at 384 px) and no `truncate`: a list row is the one surface with
+   room for a whole name, where the island is a chip beside four controls and has to cut. `break-words` only for
+   the pathological unbroken token, whose alternative is a horizontal overflow.
+
+Gate: `GATE_TITLES` seeds the mock page title as machine text (`"Big%20Buck%20Bunny in 4K &amp; Friends — Mixkit"`),
+so a real browser proves the decode on the path a title actually travels; `GATE_SUBS` seeds two subscriptions,
+because everything above "Discover" — the one row shape whose name comes from the *saved title* — had only ever
+been measured empty. The e2e compares the row to the island **string for string** (a substring match would have
+passed throughout the defect) and then measures `scrollWidth ≤ clientWidth`: `innerText` is identical under
+`truncate`, so only geometry can say the name is shown in full.
+
 ## 3. Subscribe from the reel
 Diving lands on a source you may not have. The island (top, glass, only when `depth > 0` **or** the current
 source is unsubscribed) carries: back chevron · favicon · **`sourceTitle`** (§2b) · host · **`+`**.

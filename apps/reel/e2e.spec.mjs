@@ -103,9 +103,12 @@ export default [
       h.expect(await settles(h, 2), "провалювання не завантажило стрічку сторінки, на якій лежить рілз");
       h.expect((await h.text("[data-island-label]")) !== root, `острівець лишився на «${root}» — джерело не змінилось`);
       // …and it is named by the PAGE, not by the shape of its URL. `/watch/10241/` derives only to "Mixkit";
-      // the mock's page title is "Big Buck Bunny in 4K — Mixkit", so the site chrome must come off too.
+      // the mock's page title is "Big%20Buck%20Bunny in 4K &amp; Friends — Mixkit", so the site chrome must
+      // come off AND the machine text has to be decoded — a percent-escape and an entity, both of which
+      // reached the screen raw before humanText existed.
       const lvl = await h.text("[data-island-label]");
-      h.expect(lvl === "Big Buck Bunny in 4K", `острівець показує «${lvl}» замість справжньої назви сторінки «Big Buck Bunny in 4K»`);
+      h.expect(lvl === "Big Buck Bunny in 4K & Friends", `острівець показує «${lvl}» замість справжньої назви сторінки «Big Buck Bunny in 4K & Friends»`);
+      h.expect(!/%[0-9A-Fa-f]{2}|&[a-z]+;|&#/.test(lvl), `в назві джерела лишились нерозкодовані символи: «${lvl}»`);
       h.expect((await h.count("[data-feed-back]")) === 1, "після провалювання немає кнопки повернення");
       // …and back restores the ORIGINAL list (a restore, not a refetch)
       await h.tap("[data-feed-back]"); await h.wait(500);
@@ -136,12 +139,21 @@ export default [
       await ready(h);
       await h.tap("[data-dive]"); await h.wait(600);
       h.expect((await h.count("[data-subscribe]")) === 1, "на непідписаному джерелі немає кнопки підписки");
+      const island = await h.text("[data-island-label]");
       await h.tap("[data-subscribe]"); await h.wait(400);
       h.expect((await h.count("[data-subscribe]")) === 0, "після підписки кнопка мала зникнути");
       await h.tap('[data-tab="sources"]'); await h.wait(400);
       h.expect(await has(h, /Підписки|Subscriptions/), "таб джерел не відкрився");
-      // the saved source keeps the name the page had — the whole point of naming the island properly
-      h.expect(await has(h, /Big Buck Bunny in 4K/), "збережене джерело показане не своєю назвою (лишилась форма URL)");
+      /* Рядок джерела і острівець — це ОДНА відповідь на питання «як зветься ця сторінка», тож звіряємо їх
+         рядок у рядок, а не по підрядку. Саме тут вони й розходились: острівцю віддавали <title> сторінки,
+         а список довіку показував здогад, зроблений з самого URL у мить підписки. */
+      const row = await h.text("[data-src-title]");
+      h.expect(row === island, `рядок джерела показує «${row}», а острівець — «${island}»: два різні імені однієї сторінки`);
+      /* …і показує його ЦІЛКОМ. Текст у DOM нічого не доводить (innerText той самий і під `truncate`), тож
+         міряємо: рядок переносить назву, а не ріже її — ширина вмісту не виходить за ширину елемента. */
+      const [sw, cw] = [await h.prop("[data-src-title]", "scrollWidth"), await h.prop("[data-src-title]", "clientWidth")];
+      h.expect(sw <= cw + 1, `назву джерела обрізано по горизонталі (${sw}px вмісту в ${cw}px рядка) — вона має переноситись, а не ховатись`);
+      h.expect(!/…$/.test(row), `назву джерела вкорочено трикрапкою («${row}») — у рядку є місце на повну`);
       await h.tap('[data-tab="reel"]'); await h.wait(400);
       await h.tap("[data-feed-back]"); await h.wait(400);              // прибираємо за собою — далі тести чекають корінь
     },

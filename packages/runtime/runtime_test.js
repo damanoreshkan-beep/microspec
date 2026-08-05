@@ -69,7 +69,7 @@ import { ppmBits, pwmBits, bitsToBytes, findSync, crc8, matchNexus, matchFineOff
 import { refDownchirp, makeUpSymbol, dechirpArgmax, detectPreamble, LORA_PRESETS, WHITENING, loraEncode, loraDecode, decodeLoraSignal } from "./lora.js";
 import { parsePrice, parseWishMeta, toNumber, sortWishes, wishTotals, fmtMoney } from "./wish.js";
 import { scoreRepo, parseFunding, ageDays, hostLabel } from "./underrated.js";
-import { registrableDomain, siteName, pageLabel, pageLabelInfo, cleanPageTitle, sourceTitle, groupByDomain, hostOf } from "./sitelabel.js";
+import { registrableDomain, siteName, pageLabel, pageLabelInfo, cleanPageTitle, sourceTitle, groupByDomain, hostOf, humanText } from "./sitelabel.js";
 import { overlayDepth } from "./overlay.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
@@ -2923,6 +2923,51 @@ Deno.test("sourceTitle: the URL names the page when it can, the page names itsel
   assertEquals(sourceTitle(vid, { pageTitle: "Free Online Videos - Tube", hint: "Sunrise on the roof" }), "Sunrise on the roof", "an SEO title made only of medium-words is not a title");
   assertEquals(sourceTitle(vid, { hint: "video" }), "View video", "nothing usable anywhere → the URL's shape, unchanged");
   assertEquals(sourceTitle(""), "");
+});
+
+/* A page's name arrives as MACHINE TEXT and has to stop being machine text before it is shown. Every case
+   below was measured against the shipped code first, and every one of them reached the sources list: the
+   percent-escapes as `%20`, the entities as `&amp;` — and the literal-percent URL not as bad text but as a
+   THROWN URIError, because decodeURIComponent rejects the whole string over one bad escape. */
+Deno.test("humanText: percent-escapes, entities and invisible characters, and never a throw", () => {
+  assertEquals(humanText("%D0%9A%D0%B8%D1%97%D0%B2%20%D0%B2%D0%BD%D0%BE%D1%87%D1%96"), "Київ вночі");
+  assertEquals(humanText("a-100%-sure-thing"), "a-100%-sure-thing", "a literal percent is text, not a broken escape");
+  assertEquals(humanText("%zz %D0 %E0%A4%A"), "%zz %D0 %E0%A4%A", "malformed escapes cost only themselves");
+  assertEquals(humanText("100%25 %2520pure"), "100% pure", "double-encoded — decoded twice, and no further");
+  assertEquals(humanText("Rock &amp; Roll &#039;77 &#8217;s &mdash; live &hellip;"), "Rock & Roll '77 ’s — live …");
+  assertEquals(humanText("&#x41;&#x2014;&#X42;"), "A—B", "hex entities, either case");
+  assertEquals(humanText("Bad &unknown; &amp entity"), "Bad &unknown; &amp entity", "an entity we don't know stays as it came");
+  assertEquals(humanText("A\u00a0title\u200b with\tgaps\n"), "A title with gaps", "nbsp, zero-width and control characters are not typography");
+  assertEquals(humanText(null), "");
+});
+
+Deno.test("sitelabel: a malformed escape anywhere never takes the label down with it", () => {
+  // The whole chain, on the URL that threw: pageLabelInfo → prettify → sourceTitle. A row that renders a
+  // label is a row that a URIError erases, so "does not throw" IS the user-visible behaviour here.
+  assertEquals(pageLabel("https://tube.example/clips/a-100%-sure-thing/"), "A 100% sure thing");
+  assertEquals(sourceTitle("https://tube.example/%E0%A4%A/watch/1/", { hint: "Nightfall" }), "Nightfall");
+  assertEquals(cleanPageTitle("Half %E0%A4%A decoded &amp; fine - Tube.example", "https://tube.example/x"), "Half %E0%A4%A decoded & fine");
+});
+
+Deno.test("sitelabel: an encoded path segment is a title once it is decoded", () => {
+  assertEquals(pageLabel("https://site.com/video/1234/%D0%9A%D1%80%D0%B0%D1%81%D0%B8%D0%B2%D0%B8%D0%B9%20%D0%B7%D0%B0%D1%85%D1%96%D0%B4/"), "Красивий захід");
+  assertEquals(pageLabel("https://site.com/clip/%2520double%2520encoded/"), "Double encoded");
+  assertEquals(pageLabel("https://site.com/a%2Fb/"), "A/b", "an encoded slash is a character in ONE segment, never a new segment");
+  assertEquals(sourceTitle("https://tube.example/watch/9/", { pageTitle: "Sunrise &amp; the sea &#8212; Tube.example" }), "Sunrise & the sea");
+});
+
+/* `max` is the caller's room. The island is a chip beside four controls and takes the short form; a sources
+   row wraps and takes the whole name. Before this, both got 42/64 characters and the row's spare line was
+   spent on an ellipsis. */
+Deno.test("sourceTitle: the caller states how much room it has, and both producers honour it", () => {
+  const longUrl = "https://site.com/a-very-long-page-name-that-keeps-going-and-going-forever/";
+  const vid = "https://tube.example/view_video.php?viewkey=k5f2a1b";
+  const longTitle = "A very long page title that simply keeps going and going and going past every sane limit";
+  assert(sourceTitle(longUrl).endsWith("…"), "the default cap is unchanged");
+  assert(sourceTitle(vid, { pageTitle: longTitle }).endsWith("…"), "…on the page-title path too");
+  assertEquals(sourceTitle(longUrl, { max: 120 }), "A very long page name that keeps going and going forever", "room stated → the whole name");
+  assertEquals(sourceTitle(vid, { pageTitle: longTitle, max: 120 }), longTitle);
+  assert(sourceTitle(vid, { pageTitle: longTitle, max: 40 }).length <= 41, "a smaller room truncates sooner");
 });
 
 Deno.test("groupByDomain: pages of one site group together, first-appearance order kept", () => {

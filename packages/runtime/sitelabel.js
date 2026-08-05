@@ -7,6 +7,56 @@
 // `/wiki/Category:Underwater_videos`, `/search?q=cats`).
 import { resolveSearch } from "./urlquery.js";
 
+/* ── the text a page's name arrives as, before it is a name ──────────────────────────────────────────────
+   Every producer here hands us machine text: a URL path is percent-encoded, a scraped <title> is HTML with
+   entities in it, and a title derived from a filename is BOTH. Three measured failures, all of them visible
+   in the sources list:
+     · `decodeURIComponent("/a-100%-sure-thing/")` throws URIError for the WHOLE string — one literal percent
+       anywhere in a path took down every label derived from it (and with it the row that rendered it).
+     · a double-encoded path (`%2520`) survives one decode as a visible `%20`.
+     · `&amp;`, `&#039;`, `&#8217;` reach us whole: the extractor decodes a short named list and nothing
+       numeric, so anything outside it ships to the screen as its markup.
+   humanText is the one answer, and it is applied where the text ENTERS a label — never at the moment of
+   render, which is how two screens end up disagreeing about the same page. */
+const decodeOnce = (s) => {
+  try { return decodeURIComponent(s); } catch { /* one bad sequence poisons the whole string → per-run below */ }
+  // Decode each RUN of valid escapes on its own, so a malformed `%zz` costs only itself. Runs, not single
+  // escapes: a multi-byte UTF-8 character is several `%XX` in a row and only decodes together.
+  return s.replace(/(?:%[0-9a-f]{2})+/gi, (m) => { try { return decodeURIComponent(m); } catch { return m; } });
+};
+// Twice at most: `%2520` → `%20` → " ". Bounded, because a third pass starts eating text that legitimately
+// contains a percent sign, and the second only runs when the first left something still encoded.
+const percentDecode = (s) => { const one = decodeOnce(s); return /%[0-9a-f]{2}/i.test(one) ? decodeOnce(one) : one; };
+
+// The named entities a page title actually carries (punctuation and the typographic quotes sites love).
+// Numeric — decimal and hex — is handled generically, which is where the extractor's own short list ran out.
+const NAMED = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", shy: "", ensp: " ", emsp: " ", thinsp: " ",
+  ndash: "–", mdash: "—", hellip: "…", middot: "·", bull: "•", laquo: "«", raquo: "»", lsaquo: "‹", rsaquo: "›",
+  ldquo: "“", rdquo: "”", lsquo: "‘", rsquo: "’", sbquo: "‚", bdquo: "„", prime: "′", Prime: "″",
+  deg: "°", times: "×", divide: "÷", plusmn: "±", frac12: "½", frac14: "¼", frac34: "¾",
+  copy: "©", reg: "®", trade: "™", euro: "€", pound: "£", yen: "¥", cent: "¢", sect: "§", para: "¶", dagger: "†",
+};
+const decodeEntities = (s) => s.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z][a-z0-9]{1,9});/gi, (m, g) => {
+  if (g[0] === "#") {
+    const cp = g[1] === "x" || g[1] === "X" ? parseInt(g.slice(2), 16) : parseInt(g.slice(1), 10);
+    if (!Number.isFinite(cp) || cp <= 0 || cp > 0x10ffff) return m;
+    try { return String.fromCodePoint(cp); } catch { return m; }
+  }
+  const hit = NAMED[g] ?? NAMED[g.toLowerCase()];
+  return hit === undefined ? m : hit;                                  // an unknown entity stays as it came
+});
+
+// humanText(raw) → the same string as text a person reads: decoded, unmarked-up, single-spaced. Never throws.
+export function humanText(raw) {
+  const s = decodeEntities(percentDecode(String(raw ?? "")));
+  return s
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")                                  // control characters are not typography
+    .replace(/[\u200b-\u200f\u2060\ufeff]/g, "")                              // zero-width joiners/marks: invisible weight
+    .replace(/\s+/g, " ")                                              // \s covers the NBSP the entities just made
+    .trim();
+}
+
 // Two-label public suffixes we actually meet. Not a full PSL (that's a 200 kB list): the point is only that
 // `commons.wikimedia.org` and `wikimedia.org` land in ONE group, and `bbc.co.uk` isn't grouped as `co.uk`.
 const MULTI_SUFFIX = new Set([
@@ -55,7 +105,7 @@ export function isWeakLabel(label) {
 }
 
 const prettify = (raw, max) => {
-  let s = String(raw || "")
+  let s = humanText(raw)                                 // %D0%9A…, &amp; → the characters they stand for
     .replace(/\.(?:html?|php|aspx?|jsp)$/i, "")          // page.html → page
     .replace(/^[A-Za-zА-Яа-яІіЇїЄєҐґ]{2,12}:/, "")       // Category:Underwater_videos → Underwater_videos
     .replace(/^[0-9]+[-_](?=\D)/, "")                    // 12345-some-title → some-title
@@ -80,7 +130,10 @@ export function pageLabelInfo(url, { max = 42 } = {}) {
   try { u = new URL(raw); } catch { const l = prettify(raw, max) || raw; return { label: l, weak: isWeakLabel(l) }; }
   const sr = resolveSearch(raw);                                     // a results page is titled by its term
   if (sr.searchable && sr.term.trim()) { const l = prettify(sr.term.trim(), max); return { label: l, weak: isWeakLabel(l) }; }
-  const segs = decodeURIComponent(u.pathname).split("/").map((s) => s.trim()).filter(Boolean);
+  // Decoded PER SEGMENT, after the split: decoding the whole path first would let an encoded `%2F` invent a
+  // path separator, and one malformed escape anywhere used to throw URIError and take the whole label — and
+  // the row rendering it — down with it. humanText decodes what it can and never throws.
+  const segs = u.pathname.split("/").map((s) => humanText(s)).filter(Boolean);
   for (let i = segs.length - 1; i >= 0; i--) {
     const seg = segs[i];
     if (isId(seg) || NOISE.test(seg.replace(/\.(?:html?|php|aspx?|jsp)$/i, ""))) continue;
@@ -103,7 +156,7 @@ export function pageLabel(url, opts) { return pageLabelInfo(url, opts).label; }
 // Returns "" when nothing worth showing is left, so a caller can just `||` its way down the fallback chain.
 const SEP = /\s+[-–—|·•:»«]+\s+|\s+[-–—|·•»«]\s*$|^\s*[-–—|·•»«]\s+/;
 export function cleanPageTitle(raw, url, { max = 64 } = {}) {
-  let s = String(raw || "").replace(/[\s ]+/g, " ").trim();
+  let s = humanText(raw);                                            // entities + escapes, before anything reads it
   if (!s) return "";
   const site = siteName(url).toLowerCase(), host = hostOf(url).toLowerCase();
   const key = (x) => x.toLowerCase().replace(/[^a-z0-9а-яїієґ]+/gi, "");
@@ -124,14 +177,21 @@ export function cleanPageTitle(raw, url, { max = 64 } = {}) {
   return s;
 }
 
-// sourceTitle(url, { pageTitle, hint }) → THE one answer to "what is this page called", for a list row, an
+// sourceTitle(url, { pageTitle, hint, max }) → THE one answer to "what is this page called", for a list row, an
 // island, a drag-reveal — every place the farm names a source. Priority: a URL that names the page wins (it is
 // short, offline-true and identical everywhere); otherwise the page's own title, then the caller's hint (the
 // title of the clip you dived from), and only then the shape the URL could manage.
-export function sourceTitle(url, { pageTitle = "", hint = "" } = {}) {
-  const { label, weak } = pageLabelInfo(url);
+//
+// `max` is the caller's ROOM, and it belongs to the caller: an island is one line beside four controls and
+// wants the short form, a list row can wrap and wants the whole name. It used to be unstatable — every
+// surface got the producers' own caps (42 from a URL, 64 from a page title) — so a row with three lines
+// spare still showed a name ending in "…". Passed, it overrides BOTH producers with the same number, so the
+// two can never disagree about where a name ends; omitted, each keeps the cap it always had.
+export function sourceTitle(url, { pageTitle = "", hint = "", max = 0 } = {}) {
+  const lim = max ? { max } : undefined;
+  const { label, weak } = pageLabelInfo(url, lim);
   if (!weak) return label;
-  return cleanPageTitle(pageTitle, url) || cleanPageTitle(hint, url) || label;
+  return cleanPageTitle(pageTitle, url, lim) || cleanPageTitle(hint, url, lim) || label;
 }
 
 // groupByDomain(list) → [{ domain, name, items }] in first-appearance order. `items` keep their input order,

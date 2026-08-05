@@ -111,5 +111,6 @@
   "secAlarms": "Alarms",
   "radioOn": "on",
   "radioOff": "off",
-  "radioNone": "none"
+  "radioNone": "none",
+  "srvRoutes": "Resources"
 }

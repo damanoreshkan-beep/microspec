@@ -81,11 +81,14 @@ export async function mount(canvas, getState) {
     floor.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), floorMat));
   }
 
+  const NEUTRAL = {
+    dark: { wifi: 0xc9c9d0, lte: 0x8c8c96 },
+    light: { wifi: 0x8a8a93, lte: 0x5f5f68 },
+  };
   const colourFor = (kind, t) => {
     if (kind === "ble") return new THREE.Color(t.accent);
-    const ink = new THREE.Color(t.ink);
-    if (kind === "wifi") return ink;
-    return ink.clone().multiplyScalar(t.dark ? 0.55 : 1.0).lerp(new THREE.Color(t.dark ? 0x000000 : 0xffffff), t.dark ? 0 : 0.45);
+    const set = t.dark ? NEUTRAL.dark : NEUTRAL.light;
+    return new THREE.Color(kind === "wifi" ? set.wifi : set.lte);
   };
 
   const obs = new MutationObserver(() => {

@@ -93,10 +93,15 @@ export async function mount(canvas, getState) {
     }
     enclosure.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mats.dome));
   }
-  // North is a real direction the compass gives us, so it gets a mark the rings can be read against.
-  const north = [];
-  for (let i = 0; i <= 8; i++) north.push(new THREE.Vector3(0, 0, -1.02 - (i % 2) * 0.06));
-  enclosure.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(north), mats.arc));
+  // North is a real direction — the compass applies the World Magnetic Model, so this is TRUE north — and
+  // it is the only fixed reference the rings can be read against. It therefore earns the accent, and it
+  // is the one place colour appears until a device is hunted.
+  enclosure.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, -1.0), new THREE.Vector3(0, 0, -1.2),
+  ]), mats.mark));
+  enclosure.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-0.075, 0, -1.13), new THREE.Vector3(0, 0, -1.2), new THREE.Vector3(0.075, 0, -1.13),
+  ]), mats.mark));
   world.add(enclosure);
 
   const shells = new Map();   // key -> { ring, arc, mark, group }
@@ -162,10 +167,15 @@ export async function mount(canvas, getState) {
     // The distance is DERIVED from both fields of view, never a constant. A phone is ~0.46 aspect, so the
     // horizontal FOV is less than half the vertical one: a fixed 2.6 framed the scene by its height and
     // ran the outer ring off both edges, which reads as a broken instrument rather than a close one.
-    const pitch = 0.62 + (st.pitch || 0) * 0.12;
+    // Pitch follows the aspect. A disc seen at pitch p foreshortens to sin(p) of its width, so on a phone
+    // (aspect 0.46) a shallow angle left the scene using 31% of the stage height with the rest dead — the
+    // failure an overflow check can never report, because underuse is not overflow. Looking further down
+    // on a tall screen trades foreshortening for height; landscape keeps the shallower, more spatial angle.
+    const lean = Math.min(1, Math.max(0, (camera.aspect - 0.45) / 1.15));
+    const pitch = (1.16 - 0.5 * lean) + (st.pitch || 0) * 0.1;
     const half = Math.tan((camera.fov * Math.PI) / 360);
-    const R = 1.08;                                        // the outer ring plus a hair of air
-    const dist = 1.12 * Math.max(R / (half * camera.aspect), (R * Math.sin(pitch) + 0.34) / half);
+    const R = 1.24;                                        // clears the north spur at 1.2, plus a hair of air
+    const dist = 1.05 * Math.max(R / (half * camera.aspect), (R * Math.sin(pitch) + 0.3) / half);
     camera.position.set(0, Math.sin(pitch) * dist, Math.cos(pitch) * dist);
     camera.lookAt(0, 0, 0);
     // Counter-rotate the world so a scene direction stays put while the phone turns.

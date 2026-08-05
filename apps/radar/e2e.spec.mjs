@@ -72,7 +72,9 @@ export default [
       await h.click('[data-loc="en"]'); await h.wait(250);
       h.expect(/Dome|Hunt|Guard/i.test(await h.bodyText()), "не EN");
       await h.click('[data-loc="uk"]'); await h.wait(250);
-      h.expect(/Купол|Пошук|Вартовий/.test(await h.bodyText()), "не UA");
+      // Case-insensitive: the dock uppercases in CSS and bodyText reads innerText, which applies
+      // text-transform — so the rendered label is "КУПОЛ" and a cased regex never matches it.
+      h.expect(/Купол|Пошук|Вартовий/i.test(await h.bodyText()), "не UA");
       // Four tabs share the dock; an ellipsis there is a label that was too long, not a layout to fix.
       const body = (await h.bodyText()).toLowerCase();
       for (const label of ["купол", "пошук", "вартовий"]) {

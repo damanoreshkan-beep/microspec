@@ -220,12 +220,13 @@ export function domeView({ S, t, screen, openScreen, closeScreen }) {
       ${webgl ? html`<canvas ref=${canvas} class="absolute inset-0 w-full h-full" aria-hidden="true"></canvas>` : null}
       ${/* The fallback is not a downgrade path only — it owns data-mark, the accessible names and the tap
            targets in EVERY environment, so preflight, axe and e2e never depend on WebGL existing. */""}
-      <div data-mark data-live class="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
-        <div class="font-mono tabular-nums text-[var(--ms-title)] text-base-content">${field.length}</div>
-        <div class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
-          ${counts.ble} ${T(t, "ble")} · ${counts.wifi} ${T(t, "wifi")}
-        </div>
-        ${scanning ? null : html`<div class="text-[var(--ms-label)] text-base-content/70">${T(t, "idle")}</div>`}
+      ${/* At the TOP, not the centre. Centred it sat across the ring lines and cost both the number and the
+           rings their legibility — and the centre of this scene means "you", which is not a caption slot. */""}
+      <div data-mark data-live class="absolute inset-x-0 top-0 flex items-baseline justify-center gap-2 pointer-events-none">
+        <span class="font-mono tabular-nums text-[var(--ms-title)] text-base-content">${field.length}</span>
+        <span class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
+          ${counts.ble} ${T(t, "ble")} · ${counts.wifi} ${T(t, "wifi")}${scanning ? "" : " · " + T(t, "idle")}
+        </span>
       </div>
     <//>
 
@@ -295,6 +296,18 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
           aria-label=${T(t, locked ? "aLobe" : "aCircle")}>
           <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.18" />
           <circle cx="50" cy="50" r="12" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.18" />
+          ${/* The dial is a compass rose before it is a measurement: without ticks an unswept screen is two
+               bare circles, which reads as an app that failed to draw rather than one waiting for a sweep.
+               North takes the accent, matching the dome's one fixed reference. */
+            Array.from({ length: 36 }, (_, i) => {
+              const a = (i * 10 * Math.PI) / 180 - Math.PI / 2;
+              const major = i % 9 === 0;
+              const r0 = major ? 36 : 39.5;
+              return html`<line key=${i} x1=${(50 + Math.cos(a) * r0).toFixed(2)} y1=${(50 + Math.sin(a) * r0).toFixed(2)}
+                x2=${(50 + Math.cos(a) * 42).toFixed(2)} y2=${(50 + Math.sin(a) * 42).toFixed(2)}
+                stroke="currentColor" stroke-width=${major ? 0.7 : 0.35} opacity=${major ? 0.45 : 0.2}
+                class=${i === 0 ? "text-[var(--app-accent)]" : ""} />`;
+            })}
           ${max > 0 ? html`<path data-petal d=${path.join(" ") + " Z"} fill="currentColor" fill-opacity="0.12"
             stroke="currentColor" stroke-width="0.7" class="text-[var(--app-accent)]" />` : null}
           ${locked ? html`<line data-bearing x1="50" y1="50"
@@ -317,12 +330,16 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
            hiding it would make a working instrument look broken. It lives INSIDE the island: pinned at the
            stage's bottom edge it sat under this fixed bar and collided with the dock, which no overflow
            check can see because nothing overflowed. */""}
-      <div data-live class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
-        <span class="text-base-content">${locked
+      ${/* Two lines, because one was 40 characters of Ukrainian and wrapped into an orphaned "· 0". The
+           answer goes on top in ink; the evidence behind it sits under, muted. */""}
+      <div data-live class="font-mono uppercase tracking-wide text-[var(--ms-label)]">
+        <div class="text-base-content truncate">${locked
           ? T(t, "strongestAt").replace("{deg}", Math.round(stats.bearingDeg))
-          : T(t, "coverage").replace("{pct}", Math.round(stats.coverage * 100))}</span>
-        · ${T(t, "concentration")} ${stats.r.toFixed(2)} · ${stats.samples}
-        ${stats.coverage < BEARING_MIN_COVERAGE && stats.samples > 0 ? " · " + T(t, "keepSweeping") : ""}
+          : T(t, "coverage").replace("{pct}", Math.round(stats.coverage * 100))}${
+            stats.coverage < BEARING_MIN_COVERAGE && stats.samples > 0 ? " · " + T(t, "keepSweeping") : ""}</div>
+        <div class="text-base-content/70 truncate">
+          ${T(t, "concentration")} ${stats.r.toFixed(2)} · ${T(t, "samples")} ${stats.samples}
+        </div>
       </div>
     <//>
 

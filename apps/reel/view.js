@@ -12,7 +12,7 @@ import { sealedFrameUrl } from "/_rt/sealedfetch.js";
 import { gate } from "/_rt/gate.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
 import { resolveSearch, buildSearchUrl } from "/_rt/urlquery.js";
-import { hostOf, siteName, sourceTitle, groupByDomain } from "/_rt/sitelabel.js";
+import { hostOf, siteName, sourceTitle, groupByDomain, humanText } from "/_rt/sitelabel.js";
 import { useTap, usePanX } from "/_rt/gesture.js";
 import { letterTile } from "/_rt/tile.js";
 import { reject } from "lodash-es";
@@ -62,22 +62,32 @@ const MOCK_DEEP = [
 
 
 const GATE_TITLES = {
-  "https://mixkit.co/watch/10241/": "Big Buck Bunny in 4K — Mixkit",
+  
+  
+  
+  "https://mixkit.co/watch/10241/": "Big%20Buck%20Bunny in 4K &amp; Friends — Mixkit",
   "https://mixkit.co/watch/55013/": "Deeper two · Mixkit",
-};
+};                                    
+
+
 const START_FRACTION = 1 / 8;
 const seekStart = (v) => {
   
   try { if (isFinite(v.duration) && v.duration > 0) v.currentTime = v.duration * START_FRACTION; } catch {  }
 };
-
 const PRELOAD = 1;
 
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
 
 function openSite(s) { if (typeof window !== "undefined") window.open(s.url, "_blank", "noopener"); }
 const subsDB = collection("reelSubs");
-const $subs = atom([]);
+
+
+const GATE_SUBS = [
+  { id: "https://mixkit.co/watch/70001/", url: "https://mixkit.co/watch/70001/", name: "Fog over the Carpathians at first light, in one long slow take" },
+  { id: "https://mixkit.co/watch/70002/", url: "https://mixkit.co/watch/70002/", name: "Night city" },
+];
+const $subs = atom(gate ? GATE_SUBS : []);
 if (idbSupported && !gate) subsDB.all().then((rows) => $subs.set(rows)).catch(() => {});
 async function subscribe(s) {
   if (!s?.url || $subs.get().some((x) => x.url === s.url)) return;
@@ -90,6 +100,14 @@ async function unsubscribe(url) {
   try { await subsDB.remove(url); } catch {  }
 }
 
+function renameSub(url, title) {
+  const cur = $subs.get().find((x) => x.url === url);
+  if (!cur || !title || cur.name === title) return;
+  $subs.set($subs.get().map((x) => (x.url === url ? { ...x, name: title } : x)));
+  subsDB.put(url, { name: title, url }).catch(() => {  });
+}
+
+
 
 const watchedDB = collection("reelWatched");
 const $watched = atom(new Set());
@@ -101,8 +119,6 @@ function markWatched(url) {
 }
 function clearWatched() { $watched.set(new Set()); watchedDB.clear().catch(() => {}); }
 const unseen = (arr) => arr.filter((i) => !$watched.get().has(i.orig || i.video));         
-
-
 
 
 const likesDB = collection("reelLikes");
@@ -132,7 +148,15 @@ const $ephemeral = atom(false);
 
 const $srcTitle = atom(sourceTitle(DEFAULT_SRC));
 const $srcHint = atom("");
+
+function setSrcTitle(url, opts) {
+  const title = sourceTitle(url, opts);
+  $srcTitle.set(title);
+  renameSub(url, title);
+  return title;
+}
 let booted = false;               
+
 
 
 
@@ -140,7 +164,6 @@ let booted = false;
 const $frames = atom([]);
 const $restoreTo = atom(null);    
 const $owner = atom("reel");      
-
 const snapshot = (label) => ({ label, src: $src.get(), title: $srcTitle.get(), hint: $srcHint.get(), items: $items.get(), next: $next.get(), active: $active.get(), eph: $ephemeral.get(), owner: $owner.get(), err: $err.get() });
 function restoreTop() {
   const fs = $frames.get(); if (!fs.length) return;
@@ -151,6 +174,7 @@ function restoreTop() {
   $src.set(f.src); $srcTitle.set(f.title); $srcHint.set(f.hint); $items.set(f.items); $next.set(f.next); $ephemeral.set(f.eph);
   $owner.set(f.owner); $loading.set(false); $err.set(f.err);
   $active.set(f.active); $restoreTo.set(f.active);          
+  
   if (!f.items.length && !f.err && !gate) loadSource(f.src, false, f.hint);
 }
 let bound = false;
@@ -224,7 +248,11 @@ async function checkBlankPosters() {
 
 
 function clean(arr, { requirePoster = false } = {}) {
+  
+  
+  
   let out = reject(unseen(arr), (i) => i.poster && blankPosters.has(i.poster));
+  out = out.map((i) => (i.title ? { ...i, title: humanText(i.title) } : i));
   if (requirePoster) out = out.filter(hasPoster);
   return dedupeVideos(out);
 }
@@ -234,13 +262,13 @@ async function loadSource(url, append = false, hint = "") {
   if (append) { if (loadingMore || !url) return; loadingMore = true; }
   else {
     $loading.set(true); $err.set(false); $items.set([]); $next.set(null); $active.set(0); $restoreTo.set(0);   
-    $srcHint.set(hint || ""); $srcTitle.set(sourceTitle(url, { hint }));                                       
+    $srcHint.set(hint || ""); setSrcTitle(url, { hint });                                                      
   }
   const g = append ? gen : ++gen;                            
   if (gate) {                                                
     if (!append) {
       $items.set(clean(url === DEFAULT_SRC ? MOCK : MOCK_DEEP)); $ephemeral.set(false); $loading.set(false);
-      $srcTitle.set(sourceTitle(url, { pageTitle: GATE_TITLES[url] || "", hint }));
+      setSrcTitle(url, { pageTitle: GATE_TITLES[url] || "", hint });
     }
     loadingMore = false; return;
   }
@@ -254,7 +282,7 @@ async function loadSource(url, append = false, hint = "") {
     const got = clean(Array.isArray(d.items) ? d.items : [], { requirePoster: eph });
     $items.set(append ? dedupeVideos([...$items.get(), ...got]) : got);                   
     $next.set(d.next || null);
-    if (!append) $srcTitle.set(sourceTitle(url, { pageTitle: d.title || "", hint }));      
+    if (!append) setSrcTitle(url, { pageTitle: d.title || "", hint });                     
     if (!append) $ephemeral.set(eph);                  
   } catch { if (g === gen && !append) $err.set(true); }
   finally { if (g === gen) $loading.set(false); if (append) loadingMore = false; }
@@ -280,7 +308,9 @@ async function openFull(S, item) {
     if (!pick) return settle({ err: true });
     
     
-    settle({ url: await sealedFrameUrl(pick.url, page), type: pick.format === "hls" ? "hls" : "progressive", title: d.title || title });
+    
+    
+    settle({ url: await sealedFrameUrl(pick.url, page), type: pick.format === "hls" ? "hls" : "progressive", title: humanText(d.title) || title });
   } catch { settle({ err: true }); }
 }
 function FullClip({ S, t }) {
@@ -304,8 +334,6 @@ function FullClip({ S, t }) {
     </div>
   </div>`;
 }
-
-
 function Favicon({ url, size = "w-6 h-6" }) {
   const [failed, setFailed] = useState(false);
   const cls = `${size} rounded-lg object-contain shrink-0`;
@@ -606,6 +634,8 @@ export function reel({ S }) {
 
 
 
+
+const ROW_MAX = 120;
 function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) {
   const sr = resolveSearch(s.url);
   const [searching, setSearching] = useState(false);
@@ -613,12 +643,15 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
   const submit = (e) => { e?.preventDefault?.(); const term = q.trim(); if (term) onPlay({ ...s, url: buildSearchUrl(s.url, term) }); };
   
   
+  
+  
   return html`<li class=${`flex flex-col ${active ? "sf-inset rounded-2xl" : ""}`}>
     <div class="flex items-center gap-0.5 pr-1">
       <button data-src-row class="flex items-center gap-2.5 flex-1 min-w-0 text-left px-2.5 py-2.5 rounded-xl sf-press" onClick=${() => onPlay(s)}>
         ${lead}
-        <span class="min-w-0">
-          <span class=${`block truncate ${active ? "font-semibold" : ""}`}>${sourceTitle(s.url, { hint: s.name })}</span>
+        <span class="min-w-0 flex-1">
+          
+          <span data-src-title class=${`block break-words leading-snug ${active ? "font-semibold" : ""}`}>${sourceTitle(s.url, { pageTitle: s.name, max: ROW_MAX })}</span>
           ${sub ? html`<span class="block text-[0.7rem] font-mono text-base-content/70 truncate">${sub}</span>` : null}
         </span>
       </button>
@@ -635,6 +668,7 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
     </form>` : null}
   </li>`;
 }
+
 
 
 
@@ -682,7 +716,6 @@ export function sources({ S }) {
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:compass")} ${T(t, "discover")}</div>
         ${discover.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => subscribe(s)} t=${t} key=${g.domain} />`)}
       </div>` : null}
-
       ${watchedN > 0 ? html`<button id="clear-watched" class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70 self-center mt-2" onClick=${clearWatched} data-haptic="bump">${Icon("lucide:rotate-ccw")} ${T(t, "clearWatched", { n: watchedN })}</button>` : null}
     </div>
     ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
@@ -705,7 +738,6 @@ export function liked({ S }) {
   };
   if (!sorted.length) return html`<div class="flex flex-col items-center justify-center gap-3 text-muted text-center" style="min-height:60vh">${Icon("lucide:heart", "text-6xl opacity-30")}<div class="text-sm max-w-[16rem]">${T(t, "likedEmpty")}</div></div>`;
   return html`<div data-liked class="grid grid-cols-3 gap-1.5">
-    
     ${sorted.map((l, i) => html`<div class="relative aspect-[9/16] rounded-xl overflow-hidden sf-inset" key=${l.id}>
       <button data-liked-tile class="absolute inset-0 w-full h-full active:scale-[.98] transition" aria-label=${l.title || l.host} onClick=${() => playAt(i)}>
         ${l.poster

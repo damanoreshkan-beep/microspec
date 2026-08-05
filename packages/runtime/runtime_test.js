@@ -67,7 +67,7 @@ import { ppmBits, pwmBits, bitsToBytes, findSync, crc8, matchNexus, matchFineOff
 import { refDownchirp, makeUpSymbol, dechirpArgmax, detectPreamble, LORA_PRESETS, WHITENING, loraEncode, loraDecode, decodeLoraSignal } from "./lora.js";
 import { parsePrice, parseWishMeta, toNumber, sortWishes, wishTotals, fmtMoney } from "./wish.js";
 import { scoreRepo, parseFunding, ageDays, hostLabel } from "./underrated.js";
-import { registrableDomain, siteName, pageLabel, pageLabelInfo, cleanPageTitle, sourceTitle, groupByDomain, hostOf } from "./sitelabel.js";
+import { registrableDomain, siteName, pageLabel, pageLabelInfo, cleanPageTitle, sourceTitle, groupByDomain, hostOf, humanText } from "./sitelabel.js";
 import { overlayDepth } from "./overlay.js";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
@@ -2750,6 +2750,46 @@ Deno.test("sourceTitle: the URL names the page when it can, the page names itsel
   assertEquals(sourceTitle(""), "");
 });
 
+
+Deno.test("humanText: percent-escapes, entities and invisible characters, and never a throw", () => {
+  assertEquals(humanText("%D0%9A%D0%B8%D1%97%D0%B2%20%D0%B2%D0%BD%D0%BE%D1%87%D1%96"), "Київ вночі");
+  assertEquals(humanText("a-100%-sure-thing"), "a-100%-sure-thing", "a literal percent is text, not a broken escape");
+  assertEquals(humanText("%zz %D0 %E0%A4%A"), "%zz %D0 %E0%A4%A", "malformed escapes cost only themselves");
+  assertEquals(humanText("100%25 %2520pure"), "100% pure", "double-encoded — decoded twice, and no further");
+  assertEquals(humanText("Rock &amp; Roll &#039;77 &#8217;s &mdash; live &hellip;"), "Rock & Roll '77 ’s — live …");
+  assertEquals(humanText("&#x41;&#x2014;&#X42;"), "A—B", "hex entities, either case");
+  assertEquals(humanText("Bad &unknown; &amp entity"), "Bad &unknown; &amp entity", "an entity we don't know stays as it came");
+  assertEquals(humanText("A\u00a0title\u200b with\tgaps\n"), "A title with gaps", "nbsp, zero-width and control characters are not typography");
+  assertEquals(humanText(null), "");
+});
+
+Deno.test("sitelabel: a malformed escape anywhere never takes the label down with it", () => {
+  
+  
+  assertEquals(pageLabel("https://tube.example/clips/a-100%-sure-thing/"), "A 100% sure thing");
+  assertEquals(sourceTitle("https://tube.example/%E0%A4%A/watch/1/", { hint: "Nightfall" }), "Nightfall");
+  assertEquals(cleanPageTitle("Half %E0%A4%A decoded &amp; fine - Tube.example", "https://tube.example/x"), "Half %E0%A4%A decoded & fine");
+});
+
+Deno.test("sitelabel: an encoded path segment is a title once it is decoded", () => {
+  assertEquals(pageLabel("https://site.com/video/1234/%D0%9A%D1%80%D0%B0%D1%81%D0%B8%D0%B2%D0%B8%D0%B9%20%D0%B7%D0%B0%D1%85%D1%96%D0%B4/"), "Красивий захід");
+  assertEquals(pageLabel("https://site.com/clip/%2520double%2520encoded/"), "Double encoded");
+  assertEquals(pageLabel("https://site.com/a%2Fb/"), "A/b", "an encoded slash is a character in ONE segment, never a new segment");
+  assertEquals(sourceTitle("https://tube.example/watch/9/", { pageTitle: "Sunrise &amp; the sea &#8212; Tube.example" }), "Sunrise & the sea");
+});
+
+
+Deno.test("sourceTitle: the caller states how much room it has, and both producers honour it", () => {
+  const longUrl = "https://site.com/a-very-long-page-name-that-keeps-going-and-going-forever/";
+  const vid = "https://tube.example/view_video.php?viewkey=k5f2a1b";
+  const longTitle = "A very long page title that simply keeps going and going and going past every sane limit";
+  assert(sourceTitle(longUrl).endsWith("…"), "the default cap is unchanged");
+  assert(sourceTitle(vid, { pageTitle: longTitle }).endsWith("…"), "…on the page-title path too");
+  assertEquals(sourceTitle(longUrl, { max: 120 }), "A very long page name that keeps going and going forever", "room stated → the whole name");
+  assertEquals(sourceTitle(vid, { pageTitle: longTitle, max: 120 }), longTitle);
+  assert(sourceTitle(vid, { pageTitle: longTitle, max: 40 }).length <= 41, "a smaller room truncates sooner");
+});
+
 Deno.test("groupByDomain: pages of one site group together, first-appearance order kept", () => {
   const g = groupByDomain([
     { url: "https://mixkit.co/free-stock-video/" },
@@ -2774,7 +2814,6 @@ Deno.test("overlayDepth: a stack is worth one history entry per level", () => {
   assertEquals(overlayDepth([]), 0, "an empty stack is closed");
   assertEquals(overlayDepth(["a", "b", "c"]), 3, "three dives = three Backs");
 });
-
 
 Deno.test("scoreRepo: fresh, low-star, solo, documented project scores high with ordered reasons", () => {
   const NOW = Date.parse("2026-07-25T00:00:00Z");
@@ -2871,13 +2910,13 @@ Deno.test("natal/zoneOffset: the engine's tz database reaches back to Local Mean
   assert(knownZone("Europe/Kyiv"));
   assert(!knownZone("Europe/Atlantis"), "a typo must fail loudly, not silently become UTC");
 });
-
 Deno.test("natal/zonedToUTC: wall clock → instant, including DST edges and the manual override", () => {
   
   const w = zonedToUTC({ y: 1990, mo: 1, d: 15, h: 12, mi: 30 }, "Europe/Kyiv");
   assertEquals(w.ms, Date.parse("1990-01-15T09:30:00Z"), "UTC+3 in Jan 1990 (Kyiv was on Moscow time)");
   assert(!w.ambiguous && !w.nonexistent);
 
+  
   const e = zonedToUTC({ y: 1879, mo: 3, d: 14, h: 11, mi: 30 }, "Europe/Berlin");
   assertEquals(e.offset, 53 * 60000 + 28000);
   assertEquals(e.ms, Date.parse("1879-03-14T10:36:32Z"));
@@ -2891,11 +2930,11 @@ Deno.test("natal/zonedToUTC: wall clock → instant, including DST edges and the
   assert(!after.nonexistent);
   assertEquals(after.ms, Date.parse("2021-03-28T01:30:00Z"), "and the hour after it is UTC+3");
 
-  
   const amb = zonedToUTC({ y: 2021, mo: 10, d: 31, h: 3, mi: 30 }, "Europe/Kyiv");
   assert(amb.ambiguous, "the repeated hour must be flagged, not silently resolved");
   assertEquals(amb.offset, 3 * 3600000, "the earlier pass is still on summer time");
 
+  
   const m = zonedToUTC({ y: 1990, mo: 1, d: 15, h: 12, mi: 30 }, { offsetMs: 2 * 3600000 });
   assertEquals(m.ms, Date.parse("1990-01-15T10:30:00Z"));
   assertEquals(zonedToUTC({ y: 2000, mo: 1, d: 1, h: 0 }, "Nowhere/Nothing"), null);
@@ -2918,6 +2957,7 @@ Deno.test("natal/offsets: parse and format round-trip, including sub-minute LMT"
 
 const EINSTEIN = { ramc: 344.18405, eps: 23.456473, phi: 48.4 };
 const dms = (deg, min) => deg + min / 60;
+
 Deno.test("natal/angles+houses: Placidus matches a published chart to under an arcminute", () => {
   const { ramc, eps, phi } = EINSTEIN;
   const h = houses(ramc, eps, phi, "placidus");
@@ -3015,7 +3055,6 @@ Deno.test("natal/transits: event orbs, applying vs separating, tightest first", 
   assertEquals(separation(350, 10), 20, "separation takes the short arc across 0");
   assert(TRANSIT_ORB.exact < ASPECTS[0].orb, "a transit orb must be tighter than the natal one");
 });
-
 Deno.test("natal/exactHits: bisection finds every crossing, including a retrograde triple", () => {
   const DAY = 864e5;
   
@@ -3023,6 +3062,7 @@ Deno.test("natal/exactHits: bisection finds every crossing, including a retrogra
   const one = exactHits(linear, 100, 0, 0, 30 * DAY, { step: DAY, tolMs: 1000 });
   assertEquals(one.length, 1);
   assert(Math.abs(one[0] - 10 * DAY) < 2000, "crossing at day 10, to the second");
+
   
   
   const loop = (ms) => { const d = ms / DAY; return norm360(98 + 4 * Math.sin((d / 60) * 2 * Math.PI)); };
@@ -3040,7 +3080,6 @@ Deno.test("natal/exactHits: bisection finds every crossing, including a retrogra
 });
 
 Deno.test("places/translit: official Ukrainian romanisation reaches the English geocoder index", () => {
-  
   
   const pairs = [["Київ", "Kyiv"], ["Львів", "Lviv"], ["Одеса", "Odesa"], ["Харків", "Kharkiv"],
     ["Дніпро", "Dnipro"], ["Чернівці", "Chernivtsi"], ["Запоріжжя", "Zaporizhzhia"], ["Ужгород", "Uzhhorod"],
@@ -3098,15 +3137,17 @@ Deno.test("birth/resolve: the three zone modes, and the one thing that is missin
   assert(byZone.ok);
   assertEquals(byZone.offsetLabel, "+00:53:28");
   assertEquals(byZone.ms, Date.parse("1879-03-14T10:36:32Z"));
+
   
   
   const byLmt = resolve({ ...rec, zoneMode: "lmt" });
   assertEquals(byLmt.offsetLabel, "+00:40");
   assertEquals(byLmt.ms, Date.parse("1879-03-14T10:50:00Z"));
+
+  
   const byHand = resolve({ ...rec, zoneMode: "manual", offset: "+01:00" });
   assertEquals(byHand.ms, Date.parse("1879-03-14T10:30:00Z"));
   assertEquals(resolve({ ...rec, zoneMode: "manual", offset: "nonsense" }).reason, "offset");
-
   assertEquals(resolve({}).reason, "date");
   assertEquals(resolve({ date: "1990-07-15" }).reason, "time");
   assertEquals(resolve({ date: "1990-07-15", time: "12:00" }).reason, "place");
@@ -3126,9 +3167,11 @@ Deno.test("birth/resolve: the three zone modes, and the one thing that is missin
 
 
 
-
 import { staticSpecs, htmlAssets, importMapOf } from "../../tools/graph.mjs";
 import { manifestFor } from "../../deploy/sw.mjs";
+
+
+
 class FakeCache {
   constructor(entries = {}) { this.map = new Map(Object.entries(entries)); }
   key(req) { return typeof req === "string" ? req : req.url; }
@@ -3303,6 +3346,7 @@ Deno.test("sw: a media Range request is passed straight through — cache.put re
 
 
 
+
 Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit consumes", async () => {
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
@@ -3319,6 +3363,11 @@ Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit
 
 
 
+
+
+
+
+
 Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and stays sane at every step", async () => {
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   const decl = /--ms-r-in:\s*([^;]+);/.exec(css);
@@ -3327,7 +3376,9 @@ Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and 
     assert(decl[1].includes(dep), `--ms-r-in must be derived from ${dep}, not written as a constant — a hand-written inner radius is right until the ladder moves and silently wrong after (got: ${decl[1].trim()})`);
   }
   assert(/--r-1:\s*4px/.test(css), "--ms-r-in floors on --r-1; theme.css must still declare it");
-
+  
+  
+  
   
   
   
@@ -3338,7 +3389,6 @@ Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and 
     const m = [...before.matchAll(/@media\s*\(([^{]*)\)\s*\{/g)].pop();
     if (!m) return "base";
     const between = before.slice(m.index + m[0].length);
-    
     return (between.split("}").length - 1) > (between.split("{").length - 1) ? "base" : `@media (${m[1].trim()})`;
   };
   const steps = [...css.matchAll(/:root\s*\{([^}]*)\}/g)]
@@ -3373,6 +3423,7 @@ Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and 
   );
   assert(/--sh-r-in:\s*[^;]*--sh-r[^;]*--ms-pad/.test(css), "--sh-r-in must be --sh-r minus --ms-pad — the shell's OWN outer radius, not --ms-r, since the shell scales its own by 1.2");
 });
+
 
 
 
@@ -3433,6 +3484,11 @@ Deno.test("icons: the farm draws from ONE set (lucide) — a second library is a
       `/_rt/zodiac.js \`Sign\` precedent) so it is ours and matches the set. Offenders: ${offenders.join(", ")}`,
   );
 });
+
+
+
+
+
 
 
 
@@ -3552,6 +3608,7 @@ Deno.test("design system: the fit contract disables page scroll on BOTH html and
   assert(view, "html.ms-fit main#view sizing rule is gone");
   assert(view[1].includes("var(--hdr-h)") && view[1].includes("var(--dock-h)"), "fit height must derive from --hdr-h/--dock-h, not a hardcoded rem");
 });
+
 Deno.test("design system: the UI kit imports relatively and owns its own chrome strings", async () => {
   const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
   assert(!/from\s+["']\/_rt\//.test(ui), "runtime-internal imports must be relative (./gesture.js), never /_rt/");
@@ -3615,12 +3672,14 @@ Deno.test("v2m URLs are mirror-indexed and percent-encoded", () => {
   assertEquals(v2mTitleOf("the abandoned ones.v2m"), "the abandoned ones");
   assertEquals(v2mTrackId("Dafunk", "breeze.v2m"), "V2/Dafunk/breeze.v2m");
 });
+
 Deno.test("v2m mp3Ratio — the store's headline number", () => {
   
   assertEquals(Math.round(v2mMp3Ratio(9216, 157)), 273);
   assertEquals(v2mMp3Ratio(0, 100), 0, "unknown size → no claim");
   assertEquals(v2mMp3Ratio(1000, 0), 0, "unknown duration → no claim");
 });
+
 Deno.test("v2m normGain — loudness, not peak (a 15× peak must stay audible)", () => {
   assertEquals(v2mNormGain(0.1), 1, "already at target");
   assert(v2mNormGain(0.28) < 1 && v2mNormGain(0.28) > 0.3, "loud tune is turned down, not muted");
@@ -3654,8 +3713,6 @@ Deno.test("v2m byteCloud — the point count IS the file size", () => {
   for (let i = 0; i < cloud.length; i += 3) distinct.add(cloud[i].toFixed(4) + "," + cloud[i + 1].toFixed(4));
   assert(distinct.size > 3900, "a uniform file collapsed to " + distinct.size + " visible points of 4000");
 });
-
-
 Deno.test("player cycleRepeat — off → all → one → off", () => {
   assertEquals(tpCycleRepeat("off"), "all");
   assertEquals(tpCycleRepeat("all"), "one");
@@ -3726,6 +3783,7 @@ Deno.test("v2m helixStrand — one point per byte, ordered along the strand, val
     const r = Math.hypot(pos[k * 3], pos[k * 3 + 2]);
     assert(r >= 0.42 * 0.72 - 1e-6 && r <= 0.42 + 1e-6, "radius out of band: " + r);
   }
+  
   const flat = v2mHelixStrand(new Uint8Array(500));
   const ys = new Set();
   for (let k = 0; k < flat.n; k++) ys.add(flat.pos[k * 3 + 1].toFixed(5));
@@ -3755,12 +3813,13 @@ Deno.test("Transport compacts on its CONTAINER, never on the viewport", async ()
   assert(!/\bmin-\[\d+px\]:|\bmax-\[\d+px\]:/.test(tp.replace(/@(max|min)-\[\d+px\]:/g, "")),
     "viewport width variants in the transport — use @container variants instead");
 });
+
 Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable, with its word", async () => {
   const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
   const tp = ui.slice(ui.indexOf("export function Transport("));
   
-  
   const sheet = tp.slice(tp.indexOf("data-tp-sheet"));
+  
   
   
   assert(/\.\.\.actions,/.test(sheet), "the sheet must spread every action, not a demoted subset");
@@ -3769,7 +3828,6 @@ Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable
   assert(!/overflow\.map\(/.test(sheet), "the sheet lists a different set depending on width — unlearnable");
   assert(/overflow\.map\(.{0,60}@max-\[\d+px\]:hidden/.test(tp.replace(/\n\s*/g, " ")),
     "demoted actions must be hidden by a container query, not dropped from the tree");
-  
   const row = sheet.slice(0, sheet.indexOf("</button>"));
   assert(!/\bid=\$\{a\.id/.test(row) && !/\.\.\.\$\{a\.attr/.test(row), "sheet row duplicates the inline hooks");
 });
@@ -3780,16 +3838,19 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
   
   
   
+  
+  
+  
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   const render = await Deno.readTextFile(new URL("./render.js", import.meta.url));
   for (const v of ["--hdr-h", "--dock-h", "--dock-w"]) {
     assert(render.includes(`setProperty("${v}"`), `${v} is not measured — render.js never publishes it`);
   }
-  
   assert(/function usePublishedChrome/.test(render), "the two chrome measurements have drifted into two mechanisms");
   assert((render.match(/usePublishedChrome\(/g) || []).length >= 3, "a chrome element is not wired to the measurement");
   assert(/<header ref=\$\{/.test(render), "the header is not measured — its height is a guess again");
 
+  
   
   for (const m of css.matchAll(/@media[^{]+\{([\s\S]*?)\n\}/g)) {
     for (const v of ["--hdr-h", "--dock-h", "--dock-w"]) {
@@ -3802,14 +3863,14 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
 Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts out loud", async () => {
   
   
-  
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   const at = css.indexOf(".ms-cols {");
   assert(at > 0, ".ms-cols rule is gone");
+
+  
   const region = css.slice(at - 900, at + 700);
   assert(/@container \(min-width/.test(region), ".ms-cols must respond to its container");
   assert(!/@media \([^)]*height[^)]*\)\s*\{[^}]*\.ms-cols/.test(css), ".ms-cols is back on a viewport height query");
-
   
   assert(!/grid-template-columns:[^;]*auto-fit/.test(css), "auto-fit is back — the count must be stated, not derived");
   assert(/repeat\(var\(--ms-cols, 3\), minmax\(0, 1fr\)\)/.test(region), "--ms-cols must still name the widest count");
@@ -3821,12 +3882,12 @@ Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts o
   const panelCls = /export function Panel\([^)]*\)\s*\{[\s\S]*?class=\$\{`([^`]*)`/.exec(ui)?.[1] ?? "";
   assert(panelCls.includes("@container"), `Panel no longer establishes a container — the queries have nothing to read (its classes: ${panelCls})`);
 });
+
 Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager, the tap floor holds", async () => {
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   const at = css.indexOf("@media (max-width: 300px)");
   assert(at > 0, "no watch breakpoint — the farm's smallest screen is 208px, not 320px");
   const block = css.slice(at, css.indexOf("\n}\n", css.indexOf(".ms-side >", at)));
-
   
   
   assert(/grid-auto-flow:\s*row/.test(block), "the dock must turn 90° — horizontal it costs 27% of the height");
@@ -3836,6 +3897,7 @@ Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager,
   assert(ctl && parseFloat(ctl[1]) * 16 >= 36, `watch --ms-ctl is ${ctl?.[1]}rem — below the 36px tap floor`);
 
   
+  
   assert(/scroll-snap-type:\s*x mandatory/.test(block), ".ms-side must become a horizontal snap pager");
   
   
@@ -3844,11 +3906,7 @@ Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager,
   assert(Number(page[1]) < 100 && Number(page[1]) >= 80,
     `a page is ${page[1]}% — at 100% nothing hints the next page exists; below ~80% it stops being a page`);
   assert(/scroll-snap-align/.test(block), "snap targets need an alignment or the pager free-scrolls");
-  
   assert(/\.ms-side > \.ms-side-main\s*\{\s*order:\s*-1/.test(block), "the transport must be the first page");
-
-  
-  
   const markers = css.indexOf("::scroll-marker");
   assert(markers > 0, "no scroll markers — the pager has no indicator where the browser supports one");
   assert(/@supports selector\(::scroll-marker\)/.test(css), "scroll markers must be @supports-gated");
@@ -3859,7 +3917,6 @@ Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager,
 
 Deno.test("watch mode — the dock's own position is styleable (no inline style can outrank it)", async () => {
   
-  
   const render = await Deno.readTextFile(new URL("./render.js", import.meta.url));
   const nav = render.slice(render.indexOf("<nav data-dock"), render.indexOf("</nav>", render.indexOf("<nav data-dock")));
   assert(!/style="[^"]*bottom:/.test(nav), "the dock's `bottom` is an inline style — watch mode cannot move it");
@@ -3868,13 +3925,14 @@ Deno.test("watch mode — the dock's own position is styleable (no inline style 
   
   assert(/--dock-w/.test(render) && /--dock-w/.test(css), "the rail's width must be published and consumed");
 });
-
 Deno.test("no app passes the Transport a prop it does not accept (a silent prop is a lost button)", async () => {
+  
   
   
   
   const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
   const sig = ui.slice(ui.indexOf("export function Transport("), ui.indexOf("}) {", ui.indexOf("export function Transport(")));
+  
   const bare = sig.replace(/\/\/[^\n]*/g, "").replace(/"[^"]*"|'[^']*'|`[^`]*`/g, "0");
   const accepted = new Set([...bare.matchAll(/(?:^|[,{])\s*([a-zA-Z][a-zA-Z0-9]*)\s*(?=[,=}]|$)/gm)].map((m) => m[1]));
   accepted.add("children"); accepted.add("key");
@@ -3913,17 +3971,18 @@ Deno.test("Transport — every control is opt-in, and the mode toggles frame the
   for (const [h, id] of [["onShuffle", "shuffle"], ["onRepeat", "repeat"], ["onPrev", "prev"], ["onNext", "next"]])
     assert(new RegExp(`\\$\\{\\s*${h}\\s*\\?`).test(tp) || new RegExp(`${h}\\s*\\?`).test(tp),
       `${id} is not gated on ${h} — an app that never passes it still gets the button`);
+  
   const at = (needle) => tp.indexOf(needle);
   const [sh, pv, pl, nx, rp] = ['id="shuffle"', 'id="prev"', 'id="play"', 'id="next"', 'id="repeat"'].map(at);
   assert(sh > 0 && pv > 0 && pl > 0 && nx > 0 && rp > 0, "a transport key went missing");
   assert(sh < pv && pv < pl && pl < nx && nx < rp, "control order must be shuffle · prev · play · next · repeat");
 });
 
-
 Deno.test("pinterest parseInput — four shapes, and only ONE of them needs the network", () => {
   assertEquals(pinParse("https://www.pinterest.com/pin/1096274734320084795/"), { kind: "pin", id: "1096274734320084795" });
   assertEquals(pinParse("pinterest.com/pin/123456789/sent/?invite_code=abc"), { kind: "pin", id: "123456789" });
   assertEquals(pinParse("1096274734320084795"), { kind: "pin", id: "1096274734320084795" });
+  
   assertEquals(pinParse("https://pin.it/4TgG4yGpF"), { kind: "short", code: "4TgG4yGpF" });
   assertEquals(pinParse("https://www.pinterest.com/Federico_biilancor/clean-ux-design/"),
     { kind: "board", user: "Federico_biilancor", slug: "clean-ux-design" });
@@ -3933,15 +3992,14 @@ Deno.test("pinterest parseInput — four shapes, and only ONE of them needs the 
   assertEquals(pinParse("").kind, "empty");
   assertEquals(pinParse("https://example.com/x").kind, "unknown");
 });
-
 Deno.test("pinterest ladder — /originals first, .png before giving up, 564x always last", () => {
   const l = pinLadder("https://i.pinimg.com/564x/2c/2d/a6/2c2da69b3a54335fa22daf40833a7f96.jpg");
   assert(l[0].includes("/originals/"), "the full-resolution rung must come first");
   
-  
   assert(l.some((u) => u.endsWith(".png")), "no .png rung — a graphic saved as PNG would 404 as .jpg");
   assert(l[l.length - 1].includes("/564x/"), "564x is the floor: it is the size the API itself handed us");
   assertEquals(new Set(l).size, l.length, "duplicate rungs waste a decode each");
+  
   assertEquals(pinLadder("https://example.com/a.jpg"), ["https://example.com/a.jpg"]);
   assertEquals(pinLadder(""), []);
 });
@@ -3967,10 +4025,11 @@ Deno.test("pinterest readPins — one reader for a board and for a single pin", 
 Deno.test("the surface system: every interactive node declares a state, and none draws its own shadow", async () => {
   
   
-  
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   const ui = await Deno.readTextFile(new URL("./ui.js", import.meta.url));
   const render = await Deno.readTextFile(new URL("./render.js", import.meta.url));
+
+  
   for (const [name, src] of [["ui.js", ui], ["render.js", render]]) {
     const lits = [...src.matchAll(/shadow-\[[^\]]+\]|shadow-(?:sm|md|lg|xl|2xl)\b/g)].map((m) => m[0]);
     assertEquals(lits, [], `${name} still writes its own shadows instead of declaring a surface`);
@@ -3982,6 +4041,7 @@ Deno.test("the surface system: every interactive node declares a state, and none
     const defs = (css.match(new RegExp(v.replace(/-/g, "\\-") + ":", "g")) || []).length;
     assert(defs >= 2, `${v} is defined ${defs}× — a state that exists in one theme only is not a state`);
   }
+
   
   const nodes = [
     [".btn:not(.btn-ghost)", "buttons raise at rest"],
@@ -4006,22 +4066,23 @@ Deno.test("the surface system: every interactive node declares a state, and none
 
 
 
+
 Deno.test("the material: one light at 45°, a symmetric pair, and the surface IS the page", async () => {
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
+  
+  
   const themeBlock = (t) => {
     let out = "", i = -1;
     while ((i = css.indexOf(`[data-theme="${t}"] {`, i + 1)) > -1) out += css.slice(i, css.indexOf("\n}", i)) + "\n";
     return out;
   };
-
   for (const theme of ["signal", "signal-light"]) {
     const b = themeBlock(theme);
-
-    
     for (const v of ["--nm-dark", "--nm-light", "--nm-cast"]) {
       assert(b.includes(v + ":"), `${theme} does not define ${v} — the pair is the material`);
     }
 
+    
     
     for (const v of ["--sf-drop", "--sf-sink", "--sf-press"]) {
       const decl = b.slice(b.indexOf(v + ":"));
@@ -4031,14 +4092,13 @@ Deno.test("the material: one light at 45°, a symmetric pair, and the surface IS
     }
 
     
-    
-    
     const tok = (n) => /#[0-9A-Fa-f]{6}/.exec(b.slice(b.indexOf(`--color-${n}:`)))[0].toUpperCase();
     assertEquals(tok("base-100"), tok("base-200"), `${theme}: base-100 and base-200 differ — a raised surface must be the same colour as the page it rises out of`);
+
+    
     assert(/--sf-inset-face:\s*var\(--color-base-100\)/.test(b), `${theme}: the recessed face is a different colour — that is a panel, not a hole`);
   }
 
-  
   const pair = /var\(--nm-d\) var\(--nm-d\)|var\(--nm-d2\) var\(--nm-d2\)|var\(--nm-dp\) var\(--nm-dp\)/;
   for (const v of ["--sf-drop", "--sf-sink", "--sf-press", "--sf-lift2", "--sf-sink2"]) {
     const i = css.indexOf(v + ":");
@@ -4047,7 +4107,6 @@ Deno.test("the material: one light at 45°, a symmetric pair, and the surface IS
   }
 
   
-  
   const steps = [...css.matchAll(/@media \(max-height:\s*(\d+)px\)\s*\{[^}]*--nm-d:\s*(\d+)px/g)]
     .map((m) => ({ h: +m[1], d: +m[2] })).sort((a, b) => b.h - a.h);
   assert(steps.length >= 2, "the extrusion depth does not step with the density ladder");
@@ -4055,8 +4114,6 @@ Deno.test("the material: one light at 45°, a symmetric pair, and the surface IS
     assert(steps[i].d < steps[i - 1].d, `--nm-d does not shrink at ${steps[i].h}px — depth must compact with everything else`);
   }
 });
-
-
 
 
 
@@ -4070,7 +4127,6 @@ Deno.test("the material: the two halves of the pair are near-symmetric in BOTH t
     while ((i = css.indexOf(`[data-theme="${t}"] {`, i + 1)) > -1) out += css.slice(i, css.indexOf("\n}", i)) + "\n";
     return out;
   };
-
   for (const theme of ["signal", "signal-light"]) {
     const b = themeBlocks(theme);
     const base = lum(grab(b, "--color-base-100"));
@@ -4087,7 +4143,7 @@ Deno.test("the material: the two halves of the pair are near-symmetric in BOTH t
         `If the base has no headroom left in the weak direction, MOVE THE BASE — do not widen the strong side.`,
     );
   }
-
+  
   
   
   
@@ -4132,6 +4188,7 @@ Deno.test("PWA chrome colours track the theme bases — the surface no screensho
   }
   assertEquals(bad, [], `PWA chrome is off-theme (allowed: ${[...allowed].join(", ")}). An installed app would show a splash and status bar from the previous design: ${bad.join(", ")}`);
 });
+
 
 const HUNT_WASM = new URL("../../apps/hunt/assets/hunt.wasm", import.meta.url);
 const HUNT_S = { SFX: 10, AMMO: 13, HP: 14, KILLS: 16, COUNT: 17 };
@@ -4180,7 +4237,6 @@ Deno.test("hunt engine · the collision box it reports IS the one it stands on",
   
   
   
-  
   const { E, st } = await huntEngine();
   E.game_init(0xA17C);
   for (let f = 0; f < 90; f++) E.game_step(0);                 
@@ -4189,7 +4245,6 @@ Deno.test("hunt engine · the collision box it reports IS the one it stands on",
   const boxH = packed & 0xffff;
   assert(boxH > 0 && boxH < 200, `game_box returned a nonsense height (${boxH})`);
   const py = s[6], feet = py + boxH;
-  
   const col = Math.floor((s[4] + s[5]) / 24);
   let ground = -1;
   for (let r = 0; r < 11; r++) if (E.game_tile(col, r) >= 0x10) { ground = r * 24; break; }
@@ -4207,6 +4262,7 @@ Deno.test("deck · a cluster is measured back out of its own layout, never trust
   const down = clusterMetrics(DIAMOND.down, DIAMOND.up, DIAMOND_KEY, DIAMOND_BOX);
   for (const [name, m] of [["horizontal", across], ["vertical", down]])
     assert(Math.abs(m.span - 1.92) < 0.05, `the ${name} diagonal of the four-key cluster is ${m.span.toFixed(2)} D — 1.80–2.10 D, below 1.6 they merge into a flower and above 2.3 they stop being one node`);
+  
   assert(Math.abs(across.angle) < 3, `the four-key cluster is rotated ${across.angle.toFixed(1)}° — a real one is axis-aligned within 3°, and a decorative 15–25° twist is the commonest way to draw one wrong`);
   const css = Deno.readTextFileSync(new URL("./theme.css", import.meta.url));
   const cell = +/\.ms-pad-hub\s*\{[^}]*width:\s*([\d.]+)%/.exec(css)?.[1];
@@ -4214,7 +4270,6 @@ Deno.test("deck · a cluster is measured back out of its own layout, never trust
   const whole = hubOfCross(cell);
   assert(whole > 25 && whole < 40, `the pad hub is ${whole.toFixed(1)}% of the whole cross — a real one is ~34%, and the alpha\u2019s 38%-of-the-centre-cell was 12.7%`);
 });
-
 Deno.test("console · one device, and the aperture is never rationed", async () => {
   
   const src = await Deno.readTextFile(new URL("./console.js", import.meta.url));
@@ -4224,7 +4279,6 @@ Deno.test("console · one device, and the aperture is never rationed", async () 
   
   for (const forbidden of ["brick.wasm", "hunt.wasm", "SCRW", "ammo", "spear", "crouch"])
     assert(!code.includes(forbidden), `console.js references "${forbidden}" in CODE — the shell must be game-agnostic`);
-
   const css = await Deno.readTextFile(new URL("./theme.css", import.meta.url));
   const screen = /\.ms-screen\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
   assert(/width:\s*100%/.test(screen), ".ms-screen no longer takes the whole body width");
@@ -4237,17 +4291,13 @@ Deno.test("console · one device, and the aperture is never rationed", async () 
   assert(!/(^|[^-])height:\s*100%/.test(shell),
     ".ms-shell is stretching to the view again — the canvas is width-bound, so that buys the game nothing and puts a dead band of plastic between the screen and the deck (the deployed shot, not the gate, is what caught this)");
 });
-
-
 Deno.test("isBook: the type allowlist covers what the P31 census actually found", () => {
   assert(actsIsBook({ p31: ["Q7725634"] }), "literary work is the common case (34/39)");
   assert(actsIsBook({ p31: ["Q47461344"] }), "written work — Sapiens, Educated, A Room of One's Own");
   assert(actsIsBook({ p31: ["Q1667921", "Q13593966"] }), "The Hunger Games is typed as its series");
   assert(actsIsBook({ p31: ["Q7725634", "Q49100005"] }), "banned book only ever co-occurs");
 });
-
 Deno.test("isBook: a film adaptation shares the title and must never win", () => {
-  
   assert(!actsIsBook({ p31: ["Q11424"], hasAuthor: true, hasDate: true }), "film");
   assert(!actsIsBook({ p31: ["Q5"] }), "the author is not the book");
   assert(!actsIsBook({ p31: ["Q4167410"] }), "disambiguation page");
@@ -4255,22 +4305,20 @@ Deno.test("isBook: a film adaptation shares the title and must never win", () =>
   
   assert(!actsIsBook({ p31: ["Q11424", "Q7725634"] }), "typed as both → the film reading must lose");
 });
+
 Deno.test("isBook: untyped works fall back to author+date, which films do not have", () => {
   assert(actsIsBook({ p31: [], hasAuthor: true, hasDate: true }), "P50+P577 are on 38/39 books");
   assert(!actsIsBook({ p31: [], hasAuthor: true }), "author alone is not enough");
   assert(!actsIsBook({ p31: [], hasDate: true }), "a date alone is nothing");
   assert(!actsIsBook({}), "no signal at all");
 });
-
 Deno.test("findPlotSection: resolves by NAME, never by a remembered number", () => {
-  
   assertEquals(actsFindPlot([{ index: 1, line: "Origins" }, { index: 3, line: "Plot" }]).index, "3");
   assertEquals(actsFindPlot([{ index: 2, line: "Plot summary" }]).index, "2");
   assertEquals(actsFindPlot([{ index: 5, line: "Synopsis" }]).index, "5");
   assertEquals(actsFindPlot([{ index: 4, line: "Storylines" }]).index, "4");
   
   assertEquals(actsFindPlot([{ index: 7, line: "Synopsis" }, { index: 2, line: "Plot summary" }]).index, "2");
-  
   assertEquals(actsFindPlot([{ index: 9, line: "PLOT  SUMMARY" }]).index, "9");
   assertEquals(actsFindPlot([{ index: 6, line: "Synopsis of Part One" }]).index, "6", "prefix match");
   assertEquals(actsFindPlot([{ index: 1, line: "Reception" }]), null, "no plot section at all");
@@ -4295,6 +4343,7 @@ Deno.test("foldPlot keeps the ENDING — act 3 is grounded in it", () => {
   assert(folded.includes("THE FINALE"), "a plain slice() would have cut the ending off");
   assert(folded.startsWith("A"), "the opening survives too");
   assert(folded.includes("[…]"), "the drop is marked");
+  
   assertEquals(actsFold("short plot.", 800), "short plot.");
 });
 
@@ -4304,7 +4353,6 @@ Deno.test("parseActs: the happy path splits on the markers", () => {
   assert(r.ok);
   assert(!r.truncated);
 });
-
 Deno.test("parseActs: a repeated marker mid-prose must not split the act", () => {
   const r = actsParse("[1] He counts [1] again and stops. [2] Then this. [3] Finally this.");
   assertEquals(r.acts[0], "He counts [1] again and stops.");
@@ -4344,6 +4392,7 @@ Deno.test("actSignature: the level is part of the cache key", () => {
 
 Deno.test("plotUpToClimax withholds the ending — a prompt alone did not", () => {
   
+  
   const body = Array.from({ length: 60 }, (_, i) => `Event ${i} happens.`).join(" ");
   const full = body + " AND THEN THE HERO DIES AT THE END.";
   const cut = actsUpToClimax(full);
@@ -4351,6 +4400,7 @@ Deno.test("plotUpToClimax withholds the ending — a prompt alone did not", () =
   assert(cut.length < full.length, "nothing was cut at all");
   assert(cut.length > full.length * 0.5, `cut far too aggressive: ${cut.length}/${full.length}`);
   assert(/\.$/.test(cut), "the cut left a half sentence");
+  
   assertEquals(actsUpToClimax("A short plot."), "A short plot.");
   assertEquals(actsUpToClimax(""), "");
 });
@@ -4389,13 +4439,15 @@ Deno.test("foldThread keeps the tail, and the tail is what carries the pronouns"
   assertEquals(kept[0].r, "u", "the thread must open on the reader — the grounding is prepended to it");
   assert(kept.reduce((a, x) => a + x.t.length, 0) <= 2000 + 500, "the budget was not honoured");
 });
+
 Deno.test("foldThread: a thread that no longer ends on the reader is not sendable", () => {
+  
   assertEquals(chatFold([chatAnswered("a lone reply")]), []);
   assertEquals(chatFold([]), []);
   assertEquals(chatFold(null), []);
-  
   assertEquals(chatFold([chatAsked("  "), chatAsked("real")]).length, 1);
 });
+
 Deno.test("askSignature: the whole exchange is the key, not just the last thing said", () => {
   
   
@@ -4409,12 +4461,13 @@ Deno.test("askSignature: the whole exchange is the key, not just the last thing 
   
   assert(chatSig(1, 2, false, "uk", a).length < 40, "the signature is not bounded");
 });
-
 Deno.test("groundBook puts the book above its plot", () => {
   const g = chatGround({ title: "Dune", byline: "Frank Herbert · 1965", plot: "  Sand.  " });
   assert(g.startsWith("КНИГА: Dune — Frank Herbert · 1965"), "the book header is missing");
   assert(g.trimEnd().endsWith("Sand."), "the plot is missing or untrimmed");
 });
+
+
 
 
 
@@ -4435,6 +4488,7 @@ Deno.test("signif/corpus: every leaf is an [en, uk] pair, and neither half is mi
   };
   for (const [name, table] of Object.entries({ BODY: sgBODY, SIGN: sgSIGN, HOUSE: sgHOUSE, ASPECT: sgASPECT, ANGLE: sgANGLE, DIGNITY: sgDIGNITY })) walk(table, name);
   assert(seen.n > 100, `only ${seen.n} corpus entries walked — the tables are not being reached`);
+  
   assertEquals(Object.keys(sgBODY).length, 10);
   assertEquals(sgSIGN.length, 12);
   assertEquals(sgHOUSE.length, 12);
@@ -4445,11 +4499,11 @@ Deno.test("signif/corpus: every leaf is an [en, uk] pair, and neither half is mi
 
 Deno.test("signif/dignityOf: the classical table, with detriment and fall DERIVED", () => {
   const S = { ari: 0, tau: 1, gem: 2, can: 3, leo: 4, vir: 5, lib: 6, sco: 7, sag: 8, cap: 9, aqu: 10, pis: 11 };
+  
   assertEquals(sgDignity("mars", S.ari), "domicile");
   assertEquals(sgDignity("mars", S.sco), "domicile", "Scorpio is Mars's by tradition; Pluto is only a modern co-ruler");
   assertEquals(sgDignity("saturn", S.aqu), "domicile", "Aquarius is Saturn's by tradition, not Uranus's");
   assertEquals(sgDignity("jupiter", S.pis), "domicile");
-  
   assertEquals(sgDignity("mars", S.lib), "detriment");
   assertEquals(sgDignity("sun", S.aqu), "detriment");
   assertEquals(sgDignity("moon", S.cap), "detriment");
@@ -4499,11 +4553,11 @@ Deno.test("signif/chartRuler: the convention is a CHOICE, and the answer says wh
   const aqu = 10 * 30 + 5;
   assertEquals(sgChartRuler(aqu), { sign: 10, body: "saturn", modern: false });
   assertEquals(sgChartRuler(aqu, { modern: true }), { sign: 10, body: "uranus", modern: true });
+  
   assertEquals(sgChartRuler(5, { modern: true }), { sign: 0, body: "mars", modern: false });
 });
 
 Deno.test("signif/balance: a plain unweighted count over the bodies actually shown", () => {
-  
   const b = sgBalance([1, 121, 241, 95]);
   assertEquals(b.elements, [3, 0, 0, 1]);
   assertEquals(b.modalities, [2, 1, 1]);
@@ -4573,7 +4627,6 @@ Deno.test("signif/groundPortrait: angles, chart ruler and balance, with the synt
   assert(m.text.includes("modern ruler; traditionally Saturn"), "a contested convention must name itself");
   assert(m.sig !== g.sig);
 });
-
 Deno.test("signif/spanLabel: days, months or years — the unit the reader would actually use", () => {
   const d = (n) => n * 86400000;
   assertEquals(sgSpan(0, d(12)), "12 days");
@@ -4586,7 +4639,6 @@ Deno.test("signif/spanLabel: days, months or years — the unit the reader would
 });
 
 Deno.test("signif/groundCusp: a house is delegated to its ruler, and an empty house is not a silent one", () => {
-  
   const g = sgGroundCusp({ house: 2, cuspLon: 8 * 30 + 14, houseSystem: "placidus",
     ruler: { key: "jupiter", lon: 3 * 30 + 2, house: 8, retro: false }, coRuler: null,
     tenants: [{ key: "venus", lon: 8 * 30 + 20, retro: false }] });
@@ -4600,6 +4652,7 @@ Deno.test("signif/groundCusp: a house is delegated to its ruler, and an empty ho
   assert(g.text.includes("STANDING IN house 2: Venus"));
   assert(!/undefined|NaN/.test(g.text));
 
+  
   const empty = sgGroundCusp({ house: 7, cuspLon: 30, houseSystem: "whole",
     ruler: { key: "venus", lon: 200, house: 1, retro: true } });
   assert(empty.text.includes("no planet stands in house 7"));
@@ -4622,7 +4675,6 @@ Deno.test("signif/groundCusp: a house is delegated to its ruler, and an empty ho
 Deno.test("signif/rulerOf: the modern flag is a claim about the ANSWER, not about the request", () => {
   
   assertEquals(sgRulerOf(10 * 30 + 5, { modern: true }), { sign: 10, body: "uranus", modern: true });
-  
   
   assertEquals(sgRulerOf(5, { modern: true }), { sign: 0, body: "mars", modern: false });
   assertEquals(sgRulerOf(5), { sign: 0, body: "mars", modern: false });
@@ -4652,11 +4704,11 @@ Deno.test("signif/QUESTIONS: a closed catalogue, and what it deliberately does N
     assertEquals(q.label.length, 2, `${q.id}: label must be [en, uk]`);
     assert(q.label[0].trim() && q.label[1].trim() && q.label[0] !== q.label[1], `${q.id}: label halves`);
     
+    
     for (const l of q.label) {
       assert(l.length <= 16 && l.split(/\s+/).length <= 2 && !/[?.]/.test(l),
         `${q.id}: label "${l}" is a sentence again — the catalogue takes a topic, the model takes q.ask`);
     }
-    
     assert(q.ask && q.ask.length > 20 && q.ask.endsWith("?"), `${q.id}: ask must be the full English question`);
     assert(q.focus && q.focus.length > 80, `${q.id}: focus must state the technique, not a hint`);
     for (const h of q.houses || []) assert(h >= 1 && h <= 12, `${q.id}: house ${h}`);
@@ -4682,6 +4734,7 @@ Deno.test("signif/QUESTIONS: a closed catalogue, and what it deliberately does N
   assertEquals(sgQuestionById("love").id, "love");
   assertEquals(sgQuestionById("nope"), null);
 });
+
 Deno.test("signif/groundQuestion: the block contains the declared factors and NOTHING else", () => {
   const money = sgQuestionById("money");
   const g = sgGroundQuestion({ q: money, chart: QCHART });
@@ -4695,15 +4748,17 @@ Deno.test("signif/groundQuestion: the block contains the declared factors and NO
   assert(g.text.includes("HOUSE 2 (placidus)"), "the declared house is missing");
   assert(g.text.includes("HOUSE 8 (placidus)"));
   assert(g.text.includes("Venus") && g.text.includes("Jupiter"), "the declared bodies are missing");
+  
+  
   assert(!/- Moon —/.test(g.text), "the Moon is not a money significator and must not be supplied");
   assert(!/HOUSE 7|HOUSE 10/.test(g.text), "an undeclared house leaked into the block");
   assert(!/undefined|NaN/.test(g.text));
-
-  
   assert(/RULED BY \w+ \(/.test(g.text), "the house ruler must be named");
   assert(/does not stand in house \d; it stands in \w+, house \d/.test(g.text),
     "ruling a house and standing in it must be stated as different things — a model conflated them on the live route");
   assert(/No planet stands in it, which the tradition reads through the ruler/.test(g.text) || /STANDING IN house \d:/.test(g.text));
+
+  
   assertEquals(sgGroundQuestion({ q: money, chart: QCHART }).sig, g.sig);
   assert(sgGroundQuestion({ q: sgQuestionById("love"), chart: QCHART }).sig !== g.sig, "question must vary the key");
   const moved = { ...QCHART, cusps: QCHART.cusps.map((c, i) => (i === 1 ? c + 40 : c)) };
@@ -4720,7 +4775,6 @@ Deno.test("signif/groundQuestion: a timing question leads with transits, and say
   assert(g.text.includes("29 and a half years"), "the tempo must travel, or a slow transit reads as a mood");
   assert(g.text.includes("Exact: 3 Aug 2026"));
 
-  
   const none = sgGroundQuestion({ q: phase, chart: QCHART, timing: { dateEN: "25 Jul 2026", contacts: [] } });
   assert(none.text.includes("none within orb"));
   assert(none.text.includes("do not substitute another transit"));
@@ -4762,11 +4816,9 @@ Deno.test("grain/planGrains: pitch does not leak into the read head (the classic
   
   assertEquals(low.map((g) => g.offset.toFixed(6)), high.map((g) => g.offset.toFixed(6)));
   assert(Math.abs(high[0].rate - 2) < 1e-9 && Math.abs(low[0].rate - 0.5) < 1e-9);
-  
   const unity = grPlan({ ...base, semis: 0 });
   assert(Math.abs(high[0].dur * high[0].rate - 2 * unity[0].dur * unity[0].rate) < 1e-9);
   assert(Math.abs(low[0].dur * low[0].rate - 0.5 * unity[0].dur * unity[0].rate) < 1e-9);
-  
   const frozen = grPlan({ ...base, advance: 0, sprayMs: 0 });
   assert(frozen.every((g) => Math.abs(g.offset - frozen[0].offset) < 1e-9));
 });
@@ -4794,6 +4846,7 @@ Deno.test("grain/trim: silence at the edges goes, the sound in the middle stays"
   assert(a > sr * 0.7 && a <= sr * 0.8, `left edge landed at ${a / sr}s`);
   assert(b >= sr * 1.2 && b < sr * 1.35, `right edge landed at ${b / sr}s`);
 });
+
 Deno.test("grain/pitch: YIN finds the tone, and calls noise unpitched instead of naming it", () => {
   const sr = 48000;
   const tone = grSynth(sr, 1.5, 220);
@@ -4805,6 +4858,7 @@ Deno.test("grain/pitch: YIN finds the tone, and calls noise unpitched instead of
   for (let i = 0; i < noise.length; i++) noise[i] = (rng() * 2 - 1) * 0.6;
   assert(!grPitch(noise, sr).pitched, "white noise must come back unpitched — a door slam has no note");
 });
+
 Deno.test("grain/wav: the canonical 44-byte 16-bit PCM header", () => {
   const sr = 8000, x = new Float32Array(100).fill(0.5);
   const w = grWav([x], sr), v = new DataView(w.buffer);
@@ -4858,12 +4912,12 @@ Deno.test("Transport cannot leave its container — the cap is the widget's, not
 
 
 
+
 Deno.test("rtlsdr: device ids, transfer size, and no hardware sweep", () => {
   assertEquals(RTL_VID, 0x0bda);
   assertEquals(RTL_XFER, 262144);           
   assertEquals(RTL_SWEEP, false);           
 });
-
 Deno.test("ifFreqWord: the DDC word is the negated 22-bit fraction of the crystal", () => {
   const w = ifFreqWord(3_570_000);                       
   const word = (w.hi << 16) | (w.mid << 8) | w.lo;
@@ -4871,7 +4925,6 @@ Deno.test("ifFreqWord: the DDC word is the negated 22-bit fraction of the crysta
   assertEquals(word, expect);
   assert(w.hi <= 0x3f, "the high register is 6 bits wide");
   assert(w.mid <= 0xff && w.lo <= 0xff);
-  
   assert(word > 0x200000, "a positive IF must shift DOWN — the sign bit of the 22-bit field must be set");
 });
 
@@ -4923,7 +4976,6 @@ Deno.test("gainSplit: one control, monotonic, clamped — a mid gain must NOT be
 
 Deno.test("dcBin: at zero offset the DC artifact sits ON LPD channel 35 — offset tuning moves it between channels", () => {
   
-  
   const onChannel = dcBin(0, 25_000, 96);
   assertEquals(onChannel, 48);
   assert(Number.isInteger(onChannel), "zero offset puts DC exactly on a channel centre — this is the defect");
@@ -4937,6 +4989,8 @@ Deno.test("offsetBinaryToSigned: RTL's uint8 DC maps to zero in the farm's signe
   const asSigned = [...out].map((b) => (b > 127 ? b - 256 : b));
   assertEquals(asSigned, [-128, -1, 0, 127]);            
 });
+
+
 
 Deno.test("channel plans: 1-based centres round-trip, and reject anything off-plan", () => {
   assertEquals(channelCentre(LPD433, 1), 433_075_000);
@@ -5071,10 +5125,11 @@ Deno.test("instantFreq: a pure tone reads as one constant frequency", () => {
   for (const v of f) assert(Math.abs(v - expect) < 1e-4, `constant tone drifted: ${v} vs ${expect}`);
 });
 
+
+
 Deno.test("CTCSS: the tightest tone pair sets the integration window — it is not a taste choice", () => {
   assertEquals(CTCSS_TONES.length, 38);
   assert(Math.abs(minToneGap() - 2.5) < 1e-6, `closest pair is 71.9/74.4 Hz, got ${minToneGap()}`);
-  
   assertEquals(windowSamples(8000), 4000);
   assert(windowSamples(8000) / 8000 >= 0.4, "a tone cannot be identified faster than its own resolution");
   for (let i = 1; i < CTCSS_TONES.length; i++) assert(CTCSS_TONES[i] > CTCSS_TONES[i - 1], "tones must be ascending");
@@ -5101,6 +5156,7 @@ Deno.test("CTCSS: finds a weak tone buried under much louder speech, and refuses
   assertEquals(detectCtcss(mk(null), fs), null, "speech with no tone must return null, not a nearest guess");
   assertEquals(detectCtcss(mk(100.0).slice(0, 1000), fs), null, "too short to resolve → null, never a guess");
 });
+
 
 
 Deno.test("df: an omnidirectional antenna produces a CIRCLE and no bearing is offered", () => {
@@ -5132,7 +5188,6 @@ Deno.test("df: headings wrap — 350 and 10 average to 0, not 180", () => {
   
   assertEquals(hasBearing(s), false, "coverage gate must reject an unfinished sweep even when r is high");
 });
-
 Deno.test("df: an unswept arc is not a null — unvisited bins stay distinguishable from measured silence", () => {
   const rose = newRose(72);
   for (let h = 0; h < 90; h += 5) addSample(rose, h, 1);                 
@@ -5141,7 +5196,6 @@ Deno.test("df: an unswept arc is not a null — unvisited bins stay distinguisha
   assertEquals(hasBearing(s), false);
   assertEquals(rose.count[40], 0);                                       
 });
-
 
 
 
@@ -5172,7 +5226,6 @@ Deno.test("the fixture band lights up exactly the channels it transmits on", () 
   const lit = (n) => peak[n - 1] / floor;
   assert(lit(12) > 20, `channel 12 carries a voice, got ${lit(12).toFixed(1)}x floor`);
   assert(lit(47) > 20, `channel 47 carries a voice, got ${lit(47).toFixed(1)}x floor`);
-  
   
   assertEquals(channelAt(LPD433, 433_920_000), CROWDED_CHANNEL);
   assert(lit(CROWDED_CHANNEL) > 20, `channel 35 carries the device bursts, got ${lit(CROWDED_CHANNEL).toFixed(1)}x`);
@@ -5214,6 +5267,8 @@ Deno.test("end to end: raw bytes off the antenna become a named CTCSS group", ()
   assert(tone, `no tone found in ${(audio.length / ch.sampleRate).toFixed(2)} s of demodulated audio`);
   assertEquals(tone.toneHz, 100.0, "the fixture transmits CTCSS 100.0 Hz and the chain must recover it");
 });
+
+
 
 
 Deno.test("shell: a browser has no bridge, and says so in one closed vocabulary", async () => {
@@ -5313,7 +5368,6 @@ Deno.test("permissions: every entry has a group, and every group is one the scre
     assert(def.query || def.capability, `${name} has neither a browser backend nor a capability`);
   }
 });
-
 Deno.test("shell: a subscription that fails tells the caller, instead of looking empty", async () => {
   globalThis.window = globalThis;
   const sent = [];
@@ -5336,7 +5390,6 @@ Deno.test("shell: a subscription that fails tells the caller, instead of looking
     assertEquals(stale?.code, ERR.staleBridge);
   } finally { delete globalThis.__msShell; delete globalThis.window; }
 });
-
 
 Deno.test("radar: an AD walk stops at a structure that would read past the end", () => {
   
@@ -5376,7 +5429,6 @@ Deno.test("radar: a vendor is not a device class, and a pairing protocol is not 
   const airpods = rdClassify({ addr: "5A:00:00:00:00:01", raw: "05ff4c00070f" });
   assertEquals(airpods.vendor, "Apple");
   assertEquals(airpods.tracker, "none", "a company ID alone must never read as a tracker");
-
   
   for (const uuid of ["03032cfe", "0303aafe"]) {
     const c = rdClassify({ addr: "5A:00:00:00:00:02", raw: "020106" + uuid });
@@ -5396,7 +5448,6 @@ Deno.test("radar: an address says whether it can be followed at all", () => {
   assertEquals(rdAddrKind("zz"), "unknown");
   assert(rdRotates("4C:11:22:33:44:55"), "a resolvable private address rotates, so a trail must end at it");
 });
-
 Deno.test("radar: strength is a band in dBm, and metres need calibration the caller must supply", () => {
   assertEquals(rdBand(-40), "immediate");
   assertEquals(rdBand(-60), "near");
@@ -5404,6 +5455,7 @@ Deno.test("radar: strength is a band in dBm, and metres need calibration the cal
   assertEquals(rdBand(-95), "faint");
   assertEquals(rdBand(NaN), "unknown");
 
+  
   
   assertEquals(rdEstimateDistance({ rssi: -70 }), null);
   assertEquals(rdEstimateDistance({ rssi: -70, referenceRssi: -59 }), null);
@@ -5413,7 +5465,6 @@ Deno.test("radar: strength is a band in dBm, and metres need calibration the cal
   
   const off = rdEstimateDistance({ rssi: -70, referenceRssi: -49, pathLossExponent: 2 });
   assert(Math.abs(off / d - 3.1622776) < 1e-4, "10 dB of reference error is a 3.16x distance error");
-
   assert(rdBandFraction(-40) < rdBandFraction(-100), "a stronger signal sits nearer the centre");
   assertEquals(rdBandFraction(-20), 0, "clamped, so an absurd reading cannot leave the scene");
   assertEquals(rdBandFraction(-140), 1);
@@ -5421,6 +5472,8 @@ Deno.test("radar: strength is a band in dBm, and metres need calibration the cal
 
 Deno.test("radar: smoothing is time-based, because advertising intervals are not constant", () => {
   assertEquals(rdSmooth(NaN, -60, 500), -60, "the first sample IS the estimate");
+  
+  
   const fast = rdSmooth(-60, -80, 500);
   const slow = rdSmooth(-60, -80, 3000);
   assert(slow < fast, "a longer gap trusts the new sample more");
@@ -5445,18 +5498,17 @@ Deno.test("radar: guard needs every criterion, and says which one is missing", (
   assertEquals(good.confidence, 1);
   assert(good.displacement > 1500, "displacement is real metres, not a degree delta");
   assert(good.segments >= 2);
-
   
   const owned = rdGuardScore({ sightings, separated: false, classifiable: true });
   assertEquals(owned.meets, false);
   assert(owned.reasons.includes("notSeparated"));
 
+  
   const still = rdGuardScore({
     sightings: sightings.map((s) => ({ ...s, fix: near })), separated: true, classifiable: true,
   });
   assertEquals(still.meets, false);
   assert(still.reasons.includes("noDisplacement"));
-
   
   
   const blind = rdGuardScore({ sightings, separated: true, classifiable: false });
@@ -5476,6 +5528,7 @@ Deno.test("radar: the guard thresholds are ours, and are not DULT's accessory co
 });
 
 Deno.test("radar: a percentage is per-RADIO, because the three are not one quantity", () => {
+  
   
   assertEquals(rdSignalPercent(-120, "lte"), 0);
   assertEquals(rdSignalPercent(-70, "lte"), 100);
@@ -5498,19 +5551,20 @@ Deno.test("radar: a percentage is per-RADIO, because the three are not one quant
     }
   }
 });
+
 Deno.test("radar: ordering does not move a row unless something changed that means something", () => {
   const mk = (addr, rssi, kind, first) => ({ addr, smooth: rssi, kind, first });
   const list = [
     mk("a", -80, "ble", 100), mk("b", -50, "wifi", 200), mk("c", -52, "ble", 300), mk("d", -95, "lte", 400),
   ];
-  
   assertEquals(rdOrderDevices(list, "seen").map((d) => d.addr), ["a", "b", "c", "d"]);
 
+  
+  
   assertEquals(rdOrderDevices(list, "signal").map((d) => d.addr), ["b", "c", "a", "d"]);
   const faded = list.map((d) => (d.addr === "b" ? { ...d, smooth: -54 } : d));
   assertEquals(rdOrderDevices(faded, "signal").map((d) => d.addr), ["b", "c", "a", "d"],
     "4 dB of ordinary fading must not move a row");
-  
   
   
   const dropped = list.map((d) => (d.addr === "b" ? { ...d, smooth: -72 } : d));
@@ -5538,7 +5592,6 @@ Deno.test("radar: the hex spiral tiles without a gap or a collision", () => {
   const { x, y } = rdHexToXY({ q: 0, r: 0 }, 1);
   assertEquals([x, y], [0, 0]);
 });
-
 Deno.test("oui: a vendor is named only where the address actually has one", () => {
   
   const a = 0xac_de_48, b = 0x24_0a_c4;                    
@@ -5548,7 +5601,6 @@ Deno.test("oui: a vendor is named only where the address actually has one", () =
   assertEquals(table.size, 2);
   assertEquals(table.get(a), "Apple");
   assertEquals(table.get(b), "Espressif");
-
   assertEquals(ouiVendorOf("AC:DE:48:11:22:33", "wifi", table), "Apple", "an AP's BSSID is a real OUI");
   assertEquals(ouiVendorOf("24:0A:C4:11:22:33", "wifi", table), "Espressif");
 
@@ -5559,8 +5611,8 @@ Deno.test("oui: a vendor is named only where the address actually has one", () =
   
   assertEquals(ouiVendorOf("AE:DE:48:11:22:33", "wifi", table), null);
   assert(ouiLocallyAdministered("02:00:00:00:00:01"), "the gate's own fixture is locally administered");
-  
   assertEquals(ouiVendorOf("lte:301", "lte", table), null);
+  
   assertEquals(ouiVendorOf("00:11:22:33:44:55", "wifi", table), null);
   assertEquals(ouiVendorOf("nonsense", "wifi", table), null);
   assertEquals(ouiVendorOf("AC:DE:48:11:22:33", "wifi", new Map()), null);
@@ -5571,6 +5623,7 @@ Deno.test("oui: a vendor is named only where the address actually has one", () =
   assertEquals(ouiParse("").size, 0);
   assertEquals(ouiParse("garbage").size, 0);
 });
+
 Deno.test("radar: the comb rounds up to a COMPLETE ring, never a lopsided spiral", () => {
   assertEquals(rdCombSize(0), 1);
   assertEquals(rdCombSize(1), 1);

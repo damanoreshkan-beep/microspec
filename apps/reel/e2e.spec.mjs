@@ -77,8 +77,11 @@ export default [
       h.expect((await h.text("[data-island-label]")) !== root, `острівець лишився на «${root}» — джерело не змінилось`);
       
       
+      
+      
       const lvl = await h.text("[data-island-label]");
-      h.expect(lvl === "Big Buck Bunny in 4K", `острівець показує «${lvl}» замість справжньої назви сторінки «Big Buck Bunny in 4K»`);
+      h.expect(lvl === "Big Buck Bunny in 4K & Friends", `острівець показує «${lvl}» замість справжньої назви сторінки «Big Buck Bunny in 4K & Friends»`);
+      h.expect(!/%[0-9A-Fa-f]{2}|&[a-z]+;|&#/.test(lvl), `в назві джерела лишились нерозкодовані символи: «${lvl}»`);
       h.expect((await h.count("[data-feed-back]")) === 1, "після провалювання немає кнопки повернення");
       
       await h.tap("[data-feed-back]"); await h.wait(500);
@@ -109,12 +112,18 @@ export default [
       await ready(h);
       await h.tap("[data-dive]"); await h.wait(600);
       h.expect((await h.count("[data-subscribe]")) === 1, "на непідписаному джерелі немає кнопки підписки");
+      const island = await h.text("[data-island-label]");
       await h.tap("[data-subscribe]"); await h.wait(400);
       h.expect((await h.count("[data-subscribe]")) === 0, "після підписки кнопка мала зникнути");
       await h.tap('[data-tab="sources"]'); await h.wait(400);
       h.expect(await has(h, /Підписки|Subscriptions/), "таб джерел не відкрився");
       
-      h.expect(await has(h, /Big Buck Bunny in 4K/), "збережене джерело показане не своєю назвою (лишилась форма URL)");
+      const row = await h.text("[data-src-title]");
+      h.expect(row === island, `рядок джерела показує «${row}», а острівець — «${island}»: два різні імені однієї сторінки`);
+      
+      const [sw, cw] = [await h.prop("[data-src-title]", "scrollWidth"), await h.prop("[data-src-title]", "clientWidth")];
+      h.expect(sw <= cw + 1, `назву джерела обрізано по горизонталі (${sw}px вмісту в ${cw}px рядка) — вона має переноситись, а не ховатись`);
+      h.expect(!/…$/.test(row), `назву джерела вкорочено трикрапкою («${row}») — у рядку є місце на повну`);
       await h.tap('[data-tab="reel"]'); await h.wait(400);
       await h.tap("[data-feed-back]"); await h.wait(400);              
     },

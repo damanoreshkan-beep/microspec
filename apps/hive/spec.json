@@ -5,8 +5,12 @@
   "accent": "#D9548E",
   "filters": {
     "defaults": {
-      "kinds": ["ble", "wifi", "lte"],
-      "sort": "seen"
+      "kinds": [
+        "ble",
+        "wifi",
+        "lte"
+      ],
+      "sort": "signal"
     },
     "controls": [
       {
@@ -15,9 +19,18 @@
         "label": "fKinds",
         "icon": "lucide:radio",
         "options": [
-          ["ble", "kBle"],
-          ["wifi", "kWifi"],
-          ["lte", "kLte"]
+          [
+            "ble",
+            "kBle"
+          ],
+          [
+            "wifi",
+            "kWifi"
+          ],
+          [
+            "lte",
+            "kLte"
+          ]
         ]
       },
       {
@@ -27,9 +40,18 @@
         "icon": "lucide:arrow-down-up",
         "chip": true,
         "options": [
-          ["seen", "sSeen"],
-          ["signal", "sSignal"],
-          ["kind", "sKind"]
+          [
+            "seen",
+            "sSeen"
+          ],
+          [
+            "signal",
+            "sSignal"
+          ],
+          [
+            "kind",
+            "sKind"
+          ]
         ]
       }
     ]

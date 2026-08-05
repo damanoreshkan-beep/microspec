@@ -111,6 +111,7 @@ export async function mount(canvas, getState) {
     const cells = (getState() || {}).cells || [];
     resize();
     buildFloor(cells.length);
+    const nowMs = Date.now();
 
     const coords = hexSpiral(Math.max(19, cells.length));
     let spread = 0;
@@ -130,7 +131,7 @@ export async function mount(canvas, getState) {
       const hgt = reducedMotion || prev == null ? want : prev + (want - prev) * 0.18;
       grown.set(c.key, hgt);
 
-      const age = c.pulse ? now - c.pulse : 1e9;
+      const age = c.pulse ? nowMs - c.pulse : 1e9;
       const lift = reducedMotion ? 0 : Math.max(0, 1 - age / 700) * 0.09;
       m.visible = true;
       m.position.set(x, lift, y);

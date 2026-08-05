@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 21;
+export const CATALOGUE_BRIDGE = 22;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -456,6 +456,22 @@ export const ACTIONS = {
       "shared": true,
       "uri": "content://gate/downloads/1",
       "bytes": 11
+    }
+  },
+  "lan.scan": {
+    "capability": "lan",
+    "kind": "subscribe",
+    "minBridge": 22,
+    "android": [
+      "ACCESS_WIFI_STATE",
+      "CHANGE_WIFI_MULTICAST_STATE"
+    ],
+    "mock": {
+      "ip": "192.168.1.1",
+      "name": "router.lan",
+      "ports": "80,443",
+      "via": "tcp",
+      "at": 1893479400000
     }
   }
 };

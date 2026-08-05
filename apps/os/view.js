@@ -552,6 +552,29 @@ export function radar({ S, t, toast }) {
   const [cells, setCells] = useState([]);
   const [throttled, setThrottled] = useState(false);
   const wifiRef = useRef(null);
+  const [hosts, setHosts] = useState([]);
+  const [sweep, setSweep] = useState(null);        
+  const lanRef = useRef(null);
+
+  const ipSort = (a, b) => {
+    const n = (s) => s.split(".").reduce((v, o) => v * 256 + (parseInt(o, 10) || 0), 0);
+    return n(a.ip) - n(b.ip);
+  };
+  const upsertHost = (h) => {
+    if (!h) return;
+    if (h.done) { setSweep({ scanned: h.scanned, found: h.found }); return; }
+    if (h.started || h.ack || !h.ip) return;
+    setHosts((prev) => {
+      const at = prev.find((x) => x.ip === h.ip);
+      if (!at) return [...prev, { ...h, via: [h.via] }].sort(ipSort);
+      return prev.map((x) => x.ip !== h.ip ? x : {
+        ...x,
+        name: x.name || h.name,
+        ports: x.ports || h.ports,
+        via: x.via.includes(h.via) ? x.via : [...x.via, h.via],
+      });
+    });
+  };
   const [locOn, setLocOn] = useState(null);
   useEffect(() => {
     refreshHeld().then(() => setHeld(heldPermissions()));
@@ -594,6 +617,8 @@ export function radar({ S, t, toast }) {
     stopRef.current = shell.subscribe("ble.scan", {}, upsert, (e) => { setErr(e?.detail || e?.code || ERR.failed); setScanning(false); });
     sweepRadios();
     wifiRef.current = setInterval(sweepRadios, WIFI_MS);
+    setHosts([]); setSweep(null);
+    if (shell.has("lan.scan")) lanRef.current = shell.subscribe("lan.scan", {}, upsertHost, () => {});
   };
   const stop = () => {
     setScanning(false);
@@ -601,11 +626,17 @@ export function radar({ S, t, toast }) {
     stopRef.current = null;
     clearInterval(wifiRef.current);
     wifiRef.current = null;
+    try { lanRef.current?.(); } catch {  }
+    lanRef.current = null;
   };
   useEffect(() => {
-    if (gate) sweepRadios();
+    if (gate) {
+      sweepRadios();
+      shell.subscribe("lan.scan", {}, upsertHost, () => {});
+    }
     return () => {
       try { stopRef.current?.(); } catch {  }
+      try { lanRef.current?.(); } catch {  }
       clearInterval(wifiRef.current);
     };
   }, []);
@@ -706,6 +737,28 @@ export function radar({ S, t, toast }) {
             : /scanFailed:4/.test(String(err)) ? T(t, "radarUnsupported")
             : err}</div>` : null}
     <//>
+
+    <!-- The network is a different question from the radar above it — not "what is radiating near me" but
+         "who shares this wire" — so it gets its own list rather than a shape on a circle it does not fit. -->
+    ${hosts.length || sweep ? html`<${Panel}>
+      <div class="flex items-center gap-2 pb-1">
+        ${Icon("lucide:network", "text-base text-primary shrink-0")}
+        <span class="font-semibold text-sm min-w-0 flex-1 truncate">${T(t, "radarHosts")}</span>
+        <!-- "6 of 254" rather than a count alone: a sweep that ended having looked at everything and one
+             that is still a third of the way through produce the same six rows otherwise. -->
+        <span data-lan-sweep class="font-mono text-[11px] text-base-content/45 tabular-nums shrink-0">
+          ${sweep ? `${sweep.found}/${sweep.scanned}` : hosts.length}
+        </span>
+      </div>
+      ${hosts.map((h) => html`<div key=${h.ip} data-host=${h.ip}
+          class="flex items-center gap-3 py-2 border-b border-base-content/10 last:border-0">
+        ${Icon(h.via.includes("ssdp") ? "lucide:tv-minimal" : "lucide:hard-drive", "text-base text-muted shrink-0")}
+        <div class="min-w-0 flex-1">
+          <div class="text-sm truncate">${h.name || h.ip}</div>
+          <div class="font-mono text-[11px] text-muted truncate">${h.name ? `${h.ip}${h.ports ? ` · ${h.ports}` : ""}` : (h.ports || T(t, "hostQuiet"))}</div>
+        </div>
+      </div>`)}
+    <//>` : null}
 
     <!-- ONE list for one radar. Sorted by signal across both radios, because "what is closest" is the
          question the screen answers and splitting it in two would make that unanswerable at a glance. -->

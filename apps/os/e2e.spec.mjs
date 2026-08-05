@@ -48,6 +48,8 @@ export default [
       const towers = await h.count('[data-dev][data-kind="cell"]');
       h.expect(towers >= 2, `сот на радарі немає: ${towers}`);
       h.expect((await h.count('[data-dev][data-kind="ble"]')) >= 5, "BLE-пристрої зникли зі спільного списку");
+      h.expect((await h.count("[data-host]")) >= 1, "у мережі нічого не знайдено");
+      h.expect((await h.count('[data-dev][data-kind="lan"]')) === 0, "хости протекли у список радара");
       h.expect((await h.count("#radar-toggle")) === 1, "немає кнопки сканування");
       await h.click(String.raw`[data-tab="caps"]`); await h.wait(120);
     },

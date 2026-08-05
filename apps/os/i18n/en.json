@@ -77,5 +77,7 @@
   "fsSaveLog": "Save the log",
   "fsSaved": "Saved",
   "fsShare": "Share",
-  "radarHidden": "Hidden network"
+  "radarHidden": "Hidden network",
+  "radarHosts": "On this network",
+  "hostQuiet": "Answered ping only"
 }

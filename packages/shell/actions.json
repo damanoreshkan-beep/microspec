@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 21,
+  "bridgeVersion": 22,
   "actions": [
     {
       "id": "system.info",
@@ -1612,6 +1612,69 @@
         "shared": true,
         "uri": "content://gate/downloads/1",
         "bytes": 11
+      }
+    },
+    {
+      "id": "lan.scan",
+      "capability": "lan",
+      "kind": "subscribe",
+      "minBridge": 22,
+      "android": [
+        "ACCESS_WIFI_STATE",
+        "CHANGE_WIFI_MULTICAST_STATE"
+      ],
+      "summary": "Who else is on this network. A browser has no raw sockets, no ARP and no way to probe an unknown host, so this exists nowhere on the web. Three independent sources: a TCP connect sweep of the subnet (the reliable one — isReachable needs a raw socket a normal app cannot open and is known to ignore its own timeout), an SSDP multicast that routers and TVs answer with a model name, and reverse DNS for the hosts that answered.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ip": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Reverse DNS, or the SSDP SERVER line. Often absent — a bare address is an honest answer."
+          },
+          "ports": {
+            "type": "string",
+            "description": "Comma-separated open ports. EMPTY means it answered a ping but opened nothing, which is still a host."
+          },
+          "via": {
+            "type": "string",
+            "description": "tcp | ssdp — which source saw it. The same host usually arrives twice."
+          },
+          "at": {
+            "type": "integer"
+          },
+          "done": {
+            "type": "boolean",
+            "description": "The sweep finished. A radio scan never does, so without this the list just stops growing and nothing says whether it is over."
+          },
+          "scanned": {
+            "type": "integer"
+          },
+          "found": {
+            "type": "integer"
+          },
+          "started": {
+            "type": "boolean"
+          },
+          "ack": {
+            "type": "boolean"
+          }
+        }
+      },
+      "mock": {
+        "ip": "192.168.1.1",
+        "name": "router.lan",
+        "ports": "80,443",
+        "via": "tcp",
+        "at": 1893479400000
       }
     }
   ]

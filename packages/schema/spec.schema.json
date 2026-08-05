@@ -133,7 +133,8 @@
               "ble",
               "usb",
               "server",
-              "files"
+              "files",
+              "lan"
             ]
           }
         },

@@ -124,5 +124,7 @@
   "portSilent": "connected, said nothing",
   "portNoise": "bytes that match nothing",
   "portGuess": "by port number",
-  "portGone": "refused a second connection"
+  "portGone": "refused a second connection",
+  "portsSwept": "Swept",
+  "portsTook": "Took"
 }

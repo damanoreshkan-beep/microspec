@@ -1828,6 +1828,10 @@
           },
           "elapsed": {
             "type": "integer"
+          },
+          "addrs": {
+            "type": "string",
+            "description": "Which addresses were actually swept, comma separated. A phone with no ::1 sweeps one family, and a screen that assumed both would describe a sweep that never happened."
           }
         }
       },

@@ -628,6 +628,13 @@ const SEEN_MS = 20_000;                       // older than this and it is gone,
 // decaying into it. An access point that stops being listed is gone the moment the next scan says so.
 const WIFI_MS = 30_000;
 const band = (freq) => (!freq ? "" : freq >= 5925 ? "6 GHz" : freq >= 5000 ? "5 GHz" : "2.4 GHz");
+// A cell's number is NOT the same physical quantity as an advertisement's. RSRP runs roughly -50 (on top
+// of the mast) to -125 (about to drop the call), so pushing it through the -30…-100 scale would pin every
+// neighbour to the rim and pretend a -104 and a -120 are the same place. The gate mock alone has a -104.
+const cellRadius = (rssi) => {
+  const clamped = Math.max(-125, Math.min(-55, rssi));
+  return 12 + ((-55 - clamped) / 70) * 78;
+};
 const rssiRadius = (rssi) => {
   const clamped = Math.max(-100, Math.min(-30, rssi));
   return 12 + ((-30 - clamped) / 70) * 78;    // -30dBm hugs the centre, -100 sits at the rim
@@ -665,6 +672,7 @@ export function radar({ S, t, toast }) {
   // is pushed at us, the other has to be asked. Both answer the same question — what is radiating here —
   // which is why they share one radar instead of getting a tab each.
   const [nets, setNets] = useState([]);
+  const [cells, setCells] = useState([]);
   const [throttled, setThrottled] = useState(false);
   const wifiRef = useRef(null);
   // A scan that is refused and a scan that finds nothing look identical on an empty radar, so the screen
@@ -688,13 +696,22 @@ export function radar({ S, t, toast }) {
     return [...rest, { ...d, at: Date.now() }].sort((a, b) => b.rssi - a.rssi);
   }); };
 
-  const sweepWifi = async () => {
-    if (!shell.has("wifi.scan")) return;
-    try {
-      const r = await shell.call("wifi.scan", {});
-      setNets((r.networks || []).slice().sort((a, b) => b.rssi - a.rssi));
-      setThrottled(!!r.throttled);
-    } catch { /* the BLE half still works; a wifi failure must not empty the radar */ }
+  // The two asked-for radios, swept together on one timer. Each failure is swallowed on its own: one radio
+  // being refused must never blank the other two, which is the whole reason they are not one call.
+  const sweepRadios = async () => {
+    if (shell.has("wifi.scan")) {
+      try {
+        const r = await shell.call("wifi.scan", {});
+        setNets((r.networks || []).slice().sort((a, b) => b.rssi - a.rssi));
+        setThrottled(!!r.throttled);
+      } catch { /* the BLE half still works */ }
+    }
+    if (shell.has("cell.info")) {
+      try {
+        const r = await shell.call("cell.info", {});
+        setCells((r.cells || []).slice().sort((a, b) => (b.rssi || -999) - (a.rssi || -999)));
+      } catch { /* a phone with no SIM answers nothing, which is not an error */ }
+    }
   };
 
   const start = () => {
@@ -704,8 +721,8 @@ export function radar({ S, t, toast }) {
     setStarted(false);
     setAck(false);
     stopRef.current = shell.subscribe("ble.scan", {}, upsert, (e) => { setErr(e?.detail || e?.code || ERR.failed); setScanning(false); });
-    sweepWifi();
-    wifiRef.current = setInterval(sweepWifi, WIFI_MS);
+    sweepRadios();
+    wifiRef.current = setInterval(sweepRadios, WIFI_MS);
   };
   const stop = () => {
     setScanning(false);
@@ -718,7 +735,7 @@ export function radar({ S, t, toast }) {
   useEffect(() => {
     // Under the gate the screen opens already scanning, so nothing ever presses start — sweep once here or
     // the radar photographs with its wifi half empty and the e2e asserts nothing about it.
-    if (gate) sweepWifi();
+    if (gate) sweepRadios();
     return () => {
       try { stopRef.current?.(); } catch { /* */ }
       clearInterval(wifiRef.current);
@@ -748,6 +765,20 @@ export function radar({ S, t, toast }) {
                network is an open ring. Colour then only reinforces it — accent for the thing that streams
                at us, ink for the thing we have to ask about. A legend would be the hand-holding this
                screen does not need: the list below carries the same two icons. -->
+          <!-- Cells are triangles, and the one you are REGISTERED on is filled while its neighbours are
+               outlined. That distinction is the only one here a user can act on: a neighbour is what the
+               phone would hand over to, the serving cell is what it is actually talking through. -->
+          <g class="text-base-content">
+            ${cells.map((c) => {
+              const key = `${c.type}-${c.pci ?? ""}-${c.cid ?? ""}-${c.arfcn ?? ""}`;
+              const a = angleOf(key), r = cellRadius(c.rssi ?? -110);
+              const x = 100 + Math.cos(a) * r, y = 100 + Math.sin(a) * r;
+              const pts = `${x.toFixed(1)},${(y - 4.6).toFixed(1)} ${(x - 4.2).toFixed(1)},${(y + 3.2).toFixed(1)} ${(x + 4.2).toFixed(1)},${(y + 3.2).toFixed(1)}`;
+              return html`<polygon key=${key} points=${pts}
+                fill=${c.serving ? "currentColor" : "none"} stroke="currentColor" stroke-width="1.2"
+                stroke-linejoin="round" opacity=${c.serving ? "0.75" : "0.5"} />`;
+            })}
+          </g>
           <g class="text-base-content">
             ${nets.map((n) => {
               const key = n.bssid || n.ssid || String(n.rssi);
@@ -771,6 +802,9 @@ export function radar({ S, t, toast }) {
           <span class="flex items-center gap-1 text-muted">
             ${Icon("lucide:wifi", "text-sm")}<span>${nets.length}</span>
           </span>
+          <span class="flex items-center gap-1 text-muted">
+            ${Icon("lucide:radio-tower", "text-sm")}<span>${cells.length}</span>
+          </span>
         </div>
       </div>
 
@@ -781,7 +815,7 @@ export function radar({ S, t, toast }) {
       ${held && shell.present ? html`<div data-ble-perms class="flex flex-wrap gap-x-3 gap-y-1 pt-2 font-mono text-[11px]">
         <!-- Both radios' permissions, deduped: fine location is shared, and listing it twice would read
              as two different facts about the same switch. -->
-        ${[...new Set([...shell.androidFor("ble"), ...shell.androidFor("wifi")])].filter((p) => p in held).map((p) => html`<span key=${p} class=${held[p] ? "text-success" : "text-error"}>${held[p] ? "+" : "−"} ${p}</span>`)}
+        ${[...new Set([...shell.androidFor("ble"), ...shell.androidFor("wifi"), ...shell.androidFor("cell")])].filter((p) => p in held).map((p) => html`<span key=${p} class=${held[p] ? "text-success" : "text-error"}>${held[p] ? "+" : "−"} ${p}</span>`)}
         ${locOn === false ? html`<span class="text-error">− LOCATION SERVICES</span>` : null}
         <!-- Only meaningful from bridge 15, which is when the shell started sending it. Showing a red
              ACK on an older APK reports a fault that does not exist — the indicator was newer than the
@@ -808,14 +842,24 @@ export function radar({ S, t, toast }) {
 
     <!-- ONE list for one radar. Sorted by signal across both radios, because "what is closest" is the
          question the screen answers and splitting it in two would make that unanswerable at a glance. -->
-    ${devices.length + nets.length ? html`<${Panel} title=${T(t, "radarSeen")}>
+    ${devices.length + nets.length + cells.length ? html`<${Panel} title=${T(t, "radarSeen")}>
       ${[
-        ...devices.map((d) => ({ key: d.addr, wifi: false, name: d.name || T(t, "radarUnnamed"), sub: d.addr, rssi: d.rssi })),
-        ...nets.map((n) => ({ key: n.bssid || n.ssid, wifi: true, name: n.ssid || T(t, "radarHidden"), rssi: n.rssi,
+        ...devices.map((d) => ({ key: d.addr, kind: "ble", name: d.name || T(t, "radarUnnamed"), sub: d.addr, rssi: d.rssi })),
+        ...nets.map((n) => ({ key: n.bssid || n.ssid, kind: "wifi", name: n.ssid || T(t, "radarHidden"), rssi: n.rssi,
           sub: [band(n.freq), n.bssid].filter(Boolean).join(" · ") })),
-      ].sort((a, b) => b.rssi - a.rssi).map((e) => html`<div key=${e.key} data-dev=${e.key} data-wifi=${e.wifi}
+        ...cells.map((c) => ({
+          key: `${c.type}-${c.pci ?? ""}-${c.cid ?? ""}-${c.arfcn ?? ""}`, kind: "cell", strong: !!c.serving,
+          name: [c.type ? c.type.toUpperCase() : "", c.mcc ? `${c.mcc}-${c.mnc ?? ""}` : ""].filter(Boolean).join(" · "),
+          sub: [c.pci != null ? `PCI ${c.pci}` : "", c.cid != null ? `CID ${c.cid}` : "", c.arfcn != null ? `ARFCN ${c.arfcn}` : ""].filter(Boolean).join(" · "),
+          rssi: c.rssi ?? -999,
+        })),
+        // Sorted by signal across all three, because "what is closest" is the question the radar answers
+        // and three separate lists would make it unanswerable at a glance. dBm is comparable enough for
+        // an ordering even where the underlying quantity is not the same.
+      ].sort((a, b) => b.rssi - a.rssi).map((e) => html`<div key=${e.key} data-dev=${e.key} data-kind=${e.kind}
           class="flex items-center gap-3 py-2 border-b border-base-content/10 last:border-0">
-        ${Icon(e.wifi ? "lucide:wifi" : "lucide:bluetooth", `text-base shrink-0 ${e.wifi ? "text-muted" : "text-primary"}`)}
+        ${Icon(e.kind === "wifi" ? "lucide:wifi" : e.kind === "cell" ? "lucide:radio-tower" : "lucide:bluetooth",
+          `text-base shrink-0 ${e.kind === "ble" ? "text-primary" : e.strong ? "text-base-content" : "text-muted"}`)}
         <div class="min-w-0 flex-1">
           <div class="text-sm truncate">${e.name}</div>
           <div class="font-mono text-[11px] text-muted truncate">${e.sub}</div>

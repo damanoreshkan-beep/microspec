@@ -188,8 +188,7 @@ export function domeView({ S, t, screen, openScreen, closeScreen }) {
   return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
     <${Stage}>
       ${webgl ? html`<canvas ref=${canvas} class="absolute inset-0 w-full h-full" aria-hidden="true"></canvas>` : null}
-      <div data-mark data-live class="absolute inset-x-0 top-0 flex items-baseline justify-center gap-2 pointer-events-none">
-        <span class="font-mono tabular-nums text-[var(--ms-title)] text-base-content">${field.length}</span>
+      <div data-mark data-live class="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
         <span class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
           ${counts.ble} ${T(t, "ble")} · ${counts.wifi} ${T(t, "wifi")}${scanning ? "" : " · " + T(t, "idle")}
         </span>
@@ -228,6 +227,7 @@ export function domeView({ S, t, screen, openScreen, closeScreen }) {
     <//>
   </div>`;
 }
+
 
 
 
@@ -341,6 +341,7 @@ export function guardView({ S, t }) {
           .replace("{m}", GUARD.minDisplacementM)}
       </div>
     <//>
+
     ${flagged.length ? html`<${Panel} title=${T(t, "possible")}>
       ${flagged.map(({ d }) => html`<div key=${d.addr} data-flag=${d.addr} class="flex items-center gap-3">
         ${Icon("lucide:shield-alert", "text-[var(--ms-icon)] text-[var(--app-accent)] shrink-0")}
@@ -378,6 +379,5 @@ export function guardView({ S, t }) {
     ${!fix && scanning && !gate ? html`<div data-nofix class="text-[var(--ms-label)] text-base-content/70">${T(t, "needFix")}</div>` : null}
   </div>`;
 }
-
 
 if (gate) startScan();

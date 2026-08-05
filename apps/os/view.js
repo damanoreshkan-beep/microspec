@@ -63,6 +63,9 @@ const PROBE = {
   // Only roots is probeable: grant opens a system picker (a checklist walk must never do that), and
   // list/read/write need a folder the user has actually handed over. The explorer is their real test.
   "files.roots": () => ({}),
+  "system.battery": () => ({}),
+  // system.settings and files.share both leave the app — a checklist walk must never launch a settings
+  // screen or a share sheet. They are pressed deliberately, from the tile and from the explorer.
   // start, publish a page, read it back, stop — in catalogue order, so a run proves the station comes
   // up AND goes away rather than leaving a socket listening after the checklist ends.
   "server.start": () => ({ port: 8080 }),
@@ -113,6 +116,7 @@ function summarise(id, v, loc) {
   if (id === "ble.state") return v.supported ? (v.on ? "on" : "off") : "—";
   if (id === "usb.list") return `${(v.devices || []).length}`;
   if (id === "system.logs") return `${(v.lines || []).length}`;
+  if (id === "system.battery") return `${v.level}%${v.charging ? " · charging" : ""}${v.unrestricted === false ? " · restricted" : ""}`;
   if (id === "files.roots") return `${(v.roots || []).length}`;
   if (id === "files.list") return `${(v.entries || []).length}`;
   if (id.startsWith("server.")) return v.url || (v.running === false ? "off" : v.path || String(v.running));
@@ -160,7 +164,14 @@ function Launcher({ S, loc, t, toast }) {
     if (st === "granted") { toast?.(L.revokeHint); return; }
     if (st === "needsApp") { toast?.(L.needsAppHint); return; }
     if (st === "staleApp") { toast?.(L.staleAppHint); return; }
-    if (st === "denied") { toast?.(L.deniedHint); return; }
+    if (st === "denied") {
+      // Denied twice is denied forever — requestPermissions returns instantly and no dialog can ever
+      // appear again. A toast saying "blocked" was a dead end; in the shell the tap now opens the page
+      // that holds the switch. In a browser there is nothing to open, so the hint stands.
+      if (shell.has("system.settings")) { await shell.call("system.settings", { page: "app" }); return; }
+      toast?.(L.deniedHint);
+      return;
+    }
     await permRequest(k);
     await refresh();
   };
@@ -292,7 +303,7 @@ function Explorer({ S, t, loc, toast }) {
       const bytes = bytesOf(r.base64);
       const text = (e.mime || "").startsWith("image/") ? null : new TextDecoder().decode(bytes);
       const src = (e.mime || "").startsWith("image/") ? `data:${e.mime};base64,${r.base64}` : null;
-      setFs({ busy: false, preview: { name: e.name, mime: e.mime, bytes: r.bytes, text, src } });
+      setFs({ busy: false, preview: { name: e.name, mime: e.mime, bytes: r.bytes, base64: r.base64, text, src } });
       syncStack(S);
     } catch (e2) { setFs({ busy: false, error: e2?.code === ERR.failed ? e2.detail : (e2?.code || String(e2)) }); }
   };
@@ -314,10 +325,25 @@ function Explorer({ S, t, loc, toast }) {
     } catch (e) { toast?.(e?.code || String(e)); }
   };
 
+  // Out of the app entirely — the half of files a browser cannot do at all, since WebView has no
+  // navigator.share. The bytes are already in hand from the read, so nothing is fetched twice.
+  const share = async (p) => {
+    try {
+      await shell.call("files.share", { name: p.name, mime: p.mime || "application/octet-stream", base64: p.base64 });
+    } catch (e) { toast?.(e?.code || String(e)); }
+  };
+
   if (fs.preview) {
     const p = fs.preview;
-    return html`<${Panel} title=${p.name}>
+    return html`<${Panel}>
       <div data-fs-preview class="flex flex-col gap-2 pt-1">
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-sm min-w-0 flex-1 truncate">${p.name}</span>
+          <button data-fs-share class="btn btn-xs btn-ghost btn-circle shrink-0"
+              aria-label=${T(t, "fsShare")} onClick=${() => share(p)}>
+            ${Icon("lucide:share-2", "text-base")}
+          </button>
+        </div>
         <div class="font-mono text-xs text-muted">${p.mime || "?"} · ${size(p.bytes, loc)}</div>
         ${p.src ? html`<img src=${p.src} alt=${p.name} class="w-full rounded-[var(--ms-r-in)] bg-base-200" />`
           : p.text != null ? html`<pre class="font-mono text-xs whitespace-pre-wrap break-all max-h-[60vh] overflow-y-auto rounded-[var(--ms-r-in)] bg-base-200 p-3">${p.text}</pre>`

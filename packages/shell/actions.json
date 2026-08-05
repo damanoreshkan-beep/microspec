@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 20,
+  "bridgeVersion": 21,
   "actions": [
     {
       "id": "system.info",
@@ -1461,6 +1461,156 @@
       },
       "mock": {
         "docId": "Documents/note.txt",
+        "bytes": 11
+      }
+    },
+    {
+      "id": "system.settings",
+      "capability": "system",
+      "kind": "call",
+      "minBridge": 21,
+      "android": [],
+      "summary": "Open an Android settings page for THIS app. The one exit from a permanently denied permission: once the user has said no twice, no dialog can ever appear again and a screen that only says \"blocked\" leaves them stranded.",
+      "args": {
+        "type": "object",
+        "required": [
+          "page"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "type": "string",
+            "enum": [
+              "app",
+              "location",
+              "notifications",
+              "battery",
+              "alarms",
+              "install",
+              "bluetooth",
+              "wifi"
+            ]
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "opened",
+          "page"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "opened": {
+            "type": "boolean"
+          },
+          "page": {
+            "type": "string"
+          }
+        }
+      },
+      "mock": {
+        "opened": true,
+        "page": "app"
+      }
+    },
+    {
+      "id": "system.battery",
+      "capability": "system",
+      "kind": "call",
+      "minBridge": 21,
+      "android": [],
+      "summary": "Charge, charging state and whether the system is throttling this app. The Battery Status API was removed from every browser for fingerprinting; inside our own app there is no third party to leak it to.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "level",
+          "charging"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "type": "integer"
+          },
+          "charging": {
+            "type": "boolean"
+          },
+          "saver": {
+            "type": "boolean"
+          },
+          "unrestricted": {
+            "type": "boolean",
+            "description": "Exempt from battery optimisation — the difference between a background service that survives the night and one Doze stops."
+          },
+          "temp": {
+            "type": "integer",
+            "description": "Tenths of a degree C, as the OS reports it."
+          }
+        }
+      },
+      "mock": {
+        "level": 72,
+        "charging": false,
+        "saver": false,
+        "unrestricted": true,
+        "temp": 298
+      }
+    },
+    {
+      "id": "files.share",
+      "capability": "files",
+      "kind": "call",
+      "minBridge": 21,
+      "android": [],
+      "summary": "Hand something to another app through the system share sheet. WebView has no navigator.share at all, so this is the only way out of the app — and bytes go via MediaStore, which needs no permission and leaves the file where the user can find it again.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "mime": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "base64": {
+            "type": "string"
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "shared"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "shared": {
+            "type": "boolean"
+          },
+          "uri": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer"
+          }
+        }
+      },
+      "mock": {
+        "shared": true,
+        "uri": "content://gate/downloads/1",
         "bytes": 11
       }
     }

@@ -622,6 +622,12 @@ export function alarms({ S, t, toast }) {
 // Angle is a hash of the address, so a device keeps its place between frames instead of jumping; radius
 // is signal strength, which is the only distance a radio can honestly claim.
 const SEEN_MS = 20_000;                       // older than this and it is gone, not "maybe still there"
+// Android throttles a foreground app to four scans per two minutes, so 30s is the fastest honest cadence —
+// anything quicker just returns the previous results with `throttled` set. Networks are NOT aged out like
+// advertisements: a scan is a statement about right now, so each result REPLACES the field rather than
+// decaying into it. An access point that stops being listed is gone the moment the next scan says so.
+const WIFI_MS = 30_000;
+const band = (freq) => (!freq ? "" : freq >= 5925 ? "6 GHz" : freq >= 5000 ? "5 GHz" : "2.4 GHz");
 const rssiRadius = (rssi) => {
   const clamped = Math.max(-100, Math.min(-30, rssi));
   return 12 + ((-30 - clamped) / 70) * 78;    // -30dBm hugs the centre, -100 sits at the rim
@@ -655,6 +661,12 @@ export function radar({ S, t, toast }) {
   const [held, setHeld] = useState(null);
   const [events, setEvents] = useState(0);
   const stopRef = useRef(null);
+  // Wi-Fi is a CALL where BLE is a subscribe, so the two halves of this screen are driven differently: one
+  // is pushed at us, the other has to be asked. Both answer the same question — what is radiating here —
+  // which is why they share one radar instead of getting a tab each.
+  const [nets, setNets] = useState([]);
+  const [throttled, setThrottled] = useState(false);
+  const wifiRef = useRef(null);
   // A scan that is refused and a scan that finds nothing look identical on an empty radar, so the screen
   // shows which permissions the OS actually granted and how many advertisements have arrived.
   const [locOn, setLocOn] = useState(null);
@@ -676,6 +688,15 @@ export function radar({ S, t, toast }) {
     return [...rest, { ...d, at: Date.now() }].sort((a, b) => b.rssi - a.rssi);
   }); };
 
+  const sweepWifi = async () => {
+    if (!shell.has("wifi.scan")) return;
+    try {
+      const r = await shell.call("wifi.scan", {});
+      setNets((r.networks || []).slice().sort((a, b) => b.rssi - a.rssi));
+      setThrottled(!!r.throttled);
+    } catch { /* the BLE half still works; a wifi failure must not empty the radar */ }
+  };
+
   const start = () => {
     if (scanning || why) return;
     setScanning(true);
@@ -683,14 +704,26 @@ export function radar({ S, t, toast }) {
     setStarted(false);
     setAck(false);
     stopRef.current = shell.subscribe("ble.scan", {}, upsert, (e) => { setErr(e?.detail || e?.code || ERR.failed); setScanning(false); });
+    sweepWifi();
+    wifiRef.current = setInterval(sweepWifi, WIFI_MS);
   };
   const stop = () => {
     setScanning(false);
     // Always cancel: a scan left running costs battery behind a screen nobody is looking at.
     try { stopRef.current?.(); } catch { /* already gone */ }
     stopRef.current = null;
+    clearInterval(wifiRef.current);
+    wifiRef.current = null;
   };
-  useEffect(() => () => { try { stopRef.current?.(); } catch { /* */ } }, []);
+  useEffect(() => {
+    // Under the gate the screen opens already scanning, so nothing ever presses start — sweep once here or
+    // the radar photographs with its wifi half empty and the e2e asserts nothing about it.
+    if (gate) sweepWifi();
+    return () => {
+      try { stopRef.current?.(); } catch { /* */ }
+      clearInterval(wifiRef.current);
+    };
+  }, []);
 
   // Drop what has gone quiet, so the screen states what is there NOW rather than what ever was.
   useEffect(() => {
@@ -711,6 +744,18 @@ export function radar({ S, t, toast }) {
           ${scanning ? html`<g class="ms-sweep" style="transform-origin:100px 100px;color:var(--app-accent)">
             <line x1="100" y1="100" x2="100" y2="12" stroke="currentColor" stroke-width="1.2" opacity="0.45" />
           </g>` : null}
+          <!-- Two natures, told apart WITHOUT relying on colour: an advertisement is a filled dot, a
+               network is an open ring. Colour then only reinforces it — accent for the thing that streams
+               at us, ink for the thing we have to ask about. A legend would be the hand-holding this
+               screen does not need: the list below carries the same two icons. -->
+          <g class="text-base-content">
+            ${nets.map((n) => {
+              const key = n.bssid || n.ssid || String(n.rssi);
+              const a = angleOf(key), r = rssiRadius(n.rssi);
+              return html`<circle key=${key} cx=${(100 + Math.cos(a) * r).toFixed(1)} cy=${(100 + Math.sin(a) * r).toFixed(1)}
+                r="4.2" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.55" />`;
+            })}
+          </g>
           <g style="color:var(--app-accent)">
             ${devices.map((d) => {
               const a = angleOf(d.addr), r = rssiRadius(d.rssi);
@@ -719,7 +764,14 @@ export function radar({ S, t, toast }) {
             })}
           </g>
         </svg>
-        <div class="absolute inset-x-0 bottom-1 text-center font-mono text-xs text-muted tabular-nums">${devices.length}</div>
+        <div class="absolute inset-x-0 bottom-1 flex items-center justify-center gap-3 font-mono text-xs tabular-nums">
+          <span class="flex items-center gap-1" style="color:var(--app-accent)">
+            ${Icon("lucide:bluetooth", "text-sm")}<span>${devices.length}</span>
+          </span>
+          <span class="flex items-center gap-1 text-muted">
+            ${Icon("lucide:wifi", "text-sm")}<span>${nets.length}</span>
+          </span>
+        </div>
       </div>
 
       <button id="radar-toggle" class=${`btn btn-sm w-full gap-2 mt-2 ${scanning ? "" : "btn-primary"}`}
@@ -727,13 +779,18 @@ export function radar({ S, t, toast }) {
         ${Icon(scanning ? "lucide:square" : "lucide:radar")}<span>${T(t, scanning ? "radarStop" : "radarStart")}</span>
       </button>
       ${held && shell.present ? html`<div data-ble-perms class="flex flex-wrap gap-x-3 gap-y-1 pt-2 font-mono text-[11px]">
-        ${shell.androidFor("ble").filter((p) => p in held).map((p) => html`<span key=${p} class=${held[p] ? "text-success" : "text-error"}>${held[p] ? "+" : "−"} ${p}</span>`)}
+        <!-- Both radios' permissions, deduped: fine location is shared, and listing it twice would read
+             as two different facts about the same switch. -->
+        ${[...new Set([...shell.androidFor("ble"), ...shell.androidFor("wifi")])].filter((p) => p in held).map((p) => html`<span key=${p} class=${held[p] ? "text-success" : "text-error"}>${held[p] ? "+" : "−"} ${p}</span>`)}
         ${locOn === false ? html`<span class="text-error">− LOCATION SERVICES</span>` : null}
         <!-- Only meaningful from bridge 15, which is when the shell started sending it. Showing a red
              ACK on an older APK reports a fault that does not exist — the indicator was newer than the
              app it was describing. -->
         ${shell.version >= 15 ? html`<span class=${ack ? "text-success" : "text-error"}>${ack ? "+" : "−"} ACK</span>` : null}
         <span class=${started ? "text-success" : "text-error"}>${started ? "+" : "−"} STARTED</span>
+        <!-- Four scans per two minutes is the OS budget. Over it the call still succeeds and returns the
+             PREVIOUS results, so without this the screen would quietly show a stale field as a live one. -->
+        ${throttled ? html`<span data-wifi-throttled class="text-warning">− THROTTLED</span>` : null}
         <span class="text-muted">rx ${events}</span>
         <!-- The reason belongs NEXT TO the fact it explains. On its own line below it was missed twice,
              which left "no error was shown" and "no error happened" indistinguishable — the one
@@ -749,14 +806,21 @@ export function radar({ S, t, toast }) {
             : err}</div>` : null}
     <//>
 
-    ${devices.length ? html`<${Panel} title=${T(t, "radarSeen")}>
-      ${devices.map((d) => html`<div key=${d.addr} data-dev=${d.addr} class="flex items-center gap-3 py-2 border-b border-base-content/10 last:border-0">
-        ${Icon("lucide:bluetooth", "text-base text-primary shrink-0")}
+    <!-- ONE list for one radar. Sorted by signal across both radios, because "what is closest" is the
+         question the screen answers and splitting it in two would make that unanswerable at a glance. -->
+    ${devices.length + nets.length ? html`<${Panel} title=${T(t, "radarSeen")}>
+      ${[
+        ...devices.map((d) => ({ key: d.addr, wifi: false, name: d.name || T(t, "radarUnnamed"), sub: d.addr, rssi: d.rssi })),
+        ...nets.map((n) => ({ key: n.bssid || n.ssid, wifi: true, name: n.ssid || T(t, "radarHidden"), rssi: n.rssi,
+          sub: [band(n.freq), n.bssid].filter(Boolean).join(" · ") })),
+      ].sort((a, b) => b.rssi - a.rssi).map((e) => html`<div key=${e.key} data-dev=${e.key} data-wifi=${e.wifi}
+          class="flex items-center gap-3 py-2 border-b border-base-content/10 last:border-0">
+        ${Icon(e.wifi ? "lucide:wifi" : "lucide:bluetooth", `text-base shrink-0 ${e.wifi ? "text-muted" : "text-primary"}`)}
         <div class="min-w-0 flex-1">
-          <div class="text-sm truncate">${d.name || T(t, "radarUnnamed")}</div>
-          <div class="font-mono text-[11px] text-muted truncate">${d.addr}</div>
+          <div class="text-sm truncate">${e.name}</div>
+          <div class="font-mono text-[11px] text-muted truncate">${e.sub}</div>
         </div>
-        <div class="font-mono text-xs tabular-nums shrink-0">${d.rssi}<span class="text-base-content/45">dBm</span></div>
+        <div class="font-mono text-xs tabular-nums shrink-0">${e.rssi}<span class="text-base-content/45">dBm</span></div>
       </div>`)}
     <//>` : null}
   </div>`;

@@ -53,6 +53,11 @@ export default [
       // The gate seeds a fixed field, because an empty radar photographs as a broken one.
       const devs = await h.count("[data-dev]");
       h.expect(devs >= 5, `очікував засіяне поле пристроїв, знайшов ${devs}`);
+      // One radar, two radios. Wi-Fi is a call where BLE is a subscribe, so a screen that shows the
+      // advertisements can still be silently missing the networks — assert both halves separately.
+      const wifis = await h.count('[data-dev][data-wifi="true"]');
+      h.expect(wifis >= 2, `мереж на радарі немає: ${wifis}`);
+      h.expect((await h.count('[data-dev][data-wifi="false"]')) >= 5, "BLE-пристрої зникли зі спільного списку");
       // Stopping must be reachable: a scan left running costs battery behind a screen nobody watches.
       h.expect((await h.count("#radar-toggle")) === 1, "немає кнопки сканування");
       await h.click(String.raw`[data-tab="caps"]`); await h.wait(120);

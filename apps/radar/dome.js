@@ -131,7 +131,10 @@ export async function mount(canvas, getState) {
     resize();
 
     const pitch = 0.62 + (st.pitch || 0) * 0.12;
-    camera.position.set(0, Math.sin(pitch) * 2.6, Math.cos(pitch) * 2.6);
+    const half = Math.tan((camera.fov * Math.PI) / 360);
+    const R = 1.08;                                        
+    const dist = 1.12 * Math.max(R / (half * camera.aspect), (R * Math.sin(pitch) + 0.34) / half);
+    camera.position.set(0, Math.sin(pitch) * dist, Math.cos(pitch) * dist);
     camera.lookAt(0, 0, 0);
     world.rotation.y = ((st.heading || 0) * Math.PI) / 180;
 

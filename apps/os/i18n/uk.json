@@ -112,5 +112,17 @@
   "radioOn": "увімк",
   "radioOff": "вимк",
   "radioNone": "немає",
-  "srvRoutes": "Ресурси"
+  "srvRoutes": "Ресурси",
+  "tilePorts": "Порти",
+  "portsTitle": "Слухає тут",
+  "portsIdle": "Ще не скановано",
+  "portsSweeping": "З’єднуюся з кожним портом…",
+  "portsNone": "Ніхто не відповів",
+  "portsLimit": "Лише те, що відповідає на з’єднання. Android ніколи не каже, чий це порт.",
+  "portUnknown": "Невідомо",
+  "portProto": "назвався сам",
+  "portSilent": "з’єднався, нічого не сказав",
+  "portNoise": "байти, не схожі ні на що",
+  "portGuess": "за номером порту",
+  "portGone": "відмовив на друге з’єднання"
 }

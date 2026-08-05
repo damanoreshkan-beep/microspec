@@ -112,5 +112,17 @@
   "radioOn": "on",
   "radioOff": "off",
   "radioNone": "none",
-  "srvRoutes": "Resources"
+  "srvRoutes": "Resources",
+  "tilePorts": "Ports",
+  "portsTitle": "Listening here",
+  "portsIdle": "Not swept yet",
+  "portsSweeping": "Connecting to every port…",
+  "portsNone": "Nothing answered",
+  "portsLimit": "Only what answers a connect. Android never says which app owns a port.",
+  "portUnknown": "Unknown",
+  "portProto": "identified itself",
+  "portSilent": "connected, said nothing",
+  "portNoise": "bytes that match nothing",
+  "portGuess": "by port number",
+  "portGone": "refused a second connection"
 }

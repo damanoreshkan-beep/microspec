@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 24,
+  "bridgeVersion": 25,
   "actions": [
     {
       "id": "system.info",
@@ -1734,6 +1734,112 @@
         "name": "router.lan",
         "ports": "80,443",
         "via": "tcp",
+        "at": 1893479400000
+      }
+    },
+    {
+      "id": "lan.ports",
+      "capability": "lan",
+      "kind": "subscribe",
+      "minBridge": 25,
+      "android": [],
+      "summary": "What is listening on this device itself. Android 10 closed /proc/net to apps, so nothing can ENUMERATE the listening sockets — the only way in is to connect to every port and see who answers, on 127.0.0.1 and ::1 both (an IPV6_V6ONLY listener is invisible to the IPv4 sweep). Identification is evidence, not a port table: listen first for a banner that identifies itself, ask HTTP only into silence, and try TLS on a fresh socket when the bytes are still unintelligible. Java returns the raw bytes; packages/runtime/portid.js decides what they mean, because a guess made in Java is a guess no gate can test. Needs no permission beyond INTERNET: loopback is outside Android's local-network definition.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ports": {
+            "type": "string",
+            "description": "Comma-separated ports and inclusive ranges. Default is every port: a refused loopback connect is sub-millisecond, so the whole range costs seconds, and a curated list would only find what someone already expected."
+          },
+          "ipv6": {
+            "type": "boolean",
+            "description": "Sweep ::1 as well as 127.0.0.1. Both by default — they are different destinations."
+          },
+          "identify": {
+            "type": "boolean",
+            "description": "Run the probes. Off leaves a port list with nothing said about it."
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "port": {
+            "type": "integer"
+          },
+          "family": {
+            "type": "string",
+            "description": "4 or 6 — WHERE it answered. A service on ::1 only is a different fact from one on 127.0.0.1."
+          },
+          "probe": {
+            "type": "string",
+            "description": "passive | http | tls | silent — which probe produced the bytes. Silence before we spoke is itself evidence."
+          },
+          "hex": {
+            "type": "string",
+            "description": "The captured bytes, lowercase hex, capped. The ONE evidence field: classification reads this, never a Java verdict."
+          },
+          "tls": {
+            "type": "string",
+            "description": "handshake_ok | alert | not_tls | timeout | io — transport outcome only, never a service name."
+          },
+          "cert": {
+            "type": "string",
+            "description": "Certificate subject, from a diagnostic trust-all handshake. What the service CLAIMS to be; it authenticates nothing."
+          },
+          "proto": {
+            "type": "string",
+            "description": "Negotiated TLS version."
+          },
+          "gone": {
+            "type": "boolean",
+            "description": "It accepted the sweep and refused the identification connection. Measured on a real box: two ports answered one sweep and refused the next, so a single connect is not proof that a service lives there."
+          },
+          "ms": {
+            "type": "integer"
+          },
+          "at": {
+            "type": "integer"
+          },
+          "started": {
+            "type": "boolean"
+          },
+          "ack": {
+            "type": "boolean"
+          },
+          "progress": {
+            "type": "boolean",
+            "description": "Partway through. 65k connects with nothing on screen reads as a hang."
+          },
+          "done": {
+            "type": "boolean",
+            "description": "The sweep finished. A sweep ENDS, unlike a radio scan, and must say so even at zero."
+          },
+          "scanned": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "found": {
+            "type": "integer"
+          },
+          "elapsed": {
+            "type": "integer"
+          }
+        }
+      },
+      "mock": {
+        "port": 8080,
+        "family": "4",
+        "probe": "http",
+        "hex": "485454502f312e3120323030204f4b0d0a5365727665723a206d6963726f737065632d73746174696f6e2f310d0a436f6e74656e742d547970653a20746578742f68746d6c0d0a0d0a3c7469746c653e6d6963726f73706563204f533c2f7469746c653e",
+        "tls": "",
+        "cert": "",
+        "proto": "",
+        "ms": 3,
         "at": 1893479400000
       }
     }

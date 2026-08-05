@@ -23,6 +23,7 @@ import { gate } from "/_rt/gate.js";
 import { shell, ERR } from "/_rt/shell.js";
 import { buildApk, apkFilename } from "/_rt/apk.js";
 import { PERMISSIONS, GROUPS, permLabels, permState, permRequest, refreshHeld, heldPermissions } from "/_rt/permissions.js";
+import { classify, orderPorts, tallyPorts } from "/_rt/portid.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -1037,6 +1038,130 @@ function Station({ S, t, toast }) {
   </div>`;
 }
 
+// ---- ports: what this phone is listening to, on itself ----------------------
+// The counterpart to the radar's host list — not "who shares this wire" but "what is open on THIS
+// device". It cannot be a listing: Android 10 closed /proc/net to apps, so nothing can enumerate the
+// listening sockets and the only honest question is asked one connect at a time
+// (docs/research/localhost-ports.md).
+//
+// The screen's whole job is to keep the difference between "it told us" and "the port number suggests"
+// visible. A row that says HTTP because it answered with a status line and a row that says HTTP because
+// it is 8080 would be the same row otherwise — and the second one is not a measurement.
+const SERVICE_ICON = {
+  http: "lucide:globe", tls: "lucide:lock", ssh: "lucide:terminal",
+  redis: "lucide:database", pop3: "lucide:mail", imap: "lucide:mail", "smtp-or-ftp": "lucide:mail",
+  gone: "lucide:circle-slash", unknown: "lucide:circle-help",
+};
+// Colour carries the one distinction this screen exists to make, so it is not decoration: ink for a
+// service that identified itself, warning for a grammar two protocols share, muted for a guess.
+const CONF_TONE = { product: "text-success", protocol: "text-success", ambiguous: "text-warning" };
+const SERVICE_NAME = { http: "HTTP", tls: "TLS", ssh: "SSH", redis: "Redis", pop3: "POP3", imap: "IMAP", "smtp-or-ftp": "SMTP / FTP" };
+
+// The gate has no sockets, so seed the field it would find on a phone that has something to say — and
+// seed the WIDEST version of each: the long server string is what truncation gets tested against, and
+// the ::1 row is the one a v4-only sweep would have missed. 8080 is deliberately absent: it arrives from
+// the catalogue mock through the real subscribe path, so the stream is exercised too.
+const GATE_PORTS = [
+  { port: 22, family: "4", probe: "passive", hex: "5353482d322e302d4f70656e5353485f392e362044656269616e2d322b6465623132753300", ms: 2 },
+  { port: 443, family: "4", probe: "tls", hex: "160303004a020000460303", tls: "handshake_ok", cert: "CN=localhost, O=microspec gate, C=UA", proto: "TLSv1.3", ms: 31 },
+  { port: 5432, family: "6", probe: "silent", hex: "", ms: 1 },
+  // 220 on port 21 is the ambiguity, on screen: the port table says FTP, the wire says only what SMTP and
+  // FTP both say. The row must read "SMTP / FTP" — a fixture that could be resolved would prove nothing.
+  { port: 21, family: "4", probe: "passive", hex: "323230205365727669636520726561647920666f72206e657720757365720d0a", ms: 4 },
+  { port: 41642, family: "4", gone: true, ms: 0 },
+];
+
+function Ports({ S, t, toast }) {
+  const [rows, setRows] = useState(() => (gate ? GATE_PORTS : []));
+  const [sweep, setSweep] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [err, setErr] = useState(null);
+  const stopRef = useRef(null);
+
+  const key = (o) => `${o.family || "4"}:${o.port}`;
+  const upsert = (o) => {
+    if (!o || o.ack || o.started) return;
+    if (o.done) { setSweep({ scanned: o.scanned, total: o.total, found: o.found, elapsed: o.elapsed, done: true }); setRunning(false); return; }
+    // 65k connects with nothing on screen reads as a hang, and the first open port can be minutes in.
+    if (o.progress) { setSweep((s) => (s?.done ? s : { scanned: o.scanned, total: o.total, found: o.found })); return; }
+    if (!o.port) return;
+    setRows((prev) => [...prev.filter((r) => key(r) !== key(o)), o]);
+  };
+
+  const start = () => {
+    if (running || !shell.has("lan.ports")) return;
+    setRows([]); setSweep(null); setErr(null); setRunning(true);
+    stopRef.current = shell.subscribe("lan.ports", {}, upsert, (e) => {
+      setErr(e?.detail || e?.code || ERR.failed);
+      setRunning(false);
+    });
+  };
+  const stop = () => {
+    setRunning(false);
+    try { stopRef.current?.(); } catch { /* already gone */ }
+    stopRef.current = null;
+  };
+  useEffect(() => {
+    // Under the gate the screen opens already swept, so the shot is of a populated list and the e2e has
+    // rows to assert. The mock frame arrives through the real subscribe path, seeded rows do not.
+    if (gate) { setRunning(true); shell.subscribe("lan.ports", {}, upsert, () => {}); }
+    return () => { try { stopRef.current?.(); } catch { /* */ } };
+  }, []);
+
+  const why = shell.whyCapability("lan");
+  const seen = orderPorts(rows.map((o) => ({ ...o, ...classify(o) })));
+  const tally = tallyPorts(seen);
+
+  // The evidence line, which is also the confidence statement: what it said, or that it said nothing and
+  // the number is all we have. Never a service name — that is the line above.
+  const evidence = (r) => {
+    if (r.confidence === "gone") return T(t, "portGone");
+    if (r.detail) return r.detail;
+    if (r.confidence === "protocol" || r.confidence === "ambiguous") return T(t, "portProto");
+    return [T(t, r.probe === "silent" || !r.hex ? "portSilent" : "portNoise"), r.hint ? `${T(t, "portGuess")}: ${r.hint}` : ""].filter(Boolean).join(" · ");
+  };
+
+  return html`<div class="flex flex-col gap-3 pt-1">
+    <${Panel}>
+      <div class="flex items-center gap-2 pb-1">
+        ${Icon("lucide:plug", "text-base text-primary shrink-0")}
+        <span class="font-semibold text-sm min-w-0 flex-1 truncate">${T(t, "portsTitle")}</span>
+        <!-- Two numbers, both load-bearing: how many answered, and how many said what they were. A bare
+             count of open ports reads identically whether the identification pass worked or did nothing. -->
+        <span data-ports-tally class="font-mono text-[11px] text-base-content/45 tabular-nums shrink-0">
+          ${sweep && !sweep.done && running ? `${sweep.scanned}/${sweep.total}` : `${tally.open} · ${tally.named}`}
+        </span>
+      </div>
+
+      ${why ? html`<div class="py-2 text-sm text-muted">${why === ERR.staleBridge ? T(t, "stStale") : T(t, "stNone")}</div>`
+        : err ? html`<div data-ports-err class="py-2 text-sm text-error break-all">${err}</div>`
+        : !seen.length ? html`<div data-ports-state class="py-2 text-sm text-muted">
+            ${running ? T(t, "portsSweeping") : sweep ? T(t, "portsNone") : T(t, "portsIdle")}
+          </div>` : null}
+
+      ${seen.map((r) => html`<div key=${`${r.family}:${r.port}`} data-port=${r.port} data-conf=${r.confidence}
+          class="flex items-center gap-3 py-2 border-b border-base-content/10 last:border-0">
+        ${Icon(SERVICE_ICON[r.service] || "lucide:circle-help", `text-base shrink-0 ${CONF_TONE[r.confidence] || "text-muted"}`)}
+        <div class="min-w-0 flex-1">
+          <div class=${`text-sm truncate ${r.confidence === "gone" ? "text-muted" : ""}`}>${SERVICE_NAME[r.service] || T(t, "portUnknown")}</div>
+          <div class="font-mono text-[11px] text-muted truncate">${evidence(r)}</div>
+        </div>
+        <!-- The port, and only for ::1 the family beside it — a "v4" on every row would be a column that
+             is the same in all but a handful of them. -->
+        <div class="font-mono text-xs tabular-nums shrink-0">${r.port}${r.family === "6" ? html`<span class="text-base-content/45">/6</span>` : null}</div>
+      </div>`)}
+
+      <button id="ports-toggle" class=${`btn btn-sm w-full gap-2 mt-3 ${running ? "" : "btn-primary"}`}
+          disabled=${!!why} data-scanning=${running} onClick=${() => (running ? stop() : start())}>
+        ${Icon(running ? "lucide:square" : "lucide:radar")}<span>${T(t, running ? "radarStop" : "radarStart")}</span>
+      </button>
+      <!-- Said once, where the list is, because every row on this screen is bounded by it: a sweep can only
+           report what answered a connect, and Android lets nobody ask which app owns the socket. -->
+      ${seen.length ? html`<div data-ports-limit class="pt-2 font-mono text-[11px] text-base-content/45">${T(t, "portsLimit")}</div>` : null}
+    <//>
+  </div>`;
+}
+
 // ---- the instrument: one measured fact per line -----------------------------
 // The whole visual language of home. A label in mono caps, the value beside it, a hairline between rows —
 // no card around every fact, because twelve cards is a wall and the facts are what matter. Colour appears
@@ -1059,7 +1184,7 @@ function Field({ label, value, sub, mono, tone, wrap }) {
 // Every function was verified by the console, so the console stops being the front door. What a person
 // actually opens this app for is the state of the phone — and that state was only ever visible as a probe
 // result inside a checklist.
-const $home = atom(null);        // null | "perms" | "console" | "station"
+const $home = atom(null);        // null | "perms" | "console" | "station" | "ports"
 const HOME_MS = 30_000;          // battery and signal move slowly; a 1s poll would be waste, not liveness
 
 export function home({ S, t, toast }) {
@@ -1096,7 +1221,7 @@ export function home({ S, t, toast }) {
     // nobody has looked at. Gate-only, exactly like the explorer's ?fs — never a URL a user can land on.
     if (gate) {
       const want = new URLSearchParams(location.search).get("home");
-      if (want && ["perms", "console", "station"].includes(want)) { $home.set(want); S.stack.set([want]); }
+      if (want && ["perms", "console", "station", "ports"].includes(want)) { $home.set(want); S.stack.set([want]); }
     }
     const id = setInterval(read, HOME_MS);
     // Leaving home must leave its history behind with it, or Back would pop a level whose screen is gone.
@@ -1124,6 +1249,7 @@ export function home({ S, t, toast }) {
   if (screen === "perms") return html`<${Perms} S=${S} t=${t} toast=${toast} />`;
   if (screen === "console") return html`<${Console} S=${S} t=${t} toast=${toast} />`;
   if (screen === "station") return html`<${Station} S=${S} t=${t} toast=${toast} />`;
+  if (screen === "ports") return html`<${Ports} S=${S} t=${t} toast=${toast} />`;
 
   const battLine = !batt ? "—"
     : [`${batt.level}%`, T(t, batt.charging ? "battCharging" : "battIdle"),
@@ -1139,6 +1265,9 @@ export function home({ S, t, toast }) {
   const TILES = [
     ["store", "lucide:layout-grid", T(t, "storeTile"), null],
     ["station", "lucide:server", T(t, "tileStation"), () => open("station")],
+    // Next to the station on purpose: one opens a port on this phone, the other says which are already
+    // open — and the station is the built-in positive control for the sweep.
+    ["ports", "lucide:plug", T(t, "tilePorts"), () => open("ports")],
     ["perms", "lucide:shield-check", T(t, "tilePerms"), () => open("perms")],
     ["console", "lucide:terminal", T(t, "tileConsole"), () => open("console")],
   ];

@@ -64,6 +64,17 @@ export default [
       // that it did NOT leak into the radar's device list, which is what one shared stream set did.
       h.expect((await h.count("[data-host]")) >= 1, "у мережі нічого не знайдено");
       h.expect((await h.count('[data-dev][data-kind="lan"]')) === 0, "хости протекли у список радара");
+      // The counters are the filter, and every kind is present even at zero — a network the sweep never
+      // reached must not look like a network with nothing on it.
+      h.expect((await h.count("[data-kind-toggle]")) === 4, "фільтр не показує всі чотири види");
+      h.expect((await h.count('[data-kind-toggle="lan"]')) === 1, "немає перемикача мережі");
+      // Turning one off must actually remove its marks, not just dim the chip.
+      const before = await h.count('[data-dev][data-kind="wifi"]');
+      await h.click('[data-kind-toggle="wifi"]'); await h.wait(200);
+      h.expect((await h.count('[data-dev][data-kind="wifi"]')) === 0, `фільтр не сховав Wi-Fi (було ${before})`);
+      h.expect((await h.count('[data-dev][data-kind="ble"]')) >= 5, "фільтр Wi-Fi зачепив BLE");
+      await h.click('[data-kind-toggle="wifi"]'); await h.wait(200);
+      h.expect((await h.count('[data-dev][data-kind="wifi"]')) === before, "повторний тап не повернув Wi-Fi");
       // Stopping must be reachable: a scan left running costs battery behind a screen nobody watches.
       h.expect((await h.count("#radar-toggle")) === 1, "немає кнопки сканування");
       await h.click(String.raw`[data-tab="caps"]`); await h.wait(120);

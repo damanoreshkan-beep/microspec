@@ -1,9 +1,9 @@
 self.MS = {
-  app: "radar",
-  version: "31ba847874",
+  app: "hive",
+  version: "28c0b39e70",
   precache: [
     "./",
-    "./dome.js",
+    "./hive.js",
     "./i18n/en.json",
     "./i18n/uk.json",
     "./icon.svg",
@@ -23,6 +23,7 @@ self.MS = {
     "/_rt/gesture.js",
     "/_rt/i18n.js",
     "/_rt/index.js",
+    "/_rt/oui.js",
     "/_rt/overlay.js",
     "/_rt/permissions.js",
     "/_rt/playback.js",

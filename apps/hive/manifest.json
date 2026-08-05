@@ -1,7 +1,7 @@
 {
-  "name": "radar",
-  "short_name": "radar",
-  "description": "radar",
+  "name": "Соти",
+  "short_name": "Соти",
+  "description": "Кожне радіо навколо тебе — окремою коміркою",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

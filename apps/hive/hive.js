@@ -51,10 +51,15 @@ export async function mount(canvas, getState) {
   geo.rotateY(Math.PI / 6);                       
 
   const MAX = 240;
-  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial(), MAX);
-  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  mesh.count = 0;
-  world.add(mesh);
+  const pool = [];
+  function cellAt(i) {
+    if (pool[i]) return pool[i];
+    const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial());
+    m.visible = false;
+    world.add(m);
+    pool[i] = m;
+    return m;
+  }
 
   const floor = new THREE.Group();
   world.add(floor);
@@ -90,7 +95,6 @@ export async function mount(canvas, getState) {
   });
   try { obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }); } catch {  }
 
-  const dummy = new THREE.Object3D();
   let stopped = false, raf = 0;
   const grown = new Map();                          
 
@@ -117,9 +121,9 @@ export async function mount(canvas, getState) {
     spread += HEX;
 
     const n = Math.min(cells.length, MAX);
-    mesh.count = n;
     for (let i = 0; i < n; i++) {
       const c = cells[i];
+      const m = cellAt(i);
       const { x, y } = hexToXY(coords[i], HEX);
       const want = 0.06 + (Math.max(0, Math.min(100, c.percent)) / 100) * 1.5;
       const prev = grown.get(c.key);
@@ -128,16 +132,14 @@ export async function mount(canvas, getState) {
 
       const age = c.pulse ? now - c.pulse : 1e9;
       const lift = reducedMotion ? 0 : Math.max(0, 1 - age / 700) * 0.09;
-      dummy.position.set(x, lift, y);
-      dummy.scale.set(1, hgt, 1);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
+      m.visible = true;
+      m.position.set(x, lift, y);
+      m.scale.set(1, hgt, 1);
       const col = colourFor(c.kind, theme);
-      mesh.setColorAt(i, c.target ? col.clone().offsetHSL(0, 0, 0.18) : col);
+      m.material.color.copy(c.target ? col.clone().offsetHSL(0, 0, 0.18) : col);
     }
+    for (let i = n; i < pool.length; i++) if (pool[i]) pool[i].visible = false;
     for (const k of [...grown.keys()]) if (!cells.some((c) => c.key === k)) grown.delete(k);
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 
     const pitch = 0.72;
     const half = Math.tan((camera.fov * Math.PI) / 360);
@@ -154,7 +156,7 @@ export async function mount(canvas, getState) {
     cancelAnimationFrame(raf);
     try { obs.disconnect(); } catch {  }
     geo.dispose();
-    mesh.material.dispose();
+    for (const m of pool) if (m) m.material.dispose();
     floor.clear();
     try { renderer.dispose(); } catch {  }
   };

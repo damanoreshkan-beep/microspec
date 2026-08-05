@@ -882,7 +882,7 @@ function Station({ S, t, toast }) {
 
 const SERVICE_ICON = {
   http: "lucide:globe", tls: "lucide:lock", ssh: "lucide:terminal",
-  redis: "lucide:database", pop3: "lucide:mail", imap: "lucide:mail", "smtp-or-ftp": "lucide:mail",
+  redis: "lucide:database", pop3: "lucide:mail", imap: "lucide:mail", "smtp-or-ftp": "lucide:split",
   gone: "lucide:circle-slash", unknown: "lucide:circle-help",
 };
 const CONF_TONE = { product: "text-success", protocol: "text-success", ambiguous: "text-warning" };
@@ -898,7 +898,9 @@ const GATE_PORTS = [
 
 function Ports({ S, t, toast }) {
   const [rows, setRows] = useState(() => (gate ? GATE_PORTS : []));
-  const [sweep, setSweep] = useState(null);
+  const [sweep, setSweep] = useState(() => (gate
+    ? { scanned: 131070, total: 131070, found: 6, elapsed: 2841, addrs: "127.0.0.1,::1", done: true }
+    : null));
   const [running, setRunning] = useState(false);
   const [err, setErr] = useState(null);
   const stopRef = useRef(null);
@@ -906,7 +908,7 @@ function Ports({ S, t, toast }) {
   const key = (o) => `${o.family || "4"}:${o.port}`;
   const upsert = (o) => {
     if (!o || o.ack || o.started) return;
-    if (o.done) { setSweep({ scanned: o.scanned, total: o.total, found: o.found, elapsed: o.elapsed, done: true }); setRunning(false); return; }
+    if (o.done) { setSweep({ scanned: o.scanned, total: o.total, found: o.found, elapsed: o.elapsed, addrs: o.addrs, done: true }); setRunning(false); return; }
     if (o.progress) { setSweep((s) => (s?.done ? s : { scanned: o.scanned, total: o.total, found: o.found })); return; }
     if (!o.port) return;
     setRows((prev) => [...prev.filter((r) => key(r) !== key(o)), o]);
@@ -926,7 +928,7 @@ function Ports({ S, t, toast }) {
     stopRef.current = null;
   };
   useEffect(() => {
-    if (gate) { setRunning(true); shell.subscribe("lan.ports", {}, upsert, () => {}); }
+    if (gate) shell.subscribe("lan.ports", {}, upsert, () => {});
     return () => { try { stopRef.current?.(); } catch {  } };
   }, []);
 
@@ -946,10 +948,11 @@ function Ports({ S, t, toast }) {
       <div class="flex items-center gap-2 pb-1">
         ${Icon("lucide:plug", "text-base text-primary shrink-0")}
         <span class="font-semibold text-sm min-w-0 flex-1 truncate">${T(t, "portsTitle")}</span>
-        <!-- Two numbers, both load-bearing: how many answered, and how many said what they were. A bare
-             count of open ports reads identically whether the identification pass worked or did nothing. -->
+        <!-- ONE number. "6 · 4" was open and named — the same two-bare-numbers defect the station line and
+             the bridge line each had to be fixed for, made a third time. How many identified themselves is
+             already on every row, in the colour of its icon. -->
         <span data-ports-tally class="font-mono text-[11px] text-base-content/45 tabular-nums shrink-0">
-          ${sweep && !sweep.done && running ? `${sweep.scanned}/${sweep.total}` : `${tally.open} · ${tally.named}`}
+          ${sweep && !sweep.done && running ? `${sweep.scanned}/${sweep.total}` : tally.open}
         </span>
       </div>
 
@@ -964,7 +967,9 @@ function Ports({ S, t, toast }) {
         ${Icon(SERVICE_ICON[r.service] || "lucide:circle-help", `text-base shrink-0 ${CONF_TONE[r.confidence] || "text-muted"}`)}
         <div class="min-w-0 flex-1">
           <div class=${`text-sm truncate ${r.confidence === "gone" ? "text-muted" : ""}`}>${SERVICE_NAME[r.service] || T(t, "portUnknown")}</div>
-          <div class="font-mono text-[11px] text-muted truncate">${evidence(r)}</div>
+          <!-- Two lines, not one: the evidence IS the row, and a certificate subject cut off after
+               "CN=localhost, O=micros…" is the half that carries no information. -->
+          <div class="font-mono text-[11px] text-muted line-clamp-2 break-all">${evidence(r)}</div>
         </div>
         <!-- The port, and only for ::1 the family beside it — a "v4" on every row would be a column that
              is the same in all but a handful of them. -->
@@ -979,6 +984,17 @@ function Ports({ S, t, toast }) {
            report what answered a connect, and Android lets nobody ask which app owns the socket. -->
       ${seen.length ? html`<div data-ports-limit class="pt-2 font-mono text-[11px] text-base-content/45">${T(t, "portsLimit")}</div>` : null}
     <//>
+
+    <!-- What was ASKED, which is what makes the list above mean anything. "Nothing answered" after ten
+         ports and after all 65535 on both addresses are opposite findings and read identically without it. -->
+    ${sweep?.done ? html`<${Panel}>
+      <div data-ports-scope class="flex flex-col">
+        <!-- The addresses come off the wire rather than being assumed: a phone with no ::1 sweeps one
+             family, and a screen that printed both would be describing a sweep that never happened. -->
+        <${Field} label=${T(t, "portsSwept")} value=${String(sweep.scanned)} mono sub=${(sweep.addrs || "").split(",").join(" · ")} />
+        <${Field} label=${T(t, "portsTook")} value=${`${(sweep.elapsed / 1000).toFixed(1)} s`} mono />
+      </div>
+    <//>` : null}
   </div>`;
 }
 

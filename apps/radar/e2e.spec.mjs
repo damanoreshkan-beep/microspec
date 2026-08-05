@@ -12,6 +12,7 @@ export default [
       h.expect((await h.count("[data-live]")) >= 1, "немає елемента, який не існує без показань");
 
       await h.click("[data-seen]"); await h.wait(300);
+      h.expect((await h.count("#seen[open]")) === 1, "аркуш зі списком не відкрився");
       const rows = await h.count("[data-dev]");
       h.expect(rows >= 6, `очікував BLE та Wi-Fi у спільному списку, знайшов ${rows}`);
 
@@ -20,8 +21,10 @@ export default [
       h.expect(/dBm/.test(list), "смуга без вимірювання в dBm");
       h.expect(!/\bm\b(?!Bm)|метр|metre|meter/i.test(list.replace(/dBm/g, "")), `екран заявив відстань: ${list.slice(0, 200)}`);
 
+      // A closed <dialog> stays in the DOM, so counting its CONTENTS measures nothing. The `open`
+      // attribute is what actually changes.
       await h.back(); await h.wait(300);
-      h.expect((await h.count("[data-seen-list]")) === 0, "Back не закрив список");
+      h.expect((await h.count("#seen[open]")) === 0, "Back не закрив список");
     },
   },
   {
@@ -31,9 +34,11 @@ export default [
       h.expect((await h.count("[data-petal]")) === 0, "пелюстка з'явилась без обраної цілі");
 
       await h.click("[data-pick]"); await h.wait(300);
+      h.expect((await h.count("#pick[open]")) === 1, "аркуш вибору цілі не відкрився");
       const picks = await h.count("[data-pick-dev]");
       h.expect(picks >= 4, `у виборі цілі немає BLE-пристроїв, знайшов ${picks}`);
       await h.click("[data-pick-dev]"); await h.wait(400);
+      h.expect((await h.count("#pick[open]")) === 0, "вибір цілі не закрив аркуш");
 
       h.expect((await h.count("[data-petal]")) === 1, "обмахування не намалювало пелюстку");
       // df.js only releases a bearing once concentration AND coverage clear its gates; the seeded sweep

@@ -38,9 +38,13 @@ const $err = atom(null);
 const $target = atom(null);
 const $roseAt = atom(0);          // bumped per sample so the view re-renders off the mutable rose
 const $fix = atom(null);
+// Ageing needs a clock of its own. Reading Date.now() inside a useMemo keyed on the device map freezes
+// "now" at the last sighting, so a tab mounted later aged the WHOLE field out while an already-mounted
+// one kept showing it — the same data, two answers, decided by mount order.
+const $now = atom(Date.now());
 
 let rose = newRose(72);
-let stopScan = null, wifiTimer = null, stopCompass = null, stopGeo = null, lock = null;
+let stopScan = null, wifiTimer = null, stopCompass = null, stopGeo = null, lock = null, ageTimer = null;
 let heading = 0;
 
 // The gate has no radio and no magnetometer, so seed a field wide enough to exercise every branch: a
@@ -127,6 +131,7 @@ function startScan() {
   });
   sweepWifi();
   wifiTimer = setInterval(sweepWifi, WIFI_MS);
+  ageTimer = setInterval(() => $now.set(Date.now()), 1000);
   stopCompass = compass.start((deg) => { heading = deg; });
   stopGeo = geo.watch((p) => $fix.set({ lat: p.lat, lon: p.lng, acc: p.accuracy }), () => {});
 }
@@ -136,20 +141,22 @@ function endScan() {
   try { stopScan?.(); } catch { /* already gone */ }
   stopScan = null;
   clearInterval(wifiTimer); wifiTimer = null;
+  clearInterval(ageTimer); ageTimer = null;
   try { stopCompass?.(); } catch { /* never started */ }
   try { stopGeo?.(); } catch { /* never started */ }
   try { lock?.release(); } catch { /* never acquired */ }
   stopCompass = stopGeo = lock = null;
 }
 
-/** Present devices, freshest first. Wi-Fi is NOT aged out — a scan replaces the list wholesale, so an AP
- *  that stops being listed is gone the moment the next scan says so. */
+/** Present devices, strongest first. Wi-Fi is NOT aged out — a scan replaces the list wholesale, so an AP
+ *  that stops being listed is gone the moment the next scan says so. Nothing ages under the gate either:
+ *  the mocked subscribe emits once, so a decay there would empty the screen rather than reflect a radio. */
 function useField() {
   const map = useStore($devices);
-  const now = Date.now();
+  const now = useStore($now);
   return useMemo(() => [...map.values()]
-    .filter((d) => d.kind === "wifi" || now - d.at < SEEN_MS)
-    .sort((a, b) => (b.smooth ?? b.rssi) - (a.smooth ?? a.rssi)), [map]);
+    .filter((d) => gate || d.kind === "wifi" || now - d.at < SEEN_MS)
+    .sort((a, b) => (b.smooth ?? b.rssi) - (a.smooth ?? a.rssi)), [map, now]);
 }
 
 const labelOf = (d, t) => d.name || (d.kind === "wifi" ? T(t, "hidden") : T(t, "unnamed"));
@@ -296,11 +303,6 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
             stroke="currentColor" stroke-width="1.2" class="text-[var(--app-accent)]" />` : null}
         </svg>
       </div>
-      <div data-live class="absolute inset-x-0 bottom-0 text-center font-mono tabular-nums text-[var(--ms-label)] text-base-content/70">
-        ${locked
-          ? T(t, "strongestAt").replace("{deg}", Math.round(stats.bearingDeg))
-          : T(t, "coverage").replace("{pct}", Math.round(stats.coverage * 100))}
-      </div>
     <//>
 
     <${Island} pinned className="w-full max-w-md">
@@ -312,9 +314,14 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
         </button>
       </div>
       ${/* Not hint text — a measurement. Coverage below the df.js gate is WHY no bearing is shown, and
-           hiding it would make a working instrument look broken. */""}
-      <div class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
-        ${T(t, "concentration")} ${stats.r.toFixed(2)} · ${T(t, "samples")} ${stats.samples}
+           hiding it would make a working instrument look broken. It lives INSIDE the island: pinned at the
+           stage's bottom edge it sat under this fixed bar and collided with the dock, which no overflow
+           check can see because nothing overflowed. */""}
+      <div data-live class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
+        <span class="text-base-content">${locked
+          ? T(t, "strongestAt").replace("{deg}", Math.round(stats.bearingDeg))
+          : T(t, "coverage").replace("{pct}", Math.round(stats.coverage * 100))}</span>
+        · ${T(t, "concentration")} ${stats.r.toFixed(2)} · ${stats.samples}
         ${stats.coverage < BEARING_MIN_COVERAGE && stats.samples > 0 ? " · " + T(t, "keepSweeping") : ""}
       </div>
     <//>
@@ -380,10 +387,18 @@ export function guardView({ S, t }) {
             ${Math.round(s.confidence * 100)}%
           </span>
           <span class="flex-1 min-w-0">
-            <span class="block truncate">${labelOf(d, t)}</span>
+            <span class="flex items-center gap-2 min-w-0">
+              <span class="truncate">${labelOf(d, t)}</span>
+              ${/* The one row with spec-grade evidence must not look like the other four: a DULT accessory
+                   ANNOUNCES separation, where everything else is inference. */
+                d.cls?.separated ? html`<span data-sep=${d.addr}
+                  class="shrink-0 font-mono uppercase tracking-wide text-[var(--ms-label)] px-1.5 rounded-full border border-[var(--app-accent)] text-base-content">
+                  ${T(t, "sepTag")}</span>` : null}
+            </span>
             ${/* What is MISSING, not a silent negative: a guard that never explains itself is a guard
-                 nobody can calibrate their trust against. */""}
-            <span class="block font-mono text-[var(--ms-label)] text-base-content/70 truncate">
+                 nobody can calibrate their trust against. Wrapped, never truncated — the reasons are what
+                 differ between rows, so an ellipsis cuts exactly the informative half. */""}
+            <span class="block font-mono text-[var(--ms-label)] text-base-content/70">
               ${s.reasons.length ? s.reasons.map((r) => T(t, "why_" + r)).join(" · ") : T(t, "allMet")}
             </span>
           </span>

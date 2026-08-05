@@ -158,8 +158,15 @@ export async function mount(canvas, getState) {
     resize();
 
     // Looking down onto the horizon plane from just above the viewer's own position.
+    //
+    // The distance is DERIVED from both fields of view, never a constant. A phone is ~0.46 aspect, so the
+    // horizontal FOV is less than half the vertical one: a fixed 2.6 framed the scene by its height and
+    // ran the outer ring off both edges, which reads as a broken instrument rather than a close one.
     const pitch = 0.62 + (st.pitch || 0) * 0.12;
-    camera.position.set(0, Math.sin(pitch) * 2.6, Math.cos(pitch) * 2.6);
+    const half = Math.tan((camera.fov * Math.PI) / 360);
+    const R = 1.08;                                        // the outer ring plus a hair of air
+    const dist = 1.12 * Math.max(R / (half * camera.aspect), (R * Math.sin(pitch) + 0.34) / half);
+    camera.position.set(0, Math.sin(pitch) * dist, Math.cos(pitch) * dist);
     camera.lookAt(0, 0, 0);
     // Counter-rotate the world so a scene direction stays put while the phone turns.
     world.rotation.y = ((st.heading || 0) * Math.PI) / 180;

@@ -9,6 +9,11 @@ export default [
       await h.click('[data-tab="hive"]'); await h.wait(500);
       h.expect((await h.count("[data-mark]")) === 1, "соти не змонтувались");
       h.expect((await h.count("[data-live]")) >= 1, "немає елемента, який не існує без показань");
+      // One cell per device, drawn as SVG — so the picture is in the DOM and does not depend on WebGL.
+      h.expect((await h.count("[data-cell]")) === 8, `очікував 8 комірок, знайшов ${await h.count("[data-cell]")}`);
+      for (const k of ["ble", "wifi", "lte"]) {
+        h.expect((await h.count(`[data-cell][data-kind="${k}"]`)) >= 1, `у сітці немає ${k}`);
+      }
       // BLE, Wi-Fi and cell must be tallied SEPARATELY — one total hides a radio that stopped answering.
       for (const k of ["ble", "wifi", "lte"]) {
         h.expect((await h.count(`[data-legend-kind="${k}"]`)) === 1, `у легенді немає ${k}`);

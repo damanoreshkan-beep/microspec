@@ -13,7 +13,7 @@
 // scoring) and packages/runtime/df.js (the polar accumulator that withholds a bearing until it is earned).
 // This file is wiring and layout.
 import { html } from "htm/preact";
-import { useState, useEffect, useRef, useMemo } from "preact/hooks";
+import { useEffect, useMemo } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
@@ -23,10 +23,9 @@ import { gate } from "/_rt/gate.js";
 import { compass, geo, wakeLock } from "/_rt/sensors.js";
 import { newRose, addSample, roseStats, hasBearing, petal, BEARING_MIN_COVERAGE } from "/_rt/df.js";
 import {
-  classify, band, smooth, guardScore, rotates, GUARD, signalPercent, orderDevices,
+  classify, band, smooth, guardScore, rotates, GUARD, signalPercent, orderDevices, hexSpiral, hexToXY,
 } from "/_rt/radar.js";
 import { parseOui, vendorOf } from "/_rt/oui.js";
-import { hasWebGL, mount as mountHive } from "./hive.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -241,31 +240,61 @@ function Legend({ t, field }) {
 }
 
 // ── hive ──────────────────────────────────────────────────────────────────────────────────────────────
+// SVG, not WebGL. A lit 3D scene bought nothing this screen needed and cost everything it did: the
+// percentage — the whole point — was unreadable in perspective, the neutral columns took their material
+// from the TEXT token and rendered as black holes in light mode, and the geometry once shipped 230 million
+// units off-camera because two clocks were subtracted. Flat cells keep the numbers crisp at any size,
+// invert with the theme for free because they are `currentColor`, and the gate photographs them.
+const HEX = 10;                       // circumradius in viewBox units
+const CORNERS = Array.from({ length: 6 }, (_, i) => ((60 * i + 30) * Math.PI) / 180);   // pointy-top
+const hexPath = (cx, cy, r) =>
+  CORNERS.map((a, i) => `${i ? "L" : "M"}${(cx + Math.cos(a) * r).toFixed(2)} ${(cy + Math.sin(a) * r).toFixed(2)}`).join("") + "Z";
+
 export function hiveView({ S, t }) {
   const field = useField(S);
   const scanning = useStore($scanning);
   const target = useStore($target);
-  const canvas = useRef(null);
-  const state = useRef({ cells: [] });
-  const [webgl] = useState(() => hasWebGL());
 
-  state.current = {
-    cells: field.map((d) => ({ key: d.addr, kind: d.kind, percent: d.percent, pulse: d.at, target: d.addr === target })),
-  };
-
-  useEffect(() => {
-    if (!webgl || !canvas.current) return;
-    let stop = null, dead = false;
-    mountHive(canvas.current, () => state.current).then((s) => { if (dead) s(); else stop = s; });
-    return () => { dead = true; try { stop?.(); } catch { /* never mounted */ } };
-  }, [webgl]);
+  // Always at least one full ring of empty comb, so the screen reads as a hive before anything is found.
+  const coords = hexSpiral(Math.max(7, field.length));
+  const pts = coords.map((c) => hexToXY(c, HEX));
+  const pad = HEX * 1.3;
+  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+  const x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad;
+  const vw = Math.max(...xs) + pad - x0, vh = Math.max(...ys) + pad - y0;
 
   return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
     <${Stage}>
-      ${webgl ? html`<canvas ref=${canvas} class="absolute inset-0 w-full h-full" aria-hidden="true"></canvas>` : null}
-      ${/* The fallback owns data-mark, the accessible name and the count in EVERY environment, so
-           preflight, axe and e2e never depend on WebGL existing. */""}
-      <div data-mark data-live class="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
+      <div class="absolute inset-0 flex items-center justify-center p-1">
+        ${/* One accessible name for the whole picture: the cells are a rendering of the list, and the
+             List tab is the interactive surface. A focusable <g> per cell would add 20 tab stops that
+             lead nowhere. */""}
+        <svg data-mark viewBox=${`${x0.toFixed(2)} ${y0.toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}`}
+          class="w-full h-full max-h-full text-base-content" role="img"
+          aria-label=${`${field.length} ${T(t, "cells")}`}>
+          ${coords.map((c, i) => {
+            const { x, y } = pts[i];
+            const d = field[i];
+            if (!d) {
+              return html`<path key=${`e${i}`} d=${hexPath(x, y, HEX * 0.92)} fill="none"
+                stroke="currentColor" stroke-width="0.5" opacity="0.14" />`;
+            }
+            // AREA carries the percentage, so the mark is proportional to the number beside it rather
+            // than to its square root — the commonest way a "bigger means more" graphic lies.
+            const k = Math.sqrt(Math.max(0, Math.min(100, d.percent)) / 100);
+            const tone = d.kind === "ble" ? "text-[var(--app-accent)]" : "text-base-content";
+            const solid = d.kind === "lte" ? 0.3 : d.kind === "wifi" ? 0.45 : 0.55;
+            return html`<g key=${d.addr} data-cell=${d.addr} data-kind=${d.kind} class=${tone}>
+              <path d=${hexPath(x, y, HEX * 0.92)} fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.3" />
+              ${k > 0 ? html`<path d=${hexPath(x, y, HEX * 0.92 * k)} fill="currentColor" fill-opacity=${solid}
+                stroke="currentColor" stroke-width=${d.addr === target ? 0.9 : 0} opacity=${d.addr === target ? 1 : 0.95} />` : null}
+              <text x=${x.toFixed(2)} y=${(y + HEX * 0.34).toFixed(2)} text-anchor="middle"
+                class="font-mono text-base-content" font-size=${HEX * 0.72} fill="currentColor">${d.percent}</text>
+            </g>`;
+          })}
+        </svg>
+      </div>
+      <div data-live class="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
         <span class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
           ${field.length} ${T(t, "cells")}${scanning ? "" : " · " + T(t, "idle")}
         </span>

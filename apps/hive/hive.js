@@ -1,4 +1,4 @@
-// radar — the hive. Every radio around you as one hexagonal cell.
+// hive — every radio around you as one hexagonal cell.
 //
 // What the geometry encodes, and nothing else:
 //   · HEIGHT     — signal strength as a percentage of that radio's own honest dBm range. The three radios
@@ -9,7 +9,7 @@
 //
 // What it deliberately does NOT encode: direction. A honeycomb has no compass, which is exactly why it
 // replaced the dome — a ring around a centre invites reading an angle that no stock phone can measure
-// (apps/radar/RESEARCH.md). The one screen with angles is Hunt, where the user earns them by sweeping.
+// (apps/hive/RESEARCH.md). The one screen with angles is Hunt, where the user earns them by sweeping.
 //
 // Placement comes from the SAME ordering as the list (orderDevices), so the grid and the rows always
 // describe each other, and neither reshuffles on ordinary fading.
@@ -73,11 +73,20 @@ export async function mount(canvas, getState) {
   geo.translate(0, 0.5, 0);
   geo.rotateY(Math.PI / 6);                       // pointy-top, matching hexToXY's axial layout
 
+  // Plain meshes, one per cell, pooled. An InstancedMesh renders this in one draw call and was the first
+  // attempt — it drew nothing at all, in both themes, while the floor beside it drew fine. Rather than
+  // spend a third guess on why, the variable is gone: 240 hexagonal prisms is nothing for a phone GPU,
+  // and a per-mesh material is also what lets a hunted cell carry its own colour.
   const MAX = 240;
-  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial(), MAX);
-  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  mesh.count = 0;
-  world.add(mesh);
+  const pool = [];
+  function cellAt(i) {
+    if (pool[i]) return pool[i];
+    const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial());
+    m.visible = false;
+    world.add(m);
+    pool[i] = m;
+    return m;
+  }
 
   // The empty floor: a faint comb so the field reads as a hive even before anything is found.
   const floor = new THREE.Group();
@@ -110,11 +119,10 @@ export async function mount(canvas, getState) {
   const obs = new MutationObserver(() => {
     theme = readTheme();
     floorMat.color = new THREE.Color(theme.ink);
-    floorFor = -1;                                 // colours are per-instance; force a rebuild next frame
+    floorFor = -1;                                 // force the comb to rebuild with the new ink next frame
   });
   try { obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }); } catch { /* linkedom */ }
 
-  const dummy = new THREE.Object3D();
   let stopped = false, raf = 0;
   const grown = new Map();                          // key -> current height, so a new cell rises rather than pops
 
@@ -142,9 +150,9 @@ export async function mount(canvas, getState) {
     spread += HEX;
 
     const n = Math.min(cells.length, MAX);
-    mesh.count = n;
     for (let i = 0; i < n; i++) {
       const c = cells[i];
+      const m = cellAt(i);
       const { x, y } = hexToXY(coords[i], HEX);
       const want = 0.06 + (Math.max(0, Math.min(100, c.percent)) / 100) * 1.5;
       // Ease toward the target so a fading signal settles instead of flickering — the same reason the
@@ -155,16 +163,14 @@ export async function mount(canvas, getState) {
 
       const age = c.pulse ? now - c.pulse : 1e9;
       const lift = reducedMotion ? 0 : Math.max(0, 1 - age / 700) * 0.09;
-      dummy.position.set(x, lift, y);
-      dummy.scale.set(1, hgt, 1);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
+      m.visible = true;
+      m.position.set(x, lift, y);
+      m.scale.set(1, hgt, 1);
       const col = colourFor(c.kind, theme);
-      mesh.setColorAt(i, c.target ? col.clone().offsetHSL(0, 0, 0.18) : col);
+      m.material.color.copy(c.target ? col.clone().offsetHSL(0, 0, 0.18) : col);
     }
+    for (let i = n; i < pool.length; i++) if (pool[i]) pool[i].visible = false;
     for (const k of [...grown.keys()]) if (!cells.some((c) => c.key === k)) grown.delete(k);
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 
     // Frame the hive from both fields of view — a constant distance frames by HEIGHT and runs a wide field
     // off the sides on a phone. Same derivation the dome needed; the lesson outlived the geometry.
@@ -183,7 +189,7 @@ export async function mount(canvas, getState) {
     cancelAnimationFrame(raf);
     try { obs.disconnect(); } catch { /* never observed */ }
     geo.dispose();
-    mesh.material.dispose();
+    for (const m of pool) if (m) m.material.dispose();
     floor.clear();
     try { renderer.dispose(); } catch { /* context already lost */ }
   };

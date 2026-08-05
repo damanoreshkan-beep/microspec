@@ -48,8 +48,15 @@ export default [
       await h.wait(900);
       const after = await h.text("[data-live]");
       h.expect(before === after, "список пересортувався сам, без жодної зміни в даних");
-      // The chosen order is systemic and persisted (S.filters), so the filter chip must be on screen.
-      h.expect((await h.count("[data-chip], #filters, [data-filter]")) >= 1, "немає системного керування порядком");
+      // Order and radio filtering are the runtime's, not a hand-rolled control: spec.filters renders the
+      // header button and the sheet, and the sheet is history-backed like every other screen.
+      h.expect((await h.count("#filter-btn")) === 1, "спека не дала системної кнопки фільтра");
+      await h.click("#filter-btn"); await h.wait(300);
+      h.expect((await h.count("#sheet[open]")) === 1, "аркуш фільтрів не відкрився");
+      const sheet = await h.text("#sheet");
+      h.expect(/сигнал|появ|радіо|signal|seen|radio/i.test(sheet), `у фільтрах немає керування порядком: ${sheet.slice(0, 160)}`);
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("#sheet[open]")) === 0, "Back не закрив аркуш фільтрів");
     },
   },
   {

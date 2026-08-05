@@ -43,9 +43,11 @@ export default [
       h.expect((await h.count("[data-radar]")) === 1, "радар не намальовано");
       const devs = await h.count("[data-dev]");
       h.expect(devs >= 5, `очікував засіяне поле пристроїв, знайшов ${devs}`);
-      const wifis = await h.count('[data-dev][data-wifi="true"]');
+      const wifis = await h.count('[data-dev][data-kind="wifi"]');
       h.expect(wifis >= 2, `мереж на радарі немає: ${wifis}`);
-      h.expect((await h.count('[data-dev][data-wifi="false"]')) >= 5, "BLE-пристрої зникли зі спільного списку");
+      const towers = await h.count('[data-dev][data-kind="cell"]');
+      h.expect(towers >= 2, `сот на радарі немає: ${towers}`);
+      h.expect((await h.count('[data-dev][data-kind="ble"]')) >= 5, "BLE-пристрої зникли зі спільного списку");
       h.expect((await h.count("#radar-toggle")) === 1, "немає кнопки сканування");
       await h.click(String.raw`[data-tab="caps"]`); await h.wait(120);
     },

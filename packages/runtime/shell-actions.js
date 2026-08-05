@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 20;
+export const CATALOGUE_BRIDGE = 21;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -421,6 +421,40 @@ export const ACTIONS = {
     "android": [],
     "mock": {
       "docId": "Documents/note.txt",
+      "bytes": 11
+    }
+  },
+  "system.settings": {
+    "capability": "system",
+    "kind": "call",
+    "minBridge": 21,
+    "android": [],
+    "mock": {
+      "opened": true,
+      "page": "app"
+    }
+  },
+  "system.battery": {
+    "capability": "system",
+    "kind": "call",
+    "minBridge": 21,
+    "android": [],
+    "mock": {
+      "level": 72,
+      "charging": false,
+      "saver": false,
+      "unrestricted": true,
+      "temp": 298
+    }
+  },
+  "files.share": {
+    "capability": "files",
+    "kind": "call",
+    "minBridge": 21,
+    "android": [],
+    "mock": {
+      "shared": true,
+      "uri": "content://gate/downloads/1",
       "bytes": 11
     }
   }

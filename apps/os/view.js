@@ -40,6 +40,7 @@ const PROBE = {
   "usb.list": () => ({}),
   "system.logs": () => ({}),
   "files.roots": () => ({}),
+  "system.battery": () => ({}),
   "server.start": () => ({ port: 8080 }),
   "server.put": (t) => ({ path: "/", contentType: "text/html; charset=utf-8",
     base64: btoa(unescape(encodeURIComponent(`<!doctype html><meta charset=utf-8><title>${T(t, "title")}</title><h1>${T(t, "title")}</h1>`))) }),
@@ -84,6 +85,7 @@ function summarise(id, v, loc) {
   if (id === "ble.state") return v.supported ? (v.on ? "on" : "off") : "—";
   if (id === "usb.list") return `${(v.devices || []).length}`;
   if (id === "system.logs") return `${(v.lines || []).length}`;
+  if (id === "system.battery") return `${v.level}%${v.charging ? " · charging" : ""}${v.unrestricted === false ? " · restricted" : ""}`;
   if (id === "files.roots") return `${(v.roots || []).length}`;
   if (id === "files.list") return `${(v.entries || []).length}`;
   if (id.startsWith("server.")) return v.url || (v.running === false ? "off" : v.path || String(v.running));
@@ -119,7 +121,11 @@ function Launcher({ S, loc, t, toast }) {
     if (st === "granted") { toast?.(L.revokeHint); return; }
     if (st === "needsApp") { toast?.(L.needsAppHint); return; }
     if (st === "staleApp") { toast?.(L.staleAppHint); return; }
-    if (st === "denied") { toast?.(L.deniedHint); return; }
+    if (st === "denied") {
+      if (shell.has("system.settings")) { await shell.call("system.settings", { page: "app" }); return; }
+      toast?.(L.deniedHint);
+      return;
+    }
     await permRequest(k);
     await refresh();
   };
@@ -232,7 +238,7 @@ function Explorer({ S, t, loc, toast }) {
       const bytes = bytesOf(r.base64);
       const text = (e.mime || "").startsWith("image/") ? null : new TextDecoder().decode(bytes);
       const src = (e.mime || "").startsWith("image/") ? `data:${e.mime};base64,${r.base64}` : null;
-      setFs({ busy: false, preview: { name: e.name, mime: e.mime, bytes: r.bytes, text, src } });
+      setFs({ busy: false, preview: { name: e.name, mime: e.mime, bytes: r.bytes, base64: r.base64, text, src } });
       syncStack(S);
     } catch (e2) { setFs({ busy: false, error: e2?.code === ERR.failed ? e2.detail : (e2?.code || String(e2)) }); }
   };
@@ -252,10 +258,23 @@ function Explorer({ S, t, loc, toast }) {
     } catch (e) { toast?.(e?.code || String(e)); }
   };
 
+  const share = async (p) => {
+    try {
+      await shell.call("files.share", { name: p.name, mime: p.mime || "application/octet-stream", base64: p.base64 });
+    } catch (e) { toast?.(e?.code || String(e)); }
+  };
+
   if (fs.preview) {
     const p = fs.preview;
-    return html`<${Panel} title=${p.name}>
+    return html`<${Panel}>
       <div data-fs-preview class="flex flex-col gap-2 pt-1">
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-sm min-w-0 flex-1 truncate">${p.name}</span>
+          <button data-fs-share class="btn btn-xs btn-ghost btn-circle shrink-0"
+              aria-label=${T(t, "fsShare")} onClick=${() => share(p)}>
+            ${Icon("lucide:share-2", "text-base")}
+          </button>
+        </div>
         <div class="font-mono text-xs text-muted">${p.mime || "?"} · ${size(p.bytes, loc)}</div>
         ${p.src ? html`<img src=${p.src} alt=${p.name} class="w-full rounded-[var(--ms-r-in)] bg-base-200" />`
           : p.text != null ? html`<pre class="font-mono text-xs whitespace-pre-wrap break-all max-h-[60vh] overflow-y-auto rounded-[var(--ms-r-in)] bg-base-200 p-3">${p.text}</pre>`

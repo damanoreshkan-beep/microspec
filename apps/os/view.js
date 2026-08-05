@@ -346,11 +346,17 @@ function Explorer({ S, t, loc, toast }) {
     <//>`;
   }
 
-  const trail = fs.trail.map((f) => f.name).join(" / ");
+  // Where you are is the heading of this screen, so it reads as one: left-aligned next to the entries it
+  // describes, at their weight. A right-aligned path (dir=rtl, to keep the tail of a deep one) left a
+  // 370px hole between the icon and the text on every shallow folder — the gap WAS the layout.
+  // Deep paths keep their last two segments instead: the tail is what tells you where you are, and a full
+  // breadcrumb never fits a phone anyway.
+  const trail = fs.trail.length <= 2
+    ? fs.trail.map((f) => f.name).join(" / ")
+    : `… / ${fs.trail.slice(-2).map((f) => f.name).join(" / ")}`;
   return html`<${Panel}>
     <div class="flex items-center gap-2 pb-1">
-      ${Icon("lucide:folder-open", "text-base text-primary shrink-0")}
-      <span data-fs-trail class="font-mono text-xs text-muted min-w-0 flex-1 truncate" dir="rtl">${trail}</span>
+      <span data-fs-trail class="font-mono text-sm min-w-0 flex-1 truncate">${trail}</span>
       <button class="btn btn-xs btn-ghost btn-circle shrink-0" aria-label=${T(t, "fsSaveLog")} onClick=${saveLog}>
         ${Icon("lucide:save", "text-base")}
       </button>

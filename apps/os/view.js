@@ -1021,8 +1021,11 @@ function Station({ S, t, toast }) {
     <${Panel}>
       <div data-station class="flex flex-col">
         <${Field} label=${T(t, "srvState")} value=${on ? T(t, "srvOn") : T(t, "srvOff")} tone=${on ? "ok" : ""} />
-        ${on ? html`<${Field} label=${T(t, "srvUrl")} value=${st.url || "—"} mono />` : null}
-        ${on ? html`<${Field} label=${T(t, "srvServed")} value=${`${st.hits ?? 0} · ${st.routes ?? 0}`} mono /> ` : null}
+        ${on ? html`<${Field} label=${T(t, "srvUrl")} value=${st.url || "—"} mono wrap />` : null}
+        <!-- One number per label. "3 · 1" was requests and resources under a heading that named only the
+             first — the same defect twice on two screens, and moving it here did not fix it. -->
+        ${on ? html`<${Field} label=${T(t, "srvServed")} value=${String(st.hits ?? 0)} mono />` : null}
+        ${on ? html`<${Field} label=${T(t, "srvRoutes")} value=${String(st.routes ?? 0)} mono />` : null}
       </div>
       <button id="srv-toggle" data-on=${on} class=${`btn btn-sm w-full gap-2 mt-3 ${on ? "" : "btn-primary"}`}
           disabled=${busy || !shell.has("server.start")} onClick=${toggle}>
@@ -1039,11 +1042,14 @@ function Station({ S, t, toast }) {
 // no card around every fact, because twelve cards is a wall and the facts are what matter. Colour appears
 // only where it MEANS something: green for a thing that is on, error for a thing that is refused.
 const TONE = { ok: "text-success", warn: "text-warning", bad: "text-error" };
-function Field({ label, value, sub, mono, tone }) {
+function Field({ label, value, sub, mono, tone, wrap }) {
   return html`<div class="flex items-baseline gap-3 py-2 border-b border-base-content/10 last:border-0">
     <span class="font-mono text-[11px] uppercase tracking-wide text-muted w-24 shrink-0 truncate">${label}</span>
     <div class="min-w-0 flex-1">
-      <div class=${`text-sm truncate ${mono ? "font-mono" : ""} ${TONE[tone] || ""}`}>${value}</div>
+      <!-- The wrap flag exists for the one value a person reads out loud: an address that ends in an
+           ellipsis is not an address, and it cleared the reference device by two pixels. (No backticks in
+           a comment inside a tagged template — they close the literal, as this one just did.) -->
+      <div class=${`text-sm ${wrap ? "break-all" : "truncate"} ${mono ? "font-mono" : ""} ${TONE[tone] || ""}`}>${value}</div>
       ${sub ? html`<div class="font-mono text-[11px] text-muted truncate">${sub}</div>` : null}
     </div>
   </div>`;

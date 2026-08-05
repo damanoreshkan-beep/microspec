@@ -111,5 +111,6 @@
   "secAlarms": "Сигнали",
   "radioOn": "увімк",
   "radioOff": "вимк",
-  "radioNone": "немає"
+  "radioNone": "немає",
+  "srvRoutes": "Ресурси"
 }

@@ -178,12 +178,20 @@ export async function mount(canvas, getState) {
 
     // Frame the hive from both fields of view — a constant distance frames by HEIGHT and runs a wide field
     // off the sides on a phone. Same derivation the dome needed; the lesson outlived the geometry.
-    const pitch = 0.72;
+    // Pitch follows the aspect, and here it is a real trade rather than the dome's free win: a disc seen
+    // low foreshortens to sin(p) and wastes the height of a phone (measured: 30% of the stage), but seen
+    // from straight above the COLUMNS lose the very extent they encode. So a tall screen leans to 0.95
+    // and landscape stays at 0.62 — which puts the fill at 96% wide / 71% tall on a phone.
+    const lean = Math.min(1, Math.max(0, (camera.aspect - 0.45) / 1.15));
+    const pitch = 1.02 - 0.40 * lean;
     const half = Math.tan((camera.fov * Math.PI) / 360);
-    const R = spread * 1.08;
-    const dist = 1.06 * Math.max(R / (half * camera.aspect), (R * Math.sin(pitch) + 0.9) / half);
+    const R = spread * 1.06;
+    // The vertical extent is the foreshortened disc PLUS the tallest column standing on it — framing on
+    // the disc alone crops the tops off, which is the one thing this scene exists to show.
+    const vert = R * Math.sin(pitch) + 1.56 * Math.cos(pitch) * 0.5 + 0.35;
+    const dist = 1.04 * Math.max(R / (half * camera.aspect), vert / half);
     camera.position.set(0, Math.sin(pitch) * dist, Math.cos(pitch) * dist);
-    camera.lookAt(0, 0.25, 0);
+    camera.lookAt(0, 0.42, 0);   // the columns midpoint, not the floor, or the field sits low in frame
     renderer.render(scene, camera);
   }
   raf = requestAnimationFrame(frame);

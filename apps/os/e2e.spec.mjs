@@ -50,6 +50,14 @@ export default [
       h.expect((await h.count('[data-dev][data-kind="ble"]')) >= 5, "BLE-пристрої зникли зі спільного списку");
       h.expect((await h.count("[data-host]")) >= 1, "у мережі нічого не знайдено");
       h.expect((await h.count('[data-dev][data-kind="lan"]')) === 0, "хости протекли у список радара");
+      h.expect((await h.count("[data-kind-toggle]")) === 4, "фільтр не показує всі чотири види");
+      h.expect((await h.count('[data-kind-toggle="lan"]')) === 1, "немає перемикача мережі");
+      const before = await h.count('[data-dev][data-kind="wifi"]');
+      await h.click('[data-kind-toggle="wifi"]'); await h.wait(200);
+      h.expect((await h.count('[data-dev][data-kind="wifi"]')) === 0, `фільтр не сховав Wi-Fi (було ${before})`);
+      h.expect((await h.count('[data-dev][data-kind="ble"]')) >= 5, "фільтр Wi-Fi зачепив BLE");
+      await h.click('[data-kind-toggle="wifi"]'); await h.wait(200);
+      h.expect((await h.count('[data-dev][data-kind="wifi"]')) === before, "повторний тап не повернув Wi-Fi");
       h.expect((await h.count("#radar-toggle")) === 1, "немає кнопки сканування");
       await h.click(String.raw`[data-tab="caps"]`); await h.wait(120);
     },

@@ -554,7 +554,12 @@ export function radar({ S, t, toast }) {
   const wifiRef = useRef(null);
   const [hosts, setHosts] = useState([]);
   const [sweep, setSweep] = useState(null);        
+  const [lanOn, setLanOn] = useState(false);       
+  const [lanErr, setLanErr] = useState(null);
   const lanRef = useRef(null);
+
+  const [show, setShow] = useState({ ble: true, wifi: true, cell: true, lan: true });
+  const toggle = (k) => setShow((s) => ({ ...s, [k]: !s[k] }));
 
   const ipSort = (a, b) => {
     const n = (s) => s.split(".").reduce((v, o) => v * 256 + (parseInt(o, 10) || 0), 0);
@@ -581,6 +586,7 @@ export function radar({ S, t, toast }) {
     if (shell.has("system.info")) shell.call("system.info", {}).then((i) => setLocOn(i.locationOn)).catch(() => {});
   }, []);
   const why = shell.whyCapability("ble");
+  const L = permLabels(loc);
 
   const [started, setStarted] = useState(false);
   const [ack, setAck] = useState(false);
@@ -617,8 +623,14 @@ export function radar({ S, t, toast }) {
     stopRef.current = shell.subscribe("ble.scan", {}, upsert, (e) => { setErr(e?.detail || e?.code || ERR.failed); setScanning(false); });
     sweepRadios();
     wifiRef.current = setInterval(sweepRadios, WIFI_MS);
-    setHosts([]); setSweep(null);
-    if (shell.has("lan.scan")) lanRef.current = shell.subscribe("lan.scan", {}, upsertHost, () => {});
+    setHosts([]); setSweep(null); setLanErr(null); setLanOn(false);
+    if (shell.has("lan.scan")) {
+      setLanOn(true);
+      lanRef.current = shell.subscribe("lan.scan", {}, upsertHost, (e) => {
+        setLanErr(e?.detail || e?.code || ERR.failed);
+        setLanOn(false);
+      });
+    }
   };
   const stop = () => {
     setScanning(false);
@@ -667,7 +679,7 @@ export function radar({ S, t, toast }) {
                outlined. That distinction is the only one here a user can act on: a neighbour is what the
                phone would hand over to, the serving cell is what it is actually talking through. -->
           <g class="text-base-content">
-            ${cells.map((c) => {
+            ${(show.cell ? cells : []).map((c) => {
               const key = `${c.type}-${c.pci ?? ""}-${c.cid ?? ""}-${c.arfcn ?? ""}`;
               const a = angleOf(key), r = cellRadius(c.rssi ?? -110);
               const x = 100 + Math.cos(a) * r, y = 100 + Math.sin(a) * r;
@@ -678,7 +690,7 @@ export function radar({ S, t, toast }) {
             })}
           </g>
           <g class="text-base-content">
-            ${nets.map((n) => {
+            ${(show.wifi ? nets : []).map((n) => {
               const key = n.bssid || n.ssid || String(n.rssi);
               const a = angleOf(key), r = rssiRadius(n.rssi);
               return html`<circle key=${key} cx=${(100 + Math.cos(a) * r).toFixed(1)} cy=${(100 + Math.sin(a) * r).toFixed(1)}
@@ -686,23 +698,28 @@ export function radar({ S, t, toast }) {
             })}
           </g>
           <g style="color:var(--app-accent)">
-            ${devices.map((d) => {
+            ${(show.ble ? devices : []).map((d) => {
               const a = angleOf(d.addr), r = rssiRadius(d.rssi);
               return html`<circle key=${d.addr} cx=${(100 + Math.cos(a) * r).toFixed(1)} cy=${(100 + Math.sin(a) * r).toFixed(1)}
                 r="3.4" fill="currentColor" opacity=${fresh(d).toFixed(2)} />`;
             })}
           </g>
         </svg>
-        <div class="absolute inset-x-0 bottom-1 flex items-center justify-center gap-3 font-mono text-xs tabular-nums">
-          <span class="flex items-center gap-1" style="color:var(--app-accent)">
-            ${Icon("lucide:bluetooth", "text-sm")}<span>${devices.length}</span>
-          </span>
-          <span class="flex items-center gap-1 text-muted">
-            ${Icon("lucide:wifi", "text-sm")}<span>${nets.length}</span>
-          </span>
-          <span class="flex items-center gap-1 text-muted">
-            ${Icon("lucide:radio-tower", "text-sm")}<span>${cells.length}</span>
-          </span>
+        <!-- The counters ARE the filter. One row instead of two, and every kind is present even at zero —
+             which is the point: a network the sweep never reached and a network with nothing on it were
+             indistinguishable while the row only appeared once something was found. -->
+        <div data-kinds class="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 font-mono text-xs tabular-nums">
+          ${[
+            ["ble", "lucide:bluetooth", devices.length],
+            ["wifi", "lucide:wifi", nets.length],
+            ["cell", "lucide:radio-tower", cells.length],
+            ["lan", "lucide:network", hosts.length],
+          ].map(([k, icon, n]) => html`<button key=${k} data-kind-toggle=${k} aria-pressed=${!!show[k]}
+              aria-label=${`${L[k] || k}: ${n}`} onClick=${() => toggle(k)}
+              class=${`flex items-center gap-1 rounded-full px-2 py-1 transition-opacity ${show[k] ? "" : "opacity-35"}`}
+              style=${show[k] && k === "ble" ? "color:var(--app-accent)" : ""}>
+            ${Icon(icon, "text-sm")}<span>${n}</span>
+          </button>`)}
         </div>
       </div>
 
@@ -723,6 +740,11 @@ export function radar({ S, t, toast }) {
         <!-- Four scans per two minutes is the OS budget. Over it the call still succeeds and returns the
              PREVIOUS results, so without this the screen would quietly show a stale field as a live one. -->
         ${throttled ? html`<span data-wifi-throttled class="text-warning">− THROTTLED</span>` : null}
+        <!-- The sweep gets the same treatment as the scan above it. Without SWEEP, "the OS refused it",
+             "it is still running" and "it finished empty" were one absent panel with nothing to read. -->
+        <span data-lan-flag class=${lanErr ? "text-error" : lanOn || sweep ? "text-success" : "text-error"}>
+          ${lanErr || !(lanOn || sweep) ? "−" : "+"} SWEEP${sweep ? ` ${sweep.found}/${sweep.scanned}` : ""}
+        </span>
         <span class="text-muted">rx ${events}</span>
         <!-- The reason belongs NEXT TO the fact it explains. On its own line below it was missed twice,
              which left "no error was shown" and "no error happened" indistinguishable — the one
@@ -740,12 +762,13 @@ export function radar({ S, t, toast }) {
 
     <!-- ONE list for one radar. Sorted by signal across both radios, because "what is closest" is the
          question the screen answers and splitting it in two would make that unanswerable at a glance. -->
-    ${devices.length + nets.length + cells.length ? html`<${Panel} title=${T(t, "radarSeen")}>
+    ${(show.ble ? devices.length : 0) + (show.wifi ? nets.length : 0) + (show.cell ? cells.length : 0)
+      ? html`<${Panel} title=${T(t, "radarSeen")}>
       ${[
-        ...devices.map((d) => ({ key: d.addr, kind: "ble", name: d.name || T(t, "radarUnnamed"), sub: d.addr, rssi: d.rssi })),
-        ...nets.map((n) => ({ key: n.bssid || n.ssid, kind: "wifi", name: n.ssid || T(t, "radarHidden"), rssi: n.rssi,
+        ...(show.ble ? devices : []).map((d) => ({ key: d.addr, kind: "ble", name: d.name || T(t, "radarUnnamed"), sub: d.addr, rssi: d.rssi })),
+        ...(show.wifi ? nets : []).map((n) => ({ key: n.bssid || n.ssid, kind: "wifi", name: n.ssid || T(t, "radarHidden"), rssi: n.rssi,
           sub: [band(n.freq), n.bssid].filter(Boolean).join(" · ") })),
-        ...cells.map((c) => ({
+        ...(show.cell ? cells : []).map((c) => ({
           key: `${c.type}-${c.pci ?? ""}-${c.cid ?? ""}-${c.arfcn ?? ""}`, kind: "cell", strong: !!c.serving,
           name: [c.type ? c.type.toUpperCase() : "", c.mcc ? `${c.mcc}-${c.mnc ?? ""}` : ""].filter(Boolean).join(" · "),
           sub: [c.pci != null ? `PCI ${c.pci}` : "", c.cid != null ? `CID ${c.cid}` : "", c.arfcn != null ? `ARFCN ${c.arfcn}` : ""].filter(Boolean).join(" · "),
@@ -764,7 +787,7 @@ export function radar({ S, t, toast }) {
     <//>` : null}
     <!-- The network is a different question from the radar above it — not "what is radiating near me" but
          "who shares this wire" — so it gets its own list rather than a shape on a circle it does not fit. -->
-    ${hosts.length || sweep ? html`<${Panel}>
+    ${show.lan && (hosts.length || sweep || lanOn || lanErr) ? html`<${Panel}>
       <div class="flex items-center gap-2 pb-1">
         ${Icon("lucide:network", "text-base text-primary shrink-0")}
         <span class="font-semibold text-sm min-w-0 flex-1 truncate">${T(t, "radarHosts")}</span>
@@ -774,6 +797,12 @@ export function radar({ S, t, toast }) {
           ${sweep ? `${sweep.found}/${sweep.scanned}` : hosts.length}
         </span>
       </div>
+      <!-- The panel exists from the moment the sweep starts, so the ten seconds before the first host are
+           a state and not an absence. It ends by SAYING it ended, even at zero. -->
+      ${lanErr ? html`<div data-lan-err class="py-2 text-sm text-error break-all">${lanErr}</div>`
+        : !hosts.length ? html`<div data-lan-state class="py-2 text-sm text-muted">
+            ${sweep ? T(t, "lanNone") : T(t, "lanSweeping")}
+          </div>` : null}
       ${hosts.map((h) => html`<div key=${h.ip} data-host=${h.ip}
           class="flex items-center gap-3 py-2 border-b border-base-content/10 last:border-0">
         ${Icon(h.via.includes("ssdp") ? "lucide:tv-minimal" : "lucide:hard-drive", "text-base text-muted shrink-0")}

@@ -80,5 +80,7 @@
   "radarHidden": "Прихована мережа",
   "radarHosts": "У мережі",
   "hostQuiet": "Відповів на ping",
-  "cap_lan": "Мережа"
+  "cap_lan": "Мережа",
+  "lanSweeping": "Обходжу підмережу…",
+  "lanNone": "Ніхто не відповів"
 }

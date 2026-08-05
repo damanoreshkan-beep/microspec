@@ -80,5 +80,7 @@
   "radarHidden": "Hidden network",
   "radarHosts": "On this network",
   "hostQuiet": "Answered ping only",
-  "cap_lan": "Network"
+  "cap_lan": "Network",
+  "lanSweeping": "Sweeping the subnet…",
+  "lanNone": "Nothing answered"
 }

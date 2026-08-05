@@ -151,9 +151,10 @@ function Launcher({ S, loc, t, toast }) {
     // Files is the one tile that opens something instead of asking for something — SAF has no permission
     // to grant up front, so the grant IS the first screen of the explorer.
     if (k === "files") {
+      // Files has its own tab now, so the tile goes THERE rather than opening a second copy of the
+      // explorer inside a screen that is itself one level down.
       if (!shell.hasCapability("files")) { toast?.(st === "staleApp" ? L.staleAppHint : L.needsAppHint); return; }
-      setFs({ open: true, root: null, trail: [], entries: [], preview: null, error: "" });
-      syncStack(S);
+      S.tab.set("files");
       return;
     }
     // A shell capability reports "granted" as soon as the bridge carries it — which says nothing about
@@ -220,7 +221,10 @@ const setFs = (patch) => $fs.set({ ...$fs.get(), ...patch });
 
 // One number decides every history question: how many levels are showing. Folders and a preview are both
 // levels, so Back walks out of a preview, up the tree, and finally out of the explorer — one press each.
-const fsDepth = (fs) => (fs.open ? 1 + Math.max(0, fs.trail.length - 1) + (fs.preview ? 1 : 0) : 0);
+// Files is a TAB now, not a thing opened over the console, so the explorer itself is not a level any more:
+// backing out of the top folder leaves the tab, exactly as backing out of any other tab does. Only the
+// folders you descended into and an open preview are levels.
+const fsDepth = (fs) => Math.max(0, fs.trail.length - 1) + (fs.preview ? 1 : 0);
 const syncStack = (S) => {
   const want = fsDepth($fs.get());
   if (S.stack.get().length !== want) S.stack.set(Array.from({ length: want }, (_, i) => `fs${i}`));
@@ -436,37 +440,14 @@ function Row({ id, t, loc }) {
 }
 
 // ---- the console: the catalogue, live, and every row runnable ---------------
-// Capabilities and probes were two tabs of the same list — one of them with a button. Merging them is
-// what makes this an instrument instead of two thirds of a screen listing the same six lines twice.
-export function caps({ S, t, toast }) {
+// This WAS the front door, and it should not have been. It is a checklist: thirty-two rows with a play
+// button each, built to prove the Java half works on a device CI can never run. That job is done, so it
+// moves one level down — reachable in one tap from home, out of the way of anyone who just wants the phone.
+function Console({ S, t, toast }) {
   const loc = useStore(S.locale);
   const runs = useStore($runs);
   const [all, setAll] = useState(false);
-  const fs = useStore($fs);
   const present = shell.present;
-
-  // A screen that only exists after a tap cannot be photographed, and an unphotographed screen is one
-  // nobody has looked at. Under the gate ?fs opens it at mount, so the breakpoint and contrast matrix can
-  // reach the explorer the same way it reaches a tab. Gate-only: it must never be a URL a user can land on.
-  useEffect(() => {
-    if (!gate || !new URLSearchParams(location.search).has("fs")) return;
-    setFs({ open: true, root: null, trail: [], entries: [], preview: null, error: "" });
-    syncStack(S);
-  }, []);
-
-  // ONE reaction for every way back — the system button, a gesture, the runtime popping the stack. The
-  // explorer never pops its own levels; it changes state and lets this listener bring the screen along,
-  // which is why a folder, a preview and the whole explorer all close with one press each.
-  useEffect(() => S.stack.listen((v) => {
-    const cur = $fs.get();
-    const want = fsDepth(cur);
-    const now = v?.length || 0;
-    if (now >= want) return;
-    if (now === 0) { setFs({ open: false, root: null, trail: [], entries: [], preview: null, error: "" }); return; }
-    if (cur.preview) { setFs({ preview: null }); return; }
-    const trail = cur.trail.slice(0, Math.max(1, now));
-    fsOpenFolder(S, cur.root, trail);
-  }), []);
   const ids = shell.actions;
   const done = ids.filter((id) => runs[id]).length;
   const failed = ids.filter((id) => runs[id] && !runs[id].ok).length;
@@ -481,36 +462,7 @@ export function caps({ S, t, toast }) {
     toast?.(T(t, "ranAll"));
   };
 
-  // The installed shell can be older than the page — normal after a bridge bump, since the web deploys in
-  // minutes and an APK when the user reinstalls. Rebuilding this app produces the SAME package (a digest
-  // of the start URL), so Android treats it as an update rather than a second copy.
-  const [upd, setUpd] = useState(false);
-  const update = async () => {
-    if (upd) return;
-    setUpd(true);
-    try {
-      const url = location.href.split("#")[0].split("?")[0];
-      const blob = await buildApk({ url, name: T(t, "title") });
-      const b64 = await new Promise((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result).split(",")[1]); f.onerror = rej; f.readAsDataURL(blob); });
-      await shell.call("system.update", { name: apkFilename(T(t, "title")), base64: b64 });
-      toast?.(T(t, "updStarted"));   // Android confirms it; we never claim it is installed
-    } catch (e) { toast?.(e?.code || T(t, "updFailed")); } finally { setUpd(false); }
-  };
-
-  // A launcher icon opens a thing and the thing takes the screen. Rendering the explorer over the console
-  // rather than under it is what keeps that true — a file manager wedged into a page of probe rows would
-  // be a panel, not an app.
-  if (fs.open) return html`<div class="flex flex-col gap-3 pt-1"><${Explorer} S=${S} t=${t} loc=${loc} toast=${toast} /></div>`;
-
   return html`<div class="flex flex-col gap-3 pt-1">
-    ${shell.updateAvailable ? html`<div data-update class="flex items-center gap-3 rounded-[var(--ms-r)] border border-warning/40 bg-warning/10 p-4">
-      ${Icon("lucide:download", "text-xl text-warning shrink-0")}
-      <div class="min-w-0 flex-1">
-        <div class="font-medium truncate">${T(t, "updTitle")}</div>
-        <div class="font-mono text-xs text-muted truncate">bridge ${shell.version} → ${shell.catalogueVersion}</div>
-      </div>
-      <button id="do-update" class="btn btn-sm btn-warning shrink-0" disabled=${upd} onClick=${update}>${T(t, "updBtn")}</button>
-    </div>` : null}
     <div data-bridge class="flex flex-col gap-3 rounded-[var(--ms-r)] sf-raised sf-e2 p-4">
       <div class="flex items-center gap-3">
         <span class=${`size-2.5 rounded-full shrink-0 ${present ? "bg-success" : "bg-base-content/25"}`} aria-hidden="true"></span>
@@ -518,20 +470,14 @@ export function caps({ S, t, toast }) {
           <div class="font-medium truncate">${present ? T(t, "bridgeOn") : T(t, "bridgeOff")}</div>
           <div class="font-mono text-xs text-muted truncate">${present ? `bridge ${shell.version}` : T(t, "bridgeOffHint")}</div>
         </div>
+        ${done ? html`<span data-tally class="font-mono text-xs tabular-nums shrink-0 ${failed ? "text-error" : "text-success"}">${done}/${ids.length}</span>` : null}
       </div>
-      <!-- The checklist walk is the whole point of the app, so it gets its own full-width row rather than
-           competing with the status line for it — which truncated the status on a 360px phone. -->
+      <!-- The checklist walk is the whole point of this screen, so it gets its own full-width row rather
+           than competing with the status line for it — which truncated the status on a 360px phone. -->
       <button id="run-all" class="btn btn-sm btn-primary w-full gap-2" disabled=${all} data-run-all onClick=${runAll}>
         ${Icon("lucide:list-checks")}<span>${T(t, "runAll")}</span>
       </button>
     </div>
-
-    ${done ? html`<div data-tally class="flex items-center gap-2 px-1 text-xs tabular-nums text-muted">
-      <span class=${`size-1.5 rounded-full ${failed ? "bg-error" : "bg-success"}`} aria-hidden="true"></span>
-      <span>${done}/${ids.length}</span>${failed ? html`<span class="text-error">${failed}</span>` : null}
-    </div>` : null}
-
-    <${Launcher} S=${S} loc=${loc} t=${t} toast=${toast} />
 
     ${groups().map(([cap, ids2]) => html`<${Panel} key=${cap}>
       <div class="flex items-center gap-2 pb-1">
@@ -541,6 +487,10 @@ export function caps({ S, t, toast }) {
       </div>
       ${ids2.map((id) => html`<${Row} key=${id} id=${id} t=${t} loc=${loc} />`)}
     <//>`)}
+
+    <!-- The report lives HERE now, not in a tab of its own. It reads the same bridge these rows just
+         exercised, and its copy button carries their results — one paste, one chain. -->
+    <${Report} S=${S} t=${t} toast=${toast} />
   </div>`;
 }
 
@@ -972,7 +922,7 @@ export function radar({ S, t, toast }) {
 }
 
 // ---- report: what this device is, as text you can send ----------------------
-export function report({ S, t, toast }) {
+function Report({ S, t, toast }) {
   const loc = useStore(S.locale);
   const runs = useStore($runs);
   const [logs, setLogs] = useState([]);
@@ -1015,7 +965,7 @@ export function report({ S, t, toast }) {
     try { await navigator.clipboard.writeText(text); toast?.(T(t, "copied")); } catch { toast?.(T(t, "copyFail")); }
   };
 
-  return html`<div class="flex flex-col gap-3 pt-1">
+  return html`<div class="flex flex-col gap-3">
     <${Panel} title=${T(t, "reportTitle")}>
       <div data-report class="flex flex-col">
         ${lines().map(([k, v]) => html`<div key=${k} class="flex items-baseline gap-3 py-1.5 border-b border-base-content/10 last:border-0">
@@ -1030,4 +980,200 @@ export function report({ S, t, toast }) {
       <button id="rep-copy" class="btn btn-sm flex-1 gap-2" onClick=${copy}>${Icon("lucide:copy")}<span>${T(t, "copy")}</span></button>
     </div>
   </div>`;
+}
+
+// ---- permissions: the launcher, one level down ------------------------------
+function Perms({ S, t, toast }) {
+  const loc = useStore(S.locale);
+  return html`<div class="flex flex-col gap-3 pt-1"><${Launcher} S=${S} loc=${loc} t=${t} toast=${toast} /></div>`;
+}
+
+// ---- the station: the one capability with a product, and no home ------------
+// server.start/put/status/stop existed only as four rows with play buttons, which is a capability nobody
+// can use. A phone that other devices can OPEN is the least browser-like thing this app does; it deserves
+// an address you can read out loud, not a probe result.
+function Station({ S, t, toast }) {
+  const [st, setSt] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const read = async () => { try { setSt(await shell.call("server.status", {})); } catch { setSt(null); } };
+  useEffect(() => { read(); }, []);
+
+  const toggle = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (st?.running) { await shell.call("server.stop", {}); }
+      else {
+        await shell.call("server.start", { port: 8080 });
+        // A station with nothing at "/" answers 404 to the first person who opens it, which reads as
+        // broken. It serves its own address back — proof the whole path works, from the other device.
+        const page = `<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">`
+          + `<title>${T(t, "title")}</title><body style="font:16px system-ui;padding:2rem"><h1>${T(t, "title")}</h1>`;
+        await shell.call("server.put", { path: "/", contentType: "text/html; charset=utf-8", base64: btoa(unescape(encodeURIComponent(page))) });
+      }
+      await read();
+    } catch (e) { toast?.(e?.code || String(e)); } finally { setBusy(false); }
+  };
+
+  const on = !!st?.running;
+  return html`<div class="flex flex-col gap-3 pt-1">
+    <${Panel}>
+      <div data-station class="flex flex-col">
+        <${Field} label=${T(t, "srvState")} value=${on ? T(t, "srvOn") : T(t, "srvOff")} tone=${on ? "ok" : ""} />
+        ${on ? html`<${Field} label=${T(t, "srvUrl")} value=${st.url || "—"} mono />` : null}
+        ${on ? html`<${Field} label=${T(t, "srvServed")} value=${`${st.hits ?? 0} · ${st.routes ?? 0}`} mono /> ` : null}
+      </div>
+      <button id="srv-toggle" data-on=${on} class=${`btn btn-sm w-full gap-2 mt-3 ${on ? "" : "btn-primary"}`}
+          disabled=${busy || !shell.has("server.start")} onClick=${toggle}>
+        <!-- Power, not play: a station is switched on, and a play/square pair would claim this is a media
+             transport — which is exactly what preflight reads it as, and it is right to. -->
+        ${Icon(on ? "lucide:power-off" : "lucide:power")}<span>${T(t, on ? "srvStop" : "srvStart")}</span>
+      </button>
+    <//>
+  </div>`;
+}
+
+// ---- the instrument: one measured fact per line -----------------------------
+// The whole visual language of home. A label in mono caps, the value beside it, a hairline between rows —
+// no card around every fact, because twelve cards is a wall and the facts are what matter. Colour appears
+// only where it MEANS something: green for a thing that is on, error for a thing that is refused.
+const TONE = { ok: "text-success", warn: "text-warning", bad: "text-error" };
+function Field({ label, value, sub, mono, tone }) {
+  return html`<div class="flex items-baseline gap-3 py-2 border-b border-base-content/10 last:border-0">
+    <span class="font-mono text-[11px] uppercase tracking-wide text-muted w-24 shrink-0 truncate">${label}</span>
+    <div class="min-w-0 flex-1">
+      <div class=${`text-sm truncate ${mono ? "font-mono" : ""} ${TONE[tone] || ""}`}>${value}</div>
+      ${sub ? html`<div class="font-mono text-[11px] text-muted truncate">${sub}</div>` : null}
+    </div>
+  </div>`;
+}
+
+// ---- home: the device, and the four places worth going ----------------------
+// Every function was verified by the console, so the console stops being the front door. What a person
+// actually opens this app for is the state of the phone — and that state was only ever visible as a probe
+// result inside a checklist.
+const $home = atom(null);        // null | "perms" | "console" | "station"
+const HOME_MS = 30_000;          // battery and signal move slowly; a 1s poll would be waste, not liveness
+
+export function home({ S, t, toast }) {
+  const loc = useStore(S.locale);
+  const screen = useStore($home);
+  const [info, setInfo] = useState(null);
+  const [batt, setBatt] = useState(null);
+  const [net, setNet] = useState(null);
+  const [roots, setRoots] = useState(null);
+  const [upd, setUpd] = useState(false);
+
+  const read = async () => {
+    // Each read stands alone: a phone with no SIM, no granted folder or an older bridge must still show
+    // every other line rather than collapsing the panel into one error.
+    if (shell.has("system.info")) { try { setInfo(await shell.call("system.info", {})); } catch { /* keep the last */ } }
+    if (shell.has("system.battery")) { try { setBatt(await shell.call("system.battery", {})); } catch { setBatt(null); } }
+    if (shell.has("wifi.info")) { try { setNet(await shell.call("wifi.info", {})); } catch { setNet(null); } }
+    if (shell.has("files.roots")) { try { setRoots((await shell.call("files.roots", {})).roots || []); } catch { setRoots(null); } }
+  };
+  useEffect(() => {
+    read();
+    const id = setInterval(read, HOME_MS);
+    // Leaving home must leave its history behind with it, or Back would pop a level whose screen is gone.
+    return () => { clearInterval(id); $home.set(null); if (S.stack.get().length) S.stack.set([]); };
+  }, []);
+
+  useEffect(() => S.stack.listen((v) => { if (!(v?.length) && $home.get()) $home.set(null); }), []);
+  const open = (id) => { $home.set(id); S.stack.set([id]); };
+
+  // Rebuilding this app produces the SAME package (a digest of the start URL), so Android treats it as an
+  // update rather than a second copy. Normal after a bridge bump: the web deploys in minutes, an APK when
+  // the user reinstalls.
+  const update = async () => {
+    if (upd) return;
+    setUpd(true);
+    try {
+      const url = location.href.split("#")[0].split("?")[0];
+      const blob = await buildApk({ url, name: T(t, "title") });
+      const b64 = await new Promise((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result).split(",")[1]); f.onerror = rej; f.readAsDataURL(blob); });
+      await shell.call("system.update", { name: apkFilename(T(t, "title")), base64: b64 });
+      toast?.(T(t, "updStarted"));   // Android confirms it; we never claim it is installed
+    } catch (e) { toast?.(e?.code || T(t, "updFailed")); } finally { setUpd(false); }
+  };
+
+  if (screen === "perms") return html`<${Perms} S=${S} t=${t} toast=${toast} />`;
+  if (screen === "console") return html`<${Console} S=${S} t=${t} toast=${toast} />`;
+  if (screen === "station") return html`<${Station} S=${S} t=${t} toast=${toast} />`;
+
+  const battLine = !batt ? "—"
+    : [`${batt.level}%`, T(t, batt.charging ? "battCharging" : "battIdle"),
+       batt.saver ? T(t, "battSaver") : "", batt.unrestricted === false ? T(t, "battRestricted") : ""]
+      .filter(Boolean).join(" · ");
+  const netLine = !net ? "—" : net.connected ? `${net.ssid || "?"}` : T(t, "netOff");
+  const netSub = net?.connected ? [`${net.rssi} dBm`, band(net.freq), net.ip].filter(Boolean).join(" · ") : "";
+
+  const TILES = [
+    ["store", "lucide:layout-grid", T(t, "storeTile"), null],
+    ["station", "lucide:server", T(t, "tileStation"), () => open("station")],
+    ["perms", "lucide:shield-check", T(t, "tilePerms"), () => open("perms")],
+    ["console", "lucide:terminal", T(t, "tileConsole"), () => open("console")],
+  ];
+
+  return html`<div class="flex flex-col gap-3 pt-1">
+    ${shell.updateAvailable ? html`<div data-update class="flex items-center gap-3 rounded-[var(--ms-r)] sf-raised sf-e2 p-4">
+      ${Icon("lucide:download", "text-xl text-warning shrink-0")}
+      <div class="min-w-0 flex-1">
+        <div class="font-medium truncate">${T(t, "updTitle")}</div>
+        <div class="font-mono text-xs text-muted truncate">bridge ${shell.version} → ${shell.catalogueVersion}</div>
+      </div>
+      <button id="do-update" class="btn btn-sm btn-warning shrink-0" disabled=${upd} onClick=${update}>${T(t, "updBtn")}</button>
+    </div>` : null}
+
+    <${Panel}>
+      <div data-state class="flex flex-col">
+        <${Field} label=${T(t, "secDevice")} value=${info?.model || "—"}
+          sub=${info ? `Android ${info.release || "?"} · SDK ${info.sdk ?? "?"}` : ""} />
+        <${Field} label=${T(t, "secBattery")} value=${battLine} mono
+          tone=${batt && batt.level <= 15 && !batt.charging ? "bad" : batt?.charging ? "ok" : ""} />
+        <${Field} label=${T(t, "secNetwork")} value=${netLine} sub=${netSub} />
+        <${Field} label=${T(t, "secStorage")} value=${roots == null ? "—" : roots.length ? roots.map((r) => r.name).join(" · ") : T(t, "secNoFolder")} />
+        <${Field} label=${T(t, "secBridge")} value=${shell.present ? `bridge ${shell.version}` : T(t, "bridgeOff")} mono
+          tone=${shell.present ? "ok" : "bad"}
+          sub=${shell.present ? `${shell.actions.length} · ${info?.missing?.length ? `missing ${info.missing.length}` : "—"}` : ""} />
+      </div>
+    <//>
+
+    <div data-tiles class="grid grid-cols-4 gap-x-3 gap-y-4 px-1">
+      ${TILES.map(([id, icon, label, onClick]) => {
+        const inner = html`<${Fragment}>
+          <span class="grid place-items-center aspect-square w-full rounded-[var(--ms-r-in)] sf-raised sf-e2">
+            ${Icon(icon, "text-2xl text-base-content")}
+          </span>
+          <span class="text-[11px] leading-tight text-center line-clamp-2 text-base-content/80">${label}</span>
+        <//>`;
+        return onClick
+          ? html`<button key=${id} data-go=${id} class="flex flex-col items-center gap-1.5 min-w-0" onClick=${onClick}>${inner}</button>`
+          : html`<a key=${id} data-go=${id} data-store href="../store/" class="flex flex-col items-center gap-1.5 min-w-0">${inner}</a>`;
+      })}
+    </div>
+  </div>`;
+}
+
+// ---- files: the explorer, promoted out of a tile ----------------------------
+export function files({ S, t, toast }) {
+  const loc = useStore(S.locale);
+  useEffect(() => {
+    setFs({ open: true });
+    syncStack(S);
+    return () => { if (S.stack.get().length) S.stack.set([]); };   // the tab owns its levels; leaving drops them
+  }, []);
+
+  // ONE reaction for every way back — the system button, a gesture, the runtime popping the stack. The
+  // explorer never pops its own levels; it changes state and lets this listener bring the screen along.
+  useEffect(() => S.stack.listen((v) => {
+    const cur = $fs.get();
+    const now = v?.length || 0;
+    if (now >= fsDepth(cur)) return;
+    if (cur.preview) { setFs({ preview: null }); return; }
+    fsOpenFolder(S, cur.root, cur.trail.slice(0, Math.max(1, now + 1)));
+  }), []);
+
+  return html`<div class="flex flex-col gap-3 pt-1"><${Explorer} S=${S} t=${t} loc=${loc} toast=${toast} /></div>`;
 }

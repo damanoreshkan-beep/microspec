@@ -5,11 +5,11 @@
   "accent": "#5EC8A8",
   "tabs": [
     {
-      "id": "caps",
+      "id": "home",
       "type": "tool",
-      "icon": "lucide:layers",
-      "label": "tabCaps",
-      "view": "caps"
+      "icon": "lucide:layout-dashboard",
+      "label": "tabHome",
+      "view": "home"
     },
     {
       "id": "radar",
@@ -19,18 +19,18 @@
       "view": "radar"
     },
     {
+      "id": "files",
+      "type": "tool",
+      "icon": "lucide:folder",
+      "label": "tabFiles",
+      "view": "files"
+    },
+    {
       "id": "alarms",
       "type": "tool",
       "icon": "lucide:alarm-clock",
       "label": "tabAlarms",
       "view": "alarms"
-    },
-    {
-      "id": "report",
-      "type": "tool",
-      "icon": "lucide:clipboard-list",
-      "label": "tabReport",
-      "view": "report"
     },
     {
       "id": "me",

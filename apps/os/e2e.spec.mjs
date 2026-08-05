@@ -60,6 +60,10 @@ export default [
       const towers = await h.count('[data-dev][data-kind="cell"]');
       h.expect(towers >= 2, `сот на радарі немає: ${towers}`);
       h.expect((await h.count('[data-dev][data-kind="ble"]')) >= 5, "BLE-пристрої зникли зі спільного списку");
+      // The LAN is a separate question from the radar and has its own list — assert it is populated and
+      // that it did NOT leak into the radar's device list, which is what one shared stream set did.
+      h.expect((await h.count("[data-host]")) >= 1, "у мережі нічого не знайдено");
+      h.expect((await h.count('[data-dev][data-kind="lan"]')) === 0, "хости протекли у список радара");
       // Stopping must be reachable: a scan left running costs battery behind a screen nobody watches.
       h.expect((await h.count("#radar-toggle")) === 1, "немає кнопки сканування");
       await h.click(String.raw`[data-tab="caps"]`); await h.wait(120);

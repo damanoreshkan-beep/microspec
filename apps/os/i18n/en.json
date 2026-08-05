@@ -105,5 +105,11 @@
   "srvOn": "Listening",
   "srvOff": "Off",
   "srvStart": "Start",
-  "srvStop": "Stop"
+  "srvStop": "Stop",
+  "secRadio": "Radios",
+  "secStation": "Station",
+  "secAlarms": "Alarms",
+  "radioOn": "on",
+  "radioOff": "off",
+  "radioNone": "none"
 }

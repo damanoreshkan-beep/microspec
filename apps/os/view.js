@@ -1063,6 +1063,13 @@ export function home({ S, t, toast }) {
   const [batt, setBatt] = useState(null);
   const [net, setNet] = useState(null);
   const [roots, setRoots] = useState(null);
+  // Five lines left two thirds of the reference device empty and put the tiles under the dock in a
+  // split window. The answer is not padding — it is that a device panel with five facts is not a device
+  // panel. These are the rest of what the bridge already knows, each on its own line.
+  const [ble, setBle] = useState(null);
+  const [usb, setUsb] = useState(null);
+  const [alarms, setAlarms] = useState(null);
+  const [srv, setSrv] = useState(null);
   const [upd, setUpd] = useState(false);
 
   const read = async () => {
@@ -1072,6 +1079,10 @@ export function home({ S, t, toast }) {
     if (shell.has("system.battery")) { try { setBatt(await shell.call("system.battery", {})); } catch { setBatt(null); } }
     if (shell.has("wifi.info")) { try { setNet(await shell.call("wifi.info", {})); } catch { setNet(null); } }
     if (shell.has("files.roots")) { try { setRoots((await shell.call("files.roots", {})).roots || []); } catch { setRoots(null); } }
+    if (shell.has("ble.state")) { try { setBle(await shell.call("ble.state", {})); } catch { setBle(null); } }
+    if (shell.has("usb.list")) { try { setUsb((await shell.call("usb.list", {})).devices || []); } catch { setUsb(null); } }
+    if (shell.has("alarm.list")) { try { setAlarms((await shell.call("alarm.list", {})).alarms || []); } catch { setAlarms(null); } }
+    if (shell.has("server.status")) { try { setSrv(await shell.call("server.status", {})); } catch { setSrv(null); } }
   };
   useEffect(() => {
     read();
@@ -1107,6 +1118,10 @@ export function home({ S, t, toast }) {
        batt.saver ? T(t, "battSaver") : "", batt.unrestricted === false ? T(t, "battRestricted") : ""]
       .filter(Boolean).join(" · ");
   const netLine = !net ? "—" : net.connected ? `${net.ssid || "?"}` : T(t, "netOff");
+  const radioLine = [
+    ble ? `BT ${T(t, ble.supported ? (ble.on ? "radioOn" : "radioOff") : "radioNone")}` : "",
+    usb == null ? "" : `USB ${usb.length}`,
+  ].filter(Boolean).join("  ·  ") || "—";
   const netSub = net?.connected ? [`${net.rssi} dBm`, band(net.freq), net.ip].filter(Boolean).join(" · ") : "";
 
   const TILES = [
@@ -1133,10 +1148,18 @@ export function home({ S, t, toast }) {
         <${Field} label=${T(t, "secBattery")} value=${battLine} mono
           tone=${batt && batt.level <= 15 && !batt.charging ? "bad" : batt?.charging ? "ok" : ""} />
         <${Field} label=${T(t, "secNetwork")} value=${netLine} sub=${netSub} />
+        <${Field} label=${T(t, "secRadio")} value=${radioLine} mono />
         <${Field} label=${T(t, "secStorage")} value=${roots == null ? "—" : roots.length ? roots.map((r) => r.name).join(" · ") : T(t, "secNoFolder")} />
+        <${Field} label=${T(t, "secStation")} value=${srv?.running ? (srv.url || T(t, "srvOn")) : T(t, "srvOff")} mono
+          tone=${srv?.running ? "ok" : ""} sub=${srv?.running ? `${srv.hits ?? 0} · ${srv.routes ?? 0}` : ""} />
+        <${Field} label=${T(t, "secAlarms")} value=${alarms == null ? "—" : String(alarms.length)} mono
+          sub=${alarms?.length ? new Date(Math.min(...alarms.map((a) => a.at))).toLocaleString(loc, { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : ""} />
+        <!-- The bridge's own line carries only what is WRONG. "32 · —" said the catalogue has 32 actions
+             and none are missing, which is two facts nobody can read; the action count belongs to the
+             console, and a dash for "nothing is broken" is noise pretending to be data. -->
         <${Field} label=${T(t, "secBridge")} value=${shell.present ? `bridge ${shell.version}` : T(t, "bridgeOff")} mono
           tone=${shell.present ? "ok" : "bad"}
-          sub=${shell.present ? `${shell.actions.length} · ${info?.missing?.length ? `missing ${info.missing.length}` : "—"}` : ""} />
+          sub=${info?.missing?.length ? `missing ${info.missing.join(" ")}` : ""} />
       </div>
     <//>
 

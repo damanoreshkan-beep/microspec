@@ -105,5 +105,11 @@
   "srvOn": "Слухає",
   "srvOff": "Вимкнено",
   "srvStart": "Запустити",
-  "srvStop": "Спинити"
+  "srvStop": "Спинити",
+  "secRadio": "Радіо",
+  "secStation": "Станція",
+  "secAlarms": "Сигнали",
+  "radioOn": "увімк",
+  "radioOff": "вимк",
+  "radioNone": "немає"
 }

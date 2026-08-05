@@ -222,8 +222,9 @@ export function domeView({ S, t, screen, openScreen, closeScreen }) {
            targets in EVERY environment, so preflight, axe and e2e never depend on WebGL existing. */""}
       ${/* At the TOP, not the centre. Centred it sat across the ring lines and cost both the number and the
            rings their legibility — and the centre of this scene means "you", which is not a caption slot. */""}
-      <div data-mark data-live class="absolute inset-x-0 top-0 flex items-baseline justify-center gap-2 pointer-events-none">
-        <span class="font-mono tabular-nums text-[var(--ms-title)] text-base-content">${field.length}</span>
+      ${/* The breakdown only. A total beside it rendered as "6 4 BLUETOOTH" — two numbers touching, read as
+           one — and it was the same count the island already carries. */""}
+      <div data-mark data-live class="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
         <span class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
           ${counts.ble} ${T(t, "ble")} · ${counts.wifi} ${T(t, "wifi")}${scanning ? "" : " · " + T(t, "idle")}
         </span>

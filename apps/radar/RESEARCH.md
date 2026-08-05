@@ -157,6 +157,29 @@ threshold. **UNVERIFIED and unverifiable — treat any blog's exact numbers as o
 > threshold. Guard's thresholds are ours, are named as our policy in the copy, and the screen says
 > "possible" rather than asserting a tracker. No claim of standards compliance is made anywhere.
 
+### The one thing that IS spec-grade — found after the delegated pass, by reading the draft
+
+Everything above is why Guard cannot be confident. This is why it can be more than a co-motion guess.
+
+A conforming accessory **announces its own separation**. The draft's Table 1 (§3.4.2, "Location-enabled
+advertisement payload format") lays out the service data for UUID `0xFCB2`, AD type `0x16`:
+
+| Bytes | Field |
+|---|---|
+| … | Service Data TLV, type `0x16`, value `0xFCB2` |
+| 13 | Network ID |
+| 14 | **Near-owner bit** (least significant bit) + 7 reserved |
+| 15–36 | optional proprietary payload |
+
+So within the service data value, after the two UUID octets, come the Network ID and then a byte whose
+**bit 0 is the near-owner flag** — `0` meaning **separated from its owner**, which is exactly the state
+that justifies telling the user anything. §3.4.5 also requires the separated-mode address to rotate every
+**24 hours** *specifically* so a detector has a usable observation window.
+
+**Checked: read in `draft-ietf-dult-accessory-protocol-00`, the payload table around line 400 and the
+rotation policy at 525–545.** This is read state, not inference, and it is the difference between a guard
+worth shipping and a co-travel heuristic. Implemented as `dultState()` in `packages/runtime/radar.js`.
+
 ### What legitimately follows you
 
 Own earbuds, watch, laptop; a family member's devices; every other passenger on the same train; a colleague

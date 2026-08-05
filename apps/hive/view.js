@@ -1,34 +1,42 @@
-// radar — what is radiating around you, and how much of that we can actually prove.
+// hive — every radio around you as one hexagonal cell.
 //
-// The app is built around three negative results (apps/radar/RESEARCH.md), and every screen is shaped by
-// them rather than apologising for them in a caption:
-//   · RSSI is not a distance, so strength is a BAND in dBm and the word "metres" appears nowhere;
-//   · no stock-Android API gives a bearing, so a device is a full RING until a sweep earns an arc;
-//   · no standard says when to raise a tracker alert — DULT's platform section is literally "TODO" — so
-//     Guard's thresholds are named as ours and every unmet criterion is shown rather than hidden.
+// Three negative results shape every screen here; they were settled by research before any code was
+// written and they are not up for re-litigation (apps/hive/RESEARCH.md):
+//   · RSSI is not a distance. Strength is a PERCENTAGE OF ITS OWN RADIO'S RANGE and a band in dBm — the
+//     word "metres" appears nowhere.
+//   · No stock-Android API gives a bearing. The hive is a honeycomb precisely because a honeycomb has no
+//     compass: position is RANK. Angles exist only in Hunt, where the user earns them by sweeping.
+//   · No standard says when to alert about a tracker — DULT's platform section is literally "TODO" — so
+//     Guard's thresholds are named as ours and every unmet criterion is shown.
 //
-// The maths is NOT here: packages/runtime/radar.js (parsing, bands, classification, guard scoring) and
-// packages/runtime/df.js (the polar accumulator that refuses a bearing until concentration and coverage
-// justify one). This file is wiring and layout.
+// The maths lives in packages/runtime/radar.js (parsing, per-radio percent, ordering, hex packing, guard
+// scoring) and packages/runtime/df.js (the polar accumulator that withholds a bearing until it is earned).
+// This file is wiring and layout.
 import { html } from "htm/preact";
 import { useState, useEffect, useRef, useMemo } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
-import { Panel, Island, Sheet, Stage } from "/_rt/ui.js";
+import { Panel, Island, Sheet, Stage, Segmented } from "/_rt/ui.js";
 import { shell, ERR } from "/_rt/shell.js";
 import { gate } from "/_rt/gate.js";
 import { compass, geo, wakeLock } from "/_rt/sensors.js";
 import { newRose, addSample, roseStats, hasBearing, petal, BEARING_MIN_COVERAGE } from "/_rt/df.js";
-import { classify, band, bandFraction, smooth, guardScore, rotates, GUARD } from "/_rt/radar.js";
-import { hasWebGL, mount as mountDome } from "./dome.js";
+import {
+  classify, band, smooth, guardScore, rotates, GUARD, signalPercent, orderDevices,
+} from "/_rt/radar.js";
+import { parseOui, vendorOf } from "/_rt/oui.js";
+import { hasWebGL, mount as mountHive } from "./hive.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
-// A sighting older than this is gone, not "maybe still there". Android's own low-latency scan window is
-// 5 s, so 20 s is four chances to be seen again before we stop claiming a device is present.
+// A sighting older than this is gone, not "maybe still there". Android's low-latency scan window is 5 s,
+// so 20 s is four chances to be seen again before we stop claiming a device is present.
 const SEEN_MS = 20_000;
-const WIFI_MS = 30_000;   // the OS throttles a foreground scan hard and returns the PREVIOUS list
+const RADIO_MS = 30_000;                   // the OS throttles a foreground Wi-Fi scan hard
+
+const KIND_ICON = { ble: "lucide:bluetooth", wifi: "lucide:wifi", lte: "lucide:radio-tower" };
+const KINDS = ["ble", "wifi", "lte"];
 
 // Scanning outlives a tab switch — a subscription restarted per render would hit the framework's
 // ~5-starts-per-30-seconds limit and go quiet with no error anyone could see.
@@ -36,35 +44,51 @@ const $devices = atom(new Map());
 const $scanning = atom(false);
 const $err = atom(null);
 const $target = atom(null);
-const $roseAt = atom(0);          // bumped per sample so the view re-renders off the mutable rose
+const $roseAt = atom(0);
 const $fix = atom(null);
 // Ageing needs a clock of its own. Reading Date.now() inside a useMemo keyed on the device map freezes
-// "now" at the last sighting, so a tab mounted later aged the WHOLE field out while an already-mounted
-// one kept showing it — the same data, two answers, decided by mount order.
+// "now" at the last sighting, so a tab mounted later aged the whole field out while an already-mounted one
+// kept showing it — the same data, two answers, decided by mount order.
 const $now = atom(Date.now());
+// The IEEE registry is 519 KB, so it is fetched ONCE and only when a screen that shows names is opened —
+// the hive itself never needs it. A failure is silent by design: a missing vendor is exactly what the
+// lookup returns for most addresses anyway, so the UI already handles its absence.
+const $oui = atom(null);
+let ouiPending = false;
+function loadOui() {
+  if (ouiPending || $oui.get()) return;
+  ouiPending = true;
+  fetch(new URL("./assets/oui.txt", import.meta.url).href)
+    .then((r) => (r.ok ? r.text() : ""))
+    .then((txt) => { if (txt) $oui.set(parseOui(txt)); })
+    .catch(() => { /* offline on first run; names simply stay absent */ });
+}
 
 let rose = newRose(72);
-let stopScan = null, wifiTimer = null, stopCompass = null, stopGeo = null, lock = null, ageTimer = null;
+let stopScan = null, radioTimer = null, ageTimer = null, stopCompass = null, stopGeo = null, lock = null;
 let heading = 0;
 
-// The gate has no radio and no magnetometer, so seed a field wide enough to exercise every branch: a
-// DULT accessory advertising SEPARATED (the only spec-grade tracker evidence there is), an Apple device
-// that must NOT read as a tracker, an unnamed faint one, and a Wi-Fi AP that answers FTM ranging.
+// The gate has no radio, so seed a field wide enough to exercise every branch AND every radio: a DULT
+// accessory advertising SEPARATED (the only spec-grade tracker evidence there is), an Apple device that
+// must NOT read as a tracker, a Tile, an unnamed faint one, two networks and two cells.
+// Addresses are chosen to exercise the vendor lookup's BOTH answers, because a fixture that can only
+// produce one of them tests nothing: 4C.. is a resolvable private address (rotating, so it must stay
+// nameless however registered the bytes look), while B8:27:EB and the two BSSIDs are real registered
+// prefixes that must resolve.
 const GATE_FIELD = [
   { addr: "4C:11:22:33:44:55", name: "", rssi: -63, raw: "0201060516b2fc0700", kind: "ble" },
-  { addr: "5A:00:00:00:00:01", name: "Earbuds", rssi: -47, raw: "05ff4c00070f", kind: "ble" },
+  { addr: "B8:27:EB:0A:0B:0C", name: "Earbuds", rssi: -47, raw: "05ff4c00070f", kind: "ble" },
   { addr: "C3:0A:0B:0C:0D:0E", name: "Tile", rssi: -78, raw: "0201060303edfe", kind: "ble" },
   { addr: "0A:99:88:77:66:55", name: "", rssi: -92, raw: "020106", kind: "ble" },
-];
-const GATE_NETS = [
-  { bssid: "02:00:00:00:00:01", ssid: "Gate-AP", rssi: -52, freq: 5180, ftm: true, kind: "wifi" },
-  { bssid: "02:00:00:00:00:02", ssid: "Gate-Guest", rssi: -74, freq: 2437, ftm: false, kind: "wifi" },
+  { addr: "24:0A:C4:11:22:33", name: "Gate-AP", rssi: -52, kind: "wifi", ftm: true, freq: 5180 },
+  { addr: "3C:5A:B4:44:55:66", name: "Gate-Guest", rssi: -74, kind: "wifi", ftm: false, freq: 2437 },
+  { addr: "lte:301", name: "LTE 1300", rssi: -89, kind: "lte", serving: true },
+  { addr: "lte:118", name: "LTE 1300", rssi: -104, kind: "lte", serving: false },
 ];
 
-// A sweep the gate can photograph. Without it the hunt screen renders an empty circle: under the gate the
-// mocked subscribe emits ONCE, so no further samples ever reach the accumulator and the instrument would
-// look broken in every shot while the e2e asserted nothing. Seeded as a real lobe — full coverage and a
-// concentration that clears df.js's gate — so the resolved-bearing branch is the one CI actually exercises.
+// A sweep the gate can photograph. Under the gate the mocked subscribe emits ONCE, so no further samples
+// reach the accumulator and Hunt would render an empty circle in every shot while the e2e asserted
+// nothing. Seeded as a real lobe that clears df.js's concentration and coverage gates.
 function seedRose(dirDeg = 292) {
   rose = newRose(72);
   for (let b = 0; b < 72; b++) {
@@ -80,16 +104,14 @@ function upsert(frame) {
   const now = Date.now();
   const next = new Map($devices.get());
   const prev = next.get(frame.addr);
+  const kind = frame.kind || "ble";
   const sm = smooth(prev?.smooth ?? NaN, frame.rssi, prev ? now - prev.at : 0);
   const sightings = [...(prev?.sightings || []), { at: now, rssi: frame.rssi, fix: $fix.get() }].slice(-60);
   next.set(frame.addr, {
-    ...frame,
-    kind: frame.kind || "ble",
-    smooth: sm,
-    at: now,
-    first: prev?.first ?? now,
-    sightings,
-    cls: classify(frame),
+    ...frame, kind, smooth: sm, at: now, first: prev?.first ?? now, sightings,
+    // Only BLE carries an advertisement; a Wi-Fi or cell record has nothing to classify, and saying so
+    // is different from saying "nothing found".
+    cls: kind === "ble" ? classify(frame) : null,
   });
   $devices.set(next);
 
@@ -101,36 +123,51 @@ function upsert(frame) {
   }
 }
 
-async function sweepWifi() {
-  if (!shell.has("wifi.scan")) return;
-  try {
-    const r = await shell.call("wifi.scan", {});
-    for (const n of r.networks || []) {
-      if (!n.bssid) continue;
-      upsert({ addr: n.bssid, name: n.ssid || "", rssi: n.rssi, kind: "wifi", ftm: n.ftm, freq: n.freq });
-    }
-  } catch { /* the BLE half still works; one refused radio must never blank the other */ }
+// Wi-Fi and cell are CALLS where BLE is a subscribe, so they are asked on a timer. Each failure is
+// swallowed on its own: one radio being refused must never blank the other two.
+async function sweepRadios() {
+  if (shell.has("wifi.scan")) {
+    try {
+      const r = await shell.call("wifi.scan", {});
+      for (const n of r.networks || []) {
+        if (n.bssid) upsert({ addr: n.bssid, name: n.ssid || "", rssi: n.rssi, kind: "wifi", ftm: n.ftm, freq: n.freq });
+      }
+    } catch { /* the other radios still work */ }
+  }
+  if (shell.has("cell.info")) {
+    try {
+      const r = await shell.call("cell.info", {});
+      for (const c of r.cells || []) {
+        // A cell has no address, so its identity is the physical-layer id it broadcasts.
+        const id = c.pci ?? c.cid ?? c.lac;
+        if (id == null) continue;
+        upsert({
+          addr: `${c.type || "cell"}:${id}`, name: `${(c.type || "cell").toUpperCase()} ${c.arfcn ?? ""}`.trim(),
+          rssi: c.rssi, kind: "lte", serving: !!c.serving,
+        });
+      }
+    } catch { /* a phone with no SIM answers nothing, which is not an error */ }
+  }
 }
 
 function startScan() {
   if ($scanning.get()) return;
   $scanning.set(true);
   $err.set(null);
-  rose = newRose(72);
-  $roseAt.set(Date.now());
-
   if (gate) {
-    for (const d of [...GATE_FIELD, ...GATE_NETS]) upsert({ ...d, addr: d.addr || d.bssid });
+    for (const d of GATE_FIELD) upsert(d);
     if ($target.get()) seedRose();
     return;
   }
+  rose = newRose(72);
+  $roseAt.set(Date.now());
   lock = wakeLock.acquire();
   stopScan = shell.subscribe("ble.scan", {}, upsert, (e) => {
     $err.set(e?.detail || e?.code || ERR.failed);
     $scanning.set(false);
   });
-  sweepWifi();
-  wifiTimer = setInterval(sweepWifi, WIFI_MS);
+  sweepRadios();
+  radioTimer = setInterval(sweepRadios, RADIO_MS);
   ageTimer = setInterval(() => $now.set(Date.now()), 1000);
   stopCompass = compass.start((deg) => { heading = deg; });
   stopGeo = geo.watch((p) => $fix.set({ lat: p.lat, lon: p.lng, acc: p.accuracy }), () => {});
@@ -140,7 +177,7 @@ function endScan() {
   $scanning.set(false);
   try { stopScan?.(); } catch { /* already gone */ }
   stopScan = null;
-  clearInterval(wifiTimer); wifiTimer = null;
+  clearInterval(radioTimer); radioTimer = null;
   clearInterval(ageTimer); ageTimer = null;
   try { stopCompass?.(); } catch { /* never started */ }
   try { stopGeo?.(); } catch { /* never started */ }
@@ -148,31 +185,39 @@ function endScan() {
   stopCompass = stopGeo = lock = null;
 }
 
-/** Present devices, strongest first. Wi-Fi is NOT aged out — a scan replaces the list wholesale, so an AP
- *  that stops being listed is gone the moment the next scan says so. Nothing ages under the gate either:
- *  the mocked subscribe emits once, so a decay there would empty the screen rather than reflect a radio. */
-function useField() {
+/**
+ * The one ordered, filtered view of the field — the grid and the list both read it, so they can never
+ * describe different things. Nothing ages under the gate: the mocked subscribe emits once, so a decay
+ * there would empty the screen rather than reflect a radio.
+ */
+function useField(S) {
   const map = useStore($devices);
   const now = useStore($now);
-  return useMemo(() => [...map.values()]
-    .filter((d) => gate || d.kind === "wifi" || now - d.at < SEEN_MS)
-    .sort((a, b) => (b.smooth ?? b.rssi) - (a.smooth ?? a.rssi)), [map, now]);
+  const f = useStore(S.filters);
+  const kinds = Array.isArray(f?.kinds) ? f.kinds : KINDS;
+  const sort = typeof f?.sort === "string" ? f.sort : "seen";
+  return useMemo(() => {
+    const live = [...map.values()].filter((d) =>
+      (gate || d.kind !== "ble" || now - d.at < SEEN_MS) && kinds.includes(d.kind));
+    return orderDevices(live, sort).map((d) => ({ ...d, percent: signalPercent(d.smooth ?? d.rssi, d.kind) }));
+  }, [map, now, kinds.join(","), sort]);
 }
 
 const labelOf = (d, t) => d.name || (d.kind === "wifi" ? T(t, "hidden") : T(t, "unnamed"));
 
-// ── the shared scan control ───────────────────────────────────────────────────────────────────────────
 function ScanButton({ t }) {
   const on = useStore($scanning);
   const why = shell.whyCapability("ble");
   return html`<button data-scan=${on ? "on" : "off"} disabled=${!!why && !gate}
     onClick=${() => (on ? endScan() : startScan())}
-    class=${`btn btn-sm gap-2 ${on ? "" : "btn-primary"}`}>
+    class=${`btn btn-sm gap-2 shrink-0 ${on ? "" : "btn-primary"}`}>
     ${Icon(on ? "lucide:square" : "lucide:radar")}<span>${T(t, on ? "stop" : "start")}</span>
   </button>`;
 }
 
-function Reason({ t, err, why }) {
+function Reason({ t }) {
+  const err = useStore($err);
+  const why = shell.whyCapability("ble");
   if (!err && !why) return null;
   const key = why === ERR.staleBridge ? "needsNewer"
     : why ? "needsShell"
@@ -182,51 +227,47 @@ function Reason({ t, err, why }) {
   return html`<div data-reason class="text-[var(--ms-label)] text-error">${T(t, key)}</div>`;
 }
 
-// ── dome ──────────────────────────────────────────────────────────────────────────────────────────────
-export function domeView({ S, t, screen, openScreen, closeScreen }) {
-  const field = useField();
+/** Per-radio tally — the "mark BLE, Wi-Fi and cell separately" requirement, as one readable row. */
+function Legend({ t, field }) {
+  return html`<div data-legend class="flex items-center gap-3 min-w-0 overflow-hidden">
+    ${KINDS.map((k) => {
+      const n = field.filter((d) => d.kind === k).length;
+      return html`<span key=${k} data-legend-kind=${k} class="flex items-center gap-1 min-w-0">
+        ${Icon(KIND_ICON[k], `text-[var(--ms-icon)] shrink-0 ${k === "ble" ? "text-[var(--app-accent)]" : "text-base-content/70"}`)}
+        <span class="font-mono tabular-nums text-[var(--ms-label)] ${n ? "text-base-content" : "text-base-content/50"}">${n}</span>
+      </span>`;
+    })}
+  </div>`;
+}
+
+// ── hive ──────────────────────────────────────────────────────────────────────────────────────────────
+export function hiveView({ S, t }) {
+  const field = useField(S);
   const scanning = useStore($scanning);
-  const err = useStore($err);
   const target = useStore($target);
-  useStore($roseAt);
   const canvas = useRef(null);
-  const state = useRef({ heading: 0, pitch: 0, devices: [] });
+  const state = useRef({ cells: [] });
   const [webgl] = useState(() => hasWebGL());
 
   state.current = {
-    heading,
-    pitch: 0,
-    devices: field.map((d) => ({
-      key: d.addr,
-      radius: bandFraction(d.smooth ?? d.rssi),
-      pulse: d.at,
-      target: d.addr === target,
-      petal: d.addr === target ? petal(rose) : null,
-      bearing: d.addr === target && hasBearing(roseStats(rose)) ? roseStats(rose).bearingDeg : null,
-    })),
+    cells: field.map((d) => ({ key: d.addr, kind: d.kind, percent: d.percent, pulse: d.at, target: d.addr === target })),
   };
 
   useEffect(() => {
     if (!webgl || !canvas.current) return;
     let stop = null, dead = false;
-    mountDome(canvas.current, () => state.current).then((s) => { if (dead) s(); else stop = s; });
+    mountHive(canvas.current, () => state.current).then((s) => { if (dead) s(); else stop = s; });
     return () => { dead = true; try { stop?.(); } catch { /* never mounted */ } };
   }, [webgl]);
-
-  const counts = { ble: field.filter((d) => d.kind === "ble").length, wifi: field.filter((d) => d.kind === "wifi").length };
 
   return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
     <${Stage}>
       ${webgl ? html`<canvas ref=${canvas} class="absolute inset-0 w-full h-full" aria-hidden="true"></canvas>` : null}
-      ${/* The fallback is not a downgrade path only — it owns data-mark, the accessible names and the tap
-           targets in EVERY environment, so preflight, axe and e2e never depend on WebGL existing. */""}
-      ${/* At the TOP, not the centre. Centred it sat across the ring lines and cost both the number and the
-           rings their legibility — and the centre of this scene means "you", which is not a caption slot. */""}
-      ${/* The breakdown only. A total beside it rendered as "6 4 BLUETOOTH" — two numbers touching, read as
-           one — and it was the same count the island already carries. */""}
+      ${/* The fallback owns data-mark, the accessible name and the count in EVERY environment, so
+           preflight, axe and e2e never depend on WebGL existing. */""}
       <div data-mark data-live class="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
         <span class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
-          ${counts.ble} ${T(t, "ble")} · ${counts.wifi} ${T(t, "wifi")}${scanning ? "" : " · " + T(t, "idle")}
+          ${field.length} ${T(t, "cells")}${scanning ? "" : " · " + T(t, "idle")}
         </span>
       </div>
     <//>
@@ -234,45 +275,70 @@ export function domeView({ S, t, screen, openScreen, closeScreen }) {
     <${Island} pinned className="w-full max-w-md">
       <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
         <${ScanButton} t=${t} />
-        <button data-seen class="btn btn-sm btn-ghost gap-2 min-w-0 flex-1 justify-start"
-          onClick=${() => openScreen("seen")}>
-          ${Icon("lucide:list")}<span class="truncate">${T(t, "seen")}</span>
-          <span class="font-mono tabular-nums text-base-content/70">${field.length}</span>
-        </button>
+        <${Legend} t=${t} field=${field} />
       </div>
-      <${Reason} t=${t} err=${err} why=${shell.whyCapability("ble")} />
+      <${Reason} t=${t} />
+    <//>
+  </div>`;
+}
+
+// ── list ──────────────────────────────────────────────────────────────────────────────────────────────
+// Rows never jump. Ordering is systemic (S.filters.sort, persisted) and "by signal" sorts on the BAND
+// rather than the live number, because a stationary device fades 5-15 dB on its own — sorting on that
+// reshuffles the screen several times a second and makes the list unreadable.
+export function listView({ S, t }) {
+  const field = useField(S);
+  const target = useStore($target);
+  const oui = useStore($oui);
+  useEffect(loadOui, []);
+  return html`<div class="flex flex-col gap-[var(--ms-gap)]">
+    <${Panel}>
+      <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
+        <${ScanButton} t=${t} />
+        <${Legend} t=${t} field=${field} />
+      </div>
+      <${Reason} t=${t} />
     <//>
 
-    <${Sheet} id="seen" open=${screen === "seen"} onClose=${closeScreen}
-      title=${T(t, "seen")} subtitle=${T(t, "bandsOnly")} icon="lucide:list">
-      <div class="flex flex-col gap-1" data-seen-list>
-        ${field.length === 0
-          ? html`<div class="text-base-content/70 text-sm">${T(t, "nothingYet")}</div>`
-          : field.map((d) => html`<button key=${d.addr} data-dev=${d.addr}
-              onClick=${() => { $target.set(d.addr); if (gate) seedRose(); else { rose = newRose(72); $roseAt.set(Date.now()); } closeScreen(); }}
-              class="btn btn-ghost justify-start h-auto min-h-0 py-2 gap-3 rounded-[var(--ms-r-in)]">
-              <span class="w-2 h-2 rounded-full shrink-0" style=${`background:${d.cls?.tracker === "separated" ? "var(--app-accent)" : "currentColor"};opacity:${d.cls?.tracker === "separated" ? 1 : 0.35}`}></span>
-              <span class="flex-1 min-w-0 text-left">
-                <span class="block truncate">${labelOf(d, t)}</span>
-                <span class="block font-mono text-[var(--ms-label)] text-base-content/70 truncate">
-                  ${T(t, "band_" + band(d.smooth ?? d.rssi))} · ${Math.round(d.smooth ?? d.rssi)} dBm${rotates(d.addr) ? " · " + T(t, "rotating") : ""}
-                </span>
-              </span>
-            </button>`)}
+    <${Panel} title=${T(t, "signal")}>
+      <div data-live class="flex flex-col">
+        ${field.length === 0 ? html`<div class="text-base-content/70 text-sm">${T(t, "nothingYet")}</div>` : null}
+        ${field.map((d) => html`<button key=${d.addr} data-dev=${d.addr} data-kind=${d.kind}
+          aria-pressed=${String(d.addr === target)}
+          onClick=${() => { $target.set(d.addr); if (gate) seedRose(); else { rose = newRose(72); $roseAt.set(Date.now()); } }}
+          class="text-left py-2 border-b border-base-content/10 last:border-0 rounded-[var(--ms-r-in)] transition-colors hover:bg-base-content/5">
+          <span class="flex items-center gap-2 min-w-0">
+            ${Icon(KIND_ICON[d.kind], `text-[var(--ms-icon)] shrink-0 ${d.kind === "ble" ? "text-[var(--app-accent)]" : "text-base-content/70"}`)}
+            <span class="flex-1 min-w-0 truncate">${labelOf(d, t)}</span>
+            ${d.cls?.separated ? html`<span data-sep class="shrink-0 font-mono uppercase tracking-wide text-[var(--ms-label)] px-1.5 rounded-full border border-[var(--app-accent)]">${T(t, "sepTag")}</span>` : null}
+            <span data-pct class="shrink-0 font-mono tabular-nums text-base-content">${d.percent}%</span>
+          </span>
+          ${/* The meter is the percentage made visible. transition-[width] and nothing else: the material
+               IS box-shadow here, so `all` would cross-fade the surrounding extrusion on every tick. */""}
+          <span class="mt-1.5 block h-1 rounded-full bg-base-content/10 overflow-hidden">
+            <span class="block h-full rounded-full transition-[width] duration-500 ${d.kind === "ble" ? "bg-[var(--app-accent)]" : "bg-base-content/60"}"
+              style=${`width:${d.percent}%`}></span>
+          </span>
+          ${/* The manufacturer appears only where the address actually has one — an AP's BSSID, a public
+               BLE address. A rotating address gets the word "rotating" instead, which is the true
+               statement about it; naming a vendor there would be inventing one. */""}
+          <span class="mt-1 block font-mono text-[var(--ms-label)] text-base-content/70 truncate">
+            ${(() => { const v = vendorOf(d.addr, d.kind, oui); return v ? html`<span data-vendor>${v}</span> · ` : null; })()}
+            ${T(t, "band_" + band(d.smooth ?? d.rssi))} · ${Math.round(d.smooth ?? d.rssi)} dBm${rotates(d.addr) && d.kind === "ble" ? " · " + T(t, "rotating") : ""}
+          </span>
+        </button>`)}
       </div>
     <//>
   </div>`;
 }
 
 // ── hunt ──────────────────────────────────────────────────────────────────────────────────────────────
-// The one screen where a direction can exist at all, and it exists only because the user physically
-// sweeps the phone. df.js does the circular statistics and withholds the bearing until the petal is a
-// lobe rather than a circle — with the stock omnidirectional antenna it stays a circle, and that is the
-// instrument honestly showing its own limit.
+// The one screen where a direction can exist at all, and only because the user physically sweeps the
+// phone. df.js withholds the bearing until the petal is a lobe rather than a circle — with the stock
+// omnidirectional antenna it stays a circle, which is the instrument showing its own limit by its shape.
 export function huntView({ S, t, screen, openScreen, closeScreen }) {
-  const field = useField();
+  const field = useField(S);
   const target = useStore($target);
-  const scanning = useStore($scanning);
   useStore($roseAt);
   const dev = field.find((d) => d.addr === target) || null;
   const stats = roseStats(rose);
@@ -281,8 +347,6 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
   let max = 0;
   for (let i = 0; i < p.length; i++) max = Math.max(max, p[i]);
 
-  // The petal, as an SVG the gate can actually photograph. Unswept bins read as 0 and stay visually
-  // distinct from swept-and-quiet ones: an unvisited arc is not a null.
   const path = [];
   for (let i = 0; i < p.length; i++) {
     const a = ((i + 0.5) / p.length) * Math.PI * 2 - Math.PI / 2;
@@ -297,9 +361,8 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
           aria-label=${T(t, locked ? "aLobe" : "aCircle")}>
           <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.18" />
           <circle cx="50" cy="50" r="12" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.18" />
-          ${/* The dial is a compass rose before it is a measurement: without ticks an unswept screen is two
-               bare circles, which reads as an app that failed to draw rather than one waiting for a sweep.
-               North takes the accent, matching the dome's one fixed reference. */
+          ${/* A compass rose before it is a measurement: without ticks an unswept screen is two bare
+               circles, which reads as a draw failure rather than an instrument waiting. */
             Array.from({ length: 36 }, (_, i) => {
               const a = (i * 10 * Math.PI) / 180 - Math.PI / 2;
               const major = i % 9 === 0;
@@ -323,16 +386,12 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
       <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
         <${ScanButton} t=${t} />
         <button data-pick class="btn btn-sm btn-ghost gap-2 min-w-0 flex-1 justify-start" onClick=${() => openScreen("pick")}>
-          ${Icon("lucide:crosshair")}
-          <span class="truncate">${dev ? labelOf(dev, t) : T(t, "pickTarget")}</span>
+          ${Icon("lucide:crosshair")}<span class="truncate">${dev ? labelOf(dev, t) : T(t, "pickTarget")}</span>
         </button>
       </div>
-      ${/* Not hint text — a measurement. Coverage below the df.js gate is WHY no bearing is shown, and
-           hiding it would make a working instrument look broken. It lives INSIDE the island: pinned at the
-           stage's bottom edge it sat under this fixed bar and collided with the dock, which no overflow
-           check can see because nothing overflowed. */""}
-      ${/* Two lines, because one was 40 characters of Ukrainian and wrapped into an orphaned "· 0". The
-           answer goes on top in ink; the evidence behind it sits under, muted. */""}
+      ${/* Not hint text — a measurement. Coverage below df.js's gate is WHY no bearing is shown, and
+           hiding it would make a working instrument look broken. Inside the island: pinned to the stage's
+           bottom edge it sat under this fixed bar and collided with the dock. */""}
       <div data-live class="font-mono uppercase tracking-wide text-[var(--ms-label)]">
         <div class="text-base-content truncate">${locked
           ? T(t, "strongestAt").replace("{deg}", Math.round(stats.bearingDeg))
@@ -352,7 +411,7 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
           class="btn btn-ghost justify-start h-auto min-h-0 py-2 rounded-[var(--ms-r-in)]">
           <span class="flex-1 min-w-0 text-left">
             <span class="block truncate">${labelOf(d, t)}</span>
-            <span class="block font-mono text-[var(--ms-label)] text-base-content/70">${Math.round(d.smooth ?? d.rssi)} dBm</span>
+            <span class="block font-mono text-[var(--ms-label)] text-base-content/70">${d.percent}% · ${Math.round(d.smooth ?? d.rssi)} dBm</span>
           </span>
         </button>`)}
         ${field.filter((d) => d.kind === "ble").length === 0
@@ -364,7 +423,7 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
 
 // ── guard ─────────────────────────────────────────────────────────────────────────────────────────────
 export function guardView({ S, t }) {
-  const field = useField();
+  const field = useField(S);
   const scanning = useStore($scanning);
   const fix = useStore($fix);
 
@@ -407,15 +466,14 @@ export function guardView({ S, t }) {
           <span class="flex-1 min-w-0">
             <span class="flex items-center gap-2 min-w-0">
               <span class="truncate">${labelOf(d, t)}</span>
-              ${/* The one row with spec-grade evidence must not look like the other four: a DULT accessory
+              ${/* The one row with spec-grade evidence must not look like the rest: a DULT accessory
                    ANNOUNCES separation, where everything else is inference. */
                 d.cls?.separated ? html`<span data-sep=${d.addr}
                   class="shrink-0 font-mono uppercase tracking-wide text-[var(--ms-label)] px-1.5 rounded-full border border-[var(--app-accent)] text-base-content">
                   ${T(t, "sepTag")}</span>` : null}
             </span>
-            ${/* What is MISSING, not a silent negative: a guard that never explains itself is a guard
-                 nobody can calibrate their trust against. Wrapped, never truncated — the reasons are what
-                 differ between rows, so an ellipsis cuts exactly the informative half. */""}
+            ${/* What is MISSING, not a silent negative — and wrapped, never truncated, because the reasons
+                 are exactly what differs between rows. */""}
             <span class="block font-mono text-[var(--ms-label)] text-base-content/70">
               ${s.reasons.length ? s.reasons.map((r) => T(t, "why_" + r)).join(" · ") : T(t, "allMet")}
             </span>

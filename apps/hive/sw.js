@@ -2,11 +2,11 @@
 // Scope comes from this file's own path, so every app needs its own worker; the logic lives once in
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
-  app: "radar",
-  version: "31ba847874",
+  app: "hive",
+  version: "28c0b39e70",
   precache: [
     "./",
-    "./dome.js",
+    "./hive.js",
     "./i18n/en.json",
     "./i18n/uk.json",
     "./icon.svg",
@@ -26,6 +26,7 @@ self.MS = {
     "/_rt/gesture.js",
     "/_rt/i18n.js",
     "/_rt/index.js",
+    "/_rt/oui.js",
     "/_rt/overlay.js",
     "/_rt/permissions.js",
     "/_rt/playback.js",

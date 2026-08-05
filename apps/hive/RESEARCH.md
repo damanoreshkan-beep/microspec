@@ -1,4 +1,4 @@
-# radar — research note
+# hive — research note
 
 What a phone can honestly say about the radio around it, and what it cannot. Written before the build, so
 the build encodes measurements instead of impressions.
@@ -225,7 +225,7 @@ negative result is exactly what stops a build aiming at something that does not 
 
 ---
 
-## The dome is an uncertainty volume
+## The hive: a honeycomb, because a honeycomb has no compass
 
 The design consequence of findings 1 and 2, and the reason this app is worth building in 3D at all.
 
@@ -233,14 +233,13 @@ A dome that pins each device at an azimuth and a radius would be inventing both 
 not show *where things are*. It shows **what we know about where they are**, and the geometry is the
 evidence:
 
-- **Radius** = measured strength band. A band, not a metre. This is real: it is dBm.
-- **Azimuth** = a device with no sweep evidence is drawn as a **complete ring** at its band. It occupies
-  every direction because every direction is still possible. Nothing is pinned, so nothing is fabricated.
-- **Hunt carves the ring.** As the user sweeps, `df.js` accumulates strength against true heading and the
-  ring contracts into the measured petal. When concentration and coverage pass `hasBearing()`, it resolves
-  to a lobe. The user watches their own evidence take shape, and an omnidirectional antenna honestly
-  produces a ring that never narrows — the instrument shows its own limit by its shape, exactly as `homin`'s
-  dial already does.
+- **Height** = signal as a percentage of THAT RADIO's own dBm range. The three radios are not one
+  quantity, so each is scaled against its own floor and ceiling (`SCALE` in `packages/runtime/radar.js`).
+- **Position** = RANK, not direction. Cells spiral out from the centre strongest-first. A honeycomb tiles a
+  plane; it has no compass, so no angle in it can be misread as a bearing — which is exactly why it
+  replaced the ring-and-centre dome that came first.
+- **Hunt still owns angles**, and only there: `df.js` withholds a bearing until concentration and coverage
+  earn it, so an omnidirectional antenna honestly produces a circle that never narrows.
 - **Height is not a data axis.** We have no elevation information, so nothing is placed by altitude. The
   vertical dimension is the uncertainty band's own geometry.
 
@@ -274,3 +273,31 @@ Never: "distance", metres, "bearing to device", "angle of arrival", "direction f
 
 Instead: strength bands; "strongest observed direction"; "sweep confidence"; "possible tracker"; and a plain
 statement that thresholds are ours.
+
+---
+
+## Naming the manufacturer — where that question has an answer
+
+The IEEE MA-L registry maps a 24-bit prefix to an organisation, so an access point's BSSID names its
+maker. **Measured** (`tools/oui/build.mjs`, 2026-08-05): 39,895 usable MA-L assignments, 19,627 distinct
+organisations, 3.8 MB of source CSV. Packed to 519 KB (243 KB gzipped) by delta-encoding the sorted
+prefixes and deduplicating names into a string table; the names alone are 288 KB, which is the floor.
+Lazy-loaded once, only on a screen that shows names, and cached by the service worker.
+
+**The trap, and why the lookup refuses more often than it answers.** A BLE *random* address is
+cryptographic padding with two type bits on top — it is not an IEEE assignment, so running it through the
+table returns a confident and entirely invented manufacturer. Worse, the bytes cannot settle it: Android
+never exposes the over-air address type, and Espressif's real OUI `24:0A:C4` has the same top two bits as
+a non-resolvable private address.
+
+So two independent signals must agree before a name is shown:
+
+1. the address is **globally administered** — the U/L bit (`0x02` of the first octet) is clear;
+2. the prefix is **actually in the registry**.
+
+and a resolvable private address — the dominant rotating kind — is excluded outright. A random address
+coincides with a registered prefix in roughly **0.2%** of cases (≈40k assignments out of 16.7M).
+
+The result: Wi-Fi access points almost always get a name, rotating BLE devices never do, and a cell gets
+nothing because it has no MAC at all. The row says `rotating address` instead — which is the true
+statement about it.

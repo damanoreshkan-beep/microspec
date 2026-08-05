@@ -840,6 +840,26 @@
     "category": "sound"
   },
   {
+    "id": "hive",
+    "title": "Соти",
+    "titles": {
+      "en": "Hive",
+      "uk": "Соти"
+    },
+    "tagline": "Кожне радіо навколо тебе — окремою коміркою",
+    "taglines": {
+      "en": "Every radio around you, as one cell each",
+      "uk": "Кожне радіо навколо тебе — окремою коміркою"
+    },
+    "glyph": "lucide:hexagon",
+    "art": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M12 2.5l4.8 2.8v5.4L12 13.5l-4.8-2.8V5.3z\"/><path d=\"M6.6 12.1l-4.1 2.4v4.7l4.1 2.3 4.1-2.3v-4.7z\"/><path d=\"M17.4 12.1l4.1 2.4v4.7l-4.1 2.3-4.1-2.3v-4.7z\"/></svg>",
+    "bg": "#141416",
+    "fg": "#D9548E",
+    "href": "./hive/",
+    "version": "1.0",
+    "category": "tools"
+  },
+  {
     "id": "wish",
     "title": "Список бажань",
     "titles": {
@@ -1257,23 +1277,6 @@
     "fg": "#34D399",
     "href": "./qr/",
     "version": "1.10",
-    "category": "tools"
-  },
-  {
-    "id": "radar",
-    "title": "radar",
-    "titles": {},
-    "tagline": "Що випромінює навколо тебе — і скільки з того ми можемо довести",
-    "taglines": {
-      "en": "What is radiating around you, and how much of it we can prove",
-      "uk": "Що випромінює навколо тебе — і скільки з того ми можемо довести"
-    },
-    "glyph": "lucide:radar",
-    "art": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"1.4\"/><circle cx=\"12\" cy=\"12\" r=\"5.5\"/><circle cx=\"12\" cy=\"12\" r=\"9.5\"/><path d=\"M12 2.5v4\"/></svg>",
-    "bg": "#141416",
-    "fg": "#D9548E",
-    "href": "./radar/",
-    "version": "1.0",
     "category": "tools"
   },
   {

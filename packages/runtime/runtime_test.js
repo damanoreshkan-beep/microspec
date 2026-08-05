@@ -12,7 +12,8 @@ import { asked as chatAsked, answered as chatAnswered, foldThread as chatFold, a
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "./groove.js";
 import { generateMelody, scoreMelody } from "./melody.js";
 import { shell, ERR } from "./shell.js";
-import { parseAd as rdParseAd, classify as rdClassify, addrKind as rdAddrKind, rotates as rdRotates, band as rdBand, bandFraction as rdBandFraction, smooth as rdSmooth, estimateDistance as rdEstimateDistance, guardScore as rdGuardScore, GUARD as rdGUARD } from "./radar.js";
+import { parseOui as ouiParse, vendorOf as ouiVendorOf, prefixOf as ouiPrefixOf, locallyAdministered as ouiLocallyAdministered } from "./oui.js";
+import { parseAd as rdParseAd, classify as rdClassify, addrKind as rdAddrKind, rotates as rdRotates, band as rdBand, bandFraction as rdBandFraction, smooth as rdSmooth, estimateDistance as rdEstimateDistance, guardScore as rdGuardScore, GUARD as rdGUARD, signalPercent as rdSignalPercent, orderDevices as rdOrderDevices, hexSpiral as rdHexSpiral, hexToXY as rdHexToXY, hexDistance as rdHexDistance } from "./radar.js";
 import { PERMISSIONS, GROUPS, permState, permAndroid } from "./permissions.js";
 import { hannCurve as grHann, grainRate as grGrainRate, overlapOf as grOverlapOf, cloudGain as grCloudGain, planGrains as grPlan, conditionSample as grCondition, dcOffset as grDcOffset, clipRatio as grClipRatio, trimBounds as grTrim, detectPitch as grPitch, CENTS as grCENTS, encodeWav as grWav, syntheticSample as grSynth, MIN_KEEP as grMIN_KEEP } from "./grain.js";
 import { mulberry32 as grRng } from "./groove.js";
@@ -5803,4 +5804,106 @@ Deno.test("radar: the guard thresholds are ours, and are not DULT's accessory co
   assert(rdGUARD.minSpanMs !== 30 * 60_000, "do not borrow the accessory's state constant as a policy");
   assert(rdGUARD.minDisplacementM >= 100, "a GPS accuracy radius is 5-30 m; the floor must clear jitter");
   assert(rdGUARD.minSegments >= 2);
+});
+
+Deno.test("radar: a percentage is per-RADIO, because the three are not one quantity", () => {
+  // RSRP runs ~40 dB below a BLE advertisement. One shared scale pins every cell at 0% and pretends -104
+  // and -120 are the same place — the mistake apps/os documents for its radius function.
+  assertEquals(rdSignalPercent(-120, "lte"), 0);
+  assertEquals(rdSignalPercent(-70, "lte"), 100);
+  assert(rdSignalPercent(-95, "lte") > rdSignalPercent(-95, "ble"), "a cell at -95 is healthy where a beacon is nearly gone");
+  assertEquals(rdSignalPercent(-100, "ble"), 0);
+  assertEquals(rdSignalPercent(-45, "ble"), 100);
+  assertEquals(rdSignalPercent(-90, "wifi"), 0);
+  assertEquals(rdSignalPercent(-35, "wifi"), 100);
+  // Clamped at both ends, and monotonic in between — a percentage that can exceed 100 is not a percentage.
+  for (const kind of ["ble", "wifi", "lte"]) {
+    assertEquals(rdSignalPercent(0, kind), 100);
+    assertEquals(rdSignalPercent(-200, kind), 0);
+    assertEquals(rdSignalPercent(NaN, kind), 0);
+    let prev = -1;
+    for (let r = -130; r <= -20; r += 5) {
+      const p = rdSignalPercent(r, kind);
+      assert(p >= prev, `${kind} went backwards at ${r} dBm`);
+      assert(p >= 0 && p <= 100, `${kind} left 0..100 at ${r} dBm`);
+      prev = p;
+    }
+  }
+});
+
+Deno.test("radar: ordering does not move a row unless something changed that means something", () => {
+  const mk = (addr, rssi, kind, first) => ({ addr, smooth: rssi, kind, first });
+  const list = [
+    mk("a", -80, "ble", 100), mk("b", -50, "wifi", 200), mk("c", -52, "ble", 300), mk("d", -95, "lte", 400),
+  ];
+  // First-seen is the only order that cannot move at all.
+  assertEquals(rdOrderDevices(list, "seen").map((d) => d.addr), ["a", "b", "c", "d"]);
+
+  // By signal: sorted on the BAND, so ordinary fading does not reshuffle the screen. -50 and -52 are both
+  // "immediate", so they keep their first-seen order even though b is stronger than c.
+  assertEquals(rdOrderDevices(list, "signal").map((d) => d.addr), ["b", "c", "a", "d"]);
+  const faded = list.map((d) => (d.addr === "b" ? { ...d, smooth: -54 } : d));
+  assertEquals(rdOrderDevices(faded, "signal").map((d) => d.addr), ["b", "c", "a", "d"],
+    "4 dB of ordinary fading must not move a row");
+  // Crossing a band boundary is a real change and IS allowed to move it. b falls out of "immediate" into
+  // the same band as a, so the tie resolves on first-seen and b lands AFTER a — the stability holding even
+  // as the row moves.
+  const dropped = list.map((d) => (d.addr === "b" ? { ...d, smooth: -72 } : d));
+  assertEquals(rdOrderDevices(dropped, "signal").map((d) => d.addr), ["c", "a", "b", "d"]);
+
+  assertEquals(rdOrderDevices(list, "kind").map((d) => d.addr), ["c", "a", "b", "d"]);
+  // Pure: the caller's array is never sorted in place, or the atom mutates behind preact's back.
+  assertEquals(list.map((d) => d.addr), ["a", "b", "c", "d"]);
+});
+
+Deno.test("radar: the hex spiral tiles without a gap or a collision", () => {
+  // A duplicate coordinate stacks two devices in one cell and reads as a rendering glitch, not a maths
+  // bug — so uniqueness is asserted rather than eyeballed.
+  for (const n of [1, 7, 19, 37, 61]) {
+    const s = rdHexSpiral(n);
+    assertEquals(s.length, n);
+    assertEquals(new Set(s.map((c) => `${c.q},${c.r}`)).size, n, `duplicate cell at n=${n}`);
+  }
+  // Ring k holds exactly 6k cells, which is what makes rank read as distance from the centre.
+  const rings = {};
+  for (const c of rdHexSpiral(61)) rings[rdHexDistance(c)] = (rings[rdHexDistance(c)] || 0) + 1;
+  assertEquals(rings, { 0: 1, 1: 6, 2: 12, 3: 18, 4: 24 });
+  assertEquals(rdHexSpiral(0).length, 0);
+
+  const { x, y } = rdHexToXY({ q: 0, r: 0 }, 1);
+  assertEquals([x, y], [0, 0]);
+});
+
+Deno.test("oui: a vendor is named only where the address actually has one", () => {
+  // A tiny hand-built table in the real packed format: two prefixes, deltas from zero.
+  const a = 0xac_de_48, b = 0x24_0a_c4;                    // globally administered, both registered
+  const lo = Math.min(a, b), hi = Math.max(a, b);
+  const names = lo === a ? "Apple\nEspressif" : "Espressif\nApple";
+  const table = ouiParse(`${lo.toString(36)},${(hi - lo).toString(36)}\n0,1\n${names}`);
+  assertEquals(table.size, 2);
+  assertEquals(table.get(a), "Apple");
+  assertEquals(table.get(b), "Espressif");
+
+  assertEquals(ouiVendorOf("AC:DE:48:11:22:33", "wifi", table), "Apple", "an AP's BSSID is a real OUI");
+  assertEquals(ouiVendorOf("24:0A:C4:11:22:33", "wifi", table), "Espressif");
+
+  // The whole point. A resolvable private address ROTATES — its prefix is cryptographic padding, so a
+  // lookup would invent a manufacturer with full confidence.
+  assertEquals(ouiVendorOf("4C:DE:48:11:22:33", "ble", table), null,
+    "a rotating BLE address must never be given a vendor");
+  // Locally administered: randomized or virtual, never an assignment.
+  assertEquals(ouiVendorOf("AE:DE:48:11:22:33", "wifi", table), null);
+  assert(ouiLocallyAdministered("02:00:00:00:00:01"), "the gate's own fixture is locally administered");
+  // A cell has no MAC at all.
+  assertEquals(ouiVendorOf("lte:301", "lte", table), null);
+  // Unregistered prefixes and junk answer null rather than guessing.
+  assertEquals(ouiVendorOf("00:11:22:33:44:55", "wifi", table), null);
+  assertEquals(ouiVendorOf("nonsense", "wifi", table), null);
+  assertEquals(ouiVendorOf("AC:DE:48:11:22:33", "wifi", new Map()), null);
+
+  assertEquals(ouiPrefixOf("AC:DE:48:11:22:33"), 0xacde48);
+  assertEquals(ouiPrefixOf("acde48112233"), 0xacde48);
+  assertEquals(ouiPrefixOf("AC:DE"), null);
+  assertEquals(ouiParse("").size, 0);
+  assertEquals(ouiParse("garbage").size, 0);
 });

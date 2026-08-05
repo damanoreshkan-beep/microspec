@@ -250,3 +250,77 @@ export function guardScore(track = {}, policy = GUARD) {
   const met = 6 - reasons.length;
   return { confidence: Math.max(0, met / 6), meets: reasons.length === 0, reasons, span, displacement, segments };
 }
+
+// ── Signal as a percentage ────────────────────────────────────────────────────────────────────────────
+// A percentage of SIGNAL STRENGTH — never of distance, and never "how close". Android's own UI does the
+// same thing (`CellSignalStrength.getLevel`, `WifiManager.calculateSignalLevel`): it maps dBm onto a
+// human scale without ever claiming metres.
+//
+// The three radios are NOT the same physical quantity and must not share a scale. RSRP runs roughly -75
+// (on top of the mast) to -125 (about to drop the call); a BLE advertisement lives 40 dB higher. Pushing
+// a cell through the BLE range pins every neighbour at 0% and pretends -104 and -120 are the same place —
+// the same mistake apps/os/view.js documents for its radius function.
+export const SCALE = {
+  ble: { floor: -100, ceil: -45 },
+  wifi: { floor: -90, ceil: -35 },
+  lte: { floor: -120, ceil: -70 },
+};
+
+export function signalPercent(rssi, kind = "ble") {
+  const s = SCALE[kind] || SCALE.ble;
+  if (!Number.isFinite(rssi)) return 0;
+  const clamped = Math.max(s.floor, Math.min(s.ceil, rssi));
+  return Math.round(((clamped - s.floor) / (s.ceil - s.floor)) * 100);
+}
+
+// ── Ordering that does not jump ───────────────────────────────────────────────────────────────────────
+// Sorting on live RSSI reorders the list on every advertisement, because stationary BLE fades 5-15 dB on
+// its own. So "by signal" sorts on the BAND, not the number: a row moves only when the measurement
+// crosses a boundary that means something, and ties break on first-seen — which never changes.
+export const SORTS = ["seen", "signal", "kind"];
+const KIND_ORDER = { ble: 0, wifi: 1, lte: 2 };
+const bandRank = (d) => BANDS.findIndex((b) => (d.smooth ?? d.rssi) >= b.floor);
+
+export function orderDevices(list, sort = "seen") {
+  const byFirst = (a, b) => (a.first || 0) - (b.first || 0) || String(a.addr).localeCompare(String(b.addr));
+  const arr = [...list];
+  if (sort === "signal") return arr.sort((a, b) => bandRank(a) - bandRank(b) || byFirst(a, b));
+  if (sort === "kind") {
+    return arr.sort((a, b) =>
+      (KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9) || bandRank(a) - bandRank(b) || byFirst(a, b));
+  }
+  return arr.sort(byFirst);                     // first seen — the only order that cannot move at all
+}
+
+// ── Hex packing ───────────────────────────────────────────────────────────────────────────────────────
+// Axial coordinates, spiralling out from the centre, so N cells always tile without a gap. Position is
+// RANK, and the same ordering drives the list — otherwise the grid reshuffles while the list stays put and
+// the two stop describing each other.
+// The canonical axial direction set and walk. Getting the order wrong produces DUPLICATE coordinates —
+// two devices stacked in one cell, which looks like a rendering glitch rather than a maths bug, so the
+// test asserts uniqueness and ring membership rather than eyeballing the picture.
+const HEX_DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
+
+export function hexSpiral(n) {
+  const out = [];
+  if (n <= 0) return out;
+  out.push({ q: 0, r: 0 });
+  for (let ring = 1; out.length < n; ring++) {
+    let q = -ring, r = ring;                                   // direction[4] scaled by the ring index
+    for (let side = 0; side < 6 && out.length < n; side++) {
+      for (let step = 0; step < ring && out.length < n; step++) {
+        out.push({ q, r });
+        q += HEX_DIRS[side][0]; r += HEX_DIRS[side][1];
+      }
+    }
+  }
+  return out;
+}
+
+/** Rings from the centre — the honest reading of a cell's position, since only RANK is encoded. */
+export const hexDistance = ({ q, r }) => (Math.abs(q) + Math.abs(q + r) + Math.abs(r)) / 2;
+
+/** Axial -> world, pointy-top. `size` is the hex circumradius. */
+export function hexToXY({ q, r }, size = 1) {
+  return { x: size * Math.sqrt(3) * (q + r / 2), y: size * 1.5 * r };
+}

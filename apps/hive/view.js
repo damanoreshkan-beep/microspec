@@ -17,7 +17,7 @@ import { useState, useEffect, useRef, useMemo } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
-import { Panel, Island, Sheet, Stage, Segmented } from "/_rt/ui.js";
+import { Panel, Island, Sheet, Stage } from "/_rt/ui.js";
 import { shell, ERR } from "/_rt/shell.js";
 import { gate } from "/_rt/gate.js";
 import { compass, geo, wakeLock } from "/_rt/sensors.js";
@@ -322,7 +322,7 @@ export function listView({ S, t }) {
           ${/* The manufacturer appears only where the address actually has one — an AP's BSSID, a public
                BLE address. A rotating address gets the word "rotating" instead, which is the true
                statement about it; naming a vendor there would be inventing one. */""}
-          <span class="mt-1 block font-mono text-[var(--ms-label)] text-base-content/70 truncate">
+          <span class="mt-1 block font-mono text-[var(--ms-label)] text-base-content/70">
             ${(() => { const v = vendorOf(d.addr, d.kind, oui); return v ? html`<span data-vendor>${v}</span> · ` : null; })()}
             ${T(t, "band_" + band(d.smooth ?? d.rssi))} · ${Math.round(d.smooth ?? d.rssi)} dBm${rotates(d.addr) && d.kind === "ble" ? " · " + T(t, "rotating") : ""}
           </span>

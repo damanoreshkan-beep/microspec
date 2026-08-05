@@ -73,10 +73,9 @@ export async function mount(canvas, getState) {
   geo.translate(0, 0.5, 0);
   geo.rotateY(Math.PI / 6);                       // pointy-top, matching hexToXY's axial layout
 
-  // Plain meshes, one per cell, pooled. An InstancedMesh renders this in one draw call and was the first
-  // attempt — it drew nothing at all, in both themes, while the floor beside it drew fine. Rather than
-  // spend a third guess on why, the variable is gone: 240 hexagonal prisms is nothing for a phone GPU,
-  // and a per-mesh material is also what lets a hunted cell carry its own colour.
+  // Plain meshes, one per cell, pooled. An InstancedMesh would batch this into one draw call, but 240
+  // hexagonal prisms is nothing for a phone GPU and a per-mesh material is what lets a hunted cell carry
+  // its own colour. (It was also blamed, wrongly, for the columns not drawing — see `nowMs` below.)
   const MAX = 240;
   const pool = [];
   function cellAt(i) {
@@ -139,6 +138,11 @@ export async function mount(canvas, getState) {
     const cells = (getState() || {}).cells || [];
     resize();
     buildFloor(cells.length);
+    // TWO CLOCKS, and mixing them cost two rounds. `now` here is the rAF timestamp — milliseconds since
+    // the page loaded — while `pulse` is Date.now(), an epoch. Subtracting one from the other gave an age
+    // of -1.79e12 ms, so `1 - age/700` became 2.6e9 and every column was translated 230 MILLION units
+    // above a camera sitting at ~10. They were rendering perfectly, just not in this solar system.
+    const nowMs = Date.now();
 
     const coords = hexSpiral(Math.max(19, cells.length));
     // The field's own radius in world units, so the camera frames what exists rather than a fixed guess.
@@ -161,7 +165,7 @@ export async function mount(canvas, getState) {
       const hgt = reducedMotion || prev == null ? want : prev + (want - prev) * 0.18;
       grown.set(c.key, hgt);
 
-      const age = c.pulse ? now - c.pulse : 1e9;
+      const age = c.pulse ? nowMs - c.pulse : 1e9;
       const lift = reducedMotion ? 0 : Math.max(0, 1 - age / 700) * 0.09;
       m.visible = true;
       m.position.set(x, lift, y);

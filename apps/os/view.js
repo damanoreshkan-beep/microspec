@@ -863,7 +863,7 @@ export function radar({ S, t, toast }) {
             ["lan", "lucide:network", hosts.length],
           ].map(([k, icon, n]) => html`<button key=${k} data-kind-toggle=${k} aria-pressed=${!!show[k]}
               aria-label=${`${L[k] || k}: ${n}`} onClick=${() => toggle(k)}
-              class=${`flex items-center gap-1 rounded-full px-2 py-1 transition-all ${show[k] ? "bg-base-content/[0.07]" : "opacity-35"}`}
+              class=${`flex items-center gap-1 rounded-full px-2 py-1 transition-[opacity,background-color] ${show[k] ? "bg-base-content/[0.07]" : "opacity-35"}`}
               style=${show[k] && k === "ble" ? "color:var(--app-accent)" : ""}>
             ${Icon(icon, "text-sm")}<span>${n}</span>
           </button>`)}

@@ -46,10 +46,9 @@ Backend (`/root/microspec-edge`, private, manual SSH deploy — new `edge/github
     session `Map` (model `cookieJar` `core.js:244`) keyed by a random `sid`; return a tiny HTML page that
     `postMessage(sid, "https://damanoreshkan-beep.github.io")` then `window.close()`. Popup OAuth.
 
-  **LIVE HOST = `dreamstudio.mooo.com`, NOT jobs-map.** Ground truth is `packages/runtime/feed.js:15`
-  (`VPS_PROXY = "https://dreamstudio.mooo.com/feed"`) — that is what shipped bundles call. `jobs-map.mooo.com`
-  is being retired (`vps/consolidate-domain.sh` phase-C deletes it); the edge README/`deno.json` still say
-  jobs-map because they're stale mid-migration. So the OAuth App callback is
+  **LIVE HOST = `dreamstudio.mooo.com`.** Ground truth is `packages/runtime/feed.js:15`
+  (`VPS_PROXY = "https://dreamstudio.mooo.com/feed"`) — that is what shipped bundles call, and it is the only
+  address any doc, task or runbook should ever name. So the OAuth App callback is
   **`https://dreamstudio.mooo.com/feed/gh/callback`** and the authorize `redirect_uri` matches.
   - Authenticated GitHub calls (`GET /user`, `PUT/DELETE /user/starred/{owner}/{repo}`) go through the
     **sealed tunnel** `POST /feed/f` carrying `{sid, action}`; a new `handleGithub` wired into both the

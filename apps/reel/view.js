@@ -11,6 +11,7 @@ import { VPS_PROXY, pool } from "/_rt/feed.js";
 import { sealedFrameUrl } from "/_rt/sealedfetch.js";
 import { gate } from "/_rt/gate.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
+import { fitPlan, frameContent, sameContent } from "/_rt/aspect.js";
 import { resolveSearch, buildSearchUrl } from "/_rt/urlquery.js";
 import { hostOf, siteName, sourceTitle, groupByDomain, humanText } from "/_rt/sitelabel.js";
 import { useTap, usePanX } from "/_rt/gesture.js";
@@ -47,7 +48,10 @@ const GREY_PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLb
 
 
 const GV = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/";
+
+const VERT_CLIP = "data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAQYEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggElTbuMU6uEHFO7a1OsggQC7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjIuMTIuMTAxV0GNTGF2ZjYyLjEyLjEwMUSJiECPQAAAAAAAFlSua8iuAQAAAAAAAD/XgQFzxYhvSehPHmrYwpyBACK1nIN1bmSIgQCGhVZfVlA4g4EBI+ODhAnvIargkLCBQLqBJJqBAlWwhFW5gQESVMNn/HNzoGPAgGfImkWjh0VOQ09ERVJEh41MYXZmNjIuMTIuMTAxc3PWY8CLY8WIb0noTx5q2MJnyKFFo4dFTkNPREVSRIeUTGF2YzYyLjI4LjEwMSBsaWJ2cHhnyKFFo4hEVVJBVElPTkSHkzAwOjAwOjAxLjAwMDAwMDAwMAAfQ7Z1QlbngQCjQUWBAACA0AkAnQEqQAAkAAFHCIWFiIWEiAICAgBjwP4A8Lv3d2iQgvRT+O/KDdG/8RckvAA/o56Rvok+hW74zjB/qrkAeGn3g094SISz5bpcvYim1uF6JoBjlPKAAP7/q1be6f+gY58X/+bxnHuNKsMZMmczAsCXil00u99hnjmANgcq9vhUDP/kfLQA3yHtRZbD4JfeBXQfC//LBlB41BW88Kz6h84KK3fda6y33b/5Z/9u7p2Hx7qU8JzFK2L7G4LJtBvAwL2uEv6NSRURf4Ypk9kz1q/lCXk3CwppQTNgY/iRoF/mz/GBaLiSLiiEKomd0PliRQ2JDfyei/igNJknuzt9R5wxxRz2bXWcvU2FgfYvORHmmiALxvbM4ZDe08NwydO7z7oAHvtmf5W8Ys2ueau38H+mgAAQMIEnz+yjX+nEAAAAo8CBAKcAcQMACRAQAB6YhTWn/q8e9EfMfGVC3h+ztaCri6wAy2+nGQfK4q7OASqDOSQBXgDtJETM/Qy6TUmUIeAAo7KBAU0AUQIADRAQABgAIDoNv+kUhcclfoLQ99kp6hTrveQLwkvv1ZW4CwAB9ZUNBuLAAKO0gQH0AFECAAkQEAAYACA4Le/o8Cc7zQrpAMwXyftB9K83xe9tuCihQqsCIF5F5/v1ibroAKOtgQKbADECAAkQEAAYACA4L/QA8MFRsEQY49qB5JnCAt9AbB3ZCbBkHJBdvK5Ao66BA0EAUQIACxAQABgJoADKAT+wBLDRpXve+Oj1Yx9ESlAFQNx2Auc4CWKvzc6AHFO7a5G7j7OBALeK94EB8YIBpvCBAw==";
 const MOCK = [
+  { video: VERT_CLIP, title: "Standing tall", poster: null, page: "https://mixkit.co/watch/10240/" },
   { video: GV + "BigBuckBunny.mp4", title: "Big Buck Bunny", poster: GV + "images/BigBuckBunny.jpg", page: "https://mixkit.co/watch/10241/" },
   { video: GV + "ElephantsDream.mp4", title: "Elephants Dream", poster: null, page: "https://mixkit.co/watch/10242/" },
   { video: GV + "Sintel.mp4", title: "Sintel", poster: null, page: "https://mixkit.co/watch/10243/" },
@@ -55,17 +59,18 @@ const MOCK = [
   { video: GV + "ForBiggerBlazes.mp4", title: "Broken clip", poster: BLACK_PX, page: "https://mixkit.co/watch/10244/" },
   { video: GV + "ForBiggerEscapes.mp4", title: "Flat placeholder", poster: GREY_PX, page: "https://mixkit.co/watch/10245/" },
 ];
+
 const MOCK_DEEP = [
   { video: GV + "ForBiggerFun.mp4", title: "Deeper one", poster: null, page: "https://mixkit.co/watch/55012/" },
   { video: GV + "ForBiggerJoyrides.mp4", title: "Deeper two", poster: null, page: "https://mixkit.co/watch/55013/" },
 ];
-
-
 const GATE_TITLES = {
   
   
   
-  "https://mixkit.co/watch/10241/": "Big%20Buck%20Bunny in 4K &amp; Friends — Mixkit",
+  
+  "https://mixkit.co/watch/10240/": "Standing%20tall in 4K &amp; Friends — Mixkit",
+  "https://mixkit.co/watch/10241/": "Big Buck Bunny — Mixkit",
   "https://mixkit.co/watch/55013/": "Deeper two · Mixkit",
 };                                    
 
@@ -75,11 +80,12 @@ const seekStart = (v) => {
   
   try { if (isFinite(v.duration) && v.duration > 0) v.currentTime = v.duration * START_FRACTION; } catch {  }
 };
+
 const PRELOAD = 1;
 
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
-
 function openSite(s) { if (typeof window !== "undefined") window.open(s.url, "_blank", "noopener"); }
+
 const subsDB = collection("reelSubs");
 
 
@@ -91,6 +97,7 @@ const $subs = atom(gate ? GATE_SUBS : []);
 if (idbSupported && !gate) subsDB.all().then((rows) => $subs.set(rows)).catch(() => {});
 async function subscribe(s) {
   if (!s?.url || $subs.get().some((x) => x.url === s.url)) return;
+  
   const rec = { name: s.name || sourceTitle(s.url), url: s.url };
   $subs.set([{ id: s.url, ...rec }, ...$subs.get()]);
   try { await subsDB.put(s.url, rec); } catch {  }
@@ -100,15 +107,14 @@ async function unsubscribe(url) {
   try { await subsDB.remove(url); } catch {  }
 }
 
+
+
 function renameSub(url, title) {
   const cur = $subs.get().find((x) => x.url === url);
   if (!cur || !title || cur.name === title) return;
   $subs.set($subs.get().map((x) => (x.url === url ? { ...x, name: title } : x)));
   subsDB.put(url, { name: title, url }).catch(() => {  });
 }
-
-
-
 const watchedDB = collection("reelWatched");
 const $watched = atom(new Set());
 if (idbSupported && !gate) watchedDB.all().then((rows) => $watched.set(new Set(rows.map((r) => r.id)))).catch(() => {});
@@ -119,6 +125,9 @@ function markWatched(url) {
 }
 function clearWatched() { $watched.set(new Set()); watchedDB.clear().catch(() => {}); }
 const unseen = (arr) => arr.filter((i) => !$watched.get().has(i.orig || i.video));         
+
+
+
 
 
 const likesDB = collection("reelLikes");
@@ -148,7 +157,6 @@ const $ephemeral = atom(false);
 
 const $srcTitle = atom(sourceTitle(DEFAULT_SRC));
 const $srcHint = atom("");
-
 function setSrcTitle(url, opts) {
   const title = sourceTitle(url, opts);
   $srcTitle.set(title);
@@ -160,10 +168,10 @@ let booted = false;
 
 
 
-
 const $frames = atom([]);
 const $restoreTo = atom(null);    
 const $owner = atom("reel");      
+
 const snapshot = (label) => ({ label, src: $src.get(), title: $srcTitle.get(), hint: $srcHint.get(), items: $items.get(), next: $next.get(), active: $active.get(), eph: $ephemeral.get(), owner: $owner.get(), err: $err.get() });
 function restoreTop() {
   const fs = $frames.get(); if (!fs.length) return;
@@ -174,19 +182,18 @@ function restoreTop() {
   $src.set(f.src); $srcTitle.set(f.title); $srcHint.set(f.hint); $items.set(f.items); $next.set(f.next); $ephemeral.set(f.eph);
   $owner.set(f.owner); $loading.set(false); $err.set(f.err);
   $active.set(f.active); $restoreTo.set(f.active);          
-  
   if (!f.items.length && !f.err && !gate) loadSource(f.src, false, f.hint);
 }
 let bound = false;
 function bindNav(S) {
   if (bound) return; bound = true;
+  
+  
   S.stack.listen((v) => { while ($frames.get().length > (v?.length || 0)) restoreTop(); });
 }
 function pushFrame(S, label) { $frames.set([...$frames.get(), snapshot(label)]); S.stack.set([...S.stack.get(), label]); }
 function popFrame(S) { const st = S.stack.get(); if (st.length) S.stack.set(st.slice(0, -1)); }
 function resetNav(S) { $frames.set([]); if (S.stack.get().length) S.stack.set([]); }        
-
-
 
 function diveTarget(item, src) {
   const u = item?.page;
@@ -195,12 +202,14 @@ function diveTarget(item, src) {
 }
 function openSource(url, hint) { $src.set(url); loadSource(url, false, hint); }
 
+
 function diveTo(S, url, hint) {
   if (!url) return;
   pushFrame(S, $srcTitle.get());                             
   navigator.vibrate?.(10);                                   
   openSource(url, hint);
 }
+
 
 
 
@@ -227,6 +236,8 @@ function posterIsBlank(poster, page) {
         finish(isBlackSample(px) || isFlatSample(px));                                     
       } catch { finish(false); } };                                                        
       img.onerror = () => {
+        
+        
         if (isData || src !== poster) return finish(false);
         framed(poster, page).then(sample).catch(() => finish(false));
       };
@@ -237,8 +248,6 @@ function posterIsBlank(poster, page) {
 }
 async function checkBlankPosters() {
   const todo = [];
-  
-  
   for (const it of $items.get()) { const p = it.poster; if (p && !checkedPosters.has(p)) { checkedPosters.add(p); todo.push([p, it.page || null]); } }
   if (!todo.length) return;
   const hits = new Set();
@@ -247,7 +256,9 @@ async function checkBlankPosters() {
 }
 
 
+
 function clean(arr, { requirePoster = false } = {}) {
+  
   
   
   
@@ -276,8 +287,6 @@ async function loadSource(url, append = false, hint = "") {
     const r = await fetch(`${VPS_PROXY}/videos?url=${encodeURIComponent(url)}`);
     const d = await r.json();
     if (g !== gen) return;                                   
-    
-    
     const eph = append ? $ephemeral.get() : !!d.ephemeral;
     const got = clean(Array.isArray(d.items) ? d.items : [], { requirePoster: eph });
     $items.set(append ? dedupeVideos([...$items.get(), ...got]) : got);                   
@@ -288,6 +297,7 @@ async function loadSource(url, append = false, hint = "") {
   finally { if (g === gen) $loading.set(false); if (append) loadingMore = false; }
 }
 
+
 const $full = atom(null);                                  
 
 async function openFull(S, item) {
@@ -297,27 +307,29 @@ async function openFull(S, item) {
   $full.set({ page, title, url: null, err: false });
   S.screen.set("full");                                    
   
-  
   const settle = (patch) => { const cur = $full.get(); if (cur && cur.page === page) $full.set({ ...cur, ...patch }); };
   if (gate) return settle({ url: item.video });             
   try {
     const d = await (await fetch(`${VPS_PROXY}/stream?url=${encodeURIComponent(page)}`)).json();
     const list = (Array.isArray(d.sources) ? d.sources : []).filter((s) => !s.remote);
     
+    
     const pick = list.find((s) => s.format === "hls") || list[0];
     if (!pick) return settle({ err: true });
-    
-    
     
     
     settle({ url: await sealedFrameUrl(pick.url, page), type: pick.format === "hls" ? "hls" : "progressive", title: humanText(d.title) || title });
   } catch { settle({ err: true }); }
 }
+
+
+
+
 function FullClip({ S, t }) {
   const full = useStore($full), locale = useStore(S.locale);
   if (!full) return null;
   const close = () => { S.screen.set(null); $full.set(null); };
-  if (full.url) return html`<${Player} url=${full.url} type=${full.type} title=${full.title} locale=${locale} onClose=${close} />`;
+  if (full.url) return html`<${Player} url=${full.url} type=${full.type} title=${full.title} locale=${locale} fill onClose=${close} />`;
   return html`<div data-full role="dialog" aria-modal="true" aria-label=${full.title || T(t, "watch")}
       class="fixed inset-0 z-40 bg-black flex flex-col" style="padding-top:env(safe-area-inset-top)">
     <header class="flex items-center gap-1 px-2 py-1.5 text-white bg-black/70">
@@ -334,6 +346,8 @@ function FullClip({ S, t }) {
     </div>
   </div>`;
 }
+
+
 function Favicon({ url, size = "w-6 h-6" }) {
   const [failed, setFailed] = useState(false);
   const cls = `${size} rounded-lg object-contain shrink-0`;
@@ -342,10 +356,22 @@ function Favicon({ url, size = "w-6 h-6" }) {
     : html`<img src=${`https://${hostOf(url)}/favicon.ico`} alt="" loading="lazy" class=${`${cls} bg-base-content/10`} onError=${() => setFailed(true)} />`;
 }
 
+
 const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
   <img src=${poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-55" onError=${(e) => e.currentTarget.remove()} />
   <img src=${poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain" onError=${(e) => e.currentTarget.remove()} />
 </${Fragment}>` : null;
+const SAMPLE_W = 64, SAMPLE_H = 36;
+const shapes = new Map();                                       
+const shapeKey = (i) => (i.orig || i.video) || "";
+function sampleFrame(v) {
+  try {
+    const c = document.createElement("canvas"); c.width = SAMPLE_W; c.height = SAMPLE_H;
+    const cx = c.getContext("2d", { willReadFrequently: true });
+    cx.drawImage(v, 0, 0, SAMPLE_W, SAMPLE_H);
+    return frameContent(cx.getImageData(0, 0, SAMPLE_W, SAMPLE_H).data, SAMPLE_W, SAMPLE_H);
+  } catch { return null; }                                      
+}
 
 
 
@@ -367,13 +393,10 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
 
 
 
-
-function VideoLayer({ item, playing, ephemeral }) {
+function VideoLayer({ item, playing, ephemeral, plan, onShape }) {
   const ref = useRef(), bgRef = useRef();
   const [errored, setErrored] = useState(false);
   const [viaProxy, setViaProxy] = useState(!!ephemeral);
-  
-  
   const [src, setSrc] = useState(ephemeral ? null : item.video);
   useEffect(() => {
     if (!viaProxy) { setSrc(item.video); return; }
@@ -382,13 +405,17 @@ function VideoLayer({ item, playing, ephemeral }) {
     return () => { dead = true; };
   }, [viaProxy, item.video, item.page]);
   const [ready, setReady] = useState(false);
+  
   const wants = useRef(playing);
   wants.current = playing;
+
   useEffect(() => {
     setErrored(false); setReady(false);
     const v = ref.current; if (!v || !src) return;                                        
     v.muted = true; v.loop = true;                                                        
     v.preload = "auto";                                                                   
+    
+    if (!src.startsWith("data:")) v.crossOrigin = "anonymous";
     let handle, dead = false;
     createPlayer(v, src, {
       type: /\.m3u8(\?|#|$)/i.test(item.video) ? "hls" : "progressive",
@@ -397,45 +424,82 @@ function VideoLayer({ item, playing, ephemeral }) {
         setReady(true);
         seekStart(v);                                                                     
         if (wants.current) { v.play?.().catch(() => {}); return; }
-        
         v.play?.().then(() => {
           if (dead || wants.current) return;                                              
           v.pause?.();
           seekStart(v);                                                                   
         }).catch(() => {});
       },
-      
-      
       onError: () => { if (dead) return; if (viaProxy) setErrored(true); else setViaProxy(true); },
     }).then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     return () => { dead = true; handle?.destroy?.(); };
   }, [src]);
+
+  
   
   useEffect(() => {
     const v = ref.current; if (!v || !ready) return;
     if (playing) v.play?.().catch(() => {}); else v.pause?.();
   }, [playing, ready]);
+
+  
   useEffect(() => {
-    if (!playing || !ready || item.poster || errored) return;
+    const key = shapeKey(item);
+    if (!ready || !playing || !key) return;
+    const known = shapes.get(key);
+    if (known) { onShape?.(known); return; }
+    const v = ref.current; if (!v) return;
+    let prev = sampleFrame(v), left = 3, id;
+    const tick = () => {
+      const cur = sampleFrame(v);
+      if (v.videoWidth && sameContent(prev, cur)) {
+        const s = { w: v.videoWidth, h: v.videoHeight, rect: cur };
+        shapes.set(key, s); onShape?.(s); return;
+      }
+      prev = cur;
+      if (--left > 0) id = setTimeout(tick, 340);
+    };
+    id = setTimeout(tick, 340);
+    return () => clearTimeout(id);
+  }, [ready, playing, item.video]);
+  useEffect(() => {
+    const v = ref.current, key = shapeKey(item); if (!v || !key) return;
+    const on = () => {
+      const s = shapes.get(key);
+      if (!s || !v.videoWidth || (s.w === v.videoWidth && s.h === v.videoHeight)) return;
+      const next = { ...s, w: v.videoWidth, h: v.videoHeight };
+      shapes.set(key, next); onShape?.(next);
+    };
+    v.addEventListener("resize", on);
+    return () => v.removeEventListener("resize", on);
+  }, [item.video]);
+  useEffect(() => {
+    if (!playing || !ready || item.poster || errored || plan?.fill) return;
     const bg = bgRef.current; if (!bg) return;
     bg.muted = true; bg.loop = true;
     let handle, dead = false;
     createPlayer(bg, src, { onReady: () => { if (!dead) bg.play?.().catch(() => {}); } })
       .then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     return () => { dead = true; handle?.destroy?.(); };
-  }, [playing, ready, src, item.poster, errored]);
-
+  }, [playing, ready, src, item.poster, errored, plan?.fill]);
+  
+  const zoom = plan?.fill && !errored
+    ? `transform:translate(${plan.dx.toFixed(1)}px,${plan.dy.toFixed(1)}px) scale(${plan.scale.toFixed(3)})`
+    : null;
   return html`<${Fragment}>
     ${errored
       ? html`<${PosterFill} poster=${item.poster} />`
-      : item.poster
-        ? html`<img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" onError=${(e) => e.currentTarget.remove()} />`
-        : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
+      : plan?.fill
+        ? null                                                                   
+        : item.poster
+          ? html`<img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" onError=${(e) => e.currentTarget.remove()} />`
+          : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
     <div class="absolute inset-0 bg-black/25" aria-hidden="true"></div>
-    
-    <video ref=${ref} data-main data-playing=${playing ? "" : null} poster=${item.poster || null} playsinline loop muted class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
+    <video ref=${ref} data-main data-playing=${playing ? "" : null} poster=${item.poster || null} playsinline loop muted style=${zoom} class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
   </${Fragment}>`;
 }
+
+
 
 
 function HeartBurst({ x, y, onDone }) {
@@ -454,11 +518,23 @@ function HeartBurst({ x, y, onDone }) {
 }
 
 
-
-
 function Slide({ S, item, idx, active, near, ephemeral }) {
   const secRef = useRef();
   const [burst, setBurst] = useState(null);
+  
+  
+  
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  const [shape, setShape] = useState(() => shapes.get(shapeKey(item)) || null);
+  useLayoutEffect(() => {
+    const el = secRef.current; if (!el) return;
+    const read = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    read();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(read); ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const plan = fitPlan(shape, shape?.rect, box);
   
   
   
@@ -466,10 +542,10 @@ function Slide({ S, item, idx, active, near, ephemeral }) {
     onSingle: () => openFull(S, item),
     onDouble: (p) => { setBurst({ x: p.x, y: p.y, k: Date.now() }); addLike(item); navigator.vibrate?.(12); },
   });
-  return html`<section ref=${secRef} data-reel data-idx=${idx} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
+  return html`<section ref=${secRef} data-reel data-idx=${idx} data-fit=${plan.fill ? "fill" : "box"} data-zoom=${plan.fill ? plan.scale.toFixed(2) : null} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
     
     ${near
-      ? html`<${VideoLayer} item=${item} playing=${active} ephemeral=${ephemeral} />`
+      ? html`<${VideoLayer} item=${item} playing=${active} ephemeral=${ephemeral} plan=${plan} onShape=${setShape} />`
       : item.poster
         ? html`<${PosterFill} poster=${item.poster} />`
         : null}
@@ -486,9 +562,6 @@ function SourceSheet({ S, t }) {
   
   const sr = resolveSearch(norm());
   const search = (e) => { e?.preventDefault?.(); const url = norm(), term = q.trim(); if (url && term) goto(buildSearchUrl(url, term)); };
-  
-  
-  
   
   return html`<${Sheet} open onClose=${() => S.screen.set(null)} title=${T(t, "srcTitle")} icon="lucide:link">
     <form onSubmit=${load} class="flex flex-col gap-3">
@@ -512,6 +585,8 @@ function SourceSheet({ S, t }) {
 
 
 
+
+
 function SourceIsland({ S, t, src, title, subbed, depth, dive, watch }) {
   const act = "btn btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
   return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
@@ -519,20 +594,15 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch }) {
       <${Favicon} url=${src} size="w-6 h-6" />
       
       <span data-island-label class="text-sm text-white truncate min-w-0 pl-0.5 pr-1">${title}</span>
-      
       ${!subbed ? html`<button data-subscribe class=${act} aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: title, url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
-      
-      
       ${watch ? html`<button data-watch class="btn btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")} onClick=${watch}>${Icon("lucide:play", "text-base")}</button>` : null}
-      
       ${dive ? html`<button data-dive class=${act} aria-label=${`${T(t, "dive")}: ${dive.label}`} onClick=${dive.go}>${Icon("lucide:chevron-right", "text-lg")}</button>` : null}
     <//>
   `;
 }
 
+
 function DragReveal({ underRef, diveRef, backRef, target, targetLabel, prev }) {
-  
-  
   return html`<div ref=${underRef} aria-hidden="true" class="fixed inset-0 z-0 sf-inset opacity-0">
     ${prev ? html`<div ref=${backRef} class="absolute inset-y-0 left-0 w-40 flex flex-col items-center justify-center gap-2 px-3 text-center opacity-0">
       ${Icon("lucide:corner-up-left", "text-2xl text-primary")}
@@ -551,13 +621,17 @@ function FeedSurface({ S, t }) {
   const active = useStore($active), next = useStore($next), ephemeral = useStore($ephemeral);
   const src = useStore($src), frames = useStore($frames), subs = useStore($subs), restoreTo = useStore($restoreTo);
   const title = useStore($srcTitle);
+  
   const screen = useStore(S.screen);
   const suspended = screen === "full";
   const underRef = useRef(), diveRef = useRef(), backRef = useRef();
   const target = diveTarget(items[active], src);
+  
+  
   const targetLabel = target ? sourceTitle(target, { hint: items[active]?.title }) : "";
   const prev = frames.length ? frames[frames.length - 1] : null;
 
+  
   
   
   const { paneRef, pan } = usePanX({
@@ -577,7 +651,6 @@ function FeedSurface({ S, t }) {
     if (!booted) { booted = true; if (!gate) loadSource($src.get()); }
     else if ($active.get() > 0) $restoreTo.set($active.get());        
     
-    
     const root = document.documentElement;
     root.setAttribute("data-feed", "");
     return () => root.removeAttribute("data-feed");
@@ -591,15 +664,12 @@ function FeedSurface({ S, t }) {
     root.querySelectorAll("[data-idx]").forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, [items]);                                                        
-  
-  
   useLayoutEffect(() => {
     if (restoreTo == null) return;
     const el = paneRef.current;
     if (el) el.scrollTop = restoreTo * (el.clientHeight || 0);
     $restoreTo.set(null);
   }, [restoreTo, items]);
-
   const body = loading
     ? html`<section class="h-[100dvh] w-full"><${Pixels} cls="w-full h-full" /></section>`
     : err
@@ -608,10 +678,10 @@ function FeedSurface({ S, t }) {
         ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/60 px-8 text-center">${Icon("lucide:film", "text-5xl")}<div>${T(t, "empty")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
         : items.map((it, i) => html`<${Slide} S=${S} item=${it} idx=${i} active=${i === active && !suspended} near=${Math.abs(i - active) <= PRELOAD} ephemeral=${it.eph != null ? it.eph : ephemeral} key=${(it.orig || it.video) + i} />`);
   
-  
   const cur = items[active];
   const watch = cur ? (cur.page || cur.orig || cur.video) : null;
   const dive = target ? { label: targetLabel, go: () => diveTo(S, target, cur?.title) } : null;
+
   return html`<${Fragment}>
     <${DragReveal} underRef=${underRef} diveRef=${diveRef} backRef=${backRef} target=${target} targetLabel=${targetLabel} prev=${prev} />
     
@@ -631,6 +701,8 @@ export function reel({ S }) {
     ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }
+
+
 
 
 
@@ -671,8 +743,6 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
 
 
 
-
-
 function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, t }) {
   const hot = g.items.some((s) => s.url === curSrc);
   const shell = `rounded-2xl ${hot ? "bg-primary/10 sf-e3" : "sf-raised sf-e2"}`;
@@ -695,6 +765,7 @@ function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, t }) {
     </ul>
   </section>`;
 }
+
 export function sources({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const subs = useStore($subs), curSrc = useStore($src), watchedN = useStore($watched).size;
@@ -702,16 +773,17 @@ export function sources({ S }) {
   const subbedUrls = new Set(subs.map((x) => x.url));
   const mine = groupByDomain(subs);
   const discover = groupByDomain(PRESETS.filter((p) => !subbedUrls.has(p.url)));
-
   return html`<${Fragment}>
     <div class="flex flex-col gap-4 @container">
       <button id="add-url" class="btn btn-primary rounded-2xl gap-2" onClick=${() => S.screen.set("source")}>${Icon("lucide:plus")} ${T(t, "addUrl")}</button>
+
       <div class="flex flex-col gap-2.5">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:bookmark", "text-primary")} ${T(t, "subs")}</div>
         ${mine.length
           ? mine.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => unsubscribe(s.url)} t=${t} key=${g.domain} />`)
           : html`<div class="text-sm text-base-content/70 px-1 py-3">${T(t, "noSubs")}</div>`}
       </div>
+
       ${discover.length ? html`<div class="flex flex-col gap-2.5">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:compass")} ${T(t, "discover")}</div>
         ${discover.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => subscribe(s)} t=${t} key=${g.domain} />`)}

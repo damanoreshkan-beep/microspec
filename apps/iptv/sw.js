@@ -1,6 +1,6 @@
 self.MS = {
   app: "iptv",
-  version: "93f5595a66",
+  version: "0f3ec8d2f5",
   precache: [
     "./",
     "./i18n/en.json",
@@ -12,7 +12,6 @@ self.MS = {
     "./spec.json",
     "./view.js",
     "/_rt/apk.js",
-    "/_rt/aspect.js",
     "/_rt/build.js",
     "/_rt/db.js",
     "/_rt/enrich.js",

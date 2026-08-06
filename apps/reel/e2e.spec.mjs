@@ -6,13 +6,13 @@ export default [
   {
     name: "стрічка рендериться; биті чорні/пласкі постери й дублікати відфільтровано", run: async (h) => {
       await ready(h);
-      h.expect(await settles(h, 4), "фільтри не звели стрічку до 4 чистих слайдів (дубль/чорний/плаский постер лишились)");
+      h.expect(await settles(h, 3), "фільтри не звели стрічку до 3 чистих слайдів (дубль/чорний/плаский постер лишились)");
     },
   },
   {
     name: "наступне відео вже змонтоване і буферизується; грає рівно одне", run: async (h) => {
       await ready(h);
-      h.expect(await settles(h, 4), "стрічка не влаштувалась на 4 слайдах");
+      h.expect(await settles(h, 3), "стрічка не влаштувалась на 3 слайдах");
       const mains = await h.count("video[data-main]");
       h.expect(mains >= 2, `змонтовано ${mains} відео — сусідній слайд не преload-иться, свайп знову почне з нуля`);
       h.expect(mains <= 3, `змонтовано ${mains} відео — вікно ширше за PRELOAD, це вже витрата декодерів`);
@@ -27,7 +27,7 @@ export default [
   {
     name: "тап по рілзу відкриває повний кліп поверх стрічки, і Back його закриває", run: async (h) => {
       await ready(h);
-      h.expect(await settles(h, 4), "стрічка не влаштувалась на 4 слайдах");
+      h.expect(await settles(h, 3), "стрічка не влаштувалась на 3 слайдах");
       h.expect((await h.count('[role="dialog"]')) === 0, "оверлей уже відкритий до тапу");
       await h.tap("[data-reel]"); await h.wait(500);
       h.expect((await h.count('[role="dialog"]')) === 1, "тап по слайду не відкрив повний кліп");
@@ -39,23 +39,6 @@ export default [
     },
   },
   {
-    
-    name: "кадрування: портретний кліп заповнює екран, ландшафтний лишається в рамці", run: async (h) => {
-      await ready(h);
-      h.expect(await settles(h, 4), "стрічка не влаштувалась на 4 слайдах");
-      let fit = "";
-      for (let i = 0; i < 16; i++) { fit = await h.attr('[data-reel][data-idx="0"]', "data-fit"); if (fit === "fill") break; await h.wait(300); }
-      h.expect(fit === "fill", `слайд 0 лишився «${fit}» — вертикальний вміст у 16:9 файлі не розпізнано, екран досі в рамці`);
-      const zoom = Number(await h.attr('[data-reel][data-idx="0"]', "data-zoom"));
-      h.expect(zoom > 3 && zoom < 4.5, `масштаб ${zoom} — вміст 20x36 у 64x36 файлі має дати ≈3.85 на телефонному екрані`);
-      
-      const tr = await h.css('[data-reel][data-idx="0"] video[data-main]', "transform");
-      h.expect(/^matrix\(/.test(tr || "") && Math.abs(parseFloat(tr.slice(7)) - zoom) < 0.05, `transform на відео = «${tr}», масштаб не застосовано`);
-      h.expect((await h.count('[data-reel][data-idx="0"] video[aria-hidden="true"]')) === 0, "під кліпом, що заповнив екран, лишився ambient-декодер");
-      h.expect((await h.count('[data-reel][data-idx="0"] img[aria-hidden="true"]')) === 0, "під кліпом, що заповнив екран, лишилась розмита заливка");
-    },
-  },
-  {
     name: "hero: дубльованої кнопки джерел нема (лишився лише таб)", run: async (h) => {
       await ready(h);
       h.expect((await h.count("#source")) === 0, "плаваюча кнопка-дубль #source не прибрана з hero");
@@ -64,9 +47,11 @@ export default [
   },
   {
     
+    
+    
     name: "поверхня: на слайді нема жодного контролу — все живе в нижньому острівці", run: async (h) => {
       await ready(h);
-      await settles(h, 4);
+      await settles(h, 3);
       h.expect((await h.count("[data-reel] a")) === 0, "на слайді лишилось посилання (відкрити оригінал)");
       h.expect((await h.count("[data-reel] button")) === 0, "на слайді лишилась кнопка");
       
@@ -80,13 +65,14 @@ export default [
   {
     name: "провалювання: свайп-чіп відкриває сторінку рілзу як нове джерело, назад — той самий список", run: async (h) => {
       await ready(h);
-      await settles(h, 4);
+      await settles(h, 3);
       h.expect((await h.count("[data-dive]")) >= 1, "на слайді немає цілі провалювання (data-dive)");
       h.expect((await h.count("[data-feed-back]")) === 0, "на нульовому рівні не має бути кнопки «назад»");
       const root = await h.text("[data-island-label]");
       const chip = await h.attr("[data-dive]", "aria-label");
-      h.expect(/Standing tall/.test(chip), `кнопка провалювання підписана «${chip}» — має нести назву самого рілзу, а не форму URL`);
+      h.expect(/Big Buck Bunny/.test(chip), `кнопка провалювання підписана «${chip}» — має нести назву самого рілзу, а не форму URL`);
       await h.tap("[data-dive]"); await h.wait(600);
+      
       h.expect(await settles(h, 2), "провалювання не завантажило стрічку сторінки, на якій лежить рілз");
       h.expect((await h.text("[data-island-label]")) !== root, `острівець лишився на «${root}» — джерело не змінилось`);
       
@@ -94,13 +80,13 @@ export default [
       
       
       const lvl = await h.text("[data-island-label]");
-      h.expect(lvl === "Standing tall in 4K & Friends", `острівець показує «${lvl}» замість справжньої назви сторінки «Standing tall in 4K & Friends»`);
+      h.expect(lvl === "Big Buck Bunny in 4K & Friends", `острівець показує «${lvl}» замість справжньої назви сторінки «Big Buck Bunny in 4K & Friends»`);
       h.expect(!/%[0-9A-Fa-f]{2}|&[a-z]+;|&#/.test(lvl), `в назві джерела лишились нерозкодовані символи: «${lvl}»`);
       h.expect((await h.count("[data-feed-back]")) === 1, "після провалювання немає кнопки повернення");
       
       await h.tap("[data-feed-back]"); await h.wait(500);
       h.expect((await h.text("[data-island-label]")) === root, "повернення не відновило попереднє джерело");
-      h.expect(await settles(h, 4), "повернувся не той самий список із 4 слайдів");
+      h.expect(await settles(h, 3), "повернувся не той самий список із 3 слайдів");
       h.expect((await h.count("[data-feed-back]")) === 0, "кнопка повернення лишилась на нульовому рівні");
     },
   },

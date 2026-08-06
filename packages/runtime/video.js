@@ -1,7 +1,6 @@
 import { html } from "htm/preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { media } from "./i18n.js";
-import { fitPlan } from "./aspect.js";
 import { Pixels } from "./skeleton.js";
 import { wakeLock } from "./sensors.js";
 import { resumeAt } from "./playback.js";
@@ -40,14 +39,13 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
 }
 
 
-
-export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime, type = null, fill = false }) {
-  const ref = useRef(), boxRef = useRef(), stageRef = useRef();
+export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime, type = null }) {
+  const ref = useRef(), boxRef = useRef();
   const [state, setState] = useState("loading");   
-  const [fit, setFit] = useState("contain");
   const [fs, setFs] = useState(false);
   const canPip = typeof document !== "undefined" && document.pictureInPictureEnabled;
   const canFs = typeof document !== "undefined" && !!(document.fullscreenEnabled || document.documentElement?.requestFullscreen);
+
   useEffect(() => {
     const v = ref.current; if (!v) return;
     let handle, dead = false;
@@ -62,27 +60,14 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
       .then((h) => { handle = h; if (dead) h.destroy(); });
     return () => { dead = true; handle?.destroy(); };
   }, [url, type]);
-  
-  
-  
-  useEffect(() => {
-    if (!fill) return;
-    const v = ref.current, box = stageRef.current; if (!v || !box) return;
-    const decide = () => setFit(fitPlan({ w: v.videoWidth, h: v.videoHeight }, null, { w: box.clientWidth, h: box.clientHeight }).fill ? "cover" : "contain");
-    decide();
-    v.addEventListener("loadedmetadata", decide);
-    v.addEventListener("resize", decide);
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(decide) : null;
-    ro?.observe(box);
-    return () => { v.removeEventListener("loadedmetadata", decide); v.removeEventListener("resize", decide); ro?.disconnect(); };
-  }, [fill, url]);
+
   
   
   useEffect(() => {
     const lock = wakeLock.acquire();
     return () => lock.release();
   }, []);
-
+  
   useEffect(() => {
     if (!onTime) return;
     const id = setInterval(() => {
@@ -113,9 +98,8 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
       ${state === "playing" && canFs ? html`<button id="player-fs" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media(fs ? "exitFullscreen" : "fullscreen", locale)} onClick=${full}><iconify-icon icon=${fs ? "lucide:minimize" : "lucide:maximize"} class="text-lg"></iconify-icon></button>` : null}
       ${state !== "error" ? html`<a href=${url} target="_blank" rel="noopener" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media("openExternal", locale)}><iconify-icon icon="lucide:external-link" class="text-lg"></iconify-icon></a>` : null}
     </header>
-    <div ref=${stageRef} class="flex-1 relative flex items-center justify-center overflow-hidden">
-      <video ref=${ref} controls autoplay playsinline poster=${poster || ""} data-fit=${fill ? fit : null}
-        class=${`bg-black ${fill ? `absolute inset-0 w-full h-full ${fit === "cover" ? "object-cover" : "object-contain"}` : "w-full max-h-full"} ${state === "playing" ? "" : "opacity-0 pointer-events-none"}`}></video>
+    <div class="flex-1 relative flex items-center justify-center overflow-hidden">
+      <video ref=${ref} controls autoplay playsinline poster=${poster || ""} class=${`w-full max-h-full bg-black ${state === "playing" ? "" : "opacity-0 pointer-events-none"}`}></video>
       ${state === "loading" ? html`<div class="absolute inset-0"><${Pixels} cls="w-full h-full" /><div class="absolute inset-0 flex items-center justify-center text-white/70 text-sm">${media("loading", locale)}</div></div>` : null}
       ${state === "error" ? html`<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/70 p-6 text-center">
         <iconify-icon icon="lucide:tv-minimal-play" class="text-5xl opacity-40"></iconify-icon>

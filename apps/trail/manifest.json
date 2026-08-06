@@ -1,0 +1,43 @@
+{
+  "name": "trail",
+  "short_name": "trail",
+  "description": "День, записаний самим телефоном, а потім надрукований. Встановлений застосунок тримає фонову службу, тож трек переживає вимкнений екран — а там, де запис не слухав, лінія рветься, замість вигадувати середину. Місяць днів стає одним аркушем: кожен день — одна позначка, усі в одному масштабі, тож довгий день і виглядає довгим. Запис і малювання на твоєму пристрої, офлайн, і нікуди не вивантажується.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#2A2A2E",
+  "background_color": "#2A2A2E",
+  "lang": "uk",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

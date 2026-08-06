@@ -1,0 +1,18 @@
+{
+  "id": "trail",
+  "theme": "signal",
+  "category": "creative",
+  "accent": "#5E8CA8",
+  "tabs": [
+    { "id": "month", "type": "tool", "icon": "lucide:grid-3x3", "label": "tabMonth", "view": "trailMonth" },
+    { "id": "today", "type": "tool", "icon": "lucide:circle-dot", "label": "tabToday", "view": "trailToday", "fit": true },
+    { "id": "me", "type": "profile", "icon": "lucide:route", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:route",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "permissions": ["geolocation", "backgroundLocation", "background", "notifications"]
+  }
+}

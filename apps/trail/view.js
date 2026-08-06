@@ -275,7 +275,7 @@ function DayCanvas(points, box, cls, pad = 0) {
     .filter((pts) => pts.length > 1)
     .map((pts) => pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" "));
   return html`<svg viewBox=${`0 0 ${W} ${H.toFixed(1)}`} preserveAspectRatio="xMidYMid meet" class=${cls} role="img" aria-hidden="true">
-    ${strokes.map((d, i) => html`<path key=${i} d=${d} fill="none" stroke="var(--app-accent)" stroke-width="1.4"
+    ${strokes.map((d, i) => html`<path key=${i} d=${d} fill="none" stroke="var(--app-accent)" stroke-width="1.8"
       stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />`)}
   </svg>`;
 }
@@ -335,12 +335,12 @@ export function trailMonth({ t, S, screen, openScreen, closeScreen, toast, confi
               onClick=${() => openScreen(`day:${id}`)}>
               ${isHome(d.points)
                 ? html`<svg viewBox="0 0 100 100" class="w-full h-full" aria-hidden="true"><circle cx="50" cy="50" r="9" fill="var(--app-accent)"/></svg>`
-                : DayCanvas(d.points, boxAround(centre(bbox(d.points)), span, span), "w-full h-full", 4)}
+                : DayCanvas(d.points, boxAround(centre(bbox(d.points)), span, span), "w-full h-full", 2)}
             </button>`;
           })}
         </div>`}
 
-    ${inMonth.length ? html`<p class="text-[var(--ms-label)] text-base-content/70">${T(t, "legend")} ${T(t, "oneScale")}.</p>` : null}
+    ${inMonth.length ? html`<p class="text-[var(--ms-label)] text-base-content/70">${T(t, "legend")}</p>` : null}
 
     ${inMonth.length ? html`<button class="btn btn-outline rounded-2xl gap-2" onClick=${() => exportMonth(inMonth, span, label, total, t, toast)}>
       ${Icon("lucide:download")}${T(t, "export")}</button>` : null}

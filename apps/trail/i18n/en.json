@@ -3,7 +3,6 @@
   "tabToday": "Today",
   "tabMonth": "Month",
   "tabMe": "About",
-
   "needAppTitle": "A recorder needs the app",
   "needAppBody": "Browser location stops the moment the page goes to the background, so a day recorded in a tab is a day full of holes. The installed app runs a foreground service instead, and keeps going with the screen off.",
   "oldAppTitle": "The app is older than this page",
@@ -11,7 +10,6 @@
   "needGrantTitle": "Location, all the time",
   "needGrantBody": "Android gives \"while using the app\" from a dialog. \"All the time\" comes only from settings, and that is the one a day needs.",
   "needGrantCta": "Open settings",
-
   "start": "Start the day",
   "stop": "Stop",
   "recording": "Recording",
@@ -22,16 +20,13 @@
   "statLost": "Lost",
   "lostBody": "Taken by the service while this screen was gone. Drawn as a gap rather than guessed at.",
   "nothingYet": "No movement yet",
-
   "monthPrev": "Previous month",
   "monthNext": "Next month",
   "days": "days",
-  "legend": "A dot is a day that stayed home. Blank was never recorded.",
-  "oneScale": "One scale for the month",
+  "legend": "A dot stayed home, blank was never recorded — and the whole month is drawn at one scale.",
   "export": "Export poster",
   "exportDay": "Export day",
   "saved": "Saved",
-
   "dayStops": "Stops",
   "dayGaps": "Gaps",
   "atHome": "A day at home",
@@ -43,7 +38,6 @@
   "deleteBody": "The track and the poster drawn from it. This cannot be undone.",
   "deleteVerb": "Delete",
   "deleted": "Day deleted",
-
   "profTagline": "A day recorded by the phone itself, then printed. The installed app keeps a foreground service running, so the track survives the screen going off — and where the recorder was not listening the line breaks instead of inventing the middle. A month of days becomes one sheet: every day a single mark, all of them at one scale, so a long day looks long. Recorded and drawn on your device, offline, and never uploaded anywhere.",
   "profTheme": "Dark theme",
   "profLang": "Language",

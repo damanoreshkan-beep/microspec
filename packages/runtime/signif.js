@@ -1,6 +1,6 @@
 import { signOf, ELEMENT, MODALITY } from "./synastry.js";
 
-export const CORPUS = 3;
+export const CORPUS = 4;
 
 export const RULERS = [
   ["mars"], ["venus"], ["mercury"], ["moon"], ["sun"], ["mercury"],
@@ -362,6 +362,35 @@ export function spanLabel(fromMs, toMs) {
   if (months < 18) return `about ${months} month${months === 1 ? "" : "s"}`;
   const years = (days / 365.25).toFixed(1).replace(/\.0$/, "");
   return `about ${years} years`;
+}
+
+const SKY_MAX = 4;
+export function groundSky({ dateEN, houseSystem, contacts = [], moon = null, max = SKY_MAX }) {
+  const sorted = [...contacts].sort((a, b) => a.c.orb - b.c.orb);
+  const shown = sorted.slice(0, max);
+  const lines = shown.map(({ c, transitLon, retro, natalHouse }) => {
+    const tb = BODY[c.t], nb = BODY[c.n], na = ANGLE[c.n];
+    const phase = c.applying == null ? "" : c.applying ? ", applying (building toward exact)" : ", separating (the exact contact has passed)";
+    const H = natalHouse ? HOUSE[natalHouse - 1] : null;
+    return `- transiting ${nameEN(c.t)}${retro ? " (retrograde)" : ""} in ${deg(transitLon)} ${c.type} natal ${nameEN(c.n)} in ${deg(c.natalLon)}${natalHouse ? `, house ${natalHouse}` : ""} — orb ${c.orb.toFixed(2)}°${phase}.
+    ${nameEN(c.t)} is what arrives: as a transit it ${tb.act[en]}. How long this one lasts: ${tb.tempo[en]}. Under strain: ${tb.strain[en]}.
+    The ${c.type}: ${ASPECT[c.type][en]}.
+    ${na ? `${nameEN(c.n)} is the point touched: ${na.topic[en]} (${na.axis[en]}).` : `Natal ${nameEN(c.n)} is the function touched: ${nb.role[en]}.`}${H ? ` House ${natalHouse} is the field of life it happens in (${houseSystem} houses): ${H.topic[en]}; traditionally "${H.trad[en]}".` : ""}${retro ? ` ${nameEN(c.t)} is retrograde: ${RETRO_NOTE[en]}.` : ""}`;
+  });
+  const moonLine = moon
+    ? `THE DAY'S FASTEST HAND: the transiting Moon is at ${deg(moon.lon)}${moon.house ? `, crossing natal house ${moon.house} (${HOUSE[moon.house - 1].topic[en]})` : ""}. The Moon ${BODY.moon.act[en]}. Its tempo: ${BODY.moon.tempo[en]}. This colours the day itself, not the period.`
+    : "";
+  const head = shown.length
+    ? `CONTACTS — the transiting bodies touching this chart on ${dateEN}, tightest orb first${sorted.length > shown.length ? ` (the ${shown.length} tightest of ${sorted.length} in range)` : ""}:\n${lines.join("\n")}`
+    : `CONTACTS: no transiting body is within orb of a natal point on ${dateEN}. Say that plainly — a quiet sky is a real reading, not a missing one — and read the day from the Moon below. Do not substitute a contact that is not listed here.`;
+  const text = `${HEAD}
+THE SKY ON ${dateEN}, read against this natal chart (${houseSystem} houses).
+${head}${moonLine ? `\n${moonLine}` : ""}
+MEANINGS above come from the app's sourced corpus. Lead with the tightest applying contact, because that is
+the one arriving rather than leaving. Every sentence must be ABOUT one of the contacts named above — if a
+sentence would read the same for a different chart, it does not belong in this reading.`;
+  const sig = `s${CORPUS}|${dateEN}|${houseSystem}|${shown.map(({ c, retro }) => `${c.t}${retro ? "r" : ""}-${c.type}-${c.n}-${c.orb.toFixed(1)}-${c.applying == null ? "x" : c.applying ? "a" : "s"}`).join(",")}|${moon ? `m${signOf(moon.lon)}h${moon.house || 0}` : "-"}`;
+  return { text, sig };
 }
 
 export function groundTransit({ c, transitLon, natalHouse, houseSystem, retro, dateEN, hits = [] }) {

@@ -29,7 +29,7 @@ export async function askAI(text, locale, mode, extra) {
   });
   if (!r.ok) throw new Error("status " + r.status);
   const j = await r.json();
-  return { text: (j && typeof j.text === "string") ? j.text.trim() : "", truncated: !!(j && j.truncated) };
+  return { text: (j && typeof j.text === "string") ? j.text.trim() : "", truncated: !!(j && j.truncated), ungrounded: !!(j && j.ungrounded) };
 }
 
 export function reading(ns, mode) {
@@ -42,8 +42,8 @@ export function reading(ns, mode) {
     if (key in cache || pending.has(tag)) return;
     pending.add(tag);
     try {
-      const { text: out, truncated } = await askAI(text, locale, mode, extra);
-      if (out && !truncated) { cache[key] = out; persist(ns, locale, cache); aiTick.set(aiTick.get() + 1); }
+      const { text: out, truncated, ungrounded } = await askAI(text, locale, mode, extra);
+      if (out && !truncated && !ungrounded) { cache[key] = out; persist(ns, locale, cache); aiTick.set(aiTick.get() + 1); }
     } catch {  }
     finally { pending.delete(tag); }
   };

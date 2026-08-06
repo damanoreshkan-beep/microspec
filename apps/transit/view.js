@@ -16,7 +16,7 @@ import { interpret, warmInterpret, isInterpreted, transitRead, warmTransitRead, 
   houseRead, warmHouseRead, isHouseRead, askedRead, warmAskedRead, isAskedRead, aiTick } from "/_rt/ai-astro.js";
 import { BODY, SIGN, HOUSE, ASPECT as ASPECT_MEAN, ANGLE, DIGNITY, RULERS, ELEMENT_NAME, ELEMENT_MEANS,
   MODALITY_NAME, MODALITY_MEANS, RETRO_NOTE, dignityOf, chartRuler, rulerOf, balance, say,
-  groundTransit, groundPlacement, groundPortrait, groundCusp, groundQuestion, QUESTIONS, questionById } from "/_rt/signif.js";
+  groundSky, groundTransit, groundPlacement, groundPortrait, groundCusp, groundQuestion, QUESTIONS, questionById } from "/_rt/signif.js";
 import { ELEMENT, MODALITY } from "/_rt/synastry.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
@@ -34,7 +34,6 @@ const dm = (lon) => { const d = degIn(lon), g = Math.floor(d); return `${g}°${S
 const ASPECT_HUE = { soft: "var(--color-success)", hard: "var(--color-error)", neutral: "var(--color-base-content)" };
 const ASPECT_DASH = { soft: "", hard: "2 2.4", neutral: "0.6 2" };
 const ASPECT_KEY = { conjunction: "aspConjunction", sextile: "aspSextile", square: "aspSquare", trine: "aspTrine", opposition: "aspOpposition" };
-const SIGN_EN = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
 const CHIPS = [[0, "today"], [1, "tomorrow"]];
 const SCRUB = 365;                                      
 const pad2 = (n) => String(n).padStart(2, "0");
@@ -843,15 +842,25 @@ function BirthSheet({ open, onClose, t, locale }) {
 
 
 
+
+
+
+
+
+
 function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
   if (!open) return null;
-  const name = (k) => k === "asc" ? "the Ascendant" : k === "mc" ? "the Midheaven" : (BODIES[k]?.name || k);
-  const natalLine = (p) => `${name(p.key)} in ${SIGN_EN[signOf(p.lon)]} ${Math.floor(degIn(p.lon))}° (house ${houseOf(p.lon, C.H.cusps)})`;
-  const hitLine = (a) => `transiting ${name(a.t)} ${a.type} natal ${name(a.n)} (orb ${a.orb.toFixed(1)}°${a.applying == null ? "" : a.applying ? ", applying" : ", separating"})`;
   const dateEN = C.when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  const input = `Transits for ${dateEN}.\nNatal chart: ${C.natal.map(natalLine).join("; ")}; Ascendant in ${SIGN_EN[signOf(C.H.asc)]} ${Math.floor(degIn(C.H.asc))}°; Midheaven in ${SIGN_EN[signOf(C.H.mc)]} ${Math.floor(degIn(C.H.mc))}°.\nTransits: ${C.hits.length ? C.hits.map(hitLine).join("; ") + "." : "none within orb."}`;
-  const sig = `${dateEN}|${Math.round(C.H.asc)}|${C.hits.map((a) => `${a.t}-${a.n}-${a.type}-${Math.round(a.orb)}`).join(",")}`;
-
+  const skyLon = Object.fromEntries(C.sky.map((p) => [p.key, p.lon]));
+  const contacts = C.hits.map((c) => ({
+    c,
+    transitLon: skyLon[c.t],
+    retro: C.retro(c.t, skyLon[c.t]),
+    natalHouse: ANGLE[c.n] ? null : houseOf(c.natalLon, C.H.cusps),
+  })).filter((x) => x.transitLon != null);
+  const moonLon = skyLon.moon;
+  const moon = moonLon == null ? null : { lon: moonLon, house: houseOf(moonLon, C.H.cusps), retro: false };
+  const { text: input, sig } = groundSky({ dateEN, houseSystem: C.system, contacts, moon });
   return html`<${Sheet} id="interpsheet" open=${true} onClose=${onClose} title=${T(t, "interpTitle")} subtitle=${dateLabel} icon="lucide:sparkles">
       <${Reading} sig=${sig} input=${input} loc=${loc} api=${AI_SKY} t=${t}
         gateText=${GATE_INTERP[loc] || GATE_INTERP.en} lines=${[30, 34, 28, 20]} />

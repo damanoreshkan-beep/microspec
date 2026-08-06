@@ -126,7 +126,10 @@ function sampleMonth() {
   const rnd = mulberry32(0x7241_1c);
   const now = new Date();
   const days = new Map();
-  const lastDay = Math.min(now.getDate(), new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate());
+  /* The WHOLE month, not "up to today". Seeding only elapsed days made the fixture a function of the
+     calendar: on the 6th the grid held six marks in thirty-one cells, so the shot, the breakpoint matrix
+     and axe all measured a sparse poster, and the e2e caught it only because the month was young. */
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   for (let d = 1; d <= lastDay; d++) {
     if (rnd() < 0.22) continue;                                   // a day nobody recorded stays blank
     const id = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(d)}`;
@@ -138,9 +141,13 @@ function sampleMonth() {
     let hx = (rnd() - 0.5), hy = (rnd() - 0.5);
     const points = [];
     const gapAt = d % 9 === 4 ? Math.floor(n / 2) : -1;            // one day a month loses its middle
+    // A degree of longitude at 50°N is 0.64 of a degree of latitude, so equal steps in DEGREES draw a walk
+    // squashed flat. The first fixture stepped lon 5:3 against lat on top of that and every seeded day came
+    // out a horizontal wisp — the shapes a poster is made of, generated wrong.
+    const kLon = 1 / Math.cos(50.45 * Math.PI / 180);
     for (let i = 0; i < n; i++) {
       hx += (rnd() - 0.5) * 0.6; hy += (rnd() - 0.5) * 0.6;
-      lat += hy * reach / n * 3; lon += hx * reach / n * 5;
+      lat += hy * reach / n * 4; lon += hx * reach / n * 4 * kLon;
       const skip = gapAt >= 0 && i > gapAt && i < gapAt + 12;
       if (!skip) points.push({ lat, lon, acc: 8 + rnd() * 14, at: base + i * 300_000 });
     }
@@ -172,14 +179,13 @@ function sharedSpan(days) {
   return span;
 }
 
-function strokesFor(points, span, size, pad = 0) {
+/** A day's OWN window, slightly grown so the ink is not flush against the frame. The month grid does not
+ *  use this — it shares one square window on purpose — but every single-day drawing does. */
+function ownBox(points, grow = 1.08) {
   const b = bbox(points);
-  if (!b) return [];
-  const box = boxAround(centre(b), span, span);
-  return segments(points)
-    .map((seg) => project(simplify(seg, 8), { box, width: size, height: size, pad }))
-    .filter((pts) => pts.length > 1)
-    .map((pts) => pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" "));
+  if (!b) return null;
+  const s = spanM(b);
+  return boxAround(centre(b), Math.max(s.w, MIN_SPAN_M) * grow, Math.max(s.h, MIN_SPAN_M) * grow);
 }
 
 const km = (m) => (m >= 10_000 ? Math.round(m / 1000) : Math.round(m / 100) / 10);
@@ -210,7 +216,6 @@ export function trailToday({ t, S }) {
       () => shell.call("system.settings", { page: "location" }).catch(() => {}));
   }
 
-  const span = Math.max(MIN_SPAN_M, ...(bbox(today.points) ? [spanM(bbox(today.points)).w, spanM(bbox(today.points)).h] : [0]));
   return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
     <div class="shrink-0 grid grid-cols-3 gap-[var(--ms-gap)]" data-live>
       ${Stat(T(t, "statDistance"), `${km(dist)}`, "km")}
@@ -220,7 +225,7 @@ export function trailToday({ t, S }) {
 
     <div class="flex-1 min-h-0 relative rounded-[var(--ms-r)] overflow-hidden bg-base-200/40">
       ${today.points.length > 1
-        ? DayCanvas(today, span, "absolute inset-0 w-full h-full")
+        ? DayCanvas(today.points, ownBox(today.points), "absolute inset-0 w-full h-full p-2")
         : html`<div class="absolute inset-0 grid place-items-center text-base-content/70 text-[var(--ms-label)]">${T(t, "nothingYet")}</div>`}
     </div>
 
@@ -250,12 +255,26 @@ const Gate = (t, titleKey, bodyKey, ctaKey, onCta) => html`<div class="h-full mi
   <//>
 </div>`;
 
-/** The day as one stroke per segment. `viewBox` is a square in trace.js's own coordinates, so the SVG
- *  scales with its box and the geometry never has to know how many pixels it got. */
-function DayCanvas(day, span, cls) {
-  const S = 100;
-  const strokes = strokesFor(day.points, span, S, 6);
-  return html`<svg viewBox="0 0 ${S} ${S}" preserveAspectRatio="xMidYMid meet" class=${cls} role="img" aria-hidden="true">
+/**
+ * The day as one stroke per segment. The BOX is the caller's, because the two screens want different ones:
+ * the month grid shares one square window so that magnitude compares across days, and a single day gets its
+ * own so the ink fills the stage.
+ *
+ * The viewBox takes that box's aspect rather than being square. A square viewBox inside a tall container
+ * letterboxes TWICE — once fitting the square, once fitting a flat walk inside it — which is how a day that
+ * filled its data's frame arrived on screen as a wisp across the middle of a void. Measured on the first
+ * shot: roughly a tenth of the stage. `vector-effect` keeps the stroke one width whatever the box does.
+ */
+function DayCanvas(points, box, cls, pad = 0) {
+  if (!box) return null;
+  const s = spanM(box);
+  const W = 100;
+  const H = Math.max(14, Math.min(700, s.w > 0 && s.h > 0 ? (100 * s.h) / s.w : 100));
+  const strokes = segments(points)
+    .map((seg) => project(simplify(seg, 8), { box, width: W, height: H, pad }))
+    .filter((pts) => pts.length > 1)
+    .map((pts) => pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" "));
+  return html`<svg viewBox=${`0 0 ${W} ${H.toFixed(1)}`} preserveAspectRatio="xMidYMid meet" class=${cls} role="img" aria-hidden="true">
     ${strokes.map((d, i) => html`<path key=${i} d=${d} fill="none" stroke="var(--app-accent)" stroke-width="1.4"
       stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />`)}
   </svg>`;
@@ -279,7 +298,10 @@ export function trailMonth({ t, S, screen, openScreen, closeScreen, toast, confi
   const first = new Date(y, mo - 1, 1);
   const lead = (first.getDay() + 6) % 7;                       // Monday-first, like every calendar here
   const count = new Date(y, mo, 0).getDate();
-  const label = first.toLocaleDateString(S.locale.get() === "uk" ? "uk-UA" : "en-GB", { month: "long", year: "numeric" });
+  // Capitalise the first letter only. A `capitalize` class raised the abbreviation too, so uk's
+  // "серпень 2026 р." reached the header as "Серпень 2026 Р.".
+  const raw = first.toLocaleDateString(S.locale.get() === "uk" ? "uk-UA" : "en-GB", { month: "long", year: "numeric" });
+  const label = raw.charAt(0).toUpperCase() + raw.slice(1);
 
   const openId = screen && screen.startsWith("day:") ? screen.slice(4) : null;
   const open = openId ? days.get(openId) : null;
@@ -290,7 +312,7 @@ export function trailMonth({ t, S, screen, openScreen, closeScreen, toast, confi
     <div class="flex items-center gap-2">
       <button class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "monthPrev")} onClick=${() => shift(-1)}>${Icon("lucide:chevron-left")}</button>
       <div class="flex-1 min-w-0">
-        <div class="font-medium truncate capitalize">${label}</div>
+        <div class="font-medium truncate">${label}</div>
         <div class="text-[var(--ms-label)] text-base-content/70 font-mono">${km(total)} km · ${inMonth.length} ${T(t, "days")}</div>
       </div>
       <button class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "monthNext")} onClick=${() => shift(1)}>${Icon("lucide:chevron-right")}</button>
@@ -304,13 +326,16 @@ export function trailMonth({ t, S, screen, openScreen, closeScreen, toast, confi
             const id = `${month}-${pad2(i + 1)}`;
             const d = days.get(id);
             const has = d && d.points.length > 0;
-            if (!has) return html`<div key=${id} class="aspect-square rounded-md bg-base-200/30" aria-hidden="true"></div>`;
+            // A hairline on EVERY cell, recorded or not. Without it the month has no structure at all: the
+            // first shot was six wisps floating in a void, because a 30%-opacity fill is invisible at
+            // this size and the calendar the grid is supposed to be simply was not there.
+            if (!has) return html`<div key=${id} class="aspect-square rounded-md border border-base-content/10" aria-hidden="true"></div>`;
             return html`<button key=${id} data-day=${id} aria-label=${id}
-              class="aspect-square rounded-md bg-base-200/50 active:scale-95 transition p-0.5"
+              class="aspect-square rounded-md border border-base-content/15 bg-base-200/40 active:scale-95 transition p-0.5"
               onClick=${() => openScreen(`day:${id}`)}>
               ${isHome(d.points)
-                ? html`<svg viewBox="0 0 100 100" class="w-full h-full" aria-hidden="true"><circle cx="50" cy="50" r="7" fill="var(--app-accent)"/></svg>`
-                : DayCanvas(d, span, "w-full h-full")}
+                ? html`<svg viewBox="0 0 100 100" class="w-full h-full" aria-hidden="true"><circle cx="50" cy="50" r="9" fill="var(--app-accent)"/></svg>`
+                : DayCanvas(d.points, boxAround(centre(bbox(d.points)), span, span), "w-full h-full", 4)}
             </button>`;
           })}
         </div>`}
@@ -329,7 +354,7 @@ export function trailMonth({ t, S, screen, openScreen, closeScreen, toast, confi
 
 function DayDetail(day, t, toast, confirm, closeScreen) {
   const home = isHome(day.points);
-  const span = Math.max(MIN_SPAN_M, ...(bbox(day.points) ? [spanM(bbox(day.points)).w, spanM(bbox(day.points)).h] : [0]));
+  const box = ownBox(day.points);
   const pause = stops(day.points);
   const breaks = Math.max(0, segments(day.points).length - 1);
 
@@ -339,7 +364,7 @@ function DayDetail(day, t, toast, confirm, closeScreen) {
         ? html`<div class="w-full h-full grid place-items-center text-center px-6">
             <div><div class="font-medium">${T(t, "atHome")}</div>
             <p class="text-[var(--ms-label)] text-base-content/70 mt-1">${T(t, "atHomeBody")}</p></div></div>`
-        : DayCanvas(day, span, "w-full h-full")}
+        : DayCanvas(day.points, box, "w-full h-full p-3")}
     </div>
 
     <div class="grid grid-cols-3 gap-[var(--ms-gap)]">
@@ -351,7 +376,7 @@ function DayDetail(day, t, toast, confirm, closeScreen) {
     ${day.lost ? html`<p class="text-[var(--ms-label)] text-base-content/70">${T(t, "lostBody")}</p>` : null}
 
     <div class="flex gap-2">
-      <button class="btn btn-outline flex-1 rounded-2xl gap-2" onClick=${() => exportDay(day, span, t, toast)}>
+      <button class="btn btn-outline flex-1 rounded-2xl gap-2" onClick=${() => exportDay(day, box, toast)}>
         ${Icon("lucide:download")}${T(t, "exportDay")}</button>
       <button class="btn btn-ghost text-error rounded-2xl gap-2" data-haptic="bump"
         onClick=${() => confirm({
@@ -404,11 +429,11 @@ function save(c, name, toast) {
   c.toBlob((blob) => { if (blob) { downloadBlob(blob, name); toast?.("saved"); } }, "image/png");
 }
 
-function exportDay(day, span, t, toast) {
+function exportDay(day, box, toast) {
   const { c, x } = paper(SHEET, Math.round(SHEET * 1.3));
   const size = SHEET - SHEET / 7;
   const strokes = segments(day.points)
-    .map((s) => project(simplify(s, 4), { box: boxAround(centre(bbox(day.points)), span, span), width: size, height: size }))
+    .map((s) => project(simplify(s, 4), { box, width: size, height: size }))
     .filter((p) => p.length > 1);
   x.save();
   x.translate(SHEET / 14, SHEET / 14);

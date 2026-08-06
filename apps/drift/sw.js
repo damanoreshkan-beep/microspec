@@ -3,7 +3,7 @@
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
   app: "drift",
-  version: "a99c680b66",
+  version: "ddd223a953",
   precache: [
     "./",
     "./i18n/en.json",
@@ -18,7 +18,6 @@ self.MS = {
     "./viz.js",
     "/_rt/ambient.js",
     "/_rt/apk.js",
-    "/_rt/aspect.js",
     "/_rt/audio.js",
     "/_rt/build.js",
     "/_rt/db.js",

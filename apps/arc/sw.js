@@ -3,7 +3,7 @@
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
   app: "arc",
-  version: "634edcfe38",
+  version: "337919cacc",
   precache: [
     "./",
     "./curated.js",
@@ -21,7 +21,6 @@ self.MS = {
     "/_rt/ai-books.js",
     "/_rt/ai-core.js",
     "/_rt/apk.js",
-    "/_rt/aspect.js",
     "/_rt/build.js",
     "/_rt/chat.js",
     "/_rt/db.js",

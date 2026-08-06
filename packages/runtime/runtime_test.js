@@ -46,7 +46,7 @@ import { aspects, ASPECTS } from "./aspects.js";
 import { resolve, isComplete, parseDate, parseTime, EMPTY } from "./birth.js";
 import { translit, isCyrillic, toPlace, placeLabel, formatCoords } from "./places.js";
 import { zoneOffset, knownZone, zonedToUTC, parseOffset, formatOffset, lmtOffset, houses, houseOf, HOUSE_SYSTEMS, placidusDefined, transits, transitAspect, separation, exactHits, TRANSIT_ORB, TRANSIT_ASPECTS, HIT_PRECISION, norm360, wrap180 } from "./natal.js";
-import { BODY as sgBODY, SIGN as sgSIGN, HOUSE as sgHOUSE, ASPECT as sgASPECT, ANGLE as sgANGLE, DIGNITY as sgDIGNITY, dignityOf as sgDignity, chartRuler as sgChartRuler, balance as sgBalance, groundTransit as sgGroundTransit, groundPlacement as sgGroundPlacement, groundPortrait as sgGroundPortrait, groundCusp as sgGroundCusp, rulerOf as sgRulerOf, spanLabel as sgSpan, QUESTIONS as sgQUESTIONS, questionById as sgQuestionById, groundQuestion as sgGroundQuestion } from "./signif.js";
+import { BODY as sgBODY, SIGN as sgSIGN, HOUSE as sgHOUSE, ASPECT as sgASPECT, ANGLE as sgANGLE, DIGNITY as sgDIGNITY, dignityOf as sgDignity, chartRuler as sgChartRuler, balance as sgBalance, CORPUS as sgCORPUS, groundSky as sgGroundSky, groundTransit as sgGroundTransit, groundPlacement as sgGroundPlacement, groundPortrait as sgGroundPortrait, groundCusp as sgGroundCusp, rulerOf as sgRulerOf, spanLabel as sgSpan, QUESTIONS as sgQUESTIONS, questionById as sgQuestionById, groundQuestion as sgGroundQuestion } from "./signif.js";
 import { resumeAt, RESUME_MIN } from "./playback.js";
 import { logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, advanceTerrain, Parallax, seedFrame, sampleBand, idle, fib, galaxyDisc } from "./spectrum.js";
 import { RippleField, ring, RIPPLE_DEFAULTS } from "./ripple.js";
@@ -4859,6 +4859,71 @@ Deno.test("signif/balance: a plain unweighted count over the bodies actually sho
   assertEquals(b.topElement, 0);
   assertEquals(b.topModality, 0);
   assertEquals(sgBalance([]).elements, [0, 0, 0, 0]);
+});
+
+// The sky reading is the one that had no corpus at all, and it produced the failure written up above
+// `groundSky`: two live replies out of three named none of the three contacts they were handed. The block
+// itself cannot make a model use its data — that part is the prompt's job and the server's check — but it
+// can make sure the data is THERE, ordered, and carrying its meaning next to it.
+Deno.test("signif/groundSky: the day's contacts, tightest first, each with its corpus entry", () => {
+  const saturn = { t: "saturn", n: "sun", type: "square", nature: "hard", angle: 90, natalLon: 102.4, orb: 1.3, applying: true };
+  const mercury = { t: "mercury", n: "moon", type: "trine", nature: "soft", angle: 120, natalLon: 333.1, orb: 0.6, applying: false };
+  const jupiter = { t: "jupiter", n: "venus", type: "sextile", nature: "soft", angle: 60, natalLon: 125.2, orb: 2.4, applying: true };
+  const contacts = [
+    { c: jupiter, transitLon: 248.3, retro: false, natalHouse: 11 },
+    { c: saturn, transitLon: 22.7, retro: false, natalHouse: 10 },
+    { c: mercury, transitLon: 133.9, retro: true, natalHouse: 6 },
+  ];
+  const moon = { lon: 155.2, house: 12, retro: false };
+  const g = sgGroundSky({ dateEN: "7 Aug 2026", houseSystem: "placidus", contacts, moon });
+
+  assert(g.text.includes("Use ONLY the facts and meanings below"), "the closed-world instruction is missing");
+  for (const s of ["transiting Saturn", "transiting Mercury", "transiting Jupiter"]) {
+    assert(g.text.includes(s), `${s} is missing from the block`);
+  }
+  // Tightest orb first — the model is told to open on it, so the order has to be true before the instruction
+  // means anything. Mercury 0.6 < Saturn 1.3 < Jupiter 2.4, deliberately supplied in the wrong order above.
+  const at = (s) => g.text.indexOf(s);
+  assert(at("transiting Mercury") < at("transiting Saturn"), "contacts must be sorted by orb, tightest first");
+  assert(at("transiting Saturn") < at("transiting Jupiter"), "contacts must be sorted by orb, tightest first");
+
+  assert(/29 and a half years/.test(g.text), "the tempo must reach the model, or a Saturn transit reads like a mood");
+  assert(g.text.includes("applying (building toward exact)"), "the phase carries which contact is arriving");
+  assert(g.text.includes("separating"), "and which one is leaving");
+  assert(g.text.includes("house 10"), "the natal house is the field of life the contact happens in");
+  assert(g.text.includes("(placidus houses)"), "the house system must be named — Placidus and whole-sign disagree");
+  assert(g.text.includes("retrograde"), "a retrograde transit must say so");
+  assert(g.text.includes("crossing natal house 12"), "the Moon's own house is the day's field");
+
+  // The signature is the half of this that was actually broken: the sky reading used to build its own key at
+  // the call site, with no corpus version in it, so changing a meaning could never expire a cached reading.
+  assert(g.sig.startsWith(`s${sgCORPUS}|`), `the corpus version must ride in the key, got: ${g.sig}`);
+  assertEquals(sgGroundSky({ dateEN: "7 Aug 2026", houseSystem: "placidus", contacts, moon }).sig, g.sig, "the key must be stable");
+  assert(sgGroundSky({ dateEN: "8 Aug 2026", houseSystem: "placidus", contacts, moon }).sig !== g.sig, "the date must vary the key");
+  assert(sgGroundSky({ dateEN: "7 Aug 2026", houseSystem: "whole", contacts, moon }).sig !== g.sig, "the house system must vary the key");
+  assert(sgGroundSky({ dateEN: "7 Aug 2026", houseSystem: "placidus", contacts, moon: { ...moon, house: 1 } }).sig !== g.sig, "the Moon's house must vary the key");
+
+  // An angle is a place, not a body: no house, no "strain", and nothing reached out of BODY for it.
+  const ang = sgGroundSky({ dateEN: "7 Aug 2026", houseSystem: "placidus", moon,
+    contacts: [{ c: { ...saturn, n: "asc", natalLon: 187.2 }, transitLon: 22.7, retro: false, natalHouse: null }] });
+  assert(ang.text.includes("natal Ascendant"), "the angle is missing");
+  assert(!/house null|house 0\b/.test(ang.text), "an angle must not print a null house");
+
+  // A capped list must SAY it is capped, or the model reads six contacts as the whole sky.
+  const many = sgGroundSky({ dateEN: "7 Aug 2026", houseSystem: "placidus", moon,
+    contacts: Array.from({ length: 9 }, (_, i) => ({ c: { ...saturn, orb: i * 0.3 }, transitLon: 22.7, retro: false, natalHouse: 10 })) });
+  assert(many.text.includes("the 4 tightest of 9 in range"), `the cap must be stated, got: ${many.text.slice(0, 200)}`);
+  // The cap exists to keep the block under the mode's input cap (8 000 chars on the edge). A real chart with
+  // 17 contacts in range builds ~4 100 characters here; this is the guard that stops it creeping back up.
+  assert(many.text.length < 6000, `the block must stay well inside the mode cap, got ${many.text.length}`);
+
+  // A quiet sky is a real reading. The failure to avoid is a model filling the silence with a contact that
+  // is not there, so the block says it outright and hands over the Moon.
+  const quiet = sgGroundSky({ dateEN: "7 Aug 2026", houseSystem: "placidus", contacts: [], moon });
+  assert(quiet.text.includes("no transiting body is within orb"), "a quiet sky must be stated plainly");
+  assert(quiet.text.includes("Do not substitute a contact that is not listed"), "and the substitution must be forbidden");
+  assert(quiet.text.includes("THE DAY'S FASTEST HAND"), "the Moon is what a quiet day is read from");
+  assert(quiet.sig !== g.sig, "a quiet sky is a different reading and a different key");
 });
 
 Deno.test("signif/groundTransit: the block is closed-world, and the signature moves with the facts", () => {

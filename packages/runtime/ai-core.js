@@ -46,8 +46,9 @@ export function persist(ns, locale, obj) {
 }
 
 // The one wire call. `mode` selects the server-side system prompt; `extra` carries whatever else that mode
-// needs in the body (`level`, `turns`, `locked`). Returns the text AND whether the provider hit its token
-// ceiling — the caller needs the second one to know not to cache a stump.
+// needs in the body (`level`, `turns`, `locked`). Returns the text AND the two ways the server can tell us
+// this answer is not worth keeping: `truncated` (it hit the token ceiling) and `ungrounded` (it named none
+// of the factors it was given, and re-asking did not fix it). Both mean the same thing to the cache.
 export async function askAI(text, locale, mode, extra) {
   const r = await fetch(AI, {
     method: "POST",
@@ -56,7 +57,7 @@ export async function askAI(text, locale, mode, extra) {
   });
   if (!r.ok) throw new Error("status " + r.status);
   const j = await r.json();
-  return { text: (j && typeof j.text === "string") ? j.text.trim() : "", truncated: !!(j && j.truncated) };
+  return { text: (j && typeof j.text === "string") ? j.text.trim() : "", truncated: !!(j && j.truncated), ungrounded: !!(j && j.ungrounded) };
 }
 
 // reading(ns, mode) → { get, has, warm } — a cached, deduped, fail-open synthesis capability.
@@ -78,10 +79,12 @@ export function reading(ns, mode) {
     if (key in cache || pending.has(tag)) return;
     pending.add(tag);
     try {
-      const { text: out, truncated } = await askAI(text, locale, mode, extra);
+      const { text: out, truncated, ungrounded } = await askAI(text, locale, mode, extra);
       // A reply cut off mid-word is indistinguishable from a short one once it is in the cache, and the
-      // cache is permanent. Leave it out: a miss retries, a cached stump never does.
-      if (out && !truncated) { cache[key] = out; persist(ns, locale, cache); aiTick.set(aiTick.get() + 1); }
+      // cache is permanent. Leave it out: a miss retries, a cached stump never does. `ungrounded` is the
+      // same bargain for the other failure — a reading that named none of its factors survived the server's
+      // corrective pass, and thirty days of serving it is worse than one empty sheet with a retry on it.
+      if (out && !truncated && !ungrounded) { cache[key] = out; persist(ns, locale, cache); aiTick.set(aiTick.get() + 1); }
     } catch { /* fail-open: leave uncached so a later warm can retry */ }
     finally { pending.delete(tag); }
   };

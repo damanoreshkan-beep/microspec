@@ -278,7 +278,7 @@ from data the app already has; nothing is invented to fill a heading.
 
 ## 10. What stops a grounded reading from drifting
 
-Five controls, in order of how much they actually buy:
+Six controls, in order of how much they actually buy:
 
 1. **The facts layer is not AI.** Every sheet renders the computed configuration and the corpus keywords
    from local data. The model's failure mode is a missing paragraph, never a wrong fact.
@@ -292,6 +292,11 @@ Five controls, in order of how much they actually buy:
 5. **A truncated reply is never cached** (the `acts` lesson): a stump is worse than a miss, because a miss
    retries and a cached stump is forever. This used to be true for `acts`/`ask` only; the `reading()` factory
    in `ai-core.js` now makes it true everywhere by construction.
+6. **A groundedness floor the server can measure** (`groundedCheck`, ai-prompts.js): of the bodies the input
+   supplied, how many does the reply NAME? Below the floor it is re-asked once with its own answer in the
+   thread; still below, it is returned flagged `ungrounded` and kept out of both caches. Added last and
+   listed last because it buys the least *when the other five are working* — and because it is the only one
+   that catches the failure in §10a, which the other five are structurally unable to see.
 
 ### Two failures the live route actually produced, and what fixed them
 
@@ -313,6 +318,84 @@ neither would have been caught by a "do not invent" instruction alone.
 Both are the same lesson in different clothes — **the model does not have to leave the grounding to say
 something untrue about you.** Whatever a reading can compute or assume for itself has to be supplied, or
 forbidden.
+
+## 10a. The third failure: a reading that invented nothing and said nothing (2026-08-06)
+
+The owner sent back a live sky reading and said it had no substance. He was right, and the interesting part
+is that **every control in §10 passed it.** It invented no planet, derived no number, assigned no gender,
+was not truncated. It simply was not about the chart:
+
+> Цього дня ти перевіряєш, перш ніж підпустити інших до своїх ідей чи емоцій… Ти прагнеш глибшого
+> розуміння та зв'язку… але водночас ти відчуваєш потребу усамітнитись…
+
+Three separate faults sat behind it, and only the first is obvious once seen.
+
+**The prompt was quoting itself.** «ти перевіряєш, перш ніж підпустити» is, word for word, the illustration
+GROUND_RULES carried of how to phrase the direct register. The model took the example of HOW TO PHRASE and
+used it as WHAT TO SAY. This generalises past astrology and is the most portable thing in this note: **an
+instruction written in the OUTPUT language, in the output's register, at the output's length, is
+indistinguishable from output.** A style rule may name the grammatical move; it may not hand over a finished
+sentence in the target language. Both locales lost their illustrations.
+
+**The sky mode had no corpus.** It was the only one of the six sending bare coordinates — a natal list and a
+contact list, meanings left to whatever the model had absorbed. Sending the whole natal chart made it worse:
+ten placements the reading was never going to use are ten invitations to write about something else.
+`groundSky()` now builds the same kind of block as its five siblings, from the contacts only.
+
+**And its prompt could not be failed.** The siblings each state an order of thought whose steps are visible
+in the answer — the transit prompt demands a duration, the house prompt demands the ruler's placement.
+"Розкрий головний мотив дня" cannot be failed, so nothing ever failed it. It also described an input it no
+longer received ("the planets and the aspects between them" is a *mundane* sky reading; the client sends
+transits against a natal chart), and a model handed a mismatch resolves it the cheap way — it writes the
+reading the prompt described.
+
+### What the numbers actually were
+
+One chart, 7 Aug 2026, three contacts supplied, `POST /feed/ai` on the deployed edge:
+
+| | provider | contacts named |
+|---|---|---|
+| before | gemini-2.5-flash | **0** of 3 |
+| before | gemini-2.5-flash-lite | 3 of 3 |
+| before | gemini-2.5-flash | **0** of 3 |
+| after | gemini-2.5-flash | 3 |
+| after | gemini-2.5-flash | 3 |
+| after | gemini-2.5-flash | 4 |
+
+Two things in that table matter more than the improvement. **The primary provider was the one that drifted**
+— the weaker `-lite` model was the one using its data, so a single control run against whichever model
+answered first would have said the route was fine. And **one run of three looked correct before any fix**,
+which is exactly how a systematic failure gets recorded as a fluke.
+
+### The failure the fix uncovered
+
+Re-measuring found something the first three probes could not have shown, *because none of them named a
+factor at all*: once the readings started naming things, they had to TRANSLATE the names. The grounding
+blocks are English by construction — that is what keeps one cache signature valid across both locales — so
+every Ukrainian name in the output is the model's own work. Two of three grounded replies rendered
+**"Midheaven" as «Середньовіччя»**, which is the Middle Ages. A third opened with «Найсхідніший контакт
+цього дня» — "the most *eastern* contact", a mistranslation of «найтісніший» wrapped around a stage
+direction that was never meant to be spoken aloud.
+
+The planets came through clean (Плутон, Меркурій, Сатурн, Венера); it is the **angles** that have no
+everyday Ukrainian and invite a guess. So the uk rules carry a glossary for the five of them and name the
+mistranslation as the trap it is, and both locales now forbid narrating the brief. Neither fault was
+reachable by any gate: the replies were well-formed, grounded, and passed the new check. It took reading the
+Ukrainian.
+
+### Two things this changed structurally
+
+**`CORPUS` 3 → 4, and the sky reading's signature finally contains it.** The old key was hand-built at the
+call site (`view.js`) out of the date, the Ascendant and the contacts — no corpus version, unlike the other
+five, which take theirs from `groundX()`. So no change to a meaning or a prompt could ever have expired a
+cached sky reading; every browser would have kept serving the old voice forever. `groundSky` returns the
+pair, which is the whole reason the builders return `{ text, sig }` together.
+
+**The block is measured, not estimated.** A real chart on an ordinary day had 17 contacts inside the 3°
+range; at six contacts the block came to 5 988 characters against the mode's 6 000-character cap — twelve
+short of silently losing its own composition rules off the end, which looks exactly like a model ignoring
+instructions. The list caps at four (all a 3–4 sentence reading can name, and it states that it is capped)
+and the mode's cap went to 8 000.
 
 ## 11. Two structural changes this required
 

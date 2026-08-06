@@ -40,7 +40,12 @@ import { signOf, ELEMENT, MODALITY } from "./synastry.js";
 // which together produced the flat, could-be-anyone register the owner called out. Nothing about the corpus
 // or the facts changed, so the signature inputs would not have moved on their own — and every reading
 // already cached in a browser would have kept its old voice forever.
-export const CORPUS = 3;
+//
+// 4: the SKY reading gained a corpus (`groundSky` below). It had never had one — it was the only mode sent
+// bare coordinates — and it was also the only mode whose signature was hand-built at the call site without
+// this constant in it, so nothing about the fix would have expired a single cached reading. The two facts
+// are the same oversight seen from two ends, and the same edit closes both.
+export const CORPUS = 4;
 
 // Planetary rulership, index 0=Aries..11=Pisces: the traditional ruler FIRST, then the modern outer
 // co-ruler where one is assigned — Scorpio = Mars & Pluto, Aquarius = Saturn & Uranus, Pisces = Jupiter &
@@ -492,6 +497,68 @@ export function spanLabel(fromMs, toMs) {
   if (months < 18) return `about ${months} month${months === 1 ? "" : "s"}`;
   const years = (days / 365.25).toFixed(1).replace(/\.0$/, "");
   return `about ${years} years`;
+}
+
+// THE WHOLE SKY on a date, read against the chart — the wheel tab's one-paragraph reading.
+//
+// This builder exists because of a measured failure, and it is worth writing down what the failure WAS. The
+// sky reading was the only one of the six sending the model bare coordinates and no corpus: a list of natal
+// placements and a list of contacts, with the meanings left for the model to supply from whatever it had
+// absorbed. Three live probes against the deployed route, same chart, 7 Aug 2026:
+//
+//   gemini-2.5-flash       — named ZERO of the three contacts. "Сьогодні ви відчуваєте внутрішню потребу
+//                            переглянути свій публічний імідж…"  (house 10, paraphrased, unattributed)
+//   gemini-2.5-flash-lite  — named all three, correctly.
+//   gemini-2.5-flash       — named ZERO. "Цього дня ти відчуваєш напругу між особистими амбіціями…"
+//
+// So the primary provider was the one that drifted, and it drifted in the one direction that cannot be
+// caught by a closed-world rule: it added no false fact, it simply declined to use the true ones. Every
+// sentence was defensible and none of them was about this chart. The fix is the same as everywhere else in
+// this file — hand the model the MEANING of each factor next to the factor, so that writing about the
+// contact is easier than writing around it, and (in the prompt) require each sentence to name what it reads.
+//
+//   contacts  [{ c, transitLon, retro, natalHouse }] — `c` from natal.js `transits()`; `natalHouse` is the
+//             house the NATAL point falls in, or null when that point IS an angle. Sorted here, tightest
+//             first, and capped — the count is stated so the model knows it is not seeing the whole sky.
+//   moon      { lon, house, retro } — the transiting Moon. Always supplied when it is on the wheel, contact
+//             or no contact: it is the day's tempo, and on a day with nothing else in orb it is the only
+//             honest thing the reading has to stand on.
+// FOUR, and the number is measured rather than chosen. A real chart on an ordinary day had 17 contacts
+// inside the 3° range; at six the block came to 5 988 characters against the mode's 6 000-character cap —
+// twelve characters from silently losing its own composition rules off the end, which is the failure this
+// registry's header warns about and the one that looks exactly like a model ignoring instructions. Four
+// contacts is also all a 3–4 sentence reading can name, so the cap that matters is the reading's, not the
+// transport's. (The mode's cap was raised to 8 000 in the same edit, so the margin is now real either way.)
+const SKY_MAX = 4;
+export function groundSky({ dateEN, houseSystem, contacts = [], moon = null, max = SKY_MAX }) {
+  const sorted = [...contacts].sort((a, b) => a.c.orb - b.c.orb);
+  const shown = sorted.slice(0, max);
+  const lines = shown.map(({ c, transitLon, retro, natalHouse }) => {
+    const tb = BODY[c.t], nb = BODY[c.n], na = ANGLE[c.n];
+    const phase = c.applying == null ? "" : c.applying ? ", applying (building toward exact)" : ", separating (the exact contact has passed)";
+    const H = natalHouse ? HOUSE[natalHouse - 1] : null;
+    return `- transiting ${nameEN(c.t)}${retro ? " (retrograde)" : ""} in ${deg(transitLon)} ${c.type} natal ${nameEN(c.n)} in ${deg(c.natalLon)}${natalHouse ? `, house ${natalHouse}` : ""} — orb ${c.orb.toFixed(2)}°${phase}.
+    ${nameEN(c.t)} is what arrives: as a transit it ${tb.act[en]}. How long this one lasts: ${tb.tempo[en]}. Under strain: ${tb.strain[en]}.
+    The ${c.type}: ${ASPECT[c.type][en]}.
+    ${na ? `${nameEN(c.n)} is the point touched: ${na.topic[en]} (${na.axis[en]}).` : `Natal ${nameEN(c.n)} is the function touched: ${nb.role[en]}.`}${H ? ` House ${natalHouse} is the field of life it happens in (${houseSystem} houses): ${H.topic[en]}; traditionally "${H.trad[en]}".` : ""}${retro ? ` ${nameEN(c.t)} is retrograde: ${RETRO_NOTE[en]}.` : ""}`;
+  });
+  const moonLine = moon
+    // `tempo` is a noun phrase in the corpus ("27 days round the chart, …"), so it reads as a LABEL and not
+    // as a predicate. Every other builder uses it after a colon for that reason; splicing it into a clause
+    // ("and it 27 days round the chart") produced the one sentence in the block that was not English.
+    ? `THE DAY'S FASTEST HAND: the transiting Moon is at ${deg(moon.lon)}${moon.house ? `, crossing natal house ${moon.house} (${HOUSE[moon.house - 1].topic[en]})` : ""}. The Moon ${BODY.moon.act[en]}. Its tempo: ${BODY.moon.tempo[en]}. This colours the day itself, not the period.`
+    : "";
+  const head = shown.length
+    ? `CONTACTS — the transiting bodies touching this chart on ${dateEN}, tightest orb first${sorted.length > shown.length ? ` (the ${shown.length} tightest of ${sorted.length} in range)` : ""}:\n${lines.join("\n")}`
+    : `CONTACTS: no transiting body is within orb of a natal point on ${dateEN}. Say that plainly — a quiet sky is a real reading, not a missing one — and read the day from the Moon below. Do not substitute a contact that is not listed here.`;
+  const text = `${HEAD}
+THE SKY ON ${dateEN}, read against this natal chart (${houseSystem} houses).
+${head}${moonLine ? `\n${moonLine}` : ""}
+MEANINGS above come from the app's sourced corpus. Lead with the tightest applying contact, because that is
+the one arriving rather than leaving. Every sentence must be ABOUT one of the contacts named above — if a
+sentence would read the same for a different chart, it does not belong in this reading.`;
+  const sig = `s${CORPUS}|${dateEN}|${houseSystem}|${shown.map(({ c, retro }) => `${c.t}${retro ? "r" : ""}-${c.type}-${c.n}-${c.orb.toFixed(1)}-${c.applying == null ? "x" : c.applying ? "a" : "s"}`).join(",")}|${moon ? `m${signOf(moon.lon)}h${moon.house || 0}` : "-"}`;
+  return { text, sig };
 }
 
 // One transit contact. `c` is a contact from natal.js `transits()`. `hits` are the resolved exact instants

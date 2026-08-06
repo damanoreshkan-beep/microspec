@@ -30,7 +30,7 @@ import { interpret, warmInterpret, isInterpreted, transitRead, warmTransitRead, 
   houseRead, warmHouseRead, isHouseRead, askedRead, warmAskedRead, isAskedRead, aiTick } from "/_rt/ai-astro.js";
 import { BODY, SIGN, HOUSE, ASPECT as ASPECT_MEAN, ANGLE, DIGNITY, RULERS, ELEMENT_NAME, ELEMENT_MEANS,
   MODALITY_NAME, MODALITY_MEANS, RETRO_NOTE, dignityOf, chartRuler, rulerOf, balance, say,
-  groundTransit, groundPlacement, groundPortrait, groundCusp, groundQuestion, QUESTIONS, questionById } from "/_rt/signif.js";
+  groundSky, groundTransit, groundPlacement, groundPortrait, groundCusp, groundQuestion, QUESTIONS, questionById } from "/_rt/signif.js";
 import { ELEMENT, MODALITY } from "/_rt/synastry.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
@@ -52,7 +52,6 @@ const dm = (lon) => { const d = degIn(lon), g = Math.floor(d); return `${g}°${S
 const ASPECT_HUE = { soft: "var(--color-success)", hard: "var(--color-error)", neutral: "var(--color-base-content)" };
 const ASPECT_DASH = { soft: "", hard: "2 2.4", neutral: "0.6 2" };
 const ASPECT_KEY = { conjunction: "aspConjunction", sextile: "aspSextile", square: "aspSquare", trine: "aspTrine", opposition: "aspOpposition" };
-const SIGN_EN = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
 // Two presets and a calendar. A ±week/±month jump is a guess at which day someone means; the two days that
 // are named in a language ("today", "tomorrow") are the ones worth a chip, and everything else is a DATE —
 // so the third control is the platform's own picker rather than a fourth approximation.
@@ -953,16 +952,31 @@ function BirthSheet({ open, onClose, t, locale }) {
 
 // ── the AI reading of the transits against the chart ───────────────────────────────────────────────────
 
-// The model interprets ONLY the structured facts below — natal placements, the angles, and the transit
-// contacts with their orbs — in canonical English, so the cache signature is locale-independent.
+// The model interprets ONLY the structured facts below — the transit contacts, the natal points they touch,
+// and the corpus meaning of every piece — in canonical English, so the cache signature is locale-independent.
+//
+// This used to hand over a bare coordinate dump: the whole natal chart as a list, then the contacts as a
+// second list, and no meanings at all. It was the only one of the six readings built that way, and it was
+// the only one that came back sounding like a horoscope column — three live probes are recorded above
+// `groundSky` in signif.js, and two of the three named not one of the three contacts they were given.
+// Sending the natal list was itself part of the problem: ten placements the reading was never going to use
+// are ten invitations to write about something other than the day. The block now carries the contacts, the
+// Moon, and the corpus entry for each — nothing that is not being read.
 function InterpSheet({ open, onClose, C, t, loc, dateLabel }) {
   if (!open) return null;
-  const name = (k) => k === "asc" ? "the Ascendant" : k === "mc" ? "the Midheaven" : (BODIES[k]?.name || k);
-  const natalLine = (p) => `${name(p.key)} in ${SIGN_EN[signOf(p.lon)]} ${Math.floor(degIn(p.lon))}° (house ${houseOf(p.lon, C.H.cusps)})`;
-  const hitLine = (a) => `transiting ${name(a.t)} ${a.type} natal ${name(a.n)} (orb ${a.orb.toFixed(1)}°${a.applying == null ? "" : a.applying ? ", applying" : ", separating"})`;
   const dateEN = C.when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  const input = `Transits for ${dateEN}.\nNatal chart: ${C.natal.map(natalLine).join("; ")}; Ascendant in ${SIGN_EN[signOf(C.H.asc)]} ${Math.floor(degIn(C.H.asc))}°; Midheaven in ${SIGN_EN[signOf(C.H.mc)]} ${Math.floor(degIn(C.H.mc))}°.\nTransits: ${C.hits.length ? C.hits.map(hitLine).join("; ") + "." : "none within orb."}`;
-  const sig = `${dateEN}|${Math.round(C.H.asc)}|${C.hits.map((a) => `${a.t}-${a.n}-${a.type}-${Math.round(a.orb)}`).join(",")}`;
+  const skyLon = Object.fromEntries(C.sky.map((p) => [p.key, p.lon]));
+  const contacts = C.hits.map((c) => ({
+    c,
+    transitLon: skyLon[c.t],
+    retro: C.retro(c.t, skyLon[c.t]),
+    natalHouse: ANGLE[c.n] ? null : houseOf(c.natalLon, C.H.cusps),
+  })).filter((x) => x.transitLon != null);
+  // The Moon rides along even when nothing it does is in orb — it is the day's own tempo, and on a quiet
+  // sky it is the only honest thing the reading has left to stand on. It can be filtered off the wheel.
+  const moonLon = skyLon.moon;
+  const moon = moonLon == null ? null : { lon: moonLon, house: houseOf(moonLon, C.H.cusps), retro: false };
+  const { text: input, sig } = groundSky({ dateEN, houseSystem: C.system, contacts, moon });
 
   return html`<${Sheet} id="interpsheet" open=${true} onClose=${onClose} title=${T(t, "interpTitle")} subtitle=${dateLabel} icon="lucide:sparkles">
       <${Reading} sig=${sig} input=${input} loc=${loc} api=${AI_SKY} t=${t}

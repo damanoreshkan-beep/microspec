@@ -1,7 +1,7 @@
 // microspec runtime — pure-logic unit tests (no browser, no import map).
 //   deno test -A packages/runtime/runtime_test.js
 import { clusterMetrics, hubOfCross, DIAMOND, DIAMOND_KEY, DIAMOND_BOX, PAIR, PAIR_KEY, PAIR_BOX } from "./deck.js";
-import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
+import { assert, assertAlmostEquals, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { validateSpec } from "./validate.js";
 import { cycleRepeat as tpCycleRepeat, advance as tpAdvance, clock as tpClock } from "./player.js";
 import { parseInput as pinParse, ladder as pinLadder, readPins as pinRead, ratio as pinRatio } from "./pinterest.js";
@@ -31,6 +31,7 @@ import { qrMatrix } from "./qrcode.js";
 import { classify as pidClassify, httpInfo as pidHttpInfo, tlsRecord as pidTlsRecord, textOf as pidTextOf, portRange as pidPortRange, orderPorts as pidOrder, tallyPorts as pidTally } from "./portid.js";
 import { fitResolution, sizeFor, estimateSeconds, QUALITY, DEFAULT, MAX_SIDE, AR } from "./imgsize.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "./vfilter.js";
+import { fitPlan, frameContent, sameContent } from "./aspect.js";
 import { resolveSearch, buildSearchUrl } from "./urlquery.js";
 import { PLANETS, squareFor, isMagic, magicConstant, distill, normalize, sigilPath, hash32, smooth } from "./sigil.js";
 import { sha1hex, splitHash, parseRange, lookup, checkPassword } from "./pwned.js";
@@ -1432,6 +1433,102 @@ Deno.test("vfilter isFlatSample: real textured content keeps the clip (fail towa
   const night = Array(64).fill([3, 3, 3]); night[40] = [230, 220, 200];
   assert(!isFlatSample(vpx(night)), "night scene with a highlight → kept");
   assert(!isFlatSample(new Uint8ClampedArray(0)), "empty sample → not flat (fail toward keep)");
+});
+
+// ---- aspect: what is actually INSIDE the file, and how to frame it -----------------------------------------
+// The measured shape these exist for (apps/reel/RESEARCH.md §7): a vertical clip's preview ships as a 320x180
+// file with the portrait frame pillarboxed inside it, so the container, the DAR and the poster all say 16:9.
+// A frame builder: paint(x, y) → [r,g,b] over an sw×sh sample, in the row-major order getImageData returns.
+const vframe = (sw, sh, paint) => {
+  const a = new Uint8ClampedArray(sw * sh * 4);
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
+    const [r, g, b] = paint(x, y), i = (y * sw + x) * 4;
+    a[i] = r; a[i + 1] = g; a[i + 2] = b; a[i + 3] = 255;
+  }
+  return a;
+};
+// a 64x36 sample of a pillarboxed clip: black bars, 20 bright cells of content in the middle — i.e. 100x180
+// inside a 320x180 file, which is the geometry cropdetect measured on the real previews (`crop=100:180:108:0`)
+const PILLAR = { l: 22, r: 42 };
+const pillarFrame = (bars = [0, 0, 0], body = (x, y) => [90 + (x * 3) % 120, 140, 200]) =>
+  vframe(64, 36, (x, y) => (x < PILLAR.l || x >= PILLAR.r ? bars : body(x, y)));
+
+Deno.test("aspect frameContent: a pillarboxed frame reports the content box, not the file", () => {
+  const c = frameContent(pillarFrame(), 64, 36);
+  assert(c, "centred black bars either side of bright content → a content box");
+  assertAlmostEquals(c.x, 22 / 64, 1e-9, "left bar");
+  assertAlmostEquals(c.w, 20 / 64, 1e-9, "content width");
+  assertEquals([c.y, c.h], [0, 1], "a pillarbox leaves the full height");
+});
+
+Deno.test("aspect frameContent: an unpadded frame answers with the whole box (a vertical clip has no bars)", () => {
+  const full = frameContent(vframe(64, 36, (x) => [40 + x * 2, 120, 160]), 64, 36);
+  assertEquals([full?.x, full?.y, full?.w, full?.h], [0, 0, 1, 1], "no bars → the frame IS the content");
+});
+
+Deno.test("aspect frameContent: a letterbox is read on the other axis", () => {
+  const c = frameContent(vframe(64, 36, (x, y) => (y < 6 || y >= 30 ? [0, 0, 0] : [200, 180, 90])), 64, 36);
+  assertAlmostEquals(c.y, 6 / 36, 1e-9, "top bar");
+  assertAlmostEquals(c.h, 24 / 36, 1e-9, "content height");
+});
+
+Deno.test("aspect frameContent: a dark SCENE is not a bar — every guard refuses", () => {
+  // asymmetric: black down the left third only (a wall in shot) — a pillarbox is centred
+  assertEquals(frameContent(vframe(64, 36, (x) => (x < 20 ? [0, 0, 0] : [180, 170, 160])), 64, 36), null, "off-centre dark edge");
+  // symmetric but no EDGE: the "content" is barely brighter than the "bars" (a night scene fading out)
+  assertEquals(frameContent(pillarFrame([2, 2, 2], () => [14, 14, 16]), 64, 36), null, "no luma step → not a bar");
+  // a sliver: bars eat almost everything
+  assertEquals(frameContent(vframe(64, 36, (x) => (x < 27 || x >= 37 ? [0, 0, 0] : [200, 200, 200])), 64, 36), null, "content too small to trust");
+  assertEquals(frameContent(null, 64, 36), null, "no sample");
+  assertEquals(frameContent(new Uint8ClampedArray(16), 64, 36), null, "short sample");
+});
+
+Deno.test("aspect sameContent: the temporal guard — bars hold still, a shot does not", () => {
+  const a = { x: 0.34, y: 0, w: 0.31, h: 1 };
+  assert(sameContent(a, { x: 0.35, y: 0, w: 0.30, h: 1 }), "one cell of jitter still agrees");
+  assert(!sameContent(a, { x: 0.22, y: 0, w: 0.55, h: 1 }), "the box moved → it was a scene, not a bar");
+  assert(!sameContent(a, null) && !sameContent(null, null), "nothing measured never agrees");
+});
+
+Deno.test("aspect fitPlan: a pillarboxed vertical clip is zoomed past its bars on a phone", () => {
+  const plan = fitPlan({ w: 320, h: 180 }, { x: 22 / 64, y: 0, w: 20 / 64, h: 1 }, { w: 384, h: 832 });
+  assert(plan.fill, "a 9:16 content box inside a 16:9 file must fill a 9:16 screen");
+  assertAlmostEquals(plan.aspect, 100 / 180, 1e-6, "the CONTENT's aspect (100x180 as measured), not the file's 16:9");
+  assertAlmostEquals(plan.crop, 0.1692, 1e-3, "covering costs 17% of the content's width at 384x832");
+  assertAlmostEquals(plan.scale, 3.8519, 1e-3, "832/216: the content's height drives the zoom");
+  assertAlmostEquals(plan.dx, 0, 1e-9, "centred bars need no translate");
+});
+
+Deno.test("aspect fitPlan: off-centre content is re-centred, and the zoom is capped", () => {
+  const left = fitPlan({ w: 320, h: 180 }, { x: 21 / 64, y: 0, w: 20 / 64, h: 1 }, { w: 384, h: 832 });
+  assert(left.dx > 0, "content sitting left of the file's centre is pushed right");
+  const sliver = fitPlan({ w: 320, h: 180 }, { x: 0.4, y: 0, w: 0.24, h: 1 }, { w: 384, h: 832 });
+  assert(sliver.scale <= 5.0001, `zoom must stay capped, got ${sliver.scale}`);
+});
+
+Deno.test("aspect fitPlan: a landscape clip is never touched on a phone, and fills in landscape", () => {
+  const phone = fitPlan({ w: 320, h: 180 }, null, { w: 384, h: 832 });
+  assertEquals([phone.fill, phone.scale], [false, 1], "16:9 on a 9:20 screen costs 74% — leave it boxed");
+  assertAlmostEquals(phone.crop, 0.7404, 1e-3, "and say what it would have cost");
+  const land = fitPlan({ w: 320, h: 180 }, null, { w: 844, h: 390 });
+  assert(land.fill && land.scale > 1.2, "the same clip on a landscape screen fills it");
+});
+
+Deno.test("aspect fitPlan: an unpadded vertical clip fills; split-screen refuses the crop", () => {
+  const tall = fitPlan({ w: 1080, h: 1920 }, null, { w: 384, h: 832 });
+  assert(tall.fill, "9:16 file, no bars → still fills a taller screen");
+  assertAlmostEquals(tall.scale, 1.2188, 1e-3, "832/682.67");
+  for (const [w, h] of [[412, 430], [360, 340]]) {
+    const split = fitPlan({ w: 1080, h: 1920 }, null, { w, h });
+    assertEquals(split.fill, false, `${w}x${h}: cropping 40%+ of a vertical clip is amputation, not adaptation`);
+  }
+});
+
+Deno.test("aspect fitPlan: junk in, boxed out (never a NaN transform)", () => {
+  for (const [i, v] of [[{ w: 0, h: 0 }, { w: 384, h: 832 }], [{ w: 320, h: 180 }, { w: 0, h: 0 }], [null, null], [{ w: NaN, h: 180 }, { w: 384, h: 832 }]]) {
+    const p = fitPlan(i, null, v);
+    assertEquals([p.fill, p.scale, p.dx, p.dy], [false, 1, 0, 0], `unusable dimensions → plain contain: ${JSON.stringify(i)}`);
+  }
 });
 
 Deno.test("vfilter hasPoster: only a non-empty string counts", () => {

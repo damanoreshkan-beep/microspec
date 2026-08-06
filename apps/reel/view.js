@@ -26,6 +26,7 @@ import { VPS_PROXY, pool } from "/_rt/feed.js";
 import { sealedFrameUrl } from "/_rt/sealedfetch.js";
 import { gate } from "/_rt/gate.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
+import { fitPlan, frameContent, sameContent } from "/_rt/aspect.js";
 import { resolveSearch, buildSearchUrl } from "/_rt/urlquery.js";
 import { hostOf, siteName, sourceTitle, groupByDomain, humanText } from "/_rt/sitelabel.js";
 import { useTap, usePanX } from "/_rt/gesture.js";
@@ -75,12 +76,24 @@ const GREY_PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLb
 // exercised) — the live layout, never the empty state, is what the gate measures. The last three entries are
 // deliberately BAD: a duplicate of Big Buck Bunny (dedupe drops it), a black/broken poster (black filter drops
 // it) and a flat-grey placeholder poster (flat filter drops it) — so all three cleanups are provable in the
-// gate. After filtering, three good clips remain. Every clip carries a `page`, because the page IS the dive.
+// gate. After filtering, FOUR good clips remain — the first is the pillarboxed vertical fixture below, which
+// is what makes the framing decision provable offline. Every clip carries a `page`, because the page IS the dive.
 // Every clip's `page` is a VIDEO page, and a video page's URL names nothing (`/watch/<id>/`) — which is the
 // whole reason a dive needs a title from somewhere else. The mock reproduces that shape deliberately: derive
 // a label from these URLs and you get "Mixkit", which is what the island used to show.
 const GV = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/";
+/* The PILLARBOXED clip, inline (1096 bytes of VP8) — the fixture the framing gate needs. It is a 64x36 file
+   carrying 20x36 of content between black bars, i.e. the geometry cropdetect measured on the owner's real
+   previews (`crop=100:180:108:0` in a 320x180 file) at 1/5 the size. Inline because the gate has no network
+   and because a remote clip proves nothing deterministically: same reason as the data: posters above, one
+   medium further. Our own detector reads it as {x:.34375, w:.3125} — 22/64 and 20/64 exactly — so the slide
+   must come out `data-fit="fill"` at a phone shape and `box` in split-screen. VP8, not H.264: a Chromium
+   build carries VP8 always and the proprietary codec only sometimes, and the gate is Chromium.
+   It is FIRST in the list on purpose: only the active slide is measured (the sample needs motion), the gate
+   cannot scroll an inner scroller, and the screenshot review sees slide 0. */
+const VERT_CLIP = "data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAQYEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggElTbuMU6uEHFO7a1OsggQC7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjIuMTIuMTAxV0GNTGF2ZjYyLjEyLjEwMUSJiECPQAAAAAAAFlSua8iuAQAAAAAAAD/XgQFzxYhvSehPHmrYwpyBACK1nIN1bmSIgQCGhVZfVlA4g4EBI+ODhAnvIargkLCBQLqBJJqBAlWwhFW5gQESVMNn/HNzoGPAgGfImkWjh0VOQ09ERVJEh41MYXZmNjIuMTIuMTAxc3PWY8CLY8WIb0noTx5q2MJnyKFFo4dFTkNPREVSRIeUTGF2YzYyLjI4LjEwMSBsaWJ2cHhnyKFFo4hEVVJBVElPTkSHkzAwOjAwOjAxLjAwMDAwMDAwMAAfQ7Z1QlbngQCjQUWBAACA0AkAnQEqQAAkAAFHCIWFiIWEiAICAgBjwP4A8Lv3d2iQgvRT+O/KDdG/8RckvAA/o56Rvok+hW74zjB/qrkAeGn3g094SISz5bpcvYim1uF6JoBjlPKAAP7/q1be6f+gY58X/+bxnHuNKsMZMmczAsCXil00u99hnjmANgcq9vhUDP/kfLQA3yHtRZbD4JfeBXQfC//LBlB41BW88Kz6h84KK3fda6y33b/5Z/9u7p2Hx7qU8JzFK2L7G4LJtBvAwL2uEv6NSRURf4Ypk9kz1q/lCXk3CwppQTNgY/iRoF/mz/GBaLiSLiiEKomd0PliRQ2JDfyei/igNJknuzt9R5wxxRz2bXWcvU2FgfYvORHmmiALxvbM4ZDe08NwydO7z7oAHvtmf5W8Ys2ueau38H+mgAAQMIEnz+yjX+nEAAAAo8CBAKcAcQMACRAQAB6YhTWn/q8e9EfMfGVC3h+ztaCri6wAy2+nGQfK4q7OASqDOSQBXgDtJETM/Qy6TUmUIeAAo7KBAU0AUQIADRAQABgAIDoNv+kUhcclfoLQ99kp6hTrveQLwkvv1ZW4CwAB9ZUNBuLAAKO0gQH0AFECAAkQEAAYACA4Le/o8Cc7zQrpAMwXyftB9K83xe9tuCihQqsCIF5F5/v1ibroAKOtgQKbADECAAkQEAAYACA4L/QA8MFRsEQY49qB5JnCAt9AbB3ZCbBkHJBdvK5Ao66BA0EAUQIACxAQABgJoADKAT+wBLDRpXve+Oj1Yx9ESlAFQNx2Auc4CWKvzc6AHFO7a5G7j7OBALeK94EB8YIBpvCBAw==";
 const MOCK = [
+  { video: VERT_CLIP, title: "Standing tall", poster: null, page: "https://mixkit.co/watch/10240/" },
   { video: GV + "BigBuckBunny.mp4", title: "Big Buck Bunny", poster: GV + "images/BigBuckBunny.jpg", page: "https://mixkit.co/watch/10241/" },
   { video: GV + "ElephantsDream.mp4", title: "Elephants Dream", poster: null, page: "https://mixkit.co/watch/10242/" },
   { video: GV + "Sintel.mp4", title: "Sintel", poster: null, page: "https://mixkit.co/watch/10243/" },
@@ -101,9 +114,11 @@ const GATE_TITLES = {
   // page title arrives (a filename-derived title is encoded, a scraped <title> still carries its entities).
   // The gate therefore proves the decode in a real browser, on the path a page title actually travels —
   // island, sources row and all — and not only in the unit suite.
-  "https://mixkit.co/watch/10241/": "Big%20Buck%20Bunny in 4K &amp; Friends — Mixkit",
+  // The machine-text case now rides slide 0's page, because the dive the gate exercises starts there.
+  "https://mixkit.co/watch/10240/": "Standing%20tall in 4K &amp; Friends — Mixkit",
+  "https://mixkit.co/watch/10241/": "Big Buck Bunny — Mixkit",
   "https://mixkit.co/watch/55013/": "Deeper two · Mixkit",
-};                                    // …it must reach the screen as: Big Buck Bunny in 4K & Friends
+};                                    // …it must reach the screen as: Standing tall in 4K & Friends
 
 /* Where a slide STARTS, once. Sources put a branded card on the front of the preview they hand out, so frame 0
    is a watermark rather than the clip. A fixed offset was the first attempt and it is the wrong shape: these
@@ -417,7 +432,9 @@ function FullClip({ S, t }) {
   const full = useStore($full), locale = useStore(S.locale);
   if (!full) return null;
   const close = () => { S.screen.set(null); $full.set(null); };
-  if (full.url) return html`<${Player} url=${full.url} type=${full.type} title=${full.title} locale=${locale} onClose=${close} />`;
+  // `fill`: this is a reel's clip, not a channel — a vertical stream owns the screen (the ladder's own
+  // 1080x1920 is what decides it; the runtime applies the same crop budget as the surface underneath).
+  if (full.url) return html`<${Player} url=${full.url} type=${full.type} title=${full.title} locale=${locale} fill onClose=${close} />`;
   return html`<div data-full role="dialog" aria-modal="true" aria-label=${full.title || T(t, "watch")}
       class="fixed inset-0 z-40 bg-black flex flex-col" style="padding-top:env(safe-area-inset-top)">
     <header class="flex items-center gap-1 px-2 py-1.5 text-white bg-black/70">
@@ -451,6 +468,28 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
   <img src=${poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-55" onError=${(e) => e.currentTarget.remove()} />
   <img src=${poster} alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain" onError=${(e) => e.currentTarget.remove()} />
 </${Fragment}>` : null;
+/* ── WHAT IS ACTUALLY IN THE FILE (see RESEARCH.md §7) ───────────────────────────────────────────────────
+   A vertical clip does not arrive as a vertical file. Measured on the owner's sources: 12 of 12 previews on a
+   page whose every clip is vertical declared 320x180 with DAR 16:9 and a 323x182 poster, while ffmpeg
+   cropdetect on the same files reported `crop=100:180:108:0` — the portrait frame is PILLARBOXED into a
+   landscape file. So no metadata channel can be asked, and `object-fit` alone can never fix it: the bars are
+   pixels. The shape is sampled from a FRAME (one 64x36 canvas draw), and only a box that HOLDS STILL across
+   two samples is trusted — a dark scene is the false positive, and bars do not move. Cached per clip so a
+   re-mount or a restore never re-measures and never re-frames a clip you are already watching.
+   The maths (`/_rt/aspect.js`) is unit-tested on synthetic frames and validated against ffmpeg on real files
+   in the gitignored `aspect.local_test.js`: 3 pillarboxed + 4 landscape, agreement on every axis. */
+const SAMPLE_W = 64, SAMPLE_H = 36;
+const shapes = new Map();                                       // clip url → {w, h, rect} once two samples agreed
+const shapeKey = (i) => (i.orig || i.video) || "";
+function sampleFrame(v) {
+  try {
+    const c = document.createElement("canvas"); c.width = SAMPLE_W; c.height = SAMPLE_H;
+    const cx = c.getContext("2d", { willReadFrequently: true });
+    cx.drawImage(v, 0, 0, SAMPLE_W, SAMPLE_H);
+    return frameContent(cx.getImageData(0, 0, SAMPLE_W, SAMPLE_H).data, SAMPLE_W, SAMPLE_H);
+  } catch { return null; }                                      // tainted (a host that sends no CORS) → stays boxed
+}
+
 // A live <video>, mounted for the active slide AND its neighbours (see PRELOAD). Exactly one PLAYS; the rest
 // are attached and buffering, paused. createPlayer handles mp4 vs HLS and tears down on unmount. On failure it
 // falls back to the poster — the island's way out is already there either way, so no failure flag has to
@@ -475,7 +514,7 @@ const PosterFill = ({ poster }) => poster ? html`<${Fragment}>
 //     first, because most sources need no help and every proxied byte crosses our own box; the proxy only on
 //     failure, or immediately for a source already known to hand out guarded URLs (`ephemeral`), where the
 //     direct attempt is a round trip we know the answer to. One retry, then the poster — never a loop.
-function VideoLayer({ item, playing, ephemeral }) {
+function VideoLayer({ item, playing, ephemeral, plan, onShape }) {
   const ref = useRef(), bgRef = useRef();
   const [errored, setErrored] = useState(false);
   const [viaProxy, setViaProxy] = useState(!!ephemeral);
@@ -500,6 +539,13 @@ function VideoLayer({ item, playing, ephemeral }) {
     const v = ref.current; if (!v || !src) return;                                        // no src yet → the seal is still resolving
     v.muted = true; v.loop = true;                                                        // muted → browsers allow autoplay
     v.preload = "auto";                                                                   // a neighbour exists to BUFFER; metadata is not enough
+    /* …and the frame has to be READABLE, or the pillarbox can never be found: a canvas draw of a
+       cross-origin video taints unless the response carries CORS. Measured: the sources' CDNs answer with
+       `access-control-allow-origin` (reflected or `*`), and where one does not the load simply fails and
+       `onError` below swaps to the sealed proxy, which always sends it. So this costs at most one attempt on
+       a host that would have needed the proxy anyway. An inline `data:` clip (the gate's fixture) is already
+       same-origin, and asking for CORS on one is the trap the poster filter documents right above. */
+    if (!src.startsWith("data:")) v.crossOrigin = "anonymous";
     let handle, dead = false;
     // The ORIGINAL url still has its extension; `src` may be the proxied one, which has none. Sniff the thing
     // that can still be sniffed.
@@ -537,30 +583,76 @@ function VideoLayer({ item, playing, ephemeral }) {
     if (playing) v.play?.().catch(() => {}); else v.pause?.();
   }, [playing, ready]);
 
-  // The ambient backdrop, for clips with no poster: a muted copy of the same video, blurred, filling the
-  // letterbox. Active slide only, and only once the main one has data — see the note above.
+  /* The shape, sampled while it plays. Up to four samples ~340ms apart, committing on the first CONSECUTIVE
+     pair that agrees: motion is what separates baked bars from a dark shot, so the element has to be running.
+     `videoWidth` is read at commit time rather than at attach — under HLS it is unknown until the first
+     fragment, long after MANIFEST_PARSED (which is what `onReady` fires on). */
   useEffect(() => {
-    if (!playing || !ready || item.poster || errored) return;
+    const key = shapeKey(item);
+    if (!ready || !playing || !key) return;
+    const known = shapes.get(key);
+    if (known) { onShape?.(known); return; }
+    const v = ref.current; if (!v) return;
+    let prev = sampleFrame(v), left = 3, id;
+    const tick = () => {
+      const cur = sampleFrame(v);
+      if (v.videoWidth && sameContent(prev, cur)) {
+        const s = { w: v.videoWidth, h: v.videoHeight, rect: cur };
+        shapes.set(key, s); onShape?.(s); return;
+      }
+      prev = cur;
+      if (--left > 0) id = setTimeout(tick, 340);
+    };
+    id = setTimeout(tick, 340);
+    return () => clearTimeout(id);
+  }, [ready, playing, item.video]);
+
+  // An HLS level switch changes the intrinsic size (not what is inside the frame), so the measured box stays
+  // and only the numbers it is scaled against move.
+  useEffect(() => {
+    const v = ref.current, key = shapeKey(item); if (!v || !key) return;
+    const on = () => {
+      const s = shapes.get(key);
+      if (!s || !v.videoWidth || (s.w === v.videoWidth && s.h === v.videoHeight)) return;
+      const next = { ...s, w: v.videoWidth, h: v.videoHeight };
+      shapes.set(key, next); onShape?.(next);
+    };
+    v.addEventListener("resize", on);
+    return () => v.removeEventListener("resize", on);
+  }, [item.video]);
+
+  // The ambient backdrop, for clips with no poster: a muted copy of the same video, blurred, filling the
+  // letterbox. Active slide only, and only once the main one has data — see the note above. A clip that FILLS
+  // the screen has no letterbox to fill, so the second decoder is never started for it.
+  useEffect(() => {
+    if (!playing || !ready || item.poster || errored || plan?.fill) return;
     const bg = bgRef.current; if (!bg) return;
     bg.muted = true; bg.loop = true;
     let handle, dead = false;
     createPlayer(bg, src, { onReady: () => { if (!dead) bg.play?.().catch(() => {}); } })
       .then((h) => { if (dead) h?.destroy?.(); else handle = h; });
     return () => { dead = true; handle?.destroy?.(); };
-  }, [playing, ready, src, item.poster, errored]);
+  }, [playing, ready, src, item.poster, errored, plan?.fill]);
 
+  // The zoom that puts the CONTENT on the screen: `object-contain` lays the whole file out, this moves the
+  // part that matters over the surface. One transform, composited — never a re-layout per swipe.
+  const zoom = plan?.fill && !errored
+    ? `transform:translate(${plan.dx.toFixed(1)}px,${plan.dy.toFixed(1)}px) scale(${plan.scale.toFixed(3)})`
+    : null;
   return html`<${Fragment}>
     ${errored
       ? html`<${PosterFill} poster=${item.poster} />`
-      : item.poster
-        ? html`<img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" onError=${(e) => e.currentTarget.remove()} />`
-        : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
+      : plan?.fill
+        ? null                                                                   /* it fills — nothing shows behind it */
+        : item.poster
+          ? html`<img src=${item.poster} alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" onError=${(e) => e.currentTarget.remove()} />`
+          : html`<video ref=${bgRef} aria-hidden="true" muted loop playsinline class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50"></video>`}
     <div class="absolute inset-0 bg-black/25" aria-hidden="true"></div>
     ${/* `data-playing` mirrors which element owns playback. A <video> is opaque to every gate this farm has
           — `paused` is a property, not an attribute, so no selector can see it — and the whole claim of the
           preload window is "several are mounted, exactly ONE plays". State the claim in the DOM or it
           cannot be tested, and a window that quietly plays all three is the regression to catch. */""}
-    <video ref=${ref} data-main data-playing=${playing ? "" : null} poster=${item.poster || null} playsinline loop muted class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
+    <video ref=${ref} data-main data-playing=${playing ? "" : null} poster=${item.poster || null} playsinline loop muted style=${zoom} class=${`absolute inset-0 w-full h-full object-contain ${errored ? "opacity-0" : ""}`}></video>
   </${Fragment}>`;
 }
 
@@ -588,6 +680,20 @@ function HeartBurst({ x, y, onDone }) {
 function Slide({ S, item, idx, active, near, ephemeral }) {
   const secRef = useRef();
   const [burst, setBurst] = useState(null);
+  // The surface the clip is framed against is MEASURED off the slide, never assumed from the viewport: a
+  // rotation, a split-screen resize and the browser's own collapsing toolbar all move it, and the framing
+  // decision inverts across those shapes (a crop that is right at 384x832 is amputation at 360x340).
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  const [shape, setShape] = useState(() => shapes.get(shapeKey(item)) || null);
+  useLayoutEffect(() => {
+    const el = secRef.current; if (!el) return;
+    const read = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    read();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(read); ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const plan = fitPlan(shape, shape?.rect, box);
   // Systemic tap dispatch (runtime useTap): SINGLE tap toggles pause on a clip that plays inline, else opens the
   // source page; DOUBLE tap likes + blooms a heart — and never fires the single (so a like never pauses/navigates).
   /* SINGLE tap opens the full clip — for every slide, not just a dead one. It used to toggle pause, and to
@@ -599,13 +705,15 @@ function Slide({ S, item, idx, active, near, ephemeral }) {
     onSingle: () => openFull(S, item),
     onDouble: (p) => { setBurst({ x: p.x, y: p.y, k: Date.now() }); addLike(item); navigator.vibrate?.(12); },
   });
-  return html`<section ref=${secRef} data-reel data-idx=${idx} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
+  // `data-fit`/`data-zoom` state the framing in the DOM: a transform is invisible to every selector a gate
+  // has, and "a vertical clip fills the screen" is the whole claim of this surface.
+  return html`<section ref=${secRef} data-reel data-idx=${idx} data-fit=${plan.fill ? "fill" : "box"} data-zoom=${plan.fill ? plan.scale.toFixed(2) : null} onClick=${onTap} class="snap-start snap-always relative h-[100dvh] w-full flex items-center justify-center bg-black overflow-hidden">
     ${/* `ephemeral` used to mean "do not even try" — a poster and a link out to the site. It meant that because
           a guarded clip looked unplayable, and it looked unplayable because the proxy was sending the wrong
           referer and the HTML branch was reporting the rejection as 200. Both are fixed, so the flag now means
           what it should have meant all along: START on the proxy instead of discovering the need to. */""}
     ${near
-      ? html`<${VideoLayer} item=${item} playing=${active} ephemeral=${ephemeral} />`
+      ? html`<${VideoLayer} item=${item} playing=${active} ephemeral=${ephemeral} plan=${plan} onShape=${setShape} />`
       : item.poster
         ? html`<${PosterFill} poster=${item.poster} />`
         : null}

@@ -7,6 +7,7 @@
 import { html } from "htm/preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { media } from "./i18n.js";
+import { fitPlan } from "./aspect.js";
 import { Pixels } from "./skeleton.js";
 import { wakeLock } from "./sensors.js";
 import { resumeAt } from "./playback.js";
@@ -75,9 +76,17 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
 // it plays (the OS blanks on "no touches", and watching IS no touches), picture-in-picture, fullscreen, and
 // seeking to where you left. Persistence is NOT here — the app owns its storage, so it passes `startAt` and
 // gets `onTime(t, duration)`; video.js never imports a database.
-export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime, type = null }) {
-  const ref = useRef(), boxRef = useRef();
+/* `fill` — the clip OWNS the box instead of being centred in it. Opt-in and off by default, so a channel/
+   lecture player is unchanged: a letterbox is right when the surface is a player and the content is wider than
+   it. It is wrong when a PORTRAIT clip lands on a portrait phone — measured on a real vertical stream
+   (1080x1920 from the quality ladder) in a 384x776 box: centring leaves 93px of black and covering costs 12%
+   of the width. `aspect.fitPlan` owns that budget (one rule, shared with the reel surface below it), so a
+   16:9 clip in the same box still stays boxed. `object-fit` and not a transform, because the native controls
+   are part of the element and a scaled element scales them too. */
+export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime, type = null, fill = false }) {
+  const ref = useRef(), boxRef = useRef(), stageRef = useRef();
   const [state, setState] = useState("loading");   // loading | playing | error
+  const [fit, setFit] = useState("contain");
   const [fs, setFs] = useState(false);
   const canPip = typeof document !== "undefined" && document.pictureInPictureEnabled;
   const canFs = typeof document !== "undefined" && !!(document.fullscreenEnabled || document.documentElement?.requestFullscreen);
@@ -98,6 +107,21 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
       .then((h) => { handle = h; if (dead) h.destroy(); });
     return () => { dead = true; handle?.destroy(); };
   }, [url, type]);
+
+  // The framing, decided from the clip's own intrinsic size against the MEASURED box (a rotation or a
+  // split-screen resize inverts the answer). `resize` as well as `loadedmetadata`: under HLS the size is
+  // unknown until the first fragment, and a level switch changes it.
+  useEffect(() => {
+    if (!fill) return;
+    const v = ref.current, box = stageRef.current; if (!v || !box) return;
+    const decide = () => setFit(fitPlan({ w: v.videoWidth, h: v.videoHeight }, null, { w: box.clientWidth, h: box.clientHeight }).fill ? "cover" : "contain");
+    decide();
+    v.addEventListener("loadedmetadata", decide);
+    v.addEventListener("resize", decide);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(decide) : null;
+    ro?.observe(box);
+    return () => { v.removeEventListener("loadedmetadata", decide); v.removeEventListener("resize", decide); ro?.disconnect(); };
+  }, [fill, url]);
 
   // The screen must not die mid-film. Held only while the overlay is open, released on close — a lock left
   // behind is a battery bug nobody connects back to the video app they closed an hour ago.
@@ -138,8 +162,9 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
       ${state === "playing" && canFs ? html`<button id="player-fs" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media(fs ? "exitFullscreen" : "fullscreen", locale)} onClick=${full}><iconify-icon icon=${fs ? "lucide:minimize" : "lucide:maximize"} class="text-lg"></iconify-icon></button>` : null}
       ${state !== "error" ? html`<a href=${url} target="_blank" rel="noopener" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media("openExternal", locale)}><iconify-icon icon="lucide:external-link" class="text-lg"></iconify-icon></a>` : null}
     </header>
-    <div class="flex-1 relative flex items-center justify-center overflow-hidden">
-      <video ref=${ref} controls autoplay playsinline poster=${poster || ""} class=${`w-full max-h-full bg-black ${state === "playing" ? "" : "opacity-0 pointer-events-none"}`}></video>
+    <div ref=${stageRef} class="flex-1 relative flex items-center justify-center overflow-hidden">
+      <video ref=${ref} controls autoplay playsinline poster=${poster || ""} data-fit=${fill ? fit : null}
+        class=${`bg-black ${fill ? `absolute inset-0 w-full h-full ${fit === "cover" ? "object-cover" : "object-contain"}` : "w-full max-h-full"} ${state === "playing" ? "" : "opacity-0 pointer-events-none"}`}></video>
       ${state === "loading" ? html`<div class="absolute inset-0"><${Pixels} cls="w-full h-full" /><div class="absolute inset-0 flex items-center justify-center text-white/70 text-sm">${media("loading", locale)}</div></div>` : null}
       ${state === "error" ? html`<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/70 p-6 text-center">
         <iconify-icon icon="lucide:tv-minimal-play" class="text-5xl opacity-40"></iconify-icon>

@@ -282,6 +282,10 @@ function Waterfall({ t }) {
       paint = makePainter(el, accent);
     };
     size();
+    // A FRESH canvas starts blank, and a theme switch remounts one while the run is already "listening" —
+    // so start() never fires again and the light-theme shot measured an empty box. Repaint the fixture on
+    // mount; a resize keeps its history instead (above), which is what a rotation needs.
+    if (gate && $status.get() === "listening") gateWarmup();
     let ro = null;
     try { ro = new ResizeObserver(size); ro.observe(wrap); } catch { /* linkedom */ }
     return () => { try { ro?.disconnect(); } catch { /* */ } paint = null; };
@@ -290,9 +294,11 @@ function Waterfall({ t }) {
     <canvas ref=${canvas} class="absolute inset-0 w-full h-full"></canvas>
     ${/* The instrument's own graticule — ±125 / ±250 Hz across, ~0.8 s down. currentColor, so it is one
           declaration in both themes, and behind the trace rather than over it. */ ""}
-    <div class="absolute inset-0 pointer-events-none text-base-content opacity-[0.09]"
-      style="background-image:repeating-linear-gradient(to right,currentColor 0 1px,transparent 1px 25%),repeating-linear-gradient(to bottom,currentColor 0 1px,transparent 1px 25%)"></div>
-    <div class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-base-content/25"></div>
+    <div class="absolute inset-0 pointer-events-none text-base-content opacity-[0.08]"
+      style="background-image:repeating-linear-gradient(to right,currentColor 0 1px,transparent 1px 20%),repeating-linear-gradient(to bottom,currentColor 0 1px,transparent 1px 25%)"></div>
+    ${/* The carrier axis is the reference every trace is read against, so it must out-rank the graticule —
+          at a 25% step it fell exactly on a grid line and disappeared into it. */ ""}
+    <div class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-base-content/40"></div>
     <div class="absolute inset-x-0 bottom-0 flex justify-between px-2 py-1 font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-base-content/70">
       <span>${T(t, "axisFar")}</span><span>${T(t, "axisNear")}</span>
     </div>

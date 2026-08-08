@@ -2,11 +2,13 @@ const ready = async (h) => { for (let i = 0; i < 12; i++) { if ((await h.count("
 
 export default [
   {
-    name: "стор: сітка застосунків + пошук + NEW-бейджі", run: async (h) => {
+    name: "стор: сітка + пошук; перший візит не позначає нічого як нове", run: async (h) => {
       await ready(h); await h.wait(200);
       h.expect((await h.count("[data-app]")) >= 10, "замало плиток застосунків");
       h.expect((await h.count(".input")) === 1, "немає поля пошуку");
-      h.expect(/НОВЕ|NEW/.test(await h.text('[data-app="rave"]')) || (await h.count(".badge-primary")) > 0, "немає NEW-бейджів на невідкритих");
+      const badges = await h.count(".badge-primary");
+      h.expect(badges === 0, `перший візит позначив ${badges} застосунків як нові — базова лінія не записалась`);
+      h.expect(!/НОВЕ|NEW/.test(await h.text('[data-app="rave"]')), "бейдж НОВЕ на першому візиті");
     },
   },
   {

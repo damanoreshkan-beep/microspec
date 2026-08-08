@@ -28,6 +28,7 @@ const CARRIERS = [18000, 19000, 20000];
 const VOL_MAX = 0.1;                       // a Web Audio gain has no defined mapping to SPL, so the ceiling is
 const AUTO_STOP_MS = 5 * 60 * 1000;        // conservative and the run is time-boxed rather than argued about
 const CAL_FRAMES = 30;                     // ~2 s of a still room at rAF rate
+const ROWS = 200;                          // waterfall history, in analysed frames (≈3 s at 60 fps)
 const EVENTS = collection("sonarEvents");
 
 const num = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : "—");
@@ -120,7 +121,8 @@ function pump() {
 // detector, and then STOPS mid-wave. So the first paint is already the settled, populated screen (a screen
 // spending its first two seconds calibrating is the screen every gate would otherwise measure), and every
 // shot, axe pass and breakpoint measures that identical frame instead of whatever phase rAF landed on.
-const GATE_END = GATE_STILL + 96 + 25;     // …25 frames into a wave: moving, decisive, approaching
+const GATE_END = GATE_STILL + 96 * 2 + 25; // two full waves (enough rows to FILL the waterfall), then 25
+                                           // frames into a third: moving, decisive, approaching
 function gateWarmup() {
   reset();
   for (let i = 0; i < GATE_END; i++) consume(gateFrame(frameN++), 16, GATE_RATE);
@@ -244,10 +246,25 @@ function Waterfall({ t }) {
     const el = canvas.current, wrap = box.current;
     if (!el || !wrap) return;
     const accent = hexRgb(getComputedStyle(wrap).getPropertyValue("--app-accent"));
+    // The canvas is sized in ROWS, not device pixels: one analysed frame is one row, so a fixed 200 makes the
+    // picture ~3 s of history at any screen and any DPR, and CSS stretches it. Sized in device pixels instead,
+    // a DPR-3.5 phone wants 2900 rows — the waterfall would fill a fifth of the box and look broken.
     const size = () => {
-      const dpr = Math.min(2, globalThis.devicePixelRatio || 1);
-      const w = Math.max(1, Math.round(wrap.clientWidth * dpr)), h = Math.max(1, Math.round(wrap.clientHeight * dpr));
-      if (el.width !== w || el.height !== h) { el.width = w; el.height = h; }
+      const w = Math.max(1, Math.round(wrap.clientWidth));
+      if (el.width !== w || el.height !== ROWS) {
+        // Resizing CLEARS a canvas, so the history is carried across (stretched — it is a waterfall, not
+        // text). Without this a rotation wipes what you were watching, and in the gate the breakpoint matrix
+        // would measure an empty box at every size but the first.
+        let keep = null;
+        try {
+          const tmp = document.createElement("canvas");
+          tmp.width = el.width || w; tmp.height = el.height || ROWS;
+          tmp.getContext("2d")?.drawImage(el, 0, 0);
+          keep = tmp;
+        } catch { /* linkedom, or a canvas with no context */ }
+        el.width = w; el.height = ROWS;
+        try { if (keep) el.getContext("2d")?.drawImage(keep, 0, 0, w, ROWS); } catch { /* */ }
+      }
       paint = makePainter(el, accent);
     };
     size();

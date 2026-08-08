@@ -180,7 +180,9 @@ function makePainter(canvas, accent) {
   return (db, r) => {
     const w = canvas.width, h = canvas.height;
     if (!w || !h) return;
+    c2d.globalCompositeOperation = "copy";
     c2d.drawImage(canvas, 0, 1);
+    c2d.globalCompositeOperation = "source-over";
     c2d.clearRect(0, 0, w, 1);
     const rate = $diag.get().ctxRate || GATE_RATE;
     const width = binWidth(rate, DEFAULTS.fftSize);
@@ -193,8 +195,8 @@ function makePainter(canvas, accent) {
       if (Math.abs(off) < guard) continue;
       const v = db[r.carrier.bin + off];
       if (!Number.isFinite(v)) continue;
-      const a = Math.max(0, Math.min(1, (v - floorDb) / 34));
-      if (a < 0.06) continue;
+      const a = Math.max(0, Math.min(1, (v - floorDb - 6) / 28));
+      if (a < 0.04) continue;
       c2d.fillStyle = `rgba(${accent}, ${a.toFixed(3)})`;
       c2d.fillRect(x, 0, 1, 1);
     }
@@ -236,12 +238,15 @@ function Waterfall({ t }) {
   }, []);
   return html`<div ref=${box} class="relative flex-1 min-h-0 rounded-[var(--ms-r)] bg-base-100 sf-inset overflow-hidden">
     <canvas ref=${canvas} class="absolute inset-0 w-full h-full"></canvas>
+    <div class="absolute inset-0 pointer-events-none text-base-content opacity-[0.09]"
+      style="background-image:repeating-linear-gradient(to right,currentColor 0 1px,transparent 1px 25%),repeating-linear-gradient(to bottom,currentColor 0 1px,transparent 1px 25%)"></div>
     <div class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-base-content/25"></div>
     <div class="absolute inset-x-0 bottom-0 flex justify-between px-2 py-1 font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-base-content/70">
       <span>${T(t, "axisFar")}</span><span>${T(t, "axisNear")}</span>
     </div>
   </div>`;
 }
+
 
 export function sonar({ t, loc, toast, S }) {
   const status = useStore($status), reading = useStore($reading), active = useStore($active);
@@ -301,6 +306,7 @@ const Metric = ({ label, value, unit, live }) => html`<div class="rounded-[var(-
   <div class="text-[length:var(--ms-label)] uppercase tracking-wide text-base-content/70 truncate">${label}</div>
   <div ...${live ? { "data-live": "1" } : {}} class="truncate"><span class="text-[length:var(--ms-title)] font-semibold">${value}</span><span class="text-xs text-base-content/70"> ${unit}</span></div>
 </div>`;
+
 
 const GATE_LOG = [
   { id: "g3", t: 1754600000000, dur: 4.2, peak: 19.4, dir: 0.91 },
@@ -362,6 +368,7 @@ export function sonarLog({ t, loc, toast, confirm, undo }) {
     <button data-clear data-haptic="bump" class="btn btn-ghost btn-sm self-center mt-2 text-base-content/70" onClick=${clear}>${Icon("lucide:eraser")}${T(t, "logClear")}</button>
   </div>`;
 }
+
 
 export function sonarSignal({ t }) {
   const carrier = useStore($carrier), vol = useStore($volume), diag = useStore($diag), reading = useStore($reading);

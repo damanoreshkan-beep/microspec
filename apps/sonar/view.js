@@ -212,7 +212,12 @@ function makePainter(canvas, accent) {
   return (db, r) => {
     const w = canvas.width, h = canvas.height;
     if (!w || !h) return;
+    // `copy`, not the default `source-over`: scrolling a canvas onto ITSELF composites the old pixels on top
+    // of themselves, so a 10%-alpha row saturates to solid after ~10 frames. Measured as broad solid bars
+    // where the picture should have been a faint texture — the gate is blind to it, the eye is not.
+    c2d.globalCompositeOperation = "copy";
     c2d.drawImage(canvas, 0, 1);
+    c2d.globalCompositeOperation = "source-over";
     c2d.clearRect(0, 0, w, 1);
     const rate = $diag.get().ctxRate || GATE_RATE;
     const width = binWidth(rate, DEFAULTS.fftSize);
@@ -225,8 +230,10 @@ function makePainter(canvas, accent) {
       if (Math.abs(off) < guard) continue;
       const v = db[r.carrier.bin + off];
       if (!Number.isFinite(v)) continue;
-      const a = Math.max(0, Math.min(1, (v - floorDb) / 34));
-      if (a < 0.06) continue;
+      // 6 dB of headroom over the floor before anything is drawn: the room's own texture is ±1.5 dB, and
+      // painting it turns the picture into noise that reads as signal.
+      const a = Math.max(0, Math.min(1, (v - floorDb - 6) / 28));
+      if (a < 0.04) continue;
       c2d.fillStyle = `rgba(${accent}, ${a.toFixed(3)})`;
       c2d.fillRect(x, 0, 1, 1);
     }
@@ -274,6 +281,10 @@ function Waterfall({ t }) {
   }, []);
   return html`<div ref=${box} class="relative flex-1 min-h-0 rounded-[var(--ms-r)] bg-base-100 sf-inset overflow-hidden">
     <canvas ref=${canvas} class="absolute inset-0 w-full h-full"></canvas>
+    ${/* The instrument's own graticule — ±125 / ±250 Hz across, ~0.8 s down. currentColor, so it is one
+          declaration in both themes, and behind the trace rather than over it. */ ""}
+    <div class="absolute inset-0 pointer-events-none text-base-content opacity-[0.09]"
+      style="background-image:repeating-linear-gradient(to right,currentColor 0 1px,transparent 1px 25%),repeating-linear-gradient(to bottom,currentColor 0 1px,transparent 1px 25%)"></div>
     <div class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-base-content/25"></div>
     <div class="absolute inset-x-0 bottom-0 flex justify-between px-2 py-1 font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-base-content/70">
       <span>${T(t, "axisFar")}</span><span>${T(t, "axisNear")}</span>

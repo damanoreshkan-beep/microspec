@@ -196,10 +196,13 @@ export function synthSpectrum({ sampleRate = 48000, fftSize = DEFAULTS.fftSize, 
       if (cb + 2 < bins) db[cb + 2] = carrierDb - 68;
       for (const m of moves) {
         const b = binOf(hzOfBin(cb, sampleRate, fftSize) + m.hz, sampleRate, fftSize);
-        // A real reflection is spread over a few bins by the target's velocity spread, never a single spike.
-        for (let k = -1; k <= 1; k++) {
+        // A real reflection is a BAND, not a spike: a hand is not rigid, so its parts move at a spread of
+        // radial speeds and the return smears over several bins (±4 bins ≈ ±6 Hz ≈ ±0.05 m/s at 19 kHz).
+        // Modelling it as one bin made the fixture unlike anything a room produces.
+        const spread = Math.max(1, m.spread || 4);
+        for (let k = -spread; k <= spread; k++) {
           const i = b + k;
-          if (i >= 0 && i < bins) db[i] = Math.max(db[i], m.db - Math.abs(k) * 4);
+          if (i >= 0 && i < bins) db[i] = Math.max(db[i], m.db - (Math.abs(k) / spread) ** 2 * 26);
         }
       }
     }

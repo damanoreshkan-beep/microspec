@@ -39,5 +39,7 @@
   "newBadge": "NEW",
   "updBadge": "UPD",
   "newVersion": "new version",
-  "installed": "Installed"
+  "installed": "Installed",
+  "needsDevice": "Needs an external device",
+  "needsDeviceHackrf": "Only works with a HackRF One attached"
 }

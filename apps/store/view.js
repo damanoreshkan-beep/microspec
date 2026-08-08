@@ -86,6 +86,10 @@ export function store({ S, openScreen, closeScreen }) {
         ${b ? html`<span class="absolute top-1.5 right-1.5">${tag(b, true)}</span>` : null}
       </div>
       <p class="text-base-content/70 leading-relaxed break-words">${taglineOf(sel)}</p>
+      ${/* Disclosed BEFORE the tap, not after. Six apps open a HackRF One over WebUSB; without one their
+            entire surface is a connect screen, and finding that out by launching is the store failing at
+            its one job. Driven by the manifest's `needs`, so a future USB/serial app inherits it. */""}
+      ${(sel.needs || []).includes("usb") ? html`<div data-needs-device class="flex items-center gap-2 text-sm text-warning bg-warning/10 rounded-2xl px-3 py-2">${Icon("lucide:usb", "shrink-0")}<span>${T(t, "needsDeviceHackrf")}</span></div>` : null}
       <button id="open-app" class="btn btn-primary btn-lg rounded-2xl gap-2 w-full max-w-xs" onClick=${() => launch(sel)}>${Icon("lucide:external-link")}${T(t, "openApp")}</button>
       <div class="text-xs text-base-content/50 tabular-nums flex items-center gap-1.5">v${sel.version || "1.0"}${b === "upd" ? html`<span class="text-warning font-medium">· ${T(t, "newVersion")}</span>` : null}</div>
     </div>`; })() : null}
@@ -132,7 +136,10 @@ export function store({ S, openScreen, closeScreen }) {
                 the label read as one string — the shot said "НАУКА І НЕБО 10", as though the section were
                 named that. Separating by POSITION rather than by another opacity step keeps it legible
                 (a third muted tone is where axe contrast starts failing). */""}
-          <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center justify-between gap-3"><span>${T(t, catKey(c))}</span><span class="normal-case tabular-nums">${items.length}</span></div>
+          <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center justify-between gap-3">
+            <span>${T(t, catKey(c))}${items.every((a) => (a.needs || []).includes("usb"))
+              ? html`<span class="normal-case text-warning/80"> · ${T(t, "needsDevice")}</span>` : null}</span>
+            <span class="normal-case tabular-nums">${items.length}</span></div>
           ${grid(items)}
         </div>`;
       })}

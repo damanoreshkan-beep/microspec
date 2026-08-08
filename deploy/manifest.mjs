@@ -46,6 +46,11 @@ export async function buildManifest() {
       href: `./${a.name}/`,
       version: spec.version || ("1." + (await gitCount(`apps/${a.name}`))),
       category: spec.category || "feeds",
+      // Hardware an app cannot work without. Six apps open a HackRF One over WebUSB — 9% of the farm whose
+      // entire surface is a "connect your device" screen for anyone without a ~$300 SDR. The store owes
+      // that disclosure BEFORE the tap, not after. Carried from spec.json `needs`, which only became
+      // trustworthy in 9c189eb (it had drifted: all six used WebUSB and none declared it).
+      needs: [...new Set((spec.tabs ?? []).flatMap((t) => t.needs ?? []))].sort(),
     });
   }
   apps.sort((x, y) => x.title.localeCompare(y.title, "uk"));

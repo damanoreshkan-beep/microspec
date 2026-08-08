@@ -52,24 +52,27 @@ export default [
     },
   },
   {
-    name: "редактор: джерело, інструкція, кнопка редагування", run: async (h) => {
+    name: "редактор: готове джерело, інструкція, кнопка редагування", run: async (h) => {
       await h.click('[data-tab="edit"]'); await h.wait(400);
+      h.expect((await h.count("[data-result]")) === 1, "немає зображення на сцені редактора");
       h.expect((await h.count("#prompt")) === 1, "немає поля інструкції у вкладці редагування");
       h.expect((await h.count("[data-edit]")) === 1, "немає кнопки редагування");
-      const sources = await h.count("[data-src-upload]") + await h.count("[data-src-camera]") + await h.count("[data-src-last]");
-      h.expect(sources >= 1 || (await h.count("[data-source]")) === 1, "немає ані вибору джерела, ані готового джерела");
     },
   },
   {
-    name: "редагування дає інший результат (гейт: без мережі)", run: async (h) => {
+    name: "редагування змінює зображення і дає збереження (гейт: без мережі)", run: async (h) => {
       await h.click('[data-tab="edit"]'); await h.wait(400);
-      if ((await h.count("[data-result]")) === 0) {
-        await h.type("#prompt", "додай сніг");
-        await h.click("[data-edit]");
-        for (let i = 0; i < 15; i++) { if ((await h.count("[data-result]")) > 0) break; await h.wait(300); }
+      const before = await h.attr("[data-result]", "src");
+      await h.type("#prompt", "додай сніг");
+      await h.click("[data-edit]");
+      let after = before, changed = false;
+      for (let i = 0; i < 15; i++) {
+        after = await h.attr("[data-result]", "src");
+        if (after && after !== before) { changed = true; break; }
+        await h.wait(250);
       }
-      h.expect((await h.count("[data-result]")) === 1, "редагування не дало результату");
-      h.expect((await h.count("[data-save]")) === 1, "немає збереження результату");
+      h.expect(changed, "редагування не змінило зображення");
+      h.expect((await h.count("[data-save]")) === 1, "немає збереження після завершеного редагування");
     },
   },
   {

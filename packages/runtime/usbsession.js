@@ -86,7 +86,7 @@ export function createUsbSession({
   }
 
   function restart() {
-    if (!$connected.get()) return false;
+    if (!worker) return false;
     startWorker();
     return true;
   }

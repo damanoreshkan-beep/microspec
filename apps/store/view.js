@@ -96,7 +96,7 @@ export function store({ S, openScreen, closeScreen }) {
           
           <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center justify-between gap-3">
             <span>${T(t, catKey(c))}${items.every((a) => (a.needs || []).includes("usb"))
-              ? html`<span class="normal-case text-warning/80"> · ${T(t, "needsDevice")}</span>` : null}</span>
+              ? html`<span class="normal-case text-warning"> · ${T(t, "needsDevice")}</span>` : null}</span>
             <span class="normal-case tabular-nums">${items.length}</span></div>
           ${grid(items)}
         </div>`;

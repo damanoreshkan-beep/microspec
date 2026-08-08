@@ -154,6 +154,13 @@ Deno.test("post: no-op on a dead worker instead of throwing", async () => {
   assertEquals(s.post({ type: "gain" }), false, "after disconnect");
 });
 
+Deno.test("restart is gated on the WORKER, not on the connected atom", async () => {
+  const { s, workers } = harness();
+  s.$connected.set(true);                       
+  assertEquals(s.restart(), false, "restart must not spawn a worker just because the atom says connected");
+  assertEquals(workers.length, 0);
+});
+
 Deno.test("restart: new worker, same session; refused when not connected", async () => {
   let band = "gsm900";
   const { s, workers } = harness({ start: () => ({ type: "start", band }) });

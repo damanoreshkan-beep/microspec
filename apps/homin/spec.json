@@ -3,20 +3,59 @@
   "theme": "signal",
   "category": "hackrf",
   "accent": "#E9A23B",
-  "fav": { "key": "id" },
+  "fav": {
+    "key": "id"
+  },
   "detail": {
     "title": "name",
     "subtitle": "detail",
     "rows": [
-      { "icon": "lucide:radio-tower", "label": "rowChannel", "field": "channelLabel" },
-      { "icon": "lucide:activity", "label": "rowFreq", "field": "freqLabel" },
-      { "icon": "lucide:waveform", "label": "rowKind", "field": "kindLabel" },
-      { "icon": "lucide:key-round", "label": "rowTone", "field": "toneLabel" },
-      { "icon": "lucide:cpu", "label": "rowProto", "field": "proto" },
-      { "icon": "lucide:thermometer", "label": "rowPayload", "field": "payload" },
-      { "icon": "lucide:binary", "label": "rowRaw", "field": "rawHex" },
-      { "icon": "lucide:repeat", "label": "rowSeen", "field": "countLabel" },
-      { "icon": "lucide:clock", "label": "rowLast", "field": "lastSeen", "format": "since" }
+      {
+        "icon": "lucide:radio-tower",
+        "label": "rowChannel",
+        "field": "channelLabel"
+      },
+      {
+        "icon": "lucide:activity",
+        "label": "rowFreq",
+        "field": "freqLabel"
+      },
+      {
+        "icon": "lucide:waveform",
+        "label": "rowKind",
+        "field": "kindLabel"
+      },
+      {
+        "icon": "lucide:key-round",
+        "label": "rowTone",
+        "field": "toneLabel"
+      },
+      {
+        "icon": "lucide:cpu",
+        "label": "rowProto",
+        "field": "proto"
+      },
+      {
+        "icon": "lucide:thermometer",
+        "label": "rowPayload",
+        "field": "payload"
+      },
+      {
+        "icon": "lucide:binary",
+        "label": "rowRaw",
+        "field": "rawHex"
+      },
+      {
+        "icon": "lucide:repeat",
+        "label": "rowSeen",
+        "field": "countLabel"
+      },
+      {
+        "icon": "lucide:clock",
+        "label": "rowLast",
+        "field": "lastSeen",
+        "format": "since"
+      }
     ]
   },
   "tabs": [
@@ -28,7 +67,12 @@
       "titleKey": "title",
       "view": "band",
       "fit": true,
-      "needs": ["compass", "haptic"]
+      "needs": [
+        "compass",
+        "geo",
+        "orientation",
+        "usb"
+      ]
     },
     {
       "id": "live",
@@ -39,14 +83,43 @@
       "search": true,
       "searchKey": "searchLive",
       "statusKey": "statusLive",
-      "empty": { "icon": "lucide:antenna", "text": "emptyLive", "hint": "emptyLiveHint" },
+      "empty": {
+        "icon": "lucide:antenna",
+        "text": "emptyLive",
+        "hint": "emptyLiveHint"
+      },
       "card": {
         "layout": "table",
         "columns": [
-          { "field": "name", "label": "colName", "grow": true, "lg": true, "sub": "detail" },
-          { "field": "rawHex", "label": "colRaw", "grow": true, "muted": true, "mono": true },
-          { "field": "countLabel", "label": "colSeen", "align": "right", "mono": true, "heat": "strength" },
-          { "field": "lastSeen", "label": "colWhen", "align": "right", "mono": true, "muted": true, "format": "since" }
+          {
+            "field": "name",
+            "label": "colName",
+            "grow": true,
+            "lg": true,
+            "sub": "detail"
+          },
+          {
+            "field": "rawHex",
+            "label": "colRaw",
+            "grow": true,
+            "muted": true,
+            "mono": true
+          },
+          {
+            "field": "countLabel",
+            "label": "colSeen",
+            "align": "right",
+            "mono": true,
+            "heat": "strength"
+          },
+          {
+            "field": "lastSeen",
+            "label": "colWhen",
+            "align": "right",
+            "mono": true,
+            "muted": true,
+            "format": "since"
+          }
         ]
       }
     },
@@ -59,13 +132,35 @@
       "source": "fav",
       "search": true,
       "searchKey": "searchSaved",
-      "empty": { "icon": "lucide:bookmark", "text": "emptySaved", "hint": "emptySavedHint" },
+      "empty": {
+        "icon": "lucide:bookmark",
+        "text": "emptySaved",
+        "hint": "emptySavedHint"
+      },
       "card": {
         "layout": "table",
         "columns": [
-          { "field": "name", "label": "colName", "grow": true, "lg": true, "sub": "detail" },
-          { "field": "channelLabel", "label": "colChannel", "align": "right", "mono": true },
-          { "field": "lastSeen", "label": "colWhen", "align": "right", "mono": true, "muted": true, "format": "since" }
+          {
+            "field": "name",
+            "label": "colName",
+            "grow": true,
+            "lg": true,
+            "sub": "detail"
+          },
+          {
+            "field": "channelLabel",
+            "label": "colChannel",
+            "align": "right",
+            "mono": true
+          },
+          {
+            "field": "lastSeen",
+            "label": "colWhen",
+            "align": "right",
+            "mono": true,
+            "muted": true,
+            "format": "since"
+          }
         ]
       }
     },

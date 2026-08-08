@@ -3,7 +3,7 @@
   "theme": "signal",
   "category": "hackrf",
   "tabs": [
-    { "id": "scan", "type": "tool", "icon": "lucide:radar", "label": "tabScan", "view": "gsmscanView" },
+    { "id": "scan", "type": "tool", "icon": "lucide:radar", "label": "tabScan", "view": "gsmscanView", "needs": ["usb"] },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
   ],
   "profile": { "icon": "lucide:antenna", "theme": true, "lang": true, "install": true }

@@ -73,7 +73,9 @@
       "label": "tabCompass",
       "view": "sun",
       "needs": [
-        "geo"
+        "compass",
+        "geo",
+        "orientation"
       ]
     },
     {

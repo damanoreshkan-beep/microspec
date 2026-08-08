@@ -75,6 +75,13 @@ export const NODES = [
       "packages/gates/preflight.mjs", ...globApps()],
   },
   {
+    id: "caps", kind: "script", phase: "gate", needs: ["spec", "view"], scope: "farm", frozen: "2026-08-08",
+    why: "spec.json `needs` must match the capabilities the code actually reaches for. The field was inert " +
+      "and had drifted for a whole category (six apps opened WebUSB, none declared it) — make it true " +
+      "before making it functional.",
+    run: () => ["deno", "run", "-A", "packages/gates/capabilities.mjs", "--check"],
+  },
+  {
     id: "unit", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-06-11",
     why: "packages/runtime — where the math is supposed to live. A barrel over tests/<module>_test.js.",
     run: () => ["deno", "test", "-A", "packages/runtime/runtime_test.js"],
@@ -190,7 +197,7 @@ export function topo(nodes = NODES) {
 // The named flows. A flow is a SET of target nodes; the runner pulls in their dependencies.
 export const FLOWS = {
   // everything runnable on this device, no network, no Chromium — the pre-push floor
-  gates: ["validate", "noundef", "preflight", "unit", "mcp", "pipeline", "kit", "shell", "sw", "counts"],
+  gates: ["validate", "noundef", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "counts"],
   author: ["scaffold"],
   ship: ["push"],
   all: NODES.map((n) => n.id),

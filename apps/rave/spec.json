@@ -9,7 +9,12 @@
       "icon": "lucide:audio-waveform",
       "label": "tabBeat",
       "view": "rave",
-      "fit": true
+      "fit": true,
+      "needs": [
+        "compass",
+        "orientation",
+        "wakeLock"
+      ]
     },
     {
       "id": "pads",

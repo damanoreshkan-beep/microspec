@@ -63,7 +63,13 @@
       "icon": "lucide:hexagon",
       "label": "tabHive",
       "view": "hiveView",
-      "fit": true
+      "fit": true,
+      "needs": [
+        "compass",
+        "geo",
+        "orientation",
+        "wakeLock"
+      ]
     },
     {
       "id": "list",

@@ -56,13 +56,22 @@ subclone   needs=(none)          requestDevice=1
 ```
 
 Six apps open a WebUSB device; **none declares it**. `air` uses geolocation undeclared; `sun` declares
-`geo` and also consumes compass. Nothing catches this, which means the permission surface the runtime
-primes, the store tile advertises and the Android shell requests are all derived from a declaration that
-does not match the code.
+`geo` and also consumes compass.
 
-**Done when:** every app's `needs` matches its call sites, and a gate node proves it — a preflight check
-that maps `navigator.usb` / `getUserMedia` / `geolocation` / `DeviceOrientationEvent` / `vibrate` call sites
-to required `needs` entries and fails by name. Then it is a node in `8n8` and cannot silently rot.
+**And the field is inert.** Corrected after checking: `tab.needs` is read by exactly one place in the farm —
+`packages/runtime/validate.js:117`, which asserts it is an array and nothing more. The schema's own
+description claims it "drives permission priming"; no code does. The store tile, the launcher manifest and
+the Android shell generator never read it. So this is not a live permission bug — it is a **declaration of
+intent that quietly drifted away from the code, in a field nothing forces to be true.**
+
+That ordering matters: make it true first, then it becomes safe to make it functional (permission priming,
+a "needs USB" affordance on the store tile, the shell's requested permission set). Making an inert field
+functional while it is wrong for a whole category would ship the drift into the permission surface.
+
+**Done when:** every app's `needs` matches its call sites, and a gate node proves it — a check that maps
+`navigator.usb` / `getUserMedia` / `geolocation` / `DeviceOrientationEvent` / `vibrate` / `wakeLock` call
+sites, **through the real import graph** (`tools/graph.mjs`), to required `needs` entries and fails by app
+and capability name. Then it is an 8n8 node and cannot silently rot again.
 
 ## 2. Runtime lifecycle extraction (the real duplication)
 

@@ -10,7 +10,8 @@
     "test": "deno test -A packages/runtime/runtime_test.js",
     "affected": "deno run -A tools/affected.mjs",
     "verify": "deno run -A packages/gates/verify.mjs",
-    "gates": "deno run -A packages/schema/validate.mjs apps/*/spec.json && deno run -A tools/noundef.mjs && deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/* && deno test -A packages/runtime/runtime_test.js && deno run -A tools/kit-manifest.mjs --check && deno run -A tools/shell-gen.mjs --check && deno test -A tools/mcp/server_test.js && deno run -A deploy/sw.mjs --check && deno run -A deploy/counts.mjs --check",
+    "gates": "deno run -A tools/8n8/run.mjs gates",
+    "8n8": "deno run -A tools/8n8/run.mjs",
     "kit": "deno run -A tools/kit-manifest.mjs",
     "shell": "deno run -A tools/shell-gen.mjs",
     "red": "gh run view $(gh run list --workflow=verify.yml --limit 1 --json databaseId --jq '.[0].databaseId') --log-failed | sed 's/\\x1b\\[[0-9;]*m//g' | grep -E '✗'"
@@ -28,6 +29,7 @@
       "packages/"
     ]
   },
-  "//gates": "THE pre-push block, as one command. Running all but one of these is how a stale service-worker manifest reached CI twice: the sw check depends on the LAST edit (an import graph changes when a view adopts a kit component), so it must run after everything else, every time. `kit-manifest --check` is the same shape one level up — tools/mcp/kit.json is GENERATED from packages/runtime/ui.js, so touching the kit without running `deno task kit` leaves every agent reading a signature that no longer exists.",
+  "//gates": "THE pre-push block, now an 8n8 flow (tools/8n8/nodes.mjs) instead of a `&&` chain. Same checks, one superset node (the registry's own contract test), 45.5s -> 24.4s measured, because independent nodes have no reason to be sequential. The reason it stopped being `&&`: a chain stops at the FIRST red, so one round answers one boolean and the next four failures stay hidden — and `deno task gates | grep ...` returns grep's exit code, which is how a red farm got pushed. The runner runs every node whose dependencies are green, prints each failure IN FULL with its node id and argv, and exits non-zero on the count. Running all but one of these is how a stale service-worker manifest reached CI twice, so `sw` is a node, not a habit: an import graph changes the moment a view adopts a kit component. `kit` is the same shape one level up - tools/mcp/kit.json is GENERATED from packages/runtime/ui.js, so touching the kit without `deno task kit` leaves every agent reading a signature that no longer exists.",
+  "//8n8": "The pipeline registry itself. `deno task 8n8 --list` prints every node, whether it is a deterministic script or still an agent hand-off, and the share of the pipeline that no longer needs a model. n8n has a human draw the graph and a machine run it; here the agent does the work and a run that proved itself FREEZES into a script node - packages/gen/authorless.mjs is the existence proof. The number only goes up.",
   "//red": "Print CI failures IN FULL. Never pipe this through `cut` or `head -c`: the gate names the offending element and its geometry, and truncating that turns a measurement back into a guess — three commits were spent moving the wrong element because its class name was cut at 170 characters."
 }

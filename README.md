@@ -308,8 +308,12 @@ anything.
 # scaffold a new app from a spec + i18n you (or an agent) authored
 deno run -A packages/gen/scaffold.mjs apps/myapp
 
-# the full local gate — schema + preflight + unit + service-worker + app-count. Runs on a phone, ~10s.
+# the full local gate — the 8n8 `gates` flow: ten independent nodes, run concurrently, every failure
+# reported in one round. Runs on a phone, ~16s warm (the old sequential chain took 45s).
 deno task gates
+
+# the pipeline itself: every node, script vs agent hand-off, and how much of it no longer needs a model
+deno task 8n8 --list
 
 # which apps does my change actually reach? (the same graph CI uses)
 deno task affected

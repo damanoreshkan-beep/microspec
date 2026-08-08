@@ -17,3 +17,5 @@ proxy/
 # (absolute home paths, private-repo references); same reason as .claude/skills/
 AGENTS.md
 .serena/
+# 8n8 run stamps — a green-gates record is about THIS machine and THIS tree, never shared
+.8n8/

@@ -51,11 +51,14 @@ export function store({ S, openScreen, closeScreen }) {
         ${b ? html`<span class="absolute top-1.5 right-1.5">${tag(b, true)}</span>` : null}
       </div>
       <p class="text-base-content/70 leading-relaxed break-words">${taglineOf(sel)}</p>
+      ${(sel.needs || []).includes("usb") ? html`<div data-needs-device class="flex items-center gap-2 text-sm text-warning bg-warning/10 rounded-2xl px-3 py-2">${Icon("lucide:usb", "shrink-0")}<span>${T(t, "needsDeviceHackrf")}</span></div>` : null}
       <button id="open-app" class="btn btn-primary btn-lg rounded-2xl gap-2 w-full max-w-xs" onClick=${() => launch(sel)}>${Icon("lucide:external-link")}${T(t, "openApp")}</button>
       <div class="text-xs text-base-content/50 tabular-nums flex items-center gap-1.5">v${sel.version || "1.0"}${b === "upd" ? html`<span class="text-warning font-medium">· ${T(t, "newVersion")}</span>` : null}</div>
     </div>`; })() : null}
   <//>`;
 
+  
+  
   const card = (a) => { const it = iconTint(a.bg, a.fg, dark), b = badgeOf(a), inst = installed(a); return html`<button data-app=${a.id} aria-label=${nameOf(a)} class="group flex flex-col items-center gap-1.5 min-w-0" onClick=${() => (inst ? launch(a) : openScreen(a.id))} key=${a.id}>
     <div class="relative aspect-square w-full rounded-[26%] flex items-center justify-center sf-e2 transition-transform duration-150 group-active:scale-90" style=${`background:${it.tile}`}>
       ${AppArt(a, it.glyph, "1.9rem")}
@@ -71,12 +74,15 @@ export function store({ S, openScreen, closeScreen }) {
     ${Icon("lucide:search", "absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50 text-lg pointer-events-none")}
   </div>`;
 
+  
   const query = q.trim().toLowerCase();
   if (query) {
     const list = apps.filter((a) => (nameOf(a) + " " + taglineOf(a)).toLowerCase().includes(query)).sort(byName);
     return html`<div class="flex flex-col gap-4">${searchBar}${list.length ? grid(list) : noResults}${detail}</div>`;
   }
 
+  
+  
   const shown = cat === "all" ? CATS : [cat];
   return html`<div class="flex flex-col gap-4">${searchBar}
     <${Segmented} attr="data-cat" scroll label=${T(t, "categories")}
@@ -87,7 +93,11 @@ export function store({ S, openScreen, closeScreen }) {
         const items = apps.filter((a) => a.category === c).sort(byName);
         if (!items.length) return null;
         return html`<div class="flex flex-col gap-2" key=${c}>
-          <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center justify-between gap-3"><span>${T(t, catKey(c))}</span><span class="normal-case tabular-nums">${items.length}</span></div>
+          
+          <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center justify-between gap-3">
+            <span>${T(t, catKey(c))}${items.every((a) => (a.needs || []).includes("usb"))
+              ? html`<span class="normal-case text-warning/80"> · ${T(t, "needsDevice")}</span>` : null}</span>
+            <span class="normal-case tabular-nums">${items.length}</span></div>
           ${grid(items)}
         </div>`;
       })}

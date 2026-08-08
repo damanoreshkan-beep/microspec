@@ -31,6 +31,7 @@ export async function buildManifest() {
       href: `./${a.name}/`,
       version: spec.version || ("1." + (await gitCount(`apps/${a.name}`))),
       category: spec.category || "feeds",
+      needs: [...new Set((spec.tabs ?? []).flatMap((t) => t.needs ?? []))].sort(),
     });
   }
   apps.sort((x, y) => x.title.localeCompare(y.title, "uk"));

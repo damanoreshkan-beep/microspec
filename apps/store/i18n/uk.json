@@ -39,5 +39,7 @@
   "toastRemoved": "Видалено",
   "updBadge": "ОНОВ",
   "newVersion": "нова версія",
-  "installed": "Встановлено"
+  "installed": "Встановлено",
+  "needsDevice": "Потрібен зовнішній пристрій",
+  "needsDeviceHackrf": "Працює лише з підключеним HackRF One"
 }

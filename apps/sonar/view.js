@@ -286,7 +286,7 @@ function Waterfall({ t }) {
     try { ro = new ResizeObserver(size); ro.observe(wrap); } catch { /* linkedom */ }
     return () => { try { ro?.disconnect(); } catch { /* */ } paint = null; };
   }, []);
-  return html`<div ref=${box} class="relative flex-1 min-h-0 rounded-[var(--ms-r)] bg-base-100 sf-inset overflow-hidden">
+  return html`<div ref=${box} class="relative flex-1 min-h-0 rounded-[var(--ms-r)] bg-base-100 sf-inset border border-base-content/10 overflow-hidden">
     <canvas ref=${canvas} class="absolute inset-0 w-full h-full"></canvas>
     ${/* The instrument's own graticule — ±125 / ±250 Hz across, ~0.8 s down. currentColor, so it is one
           declaration in both themes, and behind the trace rather than over it. */ ""}

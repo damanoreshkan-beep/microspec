@@ -101,6 +101,11 @@ function pump() {
 const GATE_END = GATE_STILL + 96 * 2 + 25; 
 function gateWarmup() {
   reset();
+  $diag.set({
+    ctxRate: GATE_RATE, micRate: GATE_RATE,
+    emitted: snapCarrier(carrierHz(), GATE_RATE, DEFAULTS.fftSize),
+    settings: { sampleRate: GATE_RATE, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+  });
   for (let i = 0; i < GATE_END; i++) consume(gateFrame(frameN++), 16, GATE_RATE);
 }
 
@@ -248,7 +253,8 @@ function Waterfall({ t }) {
 }
 
 
-export function sonar({ t, loc, toast, S }) {
+export function sonar({ t, toast, S }) {
+  const loc = useStore(S.locale);
   const status = useStore($status), reading = useStore($reading), active = useStore($active);
   const calS = useStore($cal), primed = useStore($primed);
   const [showPrime, setPrime] = useState(false);
@@ -314,7 +320,8 @@ const GATE_LOG = [
   { id: "g1", t: 1754598100000, dur: 12.6, peak: 21.7, dir: 0.08 },
 ];
 
-export function sonarLog({ t, loc, toast, confirm, undo }) {
+export function sonarLog({ t, S, toast, confirm, undo }) {
+  const loc = useStore(S.locale);
   const v = useStore($logv);
   const [list, setList] = useState(gate ? GATE_LOG : null);
   useEffect(() => {
@@ -353,7 +360,7 @@ export function sonarLog({ t, loc, toast, confirm, undo }) {
     ${list.map((it) => html`<div data-event key=${it.id} class="card bg-base-100 rounded-2xl">
       <div class="card-body p-3 flex-row items-center gap-3">
         <span class=${`w-9 h-9 rounded-full sf-inset shrink-0 flex items-center justify-center ${Math.abs(it.dir) >= DEFAULTS.directionMin ? "text-[var(--app-accent)]" : "text-base-content/70"}`}>
-          ${Icon(Math.abs(it.dir) < DEFAULTS.directionMin ? "lucide:waves" : it.dir > 0 ? "lucide:arrow-down-left" : "lucide:arrow-up-right", "text-lg")}
+          ${Icon(Math.abs(it.dir) < DEFAULTS.directionMin ? "lucide:waves" : it.dir > 0 ? "lucide:arrow-down-to-dot" : "lucide:arrow-up-from-dot", "text-lg")}
         </span>
         <div class="flex-1 min-w-0">
           <div class="flex items-baseline gap-2">

@@ -8,6 +8,13 @@ import { T } from "/_rt/i18n.js";
 import { Globe } from "/_rt/globe.js";
 import facts from "./facts.json" with { type: "json" };
 
+// Three views, one earth. iss and quakes were separate apps that each mounted this same Globe component and
+// differed only in what they plot on it — a satellite, live seismicity, the countries themselves. They keep
+// their own modules (the layers are genuinely independent) and the runtime resolves each tab's `view`
+// against this file's exports.
+export { iss } from "./track.js";
+export { quakes } from "./quakes.js";
+
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const LIST = Object.entries(facts).map(([id, f]) => ({ id, ...f }));
 

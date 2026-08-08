@@ -262,27 +262,6 @@
     "needs": []
   },
   {
-    "id": "quakes",
-    "title": "Землетруси",
-    "titles": {
-      "uk": "Землетруси",
-      "en": "Earthquakes"
-    },
-    "tagline": "Землетруси світу онлайн — магнітуда, місце, глибина на живому глобусі",
-    "taglines": {
-      "uk": "Землетруси світу онлайн — магнітуда, місце, глибина на живому глобусі",
-      "en": "Earthquakes worldwide, live — magnitude, place and depth on a spinning globe"
-    },
-    "glyph": "lucide:waves",
-    "art": "<path d=\"M2 12h3l2-6 3 14 3-10 2 4 2-2h3\"/>",
-    "bg": "#0C0F14",
-    "fg": "#E0463A",
-    "href": "./quakes/",
-    "version": "1.22",
-    "category": "science",
-    "needs": []
-  },
-  {
     "id": "grain",
     "title": "Зерно",
     "titles": {
@@ -607,27 +586,6 @@
     "href": "./pendulum/",
     "version": "1.20",
     "category": "esoterica",
-    "needs": []
-  },
-  {
-    "id": "iss",
-    "title": "МКС",
-    "titles": {
-      "uk": "МКС",
-      "en": "ISS"
-    },
-    "tagline": "Де Міжнародна космічна станція просто зараз — її позиція наживо на глобусі, пропагована з орбітальних елементів (SGP4), з висотою, швидкістю та освітленням Сонцем. Тягне TLE один раз, далі працює офлайн.",
-    "taglines": {
-      "uk": "Де Міжнародна космічна станція просто зараз — її позиція наживо на глобусі, пропагована з орбітальних елементів (SGP4), з висотою, швидкістю та освітленням Сонцем. Тягне TLE один раз, далі працює офлайн.",
-      "en": "Where the International Space Station is right now — its position propagated live on the globe from orbital elements (SGP4), with altitude, speed and sunlight. Fetches the TLE once, then runs offline."
-    },
-    "glyph": "lucide:satellite",
-    "art": "<path d=\"M13 7 9 3 5 7l4 4\"/><path d=\"m17 11 4 4-4 4-4-4\"/><path d=\"m8 12 4 4 6-6-4-4Z\"/><path d=\"m16 8 3-3\"/><path d=\"M9 21a6 6 0 0 0-6-6\"/>",
-    "bg": "#0A0F1E",
-    "fg": "#7CC7FF",
-    "href": "./iss/",
-    "version": "1.19",
-    "category": "science",
     "needs": []
   },
   {
@@ -1051,7 +1009,7 @@
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./imagine/",
-    "version": "1.21",
+    "version": "1.22",
     "category": "creative",
     "needs": [
       "camera"

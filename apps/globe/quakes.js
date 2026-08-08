@@ -76,7 +76,7 @@ export function quakes({ S }) {
   }, [top && top.id]);
 
   const ready = useReveal(!!list);   // hold the skeleton ≥1s so a fast load doesn't flash
-  if (err && !list) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "statusError")}</span></div>`;
+  if (err && !list) return html`<div class="flex flex-col items-center text-base-content/70 py-20 gap-2 text-center px-6">${Icon("lucide:cloud-off", "text-3xl")}<span>${T(t, "qStatusError")}</span></div>`;
   // the real globe spins immediately; the headline + list are decoding skeletons
   if (!ready) return html`<div class="flex flex-col gap-4 items-center">
     <div class="w-full flex justify-center"><${Globe} points=${[]} spin=${true} height=${300} /></div>

@@ -3,7 +3,7 @@
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
   app: "globe",
-  version: "9fa6cc3798",
+  version: "3456d86e3a",
   precache: [
     "./",
     "./facts.json",
@@ -13,7 +13,9 @@ self.MS = {
     "./icons/apple-touch-icon.png",
     "./index.html",
     "./manifest.json",
+    "./quakes.js",
     "./spec.json",
+    "./track.js",
     "./view.js",
     "/_rt/apk.js",
     "/_rt/build.js",
@@ -26,6 +28,7 @@ self.MS = {
     "/_rt/globe.js",
     "/_rt/i18n.js",
     "/_rt/index.js",
+    "/_rt/orbit.js",
     "/_rt/overlay.js",
     "/_rt/permissions.js",
     "/_rt/playback.js",
@@ -33,6 +36,7 @@ self.MS = {
     "/_rt/qrcode.js",
     "/_rt/qrgen.vendor.js",
     "/_rt/render.js",
+    "/_rt/satellite.js",
     "/_rt/sealed.js",
     "/_rt/sealedfetch.js",
     "/_rt/sensors.js",
@@ -53,6 +57,7 @@ self.MS = {
     "https://esm.sh/@nanostores/persistent@0.10.2?external=nanostores",
     "https://esm.sh/@nanostores/preact@0.5.2?external=preact,nanostores",
     "https://esm.sh/htm@3.1.1/preact?external=preact",
+    "https://esm.sh/motion@11.18.2",
     "https://esm.sh/nanostores@0.11.4",
     "https://esm.sh/preact@10.27.1",
     "https://esm.sh/preact@10.27.1/hooks",

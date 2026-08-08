@@ -22,5 +22,21 @@
   "close": "Закрити",
   "refresh": "Оновити",
   "toastSaved": "Збережено",
-  "toastRemoved": "Видалено"
+  "toastRemoved": "Видалено",
+  "tabTrack": "МКС",
+  "over": "Над",
+  "overOcean": "океаном",
+  "altitude": "Висота",
+  "velocity": "Швидкість",
+  "coords": "Координати",
+  "visibility": "Освітлення",
+  "visDay": "На сонці",
+  "visEclipse": "У тіні Землі",
+  "visNight": "Видима з поверхні",
+  "km": "км",
+  "kmh": "км/год",
+  "statusError": "Не вдалось отримати позицію",
+  "tabMap": "Землетруси",
+  "count24": "поштовхів за 24 год",
+  "qStatusError": "Не вдалось отримати дані"
 }

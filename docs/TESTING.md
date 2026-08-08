@@ -25,6 +25,27 @@ Determinism: animations + the min-skeleton delay are **instant in the gate / und
 (detected via localhost + matchMedia) so shots and e2e never race; the effects are device-only. The `?__hold`
 and `?__anim` hooks are query-param-only — zero production behaviour.
 
+## The unit layer — one file per runtime module
+
+Everything that can be proven without a browser is proven in Deno, and it is the **fast** half of the gate
+(~10 s for the whole suite vs minutes per Chromium job). Put the maths in `packages/runtime/*` and test it
+there; an app should have nothing left to prove but its surface.
+
+```
+packages/runtime/runtime_test.js      # the BARREL — no tests, only imports. CI and `deno task test` name THIS path.
+packages/runtime/tests/<module>_test.js   # the actual suites, one file per runtime module
+```
+
+Deno registers a test the moment its module is imported, so the barrel is all that binds the two. **Adding a
+suite = adding a file under `tests/` + one `import "./tests/<module>_test.js";` line in the barrel** — no
+config, no glob, no runner. Keep the file named after the module it exercises; if a test needs a helper, the
+helper lives in that same file (there is no shared test-util module, deliberately).
+
+Two things that bite when moving tests between files, both learned the hard way: relative specifiers resolve
+against the **file**, so `./x.js`, `import("./y.js")` and `new URL("./theme.css", import.meta.url)` all have
+to be re-based — but a path inside a **template literal** is usually fixture *data* (the `graph` tests assert
+on fake source code containing `import "./x.js"`) and must be left exactly as written.
+
 ## Loading UX is part of the contract (no exceptions)
 
 - **Never a content-less spinner, never a view-hiding "loading" block.** The app's real structure renders

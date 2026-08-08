@@ -238,6 +238,10 @@ CI: `unit` (runtime tests + ajv over every spec) → a Chromium `verify` job per
 - **Fail-fast / cost:** a verify run >1 min is a warning — investigate (check "Set up job" for GitHub infra
   first). Don't let a job burn minutes red.
 
+Anything provable without a browser belongs in `packages/runtime/*` with a suite in
+`packages/runtime/tests/<module>_test.js` (imported by the `runtime_test.js` barrel — see `TESTING.md`).
+That half of the gate runs in ~10 s locally; the Chromium half costs minutes per app in CI.
+
 ## Why this shape
 
 The agent writes only the **spec** (taste) + the one **adapter/view** (the bespoke fetch or custom

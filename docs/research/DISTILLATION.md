@@ -111,7 +111,30 @@ whose efficacy is UNKNOWN is a candidate for this list, not a defect.
 **Done when:** a table of every app with a keep/merge/delete recommendation and its evidence, decided by the
 owner, executed in one pass.
 
-## 5. Sources host (last, and only if the count is the point)
+## Status, 2026-08-08 — §1–§4 done, §5 declined on its own criterion
+
+| § | Outcome | Commit |
+|---|---|---|
+| 1 | Capability truth: 19 apps corrected, `caps` gate added | `9c189eb` |
+| 2 | `usbsession.js`: five copies → one, 14 tests. **Net line INCREASE** — the value is testability, not size | `3ab9e86` |
+| 3 | Store: the real defect was 68 identical NEW badges, not grouping (which already existed) | `87b1f15` |
+| 4 | Audit + three merges + hardware disclosure: **68 → 64 tiles** | `ed9b78a`, `e231b5c`, `902f222`, `a447c95`, `7cb9bf4` |
+| 5 | **Not done — and should not be.** See below. | — |
+
+§5 was conditional: *"only if the tile count is itself the product goal after §3 and §4 have run."* Both
+have run, and both answered no.
+
+§3 found the store was already grouped; what actually made it unreadable was a badge on every single tile —
+a signal problem, not a volume problem. §4 found the honest ceiling of consolidation is four tiles, and that
+the farm contains no junk to delete. Between them they say the discomfort was never "68 is too many" but
+"68 all shouting at once", and that has been fixed.
+
+Building the sources host now would dissolve seven install identities and add source routing, namespaced
+favorites, per-source cursors and a cache migration — to remove seven tiles from a store that no longer
+reads as crowded. **The condition for §5 was not met, so §5 is closed rather than deferred.** Reopen it only
+if the store still feels crowded once these changes are deployed and looked at.
+
+## 5. Sources host — the plan that was NOT executed (kept for the record)
 
 Merging the eight data-only catalogs into one host with sources-as-data. Deliberately last: §0 shows it
 removes the least code, adds the most machinery, and dissolves 7 install identities. It becomes worth doing

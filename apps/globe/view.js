@@ -5,6 +5,9 @@ import { T } from "/_rt/i18n.js";
 import { Globe } from "/_rt/globe.js";
 import facts from "./facts.json" with { type: "json" };
 
+export { iss } from "./track.js";
+export { quakes } from "./quakes.js";
+
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const LIST = Object.entries(facts).map(([id, f]) => ({ id, ...f }));
 

@@ -18,6 +18,7 @@ const CARRIERS = [18000, 19000, 20000];
 const VOL_MAX = 0.1;                       
 const AUTO_STOP_MS = 5 * 60 * 1000;        
 const CAL_FRAMES = 30;                     
+const ROWS = 200;                          
 const EVENTS = collection("sonarEvents");
 
 const num = (v, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : "—");
@@ -97,7 +98,7 @@ function pump() {
   consume(buf, dt, eng.ctx.sampleRate);
 }
 
-const GATE_END = GATE_STILL + 96 + 25;     
+const GATE_END = GATE_STILL + 96 * 2 + 25; 
 function gateWarmup() {
   reset();
   for (let i = 0; i < GATE_END; i++) consume(gateFrame(frameN++), 16, GATE_RATE);
@@ -214,9 +215,18 @@ function Waterfall({ t }) {
     if (!el || !wrap) return;
     const accent = hexRgb(getComputedStyle(wrap).getPropertyValue("--app-accent"));
     const size = () => {
-      const dpr = Math.min(2, globalThis.devicePixelRatio || 1);
-      const w = Math.max(1, Math.round(wrap.clientWidth * dpr)), h = Math.max(1, Math.round(wrap.clientHeight * dpr));
-      if (el.width !== w || el.height !== h) { el.width = w; el.height = h; }
+      const w = Math.max(1, Math.round(wrap.clientWidth));
+      if (el.width !== w || el.height !== ROWS) {
+        let keep = null;
+        try {
+          const tmp = document.createElement("canvas");
+          tmp.width = el.width || w; tmp.height = el.height || ROWS;
+          tmp.getContext("2d")?.drawImage(el, 0, 0);
+          keep = tmp;
+        } catch {  }
+        el.width = w; el.height = ROWS;
+        try { if (keep) el.getContext("2d")?.drawImage(keep, 0, 0, w, ROWS); } catch {  }
+      }
       paint = makePainter(el, accent);
     };
     size();

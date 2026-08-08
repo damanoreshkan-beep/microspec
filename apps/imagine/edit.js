@@ -164,7 +164,7 @@ export function retouch({ S, toast }) {
     setResult(null); setPhase("editing");
     if (gate) { await sleep(120); if (run === runRef.current) { setResult({ url: mockArt(seed) }); setPhase("done"); } return; }
     let image;
-    try { image = await toEditableDataURL(srcUrl); } catch { return fail(run, "eFailed"); }
+    try { image = await toEditableDataURL(srcUrl); } catch { return fail(run, "edFailed"); }
     if (run !== runRef.current) return;
     if (image.length > 9_000_000) return fail(run, "eBig");                       // ~6.7 MB decoded — over the proxy's body cap
     let pEn = p; try { pEn = await toEnglish(p); } catch { /* fail-open: send the original — the edit models prefer English but a native instruction still runs */ }
@@ -173,9 +173,9 @@ export function retouch({ S, toast }) {
       // Async job + poll, exactly like Уяви: POST starts the cascade, short polls never trip the proxy's 60s cap.
       const cr = await fetch(`${VPS_PROXY}/image/edit`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ image, prompt: pEn, seed }) });
       if (run !== runRef.current) return;
-      if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : cr.status === 413 ? "eBig" : "eFailed");
+      if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : cr.status === 413 ? "eBig" : "edFailed");
       const { job } = await cr.json();
-      if (!job) return fail(run, "eFailed");
+      if (!job) return fail(run, "edFailed");
       const t0 = Date.now();
       for (let i = 0; i < 100; i++) {                                             // ~150s of 1.5s polls
         await sleep(1500);
@@ -189,7 +189,7 @@ export function retouch({ S, toast }) {
           setResult({ url: own(URL.createObjectURL(blob)) }); setPhase("done"); buzz(12); return;
         }
         let j; try { j = await pr.json(); } catch { continue; }
-        if (j.status === "error") return fail(run, "eFailed");
+        if (j.status === "error") return fail(run, "edFailed");
       }
       fail(run, "eTimeout");
     } catch { fail(run, "eNetwork"); }
@@ -257,7 +257,7 @@ export function retouch({ S, toast }) {
            unreadable on half the images it could land on, and the hairline around it was the object drawing
            its own edge. It is an opaque raised chip now — the material says "on top of the picture", the
            colour is left to carry the meaning. */""}
-      ${phase === "error" ? html`<div class="absolute inset-x-0 bottom-3 flex justify-center px-4"><div data-error class="flex items-center gap-2 text-sm px-3 py-2 rounded-xl bg-base-100 text-error sf-e3">${Icon("lucide:alert-triangle", "text-base shrink-0")}${T(t, error || "eFailed")}</div></div>` : null}
+      ${phase === "error" ? html`<div class="absolute inset-x-0 bottom-3 flex justify-center px-4"><div data-error class="flex items-center gap-2 text-sm px-3 py-2 rounded-xl bg-base-100 text-error sf-e3">${Icon("lucide:alert-triangle", "text-base shrink-0")}${T(t, error || "edFailed")}</div></div>` : null}
     </div>
 
     <!-- ── composer / actions ── -->
@@ -265,12 +265,12 @@ export function retouch({ S, toast }) {
          and never needed a hairline on top of it (the neumorphic material makes one read as a sticker seam). */""}
     ${phase === "ready" || phase === "editing" || phase === "error" ? html`<div class="shrink-0 bg-base-100 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
       <div class="relative">
-        <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey} disabled=${phase === "editing"}></textarea>
-        <button data-dream aria-label=${T(t, "dream")} disabled=${suggesting || phase === "editing"} onClick=${() => { buzz(); dream(); }} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
+        <textarea id="prompt" rows="2" aria-label=${T(t, "edPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "edPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey} disabled=${phase === "editing"}></textarea>
+        <button data-dream aria-label=${T(t, "edDream")} disabled=${suggesting || phase === "editing"} onClick=${() => { buzz(); dream(); }} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
       </div>
       <div class="flex gap-2">
         <button data-new class="btn btn-ghost rounded-2xl gap-2 shrink-0" aria-label=${T(t, "newImg")} disabled=${phase === "editing"} onClick=${backToChooser}>${Icon("lucide:image", "text-lg")}</button>
-        <button data-edit class="btn btn-primary flex-1 rounded-2xl gap-2" disabled=${phase === "editing" || !prompt.trim()} onClick=${edit}>${Icon("lucide:wand-sparkles", "text-lg")}${T(t, phase === "error" ? "again" : "editBtn")}</button>
+        <button data-edit class="btn btn-primary flex-1 rounded-2xl gap-2" disabled=${phase === "editing" || !prompt.trim()} onClick=${edit}>${Icon("lucide:wand-sparkles", "text-lg")}${T(t, phase === "error" ? "edAgain" : "editBtn")}</button>
       </div>
     </div>` : null}
 

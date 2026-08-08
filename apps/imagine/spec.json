@@ -11,6 +11,16 @@
       "view": "imagine"
     },
     {
+      "id": "edit",
+      "type": "tool",
+      "icon": "lucide:wand-sparkles",
+      "label": "tabEdit",
+      "view": "retouch",
+      "needs": [
+        "camera"
+      ]
+    },
+    {
       "id": "me",
       "type": "profile",
       "icon": "lucide:user",
@@ -22,6 +32,9 @@
     "icon": "lucide:sparkles",
     "theme": true,
     "lang": true,
-    "install": true
+    "install": true,
+    "permissions": [
+      "camera"
+    ]
   }
 }

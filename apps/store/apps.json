@@ -652,29 +652,6 @@
     "needs": []
   },
   {
-    "id": "retouch",
-    "title": "Онови",
-    "titles": {
-      "en": "Retouch",
-      "uk": "Онови"
-    },
-    "tagline": "Дай фото інструкцію — «додай сніг», «прибери дроти», «як олійна картина» — і ШІ перемалює зображення. Твоє фото завантажується на безкоштовний сервіс редагування лише коли ти застосовуєш зміну.",
-    "taglines": {
-      "en": "Give a photo an instruction — \"make it snowy\", \"remove the wires\", \"as an oil painting\" — and AI rewrites the image. Your photo is uploaded to a free, keyless editing service only when you apply an edit.",
-      "uk": "Дай фото інструкцію — «додай сніг», «прибери дроти», «як олійна картина» — і ШІ перемалює зображення. Твоє фото завантажується на безкоштовний сервіс редагування лише коли ти застосовуєш зміну."
-    },
-    "glyph": "lucide:wand-sparkles",
-    "art": "<path d=\"m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z\"/>\n<path d=\"m14 7 3 3\"/>\n<path d=\"M5 6v4\"/>\n<path d=\"M19 14v4\"/>\n<path d=\"M10 2v2\"/>\n<path d=\"M7 8H3\"/>\n<path d=\"M21 16h-4\"/>\n<path d=\"M11 3H9\"/>",
-    "bg": "#0A0A0F",
-    "fg": "#5EEAD4",
-    "href": "./retouch/",
-    "version": "1.16",
-    "category": "creative",
-    "needs": [
-      "camera"
-    ]
-  },
-  {
     "id": "pins",
     "title": "піни",
     "titles": {
@@ -1076,7 +1053,9 @@
     "href": "./imagine/",
     "version": "1.21",
     "category": "creative",
-    "needs": []
+    "needs": [
+      "camera"
+    ]
   },
   {
     "id": "frontier",

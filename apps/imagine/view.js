@@ -17,6 +17,11 @@ import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
 
+// The edit mode lives in its own module and is re-exported here, because the runtime resolves a tab's
+// `view` against this file's exports. Keeping it a separate file rather than pasting 350 lines in: the two
+// modes share a pipeline but not a screen, and a 600-line view.js would hide that they are independent.
+export { retouch } from "./edit.js";
+
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const randSeed = () => Math.floor(Math.random() * 1e9);

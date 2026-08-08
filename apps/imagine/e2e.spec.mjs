@@ -54,8 +54,34 @@ export default [
       h.expect((await h.count("[data-go][disabled]")) === 1 || (await h.count("[data-go]:disabled")) === 1, "кнопка не задизейблена на порожньому описі");
     },
   },
+  // ── the edit mode (was apps/retouch, merged in as a second tab) ──────────────────────────────────────
+  // Its own e2e file went with the folder, so these carry the coverage over. Same discipline as the
+  // generator's: the gate has no camera and no network, so edit.js seeds a local mesh-gradient source and
+  // a differently-seeded result — the whole source → instruction → edit → keep/revert flow runs offline.
+  {
+    name: "редактор: джерело, інструкція, кнопка редагування", run: async (h) => {
+      await h.click('[data-tab="edit"]'); await h.wait(400);
+      h.expect((await h.count("#prompt")) === 1, "немає поля інструкції у вкладці редагування");
+      h.expect((await h.count("[data-edit]")) === 1, "немає кнопки редагування");
+      const sources = await h.count("[data-src-upload]") + await h.count("[data-src-camera]") + await h.count("[data-src-last]");
+      h.expect(sources >= 1 || (await h.count("[data-source]")) === 1, "немає ані вибору джерела, ані готового джерела");
+    },
+  },
+  {
+    name: "редагування дає інший результат (гейт: без мережі)", run: async (h) => {
+      await h.click('[data-tab="edit"]'); await h.wait(400);
+      if ((await h.count("[data-result]")) === 0) {
+        await h.type("#prompt", "додай сніг");
+        await h.click("[data-edit]");
+        for (let i = 0; i < 15; i++) { if ((await h.count("[data-result]")) > 0) break; await h.wait(300); }
+      }
+      h.expect((await h.count("[data-result]")) === 1, "редагування не дало результату");
+      h.expect((await h.count("[data-save]")) === 1, "немає збереження результату");
+    },
+  },
   {
     name: "i18n EN/UA", run: async (h) => {
+      await h.click('[data-tab="make"]'); await h.wait(150);
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);
       h.expect(/Make|Language|Imagine/i.test(await h.bodyText()), "не EN");

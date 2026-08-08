@@ -25,20 +25,26 @@ if (has("list")) {
   Deno.exit(0);
 }
 
-const targets = FLOWS[flow];
+const targets = FLOWS[flow] ?? (byId(flow) ? [flow] : null);
 if (!targets) {
-  console.error(`8n8: unknown flow "${flow}". Known: ${Object.keys(FLOWS).join(", ")}`);
+  console.error(`8n8: unknown flow or node "${flow}". Flows: ${Object.keys(FLOWS).join(", ")}`);
   Deno.exit(2);
 }
 const wanted = new Set(targets);
 const plan = topo().filter((n) => wanted.has(n.id));
 
-const runnable = plan.filter((n) => n.kind === "script");
-const handoffs = plan.filter((n) => n.kind === "agent");
+const noAgents = has("no-agents");
+const executable = (n) => n.kind === "script" || (typeof n.brief === "function" && !noAgents);
+const runnable = plan.filter(executable);
+const handoffs = plan.filter((n) => !executable(n));
+const MAX_AGENTS = Number(flagOf("max-agents") ?? 6);
+let agentsRun = 0;
 
 if (has("dry")) {
   for (const n of plan) {
-    const argv = n.kind === "script" ? n.run(ctx).join(" ") : `${C.yellow}(agent — hand-off)${C.off}`;
+    const argv = n.kind === "script" ? n.run(ctx).join(" ")
+      : typeof n.brief === "function" ? `${C.yellow}(${n.agent ?? "claude"})${C.off} ${n.brief(ctx).slice(0, 80).replace(/\s+/g, " ")}…`
+      : `${C.yellow}(hand-off — no brief, needs a person)${C.off}`;
     console.log(`${n.id.padEnd(11)} ${argv}`);
   }
   Deno.exit(0);
@@ -57,7 +63,55 @@ const inPlan = (d) => wanted.has(d) && byId(d).kind === "script";
 const ready = (n) => n.needs.every((d) => !inPlan(d) || results.get(d)?.ok === true);
 const blockedBy = (n) => n.needs.filter((d) => inPlan(d) && results.get(d)?.ok === false);
 
-async function exec(n) {
+const agentArgv = (n) => n.agent === "codex"
+  ? ["codex", "exec", "--sandbox", "danger-full-access", n.brief(ctx)]
+  : ["claude", "-p", n.brief(ctx), "--output-format", "text"];
+
+const mtimes = (paths) => paths.map((p) => { try { return Deno.statSync(p).mtime?.getTime() ?? 0; } catch { return 0; } });
+
+async function execAgent(n) {
+  if (agentsRun >= MAX_AGENTS) {
+    const r = { ok: false, ms: 0, code: 2, argv: ["(agent)", n.id],
+      out: `8n8: agent budget exhausted (${MAX_AGENTS}). Raise it with --max-agents=N if that is intended.` };
+    results.set(n.id, r);
+    console.log(`  ${C.red}SKIP${C.off} ${n.id.padEnd(11)} ${C.dim}over budget${C.off}`);
+    return r;
+  }
+  agentsRun++;
+  const want = (n.produces?.(ctx) ?? []);
+  const before = mtimes(want);
+  const argv = agentArgv(n);
+  const t0 = Date.now();
+  let code = 1, out = "";
+  try {
+    const p = await new Deno.Command(argv[0], { args: argv.slice(1), stdout: "piped", stderr: "piped" }).output();
+    code = p.code;
+    out = new TextDecoder().decode(p.stdout) + new TextDecoder().decode(p.stderr);
+  } catch (e) {
+    out = `8n8: could not spawn ${argv[0]} — ${e.message}`;
+  }
+  if (code === 0 && want.length) {
+    const after = mtimes(want);
+    const untouched = want.filter((_, i) => after[i] === 0 || after[i] === before[i]);
+    if (untouched.length) {
+      code = 3;
+      out += `\n\n8n8: the agent exited 0 but did not write: ${untouched.join(", ")}`;
+    }
+  }
+  const r = { ok: code === 0, ms: Date.now() - t0, code, out, argv: [`(${n.agent ?? "claude"})`, n.id] };
+  results.set(n.id, r);
+  console.log(`  ${r.ok ? C.green + "ok  " : C.red + "FAIL"}${C.off} ${n.id.padEnd(11)} ${C.dim}${(r.ms / 1000).toFixed(1)}s · ${n.agent ?? "claude"}${C.off}`);
+
+  if (r.ok && n.verify && byId(n.verify)) {
+    const v = byId(n.verify);
+    const vr = await exec(v, `${n.id}→`);
+    if (!vr.ok) { r.ok = false; r.out += `\n\n8n8: ${n.id} produced output that ${n.verify} rejected.`; results.set(n.id, r); }
+  }
+  return r;
+}
+
+async function exec(n, prefix = "") {
+  if (n.kind === "agent") return execAgent(n);
   const argv = n.run(ctx);
   const t0 = Date.now();
   let code = 1, out = "";
@@ -71,13 +125,14 @@ async function exec(n) {
   const r = { ok: code === 0, ms: Date.now() - t0, code, out, argv };
   results.set(n.id, r);
   const mark = r.ok ? `${C.green}ok  ${C.off}` : `${C.red}FAIL${C.off}`;
-  console.log(`  ${mark} ${n.id.padEnd(11)} ${C.dim}${(r.ms / 1000).toFixed(1)}s${C.off}`);
+  console.log(`  ${mark} ${(prefix + n.id).padEnd(11)} ${C.dim}${(r.ms / 1000).toFixed(1)}s${C.off}`);
   return r;
 }
 
 const pending = new Set(runnable.map((n) => n.id));
 const skipped = [];
-console.log(`${C.bold}8n8 ${flow}${C.off} — ${runnable.length} script nodes` +
+const nScript = runnable.filter((n) => n.kind === "script").length, nAgent = runnable.length - nScript;
+console.log(`${C.bold}8n8 ${flow}${C.off} — ${nScript} script` + (nAgent ? `, ${nAgent} agent` : "") + ` node(s)` +
   (handoffs.length ? `, ${handoffs.length} agent hand-off${handoffs.length > 1 ? "s" : ""}` : ""));
 
 while (pending.size) {

@@ -8,21 +8,50 @@ export const NODES = [
     id: "research", kind: "agent", phase: "author", needs: ["ideate"], scope: "app", frozen: null,
     why: "The long read → apps/<id>/RESEARCH.md. Delegated to Codex; freezing it would mean the farm " +
       "already knows the API it has never met.",
+    agent: "codex",
+    produces: (ctx) => [`apps/${ctx.app}/RESEARCH.md`],
+    brief: (ctx) => `You are a READ-ONLY researcher for the microspec farm (see AGENTS.md). Do not edit any` +
+      ` file except apps/${ctx.app}/RESEARCH.md, which you must write.\n\nTask: ${ctx.task ?? "research this app`s domain"}\n\n` +
+      `Write apps/${ctx.app}/RESEARCH.md as a research note: the concrete recipe the build will follow —` +
+      ` numbers, formulas, idioms, pitfalls. Every load-bearing claim carries its source (a URL, or a path:line` +
+      ` in this repo). Label each claim VERIFIED / INFERRED / UNKNOWN. End with an UNVERIFIED section naming` +
+      ` what the build must NOT depend on. Numbers, not adjectives. No Chromium on this device.`,
   },
   {
     id: "spec", kind: "agent", phase: "author", needs: ["research"], scope: "app", frozen: null,
     why: "spec.json — the tab contract. Freezable per FAMILY, not in general: authorless.mjs already " +
       "emits it deterministically for the list family from a recipe.",
+    agent: "claude",
+    produces: (ctx) => [`apps/${ctx.app}/spec.json`],
+    brief: (ctx) => `Author apps/${ctx.app}/spec.json for the microspec farm. Read packages/schema/SCHEMA.md` +
+      ` first and obey it exactly; read apps/${ctx.app}/RESEARCH.md if it exists.\n\nApp: ${ctx.task ?? ctx.app}\n\n` +
+      `Write ONLY spec.json. Tab types are list | dashboard | converter | tool | profile. Declare \`needs\`` +
+      ` honestly — packages/gates/capabilities.mjs checks it against the code. Do not write any other file.`,
   },
   {
     id: "i18n", kind: "agent", phase: "author", needs: ["spec"], scope: "app", frozen: null,
     why: "en + uk, hand-written, no machine translation of UI copy. Partially frozen: authorless.mjs " +
       "carries the BASE dictionary every list app needs, so only app-specific strings are authored.",
+    agent: "claude", verify: "validate",
+    produces: (ctx) => [`apps/${ctx.app}/i18n/en.json`, `apps/${ctx.app}/i18n/uk.json`],
+    brief: (ctx) => `Write apps/${ctx.app}/i18n/en.json and apps/${ctx.app}/i18n/uk.json for the microspec` +
+      ` farm. Read apps/${ctx.app}/spec.json — every \`label\`, \`titleKey\` and string key it references must` +
+      ` exist in BOTH files, with identical key sets (a parity gate fails otherwise).\n\nRules: no emoji` +
+      ` (a gate rejects them). No hand-holding hint text. Ukrainian is authored, never machine-translated` +
+      ` from the English. Include the runtime profile/install keys other apps carry.`,
   },
   {
     id: "view", kind: "agent", phase: "author", needs: ["spec"], scope: "app", frozen: null,
     why: "view.js or data.js. MUST run before scaffold — scaffold picks tool-mode vs data-mode by whether " +
       "view.js exists, and getting that order wrong yields a green preflight over an empty screen.",
+    agent: "claude", verify: "noundef",
+    produces: (ctx) => [`apps/${ctx.app}/view.js`],
+    brief: (ctx) => `Write apps/${ctx.app}/view.js for the microspec farm. Read docs/AUTHORING.md and` +
+      ` apps/${ctx.app}/spec.json first; export one function per tab \`view\` named in the spec.\n\n` +
+      `Hard rules: math goes in packages/runtime/, not here. Runtime imports are /_rt/*.js from an app file.` +
+      ` No emoji, no content-less spinners (use /_rt/skeleton.js), no explanatory hint text. Seed a` +
+      ` deterministic fixture under \`gate\` from /_rt/gate.js so the POPULATED screen renders with no network.` +
+      ` Reuse the kit in /_rt/ui.js rather than hand-rolling sheets or controls.`,
   },
   {
     id: "authorless", kind: "script", phase: "author", needs: ["ideate"], scope: "app", frozen: "2026-07-05",
@@ -168,7 +197,7 @@ export function topo(nodes = NODES) {
 
 export const FLOWS = {
   gates: ["validate", "noundef", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "counts"],
-  author: ["scaffold"],
+  author: ["research", "spec", "i18n", "view", "scaffold"],
   ship: ["push"],
   all: NODES.map((n) => n.id),
 };

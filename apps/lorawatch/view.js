@@ -13,6 +13,7 @@ import { Segmented, Island } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { LORA_PRESETS } from "/_rt/lora.js";
 import { usbSupported, USB_FILTERS } from "/_rt/hackrf.js";
+import { createUsbSession } from "/_rt/usbsession.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -20,38 +21,37 @@ const fMhz = (hz) => (hz / 1e6).toFixed(3);
 const NORM_LO = -95, NORM_HI = -35;
 const norm = (db) => Math.max(0, Math.min(1, (db - NORM_LO) / (NORM_HI - NORM_LO)));
 
-const $connected = atom(false), $usbOk = atom(true), $detect = atom(null), $active = atom(false), $packets = atom([]);
+const $detect = atom(null), $active = atom(false), $packets = atom([]);
 let pid = 0;
 const asciiOf = (bytes) => bytes.map((b) => (b >= 0x20 && b <= 0x7e ? String.fromCharCode(b) : "·")).join("");
 const hexOf = (bytes) => bytes.map((b) => b.toString(16).padStart(2, "0")).join(" ");
 const $preset = persistentAtom("lorawatch:preset", "longfast", { encode: String, decode: (s) => (LORA_PRESETS.some((p) => p.key === s) ? s : "longfast") });
 const preset = () => LORA_PRESETS.find((p) => p.key === $preset.get()) || LORA_PRESETS[0];
 
-let worker = null, wfCanvas = null;
-function startWorker() {
-  stopWorker();
-  worker = new Worker(new URL("./dsp.worker.js", import.meta.url), { type: "module" });
-  worker.onmessage = (e) => {
-    const m = e.data;
+let wfCanvas = null;
+
+// The USB + worker lifecycle is /_rt/usbsession.js — five apps carried a byte-identical copy of it.
+const rf = createUsbSession({
+  atom,
+  spawn: () => new Worker(new URL("./dsp.worker.js", import.meta.url), { type: "module" }),
+  supported: usbSupported,
+  filters: USB_FILTERS,
+  start: () => { const p = preset(); return { type: "start", freq: p.freq, sf: p.sf, bw: p.bw }; },
+  reset: () => { $detect.set(null); $active.set(false); },
+  onMessage: (m) => {
     if (m.type === "waterfall") drawRows(wfCanvas, new Float32Array(m.buf), m.nrows, m.cols);
     else if (m.type === "detect") $detect.set({ sf: m.sf, bw: m.bw, count: m.count });
     else if (m.type === "packet") $packets.set([{ id: ++pid, bytes: m.bytes, crcOk: m.crcOk, sf: m.sf }, ...$packets.get()].slice(0, 30));
     else if (m.type === "level") $active.set(!!m.active);
-    else if (m.type === "error") { $usbOk.set(false); disconnect(); }
-  };
-  const p = preset(); worker.postMessage({ type: "start", freq: p.freq, sf: p.sf, bw: p.bw });
-}
-function stopWorker() { if (!worker) return; try { worker.postMessage({ type: "stop" }); } catch { /* */ } const w = worker; worker = null; setTimeout(() => { try { w.terminate(); } catch { /* */ } }, 400); }
+  },
+});
+const $connected = rf.$connected, $usbOk = rf.$usbOk;
 
-async function connect() {
-  buzz(12);
-  if (!usbSupported()) { $usbOk.set(false); return; }
-  let dev; try { dev = await navigator.usb.requestDevice({ filters: USB_FILTERS }); } catch { return; }
-  if (!dev) return;
-  $usbOk.set(true); $connected.set(true); startWorker();
-}
-function disconnect() { buzz(); stopWorker(); $connected.set(false); $detect.set(null); $active.set(false); }
-function setPreset(k) { buzz(); $preset.set(k); $detect.set(null); $active.set(false); if (worker) { const p = preset(); worker.postMessage({ type: "stop" }); startWorker(); } }
+const connect = () => { buzz(12); return rf.connect(); };
+const disconnect = () => { buzz(); rf.disconnect(); };
+// A preset change re-tunes the radio, which means a fresh worker with the new start message — restart()
+// keeps the USB session and swaps the DSP, which is exactly what the old stop-then-start did by hand.
+function setPreset(k) { buzz(); $preset.set(k); $detect.set(null); $active.set(false); rf.restart(); }
 
 // ---- waterfall drawing (guarded for the 0×0 preflight stub) ----
 function ctx2d(cv) { try { return cv && cv.getContext ? cv.getContext("2d") : null; } catch { return null; } }

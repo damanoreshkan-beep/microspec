@@ -20,6 +20,7 @@ import { gate } from "/_rt/gate.js";
 import { OUT_RATE } from "/_rt/fmradio.js";
 import { ptyName } from "/_rt/rds.js";
 import { usbSupported, USB_FILTERS } from "/_rt/hackrf.js";
+import { createUsbSession } from "/_rt/usbsession.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -31,7 +32,7 @@ const JC = (init) => ({ encode: JSON.stringify, decode: (s) => { try { return JS
 const EMPTY_RDS = { pi: 0, pty: 0, ptyName: "", ps: "", rt: "", tp: 0, ms: 0 };
 
 // ---- shared state (module scope, survives tab switches) ----
-const $connected = atom(false), $playing = atom(false), $signal = atom(0), $usbOk = atom(true);
+const $playing = atom(false), $signal = atom(0);
 const $rds = atom({ ...EMPTY_RDS }), $stereo = atom(false), $scan = atom({ active: false, frac: 0 });
 const $freq = persistentAtom("fmradio:freq", 100e6, { encode: String, decode: Number });
 const $stations = persistentAtom("fmradio:stations", [], JC([]));
@@ -44,7 +45,7 @@ const $amp = persistentAtom("fmradio:amp", "0", { encode: String, decode: (s) =>
 const $tc = persistentAtom("fmradio:tc", 50, { encode: String, decode: Number });
 
 // ---- audio (main thread): schedule the worker's 48 kHz chunks; a gain node is the mute. ----
-let worker = null, audioCtx = null, gainNode = null, nextT = 0, wl = null, np = null;
+let audioCtx = null, gainNode = null, nextT = 0, wl = null, np = null;
 function ensureAudio() {
   if (audioCtx) return audioCtx;
   const AC = typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext);
@@ -63,11 +64,18 @@ function pushAudio(f32) {
 const rssiLevel = (db) => Math.max(0, Math.min(1, (db + 60) / 40));
 const npTitle = () => { const ps = $rds.get().ps; return ps ? `${ps} · ${fmMhz($freq.get())} FM` : `FM ${fmMhz($freq.get())} MHz`; };
 
-function startWorker() {
-  stopWorker();
-  worker = new Worker(new URL("./dsp.worker.js", import.meta.url), { type: "module" });
-  worker.onmessage = (e) => {
-    const m = e.data;
+// The USB + worker lifecycle is /_rt/usbsession.js — five apps carried a byte-identical copy of it.
+// `onOpen` is where the AudioContext is built: after the device is granted (so a cancelled picker costs
+// nothing) and before the worker spawns (so its first audio chunk has somewhere to land).
+const rf = createUsbSession({
+  atom,
+  spawn: () => new Worker(new URL("./dsp.worker.js", import.meta.url), { type: "module" }),
+  supported: usbSupported,
+  filters: USB_FILTERS,
+  onOpen: () => { const c = ensureAudio(); c?.resume?.(); },
+  start: () => ({ type: "start", freq: $freq.get(), lna: $lna.get(), vga: $vga.get(), amp: $amp.get(), tcUs: $tc.get() }),
+  reset: () => { $rds.set({ ...EMPTY_RDS }); $signal.set(0); $scan.set({ active: false, frac: 0 }); },
+  onMessage: (m) => {
     if (m.type === "audio") pushAudio(new Float32Array(m.buf));
     else if (m.type === "signal") { $signal.set(rssiLevel(m.rssi)); $stereo.set(!!m.stereo); }
     else if (m.type === "rds") { const { type, ...s } = m; $rds.set(s); if (s.ps && !s.dynamic) rememberStation($freq.get(), s); if (np) np.meta(npTitle()); }
@@ -75,11 +83,9 @@ function startWorker() {
     else if (m.type === "scanProgress") $scan.set({ active: true, frac: m.frac ?? $scan.get().frac });
     else if (m.type === "scanDone") { mergeStations(m.stations); $scan.set({ active: false, frac: 1 }); }
     else if (m.type === "seekDone") { $freq.set(m.freq); $scan.set({ active: false, frac: 0 }); if (np) np.meta(npTitle()); }
-    else if (m.type === "error") { $usbOk.set(false); disconnect(); }
-  };
-  worker.postMessage({ type: "start", freq: $freq.get(), lna: $lna.get(), vga: $vga.get(), amp: $amp.get(), tcUs: $tc.get() });
-}
-function stopWorker() { if (!worker) return; try { worker.postMessage({ type: "stop" }); } catch { /* */ } const w = worker; worker = null; setTimeout(() => { try { w.terminate(); } catch { /* */ } }, 400); }
+  },
+});
+const $connected = rf.$connected, $usbOk = rf.$usbOk;
 // keep any station the scan found, carrying a known/accumulated PS name forward if we have one
 function mergeStations(found) {
   const known = $known.get();
@@ -99,15 +105,8 @@ function toggleSave(undo) {
   else $saved.set([...sv, { freq, pi: r.pi || kn.pi || 0, ps: r.ps || kn.ps || "", pty: r.pty || kn.pty || 0 }].sort((a, b) => a.freq - b.freq));
 }
 
-async function connect() {
-  buzz(12);
-  if (!usbSupported()) { $usbOk.set(false); return; }
-  let dev; try { dev = await navigator.usb.requestDevice({ filters: USB_FILTERS }); } catch { return; }
-  if (!dev) return;
-  const c = ensureAudio(); c?.resume?.();
-  $usbOk.set(true); $connected.set(true); startWorker();
-}
-function disconnect() { buzz(); pause(); stopWorker(); $connected.set(false); $rds.set({ ...EMPTY_RDS }); $signal.set(0); $scan.set({ active: false, frac: 0 }); }
+const connect = () => { buzz(12); return rf.connect(); };
+function disconnect() { buzz(); pause(); rf.disconnect(); }
 
 function play() {
   buzz(12);
@@ -119,12 +118,12 @@ function play() {
   np.setPlaying(npTitle());
 }
 function pause() { if (gainNode) gainNode.gain.value = 0; $playing.set(false); if (wl) { wl.release(); wl = null; } if (np) { np.release(); np = null; } }
-function setFreq(hz) { const f = clampHz(hz); $freq.set(f); $rds.set({ ...EMPTY_RDS }); if (worker) worker.postMessage({ type: "tune", freq: f }); if (np) np.meta(npTitle()); }
-function seek(dir) { buzz(12); if (gate || !worker) { setFreq($freq.get() + dir * STEP_HZ); return; } $scan.set({ active: true, frac: 0 }); worker.postMessage({ type: "seek", dir }); }
-function scan() { buzz(12); if (gate || !worker) return; $scan.set({ active: true, frac: 0 }); worker.postMessage({ type: "scan" }); }
+function setFreq(hz) { const f = clampHz(hz); $freq.set(f); $rds.set({ ...EMPTY_RDS }); rf.post({ type: "tune", freq: f }); if (np) np.meta(npTitle()); }
+function seek(dir) { buzz(12); if (gate || !rf.running()) { setFreq($freq.get() + dir * STEP_HZ); return; } $scan.set({ active: true, frac: 0 }); rf.post({ type: "seek", dir }); }
+function scan() { buzz(12); if (gate || !rf.running()) return; $scan.set({ active: true, frac: 0 }); rf.post({ type: "scan" }); }
 function setVol(v) { $vol.set(v); if (gainNode && $playing.get()) gainNode.gain.value = v; }
-function pushGain() { if (worker) worker.postMessage({ type: "gain", lna: $lna.get(), vga: $vga.get(), amp: $amp.get() }); }
-function setTc(tc) { $tc.set(tc); if (worker) worker.postMessage({ type: "deemph", tcUs: tc }); }
+function pushGain() { rf.post({ type: "gain", lna: $lna.get(), vga: $vga.get(), amp: $amp.get() }); }
+function setTc(tc) { $tc.set(tc); rf.post({ type: "deemph", tcUs: tc }); }
 
 // ================= view =================
 export function fmradioView({ S, screen, openScreen, closeScreen, undo }) {

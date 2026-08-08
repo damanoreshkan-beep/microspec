@@ -75,6 +75,7 @@ import "./tests/transport_test.js";
 import "./tests/underrated_test.js";
 import "./tests/urlquery_test.js";
 import "./tests/urlsafe_test.js";
+import "./tests/usbsession_test.js";
 import "./tests/v2m_test.js";
 import "./tests/validate_test.js";
 import "./tests/vfilter_test.js";

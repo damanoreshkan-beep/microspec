@@ -3,7 +3,7 @@
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
   app: "gsmscan",
-  version: "055b84496d",
+  version: "f6a8f11f76",
   precache: [
     "./",
     "./i18n/en.json",
@@ -43,6 +43,7 @@ self.MS = {
     "/_rt/theme.css",
     "/_rt/translate.js",
     "/_rt/ui.js",
+    "/_rt/usbsession.js",
     "/_rt/validate.js",
     "/_rt/version.js",
     "/_rt/video.js",

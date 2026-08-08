@@ -20,6 +20,7 @@ import { holdAudio } from "/_rt/mediasession.js";
 import { gate } from "/_rt/gate.js";
 import { OUT_RATE } from "/_rt/fmradio.js";
 import { usbSupported, USB_FILTERS } from "/_rt/hackrf.js";
+import { createUsbSession } from "/_rt/usbsession.js";
 import { LISTEN_PRESETS } from "/_rt/bandplan.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -27,7 +28,6 @@ const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
 const presetOf = (id) => LISTEN_PRESETS.find((p) => p.id === id) || null;
 
 // ---- shared state (module scope, survives tab switches) ----
-const $connected = atom(false), $usbOk = atom(true);
 const $preset = atom(null);                                    // active Listen band id, or null
 const $listenState = atom("idle");                            // idle | searching | live | silent
 const $signal = atom(0);                                      // 0..1 channel strength
@@ -38,7 +38,7 @@ const $vol = persistentAtom("ether:vol", 0.8, { encode: String, decode: Number }
 const $squelch = persistentAtom("ether:sq", "1", { encode: String, decode: (s) => s === "1" });
 
 // ---- audio (main thread): schedule the worker's 48 kHz chunks; a gain node is the mute. ----
-let worker = null, audioCtx = null, gainNode = null, nextT = 0, wl = null, np = null;
+let audioCtx = null, gainNode = null, nextT = 0, wl = null, np = null;
 function ensureAudio() {
   if (audioCtx) return audioCtx;
   const AC = typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext);
@@ -56,45 +56,40 @@ function pushAudio(f32) {
 }
 const npTitle = (t) => { const p = presetOf($preset.get()); return p ? T(t, p.key) : T(t, "title"); };
 
-function startWorker() {
-  stopWorker();
-  worker = new Worker(new URL("./sweep.worker.js", import.meta.url), { type: "module" });
-  worker.onmessage = (e) => {
-    const m = e.data;
+// The USB + worker lifecycle is /_rt/usbsession.js — five apps carried a byte-identical copy of it.
+// Ether is the one that posts NO start message: the worker idles until a band is picked, so `start`
+// returns null and the first instruction arrives from listen()/scan().
+const rf = createUsbSession({
+  atom,
+  spawn: () => new Worker(new URL("./sweep.worker.js", import.meta.url), { type: "module" }),
+  supported: usbSupported,
+  filters: USB_FILTERS,
+  onOpen: () => { const c = ensureAudio(); c?.resume?.(); },
+  start: () => null,
+  reset: () => { $preset.set(null); $listenState.set("idle"); $signal.set(0); $scanning.set(false); },
+  onMessage: (m) => {
     if (m.type === "audio") pushAudio(new Float32Array(m.buf));
     else if (m.type === "signal") $signal.set(Math.max(0, Math.min(1, m.level)));
     else if (m.type === "channel") $listenState.set(m.state);            // searching | live | silent
     else if (m.type === "scanProgress") $scanning.set(true);
     else if (m.type === "radar") { $radar.set(m.sources || []); $scanning.set(false); }
     else if (m.type === "waterfall") $wf.set(m.wf);
-    else if (m.type === "error") { $usbOk.set(false); disconnect(); }
-  };
-}
-function stopWorker() { if (!worker) return; try { worker.postMessage({ type: "stop" }); } catch { /* */ } const w = worker; worker = null; setTimeout(() => { try { w.terminate(); } catch { /* */ } }, 300); }
+  },
+});
+const $connected = rf.$connected, $usbOk = rf.$usbOk;
 
-async function connect() {
-  buzz(12);
-  if (!usbSupported()) { $usbOk.set(false); return; }
-  let dev; try { dev = await navigator.usb.requestDevice({ filters: USB_FILTERS }); } catch { return; }
-  if (!dev) return;
-  const c = ensureAudio(); c?.resume?.();
-  $usbOk.set(true); $connected.set(true); startWorker();
-}
-function disconnect() {
-  buzz(); pause(); stopWorker();
-  $connected.set(false); $preset.set(null); $listenState.set("idle"); $signal.set(0);
-  $scanning.set(false);
-}
+const connect = () => { buzz(12); return rf.connect(); };
+function disconnect() { buzz(); pause(); rf.disconnect(); }
 
 function listen(t, id) {
   buzz(12);
   const c = ensureAudio(); c?.resume?.();
   $preset.set(id); $listenState.set("searching"); $signal.set(0);
-  if (gate || !worker) return;                                            // gate seeds; real worker sweeps→tunes
-  worker.postMessage({ type: "listen", preset: presetOf(id) });
+  if (gate || !rf.running()) return;                                      // gate seeds; real worker sweeps→tunes
+  rf.post({ type: "listen", preset: presetOf(id) });
   if (!$playing.get()) play(t);
 }
-function nextChannel() { buzz(12); $listenState.set("searching"); if (worker) worker.postMessage({ type: "next" }); }
+function nextChannel() { buzz(12); $listenState.set("searching"); rf.post({ type: "next" }); }
 function play(t) {
   const c = ensureAudio(); c?.resume?.();
   if (gainNode) gainNode.gain.value = $vol.get();
@@ -105,13 +100,13 @@ function play(t) {
 }
 function pause() { if (gainNode) gainNode.gain.value = 0; $playing.set(false); if (wl) { wl.release(); wl = null; } if (np) { np.release(); np = null; } }
 function setVol(v) { $vol.set(v); if (gainNode && $playing.get()) gainNode.gain.value = v; }
-function toggleSquelch() { $squelch.set(!$squelch.get()); if (worker) worker.postMessage({ type: "squelch", on: $squelch.get() }); }
+function toggleSquelch() { $squelch.set(!$squelch.get()); rf.post({ type: "squelch", on: $squelch.get() }); }
 
 function scan() {
   buzz(12);
-  if (gate || !worker) return;                                          // no device under the gate — keep the seeded list
+  if (gate || !rf.running()) return;                                    // no device under the gate — keep the seeded list
   $scanning.set(true); $radar.set([]);
-  worker.postMessage({ type: "scan" });
+  rf.post({ type: "scan" });
 }
 
 // ================= Listen =================

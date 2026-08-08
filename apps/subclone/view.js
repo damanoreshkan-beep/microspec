@@ -13,6 +13,7 @@ import { Sheet, Segmented, Island } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { OOK_FREQS } from "/_rt/ook.js";
 import { usbSupported, USB_FILTERS } from "/_rt/hackrf.js";
+import { createUsbSession } from "/_rt/usbsession.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -20,40 +21,35 @@ const fMhz = (hz) => (hz / 1e6).toFixed(2);
 const JC = (init) => ({ encode: JSON.stringify, decode: (s) => { try { return JSON.parse(s); } catch { return init; } } });
 const uid = () => "s" + Date.now().toString(36) + Math.floor(performance.now() % 1000);
 
-const $connected = atom(false), $usbOk = atom(true), $rec = atom({ state: "idle", cap: null }), $tx = atom(null);
+const $rec = atom({ state: "idle", cap: null }), $tx = atom(null);
 const $freq = persistentAtom("subclone:freq", 433_920_000, { encode: String, decode: Number });
 const $saved = persistentAtom("subclone:saved", [], JC([]));
 const $txGain = persistentAtom("subclone:txg", 30, { encode: String, decode: Number });
 const $repeats = persistentAtom("subclone:reps", 5, { encode: String, decode: Number });   // manual repeats per send
 
-let worker = null;
-function startWorker() {
-  stopWorker();
-  worker = new Worker(new URL("./dsp.worker.js", import.meta.url), { type: "module" });
-  worker.onmessage = (e) => {
-    const m = e.data;
+// The USB + worker lifecycle is /_rt/usbsession.js — five apps carried a byte-identical copy of it.
+const rf = createUsbSession({
+  atom,
+  spawn: () => new Worker(new URL("./dsp.worker.js", import.meta.url), { type: "module" }),
+  supported: usbSupported,
+  filters: USB_FILTERS,
+  start: () => ({ type: "open" }),
+  reset: () => { $rec.set({ state: "idle", cap: null }); $tx.set(null); },
+  onMessage: (m) => {
     if (m.type === "recording") $rec.set({ state: "recording", cap: null });
     else if (m.type === "captured") $rec.set({ state: m.frame.length ? "captured" : "empty", cap: m.frame.length ? m : null });
     else if (m.type === "transmitting") $tx.set(m.id);
     else if (m.type === "sent") $tx.set(null);
-    else if (m.type === "error") { $usbOk.set(false); disconnect(); }
-  };
-  worker.postMessage({ type: "open" });
-}
-function stopWorker() { if (!worker) return; try { worker.postMessage({ type: "stop" }); } catch { /* */ } const w = worker; worker = null; setTimeout(() => { try { w.terminate(); } catch { /* */ } }, 400); }
+  },
+});
+const $connected = rf.$connected, $usbOk = rf.$usbOk;
 
-async function connect() {
-  buzz(12);
-  if (!usbSupported()) { $usbOk.set(false); return; }
-  let dev; try { dev = await navigator.usb.requestDevice({ filters: USB_FILTERS }); } catch { return; }
-  if (!dev) return;
-  $usbOk.set(true); $connected.set(true); startWorker();
-}
-function disconnect() { buzz(); stopWorker(); $connected.set(false); $rec.set({ state: "idle", cap: null }); $tx.set(null); }
+const connect = () => { buzz(12); return rf.connect(); };
+const disconnect = () => { buzz(); rf.disconnect(); };
 function record() {
-  buzz(12); if (gate || !worker) return;
-  if ($rec.get().state === "recording") worker.postMessage({ type: "stopRecord" });   // toggle: stop → worker processes → "captured"
-  else { $rec.set({ state: "recording", cap: null }); worker.postMessage({ type: "record", freq: $freq.get() }); }
+  buzz(12); if (gate || !rf.running()) return;
+  if ($rec.get().state === "recording") rf.post({ type: "stopRecord" });   // toggle: stop → worker processes → "captured"
+  else { $rec.set({ state: "recording", cap: null }); rf.post({ type: "record", freq: $freq.get() }); }
 }
 function discard() { buzz(); $rec.set({ state: "idle", cap: null }); }
 function saveCap(name) {
@@ -61,7 +57,7 @@ function saveCap(name) {
   $saved.set([{ id: uid(), name: name || fMhz(c.freq) + " FM", freq: c.freq, frame: c.frame, entries: c.entries }, ...$saved.get()]);
   $rec.set({ state: "idle", cap: null });
 }
-function transmit(s) { buzz(12); if (gate || !worker) { $tx.set(s.id); setTimeout(() => $tx.set(null), 900); return; } worker.postMessage({ type: "transmit", id: s.id, freq: s.freq, frame: s.frame, repeats: Math.max(1, $repeats.get()), txGain: $txGain.get() }); }
+function transmit(s) { buzz(12); if (gate || !rf.running()) { $tx.set(s.id); setTimeout(() => $tx.set(null), 900); return; } rf.post({ type: "transmit", id: s.id, freq: s.freq, frame: s.frame, repeats: Math.max(1, $repeats.get()), txGain: $txGain.get() }); }
 function setFreq(f) { buzz(); $freq.set(f); $rec.set({ state: "idle", cap: null }); }
 
 export function subcloneView({ S, screen, openScreen, closeScreen, undo }) {

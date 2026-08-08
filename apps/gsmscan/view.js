@@ -13,6 +13,7 @@ import { Sheet, Segmented, Island } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { BANDS, arfcnToFreq } from "/_rt/gsmband.js";
 import { usbSupported, USB_FILTERS } from "/_rt/hackrf.js";
+import { createUsbSession } from "/_rt/usbsession.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -21,35 +22,32 @@ const NORM_LO = -118, NORM_HI = -48;
 const norm = (db) => Math.max(0, Math.min(1, (db - NORM_LO) / (NORM_HI - NORM_LO)));
 const BAND_KEYS = ["gsm900", "dcs1800"];
 
-const $connected = atom(false), $usbOk = atom(true), $spectrum = atom(null), $arfcns = atom([]), $sweep = atom({ active: false, frac: 0 });
+const $spectrum = atom(null), $arfcns = atom([]), $sweep = atom({ active: false, frac: 0 });
 const $band = persistentAtom("gsmscan:band", "gsm900", { encode: String, decode: (s) => (BANDS[s] ? s : "gsm900") });
 const $lna = persistentAtom("gsmscan:lna", 24, { encode: String, decode: Number });
 const $vga = persistentAtom("gsmscan:vga", 32, { encode: String, decode: Number });
 
-let worker = null;
-function startWorker() {
-  stopWorker();
-  worker = new Worker(new URL("./dsp.worker.js", import.meta.url), { type: "module" });
-  worker.onmessage = (e) => {
-    const m = e.data;
+// The USB + worker lifecycle is /_rt/usbsession.js — five apps carried a byte-identical copy of it.
+// What stays here is the only part that was ever app-specific: what to tell the worker, what its
+// messages mean, and what to clear when the link drops.
+const rf = createUsbSession({
+  atom,
+  spawn: () => new Worker(new URL("./dsp.worker.js", import.meta.url), { type: "module" }),
+  supported: usbSupported,
+  filters: USB_FILTERS,
+  start: () => ({ type: "start", band: $band.get(), lna: $lna.get(), vga: $vga.get() }),
+  reset: () => { $spectrum.set(null); $arfcns.set([]); $sweep.set({ active: false, frac: 0 }); },
+  onMessage: (m) => {
     if (m.type === "sweep") { $spectrum.set(new Float32Array(m.buf || m.spectrum)); $arfcns.set(m.arfcns || []); $sweep.set({ active: true, frac: 1 }); }
     else if (m.type === "sweepProgress") $sweep.set({ active: true, frac: m.frac ?? $sweep.get().frac });
-    else if (m.type === "error") { $usbOk.set(false); disconnect(); }
-  };
-  worker.postMessage({ type: "start", band: $band.get(), lna: $lna.get(), vga: $vga.get() });
-}
-function stopWorker() { if (!worker) return; try { worker.postMessage({ type: "stop" }); } catch { /* */ } const w = worker; worker = null; setTimeout(() => { try { w.terminate(); } catch { /* */ } }, 400); }
+  },
+});
+const $connected = rf.$connected, $usbOk = rf.$usbOk;
 
-async function connect() {
-  buzz(12);
-  if (!usbSupported()) { $usbOk.set(false); return; }
-  let dev; try { dev = await navigator.usb.requestDevice({ filters: USB_FILTERS }); } catch { return; }
-  if (!dev) return;
-  $usbOk.set(true); $connected.set(true); startWorker();
-}
-function disconnect() { buzz(); stopWorker(); $connected.set(false); $spectrum.set(null); $arfcns.set([]); $sweep.set({ active: false, frac: 0 }); }
-function setBand(b) { buzz(); $band.set(b); $arfcns.set([]); $spectrum.set(null); if (worker) worker.postMessage({ type: "band", band: b }); }
-function pushGain() { if (worker) worker.postMessage({ type: "gain", lna: $lna.get(), vga: $vga.get() }); }
+const connect = () => { buzz(12); return rf.connect(); };
+const disconnect = () => { buzz(); rf.disconnect(); };
+function setBand(b) { buzz(); $band.set(b); $arfcns.set([]); $spectrum.set(null); rf.post({ type: "band", band: b }); }
+function pushGain() { rf.post({ type: "gain", lna: $lna.get(), vga: $vga.get() }); }
 
 // ---- band spectrum canvas (guarded for the linkedom 0×0 stub) ----
 function ctx2d(cv) { try { return cv && cv.getContext ? cv.getContext("2d") : null; } catch { return null; } }

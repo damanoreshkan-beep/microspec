@@ -800,6 +800,26 @@
     "category": "sound"
   },
   {
+    "id": "sonar",
+    "title": "Сонар",
+    "titles": {
+      "en": "Sonar",
+      "uk": "Сонар"
+    },
+    "tagline": "Сонар перетворює телефон на ультразвуковий датчик руху. Динамік випромінює рівний тон близько 19 кГц, а мікрофон ловить доплерівські бічні смуги, які відбиває все, що рухається. Застосунок вивчає, як звучить нерухома кімната, і показує рух відносно неї — з напрямком, коли сигнал однозначний, і чесно нічого понад те: без відстані, без пеленга, без швидкості. Усе обчислюється на пристрої: запис не зберігається й нікуди не надсилається.",
+    "taglines": {
+      "en": "Sonar turns the phone into an ultrasonic motion sensor. It emits a steady tone near 19 kHz from the speaker and watches the microphone for the Doppler sidebands anything moving reflects back. It learns what a still room scores, then reports motion relative to that — with direction when the signal is decisive, and honestly nothing else: no distance, no bearing, no speed. Everything is computed on the device; no recording is kept and nothing is uploaded.",
+      "uk": "Сонар перетворює телефон на ультразвуковий датчик руху. Динамік випромінює рівний тон близько 19 кГц, а мікрофон ловить доплерівські бічні смуги, які відбиває все, що рухається. Застосунок вивчає, як звучить нерухома кімната, і показує рух відносно неї — з напрямком, коли сигнал однозначний, і чесно нічого понад те: без відстані, без пеленга, без швидкості. Усе обчислюється на пристрої: запис не зберігається й нікуди не надсилається."
+    },
+    "glyph": "lucide:radio",
+    "art": "<path d=\"M12 12h.01\"/><path d=\"M8.4 8.4a5 5 0 0 0 0 7.2\"/><path d=\"M15.6 8.4a5 5 0 0 1 0 7.2\"/><path d=\"M5.6 5.6a9 9 0 0 0 0 12.8\"/><path d=\"M18.4 5.6a9 9 0 0 1 0 12.8\"/>",
+    "bg": "#0D1018",
+    "fg": "#5B8DEF",
+    "href": "./sonar/",
+    "version": "1.0",
+    "category": "science"
+  },
+  {
     "id": "sun",
     "title": "Сонячний компас",
     "titles": {
@@ -936,7 +956,7 @@
     "bg": "#0E0B1A",
     "fg": "#C0A9F5",
     "href": "./transit/",
-    "version": "1.36",
+    "version": "1.37",
     "category": "science"
   },
   {
@@ -1316,7 +1336,7 @@
     "bg": "#111619",
     "fg": "#5E8CA8",
     "href": "./trail/",
-    "version": "1.0",
+    "version": "1.3",
     "category": "creative"
   },
   {

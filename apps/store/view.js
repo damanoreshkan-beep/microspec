@@ -18,7 +18,14 @@ const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls |
 const AppArt = (a, color, size) => a.art
   ? html`<svg viewBox="0 0 24 24" style=${`width:${size};height:${size};color:${color}`} fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" dangerouslySetInnerHTML=${{ __html: a.art }}></svg>`
   : Icon(a.glyph, "", `font-size:${size};color:${color}`);
-const SEEN = collection("seen");   // { id → { v: lastSeenVersion } } — powers NEW / update badges
+const SEEN = collection("seen");      // { id → { v: lastSeenVersion } } — "you have opened this"
+// The catalogue you had already been SHOWN, which is a different question from the one above and used to
+// share its answer. `seen` is empty for a first-time visitor, so "not in seen" marked all 68 apps NEW: a
+// wall of identical badges, larger than the icons they sat on and, in the light theme, black on pastel.
+// A badge on everything is a badge that means nothing. NEW now means "appeared since your last visit" —
+// so the first visit establishes the baseline and marks nothing, and a badge is rare enough to be worth
+// looking at. Deliberately a separate collection: merging them is what caused this.
+const CATALOG = collection("catalog");
 const appUrl = (id) => `../${id}/`;   // store is /…/store/, apps are siblings /…/<id>/
 // Section order: everyday utilities first. Each app declares its own `category` in spec.json (carried into
 // apps.json by the manifest), so the grid groups itself — the store never hard-codes which app goes where.
@@ -46,8 +53,21 @@ export function store({ S, openScreen, closeScreen }) {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");   // active category chip; "all" shows every section
   const [seen, setSeen] = useState(null);   // { id: version } last opened at (null while loading from IndexedDB)
-  useEffect(() => { SEEN.all().then((r) => setSeen(Object.fromEntries(r.map((x) => [x.id, x.v])))).catch(() => setSeen({})); }, []);
-  const badgeOf = (a) => (!seen ? null : !(a.id in seen) ? "new" : seen[a.id] !== a.version ? "upd" : null);   // never opened / opened-older-version / current
+  const [fresh, setFresh] = useState(null); // ids that were NOT in the catalogue last visit (null = loading)
+  useEffect(() => {
+    Promise.all([SEEN.all(), CATALOG.all()]).then(([s, c]) => {
+      setSeen(Object.fromEntries(s.map((x) => [x.id, x.v])));
+      const ids = apps.map((a) => a.id);
+      const rec = c.find((x) => x.id === "known");
+      // No baseline yet → this visitor is meeting the whole farm at once, so nothing is "new" to them.
+      // Record what they were shown; anything added later is genuinely new next time.
+      const known = rec ? new Set(rec.ids || []) : null;
+      setFresh(known ? new Set(ids.filter((i) => !known.has(i))) : new Set());
+      CATALOG.put("known", { ids }).catch(() => {});
+    }).catch(() => { setSeen({}); setFresh(new Set()); });
+  }, []);
+  // added since your last visit / opened at an older version / nothing to say
+  const badgeOf = (a) => (!seen || !fresh ? null : fresh.has(a.id) && !(a.id in seen) ? "new" : (a.id in seen) && seen[a.id] !== a.version ? "upd" : null);
   const installed = (a) => !!seen && a.id in seen;   // opened at least once = the store's actionable "installed" (no cross-origin install API)
   const launch = (a) => { SEEN.put(a.id, { v: a.version }).catch(() => {}); setSeen((s) => ({ ...(s || {}), [a.id]: a.version })); try { window.open(appUrl(a.id), "_blank", "noopener"); } catch { location.assign(appUrl(a.id)); } };
   const tag = (b, sm) => b === "new" ? html`<span class=${`badge badge-primary ${sm ? "badge-sm" : "badge-xs"} font-bold px-1 leading-none`}>${T(t, "newBadge")}</span>` : b === "upd" ? html`<span class=${`badge badge-warning ${sm ? "badge-sm" : "badge-xs"} font-bold px-1 leading-none`}>${T(t, "updBadge")}</span>` : null;
@@ -108,7 +128,11 @@ export function store({ S, openScreen, closeScreen }) {
         const items = apps.filter((a) => a.category === c).sort(byName);
         if (!items.length) return null;
         return html`<div class="flex flex-col gap-2" key=${c}>
-          <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center gap-1.5">${T(t, catKey(c))}<span class="text-muted normal-case tabular-nums">${items.length}</span></div>
+          ${/* The count sits at the far edge, not beside the name. Same size and same muted colour touching
+                the label read as one string — the shot said "НАУКА І НЕБО 10", as though the section were
+                named that. Separating by POSITION rather than by another opacity step keeps it legible
+                (a third muted tone is where axe contrast starts failing). */""}
+          <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center justify-between gap-3"><span>${T(t, catKey(c))}</span><span class="normal-case tabular-nums">${items.length}</span></div>
           ${grid(items)}
         </div>`;
       })}

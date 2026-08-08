@@ -8,7 +8,10 @@
       "type": "tool",
       "icon": "lucide:wind",
       "label": "tabNow",
-      "view": "air"
+      "view": "air",
+      "needs": [
+        "geo"
+      ]
     },
     {
       "id": "me",

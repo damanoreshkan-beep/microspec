@@ -4,7 +4,7 @@
   "category": "sound",
   "accent": "#8B7CF6",
   "tabs": [
-    { "id": "play", "type": "tool", "icon": "lucide:audio-waveform", "label": "tabPlay", "view": "drift", "fit": true },
+    { "id": "play", "type": "tool", "icon": "lucide:audio-waveform", "label": "tabPlay", "view": "drift", "fit": true, "needs": ["wakeLock"] },
     { "id": "shape", "type": "tool", "icon": "lucide:sliders-horizontal", "label": "tabShape", "view": "driftShape", "fit": true },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
   ],

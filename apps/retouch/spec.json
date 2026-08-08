@@ -8,7 +8,10 @@
       "type": "tool",
       "icon": "lucide:wand-sparkles",
       "label": "tabEdit",
-      "view": "retouch"
+      "view": "retouch",
+      "needs": [
+        "camera"
+      ]
     },
     {
       "id": "me",
@@ -23,6 +26,8 @@
     "theme": true,
     "lang": true,
     "install": true,
-    "permissions": ["camera"]
+    "permissions": [
+      "camera"
+    ]
   }
 }

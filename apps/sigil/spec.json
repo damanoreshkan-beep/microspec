@@ -3,7 +3,7 @@
   "theme": "signal",
   "category": "esoterica",
   "tabs": [
-    { "id": "forge", "type": "tool", "icon": "lucide:flame", "label": "tabForge", "view": "forge" },
+    { "id": "forge", "type": "tool", "icon": "lucide:flame", "label": "tabForge", "view": "forge", "needs": ["orientation"] },
     { "id": "grimoire", "type": "tool", "icon": "lucide:book-marked", "label": "tabGrimoire", "view": "grimoire" },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
   ],

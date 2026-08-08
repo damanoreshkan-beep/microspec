@@ -9,7 +9,11 @@
       "type": "tool",
       "icon": "lucide:radio-tower",
       "label": "tabListen",
-      "view": "listenView"
+      "view": "listenView",
+      "needs": [
+        "usb",
+        "wakeLock"
+      ]
     },
     {
       "id": "radar",

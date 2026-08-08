@@ -58,6 +58,33 @@ Deno.test("the gates flow is fully deterministic AND farm-scoped", () => {
   }
 });
 
+Deno.test("an executable agent node carries a brief, a producer and a verifier", () => {
+  const ctx = { app: "demo", task: "a thing" };
+  for (const n of NODES.filter((x) => x.kind === "agent" && typeof x.brief === "function")) {
+    const brief = n.brief(ctx);
+    assert(typeof brief === "string" && brief.length > 80, `${n.id}: brief is too thin to act on`);
+    assert(brief.includes("demo"), `${n.id}: brief ignores the app it is authoring`);
+    assert(["claude", "codex"].includes(n.agent), `${n.id}: unknown agent runner ${n.agent}`);
+    // The rule that makes an agent node a pipeline stage rather than a suggestion.
+    const produces = n.produces?.(ctx) ?? [];
+    assert(produces.length > 0, `${n.id} is executable but promises no output — nothing could verify it`);
+    for (const p of produces) assert(p.startsWith("apps/demo/"), `${n.id} writes outside its app: ${p}`);
+    if (n.verify) assertEquals(byId(n.verify)?.kind, "script", `${n.id}.verify must name a deterministic node`);
+  }
+});
+
+Deno.test("the two nodes that need a human have NO brief", () => {
+  // Spawning a CLI for these would be the pipeline pretending to do the one thing it cannot.
+  for (const id of ["ideate", "taste"]) {
+    assertEquals(typeof byId(id).brief, "undefined", `${id} must stay a hand-off — it needs a person`);
+  }
+});
+
+Deno.test("the author flow does not contain ideate", () => {
+  assert(!FLOWS.author.includes("ideate"), "wanting an app is an input, not a stage");
+  for (const id of FLOWS.author) assertEquals(byId(id).scope, "app", `author target ${id} must be per-app`);
+});
+
 Deno.test("determinism is the share of script nodes", () => {
   const d = determinism();
   assertEquals(d.script + d.agent, NODES.length);

@@ -5,6 +5,9 @@
 //   deno run -A tools/8n8/run.mjs --list             # the registry + the determinism number
 //   deno run -A tools/8n8/run.mjs gates --dry        # print the argv of every node, run nothing
 //   deno run -A tools/8n8/run.mjs author --app=myapp # per-app nodes need an app id
+//   deno run -A tools/8n8/run.mjs spec --app=myapp   # ONE node — how you test or redo a single stage
+//   deno run -A tools/8n8/run.mjs author --app=x --no-agents      # deterministic nodes only
+//   deno run -A tools/8n8/run.mjs author --app=x --max-agents=2   # cap the spend (default 6)
 //
 // Why this exists rather than `cmd-a && cmd-b && cmd-c`:
 //
@@ -44,9 +47,11 @@ if (has("list")) {
 }
 
 // Resolve the flow to its transitive closure, in topological order.
-const targets = FLOWS[flow];
+// A flow name, or a single node id — running one stage is how you test a stage, and it is how you redo the
+// one that failed without paying for the four that already worked.
+const targets = FLOWS[flow] ?? (byId(flow) ? [flow] : null);
 if (!targets) {
-  console.error(`8n8: unknown flow "${flow}". Known: ${Object.keys(FLOWS).join(", ")}`);
+  console.error(`8n8: unknown flow or node "${flow}". Flows: ${Object.keys(FLOWS).join(", ")}`);
   Deno.exit(2);
 }
 // A flow is a CLOSED set, not a transitive closure. `needs` records the pipeline's order — scaffold
@@ -57,14 +62,22 @@ if (!targets) {
 const wanted = new Set(targets);
 const plan = topo().filter((n) => wanted.has(n.id));
 
-// An agent node is not a command. It is a hand-off — the runner reports it and treats it as satisfied
-// for dependency purposes, because pretending otherwise would block every gate behind "ideate".
-const runnable = plan.filter((n) => n.kind === "script");
-const handoffs = plan.filter((n) => n.kind === "agent");
+// An agent node with a `brief` is EXECUTABLE — it spawns a headless CLI. One without a brief is a genuine
+// hand-off the runner only announces (`ideate` needs a person to want something; `taste` needs an eye).
+// Both were hand-offs until this; treating the briefed ones as work is what makes `author` a real flow.
+const noAgents = has("no-agents");
+const executable = (n) => n.kind === "script" || (typeof n.brief === "function" && !noAgents);
+const runnable = plan.filter(executable);
+const handoffs = plan.filter((n) => !executable(n));
+// A budget, because an agent node costs real money and a runaway loop costs a lot of it.
+const MAX_AGENTS = Number(flagOf("max-agents") ?? 6);
+let agentsRun = 0;
 
 if (has("dry")) {
   for (const n of plan) {
-    const argv = n.kind === "script" ? n.run(ctx).join(" ") : `${C.yellow}(agent — hand-off)${C.off}`;
+    const argv = n.kind === "script" ? n.run(ctx).join(" ")
+      : typeof n.brief === "function" ? `${C.yellow}(${n.agent ?? "claude"})${C.off} ${n.brief(ctx).slice(0, 80).replace(/\s+/g, " ")}…`
+      : `${C.yellow}(hand-off — no brief, needs a person)${C.off}`;
     console.log(`${n.id.padEnd(11)} ${argv}`);
   }
   Deno.exit(0);
@@ -84,7 +97,61 @@ const inPlan = (d) => wanted.has(d) && byId(d).kind === "script";
 const ready = (n) => n.needs.every((d) => !inPlan(d) || results.get(d)?.ok === true);
 const blockedBy = (n) => n.needs.filter((d) => inPlan(d) && results.get(d)?.ok === false);
 
-async function exec(n) {
+// The headless CLIs. Reading goes to codex, authoring to claude (rules/research.md draws that line), and
+// both are subprocesses rather than an API client so this needs no key and works the same in CI.
+const agentArgv = (n) => n.agent === "codex"
+  ? ["codex", "exec", "--sandbox", "danger-full-access", n.brief(ctx)]
+  : ["claude", "-p", n.brief(ctx), "--output-format", "text"];
+
+const mtimes = (paths) => paths.map((p) => { try { return Deno.statSync(p).mtime?.getTime() ?? 0; } catch { return 0; } });
+
+async function execAgent(n) {
+  if (agentsRun >= MAX_AGENTS) {
+    const r = { ok: false, ms: 0, code: 2, argv: ["(agent)", n.id],
+      out: `8n8: agent budget exhausted (${MAX_AGENTS}). Raise it with --max-agents=N if that is intended.` };
+    results.set(n.id, r);
+    console.log(`  ${C.red}SKIP${C.off} ${n.id.padEnd(11)} ${C.dim}over budget${C.off}`);
+    return r;
+  }
+  agentsRun++;
+  const want = (n.produces?.(ctx) ?? []);
+  const before = mtimes(want);
+  const argv = agentArgv(n);
+  const t0 = Date.now();
+  let code = 1, out = "";
+  try {
+    const p = await new Deno.Command(argv[0], { args: argv.slice(1), stdout: "piped", stderr: "piped" }).output();
+    code = p.code;
+    out = new TextDecoder().decode(p.stdout) + new TextDecoder().decode(p.stderr);
+  } catch (e) {
+    out = `8n8: could not spawn ${argv[0]} — ${e.message}`;
+  }
+  // The check that makes this a pipeline stage rather than a suggestion: an agent that exits 0 having
+  // written nothing has NOT done its job, and without this it would report green and the next node would
+  // gate an unchanged tree.
+  if (code === 0 && want.length) {
+    const after = mtimes(want);
+    const untouched = want.filter((_, i) => after[i] === 0 || after[i] === before[i]);
+    if (untouched.length) {
+      code = 3;
+      out += `\n\n8n8: the agent exited 0 but did not write: ${untouched.join(", ")}`;
+    }
+  }
+  const r = { ok: code === 0, ms: Date.now() - t0, code, out, argv: [`(${n.agent ?? "claude"})`, n.id] };
+  results.set(n.id, r);
+  console.log(`  ${r.ok ? C.green + "ok  " : C.red + "FAIL"}${C.off} ${n.id.padEnd(11)} ${C.dim}${(r.ms / 1000).toFixed(1)}s · ${n.agent ?? "claude"}${C.off}`);
+
+  // Its own gate, immediately — spec→validate, view→noundef. Verifying later means debugging a pile.
+  if (r.ok && n.verify && byId(n.verify)) {
+    const v = byId(n.verify);
+    const vr = await exec(v, `${n.id}→`);
+    if (!vr.ok) { r.ok = false; r.out += `\n\n8n8: ${n.id} produced output that ${n.verify} rejected.`; results.set(n.id, r); }
+  }
+  return r;
+}
+
+async function exec(n, prefix = "") {
+  if (n.kind === "agent") return execAgent(n);
   const argv = n.run(ctx);
   const t0 = Date.now();
   let code = 1, out = "";
@@ -98,7 +165,7 @@ async function exec(n) {
   const r = { ok: code === 0, ms: Date.now() - t0, code, out, argv };
   results.set(n.id, r);
   const mark = r.ok ? `${C.green}ok  ${C.off}` : `${C.red}FAIL${C.off}`;
-  console.log(`  ${mark} ${n.id.padEnd(11)} ${C.dim}${(r.ms / 1000).toFixed(1)}s${C.off}`);
+  console.log(`  ${mark} ${(prefix + n.id).padEnd(11)} ${C.dim}${(r.ms / 1000).toFixed(1)}s${C.off}`);
   return r;
 }
 
@@ -106,7 +173,8 @@ async function exec(n) {
 // A node whose dependency FAILED is skipped and said so — never silently dropped.
 const pending = new Set(runnable.map((n) => n.id));
 const skipped = [];
-console.log(`${C.bold}8n8 ${flow}${C.off} — ${runnable.length} script nodes` +
+const nScript = runnable.filter((n) => n.kind === "script").length, nAgent = runnable.length - nScript;
+console.log(`${C.bold}8n8 ${flow}${C.off} — ${nScript} script` + (nAgent ? `, ${nAgent} agent` : "") + ` node(s)` +
   (handoffs.length ? `, ${handoffs.length} agent hand-off${handoffs.length > 1 ? "s" : ""}` : ""));
 
 while (pending.size) {

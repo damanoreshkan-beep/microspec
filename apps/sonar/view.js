@@ -237,20 +237,23 @@ function Waterfall({ t }) {
       paint = makePainter(el, accent);
     };
     size();
+    if (gate && $status.get() === "listening") gateWarmup();
     let ro = null;
     try { ro = new ResizeObserver(size); ro.observe(wrap); } catch {  }
     return () => { try { ro?.disconnect(); } catch {  } paint = null; };
   }, []);
   return html`<div ref=${box} class="relative flex-1 min-h-0 rounded-[var(--ms-r)] bg-base-100 sf-inset border border-base-content/10 overflow-hidden">
     <canvas ref=${canvas} class="absolute inset-0 w-full h-full"></canvas>
-    <div class="absolute inset-0 pointer-events-none text-base-content opacity-[0.09]"
-      style="background-image:repeating-linear-gradient(to right,currentColor 0 1px,transparent 1px 25%),repeating-linear-gradient(to bottom,currentColor 0 1px,transparent 1px 25%)"></div>
-    <div class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-base-content/25"></div>
+    <div class="absolute inset-0 pointer-events-none text-base-content opacity-[0.08]"
+      style="background-image:repeating-linear-gradient(to right,currentColor 0 1px,transparent 1px 20%),repeating-linear-gradient(to bottom,currentColor 0 1px,transparent 1px 25%)"></div>
+    
+    <div class="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-base-content/40"></div>
     <div class="absolute inset-x-0 bottom-0 flex justify-between px-2 py-1 font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-base-content/70">
       <span>${T(t, "axisFar")}</span><span>${T(t, "axisNear")}</span>
     </div>
   </div>`;
 }
+
 
 
 export function sonar({ t, toast, S }) {
@@ -347,7 +350,6 @@ export function sonarLog({ t, S, toast, confirm, undo }) {
     verb: T(t, "logClear"),
     onConfirm: async () => { try { await EVENTS.clear(); } catch {  } $logv.set($logv.get() + 1); toast?.(T(t, "logCleared")); },
   });
-
   if (!list) return html`<div class="flex flex-col gap-2">${[0, 1, 2].map((i) => html`<div data-skel key=${i} class="card bg-base-100 rounded-2xl"><div class="card-body p-3 h-14"></div></div>`)}</div>`;
   if (!list.length) {
     return html`<div class="flex flex-col items-center text-center gap-2 px-6 py-20 text-base-content/70">

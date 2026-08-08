@@ -22,6 +22,8 @@ import { Scramble } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { Sheet, Segmented } from "/_rt/ui.js";
 
+export { match } from "./match.js";
+
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const DAY = 86400000;
 const wheelAngle = (lon) => norm360(270 - lon);

@@ -274,4 +274,11 @@ export default [
       await h.goto("", 1200);
     },
   },
+
+  {
+    name: "вкладка сумісності монтується і показує читання", run: async (h) => {
+      await h.click('[data-tab="match"]'); await h.wait(500);
+      h.expect((await h.bodyText()).trim().length > 40, "вкладка сумісності порожня");
+    },
+  },
 ];

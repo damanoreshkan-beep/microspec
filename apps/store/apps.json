@@ -79,7 +79,7 @@
     "bg": "#0A0A0B",
     "fg": "#5BA6E8",
     "href": "./globe/",
-    "version": "1.15",
+    "version": "1.16",
     "category": "science",
     "needs": []
   },
@@ -925,27 +925,6 @@
     "href": "./wish/",
     "version": "1.14",
     "category": "tools",
-    "needs": []
-  },
-  {
-    "id": "compat",
-    "title": "Сумісність",
-    "titles": {
-      "en": "Compatibility",
-      "uk": "Сумісність"
-    },
-    "tagline": "Справжня астрологічна сумісність двох людей — порахована на пристрої за реальними положеннями Сонця, Місяця, Венери й Марса на дати народження (справжня ефемерида), а тоді оцінена як синастрія за п'ятьма осями. Без вигаданих чисел, повністю офлайн.",
-    "taglines": {
-      "en": "Real astrological compatibility between two people — computed on your device from the true positions of the Sun, Moon, Venus and Mars on your birth dates (a real ephemeris), then scored as a synastry across five axes. No made-up numbers, fully offline.",
-      "uk": "Справжня астрологічна сумісність двох людей — порахована на пристрої за реальними положеннями Сонця, Місяця, Венери й Марса на дати народження (справжня ефемерида), а тоді оцінена як синастрія за п'ятьма осями. Без вигаданих чисел, повністю офлайн."
-    },
-    "glyph": "lucide:heart-handshake",
-    "art": "<circle cx=\"9.4\" cy=\"12\" r=\"6.3\"/>\n<circle cx=\"14.6\" cy=\"12\" r=\"6.3\"/>",
-    "bg": "#0A0A0F",
-    "fg": "#9F8CF6",
-    "href": "./compat/",
-    "version": "1.11",
-    "category": "esoterica",
     "needs": []
   },
   {

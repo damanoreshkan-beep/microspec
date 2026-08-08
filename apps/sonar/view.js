@@ -241,7 +241,7 @@ function Waterfall({ t }) {
     try { ro = new ResizeObserver(size); ro.observe(wrap); } catch {  }
     return () => { try { ro?.disconnect(); } catch {  } paint = null; };
   }, []);
-  return html`<div ref=${box} class="relative flex-1 min-h-0 rounded-[var(--ms-r)] bg-base-100 sf-inset overflow-hidden">
+  return html`<div ref=${box} class="relative flex-1 min-h-0 rounded-[var(--ms-r)] bg-base-100 sf-inset border border-base-content/10 overflow-hidden">
     <canvas ref=${canvas} class="absolute inset-0 w-full h-full"></canvas>
     <div class="absolute inset-0 pointer-events-none text-base-content opacity-[0.09]"
       style="background-image:repeating-linear-gradient(to right,currentColor 0 1px,transparent 1px 25%),repeating-linear-gradient(to bottom,currentColor 0 1px,transparent 1px 25%)"></div>

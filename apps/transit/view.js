@@ -36,6 +36,12 @@ import { Scramble } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { Sheet, Segmented } from "/_rt/ui.js";
 
+// Synastry between two people, re-exported from its own module. It was apps/compat, and its whole apparatus
+// was already a subset of this one's — zodiac.Sign, astro.eclipticPositions, synastry.{signOf,compat,band},
+// all of which transit imports anyway alongside natal, birth, skydial and houses. A different reading of
+// the same sky is a tab, not an app.
+export { match } from "./match.js";
+
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const DAY = 86400000;
 // standard chart orientation: 0° Aries at the left (9 o'clock), signs run COUNTER-clockwise. The dial angle

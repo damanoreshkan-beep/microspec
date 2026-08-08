@@ -118,6 +118,13 @@
       "view": "chart"
     },
     {
+      "id": "match",
+      "type": "tool",
+      "icon": "lucide:heart-handshake",
+      "label": "tabMatch",
+      "view": "match"
+    },
+    {
       "id": "me",
       "type": "profile",
       "icon": "lucide:user",

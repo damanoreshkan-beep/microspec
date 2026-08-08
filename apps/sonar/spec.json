@@ -1,0 +1,48 @@
+{
+  "id": "sonar",
+  "theme": "signal",
+  "category": "science",
+  "accent": "#5B8DEF",
+  "tabs": [
+    {
+      "id": "room",
+      "type": "tool",
+      "icon": "lucide:radio",
+      "label": "tabRoom",
+      "titleKey": "title",
+      "view": "sonar",
+      "fit": true,
+      "needs": ["microphone", "wakeLock"]
+    },
+    {
+      "id": "log",
+      "type": "tool",
+      "icon": "lucide:list",
+      "label": "tabLog",
+      "titleKey": "tabLog",
+      "view": "sonarLog"
+    },
+    {
+      "id": "signal",
+      "type": "tool",
+      "icon": "lucide:activity",
+      "label": "tabSignal",
+      "titleKey": "tabSignal",
+      "view": "sonarSignal"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:radio",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "permissions": ["microphone"]
+  }
+}

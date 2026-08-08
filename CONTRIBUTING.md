@@ -19,8 +19,12 @@ Then add `e2e.spec.mjs` and open a PR. CI verifies it (a11y + responsive + e2e +
 
 New slots/families live in `packages/runtime` (`render.js` + `validate.js` + `packages/schema`). Keep
 the contract the source of truth: update `spec.schema.json` + `SCHEMA.md`, add a unit test in
-`packages/runtime/runtime_test.js`, and only add a capability once a **second** app needs it
+`packages/runtime/tests/<module>_test.js`, and only add a capability once a **second** app needs it
 (rule of two — keep the runtime lean).
+
+Unit tests are **one file per runtime module** under `packages/runtime/tests/`.
+`packages/runtime/runtime_test.js` holds no tests: it is the **barrel** that imports them, and it is the
+path `deno task test` and CI both name. A new suite = a new file there + one `import` line in the barrel.
 
 ## Gates (must stay green)
 

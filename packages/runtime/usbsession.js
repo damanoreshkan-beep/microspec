@@ -118,8 +118,14 @@ export function createUsbSession({
   }
 
   // Restart the DSP with new parameters, keeping the USB session — the shape `setBand`/`setPreset` needed.
+  //
+  // Gated on the WORKER existing, not on `$connected`. That distinction cost a CI round: `$connected` is UI
+  // state and a headless gate seeds it true to render the populated screen, so keying off it made a preset
+  // change spawn a real Worker under the gate. It reached for USB, posted {type:"error"}, and the session
+  // disconnected itself — taking the seeded packet list off screen with it. The atom is what the app SAYS;
+  // the worker is what is true.
   function restart() {
-    if (!$connected.get()) return false;
+    if (!worker) return false;
     startWorker();
     return true;
   }

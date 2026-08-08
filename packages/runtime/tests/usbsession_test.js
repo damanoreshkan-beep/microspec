@@ -163,6 +163,17 @@ Deno.test("post: no-op on a dead worker instead of throwing", async () => {
   assertEquals(s.post({ type: "gain" }), false, "after disconnect");
 });
 
+Deno.test("restart is gated on the WORKER, not on the connected atom", async () => {
+  // The regression this pins: a headless gate seeds $connected true so the populated screen renders. If
+  // restart() trusted that, a preset change would spawn a real Worker under the gate, which reaches for
+  // USB, errors, and disconnects the session — taking the seeded fixture off screen. CI found it; this
+  // keeps it found.
+  const { s, workers } = harness();
+  s.$connected.set(true);                       // exactly what an app's gate fixture does
+  assertEquals(s.restart(), false, "restart must not spawn a worker just because the atom says connected");
+  assertEquals(workers.length, 0);
+});
+
 Deno.test("restart: new worker, same session; refused when not connected", async () => {
   let band = "gsm900";
   const { s, workers } = harness({ start: () => ({ type: "start", band }) });

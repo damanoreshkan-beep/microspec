@@ -59,24 +59,33 @@ export default [
   // generator's: the gate has no camera and no network, so edit.js seeds a local mesh-gradient source and
   // a differently-seeded result — the whole source → instruction → edit → keep/revert flow runs offline.
   {
-    name: "редактор: джерело, інструкція, кнопка редагування", run: async (h) => {
+    // Under the gate edit.js starts at phase "ready" with a seeded source already loaded, so the source
+    // CHOOSER (data-source / data-src-*) is deliberately absent — asserting on it was checking a screen
+    // this app never shows a gate. What must be true is the working surface: a source on stage, an
+    // instruction field, and something to press.
+    name: "редактор: готове джерело, інструкція, кнопка редагування", run: async (h) => {
       await h.click('[data-tab="edit"]'); await h.wait(400);
+      h.expect((await h.count("[data-result]")) === 1, "немає зображення на сцені редактора");
       h.expect((await h.count("#prompt")) === 1, "немає поля інструкції у вкладці редагування");
       h.expect((await h.count("[data-edit]")) === 1, "немає кнопки редагування");
-      const sources = await h.count("[data-src-upload]") + await h.count("[data-src-camera]") + await h.count("[data-src-last]");
-      h.expect(sources >= 1 || (await h.count("[data-source]")) === 1, "немає ані вибору джерела, ані готового джерела");
     },
   },
   {
-    name: "редагування дає інший результат (гейт: без мережі)", run: async (h) => {
+    // data-save only appears once the edit is DONE, so waiting on data-result proves nothing here — it is
+    // already on screen as the source. Wait for the image to actually change.
+    name: "редагування змінює зображення і дає збереження (гейт: без мережі)", run: async (h) => {
       await h.click('[data-tab="edit"]'); await h.wait(400);
-      if ((await h.count("[data-result]")) === 0) {
-        await h.type("#prompt", "додай сніг");
-        await h.click("[data-edit]");
-        for (let i = 0; i < 15; i++) { if ((await h.count("[data-result]")) > 0) break; await h.wait(300); }
+      const before = await h.attr("[data-result]", "src");
+      await h.type("#prompt", "додай сніг");
+      await h.click("[data-edit]");
+      let after = before, changed = false;
+      for (let i = 0; i < 15; i++) {
+        after = await h.attr("[data-result]", "src");
+        if (after && after !== before) { changed = true; break; }
+        await h.wait(250);
       }
-      h.expect((await h.count("[data-result]")) === 1, "редагування не дало результату");
-      h.expect((await h.count("[data-save]")) === 1, "немає збереження результату");
+      h.expect(changed, "редагування не змінило зображення");
+      h.expect((await h.count("[data-save]")) === 1, "немає збереження після завершеного редагування");
     },
   },
   {

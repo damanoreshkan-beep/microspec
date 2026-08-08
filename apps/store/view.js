@@ -134,11 +134,13 @@ export function store({ S, openScreen, closeScreen }) {
         return html`<div class="flex flex-col gap-2" key=${c}>
           ${/* The count sits at the far edge, not beside the name. Same size and same muted colour touching
                 the label read as one string — the shot said "НАУКА І НЕБО 10", as though the section were
-                named that. Separating by POSITION rather than by another opacity step keeps it legible
-                (a third muted tone is where axe contrast starts failing). */""}
+                named that. Separating by POSITION rather than by another opacity step keeps it legible.
+                The device note is FULL-strength text-warning, never text-warning/80: axe failed that at
+                serious in the light theme, and the reason was already written two lines above it — an
+                alpha step on an already-muted tone is where contrast dies. */""}
           <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center justify-between gap-3">
             <span>${T(t, catKey(c))}${items.every((a) => (a.needs || []).includes("usb"))
-              ? html`<span class="normal-case text-warning/80"> · ${T(t, "needsDevice")}</span>` : null}</span>
+              ? html`<span class="normal-case text-warning"> · ${T(t, "needsDevice")}</span>` : null}</span>
             <span class="normal-case tabular-nums">${items.length}</span></div>
           ${grid(items)}
         </div>`;

@@ -78,8 +78,8 @@ fn fs(@builtin(position) frag: vec4f) -> @location(0) vec4f {
   let dSun = distance(vec2f(p.x, (p.y - sunP.y) / squash + sunP.y), sunP);
   let core = pow(smoothstep(0.13, 0.0, dSun), 2.0) * (1.0 - cloud * 0.88) * dayness;
   let halo = pow(smoothstep(0.30, 0.01, dSun), 1.6) * (0.34 + 0.66 * dayness);
-  let scatter = pow(smoothstep(1.10, 0.02, dSun), 1.15) * dayness;
-  let warmth = 1.0 - smoothstep(0.02, 0.40, alt);
+  let scatter = pow(smoothstep(0.65, 0.02, dSun), 1.15) * dayness;
+  let warmth = (1.0 - smoothstep(0.02, 0.40, alt)) * (1.0 - cloud * 0.75);
   let tint = mix(COOL, WARM, warmth * dayness);
 
   var col = base;
@@ -87,6 +87,7 @@ fn fs(@builtin(position) frag: vec4f) -> @location(0) vec4f {
   col = col + tint * sign * horizon * (0.010 + 0.030 * warmth * dayness);
   col = col + tint * glow * dayness * 0.045;
   col = col + tint * glow * scatter * 0.105;
+  col = col - tint * lit * dayness * (1.0 - scatter) * 0.115;
   col = col + tint * glow * halo * (0.020 + 0.060 * dayness);
   col = col + tint * glow * core * 0.075;
 

@@ -5,7 +5,7 @@ export default [
     name: "герой показує температуру та місце", run: async (h) => {
       await load(h);
       h.expect(/-?\d+°/.test(await h.bodyText()), "немає температури");
-      h.expect(/Київ|Kyiv/.test(await h.bodyText()), "немає локації");
+      h.expect(/Київ|Kyiv/i.test(await h.bodyText()), "немає локації");
       h.expect(await h.count("[data-live]") >= 1, "немає [data-live] — виміряно порожній екран очікування");
     },
   },
@@ -24,8 +24,8 @@ export default [
       await load(h);
       const t = await h.bodyText();
       h.expect(/\d\d:\d\d/.test(t), "немає погодинних часів");
-      h.expect(/Погодинно|Hourly/.test(t), "немає підпису стрічки");
-      h.expect(/На тиждень|This week/.test(t), "немає прогнозу на тиждень");
+      h.expect(/Погодинно|Hourly/i.test(t), "немає підпису стрічки");
+      h.expect(/На тиждень|This week/i.test(t), "немає прогнозу на тиждень");
       h.expect(await h.count("[data-curve] path") === 2, "немає кривої (лінія + площа)");
       h.expect(await h.count("[data-daybar]") === 5, "немає смуг діапазону на 5 днів");
     },

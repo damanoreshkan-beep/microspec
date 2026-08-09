@@ -154,8 +154,12 @@ export function iching({ S, screen, openScreen, closeScreen }) {
           the canvas behind is invisible to it. One element failed that way; the rest were one tweak from
           following. Fixing the whole list at once beats fixing the first item and waiting for CI to name
           the next. It reads better over a lit field too, which is the actual reason to keep it. */""}
+    ${/* `[&_*]:shadow-none` is doing something specific, not tidying. The kit's surfaces carry the THEME's
+          elevation, and in the light theme that elevation is a pale glow — correct on a white page, and on
+          this dark island it wrapped every button and the segmented control in dirty white halos. The
+          island supplies its own depth, so nothing inside it needs to cast one. */""}
     <${Island} pinned tone="dark" style="background:rgba(11,15,20,.93)"
-      className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3">
+      className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3 [&_*]:shadow-none">
       <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}
         placeholder=${T(t, "question")} aria-label=${T(t, "question")}
         ${/* A SOLID colour, not an alpha. Inside a translucent island the browser composites white/10 over
@@ -168,16 +172,17 @@ export function iching({ S, screen, openScreen, closeScreen }) {
               without changing, which is the signal to stop patching and drop the component instead. */""}
         class="w-full rounded-xl border border-white/25 bg-[#0b0f14] px-3 py-2 text-sm text-white placeholder:text-white/70 outline-none focus:border-white/55" />
 
-      <div class="flex items-center gap-2">
-        <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}
-          items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
-          value=${m} onChange=${(id) => { buzz(); $method.set(id); }} />
-        ${/* The odds of the CHOSEN method, as the exact ratios they are — the one fact that separates the
-              two methods, and it changes when you switch. */""}
-        <div class="flex items-center gap-2 font-mono text-[length:var(--ms-label)] tabular-nums text-white/80 ms-auto" data-odds>
-          <span>${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total}</span>
-          <span>${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</span>
-        </div>
+      ${/* The segmented control takes the full width. Sharing a row with the odds squeezed it until
+            "Монети" rendered as "Моне…", and a control whose own label is truncated is not a control. */""}
+      <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}
+        items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
+        value=${m} onChange=${(id) => { buzz(); $method.set(id); }} />
+
+      ${/* The odds of the CHOSEN method, as the exact ratios they are — the one fact that separates the
+            two methods, and it changes when you switch. */""}
+      <div class="flex items-center justify-between gap-3 font-mono text-[length:var(--ms-label)] tabular-nums text-white/80 px-0.5" data-odds>
+        <span>${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total}</span>
+        <span>${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</span>
       </div>
 
       ${r ? html`<div class="flex flex-col gap-2.5" data-live data-reading>
@@ -203,12 +208,23 @@ export function iching({ S, screen, openScreen, closeScreen }) {
           </div>
         </div>
 
+        ${/* No `.btn` either, for the reason the input taught: the component owns its background and beats a
+              utility on source order, so bg-white/10 rendered as DaisyUI grey. On top of that btn-primary is
+              near-black in the light theme, which on a dark island is an invisible primary action. The
+              island is dark in BOTH themes because the field behind it always is, so these two carry fixed
+              colours rather than theme colours — that is what makes them agree with the stage. */""}
         <div class="flex gap-2">
-          <button data-cast class="btn btn-sm btn-primary flex-1 rounded-xl gap-2" onClick=${doCast}>${Icon("lucide:dices")}${T(t, "recast")}</button>
-          <button data-read class="btn btn-sm rounded-xl gap-2 bg-white/10 border-white/25 text-white hover:bg-white/20" onClick=${() => { buzz(); openScreen("reading"); }}>${Icon("lucide:sparkles")}${T(t, "readingOpen")}</button>
+          <button data-cast onClick=${doCast}
+            class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium bg-white text-[#0b0f14] hover:bg-white/90 active:bg-white/80 transition-colors">
+            ${Icon("lucide:dices")}${T(t, "recast")}</button>
+          <button data-read onClick=${() => { buzz(); openScreen("reading"); }}
+            class="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border border-white/30 text-white hover:bg-white/10 active:bg-white/15 transition-colors">
+            ${Icon("lucide:sparkles")}${T(t, "readingOpen")}</button>
         </div>
       </div>`
-      : html`<button data-cast class="btn btn-primary rounded-xl gap-2" onClick=${doCast}>${Icon("lucide:dices", "text-lg")}${T(t, "cast")}</button>`}
+      : html`<button data-cast onClick=${doCast}
+          class="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-medium bg-white text-[#0b0f14] hover:bg-white/90 transition-colors">
+          ${Icon("lucide:dices", "text-lg")}${T(t, "cast")}</button>`}
     </${Island}>
 
     <${ReadSheet} open=${screen === "reading"} onClose=${closeScreen} sig=${sig} input=${input} t=${t} loc=${loc}

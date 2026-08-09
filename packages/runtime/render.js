@@ -1062,8 +1062,10 @@ function DashboardView({ tab }) {
   return html`<${Fragment}>
     ${tab.stage ? html`<${Stage} tab=${tab} meta=${m} />` : null}
     <div class="relative z-10 flex flex-col gap-[var(--ms-gap)]">
-    ${/* THE HERO HAS NO CARD when there is a stage. A surface here would cover the one thing worth opening
-          the app for, and the reading is the biggest type on the screen — it needs no box to be found. */ ""}
+    ${/* THE HERO HAS NO CARD — for every dashboard, not only a staged one. Over a stage a surface would
+          cover the one thing worth opening the app for; on a plain page the reading is still the biggest
+          type on the screen and needs no box to be found. The sections below stay surfaces: a list wants
+          somewhere to sit, a single number does not. */ ""}
     <div class="@container flex flex-col items-center text-center gap-1 pt-1 pb-2">
       ${place}
       <div class="flex items-start justify-center gap-0.5 leading-[0.85] mt-1">

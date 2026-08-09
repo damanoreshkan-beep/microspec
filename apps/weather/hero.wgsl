@@ -140,9 +140,15 @@ fn fs(@builtin(position) frag: vec4f) -> @location(0) vec4f {
   // A third, very wide term — atmospheric scatter. Without it a clear noon and a clear midnight render
   // almost identically in the dark theme, because a 250 px halo lights nothing but its own corner. This is
   // the term that makes the screen FEEL like day, and it is why the sun needs three radii and not one.
-  let scatter = pow(smoothstep(1.10, 0.02, dSun), 1.15) * dayness;
+  // 0.65 p-units (540 px), not 1.10: at 1.10 the falloff never completes inside a 384×832 frame — the term
+  // is 0.42 even in the far corners, so it is a global lift again, the same mistake the halo made at 0.85.
+  // The flat `dayness` term below is what carries overall brightness; this one must carry the GRADIENT.
+  let scatter = pow(smoothstep(0.65, 0.02, dSun), 1.15) * dayness;
   // Warm within ~12° of the horizon, cooling as it climbs. `alt` is normalised, so 0.13 ≈ 12°.
-  let warmth = 1.0 - smoothstep(0.02, 0.40, alt);
+  // Cover kills the warmth, and that is physics rather than mood: the colour of a low sun is DIRECT light,
+  // and a lid of cloud is exactly what stops it reaching you. Without this term a snowy overcast afternoon
+  // renders in sunset amber and reads as a dust storm.
+  let warmth = (1.0 - smoothstep(0.02, 0.40, alt)) * (1.0 - cloud * 0.75);
   let tint = mix(COOL, WARM, warmth * dayness);
 
   // ---- the sky body ----------------------------------------------------------------------------------
@@ -161,6 +167,10 @@ fn fs(@builtin(position) frag: vec4f) -> @location(0) vec4f {
   col = col + tint * sign * horizon * (0.010 + 0.030 * warmth * dayness);
   col = col + tint * glow * dayness * 0.045;                   // daylight is everywhere, not only near the sun
   col = col + tint * glow * scatter * 0.105;
+  // The light theme has no room above the page — 0.933 plus a day's worth of glow is white paper, and a
+  // clear noon rendered as a blank sheet. So there, daylight is CONTRAST rather than brightness: the sky
+  // deepens away from the sun instead of glowing toward it, which is also how a bright sky photographs.
+  col = col - tint * lit * dayness * (1.0 - scatter) * 0.115;
   col = col + tint * glow * halo * (0.020 + 0.060 * dayness);
   col = col + tint * glow * core * 0.075;
 

@@ -12,7 +12,10 @@ import { gate } from "/_rt/gate.js";
 import { summary, warmSummary, isSummarized, aiTick } from "/_rt/ai-text.js";
 import { METHODS, cast, reading, isMoving, bitOf } from "/_rt/iching.js";
 import { nameOf } from "./book.js";
-import { HeroStage, packSeed } from "./hero.js";
+import { HeroStage } from "/_rt/hero.js";
+
+/** Pack six line values (6..9, bottom first) into the 0..1 seed hero.wgsl unpacks as six base-4 digits. */
+const packSeed = (ls) => { let n = 0; for (let i = 5; i >= 0; i--) n = n * 4 + ((ls[i] ?? 7) - 6); return n / 4096; };
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch {  } };
@@ -99,7 +102,7 @@ export function iching({ S, screen, openScreen, closeScreen }) {
   ].filter(Boolean).join("\n") : "";
 
   return html`<${Fragment}>
-    <${HeroStage} seed=${r ? packSeed(r.lines) : 0} />
+    <${HeroStage} shader=${new URL("hero.wgsl", import.meta.url)} seed=${r ? packSeed(r.lines) : 0} />
     <${Island} pinned tone="dark" style="background:rgba(11,15,20,.93)"
       className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3 [&_*]:!shadow-none">
       <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}

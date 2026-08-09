@@ -4,16 +4,25 @@ import { gate } from "/_rt/gate.js";
 
 const DPR_CAP = 2;   
 
+const VS = `
+@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
+  var p = array(vec2f(-1.0, -3.0), vec2f(-1.0, 1.0), vec2f(3.0, 1.0));
+  return vec4f(p[i], 0.0, 1.0);
+}`;
+
 /**
- * @param seed  0..1 — the cast, packed as six base-4 digits (line value 6..9 → digit 0..3), bottom first.
- *              The shader unpacks it, so a new cast changes the figure with no geometry upload.
+ * @param shader  URL of the app's hero.wgsl — pass `new URL("hero.wgsl", import.meta.url)` from the view
+ * @param seed    0..1, meaning is the shader's business; changing it does NOT rebuild the pipeline
+ * @param ink     optional vec4 tint handed to the shader
  */
-export function HeroStage({ seed }) {
+export function HeroStage({ shader, seed = 0, ink }) {
   const ref = useRef();
-  const state = useRef({ raf: 0, dead: false, device: null, uni: null, ctx: null }).current;
+  const state = useRef({ raf: 0, dead: false, device: null }).current;
+  state.seed = seed;
+  state.ink = ink;
 
   useEffect(() => {
-    if (gate) return;                                   
+    if (gate) return;                                  
     const canvas = ref.current;
     if (!canvas || !navigator.gpu) return;
 
@@ -25,20 +34,13 @@ export function HeroStage({ seed }) {
         if (state.dead) return;
         state.device = device;
 
-        const base = new URL("./", import.meta.url);
-        const wgsl = await fetch(new URL("hero.wgsl", base)).then((r) => r.text());
+        const wgsl = await fetch(shader).then((r) => r.text());
         if (state.dead) return;
 
         const ctx = canvas.getContext("webgpu");
         const format = navigator.gpu.getPreferredCanvasFormat();
         ctx.configure({ device, format, alphaMode: "opaque" });
-        state.ctx = ctx;
 
-        const VS = `
-@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
-  var p = array(vec2f(-1.0, -3.0), vec2f(-1.0, 1.0), vec2f(3.0, 1.0));
-  return vec4f(p[i], 0.0, 1.0);
-}`;
         const module = device.createShaderModule({ code: VS + "\n" + wgsl });
         const pipeline = device.createRenderPipeline({
           layout: "auto",
@@ -52,7 +54,7 @@ export function HeroStage({ seed }) {
           layout: pipeline.getBindGroupLayout(0),
           entries: [{ binding: 0, resource: { buffer: uniBuf } }],
         });
-        state.uni = new Float32Array(12);
+        const uni = new Float32Array(12);
 
         const size = () => {
           const r = canvas.getBoundingClientRect();
@@ -69,11 +71,11 @@ export function HeroStage({ seed }) {
 
         const frame = () => {
           if (state.dead) return;
-          const t = still ? 2.0 : (performance.now() - t0) / 1000;
-          state.uni.set([canvas.width, canvas.height, t, state.seed ?? 0], 0);
-          state.uni.set([0.9, 0.89, 0.93, 1], 4);
-          state.uni.set([0, 0, 0, 0], 8);
-          device.queue.writeBuffer(uniBuf, 0, state.uni);
+          uni.set([canvas.width, canvas.height, still ? 2 : (performance.now() - t0) / 1000, state.seed ?? 0], 0);
+          const ink = typeof state.ink === "function" ? state.ink() : state.ink;
+          uni.set(ink?.length === 4 ? ink : [0.9, 0.89, 0.93, 1], 4);
+          uni.set([0, 0, 0, 0], 8);
+          device.queue.writeBuffer(uniBuf, 0, uni);
 
           const enc = device.createCommandEncoder();
           const pass = enc.beginRenderPass({
@@ -87,7 +89,7 @@ export function HeroStage({ seed }) {
           state.raf = requestAnimationFrame(frame);
         };
         frame();
-        state.cleanupRo = () => ro?.disconnect();
+        state.cleanup = () => ro?.disconnect();
       } catch (e) {
         console.warn("hero: WebGPU init failed —", e?.message ?? e);
       }
@@ -96,21 +98,12 @@ export function HeroStage({ seed }) {
     return () => {
       state.dead = true;
       cancelAnimationFrame(state.raf);
-      state.cleanupRo?.();
+      state.cleanup?.();
       try { state.device?.destroy?.(); } catch {  }
       state.device = null;
     };
   }, []);
 
-  state.seed = seed ?? 0;
-
-  return html`<canvas ref=${ref} data-stage data-live aria-hidden="true"
+  return html`<canvas ref=${ref} data-stage aria-hidden="true"
     class="fixed inset-0 z-0 w-full h-full pointer-events-none"></canvas>`;
 }
-
-/** Pack six line values (6..9, bottom first) into the 0..1 seed the shader unpacks. */
-export const packSeed = (lines) => {
-  let n = 0;
-  for (let i = 5; i >= 0; i--) n = n * 4 + ((lines[i] ?? 7) - 6);
-  return n / 4096;
-};

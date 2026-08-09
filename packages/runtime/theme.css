@@ -47,6 +47,7 @@
   --ms-icon: 1.25rem;    /* glyph size inside a control */
   --ms-title: 1.0625rem; /* panel/sheet title */
   --ms-label: 0.68rem;   /* mono micro-label */
+  --ms-hero: 5.5rem;     /* the ONE huge reading on a glance screen (a dashboard's value) */
 }
 
 /* --ms-r-in — the CONCENTRIC radius: what a rounded box nested inside a padded surface must use.
@@ -65,10 +66,10 @@
    padding, where the two surfaces read as independent rather than nested. */
 :root { --ms-r-in: max(var(--r-1), calc(var(--ms-r) - var(--ms-pad))); }
 @media (max-height: 780px) {
-  :root { --ms-gap: 0.625rem; --ms-pad: 0.875rem; --ms-r: 1.125rem; --ms-title: 1rem; }
+  :root { --ms-gap: 0.625rem; --ms-pad: 0.875rem; --ms-r: 1.125rem; --ms-title: 1rem; --ms-hero: 5rem; }
 }
 @media (max-height: 670px) {
-  :root { --ms-gap: 0.5rem; --ms-pad: 0.75rem; --ms-r: 1rem; --ms-ctl: 2.5rem; --ms-icon: 1.125rem; --ms-title: 0.95rem; }
+  :root { --ms-gap: 0.5rem; --ms-pad: 0.75rem; --ms-r: 1rem; --ms-ctl: 2.5rem; --ms-icon: 1.125rem; --ms-title: 0.95rem; --ms-hero: 4.25rem; }
 }
 @media (max-height: 560px) {
   /* Landscape phones and split-screen. The dock compacts with everything else — it is the one piece of
@@ -77,7 +78,10 @@
   /* --dock-h is NOT set here: the runtime measures the dock and publishes the real number (render.js).
      A constant written next to the CSS that changes the dock's height is a constant that is wrong the
      moment either one moves — which is exactly how the transport island ended up under the dock. */
-  :root { --ms-gap: 0.375rem; --ms-pad: 0.625rem; --ms-ctl: 2.25rem; --ms-icon: 1rem; --ms-title: 0.9rem; --ms-label: 0.62rem; }
+  /* --ms-hero drops hardest of all, and it has to: it is the only token whose value is measured in whole
+     screen-thirds. At 5.5rem the weather hero filled a 340px floating window on its own and everything
+     under it needed a scroll to exist. */
+  :root { --ms-gap: 0.375rem; --ms-pad: 0.625rem; --ms-ctl: 2.25rem; --ms-icon: 1rem; --ms-title: 0.9rem; --ms-label: 0.62rem; --ms-hero: 3.5rem; }
   nav[data-dock] button { padding-top: 0.25rem; padding-bottom: 0.25rem; }
   nav[data-dock] button > span { font-size: 0.54rem; }
 }
@@ -90,7 +94,7 @@
 @media (min-width: 120rem) {
   :root {
     --ms-gap: 1.1rem; --ms-pad: 1.5rem; --ms-r: 1.75rem; --ms-ctl: 3.5rem;
-    --ms-icon: 1.75rem; --ms-title: 1.5rem; --ms-label: 0.95rem;
+    --ms-icon: 1.75rem; --ms-title: 1.5rem; --ms-label: 0.95rem; --ms-hero: 7.5rem;
   }
 }
 
@@ -112,7 +116,7 @@
 }
 @media (max-height: 440px) {
   /* --ms-ctl holds at the 36px tap floor: a split-screen window is still a finger-driven screen. */
-  :root { --ms-gap: 0.3rem; --ms-pad: 0.5rem; --ms-r: 0.875rem; --ms-ctl: 2.25rem; --ms-icon: 0.95rem; --ms-title: 0.85rem; }
+  :root { --ms-gap: 0.3rem; --ms-pad: 0.5rem; --ms-r: 0.875rem; --ms-ctl: 2.25rem; --ms-icon: 0.95rem; --ms-title: 0.85rem; --ms-hero: 3rem; }
   nav[data-dock] button { padding: 0.3rem 0.55rem; }
   nav[data-dock] button > span { display: none; }
 }
@@ -208,7 +212,7 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 @media (max-width: 300px) {
   /* --ms-ctl holds at the 36px tap floor; everything else is what gives a fit screen its last few pixels.
      This is the ladder's own answer to "does not fit" — compact, or move into a Sheet. Never clip. */
-  :root { --ms-gap: 0.18rem; --ms-pad: 0.25rem; --ms-r: 0.75rem; --ms-ctl: 2.25rem; --ms-icon: 0.9rem; --ms-title: 0.8rem; --ms-label: 0.58rem; }
+  :root { --ms-gap: 0.18rem; --ms-pad: 0.25rem; --ms-r: 0.75rem; --ms-ctl: 2.25rem; --ms-icon: 0.9rem; --ms-title: 0.8rem; --ms-label: 0.58rem; --ms-hero: 2.75rem; }
 
   /* the rail */
   nav[data-dock] {

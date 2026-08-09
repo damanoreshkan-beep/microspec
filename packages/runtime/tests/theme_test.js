@@ -9,9 +9,27 @@ Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit
   const declared = new Set([...css.matchAll(/(--(?:ms|app|dock|hdr)-[a-z-]+)\s*:/g)].map((m) => m[1]));
   const used = new Set([...ui.matchAll(/var\((--[a-z-]+)\)/g)].map((m) => m[1]));
   for (const v of used) assert(declared.has(v), `ui.js reads ${v} but theme.css never declares it`);
-  for (const v of ["--ms-gap", "--ms-pad", "--ms-r", "--ms-ctl", "--ms-icon", "--ms-title", "--ms-label", "--app-accent", "--app-tint"]) {
+  for (const v of ["--ms-gap", "--ms-pad", "--ms-r", "--ms-ctl", "--ms-icon", "--ms-title", "--ms-label", "--ms-hero", "--app-accent", "--app-tint"]) {
     assert(declared.has(v), `theme.css lost the ${v} token — every component sizes off these`);
   }
+});
+
+Deno.test("design tokens: --ms-hero STEPS with the height ladder", async () => {
+  // The one token whose value is measured in screen-thirds. Written as a literal (it was `text-[5.5rem]`)
+  // the weather hero filled a 340px floating window on its own and pushed the whole app below the fold —
+  // a defect no gate can see, because a page that scrolls is allowed to scroll. So the rule is not "it
+  // exists" but "it moves": a hero that does not compact is the same bug wearing a token's name.
+  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const vals = [...css.matchAll(/--ms-hero:\s*([\d.]+)rem/g)].map((m) => Number(m[1]));
+  assert(vals.length >= 4, `--ms-hero is declared ${vals.length} time(s); the height ladder has more steps`);
+  const base = vals[0];
+  assert(vals.some((v) => v < base * 0.7), `--ms-hero never drops below 70% of its ${base}rem base — it is not compacting`);
+  assert(vals.every((v) => v >= 2.5), "a hero below 2.5rem is no longer the screen's one big reading");
+
+  // And nothing may re-declare it as a hardcoded font-size beside the element it describes.
+  const render = await Deno.readTextFile(new URL("../render.js", import.meta.url));
+  const heroLine = render.split("\n").find((l) => l.includes("--ms-hero"));
+  assert(heroLine, "render.js no longer reads --ms-hero for the dashboard hero value");
 });
 
 Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and stays sane at every step", async () => {

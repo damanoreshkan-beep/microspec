@@ -1076,8 +1076,11 @@ function DashboardView({ tab }) {
     <div class="@container flex flex-col items-center text-center gap-1 pt-1 pb-2">
       ${place}
       <div class="flex items-start justify-center gap-0.5 leading-[0.85] mt-1">
-        <span class="text-[5.5rem] @max-[300px]:text-[4.25rem] font-semibold tabular-nums tracking-tighter">${m[h.value] ?? "—"}</span>
-        ${h.unit ? html`<span class="text-3xl @max-[300px]:text-2xl font-medium text-base-content/70 mt-1">${h.unit}</span>` : null}
+        ${/* --ms-hero, not a literal. The reading is the tallest thing on the screen, so it is the token
+              that most needs the height ladder: at a fixed 5.5rem the hero filled a 340px floating window
+              by itself and pushed the rest of the app below the fold. The unit rides it at 0.36×. */ ""}
+        <span class="font-semibold tabular-nums tracking-tighter leading-[0.85]" style="font-size:var(--ms-hero)">${m[h.value] ?? "—"}</span>
+        ${h.unit ? html`<span class="font-medium text-base-content/70 mt-1" style="font-size:calc(var(--ms-hero) * 0.36)">${h.unit}</span>` : null}
       </div>
       ${h.caption && m[h.caption] ? html`<div class="flex items-center gap-1.5 text-base font-medium">
         ${h.icon && m[h.icon] ? Icon(m[h.icon], "text-xl text-[var(--app-accent)]") : null}${T(t, m[h.caption])}

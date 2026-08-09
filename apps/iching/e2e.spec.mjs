@@ -1,19 +1,21 @@
-const ready = async (h) => { for (let i = 0; i < 15; i++) { if ((await h.count("[data-number]")) > 0) break; await h.wait(200); } };
+const ready = async (h) => { for (let i = 0; i < 15; i++) { if ((await h.count("[data-reading]")) > 0) break; await h.wait(200); } };
 
 export default [
   {
-    name: "сцена і острів: гексаграма названа", run: async (h) => {
+    name: "кидання: гексаграма, триграми, номер", run: async (h) => {
       await ready(h);
-      h.expect((await h.count("[data-stage]")) === 1, "немає сцени");
+      h.expect((await h.count("[data-reading]")) === 1, "немає кинутої гексаграми");
+      h.expect((await h.count("[data-line]")) === 6, "гексаграма має рівно шість ліній");
       const n = (await h.text("[data-number]")).trim();
       h.expect(/^\d{1,2}$/.test(n) && +n >= 1 && +n <= 64, `номер гексаграми поза 1..64: ${n}`);
-      h.expect((await h.count("[data-cast]")) === 1, "немає кнопки кидання");
+      h.expect((await h.count("#question")) === 1, "немає поля питання");
     },
   },
   {
     name: "рухомі лінії дають другу гексаграму", run: async (h) => {
       await ready(h);
-      h.expect((await h.count("[data-change]")) === 1, "острів не показує переходу");
+      h.expect((await h.count("[data-change]")) === 1, "немає блоку зміни");
+      h.expect((await h.count('[data-moving="1"]')) === 2, "очікувалось дві рухомі лінії у фіксованому киданні");
     },
   },
   {
@@ -29,14 +31,10 @@ export default [
     },
   },
   {
-    name: "розбір: шість ліній, Back закриває", run: async (h) => {
+    name: "повторне кидання лишає екран заповненим", run: async (h) => {
       await ready(h);
-      await h.click("[data-detail]"); await h.wait(300);
-      h.expect((await h.prop("#detailsheet", "open")) === true, "не відкрився розбір");
-      h.expect((await h.count("[data-line]")) === 6, "у розборі не шість ліній");
-      h.expect((await h.count('[data-moving="1"]')) === 2, "очікувалось дві рухомі лінії у фіксованому киданні");
-      await h.back(); await h.wait(250);
-      h.expect((await h.prop("#detailsheet", "open")) !== true, "Back не закрив розбір");
+      await h.click("[data-cast]"); await h.wait(300);
+      h.expect((await h.count("[data-line]")) === 6, "після повторного кидання немає шести ліній");
     },
   },
   {
@@ -46,14 +44,6 @@ export default [
       h.expect((await h.prop("#readsheet", "open")) === true, "не відкрився шитик тлумачення");
       await h.back(); await h.wait(250);
       h.expect((await h.prop("#readsheet", "open")) !== true, "Back не закрив шитик");
-    },
-  },
-  {
-    name: "повторне кидання лишає гексаграму названою", run: async (h) => {
-      await ready(h);
-      await h.click("[data-cast]"); await h.wait(400);
-      const n = (await h.text("[data-number]")).trim();
-      h.expect(/^\d{1,2}$/.test(n), "після повторного кидання немає номера гексаграми");
     },
   },
   {

@@ -1,6 +1,6 @@
 self.MS = {
   app: "iching",
-  version: "59ec54ad29",
+  version: "5c24c6589b",
   precache: [
     "./",
     "./book.js",
@@ -10,7 +10,6 @@ self.MS = {
     "./icons/apple-touch-icon.png",
     "./index.html",
     "./manifest.json",
-    "./scene.js",
     "./spec.json",
     "./view.js",
     "/_rt/ai-core.js",

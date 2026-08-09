@@ -19,14 +19,13 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet, Segmented, Island } from "/_rt/ui.js";
+import { Sheet, Segmented } from "/_rt/ui.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { collection } from "/_rt/db.js";
 import { gate } from "/_rt/gate.js";
 import { summary, warmSummary, isSummarized, aiTick } from "/_rt/ai-text.js";
 import { METHODS, cast, reading, isMoving, bitOf } from "/_rt/iching.js";
 import { nameOf } from "./book.js";
-import { HexStage } from "./scene.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -153,90 +152,69 @@ export function iching({ S, screen, openScreen, closeScreen }) {
     q.trim() ? `The question asked: ${q.trim()}` : "No question was asked.",
   ].filter(Boolean).join("\n") : "";
 
-  // The screen IS the figure: a full-bleed stage you can turn, and one floating island of controls over it.
-  // Everything that used to be stacked in the page — trigrams, moving lines, the hexagram it changes into —
-  // moved into the detail sheet, because on a fit screen a second panel is a second thing competing with
-  // the object the app is about.
   return html`<${Fragment}>
-    <${HexStage} lines=${r ? r.lines : null} />
+    <div class="flex flex-col gap-4 max-w-[440px] mx-auto w-full">
+      <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}
+        placeholder=${T(t, "question")} aria-label=${T(t, "question")}
+        class="input input-bordered w-full rounded-2xl" />
 
-    <${Island} pinned tone="glass" className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3">
-      ${r ? html`<div class="flex items-baseline justify-between gap-3" data-reading>
-        <div class="flex items-baseline gap-2 min-w-0">
-          <span class="text-2xl leading-none font-medium">${name.cn}</span>
-          <span class="text-muted truncate">${name.py}</span>
-        </div>
-        <div class="flex items-baseline gap-2 shrink-0">
-          ${r.changing ? html`<span class="text-muted text-sm truncate" data-change>→ ${toName.cn} ${r.toNumber}</span>` : null}
-          <span class="font-mono tabular-nums text-muted" data-number>${r.number}</span>
-        </div>
-      </div>` : null}
+      <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}
+        items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
+        value=${m} onChange=${(id) => { buzz(); $method.set(id); }} />
 
-      <div class="flex items-center gap-2">
-        <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}
-          items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
-          value=${m} onChange=${(id) => { buzz(); $method.set(id); }} />
-        <button data-cast aria-label=${T(t, r ? "recast" : "cast")}
-          class="btn btn-primary btn-circle shrink-0" onClick=${doCast}>${Icon("lucide:dices", "text-lg")}</button>
-        <button data-read aria-label=${T(t, "readingOpen")} disabled=${!r}
-          class="btn btn-ghost btn-circle shrink-0" onClick=${() => { buzz(); openScreen("reading"); }}>${Icon("lucide:sparkles", "text-lg")}</button>
-        <button data-detail aria-label=${T(t, "detailOpen")} disabled=${!r}
-          class="btn btn-ghost btn-circle shrink-0" onClick=${() => { buzz(); openScreen("detail"); }}>${Icon("lucide:list-tree", "text-lg")}</button>
-      </div>
-
-      ${/* The odds of the CHOSEN method, as the exact ratios they are — the one fact that separates the two
-            methods, and it changes when you switch. Not a caption on a control: it is the control's value. */""}
-      <div class="flex items-center justify-between gap-3 font-mono text-[length:var(--ms-label)] tabular-nums text-muted" data-odds>
-        <span class="uppercase tracking-wide">${T(t, "oddsTitle")}</span>
+      ${/* The odds of the CHOSEN method, as the exact ratios they are. This is not hint text decorating a
+            control — it is the one fact that distinguishes the two methods, and it changes when you switch. */""}
+      <div class="flex items-center justify-between gap-3 font-mono text-[length:var(--ms-label)] tabular-nums text-muted px-1" data-odds>
+        <span class="uppercase tracking-wide text-muted">${T(t, "oddsTitle")}</span>
         <span>${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total}</span>
         <span>${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</span>
       </div>
-    <//>
 
-    <${DetailSheet} open=${screen === "detail"} onClose=${closeScreen} t=${t} r=${r} name=${name} toName=${toName}
-      q=${q} onQuestion=${(v) => $question.set(v)} />
+      ${r ? html`<div class="flex flex-col gap-4" data-live data-reading>
+        <div class="rounded-3xl sf-e2 px-5 py-5 flex flex-col gap-4">
+          <div class="flex items-baseline justify-between gap-3">
+            <div class="flex items-baseline gap-2.5 min-w-0">
+              <span class="text-3xl leading-none font-medium">${name.cn}</span>
+              <span class="text-muted truncate">${name.py}</span>
+            </div>
+            <span class="font-mono tabular-nums text-muted shrink-0" data-number>${r.number}</span>
+          </div>
+          <${Hexagram} lines=${r.lines} label=${`${name.cn} ${name.py}`} />
+          <div class="flex flex-col gap-1.5 pt-0.5">
+            <${Trigram} t=${t} tri=${r.upper} side="above" />
+            <${Trigram} t=${t} tri=${r.lower} side="below" />
+          </div>
+        </div>
+
+        <div class="rounded-3xl sf-inset px-5 py-4 flex flex-col gap-3" data-change>
+          ${r.changing ? html`
+            <div class="flex items-center justify-between gap-3">
+              <span class="font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-muted">${T(t, "moving")}</span>
+              <span class="font-mono tabular-nums text-primary">${r.moving.join(" · ")}</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="flex-1"><${HexSvg} bits=${r.toBits} label=${toName ? toName.cn : ""} cls="text-base-content/70" /></div>
+              <div class="flex flex-col items-end gap-0.5 min-w-0">
+                <span class="font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-muted">${T(t, "changesTo")}</span>
+                <span class="text-xl leading-none font-medium truncate">${toName.cn}</span>
+                <span class="text-sm text-muted truncate">${toName.py}</span>
+                <span class="font-mono tabular-nums text-muted text-sm">${r.toNumber}</span>
+              </div>
+            </div>`
+            : html`<span class="text-muted">${T(t, "noMoving")}</span>`}
+        </div>
+
+        <div class="flex gap-2">
+          <button data-cast class="btn btn-primary flex-1 rounded-2xl gap-2" onClick=${doCast}>${Icon("lucide:dices", "text-lg")}${T(t, "recast")}</button>
+          <button data-read class="btn btn-outline rounded-2xl gap-2" onClick=${() => { buzz(); openScreen("reading"); }}>${Icon("lucide:sparkles")}${T(t, "readingOpen")}</button>
+        </div>
+      </div>`
+      : html`<button data-cast class="btn btn-primary btn-lg rounded-2xl gap-2 mt-2" onClick=${doCast}>${Icon("lucide:dices", "text-lg")}${T(t, "cast")}</button>`}
+    </div>
 
     <${ReadSheet} open=${screen === "reading"} onClose=${closeScreen} sig=${sig} input=${input} t=${t} loc=${loc}
       title=${name ? `${name.cn} ${name.py}` : T(t, "readingTitle")} />
   </${Fragment}>`;
-}
-
-// Everything the island cannot hold without becoming a panel: the question, the figure flat, the trigrams,
-// the moving lines and the hexagram this one changes into.
-function DetailSheet({ open, onClose, t, r, name, toName, q, onQuestion }) {
-  if (!r) return null;
-  return html`<${Sheet} id="detailsheet" open=${open} onClose=${onClose} title=${`${name.cn} ${name.py} · ${r.number}`}>
-    <div class="flex flex-col gap-4 pb-1">
-      <input id="question" value=${q} onInput=${(e) => onQuestion(e.target.value)}
-        placeholder=${T(t, "question")} aria-label=${T(t, "question")}
-        class="input input-bordered w-full rounded-2xl" />
-
-      <${Hexagram} lines=${r.lines} label=${`${name.cn} ${name.py}`} />
-
-      <div class="flex flex-col gap-1.5">
-        <${Trigram} t=${t} tri=${r.upper} side="above" />
-        <${Trigram} t=${t} tri=${r.lower} side="below" />
-      </div>
-
-      <div class="rounded-2xl sf-inset px-4 py-3 flex flex-col gap-3">
-        ${r.changing ? html`<${Fragment}>
-          <div class="flex items-center justify-between gap-3">
-            <span class="font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-muted">${T(t, "moving")}</span>
-            <span class="font-mono tabular-nums text-primary">${r.moving.join(" · ")}</span>
-          </div>
-          <div class="flex items-center gap-4">
-            <div class="flex-1"><${HexSvg} bits=${r.toBits} label=${toName.cn} cls="text-base-content/70" /></div>
-            <div class="flex flex-col items-end gap-0.5 min-w-0">
-              <span class="font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-muted">${T(t, "changesTo")}</span>
-              <span class="text-xl leading-none font-medium truncate">${toName.cn}</span>
-              <span class="text-sm text-muted truncate">${toName.py}</span>
-              <span class="font-mono tabular-nums text-muted text-sm">${r.toNumber}</span>
-            </div>
-          </div>
-        <//>` : html`<span class="text-muted">${T(t, "noMoving")}</span>`}
-      </div>
-    </div>
-  <//>`;
 }
 
 // The generated reading. Fail-open: if nothing lands in ~12s (offline, or the free tier rate-limited) stop

@@ -46,6 +46,5 @@
   "installDesc": "Works offline, opens as an app",
   "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
   "installGenericHint": "In the browser menu choose Install or Add to home screen.",
-  "close": "Close",
-  "detailOpen": "Detail"
+  "close": "Close"
 }

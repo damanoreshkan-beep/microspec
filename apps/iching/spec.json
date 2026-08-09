@@ -10,8 +10,7 @@
       "icon": "lucide:layers",
       "label": "tabCast",
       "titleKey": "title",
-      "view": "iching",
-      "fit": true
+      "view": "iching"
     },
     {
       "id": "log",

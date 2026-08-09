@@ -127,6 +127,13 @@ export const NODES = [
     run: () => ["deno", "run", "-A", "packages/gates/capabilities.mjs", "--check"],
   },
   {
+    id: "relimports", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-08-09",
+    why: "Runtime modules must import each other relatively — an absolute /_rt/ 404s on the /microspec/ " +
+      "subpath while working locally, so only a rule can catch it. The check existed ONLY in verify.yml, " +
+      "so a violation cost a whole CI round; /_rt/hero.js shipped with one.",
+    run: () => ["deno", "run", "-A", "tools/relimports.mjs"],
+  },
+  {
     id: "unit", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-06-11",
     why: "packages/runtime — where the math is supposed to live. A barrel over tests/<module>_test.js.",
     run: () => ["deno", "test", "-A", "packages/runtime/runtime_test.js"],
@@ -242,7 +249,7 @@ export function topo(nodes = NODES) {
 // The named flows. A flow is a SET of target nodes; the runner pulls in their dependencies.
 export const FLOWS = {
   // everything runnable on this device, no network, no Chromium — the pre-push floor
-  gates: ["validate", "noundef", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "counts"],
+  gates: ["validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "counts"],
   // The authoring flow, now genuinely executable: the briefed agent nodes spawn a headless CLI, each is
   // gated by its own deterministic node the moment it returns, and scaffold turns the result into a
   // runnable app. `ideate` is absent on purpose — wanting an app is the one input a pipeline cannot supply.

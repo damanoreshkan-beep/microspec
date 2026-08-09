@@ -16,7 +16,7 @@
 //   res: vec2f · time: f32 · seed: f32 · ink: vec4f · vary: vec4f
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
-import { gate } from "/_rt/gate.js";
+import { gate } from "./gate.js";   // runtime modules import RELATIVELY — /_rt/ 404s under /microspec/
 
 const DPR_CAP = 2;   // 3.5 native on a modern phone is wasted fill rate for a full-screen field
 

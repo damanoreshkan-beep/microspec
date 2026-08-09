@@ -154,12 +154,16 @@ export function iching({ S, screen, openScreen, closeScreen }) {
           the canvas behind is invisible to it. One element failed that way; the rest were one tweak from
           following. Fixing the whole list at once beats fixing the first item and waiting for CI to name
           the next. It reads better over a lit field too, which is the actual reason to keep it. */""}
-    ${/* `[&_*]:shadow-none` is doing something specific, not tidying. The kit's surfaces carry the THEME's
+    ${/* `[&_*]:!shadow-none` is doing something specific, not tidying. The kit's surfaces carry the THEME's
           elevation, and in the light theme that elevation is a pale glow — correct on a white page, and on
-          this dark island it wrapped every button and the segmented control in dirty white halos. The
-          island supplies its own depth, so nothing inside it needs to cast one. */""}
+          this dark island it wrapped every control in a dirty white halo. The island supplies its own
+          depth, so nothing inside it needs to cast one.
+
+          The `!` is load-bearing: `.sf-inset` sets box-shadow in theme.css, which is linked AFTER Tailwind,
+          so at equal specificity our own stylesheet wins and the plain utility did nothing. Same lesson as
+          .input and .btn, third time — a class from a stylesheet loaded later beats a utility. */""}
     <${Island} pinned tone="dark" style="background:rgba(11,15,20,.93)"
-      className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3 [&_*]:shadow-none">
+      className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3 [&_*]:!shadow-none">
       <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}
         placeholder=${T(t, "question")} aria-label=${T(t, "question")}
         ${/* A SOLID colour, not an alpha. Inside a translucent island the browser composites white/10 over

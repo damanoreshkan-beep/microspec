@@ -1,10 +1,8 @@
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
 import { gate } from "/_rt/gate.js";
-import { decodeHDR, downsampleRGBE } from "/_rt/hdr.js";
 
-const DPR_CAP = 2;          
-
+const DPR_CAP = 2;   
 
 /**
  * @param seed  0..1 — the cast, packed as six base-4 digits (line value 6..9 → digit 0..3), bottom first.
@@ -28,10 +26,7 @@ export function HeroStage({ seed }) {
         state.device = device;
 
         const base = new URL("./", import.meta.url);
-        const [wgsl, hdrBytes] = await Promise.all([
-          fetch(new URL("hero.wgsl", base)).then((r) => r.text()),
-          fetch(new URL("assets/env.hdr", base)).then((r) => r.arrayBuffer()),
-        ]);
+        const wgsl = await fetch(new URL("hero.wgsl", base)).then((r) => r.text());
         if (state.dead) return;
 
         const ctx = canvas.getContext("webgpu");
@@ -52,30 +47,10 @@ export function HeroStage({ seed }) {
           primitive: { topology: "triangle-list" },
         });
 
-        let level = decodeHDR(new Uint8Array(hdrBytes));
-        const mips = Math.floor(Math.log2(Math.max(level.width, level.height))) + 1;
-        const envTex = device.createTexture({
-          size: [level.width, level.height], format: "rgba8unorm", mipLevelCount: mips,
-          usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
-        });
-        for (let m = 0; m < mips; m++) {
-          device.queue.writeTexture({ texture: envTex, mipLevel: m }, level.rgbe,
-            { bytesPerRow: level.width * 4, rowsPerImage: level.height }, [level.width, level.height]);
-          if (m + 1 < mips) level = downsampleRGBE(level, Math.max(1, level.width >> 1));
-        }
-        const sampler = device.createSampler({
-          magFilter: "linear", minFilter: "linear", mipmapFilter: "linear",
-          addressModeU: "repeat", addressModeV: "clamp-to-edge",
-        });
-
         const uniBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
         const bind = device.createBindGroup({
           layout: pipeline.getBindGroupLayout(0),
-          entries: [
-            { binding: 0, resource: { buffer: uniBuf } },
-            { binding: 1, resource: envTex.createView() },
-            { binding: 2, resource: sampler },
-          ],
+          entries: [{ binding: 0, resource: { buffer: uniBuf } }],
         });
         state.uni = new Float32Array(12);
 

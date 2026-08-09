@@ -86,14 +86,17 @@ const envSampler = device.createSampler({
   addressModeU: "repeat", addressModeV: "clamp-to-edge",
 });
 
+const usesEnv = /@binding\(1\)/.test(scene);
 const uniBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 const bind = device.createBindGroup({
   layout: pipeline.getBindGroupLayout(0),
-  entries: [
-    { binding: 0, resource: { buffer: uniBuf } },
-    { binding: 1, resource: envTex.createView() },
-    { binding: 2, resource: envSampler },
-  ],
+  entries: usesEnv
+    ? [
+      { binding: 0, resource: { buffer: uniBuf } },
+      { binding: 1, resource: envTex.createView() },
+      { binding: 2, resource: envSampler },
+    ]
+    : [{ binding: 0, resource: { buffer: uniBuf } }],
 });
 
 const target = device.createTexture({ size: [W, H], format: FORMAT, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });

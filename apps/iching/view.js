@@ -101,7 +101,7 @@ export function iching({ S, screen, openScreen, closeScreen }) {
   return html`<${Fragment}>
     <${HeroStage} seed=${r ? packSeed(r.lines) : 0} />
     <${Island} pinned tone="dark" style="background:rgba(11,15,20,.93)"
-      className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3 [&_*]:shadow-none">
+      className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3 [&_*]:!shadow-none">
       <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}
         placeholder=${T(t, "question")} aria-label=${T(t, "question")}
         
@@ -114,7 +114,6 @@ export function iching({ S, screen, openScreen, closeScreen }) {
         <span>${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total}</span>
         <span>${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</span>
       </div>
-
       ${r ? html`<div class="flex flex-col gap-2.5" data-live data-reading>
         <div class="flex items-center gap-3">
           <div class="w-[74px] shrink-0"><${HexSvg} lines=${r.lines} label=${`${name.cn} ${name.py}`} cls="text-white/90" /></div>
@@ -187,6 +186,7 @@ function ReadSheet({ open, onClose, sig, input, t, loc, title }) {
   <//>`;
 }
 
+
 export function ichingLog({ t: _t, S, confirm, undo }) {
   const t = useStore(S.t);
   const v = useStore($logv);
@@ -210,7 +210,6 @@ export function ichingLog({ t: _t, S, confirm, undo }) {
     undo?.(async () => { if (!gate) await CASTS.put(row.id, row).catch(() => {}); $logv.set($logv.get() + 1); },
       T(t, "logDeleted"));
   };
-
   const clearAll = () => confirm?.({
     title: T(t, "logClearTitle"),
     body: T(t, "logClearBody", { n: rows?.length ?? 0 }),

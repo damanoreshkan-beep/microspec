@@ -23,7 +23,6 @@ import { gate } from "/_rt/gate.js";
 import { animate, stagger } from "motion";
 import { useSheetDrag, usePanX } from "/_rt/gesture.js";
 import { Sheet, Segmented } from "/_rt/ui.js";
-import { HeroStage } from "/_rt/hero.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const QS = new URLSearchParams(location.search);
@@ -49,20 +48,6 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const [detail, setDetail] = useState(0);                       // index into the current draw, for the sheet
   const liveBase = useRef(randSeed()).current;                   // random per session, stable across renders
 
-  // The candle answers the turn: a flare that decays over ~1.1s, handed to the shader as ink.x. Held in a
-  // ref and pushed through a rAF loop rather than through state — a per-frame setState would re-render the
-  // whole spread sixty times a second to animate a background.
-  const flareRef = useRef(0);
-  const flare = () => {
-    const t0 = performance.now();
-    const step = () => {
-      const k = (performance.now() - t0) / 1100;
-      flareRef.current = k >= 1 ? 0 : (1 - k) * (1 - k);
-      if (k < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  };
-
   const now = gate ? new Date(2027, 6, 23) : new Date();
   const spread = spreadById(spreadId);
   const seed = spreadId === "daily" ? hashSeed(dk(now))
@@ -81,32 +66,13 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   useEffect(() => { setOverride(null); }, [spreadId]);           // a new spread starts fresh
   // translate the meanings actually shown (chosen orientation) into the active locale
   useEffect(() => { warm(drawn.map(meaningOf), loc); }, [seed, loc]);
-  // ── dealing the cards ───────────────────────────────────────────────────────────────────────────
-  // Two beats with a HELD PAUSE between them, which is the whole point: the cards land face down, nothing
-  // happens for a moment, and only then do they turn one after another. A spread that fades in already
-  // answered gives you no time to want the answer.
-  //
-  // Timings are not invented — they are the deck-reveal curves from 21st's catalogue, read from source:
-  // settle 0.7s on cubic-bezier(0.22, 0.61, 0.36, 1), and a per-item stagger rather than one group move.
-  //
-  // Skipped entirely under the gate: shots must be deterministic and must show the FACES.
+  // deal the cards in whenever the draw changes (skipped under the gate so shots stay static)
   useEffect(() => {
-    if (gate) return;
-    const cards = [...document.querySelectorAll("[data-reading] [data-card]")];
-    const flips = [...document.querySelectorAll("[data-reading] [data-flip]")];
-    if (!flips.length) return;
-    const EASE = [0.22, 0.61, 0.36, 1];
-
-    const deal = animate(cards, { opacity: [0, 1], y: [22, 0], scale: [0.94, 1] },
-      { delay: stagger(0.09), duration: 0.7, ease: EASE });
-
-    // The turn waits out the deal — held deliberately, not merely sequenced after it.
-    const held = setTimeout(() => {
-      animate(flips, { rotateY: [180, 0] }, { delay: stagger(0.14), duration: 0.55, ease: EASE });
-      flare();
-    }, 520);
-
-    return () => { deal?.stop?.(); clearTimeout(held); };
+    if (gate || isDaily) return;
+    const cards = document.querySelectorAll("[data-reading] [data-card]");
+    if (!cards.length) return;
+    const a = animate([...cards], { opacity: [0, 1], y: [16, 0] }, { delay: stagger(0.045), duration: 0.4, ease: "easeOut" });
+    return () => a.stop?.();
   }, [seed]);
 
   const openCard = (i) => { setDetail(i); openScreen("card"); };
@@ -123,18 +89,11 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const rows = spread.rows || defaultRows(spread.pos.length);
 
   return html`<${Fragment}>
-    ${/* The lit table. The card art is the subject here, so the stage stays a table under one candle —
-          radial and warm, where iching's is a cold directional current. `seed` is the first drawn card,
-          so a reshuffle is a visibly different table rather than the same loop continuing. */""}
-    <${HeroStage} shader=${new URL("hero.wgsl", import.meta.url)}
-      seed=${((drawn[0]?.card ?? 0) + 1) / 79} ink=${() => [flareRef.current, 0, 0, 1]} />
-
     ${isDaily
-      // the card of the day: the picker, then the card itself with its meaning inline (scrolls naturally).
-      // No header here at all — the picker names the spread one row above it, and the sentence underneath
-      // was explaining the interface rather than the reading.
+      // the card of the day: the picker, then one large card with its meaning inline (scrolls naturally)
       ? html`<div class="flex flex-col gap-4">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
+          <${Header} t=${t} spreadId=${spreadId} isDaily=${true} />
           <div class="overflow-hidden"><div ref=${paneRef} ...${pan} class="touch-pan-y will-change-transform"><${Solo} d=${drawn[0]} pos=${spread.pos[0]} t=${t} loc=${loc} onOpen=${() => openCard(0)} /></div></div>
         </div>`
       // any multi-card spread: the WHOLE structure fits the screen — cards shrink to fit, no page scroll.
@@ -175,13 +134,9 @@ function Picker({ t, spreadId, onPick }) {
 // title + one-line description + a quick shuffle and the Ritual (charged draw). Both hidden for the day's card.
 function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
   return html`<div class="shrink-0 flex items-start justify-between gap-3">
-    ${/* The picker directly above already names the spread, and the one-line gloss under it explained the
-          UI rather than the reading — the farm's no-hand-holding rule. On a multi-card spread the name is
-          kept as the anchor for the two actions beside it; on the card of the day the whole block goes, so
-          the screen is the lit table and the card. The descriptions still exist in i18n, and the AI
-          synthesis sheet consumes them as facts, which is where they were always doing real work. */""}
     <div class="min-w-0">
-      ${!isDaily ? html`<div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>` : null}
+      <div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>
+      <p class="mt-0.5 text-[0.78rem] leading-snug text-base-content/55 break-words line-clamp-2">${T(t, DESC_KEY[spreadId])}</p>
     </div>
     ${/* Two icon buttons, same size and same order as before — what changed is what they are MADE of.
          `btn-ghost` means "a text button, not an object", so theme.css deliberately leaves it flat; these
@@ -226,7 +181,7 @@ function SynthSheet({ open, onClose, sig, input, t, loc, spreadName }) {
 // its row's height and 1/maxCols of the width, keeping the spread's shape — the whole thing visible at once.
 function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
   const maxCols = Math.max(...rows.map((r) => r.length));
-  const wpct = (76 / maxCols).toFixed(2);
+  const wpct = (94 / maxCols).toFixed(2);
   return html`<div data-reading ref=${paneRef} ...${pan || {}} class="flex-1 min-h-0 overflow-hidden flex flex-col gap-2 touch-pan-y will-change-transform">
     ${rows.map((row, ri) => html`<div class="flex-1 min-h-0 flex justify-center items-stretch gap-2" key=${ri}>
       ${row.map((pi) => html`<${FitTile} d=${drawn[pi]} pos=${pos[pi]} t=${t} loc=${loc} wpct=${wpct} onOpen=${() => onOpen(pi)} key=${pi} />`)}
@@ -234,41 +189,12 @@ function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
   </div>`;
 }
 
-// ── the flip ──────────────────────────────────────────────────────────────────────────────────────
-// A spread that simply fades in tells you the answer before you have had time to want it. Cards are dealt
-// FACE DOWN and turned one at a time, because the pause is the whole ritual — that is the difference
-// between a result and a reading.
-//
-// Two faces on one plane, `backface-visibility: hidden` on both, so the swap happens by itself at 90°
-// with no state to keep in sync. Under the gate the transform is omitted entirely: the shot must show the
-// cards, not the backs, and every screenshot has to be deterministic.
-//
-// The back is drawn in CSS rather than shipped as an image — 78 face scans are already vendored, and a
-// 79th file for a pattern that is two gradients would be weight for nothing.
-const BACK_STYLE = "background-image:" +
-  "radial-gradient(circle at 50% 42%, rgba(201,162,39,.28), transparent 62%)," +
-  "repeating-linear-gradient(45deg, rgba(201,162,39,.10) 0 5px, transparent 5px 10px)," +
-  "linear-gradient(160deg, #1d0a12, #0d0509)";
-
-const CardBack = () => html`<div aria-hidden="true" style=${BACK_STYLE}
-  class="absolute inset-0 rounded-md border border-[#c9a227]/35 [backface-visibility:hidden] [transform:rotateY(180deg)]"></div>`;
-
-/** Wraps a face in the flip plane. `still` (the gate) renders it already turned. */
-const Flip = ({ cls, still, children }) => html`<div data-flip
-  class=${`relative [transform-style:preserve-3d] ${cls || ""}`}
-  style=${still ? "" : "transform:rotateY(180deg)"}>
-  ${children}
-  <${CardBack} />
-</div>`;
-
 // one card in the fit layout: the art scaled to fit, a tiny position label beneath. Tap opens the sheet.
 function FitTile({ d, pos, t, loc, wpct, onOpen }) {
   const c = DECK[d.card];
-  return html`<button data-card class="h-full min-h-0 flex flex-col items-center gap-1 active:scale-95 transition [perspective:900px]" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
+  return html`<button data-card class="h-full min-h-0 flex flex-col items-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
     <div class="min-h-0 flex-1 flex items-center justify-center w-full">
-      <${Flip} still=${gate} cls="max-h-full">
-        <img src=${imgURL(c.img)} alt="" loading="lazy" class=${`max-h-full max-w-full w-auto h-auto object-contain rounded-md sf-e2 [backface-visibility:hidden] ${d.reversed ? "rotate-180" : ""}`} />
-      <//>
+      <img src=${imgURL(c.img)} alt="" loading="lazy" class=${`max-h-full max-w-full w-auto h-auto object-contain rounded-md sf-e2 ${d.reversed ? "rotate-180" : ""}`} />
     </div>
     <div class="shrink-0 text-[0.5rem] font-mono uppercase tracking-wide text-base-content/50 truncate max-w-full leading-tight">${T(t, pos)}</div>
   </button>`;
@@ -405,13 +331,8 @@ function Solo({ d, pos, t, loc, onOpen }) {
   const c = DECK[d.card];
   return html`<div data-reading class="flex flex-col items-center gap-4">
     <div class="text-[0.6rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${T(t, pos)}</div>
-    ${/* Smaller than it was (62% → 44%), on the owner's call: the card only has to stay comfortably
-          tappable, and the room it gives back goes to the lit table behind it. At 384px wide this is
-          ~150px across — far above the 44px touch floor. */""}
-    <button data-card class="w-[44%] max-w-[8.5rem] active:scale-[.99] transition [perspective:1000px]" onClick=${onOpen}>
-      <${Flip} still=${gate}>
-        <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-full aspect-[350/600] object-cover rounded-xl sf-e3 [backface-visibility:hidden] ${d.reversed ? "rotate-180" : ""}`} />
-      <//>
+    <button data-card class="w-[62%] max-w-[11rem] active:scale-[.99] transition" onClick=${onOpen}>
+      <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-full aspect-[350/600] object-cover rounded-xl sf-e3 ${d.reversed ? "rotate-180" : ""}`} />
     </button>
     <div class="text-center">
       <div class="font-bold text-xl leading-tight">${cardName(c, loc)}</div>

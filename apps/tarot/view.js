@@ -98,9 +98,9 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
 
     ${isDaily
       
+      
       ? html`<div class="flex flex-col gap-4">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
-          <${Header} t=${t} spreadId=${spreadId} isDaily=${true} />
           <div class="overflow-hidden"><div ref=${paneRef} ...${pan} class="touch-pan-y will-change-transform"><${Solo} d=${drawn[0]} pos=${spread.pos[0]} t=${t} loc=${loc} onOpen=${() => openCard(0)} /></div></div>
         </div>`
       
@@ -141,11 +141,10 @@ function Picker({ t, spreadId, onPick }) {
 
 function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
   return html`<div class="shrink-0 flex items-start justify-between gap-3">
-    <div class="min-w-0">
-      <div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>
-      <p class="mt-0.5 text-[0.78rem] leading-snug text-base-content/55 break-words line-clamp-2">${T(t, DESC_KEY[spreadId])}</p>
-    </div>
     
+    <div class="min-w-0">
+      ${!isDaily ? html`<div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>` : null}
+    </div>
     ${!isDaily ? html`<div class="shrink-0 flex items-center gap-1.5">
       <button data-synth aria-label=${T(t, "synthTitle")} class="btn btn-sm btn-circle" onClick=${onSynth}>${Icon("lucide:scroll-text", "text-base")}</button>
       <button data-shuffle aria-label=${T(t, "redraw")} class="btn btn-sm btn-circle" onClick=${onShuffle}>${Icon("lucide:shuffle", "text-base")}</button>
@@ -153,8 +152,6 @@ function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
     </div>` : null}
   </div>`;
 }
-
-
 
 
 
@@ -197,13 +194,16 @@ function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
 
 
 
+
+
+
+
 const BACK_STYLE = "background-image:" +
   "radial-gradient(circle at 50% 42%, rgba(201,162,39,.28), transparent 62%)," +
   "repeating-linear-gradient(45deg, rgba(201,162,39,.10) 0 5px, transparent 5px 10px)," +
   "linear-gradient(160deg, #1d0a12, #0d0509)";
 const CardBack = () => html`<div aria-hidden="true" style=${BACK_STYLE}
   class="absolute inset-0 rounded-md border border-[#c9a227]/35 [backface-visibility:hidden] [transform:rotateY(180deg)]"></div>`;
-
 /** Wraps a face in the flip plane. `still` (the gate) renders it already turned. */
 const Flip = ({ cls, still, children }) => html`<div data-flip
   class=${`relative [transform-style:preserve-3d] ${cls || ""}`}
@@ -232,6 +232,7 @@ function FitTile({ d, pos, t, loc, wpct, onOpen }) {
 
 const RIT_COLORS = [[159, 140, 246], [240, 101, 94], [64, 193, 115], [217, 151, 58], [90, 169, 230], [232, 160, 214]];
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
 function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   const dref = useRef(), cref = useRef();
   const [color, setColor] = useState(0);
@@ -246,6 +247,8 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   const recount = () => { const n = hashSeed(`${S.color}|${S.samples.join(",")}`) % deckLen; S.num = n; setNum(n); };
   useEffect(() => { const el = dref.current; if (!el) return; if (open) { if (!el.open) el.showModal?.(); } else el.close?.(); }, [open]);
   useEffect(() => { S.color = color; recount(); }, [color]);
+
+  
   useEffect(() => {
     if (!open) return;
     const cv = cref.current; if (!cv || !cv.getContext) return;

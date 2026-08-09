@@ -139,6 +139,26 @@ export function galaxyDisc(n, { radius = 5, branches = 5, spin = 1, randomness =
   return out;
 }
 
+// Frame a subject in a PERSPECTIVE camera so it survives a PORTRAIT viewport. A three.js camera's `fov` is
+// VERTICAL, so a distance picked while looking at a wide preview is wrong on a phone by exactly the aspect
+// ratio: at 390×844 the horizontal field is 0.46× the vertical one. Every scene in rave's gallery was
+// authored that way and every one of them was amputated at both rims — the bar ring is 6.8 world units wide
+// inside a frustum 3.8 units wide, so the near bars were sliced off by the screen edge and read as a bug.
+// The distance is therefore DERIVED from both fields and the binding axis wins.
+//   halfW/halfH — the subject's half-extent in world units AS IT PROJECTS. A disc seen from 34° above is
+//                 half as tall on screen as it is wide, so halfH is not the same number as halfW.
+//   margin      — air around the subject (1 = rim-hugging).
+//   lift        — push the subject UP the frame, as a fraction of frame height. A full-bleed stage has a
+//                 scrim and a player island over its lower third; the subject belongs above them.
+// Returns { dist, drop }: put the camera `dist` from the target along whatever direction the scene wants,
+// and aim it at (0, -drop, 0) — looking BELOW the subject is what moves the subject up the frame.
+export function frameFit(halfW, halfH, fovYDeg, aspect, { margin = 1.12, lift = 0 } = {}) {
+  const ty = Math.tan((fovYDeg * Math.PI) / 180 / 2);
+  const a = aspect > 0 ? aspect : 1;
+  const dist = Math.max((halfH * margin) / ty, (halfW * margin) / (ty * a));
+  return { dist, drop: lift * 2 * dist * ty };
+}
+
 // Deterministic seeded FFT frame — a plausible bass-heavy descending curve with a little ripple — so the
 // headless gate shot and the Canvas2D fallback are never dead flatlines. `phase` animates it without any
 // AudioContext (the gate has none). No Math.random: the gate must be deterministic.

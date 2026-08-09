@@ -176,3 +176,64 @@ additive shells `depthWrite:false`. New reusable maths in `/_rt/spectrum.js` (un
 - Codrops, *Audio-Reactive Dynamic Particles* (2023); jhancock532 *Three-JS Music Visualiser* — band→grid.
 - three.js 100 performance tips (utsubo, 2026); Codrops *Building efficient three.js scenes* (2025) — DPR 1.5,
   instancing, dispose-on-switch, one renderer. Apple Music Liquid Glass; Endel critique; NN/g bottom sheets.
+
+---
+
+# Rave v3 — the gallery was framed for a landscape it never runs on (2026-08-09)
+
+A taste pass on the shipped Beat screen found the stage's near bars **sliced in half by the left and right
+screen edges**, and the whole scene invisible in the light theme. Both were one-line consequences of two
+assumptions the v2 build never measured.
+
+## 1. `fov` is VERTICAL, and this app is portrait
+
+three.js `PerspectiveCamera(fov, …)` takes the **vertical** field. Every scene here authored its camera as a
+literal distance (`cam.position.set(0, 5.2, 7.6)`), which frames a subject correctly on a wide preview and
+crops it on a phone by exactly the aspect ratio. Measured at the reference device (390×844, aspect 0.462):
+
+| scene  | subject width | frustum width at the authored distance |
+|---|---|---|
+| ring   | 6.8 | **3.8** |
+| ribbon | 13.0 | **3.9** |
+| matrix | 19.0 | **6.6** |
+| vortex | 13.0 | **5.3** |
+
+Six of the ten scenes were showing a third of themselves. The fix is `frameFit(halfW, halfH, fovY, aspect,
+{margin, lift})` in `/_rt/spectrum.js` (pure, unit-tested): the distance is derived from **both** fields and
+the binding axis wins. `Rig()` in `viz.js` turns a scene's authored `cam.position` into a *direction*, and
+the distance is recomputed on every resize.
+
+**`lift`** is the second half. The stage is full-bleed behind a scrim, a player island and the dock, so the
+frame's geometric centre is under the chrome. `lift: 0.1` aims the camera 10% of a frame-height *below* the
+subject, which pushes the subject up into the clear band. It is expressed as a fraction of the frame, so it
+survives every viewport.
+
+## 2. Fit discrete objects; let fields bleed
+
+Fitting everything is the *opposite* failure. Measured: the 16×16 cube floor fitted whole occupies 89% of
+the width and **21% of the height** — a thin strip in a tall empty screen. What read as broken was never
+"something left the frame", it was **an object severed at the rim**. A continuous field running off both
+sides (a dancefloor, a galaxy's arms, a waveform) reads as *it continues*.
+
+So the field scenes declare a box **smaller than they are** and bleed the rest — ribbon 4.2 of 6.5, vortex
+4.6 of 6.6, matrix 6.0 of 9.9 — landing at ~35% of the height instead of 21%. `terrain` and `tunnel` are not
+rigged at all: they are fly-throughs framed by their own fog, and fitting one parks the camera outside the
+corridor it is flying down.
+
+## 3. Additive blending is a no-op on a light ground
+
+`AdditiveBlending` over `#EEEEF1` is arithmetically `white + x = white`, and a 0.55-lightness line on that
+ground is invisible either way — which is why the light-theme shot photographed as an empty sheet with a
+ghost of a wireframe. A canvas cannot take a theme from CSS, so:
+
+- `L(light, v)` maps one authored 0..1 "how loud is this" onto **lightness** on ink and **darkness** on
+  paper; `O(light, v)` doubles hairline opacities; `BLEND()` falls back to `NormalBlending`; fog takes the
+  page colour.
+- The flag is read off `<html data-theme>` and **watched** (the `globe.js` precedent). A theme flip rebuilds
+  the scene through the path a scene switch already takes, so materials are never stale.
+
+## 4. The chrome had four stacked strips of dashes
+
+Scene name, ten scene ticks, the 16-step playhead and the player each occupied their own band in the lower
+third. The playhead **is** bar position, i.e. a player's progress line, so it moved inside the island; the
+scene name and its ticks became one row (name left, track right). Two elements where there were four.

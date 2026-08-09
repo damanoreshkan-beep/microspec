@@ -294,25 +294,28 @@ export function rave({ S, screen, openScreen, closeScreen }) {
 
       <div ...${pan} class="flex-1 min-h-0 touch-pan-y" aria-hidden="true"></div>
 
-      <div class="ms-decor flex flex-col items-center gap-1.5">
-        <div class="font-mono text-[0.62rem] uppercase tracking-[0.28em] text-base-content/55">${T(t, vizKey(VIZ[viz].id))}</div>
-        <div data-viztrack class="flex items-center gap-1">
-          ${VIZ.map((v, i) => html`<button data-viztick=${i} aria-current=${i === viz} aria-label=${`${T(t, "vizLabel")} ${i + 1}`} onClick=${() => setViz(i)} key=${v.id} class="py-2 px-0.5"><span class=${`block h-1 rounded-full transition-[width,background-color] ${i === viz ? "w-5 bg-secondary" : "w-2 bg-base-content/25"}`}></span></button>`)}
+      ${/* ONE row, not two: the scene's name and the ten ticks that pick it are the same control, and
+           stacking them centred put a third band of dashes above the two the player already has. Name left,
+           track right — the lower third stops reading as four repeating strips of dots. */""}
+      <div class="ms-decor flex items-center justify-between gap-3">
+        <div class="font-mono text-[0.62rem] uppercase tracking-[0.28em] text-base-content/70 truncate">${T(t, vizKey(VIZ[viz].id))}</div>
+        <div data-viztrack class="flex items-center gap-1 shrink-0">
+          ${VIZ.map((v, i) => html`<button data-viztick=${i} aria-current=${i === viz} aria-label=${`${T(t, "vizLabel")} ${i + 1}`} onClick=${() => setViz(i)} key=${v.id} class="py-2 px-0.5"><span class=${`block h-1 rounded-full transition-[width,background-color] ${i === viz ? "w-5 bg-secondary" : "w-2 bg-base-content/40"}`}></span></button>`)}
         </div>
       </div>
 
-      ${/* The same 16-step playhead as the matrix tab, so it is made of the same thing: the empty steps are
-           the groove (--sf-track-face), and the marks that sit IN it — sweep, playhead, kick, the downbeat —
-           stay ink, because there colour means something. */""}
-      <div data-viz class="ms-decor grid grid-cols-[repeat(16,minmax(0,1fr))] gap-1">
-        ${STEPS.map((i) => { const beat = i % 4 === 0, k = kickRow[i], on = i === cur, sw = i === sweep; const hot = sw ? "bg-accent" : on ? "bg-secondary" : k ? "bg-secondary/45" : beat ? "bg-base-content/20" : ""; return html`<div key=${i} class=${`h-1.5 rounded-full transition-colors ${hot}`} style=${hot ? "" : "background:var(--sf-track-face)"}></div>`; })}
-      </div>
-
       <${Island} className="flex flex-col gap-3">
+        ${/* The 16-step playhead is the bar POSITION, which is what a player's progress line is — so it
+             belongs to the transport, inside the island, not floating over the stage as its own strip. Same
+             material as the matrix tab: the empty steps are the groove (--sf-track-face) and the marks that
+             sit IN it — sweep, playhead, kick, the downbeat — stay ink, because there colour means something. */""}
+        <div data-viz class="grid grid-cols-[repeat(16,minmax(0,1fr))] gap-1">
+          ${STEPS.map((i) => { const beat = i % 4 === 0, k = kickRow[i], on = i === cur, sw = i === sweep; const hot = sw ? "bg-accent" : on ? "bg-secondary" : k ? "bg-secondary/45" : beat ? "bg-base-content/20" : ""; return html`<div key=${i} class=${`h-1.5 rounded-full transition-colors ${hot}`} style=${hot ? "" : "background:var(--sf-track-face)"}></div>`; })}
+        </div>
         <div class="flex items-center gap-3 px-1">
-          ${Icon("lucide:filter", "text-base text-base-content/55 shrink-0")}
+          ${Icon("lucide:filter", "text-base text-base-content/70 shrink-0")}
           <input data-filter type="range" min="0" max="1" step="0.01" value=${fx.mfilter} aria-label=${T(t, "fxFilter")} onInput=${(e) => setFx("mfilter", Number(e.target.value))} class="range range-xs range-secondary flex-1" />
-          <span class="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-base-content/55 tabular-nums shrink-0">${bpm} BPM</span>
+          <span class="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-base-content/70 tabular-nums shrink-0">${bpm} BPM</span>
         </div>
         <${Transport} locale=${loc} playing=${playing} stopIcon onToggle=${toggle} disabled=${!audioSupported}
           onPrev=${() => stepTrack(-1)} onNext=${() => stepTrack(1)}

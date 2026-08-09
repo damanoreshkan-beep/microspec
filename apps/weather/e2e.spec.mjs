@@ -29,7 +29,10 @@ export default [
     name: "погодинна крива + тижневий прогноз зі смугами", run: async (h) => {
       await load(h);
       const t = await h.bodyText();
-      h.expect(/\d\d:\d\d/.test(t), "немає погодинних часів");
+      // Assert the HOOK, not the formatting. This asserted /\d\d:\d\d/ and went red the moment the strip
+      // dropped ":00" to stop the labels colliding — a passing screen failed on its own test's opinion
+      // about a string. What matters is that twelve hours are on screen.
+      h.expect(await h.count("[data-striptime]") === 12, "немає 12 погодинних колонок");
       h.expect(/Погодинно|Hourly/i.test(t), "немає підпису стрічки");
       h.expect(/На тиждень|This week/i.test(t), "немає прогнозу на тиждень");
       // The curve is the strip's whole point — a row of numbers would pass every text assertion above.

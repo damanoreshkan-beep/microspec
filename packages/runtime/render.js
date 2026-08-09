@@ -1093,7 +1093,7 @@ function DashboardView({ tab }) {
     ${strip ? Sect(T(t, tab.strip.label), html`<div class="overflow-x-auto -mx-1 px-1" tabindex="0" role="group" aria-label=${T(t, tab.strip.label)}>
       <div class="flex flex-col w-max gap-1.5">
         <div class="flex">${strip.map((s, i) => html`<div class="flex flex-col items-center gap-1 shrink-0" style=${`width:${COL_W}px`} key=${i}>
-          <span class="font-mono text-[var(--ms-label)] text-base-content/70 tabular-nums">${s[tab.strip.time]}</span>
+          <span data-striptime class="font-mono text-[var(--ms-label)] text-base-content/70 tabular-nums">${s[tab.strip.time]}</span>
           ${tab.strip.icon && s[tab.strip.icon] ? Icon(s[tab.strip.icon], "text-lg text-base-content/80") : null}
         </div>`)}</div>
         ${tab.strip.curve

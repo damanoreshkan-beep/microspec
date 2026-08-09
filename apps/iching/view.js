@@ -141,7 +141,7 @@ export function iching({ S, screen, openScreen, closeScreen }) {
               <span class="text-3xl leading-none font-medium">${name.cn}</span>
               <span class="text-muted truncate">${name.py}</span>
             </div>
-            <span class="font-mono tabular-nums text-base-content/50 shrink-0" data-number>${r.number}</span>
+            <span class="font-mono tabular-nums text-muted shrink-0" data-number>${r.number}</span>
           </div>
           <${Hexagram} lines=${r.lines} />
           <div class="flex flex-col gap-1.5 pt-0.5">

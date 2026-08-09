@@ -64,10 +64,13 @@ export default [
   {
     name: "i18n EN/UA міняє chrome", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
-      await h.click('[data-loc="en"]'); await h.wait(250);
-      h.expect(/Cast|Journal|Method/i.test(await h.bodyText()), "не EN");
-      await h.click('[data-loc="uk"]'); await h.wait(250);
-      h.expect(/Кидання|Журнал|Метод/.test(await h.bodyText()), "не UA");
+      // Assert on strings the test is actually STANDING in front of — the profile's own labels. The first
+      // version checked "Метод", which lives on the cast tab, and the dock's tab captions, which are not
+      // guaranteed to be visible at every width. sonar already had this right.
+      await h.click('[data-loc="en"]'); await h.wait(300);
+      h.expect(/Language|Theme|Install/i.test(await h.bodyText()), "не EN");
+      await h.click('[data-loc="uk"]'); await h.wait(300);
+      h.expect(/Мова|Тема/.test(await h.bodyText()), "не UA");
       await h.click('[data-tab="cast"]'); await h.wait(150);
     },
   },

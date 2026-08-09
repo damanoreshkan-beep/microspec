@@ -149,10 +149,20 @@ export function iching({ S, screen, openScreen, closeScreen }) {
           since a canvas is invisible to both). */""}
     <${HeroStage} seed=${r ? packSeed(r.lines) : 0} />
 
-    <${Island} pinned tone="dark" className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3">
+    ${/* An inline, near-opaque ground under the glass. tone="dark" alone is black/60, and every white text
+          inside it is then measured by axe against whatever the PAGE is — bright, in the light theme, since
+          the canvas behind is invisible to it. One element failed that way; the rest were one tweak from
+          following. Fixing the whole list at once beats fixing the first item and waiting for CI to name
+          the next. It reads better over a lit field too, which is the actual reason to keep it. */""}
+    <${Island} pinned tone="dark" style="background:rgba(11,15,20,.93)"
+      className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3">
       <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}
         placeholder=${T(t, "question")} aria-label=${T(t, "question")}
-        class="input input-sm bg-white/10 border-white/20 text-white placeholder:text-white/75 w-full rounded-xl" />
+        ${/* A SOLID colour, not an alpha. Inside a translucent island the browser composites white/10 over
+              black/60 over the PAGE, and in the light theme axe measures that stack against a bright body —
+              it cannot see the WebGPU field behind it — which lands white text on grey and fails contrast.
+              An opaque swatch makes the computation unambiguous in both themes. */""}
+        class="input input-sm bg-[#0d1117] border-white/25 text-white placeholder:text-white/70 w-full rounded-xl" />
 
       <div class="flex items-center gap-2">
         <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}

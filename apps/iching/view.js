@@ -12,6 +12,7 @@ import { gate } from "/_rt/gate.js";
 import { summary, warmSummary, isSummarized, aiTick } from "/_rt/ai-text.js";
 import { METHODS, cast, reading, isMoving, bitOf } from "/_rt/iching.js";
 import { nameOf } from "./book.js";
+import { HeroStage, packSeed } from "./hero.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch {  } };
@@ -114,7 +115,9 @@ export function iching({ S, screen, openScreen, closeScreen }) {
   ].filter(Boolean).join("\n") : "";
 
   return html`<${Fragment}>
-    <div class="flex flex-col gap-4 max-w-[440px] mx-auto w-full">
+    <${HeroStage} seed=${r ? packSeed(r.lines) : 0} />
+
+    <div class="relative z-10 flex flex-col gap-4 max-w-[440px] mx-auto w-full">
       <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}
         placeholder=${T(t, "question")} aria-label=${T(t, "question")}
         class="input input-bordered w-full rounded-2xl" />
@@ -123,6 +126,7 @@ export function iching({ S, screen, openScreen, closeScreen }) {
         items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
         value=${m} onChange=${(id) => { buzz(); $method.set(id); }} />
 
+      
       <div class="flex items-center justify-between gap-3 font-mono text-[length:var(--ms-label)] tabular-nums text-muted px-1" data-odds>
         <span class="uppercase tracking-wide text-muted">${T(t, "oddsTitle")}</span>
         <span>${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total}</span>
@@ -175,6 +179,7 @@ export function iching({ S, screen, openScreen, closeScreen }) {
       title=${name ? `${name.cn} ${name.py}` : T(t, "readingTitle")} />
   </${Fragment}>`;
 }
+
 
 
 function ReadSheet({ open, onClose, sig, input, t, loc, title }) {

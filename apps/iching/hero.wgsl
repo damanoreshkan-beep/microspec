@@ -1,5 +1,5 @@
 
-struct U { res: vec2f, time: f32, seed: f32, ink: vec4f };
+struct U { res: vec2f, time: f32, seed: f32, ink: vec4f, vary: vec4f };
 @group(0) @binding(0) var<uniform> u: U;
 @group(0) @binding(1) var env: texture_2d<f32>;
 @group(0) @binding(2) var envSam: sampler;
@@ -48,25 +48,28 @@ fn mapLine(p: vec3f, v: i32, t: f32) -> Hit {
   if (yang) {
     d = sdBox(p, vec3f(HALF_W, HALF_H, HALF_D));
     if (v == 9) {
-      let openAmt = 0.45 + 0.55 * (0.5 + 0.5 * sin(t * 0.7));
+      let openAmt = 0.35 + 0.65 * clamp(t * 0.16, 0.0, 1.0);
       let taper = (p.y + HALF_H) / (2.0 * HALF_H);
-      let halfCrack = 0.012 + 0.030 * openAmt * (0.25 + 0.75 * taper);
-      let jag = 0.004 * sin(p.y * 90.0) + 0.003 * sin(p.z * 60.0);
+      let halfCrack = 0.010 + 0.055 * openAmt * (0.30 + 0.70 * taper);
+      let jag = 0.005 * sin(p.y * 90.0) + 0.004 * sin(p.z * 55.0);
       let crack = halfCrack + jag - abs(p.x);
       d = max(d, crack);
-      heat = exp(-abs(p.x) * 26.0) * openAmt;
+
+      let core = sdBox(p, vec3f(HALF_W * 0.97, HALF_H * 0.42, HALF_D * 0.42));
+      if (core < d) { d = core; heat = 1.0; } else { heat = 0.0; }
     }
   } else {
     let left = sdBox(p - vec3f(-(HALF_W + GAP) * 0.5, 0.0, 0.0), vec3f((HALF_W - GAP) * 0.5, HALF_H, HALF_D));
     let right = sdBox(p - vec3f((HALF_W + GAP) * 0.5, 0.0, 0.0), vec3f((HALF_W - GAP) * 0.5, HALF_H, HALF_D));
     d = min(left, right);
     if (v == 6) {
-      let grow = 0.55 + 0.45 * (0.5 + 0.5 * sin(t * 0.45 + 1.3));
-      let waist = 0.020 + 0.020 * grow;
-      let thick = waist + 0.055 * (abs(p.x) / max(GAP, 1e-4));
-      let bridge = sdBox(p, vec3f(GAP * grow, thick, HALF_D * 0.62));
-      d = min(d, bridge);
-      heat = exp(-abs(p.x) * 9.0) * grow * 0.75;
+      let grow = clamp(0.25 + t * 0.10, 0.0, 1.0);
+      let reach = GAP * (0.45 + 0.85 * grow);
+      let along = clamp((p.x + reach) / (2.0 * reach), 0.0, 1.0);
+      let neck = 0.014 + 0.030 * grow * (0.35 + 0.65 * abs(along - 0.42) * 2.0);
+      let bridge = sdBox(p - vec3f(-reach * (1.0 - grow) * 0.4, 0.0, 0.0),
+                         vec3f(reach, neck, HALF_D * (0.40 + 0.22 * grow)));
+      if (bridge < d) { d = bridge; heat = (1.0 - grow) * 0.9 * exp(-abs(p.x) * 6.0); } else { heat = 0.0; }
     }
   }
   return Hit(d, heat);
@@ -119,14 +122,16 @@ fn linearToSrgb(x: vec3f) -> vec3f {
   let uv = ((frag.xy * 2.0 - u.res) / u.res.y) * vec2f(1.0, -1.0);
   let t = u.time;
 
+  let share = select(u.vary.x, 0.64, u.vary.x <= 0.0);
+  let lift = select(u.vary.y, 0.10, u.vary.y == 0.0);
   let yaw = 0.26 + sin(t * 0.05) * 0.05;
   let elev = 0.105;
-  let dist = 5.755;
+  let dist = OBJ_H * 4.722 / (2.0 * share);
   let ro = vec3f(sin(yaw) * cos(elev) * dist, sin(elev) * dist, cos(yaw) * cos(elev) * dist);
   let ww = normalize(-ro);
   let uu = normalize(cross(vec3f(0.0, 1.0, 0.0), ww));
   let vv = cross(ww, uu);
-  let rd = normalize(uv.x * uu + uv.y * vv + 4.722 * ww);
+  let rd = normalize((uv.x) * uu + (uv.y - lift) * vv + 4.722 * ww);
 
   var tHit = 0.0;
   var hit = false;
@@ -158,11 +163,14 @@ fn linearToSrgb(x: vec3f) -> vec3f {
     let f = fresnelSchlick(max(dot(n, v), 0.0), base);
     let occ = ao(p, n);
 
-    col = (spec * f * 1.6 + amb * base) * occ;
+    col = (spec * f + amb * base) * occ;
 
     let key = normalize(vec3f(0.57, 0.62, 0.54));
     let hv = normalize(key + v);
-    col = col + vec3f(1.00, 0.94, 0.82) * pow(max(dot(n, hv), 0.0), 110.0) * 1.4 * occ;
+    col = col + vec3f(1.00, 0.94, 0.82) * pow(max(dot(n, hv), 0.0), 110.0) * 0.7 * occ;
+
+    let flicker = 0.86 + 0.14 * sin(t * 6.0 + p.x * 14.0);
+    col = col + HEAT * heat * 9.0 * flicker + vec3f(1.0, 0.74, 0.36) * heat * heat * 5.0;
 
     col = mix(col, vec3f(0.004, 0.005, 0.007), clamp((tHit - dist + 0.9) * 0.30, 0.0, 0.7));
   }

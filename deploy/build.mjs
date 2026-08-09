@@ -63,6 +63,7 @@ for await (const e of Deno.readDir("packages/runtime")) {
 }
 
 const ids = [];
+const skipped = [];   
 for await (const a of Deno.readDir("apps")) {
   if (!a.isDirectory || !(await has(`apps/${a.name}/spec.json`))) continue;
   const outDir = `${OUT}/${a.name}`;
@@ -70,8 +71,8 @@ for await (const a of Deno.readDir("apps")) {
   await Deno.mkdir(outDir, { recursive: true });
   const appVer = "1." + (await gitCount(`apps/${a.name}`));   
   for await (const f of Deno.readDir(`apps/${a.name}`)) {
-    if (!f.isFile || f.name === "e2e.spec.mjs") continue;
-    if (/\.(html|js|json|svg|png|webmanifest)$/.test(f.name)) {
+    if (!f.isFile || f.name === "e2e.spec.mjs" || /\.(md|bak\.[a-z]+\.js)$/.test(f.name)) continue;
+    if (/\.(html|js|json|svg|png|webmanifest|wgsl)$/.test(f.name)) {
       if (f.name === "spec.json") {
         const spec = JSON.parse(await Deno.readTextFile(`apps/${a.name}/spec.json`));
         if (!spec.version) spec.version = appVer;               
@@ -81,6 +82,8 @@ for await (const a of Deno.readDir("apps")) {
       } else {
         await Deno.copyFile(`apps/${a.name}/${f.name}`, `${outDir}/${f.name}`);
       }
+    } else {
+      skipped.push(`${a.name}/${f.name}`);
     }
   }
   if (await has(`apps/${a.name}/i18n`)) {
@@ -107,4 +110,5 @@ for await (const a of Deno.readDir("apps")) {
 
 await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="uk"><meta charset="utf-8"><title>microspec</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><link rel="canonical" href="./store/"><script>location.replace("./store/"+location.search+location.hash)</script><body style="background:#0a0a0b"></body></html>\n`);
 await Deno.writeTextFile(`${OUT}/.nojekyll`, "");
+if (skipped.length) console.log(`note: ${skipped.length} app file(s) matched no copy rule: ${skipped.join(", ")}`);
 console.log(`built dist/ — ${ids.length} apps (store at /store/): ${ids.join(", ")}`);

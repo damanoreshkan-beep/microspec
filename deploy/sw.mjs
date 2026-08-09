@@ -39,6 +39,9 @@ export function manifestFor(id, { read: rd = read } = {}) {
       if (url) urls.add(url);
     }
   }
+
+  if (rd(`${dir}/hero.wgsl`) != null) urls.add("./hero.wgsl");
+
   return [...urls].sort();
 }
 

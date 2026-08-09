@@ -7,8 +7,14 @@ const flag = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[
 const app = args.find((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1].startsWith("--")));
 if (!app) { console.error("usage: hero.mjs <app> [--w N --h N --t SEC --seed F --sheet CxR --dur SEC --out FILE]"); Deno.exit(2); }
 
+const VARY_X = (flag("varyx", "") || "").split(",").filter(Boolean).map(Number);
+const VARY_Y = (flag("varyy", "") || "").split(",").filter(Boolean).map(Number);
+const VARIANTS = VARY_X.length > 0 || VARY_Y.length > 0;
+
 const SHEET = flag("sheet", "");
-const [COLS, ROWS] = SHEET ? SHEET.split("x").map(Number) : [1, 1];
+const [COLS, ROWS] = VARIANTS
+  ? [Math.max(1, VARY_X.length), Math.max(1, VARY_Y.length)]
+  : (SHEET ? SHEET.split("x").map(Number) : [1, 1]);
 const CELLS = Math.max(1, COLS * ROWS);
 const DUR = Number(flag("dur", 6));
 const T0 = Number(flag("t", 1.6));
@@ -80,7 +86,7 @@ const envSampler = device.createSampler({
   addressModeU: "repeat", addressModeV: "clamp-to-edge",
 });
 
-const uniBuf = device.createBuffer({ size: 32, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+const uniBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 const bind = device.createBindGroup({
   layout: pipeline.getBindGroupLayout(0),
   entries: [
@@ -94,10 +100,11 @@ const target = device.createTexture({ size: [W, H], format: FORMAT, usage: GPUTe
 const rowPad = Math.ceil((W * 4) / 256) * 256;            
 const readback = device.createBuffer({ size: rowPad * H, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
 
-async function renderFrame(time) {
-  const uni = new Float32Array(8);
+async function renderFrame(time, vx = 0, vy = 0) {
+  const uni = new Float32Array(12);
   uni.set([W, H, time, SEED], 0);
   uni.set(INK.length === 4 ? INK : [0.9, 0.89, 0.93, 1], 4);
+  uni.set([vx, vy, 0, 0], 8);
   device.queue.writeBuffer(uniBuf, 0, uni);
 
   const enc = device.createCommandEncoder();
@@ -120,16 +127,20 @@ const started = performance.now();
 let outPx, outW, outH;
 
 if (CELLS === 1) {
-  outPx = await renderFrame(T0); outW = W; outH = H;
+  outPx = await renderFrame(T0, VARY_X[0] ?? 0, VARY_Y[0] ?? 0); outW = W; outH = H;
 } else {
   const GUT = 2;
   outW = COLS * W + (COLS - 1) * GUT;
   outH = ROWS * H + (ROWS - 1) * GUT;
   outPx = new Uint8Array(outW * outH * 4).fill(0);
   for (let i = 0; i < CELLS; i++) {
-    const t = T0 + (DUR * i) / CELLS;
-    const cell = await renderFrame(t);
-    const cx = (i % COLS) * (W + GUT), cy = Math.floor(i / COLS) * (H + GUT);
+    const col = i % COLS, row = Math.floor(i / COLS);
+    const t = VARIANTS ? T0 : T0 + (DUR * i) / CELLS;
+    const vx = VARIANTS ? (VARY_X[col] ?? 0) : 0;
+    const vy = VARIANTS ? (VARY_Y[row] ?? 0) : 0;
+    if (VARIANTS) console.log("  cell " + col + "," + row + ": vary = " + vx + ", " + vy);
+    const cell = await renderFrame(t, vx, vy);
+    const cx = col * (W + GUT), cy = row * (H + GUT);
     for (let y = 0; y < H; y++) {
       const dst = ((cy + y) * outW + cx) * 4;
       outPx.set(cell.subarray(y * W * 4, y * W * 4 + W * 4), dst);

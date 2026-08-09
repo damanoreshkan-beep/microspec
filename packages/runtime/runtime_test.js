@@ -28,6 +28,7 @@ import "./tests/graph_test.js";
 import "./tests/groove_test.js";
 import "./tests/gsmband_test.js";
 import "./tests/hackrf_test.js";
+import "./tests/hdr_test.js";
 import "./tests/horoscope_test.js";
 import "./tests/hunt_test.js";
 import "./tests/i18n_test.js";

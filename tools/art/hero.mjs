@@ -20,9 +20,14 @@
 // intermediate format, no build artefact, nothing to keep in sync.
 //
 // Bindings every scene gets:
-//   @binding(0) uniform U { res: vec2f, time: f32, seed: f32, ink: vec4f }
+//   @binding(0) uniform U { res: vec2f, time: f32, seed: f32, ink: vec4f, vary: vec4f, env: vec4f }
 //   @binding(1) texture_2d<f32>   env    — RGBE; radiance = rgb * exp2(a * 255.0 - 128.0)
 //   @binding(2) sampler           envSam
+//
+// `--vary a,b,c,d` sets all four scene channels at once (weather's sky reads sun altitude, cloud cover,
+// precipitation and wind there), and `--light 1` renders the light theme — env.x, which the RUNTIME fills
+// from the document. Judging a data-driven stage means rendering the STATES, so both are first-class flags:
+//   deno run -A tools/art/hero.mjs weather --vary 0.4,0.9,0.7,0.5 --light 1
 
 import { encodePNG } from "./png.mjs";
 import { decodeHDR, downsampleRGBE } from "../../packages/runtime/hdr.js";
@@ -53,6 +58,8 @@ const T0 = Number(flag("t", 1.6));
 const SEED = Number(flag("seed", 0.569092));
 const OUT = flag("out", `/tmp/hero-${app}${SHEET ? "-sheet" : ""}.png`);
 const INK = flag("ink", "0.90,0.89,0.93,1").split(",").map(Number);
+const VARY = flag("vary", "0,0,0,0").split(",").map(Number);
+const LIGHT = Number(flag("light", 0));
 // A sheet cell is smaller, so the whole grid stays a sane image; a single frame is the reference device.
 const W = Number(flag("w", 384)) | 0;
 const H = Number(flag("h", 832)) | 0;
@@ -138,7 +145,7 @@ const envSampler = device.createSampler({
 // a validation error, not a harmless extra. A field shader (fbm flow) needs no map; a lit-object shader
 // does. Detecting it from the source keeps one renderer serving both instead of forking the tool.
 const usesEnv = /@binding\(1\)/.test(scene);
-const uniBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+const uniBuf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 const bind = device.createBindGroup({
   layout: pipeline.getBindGroupLayout(0),
   entries: usesEnv
@@ -154,11 +161,17 @@ const target = device.createTexture({ size: [W, H], format: FORMAT, usage: GPUTe
 const rowPad = Math.ceil((W * 4) / 256) * 256;            // copyTextureToBuffer wants 256-byte rows
 const readback = device.createBuffer({ size: rowPad * H, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
 
-async function renderFrame(time, vx = 0, vy = 0) {
-  const uni = new Float32Array(12);
+async function renderFrame(time, vx, vy) {
+  const uni = new Float32Array(16);
+  const vary = VARY.length === 4 ? [...VARY] : [0, 0, 0, 0];
+  // A variant sweep OVERRIDES two channels of the base vary; it does not replace the whole vector, or a
+  // sweep of one axis would silently zero the three numbers that describe the weather being framed.
+  if (vx !== undefined) vary[0] = vx;
+  if (vy !== undefined) vary[1] = vy;
   uni.set([W, H, time, SEED], 0);
   uni.set(INK.length === 4 ? INK : [0.9, 0.89, 0.93, 1], 4);
-  uni.set([vx, vy, 0, 0], 8);
+  uni.set(vary, 8);
+  uni.set([LIGHT, 0, 0, 0], 12);
   device.queue.writeBuffer(uniBuf, 0, uni);
 
   const enc = device.createCommandEncoder();
@@ -181,7 +194,7 @@ const started = performance.now();
 let outPx, outW, outH;
 
 if (CELLS === 1) {
-  outPx = await renderFrame(T0, VARY_X[0] ?? 0, VARY_Y[0] ?? 0); outW = W; outH = H;
+  outPx = await renderFrame(T0, VARY_X[0], VARY_Y[0]); outW = W; outH = H;
 } else {
   // Contact sheet: `CELLS` moments spread across `DUR` seconds, laid out left→right, top→bottom, with a
   // one-pixel gutter so adjacent cells cannot be mistaken for one continuous image.
@@ -193,8 +206,8 @@ if (CELLS === 1) {
     const col = i % COLS, row = Math.floor(i / COLS);
     // Variants hold time still and sweep the framing; a motion sheet holds the framing and sweeps time.
     const t = VARIANTS ? T0 : T0 + (DUR * i) / CELLS;
-    const vx = VARIANTS ? (VARY_X[col] ?? 0) : 0;
-    const vy = VARIANTS ? (VARY_Y[row] ?? 0) : 0;
+    const vx = VARIANTS ? VARY_X[col] : undefined;
+    const vy = VARIANTS ? VARY_Y[row] : undefined;
     if (VARIANTS) console.log("  cell " + col + "," + row + ": vary = " + vx + ", " + vy);
     const cell = await renderFrame(t, vx, vy);
     const cx = col * (W + GUT), cy = row * (H + GUT);

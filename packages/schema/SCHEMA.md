@@ -242,33 +242,49 @@ list — the whole screen IS the content. Data split: **hero + strip read `data.
 {
   "id": "now", "type": "dashboard", "icon": "lucide:sun", "label": "dockNow", "titleKey": "title",
   "hero": {                       // reads data.meta (a single current-conditions object, flattened)
-    "place": "place",            // OPTIONAL meta field — small location line above the icon
-    "icon": "icon",              // OPTIONAL meta field holding an iconify name (big glyph)
+    "place": "place",            // OPTIONAL meta field — small location line above the value
+    "live": true,                // OPTIONAL — the place came from a sensor, so it carries data-live
+    "icon": "icon",              // OPTIONAL meta field holding an iconify name (beside the caption)
     "value": "temp",             // REQUIRED meta field — the big number
     "unit": "°",                 // OPTIONAL literal suffix on the big value
-    "caption": "summary",        // OPTIONAL meta field — text under the value
-    "metrics": [                 // OPTIONAL stat chips (hidden at watch width)
-      { "icon": "lucide:wind", "field": "wind", "unit": " км/г", "label": "mWind" }
+    "caption": "cond",           // OPTIONAL meta field — passed through T(), so it may be an i18n KEY
+    "metrics": [                 // OPTIONAL stat readouts (value over a mono label, hairline-divided)
+      { "icon": "lucide:wind", "field": "wind", "unit": "", "label": "mWind" }
     ]
   },
   "strip": {                      // OPTIONAL horizontal scroller — reads a meta ARRAY
     "from": "hourly",            // REQUIRED meta key holding the array
-    "label": "stripHourly",      // OPTIONAL i18n key (section header, gets a clock icon)
+    "label": "stripHourly",      // OPTIONAL i18n key (section header)
     "time": "time",              // REQUIRED item field — top label (e.g. "14:00")
     "icon": "icon",              // OPTIONAL item field — iconify name
     "value": "temp",             // REQUIRED item field — bottom value
-    "unit": ""                   // OPTIONAL literal suffix on strip value
+    "unit": "",                  // OPTIONAL literal suffix on strip value
+    "curve": true                // OPTIONAL — draw the values as a spline, each printed at its point
   },
   "days": {                       // OPTIONAL vertical list — reads data.items
-    "label": "daysTitle",        // OPTIONAL i18n key (section header, calendar icon)
+    "label": "daysTitle",        // OPTIONAL i18n key (section header)
     "day": "day",                // REQUIRED item field — left label (e.g. "Today")
     "icon": "icon",              // OPTIONAL item field — iconify name
     "hi": "hi",                  // REQUIRED item field — primary value
-    "lo": "lo",                  // OPTIONAL item field — muted secondary value (hidden at watch)
-    "unit": "°"                  // OPTIONAL literal suffix on hi/lo
+    "lo": "lo",                  // OPTIONAL item field — muted secondary value
+    "unit": "°",                 // OPTIONAL literal suffix on hi/lo
+    "prob": "prob",              // OPTIONAL item field — a percentage; rows at 0 render nothing
+    "bar": true                  // OPTIONAL — lo→hi as a segment scaled to the WHOLE list's range
+  },
+  "stage": {                      // OPTIONAL — a full-bleed WebGPU atmosphere behind the tab
+    "shader": "hero.wgsl",       // REQUIRED — the app's WGSL, resolved against its index.html
+    "seed": "moon",              // OPTIONAL meta field — the scene's 0..1 seed
+    "vary": ["a", "b", "c", "d"], // OPTIONAL — exactly 4 meta fields → the shader's vary vec4f
+    "ink":  ["e", "f", "g", "h"]  // OPTIONAL — exactly 4 meta fields → the shader's ink vec4f
   }
 }
 ```
+- **`stage`** is how a declarative dashboard gets an atmosphere without becoming a `tool` tab. `hero.js` is
+  imported lazily, so apps without one never fetch it, and a device with no WebGPU renders the flat page —
+  every meaning is in the DOM as well, which is all axe and the e2e gate can see anyway. The runtime fills
+  the shader's `env.x` with how light the current theme is (eased, so a toggle cross-fades); the app must
+  not derive that itself. Powers `weather`, whose sky is the real cloud cover, precipitation and sun.
+  **When a stage is present the hero drops its card**: a surface would cover the thing it is there for.
 - `hero.metric` slots: `{ icon?, field (req, meta key), unit?, label? (i18n, shown as tooltip) }`.
 - Strip/metrics collapse at watch width so the hero stays the glance. Empty/null slots are dropped.
 - `data.js` shape: `items` = the days array; `meta` = the flattened current object **plus** the strip array.

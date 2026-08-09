@@ -177,6 +177,40 @@ a standing assumption, not a per-task ask.)
   `lucide:*`/`mdi:*`, a runtime SVG like `/_rt/zodiac.js` `Sign`) or, where a component can't render (a native
   `<option>`, a data string), plain words. Preflight enforces it (`\p{Emoji_Presentation}`).
 
+### A LIVE STAGE: atmosphere that is the data, and the three ways it goes wrong
+
+`tab.stage` (dashboard) and `HeroStage` (tool) put a WebGPU scene behind a screen, driven by real numbers —
+`weather`'s sky is this hour's cloud cover, precipitation, wind and sun altitude. Judge one offline before
+it ships: `deno run -A tools/art/hero.mjs <app> --vary a,b,c,d --light 0|1 [--sheet 3x3]`, which renders the
+same WGSL at the reference device in ~1.4 s. **A data-driven scene is judged by its STATES**, so render the
+extremes (clear noon, overcast rain, night, snow) in *both* themes — a single pretty frame proves nothing
+about the other twenty the data can produce.
+
+Three failures, all found on the weather sky, all invisible to every gate:
+
+1. **Compose in DISPLAY space, not linear.** Against `#2A2A2E` (0.024 linear) an innocent-looking `+0.055`
+   is a 2.3× lift, so every term slams into its ceiling and the frame renders as one flat slab with no
+   subject in it. In display space the numbers mean what they look like — base 0.165, `+0.03` is a quiet
+   step — and the budget is legible to the next reader. **Write the budget down in the shader** and keep the
+   sum inside the clamp; if a frame is riding the clamp, the bug is the budget.
+2. **A radius is in p-units and a p-unit is the frame HEIGHT** (832 px on the reference device). A "halo" of
+   0.85 is a 707 px radius — the whole screen, i.e. a flat global lift with no glow anywhere in it. Convert
+   every distance to pixels before believing it, cell grids included: a 0.016-of-a-cell rain streak is
+   0.44 px, which is arithmetically present and visually absent.
+3. **Legibility is the shader's job, because axe cannot see a canvas.** It reads the DOM background and will
+   sign off on white-on-white. So a stage under type carries an explicit luminance clamp — weather's frame
+   may move 0.17 toward the page's own extreme and 0.30 away from it, measured to keep `base-content` at
+   6.4:1 worst-case dark and 12.6:1 light. Moving that number moves a contrast floor for every string on
+   the screen; it is a contract, not a look.
+
+And one design rule that is not a number: **do not paint the stock version of the subject.** The catalogue
+answer for a sky is saturated cerulean with white cumulus, and it would be the most saturated object in the
+farm — this palette is neutral and colour means something. Weather is carried by structure and motion
+instead, with hue confined to light TEMPERATURE (chroma under ~0.05, warm low sun, cool high sun). The same
+logic forced day and night apart in kind rather than in brightness: **daylight is broad light with no disc,
+night is a small crisp disc plus stars**, because in an ink palette a grey circle is a grey circle and a
+clear noon rendered as a clear midnight until the two stopped being the same object at different values.
+
 When a genuinely new next-year pattern is relevant, do a quick trend-research pass, fold it in with restraint,
 and **update this section + the skill** so the baseline compounds.
 

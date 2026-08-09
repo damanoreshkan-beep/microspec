@@ -81,5 +81,6 @@ import "./tests/usbsession_test.js";
 import "./tests/v2m_test.js";
 import "./tests/validate_test.js";
 import "./tests/vfilter_test.js";
+import "./tests/weather_test.js";
 import "./tests/wind_test.js";
 import "./tests/wish_test.js";

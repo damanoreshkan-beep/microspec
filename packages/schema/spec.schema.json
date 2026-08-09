@@ -1251,7 +1251,11 @@
               "caption": {
                 "type": "string",
                 "minLength": 1,
-                "description": "OPTIONAL meta field — text under the value."
+                "description": "OPTIONAL meta field — text under the value. Passed through T(), so data.js may return an i18n key (a condition word) and it localises reactively; a plain string passes through unchanged."
+              },
+              "live": {
+                "type": "boolean",
+                "description": "OPTIONAL — the place line is derived from a sensor (geolocation), so it carries data-live. Preflight requires an app that imports geo/compass/motion/mic/camera to render at least one [data-live] element, otherwise every downstream gate measures the empty 'still locating' screen."
               },
               "metrics": {
                 "type": "array",
@@ -1325,6 +1329,10 @@
               "unit": {
                 "type": "string",
                 "description": "OPTIONAL literal suffix on the strip value."
+              },
+              "curve": {
+                "type": "boolean",
+                "description": "OPTIONAL — draw the strip's values as a spline with each value printed at its point, instead of a plain row of numbers. A row says what the values are; the curve says what the day is doing."
               }
             }
           },
@@ -1369,6 +1377,55 @@
               "weekday": {
                 "type": "boolean",
                 "description": "OPTIONAL — treat the `day` field as a raw ISO date and render it as a locale-aware short weekday (never bake the weekday string in data.js — no locale there)."
+              },
+              "prob": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OPTIONAL item field — a percentage rendered in the accent as a mark (precipitation probability). Rows whose value is 0 render nothing, so a dry week stays quiet."
+              },
+              "bar": {
+                "type": "boolean",
+                "description": "OPTIONAL — draw each row's lo→hi as a segment on a shared track, scaled to the WHOLE list's range. Requires `lo`. Scaled to a fixed range it would say nothing at five rows; scaled to the week it says which day is the warm one."
+              }
+            }
+          },
+          "stage": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "shader"
+            ],
+            "description": "dashboard only (OPTIONAL) — a full-bleed WebGPU atmosphere behind the tab, driven by the data. hero.js is lazily imported, so apps without a stage never fetch it, and a device without WebGPU simply renders the flat page (the meaning is always in the DOM too). The shader resolves against the app directory.",
+            "properties": {
+              "shader": {
+                "type": "string",
+                "minLength": 1,
+                "description": "REQUIRED — path to the app's WGSL relative to its index.html (e.g. 'hero.wgsl')."
+              },
+              "seed": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OPTIONAL meta field — the scene's 0..1 seed; its meaning is the shader's business."
+              },
+              "vary": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "OPTIONAL — exactly four meta fields mapped to the shader's vary vec4f (the scene's own parameters)."
+              },
+              "ink": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "OPTIONAL — exactly four meta fields mapped to the shader's ink vec4f."
               }
             }
           }

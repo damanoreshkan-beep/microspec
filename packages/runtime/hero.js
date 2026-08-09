@@ -12,8 +12,15 @@
 // background. The app still works — the stage is atmosphere, and every meaning it carries is also in the
 // DOM, which is the only thing axe and the e2e gate can see anyway.
 //
-// Uniform block (48 bytes, matching tools/art/hero.mjs byte for byte):
-//   res: vec2f · time: f32 · seed: f32 · ink: vec4f · vary: vec4f
+// Uniform block (64 bytes, matching tools/art/hero.mjs byte for byte):
+//   res: vec2f · time: f32 · seed: f32 · ink: vec4f · vary: vec4f · env: vec4f
+//
+// `ink` and `vary` are the APP's channels; `env` is the RUNTIME's, and the split is deliberate. env.x is
+// how light the current theme is (0 dark, 1 light), eased over ~250ms so a theme toggle cross-fades the
+// scene instead of cutting. A stage cannot derive that itself: the view does not re-render on a toggle, so
+// every scene would grow its own MutationObserver and they would drift. A 48-byte struct still binds
+// against the larger buffer (WGSL only requires the declared struct to FIT), so iching and tarot are
+// untouched — verified by rendering both through tools/art/hero.mjs after the change.
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
 import { gate } from "./gate.js";   // runtime modules import RELATIVELY — /_rt/ 404s under /microspec/
@@ -26,16 +33,23 @@ const VS = `
   return vec4f(p[i], 0.0, 1.0);
 }`;
 
+/** 0 = dark theme, 1 = light. Same idiom as globe.js — the palette follows the document, not a prop. */
+const themeLight = () =>
+  (typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light")) ? 1 : 0;
+
 /**
  * @param shader  URL of the app's hero.wgsl — pass `new URL("hero.wgsl", import.meta.url)` from the view
  * @param seed    0..1, meaning is the shader's business; changing it does NOT rebuild the pipeline
- * @param ink     optional vec4 tint handed to the shader
+ * @param ink     optional vec4 tint handed to the shader — a value, or a function read fresh every frame
+ * @param vary    optional vec4 of scene parameters — same contract as `ink`. This is how a stage becomes
+ *                DATA-driven (weather's sky reads the real cloud cover here) rather than decorative.
  */
-export function HeroStage({ shader, seed = 0, ink }) {
+export function HeroStage({ shader, seed = 0, ink, vary }) {
   const ref = useRef();
-  const state = useRef({ raf: 0, dead: false, device: null }).current;
+  const state = useRef({ raf: 0, dead: false, device: null, light: themeLight() }).current;
   state.seed = seed;
   state.ink = ink;
+  state.vary = vary;
 
   useEffect(() => {
     if (gate) return;                                  // headless: no GPU, no network, nothing to draw
@@ -67,12 +81,12 @@ export function HeroStage({ shader, seed = 0, ink }) {
 
         // `layout: "auto"` derives the bind group from what the WGSL declares, so a field shader that reads
         // no texture must not be handed one — that is a validation error, not harmless extra baggage.
-        const uniBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+        const uniBuf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
         const bind = device.createBindGroup({
           layout: pipeline.getBindGroupLayout(0),
           entries: [{ binding: 0, resource: { buffer: uniBuf } }],
         });
-        const uni = new Float32Array(12);
+        const uni = new Float32Array(16);
 
         const size = () => {
           const r = canvas.getBoundingClientRect();
@@ -90,12 +104,19 @@ export function HeroStage({ shader, seed = 0, ink }) {
 
         const frame = () => {
           if (state.dead) return;
-          uni.set([canvas.width, canvas.height, still ? 2 : (performance.now() - t0) / 1000, state.seed ?? 0], 0);
-          // `ink` may be a FUNCTION, read fresh every frame. That is how an app animates the stage (a flare,
-          // a pulse) without re-rendering its whole view sixty times a second to move a background.
+          const now = performance.now();
+          uni.set([canvas.width, canvas.height, still ? 2 : (now - t0) / 1000, state.seed ?? 0], 0);
+          // `ink`/`vary` may be FUNCTIONS, read fresh every frame. That is how an app animates the stage (a
+          // flare, a pulse) without re-rendering its whole view sixty times a second to move a background.
           const ink = typeof state.ink === "function" ? state.ink() : state.ink;
+          const vary = typeof state.vary === "function" ? state.vary() : state.vary;
           uni.set(ink?.length === 4 ? ink : [0.9, 0.89, 0.93, 1], 4);
-          uni.set([0, 0, 0, 0], 8);
+          uni.set(vary?.length === 4 ? vary : [0, 0, 0, 0], 8);
+          // Ease toward the document's theme rather than snapping: a hard cut on toggle is a flash the size
+          // of the screen. ~250ms at 60fps; `still` skips the easing so a frozen frame is exact.
+          const target = themeLight();
+          state.light = still ? target : state.light + (target - state.light) * 0.13;
+          uni.set([state.light, 0, 0, 0], 12);
           device.queue.writeBuffer(uniBuf, 0, uni);
 
           const enc = device.createCommandEncoder();

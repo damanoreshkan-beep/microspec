@@ -69,6 +69,20 @@ export const geo = {
     );
     return () => navigator.geolocation.clearWatch(id);
   },
+  // ONE fix, as a promise — for an adapter's load(), which runs once and has nowhere to put a subscription.
+  // Rejects rather than hanging: a permission prompt the user ignores would otherwise leave the app on its
+  // skeleton forever, and "no fix yet" is a state every caller here already has a fallback for.
+  once(opts) {
+    return new Promise((resolve, reject) => {
+      let stop = null, done = false;
+      // `stop?.()` and the trailing call are both load-bearing: the unsupported branch of watch() invokes
+      // onErr SYNCHRONOUSLY, before it has returned the unsubscribe function, so a bare stop() there is a
+      // TypeError on exactly the devices this is meant to degrade gracefully on.
+      const finish = (fn, v) => { if (done) return; done = true; stop?.(); fn(v); };
+      stop = this.watch((fix) => finish(resolve, fix), (err) => finish(reject, new Error(err)), opts);
+      if (done) stop?.();
+    });
+  },
 };
 
 // wakeLock — keep the screen awake. `acquire()` → a handle with release(); no-op where unsupported.

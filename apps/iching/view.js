@@ -19,7 +19,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet, Segmented } from "/_rt/ui.js";
+import { Sheet, Segmented, Island } from "/_rt/ui.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { collection } from "/_rt/db.js";
 import { gate } from "/_rt/gate.js";
@@ -113,22 +113,6 @@ const HexSvg = ({ lines, bits, label, cls }) => {
   </svg>`;
 };
 
-/** The cast hexagram, with its line values listed beside it. */
-const Hexagram = ({ lines, label }) => html`<div class="flex items-stretch gap-3 w-full">
-  <${HexSvg} lines=${lines} label=${label} cls="flex-1 text-base-content/85" />
-  <div class="flex flex-col justify-between shrink-0 py-[1px]">
-    ${[...lines].reverse().map((v, i) => html`<span key=${i}
-      class=${`font-mono text-[length:var(--ms-label)] tabular-nums leading-none ${isMoving(v) ? "text-primary" : "text-muted"}`}>${v}</span>`)}
-  </div>
-</div>`;
-
-const Trigram = ({ t, tri, side }) => html`<div class="flex items-baseline gap-2 min-w-0">
-  <span class="font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-muted shrink-0">${T(t, side)}</span>
-  <span class="text-lg leading-none">${tri.glyph}</span>
-  <span class="font-medium truncate">${tri.cn}</span>
-  <span class="text-muted text-sm truncate">${tri.pinyin}</span>
-</div>`;
-
 export function iching({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t), loc = useStore(S.locale);
   const lines = useStore($lines), m = useStore($method), q = useStore($question);
@@ -154,68 +138,64 @@ export function iching({ S, screen, openScreen, closeScreen }) {
   ].filter(Boolean).join("\n") : "";
 
   return html`<${Fragment}>
-    ${/* The hero: the cast rendered as cast bronze, WebGPU, full-bleed behind everything. The seed packs
-          the six line values, so a new throw changes the figure without touching the GPU context. */""}
+    ${/* The stage IS the screen. The cast is drawn full-bleed in WebGPU — six slits of light in a moving
+          field — and the page flow stays deliberately EMPTY behind it, so nothing scrolls over the figure.
+          Everything you can touch lives in one pinned island at the bottom.
+
+          The hexagram used to be drawn twice: once here in the current, and again as a stack of fat white
+          bars in a card. Two pictures of the same thing arguing with each other is exactly what "немає
+          гармонії" looks like. Now the sizes carry a hierarchy instead — the big figure is the atmosphere,
+          and the thumbnail in the island is the DATA (and the thing axe and the e2e gate can actually see,
+          since a canvas is invisible to both). */""}
     <${HeroStage} seed=${r ? packSeed(r.lines) : 0} />
 
-    <div class="relative z-10 flex flex-col gap-4 max-w-[440px] mx-auto w-full">
+    <${Island} pinned tone="dark" className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3">
       <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}
         placeholder=${T(t, "question")} aria-label=${T(t, "question")}
-        class="input input-bordered w-full rounded-2xl" />
+        class="input input-sm bg-white/10 border-white/20 text-white placeholder:text-white/75 w-full rounded-xl" />
 
-      <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}
-        items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
-        value=${m} onChange=${(id) => { buzz(); $method.set(id); }} />
-
-      ${/* The odds of the CHOSEN method, as the exact ratios they are. This is not hint text decorating a
-            control — it is the one fact that distinguishes the two methods, and it changes when you switch. */""}
-      <div class="flex items-center justify-between gap-3 font-mono text-[length:var(--ms-label)] tabular-nums text-muted px-1" data-odds>
-        <span class="uppercase tracking-wide text-muted">${T(t, "oddsTitle")}</span>
-        <span>${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total}</span>
-        <span>${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</span>
+      <div class="flex items-center gap-2">
+        <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}
+          items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
+          value=${m} onChange=${(id) => { buzz(); $method.set(id); }} />
+        ${/* The odds of the CHOSEN method, as the exact ratios they are — the one fact that separates the
+              two methods, and it changes when you switch. */""}
+        <div class="flex items-center gap-2 font-mono text-[length:var(--ms-label)] tabular-nums text-white/80 ms-auto" data-odds>
+          <span>${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total}</span>
+          <span>${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</span>
+        </div>
       </div>
 
-      ${r ? html`<div class="flex flex-col gap-4" data-live data-reading>
-        <div class="rounded-3xl sf-e2 px-5 py-5 flex flex-col gap-4">
-          <div class="flex items-baseline justify-between gap-3">
-            <div class="flex items-baseline gap-2.5 min-w-0">
-              <span class="text-3xl leading-none font-medium">${name.cn}</span>
-              <span class="text-muted truncate">${name.py}</span>
+      ${r ? html`<div class="flex flex-col gap-2.5" data-live data-reading>
+        <div class="flex items-center gap-3">
+          <div class="w-[74px] shrink-0"><${HexSvg} lines=${r.lines} label=${`${name.cn} ${name.py}`} cls="text-white/90" /></div>
+          <div class="flex flex-col min-w-0 gap-0.5">
+            <div class="flex items-baseline gap-2 min-w-0">
+              <span class="text-2xl leading-none font-medium text-white">${name.cn}</span>
+              <span class="text-white/80 truncate">${name.py}</span>
             </div>
-            <span class="font-mono tabular-nums text-muted shrink-0" data-number>${r.number}</span>
+            <div class="flex items-baseline gap-2 font-mono text-[length:var(--ms-label)] tabular-nums text-white/75">
+              <span data-number>${r.number}</span>
+              <span>${r.upper.cn}${r.lower.cn}</span>
+            </div>
           </div>
-          <${Hexagram} lines=${r.lines} label=${`${name.cn} ${name.py}`} />
-          <div class="flex flex-col gap-1.5 pt-0.5">
-            <${Trigram} t=${t} tri=${r.upper} side="above" />
-            <${Trigram} t=${t} tri=${r.lower} side="below" />
-          </div>
-        </div>
 
-        <div class="rounded-3xl sf-inset px-5 py-4 flex flex-col gap-3" data-change>
-          ${r.changing ? html`
-            <div class="flex items-center justify-between gap-3">
-              <span class="font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-muted">${T(t, "moving")}</span>
-              <span class="font-mono tabular-nums text-primary">${r.moving.join(" · ")}</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <div class="flex-1"><${HexSvg} bits=${r.toBits} label=${toName ? toName.cn : ""} cls="text-base-content/70" /></div>
-              <div class="flex flex-col items-end gap-0.5 min-w-0">
-                <span class="font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-muted">${T(t, "changesTo")}</span>
-                <span class="text-xl leading-none font-medium truncate">${toName.cn}</span>
-                <span class="text-sm text-muted truncate">${toName.py}</span>
-                <span class="font-mono tabular-nums text-muted text-sm">${r.toNumber}</span>
-              </div>
-            </div>`
-            : html`<span class="text-muted">${T(t, "noMoving")}</span>`}
+          <div class="ms-auto text-right min-w-0" data-change>
+            ${r.changing ? html`
+              <div class="font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-white/75">${T(t, "changesTo")}</div>
+              <div class="text-xl leading-none font-medium text-white truncate">${toName.cn}</div>
+              <div class="font-mono tabular-nums text-[length:var(--ms-label)] text-primary">${r.moving.join(" · ")} → ${r.toNumber}</div>`
+              : html`<span class="font-mono text-[length:var(--ms-label)] text-white/75">${T(t, "noMoving")}</span>`}
+          </div>
         </div>
 
         <div class="flex gap-2">
-          <button data-cast class="btn btn-primary flex-1 rounded-2xl gap-2" onClick=${doCast}>${Icon("lucide:dices", "text-lg")}${T(t, "recast")}</button>
-          <button data-read class="btn btn-outline rounded-2xl gap-2" onClick=${() => { buzz(); openScreen("reading"); }}>${Icon("lucide:sparkles")}${T(t, "readingOpen")}</button>
+          <button data-cast class="btn btn-sm btn-primary flex-1 rounded-xl gap-2" onClick=${doCast}>${Icon("lucide:dices")}${T(t, "recast")}</button>
+          <button data-read class="btn btn-sm rounded-xl gap-2 bg-white/10 border-white/25 text-white hover:bg-white/20" onClick=${() => { buzz(); openScreen("reading"); }}>${Icon("lucide:sparkles")}${T(t, "readingOpen")}</button>
         </div>
       </div>`
-      : html`<button data-cast class="btn btn-primary btn-lg rounded-2xl gap-2 mt-2" onClick=${doCast}>${Icon("lucide:dices", "text-lg")}${T(t, "cast")}</button>`}
-    </div>
+      : html`<button data-cast class="btn btn-primary rounded-xl gap-2" onClick=${doCast}>${Icon("lucide:dices", "text-lg")}${T(t, "cast")}</button>`}
+    </${Island}>
 
     <${ReadSheet} open=${screen === "reading"} onClose=${closeScreen} sig=${sig} input=${input} t=${t} loc=${loc}
       title=${name ? `${name.cn} ${name.py}` : T(t, "readingTitle")} />

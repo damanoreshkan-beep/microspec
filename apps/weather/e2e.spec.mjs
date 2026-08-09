@@ -23,7 +23,7 @@ export default [
     name: "погодинна крива + тижневий прогноз зі смугами", run: async (h) => {
       await load(h);
       const t = await h.bodyText();
-      h.expect(/\d\d:\d\d/.test(t), "немає погодинних часів");
+      h.expect(await h.count("[data-striptime]") === 12, "немає 12 погодинних колонок");
       h.expect(/Погодинно|Hourly/i.test(t), "немає підпису стрічки");
       h.expect(/На тиждень|This week/i.test(t), "немає прогнозу на тиждень");
       h.expect(await h.count("[data-curve] path") === 2, "немає кривої (лінія + площа)");

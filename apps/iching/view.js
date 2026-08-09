@@ -79,17 +79,23 @@ const W = 100, BAR = 6, PITCH = 11, GAP = 16, VB_H = PITCH * 6 - (PITCH - BAR);
  */
 const HexSvg = ({ lines, bits, label, cls }) => {
   const rows = lines ?? bits.map((b) => (b ? 7 : 8));      // bits render as static lines
+  // `data-line` / `data-moving` mark the CAST only. The transformed hexagram has no line values and no
+  // movement — it is where the cast is going, not a second throw. Tagging it too put twelve marked lines
+  // on one screen and broke the e2e count, which was the gate noticing a real semantic slip rather than a
+  // selector detail.
+  const lineAttr = (i) => (lines ? i + 1 : null);          // null attributes are not rendered at all
+  const movAttr = (moving) => (lines ? (moving ? "1" : "0") : null);
   return html`<svg viewBox=${`0 0 ${W} ${VB_H}`} class=${`w-full ${cls || ""}`} role="img"
-    aria-label=${label || ""} fill="currentColor" data-hex>
+    aria-label=${label || ""} fill="currentColor" data-hex=${lines ? "cast" : "to"}>
     ${rows.map((v, i) => {
       const yang = bitOf(v) === 1, moving = isMoving(v);
       const y = (5 - i) * PITCH;                            // index 0 is the BOTTOM line → drawn last
       const mid = y + BAR / 2;
       return html`<${Fragment} key=${i}>
         ${yang
-          ? html`<rect x="0" y=${y} width=${W} height=${BAR} rx=${BAR / 2} data-line=${i + 1} data-moving=${moving ? "1" : "0"} />`
+          ? html`<rect x="0" y=${y} width=${W} height=${BAR} rx=${BAR / 2} data-line=${lineAttr(i)} data-moving=${movAttr(moving)} />`
           : html`<${Fragment}>
-              <rect x="0" y=${y} width=${(W - GAP) / 2} height=${BAR} rx=${BAR / 2} data-line=${i + 1} data-moving=${moving ? "1" : "0"} />
+              <rect x="0" y=${y} width=${(W - GAP) / 2} height=${BAR} rx=${BAR / 2} data-line=${lineAttr(i)} data-moving=${movAttr(moving)} />
               <rect x=${(W + GAP) / 2} y=${y} width=${(W - GAP) / 2} height=${BAR} rx=${BAR / 2} />
             <//>`}
         ${moving && yang

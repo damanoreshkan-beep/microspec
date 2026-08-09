@@ -12,7 +12,6 @@ import { gate } from "/_rt/gate.js";
 import { animate, stagger } from "motion";
 import { useSheetDrag, usePanX } from "/_rt/gesture.js";
 import { Sheet, Segmented } from "/_rt/ui.js";
-import { HeroStage } from "/_rt/hero.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const QS = new URLSearchParams(location.search);
@@ -38,17 +37,6 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const [detail, setDetail] = useState(0);                       
   const liveBase = useRef(randSeed()).current;                   
 
-  const flareRef = useRef(0);
-  const flare = () => {
-    const t0 = performance.now();
-    const step = () => {
-      const k = (performance.now() - t0) / 1100;
-      flareRef.current = k >= 1 ? 0 : (1 - k) * (1 - k);
-      if (k < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  };
-
   const now = gate ? new Date(2027, 6, 23) : new Date();
   const spread = spreadById(spreadId);
   const seed = spreadId === "daily" ? hashSeed(dk(now))
@@ -64,21 +52,11 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   useEffect(() => { setOverride(null); }, [spreadId]);           
   useEffect(() => { warm(drawn.map(meaningOf), loc); }, [seed, loc]);
   useEffect(() => {
-    if (gate) return;
-    const cards = [...document.querySelectorAll("[data-reading] [data-card]")];
-    const flips = [...document.querySelectorAll("[data-reading] [data-flip]")];
-    if (!flips.length) return;
-    const EASE = [0.22, 0.61, 0.36, 1];
-
-    const deal = animate(cards, { opacity: [0, 1], y: [22, 0], scale: [0.94, 1] },
-      { delay: stagger(0.09), duration: 0.7, ease: EASE });
-
-    const held = setTimeout(() => {
-      animate(flips, { rotateY: [180, 0] }, { delay: stagger(0.14), duration: 0.55, ease: EASE });
-      flare();
-    }, 520);
-
-    return () => { deal?.stop?.(); clearTimeout(held); };
+    if (gate || isDaily) return;
+    const cards = document.querySelectorAll("[data-reading] [data-card]");
+    if (!cards.length) return;
+    const a = animate([...cards], { opacity: [0, 1], y: [16, 0] }, { delay: stagger(0.045), duration: 0.4, ease: "easeOut" });
+    return () => a.stop?.();
   }, [seed]);
 
   const openCard = (i) => { setDetail(i); openScreen("card"); };
@@ -93,17 +71,12 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const rows = spread.rows || defaultRows(spread.pos.length);
 
   return html`<${Fragment}>
-    <${HeroStage} shader=${new URL("hero.wgsl", import.meta.url)}
-      seed=${((drawn[0]?.card ?? 0) + 1) / 79} ink=${() => [flareRef.current, 0, 0, 1]} />
-
     ${isDaily
-      
-      
       ? html`<div class="flex flex-col gap-4">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
+          <${Header} t=${t} spreadId=${spreadId} isDaily=${true} />
           <div class="overflow-hidden"><div ref=${paneRef} ...${pan} class="touch-pan-y will-change-transform"><${Solo} d=${drawn[0]} pos=${spread.pos[0]} t=${t} loc=${loc} onOpen=${() => openCard(0)} /></div></div>
         </div>`
-      
       : html`<div class="flex flex-col gap-2.5 h-[calc(100dvh-11.5rem)] min-h-0 overflow-hidden">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
           <${Header} t=${t} spreadId=${spreadId} isDaily=${false} onShuffle=${shuffle} onRitual=${openRitual} onSynth=${() => openScreen("synth")} />
@@ -116,8 +89,6 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   </${Fragment}>`;
 }
 
-
-
 const seq = (a, b) => Array.from({ length: b - a }, (_, i) => a + i);
 function defaultRows(n) {
   if (n <= 4) return [seq(0, n)];
@@ -126,7 +97,6 @@ function defaultRows(n) {
   for (let i = 0; i < n; i += per) rows.push(seq(i, Math.min(i + per, n)));
   return rows;
 }
-
 
 function Picker({ t, spreadId, onPick }) {
   const wrapRef = useRef();
@@ -138,12 +108,11 @@ function Picker({ t, spreadId, onPick }) {
   </div>`;
 }
 
-
 function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
   return html`<div class="shrink-0 flex items-start justify-between gap-3">
-    
     <div class="min-w-0">
-      ${!isDaily ? html`<div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>` : null}
+      <div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>
+      <p class="mt-0.5 text-[0.78rem] leading-snug text-base-content/55 break-words line-clamp-2">${T(t, DESC_KEY[spreadId])}</p>
     </div>
     ${!isDaily ? html`<div class="shrink-0 flex items-center gap-1.5">
       <button data-synth aria-label=${T(t, "synthTitle")} class="btn btn-sm btn-circle" onClick=${onSynth}>${Icon("lucide:scroll-text", "text-base")}</button>
@@ -155,10 +124,12 @@ function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
 
 
 
+
 const GATE_SUMMARY = { uk: "Розклад радить довіритися внутрішньому чуттю: минуле поступово відпускає, теперішнє прояснюється, а майбутнє винагородить терпіння й чесність із собою. Дій виважено — рівновага вже поруч.", en: "The spread counsels trust in your own instinct: the past is loosening its grip, the present is clearing, and the future rewards patience and honesty with yourself. Move deliberately — the balance you seek is already near." };
 function SynthSheet({ open, onClose, sig, input, t, loc, spreadName }) {
   useStore(aiTick);
   const [failed, setFailed] = useState(false);
+  
   
   const run = () => { setFailed(false); warmSummary(sig, input, loc); return setTimeout(() => setFailed(!isSummarized(sig, loc)), 12000); };
   useEffect(() => {
@@ -181,7 +152,7 @@ function SynthSheet({ open, onClose, sig, input, t, loc, spreadName }) {
 
 function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
   const maxCols = Math.max(...rows.map((r) => r.length));
-  const wpct = (76 / maxCols).toFixed(2);
+  const wpct = (94 / maxCols).toFixed(2);
   return html`<div data-reading ref=${paneRef} ...${pan || {}} class="flex-1 min-h-0 overflow-hidden flex flex-col gap-2 touch-pan-y will-change-transform">
     ${rows.map((row, ri) => html`<div class="flex-1 min-h-0 flex justify-center items-stretch gap-2" key=${ri}>
       ${row.map((pi) => html`<${FitTile} d=${drawn[pi]} pos=${pos[pi]} t=${t} loc=${loc} wpct=${wpct} onOpen=${() => onOpen(pi)} key=${pi} />`)}
@@ -190,36 +161,11 @@ function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
 }
 
 
-
-
-
-
-
-
-
-
-const BACK_STYLE = "background-image:" +
-  "radial-gradient(circle at 50% 42%, rgba(201,162,39,.28), transparent 62%)," +
-  "repeating-linear-gradient(45deg, rgba(201,162,39,.10) 0 5px, transparent 5px 10px)," +
-  "linear-gradient(160deg, #1d0a12, #0d0509)";
-const CardBack = () => html`<div aria-hidden="true" style=${BACK_STYLE}
-  class="absolute inset-0 rounded-md border border-[#c9a227]/35 [backface-visibility:hidden] [transform:rotateY(180deg)]"></div>`;
-/** Wraps a face in the flip plane. `still` (the gate) renders it already turned. */
-const Flip = ({ cls, still, children }) => html`<div data-flip
-  class=${`relative [transform-style:preserve-3d] ${cls || ""}`}
-  style=${still ? "" : "transform:rotateY(180deg)"}>
-  ${children}
-  <${CardBack} />
-</div>`;
-
-
 function FitTile({ d, pos, t, loc, wpct, onOpen }) {
   const c = DECK[d.card];
-  return html`<button data-card class="h-full min-h-0 flex flex-col items-center gap-1 active:scale-95 transition [perspective:900px]" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
+  return html`<button data-card class="h-full min-h-0 flex flex-col items-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
     <div class="min-h-0 flex-1 flex items-center justify-center w-full">
-      <${Flip} still=${gate} cls="max-h-full">
-        <img src=${imgURL(c.img)} alt="" loading="lazy" class=${`max-h-full max-w-full w-auto h-auto object-contain rounded-md sf-e2 [backface-visibility:hidden] ${d.reversed ? "rotate-180" : ""}`} />
-      <//>
+      <img src=${imgURL(c.img)} alt="" loading="lazy" class=${`max-h-full max-w-full w-auto h-auto object-contain rounded-md sf-e2 ${d.reversed ? "rotate-180" : ""}`} />
     </div>
     <div class="shrink-0 text-[0.5rem] font-mono uppercase tracking-wide text-base-content/50 truncate max-w-full leading-tight">${T(t, pos)}</div>
   </button>`;
@@ -228,11 +174,8 @@ function FitTile({ d, pos, t, loc, wpct, onOpen }) {
 
 
 
-
-
 const RIT_COLORS = [[159, 140, 246], [240, 101, 94], [64, 193, 115], [217, 151, 58], [90, 169, 230], [232, 160, 214]];
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
-
 function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   const dref = useRef(), cref = useRef();
   const [color, setColor] = useState(0);
@@ -257,6 +200,7 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
     const dpr = Math.min((globalThis.devicePixelRatio || 1), 2);
     const size = () => { const r = cv.getBoundingClientRect(); cv.width = Math.max(1, (r.width || globalThis.innerWidth || 360) * dpr); cv.height = Math.max(1, (r.height || globalThis.innerHeight || 640) * dpr); };
     size();
+    
     const P = Array.from({ length: 96 }, (_, i) => ({ a: i * 2.39996, r: 0.14 + ((i * 0.61803) % 1) * 0.86, sz: 1 + ((i * 0.37) % 1) * 2.4, spd: 0.0025 + ((i * 0.113) % 1) * 0.006 }));
     const paint = (now) => {
       const w = cv.width, h = cv.height, cx = w / 2, cy = h * 0.44, R = Math.min(w, h) * 0.4, c = RIT_COLORS[S.color];
@@ -297,7 +241,6 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   const drawNow = () => { onDraw(hashSeed(`${S.color}|${S.num}`) >>> 0); };   
   const col = RIT_COLORS[color];
   const { boxRef, grip } = useSheetDrag(onClose);   
-
   return html`<dialog id="ritual" ref=${dref} class="modal" onClose=${onClose}>
     <div ref=${boxRef} class="modal-box max-w-none w-screen h-[100dvh] max-h-none rounded-none p-0 bg-base-100 overflow-hidden relative">
       <canvas ref=${cref} data-live aria-hidden="true" class="absolute inset-0 w-full h-full"></canvas>
@@ -355,11 +298,8 @@ function Solo({ d, pos, t, loc, onOpen }) {
   const c = DECK[d.card];
   return html`<div data-reading class="flex flex-col items-center gap-4">
     <div class="text-[0.6rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${T(t, pos)}</div>
-    
-    <button data-card class="w-[44%] max-w-[8.5rem] active:scale-[.99] transition [perspective:1000px]" onClick=${onOpen}>
-      <${Flip} still=${gate}>
-        <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-full aspect-[350/600] object-cover rounded-xl sf-e3 [backface-visibility:hidden] ${d.reversed ? "rotate-180" : ""}`} />
-      <//>
+    <button data-card class="w-[62%] max-w-[11rem] active:scale-[.99] transition" onClick=${onOpen}>
+      <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-full aspect-[350/600] object-cover rounded-xl sf-e3 ${d.reversed ? "rotate-180" : ""}`} />
     </button>
     <div class="text-center">
       <div class="font-bold text-xl leading-tight">${cardName(c, loc)}</div>

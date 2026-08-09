@@ -162,7 +162,11 @@ export function iching({ S, screen, openScreen, closeScreen }) {
               black/60 over the PAGE, and in the light theme axe measures that stack against a bright body —
               it cannot see the WebGPU field behind it — which lands white text on grey and fails contrast.
               An opaque swatch makes the computation unambiguous in both themes. */""}
-        class="input input-sm bg-[#0d1117] border-white/25 text-white placeholder:text-white/70 w-full rounded-xl" />
+        ${/* NO DaisyUI `.input` here. It carries its own background at the same specificity as a Tailwind
+              utility, and it wins on source order — so bg-[…] silently did nothing and the light theme kept
+              painting the field white under white text. Two CI rounds said "color-contrast: #question"
+              without changing, which is the signal to stop patching and drop the component instead. */""}
+        class="w-full rounded-xl border border-white/25 bg-[#0b0f14] px-3 py-2 text-sm text-white placeholder:text-white/70 outline-none focus:border-white/55" />
 
       <div class="flex items-center gap-2">
         <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}

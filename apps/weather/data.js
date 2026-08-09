@@ -76,7 +76,7 @@ function shape(place, lat, lng, d, loc) {
   const hourKey = now.time.slice(0, 13);
   const start = Math.max(0, d.hourly.time.findIndex((t) => t.slice(0, 13) >= hourKey));
   const hourly = d.hourly.time.slice(start, start + 12).map((t, i) => ({
-    time: t.slice(11, 16),
+    time: t.slice(11, 13),
     temp: Math.round(d.hourly.temperature_2m[start + i]),
     wicon: wmoIcon(d.hourly.weather_code[start + i]),
   }));

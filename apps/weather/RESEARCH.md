@@ -102,10 +102,15 @@ real numbers:
 
 **The luminance contract.** The hero type sits directly on the stage (no card — a card would hide the very
 thing that makes this app worth opening). Legibility therefore cannot be left to taste: the shader clamps
-its output to the base colour ±0.075 in linear luminance across the top 55% of the frame, and fades to the
-flat base by 75% down, where the panels start. Contrast for `base-content` is then never worse than it is
-on the flat page. Axe cannot see any of this — it reads the DOM background — so the clamp IS the gate, and
-it is pinned in the shader with a comment.
+DISPLAY-space luminance to base +0.17 in the direction that would eat the text and 0.30 the other way, and
+fades to the flat base between 66% and 96% down, where the panels start. Measured, `base-content` holds
+6.4:1 in the dark theme at the ceiling and 12.6:1 in the light theme at the floor. Axe cannot see any of
+this — it reads the DOM background — so the clamp IS the gate, and it is pinned in the shader.
+
+The composition is budgeted to land *inside* the clamp rather than lean on it: a frame riding the clamp is a
+frame the clamp is composing. The first cut worked in LINEAR light with tarot's constants, where a "+0.055"
+against a 0.024 base is a 2.3× lift — every term hit the ceiling and the whole screen rendered as one flat
+grey slab with no sun in it.
 
 `prefers-reduced-motion` is already handled one level up: `hero.js` freezes the clock at t=2s and the scene
 still renders.

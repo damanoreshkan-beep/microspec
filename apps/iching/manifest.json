@@ -1,0 +1,43 @@
+{
+  "name": "Книга Перемін",
+  "short_name": "Книга Перемін",
+  "description": "Книга Перемін кидає гексаграму так, як це робили стеблами деревію або трьома монетами — і ці два методи дають РІЗНІ шанси, а не однакові. У стеблах ян переходить в інь утричі частіше, ніж інь у ян; монети симетричні. Застосунок рахує чесно: гексаграму, її триграми, рухомі лінії та другу гексаграму, у яку вона переходить. Тлумачення складає модель поверх цієї структури й позначене як згенероване — канонічного тексту тут немає.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#2A2A2E",
+  "background_color": "#2A2A2E",
+  "lang": "uk",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

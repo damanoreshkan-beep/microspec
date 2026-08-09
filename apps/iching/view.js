@@ -104,12 +104,13 @@ export function iching({ S, screen, openScreen, closeScreen }) {
       className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3">
       <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}
         placeholder=${T(t, "question")} aria-label=${T(t, "question")}
-        class="input input-sm bg-[#0d1117] border-white/25 text-white placeholder:text-white/70 w-full rounded-xl" />
-
+        
+        class="w-full rounded-xl border border-white/25 bg-[#0b0f14] px-3 py-2 text-sm text-white placeholder:text-white/70 outline-none focus:border-white/55" />
       <div class="flex items-center gap-2">
         <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}
           items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
           value=${m} onChange=${(id) => { buzz(); $method.set(id); }} />
+        
         <div class="flex items-center gap-2 font-mono text-[length:var(--ms-label)] tabular-nums text-white/80 ms-auto" data-odds>
           <span>${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total}</span>
           <span>${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</span>

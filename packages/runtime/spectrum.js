@@ -103,6 +103,13 @@ export function galaxyDisc(n, { radius = 5, branches = 5, spin = 1, randomness =
   return out;
 }
 
+export function frameFit(halfW, halfH, fovYDeg, aspect, { margin = 1.12, lift = 0 } = {}) {
+  const ty = Math.tan((fovYDeg * Math.PI) / 180 / 2);
+  const a = aspect > 0 ? aspect : 1;
+  const dist = Math.max((halfH * margin) / ty, (halfW * margin) / (ty * a));
+  return { dist, drop: lift * 2 * dist * ty };
+}
+
 export function seedFrame(bins = 1024, phase = 0) {
   const u = new Uint8Array(bins);
   for (let i = 0; i < bins; i++) {

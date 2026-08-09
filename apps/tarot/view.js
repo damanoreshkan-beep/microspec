@@ -23,6 +23,7 @@ import { gate } from "/_rt/gate.js";
 import { animate, stagger } from "motion";
 import { useSheetDrag, usePanX } from "/_rt/gesture.js";
 import { Sheet, Segmented } from "/_rt/ui.js";
+import { HeroStage } from "/_rt/hero.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const QS = new URLSearchParams(location.search);
@@ -89,15 +90,25 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const rows = spread.rows || defaultRows(spread.pos.length);
 
   return html`<${Fragment}>
+    ${/* The lit table, and NOTHING else changed on this screen — layout, card sizes and the existing deal
+          animation are exactly as they were. The stage is a candle over baize: radial and warm, where
+          iching's is a cold directional current, because the two apps must not share an atmosphere.
+
+          `relative z-10` on the content wrappers is the whole reason the tabs vanished last time. A
+          `fixed inset-0` canvas paints over everything that has no stacking context of its own; iching had
+          the wrapper, this screen did not, and I shipped it without looking at a render that could show a
+          canvas at all. */""}
+    <${HeroStage} shader=${new URL("hero.wgsl", import.meta.url)} seed=${((drawn[0]?.card ?? 0) + 1) / 79} />
+
     ${isDaily
       // the card of the day: the picker, then one large card with its meaning inline (scrolls naturally)
-      ? html`<div class="flex flex-col gap-4">
+      ? html`<div class="relative z-10 flex flex-col gap-4">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
           <${Header} t=${t} spreadId=${spreadId} isDaily=${true} />
           <div class="overflow-hidden"><div ref=${paneRef} ...${pan} class="touch-pan-y will-change-transform"><${Solo} d=${drawn[0]} pos=${spread.pos[0]} t=${t} loc=${loc} onOpen=${() => openCard(0)} /></div></div>
         </div>`
       // any multi-card spread: the WHOLE structure fits the screen — cards shrink to fit, no page scroll.
-      : html`<div class="flex flex-col gap-2.5 h-[calc(100dvh-11.5rem)] min-h-0 overflow-hidden">
+      : html`<div class="relative z-10 flex flex-col gap-2.5 h-[calc(100dvh-11.5rem)] min-h-0 overflow-hidden">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
           <${Header} t=${t} spreadId=${spreadId} isDaily=${false} onShuffle=${shuffle} onRitual=${openRitual} onSynth=${() => openScreen("synth")} />
           <${FitReading} rows=${rows} drawn=${drawn} pos=${spread.pos} t=${t} loc=${loc} onOpen=${openCard} paneRef=${paneRef} pan=${pan} />

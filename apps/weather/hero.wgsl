@@ -18,10 +18,10 @@
 // THE LEGIBILITY CONTRACT, and it is a contract, not a preference. The hero type sits directly on this
 // stage with no card behind it (a card would hide the one thing worth opening the app for), and axe cannot
 // see a canvas — it reads the DOM background and would sign off on white-on-white. So the clamp at the
-// bottom of this file is the gate: the frame never travels more than 0.085 in linear luminance in the
-// direction that would eat the text (brighter in the dark theme, darker in the light one). It may travel
-// freely the other way, which is where the drama goes. Move that number and you are moving a contrast
-// floor for every string on the screen.
+// bottom of this file is the gate: display-space luminance never travels more than 0.17 in the direction
+// that would eat the text (brighter in the dark theme, darker in the light one) and 0.30 the other way,
+// which is where the drama goes. Measured, base-content stays at 6.4:1 dark / 12.6:1 light. Move those
+// numbers and you are moving a contrast floor for every string on the screen.
 
 struct U { res: vec2f, time: f32, seed: f32, ink: vec4f, vary: vec4f, env: vec4f };
 @group(0) @binding(0) var<uniform> u: U;

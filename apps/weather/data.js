@@ -96,7 +96,9 @@ function shape(place, lat, lng, d, loc) {
   const hourKey = now.time.slice(0, 13);
   const start = Math.max(0, d.hourly.time.findIndex((t) => t.slice(0, 13) >= hourKey));
   const hourly = d.hourly.time.slice(start, start + 12).map((t, i) => ({
-    time: t.slice(11, 16),
+    // The HOUR only. "13:00" is 5 mono characters and the strip's column is 48px, so a full clock ran the
+    // labels together into "13:0014:0015:00" — one unreadable string across the whole strip.
+    time: t.slice(11, 13),
     temp: Math.round(d.hourly.temperature_2m[start + i]),
     wicon: wmoIcon(d.hourly.weather_code[start + i]),
   }));

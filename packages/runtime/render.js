@@ -1007,7 +1007,7 @@ function Stage({ tab, meta }) {
 // a weather app to answer. Columns are a fixed 3rem so the SVG and the labels agree on one geometry
 // without measuring anything — the alternative (a percentage width) desynchronises the moment the strip
 // scrolls.
-const COL_W = 48, CURVE_H = 72, CURVE_PAD = 20;
+const COL_W = 48, CURVE_H = 72, CURVE_PAD = 24;
 function StripCurve({ items, valueKey, unit }) {
   const vals = items.map((s) => Number(s[valueKey]));
   const w = items.length * COL_W;
@@ -1019,7 +1019,14 @@ function StripCurve({ items, valueKey, unit }) {
   return html`<div data-curve class="relative shrink-0" style=${`width:${w}px;height:${CURVE_H}px`}>
     <svg viewBox=${`0 0 ${w - COL_W} ${CURVE_H}`} width=${w - COL_W} height=${CURVE_H} aria-hidden="true"
       class="absolute top-0 text-[var(--app-accent)]" style=${`left:${COL_W / 2}px`}>
-      <path d=${area} fill="currentColor" opacity="0.13" />
+      ${/* A FLAT fill is wrong for a nearly flat forecast: twelve hours inside 3° put the line near the top
+            of the band, so a uniform wash renders as one solid slab occupying most of the panel and reads
+            as a bar, not a curve. The gradient makes the area belong to the line it hangs from. */ ""}
+      <defs><linearGradient id="ms-curve-fade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="currentColor" stop-opacity="0.20" />
+        <stop offset="1" stop-color="currentColor" stop-opacity="0.01" />
+      </linearGradient></defs>
+      <path d=${area} fill="url(#ms-curve-fade)" />
       <path d=${line} fill="none" stroke="currentColor" stroke-width="1.75" opacity="0.9"
         stroke-linecap="round" stroke-linejoin="round" />
       <circle cx=${points[0].x} cy=${points[0].y} r="3.2" fill="currentColor" />
@@ -1084,7 +1091,7 @@ function DashboardView({ tab }) {
       </div>` : null}
     </div>
     ${strip ? Sect(T(t, tab.strip.label), html`<div class="overflow-x-auto -mx-1 px-1" tabindex="0" role="group" aria-label=${T(t, tab.strip.label)}>
-      <div class="flex flex-col w-max">
+      <div class="flex flex-col w-max gap-1.5">
         <div class="flex">${strip.map((s, i) => html`<div class="flex flex-col items-center gap-1 shrink-0" style=${`width:${COL_W}px`} key=${i}>
           <span class="font-mono text-[var(--ms-label)] text-base-content/70 tabular-nums">${s[tab.strip.time]}</span>
           ${tab.strip.icon && s[tab.strip.icon] ? Icon(s[tab.strip.icon], "text-lg text-base-content/80") : null}

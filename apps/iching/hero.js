@@ -13,13 +13,8 @@
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
 import { gate } from "/_rt/gate.js";
-import { decodeHDR, downsampleRGBE } from "/_rt/hdr.js";
 
-const DPR_CAP = 2;          // 3.5 native on this phone is fill-rate suicide for a full-screen ray march
-
-// The environment ships at FULL 2K, exactly as tools/art/hero.mjs renders it offline. Halving it here to
-// save memory would have been the quiet kind of wrong: the mip chain would lose a level, so SPEC_LOD 3.4
-// would land one step sharper than the frames I actually judged. What ships has to be what was approved.
+const DPR_CAP = 2;   // 3.5 native on this phone is wasted fill rate for a full-screen field
 
 /**
  * @param seed  0..1 — the cast, packed as six base-4 digits (line value 6..9 → digit 0..3), bottom first.
@@ -43,10 +38,7 @@ export function HeroStage({ seed }) {
         state.device = device;
 
         const base = new URL("./", import.meta.url);
-        const [wgsl, hdrBytes] = await Promise.all([
-          fetch(new URL("hero.wgsl", base)).then((r) => r.text()),
-          fetch(new URL("assets/env.hdr", base)).then((r) => r.arrayBuffer()),
-        ]);
+        const wgsl = await fetch(new URL("hero.wgsl", base)).then((r) => r.text());
         if (state.dead) return;
 
         const ctx = canvas.getContext("webgpu");
@@ -67,33 +59,13 @@ export function HeroStage({ seed }) {
           primitive: { topology: "triangle-list" },
         });
 
-        // Environment: the original Radiance file, decoded here. A mip chain is built on the CPU because
-        // ROUGHNESS is a blur level — sampling mip 0 on a 0.30-roughness metal renders single texels as
-        // visible squares, which is what the first version did.
-        let level = decodeHDR(new Uint8Array(hdrBytes));
-        const mips = Math.floor(Math.log2(Math.max(level.width, level.height))) + 1;
-        const envTex = device.createTexture({
-          size: [level.width, level.height], format: "rgba8unorm", mipLevelCount: mips,
-          usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
-        });
-        for (let m = 0; m < mips; m++) {
-          device.queue.writeTexture({ texture: envTex, mipLevel: m }, level.rgbe,
-            { bytesPerRow: level.width * 4, rowsPerImage: level.height }, [level.width, level.height]);
-          if (m + 1 < mips) level = downsampleRGBE(level, Math.max(1, level.width >> 1));
-        }
-        const sampler = device.createSampler({
-          magFilter: "linear", minFilter: "linear", mipmapFilter: "linear",
-          addressModeU: "repeat", addressModeV: "clamp-to-edge",
-        });
-
+        // No environment map. The field shader lights itself, which is why the 6.5 MB env.hdr could go —
+        // and `layout: "auto"` derives the bind group from what the WGSL declares, so an unused texture
+        // entry here would be a validation error rather than dead weight.
         const uniBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
         const bind = device.createBindGroup({
           layout: pipeline.getBindGroupLayout(0),
-          entries: [
-            { binding: 0, resource: { buffer: uniBuf } },
-            { binding: 1, resource: envTex.createView() },
-            { binding: 2, resource: sampler },
-          ],
+          entries: [{ binding: 0, resource: { buffer: uniBuf } }],
         });
         state.uni = new Float32Array(12);
 

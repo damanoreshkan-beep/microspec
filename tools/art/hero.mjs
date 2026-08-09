@@ -133,14 +133,21 @@ const envSampler = device.createSampler({
   addressModeU: "repeat", addressModeV: "clamp-to-edge",
 });
 
+// The environment is OPTIONAL, and the shader itself is what decides. `layout: "auto"` derives the bind
+// group layout from what the WGSL actually declares, so handing it a texture that no shader stage reads is
+// a validation error, not a harmless extra. A field shader (fbm flow) needs no map; a lit-object shader
+// does. Detecting it from the source keeps one renderer serving both instead of forking the tool.
+const usesEnv = /@binding\(1\)/.test(scene);
 const uniBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 const bind = device.createBindGroup({
   layout: pipeline.getBindGroupLayout(0),
-  entries: [
-    { binding: 0, resource: { buffer: uniBuf } },
-    { binding: 1, resource: envTex.createView() },
-    { binding: 2, resource: envSampler },
-  ],
+  entries: usesEnv
+    ? [
+      { binding: 0, resource: { buffer: uniBuf } },
+      { binding: 1, resource: envTex.createView() },
+      { binding: 2, resource: envSampler },
+    ]
+    : [{ binding: 0, resource: { buffer: uniBuf } }],
 });
 
 const target = device.createTexture({ size: [W, H], format: FORMAT, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });

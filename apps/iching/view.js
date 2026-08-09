@@ -100,21 +100,21 @@ export function iching({ S, screen, openScreen, closeScreen }) {
 
   return html`<${Fragment}>
     <${HeroStage} seed=${r ? packSeed(r.lines) : 0} />
-    <${Island} pinned tone="dark" className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3">
+    <${Island} pinned tone="dark" style="background:rgba(11,15,20,.93)"
+      className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3">
       <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}
         placeholder=${T(t, "question")} aria-label=${T(t, "question")}
-        class="input input-sm bg-white/10 border-white/20 text-white placeholder:text-white/75 w-full rounded-xl" />
+        class="input input-sm bg-[#0d1117] border-white/25 text-white placeholder:text-white/70 w-full rounded-xl" />
+
       <div class="flex items-center gap-2">
         <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}
           items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
           value=${m} onChange=${(id) => { buzz(); $method.set(id); }} />
-        
         <div class="flex items-center gap-2 font-mono text-[length:var(--ms-label)] tabular-nums text-white/80 ms-auto" data-odds>
           <span>${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total}</span>
           <span>${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</span>
         </div>
       </div>
-
       ${r ? html`<div class="flex flex-col gap-2.5" data-live data-reading>
         <div class="flex items-center gap-3">
           <div class="w-[74px] shrink-0"><${HexSvg} lines=${r.lines} label=${`${name.cn} ${name.py}`} cls="text-white/90" /></div>

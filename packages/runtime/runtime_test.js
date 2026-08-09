@@ -31,6 +31,7 @@ import "./tests/hackrf_test.js";
 import "./tests/horoscope_test.js";
 import "./tests/hunt_test.js";
 import "./tests/i18n_test.js";
+import "./tests/iching_test.js";
 import "./tests/imgsize_test.js";
 import "./tests/ism433_test.js";
 import "./tests/lora_test.js";

@@ -130,10 +130,11 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
       seed=${((drawn[0]?.card ?? 0) + 1) / 79} ink=${() => [flareRef.current, 0, 0, 1]} />
 
     ${isDaily
-      // the card of the day: the picker, then one large card with its meaning inline (scrolls naturally)
+      // the card of the day: the picker, then the card itself with its meaning inline (scrolls naturally).
+      // No header here at all — the picker names the spread one row above it, and the sentence underneath
+      // was explaining the interface rather than the reading.
       ? html`<div class="flex flex-col gap-4">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
-          <${Header} t=${t} spreadId=${spreadId} isDaily=${true} />
           <div class="overflow-hidden"><div ref=${paneRef} ...${pan} class="touch-pan-y will-change-transform"><${Solo} d=${drawn[0]} pos=${spread.pos[0]} t=${t} loc=${loc} onOpen=${() => openCard(0)} /></div></div>
         </div>`
       // any multi-card spread: the WHOLE structure fits the screen — cards shrink to fit, no page scroll.
@@ -174,9 +175,13 @@ function Picker({ t, spreadId, onPick }) {
 // title + one-line description + a quick shuffle and the Ritual (charged draw). Both hidden for the day's card.
 function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
   return html`<div class="shrink-0 flex items-start justify-between gap-3">
+    ${/* The picker directly above already names the spread, and the one-line gloss under it explained the
+          UI rather than the reading — the farm's no-hand-holding rule. On a multi-card spread the name is
+          kept as the anchor for the two actions beside it; on the card of the day the whole block goes, so
+          the screen is the lit table and the card. The descriptions still exist in i18n, and the AI
+          synthesis sheet consumes them as facts, which is where they were always doing real work. */""}
     <div class="min-w-0">
-      <div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>
-      <p class="mt-0.5 text-[0.78rem] leading-snug text-base-content/55 break-words line-clamp-2">${T(t, DESC_KEY[spreadId])}</p>
+      ${!isDaily ? html`<div class="font-bold text-lg leading-tight">${T(t, SPREAD_KEY[spreadId])}</div>` : null}
     </div>
     ${/* Two icon buttons, same size and same order as before — what changed is what they are MADE of.
          `btn-ghost` means "a text button, not an object", so theme.css deliberately leaves it flat; these

@@ -1,6 +1,6 @@
 self.MS = {
   app: "pins",
-  version: "1da022f465",
+  version: "0e499157c7",
   precache: [
     "./",
     "./i18n/en.json",
@@ -19,6 +19,7 @@ self.MS = {
     "/_rt/gate.js",
     "/_rt/geomag.js",
     "/_rt/gesture.js",
+    "/_rt/hero.js",
     "/_rt/i18n.js",
     "/_rt/index.js",
     "/_rt/overlay.js",
@@ -42,6 +43,7 @@ self.MS = {
     "/_rt/validate.js",
     "/_rt/version.js",
     "/_rt/video.js",
+    "/_rt/weather.js",
     "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4",
     "https://cdn.jsdelivr.net/npm/daisyui@5",
     "https://cdn.jsdelivr.net/npm/daisyui@5/themes.css",

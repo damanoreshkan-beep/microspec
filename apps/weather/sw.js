@@ -1,9 +1,10 @@
 self.MS = {
   app: "weather",
-  version: "9f21e866d9",
+  version: "bdf3e9ac30",
   precache: [
     "./",
     "./data.js",
+    "./hero.wgsl",
     "./i18n/en.json",
     "./i18n/uk.json",
     "./icon.svg",
@@ -19,6 +20,7 @@ self.MS = {
     "/_rt/gate.js",
     "/_rt/geomag.js",
     "/_rt/gesture.js",
+    "/_rt/hero.js",
     "/_rt/i18n.js",
     "/_rt/index.js",
     "/_rt/overlay.js",
@@ -41,6 +43,7 @@ self.MS = {
     "/_rt/validate.js",
     "/_rt/version.js",
     "/_rt/video.js",
+    "/_rt/weather.js",
     "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4",
     "https://cdn.jsdelivr.net/npm/daisyui@5",
     "https://cdn.jsdelivr.net/npm/daisyui@5/themes.css",

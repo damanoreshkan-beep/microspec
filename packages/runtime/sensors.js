@@ -39,6 +39,14 @@ export const geo = {
     );
     return () => navigator.geolocation.clearWatch(id);
   },
+  once(opts) {
+    return new Promise((resolve, reject) => {
+      let stop = null, done = false;
+      const finish = (fn, v) => { if (done) return; done = true; stop?.(); fn(v); };
+      stop = this.watch((fix) => finish(resolve, fix), (err) => finish(reject, new Error(err)), opts);
+      if (done) stop?.();
+    });
+  },
 };
 
 export const wakeLock = {

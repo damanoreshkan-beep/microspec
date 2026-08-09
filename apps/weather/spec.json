@@ -2,36 +2,31 @@
   "id": "weather",
   "theme": "signal",
   "category": "science",
+  "accent": "#38BDF8",
   "tabs": [
     {
       "id": "now",
       "type": "dashboard",
       "icon": "lucide:sun",
       "label": "tabNow",
+      "needs": ["geo"],
+      "stage": {
+        "shader": "hero.wgsl",
+        "seed": "moon",
+        "vary": ["skyAlt", "skyCloud", "skyWet", "skyWind"],
+        "ink": ["skySnow", "skyHaze", "skyStorm", "skyLight"]
+      },
       "hero": {
         "place": "place",
+        "live": true,
         "icon": "wicon",
         "value": "temp",
         "unit": "°",
+        "caption": "cond",
         "metrics": [
-          {
-            "field": "feels",
-            "label": "mFeels",
-            "unit": "°",
-            "icon": "lucide:thermometer"
-          },
-          {
-            "field": "humidity",
-            "label": "mHumidity",
-            "unit": "%",
-            "icon": "lucide:droplet"
-          },
-          {
-            "field": "wind",
-            "label": "mWind",
-            "unit": " km/h",
-            "icon": "lucide:wind"
-          }
+          { "field": "feels", "label": "mFeels", "unit": "°", "icon": "lucide:thermometer" },
+          { "field": "wind", "label": "mWind", "unit": "", "icon": "lucide:wind" },
+          { "field": "rain", "label": "mRain", "unit": "%", "icon": "lucide:droplet" }
         ]
       },
       "strip": {
@@ -40,7 +35,8 @@
         "time": "time",
         "value": "temp",
         "unit": "°",
-        "icon": "wicon"
+        "icon": "wicon",
+        "curve": true
       },
       "days": {
         "label": "daysLabel",
@@ -49,7 +45,9 @@
         "hi": "hi",
         "lo": "lo",
         "unit": "°",
-        "icon": "wicon"
+        "icon": "wicon",
+        "prob": "prob",
+        "bar": true
       }
     },
     {

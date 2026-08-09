@@ -21,6 +21,8 @@ const T0 = Number(flag("t", 1.6));
 const SEED = Number(flag("seed", 0.569092));
 const OUT = flag("out", `/tmp/hero-${app}${SHEET ? "-sheet" : ""}.png`);
 const INK = flag("ink", "0.90,0.89,0.93,1").split(",").map(Number);
+const VARY = flag("vary", "0,0,0,0").split(",").map(Number);
+const LIGHT = Number(flag("light", 0));
 const W = Number(flag("w", 384)) | 0;
 const H = Number(flag("h", 832)) | 0;
 
@@ -87,7 +89,7 @@ const envSampler = device.createSampler({
 });
 
 const usesEnv = /@binding\(1\)/.test(scene);
-const uniBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+const uniBuf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 const bind = device.createBindGroup({
   layout: pipeline.getBindGroupLayout(0),
   entries: usesEnv
@@ -103,11 +105,15 @@ const target = device.createTexture({ size: [W, H], format: FORMAT, usage: GPUTe
 const rowPad = Math.ceil((W * 4) / 256) * 256;            
 const readback = device.createBuffer({ size: rowPad * H, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
 
-async function renderFrame(time, vx = 0, vy = 0) {
-  const uni = new Float32Array(12);
+async function renderFrame(time, vx, vy) {
+  const uni = new Float32Array(16);
+  const vary = VARY.length === 4 ? [...VARY] : [0, 0, 0, 0];
+  if (vx !== undefined) vary[0] = vx;
+  if (vy !== undefined) vary[1] = vy;
   uni.set([W, H, time, SEED], 0);
   uni.set(INK.length === 4 ? INK : [0.9, 0.89, 0.93, 1], 4);
-  uni.set([vx, vy, 0, 0], 8);
+  uni.set(vary, 8);
+  uni.set([LIGHT, 0, 0, 0], 12);
   device.queue.writeBuffer(uniBuf, 0, uni);
 
   const enc = device.createCommandEncoder();
@@ -130,7 +136,7 @@ const started = performance.now();
 let outPx, outW, outH;
 
 if (CELLS === 1) {
-  outPx = await renderFrame(T0, VARY_X[0] ?? 0, VARY_Y[0] ?? 0); outW = W; outH = H;
+  outPx = await renderFrame(T0, VARY_X[0], VARY_Y[0]); outW = W; outH = H;
 } else {
   const GUT = 2;
   outW = COLS * W + (COLS - 1) * GUT;
@@ -139,8 +145,8 @@ if (CELLS === 1) {
   for (let i = 0; i < CELLS; i++) {
     const col = i % COLS, row = Math.floor(i / COLS);
     const t = VARIANTS ? T0 : T0 + (DUR * i) / CELLS;
-    const vx = VARIANTS ? (VARY_X[col] ?? 0) : 0;
-    const vy = VARIANTS ? (VARY_Y[row] ?? 0) : 0;
+    const vx = VARIANTS ? VARY_X[col] : undefined;
+    const vy = VARIANTS ? VARY_Y[row] : undefined;
     if (VARIANTS) console.log("  cell " + col + "," + row + ": vary = " + vx + ", " + vy);
     const cell = await renderFrame(t, vx, vy);
     const cx = col * (W + GUT), cy = row * (H + GUT);

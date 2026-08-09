@@ -1,29 +1,40 @@
-const load = async (h) => { await h.waitFor(/\d+°/, 14000); };
+const load = async (h) => { await h.waitFor(/-?\d+°/, 14000); };
 
 export default [
   {
-    name: "герой показує температуру", run: async (h) => {
+    name: "герой показує температуру та місце", run: async (h) => {
       await load(h);
-      h.expect(/\d+°/.test(await h.bodyText()), "немає температури");
-      h.expect(/Київ|Kyiv/.test(await h.bodyText()), "немає локації"); 
+      h.expect(/-?\d+°/.test(await h.bodyText()), "немає температури");
+      h.expect(/Київ|Kyiv/.test(await h.bodyText()), "немає локації");
+      h.expect(await h.count("[data-live]") >= 1, "немає [data-live] — виміряно порожній екран очікування");
     },
   },
   {
-    name: "метрики: відчувається / вологість / вітер", run: async (h) => {
+    name: "метрики: відчуття / вітер / опади", run: async (h) => {
       await load(h);
       const t = await h.bodyText();
-      h.expect(/відчувається|feels/i.test(t), "немає «відчувається»");
-      h.expect(/вологість|humidity/i.test(t), "немає вологості");
+      h.expect(/відчуття|feels/i.test(t), "немає «відчуття»");
       h.expect(/вітер|wind/i.test(t), "немає вітру");
+      h.expect(/опади|rain/i.test(t), "немає опадів");
+      h.expect(/сніг|snow/i.test(t), "немає словесного опису погоди");   
     },
   },
   {
-    name: "погодинна стрічка + тижневий прогноз", run: async (h) => {
+    name: "погодинна крива + тижневий прогноз зі смугами", run: async (h) => {
       await load(h);
       const t = await h.bodyText();
       h.expect(/\d\d:\d\d/.test(t), "немає погодинних часів");
       h.expect(/Погодинно|Hourly/.test(t), "немає підпису стрічки");
       h.expect(/На тиждень|This week/.test(t), "немає прогнозу на тиждень");
+      h.expect(await h.count("[data-curve] path") === 2, "немає кривої (лінія + площа)");
+      h.expect(await h.count("[data-daybar]") === 5, "немає смуг діапазону на 5 днів");
+    },
+  },
+  {
+    name: "живе небо змонтоване", run: async (h) => {
+      await load(h);
+      await h.wait(400);                                    
+      h.expect(await h.count("[data-stage]") === 1, "сцена не змонтувалась");
     },
   },
   {

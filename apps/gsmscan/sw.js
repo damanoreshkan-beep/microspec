@@ -1,6 +1,6 @@
 self.MS = {
   app: "gsmscan",
-  version: "f6a8f11f76",
+  version: "2a73e2a5ae",
   precache: [
     "./",
     "./i18n/en.json",
@@ -21,6 +21,7 @@ self.MS = {
     "/_rt/gesture.js",
     "/_rt/gsmband.js",
     "/_rt/hackrf.js",
+    "/_rt/hero.js",
     "/_rt/i18n.js",
     "/_rt/index.js",
     "/_rt/overlay.js",
@@ -44,6 +45,7 @@ self.MS = {
     "/_rt/validate.js",
     "/_rt/version.js",
     "/_rt/video.js",
+    "/_rt/weather.js",
     "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4",
     "https://cdn.jsdelivr.net/npm/daisyui@5",
     "https://cdn.jsdelivr.net/npm/daisyui@5/themes.css",

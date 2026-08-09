@@ -10,16 +10,23 @@ const VS = `
   return vec4f(p[i], 0.0, 1.0);
 }`;
 
+/** 0 = dark theme, 1 = light. Same idiom as globe.js — the palette follows the document, not a prop. */
+const themeLight = () =>
+  (typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light")) ? 1 : 0;
+
 /**
  * @param shader  URL of the app's hero.wgsl — pass `new URL("hero.wgsl", import.meta.url)` from the view
  * @param seed    0..1, meaning is the shader's business; changing it does NOT rebuild the pipeline
- * @param ink     optional vec4 tint handed to the shader
+ * @param ink     optional vec4 tint handed to the shader — a value, or a function read fresh every frame
+ * @param vary    optional vec4 of scene parameters — same contract as `ink`. This is how a stage becomes
+ *                DATA-driven (weather's sky reads the real cloud cover here) rather than decorative.
  */
-export function HeroStage({ shader, seed = 0, ink }) {
+export function HeroStage({ shader, seed = 0, ink, vary }) {
   const ref = useRef();
-  const state = useRef({ raf: 0, dead: false, device: null }).current;
+  const state = useRef({ raf: 0, dead: false, device: null, light: themeLight() }).current;
   state.seed = seed;
   state.ink = ink;
+  state.vary = vary;
 
   useEffect(() => {
     if (gate) return;                                  
@@ -49,12 +56,12 @@ export function HeroStage({ shader, seed = 0, ink }) {
           primitive: { topology: "triangle-list" },
         });
 
-        const uniBuf = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+        const uniBuf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
         const bind = device.createBindGroup({
           layout: pipeline.getBindGroupLayout(0),
           entries: [{ binding: 0, resource: { buffer: uniBuf } }],
         });
-        const uni = new Float32Array(12);
+        const uni = new Float32Array(16);
 
         const size = () => {
           const r = canvas.getBoundingClientRect();
@@ -71,10 +78,15 @@ export function HeroStage({ shader, seed = 0, ink }) {
 
         const frame = () => {
           if (state.dead) return;
-          uni.set([canvas.width, canvas.height, still ? 2 : (performance.now() - t0) / 1000, state.seed ?? 0], 0);
+          const now = performance.now();
+          uni.set([canvas.width, canvas.height, still ? 2 : (now - t0) / 1000, state.seed ?? 0], 0);
           const ink = typeof state.ink === "function" ? state.ink() : state.ink;
+          const vary = typeof state.vary === "function" ? state.vary() : state.vary;
           uni.set(ink?.length === 4 ? ink : [0.9, 0.89, 0.93, 1], 4);
-          uni.set([0, 0, 0, 0], 8);
+          uni.set(vary?.length === 4 ? vary : [0, 0, 0, 0], 8);
+          const target = themeLight();
+          state.light = still ? target : state.light + (target - state.light) * 0.13;
+          uni.set([state.light, 0, 0, 0], 12);
           device.queue.writeBuffer(uniBuf, 0, uni);
 
           const enc = device.createCommandEncoder();

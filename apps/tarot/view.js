@@ -12,6 +12,7 @@ import { gate } from "/_rt/gate.js";
 import { animate, stagger } from "motion";
 import { useSheetDrag, usePanX } from "/_rt/gesture.js";
 import { Sheet, Segmented } from "/_rt/ui.js";
+import { HeroStage } from "/_rt/hero.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const QS = new URLSearchParams(location.search);
@@ -71,13 +72,15 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   const rows = spread.rows || defaultRows(spread.pos.length);
 
   return html`<${Fragment}>
+    <${HeroStage} shader=${new URL("hero.wgsl", import.meta.url)} seed=${((drawn[0]?.card ?? 0) + 1) / 79} />
     ${isDaily
-      ? html`<div class="flex flex-col gap-4">
+      ? html`<div class="relative z-10 flex flex-col gap-4">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
           <${Header} t=${t} spreadId=${spreadId} isDaily=${true} />
           <div class="overflow-hidden"><div ref=${paneRef} ...${pan} class="touch-pan-y will-change-transform"><${Solo} d=${drawn[0]} pos=${spread.pos[0]} t=${t} loc=${loc} onOpen=${() => openCard(0)} /></div></div>
         </div>`
-      : html`<div class="flex flex-col gap-2.5 h-[calc(100dvh-11.5rem)] min-h-0 overflow-hidden">
+      
+      : html`<div class="relative z-10 flex flex-col gap-2.5 h-[calc(100dvh-11.5rem)] min-h-0 overflow-hidden">
           <${Picker} t=${t} spreadId=${spreadId} onPick=${pickSpread} />
           <${Header} t=${t} spreadId=${spreadId} isDaily=${false} onShuffle=${shuffle} onRitual=${openRitual} onSynth=${() => openScreen("synth")} />
           <${FitReading} rows=${rows} drawn=${drawn} pos=${spread.pos} t=${t} loc=${loc} onOpen=${openCard} paneRef=${paneRef} pan=${pan} />
@@ -89,6 +92,8 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   </${Fragment}>`;
 }
 
+
+
 const seq = (a, b) => Array.from({ length: b - a }, (_, i) => a + i);
 function defaultRows(n) {
   if (n <= 4) return [seq(0, n)];
@@ -97,6 +102,7 @@ function defaultRows(n) {
   for (let i = 0; i < n; i += per) rows.push(seq(i, Math.min(i + per, n)));
   return rows;
 }
+
 
 function Picker({ t, spreadId, onPick }) {
   const wrapRef = useRef();
@@ -107,6 +113,7 @@ function Picker({ t, spreadId, onPick }) {
       value=${spreadId} onChange=${onPick} />
   </div>`;
 }
+
 
 function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
   return html`<div class="shrink-0 flex items-start justify-between gap-3">
@@ -121,8 +128,6 @@ function Header({ t, spreadId, isDaily, onShuffle, onRitual, onSynth }) {
     </div>` : null}
   </div>`;
 }
-
-
 
 
 const GATE_SUMMARY = { uk: "Розклад радить довіритися внутрішньому чуттю: минуле поступово відпускає, теперішнє прояснюється, а майбутнє винагородить терпіння й чесність із собою. Дій виважено — рівновага вже поруч.", en: "The spread counsels trust in your own instinct: the past is loosening its grip, the present is clearing, and the future rewards patience and honesty with yourself. Move deliberately — the balance you seek is already near." };
@@ -160,7 +165,6 @@ function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
   </div>`;
 }
 
-
 function FitTile({ d, pos, t, loc, wpct, onOpen }) {
   const c = DECK[d.card];
   return html`<button data-card class="h-full min-h-0 flex flex-col items-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
@@ -174,8 +178,10 @@ function FitTile({ d, pos, t, loc, wpct, onOpen }) {
 
 
 
+
 const RIT_COLORS = [[159, 140, 246], [240, 101, 94], [64, 193, 115], [217, 151, 58], [90, 169, 230], [232, 160, 214]];
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
 function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   const dref = useRef(), cref = useRef();
   const [color, setColor] = useState(0);
@@ -241,6 +247,7 @@ function Ritual({ open, onClose, onDraw, deckLen, t, loc, spreadName }) {
   const drawNow = () => { onDraw(hashSeed(`${S.color}|${S.num}`) >>> 0); };   
   const col = RIT_COLORS[color];
   const { boxRef, grip } = useSheetDrag(onClose);   
+
   return html`<dialog id="ritual" ref=${dref} class="modal" onClose=${onClose}>
     <div ref=${boxRef} class="modal-box max-w-none w-screen h-[100dvh] max-h-none rounded-none p-0 bg-base-100 overflow-hidden relative">
       <canvas ref=${cref} data-live aria-hidden="true" class="absolute inset-0 w-full h-full"></canvas>

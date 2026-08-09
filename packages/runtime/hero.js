@@ -1,6 +1,6 @@
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
-import { gate } from "/_rt/gate.js";
+import { gate } from "./gate.js";   
 
 const DPR_CAP = 2;   
 

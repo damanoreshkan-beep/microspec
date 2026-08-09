@@ -89,6 +89,13 @@ export const NODES = [
     run: () => ["deno", "run", "-A", "packages/gates/capabilities.mjs", "--check"],
   },
   {
+    id: "relimports", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-08-09",
+    why: "Runtime modules must import each other relatively — an absolute /_rt/ 404s on the /microspec/ " +
+      "subpath while working locally, so only a rule can catch it. The check existed ONLY in verify.yml, " +
+      "so a violation cost a whole CI round; /_rt/hero.js shipped with one.",
+    run: () => ["deno", "run", "-A", "tools/relimports.mjs"],
+  },
+  {
     id: "unit", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-06-11",
     why: "packages/runtime — where the math is supposed to live. A barrel over tests/<module>_test.js.",
     run: () => ["deno", "test", "-A", "packages/runtime/runtime_test.js"],
@@ -196,7 +203,7 @@ export function topo(nodes = NODES) {
 }
 
 export const FLOWS = {
-  gates: ["validate", "noundef", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "counts"],
+  gates: ["validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "counts"],
   author: ["research", "spec", "i18n", "view", "scaffold"],
   ship: ["push"],
   all: NODES.map((n) => n.id),

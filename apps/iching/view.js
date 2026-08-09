@@ -26,7 +26,10 @@ import { gate } from "/_rt/gate.js";
 import { summary, warmSummary, isSummarized, aiTick } from "/_rt/ai-text.js";
 import { METHODS, cast, reading, isMoving, bitOf } from "/_rt/iching.js";
 import { nameOf } from "./book.js";
-import { HeroStage, packSeed } from "./hero.js";
+import { HeroStage } from "/_rt/hero.js";
+
+/** Pack six line values (6..9, bottom first) into the 0..1 seed hero.wgsl unpacks as six base-4 digits. */
+const packSeed = (ls) => { let n = 0; for (let i = 5; i >= 0; i--) n = n * 4 + ((ls[i] ?? 7) - 6); return n / 4096; };
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -147,7 +150,7 @@ export function iching({ S, screen, openScreen, closeScreen }) {
           гармонії" looks like. Now the sizes carry a hierarchy instead — the big figure is the atmosphere,
           and the thumbnail in the island is the DATA (and the thing axe and the e2e gate can actually see,
           since a canvas is invisible to both). */""}
-    <${HeroStage} seed=${r ? packSeed(r.lines) : 0} />
+    <${HeroStage} shader=${new URL("hero.wgsl", import.meta.url)} seed=${r ? packSeed(r.lines) : 0} />
 
     ${/* An inline, near-opaque ground under the glass. tone="dark" alone is black/60, and every white text
           inside it is then measured by axe against whatever the PAGE is — bright, in the light theme, since

@@ -39,30 +39,48 @@ function doCast() {
   }
 }
 
-const Line = ({ v, n }) => {
-  const yang = bitOf(v) === 1, moving = isMoving(v);
-  const bar = `h-2.5 rounded-full ${moving ? "bg-primary" : "bg-base-content/80"}`;
-  return html`<div class="flex items-center gap-3" data-line=${n} data-moving=${moving ? "1" : "0"}>
-    <div class="flex-1 flex items-center gap-2">
-      ${yang
-        ? html`<div class=${`${bar} flex-1`}></div>`
-        : html`<div class=${`${bar} flex-1`}></div><div class=${`${bar} flex-1`}></div>`}
-    </div>
-    <span class="w-9 shrink-0 text-right font-mono text-[length:var(--ms-label)] tabular-nums ${moving ? "text-primary" : "text-muted"}">${v}</span>
-  </div>`;
+const W = 100, BAR = 6, PITCH = 11, GAP = 16, VB_H = PITCH * 6 - (PITCH - BAR);
+
+/**
+ * @param lines  6/7/8/9 bottom-first — the cast, with movement
+ * @param bits   0/1 bottom-first — a plain hexagram (the transformed one has no line values)
+ */
+const HexSvg = ({ lines, bits, label, cls }) => {
+  const rows = lines ?? bits.map((b) => (b ? 7 : 8));      
+  return html`<svg viewBox=${`0 0 ${W} ${VB_H}`} class=${`w-full ${cls || ""}`} role="img"
+    aria-label=${label || ""} fill="currentColor" data-hex>
+    ${rows.map((v, i) => {
+      const yang = bitOf(v) === 1, moving = isMoving(v);
+      const y = (5 - i) * PITCH;                            
+      const mid = y + BAR / 2;
+      return html`<${Fragment} key=${i}>
+        ${yang
+          ? html`<rect x="0" y=${y} width=${W} height=${BAR} rx=${BAR / 2} data-line=${i + 1} data-moving=${moving ? "1" : "0"} />`
+          : html`<${Fragment}>
+              <rect x="0" y=${y} width=${(W - GAP) / 2} height=${BAR} rx=${BAR / 2} data-line=${i + 1} data-moving=${moving ? "1" : "0"} />
+              <rect x=${(W + GAP) / 2} y=${y} width=${(W - GAP) / 2} height=${BAR} rx=${BAR / 2} />
+            <//>`}
+        ${moving && yang
+          ? html`<circle cx=${W / 2} cy=${mid} r=${BAR * 0.62} fill="none" stroke="currentColor" stroke-width="1.6" />`
+          : null}
+        ${moving && !yang
+          ? html`<${Fragment}>
+              <line x1=${W / 2 - 3.4} y1=${mid - 3.4} x2=${W / 2 + 3.4} y2=${mid + 3.4} stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+              <line x1=${W / 2 - 3.4} y1=${mid + 3.4} x2=${W / 2 + 3.4} y2=${mid - 3.4} stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            <//>`
+          : null}
+      <//>`;
+    })}
+  </svg>`;
 };
 
-/** Six lines, drawn TOP DOWN from bottom-first data. The reverse lives here and nowhere else. */
-const Hexagram = ({ lines, compact }) => html`<div class=${`flex flex-col ${compact ? "gap-1.5" : "gap-2.5"} w-full`}>
-  ${[...lines].reverse().map((v, i) => html`<${Line} key=${5 - i} v=${v} n=${6 - i} />`)}
-</div>`;
-
-/** A static hexagram from bits (the transformed one — it has no 6/7/8/9, only yin and yang). */
-const HexBits = ({ bits }) => html`<div class="flex flex-col gap-1.5 w-full">
-  ${[...bits].reverse().map((b, i) => html`<div key=${i} class="flex items-center gap-2">
-    ${b ? html`<div class="h-2 flex-1 rounded-full bg-base-content/55"></div>`
-        : html`<div class="h-2 flex-1 rounded-full bg-base-content/55"></div><div class="h-2 flex-1 rounded-full bg-base-content/55"></div>`}
-  </div>`)}
+/** The cast hexagram, with its line values listed beside it. */
+const Hexagram = ({ lines, label }) => html`<div class="flex items-stretch gap-3 w-full">
+  <${HexSvg} lines=${lines} label=${label} cls="flex-1 text-base-content/85" />
+  <div class="flex flex-col justify-between shrink-0 py-[1px]">
+    ${[...lines].reverse().map((v, i) => html`<span key=${i}
+      class=${`font-mono text-[length:var(--ms-label)] tabular-nums leading-none ${isMoving(v) ? "text-primary" : "text-muted"}`}>${v}</span>`)}
+  </div>
 </div>`;
 
 const Trigram = ({ t, tri, side }) => html`<div class="flex items-baseline gap-2 min-w-0">
@@ -118,7 +136,7 @@ export function iching({ S, screen, openScreen, closeScreen }) {
             </div>
             <span class="font-mono tabular-nums text-muted shrink-0" data-number>${r.number}</span>
           </div>
-          <${Hexagram} lines=${r.lines} />
+          <${Hexagram} lines=${r.lines} label=${`${name.cn} ${name.py}`} />
           <div class="flex flex-col gap-1.5 pt-0.5">
             <${Trigram} t=${t} tri=${r.upper} side="above" />
             <${Trigram} t=${t} tri=${r.lower} side="below" />
@@ -132,7 +150,7 @@ export function iching({ S, screen, openScreen, closeScreen }) {
               <span class="font-mono tabular-nums text-primary">${r.moving.join(" · ")}</span>
             </div>
             <div class="flex items-center gap-4">
-              <div class="flex-1"><${HexBits} bits=${r.toBits} /></div>
+              <div class="flex-1"><${HexSvg} bits=${r.toBits} label=${toName ? toName.cn : ""} cls="text-base-content/70" /></div>
               <div class="flex flex-col items-end gap-0.5 min-w-0">
                 <span class="font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-muted">${T(t, "changesTo")}</span>
                 <span class="text-xl leading-none font-medium truncate">${toName.cn}</span>
@@ -233,7 +251,7 @@ export function ichingLog({ t: _t, S, confirm, undo }) {
     ${rows.map((row) => {
       const nm = nameOf(row.n), to = row.to ? nameOf(row.to) : null;
       return html`<div key=${row.id} data-entry class="rounded-2xl sf-raised sf-e2 px-4 py-3 flex items-center gap-4">
-        <div class="w-12 shrink-0"><${Hexagram} lines=${row.lines} compact /></div>
+        <div class="w-11 shrink-0"><${HexSvg} lines=${row.lines} label=${nm.cn} cls="text-base-content/85" /></div>
         <div class="flex-1 min-w-0 flex flex-col gap-0.5">
           <div class="flex items-baseline gap-2 min-w-0">
             <span class="font-medium">${nm.cn}</span>

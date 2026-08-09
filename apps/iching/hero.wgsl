@@ -22,7 +22,10 @@
 //   bronze   linear base 0.78, 0.39, 0.16 · roughness 0.30 · metallic (diffuse suppressed)
 //   output   exact sRGB OETF, then dither at ±0.5/255 — dark gradients band without it.
 
-struct U { res: vec2f, time: f32, seed: f32, ink: vec4f };
+// `vary` is the variant-sheet channel: x = how much of the frame height the figure fills, y = how far it
+// sits from the optical centre (positive lifts it). Zero means "use the researched default", so a normal
+// render is unaffected and only a variant sheet moves them.
+struct U { res: vec2f, time: f32, seed: f32, ink: vec4f, vary: vec4f };
 @group(0) @binding(0) var<uniform> u: U;
 @group(0) @binding(1) var env: texture_2d<f32>;
 @group(0) @binding(2) var envSam: sampler;
@@ -75,6 +78,11 @@ fn lineVal(i: i32) -> i32 {
 }
 
 // d = distance, heat = 0..1 emissive mask (only ever non-zero on a moving line)
+//
+// `heat` is carried on a SURFACE, which is the detail that defeated the first attempt: a crack is a void,
+// so a ray aimed at the break passes straight through and there is nothing to glow. Real fractured casting
+// shows its incandescent core through the split — so the core is modelled as a thin body INSIDE the beam,
+// exposed only where the metal has opened. The glow then has something to come from.
 struct Hit { d: f32, heat: f32 };
 
 fn mapLine(p: vec3f, v: i32, t: f32) -> Hit {
@@ -85,15 +93,19 @@ fn mapLine(p: vec3f, v: i32, t: f32) -> Hit {
   if (yang) {
     d = sdBox(p, vec3f(HALF_W, HALF_H, HALF_D));
     if (v == 9) {
-      // FRACTURE: carve a thin wedge at the centre, wider at the top, and let the break glow.
-      let openAmt = 0.45 + 0.55 * (0.5 + 0.5 * sin(t * 0.7));
+      // FRACTURE: the beam splits, and the split WIDENS over time. Breaking a bond is the violent
+      // direction of change, so this one is quick and irreversible-looking.
+      let openAmt = 0.35 + 0.65 * clamp(t * 0.16, 0.0, 1.0);
       let taper = (p.y + HALF_H) / (2.0 * HALF_H);            // 0 at the underside, 1 at the top
-      let halfCrack = 0.012 + 0.030 * openAmt * (0.25 + 0.75 * taper);
-      let jag = 0.004 * sin(p.y * 90.0) + 0.003 * sin(p.z * 60.0);
+      let halfCrack = 0.010 + 0.055 * openAmt * (0.30 + 0.70 * taper);
+      let jag = 0.005 * sin(p.y * 90.0) + 0.004 * sin(p.z * 55.0);
       let crack = halfCrack + jag - abs(p.x);
       d = max(d, crack);
-      // heat lives IN the break, falling off fast — it is the event, not a light source
-      heat = exp(-abs(p.x) * 26.0) * openAmt;
+
+      // The incandescent core, revealed by the break. It sits inside the beam, so it is invisible until
+      // the metal opens — and then it is the brightest thing on screen, which is the point.
+      let core = sdBox(p, vec3f(HALF_W * 0.97, HALF_H * 0.42, HALF_D * 0.42));
+      if (core < d) { d = core; heat = 1.0; } else { heat = 0.0; }
     }
   } else {
     let left = sdBox(p - vec3f(-(HALF_W + GAP) * 0.5, 0.0, 0.0), vec3f((HALF_W - GAP) * 0.5, HALF_H, HALF_D));
@@ -101,12 +113,14 @@ fn mapLine(p: vec3f, v: i32, t: f32) -> Hit {
     d = min(left, right);
     if (v == 6) {
       // BRIDGE: metal crystallising across the gap — thin at the middle, still molten there.
-      let grow = 0.55 + 0.45 * (0.5 + 0.5 * sin(t * 0.45 + 1.3));
-      let waist = 0.020 + 0.020 * grow;                        // thinnest section, at x = 0
-      let thick = waist + 0.055 * (abs(p.x) / max(GAP, 1e-4)); // thickens toward each shoulder
-      let bridge = sdBox(p, vec3f(GAP * grow, thick, HALF_D * 0.62));
-      d = min(d, bridge);
-      heat = exp(-abs(p.x) * 9.0) * grow * 0.75;
+      let grow = clamp(0.25 + t * 0.10, 0.0, 1.0);
+      let reach = GAP * (0.45 + 0.85 * grow);
+      // asymmetric: the strand advances from the left shoulder and meets the right one late
+      let along = clamp((p.x + reach) / (2.0 * reach), 0.0, 1.0);
+      let neck = 0.014 + 0.030 * grow * (0.35 + 0.65 * abs(along - 0.42) * 2.0);
+      let bridge = sdBox(p - vec3f(-reach * (1.0 - grow) * 0.4, 0.0, 0.0),
+                         vec3f(reach, neck, HALF_D * (0.40 + 0.22 * grow)));
+      if (bridge < d) { d = bridge; heat = (1.0 - grow) * 0.9 * exp(-abs(p.x) * 6.0); } else { heat = 0.0; }
     }
   }
   return Hit(d, heat);
@@ -163,14 +177,19 @@ fn linearToSrgb(x: vec3f) -> vec3f {
   let t = u.time;
 
   // 85mm-equivalent product framing: a long lens keeps the top and bottom of the stack the same size.
-  let yaw = 0.26 + sin(t * 0.05) * 0.05;      // a slight, slow turn — enough to show the beams have depth
+  // Distance is DERIVED from how much of the frame the figure should fill, rather than typed in — so a
+  // variant sheet can sweep the share and the camera follows correctly instead of being re-guessed.
+  //   dist = objectHeight / (2 · tan(vFov/2) · share),  tan(vFov/2) = 1/4.722
+  let share = select(u.vary.x, 0.64, u.vary.x <= 0.0);
+  let lift = select(u.vary.y, 0.10, u.vary.y == 0.0);   // chosen framing; vary only overrides for sheets
+  let yaw = 0.26 + sin(t * 0.05) * 0.05;       // a slight, slow turn — enough to show the beams have depth
   let elev = 0.105;                            // 6°: above 12–15° the stack starts reading as steps
-  let dist = 5.755;                            // 3.69 × object height, for a 64% subject share
+  let dist = OBJ_H * 4.722 / (2.0 * share);
   let ro = vec3f(sin(yaw) * cos(elev) * dist, sin(elev) * dist, cos(yaw) * cos(elev) * dist);
   let ww = normalize(-ro);
   let uu = normalize(cross(vec3f(0.0, 1.0, 0.0), ww));
   let vv = cross(ww, uu);
-  let rd = normalize(uv.x * uu + uv.y * vv + 4.722 * ww);
+  let rd = normalize((uv.x) * uu + (uv.y - lift) * vv + 4.722 * ww);
 
   var tHit = 0.0;
   var hit = false;
@@ -211,13 +230,19 @@ fn linearToSrgb(x: vec3f) -> vec3f {
     let occ = ao(p, n);
 
     // A conductor has no diffuse term: everything you see is reflected, tinted by F0.
-    col = (spec * f * 1.6 + amb * base) * occ;
+    col = (spec * f + amb * base) * occ;
 
     // One small analytic key remains, purely to guarantee a crisp highlight — an environment this dark
     // gives a beautiful wash but no single hard glint, and the glint is what says "polished".
     let key = normalize(vec3f(0.57, 0.62, 0.54));
     let hv = normalize(key + v);
-    col = col + vec3f(1.00, 0.94, 0.82) * pow(max(dot(n, hv), 0.0), 110.0) * 1.4 * occ;
+    col = col + vec3f(1.00, 0.94, 0.82) * pow(max(dot(n, hv), 0.0), 110.0) * 0.7 * occ;
+
+    // THE EVENT. Emissive, far above 1.0 so the tone curve has somewhere to take it, and present only
+    // where metal is breaking or knitting. Nothing else in this scene emits — that restraint is what makes
+    // one glowing line read as something happening rather than as decoration.
+    let flicker = 0.86 + 0.14 * sin(t * 6.0 + p.x * 14.0);
+    col = col + HEAT * heat * 9.0 * flicker + vec3f(1.0, 0.74, 0.36) * heat * heat * 5.0;
 
     // Depth: the far end of the stack sits back rather than competing with the near end.
     col = mix(col, vec3f(0.004, 0.005, 0.007), clamp((tHit - dist + 0.9) * 0.30, 0.0, 0.7));

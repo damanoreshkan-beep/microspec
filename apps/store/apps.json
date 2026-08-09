@@ -399,20 +399,20 @@
     "id": "iching",
     "title": "Книга Перемін",
     "titles": {
-      "uk": "Книга Перемін",
-      "en": "Book of Changes"
+      "en": "Book of Changes",
+      "uk": "Книга Перемін"
     },
     "tagline": "Книга Перемін кидає гексаграму так, як це робили стеблами деревію або трьома монетами — і ці два методи дають РІЗНІ шанси, а не однакові. У стеблах ян переходить в інь утричі частіше, ніж інь у ян; монети симетричні. Застосунок рахує чесно: гексаграму, її триграми, рухомі лінії та другу гексаграму, у яку вона переходить. Тлумачення складає модель поверх цієї структури й позначене як згенероване — канонічного тексту тут немає.",
     "taglines": {
-      "uk": "Книга Перемін кидає гексаграму так, як це робили стеблами деревію або трьома монетами — і ці два методи дають РІЗНІ шанси, а не однакові. У стеблах ян переходить в інь утричі частіше, ніж інь у ян; монети симетричні. Застосунок рахує чесно: гексаграму, її триграми, рухомі лінії та другу гексаграму, у яку вона переходить. Тлумачення складає модель поверх цієї структури й позначене як згенероване — канонічного тексту тут немає.",
-      "en": "The Book of Changes casts a hexagram the way it was cast with yarrow stalks or three coins — and those two methods carry DIFFERENT odds, not the same ones. With stalks, yang turns to yin three times as often as yin turns to yang; coins are symmetric. The app computes honestly: the hexagram, its trigrams, the moving lines, and the second hexagram it changes into. The interpretation is written by a model on top of that structure and marked as generated — there is no canonical text here."
+      "en": "The Book of Changes casts a hexagram the way it was cast with yarrow stalks or three coins — and those two methods carry DIFFERENT odds, not the same ones. With stalks, yang turns to yin three times as often as yin turns to yang; coins are symmetric. The app computes honestly: the hexagram, its trigrams, the moving lines, and the second hexagram it changes into. The interpretation is written by a model on top of that structure and marked as generated — there is no canonical text here.",
+      "uk": "Книга Перемін кидає гексаграму так, як це робили стеблами деревію або трьома монетами — і ці два методи дають РІЗНІ шанси, а не однакові. У стеблах ян переходить в інь утричі частіше, ніж інь у ян; монети симетричні. Застосунок рахує чесно: гексаграму, її триграми, рухомі лінії та другу гексаграму, у яку вона переходить. Тлумачення складає модель поверх цієї структури й позначене як згенероване — канонічного тексту тут немає."
     },
     "glyph": "lucide:layers",
     "art": "<path d=\"M4 4h6.2\"/>\n<path d=\"M13.8 4H20\"/>\n<path d=\"M4 7.2h6.2\"/>\n<path d=\"M13.8 7.2H20\"/>\n<path d=\"M4 10.4h6.2\"/>\n<path d=\"M13.8 10.4H20\"/>\n<path d=\"M4 13.6h16\"/>\n<path d=\"M4 16.8h16\"/>\n<path d=\"M4 20h16\"/>",
     "bg": "#0F0D08",
     "fg": "#C9A227",
     "href": "./iching/",
-    "version": "1.0",
+    "version": "1.7",
     "category": "esoterica",
     "needs": []
   },

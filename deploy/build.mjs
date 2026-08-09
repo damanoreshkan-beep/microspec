@@ -90,6 +90,7 @@ for await (const e of Deno.readDir("packages/runtime")) {
 //    envelop the apps (/…/<id>/), so each app stays independently installable even when the store PWA is
 //    installed. The root is a redirect to ./store/ (below).
 const ids = [];
+const skipped = [];   // app files no copy rule matched — printed at the end so they cannot vanish quietly
 for await (const a of Deno.readDir("apps")) {
   if (!a.isDirectory || !(await has(`apps/${a.name}/spec.json`))) continue;
   const outDir = `${OUT}/${a.name}`;
@@ -97,8 +98,11 @@ for await (const a of Deno.readDir("apps")) {
   await Deno.mkdir(outDir, { recursive: true });
   const appVer = "1." + (await gitCount(`apps/${a.name}`));   // app version = commits touching this app
   for await (const f of Deno.readDir(`apps/${a.name}`)) {
-    if (!f.isFile || f.name === "e2e.spec.mjs") continue;
-    if (/\.(html|js|json|svg|png|webmanifest)$/.test(f.name)) {
+    if (!f.isFile || f.name === "e2e.spec.mjs" || /\.(md|bak\.[a-z]+\.js)$/.test(f.name)) continue;
+    // The extension list is an ALLOW-list, so anything new drops out of dist/ silently — hero.wgsl did
+    // exactly that, and the app would have 404'd on production with a black stage and a green CI. Unknown
+    // extensions are now reported (below) instead of vanishing.
+    if (/\.(html|js|json|svg|png|webmanifest|wgsl)$/.test(f.name)) {
       if (f.name === "spec.json") {
         const spec = JSON.parse(await Deno.readTextFile(`apps/${a.name}/spec.json`));
         if (!spec.version) spec.version = appVer;               // stamp unless the author pinned one
@@ -108,6 +112,8 @@ for await (const a of Deno.readDir("apps")) {
       } else {
         await Deno.copyFile(`apps/${a.name}/${f.name}`, `${outDir}/${f.name}`);
       }
+    } else {
+      skipped.push(`${a.name}/${f.name}`);
     }
   }
   // per-locale translations live in an i18n/ subdir the top-level file loop skips — copy it through
@@ -143,4 +149,5 @@ for await (const a of Deno.readDir("apps")) {
 // root → redirect to the store (which now lives in its own scope at /store/)
 await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="uk"><meta charset="utf-8"><title>microspec</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><link rel="canonical" href="./store/"><script>location.replace("./store/"+location.search+location.hash)</script><body style="background:#0a0a0b"></body></html>\n`);
 await Deno.writeTextFile(`${OUT}/.nojekyll`, "");
+if (skipped.length) console.log(`note: ${skipped.length} app file(s) matched no copy rule: ${skipped.join(", ")}`);
 console.log(`built dist/ — ${ids.length} apps (store at /store/): ${ids.join(", ")}`);

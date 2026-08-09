@@ -26,6 +26,7 @@ import { gate } from "/_rt/gate.js";
 import { summary, warmSummary, isSummarized, aiTick } from "/_rt/ai-text.js";
 import { METHODS, cast, reading, isMoving, bitOf } from "/_rt/iching.js";
 import { nameOf } from "./book.js";
+import { HeroStage, packSeed } from "./hero.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -153,7 +154,11 @@ export function iching({ S, screen, openScreen, closeScreen }) {
   ].filter(Boolean).join("\n") : "";
 
   return html`<${Fragment}>
-    <div class="flex flex-col gap-4 max-w-[440px] mx-auto w-full">
+    ${/* The hero: the cast rendered as cast bronze, WebGPU, full-bleed behind everything. The seed packs
+          the six line values, so a new throw changes the figure without touching the GPU context. */""}
+    <${HeroStage} seed=${r ? packSeed(r.lines) : 0} />
+
+    <div class="relative z-10 flex flex-col gap-4 max-w-[440px] mx-auto w-full">
       <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}
         placeholder=${T(t, "question")} aria-label=${T(t, "question")}
         class="input input-bordered w-full rounded-2xl" />

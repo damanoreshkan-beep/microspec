@@ -65,6 +65,13 @@ export function manifestFor(id, { read: rd = read } = {}) {
       if (url) urls.add(url);
     }
   }
+
+  // 4) the WebGPU hero shader. It is part of the shell — a few hundred bytes the stage cannot start
+  // without — but it arrives by fetch() rather than import, so the closure above is blind to it. The
+  // environment map beside it stays OUT, like every other assets/* payload: it is megabytes, and SWR
+  // caches it on the first online run.
+  if (rd(`${dir}/hero.wgsl`) != null) urls.add("./hero.wgsl");
+
   return [...urls].sort();
 }
 

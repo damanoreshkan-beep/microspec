@@ -258,7 +258,8 @@ export function swarm(props) {
   const chip = "flex items-baseline gap-1.5 rounded-full bg-black px-3 py-1 border border-white/15";
   
   
-  const chipBtn = "btn btn-circle btn-sm bg-black text-white border border-white/15 shadow-none pointer-events-auto";
+  
+  const chipBtn = "w-9 h-9 rounded-full grid place-items-center bg-black text-white border border-white/15 pointer-events-auto";
 
   return html`<${Fragment}>
     <div class="ms-stage z-20 bg-black overflow-hidden select-none" ref=${stage} data-swarm>

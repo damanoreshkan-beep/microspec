@@ -50,26 +50,33 @@ function flipCell(cell) {
 }
 
 
-function huntPainter(s, rt, PAL, glyphRects) {
+function huntPainter(s, rt, PAL, glyphRects, WORLD_INDEX) {
   const { SCRH, WORLD } = rt;
   const TRANSPARENT = 255;
-  const sky0 = hex(WORLD.sky[0]), sky1 = hex(WORLD.sky[1]);
+  let sky0 = hex(WORLD.sky[0]), sky1 = hex(WORLD.sky[1]);
   const glyphInk = hex("#f0f0f5");
 
   return {
     keep() {},                                   
-    sky() {
+    setWorld(colors) {
+      for (const [k, idx] of Object.entries(WORLD_INDEX)) if (colors[k]) PAL[idx] = hex(colors[k]);
+    },
+    sky(top, bot) {
+      if (top) sky0 = hex(top);
+      if (bot) sky1 = hex(bot);
       for (let y = 0; y < s.H; y++) {
         const t = Math.min(1, (y + 0.5) / SCRH);
         const c = [0, 1, 2].map((i) => Math.round(sky0[i] + (sky1[i] - sky0[i]) * t));
         for (let x = 0; x < s.W; x++) s.px((y * s.W + x) * 4, c[0], c[1], c[2], 1);
       }
     },
-    rect(x, y, w, h, idx) { s.rect(x, y, w, h, PAL[idx] || [255, 0, 255], 1); },
+    rect(x, y, w, h, idx, alpha = 1) { s.rect(x, y, w, h, PAL[idx] || [255, 0, 255], alpha); },
     shadow(x, y, w, h, alpha) { s.rect(x, y, w, h, [0, 0, 0], alpha); },
-    cell(cell, ox, oy, { flip = false, alpha = 1 } = {}) {
+    cell(cell, ox, oy, { flip = false, alpha = 1, rim = null } = {}) {
       if (!cell.w) return;
       const src = flip ? flipCell(cell) : cell, x0 = Math.round(ox), y0 = Math.round(oy);
+      const R = rim ? hex(rim.hex) : null;
+      const at = (x, y) => (x < 0 || y < 0 || x >= cell.w || y >= cell.h) ? TRANSPARENT : src.px[y * cell.w + x];
       for (let y = 0; y < cell.h; y++) {
         const py = y0 + y;
         if (py < 0 || py >= s.H) continue;
@@ -78,7 +85,11 @@ function huntPainter(s, rt, PAL, glyphRects) {
           if (v === TRANSPARENT) continue;
           const pxx = x0 + x;
           if (pxx < 0 || pxx >= s.W) continue;
-          const c = PAL[v] || [255, 0, 255];
+          let c = PAL[v] || [255, 0, 255];
+          if (R && (at(x, y - 1) === TRANSPARENT || at(x - 1, y) === TRANSPARENT)) {
+            const a = rim.a;
+            c = [c[0] + (R[0] - c[0]) * a, c[1] + (R[1] - c[1]) * a, c[2] + (R[2] - c[2]) * a];
+          }
           s.px((py * s.W + pxx) * 4, c[0], c[1], c[2], alpha);
         }
       }
@@ -113,8 +124,12 @@ const APPS = {
         E, s, seed: seedOverride ?? GATE_SEED,
         
         track: (i) => rt.IN.RIGHT | ((i % 60) < 16 ? rt.IN.JUMP : 0) | ((i % 30) === 0 ? rt.IN.SHOOT : 0),
-        p: huntPainter(s, rt, atlas.FULL.map(hex), render.glyphRects),
-        draw: (p, dl, n, st) => render.renderFrame(p, dl, n, st, { box: E.box }),
+        p: huntPainter(s, rt, atlas.FULL.map(hex), render.glyphRects, atlas.WORLD_INDEX),
+        draw: (p, dl, n, st, dist) => {
+          let stc = st;
+          if (dist != null) { stc = Int32Array.from(st); stc[rt.S.DIST] = dist; }
+          render.renderFrame(p, dl, n, stc, { box: E.box });
+        },
       };
     },
   },
@@ -136,13 +151,14 @@ function upscale(buf, W, H, k) {
 
 
 function args(argv) {
-  const o = { app: null, out: null, scale: 3, frames: null, seed: null };
+  const o = { app: null, out: null, scale: 3, frames: null, seed: null, dist: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--out") o.out = argv[++i];
     else if (a === "--scale") o.scale = Math.max(1, parseInt(argv[++i], 10) || 1);
     else if (a === "--frames") o.frames = Math.max(0, parseInt(argv[++i], 10) || 0);
     else if (a === "--seed") o.seed = Number(argv[++i]) >>> 0;       
+    else if (a === "--dist") o.dist = Math.max(0, parseInt(argv[++i], 10) || 0);   
     else if (!a.startsWith("-") && !o.app) o.app = a;
   }
   return o;
@@ -160,7 +176,7 @@ const N = opt.frames ?? app.frames;
 const { E, s, p, seed, track, draw } = await app.build(opt.seed);
 E.init(seed);
 
-const frame = () => { const { dl, n } = E.list(); draw(p, dl, n, E.state()); };
+const frame = () => { const { dl, n } = E.list(); draw(p, dl, n, E.state(), opt.dist); };
 for (let i = 0; i < N; i++) E.step(track(i));
 frame();
 

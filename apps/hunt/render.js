@@ -1,6 +1,6 @@
 
 import {
-  SCRW, SCRH, TILE, ROWS, LAYERS, shadowFor, parallaxX,
+  SCRW, SCRH, TILE, ROWS, LAYERS, shadowFor, parallaxX, worldAt,
   T, K, S, POSE, ANIM, animFrame, decodeEntry,
 } from "/_rt/hunt.js";
 import { tileCell, frameCell, spearCell, anim, WORLD_INDEX as W } from "./atlas.js";
@@ -99,45 +99,85 @@ function pitTops(crust, horizon) {
 
 const colOf = (x) => Math.round(x / TILE) + 1;
 
-function backdrop(p, camx, crust) {
-  p.sky();
+function backdrop(p, camx, crust, world, frameNo) {
+  p.sky(world.sky[0], world.sky[1]);
   const horizon = ROWS * TILE - TILE * 3;
   
   const base = horizon + 2;
 
   
-  for (let i = 0; i < 54; i++) {
-    const s = hash(i * 2711 + 17);
-    p.rect(s % SCRW, 30 + ((s >>> 9) % 92), 1, 1, (s >>> 20) % 6 ? W.star : W.moon);
+  if (world.stars > 0.03) {
+    for (let i = 0; i < 54; i++) {
+      const s = hash(i * 2711 + 17);
+      p.rect(s % SCRW, 30 + ((s >>> 9) % 92), 1, 1, (s >>> 20) % 6 ? W.star : W.moon, world.stars);
+    }
   }
+
   
   {
-    const R = 8, cx = 88, cy = 46, K = Math.sqrt(1 / 3);       
-    for (let dy = -R; dy <= R; dy++) {
-      const hw = Math.floor(Math.sqrt(Math.max(0, R * R - dy * dy)));
-      let runFrom = -hw, runTone = null;
-      for (let dx = -hw; dx <= hw + 1; dx++) {
-        let tone = null;
-        if (dx <= hw) {
-          const nx = dx / R, ny = dy / R;
-          const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
-          const lam = (-nx - ny + nz) * K;                     
-          tone = lam > 0.66 ? W.moon : lam > 0.3 ? W.moonMid : W.moonDim;
+    const { x: cx, y: cy, r: R, kind, tones, alpha } = world.orb;
+    if (alpha > 0.05) {
+      if (kind === 1) {
+        for (const [hr, ha] of [[R + 6, 0.08], [R + 3, 0.14]]) {         
+          for (let dy = -hr; dy <= hr; dy++) {
+            const hw = Math.floor(Math.sqrt(Math.max(0, hr * hr - dy * dy)));
+            if (hw > 0) p.rect(cx - hw, cy + dy, hw * 2, 1, W.moonMid, ha * alpha);
+          }
         }
-        if (tone !== runTone) {
-          if (runTone !== null) p.rect(cx + runFrom, cy + dy, dx - runFrom, 1, runTone);
-          runFrom = dx; runTone = tone;
+      }
+      const KL = Math.sqrt(1 / 3);
+      for (let dy = -R; dy <= R; dy++) {
+        const hw = Math.floor(Math.sqrt(Math.max(0, R * R - dy * dy)));
+        let runFrom = -hw, runTone = null;
+        for (let dx = -hw; dx <= hw + 1; dx++) {
+          let tone = null;
+          if (dx <= hw) {
+            if (kind === 1) {
+              const rr = Math.sqrt(dx * dx + dy * dy) / R;
+              tone = rr > 0.82 ? W.moonMid : W.moon;
+            } else {
+              const nx = dx / R, ny = dy / R;
+              const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+              const lam = (-nx - ny + nz) * KL;                 
+              tone = lam > 0.66 ? W.moon : lam > 0.3 ? W.moonMid : W.moonDim;
+            }
+          }
+          if (tone !== runTone) {
+            if (runTone !== null) p.rect(cx + runFrom, cy + dy, dx - runFrom, 1, runTone, alpha);
+            runFrom = dx; runTone = tone;
+          }
         }
       }
     }
   }
-  
+
+  {
+    const coff = parallaxX(camx, 0.04) + (frameNo >> 3);
+    const period = 168;
+    const i0 = Math.floor((coff - period) / period), i1 = Math.ceil((coff + SCRW + period) / period);
+    for (let i = i0; i <= i1; i++) {
+      const s = hash(9000 + i * 131);
+      const cx = i * period + (s % period) - coff;
+      const cy = 34 + ((s >>> 7) % 44);
+      const cw = 34 + ((s >>> 13) % 30);
+      if (cx + cw < -10 || cx - cw > SCRW + 10) continue;
+      const rows = [[0.55, -3, W.cloudLit], [0.85, -2, W.cloudLit], [1, -1, W.cloud], [0.9, 0, W.cloud]];
+      for (const [f, dy, ink] of rows) {
+        const hw = Math.round(cw * f / 2);
+        p.rect(cx - hw, cy + dy, hw * 2, 1, ink, 0.9);
+      }
+      p.rect(cx - Math.round(cw * 0.3), cy - 4, Math.round(cw * 0.42), 1, W.cloudLit, 0.9);
+    }
+  }
+
   const roff = parallaxX(camx, DEPTH.range);
   silhouette(p, W.ridge, base, (x) => {
     const wx = x + roff;
     const n = vnoise(wx, 173, 4001) * 0.68 + vnoise(wx, 59, 4200) * 0.32;
     return base - 44 - Math.round(n * 34) + (hash(wx * 3 + 91) & 1);
   });
+
+  
   conifers(p, camx, { depth: DEPTH.far, base, salt: 5100, period: 17, wlo: 20, wspan: 12, hlo: 18, hspan: 18, floor: 16, ink: W.canopyFar });
   conifers(p, camx, { depth: DEPTH.mid, base, salt: 6100, period: 26, wlo: 30, wspan: 16, hlo: 30, hspan: 26, floor: 20, ink: W.canopyMid });
   conifers(p, camx, {
@@ -236,8 +276,12 @@ export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
   
   const boxH = (kind) => (box ? box(kind).h : TILE);
   const camx = st[S.CAMX], frameNo = st[S.FRAME];
+  
+  const qd = st[S.DIST] - (st[S.DIST] % 4);
+  const world = worldAt(qd);
+  p.setWorld?.(world.colors, qd);
   const floors = groundMap(dl, dln), crust = crustMap(dl, dln);
-  backdrop(p, camx, crust);
+  backdrop(p, camx, crust, world, frameNo);
 
   const sprites = [];
   for (let i = 0; i < dln; i++) {
@@ -267,6 +311,10 @@ export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
   for (const e of sprites) {
     if (e.kind === K.SPEAR) {
       
+      const back = e.flip ? 1 : -1;
+      for (let k = 1; k <= 3; k++) {
+        p.rect(e.x + (e.flip ? 12 : -4) + back * k * 7, e.y + 2, 4, 1, W.spearTip, 0.3 / k);
+      }
       p.cell(spearCell(e.frame - 2), e.x - 8, e.y - 4, { flip: e.flip });
       continue;
     }
@@ -277,11 +325,31 @@ export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
     if (!a) continue;
     const cell = frameCell(who, ANIM[e.frame] && anim(who, ANIM[e.frame]) ? ANIM[e.frame] : "idle",
                            animFrame(a, e.frame, frameNo), e.frame === POSE.LOW);
-    
     const ox = e.x + ((TILE - cell.w) >> 1), oy = e.y + boxH(e.kind) - cell.h;
     
     const blink = e.kind === K.PLAYER && st[S.INVULN] > 0 && (frameNo >> 2) % 2 ? 0.4 : 1;
-    p.cell(cell, ox, oy, { flip: e.flip, alpha: blink });
+    
+    const rim = e.kind === K.PLAYER && world.rimA > 0.03 ? { hex: world.rim, a: world.rimA } : null;
+    p.cell(cell, ox, oy, { flip: e.flip, alpha: blink, rim });
+  }
+
+  
+  const flyN = Math.round(9 * world.fireflies);
+  for (let i = 0; i < flyN; i++) {
+    const s = hash(i * 517 + 29);
+    const px = (((s % SCRW) + Math.round(Math.sin(frameNo / 34 + i * 1.7) * 16) - (camx >> 3)) % SCRW + SCRW) % SCRW;
+    const py = 128 + ((s >>> 9) % 96) + Math.round(Math.sin(frameNo / 52 + i * 2.3) * 9);
+    const tw = 0.35 + 0.65 * Math.abs(Math.sin(frameNo / 22 + i * 2.9));
+    p.rect(px - 1, py, 3, 1, W.fly, 0.10 * tw);
+    p.rect(px, py - 1, 1, 3, W.fly, 0.10 * tw);
+    p.rect(px, py, 1, 1, W.fly, tw * world.fireflies);
+  }
+  const moteN = Math.round(7 * world.motes);
+  for (let i = 0; i < moteN; i++) {
+    const s = hash(i * 733 + 91);
+    const px = (((s % SCRW) + ((frameNo >> 2) % SCRW) * ((s >>> 5) & 1 ? 1 : -1) - (camx >> 2)) % SCRW + SCRW) % SCRW;
+    const py = (((s >>> 9) % SCRH) + (frameNo >> 3)) % SCRH;
+    p.rect(px, py, 1, 1, W.mote, 0.22 * world.motes);
   }
 
   if (hud) {
@@ -295,11 +363,21 @@ export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
       if (i < ammo) { p.rect(x, 16, 2, 10, W.spear); p.rect(x, 16, 2, 2, W.spearTip); }
       else p.rect(x, 18, 2, 8, W.quiverEmpty);
     }
-
     
     const score = String(Math.max(0, Math.floor(st[S.SCORE] || 0)));
     let x = SCRW - 11 - (score.length - 1) * 8;
     for (const ch of score) { p.glyph(ch, x, 5); x += 8; }
+
+    
+    if (st[S.COINS] > 0) {
+      const coins = String(st[S.COINS]);
+      let cx = SCRW - 11 - (coins.length - 1) * 8;
+      p.rect(cx - 10, 16, 5, 5, W.gold);
+      p.rect(cx - 10, 16, 5, 1, W.goldLit);
+      p.rect(cx - 10, 16, 1, 3, W.goldLit);
+      p.rect(cx - 7, 20, 2, 1, W.goldDark);
+      for (const ch of coins) { p.glyph(ch, cx, 15); cx += 8; }
+    }
   }
 }
 const FONT = {

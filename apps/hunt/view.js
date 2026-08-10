@@ -11,7 +11,7 @@ import { Pixels } from "/_rt/skeleton.js";
 import { gate } from "/_rt/gate.js";
 import { useTouchDeck, useKeyboardPad, PAD } from "/_rt/dpad.js";
 import { GameConsole } from "/_rt/console.js";
-import { SCRW, SCRH, S, IN, WORLD, digits, betterRun } from "/_rt/hunt.js";
+import { SCRW, SCRH, S, IN, WORLD, SFX as SFXBITS, digits, betterRun } from "/_rt/hunt.js";
 import { renderFrame } from "./render.js";
 import { loadEngine, canvasPainter, makeClock, makeSound, GATE_SEED } from "./engine.js";
 
@@ -87,11 +87,21 @@ export function hunt(props) {
       painter.current = canvasPainter(ctx);
       setReady(true);
 
+      
+      const shake = { current: 0 };
       const clock = makeClock(() => {
         E.step(mask.current);
         const st = E.state();
-        if (st[S.SFX]) sound.current?.play(st[S.SFX]);
+        const sfx = st[S.SFX];
+        if (sfx) {
+          sound.current?.play(sfx);
+          if (sfx & SFXBITS.HURT) shake.current = 4;
+          else if (sfx & SFXBITS.DEATH) shake.current = 6;
+          else if (sfx & (SFXBITS.BRICK | SFXBITS.STOMP)) shake.current = Math.max(shake.current, 2);
+        }
       });
+
+      
       if (gate) {
         const track = (i) => IN.RIGHT | ((i % 60) < 16 ? IN.JUMP : 0) | ((i % 30) === 0 ? IN.SHOOT : 0);
         const survives = (n) => {
@@ -108,7 +118,14 @@ export function hunt(props) {
 
       const paint = () => {
         const st = E.state(), { dl, n } = E.list();
+        const s = Math.round(shake.current);
+        if (s > 0 && ctx.save) {
+          ctx.save();
+          ctx.translate((st[S.FRAME] & 1 ? 1 : -1) * s, (st[S.FRAME] & 2 ? 1 : -1) * ((s / 2) | 0));
+        }
         renderFrame(painter.current, dl, n, st, { box: E.box });
+        if (s > 0 && ctx.save) ctx.restore();
+        if (shake.current > 0) shake.current = Math.max(0, shake.current - 0.5);
         const h = hud.current;
         if (h) {
           h.dataset.dist = st[S.DIST]; h.dataset.score = st[S.SCORE];
@@ -117,6 +134,7 @@ export function hunt(props) {
           h.dataset.camx = st[S.CAMX];
           h.dataset.mask = mask.current;
         }
+        
         if (st[S.DEAD]) {
           if (fell.current == null) {
             fell.current = st[S.FRAME];
@@ -151,7 +169,6 @@ export function hunt(props) {
   }, []);
   restartRef.current = restart;
   const arm = useCallback(() => { sound.current?.arm(); }, []);
-
   return html`<${Fragment}>
     <${GameConsole}
       deck=${deckProps}

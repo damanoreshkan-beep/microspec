@@ -43,6 +43,7 @@ function loadOui() {
 let rose = newRose(72);
 let stopScan = null, radioTimer = null, ageTimer = null, stopCompass = null, stopGeo = null, lock = null;
 let heading = 0;
+const $heading = atom(0);
 
 const GATE_FIELD = [
   { addr: "4C:11:22:33:44:55", name: "", rssi: -63, raw: "0201060516b2fc0700", kind: "ble" },
@@ -128,7 +129,11 @@ function startScan() {
   sweepRadios();
   radioTimer = setInterval(sweepRadios, RADIO_MS);
   ageTimer = setInterval(() => $now.set(Date.now()), 1000);
-  stopCompass = compass.start((deg) => { heading = deg; });
+  stopCompass = compass.start((deg) => {
+    heading = deg;
+    const h = Math.round(deg) % 360;
+    if (h !== $heading.get()) $heading.set(h);
+  });
   stopGeo = geo.watch((p) => $fix.set({ lat: p.lat, lon: p.lng, acc: p.accuracy }), () => {});
 }
 
@@ -205,6 +210,18 @@ const hexPath = (cx, cy, r) =>
   CORNERS.map((a, i) => `${i ? "L" : "M"}${(cx + Math.cos(a) * r).toFixed(2)} ${(cy + Math.sin(a) * r).toFixed(2)}`).join("") + "Z";
 const CELL = hexPath(0, 0, HEX * 0.92);
 
+const chain = (r, idx) =>
+  idx.map((ci, j) => `${j ? "L" : "M"}${(Math.cos(CORNERS[ci]) * r).toFixed(2)} ${(Math.sin(CORNERS[ci]) * r).toFixed(2)}`).join("");
+const CELL_UP = chain(HEX * 0.92, [2, 3, 4, 5]);      
+const CELL_DOWN = chain(HEX * 0.92, [5, 0, 1, 2]);    
+function Bevel({ raised }) {
+  return html`
+    <path d=${CELL_UP} style=${`stroke:var(${raised ? "--nm-light" : "--nm-dark"})`} fill="none"
+      stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" />
+    <path d=${CELL_DOWN} style=${`stroke:var(${raised ? "--nm-dark" : "--nm-light"})`} fill="none"
+      stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" />`;
+}
+
 export function hiveView({ S, t }) {
   const field = useField(S);
   const scanning = useStore($scanning);
@@ -236,9 +253,9 @@ export function hiveView({ S, t }) {
               const at = `transform:translate(${(x - cx).toFixed(2)}px,${(y - cy).toFixed(2)}px)`;
               const d = field[i];
               if (!d) {
-                return html`<path key=${`e${i}`} class=${gate ? "hv-cell" : "hv-cell hv-e-in"} style=${at}
-                  d=${CELL} fill="none" stroke="currentColor" stroke-width="1"
-                  vector-effect="non-scaling-stroke" opacity="0.2" />`;
+                return html`<g key=${`e${i}`} class=${gate ? "hv-cell" : "hv-cell hv-e-in"} style=${at}>
+                  <${Bevel} raised=${false} />
+                </g>`;
               }
               
               
@@ -247,8 +264,7 @@ export function hiveView({ S, t }) {
               const solid = d.kind === "lte" ? 0.5 : d.kind === "wifi" ? 0.45 : 0.55;
               return html`<g key=${d.addr} data-cell=${d.addr} data-kind=${d.kind} class=${`hv-cell ${tone}`} style=${at}>
                 <g class=${gate ? "" : "hv-in"} style=${gate ? "" : `animation-delay:${Math.min(i, 20) * 24}ms`}>
-                  <path d=${CELL} fill="none" stroke="currentColor" stroke-width="1"
-                    vector-effect="non-scaling-stroke" opacity="0.3" />
+                  <${Bevel} raised=${true} />
                   <g class="hv-fill" style=${`transform:scale(${k.toFixed(3)})`}>
                     <path d=${CELL} fill=${d.kind === "lte" ? "url(#hvHatch)" : "currentColor"} fill-opacity=${solid} />
                   </g>
@@ -355,7 +371,16 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
   
   
   const angRef = useRef(0);
-  if (locked) angRef.current = unwrapDeg(angRef.current, stats.bearingDeg);
+  if (stats.bearingDeg !== null) angRef.current = unwrapDeg(angRef.current, stats.bearingDeg);
+  const hdg = useStore($heading);
+
+  
+  
+  
+  const spread = Math.max(12, Math.min(80, 90 * (1 - stats.r)));
+  const wx = (a, r) => (50 + r * Math.sin((a * Math.PI) / 180)).toFixed(2);
+  const wy = (a, r) => (50 - r * Math.cos((a * Math.PI) / 180)).toFixed(2);
+  const wedge = `M50 50 L${wx(-spread, 40)} ${wy(-spread, 40)} A40 40 0 0 1 ${wx(spread, 40)} ${wy(spread, 40)} Z`;
 
   
   return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] ms-side">
@@ -365,23 +390,32 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
           aria-label=${T(t, locked ? "aLobe" : "aCircle")}>
           <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.18" />
           <circle cx="50" cy="50" r="12" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.18" />
-          ${
-            Array.from({ length: 36 }, (_, i) => {
-              const a = (i * 10 * Math.PI) / 180 - Math.PI / 2;
-              const major = i % 9 === 0;
-              const r0 = major ? 36 : 39.5;
-              return html`<line key=${i} x1=${(50 + Math.cos(a) * r0).toFixed(2)} y1=${(50 + Math.sin(a) * r0).toFixed(2)}
-                x2=${(50 + Math.cos(a) * 42).toFixed(2)} y2=${(50 + Math.sin(a) * 42).toFixed(2)}
-                stroke="currentColor" stroke-width=${major ? 0.7 : 0.35} opacity=${major ? 0.45 : 0.2}
-                class=${i === 0 ? "text-[var(--app-accent)]" : ""} />`;
-            })}
-          ${max > 0 ? html`<path data-petal d=${dPath} style=${`d:path('${dPath}')`}
-            fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="0.7"
-            class=${`hv-petal text-[var(--app-accent)] ${gate ? "" : "hv-e-in"}`} />` : null}
-          ${locked ? html`<g data-bearing class=${`hv-rose text-[var(--app-accent)] ${gate ? "" : "hv-e-in"}`}
-            style=${`transform:rotate(${angRef.current.toFixed(1)}deg)`}>
-            <line x1="50" y1="50" x2="50" y2="6" stroke="currentColor" stroke-width="1.2" />
-          </g>` : null}
+          
+          <path d="M47.4 2.6 L52.6 2.6 L50 7.6 Z" fill="currentColor" opacity="0.65" />
+          <g class="hv-dial" style=${`transform:rotate(${-hdg}deg)`}>
+            ${
+              Array.from({ length: 36 }, (_, i) => {
+                const a = (i * 10 * Math.PI) / 180 - Math.PI / 2;
+                const major = i % 9 === 0;
+                const r0 = major ? 36 : 39.5;
+                return html`<line key=${i} x1=${(50 + Math.cos(a) * r0).toFixed(2)} y1=${(50 + Math.sin(a) * r0).toFixed(2)}
+                  x2=${(50 + Math.cos(a) * 42).toFixed(2)} y2=${(50 + Math.sin(a) * 42).toFixed(2)}
+                  stroke="currentColor" stroke-width=${major ? 0.7 : 0.35} opacity=${major ? 0.45 : 0.2}
+                  class=${i === 0 ? "text-[var(--app-accent)]" : ""} />`;
+              })}
+            
+            ${max > 0 ? html`<path data-petal d=${dPath} style=${`d:path('${dPath}')`}
+              fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="0.7"
+              class=${`hv-petal text-[var(--app-accent)] ${gate ? "" : "hv-e-in"}`} />` : null}
+            ${stats.bearingDeg !== null ? html`<g data-bearing
+              class=${`hv-rose text-[var(--app-accent)] ${gate ? "" : "hv-e-in"}`}
+              style=${`transform:rotate(${angRef.current.toFixed(1)}deg)`} opacity=${locked ? 1 : 0.55}>
+              <path class="hv-petal" d=${wedge} style=${`d:path('${wedge}')`} fill="currentColor" fill-opacity="0.1" />
+              <line x1="50" y1="50" x2="50" y2="10" stroke="currentColor" stroke-width=${locked ? 1.4 : 0.9}
+                stroke-dasharray=${locked ? "none" : "2.5 2"} stroke-linecap="round" />
+              <path d="M50 5.5 L46.6 13 L53.4 13 Z" fill="currentColor" />
+            </g>` : null}
+          </g>
         </svg>
       </div>
     <//>
@@ -457,7 +491,6 @@ export function guardView({ S, t }) {
         </span>
       </div>`)}
     <//>` : null}
-
     <${Panel} title=${T(t, "watching")}>
       <div data-live class="flex flex-col gap-2">
         ${scored.length === 0 ? html`<div class="text-base-content/70 text-sm">${T(t, "nothingYet")}</div>` : null}
@@ -485,7 +518,5 @@ export function guardView({ S, t }) {
     ${!fix && scanning && !gate ? html`<div data-nofix class="text-[var(--ms-label)] text-base-content/70">${T(t, "needFix")}</div>` : null}
   </div>`;
 }
-
-
 
 if (gate) startScan();

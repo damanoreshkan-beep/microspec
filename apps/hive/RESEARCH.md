@@ -317,9 +317,13 @@ whole system off, and under the gate the entrance classes are omitted so shots s
   `cubic-bezier(.22,1,.36,1)`). `viewBox` itself cannot transition; a transform can.
 - **Signal = area, animated as scale.** The filled hex is drawn full-size once (`CELL`) and scaled by
   `k = √(pct/100)` on its own `.hv-fill` group — 500 ms with a slight overshoot, so a cell "наливається".
-- **SVG transform-origin is browser-divergent unless pinned.** Every transformed group states
-  `transform-box` + `transform-origin` explicitly (`view-box`+50% for whole-picture groups, `fill-box`+center
-  for per-cell ones). Cell geometry is centred on local (0,0) so every origin lands on the cell centre.
+- **SVG transform-origin is a trap twice over.** Every transformed group states `transform-box` +
+  `transform-origin` explicitly — and the viewBox must start at `0 0`: `transform-box: view-box` anchors
+  its reference box at the ORIGIN of the viewBox coordinate system, not at its min-x/min-y corner, so a
+  `-100 -100 200 200` viewBox shifted every origin by 100 units and the first deploy rendered the comb off
+  the left edge. With `0 0 200 200` both readings coincide; the centring lives in the transform chain
+  (`translate(100px,100px) scale(s)`), and per-cell groups use `fill-box`+center (cell geometry is centred
+  on local (0,0), so the origin is the cell centre).
 - **Hairlines via `vector-effect="non-scaling-stroke"`** — 1 px comb lines and a 2 px accent target ring at
   any comb size, instead of strokes that fatten as the field shrinks.
 - **The petal morphs through CSS `d`.** Chromium/Firefox transition the `d` property when the point count

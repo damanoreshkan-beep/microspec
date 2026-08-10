@@ -222,16 +222,15 @@ export function hiveView({ S, t }) {
   return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
     <${Stage}>
       <div class="absolute inset-0 flex items-center justify-center p-1">
-        <svg data-mark viewBox="-100 -100 200 200"
+        <svg data-mark viewBox="0 0 200 200"
           class="w-full h-full max-h-full text-base-content" role="img"
           aria-label=${`${field.length} ${T(t, "cells")}`}>
           <defs>
-            
             <pattern id="hvHatch" patternUnits="userSpaceOnUse" width="2.6" height="2.6" patternTransform="rotate(45)">
               <line x1="0" y1="0" x2="0" y2="2.6" stroke="currentColor" stroke-width="0.9" />
             </pattern>
           </defs>
-          <g class="hv-scale" style=${`transform:scale(${s.toFixed(4)})`}>
+          <g class="hv-scale" style=${`transform:translate(100px,100px) scale(${s.toFixed(4)})`}>
             ${coords.map((c, i) => {
               const { x, y } = pts[i];
               const at = `transform:translate(${(x - cx).toFixed(2)}px,${(y - cy).toFixed(2)}px)`;
@@ -239,7 +238,7 @@ export function hiveView({ S, t }) {
               if (!d) {
                 return html`<path key=${`e${i}`} class=${gate ? "hv-cell" : "hv-cell hv-e-in"} style=${at}
                   d=${CELL} fill="none" stroke="currentColor" stroke-width="1"
-                  vector-effect="non-scaling-stroke" opacity="0.14" />`;
+                  vector-effect="non-scaling-stroke" opacity="0.2" />`;
               }
               
               
@@ -271,7 +270,6 @@ export function hiveView({ S, t }) {
         </span>
       </div>
     <//>
-
     <${Island} pinned className="w-full max-w-md">
       <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
         <${ScanButton} t=${t} />
@@ -281,6 +279,7 @@ export function hiveView({ S, t }) {
     <//>
   </div>`;
 }
+
 
 
 
@@ -373,7 +372,6 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
                 stroke="currentColor" stroke-width=${major ? 0.7 : 0.35} opacity=${major ? 0.45 : 0.2}
                 class=${i === 0 ? "text-[var(--app-accent)]" : ""} />`;
             })}
-          
           ${max > 0 ? html`<path data-petal d=${dPath} style=${`d:path('${dPath}')`}
             fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="0.7"
             class=${`hv-petal text-[var(--app-accent)] ${gate ? "" : "hv-e-in"}`} />` : null}
@@ -384,7 +382,6 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
         </svg>
       </div>
     <//>
-
     <${Island} pinned className="w-full max-w-md">
       <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
         <${ScanButton} t=${t} />
@@ -403,6 +400,7 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
         </div>
       </div>
     <//>
+
     <${Sheet} id="pick" open=${screen === "pick"} onClose=${closeScreen} title=${T(t, "pickTarget")} icon="lucide:crosshair">
       <div class="flex flex-col gap-1">
         ${field.filter((d) => d.kind === "ble").map((d) => html`<button key=${d.addr} data-pick-dev=${d.addr}
@@ -432,6 +430,7 @@ export function guardView({ S, t }) {
     .map((d) => ({ d, s: guardScore({ sightings: d.sightings, separated: !!d.cls?.separated, classifiable: !!d.cls?.classifiable }) }))
     .sort((a, b) => b.s.confidence - a.s.confidence);
   const flagged = scored.filter((x) => x.s.meets);
+
   return html`<div class="flex flex-col gap-[var(--ms-gap)]">
     <${Panel} title=${T(t, "guard")}>
       <div class="flex items-center gap-[var(--ms-gap)]"><${ScanButton} t=${t} /></div>
@@ -477,8 +476,11 @@ export function guardView({ S, t }) {
         </div>`)}
       </div>
     <//>
+
     ${!fix && scanning && !gate ? html`<div data-nofix class="text-[var(--ms-label)] text-base-content/70">${T(t, "needFix")}</div>` : null}
   </div>`;
 }
+
+
 
 if (gate) startScan();

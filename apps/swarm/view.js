@@ -269,8 +269,9 @@ export function swarm(props) {
       <canvas ref=${cv} class="absolute inset-0 w-full h-full touch-none" role="img"
         aria-label=${T(t, "screenAlt")} onPointerDown=${arm}></canvas>
       <div ref=${hud} data-live class="absolute inset-0 pointer-events-none p-3 text-white font-mono">
-        <div class="flex items-start justify-between gap-2">
-          <div class="flex items-center gap-2">
+        
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
             <div class=${chip}>
               <span class="text-[0.58rem] uppercase tracking-[0.22em] text-white/60">${T(t, "wave")}</span>
               <span class="text-sm" ref=${waveEl}>1</span>
@@ -278,10 +279,10 @@ export function swarm(props) {
             <div class=${chip}>
               <span class="text-[0.58rem] uppercase tracking-[0.22em] text-white/60">${T(t, "score")}</span>
               <span class="text-sm" ref=${scoreEl}>0</span>
+              <span ref=${comboEl} class="text-sm text-[var(--app-accent)] transition-opacity" aria-hidden="true"></span>
             </div>
-            <span ref=${comboEl} class="text-sm text-[var(--app-accent)] transition-opacity" aria-hidden="true"></span>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 ml-auto">
             <div ref=${hearts} class="flex items-center gap-1 rounded-full bg-black px-2.5 py-1.5 border border-white/15" aria-hidden="true">
               ${[0, 1, 2].map(() => html`<svg viewBox="0 0 12 12" class="w-3 h-3" fill="var(--app-accent)"><path d="M6 1.5 10.5 6 6 10.5 1.5 6z"/></svg>`)}
             </div>

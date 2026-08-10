@@ -1,6 +1,17 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { parseAd as rdParseAd, classify as rdClassify, addrKind as rdAddrKind, rotates as rdRotates, band as rdBand, bandFraction as rdBandFraction, smooth as rdSmooth, estimateDistance as rdEstimateDistance, guardScore as rdGuardScore, GUARD as rdGUARD, signalPercent as rdSignalPercent, orderDevices as rdOrderDevices, hexSpiral as rdHexSpiral, hexToXY as rdHexToXY, hexDistance as rdHexDistance, combSize as rdCombSize } from "../radar.js";
+import { parseAd as rdParseAd, classify as rdClassify, addrKind as rdAddrKind, rotates as rdRotates, band as rdBand, bandFraction as rdBandFraction, smooth as rdSmooth, estimateDistance as rdEstimateDistance, guardScore as rdGuardScore, GUARD as rdGUARD, signalPercent as rdSignalPercent, orderDevices as rdOrderDevices, hexSpiral as rdHexSpiral, hexToXY as rdHexToXY, hexDistance as rdHexDistance, combSize as rdCombSize, unwrapDeg as rdUnwrapDeg } from "../radar.js";
+
+Deno.test("radar: an animated bearing takes the short arc across the wrap, both ways", () => {
+  assertEquals(rdUnwrapDeg(359, 1), 361);        
+  assertEquals(rdUnwrapDeg(1, 359), -1);         
+  assertEquals(rdUnwrapDeg(0, 180), 180);        
+  assertEquals(rdUnwrapDeg(90, 90), 90);         
+  assertEquals(rdUnwrapDeg(725, 10), 730);
+  assertEquals(rdUnwrapDeg(-350, 5), -355);
+  const once = rdUnwrapDeg(178, -178);
+  assertEquals(rdUnwrapDeg(once, -178 + 360), once);
+});
 
 Deno.test("radar: an AD walk stops at a structure that would read past the end", () => {
   const ok = rdParseAd("0201060303b2fc0716b2fc41424344");

@@ -301,3 +301,33 @@ coincides with a registered prefix in roughly **0.2%** of cases (≈40k assignme
 The result: Wi-Fi access points almost always get a name, rotating BLE devices never do, and a cell gets
 nothing because it has no MAC at all. The row says `rotating address` instead — which is the true
 statement about it.
+
+---
+
+## The motion system (2026-08-10 premium pass) — decisions, so they are not re-derived
+
+The comb is a live instrument; the original render was a still that TELEPORTED between states (rank change,
+signal change, ring growth, device arrival were all attribute jumps). The motion pass is CSS-only —
+transform + opacity, compositor-only, every transition names its property, reduced-motion switches the
+whole system off, and under the gate the entrance classes are omitted so shots stay deterministic.
+
+- **Layout by transform, never by attribute.** The viewBox is a constant `-100 -100 200 200`; one
+  `.hv-scale` group carries `scale(s)` (ring growth = the whole field breathes outward, 700 ms), each cell
+  group `.hv-cell` carries its `translate()` in comb units (rank change = a glide, 620 ms, expo-out
+  `cubic-bezier(.22,1,.36,1)`). `viewBox` itself cannot transition; a transform can.
+- **Signal = area, animated as scale.** The filled hex is drawn full-size once (`CELL`) and scaled by
+  `k = √(pct/100)` on its own `.hv-fill` group — 500 ms with a slight overshoot, so a cell "наливається".
+- **SVG transform-origin is browser-divergent unless pinned.** Every transformed group states
+  `transform-box` + `transform-origin` explicitly (`view-box`+50% for whole-picture groups, `fill-box`+center
+  for per-cell ones). Cell geometry is centred on local (0,0) so every origin lands on the cell centre.
+- **Hairlines via `vector-effect="non-scaling-stroke"`** — 1 px comb lines and a 2 px accent target ring at
+  any comb size, instead of strokes that fatten as the field shrinks.
+- **The petal morphs through CSS `d`.** Chromium/Firefox transition the `d` property when the point count
+  is fixed (ours is always 72 + Z); the attribute stays as the semantic fallback. The bearing needle is a
+  rotated group fed by `unwrapDeg()` (`packages/runtime/radar.js`, unit-tested) so 359° → 1° takes the
+  short arc, never a 358° spin.
+- **Clarity marks, not captions:** scanning = a pulsing accent dot beside the tally (idle keeps the word);
+  LTE cells are hatched (`<pattern>`, currentColor) because a tower is infrastructure, not a personal
+  device; the target is a steady accent ring.
+- **Entrance:** cells bloom (opacity+scale, 450 ms, 24 ms stagger capped at 20 cells); keyframes declare
+  only `from`, so they land on the element's own computed values and cannot fight inline transforms.

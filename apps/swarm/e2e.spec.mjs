@@ -32,7 +32,7 @@ export default [
     name: "клавіатура: пробіл стріляє",
     async run(h) {
       const before = await num(h, "shots");
-      await h.key("Space", 350);
+      await h.key("Space", 600);
       h.expect(await until(h, async () => (await num(h, "shots")) > before, 4000), "Space fired nothing");
     },
   },

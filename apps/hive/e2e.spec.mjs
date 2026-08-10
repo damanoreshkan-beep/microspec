@@ -62,6 +62,7 @@ export default [
       h.expect((await h.count("#pick[open]")) === 0, "вибір цілі не закрив аркуш");
       h.expect((await h.count("[data-petal]")) === 1, "обмахування не намалювало пелюстку");
       h.expect((await h.count("[data-bearing]")) === 1, "пелюстка стягнулась, але азимут не показано");
+      h.expect((await h.count("[data-strength]")) === 1, "у центрі дзиґи немає живого сигналу цілі");
     },
   },
   {

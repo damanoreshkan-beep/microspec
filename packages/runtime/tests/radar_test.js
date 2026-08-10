@@ -1,6 +1,17 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { parseAd as rdParseAd, classify as rdClassify, addrKind as rdAddrKind, rotates as rdRotates, band as rdBand, bandFraction as rdBandFraction, smooth as rdSmooth, estimateDistance as rdEstimateDistance, guardScore as rdGuardScore, GUARD as rdGUARD, signalPercent as rdSignalPercent, orderDevices as rdOrderDevices, hexSpiral as rdHexSpiral, hexToXY as rdHexToXY, hexDistance as rdHexDistance, combSize as rdCombSize, unwrapDeg as rdUnwrapDeg } from "../radar.js";
+import { parseAd as rdParseAd, classify as rdClassify, addrKind as rdAddrKind, rotates as rdRotates, band as rdBand, bandFraction as rdBandFraction, smooth as rdSmooth, estimateDistance as rdEstimateDistance, guardScore as rdGuardScore, GUARD as rdGUARD, signalPercent as rdSignalPercent, orderDevices as rdOrderDevices, hexSpiral as rdHexSpiral, hexToXY as rdHexToXY, hexDistance as rdHexDistance, combSize as rdCombSize, unwrapDeg as rdUnwrapDeg, sightTrend as rdSightTrend } from "../radar.js";
+
+Deno.test("radar: hot/cold needs 6 dB of median shift — noise and thin data both answer null", () => {
+  const now = 1_000_000;
+  const walk = (rssis, stepMs = 1500) => rssis.map((rssi, i) => ({ at: now - (rssis.length - 1 - i) * stepMs, rssi }));
+  assertEquals(rdSightTrend(walk([-80, -81, -79, -80, -95, -71, -70, -69]), now), "up");
+  assertEquals(rdSightTrend(walk([-70, -69, -71, -70, -55, -79, -80, -81]), now), "down");
+  assertEquals(rdSightTrend(walk([-75, -72, -76, -73, -75, -74, -72, -76]), now), null);
+  assertEquals(rdSightTrend(walk([-80, -70]), now), null);
+  assertEquals(rdSightTrend(null, now), null);
+  assertEquals(rdSightTrend([{ at: now, rssi: NaN }, {}, null], now), null);
+});
 
 Deno.test("radar: an animated bearing takes the short arc across the wrap, both ways", () => {
   assertEquals(rdUnwrapDeg(359, 1), 361);        

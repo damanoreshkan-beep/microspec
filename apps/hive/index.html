@@ -42,14 +42,13 @@
     .hv-dot-live{animation:hvBeat 1.6s ease-in-out infinite}
     @keyframes hvBeat{0%,100%{opacity:1}50%{opacity:.25}}
     .hv-petal{transition:d .35s ease-out}
-    .hv-rose{transform-box:view-box;transform-origin:50% 50%;transition:transform .5s cubic-bezier(.22,1,.36,1)}
-    .hv-dial{transform-box:view-box;transform-origin:50% 50%}
     
+    .hv-dial{transform-box:view-box;transform-origin:50% 50%;transition:transform .1s linear}
+    .hv-rose{transform-box:view-box;transform-origin:50% 50%;transition:transform .2s cubic-bezier(.22,1,.36,1)}
     @media(prefers-reduced-motion:reduce){
-      .hv-scale,.hv-cell,.hv-fill,.hv-petal,.hv-rose{transition:none}
+      .hv-scale,.hv-cell,.hv-fill,.hv-petal,.hv-rose,.hv-dial{transition:none}
       .hv-in,.hv-e-in,.hv-dot-live{animation:none}
-    }
-  </style>
+    }</style>
   <script type="importmap">
   {
     "imports": {

@@ -31,6 +31,27 @@
     @keyframes bootslide{0%{left:-38%}100%{left:100%}}
     @media(prefers-reduced-motion:reduce){#boot .bb i{animation:none;left:0;width:100%;opacity:.5}}
   </style>
+  <style>
+    /* The living comb. Every motion is transform/opacity (compositor-only) and every transition names its
+       property. SVG transform-origin is browser-divergent unless pinned, so every transformed group pins
+       transform-box + origin explicitly. Under the gate the view omits the entrance classes, so shots are
+       deterministic; prefers-reduced-motion switches the whole system off. */
+    .hv-scale{transform-box:view-box;transform-origin:50% 50%;transition:transform .7s cubic-bezier(.22,1,.36,1)}
+    .hv-cell{transition:transform .62s cubic-bezier(.22,1,.36,1)}
+    .hv-fill{transform-box:fill-box;transform-origin:center;transition:transform .5s cubic-bezier(.34,1.4,.64,1)}
+    .hv-in{transform-box:fill-box;transform-origin:center;animation:hvBloom .45s cubic-bezier(.22,1,.36,1) backwards}
+    @keyframes hvBloom{from{opacity:0;transform:scale(.55)}}
+    .hv-e-in{animation:hvFadeIn .5s ease-out backwards}
+    @keyframes hvFadeIn{from{opacity:0}}
+    .hv-dot-live{animation:hvBeat 1.6s ease-in-out infinite}
+    @keyframes hvBeat{0%,100%{opacity:1}50%{opacity:.25}}
+    .hv-petal{transition:d .35s ease-out}
+    .hv-rose{transform-box:view-box;transform-origin:50% 50%;transition:transform .5s cubic-bezier(.22,1,.36,1)}
+    @media(prefers-reduced-motion:reduce){
+      .hv-scale,.hv-cell,.hv-fill,.hv-petal,.hv-rose{transition:none}
+      .hv-in,.hv-e-in,.hv-dot-live{animation:none}
+    }
+  </style>
   <script type="importmap">
   {
     "imports": {

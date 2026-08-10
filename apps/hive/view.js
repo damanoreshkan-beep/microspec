@@ -13,7 +13,7 @@
 // scoring) and packages/runtime/df.js (the polar accumulator that withholds a bearing until it is earned).
 // This file is wiring and layout.
 import { html } from "htm/preact";
-import { useEffect, useMemo } from "preact/hooks";
+import { useEffect, useMemo, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { atom } from "nanostores";
 import { T } from "/_rt/i18n.js";
@@ -24,6 +24,7 @@ import { compass, geo, wakeLock } from "/_rt/sensors.js";
 import { newRose, addSample, roseStats, hasBearing, petal, BEARING_MIN_COVERAGE } from "/_rt/df.js";
 import {
   classify, band, smooth, guardScore, rotates, GUARD, signalPercent, orderDevices, hexSpiral, hexToXY, combSize,
+  unwrapDeg,
 } from "/_rt/radar.js";
 import { parseOui, vendorOf } from "/_rt/oui.js";
 
@@ -249,6 +250,9 @@ const HEX = 10;                       // circumradius in viewBox units
 const CORNERS = Array.from({ length: 6 }, (_, i) => ((60 * i + 30) * Math.PI) / 180);   // pointy-top
 const hexPath = (cx, cy, r) =>
   CORNERS.map((a, i) => `${i ? "L" : "M"}${(cx + Math.cos(a) * r).toFixed(2)} ${(cy + Math.sin(a) * r).toFixed(2)}`).join("") + "Z";
+// Every cell is the SAME path; position and size live on groups as CSS transforms (apps/hive/index.html,
+// the .hv-* block), so a rank change is a glide and a signal change is a swell — never an attribute jump.
+const CELL = hexPath(0, 0, HEX * 0.92);
 
 export function hiveView({ S, t }) {
   const field = useField(S);
@@ -262,8 +266,12 @@ export function hiveView({ S, t }) {
   const pts = coords.map((c) => hexToXY(c, HEX));
   const pad = HEX * 1.3;
   const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
-  const x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad;
-  const vw = Math.max(...xs) + pad - x0, vh = Math.max(...ys) + pad - y0;
+  const minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad;
+  const minY = Math.min(...ys) - pad, maxY = Math.max(...ys) + pad;
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  // The viewBox never changes. The comb reaches a new ring by SCALING a group, which is a transition
+  // rather than an attribute jump — the whole field breathes outward instead of snapping.
+  const s = 200 / Math.max(maxX - minX, maxY - minY);
 
   return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
     <${Stage}>
@@ -271,34 +279,53 @@ export function hiveView({ S, t }) {
         ${/* One accessible name for the whole picture: the cells are a rendering of the list, and the
              List tab is the interactive surface. A focusable <g> per cell would add 20 tab stops that
              lead nowhere. */""}
-        <svg data-mark viewBox=${`${x0.toFixed(2)} ${y0.toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}`}
+        <svg data-mark viewBox="-100 -100 200 200"
           class="w-full h-full max-h-full text-base-content" role="img"
           aria-label=${`${field.length} ${T(t, "cells")}`}>
-          ${coords.map((c, i) => {
-            const { x, y } = pts[i];
-            const d = field[i];
-            if (!d) {
-              return html`<path key=${`e${i}`} d=${hexPath(x, y, HEX * 0.92)} fill="none"
-                stroke="currentColor" stroke-width="0.5" opacity="0.14" />`;
-            }
-            // AREA carries the percentage, so the mark is proportional to the number beside it rather
-            // than to its square root — the commonest way a "bigger means more" graphic lies.
-            const k = Math.sqrt(Math.max(0, Math.min(100, d.percent)) / 100);
-            const tone = d.kind === "ble" ? "text-[var(--app-accent)]" : "text-base-content";
-            const solid = d.kind === "lte" ? 0.3 : d.kind === "wifi" ? 0.45 : 0.55;
-            return html`<g key=${d.addr} data-cell=${d.addr} data-kind=${d.kind} class=${tone}>
-              <path d=${hexPath(x, y, HEX * 0.92)} fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.3" />
-              ${k > 0 ? html`<path d=${hexPath(x, y, HEX * 0.92 * k)} fill="currentColor" fill-opacity=${solid}
-                stroke="currentColor" stroke-width=${d.addr === target ? 0.9 : 0} opacity=${d.addr === target ? 1 : 0.95} />` : null}
-              <text x=${x.toFixed(2)} y=${(y + HEX * 0.34).toFixed(2)} text-anchor="middle"
-                class="font-mono text-base-content" font-size=${HEX * 0.72} fill="currentColor">${d.percent}</text>
-            </g>`;
-          })}
+          <defs>
+            ${/* A tower is infrastructure, not a personal device, and the comb should say so without a
+                 caption: cells are hatched, personal radios are solid. currentColor, so it themes. */""}
+            <pattern id="hvHatch" patternUnits="userSpaceOnUse" width="2.6" height="2.6" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="2.6" stroke="currentColor" stroke-width="0.9" />
+            </pattern>
+          </defs>
+          <g class="hv-scale" style=${`transform:scale(${s.toFixed(4)})`}>
+            ${coords.map((c, i) => {
+              const { x, y } = pts[i];
+              const at = `transform:translate(${(x - cx).toFixed(2)}px,${(y - cy).toFixed(2)}px)`;
+              const d = field[i];
+              if (!d) {
+                return html`<path key=${`e${i}`} class=${gate ? "hv-cell" : "hv-cell hv-e-in"} style=${at}
+                  d=${CELL} fill="none" stroke="currentColor" stroke-width="1"
+                  vector-effect="non-scaling-stroke" opacity="0.14" />`;
+              }
+              // AREA carries the percentage, so the mark is proportional to the number beside it rather
+              // than to its square root — the commonest way a "bigger means more" graphic lies.
+              const k = Math.sqrt(Math.max(0, Math.min(100, d.percent)) / 100);
+              const tone = d.kind === "ble" ? "text-[var(--app-accent)]" : "text-base-content";
+              const solid = d.kind === "lte" ? 0.5 : d.kind === "wifi" ? 0.45 : 0.55;
+              return html`<g key=${d.addr} data-cell=${d.addr} data-kind=${d.kind} class=${`hv-cell ${tone}`} style=${at}>
+                <g class=${gate ? "" : "hv-in"} style=${gate ? "" : `animation-delay:${Math.min(i, 20) * 24}ms`}>
+                  <path d=${CELL} fill="none" stroke="currentColor" stroke-width="1"
+                    vector-effect="non-scaling-stroke" opacity="0.3" />
+                  <g class="hv-fill" style=${`transform:scale(${k.toFixed(3)})`}>
+                    <path d=${CELL} fill=${d.kind === "lte" ? "url(#hvHatch)" : "currentColor"} fill-opacity=${solid} />
+                  </g>
+                  ${d.addr === target ? html`<path d=${CELL} fill="none" stroke="currentColor" stroke-width="2"
+                    vector-effect="non-scaling-stroke" class="text-[var(--app-accent)]" />` : null}
+                  <text x="0" y=${(HEX * 0.34).toFixed(2)} text-anchor="middle"
+                    class="font-mono text-base-content" font-size=${HEX * 0.72} fill="currentColor">${d.percent}</text>
+                </g>
+              </g>`;
+            })}
+          </g>
         </svg>
       </div>
       <div data-live class="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
-        <span class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
-          ${field.length} ${T(t, "cells")}${scanning ? "" : " · " + T(t, "idle")}
+        <span class="flex items-center gap-1.5 font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70">
+          ${/* The state is a mark, not a caption: scanning shows a live pulse, idle says the word. */""}
+          ${scanning ? html`<span class=${`inline-block w-1.5 h-1.5 rounded-full bg-[var(--app-accent)] ${gate ? "" : "hv-dot-live"}`}></span>` : null}
+          <span>${field.length} ${T(t, "cells")}${scanning ? "" : " · " + T(t, "idle")}</span>
         </span>
       </div>
     <//>
@@ -337,7 +364,7 @@ export function listView({ S, t }) {
         ${field.map((d) => html`<button key=${d.addr} data-dev=${d.addr} data-kind=${d.kind}
           aria-pressed=${String(d.addr === target)}
           onClick=${() => { $target.set(d.addr); if (gate) seedRose(); else { rose = newRose(72); $roseAt.set(Date.now()); } }}
-          class="text-left py-2 border-b border-base-content/10 last:border-0 rounded-[var(--ms-r-in)] transition-colors hover:bg-base-content/5">
+          class="ms-reveal text-left py-2 border-b border-base-content/10 last:border-0 rounded-[var(--ms-r-in)] transition-colors hover:bg-base-content/5">
           <span class="flex items-center gap-2 min-w-0">
             ${Icon(KIND_ICON[d.kind], `text-[var(--ms-icon)] shrink-0 ${d.kind === "ble" ? "text-[var(--app-accent)]" : "text-base-content/70"}`)}
             <span class="flex-1 min-w-0 truncate">${labelOf(d, t)}</span>
@@ -384,6 +411,12 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
     const r = 12 + (max > 0 ? (p[i] / max) * 30 : 0);
     path.push(`${i ? "L" : "M"}${(50 + Math.cos(a) * r).toFixed(2)} ${(50 + Math.sin(a) * r).toFixed(2)}`);
   }
+  const dPath = path.join(" ") + " Z";
+
+  // The needle animates by rotating a group, and the reading is unwrapped to the nearest equivalent
+  // angle so the transition always takes the short arc — 359° → 1° must never spin the long way round.
+  const angRef = useRef(0);
+  if (locked) angRef.current = unwrapDeg(angRef.current, stats.bearingDeg);
 
   return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
     <${Stage}>
@@ -403,12 +436,16 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
                 stroke="currentColor" stroke-width=${major ? 0.7 : 0.35} opacity=${major ? 0.45 : 0.2}
                 class=${i === 0 ? "text-[var(--app-accent)]" : ""} />`;
             })}
-          ${max > 0 ? html`<path data-petal d=${path.join(" ") + " Z"} fill="currentColor" fill-opacity="0.12"
-            stroke="currentColor" stroke-width="0.7" class="text-[var(--app-accent)]" />` : null}
-          ${locked ? html`<line data-bearing x1="50" y1="50"
-            x2=${(50 + Math.cos((stats.bearingDeg * Math.PI) / 180 - Math.PI / 2) * 44).toFixed(2)}
-            y2=${(50 + Math.sin((stats.bearingDeg * Math.PI) / 180 - Math.PI / 2) * 44).toFixed(2)}
-            stroke="currentColor" stroke-width="1.2" class="text-[var(--app-accent)]" />` : null}
+          ${/* The petal morphs: CSS can transition `d` when the point count is fixed, and ours is always
+               72 + Z, so every new sample reshapes the lobe instead of redrawing it. The attribute stays
+               as the fallback; the style wins where transitions exist. */""}
+          ${max > 0 ? html`<path data-petal d=${dPath} style=${`d:path('${dPath}')`}
+            fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="0.7"
+            class=${`hv-petal text-[var(--app-accent)] ${gate ? "" : "hv-e-in"}`} />` : null}
+          ${locked ? html`<g data-bearing class=${`hv-rose text-[var(--app-accent)] ${gate ? "" : "hv-e-in"}`}
+            style=${`transform:rotate(${angRef.current.toFixed(1)}deg)`}>
+            <line x1="50" y1="50" x2="50" y2="6" stroke="currentColor" stroke-width="1.2" />
+          </g>` : null}
         </svg>
       </div>
     <//>

@@ -2,7 +2,21 @@
 //   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { parseAd as rdParseAd, classify as rdClassify, addrKind as rdAddrKind, rotates as rdRotates, band as rdBand, bandFraction as rdBandFraction, smooth as rdSmooth, estimateDistance as rdEstimateDistance, guardScore as rdGuardScore, GUARD as rdGUARD, signalPercent as rdSignalPercent, orderDevices as rdOrderDevices, hexSpiral as rdHexSpiral, hexToXY as rdHexToXY, hexDistance as rdHexDistance, combSize as rdCombSize } from "../radar.js";
+import { parseAd as rdParseAd, classify as rdClassify, addrKind as rdAddrKind, rotates as rdRotates, band as rdBand, bandFraction as rdBandFraction, smooth as rdSmooth, estimateDistance as rdEstimateDistance, guardScore as rdGuardScore, GUARD as rdGUARD, signalPercent as rdSignalPercent, orderDevices as rdOrderDevices, hexSpiral as rdHexSpiral, hexToXY as rdHexToXY, hexDistance as rdHexDistance, combSize as rdCombSize, unwrapDeg as rdUnwrapDeg } from "../radar.js";
+
+Deno.test("radar: an animated bearing takes the short arc across the wrap, both ways", () => {
+  assertEquals(rdUnwrapDeg(359, 1), 361);        // +2, never −358
+  assertEquals(rdUnwrapDeg(1, 359), -1);         // −2, never +358
+  assertEquals(rdUnwrapDeg(0, 180), 180);        // the tie resolves forward, deterministically
+  assertEquals(rdUnwrapDeg(90, 90), 90);         // no reading change, no motion
+  // The value is unbounded on purpose: after full laps it stays the nearest equivalent, so a dial that
+  // has turned twice does not snap back through 720°.
+  assertEquals(rdUnwrapDeg(725, 10), 730);
+  assertEquals(rdUnwrapDeg(-350, 5), -355);
+  // Feeding the result back as prev is stable: a second identical reading moves nothing.
+  const once = rdUnwrapDeg(178, -178);
+  assertEquals(rdUnwrapDeg(once, -178 + 360), once);
+});
 
 Deno.test("radar: an AD walk stops at a structure that would read past the end", () => {
   // The catalogue's own gate mock: flags, complete 16-bit UUID 0xFCB2, service data for 0xFCB2.

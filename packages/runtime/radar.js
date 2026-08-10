@@ -338,3 +338,14 @@ export function combSize(n) {
   while (1 + 3 * ring * (ring + 1) < Math.max(0, n)) ring++;
   return 1 + 3 * ring * (ring + 1);
 }
+
+/**
+ * Continuous rotation for a display that ANIMATES its angle: the next reading expressed as the nearest
+ * full-circle equivalent of the previous one, so a CSS transition on rotate() takes the short arc —
+ * 359° → 1° becomes +2°, never a −358° spin through the whole dial. The returned value is unbounded by
+ * design; feed it back in as `prev` on the next reading.
+ */
+export function unwrapDeg(prev, next) {
+  const d = (((next - prev) % 360) + 360) % 360;      // forward distance, 0..359
+  return prev + (d > 180 ? d - 360 : d);              // the tie at exactly 180° resolves forward
+}

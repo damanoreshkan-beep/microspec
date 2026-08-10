@@ -171,7 +171,10 @@ export function swarm(props) {
       const clock = makeClock(() => {
         let h = (((headingT.current + dragT.current) % 3600) + 3600) % 3600;
         // a held trigger OR a queued one-shot (keyboard-activated click); the pulse burns down
-        // per STEP, never by wall-clock — a timeout here once zeroed the flag a held key owned
+        // per STEP, never by wall-clock — a timeout here once zeroed the flag a held key owned.
+        // 18 frames, not 3: it must cover a FULL trigger recharge (16), because in the gate the
+        // attract bot fires on every free cooldown and a shorter window usually lands entirely
+        // inside one — measured as an 81% e2e miss rate before this number
         const manual = !!(fire.current || pulse.current > 0);
         if (pulse.current > 0) pulse.current--;
         let aimAz = h, aimEl = pitchT.current, f = manual;
@@ -319,7 +322,7 @@ export function swarm(props) {
           onPointerDown=${() => { fire.current = 1; arm(); }}
           onPointerUp=${() => { fire.current = 0; }}
           onPointerLeave=${() => { fire.current = 0; }}
-          onClick=${() => { pulse.current = 3; }}>
+          onClick=${() => { pulse.current = 18; }}>
           <span class="w-9 h-9 rounded-full border-2 border-[var(--app-accent)] grid place-items-center">
             <span class="w-3 h-3 rounded-full bg-[var(--app-accent)]"></span>
           </span>

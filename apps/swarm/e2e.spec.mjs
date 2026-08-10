@@ -19,7 +19,9 @@ export default [
       const f1 = await num(h, "frame");
       await h.wait(600);
       h.expect((await num(h, "frame")) > f1, "frames stopped advancing — the clock is dead");
-      h.expect((await num(h, "alive")) > 0, "no enemies alive at settle — the fixture photographed an empty ring");
+      // polled, not sampled: the attract bot clears waves, and a single read can land inside the
+      // legitimate 1.5s empty-ring breath between them
+      h.expect(await until(h, async () => (await num(h, "alive")) > 0, 8000), "no enemies alive — the ring never repopulated");
       h.expect((await num(h, "kills")) > 0, "the gate bot landed zero kills — the populated screen is a lie");
       h.expect((await num(h, "dead")) === 0, "the fixture left a dead player on screen");
     },

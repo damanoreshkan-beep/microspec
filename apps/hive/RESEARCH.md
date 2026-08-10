@@ -351,3 +351,16 @@ whole system off, and under the gate the entrance classes are omitted so shots s
   uncertainty wedge whose span is `90°·(1−r)` (clamped 12–80°). The wedge is the honesty — a guess and an
   earned bearing can never look alike, and the arrow the owner asked for appears the moment a target is
   picked and heard.
+- **The arrow LEADS because the rose forgets** (owner field report: "стрілка має вести"). `newRose(72,
+  30_000)` opts hive's rose into time decay — every bin fades by e^(−Δt/τ), the per-bin weight becomes
+  decayed MASS (strength × recency), so a weaker fresh reading out-votes a stronger stale one and the
+  bearing follows the walk. homin's stationary fox-hunt rose stays tau-less and bit-for-bit unchanged.
+- **The dial blends, unwrapped** (owner field report: "все поплило при зміні напряму"). Sensor events
+  arrive in discrete steps, so an un-eased dial judders; the fix is the farm compass's own idiom — a short
+  transition (100 ms linear; apps/compass uses duration-100) — but fed a CONTINUOUS unwrapped angle, which
+  apps/compass does not do and therefore spins the long way at 359°→0°. The needle blends at 200 ms; at
+  500 ms it visibly swam against the turning dial.
+- **Hot/cold lives in the dial's centre.** The target's live percent + dBm, with a trend mark only past a
+  6 dB shift of window medians (`sightTrend` in radar.js) — RESEARCH §B says a stationary trace wanders
+  5–15 dB, so anything smaller is noise and the mark stays away. Medians, not means: one body-shadow
+  dropout must not flip the verdict.

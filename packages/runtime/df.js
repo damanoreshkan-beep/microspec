@@ -16,14 +16,37 @@ const TAU = 2 * Math.PI;
 const rad = (deg) => deg * Math.PI / 180;
 const deg = (r) => ((r * 180 / Math.PI) % 360 + 360) % 360;
 
-export function newRose(bins = 72) {
-  return { bins, peak: new Float32Array(bins), sum: new Float32Array(bins), count: new Uint32Array(bins), n: 0 };
+// `tau` (ms) opts a rose into TIME DECAY: every accumulated bin fades by e^(−Δt/τ) as samples arrive, so
+// the rose remembers roughly the last τ of the walk and the bearing follows the user instead of being
+// anchored to where they stood a minute ago. A hand-held hunt needs this — the whole point is to MOVE.
+// Without `tau` the behaviour is exactly the old one (integer counts, nothing fades): homin's fox-hunt
+// rose accumulates a deliberate stationary sweep and must keep doing so.
+export function newRose(bins = 72, tau = 0) {
+  return {
+    bins, tau, at: 0, n: 0,
+    peak: new Float32Array(bins), sum: new Float32Array(bins),
+    count: tau ? new Float32Array(bins) : new Uint32Array(bins),
+  };
 }
 
+// A decayed bin never reaches exactly zero, so "visited" needs a floor; integers pass it untouched.
+const VISITED = 0.05;
+const seen = (c) => c > VISITED || (Number.isInteger(c) && c > 0);
+
 // Record one measurement. `strength` is whatever linear scale the caller uses (0..1 is convenient); the
-// statistics below are scale-free, so the units never leave the caller.
-export function addSample(rose, headingDeg, strength) {
+// statistics below are scale-free, so the units never leave the caller. `now` only matters for a decaying
+// rose; it is a parameter so the tests (and the gate) stay deterministic.
+export function addSample(rose, headingDeg, strength, now = Date.now()) {
   if (!Number.isFinite(headingDeg) || !Number.isFinite(strength) || strength < 0) return rose;
+  if (rose.tau) {
+    if (rose.at) {
+      const f = Math.min(1, Math.exp(-(now - rose.at) / rose.tau));
+      if (f < 0.9995) {
+        for (let b = 0; b < rose.bins; b++) { rose.sum[b] *= f; rose.count[b] *= f; rose.peak[b] *= f; }
+      }
+    }
+    rose.at = now;
+  }
   const h = ((headingDeg % 360) + 360) % 360;
   const b = Math.min(rose.bins - 1, Math.floor(h * rose.bins / 360));
   if (strength > rose.peak[b]) rose.peak[b] = strength;
@@ -35,11 +58,16 @@ export function addSample(rose, headingDeg, strength) {
 
 export const binHeading = (rose, b) => (b + 0.5) * 360 / rose.bins;
 
-// Mean strength per bin — the shape the view draws. Bins never visited read as 0, which is visually distinct
-// from "visited and quiet" and must stay that way: an unswept arc is not a null.
+// The shape the view draws, and the per-bin weight the statistics use. Bins never visited read as 0, which
+// is visually distinct from "visited and quiet" and must stay that way: an unswept arc is not a null.
+// A plain rose reports the MEAN per bin (sampling-rate independent — lingering somewhere must not weigh
+// it up). A decaying rose reports the decayed MASS instead: strength × recency, so a stale lobe literally
+// evaporates from the picture and the resultant follows what the walk is measuring NOW.
 export function petal(rose) {
   const out = new Float32Array(rose.bins);
-  for (let b = 0; b < rose.bins; b++) out[b] = rose.count[b] ? rose.sum[b] / rose.count[b] : 0;
+  for (let b = 0; b < rose.bins; b++) {
+    out[b] = seen(rose.count[b]) ? (rose.tau ? rose.sum[b] : rose.sum[b] / rose.count[b]) : 0;
+  }
   return out;
 }
 
@@ -53,7 +81,7 @@ export function roseStats(rose) {
   const p = petal(rose);
   let x = 0, y = 0, total = 0, visited = 0;
   for (let b = 0; b < rose.bins; b++) {
-    if (rose.count[b]) visited++;
+    if (seen(rose.count[b])) visited++;
     const w = p[b];
     if (w <= 0) continue;
     const a = rad(binHeading(rose, b));

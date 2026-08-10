@@ -349,3 +349,26 @@ export function unwrapDeg(prev, next) {
   const d = (((next - prev) % 360) + 360) % 360;      // forward distance, 0..359
   return prev + (d > 180 ? d - 360 : d);              // the tie at exactly 180° resolves forward
 }
+
+/**
+ * Hot/cold while walking toward a target: the median RSSI of the last `recentMs` against the median of
+ * the window before it. Returns "up" (closer), "down" (farther) or null — and null is the honest default:
+ * a stationary BLE trace wanders 5–15 dB on its own (apps/hive/RESEARCH.md §B), so anything under `minDb`
+ * is noise, not movement, and too few samples in either window is no evidence at all. Medians, not means,
+ * because a single body-shadow dropout would otherwise flip the verdict.
+ */
+export function sightTrend(sightings, now = Date.now(), { recentMs = 4000, priorMs = 16000, minDb = 6, minEach = 3 } = {}) {
+  if (!Array.isArray(sightings)) return null;
+  const rec = [], pri = [];
+  for (const s of sightings) {
+    if (!s || !Number.isFinite(s.rssi) || !Number.isFinite(s.at)) continue;
+    const age = now - s.at;
+    if (age < 0) continue;
+    if (age <= recentMs) rec.push(s.rssi);
+    else if (age <= priorMs) pri.push(s.rssi);
+  }
+  if (rec.length < minEach || pri.length < minEach) return null;
+  const median = (a) => { const b = [...a].sort((x, y) => x - y); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+  const d = median(rec) - median(pri);
+  return d >= minDb ? "up" : d <= -minDb ? "down" : null;
+}

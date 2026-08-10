@@ -36,6 +36,27 @@ Deno.test("df: headings wrap — 350 and 10 average to 0, not 180", () => {
   assertEquals(hasBearing(s), false, "coverage gate must reject an unfinished sweep even when r is high");
 });
 
+Deno.test("df: a decaying rose follows the walk — stale strength expires and the arrow goes recent", () => {
+  const rose = newRose(72, 30_000);
+  const t0 = 1_000_000;
+  for (let i = 0; i < 5; i++) addSample(rose, i, 1.0, t0 + i * 100);           // strong at ~north
+  let s = roseStats(rose);
+  assert(s.bearingDeg < 6 || s.bearingDeg > 354, `fresh rose should point ~0, got ${s.bearingDeg}`);
+  // 90 s later (3 tau) the user has walked; east is where the strength is NOW. A weaker fresh reading
+  // must out-vote a stronger stale one, or the arrow leads to where the user used to stand.
+  for (let i = 0; i < 5; i++) addSample(rose, 90 + i, 0.6, t0 + 90_000 + i * 100);
+  s = roseStats(rose);
+  assert(Math.abs(s.bearingDeg - 90) < 10, `the arrow stayed anchored to the past: ${s.bearingDeg}`);
+});
+
+Deno.test("df: a tau-less rose keeps the old accumulate-forever behaviour bit for bit", () => {
+  const rose = newRose(72);
+  addSample(rose, 0, 1, 1_000_000);
+  addSample(rose, 0, 1, 99_000_000);                                            // an hour later
+  assertEquals(rose.count[0], 2);                                               // integers, nothing faded
+  assertEquals(rose.sum[0], 2);
+});
+
 Deno.test("df: an unswept arc is not a null — unvisited bins stay distinguishable from measured silence", () => {
   const rose = newRose(72);
   for (let h = 0; h < 90; h += 5) addSample(rose, h, 1);                 // swept only a quarter of the circle

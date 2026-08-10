@@ -24,7 +24,7 @@ import { compass, geo, wakeLock } from "/_rt/sensors.js";
 import { newRose, addSample, roseStats, hasBearing, petal, BEARING_MIN_COVERAGE } from "/_rt/df.js";
 import {
   classify, band, smooth, guardScore, rotates, GUARD, signalPercent, orderDevices, hexSpiral, hexToXY, combSize,
-  unwrapDeg,
+  unwrapDeg, sightTrend,
 } from "/_rt/radar.js";
 import { parseOui, vendorOf } from "/_rt/oui.js";
 
@@ -64,7 +64,10 @@ function loadOui() {
     .catch(() => { /* offline on first run; names simply stay absent */ });
 }
 
-let rose = newRose(72);
+// The hunt rose DECAYS (~30 s of memory): the arrow must follow the walk, not stay anchored to where the
+// user stood a minute ago. homin's stationary fox-hunt rose deliberately does not.
+const HUNT_TAU = 30_000;
+let rose = newRose(72, HUNT_TAU);
 let stopScan = null, radioTimer = null, ageTimer = null, stopCompass = null, stopGeo = null, lock = null;
 let heading = 0;
 // The dial is heading-up (the world rotates, the needle says where to turn), so the heading must reach
@@ -93,7 +96,7 @@ const GATE_FIELD = [
 // reach the accumulator and Hunt would render an empty circle in every shot while the e2e asserted
 // nothing. Seeded as a real lobe that clears df.js's concentration and coverage gates.
 function seedRose(dirDeg = 292) {
-  rose = newRose(72);
+  rose = newRose(72, HUNT_TAU);
   for (let b = 0; b < 72; b++) {
     const h = (b + 0.5) * 5;
     const off = Math.abs(((h - dirDeg + 540) % 360) - 180);
@@ -162,7 +165,7 @@ function startScan() {
     if ($target.get()) seedRose();
     return;
   }
-  rose = newRose(72);
+  rose = newRose(72, HUNT_TAU);
   $roseAt.set(Date.now());
   lock = wakeLock.acquire();
   stopScan = shell.subscribe("ble.scan", {}, upsert, (e) => {
@@ -397,7 +400,7 @@ export function listView({ S, t }) {
         ${field.length === 0 ? html`<div class="text-base-content/70 text-sm">${T(t, "nothingYet")}</div>` : null}
         ${field.map((d) => html`<button key=${d.addr} data-dev=${d.addr} data-kind=${d.kind}
           aria-pressed=${String(d.addr === target)}
-          onClick=${() => { $target.set(d.addr); if (gate) seedRose(); else { rose = newRose(72); $roseAt.set(Date.now()); } }}
+          onClick=${() => { $target.set(d.addr); if (gate) seedRose(); else { rose = newRose(72, HUNT_TAU); $roseAt.set(Date.now()); } }}
           class="ms-reveal text-left py-2 border-b border-base-content/10 last:border-0 rounded-[var(--ms-r-in)] transition-colors hover:bg-base-content/5">
           <span class="flex items-center gap-2 min-w-0">
             ${Icon(KIND_ICON[d.kind], `text-[var(--ms-icon)] shrink-0 ${d.kind === "ble" ? "text-[var(--app-accent)]" : "text-base-content/70"}`)}
@@ -447,11 +450,14 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
   }
   const dPath = path.join(" ") + " Z";
 
-  // The needle animates by rotating a group, and the reading is unwrapped to the nearest equivalent
-  // angle so the transition always takes the short arc — 359° → 1° must never spin the long way round.
+  // Both rotations are unwrapped to the nearest equivalent angle so their transitions always take the
+  // short arc — 359° → 1° must never spin the long way round, on the needle OR on the dial.
   const angRef = useRef(0);
   if (stats.bearingDeg !== null) angRef.current = unwrapDeg(angRef.current, stats.bearingDeg);
   const hdg = useStore($heading);
+  const dialRef = useRef(0);
+  dialRef.current = unwrapDeg(dialRef.current, hdg);
+  const trend = dev ? sightTrend(dev.sightings) : null;
 
   // The arrow exists from the FIRST sample — provisional (dashed, half-lit, inside a wide uncertainty
   // wedge) until df.js's gates are earned, then solid. The wedge IS the honesty: its span is the
@@ -473,7 +479,7 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
                is heading-up: the WORLD rotates, so walking the arrow onto the lubber walks you onto the
                strongest observed direction. */""}
           <path d="M47.4 2.6 L52.6 2.6 L50 7.6 Z" fill="currentColor" opacity="0.65" />
-          <g class="hv-dial" style=${`transform:rotate(${-hdg}deg)`}>
+          <g class="hv-dial" style=${`transform:rotate(${(-dialRef.current).toFixed(1)}deg)`}>
             ${/* A compass rose before it is a measurement: without ticks an unswept screen is two bare
                  circles, which reads as a draw failure rather than an instrument waiting. The accent tick
                  is true north, and it moves because the world does. */
@@ -501,6 +507,19 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
               <path d="M50 5.5 L46.6 13 L53.4 13 Z" fill="currentColor" />
             </g>` : null}
           </g>
+          ${/* The live strength, fixed to the glass in the dial's empty centre — the hot/cold half of
+               "lead me there": the number rises as you close in. The trend mark appears only past the
+               6 dB median test (sightTrend) — a stationary trace wanders less than that on its own. */""}
+          ${dev ? html`<g data-strength class="font-mono">
+            <text x="50" y="53" text-anchor="middle" font-size="10.5" fill="currentColor"
+              class="text-base-content font-mono">${dev.percent}</text>
+            <text x="50" y="58.6" text-anchor="middle" font-size="3.2" fill="currentColor"
+              class="text-base-content font-mono" opacity="0.55">${Math.round(dev.smooth ?? dev.rssi)} dBm</text>
+            ${trend === "up" ? html`<path data-trend="up" d="M50 38 L47.4 42 L52.6 42 Z"
+              fill="currentColor" class="text-[var(--app-accent)]" />` : null}
+            ${trend === "down" ? html`<path data-trend="down" d="M50 42 L47.4 38 L52.6 38 Z"
+              fill="currentColor" class="text-base-content" opacity="0.5" />` : null}
+          </g>` : null}
         </svg>
       </div>
     <//>
@@ -531,7 +550,7 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
       <div class="flex flex-col gap-1">
         ${field.filter((d) => d.kind === "ble").map((d) => html`<button key=${d.addr} data-pick-dev=${d.addr}
           aria-pressed=${String(d.addr === target)}
-          onClick=${() => { $target.set(d.addr); if (gate) seedRose(); else { rose = newRose(72); $roseAt.set(Date.now()); } closeScreen(); }}
+          onClick=${() => { $target.set(d.addr); if (gate) seedRose(); else { rose = newRose(72, HUNT_TAU); $roseAt.set(Date.now()); } closeScreen(); }}
           class="btn btn-ghost justify-start h-auto min-h-0 py-2 rounded-[var(--ms-r-in)]">
           <span class="flex-1 min-w-0 text-left">
             <span class="block truncate">${labelOf(d, t)}</span>

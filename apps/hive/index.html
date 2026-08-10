@@ -46,12 +46,15 @@
     .hv-dot-live{animation:hvBeat 1.6s ease-in-out infinite}
     @keyframes hvBeat{0%,100%{opacity:1}50%{opacity:.25}}
     .hv-petal{transition:d .35s ease-out}
-    .hv-rose{transform-box:view-box;transform-origin:50% 50%;transition:transform .5s cubic-bezier(.22,1,.36,1)}
-    .hv-dial{transform-box:view-box;transform-origin:50% 50%}
-    /* No transition on the dial: it follows the magnetometer, which is already smooth — easing a 60 Hz
-       stream makes the world lag the hand. The needle inside it still eases, its readings are discrete. */
+    /* The dial follows the magnetometer through a SHORT linear blend (the farm compass's own idiom,
+       apps/compass uses duration-100): sensor events arrive in discrete steps and an un-eased dial
+       judders at every one. The angle it receives is UNWRAPPED in the view, so 359°→1° can never animate
+       the long way round. The needle blends faster than before (.2s): at .5s it visibly swam against the
+       turning dial instead of holding its world direction. */
+    .hv-dial{transform-box:view-box;transform-origin:50% 50%;transition:transform .1s linear}
+    .hv-rose{transform-box:view-box;transform-origin:50% 50%;transition:transform .2s cubic-bezier(.22,1,.36,1)}
     @media(prefers-reduced-motion:reduce){
-      .hv-scale,.hv-cell,.hv-fill,.hv-petal,.hv-rose{transition:none}
+      .hv-scale,.hv-cell,.hv-fill,.hv-petal,.hv-rose,.hv-dial{transition:none}
       .hv-in,.hv-e-in,.hv-dot-live{animation:none}
     }
   </style>

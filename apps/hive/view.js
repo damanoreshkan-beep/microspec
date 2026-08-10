@@ -273,7 +273,10 @@ export function hiveView({ S, t }) {
   // rather than an attribute jump — the whole field breathes outward instead of snapping.
   const s = 200 / Math.max(maxX - minX, maxY - minY);
 
-  return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
+  // .ms-side, with the island IN FLOW (v2m's structure): a pinned island is fixed OVER the stage, so a
+  // short viewport slid the comb's bottom row underneath it — overlap no gate can see. In flow the
+  // stage can never reach behind the controls, and below 520px of height the comb moves BESIDE them.
+  return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] ms-side">
     <${Stage}>
       <div class="absolute inset-0 flex items-center justify-center p-1">
         ${/* One accessible name for the whole picture: the cells are a rendering of the list, and the
@@ -334,13 +337,15 @@ export function hiveView({ S, t }) {
       </div>
     <//>
 
-    <${Island} pinned className="w-full max-w-md">
-      <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
-        <${ScanButton} t=${t} />
-        <${Legend} t=${t} field=${field} />
-      </div>
-      <${Reason} t=${t} />
-    <//>
+    <div class="ms-side-main flex flex-col justify-end items-center pb-[var(--ms-gap)]">
+      <${Island} className="w-full max-w-md">
+        <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
+          <${ScanButton} t=${t} />
+          <${Legend} t=${t} field=${field} />
+        </div>
+        <${Reason} t=${t} />
+      <//>
+    </div>
   </div>`;
 }
 
@@ -422,7 +427,8 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
   const angRef = useRef(0);
   if (locked) angRef.current = unwrapDeg(angRef.current, stats.bearingDeg);
 
-  return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
+  // The same in-flow island + .ms-side structure as the comb, for the same overlap reason.
+  return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] ms-side">
     <${Stage}>
       <div class="absolute inset-0 flex items-center justify-center">
         <svg viewBox="0 0 100 100" class="w-full h-full max-h-full text-base-content" role="img"
@@ -454,26 +460,27 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
       </div>
     <//>
 
-    <${Island} pinned className="w-full max-w-md">
-      <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
-        <${ScanButton} t=${t} />
-        <button data-pick class="btn btn-sm btn-ghost gap-2 min-w-0 flex-1 justify-start" onClick=${() => openScreen("pick")}>
-          ${Icon("lucide:crosshair")}<span class="truncate">${dev ? labelOf(dev, t) : T(t, "pickTarget")}</span>
-        </button>
-      </div>
-      ${/* Not hint text — a measurement. Coverage below df.js's gate is WHY no bearing is shown, and
-           hiding it would make a working instrument look broken. Inside the island: pinned to the stage's
-           bottom edge it sat under this fixed bar and collided with the dock. */""}
-      <div data-live class="font-mono uppercase tracking-wide text-[var(--ms-label)]">
-        <div class="text-base-content truncate">${locked
-          ? T(t, "strongestAt").replace("{deg}", Math.round(stats.bearingDeg))
-          : T(t, "coverage").replace("{pct}", Math.round(stats.coverage * 100))}${
-            stats.coverage < BEARING_MIN_COVERAGE && stats.samples > 0 ? " · " + T(t, "keepSweeping") : ""}</div>
-        <div class="text-base-content/70 truncate">
-          ${T(t, "concentration")} ${stats.r.toFixed(2)} · ${T(t, "samples")} ${stats.samples}
+    <div class="ms-side-main flex flex-col justify-end items-center pb-[var(--ms-gap)]">
+      <${Island} className="w-full max-w-md">
+        <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
+          <${ScanButton} t=${t} />
+          <button data-pick class="btn btn-sm btn-ghost gap-2 min-w-0 flex-1 justify-start" onClick=${() => openScreen("pick")}>
+            ${Icon("lucide:crosshair")}<span class="truncate">${dev ? labelOf(dev, t) : T(t, "pickTarget")}</span>
+          </button>
         </div>
-      </div>
-    <//>
+        ${/* Not hint text — a measurement. Coverage below df.js's gate is WHY no bearing is shown, and
+             hiding it would make a working instrument look broken. */""}
+        <div data-live class="font-mono uppercase tracking-wide text-[var(--ms-label)]">
+          <div class="text-base-content truncate">${locked
+            ? T(t, "strongestAt").replace("{deg}", Math.round(stats.bearingDeg))
+            : T(t, "coverage").replace("{pct}", Math.round(stats.coverage * 100))}${
+              stats.coverage < BEARING_MIN_COVERAGE && stats.samples > 0 ? " · " + T(t, "keepSweeping") : ""}</div>
+          <div class="text-base-content/70 truncate">
+            ${T(t, "concentration")} ${stats.r.toFixed(2)} · ${T(t, "samples")} ${stats.samples}
+          </div>
+        </div>
+      <//>
+    </div>
 
     <${Sheet} id="pick" open=${screen === "pick"} onClose=${closeScreen} title=${T(t, "pickTarget")} icon="lucide:crosshair">
       <div class="flex flex-col gap-1">

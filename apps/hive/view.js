@@ -339,7 +339,9 @@ export function hiveView({ S, t }) {
 
     <div class="ms-side-main flex flex-col justify-end items-center pb-[var(--ms-gap)]">
       <${Island} className="w-full max-w-md">
-        <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
+        ${/* A ROW that wraps (the swarm precedent): in .ms-side's narrow column the legend drops to its
+             own line instead of overflow-hidden silently eating the last radio's count. */""}
+        <div class="flex flex-wrap items-center gap-[var(--ms-gap)] min-w-0">
           <${ScanButton} t=${t} />
           <${Legend} t=${t} field=${field} />
         </div>

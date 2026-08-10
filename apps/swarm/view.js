@@ -157,6 +157,9 @@ export function swarm(props) {
         let h = (((headingT.current + dragT.current) % 3600) + 3600) % 3600;
         
         
+        
+        
+        
         const manual = !!(fire.current || pulse.current > 0);
         if (pulse.current > 0) pulse.current--;
         let aimAz = h, aimEl = pitchT.current, f = manual;
@@ -296,7 +299,7 @@ export function swarm(props) {
           onPointerDown=${() => { fire.current = 1; arm(); }}
           onPointerUp=${() => { fire.current = 0; }}
           onPointerLeave=${() => { fire.current = 0; }}
-          onClick=${() => { pulse.current = 3; }}>
+          onClick=${() => { pulse.current = 18; }}>
           <span class="w-9 h-9 rounded-full border-2 border-[var(--app-accent)] grid place-items-center">
             <span class="w-3 h-3 rounded-full bg-[var(--app-accent)]"></span>
           </span>

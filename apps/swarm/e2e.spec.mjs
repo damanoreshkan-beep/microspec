@@ -21,19 +21,19 @@ export default [
     },
   },
   {
-    name: "тригер: тап по кнопці вогню реєструє постріл",
+    name: "тригер: тап по кнопці вогню реєструє РУЧНИЙ постріл",
     async run(h) {
-      const before = await num(h, "shots");
+      const before = await num(h, "mshots");
       await h.tap("[data-fire]");
-      h.expect(await until(h, async () => (await num(h, "shots")) > before, 4000), "a tap on the trigger fired nothing");
+      h.expect(await until(h, async () => (await num(h, "mshots")) > before, 4000), "a tap on the trigger fired nothing");
     },
   },
   {
     name: "клавіатура: пробіл стріляє",
     async run(h) {
-      const before = await num(h, "shots");
+      const before = await num(h, "mshots");
       await h.key("Space", 600);
-      h.expect(await until(h, async () => (await num(h, "shots")) > before, 4000), "Space fired nothing");
+      h.expect(await until(h, async () => (await num(h, "mshots")) > before, 4000), "Space fired nothing");
     },
   },
   {

@@ -54,7 +54,7 @@ export function swarm(props) {
   const waveEl = useRef(null), scoreEl = useRef(null), comboEl = useRef(null), hearts = useRef(null);
   const eng = useRef(null), sound = useRef(null);
   const seed = useRef(gate ? GATE_SEED : (Math.random() * 0xffffffff) >>> 0);
-  const headingT = useRef(2100), pitchT = useRef(0), dragT = useRef(0), fire = useRef(0), pulse = useRef(0);
+  const headingT = useRef(2100), pitchT = useRef(0), dragT = useRef(0), fire = useRef(0), pulse = useRef(0), mshots = useRef(0);
   const fell = useRef(null), restartRef = useRef(null);
 
   const arm = useCallback(() => { sound.current?.arm(); }, []);
@@ -155,20 +155,34 @@ export function swarm(props) {
 
       const clock = makeClock(() => {
         let h = (((headingT.current + dragT.current) % 3600) + 3600) % 3600;
-        if (gate) {
-          
-          
-          const st = E.state();
-          if (st[S.NAZ] >= 0) dragT.current += wrapT(st[S.NAZ] - h) * 0.06;
-          h = (((headingT.current + dragT.current) % 3600) + 3600) % 3600;
-        }
-        const f = fire.current || pulse.current > 0;
+        
+        
+        const manual = !!(fire.current || pulse.current > 0);
         if (pulse.current > 0) pulse.current--;
-        E.step(packInput(h, Math.round(pitchT.current / 10), f));
+        let aimAz = h, aimEl = pitchT.current, f = manual;
+        if (gate) {
+          const st0 = E.state(), { dl: d0, n: n0 } = E.list();
+          let ne = null;
+          for (let i = 0; i < n0; i++) {
+            const e = decodeEntry(d0, i);
+            if (!ne || e.distCm < ne.distCm) ne = e;
+          }
+          if (ne) {
+            dragT.current += wrapT(ne.azT - h) * 0.06;
+            pitchT.current += (ne.elT - pitchT.current) * 0.06;
+            h = (((headingT.current + dragT.current) % 3600) + 3600) % 3600;
+            aimAz = h; aimEl = pitchT.current;
+            if (st0[S.COOLDOWN] === 0) {
+              if (lockOn(d0, n0, h, pitchT.current) >= 0) f = true;
+              else if (ne.distCm < 350) { aimAz = ne.azT; aimEl = ne.elT; f = true; }
+            }
+          }
+        }
+        E.step(packInput(aimAz, Math.round(aimEl / 10), f));
         const sfx = E.state()[S.SFX];
         if (sfx) {
           sound.current?.play(sfx);
-          if (sfx & SFX.SHOOT) muzzle = 4;
+          if (sfx & SFX.SHOOT) { muzzle = 4; if (manual) mshots.current++; }
           if (sfx & SFX.HURT) haptic.bump();
         }
       });
@@ -199,6 +213,9 @@ export function swarm(props) {
           hd.dataset.frame = st[S.FRAME]; hd.dataset.wave = st[S.WAVE]; hd.dataset.score = st[S.SCORE];
           hd.dataset.hp = st[S.HP]; hd.dataset.alive = st[S.ALIVE]; hd.dataset.dead = st[S.DEAD] ? "1" : "0";
           hd.dataset.kills = st[S.KILLS]; hd.dataset.shots = st[S.SHOTS];
+          
+          
+          hd.dataset.mshots = mshots.current;
           hd.dataset.heading = Math.round(hh / 10);
         }
         
@@ -212,7 +229,6 @@ export function swarm(props) {
           }
         }
       };
-
       const frame = (now) => {
         if (!live) return;
         if (!$over.get()) clock.tick(now);
@@ -237,7 +253,9 @@ export function swarm(props) {
   restartRef.current = restart;
 
   const chip = "flex items-baseline gap-1.5 rounded-full bg-black px-3 py-1 border border-white/15";
-  const chipBtn = "btn btn-circle btn-sm bg-black text-white border border-white/15 pointer-events-auto";
+  
+  
+  const chipBtn = "btn btn-circle btn-sm bg-black text-white border border-white/15 shadow-none pointer-events-auto";
 
   return html`<${Fragment}>
     <div class="ms-stage z-20 bg-black overflow-hidden select-none" ref=${stage} data-swarm>
@@ -247,7 +265,6 @@ export function swarm(props) {
         class="absolute inset-0 w-full h-full object-cover" aria-hidden="true"></video>` : null}
       <canvas ref=${cv} class="absolute inset-0 w-full h-full touch-none" role="img"
         aria-label=${T(t, "screenAlt")} onPointerDown=${arm}></canvas>
-
       <div ref=${hud} data-live class="absolute inset-0 pointer-events-none p-3 text-white font-mono">
         <div class="flex items-start justify-between gap-2">
           <div class="flex items-center gap-2">

@@ -279,7 +279,11 @@ export function hiveView({ S, t }) {
         ${/* One accessible name for the whole picture: the cells are a rendering of the list, and the
              List tab is the interactive surface. A focusable <g> per cell would add 20 tab stops that
              lead nowhere. */""}
-        <svg data-mark viewBox="-100 -100 200 200"
+        ${/* viewBox starts at 0 0 ON PURPOSE: transform-box:view-box anchors its reference box at the
+             ORIGIN of the viewBox coordinate system, not at its min-x/min-y corner, so a negative-origin
+             viewBox makes every transform-origin resolve 100 units off. With 0 0 the two readings
+             coincide and the centring lives in the transform chain itself. */""}
+        <svg data-mark viewBox="0 0 200 200"
           class="w-full h-full max-h-full text-base-content" role="img"
           aria-label=${`${field.length} ${T(t, "cells")}`}>
           <defs>
@@ -289,7 +293,7 @@ export function hiveView({ S, t }) {
               <line x1="0" y1="0" x2="0" y2="2.6" stroke="currentColor" stroke-width="0.9" />
             </pattern>
           </defs>
-          <g class="hv-scale" style=${`transform:scale(${s.toFixed(4)})`}>
+          <g class="hv-scale" style=${`transform:translate(100px,100px) scale(${s.toFixed(4)})`}>
             ${coords.map((c, i) => {
               const { x, y } = pts[i];
               const at = `transform:translate(${(x - cx).toFixed(2)}px,${(y - cy).toFixed(2)}px)`;
@@ -297,7 +301,7 @@ export function hiveView({ S, t }) {
               if (!d) {
                 return html`<path key=${`e${i}`} class=${gate ? "hv-cell" : "hv-cell hv-e-in"} style=${at}
                   d=${CELL} fill="none" stroke="currentColor" stroke-width="1"
-                  vector-effect="non-scaling-stroke" opacity="0.14" />`;
+                  vector-effect="non-scaling-stroke" opacity="0.2" />`;
               }
               // AREA carries the percentage, so the mark is proportional to the number beside it rather
               // than to its square root — the commonest way a "bigger means more" graphic lies.

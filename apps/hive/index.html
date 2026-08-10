@@ -36,7 +36,7 @@
        property. SVG transform-origin is browser-divergent unless pinned, so every transformed group pins
        transform-box + origin explicitly. Under the gate the view omits the entrance classes, so shots are
        deterministic; prefers-reduced-motion switches the whole system off. */
-    .hv-scale{transform-box:view-box;transform-origin:50% 50%;transition:transform .7s cubic-bezier(.22,1,.36,1)}
+    .hv-scale{transform-box:view-box;transform-origin:0 0;transition:transform .7s cubic-bezier(.22,1,.36,1)}
     .hv-cell{transition:transform .62s cubic-bezier(.22,1,.36,1)}
     .hv-fill{transform-box:fill-box;transform-origin:center;transition:transform .5s cubic-bezier(.34,1.4,.64,1)}
     .hv-in{transform-box:fill-box;transform-origin:center;animation:hvBloom .45s cubic-bezier(.22,1,.36,1) backwards}

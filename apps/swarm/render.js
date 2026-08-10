@@ -8,6 +8,7 @@ import { S, decodeEntry, project, angRadiusT, wrapT, radarPoint } from "/_rt/swa
 
 const INK = "rgba(10,10,14,0.6)";           // the halo every mark wears over unknown video
 const PAPER = "rgba(245,245,250,0.92)";
+const EDGE = "rgba(240,240,246,0.85)";      // the light rim that keeps a dark body alive on dark video
 
 /* far first, so a near wasp overdraws a distant one */
 function sorted(dl, n) {
@@ -21,10 +22,13 @@ function wasp(ctx, e, x, y, r, accent, frame) {
   ctx.save();
   ctx.translate(x, y);
   ctx.lineJoin = "round";
-  if (r < 6) {                                          // a distant speck: dot + ring, readable at 3px
+  if (r < 6) {                                          // a distant speck: dot + light ring, readable at 3px
+    const sr = Math.max(1.6, r * 0.6);
+    ctx.strokeStyle = INK; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.arc(0, 0, sr, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = e.flash ? PAPER : accent;
-    ctx.strokeStyle = INK; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(0, 0, Math.max(1.6, r * 0.6), 0, Math.PI * 2); ctx.stroke(); ctx.fill();
+    ctx.strokeStyle = EDGE; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(0, 0, sr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.restore();
     return;
   }
@@ -35,7 +39,13 @@ function wasp(ctx, e, x, y, r, accent, frame) {
   ctx.moveTo(-r * 0.2, -r * 0.15); ctx.quadraticCurveTo(-r * 1.1, -r * (0.9 + flap * 0.3), -r * 1.4, -r * 0.2 * flap);
   ctx.moveTo(r * 0.2, -r * 0.15); ctx.quadraticCurveTo(r * 1.1, -r * (0.9 + flap * 0.3), r * 1.4, -r * 0.2 * flap);
   ctx.stroke();
-  const body = (path) => { ctx.strokeStyle = INK; ctx.lineWidth = Math.max(2, r * 0.22); path(); ctx.stroke(); path(); ctx.fill(); };
+  // double outline: a dark halo for light video, a light rim for dark video — the same body
+  // reads on both, which a single stroke provably does not (the first shot lost it to a dark room)
+  const body = (path) => {
+    ctx.strokeStyle = INK; ctx.lineWidth = Math.max(3, r * 0.34); path(); ctx.stroke();
+    path(); ctx.fill();
+    ctx.strokeStyle = EDGE; ctx.lineWidth = Math.max(1.2, r * 0.12); path(); ctx.stroke();
+  };
   ctx.fillStyle = e.flash ? PAPER : "#1b1b21";
   if (e.kind === 2) {                                   // tank: a broad hexagon, double-ringed
     body(() => { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + frame * 0.01; ctx[i ? "lineTo" : "moveTo"](Math.cos(a) * r, Math.sin(a) * r * 0.85); } ctx.closePath(); });
@@ -78,7 +88,7 @@ function radar(ctx, entries, headingT, x, y, R, accent) {
   ctx.translate(x, y);
   ctx.fillStyle = "rgba(8,8,12,0.62)";
   ctx.beginPath(); ctx.arc(0, 0, R + 6, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(255,255,255,0.34)"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.arc(0, 0, R * 0.5, 0, Math.PI * 2); ctx.stroke();
   // the FOV wedge: what the screen currently sees, up = ahead

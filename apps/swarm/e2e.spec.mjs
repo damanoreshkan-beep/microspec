@@ -25,21 +25,23 @@ export default [
     },
   },
   {
-    name: "тригер: тап по кнопці вогню реєструє постріл",
+    name: "тригер: тап по кнопці вогню реєструє РУЧНИЙ постріл",
     async run(h) {
-      const before = await num(h, "shots");
+      // data-mshots, not data-shots: the attract bot fires on its own in the gate, so the
+      // engine's total would pass this test with the trigger unplugged
+      const before = await num(h, "mshots");
       await h.tap("[data-fire]");
-      h.expect(await until(h, async () => (await num(h, "shots")) > before, 4000), "a tap on the trigger fired nothing");
+      h.expect(await until(h, async () => (await num(h, "mshots")) > before, 4000), "a tap on the trigger fired nothing");
     },
   },
   {
     name: "клавіатура: пробіл стріляє",
     async run(h) {
-      const before = await num(h, "shots");
-      // held past a full trigger cooldown (16 frames ≈ 267ms): the previous test just fired,
-      // so a short hold can fall entirely inside the recharge and prove nothing
+      const before = await num(h, "mshots");
+      // held past a full trigger cooldown (16 frames ≈ 267ms): a recent shot's recharge can
+      // otherwise swallow a short hold whole
       await h.key("Space", 600);
-      h.expect(await until(h, async () => (await num(h, "shots")) > before, 4000), "Space fired nothing");
+      h.expect(await until(h, async () => (await num(h, "mshots")) > before, 4000), "Space fired nothing");
     },
   },
   {

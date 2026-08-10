@@ -36,7 +36,9 @@ export default [
     name: "клавіатура: пробіл стріляє",
     async run(h) {
       const before = await num(h, "shots");
-      await h.key("Space", 350);
+      // held past a full trigger cooldown (16 frames ≈ 267ms): the previous test just fired,
+      // so a short hold can fall entirely inside the recharge and prove nothing
+      await h.key("Space", 600);
       h.expect(await until(h, async () => (await num(h, "shots")) > before, 4000), "Space fired nothing");
     },
   },

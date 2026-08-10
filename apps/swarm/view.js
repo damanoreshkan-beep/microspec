@@ -65,7 +65,7 @@ export function swarm(props) {
   const waveEl = useRef(null), scoreEl = useRef(null), comboEl = useRef(null), hearts = useRef(null);
   const eng = useRef(null), sound = useRef(null);
   const seed = useRef(gate ? GATE_SEED : (Math.random() * 0xffffffff) >>> 0);
-  const headingT = useRef(2100), pitchT = useRef(0), dragT = useRef(0), fire = useRef(0);
+  const headingT = useRef(2100), pitchT = useRef(0), dragT = useRef(0), fire = useRef(0), pulse = useRef(0);
   const fell = useRef(null), restartRef = useRef(null);
 
   const arm = useCallback(() => { sound.current?.arm(); }, []);
@@ -177,7 +177,11 @@ export function swarm(props) {
           if (st[S.NAZ] >= 0) dragT.current += wrapT(st[S.NAZ] - h) * 0.06;
           h = (((headingT.current + dragT.current) % 3600) + 3600) % 3600;
         }
-        E.step(packInput(h, Math.round(pitchT.current / 10), fire.current));
+        // a held trigger OR a queued one-shot (keyboard-activated click); the pulse burns down
+        // per STEP, never by wall-clock — a timeout here once zeroed the flag a held key owned
+        const f = fire.current || pulse.current > 0;
+        if (pulse.current > 0) pulse.current--;
+        E.step(packInput(h, Math.round(pitchT.current / 10), f));
         const sfx = E.state()[S.SFX];
         if (sfx) {
           sound.current?.play(sfx);
@@ -292,7 +296,7 @@ export function swarm(props) {
           onPointerDown=${() => { fire.current = 1; arm(); }}
           onPointerUp=${() => { fire.current = 0; }}
           onPointerLeave=${() => { fire.current = 0; }}
-          onClick=${() => { /* a keyboard "click" fires once */ const E = eng.current; if (E) { fire.current = 1; setTimeout(() => { fire.current = 0; }, 40); } }}>
+          onClick=${() => { pulse.current = 3; }}>
           <span class="w-9 h-9 rounded-full border-2 border-[var(--app-accent)] grid place-items-center">
             <span class="w-3 h-3 rounded-full bg-[var(--app-accent)]"></span>
           </span>

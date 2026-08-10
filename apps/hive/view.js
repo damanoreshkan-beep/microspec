@@ -67,6 +67,9 @@ function loadOui() {
 let rose = newRose(72);
 let stopScan = null, radioTimer = null, ageTimer = null, stopCompass = null, stopGeo = null, lock = null;
 let heading = 0;
+// The dial is heading-up (the world rotates, the needle says where to turn), so the heading must reach
+// the render — rounded to whole degrees, or the 60 Hz orientation stream re-renders the tab per frame.
+const $heading = atom(0);
 
 // The gate has no radio, so seed a field wide enough to exercise every branch AND every radio: a DULT
 // accessory advertising SEPARATED (the only spec-grade tracker evidence there is), an Apple device that
@@ -169,7 +172,11 @@ function startScan() {
   sweepRadios();
   radioTimer = setInterval(sweepRadios, RADIO_MS);
   ageTimer = setInterval(() => $now.set(Date.now()), 1000);
-  stopCompass = compass.start((deg) => { heading = deg; });
+  stopCompass = compass.start((deg) => {
+    heading = deg;
+    const h = Math.round(deg) % 360;
+    if (h !== $heading.get()) $heading.set(h);
+  });
   stopGeo = geo.watch((p) => $fix.set({ lat: p.lat, lon: p.lng, acc: p.accuracy }), () => {});
 }
 
@@ -254,6 +261,23 @@ const hexPath = (cx, cy, r) =>
 // the .hv-* block), so a rank change is a glide and a signal change is a swell — never an attribute jump.
 const CELL = hexPath(0, 0, HEX * 0.92);
 
+// The farm's material, drawn into the instrument itself: a cell is the page EXTRUDED (occupied) or
+// RECESSED (empty), so the comb reads as one pressed surface rather than a wireframe. The lit edge is
+// DRAWN, never inherited (the brick lesson): the three upper edges take one token of the --nm pair and
+// the three lower edges take the other, and swapping the pair flips raised into inset. The tokens invert
+// with the theme for free.
+const chain = (r, idx) =>
+  idx.map((ci, j) => `${j ? "L" : "M"}${(Math.cos(CORNERS[ci]) * r).toFixed(2)} ${(Math.sin(CORNERS[ci]) * r).toFixed(2)}`).join("");
+const CELL_UP = chain(HEX * 0.92, [2, 3, 4, 5]);      // left → top-left → top-right edges
+const CELL_DOWN = chain(HEX * 0.92, [5, 0, 1, 2]);    // right → bottom-right → bottom-left edges
+function Bevel({ raised }) {
+  return html`
+    <path d=${CELL_UP} style=${`stroke:var(${raised ? "--nm-light" : "--nm-dark"})`} fill="none"
+      stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" />
+    <path d=${CELL_DOWN} style=${`stroke:var(${raised ? "--nm-dark" : "--nm-light"})`} fill="none"
+      stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" />`;
+}
+
 export function hiveView({ S, t }) {
   const field = useField(S);
   const scanning = useStore($scanning);
@@ -302,9 +326,9 @@ export function hiveView({ S, t }) {
               const at = `transform:translate(${(x - cx).toFixed(2)}px,${(y - cy).toFixed(2)}px)`;
               const d = field[i];
               if (!d) {
-                return html`<path key=${`e${i}`} class=${gate ? "hv-cell" : "hv-cell hv-e-in"} style=${at}
-                  d=${CELL} fill="none" stroke="currentColor" stroke-width="1"
-                  vector-effect="non-scaling-stroke" opacity="0.2" />`;
+                return html`<g key=${`e${i}`} class=${gate ? "hv-cell" : "hv-cell hv-e-in"} style=${at}>
+                  <${Bevel} raised=${false} />
+                </g>`;
               }
               // AREA carries the percentage, so the mark is proportional to the number beside it rather
               // than to its square root — the commonest way a "bigger means more" graphic lies.
@@ -313,8 +337,7 @@ export function hiveView({ S, t }) {
               const solid = d.kind === "lte" ? 0.5 : d.kind === "wifi" ? 0.45 : 0.55;
               return html`<g key=${d.addr} data-cell=${d.addr} data-kind=${d.kind} class=${`hv-cell ${tone}`} style=${at}>
                 <g class=${gate ? "" : "hv-in"} style=${gate ? "" : `animation-delay:${Math.min(i, 20) * 24}ms`}>
-                  <path d=${CELL} fill="none" stroke="currentColor" stroke-width="1"
-                    vector-effect="non-scaling-stroke" opacity="0.3" />
+                  <${Bevel} raised=${true} />
                   <g class="hv-fill" style=${`transform:scale(${k.toFixed(3)})`}>
                     <path d=${CELL} fill=${d.kind === "lte" ? "url(#hvHatch)" : "currentColor"} fill-opacity=${solid} />
                   </g>
@@ -427,7 +450,16 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
   // The needle animates by rotating a group, and the reading is unwrapped to the nearest equivalent
   // angle so the transition always takes the short arc — 359° → 1° must never spin the long way round.
   const angRef = useRef(0);
-  if (locked) angRef.current = unwrapDeg(angRef.current, stats.bearingDeg);
+  if (stats.bearingDeg !== null) angRef.current = unwrapDeg(angRef.current, stats.bearingDeg);
+  const hdg = useStore($heading);
+
+  // The arrow exists from the FIRST sample — provisional (dashed, half-lit, inside a wide uncertainty
+  // wedge) until df.js's gates are earned, then solid. The wedge IS the honesty: its span is the
+  // concentration the sweep has actually achieved, so a guess and a bearing can never look alike.
+  const spread = Math.max(12, Math.min(80, 90 * (1 - stats.r)));
+  const wx = (a, r) => (50 + r * Math.sin((a * Math.PI) / 180)).toFixed(2);
+  const wy = (a, r) => (50 - r * Math.cos((a * Math.PI) / 180)).toFixed(2);
+  const wedge = `M50 50 L${wx(-spread, 40)} ${wy(-spread, 40)} A40 40 0 0 1 ${wx(spread, 40)} ${wy(spread, 40)} Z`;
 
   // The same in-flow island + .ms-side structure as the comb, for the same overlap reason.
   return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] ms-side">
@@ -437,27 +469,38 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
           aria-label=${T(t, locked ? "aLobe" : "aCircle")}>
           <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.18" />
           <circle cx="50" cy="50" r="12" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.18" />
-          ${/* A compass rose before it is a measurement: without ticks an unswept screen is two bare
-               circles, which reads as a draw failure rather than an instrument waiting. */
-            Array.from({ length: 36 }, (_, i) => {
-              const a = (i * 10 * Math.PI) / 180 - Math.PI / 2;
-              const major = i % 9 === 0;
-              const r0 = major ? 36 : 39.5;
-              return html`<line key=${i} x1=${(50 + Math.cos(a) * r0).toFixed(2)} y1=${(50 + Math.sin(a) * r0).toFixed(2)}
-                x2=${(50 + Math.cos(a) * 42).toFixed(2)} y2=${(50 + Math.sin(a) * 42).toFixed(2)}
-                stroke="currentColor" stroke-width=${major ? 0.7 : 0.35} opacity=${major ? 0.45 : 0.2}
-                class=${i === 0 ? "text-[var(--app-accent)]" : ""} />`;
-            })}
-          ${/* The petal morphs: CSS can transition `d` when the point count is fixed, and ours is always
-               72 + Z, so every new sample reshapes the lobe instead of redrawing it. The attribute stays
-               as the fallback; the style wins where transitions exist. */""}
-          ${max > 0 ? html`<path data-petal d=${dPath} style=${`d:path('${dPath}')`}
-            fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="0.7"
-            class=${`hv-petal text-[var(--app-accent)] ${gate ? "" : "hv-e-in"}`} />` : null}
-          ${locked ? html`<g data-bearing class=${`hv-rose text-[var(--app-accent)] ${gate ? "" : "hv-e-in"}`}
-            style=${`transform:rotate(${angRef.current.toFixed(1)}deg)`}>
-            <line x1="50" y1="50" x2="50" y2="6" stroke="currentColor" stroke-width="1.2" />
-          </g>` : null}
+          ${/* The lubber line — the phone's own forward direction, fixed to the glass. The dial under it
+               is heading-up: the WORLD rotates, so walking the arrow onto the lubber walks you onto the
+               strongest observed direction. */""}
+          <path d="M47.4 2.6 L52.6 2.6 L50 7.6 Z" fill="currentColor" opacity="0.65" />
+          <g class="hv-dial" style=${`transform:rotate(${-hdg}deg)`}>
+            ${/* A compass rose before it is a measurement: without ticks an unswept screen is two bare
+                 circles, which reads as a draw failure rather than an instrument waiting. The accent tick
+                 is true north, and it moves because the world does. */
+              Array.from({ length: 36 }, (_, i) => {
+                const a = (i * 10 * Math.PI) / 180 - Math.PI / 2;
+                const major = i % 9 === 0;
+                const r0 = major ? 36 : 39.5;
+                return html`<line key=${i} x1=${(50 + Math.cos(a) * r0).toFixed(2)} y1=${(50 + Math.sin(a) * r0).toFixed(2)}
+                  x2=${(50 + Math.cos(a) * 42).toFixed(2)} y2=${(50 + Math.sin(a) * 42).toFixed(2)}
+                  stroke="currentColor" stroke-width=${major ? 0.7 : 0.35} opacity=${major ? 0.45 : 0.2}
+                  class=${i === 0 ? "text-[var(--app-accent)]" : ""} />`;
+              })}
+            ${/* The petal morphs: CSS can transition `d` when the point count is fixed, and ours is always
+                 72 + Z, so every new sample reshapes the lobe instead of redrawing it. The attribute stays
+                 as the fallback; the style wins where transitions exist. */""}
+            ${max > 0 ? html`<path data-petal d=${dPath} style=${`d:path('${dPath}')`}
+              fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="0.7"
+              class=${`hv-petal text-[var(--app-accent)] ${gate ? "" : "hv-e-in"}`} />` : null}
+            ${stats.bearingDeg !== null ? html`<g data-bearing
+              class=${`hv-rose text-[var(--app-accent)] ${gate ? "" : "hv-e-in"}`}
+              style=${`transform:rotate(${angRef.current.toFixed(1)}deg)`} opacity=${locked ? 1 : 0.55}>
+              <path class="hv-petal" d=${wedge} style=${`d:path('${wedge}')`} fill="currentColor" fill-opacity="0.1" />
+              <line x1="50" y1="50" x2="50" y2="10" stroke="currentColor" stroke-width=${locked ? 1.4 : 0.9}
+                stroke-dasharray=${locked ? "none" : "2.5 2"} stroke-linecap="round" />
+              <path d="M50 5.5 L46.6 13 L53.4 13 Z" fill="currentColor" />
+            </g>` : null}
+          </g>
         </svg>
       </div>
     <//>

@@ -335,3 +335,19 @@ whole system off, and under the gate the entrance classes are omitted so shots s
   device; the target is a steady accent ring.
 - **Entrance:** cells bloom (opacity+scale, 450 ms, 24 ms stagger capped at 20 cells); keyframes declare
   only `from`, so they land on the element's own computed values and cannot fight inline transforms.
+
+### The 2026-08-10 owner pass — reimagined, still honest
+
+- **The comb is the farm's material now, not a wireframe.** Each cell carries a drawn bevel: the three
+  upper edges take one token of the `--nm` pair, the three lower the other — occupied cells are the page
+  extruded, empty comb is recessed. The lit edge is DRAWN, never inherited (the brick lesson), and the
+  tokens flip with the theme for free.
+- **Hunt is a heading-up compass.** The dial (ticks, petal, needle) rotates by −heading with NO easing
+  (the magnetometer is already smooth; easing makes the world lag the hand); a fixed lubber mark shows the
+  phone's forward direction, so "walk the arrow onto the lubber" is the whole instruction. North is the
+  accent tick and it moves because the world does.
+- **The arrow exists from the first sample — as a PROVISIONAL reading.** df.js's thresholds are untouched;
+  what changed is the rendering of the state below them: a dashed, half-opacity needle inside an
+  uncertainty wedge whose span is `90°·(1−r)` (clamped 12–80°). The wedge is the honesty — a guess and an
+  earned bearing can never look alike, and the arrow the owner asked for appears the moment a target is
+  picked and heard.

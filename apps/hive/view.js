@@ -219,7 +219,7 @@ export function hiveView({ S, t }) {
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
   const s = 200 / Math.max(maxX - minX, maxY - minY);
 
-  return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
+  return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] ms-side">
     <${Stage}>
       <div class="absolute inset-0 flex items-center justify-center p-1">
         <svg data-mark viewBox="0 0 200 200"
@@ -270,13 +270,15 @@ export function hiveView({ S, t }) {
         </span>
       </div>
     <//>
-    <${Island} pinned className="w-full max-w-md">
-      <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
-        <${ScanButton} t=${t} />
-        <${Legend} t=${t} field=${field} />
-      </div>
-      <${Reason} t=${t} />
-    <//>
+    <div class="ms-side-main flex flex-col justify-end items-center pb-[var(--ms-gap)]">
+      <${Island} className="w-full max-w-md">
+        <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
+          <${ScanButton} t=${t} />
+          <${Legend} t=${t} field=${field} />
+        </div>
+        <${Reason} t=${t} />
+      <//>
+    </div>
   </div>`;
 }
 
@@ -355,7 +357,8 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
   const angRef = useRef(0);
   if (locked) angRef.current = unwrapDeg(angRef.current, stats.bearingDeg);
 
-  return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)]">
+  
+  return html`<div class="h-full min-h-0 flex flex-col gap-[var(--ms-gap)] ms-side">
     <${Stage}>
       <div class="absolute inset-0 flex items-center justify-center">
         <svg viewBox="0 0 100 100" class="w-full h-full max-h-full text-base-content" role="img"
@@ -382,25 +385,26 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
         </svg>
       </div>
     <//>
-    <${Island} pinned className="w-full max-w-md">
-      <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
-        <${ScanButton} t=${t} />
-        <button data-pick class="btn btn-sm btn-ghost gap-2 min-w-0 flex-1 justify-start" onClick=${() => openScreen("pick")}>
-          ${Icon("lucide:crosshair")}<span class="truncate">${dev ? labelOf(dev, t) : T(t, "pickTarget")}</span>
-        </button>
-      </div>
-      
-      <div data-live class="font-mono uppercase tracking-wide text-[var(--ms-label)]">
-        <div class="text-base-content truncate">${locked
-          ? T(t, "strongestAt").replace("{deg}", Math.round(stats.bearingDeg))
-          : T(t, "coverage").replace("{pct}", Math.round(stats.coverage * 100))}${
-            stats.coverage < BEARING_MIN_COVERAGE && stats.samples > 0 ? " · " + T(t, "keepSweeping") : ""}</div>
-        <div class="text-base-content/70 truncate">
-          ${T(t, "concentration")} ${stats.r.toFixed(2)} · ${T(t, "samples")} ${stats.samples}
+    <div class="ms-side-main flex flex-col justify-end items-center pb-[var(--ms-gap)]">
+      <${Island} className="w-full max-w-md">
+        <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
+          <${ScanButton} t=${t} />
+          <button data-pick class="btn btn-sm btn-ghost gap-2 min-w-0 flex-1 justify-start" onClick=${() => openScreen("pick")}>
+            ${Icon("lucide:crosshair")}<span class="truncate">${dev ? labelOf(dev, t) : T(t, "pickTarget")}</span>
+          </button>
         </div>
-      </div>
-    <//>
-
+        
+        <div data-live class="font-mono uppercase tracking-wide text-[var(--ms-label)]">
+          <div class="text-base-content truncate">${locked
+            ? T(t, "strongestAt").replace("{deg}", Math.round(stats.bearingDeg))
+            : T(t, "coverage").replace("{pct}", Math.round(stats.coverage * 100))}${
+              stats.coverage < BEARING_MIN_COVERAGE && stats.samples > 0 ? " · " + T(t, "keepSweeping") : ""}</div>
+          <div class="text-base-content/70 truncate">
+            ${T(t, "concentration")} ${stats.r.toFixed(2)} · ${T(t, "samples")} ${stats.samples}
+          </div>
+        </div>
+      <//>
+    </div>
     <${Sheet} id="pick" open=${screen === "pick"} onClose=${closeScreen} title=${T(t, "pickTarget")} icon="lucide:crosshair">
       <div class="flex flex-col gap-1">
         ${field.filter((d) => d.kind === "ble").map((d) => html`<button key=${d.addr} data-pick-dev=${d.addr}

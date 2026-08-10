@@ -272,7 +272,8 @@ export function hiveView({ S, t }) {
     <//>
     <div class="ms-side-main flex flex-col justify-end items-center pb-[var(--ms-gap)]">
       <${Island} className="w-full max-w-md">
-        <div class="flex items-center gap-[var(--ms-gap)] min-w-0">
+        
+        <div class="flex flex-wrap items-center gap-[var(--ms-gap)] min-w-0">
           <${ScanButton} t=${t} />
           <${Legend} t=${t} field=${field} />
         </div>
@@ -328,7 +329,6 @@ export function listView({ S, t }) {
     <//>
   </div>`;
 }
-
 
 
 
@@ -405,6 +405,7 @@ export function huntView({ S, t, screen, openScreen, closeScreen }) {
         </div>
       <//>
     </div>
+
     <${Sheet} id="pick" open=${screen === "pick"} onClose=${closeScreen} title=${T(t, "pickTarget")} icon="lucide:crosshair">
       <div class="flex flex-col gap-1">
         ${field.filter((d) => d.kind === "ble").map((d) => html`<button key=${d.addr} data-pick-dev=${d.addr}

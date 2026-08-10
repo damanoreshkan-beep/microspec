@@ -7,13 +7,15 @@
 
 import { SCRW, SCRH, WORLD, S, SFX } from "/_rt/hunt.js";
 import { renderFrame, glyphRects } from "./render.js";
-import { FULL, TRANSPARENT } from "./atlas.js";
+import { FULL, TRANSPARENT, WORLD_INDEX } from "./atlas.js";
 import { createEngine } from "/_rt/audio.js";
 
 export const WASM_URL = new URL("./assets/hunt.wasm", import.meta.url).href;
 export const GATE_SEED = 0xA17C;
 
 const rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+/* Mutable on purpose: the WORLD half of the palette is a function of distance now (worldAt),
+   and setWorld() rewrites those entries in place. The character half never changes. */
 const PAL = FULL.map(rgb);
 
 export async function loadEngine(url = WASM_URL) {
@@ -35,7 +37,10 @@ export async function loadEngine(url = WASM_URL) {
    Cells are baked once into their own canvases: a frame is a hundred drawImage calls rather than
    a hundred thousand per-pixel writes, and flipped variants are baked too because a per-sprite
    ctx.scale(-1,1) costs a state change on every draw. */
-function bake(cell, flip) {
+/* `rim` lights the pixels whose upper or left neighbour is transparent — the silhouette edges
+   that face the farm's 45° lamp — mixed toward the phase's rim colour. It is how the huntress
+   stays the densest mark on the plate at every hour without repainting her art. */
+function bake(cell, flip, rim) {
   const c = document.createElement("canvas");
   c.width = Math.max(1, cell.w); c.height = Math.max(1, cell.h);
   if (!cell.w) return c;
@@ -44,11 +49,18 @@ function bake(cell, flip) {
   // The browser-free preflight mounts this against a stub canvas that answers to the method names
   // and returns nothing useful. Baking is an optimisation, not the app.
   if (!img?.data || !g.putImageData) return c;
+  const R = rim ? rgb(rim.hex) : null;
+  const src = (x, y) => (x < 0 || y < 0 || x >= cell.w || y >= cell.h)
+    ? TRANSPARENT : cell.px[y * cell.w + (flip ? cell.w - 1 - x : x)];
   for (let y = 0; y < cell.h; y++)
     for (let x = 0; x < cell.w; x++) {
-      const v = cell.px[y * cell.w + (flip ? cell.w - 1 - x : x)];
+      const v = src(x, y);
       if (v === TRANSPARENT) continue;
-      const p = PAL[v] || [255, 0, 255];
+      let p = PAL[v] || [255, 0, 255];
+      if (R && (src(x, y - 1) === TRANSPARENT || src(x - 1, y) === TRANSPARENT)) {
+        const a = rim.a;
+        p = [p[0] + (R[0] - p[0]) * a, p[1] + (R[1] - p[1]) * a, p[2] + (R[2] - p[2]) * a];
+      }
       const o = (y * cell.w + x) * 4;
       img.data[o] = p[0]; img.data[o + 1] = p[1]; img.data[o + 2] = p[2]; img.data[o + 3] = 255;
     }
@@ -57,35 +69,53 @@ function bake(cell, flip) {
 }
 
 export function canvasPainter(ctx) {
-  const cache = new Map();
-  const baked = (cell, flip) => {
+  /* The whole cache dies when the palette generation changes: the day advances in 6-column
+     steps, so a generation lives ~2.5s of running and a rebake is a couple dozen small cells. */
+  let cache = new Map(), gen = null;
+  const baked = (cell, flip, rim) => {
     let m = cache.get(cell);
     if (!m) { m = new Map(); cache.set(cell, m); }
-    const k = flip ? 1 : 0;
+    const k = (flip ? 1 : 0) + (rim ? `|${rim.hex}${rim.a}` : "");
     let c = m.get(k);
-    if (!c) { c = bake(cell, flip); m.set(k, c); }
+    if (!c) { c = bake(cell, flip, rim); m.set(k, c); }
     return c;
   };
-  let sky = null;
-  const grad = ctx.createLinearGradient?.(0, 0, 0, SCRH);
-  if (grad?.addColorStop) { grad.addColorStop(0, WORLD.sky[0]); grad.addColorStop(1, WORLD.sky[1]); sky = grad; }
+  let sky = null, skyKey = "";
 
   return {
-    sky() { ctx.fillStyle = sky || WORLD.sky[1]; ctx.fillRect(0, 0, SCRW, SCRH); },
-    rect(x, y, w, h, idx) {
+    setWorld(colors, genKey) {
+      if (genKey === gen) return;
+      gen = genKey;
+      for (const [k, idx] of Object.entries(WORLD_INDEX)) if (colors[k]) PAL[idx] = rgb(colors[k]);
+      cache = new Map();
+    },
+    sky(top = WORLD.sky[0], bot = WORLD.sky[1]) {
+      const key = top + bot;
+      if (key !== skyKey) {
+        skyKey = key;
+        const grad = ctx.createLinearGradient?.(0, 0, 0, SCRH);
+        if (grad?.addColorStop) { grad.addColorStop(0, top); grad.addColorStop(1, bot); sky = grad; }
+        else sky = bot;
+      }
+      ctx.fillStyle = sky || bot;
+      ctx.fillRect(0, 0, SCRW, SCRH);
+    },
+    rect(x, y, w, h, idx, alpha = 1) {
       const p = PAL[idx] || [255, 0, 255];
+      if (alpha !== 1) ctx.globalAlpha = alpha;
       ctx.fillStyle = `rgb(${p[0]},${p[1]},${p[2]})`;
       ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
+      if (alpha !== 1) ctx.globalAlpha = 1;
     },
     shadow(x, y, w, h, alpha) {
       ctx.globalAlpha = alpha; ctx.fillStyle = "#000";
       ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
       ctx.globalAlpha = 1;
     },
-    cell(cell, ox, oy, { flip = false, alpha = 1 } = {}) {
+    cell(cell, ox, oy, { flip = false, alpha = 1, rim = null } = {}) {
       if (!cell.w) return;
       if (alpha !== 1) ctx.globalAlpha = alpha;
-      ctx.drawImage(baked(cell, flip), Math.round(ox), Math.round(oy));
+      ctx.drawImage(baked(cell, flip, rim), Math.round(ox), Math.round(oy));
       if (alpha !== 1) ctx.globalAlpha = 1;
     },
     glyph(ch, ox, oy) {

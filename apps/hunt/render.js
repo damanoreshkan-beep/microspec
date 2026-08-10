@@ -9,7 +9,7 @@
 // light — the rim, the extrusion, the contour, and the ground shadow as a 45° projection.
 
 import {
-  SCRW, SCRH, TILE, ROWS, LAYERS, shadowFor, parallaxX,
+  SCRW, SCRH, TILE, ROWS, LAYERS, shadowFor, parallaxX, worldAt,
   T, K, S, POSE, ANIM, animFrame, decodeEntry,
 } from "/_rt/hunt.js";
 import { tileCell, frameCell, spearCell, anim, WORLD_INDEX as W } from "./atlas.js";
@@ -134,8 +134,8 @@ function pitTops(crust, horizon) {
 
 const colOf = (x) => Math.round(x / TILE) + 1;
 
-function backdrop(p, camx, crust) {
-  p.sky();
+function backdrop(p, camx, crust, world, frameNo) {
+  p.sky(world.sky[0], world.sky[1]);
   const horizon = ROWS * TILE - TILE * 3;
   /* Two pixels under the crust line, and no further. The terrain is not flat (it runs y=120..216),
      and the obvious fix — drop the base a whole row so a dip cannot expose sky — buries the near
@@ -145,41 +145,78 @@ function backdrop(p, camx, crust) {
 
   /* Stars do not parallax AT ALL. That is not a shortcut — zero is the physically true speed for
      something at infinity, and it is the cue that separates sky from land before any silhouette
-     does. Held below the HUD row so a readout never sits in a star field. */
-  for (let i = 0; i < 54; i++) {
-    const s = hash(i * 2711 + 17);
-    p.rect(s % SCRW, 30 + ((s >>> 9) % 92), 1, 1, (s >>> 20) % 6 ? W.star : W.moon);
+     does. Held below the HUD row so a readout never sits in a star field. They FADE with the day
+     (alpha, not colour): at noon the loop is skipped outright. */
+  if (world.stars > 0.03) {
+    for (let i = 0; i < 54; i++) {
+      const s = hash(i * 2711 + 17);
+      p.rect(s % SCRW, 30 + ((s >>> 9) % 92), 1, 1, (s >>> 20) % 6 ? W.star : W.moon, world.stars);
+    }
   }
-  /* The moon, and it is where the light comes FROM: every surface in this game (and in the page
-     around it) is lit from the upper left at 45°, so the source belongs in the upper left of the
-     frame rather than wherever it looked prettiest.
 
-     Its terminator is SHADED FROM THE NORMAL rather than drawn. The two cuts before this both
-     placed the boundary with a straight line (`cut = 7 - dy`), and a straight terminator is a
-     CHORD — it reads as a bite taken out of a disc, which is exactly how it kept photographing:
-     the brightest object in the frame and the worst-drawn one. A real terminator is the
-     projection of a great circle onto the disc, so it curves, and the honest way to get that
-     curve at 16px is not to derive its ellipse but to ask each pixel which way it faces and let
-     the shape fall out. Three tones, because a sphere with one boundary is a pac-man and the limb
-     needs somewhere to go. Runs per row rather than per pixel: same result, a third of the calls. */
+  /* The orb — sun or moon by phase, still in the upper left because that is where the farm's 45°
+     lamp lives; it slides along a shallow arc as the day turns.
+
+     The MOON's terminator is SHADED FROM THE NORMAL rather than drawn (a straight terminator is a
+     chord — a bite out of a disc; the honest curve at 16px is asking each pixel which way it
+     faces). The SUN is not a Lambert sphere — it is a light source, so it gets a bright core, a
+     rim one step down, and a halo the sky can breathe through. Runs per row, not per pixel. */
   {
-    const R = 8, cx = 88, cy = 46, K = Math.sqrt(1 / 3);       // the farm's 45° lamp, toward the viewer
-    for (let dy = -R; dy <= R; dy++) {
-      const hw = Math.floor(Math.sqrt(Math.max(0, R * R - dy * dy)));
-      let runFrom = -hw, runTone = null;
-      for (let dx = -hw; dx <= hw + 1; dx++) {
-        let tone = null;
-        if (dx <= hw) {
-          const nx = dx / R, ny = dy / R;
-          const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
-          const lam = (-nx - ny + nz) * K;                     // Lambert against (-1,-1,1)/√3
-          tone = lam > 0.66 ? W.moon : lam > 0.3 ? W.moonMid : W.moonDim;
-        }
-        if (tone !== runTone) {
-          if (runTone !== null) p.rect(cx + runFrom, cy + dy, dx - runFrom, 1, runTone);
-          runFrom = dx; runTone = tone;
+    const { x: cx, y: cy, r: R, kind, tones, alpha } = world.orb;
+    if (alpha > 0.05) {
+      if (kind === 1) {
+        for (const [hr, ha] of [[R + 6, 0.08], [R + 3, 0.14]]) {         // the halo, two soft steps
+          for (let dy = -hr; dy <= hr; dy++) {
+            const hw = Math.floor(Math.sqrt(Math.max(0, hr * hr - dy * dy)));
+            if (hw > 0) p.rect(cx - hw, cy + dy, hw * 2, 1, W.moonMid, ha * alpha);
+          }
         }
       }
+      const KL = Math.sqrt(1 / 3);
+      for (let dy = -R; dy <= R; dy++) {
+        const hw = Math.floor(Math.sqrt(Math.max(0, R * R - dy * dy)));
+        let runFrom = -hw, runTone = null;
+        for (let dx = -hw; dx <= hw + 1; dx++) {
+          let tone = null;
+          if (dx <= hw) {
+            if (kind === 1) {
+              const rr = Math.sqrt(dx * dx + dy * dy) / R;
+              tone = rr > 0.82 ? W.moonMid : W.moon;
+            } else {
+              const nx = dx / R, ny = dy / R;
+              const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+              const lam = (-nx - ny + nz) * KL;                 // Lambert against (-1,-1,1)/√3
+              tone = lam > 0.66 ? W.moon : lam > 0.3 ? W.moonMid : W.moonDim;
+            }
+          }
+          if (tone !== runTone) {
+            if (runTone !== null) p.rect(cx + runFrom, cy + dy, dx - runFrom, 1, runTone, alpha);
+            runFrom = dx; runTone = tone;
+          }
+        }
+      }
+    }
+  }
+
+  /* Clouds: flat-bottomed stacks of rows, nearly stationary (0.04) plus their own slow drift, so
+     a standing player still sees a live sky. Two tones from the phase — white at noon, embers at
+     the golden hour, a held breath at night. */
+  {
+    const coff = parallaxX(camx, 0.04) + (frameNo >> 3);
+    const period = 168;
+    const i0 = Math.floor((coff - period) / period), i1 = Math.ceil((coff + SCRW + period) / period);
+    for (let i = i0; i <= i1; i++) {
+      const s = hash(9000 + i * 131);
+      const cx = i * period + (s % period) - coff;
+      const cy = 34 + ((s >>> 7) % 44);
+      const cw = 34 + ((s >>> 13) % 30);
+      if (cx + cw < -10 || cx - cw > SCRW + 10) continue;
+      const rows = [[0.55, -3, W.cloudLit], [0.85, -2, W.cloudLit], [1, -1, W.cloud], [0.9, 0, W.cloud]];
+      for (const [f, dy, ink] of rows) {
+        const hw = Math.round(cw * f / 2);
+        p.rect(cx - hw, cy + dy, hw * 2, 1, ink, 0.9);
+      }
+      p.rect(cx - Math.round(cw * 0.3), cy - 4, Math.round(cw * 0.42), 1, W.cloudLit, 0.9);
     }
   }
 
@@ -304,8 +341,14 @@ export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
      twelve pixels is a character hovering above the ground. */
   const boxH = (kind) => (box ? box(kind).h : TILE);
   const camx = st[S.CAMX], frameNo = st[S.FRAME];
+  /* The hour comes from DISTANCE, quantised to 4 columns: the palette moves in steps small enough
+     to be invisible (unit-tested ≤16/255 per channel — dawn is the steepest hour) and rare enough
+     that a bake generation lives seconds. */
+  const qd = st[S.DIST] - (st[S.DIST] % 4);
+  const world = worldAt(qd);
+  p.setWorld?.(world.colors, qd);
   const floors = groundMap(dl, dln), crust = crustMap(dl, dln);
-  backdrop(p, camx, crust);
+  backdrop(p, camx, crust, world, frameNo);
 
   const sprites = [];
   for (let i = 0; i < dln; i++) {
@@ -338,7 +381,12 @@ export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
   for (const e of sprites) {
     if (e.kind === K.SPEAR) {
       /* The weapon is its own sprite, which is the whole reason a throw does not need its own body
-         pose — see the note on POSE in /_rt/hunt.js. */
+         pose — see the note on POSE in /_rt/hunt.js. The TRAIL is three fading dashes on the shaft
+         line behind the tip: motion drawn as light, cheaper and calmer than a smeared sprite. */
+      const back = e.flip ? 1 : -1;
+      for (let k = 1; k <= 3; k++) {
+        p.rect(e.x + (e.flip ? 12 : -4) + back * k * 7, e.y + 2, 4, 1, W.spearTip, 0.3 / k);
+      }
       p.cell(spearCell(e.frame - 2), e.x - 8, e.y - 4, { flip: e.flip });
       continue;
     }
@@ -357,7 +405,33 @@ export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
        frame, so the app's own screenshot — the one in the store, the one the taste pass judges —
        can come back with no character on screen at all. Fade instead of hide. */
     const blink = e.kind === K.PLAYER && st[S.INVULN] > 0 && (frameNo >> 2) % 2 ? 0.4 : 1;
-    p.cell(cell, ox, oy, { flip: e.flip, alpha: blink });
+    /* The rim is the focus fix this update exists for: the player's lamp-facing silhouette edges
+       take the phase's rim light, so she is the densest mark at midnight AND at noon (where rimA
+       is 0 because daylight contrast already does the job). Only the player — rim-lighting every
+       walker would promote the whole cast and demote her again. */
+    const rim = e.kind === K.PLAYER && world.rimA > 0.03 ? { hex: world.rim, a: world.rimA } : null;
+    p.cell(cell, ox, oy, { flip: e.flip, alpha: blink, rim });
+  }
+
+  /* Ambient particles, deterministic from (index, frameNo, camx) — no Math.random, so the offline
+     preview shows the same air the phone does. Fireflies wander near the play plane at dusk and
+     night; daylight gets slow-falling motes. Both are screen-space with a whisper of parallax. */
+  const flyN = Math.round(9 * world.fireflies);
+  for (let i = 0; i < flyN; i++) {
+    const s = hash(i * 517 + 29);
+    const px = (((s % SCRW) + Math.round(Math.sin(frameNo / 34 + i * 1.7) * 16) - (camx >> 3)) % SCRW + SCRW) % SCRW;
+    const py = 128 + ((s >>> 9) % 96) + Math.round(Math.sin(frameNo / 52 + i * 2.3) * 9);
+    const tw = 0.35 + 0.65 * Math.abs(Math.sin(frameNo / 22 + i * 2.9));
+    p.rect(px - 1, py, 3, 1, W.fly, 0.10 * tw);
+    p.rect(px, py - 1, 1, 3, W.fly, 0.10 * tw);
+    p.rect(px, py, 1, 1, W.fly, tw * world.fireflies);
+  }
+  const moteN = Math.round(7 * world.motes);
+  for (let i = 0; i < moteN; i++) {
+    const s = hash(i * 733 + 91);
+    const px = (((s % SCRW) + ((frameNo >> 2) % SCRW) * ((s >>> 5) & 1 ? 1 : -1) - (camx >> 2)) % SCRW + SCRW) % SCRW;
+    const py = (((s >>> 9) % SCRH) + (frameNo >> 3)) % SCRH;
+    p.rect(px, py, 1, 1, W.mote, 0.22 * world.motes);
   }
 
   if (hud) {
@@ -386,6 +460,18 @@ export function renderFrame(p, dl, dln, st, { hud = true, box = null } = {}) {
     const score = String(Math.max(0, Math.floor(st[S.SCORE] || 0)));
     let x = SCRW - 11 - (score.length - 1) * 8;
     for (const ch of score) { p.glyph(ch, x, 5); x += 8; }
+
+    /* Coins were counted by the simulation from day one and shown NOWHERE — the readout below the
+       score closes that. A struck 5px disc says what the number is a number OF. */
+    if (st[S.COINS] > 0) {
+      const coins = String(st[S.COINS]);
+      let cx = SCRW - 11 - (coins.length - 1) * 8;
+      p.rect(cx - 10, 16, 5, 5, W.gold);
+      p.rect(cx - 10, 16, 5, 1, W.goldLit);
+      p.rect(cx - 10, 16, 1, 3, W.goldLit);
+      p.rect(cx - 7, 20, 2, 1, W.goldDark);
+      for (const ch of coins) { p.glyph(ch, cx, 15); cx += 8; }
+    }
   }
 }
 

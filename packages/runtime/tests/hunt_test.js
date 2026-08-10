@@ -67,3 +67,79 @@ Deno.test("hunt engine · the collision box it reports IS the one it stands on",
   assert(ground >= 0, "she is not standing over any ground — the fixture moved");
   assertEquals(feet, ground, `feet at ${feet} against a surface at ${ground} — the box the renderer is given is not the box she rests on`);
 });
+
+// ── the day cycle (worldAt) — the palette is a FUNCTION now, so its laws are testable ─────
+import { WORLD, PHASES, CYCLE, worldAt, lerpHex } from "../hunt.js";
+
+const WORLD_KEYS = Object.keys(WORLD).filter((k) => typeof WORLD[k] === "string");
+const luma = (h) =>
+  0.2126 * parseInt(h.slice(1, 3), 16) + 0.7152 * parseInt(h.slice(3, 5), 16) + 0.0722 * parseInt(h.slice(5, 7), 16);
+
+Deno.test("hunt day · every keyframe carries the FULL world key set", () => {
+  // A key missing from one phase would lerp against undefined and flash the fallback mid-run —
+  // the failure would be a one-frame colour pop nobody can reproduce. Parity is the contract.
+  for (const ph of PHASES) {
+    const missing = WORLD_KEYS.filter((k) => !(k in ph.colors));
+    assertEquals(missing, [], `a keyframe at t=${ph.at} is missing: ${missing.join(", ")}`);
+    const extra = Object.keys(ph.colors).filter((k) => !WORLD_KEYS.includes(k));
+    assertEquals(extra, [], `a keyframe at t=${ph.at} carries unknown keys: ${extra.join(", ")}`);
+  }
+});
+
+Deno.test("hunt day · depth is a value: every band darker than the sky, stepping down as it nears", () => {
+  // The law the night palette documented in prose, now enforced for all five hours: a backdrop
+  // band brighter than the sky behind it reads as GLOWING, and two bands at one value collapse
+  // into one distance.
+  for (const ph of PHASES) {
+    const skyBot = luma(ph.sky[1]);
+    const bands = ["ridge", "canopyFar", "canopyMid", "canopy"].map((k) => luma(ph.colors[k]));
+    for (let i = 0; i < bands.length; i++) {
+      assert(bands[i] < skyBot, `t=${ph.at}: band ${i} (${bands[i].toFixed(0)}) is not darker than the horizon sky (${skyBot.toFixed(0)})`);
+      if (i > 0) assert(bands[i] < bands[i - 1] + 0.01, `t=${ph.at}: band ${i} does not step down from band ${i - 1}`);
+    }
+  }
+});
+
+Deno.test("hunt day · the hour turns without a visible seam", () => {
+  // 4 columns is the render quantum (mirrored in apps/hunt/render.js); a per-channel jump past
+  // ~16 between adjacent quanta is a palette POP on screen. Includes the wrap: a long run's
+  // second dawn must arrive smoothly.
+  const step = 4;
+  for (let d = 0; d <= CYCLE; d += step) {
+    const a = worldAt(d), b = worldAt(d + step);
+    for (const k of WORLD_KEYS) {
+      const A = a.colors[k], B = b.colors[k];
+      for (let c = 0; c < 3; c++) {
+        const dv = Math.abs(parseInt(A.slice(1 + c * 2, 3 + c * 2), 16) - parseInt(B.slice(1 + c * 2, 3 + c * 2), 16));
+        assert(dv <= 16, `${k} jumps ${dv} at dist ${d}→${d + step}`);
+      }
+    }
+  }
+  assertEquals(worldAt(CYCLE).colors.grass, worldAt(0).colors.grass, "the cycle does not close");
+});
+
+Deno.test("hunt day · the orb stays in the upper-left third and inside the frame", () => {
+  // The farm's lamp is upper-left at 45°; an orb wandering right of centre would light the world
+  // from a place no surface shading agrees with.
+  for (let d = 0; d < CYCLE; d += 12) {
+    const { orb } = worldAt(d);
+    assert(orb.x - orb.r >= 0 && orb.x + orb.r <= 192, `orb x=${orb.x} r=${orb.r} leaves the upper-left half at dist ${d}`);
+    assert(orb.y - orb.r >= 10 && orb.y + orb.r <= 132, `orb y=${orb.y} outside the sky band at dist ${d}`);
+    assert(orb.alpha >= 0 && orb.alpha <= 1, "orb alpha out of range");
+  }
+});
+
+Deno.test("hunt day · ambient factors stay in [0,1] and noon owns no stars", () => {
+  for (let d = 0; d < CYCLE; d += 10) {
+    const w = worldAt(d);
+    for (const f of [w.stars, w.fireflies, w.motes, w.rimA]) assert(f >= 0 && f <= 1, `factor ${f} out of range at ${d}`);
+  }
+  assert(worldAt(CYCLE * 0.3).stars < 0.02, "stars survive into midday");
+  assert(worldAt(CYCLE * 0.88).stars > 0.8, "night without stars");
+});
+
+Deno.test("hunt day · lerpHex is exact at the ends and midway", () => {
+  assertEquals(lerpHex("#000000", "#ffffff", 0), "#000000");
+  assertEquals(lerpHex("#000000", "#ffffff", 1), "#ffffff");
+  assertEquals(lerpHex("#000000", "#fe0000", 0.5), "#7f0000");
+});

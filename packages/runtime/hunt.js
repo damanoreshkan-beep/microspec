@@ -104,7 +104,157 @@ export const WORLD = Object.freeze({
   spear: "#b9743a",
   spearTip: "#d9dbe4",
   quiverEmpty: "#3d4653",                 // a slot with nothing in it — visible, but plainly not a spear
+  /* Appended AFTER the original set on purpose: atlas.js derives palette indices from key order,
+     and inserting a key above this line would renumber every baked cell in the farm's caches. */
+  cloud: "#222c3b",                       // night clouds: barely there, a held breath
+  cloudLit: "#2c3849",
+  fly: "#ffd27a",                         // a firefly — never appears at noon
+  mote: "#f2efe4",                        // daylight dust
 });
+
+/* ── the day, driven by distance ──────────────────────────────────────────────────────────
+   One cycle is 480 columns: dawn at the start of a run, night arriving with the hard part
+   (difficulty saturates at column 300), and a second dawn for the runs that earn it. Each
+   keyframe carries the FULL WORLD key set — a key missing from one phase would flash the night
+   value mid-lerp, so the parity is unit-tested rather than trusted.
+
+   The night keyframe IS the original WORLD, verbatim. It was crafted; its mistake was being the
+   only weather. */
+export const CYCLE = 480;
+
+const DAWN = {
+  at: 0.0, stars: 0.25, fireflies: 0, motes: 0.3,
+  orb: { kind: 1, x: 64, y: 82, r: 11 },                  // kind 1 = sun, 0 = moon
+  orbTones: ["#ffd9a0", "#f0a860", "#c9825a"],
+  rim: "#e8b58a", rimA: 0.5,
+  sky: ["#494466", "#d99a72"],
+  colors: {
+    ridge: "#595070", canopyFar: "#474160", canopyMid: "#36334c", canopy: "#262536",
+    canopyLit: "#6b5a52", bark: "#33291f", barkLit: "#4d3c2b",
+    moon: "#ffd9a0", moonMid: "#f0a860", moonDim: "#c9825a", star: "#8d93ad",
+    abyss: "#12131c", grass: "#45543a", grassLit: "#6d7a4c",
+    earth: "#5c4936", earthMid: "#4e3d2c", earthDark: "#3c2f22", earthDeep: "#281f16",
+    grit: "#5a4f40", gritLit: "#6f6250", stone: "#55555f", stoneLit: "#6a6a75",
+    wood: "#6a4c2e", gold: "#e0ac38", goldLit: "#f7d97e", goldDark: "#946b22",
+    heart: "#cf4550", spear: "#c07a40", spearTip: "#ecdfe0", quiverEmpty: "#454a5c",
+    cloud: "#8a5e6b", cloudLit: "#e8a184", fly: "#ffd27a", mote: "#f2efe4",
+  },
+};
+
+const DAY = {
+  at: 0.16, stars: 0, fireflies: 0, motes: 1,
+  orb: { kind: 1, x: 100, y: 40, r: 9 },
+  orbTones: ["#f9efd6", "#f2d78a", "#e0b45e"],
+  rim: "#ffffff", rimA: 0,                                 // noon needs no rescue light
+  sky: ["#7fa9c6", "#d8e6ee"],
+  colors: {
+    ridge: "#6c8ba1", canopyFar: "#54776a", canopyMid: "#3f5f4d", canopy: "#2a4634",
+    canopyLit: "#5d8b54", bark: "#4a3826", barkLit: "#6b5233",
+    moon: "#f9efd6", moonMid: "#f2d78a", moonDim: "#e0b45e", star: "#d8e6ee",
+    abyss: "#1a2318", grass: "#4a6b3a", grassLit: "#6d9150",
+    earth: "#6b543c", earthMid: "#5d4934", earthDark: "#493a29", earthDeep: "#33291d",
+    grit: "#6b5f4c", gritLit: "#857463", stone: "#6e7278", stoneLit: "#8b9097",
+    wood: "#7a5836", gold: "#e8b83e", goldLit: "#ffe38f", goldDark: "#a3762a",
+    heart: "#d84a56", spear: "#c98548", spearTip: "#f0f2f7", quiverEmpty: "#4d5765",
+    cloud: "#e9f0f5", cloudLit: "#fbfdfe", fly: "#ffd27a", mote: "#f2efe4",
+  },
+};
+
+const GOLD = {
+  at: 0.5, stars: 0, fireflies: 0.15, motes: 0.5,
+  orb: { kind: 1, x: 70, y: 72, r: 11 },
+  orbTones: ["#ffedbe", "#f5c26a", "#d99a4a"],
+  rim: "#ffd98a", rimA: 0.55,
+  sky: ["#5c6a88", "#e8b06a"],
+  colors: {
+    ridge: "#6b6478", canopyFar: "#5e5a50", canopyMid: "#4a4638", canopy: "#333526",
+    canopyLit: "#8a7a3e", bark: "#443521", barkLit: "#66512f",
+    moon: "#ffedbe", moonMid: "#f5c26a", moonDim: "#d99a4a", star: "#c9b8a0",
+    abyss: "#171a14", grass: "#566038", grassLit: "#8a8a4a",
+    earth: "#6b5238", earthMid: "#5c4530", earthDark: "#473624", earthDeep: "#302518",
+    grit: "#6b5c44", gritLit: "#837152", stone: "#6d6a62", stoneLit: "#868377",
+    wood: "#75552f", gold: "#eebd44", goldLit: "#ffe896", goldDark: "#a3782a",
+    heart: "#d8505a", spear: "#cd8746", spearTip: "#f5ecdc", quiverEmpty: "#4c5158",
+    cloud: "#d9a06a", cloudLit: "#f5cf96", fly: "#ffd27a", mote: "#f2efe4",
+  },
+};
+
+const DUSK = {
+  at: 0.66, stars: 0.45, fireflies: 0.6, motes: 0,
+  orb: { kind: 0, x: 92, y: 56, r: 8 },
+  orbTones: ["#d9cfd6", "#b3a8ba", "#948a9e"],
+  rim: "#a29ac2", rimA: 0.45,
+  sky: ["#2c2b47", "#8a5a78"],
+  colors: {
+    ridge: "#3a3652", canopyFar: "#2e2b45", canopyMid: "#232238", canopy: "#17172a",
+    canopyLit: "#3d3448", bark: "#241d18", barkLit: "#3a2f22",
+    moon: "#d9cfd6", moonMid: "#b3a8ba", moonDim: "#948a9e", star: "#8d93ad",
+    abyss: "#0c0d16", grass: "#3d4633", grassLit: "#576246",
+    earth: "#52422f", earthMid: "#463829", earthDark: "#372c20", earthDeep: "#262015",
+    grit: "#52483a", gritLit: "#665a48", stone: "#4c4c58", stoneLit: "#5e5e6b",
+    wood: "#61442b", gold: "#d8a534", goldLit: "#f2d47a", goldDark: "#8a6420",
+    heart: "#c8434f", spear: "#bd7a3e", spearTip: "#dfd9e6", quiverEmpty: "#414659",
+    cloud: "#4a3a58", cloudLit: "#6b4d6e", fly: "#ffd27a", mote: "#f2efe4",
+  },
+};
+
+const NIGHT = {
+  at: 0.82, stars: 1, fireflies: 1, motes: 0,
+  orb: { kind: 0, x: 88, y: 46, r: 8 },
+  orbTones: [WORLD.moon, WORLD.moonMid, WORLD.moonDim],
+  rim: "#b9c6d8", rimA: 0.5,
+  sky: [WORLD.sky[0], WORLD.sky[1]],
+  colors: Object.fromEntries(
+    Object.keys(WORLD).filter((k) => typeof WORLD[k] === "string").map((k) => [k, WORLD[k]]),
+  ),
+};
+
+export const PHASES = Object.freeze([DAWN, DAY, GOLD, DUSK, NIGHT]);
+
+const hx = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const hex2 = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+export function lerpHex(a, b, t) {
+  const A = hx(a), B = hx(b);
+  return "#" + hex2(A[0] + (B[0] - A[0]) * t) + hex2(A[1] + (B[1] - A[1]) * t) + hex2(A[2] + (B[2] - A[2]) * t);
+}
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/**
+ * The world at a distance: every colour and ambient number, interpolated between phase
+ * keyframes with a smoothstep. Distance wraps at CYCLE, so a long run sees a second dawn.
+ * Pure — the same function feeds the browser, the gate and the offline preview.
+ */
+export function worldAt(dist) {
+  const t = (((dist / CYCLE) % 1) + 1) % 1;
+  let i = PHASES.length - 1;
+  for (let k = 0; k < PHASES.length; k++) if (PHASES[k].at <= t) i = k;
+  const a = PHASES[i], b = PHASES[(i + 1) % PHASES.length];
+  const span = (b.at > a.at ? b.at : b.at + 1) - a.at;
+  let u = span > 0 ? (t - a.at) / span : 0;
+  u = u * u * (3 - 2 * u);
+  const colors = {};
+  for (const k of Object.keys(a.colors)) colors[k] = lerpHex(a.colors[k], b.colors[k], u);
+  return {
+    colors,
+    sky: [lerpHex(a.sky[0], b.sky[0], u), lerpHex(a.sky[1], b.sky[1], u)],
+    stars: lerp(a.stars, b.stars, u),
+    fireflies: lerp(a.fireflies, b.fireflies, u),
+    motes: lerp(a.motes, b.motes, u),
+    /* The orb never crossfades kinds mid-air: it keeps the NEARER keyframe's body and lerps
+       position/size, so the sun sets as a sun and the moon rises as a moon. */
+    orb: {
+      kind: (u < 0.5 ? a : b).orb.kind,
+      x: Math.round(lerp(a.orb.x, b.orb.x, u)),
+      y: Math.round(lerp(a.orb.y, b.orb.y, u)),
+      r: Math.round(lerp(a.orb.r, b.orb.r, u)),
+      tones: [0, 1, 2].map((j) => lerpHex(a.orbTones[j], b.orbTones[j], u)),
+      /* fade through a kind switch so a sun never pops into a moon */
+      alpha: a.orb.kind === b.orb.kind ? 1 : Math.abs(u - 0.5) * 2,
+    },
+    rim: lerpHex(a.rim, b.rim, u),
+    rimA: lerp(a.rimA, b.rimA, u),
+  };
+}
 
 /* ── the material, in colour ──────────────────────────────────────────────────────────────
    `lit()` and `shade()` replace brick's `level ± 1`. They take the RAMP the importer derived from

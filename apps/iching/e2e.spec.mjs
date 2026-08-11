@@ -1,6 +1,8 @@
-// The Book of Changes casts under the gate from a FIXED line set (GATE_LINES), so the populated screen —
-// hexagram, trigrams, moving lines, the hexagram it changes into — renders with no interaction and no
-// randomness. The AI reading is never requested here: the gate has no network.
+// The Book of Changes casts under the gate from a FIXED line set (GATE_LINES) and a fixed journal
+// (GATE_ROWS), so the populated screen renders with no interaction and no randomness. Under the gate the
+// ceremony is INSTANT (no shuffle, no typewriter) and the answer is the fixed GATE_READING — so every
+// answer's TEXT is identical, and the dedupe branch is proven by STATE instead: [data-asked]/[data-recast]
+// appear only when a known question replayed its journal entry (g1 carries an old day on purpose).
 const ready = async (h) => { for (let i = 0; i < 15; i++) { if ((await h.count("[data-reading]")) > 0) break; await h.wait(200); } };
 
 export default [
@@ -11,7 +13,7 @@ export default [
       h.expect((await h.count("[data-line]")) === 6, "гексаграма має рівно шість ліній");
       const n = (await h.text("[data-number]")).trim();
       h.expect(/^\d{1,2}$/.test(n) && +n >= 1 && +n <= 64, `номер гексаграми поза 1..64: ${n}`);
-      h.expect((await h.count("#question")) === 1, "немає поля питання");
+      h.expect((await h.count("[data-ask]")) === 1, "немає входу в церемонію питання");
     },
   },
   {
@@ -39,26 +41,59 @@ export default [
     },
   },
   {
-    name: "повторне кидання лишає екран заповненим", run: async (h) => {
+    name: "церемонія: відкривається, Back закриває", run: async (h) => {
       await ready(h);
-      await h.click("[data-cast]"); await h.wait(300);
-      h.expect((await h.count("[data-line]")) === 6, "після повторного кидання немає шести ліній");
-    },
-  },
-  {
-    name: "тлумачення: шитик відкривається, Back закриває", run: async (h) => {
-      await ready(h);
-      await h.click("[data-read]"); await h.wait(300);
-      h.expect((await h.prop("#readsheet", "open")) === true, "не відкрився шитик тлумачення");
+      await h.tap("[data-ask]"); await h.wait(300);
+      h.expect((await h.prop("#ask", "open")) === true, "церемонія не відкрилась");
+      h.expect((await h.count("#question")) === 1, "немає поля питання");
       await h.back(); await h.wait(250);
-      h.expect((await h.prop("#readsheet", "open")) !== true, "Back не закрив шитик");
+      h.expect((await h.prop("#ask", "open")) !== true, "Back не закрив церемонію");
     },
   },
   {
-    name: "журнал: записи з гексаграмами", run: async (h) => {
+    // A FRESH question: cast → the answer renders (instant under the gate), and neither the replay marks
+    // nor the recast button may appear — the entry was made today.
+    name: "нове питання: кидок і відповідь, без перекидання", run: async (h) => {
+      await ready(h);
+      await h.tap("[data-ask]"); await h.wait(300);
+      await h.type("#question", "Нове питання про дорогу");
+      await h.tap("[data-cast]"); await h.wait(400);
+      h.expect((await h.count("[data-answer-text]")) === 1, "відповідь не зʼявилась");
+      h.expect((await h.text("[data-answer-text]")).trim().length > 40, "відповідь порожня");
+      h.expect((await h.count("[data-asked]")) === 0, "свіжий кидок позначено як повтор");
+      h.expect((await h.count("[data-recast]")) === 0, "перекидання доступне для сьогоднішнього кидка");
+      await h.tap("[data-ask-done]"); await h.wait(250);
+      h.expect((await h.prop("#ask", "open")) !== true, "закриття не закрило церемонію");
+    },
+  },
+  {
+    // A KNOWN question (g1 in the gate journal, cast on an OLD day): the entry replays — the hexagram is
+    // g1's (40), the replay date shows, and the once-a-day recast button is offered.
+    name: "повторне питання: та сама відповідь і перекидання раз на день", run: async (h) => {
+      await ready(h);
+      await h.tap("[data-ask]"); await h.wait(300);
+      await h.type("#question", "  чи ВАРТО починати зараз ");   // normalization: case + spacing must not fork the entry
+      await h.tap("[data-cast]"); await h.wait(400);
+      h.expect((await h.count("[data-answer-text]")) === 1, "відповідь не зʼявилась");
+      h.expect((await h.text("[data-a-number]")).trim() === "40", "повтор не повернув гексаграму запису журналу");
+      h.expect((await h.count("[data-asked]")) === 1, "повтор без позначки первинного кидка");
+      h.expect((await h.count("[data-recast]")) === 1, "немає кнопки перекидання для старого запису");
+      await h.tap("[data-recast]"); await h.wait(400);
+      h.expect((await h.count("[data-answer-text]")) === 1, "після перекидання немає відповіді");
+      h.expect((await h.count("[data-recast]")) === 0, "перекидання лишилось доступним двічі на день");
+      await h.back(); await h.wait(250);
+    },
+  },
+  {
+    name: "журнал: записи, відкриття запису, Back закриває", run: async (h) => {
       await h.click('[data-tab="log"]'); await h.wait(400);
       h.expect((await h.count("[data-entry]")) >= 2, "у журналі немає записів");
       h.expect((await h.count("[data-clear]")) === 1, "немає очищення журналу");
+      await h.tap("[data-entry] [data-open]"); await h.wait(300);
+      h.expect((await h.prop("#logsheet", "open")) === true, "запис журналу не відкрився");
+      h.expect((await h.count("[data-log-text]")) === 1, "у записі немає тлумачення");
+      await h.back(); await h.wait(250);
+      h.expect((await h.prop("#logsheet", "open")) !== true, "Back не закрив запис журналу");
     },
   },
   {

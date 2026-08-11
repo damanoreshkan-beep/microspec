@@ -90,7 +90,9 @@ export function swarm(props) {
      rAF loop for the main thread */
   useEffect(() => {
     if (gate || !enabled) return;
-    const stopC = compass.start((deg) => { headingT.current = deg * 10; }, { trueNorth: false });
+    // look: raw alpha gimbal-locks with the phone held upright (this app's ONLY grip) and leapt
+    // 1°→−300° mid-turn on the reference device — aim must ride the camera axis, not alpha
+    const stopC = compass.start((deg) => { headingT.current = deg * 10; }, { trueNorth: false, look: true });
     const stopT = tilt.start(({ beta }) => {
       if (beta == null) return;
       // upright-in-hand is beta≈80; that maps to level aim, tuned on the reference device

@@ -136,6 +136,23 @@ export const wakeLock = {
 // Screen-orientation corrected, circular-EMA smoothed.
 //   start(onHeading, opts?) → stop fn. onHeading(deg, { magnetic, declination, isTrue }).
 //   opts.trueNorth: false keeps it magnetic and starts no geolocation watch.
+//   opts.look: true reads the BACK CAMERA's heading (viewfinder/AR apps) — see lookHeadingDeg.
+
+// lookHeadingDeg — heading of the device −z axis (out the back of the screen), i.e. what the rear
+// camera points at: R = Rz(α)·Rx(β)·Ry(γ) applied to (0,0,−1), per the W3C orientation-event
+// worked example (§A.1). Raw alpha is only a heading while the phone lies flat-ish: held upright
+// (β→90°) the α and γ axes coincide (gimbal lock) and the SAME orientation re-expresses with α
+// jumped by hundreds of degrees — swarm's aim leapt 1°→−300° mid-turn on the reference device.
+// The projected vector is invariant under that re-expression (unit-tested). Returns null within
+// ~9° of straight up/down, where a camera heading does not exist — the caller holds the last one.
+export function lookHeadingDeg(alpha, beta, gamma) {
+  const r = Math.PI / 180, cA = Math.cos(alpha * r), sA = Math.sin(alpha * r);
+  const sB = Math.sin(beta * r), cG = Math.cos(gamma * r), sG = Math.sin(gamma * r);
+  const x = -cA * sG - sA * sB * cG;                                   // east
+  const y = -sA * sG + cA * sB * cG;                                   // north
+  if (Math.hypot(x, y) < 0.15) return null;
+  return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+}
 export const compass = {
   supported: typeof window !== "undefined" && typeof DeviceOrientationEvent !== "undefined",
   needsPermission: typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function",
@@ -143,7 +160,7 @@ export const compass = {
     if (this.needsPermission) { try { return (await DeviceOrientationEvent.requestPermission()) === "granted"; } catch { return false; } }
     return true;
   },
-  start(onHeading, { trueNorth = true } = {}) {
+  start(onHeading, { trueNorth = true, look = false } = {}) {
     if (!this.supported) return () => {};
     let ema = null, dec = null, wmm = null, stopGeo = () => {};
     // Why there is no declination, not just that there isn't one. A consumer showing "no position" when the
@@ -171,9 +188,15 @@ export const compass = {
     const handler = (e) => {
       let h = null;
       if (typeof e.webkitCompassHeading === "number") h = e.webkitCompassHeading;      // iOS: from north, clockwise
-      else if (e.absolute && typeof e.alpha === "number") h = (360 - e.alpha) % 360;    // Android: absolute
-      if (h == null) return;
-      h = (h + ((screen.orientation && screen.orientation.angle) || 0)) % 360;          // screen-orientation correction
+      else if (e.absolute && typeof e.alpha === "number") {
+        // look mode falls back to flat alpha when β/γ are null (low-end Android reports them so)
+        h = look && typeof e.beta === "number" && typeof e.gamma === "number"
+          ? lookHeadingDeg(e.alpha, e.beta, e.gamma)
+          : (360 - e.alpha) % 360;                                                     // Android: absolute
+      }
+      if (h == null) return;                                                            // look: near-vertical, hold last
+      // look mode skips the correction: the camera does not move when the UI rotates
+      if (!look) h = (h + ((screen.orientation && screen.orientation.angle) || 0)) % 360;
       if (ema == null) ema = h;
       else { const d = ((h - ema + 540) % 360) - 180; ema = (ema + 0.25 * d + 360) % 360; } // circular EMA
       // Smooth the magnetometer, then correct — never the reverse: the EMA would drag a step change in

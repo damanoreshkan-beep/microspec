@@ -1,6 +1,6 @@
 import { html } from "htm/preact";
 import { Fragment } from "preact";
-import { useState, useEffect } from "preact/hooks";
+import { useState, useEffect, useRef } from "preact/hooks";
 import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
@@ -11,6 +11,8 @@ import { collection } from "/_rt/db.js";
 import { gate } from "/_rt/gate.js";
 import { summary, warmSummary, isSummarized, aiTick } from "/_rt/ai-text.js";
 import { METHODS, cast, reading, isMoving, bitOf } from "/_rt/iching.js";
+import { useSheetDrag } from "/_rt/gesture.js";
+import { animate } from "motion";
 import { nameOf } from "./book.js";
 import { HeroStage } from "/_rt/hero.js";
 
@@ -18,29 +20,77 @@ import { HeroStage } from "/_rt/hero.js";
 const packSeed = (ls) => { let n = 0; for (let i = 5; i >= 0; i--) n = n * 4 + ((ls[i] ?? 7) - 6); return n / 4096; };
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch {  } };
 const CASTS = collection("ichingCasts");
 
+const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+const instant = () => gate || reduced();
+
 const $method = persistentAtom("iching:method", "yarrow");
-const $question = atom("");
 const $lines = atom(null);          
+const $last = atom(null);           
+const $view = atom(null);           
+const $sel = atom(null);            
 const $logv = atom(0);              
+
+/** The dedupe key: one question is one entry, however it is spaced or capitalized. */
+const qkey = (s) => String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
+/** */
+const dayKey = (ts) => { const d = ts ? new Date(ts) : new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
 const GATE_LINES = [9, 8, 7, 6, 7, 8];
 
+const GATE_ROWS = [
+  { id: "g1", at: 1765000000000, q: "Чи варто починати зараз", m: "yarrow", lines: [9, 8, 7, 6, 7, 8], n: 40, to: 47, tx: {} },
+  { id: "g2", at: 1764900000000, q: "", m: "coins", lines: [7, 7, 7, 8, 8, 8], n: 11, to: null, tx: {} },
+].map((r) => ({ ...r, day: dayKey(r.at), qk: qkey(r.q) }));
+
+const GATE_READING = {
+  uk: "Вузол уже розвʼязується: те, що тримало тебе на місці, втрачає силу, і перший крок можна робити без поспіху. Не намагайся владнати все одразу — прибери одну перешкоду, і решта зрушить сама. Після грому дощ ущухає: дій спокійно, і дорога відкриється.",
+  en: "The knot is already loosening: what held you in place is losing its grip, and the first step can be taken without haste. Do not try to settle everything at once — remove one obstacle and the rest will shift on its own. After thunder the rain eases: act calmly, and the road will open.",
+};
+
 const method = () => METHODS[$method.get()] ? $method.get() : "yarrow";
 
-function doCast() {
-  buzz(12);
-  $lines.set(gate ? GATE_LINES : cast(method()));
-  const r = reading($lines.get());
-  if (!gate) {
-    CASTS.put(String(Date.now()), {
-      at: Date.now(), q: $question.get().trim(), m: method(),
-      lines: r.lines, n: r.number, to: r.toNumber,
-    }).catch(() => {});
-    $logv.set($logv.get() + 1);
-  }
+/** The AI cache signature — every value that can change the answer, nothing else. */
+const sigOf = (row) => `${row.m}|${row.lines.join("")}|${row.q.trim()}`;
+
+function buildInput(row) {
+  const r = reading(row.lines), name = nameOf(r.number), toName = r.toNumber ? nameOf(r.toNumber) : null;
+  return [
+    `Hexagram ${r.number} ${name.cn} (${name.py}).`,
+    `Lower trigram ${r.lower.cn} ${r.lower.pinyin} (${r.lower.en}), upper trigram ${r.upper.cn} ${r.upper.pinyin} (${r.upper.en}).`,
+    r.moving.length ? `Moving lines, counted from the bottom: ${r.moving.join(", ")}.` : "No moving lines.",
+    r.toNumber ? `It changes into hexagram ${r.toNumber} ${toName.cn} (${toName.py}).` : "",
+    row.q.trim() ? `The question asked: ${row.q.trim()}` : "No question was asked.",
+  ].filter(Boolean).join("\n");
+}
+
+function useReadingText(row, loc, active) {
+  const tick = useStore(aiTick);
+  const [failed, setFailed] = useState(false);
+  const [landed, setLanded] = useState("");
+  const [nonce, setNonce] = useState(0);
+  const sig = row ? sigOf(row) : "";
+  useEffect(() => { setLanded(""); setFailed(false); }, [sig, loc]);
+  const stored = row?.tx?.[loc] || "";
+  const text = !active || !row ? "" : gate ? (GATE_READING[loc] || GATE_READING.en) : (stored || landed || summary(sig, loc));
+  useEffect(() => {
+    if (!active || !row || gate || stored || landed) return;
+    const got = summary(sig, loc);
+    if (got) {
+      row.tx = { ...(row.tx || {}), [loc]: got };
+      setLanded(got);
+      CASTS.put(row.id, { ...row }).catch(() => {});
+      if ($last.get()?.id === row.id) $last.set({ ...row });
+      $logv.set($logv.get() + 1);
+      return;
+    }
+    setFailed(false);
+    warmSummary(sig, buildInput(row), loc);
+    const id = setTimeout(() => setFailed(!isSummarized(sig, loc)), 12000);
+    return () => clearTimeout(id);
+  }, [active, sig, loc, nonce, tick]);
+  return { text, failed, retry: () => setNonce((x) => x + 1) };
 }
 
 const W = 100, BAR = 6, PITCH = 11, GAP = 16, VB_H = PITCH * 6 - (PITCH - BAR);
@@ -82,41 +132,38 @@ const HexSvg = ({ lines, bits, label, cls }) => {
 
 export function iching({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t), loc = useStore(S.locale);
-  const lines = useStore($lines), m = useStore($method), q = useStore($question);
-  useStore($logv);
+  const lines = useStore($lines), m = useStore($method);
 
-  useEffect(() => { if (gate && !$lines.get()) $lines.set(GATE_LINES); }, []);
+  useEffect(() => {
+    if (gate && !$lines.get()) { $lines.set(GATE_LINES); $last.set(GATE_ROWS[0]); }
+  }, []);
 
   const r = lines ? reading(lines) : null;
   const name = r ? nameOf(r.number) : null;
   const toName = r?.toNumber ? nameOf(r.toNumber) : null;
   const w = METHODS[m] ?? METHODS.yarrow;
 
-  const sig = r ? `${m}|${r.lines.join("")}|${q.trim()}` : "";
-  const input = r ? [
-    `Hexagram ${r.number} ${name.cn} (${name.py}).`,
-    `Lower trigram ${r.lower.cn} ${r.lower.pinyin} (${r.lower.en}), upper trigram ${r.upper.cn} ${r.upper.pinyin} (${r.upper.en}).`,
-    r.moving.length ? `Moving lines, counted from the bottom: ${r.moving.join(", ")}.` : "No moving lines.",
-    r.toNumber ? `It changes into hexagram ${r.toNumber} ${toName.cn} (${toName.py}).` : "",
-    q.trim() ? `The question asked: ${q.trim()}` : "No question was asked.",
-  ].filter(Boolean).join("\n") : "";
+  const openAsk = () => { $view.set({ mode: "ask" }); openScreen("ask"); };
+  const openRead = () => { const row = $last.get(); if (!row) return openAsk(); $view.set({ mode: "read", row }); openScreen("ask"); };
 
   return html`<${Fragment}>
     <${HeroStage} shader=${new URL("hero.wgsl", import.meta.url)} seed=${r ? packSeed(r.lines) : 0} />
+    
     <${Island} pinned tone="dark" style="background:rgba(11,15,20,.93)"
       className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3 [&_*]:!shadow-none">
-      <input id="question" value=${q} onInput=${(e) => $question.set(e.target.value)}
-        placeholder=${T(t, "question")} aria-label=${T(t, "question")}
-        
-        
-        class="w-full rounded-xl border border-white/25 bg-[#0b0f14] px-3 py-2 text-sm text-white placeholder:text-white/70 outline-none focus:border-white/55" />
+      <button data-ask onClick=${openAsk}
+        class="w-full rounded-xl border border-white/25 bg-[#10151c] px-3 py-2.5 text-sm text-left text-white/70 hover:border-white/50 transition-colors">
+        ${T(t, "question")}</button>
+
       <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}
         items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
-        value=${m} onChange=${(id) => { buzz(); $method.set(id); }} />
+        value=${m} onChange=${(id) => $method.set(id)} />
+      
       <div class="flex items-center justify-between gap-3 font-mono text-[length:var(--ms-label)] tabular-nums text-white/80 px-0.5" data-odds>
         <span>${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total}</span>
         <span>${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</span>
       </div>
+
       ${r ? html`<div class="flex flex-col gap-2.5" data-live data-reading>
         <div class="flex items-center gap-3">
           <div class="w-[74px] shrink-0"><${HexSvg} lines=${r.lines} label=${`${name.cn} ${name.py}`} cls="text-white/90" /></div>
@@ -141,78 +188,230 @@ export function iching({ S, screen, openScreen, closeScreen }) {
         </div>
 
         
-        <div class="flex gap-2">
-          <button data-cast onClick=${doCast}
-            class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium bg-white text-[#0b0f14] hover:bg-white/90 active:bg-white/80 transition-colors">
-            ${Icon("lucide:dices")}${T(t, "recast")}</button>
-          <button data-read onClick=${() => { buzz(); openScreen("reading"); }}
-            class="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border border-white/30 text-white hover:bg-white/10 active:bg-white/15 transition-colors">
-            ${Icon("lucide:sparkles")}${T(t, "readingOpen")}</button>
-        </div>
-      </div>`
-      : html`<button data-cast onClick=${doCast}
-          class="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-medium bg-white text-[#0b0f14] hover:bg-white/90 transition-colors">
-          ${Icon("lucide:dices", "text-lg")}${T(t, "cast")}</button>`}
+        <button data-read onClick=${openRead}
+          class="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium bg-white text-[#0b0f14] hover:bg-white/90 active:bg-white/80 transition-colors">
+          ${Icon("lucide:sparkles")}${T(t, "readingOpen")}</button>
+      </div>` : null}
     </${Island}>
 
-    <${ReadSheet} open=${screen === "reading"} onClose=${closeScreen} sig=${sig} input=${input} t=${t} loc=${loc}
-      title=${name ? `${name.cn} ${name.py}` : T(t, "readingTitle")} />
+    <${Ceremony} open=${screen === "ask"} onClose=${closeScreen} t=${t} loc=${loc} />
   </${Fragment}>`;
 }
 
 
 
-function ReadSheet({ open, onClose, sig, input, t, loc, title }) {
-  useStore(aiTick);
-  const [failed, setFailed] = useState(false);
-  const run = () => {
-    setFailed(false);
-    warmSummary(sig, input, loc);
-    return setTimeout(() => setFailed(!isSummarized(sig, loc)), 12000);
-  };
-  useEffect(() => { if (!open || !sig) return; const id = run(); return () => clearTimeout(id); }, [open, sig, loc]);
-  const text = open && sig ? summary(sig, loc) : null;
+function Ceremony({ open, onClose, t, loc }) {
+  const dref = useRef(), qRef = useRef();
+  const [phase, setPhase] = useState("ask");
+  const [row, setRow] = useState(null);
+  const [replay, setReplay] = useState(false);
+  const [qText, setQText] = useState("");
+  const { boxRef, grip } = useSheetDrag(onClose);
+  const { text, failed, retry } = useReadingText(row, loc, phase === "answer");
+  useEffect(() => { const d = dref.current; if (!d) return; if (open) { if (!d.open) d.showModal?.(); } else d.close?.(); }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const v = $view.get() || { mode: "ask" };
+    if (v.mode === "read" && v.row) { setRow(v.row); setReplay(true); setPhase("answer"); }
+    else { setRow(null); setReplay(false); setQText(""); setPhase("ask"); }
+    if (!instant()) {
+      const el = boxRef.current;
+      if (el) animate(el, { opacity: [0, 1], transform: ["translateY(28px)", "translateY(0px)"] }, { duration: 0.35, ease: "easeOut" });
+      setTimeout(() => qRef.current?.focus?.(), 380);
+    }
+  }, [open]);
 
-  return html`<${Sheet} id="readsheet" open=${open} onClose=${onClose} title=${title}>
-    <div class="flex flex-col gap-4 pb-1">
-      ${text ? html`<p class="leading-relaxed whitespace-pre-line" data-reading-text>${text}</p>`
-        : failed ? html`<div class="flex flex-col items-center gap-3 py-6 text-center">
-            <span class="text-muted">${T(t, "readingFail")}</span>
-            <button class="btn btn-sm btn-outline rounded-xl" onClick=${run}>${T(t, "retry")}</button>
-          </div>`
-        : html`<${Scramble} lines=${5} />`}
+  const begin = (entry, rep) => {
+    setRow(entry); setReplay(rep);
+    $lines.set(entry.lines); $last.set(entry);
+    if (!gate && !entry.tx?.[loc]) warmSummary(sigOf(entry), buildInput(entry), loc);   
+    setPhase(instant() ? "answer" : "cast");
+  };
+
+  const submit = async () => {
+    const q = qText.trim(), qk = qkey(q);
+    if (qk) {
       
-      <div class="flex items-start gap-2 text-[length:var(--ms-label)] text-muted border-t border-base-content/10 pt-3">
-        ${Icon("lucide:sparkles", "shrink-0 mt-0.5")}<span>${T(t, "readingGenerated")}</span>
+      const rows = gate ? GATE_ROWS : await CASTS.all().catch(() => []);
+      const hit = rows.filter((x) => (x.qk ?? qkey(x.q)) === qk).sort((a, b) => b.at - a.at)[0];
+      if (hit) return begin(hit, true);
+    }
+    const r = reading(gate ? GATE_LINES : cast(method()));
+    const entry = { id: gate ? "g0" : String(Date.now()), at: Date.now(), day: dayKey(), q, qk, m: method(), lines: r.lines, n: r.number, to: r.toNumber, tx: {} };
+    if (!gate) { CASTS.put(entry.id, entry).catch(() => {}); $logv.set($logv.get() + 1); }
+    begin(entry, false);
+  };
+
+  
+  const recast = () => {
+    const r = reading(gate ? GATE_LINES : cast(method()));
+    const upd = { ...row, at: Date.now(), day: dayKey(), m: method(), lines: r.lines, n: r.number, to: r.toNumber, tx: {} };
+    if (!gate) { CASTS.put(upd.id, upd).catch(() => {}); $logv.set($logv.get() + 1); }
+    begin(upd, false);
+  };
+
+  const r = row ? reading(row.lines) : null;
+  const name = r ? nameOf(r.number) : null;
+  const toName = r?.toNumber ? nameOf(r.toNumber) : null;
+  const canRecast = phase === "answer" && row && row.day !== dayKey();
+
+  return html`<dialog id="ask" ref=${dref} class="modal" onClose=${onClose}>
+    <div ref=${boxRef} class="modal-box max-w-none w-screen h-[100dvh] max-h-none rounded-none p-0 overflow-hidden relative bg-[#0b0f14] text-white [&_*]:!shadow-none">
+      <div class="relative z-10 flex flex-col h-full px-5" style="padding-top:calc(env(safe-area-inset-top) + 0.5rem);padding-bottom:calc(env(safe-area-inset-bottom) + 1.25rem)">
+        ${grip}
+        <div class="flex items-center justify-between shrink-0">
+          <h3 class="font-bold text-lg leading-tight min-w-0 truncate">
+            ${phase === "answer" && name ? `${name.cn} ${name.py}` : T(t, "askTitle")}</h3>
+          <button data-ask-close aria-label=${T(t, "close")} class="btn btn-sm btn-circle btn-ghost text-white shrink-0" onClick=${onClose}>${Icon("lucide:x", "text-lg")}</button>
+        </div>
+
+        ${phase === "ask" ? html`<div data-phase="ask" class="flex-1 min-h-0 flex flex-col justify-center gap-6 max-w-[440px] w-full mx-auto">
+          <textarea id="question" ref=${qRef} rows="3" value=${qText} onInput=${(e) => setQText(e.target.value)}
+            placeholder=${T(t, "question")} aria-label=${T(t, "question")}
+            class="w-full resize-none rounded-2xl border border-white/25 bg-[#10151c] px-4 py-3 text-lg leading-snug text-white placeholder:text-white/70 outline-none focus:border-white/55"></textarea>
+          <button data-cast onClick=${submit}
+            class="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-base font-medium bg-white text-[#0b0f14] hover:bg-white/90 active:bg-white/80 transition-colors">
+            ${Icon("lucide:dices", "text-lg")}${T(t, "cast")}</button>
+        </div>` : null}
+
+        ${phase === "cast" && row ? html`<div data-phase="cast" class="flex-1 min-h-0 flex items-center justify-center">
+          <${CastPlay} lines=${row.lines} onDone=${() => setPhase("answer")} />
+        </div>` : null}
+
+        ${phase === "answer" && r ? html`<div data-phase="answer" class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-5 max-w-[440px] w-full mx-auto pt-3">
+          <div class="flex items-center gap-4 shrink-0">
+            <div class="w-[84px] shrink-0"><${HexSvg} lines=${r.lines} label=${`${name.cn} ${name.py}`} cls="text-white/90" /></div>
+            <div class="flex flex-col min-w-0 gap-1">
+              <div class="flex items-baseline gap-2 min-w-0">
+                <span class="text-3xl leading-none font-medium">${name.cn}</span>
+                <span class="text-white/80 truncate">${name.py}</span>
+              </div>
+              <div class="flex items-baseline gap-2 font-mono text-[length:var(--ms-label)] tabular-nums text-white/75 min-w-0">
+                <span data-a-number>${r.number}</span><span>${r.upper.cn}${r.lower.cn}</span>
+                ${r.changing ? html`<span class="text-primary truncate">→ ${toName.cn} · ${r.toNumber}</span>` : html`<span class="truncate">${T(t, "noMoving")}</span>`}
+              </div>
+              ${row.q ? html`<div class="text-sm text-white/80 line-clamp-2">${row.q}</div>` : null}
+              ${replay ? html`<div data-asked class="font-mono text-[length:var(--ms-label)] tabular-nums text-white/70">${new Date(row.at).toLocaleDateString(loc === "uk" ? "uk-UA" : "en-GB")} · ${T(t, row.m === "coins" ? "methodCoins" : "methodYarrow")}</div>` : null}
+            </div>
+          </div>
+
+          ${text ? html`<${Typewriter} key=${row.id + loc} text=${text} />`
+            : failed ? html`<div class="flex flex-col items-center gap-3 py-6 text-center">
+                <span class="text-white/75">${T(t, "readingFail")}</span>
+                <button onClick=${retry} class="rounded-xl border border-white/30 px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors">${T(t, "retry")}</button>
+              </div>`
+            : html`<div class="flex flex-col gap-2 text-white/70">${[30, 34, 28, 22].map((n, i) => html`<div key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
+
+          <div class="mt-auto shrink-0 flex flex-col gap-2.5 pt-4">
+            
+            <div class="flex items-start gap-2 text-[length:var(--ms-label)] text-white/70">
+              ${Icon("lucide:sparkles", "shrink-0 mt-0.5")}<span>${T(t, "readingGenerated")}</span>
+            </div>
+            <div class="flex gap-2">
+              ${canRecast ? html`<button data-recast onClick=${recast}
+                class="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium border border-white/30 text-white hover:bg-white/10 transition-colors">
+                ${Icon("lucide:dices")}${T(t, "recast")}</button>` : null}
+              <button data-ask-done onClick=${onClose}
+                class="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-medium bg-white text-[#0b0f14] hover:bg-white/90 transition-colors">
+                ${T(t, "close")}</button>
+            </div>
+          </div>
+        </div>` : null}
       </div>
     </div>
-  <//>`;
+    <form method="dialog" class="modal-backdrop"><button>${T(t, "close")}</button></form>
+  </dialog>`;
 }
 
 
-export function ichingLog({ t: _t, S, confirm, undo }) {
-  const t = useStore(S.t);
+
+
+
+
+
+
+const HW = (W - GAP) / 2;
+function CastPlay({ lines, onDone }) {
+  const [cur, setCur] = useState(() => lines.map(() => 7));
+  const [locked, setLocked] = useState(0);
+  const lockRef = useRef(0);
+  useEffect(() => {
+    const rand = () => [6, 7, 8, 9][(Math.random() * 4) | 0];
+    const flick = setInterval(() => {
+      setCur((c) => c.map((v, i) => (i < lockRef.current ? lines[i] : rand())));
+    }, 90);
+    const timers = lines.map((_, i) => setTimeout(() => {
+      lockRef.current = i + 1;
+      setLocked(i + 1);
+      setCur((c) => c.map((v, j) => (j <= i ? lines[j] : v)));
+      try { navigator.vibrate?.(6); } catch {  }
+    }, 1000 + i * 280));
+    const done = setTimeout(onDone, 1000 + 5 * 280 + 700);
+    return () => { clearInterval(flick); timers.forEach(clearTimeout); clearTimeout(done); };
+  }, []);
+
+  return html`<svg viewBox=${`0 0 ${W} ${VB_H}`} class="w-[220px] max-w-[70vw] text-white/90" aria-hidden="true" fill="currentColor">
+    ${cur.map((v, i) => {
+      const isLocked = i < locked;
+      const yang = bitOf(v) === 1, moving = isLocked && isMoving(v);
+      const y = (5 - i) * PITCH, mid = y + BAR / 2;
+      const glide = isLocked ? "transition-[x,width] duration-200 ease-out" : "";
+      return html`<${Fragment} key=${i}>
+        <rect x="0" y=${y} width=${yang ? W / 2 + 1 : HW} height=${BAR} rx=${BAR / 2} class=${glide} />
+        <rect x=${yang ? W / 2 - 1 : (W + GAP) / 2} y=${y} width=${yang ? W / 2 + 1 : HW} height=${BAR} rx=${BAR / 2} class=${glide} />
+        <rect x="0" y=${y} width=${W} height=${BAR} rx=${BAR / 2}
+          class=${`transition-opacity duration-150 delay-150 ${isLocked && yang ? "opacity-100" : "opacity-0"}`} />
+        <circle cx=${W / 2} cy=${mid} r=${BAR * 0.62} fill="none" stroke="currentColor" stroke-width="1.6"
+          class=${`transition-opacity duration-200 delay-200 ${moving && yang ? "opacity-100" : "opacity-0"}`} />
+        <g class=${`transition-opacity duration-200 delay-200 ${moving && !yang ? "opacity-100" : "opacity-0"}`}>
+          <line x1=${W / 2 - 3.4} y1=${mid - 3.4} x2=${W / 2 + 3.4} y2=${mid + 3.4} stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <line x1=${W / 2 - 3.4} y1=${mid + 3.4} x2=${W / 2 + 3.4} y2=${mid - 3.4} stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </g>
+      <//>`;
+    })}
+  </svg>`;
+}
+
+
+
+
+
+function Typewriter({ text }) {
+  const [n, setN] = useState(() => (instant() ? text.length : 0));
+  useEffect(() => {
+    if (instant()) { setN(text.length); return; }
+    setN(0);
+    const step = Math.max(12, Math.min(28, 9000 / Math.max(1, text.length)));
+    let i = 0;
+    const id = setInterval(() => { i += 1; setN(i); if (i >= text.length) clearInterval(id); }, step);
+    return () => clearInterval(id);
+  }, [text]);
+  const done = n >= text.length;
+  return html`<div data-answer-text class="text-[1.02rem] leading-relaxed whitespace-pre-line">
+    <span class="sr-only">${text}</span>
+    <span aria-hidden="true">${text.slice(0, n)}${done ? "" : html`<span class="inline-block w-[2px] h-[1.05em] align-[-0.15em] bg-white/80 animate-pulse"></span>`}</span>
+  </div>`;
+}
+
+
+export function ichingLog({ S, screen, openScreen, closeScreen, confirm, undo }) {
+  const t = useStore(S.t), loc = useStore(S.locale);
   const v = useStore($logv);
+  const sel = useStore($sel);
   const [rows, setRows] = useState(null);
 
   useEffect(() => {
-    if (gate) {
-      setRows([
-        { id: "g1", at: 1765000000000, q: "Чи варто починати зараз", m: "yarrow", lines: [9, 8, 7, 6, 7, 8], n: 40, to: 47 },
-        { id: "g2", at: 1764900000000, q: "", m: "coins", lines: [7, 7, 7, 8, 8, 8], n: 11, to: null },
-      ]);
-      return;
-    }
+    if (gate) { setRows(GATE_ROWS); return; }
     CASTS.all().then((r) => setRows(r.sort((a, b) => b.at - a.at))).catch(() => setRows([]));
   }, [v]);
 
   const del = async (row) => {
-    buzz();
     if (!gate) await CASTS.del(row.id).catch(() => {});
     setRows((rs) => rs.filter((x) => x.id !== row.id));
     undo?.(async () => { if (!gate) await CASTS.put(row.id, row).catch(() => {}); $logv.set($logv.get() + 1); },
       T(t, "logDeleted"));
   };
+
   const clearAll = () => confirm?.({
     title: T(t, "logClearTitle"),
     body: T(t, "logClearBody", { n: rows?.length ?? 0 }),
@@ -237,20 +436,45 @@ export function ichingLog({ t: _t, S, confirm, undo }) {
     ${rows.map((row) => {
       const nm = nameOf(row.n), to = row.to ? nameOf(row.to) : null;
       return html`<div key=${row.id} data-entry class="rounded-2xl sf-raised sf-e2 px-4 py-3 flex items-center gap-4">
-        <div class="w-11 shrink-0"><${HexSvg} lines=${row.lines} label=${nm.cn} cls="text-base-content/85" /></div>
-        <div class="flex-1 min-w-0 flex flex-col gap-0.5">
-          <div class="flex items-baseline gap-2 min-w-0">
-            <span class="font-medium">${nm.cn}</span>
-            <span class="text-sm text-muted truncate">${nm.py}</span>
-            ${to ? html`<span class="text-sm text-muted truncate">→ ${to.cn}</span>` : null}
+        <button data-open class="flex-1 min-w-0 flex items-center gap-4 text-left" onClick=${() => { $sel.set(row); openScreen("entry"); }}>
+          <div class="w-11 shrink-0"><${HexSvg} lines=${row.lines} label=${nm.cn} cls="text-base-content/85" /></div>
+          <div class="flex-1 min-w-0 flex flex-col gap-0.5">
+            <div class="flex items-baseline gap-2 min-w-0">
+              <span class="font-medium">${nm.cn}</span>
+              <span class="text-sm text-muted truncate">${nm.py}</span>
+              ${to ? html`<span class="text-sm text-muted truncate">→ ${to.cn}</span>` : null}
+            </div>
+            <span class="text-sm text-muted truncate">${row.q || T(t, "noQuestion")}</span>
           </div>
-          <span class="text-sm text-muted truncate">${row.q || T(t, "noQuestion")}</span>
-        </div>
+        </button>
         <button data-del aria-label=${T(t, "logDeleted")} class="btn btn-ghost btn-sm btn-circle shrink-0" onClick=${() => del(row)}>
           ${Icon("lucide:trash-2", "text-base")}
         </button>
       </div>`;
     })}
     <button data-clear class="btn btn-ghost btn-sm rounded-xl self-center mt-2 text-muted" onClick=${clearAll}>${T(t, "logClear")}</button>
+
+    <${LogSheet} open=${screen === "entry"} onClose=${closeScreen} row=${sel} t=${t} loc=${loc} />
   </div>`;
+}
+
+
+
+function LogSheet({ open, onClose, row, t, loc }) {
+  const nm = row ? nameOf(row.n) : null;
+  const { text, failed, retry } = useReadingText(row, loc, open && !!row);
+  return html`<${Sheet} id="logsheet" open=${open} onClose=${onClose} locale=${loc}
+    title=${nm ? `${nm.cn} ${nm.py}` : T(t, "readingTitle")} subtitle=${row ? (row.q || T(t, "noQuestion")) : ""}>
+    ${row ? html`<div class="flex flex-col gap-4 pb-1">
+      ${text ? html`<p data-log-text class="leading-relaxed whitespace-pre-line">${text}</p>`
+        : failed ? html`<div class="flex flex-col items-center gap-3 py-6 text-center">
+            <span class="text-muted">${T(t, "readingFail")}</span>
+            <button class="btn btn-sm btn-outline rounded-xl" onClick=${retry}>${T(t, "retry")}</button>
+          </div>`
+        : html`<div class="flex flex-col gap-2 text-base-content/70">${[28, 32, 26].map((n, i) => html`<div key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
+      <div class="flex items-start gap-2 text-[length:var(--ms-label)] text-muted border-t border-base-content/10 pt-3">
+        ${Icon("lucide:sparkles", "shrink-0 mt-0.5")}<span>${T(t, "readingGenerated")}</span>
+      </div>
+    </div>` : null}
+  <//>`;
 }

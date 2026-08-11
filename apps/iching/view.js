@@ -325,7 +325,7 @@ function Ceremony({ open, onClose, t, loc }) {
           <div class="flex-1 min-h-0 flex flex-col justify-center gap-6">
             <div class="text-center font-mono uppercase tracking-[0.35em] text-[length:var(--ms-label)] text-white/70">${T(t, "askTitle")}</div>
             <div class="flex flex-col gap-3">
-              <textarea id="question" ref=${qRef} rows="3" value=${qText} onInput=${(e) => setQText(e.target.value)}
+              <textarea id="question" ref=${qRef} rows="2" value=${qText} onInput=${(e) => setQText(e.target.value)}
                 placeholder=${T(t, "question")} aria-label=${T(t, "question")}
                 class="w-full resize-none bg-transparent text-center text-2xl font-light leading-snug text-white placeholder:text-white/40 outline-none border-0 px-1"
                 style="caret-color:var(--app-accent)"></textarea>
@@ -338,9 +338,11 @@ function Ceremony({ open, onClose, t, loc }) {
           ${/* The method, spoken quietly at the foot of the act — a choice, not a dashboard: the strip and
                 the exact ratios it implies, the one fact separating the two traditions. */""}
           <div class="shrink-0 flex flex-col items-center gap-2 pb-2">
-            <${Segmented} attr="data-method" size="sm" variant="outline" label=${T(t, "methodLabel")}
+            ${/* The strip needs a REAL width: under `items-center` it collapses to fit-content and its
+                  flex-1 buttons then ellipsize their own labels — the shot showed "Моне…". */""}
+            <div class="w-full max-w-[300px]"><${Segmented} attr="data-method" size="sm" variant="outline" label=${T(t, "methodLabel")}
               items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
-              value=${m} onChange=${(id) => $method.set(id)} />
+              value=${m} onChange=${(id) => $method.set(id)} /></div>
             <div data-odds class="font-mono text-[length:var(--ms-label)] tabular-nums text-white/70">
               ${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total} · ${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</div>
           </div>

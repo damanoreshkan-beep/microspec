@@ -63,10 +63,12 @@ const GATE_LINES = [9, 8, 7, 6, 7, 8];
 // The ONE gate fixture: the journal list, the question lookup and the seeded $last all read it. g1 carries
 // an OLD day on purpose — replaying its question is the only way the e2e can see [data-recast] appear
 // (under the gate every answer text is identical, so the dedupe branch is proven by state, not by text).
+// n/to are DERIVED from the lines, never written beside them: the first version hand-wrote n:40 next to
+// lines that are hexagram 63, and the journal displayed the lie verbatim for as long as the app existed.
 const GATE_ROWS = [
-  { id: "g1", at: 1765000000000, q: "Чи варто починати зараз", m: "yarrow", lines: [9, 8, 7, 6, 7, 8], n: 40, to: 47, tx: {} },
-  { id: "g2", at: 1764900000000, q: "", m: "coins", lines: [7, 7, 7, 8, 8, 8], n: 11, to: null, tx: {} },
-].map((r) => ({ ...r, day: dayKey(r.at), qk: qkey(r.q) }));
+  { id: "g1", at: 1765000000000, q: "Чи варто починати зараз", m: "yarrow", lines: [9, 8, 7, 6, 7, 8] },
+  { id: "g2", at: 1764900000000, q: "", m: "coins", lines: [7, 7, 7, 8, 8, 8] },
+].map((r) => { const rd = reading(r.lines); return { ...r, n: rd.number, to: rd.toNumber, tx: {}, day: dayKey(r.at), qk: qkey(r.q) }; });
 
 // Mirrors tarot's GATE_SUMMARY: the gate has no network, so the answer phase renders a fixed reading.
 const GATE_READING = {

@@ -40,9 +40,9 @@ const dayKey = (ts) => { const d = ts ? new Date(ts) : new Date(); return `${d.g
 const GATE_LINES = [9, 8, 7, 6, 7, 8];
 
 const GATE_ROWS = [
-  { id: "g1", at: 1765000000000, q: "Чи варто починати зараз", m: "yarrow", lines: [9, 8, 7, 6, 7, 8], n: 40, to: 47, tx: {} },
-  { id: "g2", at: 1764900000000, q: "", m: "coins", lines: [7, 7, 7, 8, 8, 8], n: 11, to: null, tx: {} },
-].map((r) => ({ ...r, day: dayKey(r.at), qk: qkey(r.q) }));
+  { id: "g1", at: 1765000000000, q: "Чи варто починати зараз", m: "yarrow", lines: [9, 8, 7, 6, 7, 8] },
+  { id: "g2", at: 1764900000000, q: "", m: "coins", lines: [7, 7, 7, 8, 8, 8] },
+].map((r) => { const rd = reading(r.lines); return { ...r, n: rd.number, to: rd.toNumber, tx: {}, day: dayKey(r.at), qk: qkey(r.q) }; });
 
 const GATE_READING = {
   uk: "Вузол уже розвʼязується: те, що тримало тебе на місці, втрачає силу, і перший крок можна робити без поспіху. Не намагайся владнати все одразу — прибери одну перешкоду, і решта зрушить сама. Після грому дощ ущухає: дій спокійно, і дорога відкриється.",

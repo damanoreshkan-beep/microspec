@@ -61,7 +61,7 @@ export default [
       await h.type("#question", "  чи ВАРТО починати зараз ");   
       await h.tap("[data-cast]"); await h.wait(400);
       h.expect((await h.count("[data-answer-text]")) === 1, "відповідь не зʼявилась");
-      h.expect((await h.text("[data-a-number]")).trim() === "40", "повтор не повернув гексаграму запису журналу");
+      h.expect((await h.text("[data-a-number]")).trim() === "63", "повтор не повернув гексаграму запису журналу");
       h.expect((await h.count("[data-asked]")) === 1, "повтор без позначки первинного кидка");
       h.expect((await h.count("[data-recast]")) === 1, "немає кнопки перекидання для старого запису");
       await h.tap("[data-recast]"); await h.wait(400);

@@ -1,16 +1,17 @@
-// Book of Changes (易經) — cast a hexagram the way it was actually cast, and say honestly what is computed
-// and what is generated.
+// Book of Changes (易經) — a magical film, not an instrument panel (owner's brief, 2026-08-11: the old
+// island UI was rejected wholesale; RESEARCH.md logs the acts).
 //
-// The whole point of the app is in /_rt/iching.js: the two traditional methods carry DIFFERENT odds. Yarrow
-// stalks make yang→yin three times likelier than yin→yang (3/16 vs 1/16); three coins are symmetric (1/8
-// each). Almost every digital I Ching draws a uniform random 6-9 and erases that. This one draws from the
-// real weights and shows them, because the odds ARE the tradition.
+// THE FILM: the WebGPU current is the only set. Act I — the field, the cast hexagram luminous at centre,
+// one golden caret blinking in the question slot. Act II — the veil: a full-screen question written on a
+// golden line. Act III — the six lines shuffle LARGE while the field dances with them (the shader's seed
+// IS the six lines, so the slits of light in the current shuffle in step with the DOM figure), then glue
+// bottom-first. Act IV — the name appears, and the answer writes itself out like film subtitles.
 //
-// THE CEREMONY (apps/iching/RESEARCH.md): all casting goes through one full-screen flow — ask → the lines
-// shuffle and lock bottom-first → the reading types out. The journal is the oracle's MEMORY, not a log:
-// a repeated question (normalized → `qk`) replays its entry verbatim — same lines, same stored text
-// (`tx[locale]`, persisted the moment the AI answer lands, so a replay works offline) — and may be recast
-// once per day (`day`, local). The Book does not answer one question twice.
+// The honest math stays (/_rt/iching.js: yarrow 1:5:7:3 vs coins 1:3:3:1 — the odds ARE the tradition),
+// but it is spoken as an incantation under the shuffle, not laid out as a control row. The journal is the
+// oracle's MEMORY: a repeated question (normalized `qk`) replays its entry verbatim — same lines, same
+// stored text (`tx[locale]`, persisted the moment the answer lands, so replays work offline) — and may be
+// recast once per local day. The Book does not answer one question twice.
 //
 // DATA IS BOTTOM-FIRST, DISPLAY IS TOP-FIRST. lines[0] is the bottom line (初爻). Only the template
 // reverses; nothing else may, or the app silently reads the wrong line.
@@ -21,7 +22,7 @@ import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet, Segmented, Island } from "/_rt/ui.js";
+import { Sheet, Segmented } from "/_rt/ui.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { collection } from "/_rt/db.js";
 import { gate } from "/_rt/gate.js";
@@ -44,11 +45,12 @@ const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-
 const instant = () => gate || reduced();
 
 const $method = persistentAtom("iching:method", "yarrow");
-const $lines = atom(null);          // 6/7/8/9, bottom first — the island's current cast, or null
-const $last = atom(null);           // the journal row behind $lines (the ceremony's "read again" target)
+const $lines = atom(null);          // 6/7/8/9, bottom first — the current cast, or null
+const $last = atom(null);           // the journal row behind $lines (the "read again" target)
 const $view = atom(null);           // what the ceremony opens as: {mode:"ask"} | {mode:"read", row}
 const $sel = atom(null);            // the journal row the log sheet shows
 const $logv = atom(0);              // bumped when the journal changes, so the list reloads
+const $seedLines = atom(null);      // the shuffle's live lines — the FIELD follows them (seed = the cast)
 
 /** The dedupe key: one question is one entry, however it is spaced or capitalized. */
 const qkey = (s) => String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
@@ -128,17 +130,15 @@ function useReadingText(row, loc, active) {
 }
 
 // ── the hexagram, drawn as SVG ───────────────────────────────────────────────────────────────────
-// One element instead of twelve divs, exact geometry at any size, and — the reason that matters most —
-// it can carry the CANONICAL notation for a moving line, which a stack of coloured bars cannot:
+// One element instead of twelve divs, exact geometry at any size, and the CANONICAL notation for movement:
 //
 //   7  young yang   ▬▬▬▬▬        a whole bar
 //   8  young yin    ▬▬  ▬▬       a bar with a gap
 //   9  old yang     ▬▬○▬▬        whole, marked with a circle — it is about to open
 //   6  old yin      ▬▬✕▬▬        broken, marked with a cross — it is about to close
 //
-// The mark is the tradition's own and it survives both themes, greyscale and a screenshot.
-// Geometry: a 6-unit bar on an 11-unit pitch, so the gaps read as gaps at 40px and at 400px. `currentColor`
-// throughout — the theme decides the ink, this decides the shape.
+// The moving marks carry the ONE colour in the film (--app-accent, old gold): movement is the only thing
+// colour means here. Bars are currentColor — the surface decides the ink, this decides the shape.
 const W = 100, BAR = 6, PITCH = 11, GAP = 16, VB_H = PITCH * 6 - (PITCH - BAR);
 
 /**
@@ -147,10 +147,8 @@ const W = 100, BAR = 6, PITCH = 11, GAP = 16, VB_H = PITCH * 6 - (PITCH - BAR);
  */
 const HexSvg = ({ lines, bits, label, cls }) => {
   const rows = lines ?? bits.map((b) => (b ? 7 : 8));      // bits render as static lines
-  // `data-line` / `data-moving` mark the CAST only. The transformed hexagram has no line values and no
-  // movement — it is where the cast is going, not a second throw. Tagging it too put twelve marked lines
-  // on one screen and broke the e2e count, which was the gate noticing a real semantic slip rather than a
-  // selector detail.
+  // `data-line` / `data-moving` mark the CAST only — the transformed hexagram is where the cast is going,
+  // not a second throw; tagging it too once broke the e2e count for a real semantic reason.
   const lineAttr = (i) => (lines ? i + 1 : null);          // null attributes are not rendered at all
   const movAttr = (moving) => (lines ? (moving ? "1" : "0") : null);
   return html`<svg viewBox=${`0 0 ${W} ${VB_H}`} class=${`w-full ${cls || ""}`} role="img"
@@ -167,12 +165,12 @@ const HexSvg = ({ lines, bits, label, cls }) => {
               <rect x=${(W + GAP) / 2} y=${y} width=${(W - GAP) / 2} height=${BAR} rx=${BAR / 2} />
             <//>`}
         ${moving && yang
-          ? html`<circle cx=${W / 2} cy=${mid} r=${BAR * 0.62} fill="none" stroke="currentColor" stroke-width="1.6" />`
+          ? html`<circle cx=${W / 2} cy=${mid} r=${BAR * 0.62} fill="none" stroke="var(--app-accent)" stroke-width="1.8" />`
           : null}
         ${moving && !yang
           ? html`<${Fragment}>
-              <line x1=${W / 2 - 3.4} y1=${mid - 3.4} x2=${W / 2 + 3.4} y2=${mid + 3.4} stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-              <line x1=${W / 2 - 3.4} y1=${mid + 3.4} x2=${W / 2 + 3.4} y2=${mid - 3.4} stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+              <line x1=${W / 2 - 3.4} y1=${mid - 3.4} x2=${W / 2 + 3.4} y2=${mid + 3.4} stroke="var(--app-accent)" stroke-width="1.8" stroke-linecap="round" />
+              <line x1=${W / 2 - 3.4} y1=${mid + 3.4} x2=${W / 2 + 3.4} y2=${mid - 3.4} stroke="var(--app-accent)" stroke-width="1.8" stroke-linecap="round" />
             <//>`
           : null}
       <//>`;
@@ -180,9 +178,15 @@ const HexSvg = ({ lines, bits, label, cls }) => {
   </svg>`;
 };
 
+// The golden caret — the film's through-line: it blinks in the question slot, waits on the writing line,
+// and types the answer. One mark, one colour, one meaning: here is where the Book speaks next.
+const Caret = (cls) => html`<span aria-hidden="true" class=${`inline-block w-[2px] h-[1em] align-[-0.12em] animate-pulse ${cls || ""}`} style="background:var(--app-accent)"></span>`;
+
+// ── Act I — the field ────────────────────────────────────────────────────────────────────────────
 export function iching({ S, screen, openScreen, closeScreen }) {
   const t = useStore(S.t), loc = useStore(S.locale);
-  const lines = useStore($lines), m = useStore($method);
+  const lines = useStore($lines);
+  const shuffling = useStore($seedLines);
 
   // Seed the gate's cast once, so the populated screen renders with no interaction and no randomness.
   useEffect(() => {
@@ -192,103 +196,80 @@ export function iching({ S, screen, openScreen, closeScreen }) {
   const r = lines ? reading(lines) : null;
   const name = r ? nameOf(r.number) : null;
   const toName = r?.toNumber ? nameOf(r.toNumber) : null;
-  const w = METHODS[m] ?? METHODS.yarrow;
 
   const openAsk = () => { $view.set({ mode: "ask" }); openScreen("ask"); };
   const openRead = () => { const row = $last.get(); if (!row) return openAsk(); $view.set({ mode: "read", row }); openScreen("ask"); };
 
   return html`<${Fragment}>
-    ${/* The stage IS the screen. The cast is drawn full-bleed in WebGPU — six slits of light in a moving
-          field — and the page flow stays deliberately EMPTY behind it, so nothing scrolls over the figure.
-          Everything you can touch lives in one pinned island at the bottom. */""}
-    <${HeroStage} shader=${new URL("hero.wgsl", import.meta.url)} seed=${r ? packSeed(r.lines) : 0} />
+    ${/* The current — and during the shuffle the FIELD follows the flickering lines, because the shader's
+          seed literally is the six line values. The page flow stays empty; the film is composed of fixed
+          layers between the measured chrome tokens (--hdr-h/--dock-h — published, never hand-written). */""}
+    <${HeroStage} shader=${new URL("hero.wgsl", import.meta.url)} seed=${packSeed(shuffling ?? (r ? r.lines : null) ?? [7, 7, 7, 7, 7, 7])} />
 
-    ${/* An inline, near-opaque ground under the glass: axe measures white text against the PAGE (a canvas
-          is invisible to it), so the island supplies its own solid dark ground in both themes.
-          `[&_*]:!shadow-none` — the island supplies its own depth; the kit's light-theme elevation glow
-          wrapped every control in a dirty white halo here. The `!` is load-bearing: theme.css loads after
-          Tailwind, so at equal specificity the plain utility loses. */""}
-    <${Island} pinned tone="dark" style="background:rgba(11,15,20,.93)"
-      className="w-full max-w-[440px] flex flex-col gap-2.5 px-4 py-3 [&_*]:!shadow-none">
-      ${/* Not an input — the single entry point into the ceremony, shaped like the slot it opens (the
-            search-bar-that-opens-a-search-screen pattern). A SOLID background: inside a translucent island
-            an alpha would composite against the light page and fail contrast. */""}
-      <button data-ask onClick=${openAsk}
-        class="w-full rounded-xl border border-white/25 bg-[#10151c] px-3 py-2.5 text-sm text-left text-white/70 hover:border-white/50 transition-colors">
-        ${T(t, "question")}</button>
-
-      <${Segmented} attr="data-method" size="sm" label=${T(t, "methodLabel")}
-        items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
-        value=${m} onChange=${(id) => $method.set(id)} />
-
-      ${/* The odds of the CHOSEN method, as the exact ratios they are — the one fact that separates the
-            two methods, and it changes when you switch. */""}
-      <div class="flex items-center justify-between gap-3 font-mono text-[length:var(--ms-label)] tabular-nums text-white/80 px-0.5" data-odds>
-        <span>${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total}</span>
-        <span>${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</span>
-      </div>
-
-      ${r ? html`<div class="flex flex-col gap-2.5" data-live data-reading>
-        <div class="flex items-center gap-3">
-          <div class="w-[74px] shrink-0"><${HexSvg} lines=${r.lines} label=${`${name.cn} ${name.py}`} cls="text-white/90" /></div>
-          <div class="flex flex-col min-w-0 gap-0.5">
-            <div class="flex items-baseline gap-2 min-w-0">
-              <span class="text-2xl leading-none font-medium text-white">${name.cn}</span>
-              <span class="text-white/80 truncate">${name.py}</span>
-            </div>
-            <div class="flex items-baseline gap-2 font-mono text-[length:var(--ms-label)] tabular-nums text-white/75">
+    ${/* Everything visible sits in ONE .ms-stage — the class consumes the measured chrome contract
+          (--hdr-h/--dock-h/--dock-w), so the app never writes a chrome number. Centre: the cast, luminous
+          on a soft night pane — a real DOM ground (axe cannot see the canvas), so white ink is safe in
+          both themes; tapping the figure replays its reading. Foot: the question slot, the single control
+          on the set, the golden caret already blinking in it. */""}
+    <div class="ms-stage z-10 flex flex-col items-center pointer-events-none">
+      <div class="flex-1 min-h-0 w-full flex flex-col items-center justify-center px-6">
+        ${r ? html`<button data-read data-live data-reading aria-label=${T(t, "readingOpen")} onClick=${openRead}
+            class="pointer-events-auto max-w-full min-h-0 flex flex-col items-center gap-2.5 rounded-[2rem] bg-[#0b0f14]/85 backdrop-blur-[2px] px-8 py-6 text-white active:bg-[#0b0f14]/95 transition-colors">
+            <div class="w-[clamp(5.5rem,20vh,9rem)] min-h-0"><${HexSvg} lines=${r.lines} label=${`${name.cn} ${name.py}`} cls="text-white/90" /></div>
+            <div class="text-[clamp(2.2rem,6.5vh,3.4rem)] font-light leading-none">${name.cn}</div>
+            <div class="font-mono uppercase tracking-[0.3em] text-[length:var(--ms-label)] text-white/70">${name.py}</div>
+            <div class="flex items-center gap-2 font-mono text-[length:var(--ms-label)] tabular-nums text-white/70">
               <span data-number>${r.number}</span>
               <span>${r.upper.cn}${r.lower.cn}</span>
+              <span data-change>${r.changing
+                ? html`<span aria-hidden="true" style="color:var(--app-accent)">→</span> ${toName.cn} · ${r.toNumber}`
+                : T(t, "noMoving")}</span>
             </div>
-          </div>
-
-          <div class="ms-auto text-right min-w-0" data-change>
-            ${r.changing ? html`
-              <div class="font-mono text-[length:var(--ms-label)] uppercase tracking-wide text-white/75">${T(t, "changesTo")}</div>
-              <div class="text-xl leading-none font-medium text-white truncate">${toName.cn}</div>
-              <div class="font-mono tabular-nums text-[length:var(--ms-label)] text-primary">${r.moving.join(" · ")} → ${r.toNumber}</div>`
-              : html`<span class="font-mono text-[length:var(--ms-label)] text-white/75">${T(t, "noMoving")}</span>`}
-          </div>
-        </div>
-
-        ${/* No `.btn`: the component owns its background and beats a utility on source order. The island
-              is dark in BOTH themes because the field behind it always is, so this carries fixed colours —
-              that is what makes it agree with the stage. */""}
-        <button data-read onClick=${openRead}
-          class="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium bg-white text-[#0b0f14] hover:bg-white/90 active:bg-white/80 transition-colors">
-          ${Icon("lucide:sparkles")}${T(t, "readingOpen")}</button>
-      </div>` : null}
-    </${Island}>
+          </button>`
+        : html`<div data-live class="pointer-events-auto flex flex-col items-center gap-2 rounded-[2rem] bg-[#0b0f14]/85 px-8 py-6 text-center text-white">
+            <span class="text-white/90">${T(t, "emptyCast")}</span>
+            <span class="text-sm text-white/70">${T(t, "emptyCastHint")}</span>
+          </div>`}
+      </div>
+      <button data-ask onClick=${openAsk}
+        class="pointer-events-auto shrink-0 mb-4 w-[min(86vw,24rem)] rounded-full border border-white/25 bg-[#0b0f14]/90 px-6 py-3.5 text-left text-white/75 hover:border-white/50 transition-colors">
+        ${Caret("mr-2.5")}${T(t, "question")}
+      </button>
+    </div>
 
     <${Ceremony} open=${screen === "ask"} onClose=${closeScreen} t=${t} loc=${loc} />
   </${Fragment}>`;
 }
 
-// ── the ceremony — ask, cast, answer, one full-screen flow ───────────────────────────────────────
-// A full-screen `class="modal"` dialog (tarot's Ritual precedent — NOT a bottom sheet), history-backed via
-// S.screen so Back closes it at any phase. Opaque and dark in both themes, like the island, because it is
-// the night-space the always-dark WebGPU field lives in.
+// ── the ceremony — Acts II–V, one transparent full-screen dialog over the living field ───────────
+// A `class="modal"` top-layer dialog (tarot's Ritual precedent), history-backed via S.screen so Back
+// closes it at any act. The box is TRANSPARENT: the film never cuts away from the current — a veil dims
+// it (lighter during the shuffle so the slits visibly dance), and every act plays over it.
 function Ceremony({ open, onClose, t, loc }) {
-  const dref = useRef(), qRef = useRef();
+  const dref = useRef(), qRef = useRef(), actRef = useRef();
   const [phase, setPhase] = useState("ask");
   const [row, setRow] = useState(null);
   const [replay, setReplay] = useState(false);
   const [qText, setQText] = useState("");
   const { boxRef, grip } = useSheetDrag(onClose);
   const { text, failed, retry } = useReadingText(row, loc, phase === "answer");
+  const m = useStore($method);
+  const w = METHODS[m] ?? METHODS.yarrow;
 
   useEffect(() => { const d = dref.current; if (!d) return; if (open) { if (!d.open) d.showModal?.(); } else d.close?.(); }, [open]);
   useEffect(() => {
-    if (!open) return;
+    if (!open) { $seedLines.set(null); return; }
     const v = $view.get() || { mode: "ask" };
     if (v.mode === "read" && v.row) { setRow(v.row); setReplay(true); setPhase("answer"); }
     else { setRow(null); setReplay(false); setQText(""); setPhase("ask"); }
-    if (!instant()) {
-      const el = boxRef.current;
-      if (el) animate(el, { opacity: [0, 1], transform: ["translateY(28px)", "translateY(0px)"] }, { duration: 0.35, ease: "easeOut" });
-      setTimeout(() => qRef.current?.focus?.(), 380);
-    }
+    if (!instant()) setTimeout(() => qRef.current?.focus?.(), 420);
   }, [open]);
+  // Each act enters like a cut in the film: rise and fade, one orchestrated move, nothing scattered.
+  useEffect(() => {
+    if (instant() || !open) return;
+    const el = actRef.current;
+    if (el) animate(el, { opacity: [0, 1], transform: ["translateY(18px)", "translateY(0px)"] }, { duration: 0.45, ease: "easeOut" });
+  }, [phase, open]);
 
   const begin = (entry, rep) => {
     setRow(entry); setReplay(rep);
@@ -324,66 +305,94 @@ function Ceremony({ open, onClose, t, loc }) {
   const name = r ? nameOf(r.number) : null;
   const toName = r?.toNumber ? nameOf(r.toNumber) : null;
   const canRecast = phase === "answer" && row && row.day !== dayKey();
+  const pill = "rounded-full border px-6 py-2.5 font-mono uppercase tracking-[0.18em] text-sm transition-colors";
 
-  return html`<dialog id="ask" ref=${dref} class="modal" onClose=${onClose}>
-    <div ref=${boxRef} class="modal-box max-w-none w-screen h-[100dvh] max-h-none rounded-none p-0 overflow-hidden relative bg-[#0b0f14] text-white [&_*]:!shadow-none">
-      <div class="relative z-10 flex flex-col h-full px-5" style="padding-top:calc(env(safe-area-inset-top) + 0.5rem);padding-bottom:calc(env(safe-area-inset-bottom) + 1.25rem)">
+  return html`<dialog id="ask" ref=${dref} class="modal" aria-label=${T(t, "askTitle")} onClose=${onClose}>
+    ${/* data-theme="signal" re-scopes the DaisyUI tokens DARK inside the box, whatever the page theme —
+          the kit strip (Segmented) reads base-content, and dark ink on the dark veil would vanish in the
+          light theme. The film is night in both themes, so the tokens say so. */""}
+    <div ref=${boxRef} data-theme="signal" class="modal-box max-w-none w-screen h-[100dvh] max-h-none rounded-none p-0 overflow-hidden relative bg-transparent text-white [&_*]:!shadow-none">
+      ${/* The veil: near-black over the current, thinner while the lines shuffle so the field visibly
+            dances with them. A solid-alpha ground in BOTH themes — axe composites it over the page. */""}
+      <div aria-hidden="true" class=${`absolute inset-0 transition-colors duration-700 ${phase === "cast" ? "bg-[#0b0f14]/70" : "bg-[#0b0f14]/90"}`}></div>
+      <div class="relative z-10 flex flex-col h-full px-6" style="padding-top:calc(env(safe-area-inset-top) + 0.5rem);padding-bottom:calc(env(safe-area-inset-bottom) + 1.25rem)">
         ${grip}
-        <div class="flex items-center justify-between shrink-0">
-          <h3 class="font-bold text-lg leading-tight min-w-0 truncate">
-            ${phase === "answer" && name ? `${name.cn} ${name.py}` : T(t, "askTitle")}</h3>
-          <button data-ask-close aria-label=${T(t, "close")} class="btn btn-sm btn-circle btn-ghost text-white shrink-0" onClick=${onClose}>${Icon("lucide:x", "text-lg")}</button>
+        <div class="flex items-center justify-end shrink-0">
+          <button data-ask-close aria-label=${T(t, "close")} class="btn btn-sm btn-circle btn-ghost text-white" onClick=${onClose}>${Icon("lucide:x", "text-lg")}</button>
         </div>
 
-        ${phase === "ask" ? html`<div data-phase="ask" class="flex-1 min-h-0 flex flex-col justify-center gap-6 max-w-[440px] w-full mx-auto">
-          <textarea id="question" ref=${qRef} rows="3" value=${qText} onInput=${(e) => setQText(e.target.value)}
-            placeholder=${T(t, "question")} aria-label=${T(t, "question")}
-            class="w-full resize-none rounded-2xl border border-white/25 bg-[#10151c] px-4 py-3 text-lg leading-snug text-white placeholder:text-white/70 outline-none focus:border-white/55"></textarea>
-          <button data-cast onClick=${submit}
-            class="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-base font-medium bg-white text-[#0b0f14] hover:bg-white/90 active:bg-white/80 transition-colors">
-            ${Icon("lucide:dices", "text-lg")}${T(t, "cast")}</button>
-        </div>` : null}
-
-        ${phase === "cast" && row ? html`<div data-phase="cast" class="flex-1 min-h-0 flex items-center justify-center">
-          <${CastPlay} lines=${row.lines} onDone=${() => setPhase("answer")} />
-        </div>` : null}
-
-        ${phase === "answer" && r ? html`<div data-phase="answer" class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-5 max-w-[440px] w-full mx-auto pt-3">
-          <div class="flex items-center gap-4 shrink-0">
-            <div class="w-[84px] shrink-0"><${HexSvg} lines=${r.lines} label=${`${name.cn} ${name.py}`} cls="text-white/90" /></div>
-            <div class="flex flex-col min-w-0 gap-1">
-              <div class="flex items-baseline gap-2 min-w-0">
-                <span class="text-3xl leading-none font-medium">${name.cn}</span>
-                <span class="text-white/80 truncate">${name.py}</span>
-              </div>
-              <div class="flex items-baseline gap-2 font-mono text-[length:var(--ms-label)] tabular-nums text-white/75 min-w-0">
-                <span data-a-number>${r.number}</span><span>${r.upper.cn}${r.lower.cn}</span>
-                ${r.changing ? html`<span class="text-primary truncate">→ ${toName.cn} · ${r.toNumber}</span>` : html`<span class="truncate">${T(t, "noMoving")}</span>`}
-              </div>
-              ${row.q ? html`<div class="text-sm text-white/80 line-clamp-2">${row.q}</div>` : null}
-              ${replay ? html`<div data-asked class="font-mono text-[length:var(--ms-label)] tabular-nums text-white/70">${new Date(row.at).toLocaleDateString(loc === "uk" ? "uk-UA" : "en-GB")} · ${T(t, row.m === "coins" ? "methodCoins" : "methodYarrow")}</div>` : null}
+        ${phase === "ask" ? html`<div data-phase="ask" ref=${actRef} class="flex-1 min-h-0 flex flex-col max-w-[440px] w-full mx-auto">
+          <div class="flex-1 min-h-0 flex flex-col justify-center gap-6">
+            <div class="text-center font-mono uppercase tracking-[0.35em] text-[length:var(--ms-label)] text-white/70">${T(t, "askTitle")}</div>
+            <div class="flex flex-col gap-3">
+              <textarea id="question" ref=${qRef} rows="3" value=${qText} onInput=${(e) => setQText(e.target.value)}
+                placeholder=${T(t, "question")} aria-label=${T(t, "question")}
+                class="w-full resize-none bg-transparent text-center text-2xl font-light leading-snug text-white placeholder:text-white/40 outline-none border-0 px-1"
+                style="caret-color:var(--app-accent)"></textarea>
+              ${/* The writing line — the golden hairline the answer will later type itself onto. */""}
+              <div aria-hidden="true" class="h-px w-full" style="background:linear-gradient(90deg,transparent,var(--app-accent),transparent);opacity:.6"></div>
             </div>
+            <button data-cast onClick=${submit} class=${`${pill} self-center border-white/30 text-white hover:bg-white/10 active:bg-white/15`}>
+              ${T(t, "cast")}</button>
+          </div>
+          ${/* The method, spoken quietly at the foot of the act — a choice, not a dashboard: the strip and
+                the exact ratios it implies, the one fact separating the two traditions. */""}
+          <div class="shrink-0 flex flex-col items-center gap-2 pb-2">
+            <${Segmented} attr="data-method" size="sm" variant="outline" label=${T(t, "methodLabel")}
+              items=${[{ id: "yarrow", label: T(t, "methodYarrow") }, { id: "coins", label: T(t, "methodCoins") }]}
+              value=${m} onChange=${(id) => $method.set(id)} />
+            <div data-odds class="font-mono text-[length:var(--ms-label)] tabular-nums text-white/70">
+              ${T(t, "oddsYinYang")} ${w.weights[6]}/${w.total} · ${T(t, "oddsYangYin")} ${w.weights[9]}/${w.total}</div>
+          </div>
+        </div>` : null}
+
+        ${phase === "cast" && row ? (() => {
+          const wm = METHODS[row.m] ?? METHODS.yarrow;
+          return html`<div data-phase="cast" ref=${actRef} class="flex-1 min-h-0 flex flex-col items-center justify-center gap-7">
+            <${CastPlay} lines=${row.lines} onDone=${() => setPhase("answer")} />
+            ${/* The odds as an incantation under the falling lines — the tradition's one honest number,
+                  spoken during the ritual instead of laid out as a dashboard row. */""}
+            <div class="rounded-full bg-[#0b0f14]/90 px-4 py-1.5 font-mono text-[length:var(--ms-label)] tabular-nums text-white/75">
+              ${T(t, row.m === "coins" ? "methodCoins" : "methodYarrow")} · ${T(t, "oddsYinYang")} ${wm.weights[6]}/${wm.total} · ${T(t, "oddsYangYin")} ${wm.weights[9]}/${wm.total}</div>
+          </div>`;
+        })() : null}
+
+        ${phase === "answer" && r ? html`<div data-phase="answer" ref=${actRef} class="flex-1 min-h-0 overflow-y-auto flex flex-col max-w-[480px] w-full mx-auto">
+          <div class="shrink-0 flex flex-col items-center gap-2.5 pt-2 text-center">
+            <div class="w-[clamp(4.5rem,15vh,6.5rem)]"><${HexSvg} lines=${r.lines} label=${`${name.cn} ${name.py}`} cls="text-white/90" /></div>
+            <div class="text-[clamp(2.4rem,7vh,3.6rem)] font-light leading-none">${name.cn}</div>
+            <div class="font-mono uppercase tracking-[0.3em] text-[length:var(--ms-label)] text-white/70">${name.py}</div>
+            <div class="flex items-center gap-2 font-mono text-[length:var(--ms-label)] tabular-nums text-white/70">
+              <span data-a-number>${r.number}</span>
+              <span>${r.upper.cn}${r.lower.cn}</span>
+              ${r.changing
+                ? html`<span><span aria-hidden="true" style="color:var(--app-accent)">→</span> ${toName.cn} · ${r.toNumber}</span>`
+                : html`<span>${T(t, "noMoving")}</span>`}
+            </div>
+            ${row.q ? html`<div class="text-sm text-white/80 max-w-[38ch] line-clamp-2">${row.q}</div>` : null}
+            ${replay ? html`<div data-asked class="font-mono uppercase tracking-[0.2em] text-[length:var(--ms-label)] text-white/70">
+              ${new Date(row.at).toLocaleDateString(loc === "uk" ? "uk-UA" : "en-GB")} · ${T(t, row.m === "coins" ? "methodCoins" : "methodYarrow")}</div>` : null}
           </div>
 
-          ${text ? html`<${Typewriter} key=${row.id + loc} text=${text} />`
-            : failed ? html`<div class="flex flex-col items-center gap-3 py-6 text-center">
-                <span class="text-white/75">${T(t, "readingFail")}</span>
-                <button onClick=${retry} class="rounded-xl border border-white/30 px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors">${T(t, "retry")}</button>
-              </div>`
-            : html`<div class="flex flex-col gap-2 text-white/70">${[30, 34, 28, 22].map((n, i) => html`<div key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
+          <div class="flex-1 flex flex-col justify-center py-6">
+            ${text ? html`<${Typewriter} key=${row.id + loc} text=${text} />`
+              : failed ? html`<div class="flex flex-col items-center gap-3 py-6 text-center">
+                  <span class="text-white/80">${T(t, "readingFail")}</span>
+                  <button onClick=${retry} class=${`${pill} border-white/30 text-white hover:bg-white/10`}>${T(t, "retry")}</button>
+                </div>`
+              : html`<div class="flex flex-col items-center gap-2 text-white/70">${[26, 32, 28, 20].map((n, i) => html`<div key=${i}><${Scramble} len=${n} /></div>`)}</div>`}
+          </div>
 
-          <div class="mt-auto shrink-0 flex flex-col gap-2.5 pt-4">
-            ${/* Provenance, not decoration: the app computes the hexagram exactly and does NOT own a
-                  canonical translation, so the reader is told which half a model wrote. */""}
-            <div class="flex items-start gap-2 text-[length:var(--ms-label)] text-white/70">
+          <div class="shrink-0 flex flex-col items-center gap-3 pb-1">
+            ${/* Provenance, not decoration: the hexagram is computed exactly; the words are a model's, and
+                  the reader is told so. */""}
+            <div class="flex items-start gap-2 text-[length:var(--ms-label)] text-white/70 text-center">
               ${Icon("lucide:sparkles", "shrink-0 mt-0.5")}<span>${T(t, "readingGenerated")}</span>
             </div>
-            <div class="flex gap-2">
-              ${canRecast ? html`<button data-recast onClick=${recast}
-                class="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium border border-white/30 text-white hover:bg-white/10 transition-colors">
-                ${Icon("lucide:dices")}${T(t, "recast")}</button>` : null}
-              <button data-ask-done onClick=${onClose}
-                class="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-medium bg-white text-[#0b0f14] hover:bg-white/90 transition-colors">
+            <div class="flex gap-2.5">
+              ${canRecast ? html`<button data-recast onClick=${recast} class=${`${pill} border-white/30 text-white hover:bg-white/10`}>
+                <span aria-hidden="true" class="inline-block w-1.5 h-1.5 rounded-full mr-2 align-middle" style="background:var(--app-accent)"></span>${T(t, "recast")}</button>` : null}
+              <button data-ask-done onClick=${onClose} class=${`${pill} border-transparent bg-white text-[#0b0f14] hover:bg-white/90`}>
                 ${T(t, "close")}</button>
             </div>
           </div>
@@ -394,34 +403,36 @@ function Ceremony({ open, onClose, t, loc }) {
   </dialog>`;
 }
 
-// ── the casting animation — shuffle, then glue, bottom-first ─────────────────────────────────────
-// Six lines flicker through random values (90ms — a hard snap, the point is chaos), then lock to the real
-// cast bottom-first (初爻 first, as the stalks fall). A locked yin pair that became yang GLUES: the two
-// halves slide together (animated SVG x/width — Chromium animates geometry attributes; if a browser does
-// not, the values snap and the final frame is still exact) and a full bar crossfades over the seam, so no
-// rounded-corner notch survives at the centre. One navigator.vibrate(6) per lock — a state event, not a
-// tap, so it does not collide with the runtime's systemic tap haptic. Mounted only when !instant().
+// ── Act III — the shuffle and the glue ───────────────────────────────────────────────────────────
+// Six lines flicker through random values (90ms — a hard snap, the point is chaos) while the FIELD behind
+// dances with them ($seedLines drives the shader's seed). Then they lock to the real cast bottom-first
+// (初爻 first, as the stalks fall): a yin pair that became yang GLUES — the two halves slide together
+// (animated SVG x/width; Chromium animates geometry attributes, and a browser that does not simply snaps
+// to the exact final frame) and a full bar crossfades over the seam. One navigator.vibrate(6) per lock —
+// a state event, not a tap, so it does not collide with the systemic tap haptic. Mounted only when !instant().
 const HW = (W - GAP) / 2;
 function CastPlay({ lines, onDone }) {
   const [cur, setCur] = useState(() => lines.map(() => 7));
   const [locked, setLocked] = useState(0);
-  const lockRef = useRef(0);
+  const lockRef = useRef(0), curRef = useRef(lines.map(() => 7));
   useEffect(() => {
     const rand = () => [6, 7, 8, 9][(Math.random() * 4) | 0];
-    const flick = setInterval(() => {
-      setCur((c) => c.map((v, i) => (i < lockRef.current ? lines[i] : rand())));
-    }, 90);
+    const step = () => {
+      const next = curRef.current.map((v, i) => (i < lockRef.current ? lines[i] : rand()));
+      curRef.current = next; setCur(next); $seedLines.set(next);
+    };
+    const flick = setInterval(step, 90);
     const timers = lines.map((_, i) => setTimeout(() => {
       lockRef.current = i + 1;
       setLocked(i + 1);
-      setCur((c) => c.map((v, j) => (j <= i ? lines[j] : v)));
+      step();
       try { navigator.vibrate?.(6); } catch { /* */ }
     }, 1000 + i * 280));
     const done = setTimeout(onDone, 1000 + 5 * 280 + 700);
-    return () => { clearInterval(flick); timers.forEach(clearTimeout); clearTimeout(done); };
+    return () => { clearInterval(flick); timers.forEach(clearTimeout); clearTimeout(done); $seedLines.set(null); };
   }, []);
 
-  return html`<svg viewBox=${`0 0 ${W} ${VB_H}`} class="w-[220px] max-w-[70vw] text-white/90" aria-hidden="true" fill="currentColor">
+  return html`<svg viewBox=${`0 0 ${W} ${VB_H}`} class="w-[min(62vw,17rem)] max-h-[52vh] text-white/90" aria-hidden="true" fill="currentColor">
     ${cur.map((v, i) => {
       const isLocked = i < locked;
       const yang = bitOf(v) === 1, moving = isLocked && isMoving(v);
@@ -432,18 +443,18 @@ function CastPlay({ lines, onDone }) {
         <rect x=${yang ? W / 2 - 1 : (W + GAP) / 2} y=${y} width=${yang ? W / 2 + 1 : HW} height=${BAR} rx=${BAR / 2} class=${glide} />
         <rect x="0" y=${y} width=${W} height=${BAR} rx=${BAR / 2}
           class=${`transition-opacity duration-150 delay-150 ${isLocked && yang ? "opacity-100" : "opacity-0"}`} />
-        <circle cx=${W / 2} cy=${mid} r=${BAR * 0.62} fill="none" stroke="currentColor" stroke-width="1.6"
+        <circle cx=${W / 2} cy=${mid} r=${BAR * 0.62} fill="none" stroke="var(--app-accent)" stroke-width="1.8"
           class=${`transition-opacity duration-200 delay-200 ${moving && yang ? "opacity-100" : "opacity-0"}`} />
         <g class=${`transition-opacity duration-200 delay-200 ${moving && !yang ? "opacity-100" : "opacity-0"}`}>
-          <line x1=${W / 2 - 3.4} y1=${mid - 3.4} x2=${W / 2 + 3.4} y2=${mid + 3.4} stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-          <line x1=${W / 2 - 3.4} y1=${mid + 3.4} x2=${W / 2 + 3.4} y2=${mid - 3.4} stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <line x1=${W / 2 - 3.4} y1=${mid - 3.4} x2=${W / 2 + 3.4} y2=${mid + 3.4} stroke="var(--app-accent)" stroke-width="1.8" stroke-linecap="round" />
+          <line x1=${W / 2 - 3.4} y1=${mid + 3.4} x2=${W / 2 + 3.4} y2=${mid - 3.4} stroke="var(--app-accent)" stroke-width="1.8" stroke-linecap="round" />
         </g>
       <//>`;
     })}
   </svg>`;
-}
+};
 
-// ── the typewriter — the answer writes itself ────────────────────────────────────────────────────
+// ── Act V — the answer writes itself, like film subtitles ────────────────────────────────────────
 // App-local on purpose (RESEARCH.md): first consumer; promote to /_rt/skeleton.js when a second app wants
 // it. Speed adapts so any answer finishes in ~6-9s. Screen readers get the full text once (sr-only); the
 // typed copy is aria-hidden so nothing announces per-character.
@@ -458,13 +469,13 @@ function Typewriter({ text }) {
     return () => clearInterval(id);
   }, [text]);
   const done = n >= text.length;
-  return html`<div data-answer-text class="text-[1.02rem] leading-relaxed whitespace-pre-line">
+  return html`<div data-answer-text class="text-center text-[1.05rem] font-light leading-loose whitespace-pre-line text-white/95">
     <span class="sr-only">${text}</span>
-    <span aria-hidden="true">${text.slice(0, n)}${done ? "" : html`<span class="inline-block w-[2px] h-[1.05em] align-[-0.15em] bg-white/80 animate-pulse"></span>`}</span>
+    <span aria-hidden="true">${text.slice(0, n)}${done ? "" : Caret("ml-0.5")}</span>
   </div>`;
 }
 
-// ── journal ──────────────────────────────────────────────────────────────────────────────────────
+// ── journal — the oracle's memory ────────────────────────────────────────────────────────────────
 export function ichingLog({ S, screen, openScreen, closeScreen, confirm, undo }) {
   const t = useStore(S.t), loc = useStore(S.locale);
   const v = useStore($logv);
@@ -506,16 +517,14 @@ export function ichingLog({ S, screen, openScreen, closeScreen, confirm, undo })
   return html`<div class="flex flex-col gap-2 max-w-[440px] mx-auto w-full" data-live data-log>
     ${rows.map((row) => {
       const nm = nameOf(row.n), to = row.to ? nameOf(row.to) : null;
+      // The QUESTION leads the row — the journal is remembered by what was asked, not by what fell.
       return html`<div key=${row.id} data-entry class="rounded-2xl sf-raised sf-e2 px-4 py-3 flex items-center gap-4">
         <button data-open class="flex-1 min-w-0 flex items-center gap-4 text-left" onClick=${() => { $sel.set(row); openScreen("entry"); }}>
-          <div class="w-11 shrink-0"><${HexSvg} lines=${row.lines} label=${nm.cn} cls="text-base-content/85" /></div>
+          <div class="w-10 shrink-0"><${HexSvg} lines=${row.lines} label=${nm.cn} cls="text-base-content/85" /></div>
           <div class="flex-1 min-w-0 flex flex-col gap-0.5">
-            <div class="flex items-baseline gap-2 min-w-0">
-              <span class="font-medium">${nm.cn}</span>
-              <span class="text-sm text-muted truncate">${nm.py}</span>
-              ${to ? html`<span class="text-sm text-muted truncate">→ ${to.cn}</span>` : null}
-            </div>
-            <span class="text-sm text-muted truncate">${row.q || T(t, "noQuestion")}</span>
+            <span class="font-medium truncate">${row.q || T(t, "noQuestion")}</span>
+            <span class="font-mono text-[length:var(--ms-label)] tabular-nums text-muted truncate">
+              ${nm.cn} ${nm.py}${to ? ` → ${to.cn}` : ""} · ${new Date(row.at).toLocaleDateString(loc === "uk" ? "uk-UA" : "en-GB")}</span>
           </div>
         </button>
         <button data-del aria-label=${T(t, "logDeleted")} class="btn btn-ghost btn-sm btn-circle shrink-0" onClick=${() => del(row)}>

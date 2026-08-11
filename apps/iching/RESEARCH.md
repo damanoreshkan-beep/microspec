@@ -2,6 +2,28 @@
 
 The ask→cast→answer flow, rebuilt around one full-screen ceremony. Decisions logged here are CLOSED.
 
+## Revision 2 — the film (owner, same day)
+
+The first rebuild kept the old island (method strip + odds row + summary) and attached the ceremony to
+it. **Rejected wholesale**: "я це бачу як фільм магічний, а ти мені старе залишив технічний ui". The UI
+is now built from zero as acts over the always-visible WebGPU current:
+
+- **Act I** — the field: the cast luminous on a night pane at centre (tap = replay its reading), ONE
+  control at the foot — the question slot with the golden caret blinking in it. No method row, no odds
+  row on the set.
+- **Act II** — the veil (transparent dialog box + `bg-[#0b0f14]/90` ground): the question written on a
+  **golden writing line** (the signature element; the same gold caret is the through-line of the film).
+  The method strip + exact odds sit quietly at the foot of this act.
+- **Act III** — the shuffle at `/70` veil so the field visibly dances: `$seedLines` feeds the flickering
+  values straight into the shader seed — **the slits of light in the current ARE the shuffling lines**.
+  The odds are spoken as a one-line incantation under the figure.
+- **Act IV/V** — the name in huge light type, then the answer types itself **centered, like film
+  subtitles**. Gold is reserved for movement marks, the caret/writing line, and the recast dot — never
+  body text.
+- Chrome geometry comes ONLY from `.ms-stage` (the unit gate rejected the first hand-written
+  `var(--dock-h)`); dark DaisyUI tokens are re-scoped inside the ceremony via `data-theme="signal"` so
+  the kit strip survives the light theme.
+
 ## What was actually broken (measured, not guessed)
 
 - `/feed/ai` mode `summarize` **works** (probed with the allowlisted Origin; Gemini answers in uk).

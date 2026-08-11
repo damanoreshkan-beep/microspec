@@ -28,9 +28,10 @@ export default [
   },
   {
     // The odds are the app's whole reason to exist: the two methods are different distributions, so the
-    // displayed ratio MUST change when the method does.
+    // displayed ratio MUST change when the method does. Both now live at the foot of the ask act.
     name: "зміна методу змінює показані шанси", run: async (h) => {
       await ready(h);
+      await h.tap("[data-ask]"); await h.wait(300);
       const before = await h.text("[data-odds]");
       await h.tap('[data-method="coins"]'); await h.wait(250);
       const after = await h.text("[data-odds]");
@@ -38,6 +39,8 @@ export default [
       h.expect((await h.attr('[data-method="coins"]', "aria-pressed")) === "true", "обраний метод без aria-pressed");
       await h.tap('[data-method="yarrow"]'); await h.wait(200);
       h.expect((await h.text("[data-odds]")) === before, "шанси не повернулись до стебел");
+      await h.back(); await h.wait(250);
+      h.expect((await h.prop("#ask", "open")) !== true, "Back не закрив церемонію після вибору методу");
     },
   },
   {

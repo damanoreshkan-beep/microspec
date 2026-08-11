@@ -78,7 +78,8 @@ export function swarm(props) {
   
   useEffect(() => {
     if (gate || !enabled) return;
-    const stopC = compass.start((deg) => { headingT.current = deg * 10; }, { trueNorth: false });
+    
+    const stopC = compass.start((deg) => { headingT.current = deg * 10; }, { trueNorth: false, look: true });
     const stopT = tilt.start(({ beta }) => {
       if (beta == null) return;
       

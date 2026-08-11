@@ -84,6 +84,26 @@ test/affected/verify/gates/8n8/kit/shell/red). i18n must include the runtime pro
 keys (hunt's full key list is the template). Push → read run-level conclusion → download
 `shot-swarm` and judge both themes.
 
+## Aim heading — the camera axis, never raw alpha (added 2026-08-11, after a real-device defect)
+
+- Owner-reported: aim leapt chaotically mid-turn, "compass goes 1° → −300° at once". Root cause:
+  this app's ONLY grip is upright (viewfinder), and at β→90° the Z-X'-Y'' Euler axes for α and γ
+  coincide — gimbal lock — so the sensor re-expresses the SAME orientation with α jumped by
+  hundreds of degrees (γ compensating). `compass.start`'s Android branch read α alone
+  (`sensors.js` `(360 − e.alpha) % 360`), which is a heading only while the phone lies flat-ish.
+- Fix: project the device −z axis (the rear camera) through R = Rz(α)·Rx(β)·Ry(γ) and take
+  atan2(east, north). Validated against the W3C worked example (orientation-event, Appendix A.1:
+  `Vx = −cZ·sY − sZ·sX·cY; Vy = −sZ·sY + cZ·cY·sX` — fetched https://www.w3.org/TR/orientation-event/
+  2026-08-11; my derivation matched term-for-term). At β=90° the formula reduces to −(α+γ), which
+  is invariant under the gimbal re-expression — unit-tested with the exact reported leap
+  (`packages/runtime/tests/sensors_test.js`, α 1°→60°(≡−300°) with γ −59°).
+- `lookHeadingDeg` lives in `packages/runtime/sensors.js`; swarm opts in via
+  `compass.start(…, { trueNorth: false, look: true })`. Near straight up/down (horizontal
+  projection < 0.15, ~9°) there IS no camera heading → null, caller holds the last one. Look mode
+  skips the screen-orientation correction — the camera does not move when the UI rotates.
+- iOS path unchanged (webkitCompassHeading; α is not absolute there) — UNVERIFIED on a real
+  iPhone held upright; the drag-trim fallback still covers it.
+
 ## UNVERIFIED / open
 
 - Real-device aim feel (tilt→elevation mapping `beta−80`, clamp ±45) — tuned on the reference

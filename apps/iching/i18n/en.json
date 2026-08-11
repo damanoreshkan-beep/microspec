@@ -30,6 +30,8 @@
   "oddsMoving": "Change",
   "oddsYinYang": "yin to yang",
   "oddsYangYin": "yang to yin",
+  "emptyCast": "The book is still silent",
+  "emptyCastHint": "The question below begins the ceremony",
   "logEmpty": "Nothing cast yet",
   "logEmptyHint": "Every cast leaves its hexagram and question here",
   "logClear": "Clear the journal",

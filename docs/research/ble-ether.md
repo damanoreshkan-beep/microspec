@@ -198,6 +198,11 @@ expire incomplete reassembly. Bluetooth Mesh uses exactly this idiom (non-connec
 source/sequence, TTL, duplicate suppression, 1–8 retransmissions) — cited as an idiom, not as our numbers,
 since Mesh assumes near-100% scanning.
 
+**A hold is capped at 180 seconds by the platform.** `AdvertiseSettings.java:71` defines
+`LIMITED_ADVERTISING_MAX_MILLIS = 180 * 1000`, and `setTimeout` **throws** above it rather than clamping —
+so a longer hold is an exception on the device and nothing in the air. Anything longer must be re-armed by
+the page. Found while writing the Java, after the catalogue had already shipped a 300 s ceiling.
+
 **UNKNOWN and unmeasurable from here:** actual packet error rate, collision behaviour in a crowded 2.4 GHz
 band, whether One UI throttles or kills long-lived advertising, and whether advertising survives screen-off
 in practice. All device work.

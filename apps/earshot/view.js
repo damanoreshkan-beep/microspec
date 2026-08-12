@@ -110,12 +110,17 @@ async function throwVoice(text) {
   const seq = ((($mine.get()?.seq ?? 0) + 1) & 0xff);
   const bytes = encodeVoice({ sender: senderId(), seq, text: fit.text });
   if (gate) { $mine.set({ seq, text: fit.text, until: Date.now() + HOLD_MS }); return; }
+  // ALWAYS attempt it. Greying the button out on shell.has() hid the reason behind a dead control, and a
+  // dead control cannot be diagnosed from the outside — the owner hit exactly that with a working bridge.
+  // Every refusal now arrives as text, with the numbers that decide it.
   try {
     await shell.call("ble.advertise", { data: hexOf(bytes), ms: HOLD_MS });
     $mine.set({ seq, text: fit.text, until: Date.now() + HOLD_MS });
     $err.set(null);
   } catch (e) {
-    $err.set(e?.detail || e?.code || ERR.failed);
+    const code = e?.code || ERR.failed;
+    const detail = e?.detail ? ` · ${e.detail}` : "";
+    $err.set(`${code}${detail} · bridge ${shell.version}/${shell.catalogueVersion} · ${hexOf(bytes).length / 2}B`);
   }
 }
 
@@ -181,12 +186,11 @@ export function airView({ t }) {
     return () => { if (!gate) hush(); };
   }, []);
 
+  // ONLY an empty message disables the throw. The radio's opinion is not a reason to grey out a control:
+  // it makes a refusal unreadable, and a page can be wrong about it — shell.has() was false on a phone
+  // whose bridge was current, and there was no way to see that from the screen.
   const fit = fitText(draft);
-  const canThrow = fit.bytes > 0 && (gate || shell.has("ble.advertise"));
-  // why() separates the two reasons a throw is impossible, and they need DIFFERENT words: a browser can
-  // never transmit (install the app), while an installed APK older than bridge 26 has the capability
-  // listed and refuses it (update the app). Collapsing them into one greyed-out button is how a working
-  // phone looks broken — you type, and nothing explains why the button will not move.
+  const canThrow = fit.bytes > 0;
   const why = gate ? null : shell.why("ble.advertise");
   const holding = mine && (gate || mine.until > now);
 
@@ -211,8 +215,13 @@ export function airView({ t }) {
     </${Stage}>
 
     <${Island}>
-      ${err ? html`<div data-err class="text-[0.8rem] text-base-content/70">${String(err)}</div>` : null}
-      ${why
+      ${err
+        ? html`<div data-err class="flex items-start gap-[var(--ms-gap)] min-w-0">
+            ${Icon("lucide:triangle-alert", "text-[1.1em] shrink-0 mt-0.5 text-[var(--app-accent)]")}
+            <span class="min-w-0 break-words font-mono text-[0.85rem] text-base-content">${String(err)}</span>
+          </div>`
+        : null}
+      ${why && !err
         ? html`<div data-needs class="flex items-center gap-[var(--ms-gap)] min-w-0">
             ${Icon("lucide:radio-tower", "text-[1.1em] shrink-0 text-base-content/70")}
             <span class="min-w-0 text-base-content/70">${T(t, why === ERR.staleBridge ? "needsUpdate" : "needsApp")}</span>

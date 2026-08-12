@@ -183,7 +183,11 @@ export function airView({ t }) {
 
   const fit = fitText(draft);
   const canThrow = fit.bytes > 0 && (gate || shell.has("ble.advertise"));
-  const noBridge = !gate && !shell.has("ble.advertise");
+  // why() separates the two reasons a throw is impossible, and they need DIFFERENT words: a browser can
+  // never transmit (install the app), while an installed APK older than bridge 26 has the capability
+  // listed and refuses it (update the app). Collapsing them into one greyed-out button is how a working
+  // phone looks broken — you type, and nothing explains why the button will not move.
+  const why = gate ? null : shell.why("ble.advertise");
   const holding = mine && (gate || mine.until > now);
 
   return html`<div class="h-full min-h-0 flex flex-col">
@@ -208,6 +212,12 @@ export function airView({ t }) {
 
     <${Island}>
       ${err ? html`<div data-err class="text-[0.8rem] text-base-content/70">${String(err)}</div>` : null}
+      ${why
+        ? html`<div data-needs class="flex items-center gap-[var(--ms-gap)] min-w-0">
+            ${Icon("lucide:radio-tower", "text-[1.1em] shrink-0 text-base-content/70")}
+            <span class="min-w-0 text-base-content/70">${T(t, why === ERR.staleBridge ? "needsUpdate" : "needsApp")}</span>
+          </div>`
+        : null}
       ${holding
         ? html`<div data-holding class="flex items-center gap-[var(--ms-gap)] min-w-0">
             <span class="w-1.5 h-1.5 rounded-full shrink-0"
@@ -232,9 +242,6 @@ export function airView({ t }) {
           ${Icon(listening ? "lucide:ear" : "lucide:ear-off", "text-[1.1em]")}
           <span>${T(t, listening ? "hush" : "listen")}</span>
         </button>
-        ${noBridge
-          ? html`<span data-needs class="text-[0.8rem] text-base-content/70 ml-auto">${T(t, "needsApp")}</span>`
-          : null}
       </div>
     </${Island}>
   </div>`;

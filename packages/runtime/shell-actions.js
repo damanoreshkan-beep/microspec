@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 25;
+export const CATALOGUE_BRIDGE = 26;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -250,7 +250,11 @@ export const ACTIONS = {
     ],
     "mock": {
       "supported": true,
-      "on": true
+      "on": true,
+      "advertising": false,
+      "extAdv": true,
+      "maxAdvLen": 1650,
+      "multiAdv": true
     }
   },
   "ble.scan": {
@@ -273,6 +277,30 @@ export const ACTIONS = {
       "dstat": 0,
       "legacy": true,
       "conn": true
+    }
+  },
+  "ble.advertise": {
+    "capability": "advertise",
+    "kind": "call",
+    "minBridge": 26,
+    "android": [
+      "BLUETOOTH_ADVERTISE"
+    ],
+    "mock": {
+      "advertising": true,
+      "bytes": 22,
+      "replaced": false
+    }
+  },
+  "ble.silence": {
+    "capability": "advertise",
+    "kind": "call",
+    "minBridge": 26,
+    "android": [
+      "BLUETOOTH_ADVERTISE"
+    ],
+    "mock": {
+      "advertising": false
     }
   },
   "usb.list": {

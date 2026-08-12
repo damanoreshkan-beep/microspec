@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 25,
+  "bridgeVersion": 26,
   "actions": [
     {
       "id": "system.info",
@@ -842,7 +842,7 @@
       "android": [
         "BLUETOOTH_CONNECT"
       ],
-      "summary": "Is there a Bluetooth radio and is it on. Web Bluetooth cannot answer this — it can only open a chooser.",
+      "summary": "Is there a Bluetooth radio, is it on, and what can it transmit. Web Bluetooth cannot answer any of this — it can only open a chooser.",
       "args": {
         "type": "object",
         "additionalProperties": false,
@@ -861,12 +861,32 @@
           },
           "on": {
             "type": "boolean"
+          },
+          "advertising": {
+            "type": "boolean",
+            "description": "Whether THIS app currently holds an advertisement in the air. The shell owns this state, so a reloaded page can find out instead of guessing."
+          },
+          "extAdv": {
+            "type": "boolean",
+            "description": "isLeExtendedAdvertisingSupported. Absent on a shell older than bridge 26 — which is how a page tells 'this controller cannot' apart from 'this shell cannot say'."
+          },
+          "maxAdvLen": {
+            "type": "integer",
+            "description": "getLeMaximumAdvertisingDataLength — the controller's own ceiling, never assumed. 31 means legacy only; the HCI range tops out at 1650 and no phone owes you that."
+          },
+          "multiAdv": {
+            "type": "boolean",
+            "description": "isMultipleAdvertisementSupported. A boolean is all Android exposes — it is NOT a count, and treating it as one is how ADVERTISE_FAILED_TOO_MANY_ADVERTISERS arrives."
           }
         }
       },
       "mock": {
         "supported": true,
-        "on": true
+        "on": true,
+        "advertising": false,
+        "extAdv": true,
+        "maxAdvLen": 1650,
+        "multiAdv": true
       }
     },
     {
@@ -952,6 +972,98 @@
         "dstat": 0,
         "legacy": true,
         "conn": true
+      }
+    },
+    {
+      "id": "ble.advertise",
+      "capability": "advertise",
+      "kind": "call",
+      "minBridge": 26,
+      "android": [
+        "BLUETOOTH_ADVERTISE"
+      ],
+      "summary": "Put bytes into the air for anyone nearby to hear. The peripheral role Web Bluetooth has never had — a browser can only ever be a central, so a phone running a page is invisible to every other phone. Non-connectable and non-discoverable: nothing can open a session against this device, and Android charges no 3-byte flags structure for it (BluetoothLeAdvertiser hasFlags = isConnectable && isDiscoverable), which is what leaves 27 usable bytes. Its own capability, deliberately: scanning and speaking are different powers and an app that reads the air must not be able to fill it.",
+      "args": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "string",
+            "pattern": "^([0-9a-f]{2})+$",
+            "maxLength": 54,
+            "description": "Manufacturer-specific payload as lowercase hex, 1-27 bytes, carried under company id 0xFFFF (the SIG's internal/interoperability-test space — the shell fixes it so a page cannot impersonate a vendor). 31 legacy bytes minus AD length, AD type and the 2-byte company id is where 27 comes from."
+          },
+          "more": {
+            "type": "string",
+            "pattern": "^([0-9a-f]{2})+$",
+            "maxLength": 54,
+            "description": "A second payload of the same shape carried in the scan response, checked against its own 31-byte budget and never charged flags. Android forces legacy advertisements to be scannable and withholds the report until the scan response arrives, so this space is already paid for whether or not it is used."
+          },
+          "ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 300000,
+            "description": "Stop by itself after this long. 0 holds it until ble.silence. Bounded because a page that dies mid-throw must not leave the radio talking forever."
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "advertising"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "advertising": {
+            "type": "boolean"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "Payload bytes accepted, so a page can assert what actually went out rather than what it meant to send."
+          },
+          "replaced": {
+            "type": "boolean",
+            "description": "A previous advertisement was stopped to make room. One set at a time, the same way a second ble.scan replaces the first."
+          }
+        }
+      },
+      "mock": {
+        "advertising": true,
+        "bytes": 22,
+        "replaced": false
+      }
+    },
+    {
+      "id": "ble.silence",
+      "capability": "advertise",
+      "kind": "call",
+      "minBridge": 26,
+      "android": [
+        "BLUETOOTH_ADVERTISE"
+      ],
+      "summary": "Stop transmitting. Named for the transmitter alone — a scan is stopped by dropping its subscription, and one verb that could mean either is one verb that eventually means the wrong one.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "advertising"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "advertising": {
+            "type": "boolean"
+          }
+        }
+      },
+      "mock": {
+        "advertising": false
       }
     },
     {

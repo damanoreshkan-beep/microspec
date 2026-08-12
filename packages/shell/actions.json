@@ -1005,8 +1005,8 @@
           "ms": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 300000,
-            "description": "Stop by itself after this long. 0 holds it until ble.silence. Bounded because a page that dies mid-throw must not leave the radio talking forever."
+            "maximum": 180000,
+            "description": "Stop by itself after this long. 0 holds it until ble.silence. The ceiling is the platform's, not ours: AdvertiseSettings.setTimeout THROWS above LIMITED_ADVERTISING_MAX_MILLIS (180 * 1000) rather than clamping, so a larger number would be an exception on the device and nothing in the air."
           }
         }
       },

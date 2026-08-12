@@ -179,12 +179,15 @@ function Line({ row, loc }) {
   const at = new Date(row.at).toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" });
   const name = callsign(row.sender);
   return html`<div data-voice=${row.sender.toString(16)} data-mine=${row.mine ? "1" : "0"}
-      class=${`flex flex-col gap-1 max-w-[85%] ${row.mine ? "ml-auto items-end" : "items-start"}`}>
+      class=${`flex flex-col gap-0.5 max-w-[85%] ${row.mine ? "ml-auto items-end" : "items-start"}`}>
     <div class="flex items-center gap-1.5 px-1">
       <span class="w-2 h-2 rounded-full shrink-0" style=${`background:hsl(${hue} 70% 55%)`}></span>
       <span class="font-mono text-[0.7rem] text-base-content/70">${name}</span>
     </div>
-    <div class=${`min-w-0 rounded-2xl px-3 py-2 ${row.mine ? "bg-[var(--app-accent)]/15 border border-[var(--app-accent)]" : "bg-base-200"}`}>
+    ${/* A bubble has to be a SURFACE, not a tint: bg-base-200 sits within a few percent of the page in the
+         dark theme, so the messages read as a bare list. sf-raised/sf-e2 is the farm's extruded card — the
+         same material Panel uses — and it stays legible in both themes without picking a colour here. */ ""}
+    <div class=${`min-w-0 rounded-2xl px-3 py-2 ${row.mine ? "bg-[var(--app-accent)]/20 border border-[var(--app-accent)]" : "sf-raised sf-e2"}`}>
       <div class="break-words text-base-content">
         ${row.mine ? row.text : html`<${Scramble} text=${row.text} minMs=${420} />`}
       </div>
@@ -223,7 +226,7 @@ export function airView({ S, t }) {
     </div>
 
     ${rows.length
-      ? html`<div data-field class="flex flex-col gap-3">
+      ? html`<div data-field class="flex flex-col gap-2">
           ${rows.map((row) => html`<${Line} key=${row.key} row=${row} loc=${loc} />`)}
           <div ref=${endRef}></div>
         </div>`

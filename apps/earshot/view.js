@@ -88,7 +88,9 @@ async function throwVoice(text) {
     $mine.set({ seq, text: fit.text, until: Date.now() + HOLD_MS });
     $err.set(null);
   } catch (e) {
-    $err.set(e?.detail || e?.code || ERR.failed);
+    const code = e?.code || ERR.failed;
+    const detail = e?.detail ? ` · ${e.detail}` : "";
+    $err.set(`${code}${detail} · bridge ${shell.version}/${shell.catalogueVersion} · ${hexOf(bytes).length / 2}B`);
   }
 }
 
@@ -148,7 +150,7 @@ export function airView({ t }) {
   }, []);
 
   const fit = fitText(draft);
-  const canThrow = fit.bytes > 0 && (gate || shell.has("ble.advertise"));
+  const canThrow = fit.bytes > 0;
   const why = gate ? null : shell.why("ble.advertise");
   const holding = mine && (gate || mine.until > now);
 
@@ -169,8 +171,13 @@ export function airView({ t }) {
     </${Stage}>
 
     <${Island}>
-      ${err ? html`<div data-err class="text-[0.8rem] text-base-content/70">${String(err)}</div>` : null}
-      ${why
+      ${err
+        ? html`<div data-err class="flex items-start gap-[var(--ms-gap)] min-w-0">
+            ${Icon("lucide:triangle-alert", "text-[1.1em] shrink-0 mt-0.5 text-[var(--app-accent)]")}
+            <span class="min-w-0 break-words font-mono text-[0.85rem] text-base-content">${String(err)}</span>
+          </div>`
+        : null}
+      ${why && !err
         ? html`<div data-needs class="flex items-center gap-[var(--ms-gap)] min-w-0">
             ${Icon("lucide:radio-tower", "text-[1.1em] shrink-0 text-base-content/70")}
             <span class="min-w-0 text-base-content/70">${T(t, why === ERR.staleBridge ? "needsUpdate" : "needsApp")}</span>

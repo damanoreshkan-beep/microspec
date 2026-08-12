@@ -20,5 +20,8 @@
   "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
   "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
   "close": "Close",
-  "needsUpdate": "Update the app to speak — this one is older than the air"
+  "needsUpdate": "Update the app to speak — this one is older than the air",
+  "locationOff": "Turn location on — Android returns an empty scan without it and reports no error",
+  "bleOff": "Bluetooth is off",
+  "noBle": "No Bluetooth radio on this device"
 }

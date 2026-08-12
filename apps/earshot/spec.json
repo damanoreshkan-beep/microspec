@@ -9,8 +9,7 @@
       "type": "tool",
       "icon": "lucide:radio",
       "label": "tabAir",
-      "view": "airView",
-      "fit": true
+      "view": "airView"
     },
     {
       "id": "me",

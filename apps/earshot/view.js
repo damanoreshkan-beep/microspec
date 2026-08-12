@@ -74,6 +74,7 @@ function hush() {
   try { stopScan?.(); } catch {  }
   stopScan = null;
   clearInterval(ageTimer); ageTimer = null;
+  $voices.set([]);
 }
 
 async function throwVoice(text) {

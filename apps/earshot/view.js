@@ -118,7 +118,7 @@ function useField() {
  */
 function Voice({ v, mine }) {
   const size = 1.0 + (v.percent / 100) * 0.35;
-  const dim = 0.55 + (v.percent / 100) * 0.45;
+  const dim = 0.62 + (v.percent / 100) * 0.38;
   const hue = hueOf(v.sender);
   return html`<span
     data-voice=${v.sender.toString(16)}
@@ -157,7 +157,7 @@ export function airView({ t }) {
       <div class="h-full min-h-0 flex flex-col px-[var(--ms-pad)]">
         ${shown.length
           ? html`<div data-field
-              class="flex-1 min-h-0 flex flex-wrap items-center justify-center content-around gap-2.5 py-[var(--ms-gap)]">
+              class="flex-1 min-h-0 flex flex-wrap items-end justify-center content-end gap-3 py-[var(--ms-gap)]">
               ${shown.map((v) => html`<${Voice} key=${`${v.sender}:${v.seq}`} v=${v} mine=${false} />`)}
               ${hidden ? html`<span data-more class="font-mono text-[0.8rem] text-base-content/70">+${hidden}</span>` : null}
             </div>`

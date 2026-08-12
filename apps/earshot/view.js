@@ -117,7 +117,7 @@ function useField() {
  * recognise across two throws without ever being a name.
  */
 function Voice({ v, mine }) {
-  const size = 0.92 + (v.percent / 100) * 0.43;
+  const size = 1.0 + (v.percent / 100) * 0.35;
   const dim = 0.55 + (v.percent / 100) * 0.45;
   const hue = hueOf(v.sender);
   return html`<span
@@ -154,14 +154,15 @@ export function airView({ t }) {
 
   return html`<div class="h-full min-h-0 flex flex-col">
     <${Stage}>
-      <div class="h-full min-h-0 flex flex-col items-center justify-center gap-[var(--ms-gap)] px-[var(--ms-pad)]">
+      <div class="h-full min-h-0 flex flex-col px-[var(--ms-pad)]">
         ${shown.length
-          ? html`<div data-field class="flex flex-wrap items-center justify-center gap-2 max-w-full">
+          ? html`<div data-field
+              class="flex-1 min-h-0 flex flex-wrap items-center justify-center content-around gap-2.5 py-[var(--ms-gap)]">
               ${shown.map((v) => html`<${Voice} key=${`${v.sender}:${v.seq}`} v=${v} mine=${false} />`)}
               ${hidden ? html`<span data-more class="font-mono text-[0.8rem] text-base-content/70">+${hidden}</span>` : null}
             </div>`
-          : html`<div data-empty class="text-center max-w-[22rem]">
-              <div class="text-base-content/70">${T(t, listening ? "quiet" : "off")}</div>
+          : html`<div data-empty class="flex-1 min-h-0 grid place-items-center text-center">
+              <div class="text-base-content/70 max-w-[22rem]">${T(t, listening ? "quiet" : "off")}</div>
             </div>`}
       </div>
     </${Stage}>

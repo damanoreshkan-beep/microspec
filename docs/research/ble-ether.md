@@ -275,7 +275,24 @@ physically possible at ~10 Cyrillic characters per packet.
 **CI can never test any of this.** The Chromium gate sees the catalogue mock; the radio is verified by hand
 on one device. That is the honest price.
 
-## 10. Open questions the device must answer
+## 10. What shipped (2026-08-12)
+
+Both halves are built; only the radio itself is unverified.
+
+- **Transport** — `ble.advertise` / `ble.silence` at bridge 26 under a new `advertise` capability, kept
+  separate from `ble` so an app that reads the air cannot fill it. Verified end to end **to the APK**: the
+  production VPS `/feed/apk` returns a package whose `bridge.json` carries `advertise` and whose
+  `classes.dex` carries `ble.advertise`.
+- **Protocol** — `packages/runtime/earshot.js`, 9 unit tests. Header is **5 bytes** (magic+version ·
+  3-byte sender · seq), leaving **22 bytes** of UTF-8 ≈ **11 Cyrillic characters**. No fragmentation.
+  Length is not carried: UTF-8 of a non-empty string never ends in `0x00`, so §3's trailing-zero strip
+  cannot bite. Dedup on (sender, seq); ageing on last-heard.
+- **App** — `apps/earshot`, the farm's 67th. No dial, no ring, no angle, no metres.
+
+The one thing the gates could not see and a person had to decide: stopping the scan must also **clear the
+field**, because the ageing clock stops with it and the last voices would otherwise hang on screen forever.
+
+## 11. Open questions the device must answer
 
 - `getLeMaximumAdvertisingDataLength()` and `isLeExtendedAdvertisingSupported()` on the S25.
 - Concurrent advertising sets.

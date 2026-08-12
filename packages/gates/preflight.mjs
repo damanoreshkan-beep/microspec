@@ -365,11 +365,17 @@ const toolTabsAfterFirst = (d) => {
     return tabs.slice(1).filter((t) => t.type === "tool" && t.id).map((t) => `?tab=${t.id}`);
   } catch { return []; }
 };
+// preflight() returns a PROBLEM count, so summing it and calling the total "apps" reports 20 broken apps
+// when one app has 20 missing i18n keys — a number that sends you looking for a farm-wide regression that
+// does not exist. Count the two things separately and name both.
+const badApps = new Set();
 for (const d of dirs) {
   URL_QUERY = URL_ARG;
-  fail += await preflight(d);
-  for (const q of toolTabsAfterFirst(d)) { URL_QUERY = q; fail += await preflight(d); }
+  let n = await preflight(d);
+  for (const q of toolTabsAfterFirst(d)) { URL_QUERY = q; n += await preflight(d); }
   URL_QUERY = URL_ARG;
+  fail += n;
+  if (n) badApps.add(d);
 }
-console.log(`\n  ${fail ? C.r + "✗ " + fail + " app(s) failed" : C.g + "✓ all clean"}${C.x}\n`);
+console.log(`\n  ${fail ? `${C.r}✗ ${badApps.size} app(s) failed · ${fail} problem(s)` : C.g + "✓ all clean"}${C.x}\n`);
 Deno.exit(fail ? 1 : 0);

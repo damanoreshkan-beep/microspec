@@ -98,6 +98,10 @@ function hush() {
   try { stopScan?.(); } catch { /* already gone */ }
   stopScan = null;
   clearInterval(ageTimer); ageTimer = null;
+  // The field goes with the radio. Keeping the last voices on screen would show people who are no longer
+  // being heard — and since the ageing clock stops here too, they would never expire either: ghosts with
+  // no way out. A voice exists only while something is listening for it.
+  $voices.set([]);
 }
 
 async function throwVoice(text) {

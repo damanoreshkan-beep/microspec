@@ -292,6 +292,20 @@ Both halves are built; only the radio itself is unverified.
 The one thing the gates could not see and a person had to decide: stopping the scan must also **clear the
 field**, because the ageing clock stops with it and the last voices would otherwise hang on screen forever.
 
+**VERIFIED ON TWO PHONES, 2026-08-12.** A message typed on one phone arrives on another with no network,
+and nRF Connect sees the raw payload under company id 0xFFFF. Three things cost real time getting there,
+none of them in the radio work itself:
+
+1. **The bridge version lived in two places.** `Catalogue.java` (generated) said 26, `ShellBridge.java`
+   (hand-written) said 25, and `version()` returns the latter — so a freshly built APK announced itself a
+   bridge behind and refused the capability it had just gained. No reinstall could fix it.
+   `java-gen --check` now fails on a literal there.
+2. **A permission refused twice is refused forever.** `denied:BLUETOOTH_SCAN` cannot be retried into
+   working: `requestPermissions` returns instantly with no dialog. The only exit is `system.grant` and then
+   `system.settings`.
+3. **Location services OFF returns an empty scan with no error** — indistinguishable from an empty room.
+   `system.info.locationOn` is the only tell, and the app has to say it out loud.
+
 ## 11. Open questions the device must answer
 
 - `getLeMaximumAdvertisingDataLength()` and `isLeExtendedAdvertisingSupported()` on the S25.

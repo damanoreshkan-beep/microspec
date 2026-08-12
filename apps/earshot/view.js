@@ -147,7 +147,9 @@ function Voice({ v, mine }) {
   // Text scale is bounded well above legibility: a 60% voice must still be readable, so the ladder runs
   // 0.92→1.35rem rather than fading to nothing.
   const size = 1.0 + (v.percent / 100) * 0.35;
-  const dim = 0.55 + (v.percent / 100) * 0.45;
+  // Floor at 0.62, not 0.55: the faintest voice is meant to read as distant, not as unreadable, and on the
+  // light theme 55% of base-content is where legibility starts going.
+  const dim = 0.62 + (v.percent / 100) * 0.38;
   const hue = hueOf(v.sender);
   return html`<span
     data-voice=${v.sender.toString(16)}
@@ -188,11 +190,12 @@ export function airView({ t }) {
     <${Stage}>
       <div class="h-full min-h-0 flex flex-col px-[var(--ms-pad)]">
         ${shown.length
-          // content-around spreads the WRAPPED ROWS down the cross axis. Centring them instead packs the
-          // whole field into a band in the middle and leaves two thirds of a phone screen empty — an
-          // underuse no gate can see, since nothing overflows and every check passes.
+          // The cloud sits at the BOTTOM, against the input. Centring the rows leaves two thirds of a phone
+          // empty; spreading them (content-around) opens ~350px between rows and they stop reading as one
+          // group. Bottom-aligned, the empty space above is sky rather than a hole, and the weight sits
+          // where the speaking happens. Neither version overflows, so no gate can choose between them.
           ? html`<div data-field
-              class="flex-1 min-h-0 flex flex-wrap items-center justify-center content-around gap-2.5 py-[var(--ms-gap)]">
+              class="flex-1 min-h-0 flex flex-wrap items-end justify-center content-end gap-3 py-[var(--ms-gap)]">
               ${shown.map((v) => html`<${Voice} key=${`${v.sender}:${v.seq}`} v=${v} mine=${false} />`)}
               ${hidden ? html`<span data-more class="font-mono text-[0.8rem] text-base-content/70">+${hidden}</span>` : null}
             </div>`

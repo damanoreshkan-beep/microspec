@@ -3,12 +3,7 @@
   "tabAir": "Air",
   "tabMe": "Settings",
   "say": "say something",
-  "throw": "Throw",
-  "takeBack": "Take back",
-  "listen": "Listen",
-  "hush": "Stop listening",
-  "quiet": "Nobody within earshot",
-  "off": "The air is quiet until you listen",
+  "quiet": "Nobody within earshot yet",
   "needsApp": "Speaking needs the app",
   "profTagline": "Say something to whoever is close enough to hear",
   "profTheme": "Dark theme",
@@ -24,5 +19,7 @@
   "locationOff": "Turn location on — Android returns an empty scan without it and reports no error",
   "bleOff": "Bluetooth is off",
   "noBle": "No Bluetooth radio on this device",
-  "allow": "Allow"
+  "allow": "Allow",
+  "send": "Send",
+  "packets": "packets"
 }

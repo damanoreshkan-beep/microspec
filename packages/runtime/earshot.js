@@ -99,6 +99,23 @@ export const newSender = (rand = Math.random) => Math.floor(rand() * 0x1000000) 
 /** Golden-angle hue: consecutive ids land far apart, so two speakers are rarely the same colour. */
 export const hueOf = (sender) => Math.round(((sender >>> 0) * 137.508) % 360);
 
+// A sender id has to be shown as SOMETHING, and six hex digits is a serial number, not a person. Alternating
+// consonant and vowel gives a name that can be read aloud and told apart across a room in either locale.
+// 14×5 per syllable, three syllables = 343,000 names — collisions matter only among people standing
+// together, and the colour disambiguates the rest.
+const CONS = "bdfgklmnprstvz";
+const VOW = "aeiou";
+
+export function callsign(sender) {
+  let n = (sender >>> 0);
+  let out = "";
+  for (let i = 0; i < 3; i++) {
+    out += CONS[n % CONS.length]; n = Math.floor(n / CONS.length);
+    out += VOW[n % VOW.length]; n = Math.floor(n / VOW.length);
+  }
+  return out;
+}
+
 /**
  * Fold sightings into the voices on screen.
  *

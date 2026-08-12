@@ -38,6 +38,35 @@ const $err = atom(null);
 const $blocked = atom(null);
 const $mine = atom(null);          // { seq, text, until, at } — what THIS phone is holding in the air
 const $now = atom(Date.now());
+// The Android permission an error named, so the screen can offer the ONE exit that exists. A permission
+// refused twice is refused forever: requestPermissions returns instantly and no dialog can ever appear
+// again, which is why "ask again" alone is not an answer and app settings has to be reachable from here.
+const $needPerm = atom(null);
+
+const PERM_RE = /denied:([A-Z_]+)/;
+
+function noteError(e) {
+  const code = e?.code || ERR.failed;
+  const detail = e?.detail || "";
+  const m = PERM_RE.exec(detail) || PERM_RE.exec(code);
+  if (m) $needPerm.set(m[1]);
+  $err.set(`${code}${detail ? ` · ${detail}` : ""}`);
+}
+
+/** Ask; if Android has stopped asking, walk the user to the switch instead of repeating a no-op. */
+async function grant() {
+  const p = $needPerm.get();
+  if (!p) return;
+  try {
+    const r = await shell.call("system.grant", { permission: p });
+    if (r?.state === "granted") {
+      $needPerm.set(null); $err.set(null);
+      hush(); listen();
+      return;
+    }
+  } catch { /* the grant call itself failed; settings is still worth offering */ }
+  try { await shell.call("system.settings", { page: "app" }); } catch { /* nothing else to offer */ }
+}
 
 const SENDER_KEY = "earshot.sender";
 function loadSender() {
@@ -116,7 +145,7 @@ function listen() {
   $seen.set({ frames: 0, ours: 0 });
   ageTimer = setInterval(() => $now.set(Date.now()), 1000);
   stopScan = shell.subscribe("ble.scan", {}, heard, (e) => {
-    $err.set(`${e?.code || ERR.failed}${e?.detail ? ` · ${e.detail}` : ""}`);
+    noteError(e);
     $listening.set(false);
   });
 }
@@ -145,9 +174,8 @@ async function throwVoice(text) {
     $mine.set({ seq, text: fit.text, until: now + HOLD_MS, at: now });
     $err.set(null);
   } catch (e) {
-    const code = e?.code || ERR.failed;
-    const detail = e?.detail ? ` · ${e.detail}` : "";
-    $err.set(`${code}${detail} · bridge ${shell.version}/${shell.catalogueVersion} · ${bytes.length}B`);
+    noteError(e);
+    $err.set(`${$err.get()} · bridge ${shell.version}/${shell.catalogueVersion} · ${bytes.length}B`);
   }
 }
 
@@ -196,6 +224,7 @@ export function airView({ S, t }) {
   const mine = useStore($mine);
   const now = useStore($now);
   const seen = useStore($seen);
+  const needPerm = useStore($needPerm);
   const loc = useStore(S.locale);
   const rows = useChat();
   const [draft, setDraft] = useState("");
@@ -236,6 +265,10 @@ export function airView({ S, t }) {
         ? html`<div data-err class="flex items-start gap-[var(--ms-gap)] min-w-0">
             ${Icon("lucide:triangle-alert", "text-[1.1em] shrink-0 mt-0.5 text-[var(--app-accent)]")}
             <span class="min-w-0 break-words font-mono text-[0.85rem] text-base-content">${String(err)}</span>
+            ${needPerm
+              ? html`<button data-grant class="btn btn-sm btn-primary shrink-0 ml-auto"
+                             onClick=${grant}>${T(t, "allow")}</button>`
+              : null}
           </div>`
         : null}
       ${why && !err && !blocked

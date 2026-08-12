@@ -54,6 +54,7 @@
       "wifi",
       "cell",
       "ble",
+      "advertise",
       "usb",
       "motion",
       "camera",

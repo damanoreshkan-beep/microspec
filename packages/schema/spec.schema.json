@@ -131,6 +131,7 @@
               "wifi",
               "cell",
               "ble",
+              "advertise",
               "usb",
               "server",
               "files",

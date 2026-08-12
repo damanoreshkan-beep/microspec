@@ -34,7 +34,7 @@ const record = (id, v) => $runs.set({ ...$runs.get(), [id]: v });
 const CAP_ICON = {
   system: "lucide:cpu", notify: "lucide:bell", alarm: "lucide:alarm-clock",
   background: "lucide:activity", wifi: "lucide:wifi", cell: "lucide:radio-tower",
-  ble: "lucide:bluetooth", usb: "lucide:usb", location: "lucide:map-pin",
+  ble: "lucide:bluetooth", advertise: "lucide:radio", usb: "lucide:usb", location: "lucide:map-pin",
   files: "lucide:folder", server: "lucide:server", lan: "lucide:network",
 };
 
@@ -59,6 +59,11 @@ const PROBE = {
   // safe inside a checklist run — and it is the one probe that can UNBLOCK the two rows above it.
   "system.grant": () => ({ permission: "READ_PHONE_STATE" }),
   "ble.state": () => ({}),
+  // Speak then fall silent, in catalogue order, so a run proves the radio both starts AND stops instead of
+  // leaving the phone transmitting after the checklist ends. The payload is "msos" in hex so it is
+  // recognisable in another device's raw advertisement dump — this probe is only half a test on one phone.
+  "ble.advertise": () => ({ data: "6d736f73", ms: 3000 }),
+  "ble.silence": () => ({}),
   "usb.list": () => ({}),
   "system.logs": () => ({}),
   // Only roots is probeable: grant opens a system picker (a checklist walk must never do that), and
@@ -114,7 +119,15 @@ function summarise(id, v, loc) {
   if (id === "wifi.info") return v.connected ? `${v.ssid || "?"} ${v.rssi}dBm` : "—";
   if (id === "cell.info") return `${(v.cells || []).length}`;
   if (id === "system.grant") return v.state;
-  if (id === "ble.state") return v.supported ? (v.on ? "on" : "off") : "—";
+  if (id === "ble.state") {
+    if (!v.supported) return "—";
+    // maxAdvLen is the number the ether app's whole payload budget rests on, so the console prints it
+    // rather than a word: 31 means legacy only, and no phone owes us more.
+    const adv = v.maxAdvLen ? ` · ${v.maxAdvLen}B${v.extAdv ? " ext" : ""}` : "";
+    return `${v.on ? "on" : "off"}${adv}${v.advertising ? " · advertising" : ""}`;
+  }
+  if (id === "ble.advertise") return `${v.bytes ?? 0}B${v.replaced ? " · replaced" : ""}`;
+  if (id === "ble.silence") return v.advertising ? "still on" : "off";
   if (id === "usb.list") return `${(v.devices || []).length}`;
   if (id === "system.logs") return `${(v.lines || []).length}`;
   if (id === "system.battery") return `${v.level}%${v.charging ? " · charging" : ""}${v.unrestricted === false ? " · restricted" : ""}`;

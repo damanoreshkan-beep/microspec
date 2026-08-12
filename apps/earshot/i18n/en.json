@@ -1,0 +1,23 @@
+{
+  "appName": "Earshot",
+  "tabAir": "Air",
+  "tabMe": "Settings",
+  "say": "say something",
+  "throw": "Throw",
+  "takeBack": "Take back",
+  "listen": "Listen",
+  "hush": "Stop listening",
+  "quiet": "Nobody within earshot",
+  "off": "The air is quiet until you listen",
+  "needsApp": "Speaking needs the app",
+  "profTagline": "Say something to whoever is close enough to hear",
+  "profTheme": "Dark theme",
+  "profLang": "Language",
+  "install": "Install app",
+  "installTitle": "Install",
+  "installBtn": "Install",
+  "installDesc": "Works offline, opens like an app",
+  "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
+  "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
+  "close": "Close"
+}

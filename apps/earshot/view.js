@@ -195,7 +195,8 @@ export function airView({ t }) {
           // group. Bottom-aligned, the empty space above is sky rather than a hole, and the weight sits
           // where the speaking happens. Neither version overflows, so no gate can choose between them.
           ? html`<div data-field
-              class="flex-1 min-h-0 flex flex-wrap items-end justify-center content-end gap-3 py-[var(--ms-gap)]">
+              class="flex-1 min-h-0 flex flex-wrap items-end justify-center content-end gap-3
+                     pt-[var(--ms-gap)] pb-[calc(var(--ms-gap)*2)]">
               ${shown.map((v) => html`<${Voice} key=${`${v.sender}:${v.seq}`} v=${v} mine=${false} />`)}
               ${hidden ? html`<span data-more class="font-mono text-[0.8rem] text-base-content/70">+${hidden}</span>` : null}
             </div>`

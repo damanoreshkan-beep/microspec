@@ -128,6 +128,11 @@ async function preflight(appdir) {
     // The profile tab is 100% runtime-rendered from spec.profile flags — its labels live in NO app source,
     // so a missing one prints the raw key ("profTheme", "install") on a screen the app author never wrote.
     // Parity can't catch it (both locales equally missing) — only tying the key to the declared capability does.
+    // Every app has a header, and the header's name is `title` — NOT `appName`, which is the plausible
+// guess that ships a chrome reading "TITLE" in caps. Parity cannot catch it (both locales equally
+    // wrong) and nothing else references the key, so only an unconditional rule does. Dry-run before it
+    // became fatal: 0 of the 67 apps were missing it.
+    [() => true, ["title"], "the header renders the app name"],
     [(s) => !!s.profile, ["profTagline"], "the profile tab renders the app tagline"],
     [(s) => !!s.profile?.theme, ["profTheme"], "profile.theme renders a dark-theme toggle"],
     [(s) => !!s.profile?.lang, ["profLang"], "profile.lang renders a language switch"],

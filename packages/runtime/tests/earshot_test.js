@@ -4,8 +4,17 @@ import {
   MAGIC as esMAGIC, COMPANY as esCOMPANY, HEADER as esHEADER, MAX_PAYLOAD as esMAX_PAYLOAD,
   MAX_TEXT as esMAX_TEXT, VOICE_TTL_MS as esTTL, fitText as esFitText, encodeVoice as esEncodeVoice,
   decodeVoice as esDecodeVoice, readFrame as esReadFrame, hexOf as esHexOf, newSender as esNewSender,
-  hueOf as esHueOf, mergeVoices as esMergeVoices,
+  hueOf as esHueOf, mergeVoices as esMergeVoices, callsign as esCallsign,
 } from "../earshot.js";
+
+Deno.test("earshot: a sender reads as a name, not a serial number", () => {
+  assertEquals(esCallsign(0x2f7a10), esCallsign(0x2f7a10));
+  assert(/^[bdfgklmnprstvz][aeiou][bdfgklmnprstvz][aeiou][bdfgklmnprstvz][aeiou]$/.test(esCallsign(0x2f7a10)));
+  const names = new Set([1, 2, 3, 4, 5, 6, 7, 8].map(esCallsign));
+  assertEquals(names.size, 8);
+  assertEquals(esCallsign(0).length, 6);
+  assertEquals(esCallsign(0xffffff).length, 6);
+});
 
 const advHex = (payload) => {
   const body = [0xff, esCOMPANY & 0xff, (esCOMPANY >> 8) & 0xff, ...payload];

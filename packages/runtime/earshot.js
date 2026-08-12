@@ -83,6 +83,19 @@ export const newSender = (rand = Math.random) => Math.floor(rand() * 0x1000000) 
 /** Golden-angle hue: consecutive ids land far apart, so two speakers are rarely the same colour. */
 export const hueOf = (sender) => Math.round(((sender >>> 0) * 137.508) % 360);
 
+const CONS = "bdfgklmnprstvz";
+const VOW = "aeiou";
+
+export function callsign(sender) {
+  let n = (sender >>> 0);
+  let out = "";
+  for (let i = 0; i < 3; i++) {
+    out += CONS[n % CONS.length]; n = Math.floor(n / CONS.length);
+    out += VOW[n % VOW.length]; n = Math.floor(n / VOW.length);
+  }
+  return out;
+}
+
 /**
  * Fold sightings into the voices on screen.
  *

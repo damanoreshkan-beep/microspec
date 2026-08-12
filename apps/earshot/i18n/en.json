@@ -23,5 +23,6 @@
   "needsUpdate": "Update the app to speak — this one is older than the air",
   "locationOff": "Turn location on — Android returns an empty scan without it and reports no error",
   "bleOff": "Bluetooth is off",
-  "noBle": "No Bluetooth radio on this device"
+  "noBle": "No Bluetooth radio on this device",
+  "allow": "Allow"
 }

@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 26;
+export const CATALOGUE_BRIDGE = 27;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -301,6 +301,19 @@ export const ACTIONS = {
     ],
     "mock": {
       "advertising": false
+    }
+  },
+  "ble.advertiseRaw": {
+    "capability": "advertise-raw",
+    "kind": "call",
+    "minBridge": 27,
+    "android": [
+      "BLUETOOTH_ADVERTISE"
+    ],
+    "mock": {
+      "advertising": true,
+      "bytes": 20,
+      "replaced": false
     }
   },
   "usb.list": {

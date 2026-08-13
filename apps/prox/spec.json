@@ -1,0 +1,31 @@
+{
+  "id": "prox",
+  "theme": "signal",
+  "category": "tools",
+  "accent": "#9D8CFF",
+  "tabs": [
+    {
+      "id": "air",
+      "type": "tool",
+      "icon": "lucide:scan-eye",
+      "label": "tabAir",
+      "view": "proxView"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:settings",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:scan-eye",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "permissions": [
+      "ble"
+    ]
+  }
+}

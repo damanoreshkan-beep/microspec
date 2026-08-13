@@ -977,6 +977,27 @@
     "needs": []
   },
   {
+    "id": "wall",
+    "title": "Стіна",
+    "titles": {
+      "en": "Wall",
+      "uk": "Стіна"
+    },
+    "tagline": "Чорний термінал, у який ти друкуєш, — наживо на всі телефони твого Wi-Fi.",
+    "taglines": {
+      "en": "A black terminal you type into, broadcast live to every phone on your Wi-Fi.",
+      "uk": "Чорний термінал, у який ти друкуєш, — наживо на всі телефони твого Wi-Fi."
+    },
+    "glyph": "lucide:square-terminal",
+    "art": "",
+    "bg": "#1f2430",
+    "fg": "#a78bfa",
+    "href": "./wall/",
+    "version": "1.0",
+    "category": "tools",
+    "needs": []
+  },
+  {
     "id": "tarot",
     "title": "Таро",
     "titles": {
@@ -1415,7 +1436,7 @@
     "bg": "#16161C",
     "fg": "#9D8CFF",
     "href": "./prox/",
-    "version": "1.0",
+    "version": "1.5",
     "category": "tools",
     "needs": []
   },

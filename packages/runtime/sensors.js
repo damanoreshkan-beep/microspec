@@ -132,7 +132,8 @@ export const wakeLock = {
 // Without a position there IS no declination — the model is a function of location — so a heading is
 // magnetic until a fix arrives, and says so via meta rather than quietly passing itself off as true.
 //
-// iOS webkitCompassHeading (gesture-gated permission); Android deviceorientationabsolute (360−alpha).
+// iOS webkitCompassHeading (gesture-gated permission); Android deviceorientationabsolute, where the
+// heading is PROJECTED from the orientation matrix, never read off α — see heldHeadingDeg.
 // Screen-orientation corrected, circular-EMA smoothed.
 //   start(onHeading, opts?) → stop fn. onHeading(deg, { magnetic, declination, isTrue }).
 //   opts.trueNorth: false keeps it magnetic and starts no geolocation watch.
@@ -145,14 +146,67 @@ export const wakeLock = {
 // jumped by hundreds of degrees — swarm's aim leapt 1°→−300° mid-turn on the reference device.
 // The projected vector is invariant under that re-expression (unit-tested). Returns null within
 // ~9° of straight up/down, where a camera heading does not exist — the caller holds the last one.
+// An axis whose horizontal projection is shorter than LOCK has no heading left to report (~9° of
+// straight up or down). Between FLAT and LOCK the screen-top axis is LOSING one: both numbers are
+// horizontal lengths, so they read as pitch — FLAT is 60° off flat, LOCK ~81°.
+const LOCK = 0.15, FLAT = 0.5;
+
 export function lookHeadingDeg(alpha, beta, gamma) {
   const r = Math.PI / 180, cA = Math.cos(alpha * r), sA = Math.sin(alpha * r);
   const sB = Math.sin(beta * r), cG = Math.cos(gamma * r), sG = Math.sin(gamma * r);
   const x = -cA * sG - sA * sB * cG;                                   // east
   const y = -sA * sG + cA * sB * cG;                                   // north
-  if (Math.hypot(x, y) < 0.15) return null;
+  if (Math.hypot(x, y) < LOCK) return null;
   return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
 }
+// screenHeadingDeg — heading of the device +y axis: the TOP EDGE OF THE SCREEN, which is what a dial,
+// a rose or a needle actually means by "ahead". Taken from the spec's own rotation matrix instead of
+// from α: R·ŷ = (−sinα·cosβ, cosα·cosβ, sinβ) (W3C orientation-event, the Z-X'-Y'' matrix), so east and
+// north are BOTH scaled by cosβ — the horizontal length of that axis as the phone pitches up.
+//
+// Two things fall out of keeping that length instead of dividing it away, and the old `(360 − α)` had
+// neither. It reduces to exactly (360 − α) while the phone is flat, so nothing changes in the grip these
+// apps were written for. And |cosβ| IS the confidence: it goes to zero as the phone comes upright, which
+// is where α stops being a heading at all — the same Euler axis it shares with γ (gimbal lock), so the
+// sensor re-expresses one physical orientation with α hundreds of degrees away and γ absorbing it. That
+// is the leap the owner sees (20° → −300°) and no amount of smoothing downstream can undo it, because
+// the number arriving is not noisy, it is a different valid description of the same direction.
+// Face-down (cosβ < 0) the top edge genuinely points behind you and this flips; (360 − α) never did.
+export function screenHeadingDeg(alpha, beta) {
+  const r = Math.PI / 180, cB = Math.cos(beta * r);
+  const x = -Math.sin(alpha * r) * cB;                                 // east
+  const y = Math.cos(alpha * r) * cB;                                  // north
+  if (Math.abs(cB) < LOCK) return null;                                // within ~9° of upright: no heading
+  return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+}
+
+// heldHeadingDeg — the heading a HAND-HELD compass should show, in the UI's frame, at any pitch. The
+// default path for every dial in the farm.
+//
+// The screen-top axis answers while the phone is flat; the camera axis (lookHeadingDeg) answers while it
+// is upright — and they are the same real-world direction, "away from the person holding it", so raising
+// the phone is a handoff, not a switch of meaning. They cannot fail together: |h_y|² + |h_z|² =
+// 1 + sin²γ·cos²β ≥ 1, so one of the two always keeps a horizontal length ≥ 0.707 and this never returns
+// null. A compass that freezes when you lift it reads as broken exactly like one that jumps.
+//
+// The crossfade is not cosmetic. α's noise is amplified by 1/cosβ as the axes converge, so the band where
+// the reading is merely GETTING bad is the band where weight has already moved to the camera — by 81° the
+// screen-top term is gone. Only the screen-top term takes the screen-orientation correction: the camera
+// does not turn when the UI does.
+export function heldHeadingDeg(alpha, beta, gamma, screenAngle = 0) {
+  const flat = screenHeadingDeg(alpha, beta);
+  const look = lookHeadingDeg(alpha, beta, gamma);
+  const ui = flat == null ? null : (flat + screenAngle) % 360;
+  if (look == null) return ui;
+  if (ui == null) return look;
+  const k = Math.abs(Math.cos(beta * Math.PI / 180));
+  if (k >= FLAT) return ui;
+  const t = k <= LOCK ? 1 : (FLAT - k) / (FLAT - LOCK);
+  const w = t * t * (3 - 2 * t);                                       // smoothstep: no kink at either end
+  const d = ((look - ui + 540) % 360) - 180;                           // shortest way round
+  return (ui + w * d + 360) % 360;
+}
+
 export const compass = {
   supported: typeof window !== "undefined" && typeof DeviceOrientationEvent !== "undefined",
   needsPermission: typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function",
@@ -186,17 +240,21 @@ export const compass = {
     }
 
     const handler = (e) => {
+      const ang = (screen.orientation && screen.orientation.angle) || 0;
+      // Every projected path needs the tilt. Some low-end Android reports β/γ null, and there is nothing
+      // to project from then — fall back to raw α, which is what this whole capability used to be.
+      const tilt = typeof e.beta === "number" && typeof e.gamma === "number";
       let h = null;
-      if (typeof e.webkitCompassHeading === "number") h = e.webkitCompassHeading;      // iOS: from north, clockwise
-      else if (e.absolute && typeof e.alpha === "number") {
-        // look mode falls back to flat alpha when β/γ are null (low-end Android reports them so)
-        h = look && typeof e.beta === "number" && typeof e.gamma === "number"
-          ? lookHeadingDeg(e.alpha, e.beta, e.gamma)
-          : (360 - e.alpha) % 360;                                                     // Android: absolute
+      if (typeof e.webkitCompassHeading === "number") {
+        // iOS hands back a heading, not Euler angles, and its behaviour upright cannot be checked from
+        // here — left exactly as it was rather than "fixed" against a device nobody has run this on.
+        h = look ? e.webkitCompassHeading : (e.webkitCompassHeading + ang) % 360;       // from north, clockwise
+      } else if (e.absolute && typeof e.alpha === "number") {                           // Android: absolute
+        if (look) h = tilt ? lookHeadingDeg(e.alpha, e.beta, e.gamma) : (360 - e.alpha) % 360;
+        // The correction is applied INSIDE heldHeadingDeg — only its screen-top term earns it.
+        else h = tilt ? heldHeadingDeg(e.alpha, e.beta, e.gamma, ang) : (360 - e.alpha + ang) % 360;
       }
       if (h == null) return;                                                            // look: near-vertical, hold last
-      // look mode skips the correction: the camera does not move when the UI rotates
-      if (!look) h = (h + ((screen.orientation && screen.orientation.angle) || 0)) % 360;
       if (ema == null) ema = h;
       else { const d = ((h - ema + 540) % 360) - 180; ema = (ema + 0.25 * d + 360) % 360; } // circular EMA
       // Smooth the magnetometer, then correct — never the reverse: the EMA would drag a step change in

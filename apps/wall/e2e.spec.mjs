@@ -6,7 +6,8 @@ export default [
     async run(h) {
       await h.waitFor(/192\.168\.1\.42:8080/);
       h.expect((await h.count("[data-board]")) === 1, "немає дошки-терміналу");
-      h.expect(/broadcast/.test(await h.text("[data-board]")), "дошка не показує засіяний текст");
+      // A textarea's content is its .value, not textContent — read the property.
+      h.expect(/broadcast/.test(await h.prop("[data-board]", "value")), "дошка не показує засіяний текст");
       // The address is on the face of the bar, not hidden behind a probe.
       h.expect(/192\.168/.test(await h.text("[data-bar]")), "панель не показує LAN-адресу");
     },

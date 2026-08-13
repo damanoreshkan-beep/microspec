@@ -42,8 +42,7 @@ const $url = atom("");           // the LAN address other devices open
 const $hits = atom(0);           // requests served — proof someone is watching
 const $text = atom("");          // the board's text, the single source served at /feed
 const $busy = atom(false);
-const $err = atom(null);
-const $qr = atom(false);         // the QR sheet
+const $err = atom(null);         // the QR sheet is history-backed (openScreen "qr"), so Back closes it
 
 function noteError(e) {
   $err.set(e?.code ? `${e.code}${e.detail ? ` · ${e.detail}` : ""}` : String(e));
@@ -97,14 +96,14 @@ function watchHits() {
   }, 4000);
 }
 
-export function wallView({ t }) {
+export function wallView({ t, S, openScreen, closeScreen }) {
   const on = useStore($on);
   const url = useStore($url);
   const hits = useStore($hits);
   const text = useStore($text);
   const busy = useStore($busy);
   const err = useStore($err);
-  const qr = useStore($qr);
+  const screen = useStore(S.screen);
   const areaRef = useRef(null);
 
   useEffect(() => {
@@ -126,14 +125,14 @@ export function wallView({ t }) {
     <div data-bar class="shrink-0 flex items-center gap-2 rounded-2xl p-2 pl-3 sf-raised">
       <span class=${`w-2 h-2 rounded-full shrink-0 ${on ? "bg-[var(--app-accent)] animate-pulse" : "bg-base-content/30"}`}></span>
       ${on
-        ? html`<button data-url onClick=${() => $qr.set(true)}
+        ? html`<button data-url onClick=${() => openScreen("qr")}
             class="min-w-0 flex items-center gap-1.5 font-mono text-[0.72rem] text-base-content/80 truncate">
             <span class="truncate">${url || T(t, "srvOn")}</span>
           </button>
           <span class="ml-auto shrink-0 flex items-center gap-1 font-mono text-[0.7rem] text-muted">
             ${Icon("lucide:eye", "text-[1em]")}${hits}
           </span>
-          <button data-qr class="shrink-0 btn btn-ghost btn-xs px-2" onClick=${() => $qr.set(true)} aria-label=${T(t, "showQr")}>
+          <button data-qr class="shrink-0 btn btn-ghost btn-xs px-2" onClick=${() => openScreen("qr")} aria-label=${T(t, "showQr")}>
             ${Icon("lucide:qr-code", "text-[1.15em]")}
           </button>
           <button data-stop class="shrink-0 btn btn-xs gap-1" onClick=${stop} disabled=${busy}>
@@ -164,7 +163,7 @@ export function wallView({ t }) {
              bg-[#0A0A0B] text-[#E7E7EA] caret-[var(--app-accent)]
              placeholder:text-[#6b6b70] focus:outline-none focus:border-[var(--app-accent)]/40"></textarea>
 
-    <${Sheet} id="wall-qr" open=${qr} onClose=${() => $qr.set(false)} title=${T(t, "joinTitle")} icon="lucide:qr-code">
+    <${Sheet} id="wall-qr" open=${screen === "qr"} onClose=${closeScreen} title=${T(t, "joinTitle")} icon="lucide:qr-code">
       <div class="flex flex-col items-center gap-4 pb-2">
         <p class="text-center text-base-content/80 leading-relaxed">${T(t, "joinBody")}</p>
         ${url

@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 26,
+  "bridgeVersion": 27,
   "actions": [
     {
       "id": "system.info",
@@ -1064,6 +1064,94 @@
       },
       "mock": {
         "advertising": false
+      }
+    },
+    {
+      "id": "ble.advertiseRaw",
+      "capability": "advertise-raw",
+      "kind": "call",
+      "minBridge": 27,
+      "android": [
+        "BLUETOOTH_ADVERTISE"
+      ],
+      "summary": "Assemble and broadcast one or more raw AD structures verbatim — arbitrary company id (manufacturer data) or 16-bit service UUID. The lab transmitter for studying proximity-pairing protocols (Apple Continuity, Fast Pair, Swift Pair, Eddystone) on your OWN devices. A separate capability from advertise, which stays locked to 0xFFFF so no ordinary app can wear a vendor's id; this one an app must list explicitly and gate behind consent. Non-connectable legacy by default; the assembled payload must fit the 31-byte legacy budget.",
+      "args": {
+        "type": "object",
+        "required": [
+          "structures"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "structures": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "id",
+                "data"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "mfg",
+                    "svc"
+                  ],
+                  "description": "manufacturer data (AD 0xFF, id is a company id) or service data (AD 0x16, id is a 16-bit UUID)"
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 65535
+                },
+                "data": {
+                  "type": "string",
+                  "pattern": "^([0-9a-f]{2})*$",
+                  "maxLength": 58,
+                  "description": "the AD value AFTER the id, lowercase hex. The assembled total across all structures must fit 31 legacy bytes; the shell rejects an over-budget set with the byte count."
+                }
+              }
+            }
+          },
+          "connectable": {
+            "type": "boolean",
+            "description": "default false; true costs the 3-byte AD flags structure out of the 31-byte budget"
+          },
+          "ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 180000,
+            "description": "auto-stop after this long; 0 holds until ble.silence. The ceiling is the platform's — AdvertiseSettings.setTimeout throws above it rather than clamping."
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "advertising"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "advertising": {
+            "type": "boolean"
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "total assembled AD bytes that went out"
+          },
+          "replaced": {
+            "type": "boolean",
+            "description": "a previous advertisement was stopped to make room — one set at a time"
+          }
+        }
+      },
+      "mock": {
+        "advertising": true,
+        "bytes": 20,
+        "replaced": false
       }
     },
     {

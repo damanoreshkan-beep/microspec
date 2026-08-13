@@ -165,12 +165,14 @@ function detailRows(key, entry, t) {
   return [];
 }
 
-// One accent-tinted pill per text kind. Colour is meaning: the free-form one wears the app accent, the rest
-// are neutral — a glance at the grid answers "which of these could carry my words".
+// One pill per text kind. Colour is meaning — but the accent is the MARK (a dot + the border), never the
+// text: accent-as-text is #9D8CFF on a light page, which fails contrast, and the design rule forbids it. So
+// the label stays a token colour and the free-form one is flagged by its accent dot and ring.
 function KindBadge({ kind, t }) {
   const free = kind === "free";
   return html`<span data-kind=${kind}
-    class=${`shrink-0 rounded-full px-2 py-0.5 text-[0.62rem] font-mono uppercase tracking-wide ${free ? "text-[var(--app-accent)] border border-[var(--app-accent)]" : "text-muted border border-base-content/20"}`}>
+    class=${`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.62rem] font-mono uppercase tracking-wide border ${free ? "border-[var(--app-accent)] text-base-content" : "border-base-content/20 text-muted"}`}>
+    ${free ? html`<span class="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)] shrink-0"></span>` : null}
     ${T(t, `kind_${kind}`)}
   </span>`;
 }
@@ -179,12 +181,12 @@ function Card({ card, entry, now, t, onOpen }) {
   const live = isLive(entry, now);
   const b = live && entry?.rssi != null ? band(entry.rssi) : null;
   return html`<button data-card=${card.key} data-live=${live ? "1" : "0"} onClick=${onOpen}
-    class=${`text-left rounded-2xl p-3 flex flex-col gap-2 min-w-0 transition-colors sf-raised ${live ? "sf-e2 ring-1 ring-[var(--app-accent)]" : "opacity-60"}`}>
+    class=${`text-left rounded-2xl p-3 flex flex-col gap-2 min-w-0 transition-colors sf-raised ${live ? "sf-e2 ring-1 ring-[var(--app-accent)]" : "border border-base-content/10"}`}>
     <div class="flex items-center gap-2 min-w-0">
       ${Icon(card.icon, `text-[1.15em] shrink-0 ${live ? "text-[var(--app-accent)]" : "text-muted"}`)}
       <span class="min-w-0 truncate font-medium text-base-content">${T(t, `name_${card.key}`)}</span>
     </div>
-    <div class="flex items-center gap-1.5 min-w-0">
+    <div class="flex flex-wrap items-center gap-1.5 min-w-0">
       <span class="shrink-0 rounded px-1.5 py-0.5 text-[0.62rem] uppercase tracking-wide bg-base-content/10 text-base-content/70">${T(t, `target_${card.target}`)}</span>
       <${KindBadge} kind=${card.textKind} t=${t} />
     </div>

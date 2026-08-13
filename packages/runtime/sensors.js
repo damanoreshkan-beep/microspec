@@ -75,14 +75,38 @@ export const wakeLock = {
 };
 
 
+const LOCK = 0.15, FLAT = 0.5;
+
 export function lookHeadingDeg(alpha, beta, gamma) {
   const r = Math.PI / 180, cA = Math.cos(alpha * r), sA = Math.sin(alpha * r);
   const sB = Math.sin(beta * r), cG = Math.cos(gamma * r), sG = Math.sin(gamma * r);
   const x = -cA * sG - sA * sB * cG;                                   
   const y = -sA * sG + cA * sB * cG;                                   
-  if (Math.hypot(x, y) < 0.15) return null;
+  if (Math.hypot(x, y) < LOCK) return null;
   return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
 }
+export function screenHeadingDeg(alpha, beta) {
+  const r = Math.PI / 180, cB = Math.cos(beta * r);
+  const x = -Math.sin(alpha * r) * cB;                                 
+  const y = Math.cos(alpha * r) * cB;                                  
+  if (Math.abs(cB) < LOCK) return null;                                
+  return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+}
+
+export function heldHeadingDeg(alpha, beta, gamma, screenAngle = 0) {
+  const flat = screenHeadingDeg(alpha, beta);
+  const look = lookHeadingDeg(alpha, beta, gamma);
+  const ui = flat == null ? null : (flat + screenAngle) % 360;
+  if (look == null) return ui;
+  if (ui == null) return look;
+  const k = Math.abs(Math.cos(beta * Math.PI / 180));
+  if (k >= FLAT) return ui;
+  const t = k <= LOCK ? 1 : (FLAT - k) / (FLAT - LOCK);
+  const w = t * t * (3 - 2 * t);                                       
+  const d = ((look - ui + 540) % 360) - 180;                           
+  return (ui + w * d + 360) % 360;
+}
+
 export const compass = {
   supported: typeof window !== "undefined" && typeof DeviceOrientationEvent !== "undefined",
   needsPermission: typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function",
@@ -108,15 +132,16 @@ export const compass = {
     }
 
     const handler = (e) => {
+      const ang = (screen.orientation && screen.orientation.angle) || 0;
+      const tilt = typeof e.beta === "number" && typeof e.gamma === "number";
       let h = null;
-      if (typeof e.webkitCompassHeading === "number") h = e.webkitCompassHeading;      
-      else if (e.absolute && typeof e.alpha === "number") {
-        h = look && typeof e.beta === "number" && typeof e.gamma === "number"
-          ? lookHeadingDeg(e.alpha, e.beta, e.gamma)
-          : (360 - e.alpha) % 360;                                                     
+      if (typeof e.webkitCompassHeading === "number") {
+        h = look ? e.webkitCompassHeading : (e.webkitCompassHeading + ang) % 360;       
+      } else if (e.absolute && typeof e.alpha === "number") {                           
+        if (look) h = tilt ? lookHeadingDeg(e.alpha, e.beta, e.gamma) : (360 - e.alpha) % 360;
+        else h = tilt ? heldHeadingDeg(e.alpha, e.beta, e.gamma, ang) : (360 - e.alpha + ang) % 360;
       }
       if (h == null) return;                                                            
-      if (!look) h = (h + ((screen.orientation && screen.orientation.angle) || 0)) % 360;
       if (ema == null) ema = h;
       else { const d = ((h - ema + 540) % 360) - 180; ema = (ema + 0.25 * d + 360) % 360; } 
       onHeading(wmm ? wmm.trueFrom(ema, dec) : ema, { magnetic: ema, declination: dec, isTrue: dec != null, geo: geoState });

@@ -1,7 +1,9 @@
 
 import { assertEquals, assertAlmostEquals } from "jsr:@std/assert@1";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
-import { hapticFor, lookHeadingDeg } from "../sensors.js";
+import { hapticFor, lookHeadingDeg, screenHeadingDeg, heldHeadingDeg } from "../sensors.js";
+
+const apart = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
 
 const el = (h, sel) => new DOMParser().parseFromString(`<body>${h}</body>`, "text/html").querySelector(sel);
 
@@ -46,6 +48,72 @@ Deno.test("lookHeadingDeg — null where a camera heading does not exist", () =>
   assertEquals(lookHeadingDeg(123, 0, 0), null, "flat on the table: camera straight down");
   assertEquals(lookHeadingDeg(45, 180, 0), null, "flat face-down: camera straight up");
   assertEquals(lookHeadingDeg(0, 85, 0) !== null, true, "5° off vertical is still a heading");
+});
+
+Deno.test("screenHeadingDeg — flat, it IS the (360−α) it replaces", () => {
+  for (const a of [0, 37, 90, 180, 271, 359]) {
+    assertAlmostEquals(screenHeadingDeg(a, 0), (360 - a) % 360, 1e-9, `α=${a}`);
+    assertAlmostEquals(screenHeadingDeg(a, 30), (360 - a) % 360, 1e-9, `α=${a} at 30° of pitch`);
+  }
+});
+
+Deno.test("screenHeadingDeg — face-down the top edge points behind you, and says so", () => {
+  assertAlmostEquals(screenHeadingDeg(0, 180), 180, 1e-9);
+  assertAlmostEquals(screenHeadingDeg(90, 170), (180 - 90 + 360) % 360, 1e-9);
+});
+
+Deno.test("screenHeadingDeg — null where the top edge points at the sky", () => {
+  assertEquals(screenHeadingDeg(20, 90), null, "upright: no screen-top heading exists");
+  assertEquals(screenHeadingDeg(20, 85), null, "5° off vertical is already unusable");
+  assertEquals(screenHeadingDeg(20, 75) !== null, true, "15° off vertical still answers");
+});
+
+Deno.test("heldHeadingDeg — the reported leap does not survive the projection", () => {
+  const a = heldHeadingDeg(20, 90, 0), b = heldHeadingDeg(-300, 90, 320);
+  assertAlmostEquals(apart(a, b), 0, 1e-6, "same orientation ⇒ same heading");
+  assertAlmostEquals(apart((360 - 20) % 360, (360 - -300) % 360), 40, 1e-9, "…which the old formula did not give");
+});
+
+Deno.test("heldHeadingDeg — raising the phone does not turn the needle", () => {
+  for (const a of [0, 47, 200, 314]) {
+    for (let beta = 0; beta <= 90; beta += 3) {
+      assertAlmostEquals(apart(heldHeadingDeg(a, beta, 0), (360 - a) % 360), 0, 1e-6, `α=${a} β=${beta}`);
+    }
+  }
+});
+
+Deno.test("heldHeadingDeg — never null, at any orientation", () => {
+  for (let beta = -180; beta <= 180; beta += 7) {
+    for (let gamma = -90; gamma <= 90; gamma += 7) {
+      const h = heldHeadingDeg(123, beta, gamma);
+      assertEquals(typeof h === "number" && Number.isFinite(h), true, `β=${beta} γ=${gamma} → ${h}`);
+      assertEquals(h >= 0 && h < 360, true, `β=${beta} γ=${gamma} out of range: ${h}`);
+    }
+  }
+});
+
+Deno.test("heldHeadingDeg — continuous through the handoff, at any roll", () => {
+  const sweep = (gamma, step) => {
+    let prev = heldHeadingDeg(80, 0, gamma), worst = 0;
+    for (let beta = step; beta <= 100; beta += step) {
+      const h = heldHeadingDeg(80, beta, gamma);
+      worst = Math.max(worst, apart(h, prev));
+      prev = h;
+    }
+    return worst;
+  };
+  for (const gamma of [-60, -30, 0, 25, 55]) {
+    const coarse = sweep(gamma, 1), fine = sweep(gamma, 0.25);
+    assertEquals(coarse < 6, true, `γ=${gamma}: ${coarse.toFixed(2)}° for one degree of pitch`);
+    assertEquals(fine < coarse / 3 + 0.05, true,
+      `γ=${gamma}: ${coarse.toFixed(2)}° at 1° steps but ${fine.toFixed(2)}° at 0.25° — that is a step, not a slew`);
+  }
+});
+
+Deno.test("heldHeadingDeg — landscape turns the dial, not the camera", () => {
+  assertAlmostEquals(heldHeadingDeg(0, 0, 0, 90), 90, 1e-9, "flat: the UI frame is rotated");
+  assertAlmostEquals(heldHeadingDeg(0, 90, 0, 90), lookHeadingDeg(0, 90, 0), 1e-9,
+    "upright: the reading is the camera's, which the screen rotation does not touch");
 });
 
 Deno.test("hapticFor — destructive hits harder; apps can opt out or up", () => {

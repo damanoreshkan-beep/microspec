@@ -68,10 +68,13 @@ which is why a lone Nearby Action is less reliable than one paired with a plausi
 **Find My — type `0x12`** (`messages/findmy.md`): offline-finding key beacon. For the ANALYZER to classify
 only; we do not emit it. (Cross-refs the AirTag research already in memory.)
 
-**iOS version behaviour** (RE-CONSISTENT, multiple 2023–2026 sources): the *crash/DoS* on iOS 17.0–17.1 was
-partially fixed in 17.2 and fully in 18; the *popups themselves still fire* on current iOS when BT is on. The
-owner's OLD-iOS iPad is the most permissive case — good for a lab demo, and the reason not to promise the
-same on an 18.x device.
+**iOS version behaviour** (corrected 2026-08-13, §9): the *crash/DoS* on iOS 17.0–17.1 was partially fixed in
+17.2 and fully in 18 (VERIFIED). Whether the *popups still fire* on iOS 18/26 with a STATIC MAC + static
+auth/payload is **UNKNOWN** — every RE corpus that reliably re-fires (AppleJuice, tutozz) rotates MAC/auth
+each cycle, and the one device-tested analysis (jb0x168) only covered iOS 17–17.1.1. The owner's OLD-iOS iPad
+is the most permissive case; on 18/26 a static Continuity preset may give at most a first prompt, and the copy
+must not promise more. This corrects an earlier "popups still fire on current iOS" that had no citable device
+test for 18/26.
 
 ## 4. Android & Windows
 
@@ -124,7 +127,8 @@ capability, get the OK, then touch edge.**
 
 ## 7. UNVERIFIED / to close on the device — the build must not depend on these
 
-- Samsung EasySetup byte layout (§4) — **UNKNOWN**, emitter deferred until read from source.
+- Samsung EasySetup Watch byte layout — **now VERIFIED from source (§9)**; Buds still deferred (needs a
+  scan-response channel the shell lacks). UI appearance on One UI 7/8 remains UNKNOWN — device-test it.
 - Swift Pair exact beacon-id byte offsets (§4) — INFERRED from field order; confirm with nRF Connect.
 - The reliable "make Continuity fire" recipe on old vs new iOS: MAC-rotation cadence, whether Nearby Info
   must accompany, which dynamic fields are load-bearing — RE-SINGLE / INFERRED; tune on the owner's iPad.
@@ -138,3 +142,47 @@ capability, get the OK, then touch edge.**
 2. Design `advertise-raw` (§5), bring to owner for go-ahead, then the edge/Java/CI/device path.
 3. **Transmitter app** behind the §6 gate: Eddystone + Swift Pair first (open/SPEC), Continuity next
    (fixed-text, own iPad), Fast Pair, Samsung last (once its bytes are read).
+
+## 9. 2026 reality check — which buttons actually work, and the wire ceiling (2026-08-13)
+
+Prompted by "Fast Pair doesn't pop on my S22, nor on the other S22". Codex surveyed the current RE corpus;
+every load-bearing byte below was re-read by me from the cited source.
+
+**What raises UI on a CURRENT stock device, ranked by confidence:**
+
+| Vector | Static-advertisement verdict | Source |
+|---|---|---|
+| **Swift Pair** (Windows 11) | **VERIFIED** — one notification per session, MAC must stay static; rotation *hurts* (reads as a new device). Best fit for our one-shot emitter. | [MS Swift Pair](https://learn.microsoft.com/en-us/windows-hardware/design/component-guidelines/bluetooth-swift-pair) |
+| **Fast Pair** (Android) | **VERIFIED protocol** — discoverable Model ID over `0xFE2C`, BLE address *shall not rotate*, interval ≤100ms. Half-sheet needs a *registered* model id + the receiver's "Scan for nearby devices" toggle ON + internet. UNKNOWN whether 2026 GMS filters a non-connectable advert before showing the sheet → we emit **connectable**. | [Google Provider Advertising](https://developers.google.com/nearby/fast-pair/specifications/service/provider#advertising_when_discoverable) |
+| **Samsung EasySetup Watch** | **VERIFIED bytes**, UI on One UI 7/8 **UNKNOWN** (no dated device test) → ships as *experimental*, copy promises nothing. | RE below |
+| **Apple Nearby Action / Proximity Pairing** | **UNKNOWN on iOS 18/26** with a static MAC (see corrected §3). Kept as legacy/experimental, own-iPad only. | jb0x168 (iOS 17 only) |
+| **Eddystone URL** | **No stock UI on any OS** since Google killed Nearby Notifications 2018-12-06. It is a decoder self-test / beacon, NOT a popup button. | [Nearby Notifications discontinued](https://android-developers.googleblog.com/2018/10/discontinuing-support-for-android.html) |
+
+**THE WIRE CEILING (VERIFIED, `packages/shell/actions.json` → `ble.advertiseRaw`).** `kind` enum is
+`["mfg","svc"]` only; `assemble()` emits AD type `0xFF` or `0x16`. So the full 3-AD working Fast Pair form —
+`03 03 2C FE` (service-UUID list) + `06 16 2C FE <model>` (service data) + `02 0A <tx>` (TX power) — is
+**physically inexpressible without a Java shell change** (a new `uuid16`/`txPower` kind, or
+`setIncludeTxPowerLevel(true)` + `addServiceUuid`). `connectable` IS an arg, so it needs no shell change. TX
+power being *required* is [jb0x168](https://github.com/jb0x168/ble-spam-analysis#breakdown-of-packet)
+(RE-SINGLE), not a Google requirement — so the service-data-only form may still pop; the receiver-side toggles
+are the likelier cause of "nothing shows".
+
+**Samsung Galaxy Watch EasySetup — VERIFIED bytes.** manufacturer id `0x0075`, manufacturer data
+`01 00 02 00 01 01 FF 00 00 43 <watchId>`. Full manufacturer AD: `0E FF 75 00 01 00 02 00 01 01 FF 00 00 43 <watchId>`.
+Watch ids: `01`–`0C`/`11`–`18`/`1B`–`20` are Watch4/5/6 colour variants, `1A` = fallback. Read from
+[wirebits ESP32 source](https://github.com/wirebits/ESP32-Samsung-BLE-Spammer/blob/main/ESP32-Samsung-BLE-Spammer/ESP32-Samsung-BLE-Spammer.ino)
+(Sep 2025) and cross-checked against [simondankelmann Kotlin generator](https://github.com/simondankelmann/Bluetooth-LE-Spam).
+
+**Samsung Galaxy Buds — DEFERRED.** The working corpus (`42 09 81 02 14 15 03 21 01 09 <id0><id1> 01 <id2>
+06 3C 94 8E 00 00 00 00 C7 00`) rides a SEPARATE manufacturer scan-response, which `ble.advertiseRaw` cannot
+express (single main-payload channel). A main-AD-only Buds preset would be round-trip-green but unproven —
+skip until the shell grows a `scanResponse` channel.
+
+**MAC rotation (VERIFIED):** Fast Pair and Swift Pair *want* a static MAC; only the Apple/Samsung *flood*
+PoCs rotate it, and that is spam cadence, not a measured OS cache timeout. Our one-shot static emitter is the
+right shape for the two vectors that actually matter.
+
+**Runtime-half vs Java-half.** Everything above except the Fast Pair 3-AD form and Samsung Buds is a pure
+runtime change (github.io deploy, reaches every installed APK, no reinstall): `samsungWatch` encoder +
+`connectable` on the Fast Pair preset + honest copy. The 3-AD Fast Pair form + Buds scan-response is a
+separate edge/Java/deploy task, to be brought to the owner for go-ahead (outward-facing).

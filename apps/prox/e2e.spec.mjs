@@ -40,7 +40,7 @@ export default [
     name: "a reference card still opens, and says it has not been heard",
     async run(h) {
       await h.waitFor(/Swift Pair/);
-      await h.tap('[data-card="easySetup"]');   // seeded quiet — the reference branch
+      await h.tap('[data-card="findMy"]');   // seeded quiet — the reference branch
       await h.wait(200);
       h.expect((await h.count("[data-never]")) === 1, "тиха картка не показала довідковий стан");
       h.expect((await h.count("[data-custom]")) === 1, "довідкова картка все одно має пояснити текст");
@@ -56,7 +56,7 @@ export default [
       await h.click('[data-tab="send"]');
       await h.wait(200);
       const presets = await h.count("[data-preset]");
-      h.expect(presets === 6, `очікував 6 пресетів, знайшов ${presets}`);
+      h.expect(presets === 7, `очікував 7 пресетів, знайшов ${presets}`);
       // Swift Pair is the one preset with a free-text name field — the тук тук path.
       h.expect((await h.count('[data-field="swiftPair"]')) === 1, "у Swift Pair немає поля назви");
       // The gate seeds an active broadcast so the populated screen is measured, showing the exact bytes.

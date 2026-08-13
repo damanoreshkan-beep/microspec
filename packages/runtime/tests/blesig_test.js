@@ -107,6 +107,20 @@ Deno.test("blesig: the catalog spans every popular Apple + Android + desktop pro
   assert(CATALOG.some((c) => c.target === "ios") && CATALOG.some((c) => c.target === "android") && CATALOG.some((c) => c.target === "windows"));
 });
 
+Deno.test("blesig: a Samsung EasySetup Watch advert decodes to its model id, an unknown 0x0075 stays vendor-level", () => {
+  // AD: len=0x0e, type=0xFF, company 75 00 (LE), then the 10-byte Watch prefix + a 1-byte model id (0x1a).
+  const [watch] = signatures(H("0e ff 7500 010002000101ff0000431a"));
+  assertEquals(watch.vendor, "samsung");
+  assertEquals(watch.protocol, "easySetup");
+  assertEquals(watch.msg, "easySetupWatch");
+  assertEquals(watch.detail.family, "watch");
+  assertEquals(watch.detail.watchId, 0x1a);
+  // A Samsung payload that is NOT the Watch shape is named honestly, no fabricated fields.
+  const [other] = signatures(H("05 ff 7500 abcd"));
+  assertEquals(other.msg, "easySetup");
+  assertEquals(Object.keys(other.detail).length, 0);
+});
+
 function hexToBytes(hex) {
   const h = H(hex);
   const b = new Uint8Array(h.length / 2);

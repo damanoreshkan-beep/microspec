@@ -87,6 +87,7 @@ const GATE_SEEN = {
   nearbyInfo: { count: 77, rssi: -58, detail: { status: 3, activity: 7 }, raw: "100537008390", text: null, msg: "nearbyInfo" },
   swiftPair: { count: 9, rssi: -70, detail: { subScenario: 0, name: "тук тук" }, raw: "030080d182d183d0ba20d182d183d0ba", text: { free: "тук тук" }, msg: "swiftPair" },
   fastPair: { count: 5, rssi: -66, detail: { mode: "discoverable", modelId: "aabbcc" }, raw: "aabbcc", text: { db: "aabbcc" }, msg: "fastPairModel" },
+  easySetup: { count: 7, rssi: -74, detail: { family: "watch", watchId: 0x1a }, raw: "010002000101ff0000431a", text: null, msg: "easySetupWatch" },
   eddystone: { count: 3, rssi: -82, detail: { frame: "url", url: "https://www.example.com/" }, raw: "10ec016578616d706c6500", text: { free: "https://www.example.com/" }, msg: "eddystone_url" },
 };
 
@@ -164,6 +165,7 @@ function detailRows(key, entry, t) {
   if (key === "nearbyInfo") return [["dStatus", `${d.status ?? "—"} / ${d.activity ?? "—"}`]];
   if (key === "swiftPair") return [["dName", d.name || "—"], ["dSub", `0x${(d.subScenario ?? 0).toString(16).padStart(2, "0")}`]];
   if (key === "fastPair") return [["dMode", T(t, `fpMode_${d.mode}`)], ["dModelId", d.modelId ? `0x${d.modelId}` : "—"]];
+  if (key === "easySetup") return [["dDevice", d.family ? T(t, `easy_${d.family}`) : "—"], ["dModelId", d.watchId != null ? `0x${d.watchId.toString(16).padStart(2, "0")}` : "—"]];
   if (key === "eddystone") return [["dFrame", d.frame || "—"], ...(d.url ? [["dUrl", d.url]] : [])];
   return [];
 }
@@ -314,7 +316,9 @@ const readLab = () => { try { return localStorage.getItem(LAB_KEY) === "1"; } ca
 const $labOk = atom(readLab());
 function enableLab() { try { localStorage.setItem(LAB_KEY, "1"); } catch { /* private mode */ } $labOk.set(true); }
 
-const $fields = atom({ swiftPair: "тук тук", eddystone: "https://example.com" });
+const $fields = atom({ swiftPair: "тук тук", eddystone: "https://example.com", fastPair: "cd8256" });
+// A custom preset names which field it collects; each maps to its own label/placeholder string.
+const FIELD_LABEL = { name: "fieldName", url: "fieldUrl", model: "fieldModel" };
 const $active = atom(null);     // { id, bytes } currently in the air
 const $sErr = atom(null);
 const $sNeedPerm = atom(null);
@@ -342,7 +346,7 @@ async function emit(preset) {
   const bytes = assemble(structures);
   if (gate) { $active.set({ id: preset.id, bytes }); return; }
   try {
-    const r = await shell.call("ble.advertiseRaw", { structures, ms: 0 });
+    const r = await shell.call("ble.advertiseRaw", { structures, ms: 0, connectable: !!preset.connectable });
     $active.set({ id: preset.id, bytes, out: r?.bytes });
     $sErr.set(null);
   } catch (e) { noteSErr(e); }
@@ -365,8 +369,8 @@ function PresetCard({ preset, active, t }) {
     ${preset.custom
       ? html`<input data-field=${preset.id} type="text" inputmode="text" autocomplete="off"
           class="input input-sm input-ghost w-full min-w-0 px-2 focus:outline-none border border-base-content/20"
-          aria-label=${T(t, preset.custom === "name" ? "fieldName" : "fieldUrl")}
-          placeholder=${T(t, preset.custom === "name" ? "fieldName" : "fieldUrl")}
+          aria-label=${T(t, FIELD_LABEL[preset.custom] || "fieldUrl")}
+          placeholder=${T(t, FIELD_LABEL[preset.custom] || "fieldUrl")}
           value=${fields[preset.id] || ""}
           onInput=${(e) => $fields.set({ ...$fields.get(), [preset.id]: e.currentTarget.value })} />`
       : null}

@@ -15,8 +15,8 @@
 //   · Microsoft Swift Pair — learn.microsoft.com bluetooth-swift-pair (SPEC). Carries an uncapped, free-form
 //     "Display Name"; Windows renders "New <name> found". THE ONLY free-form-text path.
 //   · Eddystone — SIG-open beacon format; frame type in the first service-data byte.
-//   · Samsung EasySetup (0x0075) — byte layout NOT yet read from a primary source; vendor-level only, no
-//     fabricated fields.
+//   · Samsung EasySetup (0x0075) — Galaxy Watch shape VERIFIED from source (ble-air.md §9): a fixed 10-byte
+//     prefix + a 1-byte model id, no free text. Other Samsung 0x0075 payloads stay vendor-level only.
 //
 // Pure — no DOM, no clock, no shell. Operates on the raw ScanRecord hex the shell's ble.scan sends as `raw`.
 
@@ -136,6 +136,22 @@ export function decodeFastPair(v) {
   };
 }
 
+// Samsung EasySetup Galaxy Watch: a fixed 10-byte prefix then a 1-byte model id (docs/research/ble-air.md §9,
+// VERIFIED bytes). Only the Watch shape is decoded to fields; any other Samsung 0x0075 payload is named
+// honestly and left opaque (Buds ride a scan-response the shell does not surface).
+const SAMSUNG_WATCH_PREFIX = [0x01, 0x00, 0x02, 0x00, 0x01, 0x01, 0xff, 0x00, 0x00, 0x43];
+export function decodeSamsung(v) {
+  const isWatch = v.length >= SAMSUNG_WATCH_PREFIX.length + 1 &&
+    SAMSUNG_WATCH_PREFIX.every((b, i) => v[i] === b);
+  if (isWatch) {
+    return {
+      vendor: "samsung", protocol: "easySetup", msg: "easySetupWatch", raw: hex(v),
+      detail: { family: "watch", watchId: v[SAMSUNG_WATCH_PREFIX.length] }, text: null,
+    };
+  }
+  return { vendor: "samsung", protocol: "easySetup", msg: "easySetup", raw: hex(v), detail: {}, text: null };
+}
+
 /** Eddystone: first byte is the frame type; URL frames decode to a readable URL. */
 export function decodeEddystone(v) {
   if (!v.length) return null;
@@ -164,8 +180,7 @@ export function signatures(raw) {
   const swift = s.mfg[MICROSOFT];
   if (swift) { const d = decodeSwiftPair(swift); if (d) out.push(d); }
   const samsung = s.mfg[SAMSUNG];
-  // Samsung EasySetup: vendor named honestly, fields left undecoded (layout unverified — ble-air.md §4).
-  if (samsung) out.push({ vendor: "samsung", protocol: "easySetup", msg: "easySetup", raw: hex(samsung), detail: {}, text: null });
+  if (samsung) out.push(decodeSamsung(samsung));
   const fp = s.serviceData[FAST_PAIR];
   if (fp) out.push(decodeFastPair(fp));
   const ed = s.serviceData[EDDYSTONE];

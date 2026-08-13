@@ -14,7 +14,7 @@ const hx = (bytes) => Array.from(bytes, (b) => (b & 0xff).toString(16).padStart(
 const mfg = (id, bytes) => ({ kind: "mfg", id, data: hx(bytes) });
 const svc = (id, bytes) => ({ kind: "svc", id, data: hx(bytes) });
 
-const APPLE = 0x004c, MICROSOFT = 0x0006;
+const APPLE = 0x004c, MICROSOFT = 0x0006, SAMSUNG = 0x0075;
 const FAST_PAIR = 0xfe2c, EDDYSTONE = 0xfeaa;
 
 /**
@@ -52,6 +52,15 @@ export function fastPair(modelId = "cd8256") {
   return [svc(FAST_PAIR, [parseInt(m.slice(0, 2), 16), parseInt(m.slice(2, 4), 16), parseInt(m.slice(4, 6), 16)])];
 }
 
+// Samsung EasySetup — the Galaxy Watch "pair" card on a nearby Samsung phone. VERIFIED byte layout
+// (docs/research/ble-air.md §9): a fixed 10-byte prefix + a 1-byte watch model id. The shown text is NOT
+// free-form — it is Samsung's own device string, chosen by the id — so this is a `none` text kind, and
+// whether One UI 7/8 still raises the card is UNKNOWN, so it ships experimental.
+const SAMSUNG_WATCH_PREFIX = [0x01, 0x00, 0x02, 0x00, 0x01, 0x01, 0xff, 0x00, 0x00, 0x43];
+export function samsungWatch(watchId = 0x1a) {
+  return [mfg(SAMSUNG, [...SAMSUNG_WATCH_PREFIX, watchId & 0xff])];
+}
+
 const ED_SCHEME = ["http://www.", "https://www.", "http://", "https://"];
 const ED_TLD = [".com/", ".org/", ".edu/", ".net/", ".info/", ".biz/", ".gov/",
   ".com", ".org", ".edu", ".net", ".info", ".biz", ".gov"];
@@ -72,14 +81,18 @@ export function eddystoneUrl(url = "https://example.com") {
 
 /**
  * The presets the send grid offers, own-device lab. `custom` names a free-text field the UI collects
- * (Swift Pair's display name, Eddystone's URL); the rest are one-tap. Order mirrors the analyzer grid.
+ * (Swift Pair's display name, Eddystone's URL, Fast Pair's 6-hex model id); `connectable` asks the shell for
+ * an ADV_IND advertisement (a real Fast Pair provider is connectable — the seeker connects to its GATT). The
+ * rest are one-tap. Order mirrors the analyzer grid: the two vectors that reliably raise UI on a current
+ * stock device (Swift Pair on Windows 11, Fast Pair on Android) lead; Apple/Samsung stay experimental.
  */
 export const PRESETS = [
+  { id: "swiftPair", vendor: "microsoft", target: "windows", custom: "name", build: (v) => swiftPair(v) },
+  { id: "fastPair", vendor: "google", target: "android", custom: "model", connectable: true, build: (v) => fastPair(v) },
+  { id: "samsungWatch", vendor: "samsung", target: "android", build: () => samsungWatch(0x1a) },
   { id: "iosSetup", vendor: "apple", target: "ios", build: () => nearbyAction(0x09) },
   { id: "wifiPassword", vendor: "apple", target: "ios", build: () => nearbyAction(0x08) },
   { id: "airpods", vendor: "apple", target: "ios", build: () => proximityPairing(0x0e20) },
-  { id: "swiftPair", vendor: "microsoft", target: "windows", custom: "name", build: (v) => swiftPair(v) },
-  { id: "fastPair", vendor: "google", target: "android", build: () => fastPair() },
   { id: "eddystone", vendor: "eddystone", target: "any", custom: "url", build: (v) => eddystoneUrl(v) },
 ];
 

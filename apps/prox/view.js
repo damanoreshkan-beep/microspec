@@ -43,6 +43,7 @@ const $err = atom(null);
 const $blocked = atom(null);
 const $needPerm = atom(null);
 const $sel = atom(null);       
+const $selEntry = atom(null);  
 
 const PERM_RE = /denied:([A-Z_]+)/;
 function noteError(e) {
@@ -230,6 +231,7 @@ export function proxView({ S, t, openScreen, closeScreen }) {
   const needPerm = useStore($needPerm);
   const screen = useStore(S.screen);
   const selKey = useStore($sel);
+  const selEntry = useStore($selEntry);
 
   useEffect(() => {
     listen();
@@ -239,8 +241,13 @@ export function proxView({ S, t, openScreen, closeScreen }) {
   const liveCount = useMemo(
     () => CARDS.filter((c) => isLive(seen[c.key], now)).length, [seen, now]);
 
-  const open = (key) => { $sel.set(key); openScreen("card"); };
-  const close = () => { closeScreen(); $sel.set(null); };
+  const open = (key) => {
+    const e = $seen.get()[key];
+    $selEntry.set(e ? { ...e } : null);   
+    $sel.set(key);
+    openScreen("card");
+  };
+  const close = () => { closeScreen(); $sel.set(null); $selEntry.set(null); };
   const sel = CARDS.find((c) => c.key === selKey) || null;
 
   return html`<div class="flex flex-col gap-3 px-[var(--ms-pad)] pb-[calc(var(--dock-h)+2rem)]">
@@ -272,7 +279,7 @@ export function proxView({ S, t, openScreen, closeScreen }) {
         entry=${seen[card.key]} now=${now} t=${t} onOpen=${() => open(card.key)} />`)}
     </div>
 
-    <${CardSheet} card=${sel} entry=${sel ? seen[sel.key] : null} t=${t}
+    <${CardSheet} card=${sel} entry=${selEntry} t=${t}
       open=${screen === "card" && !!sel} onClose=${close} />
   </div>`;
 }

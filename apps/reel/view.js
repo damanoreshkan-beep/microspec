@@ -79,7 +79,8 @@ const PRELOAD = 1;
 
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
 
-function openSite(s) { if (typeof window !== "undefined") window.open(s.url, "_blank", "noopener"); }
+function openExternal(url) { if (url && typeof window !== "undefined") window.open(url, "_blank", "noopener"); }
+const openSite = (s) => openExternal(s.url);
 const subsDB = collection("reelSubs");
 
 
@@ -91,6 +92,7 @@ const $subs = atom(gate ? GATE_SUBS : []);
 if (idbSupported && !gate) subsDB.all().then((rows) => $subs.set(rows)).catch(() => {});
 async function subscribe(s) {
   if (!s?.url || $subs.get().some((x) => x.url === s.url)) return;
+  
   const rec = { name: s.name || sourceTitle(s.url), url: s.url };
   $subs.set([{ id: s.url, ...rec }, ...$subs.get()]);
   try { await subsDB.put(s.url, rec); } catch {  }
@@ -512,7 +514,7 @@ function SourceSheet({ S, t }) {
 
 
 
-function SourceIsland({ S, t, src, title, subbed, depth, dive, watch }) {
+function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, openIn }) {
   const act = "btn btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
   return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
       ${depth ? html`<button data-feed-back class="btn btn-ghost btn-sm btn-circle text-white shrink-0" aria-label=${T(t, "back")} onClick=${() => popFrame(S)}>${Icon("lucide:chevron-left", "text-xl")}</button>` : null}
@@ -523,6 +525,8 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch }) {
       ${!subbed ? html`<button data-subscribe class=${act} aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: title, url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
       
       
+      
+      ${openIn ? html`<button data-open-page class=${act} aria-label=${T(t, "openBrowser")} onClick=${openIn}>${Icon("lucide:external-link", "text-base")}</button>` : null}
       ${watch ? html`<button data-watch class="btn btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")} onClick=${watch}>${Icon("lucide:play", "text-base")}</button>` : null}
       
       ${dive ? html`<button data-dive class=${act} aria-label=${`${T(t, "dive")}: ${dive.label}`} onClick=${dive.go}>${Icon("lucide:chevron-right", "text-lg")}</button>` : null}
@@ -555,11 +559,11 @@ function FeedSurface({ S, t }) {
   const suspended = screen === "full";
   const underRef = useRef(), diveRef = useRef(), backRef = useRef();
   const target = diveTarget(items[active], src);
+  
+  
   const targetLabel = target ? sourceTitle(target, { hint: items[active]?.title }) : "";
   const prev = frames.length ? frames[frames.length - 1] : null;
 
-  
-  
   const { paneRef, pan } = usePanX({
     threshold: 64,                                                   
     canNext: !!target, canPrev: frames.length > 0,
@@ -607,22 +611,21 @@ function FeedSurface({ S, t }) {
       : !items.length
         ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/60 px-8 text-center">${Icon("lucide:film", "text-5xl")}<div>${T(t, "empty")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
         : items.map((it, i) => html`<${Slide} S=${S} item=${it} idx=${i} active=${i === active && !suspended} near=${Math.abs(i - active) <= PRELOAD} ephemeral=${it.eph != null ? it.eph : ephemeral} key=${(it.orig || it.video) + i} />`);
-  
+
   
   const cur = items[active];
   const watch = cur ? (cur.page || cur.orig || cur.video) : null;
   const dive = target ? { label: targetLabel, go: () => diveTo(S, target, cur?.title) } : null;
+
   return html`<${Fragment}>
     <${DragReveal} underRef=${underRef} diveRef=${diveRef} backRef=${backRef} target=${target} targetLabel=${targetLabel} prev=${prev} />
-    
     <div ref=${paneRef} ...${pan} data-scroller tabindex="0" role="region" aria-label=${T(t, "tabReel")} class="fixed inset-0 z-[1] bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain touch-pan-y will-change-transform">${body}</div>
     <${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
-      dive=${dive} watch=${watch ? () => openFull(S, cur) : null} />
+      dive=${dive} watch=${watch ? () => openFull(S, cur) : null} openIn=${watch ? () => openExternal(watch) : null} />
     
     ${suspended ? html`<${FullClip} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }
-
 
 export function reel({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
@@ -635,6 +638,9 @@ export function reel({ S }) {
 
 
 
+
+
+
 const ROW_MAX = 120;
 function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) {
   const sr = resolveSearch(s.url);
@@ -643,14 +649,11 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
   const submit = (e) => { e?.preventDefault?.(); const term = q.trim(); if (term) onPlay({ ...s, url: buildSearchUrl(s.url, term) }); };
   
   
-  
-  
   return html`<li class=${`flex flex-col ${active ? "sf-inset rounded-2xl" : ""}`}>
     <div class="flex items-center gap-0.5 pr-1">
       <button data-src-row class="flex items-center gap-2.5 flex-1 min-w-0 text-left px-2.5 py-2.5 rounded-xl sf-press" onClick=${() => onPlay(s)}>
         ${lead}
         <span class="min-w-0 flex-1">
-          
           <span data-src-title class=${`block break-words leading-snug ${active ? "font-semibold" : ""}`}>${sourceTitle(s.url, { pageTitle: s.name, max: ROW_MAX })}</span>
           ${sub ? html`<span class="block text-[0.7rem] font-mono text-base-content/70 truncate">${sub}</span>` : null}
         </span>
@@ -668,8 +671,6 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
     </form>` : null}
   </li>`;
 }
-
-
 
 
 
@@ -695,6 +696,7 @@ function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, t }) {
     </ul>
   </section>`;
 }
+
 export function sources({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const subs = useStore($subs), curSrc = useStore($src), watchedN = useStore($watched).size;
@@ -706,12 +708,14 @@ export function sources({ S }) {
   return html`<${Fragment}>
     <div class="flex flex-col gap-4 @container">
       <button id="add-url" class="btn btn-primary rounded-2xl gap-2" onClick=${() => S.screen.set("source")}>${Icon("lucide:plus")} ${T(t, "addUrl")}</button>
+
       <div class="flex flex-col gap-2.5">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:bookmark", "text-primary")} ${T(t, "subs")}</div>
         ${mine.length
           ? mine.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => unsubscribe(s.url)} t=${t} key=${g.domain} />`)
           : html`<div class="text-sm text-base-content/70 px-1 py-3">${T(t, "noSubs")}</div>`}
       </div>
+
       ${discover.length ? html`<div class="flex flex-col gap-2.5">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:compass")} ${T(t, "discover")}</div>
         ${discover.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => subscribe(s)} t=${t} key=${g.domain} />`)}
@@ -721,9 +725,6 @@ export function sources({ S }) {
     ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }
-
-
-
 
 
 export function liked({ S }) {
@@ -738,6 +739,7 @@ export function liked({ S }) {
   };
   if (!sorted.length) return html`<div class="flex flex-col items-center justify-center gap-3 text-muted text-center" style="min-height:60vh">${Icon("lucide:heart", "text-6xl opacity-30")}<div class="text-sm max-w-[16rem]">${T(t, "likedEmpty")}</div></div>`;
   return html`<div data-liked class="grid grid-cols-3 gap-1.5">
+    
     ${sorted.map((l, i) => html`<div class="relative aspect-[9/16] rounded-xl overflow-hidden sf-inset" key=${l.id}>
       <button data-liked-tile class="absolute inset-0 w-full h-full active:scale-[.98] transition" aria-label=${l.title || l.host} onClick=${() => playAt(i)}>
         ${l.poster

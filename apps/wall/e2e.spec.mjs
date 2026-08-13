@@ -4,7 +4,7 @@ export default [
     async run(h) {
       await h.waitFor(/192\.168\.1\.42:8080/);
       h.expect((await h.count("[data-board]")) === 1, "немає дошки-терміналу");
-      h.expect(/broadcast/.test(await h.text("[data-board]")), "дошка не показує засіяний текст");
+      h.expect(/broadcast/.test(await h.prop("[data-board]", "value")), "дошка не показує засіяний текст");
       h.expect(/192\.168/.test(await h.text("[data-bar]")), "панель не показує LAN-адресу");
     },
   },

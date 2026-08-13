@@ -101,6 +101,19 @@ export function decodeFastPair(v) {
   };
 }
 
+const SAMSUNG_WATCH_PREFIX = [0x01, 0x00, 0x02, 0x00, 0x01, 0x01, 0xff, 0x00, 0x00, 0x43];
+export function decodeSamsung(v) {
+  const isWatch = v.length >= SAMSUNG_WATCH_PREFIX.length + 1 &&
+    SAMSUNG_WATCH_PREFIX.every((b, i) => v[i] === b);
+  if (isWatch) {
+    return {
+      vendor: "samsung", protocol: "easySetup", msg: "easySetupWatch", raw: hex(v),
+      detail: { family: "watch", watchId: v[SAMSUNG_WATCH_PREFIX.length] }, text: null,
+    };
+  }
+  return { vendor: "samsung", protocol: "easySetup", msg: "easySetup", raw: hex(v), detail: {}, text: null };
+}
+
 /** Eddystone: first byte is the frame type; URL frames decode to a readable URL. */
 export function decodeEddystone(v) {
   if (!v.length) return null;
@@ -129,7 +142,7 @@ export function signatures(raw) {
   const swift = s.mfg[MICROSOFT];
   if (swift) { const d = decodeSwiftPair(swift); if (d) out.push(d); }
   const samsung = s.mfg[SAMSUNG];
-  if (samsung) out.push({ vendor: "samsung", protocol: "easySetup", msg: "easySetup", raw: hex(samsung), detail: {}, text: null });
+  if (samsung) out.push(decodeSamsung(samsung));
   const fp = s.serviceData[FAST_PAIR];
   if (fp) out.push(decodeFastPair(fp));
   const ed = s.serviceData[EDDYSTONE];

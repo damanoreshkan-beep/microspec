@@ -1,6 +1,6 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { nearbyAction, proximityPairing, swiftPair, fastPair, eddystoneUrl, assemble, PRESETS } from "../blesend.js";
+import { nearbyAction, proximityPairing, swiftPair, fastPair, samsungWatch, eddystoneUrl, assemble, PRESETS } from "../blesend.js";
 import { signatures } from "../blesig.js";
 
 const decode = (structures) => signatures(assemble(structures));
@@ -32,6 +32,22 @@ Deno.test("blesend: Fast Pair normalises a model id to three bytes and round-tri
   const [fp] = decode(fastPair("cd8256"));
   assertEquals(fp.detail.mode, "discoverable");
   assertEquals(fp.detail.modelId, "cd8256");
+});
+
+Deno.test("blesend: Samsung Galaxy Watch round-trips to the intended model id and fits the frame", () => {
+  const structures = samsungWatch(0x1a);
+  const [sig] = decode(structures);
+  assertEquals(sig.protocol, "easySetup");
+  assertEquals(sig.msg, "easySetupWatch");
+  assertEquals(sig.detail.family, "watch");
+  assertEquals(sig.detail.watchId, 0x1a);
+  assertEquals(assemble(structures).length / 2, 15);
+});
+
+Deno.test("blesend: Fast Pair is the one preset asking for a connectable advert (real providers are ADV_IND)", () => {
+  const fp = PRESETS.find((p) => p.id === "fastPair");
+  assert(fp.connectable === true, "Fast Pair should advertise connectable");
+  assert(!PRESETS.filter((p) => p.id !== "fastPair").some((p) => p.connectable), "only Fast Pair is connectable");
 });
 
 Deno.test("blesend: Eddystone-URL encodes scheme + TLD compression and decodes to the same URL", () => {

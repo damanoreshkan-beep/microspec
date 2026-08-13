@@ -36,7 +36,7 @@ export default [
     name: "a reference card still opens, and says it has not been heard",
     async run(h) {
       await h.waitFor(/Swift Pair/);
-      await h.tap('[data-card="easySetup"]');   
+      await h.tap('[data-card="findMy"]');   
       await h.wait(200);
       h.expect((await h.count("[data-never]")) === 1, "тиха картка не показала довідковий стан");
       h.expect((await h.count("[data-custom]")) === 1, "довідкова картка все одно має пояснити текст");
@@ -52,7 +52,7 @@ export default [
       await h.click('[data-tab="send"]');
       await h.wait(200);
       const presets = await h.count("[data-preset]");
-      h.expect(presets === 6, `очікував 6 пресетів, знайшов ${presets}`);
+      h.expect(presets === 7, `очікував 7 пресетів, знайшов ${presets}`);
       h.expect((await h.count('[data-field="swiftPair"]')) === 1, "у Swift Pair немає поля назви");
       h.expect((await h.count("[data-active]")) === 1, "немає індикатора активної трансляції");
       h.expect(/[0-9a-f]{8}/.test(await h.text("[data-active]")), "активний банер не показує байти");

@@ -164,14 +164,16 @@ export function wallView({ t, S, openScreen, closeScreen }) {
              placeholder:text-[#6b6b70] focus:outline-none focus:border-[var(--app-accent)]/40"></textarea>
 
     <${Sheet} id="wall-qr" open=${screen === "qr"} onClose=${closeScreen} title=${T(t, "joinTitle")} icon="lucide:qr-code">
-      <div class="flex flex-col items-center gap-4 pb-2">
-        <p class="text-center text-base-content/80 leading-relaxed">${T(t, "joinBody")}</p>
-        ${url
-          ? html`<img data-qrimg src=${qrDataUri(url, { margin: 3 })} alt=${T(t, "joinTitle")}
-              class="w-56 h-56 rounded-2xl bg-white p-3" />
-            <code class="block w-full text-center break-all font-mono text-[0.8rem] text-base-content/80 sf-sunken rounded-lg p-2">${url}</code>`
-          : html`<span class="text-muted">${T(t, "offHint")}</span>`}
-      </div>
+      ${screen === "qr"
+        ? html`<div class="flex flex-col items-center gap-4 pb-2">
+            <p class="text-center text-base-content/80 leading-relaxed">${T(t, "joinBody")}</p>
+            ${url
+              ? html`<img data-qrimg src=${qrDataUri(url, { margin: 3 })} alt=${T(t, "joinTitle")}
+                  class="w-56 h-56 rounded-2xl bg-white p-3" />
+                <code class="block w-full text-center break-all font-mono text-[0.8rem] text-base-content/80 sf-sunken rounded-lg p-2">${url}</code>`
+              : html`<span class="text-muted">${T(t, "offHint")}</span>`}
+          </div>`
+        : null}
     </${Sheet}>
   </div>`;
 }

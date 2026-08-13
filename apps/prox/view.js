@@ -17,6 +17,7 @@ import { shell, ERR } from "/_rt/shell.js";
 import { gate } from "/_rt/gate.js";
 import { band } from "/_rt/radar.js";
 import { signatures } from "/_rt/blesig.js";
+import { PRESETS, assemble } from "/_rt/blesend.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -300,5 +301,133 @@ export function proxView({ S, t, openScreen, closeScreen }) {
 
     <${CardSheet} card=${sel} entry=${selEntry} t=${t}
       open=${screen === "card" && !!sel} onClose=${close} />
+  </div>`;
+}
+
+// ── The transmitter — own-device lab, behind a consent gate ────────────────────────────────────────────
+// This is the send half. It wears its own capability (advertise-raw) and never opens until the owner has
+// acknowledged, once, that it is for their own devices in a controlled space. The emit bytes are built by
+// the pure encoders in blesend.js and shown on screen, because a lab tool that hides what it puts in the
+// air is not a lab tool.
+const LAB_KEY = "prox.lab.ok";
+const readLab = () => { try { return localStorage.getItem(LAB_KEY) === "1"; } catch { return false; } };
+const $labOk = atom(readLab());
+function enableLab() { try { localStorage.setItem(LAB_KEY, "1"); } catch { /* private mode */ } $labOk.set(true); }
+
+const $fields = atom({ swiftPair: "тук тук", eddystone: "https://example.com" });
+const $active = atom(null);     // { id, bytes } currently in the air
+const $sErr = atom(null);
+const $sNeedPerm = atom(null);
+
+function noteSErr(e) {
+  const code = e?.code || ERR.failed;
+  const detail = e?.detail || "";
+  const m = PERM_RE.exec(detail) || PERM_RE.exec(code);
+  if (m) $sNeedPerm.set(m[1]);
+  $sErr.set(`${code}${detail ? ` · ${detail}` : ""}`);
+}
+async function grantSend() {
+  const p = $sNeedPerm.get();
+  if (!p) return;
+  try {
+    const r = await shell.call("system.grant", { permission: p });
+    if (r?.state === "granted") { $sNeedPerm.set(null); $sErr.set(null); return; }
+  } catch { /* fall through to settings */ }
+  try { await shell.call("system.settings", { page: "app" }); } catch { /* nothing else to offer */ }
+}
+
+async function emit(preset) {
+  const val = preset.custom ? ($fields.get()[preset.id] || "") : undefined;
+  const structures = preset.build(val);
+  const bytes = assemble(structures);
+  if (gate) { $active.set({ id: preset.id, bytes }); return; }
+  try {
+    const r = await shell.call("ble.advertiseRaw", { structures, ms: 0 });
+    $active.set({ id: preset.id, bytes, out: r?.bytes });
+    $sErr.set(null);
+  } catch (e) { noteSErr(e); }
+}
+async function stopEmit() {
+  $active.set(null);
+  if (gate) return;
+  try { await shell.call("ble.silence", {}); } catch { /* already silent */ }
+}
+
+function PresetCard({ preset, active, t }) {
+  const fields = useStore($fields);
+  const on = active?.id === preset.id;
+  return html`<div data-preset=${preset.id} data-live=${on ? "1" : "0"}
+    class=${`rounded-2xl p-3 flex flex-col gap-2 min-w-0 sf-raised ${on ? "sf-e2 ring-1 ring-[var(--app-accent)]" : "border border-base-content/10"}`}>
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="min-w-0 truncate font-medium text-base-content">${T(t, `send_${preset.id}`)}</span>
+      <span class="ml-auto shrink-0 rounded px-1.5 py-0.5 text-[0.62rem] uppercase tracking-wide bg-base-content/10 text-base-content/70">${T(t, `target_${preset.target}`)}</span>
+    </div>
+    ${preset.custom
+      ? html`<input data-field=${preset.id} type="text" inputmode="text" autocomplete="off"
+          class="input input-sm input-ghost w-full min-w-0 px-2 focus:outline-none border border-base-content/20"
+          aria-label=${T(t, preset.custom === "name" ? "fieldName" : "fieldUrl")}
+          placeholder=${T(t, preset.custom === "name" ? "fieldName" : "fieldUrl")}
+          value=${fields[preset.id] || ""}
+          onInput=${(e) => $fields.set({ ...$fields.get(), [preset.id]: e.currentTarget.value })} />`
+      : null}
+    <button data-send=${preset.id} onClick=${() => (on ? stopEmit() : emit(preset))}
+      class=${`btn btn-sm shrink-0 ${on ? "btn-outline" : "btn-primary"}`}>
+      ${on ? T(t, "stop") : T(t, "sendBtn")}
+    </button>
+  </div>`;
+}
+
+export function sendView({ t }) {
+  const okStore = useStore($labOk);
+  const labOk = gate || okStore;
+  const active = useStore($active);
+  const err = useStore($sErr);
+  const needPerm = useStore($sNeedPerm);
+
+  useEffect(() => {
+    if (gate && !$active.get()) $active.set({ id: "swiftPair", bytes: assemble(PRESETS.find((p) => p.id === "swiftPair").build("тук тук")) });
+    return () => { if (!gate) { $active.set(null); try { shell.call("ble.silence", {}); } catch { /* ignore */ } } };
+  }, []);
+
+  if (!labOk) {
+    return html`<div class="flex flex-col gap-4 px-[var(--ms-pad)] pt-6 pb-[calc(var(--dock-h)+2rem)]">
+      <div data-prime class="rounded-2xl p-5 sf-raised flex flex-col gap-3">
+        ${Icon("lucide:radio-tower", "text-[1.6em] text-[var(--app-accent)]")}
+        <div class="text-lg font-semibold text-base-content">${T(t, "labTitle")}</div>
+        <p class="text-base-content/80 leading-relaxed">${T(t, "labWarn")}</p>
+        <button data-enable onClick=${enableLab} class="btn btn-primary self-start mt-1">${T(t, "labEnable")}</button>
+      </div>
+    </div>`;
+  }
+
+  return html`<div class="flex flex-col gap-3 px-[var(--ms-pad)] pt-1 pb-[calc(var(--dock-h)+2rem)]">
+    ${!gate && shell.why("ble.advertiseRaw")
+      ? html`<div data-needs class="flex items-center gap-2 min-w-0 rounded-xl p-3 sf-sunken">
+          ${Icon("lucide:radio-tower", "text-[1.1em] shrink-0 text-muted")}
+          <span class="min-w-0 text-base-content/80">${T(t, shell.why("ble.advertiseRaw") === ERR.staleBridge ? "needsUpdate" : "needsApp")}</span>
+        </div>`
+      : null}
+    ${err
+      ? html`<div data-serr class="flex items-start gap-2 min-w-0 rounded-xl p-3 sf-sunken">
+          ${Icon("lucide:triangle-alert", "text-[1.1em] shrink-0 mt-0.5 text-[var(--app-accent)]")}
+          <span class="min-w-0 break-words font-mono text-[0.8rem] text-base-content">${String(err)}</span>
+          ${needPerm ? html`<button data-sgrant class="btn btn-sm btn-primary shrink-0 ml-auto" onClick=${grantSend}>${T(t, "allow")}</button>` : null}
+        </div>`
+      : null}
+
+    ${active
+      ? html`<div data-active class="rounded-2xl p-3 sf-raised sf-e2 ring-1 ring-[var(--app-accent)] flex flex-col gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-2 h-2 rounded-full bg-[var(--app-accent)] shrink-0 ${gate ? "" : "animate-pulse"}"></span>
+            <span class="min-w-0 truncate text-base-content">${T(t, "broadcasting")} · ${T(t, `send_${active.id}`)}</span>
+            <button data-stop onClick=${stopEmit} class="btn btn-sm btn-outline shrink-0 ml-auto">${T(t, "stop")}</button>
+          </div>
+          <code class="block break-all font-mono text-[0.72rem] text-base-content/80 sf-sunken rounded-lg p-2">${active.bytes}</code>
+        </div>`
+      : null}
+
+    <div data-presets class="grid grid-cols-1 gap-2">
+      ${PRESETS.map((p) => html`<${PresetCard} key=${p.id} preset=${p} active=${active} t=${t} />`)}
+    </div>
   </div>`;
 }

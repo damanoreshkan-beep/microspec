@@ -82,7 +82,7 @@ export default [
       h.expect((await h.count("[data-reel] a")) === 0, "на слайді лишилось посилання (відкрити оригінал)");
       h.expect((await h.count("[data-reel] button")) === 0, "на слайді лишилась кнопка");
       // …і кожна функція має свій контрол в острівці
-      for (const [sel, what] of [["[data-island-label]", "назва джерела"], ["[data-dive]", "провалювання"], ["[data-watch]", "відкрити сторінку рілзу"], ["[data-subscribe]", "підписка"]]) {
+      for (const [sel, what] of [["[data-island-label]", "назва джерела"], ["[data-dive]", "провалювання"], ["[data-watch]", "повний кліп в апці"], ["[data-open-page]", "відкрити сторінку рілзу у браузері"], ["[data-subscribe]", "підписка"]]) {
         h.expect((await h.count(sel)) === 1, `в острівці немає контролу: ${what} (${sel})`);
       }
       const isl = await h.attr("[data-island]", "class");

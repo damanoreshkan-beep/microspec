@@ -130,7 +130,8 @@ const PRELOAD = 1;
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
 // "Open site" opens the source's real website in the external browser. (The in-app reverse-proxy iframe was
 // removed — heavy/anti-bot sites never rendered reliably through the datacenter-IP proxy.) The reel is the tap.
-function openSite(s) { if (typeof window !== "undefined") window.open(s.url, "_blank", "noopener"); }
+function openExternal(url) { if (url && typeof window !== "undefined") window.open(url, "_blank", "noopener"); }
+const openSite = (s) => openExternal(s.url);
 // Subscriptions live in IndexedDB (the runtime's collection() store) — a real DB, not localStorage. $subs is a
 // reactive mirror the views read; writes go to both (optimistic atom + async idb). Headless/no-idb: atom only.
 const subsDB = collection("reelSubs");
@@ -653,7 +654,7 @@ function SourceSheet({ S, t }) {
 //
 // It is ALWAYS present now. It used to hide itself on a subscribed root feed "for a clean surface", which
 // was affordable only while every control also existed on the slide. It is the controls now.
-function SourceIsland({ S, t, src, title, subbed, depth, dive, watch }) {
+function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, openIn }) {
   const act = "btn btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
   return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
       ${depth ? html`<button data-feed-back class="btn btn-ghost btn-sm btn-circle text-white shrink-0" aria-label=${T(t, "back")} onClick=${() => popFrame(S)}>${Icon("lucide:chevron-left", "text-xl")}</button>` : null}
@@ -674,6 +675,12 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch }) {
             the screen — the exact mistake the note on `subscribe` above warns about. */""}
       ${/* It plays HERE now, so the icon stops promising a trip outside: an external-link glyph on a control
             that opens an in-app player is the icon lying about where the tap goes. */""}
+      ${/* …and the trip outside, on the one control that really takes it. `watch` plays the clip HERE — our
+            player over our own extraction — so it owns the filled circle and keeps the play glyph. What only
+            the site itself has (the rest of the page, its comments, an account, a download) needs a door, and
+            an external-link glyph on a control that genuinely leaves the app is the icon telling the truth
+            about where the tap goes. Same destination as `watch`: the page the clip was extracted from. */""}
+      ${openIn ? html`<button data-open-page class=${act} aria-label=${T(t, "openBrowser")} onClick=${openIn}>${Icon("lucide:external-link", "text-base")}</button>` : null}
       ${watch ? html`<button data-watch class="btn btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")} onClick=${watch}>${Icon("lucide:play", "text-base")}</button>` : null}
       ${/* forward is the mirror of back: the page this clip lives on. The destination's NAME is not written
             here — it is what the drag reveals under the finger — so the label rides the a11y name instead. */""}
@@ -786,7 +793,7 @@ function FeedSurface({ S, t }) {
           empty, the region carries its own focus and its own name (axe: scrollable-region-focusable). */""}
     <div ref=${paneRef} ...${pan} data-scroller tabindex="0" role="region" aria-label=${T(t, "tabReel")} class="fixed inset-0 z-[1] bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain touch-pan-y will-change-transform">${body}</div>
     <${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
-      dive=${dive} watch=${watch ? () => openFull(S, cur) : null} />
+      dive=${dive} watch=${watch ? () => openFull(S, cur) : null} openIn=${watch ? () => openExternal(watch) : null} />
     ${/* Lives with the feed, not with the tab, so it works identically from Liked — one engine, one overlay. */""}
     ${suspended ? html`<${FullClip} S=${S} t=${t} />` : null}
   </${Fragment}>`;

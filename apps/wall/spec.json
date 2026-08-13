@@ -1,0 +1,31 @@
+{
+  "id": "wall",
+  "theme": "signal",
+  "category": "tools",
+  "accent": "#6EE7A0",
+  "tabs": [
+    {
+      "id": "board",
+      "type": "tool",
+      "icon": "lucide:square-terminal",
+      "label": "tabBoard",
+      "view": "wallView"
+    },
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:settings",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
+  ],
+  "profile": {
+    "icon": "lucide:square-terminal",
+    "theme": true,
+    "lang": true,
+    "install": true,
+    "permissions": [
+      "server"
+    ]
+  }
+}

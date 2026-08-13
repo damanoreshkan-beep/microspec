@@ -45,4 +45,31 @@ export default [
       h.expect((await h.count("[data-never]")) === 0, "Back не закрив довідкову деталь");
     },
   },
+  {
+    name: "the send tab is a consent-gated grid of proximity-protocol presets",
+    async run(h) {
+      await h.waitFor(/Swift Pair/);
+      await h.click('[data-tab="send"]');
+      await h.wait(200);
+      const presets = await h.count("[data-preset]");
+      h.expect(presets === 6, `очікував 6 пресетів, знайшов ${presets}`);
+      h.expect((await h.count('[data-field="swiftPair"]')) === 1, "у Swift Pair немає поля назви");
+      h.expect((await h.count("[data-active]")) === 1, "немає індикатора активної трансляції");
+      h.expect(/[0-9a-f]{8}/.test(await h.text("[data-active]")), "активний банер не показує байти");
+    },
+  },
+  {
+    name: "sending a preset lights it, stopping clears the air",
+    async run(h) {
+      await h.waitFor(/Swift Pair/);
+      await h.click('[data-tab="send"]');
+      await h.wait(200);
+      await h.tap('[data-send="fastPair"]');
+      await h.wait(200);
+      h.expect((await h.count('[data-preset="fastPair"][data-live="1"]')) === 1, "надіслане не засвітилось");
+      await h.tap("[data-stop]");
+      await h.wait(200);
+      h.expect((await h.count("[data-active]")) === 0, "стоп не прибрав активну трансляцію");
+    },
+  },
 ];

@@ -132,6 +132,7 @@
               "cell",
               "ble",
               "advertise",
+              "advertise-raw",
               "usb",
               "server",
               "files",

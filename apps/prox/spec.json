@@ -12,6 +12,13 @@
       "view": "proxView"
     },
     {
+      "id": "send",
+      "type": "tool",
+      "icon": "lucide:radio-tower",
+      "label": "tabSend",
+      "view": "sendView"
+    },
+    {
       "id": "me",
       "type": "profile",
       "icon": "lucide:settings",
@@ -25,7 +32,8 @@
     "lang": true,
     "install": true,
     "permissions": [
-      "ble"
+      "ble",
+      "advertise-raw"
     ]
   }
 }

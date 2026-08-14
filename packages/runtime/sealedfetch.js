@@ -38,7 +38,14 @@ export async function sealedFrameUrl(url, ref) {
   return `${VPS_PROXY}/frame?s=${b64u(wire)}`;
 }
 
-const PLAIN = [`${VPS_PROXY}/frame`];                 // iframe navigation — cannot be tunnelled
+const PLAIN = [
+  `${VPS_PROXY}/frame`,                               // iframe navigation — cannot be tunnelled
+  // APK build carries a launcher-icon PNG in the body; a real icon pushes the sealed envelope past the
+  // tunnel's size ceiling and the whole request comes back "400 bad request" (verified: plain path with a
+  // 30 KB icon → 200, the same call sealed → 400 above ~3.5 KB). The payload is not private — a public
+  // github.io url + app name + a generated tile — so this route has nothing to hide behind the envelope.
+  `${VPS_PROXY}/apk`,
+];
 const TUNNEL = `${VPS_PROXY}/f`;
 
 const urlOf = (input) => (typeof input === "string" ? input : input instanceof URL ? input.href : input?.url ?? "");

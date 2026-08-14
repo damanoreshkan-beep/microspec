@@ -6,6 +6,7 @@
 
 import { generateAppIcons } from "./icons.mjs";
 import { buildManifest } from "./manifest.mjs";
+import { buildAppCompat } from "./build-app.mjs";
 
 const OUT = "dist";
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
@@ -145,6 +146,20 @@ for await (const a of Deno.readDir("apps")) {
   await assertInstallable(outDir, a.name);   // fail the build if this app cannot be installed as a PWA
   ids.push(a.name);
 }
+
+// COMPAT PASS — the deployed artifact must run on the compat floor (Safari 16.1, the owner's iPad). Every
+// app is bundled (import attributes + import maps + esm.sh deps resolved away) and its Tailwind precompiled
+// to a static stylesheet (the runtime @tailwindcss/browser CDN crashes JSC 16.1). App SOURCE is untouched —
+// dev stays zero-build/modern; this is build-only. Fail LOUD with the full list so no app ships half-migrated.
+// See docs/RESEARCH-safari16-compat.md.
+const RT_ABS = `${Deno.cwd()}/packages/runtime`;
+const compatFails = [];
+for (const id of ids) {
+  try { await buildAppCompat({ srcDir: `apps/${id}`, outDir: `${OUT}/${id}`, rtDir: RT_ABS }); }
+  catch (e) { compatFails.push(`${id}: ${String(e.message).split("\n")[0]}`); }
+}
+if (compatFails.length) throw new Error(`compat build failed for ${compatFails.length}/${ids.length} app(s):\n  ${compatFails.join("\n  ")}`);
+console.log(`compat: bundled JS + precompiled CSS for ${ids.length} apps (Safari 16.1 floor)`);
 
 // root → redirect to the store (which now lives in its own scope at /store/)
 await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="uk"><meta charset="utf-8"><title>microspec</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><link rel="canonical" href="./store/"><script>location.replace("./store/"+location.search+location.hash)</script><body style="background:#0a0a0b"></body></html>\n`);

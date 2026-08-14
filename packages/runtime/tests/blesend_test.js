@@ -65,3 +65,14 @@ Deno.test("blesend: every preset builds a non-empty, in-budget frame that decode
     assert(decode(structures).length >= 1, `${p.id} did not decode back to a signature`);
   }
 });
+
+Deno.test("blesend: dynamic Apple payloads survive Android's trailing-zero strip, even zero-heavy", () => {
+  const stripZeros = (hex) => hex.replace(/(?:00)+$/i, "");
+  const allZero = (n) => new Uint8Array(n);
+  for (const p of PRESETS.filter((x) => x.dynamic)) {
+    for (const rnd of [undefined, allZero]) {
+      const raw = assemble(p.build(undefined, rnd));
+      assertEquals(stripZeros(raw), raw, `${p.id} ends in 0x00 — Android would truncate it on air`);
+    }
+  }
+});

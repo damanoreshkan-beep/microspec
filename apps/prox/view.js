@@ -315,18 +315,33 @@ async function grantSend() {
   try { await shell.call("system.settings", { page: "app" }); } catch {  }
 }
 
+const rnd = (n) => crypto.getRandomValues(new Uint8Array(n));
+let reemit = null;
+function stopReemit() { if (reemit) { clearInterval(reemit); reemit = null; } }
+
 async function emit(preset) {
+  stopReemit();
   const val = preset.custom ? ($fields.get()[preset.id] || "") : undefined;
-  const structures = preset.build(val);
+  const structures = preset.build(val, rnd);
   const bytes = assemble(structures);
   if (gate) { $active.set({ id: preset.id, bytes }); return; }
   try {
     const r = await shell.call("ble.advertiseRaw", { structures, ms: 0, connectable: !!preset.connectable });
     $active.set({ id: preset.id, bytes, out: r?.bytes });
     $sErr.set(null);
+    if (preset.dynamic) {
+      reemit = setInterval(async () => {
+        try {
+          const s2 = preset.build(val, rnd);
+          const r2 = await shell.call("ble.advertiseRaw", { structures: s2, ms: 0, connectable: !!preset.connectable });
+          $active.set({ id: preset.id, bytes: assemble(s2), out: r2?.bytes });
+        } catch (e) { stopReemit(); noteSErr(e); }
+      }, 2000);
+    }
   } catch (e) { noteSErr(e); }
 }
 async function stopEmit() {
+  stopReemit();
   $active.set(null);
   if (gate) return;
   try { await shell.call("ble.silence", {}); } catch {  }
@@ -365,7 +380,7 @@ export function sendView({ t }) {
 
   useEffect(() => {
     if (gate && !$active.get()) $active.set({ id: "swiftPair", bytes: assemble(PRESETS.find((p) => p.id === "swiftPair").build("тук тук")) });
-    return () => { if (!gate) { $active.set(null); try { shell.call("ble.silence", {}); } catch {  } } };
+    return () => { if (!gate) { stopReemit(); $active.set(null); try { shell.call("ble.silence", {}); } catch {  } } };
   }, []);
 
   if (!labOk) {

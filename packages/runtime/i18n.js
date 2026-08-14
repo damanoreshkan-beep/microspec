@@ -47,6 +47,7 @@ export const SYS = {
   apkGenerating: { en: "Signing…", uk: "Підписую…" },
   apkDone: { en: "APK ready", uk: "APK готовий" },
   apkErr: { en: "Couldn't build the APK", uk: "Не вдалося зібрати APK" },
+  apkRate: { en: "Too many builds — wait a minute and try once.", uk: "Забагато збірок — зачекай хвилину і спробуй раз." },
   apkNote: {
     en: "Sideload only. On Samsung, turn Auto Blocker off (Settings → Security & privacy) or install over adb, then allow unknown sources.",
     uk: "Лише sideload. На Samsung вимкни Auto Blocker (Налаштування → Безпека і приватність) або встанови через adb, тоді дозволь невідомі джерела.",

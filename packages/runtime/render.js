@@ -540,7 +540,11 @@ function ApkScreen() {
       if (!iconB64) { try { iconB64 = await letterTilePng(name, accent()); } catch { /* no icon */ } }
       if (!gate) { const blob = await buildApk({ url, name, iconB64 }); downloadBlob(blob, apkFilename(name)); }
       setDone(true); A.toast(sys("apkDone", loc));
-    } catch { setErr(true); } finally { setBusy(false); }
+    } catch (e) {
+      // The reason is the whole point of an error line — a generic "failed" is why "rate limited" (429),
+      // "origin" (403) and a dropped network all read identically. buildApk throws `apk <status>`; surface it.
+      setErr(String(e?.message || e) || true);
+    } finally { setBusy(false); }
   };
 
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
@@ -559,7 +563,7 @@ function ApkScreen() {
       <button id="apk-go" disabled=${busy} onClick=${generate} class="btn btn-primary rounded-2xl w-full gap-2">
         ${busy ? html`<span class="animate-pulse">${sys("apkGenerating", loc)}</span>` : html`${Icon("lucide:download")}<span>${done ? sys("apkDone", loc) : sys("apkGenerate", loc)}</span>`}
       </button>
-      ${err ? html`<div class="text-center text-xs text-error">${sys("apkErr", loc)}</div>` : null}
+      ${err ? html`<div class="text-center text-xs text-error">${/apk 429/.test(String(err)) ? sys("apkRate", loc) : sys("apkErr", loc)}${typeof err === "string" && !/apk 429/.test(err) ? html` · ${err}` : null}</div>` : null}
     </div>
   </div>`;
 }

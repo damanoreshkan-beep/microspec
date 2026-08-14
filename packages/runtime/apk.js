@@ -53,7 +53,7 @@ export async function buildApk({ url, name, iconB64 }) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ url, name, icon: iconB64 || undefined }),
   });
-  if (!r.ok) throw new Error(`apk ${r.status}`);
+  if (!r.ok) { const why = await r.text().catch(() => ""); throw new Error(`apk ${r.status}${why ? ` ${why}` : ""}`); }
   return await r.blob();
 }
 

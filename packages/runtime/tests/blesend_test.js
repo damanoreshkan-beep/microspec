@@ -70,3 +70,19 @@ Deno.test("blesend: every preset builds a non-empty, in-budget frame that decode
     assert(decode(structures).length >= 1, `${p.id} did not decode back to a signature`);
   }
 });
+
+// The bug that made the AirPods card never appear: Android's AdvertiseDataParser.removeTrailingZeros strips
+// trailing 0x00 from a legacy advertisement before it goes on air (Peripherals.java:246). A dynamic Apple
+// payload that ended in a zero tail arrived TRUNCATED — its inner TLV length byte then overran the shortened
+// data and iOS discarded it. Every dynamic preset must end NON-ZERO so the strip is a no-op — proven here
+// even against a worst-case entropy source that hands back all zeros (the nz() terminator must save it).
+Deno.test("blesend: dynamic Apple payloads survive Android's trailing-zero strip, even zero-heavy", () => {
+  const stripZeros = (hex) => hex.replace(/(?:00)+$/i, "");
+  const allZero = (n) => new Uint8Array(n);
+  for (const p of PRESETS.filter((x) => x.dynamic)) {
+    for (const rnd of [undefined, allZero]) {
+      const raw = assemble(p.build(undefined, rnd));
+      assertEquals(stripZeros(raw), raw, `${p.id} ends in 0x00 — Android would truncate it on air`);
+    }
+  }
+});

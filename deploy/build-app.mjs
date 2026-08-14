@@ -12,7 +12,7 @@ async function copyTree(src, dst) {
   }
 }
 
-export async function buildAppCompat({ srcDir, outDir, rtDir }) {
+export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = [] }) {
   const html = await Deno.readTextFile(`${srcDir}/index.html`);
 
   const entry = html.match(/<script type="module">([\s\S]*?)<\/script>/);
@@ -39,7 +39,7 @@ export async function buildAppCompat({ srcDir, outDir, rtDir }) {
   if (!bundle.success) throw new Error(`deno bundle failed:\n${dec.decode(bundle.stderr).split("\n").slice(-8).join("\n")}`);
 
   const viewJs = await Deno.readTextFile(`${srcDir}/view.js`).catch(() => "");
-  const { css, candidateCount } = await buildTailwind([html, viewJs]);
+  const { css, candidateCount } = await buildTailwind([html, viewJs, ...sharedSources]);
   await Deno.writeTextFile(`${outDir}/app.css`, css);
 
   let out = html
@@ -83,6 +83,8 @@ if (import.meta.main) {
   }
   await Deno.mkdir(`${ROOT}/dist-compat/_rt`, { recursive: true });
   for await (const f of Deno.readDir(RT)) if (f.isFile && f.name.endsWith(".css")) await Deno.copyFile(`${RT}/${f.name}`, `${ROOT}/dist-compat/_rt/${f.name}`);
-  const r = await buildAppCompat({ srcDir: APP, outDir: OUT, rtDir: RT });
+  const sharedSources = [];
+  for await (const f of Deno.readDir(RT)) if (f.isFile && f.name.endsWith(".js") && !f.name.endsWith("_test.js")) sharedSources.push(await Deno.readTextFile(`${RT}/${f.name}`));
+  const r = await buildAppCompat({ srcDir: APP, outDir: OUT, rtDir: RT, sharedSources });
   console.log(`built dist-compat/${id}/  app.js ${r.jsKB}KB  app.css ${r.cssKB}KB  (${r.candidateCount} tw candidates) — compat gate clean`);
 }

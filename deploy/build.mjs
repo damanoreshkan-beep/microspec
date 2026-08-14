@@ -110,9 +110,13 @@ for await (const a of Deno.readDir("apps")) {
 }
 
 const RT_ABS = `${Deno.cwd()}/packages/runtime`;
+const sharedSources = [];
+for await (const f of Deno.readDir("packages/runtime")) {
+  if (f.isFile && f.name.endsWith(".js") && !f.name.endsWith("_test.js")) sharedSources.push(await Deno.readTextFile(`packages/runtime/${f.name}`));
+}
 const compatFails = [];
 for (const id of ids) {
-  try { await buildAppCompat({ srcDir: `apps/${id}`, outDir: `${OUT}/${id}`, rtDir: RT_ABS }); }
+  try { await buildAppCompat({ srcDir: `apps/${id}`, outDir: `${OUT}/${id}`, rtDir: RT_ABS, sharedSources }); }
   catch (e) { compatFails.push(`${id}: ${String(e.message).split("\n")[0]}`); }
 }
 if (compatFails.length) throw new Error(`compat build failed for ${compatFails.length}/${ids.length} app(s):\n  ${compatFails.join("\n  ")}`);

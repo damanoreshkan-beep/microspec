@@ -6,13 +6,16 @@ export async function sealedFrameUrl(url, ref) {
   const { wire } = await seal(SEALED_KEY, { p: "/feed/frame", u: url, r: ref || null });
   return `${VPS_PROXY}/frame?s=${b64u(wire)}`;
 }
-const PLAIN = [`${VPS_PROXY}/frame`];                 
+const PLAIN = [
+  `${VPS_PROXY}/frame`,                               
+  
+  
+  `${VPS_PROXY}/apk`,
+];
 const TUNNEL = `${VPS_PROXY}/f`;
+
 const urlOf = (input) => (typeof input === "string" ? input : input instanceof URL ? input.href : input?.url ?? "");
-
-
 const innerPath = (url) => "/feed" + url.slice(VPS_PROXY.length);
-
 export function installSealedFetch(realFetch = globalThis.fetch.bind(globalThis)) {
   const patched = async (input, init = {}) => {
     const url = urlOf(input);

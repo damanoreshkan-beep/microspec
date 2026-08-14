@@ -993,9 +993,11 @@
     "bg": "#0A0A0B",
     "fg": "#6EE7A0",
     "href": "./wall/",
-    "version": "1.5",
+    "version": "1.6",
     "category": "tools",
-    "needs": []
+    "needs": [
+      "wakeLock"
+    ]
   },
   {
     "id": "tarot",
@@ -1436,7 +1438,7 @@
     "bg": "#16161C",
     "fg": "#9D8CFF",
     "href": "./prox/",
-    "version": "1.5",
+    "version": "1.6",
     "category": "tools",
     "needs": []
   },

@@ -5,7 +5,7 @@ states/
 *.log
 .DS_Store
 packages/gates/shots/
-.claude/skills/
+.claude/
 skills-lock.json
 # local mirror of the VPS feed-proxy — holds the host/IP + keys, never publish
 proxy/

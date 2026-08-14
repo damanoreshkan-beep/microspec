@@ -25,7 +25,7 @@ async function copyTree(src, dst) {
 // Bundle + precompile CSS + rewrite index.html INTO outDir (which already holds the normal-build output:
 // manifest, icons, sw, i18n). srcDir = apps/<id> (has /_rt/ imports + the import map). rtDir = ABSOLUTE
 // path to packages/runtime (for the file:// import-map entry that resolves the runtime's /_rt/ imports).
-export async function buildAppCompat({ srcDir, outDir, rtDir }) {
+export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = [] }) {
   const html = await Deno.readTextFile(`${srcDir}/index.html`);
 
   const entry = html.match(/<script type="module">([\s\S]*?)<\/script>/);
@@ -54,9 +54,11 @@ export async function buildAppCompat({ srcDir, outDir, rtDir }) {
   await Deno.remove(stage, { recursive: true }).catch(() => {});
   if (!bundle.success) throw new Error(`deno bundle failed:\n${dec.decode(bundle.stderr).split("\n").slice(-8).join("\n")}`);
 
-  // 2) precompile Tailwind + daisyui → static app.css (scan this app's HTML + view.js for classes)
+  // 2) precompile Tailwind + daisyui → static app.css. Scan this app's HTML + view.js AND the shared runtime
+  //    kit (packages/runtime/*.js) — most of the UI (daisyui components) is rendered by the runtime, so an
+  //    app-only scan misses ~95% of the real classes and the page renders unstyled. sharedSources = runtime.
   const viewJs = await Deno.readTextFile(`${srcDir}/view.js`).catch(() => "");
-  const { css, candidateCount } = await buildTailwind([html, viewJs]);
+  const { css, candidateCount } = await buildTailwind([html, viewJs, ...sharedSources]);
   await Deno.writeTextFile(`${outDir}/app.css`, css);
 
   // 3) rewrite index.html: drop tailwind/daisyui CDN + importmap + inline module; link app.css/app.js
@@ -105,6 +107,8 @@ if (import.meta.main) {
   }
   await Deno.mkdir(`${ROOT}/dist-compat/_rt`, { recursive: true });
   for await (const f of Deno.readDir(RT)) if (f.isFile && f.name.endsWith(".css")) await Deno.copyFile(`${RT}/${f.name}`, `${ROOT}/dist-compat/_rt/${f.name}`);
-  const r = await buildAppCompat({ srcDir: APP, outDir: OUT, rtDir: RT });
+  const sharedSources = [];
+  for await (const f of Deno.readDir(RT)) if (f.isFile && f.name.endsWith(".js") && !f.name.endsWith("_test.js")) sharedSources.push(await Deno.readTextFile(`${RT}/${f.name}`));
+  const r = await buildAppCompat({ srcDir: APP, outDir: OUT, rtDir: RT, sharedSources });
   console.log(`built dist-compat/${id}/  app.js ${r.jsKB}KB  app.css ${r.cssKB}KB  (${r.candidateCount} tw candidates) — compat gate clean`);
 }

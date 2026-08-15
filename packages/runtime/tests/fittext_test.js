@@ -3,15 +3,18 @@ import { fitText, fitTextSource, FIT_CSS } from "../fittext.js";
 
 /** An element whose wrapped extent is a known function of the font size. */
 function stub(extentAt) {
-  let size = 0;
+  let size = 0, wrap = "";
   return {
     style: {
       set fontSize(v) { size = parseFloat(v); },
       get fontSize() { return size + "px"; },
+      set overflowWrap(v) { wrap = v; },
+      get overflowWrap() { return wrap; },
     },
-    get scrollWidth() { return extentAt(size).w; },
-    get scrollHeight() { return extentAt(size).h; },
+    get scrollWidth() { return extentAt(size, wrap).w; },
+    get scrollHeight() { return extentAt(size, wrap).h; },
     get size() { return size; },
+    get wrap() { return wrap; },
   };
 }
 
@@ -62,7 +65,38 @@ Deno.test("fittext: the source survives being inlined with no module scope", () 
   assertEquals(Math.round(inlined(el, box(330, 800))), 50, "the inlined copy must behave identically");
 });
 
-Deno.test("fittext: the wrap contract keeps a long unbreakable word from shrinking the poster", () => {
-  assert(FIT_CSS.includes("overflow-wrap:anywhere"), FIT_CSS);
+function phrase(words, boxW) {
+  return (s, wrap) => {
+    const em = 0.6 * s;
+    if (wrap === "anywhere") {
+      const glyphs = words.join(" ").length * em;
+      return { w: Math.min(glyphs, boxW), h: Math.ceil(glyphs / boxW) * 0.95 * s };
+    }
+    let lines = 1, line = 0, widest = 0;
+    for (const wd of words) {
+      const adv = wd.length * em, need = line ? line + em + adv : adv;
+      if (line && need > boxW) { lines++; line = adv; } else line = need;
+      widest = Math.max(widest, line);
+    }
+    return { w: widest, h: lines * 0.95 * s };
+  };
+}
+
+Deno.test("fittext: word boundaries win when breaking anywhere is under 3x bigger", () => {
+  const el = stub(phrase(["Починаємо", "за", "5", "хвилин"], 340));
+  const got = fitText(el, box(340, 700));
+  assertEquals(el.wrap, "normal", "the poster broke a word it did not have to");
+  assertEquals(Math.round(got), 63, "340 / (9 × 0.6) = 63px: the longest word sets the size");
+});
+
+Deno.test("fittext: one long unbreakable word falls back to breaking anywhere", () => {
+  const el = stub(phrase(["https://example.com/very/long/path/to/a/thing"], 340));
+  const got = fitText(el, box(340, 700));
+  assertEquals(el.wrap, "anywhere", "a 12px poster is a fit and a ruined screen");
+  assert(got > 60, `${got}px — the fallback must actually use the box (words alone give 12px)`);
+});
+
+Deno.test("fittext: the wrap contract leaves overflow-wrap to the search", () => {
+  assert(!FIT_CSS.includes("overflow-wrap"), "a stylesheet overflow-wrap would fight the two-pass search");
   assert(FIT_CSS.includes("pre-wrap"), "authored line breaks are part of the phrase");
 });

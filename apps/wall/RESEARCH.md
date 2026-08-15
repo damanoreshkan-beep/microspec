@@ -100,7 +100,12 @@ Three candidates; the choice is forced by wrapping and by Cyrillic metrics.
 
 Bounds: `hi = 2 × max(box side)`, `lo = 1`, stop at a quarter-pixel. From 1664px that is
 `ceil(log2(1663 / 0.25)) = 13` passes — I re-derived this rather than taking the report's "11".
-`overflow-wrap: anywhere` is required, or one long unbreakable word shrinks the whole poster to fit itself.
+Two passes over the wrap rule (2026-08-15, measured on the reference device): with `overflow-wrap:
+anywhere` always on, "Починаємо за 5 хвилин" on a portrait screen fitted as `Почи / наєм / о за 5 / хвили /
+н` — about 2× the size, and not a phrase any more. So the search runs once at word boundaries and once
+`anywhere`, and word boundaries win unless they cost more than 3× the size. That ratio is the one long
+unbreakable token (a URL) that would otherwise be the whole poster's width at ~12px — the case `anywhere`
+exists for. 26 layouts per fit instead of 13; still one rAF on the viewer.
 
 The algorithm lives once, in `packages/runtime/fittext.js`, and the viewer page gets the **same** function
 by source (`fitText.toString()`), because that page cannot import from `/_rt/`. A unit test pins both the

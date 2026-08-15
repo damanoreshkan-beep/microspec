@@ -5,6 +5,13 @@
 // line-wrap (SVG 2 Text), which is the whole job here. So: binary search over font-size, reading the real
 // wrapped extent back out of the layout engine.
 //
+// Two passes, because the wrap rule decides what a poster looks like as much as the size does. Breaking
+// only at word boundaries reads as a phrase; breaking anywhere reads bigger and turns "Починаємо за 5
+// хвилин" into "Почи / наєм / о за 5 / хвили / н" on a portrait screen (measured on the reference device).
+// So word boundaries win unless they cost more than 3× the size — the one long unbreakable word (a URL, a
+// hashtag) that would otherwise shrink the whole poster to its own width, which is the case `anywhere`
+// exists for.
+//
 // fitText is deliberately SELF-CONTAINED — no imports, no module constants, nothing from its closure. The
 // wall app serves a page off the phone's own LAN socket, and that page cannot import from /_rt/; it inlines
 // this function's own source instead (fitTextSource). A unit test compiles the source in an empty scope, so
@@ -18,17 +25,25 @@
 export function fitText(el, box) {
   const w = box.clientWidth, h = box.clientHeight;
   if (!(w > 0) || !(h > 0)) return 0;
-  // 2x the longest side is unreachable for any string of 1+ characters, so it is a safe open bound.
-  let lo = 1, hi = Math.max(2, Math.max(w, h) * 2), best = 1;
-  // 13 halvings take 1664px to under a quarter pixel: ceil(log2(1663/0.25)) = 13.
-  for (let i = 0; i < 13 && hi - lo > 0.25; i++) {
-    const mid = (lo + hi) / 2;
-    el.style.fontSize = mid + "px";
-    // +0.5 absorbs sub-pixel rounding; without it the last step oscillates and the search returns lo.
-    if (el.scrollWidth <= w + 0.5 && el.scrollHeight <= h + 0.5) { best = mid; lo = mid; }
-    else hi = mid;
-  }
-  const size = Math.floor(best * 4) / 4;
+  const search = function (wrap) {
+    el.style.overflowWrap = wrap;
+    // 2x the longest side is unreachable for any string of 1+ characters, so it is a safe open bound.
+    let lo = 1, hi = Math.max(2, Math.max(w, h) * 2), best = 1;
+    // 13 halvings take 1664px to under a quarter pixel: ceil(log2(1663/0.25)) = 13.
+    for (let i = 0; i < 13 && hi - lo > 0.25; i++) {
+      const mid = (lo + hi) / 2;
+      el.style.fontSize = mid + "px";
+      // +0.5 absorbs sub-pixel rounding; without it the last step oscillates and the search returns lo.
+      if (el.scrollWidth <= w + 0.5 && el.scrollHeight <= h + 0.5) { best = mid; lo = mid; }
+      else hi = mid;
+    }
+    return Math.floor(best * 4) / 4;
+  };
+  const words = search("normal");
+  const anywhere = search("anywhere");
+  const wrap = words * 3 >= anywhere ? "normal" : "anywhere";
+  const size = wrap === "normal" ? words : anywhere;
+  el.style.overflowWrap = wrap;
   el.style.fontSize = size + "px";
   return size;
 }
@@ -36,6 +51,6 @@ export function fitText(el, box) {
 /** The function's own source, for a page that cannot import it. Pairs with FIT_CSS. */
 export const fitTextSource = () => fitText.toString();
 
-// The wrapping contract the search assumes. `anywhere` is load-bearing: one long unbreakable word otherwise
-// shrinks the whole poster down to that word's width, which is a correct fit and a ruined screen.
-export const FIT_CSS = "white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;line-height:0.95";
+// The wrapping contract the search assumes. `overflow-wrap` is NOT here on purpose: fitText owns it (word
+// boundaries first, `anywhere` only as the fallback above), and a stylesheet value would fight the search.
+export const FIT_CSS = "white-space:pre-wrap;word-break:normal;line-height:0.95";

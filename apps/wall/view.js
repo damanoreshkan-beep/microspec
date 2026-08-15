@@ -171,47 +171,57 @@ export function wallView({ t, S, openScreen, closeScreen }) {
   const missing = !gate && !shell.has("server.start");
   const why = missing ? (shell.why("server.start") === ERR.staleBridge ? "needsUpdate" : "needsApp") : null;
 
-  return html`<div class="flex flex-col h-full min-h-0 gap-[var(--ms-gap)] px-[var(--ms-pad)] pb-[var(--ms-pad)]">
-    <${Island} className="shrink-0 flex items-center gap-2 px-3 py-2">
-      <span class=${`w-2 h-2 rounded-full shrink-0 ${on ? "bg-[var(--app-accent)] animate-pulse" : "bg-base-content/30"}`}></span>
+  // The owner's screen IS the room's screen: one black stage fills the view, and the phrase gets it all.
+  // Everything else is an overlay in the stage's own corners — a broadcast OSD (live dot + head count),
+  // two icon buttons, the input floating at the foot. Grid rows, not absolute positioning: the fit box is
+  // the row that is left, so it is MEASURED between the overlays and never has to know their heights.
+  // Fixed black and fixed white on purpose: this is a window onto other people's displays, not a farm
+  // surface, and it must read the same whatever theme the owner runs (so the go-live key cannot be
+  // btn-primary — light-theme ink is #0A0A0C, invisible on this stage).
+  const osd = "font-mono text-[var(--ms-label)] text-white/70";
+  const key = "btn btn-ghost btn-sm btn-circle text-white hover:bg-white/10";
+  return html`<div class="h-full min-h-0 px-[var(--ms-pad)] pb-[var(--ms-pad)]">
+    <div data-stage class="h-full min-h-0 rounded-[var(--ms-r)] bg-[#0A0A0B] overflow-hidden
+                grid grid-rows-[auto_minmax(0,1fr)_auto]">
+    <div class="flex items-center gap-2 px-[var(--ms-pad)] pt-2 min-h-[var(--ms-ctl)]">
       ${on
-        ? html`<button data-url onClick=${() => openScreen("qr")}
-              class="min-w-0 flex-1 text-left font-mono text-[var(--ms-label)] text-base-content/80 truncate">
-              ${url || T(t, "live")}
-            </button>
+        ? html`<span class="w-2 h-2 rounded-full shrink-0 bg-[var(--app-accent)] animate-pulse" title=${T(t, "live")}></span>
             ${viewers != null
-              ? html`<span data-viewers title=${T(t, "viewers")}
-                  class="shrink-0 flex items-center gap-1 font-mono text-[var(--ms-label)] text-base-content/70">
+              ? html`<span data-viewers title=${T(t, "viewers")} class=${`${osd} flex items-center gap-1`}>
                   ${Icon("lucide:eye", "text-[1em]")}${viewers}
                 </span>`
-              : null}
-            <button data-qr class="shrink-0 btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "showQr")}
-              onClick=${() => openScreen("qr")}>${Icon("lucide:qr-code", "text-[1.15em]")}</button>
-            <button data-stop class="shrink-0 btn btn-sm" onClick=${stop} disabled=${busy}>${T(t, "stop")}</button>`
-        : html`<span class="min-w-0 flex-1 truncate text-[var(--ms-label)] text-base-content/70">
-              ${missing ? T(t, why) : err ? T(t, err) : ""}
-            </span>
-            <button data-start class="shrink-0 btn btn-primary btn-sm gap-1.5" onClick=${() => start(t)}
-              disabled=${busy || missing}>
+              : html`<span class=${osd}>${T(t, "live")}</span>`}
+            <span class="flex-1"></span>
+            <button data-qr class=${key} aria-label=${T(t, "showQr")} onClick=${() => openScreen("qr")}>
+              ${Icon("lucide:qr-code", "text-[1.15em]")}
+            </button>
+            <button data-stop class=${key} aria-label=${T(t, "stop")} onClick=${stop} disabled=${busy}>
+              ${Icon("lucide:square", "text-[1.05em]")}
+            </button>`
+        : html`<span class=${`min-w-0 flex-1 truncate ${osd}`}>${missing ? T(t, why) : err ? T(t, err) : ""}</span>
+            <button data-start class="shrink-0 btn btn-sm border-0 bg-white text-black hover:bg-white/90 gap-1.5"
+              onClick=${() => start(t)} disabled=${busy || missing}>
               ${Icon("lucide:megaphone", "text-[1.1em]")}<span>${T(t, "start")}</span>
             </button>`}
-    <//>
+    </div>
 
-    <!-- The room's screen, at desk size. Fixed black on purpose: this is a window onto other people's
-         displays, not a farm surface, and it must read the same whatever theme the owner runs. -->
-    <div class="flex-1 min-h-0 rounded-[var(--ms-r)] bg-[#0A0A0B] border border-base-content/10
-                overflow-hidden p-[var(--ms-pad)]">
-      <div ref=${boxRef} class="w-full h-full flex items-center justify-center">
+    <div class="min-h-0 min-w-0 px-[var(--ms-pad)] py-2">
+      <div data-fitbox ref=${boxRef} class="w-full h-full flex items-center justify-center">
         <span data-poster ref=${textRef} aria-label=${T(t, "posterLabel")}
-          class="w-full text-center font-bold text-white" style=${FIT_CSS}>${text}</span>
+          class=${`w-full text-center font-bold ${on ? "text-white" : "text-white/60"}`} style=${FIT_CSS}>${text}</span>
       </div>
     </div>
 
-    <textarea data-phrase rows="2" value=${text} spellcheck="false"
-      aria-label=${T(t, "phraseLabel")} placeholder=${T(t, "phrasePlaceholder")}
-      onInput=${(e) => { $text.set(e.currentTarget.value); publish(); }}
-      class="shrink-0 w-full resize-none rounded-[var(--ms-r)] p-3 sf-inset bg-base-100 text-base-content
-             text-[0.95rem] leading-snug focus:outline-none placeholder:text-base-content/50"></textarea>
+    <div class="p-[var(--ms-pad)] pt-2">
+      <${Island} tone="dark" className="py-2">
+        <textarea data-phrase rows="2" value=${text} spellcheck="false"
+          aria-label=${T(t, "phraseLabel")} placeholder=${T(t, "phrasePlaceholder")}
+          onInput=${(e) => { $text.set(e.currentTarget.value); publish(); }}
+          class="block w-full resize-none bg-transparent text-white text-[0.95rem] leading-snug
+                 focus:outline-none placeholder:text-white/50"></textarea>
+      <//>
+    </div>
+    </div>
 
     <${Sheet} id="wall-qr" open=${screen === "qr"} onClose=${closeScreen}
       title=${T(t, "joinTitle")} icon="lucide:qr-code">

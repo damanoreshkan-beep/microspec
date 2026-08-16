@@ -45,6 +45,10 @@ const PLAIN = [
   // 30 KB icon → 200, the same call sealed → 400 above ~3.5 KB). The payload is not private — a public
   // github.io url + app name + a generated tile — so this route has nothing to hide behind the envelope.
   `${VPS_PROXY}/apk`,
+  // A streamed reply (text/event-stream) is not ONE envelope: sealing it would buffer the whole answer and
+  // hand it over at the end, which is exactly the wait streaming exists to remove. Named to the sub-path so
+  // /feed/chats (the history, sealed) is not caught by the prefix.
+  `${VPS_PROXY}/chat/stream`,
 ];
 const TUNNEL = `${VPS_PROXY}/f`;
 

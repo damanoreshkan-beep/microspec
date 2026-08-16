@@ -69,6 +69,7 @@ import "./tests/shell_test.js";
 import "./tests/sigil_test.js";
 import "./tests/signif_test.js";
 import "./tests/sitelabel_test.js";
+import "./tests/sse_test.js";
 import "./tests/sonar_test.js";
 import "./tests/spectrum_test.js";
 import "./tests/swarm_test.js";

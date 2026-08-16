@@ -1,4 +1,5 @@
-# Pages deploy — assemble dist/ (home launcher + apps + shared _rt) and publish to GitHub Pages.
+# Deploy — assemble dist/ (store launcher + apps + shared _rt) and ship it to the VPS (https://dreamstudio.mooo.com/).
+# GitHub Pages was retired on 2026-08-16; there is no mirror.
 # Runs ONLY after the `verify` gate passes on main (workflow_run), never in parallel with it: this
 # (a) never deploys red code, and (b) keeps the two workflows from spinning up ~12 jobs at once, each
 # hammering GitHub's action-resolution service (which halves our exposure when GitHub has an outage).
@@ -12,11 +13,9 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: deploy
   cancel-in-progress: false
 
 jobs:
@@ -43,8 +42,6 @@ jobs:
       # THE PRODUCTION HOST is our VPS (https://dreamstudio.mooo.com/, since 2026-08-16): dist/ is rsynced
       # into /srv/www as a restricted `deploy` user (its key has no shell/pty/forwarding and owns only that
       # directory) and served by the `web` container. --delete keeps the tree exact — a removed app must go.
-      # GitHub Pages below stays as a MIRROR through the transition (installed PWAs are bound to the old
-      # origin); it will be retired once nothing points at it.
       - name: Ship dist/ to the VPS
         env:
           KEY: ${{ secrets.VPS_DEPLOY_KEY }}
@@ -60,15 +57,3 @@ jobs:
           sleep 2
           curl -fsS -o /dev/null https://dreamstudio.mooo.com/store/
           test "$(curl -fsS https://dreamstudio.mooo.com/_rt/build.js)" = "$(cat dist/_rt/build.js)"
-      - uses: actions/upload-pages-artifact@v5
-        with: { path: dist }
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    environment:
-      name: github-pages
-      url: ${{ steps.d.outputs.page_url }}
-    steps:
-      - id: d
-        uses: actions/deploy-pages@v5

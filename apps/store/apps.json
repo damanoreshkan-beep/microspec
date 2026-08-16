@@ -631,6 +631,29 @@
     "needs": []
   },
   {
+    "id": "persona",
+    "title": "Персона",
+    "titles": {
+      "en": "Persona",
+      "uk": "Персона"
+    },
+    "tagline": "Розмови з людьми, які щось значать",
+    "taglines": {
+      "en": "Conversations with people who matter",
+      "uk": "Розмови з людьми, які щось значать"
+    },
+    "glyph": "lucide:users-round",
+    "art": "<path d=\"M7.9 20A9 9 0 1 0 4 16.1L2 22Z\"/><circle cx=\"12\" cy=\"9.5\" r=\"1.6\"/><path d=\"M9 15a3 3 0 0 1 6 0\"/>",
+    "bg": "#1B1114",
+    "fg": "#C4687A",
+    "href": "./persona/",
+    "version": "1.6",
+    "category": "creative",
+    "needs": [
+      "auth"
+    ]
+  },
+  {
     "id": "pins",
     "title": "піни",
     "titles": {

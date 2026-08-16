@@ -51,8 +51,10 @@ try {
     let m = null, why = [];
     try {
       await page.setViewportSize({ width: dev.width, height: dev.height });
-      await page.goto(url, { waitUntil: "networkidle2" });
-      await new Promise((r) => setTimeout(r, 1500));
+      // "load", not networkidle2: an app that keeps a request in flight under ?mock (hf polls its Spaces) never
+      // goes idle and Astral gives up after 5 retries. The token measurement needs the shell, not a quiet network.
+      await page.goto(url, { waitUntil: "load" });
+      await new Promise((r) => setTimeout(r, 2000));
       m = await page.evaluate(() => {
         const cs = (el) => (el ? getComputedStyle(el) : null);
         const surf = document.querySelector(".sf-raised, [data-island], .card, .modal-box, .btn");

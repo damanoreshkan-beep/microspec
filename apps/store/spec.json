@@ -2,7 +2,13 @@
   "id": "store",
   "theme": "signal",
   "tabs": [
-    { "id": "apps", "type": "tool", "icon": "lucide:layout-grid", "label": "tabApps", "view": "store" },
+    {
+      "id": "apps",
+      "type": "tool",
+      "icon": "lucide:layout-grid",
+      "label": "tabApps",
+      "view": "store"
+    },
     {
       "id": "me",
       "type": "profile",
@@ -21,5 +27,6 @@
       "url": "https://github.com/damanoreshkan-beep/microspec",
       "icon": "lucide:github"
     }
-  }
+  },
+  "accent": "#D2A24C"
 }

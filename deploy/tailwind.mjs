@@ -21,19 +21,13 @@ async function loadModule(id, base) {
   return { base, module: mod.default ?? mod };
 }
 
-export function scanCandidates(text) {
-  const out = new Set();
-  for (const m of String(text).matchAll(/[!-]?[a-z][a-z0-9]*(?:[-:/][a-z0-9!.%#[\]()_&>*+~,=]+)*/gi)) {
-    const t = m[0];
-    if (t.length > 1 && !/^https?:/.test(t)) out.add(t);
-  }
-  return [...out];
-}
-
+import { scanCandidates } from "./candidates.mjs";
+export { scanCandidates };
 export async function buildTailwind(sourceTexts, { plugins = ["daisyui"], base = "/" } = {}) {
   const input = [`@import "tailwindcss";`, ...plugins.map((p) => `@plugin "${p}";`)].join("\n");
   const compiler = await compile(input, { base, loadStylesheet, loadModule });
   const candidates = [...new Set(sourceTexts.flatMap(scanCandidates))];
   const css = compiler.build(candidates);
+  if (candidates.includes("rounded-[var(--ms-r)]") && !css.includes("var(--ms-r)")) throw new Error("tailwind: rounded-[var(--ms-r)] scanned but not compiled — the token system would ship absent");
   return { css, candidateCount: candidates.length };
 }

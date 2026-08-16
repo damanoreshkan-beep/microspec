@@ -171,11 +171,11 @@ export function chat({ item, t, loc, S }) {
   }
 
   const empty = th.loaded && th.messages.length === 0;
-  return html`<div ref=${wrap} data-chat class="flex flex-col gap-[var(--ms-gap)]" style="padding-bottom:calc(var(--composer-h, 4rem) + 0.75rem)">
+  return html`<div ref=${wrap} data-chat class="flex flex-col gap-[var(--ms-gap)]" style="padding-bottom:calc(var(--composer-h, 4rem) + 1rem)">
     ${intro}
     ${!th.loaded
       ? html`<div class="flex flex-col gap-3 pt-1 text-base-content/70">${[26, 33, 22].map((w, i) => html`<div key=${i} class=${i % 2 ? "self-end" : ""}><${Scramble} len=${w} /></div>`)}</div>`
-      : html`<div class="flex flex-col gap-5 pt-1">
+      : html`<div class="flex flex-col gap-5 pt-2">
           ${/* The farm's one idiom for a conversation with a subject (arc): the reader's line is a muted rank marked
                by a rule in the app's accent — colour on a MARK — and the reply is plain reading text. The gap BETWEEN
                turns beats the gap inside one, or a reply and the next line read as one paragraph. No bubbles. */""}
@@ -189,7 +189,7 @@ export function chat({ item, t, loc, S }) {
                 ${turn.a.cut && !turn.a.failed ? html`<div class="mt-1 font-mono text-[var(--ms-label)] uppercase tracking-wider text-muted">${T(t, "cutOff")}</div>` : null}
               </div>` : null}
           </div>`)}
-          <span ref=${tail} aria-hidden="true"></span>
+          <span ref=${tail} aria-hidden="true" style="scroll-margin-bottom:calc(var(--composer-h, 4rem) + 1rem)"></span>
         </div>`}
     ${empty ? html`<div class="flex flex-wrap gap-1.5">
         ${["openerWho", "openerDay", "openerAdvice"].map((k) => html`<button data-opener=${k} key=${k} type="button" onClick=${() => submit(T(t, k))}
@@ -198,7 +198,7 @@ export function chat({ item, t, loc, S }) {
 
     ${/* The composer: fixed to the bottom of the viewport inside the drill-down (which covers the dock), one
           input and one send button, the kit's glass so the thread reads through it as it scrolls under. */""}
-    <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(env(safe-area-inset-bottom) + 0.5rem)">
+    <div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style="bottom:calc(env(safe-area-inset-bottom) + 0.75rem)">
       <${Island} className="pointer-events-auto w-full max-w-xl" tag="section" aria-label=${T(t, "composer")}>
         <form ref=${composer} data-composer onSubmit=${(e) => { e.preventDefault(); submit(draft); }} class="flex items-center gap-2">
           <input data-input type="text" value=${draft} onInput=${(e) => setDraft(e.target.value)} enterkeyhint="send" autocomplete="off"

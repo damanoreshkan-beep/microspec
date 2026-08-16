@@ -120,9 +120,13 @@ export function chat({ item, t, loc, S }) {
   const intro = html`<${Panel} className="!flex-row items-center gap-[var(--ms-gap)]" data-intro>
     <img src=${item.cover} alt="" class="w-[4.5rem] h-[4.5rem] rounded-full object-cover shrink-0 sf-inset" />
     <p class="text-[0.92rem] leading-snug text-base-content/80 flex-1 min-w-0">${story || item.byline}</p>
-    ${th?.messages.length && !streaming ? html`<button data-new-chat type="button" onClick=${() => startOver(characterId)} data-haptic="bump"
-        aria-label=${T(t, "newChat")} class="shrink-0 grid place-items-center w-9 h-9 rounded-full text-base-content/70 active:scale-95 transition-transform">
-        ${Icon("lucide:rotate-ccw", "text-lg")}</button>` : null}
+    <div class="flex flex-col gap-1 shrink-0">
+      ${item.url ? html`<a data-wiki href=${item.url} target="_blank" rel="noopener" aria-label=${T(t, "readOn")}
+          class="grid place-items-center w-9 h-9 rounded-full text-base-content/70 active:scale-95 transition-transform">${Icon("lucide:external-link", "text-lg")}</a>` : null}
+      ${th?.messages.length && !streaming ? html`<button data-new-chat type="button" onClick=${() => startOver(characterId)} data-haptic="bump"
+          aria-label=${T(t, "newChat")} class="grid place-items-center w-9 h-9 rounded-full text-base-content/70 active:scale-95 transition-transform">
+          ${Icon("lucide:rotate-ccw", "text-lg")}</button>` : null}
+    </div>
   <//>`;
 
   if (!sess) {

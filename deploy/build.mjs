@@ -166,6 +166,19 @@ for (const id of ids) {
 if (compatFails.length) throw new Error(`compat build failed for ${compatFails.length}/${ids.length} app(s):\n  ${compatFails.join("\n  ")}`);
 console.log(`compat: bundled JS + precompiled CSS for ${ids.length} apps (Safari 16.1 floor)`);
 
+// A KILL-SWITCH for the site that lived on this origin before the farm (a Vite PWA, "dreamstudio", whose
+// worker was /sw-custom.js at scope /). A browser that ever visited it still holds that worker and serves the
+// old shell offline-first without asking the server — the owner saw the old site the day the farm moved in
+// (2026-08-16). Same URL, new script: the browser fetches it on its next check, installs this, and this
+// deletes every cache that is not ours (ours are namespaced ms-*) and unregisters itself; the open tabs are
+// reloaded onto the real page. Kept indefinitely — it is one file, and the old worker has no expiry.
+await Deno.writeTextFile(`${OUT}/sw-custom.js`, `self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (e) => e.waitUntil((async () => {
+  for (const k of await caches.keys()) if (!k.startsWith("ms-")) await caches.delete(k);
+  await self.registration.unregister();
+  for (const c of await self.clients.matchAll({ type: "window" })) c.navigate(c.url).catch(() => {});
+})());
+`);
 // root → redirect to the store (which now lives in its own scope at /store/)
 await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="uk"><meta charset="utf-8"><title>microspec</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><link rel="canonical" href="./store/"><script>location.replace("./store/"+location.search+location.hash)</script><body style="background:#0a0a0b"></body></html>\n`);
 await Deno.writeTextFile(`${OUT}/.nojekyll`, "");

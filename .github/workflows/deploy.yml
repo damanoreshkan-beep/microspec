@@ -21,7 +21,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 4  # fail fast on a stuck setup/build instead of burning runner minutes
+    timeout-minutes: 20  # build ~1 min + the dist eye (71 apps in one Chromium) — fail fast beyond that
     # workflow_dispatch → always; workflow_run → only when the verify gate concluded success.
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
@@ -39,6 +39,24 @@ jobs:
           restore-keys: deno-
       - name: Assemble dist/
         run: deno run -A deploy/build.mjs
+      # THE EYE ON DIST — a real Chromium opens every app of the BUILT site and MEASURES that the token system is
+      # alive (--ms-r on :root, border-radius > 0 on the first kit surface, app.css loaded, no uncaught error),
+      # keeping one PNG per app. Exists because verify.yml runs the SOURCE with the CDN, and on 2026-08-14 → 16 the
+      # compat build shipped the whole farm without radii/density/accent while every gate stayed green. Red here
+      # → nothing is shipped. The PNGs are the taste review's material: the designer (the owner and the agent, in
+      # session — no paid API here) downloads `dist-eye` and READS them.
+      - name: Eye on dist (real Chromium, measured)
+        timeout-minutes: 12
+        env:
+          CHROMIUM_PATH: /usr/bin/google-chrome
+        run: deno run -A packages/gates/dist-eye.mjs --dist dist --out dist-eye
+      - name: Upload dist shots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: dist-eye
+          path: dist-eye/
+          retention-days: 14
       # THE PRODUCTION HOST is our VPS (https://dreamstudio.mooo.com/, since 2026-08-16): dist/ is rsynced
       # into /srv/www as a restricted `deploy` user (its key has no shell/pty/forwarding and owns only that
       # directory) and served by the `web` container. --delete keeps the tree exact — a removed app must go.

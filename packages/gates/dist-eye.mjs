@@ -34,8 +34,8 @@ try {
     let m = null, why = [];
     try {
       await page.setViewportSize({ width: dev.width, height: dev.height });
-      await page.goto(url, { waitUntil: "networkidle2" });
-      await new Promise((r) => setTimeout(r, 1500));
+      await page.goto(url, { waitUntil: "load" });
+      await new Promise((r) => setTimeout(r, 2000));
       m = await page.evaluate(() => {
         const cs = (el) => (el ? getComputedStyle(el) : null);
         const surf = document.querySelector(".sf-raised, [data-island], .card, .modal-box, .btn");

@@ -39,7 +39,8 @@ export default [
       h.expect((await h.count("[data-msg='user']")) >= 1, "репліка користувача не з'явилася");
       h.expect(await untilNoPending(h), "відповідь так і лишилася в очікуванні");
       h.expect((await h.count("[data-msg='assistant']")) === before + 1, "відповіді не додалося");
-      const last = await h.text("[data-msg='assistant']:last-of-type");
+      const turns = await h.count("[data-turn]");
+      const last = await h.text(`[data-turn='${turns - 1}'] [data-msg='assistant']`);
       h.expect(last.length > 40, `відповідь надто коротка: «${last}»`);
       h.expect((await h.count("[data-composer]")) === 1, "поле вводу зникло після відповіді");
     },

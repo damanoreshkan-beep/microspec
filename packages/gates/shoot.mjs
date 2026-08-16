@@ -8,7 +8,7 @@
 //   deno run -A packages/gates/shoot.mjs drift --bp phone-land          # one breakpoint
 //   deno run -A packages/gates/shoot.mjs rave v2m --locale en --fresh   # English chrome (README stills)
 //   deno run -A packages/gates/shoot.mjs drift --bp all --seed          # the whole matrix, one PNG each
-//   deno run -A packages/gates/shoot.mjs hf --out /tmp/shots --base https://damanoreshkan-beep.github.io/microspec/
+//   deno run -A packages/gates/shoot.mjs hf --out /tmp/shots --base https://dreamstudio.mooo.com/
 //
 // --bp mirrors the verify gate's BREAKPOINTS. The measurable half of responsiveness (overflow, fit) is
 // checked in CI; this is how the TASTE half gets looked at — a screen that technically fits at 390px tall
@@ -18,7 +18,7 @@ const args = Deno.args;
 const flag = (n, d) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] ?? d) : d; };
 const isFlagVal = (a) => ["--out", "--base", "--bp", "--theme", "--locale", "--query"].some((f) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] === a; });
 const apps = args.filter((a) => !a.startsWith("--") && !isFlagVal(a));
-const base = flag("--base", "https://damanoreshkan-beep.github.io/microspec/").replace(/\/?$/, "/");
+const base = flag("--base", "https://dreamstudio.mooo.com/").replace(/\/?$/, "/");
 const out = flag("--out", "packages/gates/shots");
 const seed = args.includes("--seed");
 // A TOOL app seeds its fixture off /_rt/gate.js, which flips on ?mock — not ?seed. Shooting one with

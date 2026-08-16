@@ -6,11 +6,11 @@
 
 [![verify](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml/badge.svg)](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml)
 [![gate efficacy](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damanoreshkan-beep/microspec/main/docs/efficacy.json)](packages/gates/efficacy.mjs)
-[![live demo](https://img.shields.io/badge/live-70%20apps-3fb950)](https://damanoreshkan-beep.github.io/microspec/store/)
+[![live demo](https://img.shields.io/badge/live-70%20apps-3fb950)](https://dreamstudio.mooo.com/store/)
 [![built on Android](https://img.shields.io/badge/built%20on-Termux%20%2F%20Android-a78bfa)](#-written-on-a-phone)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-### **[▶ Open the farm — 70 installable apps](https://damanoreshkan-beep.github.io/microspec/store/)**
+### **[▶ Open the farm — 70 installable apps](https://dreamstudio.mooo.com/store/)**
 
 Add any to your home screen. They work offline. Every one is a spec + adapter that **passed the gates.**
 
@@ -35,19 +35,19 @@ Add any to your home screen. They work offline. Every one is a spec + adapter th
 
 <table>
 <tr>
-<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/fmradio/"><img src="docs/shots/fmradio.png" alt="FM Radio — a HackRF One demodulated in the browser"></a><div align="center"><sub><b>FM Radio</b> · a HackRF One over WebUSB, demodulated on-device</sub></div></td>
-<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/v2m/"><img src="docs/shots/v2m.png" alt="V2 Player — an 87 KB synthesiser in WebAssembly"></a><div align="center"><sub><b>V2 Player</b> · an 87 KB WASM synth, one point per byte</sub></div></td>
-<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/rave/"><img src="docs/shots/rave.png" alt="Rave — a techno instrument with audio-reactive 3D"></a><div align="center"><sub><b>Rave</b> · a synthesised techno instrument</sub></div></td>
+<td width="33%"><a href="https://dreamstudio.mooo.com/fmradio/"><img src="docs/shots/fmradio.png" alt="FM Radio — a HackRF One demodulated in the browser"></a><div align="center"><sub><b>FM Radio</b> · a HackRF One over WebUSB, demodulated on-device</sub></div></td>
+<td width="33%"><a href="https://dreamstudio.mooo.com/v2m/"><img src="docs/shots/v2m.png" alt="V2 Player — an 87 KB synthesiser in WebAssembly"></a><div align="center"><sub><b>V2 Player</b> · an 87 KB WASM synth, one point per byte</sub></div></td>
+<td width="33%"><a href="https://dreamstudio.mooo.com/rave/"><img src="docs/shots/rave.png" alt="Rave — a techno instrument with audio-reactive 3D"></a><div align="center"><sub><b>Rave</b> · a synthesised techno instrument</sub></div></td>
 </tr>
 <tr>
-<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/handpan/"><img src="docs/shots/handpan.png" alt="Handpan — a playable tone field"></a><div align="center"><sub><b>Handpan</b> · struck tone fields, lit by the gyroscope</sub></div></td>
-<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/gsmscan/"><img src="docs/shots/gsmscan.png" alt="GSM Scanner — a swept band with its active carriers"></a><div align="center"><sub><b>GSM Scanner</b> · sweep a band, list its carriers</sub></div></td>
-<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/sigil/"><img src="docs/shots/sigil.png" alt="Sigil — an intent forged into a glyph"></a><div align="center"><sub><b>Sigil</b> · an intent walked across a kamea</sub></div></td>
+<td width="33%"><a href="https://dreamstudio.mooo.com/handpan/"><img src="docs/shots/handpan.png" alt="Handpan — a playable tone field"></a><div align="center"><sub><b>Handpan</b> · struck tone fields, lit by the gyroscope</sub></div></td>
+<td width="33%"><a href="https://dreamstudio.mooo.com/gsmscan/"><img src="docs/shots/gsmscan.png" alt="GSM Scanner — a swept band with its active carriers"></a><div align="center"><sub><b>GSM Scanner</b> · sweep a band, list its carriers</sub></div></td>
+<td width="33%"><a href="https://dreamstudio.mooo.com/sigil/"><img src="docs/shots/sigil.png" alt="Sigil — an intent forged into a glyph"></a><div align="center"><sub><b>Sigil</b> · an intent walked across a kamea</sub></div></td>
 </tr>
 <tr>
-<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/quakes/"><img src="docs/shots/quakes.png" alt="Quakes — a live seismic globe"></a><div align="center"><sub><b>Quakes</b> · live seismic globe, magnitude-coded</sub></div></td>
-<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/imagine/"><img src="docs/shots/imagine.png" alt="Imagine — a wallpaper at the screen's own proportions"></a><div align="center"><sub><b>Imagine</b> · a wallpaper at your screen's exact ratio</sub></div></td>
-<td width="33%"><a href="https://damanoreshkan-beep.github.io/microspec/store/"><img src="docs/shots/store.png" alt="The launcher"></a><div align="center"><sub><b>The launcher</b> · every app, one home screen</sub></div></td>
+<td width="33%"><a href="https://dreamstudio.mooo.com/quakes/"><img src="docs/shots/quakes.png" alt="Quakes — a live seismic globe"></a><div align="center"><sub><b>Quakes</b> · live seismic globe, magnitude-coded</sub></div></td>
+<td width="33%"><a href="https://dreamstudio.mooo.com/imagine/"><img src="docs/shots/imagine.png" alt="Imagine — a wallpaper at the screen's own proportions"></a><div align="center"><sub><b>Imagine</b> · a wallpaper at your screen's exact ratio</sub></div></td>
+<td width="33%"><a href="https://dreamstudio.mooo.com/store/"><img src="docs/shots/store.png" alt="The launcher"></a><div align="center"><sub><b>The launcher</b> · every app, one home screen</sub></div></td>
 </tr>
 </table>
 
@@ -58,7 +58,7 @@ change* if the app is broken, inaccessible, or untranslated. The constraint is t
 + a gated runtime is what makes agent-generated apps **verifiably** correct instead of hopefully correct.
 
 <p align="center">
-  <a href="https://damanoreshkan-beep.github.io/microspec/store/">
+  <a href="https://dreamstudio.mooo.com/store/">
     <img src="docs/demo/gate.svg" width="720"
       alt="An agent drops one translation; the preflight gate catches it in ~2s, then passes after the fix">
   </a>
@@ -340,7 +340,7 @@ verification path calls no model at all.** So the *author* is swappable:
 - **Any other model** — nothing here is Anthropic-specific; the contract is just JSON Schema.
 - **A deterministic script** — [`packages/gen/authorless.mjs`](packages/gen/authorless.mjs) turns a recipe
   (a source URL + a field map) into a complete app with **zero model calls**. The
-  [**Books**](https://damanoreshkan-beep.github.io/microspec/books/) app was generated this way and passed
+  [**Books**](https://dreamstudio.mooo.com/books/) app was generated this way and passed
   the *same* a11y / responsive / e2e gates as everything else.
 - **A human** — hand-write `spec.json` + an adapter, scaffold, gate.
 

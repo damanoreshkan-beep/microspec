@@ -40,6 +40,26 @@ jobs:
           restore-keys: deno-
       - name: Assemble dist/
         run: deno run -A deploy/build.mjs
+      # THE PRODUCTION HOST is our VPS (https://dreamstudio.mooo.com/, since 2026-08-16): dist/ is rsynced
+      # into /srv/www as a restricted `deploy` user (its key has no shell/pty/forwarding and owns only that
+      # directory) and served by the `web` container. --delete keeps the tree exact — a removed app must go.
+      # GitHub Pages below stays as a MIRROR through the transition (installed PWAs are bound to the old
+      # origin); it will be retired once nothing points at it.
+      - name: Ship dist/ to the VPS
+        env:
+          KEY: ${{ secrets.VPS_DEPLOY_KEY }}
+          HOST: ${{ secrets.VPS_HOST }}
+          KNOWN: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
+          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" dist/ "deploy@$HOST:/srv/www/"
+          # verify through the PUBLIC URL: the launcher and one app must answer with the build we just sent
+          sleep 2
+          curl -fsS -o /dev/null https://dreamstudio.mooo.com/store/
+          test "$(curl -fsS https://dreamstudio.mooo.com/_rt/build.js)" = "$(cat dist/_rt/build.js)"
       - uses: actions/upload-pages-artifact@v5
         with: { path: dist }
   deploy:

@@ -4,7 +4,7 @@ Post the **live gallery** as the URL (people can try it in one tap); put the rep
 of the text. Submit Tue–Thu, ~15:00–17:00 UTC. Reply fast to the first comments — early engagement is
 what moves a Show HN.
 
-- **URL:** https://damanoreshkan-beep.github.io/microspec/store/
+- **URL:** https://dreamstudio.mooo.com/store/
 - **Repo:** https://github.com/damanoreshkan-beep/microspec
 
 ---

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="160" viewBox="0 0 640 160" role="img" aria-label="dreamstudio">
+  <!-- the mark: a crescent cradling a small window with one lit pixel — dream + screen — on the farm's tile -->
+  <rect x="16" y="16" width="128" height="128" rx="30" fill="#15130F"/>
+  <g transform="translate(36.48 36.48) scale(3.6267)" fill="none" stroke="#D2A24C" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><rect x="15.1" y="5" width="4.4" height="4.4" rx="1.2"/><path d="M17.3 7.2h.01"/>
+  </g>
+  <!-- the wordmark: one weight, one case, tight tracking; the "o" carries the mark's colour as its only accent -->
+  <text x="176" y="98" font-family="Geist, 'SF Pro Display', ui-sans-serif, system-ui, sans-serif" font-size="66" font-weight="600" letter-spacing="-1.8" fill="currentColor">dreamstudi<tspan fill="#D2A24C">o</tspan></text>
+</svg>

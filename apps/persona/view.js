@@ -168,7 +168,7 @@ export function chat({ item, t, loc, S }) {
                       class="btn btn-ghost btn-xs rounded-lg gap-1">${Icon("lucide:rotate-cw")}${T(t, "retry")}</button></div>` : null}
                 ${m.cut && !m.failed ? html`<div class="mt-1 font-mono text-[var(--ms-label)] text-muted">${T(t, "cutOff")}</div>` : null}
               </div>`)}
-          <div ref=${tail}></div>
+          <span ref=${tail} aria-hidden="true"></span>
         </div>`}
     ${empty ? html`<div class="flex flex-wrap gap-1.5">
         ${["openerWho", "openerDay", "openerAdvice"].map((k) => html`<button data-opener=${k} key=${k} type="button" onClick=${() => submit(T(t, k))}

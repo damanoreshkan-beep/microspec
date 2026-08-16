@@ -33,24 +33,16 @@ async function loadModule(id, base) {
   return { base, module: mod.default ?? mod };
 }
 
-// Broad candidate extraction from source text. Over-inclusion is harmless — Tailwind emits nothing for
-// tokens that are not real utilities; UNDER-inclusion silently drops CSS and breaks the look on device,
-// so this stays permissive: variants (md:, hover:, dark:), negatives (-mx-2), important (!p-0),
-// slashes (bg-white/10) and arbitrary values ([&>svg]:hidden, w-[42px]).
-export function scanCandidates(text) {
-  const out = new Set();
-  for (const m of String(text).matchAll(/[!-]?[a-z][a-z0-9]*(?:[-:/][a-z0-9!.%#[\]()_&>*+~,=]+)*/gi)) {
-    const t = m[0];
-    if (t.length > 1 && !/^https?:/.test(t)) out.add(t);
-  }
-  return [...out];
-}
-
+import { scanCandidates } from "./candidates.mjs";
+export { scanCandidates };
 // Compile the given source texts' classes into one static stylesheet.
 export async function buildTailwind(sourceTexts, { plugins = ["daisyui"], base = "/" } = {}) {
   const input = [`@import "tailwindcss";`, ...plugins.map((p) => `@plugin "${p}";`)].join("\n");
   const compiler = await compile(input, { base, loadStylesheet, loadModule });
   const candidates = [...new Set(sourceTexts.flatMap(scanCandidates))];
   const css = compiler.build(candidates);
+  // The one failure this build has actually had: a token with a CSS variable inside brackets scanned wrong and
+  // its rule was silently absent. If the sources use the farm's radius token, the stylesheet must carry it.
+  if (candidates.includes("rounded-[var(--ms-r)]") && !css.includes("var(--ms-r)")) throw new Error("tailwind: rounded-[var(--ms-r)] scanned but not compiled — the token system would ship absent");
   return { css, candidateCount: candidates.length };
 }

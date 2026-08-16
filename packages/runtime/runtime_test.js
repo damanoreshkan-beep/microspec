@@ -13,6 +13,7 @@ import "./tests/birth_test.js";
 import "./tests/blesend_test.js";
 import "./tests/blesig_test.js";
 import "./tests/burst_test.js";
+import "./tests/candidates_test.js";
 import "./tests/chan433_test.js";
 import "./tests/chat_test.js";
 import "./tests/chroma_test.js";

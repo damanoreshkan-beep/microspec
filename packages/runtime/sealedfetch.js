@@ -11,10 +11,14 @@ const PLAIN = [
   
   
   `${VPS_PROXY}/apk`,
+  
+  
+  
+  `${VPS_PROXY}/chat/stream`,
 ];
 const TUNNEL = `${VPS_PROXY}/f`;
-
 const urlOf = (input) => (typeof input === "string" ? input : input instanceof URL ? input.href : input?.url ?? "");
+
 const innerPath = (url) => "/feed" + url.slice(VPS_PROXY.length);
 export function installSealedFetch(realFetch = globalThis.fetch.bind(globalThis)) {
   const patched = async (input, init = {}) => {

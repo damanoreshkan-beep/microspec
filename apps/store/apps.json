@@ -631,6 +631,27 @@
     "needs": []
   },
   {
+    "id": "persona",
+    "title": "Персона",
+    "titles": {
+      "en": "Persona",
+      "uk": "Персона"
+    },
+    "tagline": "Розмови з людьми, які щось значать",
+    "taglines": {
+      "en": "Conversations with people who matter",
+      "uk": "Розмови з людьми, які щось значать"
+    },
+    "glyph": "lucide:users-round",
+    "art": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M7.9 20A9 9 0 1 0 4 16.1L2 22Z\"/><path d=\"M12 8v0\"/><path d=\"M12 12a3 3 0 0 0-3 3\"/><circle cx=\"12\" cy=\"9.5\" r=\"1.6\"/></svg>",
+    "bg": "#1B1710",
+    "fg": "#C9A24C",
+    "href": "./persona/",
+    "version": "1.0",
+    "category": "creative",
+    "needs": []
+  },
+  {
     "id": "pins",
     "title": "піни",
     "titles": {
@@ -993,7 +1014,7 @@
     "bg": "#0A0A0B",
     "fg": "#6EE7A0",
     "href": "./wall/",
-    "version": "1.6",
+    "version": "1.7",
     "category": "tools",
     "needs": [
       "wakeLock"

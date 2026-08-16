@@ -6,14 +6,7 @@
   "detail": {
     "title": "title",
     "subtitle": "byline",
-    "view": "chat",
-    "actions": [
-      {
-        "icon": "lucide:external-link",
-        "label": "readOn",
-        "href": "url"
-      }
-    ]
+    "view": "chat"
   },
   "tabs": [
     {

@@ -123,6 +123,9 @@ async function preflight(appdir) {
   const declared = [
     [(s) => (s.tabs || []).some((t) => t.searchFetch && !t.browse && !t.prompt), ["searchPrompt", "searchPromptHint"], "tab.searchFetch without browse/prompt shows the search empty-state"],
     [(s) => (s.tabs || []).some((t) => t.paginate), ["loadMore"], "tab.paginate renders a load-more control"],
+    // A list/dashboard/converter tab whose load fails renders the runtime's error state — persona showed
+    // "statusError" raw on the owner's phone the first time its edge answered 429 (2026-08-17).
+    [(s) => (s.tabs || []).some((t) => ["list", "dashboard", "converter"].includes(t.type)), ["statusError", "errorHint"], "a data tab renders the runtime's failed-load state"],
     [(s) => !!s.detail, ["back"], "spec.detail renders a back button"],
     [(s) => !!s.fav, ["favAria", "unfavAria"], "spec.fav renders bookmark controls"],
     // The profile tab is 100% runtime-rendered from spec.profile flags — its labels live in NO app source,

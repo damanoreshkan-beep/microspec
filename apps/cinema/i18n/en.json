@@ -48,5 +48,7 @@
   "filters": "Filters",
   "reset": "Reset",
   "apply": "Show",
-  "back": "Back"
+  "back": "Back",
+  "statusError": "Failed",
+  "errorHint": "Try again"
 }

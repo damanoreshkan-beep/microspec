@@ -213,7 +213,7 @@ export function chat({ item, t, loc, S, undo, confirm }) {
   const intro = hasThread
     ? html`<div data-intro data-slim class="flex items-center gap-3 pt-1">
         <img src=${item.cover} alt="" class="w-10 h-10 rounded-full object-cover shrink-0 sf-inset" />
-        <p class="flex-1 min-w-0 font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70 truncate">${item.byline}</p>
+        <p class="flex-1 min-w-0 text-[0.82rem] text-base-content/70 truncate">${item.byline}</p>
         <div class="flex shrink-0">${btnHistory}${openWiki}${btnNew}${btnRemove}</div>
       </div>`
     : html`<div data-intro class="flex flex-col gap-3 pt-2">

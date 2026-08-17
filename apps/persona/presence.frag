@@ -40,9 +40,9 @@ void main(){
   // the portrait: cover-fit, its colours pulled through the warp
   vec2 cuv = uv-0.5; float ta = texAspect.x;                   // texture aspect w/h
   vec2 s = (aspect > ta) ? vec2(1.0, ta/aspect) : vec2(aspect/ta, 1.0);
-  vec2 puv = cuv*s + 0.5 + (vec2(n2,n3)-0.5)*(0.32+0.12*breath+0.12*speak);
-  vec3 por = texture(tex, puv).rgb;
-  vec3 porMean = texture(tex, vec2(0.5), 8.0).rgb;             // coarsest mip ~ mean colour
+  vec2 puv = cuv*s + 0.5 + (vec2(n2,n3)-0.5)*(0.55+0.15*breath+0.15*speak);
+  vec3 por = textureLod(tex, puv, 2.4).rgb;                       // an ABSOLUTE mip level (~12px of a 64px palette): colour fields, never a face. A bias would not do - the texture is magnified here, base LOD < 0, and a bias never reaches level 1
+  vec3 porMean = textureLod(tex, vec2(0.5), 7.0).rgb;          // coarsest mip ~ mean colour
   vec3 pal = mix(porMean, por, 0.75);
   // presence: strongest where the person "is" (upper third), quieter at the edges
   float focus = (1.0 - smoothstep(0.1, 1.0, length((p - vec2(0.0,-0.34))*vec2(0.85,1.0)))) * (1.0 - smoothstep(-0.05, 0.62, p.y));

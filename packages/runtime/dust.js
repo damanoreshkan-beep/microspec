@@ -15,7 +15,7 @@ import { useRef, useEffect } from "preact/hooks";
 import { gate } from "./gate.js";   // runtime modules import RELATIVELY — /_rt/ 404s under /microspec/
 
 const DPR_CAP = 2;
-const N = 1500;                     // fine points — additive glow means MANY overlaps blow to white, so keep it sparse
+const N = 800;                     // fine points — additive glow means MANY overlaps blow to white, so keep it sparse
 
 const VS = `
   attribute vec2 a_pos; attribute float a_size; attribute float a_alpha;
@@ -60,9 +60,9 @@ export function Dust({ active = true, progress = null }) {
     const GA = Math.PI * (3 - Math.sqrt(5));
     for (let i = 0; i < N; i++) {
       const r = Math.sqrt(i / N), a = i * GA;
-      home[i * 2] = Math.cos(a) * r * 0.52; home[i * 2 + 1] = Math.sin(a) * r * 0.52;
+      home[i * 2] = Math.cos(a) * r * 0.78; home[i * 2 + 1] = Math.sin(a) * r * 0.78;
       ang[i] = Math.random() * Math.PI * 2; rad[i] = 0.45 + Math.random() * 1.5;   // drift out to the frame edges
-      ph[i] = Math.random() * Math.PI * 2; sz[i] = 1.5 + Math.random() * 2.4;
+      ph[i] = Math.random() * Math.PI * 2; sz[i] = 1.0 + Math.random() * 1.6;
       px[i * 2] = home[i * 2]; px[i * 2 + 1] = home[i * 2 + 1];
     }
     const pos = new Float32Array(N * 2), size = new Float32Array(N), alpha = new Float32Array(N);
@@ -99,7 +99,7 @@ export function Dust({ active = true, progress = null }) {
         pv[i * 2 + 1] += (ty - px[i * 2 + 1]) * 0.05; pv[i * 2 + 1] *= 0.9; px[i * 2 + 1] += pv[i * 2 + 1];
         pos[i * 2] = px[i * 2] * fit[0]; pos[i * 2 + 1] = px[i * 2 + 1] * fit[1];
         size[i] = sz[i] * dpr * (0.75 + wave * 0.5);
-        alpha[i] = 0.30 + 0.35 * (1 - Math.min(1, spread));   // normal blend → higher alpha reads as solid gold dust, brighter when gathered
+        alpha[i] = 0.13 + 0.11 * (1 - Math.min(1, spread));   // normal blend → higher alpha reads as solid gold dust, brighter when gathered
       }
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.bindBuffer(gl.ARRAY_BUFFER, bPos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);

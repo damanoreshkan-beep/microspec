@@ -1,6 +1,6 @@
 self.MS = {
   app: "arc",
-  version: "cca70c07dc",
+  version: "44d5684885",
   precache: [
     "./",
     "./curated.js",
@@ -14,10 +14,12 @@ self.MS = {
     "./manifest.json",
     "./spec.json",
     "./view.js",
+    "/_rt/account.js",
     "/_rt/acts.js",
     "/_rt/ai-books.js",
     "/_rt/ai-core.js",
     "/_rt/apk.js",
+    "/_rt/auth.js",
     "/_rt/build.js",
     "/_rt/chat.js",
     "/_rt/db.js",
@@ -41,6 +43,7 @@ self.MS = {
     "/_rt/sensors.js",
     "/_rt/shell-actions.js",
     "/_rt/shell.js",
+    "/_rt/signin.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
     "/_rt/theme.css",

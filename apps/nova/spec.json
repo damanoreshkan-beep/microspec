@@ -9,7 +9,9 @@
       "icon": "lucide:sparkles",
       "label": "tabDiscover",
       "view": "nova",
-      "needs": ["auth"]
+      "needs": [
+        "auth"
+      ]
     },
     {
       "id": "lifted",
@@ -27,6 +29,7 @@
     }
   ],
   "profile": {
+    "account": "github",
     "icon": "lucide:sparkles",
     "theme": true,
     "lang": true,

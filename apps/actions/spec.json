@@ -10,7 +10,9 @@
       "icon": "lucide:activity",
       "label": "tabBoard",
       "view": "actions",
-      "needs": ["auth"]
+      "needs": [
+        "auth"
+      ]
     },
     {
       "id": "me",
@@ -21,6 +23,7 @@
     }
   ],
   "profile": {
+    "account": "github",
     "icon": "lucide:activity",
     "theme": true,
     "lang": true,

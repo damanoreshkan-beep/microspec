@@ -97,6 +97,11 @@
       "additionalProperties": false,
       "description": "Configuration for tabs of type 'profile'.",
       "properties": {
+        "account": {
+          "type": "string",
+          "enum": ["any", "github"],
+          "description": "OPTIONAL — an ACCOUNT card at the top of the profile (who is signed in: avatar, name, provider, sign out; the SignIn surface when nobody is). Implied as \"any\" (Google first, GitHub quiet) for any app whose tab `needs` includes \"auth\"; \"github\" makes GitHub the button — for an app that must ACT on GitHub."
+        },
         "icon": {
           "type": "string",
           "minLength": 1,

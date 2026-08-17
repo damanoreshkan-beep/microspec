@@ -15,6 +15,8 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 const raf = (fn) => (typeof requestAnimationFrame === "function" ? requestAnimationFrame(fn) : setTimeout(fn, 16));
 
 const $threads = atom({});
+let lastSid = session.get()?.sid || null;
+session.listen((s) => { const sid = s?.sid || null; if (sid !== lastSid) { lastSid = sid; $threads.set({}); } });
 const threadOf = (id) => $threads.get()[id] || { chatId: null, messages: [], loaded: false, history: null };
 const patch = (id, fn) => $threads.set({ ...$threads.get(), [id]: fn(threadOf(id)) });
 let seq = 0;

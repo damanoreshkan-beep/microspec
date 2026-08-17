@@ -22,6 +22,8 @@ async function post(path, body, timeout = 20000) {
 }
 
 export const $characters = atom(null);        
+let lastSid = session.get()?.sid || null;
+session.listen((s) => { const sid = s?.sid || null; if (sid !== lastSid) { lastSid = sid; $characters.set(null); } });
 
 export async function characters({ force = false } = {}) {
   if (gate) { if (!$characters.get()) $characters.set(FIXTURE_CHARACTERS); return $characters.get(); }

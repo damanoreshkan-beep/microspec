@@ -1,6 +1,6 @@
 self.MS = {
   app: "sopilka",
-  version: "740f60a2fa",
+  version: "94a6698227",
   precache: [
     "./",
     "./i18n/en.json",
@@ -11,8 +11,10 @@ self.MS = {
     "./manifest.json",
     "./spec.json",
     "./view.js",
+    "/_rt/account.js",
     "/_rt/apk.js",
     "/_rt/audio.js",
+    "/_rt/auth.js",
     "/_rt/build.js",
     "/_rt/db.js",
     "/_rt/enrich.js",
@@ -35,6 +37,7 @@ self.MS = {
     "/_rt/sensors.js",
     "/_rt/shell-actions.js",
     "/_rt/shell.js",
+    "/_rt/signin.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
     "/_rt/theme.css",

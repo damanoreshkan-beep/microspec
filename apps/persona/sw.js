@@ -1,6 +1,6 @@
 self.MS = {
   app: "persona",
-  version: "3473d91479",
+  version: "2f4d6ce4af",
   precache: [
     "./",
     "./data.js",
@@ -13,6 +13,7 @@ self.MS = {
     "./presence.frag",
     "./spec.json",
     "./view.js",
+    "/_rt/account.js",
     "/_rt/apk.js",
     "/_rt/auth.js",
     "/_rt/build.js",

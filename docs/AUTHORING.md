@@ -114,6 +114,17 @@ Compose the shared runtime components instead of writing geometry/astronomy from
   runtime for a per-state hue (`drift` follows the active world: one `setProperty`, every shared component
   on screen re-tints).
 
+- **`/_rt/signin.js` — the ONE sign-in surface.** `<SignIn github="quiet|primary|false" onDone onError/>`:
+  Google first (the GIS button + One Tap, FedCM where the browser has it), GitHub as a quiet text action
+  under it; `github="primary"` for an app that must ACT on GitHub (nova stars repos — a Google session
+  identifies the reader but holds no GitHub token; check `session.get().provider`). Under the gate it is a
+  plain kit button (`data-signin-google`) that sets the mock session. Never hand-roll a provider button.
+- **`/_rt/glstage.js` — a WebGL2 stage, hero.js's twin.** `<GlStage shader seed ink vary tex texReady/>`
+  with the same 16-float uniform contract as `hero.wgsl` plus one optional CORS texture (downsampled to a
+  palette). PROBE-guarded, so CI's Chromium draws it and the shot shows the real field; the e2e guard is
+  `data-haswebgl="yes" ⇒ data-render="webgl"`. Judge a GLSL stage on the VPS eye from a scratch page (see
+  `apps/persona/RESEARCH.md`) — `tools/art/hero.mjs` renders WGSL only.
+
 - **Single-screen tabs — `"fit": true`.** An instrument is not a document. A `fit` tab gets `.ms-fit` on
   `<html>`, `#view` is sized off `--hdr-h`/`--dock-h`, and the page **cannot scroll at any viewport height**.
   The verify gate measures it across the whole breakpoint matrix (320×568 → 1280×900, landscape included)

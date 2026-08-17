@@ -73,7 +73,7 @@ for await (const a of Deno.readDir("apps")) {
   const appVer = "1." + (await gitCount(`apps/${a.name}`));   
   for await (const f of Deno.readDir(`apps/${a.name}`)) {
     if (!f.isFile || f.name === "e2e.spec.mjs" || /\.(md|bak\.[a-z]+\.js)$/.test(f.name)) continue;
-    if (/\.(html|js|json|svg|png|webmanifest|wgsl)$/.test(f.name)) {
+    if (/\.(html|js|json|svg|png|webmanifest|wgsl|frag)$/.test(f.name)) {
       if (f.name === "spec.json") {
         const spec = JSON.parse(await Deno.readTextFile(`apps/${a.name}/spec.json`));
         if (!spec.version) spec.version = appVer;               

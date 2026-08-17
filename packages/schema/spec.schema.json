@@ -194,6 +194,10 @@
           "minLength": 1,
           "description": "REQUIRED item field — page + app-bar title."
         },
+        "stage": {
+          "type": "boolean",
+          "description": "OPTIONAL — the detail BODY paints a full-bleed stage (a GL field behind the conversation): the overlay's header turns to glass over it and the title block is dropped, so the app-bar is the only chrome over the field. Only meaningful with `view`."
+        },
         "view": {
           "type": "string",
           "minLength": 1,

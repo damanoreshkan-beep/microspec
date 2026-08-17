@@ -41,6 +41,7 @@ export function manifestFor(id, { read: rd = read } = {}) {
   }
 
   if (rd(`${dir}/hero.wgsl`) != null) urls.add("./hero.wgsl");
+  if (rd(`${dir}/presence.frag`) != null) urls.add("./presence.frag");   
 
   return [...urls].sort();
 }

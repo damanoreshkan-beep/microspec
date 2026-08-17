@@ -67,14 +67,15 @@ export function start(spec, arg2) {
   const boot = document.getElementById("boot");
   if (boot && !/[?&]__boot\b/.test(location.search)) { requestAnimationFrame(() => { boot.classList.add("gone"); setTimeout(() => boot.remove(), 450); }); } 
   S.tab.listen(() => { window.scrollTo({ top: 0 }); if (S.screen.get()) S.screen.set(null); }); 
+  S.detail.listen((v) => { if (v == null && S.screen.get()) S.screen.set(null); });               
 
   const overlays = [
     [S.stack, () => S.stack.set(S.stack.get().slice(0, -1)), (v) => v],   
     [S.sheet, () => S.sheet.set(false), (v) => v === true],
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],
     [S.qrOpen, () => S.qrOpen.set(false), (v) => v === true],
-    [S.screen, () => S.screen.set(null), (v) => v != null],
     [S.detail, () => S.detail.set(null), (v) => v != null],
+    [S.screen, () => S.screen.set(null), (v) => v != null],
     [S.player, () => S.player.set(null), (v) => v != null],
     [S.confirm, () => S.confirm.set(null), (v) => v != null],   
   ];

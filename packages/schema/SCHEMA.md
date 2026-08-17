@@ -323,6 +323,11 @@ Keep `card.more` as the affordance label (e.g. "Докладніше"/"Details")
   whole screen yours and tempts you into re-implementing the card list, the search box, the favourite star,
   the empty states and the skeleton alongside the one piece that needed to be custom; `detail.view` gives
   you only the body and keeps the overlay, the back-routing, the app-bar and the star. Powers `arc`.
+- **`stage`** (OPTIONAL, with `view`) — the body paints a full-bleed stage (`/_rt/glstage.js`, a WebGL
+  field driven by the app's state — persona's presence). The overlay's header turns to glass over it and the
+  runtime's h1/subtitle block is dropped, so the app-bar is the only chrome over the field and the body draws
+  the person itself. A body may also open a `Sheet` on `S.screen` — Back closes the sheet before the
+  drill-down (the runtime orders `screen` above `detail` for exactly this). Powers `persona`.
 
 ## 9c. `tool` tab — sensor / instrument apps (escape hatch)
 

@@ -13,8 +13,7 @@
   "more": "Talk",
   "status": "{found}",
   "heroTitle": "Talk to them",
-  "heroBody": "Sign in with GitHub to start a conversation and keep it across devices.",
-  "signIn": "Sign in with GitHub",
+  "heroBody": "Sign in to start a conversation and keep it across devices.",
   "loginFailed": "Sign-in did not complete",
   "creating": "Reading up on them",
   "createFailed": "Could not add this one",
@@ -38,5 +37,11 @@
   "installIosHint": "Share, then \"Add to Home Screen\"",
   "installGenericHint": "Choose \"Install app\" in the browser menu",
   "close": "Close",
-  "refresh": "Refresh"
+  "refresh": "Refresh",
+  "history": "Conversations",
+  "current": "current",
+  "deleteChat": "Delete conversation",
+  "removePerson": "Remove this person",
+  "removeBody": "the person and every conversation with them will be deleted",
+  "removeVerb": "Remove"
 }

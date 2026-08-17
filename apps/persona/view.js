@@ -41,6 +41,9 @@ const raf = (fn) => (typeof requestAnimationFrame === "function" ? requestAnimat
 // characterId → { chatId, messages, loaded, history }. Module scope: closing a person and reopening keeps
 // the thread. `history` is the person's list of chats (newest first) once the sheet has asked for it.
 const $threads = atom({});
+// Threads are a user's: a sign-out (or another account) forgets them, or the next reader would see the last one's.
+let lastSid = session.get()?.sid || null;
+session.listen((s) => { const sid = s?.sid || null; if (sid !== lastSid) { lastSid = sid; $threads.set({}); } });
 const threadOf = (id) => $threads.get()[id] || { chatId: null, messages: [], loaded: false, history: null };
 const patch = (id, fn) => $threads.set({ ...$threads.get(), [id]: fn(threadOf(id)) });
 let seq = 0;

@@ -35,6 +35,11 @@ async function post(path, body, timeout = 20000) {
 // One atom, module-scoped: the list is fetched once per session and a character created from search is
 // pushed into it, so the shelf the user returns to already has the new face without a refetch.
 export const $characters = atom(null);        // null = never loaded
+// The shelf holds a user's OWN rows too, so it belongs to a session: when the sid changes (sign-out, or
+// another account on the same device) the cache is dropped and the next load asks again. Keyed on the sid,
+// not the session object — restore() sets the same identity twice (optimistic, then revalidated).
+let lastSid = session.get()?.sid || null;
+session.listen((s) => { const sid = s?.sid || null; if (sid !== lastSid) { lastSid = sid; $characters.set(null); } });
 
 export async function characters({ force = false } = {}) {
   if (gate) { if (!$characters.get()) $characters.set(FIXTURE_CHARACTERS); return $characters.get(); }

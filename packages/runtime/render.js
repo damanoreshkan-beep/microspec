@@ -423,9 +423,23 @@ function ListView({ tab }) {
 }
 
 // ---- profile ----------------------------------------------------------------
+// The account card — only for apps that sign a reader in (a tab `needs` "auth", or profile.account is set).
+// Lazily imported: render.js is in every app's bootstrap closure and auth.js is not for the other sixty.
+function AccountSlot({ github, loc }) {
+  const [Comp, setComp] = useState(null);
+  useEffect(() => {
+    let live = true;
+    import("./account.js").then((m) => { if (live) setComp(() => m.Account); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+  // A sign-in or sign-out changes what the shelf holds (a user's own rows) — reload the tab data.
+  return Comp ? html`<${Comp} github=${github} loc=${loc} onChange=${() => A.load?.()} />` : null;
+}
+
 function Profile({ tab }) {
   const t = useStore(A.S.t), theme = useStore(A.S.theme), loc = useStore(A.S.locale), fav = useStore(A.S.fav);
   const p = A.spec.profile || {};
+  const account = p.account || (A.spec.tabs.some((x) => (x.needs || []).includes("auth")) ? "any" : null);
   const savedTab = A.spec.tabs.find((x) => x.source === "fav");
   // Systemic share — available in every app's profile. Native sheet where supported (mobile), clipboard
   // fallback elsewhere. Strip the route hash so the shared link opens the app clean, not a stale overlay.
@@ -438,6 +452,7 @@ function Profile({ tab }) {
     try { await navigator.clipboard.writeText(url); A.toast(sys("shareCopied", loc)); } catch { /* clipboard unavailable */ }
   };
   return html`<div class="flex flex-col gap-3 pt-1">
+    ${account ? html`<${AccountSlot} github=${account === "github" ? "primary" : "quiet"} loc=${loc} />` : null}
     ${p.install && !isStandalone() ? html`<button id="p-install" class="card bg-primary/10 border border-primary/25 rounded-2xl active:scale-[.99] transition" onClick=${() => A.S.installOpen.set(true)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:download", "text-xl text-primary")}<span class="flex-1 min-w-0 truncate font-medium text-left text-primary">${T(t, "install")}</span>${Icon("lucide:chevron-right", "text-primary opacity-60")}</div></button>` : null}
     <div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-5 items-center text-center gap-1">${Icon(p.icon || "lucide:box", "text-4xl text-primary")}<div class="font-bold text-lg mt-1">${T(t, "title")}</div><div class="text-sm text-muted">${T(t, "profTagline")}</div></div></div>
     <button id="p-share" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${shareApp}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:share-2", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("share", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></button>

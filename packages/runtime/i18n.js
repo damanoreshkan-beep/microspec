@@ -42,6 +42,9 @@ export const SYS = {
   back: { en: "Back", uk: "Назад" },
   // Systemic "Download APK" — every app can emit itself as a sideloadable Android APK (edge-signed).
   apkRow: { en: "Download APK", uk: "Завантажити APK" },
+  signOut: { en: "Sign out", uk: "Вийти" },
+  signedOut: { en: "Not signed in", uk: "Ви не увійшли" },
+  accountVia: { en: "via", uk: "через" },
   apkTitle: { en: "Download as APK", uk: "Завантажити як APK" },
   apkGenerate: { en: "Generate APK", uk: "Згенерувати APK" },
   apkGenerating: { en: "Signing…", uk: "Підписую…" },

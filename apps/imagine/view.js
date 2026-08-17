@@ -127,8 +127,8 @@ export function imagine({ S, toast }) {
 
   const onKey = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); generate(); } };
   const genProgress = phase === "generating" ? (live?.pct != null ? Math.max(0.02, live.pct / 100) : Math.min(0.95, elapsed / Math.max(1, est))) : null;
-  const seg = (id, icon, label) => html`<button type="button" role="tab" aria-selected=${quality === id} disabled=${phase === "generating"} onClick=${() => setQuality(id)}
-    class=${`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-1.5 text-[0.8rem] font-medium transition-colors ${quality === id ? "bg-[var(--app-accent)] text-black shadow" : "text-white/70"}`}>${Icon(icon, "text-base")}${label}</button>`;
+  const seg = (id, icon, label) => html`<button type="button" role="tab" data-q=${id} aria-selected=${quality === id} disabled=${phase === "generating"} onClick=${() => setQuality(id)}
+    class=${`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-1.5 text-[0.8rem] font-medium transition-colors ${quality === id ? "bg-primary text-primary-content shadow" : "text-muted"}`}>${Icon(icon, "text-base")}${label}</button>`;
 
   // Full-bleed stage: the picture (or the living dust while it forms) IS the screen; the composer floats over it.
   return html`<div class="ms-stage relative overflow-hidden bg-black">

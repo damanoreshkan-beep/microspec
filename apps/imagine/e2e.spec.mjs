@@ -25,15 +25,13 @@ export default [
     },
   },
   {
-    name: "повзунок якості змінює розмір і естімейт", run: async (h) => {
+    name: "перемикач швидкість/якість перемикається", run: async (h) => {
       await ready(h);
-      const sizeHi = await h.text("[data-size]"), estHi = await h.text("[data-estimate]");
-      h.expect(/×/.test(sizeHi), "немає читання розміру");
-      await h.type("[data-quality]", "0");                                        // drag to draft
+      h.expect(await h.attr("[data-q=fast]", "aria-selected") === "true", "швидкість не активна за замовчуванням");
+      await h.click("[data-q='2k']");
       await h.wait(150);
-      const sizeLo = await h.text("[data-size]"), estLo = await h.text("[data-estimate]");
-      h.expect(sizeLo !== sizeHi, "розмір не змінився від повзунка якості");
-      h.expect(estLo !== estHi, "естімейт не змінився від повзунка якості");
+      h.expect(await h.attr("[data-q='2k']", "aria-selected") === "true", "якість не увімкнулась");
+      h.expect(await h.attr("[data-q=fast]", "aria-selected") === "false", "швидкість не вимкнулась після вибору якості");
     },
   },
   {

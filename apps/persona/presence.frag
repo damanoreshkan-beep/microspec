@@ -23,9 +23,9 @@ void main(){
   float n3 = fbm((p + (n2-0.5)*0.7)*3.6 + t);
   vec2 cuv = uv-0.5; float ta = texAspect.x;
   vec2 s = (aspect > ta) ? vec2(1.0, ta/aspect) : vec2(aspect/ta, 1.0);
-  vec2 puv = cuv*s + 0.5 + (vec2(n2,n3)-0.5)*(0.32+0.12*breath+0.12*speak);
-  vec3 por = texture(tex, puv).rgb;
-  vec3 porMean = texture(tex, vec2(0.5), 8.0).rgb;
+  vec2 puv = cuv*s + 0.5 + (vec2(n2,n3)-0.5)*(0.55+0.15*breath+0.15*speak);
+  vec3 por = textureLod(tex, puv, 2.4).rgb;
+  vec3 porMean = textureLod(tex, vec2(0.5), 7.0).rgb;
   vec3 pal = mix(porMean, por, 0.75);
   float focus = (1.0 - smoothstep(0.1, 1.0, length((p - vec2(0.0,-0.34))*vec2(0.85,1.0)))) * (1.0 - smoothstep(-0.05, 0.62, p.y));
   float k = (0.38 + 0.08*breath + 0.16*speak + 0.10*think) * focus * ready;

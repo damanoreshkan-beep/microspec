@@ -89,18 +89,24 @@ async function ask(characterId, text, loc) {
   patch(characterId, (t0) => ({ ...t0, messages: [...t0.messages, { id: uid, role: "user", content: text }, { id: aid, role: "assistant", content: "", pending: true }] }));
   const upd = (fn) => patch(characterId, (t0) => ({ ...t0, messages: t0.messages.map((m) => (m.id === aid ? fn(m) : m)) }));
   presence.tThink = 1;
-  let latest = "", queued = false;
-  const flush = () => { queued = false; upd((m) => ({ ...m, content: latest })); presence.energy = Math.min(1, presence.energy + 0.3); };
+  // Each frame's worth of new text is its own CHUNK, so the words that just arrived can fade in softly while
+  // the ones before them stay still; when the reply is done the chunks collapse into plain text.
+  let latest = "", queued = false, chunkSeq = 0;
+  const flush = () => {
+    queued = false;
+    upd((m) => { const from = m.content.length; return from >= latest.length ? m : { ...m, content: latest, chunks: [...(m.chunks || []), { id: chunkSeq++, text: latest.slice(from) }] }; });
+    presence.energy = Math.min(1, presence.energy + 0.3);
+  };
   try {
     const r = await send({ characterId, chatId: th.chatId, text, locale: loc }, {
       onMeta: (m) => { if (m?.chatId) patch(characterId, (t0) => ({ ...t0, chatId: m.chatId })); },
       onDelta: (_d, acc) => { latest = acc; presence.tThink = 0; if (!queued) { queued = true; raf(flush); } },
     });
     presence.tThink = 0;
-    upd((m) => ({ ...m, content: r.text || latest || m.content, pending: false, cut: !r.complete && !!r.text, failed: !r.text }));
+    upd((m) => ({ ...m, content: r.text || latest || m.content, chunks: null, pending: false, cut: !r.complete && !!r.text, failed: !r.text }));
   } catch {
     presence.tThink = 0;
-    upd((m) => ({ ...m, content: latest || m.content, pending: false, failed: !(latest || m.content), cut: !!(latest || m.content) }));
+    upd((m) => ({ ...m, content: latest || m.content, chunks: null, pending: false, failed: !(latest || m.content), cut: !!(latest || m.content) }));
   }
 }
 
@@ -266,7 +272,7 @@ export function chat({ item, t, loc, S, undo, confirm }) {
           ${turnsOf(th.messages).map((turn, i) => html`<div data-turn=${i} key=${turn.key} class="flex flex-col gap-2 ms-reveal">
             ${turn.q ? html`<p data-msg="user" class="text-[0.9rem] text-base-content/75 border-l-2 pl-3 whitespace-pre-wrap break-words" style="border-color:var(--app-accent)">${turn.q.content}</p>` : null}
             ${turn.a ? html`<div data-msg="assistant" data-pending=${turn.a.pending ? "1" : null} class="text-[0.97rem] leading-relaxed text-base-content/90 whitespace-pre-wrap break-words">
-                ${turn.a.content}${turn.a.pending && !turn.a.content ? html`<span class="text-base-content/70"><${Scramble} len=${18} /></span>` : null}
+                ${turn.a.pending && turn.a.chunks ? turn.a.chunks.map((c) => html`<span key=${c.id} class="ms-word-in">${c.text}</span>`) : turn.a.content}${turn.a.pending && !turn.a.content ? html`<span class="text-base-content/70"><${Scramble} len=${18} /></span>` : null}
                 ${turn.a.failed ? html`<div class="flex items-center gap-2 mt-1.5 text-sm text-base-content/70">${T(t, "sendFailed")}
                     <button data-retry type="button" class="btn btn-ghost btn-xs rounded-lg gap-1"
                       onClick=${() => { const m = turn.a, prev = turn.q; patch(characterId, (t0) => ({ ...t0, messages: t0.messages.filter((x) => x !== m && x !== prev) })); if (prev) ask(characterId, prev.content, loc); }}>

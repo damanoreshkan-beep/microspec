@@ -737,6 +737,12 @@ nav[data-dock] button > span {
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
 
+/* streamed text ARRIVES softly: each frame's new words fade in from a slight blur (persona). Inline spans, so
+   opacity + filter only — a transform would need inline-block and break the wrap. */
+@keyframes msWordIn { from { opacity: 0; filter: blur(3px) } to { opacity: 1; filter: none } }
+.ms-word-in { animation: msWordIn .42s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .ms-word-in { animation: none; } }
+
 /* the drill-down (render.js DetailView) ARRIVES rather than appearing: a short rise + fade on open. NO
    fill-mode on purpose — a transform left on the overlay would turn it into the containing block of every
    fixed descendant (an app's floating composer, a stage), which then SCROLL with the body. The animation

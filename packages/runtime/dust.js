@@ -113,7 +113,12 @@ export function Dust({ active = true, progress = null }) {
     };
     raf = requestAnimationFrame(frame);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); const ext = gl.getExtension("WEBGL_lose_context"); if (ext) ext.loseContext(); };
-  }, [active]);
+    // Mount/unmount ONLY. This used to depend on [active]: the idle→generating flip re-ran the effect, whose
+    // cleanup had just called loseContext() on the one canvas — getContext() then handed back that same DEAD
+    // context, every GL call became a no-op, and Chrome painted the lost canvas as an opaque white sheet with a
+    // broken-image glyph (measured on the VPS eye and the owner's phone, 2026-08-17). `active` is not read
+    // inside; the field breathes in idle and while generating alike, and `progress` arrives through the ref.
+  }, []);
 
   // The dark stage + vignette is a plain element, so the gate (and a no-WebGL device) still gets a premium
   // frame: a soft radial glow orb standing in for the gathered dust.

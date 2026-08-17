@@ -125,6 +125,13 @@ Compose the shared runtime components instead of writing geometry/astronomy from
   `data-haswebgl="yes" ⇒ data-render="webgl"`. Judge a GLSL stage on the VPS eye from a scratch page (see
   `apps/persona/RESEARCH.md`) — `tools/art/hero.mjs` renders WGSL only.
 
+- **Link previews are generated, never hand-written.** The build renders `dist/<app>/og.png` (1200×630, from
+  `brand.json` + `brand.svg` + the uk `title`/`profTagline`) and injects the Open Graph / Twitter-card block
+  into the BUILT index.html (preview bots read raw HTML, no JS) — every app, asserted, a gap fails the build
+  (`deploy/og.mjs`, research in `docs/research/link-previews.md`). So the preview IS your uk `title` and
+  `profTagline`: write the tagline as the one line you would want under the link in Telegram (≤ ~100 chars;
+  longer is clipped at a word). After a change, paste the URL to @WebpageBot to refresh Telegram's cache.
+
 - **Single-screen tabs — `"fit": true`.** An instrument is not a document. A `fit` tab gets `.ms-fit` on
   `<html>`, `#view` is sized off `--hdr-h`/`--dock-h`, and the page **cannot scroll at any viewport height**.
   The verify gate measures it across the whole breakpoint matrix (320×568 → 1280×900, landscape included)

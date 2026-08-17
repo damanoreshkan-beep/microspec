@@ -5,6 +5,7 @@
 //   deno run -A deploy/build.mjs
 
 import { generateAppIcons } from "./icons.mjs";
+import { renderOgCard, metaBlock, injectMeta, previewGaps, SITE_NAME } from "./og.mjs";   // link previews — every app, every build
 import { buildManifest } from "./manifest.mjs";
 import { buildAppCompat } from "./build-app.mjs";
 
@@ -91,7 +92,8 @@ for await (const e of Deno.readDir("packages/runtime")) {
 //    envelop the apps (/…/<id>/), so each app stays independently installable even when the store PWA is
 //    installed. The root is a redirect to ./store/ (below).
 const ids = [];
-const skipped = [];   // app files no copy rule matched — printed at the end so they cannot vanish quietly
+const skipped = [];
+const previews = new Map();   // app id → { title, description } for the link-preview block   // app files no copy rule matched — printed at the end so they cannot vanish quietly
 for await (const a of Deno.readDir("apps")) {
   if (!a.isDirectory || !(await has(`apps/${a.name}/spec.json`))) continue;
   const outDir = `${OUT}/${a.name}`;
@@ -142,6 +144,13 @@ for await (const a of Deno.readDir("apps")) {
     const brand = (await has(`apps/${a.name}/brand.json`)) ? JSON.parse(await Deno.readTextFile(`apps/${a.name}/brand.json`)) : { bg: "#1f2430", fg: "#a78bfa" };
     const paths = (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim();
     await generateAppIcons(`${outDir}/icons`, brand, paths);
+    // LINK PREVIEW — the card + the meta block, from the same brand and the app's own uk strings. Preview
+    // bots read raw HTML, so this is written INTO dist/<app>/index.html; a gap is a build error, not a
+    // silent skip (the same rule as the icons). docs/research/link-previews.md.
+    const uk = JSON.parse(await Deno.readTextFile(`apps/${a.name}/i18n/uk.json`));
+    const title = uk.title || a.name, tagline = uk.profTagline || uk.heroBody || "";
+    await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline }));
+    previews.set(a.name, { title, description: tagline || `${title} — ${SITE_NAME}` });   // injected AFTER the compat pass (which rewrites index.html)
   }
   await assertInstallable(outDir, a.name);   // fail the build if this app cannot be installed as a PWA
   ids.push(a.name);
@@ -166,6 +175,19 @@ for (const id of ids) {
 if (compatFails.length) throw new Error(`compat build failed for ${compatFails.length}/${ids.length} app(s):\n  ${compatFails.join("\n  ")}`);
 console.log(`compat: bundled JS + precompiled CSS for ${ids.length} apps (Safari 16.1 floor)`);
 
+// LINK PREVIEWS — after compat, because that pass rewrites index.html from the SOURCE and would drop the
+// block. Every app, asserted: a page a preview bot cannot unfurl is a build error (docs/research/link-previews.md).
+for (const id of ids) {
+  const p = previews.get(id);
+  if (!p) throw new Error(`${id}: no link-preview record — the app loop did not render its card`);
+  const withMeta = injectMeta(await Deno.readTextFile(`${OUT}/${id}/index.html`), metaBlock({ path: `/${id}/`, ...p }));
+  await Deno.writeTextFile(`${OUT}/${id}/index.html`, withMeta);
+  const gaps = previewGaps(withMeta);
+  if (gaps.length) throw new Error(`${id}: link preview incomplete — ${gaps.join(", ")}`);
+  try { await Deno.stat(`${OUT}/${id}/og.png`); } catch { throw new Error(`${id}: og.png missing`); }
+}
+console.log(`link previews: og.png + meta block for ${ids.length} apps`);
+
 // A KILL-SWITCH for the site that lived on this origin before the farm (a Vite PWA, "dreamstudio", whose
 // worker was /sw-custom.js at scope /). A browser that ever visited it still holds that worker and serves the
 // old shell offline-first without asking the server — the owner saw the old site the day the farm moved in
@@ -180,7 +202,13 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
 })());
 `);
 // root → redirect to the store (which now lives in its own scope at /store/)
-await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="uk"><meta charset="utf-8"><title>microspec</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><link rel="canonical" href="./store/"><script>location.replace("./store/"+location.search+location.hash)</script><body style="background:#0a0a0b"></body></html>\n`);
+{
+  // The site root redirects to the store, but a preview bot does not follow a meta refresh — so the root
+  // carries the store's own preview block (its card is dist/store/og.png).
+  const storeUk = JSON.parse(await Deno.readTextFile("apps/store/i18n/uk.json"));
+  const rootHtml = injectMeta(`<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>${storeUk.title || "microspec"}</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><script>location.replace("./store/"+location.search+location.hash)</script></head><body style="background:#0a0a0b"></body></html>\n`, metaBlock({ path: "/", title: storeUk.title || "microspec", description: storeUk.profTagline || "", image: "/store/og.png" }));
+  await Deno.writeTextFile(`${OUT}/index.html`, rootHtml);
+}
 await Deno.writeTextFile(`${OUT}/.nojekyll`, "");
 if (skipped.length) console.log(`note: ${skipped.length} app file(s) matched no copy rule: ${skipped.join(", ")}`);
 console.log(`built dist/ — ${ids.length} apps (store at /store/): ${ids.join(", ")}`);

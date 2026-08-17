@@ -109,7 +109,9 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
     ${googleOn ? (gate
       ? html`<button data-signin-google type="button" disabled=${busy} onClick=${viaMockGoogle}
           class="btn btn-primary rounded-full w-full gap-2"><${GoogleG} />${t.google}</button>`
-      : html`<div data-signin-google ref=${slot} class="flex justify-center min-h-[44px]" aria-label=${t.google}></div>`)
+      // color-scheme:light on the slot: Chrome paints an OPAQUE white backdrop under a cross-origin iframe whose
+      // colour scheme differs from its embedder's, so on the dark theme the pill sat in a white slab (eye pass).
+      : html`<div data-signin-google ref=${slot} class="flex justify-center min-h-[44px]" style="color-scheme:light" aria-label=${t.google}></div>`)
     : null}
     ${github ? (ghPrimary
       ? html`<button data-signin-github type="button" disabled=${busy} onClick=${viaGithub}

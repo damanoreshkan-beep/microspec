@@ -144,7 +144,7 @@ export function imagine({ S, toast }) {
                base-content. `text-base-content/70` and a `bg-base-content/15` track were dark-theme-only by
                accident: on the light theme they resolve to near-black on black and the whole progress read
                vanished. Same treatment as Онови (apps/retouch), which shows the identical wait. */""}
-          <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}<span class="text-white/50"> / ~${fmt(Math.round(live?.eta ?? est))}</span>${live?.steps ? html`<span class="text-white/50"> · ${live.step}/${live.steps}</span>` : null}</div>
+          <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}${elapsed <= (live?.eta ?? est) + 3 ? html`<span class="text-white/50"> / ~${fmt(Math.round(live?.eta ?? est))}</span>` : ""}${live?.steps ? html`<span class="text-white/50"> · ${live.step}/${live.steps}</span>` : null}</div>
           <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-[var(--app-accent)] rounded-full transition-[width] duration-700 ease-out" style=${`width:${live?.pct != null ? Math.min(99, Math.round(live.pct)) : Math.min(96, Math.round(elapsed / Math.max(1, est) * 100))}%`}></div></div>
         </div>
       </${Fragment}>` : null}

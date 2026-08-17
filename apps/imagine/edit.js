@@ -251,7 +251,7 @@ export function retouch({ S, toast }) {
       </${Fragment}>` : null}
 
       ${phase === "editing" ? html`<div class="relative z-10 flex flex-col items-center gap-3 w-56 max-w-[70%]">
-        <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eEditing")} ${fmt(elapsed)}<span class="text-white/50"> / ~${fmt(Math.round(live?.eta ?? EST))}</span>${live?.steps ? html`<span class="text-white/50"> · ${live.step}/${live.steps}</span>` : null}</div>
+        <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eEditing")} ${fmt(elapsed)}${elapsed <= (live?.eta ?? EST) + 3 ? html`<span class="text-white/50"> / ~${fmt(Math.round(live?.eta ?? EST))}</span>` : ""}${live?.steps ? html`<span class="text-white/50"> · ${live.step}/${live.steps}</span>` : null}</div>
         <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-primary rounded-full transition-[width] duration-700 ease-out" style=${`width:${live?.pct != null ? Math.min(99, Math.round(live.pct)) : Math.min(96, Math.round(elapsed / EST * 100))}%`}></div></div>
       </div>` : null}
 

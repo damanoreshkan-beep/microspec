@@ -1,11 +1,10 @@
 import { html } from "htm/preact";
-import { Fragment } from "preact";
 import { useState, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
-import { QUALITY, DEFAULT, sizeFor, estimateSeconds } from "/_rt/imgsize.js";
+import { Dust } from "/_rt/dust.js";
 import { writeLastGen } from "/_rt/lastgen.js";
 import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
@@ -19,7 +18,8 @@ const randSeed = () => Math.floor(Math.random() * 1e9);
 const SPARKS = ["a lighthouse in a raging storm", "bioluminescent jellyfish in the deep sea", "a lone cabin under the northern lights", "brutalist architecture at dawn", "a fox in a misty autumn forest", "floating islands above the clouds", "a neon-lit rainy Tokyo alley", "an astronaut on a pastel desert planet", "a koi pond with cherry blossoms", "a snowy mountain village at dusk", "a whale swimming through a starry sky", "an old library with towering shelves", "a hummingbird at a tropical flower", "a coral reef bursting with colour", "a foggy harbour at first light", "a field of lavender under a purple sky", "a dragon curled on a mountain peak", "a quiet café on a rainy Paris street"];
 const gateDream = "гірське озеро на світанку, кришталева вода, золоте світло, кінематографічно";   
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;   
-const { width: W, height: H } = sizeFor(QUALITY[DEFAULT]);                       
+const W = 768, H = 1024;                                                         
+const EST = { fast: 18, "2k": 32 };                                             
 
 function mockArt(seed) {
   let s = (seed >>> 0) || 1;
@@ -42,12 +42,11 @@ export function imagine({ S, toast }) {
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);                                      
   const [live, setLive] = useState(null);                                          
-  const [q, setQ] = useState(DEFAULT);                                            
+  const [quality, setQuality] = useState("fast");                                 
   const [suggesting, setSuggesting] = useState(false);                            
   const runRef = useRef(0);                                                       
 
-  const { width, height } = sizeFor(QUALITY[q]);                                  
-  const est = estimateSeconds(width, height);                                     
+  const est = EST[quality];                                                       
 
   const fail = (run, key) => { if (run === runRef.current) { setError(key); setPhase("error"); } };
 
@@ -66,12 +65,11 @@ export function imagine({ S, toast }) {
     setError(null); setElapsed(0); setLive(null);
     if (result?.url?.startsWith?.("blob:")) URL.revokeObjectURL(result.url);      
     setResult(null); setPhase("generating");
-    const w = width, h = height;                                                  
-    if (gate) { await sleep(90); if (run === runRef.current) { setResult({ url: mockArt(seed), w, h, seed }); setPhase("done"); } return; }
+    if (gate) { await sleep(90); if (run === runRef.current) { setResult({ url: mockArt(seed), w: W, h: H, seed }); setPhase("done"); } return; }
     let pEn = p; try { pEn = await toEnglish(p); } catch {  }
     if (run !== runRef.current) return;
     try {
-      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: pEn, width: w, height: h, seed }) });
+      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: pEn, quality, seed }) });
       if (run !== runRef.current) return;
       if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : "eFailed");
       const { job } = await cr.json();
@@ -87,7 +85,7 @@ export function imagine({ S, toast }) {
           const blob = await pr.blob();
           if (run !== runRef.current) return;
           const ext = blob.type.includes("webp") ? "webp" : blob.type.includes("png") ? "png" : "jpg";
-          setResult({ url: URL.createObjectURL(blob), w, h, seed, ext }); setPhase("done");
+          setResult({ url: URL.createObjectURL(blob), w: W, h: H, seed, ext }); setPhase("done");
           writeLastGen(blob, p);                                                   
           return;
         }
@@ -108,41 +106,43 @@ export function imagine({ S, toast }) {
   };
 
   const onKey = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); generate(); } };
+  const genProgress = phase === "generating" ? (live?.pct != null ? Math.max(0.02, live.pct / 100) : Math.min(0.95, elapsed / Math.max(1, est))) : null;
+  const seg = (id, icon, label) => html`<button type="button" role="tab" aria-selected=${quality === id} disabled=${phase === "generating"} onClick=${() => setQuality(id)}
+    class=${`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-1.5 text-[0.8rem] font-medium transition-colors ${quality === id ? "bg-[var(--app-accent)] text-black shadow" : "text-white/70"}`}>${Icon(icon, "text-base")}${label}</button>`;
 
-  return html`<div class="ms-stage z-20 bg-base-100 flex flex-col">
-    <div class="relative flex-1 min-h-0 overflow-hidden bg-black flex items-center justify-center">
-      ${phase === "done" && result ? html`<${Fragment}>
-        <img data-result src=${result.url} alt=${prompt} class="absolute inset-0 w-full h-full object-cover" onLoad=${(e) => { const el = e.currentTarget; if (el.naturalWidth && (el.naturalWidth !== result.w || el.naturalHeight !== result.h)) setResult({ ...result, w: el.naturalWidth, h: el.naturalHeight }); }} />
-        <span class="absolute top-2 right-2 font-mono text-[0.65rem] px-2 py-1 rounded-lg bg-black/55 text-white/90">${result.w}×${result.h}</span>
-      </${Fragment}>` : null}
-      ${phase === "generating" ? html`<${Fragment}>
-        <div class="absolute inset-0 animate-pulse" style="background:linear-gradient(120deg,#141416,#241f36,#141416)"></div>
-        <div class="relative z-10 flex flex-col items-center gap-3 w-56 max-w-[70%]">
-          <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}${elapsed <= (live?.eta ?? est) + 3 ? html`<span class="text-white/50"> / ~${fmt(Math.round(live?.eta ?? est))}</span>` : ""}${live?.steps ? html`<span class="text-white/50"> · ${live.step}/${live.steps}</span>` : null}</div>
-          <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-[var(--app-accent)] rounded-full transition-[width] duration-700 ease-out" style=${`width:${live?.pct != null ? Math.min(99, Math.round(live.pct)) : Math.min(96, Math.round(elapsed / Math.max(1, est) * 100))}%`}></div></div>
-        </div>
-      </${Fragment}>` : null}
-      ${phase === "idle" ? html`<div class="text-white/25">${Icon("lucide:sparkles", "text-5xl")}</div>` : null}
-      ${phase === "error" ? html`<div class="flex flex-col items-center gap-2 text-center px-8">${Icon("lucide:alert-triangle", "text-3xl text-error")}<div data-error class="text-sm text-white/85">${T(t, error || "eFailed")}</div></div>` : null}
+  return html`<div class="ms-stage relative overflow-hidden bg-black">
+    <div class="absolute inset-0">
+      ${phase === "done" && result
+        ? html`<img data-result src=${result.url} alt=${prompt} class="absolute inset-0 w-full h-full object-cover" onLoad=${(e) => { const el = e.currentTarget; if (el.naturalWidth && (el.naturalWidth !== result.w || el.naturalHeight !== result.h)) setResult({ ...result, w: el.naturalWidth, h: el.naturalHeight }); }} />`
+        : html`<${Dust} active=${phase === "generating"} progress=${genProgress} />`}
+      <div class="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
+      <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/45 to-transparent pointer-events-none"></div>
     </div>
 
-    
-    <div class="shrink-0 bg-base-100 sf-e3 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
-      <div class="relative">
-        <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
-        <button data-dream aria-label=${T(t, "dream")} disabled=${suggesting || phase === "generating"} onClick=${dream} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
+    <div class="relative z-10 h-full flex flex-col">
+      <div class="flex items-center justify-between px-4 pt-3">
+        <span class="font-semibold tracking-[0.2em] text-white/90 text-sm drop-shadow">${T(t, "title").toUpperCase()}</span>
+        ${phase === "done" && result ? html`<span class="font-mono text-[0.62rem] px-2 py-1 rounded-lg bg-black/45 text-white/85">${Math.max(result.w, result.h)}px</span>` : null}
       </div>
-      <div class="flex items-center gap-3">
-        <div class="flex items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-base-content/70 shrink-0">${Icon("lucide:sliders-horizontal", "text-[0.9em]")}<span>${T(t, "quality")}</span></div>
-        <input data-quality type="range" min="0" max=${QUALITY.length - 1} step="1" value=${q} aria-label=${T(t, "quality")} disabled=${phase === "generating"} onInput=${(e) => setQ(Number(e.target.value))} class="range range-xs range-primary flex-1" />
-        <div class="flex items-center gap-2 font-mono text-[0.65rem] tabular-nums text-base-content/70 shrink-0">
-          <span data-size>${width}×${height}</span>
-          <span data-estimate class="flex items-center gap-0.5">${Icon("lucide:clock", "text-[0.95em] opacity-80")}~${fmt(est)}</span>
+
+      <div class="flex-1 min-h-0 flex items-center justify-center px-8 text-center">
+        ${phase === "generating" ? html`<div data-gen class="font-mono text-sm uppercase tracking-[0.15em] text-white/80 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}${live?.steps ? html`<span class="text-white/45"> · ${live.step}/${live.steps}</span>` : null}</div>` : null}
+        ${phase === "error" ? html`<div class="flex flex-col items-center gap-2">${Icon("lucide:alert-triangle", "text-3xl text-error drop-shadow")}<div data-error class="text-sm text-white/90 drop-shadow">${T(t, error || "eFailed")}</div></div>` : null}
+      </div>
+
+      <div class="sf-raised rounded-t-3xl bg-base-100 px-3 pt-3 flex flex-col gap-2.5 max-w-xl w-full mx-auto" style="padding-bottom:max(0.85rem,env(safe-area-inset-bottom))">
+        <div class="relative">
+          <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12 bg-base-200" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
+          <button data-dream aria-label=${T(t, "dream")} disabled=${suggesting || phase === "generating"} onClick=${dream} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
         </div>
-      </div>
-      <div class="flex gap-2">
-        <button id="go" data-go class="btn btn-primary flex-1 rounded-2xl gap-2" disabled=${phase === "generating" || !prompt.trim()} onClick=${generate}>${Icon("lucide:sparkles", "text-lg")}${T(t, phase === "done" || phase === "error" ? "again" : "generate")}</button>
-        ${phase === "done" && result ? html`<button data-save class="btn btn-outline rounded-2xl gap-2 shrink-0" onClick=${save}>${Icon("lucide:download", "text-lg")}${T(t, "save")}</button>` : null}
+        <div class="flex gap-2">
+          <div data-quality role="tablist" aria-label=${T(t, "quality")} class="flex flex-1 gap-1 p-1 rounded-2xl bg-base-300/70">
+            ${seg("fast", "lucide:zap", T(t, "speed"))}
+            ${seg("2k", "lucide:gem", T(t, "quality"))}
+          </div>
+          <button id="go" data-go class="btn btn-primary rounded-2xl gap-2 px-5" disabled=${phase === "generating" || !prompt.trim()} onClick=${generate}>${Icon(phase === "generating" ? "lucide:loader-circle" : "lucide:sparkles", `text-lg ${phase === "generating" ? "animate-spin" : ""}`)}${T(t, phase === "done" || phase === "error" ? "again" : "generate")}</button>
+        </div>
+        ${phase === "done" && result ? html`<button data-save class="btn btn-outline rounded-2xl gap-2 w-full" onClick=${save}>${Icon("lucide:download", "text-lg")}${T(t, "save")}</button>` : null}
       </div>
     </div>
   </div>`;

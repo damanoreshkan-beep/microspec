@@ -1,5 +1,6 @@
 
 import { generateAppIcons } from "./icons.mjs";
+import { renderOgCard, metaBlock, injectMeta, previewGaps, SITE_NAME } from "./og.mjs";   
 import { buildManifest } from "./manifest.mjs";
 import { buildAppCompat } from "./build-app.mjs";
 
@@ -64,7 +65,8 @@ for await (const e of Deno.readDir("packages/runtime")) {
 }
 
 const ids = [];
-const skipped = [];   
+const skipped = [];
+const previews = new Map();   
 for await (const a of Deno.readDir("apps")) {
   if (!a.isDirectory || !(await has(`apps/${a.name}/spec.json`))) continue;
   const outDir = `${OUT}/${a.name}`;
@@ -104,6 +106,10 @@ for await (const a of Deno.readDir("apps")) {
     const brand = (await has(`apps/${a.name}/brand.json`)) ? JSON.parse(await Deno.readTextFile(`apps/${a.name}/brand.json`)) : { bg: "#1f2430", fg: "#a78bfa" };
     const paths = (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim();
     await generateAppIcons(`${outDir}/icons`, brand, paths);
+    const uk = JSON.parse(await Deno.readTextFile(`apps/${a.name}/i18n/uk.json`));
+    const title = uk.title || a.name, tagline = uk.profTagline || uk.heroBody || "";
+    await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline }));
+    previews.set(a.name, { title, description: tagline || `${title} — ${SITE_NAME}` });   
   }
   await assertInstallable(outDir, a.name);   
   ids.push(a.name);
@@ -122,6 +128,17 @@ for (const id of ids) {
 if (compatFails.length) throw new Error(`compat build failed for ${compatFails.length}/${ids.length} app(s):\n  ${compatFails.join("\n  ")}`);
 console.log(`compat: bundled JS + precompiled CSS for ${ids.length} apps (Safari 16.1 floor)`);
 
+for (const id of ids) {
+  const p = previews.get(id);
+  if (!p) throw new Error(`${id}: no link-preview record — the app loop did not render its card`);
+  const withMeta = injectMeta(await Deno.readTextFile(`${OUT}/${id}/index.html`), metaBlock({ path: `/${id}/`, ...p }));
+  await Deno.writeTextFile(`${OUT}/${id}/index.html`, withMeta);
+  const gaps = previewGaps(withMeta);
+  if (gaps.length) throw new Error(`${id}: link preview incomplete — ${gaps.join(", ")}`);
+  try { await Deno.stat(`${OUT}/${id}/og.png`); } catch { throw new Error(`${id}: og.png missing`); }
+}
+console.log(`link previews: og.png + meta block for ${ids.length} apps`);
+
 await Deno.writeTextFile(`${OUT}/sw-custom.js`, `self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (!k.startsWith("ms-")) await caches.delete(k);
@@ -129,7 +146,11 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
   for (const c of await self.clients.matchAll({ type: "window" })) c.navigate(c.url).catch(() => {});
 })());
 `);
-await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="uk"><meta charset="utf-8"><title>microspec</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><link rel="canonical" href="./store/"><script>location.replace("./store/"+location.search+location.hash)</script><body style="background:#0a0a0b"></body></html>\n`);
+{
+  const storeUk = JSON.parse(await Deno.readTextFile("apps/store/i18n/uk.json"));
+  const rootHtml = injectMeta(`<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>${storeUk.title || "microspec"}</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><script>location.replace("./store/"+location.search+location.hash)</script></head><body style="background:#0a0a0b"></body></html>\n`, metaBlock({ path: "/", title: storeUk.title || "microspec", description: storeUk.profTagline || "", image: "/store/og.png" }));
+  await Deno.writeTextFile(`${OUT}/index.html`, rootHtml);
+}
 await Deno.writeTextFile(`${OUT}/.nojekyll`, "");
 if (skipped.length) console.log(`note: ${skipped.length} app file(s) matched no copy rule: ${skipped.join(", ")}`);
 console.log(`built dist/ — ${ids.length} apps (store at /store/): ${ids.join(", ")}`);

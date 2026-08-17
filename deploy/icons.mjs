@@ -1,7 +1,7 @@
 import { initWasm, Resvg } from "npm:@resvg/resvg-wasm@2.6.2";
 
 let inited = false;
-async function ensure() {
+export async function ensure() {   
   if (!inited) { await initWasm(fetch("https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm")); inited = true; }
 }
 

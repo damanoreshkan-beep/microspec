@@ -62,6 +62,7 @@ export function retouch({ S, toast }) {
   const [prompt, setPrompt] = useState(gate ? "add falling snow, cinematic" : "");
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);
+  const [live, setLive] = useState(null);                                          
   const [enabled, setEnabled] = useState(false);                                  
   const [camErr, setCamErr] = useState(null);
   const [hasLast, setHasLast] = useState(false);                                  
@@ -93,7 +94,7 @@ export function retouch({ S, toast }) {
 
   const loadSource = (url) => {
     if (result?.url) own(result.url);
-    setResult(null); setError(null); setElapsed(0);
+    setResult(null); setError(null); setElapsed(0); setLive(null);
     setSrcUrl(url); setOriginal(url); setPhase("ready");
   };
 
@@ -163,6 +164,7 @@ export function retouch({ S, toast }) {
           setResult({ url: own(URL.createObjectURL(blob)) }); setPhase("done"); buzz(12); return;
         }
         let j; try { j = await pr.json(); } catch { continue; }
+        if (j.pct != null || j.eta != null) setLive({ eta: j.eta, pct: j.pct, step: j.step, steps: j.steps });
         if (j.status === "error") return fail(run, "edFailed");
       }
       fail(run, "eTimeout");
@@ -216,8 +218,8 @@ export function retouch({ S, toast }) {
       </${Fragment}>` : null}
 
       ${phase === "editing" ? html`<div class="relative z-10 flex flex-col items-center gap-3 w-56 max-w-[70%]">
-        <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eEditing")} ${fmt(elapsed)}<span class="text-white/50"> / ~${fmt(EST)}</span></div>
-        <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-primary rounded-full transition-[width] duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / EST * 100))}%`}></div></div>
+        <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eEditing")} ${fmt(elapsed)}<span class="text-white/50"> / ~${fmt(live?.eta ?? EST)}</span>${live?.steps ? html`<span class="text-white/50"> · ${live.step}/${live.steps}</span>` : null}</div>
+        <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-primary rounded-full transition-[width] duration-700 ease-out" style=${`width:${live?.pct != null ? Math.min(99, Math.round(live.pct)) : Math.min(96, Math.round(elapsed / EST * 100))}%`}></div></div>
       </div>` : null}
 
       

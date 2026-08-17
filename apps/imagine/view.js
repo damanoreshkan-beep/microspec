@@ -41,6 +41,7 @@ export function imagine({ S, toast }) {
   const [result, setResult] = useState(gate ? { url: mockArt(7), w: W, h: H, seed: 7 } : null);
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);                                      
+  const [live, setLive] = useState(null);                                          
   const [q, setQ] = useState(DEFAULT);                                            
   const [suggesting, setSuggesting] = useState(false);                            
   const runRef = useRef(0);                                                       
@@ -62,7 +63,7 @@ export function imagine({ S, toast }) {
     const p = prompt.trim();
     if (!p || phase === "generating") return;
     const seed = randSeed(), run = ++runRef.current;
-    setError(null); setElapsed(0);
+    setError(null); setElapsed(0); setLive(null);
     if (result?.url?.startsWith?.("blob:")) URL.revokeObjectURL(result.url);      
     setResult(null); setPhase("generating");
     const w = width, h = height;                                                  
@@ -90,6 +91,7 @@ export function imagine({ S, toast }) {
           return;
         }
         let j; try { j = await pr.json(); } catch { continue; }
+        if (j.pct != null || j.eta != null) setLive({ eta: j.eta, pct: j.pct, step: j.step, steps: j.steps });
         if (j.status === "error") return fail(run, "eFailed");
       }
       fail(run, "eTimeout");
@@ -115,8 +117,8 @@ export function imagine({ S, toast }) {
       ${phase === "generating" ? html`<${Fragment}>
         <div class="absolute inset-0 animate-pulse" style="background:linear-gradient(120deg,#141416,#241f36,#141416)"></div>
         <div class="relative z-10 flex flex-col items-center gap-3 w-56 max-w-[70%]">
-          <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}<span class="text-white/50"> / ~${fmt(est)}</span></div>
-          <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-[var(--app-accent)] rounded-full transition-[width] duration-700 ease-out" style=${`width:${Math.min(96, Math.round(elapsed / Math.max(1, est) * 100))}%`}></div></div>
+          <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}<span class="text-white/50"> / ~${fmt(live?.eta ?? est)}</span>${live?.steps ? html`<span class="text-white/50"> · ${live.step}/${live.steps}</span>` : null}</div>
+          <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-[var(--app-accent)] rounded-full transition-[width] duration-700 ease-out" style=${`width:${live?.pct != null ? Math.min(99, Math.round(live.pct)) : Math.min(96, Math.round(elapsed / Math.max(1, est) * 100))}%`}></div></div>
         </div>
       </${Fragment}>` : null}
       ${phase === "idle" ? html`<div class="text-white/25">${Icon("lucide:sparkles", "text-5xl")}</div>` : null}

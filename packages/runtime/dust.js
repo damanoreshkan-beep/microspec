@@ -97,7 +97,7 @@ export function Dust({ active = true, progress = null }) {
     };
     raf = requestAnimationFrame(frame);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); const ext = gl.getExtension("WEBGL_lose_context"); if (ext) ext.loseContext(); };
-  }, [active]);
+  }, []);
 
   return html`<div class="absolute inset-0 overflow-hidden" style="background:radial-gradient(120% 120% at 50% 45%, #16131f 0%, #0a0a0f 70%)">
     <div class="absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 rounded-full"

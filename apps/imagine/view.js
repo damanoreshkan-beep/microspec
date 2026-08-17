@@ -5,13 +5,12 @@
 // The headless gate has no network and must stay deterministic, so there it seeds a local mesh-gradient
 // "image" and never calls out.
 import { html } from "htm/preact";
-import { Fragment } from "preact";
 import { useState, useRef } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
-import { QUALITY, DEFAULT, sizeFor, estimateSeconds } from "/_rt/imgsize.js";
+import { Dust } from "/_rt/dust.js";
 import { writeLastGen } from "/_rt/lastgen.js";
 import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
@@ -30,9 +29,8 @@ const randSeed = () => Math.floor(Math.random() * 1e9);
 const SPARKS = ["a lighthouse in a raging storm", "bioluminescent jellyfish in the deep sea", "a lone cabin under the northern lights", "brutalist architecture at dawn", "a fox in a misty autumn forest", "floating islands above the clouds", "a neon-lit rainy Tokyo alley", "an astronaut on a pastel desert planet", "a koi pond with cherry blossoms", "a snowy mountain village at dusk", "a whale swimming through a starry sky", "an old library with towering shelves", "a hummingbird at a tropical flower", "a coral reef bursting with colour", "a foggy harbour at first light", "a field of lavender under a purple sky", "a dragon curled on a mountain peak", "a quiet café on a rainy Paris street"];
 const gateDream = "гірське озеро на світанку, кришталева вода, золоте світло, кінематографічно";   // gate: deterministic, no network
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;   // seconds → m:ss
-// Default = the balanced middle stop (768×1024) — the resolution the app always rendered; the slider trades
-// DOWN to a fast draft or UP to a slow high-res (…1536×2048). See /_rt/imgsize.js for the size→estimate math.
-const { width: W, height: H } = sizeFor(QUALITY[DEFAULT]);                       // 768×1024 — the gate seed size
+const W = 768, H = 1024;                                                         // gate seed aspect (real size comes from the Space)
+const EST = { fast: 18, "2k": 32 };                                             // rough wait per tier, for the progress bar before the Space reports its own
 
 // A stand-in "generated image" for the gate/screenshot: overlapping soft colour blobs on ink → an abstract
 // mesh-gradient wallpaper, varied by seed so "Again" visibly changes it. Deterministic, self-contained.
@@ -57,12 +55,11 @@ export function imagine({ S, toast }) {
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);                                      // seconds since generation began (the live estimate)
   const [live, setLive] = useState(null);                                          // the Space's own progress {eta, pct, step, steps}, once the worker reports it
-  const [q, setQ] = useState(DEFAULT);                                            // quality stop (index into QUALITY); starts balanced — no regression
+  const [quality, setQuality] = useState("fast");                                 // "fast" (1024, ~18s) | "2k" (2048, ~32s) — speed↔quality, not pixels
   const [suggesting, setSuggesting] = useState(false);                            // "surprise me" prompt is being written by the AI
   const runRef = useRef(0);                                                       // guards against a stale response landing after a new run
 
-  const { width, height } = sizeFor(QUALITY[q]);                                  // the request size this quality asks for
-  const est = estimateSeconds(width, height);                                     // approximate wall-clock the slider is trading against
+  const est = EST[quality];                                                       // approximate wall-clock, for the progress bar
 
   const fail = (run, key) => { if (run === runRef.current) { setError(key); setPhase("error"); } };
 
@@ -83,14 +80,13 @@ export function imagine({ S, toast }) {
     setError(null); setElapsed(0); setLive(null);
     if (result?.url?.startsWith?.("blob:")) URL.revokeObjectURL(result.url);      // free the previous blob
     setResult(null); setPhase("generating");
-    const w = width, h = height;                                                  // freeze the size for this run (the slider is disabled while generating)
-    if (gate) { await sleep(90); if (run === runRef.current) { setResult({ url: mockArt(seed), w, h, seed }); setPhase("done"); } return; }
+    if (gate) { await sleep(90); if (run === runRef.current) { setResult({ url: mockArt(seed), w: W, h: H, seed }); setPhase("done"); } return; }
     let pEn = p; try { pEn = await toEnglish(p); } catch { /* fail-open: send the original — the models prefer English but a native prompt still runs */ }
     if (run !== runRef.current) return;
     try {
       // Async: POST starts the job, then poll — short requests, so a slow (>60s) generation never trips the
       // proxy's 60s cap. Each poll returns JSON while pending (updating the elapsed estimate) or the image bytes.
-      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: pEn, width: w, height: h, seed }) });
+      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: pEn, quality, seed }) });
       if (run !== runRef.current) return;
       if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : "eFailed");
       const { job } = await cr.json();
@@ -108,7 +104,7 @@ export function imagine({ S, toast }) {
           // The Space decides the real geometry and codec (the browser rows answer 1024² webp whatever was
           // asked), so the badge and the file name follow the BYTES — the natural size once decoded, the type of the blob.
           const ext = blob.type.includes("webp") ? "webp" : blob.type.includes("png") ? "png" : "jpg";
-          setResult({ url: URL.createObjectURL(blob), w, h, seed, ext }); setPhase("done");
+          setResult({ url: URL.createObjectURL(blob), w: W, h: H, seed, ext }); setPhase("done");
           writeLastGen(blob, p);                                                   // hand off to Онови (apps/retouch) as an editable source
           return;
         }
@@ -130,47 +126,45 @@ export function imagine({ S, toast }) {
   };
 
   const onKey = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); generate(); } };
+  const genProgress = phase === "generating" ? (live?.pct != null ? Math.max(0.02, live.pct / 100) : Math.min(0.95, elapsed / Math.max(1, est))) : null;
+  const seg = (id, icon, label) => html`<button type="button" role="tab" aria-selected=${quality === id} disabled=${phase === "generating"} onClick=${() => setQuality(id)}
+    class=${`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-1.5 text-[0.8rem] font-medium transition-colors ${quality === id ? "bg-[var(--app-accent)] text-black shadow" : "text-white/70"}`}>${Icon(icon, "text-base")}${label}</button>`;
 
-  return html`<div class="ms-stage z-20 bg-base-100 flex flex-col">
-    <div class="relative flex-1 min-h-0 overflow-hidden bg-black flex items-center justify-center">
-      ${phase === "done" && result ? html`<${Fragment}>
-        <img data-result src=${result.url} alt=${prompt} class="absolute inset-0 w-full h-full object-cover" onLoad=${(e) => { const el = e.currentTarget; if (el.naturalWidth && (el.naturalWidth !== result.w || el.naturalHeight !== result.h)) setResult({ ...result, w: el.naturalWidth, h: el.naturalHeight }); }} />
-        <span class="absolute top-2 right-2 font-mono text-[0.65rem] px-2 py-1 rounded-lg bg-black/55 text-white/90">${result.w}×${result.h}</span>
-      </${Fragment}>` : null}
-      ${phase === "generating" ? html`<${Fragment}>
-        <div class="absolute inset-0 animate-pulse" style="background:linear-gradient(120deg,#141416,#241f36,#141416)"></div>
-        <div class="relative z-10 flex flex-col items-center gap-3 w-56 max-w-[70%]">
-          ${/* This block lives on the viewer PLATE, which is black in both themes — so its ink is white, not
-               base-content. `text-base-content/70` and a `bg-base-content/15` track were dark-theme-only by
-               accident: on the light theme they resolve to near-black on black and the whole progress read
-               vanished. Same treatment as Онови (apps/retouch), which shows the identical wait. */""}
-          <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}${elapsed <= (live?.eta ?? est) + 3 ? html`<span class="text-white/50"> / ~${fmt(Math.round(live?.eta ?? est))}</span>` : ""}${live?.steps ? html`<span class="text-white/50"> · ${live.step}/${live.steps}</span>` : null}</div>
-          <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-[var(--app-accent)] rounded-full transition-[width] duration-700 ease-out" style=${`width:${live?.pct != null ? Math.min(99, Math.round(live.pct)) : Math.min(96, Math.round(elapsed / Math.max(1, est) * 100))}%`}></div></div>
-        </div>
-      </${Fragment}>` : null}
-      ${phase === "idle" ? html`<div class="text-white/25">${Icon("lucide:sparkles", "text-5xl")}</div>` : null}
-      ${phase === "error" ? html`<div class="flex flex-col items-center gap-2 text-center px-8">${Icon("lucide:alert-triangle", "text-3xl text-error")}<div data-error class="text-sm text-white/85">${T(t, error || "eFailed")}</div></div>` : null}
+  // Full-bleed stage: the picture (or the living dust while it forms) IS the screen; the composer floats over it.
+  return html`<div class="ms-stage relative overflow-hidden bg-black">
+    <div class="absolute inset-0">
+      ${phase === "done" && result
+        ? html`<img data-result src=${result.url} alt=${prompt} class="absolute inset-0 w-full h-full object-cover" onLoad=${(e) => { const el = e.currentTarget; if (el.naturalWidth && (el.naturalWidth !== result.w || el.naturalHeight !== result.h)) setResult({ ...result, w: el.naturalWidth, h: el.naturalHeight }); }} />`
+        : html`<${Dust} active=${phase === "generating"} progress=${genProgress} />`}
+      ${/* a scrim so the glass island and any status stay legible over a bright picture or the dust */""}
+      <div class="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
+      <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/45 to-transparent pointer-events-none"></div>
     </div>
 
-    ${/* The composer is the page RAISED against the viewer plate, so the pair draws its own top edge — the
-         `border-t border-base-300` it used to carry was the object outlining itself, and a hairline is the
-         one thing this material replaces. */""}
-    <div class="shrink-0 bg-base-100 sf-e3 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
-      <div class="relative">
-        <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
-        <button data-dream aria-label=${T(t, "dream")} disabled=${suggesting || phase === "generating"} onClick=${dream} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
+    <div class="relative z-10 h-full flex flex-col">
+      <div class="flex items-center justify-between px-4 pt-3">
+        <span class="font-semibold tracking-[0.2em] text-white/90 text-sm drop-shadow">${T(t, "title").toUpperCase()}</span>
+        ${phase === "done" && result ? html`<span class="font-mono text-[0.62rem] px-2 py-1 rounded-lg bg-black/45 text-white/85">${Math.max(result.w, result.h)}px</span>` : null}
       </div>
-      <div class="flex items-center gap-3">
-        <div class="flex items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-base-content/70 shrink-0">${Icon("lucide:sliders-horizontal", "text-[0.9em]")}<span>${T(t, "quality")}</span></div>
-        <input data-quality type="range" min="0" max=${QUALITY.length - 1} step="1" value=${q} aria-label=${T(t, "quality")} disabled=${phase === "generating"} onInput=${(e) => setQ(Number(e.target.value))} class="range range-xs range-primary flex-1" />
-        <div class="flex items-center gap-2 font-mono text-[0.65rem] tabular-nums text-base-content/70 shrink-0">
-          <span data-size>${width}×${height}</span>
-          <span data-estimate class="flex items-center gap-0.5">${Icon("lucide:clock", "text-[0.95em] opacity-80")}~${fmt(est)}</span>
+
+      <div class="flex-1 min-h-0 flex items-center justify-center px-8 text-center">
+        ${phase === "generating" ? html`<div data-gen class="font-mono text-sm uppercase tracking-[0.15em] text-white/80 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}${live?.steps ? html`<span class="text-white/45"> · ${live.step}/${live.steps}</span>` : null}</div>` : null}
+        ${phase === "error" ? html`<div class="flex flex-col items-center gap-2">${Icon("lucide:alert-triangle", "text-3xl text-error drop-shadow")}<div data-error class="text-sm text-white/90 drop-shadow">${T(t, error || "eFailed")}</div></div>` : null}
+      </div>
+
+      <div class="sf-raised rounded-t-3xl bg-base-100 px-3 pt-3 flex flex-col gap-2.5 max-w-xl w-full mx-auto" style="padding-bottom:max(0.85rem,env(safe-area-inset-bottom))">
+        <div class="relative">
+          <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12 bg-base-200" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
+          <button data-dream aria-label=${T(t, "dream")} disabled=${suggesting || phase === "generating"} onClick=${dream} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
         </div>
-      </div>
-      <div class="flex gap-2">
-        <button id="go" data-go class="btn btn-primary flex-1 rounded-2xl gap-2" disabled=${phase === "generating" || !prompt.trim()} onClick=${generate}>${Icon("lucide:sparkles", "text-lg")}${T(t, phase === "done" || phase === "error" ? "again" : "generate")}</button>
-        ${phase === "done" && result ? html`<button data-save class="btn btn-outline rounded-2xl gap-2 shrink-0" onClick=${save}>${Icon("lucide:download", "text-lg")}${T(t, "save")}</button>` : null}
+        <div class="flex gap-2">
+          <div data-quality role="tablist" aria-label=${T(t, "quality")} class="flex flex-1 gap-1 p-1 rounded-2xl bg-base-300/70">
+            ${seg("fast", "lucide:zap", T(t, "speed"))}
+            ${seg("2k", "lucide:gem", T(t, "quality"))}
+          </div>
+          <button id="go" data-go class="btn btn-primary rounded-2xl gap-2 px-5" disabled=${phase === "generating" || !prompt.trim()} onClick=${generate}>${Icon(phase === "generating" ? "lucide:loader-circle" : "lucide:sparkles", `text-lg ${phase === "generating" ? "animate-spin" : ""}`)}${T(t, phase === "done" || phase === "error" ? "again" : "generate")}</button>
+        </div>
+        ${phase === "done" && result ? html`<button data-save class="btn btn-outline rounded-2xl gap-2 w-full" onClick=${save}>${Icon("lucide:download", "text-lg")}${T(t, "save")}</button>` : null}
       </div>
     </div>
   </div>`;

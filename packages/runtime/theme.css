@@ -362,17 +362,20 @@ nav[data-dock] button > span {
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
 
 
+@keyframes msWordIn { from { opacity: 0; filter: blur(3px) } to { opacity: 1; filter: none } }
+.ms-word-in { animation: msWordIn .42s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .ms-word-in { animation: none; } }
+
+
 @keyframes msDetailIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
 .ms-detail-in { animation: msDetailIn .26s cubic-bezier(.2, .8, .2, 1); }
 @media (prefers-reduced-motion: reduce) { .ms-detail-in { animation: none; } }
-
-
 .truncate { min-width: 0; }
-
 
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
 .overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
+
 
 @media (prefers-reduced-motion: reduce) {
   .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }
@@ -381,6 +384,7 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 
 
 .ms-shell {
+  
   --sh-r: calc(var(--ms-r) * 1.2);
   --sh-r-in: max(var(--r-1), calc(var(--sh-r) - var(--ms-pad)));
   width: 100%;
@@ -393,13 +397,14 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 [data-theme="signal"]       .ms-shell { --sh-body: #35342C; }
 [data-theme="signal-light"] .ms-shell { --sh-body: #D8D5C2; }
 
+
+
 .ms-screen {
   --sf-inset-face: var(--sh-tint, var(--color-base-200));
   width: 100%;
   padding: max(0.3rem, 2.5%);
   border-radius: var(--sh-r-in, var(--ms-r-in));
 }
-
 
 @media (max-height: 520px) and (min-width: 301px) {
   .ms-shell { max-width: 46rem; }
@@ -409,12 +414,9 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 
 .ms-pad { padding: 4%; }
 .ms-pad-hub { width: 92%; height: 92%; }
-
 .ms-pad-key { border-radius: 12%; }
 
 .ms-menu { flex-wrap: wrap; justify-content: center; }
-
-
 .ms-sweep { animation: ms-sweep 4s linear infinite; }
 @keyframes ms-sweep { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ms-sweep { animation: none; } }

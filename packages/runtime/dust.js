@@ -28,8 +28,8 @@ const FS = `
     if (d > 0.5) discard;
     float core = 1.0 - smoothstep(0.0, 0.18, d);
     float halo = 1.0 - smoothstep(0.18, 0.5, d);
-    float glow = pow(core, 3.0) + pow(halo, 1.8) * 0.3;
-    vec3 col = mix(u_tint, vec3(1.0), core * 0.7);
+    float glow = pow(core, 2.4) + pow(halo, 1.8) * 0.4;
+    vec3 col = mix(u_tint, vec3(1.0), core * 0.35);   // mostly the tint — a white core would composite to white where dust piles up
     gl_FragColor = vec4(col, glow * v_alpha);
   }`;
 
@@ -57,7 +57,7 @@ export function Dust({ active = true, progress = null }) {
     gl.attachShader(prog, compile(gl, gl.VERTEX_SHADER, VS));
     gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, FS));
     gl.linkProgram(prog); gl.useProgram(prog);
-    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE);   // additive glow
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);   // NORMAL blend — additive piled dense dust into a white blob; this composites toward the tint, never past it
 
     // particle home = phyllotaxis disc (a dense, even, organic orb); scatter = an outward ray per particle.
     const home = new Float32Array(N * 2), ang = new Float32Array(N), rad = new Float32Array(N),
@@ -104,7 +104,7 @@ export function Dust({ active = true, progress = null }) {
         pv[i * 2 + 1] += (ty - px[i * 2 + 1]) * 0.05; pv[i * 2 + 1] *= 0.9; px[i * 2 + 1] += pv[i * 2 + 1];
         pos[i * 2] = px[i * 2] * fit[0]; pos[i * 2 + 1] = px[i * 2 + 1] * fit[1];
         size[i] = sz[i] * dpr * (0.75 + wave * 0.5);
-        alpha[i] = 0.12 + 0.10 * (1 - Math.min(1, spread));   // low — additive glow builds gently, bright when gathered, never white-out
+        alpha[i] = 0.30 + 0.35 * (1 - Math.min(1, spread));   // normal blend → higher alpha reads as solid gold dust, brighter when gathered
       }
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.bindBuffer(gl.ARRAY_BUFFER, bPos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);

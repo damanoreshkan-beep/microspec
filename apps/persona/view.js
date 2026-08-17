@@ -217,15 +217,15 @@ export function chat({ item, t, loc, S, undo, confirm }) {
         <div class="flex shrink-0">${btnHistory}${openWiki}${btnNew}${btnRemove}</div>
       </div>`
     : html`<div data-intro class="flex flex-col gap-3 pt-2">
-        <div class="flex items-center gap-4">
+        <div class="flex items-start gap-4">
           <img src=${item.cover} alt="" class="w-[4.5rem] h-[4.5rem] rounded-full object-cover shrink-0 sf-inset" />
-          <div class="flex-1 min-w-0">
+          <div class="flex-1 min-w-0 pt-0.5">
             <h1 class="text-2xl font-bold leading-tight break-words">${item.title}</h1>
-            <p class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70 mt-0.5">${item.byline}</p>
+            <p class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70 mt-1">${item.byline}</p>
           </div>
+          <div class="flex shrink-0 -mr-2">${btnHistory}${openWiki}${btnRemove}</div>
         </div>
         ${item.story ? html`<p class="text-[0.95rem] leading-relaxed text-base-content/85">${item.story}</p>` : null}
-        <div class="flex -ml-2">${btnHistory}${openWiki}${btnRemove}</div>
       </div>`;
 
   if (!sess) {

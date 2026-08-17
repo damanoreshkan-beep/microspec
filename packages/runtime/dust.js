@@ -118,8 +118,10 @@ export function Dust({ active = true, progress = null }) {
   // The dark stage + vignette is a plain element, so the gate (and a no-WebGL device) still gets a premium
   // frame: a soft radial glow orb standing in for the gathered dust.
   return html`<div class="absolute inset-0 overflow-hidden" style="background:radial-gradient(120% 120% at 50% 45%, #16131f 0%, #0a0a0f 70%)">
+    ${/* a fixed, subtle warm glow behind the dust — NOT var(--app-accent): imagine's accent is near-white and
+         painted the whole screen white. Low-opacity gold reads as a gentle backdrop, not a wash. */""}
     <div class="absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 rounded-full"
-      style="width:46vmin;height:46vmin;background:radial-gradient(circle, color-mix(in srgb, var(--app-accent, #f2c766) 55%, transparent) 0%, transparent 62%);filter:blur(6px)"></div>
+      style="width:40vmin;height:40vmin;background:radial-gradient(circle, rgba(242,199,102,0.22) 0%, transparent 62%);filter:blur(8px)"></div>
     ${gate ? null : html`<canvas ref=${ref} class="absolute inset-0 w-full h-full"></canvas>`}
   </div>`;
 }

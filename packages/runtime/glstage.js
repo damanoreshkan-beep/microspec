@@ -1,7 +1,9 @@
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
+import { gate } from "./gate.js";
 
 const DPR_CAP = 2;
+const GATE_DPR = 1;
 const TEX_MAX = 64;
 
 const VS = `#version 300 es
@@ -89,7 +91,7 @@ export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, zClass = "
         if (state.texUrl) state.loadTex(state.texUrl);
 
         const size = () => {
-          const dpr = Math.min(DPR_CAP, devicePixelRatio || 1);
+          const dpr = gate ? GATE_DPR : Math.min(DPR_CAP, devicePixelRatio || 1);
           const w = Math.max(1, Math.round((globalThis.innerWidth || 1) * dpr)), h = Math.max(1, Math.round((globalThis.innerHeight || 1) * dpr));
           if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
           gl.viewport(0, 0, w, h);
@@ -99,9 +101,10 @@ export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, zClass = "
         const still = matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
         const t0 = performance.now();
         const uni = new Float32Array(4);
+        let tick = 0;
         const frame = () => {
           if (state.dead) return;
-          if (document.hidden) { state.raf = requestAnimationFrame(frame); return; }   
+          if (document.hidden || (gate && (tick++ & 1))) { state.raf = requestAnimationFrame(frame); return; }   
           const now = performance.now();
           gl.uniform2f(uRes, canvas.width, canvas.height);
           gl.uniform1f(uTime, still ? 2 : (now - t0) / 1000);

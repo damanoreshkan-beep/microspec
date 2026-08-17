@@ -34,14 +34,9 @@ const FS = `
   }`;
 
 function compile(gl, type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; }
-function hexTint() {
-  try {
-    const v = getComputedStyle(document.documentElement).getPropertyValue("--app-accent").trim();
-    const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(v);
-    if (m) return [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255];
-  } catch { /* fall through */ }
-  return [0.95, 0.78, 0.42];   // warm gold
-}
+// A FIXED warm gold — the dust stage is its own cinematic element, not tied to the app accent (imagine's is
+// near-white, which turned the whole cloud white). Gold reads premium on the dark stage in both themes.
+function hexTint() { return [0.98, 0.74, 0.38]; }
 
 export function Dust({ active = true, progress = null }) {
   const ref = useRef(null);

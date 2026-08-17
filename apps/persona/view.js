@@ -221,7 +221,7 @@ export function chat({ item, t, loc, S, undo, confirm }) {
           <img src=${item.cover} alt="" class="w-[4.5rem] h-[4.5rem] rounded-full object-cover shrink-0 sf-inset" />
           <div class="flex-1 min-w-0 pt-0.5">
             <h1 class="text-2xl font-bold leading-tight break-words">${item.title}</h1>
-            <p class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70 mt-1">${item.byline}</p>
+            <p class="text-[0.9rem] leading-snug text-base-content/70 mt-1">${item.byline}</p>
           </div>
           <div class="flex shrink-0 -mr-2">${btnHistory}${openWiki}${btnRemove}</div>
         </div>

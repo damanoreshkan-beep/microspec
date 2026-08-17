@@ -43,5 +43,9 @@
   "deleteChat": "Видалити розмову",
   "removePerson": "Прибрати цю особу",
   "removeBody": "особу і всі розмови з нею буде видалено",
-  "removeVerb": "Прибрати"
+  "removeVerb": "Прибрати",
+  "statusError": "Не вдалося",
+  "errorHint": "Спробуйте ще раз",
+  "statusLoading": "Шукаю…",
+  "loadMore": "Ще"
 }

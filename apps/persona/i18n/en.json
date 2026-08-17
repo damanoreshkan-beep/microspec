@@ -43,5 +43,9 @@
   "deleteChat": "Delete conversation",
   "removePerson": "Remove this person",
   "removeBody": "the person and every conversation with them will be deleted",
-  "removeVerb": "Remove"
+  "removeVerb": "Remove",
+  "statusError": "Failed",
+  "errorHint": "Try again",
+  "statusLoading": "Searching…",
+  "loadMore": "More"
 }

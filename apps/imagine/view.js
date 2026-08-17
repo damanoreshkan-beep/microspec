@@ -86,7 +86,8 @@ export function imagine({ S, toast }) {
         if ((pr.headers.get("content-type") || "").startsWith("image/")) {
           const blob = await pr.blob();
           if (run !== runRef.current) return;
-          setResult({ url: URL.createObjectURL(blob), w, h, seed }); setPhase("done");
+          const ext = blob.type.includes("webp") ? "webp" : blob.type.includes("png") ? "png" : "jpg";
+          setResult({ url: URL.createObjectURL(blob), w, h, seed, ext }); setPhase("done");
           writeLastGen(blob, p);                                                   
           return;
         }
@@ -101,7 +102,7 @@ export function imagine({ S, toast }) {
   const save = () => {
     if (!result?.url) return;
     try {
-      downloadUrl(result.url, `imagine-${result.seed}.jpg`);
+      downloadUrl(result.url, `imagine-${result.seed}.${result.ext || "jpg"}`);
       toast?.(T(t, "saved"));
     } catch { toast?.(T(t, "eNetwork")); }
   };
@@ -111,13 +112,13 @@ export function imagine({ S, toast }) {
   return html`<div class="ms-stage z-20 bg-base-100 flex flex-col">
     <div class="relative flex-1 min-h-0 overflow-hidden bg-black flex items-center justify-center">
       ${phase === "done" && result ? html`<${Fragment}>
-        <img data-result src=${result.url} alt=${prompt} class="absolute inset-0 w-full h-full object-cover" />
+        <img data-result src=${result.url} alt=${prompt} class="absolute inset-0 w-full h-full object-cover" onLoad=${(e) => { const el = e.currentTarget; if (el.naturalWidth && (el.naturalWidth !== result.w || el.naturalHeight !== result.h)) setResult({ ...result, w: el.naturalWidth, h: el.naturalHeight }); }} />
         <span class="absolute top-2 right-2 font-mono text-[0.65rem] px-2 py-1 rounded-lg bg-black/55 text-white/90">${result.w}×${result.h}</span>
       </${Fragment}>` : null}
       ${phase === "generating" ? html`<${Fragment}>
         <div class="absolute inset-0 animate-pulse" style="background:linear-gradient(120deg,#141416,#241f36,#141416)"></div>
         <div class="relative z-10 flex flex-col items-center gap-3 w-56 max-w-[70%]">
-          <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}<span class="text-white/50"> / ~${fmt(live?.eta ?? est)}</span>${live?.steps ? html`<span class="text-white/50"> · ${live.step}/${live.steps}</span>` : null}</div>
+          <div data-gen class="font-mono text-sm uppercase tracking-wide text-white/90 tabular-nums drop-shadow">${T(t, "eGenerating")} ${fmt(elapsed)}<span class="text-white/50"> / ~${fmt(Math.round(live?.eta ?? est))}</span>${live?.steps ? html`<span class="text-white/50"> · ${live.step}/${live.steps}</span>` : null}</div>
           <div class="w-full h-1 rounded-full bg-white/20 overflow-hidden"><div class="h-full bg-[var(--app-accent)] rounded-full transition-[width] duration-700 ease-out" style=${`width:${live?.pct != null ? Math.min(99, Math.round(live.pct)) : Math.min(96, Math.round(elapsed / Math.max(1, est) * 100))}%`}></div></div>
         </div>
       </${Fragment}>` : null}

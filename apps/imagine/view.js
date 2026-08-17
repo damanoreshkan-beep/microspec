@@ -142,8 +142,7 @@ export function imagine({ S, toast }) {
     </div>
 
     <div class="relative z-10 h-full flex flex-col">
-      <div class="flex items-center justify-between px-4 pt-3">
-        <span class="font-semibold tracking-[0.2em] text-white/90 text-sm drop-shadow">${T(t, "title").toUpperCase()}</span>
+      <div class="flex justify-end px-4 pt-3 min-h-[1.5rem]">
         ${phase === "done" && result ? html`<span class="font-mono text-[0.62rem] px-2 py-1 rounded-lg bg-black/45 text-white/85">${Math.max(result.w, result.h)}px</span>` : null}
       </div>
 

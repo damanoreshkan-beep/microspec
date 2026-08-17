@@ -15,7 +15,7 @@ import { useRef, useEffect } from "preact/hooks";
 import { gate } from "./gate.js";   // runtime modules import RELATIVELY — /_rt/ 404s under /microspec/
 
 const DPR_CAP = 2;
-const N = 2200;                     // particle count — enough for a rich cloud, light enough for mobile fill
+const N = 1500;                     // fine points — additive glow means MANY overlaps blow to white, so keep it sparse
 
 const VS = `
   attribute vec2 a_pos; attribute float a_size; attribute float a_alpha;
@@ -28,7 +28,7 @@ const FS = `
     if (d > 0.5) discard;
     float core = 1.0 - smoothstep(0.0, 0.18, d);
     float halo = 1.0 - smoothstep(0.18, 0.5, d);
-    float glow = pow(core, 3.0) + pow(halo, 1.6) * 0.5;
+    float glow = pow(core, 3.0) + pow(halo, 1.8) * 0.3;
     vec3 col = mix(u_tint, vec3(1.0), core * 0.7);
     gl_FragColor = vec4(col, glow * v_alpha);
   }`;
@@ -65,9 +65,9 @@ export function Dust({ active = true, progress = null }) {
     const GA = Math.PI * (3 - Math.sqrt(5));
     for (let i = 0; i < N; i++) {
       const r = Math.sqrt(i / N), a = i * GA;
-      home[i * 2] = Math.cos(a) * r * 0.42; home[i * 2 + 1] = Math.sin(a) * r * 0.42;
-      ang[i] = Math.random() * Math.PI * 2; rad[i] = 0.25 + Math.random() * 0.95;
-      ph[i] = Math.random() * Math.PI * 2; sz[i] = 1.4 + Math.random() * 2.6;
+      home[i * 2] = Math.cos(a) * r * 0.52; home[i * 2 + 1] = Math.sin(a) * r * 0.52;
+      ang[i] = Math.random() * Math.PI * 2; rad[i] = 0.45 + Math.random() * 1.5;   // drift out to the frame edges
+      ph[i] = Math.random() * Math.PI * 2; sz[i] = 1.5 + Math.random() * 2.4;
       px[i * 2] = home[i * 2]; px[i * 2 + 1] = home[i * 2 + 1];
     }
     const pos = new Float32Array(N * 2), size = new Float32Array(N), alpha = new Float32Array(N);
@@ -95,7 +95,7 @@ export function Dust({ active = true, progress = null }) {
       const fit = aspect >= 1 ? [1 / aspect, 1] : [1, aspect];   // keep the orb circular
       for (let i = 0; i < N; i++) {
         const wave = 0.5 + 0.5 * Math.sin(t * 0.7 + ph[i]);
-        const spread = (0.12 + 0.95 * wave) * (1 - gather * 0.85);
+        const spread = (0.28 + 0.9 * wave) * (1 - gather * 0.85);
         const swirl = t * 0.12;
         const ax = ang[i] + swirl;
         const tx = home[i * 2] * (0.92 + gather * 0.08) + Math.cos(ax) * rad[i] * spread;
@@ -103,8 +103,8 @@ export function Dust({ active = true, progress = null }) {
         pv[i * 2] += (tx - px[i * 2]) * 0.05; pv[i * 2] *= 0.9; px[i * 2] += pv[i * 2];
         pv[i * 2 + 1] += (ty - px[i * 2 + 1]) * 0.05; pv[i * 2 + 1] *= 0.9; px[i * 2 + 1] += pv[i * 2 + 1];
         pos[i * 2] = px[i * 2] * fit[0]; pos[i * 2 + 1] = px[i * 2 + 1] * fit[1];
-        size[i] = sz[i] * dpr * (0.7 + wave * 0.6);
-        alpha[i] = 0.35 + 0.5 * (1 - Math.min(1, spread));   // brighter when gathered
+        size[i] = sz[i] * dpr * (0.75 + wave * 0.5);
+        alpha[i] = 0.12 + 0.10 * (1 - Math.min(1, spread));   // low — additive glow builds gently, bright when gathered, never white-out
       }
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.bindBuffer(gl.ARRAY_BUFFER, bPos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);

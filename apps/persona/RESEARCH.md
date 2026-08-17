@@ -50,3 +50,85 @@ personas and every conversation live on the edge in Postgres, per GitHub user.
 - Locale switch re-labels the shelf on the next load, not instantly.
 - Deleting a person you added, and a favourites star, are not in v1.
 
+
+---
+
+# Premium pass (2026-08-17) — presence, smoothness, Google sign-in
+
+Owner's brief: «преміум, абсолютна плавність, кожен флоу, сфокусованість, відчуття присутності персони,
+webgl, 21st». Then: «google авторизацію — основна, найсучасніша; гітхаб приховай опціональним».
+
+## Measured before building
+
+- **The detail overlay is a scroll container, not the page** (`render.js` DetailView: `fixed inset-0 z-40
+  bg-base-200 overflow-y-auto`, header `sticky z-10`). So a stage inside the body sits `fixed inset-0` with a
+  NEGATIVE z-index: inside the dialog's own stacking context (z-40) the dialog background paints first, then
+  negative-z descendants, then in-flow content — the field lands between the page colour and the text.
+  (`-z-10` at page level fails — the body's background wins there — see [[reference_fullscreen_ambient_layer]];
+  inside a positioned, z-indexed dialog it is the right tool.)
+- **Keyboard vs the floating composer.** MDN Viewport_meta_element: `interactive-widget` default is
+  `resizes-visual` — the virtual keyboard changes the visual viewport ONLY, the layout viewport (and every
+  `position:fixed; bottom:0`) stays put, i.e. under the keyboard. `resizes-content` shrinks the layout viewport,
+  which is what a chat wants. persona is the FIRST app in the farm to declare it (no app had it, checked with
+  grep over apps/*/index.html); the `visualViewport` fallback covers Safari (which ignores the key).
+- **Wikimedia portraits are CORS-open**: `curl -I -H "Origin: https://dreamstudio.mooo.com"` on
+  `upload.wikimedia.org/.../330px-ErnestHemingway.jpg` → `access-control-allow-origin: *`. So the portrait
+  can be a WebGL texture (`crossOrigin="anonymous"`) — the presence field carries THEIR palette, not a stock hue.
+- **The eye's Chromium has WebGL2** (SwiftShader, `RENDERER WebKit WebGL`): a scratch page scp'd to
+  `vps:~/eye/out/*.html` and shot as `file:///eye/out/…` (node shot.mjs directly; `eye.sh` matches `http*`
+  only; `fetch()` of a sibling file is blocked under file:// — inline the shader) is a 10-second GLSL judge.
+  `tools/art/hero.mjs` renders WGSL only, so this scratch loop IS the offline judge for a GLSL stage.
+- **WebGL, not WebGPU, deliberately**: the owner said WebGL; the iPad (iOS 16.1.1, farm PWAs installed via
+  url2clip) has no WebGPU; CI's Chromium has WebGL so the shot artifact shows the real field (probe-guard,
+  never gate-guard — [[reference_webgl_threejs_in_farm]]).
+- **Sign in with Google** (developers.google.com/identity/gsi/web/reference/js-reference, read 2026-08-17):
+  script `https://accounts.google.com/gsi/client`; `google.accounts.id.initialize({client_id, callback,
+  use_fedcm_for_button, ux_mode:"popup", context, itp_support})` (`use_fedcm_for_prompt` is DEPRECATED — One
+  Tap already rides FedCM); `renderButton(el, {type, theme: outline|filled_blue|filled_black|outline_dark,
+  size, text: signin_with|continue_with, shape: pill|…, width ≤ 400px, locale})`; `prompt()` for One Tap;
+  the callback gets `{credential: <JWT id_token>, select_by}`; `disableAutoSelect()` on sign-out. The origin
+  must be registered as an Authorized JavaScript origin of the OAuth client (owner action).
+- **Verifying the id_token on the edge**: RS256 against `https://www.googleapis.com/oauth2/v3/certs` (JWKS,
+  cache by max-age), `iss ∈ {accounts.google.com, https://accounts.google.com}`, `aud === client_id`, `exp`.
+  Zero-dep with WebCrypto (`importKey("jwk", …, RSASSA-PKCS1-v1_5/SHA-256)`).
+- **users.id is `bigint` (GitHub numeric id)**; a Google `sub` is a 21-digit string — does not fit. Google
+  users get id = the first 63 bits of SHA-256("google:"+sub); `provider`/`subject`/`email` columns are added
+  with `add column if not exists`. Sessions stay stateless: the sealed sid carries `{p:"google", u:{…}}`;
+  GitHub sids (`{t}`) keep decrypting — same key derivation string.
+
+## Shape of the build
+
+- `packages/runtime/glstage.js` — `GlStage({shader, seed, ink, vary, tex})`, the WebGL2 twin of `hero.js`
+  (same 16-float uniform contract + one optional CORS texture, downsampled to ≤64px before upload so it is a
+  palette, not a picture). Probe-guarded, DPR cap 2, reduced-motion still frame, pauses when hidden.
+- `apps/persona/presence.frag` — three domain-warped fbm stacks pull the portrait through the warp; a focus
+  mask (strongest behind the person, gone by the lower third); `vary` = (thinking, speaking energy,
+  listening, portrait-ready); env.x theme; luminance clamp in DISPLAY space — dark [0.10, 0.32], light
+  [0.64, 0.97] — measured against base-content: ≥ 4.5:1 at the clamp. Amplitude budget in the shader.
+- `packages/runtime/signin.js` — `SignIn` kit: Google button (GIS, theme follows `data-theme`), One Tap once,
+  GitHub as a quiet secondary; gate → deterministic mock. `auth.js` gains `googleClientId()`, `loginGoogle()`;
+  the session record carries `provider`.
+- Edge `google.js` — `GET /feed/google/config`, `POST /feed/google/verify`, `POST /feed/google/me`; `session.js`
+  holds seal/open for both providers; `whoami()` answers for both; owner = `OWNER_LOGIN` (GitHub) or
+  `OWNER_EMAIL` (Google).
+
+## Decisions (closed)
+
+- Presence = the portrait's palette as a flowing field, breathing at rest, quickening while the model
+  thinks, pulsing while it speaks. Not an orb, not a lit object (`[[reference_hero_flow_field]]`).
+- Google is the primary sign-in (GIS button + One Tap); GitHub is a small text action under it. nova and
+  actions keep `login()` (they need a GitHub token to act).
+- Pending reply = the field's thinking state + the farm's `Scramble` in the reply slot; no cursor block, no
+  spinner.
+- Deltas are batched per animation frame; the thread follows only while the reader is at the bottom.
+- The intro card collapses to a slim row after the first turn (focus); openers leave after the first line.
+- History sheet (previous chats with the person) and delete-with-undo ride the runtime's `Sheet`, `undo`,
+  `confirm` — no new surfaces.
+
+## Left to the owner
+
+- Create a Google OAuth **Web** client (console.cloud.google.com → APIs & Services → Credentials), Authorized
+  JavaScript origins `https://dreamstudio.mooo.com` (and `http://localhost:8000` for dev), no redirect URI
+  needed (popup/FedCM). Put `GOOGLE_CLIENT_ID=…` (and optionally `OWNER_EMAIL=…`) in the VPS `.env`, then
+  `docker compose up -d core`. Until then `/feed/google/config` returns an empty id and the sign-in surface
+  shows GitHub alone.

@@ -737,6 +737,14 @@ nav[data-dock] button > span {
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
 
+/* the drill-down (render.js DetailView) ARRIVES rather than appearing: a short rise + fade on open. NO
+   fill-mode on purpose — a transform left on the overlay would turn it into the containing block of every
+   fixed descendant (an app's floating composer, a stage), which then SCROLL with the body. The animation
+   ends, the transform is gone, fixed means fixed again. */
+@keyframes msDetailIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+.ms-detail-in { animation: msDetailIn .26s cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) { .ms-detail-in { animation: none; } }
+
 /* `truncate` without `min-w-0` is a no-op in a flex row, and it is the single most repeated layout bug in
    this farm: a flex item defaults to min-width:auto, so a span that says "I may be cut" still refuses to
    shrink below its text. Every fix so far has been per-row (the sheet column, transit's aspect row). It is

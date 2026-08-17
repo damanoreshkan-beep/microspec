@@ -6,7 +6,8 @@
   "detail": {
     "title": "title",
     "subtitle": "byline",
-    "view": "chat"
+    "view": "chat",
+    "stage": true
   },
   "tabs": [
     {
@@ -15,26 +16,63 @@
       "icon": "lucide:users-round",
       "label": "tabShelf",
       "titleKey": "title",
-      "needs": ["auth"],
+      "needs": [
+        "auth"
+      ],
       "search": true,
       "searchFetch": true,
       "browse": true,
       "searchKey": "search",
-      "empty": { "icon": "lucide:user-search", "text": "noResults", "hint": "noResultsHint" },
+      "empty": {
+        "icon": "lucide:user-search",
+        "text": "noResults",
+        "hint": "noResultsHint"
+      },
       "sections": [
-        { "filter": "candidate", "icon": "lucide:sparkles", "label": "shelfWiki", "accent": true },
-        { "filter": "mine", "icon": "lucide:user-round-pen", "label": "shelfMine", "accent": true },
-        { "filter": "shelf", "icon": "lucide:users-round", "label": "shelfAll" }
+        {
+          "filter": "candidate",
+          "icon": "lucide:sparkles",
+          "label": "shelfWiki",
+          "accent": true
+        },
+        {
+          "filter": "mine",
+          "icon": "lucide:user-round-pen",
+          "label": "shelfMine",
+          "accent": true
+        },
+        {
+          "filter": "shelf",
+          "icon": "lucide:users-round",
+          "label": "shelfAll"
+        }
       ],
-      "card": { "layout": "gallery", "image": "cover", "imageFit": "cover", "aspect": "portrait", "title": "title", "subtitle": "byline" }
+      "card": {
+        "layout": "gallery",
+        "image": "cover",
+        "imageFit": "cover",
+        "aspect": "portrait",
+        "title": "title",
+        "subtitle": "byline"
+      }
     },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    {
+      "id": "me",
+      "type": "profile",
+      "icon": "lucide:user",
+      "label": "tabMe",
+      "titleKey": "tabMe"
+    }
   ],
   "profile": {
     "icon": "lucide:users-round",
     "theme": true,
     "lang": true,
     "install": true,
-    "source": { "label": "profSource", "url": "https://github.com/damanoreshkan-beep/microspec", "icon": "lucide:github" }
+    "source": {
+      "label": "profSource",
+      "url": "https://github.com/damanoreshkan-beep/microspec",
+      "icon": "lucide:github"
+    }
   }
 }

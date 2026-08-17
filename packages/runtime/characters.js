@@ -73,6 +73,16 @@ export async function create(key) {
   return c;
 }
 
+/** Delete a character you added (the edge refuses public rows for anyone but the owner). Drops it from the shelf atom. */
+export async function deleteCharacter(id) {
+  if (gate) { $characters.set(($characters.get() || []).filter((c) => c.id !== id)); return true; }
+  const sid = sidOf();
+  if (!sid) return false;
+  const j = await post("chars/delete", { sid, id });
+  if (j?.ok) $characters.set(($characters.get() || []).filter((c) => c.id !== id));
+  return !!j?.ok;
+}
+
 // ── conversations ─────────────────────────────────────────────────────────────────────────────────────────
 export async function chats() {
   if (gate) return FIXTURE_CHATS;
@@ -158,7 +168,10 @@ export const FIXTURE_REPLY = {
   uk: "Ключі не губляться — їх кладуть. Згадайте останні двері, які ви зачиняли зсередини: пальто, яке зняли одразу після цього, і кишеню, куди пішла права рука. Почніть з неї.",
   en: "Keys are not lost — they are put down. Recall the last door you locked from inside, the coat you took off right after, and the pocket your right hand went to. Start there.",
 };
-export const FIXTURE_CHATS = [{ id: 1, character_id: 1, title: "Добрий вечір, містере Холмс", updated_at: "2026-08-16T12:00:00Z", name: "Sherlock Holmes", name_uk: "Шерлок Холмс", avatar_url: FIXTURE_CHARACTERS[0].avatar, last: FIXTURE_THREAD[2].content }];
+export const FIXTURE_CHATS = [
+  { id: 1, character_id: 1, title: "Добрий вечір, містере Холмс", updated_at: "2026-08-16T12:00:00Z", name: "Sherlock Holmes", name_uk: "Шерлок Холмс", avatar_url: FIXTURE_CHARACTERS[0].avatar, last: FIXTURE_THREAD[2].content },
+  { id: 2, character_id: 1, title: "Про професора Моріарті", updated_at: "2026-08-14T09:30:00Z", name: "Sherlock Holmes", name_uk: "Шерлок Холмс", avatar_url: FIXTURE_CHARACTERS[0].avatar, last: "Він павук у центрі павутини." },
+];
 
 // Types the fixture reply word by word so the gate sees the same motion a real stream produces.
 async function fixtureStream(text, locale, { onMeta, onDelta, signal, chatId }) {

@@ -71,6 +71,7 @@ export function manifestFor(id, { read: rd = read } = {}) {
   // environment map beside it stays OUT, like every other assets/* payload: it is megabytes, and SWR
   // caches it on the first online run.
   if (rd(`${dir}/hero.wgsl`) != null) urls.add("./hero.wgsl");
+  if (rd(`${dir}/presence.frag`) != null) urls.add("./presence.frag");   // the WebGL twin (glstage.js), same reason
 
   return [...urls].sort();
 }

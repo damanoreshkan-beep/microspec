@@ -3,7 +3,7 @@
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
   app: "persona",
-  version: "d1f80eceaf",
+  version: "3473d91479",
   precache: [
     "./",
     "./data.js",
@@ -13,6 +13,7 @@ self.MS = {
     "./icons/apple-touch-icon.png",
     "./index.html",
     "./manifest.json",
+    "./presence.frag",
     "./spec.json",
     "./view.js",
     "/_rt/apk.js",
@@ -25,6 +26,7 @@ self.MS = {
     "/_rt/gate.js",
     "/_rt/geomag.js",
     "/_rt/gesture.js",
+    "/_rt/glstage.js",
     "/_rt/hero.js",
     "/_rt/i18n.js",
     "/_rt/index.js",
@@ -40,6 +42,7 @@ self.MS = {
     "/_rt/sensors.js",
     "/_rt/shell-actions.js",
     "/_rt/shell.js",
+    "/_rt/signin.js",
     "/_rt/skeleton.js",
     "/_rt/sse.js",
     "/_rt/store.js",

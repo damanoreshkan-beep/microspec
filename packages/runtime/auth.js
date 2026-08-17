@@ -20,6 +20,8 @@ const GH = `${VPS_PROXY}/gh`;
 const SID_KEY = "ms:gh:sid";
 const USER_KEY = "ms:gh:user";   // last-known profile, so a restart shows signed-in instantly and a transient
                                  // me() hiccup never flashes (or sticks at) logged-out.
+const PROV_KEY = "ms:gh:prov";   // which provider minted the sid: "github" (default, the older sessions) | "google"
+const GOOGLE = `${VPS_PROXY}/google`;
 const PWA_ORIGIN = typeof location !== "undefined" ? location.origin : "";
 const EDGE_ORIGIN = (() => { try { return new URL(VPS_PROXY).origin; } catch { return ""; } })();
 
@@ -28,13 +30,17 @@ const EDGE_ORIGIN = (() => { try { return new URL(VPS_PROXY).origin; } catch { r
 // "Starring" permission would be narrower but a heavier install flow — a documented future tightening.
 export const SCOPE = "public_repo";
 
-// session: null = signed out; { sid, user } = signed in. `user` is the trimmed GitHub profile.
+// session: null = signed out; { sid, user, provider } = signed in. `user` is the trimmed profile — the same
+// four fields whichever provider minted it (login · name · avatar · html_url), so no consumer branches.
+// `provider` is "github" | "google": an app that needs to ACT on GitHub (star, read Actions) checks it —
+// a Google session identifies the reader but holds no GitHub token.
 export const session = atom(null);
 
 // A deterministic stand-in so the login-gated feed renders under the gate (the shot must see the populated
 // screen, not the sign-in wall). Never used off the gate.
 export const MOCK_USER = { login: "octocat", name: "Octocat", avatar: "", html_url: "https://github.com/octocat" };
-const MOCK_SESSION = { sid: "mock-sid", user: MOCK_USER };
+const MOCK_SESSION = { sid: "mock-sid", user: MOCK_USER, provider: "github" };
+export const MOCK_GOOGLE_SESSION = { sid: "mock-sid-google", user: { login: "octo@example.com", name: "Octocat", avatar: "", html_url: "" }, provider: "google" };
 
 export const isLoggedIn = () => !!session.get();
 
@@ -45,7 +51,7 @@ const lsDel = (k) => { try { localStorage.removeItem(k); } catch { /* private mo
 const lsGetJSON = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } };
 const lsSetJSON = (k, o) => { try { localStorage.setItem(k, JSON.stringify(o)); } catch { /* quota / private mode */ } };
 // Forget the session everywhere (both keys), used only on an explicit logout or a DEFINITIVE 401.
-const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); };
+const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); lsDel(PROV_KEY); };
 
 // Trim a raw GitHub /user payload to what the UI shows — never hold more than needed.
 const trimUser = (u) => (u && u.login ? {
@@ -56,21 +62,25 @@ const trimUser = (u) => (u && u.login ? {
 // JSON (the sealed tunnel only envelopes JSON POSTs). Throws an Error carrying `.status` — the HTTP status on a
 // non-ok response, or 0 on a network/timeout failure — so callers can tell a DEFINITIVE 401 (log out) apart
 // from a TRANSIENT hiccup (keep the session). Only 401 means "this session is dead".
-async function edge(path, body, timeout = 12000) {
+function edge(path, body, timeout = 12000) { return edgeAt(`${GH}/${path}`, body, timeout); }
+async function edgeAt(url, body, timeout = 12000) {
   const ctrl = new AbortController();
   const to = setTimeout(() => ctrl.abort(), timeout);
   try {
-    const r = await fetch(`${GH}/${path}`, {
+    const r = await fetch(url, {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify(body), signal: ctrl.signal,
     });
-    if (!r.ok) { const e = new Error(`gh/${path} ${r.status}`); e.status = r.status; throw e; }
+    if (!r.ok) { const e = new Error(`${url} ${r.status}`); e.status = r.status; throw e; }
     return await r.json();
   } catch (e) {
     if (e && typeof e.status === "number") throw e;
-    const err = new Error(`gh/${path} network`); err.status = 0; throw err;   // network / timeout / abort → transient
+    const err = new Error(`${url} network`); err.status = 0; throw err;   // network / timeout / abort → transient
   } finally { clearTimeout(to); }
 }
+// The provider-aware "who am I" — GitHub sessions ask /gh/me (the edge asks GitHub), Google ones /google/me
+// (the edge opens the sealed sid, no network behind it).
+const me = (sid, provider) => (provider === "google" ? edgeAt(`${GOOGLE}/me`, { sid }) : edge("me", { sid }));
 
 // restore() — rehydrate the session on app boot. Gate → mock. Else: if a sid is stored, show the cached profile
 // IMMEDIATELY (optimistic — a restart never flashes logged-out), then revalidate in the background. The session
@@ -81,12 +91,13 @@ export async function restore() {
   if (gate) { session.set(MOCK_SESSION); return MOCK_SESSION; }
   const sid = lsGet(SID_KEY);
   if (!sid) { session.set(null); return null; }
+  const provider = lsGet(PROV_KEY) || "github";
   const cached = lsGetJSON(USER_KEY);
-  if (cached) session.set({ sid, user: cached });         // optimistic: stay signed-in across the revalidation
+  if (cached) session.set({ sid, user: cached, provider });   // optimistic: stay signed-in across the revalidation
   try {
-    const j = await edge("me", { sid });
-    const user = trimUser(j && j.user);
-    if (user) { lsSetJSON(USER_KEY, user); const s = { sid, user }; session.set(s); return s; }
+    const j = await me(sid, provider);
+    const user = provider === "google" ? trimGoogleUser(j && j.user) : trimUser(j && j.user);
+    if (user) { lsSetJSON(USER_KEY, user); const s = { sid, user, provider }; session.set(s); return s; }
     // 200 without a user shouldn't happen (the edge now answers 401 for a dead token, 5xx for a transient one)
     // — treat it as transient and KEEP the session rather than risk a false logout.
     return session.get();
@@ -125,8 +136,8 @@ export function login({ scope = SCOPE } = {}) {
         const j = await edge("me", { sid: d.sid });
         const user = trimUser(j && j.user);
         if (!user) throw new Error("no-profile");
-        lsSetJSON(USER_KEY, user);
-        const s = { sid: d.sid, user };
+        lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "github");
+        const s = { sid: d.sid, user, provider: "github" };
         session.set(s);
         finish(resolve, s);
       } catch (err) { finish(reject, err); }
@@ -232,9 +243,47 @@ export async function jobs(owner, repo, id) {
 }
 
 // logout() — drop the local sid + session and best-effort tell the edge to forget the server-side token.
+// A Google session also tells GIS not to auto-select next time (the documented "no dead loop" step).
 export async function logout() {
   const s = session.get();
   dropStored();
   session.set(null);
-  if (!gate && s) { try { await edge("logout", { sid: s.sid }); } catch { /* best effort */ } }
+  if (gate || !s) return;
+  if (s.provider === "google") { try { globalThis.google?.accounts?.id?.disableAutoSelect?.(); } catch { /* not loaded */ } return; }
+  try { await edge("logout", { sid: s.sid }); } catch { /* best effort */ }
+}
+
+// ── Sign in with Google ───────────────────────────────────────────────────────────────────────────────────
+// The edge verifies the ID token (RS256 against Google's JWKS, aud = the client id it holds) and mints the
+// same sealed, stateless sid the GitHub flow does; the browser never sees a Google token it could replay
+// off-farm either — the credential goes straight to the edge and comes back as a sid.
+const trimGoogleUser = (u) => (u && (u.email || u.login) ? {
+  login: u.email || u.login, name: u.name || u.email || u.login, avatar: u.picture || u.avatar_url || "", html_url: "",
+} : null);
+
+let clientIdP = null;
+/** The Google OAuth client id the edge is configured with ("" when the owner has not set one — the sign-in
+ *  surface then offers GitHub alone). Fetched once per page; gate → a mock id so the surface renders. */
+export function googleClientId() {
+  if (gate) return Promise.resolve("mock-google-client");
+  return (clientIdP ||= (async () => {
+    try {
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
+      const r = await fetch(`${GOOGLE}/config`, { signal: ctrl.signal }); clearTimeout(to);
+      if (!r.ok) return "";
+      const j = await r.json(); return typeof j?.clientId === "string" ? j.clientId : "";
+    } catch { clientIdP = null; return ""; }     // transient: the next surface asks again
+  })());
+}
+
+/** Exchange a GIS credential (the ID token JWT) for a farm session. Gate → the mock Google session. */
+export async function loginGoogle(credential) {
+  if (gate) { session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
+  const j = await edgeAt(`${GOOGLE}/verify`, { credential: String(credential || "") });
+  const user = trimGoogleUser(j && j.user);
+  if (!j?.sid || !user) throw Object.assign(new Error("google-verify"), { status: 502 });
+  lsSet(SID_KEY, j.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "google");
+  const s = { sid: j.sid, user, provider: "google" };
+  session.set(s);
+  return s;
 }

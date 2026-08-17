@@ -103,7 +103,7 @@ for await (const a of Deno.readDir("apps")) {
     // The extension list is an ALLOW-list, so anything new drops out of dist/ silently — hero.wgsl did
     // exactly that, and the app would have 404'd on production with a black stage and a green CI. Unknown
     // extensions are now reported (below) instead of vanishing.
-    if (/\.(html|js|json|svg|png|webmanifest|wgsl)$/.test(f.name)) {
+    if (/\.(html|js|json|svg|png|webmanifest|wgsl|frag)$/.test(f.name)) {
       if (f.name === "spec.json") {
         const spec = JSON.parse(await Deno.readTextFile(`apps/${a.name}/spec.json`));
         if (!spec.version) spec.version = appVer;               // stamp unless the author pinned one

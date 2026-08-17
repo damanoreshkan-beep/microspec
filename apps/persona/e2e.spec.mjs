@@ -59,4 +59,30 @@ export default [
       h.expect((await h.count("[data-opener]")) === 3, "після «Почати заново» входи не повернулися");
     },
   },
+  {
+    name: "розмови з особою: аркуш історії відкривається, Back закриває аркуш, а не особу", run: async (h) => {
+      h.expect(await openFirst(h), "розмова не відкрилася");
+      for (let i = 0; i < 20; i++) { if ((await h.count("[data-history]")) > 0) break; await h.wait(150); }
+      h.expect((await h.count("[data-history]")) === 1, "немає кнопки історії при двох розмовах у фікстурі");
+      await h.tap("[data-history]"); await h.wait(300);
+      h.expect((await h.count("#persona-history[open]")) === 1, "аркуш історії не відкрився");
+      h.expect((await h.count("[data-history-row]")) === 2, `у списку ${await h.count("[data-history-row]")} розмов, а не дві`);
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("#persona-history[open]")) === 0, "Back не закрив аркуш історії");
+      h.expect((await h.count('[role="dialog"]')) === 1, "Back закрив особу замість аркуша");
+      await h.tap("[data-history]"); await h.wait(300);
+      await h.tap("[data-history-row='2']"); await h.wait(400);
+      h.expect((await h.count("#persona-history[open]")) === 0, "вибір розмови не закрив аркуш");
+      h.expect((await h.count("[data-msg]")) > 0, "вибрана розмова не завантажилась у нитку");
+    },
+  },
+  {
+    name: "присутність: де є WebGL, поле малюється саме ним (не тихий відкат)", run: async (h) => {
+      h.expect(await openFirst(h), "розмова не відкрилася");
+      h.expect((await h.count("[data-stage]")) === 1, "немає полотна присутності");
+      for (let i = 0; i < 30; i++) { if ((await h.attr("[data-stage]", "data-render")) === "webgl") break; await h.wait(200); }
+      const has = await h.attr("[data-stage]", "data-haswebgl");
+      if (has === "yes") h.expect((await h.attr("[data-stage]", "data-render")) === "webgl", `WebGL є, а поле не малюється: err=${await h.attr("[data-stage]", "data-err")}`);
+    },
+  },
 ];

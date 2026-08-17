@@ -107,6 +107,7 @@ export function start(spec, arg2) {
   const boot = document.getElementById("boot");
   if (boot && !/[?&]__boot\b/.test(location.search)) { requestAnimationFrame(() => { boot.classList.add("gone"); setTimeout(() => boot.remove(), 450); }); } // ?__boot freezes the shell for review/gates
   S.tab.listen(() => { window.scrollTo({ top: 0 }); if (S.screen.get()) S.screen.set(null); }); // leaving a tab closes its sub-screen
+  S.detail.listen((v) => { if (v == null && S.screen.get()) S.screen.set(null); });               // closing a drill-down closes the sheet its body opened
 
   // Back-button routing invariant: hardware/browser Back closes an open overlay (detail, sheet,
   // install modal, tool sub-screen) instead of exiting the PWA. Each open state = one history entry;
@@ -122,8 +123,11 @@ export function start(spec, arg2) {
     [S.sheet, () => S.sheet.set(false), (v) => v === true],
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],
     [S.qrOpen, () => S.qrOpen.set(false), (v) => v === true],
-    [S.screen, () => S.screen.set(null), (v) => v != null],
+    // detail BELOW screen (since 2026-08-17): a detail BODY (`detail.view`) may open a sheet on S.screen —
+    // persona's conversation history — and Back must close that sheet before the drill-down under it.
+    // Nothing opens a detail from inside a screen (checked across apps/), so the other order had no client.
     [S.detail, () => S.detail.set(null), (v) => v != null],
+    [S.screen, () => S.screen.set(null), (v) => v != null],
     [S.player, () => S.player.set(null), (v) => v != null],
     [S.confirm, () => S.confirm.set(null), (v) => v != null],   // danger-confirm sheet — stacks on top, Back cancels
   ];

@@ -45,20 +45,54 @@ export function letterTilePng(text, accent, size = 192) {
   return canvasToPngB64(cv);
 }
 
-// fetchAppIconPng() → THIS app's own launcher icon (base64 PNG), or null. The build writes the PWA icon set
-// to <app>/icons/ (deploy/icons.mjs) — the same PNG Chrome puts on the home screen when the PWA is installed,
-// so the APK carries the app's real identity, not a synthesised letter tile. Same-origin, no canvas: the PNG
-// goes to the edge as-is (every launcher density bucket gets it; 192px is xxxhdpi-exact). Null in source /
-// gate mode where dist/ icons do not exist — the caller falls back to letterTilePng.
-export async function fetchAppIconPng() {
+// fetchPngB64(relUrl) → same-origin PNG as base64, or null (404, or a 200 that is not a PNG — an HTML fallback
+// page must never become a launcher icon).
+async function fetchPngB64(rel) {
   try {
-    const r = await fetch(new URL("icons/icon-192.png", location.href), { cache: "force-cache" });
+    const r = await fetch(new URL(rel, location.href), { cache: "force-cache" });
     if (!r.ok) return null;
     const buf = new Uint8Array(await r.arrayBuffer());
-    // PNG magic — a 200 that is not a PNG (an HTML fallback page) must not become the launcher icon
     if (buf.length < 8 || buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4E || buf[3] !== 0x47) return null;
     return bytesToB64(buf);
   } catch { return null; }
+}
+
+// cornerHex(pngB64) → "#rrggbb" of the top-left pixel, or null when it is not opaque. Reads a colour off a
+// tile instead of asking anyone to declare it — the build's maskable icon is a full-bleed brand.bg square.
+async function cornerHex(pngB64) {
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `data:image/png;base64,${pngB64}`; });
+    const cv = document.createElement("canvas"); cv.width = cv.height = 1;
+    const ctx = cv.getContext("2d"); ctx.drawImage(img, 0, 0);
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+    return a === 255 ? "#" + [r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("") : null;
+  } catch { return null; }
+}
+
+// fetchAppIcons() → { icon, fg, bg } for THIS app from the icon set the build writes to <app>/icons/
+// (deploy/icons.mjs), or null where it does not exist (source / gate mode → the caller falls back to a
+// letter tile). icon = the 192px tile Chrome puts on the home screen (the APK's legacy launcher icon);
+// fg = the transparent adaptive foreground (glyph in the safe zone); bg = brand.bg, sampled off the maskable
+// tile. So an APK carries exactly the identity the installed PWA has, on every launcher shape.
+export async function fetchAppIcons() {
+  const icon = await fetchPngB64("icons/icon-192.png");
+  if (!icon) return null;
+  const [fg, mask] = await Promise.all([fetchPngB64("icons/icon-fg-432.png"), fetchPngB64("icons/icon-192-maskable.png")]);
+  const bg = mask ? await cornerHex(mask) : null;
+  return { icon, fg: fg || undefined, bg: bg || undefined };
+}
+
+// adaptiveFromTile(pngB64, fallbackBg) → { fg, bg } derived from a full-bleed tile (a site favicon, a letter
+// tile): the tile shrunk to 46% into the safe zone on a transparent 432px layer, and its corner colour as
+// the background (a flat-background tile becomes seamless; a transparent logo sits on fallbackBg). This is
+// what Android itself does to a legacy icon, done once here so the APK ships a real adaptive icon.
+export async function adaptiveFromTile(pngB64, fallbackBg = "#ffffff") {
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `data:image/png;base64,${pngB64}`; });
+  const size = 432, box = Math.round(size * 0.46);
+  const cv = document.createElement("canvas"); cv.width = cv.height = size;
+  cv.getContext("2d").drawImage(img, (size - box) / 2, (size - box) / 2, box, box);
+  const bg = (await cornerHex(pngB64)) || fallbackBg;
+  return { fg: await canvasToPngB64(cv), bg };
 }
 
 // fetchSiteIconPng(url) → the site's best icon rasterised to a PNG (base64), or null. Goes through the edge
@@ -73,12 +107,14 @@ export async function fetchSiteIconPng(url, size = 192) {
   } catch { return null; }
 }
 
-// buildApk({url, name, iconB64}) → a signed APK Blob. Calls the edge (core /feed/apk) via the sealed tunnel.
-export async function buildApk({ url, name, iconB64 }) {
+// buildApk({url, name, iconB64, fgB64?, bg?}) → a signed APK Blob. Calls the edge (core /feed/apk) via the
+// sealed tunnel. iconB64 = legacy launcher PNG; fgB64 + bg = the adaptive icon's foreground layer and
+// "#rrggbb" background (API 26+); the edge falls back to iconB64 for the foreground when fg is absent.
+export async function buildApk({ url, name, iconB64, fgB64, bg }) {
   const r = await fetch(`${VPS_PROXY}/apk`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url, name, icon: iconB64 || undefined }),
+    body: JSON.stringify({ url, name, icon: iconB64 || undefined, fg: fgB64 || undefined, bg: bg || undefined }),
   });
   // The status alone can't tell "bad url" from "name required" — both are 400 — so carry the edge's own
   // one-line reason back to the screen. It is short, safe text (util.send), never a page.

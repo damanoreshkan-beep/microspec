@@ -8,7 +8,7 @@ import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
 import { authWall } from "./authwall.js";
 import { T, ago, whenLabel, sinceLabel, sys } from "./i18n.js";
-import { buildApk, fetchAppIconPng, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
+import { buildApk, fetchAppIcons, adaptiveFromTile, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
 import { gate } from "./gate.js";
 import { SHEET_BOX } from "./ui.js";
 import { CORE, BUILD, appVersion } from "./version.js";
@@ -584,15 +584,22 @@ function ApkScreen() {
   const name = T(t, "title");
   const url = location.href.split("#")[0];
   const accent = () => (getComputedStyle(document.documentElement).getPropertyValue("--app-accent").trim() || "#7C3AED");
-  const [icon, setIcon] = useState(null);
+  const [icons, setIcons] = useState(null);   // { icon, fg, bg } — legacy tile + adaptive layers
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState(false);
 
+  // The app's REAL icon set first (dist/<app>/icons/, the same PNGs the installed PWA has); a letter tile,
+  // turned into adaptive layers the same way, only where that does not exist (source / gate).
+  const resolveIcons = async () => {
+    const real = await fetchAppIcons();
+    if (real) return real;
+    const tile = await letterTilePng(name, accent());
+    return { icon: tile, ...(await adaptiveFromTile(tile, accent())) };
+  };
   useEffect(() => {
     let live = true;
-    // the app's REAL icon first (dist/<app>/icons/); the letter tile only where that does not exist (source/gate)
-    (async () => { try { const png = (await fetchAppIconPng()) || await letterTilePng(name, accent()); if (live) setIcon(png); } catch { /* no canvas (preflight) */ } })();
+    (async () => { try { const i = await resolveIcons(); if (live) setIcons(i); } catch { /* no canvas (preflight) */ } })();
     return () => { live = false; };
   }, []);
 
@@ -600,9 +607,9 @@ function ApkScreen() {
     if (busy) return;
     setBusy(true); setErr(false); setDone(false);
     try {
-      let iconB64 = icon;
-      if (!iconB64) { try { iconB64 = (await fetchAppIconPng()) || await letterTilePng(name, accent()); } catch { /* no icon */ } }
-      if (!gate) { const blob = await buildApk({ url, name, iconB64 }); downloadBlob(blob, apkFilename(name)); }
+      let i = icons;
+      if (!i) { try { i = await resolveIcons(); } catch { i = {}; } }
+      if (!gate) { const blob = await buildApk({ url, name, iconB64: i.icon, fgB64: i.fg, bg: i.bg }); downloadBlob(blob, apkFilename(name)); }
       setDone(true); A.toast(sys("apkDone", loc));
     } catch (e) {
       // The reason is the whole point of an error line — a generic "failed" is why "rate limited" (429),
@@ -618,8 +625,12 @@ function ApkScreen() {
     </header>
     <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">
       <div data-apk class="flex items-center gap-3 rounded-2xl sf-raised sf-e2 p-3">
-        <div class="size-14 rounded-2xl overflow-hidden bg-base-200 shrink-0 grid place-items-center ring-1 ring-base-content/10">
-          ${icon ? html`<img src=${`data:image/png;base64,${icon}`} class="size-full object-cover" alt="" />` : Icon(A.spec.profile?.icon || "lucide:box", "text-2xl text-base-content/40")}
+        <div class="size-14 rounded-full overflow-hidden bg-base-200 shrink-0 grid place-items-center ring-1 ring-base-content/10" style=${icons?.bg ? `background:${icons.bg}` : ""}>
+          ${icons?.fg
+            // the launcher's view of an adaptive icon: the 108dp foreground shown through a 72dp mask → 150%, centred
+            ? html`<img src=${`data:image/png;base64,${icons.fg}`} style="width:150%;height:150%;max-width:none;flex:none" alt="" />`
+            : icons?.icon ? html`<img src=${`data:image/png;base64,${icons.icon}`} class="size-full object-cover" alt="" />`
+            : Icon(A.spec.profile?.icon || "lucide:box", "text-2xl text-base-content/40")}
         </div>
         <div class="min-w-0 flex-1"><div class="font-semibold truncate">${name}</div><div class="font-mono text-xs text-base-content/55 truncate">${url}</div></div>
       </div>

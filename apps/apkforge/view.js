@@ -8,7 +8,7 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { Panel } from "/_rt/ui.js";
 import { siteName } from "/_rt/sitelabel.js";
-import { buildApk, fetchSiteIconPng, letterTilePng, downloadBlob, apkFilename } from "/_rt/apk.js";
+import { buildApk, fetchSiteIconPng, letterTilePng, adaptiveFromTile, downloadBlob, apkFilename } from "/_rt/apk.js";
 import { gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -55,7 +55,9 @@ export function forge({ S, toast }) {
       let iconB64 = icon;
       if (!iconB64) { try { iconB64 = await letterTilePng(name, accent()); } catch { /* no icon */ } }
       if (!gate) {
-        const blob = await buildApk({ url, name: name.trim(), iconB64 });
+        // the site tile also becomes the adaptive icon (shrunk into the safe zone over its own corner colour)
+        let layers = {}; try { layers = await adaptiveFromTile(iconB64, accent()); } catch { /* legacy icon only */ }
+        const blob = await buildApk({ url, name: name.trim(), iconB64, fgB64: layers.fg, bg: layers.bg });
         downloadBlob(blob, apkFilename(name));
       }
       setDone(apkFilename(name));

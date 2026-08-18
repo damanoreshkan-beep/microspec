@@ -19,6 +19,7 @@ import { promptHandoff } from "./handoff.js";
 import { Lightbox } from "./lightbox.js";
 import { usePromptHistory, HistorySheet } from "./history.js";
 import { notify, notifyAsk } from "/_rt/notify.js";
+import { holdBackground } from "/_rt/bghold.js";
 
 const JOB_KEY = "ms:imagine:job";   // the run in flight, so a tab that Android discards while we wait picks it back up
 
@@ -72,6 +73,7 @@ export function imagine({ S, toast }) {
   const [suggesting, setSuggesting] = useState(false);                            // "surprise me" prompt is being written by the AI
   const runRef = useRef(0);                                                       // guards against a stale response landing after a new run
   const jobRef = useRef(null);                                                    // the edge job in flight, so Cancel can tell the edge to stop the race
+  const holdRef = useRef(null);                                                   // the foreground-service hold of the run in flight (APK), released on finish/cancel
   const slidesRef = useRef(null);                                                 // the snap scroller, to read which slide is in view
   const islandRef = useRef(null);                                                 // the composer island — MEASURED, so contained pictures sit above it
   const [islandH, setIslandH] = useState(0);
@@ -107,7 +109,9 @@ export function imagine({ S, toast }) {
   // background when the first one does. Shared by generate() and the resume-on-mount below.
   const follow = async (job, run, p, seed, t0) => {
     let got = 0; const mine = [];
-    const finish = () => { if (run === runRef.current) { setMore(false); jobRef.current = null; } try { localStorage.removeItem(JOB_KEY); } catch { /* */ } };
+    const release = holdBackground({ title: T(t, "title"), body: T(t, "eGenerating") });   // keep the process warm in the APK while we poll
+    holdRef.current = release;
+    const finish = () => { release(); if (run === runRef.current) { setMore(false); jobRef.current = null; } try { localStorage.removeItem(JOB_KEY); } catch { /* */ } };
     try {
       for (let i = 0; i < 100; i++) {                                             // ~150s of 1.5s polls
         await sleep(1500);
@@ -143,6 +147,7 @@ export function imagine({ S, toast }) {
     if (!p || phase === "generating") return;
     const seed = randSeed(), run = ++runRef.current;
     setError(null); setElapsed(0); setLive(null); setMore(false);
+    holdRef.current?.(); holdRef.current = null;                                 // a superseded run must not keep the service up
     freeSlides(slides); setSlides([]); setIdx(0); setPhase("generating");
     remember(p);
     if (gate) { await sleep(90); if (run === runRef.current) { setSlides([seed, seed + 1, seed + 2, seed + 3].map((sd) => ({ url: mockArt(sd), w: W, h: H, seed: sd }))); setPhase("done"); } return; }
@@ -181,6 +186,7 @@ export function imagine({ S, toast }) {
   const cancel = () => {
     if (phase !== "generating") return;
     runRef.current++; const job = jobRef.current; jobRef.current = null;
+    holdRef.current?.(); holdRef.current = null;
     setMore(false); setPhase("idle"); try { localStorage.removeItem(JOB_KEY); } catch { /* */ }
     if (job && !gate) fetch(`${VPS_PROXY}/image/cancel`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job }) }).catch(() => {});
   };

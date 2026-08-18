@@ -25,6 +25,7 @@ import { Lightbox } from "./lightbox.js";
 import { usePromptHistory, HistorySheet } from "./history.js";
 import { editHandoff } from "./handoff.js";
 import { notify, notifyAsk } from "/_rt/notify.js";
+import { holdBackground } from "/_rt/bghold.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -96,7 +97,7 @@ export function retouch({ S, toast }) {
   const [hasLast, setHasLast] = useState(false);                                  // an image from Уяви is available
   const [suggesting, setSuggesting] = useState(false);                            // "surprise me" instruction is being written by the AI
 
-  const fileRef = useRef(), videoRef = useRef(), streamRef = useRef(null), runRef = useRef(0), blobs = useRef([]), jobRef = useRef(null);
+  const fileRef = useRef(), videoRef = useRef(), streamRef = useRef(null), runRef = useRef(0), blobs = useRef([]), jobRef = useRef(null), holdRef = useRef(null);
   const [hist, remember] = usePromptHistory("edit");
 
   // Track object URLs we mint so they can be revoked on unmount (avoid leaks across many edits).
@@ -176,6 +177,7 @@ export function retouch({ S, toast }) {
     if (!p || !srcUrl || phase === "editing") return;
     const seed = randSeed(), run = ++runRef.current;
     buzz(); setError(null); setElapsed(0);
+    holdRef.current?.(); holdRef.current = null;
     dropSlides(); setPhase("editing");
     remember(p);
     if (!gate) notifyAsk();
@@ -194,6 +196,7 @@ export function retouch({ S, toast }) {
       const { job } = await cr.json();
       if (!job) return fail(run, "edFailed");
       jobRef.current = job;
+      const release = holdBackground({ title: T(t, "title"), body: T(t, "eEditing") }); holdRef.current = release;   // APK: stay warm while we poll
       const t0 = Date.now(); let got = 0; const mine = [];
       for (let i = 0; i < 100; i++) {                                             // ~150s of 1.5s polls
         await sleep(1500);
@@ -217,16 +220,17 @@ export function retouch({ S, toast }) {
           } catch { /* a variant that failed to transfer is skipped; the rest still land */ }
           got = n + 1;
         }
-        if (j.status === "done" || j.status === "error") { setMore(false); if (!mine.length) fail(run, "edFailed"); return; }
+        if (j.status === "done" || j.status === "error") { release(); setMore(false); if (!mine.length) fail(run, "edFailed"); return; }
       }
-      setMore(false); if (!mine.length) fail(run, "eTimeout");
-    } catch { fail(run, "eNetwork"); }
+      release(); setMore(false); if (!mine.length) fail(run, "eTimeout");
+    } catch { holdRef.current?.(); fail(run, "eNetwork"); }
   };
 
   // Cancel — abandon this run (a stale reply cannot land) and tell the edge, so the worker stops the race.
   const cancel = () => {
     if (phase !== "editing") return;
     runRef.current++; const job = jobRef.current; jobRef.current = null;
+    holdRef.current?.(); holdRef.current = null;
     setMore(false); setPhase("ready");
     if (job && !gate) fetch(`${VPS_PROXY}/image/edit/cancel`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job }) }).catch(() => {});
   };

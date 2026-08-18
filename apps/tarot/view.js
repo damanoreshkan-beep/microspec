@@ -201,10 +201,14 @@ function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
 }
 
 // one card in the fit layout: the art scaled to fit, a tiny position label beneath. Tap opens the sheet.
+// The tile keeps the row's DEFINITE height (h-full) — that is what lets the image's max-h-full resolve when
+// the row is the limit — but centres its content instead of stretching the art box: with flex-1 on the art
+// box the label sat at the bottom of a tall column, a screen away from a width-bound card (the 3-card
+// spreads). Now art + label travel together; the art box only shrinks (min-h-0) when the row is short.
 function FitTile({ d, pos, t, loc, wpct, onOpen }) {
   const c = DECK[d.card];
-  return html`<button data-card class="h-full min-h-0 flex flex-col items-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
-    <div class="min-h-0 flex-1 flex items-center justify-center w-full">
+  return html`<button data-card class="h-full min-h-0 flex flex-col items-center justify-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
+    <div class="min-h-0 flex items-center justify-center w-full">
       <img src=${imgURL(c.img)} alt="" loading="lazy" class=${`max-h-full max-w-full w-auto h-auto object-contain rounded-md sf-e2 ${d.reversed ? "rotate-180" : ""}`} />
     </div>
     <div class="shrink-0 text-[0.5rem] font-mono uppercase tracking-wide text-base-content/50 truncate max-w-full leading-tight">${T(t, pos)}</div>

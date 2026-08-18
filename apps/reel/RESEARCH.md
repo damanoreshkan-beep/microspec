@@ -222,3 +222,31 @@ per clip URL and never rebuilt for a change of `active`, which is the entire poi
 **Not verified here, and only the phone can settle it:** whether three elements is comfortably inside the real
 decoder budget on the target device, and how much of the next clip actually buffers on a cellular connection.
 Both are device/network-dependent and the specs decline to say.
+
+## 6. A site's SESSION — your front page, not the server's (2026-08-18)
+
+**The defect.** The root of a site you are signed in to, pasted as a source, came back as somebody else's front
+page: the VPS is *one anonymous visitor for everyone* — a datacenter IP with one shared `cookieJar` per host
+(`microspec-edge` `core.js`) — and a front page's "recommended" is the visitor's account and history. Nothing
+in the extractor could fix that; the fetch had to carry the client's session. (There is no iframe on the
+client any more — the reverse-proxy view was removed for never rendering through the datacenter IP.)
+
+**Why the cookie goes to the VPS and not around it.** A page fetch straight from the PWA is CORS-blocked (and
+`Referer` is a forbidden header anyway); a shell-side WebView with its own cookie jar would be APK-only and a
+Java change. The one party that already fetches the page is the proxy, and the tunnel already exists.
+
+**The recipe.**
+- **Edge:** `/feed/videos` takes `POST {url, cookie}` beside the keyless `GET ?url=`. `pageHeaders(src, cookie)`
+  — the client cookie wins outright, the shared jar is *not consulted* (mixing would hand one visitor another's
+  tracking cookies) and is *never written*. `cleanCookie` = one header line, CR/LF stripped, 8 KB cap. Core
+  forwards method+body to the `open` process (both inside the tunnel and on the plain route). Unit-tested on
+  `tube.example`; the real host lives in gitignored `core.local_test.js`.
+- **Wire:** reel's fetch is already wrapped by `installSealedFetch`, so the JSON body rides inside the sealed
+  envelope — the cookie is never in a query string, an nginx log line, or TLS metadata. Verified end-to-end
+  through the public URL: plain POST and sealed POST both return the same 22 clips from the probe gallery.
+- **App:** `$sessions` (IndexedDB `reelSessions`, keyed by **registrable domain** so root, dive pages and
+  `www.`/`m.` share one), a key button on *my* site cards only (a preset has no account) → `SessionSheet`
+  (S.screen `"session"`, history-backed) with one field. `loadSource` posts when a session exists, GETs
+  otherwise. Empty save = forget, through the undo snackbar. Nothing site-specific in the public repo: the
+  owner pastes the site's `/recommended`-style page as a source themselves.
+- **Not covered:** `/feed/stream` (the full-clip ladder) still fetches anonymously — the ladder is not personal.

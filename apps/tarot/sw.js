@@ -1,6 +1,6 @@
 self.MS = {
   app: "tarot",
-  version: "93388b2fb2",
+  version: "47dfe11c5f",
   precache: [
     "./",
     "./deck.js",
@@ -18,6 +18,7 @@ self.MS = {
     "/_rt/ai-text.js",
     "/_rt/apk.js",
     "/_rt/auth.js",
+    "/_rt/authwall.js",
     "/_rt/build.js",
     "/_rt/db.js",
     "/_rt/enrich.js",

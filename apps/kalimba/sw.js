@@ -1,6 +1,6 @@
 self.MS = {
   app: "kalimba",
-  version: "ac3f7f78e0",
+  version: "d0dd8642dd",
   precache: [
     "./",
     "./i18n/en.json",
@@ -15,6 +15,7 @@ self.MS = {
     "/_rt/apk.js",
     "/_rt/audio.js",
     "/_rt/auth.js",
+    "/_rt/authwall.js",
     "/_rt/build.js",
     "/_rt/db.js",
     "/_rt/enrich.js",

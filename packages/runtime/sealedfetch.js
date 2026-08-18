@@ -1,6 +1,9 @@
 
 import { VPS_PROXY, SEALED_KEY } from "./feed.js";
 import { seal, openResponse, b64u, unb64u } from "./sealed.js";
+import { authWall } from "./authwall.js";
+
+const sidNow = () => { try { return localStorage.getItem("ms:gh:sid") || ""; } catch { return ""; } };
 
 export async function sealedFrameUrl(url, ref) {
   const { wire } = await seal(SEALED_KEY, { p: "/feed/frame", u: url, r: ref || null });
@@ -34,7 +37,8 @@ export function installSealedFetch(realFetch = globalThis.fetch.bind(globalThis)
       try { body = JSON.parse(init.body); } catch { return realFetch(input, init); }
     }
 
-    const { wire, resKey } = await seal(SEALED_KEY, { p: innerPath(url), m: method, b: body });
+    const sid = sidNow();
+    const { wire, resKey } = await seal(SEALED_KEY, { p: innerPath(url), m: method, b: body, ...(sid ? { s: sid } : {}) });
     
     const r = await realFetch(TUNNEL, {
       method: "POST",
@@ -48,6 +52,8 @@ export function installSealedFetch(realFetch = globalThis.fetch.bind(globalThis)
 
     const out = await openResponse(resKey, new Uint8Array(await r.arrayBuffer()));
     const payload = out.enc === "b64" ? unb64u(out.body) : out.body;
+    
+    if (out.s === 401 && typeof payload === "string" && payload.includes('"sign in"')) authWall.set(authWall.get() + 1);
     return new Response(out.s === 204 || out.s === 304 ? null : payload, {
       status: out.s,
       headers: out.ct ? { "content-type": out.ct } : {},

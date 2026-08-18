@@ -2,6 +2,7 @@ import { Fragment } from "preact";
 import { useRef, useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
+import { authWall } from "./authwall.js";
 import { T, ago, whenLabel, sinceLabel, sys } from "./i18n.js";
 import { buildApk, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
 import { gate } from "./gate.js";
@@ -459,6 +460,28 @@ function PermissionsScreen() {
 
 
 
+
+function SignInScreen() {
+  const loc = useStore(A.S.locale);
+  const [mods, setMods] = useState(null);
+  useEffect(() => {
+    let live = true;
+    Promise.all([import("./signin.js"), import("./auth.js")]).then(([si, au]) => { if (live) setMods({ SignIn: si.SignIn, session: au.session }); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+  useEffect(() => { if (!mods) return; return mods.session.listen((s) => { if (s) A.S.screen.set(null); }); }, [mods]);
+  return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
+    <header class="navbar bg-base-100 sf-e2 sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
+      <button id="signin-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${sys("back", loc)} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
+      <div class="flex-1 font-bold tracking-tight px-1">${sys("signInTitle", loc)}</div>
+    </header>
+    <div data-signin class="px-4 pt-6 pb-8 flex flex-col items-center text-center gap-4 max-w-xl mx-auto">
+      ${Icon("lucide:lock-keyhole", "text-4xl text-primary")}
+      <p class="text-sm text-base-content/75 max-w-xs">${sys("signInBody", loc)}</p>
+      ${mods ? html`<${mods.SignIn} locale=${loc} className="pt-1" />` : null}
+    </div>
+  </div>`;
+}
 
 function ApkScreen() {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
@@ -984,6 +1007,8 @@ function TabView({ tab }) {
 
 export function App() {
   const cur = useStore(A.S.tab), screen = useStore(A.S.screen);
+  
+  useEffect(() => authWall.listen(() => { if (A.S.screen.get() !== "signin") A.S.screen.set("signin"); }), []);
   const tab = A.spec.tabs.find((x) => x.id === cur) || A.spec.tabs[0];
   
   
@@ -1042,6 +1067,7 @@ export function App() {
     ${A.spec.filters ? html`<${FilterSheet} />` : null}
     ${screen === "perms" ? html`<${PermissionsScreen} />` : null}
     ${screen === "apk" ? html`<${ApkScreen} />` : null}
+    ${screen === "signin" ? html`<${SignInScreen} />` : null}
     <${DockFade} />
     <${InstallModal} />
     <${QrModal} />

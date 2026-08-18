@@ -30,6 +30,7 @@
       "label": "profSource",
       "url": "https://open-meteo.com/",
       "icon": "lucide:database"
-    }
+    },
+    "account": "any"
   }
 }

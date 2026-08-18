@@ -12,6 +12,8 @@ export const SYS = {
   deleted: { en: "Deleted", uk: "Видалено" },
   undo: { en: "Undo", uk: "Скасувати" },
   cancel: { en: "Cancel", uk: "Скасувати" },
+  signInTitle: { en: "Sign in", uk: "Увійти" },
+  signInBody: { en: "AI generation is for signed-in users — so the free quota goes to people, not bots.", uk: "AI-генерація доступна після входу — так безкоштовна квота дістається людям, а не ботам." },
   close: { en: "Close", uk: "Закрити" },
   share: { en: "Share app", uk: "Поділитися" },
   shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },

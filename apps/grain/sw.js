@@ -1,6 +1,6 @@
 self.MS = {
   app: "grain",
-  version: "f02298066d",
+  version: "ae9ac52eff",
   precache: [
     "./",
     "./i18n/en.json",
@@ -15,6 +15,7 @@ self.MS = {
     "/_rt/apk.js",
     "/_rt/audio.js",
     "/_rt/auth.js",
+    "/_rt/authwall.js",
     "/_rt/build.js",
     "/_rt/camprime.js",
     "/_rt/db.js",

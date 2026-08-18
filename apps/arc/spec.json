@@ -4,7 +4,9 @@
   "category": "feeds",
   "accent": "#C2703A",
   "localized": true,
-  "fav": { "key": "id" },
+  "fav": {
+    "key": "id"
+  },
   "detail": {
     "image": "cover",
     "imageFit": "contain",
@@ -12,7 +14,11 @@
     "subtitle": "byline",
     "view": "reader",
     "actions": [
-      { "icon": "lucide:external-link", "label": "readOn", "href": "url" }
+      {
+        "icon": "lucide:external-link",
+        "label": "readOn",
+        "href": "url"
+      }
     ]
   },
   "tabs": [
@@ -32,10 +38,27 @@
         "hint": "noResultsHint"
       },
       "sections": [
-        { "filter": "g_ukr", "icon": "lucide:landmark", "label": "shelfUkr", "accent": true },
-        { "filter": "g_canon", "icon": "lucide:globe", "label": "shelfCanon" },
-        { "filter": "g_genre", "icon": "lucide:compass", "label": "shelfGenre" },
-        { "filter": "g_screen", "icon": "lucide:clapperboard", "label": "shelfScreen" }
+        {
+          "filter": "g_ukr",
+          "icon": "lucide:landmark",
+          "label": "shelfUkr",
+          "accent": true
+        },
+        {
+          "filter": "g_canon",
+          "icon": "lucide:globe",
+          "label": "shelfCanon"
+        },
+        {
+          "filter": "g_genre",
+          "icon": "lucide:compass",
+          "label": "shelfGenre"
+        },
+        {
+          "filter": "g_screen",
+          "icon": "lucide:clapperboard",
+          "label": "shelfScreen"
+        }
       ],
       "card": {
         "layout": "gallery",
@@ -86,6 +109,7 @@
       "label": "profSource",
       "url": "https://www.wikipedia.org/",
       "icon": "lucide:database"
-    }
+    },
+    "account": "any"
   }
 }

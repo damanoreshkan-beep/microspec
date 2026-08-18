@@ -1,6 +1,6 @@
 self.MS = {
   app: "transit",
-  version: "09ba6747df",
+  version: "a4a9a74d92",
   precache: [
     "./",
     "./i18n/en.json",
@@ -19,6 +19,7 @@ self.MS = {
     "/_rt/aspects.js",
     "/_rt/astro.js",
     "/_rt/auth.js",
+    "/_rt/authwall.js",
     "/_rt/birth.js",
     "/_rt/build.js",
     "/_rt/db.js",

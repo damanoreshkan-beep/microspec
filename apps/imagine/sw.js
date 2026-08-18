@@ -1,8 +1,9 @@
 self.MS = {
   app: "imagine",
-  version: "e84406f941",
+  version: "c4b9ab91eb",
   precache: [
     "./",
+    "./describe.js",
     "./edit.js",
     "./i18n/en.json",
     "./i18n/uk.json",

@@ -34,7 +34,7 @@ function mockArt(seed) {
   return "data:image/svg+xml," + encodeURIComponent(svg);
 }
 
-function toEditableDataURL(url) {
+export function toEditableDataURL(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {

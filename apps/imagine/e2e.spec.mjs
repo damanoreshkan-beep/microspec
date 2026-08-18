@@ -74,6 +74,28 @@ export default [
     },
   },
   {
+    name: "читання: фото на сцені, текст, теги, копіювати / спитати ще", run: async (h) => {
+      await h.click('[data-tab="read"]'); await h.wait(400);
+      h.expect((await h.count("[data-result]")) === 1, "немає зображення на сцені читання");
+      h.expect((await h.count("[data-text]")) === 1, "немає прочитаного тексту");
+      h.expect((await h.count("[data-tags] .badge")) >= 3, "немає тегів під текстом");
+      h.expect((await h.count("[data-copy]")) === 1, "немає кнопки копіювання");
+      h.expect((await h.count("[data-ask]")) === 1, "немає кнопки «спитати ще»");
+    },
+  },
+  {
+    name: "спитати ще → питання → відповідь (гейт: без мережі)", run: async (h) => {
+      await h.click('[data-tab="read"]'); await h.wait(400);
+      await h.click("[data-ask]"); await h.wait(200);
+      h.expect((await h.count("#question")) === 1, "немає поля питання після «спитати ще»");
+      await h.type("#question", "яка пора доби?");
+      await h.click("[data-read-go]");
+      let ok = false;
+      for (let i = 0; i < 15; i++) { if ((await h.count("[data-text]")) === 1) { ok = true; break; } await h.wait(200); }
+      h.expect(ok, "відповідь не з'явилась");
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="make"]'); await h.wait(150);
       await h.click('[data-tab="me"]'); await h.wait(150);

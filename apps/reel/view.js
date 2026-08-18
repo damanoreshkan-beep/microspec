@@ -677,6 +677,9 @@ function SessionSheet({ S, t, undo }) {
   const site = useStore($sessSite), sessions = useStore($sessions);
   const cur = sessions[sessionKey(site)] || "";
   const [val, setVal] = useState(cur);
+  // The saved line arrives from the atom (IndexedDB behind it), not from this render: seed once and the field
+  // stays empty while the fetch happily uses the session — the owner saw exactly that. Follow the atom.
+  useEffect(() => { setVal(cur); }, [cur, site]);
   const close = () => S.screen.set(null);
   const save = (e) => { e?.preventDefault?.(); const next = val.trim(); if (!next) return; setSession(site, next); close(); };
   const forget = () => { undo(() => setSession(site, cur), siteName(site)); setSession(site, ""); close(); };

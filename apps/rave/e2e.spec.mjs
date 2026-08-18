@@ -77,16 +77,21 @@ export default [
     },
   },
   {
+    // No fixed sleeps here: the pads tab mounts a 22×16 matrix plus the transport, and under CI load 200ms
+    // was sometimes not enough for [data-settings] to exist — the tap landed on nothing and "sheet не
+    // відкрився" flaked (2026-08-18, twice on farm-wide runs). Wait for the element, then for the state.
     name: "налаштування: sheet, Back закриває", run: async (h) => {
-      await h.click('[data-tab="pads"]'); await h.wait(200);
-      await h.tap("[data-settings]"); await h.wait(200);
-      h.expect((await h.prop("#fxsheet", "open")) === true, "sheet не відкрився");
+      const until = async (cond, ms = 4000) => { for (let i = 0; i < ms / 100; i++) { if (await cond()) return true; await h.wait(100); } return cond(); };
+      await h.click('[data-tab="pads"]');
+      h.expect(await until(async () => (await h.count("[data-settings]")) === 1), "кнопка налаштувань не змонтувалась");
+      await h.tap("[data-settings]");
+      h.expect(await until(async () => (await h.prop("#fxsheet", "open")) === true), "sheet не відкрився");
       h.expect((await h.count("[data-fx]")) === 6, "немає 6 FX-повзунків");
       h.expect((await h.count("[data-pack]")) === 11, "немає 10 пакетів + синтез");
       await h.tap('[data-pack="R8"]'); await h.wait(150);
       h.expect((await h.attr('[data-pack="R8"]', "aria-pressed")) === "true", "пакет не обрався");
-      await h.back(); await h.wait(200);
-      h.expect((await h.prop("#fxsheet", "open")) !== true, "Back не закрив sheet");
+      await h.back();
+      h.expect(await until(async () => (await h.prop("#fxsheet", "open")) !== true), "Back не закрив sheet");
     },
   },
   {

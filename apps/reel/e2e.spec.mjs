@@ -170,6 +170,8 @@ export default [
       h.expect((await h.count('[data-session][aria-pressed="true"]')) === 0, "сесія позначена до збереження");
       await h.tap("[data-session]"); await h.wait(300);
       h.expect((await h.count("#sess-input")) === 1, "шит сесії не відкрився");
+      h.expect((await h.count("[data-sess-forget]")) === 0, "«Забути» показано, хоча сесії ще нема");
+      h.expect((await h.prop("#sess-save", "disabled")) === true, "«Зберегти» активна на порожньому полі");
       await h.back(); await h.wait(300);
       h.expect((await h.count("#sess-input")) === 0, "Back не закрив шит сесії");
       await h.tap("[data-session]"); await h.wait(300);
@@ -179,9 +181,10 @@ export default [
       h.expect((await h.count('[data-session][aria-pressed="true"]')) === 1, "збережена сесія не позначила ключ");
       await h.tap("[data-session]"); await h.wait(300);
       h.expect((await h.prop("#sess-input", "value")) === "il=abc; ss=def", "шит не показав збережену сесію");
-      await h.type("#sess-input", ""); await h.wait(150);
-      await h.tap("#sess-save"); await h.wait(400);
-      h.expect((await h.count('[data-session][aria-pressed="true"]')) === 0, "порожнє збереження не забуло сесію");
+      h.expect((await h.count("[data-sess-forget]")) === 1, "«Забути» не показано для збереженої сесії");
+      await h.tap("[data-sess-forget]"); await h.wait(400);
+      h.expect((await h.count("#sess-input")) === 0, "«Забути» не закрило шит");
+      h.expect((await h.count('[data-session][aria-pressed="true"]')) === 0, "«Забути» не зняло позначку з ключа");
     },
   },
   {

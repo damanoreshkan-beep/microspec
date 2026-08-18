@@ -55,5 +55,10 @@
   "copied": "Скопійовано",
   "dsPrimeReason": "Наведи камеру — і дізнайся, що перед тобою.",
   "dsFailed": "Не вдалося прочитати",
-  "toMake": "Використати в Твори"
+  "toMake": "Використати в Твори",
+  "aspect": "Пропорції",
+  "aspect_screen": "Екран",
+  "aspect_square": "Квадрат",
+  "aspect_portrait": "Портрет",
+  "aspect_landscape": "Пейзаж"
 }

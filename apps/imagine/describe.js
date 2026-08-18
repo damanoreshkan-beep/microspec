@@ -21,6 +21,7 @@ import { readLastGen } from "/_rt/lastgen.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { toEditableDataURL } from "./edit.js";
 import { promptHandoff } from "./handoff.js";
+import { usePromptHistory, HistorySheet } from "./history.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -48,7 +49,7 @@ function mockArt(seed) {
 }
 
 export function describe({ S, toast }) {
-  const t = useStore(S.t), loc = useStore(S.locale);
+  const t = useStore(S.t), loc = useStore(S.locale), screen = useStore(S.screen);
   // phase: empty (source chooser) · camera (viewfinder) · ready (image + question) · reading · done · error
   const [phase, setPhase] = useState(gate ? "done" : "empty");
   const [srcUrl, setSrcUrl] = useState(gate ? mockArt(5) : null);
@@ -59,6 +60,7 @@ export function describe({ S, toast }) {
   const [camErr, setCamErr] = useState(null);
   const [hasLast, setHasLast] = useState(false);
   const fileRef = useRef(), videoRef = useRef(), streamRef = useRef(null), runRef = useRef(0), blobs = useRef([]);
+  const [hist, remember] = usePromptHistory("read");
 
   const own = (url) => { if (url?.startsWith?.("blob:")) blobs.current.push(url); return url; };
   useEffect(() => () => { blobs.current.forEach((u) => { try { URL.revokeObjectURL(u); } catch { /* */ } }); }, []);
@@ -95,6 +97,7 @@ export function describe({ S, toast }) {
     if (!srcUrl || phase === "reading") return;
     const run = ++runRef.current, q = question.trim();
     buzz(); setError(null); setText(""); setPhase("reading");
+    if (q) remember(q);
     if (gate) { await sleep(120); if (run === runRef.current) { setText(q ? `${gateText.split("\n")[0]}` : gateText); setPhase("done"); } return; }
     let image;
     try { image = await toEditableDataURL(srcUrl); } catch { return fail(run, "dsFailed"); }
@@ -123,6 +126,7 @@ export function describe({ S, toast }) {
   const showStage = phase === "ready" || phase === "reading" || phase === "done" || phase === "error";
 
   return html`<div class="ms-stage z-20 bg-base-100 flex flex-col">
+    <${HistorySheet} id="hist-read" open=${screen === "hist"} onClose=${() => S.screen.set(null)} items=${hist} onPick=${setQuestion} t=${t} locale=${loc} />
     <input ref=${fileRef} type="file" accept="image/*" class="hidden" aria-hidden="true" onChange=${onFile} />
 
     <div class=${`relative flex-1 min-h-0 overflow-hidden flex items-center justify-center ${phase === "empty" ? "bg-base-100" : "bg-black"}`}>
@@ -171,7 +175,10 @@ export function describe({ S, toast }) {
     </div>` : null}
 
     ${phase === "ready" || phase === "error" ? html`<div class="shrink-0 bg-base-100 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
-      <textarea id="question" rows="2" aria-label=${T(t, "dsPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug" placeholder=${T(t, "dsPlaceholder")} value=${question} onInput=${(e) => setQuestion(e.target.value)} onKeyDown=${onKey}></textarea>
+      <div class="relative">
+        <textarea id="question" rows="2" aria-label=${T(t, "dsPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "dsPlaceholder")} value=${question} onInput=${(e) => setQuestion(e.target.value)} onKeyDown=${onKey}></textarea>
+        <button data-history aria-label=${T(t, "history")} onClick=${() => S.screen.set("hist")} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-base-content/70">${Icon("lucide:history", "text-lg")}</button>
+      </div>
       <div class="flex gap-2">
         <button data-new class="btn btn-ghost rounded-2xl gap-2 shrink-0" aria-label=${T(t, "newImg")} onClick=${backToChooser}>${Icon("lucide:image", "text-lg")}</button>
         <button data-read-go class="btn btn-primary flex-1 rounded-2xl gap-2" onClick=${read}>${Icon("lucide:scan-eye", "text-lg")}${T(t, question.trim() ? "answer" : phase === "error" ? "dsAgain" : "readBtn")}</button>

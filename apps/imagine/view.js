@@ -17,6 +17,7 @@ import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
 import { promptHandoff } from "./handoff.js";
 import { Lightbox } from "./lightbox.js";
+import { usePromptHistory, HistorySheet } from "./history.js";
 import { notify, notifyAsk } from "/_rt/notify.js";
 
 const JOB_KEY = "ms:imagine:job";   // the run in flight, so a tab that Android discards while we wait picks it back up
@@ -86,6 +87,7 @@ export function imagine({ S, toast }) {
 
   const est = EST[quality];                                                       // approximate wall-clock, for the progress bar
   const cur = slides[idx] || slides[0] || null;
+  const [hist, remember] = usePromptHistory("make");
 
   const fail = (run, key) => { if (run === runRef.current) { setError(key); setPhase("error"); } };
 
@@ -142,6 +144,7 @@ export function imagine({ S, toast }) {
     const seed = randSeed(), run = ++runRef.current;
     setError(null); setElapsed(0); setLive(null); setMore(false);
     freeSlides(slides); setSlides([]); setIdx(0); setPhase("generating");
+    remember(p);
     if (gate) { await sleep(90); if (run === runRef.current) { setSlides([seed, seed + 1, seed + 2, seed + 3].map((sd) => ({ url: mockArt(sd), w: W, h: H, seed: sd }))); setPhase("done"); } return; }
     notifyAsk();                                                                  // on the gesture: "we'll tell you when it's done" — asked once
     let pEn = p; try { pEn = await toEnglish(p); } catch { /* fail-open: send the original — the models prefer English but a native prompt still runs */ }
@@ -212,6 +215,7 @@ export function imagine({ S, toast }) {
   // Full-bleed stage: the pictures (or the living dust while they form) ARE the screen; the composer floats over.
   return html`<div class="ms-stage relative overflow-hidden bg-black">
     <${Lightbox} open=${screen === "view" && !!cur} src=${cur?.url} alt=${prompt} onClose=${() => S.screen.set(null)} />
+    <${HistorySheet} id="hist-make" open=${screen === "hist"} onClose=${() => S.screen.set(null)} items=${hist} onPick=${setPrompt} t=${t} locale=${loc} />
     <div class="absolute inset-0">
       ${phase === "done" && slides.length
         ? html`<div ref=${slidesRef} data-slides tabindex="0" role="region" aria-label=${T(t, "slides")} class="absolute inset-0 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory outline-none" style="scrollbar-width:none" onScroll=${onSlidesScroll}>
@@ -241,7 +245,8 @@ export function imagine({ S, toast }) {
 
       <div ref=${islandRef} class="sf-raised rounded-t-3xl bg-base-100 px-3 pt-3 flex flex-col gap-2.5 max-w-xl w-full mx-auto pointer-events-auto" style="padding-bottom:max(0.85rem,env(safe-area-inset-bottom))">
         <div class="relative">
-          <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12 bg-base-200" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
+          <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-[5.25rem] bg-base-200" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
+          <button data-history aria-label=${T(t, "history")} onClick=${() => S.screen.set("hist")} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-10 text-base-content/70">${Icon("lucide:history", "text-lg")}</button>
           <button data-dream aria-label=${T(t, "dream")} disabled=${suggesting || phase === "generating"} onClick=${dream} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
         </div>
         <div data-aspects role="tablist" aria-label=${T(t, "aspect")} class="flex gap-1 p-1 rounded-2xl bg-base-300/70">

@@ -79,6 +79,24 @@ export default [
     },
   },
   {
+    // The history sheet is a kit Sheet (children stay mounted while closed), so the assertion is the dialog's
+    // own `open`, never a count. Runs after a generation, so the list carries what was typed.
+    name: "історія промптів: іконка → sheet, тап підставляє, Back закриває", run: async (h) => {
+      await ready(h);
+      await h.type("#prompt", "a lighthouse in a storm"); await h.click("[data-go]"); await h.wait(500);
+      await h.type("#prompt", ""); await h.wait(80);
+      await h.click("[data-history]"); await h.wait(250);
+      h.expect((await h.prop("#hist-make", "open")) === true, "sheet історії не відкрився");
+      h.expect((await h.count("#hist-make [data-hist-item]")) >= 1, "історія порожня після генерації");
+      await h.click('#hist-make [data-hist-item="0"]'); await h.wait(250);
+      h.expect((await h.prop("#hist-make", "open")) !== true, "sheet не закрився після вибору");
+      h.expect(/lighthouse/.test(await h.prop("#prompt", "value")), "вибраний рядок не потрапив у поле");
+      await h.click("[data-history]"); await h.wait(250);
+      await h.back(); await h.wait(300);
+      h.expect((await h.prop("#hist-make", "open")) !== true, "Back не закрив sheet історії");
+    },
+  },
+  {
     name: "порожній опис не запускає генерацію", run: async (h) => {
       await ready(h);
       await h.type("#prompt", "");

@@ -22,6 +22,7 @@ import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
 import { Lightbox } from "./lightbox.js";
+import { usePromptHistory, HistorySheet } from "./history.js";
 import { notify, notifyAsk } from "/_rt/notify.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -95,6 +96,7 @@ export function retouch({ S, toast }) {
   const [suggesting, setSuggesting] = useState(false);                            // "surprise me" instruction is being written by the AI
 
   const fileRef = useRef(), videoRef = useRef(), streamRef = useRef(null), runRef = useRef(0), blobs = useRef([]), jobRef = useRef(null);
+  const [hist, remember] = usePromptHistory("edit");
 
   // Track object URLs we mint so they can be revoked on unmount (avoid leaks across many edits).
   const own = (url) => { if (url?.startsWith?.("blob:")) blobs.current.push(url); return url; };
@@ -169,6 +171,7 @@ export function retouch({ S, toast }) {
     const seed = randSeed(), run = ++runRef.current;
     buzz(); setError(null); setElapsed(0);
     dropSlides(); setPhase("editing");
+    remember(p);
     if (!gate) notifyAsk();
     if (gate) { await sleep(120); if (run === runRef.current) { setSlides([0, 1, 2, 3].map((n) => ({ url: mockArt(seed + n) }))); setPhase("done"); } return; }
     let image;
@@ -241,6 +244,7 @@ export function retouch({ S, toast }) {
 
   return html`<div class="ms-stage z-20 bg-base-100 flex flex-col">
     <${Lightbox} open=${screen === "view" && !!(isDone ? cur?.url : srcUrl)} src=${isDone ? cur?.url : srcUrl} alt=${prompt} onClose=${() => S.screen.set(null)} />
+    <${HistorySheet} id="hist-edit" open=${screen === "hist"} onClose=${() => S.screen.set(null)} items=${hist} onPick=${setPrompt} t=${t} locale=${loc} />
     <input ref=${fileRef} type="file" accept="image/*" class="hidden" aria-hidden="true" onChange=${onFile} />
 
     <!-- ── the image stage (contain, so an editor never crops what you're working on) ── -->
@@ -301,7 +305,8 @@ export function retouch({ S, toast }) {
          and never needed a hairline on top of it (the neumorphic material makes one read as a sticker seam). */""}
     ${phase === "ready" || phase === "editing" || phase === "error" ? html`<div class="shrink-0 bg-base-100 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
       <div class="relative">
-        <textarea id="prompt" rows="2" aria-label=${T(t, "edPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "edPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
+        <textarea id="prompt" rows="2" aria-label=${T(t, "edPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-[5.25rem]" placeholder=${T(t, "edPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
+        <button data-history aria-label=${T(t, "history")} onClick=${() => S.screen.set("hist")} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-10 text-base-content/70">${Icon("lucide:history", "text-lg")}</button>
         <button data-dream aria-label=${T(t, "edDream")} disabled=${suggesting || phase === "editing"} onClick=${() => { buzz(); dream(); }} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
       </div>
       <div class="flex gap-2">

@@ -54,7 +54,7 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   useEffect(() => { warm(drawn.map(meaningOf), loc); }, [seed, loc]);
   useEffect(() => {
     if (gate || isDaily) return;
-    const cards = document.querySelectorAll("[data-reading] [data-card]");
+    const cards = document.querySelectorAll("[data-reading] [data-tile]");
     if (!cards.length) return;
     const a = animate([...cards], { opacity: [0, 1], y: [16, 0] }, { delay: stagger(0.045), duration: 0.4, ease: "easeOut" });
     return () => a.stop?.();
@@ -169,9 +169,12 @@ function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
 
 
 
+
+
+
 function FitTile({ d, pos, t, loc, wpct, onOpen }) {
   const c = DECK[d.card];
-  return html`<button data-card class="h-full min-h-0 flex flex-col items-center justify-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
+  return html`<button data-tile class="h-full min-h-0 flex flex-col items-center justify-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
     <div class="min-h-0 flex items-center justify-center w-full">
       <img src=${imgURL(c.img)} alt="" loading="lazy" class=${`max-h-full max-w-full w-auto h-auto object-contain rounded-md sf-e2 ${d.reversed ? "rotate-180" : ""}`} />
     </div>
@@ -309,7 +312,7 @@ function Solo({ d, pos, t, loc, onOpen }) {
   const c = DECK[d.card];
   return html`<div data-reading class="flex flex-col items-center gap-4">
     <div class="text-[0.6rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${T(t, pos)}</div>
-    <button data-card class="w-[62%] max-w-[11rem] active:scale-[.99] transition" onClick=${onOpen}>
+    <button data-tile class="w-[62%] max-w-[11rem] active:scale-[.99] transition" onClick=${onOpen}>
       <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-full aspect-[350/600] object-cover rounded-xl sf-e3 ${d.reversed ? "rotate-180" : ""}`} />
     </button>
     <div class="text-center">

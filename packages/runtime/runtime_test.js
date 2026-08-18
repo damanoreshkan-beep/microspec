@@ -79,6 +79,7 @@ import "./tests/sw_test.js";
 import "./tests/synastry_test.js";
 import "./tests/tarot_test.js";
 import "./tests/theme_test.js";
+import "./tests/tide_test.js";
 import "./tests/tile_test.js";
 import "./tests/trace_test.js";
 import "./tests/transport_test.js";

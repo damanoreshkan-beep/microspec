@@ -1,5 +1,5 @@
 import { html } from "htm/preact";
-import { useState, useRef } from "preact/hooks";
+import { useState, useRef, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
@@ -9,6 +9,7 @@ import { writeLastGen } from "/_rt/lastgen.js";
 import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
+import { promptHandoff } from "./handoff.js";
 
 export { retouch } from "./edit.js";
 export { describe } from "./describe.js";   
@@ -46,6 +47,9 @@ export function imagine({ S, toast }) {
   const [quality, setQuality] = useState("fast");                                 
   const [suggesting, setSuggesting] = useState(false);                            
   const runRef = useRef(0);                                                       
+
+  const handed = useStore(promptHandoff);
+  useEffect(() => { if (handed) { setPrompt(handed); promptHandoff.set(null); } }, [handed]);
 
   const est = EST[quality];                                                       
 

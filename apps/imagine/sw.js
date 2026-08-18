@@ -1,10 +1,11 @@
 self.MS = {
   app: "imagine",
-  version: "c4b9ab91eb",
+  version: "b91b8864ba",
   precache: [
     "./",
     "./describe.js",
     "./edit.js",
+    "./handoff.js",
     "./i18n/en.json",
     "./i18n/uk.json",
     "./icon.svg",

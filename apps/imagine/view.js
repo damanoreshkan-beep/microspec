@@ -67,6 +67,13 @@ export function imagine({ S, toast }) {
   const [suggesting, setSuggesting] = useState(false);                            // "surprise me" prompt is being written by the AI
   const runRef = useRef(0);                                                       // guards against a stale response landing after a new run
   const slidesRef = useRef(null);                                                 // the snap scroller, to read which slide is in view
+  const islandRef = useRef(null);                                                 // the composer island — MEASURED, so contained pictures sit above it
+  const [islandH, setIslandH] = useState(0);
+  useEffect(() => {
+    const el = islandRef.current; if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setIslandH(el.getBoundingClientRect().height)); ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // A description handed over from Опиши becomes the prompt (and is consumed, so it lands exactly once).
   const handed = useStore(promptHandoff);
@@ -157,14 +164,17 @@ export function imagine({ S, toast }) {
     class=${`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-1.5 text-[0.8rem] font-medium transition-colors ${quality === id ? "bg-primary text-primary-content shadow" : "text-muted"}`}>${Icon(icon, "text-base")}${label}</button>`;
   const asp = (id, icon) => html`<button type="button" role="tab" data-aspect=${id} aria-selected=${aspect === id} aria-label=${T(t, "aspect_" + id)} onClick=${() => setAspect(id)}
     class=${`flex-1 flex items-center justify-center rounded-xl py-1.5 transition-colors ${aspect === id ? "bg-primary text-primary-content shadow" : "text-muted"}`}>${Icon(icon, "text-lg")}</button>`;
+  // "screen" fills the stage edge to edge (the island floats over a wallpaper preview); every other shape is
+  // CONTAINED in the part of the stage the island leaves free — the measured island height, never a guess.
   const fit = aspect === "screen" ? "object-cover" : "object-contain";
+  const slideStyle = aspect === "screen" ? "" : `padding-bottom:${Math.round(islandH)}px`;
 
   // Full-bleed stage: the pictures (or the living dust while they form) ARE the screen; the composer floats over.
   return html`<div class="ms-stage relative overflow-hidden bg-black">
     <div class="absolute inset-0">
       ${phase === "done" && slides.length
         ? html`<div ref=${slidesRef} data-slides tabindex="0" role="region" aria-label=${T(t, "slides")} class="absolute inset-0 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory outline-none" style="scrollbar-width:none" onScroll=${onSlidesScroll}>
-            ${slides.map((s, i) => html`<div key=${s.url} class="w-full h-full shrink-0 snap-center bg-black"><img data-result data-slide=${i} src=${s.url} alt=${prompt} class=${`w-full h-full ${fit}`} loading=${i > 1 ? "lazy" : "eager"} /></div>`)}
+            ${slides.map((s, i) => html`<div key=${s.url} class="w-full h-full shrink-0 snap-center bg-black" style=${slideStyle}><img data-result data-slide=${i} src=${s.url} alt=${prompt} class=${`w-full h-full ${fit}`} loading=${i > 1 ? "lazy" : "eager"} /></div>`)}
           </div>`
         : html`<${Dust} active=${phase === "generating"} progress=${genProgress} />`}
       ${/* a scrim so the glass island and any status stay legible over a bright picture or the dust */""}
@@ -188,7 +198,7 @@ export function imagine({ S, toast }) {
         ${more ? html`<span class="w-1.5 h-1.5 rounded-full bg-white/45 animate-pulse"></span>` : null}
       </div>` : null}
 
-      <div class="sf-raised rounded-t-3xl bg-base-100 px-3 pt-3 flex flex-col gap-2.5 max-w-xl w-full mx-auto pointer-events-auto" style="padding-bottom:max(0.85rem,env(safe-area-inset-bottom))">
+      <div ref=${islandRef} class="sf-raised rounded-t-3xl bg-base-100 px-3 pt-3 flex flex-col gap-2.5 max-w-xl w-full mx-auto pointer-events-auto" style="padding-bottom:max(0.85rem,env(safe-area-inset-bottom))">
         <div class="relative">
           <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12 bg-base-200" placeholder=${T(t, "promptPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
           <button data-dream aria-label=${T(t, "dream")} disabled=${suggesting || phase === "generating"} onClick=${dream} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>

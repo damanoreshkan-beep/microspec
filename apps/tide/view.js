@@ -210,7 +210,7 @@ export function tide({ S }) {
         <${Transport} locale=${loc} playing=${playing} onToggle=${toggle} onPrev=${() => skip(-1)} onNext=${() => skip(1)}
           title=${station.name}
           subtitle=${html`<span class="inline-flex items-center gap-1.5"><span class="inline-block w-1.5 h-1.5 rounded-full shrink-0" style=${`background:hsl(${cat.hue} 60% 58%)`}></span>${T(t, cat.key)} · ${T(t, station.genre)}</span>`}
-          actions=${[{ id: "stations", icon: "lucide:list-music", label: T(t, "aStations"), onClick: () => S.screen.set("stations"), attr: { "data-stations": "" } }]} />
+          actions=${[{ id: "list", icon: "lucide:list-music", label: T(t, "aStations"), onClick: () => S.screen.set("stations"), attr: { "data-stations": "" } }]} />
       </${Island}>
     </div>
 

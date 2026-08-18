@@ -193,6 +193,32 @@ export default [
     },
   },
   {
+    /* Сесія сайту: ключ на картці МОГО сайту відкриває шит з одним полем (Cookie сайту) — history-backed, Back
+       закриває. Збережена сесія позначає ключ (aria-pressed), порожнє збереження = «забути». Пресети (Discover)
+       ключа не мають — у чужого каналу нема твого акаунта. Мережі під гейтом немає, тож сам POST з кукі до
+       /feed/videos доводиться unit-тестом на edge (pageHeaders/videosBody), а тут — тільки стан і маршрут. */
+    name: "сесія сайту: ключ на картці → шит (Back закриває) → збережено → позначено → забути", run: async (h) => {
+      await ready(h);
+      await h.tap('[data-tab="sources"]'); await h.wait(300);
+      h.expect((await h.count("[data-session]")) === 1, `ключ сесії має бути рівно на одній картці (мої сайти), є ${await h.count("[data-session]")}`);
+      h.expect((await h.count('[data-session][aria-pressed="true"]')) === 0, "сесія позначена до збереження");
+      await h.tap("[data-session]"); await h.wait(300);
+      h.expect((await h.count("#sess-input")) === 1, "шит сесії не відкрився");
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("#sess-input")) === 0, "Back не закрив шит сесії");
+      await h.tap("[data-session]"); await h.wait(300);
+      await h.type("#sess-input", "il=abc; ss=def"); await h.wait(150);
+      await h.tap("#sess-save"); await h.wait(400);
+      h.expect((await h.count("#sess-input")) === 0, "збереження не закрило шит");
+      h.expect((await h.count('[data-session][aria-pressed="true"]')) === 1, "збережена сесія не позначила ключ");
+      await h.tap("[data-session]"); await h.wait(300);
+      h.expect((await h.prop("#sess-input", "value")) === "il=abc; ss=def", "шит не показав збережену сесію");
+      await h.type("#sess-input", ""); await h.wait(150);
+      await h.tap("#sess-save"); await h.wait(400);
+      h.expect((await h.count('[data-session][aria-pressed="true"]')) === 0, "порожнє збереження не забуло сесію");
+    },
+  },
+  {
     name: "лайки: тайл відкриває стрічку ПРЯМО в табі лайків, системний Back повертає сітку", run: async (h) => {
       await ready(h);
       await h.tap('[data-tab="liked"]'); await h.wait(400);

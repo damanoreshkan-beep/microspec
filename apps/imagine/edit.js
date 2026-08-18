@@ -12,6 +12,7 @@ import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
 import { Lightbox } from "./lightbox.js";
 import { usePromptHistory, HistorySheet } from "./history.js";
+import { editHandoff } from "./handoff.js";
 import { notify, notifyAsk } from "/_rt/notify.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -130,6 +131,9 @@ export function retouch({ S, toast }) {
   const backToChooser = () => { stopCam(); setEnabled(false); setCamErr(null); setPhase("empty"); if (!gate) readLastGen().then((v) => setHasLast(!!v)).catch(() => {}); };
 
   const fail = (run, key) => { if (run === runRef.current) { setError(key); setPhase("error"); } };
+
+  const handed = useStore(editHandoff);
+  useEffect(() => { if (handed?.url) { stopCam(); setEnabled(false); loadSource(handed.url); setPrompt(handed.prompt || ""); editHandoff.set(null); } }, [handed]);
 
   const dream = async () => {
     if (suggesting || phase === "editing") return;

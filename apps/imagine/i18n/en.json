@@ -65,5 +65,6 @@
   "notifDone": "Your image is ready",
   "notifEditDone": "Your edit is ready",
   "history": "History",
-  "historyEmpty": "Your prompts will show up here"
+  "historyEmpty": "Your prompts will show up here",
+  "toEdit": "Use in Edit"
 }

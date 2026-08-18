@@ -9,7 +9,7 @@ import { CameraPrime } from "/_rt/camprime.js";
 import { readLastGen } from "/_rt/lastgen.js";
 import { Scramble } from "/_rt/skeleton.js";
 import { toEditableDataURL } from "./edit.js";
-import { promptHandoff } from "./handoff.js";
+import { promptHandoff, editHandoff } from "./handoff.js";
 import { usePromptHistory, HistorySheet } from "./history.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -102,6 +102,7 @@ export function describe({ S, toast }) {
 
   const copy = async () => { try { await navigator.clipboard.writeText(text); toast?.(T(t, "copied")); } catch { toast?.(T(t, "eNetwork")); } };
   const toMake = () => { buzz(); promptHandoff.set(text.replace(/\s*\n+\s*/g, ". ").replace(/\.\s*\./g, ".").trim()); S.tab.set("make"); };
+  const toEdit = () => { buzz(); editHandoff.set({ url: srcUrl, prompt: text.replace(/\s*\n+\s*/g, ". ").replace(/\.\s*\./g, ".").trim() }); S.tab.set("edit"); };
   const askAgain = () => { buzz(); setText(""); setError(null); setPhase("ready"); };
   const onKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); read(); } };
 
@@ -148,9 +149,12 @@ export function describe({ S, toast }) {
           <p data-text class="text-[0.95rem] leading-relaxed whitespace-pre-line text-base-content/90">${body}</p>
           ${tags.length ? html`<div data-tags class="flex flex-wrap gap-1.5">${tags.map((tg) => html`<span key=${tg} class="badge badge-ghost rounded-lg font-mono text-[0.68rem] uppercase tracking-wide">${tg}</span>`)}</div>` : null}
           <div class="flex gap-2 pt-1">
-            <button data-to-make class="btn btn-primary flex-1 rounded-2xl gap-2" onClick=${toMake}>${Icon("lucide:sparkles", "text-lg")}${T(t, "toMake")}</button>
-            <button data-copy aria-label=${T(t, "copy")} class="btn btn-outline rounded-2xl gap-2 shrink-0" onClick=${copy}>${Icon("lucide:copy", "text-lg")}</button>
-            <button data-ask aria-label=${T(t, "askMore")} class="btn btn-outline rounded-2xl gap-2 shrink-0" onClick=${askAgain}>${Icon("lucide:message-circle-question", "text-lg")}</button>
+            <button data-to-make class="btn btn-primary flex-1 min-w-0 rounded-2xl gap-2" onClick=${toMake}>${Icon("lucide:sparkles", "text-lg shrink-0")}<span class="truncate">${T(t, "toMake")}</span></button>
+            <button data-to-edit class="btn btn-outline flex-1 min-w-0 rounded-2xl gap-2" onClick=${toEdit}>${Icon("lucide:wand-sparkles", "text-lg shrink-0")}<span class="truncate">${T(t, "toEdit")}</span></button>
+          </div>
+          <div class="flex justify-center gap-2">
+            <button data-copy aria-label=${T(t, "copy")} class="btn btn-ghost btn-sm rounded-2xl gap-2" onClick=${copy}>${Icon("lucide:copy", "text-base")}${T(t, "copy")}</button>
+            <button data-ask aria-label=${T(t, "askMore")} class="btn btn-ghost btn-sm rounded-2xl gap-2" onClick=${askAgain}>${Icon("lucide:message-circle-question", "text-base")}${T(t, "askMore")}</button>
           </div>
         </${Fragment}>`}
     </div>` : null}

@@ -250,3 +250,11 @@ Java change. The one party that already fetches the page is the proxy, and the t
   otherwise. Empty save = forget, through the undo snackbar. Nothing site-specific in the public repo: the
   owner pastes the site's `/recommended`-style page as a source themselves.
 - **Not covered:** `/feed/stream` (the full-clip ladder) still fetches anonymously — the ladder is not personal.
+- **Two ways the session still failed to arrive (2026-08-18, evening).** (1) Deno's `fetch(redirect:"follow")`
+  drops `Cookie` on any **cross-origin** hop (measured on 2.9: httpbin → httpbin keeps it, httpbin →
+  postman-echo loses it), and a bare `site.com` root answers `301 → www.site.com` — so the pasted session
+  never reached the page and the owner saw the server's anonymous front page again. Edge `fetchPage` now
+  follows redirects by hand, re-stating the cookie while a hop stays inside one registrable domain (a browser
+  sends a domain cookie to every host of the site), dropping it off-site, and `safeUrl`-checking every hop.
+  (2) The boot fetch fired from the first mount before IndexedDB had answered, so every **cold start** loaded
+  the site anonymously; `loadSource` now awaits `sessionsReady` before reading the cookie.

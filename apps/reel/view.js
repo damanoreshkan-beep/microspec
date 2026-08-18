@@ -180,7 +180,12 @@ function renameSub(url, title) {
 // root, a dive page and a www./m. host all share one session. IndexedDB, mirrored into an atom for the views.
 const sessDB = collection("reelSessions");
 const $sessions = atom({});                                 // domain → Cookie header value
-if (idbSupported && !gate) sessDB.all().then((rows) => $sessions.set(Object.fromEntries(rows.map((r) => [r.id, r.cookie])))).catch(() => {});
+// The boot fetch fires from the first mount, before IndexedDB has answered — so the very first page of a
+// site with a saved session went out ANONYMOUS every cold start, and the owner met the server's front page
+// again. loadSource awaits this before it reads the cookie; it is a settled promise from then on.
+const sessionsReady = idbSupported && !gate
+  ? sessDB.all().then((rows) => $sessions.set(Object.fromEntries(rows.map((r) => [r.id, r.cookie])))).catch(() => {})
+  : Promise.resolve();
 const sessionKey = (url) => registrableDomain(hostOf(url));
 const sessionFor = (url) => $sessions.get()[sessionKey(url)] || "";
 async function setSession(url, cookie) {
@@ -380,6 +385,7 @@ async function loadSource(url, append = false, hint = "") {
     loadingMore = false; return;
   }
   try {
+    await sessionsReady;                                   // the saved sessions, before the first fetch decides anonymous or not
     const cookie = sessionFor(url);                        // your session for this site → the page is yours, not the server's
     const r = await (cookie
       ? fetch(`${VPS_PROXY}/videos`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, cookie }) })

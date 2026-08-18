@@ -19,9 +19,12 @@ import { Pixels } from "./skeleton.js";
 let LAND = null, LOADING = null;
 async function loadWorld() {
   if (LAND) return;
-  // resolve relative to THIS module (…/_rt/globe.js) so it works under any base path (GitHub Pages
-  // serves the site under /microspec/, not the origin root — an absolute "/_rt/…" would 404 there).
-  if (!LOADING) LOADING = fetch(new URL("./world-110m.json", import.meta.url)).then((r) => r.json()).then((topo) => { LAND = feature(topo, topo.objects.countries).features; });
+  // Resolve against the DOCUMENT, not import.meta.url: the deploy bundles this module into <app>/app.js, so
+  // a module-relative URL asked for /<app>/world-110m.json and 404'd on every deployed globe (2026-08-18) —
+  // while the source-mode gate, which serves /_rt/ as real files, stayed green. "../_rt/" is right in every
+  // layout: source mode serves the app at the origin root ("../" clamps to "/"), dist puts it one level deep,
+  // and a base-path mirror (/microspec/<app>/) keeps its prefix. An absolute "/_rt/…" would break the last.
+  if (!LOADING) LOADING = fetch(new URL("../_rt/world-110m.json", document.baseURI)).then((r) => { if (!r.ok) throw new Error(`world-110m.json ${r.status}`); return r.json(); }).then((topo) => { LAND = feature(topo, topo.objects.countries).features; });
   await LOADING;
 }
 // which country a point falls in — {id, name} or null (ocean / topology not loaded yet). Uses the world

@@ -42,7 +42,10 @@ const ac = new AbortController();
 let missing = [];
 const server = Deno.serve({ port: 0, signal: ac.signal, onListen: () => {} }, async (req) => {
   const res = await serveDir(req, { fsRoot: DIST, quiet: true, headers: ["cache-control: no-store"] });
-  if (res.status >= 400) missing.push(`${res.status} ${new URL(req.url).pathname}`);
+  // Scope: BUILT FILES. /feed/* is the edge proxy nginx serves in production — this file server has no
+  // backend, so its 404s here say nothing about dist (dou/hf lit up on exactly that in the dry run).
+  const path = new URL(req.url).pathname;
+  if (res.status >= 400 && !path.startsWith("/feed")) missing.push(`${res.status} ${path}`);
   return res;
 });
 const base = `http://localhost:${server.addr.port}`;

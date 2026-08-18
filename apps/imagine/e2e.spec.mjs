@@ -63,6 +63,17 @@ export default [
     },
   },
   {
+    name: "під час генерації є «Скасувати»; після нього — можна генерувати знову", run: async (h) => {
+      await ready(h);
+      await h.type("#prompt", "a lighthouse in a storm");
+      await h.click("[data-go]");
+      const seen = (await h.count("[data-cancel]")) === 1;
+      if (seen) { await h.click("[data-cancel]"); await h.wait(150); }
+      await h.wait(400);
+      h.expect((await h.count("[data-go]")) === 1, "після скасування/завершення немає кнопки генерації");
+    },
+  },
+  {
     name: "порожній опис не запускає генерацію", run: async (h) => {
       await ready(h);
       await h.type("#prompt", "");

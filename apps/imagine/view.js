@@ -1,7 +1,7 @@
 import { html } from "htm/preact";
 import { useState, useRef, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
-import { T } from "/_rt/i18n.js";
+import { T, sys } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
 import { Dust } from "/_rt/dust.js";
@@ -52,6 +52,7 @@ export function imagine({ S, toast }) {
   const [aspect, setAspect] = useState("screen");                                 
   const [suggesting, setSuggesting] = useState(false);                            
   const runRef = useRef(0);                                                       
+  const jobRef = useRef(null);                                                    
   const slidesRef = useRef(null);                                                 
   const islandRef = useRef(null);                                                 
   const [islandH, setIslandH] = useState(0);
@@ -95,6 +96,7 @@ export function imagine({ S, toast }) {
       if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : "eFailed");
       const { job } = await cr.json();
       if (!job) return fail(run, "eFailed");
+      jobRef.current = job;
       const t0 = Date.now(); let got = 0; const mine = [];
       for (let i = 0; i < 100; i++) {                                             
         await sleep(1500);
@@ -121,6 +123,13 @@ export function imagine({ S, toast }) {
       }
       setMore(false); if (!mine.length) fail(run, "eTimeout");
     } catch { fail(run, "eNetwork"); }
+  };
+
+  const cancel = () => {
+    if (phase !== "generating") return;
+    runRef.current++; const job = jobRef.current; jobRef.current = null;
+    setMore(false); setPhase("idle");
+    if (job && !gate) fetch(`${VPS_PROXY}/image/cancel`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job }) }).catch(() => {});
   };
 
   const onSlidesScroll = (e) => { const el = e.currentTarget; const n = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (n !== idx && n >= 0 && n < slides.length) setIdx(n); };
@@ -186,7 +195,9 @@ export function imagine({ S, toast }) {
             ${seg("fast", "lucide:zap", T(t, "speed"))}
             ${seg("2k", "lucide:gem", T(t, "quality"))}
           </div>
-          <button id="go" data-go class="btn btn-primary rounded-2xl gap-2 px-5" disabled=${phase === "generating" || !prompt.trim()} onClick=${generate}>${Icon(phase === "generating" ? "lucide:loader-circle" : "lucide:sparkles", `text-lg ${phase === "generating" ? "animate-spin" : ""}`)}${T(t, phase === "done" || phase === "error" ? "again" : "generate")}</button>
+          ${phase === "generating"
+            ? html`<button data-cancel class="btn btn-outline rounded-2xl gap-2 px-5" onClick=${cancel}>${Icon("lucide:x", "text-lg")}${sys("cancel", loc)}</button>`
+            : html`<button id="go" data-go class="btn btn-primary rounded-2xl gap-2 px-5" disabled=${!prompt.trim()} onClick=${generate}>${Icon("lucide:sparkles", "text-lg")}${T(t, phase === "done" || phase === "error" ? "again" : "generate")}</button>`}
         </div>
         ${phase === "done" && cur ? html`<button data-save class="btn btn-outline rounded-2xl gap-2 w-full" onClick=${save}>${Icon("lucide:download", "text-lg")}${T(t, "save")}</button>` : null}
       </div>

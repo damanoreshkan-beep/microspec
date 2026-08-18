@@ -7,7 +7,7 @@ import { Pixels } from "./skeleton.js";
 let LAND = null, LOADING = null;
 async function loadWorld() {
   if (LAND) return;
-  if (!LOADING) LOADING = fetch(new URL("./world-110m.json", import.meta.url)).then((r) => r.json()).then((topo) => { LAND = feature(topo, topo.objects.countries).features; });
+  if (!LOADING) LOADING = fetch(new URL("../_rt/world-110m.json", document.baseURI)).then((r) => { if (!r.ok) throw new Error(`world-110m.json ${r.status}`); return r.json(); }).then((topo) => { LAND = feature(topo, topo.objects.countries).features; });
   await LOADING;
 }
 export function countryAt(lat, lon) {

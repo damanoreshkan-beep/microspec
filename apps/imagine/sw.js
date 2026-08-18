@@ -1,6 +1,6 @@
 self.MS = {
   app: "imagine",
-  version: "b91b8864ba",
+  version: "ef6eb67baf",
   precache: [
     "./",
     "./describe.js",
@@ -11,6 +11,7 @@ self.MS = {
     "./icon.svg",
     "./icons/apple-touch-icon.png",
     "./index.html",
+    "./lightbox.js",
     "./manifest.json",
     "./spec.json",
     "./view.js",

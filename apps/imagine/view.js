@@ -10,6 +10,7 @@ import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
 import { promptHandoff } from "./handoff.js";
+import { Lightbox } from "./lightbox.js";
 
 export { retouch } from "./edit.js";
 export { describe } from "./describe.js";   
@@ -38,7 +39,7 @@ function mockArt(seed) {
 
 
 export function imagine({ S, toast }) {
-  const t = useStore(S.t), loc = useStore(S.locale);
+  const t = useStore(S.t), loc = useStore(S.locale), screen = useStore(S.screen);
   const [prompt, setPrompt] = useState(gate ? "northern lights over a frozen lake, cinematic, ultra detailed" : "");
   const [phase, setPhase] = useState(gate ? "done" : "idle");                    
   const [slides, setSlides] = useState(gate ? [7, 8, 9, 10].map((seed) => ({ url: mockArt(seed), w: W, h: H, seed })) : []);
@@ -143,10 +144,11 @@ export function imagine({ S, toast }) {
   const slideStyle = aspect === "screen" ? "" : `padding-bottom:${Math.round(islandH)}px`;
 
   return html`<div class="ms-stage relative overflow-hidden bg-black">
+    <${Lightbox} open=${screen === "view" && !!cur} src=${cur?.url} alt=${prompt} onClose=${() => S.screen.set(null)} />
     <div class="absolute inset-0">
       ${phase === "done" && slides.length
         ? html`<div ref=${slidesRef} data-slides tabindex="0" role="region" aria-label=${T(t, "slides")} class="absolute inset-0 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory outline-none" style="scrollbar-width:none" onScroll=${onSlidesScroll}>
-            ${slides.map((s, i) => html`<div key=${s.url} class="w-full h-full shrink-0 snap-center bg-black" style=${slideStyle}><img data-result data-slide=${i} src=${s.url} alt=${prompt} class=${`w-full h-full ${fit}`} loading=${i > 1 ? "lazy" : "eager"} /></div>`)}
+            ${slides.map((s, i) => html`<div key=${s.url} class="w-full h-full shrink-0 snap-center bg-black" style=${slideStyle}><img data-result data-slide=${i} src=${s.url} alt=${prompt} class=${`w-full h-full ${fit}`} loading=${i > 1 ? "lazy" : "eager"} onClick=${() => S.screen.set("view")} /></div>`)}
           </div>`
         : html`<${Dust} active=${phase === "generating"} progress=${genProgress} />`}
       <div class="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>

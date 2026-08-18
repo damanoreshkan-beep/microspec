@@ -12,7 +12,7 @@ import { sealedFrameUrl } from "/_rt/sealedfetch.js";
 import { gate } from "/_rt/gate.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
 import { resolveSearch, buildSearchUrl } from "/_rt/urlquery.js";
-import { hostOf, siteName, sourceTitle, groupByDomain, humanText } from "/_rt/sitelabel.js";
+import { hostOf, siteName, sourceTitle, groupByDomain, humanText, registrableDomain } from "/_rt/sitelabel.js";
 import { useTap, usePanX } from "/_rt/gesture.js";
 import { letterTile } from "/_rt/tile.js";
 import { reject } from "lodash-es";
@@ -111,6 +111,24 @@ function renameSub(url, title) {
 
 
 
+
+
+
+const sessDB = collection("reelSessions");
+const $sessions = atom({});                                 
+if (idbSupported && !gate) sessDB.all().then((rows) => $sessions.set(Object.fromEntries(rows.map((r) => [r.id, r.cookie])))).catch(() => {});
+const sessionKey = (url) => registrableDomain(hostOf(url));
+const sessionFor = (url) => $sessions.get()[sessionKey(url)] || "";
+async function setSession(url, cookie) {
+  const k = sessionKey(url), c = String(cookie || "").trim();
+  const next = { ...$sessions.get() };
+  if (c) next[k] = c; else delete next[k];
+  $sessions.set(next);
+  try { if (c) await sessDB.put(k, { cookie: c }); else await sessDB.remove(k); } catch {  }
+}
+const $sessSite = atom("");                                 
+
+
 const watchedDB = collection("reelWatched");
 const $watched = atom(new Set());
 if (idbSupported && !gate) watchedDB.all().then((rows) => $watched.set(new Set(rows.map((r) => r.id)))).catch(() => {});
@@ -121,6 +139,11 @@ function markWatched(url) {
 }
 function clearWatched() { $watched.set(new Set()); watchedDB.clear().catch(() => {}); }
 const unseen = (arr) => arr.filter((i) => !$watched.get().has(i.orig || i.video));         
+
+
+
+
+
 
 
 const likesDB = collection("reelLikes");
@@ -275,7 +298,10 @@ async function loadSource(url, append = false, hint = "") {
     loadingMore = false; return;
   }
   try {
-    const r = await fetch(`${VPS_PROXY}/videos?url=${encodeURIComponent(url)}`);
+    const cookie = sessionFor(url);                        
+    const r = await (cookie
+      ? fetch(`${VPS_PROXY}/videos`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, cookie }) })
+      : fetch(`${VPS_PROXY}/videos?url=${encodeURIComponent(url)}`));
     const d = await r.json();
     if (g !== gen) return;                                   
     
@@ -289,6 +315,7 @@ async function loadSource(url, append = false, hint = "") {
   } catch { if (g === gen && !append) $err.set(true); }
   finally { if (g === gen) $loading.set(false); if (append) loadingMore = false; }
 }
+
 
 const $full = atom(null);                                  
 
@@ -512,6 +539,27 @@ function SourceSheet({ S, t }) {
 
 
 
+function SessionSheet({ S, t, undo }) {
+  const site = useStore($sessSite), sessions = useStore($sessions);
+  const cur = sessions[sessionKey(site)] || "";
+  const [val, setVal] = useState(cur);
+  const close = () => S.screen.set(null);
+  const save = (e) => {
+    e?.preventDefault?.();
+    const next = val.trim();
+    if (!next && cur) undo(() => setSession(site, cur), siteName(site));
+    setSession(site, next); close();
+  };
+  return html`<${Sheet} open onClose=${close} title=${T(t, "sessTitle")} subtitle=${sessionKey(site)} icon="lucide:key-round">
+    <form onSubmit=${save} class="flex flex-col gap-3">
+      <textarea id="sess-input" rows="4" autocomplete="off" spellcheck="false" class="textarea rounded-2xl font-mono text-xs leading-snug w-full break-all" placeholder="name=value; name2=value2" aria-label=${T(t, "sessTitle")} value=${val} onInput=${(e) => setVal(e.target.value)}></textarea>
+      <button id="sess-save" type="submit" class="btn btn-primary rounded-2xl gap-1">${Icon(val.trim() ? "lucide:check" : "lucide:trash-2")} ${T(t, val.trim() ? "sessSave" : "sessForget")}</button>
+    </form>
+  <//>`;
+}
+
+
+
 
 
 function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, openIn }) {
@@ -533,6 +581,7 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, openIn }) 
     <//>
   `;
 }
+
 
 function DragReveal({ underRef, diveRef, backRef, target, targetLabel, prev }) {
   
@@ -642,7 +691,7 @@ export function reel({ S }) {
 
 
 const ROW_MAX = 120;
-function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) {
+function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, onSession, hasSession, lead, sub, t }) {
   const sr = resolveSearch(s.url);
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState(sr.term || "");
@@ -660,6 +709,7 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
       </button>
       ${sr.searchable ? html`<button data-search-toggle class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${searching ? "text-primary" : "opacity-70"}`} aria-label=${T(t, "search")} aria-pressed=${searching} onClick=${() => setSearching((v) => !v)}>${Icon("lucide:search", "text-lg")}</button>` : null}
       ${onOpen ? html`<button data-open-site class="btn btn-ghost btn-sm btn-circle shrink-0 opacity-70" aria-label=${T(t, "openSite")} onClick=${() => onOpen(s)}>${Icon("lucide:external-link", "text-lg")}</button>` : null}
+      ${onSession ? html`<button data-session class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${hasSession ? "text-primary" : "opacity-70"}`} aria-label=${T(t, "sessTitle")} aria-pressed=${hasSession} onClick=${() => onSession(s)}>${Icon("lucide:key-round", "text-lg")}</button>` : null}
       <button class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${subbed ? "text-primary" : "opacity-50"}`} aria-label=${T(t, subbed ? "unsub" : "sub")} data-haptic=${subbed ? "bump" : "off"} onClick=${onToggle}>${Icon(subbed ? "lucide:check" : "lucide:plus", "text-lg")}</button>
     </div>
     ${searching ? html`<form onSubmit=${submit} class="flex items-center gap-2 px-2.5 pb-2.5">
@@ -674,12 +724,14 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, lead, sub, t }) 
 
 
 
-function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, t }) {
+
+function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, onSession, sessions, t }) {
   const hot = g.items.some((s) => s.url === curSrc);
+  const hasSession = !!(sessions && sessions[g.domain]);
   const shell = `rounded-2xl ${hot ? "bg-primary/10 sf-e3" : "sf-raised sf-e2"}`;
   if (g.items.length === 1) {
     const s = g.items[0];
-    return html`<ul class=${shell}><${PageRow} s=${s} active=${s.url === curSrc} subbed=${subbedUrls.has(s.url)} onPlay=${onPlay} onOpen=${onOpen} onToggle=${() => onToggle(s)} lead=${html`<${Favicon} url=${s.url} size="w-10 h-10" />`} sub=${g.domain} t=${t} /></ul>`;
+    return html`<ul class=${shell}><${PageRow} s=${s} active=${s.url === curSrc} subbed=${subbedUrls.has(s.url)} onPlay=${onPlay} onOpen=${onOpen} onToggle=${() => onToggle(s)} onSession=${onSession} hasSession=${hasSession} lead=${html`<${Favicon} url=${s.url} size="w-10 h-10" />`} sub=${g.domain} t=${t} /></ul>`;
   }
   return html`<section class=${`${shell} overflow-hidden`}>
     <header class="flex items-center gap-2.5 px-2.5 py-2.5 border-b border-base-300">
@@ -690,16 +742,17 @@ function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, t }) {
       </div>
       <span class="text-xs font-mono text-base-content/70 tabular-nums px-1">${g.items.length}</span>
       <button data-open-site class="btn btn-ghost btn-sm btn-circle shrink-0 opacity-70" aria-label=${T(t, "openSite")} onClick=${() => onOpen(g.items[0])}>${Icon("lucide:external-link", "text-lg")}</button>
+      ${onSession ? html`<button data-session class=${`btn btn-ghost btn-sm btn-circle shrink-0 ${hasSession ? "text-primary" : "opacity-70"}`} aria-label=${T(t, "sessTitle")} aria-pressed=${hasSession} onClick=${() => onSession(g.items[0])}>${Icon("lucide:key-round", "text-lg")}</button>` : null}
     </header>
     <ul class="divide-y divide-base-300/60">
       ${g.items.map((s) => html`<${PageRow} s=${s} active=${s.url === curSrc} subbed=${subbedUrls.has(s.url)} onPlay=${onPlay} onToggle=${() => onToggle(s)} lead=${html`<span class=${`shrink-0 rounded-full ${s.url === curSrc ? "w-1.5 h-5 bg-primary" : "w-1.5 h-1.5 bg-base-content/30"}`}></span>`} t=${t} key=${s.url} />`)}
     </ul>
   </section>`;
 }
-
-export function sources({ S }) {
+export function sources({ S, undo }) {
   const t = useStore(S.t), screen = useStore(S.screen);
-  const subs = useStore($subs), curSrc = useStore($src), watchedN = useStore($watched).size;
+  const subs = useStore($subs), curSrc = useStore($src), watchedN = useStore($watched).size, sessions = useStore($sessions);
+  const editSession = (s) => { $sessSite.set(s.url); S.screen.set("session"); };
   const play = (s) => { resetNav(S); $owner.set("reel"); openSource(s.url, s.name); S.tab.set("reel"); };   
   const subbedUrls = new Set(subs.map((x) => x.url));
   const mine = groupByDomain(subs);
@@ -708,14 +761,12 @@ export function sources({ S }) {
   return html`<${Fragment}>
     <div class="flex flex-col gap-4 @container">
       <button id="add-url" class="btn btn-primary rounded-2xl gap-2" onClick=${() => S.screen.set("source")}>${Icon("lucide:plus")} ${T(t, "addUrl")}</button>
-
       <div class="flex flex-col gap-2.5">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:bookmark", "text-primary")} ${T(t, "subs")}</div>
         ${mine.length
-          ? mine.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => unsubscribe(s.url)} t=${t} key=${g.domain} />`)
+          ? mine.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => unsubscribe(s.url)} onSession=${editSession} sessions=${sessions} t=${t} key=${g.domain} />`)
           : html`<div class="text-sm text-base-content/70 px-1 py-3">${T(t, "noSubs")}</div>`}
       </div>
-
       ${discover.length ? html`<div class="flex flex-col gap-2.5">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:compass")} ${T(t, "discover")}</div>
         ${discover.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => subscribe(s)} t=${t} key=${g.domain} />`)}
@@ -723,8 +774,12 @@ export function sources({ S }) {
       ${watchedN > 0 ? html`<button id="clear-watched" class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70 self-center mt-2" onClick=${clearWatched} data-haptic="bump">${Icon("lucide:rotate-ccw")} ${T(t, "clearWatched", { n: watchedN })}</button>` : null}
     </div>
     ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
+    ${screen === "session" ? html`<${SessionSheet} S=${S} t=${t} undo=${undo} />` : null}
   </${Fragment}>`;
 }
+
+
+
 
 
 export function liked({ S }) {
@@ -739,7 +794,6 @@ export function liked({ S }) {
   };
   if (!sorted.length) return html`<div class="flex flex-col items-center justify-center gap-3 text-muted text-center" style="min-height:60vh">${Icon("lucide:heart", "text-6xl opacity-30")}<div class="text-sm max-w-[16rem]">${T(t, "likedEmpty")}</div></div>`;
   return html`<div data-liked class="grid grid-cols-3 gap-1.5">
-    
     ${sorted.map((l, i) => html`<div class="relative aspect-[9/16] rounded-xl overflow-hidden sf-inset" key=${l.id}>
       <button data-liked-tile class="absolute inset-0 w-full h-full active:scale-[.98] transition" aria-label=${l.title || l.host} onClick=${() => playAt(i)}>
         ${l.poster

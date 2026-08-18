@@ -194,3 +194,14 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
 })()));
 
 self.addEventListener("message", (e) => { if (e.data === "ms-skip-waiting") self.skipWaiting(); });
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const scope = self.registration.scope, url = new URL(e.notification.data?.url || "./", scope).href;
+  e.waitUntil((async () => {
+    for (const c of await self.clients.matchAll({ type: "window", includeUncontrolled: true })) {
+      if (c.url.startsWith(scope) && "focus" in c) return c.focus();
+    }
+    return self.clients.openWindow ? self.clients.openWindow(url) : null;
+  })());
+});

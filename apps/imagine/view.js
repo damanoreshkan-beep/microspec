@@ -11,6 +11,9 @@ import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
 import { promptHandoff } from "./handoff.js";
 import { Lightbox } from "./lightbox.js";
+import { notify, notifyAsk } from "/_rt/notify.js";
+
+const JOB_KEY = "ms:imagine:job";   
 
 export { retouch } from "./edit.js";
 export { describe } from "./describe.js";   
@@ -80,24 +83,10 @@ export function imagine({ S, toast }) {
 
   const freeSlides = (list) => list.forEach((s) => { if (s.url?.startsWith?.("blob:")) URL.revokeObjectURL(s.url); });
 
-  const generate = async () => {
-    const p = prompt.trim();
-    if (!p || phase === "generating") return;
-    const seed = randSeed(), run = ++runRef.current;
-    setError(null); setElapsed(0); setLive(null); setMore(false);
-    freeSlides(slides); setSlides([]); setIdx(0); setPhase("generating");
-    if (gate) { await sleep(90); if (run === runRef.current) { setSlides([seed, seed + 1, seed + 2, seed + 3].map((sd) => ({ url: mockArt(sd), w: W, h: H, seed: sd }))); setPhase("done"); } return; }
-    let pEn = p; try { pEn = await toEnglish(p); } catch {  }
-    if (run !== runRef.current) return;
+  const follow = async (job, run, p, seed, t0) => {
+    let got = 0; const mine = [];
+    const finish = () => { if (run === runRef.current) { setMore(false); jobRef.current = null; } try { localStorage.removeItem(JOB_KEY); } catch {  } };
     try {
-      const ratio = Math.max(0.3, Math.min(3, (window.innerWidth || 1) / (window.innerHeight || 1)));
-      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: pEn, quality, aspect, ratio, seed, k: 4 }) });
-      if (run !== runRef.current) return;
-      if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : "eFailed");
-      const { job } = await cr.json();
-      if (!job) return fail(run, "eFailed");
-      jobRef.current = job;
-      const t0 = Date.now(); let got = 0; const mine = [];
       for (let i = 0; i < 100; i++) {                                             
         await sleep(1500);
         if (run !== runRef.current) return;
@@ -114,21 +103,56 @@ export function imagine({ S, toast }) {
             const ext = blob.type.includes("webp") ? "webp" : blob.type.includes("png") ? "png" : "jpg";
             mine.push({ url: URL.createObjectURL(blob), w: meta.w || W, h: meta.h || H, by: meta.by, seed: seed + n, ext });
             setSlides([...mine]); setMore(j.status !== "done");
-            if (mine.length === 1) { setIdx(0); setPhase("done"); writeLastGen(blob, p); }
+            if (mine.length === 1) {
+              setIdx(0); setPhase("done"); writeLastGen(blob, p);
+              if (document.visibilityState === "hidden") notify({ id: "imagine-done", title: T(t, "title"), body: T(t, "notifDone"), url: "./" });
+            }
           } catch {  }
           got = n + 1;
         }
-        if (j.status === "done") { setMore(false); if (!mine.length) fail(run, "eFailed"); return; }
-        if (j.status === "error") { setMore(false); if (!mine.length) fail(run, "eFailed"); return; }
+        if (j.status === "done" || j.status === "error") { finish(); if (!mine.length) fail(run, j.status === "error" && j.error === "no such job" ? "eTimeout" : "eFailed"); return; }
       }
-      setMore(false); if (!mine.length) fail(run, "eTimeout");
+      finish(); if (!mine.length) fail(run, "eTimeout");
+    } catch { finish(); fail(run, "eNetwork"); }
+  };
+
+  const generate = async () => {
+    const p = prompt.trim();
+    if (!p || phase === "generating") return;
+    const seed = randSeed(), run = ++runRef.current;
+    setError(null); setElapsed(0); setLive(null); setMore(false);
+    freeSlides(slides); setSlides([]); setIdx(0); setPhase("generating");
+    if (gate) { await sleep(90); if (run === runRef.current) { setSlides([seed, seed + 1, seed + 2, seed + 3].map((sd) => ({ url: mockArt(sd), w: W, h: H, seed: sd }))); setPhase("done"); } return; }
+    notifyAsk();                                                                  
+    let pEn = p; try { pEn = await toEnglish(p); } catch {  }
+    if (run !== runRef.current) return;
+    try {
+      const ratio = Math.max(0.3, Math.min(3, (window.innerWidth || 1) / (window.innerHeight || 1)));
+      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: pEn, quality, aspect, ratio, seed, k: 4 }) });
+      if (run !== runRef.current) return;
+      if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : "eFailed");
+      const { job } = await cr.json();
+      if (!job) return fail(run, "eFailed");
+      jobRef.current = job;
+      const t0 = Date.now();
+      try { localStorage.setItem(JOB_KEY, JSON.stringify({ job, prompt: p, seed, ts: t0 })); } catch {  }
+      await follow(job, run, p, seed, t0);
     } catch { fail(run, "eNetwork"); }
   };
+
+  useEffect(() => {
+    if (gate) return;
+    let j = null; try { j = JSON.parse(localStorage.getItem(JOB_KEY) || "null"); } catch {  }
+    if (!j?.job || Date.now() - j.ts > 240000) { try { localStorage.removeItem(JOB_KEY); } catch {  } return; }
+    const run = ++runRef.current; jobRef.current = j.job;
+    setPrompt(j.prompt || ""); setPhase("generating"); setElapsed(Math.round((Date.now() - j.ts) / 1000));
+    follow(j.job, run, j.prompt || "", j.seed || 0, j.ts);
+  }, []);
 
   const cancel = () => {
     if (phase !== "generating") return;
     runRef.current++; const job = jobRef.current; jobRef.current = null;
-    setMore(false); setPhase("idle");
+    setMore(false); setPhase("idle"); try { localStorage.removeItem(JOB_KEY); } catch {  }
     if (job && !gate) fetch(`${VPS_PROXY}/image/cancel`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job }) }).catch(() => {});
   };
 

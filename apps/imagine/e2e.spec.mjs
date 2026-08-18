@@ -37,6 +37,15 @@ export default [
     },
   },
   {
+    name: "тап по зображенню відкриває повний розмір; Back закриває", run: async (h) => {
+      await ready(h);
+      await h.click('[data-slide="0"]'); await h.wait(250);
+      h.expect((await h.count("[data-lightbox]")) === 1, "повноекранний перегляд не відкрився");
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("[data-lightbox]")) === 0, "Back не закрив повноекранний перегляд");
+    },
+  },
+  {
     name: "пропорції: екран за замовчуванням, перемикаються", run: async (h) => {
       await ready(h);
       h.expect(await h.attr("[data-aspect=screen]", "aria-selected") === "true", "екран не активний за замовчуванням");
@@ -95,7 +104,12 @@ export default [
         await h.wait(250);
       }
       h.expect(changed, "редагування не змінило зображення");
+      h.expect((await h.count("[data-slide]")) === 4, "має бути 4 варіанти редагування");
       h.expect((await h.count("[data-save]")) === 1, "немає збереження після завершеного редагування");
+      await h.click('[data-slide="0"]'); await h.wait(250);
+      h.expect((await h.count("[data-lightbox]")) === 1, "повний розмір не відкрився з редактора");
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("[data-lightbox]")) === 0, "Back не закрив повний розмір у редакторі");
     },
   },
   // ── the read mode (image → text) ─────────────────────────────────────────────────────────────────────

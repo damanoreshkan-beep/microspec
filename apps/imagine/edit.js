@@ -21,6 +21,7 @@ import { readLastGen } from "/_rt/lastgen.js";
 import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
+import { Lightbox } from "./lightbox.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -72,12 +73,17 @@ export function toEditableDataURL(url) {
 }
 
 export function retouch({ S, toast }) {
-  const t = useStore(S.t), loc = useStore(S.locale);
+  const t = useStore(S.t), loc = useStore(S.locale), screen = useStore(S.screen);
   // phase: empty (source chooser) · camera (viewfinder) · ready (image + instruction) · editing · done · error
   const [phase, setPhase] = useState(gate ? "ready" : "empty");
   const [srcUrl, setSrcUrl] = useState(gate ? mockArt(3) : null);                 // the image currently being edited (display)
   const [original, setOriginal] = useState(gate ? mockArt(3) : null);            // the first source loaded (for "revert")
-  const [result, setResult] = useState(null);                                     // { url } of the last edit
+  // SLIDES: the race returns up to K edits and they land one by one; `cur` is the one in view (Save / keep / handoff).
+  const [slides, setSlides] = useState([]);                                       // [{url, w, h, by}]
+  const [idx, setIdx] = useState(0);
+  const [more, setMore] = useState(false);                                        // the race is still delivering
+  const cur = slides[idx] || slides[0] || null;
+  const result = cur;                                                             // the name the rest of this file grew up with
   const [prompt, setPrompt] = useState(gate ? "add falling snow, cinematic" : "");
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);
@@ -115,9 +121,9 @@ export function retouch({ S, toast }) {
   const stopCam = () => { try { streamRef.current?.getTracks().forEach((tr) => tr.stop()); } catch { /* */ } streamRef.current = null; };
 
   // load a source image and go to the ready state (revoke the previous run's result blob first)
+  const dropSlides = () => { slides.forEach((x) => own(x.url)); setSlides([]); setIdx(0); setMore(false); };
   const loadSource = (url) => {
-    if (result?.url) own(result.url);
-    setResult(null); setError(null); setElapsed(0); setLive(null);
+    dropSlides(); setError(null); setElapsed(0); setLive(null);
     setSrcUrl(url); setOriginal(url); setPhase("ready");
   };
 
@@ -161,9 +167,8 @@ export function retouch({ S, toast }) {
     if (!p || !srcUrl || phase === "editing") return;
     const seed = randSeed(), run = ++runRef.current;
     buzz(); setError(null); setElapsed(0);
-    if (result?.url) own(result.url);
-    setResult(null); setPhase("editing");
-    if (gate) { await sleep(120); if (run === runRef.current) { setResult({ url: mockArt(seed) }); setPhase("done"); } return; }
+    dropSlides(); setPhase("editing");
+    if (gate) { await sleep(120); if (run === runRef.current) { setSlides([0, 1, 2, 3].map((n) => ({ url: mockArt(seed + n) }))); setPhase("done"); } return; }
     let image;
     try { image = await toEditableDataURL(srcUrl); } catch { return fail(run, "edFailed"); }
     if (run !== runRef.current) return;
@@ -172,34 +177,41 @@ export function retouch({ S, toast }) {
     if (run !== runRef.current) return;
     try {
       // Async job + poll, exactly like Уяви: POST starts the cascade, short polls never trip the proxy's 60s cap.
-      const cr = await fetch(`${VPS_PROXY}/image/edit`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ image, prompt: pEn, seed }) });
+      const cr = await fetch(`${VPS_PROXY}/image/edit`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ image, prompt: pEn, seed, k: 4 }) });
       if (run !== runRef.current) return;
       if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : cr.status === 413 ? "eBig" : "edFailed");
       const { job } = await cr.json();
       if (!job) return fail(run, "edFailed");
-      const t0 = Date.now();
+      const t0 = Date.now(); let got = 0; const mine = [];
       for (let i = 0; i < 100; i++) {                                             // ~150s of 1.5s polls
         await sleep(1500);
         if (run !== runRef.current) return;
         setElapsed(Math.round((Date.now() - t0) / 1000));
-        let pr; try { pr = await fetch(`${VPS_PROXY}/image/edit/get?job=${job}`); } catch { continue; }
-        if (run !== runRef.current) return;
-        if ((pr.headers.get("content-type") || "").startsWith("image/")) {
-          const blob = await pr.blob();
-          if (run !== runRef.current) return;
-          setResult({ url: own(URL.createObjectURL(blob)) }); setPhase("done"); buzz(12); return;
-        }
-        let j; try { j = await pr.json(); } catch { continue; }
+        let j; try { j = await (await fetch(`${VPS_PROXY}/image/edit/get?job=${job}`)).json(); } catch { continue; }
+        if (run !== runRef.current || !j) return;
         if (j.pct != null || j.eta != null) setLive({ eta: j.eta, pct: j.pct, step: j.step, steps: j.steps });
-        if (j.status === "error") return fail(run, "edFailed");
+        for (let n = got; n < (j.got || 0); n++) {                                // pull every variant that landed since the last poll
+          try {
+            const pr = await fetch(`${VPS_PROXY}/image/edit/get?job=${job}&n=${n}`);
+            if (run !== runRef.current) return;
+            if (!(pr.headers.get("content-type") || "").startsWith("image/")) continue;
+            const blob = await pr.blob(); const meta = (j.slides || [])[n] || {};
+            mine.push({ url: own(URL.createObjectURL(blob)), w: meta.w, h: meta.h, by: meta.by });
+            setSlides([...mine]); setMore(j.status !== "done");
+            if (mine.length === 1) { setIdx(0); setPhase("done"); buzz(12); }
+          } catch { /* a variant that failed to transfer is skipped; the rest still land */ }
+          got = n + 1;
+        }
+        if (j.status === "done" || j.status === "error") { setMore(false); if (!mine.length) fail(run, "edFailed"); return; }
       }
-      fail(run, "eTimeout");
+      setMore(false); if (!mine.length) fail(run, "eTimeout");
     } catch { fail(run, "eNetwork"); }
   };
 
   // keep editing: the result becomes the new base (iterative). revert: back to the untouched original.
-  const keep = () => { if (!result?.url) return; buzz(); setSrcUrl(result.url); setResult(null); setPrompt(""); setError(null); setPhase("ready"); };
-  const revert = () => { buzz(); if (result?.url) own(result.url); setResult(null); setSrcUrl(original); setError(null); setPhase("ready"); };
+  const keep = () => { if (!cur?.url) return; buzz(); const next = cur.url; slides.forEach((x) => { if (x.url !== next) own(x.url); }); setSlides([]); setIdx(0); setMore(false); setSrcUrl(next); setPrompt(""); setError(null); setPhase("ready"); };
+  const revert = () => { buzz(); dropSlides(); setSrcUrl(original); setError(null); setPhase("ready"); };
+  const onSlidesScroll = (e) => { const el = e.currentTarget; const n = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (n !== idx && n >= 0 && n < slides.length) setIdx(n); };
 
   const save = () => {
     const url = result?.url; if (!url) return;
@@ -210,10 +222,11 @@ export function retouch({ S, toast }) {
 
   const onKey = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); edit(); } };
 
-  const stageImg = result?.url || srcUrl;                                         // the image shown in the stage right now
+  const stageImg = srcUrl;                                                        // the source on stage before/while editing (results are the slides)
   const isDone = phase === "done" && result;
 
   return html`<div class="ms-stage z-20 bg-base-100 flex flex-col">
+    <${Lightbox} open=${screen === "view" && !!(isDone ? cur?.url : srcUrl)} src=${isDone ? cur?.url : srcUrl} alt=${prompt} onClose=${() => S.screen.set(null)} />
     <input ref=${fileRef} type="file" accept="image/*" class="hidden" aria-hidden="true" onChange=${onFile} />
 
     <!-- ── the image stage (contain, so an editor never crops what you're working on) ── -->
@@ -245,8 +258,15 @@ export function retouch({ S, toast }) {
         </${Fragment}>` : null}
       </${Fragment}>` : null}
 
+      ${isDone ? html`<div data-slides tabindex="0" role="region" aria-label=${T(t, "slides")} class="absolute inset-0 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory outline-none" style="scrollbar-width:none" onScroll=${onSlidesScroll}>
+        ${slides.map((x, i) => html`<div key=${x.url} class="w-full h-full shrink-0 snap-center bg-black"><img data-result data-slide=${i} src=${x.url} alt=${prompt} class="w-full h-full object-contain" onClick=${() => S.screen.set("view")} /></div>`)}
+      </div>` : null}
+      ${isDone && (slides.length > 1 || more) ? html`<div data-dots class="absolute inset-x-0 bottom-3 flex justify-center items-center gap-1.5 pointer-events-none">
+        ${slides.map((x, i) => html`<span key=${x.url} class=${`rounded-full transition-[width,background-color] ${i === idx ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/45"}`}></span>`)}
+        ${more ? html`<span class="w-1.5 h-1.5 rounded-full bg-white/45 animate-pulse"></span>` : null}
+      </div>` : null}
       ${(phase === "ready" || phase === "editing" || phase === "done" || phase === "error") && stageImg ? html`<${Fragment}>
-        <img data-result src=${stageImg} alt=${isDone ? prompt : ""} class=${`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${phase === "editing" ? "opacity-30" : "opacity-100"}`} />
+        ${isDone ? null : html`<img data-result src=${stageImg} alt="" class=${`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${phase === "editing" ? "opacity-30" : "opacity-100"}`} onClick=${() => phase === "ready" && S.screen.set("view")} />`}
         ${isDone ? html`<button data-new aria-label=${T(t, "newImg")} class="absolute top-3 left-3 btn btn-circle btn-sm bg-black/50 text-white" onClick=${() => { revert(); setPhase("empty"); }}>${Icon("lucide:x", "text-base")}</button>` : null}
       </${Fragment}>` : null}
 

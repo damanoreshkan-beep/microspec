@@ -16,6 +16,7 @@ import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
 import { promptHandoff } from "./handoff.js";
+import { Lightbox } from "./lightbox.js";
 
 // The edit mode lives in its own module and is re-exported here, because the runtime resolves a tab's
 // `view` against this file's exports. Keeping it a separate file rather than pasting 350 lines in: the two
@@ -51,7 +52,7 @@ function mockArt(seed) {
 
 
 export function imagine({ S, toast }) {
-  const t = useStore(S.t), loc = useStore(S.locale);
+  const t = useStore(S.t), loc = useStore(S.locale), screen = useStore(S.screen);
   const [prompt, setPrompt] = useState(gate ? "northern lights over a frozen lake, cinematic, ultra detailed" : "");
   const [phase, setPhase] = useState(gate ? "done" : "idle");                    // idle | generating | done | error
   // SLIDES: the race returns up to K pictures and they land one by one — slide 0 at ~15s, the rest behind it.
@@ -171,10 +172,11 @@ export function imagine({ S, toast }) {
 
   // Full-bleed stage: the pictures (or the living dust while they form) ARE the screen; the composer floats over.
   return html`<div class="ms-stage relative overflow-hidden bg-black">
+    <${Lightbox} open=${screen === "view" && !!cur} src=${cur?.url} alt=${prompt} onClose=${() => S.screen.set(null)} />
     <div class="absolute inset-0">
       ${phase === "done" && slides.length
         ? html`<div ref=${slidesRef} data-slides tabindex="0" role="region" aria-label=${T(t, "slides")} class="absolute inset-0 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory outline-none" style="scrollbar-width:none" onScroll=${onSlidesScroll}>
-            ${slides.map((s, i) => html`<div key=${s.url} class="w-full h-full shrink-0 snap-center bg-black" style=${slideStyle}><img data-result data-slide=${i} src=${s.url} alt=${prompt} class=${`w-full h-full ${fit}`} loading=${i > 1 ? "lazy" : "eager"} /></div>`)}
+            ${slides.map((s, i) => html`<div key=${s.url} class="w-full h-full shrink-0 snap-center bg-black" style=${slideStyle}><img data-result data-slide=${i} src=${s.url} alt=${prompt} class=${`w-full h-full ${fit}`} loading=${i > 1 ? "lazy" : "eager"} onClick=${() => S.screen.set("view")} /></div>`)}
           </div>`
         : html`<${Dust} active=${phase === "generating"} progress=${genProgress} />`}
       ${/* a scrim so the glass island and any status stay legible over a bright picture or the dust */""}

@@ -544,7 +544,13 @@ function SignInScreen() {
   const [paired, setPaired] = useState(false);
   useEffect(() => {
     let live = true;
-    Promise.all([import("./signin.js"), import("./auth.js")]).then(([si, au]) => { if (live) setMods({ SignIn: si.SignIn, session: au.session, pairComplete: au.pairComplete }); }).catch(() => {});
+    Promise.all([import("./signin.js"), import("./auth.js")]).then(([si, au]) => {
+      if (!live) return;
+      setMods({ SignIn: si.SignIn, session: au.session, pairComplete: au.pairComplete });
+      // A session already stored (this browser signed in earlier) must count: restore() fills the atom, and the
+      // effect below then closes the wall — or completes a pairing — without asking the user to sign in twice.
+      if (!au.session.get()) au.restore().catch(() => {});
+    }).catch(() => {});
     return () => { live = false; };
   }, []);
   useEffect(() => {

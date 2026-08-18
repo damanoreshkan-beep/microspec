@@ -70,7 +70,7 @@ export function tarot({ S, screen, openScreen, closeScreen }) {
   // deal the cards in whenever the draw changes (skipped under the gate so shots stay static)
   useEffect(() => {
     if (gate || isDaily) return;
-    const cards = document.querySelectorAll("[data-reading] [data-card]");
+    const cards = document.querySelectorAll("[data-reading] [data-tile]");
     if (!cards.length) return;
     const a = animate([...cards], { opacity: [0, 1], y: [16, 0] }, { delay: stagger(0.045), duration: 0.4, ease: "easeOut" });
     return () => a.stop?.();
@@ -201,13 +201,16 @@ function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
 }
 
 // one card in the fit layout: the art scaled to fit, a tiny position label beneath. Tap opens the sheet.
+// The hook is data-TILE, not data-card: theme.css lifts every [data-card] as a card SURFACE (box-shadow), and
+// on a row-tall button that painted a full-height "column" behind each width-bound card. The art carries
+// its own sf-e2; the button is a hit target, not a surface.
 // The tile keeps the row's DEFINITE height (h-full) — that is what lets the image's max-h-full resolve when
 // the row is the limit — but centres its content instead of stretching the art box: with flex-1 on the art
 // box the label sat at the bottom of a tall column, a screen away from a width-bound card (the 3-card
 // spreads). Now art + label travel together; the art box only shrinks (min-h-0) when the row is short.
 function FitTile({ d, pos, t, loc, wpct, onOpen }) {
   const c = DECK[d.card];
-  return html`<button data-card class="h-full min-h-0 flex flex-col items-center justify-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
+  return html`<button data-tile class="h-full min-h-0 flex flex-col items-center justify-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
     <div class="min-h-0 flex items-center justify-center w-full">
       <img src=${imgURL(c.img)} alt="" loading="lazy" class=${`max-h-full max-w-full w-auto h-auto object-contain rounded-md sf-e2 ${d.reversed ? "rotate-180" : ""}`} />
     </div>
@@ -346,7 +349,7 @@ function Solo({ d, pos, t, loc, onOpen }) {
   const c = DECK[d.card];
   return html`<div data-reading class="flex flex-col items-center gap-4">
     <div class="text-[0.6rem] font-mono uppercase tracking-[0.14em] text-base-content/45">${T(t, pos)}</div>
-    <button data-card class="w-[62%] max-w-[11rem] active:scale-[.99] transition" onClick=${onOpen}>
+    <button data-tile class="w-[62%] max-w-[11rem] active:scale-[.99] transition" onClick=${onOpen}>
       <img src=${imgURL(c.img)} alt=${cardName(c, loc)} class=${`w-full aspect-[350/600] object-cover rounded-xl sf-e3 ${d.reversed ? "rotate-180" : ""}`} />
     </button>
     <div class="text-center">

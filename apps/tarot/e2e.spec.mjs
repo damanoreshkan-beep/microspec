@@ -6,19 +6,19 @@ export default [
     name: "card of the day renders: 11 spreads, one card + meaning", run: async (h) => {
       h.expect((await h.count("[data-spread]")) === 11, "має бути 11 розкладів");
       h.expect((await h.prop('[data-spread="daily"]', "ariaPressed")) === "true", "'карта дня' не активна за замовчуванням");
-      h.expect((await h.count("[data-card]")) === 1, "карта дня — рівно одна карта");
-      h.expect((await h.count("[data-reading] img, [data-card] img")) >= 1, "немає зображення карти");
+      h.expect((await h.count("[data-tile]")) === 1, "карта дня — рівно одна карта");
+      h.expect((await h.count("[data-reading] img, [data-tile] img")) >= 1, "немає зображення карти");
       h.expect((await h.text("[data-reading]")).trim().length > 30, "порожнє значення карти");
     },
   },
   {
     name: "spread switch changes the layout (3 → 10 cards)", run: async (h) => {
       await h.click('[data-spread="ppf"]'); await h.wait(150);
-      h.expect((await h.count("[data-card]")) === 3, "минуле/тепер/майбутнє = 3 карти");
+      h.expect((await h.count("[data-tile]")) === 3, "минуле/тепер/майбутнє = 3 карти");
       await h.click('[data-spread="celtic"]'); await h.wait(150);
-      h.expect((await h.count("[data-card]")) === 10, "кельтський хрест = 10 карт");
+      h.expect((await h.count("[data-tile]")) === 10, "кельтський хрест = 10 карт");
       await h.click('[data-spread="pyramid"]'); await h.wait(150);
-      h.expect((await h.count("[data-card]")) === 6, "піраміда душі = 6 карт");
+      h.expect((await h.count("[data-tile]")) === 6, "піраміда душі = 6 карт");
       await h.click('[data-spread="daily"]'); await h.wait(120);
     },
   },
@@ -43,7 +43,7 @@ export default [
       await h.click('[data-color="2"]'); await h.wait(100);
       await h.click("[data-draw]"); await h.wait(250);
       h.expect((await h.prop("#ritual", "open")) !== true, "ритуал не закрився після витягування");
-      h.expect((await h.count("[data-card]")) === 3, "карти не розкрились після ритуалу");
+      h.expect((await h.count("[data-tile]")) === 3, "карти не розкрились після ритуалу");
       await h.click('[data-spread="daily"]'); await h.wait(120);
     },
   },
@@ -60,7 +60,7 @@ export default [
   },
   {
     name: "card detail: аркуш історія-backed (Back закриває)", run: async (h) => {
-      await h.click("[data-card]"); await h.wait(200);
+      await h.click("[data-tile]"); await h.wait(200);
       h.expect((await h.prop("#cardsheet", "open")) === true, "аркуш карти не відкрився");
       await h.back(); await h.wait(200);
       h.expect((await h.prop("#cardsheet", "open")) !== true, "Back не закрив аркуш карти");

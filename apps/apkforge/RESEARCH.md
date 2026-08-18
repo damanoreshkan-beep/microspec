@@ -88,6 +88,26 @@ Label string lives once in the arsc **global string pool** (`RES_STRING_POOL_TYP
   pre-patch **except** the target string's raw bytes + charLen byte; assert the label decodes to the
   padded name. Unit-tested in the edge repo.
 
+## 3b. Launcher icon — adaptive, both layers patched (2026-08-18)
+
+Before: every APK carried a canvas letter tile in the 5 legacy `ic_launcher.png` buckets. Now the template is
+the standard Image Asset Studio layout — `mipmap-anydpi-v26/ic_launcher.xml` = `@color/ic_launcher_bg` +
+`@mipmap/ic_launcher_fg` (108dp bitmap buckets), legacy 48dp PNGs kept for API 24–25 — and the builder
+patches all three:
+
+- **PNG families are told apart by PIXEL SIZE, never by name.** AGP 8 shortens every res path (`res/9w.png`)
+  even with `minifyEnabled false`; the IHDR width is the one invariant. 48/72/96/144/192 ← `icon`,
+  108/162/216/324/432 ← `fg` (falls back to `icon`). `edge/apk/build.js`.
+- **The background colour is patched in place in `resources.arsc`**, exactly like the label: aapt2 stores a
+  `<color>` as `Res_value {size=8,res0=0,type=0x1c,data=u32 LE}`, so the 8 bytes `08 00 00 1C 9B 57 13 FF`
+  (`#FF13579B`, values/colors.xml) are the anchor — exactly ONE hit asserted — and the last 4 are overwritten.
+  `edge/apk/arsc.js patchIconBg`. CI reads it back with the real parser (`aapt2 dump resources`) and asserts
+  badging shows `application-icon-65534:'res/….xml'` (65534 = anydpi).
+- **The farm ships its own layers**: `deploy/icons.mjs` writes `icons/icon-fg-432.png` (glyph box 54dp of
+  108, transparent — lucide art ≤22/24 stays inside the 66dp safe zone); `/_rt/apk.js fetchAppIcons()` sends
+  `{icon: icon-192, fg, bg}` with bg sampled off the maskable tile's corner (= brand.bg). Arbitrary URLs and
+  the letter fallback go through `adaptiveFromTile()`: tile at 46% on transparent + its corner colour.
+
 ## 4. v1 (JAR) signing — pure Deno + Web Crypto (agent A, verified vs apksig/OpenJDK)
 
 Confirmed: **CERT.RSA signs the raw CERT.SF bytes directly, NO authenticatedAttributes** →

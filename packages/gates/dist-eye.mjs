@@ -16,7 +16,12 @@ const list = only.length ? apps.filter((a) => only.includes(a)) : apps;
 if (!list.length) { console.error("dist-eye: no apps found under " + DIST); Deno.exit(2); }
 
 const ac = new AbortController();
-const server = Deno.serve({ port: 0, signal: ac.signal, onListen: () => {} }, (req) => serveDir(req, { fsRoot: DIST, quiet: true, headers: ["cache-control: no-store"] }));
+let missing = [];
+const server = Deno.serve({ port: 0, signal: ac.signal, onListen: () => {} }, async (req) => {
+  const res = await serveDir(req, { fsRoot: DIST, quiet: true, headers: ["cache-control: no-store"] });
+  if (res.status >= 400) missing.push(`${res.status} ${new URL(req.url).pathname}`);
+  return res;
+});
 const base = `http://localhost:${server.addr.port}`;
 await Deno.mkdir(OUT, { recursive: true });
 
@@ -32,6 +37,7 @@ try {
     page.addEventListener("console", (e) => { if (e.detail?.type === "error") { const tx = String(e.detail.text || ""); if (!NOISE.test(tx)) errs.push("console.error: " + tx.slice(0, 160)); } });
     const url = `${base}/${app}/?mock${light ? "&theme=light" : ""}`;
     let m = null, why = [];
+    missing = [];
     try {
       await page.setViewportSize({ width: dev.width, height: dev.height });
       await page.goto(url, { waitUntil: "load" });
@@ -56,6 +62,7 @@ try {
       if (m.surface && !(px > 0)) why.push(`first kit surface has border-radius ${m.surface.radius} (token classes not compiled): ${m.surface.cls}`);
       if (!m.surface) why.push("no kit surface found (.sf-raised/[data-island]/.card/.modal-box/.btn)");
       if (errs.length) why.push(...errs.slice(0, 3));
+      if (missing.length) why.push(`same-origin ${missing.length} missing: ${[...new Set(missing)].slice(0, 4).join(", ")}`);
       await Deno.writeFile(`${OUT}/${app}${light ? "~light" : ""}.png`, await page.screenshot());
     } catch (e) {
       why.push("load failed: " + String(e?.message || e).slice(0, 160));

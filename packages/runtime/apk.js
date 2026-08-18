@@ -4,13 +4,14 @@
 // library. Used by the apkforge app and the systemic profile "Download APK" row. See apps/apkforge/RESEARCH.md.
 import { VPS_PROXY } from "./feed.js";
 
+function bytesToB64(buf) {
+  let s = "";
+  for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
 function canvasToPngB64(cv) {
-  return new Promise((resolve) => cv.toBlob(async (b) => {
-    const buf = new Uint8Array(await b.arrayBuffer());
-    let s = "";
-    for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-    resolve(btoa(s));
-  }, "image/png"));
+  return new Promise((resolve) => cv.toBlob(async (b) => resolve(bytesToB64(new Uint8Array(await b.arrayBuffer()))), "image/png"));
 }
 
 // rasterizeIcon(blob, size) → square PNG (base64, no data: prefix). Cover-fits any format (svg/ico/png/webp).
@@ -42,6 +43,22 @@ export function letterTilePng(text, accent, size = 192) {
   ctx.textBaseline = "middle";
   ctx.fillText(((text || "A").trim()[0] || "A").toUpperCase(), size / 2, size * 0.54);
   return canvasToPngB64(cv);
+}
+
+// fetchAppIconPng() → THIS app's own launcher icon (base64 PNG), or null. The build writes the PWA icon set
+// to <app>/icons/ (deploy/icons.mjs) — the same PNG Chrome puts on the home screen when the PWA is installed,
+// so the APK carries the app's real identity, not a synthesised letter tile. Same-origin, no canvas: the PNG
+// goes to the edge as-is (every launcher density bucket gets it; 192px is xxxhdpi-exact). Null in source /
+// gate mode where dist/ icons do not exist — the caller falls back to letterTilePng.
+export async function fetchAppIconPng() {
+  try {
+    const r = await fetch(new URL("icons/icon-192.png", location.href), { cache: "force-cache" });
+    if (!r.ok) return null;
+    const buf = new Uint8Array(await r.arrayBuffer());
+    // PNG magic — a 200 that is not a PNG (an HTML fallback page) must not become the launcher icon
+    if (buf.length < 8 || buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4E || buf[3] !== 0x47) return null;
+    return bytesToB64(buf);
+  } catch { return null; }
 }
 
 // fetchSiteIconPng(url) → the site's best icon rasterised to a PNG (base64), or null. Goes through the edge

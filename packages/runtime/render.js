@@ -8,7 +8,7 @@ import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
 import { authWall } from "./authwall.js";
 import { T, ago, whenLabel, sinceLabel, sys } from "./i18n.js";
-import { buildApk, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
+import { buildApk, fetchAppIconPng, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
 import { gate } from "./gate.js";
 import { SHEET_BOX } from "./ui.js";
 import { CORE, BUILD, appVersion } from "./version.js";
@@ -591,7 +591,8 @@ function ApkScreen() {
 
   useEffect(() => {
     let live = true;
-    (async () => { try { const png = await letterTilePng(name, accent()); if (live) setIcon(png); } catch { /* no canvas (preflight) */ } })();
+    // the app's REAL icon first (dist/<app>/icons/); the letter tile only where that does not exist (source/gate)
+    (async () => { try { const png = (await fetchAppIconPng()) || await letterTilePng(name, accent()); if (live) setIcon(png); } catch { /* no canvas (preflight) */ } })();
     return () => { live = false; };
   }, []);
 
@@ -600,7 +601,7 @@ function ApkScreen() {
     setBusy(true); setErr(false); setDone(false);
     try {
       let iconB64 = icon;
-      if (!iconB64) { try { iconB64 = await letterTilePng(name, accent()); } catch { /* no icon */ } }
+      if (!iconB64) { try { iconB64 = (await fetchAppIconPng()) || await letterTilePng(name, accent()); } catch { /* no icon */ } }
       if (!gate) { const blob = await buildApk({ url, name, iconB64 }); downloadBlob(blob, apkFilename(name)); }
       setDone(true); A.toast(sys("apkDone", loc));
     } catch (e) {

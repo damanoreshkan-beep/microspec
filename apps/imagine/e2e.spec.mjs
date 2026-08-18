@@ -7,7 +7,9 @@ export default [
   {
     name: "generator: result image + prompt + generate/save", run: async (h) => {
       await ready(h);
-      h.expect((await h.count("[data-result]")) === 1, "немає згенерованого зображення");
+      h.expect((await h.count("[data-result]")) >= 1, "немає згенерованого зображення");
+      h.expect((await h.count("[data-slide]")) === 4, "має бути 4 слайди на вибір");
+      h.expect((await h.count("[data-dots] span")) === 4, "немає крапок слайдів");
       h.expect((await h.count("#prompt")) === 1, "немає поля опису");
       h.expect((await h.count("[data-go]")) === 1, "немає кнопки генерації");
       h.expect((await h.count("[data-save]")) === 1, "немає кнопки збереження");
@@ -32,6 +34,16 @@ export default [
       await h.wait(150);
       h.expect(await h.attr("[data-q='2k']", "aria-selected") === "true", "якість не увімкнулась");
       h.expect(await h.attr("[data-q=fast]", "aria-selected") === "false", "швидкість не вимкнулась після вибору якості");
+    },
+  },
+  {
+    name: "пропорції: екран за замовчуванням, перемикаються", run: async (h) => {
+      await ready(h);
+      h.expect(await h.attr("[data-aspect=screen]", "aria-selected") === "true", "екран не активний за замовчуванням");
+      await h.click("[data-aspect=landscape]"); await h.wait(150);
+      h.expect(await h.attr("[data-aspect=landscape]", "aria-selected") === "true", "пейзаж не увімкнувся");
+      h.expect(await h.attr("[data-aspect=screen]", "aria-selected") === "false", "екран не вимкнувся");
+      await h.click("[data-aspect=screen]"); await h.wait(100);
     },
   },
   {

@@ -671,23 +671,20 @@ function SourceSheet({ S, t }) {
 }
 
 // The session sheet: one field, the site's Cookie header, and a verb. Routed through S.screen like every other
-// dismissable surface, so the system Back closes it. Saving an empty field forgets the session — a delete, so
-// it goes through the undo snackbar (the pasted line is not something you want to type twice).
+// dismissable surface, so the system Back closes it. "Forget" exists only while a session is saved — a delete,
+// so it goes through the undo snackbar (the pasted line is not something you want to type twice).
 function SessionSheet({ S, t, undo }) {
   const site = useStore($sessSite), sessions = useStore($sessions);
   const cur = sessions[sessionKey(site)] || "";
   const [val, setVal] = useState(cur);
   const close = () => S.screen.set(null);
-  const save = (e) => {
-    e?.preventDefault?.();
-    const next = val.trim();
-    if (!next && cur) undo(() => setSession(site, cur), siteName(site));
-    setSession(site, next); close();
-  };
+  const save = (e) => { e?.preventDefault?.(); const next = val.trim(); if (!next) return; setSession(site, next); close(); };
+  const forget = () => { undo(() => setSession(site, cur), siteName(site)); setSession(site, ""); close(); };
   return html`<${Sheet} open onClose=${close} title=${T(t, "sessTitle")} subtitle=${sessionKey(site)} icon="lucide:key-round">
     <form onSubmit=${save} class="flex flex-col gap-3">
       <textarea id="sess-input" rows="4" autocomplete="off" spellcheck="false" class="textarea rounded-2xl font-mono text-xs leading-snug w-full break-all" placeholder="name=value; name2=value2" aria-label=${T(t, "sessTitle")} value=${val} onInput=${(e) => setVal(e.target.value)}></textarea>
-      <button id="sess-save" type="submit" class="btn btn-primary rounded-2xl gap-1">${Icon(val.trim() ? "lucide:check" : "lucide:trash-2")} ${T(t, val.trim() ? "sessSave" : "sessForget")}</button>
+      <button id="sess-save" type="submit" class="btn btn-primary rounded-2xl gap-1" disabled=${!val.trim()}>${Icon("lucide:check")} ${T(t, "sessSave")}</button>
+      ${cur ? html`<button type="button" data-sess-forget class="btn btn-ghost rounded-2xl gap-1 text-base-content/70" onClick=${forget}>${Icon("lucide:trash-2")} ${T(t, "sessForget")}</button>` : null}
     </form>
   <//>`;
 }

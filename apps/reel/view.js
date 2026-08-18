@@ -116,7 +116,10 @@ function renameSub(url, title) {
 
 const sessDB = collection("reelSessions");
 const $sessions = atom({});                                 
-if (idbSupported && !gate) sessDB.all().then((rows) => $sessions.set(Object.fromEntries(rows.map((r) => [r.id, r.cookie])))).catch(() => {});
+
+const sessionsReady = idbSupported && !gate
+  ? sessDB.all().then((rows) => $sessions.set(Object.fromEntries(rows.map((r) => [r.id, r.cookie])))).catch(() => {})
+  : Promise.resolve();
 const sessionKey = (url) => registrableDomain(hostOf(url));
 const sessionFor = (url) => $sessions.get()[sessionKey(url)] || "";
 async function setSession(url, cookie) {
@@ -127,8 +130,6 @@ async function setSession(url, cookie) {
   try { if (c) await sessDB.put(k, { cookie: c }); else await sessDB.remove(k); } catch {  }
 }
 const $sessSite = atom("");                                 
-
-
 const watchedDB = collection("reelWatched");
 const $watched = atom(new Set());
 if (idbSupported && !gate) watchedDB.all().then((rows) => $watched.set(new Set(rows.map((r) => r.id)))).catch(() => {});
@@ -298,6 +299,7 @@ async function loadSource(url, append = false, hint = "") {
     loadingMore = false; return;
   }
   try {
+    await sessionsReady;                                   
     const cookie = sessionFor(url);                        
     const r = await (cookie
       ? fetch(`${VPS_PROXY}/videos`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, cookie }) })

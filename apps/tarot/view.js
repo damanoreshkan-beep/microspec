@@ -165,10 +165,14 @@ function FitReading({ rows, drawn, pos, t, loc, onOpen, paneRef, pan }) {
   </div>`;
 }
 
+
+
+
+
 function FitTile({ d, pos, t, loc, wpct, onOpen }) {
   const c = DECK[d.card];
-  return html`<button data-card class="h-full min-h-0 flex flex-col items-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
-    <div class="min-h-0 flex-1 flex items-center justify-center w-full">
+  return html`<button data-card class="h-full min-h-0 flex flex-col items-center justify-center gap-1 active:scale-95 transition" style=${`max-width:${wpct}%`} aria-label=${`${cardName(c, loc)} — ${T(t, pos)}`} onClick=${onOpen}>
+    <div class="min-h-0 flex items-center justify-center w-full">
       <img src=${imgURL(c.img)} alt="" loading="lazy" class=${`max-h-full max-w-full w-auto h-auto object-contain rounded-md sf-e2 ${d.reversed ? "rotate-180" : ""}`} />
     </div>
     <div class="shrink-0 text-[0.5rem] font-mono uppercase tracking-wide text-base-content/50 truncate max-w-full leading-tight">${T(t, pos)}</div>

@@ -625,10 +625,10 @@ function ApkScreen() {
     </header>
     <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">
       <div data-apk class="flex items-center gap-3 rounded-2xl sf-raised sf-e2 p-3">
-        <div class="size-14 rounded-full overflow-hidden bg-base-200 shrink-0 grid place-items-center ring-1 ring-base-content/10" style=${icons?.bg ? `background:${icons.bg}` : ""}>
+        <div class="size-14 rounded-full overflow-hidden bg-base-200 shrink-0 relative grid place-items-center ring-1 ring-base-content/10" style=${icons?.bg ? `background:${icons.bg}` : ""}>
           ${icons?.fg
             // the launcher's view of an adaptive icon: the 108dp foreground shown through a 72dp mask → 150%, centred
-            ? html`<img src=${`data:image/png;base64,${icons.fg}`} style="width:150%;height:150%;max-width:none;flex:none" alt="" />`
+            ? html`<img src=${`data:image/png;base64,${icons.fg}`} style="position:absolute;left:-25%;top:-25%;width:150%;height:150%;max-width:none" alt="" />`
             : icons?.icon ? html`<img src=${`data:image/png;base64,${icons.icon}`} class="size-full object-cover" alt="" />`
             : Icon(A.spec.profile?.icon || "lucide:box", "text-2xl text-base-content/40")}
         </div>

@@ -1,12 +1,13 @@
 import { VPS_PROXY } from "./feed.js";
 
+function bytesToB64(buf) {
+  let s = "";
+  for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
 function canvasToPngB64(cv) {
-  return new Promise((resolve) => cv.toBlob(async (b) => {
-    const buf = new Uint8Array(await b.arrayBuffer());
-    let s = "";
-    for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-    resolve(btoa(s));
-  }, "image/png"));
+  return new Promise((resolve) => cv.toBlob(async (b) => resolve(bytesToB64(new Uint8Array(await b.arrayBuffer()))), "image/png"));
 }
 
 export async function rasterizeIcon(blob, size = 192) {
@@ -35,6 +36,16 @@ export function letterTilePng(text, accent, size = 192) {
   ctx.textBaseline = "middle";
   ctx.fillText(((text || "A").trim()[0] || "A").toUpperCase(), size / 2, size * 0.54);
   return canvasToPngB64(cv);
+}
+
+export async function fetchAppIconPng() {
+  try {
+    const r = await fetch(new URL("icons/icon-192.png", location.href), { cache: "force-cache" });
+    if (!r.ok) return null;
+    const buf = new Uint8Array(await r.arrayBuffer());
+    if (buf.length < 8 || buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4E || buf[3] !== 0x47) return null;
+    return bytesToB64(buf);
+  } catch { return null; }
 }
 
 export async function fetchSiteIconPng(url, size = 192) {

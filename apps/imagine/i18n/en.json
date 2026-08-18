@@ -60,5 +60,6 @@
   "aspect_screen": "Screen",
   "aspect_square": "Square",
   "aspect_portrait": "Portrait",
-  "aspect_landscape": "Landscape"
+  "aspect_landscape": "Landscape",
+  "slides": "Variants"
 }

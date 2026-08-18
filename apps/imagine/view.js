@@ -163,7 +163,7 @@ export function imagine({ S, toast }) {
   return html`<div class="ms-stage relative overflow-hidden bg-black">
     <div class="absolute inset-0">
       ${phase === "done" && slides.length
-        ? html`<div ref=${slidesRef} data-slides class="absolute inset-0 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory" style="scrollbar-width:none" onScroll=${onSlidesScroll}>
+        ? html`<div ref=${slidesRef} data-slides tabindex="0" role="region" aria-label=${T(t, "slides")} class="absolute inset-0 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory outline-none" style="scrollbar-width:none" onScroll=${onSlidesScroll}>
             ${slides.map((s, i) => html`<div key=${s.url} class="w-full h-full shrink-0 snap-center bg-black"><img data-result data-slide=${i} src=${s.url} alt=${prompt} class=${`w-full h-full ${fit}`} loading=${i > 1 ? "lazy" : "eager"} /></div>`)}
           </div>`
         : html`<${Dust} active=${phase === "generating"} progress=${genProgress} />`}

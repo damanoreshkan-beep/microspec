@@ -13,7 +13,7 @@ import { html } from "htm/preact";
 import { Fragment } from "preact";
 import { useState, useRef, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
-import { T } from "/_rt/i18n.js";
+import { T, sys } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
 import { CameraPrime } from "/_rt/camprime.js";
@@ -93,7 +93,7 @@ export function retouch({ S, toast }) {
   const [hasLast, setHasLast] = useState(false);                                  // an image from Уяви is available
   const [suggesting, setSuggesting] = useState(false);                            // "surprise me" instruction is being written by the AI
 
-  const fileRef = useRef(), videoRef = useRef(), streamRef = useRef(null), runRef = useRef(0), blobs = useRef([]);
+  const fileRef = useRef(), videoRef = useRef(), streamRef = useRef(null), runRef = useRef(0), blobs = useRef([]), jobRef = useRef(null);
 
   // Track object URLs we mint so they can be revoked on unmount (avoid leaks across many edits).
   const own = (url) => { if (url?.startsWith?.("blob:")) blobs.current.push(url); return url; };
@@ -182,6 +182,7 @@ export function retouch({ S, toast }) {
       if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : cr.status === 413 ? "eBig" : "edFailed");
       const { job } = await cr.json();
       if (!job) return fail(run, "edFailed");
+      jobRef.current = job;
       const t0 = Date.now(); let got = 0; const mine = [];
       for (let i = 0; i < 100; i++) {                                             // ~150s of 1.5s polls
         await sleep(1500);
@@ -206,6 +207,14 @@ export function retouch({ S, toast }) {
       }
       setMore(false); if (!mine.length) fail(run, "eTimeout");
     } catch { fail(run, "eNetwork"); }
+  };
+
+  // Cancel — abandon this run (a stale reply cannot land) and tell the edge, so the worker stops the race.
+  const cancel = () => {
+    if (phase !== "editing") return;
+    runRef.current++; const job = jobRef.current; jobRef.current = null;
+    setMore(false); setPhase("ready");
+    if (job && !gate) fetch(`${VPS_PROXY}/image/edit/cancel`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job }) }).catch(() => {});
   };
 
   // keep editing: the result becomes the new base (iterative). revert: back to the untouched original.
@@ -287,12 +296,14 @@ export function retouch({ S, toast }) {
          and never needed a hairline on top of it (the neumorphic material makes one read as a sticker seam). */""}
     ${phase === "ready" || phase === "editing" || phase === "error" ? html`<div class="shrink-0 bg-base-100 px-3 pt-3 flex flex-col gap-2 max-w-xl w-full mx-auto" style="padding-bottom:max(0.75rem,env(safe-area-inset-bottom))">
       <div class="relative">
-        <textarea id="prompt" rows="2" aria-label=${T(t, "edPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "edPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey} disabled=${phase === "editing"}></textarea>
+        <textarea id="prompt" rows="2" aria-label=${T(t, "edPlaceholder")} class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-12" placeholder=${T(t, "edPlaceholder")} value=${prompt} onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
         <button data-dream aria-label=${T(t, "edDream")} disabled=${suggesting || phase === "editing"} onClick=${() => { buzz(); dream(); }} class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-secondary">${Icon("lucide:dices", `text-lg ${suggesting ? "animate-pulse" : ""}`)}</button>
       </div>
       <div class="flex gap-2">
         <button data-new class="btn btn-ghost rounded-2xl gap-2 shrink-0" aria-label=${T(t, "newImg")} disabled=${phase === "editing"} onClick=${backToChooser}>${Icon("lucide:image", "text-lg")}</button>
-        <button data-edit class="btn btn-primary flex-1 rounded-2xl gap-2" disabled=${phase === "editing" || !prompt.trim()} onClick=${edit}>${Icon("lucide:wand-sparkles", "text-lg")}${T(t, phase === "error" ? "edAgain" : "editBtn")}</button>
+        ${phase === "editing"
+          ? html`<button data-cancel class="btn btn-outline flex-1 rounded-2xl gap-2" onClick=${cancel}>${Icon("lucide:x", "text-lg")}${sys("cancel", loc)}</button>`
+          : html`<button data-edit class="btn btn-primary flex-1 rounded-2xl gap-2" disabled=${!prompt.trim()} onClick=${edit}>${Icon("lucide:wand-sparkles", "text-lg")}${T(t, phase === "error" ? "edAgain" : "editBtn")}</button>`}
       </div>
     </div>` : null}
 

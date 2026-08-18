@@ -7,7 +7,7 @@
 import { html } from "htm/preact";
 import { useState, useRef, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
-import { T } from "/_rt/i18n.js";
+import { T, sys } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
 import { Dust } from "/_rt/dust.js";
@@ -67,6 +67,7 @@ export function imagine({ S, toast }) {
   const [aspect, setAspect] = useState("screen");                                 // screen (this phone's ratio) | square | portrait | landscape
   const [suggesting, setSuggesting] = useState(false);                            // "surprise me" prompt is being written by the AI
   const runRef = useRef(0);                                                       // guards against a stale response landing after a new run
+  const jobRef = useRef(null);                                                    // the edge job in flight, so Cancel can tell the edge to stop the race
   const slidesRef = useRef(null);                                                 // the snap scroller, to read which slide is in view
   const islandRef = useRef(null);                                                 // the composer island — MEASURED, so contained pictures sit above it
   const [islandH, setIslandH] = useState(0);
@@ -115,6 +116,7 @@ export function imagine({ S, toast }) {
       if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : "eFailed");
       const { job } = await cr.json();
       if (!job) return fail(run, "eFailed");
+      jobRef.current = job;
       const t0 = Date.now(); let got = 0; const mine = [];
       for (let i = 0; i < 100; i++) {                                             // ~150s of 1.5s polls
         await sleep(1500);
@@ -141,6 +143,15 @@ export function imagine({ S, toast }) {
       }
       setMore(false); if (!mine.length) fail(run, "eTimeout");
     } catch { fail(run, "eNetwork"); }
+  };
+
+  // Cancel — the user changed their mind (a retyped prompt, a wrong setting): this run is abandoned (a stale
+  // reply cannot land) and the edge is told, so the worker stops the race and the quota is not spent for nothing.
+  const cancel = () => {
+    if (phase !== "generating") return;
+    runRef.current++; const job = jobRef.current; jobRef.current = null;
+    setMore(false); setPhase("idle");
+    if (job && !gate) fetch(`${VPS_PROXY}/image/cancel`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job }) }).catch(() => {});
   };
 
   // Which slide is in view: the scroller snaps one slide per screen width, so the index is scrollLeft / width.
@@ -216,7 +227,9 @@ export function imagine({ S, toast }) {
             ${seg("fast", "lucide:zap", T(t, "speed"))}
             ${seg("2k", "lucide:gem", T(t, "quality"))}
           </div>
-          <button id="go" data-go class="btn btn-primary rounded-2xl gap-2 px-5" disabled=${phase === "generating" || !prompt.trim()} onClick=${generate}>${Icon(phase === "generating" ? "lucide:loader-circle" : "lucide:sparkles", `text-lg ${phase === "generating" ? "animate-spin" : ""}`)}${T(t, phase === "done" || phase === "error" ? "again" : "generate")}</button>
+          ${phase === "generating"
+            ? html`<button data-cancel class="btn btn-outline rounded-2xl gap-2 px-5" onClick=${cancel}>${Icon("lucide:x", "text-lg")}${sys("cancel", loc)}</button>`
+            : html`<button id="go" data-go class="btn btn-primary rounded-2xl gap-2 px-5" disabled=${!prompt.trim()} onClick=${generate}>${Icon("lucide:sparkles", "text-lg")}${T(t, phase === "done" || phase === "error" ? "again" : "generate")}</button>`}
         </div>
         ${phase === "done" && cur ? html`<button data-save class="btn btn-outline rounded-2xl gap-2 w-full" onClick=${save}>${Icon("lucide:download", "text-lg")}${T(t, "save")}</button>` : null}
       </div>

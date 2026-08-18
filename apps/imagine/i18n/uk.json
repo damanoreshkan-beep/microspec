@@ -61,5 +61,7 @@
   "aspect_square": "Квадрат",
   "aspect_portrait": "Портрет",
   "aspect_landscape": "Пейзаж",
-  "slides": "Варіанти"
+  "slides": "Варіанти",
+  "notifDone": "Зображення готове",
+  "notifEditDone": "Правка готова"
 }

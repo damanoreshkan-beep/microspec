@@ -22,6 +22,7 @@ import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
 import { Lightbox } from "./lightbox.js";
+import { notify, notifyAsk } from "/_rt/notify.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -168,6 +169,7 @@ export function retouch({ S, toast }) {
     const seed = randSeed(), run = ++runRef.current;
     buzz(); setError(null); setElapsed(0);
     dropSlides(); setPhase("editing");
+    if (!gate) notifyAsk();
     if (gate) { await sleep(120); if (run === runRef.current) { setSlides([0, 1, 2, 3].map((n) => ({ url: mockArt(seed + n) }))); setPhase("done"); } return; }
     let image;
     try { image = await toEditableDataURL(srcUrl); } catch { return fail(run, "edFailed"); }
@@ -199,7 +201,10 @@ export function retouch({ S, toast }) {
             const blob = await pr.blob(); const meta = (j.slides || [])[n] || {};
             mine.push({ url: own(URL.createObjectURL(blob)), w: meta.w, h: meta.h, by: meta.by });
             setSlides([...mine]); setMore(j.status !== "done");
-            if (mine.length === 1) { setIdx(0); setPhase("done"); buzz(12); }
+            if (mine.length === 1) {
+              setIdx(0); setPhase("done"); buzz(12);
+              if (document.visibilityState === "hidden") notify({ id: "imagine-edit-done", title: T(t, "title"), body: T(t, "notifEditDone"), url: "./?tab=edit" });
+            }
           } catch { /* a variant that failed to transfer is skipped; the rest still land */ }
           got = n + 1;
         }

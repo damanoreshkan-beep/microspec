@@ -254,3 +254,16 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
 
 // The page asks for the swap when the user taps "restart" on the update snackbar — never on our own.
 self.addEventListener("message", (e) => { if (e.data === "ms-skip-waiting") self.skipWaiting(); });
+
+// A tap on one of the app's notifications (/_rt/notify.js) brings the app back: focus the window that is
+// already open under this scope, or open a fresh one at the app root — never a second copy beside the first.
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const scope = self.registration.scope, url = new URL(e.notification.data?.url || "./", scope).href;
+  e.waitUntil((async () => {
+    for (const c of await self.clients.matchAll({ type: "window", includeUncontrolled: true })) {
+      if (c.url.startsWith(scope) && "focus" in c) return c.focus();
+    }
+    return self.clients.openWindow ? self.clients.openWindow(url) : null;
+  })());
+});

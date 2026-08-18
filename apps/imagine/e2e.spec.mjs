@@ -178,6 +178,16 @@ export default [
     },
   },
   {
+    name: "«Використати в Онови» переносить фото як джерело й опис як інструкцію", run: async (h) => {
+      await h.click('[data-tab="read"]'); await h.wait(400);
+      const photo = await h.attr('[data-tab="read"]', "data-tab") && await h.attr("[data-result]", "src");
+      await h.click("[data-to-edit]"); await h.wait(500);
+      h.expect((await h.count("[data-edit]")) === 1, "не перейшло в Онови");
+      h.expect((await h.attr("[data-result]", "src")) === photo, "фото з Опиши не стало джерелом в Онови");
+      h.expect(/Гірське озеро/.test(await h.prop("#prompt", "value")), "опис не став інструкцією");
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="make"]'); await h.wait(150);
       await h.click('[data-tab="me"]'); await h.wait(150);

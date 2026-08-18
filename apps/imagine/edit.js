@@ -23,6 +23,7 @@ import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
 import { Lightbox } from "./lightbox.js";
 import { usePromptHistory, HistorySheet } from "./history.js";
+import { editHandoff } from "./handoff.js";
 import { notify, notifyAsk } from "/_rt/notify.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -154,6 +155,11 @@ export function retouch({ S, toast }) {
   const backToChooser = () => { stopCam(); setEnabled(false); setCamErr(null); setPhase("empty"); if (!gate) readLastGen().then((v) => setHasLast(!!v)).catch(() => {}); };
 
   const fail = (run, key) => { if (run === runRef.current) { setError(key); setPhase("error"); } };
+
+  // A photo + read handed over from Опиши: it becomes the source on stage and the instruction in the field,
+  // consumed once (whether this view was mounted or comes up now).
+  const handed = useStore(editHandoff);
+  useEffect(() => { if (handed?.url) { stopCam(); setEnabled(false); loadSource(handed.url); setPrompt(handed.prompt || ""); editHandoff.set(null); } }, [handed]);
 
   // "Surprise me" — the AI writes a fresh edit instruction (in the active locale) from a random spark; toEnglish
   // converts it for the model at edit() time. Fail-open: a miss leaves the field as-is. The gate uses a fixed line.

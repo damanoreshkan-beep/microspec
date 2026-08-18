@@ -3,3 +3,4 @@
 // views import the same module so a set() here is a render there whether Твори is mounted or comes back later.
 import { atom } from "nanostores";
 export const promptHandoff = atom(null);   // string | null — consumed (reset to null) by the make view
+export const editHandoff = atom(null);     // { url, prompt } | null — Опиши → Онови: the photo as the source, the read as the instruction; consumed by the edit view

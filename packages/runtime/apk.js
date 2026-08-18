@@ -38,14 +38,41 @@ export function letterTilePng(text, accent, size = 192) {
   return canvasToPngB64(cv);
 }
 
-export async function fetchAppIconPng() {
+async function fetchPngB64(rel) {
   try {
-    const r = await fetch(new URL("icons/icon-192.png", location.href), { cache: "force-cache" });
+    const r = await fetch(new URL(rel, location.href), { cache: "force-cache" });
     if (!r.ok) return null;
     const buf = new Uint8Array(await r.arrayBuffer());
     if (buf.length < 8 || buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4E || buf[3] !== 0x47) return null;
     return bytesToB64(buf);
   } catch { return null; }
+}
+
+async function cornerHex(pngB64) {
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `data:image/png;base64,${pngB64}`; });
+    const cv = document.createElement("canvas"); cv.width = cv.height = 1;
+    const ctx = cv.getContext("2d"); ctx.drawImage(img, 0, 0);
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+    return a === 255 ? "#" + [r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("") : null;
+  } catch { return null; }
+}
+
+export async function fetchAppIcons() {
+  const icon = await fetchPngB64("icons/icon-192.png");
+  if (!icon) return null;
+  const [fg, mask] = await Promise.all([fetchPngB64("icons/icon-fg-432.png"), fetchPngB64("icons/icon-192-maskable.png")]);
+  const bg = mask ? await cornerHex(mask) : null;
+  return { icon, fg: fg || undefined, bg: bg || undefined };
+}
+
+export async function adaptiveFromTile(pngB64, fallbackBg = "#ffffff") {
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `data:image/png;base64,${pngB64}`; });
+  const size = 432, box = Math.round(size * 0.46);
+  const cv = document.createElement("canvas"); cv.width = cv.height = size;
+  cv.getContext("2d").drawImage(img, (size - box) / 2, (size - box) / 2, box, box);
+  const bg = (await cornerHex(pngB64)) || fallbackBg;
+  return { fg: await canvasToPngB64(cv), bg };
 }
 
 export async function fetchSiteIconPng(url, size = 192) {
@@ -58,11 +85,11 @@ export async function fetchSiteIconPng(url, size = 192) {
   } catch { return null; }
 }
 
-export async function buildApk({ url, name, iconB64 }) {
+export async function buildApk({ url, name, iconB64, fgB64, bg }) {
   const r = await fetch(`${VPS_PROXY}/apk`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url, name, icon: iconB64 || undefined }),
+    body: JSON.stringify({ url, name, icon: iconB64 || undefined, fg: fgB64 || undefined, bg: bg || undefined }),
   });
   if (!r.ok) { const why = await r.text().catch(() => ""); throw new Error(`apk ${r.status}${why ? ` ${why}` : ""}`); }
   return await r.blob();

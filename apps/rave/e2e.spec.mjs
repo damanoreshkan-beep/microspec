@@ -53,16 +53,20 @@ export default [
     },
   },
   {
+    // Same shape as the settings-sheet case: conditions, not clocks. A fixed 250ms after #save + 300ms after
+    // the tab switch was not always enough for the saved list to mount under CI load — "збережений біт не
+    // зʼявився" flaked on a farm-wide run (2026-08-18) with no rave change in the diff. Poll for each state.
     name: "матриця 22x16: редагування + збереження", run: async (h) => {
-      await h.click('[data-tab="pads"]'); await h.wait(200);
-      h.expect((await h.count("[data-cell]")) === 22 * 16, "матриця не 22x16");
+      const until = async (cond, ms = 4000) => { for (let i = 0; i < ms / 100; i++) { if (await cond()) return true; await h.wait(100); } return cond(); };
+      await h.click('[data-tab="pads"]');
+      h.expect(await until(async () => (await h.count("[data-cell]")) === 22 * 16), "матриця не 22x16");
       const cell = '[data-cell="conga-6"]';
       const before = await h.attr(cell, "aria-pressed");
-      await h.tap(cell); await h.wait(120);
-      h.expect((await h.attr(cell, "aria-pressed")) !== before, "пад не перемкнувся");
+      await h.tap(cell);
+      h.expect(await until(async () => (await h.attr(cell, "aria-pressed")) !== before), "пад не перемкнувся");
       await h.tap("#save"); await h.wait(250);
-      await h.click('[data-tab="saved"]'); await h.wait(300);
-      h.expect((await h.count("[data-saved]")) >= 1, "збережений біт не зʼявився");
+      await h.click('[data-tab="saved"]');
+      h.expect(await until(async () => (await h.count("[data-saved]")) >= 1), "збережений біт не зʼявився");
     },
   },
   {

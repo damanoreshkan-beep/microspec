@@ -79,7 +79,7 @@ function play(station, { retryPlain = false } = {}) {
   const old = el;
   if (old) { const o = old; ramp(o, o.volume, 0, 350, () => teardown(o)); }
   const cors = station.cors && !retryPlain;
-  const a = new Audio();
+  const a = document.createElement("audio");
   a.preload = "none";
   if (cors) a.crossOrigin = "anonymous";
   a.src = station.url;

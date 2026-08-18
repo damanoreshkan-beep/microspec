@@ -244,6 +244,23 @@ export async function jobs(owner, repo, id) {
 
 // logout() — drop the local sid + session and best-effort tell the edge to forget the server-side token.
 // A Google session also tells GIS not to auto-select next time (the documented "no dead loop" step).
+// adoptSession — a session minted elsewhere (the phone's browser, via the edge's pairing) becomes THIS page's:
+// persisted under the same keys restore() reads, and set on the atom so every surface flips at once.
+export function adoptSession({ sid, provider = "github", user }) {
+  if (typeof sid !== "string" || !sid) return null;
+  const u = user && user.login ? { login: user.login, name: user.name || user.login, avatar: user.avatar || "", html_url: user.html_url || "" } : null;
+  lsSet(SID_KEY, sid); lsSet(PROV_KEY, provider === "google" ? "google" : "github"); if (u) lsSetJSON(USER_KEY, u);
+  const sess = { sid, user: u, provider: provider === "google" ? "google" : "github" };
+  session.set(sess); return sess;
+}
+
+// Pairing (the APK's WebView cannot pop a window nor run GIS): pairNew() → an id; the browser page that signs
+// in calls pairComplete(id, sid); the WebView polls pairPoll(id) until the session arrives.
+const PAIR = `${VPS_PROXY}/pair`;
+export async function pairNew() { const r = await fetch(`${PAIR}/new`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }); const j = await r.json().catch(() => null); return r.ok && typeof j?.pair === "string" ? j.pair : null; }
+export async function pairComplete(pair, sid) { const r = await fetch(`${PAIR}/complete`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pair, sid }) }); return r.ok; }
+export async function pairPoll(pair) { const r = await fetch(`${PAIR}/poll?pair=${encodeURIComponent(pair)}`); if (!r.ok) throw Object.assign(new Error("pair " + r.status), { status: r.status }); return r.json(); }
+
 export async function logout() {
   const s = session.get();
   dropStored();

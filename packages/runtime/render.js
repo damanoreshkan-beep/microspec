@@ -538,21 +538,37 @@ function PermissionsScreen() {
 function SignInScreen() {
   const loc = useStore(A.S.locale);
   const [mods, setMods] = useState(null);
+  // ?pair=<id>: this page was opened by the APK's WebView in the phone's browser to sign in ON ITS BEHALF —
+  // when the session lands (or is already here) hand it to the edge under that id and say so, instead of closing.
+  const pair = (() => { try { return new URLSearchParams(location.search).get("pair") || ""; } catch { return ""; } })();
+  const [paired, setPaired] = useState(false);
   useEffect(() => {
     let live = true;
-    Promise.all([import("./signin.js"), import("./auth.js")]).then(([si, au]) => { if (live) setMods({ SignIn: si.SignIn, session: au.session }); }).catch(() => {});
+    Promise.all([import("./signin.js"), import("./auth.js")]).then(([si, au]) => { if (live) setMods({ SignIn: si.SignIn, session: au.session, pairComplete: au.pairComplete }); }).catch(() => {});
     return () => { live = false; };
   }, []);
-  useEffect(() => { if (!mods) return; return mods.session.listen((s) => { if (s) A.S.screen.set(null); }); }, [mods]);
+  useEffect(() => {
+    if (!mods) return;
+    const onSession = async (s) => {
+      if (!s) return;
+      if (pair) { const ok = await mods.pairComplete(pair, s.sid).catch(() => false); setPaired(ok ? "ok" : "fail"); return; }
+      A.S.screen.set(null);
+    };
+    if (mods.session.get()) onSession(mods.session.get());
+    return mods.session.listen(onSession);
+  }, [mods]);
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
     <header class="navbar bg-base-100 sf-e2 sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
       <button id="signin-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${sys("back", loc)} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${sys("signInTitle", loc)}</div>
     </header>
     <div data-signin class="px-4 pt-6 pb-8 flex flex-col items-center text-center gap-4 max-w-xl mx-auto">
-      ${Icon("lucide:lock-keyhole", "text-4xl text-primary")}
-      <p class="text-sm text-base-content/75 max-w-xs">${sys("signInBody", loc)}</p>
-      ${mods ? html`<${mods.SignIn} locale=${loc} className="pt-1" />` : null}
+      ${paired === "ok"
+        ? html`${Icon("lucide:check-circle-2", "text-4xl text-success")}<p data-paired class="text-base font-semibold max-w-xs">${sys("pairDone", loc)}</p>`
+        : html`${Icon("lucide:lock-keyhole", "text-4xl text-primary")}
+          <p class="text-sm text-base-content/75 max-w-xs">${sys(pair ? "pairBody" : "signInBody", loc)}</p>
+          ${paired === "fail" ? html`<p role="alert" class="text-error text-sm">${sys("pairFail", loc)}</p>` : null}
+          ${mods ? html`<${mods.SignIn} locale=${loc} className="pt-1" />` : null}`}
     </div>
   </div>`;
 }

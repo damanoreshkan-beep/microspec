@@ -20,6 +20,8 @@ export const SYS = {
   deleted: { en: "Deleted", uk: "Видалено" },
   undo: { en: "Undo", uk: "Скасувати" },
   cancel: { en: "Cancel", uk: "Скасувати" },
+  signInTitle: { en: "Sign in", uk: "Увійти" },
+  signInBody: { en: "AI generation is for signed-in users — so the free quota goes to people, not bots.", uk: "AI-генерація доступна після входу — так безкоштовна квота дістається людям, а не ботам." },
   // The UI kit's own chrome (a Sheet's close button). Systemic strings live HERE, never in an app dict —
   // a shared component that demands an i18n key from every app that mounts it is a component that ships
   // the raw key the first time someone forgets (which is how "profTheme" reached a real screen).

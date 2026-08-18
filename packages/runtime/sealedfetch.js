@@ -22,6 +22,11 @@
 
 import { VPS_PROXY, SEALED_KEY } from "./feed.js";
 import { seal, openResponse, b64u, unb64u } from "./sealed.js";
+import { authWall } from "./authwall.js";
+
+// The session rides INSIDE the envelope (field `s`), read straight from where auth.js keeps it — this file is
+// in every app's bootstrap closure and auth.js deliberately is not, so no import, just the one key.
+const sidNow = () => { try { return localStorage.getItem("ms:gh:sid") || ""; } catch { return ""; } };
 
 /* sealedFrameUrl(url, ref) → `${VPS_PROXY}/frame?s=<envelope>` — a plain GET an ELEMENT can load, whose
    destination is nevertheless inside the envelope. This is the half of the tunnel `installSealedFetch` cannot
@@ -72,7 +77,8 @@ export function installSealedFetch(realFetch = globalThis.fetch.bind(globalThis)
       try { body = JSON.parse(init.body); } catch { return realFetch(input, init); }
     }
 
-    const { wire, resKey } = await seal(SEALED_KEY, { p: innerPath(url), m: method, b: body });
+    const sid = sidNow();
+    const { wire, resKey } = await seal(SEALED_KEY, { p: innerPath(url), m: method, b: body, ...(sid ? { s: sid } : {}) });
     // text/plain keeps this CORS-safelisted, so there is no preflight OPTIONS on every call.
     const r = await realFetch(TUNNEL, {
       method: "POST",
@@ -86,6 +92,8 @@ export function installSealedFetch(realFetch = globalThis.fetch.bind(globalThis)
 
     const out = await openResponse(resKey, new Uint8Array(await r.arrayBuffer()));
     const payload = out.enc === "b64" ? unb64u(out.body) : out.body;
+    // The edge's "signed-in only" refusal → the runtime's sign-in wall (see authwall.js); the app still gets its 401.
+    if (out.s === 401 && typeof payload === "string" && payload.includes('"sign in"')) authWall.set(authWall.get() + 1);
     return new Response(out.s === 204 || out.s === 304 ? null : payload, {
       status: out.s,
       headers: out.ct ? { "content-type": out.ct } : {},

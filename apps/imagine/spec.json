@@ -45,6 +45,7 @@
     "install": true,
     "permissions": [
       "camera"
-    ]
+    ],
+    "account": "any"
   }
 }

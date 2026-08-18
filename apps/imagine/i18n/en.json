@@ -54,5 +54,6 @@
   "copy": "Copy",
   "copied": "Copied",
   "dsPrimeReason": "Point the camera — and learn what is in front of you.",
-  "dsFailed": "Could not read it"
+  "dsFailed": "Could not read it",
+  "toMake": "Use in Make"
 }

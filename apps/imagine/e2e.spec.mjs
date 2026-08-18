@@ -101,6 +101,14 @@ export default [
     },
   },
   {
+    name: "«Використати в Твори» переносить опис у промпт генерації", run: async (h) => {
+      await h.click('[data-tab="read"]'); await h.wait(400);
+      await h.click("[data-to-make]"); await h.wait(400);
+      h.expect((await h.count("[data-go]")) === 1, "не перейшло у Твори");
+      h.expect(/Гірське озеро/.test(await h.prop("#prompt", "value")), "опис не став промптом");
+    },
+  },
+  {
     name: "спитати ще → питання → відповідь (гейт: без мережі)", run: async (h) => {
       await h.click('[data-tab="read"]'); await h.wait(400);
       await h.click("[data-ask]"); await h.wait(200);

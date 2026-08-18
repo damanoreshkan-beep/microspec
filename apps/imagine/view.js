@@ -5,7 +5,7 @@
 // The headless gate has no network and must stay deterministic, so there it seeds a local mesh-gradient
 // "image" and never calls out.
 import { html } from "htm/preact";
-import { useState, useRef } from "preact/hooks";
+import { useState, useRef, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
@@ -15,6 +15,7 @@ import { writeLastGen } from "/_rt/lastgen.js";
 import { toEnglish } from "/_rt/translate.js";
 import { suggest } from "/_rt/ai-text.js";
 import { downloadUrl } from "/_rt/apk.js";
+import { promptHandoff } from "./handoff.js";
 
 // The edit mode lives in its own module and is re-exported here, because the runtime resolves a tab's
 // `view` against this file's exports. Keeping it a separate file rather than pasting 350 lines in: the two
@@ -59,6 +60,10 @@ export function imagine({ S, toast }) {
   const [quality, setQuality] = useState("fast");                                 // "fast" (1024, ~18s) | "2k" (2048, ~32s) — speed↔quality, not pixels
   const [suggesting, setSuggesting] = useState(false);                            // "surprise me" prompt is being written by the AI
   const runRef = useRef(0);                                                       // guards against a stale response landing after a new run
+
+  // A description handed over from Опиши becomes the prompt (and is consumed, so it lands exactly once).
+  const handed = useStore(promptHandoff);
+  useEffect(() => { if (handed) { setPrompt(handed); promptHandoff.set(null); } }, [handed]);
 
   const est = EST[quality];                                                       // approximate wall-clock, for the progress bar
 

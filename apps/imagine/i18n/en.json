@@ -63,5 +63,7 @@
   "aspect_landscape": "Landscape",
   "slides": "Variants",
   "notifDone": "Your image is ready",
-  "notifEditDone": "Your edit is ready"
+  "notifEditDone": "Your edit is ready",
+  "history": "History",
+  "historyEmpty": "Your prompts will show up here"
 }

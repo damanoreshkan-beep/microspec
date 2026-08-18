@@ -63,5 +63,7 @@
   "aspect_landscape": "Пейзаж",
   "slides": "Варіанти",
   "notifDone": "Зображення готове",
-  "notifEditDone": "Правка готова"
+  "notifEditDone": "Правка готова",
+  "history": "Історія",
+  "historyEmpty": "Тут з'являться твої запити"
 }

@@ -543,6 +543,7 @@ function SessionSheet({ S, t, undo }) {
   const site = useStore($sessSite), sessions = useStore($sessions);
   const cur = sessions[sessionKey(site)] || "";
   const [val, setVal] = useState(cur);
+  useEffect(() => { setVal(cur); }, [cur, site]);
   const close = () => S.screen.set(null);
   const save = (e) => { e?.preventDefault?.(); const next = val.trim(); if (!next) return; setSession(site, next); close(); };
   const forget = () => { undo(() => setSession(site, cur), siteName(site)); setSession(site, ""); close(); };
@@ -554,9 +555,6 @@ function SessionSheet({ S, t, undo }) {
     </form>
   <//>`;
 }
-
-
-
 
 
 
@@ -584,7 +582,6 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, openIn }) 
 
 
 function DragReveal({ underRef, diveRef, backRef, target, targetLabel, prev }) {
-  
   
   return html`<div ref=${underRef} aria-hidden="true" class="fixed inset-0 z-0 sf-inset opacity-0">
     ${prev ? html`<div ref=${backRef} class="absolute inset-y-0 left-0 w-40 flex flex-col items-center justify-center gap-2 px-3 text-center opacity-0">

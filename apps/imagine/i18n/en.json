@@ -44,5 +44,15 @@
   "primePrivacy": "Edited online — your photo is uploaded to the service",
   "eEditing": "Editing…",
   "edFailed": "Couldn't edit that",
-  "eBig": "That image is too large"
+  "eBig": "That image is too large",
+  "tabRead": "Read",
+  "dsPlaceholder": "Ask something about the photo…",
+  "readBtn": "Tell me",
+  "answer": "Answer",
+  "dsAgain": "Try again",
+  "askMore": "Ask more",
+  "copy": "Copy",
+  "copied": "Copied",
+  "dsPrimeReason": "Point the camera — and learn what is in front of you.",
+  "dsFailed": "Could not read it"
 }

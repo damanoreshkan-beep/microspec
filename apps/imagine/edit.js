@@ -52,7 +52,7 @@ function mockArt(seed) {
 // Draw any same-origin image (objectURL / dataURL / svg) onto a capped canvas and return a JPEG data URL — the
 // shape the proxy forwards to the Spaces (their FileData.url accepts a base64 data URL). Downscaled so the POST
 // body stays small. Same-origin only, so the canvas never taints.
-function toEditableDataURL(url) {
+export function toEditableDataURL(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {

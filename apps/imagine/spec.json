@@ -21,6 +21,16 @@
       ]
     },
     {
+      "id": "read",
+      "type": "tool",
+      "icon": "lucide:scan-eye",
+      "label": "tabRead",
+      "view": "describe",
+      "needs": [
+        "camera"
+      ]
+    },
+    {
       "id": "me",
       "type": "profile",
       "icon": "lucide:user",

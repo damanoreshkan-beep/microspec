@@ -20,6 +20,7 @@ import { downloadUrl } from "/_rt/apk.js";
 // `view` against this file's exports. Keeping it a separate file rather than pasting 350 lines in: the two
 // modes share a pipeline but not a screen, and a 600-line view.js would hide that they are independent.
 export { retouch } from "./edit.js";
+export { describe } from "./describe.js";   // image → text (Опиши), same shape: its own file, re-exported for the tab
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

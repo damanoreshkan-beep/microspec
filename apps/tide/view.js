@@ -199,11 +199,12 @@ export function tide({ S }) {
 
       ${/* the void: what is playing right now, in the field — the station lives on the transport, the
            TRACK lives here (one representation per state; the two are different states) */""}
-      <div class="flex-1 min-h-0 flex flex-col justify-end px-1 gap-1" data-now=${now ? "yes" : "no"}>
-        ${now ? html`
-          <div class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70 truncate">${now.artist}</div>
-          <div class="text-[length:var(--ms-title)] font-semibold leading-tight line-clamp-2">${now.title}</div>` : null}
-        ${stateLine ? html`<div class=${`font-mono uppercase tracking-wide text-[var(--ms-label)] truncate mt-1 ${state === "error" ? "text-error" : "text-base-content/70"}`}>${stateLine}</div>` : null}
+      <div class="flex-1 min-h-0 flex flex-col justify-end px-1 gap-0.5" data-now=${now ? "yes" : "no"}>
+        ${/* two lines, always: ARTIST · STATE (mono) over the title (one line, ellipsis) — a two-line clamp
+             clipped its descenders in the ~60px void a 340px split window leaves; a fixed two-line block
+             never does, at any height the density ladder reaches */""}
+        ${(now || stateLine) ? html`<div class=${`font-mono uppercase tracking-wide text-[var(--ms-label)] truncate ${state === "error" ? "text-error" : "text-base-content/70"}`}>${[now?.artist, stateLine].filter(Boolean).join(" · ")}</div>` : null}
+        ${now ? html`<div class="text-[length:var(--ms-title)] font-semibold leading-tight truncate">${now.title}</div>` : null}
       </div>
 
       <${Island} className="shrink-0">

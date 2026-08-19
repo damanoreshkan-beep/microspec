@@ -258,3 +258,14 @@ Java change. The one party that already fetches the page is the proxy, and the t
   sends a domain cookie to every host of the site), dropping it off-site, and `safeUrl`-checking every hop.
   (2) The boot fetch fired from the first mount before IndexedDB had answered, so every **cold start** loaded
   the site anonymously; `loadSource` now awaits `sessionsReady` before reading the cookie.
+- **What "the same censored videos every time" actually was (2026-08-19).** Not the cookie, not the parser
+  alone: the keyless `open` process egresses through the ExpressVPN tunnel, and its rotator walked all 62 US
+  regions — from `usa-sioux-falls` (a state with an adult age-verification law) the site answers its front page
+  with an SFW compliance page: 468 KB, `<title>` "Pornhub", 24 podcast clips, no next page. From
+  `usa-new-york`: 1.03 MB, 61 clips. The rotator now rotates only through 33 regions in states without such a
+  law (`edge/vpn-rotator.sh`). Second, real, defect found on the way: the tiles' poster is an image-proxy URL
+  with the clip's filename INSIDE the path (`…/original_<id>.mp4/plain/…`), which the raw sweep read as a second
+  video per tile — 82 items, 61 titled "225k <id>", 21 poster-less; `RAW_RX` now requires the extension to end
+  the path and `humanName` ignores bitrate tokens (61 clean items). Gitignored local suites carry the real page:
+  `edge/core.local_test.js` (ph-root fixture) and `edge/session.local_test.js` (redirect chain, anonymous vs
+  cookie, consent flags, egress).

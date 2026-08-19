@@ -20,6 +20,7 @@
   "aFsExit": "Exit full screen",
   "stations": "Stations",
   "connecting": "Connecting",
+  "reconnecting": "Reconnecting",
   "live": "Live",
   "errStream": "Stream unavailable. Try another station.",
   "cDeep": "Deep",

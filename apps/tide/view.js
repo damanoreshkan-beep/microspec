@@ -34,6 +34,8 @@ const AC = typeof AudioContext !== "undefined" ? AudioContext : (typeof globalTh
 // ---- persisted working set ----
 const $cat = persistentAtom("tide:cat", CATEGORIES[0].id);
 const $station = persistentAtom("tide:station", stationsIn(CATEGORIES[0].id)[0].id);
+// favourites: station ids in the order they were hearted (the gate shoots the POPULATED hero: a fixture set)
+const $favs = persistentAtom("tide:favs", gate ? ["dronezone", "groovesalad", "defcon"] : [], { encode: JSON.stringify, decode: (v) => { try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch { return []; } } });
 const $playing = atom(false);
 const $state = atom("idle");                                     // idle | connecting | live | reconnecting | error
 const $now = atom(null);                                         // { title, artist } | null
@@ -180,6 +182,12 @@ function select(id) {
   if (np) np.meta(s.name);
   if ($playing.get()) play(s);
 }
+// favourites: station ids, in the order they were hearted; the heart on the transport toggles the station
+// that is playing, the hero strip (idle only) is the shortcut back to them
+function toggleFav(id) {
+  const f = $favs.get();
+  $favs.set(f.includes(id) ? f.filter((x) => x !== id) : [...f, id]);
+}
 function setCat(id) {
   fails = 0;
   $cat.set(id);
@@ -258,6 +266,7 @@ export function tide({ S }) {
   const loc = useStore(S.locale);
   const catId = useStore($cat), stId = useStore($station);
   const playing = useStore($playing), state = useStore($state), now = useStore($now);
+  const favs = useStore($favs);
   const screen = useStore(S.screen), fs = useStore($fs);
   const cat = categoryById(catId), station = stationById(stId) || stationsIn(catId)[0];
   const fieldRef = useRef();
@@ -268,6 +277,10 @@ export function tide({ S }) {
   const tap = useTap({ onDouble: () => toggleFs(fieldRef.current) });
   const surface = { ...swipe, onClick: tap };
   const currents = CATEGORIES.map((c) => ({ id: c.id, label: T(t, c.key), dot: `hsl(${c.hue} 60% 58%)` }));
+  const isFav = favs.includes(station.id);
+  // the hero's favourites — a frost rail of the hearted stations (each pill wears its current's hue), shown
+  // only while nothing plays: once a station is live the void belongs to the track
+  const favItems = favs.map(stationById).filter(Boolean).map((s) => ({ id: s.id, label: s.name, dot: `hsl(${categoryById(s.cat).hue} 60% 58%)` }));
   useEffect(() => { if (screen === "stations") fetchListeners(); }, [screen]);
 
   const stateLine = state === "connecting" ? T(t, "connecting") : state === "reconnecting" ? T(t, "reconnecting") : state === "error" ? T(t, "errStream") : state === "live" ? T(t, "live") : null;
@@ -278,7 +291,7 @@ export function tide({ S }) {
     </div>
 
     <div class="relative z-10 h-full min-h-0 flex flex-col gap-[var(--ms-gap)]" data-cat=${catId} data-station=${station.id} data-state=${state}>
-      <div class="shrink-0"><${Segmented} attr="data-current" scroll variant="outline" label=${T(t, "tabListen")}
+      <div class="shrink-0"><${Segmented} attr="data-current" scroll variant="outline" tone="frost" label=${T(t, "tabListen")}
         items=${currents} value=${catId} onChange=${setCat} /></div>
 
       ${/* the void: what is playing right now, in the field — the station lives on the transport, the
@@ -287,15 +300,18 @@ export function tide({ S }) {
         ${/* two lines, always: ARTIST · STATE (mono) over the title (one line, ellipsis) — a two-line clamp
              clipped its descenders in the ~60px void a 340px split window leaves; a fixed two-line block
              never does, at any height the density ladder reaches */""}
+        ${!playing && favItems.length ? html`<div class="shrink-0 self-start max-w-full mb-1" data-favs><${Segmented} attr="data-fav" scroll variant="outline" tone="frost" size="sm" label=${T(t, "favs")}
+          items=${favItems} value=${station.id} onChange=${(id) => { const f = stationById(id); if (f && f.cat !== catId) setCat(f.cat); select(id); start(); }} /></div>` : null}
         ${(now || stateLine) ? html`<div class=${`font-mono uppercase tracking-wide text-[var(--ms-label)] truncate ${state === "error" ? "text-error" : "text-base-content/70"}`}>${[now?.artist, stateLine].filter(Boolean).join(" · ")}</div>` : null}
         ${now ? html`<div class="text-[length:var(--ms-title)] font-semibold leading-tight truncate">${now.title}</div>` : null}
       </div>
 
-      <${Island} className="shrink-0">
+      <${Island} className="shrink-0" tone="frost">
         <${Transport} locale=${loc} playing=${playing} onToggle=${toggle} onPrev=${() => skip(-1)} onNext=${() => skip(1)}
           title=${station.name}
           subtitle=${html`<span class="inline-flex items-center gap-1.5"><span class="inline-block w-1.5 h-1.5 rounded-full shrink-0" style=${`background:hsl(${cat.hue} 60% 58%)`}></span>${T(t, cat.key)} · ${T(t, station.genre)}</span>`}
           actions=${[
+            { id: "fav", icon: "lucide:heart", label: T(t, isFav ? "aUnfav" : "aFav"), active: isFav, pressed: isFav, onClick: () => toggleFav(station.id), attr: { "data-fav-btn": "" } },
             { id: "list", icon: "lucide:list-music", label: T(t, "aStations"), onClick: () => S.screen.set("stations"), attr: { "data-stations": "" } },
             ...(fsSupported ? [{ id: "fs", icon: fs ? "lucide:minimize" : "lucide:maximize", label: T(t, fs ? "aFsExit" : "aFs"), onClick: () => toggleFs(fieldRef.current), attr: { "data-fs-btn": "" } }] : []),
           ]} />
@@ -311,7 +327,7 @@ export function tide({ S }) {
 function StationSheet({ S, t, open, cat, stId, playing }) {
   const listeners = useStore($listeners);
   const list = stationsIn(cat.id);
-  return html`<${Sheet} id="stations" open=${open} onClose=${() => S.screen.set(null)} title=${T(t, "stations")} subtitle=${T(t, cat.key)} icon="lucide:list-music">
+  return html`<${Sheet} id="stations" open=${open} onClose=${() => S.screen.set(null)} title=${T(t, "stations")} subtitle=${T(t, cat.key)} icon="lucide:list-music" tone="frost">
     <div class="flex flex-col gap-0.5" data-station-list>
       ${list.map((s) => {
         const active = s.id === stId, n = s.soma ? listeners[s.soma] : null;

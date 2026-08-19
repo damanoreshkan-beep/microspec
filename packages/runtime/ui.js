@@ -39,9 +39,18 @@ const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls |
 // modal, the QR invite, the danger confirm) that predate this kit and each wrote their own box classes —
 // which is how three apps ended up overflowing at 208px through a sheet none of them wrote: no width
 // ceiling, no min-w-0, so a control inside pushed the DOCUMENT wide. One definition, one place.
+// ── FROST — the material for a surface floating over a STAGE ───────────────────────────────────────────
+// Over the farm's own extrusion a blur is banned (preflight: glass and the shadow pair answer the same
+// question). Over FOREIGN content — a WebGL field, a video frame, a camera feed — the page beneath is not a
+// surface at all, and a solid base-100 panel simply hides the one thing the screen is for. Frost is the
+// detail header's recipe (render.js "staged"), named once: a 60% base-100 wash (deterministic contrast in
+// both themes), the default-xl blur, a 10% hairline so the edge survives a busy frame, and the raised rung.
+// Island / Segmented / Sheet take `tone="frost"` — an app never writes the recipe itself.
+export const FROST = "bg-base-100/60 backdrop-blur-xl border border-base-content/10 sf-e3 text-base-content";
+
 export const SHEET_BOX = "modal-box rounded-t-[1.75rem] max-w-[min(36rem,100vw)] mx-auto min-w-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)] pb-8 max-h-[88dvh]";
 
-export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size = "md", children }) {
+export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size = "md", tone = "glass", children }) {
   const loc = locale || (typeof document !== "undefined" ? document.documentElement.lang : "") || "en";
   const ref = useRef();
   useEffect(() => { const d = ref.current; if (!d) return; if (open) { if (!d.open) d.showModal?.(); } else d.close?.(); }, [open]);
@@ -49,9 +58,12 @@ export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size =
   // A sheet is never taller than the screen it slides over: past 88dvh its own content scrolls, the page
   // behind it never does (overscroll-behavior is contained farm-wide in theme.css). This is the ONE
   // sanctioned nested scroll — the escape hatch a fit screen overflows INTO.
-  const box = `${SHEET_BOX} ${size === "lg" ? "min-h-[50dvh]" : ""}`;
+  const box = `${SHEET_BOX} ${size === "lg" ? "min-h-[50dvh]" : ""} ${tone === "frost" ? "backdrop-blur-xl border border-base-content/10" : ""}`;
+  // .modal-box paints an opaque base-100 from theme.css (unlayered, so it beats any utility): frost sets the
+  // wash inline, the one place that wins without an !important
+  const frostBg = tone === "frost" ? "background:color-mix(in oklch, var(--color-base-100) 60%, transparent)" : null;
   return html`<dialog id=${id} ref=${ref} class="modal modal-bottom" onClose=${onClose}>
-    <div ref=${boxRef} class=${box}>${grip}
+    <div ref=${boxRef} class=${box} style=${frostBg}>${grip}
       ${title ? html`<div class="flex items-center gap-2 shrink-0">
         ${icon ? Icon(icon, "shrink-0 text-[var(--ms-icon)] text-[var(--app-accent)]") : null}
         <div class="flex-1 min-w-0">
@@ -84,7 +96,7 @@ export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size =
 //             (a stage, a photo, a canvas) and a filled ink block would punch a hole in it.
 // Both are monochrome by construction. Colour enters only as `dot` — a small filled disc carrying the
 // app's or the option's own hue, which is the safe place for an arbitrary colour (never text).
-export function Segmented({ items, value, onChange, variant = "solid", size = "md", scroll = false, attr = "data-seg", label }) {
+export function Segmented({ items, value, onChange, variant = "solid", size = "md", scroll = false, attr = "data-seg", label, tone = "inset" }) {
   const sm = size === "sm";
   const pad = sm ? "px-2.5 py-1" : "px-3.5 py-1.5";
   const txt = sm ? "text-[0.78rem]" : "text-sm";
@@ -118,9 +130,11 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
   // A scrolling strip is a RAIL, not a row that overflows: the scrollbar is hidden (we own the affordance
   // — the pills are visibly cut at the edge), and the scroll is contained so flicking through styles can
   // never rubber-band the page behind it.
+  // tone "frost": the rail floats over a stage (see FROST) instead of being sunk into the page
+  const face = tone === "frost" ? FROST : "sf-inset";
   return scroll
-    ? html`<div class="sf-inset overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-full">${rail}</div>`
-    : html`<div class="sf-inset rounded-full">${rail}</div>`;
+    ? html`<div class=${`${face} overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-full`}>${rail}</div>`
+    : html`<div class=${`${face} rounded-full`}>${rail}</div>`;
 }
 
 // ── Island — the floating glass panel ─────────────────────────────────────────────────────────────────
@@ -136,7 +150,8 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
 // same idea (a bar that clears the chrome without an app knowing the chrome's height), and both read the
 // MEASURED numbers rather than restating them.
 // `tone` — what it floats ON. "glass" is the farm's base-100 material; "dark" is for a bar over arbitrary
-// media, where a light-surface island simply disappears against a bright video frame. That is a material
+// media, where a light-surface island simply disappears against a bright video frame; "frost" (FROST below)
+// is the translucent wash for a panel over the app's own STAGE (a GL field, a hero). That is a material
 // decision with a reason, not a per-app taste, which is why it belongs here.
 export function Island({ children, className = "", tag = "div", pinned = false, at = "bottom", tone = "glass", ...rest }) {
   if (pinned) {
@@ -157,6 +172,7 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
   // is invisible, which is not a style preference but a legibility fact.
   const surface = tone === "dark"
     ? "sf-e3 border border-white/15 bg-black/60 text-white"
+    : tone === "frost" ? FROST
     : "sf-raised sf-e3";
   const cls = `${surface} rounded-[var(--ms-r)] p-[var(--ms-pad)] ${className}`;
   // data-island is the hook the ladder needs: an island floating at the bottom of a fit screen must keep

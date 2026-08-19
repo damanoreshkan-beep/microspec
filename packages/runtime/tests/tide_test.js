@@ -84,3 +84,13 @@ Deno.test("tide hslRgb — primaries and grey", () => {
   const g = tHslRgb(120, 100, 50); assert(near(g[1], 1) && near(g[0], 0));
   const grey = tHslRgb(214, 0, 50); assert(near(grey[0], 0.5) && near(grey[1], 0.5) && near(grey[2], 0.5));
 });
+
+Deno.test("tide reconnect — backoff caps at 15s; a drop holds the station, only a dead station skips", async () => {
+  const { retryDelay, onLoss } = await import("../tide.js");
+  assertEquals([0, 1, 2, 3, 4, 9].map(retryDelay), [1000, 2000, 4000, 8000, 15000, 15000]);
+  assertEquals(onLoss({ hadAudio: false, online: true, attempt: 0 }), "skip");
+  assertEquals(onLoss({ hadAudio: true, online: true }), "reconnect");
+  assertEquals(onLoss({ hadAudio: false, online: false }), "reconnect");
+  assertEquals(onLoss({ hadAudio: false, online: true, attempt: 1 }), "reconnect");
+  assertEquals(onLoss(), "skip");
+});

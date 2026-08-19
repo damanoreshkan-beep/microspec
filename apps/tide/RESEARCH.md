@@ -49,13 +49,22 @@ content stream is a silent failure the gate cannot see.
   the visibility re-resume; the real `<audio>` already owns audio focus, the silent keeper is harmless.
 - `wakeLock` while playing (drift precedent — the stage is the point).
 - State mirrored into the DOM for the gate: `#play[data-playing]` (kit), `[data-station]` (the current id),
-  `[data-state="idle|connecting|live|error"]`, `[data-cat]` on the strip.
+  `[data-state="idle|connecting|live|reconnecting|error"]`, `[data-cat]` on the strip.
 - Now-playing: SomaFM stations poll `songs/<id>.json` every 30 s while playing (one small JSON, `ACAO: *`);
   the sheet reads `channels.json` once per open (listeners) — cached 60 s. **Under `gate` nothing is
   fetched**: a deterministic fixture (`FIXTURE_NOW`, `FIXTURE_LISTENERS` in `tide.js`) populates the shot.
 - Where the queue goes next: `advance()` from `/_rt/player.js` over the current category's list
   (`manual: true` for prev/next; there is no `ended` on a live stream — a `stalled`/`error` shows the state,
   it never auto-skips: a stream that fell over should not silently take you to a different station).
+- Drop-outs (2026-08-19): a live Icecast stream cannot resume — once the link is gone the element's few
+  seconds of buffer drain and it `error`s (MEDIA_ERR_NETWORK) or sits in `waiting` for ever (Chrome/Android
+  does both). So the player tells a DEAD station from a DROPPED link (`onLoss` in `tide.js`): an element that
+  never produced audio while `navigator.onLine` → skip (the auto-skip); one that had played, or the device
+  offline, or a retry already running → HOLD the station, tear the element down, re-create it after
+  `retryDelay(attempt)` (1·2·4·8·15 s cap, unbounded while playing). A stall longer than 8 s is a drop too
+  (watchdog). `window.online` cancels the wait and reconnects at once. An exhausted current (every station
+  failed once — a captive wifi) keeps the error line and still retries at the cap; `playing` resets it all.
+  There is no client-side buffer to add on top of `<audio>` (MSE over fetch would be one — not built).
 
 ## 3. The stage (`apps/tide/tide.frag` on `/_rt/glstage.js`)
 

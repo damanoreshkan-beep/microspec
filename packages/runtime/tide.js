@@ -137,3 +137,15 @@ export function hslRgb(h, s, l) {
 // ── gate fixtures — the populated screen, deterministic, no network ──────────────────────────────────
 export const FIXTURE_NOW = { title: "Something Better (Cydelix Remix)", artist: "Kick Bong" };
 export const FIXTURE_LISTENERS = { dronezone: 777, deepspaceone: 391, groovesalad: 1619, defcon: 196, spacestation: 309, secretagent: 237, lush: 217 };
+
+// ── the reconnect policy (the element's drop-outs, not the UI) ────────────────────────────────────────
+/** Backoff between reconnect attempts to the SAME station: 1s · 2s · 4s · 8s · 15s cap, in ms. */
+export const retryDelay = (attempt) => Math.min(15000, 1000 * 2 ** Math.max(0, attempt));
+
+/**
+ * What a media error / stall on a station means. A station that never produced audio while the device is
+ * online is DEAD → "skip" (move on in the current). Everything else — the link dropped mid-stream, the
+ * device is offline, an earlier reconnect already ran — is a LOSS → "reconnect" (hold the station, retry).
+ */
+export const onLoss = ({ hadAudio = false, online = true, attempt = 0 } = {}) =>
+  (hadAudio || !online || attempt > 0) ? "reconnect" : "skip";

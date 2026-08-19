@@ -1,6 +1,6 @@
 self.MS = {
   app: "drift",
-  version: "2b41613313",
+  version: "6e2cf43ab8",
   precache: [
     "./",
     "./i18n/en.json",
@@ -47,6 +47,7 @@ self.MS = {
     "/_rt/skeleton.js",
     "/_rt/spectrum.js",
     "/_rt/store.js",
+    "/_rt/swipe.js",
     "/_rt/theme.css",
     "/_rt/translate.js",
     "/_rt/ui.js",

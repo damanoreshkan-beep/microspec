@@ -1,6 +1,6 @@
 self.MS = {
   app: "pendulum",
-  version: "ba8a50d2db",
+  version: "1a9256405d",
   precache: [
     "./",
     "./i18n/en.json",
@@ -41,6 +41,7 @@ self.MS = {
     "/_rt/signin.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
+    "/_rt/swipe.js",
     "/_rt/theme.css",
     "/_rt/translate.js",
     "/_rt/ui.js",

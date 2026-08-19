@@ -1,6 +1,6 @@
 self.MS = {
   app: "nova",
-  version: "da2ce5257b",
+  version: "05aee0fe01",
   precache: [
     "./",
     "./finale.js",
@@ -42,6 +42,7 @@ self.MS = {
     "/_rt/signin.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
+    "/_rt/swipe.js",
     "/_rt/theme.css",
     "/_rt/tile.js",
     "/_rt/translate.js",

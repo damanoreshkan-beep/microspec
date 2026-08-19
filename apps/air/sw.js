@@ -1,6 +1,6 @@
 self.MS = {
   app: "air",
-  version: "fc627026d2",
+  version: "8edd4820df",
   precache: [
     "./",
     "./i18n/en.json",
@@ -41,6 +41,7 @@ self.MS = {
     "/_rt/signin.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
+    "/_rt/swipe.js",
     "/_rt/theme.css",
     "/_rt/translate.js",
     "/_rt/ui.js",

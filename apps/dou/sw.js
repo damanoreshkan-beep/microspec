@@ -1,6 +1,6 @@
 self.MS = {
   app: "dou",
-  version: "f204d7a5e9",
+  version: "2f414b16d4",
   precache: [
     "./",
     "./data.js",
@@ -40,6 +40,7 @@ self.MS = {
     "/_rt/signin.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
+    "/_rt/swipe.js",
     "/_rt/theme.css",
     "/_rt/translate.js",
     "/_rt/ui.js",

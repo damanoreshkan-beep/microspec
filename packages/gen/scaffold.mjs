@@ -127,7 +127,7 @@ const icons = [
 ];
 const manifest = JSON.stringify({
   name: title, short_name: title, description: tagline, start_url: "./", scope: "./",
-  display: "standalone", orientation: "portrait", theme_color: themeColor, background_color: bg, lang, icons,
+  display: "standalone", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
 }, null, 2) + "\n";
 
 // A placeholder worker, replaced the moment `deploy/sw.mjs` runs (which is gated in CI): the real precache

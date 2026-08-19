@@ -43,6 +43,7 @@ import "./tests/iching_test.js";
 import "./tests/imgsize_test.js";
 import "./tests/ism433_test.js";
 import "./tests/lora_test.js";
+import "./tests/manifest_test.js";
 import "./tests/mediasession_test.js";
 import "./tests/melody_test.js";
 import "./tests/motion_test.js";

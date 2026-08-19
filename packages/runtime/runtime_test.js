@@ -28,6 +28,7 @@ import "./tests/earshot_test.js";
 import "./tests/fittext_test.js";
 import "./tests/fmradio_test.js";
 import "./tests/geofix_test.js";
+import "./tests/gesture_test.js";
 import "./tests/geomag_test.js";
 import "./tests/grain_test.js";
 import "./tests/graph_test.js";

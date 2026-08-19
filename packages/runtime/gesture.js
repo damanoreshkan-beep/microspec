@@ -8,6 +8,8 @@
 // the render. The dismiss decision is a PURE function so it can be unit-tested (see runtime_test.js).
 import { useRef, useEffect } from "preact/hooks";
 import { html } from "htm/preact";
+import { swipeDir } from "./swipe.js";
+export { swipeDir };
 
 // Dismiss when dragged far, or flicked down fast from a shorter distance. dy in px (down +), vy in px/ms.
 export const pastDismiss = (dy, vy) => dy > 96 || (dy > 24 && vy > 0.5);
@@ -79,4 +81,22 @@ export function usePanX({ onNext, onPrev, canNext = true, canPrev = true, thresh
   const clickCapture = (e) => { if (s.at && performance.now() - s.at < 450) { e.stopPropagation(); e.preventDefault(); s.at = 0; } };
   // NB: no `style` prop (add `touch-pan-y` on the element) — so Preact never resets the transform we drive by ref
   return { paneRef, pan: { onPointerDown: down, onPointerMove: move, onPointerUp: up, onPointerCancel: up, onClickCapture: clickCapture } };
+}
+
+// useSwipe — a four-way flick on a surface that does NOT move (a stage, a field): commit on release, swallow
+// the click the same drag would fire. Spread the returned handlers on the element; add `touch-none` (or
+// `touch-pan-y` if a vertical scroll must survive) so the browser does not claim the gesture first.
+export function useSwipe({ onLeft, onRight, onUp, onDown, threshold = 52 } = {}) {
+  const s = useRef({ on: false, x0: 0, y0: 0, dx: 0, dy: 0, at: 0 }).current;
+  const down = (e) => { s.on = true; s.x0 = e.clientX; s.y0 = e.clientY; s.dx = 0; s.dy = 0; try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* */ } };
+  const move = (e) => { if (!s.on) return; s.dx = e.clientX - s.x0; s.dy = e.clientY - s.y0; };
+  const up = () => {
+    if (!s.on) return; s.on = false;
+    const dir = swipeDir(s.dx, s.dy, threshold);
+    if (Math.abs(s.dx) > 8 || Math.abs(s.dy) > 8) s.at = performance.now();
+    if (!dir) return;
+    try { ({ left: onLeft, right: onRight, up: onUp, down: onDown })[dir]?.(); } catch { /* */ }
+  };
+  const clickCapture = (e) => { if (s.at && performance.now() - s.at < 450) { e.stopPropagation(); e.preventDefault(); s.at = 0; } };
+  return { onPointerDown: down, onPointerMove: move, onPointerUp: up, onPointerCancel: up, onClickCapture: clickCapture };
 }

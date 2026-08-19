@@ -10,7 +10,7 @@
 
 import { html } from "htm/preact";
 import { Fragment } from "preact";
-import { useEffect } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import { persistentAtom } from "@nanostores/persistent";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
@@ -23,6 +23,7 @@ import { splitBands } from "/_rt/spectrum.js";
 import { advance } from "/_rt/player.js";
 import { Segmented, Island, Transport, Sheet } from "/_rt/ui.js";
 import { GlStage } from "/_rt/glstage.js";
+import { useSwipe, useTap } from "/_rt/gesture.js";
 import {
   CATEGORIES, categoryById, stationById, stationsIn, somaNow, somaChannels,
   settle, idleBands, phaseStep, hslRgb, FIXTURE_NOW, FIXTURE_LISTENERS,
@@ -37,12 +38,14 @@ const $playing = atom(false);
 const $state = atom("idle");                                     // idle | connecting | live | error
 const $now = atom(null);                                         // { title, artist } | null
 const $listeners = atom(gate ? FIXTURE_LISTENERS : {});          // soma id → count (sheet meta)
+const $fs = atom(false);                                         // the field is fullscreen (the screensaver)
 
 const curCat = () => categoryById($cat.get());
 const curStation = () => stationById($station.get()) || stationsIn($cat.get())[0];
 
 // ---- the engine (module scope: survives tab switches, shared with the lock screen) ----
 let el = null, ctx = null, src = null, analyser = null, freq = null, np = null, wl = null, nowTimer = null;
+let fails = 0, connectTimer = null;                              // auto-skip: a dead stream moves on, once per station, until the current is exhausted
 let curT = {};
 const npTitle = () => curStation().name;
 const artUrl = () => { try { return new URL("icons/icon-512.png", location.href).href; } catch { return null; } };
@@ -85,14 +88,16 @@ function play(station, { retryPlain = false } = {}) {
   a.src = station.url;
   el = a;
   $state.set("connecting");
-  a.onplaying = () => { if (el !== a) return; $state.set("live"); ramp(a, 0, 1, 500); };
+  a.onplaying = () => { if (el !== a) return; fails = 0; if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; } $state.set("live"); ramp(a, 0, 1, 500); };
   a.onwaiting = () => { if (el === a) $state.set("connecting"); };
   // a CORS station whose server dropped the header errors at load: once, retry as a plain element (plays,
   // the field goes idle) rather than dying — the registry flag was measured, servers change
-  a.onerror = () => { if (el !== a) return; if (cors) play(station, { retryPlain: true }); else $state.set("error"); };
+  a.onerror = () => { if (el !== a) return; if (cors) play(station, { retryPlain: true }); else fail(); };
+  if (connectTimer) clearTimeout(connectTimer);
+  connectTimer = setTimeout(() => { if (el === a && $state.get() === "connecting") fail(); }, 12000);
   a.volume = 0;
   attach(a, cors);
-  const p = a.play(); if (p && p.catch) p.catch(() => { if (el === a) $state.set("error"); });
+  const p = a.play(); if (p && p.catch) p.catch(() => { if (el === a) fail(); });
   $playing.set(true);
   if (!wl) wl = wakeLock.acquire();
   if (!np) np = holdAudio({ title: npTitle(), artist: T(curT, curCat().key), artwork: artUrl(), onPlay: () => { if (!$playing.get()) start(); }, onPause: () => stop(), onPrev: () => skip(-1), onNext: () => skip(1), resumeCtx: () => ctx?.resume() });
@@ -100,8 +105,20 @@ function play(station, { retryPlain = false } = {}) {
   pollNow(station);
 }
 
+// A stream that will not play is not a screen you sit on: move to the next station in the current at once.
+// Bounded — after every station in the current has failed once the state stays "error" instead of looping.
+function fail() {
+  $state.set("error");
+  if (gate) return;
+  const n = stationsIn($cat.get()).length;
+  if (fails >= n) return;
+  fails += 1;
+  skip(1);
+}
+
 function stop() {
   $playing.set(false); $state.set("idle");
+  if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
   if (el) { const o = el; el = null; ramp(o, o.volume, 0, 250, () => teardown(o)); }
   if (wl) { wl.release(); wl = null; }
   if (np) { np.release(); np = null; }
@@ -124,6 +141,7 @@ function select(id) {
   if ($playing.get()) play(s);
 }
 function setCat(id) {
+  fails = 0;
   $cat.set(id);
   const list = stationsIn(id);
   if (!list.some((s) => s.id === $station.get())) select(list[0].id);
@@ -151,6 +169,23 @@ async function fetchListeners() {
   listenersAt = performance.now();
   try { const m = somaChannels(await fetchJson("https://somafm.com/channels.json")); const out = {}; for (const k in m) out[k] = m[k].listeners; $listeners.set(out); } catch { /* */ }
 }
+
+const cycleCat = (d) => { const i = CATEGORIES.findIndex((c) => c.id === $cat.get()); setCat(CATEGORIES[(i + d + CATEGORIES.length) % CATEGORIES.length].id); };
+
+// The field as a SCREENSAVER: the Fullscreen API on the field's own wrapper (a top-layer element shows alone,
+// so the canvas fills the display and the UI is gone). System Back / ESC exits natively; the button and a
+// double-tap toggle it. Guarded: iOS Safari has no element fullscreen — the action is hidden there.
+const fsSupported = typeof document !== "undefined" && !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+function toggleFs(elm) {
+  try {
+    if (document.fullscreenElement) { document.exitFullscreen?.(); return; }
+    if (!elm) return;
+    const r = elm.requestFullscreen?.({ navigationUI: "hide" }) || elm.webkitRequestFullscreen?.();
+    if (r && r.catch) r.catch(() => {});
+    if (!wl) wl = wakeLock.acquire();
+  } catch { /* */ }
+}
+if (typeof document !== "undefined") document.addEventListener("fullscreenchange", () => { $fs.set(!!document.fullscreenElement); if (!document.fullscreenElement && wl && !$playing.get()) { wl.release(); wl = null; } });
 
 // The app's accent follows the current — a MARK colour (dots, rings, the sheet icon), never text.
 const applyAccent = (c) => { try { document.documentElement.style.setProperty("--app-accent", `hsl(${c.hue} 60% 58%)`); } catch { /* */ } };
@@ -183,15 +218,24 @@ export function tide({ S }) {
   const loc = useStore(S.locale);
   const catId = useStore($cat), stId = useStore($station);
   const playing = useStore($playing), state = useStore($state), now = useStore($now);
-  const screen = useStore(S.screen);
+  const screen = useStore(S.screen), fs = useStore($fs);
   const cat = categoryById(catId), station = stationById(stId) || stationsIn(catId)[0];
+  const fieldRef = useRef();
+  // the field's gestures — swipe down/up = next/prev station, left/right = next/prev current, double-tap =
+  // fullscreen; the same handlers sit on the void (normal) and on the field wrapper (fullscreen, where the
+  // wrapper is the only element on the display). A button covers every gesture (a gesture is never the only way).
+  const swipe = useSwipe({ onDown: () => skip(1), onUp: () => skip(-1), onLeft: () => cycleCat(1), onRight: () => cycleCat(-1) });
+  const tap = useTap({ onDouble: () => toggleFs(fieldRef.current) });
+  const surface = { ...swipe, onClick: tap };
   const currents = CATEGORIES.map((c) => ({ id: c.id, label: T(t, c.key), dot: `hsl(${c.hue} 60% 58%)` }));
   useEffect(() => { if (screen === "stations") fetchListeners(); }, [screen]);
 
   const stateLine = state === "connecting" ? T(t, "connecting") : state === "error" ? T(t, "errStream") : state === "live" ? T(t, "live") : null;
   return html`<${Fragment}>
-    <${GlStage} shader=${new URL("tide.frag", import.meta.url)} seed=${seedFor(station)} zClass="z-0"
-      ink=${inkFor} vary=${bands} tex=${station.logo || null} texReady=${(r) => { env.readyTo = r; }} />
+    <div ref=${fieldRef} data-field data-fs=${fs ? "yes" : "no"} class="fixed inset-0 z-0 touch-none bg-base-200" ...${surface}>
+      <${GlStage} shader=${new URL("tide.frag", import.meta.url)} seed=${seedFor(station)} zClass="z-0"
+        ink=${inkFor} vary=${bands} tex=${station.logo || null} texReady=${(r) => { env.readyTo = r; }} />
+    </div>
 
     <div class="relative z-10 h-full min-h-0 flex flex-col gap-[var(--ms-gap)]" data-cat=${catId} data-station=${station.id} data-state=${state}>
       <div class="shrink-0"><${Segmented} attr="data-current" scroll variant="outline" label=${T(t, "tabListen")}
@@ -199,7 +243,7 @@ export function tide({ S }) {
 
       ${/* the void: what is playing right now, in the field — the station lives on the transport, the
            TRACK lives here (one representation per state; the two are different states) */""}
-      <div class="flex-1 min-h-0 flex flex-col justify-end px-1 gap-0.5" data-now=${now ? "yes" : "no"}>
+      <div class="flex-1 min-h-0 flex flex-col justify-end px-1 gap-0.5 touch-none" data-now=${now ? "yes" : "no"} data-void ...${surface}>
         ${/* two lines, always: ARTIST · STATE (mono) over the title (one line, ellipsis) — a two-line clamp
              clipped its descenders in the ~60px void a 340px split window leaves; a fixed two-line block
              never does, at any height the density ladder reaches */""}
@@ -211,7 +255,10 @@ export function tide({ S }) {
         <${Transport} locale=${loc} playing=${playing} onToggle=${toggle} onPrev=${() => skip(-1)} onNext=${() => skip(1)}
           title=${station.name}
           subtitle=${html`<span class="inline-flex items-center gap-1.5"><span class="inline-block w-1.5 h-1.5 rounded-full shrink-0" style=${`background:hsl(${cat.hue} 60% 58%)`}></span>${T(t, cat.key)} · ${T(t, station.genre)}</span>`}
-          actions=${[{ id: "list", icon: "lucide:list-music", label: T(t, "aStations"), onClick: () => S.screen.set("stations"), attr: { "data-stations": "" } }]} />
+          actions=${[
+            { id: "list", icon: "lucide:list-music", label: T(t, "aStations"), onClick: () => S.screen.set("stations"), attr: { "data-stations": "" } },
+            ...(fsSupported ? [{ id: "fs", icon: fs ? "lucide:minimize" : "lucide:maximize", label: T(t, fs ? "aFsExit" : "aFs"), onClick: () => toggleFs(fieldRef.current), attr: { "data-fs-btn": "" } }] : []),
+          ]} />
       </${Island}>
     </div>
 

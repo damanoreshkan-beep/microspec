@@ -3,7 +3,7 @@
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
   app: "imagine",
-  version: "6a7c4ee85e",
+  version: "ac48aafe68",
   precache: [
     "./",
     "./describe.js",
@@ -55,6 +55,7 @@ self.MS = {
     "/_rt/signin.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
+    "/_rt/swipe.js",
     "/_rt/theme.css",
     "/_rt/translate.js",
     "/_rt/ui.js",

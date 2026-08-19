@@ -3,7 +3,7 @@
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
   app: "apkforge",
-  version: "796ba73367",
+  version: "d4df60d1b2",
   precache: [
     "./",
     "./i18n/en.json",
@@ -44,6 +44,7 @@ self.MS = {
     "/_rt/sitelabel.js",
     "/_rt/skeleton.js",
     "/_rt/store.js",
+    "/_rt/swipe.js",
     "/_rt/theme.css",
     "/_rt/translate.js",
     "/_rt/ui.js",

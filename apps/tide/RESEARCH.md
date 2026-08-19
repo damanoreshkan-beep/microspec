@@ -94,3 +94,15 @@ Same contract as persona (`res · time · seed · ink · vary · env · tex/texA
 - Whether iOS Safari honours the `volume` ramp (it does not on iPhone historically; the cut is still correct).
 - Long-term stability of any single third-party stream — that is why the registry is data with a `cors`
   flag and an https unit test, and why a dead stream shows `error` instead of skipping.
+
+## Addendum 2026-08-19 (owner's three asks)
+- **A dead stream moves on by itself**: `error` / a 12 s connect timeout → `fail()` → next station in the
+  current, bounded to one pass over the current (then the state stays `error`). Under the gate the mock never skips.
+- **The field is a screensaver**: double-tap (or the transport's maximize action — a gesture is never the
+  only way) → `requestFullscreen({navigationUI:"hide"})` on the field's own wrapper (a top-layer element is
+  shown alone, so the canvas fills the display and the UI is gone); Back/ESC exits natively; `data-fs`
+  mirrors it. iOS Safari has no element fullscreen (`fullscreenEnabled` false) → the action is hidden.
+- **Swipes on the field**: down/up = next/prev station, left/right = next/prev current — `useSwipe` in
+  `/_rt/gesture.js` (pure `swipeDir` in `/_rt/swipe.js`, unit-tested; dominant axis, 52 px threshold, the
+  click after a drag is swallowed). The same handlers sit on the void (normal) and the wrapper (fullscreen).
+- The same Fullscreen move fixed `imagine`'s Lightbox, which opened as a layer under the system chrome.

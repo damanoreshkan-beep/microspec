@@ -16,6 +16,8 @@
   "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
   "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
   "aStations": "Choose station",
+  "aFs": "Full screen",
+  "aFsExit": "Exit full screen",
   "stations": "Stations",
   "connecting": "Connecting",
   "live": "Live",

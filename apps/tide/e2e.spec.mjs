@@ -61,6 +61,14 @@ export default [
     },
   },
   {
+    name: "поле: жестова поверхня + кнопка на весь екран присутні (жест ніколи не єдиний шлях)", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-void]")) === 1, "немає жестової поверхні поля");
+      h.expect((await h.attr("[data-field]", "data-fs")) === "no", "поле стартує не у звичайному режимі");
+      h.expect((await h.count("[data-fs-btn]")) === 1, "немає кнопки на весь екран");
+    },
+  },
+  {
     name: "поле: де є WebGL, воно малюється саме ним (не тихий відкат)", run: async (h) => {
       await ready(h);
       for (let i = 0; i < 30; i++) { if ((await h.attr("[data-stage]", "data-render")) === "webgl") break; await h.wait(200); }

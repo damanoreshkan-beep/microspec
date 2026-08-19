@@ -437,6 +437,10 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 .sf-e3 { box-shadow: var(--sf-drop); }
 .sf-e4 { box-shadow: 0 -10px 44px -12px var(--nm-cast), var(--sf-drop); }
 .sf-e5 { box-shadow: 0 14px 46px -10px var(--nm-cast), var(--sf-drop); }
+/* FROST — a translucent panel over a STAGE (ui.js FROST: Island/Segmented/Sheet tone="frost"). Glass is not
+   extruded, so it gets the cast alone: the pair's light half painted a white halo round a glass rail in the
+   light theme. The wash and the blur are utilities on the element; the SHADOW stays declared here. */
+.sf-frost { box-shadow: 0 10px 30px -12px var(--nm-cast); }
 
 /* The radius and border scales the reference also enumerates — 4/8/12/16/24 and 1/2/4px. --ms-r stays the
    density-stepped default; these are the fixed rungs a component picks from deliberately. */

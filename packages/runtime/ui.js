@@ -44,9 +44,10 @@ const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls |
 // question). Over FOREIGN content — a WebGL field, a video frame, a camera feed — the page beneath is not a
 // surface at all, and a solid base-100 panel simply hides the one thing the screen is for. Frost is the
 // detail header's recipe (render.js "staged"), named once: a 60% base-100 wash (deterministic contrast in
-// both themes), the default-xl blur, a 10% hairline so the edge survives a busy frame, and the raised rung.
+// both themes), the default-xl blur, a 10% hairline so the edge survives a busy frame, and ONE soft cast (the
+// extrusion pair would paint a light halo round glass — the light theme showed it; glass is not extruded).
 // Island / Segmented / Sheet take `tone="frost"` — an app never writes the recipe itself.
-export const FROST = "bg-base-100/60 backdrop-blur-xl border border-base-content/10 sf-e3 text-base-content";
+export const FROST = "bg-base-100/60 backdrop-blur-xl border border-base-content/10 sf-frost text-base-content";
 
 export const SHEET_BOX = "modal-box rounded-t-[1.75rem] max-w-[min(36rem,100vw)] mx-auto min-w-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)] pb-8 max-h-[88dvh]";
 

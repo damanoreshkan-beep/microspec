@@ -1,3 +1,4 @@
+import { shell } from "./shell.js";
 
 export function silentWav(ms = 250, rate = 8000) {
   const frames = Math.max(1, Math.round(rate * ms / 1000)), bps = 2, ch = 1;   
@@ -36,14 +37,45 @@ export function holdAudio({ title = "microspec", artist = "microspec", artwork =
   handler("play", onPlay); handler("pause", onPause); handler("stop", onPause);
   handler("previoustrack", onPrev); handler("nexttrack", onNext);
 
+  const nativeMedia = (() => { try { return shell.present && shell.has("media.show"); } catch { return false; } })();
+  const plainHold = (() => { try { return !nativeMedia && shell.present && shell.has("bg.start"); } catch { return false; } })();
+  let shown = false, isPlaying = false, unsub = null;
+  const COMMANDS = { play: () => onPlay, pause: () => onPause, stop: () => onPause, next: () => onNext, prev: () => onPrev };
+  const show = (playingNow) => {
+    isPlaying = !!playingNow;
+    if (nativeMedia) {
+      shown = true;
+      shell.call("media.show", { title: curTitle || "microspec", artist, album: "microspec", playing: !!playingNow, prev: !!onPrev, next: !!onNext })
+        .catch(() => {  });
+      if (!unsub) {
+        unsub = shell.subscribe("media.command", {}, (v) => {
+          const fn = v && COMMANDS[v.command]?.();
+          if (fn) try { fn(); } catch {  }
+        }, () => {  });
+      }
+      return;
+    }
+    if (!plainHold) return;
+    if (!playingNow) { if (shown) { shown = false; shell.call("bg.stop", {}).catch(() => {}); } return; }
+    shown = true;
+    shell.call("bg.start", { title: curTitle || "microspec", body: artist }).catch(() => { shown = false; });
+  };
+  const hide = () => {
+    if (unsub) { try { unsub(); } catch {  } unsub = null; }
+    if (!shown) return;
+    shown = false;
+    if (nativeMedia) shell.call("media.hide", {}).catch(() => {});
+    else if (plainHold) shell.call("bg.stop", {}).catch(() => {});
+  };
+
   const onVis = () => { if (live && document.visibilityState === "visible") { try { resumeCtx && resumeCtx(); } catch {  } play(); } };
   document.addEventListener("visibilitychange", onVis);
 
   return {
-    supported: !!ms,
-    setPlaying(t) { play(); setMeta(t); setState("playing"); },
-    setPaused() { setState("paused"); },              
-    meta(t) { setMeta(t); },
+    supported: !!ms || nativeMedia,
+    setPlaying(t) { play(); setMeta(t); setState("playing"); show(true); },
+    setPaused() { setState("paused"); show(false); },  
+    meta(t) { setMeta(t); if (shown) show(isPlaying); },
     position(durationMs, positionMs, rate = 1) {
       if (!ms || typeof ms.setPositionState !== "function") return;
       const duration = Math.max(0, (durationMs || 0) / 1000);
@@ -52,6 +84,7 @@ export function holdAudio({ title = "microspec", artist = "microspec", artwork =
     },
     release() {
       live = false;
+      hide();
       document.removeEventListener("visibilitychange", onVis);
       pause();
       for (const n of ["play", "pause", "stop", "previoustrack", "nexttrack"]) handler(n, null);

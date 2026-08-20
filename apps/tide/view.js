@@ -17,7 +17,7 @@ import { GlStage } from "/_rt/glstage.js";
 import { useSwipe, useTap } from "/_rt/gesture.js";
 import {
   CATEGORIES, categoryById, stationById, stationsIn, somaNow, somaChannels,
-  settle, idleBands, phaseStep, hslRgb, retryDelay, onLoss, FIXTURE_NOW, FIXTURE_LISTENERS,
+  settle, idleBands, phaseStep, hslRgb, retryDelay, onLoss, progressCheck, FIXTURE_NOW, FIXTURE_LISTENERS,
 } from "/_rt/tide.js";
 
 const AC = typeof AudioContext !== "undefined" ? AudioContext : (typeof globalThis !== "undefined" && globalThis.webkitAudioContext) || null;
@@ -30,6 +30,7 @@ const $state = atom("idle");
 const $now = atom(null);                                         
 const $listeners = atom(gate ? FIXTURE_LISTENERS : {});          
 const $fs = atom(false);                                         
+const $bg = atom(false);                                         
 
 const curCat = () => categoryById($cat.get());
 const curStation = () => stationById($station.get()) || stationsIn($cat.get())[0];
@@ -37,6 +38,7 @@ const curStation = () => stationById($station.get()) || stationsIn($cat.get())[0
 let el = null, ctx = null, src = null, analyser = null, freq = null, np = null, wl = null, nowTimer = null;
 let fails = 0, connectTimer = null;                              
 let attempt = 0, retryTimer = null, stallTimer = null;          
+let mark = null, liveTimer = null;                               
 let curT = {};
 const npTitle = () => curStation().name;
 const artUrl = () => { try { return new URL("icons/icon-512.png", location.href).href; } catch { return null; } };
@@ -66,8 +68,14 @@ function attach(a, cors) {
   } catch { src = null; }
 }
 
+function hold() {
+  if (!np) np = holdAudio({ title: npTitle(), artist: T(curT, curCat().key), artwork: artUrl(), onPlay: () => { if (!$playing.get()) start(); }, onPause: () => stop(), onPrev: () => skip(-1), onNext: () => skip(1), resumeCtx: () => ctx?.resume() });
+  np.setPlaying(npTitle());
+  $bg.set(true);
+}
+
 function play(station, { retryPlain = false, reconnect = false } = {}) {
-  if (gate || typeof Audio === "undefined") { $playing.set(true); $state.set("live"); pollNow(station); return; }
+  if (gate || typeof Audio === "undefined") { $playing.set(true); $state.set("live"); hold(); pollNow(station); return; }
   if (!reconnect) attempt = 0;
   if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
   if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
@@ -94,8 +102,9 @@ function play(station, { retryPlain = false, reconnect = false } = {}) {
   const p = a.play(); if (p && p.catch) p.catch(() => { if (el === a) lost(a, station, hadAudio); });
   $playing.set(true);
   if (!wl) wl = wakeLock.acquire();
-  if (!np) np = holdAudio({ title: npTitle(), artist: T(curT, curCat().key), artwork: artUrl(), onPlay: () => { if (!$playing.get()) start(); }, onPause: () => stop(), onPrev: () => skip(-1), onNext: () => skip(1), resumeCtx: () => ctx?.resume() });
-  np.setPlaying(npTitle());
+  hold();
+  mark = null;                                                   
+  if (!liveTimer) liveTimer = setInterval(probe, 4000);
   pollNow(station);
 }
 
@@ -112,11 +121,21 @@ function lost(a, station, hadAudio) {
   const wait = retryDelay(attempt); attempt += 1;
   retryTimer = setTimeout(() => { retryTimer = null; if ($playing.get() && curStation().id === station.id) play(station, { reconnect: true }); }, wait);
 }
-if (typeof addEventListener !== "undefined") addEventListener("online", () => {
-  if (!$playing.get() || gate || $state.get() === "live") return;
-  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-  play(curStation(), { reconnect: true });
-});
+function probe() {
+  if (gate || !$playing.get() || !el || $state.get() !== "live") return;
+  const r = progressCheck({ time: el.currentTime, mark, now: performance.now() });
+  mark = r.mark;
+  if (r.dead) lost(el, curStation(), true);                      
+}
+function relink() {
+  if (!$playing.get() || gate) return;
+  if ($state.get() !== "live") { if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; } play(curStation(), { reconnect: true }); return; }
+  probe();                                                       
+}
+if (typeof addEventListener !== "undefined") {
+  addEventListener("online", relink);
+  try { navigator.connection?.addEventListener?.("change", relink); } catch {  }
+}
 
 function fail() {
   $state.set("error");
@@ -134,8 +153,10 @@ function stop() {
   if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
   attempt = 0;
   if (el) { const o = el; el = null; ramp(o, o.volume, 0, 250, () => teardown(o)); }
+  if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+  mark = null;
   if (wl) { wl.release(); wl = null; }
-  if (np) { np.release(); np = null; }
+  if (np) { np.release(); np = null; $bg.set(false); }
   if (nowTimer) { clearInterval(nowTimer); nowTimer = null; }
 }
 const start = () => play(curStation());
@@ -228,7 +249,7 @@ export function tide({ S }) {
   const catId = useStore($cat), stId = useStore($station);
   const playing = useStore($playing), state = useStore($state), now = useStore($now);
   const favs = useStore($favs);
-  const screen = useStore(S.screen), fs = useStore($fs);
+  const screen = useStore(S.screen), fs = useStore($fs), bg = useStore($bg);
   const cat = categoryById(catId), station = stationById(stId) || stationsIn(catId)[0];
   const fieldRef = useRef();
   const swipe = useSwipe({ onDown: () => skip(1), onUp: () => skip(-1), onLeft: () => cycleCat(1), onRight: () => cycleCat(-1) });
@@ -246,7 +267,7 @@ export function tide({ S }) {
         ink=${inkFor} vary=${bands} tex=${station.logo || null} texReady=${(r) => { env.readyTo = r; }} />
     </div>
 
-    <div class="relative z-10 h-full min-h-0 flex flex-col gap-[var(--ms-gap)]" data-cat=${catId} data-station=${station.id} data-state=${state}>
+    <div class="relative z-10 h-full min-h-0 flex flex-col gap-[var(--ms-gap)]" data-cat=${catId} data-station=${station.id} data-state=${state} data-bg=${bg ? "on" : "off"}>
       <div class="shrink-0"><${Segmented} attr="data-current" scroll variant="outline" tone="frost" label=${T(t, "tabListen")}
         items=${currents} value=${catId} onChange=${setCat} /></div>
 

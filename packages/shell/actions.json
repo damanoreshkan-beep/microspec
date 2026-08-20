@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 27,
+  "bridgeVersion": 28,
   "actions": [
     {
       "id": "system.info",
@@ -2045,6 +2045,126 @@
         "proto": "",
         "ms": 3,
         "at": 1893479400000
+      }
+    },
+    {
+      "id": "media.show",
+      "capability": "media",
+      "kind": "call",
+      "minBridge": 28,
+      "android": [
+        "FOREGROUND_SERVICE",
+        "POST_NOTIFICATIONS"
+      ],
+      "summary": "Post/update the OS media notification and own the framework MediaSession, so a page that is playing audio gets lock-screen transport and survives the screen going off. This is the shell POLYFILLING navigator.mediaSession, which browser-compat-data records as webview_android:false for every member (crbug 40611412) — a WebView is the one place a farm audio app has no media session at all, and it is also the only place where losing one kills the stream. Calling it again REPLACES the same notification, so the title tracks the track. It carries its own foreground service; bg.start is the generic one and the two are independent.",
+      "args": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "MediaMetadata.title — what is playing."
+          },
+          "artist": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "album": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "playing": {
+            "type": "boolean",
+            "description": "PlaybackState STATE_PLAYING vs STATE_PAUSED. Without it System UI shows the wrong button and the lock screen argues with the app."
+          },
+          "prev": {
+            "type": "boolean",
+            "description": "Offer a previous action. A player with no queue must not show one."
+          },
+          "next": {
+            "type": "boolean"
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
+      "mock": {
+        "ok": true
+      }
+    },
+    {
+      "id": "media.hide",
+      "capability": "media",
+      "kind": "call",
+      "minBridge": 28,
+      "android": [
+        "FOREGROUND_SERVICE"
+      ],
+      "summary": "Release the session and drop the notification with its foreground service. A session left behind is a phantom notification whose buttons reach nobody.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
+      "mock": {
+        "ok": true
+      }
+    },
+    {
+      "id": "media.command",
+      "capability": "media",
+      "kind": "subscribe",
+      "minBridge": 28,
+      "android": [],
+      "summary": "What the user pressed on the lock screen, in the notification, or on a headset — the return leg of the polyfill, standing in for MediaSession.setActionHandler. Without it the notification's buttons are decoration.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "play | pause | next | prev | stop. `stop` is the user dismissing the player, not a transport press — a page that treats it as pause leaves a notification nobody asked for. Absent on an `ack` frame: a frame is one or the other."
+          },
+          "ack": {
+            "type": "boolean",
+            "description": "The bridge received the subscribe call. Without it a button that reached nobody looks exactly like a button nobody pressed."
+          }
+        }
+      },
+      "mock": {
+        "ack": true
       }
     }
   ]

@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 27;
+export const CATALOGUE_BRIDGE = 28;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -536,6 +536,38 @@ export const ACTIONS = {
       "proto": "",
       "ms": 3,
       "at": 1893479400000
+    }
+  },
+  "media.show": {
+    "capability": "media",
+    "kind": "call",
+    "minBridge": 28,
+    "android": [
+      "FOREGROUND_SERVICE",
+      "POST_NOTIFICATIONS"
+    ],
+    "mock": {
+      "ok": true
+    }
+  },
+  "media.hide": {
+    "capability": "media",
+    "kind": "call",
+    "minBridge": 28,
+    "android": [
+      "FOREGROUND_SERVICE"
+    ],
+    "mock": {
+      "ok": true
+    }
+  },
+  "media.command": {
+    "capability": "media",
+    "kind": "subscribe",
+    "minBridge": 28,
+    "android": [],
+    "mock": {
+      "ack": true
     }
   }
 };

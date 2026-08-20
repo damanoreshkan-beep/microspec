@@ -149,3 +149,26 @@ export const retryDelay = (attempt) => Math.min(15000, 1000 * 2 ** Math.max(0, a
  */
 export const onLoss = ({ hadAudio = false, online = true, attempt = 0 } = {}) =>
   (hadAudio || !online || attempt > 0) ? "reconnect" : "skip";
+
+/**
+ * Is the element still producing sound? The ONE liveness signal that survives a network handover.
+ *
+ * Measured against the spec rather than against hope (RESEARCH.md §5): a wifi→cellular switch can be
+ * seamless from the page's side — Chromium's NetworkChangeNotifier sees the type change with no
+ * CONNECTION_NONE in between, so there is no `offline`/`online` pair to react to — while the old TCP
+ * socket, bound to the network path that just went away, silently stops delivering. MDN is explicit that
+ * neither `networkState` (NETWORK_LOADING describes a fetch that was STARTED, not bytes arriving) nor
+ * `readyState` proves a live stream is healthy, and Chromium is free to drain the buffer into `waiting`
+ * and never raise a terminal `error`. `timeupdate` is throttled and cannot be counted on either.
+ *
+ * So the truth is arithmetic: has `currentTime` moved? `mark` is the last position seen to ADVANCE and
+ * when that was, both carried by the caller. TIMESTAMPS, never tick counts — a hidden renderer runs its
+ * interval late and a process that was frozen comes back with a mark minutes old, which is precisely the
+ * state that must reconnect rather than the one that must be forgiven.
+ *
+ * → { mark, dead } — the new marker to carry, and whether the budget is blown.
+ */
+export function progressCheck({ time = 0, mark = null, now = 0, budget = 8000 } = {}) {
+  if (!mark || time > mark.time) return { mark: { time, at: now }, dead: false };
+  return { mark, dead: now - mark.at >= budget };
+}

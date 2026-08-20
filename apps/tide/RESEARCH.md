@@ -115,3 +115,51 @@ Same contract as persona (`res · time · seed · ink · vary · env · tex/texA
   `/_rt/gesture.js` (pure `swipeDir` in `/_rt/swipe.js`, unit-tested; dominant axis, 52 px threshold, the
   click after a drag is swallowed). The same handlers sit on the void (normal) and the wrapper (fullscreen).
 - The same Fullscreen move fixed `imagine`'s Lightbox, which opened as a layer under the system chrome.
+
+## Addendum 2026-08-20 — the APK has no media session, and that is why the stream dies
+
+The owner installed tide as an APK and found no background service and no notification — and with them
+missing, a stream that survives a wifi→cellular switch or a minute offline. Both symptoms are one root
+cause, and it is not in the player.
+
+**`navigator.mediaSession` does not exist in a WebView.** VERIFIED against MDN browser-compat-data
+(`api/MediaSession.json`) this session: `webview_android: {"version_added": false, "impl_url":
+"https://crbug.com/40611412"}`, and every member — `metadata`, `playbackState`, `setActionHandler`,
+`setPositionState` — is `false` too. So the entire `holdAudio` block that gives tide its lock-screen
+transport in Chrome is a **silent no-op inside our own APK**. That is the missing notification, exactly.
+
+It is not cosmetic. A player with no session is a process Android is free to classify as cached, and a
+cached process is frozen (AOSP *Cached Apps Freezer*): zero CPU, so the backoff timer never fires, the
+stall watchdog never fires, and the stream that dropped while the phone was in a pocket is still dead when
+the app is reopened. The shell has had `bg.start` — a real foreground service — since bridge 3, and no
+farm audio app had ever asked for one. **The fix belongs in `/_rt/mediasession.js`, not in tide**: the same
+`holdAudio` call now polyfills the session over the shell (`media.show`/`media.hide`/`media.command`,
+bridge 28) and falls back to a plain `bg.start` hold on any older shell, so all eight audio apps — drift,
+ether, fmradio, grain, handpan, rave, tide, v2m — get it without touching one of them.
+
+**The second bug is a drop nothing announces.** Everything tide had waited for an EVENT. Measured against
+the specs rather than hope:
+
+- A seamless wifi→cellular handover changes Chromium's connection type with no `CONNECTION_NONE` in
+  between (`NetworkChangeNotifierAutoDetect`, which is also why `ACCESS_NETWORK_STATE` is declared) — so
+  **there is no `offline`/`online` pair to react to**, and the `online` listener never runs.
+- The old TCP socket is bound to the path that went away. It does not migrate; it stops delivering. MDN is
+  explicit that neither `networkState` (`NETWORK_LOADING` describes a fetch that was *started*, not bytes
+  arriving) nor `readyState` proves a live stream is healthy, and Chromium may drain the buffer into
+  `waiting` and never raise a terminal `error`. **The element can hang for ever with every event silent.**
+- `timeupdate` is throttled and cannot carry the watchdog either.
+
+So the liveness signal is arithmetic on the only number that cannot lie: `progressCheck` in
+`/_rt/tide.js` (unit-tested) asks whether `currentTime` has ADVANCED, against `performance.now()` —
+**timestamps, never tick counts**, because a hidden renderer runs its interval late and a process that was
+frozen returns with a marker minutes old, which is precisely the state that must reconnect. A 4 s interval
+while live, an 8 s budget, and `navigator.connection.change` (`NetworkInformation`: webview_android **50+**,
+VERIFIED in BCD — every shell we ship) as an extra prompt to look early. `data-bg` mirrors the held session
+so the Chromium gate can see the has-bridge branch, which is the only place CI will ever see it.
+
+What stays Java-only, and therefore needs a reinstall: the MediaStyle notification with a real framework
+`MediaSession` (transport buttons, correct `PlaybackState`), a low-importance channel so an ongoing player
+notification does not buzz, `setRendererPriorityPolicy` — a foreground service raises the HOST process,
+while the WebView renderer has its own priority — and `onRenderProcessGone`, because an FGS is not a
+promise that the renderer survives. Chromium already requests Android audio focus for HTML media itself
+(`AudioFocusDelegate`), so the shell must NOT request a second one.

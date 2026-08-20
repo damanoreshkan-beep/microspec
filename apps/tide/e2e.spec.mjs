@@ -11,13 +11,17 @@ export default [
       h.expect((await h.count("#play")) === 1, "немає кнопки відтворення");
       h.expect((await h.count("[data-stage]")) === 1, "немає поля");
       h.expect((await h.attr(wrap, "data-state")) === "idle", "стартовий стан не idle");
+      h.expect((await h.attr(wrap, "data-bg")) === "off", "медіасесія тримається до старту");
       await h.tap("#play"); await h.wait(300);
       h.expect((await h.attr("#play", "data-playing")) === "true", "не почав грати");
       h.expect((await h.attr(wrap, "data-state")) === "live", "стан не live");
       h.expect((await h.attr("[data-now]", "data-now")) === "yes", "трек із фікстури не показано");
+      // медіасесія (в APK — фоновий сервіс + нотіфікація): без неї процес засинає і стрім не оживає
+      h.expect((await h.attr(wrap, "data-bg")) === "on", "медіасесію не взято під час гри");
       await h.tap("#play"); await h.wait(300);
       h.expect((await h.attr("#play", "data-playing")) !== "true", "не зупинився");
       h.expect((await h.attr(wrap, "data-state")) === "idle", "після стопу стан не idle");
+      h.expect((await h.attr(wrap, "data-bg")) === "off", "медіасесію не відпущено після стопу");
     },
   },
   {

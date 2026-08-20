@@ -26,7 +26,7 @@ import { GlStage } from "/_rt/glstage.js";
 import { useSwipe, useTap } from "/_rt/gesture.js";
 import {
   CATEGORIES, categoryById, stationById, stationsIn, somaNow, somaChannels,
-  settle, idleBands, phaseStep, hslRgb, retryDelay, onLoss, FIXTURE_NOW, FIXTURE_LISTENERS,
+  settle, idleBands, phaseStep, hslRgb, retryDelay, onLoss, progressCheck, FIXTURE_NOW, FIXTURE_LISTENERS,
 } from "/_rt/tide.js";
 
 const AC = typeof AudioContext !== "undefined" ? AudioContext : (typeof globalThis !== "undefined" && globalThis.webkitAudioContext) || null;
@@ -41,6 +41,7 @@ const $state = atom("idle");                                     // idle | conne
 const $now = atom(null);                                         // { title, artist } | null
 const $listeners = atom(gate ? FIXTURE_LISTENERS : {});          // soma id → count (sheet meta)
 const $fs = atom(false);                                         // the field is fullscreen (the screensaver)
+const $bg = atom(false);                                         // the OS media session is held (APK: a real foreground service)
 
 const curCat = () => categoryById($cat.get());
 const curStation = () => stationById($station.get()) || stationsIn($cat.get())[0];
@@ -49,6 +50,7 @@ const curStation = () => stationById($station.get()) || stationsIn($cat.get())[0
 let el = null, ctx = null, src = null, analyser = null, freq = null, np = null, wl = null, nowTimer = null;
 let fails = 0, connectTimer = null;                              // auto-skip: a dead stream moves on, once per station, until the current is exhausted
 let attempt = 0, retryTimer = null, stallTimer = null;          // reconnect: a DROPPED link holds the station and retries with backoff (runtime onLoss/retryDelay)
+let mark = null, liveTimer = null;                               // liveness: currentTime is the only drop signal a seamless network handover cannot hide
 let curT = {};
 const npTitle = () => curStation().name;
 const artUrl = () => { try { return new URL("icons/icon-512.png", location.href).href; } catch { return null; } };
@@ -79,9 +81,24 @@ function attach(a, cors) {
   } catch { src = null; }
 }
 
+// The OS media session. In a browser that is navigator.mediaSession: lock-screen transport, plus the audio
+// focus that keeps a hidden tab's timers un-throttled. INSIDE THE APK the identical call reaches the shell,
+// because browser-compat-data records `api.MediaSession` as webview_android:false for every member
+// (crbug 40611412) — there the handle owns a framework MediaSession behind a foreground service, and THAT
+// service is the point: without one Android may treat the process as cached, a cached process runs no
+// reconnect timer, and a stream that dropped on a wifi switch stays dead until the app is reopened. The
+// branch lives in /_rt/mediasession.js, so this file asks for a session and never asks where it runs.
+function hold() {
+  if (!np) np = holdAudio({ title: npTitle(), artist: T(curT, curCat().key), artwork: artUrl(), onPlay: () => { if (!$playing.get()) start(); }, onPause: () => stop(), onPrev: () => skip(-1), onNext: () => skip(1), resumeCtx: () => ctx?.resume() });
+  np.setPlaying(npTitle());
+  $bg.set(true);
+}
+
 function play(station, { retryPlain = false, reconnect = false } = {}) {
-  // the gate (preflight has no media; CI must not stream a third party): the mock owns the state machine
-  if (gate || typeof Audio === "undefined") { $playing.set(true); $state.set("live"); pollNow(station); return; }
+  // the gate (preflight has no media; CI must not stream a third party): the mock owns the state machine.
+  // The session is held on BOTH paths — it is the has-bridge branch, and Chromium is the only place CI can
+  // see it at all, so short-circuiting before it would leave the APK half untested for ever.
+  if (gate || typeof Audio === "undefined") { $playing.set(true); $state.set("live"); hold(); pollNow(station); return; }
   if (!reconnect) attempt = 0;
   if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
   if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
@@ -113,8 +130,9 @@ function play(station, { retryPlain = false, reconnect = false } = {}) {
   const p = a.play(); if (p && p.catch) p.catch(() => { if (el === a) lost(a, station, hadAudio); });
   $playing.set(true);
   if (!wl) wl = wakeLock.acquire();
-  if (!np) np = holdAudio({ title: npTitle(), artist: T(curT, curCat().key), artwork: artUrl(), onPlay: () => { if (!$playing.get()) start(); }, onPause: () => stop(), onPrev: () => skip(-1), onNext: () => skip(1), resumeCtx: () => ctx?.resume() });
-  np.setPlaying(npTitle());
+  hold();
+  mark = null;                                                   // a fresh element restarts the liveness marker
+  if (!liveTimer) liveTimer = setInterval(probe, 4000);
   pollNow(station);
 }
 
@@ -137,12 +155,31 @@ function lost(a, station, hadAudio) {
   const wait = retryDelay(attempt); attempt += 1;
   retryTimer = setTimeout(() => { retryTimer = null; if ($playing.get() && curStation().id === station.id) play(station, { reconnect: true }); }, wait);
 }
-if (typeof addEventListener !== "undefined") addEventListener("online", () => {
+// The drop nothing announces. Every handler above waits for an EVENT, and a wifi→cellular handover raises
+// none: Chromium sees the connection type change without a CONNECTION_NONE in between, so there is no
+// offline/online pair, while the old socket — bound to the path that just went away — quietly stops
+// delivering and the element can sit in `waiting` for ever with no terminal error. `networkState` does not
+// help (NETWORK_LOADING describes a fetch that was started, not bytes arriving). So this asks the only
+// question with an answer: has currentTime moved? The arithmetic is the runtime's progressCheck.
+function probe() {
+  if (gate || !$playing.get() || !el || $state.get() !== "live") return;
+  const r = progressCheck({ time: el.currentTime, mark, now: performance.now() });
+  mark = r.mark;
+  if (r.dead) lost(el, curStation(), true);                      // it had played, so this holds the station and retries
+}
+function relink() {
+  if (!$playing.get() || gate) return;
+  // mid-backoff: the path changed, so do not sit out the wait — try now
+  if ($state.get() !== "live") { if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; } play(curStation(), { reconnect: true }); return; }
+  probe();                                                       // live: only currentTime can say whether it survived
+}
+if (typeof addEventListener !== "undefined") {
   // the link is back: do not sit out the backoff — reconnect now (only when we are not already live)
-  if (!$playing.get() || gate || $state.get() === "live") return;
-  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-  play(curStation(), { reconnect: true });
-});
+  addEventListener("online", relink);
+  // the link CHANGED without going away — NetworkInformation is webview_android 50+, which is every shell
+  // we ship, and it is the only notice a seamless handover gives us
+  try { navigator.connection?.addEventListener?.("change", relink); } catch { /* not here: the probe still covers it */ }
+}
 
 // A stream that will not play is not a screen you sit on: move to the next station in the current at once.
 // Bounded — after every station in the current has failed once the state stays "error" instead of looping.
@@ -162,8 +199,10 @@ function stop() {
   if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
   attempt = 0;
   if (el) { const o = el; el = null; ramp(o, o.volume, 0, 250, () => teardown(o)); }
+  if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+  mark = null;
   if (wl) { wl.release(); wl = null; }
-  if (np) { np.release(); np = null; }
+  if (np) { np.release(); np = null; $bg.set(false); }
   if (nowTimer) { clearInterval(nowTimer); nowTimer = null; }
 }
 const start = () => play(curStation());
@@ -267,7 +306,7 @@ export function tide({ S }) {
   const catId = useStore($cat), stId = useStore($station);
   const playing = useStore($playing), state = useStore($state), now = useStore($now);
   const favs = useStore($favs);
-  const screen = useStore(S.screen), fs = useStore($fs);
+  const screen = useStore(S.screen), fs = useStore($fs), bg = useStore($bg);
   const cat = categoryById(catId), station = stationById(stId) || stationsIn(catId)[0];
   const fieldRef = useRef();
   // the field's gestures — swipe down/up = next/prev station, left/right = next/prev current, double-tap =
@@ -290,7 +329,7 @@ export function tide({ S }) {
         ink=${inkFor} vary=${bands} tex=${station.logo || null} texReady=${(r) => { env.readyTo = r; }} />
     </div>
 
-    <div class="relative z-10 h-full min-h-0 flex flex-col gap-[var(--ms-gap)]" data-cat=${catId} data-station=${station.id} data-state=${state}>
+    <div class="relative z-10 h-full min-h-0 flex flex-col gap-[var(--ms-gap)]" data-cat=${catId} data-station=${station.id} data-state=${state} data-bg=${bg ? "on" : "off"}>
       <div class="shrink-0"><${Segmented} attr="data-current" scroll variant="outline" tone="frost" label=${T(t, "tabListen")}
         items=${currents} value=${catId} onChange=${setCat} /></div>
 

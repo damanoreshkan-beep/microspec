@@ -94,3 +94,31 @@ Deno.test("tide reconnect — backoff caps at 15s; a drop holds the station, onl
   assertEquals(onLoss({ hadAudio: false, online: true, attempt: 1 }), "reconnect");
   assertEquals(onLoss(), "skip");
 });
+
+Deno.test("tide progressCheck: currentTime is the liveness signal, on timestamps not ticks", async () => {
+  const { progressCheck } = await import("../tide.js");
+  // first look just plants the marker — nothing is dead before there is something to compare with
+  const a = progressCheck({ time: 3, mark: null, now: 1000 });
+  assertEquals(a.dead, false);
+  assertEquals(a.mark, { time: 3, at: 1000 });
+
+  // it advanced: the marker MOVES, so the budget restarts from the moment sound was last proven
+  const b = progressCheck({ time: 9, mark: a.mark, now: 5000 });
+  assertEquals(b.dead, false);
+  assertEquals(b.mark, { time: 9, at: 5000 });
+
+  // frozen position, still inside the budget — a buffer hiccup is not a dead stream
+  const c = progressCheck({ time: 9, mark: b.mark, now: 11000 });
+  assertEquals(c.dead, false);
+  assertEquals(c.mark, b.mark, "a stalled check must not move the marker forward");
+
+  // frozen past the budget: dead, whatever the events said (a handover raises none of them)
+  assertEquals(progressCheck({ time: 9, mark: b.mark, now: 13000 }).dead, true);
+  assertEquals(progressCheck({ time: 9, mark: b.mark, now: 13001 }).dead, true);
+
+  // a renderer that was FROZEN comes back with a mark minutes old — that reconnects, it is not forgiven
+  assertEquals(progressCheck({ time: 9, mark: b.mark, now: 605000 }).dead, true);
+
+  // a rewind (a fresh element reusing the marker) counts as no progress, never as negative time
+  assertEquals(progressCheck({ time: 0, mark: b.mark, now: 5500 }).dead, false);
+});

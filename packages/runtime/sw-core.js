@@ -34,6 +34,8 @@ self.MS_POLICY = { cacheNameFor, APP_CACHE, CDN_CACHE, CDN };
 const isNav = (req) => req.mode === "navigate" || req.destination === "document";
 const cacheable = (res) => !!res && res.status === 200 && (res.type === "basic" || res.type === "cors" || res.type === "default");
 
+const isManifest = (req, url) => req.destination === "manifest" || /\/manifest\.json$/.test(url.pathname);
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
@@ -48,6 +50,7 @@ self.addEventListener("fetch", (e) => {
 
 async function serve(e, req, url, name) {
   const cache = await caches.open(name);
+  if (isManifest(req, url)) return manifestFirst(e, cache, req, url);
   const hit = await lookup(cache, req);
   if (hit) {
     if (shouldRevalidate(req.url)) e.waitUntil(revalidate(cache, req, url));
@@ -59,6 +62,18 @@ async function serve(e, req, url, name) {
     return res;
   } catch {
     return (await lookup(cache, req)) || Response.error();
+  }
+}
+
+async function manifestFirst(e, cache, req, url) {
+  try {
+    const res = await timedFetch(req, url, COLD_TIMEOUT, true);
+    if (!cacheable(res)) return (await cache.match(req, { ignoreVary: true })) || res;
+    const copy = res.clone();
+    e.waitUntil(cache.put(req, copy).catch(() => {}));
+    return res;
+  } catch {
+    return (await cache.match(req, { ignoreVary: true })) || Response.error();
   }
 }
 

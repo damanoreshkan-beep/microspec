@@ -116,3 +116,10 @@ shell is a fixed small cost at install; media is not.
 ### Range requests
 
 `cache.put` rejects a `206`. Requests carrying a `Range` header (media elements) pass straight through.
+
+### The one file that is NOT stale-while-revalidate
+
+`manifest.json`. It is the browser's copy of the *installed* app's identity — on Android those fields are
+baked into a WebAPK at install and only ever change when the browser re-reads the manifest and diffs it, a
+read that lands in this worker. Serving it from cache lets the app's own cache pin its own identity. Network
+first, cache as the offline fallback: `docs/research/webapk-identity.md`.

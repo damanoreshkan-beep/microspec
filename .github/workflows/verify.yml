@@ -108,8 +108,17 @@ jobs:
           restore-keys: deno-
       - name: Verify ${{ matrix.app }}
         # Chrome is preinstalled on the runner (no setup-chrome download) and we run headless (no Xvfb / no
-        # apt-get) — that removes ~25s of per-job setup. The gate itself is ~5s; 2min fails fast on a hang.
-        timeout-minutes: 2
+        # apt-get) — that removes ~25s of per-job setup.
+        # The budget has to clear the HEAVIEST app, not the median one, and the "~5s gate" this comment used
+        # to quote stopped being true a long time ago. Measured over the last 7 pushes, `reel` ran 116s /
+        # 122s / 124s / 128s / 128s / 129s / 133s — i.e. it had been finishing at 97-100% of a 2-minute
+        # budget for weeks, and every one of those runs was a coin flip. It tipped the moment one more e2e
+        # case landed: 72 checks passed, 0 failed, and the step was killed 12ms after printing the summary.
+        # reel is the outlier for a reason (4 tabs through the responsive matrix in both themes + 14 e2e
+        # cases driving a video surface); a small app is still ~20s. 3 minutes keeps a hard stop on a hung
+        # browser while leaving the heaviest app ~50% of headroom. If an app ever needs more than this,
+        # make the app's suite faster — do not raise the number again.
+        timeout-minutes: 3
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
         run: deno run -A packages/gates/verify.mjs "$GITHUB_WORKSPACE/apps/${{ matrix.app }}" --shots

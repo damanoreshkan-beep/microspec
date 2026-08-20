@@ -347,6 +347,12 @@ Deno.test("clean screen: the chrome that unmounts takes its measurements with it
   // 3) There is a way back, and it is history-backed. Hiding the dock removes the app's only navigation:
   //    without an overlay entry the Back that should restore it exits the PWA instead.
   assert(/function CleanExit/.test(render) && /data-clean-exit/.test(render), "no door out of clean screen");
+  // …and the door is glass over media, so it must not be extruded. On a screen that has been deliberately
+  // cleared, --sf-drop's light half IS the only thing on it. btn-ghost is how it escapes that rule: the
+  // DaisyUI selector is (0,4,0) and `shadow-none` is (0,1,0), so a utility cannot switch it off.
+  const door = /data-clean-exit class="([^"]+)"/.exec(render);
+  assert(door && /\bbtn-ghost\b/.test(door[1]) && /\bsf-frost\b/.test(door[1]),
+    `the clean-screen door is extruded (${door?.[1]}) — it needs btn-ghost + sf-frost, or it wears a white halo on the screen it just cleared`);
   assert(/\[S\.clean, \(\) => S\.clean\.set\(false\), \(v\) => v === true\]/.test(index),
     "S.clean is not registered as an overlay — Back would leave the app instead of giving the chrome back");
   const overlays = /const overlays = \[([\s\S]*?)\n  \];/.exec(index)[1];
@@ -358,6 +364,20 @@ Deno.test("clean screen: the chrome that unmounts takes its measurements with it
   for (const k of ["clean", "cleanExit"]) {
     assert(new RegExp(`\\b${k}:\\s*\\{[^}]*\\ben:[^}]*\\buk:`).test(sys), `SYS.${k} must carry BOTH locales`);
   }
+});
+
+// The third time the SAME defect has shipped: .sf-frost was carved out of the kit when the extrusion pair
+// haloed a glass rail, the clean-screen door repeated it, and this one had been on reel's island all along.
+// The pair's light half is --nm-light, and it exists to shade a surface — over a PICTURE there is nothing to
+// shade, so it just draws a white ring. In the dark theme that reads as a soft glow you can argue with; in
+// the light theme --nm-light is bright and reel's island came out hard-outlined in white over black video.
+Deno.test('a "dark" island is glass over MEDIA — it casts alone, never the extrusion pair', async () => {
+  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const dark = /tone === "dark"\s*[\r\n]*\s*\? "([^"]+)"/.exec(ui);
+  assert(dark, 'the tone="dark" surface is gone from IslandBox');
+  assert(!/\bsf-e[2-5]\b/.test(dark[1]),
+    `tone="dark" is extruded ("${dark[1]}") — the pair's light half has nothing to shade against on a media surface and draws a white ring instead`);
+  assert(/\bsf-frost\b/.test(dark[1]), 'tone="dark" must cast alone (.sf-frost), like every other glass-over-stage surface');
 });
 
 Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts out loud", async () => {

@@ -708,7 +708,12 @@ function SessionSheet({ S, t, undo }) {
 // It is ALWAYS present now. It used to hide itself on a subscribed root feed "for a clean surface", which
 // was affordable only while every control also existed on the slide. It is the controls now.
 function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, openIn }) {
-  const act = "btn btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
+  /* btn-GHOST on every control in here, for the island's own reason: `.btn:not(.btn-ghost)` carries
+     --sf-drop, the extrusion pair, and the pair's light half has nothing to shade against on a black media
+     surface — it draws a white ring instead. In the light theme (--nm-light is bright) each of these
+     circles came out haloed inside an island that was itself hard-outlined in white. Same fix as the island
+     box and the clean-screen door; a utility cannot reach it, the DaisyUI rule is (0,4,0). */
+  const act = "btn btn-ghost btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
   const loc = useStore(S.locale);
   return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
       ${depth ? html`<button data-feed-back class="btn btn-ghost btn-sm btn-circle text-white shrink-0" aria-label=${T(t, "back")} onClick=${() => popFrame(S)}>${Icon("lucide:chevron-left", "text-xl")}</button>` : null}
@@ -743,7 +748,7 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, openIn }) 
             an external-link glyph on a control that genuinely leaves the app is the icon telling the truth
             about where the tap goes. Same destination as `watch`: the page the clip was extracted from. */""}
       ${openIn ? html`<button data-open-page class=${act} aria-label=${T(t, "openBrowser")} onClick=${openIn}>${Icon("lucide:external-link", "text-base")}</button>` : null}
-      ${watch ? html`<button data-watch class="btn btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")} onClick=${watch}>${Icon("lucide:play", "text-base")}</button>` : null}
+      ${watch ? html`<button data-watch class="btn btn-ghost btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")} onClick=${watch}>${Icon("lucide:play", "text-base")}</button>` : null}
       ${/* forward is the mirror of back: the page this clip lives on. The destination's NAME is not written
             here — it is what the drag reveals under the finger — so the label rides the a11y name instead. */""}
       ${dive ? html`<button data-dive class=${act} aria-label=${`${T(t, "dive")}: ${dive.label}`} onClick=${dive.go}>${Icon("lucide:chevron-right", "text-lg")}</button>` : null}

@@ -143,7 +143,7 @@
     {
       "name": "Panel",
       "kind": "component",
-      "line": 191,
+      "line": 197,
       "headline": "Panel — the solid surface",
       "doc": "What a card is in the list family: the page EXTRUDED (sf-raised at the shallow elevation), no border, an\noptional mono micro-label header. Use it for grouped controls; use Island only where the panel floats\nOVER content. It has no hairline — this comment used to say it did, and app authors copied that.",
       "signature": "Panel({ title, children, className = \"\", ...rest })",
@@ -166,7 +166,7 @@
     {
       "name": "Slider",
       "kind": "component",
-      "line": 201,
+      "line": 207,
       "headline": "Slider — a labelled range",
       "doc": "The value is not printed. A macro like \"space\" or \"density\" has no unit a number would honestly carry,\nand a readout the user cannot act on is hint text with extra steps (the farm's no-hand-holding rule).",
       "signature": "Slider({ id, label, value, onInput, min = 0, max = 1, step = 0.02, attr = \"data-macro\" })",
@@ -204,7 +204,7 @@
     {
       "name": "Row",
       "kind": "component",
-      "line": 217,
+      "line": 223,
       "headline": "",
       "doc": "Row — the one-line flex used inside Panels/Sheets (label left, control right). Not a component so much\nas the shape they all share; exported so a caller never re-guesses the gap.",
       "signature": "Row({ children, className = \"\" })",
@@ -221,7 +221,7 @@
     {
       "name": "Transport",
       "kind": "component",
-      "line": 226,
+      "line": 232,
       "headline": "Transport — the widget",
       "doc": "Every piece is opt-in: no `onNext` → no skip button; no `dur` → no seek bar; no `onRepeat` → no repeat\ncontrol. So a one-button ambient player and a full queue player are the same component, and a fix to the\nscrub interaction or the a11y labels lands in all of them at once.\n\nLocalisation: the runtime's SYS dictionary carries the transport strings (aPlay/aPause/aPrev/aNext/\naSeek/aRepeat…), so an app adopting this does not restate them — pass `locale`, not a dict.",
       "signature": "Transport({ locale = \"en\", playing = false, onToggle, onPrev, onNext, pos = 0, dur = 0, onSeek, repeat, onRepeat, shuffle = false, onShuffle, title, subtitle, lead, trail, stopIcon = false, size = \"md\", disabled = false, className = \"\", actions = [], keep = 2, moreOpen, onMore, onMoreClose, onScrubStart, onScrub, onScrubEnd })",
@@ -338,7 +338,7 @@
     {
       "name": "Stage",
       "kind": "component",
-      "line": 391,
+      "line": 397,
       "headline": "Stage — where a visualiser lives",
       "doc": "A full-bleed `absolute inset-0` canvas centres its subject on the SCREEN, which is the wrong centre: the\nheader sits over the top of it and the transport island over the bottom, so the object reads as pushed\nup and off-balance on every phone. A visualiser belongs in the box that is actually visible — the flex\nvoid between the chrome — and then its own geometry centring is correct for free, at every breakpoint,\nwith no measuring and no magic numbers.\n\nUse it as the `flex-1 min-h-0` void of a fit view: header · <Stage> · controls. The canvas inside is\n`absolute inset-0` relative to THIS box, not the screen.",
       "signature": "Stage({ children, className = \"\" })",

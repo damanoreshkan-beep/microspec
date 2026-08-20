@@ -171,8 +171,14 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
   // triple, so a change to what "raised" means reaches the dock, the sheet and every island at once.
   // "dark" keeps the raised geometry and swaps only the material — a light island over a bright video frame
   // is invisible, which is not a style preference but a legibility fact.
+  // …and it casts ALONE, like frost, for the same reason frost does. sf-e3 is the extrusion PAIR, and the
+  // pair's light half is --nm-light: on a dark island over a black media surface that half has nothing to
+  // shade against, so it draws a white ring around the pill instead. In the dark theme it reads as a soft
+  // glow you can talk yourself into; in the LIGHT theme --nm-light is bright and reel's island came out
+  // hard-outlined in white, every button in it wearing its own halo. A material defined as "dark over
+  // media" can never be extruded, in either theme — the thing behind it is a picture, not a surface.
   const surface = tone === "dark"
-    ? "sf-e3 border border-white/15 bg-black/60 text-white"
+    ? "sf-frost border border-white/15 bg-black/60 text-white"
     : tone === "frost" ? FROST
     : "sf-raised sf-e3";
   const cls = `${surface} rounded-[var(--ms-r)] p-[var(--ms-pad)] ${className}`;

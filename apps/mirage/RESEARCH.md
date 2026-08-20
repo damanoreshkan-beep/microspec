@@ -101,18 +101,42 @@ app puts over the field.
 `vary` channels: `x` busy · `y` arrival · `z` facet (rotates the palette cross-mix, so modes differ by colour
 without a hue being hard-coded) · `w` ready (palette bound).
 
+## The palette, and the two ways it went wrong (both measured, both fixed)
+
+`frag.sh --tex <file>` binds a real picture, downsampled to 64px **exactly as glstage.js does** — a preview at
+full resolution would show detail the shipped field can never sample. The palette source used here is a real
+output of the app (a pod edit: sunset sky over the checkerboard fixture).
+
+**Oil slick (dark).** The first version tapped the texture through the WARPED, high-frequency uv and
+cross-mixed three taps. Adjacent pixels landed on unrelated hues and the field read as a compression
+artefact. A field borrows a NARROW palette — two related tones over large, smooth regions. Fixed by sampling
+low and wide (`0.35 + 0.30*body`), two taps, mixed by a slow `sin` of `facet`.
+
+**Bubblegum (light).** Keeping 34% chroma and then lifting luma toward 0.93 turns any tinted tone into pink
+and yellow candy. **Chroma must fall as the band rises**: `mix(0.34, 0.11, lite)`.
+
+**And the structure was cut in the wrong theme.** The light band `[0.64, 0.97]` is 0.33 wide against dark's
+0.22 — light has MORE room, and the first numbers gave it less, so the laminae vanished there. Now
+`body mix(0.205, 0.185)` and `laminae mix(0.150, 0.145)`.
+
+The lesson worth keeping beyond this app: **every amplitude that reads well dark must be re-judged light, and
+chroma is the term that flips hardest** — the same value is a tint at one end of the band and candy at the
+other.
+
 ## UNVERIFIED — the build must not lean on these yet
 
-- **The palette path has never been seen with a real picture.** `frag.sh` binds a neutral 1px texture, so
-  every shot so far shows the `ready=0` fallback. Needs a `--tex` option before the palette can be judged.
-- **Light theme unrendered.** The clamp inverts there and `presence.frag`'s notes warn the band inverts with
-  it; assume nothing.
 - **`busy` and `arrival` unrendered.** Both have amplitude terms written and neither has been looked at.
 - **The dust layer does not exist.** Not designed, not measured. It is the single biggest remaining unknown
   and the one the owner asked for first.
 - **No performance measurement.** GlStage caps DPR at 2 and drops to 1 under the gate because a full-bleed
   fbm field at DPR 2 is ~1.3M fragments a frame and starves the page's timers in SwiftShader. mirage runs
   three fbm stacks plus two lamina stacks — heavier than `presence`. Unmeasured on the reference device.
+- **The field has only ever been judged ALONE.** It is a background; the honest test is with the composer,
+  the picture and real strings over it, and some of the remaining tuning (how far the palette's tone travels
+  over 8s, how pink light leans) should not be settled until then.
+- **The palette source was a fixture, not a photograph.** The checkerboard's greens and magentas are visible
+  as blotches in the first cell of every sheet; a real photograph has a narrower gamut and would sample
+  more calmly. Re-judge with a photo before trusting the tuning.
 
 ## Shader traps already paid for (`[[reference_shader_field_traps]]`, `[[reference_glstage_presence]]`)
 

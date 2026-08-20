@@ -69,14 +69,18 @@ void main(){
   float body = fbm(q*0.8 + vec2(w2*1.1, w1*0.7));
 
   // ── the palette comes from the picture, never from a stock hue ───────────────────────────────────────
-  // Three taps at different points of the same 64px texture, cross-mixed by `facet`, so each mode leans on
-  // a different part of the picture's colour and the two never agree exactly.
-  vec2 tuv = clamp(vec2(0.5) + vec2(w2-0.5, body-0.5)*0.75, 0.02, 0.98);
+  // A field borrows a NARROW palette — two or three related tones over large, smooth regions — not the
+  // picture's whole gamut sampled per pixel. The first version tapped the texture through the WARPED,
+  // high-frequency uv, so adjacent pixels landed on unrelated hues and the field read as an oil slick.
+  // Sample low and wide instead, and let only the slow body term choose where.
+  vec2 tuv = clamp(vec2(0.35 + 0.30*body, 0.35 + 0.30*w2), 0.06, 0.94);
   vec3 c1 = texture(tex, tuv).rgb;
-  vec3 c2 = texture(tex, clamp(tuv.yx + vec2(0.13, -0.11), 0.02, 0.98)).rgb;
-  vec3 c3 = texture(tex, clamp(vec2(1.0)-tuv + vec2(-0.07, 0.09), 0.02, 0.98)).rgb;
-  float m = fract(facet + 0.33*w1);
-  vec3 pal = mix(mix(c1, c2, smoothstep(0.0, 0.5, m)), c3, smoothstep(0.5, 1.0, m));
+  vec3 c2 = texture(tex, clamp(vec2(1.0) - tuv, 0.06, 0.94)).rgb;
+  float m = clamp(0.5 + 0.5*sin(6.283*(facet + 0.25*w1)), 0.0, 1.0);
+  vec3 pal = mix(c1, c2, m);
+  // and it is a TINT, not a reproduction: collapse most of the chroma toward the tone's own luma, or the
+  // rescale below turns every deep blue into a glowing one
+  pal = mix(vec3(luma(pal)), pal, mix(0.34, 0.11, lite));
   // before a picture exists there is no palette: fall back to a neutral that carries the theme, not a hue
   vec3 neutral = mix(vec3(0.16, 0.17, 0.20), vec3(0.90, 0.91, 0.94), lite);
   vec3 col = mix(neutral, pal, ready*0.85);
@@ -94,8 +98,8 @@ void main(){
   // the sheets carry roughly as much of the shade as the body does — that ratio IS the heat reading; drop
   // the lamina term below about half the body's and the field falls back to fog
   float shade = base
-    + (body - 0.5)*mix(0.205, 0.135, lite)
-    + laminae*mix(0.150, 0.098, lite)
+    + (body - 0.5)*mix(0.205, 0.185, lite)
+    + laminae*mix(0.150, 0.145, lite)
     + bloom + grain;
   float target = clamp(shade, lo, hi);
   // drive the picture's colour to the shade the contract allows, keeping its hue

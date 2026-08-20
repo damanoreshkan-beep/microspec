@@ -123,6 +123,8 @@ export default [
       h.expect((await h.prop("[data-noir]", "checked")) === true, "режим увімкнений, а перемикач у шторці цього не показує");
       await h.tap("[data-noir]"); await h.wait(400);
       h.expect((await h.css("[data-reel]", "filter")) === "none", "нуар не вимикається — кадр лишився чорно-білим");
+      await h.back(); await h.wait(400);
+      h.expect((await h.count("[data-noir]")) === 0, "шторка лишилась відкритою — наступний системний Back дістанеться їй, а не рівню стрічки");
     },
   },
   {
@@ -135,9 +137,9 @@ export default [
       const chip = await h.attr("[data-dive]", "aria-label");
       h.expect(/Big Buck Bunny/.test(chip), `кнопка провалювання підписана «${chip}» — має нести назву самого рілзу, а не форму URL`);
       await h.tap("[data-dive]"); await h.wait(600);
+      
       h.expect(await settles(h, 2), "провалювання не завантажило стрічку сторінки, на якій лежить рілз");
       h.expect((await h.text("[data-island-label]")) !== root, `острівець лишився на «${root}» — джерело не змінилось`);
-      
       
       
       

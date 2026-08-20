@@ -42,5 +42,13 @@
   "back": "Back",
   "sessTitle": "Site session",
   "sessSave": "Save session",
-  "sessForget": "Forget session"
+  "sessForget": "Forget session",
+  "more": "More",
+  "expGif": "GIF",
+  "expVideo": "Video",
+  "expSave": "Save",
+  "expShare": "Share",
+  "expBusy": "Preparing",
+  "expSaved": "Saved",
+  "expFail": "Could not export"
 }

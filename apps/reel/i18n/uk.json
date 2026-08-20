@@ -42,5 +42,13 @@
   "back": "Назад",
   "sessTitle": "Сесія сайту",
   "sessSave": "Зберегти сесію",
-  "sessForget": "Забути сесію"
+  "sessForget": "Забути сесію",
+  "more": "Ще",
+  "expGif": "GIF",
+  "expVideo": "Відео",
+  "expSave": "Зберегти",
+  "expShare": "Поділитися",
+  "expBusy": "Готуємо",
+  "expSaved": "Збережено",
+  "expFail": "Не вдалося експортувати"
 }

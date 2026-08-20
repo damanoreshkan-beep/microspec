@@ -1,4 +1,5 @@
 import { VPS_PROXY } from "./feed.js";
+import { shell } from "./shell.js";
 
 function bytesToB64(buf) {
   let s = "";
@@ -115,6 +116,39 @@ export function downloadBlob(blob, filename) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/**
+ * shareFile(blob, filename) — hand a generated file to the OS share sheet, wherever the app is running.
+ * Returns "shared" | "cancel" | "saved"; it never throws, because a share that fails must still leave the
+ * user holding the file.
+ *
+ * THE FORK THAT KEEPS BEING MISSED. A WebView has NO `navigator.share` — measured, and the reason apps/os
+ * goes through the bridge instead. So inside our APK, which is how these apps are actually used, the browser
+ * path is not merely worse, it is absent. Three apps (sigil, grain, cam) each hand-rolled the
+ * canShare→share→download ladder and every one of them is dead in the shell; os hand-rolled the shell call
+ * and has no browser path. This is both halves in one place, which is the only version that works in both.
+ *
+ * The shell is tried FIRST for that reason: where a bridge exists it is the only thing that can share, and
+ * `shell.has` already answers "no bridge / unknown action / bridge too old" as one boolean.
+ */
+export async function shareFile(blob, filename) {
+  const mime = blob.type || "application/octet-stream";
+  if (shell.has("files.share")) {
+    try {
+      await shell.call("files.share", { name: filename, mime, base64: bytesToB64(new Uint8Array(await blob.arrayBuffer())) });
+      return "shared";
+    } catch {  }
+  } else {
+    try {
+      const file = new File([blob], filename, { type: mime });
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file] }); return "shared"; }
+    } catch (e) {
+      if (e?.name === "AbortError") return "cancel";
+    }
+  }
+  downloadBlob(blob, filename);
+  return "saved";
 }
 
 export async function downloadUrl(url, filename) {

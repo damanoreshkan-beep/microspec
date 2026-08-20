@@ -126,8 +126,18 @@ other.
 ## UNVERIFIED — the build must not lean on these yet
 
 - **`busy` and `arrival` unrendered.** Both have amplitude terms written and neither has been looked at.
-- **The dust layer does not exist.** Not designed, not measured. It is the single biggest remaining unknown
-  and the one the owner asked for first.
+- ~~The dust layer does not exist.~~ **WRONG, and corrected 2026-08-20: `packages/runtime/dust.js` has
+  existed since 2026-08-17** and is exactly the owner's mandate — a premium WebGL particle cloud that
+  scatters and gathers, used as the generation stage, adapted from a 21st.dev particle field, gate-safe, 800
+  points, additive glow over a dark vignette, `<Dust active progress />`. `apps/imagine` already imports it.
+  mirage REUSES it; building a second one would be the hand-rolled-copy failure `rules/design.md` calls a
+  hard failure.
+
+  **How the claim got made, because the method is the lesson:** I listed `packages/runtime/` through a grep
+  of guessed keywords — `gl|hero|shader|particle|ripple|spectrum|motion|anim` — and `dust` matches none of
+  them. Concluding from a filtered listing is the same error as concluding from a `tail`ed one: the answer
+  was present and the filter threw it away. Before claiming the farm lacks a capability, read the module
+  list WHOLE.
 - **No performance measurement.** GlStage caps DPR at 2 and drops to 1 under the gate because a full-bleed
   fbm field at DPR 2 is ~1.3M fragments a frame and starves the page's timers in SwiftShader. mirage runs
   three fbm stacks plus two lamina stacks — heavier than `presence`. Unmeasured on the reference device.

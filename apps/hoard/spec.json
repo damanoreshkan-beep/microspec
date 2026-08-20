@@ -1,0 +1,17 @@
+{
+  "id": "hoard",
+  "theme": "signal",
+  "category": "money",
+  "accent": "#D8A43A",
+  "tabs": [
+    { "id": "flow", "type": "tool", "icon": "lucide:flame", "label": "tabFlow", "view": "flow", "fit": true },
+    { "id": "vault", "type": "tool", "icon": "lucide:coins", "label": "tabVault", "view": "vault" },
+    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+  ],
+  "profile": {
+    "icon": "lucide:flame",
+    "theme": true,
+    "lang": true,
+    "install": true
+  }
+}

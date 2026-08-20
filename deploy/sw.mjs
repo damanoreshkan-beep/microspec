@@ -66,12 +66,16 @@ export function manifestFor(id, { read: rd = read } = {}) {
     }
   }
 
-  // 4) the WebGPU hero shader. It is part of the shell — a few hundred bytes the stage cannot start
-  // without — but it arrives by fetch() rather than import, so the closure above is blind to it. The
-  // environment map beside it stays OUT, like every other assets/* payload: it is megabytes, and SWR
-  // caches it on the first online run.
-  if (rd(`${dir}/hero.wgsl`) != null) urls.add("./hero.wgsl");
-  if (rd(`${dir}/presence.frag`) != null) urls.add("./presence.frag");   // the WebGL twin (glstage.js), same reason
+  // 4) the app's shaders. They are part of the shell — a few hundred bytes a stage cannot start without —
+  // but they arrive by fetch() rather than import, so the closure above is blind to them. DISCOVERED, not
+  // listed: this was two hardcoded filenames (hero.wgsl, presence.frag) and the third app to ship a shader
+  // would have gone offline-blank with every gate green. The environment map beside them stays OUT, like
+  // every other assets/* payload: it is megabytes, and SWR caches it on the first online run.
+  try {
+    for (const e of Deno.readDirSync(dir)) {
+      if (e.isFile && /\.(wgsl|frag)$/.test(e.name)) urls.add(`./${e.name}`);
+    }
+  } catch { /* an injected read() against a directory that does not exist — the unit tests' shape */ }
 
   return [...urls].sort();
 }

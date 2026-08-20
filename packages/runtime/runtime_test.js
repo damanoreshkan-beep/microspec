@@ -24,6 +24,7 @@ import "./tests/ctcss_test.js";
 import "./tests/deck_test.js";
 import "./tests/demod_test.js";
 import "./tests/df_test.js";
+import "./tests/earn_test.js";
 import "./tests/earshot_test.js";
 import "./tests/fittext_test.js";
 import "./tests/fmradio_test.js";

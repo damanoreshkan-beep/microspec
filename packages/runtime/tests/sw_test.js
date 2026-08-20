@@ -92,6 +92,14 @@ Deno.test("sw manifest: a real app's shell covers document, spec, locales, runti
   assert(!m.some((u) => u.includes("brand.svg")), "brand.svg is a build input, never fetched at runtime");
 });
 
+// A shader is fetched, not imported, so the import graph cannot see it — it used to be TWO hardcoded
+// filenames, and an app whose shader was named anything else booted offline to a blank canvas.
+Deno.test("sw manifest: an app's shader is discovered, not listed by name", () => {
+  for (const [id, file] of [["hoard", "./hoard.frag"], ["persona", "./presence.frag"], ["iching", "./hero.wgsl"]]) {
+    assert(manifestFor(id).includes(file), `${id}: ${file} missing from the precache — the stage is blank offline`);
+  }
+});
+
 // The four behaviours the whole change exists for. Proved browser-free, against the real sw-core.js source.
 Deno.test("sw: offline, a cached app still opens — the cache is consulted FIRST, not after a fetch fails", async () => {
   const url = "https://damanoreshkan-beep.github.io/microspec/rave/view.js";

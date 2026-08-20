@@ -135,7 +135,7 @@ function play(station, { retryPlain = false, reconnect = false } = {}) {
   $state.set(waitState);
   let hadAudio = false;                                          // this element produced sound → a later error is a DROP, not a dead station
   const armStall = () => { if (stallTimer) clearTimeout(stallTimer); stallTimer = setTimeout(() => { if (el === a && $state.get() !== "live") lost(a, station, hadAudio); }, 8000); };
-  a.onplaying = () => { if (el !== a) return; fails = 0; attempt = 0; hadAudio = true; if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; } if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } $state.set("live"); ramp(a, 0, 1, 500); };
+  a.onplaying = () => { if (el !== a) return; fails = 0; attempt = 0; hadAudio = true; if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; } if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } $state.set("live"); if (!reconnect) ramp(a, 0, 1, 500); };
   // a live stream that stalls mid-play (the link went away) stays "waiting" for ever in some engines — an
   // 8 s watchdog turns a stall into a reconnect; a stall that clears on its own (playing) disarms it
   a.onwaiting = a.onstalled = () => { if (el !== a) return; if (hadAudio) { $state.set("reconnecting"); armStall(); } else $state.set(waitState); };
@@ -145,7 +145,13 @@ function play(station, { retryPlain = false, reconnect = false } = {}) {
   a.onerror = () => { if (el !== a) return; if (cors && !hadAudio) play(station, { retryPlain: true, reconnect }); else lost(a, station, hadAudio); };
   if (connectTimer) clearTimeout(connectTimer);
   connectTimer = setTimeout(() => { if (el === a && $state.get() !== "live") lost(a, station, hadAudio); }, 12000);
-  a.volume = 0;
+  // A RECONNECT DOES NOT FADE IN. The fade exists to cross-fade one station into another; recovering the
+  // SAME station has nothing to cross-fade against — the old element is already dead. Starting at 0 and
+  // relying on a fade to raise it is what made a background reconnect silent, and the two guards inside
+  // ramp() both rest on assumptions this one does not need: that a WebView reports visibilityState
+  // honestly, and that a hidden page's timers are not throttled to once a minute. Full volume from the
+  // first byte depends on neither, and it is what a recovering stream should do anyway.
+  a.volume = reconnect ? 1 : 0;
   attach(a, cors);
   const p = a.play(); if (p && p.catch) p.catch(() => { if (el === a) lost(a, station, hadAudio); });
   $playing.set(true);

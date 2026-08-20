@@ -606,8 +606,9 @@ function MoreSheet({ S, t, item, src, title, subbed, openIn, toast }) {
   const busy = useStore($busy), loc = useStore(S.locale);
   const close = () => S.screen.set(null);
   const row = "btn btn-ghost justify-start gap-3 rounded-2xl w-full font-normal";
-  const pair = (format, label) => html`<div class="flex items-center gap-2">
-    <span class="flex-1 min-w-0 truncate text-sm font-medium pl-1">${label}</span>
+  const pair = (format, icon, label) => html`<div class="flex items-center gap-3 px-4 py-1 rounded-2xl">
+    ${Icon(icon, "text-lg opacity-70 shrink-0")}
+    <span class="flex-1 min-w-0 truncate">${label}</span>
     ${[["save", "lucide:download"], ["share", "lucide:share-2"]].map(([mode, icon]) => {
       const key = `${format}-${mode}`;
       return html`<button data-exp=${key} class=${`btn btn-sm btn-circle btn-ghost border border-base-content/15${busy === key ? " btn-active" : ""}`} disabled=${!!busy}
@@ -618,9 +619,10 @@ function MoreSheet({ S, t, item, src, title, subbed, openIn, toast }) {
   return html`<${Sheet} open onClose=${close} title=${T(t, "more")} icon="lucide:ellipsis">
     <div class="flex flex-col gap-2">
       ${item ? html`<${Fragment}>
-        ${pair("gif", T(t, "expGif"))}
-        ${pair("mp4", T(t, "expVideo"))}
-        ${busy ? html`<div data-exp-busy class="text-xs text-muted pl-1">${T(t, "expBusy")} ${T(t, busy.startsWith("mp4") ? "expVideo" : "expGif")}</div>` : null}
+        ${pair("gif", "lucide:image", T(t, "expGif"))}
+        ${pair("mp4", "lucide:video", T(t, "expVideo"))}
+        
+        ${busy ? html`<div data-exp-busy class="text-xs text-muted px-4">${T(t, "expBusy")} ${T(t, busy.startsWith("mp4") ? "expVideo" : "expGif")}</div>` : null}
         <div class="h-px bg-base-content/10 my-1"></div>
       </${Fragment}>` : null}
       
@@ -630,14 +632,15 @@ function MoreSheet({ S, t, item, src, title, subbed, openIn, toast }) {
     </div>
   <//>`;
 }
+
 function SourceIsland({ S, t, src, title, depth, dive, watch }) {
   
   const act = "btn btn-ghost btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
   return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
       ${depth ? html`<button data-feed-back class="btn btn-ghost btn-sm btn-circle text-white shrink-0" aria-label=${T(t, "back")} onClick=${() => popFrame(S)}>${Icon("lucide:chevron-left", "text-xl")}</button>` : null}
       <${Favicon} url=${src} size="w-6 h-6" />
-      
       <span data-island-label class="text-sm text-white truncate min-w-0 pl-0.5 pr-1">${title}</span>
+      
       <button data-more class=${act} aria-label=${T(t, "more")} onClick=${() => S.screen.set("more")}>${Icon("lucide:ellipsis", "text-base")}</button>
       
       ${watch ? html`<button data-watch class="btn btn-ghost btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")} onClick=${watch}>${Icon("lucide:play", "text-base")}</button>` : null}
@@ -646,7 +649,6 @@ function SourceIsland({ S, t, src, title, depth, dive, watch }) {
     <//>
   `;
 }
-
 
 
 
@@ -669,7 +671,6 @@ function FeedSurface({ S, t, toast }) {
   const active = useStore($active), next = useStore($next), ephemeral = useStore($ephemeral);
   const src = useStore($src), frames = useStore($frames), subs = useStore($subs), restoreTo = useStore($restoreTo);
   const title = useStore($srcTitle);
-  
   const screen = useStore(S.screen);
   const suspended = screen === "full";
   const clean = useStore(S.clean);
@@ -680,7 +681,6 @@ function FeedSurface({ S, t, toast }) {
   const targetLabel = target ? sourceTitle(target, { hint: items[active]?.title }) : "";
   const prev = frames.length ? frames[frames.length - 1] : null;
 
-  
   
   const { paneRef, pan } = usePanX({
     threshold: 64,                                                   
@@ -694,15 +694,14 @@ function FeedSurface({ S, t, toast }) {
       if (backRef.current) backRef.current.style.opacity = dx > 0 ? "1" : "0";
     },
   });
+
   useEffect(() => {
     bindNav(S);
     if (!booted) { booted = true; if (!gate) loadSource($src.get()); }
     else if ($active.get() > 0) $restoreTo.set($active.get());        
-    
-    
-    
     const root = document.documentElement;
     root.setAttribute("data-feed", "");
+    
     return () => { root.removeAttribute("data-feed"); S.clean.set(false); };
   }, [S]);
   useEffect(() => { void checkBlankPosters(); }, [items]);            
@@ -720,7 +719,6 @@ function FeedSurface({ S, t, toast }) {
     if (el) el.scrollTop = restoreTo * (el.clientHeight || 0);
     $restoreTo.set(null);
   }, [restoreTo, items]);
-
   const body = loading
     ? html`<section class="h-[100dvh] w-full"><${Pixels} cls="w-full h-full" /></section>`
     : err
@@ -728,11 +726,12 @@ function FeedSurface({ S, t, toast }) {
       : !items.length
         ? html`<section class="h-[100dvh] w-full flex flex-col items-center justify-center gap-3 text-white/60 px-8 text-center">${Icon("lucide:film", "text-5xl")}<div>${T(t, "empty")}</div><button class="btn btn-sm btn-outline text-white border-white/25 rounded-2xl" onClick=${() => S.tab.set("sources")}>${T(t, "changeSrc")}</button></section>`
         : items.map((it, i) => html`<${Slide} S=${S} item=${it} idx=${i} active=${i === active && !suspended} near=${Math.abs(i - active) <= PRELOAD} ephemeral=${it.eph != null ? it.eph : ephemeral} key=${(it.orig || it.video) + i} />`);
+
+  
   
   const cur = items[active];
   const watch = cur ? (cur.page || cur.orig || cur.video) : null;
   const dive = target ? { label: targetLabel, go: () => diveTo(S, target, cur?.title) } : null;
-
   return html`<${Fragment}>
     <${DragReveal} underRef=${underRef} diveRef=${diveRef} backRef=${backRef} target=${target} targetLabel=${targetLabel} prev=${prev} />
     
@@ -761,13 +760,13 @@ export function reel({ S, toast }) {
 
 
 
+
 const ROW_MAX = 120;
 function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, onSession, hasSession, lead, sub, t }) {
   const sr = resolveSearch(s.url);
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState(sr.term || "");
   const submit = (e) => { e?.preventDefault?.(); const term = q.trim(); if (term) onPlay({ ...s, url: buildSearchUrl(s.url, term) }); };
-  
   
   
   
@@ -799,7 +798,6 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, onSession, hasSe
 
 
 
-
 function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, onSession, sessions, t }) {
   const hot = g.items.some((s) => s.url === curSrc);
   const hasSession = !!(sessions && sessions[g.domain]);
@@ -824,7 +822,6 @@ function DomainCard({ g, curSrc, subbedUrls, onPlay, onOpen, onToggle, onSession
     </ul>
   </section>`;
 }
-
 export function sources({ S, undo }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   const subs = useStore($subs), curSrc = useStore($src), watchedN = useStore($watched).size, sessions = useStore($sessions);
@@ -854,6 +851,9 @@ export function sources({ S, undo }) {
     ${screen === "session" ? html`<${SessionSheet} S=${S} t=${t} undo=${undo} />` : null}
   </${Fragment}>`;
 }
+
+
+
 export function liked({ S, toast }) {
   const t = useStore(S.t), likes = useStore($likes), owner = useStore($owner);
   const sorted = [...likes].sort((a, b) => (b.ts || 0) - (a.ts || 0));
@@ -866,7 +866,6 @@ export function liked({ S, toast }) {
   };
   if (!sorted.length) return html`<div class="flex flex-col items-center justify-center gap-3 text-muted text-center" style="min-height:60vh">${Icon("lucide:heart", "text-6xl opacity-30")}<div class="text-sm max-w-[16rem]">${T(t, "likedEmpty")}</div></div>`;
   return html`<div data-liked class="grid grid-cols-3 gap-1.5">
-    
     ${sorted.map((l, i) => html`<div class="relative aspect-[9/16] rounded-xl overflow-hidden sf-inset" key=${l.id}>
       <button data-liked-tile class="absolute inset-0 w-full h-full active:scale-[.98] transition" aria-label=${l.title || l.host} onClick=${() => playAt(i)}>
         ${l.poster

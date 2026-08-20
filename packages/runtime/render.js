@@ -946,7 +946,12 @@ function CleanExit() {
   // already covers the dock covers this too and there is no second rule to remember. At z-40 it floated on
   // top of reel's own full-clip player (also z-40, but earlier in the DOM): a "show controls" button over a
   // video, restoring chrome behind the thing you were watching.
-  return html`<button data-clean-exit class="fixed right-3 z-30 btn btn-sm btn-circle border border-white/15 bg-black/55 text-white/85 backdrop-blur-sm"
+  // btn-GHOST, and that is load-bearing rather than a style preference: `.btn:not(.btn-ghost)` carries
+  // --sf-drop, the neumorphic PAIR, whose light half paints a white halo — and on a screen that has been
+  // deliberately cleared, that halo is the only thing on it. Glass over media casts ALONE; the kit already
+  // has the word for it (.sf-frost, added when the same pair haloed a glass rail). A utility cannot fix this
+  // from the outside: the DaisyUI rule is (0,4,0) and `shadow-none` is (0,1,0), so it has to not apply.
+  return html`<button data-clean-exit class="fixed right-3 z-30 btn btn-ghost btn-sm btn-circle sf-frost border border-white/15 bg-black/55 text-white/85 backdrop-blur-sm"
     style="top:calc(env(safe-area-inset-top) + 0.5rem)" aria-label=${sys("cleanExit", loc)}
     onClick=${() => A.S.clean.set(false)}>${Icon("lucide:minimize-2", "text-base")}</button>`;
 }

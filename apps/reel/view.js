@@ -814,7 +814,14 @@ function FeedSurface({ S, t }) {
     // near-black title sat on black at ~1.2:1 — invisible, and axe can't see a stacking-context problem).
     const root = document.documentElement;
     root.setAttribute("data-feed", "");
-    return () => root.removeAttribute("data-feed");
+    /* …and the clean screen dies with the surface it was clearing. It is a property of THIS full-bleed
+       thing, not of the app, and the runtime cannot know that — S.clean sits BELOW S.stack in the overlay
+       order, so a Back taken from the Liked feed pops the stack first and lands on the liked GRID, which
+       would otherwise render with no app bar, no dock and a "show controls" button as its only navigation.
+       A dive is the opposite case and stays clean on purpose: the surface never went away, only its source.
+       Setting the atom here is also what BALANCES history — the overlay listener sees the count fall and
+       consumes clean's own entry with the same go(-1) a tap on the door would. */
+    return () => { root.removeAttribute("data-feed"); S.clean.set(false); };
   }, [S]);
   useEffect(() => { void checkBlankPosters(); }, [items]);            // sample new posters → drop black/flat/broken slides (gate: inline data: posters too)
   useEffect(() => { if (next && active >= items.length - 3) loadSource(next, true); }, [active, items.length, next]);

@@ -119,6 +119,11 @@ export function start(spec, arg2) {
   // BOTTOM-most on purpose: S.stack is a drill-down INSIDE a tab (a dive, a drilled feed), and any sheet or
   // detail opened while you're down there was opened later, so it must close before the drill-down unwinds.
   const overlays = [
+    // BOTTOM-most of all: clean screen is a property of the surface you are looking at, not something opened
+    // on top of it — so a dive taken while the chrome is hidden unwinds first, and only the last Back gives
+    // the dock back. It is here at all because hiding the dock removes the app's navigation: without a
+    // history entry, the Back that should restore the chrome would leave the app instead.
+    [S.clean, () => S.clean.set(false), (v) => v === true],
     [S.stack, () => S.stack.set(S.stack.get().slice(0, -1)), (v) => v],   // an array: one history entry PER level
     [S.sheet, () => S.sheet.set(false), (v) => v === true],
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],

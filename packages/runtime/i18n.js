@@ -29,6 +29,11 @@ export const SYS = {
   // a shared component that demands an i18n key from every app that mounts it is a component that ships
   // the raw key the first time someone forgets (which is how "profTheme" reached a real screen).
   close: { en: "Close", uk: "Закрити" },
+  // Clean screen (S.clean): the runtime's chrome steps off a full-bleed surface. Both halves live here for
+  // the same reason `close` does — the runtime paints the door, so the runtime owns its name; an app that
+  // merely asks for the mode must not have to restate it in two locales.
+  clean: { en: "Clean screen", uk: "Чистий екран" },
+  cleanExit: { en: "Show controls", uk: "Показати керування" },
   share: { en: "Share app", uk: "Поділитися" },
   shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
   updateReady: { en: "New version ready", uk: "Нова версія готова" },

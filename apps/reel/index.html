@@ -30,6 +30,20 @@
     :root[data-feed] header.navbar{background:linear-gradient(to bottom,rgba(0,0,0,.6),rgba(0,0,0,.25) 70%,transparent)}
     :root[data-feed] header.navbar [data-title],
     :root[data-feed] header.navbar button{color:#fff}
+    /* Landscape (and split-screen): the app bar comes off the feed entirely. On this surface it carries no
+       control at all — reel declares no filters, has no refresh, and the desktop "open on phone" button is
+       `hidden lg:` — so it is the wordmark and nothing else, floating over the picture. Measured at
+       832x384: header 59px, island 51px, dock 52px = 48% of the height covered by chrome, of which the
+       header is the only third that does nothing. The design system already makes exactly this call on the
+       axis a watch is short of ("an app's NAME is not information at 208px wide", theme.css); a landscape
+       phone is short of the same axis, and 560px is that ladder's own rung for it.
+       Height only, so portrait keeps its title bar; scoped to [data-feed], so the sources and profile tabs
+       are documents with a heading like every other app. --hdr-h is deliberately NOT re-declared: nothing on
+       this surface reads it (the island pins to --dock-h) and a measured number may never be overwritten by
+       a written one — see the chrome contract in render.js. */
+    @media (max-height: 560px){
+      :root[data-feed] header.navbar{display:none}
+    }
     html{scrollbar-width:none}
     html::-webkit-scrollbar{display:none}
     [data-scroller]{scrollbar-width:none}

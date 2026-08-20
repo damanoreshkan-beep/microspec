@@ -82,11 +82,38 @@ export default [
       h.expect((await h.count("[data-reel] a")) === 0, "на слайді лишилось посилання (відкрити оригінал)");
       h.expect((await h.count("[data-reel] button")) === 0, "на слайді лишилась кнопка");
       // …і кожна функція має свій контрол в острівці
-      for (const [sel, what] of [["[data-island-label]", "назва джерела"], ["[data-dive]", "провалювання"], ["[data-watch]", "повний кліп в апці"], ["[data-open-page]", "відкрити сторінку рілзу у браузері"], ["[data-subscribe]", "підписка"]]) {
+      for (const [sel, what] of [["[data-island-label]", "назва джерела"], ["[data-dive]", "провалювання"], ["[data-watch]", "повний кліп в апці"], ["[data-open-page]", "відкрити сторінку рілзу у браузері"], ["[data-subscribe]", "підписка"], ["[data-clean]", "чистий екран"]]) {
         h.expect((await h.count(sel)) === 1, `в острівці немає контролу: ${what} (${sel})`);
       }
       const isl = await h.attr("[data-island]", "class");
       h.expect(!/\bopacity-0\b/.test(isl || ""), "острівець не має бути прихованим");
+    },
+  },
+  {
+    /* Чистий екран. Уся хромованка живе на ТРЬОХ елементах, і два з них — рантаймові (шапка, док + його
+       градієнт), тож ховати їх зсередини застосунку не можна: --hdr-h/--dock-h вимірюються з них. Тому це
+       режим рантайму (S.clean), а тут перевіряється рівно те, що власник побачить: після тапу на екрані не
+       лишилось нічого, крім відео, свайп працює, і назад повертає ВСЕ — і кнопкою-дверима, і системним Back
+       (док зник, тож без history-запису Back вийшов би з апки). */
+    name: "чистий екран: тап прибирає шапку, док і острівець — лишається саме відео; Back повертає все", run: async (h) => {
+      await ready(h);
+      h.expect(await settles(h, 3), "стрічка не влаштувалась на 3 слайдах");
+      h.expect((await h.count("nav[data-dock]")) === 1 && (await h.count("header.navbar")) === 1, "хромованки нема ще до входу в чистий екран");
+      await h.tap("[data-clean]"); await h.wait(400);
+      for (const [sel, what] of [["header.navbar", "шапка"], ["nav[data-dock]", "док"], ["[data-island]", "острівець"]]) {
+        h.expect((await h.count(sel)) === 0, `у чистому екрані лишилась ${what} (${sel})`);
+      }
+      h.expect((await h.count("[data-reel]")) === 3, "чистий екран знищив саму стрічку");
+      h.expect((await h.count("[data-clean-exit]")) === 1, "у чистому екрані нема дверей назад — док прибрано, і вийти нема чим");
+      /* Кнопка-двері — і тільки вона. Якщо їх дві (або нуль), «нічого не заважає» перестає бути правдою. */
+      await h.tap("[data-clean-exit]"); await h.wait(400);
+      h.expect((await h.count("nav[data-dock]")) === 1 && (await h.count("[data-island]")) === 1, "двері не повернули хромованку");
+      // …і те саме системним Back: без history-запису він вийшов би з апки, бо доку на екрані нема
+      await h.tap("[data-clean]"); await h.wait(400);
+      h.expect((await h.count("nav[data-dock]")) === 0, "повторний вхід у чистий екран не спрацював");
+      await h.back(); await h.wait(400);
+      h.expect((await h.count("nav[data-dock]")) === 1, "системний Back не повернув док (або вийшов з апки)");
+      h.expect((await h.count("[data-reel]")) === 3, "Back вийшов зі стрічки замість повернути керування");
     },
   },
   {

@@ -56,6 +56,13 @@ export function createApp(spec, dataLoad) {
     // depth — so Back walks the drill-down back one step at a time instead of collapsing it. The elements
     // are the app's own (a label shown while dragging back); the runtime only counts them.
     stack: atom([]),
+    // CLEAN SCREEN — the runtime's chrome steps off the surface entirely (app bar, dock, dock fade) so a
+    // full-bleed app is nothing but its content. It lives here rather than in an app because the runtime
+    // OWNS that chrome: an app can only reach it by `display:none` on someone else's element, which also
+    // silently falsifies the measured --hdr-h/--dock-h every fit screen's math is built from. Registered as
+    // an overlay in index.js, so hiding the dock never strands anyone: system Back brings it all back, and
+    // the runtime paints one quiet door (CleanExit) for the tap that means the same thing.
+    clean: atom(false),
     sheet: atom(false),
     detail: atom(null),
     screen: atom(null),

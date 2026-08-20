@@ -19,7 +19,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { atom } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
-import { T } from "/_rt/i18n.js";
+import { T, sys } from "/_rt/i18n.js";
 import { Island, Sheet } from "/_rt/ui.js";
 import { createPlayer, Player } from "/_rt/video.js";
 import { VPS_PROXY, pool } from "/_rt/feed.js";
@@ -709,6 +709,7 @@ function SessionSheet({ S, t, undo }) {
 // was affordable only while every control also existed on the slide. It is the controls now.
 function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, openIn }) {
   const act = "btn btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
+  const loc = useStore(S.locale);
   return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
       ${depth ? html`<button data-feed-back class="btn btn-ghost btn-sm btn-circle text-white shrink-0" aria-label=${T(t, "back")} onClick=${() => popFrame(S)}>${Icon("lucide:chevron-left", "text-xl")}</button>` : null}
       <${Favicon} url=${src} size="w-6 h-6" />
@@ -716,6 +717,14 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, openIn }) 
             truncated EACH OTHER — "Free stoc…" next to "mixk…", which is two half-words and no name. The
             favicon already says which site this is; the host stays where it is precision, the sources list. */""}
       <span data-island-label class="text-sm text-white truncate min-w-0 pl-0.5 pr-1">${title}</span>
+      ${/* Clean screen. A reel is the one surface where the chrome is genuinely in the way — it floats over
+            the picture rather than beside it, and in landscape the app bar, this island and the dock cover
+            48% of the height (measured, 832x384). One tap takes all three off and leaves the video and the
+            swipe; Back, or the runtime's own door, brings them back. The mode belongs to the RUNTIME
+            (S.clean) because the app bar and the dock are its elements and --hdr-h/--dock-h are its
+            measurements — an app hiding them from the outside would leave both numbers describing chrome
+            that is no longer on screen. */""}
+      <button data-clean class=${act} aria-label=${sys("clean", loc)} onClick=${() => S.clean.set(true)}>${Icon("lucide:maximize-2", "text-base")}</button>
       ${/* a hairline glass circle, not a filled ink pill: on a media surface the island is a quiet identity
             chip, and a solid white button made "subscribe" the brightest thing on a full-screen video */""}
       ${!subbed ? html`<button data-subscribe class=${act} aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: title, url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
@@ -772,6 +781,7 @@ function FeedSurface({ S, t }) {
      is never torn down — swiping back finds the slide exactly where it was left. */
   const screen = useStore(S.screen);
   const suspended = screen === "full";
+  const clean = useStore(S.clean);
   const underRef = useRef(), diveRef = useRef(), backRef = useRef();
   const target = diveTarget(items[active], src);
   // The destination is named by the clip you're leaving on — the reveal under the finger says where you land,
@@ -845,8 +855,11 @@ function FeedSurface({ S, t }) {
           slide used to contain a link, which is what quietly made this region reachable. With the slide
           empty, the region carries its own focus and its own name (axe: scrollable-region-focusable). */""}
     <div ref=${paneRef} ...${pan} data-scroller tabindex="0" role="region" aria-label=${T(t, "tabReel")} class="fixed inset-0 z-[1] bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain touch-pan-y will-change-transform">${body}</div>
-    <${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
-      dive=${dive} watch=${watch ? () => openFull(S, cur) : null} openIn=${watch ? () => openExternal(watch) : null} />
+    ${/* The island is the app's half of the clean screen: the runtime takes its own chrome off, this comes
+          off with it, and what is left is the video and the swipe. Unmounted rather than faded — a
+          transparent island still eats the taps under it, which on this surface is the whole gesture. */""}
+    ${clean ? null : html`<${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
+      dive=${dive} watch=${watch ? () => openFull(S, cur) : null} openIn=${watch ? () => openExternal(watch) : null} />`}
     ${/* Lives with the feed, not with the tab, so it works identically from Liked — one engine, one overlay. */""}
     ${suspended ? html`<${FullClip} S=${S} t=${t} />` : null}
   </${Fragment}>`;

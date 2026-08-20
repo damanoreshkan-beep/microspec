@@ -321,6 +321,45 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
   }
 });
 
+// Clean screen (S.clean). Three things have to hold together or the mode is a trap rather than a feature,
+// and none of them is visible in a screenshot of the good case.
+Deno.test("clean screen: the chrome that unmounts takes its measurements with it, and leaves a door", async () => {
+  const render = await Deno.readTextFile(new URL("../render.js", import.meta.url));
+  const index = await Deno.readTextFile(new URL("../index.js", import.meta.url));
+  const store = await Deno.readTextFile(new URL("../store.js", import.meta.url));
+  const i18n = await Deno.readTextFile(new URL("../i18n.js", import.meta.url));
+
+  assert(/\bclean:\s*atom\(false\)/.test(store), "S.clean is gone — the mode has no state");
+
+  // 1) The chrome is gone. All three pieces: a dock that unmounts while its fade still paints leaves a
+  //    gradient band floating over the content with nothing under it to explain it.
+  for (const el of ["AppBar", "DockFade", "Dock"]) {
+    assert(new RegExp(`clean \\? null : html\`<\\$\\{${el}\\}|clean \\? html\`<\\$\\{CleanExit\\}[^\`]*\` : html\`<\\$\\{${el}\\}`).test(render),
+      `${el} still renders in clean screen — the surface is not clean`);
+  }
+
+  // 2) …and so are the numbers it publishes. An element that unmounted is still describing the layout
+  //    through --hdr-h/--dock-h until someone says otherwise, and a stale one fails by COVERING content
+  //    (an island pinned at="bottom" reads --dock-h), which no overflow check can see.
+  const zeroed = /if \(!clean\) return;[\s\S]{0,400}?setProperty\("--hdr-h", "0px"\)[\s\S]{0,200}?setProperty\("--dock-h", "0px"\)/;
+  assert(zeroed.test(render), "clean screen unmounts the chrome without zeroing --hdr-h/--dock-h — every consumer still lays out around chrome that is not on screen");
+
+  // 3) There is a way back, and it is history-backed. Hiding the dock removes the app's only navigation:
+  //    without an overlay entry the Back that should restore it exits the PWA instead.
+  assert(/function CleanExit/.test(render) && /data-clean-exit/.test(render), "no door out of clean screen");
+  assert(/\[S\.clean, \(\) => S\.clean\.set\(false\), \(v\) => v === true\]/.test(index),
+    "S.clean is not registered as an overlay — Back would leave the app instead of giving the chrome back");
+  const overlays = /const overlays = \[([\s\S]*?)\n  \];/.exec(index)[1];
+  assert(overlays.trimStart().split("\n").filter((l) => l.trim().startsWith("[S.")).shift().includes("S.clean"),
+    "S.clean must be the BOTTOM-most overlay — a dive taken with the chrome hidden has to unwind before the chrome comes back");
+
+  // 4) Both names are the runtime's, in both locales — the app only asks for the mode.
+  const sys = /export const SYS = \{([\s\S]*?)\n\};/.exec(i18n)[1];
+  for (const k of ["clean", "cleanExit"]) {
+    assert(new RegExp(`\\b${k}:\\s*\\{[^}]*\\ben:[^}]*\\buk:`).test(sys), `SYS.${k} must carry BOTH locales`);
+  }
+});
+
 Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts out loud", async () => {
   // The rule answers "what fits inside me", so its input is the component's own box: a slider group can sit
   // in a panel, a sheet, a 38% side column or a 200px watch screen, and the viewport describes none of them.

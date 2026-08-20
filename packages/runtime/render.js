@@ -932,6 +932,25 @@ function QrModal() {
 const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
   style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 38%, transparent)"></div>`;
 
+// ── clean screen — the door ───────────────────────────────────────────────────────────────────────────
+// S.clean takes the app bar, the dock and the dock fade off the surface, so a full-bleed app is nothing but
+// its content (reel: a reel you swipe with nothing over it). The runtime owns that chrome, so it owns the
+// way back too — an app must never be able to remove the only navigation and leave nothing in its place.
+// There are two ways back and they are the same action: system Back (S.clean is an overlay, index.js) and
+// this. One circle, top-right, out of the thumb's path — the bottom edge is where the swiping happens.
+// Dark material rather than the kit's glass on purpose: a screen worth clearing is a full-bleed media
+// surface, and a light island over a bright frame is invisible — the same fact `tone="dark"` exists for.
+function CleanExit() {
+  const loc = useStore(A.S.locale);
+  // z-30 is the DOCK's layer, deliberately — this is the element standing in for it, so every overlay that
+  // already covers the dock covers this too and there is no second rule to remember. At z-40 it floated on
+  // top of reel's own full-clip player (also z-40, but earlier in the DOM): a "show controls" button over a
+  // video, restoring chrome behind the thing you were watching.
+  return html`<button data-clean-exit class="fixed right-3 z-30 btn btn-sm btn-circle border border-white/15 bg-black/55 text-white/85 backdrop-blur-sm"
+    style="top:calc(env(safe-area-inset-top) + 0.5rem)" aria-label=${sys("cleanExit", loc)}
+    onClick=${() => A.S.clean.set(false)}>${Icon("lucide:minimize-2", "text-base")}</button>`;
+}
+
 function Dock() {
   // Explicit flex bottom-nav (version-independent — DaisyUI 5 dropped `btm-nav`). Labels truncate so
   // 3+ tabs stay inside a watch-narrow width.
@@ -1269,8 +1288,24 @@ export function App() {
     el.classList.toggle("ms-fit", fit);
     return () => el.classList.remove("ms-fit");
   }, [fit]);
+  // CLEAN SCREEN. The chrome unmounts, so the two numbers it publishes have to go with it — an island
+  // pinned `at="bottom"` reads --dock-h, and every fit screen's height math reads both. A measurement whose
+  // element is gone is the stale-constant bug in its purest form: nothing overflows, the page is simply
+  // laid out around chrome that is not on screen.
+  // The write is one-directional on purpose — there is no cleanup restoring the old values. Preact flushes
+  // child effects before the parent's, so the moment `clean` goes false the app bar and the dock have
+  // already remounted and republished what they actually measure; a restore here would run afterwards and
+  // overwrite the truth with a remembered number, which is exactly the class of bug the chrome contract
+  // exists to make impossible.
+  const clean = useStore(A.S.clean);
+  useEffect(() => {
+    if (!clean) return;
+    const s = document.documentElement.style;
+    s.setProperty("--hdr-h", "0px");
+    s.setProperty("--dock-h", "0px");
+  }, [clean]);
   return html`<${Fragment}>
-    <${AppBar} />
+    ${clean ? null : html`<${AppBar} />`}
     ${tab.type === "list" && tab.search ? html`<${SearchBar} tab=${tab} />` : null}
     ${A.spec.filters ? html`<${FilterChips} />` : null}
     ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
@@ -1286,11 +1321,11 @@ export function App() {
     ${screen === "perms" ? html`<${PermissionsScreen} />` : null}
     ${screen === "apk" ? html`<${ApkScreen} />` : null}
     ${screen === "signin" ? html`<${SignInScreen} />` : null}
-    <${DockFade} />
+    ${clean ? null : html`<${DockFade} />`}
     <${InstallModal} />
     <${QrModal} />
     <${ConfirmSheet} />
-    <${Dock} />
+    ${clean ? html`<${CleanExit} />` : html`<${Dock} />`}
     <${Toast} />
   </${Fragment}>`;
 }

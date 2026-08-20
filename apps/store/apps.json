@@ -899,7 +899,7 @@
     "bg": "#12100A",
     "fg": "#D8A43A",
     "href": "./hoard/",
-    "version": "1.0",
+    "version": "1.1",
     "category": "money",
     "needs": []
   },
@@ -1547,7 +1547,7 @@
     "bg": "#0B1424",
     "fg": "#5B8DEF",
     "href": "./tide/",
-    "version": "1.8",
+    "version": "1.9",
     "category": "sound",
     "needs": [
       "wakeLock"

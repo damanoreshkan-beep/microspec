@@ -95,7 +95,8 @@ export default [
       await h.click('[data-tab="me"]'); await h.wait(300);
       await h.click('[data-loc="en"]'); await h.wait(400);
       await h.click('[data-tab="flow"]'); await h.wait(400);
-      h.expect(/\/ s/.test(await h.text("[data-persec]")), "англійська локаль не застосувалась");
+      const en = await h.text("[data-persec]");
+      h.expect(/\/\s*s\s*$/i.test(en), `англійська локаль не застосувалась: data-persec = "${en}"`);
       await h.click('[data-tab="me"]'); await h.wait(300);
       await h.click('[data-loc="uk"]'); await h.wait(400);
     },

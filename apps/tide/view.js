@@ -55,13 +55,33 @@ let curT = {};
 const npTitle = () => curStation().name;
 const artUrl = () => { try { return new URL("icons/icon-512.png", location.href).href; } catch { return null; } };
 
-// volume ramp on an element (rAF, ~ms long); iOS ignores `volume` — the cut is still correct there
+// Volume ramp on an element; iOS ignores `volume` — the cut is still correct there.
+//
+// A RAMP MUST NEVER BE THE REASON A STREAM IS INAUDIBLE, and it was. This ran on requestAnimationFrame,
+// which does NOT fire in a hidden document — so a reconnect that happened while the app was in the
+// background created a fresh element, set it to volume 0, scheduled the fade-in and then never ran a single
+// frame of it. The element streamed perfectly at volume 0 for as long as the app stayed closed; the moment
+// it was reopened rAF resumed and the fade finished in 500 ms. That IS "it went quiet after the wifi switch
+// and played the instant I opened it" — no Android freeze, no dead socket, our own fade. The currentTime
+// watchdog could never see it either: the element really was playing, just silently.
+//
+// The same hole made a PAUSE from the lock screen do nothing while hidden — the first step writes `from`
+// (k=0), so the volume stayed where it was and `done` never ran, which is where teardown lives.
+//
+// Two layers, because neither is sufficient alone. Hidden → there is no fade worth hearing, so jump to the
+// target and finish synchronously. Visible → drive it with a TIMER, not a frame: a page can be starved of
+// frames while still reporting itself visible, and the elapsed-time maths means a late timer simply snaps
+// k to 1 instead of stalling.
 function ramp(a, from, to, ms, done) {
+  const finish = () => { try { a.volume = to; } catch { /* iOS: read-only volume */ } done?.(); };
+  const hidden = () => typeof document !== "undefined" && document.visibilityState === "hidden";
+  if (hidden()) { finish(); return; }
   const t0 = performance.now();
   const step = () => {
+    if (hidden()) { finish(); return; }
     const k = Math.min(1, (performance.now() - t0) / ms);
     try { a.volume = from + (to - from) * k; } catch { /* iOS: read-only volume */ }
-    if (k < 1) requestAnimationFrame(step); else done?.();
+    if (k < 1) setTimeout(step, 16); else done?.();
   };
   step();
 }

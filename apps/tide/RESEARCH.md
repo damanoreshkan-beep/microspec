@@ -163,3 +163,34 @@ notification does not buzz, `setRendererPriorityPolicy` — a foreground service
 while the WebView renderer has its own priority — and `onRenderProcessGone`, because an FGS is not a
 promise that the renderer survives. Chromium already requests Android audio focus for HTML media itself
 (`AudioFocusDelegate`), so the shell must NOT request a second one.
+
+## Addendum 2026-08-20b — it was our own fade, not Android
+
+The background service and the media session landed, and the owner reported the SAME symptom: minimised,
+wifi → mobile, the music stops; **open the app and it plays instantly**. That last word is the whole
+diagnosis. A dead Icecast socket cannot resume instantly — it needs a new element and seconds of buffering.
+Instant sound means the audio was already flowing and simply was not reaching the output.
+
+`ramp()` drove the cross-fade with **`requestAnimationFrame`, which does not fire in a hidden document.**
+So a reconnect that landed while the app was backgrounded created a fresh element, set `a.volume = 0`,
+armed the fade-in on `playing` — and never ran one frame of it. The stream played perfectly, at volume
+zero, for as long as the app stayed closed. Reopening it resumed rAF and finished the fade in 500 ms.
+
+Three things follow, and each is worth more than the fix:
+
+- **The `currentTime` watchdog is blind to this by construction.** The element really is playing and
+  `currentTime` really is advancing; only the gain is wrong. A liveness signal proves the bytes arrive, not
+  that anyone can hear them. It remains the right signal for a dropped socket and the wrong one here.
+- **The same hole silently broke PAUSE.** `stop()` fades to 0 and tears down in the ramp's `done`; the
+  first step writes `from` (k=0), so a pause issued from the lock screen while hidden left the volume where
+  it was and never tore the element down — the notification's own button would not have stopped the sound.
+- **It read exactly like an OS problem.** A whole round of shell work — foreground service, renderer
+  priority, MediaSession — went into a symptom whose cause was three lines of our own JavaScript. Both
+  halves were needed anyway, but the order was wrong: *read your own code before theorising about the
+  platform.*
+
+The fix is two layers, because neither is sufficient alone: hidden → there is no fade worth hearing, so
+jump to the target and finish synchronously; visible → drive it with a **timer**, since a page can be
+starved of frames while still reporting itself visible, and elapsed-time maths makes a late timer snap the
+fraction to 1 instead of stalling. `packages/gates/preflight.mjs` now fails any app whose `.volume` fade is
+driven by rAF — dry-run across all 73 apps first, where it matched exactly once: this bug.

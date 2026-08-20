@@ -152,6 +152,26 @@ async function preflight(appdir) {
   // Pixels) instead. DaisyUI loading spinners are banned in app source.
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
+  /* requestAnimationFrame may not drive anything AUDIBLE. rAF does not fire in a hidden document, so a
+     fade written with it stops dead the moment the app is backgrounded — and unlike a stalled animation,
+     a stalled fade is not invisible, it is INAUDIBLE. tide reconnected its stream in the background,
+     created a fresh element at volume 0, scheduled the fade-in and never ran one frame of it: the stream
+     played perfectly and silently until the app was reopened, when rAF resumed and finished the fade in
+     500ms. It read exactly like an Android freeze, and cost a whole round of shell work before the cause
+     turned out to be three lines of our own. The currentTime watchdog cannot see it either — the element
+     really is playing. Ramp with a timer (a late timer snaps the elapsed fraction to 1 instead of
+     stalling) and jump to the target outright when the document is hidden.
+     Dry-run before it was fatal: across all 73 apps this matched exactly once — the bug. */
+  {
+    const audible = /(^|[^\w.])(\w+)\.volume\s*=/;
+    for (const m of src.matchAll(/function\s+\w+[\s\S]{0,600}?\n\}/g)) {
+      if (audible.test(m[0]) && /requestAnimationFrame/.test(m[0])) {
+        const line = src.slice(0, m.index).split("\n").length;
+        errs.push(`requestAnimationFrame drives a \`.volume\` fade in ${srcFile}:${line} — rAF does not fire in a hidden document, so this fade stalls when the app is backgrounded and leaves the element SILENT (a reconnect that lands in the background never becomes audible). Drive it with setTimeout, and when document.visibilityState === "hidden" set the target value and finish synchronously.`);
+      }
+    }
+  }
+
   // ONE bottom sheet for the whole farm. Eight apps had hand-rolled the same <dialog class="modal
   // modal-bottom"> + grip + close, and they had already drifted: different max-widths, different title
   // sizes, some with a close button and some only the drag. Nothing a gate could see — a copied component

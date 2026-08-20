@@ -795,11 +795,6 @@ function MoreSheet({ S, t, item, src, title, subbed, openIn, toast }) {
         ${busy ? html`<div data-exp-busy class="text-xs text-muted px-4">${T(t, "expBusy")} ${T(t, busy.startsWith("mp4") ? "expVideo" : "expGif")}</div>` : null}
         <div class="h-px bg-base-content/10 my-1"></div>
       </${Fragment}>` : null}
-      ${/* Clean screen. A reel is the one surface where the chrome is genuinely in the way — it floats over
-            the picture rather than beside it, and in landscape the app bar, the island and the dock cover 48%
-            of the height (measured, 832x384). The mode belongs to the RUNTIME (S.clean) because the app bar
-            and the dock are its elements and --hdr-h/--dock-h are its measurements — an app hiding them from
-            the outside would leave both numbers describing chrome that is no longer on screen. */""}
       ${/* Noir and the clean screen are the two ways of WATCHING, so they sit together and first. Noir is a
             switch and not a door — it has an on state you have to be able to see in the sheet — so it is the
             runtime's own settings language (icon · name · DaisyUI toggle, exactly the profile's theme row),
@@ -810,6 +805,11 @@ function MoreSheet({ S, t, item, src, title, subbed, openIn, toast }) {
         <input data-noir type="checkbox" class="toggle toggle-primary shrink-0" aria-label=${T(t, "noir")}
           checked=${mono === "1"} onChange=${(e) => $mono.set(e.target.checked ? "1" : "0")} />
       </label>
+      ${/* Clean screen. A reel is the one surface where the chrome is genuinely in the way — it floats over
+            the picture rather than beside it, and in landscape the app bar, the island and the dock cover 48%
+            of the height (measured, 832x384). The mode belongs to the RUNTIME (S.clean) because the app bar
+            and the dock are its elements and --hdr-h/--dock-h are its measurements — an app hiding them from
+            the outside would leave both numbers describing chrome that is no longer on screen. */""}
       <button data-clean class=${row} onClick=${() => { close(); S.clean.set(true); }}>${Icon("lucide:maximize-2", "text-lg opacity-70")}${sys("clean", loc)}</button>
       ${!subbed ? html`<button data-subscribe class=${row} onClick=${() => { subscribe({ name: title, url: src }); close(); }}>${Icon("lucide:plus", "text-lg opacity-70")}${T(t, "sub")}</button>` : null}
       ${openIn ? html`<button data-open-page class=${row} onClick=${() => { close(); openIn(); }}>${Icon("lucide:external-link", "text-lg opacity-70")}${T(t, "openBrowser")}</button>` : null}

@@ -198,7 +198,10 @@ export function retouch({ S, toast }) {
       jobRef.current = job;
       const release = holdBackground({ title: T(t, "title"), body: T(t, "eEditing") }); holdRef.current = release;   // APK: stay warm while we poll
       const t0 = Date.now(); let got = 0; const mine = [];
-      for (let i = 0; i < 100; i++) {                                             // ~150s of 1.5s polls
+      // ~200s of 1.5s polls. It must OUTLAST the edge's own 200s race budget: at 150s the client used to give up
+      // while the worker was still driving its last Space, so a variant that landed at 160s was thrown away and
+      // the user was told "took too long" by a job that had not finished.
+      for (let i = 0; i < 135; i++) {
         await sleep(1500);
         if (run !== runRef.current) return;
         setElapsed(Math.round((Date.now() - t0) / 1000));
@@ -222,7 +225,11 @@ export function retouch({ S, toast }) {
         }
         if (j.status === "done" || j.status === "error") { release(); setMore(false); if (!mine.length) fail(run, "edFailed"); return; }
       }
-      release(); setMore(false); if (!mine.length) fail(run, "eTimeout");
+      // Out of polls: tell the edge, so the worker stops the race instead of spending the rest of the anonymous
+      // ZeroGPU budget on pictures this client will never read.
+      release(); setMore(false);
+      fetch(`${VPS_PROXY}/image/edit/cancel`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job }) }).catch(() => {});
+      if (!mine.length) fail(run, "eTimeout");
     } catch { holdRef.current?.(); fail(run, "eNetwork"); }
   };
 

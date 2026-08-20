@@ -103,6 +103,21 @@ async function preflight(appdir) {
 
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
+  {
+    const audible = /(^|[^\w.])(\w+)\.volume\s*=/;
+    for (const m of src.matchAll(/function\s+\w+[\s\S]{0,600}?\n\}/g)) {
+      if (audible.test(m[0]) && /requestAnimationFrame/.test(m[0])) {
+        const line = src.slice(0, m.index).split("\n").length;
+        errs.push(`requestAnimationFrame drives a \`.volume\` fade in ${srcFile}:${line} — rAF does not fire in a hidden document, so this fade stalls when the app is backgrounded and leaves the element SILENT (a reconnect that lands in the background never becomes audible). Drive it with setTimeout, and when document.visibilityState === "hidden" set the target value and finish synchronously.`);
+      }
+    }
+  }
+
+  
+  
+  
+  
+  
   if (/modal-bottom/.test(src)) {
     errs.push(`hand-rolled bottom sheet (\`modal-bottom\`) in ${srcFile} — import { Sheet } from "/_rt/ui.js" instead. The kit owns the shell (glass, drag-to-dismiss, title row, close, backdrop); pass open/onClose from your S.screen atom so Back still closes it.`);
   }
@@ -117,20 +132,16 @@ async function preflight(appdir) {
       errs.push(`\`${el}\` is a canvas measured against itself in ${srcFile} — \`${el}.width = ${el}.clientWidth * dpr\`. Before the browser-generated stylesheet lands, \`clientWidth\` on a canvas is its INTRINSIC size (300), so this bakes 300×DPR into layout and the page overflows on a cold open; an ancestor's \`overflow-hidden\` has not applied yet either, so nothing clips it. Measure a wrapper whose height is its own (or the viewport for a fixed field), set \`style.width\`/\`style.height\` AND the backing store, and observe the BOX — never the canvas.`);
     }
   }
-  
-  
-  
-  
-  
-  
-  
-  
   {
     const bespokeSheet = /role=["']dialog["']/.test(src) && /fixed inset-0/.test(src);
     if (bespokeSheet && !/\bSheet\b/.test(src)) {
       errs.push(`hand-rolled bottom sheet in ${srcFile} — a \`fixed inset-0\` + \`role="dialog"\` is the farm's Sheet built by hand. import { Sheet } from "/_rt/ui.js": it owns the shell (glass, drag-to-dismiss, title row, close, backdrop, max-h-88dvh with the only sanctioned inner scroll) and the contents stay yours. Pass open/onClose from your S.screen atom so the system Back button still closes it.`);
     }
   }
+
+  
+  
+  
   
   
   if (/lucide:play/.test(src) && /lucide:(pause|square)/.test(src)) {
@@ -147,12 +158,14 @@ async function preflight(appdir) {
   
   
   {
+    
+    
+    
     const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
     const surfaceShadow = /(?:^|[\s"'`])shadow-(?:sm|md|lg|xl|2xl|inner)\b/;
     if (surfaceShadow.test(code)) {
       errs.push(`app-authored shadow in ${srcFile} — the material is systemic. Declare what the surface IS: \`sf-raised\` / \`sf-inset\` / \`sf-pressed\`, or a rung of the ladder \`sf-e2\` (hover) … \`sf-e5\` (popover). A hardcoded shadow does not invert with the theme and does not compact with the density ladder.`);
     }
-    
     const glassOnOurSurface = /backdrop-blur(-[a-z0-9]+)?\b[^"'`]*\bbg-base-|bg-base-[0-9]+\/[0-9]+[^"'`]*\bbackdrop-blur\b/;
     if (glassOnOurSurface.test(code)) {
       errs.push(`frosted glass over a base surface in ${srcFile} — glass and the extrusion are answers to the same question and cannot both be on screen: the blur erases the shadow pair that makes the surface read. Use \`sf-raised\`/\`sf-e4\` and an opaque bg-base-100. (Blur over a VIDEO or camera frame is still fine — that is foreign content, not our surface.)`);
@@ -161,9 +174,16 @@ async function preflight(appdir) {
     
     
     
+    
+    
     if (/(?:^|[\s"'`])transition-all\b/.test(code)) {
       errs.push(`\`transition-all\` in ${srcFile} — name the properties instead. It animates the material too: sf-raised/sf-inset are box-shadow pairs, so the extrusion cross-fades on every state change, and layout properties (width/margin) re-layout each frame off the compositor. Use \`transition-colors\`/\`transition-opacity\`/\`transition-shadow\`/\`transition-transform\`, or an arbitrary set like \`transition-[width]\` / \`transition-[box-shadow,background-color,scale]\`.`);
     }
+    
+    
+    
+    
+    
     { const foreign = [...code.matchAll(/["']([a-z0-9-]+):[a-z0-9-]+["']/g)]
         .map((m) => m[1])
         .filter((p) => p !== "lucide" && ICON_SETS.has(p));
@@ -172,12 +192,14 @@ async function preflight(appdir) {
       } }
   }
   
+  
+  
   { const emojiRe = /\p{Emoji_Presentation}/gu;
     const scan = (label, text) => { const m = text.match(emojiRe); if (m) errs.push(`emoji ${[...new Set(m)].join(" ")} in ${label} — emoji are banned farm-wide; use a crafted vector (iconify lucide:*/mdi:*, an /_rt SVG like Sign) or plain words, never an emoji`); };
     scan(srcFile, src);
     scan("spec.json", JSON.stringify(spec));
     for (const l of locales) scan(`i18n/${l}.json`, JSON.stringify(i18n[l])); }
-
+  
   
   { const m = src.match(/\.toLocale(?:Date|Time)?String\(\s*(?:undefined\b|\))/);
     if (m) errs.push(`locale-blind \`${m[0]}…\` — pass the app locale, or return a raw value for the renderer to format (never bake a locale-frozen string in an adapter/view)`); }
@@ -196,13 +218,11 @@ async function preflight(appdir) {
     const app = document.getElementById("app");
     const htmlOut = app?.innerHTML || "";
     if (!htmlOut.trim() || htmlOut.length < 30) errs.push("render produced (almost) no output — blank/crashed view");
-
-    
     const strays = new Set();
     const walk = (n) => { for (const c of n.childNodes || []) { if (c.nodeType === 3) { const v = (c.textContent || "").trim(); if (v.length >= 3 && TAGS.has(v)) strays.add(v); } else walk(c); } };
     walk(app);
     if (strays.size) errs.push(`stray tag-name text ${[...strays].map((s) => `"${s}"`).join(", ")} — likely an UNCLOSED tag in ${srcFile}`);
-    
+
     
     
     
@@ -218,13 +238,15 @@ async function preflight(appdir) {
     if (reads && !app?.querySelector("[data-live]")) {
       errs.push(`reads a sensor but rendered no [data-live] element — headless has no hardware, so this is the empty waiting state, and every check below (a11y, overflow@384, watch@200) is now measuring a screen no user sees. Seed the mock with a reading (see apps/ruler SAMPLE_FIXES) and mark what it renders with data-live.`);
     }
+    
+    
+    
     if (sensorImport && /\bcamera\b/.test(sensorImport[1]) && !/CameraPrime/.test(src)) {
       errs.push(`imports the camera but never renders <${"CameraPrime"}/> — a camera view must PRIME the permission with a custom "why + processed on your device" screen before the native getUserMedia prompt, never open the stream cold. Import { CameraPrime } from "/_rt/camprime.js" and show it until the user opts in.`);
     }
     if (sensorImport && /\bmic\b/.test(sensorImport[1]) && !/MicPrime/.test(src)) {
       errs.push(`imports the microphone but never renders <${"MicPrime"}/> — a mic view must PRIME the permission with a custom "why + processed on your device" screen before the native getUserMedia prompt. Import { MicPrime } from "/_rt/camprime.js" and show it until the user opts in.`);
     }
-
     for (const e of rafErr) errs.push("render loop threw: " + (e?.message || e));
     for (const m of uncaught) errs.push("async/effect threw: " + m);
   } catch (e) {
@@ -236,7 +258,6 @@ async function preflight(appdir) {
   else { console.log(`  ${C.g}✓ ${name}${C.x}${warns.length ? C.y + " (" + warns.length + " warn)" + C.x : ""}`); warns.forEach((w) => console.log(`      ${C.y}${w}${C.x}`)); }
   return errs.length;
 }
-
 async function exists(p) { try { await Deno.stat(p); return true; } catch { return false; } }
 
 const dirs = Deno.args.filter((a) => !a.startsWith("--") && a !== URL_ARG).map((a) => a.replace(/\/$/, ""));
@@ -253,6 +274,7 @@ const toolTabsAfterFirst = (d) => {
     return tabs.slice(1).filter((t) => t.type === "tool" && t.id).map((t) => `?tab=${t.id}`);
   } catch { return []; }
 };
+
 
 
 const badApps = new Set();

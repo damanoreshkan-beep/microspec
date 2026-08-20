@@ -44,11 +44,15 @@ const npTitle = () => curStation().name;
 const artUrl = () => { try { return new URL("icons/icon-512.png", location.href).href; } catch { return null; } };
 
 function ramp(a, from, to, ms, done) {
+  const finish = () => { try { a.volume = to; } catch {  } done?.(); };
+  const hidden = () => typeof document !== "undefined" && document.visibilityState === "hidden";
+  if (hidden()) { finish(); return; }
   const t0 = performance.now();
   const step = () => {
+    if (hidden()) { finish(); return; }
     const k = Math.min(1, (performance.now() - t0) / ms);
     try { a.volume = from + (to - from) * k; } catch {  }
-    if (k < 1) requestAnimationFrame(step); else done?.();
+    if (k < 1) setTimeout(step, 16); else done?.();
   };
   step();
 }

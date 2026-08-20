@@ -103,6 +103,29 @@ export default [
     },
   },
   {
+    
+    name: "нуар: перемикач у шторці знебарвлює саме кадр, лишає хром кольоровим і переживає перезапуск", run: async (h) => {
+      await ready(h);
+      h.expect(await settles(h, 3), "стрічка не влаштувалась на 3 слайдах");
+      h.expect((await h.css("[data-reel]", "filter")) === "none", "кадр знебарвлений ще до вмикання нуару");
+      await openMore(h);
+      h.expect((await h.count("[data-noir]")) === 1, "у шторці «Ще» нема перемикача нуару");
+      h.expect((await h.prop("[data-noir]", "checked")) === false, "перемикач нуару стоїть увімкненим за замовчуванням");
+      await h.tap("[data-noir]"); await h.wait(400);
+      h.expect(/grayscale\(1\)/.test(await h.css("[data-reel]", "filter")), "нуар увімкнено, а слайд лишився кольоровим — CSS не доїхав до кадру");
+      h.expect((await h.css("[data-more]", "filter")) === "none", "фільтр дістав і острівець — правило зачепило корінь, а не саму стрічку");
+      await h.back(); await h.wait(400);                                   
+      h.expect(/grayscale\(1\)/.test(await h.css("[data-reel]", "filter")), "нуар вимкнувся разом зі шторкою");
+      await h.reload(); await ready(h);
+      h.expect(await settles(h, 3), "після перезапуску стрічка не влаштувалась");
+      h.expect(/grayscale\(1\)/.test(await h.css("[data-reel]", "filter")), "нуар не пережив перезапуск — режим не зберігається");
+      await openMore(h);
+      h.expect((await h.prop("[data-noir]", "checked")) === true, "режим увімкнений, а перемикач у шторці цього не показує");
+      await h.tap("[data-noir]"); await h.wait(400);
+      h.expect((await h.css("[data-reel]", "filter")) === "none", "нуар не вимикається — кадр лишився чорно-білим");
+    },
+  },
+  {
     name: "провалювання: свайп-чіп відкриває сторінку рілзу як нове джерело, назад — той самий список", run: async (h) => {
       await ready(h);
       await settles(h, 3);
@@ -112,7 +135,6 @@ export default [
       const chip = await h.attr("[data-dive]", "aria-label");
       h.expect(/Big Buck Bunny/.test(chip), `кнопка провалювання підписана «${chip}» — має нести назву самого рілзу, а не форму URL`);
       await h.tap("[data-dive]"); await h.wait(600);
-      
       h.expect(await settles(h, 2), "провалювання не завантажило стрічку сторінки, на якій лежить рілз");
       h.expect((await h.text("[data-island-label]")) !== root, `острівець лишився на «${root}» — джерело не змінилось`);
       

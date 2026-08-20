@@ -816,7 +816,18 @@ function QrModal() {
 
 const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
   style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 38%, transparent)"></div>`;
+
+
+function CleanExit() {
+  const loc = useStore(A.S.locale);
+  return html`<button data-clean-exit class="fixed right-3 z-30 btn btn-sm btn-circle border border-white/15 bg-black/55 text-white/85 backdrop-blur-sm"
+    style="top:calc(env(safe-area-inset-top) + 0.5rem)" aria-label=${sys("cleanExit", loc)}
+    onClick=${() => A.S.clean.set(false)}>${Icon("lucide:minimize-2", "text-base")}</button>`;
+}
+
 function Dock() {
+  
+  
   
   const t = useStore(A.S.t), cur = useStore(A.S.tab);
   
@@ -1090,8 +1101,21 @@ export function App() {
     el.classList.toggle("ms-fit", fit);
     return () => el.classList.remove("ms-fit");
   }, [fit]);
+  
+  
+  
+  
+  
+  
+  const clean = useStore(A.S.clean);
+  useEffect(() => {
+    if (!clean) return;
+    const s = document.documentElement.style;
+    s.setProperty("--hdr-h", "0px");
+    s.setProperty("--dock-h", "0px");
+  }, [clean]);
   return html`<${Fragment}>
-    <${AppBar} />
+    ${clean ? null : html`<${AppBar} />`}
     ${tab.type === "list" && tab.search ? html`<${SearchBar} tab=${tab} />` : null}
     ${A.spec.filters ? html`<${FilterChips} />` : null}
     ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
@@ -1107,11 +1131,11 @@ export function App() {
     ${screen === "perms" ? html`<${PermissionsScreen} />` : null}
     ${screen === "apk" ? html`<${ApkScreen} />` : null}
     ${screen === "signin" ? html`<${SignInScreen} />` : null}
-    <${DockFade} />
+    ${clean ? null : html`<${DockFade} />`}
     <${InstallModal} />
     <${QrModal} />
     <${ConfirmSheet} />
-    <${Dock} />
+    ${clean ? html`<${CleanExit} />` : html`<${Dock} />`}
     <${Toast} />
   </${Fragment}>`;
 }

@@ -37,6 +37,7 @@ export function createApp(spec, dataLoad) {
     filters: map({ ...(spec.filters?.defaults || {}), ...savedFilters }),
     toast: atom(""),
     stack: atom([]),
+    clean: atom(false),
     sheet: atom(false),
     detail: atom(null),
     screen: atom(null),

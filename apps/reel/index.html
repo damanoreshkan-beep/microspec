@@ -23,6 +23,9 @@
     :root[data-feed] header.navbar{background:linear-gradient(to bottom,rgba(0,0,0,.6),rgba(0,0,0,.25) 70%,transparent)}
     :root[data-feed] header.navbar [data-title],
     :root[data-feed] header.navbar button{color:#fff}
+    @media (max-height: 560px){
+      :root[data-feed] header.navbar{display:none}
+    }
     html{scrollbar-width:none}
     html::-webkit-scrollbar{display:none}
     [data-scroller]{scrollbar-width:none}

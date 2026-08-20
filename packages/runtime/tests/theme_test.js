@@ -277,6 +277,35 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
   }
 });
 
+Deno.test("clean screen: the chrome that unmounts takes its measurements with it, and leaves a door", async () => {
+  const render = await Deno.readTextFile(new URL("../render.js", import.meta.url));
+  const index = await Deno.readTextFile(new URL("../index.js", import.meta.url));
+  const store = await Deno.readTextFile(new URL("../store.js", import.meta.url));
+  const i18n = await Deno.readTextFile(new URL("../i18n.js", import.meta.url));
+
+  assert(/\bclean:\s*atom\(false\)/.test(store), "S.clean is gone — the mode has no state");
+
+  for (const el of ["AppBar", "DockFade", "Dock"]) {
+    assert(new RegExp(`clean \\? null : html\`<\\$\\{${el}\\}|clean \\? html\`<\\$\\{CleanExit\\}[^\`]*\` : html\`<\\$\\{${el}\\}`).test(render),
+      `${el} still renders in clean screen — the surface is not clean`);
+  }
+
+  const zeroed = /if \(!clean\) return;[\s\S]{0,400}?setProperty\("--hdr-h", "0px"\)[\s\S]{0,200}?setProperty\("--dock-h", "0px"\)/;
+  assert(zeroed.test(render), "clean screen unmounts the chrome without zeroing --hdr-h/--dock-h — every consumer still lays out around chrome that is not on screen");
+
+  assert(/function CleanExit/.test(render) && /data-clean-exit/.test(render), "no door out of clean screen");
+  assert(/\[S\.clean, \(\) => S\.clean\.set\(false\), \(v\) => v === true\]/.test(index),
+    "S.clean is not registered as an overlay — Back would leave the app instead of giving the chrome back");
+  const overlays = /const overlays = \[([\s\S]*?)\n  \];/.exec(index)[1];
+  assert(overlays.trimStart().split("\n").filter((l) => l.trim().startsWith("[S.")).shift().includes("S.clean"),
+    "S.clean must be the BOTTOM-most overlay — a dive taken with the chrome hidden has to unwind before the chrome comes back");
+
+  const sys = /export const SYS = \{([\s\S]*?)\n\};/.exec(i18n)[1];
+  for (const k of ["clean", "cleanExit"]) {
+    assert(new RegExp(`\\b${k}:\\s*\\{[^}]*\\ben:[^}]*\\buk:`).test(sys), `SYS.${k} must carry BOTH locales`);
+  }
+});
+
 Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts out loud", async () => {
   const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
   const at = css.indexOf(".ms-cols {");

@@ -55,11 +55,33 @@ export default [
       h.expect((await h.count("[data-reel] a")) === 0, "на слайді лишилось посилання (відкрити оригінал)");
       h.expect((await h.count("[data-reel] button")) === 0, "на слайді лишилась кнопка");
       
-      for (const [sel, what] of [["[data-island-label]", "назва джерела"], ["[data-dive]", "провалювання"], ["[data-watch]", "повний кліп в апці"], ["[data-open-page]", "відкрити сторінку рілзу у браузері"], ["[data-subscribe]", "підписка"]]) {
+      for (const [sel, what] of [["[data-island-label]", "назва джерела"], ["[data-dive]", "провалювання"], ["[data-watch]", "повний кліп в апці"], ["[data-open-page]", "відкрити сторінку рілзу у браузері"], ["[data-subscribe]", "підписка"], ["[data-clean]", "чистий екран"]]) {
         h.expect((await h.count(sel)) === 1, `в острівці немає контролу: ${what} (${sel})`);
       }
       const isl = await h.attr("[data-island]", "class");
       h.expect(!/\bopacity-0\b/.test(isl || ""), "острівець не має бути прихованим");
+    },
+  },
+  {
+    
+    name: "чистий екран: тап прибирає шапку, док і острівець — лишається саме відео; Back повертає все", run: async (h) => {
+      await ready(h);
+      h.expect(await settles(h, 3), "стрічка не влаштувалась на 3 слайдах");
+      h.expect((await h.count("nav[data-dock]")) === 1 && (await h.count("header.navbar")) === 1, "хромованки нема ще до входу в чистий екран");
+      await h.tap("[data-clean]"); await h.wait(400);
+      for (const [sel, what] of [["header.navbar", "шапка"], ["nav[data-dock]", "док"], ["[data-island]", "острівець"]]) {
+        h.expect((await h.count(sel)) === 0, `у чистому екрані лишилась ${what} (${sel})`);
+      }
+      h.expect((await h.count("[data-reel]")) === 3, "чистий екран знищив саму стрічку");
+      h.expect((await h.count("[data-clean-exit]")) === 1, "у чистому екрані нема дверей назад — док прибрано, і вийти нема чим");
+      
+      await h.tap("[data-clean-exit]"); await h.wait(400);
+      h.expect((await h.count("nav[data-dock]")) === 1 && (await h.count("[data-island]")) === 1, "двері не повернули хромованку");
+      await h.tap("[data-clean]"); await h.wait(400);
+      h.expect((await h.count("nav[data-dock]")) === 0, "повторний вхід у чистий екран не спрацював");
+      await h.back(); await h.wait(400);
+      h.expect((await h.count("nav[data-dock]")) === 1, "системний Back не повернув док (або вийшов з апки)");
+      h.expect((await h.count("[data-reel]")) === 3, "Back вийшов зі стрічки замість повернути керування");
     },
   },
   {
@@ -163,6 +185,7 @@ export default [
     },
   },
   {
+    
     name: "сесія сайту: ключ на картці → шит (Back закриває) → збережено → позначено → забути", run: async (h) => {
       await ready(h);
       await h.tap('[data-tab="sources"]'); await h.wait(300);

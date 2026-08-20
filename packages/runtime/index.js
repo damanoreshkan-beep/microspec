@@ -70,6 +70,7 @@ export function start(spec, arg2) {
   S.detail.listen((v) => { if (v == null && S.screen.get()) S.screen.set(null); });               
 
   const overlays = [
+    [S.clean, () => S.clean.set(false), (v) => v === true],
     [S.stack, () => S.stack.set(S.stack.get().slice(0, -1)), (v) => v],   
     [S.sheet, () => S.sheet.set(false), (v) => v === true],
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],

@@ -18,6 +18,8 @@ export const SYS = {
   pairFail: { en: "The app did not receive the sign-in — try again from the app.", uk: "Застосунок не отримав вхід — спробуй ще раз із застосунку." },
   signInBody: { en: "AI generation is for signed-in users — so the free quota goes to people, not bots.", uk: "AI-генерація доступна після входу — так безкоштовна квота дістається людям, а не ботам." },
   close: { en: "Close", uk: "Закрити" },
+  clean: { en: "Clean screen", uk: "Чистий екран" },
+  cleanExit: { en: "Show controls", uk: "Показати керування" },
   share: { en: "Share app", uk: "Поділитися" },
   shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
   updateReady: { en: "New version ready", uk: "Нова версія готова" },

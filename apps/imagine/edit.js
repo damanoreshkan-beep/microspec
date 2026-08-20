@@ -169,7 +169,7 @@ export function retouch({ S, toast }) {
       jobRef.current = job;
       const release = holdBackground({ title: T(t, "title"), body: T(t, "eEditing") }); holdRef.current = release;   
       const t0 = Date.now(); let got = 0; const mine = [];
-      for (let i = 0; i < 100; i++) {                                             
+      for (let i = 0; i < 135; i++) {
         await sleep(1500);
         if (run !== runRef.current) return;
         setElapsed(Math.round((Date.now() - t0) / 1000));
@@ -193,7 +193,9 @@ export function retouch({ S, toast }) {
         }
         if (j.status === "done" || j.status === "error") { release(); setMore(false); if (!mine.length) fail(run, "edFailed"); return; }
       }
-      release(); setMore(false); if (!mine.length) fail(run, "eTimeout");
+      release(); setMore(false);
+      fetch(`${VPS_PROXY}/image/edit/cancel`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job }) }).catch(() => {});
+      if (!mine.length) fail(run, "eTimeout");
     } catch { holdRef.current?.(); fail(run, "eNetwork"); }
   };
 

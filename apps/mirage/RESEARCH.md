@@ -1,0 +1,124 @@
+# mirage — research
+
+The successor to `apps/imagine`. Not a refactor of it: a new app with its own name, built while the old one
+keeps running, because a rebuild-in-place has to preserve the old seams to stay shippable and the new
+structure is born bent around them. `imagine` stays live until this one catches up (owner, 2026-08-20).
+
+Everything below is MEASURED on this device or on the VPS eye, on 2026-08-20. Anything not measured says so.
+
+## Why the old app needs replacing, in one number
+
+1071 lines across `view.js` (278), `edit.js` (358), `describe.js` (195) — and those three files are near-copies
+of one screen. Each hand-rolls its own composer island, snap scroller, progress readout, error states, prompt
+history and lightbox wiring. A fourth mode (the market) would have been a fourth copy.
+
+Domain-wise they are ONE pipeline: **input (prompt · photo · link) → race across HF Spaces → variants →
+keep / save / hand off.** Three tabs is a fact about how the app grew, not about the problem. `rules/design.md`
+names this exact failure: choosing `type: "tool"` because one piece of a screen is interactive, then
+re-implementing everything around it — the mistake that had to be undone in `arc`.
+
+So: one stage, one composer, mode as a `Segmented` from the kit, and the shared parts as real modules.
+
+## What carries over, and why (do not re-earn these)
+
+These are measured behaviours, not decoration. A rewrite that forgets them re-earns the bugs they fixed.
+
+| Carry over | Because |
+|---|---|
+| `k:4` slides contract — variants pulled by `?n=` as they land, cancel on client timeout | fixed 2026-08-20; the client used to give up at 150s while the edge raced to 200s and threw away a picture that had landed at 160s |
+| `toEnglish()` before every prompt | the Spaces understand English far better; free keyless gtx, own cache bucket |
+| job id in `localStorage`, resumed on mount | Android discards the tab during a 30s race; without it you return to an idle screen over a finished picture |
+| `CameraPrime` — never open the camera cold | `[[feedback_camera_priming]]` |
+| `holdBackground()` while polling | the APK sleeps otherwise |
+| notify when the first picture lands and the app is hidden | the wait is 20–50s; nobody watches it |
+| gate mocks for every mode | without them e2e reaches live APIs and burns real GPU quota |
+| 68 i18n keys, en + uk parity | `rules/constraints.md` |
+| result state that survives a tab switch (`kept.js`) | the runtime mounts ONE tab; `useState` dies on switch, and `edit.js` also revoked its blobs on unmount, so the pictures were destroyed rather than merely forgotten |
+
+## The stage: what GlStage will and will not do
+
+`packages/runtime/glstage.js`, read before designing against it:
+
+- Uniform contract is fixed: `res·time·seed·ink·vary·env` (+ `tex`, `texAspect`). Same 16 floats as `hero.wgsl`.
+- `env.x` is the RUNTIME's theme channel, eased ~250ms so a toggle cross-fades. Never compute a theme colour
+  in JS at render — the view does not re-render on a toggle.
+- **`tex` is downsampled to `TEX_MAX = 64`px, deliberately: "a stage borrows a PALETTE from a portrait, it
+  does not project the picture."** So the generated image CANNOT be the stage's texture. This kills the
+  obvious idea and points at the right one:
+
+**The layering that follows from that constraint:**
+
+1. `GlStage` + `mirage.frag` — the field, full-bleed, taking its PALETTE from the current picture (64px is
+   exactly right for a palette).
+2. a dust layer — only while a race runs. It does not need the picture: the dust gathers BEFORE the picture
+   exists, so there is nothing to sample. This is the owner's mandate of 2026-08-17, still unbuilt.
+3. the picture itself stays a real `<img>` at full resolution — it is the product; it must be saveable and
+   shareable, and a texture is neither.
+
+## The tooling gap this pass closed
+
+`tools/art/hero.mjs` renders WGSL through Deno's WebGPU on this phone in ~1.4s — but GlStage ships **GLSL ES
+3.00 to WebGL2** and there is no WebGPU path for it. Every shader iteration would have cost a push, a CI run,
+a deploy and a remote shot.
+
+**`microspec-edge/vps/frag.sh`** (written and committed this pass) inlines a `.frag` into a self-contained
+page and shoots it on the VPS eye's real Chromium: same language, very nearly the same stack, **~35s end to
+end**, with `--sheet CxR` for a contact sheet across time. Two traps it hit first, both now handled and both
+worth knowing for any future page like it:
+
+- a `<script>` block's `textContent` begins with the newline after the opening tag, so the shader must be
+  left-trimmed or ANGLE refuses the `#version` directive (`presence.frag` warns about this on its own line 2);
+- without a `viewport` meta the mobile Chromium lays the page out at its default 980px and scales it down, so
+  the canvas renders into a quarter of the shot and every judgement is made at the wrong scale.
+
+## mirage.frag — where it stands, and the numbers that matter
+
+Three passes, each judged on a 3x1 sheet across 8s at 256x420.
+
+**v1 — rejected.** Generic dark fog, and three cells across 8s were indistinguishable. Two causes: the shear
+was fed only into a low-frequency fbm, which averages it away; and the drift was too slow to travel.
+
+**v2 — the fix that mattered.** A lamina has TWO jobs and v1 only did the second: it must *show* as a sheet of
+its own AND shear what is behind it. Giving the laminae a direct term in the shade turned fog into heat.
+
+**v3 — current.** Sheets reach further down, structure opened up inside the same clamp.
+
+Numbers as they stand (all in `p`-units, where `p = (uv.x*aspect, uv.y)`):
+
+| | value | why |
+|---|---|---|
+| lamina scale | `vec2(1.4, 14.0)` | lopsided ON PURPOSE — heat shears the view in thin horizontal sheets; isotropic noise here is smoke whatever colour it is given |
+| rise | `time*(0.16 + 0.34*busy)`, lamina y offset `*9.0` | v1's `0.055` showed no travel over 8s |
+| second stack | `vec2(0.7, 6.0)`, offset 13.0 | without it the sheets read as one repeating comb |
+| lamina share of shade | `mix(0.150, 0.098, lite)` vs body `mix(0.205, 0.135, lite)` | the RATIO is the heat reading; below about half the body's, it falls back to fog |
+| `airband` | `1.0 - smoothstep(0.06, 0.96, uv.y)` | weighted to the TOP, deliberately: the composer owns the bottom, the picture owns the middle, the top is the only reliably empty band. (v1 called this `lift`, which read as ground-heat while doing the opposite — a name that lies is a bug with a delay fuse.) |
+
+**Amplitude contract, carried verbatim from `persona/presence.frag` because it is a contract and not a look:**
+dark base `0.165` clamped to `[0.10, 0.32]`; light base `0.93` clamped to `[0.64, 0.97]`. Measured there
+against base-content at `>= 4.5:1` at both clamps. Moving these moves a contrast floor for every string the
+app puts over the field.
+
+`vary` channels: `x` busy · `y` arrival · `z` facet (rotates the palette cross-mix, so modes differ by colour
+without a hue being hard-coded) · `w` ready (palette bound).
+
+## UNVERIFIED — the build must not lean on these yet
+
+- **The palette path has never been seen with a real picture.** `frag.sh` binds a neutral 1px texture, so
+  every shot so far shows the `ready=0` fallback. Needs a `--tex` option before the palette can be judged.
+- **Light theme unrendered.** The clamp inverts there and `presence.frag`'s notes warn the band inverts with
+  it; assume nothing.
+- **`busy` and `arrival` unrendered.** Both have amplitude terms written and neither has been looked at.
+- **The dust layer does not exist.** Not designed, not measured. It is the single biggest remaining unknown
+  and the one the owner asked for first.
+- **No performance measurement.** GlStage caps DPR at 2 and drops to 1 under the gate because a full-bleed
+  fbm field at DPR 2 is ~1.3M fragments a frame and starves the page's timers in SwiftShader. mirage runs
+  three fbm stacks plus two lamina stacks — heavier than `presence`. Unmeasured on the reference device.
+
+## Shader traps already paid for (`[[reference_shader_field_traps]]`, `[[reference_glstage_presence]]`)
+
+- frequency is in `p`-units, not pixels;
+- a `floor()`-based hash makes a visible lattice;
+- **never `smoothstep(a, b, x)` with `a > b`** — undefined in GLSL; write `1.0 - smoothstep(b, a, x)`;
+- the light theme INVERTS the band, so a term tuned dark can read backwards light;
+- `.frag` must be on the build allow-list and named in `deploy/sw.mjs`'s precache, or it 404s in production
+  and the stage silently falls back to an empty canvas.

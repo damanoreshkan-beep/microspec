@@ -44,6 +44,13 @@
     @media (max-height: 560px){
       :root[data-feed] header.navbar{display:none}
     }
+    /* Noir. The filter sits on the SLIDE, not on the <video>, and that is not a style choice: the ambient
+       backdrop carries its own `filter: blur()`, and `:root[data-mono] video` (0,1,1) outranks Tailwind's
+       `.blur-2xl` (0,1,0) — it would replace the blur instead of adding to it. One pass over the section
+       drains video, poster and backdrop while their own filters stay intact. The island is a SIBLING of
+       [data-reel], so its favicon and play button keep their colour, where colour means source and action. */
+    :root[data-mono] [data-reel],
+    :root[data-mono] [role="dialog"] video{filter:grayscale(1)}
     html{scrollbar-width:none}
     html::-webkit-scrollbar{display:none}
     [data-scroller]{scrollbar-width:none}

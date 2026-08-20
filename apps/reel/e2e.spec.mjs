@@ -139,6 +139,33 @@ export default [
     },
   },
   {
+    /* Нуар. Стверджується ОБЧИСЛЕНИЙ filter, а не атрибут на <html> і не клас: правило живе в <style> самої
+       сторінки, а весь сенс claim-у — що воно ДОЇХАЛО до слайда. Атрибут довів би лише, що атом перемкнувся.
+       Другий бік — межа: острівець сусід [data-reel], а не нащадок, тож favicon і синя кнопка play мусять
+       лишитись кольоровими; фільтр на них означав би, що правило зачепило корінь.
+       І перезавантаження, бо режим persistent: спосіб дивитись, який зникає з сесією, — це не режим. */
+    name: "нуар: перемикач у шторці знебарвлює саме кадр, лишає хром кольоровим і переживає перезапуск", run: async (h) => {
+      await ready(h);
+      h.expect(await settles(h, 3), "стрічка не влаштувалась на 3 слайдах");
+      h.expect((await h.css("[data-reel]", "filter")) === "none", "кадр знебарвлений ще до вмикання нуару");
+      await openMore(h);
+      h.expect((await h.count("[data-noir]")) === 1, "у шторці «Ще» нема перемикача нуару");
+      h.expect((await h.prop("[data-noir]", "checked")) === false, "перемикач нуару стоїть увімкненим за замовчуванням");
+      await h.tap("[data-noir]"); await h.wait(400);
+      h.expect(/grayscale\(1\)/.test(await h.css("[data-reel]", "filter")), "нуар увімкнено, а слайд лишився кольоровим — CSS не доїхав до кадру");
+      h.expect((await h.css("[data-more]", "filter")) === "none", "фільтр дістав і острівець — правило зачепило корінь, а не саму стрічку");
+      await h.back(); await h.wait(400);                                   // шторку геть — режим не її власність
+      h.expect(/grayscale\(1\)/.test(await h.css("[data-reel]", "filter")), "нуар вимкнувся разом зі шторкою");
+      await h.reload(); await ready(h);
+      h.expect(await settles(h, 3), "після перезапуску стрічка не влаштувалась");
+      h.expect(/grayscale\(1\)/.test(await h.css("[data-reel]", "filter")), "нуар не пережив перезапуск — режим не зберігається");
+      await openMore(h);
+      h.expect((await h.prop("[data-noir]", "checked")) === true, "режим увімкнений, а перемикач у шторці цього не показує");
+      await h.tap("[data-noir]"); await h.wait(400);
+      h.expect((await h.css("[data-reel]", "filter")) === "none", "нуар не вимикається — кадр лишився чорно-білим");
+    },
+  },
+  {
     name: "провалювання: свайп-чіп відкриває сторінку рілзу як нове джерело, назад — той самий список", run: async (h) => {
       await ready(h);
       await settles(h, 3);

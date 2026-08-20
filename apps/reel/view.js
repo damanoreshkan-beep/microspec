@@ -129,6 +129,10 @@ const seekStart = (v) => {
 const PRELOAD = 1;
 
 const $src = persistentAtom("reel:src", DEFAULT_SRC);
+/* Noir — the picture in black and white. Persistent, because it is a way of watching rather than a thing you
+   do to one clip: it has to still be on tomorrow. The mode itself is CSS (see index.html); this atom only
+   raises a flag on <html>, the same lever data-feed already uses, so nothing re-renders when it flips. */
+const $mono = persistentAtom("reel:mono", "0");
 // "Open site" opens the source's real website in the external browser. (The in-app reverse-proxy iframe was
 // removed — heavy/anti-bot sites never rendered reliably through the datacenter-IP proxy.) The reel is the tap.
 function openExternal(url) { if (url && typeof window !== "undefined") window.open(url, "_blank", "noopener"); }
@@ -760,7 +764,7 @@ async function exportClip({ item, format, mode, t, toast }) {
    A Sheet and not a popover: it is the kit's, it drag-dismisses, and it is routed through S.screen, so the
    system Back closes it like every other dismissable surface in this farm. */
 function MoreSheet({ S, t, item, src, title, subbed, openIn, toast }) {
-  const busy = useStore($busy), loc = useStore(S.locale);
+  const busy = useStore($busy), loc = useStore(S.locale), mono = useStore($mono);
   const close = () => S.screen.set(null);
   const row = "btn btn-ghost justify-start gap-3 rounded-2xl w-full font-normal";
   // Save and share sit on the same line as the format they act on: two rows instead of four, and the pair
@@ -796,6 +800,16 @@ function MoreSheet({ S, t, item, src, title, subbed, openIn, toast }) {
             of the height (measured, 832x384). The mode belongs to the RUNTIME (S.clean) because the app bar
             and the dock are its elements and --hdr-h/--dock-h are its measurements — an app hiding them from
             the outside would leave both numbers describing chrome that is no longer on screen. */""}
+      ${/* Noir and the clean screen are the two ways of WATCHING, so they sit together and first. Noir is a
+            switch and not a door — it has an on state you have to be able to see in the sheet — so it is the
+            runtime's own settings language (icon · name · DaisyUI toggle, exactly the profile's theme row),
+            aligned to px-4 = --btn-p so its left edge lands on the .btn rows' text. */""}
+      <label class="flex items-center gap-3 px-4 py-3 rounded-2xl">
+        ${Icon("lucide:contrast", "text-lg opacity-70 shrink-0")}
+        <span class="flex-1 min-w-0 truncate">${T(t, "noir")}</span>
+        <input data-noir type="checkbox" class="toggle toggle-primary shrink-0" aria-label=${T(t, "noir")}
+          checked=${mono === "1"} onChange=${(e) => $mono.set(e.target.checked ? "1" : "0")} />
+      </label>
       <button data-clean class=${row} onClick=${() => { close(); S.clean.set(true); }}>${Icon("lucide:maximize-2", "text-lg opacity-70")}${sys("clean", loc)}</button>
       ${!subbed ? html`<button data-subscribe class=${row} onClick=${() => { subscribe({ name: title, url: src }); close(); }}>${Icon("lucide:plus", "text-lg opacity-70")}${T(t, "sub")}</button>` : null}
       ${openIn ? html`<button data-open-page class=${row} onClick=${() => { close(); openIn(); }}>${Icon("lucide:external-link", "text-lg opacity-70")}${T(t, "openBrowser")}</button>` : null}
@@ -873,6 +887,7 @@ function FeedSurface({ S, t, toast }) {
   const screen = useStore(S.screen);
   const suspended = screen === "full";
   const clean = useStore(S.clean);
+  const mono = useStore($mono);
   const underRef = useRef(), diveRef = useRef(), backRef = useRef();
   const target = diveTarget(items[active], src);
   // The destination is named by the clip you're leaving on — the reveal under the finger says where you land,
@@ -914,6 +929,14 @@ function FeedSurface({ S, t, toast }) {
        consumes clean's own entry with the same go(-1) a tap on the door would. */
     return () => { root.removeAttribute("data-feed"); S.clean.set(false); };
   }, [S]);
+  /* Noir is a document-level flag, not a class on the slides: the full-clip player is the runtime's element
+     and lives outside this tree, so the only place both surfaces can be reached from is <html>. It comes off
+     with the surface, like data-feed — nothing outside the feed shows a frame of video. */
+  useEffect(() => {
+    const root = document.documentElement;
+    if (mono === "1") root.setAttribute("data-mono", "1"); else root.removeAttribute("data-mono");
+    return () => root.removeAttribute("data-mono");
+  }, [mono]);
   useEffect(() => { void checkBlankPosters(); }, [items]);            // sample new posters → drop black/flat/broken slides (gate: inline data: posters too)
   useEffect(() => { if (next && active >= items.length - 3) loadSource(next, true); }, [active, items.length, next]);
   useEffect(() => { const it = items[active]; if (!it || gate) return; const id = setTimeout(() => markWatched(it.orig || it.video), 2500); return () => clearTimeout(id); }, [active, items]);   // dwell → watched

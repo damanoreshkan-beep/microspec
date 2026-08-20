@@ -151,10 +151,17 @@ export default [
     name: "провалювання: у джерело без підписки — кнопка «підписатись» додає його в таб джерел", run: async (h) => {
       await ready(h);
       await h.tap("[data-dive]"); await h.wait(600);
-      h.expect((await h.count("[data-subscribe]")) === 1, "на непідписаному джерелі немає кнопки підписки");
+      
+      
       const island = await h.text("[data-island-label]");
+      await openMore(h);
+      h.expect((await h.count("[data-subscribe]")) === 1, "на непідписаному джерелі немає кнопки підписки");
       await h.tap("[data-subscribe]"); await h.wait(400);
+      
+      await openMore(h);
       h.expect((await h.count("[data-subscribe]")) === 0, "після підписки кнопка мала зникнути");
+      await h.back(); await h.wait(400);
+      h.expect((await h.count("[data-exp]")) === 0, "шторка лишилась відкритою над стрічкою");
       await h.tap('[data-tab="sources"]'); await h.wait(400);
       h.expect(await has(h, /Підписки|Subscriptions/), "таб джерел не відкрився");
       

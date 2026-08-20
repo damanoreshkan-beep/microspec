@@ -140,8 +140,12 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
   
   
   
+  
+  
+  
+  
   const surface = tone === "dark"
-    ? "sf-e3 border border-white/15 bg-black/60 text-white"
+    ? "sf-frost border border-white/15 bg-black/60 text-white"
     : tone === "frost" ? FROST
     : "sf-raised sf-e3";
   const cls = `${surface} rounded-[var(--ms-r)] p-[var(--ms-pad)] ${className}`;

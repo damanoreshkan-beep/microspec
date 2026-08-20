@@ -294,6 +294,9 @@ Deno.test("clean screen: the chrome that unmounts takes its measurements with it
   assert(zeroed.test(render), "clean screen unmounts the chrome without zeroing --hdr-h/--dock-h — every consumer still lays out around chrome that is not on screen");
 
   assert(/function CleanExit/.test(render) && /data-clean-exit/.test(render), "no door out of clean screen");
+  const door = /data-clean-exit class="([^"]+)"/.exec(render);
+  assert(door && /\bbtn-ghost\b/.test(door[1]) && /\bsf-frost\b/.test(door[1]),
+    `the clean-screen door is extruded (${door?.[1]}) — it needs btn-ghost + sf-frost, or it wears a white halo on the screen it just cleared`);
   assert(/\[S\.clean, \(\) => S\.clean\.set\(false\), \(v\) => v === true\]/.test(index),
     "S.clean is not registered as an overlay — Back would leave the app instead of giving the chrome back");
   const overlays = /const overlays = \[([\s\S]*?)\n  \];/.exec(index)[1];
@@ -304,6 +307,15 @@ Deno.test("clean screen: the chrome that unmounts takes its measurements with it
   for (const k of ["clean", "cleanExit"]) {
     assert(new RegExp(`\\b${k}:\\s*\\{[^}]*\\ben:[^}]*\\buk:`).test(sys), `SYS.${k} must carry BOTH locales`);
   }
+});
+
+Deno.test('a "dark" island is glass over MEDIA — it casts alone, never the extrusion pair', async () => {
+  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const dark = /tone === "dark"\s*[\r\n]*\s*\? "([^"]+)"/.exec(ui);
+  assert(dark, 'the tone="dark" surface is gone from IslandBox');
+  assert(!/\bsf-e[2-5]\b/.test(dark[1]),
+    `tone="dark" is extruded ("${dark[1]}") — the pair's light half has nothing to shade against on a media surface and draws a white ring instead`);
+  assert(/\bsf-frost\b/.test(dark[1]), 'tone="dark" must cast alone (.sf-frost), like every other glass-over-stage surface');
 });
 
 Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts out loud", async () => {

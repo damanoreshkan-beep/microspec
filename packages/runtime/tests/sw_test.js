@@ -147,6 +147,38 @@ Deno.test("sw: on a 2g/saveData link we do NOT spend bandwidth revalidating what
   assertEquals(twice.calls.length, 1, "at most one revalidation per URL per worker lifetime");
 });
 
+// The one exception to stale-while-revalidate, and the most expensive bug this worker has shipped. An
+// Android install BAKES orientation/display/name/icons into a WebAPK; the only way they ever change again is
+// the browser re-reading manifest.json (once a day at best) and diffing. That read is `destination:
+// "manifest"` and lands here — so a cache hit hands the update check the manifest the app was installed
+// with, and the app's own cache pins its own identity. reel was installed while every manifest said
+// `orientation: "portrait"`; a stale read is what would have kept it portrait after the fix shipped.
+Deno.test("sw: the manifest is fetched network-FIRST — a cached one pins the installed app's identity", async () => {
+  const url = "https://damanoreshkan-beep.github.io/microspec/reel/manifest.json";
+  const stale = () => new Response('{"orientation":"portrait"}', { status: 200 });
+  const fresh = () => Promise.resolve(new Response('{"orientation":"any"}', { status: 200 }));
+
+  for (const req of [swReq(url, { destination: "manifest" }), swReq(url)]) {
+    const { fire, cache, calls } = loadSwCore("reel", { cached: { [url]: stale() }, fetch: fresh });
+    const res = await fire(req);
+    assertEquals(JSON.parse(await res.text()).orientation, "any", `${req.destination}: the update check must read the LIVE manifest, never the cached one`);
+    assertEquals(calls.length, 1, "network first — one request, and the response is the one we return");
+    assertEquals(JSON.parse(await (await cache.match(url)).text()).orientation, "any", "…and the fresh copy replaces the stale one, so the offline fallback is current too");
+  }
+});
+
+Deno.test("sw: offline (or mid-deploy 404), the manifest still answers from the precache", async () => {
+  const url = "https://damanoreshkan-beep.github.io/microspec/reel/manifest.json";
+  const req = () => swReq(url, { destination: "manifest" });
+  const held = () => new Response('{"orientation":"any"}', { status: 200 });
+
+  const off = loadSwCore("reel", { cached: { [url]: held() }, onLine: false });
+  assertEquals(JSON.parse(await (await off.fire(req())).text()).orientation, "any", "offline: the installed app must still have a manifest");
+
+  const gone = loadSwCore("reel", { cached: { [url]: held() }, fetch: () => Promise.resolve(new Response("nope", { status: 404 })) });
+  assertEquals(JSON.parse(await (await gone.fire(req())).text()).orientation, "any", "a 404 mid-deploy must not be read as the app's identity");
+});
+
 Deno.test("sw: a cross-origin CDN asset is re-issued as cors — an opaque response cannot be cached", async () => {
   const url = "https://esm.sh/preact@10.27.1";
   let mode;

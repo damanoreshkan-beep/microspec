@@ -65,6 +65,20 @@ self.MS_POLICY = { cacheNameFor, APP_CACHE, CDN_CACHE, CDN };   // unit-test sur
 const isNav = (req) => req.mode === "navigate" || req.destination === "document";
 const cacheable = (res) => !!res && res.status === 200 && (res.type === "basic" || res.type === "cors" || res.type === "default");
 
+// The web manifest is the ONE file stale-while-revalidate must not touch, and the reason is not freshness —
+// it is that the manifest is the INSTALLED app's identity. On Android an install mints a WebAPK whose
+// AndroidManifest bakes `name`, `icons`, `display`, `start_url` and `orientation` at install time; the OS
+// applies them before a line of our code runs, and no web API can override them. The only path by which any
+// of those ever changes again is the browser re-reading manifest.json at launch (throttled to once per 24h,
+// and backing off to 30 days when a check fails) and diffing it against what it baked. That read is an
+// ordinary subresource fetch with `destination: "manifest"` — so it lands in THIS worker, and a cache hit
+// hands the update check the manifest the app was installed with. The app's own offline cache then pins its
+// own identity, permanently on a link where revalidation is skipped (offline/saveData/2g). reel was
+// installed while every manifest in the farm still said `orientation: "portrait"`, and this is the half that
+// would have kept it portrait after the fix shipped.
+// So: network FIRST for the manifest, cache only as the offline fallback. It costs one request per launch.
+const isManifest = (req, url) => req.destination === "manifest" || /\/manifest\.json$/.test(url.pathname);
+
 // ── fetch ───────────────────────────────────────────────────────────────────────────────────────────────
 self.addEventListener("fetch", (e) => {
   const req = e.request;
@@ -80,6 +94,7 @@ self.addEventListener("fetch", (e) => {
 
 async function serve(e, req, url, name) {
   const cache = await caches.open(name);
+  if (isManifest(req, url)) return manifestFirst(e, cache, req, url);
   const hit = await lookup(cache, req);
   if (hit) {
     if (shouldRevalidate(req.url)) e.waitUntil(revalidate(cache, req, url));
@@ -91,6 +106,22 @@ async function serve(e, req, url, name) {
     return res;
   } catch {
     return (await lookup(cache, req)) || Response.error();
+  }
+}
+
+// Network first, cache as the fallback — see isManifest. `background: true` is what makes the request
+// `cache: "no-cache"`, so the browser's own HTTP cache cannot re-introduce the staleness one layer down.
+// Anything that is not a cacheable 200 (a 404 mid-deploy, a captive portal) falls back to the copy we hold:
+// a broken manifest read is worse than yesterday's, because the browser treats it as the app's identity.
+async function manifestFirst(e, cache, req, url) {
+  try {
+    const res = await timedFetch(req, url, COLD_TIMEOUT, true);
+    if (!cacheable(res)) return (await cache.match(req, { ignoreVary: true })) || res;
+    const copy = res.clone();
+    e.waitUntil(cache.put(req, copy).catch(() => {}));
+    return res;
+  } catch {
+    return (await cache.match(req, { ignoreVary: true })) || Response.error();
   }
 }
 

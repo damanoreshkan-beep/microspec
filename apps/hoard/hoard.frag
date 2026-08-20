@@ -107,7 +107,7 @@ void main(){
   // ---- luminance, set explicitly INSIDE the budget (display space), so the field spans its band by
   // construction instead of riding the clamp as one flat slab.
   float lo = mix(0.085, 0.50, light), hi = mix(0.36, 0.88, light);
-  float f = mass*(0.16 + 0.84*shade) + rim*0.40*mass + haze*0.55*mix(1.0, 0.55, light) + gem*0.55
+  float f = mass*(0.16 + 0.84*shade) + rim*0.40*mass + gem*0.55
           + mass*deep*vein*0.12*heat + 0.04*breath*mass;
   // In LIGHT the same distribution rides the top of its band and renders as amber gel — the body has to
   // sit LOW in the band and let only the highlights climb, which is what gold on paper actually does.
@@ -134,9 +134,19 @@ void main(){
   col = clamp(col, 0.0, 1.0);
 
   vec3 bg = mix(vec3(0.165,0.165,0.18), vec3(0.93,0.925,0.935), light);
-  float presence = clamp(mass*0.97 + haze + gem, 0.0, 1.0);
+  float presence = clamp(mass*0.97 + gem, 0.0, 1.0);
   float vig = 1.0 - 0.18*smoothstep(0.55, 1.15, length(p*vec2(0.85,1.0)));
   col = mix(bg, col, presence*vig);
+
+  // The heat above the pile is composited SEPARATELY, because it is the one term whose correct DIRECTION
+  // flips with the theme. Run through the band like everything else it lands near the band's floor — which
+  // on a near-white page is DARKER than the paper, so rising heat rendered as a grey smear over the top two
+  // thirds of the screen (measured: that is how the first light build shipped). A glow is defined by being
+  // lighter than what it sits on, so it gets its own luminance either side: 0.34 in dark (inside the band's
+  // ceiling, so the type contract holds) and 0.965 in light — just above the page, never below it.
+  float hazeL = mix(0.34, 0.965, light);
+  vec3 hazeCol = mix(clamp(gold*(hazeL/Lp), 0.0, 1.0), vec3(hazeL), mix(0.25, 0.62, light));
+  col = mix(col, hazeCol, clamp(haze*mix(0.85, 0.55, light), 0.0, 1.0)*(1.0-mass)*vig);
   col += (hash(gl_FragCoord.xy + fract(time)) - 0.5) * (2.0/255.0) + (hash(gl_FragCoord.xy*1.7)-0.5)*0.012;
   o = vec4(col, 1.0);
 }

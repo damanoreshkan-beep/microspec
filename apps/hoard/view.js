@@ -47,6 +47,11 @@ const FIXTURE_SESSIONS = [
   { id: "fx4", amount: 744.05, ms: 5 * 3600_000, currency: "UAH", endedAt: 1754740000000, mode: "month" },
 ];
 
+// db.js's all() orders by the record's WRITE time, which is not when the session ended — a restored undo,
+// or a fixture set written in one loop, comes back shuffled (the vault shipped 10·9·12·11 серпня). The
+// list is ordered by the field it is actually about.
+const byEnded = (rows) => [...rows].sort((a, b) => (b.endedAt || b._ts || 0) - (a.endedAt || a._ts || 0));
+
 async function loadSessions() {
   try {
     let all = await ledger.all();
@@ -54,9 +59,9 @@ async function loadSessions() {
       for (const s of FIXTURE_SESSIONS) await ledger.put(s.id, s);
       all = await ledger.all();
     }
-    $sessions.set(all);
+    $sessions.set(byEnded(all));
   } catch {
-    $sessions.set(gate ? FIXTURE_SESSIONS : []);                // no IndexedDB (preflight): render anyway
+    $sessions.set(gate ? byEnded(FIXTURE_SESSIONS) : []);       // no IndexedDB (preflight): render anyway
   }
 }
 if (gate && !started()) $startedAt.set(String(Date.now() - FIXTURE_STARTED));
@@ -143,7 +148,7 @@ export function flow({ t, S, toast }) {
     $startedAt.set("0");
     const rec = { amount, ms, currency: rate.currency, mode: rate.mode, endedAt: Date.now() };
     try { await ledger.put(String(at), rec); await loadSessions(); }
-    catch { $sessions.set([{ id: String(at), ...rec }, ...$sessions.get()]); }
+    catch { $sessions.set(byEnded([{ id: String(at), ...rec }, ...$sessions.get()])); }
     toast?.(T(t, "banked", { v: fmtAmount(amount, rate.currency, 2) }));
   };
 
@@ -188,12 +193,13 @@ export function flow({ t, S, toast }) {
       ${/* the void the hoard rises into — deliberately empty: the field IS the content here */""}
       <div class="flex-1 min-h-0" aria-hidden="true"></div>
 
-      ${/* Idle the button is the one thing to do, so it is filled ink. Running, the app is doing the work
-           and the button is the way OUT of it — an outline over the live field, which is also the only way
-           the two states tell themselves apart at a glance (the label alone is one word in a dark row). */""}
+      ${/* Filled ink in BOTH states. The running state was an outline for one build, and on the shot it read
+           as a disabled control — an outline inside a frost island over a dark field is barely a box. The
+           state is not carried by this button anyway: the field, the ticking amount and the clock all say
+           it, and the button says what it DOES, the way a play/pause key does. */""}
       <${Island} className="shrink-0" tone="frost">
         <button data-run type="button" onClick=${running ? bank : start}
-          class=${`btn btn-block h-[var(--ms-ctl)] min-h-0 rounded-[var(--ms-r-in)] gap-2 ${running ? "btn-outline" : "btn-primary"}`}>
+          class="btn btn-primary btn-block h-[var(--ms-ctl)] min-h-0 rounded-[var(--ms-r-in)] gap-2">
           <iconify-icon icon=${running ? "lucide:hand-coins" : "lucide:play"} class="text-[var(--ms-icon)]"></iconify-icon>
           ${T(t, running ? "bank" : "start")}
         </button>

@@ -33,6 +33,8 @@ const FIXTURE_SESSIONS = [
   { id: "fx4", amount: 744.05, ms: 5 * 3600_000, currency: "UAH", endedAt: 1754740000000, mode: "month" },
 ];
 
+const byEnded = (rows) => [...rows].sort((a, b) => (b.endedAt || b._ts || 0) - (a.endedAt || a._ts || 0));
+
 async function loadSessions() {
   try {
     let all = await ledger.all();
@@ -40,9 +42,9 @@ async function loadSessions() {
       for (const s of FIXTURE_SESSIONS) await ledger.put(s.id, s);
       all = await ledger.all();
     }
-    $sessions.set(all);
+    $sessions.set(byEnded(all));
   } catch {
-    $sessions.set(gate ? FIXTURE_SESSIONS : []);                
+    $sessions.set(gate ? byEnded(FIXTURE_SESSIONS) : []);       
   }
 }
 if (gate && !started()) $startedAt.set(String(Date.now() - FIXTURE_STARTED));
@@ -116,7 +118,7 @@ export function flow({ t, S, toast }) {
     $startedAt.set("0");
     const rec = { amount, ms, currency: rate.currency, mode: rate.mode, endedAt: Date.now() };
     try { await ledger.put(String(at), rec); await loadSessions(); }
-    catch { $sessions.set([{ id: String(at), ...rec }, ...$sessions.get()]); }
+    catch { $sessions.set(byEnded([{ id: String(at), ...rec }, ...$sessions.get()])); }
     toast?.(T(t, "banked", { v: fmtAmount(amount, rate.currency, 2) }));
   };
 
@@ -160,7 +162,7 @@ export function flow({ t, S, toast }) {
       
       <${Island} className="shrink-0" tone="frost">
         <button data-run type="button" onClick=${running ? bank : start}
-          class=${`btn btn-block h-[var(--ms-ctl)] min-h-0 rounded-[var(--ms-r-in)] gap-2 ${running ? "btn-outline" : "btn-primary"}`}>
+          class="btn btn-primary btn-block h-[var(--ms-ctl)] min-h-0 rounded-[var(--ms-r-in)] gap-2">
           <iconify-icon icon=${running ? "lucide:hand-coins" : "lucide:play"} class="text-[var(--ms-icon)]"></iconify-icon>
           ${T(t, running ? "bank" : "start")}
         </button>
@@ -180,7 +182,6 @@ function RateSheet({ t, loc, S, open, rate }) {
   const set = (k, v) => setDraft({ ...draft, [k]: v });
   const close = () => S.screen.set(null);
   const save = () => { $rate.set(normRate(draft)); close(); };
-
   const field = (label, key, extra) => html`<label class="flex flex-col gap-1 min-w-0 flex-1 basis-[7rem]">
     <span class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70 truncate">${label}</span>
     <input ...${extra} type="number" min="0" step="any" inputmode="decimal" value=${draft[key] ?? ""}
@@ -200,7 +201,6 @@ function RateSheet({ t, loc, S, open, rate }) {
       ${draft.mode === "month" ? field(T(t, "rateDays"), "days", { "data-days": "" }) : null}
       ${field(T(t, draft.mode === "shift" ? "rateHoursShift" : "rateHoursDay"), "hours", { "data-hours": "" })}
     </div>
-
     <${Segmented} attr="data-cur" label=${T(t, "rateCurrency")} value=${draft.currency}
       onChange=${(id) => set("currency", id)}
       items=${CURRENCIES.map((c) => ({ id: c, label: c === "UAH" ? "₴" : "$" }))} />

@@ -58,7 +58,7 @@ void main(){
   float deep = smoothstep(0.02, 0.32, front-up);
 
   float lo = mix(0.085, 0.50, light), hi = mix(0.36, 0.88, light);
-  float f = mass*(0.16 + 0.84*shade) + rim*0.40*mass + haze*0.55*mix(1.0, 0.55, light) + gem*0.55
+  float f = mass*(0.16 + 0.84*shade) + rim*0.40*mass + gem*0.55
           + mass*deep*vein*0.12*heat + 0.04*breath*mass;
   float fc = clamp(f, 0.0, 1.0);
   float Lt = lo + (hi-lo)*mix(fc, pow(fc, 1.7), light);
@@ -76,9 +76,13 @@ void main(){
   col = clamp(col, 0.0, 1.0);
 
   vec3 bg = mix(vec3(0.165,0.165,0.18), vec3(0.93,0.925,0.935), light);
-  float presence = clamp(mass*0.97 + haze + gem, 0.0, 1.0);
+  float presence = clamp(mass*0.97 + gem, 0.0, 1.0);
   float vig = 1.0 - 0.18*smoothstep(0.55, 1.15, length(p*vec2(0.85,1.0)));
   col = mix(bg, col, presence*vig);
+
+  float hazeL = mix(0.34, 0.965, light);
+  vec3 hazeCol = mix(clamp(gold*(hazeL/Lp), 0.0, 1.0), vec3(hazeL), mix(0.25, 0.62, light));
+  col = mix(col, hazeCol, clamp(haze*mix(0.85, 0.55, light), 0.0, 1.0)*(1.0-mass)*vig);
   col += (hash(gl_FragCoord.xy + fract(time)) - 0.5) * (2.0/255.0) + (hash(gl_FragCoord.xy*1.7)-0.5)*0.012;
   o = vec4(col, 1.0);
 }

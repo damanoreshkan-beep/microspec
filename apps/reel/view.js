@@ -23,7 +23,8 @@ import { T, sys } from "/_rt/i18n.js";
 import { Island, Sheet } from "/_rt/ui.js";
 import { createPlayer, Player } from "/_rt/video.js";
 import { VPS_PROXY, pool } from "/_rt/feed.js";
-import { sealedFrameUrl } from "/_rt/sealedfetch.js";
+import { sealedFrameUrl, sealedClipUrl } from "/_rt/sealedfetch.js";
+import { shareFile, downloadBlob } from "/_rt/apk.js";
 import { gate } from "/_rt/gate.js";
 import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";
 import { resolveSearch, buildSearchUrl } from "/_rt/urlquery.js";
@@ -707,14 +708,103 @@ function SessionSheet({ S, t, undo }) {
 //
 // It is ALWAYS present now. It used to hide itself on a subscribed root feed "for a clean surface", which
 // was affordable only while every control also existed on the slide. It is the controls now.
-function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, openIn }) {
+/* ---- exporting a clip -------------------------------------------------------------------------------
+   A SERVER round trip, not a canvas capture, for two reasons that are both already settled elsewhere in this
+   file: the clip's bytes are gated on Referer + UA (a forbidden header name for fetch — the whole reason
+   /feed/frame exists), and a JS re-encode drops frames under load, which is the one property that was asked
+   for. `sealedClipUrl` puts the destination in the envelope and lets the bytes ride TLS — sealing them would
+   inflate a 24 MB GIF by a third and double the wait (measured; see the note on that helper).
+   Sizes, measured on real clips: GIF is 360px/12.5fps whole-clip, 8-27 MB depending on how much moves; the
+   video is a 720p re-encode, ~3 MB. Both are inside the 50 MB the share sheet accepts. */
+const $busy = atom("");                                 // "gif-save" | "gif-share" | … — one export at a time
+
+// The file the owner ends up with, named after the clip rather than after our URL scheme. Kept short and
+// filesystem-safe; a title is scraped HTML and can carry anything at all.
+const exportName = (item, ext) => `${(item?.title || "clip").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "clip"}.${ext}`;
+
+async function exportClip({ item, format, mode, t, toast }) {
+  const url = item?.orig || item?.video;
+  if (!url || $busy.get()) return;                      // one at a time: the box does real CPU work per call
+  $busy.set(`${format}-${mode}`);
+  try {
+    const r = await fetch(await sealedClipUrl(url, item.page || null, format));
+    if (!r.ok) {
+      // The edge answers with a reason and a number (a size ceiling, a refused source). Show it — "export
+      // failed" with nothing after it is the diagnostic this project keeps having to go back and add.
+      const why = await r.json().catch(() => null);
+      toast?.(why?.error ? `${T(t, "expFail")}: ${why.error}` : T(t, "expFail"));
+      return;
+    }
+    const blob = await r.blob();
+    const name = exportName(item, format);
+    if (mode === "share") {
+      // shareFile falls back to saving where nothing can share (a desktop browser, a refused bridge), and
+      // reports which happened — so the toast tells the truth instead of claiming a share that never opened.
+      const how = await shareFile(blob, name);
+      if (how === "saved") toast?.(T(t, "expSaved"));
+    } else {
+      downloadBlob(blob, name);
+      toast?.(T(t, "expSaved"));
+    }
+  } catch {
+    toast?.(T(t, "expFail"));
+  } finally {
+    $busy.set("");
+  }
+}
+
+/* The overflow sheet. The island had grown to five controls plus a favicon and a title that truncated to
+   make room for them — a control panel floating over the video it was meant to stay out of the way of. Only
+   the things you reach for WHILE watching stay out there (the way back, the way in, and play); everything
+   that is a decision rather than a reflex moved in here.
+   A Sheet and not a popover: it is the kit's, it drag-dismisses, and it is routed through S.screen, so the
+   system Back closes it like every other dismissable surface in this farm. */
+function MoreSheet({ S, t, item, src, title, subbed, openIn, toast }) {
+  const busy = useStore($busy), loc = useStore(S.locale);
+  const close = () => S.screen.set(null);
+  const row = "btn btn-ghost justify-start gap-3 rounded-2xl w-full font-normal";
+  // Save and share sit on the same line as the format they act on: two rows instead of four, and the pair
+  // reads as one choice about one thing rather than as four unrelated buttons.
+  const pair = (format, label) => html`<div class="flex items-center gap-2">
+    <span class="flex-1 min-w-0 truncate text-sm font-medium pl-1">${label}</span>
+    ${[["save", "lucide:download"], ["share", "lucide:share-2"]].map(([mode, icon]) => {
+      const key = `${format}-${mode}`;
+      /* No spinner on the button, per the farm rule: a spinner is what you reach for when you have nothing
+         to say. There IS something to say here — which artifact is being built — and the line below says it. */
+      return html`<button data-exp=${key} class=${`btn btn-sm btn-circle btn-ghost border border-base-content/15${busy === key ? " btn-active" : ""}`} disabled=${!!busy}
+        aria-label=${`${T(t, mode === "save" ? "expSave" : "expShare")}: ${label}`}
+        onClick=${() => exportClip({ item, format, mode, t, toast })}>${Icon(icon)}</button>`;
+    })}
+  </div>`;
+  return html`<${Sheet} open onClose=${close} title=${T(t, "more")} icon="lucide:ellipsis">
+    <div class="flex flex-col gap-2">
+      ${item ? html`<${Fragment}>
+        ${pair("gif", T(t, "expGif"))}
+        ${pair("mp4", T(t, "expVideo"))}
+        ${/* The wait is real (a download and a transcode on our box), so it is STATED rather than hidden
+              behind a control that simply does not respond for half a minute. */""}
+        ${busy ? html`<div data-exp-busy class="text-xs text-muted pl-1">${T(t, "expBusy")} ${T(t, busy.startsWith("mp4") ? "expVideo" : "expGif")}</div>` : null}
+        <div class="h-px bg-base-content/10 my-1"></div>
+      </${Fragment}>` : null}
+      ${/* Clean screen. A reel is the one surface where the chrome is genuinely in the way — it floats over
+            the picture rather than beside it, and in landscape the app bar, the island and the dock cover 48%
+            of the height (measured, 832x384). The mode belongs to the RUNTIME (S.clean) because the app bar
+            and the dock are its elements and --hdr-h/--dock-h are its measurements — an app hiding them from
+            the outside would leave both numbers describing chrome that is no longer on screen. */""}
+      <button data-clean class=${row} onClick=${() => { close(); S.clean.set(true); }}>${Icon("lucide:maximize-2", "text-lg opacity-70")}${sys("clean", loc)}</button>
+      ${!subbed ? html`<button data-subscribe class=${row} onClick=${() => { subscribe({ name: title, url: src }); close(); }}>${Icon("lucide:plus", "text-lg opacity-70")}${T(t, "sub")}</button>` : null}
+      ${openIn ? html`<button data-open-page class=${row} onClick=${() => { close(); openIn(); }}>${Icon("lucide:external-link", "text-lg opacity-70")}${T(t, "openBrowser")}</button>` : null}
+    </div>
+  <//>`;
+}
+
+function SourceIsland({ S, t, src, title, depth, dive, watch }) {
   /* btn-GHOST on every control in here, for the island's own reason: `.btn:not(.btn-ghost)` carries
      --sf-drop, the extrusion pair, and the pair's light half has nothing to shade against on a black media
      surface — it draws a white ring instead. In the light theme (--nm-light is bright) each of these
      circles came out haloed inside an island that was itself hard-outlined in white. Same fix as the island
      box and the clean-screen door; a utility cannot reach it, the DaisyUI rule is (0,4,0). */
   const act = "btn btn-ghost btn-sm btn-circle shrink-0 border border-white/20 bg-white/10 text-white";
-  const loc = useStore(S.locale);
   return html`<${Island} pinned at="bottom" tone="dark" className="flex items-center gap-1 min-w-0 max-w-full rounded-full">
       ${depth ? html`<button data-feed-back class="btn btn-ghost btn-sm btn-circle text-white shrink-0" aria-label=${T(t, "back")} onClick=${() => popFrame(S)}>${Icon("lucide:chevron-left", "text-xl")}</button>` : null}
       <${Favicon} url=${src} size="w-6 h-6" />
@@ -722,32 +812,23 @@ function SourceIsland({ S, t, src, title, subbed, depth, dive, watch, openIn }) 
             truncated EACH OTHER — "Free stoc…" next to "mixk…", which is two half-words and no name. The
             favicon already says which site this is; the host stays where it is precision, the sources list. */""}
       <span data-island-label class="text-sm text-white truncate min-w-0 pl-0.5 pr-1">${title}</span>
-      ${/* Clean screen. A reel is the one surface where the chrome is genuinely in the way — it floats over
-            the picture rather than beside it, and in landscape the app bar, this island and the dock cover
-            48% of the height (measured, 832x384). One tap takes all three off and leaves the video and the
-            swipe; Back, or the runtime's own door, brings them back. The mode belongs to the RUNTIME
-            (S.clean) because the app bar and the dock are its elements and --hdr-h/--dock-h are its
-            measurements — an app hiding them from the outside would leave both numbers describing chrome
-            that is no longer on screen. */""}
-      <button data-clean class=${act} aria-label=${sys("clean", loc)} onClick=${() => S.clean.set(true)}>${Icon("lucide:maximize-2", "text-base")}</button>
-      ${/* a hairline glass circle, not a filled ink pill: on a media surface the island is a quiet identity
-            chip, and a solid white button made "subscribe" the brightest thing on a full-screen video */""}
-      ${!subbed ? html`<button data-subscribe class=${act} aria-label=${T(t, "sub")} onClick=${() => subscribe({ name: title, url: src })}>${Icon("lucide:plus", "text-lg")}</button>` : null}
+      ${/* One door instead of three. Clean screen, subscribe and the trip to the site all used to sit out
+            here as their own circles; with the export actions added that would have been eight controls in a
+            pill 384px wide, which is a control panel laid over the thing it is supposed to keep out of the
+            way of. What stays outside is what you reach for WITHOUT deciding — the way back, the way in, and
+            play. Everything else is one tap deeper, in a sheet the system Back closes. */""}
+      <button data-more class=${act} aria-label=${T(t, "more")} onClick=${() => S.screen.set("more")}>${Icon("lucide:ellipsis", "text-base")}</button>
       ${/* The white "Watch" pill, absorbed. It used to appear ONLY while the clip could not play here (a
             signed ephemeral URL, or a player that errored) — on the theory that a clip which plays needs no
             way out. That theory read the failure backwards: "it plays" is decided by the browser, in a CORS
             check we cannot see from here, so the condition hid the escape hatch exactly when the surface was
             blank. The page is always worth reaching, so the control is always there. It stays a circle and
             never carries a word: filled with a word, on a black media surface, it was the brightest thing on
-            the screen — the exact mistake the note on `subscribe` above warns about. */""}
-      ${/* It plays HERE now, so the icon stops promising a trip outside: an external-link glyph on a control
-            that opens an in-app player is the icon lying about where the tap goes. */""}
-      ${/* …and the trip outside, on the one control that really takes it. `watch` plays the clip HERE — our
-            player over our own extraction — so it owns the filled circle and keeps the play glyph. What only
-            the site itself has (the rest of the page, its comments, an account, a download) needs a door, and
-            an external-link glyph on a control that genuinely leaves the app is the icon telling the truth
-            about where the tap goes. Same destination as `watch`: the page the clip was extracted from. */""}
-      ${openIn ? html`<button data-open-page class=${act} aria-label=${T(t, "openBrowser")} onClick=${openIn}>${Icon("lucide:external-link", "text-base")}</button>` : null}
+            the screen.
+            It plays HERE, so the glyph stays `play` and never becomes an external-link — an external-link on
+            a control that opens an in-app player is the icon lying about where the tap goes. The trip that
+            really leaves (what only the site itself has: the rest of the page, its comments, an account)
+            moved into the sheet, where it can afford to carry its name instead of a glyph. */""}
       ${watch ? html`<button data-watch class="btn btn-ghost btn-sm btn-circle shrink-0 border-0 bg-primary text-primary-content" aria-label=${T(t, "watch")} onClick=${watch}>${Icon("lucide:play", "text-base")}</button>` : null}
       ${/* forward is the mirror of back: the page this clip lives on. The destination's NAME is not written
             here — it is what the drag reveals under the finger — so the label rides the a11y name instead. */""}
@@ -775,7 +856,7 @@ function DragReveal({ underRef, diveRef, backRef, target, targetLabel, prev }) {
   </div>`;
 }
 
-function FeedSurface({ S, t }) {
+function FeedSurface({ S, t, toast }) {
   const items = useStore($items), loading = useStore($loading), err = useStore($err);
   const active = useStore($active), next = useStore($next), ephemeral = useStore($ephemeral);
   const src = useStore($src), frames = useStore($frames), subs = useStore($subs), restoreTo = useStore($restoreTo);
@@ -871,17 +952,22 @@ function FeedSurface({ S, t }) {
           off with it, and what is left is the video and the swipe. Unmounted rather than faded — a
           transparent island still eats the taps under it, which on this surface is the whole gesture. */""}
     ${clean ? null : html`<${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
-      dive=${dive} watch=${watch ? () => openFull(S, cur) : null} openIn=${watch ? () => openExternal(watch) : null} />`}
+      dive=${dive} watch=${watch ? () => openFull(S, cur) : null} />`}
+    ${/* The island's overflow. Rendered HERE rather than in reel(), because this surface is what the Liked
+          tab plays through too — hanging it off the tab would give the same feed two different sets of
+          actions depending on which way you arrived at it. */""}
+    ${screen === "more" ? html`<${MoreSheet} S=${S} t=${t} toast=${toast} item=${cur} src=${src} title=${title}
+      subbed=${subs.some((s) => s.url === src)} openIn=${watch ? () => openExternal(watch) : null} />` : null}
     ${/* Lives with the feed, not with the tab, so it works identically from Liked — one engine, one overlay. */""}
     ${suspended ? html`<${FullClip} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }
 
 // ---- reel (the feed) --------------------------------------------------------
-export function reel({ S }) {
+export function reel({ S, toast }) {
   const t = useStore(S.t), screen = useStore(S.screen);
   return html`<${Fragment}>
-    <${FeedSurface} S=${S} t=${t} />
+    <${FeedSurface} S=${S} t=${t} toast=${toast} />
     ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }
@@ -1003,10 +1089,10 @@ export function sources({ S, undo }) {
 // A poster grid of the reels you double-tapped, newest first. Tapping a tile plays the liked collection AS A
 // FEED RIGHT HERE — the Liked tab becomes the reel, no tab switch, and Back (system or the island chevron)
 // brings the grid straight back with the source feed underneath untouched. Removal lives ONLY here.
-export function liked({ S }) {
+export function liked({ S, toast }) {
   const t = useStore(S.t), likes = useStore($likes), owner = useStore($owner);
   const sorted = [...likes].sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  if (owner === "liked") return html`<${FeedSurface} S=${S} t=${t} />`;
+  if (owner === "liked") return html`<${FeedSurface} S=${S} t=${t} toast=${toast} />`;
   const playAt = (i) => {
     pushFrame(S, T(t, "tabLiked"));                       // …so Back returns to THIS grid, one step
     $owner.set("liked"); $ephemeral.set(false); $next.set(null); $err.set(false); $loading.set(false);

@@ -43,8 +43,26 @@ export async function sealedFrameUrl(url, ref) {
   return `${VPS_PROXY}/frame?s=${b64u(wire)}`;
 }
 
+/* sealedClipUrl(url, page, format) → `${VPS_PROXY}/clip?s=<envelope>` — the same trade as sealedFrameUrl,
+   for the clip exporter. `fetch` it and read `.blob()`.
+   Here the reply COULD be decrypted (this is a fetch, not an element), and it deliberately is not: the
+   envelope carries the reply as base64, which inflates a 24.4 MB GIF to 32.5 MB and takes the round trip from
+   22.1 s to 42.5 s — both measured against production on 2026-08-20. Paying that to hide bytes TLS already
+   carries is the wrong trade, and the destination — the part that actually identifies what is being watched —
+   is inside the envelope either way. `f` and `g` are short because the whole envelope rides in a query
+   string. */
+export async function sealedClipUrl(url, page, format) {
+  const { wire } = await seal(SEALED_KEY, { p: "/feed/clip", u: url, g: page || null, f: format === "mp4" ? "mp4" : "gif" });
+  return `${VPS_PROXY}/clip?s=${b64u(wire)}`;
+}
+
 const PLAIN = [
   `${VPS_PROXY}/frame`,                               // iframe navigation — cannot be tunnelled
+  // The clip export. Its destination IS sealed — into an opaque `?s=` by sealedClipUrl below — but the reply
+  // is tens of megabytes and must not go through the envelope: measured 2026-08-20, the same 24.4 MB GIF
+  // costs 42.5 s and 32.5 MB sealed (base64 inflates it by a third) against 22.1 s and 24.4 MB plain. Same
+  // trade the note on sealedFrameUrl makes for video, and for the same reason.
+  `${VPS_PROXY}/clip`,
   // APK build carries a launcher-icon PNG in the body; a real icon pushes the sealed envelope past the
   // tunnel's size ceiling and the whole request comes back "400 bad request" (verified: plain path with a
   // 30 KB icon → 200, the same call sealed → 400 above ~3.5 KB). The payload is not private — a public

@@ -1,6 +1,7 @@
 import { html } from "htm/preact";
 import { useState, useRef, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
+import { useKept } from "./kept.js";
 import { T, sys } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
@@ -45,16 +46,16 @@ function mockArt(seed) {
 
 export function imagine({ S, toast }) {
   const t = useStore(S.t), loc = useStore(S.locale), screen = useStore(S.screen);
-  const [prompt, setPrompt] = useState(gate ? "northern lights over a frozen lake, cinematic, ultra detailed" : "");
-  const [phase, setPhase] = useState(gate ? "done" : "idle");                    
-  const [slides, setSlides] = useState(gate ? [7, 8, 9, 10].map((seed) => ({ url: mockArt(seed), w: W, h: H, seed })) : []);
-  const [idx, setIdx] = useState(0);
-  const [more, setMore] = useState(false);
-  const [error, setError] = useState(null);
+  const [prompt, setPrompt] = useKept("make.prompt", gate ? "northern lights over a frozen lake, cinematic, ultra detailed" : "");
+  const [phase, setPhase] = useKept("make.phase", gate ? "done" : "idle");                    
+  const [slides, setSlides] = useKept("make.slides", gate ? [7, 8, 9, 10].map((seed) => ({ url: mockArt(seed), w: W, h: H, seed })) : []);
+  const [idx, setIdx] = useKept("make.idx", 0);
+  const [more, setMore] = useKept("make.more", false);
+  const [error, setError] = useKept("make.error", null);
   const [elapsed, setElapsed] = useState(0);                                      
   const [live, setLive] = useState(null);                                          
-  const [quality, setQuality] = useState("fast");                                 
-  const [aspect, setAspect] = useState("screen");                                 
+  const [quality, setQuality] = useKept("make.quality", "fast");                                 
+  const [aspect, setAspect] = useKept("make.aspect", "screen");                                 
   const [suggesting, setSuggesting] = useState(false);                            
   const runRef = useRef(0);                                                       
   const jobRef = useRef(null);                                                    
@@ -186,7 +187,7 @@ export function imagine({ S, toast }) {
   const slideStyle = aspect === "screen" ? "" : `padding-bottom:${Math.round(islandH)}px`;
 
   return html`<div class="ms-stage relative overflow-hidden bg-black">
-    <${Lightbox} open=${screen === "view" && !!cur} src=${cur?.url} alt=${prompt} onClose=${() => S.screen.set(null)} />
+    <${Lightbox} open=${screen === "view" && !!cur} slides=${slides} index=${idx} onIndex=${setIdx} alt=${prompt} onClose=${() => S.screen.set(null)} />
     <${HistorySheet} id="hist-make" open=${screen === "hist"} onClose=${() => S.screen.set(null)} items=${hist} onPick=${setPrompt} t=${t} locale=${loc} />
     <div class="absolute inset-0">
       ${phase === "done" && slides.length

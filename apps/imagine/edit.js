@@ -2,6 +2,7 @@ import { html } from "htm/preact";
 import { Fragment } from "preact";
 import { useState, useRef, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
+import { useKept } from "./kept.js";
 import { T, sys } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
@@ -60,15 +61,15 @@ export function toEditableDataURL(url) {
 
 export function retouch({ S, toast }) {
   const t = useStore(S.t), loc = useStore(S.locale), screen = useStore(S.screen);
-  const [phase, setPhase] = useState(gate ? "ready" : "empty");
-  const [srcUrl, setSrcUrl] = useState(gate ? mockArt(3) : null);                 
-  const [original, setOriginal] = useState(gate ? mockArt(3) : null);            
-  const [slides, setSlides] = useState([]);                                       
-  const [idx, setIdx] = useState(0);
-  const [more, setMore] = useState(false);                                        
+  const [phase, setPhase] = useKept("edit.phase", gate ? "ready" : "empty");
+  const [srcUrl, setSrcUrl] = useKept("edit.src", gate ? mockArt(3) : null);                 
+  const [original, setOriginal] = useKept("edit.original", gate ? mockArt(3) : null);            
+  const [slides, setSlides] = useKept("edit.slides", []);                                       
+  const [idx, setIdx] = useKept("edit.idx", 0);
+  const [more, setMore] = useKept("edit.more", false);                                        
   const cur = slides[idx] || slides[0] || null;
   const result = cur;                                                             
-  const [prompt, setPrompt] = useState(gate ? "add falling snow, cinematic" : "");
+  const [prompt, setPrompt] = useKept("edit.prompt", gate ? "add falling snow, cinematic" : "");
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [live, setLive] = useState(null);                                          
@@ -81,7 +82,11 @@ export function retouch({ S, toast }) {
   const [hist, remember] = usePromptHistory("edit");
 
   const own = (url) => { if (url?.startsWith?.("blob:")) blobs.current.push(url); return url; };
-  useEffect(() => () => { blobs.current.forEach((u) => { try { URL.revokeObjectURL(u); } catch {  } }); }, []);
+  const revoke = (url) => { if (url?.startsWith?.("blob:")) { try { URL.revokeObjectURL(url); } catch {  } blobs.current = blobs.current.filter((u) => u !== url); } };
+
+  useEffect(() => {
+    if (phase === "editing" && !jobRef.current) setPhase(slides.length ? "done" : (srcUrl ? "ready" : "empty"));
+  }, []);
 
   useEffect(() => { if (!gate) readLastGen().then((v) => setHasLast(!!v)).catch(() => {}); }, []);
 
@@ -102,7 +107,7 @@ export function retouch({ S, toast }) {
 
   const stopCam = () => { try { streamRef.current?.getTracks().forEach((tr) => tr.stop()); } catch {  } streamRef.current = null; };
 
-  const dropSlides = () => { slides.forEach((x) => own(x.url)); setSlides([]); setIdx(0); setMore(false); };
+  const dropSlides = () => { slides.forEach((x) => revoke(x.url)); setSlides([]); setIdx(0); setMore(false); };
   const loadSource = (url) => {
     dropSlides(); setError(null); setElapsed(0); setLive(null);
     setSrcUrl(url); setOriginal(url); setPhase("ready");
@@ -207,7 +212,7 @@ export function retouch({ S, toast }) {
     if (job && !gate) fetch(`${VPS_PROXY}/image/edit/cancel`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job }) }).catch(() => {});
   };
 
-  const keep = () => { if (!cur?.url) return; buzz(); const next = cur.url; slides.forEach((x) => { if (x.url !== next) own(x.url); }); setSlides([]); setIdx(0); setMore(false); setSrcUrl(next); setPrompt(""); setError(null); setPhase("ready"); };
+  const keep = () => { if (!cur?.url) return; buzz(); const next = cur.url; slides.forEach((x) => { if (x.url !== next) revoke(x.url); }); setSlides([]); setIdx(0); setMore(false); setSrcUrl(next); setPrompt(""); setError(null); setPhase("ready"); };
   const revert = () => { buzz(); dropSlides(); setSrcUrl(original); setError(null); setPhase("ready"); };
   const onSlidesScroll = (e) => { const el = e.currentTarget; const n = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (n !== idx && n >= 0 && n < slides.length) setIdx(n); };
 
@@ -224,7 +229,7 @@ export function retouch({ S, toast }) {
   const isDone = phase === "done" && result;
 
   return html`<div class="ms-stage z-20 bg-base-100 flex flex-col">
-    <${Lightbox} open=${screen === "view" && !!(isDone ? cur?.url : srcUrl)} src=${isDone ? cur?.url : srcUrl} alt=${prompt} onClose=${() => S.screen.set(null)} />
+    <${Lightbox} open=${screen === "view" && !!(isDone ? cur?.url : srcUrl)} slides=${isDone ? slides : null} src=${isDone ? null : srcUrl} index=${idx} onIndex=${setIdx} alt=${prompt} onClose=${() => S.screen.set(null)} />
     <${HistorySheet} id="hist-edit" open=${screen === "hist"} onClose=${() => S.screen.set(null)} items=${hist} onPick=${setPrompt} t=${t} locale=${loc} />
     <input ref=${fileRef} type="file" accept="image/*" class="hidden" aria-hidden="true" onChange=${onFile} />
 

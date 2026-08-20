@@ -222,6 +222,14 @@ export default [
       await h.back(); await h.wait(500);
       h.expect((await h.count("[data-liked-tile]")) === 3, "системний Back не повернув сітку лайків");
       h.expect((await h.attr('[data-tab="liked"]', "aria-current")) === "page", "Back вискочив із таба лайків");
+      
+      await h.tap("[data-liked-tile]"); await h.wait(600);
+      await h.tap("[data-clean]"); await h.wait(400);
+      h.expect((await h.count("nav[data-dock]")) === 0, "чистий екран не увімкнувся в лайковій стрічці");
+      await h.back(); await h.wait(600);
+      h.expect((await h.count("[data-liked-tile]")) === 3, "Back із чистого екрана не повернув сітку лайків");
+      h.expect((await h.count("nav[data-dock]")) === 1 && (await h.count("header.navbar")) === 1, "сітка лайків повернулась без хромованки — чистий екран пережив поверхню, яку чистив");
+      h.expect((await h.count("[data-clean-exit]")) === 0, "двері чистого екрана лишились над сіткою");
     },
   },
 ];

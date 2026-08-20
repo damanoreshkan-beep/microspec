@@ -635,7 +635,7 @@ function FeedSurface({ S, t }) {
     else if ($active.get() > 0) $restoreTo.set($active.get());        
     const root = document.documentElement;
     root.setAttribute("data-feed", "");
-    return () => root.removeAttribute("data-feed");
+    return () => { root.removeAttribute("data-feed"); S.clean.set(false); };
   }, [S]);
   useEffect(() => { void checkBlankPosters(); }, [items]);            
   useEffect(() => { if (next && active >= items.length - 3) loadSource(next, true); }, [active, items.length, next]);
@@ -646,6 +646,7 @@ function FeedSurface({ S, t }) {
     root.querySelectorAll("[data-idx]").forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, [items]);                                                        
+  
   useLayoutEffect(() => {
     if (restoreTo == null) return;
     const el = paneRef.current;
@@ -669,15 +670,14 @@ function FeedSurface({ S, t }) {
   const dive = target ? { label: targetLabel, go: () => diveTo(S, target, cur?.title) } : null;
   return html`<${Fragment}>
     <${DragReveal} underRef=${underRef} diveRef=${diveRef} backRef=${backRef} target=${target} targetLabel=${targetLabel} prev=${prev} />
+    
     <div ref=${paneRef} ...${pan} data-scroller tabindex="0" role="region" aria-label=${T(t, "tabReel")} class="fixed inset-0 z-[1] bg-black overflow-y-auto snap-y snap-mandatory overscroll-y-contain touch-pan-y will-change-transform">${body}</div>
     
     ${clean ? null : html`<${SourceIsland} S=${S} t=${t} src=${src} title=${title} subbed=${subs.some((s) => s.url === src)} depth=${frames.length}
       dive=${dive} watch=${watch ? () => openFull(S, cur) : null} openIn=${watch ? () => openExternal(watch) : null} />`}
-    
     ${suspended ? html`<${FullClip} S=${S} t=${t} />` : null}
   </${Fragment}>`;
 }
-
 
 export function reel({ S }) {
   const t = useStore(S.t), screen = useStore(S.screen);
@@ -707,7 +707,6 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, onSession, hasSe
       <button data-src-row class="flex items-center gap-2.5 flex-1 min-w-0 text-left px-2.5 py-2.5 rounded-xl sf-press" onClick=${() => onPlay(s)}>
         ${lead}
         <span class="min-w-0 flex-1">
-          
           <span data-src-title class=${`block break-words leading-snug ${active ? "font-semibold" : ""}`}>${sourceTitle(s.url, { pageTitle: s.name, max: ROW_MAX })}</span>
           ${sub ? html`<span class="block text-[0.7rem] font-mono text-base-content/70 truncate">${sub}</span>` : null}
         </span>
@@ -726,6 +725,8 @@ function PageRow({ s, active, subbed, onPlay, onToggle, onOpen, onSession, hasSe
     </form>` : null}
   </li>`;
 }
+
+
 
 
 
@@ -763,27 +764,29 @@ export function sources({ S, undo }) {
   const subbedUrls = new Set(subs.map((x) => x.url));
   const mine = groupByDomain(subs);
   const discover = groupByDomain(PRESETS.filter((p) => !subbedUrls.has(p.url)));
+
   return html`<${Fragment}>
     <div class="flex flex-col gap-4 @container">
       <button id="add-url" class="btn btn-primary rounded-2xl gap-2" onClick=${() => S.screen.set("source")}>${Icon("lucide:plus")} ${T(t, "addUrl")}</button>
-
       <div class="flex flex-col gap-2.5">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:bookmark", "text-primary")} ${T(t, "subs")}</div>
         ${mine.length
           ? mine.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => unsubscribe(s.url)} onSession=${editSession} sessions=${sessions} t=${t} key=${g.domain} />`)
           : html`<div class="text-sm text-base-content/70 px-1 py-3">${T(t, "noSubs")}</div>`}
       </div>
+
       ${discover.length ? html`<div class="flex flex-col gap-2.5">
         <div class="text-sm font-semibold px-1 flex items-center gap-1.5">${Icon("lucide:compass")} ${T(t, "discover")}</div>
         ${discover.map((g) => html`<${DomainCard} g=${g} curSrc=${curSrc} subbedUrls=${subbedUrls} onPlay=${play} onOpen=${openSite} onToggle=${(s) => subscribe(s)} t=${t} key=${g.domain} />`)}
       </div>` : null}
-
       ${watchedN > 0 ? html`<button id="clear-watched" class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70 self-center mt-2" onClick=${clearWatched} data-haptic="bump">${Icon("lucide:rotate-ccw")} ${T(t, "clearWatched", { n: watchedN })}</button>` : null}
     </div>
     ${screen === "source" ? html`<${SourceSheet} S=${S} t=${t} />` : null}
     ${screen === "session" ? html`<${SessionSheet} S=${S} t=${t} undo=${undo} />` : null}
   </${Fragment}>`;
 }
+
+
 export function liked({ S }) {
   const t = useStore(S.t), likes = useStore($likes), owner = useStore($owner);
   const sorted = [...likes].sort((a, b) => (b.ts || 0) - (a.ts || 0));

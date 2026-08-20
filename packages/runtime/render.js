@@ -820,11 +820,12 @@ const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 botto
 
 function CleanExit() {
   const loc = useStore(A.S.locale);
-  return html`<button data-clean-exit class="fixed right-3 z-30 btn btn-sm btn-circle border border-white/15 bg-black/55 text-white/85 backdrop-blur-sm"
+  
+  
+  return html`<button data-clean-exit class="fixed right-3 z-30 btn btn-ghost btn-sm btn-circle sf-frost border border-white/15 bg-black/55 text-white/85 backdrop-blur-sm"
     style="top:calc(env(safe-area-inset-top) + 0.5rem)" aria-label=${sys("cleanExit", loc)}
     onClick=${() => A.S.clean.set(false)}>${Icon("lucide:minimize-2", "text-base")}</button>`;
 }
-
 function Dock() {
   
   

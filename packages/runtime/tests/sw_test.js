@@ -84,6 +84,12 @@ Deno.test("sw manifest: a real app's shell covers document, spec, locales, runti
   assert(!m.some((u) => u.includes("brand.svg")), "brand.svg is a build input, never fetched at runtime");
 });
 
+Deno.test("sw manifest: an app's shader is discovered, not listed by name", () => {
+  for (const [id, file] of [["hoard", "./hoard.frag"], ["persona", "./presence.frag"], ["iching", "./hero.wgsl"]]) {
+    assert(manifestFor(id).includes(file), `${id}: ${file} missing from the precache — the stage is blank offline`);
+  }
+});
+
 Deno.test("sw: offline, a cached app still opens — the cache is consulted FIRST, not after a fetch fails", async () => {
   const url = "https://damanoreshkan-beep.github.io/microspec/rave/view.js";
   const { fire, calls } = loadSwCore("rave", { cached: { [url]: new Response("cached", { status: 200 }) }, onLine: false });

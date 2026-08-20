@@ -211,6 +211,29 @@ logic forced day and night apart in kind rather than in brightness: **daylight i
 night is a small crisp disc plus stars**, because in an ink palette a grey circle is a grey circle and a
 clear noon rendered as a clear midnight until the two stopped being the same object at different values.
 
+Three more, found on `hoard`'s molten heap (GLSL on `/_rt/glstage.js`) and each of them a whole render cycle:
+
+4. **A frequency is in p-units too, and p.x is TINY.** `p = (uv-0.5)*vec2(aspect,1.0)` makes the p-unit the
+   frame HEIGHT, so on a 384×832 phone `p.x` spans only ±0.23. `fbm(p*1.6)` is therefore **less than one
+   noise cell across the whole width** and renders as a flat slab with no structure in it — the same class
+   of error as the 707 px "halo", pointing the other way. The multiplier for N features across the width is
+   **N × (height/width)**, which is N × 2.17 at the reference device; a cell at frequency f is 832/f px and
+   an fbm doubles four times. State the intended feature size in PIXELS in the shader and derive the number.
+5. **`floor(coord/n)` + hash is a visible LATTICE.** Sparkles, gems, stars and dust laid out on that grid
+   read as a broken particle system, because the eye finds the alignment instantly. Jitter the point inside
+   its cell and give it a radial falloff. And gate it on the thing it belongs to: `hoard`'s glints were
+   gated on a `crest` term that is 1 everywhere ABOVE the pile, and sprinkled treasure across the empty sky.
+6. **A metal held under a flat luminance ceiling is not metal.** Gold clamped into a legibility band renders
+   as khaki: what the eye reads as metal is a few per cent of pixels going far brighter than the body ever
+   does. Let the specular terms (rim, glints) past the clamp — and **buy the licence with a height gate**,
+   so the overshoot fades out below the band where type sits (`hoard`: out by up 0.62, the amount block
+   starts at 0.65). The body's clamp, which is the actual contrast contract, stays untouched.
+
+Also from `hoard`, on the light theme: **on near-white paper a warm material must be DARKER than the paper.**
+A band of [0.58, 0.95] rendered a gold field as lemon candy; [0.50, 0.88] plus a `pow(f, 1.7)` on the body —
+so only the highlights climb — reads as gold leaf. Work the floor out from the contrast requirement rather
+than guessing: 4.5:1 against `base-content` #0A0A0C allows a floor of display **0.472**.
+
 When a genuinely new next-year pattern is relevant, do a quick trend-research pass, fold it in with restraint,
 and **update this section + the skill** so the baseline compounds.
 

@@ -1,6 +1,6 @@
 self.MS = {
   app: "tide",
-  version: "1f31181525",
+  version: "02186be019",
   precache: [
     "./",
     "./i18n/en.json",
@@ -10,6 +10,7 @@ self.MS = {
     "./index.html",
     "./manifest.json",
     "./spec.json",
+    "./tide.frag",
     "./view.js",
     "/_rt/account.js",
     "/_rt/apk.js",

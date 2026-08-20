@@ -40,8 +40,11 @@ export function manifestFor(id, { read: rd = read } = {}) {
     }
   }
 
-  if (rd(`${dir}/hero.wgsl`) != null) urls.add("./hero.wgsl");
-  if (rd(`${dir}/presence.frag`) != null) urls.add("./presence.frag");   
+  try {
+    for (const e of Deno.readDirSync(dir)) {
+      if (e.isFile && /\.(wgsl|frag)$/.test(e.name)) urls.add(`./${e.name}`);
+    }
+  } catch {  }
 
   return [...urls].sort();
 }

@@ -13,6 +13,7 @@ import { html } from "htm/preact";
 import { Fragment } from "preact";
 import { useState, useRef, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
+import { useKept } from "./kept.js";
 import { T, sys } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
@@ -79,16 +80,16 @@ export function toEditableDataURL(url) {
 export function retouch({ S, toast }) {
   const t = useStore(S.t), loc = useStore(S.locale), screen = useStore(S.screen);
   // phase: empty (source chooser) · camera (viewfinder) · ready (image + instruction) · editing · done · error
-  const [phase, setPhase] = useState(gate ? "ready" : "empty");
-  const [srcUrl, setSrcUrl] = useState(gate ? mockArt(3) : null);                 // the image currently being edited (display)
-  const [original, setOriginal] = useState(gate ? mockArt(3) : null);            // the first source loaded (for "revert")
+  const [phase, setPhase] = useKept("edit.phase", gate ? "ready" : "empty");
+  const [srcUrl, setSrcUrl] = useKept("edit.src", gate ? mockArt(3) : null);                 // the image currently being edited (display)
+  const [original, setOriginal] = useKept("edit.original", gate ? mockArt(3) : null);            // the first source loaded (for "revert")
   // SLIDES: the race returns up to K edits and they land one by one; `cur` is the one in view (Save / keep / handoff).
-  const [slides, setSlides] = useState([]);                                       // [{url, w, h, by}]
-  const [idx, setIdx] = useState(0);
-  const [more, setMore] = useState(false);                                        // the race is still delivering
+  const [slides, setSlides] = useKept("edit.slides", []);                                       // [{url, w, h, by}]
+  const [idx, setIdx] = useKept("edit.idx", 0);
+  const [more, setMore] = useKept("edit.more", false);                                        // the race is still delivering
   const cur = slides[idx] || slides[0] || null;
   const result = cur;                                                             // the name the rest of this file grew up with
-  const [prompt, setPrompt] = useState(gate ? "add falling snow, cinematic" : "");
+  const [prompt, setPrompt] = useKept("edit.prompt", gate ? "add falling snow, cinematic" : "");
   const [error, setError] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [live, setLive] = useState(null);                                          // the Space's own progress {eta, pct, step, steps}, once the worker reports it
@@ -100,9 +101,19 @@ export function retouch({ S, toast }) {
   const fileRef = useRef(), videoRef = useRef(), streamRef = useRef(null), runRef = useRef(0), blobs = useRef([]), jobRef = useRef(null), holdRef = useRef(null);
   const [hist, remember] = usePromptHistory("edit");
 
-  // Track object URLs we mint so they can be revoked on unmount (avoid leaks across many edits).
+  // Object URLs are revoked when the picture they point at is REPLACED (dropSlides / keep / a new run), never
+  // on unmount. Unmount is not the end of this screen's life: the runtime mounts one tab at a time, so a trip
+  // to Твори and back used to revoke every blob the kept state is now holding on to, and the tab returned to
+  // a row of broken images. `own()` still marks a URL as this screen's to free at the moment it is dropped.
   const own = (url) => { if (url?.startsWith?.("blob:")) blobs.current.push(url); return url; };
-  useEffect(() => () => { blobs.current.forEach((u) => { try { URL.revokeObjectURL(u); } catch { /* */ } }); }, []);
+  const revoke = (url) => { if (url?.startsWith?.("blob:")) { try { URL.revokeObjectURL(url); } catch { /* */ } blobs.current = blobs.current.filter((u) => u !== url); } };
+
+  // A run that was in flight when this tab went away cannot be resumed — unlike Твори, Онови keeps no job id
+  // in storage — and returning to a progress bar that will never move is worse than returning to the
+  // composer. Settle a stranded "editing" into whatever the kept slides actually justify.
+  useEffect(() => {
+    if (phase === "editing" && !jobRef.current) setPhase(slides.length ? "done" : (srcUrl ? "ready" : "empty"));
+  }, []);
 
   // Is there a last-generated image from Уяви to offer as a source? (same-origin shared store; see /_rt/lastgen.js)
   useEffect(() => { if (!gate) readLastGen().then((v) => setHasLast(!!v)).catch(() => {}); }, []);
@@ -126,7 +137,7 @@ export function retouch({ S, toast }) {
   const stopCam = () => { try { streamRef.current?.getTracks().forEach((tr) => tr.stop()); } catch { /* */ } streamRef.current = null; };
 
   // load a source image and go to the ready state (revoke the previous run's result blob first)
-  const dropSlides = () => { slides.forEach((x) => own(x.url)); setSlides([]); setIdx(0); setMore(false); };
+  const dropSlides = () => { slides.forEach((x) => revoke(x.url)); setSlides([]); setIdx(0); setMore(false); };
   const loadSource = (url) => {
     dropSlides(); setError(null); setElapsed(0); setLive(null);
     setSrcUrl(url); setOriginal(url); setPhase("ready");
@@ -243,7 +254,7 @@ export function retouch({ S, toast }) {
   };
 
   // keep editing: the result becomes the new base (iterative). revert: back to the untouched original.
-  const keep = () => { if (!cur?.url) return; buzz(); const next = cur.url; slides.forEach((x) => { if (x.url !== next) own(x.url); }); setSlides([]); setIdx(0); setMore(false); setSrcUrl(next); setPrompt(""); setError(null); setPhase("ready"); };
+  const keep = () => { if (!cur?.url) return; buzz(); const next = cur.url; slides.forEach((x) => { if (x.url !== next) revoke(x.url); }); setSlides([]); setIdx(0); setMore(false); setSrcUrl(next); setPrompt(""); setError(null); setPhase("ready"); };
   const revert = () => { buzz(); dropSlides(); setSrcUrl(original); setError(null); setPhase("ready"); };
   const onSlidesScroll = (e) => { const el = e.currentTarget; const n = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (n !== idx && n >= 0 && n < slides.length) setIdx(n); };
 
@@ -260,7 +271,7 @@ export function retouch({ S, toast }) {
   const isDone = phase === "done" && result;
 
   return html`<div class="ms-stage z-20 bg-base-100 flex flex-col">
-    <${Lightbox} open=${screen === "view" && !!(isDone ? cur?.url : srcUrl)} src=${isDone ? cur?.url : srcUrl} alt=${prompt} onClose=${() => S.screen.set(null)} />
+    <${Lightbox} open=${screen === "view" && !!(isDone ? cur?.url : srcUrl)} slides=${isDone ? slides : null} src=${isDone ? null : srcUrl} index=${idx} onIndex=${setIdx} alt=${prompt} onClose=${() => S.screen.set(null)} />
     <${HistorySheet} id="hist-edit" open=${screen === "hist"} onClose=${() => S.screen.set(null)} items=${hist} onPick=${setPrompt} t=${t} locale=${loc} />
     <input ref=${fileRef} type="file" accept="image/*" class="hidden" aria-hidden="true" onChange=${onFile} />
 

@@ -7,6 +7,7 @@
 import { html } from "htm/preact";
 import { useState, useRef, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
+import { useKept } from "./kept.js";
 import { T, sys } from "/_rt/i18n.js";
 import { VPS_PROXY } from "/_rt/feed.js";
 import { gate } from "/_rt/gate.js";
@@ -58,18 +59,18 @@ function mockArt(seed) {
 
 export function imagine({ S, toast }) {
   const t = useStore(S.t), loc = useStore(S.locale), screen = useStore(S.screen);
-  const [prompt, setPrompt] = useState(gate ? "northern lights over a frozen lake, cinematic, ultra detailed" : "");
-  const [phase, setPhase] = useState(gate ? "done" : "idle");                    // idle | generating | done | error
+  const [prompt, setPrompt] = useKept("make.prompt", gate ? "northern lights over a frozen lake, cinematic, ultra detailed" : "");
+  const [phase, setPhase] = useKept("make.phase", gate ? "done" : "idle");                    // idle | generating | done | error
   // SLIDES: the race returns up to K pictures and they land one by one — slide 0 at ~15s, the rest behind it.
   // {url, w, h, by, ext} each; `more` is true while the race is still running (a placeholder dot pulses).
-  const [slides, setSlides] = useState(gate ? [7, 8, 9, 10].map((seed) => ({ url: mockArt(seed), w: W, h: H, seed })) : []);
-  const [idx, setIdx] = useState(0);
-  const [more, setMore] = useState(false);
-  const [error, setError] = useState(null);
+  const [slides, setSlides] = useKept("make.slides", gate ? [7, 8, 9, 10].map((seed) => ({ url: mockArt(seed), w: W, h: H, seed })) : []);
+  const [idx, setIdx] = useKept("make.idx", 0);
+  const [more, setMore] = useKept("make.more", false);
+  const [error, setError] = useKept("make.error", null);
   const [elapsed, setElapsed] = useState(0);                                      // seconds since generation began (the live estimate)
   const [live, setLive] = useState(null);                                          // the Space's own progress {eta, pct, step, steps}, once the worker reports it
-  const [quality, setQuality] = useState("fast");                                 // "fast" (1024, ~18s) | "2k" (2048, ~32s) — speed↔quality, not pixels
-  const [aspect, setAspect] = useState("screen");                                 // screen (this phone's ratio) | square | portrait | landscape
+  const [quality, setQuality] = useKept("make.quality", "fast");                                 // "fast" (1024, ~18s) | "2k" (2048, ~32s) — speed↔quality, not pixels
+  const [aspect, setAspect] = useKept("make.aspect", "screen");                                 // screen (this phone's ratio) | square | portrait | landscape
   const [suggesting, setSuggesting] = useState(false);                            // "surprise me" prompt is being written by the AI
   const runRef = useRef(0);                                                       // guards against a stale response landing after a new run
   const jobRef = useRef(null);                                                    // the edge job in flight, so Cancel can tell the edge to stop the race
@@ -220,7 +221,7 @@ export function imagine({ S, toast }) {
 
   // Full-bleed stage: the pictures (or the living dust while they form) ARE the screen; the composer floats over.
   return html`<div class="ms-stage relative overflow-hidden bg-black">
-    <${Lightbox} open=${screen === "view" && !!cur} src=${cur?.url} alt=${prompt} onClose=${() => S.screen.set(null)} />
+    <${Lightbox} open=${screen === "view" && !!cur} slides=${slides} index=${idx} onIndex=${setIdx} alt=${prompt} onClose=${() => S.screen.set(null)} />
     <${HistorySheet} id="hist-make" open=${screen === "hist"} onClose=${() => S.screen.set(null)} items=${hist} onPick=${setPrompt} t=${t} locale=${loc} />
     <div class="absolute inset-0">
       ${phase === "done" && slides.length

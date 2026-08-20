@@ -765,8 +765,13 @@ function MoreSheet({ S, t, item, src, title, subbed, openIn, toast }) {
   const row = "btn btn-ghost justify-start gap-3 rounded-2xl w-full font-normal";
   // Save and share sit on the same line as the format they act on: two rows instead of four, and the pair
   // reads as one choice about one thing rather than as four unrelated buttons.
-  const pair = (format, label) => html`<div class="flex items-center gap-2">
-    <span class="flex-1 min-w-0 truncate text-sm font-medium pl-1">${label}</span>
+  /* Same left edge, same gap, same icon slot as the rows below. Shot 2026-08-20 and measured: the export
+     labels sat at 20px from the edge while the list labels sat at 62px, and only the list rows carried an
+     icon — one sheet speaking two visual languages, which reads as two unrelated widgets stacked. `px-4`
+     matches DaisyUI's --btn-p (1rem) so this aligns with .btn rows without hard-coding their padding twice. */
+  const pair = (format, icon, label) => html`<div class="flex items-center gap-3 px-4 py-1 rounded-2xl">
+    ${Icon(icon, "text-lg opacity-70 shrink-0")}
+    <span class="flex-1 min-w-0 truncate">${label}</span>
     ${[["save", "lucide:download"], ["share", "lucide:share-2"]].map(([mode, icon]) => {
       const key = `${format}-${mode}`;
       /* No spinner on the button, per the farm rule: a spinner is what you reach for when you have nothing
@@ -779,11 +784,11 @@ function MoreSheet({ S, t, item, src, title, subbed, openIn, toast }) {
   return html`<${Sheet} open onClose=${close} title=${T(t, "more")} icon="lucide:ellipsis">
     <div class="flex flex-col gap-2">
       ${item ? html`<${Fragment}>
-        ${pair("gif", T(t, "expGif"))}
-        ${pair("mp4", T(t, "expVideo"))}
+        ${pair("gif", "lucide:image", T(t, "expGif"))}
+        ${pair("mp4", "lucide:video", T(t, "expVideo"))}
         ${/* The wait is real (a download and a transcode on our box), so it is STATED rather than hidden
               behind a control that simply does not respond for half a minute. */""}
-        ${busy ? html`<div data-exp-busy class="text-xs text-muted pl-1">${T(t, "expBusy")} ${T(t, busy.startsWith("mp4") ? "expVideo" : "expGif")}</div>` : null}
+        ${busy ? html`<div data-exp-busy class="text-xs text-muted px-4">${T(t, "expBusy")} ${T(t, busy.startsWith("mp4") ? "expVideo" : "expGif")}</div>` : null}
         <div class="h-px bg-base-content/10 my-1"></div>
       </${Fragment}>` : null}
       ${/* Clean screen. A reel is the one surface where the chrome is genuinely in the way — it floats over

@@ -38,12 +38,12 @@ void main(){
   float w2 = fbm(q*1.7 + vec2(w1*0.9, -w1*0.6) + vec2(0.0, time*0.021));
   float body = fbm(q*0.8 + vec2(w2*1.1, w1*0.7));
 
-  vec2 tuv = clamp(vec2(0.5) + vec2(w2-0.5, body-0.5)*0.75, 0.02, 0.98);
+  vec2 tuv = clamp(vec2(0.35 + 0.30*body, 0.35 + 0.30*w2), 0.06, 0.94);
   vec3 c1 = texture(tex, tuv).rgb;
-  vec3 c2 = texture(tex, clamp(tuv.yx + vec2(0.13, -0.11), 0.02, 0.98)).rgb;
-  vec3 c3 = texture(tex, clamp(vec2(1.0)-tuv + vec2(-0.07, 0.09), 0.02, 0.98)).rgb;
-  float m = fract(facet + 0.33*w1);
-  vec3 pal = mix(mix(c1, c2, smoothstep(0.0, 0.5, m)), c3, smoothstep(0.5, 1.0, m));
+  vec3 c2 = texture(tex, clamp(vec2(1.0) - tuv, 0.06, 0.94)).rgb;
+  float m = clamp(0.5 + 0.5*sin(6.283*(facet + 0.25*w1)), 0.0, 1.0);
+  vec3 pal = mix(c1, c2, m);
+  pal = mix(vec3(luma(pal)), pal, mix(0.34, 0.11, lite));
   vec3 neutral = mix(vec3(0.16, 0.17, 0.20), vec3(0.90, 0.91, 0.94), lite);
   vec3 col = mix(neutral, pal, ready*0.85);
 
@@ -55,8 +55,8 @@ void main(){
   float base = mix(0.165, 0.93, lite);
   float lo = mix(0.10, 0.64, lite), hi = mix(0.32, 0.97, lite);
   float shade = base
-    + (body - 0.5)*mix(0.205, 0.135, lite)
-    + laminae*mix(0.150, 0.098, lite)
+    + (body - 0.5)*mix(0.205, 0.185, lite)
+    + laminae*mix(0.150, 0.145, lite)
     + bloom + grain;
   float target = clamp(shade, lo, hi);
   float l = max(luma(col), 1e-3);

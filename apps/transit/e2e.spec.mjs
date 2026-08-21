@@ -312,11 +312,61 @@ export default [
     },
   },
 
-  // ── синастрія (був apps/compat, злитий як вкладка) ───────────────────────────────────────────────
+  // ── синастрія: дві карти, невідомий час, і повзунок, що робить цю невідомість видимою ──────────
+  //
+  // Числа тут пораховані наперед (packages/runtime/synastry.js на мок-датах 1992-03-22 × 1990-07-15) і
+  // саме тому вони чогось варті: гейт ловить не «щось відрендерилось», а зміну самої моделі.
   {
-    name: "вкладка сумісності монтується і показує читання", run: async (h) => {
-      await h.click('[data-tab="match"]'); await h.wait(500);
-      h.expect((await h.bodyText()).trim().length > 40, "вкладка сумісності порожня");
+    name: "сумісність: партнер стоїть ПЕРШИМ, і в полях, і в картках", run: async (h) => {
+      await h.click('[data-tab="match"]'); await h.wait(600);
+      h.expect((await h.count("[data-date-b] + [data-date-a]")) === 1, "поля дат не в порядку партнер→ти");
+      h.expect((await h.count("[data-person-b] + [data-person-a]")) === 1, "картки не в порядку партнер→ти");
+    },
+  },
+  {
+    name: "сумісність: індекс і контакти пораховані з реальних довгот", run: async (h) => {
+      await h.click('[data-tab="match"]'); await h.wait(600);
+      h.expect((await h.text("[data-overall]")).trim() === "83", "індекс на мок-датах має бути 83");
+      const n = await h.count("[data-contact]");
+      h.expect(n > 0 && n <= 5, `контактів ${n}, очікувалось 1..5`);
+    },
+  },
+  {
+    // Те, заради чого повзунок існує: Місяць змінює знак усередині доби народження у 43.8% випадків, тож
+    // без часу народження його знак — не факт про людину. У мок-парі це стосується ТЕБЕ, а не партнера.
+    name: "сумісність: невизначений Місяць позначено там, де він справді невизначений", run: async (h) => {
+      await h.click('[data-tab="match"]'); await h.wait(600);
+      h.expect((await h.count("[data-person-a] [data-moon-open]")) === 1, "твій Місяць рухомий, але не позначений");
+      h.expect((await h.count("[data-person-b] [data-moon-open]")) === 0, "Місяць партнера позначено помилково");
+    },
+  },
+  {
+    name: "сумісність: повзунок часу перераховує карту наживо", run: async (h) => {
+      await h.click('[data-tab="match"]'); await h.wait(600);
+      await h.type('[data-dial-b] input[type=range]', "1440"); await h.wait(400);
+      h.expect((await h.text("[data-overall]")).trim() === "74", "зсув партнера на +24 год не перерахував індекс");
+      // +24 год від полудня — це той самий годинник наступної доби, тож саме позначка дня доводить зсув.
+      h.expect((await h.text("[data-dial-b]")).includes("+1"), "зсув на добу не показано в підписі");
+      await h.type('[data-dial-b] input[type=range]', "0"); await h.wait(400);
+      h.expect((await h.text("[data-overall]")).trim() === "83", "повернення повзунка не повернуло індекс");
+    },
+  },
+  {
+    name: "сумісність: календар відкривається, гортає роки і закривається на Back", run: async (h) => {
+      await h.click('[data-tab="match"]'); await h.wait(600);
+      await h.tap("[data-date-b]"); await h.wait(400);
+      h.expect((await h.prop("#calsheet", "open")) === true, "календар не відкрився");
+      await h.click("[data-cal-title]"); await h.wait(250);
+      h.expect((await h.count("[data-cal-year]")) > 0, "заголовок не відкрив сітку років");
+      await h.back(); await h.wait(400);
+      h.expect((await h.prop("#calsheet", "open")) !== true, "Back не закрив календар");
+    },
+  },
+  {
+    name: "сумісність: трактування рендериться як текст, а не як скелет", run: async (h) => {
+      await h.click('[data-tab="match"]'); await h.wait(600);
+      h.expect((await h.count("[data-reading]")) === 1, "немає блоку трактування");
+      h.expect((await h.text("[data-reading]")).length > 200, "трактування підозріло коротке");
     },
   },
 ];

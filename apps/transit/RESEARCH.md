@@ -550,3 +550,133 @@ inside the zodiac ring (soft = success hue solid, hard = error hue dashed, conju
 nature never reads on colour alone) and fed to the model as a canonical-English block whose signature is the
 per-locale cache key. The sheet is history-backed, skeleton-while-loading, 12 s fail-open with retry, and a
 fixed reading under the gate for deterministic CI shots.
+
+# Part IV — synastry: two charts, and a time nobody knows (2026-08-21)
+
+The compatibility tab shipped as the crudest thing in the app: it took two birth dates, computed each
+person's Sun/Moon/Mercury/Venus/Mars at noon UTC, threw the longitudes away with `signOf`, and scored the
+pair by SIGN DISTANCE. Three separate problems came out of that one shortcut, and they are worth separating
+because only one of them is about astrology.
+
+## 17. The degree inside the sign was being computed and then discarded
+
+Sign distance cannot tell 1° Cancer from 29° Cancer. A pair one degree off an exact trine and a pair
+twenty-eight degrees off scored the same number, because both were "four signs apart". The ephemeris was
+already producing the real longitudes; `signOf` dropped them on the floor one line later.
+
+`contacts(A, B)` in `packages/runtime/synastry.js` now measures the aspect between the longitudes and keeps
+the distance from exact. It is a CROSS product, not a half-matrix: A.Sun–B.Sun is a real contact between two
+different Suns, and A.Venus–B.Mars is a different claim from B.Venus–A.Mars.
+
+## 18. Orbs belong to the planets, not to the aspects
+
+VERIFIED, and it is the one place synastry parts company with `aspects.js`. Deborah Houlding, tracing the
+classical use of aspects, is explicit that per-aspect orbs are recent:
+
+> "Only within the last century have orbs come to be determined by the nature of the aspect rather than the
+> planets involved, a simplifying process which fails to accept that some planets have a stronger influence
+> than others."
+> — [The Classical Origin and Traditional Use of Aspects](https://www.skyscript.co.uk/aspects.html)
+
+The older model gives each PLANET an orb, and two planets are in aspect when their distance from exact is
+inside the sum of their two MOIETIES (each planet's orb radius). Dariot's table as Houlding reproduces it,
+itself from Al-Biruni — read from the primary source, not taken from the research pass:
+
+| | Sun | Moon | Mercury | Venus | Mars | Jupiter | Saturn |
+|---|---|---|---|---|---|---|---|
+| orb radius | 15° | 12° | 7° | 7° | 8° | 9° | 9° |
+| **moiety** | **7½°** | **6°** | **3½°** | **3½°** | **4°** | **4½°** | **4½°** |
+
+So Sun–Moon reaches 13½° and Mercury–Venus only 7°. That is the substantive claim and it is why the model is
+worth adopting: the luminaries carry further than the small personal planets, which per-aspect orbs cannot
+express. Houlding also records that the sources disagree among themselves — 12° for everything, 15°, the
+mean of the two planets, Ptolemy's 5° — so this is ONE documented system, named and cited in the code,
+never "the" traditional orb.
+
+`aspects.js` is deliberately left alone: transit orbs are already their own question (§7), and one module
+changing its mind about what a trine is would be worse than two modules being explicit about why they
+differ.
+
+**The three modern planets have no moiety**, because the tradition ended before they were found. There is no
+honest number to invent for them, and that — not screen space — is why the tab reads five bodies and stops.
+
+## 19. Which aspects, and the quincunx
+
+The five Ptolemaic aspects only. Same source: the semisextile "was dismissed as too weak to be of noticeable
+influence", and the inconjunct/quincunx named the ABSENCE of an aspect — *aversum*, "turned away from",
+*asyndeton*, "unconnected". Modern relationship astrology does read the quincunx, and reads it as constant
+adjustment, but that is a 20th-century reinterpretation of aversion rather than received technique. Shipping
+it would be asserting a modern school as the tradition, which is the one thing §8's rules forbid.
+
+## 20. There is no traditional basis for a compatibility percentage — so the ring says so
+
+VERIFIED, and this is the finding the tab most needed. Classical judgement of an aspect turns on the nature,
+dignity, reception and condition of the planets involved: a square between two well-placed planets is not
+simply bad, and a trine to an afflicted Venus is not simply good. A single scalar erases exactly the
+conditions the tradition judges by. The numeric systems that do exist have named 20th-century authors
+(Elbert Benjamine's astrodynes) or are closed scoring inside commercial software; neither is received
+technique, and no public weighting table for the commercial ones could be verified at all.
+
+The ring therefore stays — it is the screen's spine — but it is labelled in the code and in the grounding
+block as **this app's index, computed by the formula in `score()`**, and the AI prompt is forbidden from
+handing it back as a percentage of compatibility. What the tradition supplies is the CONTACTS; the number
+on top of them is ours.
+
+### Two dead bands, both found by measuring rather than by looking
+
+The index is a strength-weighted read of the contacts an axis actually has. Getting there took two measured
+corrections, and both were invisible to every gate:
+
+1. **Scoring absent pairs at neutral collapsed the whole scale.** Only ~11 of the 25 possible contacts exist
+   in a typical pair, so three dead slots in a five-pair axis dragged everything back to the midpoint. Over
+   1 500 random pairs the overall ran 54–70 and *two of the four bands became mathematically unreachable* —
+   the app would have shipped "challenge" and "harmony" as labels no user could ever see. An absent pair is
+   AVERSION, which is not a mild connection but no connection, so it now gets no vote at all.
+2. **Weighting by strength without pulling toward neutral ignored the orb it had just measured.** An axis
+   whose only contact was a 12°-wide trine scored exactly 90 — the same as an exact one — and a real pair
+   came out 90/90/90/90/86. Caught by rendering a grounding block and READING it, not by any assertion.
+   Each vote is now pulled toward neutral by its own strength before being weighted.
+
+Measured distribution after both fixes, over 3 000 random pairs: **48–84, median 65** (p05 56, p25 62,
+p75 68, p95 74). The old 48/62/78 band cuts sorted a distribution that no longer exists, so they were re-cut
+to **58/65/72**, which splits it roughly 10 · 40 · 40 · 10. The number is NOT stretched across 0–100:
+rescaling would widen the gaps between scores without adding anything that measures them.
+
+## 21. The unknown birth time, and why it became a slider
+
+This is the honest limit of the whole tab, and it was previously hidden. Measured on this ephemeris over 900
+sampled dates:
+
+| body | mean motion / 24 h | max | ± around noon |
+|---|---|---|---|
+| Sun | 0.99° | 1.02° | ±0.49° |
+| **Moon** | **13.18°** | **15.28°** | **±6.59° (±7.64° worst)** |
+| Mercury | 1.22° | 2.20° | ±0.61° |
+| Venus | 1.04° | 1.26° | ±0.52° |
+| Mars | 0.57° | 0.79° | ±0.28° |
+
+**The Moon changes SIGN inside the birth day 43.8% of the time** (394 of 900). The old screen took noon,
+drew a Moon glyph, and said nothing — so roughly one card in five was confidently showing a Moon sign that
+was a coin toss. The four other bodies are solid to about a degree and need no such warning.
+
+The standard practice for an unknown time is a **noon chart**, and the sources are consistent that it is a
+computational placeholder, not a recovered time: no Ascendant, no Midheaven, no houses, and therefore no
+HOUSE OVERLAYS — a whole standard layer of synastry that this input cannot support at all. What ships is
+honestly *planetary* synastry, and the grounding block says so in those words so the model cannot reach for
+"your seventh house of partnership", which is the single most predictable sentence in relationship astrology.
+
+So the fix is not a disclaimer, it is a control. A **±24 h slider in 30-minute steps** moves the whole chart
+and recomputes live — measured at **0.19 ms** for both charts, so there is nothing to debounce and no reason
+to make the user wait. ±24 h rather than ±12 h covers the unknown hour AND the unknown timezone, since a
+date recorded in local time can sit up to 14 hours from the UTC day. The Moon visibly moves under the
+slider; the card marks it when its sign changes inside the day around the current position. The reading
+alone settles a second behind, because each distinct chart is one paid request.
+
+## 22. The AI reading (`astroMatch`)
+
+Sixth mode in the astrology family, same contract as the other five: closed-world block, corpus supplied
+alongside every factor, `groundedCheck(2)`, cap 6 000 (worst case measured at 4 256 characters over 400
+random pairs). Two rules are specific to it, and both come from failures already measured elsewhere in this
+file — a prompt that describes an input the client does not send gets the reading the prompt described
+(§10), so the absence of houses is stated in the block AND in the prompt; and two charts invite two portraits
+back to back, which is not a synastry, so the required shape is contact-first.

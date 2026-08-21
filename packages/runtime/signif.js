@@ -726,3 +726,46 @@ Synthesise in this order: the luminaries and the Ascendant first, then the chart
   const sig = `c${CORPUS}|${houseSystem}|${modernRulers ? "m" : "t"}|${Math.round(asc)}|${Math.round(mc)}|${points.map((p) => `${p.key}${signOf(p.lon)}${p.house}${p.retro ? "r" : ""}`).join("")}`;
   return { text, sig };
 }
+
+// TWO PEOPLE, read against each other — the compatibility tab's reading.
+//
+// This block differs from its five siblings in one structural way, and the prompt leans on it: the chart is
+// only PARTLY known. A birth date without a time and place has no Ascendant, no Midheaven, no houses and
+// therefore no house overlays, which is a whole standard layer of synastry that simply is not available —
+// so the block says so in its own words rather than leaving the model to fill the silence. The reference
+// instant is stated for the same reason: "noon" is a named convention for an unknown time, not a recovered
+// one, and a reading that calls a noon position "your birth position" is making a claim the data cannot
+// carry.
+//
+// The Moon gets its own line whenever the app reports it as time-sensitive. Measured on this ephemeris: the
+// Moon moves 13.2° in a mean day (15.3° at its fastest), so a date-only Moon carries ±6.6° and it changes
+// SIGN inside the birth day 43.8% of the time. That is not a footnote — it is the difference between a
+// reading built on a Moon that is there and one built on a Moon that is a coin toss, and the model is told
+// which of the two it has.
+//
+//   people   [{ label, points: [{ key, lon }] }] — exactly two, `label` being A/B as the app names them.
+//   list     contacts() output, strongest first. Capped here; the total is stated so the model knows it is
+//            not seeing all of them.
+//   scores   score() output — supplied so the prose and the ring cannot disagree about which axis is high.
+//   moonOpen true when either Moon changes sign inside the ±window the user can still move.
+const MATCH_MAX = 5;
+export function groundSynastry({ people, list = [], scores = null, refEN, moonOpen = false, max = MATCH_MAX }) {
+  const [A, B] = people;
+  const placements = (p) => p.points.map((pt) => {
+    const s = signOf(pt.lon);
+    return `- ${p.label}: ${nameEN(pt.key)} in ${SIGN_EN[s]} (that sign ${SIGN[s].mode[en]}). ${nameEN(pt.key)}: ${BODY[pt.key].role[en]}.`;
+  }).join("\n");
+  const shown = list.slice(0, max).map((c) =>
+    `- ${A.label}'s ${nameEN(c.a)} ${c.type} ${B.label}'s ${nameEN(c.b)} — orb ${c.orb.toFixed(1)}° of a possible ${c.limit}°. The ${c.type}: ${ASPECT[c.type][en]}. ${nameEN(c.a)}: ${BODY[c.a].role[en]}. ${nameEN(c.b)}: ${BODY[c.b].role[en]}.`);
+  const axes = scores ? `INDEX (this app's own formula, not a traditional score): together ${scores.overall}, core ${scores.core}, love ${scores.love}, emotion ${scores.emotion}, mind ${scores.mind}, passion ${scores.passion}. Out of 100.` : "";
+  const text = `${HEAD}
+TWO CHARTS COMPARED, ${A.label} and ${B.label}. Birth TIMES are unknown: both charts are cast for ${refEN}, which is a convention for an unknown time and not a recovered one. There are therefore NO houses, NO Ascendant, NO Midheaven and NO house overlays here — do not mention any of them, and do not say which area of life something falls in.
+PLACEMENTS:
+${placements(A)}
+${placements(B)}
+${shown.length ? `CONTACTS BETWEEN THE TWO CHARTS (${list.length} in orb, the ${shown.length} closest shown; orbs are the two planets' traditional moieties summed, so the Sun and Moon reach further than Mercury or Venus):\n${shown.join("\n")}` : "NO CONTACT between the two charts falls inside orb. Say that plainly and read the two sets of placements against each other instead — do not invent a contact."}
+${moonOpen ? "CAUTION: at least one Moon changes sign inside the day, so its sign here is the one that holds at the stated instant and not a fact about the person. Read the Moon as provisional, and say once that a birth time would settle it.\n" : ""}${axes}
+Write about these two as a pair, not as two separate portraits. Lead with the closest contact and what it does between them; then the second; then what the placements themselves set up regardless of contact. Name each contact by both planets and the aspect. Do not restate the index numbers as a list.`;
+  const sig = `c${CORPUS}|${refEN}|${moonOpen ? "m" : "f"}|${people.map((p) => p.points.map((pt) => `${pt.key}${Math.round(pt.lon)}`).join("")).join("/")}`;
+  return { text, sig };
+}

@@ -6,6 +6,7 @@
 //   • transitRead   — ONE contact: transiting body · aspect · natal point. What is arriving, and for how long.
 //   • placementRead — ONE natal placement: body in sign, in house, with its dignity. Who this person is here.
 //   • portraitRead  — the chart AS A WHOLE: luminaries and Ascendant, chart ruler, balances, tightest aspects.
+//   • matchRead     — TWO charts against each other: the contacts between them, and what they set up.
 //
 // What makes these different from `summary` is not the prompt, it is the INPUT. The model is not asked what
 // Saturn means — it is handed the sourced significations (packages/runtime/signif.js) alongside the computed
@@ -47,6 +48,14 @@ const ASKED = reading("astro-q", "astroAsk");
 export const askedRead = ASKED.get;
 export const isAskedRead = ASKED.has;
 export const warmAskedRead = ASKED.warm;
+
+// two charts read against each other — the compatibility tab. The only reading built from an admittedly
+// PARTIAL chart: no birth time means no angles and no houses, so the block says so and the prompt forbids
+// reaching for them (signif.js groundSynastry).
+const MATCH = reading("astro-m", "astroMatch");
+export const matchRead = MATCH.get;
+export const isMatchRead = MATCH.has;
+export const warmMatchRead = MATCH.warm;
 
 // the natal chart as a whole
 const PORTRAIT = reading("astro-c", "astroChart");

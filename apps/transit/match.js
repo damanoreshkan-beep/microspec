@@ -125,7 +125,7 @@ export function match({ S, screen, openScreen, closeScreen }) {
         </div>
         <${Bars} r=${r} t=${t} />
         <${Contacts} list=${list} t=${t} />
-        <${Verdict} people=${people} list=${list} r=${r} settled=${settled} locale=${locale} t=${t} />
+        <${Verdict} people=${people} settled=${settled} locale=${locale} t=${t} />
       ` : null}
     </div>
 
@@ -138,6 +138,14 @@ export function match({ S, screen, openScreen, closeScreen }) {
 // The unknown hour, made movable. The readout is the whole point of the control — the number it shows is
 // stated in UTC because without a birth PLACE there is no local time to convert to, and quietly printing a
 // local-looking clock would be the app inventing a timezone.
+//
+// `--range-fill:0` is DaisyUI's own knob, not a style laid over it: the fill is painted by the thumb's
+// box-shadow spread, and the variable that drives it collapses to nothing at 0 while `--range-bg` keeps the
+// track. Reaching for the track variable instead is how this farm once deleted every seek bar. Turning the
+// fill off is not cosmetic — a filled range reads as a VALUE that is half-set, and on the deployed screen
+// the two bars were the heaviest thing above the ring (solid black in the light theme). This control does
+// not hold a value; it holds an OFFSET from a midpoint that means "no adjustment", so it gets a dial with a
+// notch under its centre and no fill at all.
 function TimeDial({ p, t }) {
   const shift = dayShift(p.off);
   return html`<label ...${{ [`data-dial-${p.key}`]: p.key }} class="flex flex-col gap-1">
@@ -147,8 +155,12 @@ function TimeDial({ p, t }) {
       <span class="text-xs font-mono tabular-nums text-base-content/80">${clock(p.off)}
         ${shift ? html`<span class="text-base-content/55">${shift > 0 ? "+1" : "−1"}</span>` : null} UTC</span>
     </span>
-    <input type="range" min=${-SPAN} max=${SPAN} step=${STEP} value=${p.off} aria-label=${p.label}
-      onInput=${(e) => p.setOff(Number(e.target.value))} class="range range-xs range-primary w-full" />
+    <div class="relative">
+      <input type="range" min=${-SPAN} max=${SPAN} step=${STEP} value=${p.off} aria-label=${p.label}
+        onInput=${(e) => p.setOff(Number(e.target.value))} class="range range-xs range-primary w-full"
+        style="--range-fill:0" />
+      <div class="absolute left-1/2 -bottom-0.5 w-px h-1 -translate-x-1/2 bg-base-content/30 pointer-events-none"></div>
+    </div>
   </label>`;
 }
 
@@ -213,23 +225,34 @@ function Bars({ r, t }) {
 // The contacts themselves — the evidence the index is built from, so a number on the ring can be traced to
 // the aspects that produced it. The orb is shown against the pair's OWN limit because those limits differ:
 // 3° is most of a Mercury–Venus contact and a quarter of a Sun–Moon one.
+//
+// Each body is NAMED, not just discced. The first deployed version drew `Planet` alone, which on a wheel is
+// unambiguous because position carries the identity — in a list it is an anonymous coloured dot, and three
+// rows reading "● тригон ●" told the reader nothing about which planets were in trine. The two columns are
+// laid out to match the two cards above, partner on the left and you on the right, so whose planet is whose
+// needs no caption.
 function Contacts({ list, t }) {
   if (!list.length) return html`<div data-contacts class="text-[0.8rem] text-base-content/65 py-1">${T(t, "matchNoContacts")}</div>`;
   return html`<div data-contacts class="flex flex-col gap-1.5">
     <div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "matchContacts")}</div>
-    ${list.slice(0, 5).map((c) => html`<div data-contact class="flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0" key=${`${c.a}-${c.b}-${c.type}`}>
-      <span class="shrink-0"><${Planet} body=${c.a} /></span>
-      <span class="text-[0.72rem] font-medium truncate">${T(t, ASPECT_KEY[c.type])}</span>
-      <span class="shrink-0"><${Planet} body=${c.b} /></span>
-      <span class="flex-1"></span>
-      <span class="shrink-0 text-[0.68rem] font-mono tabular-nums text-base-content/65">${c.orb.toFixed(1)}° / ${c.limit}°</span>
+    ${list.slice(0, 5).map((c) => html`<div data-contact class="flex items-center gap-1.5 py-1.5 border-b border-base-300/40 last:border-0" key=${`${c.a}-${c.b}-${c.type}`}>
+      <span class="flex items-center gap-1 min-w-0 flex-1">
+        <span class="shrink-0"><${Planet} body=${c.a} /></span>
+        <span class="text-[0.7rem] truncate">${T(t, "pl_" + c.a)}</span>
+      </span>
+      <span class="shrink-0 text-[0.66rem] font-mono uppercase tracking-wide text-muted">${T(t, ASPECT_KEY[c.type])}</span>
+      <span class="flex items-center justify-end gap-1 min-w-0 flex-1">
+        <span class="text-[0.7rem] truncate">${T(t, "pl_" + c.b)}</span>
+        <span class="shrink-0"><${Planet} body=${c.b} /></span>
+      </span>
+      <span class="shrink-0 w-16 text-right text-[0.66rem] font-mono tabular-nums text-muted">${c.orb.toFixed(1)}°/${c.limit}°</span>
     </div>`)}
   </div>`;
 }
 
 // The reading. `settled` is the offsets as they were a second after the last slider move, so the grounding
 // block and its cache signature are built from a chart the user has stopped on.
-function Verdict({ people, list, r, settled, locale, t }) {
+function Verdict({ people, settled, locale, t }) {
   const { ao, bo } = settled;   // named, not positional: `people` draws the partner first and the pair
                                 // read the other way round once already.
   const pos = [chartAt(people[0].date, bo), chartAt(people[1].date, ao)];

@@ -57,8 +57,18 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
   // 2) precompile Tailwind + daisyui → static app.css. Scan this app's HTML + view.js AND the shared runtime
   //    kit (packages/runtime/*.js) — most of the UI (daisyui components) is rendered by the runtime, so an
   //    app-only scan misses ~95% of the real classes and the page renders unstyled. sharedSources = runtime.
-  const viewJs = await Deno.readTextFile(`${srcDir}/view.js`).catch(() => "");
-  const { css, candidateCount } = await buildTailwind([html, viewJs, ...sharedSources]);
+  //    EVERY app-local .js, not just view.js. An app that splits its UI across sibling modules had those
+  //    files invisible to the scanner, so a class used ONLY there was never compiled — and the failure is
+  //    silent in the worst way, because the class name is right there in the markup and simply has no rule.
+  //    Measured: transit's calendar (datepick.js) uses `grid-cols-7`, which appears nowhere else in the
+  //    farm; it was dropped, the day grid collapsed to a single column on production, and every gate stayed
+  //    green. 36 apps ship sibling modules, so this had been quietly true for all of them — anything they
+  //    used that view.js or the runtime happened to use too survived, and anything unique to them did not.
+  const appJs = [];
+  for await (const e of Deno.readDir(srcDir)) {
+    if (e.isFile && e.name.endsWith(".js")) appJs.push(await Deno.readTextFile(`${srcDir}/${e.name}`));
+  }
+  const { css, candidateCount } = await buildTailwind([html, ...appJs, ...sharedSources]);
   await Deno.writeTextFile(`${outDir}/app.css`, css);
 
   // 3) rewrite index.html: drop tailwind/daisyui CDN + importmap + inline module; link app.css/app.js

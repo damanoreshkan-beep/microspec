@@ -134,7 +134,10 @@ export function mirage({ S, toast }) {
   };
 
   // ── the composer ──────────────────────────────────────────────────────────────────────────────────
-  const act = (id, icon, label, onClick) => html`<button data-act=${id} class="btn btn-sm rounded-full flex-1 min-w-0 gap-1.5" aria-label=${label} onClick=${onClick}>${Icon(icon, "text-base shrink-0")}<span class="truncate @max-[17rem]:hidden">${label}</span></button>`;
+  // One word, two glyphs: the hand-off keeps its name (it is the interesting action); save and share are
+  // universally iconic and stay circles, so nothing truncates at any width — under 15rem the word demotes too.
+  const act = (id, icon, label, onClick) => html`<button data-act=${id} class="btn btn-sm btn-circle shrink-0" aria-label=${label} title=${label} onClick=${onClick}>${Icon(icon, "text-base")}</button>`;
+  const handoff = (id, icon, label, onClick) => html`<button data-act=${id} class="btn btn-sm rounded-full flex-1 min-w-0 gap-1.5" aria-label=${label} onClick=${onClick}>${Icon(icon, "text-base shrink-0")}<span class="truncate @max-[15rem]:hidden">${label}</span></button>`;
   const hasResult = !!cur && st.phase === "done";
   const modeItems = M.MODES.map((m) => ({ id: m, label: T(t, "mode" + m[0].toUpperCase() + m.slice(1)), icon: ICONS[m] }));
 
@@ -177,10 +180,10 @@ export function mirage({ S, toast }) {
       <${Island} className="shrink-0 ms-side-main w-full max-w-xl mx-auto flex flex-col gap-[var(--ms-gap)]">
         <${Segmented} attr="data-mode" label=${T(t, "tabStage")} items=${modeItems} value=${mode} onChange=${(m) => M.$mode.set(m)} />
 
-        ${hasResult ? html`<div data-actions class="@container flex gap-1.5">
+        ${hasResult ? html`<div data-actions class="@container flex items-center gap-1.5">
+          ${mode === "make" ? handoff("to-edit", "lucide:wand-sparkles", T(t, "toEdit"), () => M.toEdit(cur.url)) : handoff("keep", "lucide:wand-sparkles", T(t, "keep"), M.keepEditing)}
           ${act("save", "lucide:download", T(t, "save"), save)}
           ${act("share", "lucide:share-2", T(t, "share"), share)}
-          ${mode === "make" ? act("to-edit", "lucide:wand-sparkles", T(t, "toEdit"), () => M.toEdit(cur.url)) : act("keep", "lucide:wand-sparkles", T(t, "keep"), M.keepEditing)}
         </div>` : null}
 
         <div data-field class="sf-inset rounded-[var(--ms-r-in)] p-2 flex flex-col gap-1 focus-within:ring-1 focus-within:ring-base-content/25">

@@ -92,7 +92,23 @@ export function tgvoice({ S, toast }) {
     doCopy();
   };
 
-  const langItems = [{ id: "auto", label: T(t, "langAuto") }, ...LANGS.map((l) => ({ id: l, label: MODELS[l].label }))];
+  // The full endonym reads best in the detected line, but four of them overflow the strip on a phone — so
+  // the picker shows each language's own short form (Auto in the UI locale) and the detected line keeps the
+  // full name.
+  const ABBR = { uk: "Укр", ru: "Рус", en: "Eng" };
+  const langItems = [{ id: "auto", label: T(t, "langAuto") }, ...LANGS.map((l) => ({ id: l, label: ABBR[l] }))];
+  const dlFrac = stage && stage.stage === "model" && stage.fraction != null && phase !== "working" ? stage.fraction : null;
+
+  // The model affordance lives with the EMPTY state (where you decide what to do), never beside the result's
+  // own actions: a transcript you already have does not need a "download models" button next to Copy.
+  const modelChip = dlFrac != null
+    ? html`<div data-get class="font-mono text-[var(--ms-label)] text-base-content/70 flex items-center gap-1.5">
+        ${Icon("lucide:download", "text-[color:var(--app-accent)]")}<span>${T(t, "stModel")} · ${Math.round(dlFrac * 100)}%</span></div>`
+    : ready
+      ? html`<div class="font-mono text-[var(--ms-label)] text-success flex items-center gap-1.5">${Icon("lucide:check")}<span>${T(t, "cached")}</span></div>`
+      : html`<button data-get onClick=${download} class="btn btn-sm btn-ghost gap-1.5 normal-case">
+          ${Icon("lucide:download", "text-[color:var(--app-accent)]")}
+          <span>${lang === "auto" ? T(t, "getAll") : T(t, "getModels")} · ${T(t, "modelSize", { mb: needMB })}</span></button>`;
 
   return html`<div class="h-full flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]">
     <${Segmented} items=${langItems} value=${lang} onChange=${(v) => { setLang(v); buzz(); }} variant="solid" attr="data-lang" />
@@ -112,33 +128,28 @@ export function tgvoice({ S, toast }) {
             <div data-working class="flex-1 min-h-0"><${Scramble} lines=${4} /><//>
           <//>`
         : phase === "error"
-        ? html`<${Panel} className="flex-1 min-h-0 items-center justify-center text-center">
+        ? html`<${Panel} className="flex-1 min-h-0 items-center justify-center text-center gap-3">
             ${Icon("lucide:triangle-alert", "text-2xl text-warning")}
             <p data-error class="text-base-content max-w-[42ch]">${T(t, errKey || "errFailed")}</p>
+            ${modelChip}
           <//>`
-        : html`<div data-empty class="flex-1 min-h-0 flex flex-col items-center justify-center text-center gap-2 px-4">
+        : html`<div data-empty class="flex-1 min-h-0 flex flex-col items-center justify-center text-center gap-3 px-4">
             ${Icon("lucide:audio-lines", "text-4xl text-[color:var(--app-accent)]")}
             <div class="font-semibold text-base-content">${T(t, "promptTitle")}</div>
             <div class="text-base-content/70 text-sm max-w-[34ch]">${T(t, "promptHint")}</div>
+            <div class="pt-1">${modelChip}</div>
           </div>`}
     </div>
 
-    <div class="flex items-center justify-between gap-[var(--ms-gap)]">
-      <div class="min-w-0 font-mono text-[var(--ms-label)] text-base-content/70 truncate">
-        ${ready
-          ? html`<span class="text-success">${T(t, "cached")}</span>`
-          : html`<button data-get onClick=${download} class="btn btn-sm btn-ghost gap-1.5 normal-case">
-              ${Icon("lucide:download", "text-[color:var(--app-accent)]")}
-              <span>${lang === "auto" ? T(t, "getAll") : T(t, "getModels")} · ${T(t, "modelSize", { mb: needMB })}</span></button>`}
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
-        ${phase === "result"
-          ? html`<button data-copy onClick=${doCopy} class="btn btn-sm btn-ghost" aria-label=${T(t, "copy")}>${Icon("lucide:copy")}</button>
-              <button data-share onClick=${doShare} class="btn btn-sm btn-ghost" aria-label=${T(t, "shareOut")}>${Icon("lucide:share-2")}</button>
-              <button data-again onClick=${() => { setPhase("idle"); setRes(null); }} class="btn btn-sm btn-primary gap-1.5 normal-case">${Icon("lucide:plus")}<span>${T(t, "again")}</span></button>`
-          : html`<button data-pick onClick=${() => fileRef.current?.click()} class="btn btn-sm btn-primary gap-1.5 normal-case">
-              ${Icon("lucide:folder-open")}<span>${T(t, "pick")}</span></button>`}
-      </div>
+    <div class="flex items-center justify-end gap-2">
+      ${phase === "result"
+        ? html`<button data-copy onClick=${doCopy} class="btn btn-sm btn-ghost" aria-label=${T(t, "copy")}>${Icon("lucide:copy")}</button>
+            <button data-share onClick=${doShare} class="btn btn-sm btn-ghost" aria-label=${T(t, "shareOut")}>${Icon("lucide:share-2")}</button>
+            <button data-again onClick=${() => { setPhase("idle"); setRes(null); }} class="btn btn-sm btn-primary gap-1.5 normal-case">${Icon("lucide:plus")}<span>${T(t, "again")}</span></button>`
+        : phase !== "working"
+        ? html`<button data-pick onClick=${() => fileRef.current?.click()} class="btn btn-sm btn-primary gap-1.5 normal-case">
+            ${Icon("lucide:folder-open")}<span>${T(t, "pick")}</span></button>`
+        : null}
     </div>
 
     <input ref=${fileRef} type="file" accept="audio/ogg,audio/opus,audio/*,.ogg,.oga,.opus" class="hidden" aria-hidden="true" tabindex="-1" onChange=${onFile} />

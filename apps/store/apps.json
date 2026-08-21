@@ -84,6 +84,27 @@
     "needs": []
   },
   {
+    "id": "tgvoice",
+    "title": "Голос у текст",
+    "titles": {
+      "en": "Voice to Text",
+      "uk": "Голос у текст"
+    },
+    "tagline": "Перетворює голосове повідомлення з Телеграму на текст повністю офлайн. Поділіться голосівкою просто в застосунок або відкрийте аудіофайл — мовлення розпізнається на вашому пристрої, без хмари й без акаунта: українська, російська та англійська з автоматичним вибором мови. Модель кожної мови завантажується один раз і далі працює без мережі.",
+    "taglines": {
+      "en": "Turn a Telegram voice message into text, fully offline. Share a voice note straight into the app or open an audio file; speech is recognised on your device — no cloud, no account — in Ukrainian, Russian and English, with the language chosen automatically. Each language model downloads once and then works with the network unplugged.",
+      "uk": "Перетворює голосове повідомлення з Телеграму на текст повністю офлайн. Поділіться голосівкою просто в застосунок або відкрийте аудіофайл — мовлення розпізнається на вашому пристрої, без хмари й без акаунта: українська, російська та англійська з автоматичним вибором мови. Модель кожної мови завантажується один раз і далі працює без мережі."
+    },
+    "glyph": "lucide:captions",
+    "art": "<rect width=\"18\" height=\"14\" x=\"3\" y=\"5\" rx=\"2\" ry=\"2\"/><path d=\"M7 15h4m4 0h2M7 11h2m4 0h4\"/>",
+    "bg": "#0A0A0C",
+    "fg": "#E0A458",
+    "href": "./tgvoice/",
+    "version": "1.0",
+    "category": "tools",
+    "needs": []
+  },
+  {
     "id": "homin",
     "title": "Гомін",
     "titles": {
@@ -1459,7 +1480,7 @@
     "bg": "#221C29",
     "fg": "#C9A7E0",
     "href": "./mirage/",
-    "version": "1.4",
+    "version": "1.12",
     "category": "creative",
     "needs": [
       "camera"

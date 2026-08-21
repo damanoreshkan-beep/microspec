@@ -49,6 +49,7 @@ const PROBE = {
     base64: btoa(unescape(encodeURIComponent(`<!doctype html><meta charset=utf-8><title>${T(t, "title")}</title><h1>${T(t, "title")}</h1>`))) }),
   "server.status": () => ({}),
   "server.stop": () => ({}),
+  "share.target": () => ({ kinds: [] }),
 };
 
 const stateOf = (id) => (shell.has(id) ? "ok" : shell.why(id) === ERR.staleBridge ? "stale" : "none");
@@ -85,6 +86,7 @@ function summarise(id, v, loc) {
   if (id === "wifi.info") return v.connected ? `${v.ssid || "?"} ${v.rssi}dBm` : "—";
   if (id === "cell.info") return `${(v.cells || []).length}`;
   if (id === "system.grant") return v.state;
+  if (id === "share.target") return (v.kinds || []).join(" ") || "—";
   if (id === "ble.state") {
     if (!v.supported) return "—";
     const adv = v.maxAdvLen ? ` · ${v.maxAdvLen}B${v.extAdv ? " ext" : ""}` : "";

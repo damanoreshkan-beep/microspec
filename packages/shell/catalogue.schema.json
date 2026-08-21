@@ -27,7 +27,7 @@
           },
           "capability": {
             "type": "string",
-            "enum": ["notify", "alarm", "background", "media", "wifi", "cell", "ble", "advertise", "advertise-raw", "usb", "location", "files", "system", "server", "lan"],
+            "enum": ["notify", "alarm", "background", "media", "wifi", "cell", "ble", "advertise", "advertise-raw", "usb", "location", "files", "system", "server", "lan", "share"],
             "description": "Permission group and bridge flag. The registry in docs/research/apk-sdk-plan.md §3."
           },
           "kind": {

@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 28;
+export const CATALOGUE_BRIDGE = 29;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -565,6 +565,26 @@ export const ACTIONS = {
     "capability": "media",
     "kind": "subscribe",
     "minBridge": 28,
+    "android": [],
+    "mock": {
+      "ack": true
+    }
+  },
+  "share.target": {
+    "capability": "share",
+    "kind": "call",
+    "minBridge": 29,
+    "android": [],
+    "mock": {
+      "kinds": [
+        "audio"
+      ]
+    }
+  },
+  "share.incoming": {
+    "capability": "share",
+    "kind": "subscribe",
+    "minBridge": 29,
     "android": [],
     "mock": {
       "ack": true

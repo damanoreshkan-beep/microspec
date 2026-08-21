@@ -13,20 +13,22 @@ export default [
     },
   },
   {
+    // These tests share one page session, so the state-CHANGING ones run last: this toggles the language
+    // (result stays), then «Нова» clears it. Ordered before the clear so a result is on screen to read.
+    name: "мова: фіксований вибір ховає рядок «Розпізнано», Авто показує", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-detected]")) === 1, "Авто має показувати визначену мову");
+      await h.tap('[data-lang="uk"]'); await h.wait(200);
+      h.expect((await h.count("[data-detected]")) === 0, "фіксована мова не має показувати «Розпізнано»");
+    },
+  },
+  {
     name: "нова: очищає результат і показує порожній стан з вибором файлу", run: async (h) => {
       await ready(h);
       await h.tap("[data-again]"); await h.wait(200);
       h.expect((await h.count("[data-empty]")) === 1, "не показано порожній стан після «Нова»");
       h.expect((await h.count("[data-pick]")) === 1, "немає кнопки вибору файлу в порожньому стані");
       h.expect((await h.count("[data-transcript]")) === 0, "розшифровка не зникла");
-    },
-  },
-  {
-    name: "мова: фіксований вибір ховає рядок «Розпізнано», Авто показує", run: async (h) => {
-      await ready(h);
-      h.expect((await h.count("[data-detected]")) === 1, "Авто має показувати визначену мову");
-      await h.tap('[data-lang="uk"]'); await h.wait(200);
-      h.expect((await h.count("[data-detected]")) === 0, "фіксована мова не має показувати «Розпізнано»");
     },
   },
 ];

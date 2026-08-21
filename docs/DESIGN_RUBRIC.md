@@ -279,6 +279,10 @@ Each row is a real finding no axe/overflow/e2e check could see. 🔴 fixed (hard
 | brick | 🟡 | clouds drawn as rectangles read as a rendering artefact rather than as sky | fixed — three rounded lobes per cloud, flattened underneath |
 | brick · hunt | 🔴 | the game was ~155px (brick) and ~115px (hunt) wide on a 390px phone, in a console body that shrink-wrapped its contents, so two thirds of the viewport was empty page. **This gate missed it too** — the shot was looked at more than once and read as "a console, a bit small", which is exactly what a taste note sounds like when the defect is a number | fixed — the nine-shell catalogue is gone, one device fills the view, the aperture takes the whole body; an e2e in each game now measures the body against `#view` and the canvas against the body in fractions |
 
+| mirage · farm (kit) | 🔴 | the mode strip ran out of its island at 412×430 — not the app: the deployed CSS had no `[&>button]:flex-1` and no `@container` at all, because the build's class scanner cut every token that starts with `[` or `@`. Every Segmented, the Transport's demotion and the Slider's inline caption were source-only for the life of the compat build; every gate green (CI runs source + CDN) | fixed — scanner admits `[`/`@`, build self-check + unit pin (GATE_BLINDSPOTS §15) |
+| mirage · farm (kit) | 🟠 | a fitted Segmented SQUASHED in a narrow column ("Т… · О.. · О..", then one letter each at 360×340) — two options with the same visible text | fixed — the kit measures the labelled width and demotes to glyphs (aria-label keeps the word) |
+| mirage | 🟠 | three labelled result pills truncated on the reference device | fixed — one word (the hand-off) + two glyphs (save, share) |
+
 Every finding fixed. The taste gate now has zero open debt on the reviewed apps.
 
 Strengths repeatedly noted: restrained dark palette (no gradients / emoji soup), colour = meaning carried

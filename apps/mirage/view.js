@@ -158,7 +158,8 @@ export function mirage({ S, toast }) {
     <div class="relative z-10 h-full min-h-0 flex flex-col gap-[var(--ms-gap)] ms-side">
       <${Stage}>${stage()}<//>
 
-      <${Island} className="shrink-0 ms-side-main w-full max-w-xl mx-auto flex flex-col gap-[var(--ms-gap)]">
+      <div class="ms-side-main shrink-0 flex flex-col justify-center">
+      <${Island} className="w-full max-w-xl mx-auto flex flex-col gap-[var(--ms-gap)]">
         <${Segmented} attr="data-mode" label=${T(t, "tabStage")} items=${modeItems} value=${mode} onChange=${(m) => M.$mode.set(m)} />
 
         ${hasResult ? html`<div data-actions class="@container flex items-center gap-1.5">
@@ -183,6 +184,7 @@ export function mirage({ S, toast }) {
         </div>
         ${st.error ? html`<p data-error role="alert" class="text-sm text-error px-1">${T(t, st.error)}</p>` : null}
       <//>
+      </div>
     </div>
   </${Fragment}>`;
 }

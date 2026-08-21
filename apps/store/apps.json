@@ -1461,7 +1461,9 @@
     "href": "./mirage/",
     "version": "1.4",
     "category": "creative",
-    "needs": []
+    "needs": [
+      "camera"
+    ]
   },
   {
     "id": "nova",

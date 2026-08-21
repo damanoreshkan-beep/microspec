@@ -156,3 +156,46 @@ other.
 - the light theme INVERTS the band, so a term tuned dark can read backwards light;
 - `.frag` must be on the build allow-list and named in `deploy/sw.mjs`'s precache, or it 404s in production
   and the stage silently falls back to an empty canvas.
+
+## Build pass 2026-08-21 — the three modes, and the decisions that are CLOSED
+
+The 2026-08-20 pass shipped Make alone; Edit, Read and a "Market" pill were `Not built yet`. This pass finishes
+the app. Decision log (closed — do not re-litigate):
+
+- **Not a rewrite.** `kept` semantics, `lightbox.js`, `history.js`, `mirage.frag` and the contract table
+  above carry measured behaviour; only `view.js` was structurally wrong (one mode, in-flow scroll, no e2e).
+  It was replaced; the modules were kept or split.
+- **Market is gone.** No edge route, no definition in any doc, memory or issue — a pill with nothing behind it.
+  Three modes: Make · Rework (`edit`) · Read.
+- **State and actions OUTLIVE the view — `state.js`.** Module-level atoms per mode (`$make/$edit/$read/$opts`)
+  and the actions (`conjure/rework/readPhoto/cancel/keepEditing/toEdit/toRead/readToMake/readToEdit/resume`)
+  live outside the mount, so a race keeps landing variants while the tab is away, and `useKept` is no longer
+  needed (deleted). `race.js` is ONE follow loop for `/image` and `/image/edit` (same protocol, different
+  base); `bitmap.js` the two pixel conversions; `source.js` the chooser + viewfinder shared by Edit and Read.
+- **One `fit` screen: `Stage` + an in-flow `Island`, wrapped in `.ms-side`** (hive/v2m's structure) — below
+  520px of height the picture moves BESIDE the composer instead of under it. Nothing is pinned over the stage,
+  so the composer can never cover a picture.
+- **The composer is the 2026 idiom, not a form:** one recessed field (`sf-inset`, concentric `--ms-r-in`) with
+  a toolbar row inside it — dice · history · options (make) / new photo (edit, read) · the one circular
+  primary action (which becomes Stop while a race runs). Quality (Fast / 2K, default **2K** — owner's mandate
+  2026-08-17) and Shape (screen/square/portrait/landscape) live in an options `Sheet`; the toolbar button
+  carries the quality word as its meta so the current choice is visible without opening it. Demotion, not
+  deletion: the result actions (Save · Share · Rework it / Keep reworking) drop their words under a 17rem
+  container and keep their `aria-label`.
+- **Read lands in a Sheet** (Google Lens' shape): the words need room and the only sanctioned inner scroll
+  is the Sheet's; it is history-backed (`S.screen = "read"`), re-openable from a pill on the photo, and
+  carries the hand-offs (Make from it · Rework it · Copy · Ask more).
+- **Rework compares by HOLD, not a slider.** A horizontal before/after handle fights the horizontal snap
+  scroller that carries the four variants; press-and-hold "Original" (Lightroom's idiom) has no gesture
+  conflict and is gate-testable.
+- **The working caption says the worker's REAL state.** Borrowed from 21st.dev `kokonutd/ai-text-loading`
+  (the gradient sweep clipped to the glyphs) and `kvnkld/image-generation` (label + resolution badge over the
+  forming canvas) — but it prints `translating · queued · painting n/m · elapsed` from the poll, never a cycled
+  phrase. Static under the gate (`color: transparent` would blind axe).
+- **Every result hands off:** Make → Rework it (the picture becomes the source); Rework → Keep reworking (the
+  variant becomes the base); Read → Make from it / Rework it. Blob URLs are freed when replaced, except any
+  URL another mode still shows (`stillHeld`).
+
+Verified locally: ajv · preflight · unit (the `/60` alpha rule caught a placeholder — `.text-muted` now) ·
+`sw.mjs --check` · `counts --check`. The eye pass (three shapes, both themes, each mode) is recorded below
+once the deploy lands.

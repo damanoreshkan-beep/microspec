@@ -1,247 +1,204 @@
-// mirage — the stage. ONE screen, ONE composer, and the mode is a Segmented rather than a tab.
+// mirage — the stage. ONE fit screen: a Stage (the picture, or the dust while it forms) over the GL field,
+// and ONE composer island where the mode is a Segmented. The pipeline is the screen — input (prompt · photo)
+// → a race across HF Spaces → variants → keep / save / hand off — and the mode only changes what the input
+// is. State and actions live in state.js, outside the mount, because the runtime mounts one tab at a time.
 //
-// The app this replaces (`apps/imagine`) grew three tool tabs that were near-copies of one screen: each
-// hand-rolled its own composer island, snap scroller, progress readout, error states and lightbox wiring,
-// and a fourth mode would have been a fourth copy. Domain-wise they are ONE pipeline — input (prompt · photo
-// · link) → a race across HF Spaces → variants → keep / save / hand off — so the pipeline is the screen and
-// the mode only changes what the input is. `rules/design.md` names the failure that produced the old shape:
-// reaching for `type: "tool"` because one piece is interactive, then re-implementing everything around it.
-//
-// THE THREE LAYERS, and why they are three (see RESEARCH.md):
-//   1. the FIELD — GlStage + mirage.frag, full-bleed, taking its PALETTE from the picture in view. GlStage
-//      downsamples its texture to 64px on purpose, so the picture can never BE the field; it can only tint it.
-//   2. the DUST — /_rt/dust.js, the runtime's particle cloud, while a race runs. It needs no texture: the
-//      dust gathers BEFORE any picture exists. Reused, never rebuilt — a second copy would be the hand-rolled
-//      -component failure the design rules call hard.
-//   3. the PICTURE — a real <img> at full resolution, because it is the product: it has to be saveable and
-//      shareable, and a texture is neither.
+// THE THREE LAYERS (RESEARCH.md): the FIELD (GlStage + mirage.frag, tinted by the picture in view — GlStage
+// downsamples its texture to 64px, so a picture can never BE the field), the DUST (/_rt/dust.js, while a race
+// runs; it needs no picture, the dust gathers before one exists) and the PICTURE (a real <img> — the product,
+// saveable and shareable, which a texture is not).
 import { html } from "htm/preact";
-import { useRef, useEffect } from "preact/hooks";
+import { Fragment } from "preact";
+import { useRef, useEffect, useState } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
-import { useKept } from "./kept.js";
-import { T, sys } from "/_rt/i18n.js";
-import { VPS_PROXY } from "/_rt/feed.js";
+import { T } from "/_rt/i18n.js";
 import { gate } from "/_rt/gate.js";
 import { Dust } from "/_rt/dust.js";
 import { GlStage } from "/_rt/glstage.js";
-import { Segmented, Island } from "/_rt/ui.js";
-import { toEnglish } from "/_rt/translate.js";
+import { Segmented, Island, Sheet, Stage } from "/_rt/ui.js";
 import { suggest } from "/_rt/ai-text.js";
-import { writeLastGen } from "/_rt/lastgen.js";
-import { notify, notifyAsk } from "/_rt/notify.js";
-import { holdBackground } from "/_rt/bghold.js";
+import { downloadUrl, shareFile } from "/_rt/apk.js";
 import { Lightbox } from "./lightbox.js";
 import { usePromptHistory, HistorySheet } from "./history.js";
+import { Chooser, Camera } from "./source.js";
+import * as M from "./state.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const randSeed = () => Math.floor(Math.random() * 1e9);
-const JOB_KEY = "ms:mirage:job";   // the run in flight, so a tab Android discards while we wait is picked back up
-
-// Only a spark, never shown: the model writes the actual prompt in the active locale.
-const SPARKS = ["a lighthouse in a storm", "an empty station at dawn", "a garden under snow",
-  "a city seen through rain", "a whale above a desert", "a room where the light is wrong"];
-const GATE_PROMPT = "northern lights over a frozen lake, cinematic, ultra detailed";
-
-// A deterministic stand-in for the gate: no network, same picture every run, so the shot and the e2e are
-// stable and no real GPU quota is ever spent by CI.
-const mockArt = (seed) => {
-  const h = (seed * 2654435761) % 360;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 128"><defs><radialGradient id="g" cx=".4" cy=".35" r=".8">` +
-    `<stop offset="0" stop-color="hsl(${h} 70% 62%)"/><stop offset=".55" stop-color="hsl(${(h + 40) % 360} 55% 34%)"/>` +
-    `<stop offset="1" stop-color="hsl(${(h + 200) % 360} 45% 12%)"/></radialGradient></defs>` +
-    `<rect width="96" height="128" fill="url(#g)"/></svg>`)}`;
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`;
+// Only a spark, never shown: the model writes the actual line in the active locale.
+const SPARKS = {
+  make: ["a lighthouse in a storm", "an empty station at dawn", "a garden under snow", "a city seen through rain", "a whale above a desert", "a room where the light is wrong"],
+  edit: ["turn it into an oil painting", "golden-hour light", "make it snow", "black-and-white film", "turn day into night", "a pencil sketch"],
 };
-
-const MODES = ["make", "edit", "read", "market"];
+const GATE_EDIT = "add falling snow, cinematic";
+const ICONS = { make: "lucide:sparkles", edit: "lucide:wand-sparkles", read: "lucide:scan-eye" };
+const ASPECTS = [["screen", "lucide:smartphone"], ["square", "lucide:square"], ["portrait", "lucide:rectangle-vertical"], ["landscape", "lucide:rectangle-horizontal"]];
+const tool = "btn btn-ghost btn-sm btn-circle text-base-content/70";
+// The working line sweeps like the 21st "AI text loading" idiom — a gradient clipped to the glyphs — but it
+// says the worker's REAL state (translating · queued · painting n/m), never a cycled phrase. Gate: static.
+const SHIMMER = `.mg-sh{background:linear-gradient(90deg,rgba(255,255,255,.45) 0%,#fff 50%,rgba(255,255,255,.45) 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:mgSweep 2.2s linear infinite}
+@keyframes mgSweep{from{background-position:200% 0}to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.mg-sh{animation:none}}`;
 
 export function mirage({ S, toast }) {
   const t = useStore(S.t), loc = useStore(S.locale), screen = useStore(S.screen);
+  const mode = useStore(M.$mode);
+  const make = useStore(M.$make), edit = useStore(M.$edit), read = useStore(M.$read), opts = useStore(M.$opts);
+  const st = mode === "make" ? make : mode === "edit" ? edit : read;
+  const slides = mode === "read" ? [] : st.slides, cur = slides[st.idx] || slides[0] || null;
+  const working = st.phase === "working";
+  const anyBusy = make.phase === "working" || edit.phase === "working" || read.phase === "working";
+  const shown = cur?.url || st.src || null;                      // the picture in view: the product, or the source
+  const text = mode === "make" ? st.prompt : mode === "edit" ? st.prompt : st.question;
+  const setText = (v) => M.patch(mode, mode === "read" ? { question: v } : { prompt: v });
+  const [hist, remember] = usePromptHistory(mode);
+  const [hold, setHold] = useState(false);                          // hold-to-compare: the original over the rework
+  const ctx = { t, loc };
 
-  // Kept across a tab switch — the runtime mounts one tab at a time, so plain useState would throw away a
-  // picture that cost ~30s and one of a handful of daily GPU minutes.
-  const [mode, setMode] = useKept("mirage.mode", "make");
-  const [prompt, setPrompt] = useKept("mirage.prompt", gate ? GATE_PROMPT : "");
-  const [phase, setPhase] = useKept("mirage.phase", gate ? "done" : "idle");   // idle | working | done | error
-  const [slides, setSlides] = useKept("mirage.slides", gate ? [7, 8, 9, 10].map((s) => ({ url: mockArt(s), seed: s })) : []);
-  const [idx, setIdx] = useKept("mirage.idx", 0);
-  const [error, setError] = useKept("mirage.error", null);
-  const [more, setMore] = useKept("mirage.more", false);
+  useEffect(() => { M.resume(ctx); }, []);
+  // a 1s tick only while something runs — the elapsed readout, nothing else re-renders for it
+  const [, tick] = useState(0);
+  useEffect(() => { if (!anyBusy) return; const id = setInterval(() => tick((n) => n + 1), 1000); return () => clearInterval(id); }, [anyBusy]);
 
-  const runRef = useRef(0), jobRef = useRef(null), holdRef = useRef(null), scrollerRef = useRef();
-  const [hist, remember] = usePromptHistory("mirage");
-  const cur = slides[idx] || slides[0] || null;
-  const working = phase === "working";
-
-  // The stage's live channels. A plain object read every frame by the shader — NOT state: the view must not
-  // re-render sixty times a second to animate a background.
+  // ── the field's live channels: a plain object the shader reads every frame, never state ──────────
   const chan = useRef({ busy: 0, arrive: 0, ready: 0 }).current;
-  useEffect(() => { chan.busy = working ? 1 : 0; }, [working]);
+  useEffect(() => { chan.busy = anyBusy ? 1 : 0; }, [anyBusy]);
   useEffect(() => {
-    if (!cur) { chan.arrive = 0; return; }
-    chan.arrive = 1;                                   // the bloom swells on arrival and the host eases it down
-    let raf = 0; const t0 = Date.now();
+    if (!shown) { chan.arrive = 0; return; }
+    chan.arrive = 1; const t0 = Date.now(); let raf = 0;
     const ease = () => { chan.arrive = Math.max(0, 1 - (Date.now() - t0) / 1400); if (chan.arrive > 0) raf = requestAnimationFrame(ease); };
     raf = requestAnimationFrame(ease);
     return () => cancelAnimationFrame(raf);
-  }, [cur?.url]);
-  const vary = () => [chan.busy, chan.arrive, MODES.indexOf(mode) / MODES.length, chan.ready];
+  }, [shown]);
+  const vary = () => [chan.busy, chan.arrive, M.MODES.indexOf(mode) / M.MODES.length, chan.ready];
 
-  const fail = (run, key) => { if (run === runRef.current) { setError(key); setPhase("error"); } };
-  const freeSlides = (list) => list.forEach((s) => { if (s.url?.startsWith?.("blob:")) URL.revokeObjectURL(s.url); });
-
-  // ── the race: POST starts it, short polls carry it ───────────────────────────────────────────────────
-  // Async on purpose — a cold Space can take well over a minute and nginx caps a single /feed request at 60s,
-  // so the long wait lives in polls that each return in milliseconds. Each poll says how many variants exist;
-  // each variant's bytes are one more GET, pulled the moment it lands rather than at the end.
-  const follow = async (job, run, p, seed, t0) => {
-    let got = 0; const mine = [];
-    const release = holdBackground({ title: T(t, "title"), body: T(t, "working") });
-    holdRef.current = release;
-    const finish = () => { release(); if (run === runRef.current) { setMore(false); jobRef.current = null; } try { localStorage.removeItem(JOB_KEY); } catch { /* */ } };
-    try {
-      for (let i = 0; i < 135; i++) {                                            // ~200s, outlasting the edge's own race budget
-        await sleep(1500);
-        if (run !== runRef.current) return;
-        let j; try { j = await (await fetch(`${VPS_PROXY}/image/get?job=${job}`)).json(); } catch { continue; }
-        if (run !== runRef.current || !j) return;
-        for (let n = got; n < (j.got || 0); n++) {
-          try {
-            const pr = await fetch(`${VPS_PROXY}/image/get?job=${job}&n=${n}`);
-            if (run !== runRef.current) return;
-            if (!(pr.headers.get("content-type") || "").startsWith("image/")) continue;
-            const meta = (j.slides || [])[n] || {};
-            mine.push({ url: URL.createObjectURL(await pr.blob()), w: meta.w, h: meta.h, by: meta.by, seed: seed + n });
-            setSlides([...mine]); setMore(j.status !== "done");
-            if (mine.length === 1) {
-              setIdx(0); setPhase("done");
-              writeLastGen(mine[0].url).catch(() => {});
-              if (document.visibilityState === "hidden") notify({ id: "mirage-done", title: T(t, "title"), body: T(t, "tagline"), url: "./" });
-            }
-          } catch { /* a variant that failed to transfer is skipped; the rest still land */ }
-          got = n + 1;
-        }
-        if (j.status === "done" || j.status === "error") { finish(); if (!mine.length) fail(run, "eFailed"); return; }
-      }
-      finish();
-      fetch(`${VPS_PROXY}/image/cancel`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job }) }).catch(() => {});
-      if (!mine.length) fail(run, "eTimeout");
-    } catch { finish(); fail(run, "eNetwork"); }
+  // ── actions ───────────────────────────────────────────────────────────────────────────────────────
+  const go = async () => {
+    if (working) return M.cancel(mode);
+    if (mode === "make") { remember(st.prompt); return M.conjure(ctx); }
+    if (mode === "edit") { remember(st.prompt); return M.rework(ctx); }
+    if (st.question.trim()) remember(st.question);
+    if (await M.readPhoto(ctx)) S.screen.set("read");
   };
-
-  const conjure = async () => {
-    const p = prompt.trim();
-    if (!p || working) return;
-    const seed = randSeed(), run = ++runRef.current;
-    setError(null); setMore(false);
-    holdRef.current?.(); holdRef.current = null;
-    freeSlides(slides); setSlides([]); setIdx(0); setPhase("working");
-    remember(p);
-    if (gate) { await sleep(90); if (run === runRef.current) { setSlides([seed, seed + 1, seed + 2, seed + 3].map((s) => ({ url: mockArt(s), seed: s }))); setPhase("done"); } return; }
-    notifyAsk();
-    // the Spaces understand English far better than any other input; free, keyless, cached, and fail-open
-    let pEn = p; try { pEn = await toEnglish(p); } catch { /* send the original rather than nothing */ }
-    if (run !== runRef.current) return;
-    try {
-      const ratio = Math.max(0.3, Math.min(3, (window.innerWidth || 1) / (window.innerHeight || 1)));
-      const cr = await fetch(`${VPS_PROXY}/image`, { method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: pEn, quality: "fast", aspect: "screen", ratio, seed, k: 4 }) });
-      if (run !== runRef.current) return;
-      if (!cr.ok) return fail(run, cr.status === 429 ? "eRate" : "eFailed");
-      const { job } = await cr.json();
-      if (!job) return fail(run, "eFailed");
-      jobRef.current = job;
-      const t0 = Date.now();
-      try { localStorage.setItem(JOB_KEY, JSON.stringify({ job, prompt: p, seed, ts: t0 })); } catch { /* */ }
-      await follow(job, run, p, seed, t0);
-    } catch { fail(run, "eNetwork"); }
-  };
-
-  // Resume: the edge keeps a job for five minutes, so a tab Android discarded mid-race is picked up where it
-  // was rather than showing an idle composer over a finished picture.
-  useEffect(() => {
-    if (gate) return;
-    let j = null; try { j = JSON.parse(localStorage.getItem(JOB_KEY) || "null"); } catch { /* */ }
-    if (!j?.job || Date.now() - j.ts > 240000) { try { localStorage.removeItem(JOB_KEY); } catch { /* */ } return; }
-    const run = ++runRef.current; jobRef.current = j.job;
-    setPhase("working"); setPrompt(j.prompt || "");
-    follow(j.job, run, j.prompt || "", j.seed || 0, j.ts);
-  }, []);
-
-  const cancel = () => {
-    if (!working) return;
-    runRef.current++; const job = jobRef.current; jobRef.current = null;
-    holdRef.current?.(); holdRef.current = null;
-    setMore(false); setPhase(slides.length ? "done" : "idle");
-    if (job && !gate) fetch(`${VPS_PROXY}/image/cancel`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job }) }).catch(() => {});
-  };
-
   const dream = async () => {
     if (working) return;
-    if (gate) { setPrompt(GATE_PROMPT); return; }
-    try { const out = await suggest("dream", SPARKS[Math.floor(Math.random() * SPARKS.length)], loc); if (out) setPrompt(out); } catch { /* fail-open */ }
+    if (gate) { setText(mode === "make" ? M.GATE_PROMPT : GATE_EDIT); return; }
+    const list = SPARKS[mode];
+    try { const out = await suggest(mode === "make" ? "dream" : "edit", list[Math.floor(Math.random() * list.length)], loc); if (out) setText(out); } catch { /* fail-open */ }
   };
+  const save = async () => { if (!shown) return; try { await downloadUrl(shown, `mirage-${cur?.seed || Date.now()}.${cur?.ext || "jpg"}`); toast?.(T(t, "saved")); } catch { toast?.(T(t, "eNetwork")); } };
+  const share = async () => { if (!shown) return; try { const r = await shareFile(await (await fetch(shown)).blob(), `mirage-${cur?.seed || Date.now()}.${cur?.ext || "jpg"}`); if (r === "saved") toast?.(T(t, "saved")); } catch { toast?.(T(t, "eNetwork")); } };
+  const copy = async () => { try { await navigator.clipboard.writeText(read.text); toast?.(T(t, "copied")); } catch { toast?.(T(t, "eNetwork")); } };
+  const onScroll = (e) => { const el = e.currentTarget; const n = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (n !== st.idx && n >= 0 && n < slides.length) M.patch(mode, { idx: n }); };
+  const onKey = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); go(); } };
+  const canGo = working || (mode === "make" ? !!st.prompt.trim() : mode === "edit" ? !!(st.prompt.trim() && st.src) : !!st.src);
+  const goIcon = working ? "lucide:square" : ICONS[mode];
+  const goLabel = working ? T(t, "stop") : mode === "make" ? T(t, "go") : mode === "edit" ? T(t, "rework") : T(t, st.question.trim() ? "answer" : "tell");
+  const live = M.liveOf(st.live);
+  const elapsed = st.t0 ? Math.round((Date.now() - st.t0) / 1000) : 0;
+  const [body, tags] = (() => { const lines = read.text.trim().split(/\n+/); const last = lines[lines.length - 1] || ""; const isTags = lines.length > 1 && last.split(",").length >= 3 && last.length < 120; return isTags ? [lines.slice(0, -1).join("\n"), last.split(",").map((s) => s.trim()).filter(Boolean)] : [read.text, []]; })();
 
-  const onScroll = (e) => {
-    const el = e.currentTarget;
-    const n = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
-    if (n !== idx && n >= 0 && n < slides.length) setIdx(n);
-  };
-  const onKey = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) conjure(); };
-
-  const modeItems = MODES.map((m) => ({ value: m, label: T(t, "mode" + m[0].toUpperCase() + m.slice(1)) }));
-
-  return html`<div data-mirage class="relative min-h-full">
-    <${GlStage} shader=${new URL("mirage.frag", import.meta.url)} seed=${((slides[0]?.seed || 3) % 97) / 97}
-      tex=${cur?.url || null} vary=${vary} texReady=${(r) => { chan.ready = r; }} zClass="fixed inset-0 z-0" />
-
-    <${Lightbox} open=${screen === "view" && !!cur} slides=${slides} index=${idx} onIndex=${setIdx}
-      alt=${prompt} onClose=${() => S.screen.set(null)} />
-    <${HistorySheet} id="hist-mirage" open=${screen === "hist"} onClose=${() => S.screen.set(null)}
-      items=${hist} onPick=${setPrompt} t=${t} locale=${loc} />
-
-    <div class="relative z-10 flex flex-col min-h-full">
-      <div data-stage class="relative flex-1 min-h-[54vh]">
-        ${slides.length ? html`<div data-slides ref=${scrollerRef} tabindex="0" role="region" aria-label=${T(t, "slides")}
-            class="absolute inset-0 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory outline-none"
-            style="scrollbar-width:none" onScroll=${onScroll}>
-          ${slides.map((s, i) => html`<div key=${s.url} class="w-full h-full shrink-0 snap-center flex items-center justify-center p-3">
-            <img data-result data-slide=${i} src=${s.url} alt=${prompt}
-              class="max-w-full max-h-full rounded-[var(--ms-r)] object-contain sf-raised"
-              loading=${i > 1 ? "lazy" : "eager"} onClick=${() => S.screen.set("view")} />
-          </div>`)}
-        </div>` : null}
-
-        ${working ? html`<${Dust} active=${true} progress=${more ? 0.75 : 0.35} />` : null}
-
-        ${slides.length > 1 || more ? html`<div data-dots class="absolute inset-x-0 bottom-2 flex justify-center items-center gap-1.5 pointer-events-none">
-          ${slides.map((s, i) => html`<span key=${s.url} class=${`rounded-full transition-[width,background-color] ${i === idx ? "w-4 h-1.5 bg-base-content/80" : "w-1.5 h-1.5 bg-base-content/35"}`}></span>`)}
-        </div>` : null}
+  // ── the stage ─────────────────────────────────────────────────────────────────────────────────────
+  const frame = "max-w-full max-h-full rounded-[var(--ms-r)] object-contain sf-raised";
+  const slot = (inner) => html`<div class="absolute inset-0 flex items-center justify-center p-[var(--ms-gap)] pb-6">${inner}</div>`;
+  const stage = () => {
+    if (mode !== "make" && st.phase === "empty") return html`<${Chooser} t=${t} onPick=${(u) => M.setSource(mode, u)} onCamera=${() => M.patch(mode, { phase: "camera" })} />`;
+    if (mode !== "make" && st.phase === "camera") return html`<${Camera} t=${t} loc=${loc} S=${S} reason=${T(t, mode === "read" ? "primeReasonRead" : "primeReason")}
+      onCapture=${(u) => M.setSource(mode, u)} onClose=${() => M.patch(mode, { phase: "empty" })} />`;
+    const dust = working && !slides.length ? html`<div class="absolute inset-0 rounded-[var(--ms-r)] overflow-hidden sf-raised"><${Dust} active=${true} progress=${live.pct ?? Math.min(0.9, elapsed / 40)} /></div>` : null;
+    const caption = working ? html`<div data-working class="absolute inset-x-0 bottom-[var(--ms-pad)] flex flex-col items-center gap-1 pointer-events-none text-white">
+      <div class=${`font-mono text-[0.72rem] uppercase tracking-[0.18em] tabular-nums ${gate ? "" : "mg-sh"}`}>${T(t, mode === "read" ? "reading" : live.key)} · ${fmt(elapsed)}</div>
+      ${live.step ? html`<div class="font-mono text-[0.68rem] text-white/70 tabular-nums">${live.step}</div>` : null}
+    </div>` : null;
+    if (slides.length) return html`<${Fragment}>
+      <div data-slides tabindex="0" role="region" aria-label=${T(t, "slides")} class="absolute inset-0 flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory outline-none" style="scrollbar-width:none" onScroll=${onScroll}>
+        ${slides.map((s, i) => html`<div key=${s.url} class="w-full h-full shrink-0 snap-center flex items-center justify-center p-[var(--ms-gap)] pb-6">
+          <img data-result data-slide=${i} src=${s.url} alt=${st.prompt} class=${frame} loading=${i > 1 ? "lazy" : "eager"} onClick=${() => S.screen.set("view")} />
+        </div>`)}
       </div>
+      ${mode === "edit" && hold ? slot(html`<img src=${st.original} alt=${T(t, "original")} class=${`${frame} pointer-events-none`} />`) : null}
+      ${mode === "edit" ? html`<button data-compare aria-label=${T(t, "compare")} class="absolute top-3 left-3 z-10 btn btn-sm rounded-full gap-1.5 bg-black/50 text-white border-0 font-mono uppercase tracking-wide text-[0.68rem] select-none"
+        onPointerDown=${() => setHold(true)} onPointerUp=${() => setHold(false)} onPointerLeave=${() => setHold(false)} onPointerCancel=${() => setHold(false)} onContextMenu=${(e) => e.preventDefault()}>${Icon("lucide:eye", "text-sm")}${T(t, "original")}</button>` : null}
+      ${slides.length > 1 || st.more ? html`<div data-dots class="absolute inset-x-0 bottom-1.5 flex justify-center items-center gap-1.5 pointer-events-none">
+        ${slides.map((s, i) => html`<span key=${s.url} class=${`rounded-full transition-[width,background-color] ${i === st.idx ? "w-4 h-1.5 bg-base-content/80" : "w-1.5 h-1.5 bg-base-content/35"}`}></span>`)}
+        ${st.more ? html`<span class="w-1.5 h-1.5 rounded-full bg-base-content/35 animate-pulse"></span>` : null}
+      </div>` : null}
+    </${Fragment}>`;
+    if (dust) return html`<${Fragment}>${dust}${caption}</${Fragment}>`;
+    if (st.src) return html`<${Fragment}>
+      ${slot(html`<img data-result src=${st.src} alt="" class=${`${frame} ${working ? "opacity-50" : ""} transition-opacity`} onClick=${() => S.screen.set("view")} />`)}
+      ${mode === "read" && read.text && !working ? html`<button data-read-open class="absolute bottom-[var(--ms-pad)] left-1/2 -translate-x-1/2 btn btn-sm rounded-full gap-1.5 bg-black/50 text-white border-0" onClick=${() => S.screen.set("read")}>${Icon("lucide:scan-eye", "text-base")}${T(t, "readTitle")}</button>` : null}
+      ${working ? html`<div class="absolute inset-0 flex items-center justify-center pointer-events-none"><div class="rounded-full bg-black/55 px-4 py-2 text-white"><span class=${`font-mono text-[0.72rem] uppercase tracking-[0.18em] tabular-nums ${gate ? "" : "mg-sh"}`}>${T(t, mode === "read" ? "reading" : live.key)} · ${fmt(elapsed)}</span></div></div>` : null}
+    </${Fragment}>`;
+    return null;
+  };
 
-      <${Island} ref=${null}>
-        <div class="flex flex-col gap-2">
-          <${Segmented} items=${modeItems} value=${mode} onChange=${setMode} size="sm" scroll=${true}
-            attr="data-mode" label=${T(t, "tabStage")} />
-          ${mode === "make" ? html`
-            <div class="relative">
-              <textarea id="prompt" rows="2" aria-label=${T(t, "promptPlaceholder")}
-                class="textarea textarea-bordered w-full resize-none rounded-2xl text-[0.95rem] leading-snug pr-[5.25rem] bg-base-200"
-                placeholder=${T(t, "promptPlaceholder")} value=${prompt}
-                onInput=${(e) => setPrompt(e.target.value)} onKeyDown=${onKey}></textarea>
-              <button data-dream aria-label=${T(t, "surprise")} onClick=${dream}
-                class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-10 text-base-content/70">${Icon("lucide:dices", "text-lg")}</button>
-              <button data-history aria-label=${T(t, "history")} onClick=${() => S.screen.set("hist")}
-                class="btn btn-ghost btn-sm btn-circle absolute top-1.5 right-1.5 text-base-content/70">${Icon("lucide:history", "text-lg")}</button>
-            </div>
-            <button data-go class="btn btn-primary w-full rounded-2xl" onClick=${working ? cancel : conjure} disabled=${!working && !prompt.trim()}>
-              ${working ? T(t, "cancel") : T(t, "go")}
-            </button>
-          ` : html`<p data-soon class="text-sm text-base-content/70 py-2">${T(t, "soonBody")}</p>`}
-          ${error ? html`<p data-error role="alert" class="text-sm text-error">${T(t, error)}</p>` : null}
+  // ── the composer ──────────────────────────────────────────────────────────────────────────────────
+  const act = (id, icon, label, onClick) => html`<button data-act=${id} class="btn btn-sm rounded-full flex-1 min-w-0 gap-1.5" aria-label=${label} onClick=${onClick}>${Icon(icon, "text-base shrink-0")}<span class="truncate @max-[17rem]:hidden">${label}</span></button>`;
+  const hasResult = !!cur && st.phase === "done";
+  const modeItems = M.MODES.map((m) => ({ id: m, label: T(t, "mode" + m[0].toUpperCase() + m.slice(1)), icon: ICONS[m] }));
+
+  return html`<${Fragment}>
+    <style>${SHIMMER}</style>
+    <${GlStage} shader=${new URL("mirage.frag", import.meta.url)} seed=${((cur?.seed || 3) % 97) / 97}
+      tex=${shown} vary=${vary} texReady=${(r) => { chan.ready = r; }} zClass="z-0" />
+
+    <${Lightbox} open=${screen === "view" && !!shown} slides=${slides.length ? slides : null} src=${slides.length ? null : st.src} index=${st.idx}
+      onIndex=${(i) => M.patch(mode, { idx: i })} alt=${st.prompt || ""} onClose=${() => S.screen.set(null)} />
+    <${HistorySheet} id="hist-mirage" open=${screen === "hist"} onClose=${() => S.screen.set(null)} items=${hist} onPick=${setText} t=${t} locale=${loc} />
+
+    <${Sheet} id="opts" open=${screen === "opts"} onClose=${() => S.screen.set(null)} title=${T(t, "options")} icon="lucide:sliders-horizontal" locale=${loc}>
+      <div class="flex flex-col gap-[var(--ms-gap)]">
+        <div class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${T(t, "quality")}</div>
+        <${Segmented} attr="data-q" label=${T(t, "quality")} value=${opts.quality} onChange=${(q) => M.setOpts({ quality: q })}
+          items=${[{ id: "fast", label: T(t, "qFast"), icon: "lucide:zap" }, { id: "2k", label: T(t, "q2k"), icon: "lucide:gem" }]} />
+        <div class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${T(t, "aspect")}</div>
+        <${Segmented} attr="data-aspect" label=${T(t, "aspect")} value=${opts.aspect} onChange=${(a) => M.setOpts({ aspect: a })}
+          items=${ASPECTS.map(([id, icon]) => ({ id, icon, label: T(t, "a" + id[0].toUpperCase() + id.slice(1)) }))} />
+      </div>
+    <//>
+
+    <${Sheet} id="read" open=${screen === "read"} onClose=${() => S.screen.set(null)} title=${T(t, "readTitle")} icon="lucide:scan-eye" locale=${loc}>
+      <p data-text class="text-[0.95rem] leading-relaxed whitespace-pre-line">${body}</p>
+      ${tags.length ? html`<div data-tags class="flex flex-wrap gap-1.5">${tags.map((tg) => html`<span key=${tg} class="badge badge-ghost rounded-lg font-mono text-[0.68rem] uppercase tracking-wide">${tg}</span>`)}</div>` : null}
+      <div class="flex gap-2">
+        <button data-to-make class="btn btn-primary flex-1 min-w-0 rounded-full gap-2" onClick=${() => { S.screen.set(null); M.readToMake(); }}>${Icon("lucide:sparkles", "text-lg shrink-0")}<span class="truncate">${T(t, "toMake")}</span></button>
+        <button data-to-edit class="btn flex-1 min-w-0 rounded-full gap-2" onClick=${() => { S.screen.set(null); M.readToEdit(); }}>${Icon("lucide:wand-sparkles", "text-lg shrink-0")}<span class="truncate">${T(t, "toEdit")}</span></button>
+      </div>
+      <div class="flex justify-center gap-2">
+        <button data-copy class="btn btn-ghost btn-sm rounded-full gap-2" onClick=${copy}>${Icon("lucide:copy", "text-base")}${T(t, "copy")}</button>
+        <button data-ask class="btn btn-ghost btn-sm rounded-full gap-2" onClick=${() => { S.screen.set(null); M.patch("read", { question: "", phase: "ready" }); }}>${Icon("lucide:message-circle-question", "text-base")}${T(t, "askMore")}</button>
+      </div>
+    <//>
+
+    <div class="relative z-10 h-full min-h-0 flex flex-col gap-[var(--ms-gap)] ms-side">
+      <${Stage}>${stage()}<//>
+
+      <${Island} className="shrink-0 ms-side-main w-full max-w-xl mx-auto flex flex-col gap-[var(--ms-gap)]">
+        <${Segmented} attr="data-mode" label=${T(t, "tabStage")} items=${modeItems} value=${mode} onChange=${(m) => M.$mode.set(m)} />
+
+        ${hasResult ? html`<div data-actions class="@container flex gap-1.5">
+          ${act("save", "lucide:download", T(t, "save"), save)}
+          ${act("share", "lucide:share-2", T(t, "share"), share)}
+          ${mode === "make" ? act("to-edit", "lucide:wand-sparkles", T(t, "toEdit"), () => M.toEdit(cur.url)) : act("keep", "lucide:wand-sparkles", T(t, "keep"), M.keepEditing)}
+        </div>` : null}
+
+        <div data-field class="sf-inset rounded-[var(--ms-r-in)] p-2 flex flex-col gap-1 focus-within:ring-1 focus-within:ring-base-content/25">
+          <textarea id="prompt" rows="2" aria-label=${T(t, mode === "make" ? "promptPlaceholder" : mode === "edit" ? "editPlaceholder" : "askPlaceholder")}
+            class="w-full resize-none bg-transparent border-0 outline-none px-2 pt-1 text-[0.95rem] leading-snug text-base-content placeholder:text-muted"
+            placeholder=${T(t, mode === "make" ? "promptPlaceholder" : mode === "edit" ? "editPlaceholder" : "askPlaceholder")} value=${text}
+            onInput=${(e) => setText(e.target.value)} onKeyDown=${onKey}></textarea>
+          <div class="flex items-center gap-0.5">
+            ${mode !== "read" ? html`<button data-dream aria-label=${T(t, "surprise")} class=${tool} disabled=${working} onClick=${dream}>${Icon("lucide:dices", "text-lg")}</button>` : null}
+            <button data-history aria-label=${T(t, "history")} class=${tool} onClick=${() => S.screen.set("hist")}>${Icon("lucide:history", "text-lg")}</button>
+            ${mode === "make" ? html`<button data-opts aria-label=${T(t, "options")} class="btn btn-ghost btn-sm rounded-full gap-1.5 text-base-content/70 px-2.5" onClick=${() => S.screen.set("opts")}>${Icon("lucide:sliders-horizontal", "text-lg")}<span class="font-mono text-[0.68rem] uppercase tracking-wide">${T(t, opts.quality === "2k" ? "q2k" : "qFast")}</span></button>` : null}
+            ${mode !== "make" && st.src ? html`<button data-new aria-label=${T(t, "newPhoto")} class=${tool} disabled=${working} onClick=${() => M.clearSource(mode)}>${Icon("lucide:image-plus", "text-lg")}</button>` : null}
+            <div class="flex-1"></div>
+            <button data-go aria-label=${goLabel} aria-busy=${working ? "true" : null} class="btn btn-primary btn-circle shrink-0" disabled=${!canGo} onClick=${go}>${Icon(goIcon, "text-xl")}</button>
+          </div>
         </div>
+        ${st.error ? html`<p data-error role="alert" class="text-sm text-error px-1">${T(t, st.error)}</p>` : null}
       <//>
     </div>
-  </div>`;
+  </${Fragment}>`;
 }

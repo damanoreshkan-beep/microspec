@@ -38,8 +38,11 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
   await Deno.remove(stage, { recursive: true }).catch(() => {});
   if (!bundle.success) throw new Error(`deno bundle failed:\n${dec.decode(bundle.stderr).split("\n").slice(-8).join("\n")}`);
 
-  const viewJs = await Deno.readTextFile(`${srcDir}/view.js`).catch(() => "");
-  const { css, candidateCount } = await buildTailwind([html, viewJs, ...sharedSources]);
+  const appJs = [];
+  for await (const e of Deno.readDir(srcDir)) {
+    if (e.isFile && e.name.endsWith(".js")) appJs.push(await Deno.readTextFile(`${srcDir}/${e.name}`));
+  }
+  const { css, candidateCount } = await buildTailwind([html, ...appJs, ...sharedSources]);
   await Deno.writeTextFile(`${outDir}/app.css`, css);
 
   let out = html

@@ -44,13 +44,13 @@ const SHIMMER = `.mg-sh{background:linear-gradient(90deg,rgba(255,255,255,.45) 0
 export function mirage({ S, toast }) {
   const t = useStore(S.t), loc = useStore(S.locale), screen = useStore(S.screen);
   const mode = useStore(M.$mode);
-  const make = useStore(M.$make), edit = useStore(M.$edit), read = useStore(M.$read), opts = useStore(M.$opts);
-  const st = mode === "make" ? make : mode === "edit" ? edit : read;
+  const make = useStore(M.$make), edit = useStore(M.$edit), read = useStore(M.$read), blendSt = useStore(M.$blend), opts = useStore(M.$opts);
+  const st = mode === "make" ? make : mode === "edit" ? edit : mode === "blend" ? blendSt : read;
   const slides = mode === "read" ? [] : st.slides, cur = slides[st.idx] || slides[0] || null;
   const working = st.phase === "working";
   const anyBusy = make.phase === "working" || edit.phase === "working" || read.phase === "working";
   const shown = cur?.url || st.src || st.a || null;              // the picture in view: the product, or the source
-  const text = mode === "make" ? st.prompt : mode === "edit" ? st.prompt : st.question;
+  const text = mode === "read" ? st.question : st.prompt;
   const setText = (v) => M.patch(mode, mode === "read" ? { question: v } : { prompt: v });
   const [hist, remember] = usePromptHistory(mode);
   const [hold, setHold] = useState(false);                          // hold-to-compare: the original over the rework

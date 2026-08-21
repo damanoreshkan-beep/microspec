@@ -6,14 +6,23 @@ import { gate } from "/_rt/gate.js";
 import { Island } from "/_rt/ui.js";
 import { CameraPrime } from "/_rt/camprime.js";
 import { readLastGen } from "/_rt/lastgen.js";
+import { mockArt } from "./bitmap.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
-export function Chooser({ t, onPick, onCamera }) {
+export function Chooser({ t, onPick, onCamera, compact = false }) {
   const fileRef = useRef();
   const [last, setLast] = useState(null);
-  useEffect(() => { if (!gate) readLastGen().then((v) => setLast(v?.url || null)).catch(() => {}); }, []);
+  useEffect(() => { if (gate) setLast(mockArt(13)); else readLastGen().then((v) => setLast(v?.url || null)).catch(() => {}); }, []);   
   const onFile = (e) => { const f = e.target.files?.[0]; if (f) onPick(URL.createObjectURL(f)); e.target.value = ""; };
+  if (compact) return html`<div class="absolute inset-0 flex items-center justify-center p-[var(--ms-gap)]">
+    <input ref=${fileRef} type="file" accept="image/*" class="hidden" aria-hidden="true" onChange=${onFile} />
+    <${Island} tone="frost" data-source className="flex items-center gap-1.5 rounded-full p-1.5">
+      <button data-src-upload aria-label=${T(t, "srcUpload")} title=${T(t, "srcUpload")} class="btn btn-primary btn-circle btn-sm" onClick=${() => fileRef.current?.click()}>${Icon("lucide:upload", "text-base")}</button>
+      <button data-src-camera aria-label=${T(t, "srcCamera")} title=${T(t, "srcCamera")} class="btn btn-circle btn-sm" onClick=${onCamera}>${Icon("lucide:camera", "text-base")}</button>
+      ${last ? html`<button data-src-last aria-label=${T(t, "srcLast")} title=${T(t, "srcLast")} class="btn btn-ghost btn-circle btn-sm" onClick=${() => onPick(last)}>${Icon("lucide:sparkles", "text-base")}</button>` : null}
+    <//>
+  </div>`;
   return html`<div class="absolute inset-0 flex items-center justify-center p-[var(--ms-pad)]">
     <input ref=${fileRef} type="file" accept="image/*" class="hidden" aria-hidden="true" onChange=${onFile} />
     <${Island} tone="frost" data-source className="w-full max-w-[17rem] flex flex-col gap-[var(--ms-gap)]">

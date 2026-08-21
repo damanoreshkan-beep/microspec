@@ -33,9 +33,33 @@ export const $edit = atom({ prompt: "", phase: gate ? "ready" : "empty", src: ga
   slides: [], idx: 0, more: false, error: null, live: null, t0: 0 });
 // read: empty | camera | ready | working | done | error
 export const $read = atom({ question: "", phase: gate ? "ready" : "empty", src: gate ? mockArt(5) : null, text: "", error: null });
-const loadOpts = () => { try { const v = JSON.parse(localStorage.getItem(OPTS_KEY) || "null"); if (v?.quality && v?.aspect) return v; } catch { /* */ } return { quality: "2k", aspect: "screen" }; };
+const DEFAULT_OPTS = { quality: "2k", aspect: "screen", model: { make: "auto", edit: "auto", read: "auto" } };
+const loadOpts = () => { try { const v = JSON.parse(localStorage.getItem(OPTS_KEY) || "null"); if (v?.quality && v?.aspect) return { ...DEFAULT_OPTS, ...v, model: { ...DEFAULT_OPTS.model, ...(v.model || {}) } }; } catch { /* */ } return DEFAULT_OPTS; };
 export const $opts = atom(loadOpts());
 export const setOpts = (p) => { const v = { ...$opts.get(), ...p }; $opts.set(v); try { localStorage.setItem(OPTS_KEY, JSON.stringify(v)); } catch { /* */ } };
+export const setModel = (mode, id) => setOpts({ model: { ...$opts.get().model, [mode]: id || "auto" } });
+const modelFor = (mode) => { const m = $opts.get().model[mode]; return m && m !== "auto" ? m : null; };
+
+// ── the catalogue: what the edge can run right now, with HF's word on whether each Space is alive ─────────
+// Fetched when the options sheet opens, kept 5 min; `fresh` re-probes. Under the gate a fixed list.
+const KIND = { make: "gen", edit: "edit", read: "read" };
+const GATE_MODELS = { gen: [{ id: "black-forest-labs/FLUX.1-schnell", tier: "2k", alive: true }, { id: "mrfakename/Z-Image-Turbo", tier: "fast", alive: true }, { id: "krea/Krea-2", tier: "fast", alive: null }],
+  edit: [{ id: "LPX55/Qwen-Image-Edit-2511-Turbo-Lightning", tier: "edit", alive: true }, { id: "JitRoy2024/Qwen_Img_Space", tier: "edit", alive: true }], read: [{ id: "ovh/Qwen2.5-VL-72B", tier: "vision", alive: null }] };
+export const $models = atom({ gen: [], edit: [], read: [], at: 0, loading: false, error: false });
+export async function loadModels(fresh = false) {
+  const cur = $models.get();
+  if (gate) { if (!cur.at) $models.set({ ...GATE_MODELS, at: Date.now(), loading: false, error: false }); return; }
+  if (cur.loading || (!fresh && cur.at && Date.now() - cur.at < 5 * 60_000)) return;
+  $models.set({ ...cur, loading: true, error: false });
+  try {
+    const r = await fetch(VPS_PROXY + "/image/models" + (fresh ? "?fresh=1" : ""));
+    if (!r.ok) throw new Error(String(r.status));
+    const j = await r.json();
+    $models.set({ gen: j.gen || [], edit: j.edit || [], read: j.read || [], at: Date.now(), loading: false, error: false });
+  } catch { $models.set({ ...$models.get(), loading: false, error: true }); }
+}
+// the models a mode may pick from: alive or unknown — a Space HF calls dead is never offered
+export const modelsFor = (mode) => ($models.get()[KIND[mode]] || []).filter((m) => m.alive !== false);
 
 const ATOM = { make: $make, edit: $edit, read: $read };
 export const patch = (mode, p) => { const a = ATOM[mode]; a.set({ ...a.get(), ...(typeof p === "function" ? p(a.get()) : p) }); };
@@ -108,7 +132,7 @@ export async function conjure(ctx) {
   if (run !== runs.make) return;
   const { quality, aspect } = $opts.get();
   const ratio = Math.max(0.3, Math.min(3, (window.innerWidth || 1) / (window.innerHeight || 1)));
-  await race("make", { prompt: pEn, quality, aspect, ratio, seed, k: K }, run, ctx, seed);
+  await race("make", { prompt: pEn, quality, aspect, ratio, seed, k: K, model: modelFor("make") }, run, ctx, seed);
 }
 
 // ── edit ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -128,7 +152,7 @@ export async function rework(ctx) {
   patch("edit", { live: { stage: "translate" } });
   let pEn = p; try { pEn = await toEnglish(p); } catch { /* */ }
   if (run !== runs.edit) return;
-  await race("edit", { image, prompt: pEn, seed, k: K }, run, ctx, seed);
+  await race("edit", { image, prompt: pEn, seed, k: K, model: modelFor("edit") }, run, ctx, seed);
 }
 
 // the result becomes the new base — a chain of reworks is one tap per link
@@ -156,7 +180,7 @@ export async function readPhoto(ctx) {
   if (image.length > 9_000_000) return fail("read", run, "eBig");
   const ask = ASK[ctx.loc] || ASK.en;
   try {
-    const r = await fetch(`${VPS_PROXY}/vision`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ image, prompt: q ? ask.q + q : ask.read, maxTokens: 400 }) });
+    const r = await fetch(`${VPS_PROXY}/vision`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ image, prompt: q ? ask.q + q : ask.read, maxTokens: 400, model: modelFor("read") }) });
     if (run !== runs.read) return;
     if (!r.ok) return fail("read", run, r.status === 429 ? "eRate" : r.status === 413 ? "eBig" : "eRead");
     const j = await r.json().catch(() => null);

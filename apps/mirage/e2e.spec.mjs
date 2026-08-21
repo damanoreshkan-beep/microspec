@@ -69,6 +69,28 @@ export default [
     },
   },
   {
+    // The gate seeds a fixed catalogue: Auto + the alive/unknown Spaces; a pick sticks per mode and shows on
+    // the options button; Rework and Read carry the same control with their own lists.
+    name: "модель: Авто + живі Spaces, вибір тримається по режимах", run: async (h) => {
+      await ready(h);
+      await h.click("[data-opts]"); await h.wait(300);
+      h.expect(await h.attr('[data-model="auto"]', "aria-pressed") === "true", "Авто не стандарт");
+      h.expect((await h.count("[data-model]")) >= 3, "немає списку моделей");
+      h.expect((await h.count("[data-models-check]")) === 1, "немає кнопки перевірки");
+      await h.click('[data-model="black-forest-labs/FLUX.1-schnell"]'); await h.wait(150);
+      h.expect(await h.attr('[data-model="black-forest-labs/FLUX.1-schnell"]', "aria-pressed") === "true", "модель не вибралась");
+      await h.back(); await h.wait(300);
+      h.expect(/schnell/i.test(await h.text("[data-opts]")), "вибрана модель не показана на кнопці параметрів");
+      await mode(h, "edit");
+      await h.click("[data-opts]"); await h.wait(300);
+      h.expect(await h.attr('[data-model="auto"]', "aria-pressed") === "true", "вибір Твори протік в Онови");
+      h.expect((await h.count("[data-q]")) === 0, "якість показана поза режимом Твори");
+      await h.back(); await h.wait(300);
+      await mode(h, "make");
+      await h.click("[data-opts]"); await h.wait(200); await h.click('[data-model="auto"]'); await h.wait(100); await h.back(); await h.wait(300);
+    },
+  },
+  {
     name: "«Здивуй мене» заповнює поле (гейт: без мережі)", run: async (h) => {
       await ready(h);
       await h.type("#prompt", ""); await h.wait(80);

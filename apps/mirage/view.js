@@ -96,6 +96,14 @@ export function mirage({ S, toast }) {
   const goLabel = working ? T(t, "stop") : mode === "make" ? T(t, "go") : mode === "edit" ? T(t, "rework") : T(t, st.question.trim() ? "answer" : "tell");
   const live = M.liveOf(st.live);
   const elapsed = st.t0 ? Math.round((Date.now() - st.t0) / 1000) : 0;
+  // the catalogue for this mode; a chosen model that is no longer offered falls back to auto on screen
+  const models = useStore(M.$models);
+  const modelList = M.modelsFor(mode);
+  const chosen = opts.model?.[mode] || "auto";
+  const modelSel = chosen !== "auto" && !modelList.some((m) => m.id === chosen) && models.at && !models.error ? "auto" : chosen;
+  const shortName = (id) => { const n = id.split("/").pop(); return n.length > 20 ? n.slice(0, 19) + "…" : n; };
+  const optsMeta = modelSel !== "auto" ? shortName(modelSel) : mode === "make" ? T(t, opts.quality === "2k" ? "q2k" : "qFast") : null;
+  const label = "font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70";
   const [body, tags] = (() => { const lines = read.text.trim().split(/\n+/); const last = lines[lines.length - 1] || ""; const isTags = lines.length > 1 && last.split(",").length >= 3 && last.length < 120; return isTags ? [lines.slice(0, -1).join("\n"), last.split(",").map((s) => s.trim()).filter(Boolean)] : [read.text, []]; })();
 
   // ── the stage ─────────────────────────────────────────────────────────────────────────────────────
@@ -152,12 +160,24 @@ export function mirage({ S, toast }) {
 
     <${Sheet} id="opts" open=${screen === "opts"} onClose=${() => S.screen.set(null)} title=${T(t, "options")} icon="lucide:sliders-horizontal" locale=${loc}>
       <div class="flex flex-col gap-[var(--ms-gap)]">
-        <div class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${T(t, "quality")}</div>
-        <${Segmented} attr="data-q" label=${T(t, "quality")} value=${opts.quality} onChange=${(q) => M.setOpts({ quality: q })}
-          items=${[{ id: "fast", label: T(t, "qFast"), icon: "lucide:zap" }, { id: "2k", label: T(t, "q2k"), icon: "lucide:gem" }]} />
-        <div class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${T(t, "aspect")}</div>
-        <${Segmented} attr="data-aspect" label=${T(t, "aspect")} value=${opts.aspect} onChange=${(a) => M.setOpts({ aspect: a })}
-          items=${ASPECTS.map(([id, icon]) => ({ id, icon, label: T(t, "a" + id[0].toUpperCase() + id.slice(1)) }))} />
+        ${mode === "make" ? html`<${Fragment}>
+          <div class=${label}>${T(t, "quality")}</div>
+          <${Segmented} attr="data-q" label=${T(t, "quality")} value=${opts.quality} onChange=${(q) => M.setOpts({ quality: q })}
+            items=${[{ id: "fast", label: T(t, "qFast"), icon: "lucide:zap" }, { id: "2k", label: T(t, "q2k"), icon: "lucide:gem" }]} />
+          <div class=${label}>${T(t, "aspect")}</div>
+          <${Segmented} attr="data-aspect" label=${T(t, "aspect")} value=${opts.aspect} onChange=${(a) => M.setOpts({ aspect: a })}
+            items=${ASPECTS.map(([id, icon]) => ({ id, icon, label: T(t, "a" + id[0].toUpperCase() + id.slice(1)) }))} />
+        </${Fragment}>` : null}
+        ${/* The model: the owner's choice, not the back end's. "Auto" is the measured pool; every other pill is a
+             Space the edge can run NOW — green = HF says RUNNING, grey = HF could not say; a dead one is never
+             offered. The list is fetched when this sheet opens and re-probed on demand. */""}
+        <div class="flex items-center justify-between gap-2">
+          <div class=${label}>${T(t, "model")}</div>
+          <button data-models-check aria-label=${T(t, "modelCheck")} class="btn btn-ghost btn-xs btn-circle text-base-content/70" disabled=${models.loading} onClick=${() => M.loadModels(true)}>${Icon("lucide:refresh-cw", `text-base ${models.loading ? "animate-spin" : ""}`)}</button>
+        </div>
+        <${Segmented} attr="data-model" label=${T(t, "model")} scroll value=${modelSel} onChange=${(id) => M.setModel(mode, id)}
+          items=${[{ id: "auto", label: T(t, "modelAuto"), icon: "lucide:sparkles" }, ...modelList.map((m) => ({ id: m.id, label: shortName(m.id), title: m.id, dot: m.alive ? "var(--color-success)" : "color-mix(in oklch, var(--color-base-content) 35%, transparent)", meta: m.tier === "2k" ? "2K" : null }))]} />
+        ${models.error && !modelList.length ? html`<p data-models-none class="text-sm text-error">${T(t, "modelsNone")}</p>` : null}
       </div>
     <//>
 
@@ -198,7 +218,7 @@ export function mirage({ S, toast }) {
           <div class="flex items-center gap-0.5">
             ${mode !== "read" ? html`<button data-dream aria-label=${T(t, "surprise")} class=${tool} disabled=${working} onClick=${dream}>${Icon("lucide:dices", "text-lg")}</button>` : null}
             <button data-history aria-label=${T(t, "history")} class=${tool} onClick=${() => S.screen.set("hist")}>${Icon("lucide:history", "text-lg")}</button>
-            ${mode === "make" ? html`<button data-opts aria-label=${T(t, "options")} class="btn btn-ghost btn-sm rounded-full gap-1.5 text-base-content/70 px-2.5" onClick=${() => S.screen.set("opts")}>${Icon("lucide:sliders-horizontal", "text-lg")}<span class="font-mono text-[0.68rem] uppercase tracking-wide">${T(t, opts.quality === "2k" ? "q2k" : "qFast")}</span></button>` : null}
+            <button data-opts aria-label=${T(t, "options")} class="btn btn-ghost btn-sm rounded-full gap-1.5 text-base-content/70 px-2.5" onClick=${() => { M.loadModels(); S.screen.set("opts"); }}>${Icon("lucide:sliders-horizontal", "text-lg")}${optsMeta ? html`<span class="font-mono text-[0.68rem] uppercase tracking-wide">${optsMeta}</span>` : null}</button>
             ${mode !== "make" && st.src ? html`<button data-new aria-label=${T(t, "newPhoto")} class=${tool} disabled=${working} onClick=${() => M.clearSource(mode)}>${Icon("lucide:image-plus", "text-lg")}</button>` : null}
             <div class="flex-1"></div>
             <button data-go aria-label=${goLabel} aria-busy=${working ? "true" : null} class="btn btn-primary btn-circle shrink-0" disabled=${!canGo} onClick=${go}>${Icon(goIcon, "text-xl")}</button>

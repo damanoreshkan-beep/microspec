@@ -40,4 +40,5 @@ jobs:
           path: |
             apps/tgvoice/assets/sherpa-onnx-wasm-web.js
             apps/tgvoice/assets/sherpa-onnx-wasm-web.wasm
+            apps/tgvoice/assets/sherpa-onnx-asr.js
           if-no-files-found: error

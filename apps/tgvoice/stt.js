@@ -166,23 +166,24 @@ export async function engineAvailable() {
   catch { return false; }
 }
 
-// Load the Emscripten MODULARIZE factory (EXPORT_NAME="SherpaOnnx") once. It is a classic script, not an ES
-// module, so it is injected as a <script> and read off window. locateFile points it at our asset dir.
-function loadEngine() {
-  if (enginePromise) return enginePromise;
-  enginePromise = new Promise((resolve, reject) => {
+// Two classic scripts, loaded once and read off the global: the Emscripten MODULARIZE factory
+// (`var SherpaOnnx`, EXPORT_NAME) and sherpa's high-level wrapper (which publishes `OfflineRecognizer` +
+// the `initSherpaOnnx*` helpers). locateFile points the factory at our asset dir so it finds the .wasm.
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
     const s = document.createElement("script");
-    s.src = assetURL("sherpa-onnx-wasm-web.js");
-    s.onload = async () => {
-      try {
-        const factory = globalThis.SherpaOnnx;
-        const Module = await factory({ locateFile: (p) => assetURL(p) });
-        resolve(Module);
-      } catch (e) { reject(e); }
-    };
-    s.onerror = () => reject(new Error("engine script failed"));
+    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error(`script failed: ${src}`));
     document.head.appendChild(s);
   });
+}
+
+function loadEngine() {
+  if (enginePromise) return enginePromise;
+  enginePromise = (async () => {
+    await loadScript(assetURL("sherpa-onnx-asr.js"));            // globals: OfflineRecognizer + helpers
+    await loadScript(assetURL("sherpa-onnx-wasm-web.js"));       // global: SherpaOnnx (the wasm factory)
+    return await globalThis.SherpaOnnx({ locateFile: (p) => assetURL(p) });
+  })();
   return enginePromise;
 }
 

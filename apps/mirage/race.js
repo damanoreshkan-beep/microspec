@@ -21,7 +21,7 @@ export async function startJob(base, body) {
 }
 
 // Follow a job to its end. `alive()` is the caller's staleness guard; `onLive(meta)` mirrors the worker's
-// progress; `onSlide(slide)` fires per picture as it lands. Resolves "done" | "error" | "timeout" | "stale".
+// progress; `onSlide(slide)` fires per picture as it lands. Resolves "done" | "error" | "busy" | "timeout" | "stale".
 export async function follow({ base, job, alive, onLive, onSlide }) {
   let got = 0;
   try {
@@ -42,7 +42,7 @@ export async function follow({ base, job, alive, onLive, onSlide }) {
         } catch { /* a variant that failed to transfer is skipped; the rest still land */ }
         got = n + 1;
       }
-      if (j.status === "done" || j.status === "error") return j.status;
+      if (j.status === "done" || j.status === "error") return j.status === "error" && j.error === "busy" ? "busy" : j.status;   // "busy": every Space queued out or refused — not the words, the capacity
     }
     cancelJob(base, job);   // out of polls: stop the worker, or it spends the day's quota on pictures nobody reads
     return "timeout";

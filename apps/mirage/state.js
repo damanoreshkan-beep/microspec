@@ -84,7 +84,7 @@ async function followJob(mode, job, run, ctx, seed) {
   release(); holds[mode] = null; jobs[mode] = null;
   try { localStorage.removeItem(JOB_KEY(mode)); } catch { /* */ }
   patch(mode, { more: false, live: null });
-  if (!mine.length) fail(mode, run, status === "timeout" ? "eTimeout" : "eFailed");
+  if (!mine.length) fail(mode, run, status === "timeout" ? "eTimeout" : status === "busy" ? "eBusy" : "eFailed");
 }
 
 function fail(mode, run, code) {

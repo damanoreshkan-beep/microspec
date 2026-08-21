@@ -59,6 +59,7 @@
   "eRate": "Too many at once. Wait a moment.",
   "eTimeout": "Took too long. Try again.",
   "eBig": "That photo is too large.",
+  "eBusy": "Every GPU is taken. Try again in a minute, or switch to Fast.",
   "eRead": "Could not read it. Try another photo.",
   "notifDone": "Your image is ready",
   "profTagline": "an image out of the air",

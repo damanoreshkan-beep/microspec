@@ -90,9 +90,12 @@ Measured (`curl -I -H Origin: https://dreamstudio.mooo.com`):
   release tarball **cannot be fetched directly by the page.**
 - **Hugging Face `resolve/main/…` → `access-control-allow-origin: https://dreamstudio.mooo.com`** (verified
   on `Yehor/citrinet-models-onnx`). HF is a valid direct host for a per-file ONNX.
-- The multilingual INT8 lives only in the GH release (the HF `csukuangfj/…` mirror is an LFS-pointer repo
-  with just `.gitattributes`). ⇒ to use it we either **re-host on our VPS with a CORS header** (57 MB used
-  of 217 GB free — trivially room) or push it to an HF repo we own. Per-file uk citrinet needs no re-host.
+- **All three chosen per-language models are real files on Hugging Face** (verified `tree/main`): uk
+  `Yehor/citrinet-models-onnx`, ru `csukuangfj/sherpa-onnx-zipformer-ru-int8-2025-04-20` (encoder.int8 +
+  decoder + joiner.int8 + tokens), en `csukuangfj/sherpa-onnx-moonshine-tiny-en-int8` (preprocess + encode +
+  cached/uncached decode + tokens). HF `resolve/` sends ACAO for our origin (measured on both accounts). ⇒
+  **no VPS re-hosting needed** — `stt.js` points straight at HF. (The multilingual INT8 lives only in the GH
+  release with no CORS; not used now that we take three per-language models.)
 - One-time download then **Cache Storage / IndexedDB**, fully offline after. Quota is generous (Chromium
   best-effort ~60% of disk; 130 MB nowhere near it — MDN). `navigator.storage.persist()` to resist
   eviction. **WebView cache origin is separate from Chrome's** (UNVERIFIED, worth a device check): the APK's

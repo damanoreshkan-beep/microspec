@@ -20,52 +20,45 @@ const assetURL = (f) => new URL(`./assets/${f}`, import.meta.url).href;
 export const LID_HEAD_SEC = 8;
 export const MODEL_ROOT_FS = "/models";     // where models are written inside the WASM filesystem
 
-// The three models. `type` selects the sherpa config shape; `files` are fetched once and cached. uk is a
-// NeMo CTC on Hugging Face (which sends CORS); ru/en are re-hosted on our VPS because GitHub release assets
-// send none (measured — see RESEARCH.md). Every URL must answer ACAO for our origin or the fetch is blocked.
-// `base` is filled from the runtime's VPS_PROXY host at load, so there is one place the host lives.
+// The three models. `type` selects the sherpa config shape; `files` are fetched once and cached. Every file
+// is served by Hugging Face, whose resolve/ endpoint answers ACAO for our origin (measured — GitHub release
+// assets send NO CORS, which is why the models are pulled from HF mirrors, not the sherpa releases). The
+// file KEYS are the config field names buildRecognizer() maps; `src` is the exact HF filename.
+const HF = "https://huggingface.co";
 export const MODELS = {
   uk: {
     label: "Українська", type: "nemo_ctc", approxMB: 37,
     files: {
-      model: "https://huggingface.co/Yehor/citrinet-models-onnx/resolve/main/stt_uk_citrinet_512_gamma_0_25.int8.onnx",
-      tokens: "https://huggingface.co/Yehor/citrinet-models-onnx/resolve/main/tokens_stt_uk_citrinet_512_gamma_0_25.txt",
+      model: `${HF}/Yehor/citrinet-models-onnx/resolve/main/stt_uk_citrinet_512_gamma_0_25.int8.onnx`,
+      tokens: `${HF}/Yehor/citrinet-models-onnx/resolve/main/tokens_stt_uk_citrinet_512_gamma_0_25.txt`,
     },
   },
   ru: {
-    label: "Русский", type: "transducer", approxMB: 60,
+    // Zipformer transducer; the decoder ships un-quantized (decoder.onnx), the encoder/joiner are int8.
+    label: "Русский", type: "transducer", approxMB: 71,
     files: {
-      encoder: "vps:/stt/ru-zipformer/encoder.int8.onnx",
-      decoder: "vps:/stt/ru-zipformer/decoder.int8.onnx",
-      joiner: "vps:/stt/ru-zipformer/joiner.int8.onnx",
-      tokens: "vps:/stt/ru-zipformer/tokens.txt",
+      encoder: `${HF}/csukuangfj/sherpa-onnx-zipformer-ru-int8-2025-04-20/resolve/main/encoder.int8.onnx`,
+      decoder: `${HF}/csukuangfj/sherpa-onnx-zipformer-ru-int8-2025-04-20/resolve/main/decoder.onnx`,
+      joiner: `${HF}/csukuangfj/sherpa-onnx-zipformer-ru-int8-2025-04-20/resolve/main/joiner.int8.onnx`,
+      tokens: `${HF}/csukuangfj/sherpa-onnx-zipformer-ru-int8-2025-04-20/resolve/main/tokens.txt`,
     },
   },
   en: {
-    label: "English", type: "moonshine", approxMB: 30,
+    label: "English", type: "moonshine", approxMB: 40,
     files: {
-      preprocessor: "vps:/stt/en-moonshine/preprocess.onnx",
-      encoder: "vps:/stt/en-moonshine/encode.int8.onnx",
-      uncachedDecoder: "vps:/stt/en-moonshine/uncached_decode.int8.onnx",
-      cachedDecoder: "vps:/stt/en-moonshine/cached_decode.int8.onnx",
-      tokens: "vps:/stt/en-moonshine/tokens.txt",
+      preprocessor: `${HF}/csukuangfj/sherpa-onnx-moonshine-tiny-en-int8/resolve/main/preprocess.onnx`,
+      encoder: `${HF}/csukuangfj/sherpa-onnx-moonshine-tiny-en-int8/resolve/main/encode.int8.onnx`,
+      uncachedDecoder: `${HF}/csukuangfj/sherpa-onnx-moonshine-tiny-en-int8/resolve/main/uncached_decode.int8.onnx`,
+      cachedDecoder: `${HF}/csukuangfj/sherpa-onnx-moonshine-tiny-en-int8/resolve/main/cached_decode.int8.onnx`,
+      tokens: `${HF}/csukuangfj/sherpa-onnx-moonshine-tiny-en-int8/resolve/main/tokens.txt`,
     },
   },
 };
 
 export const LANGS = Object.keys(MODELS);
 
-// vps: URLs are resolved against the one host the farm knows, so the literal never appears here.
-let VPS = "";
-async function vpsHost() {
-  if (VPS) return VPS;
-  try { ({ VPS_PROXY: VPS } = await import("/_rt/feed.js")); } catch { VPS = ""; }
-  return VPS;
-}
-async function resolveUrl(u) {
-  if (u.startsWith("vps:")) return (await vpsHost()) + u.slice(4);
-  return u;
-}
+// Every URL is already absolute (Hugging Face); kept as a seam so a future host swap is one function.
+const resolveUrl = (u) => u;
 
 // ---- decoding the voice note ------------------------------------------------
 
@@ -112,7 +105,7 @@ const CACHE = "tgvoice-models-v1";
 
 // Fetch one file, streaming progress, cached forever after the first success. Returns the bytes.
 async function fetchCached(url, onProgress) {
-  const abs = await resolveUrl(url);
+  const abs = resolveUrl(url);
   const cache = await caches.open(CACHE);
   const hit = await cache.match(abs);
   if (hit) return new Uint8Array(await hit.arrayBuffer());
@@ -140,7 +133,7 @@ export async function isModelCached(lang) {
   if (gate) return lang === "uk";
   try {
     const cache = await caches.open(CACHE);
-    for (const u of Object.values(MODELS[lang].files)) if (!(await cache.match(await resolveUrl(u)))) return false;
+    for (const u of Object.values(MODELS[lang].files)) if (!(await cache.match(resolveUrl(u)))) return false;
     return true;
   } catch { return false; }
 }

@@ -44,5 +44,9 @@ export async function buildTailwind(sourceTexts, { plugins = ["daisyui"], base =
   // The one failure this build has actually had: a token with a CSS variable inside brackets scanned wrong and
   // its rule was silently absent. If the sources use the farm's radius token, the stylesheet must carry it.
   if (candidates.includes("rounded-[var(--ms-r)]") && !css.includes("var(--ms-r)")) throw new Error("tailwind: rounded-[var(--ms-r)] scanned but not compiled — the token system would ship absent");
+  // The second: tokens that START with `[` or `@` (the kit's child variants and container queries) were cut
+  // at their first letter and silently absent from every deployed app (2026-08-21).
+  if (candidates.includes("@container") && !css.includes("container-type")) throw new Error("tailwind: @container scanned but not compiled — container queries would ship absent");
+  if (candidates.includes("[&>button]:flex-1") && !/>\s*button/.test(css)) throw new Error("tailwind: [&>button]:flex-1 scanned but not compiled — Segmented would ship without its flex children");
   return { css, candidateCount: candidates.length };
 }

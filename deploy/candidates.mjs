@@ -6,11 +6,16 @@
 // variable — `rounded-[var(--ms-r)]`, `h-[var(--ms-ctl)]`, `gap-[var(--ms-gap)]`, `text-[var(--app-accent)]`
 // — was cut at the first hyphen inside the brackets, and the whole density/token system was absent from
 // production while every gate stayed green (the Chromium gate runs the SOURCE with the CDN, not dist/).
-// A token is: an optional !/- prefix, a letter, then any run of class-safe characters — including `-`, `[`,
-// `]`, `(`, `)`, `.`, `%`, `/`, `:` — so a bracketed value is kept whole.
+// A token is: an optional !/- prefix, a letter — OR an opening `[` / `@` — then any run of class-safe
+// characters, including `-`, `[`, `]`, `(`, `)`, `.`, `%`, `/`, `:`, so a bracketed value is kept whole.
+// The second failure (found 2026-08-21 on mirage's split shot): a token may START with a bracket or an at —
+// `[&>button]:flex-1` (the kit's child variants), `@container`, `@max-[9rem]/sl:flex-row` (container-query
+// variants). Requiring a leading letter cut them to `button]:flex-1` / `container` / `max-[9rem]/sl:flex-row`,
+// so every Segmented lost its flex children, no `@container` ever existed in dist, and a `@max-[…]` variant
+// compiled as a VIEWPORT media query — every gate green, because the CI Chromium runs the source with the CDN.
 export function scanCandidates(text) {
   const out = new Set();
-  for (const m of String(text).matchAll(/[!-]?[a-zA-Z][a-zA-Z0-9_\-:/[\]().%#!&>*+~,=]*/g)) {
+  for (const m of String(text).matchAll(/[!-]?[a-zA-Z@[][a-zA-Z0-9_\-:/[\]().%#!&>*+~,=]*/g)) {
     const t = m[0];
     if (t.length > 1 && !/^https?:/.test(t) && /[a-z]/.test(t)) out.add(t);
   }

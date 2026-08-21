@@ -230,6 +230,26 @@ floor, so an element can be absurdly small, or a layout two thirds empty, in per
 a screen exists to show one thing, assert the *share* that thing gets — a floor is a different
 assertion from a ceiling, and nothing you already own implies it.
 
+### 15. The build compiles what a regex saw, and the gates never look at the build
+The deployed stylesheet is not the CDN's. `deploy/tailwind.mjs` compiles Tailwind from the class candidates
+ONE regex (`deploy/candidates.mjs`) extracts from the sources — and `verify.yml` drives its Chromium at the
+SOURCE with the CDN, which scans the live DOM itself. So a token the regex mangles renders perfectly in CI and
+is simply absent in `dist/`. It has now happened twice, both found on the VPS eye and never by a gate:
+- 2026-08-14 → 16 the bracket alphabet had no `-`, so every `rounded-[var(--ms-r)]`-shaped token was cut and the
+  whole token system shipped absent for two days (§ the dist-eye gate exists because of it).
+- 2026-08-21 the regex required a LEADING LETTER. `[&>button]:flex-1` became `button]:flex-1`, `@container`
+  became `container`, and `@max-[9rem]/sl:flex-row` became a VIEWPORT media query. Every non-scroll
+  `Segmented` in production had no flex children (mirage's mode strip ran out of its island at 412×430), and
+  no container query had ever existed in a deployed app — the Transport's demotion and the Slider's inline
+  caption were source-only features for the whole life of the kit.
+
+**Closed:** the regex admits `[` and `@` as a first character; `buildTailwind` asserts that a scanned
+`@container` compiles to `container-type` and `[&>button]:flex-1` to a child rule (the way it already
+asserted the radius token); `candidates_test.js` pins both from a literal AND from `ui.js` itself, so a new
+kit class shape fails the unit job before it can ship silent. The general form stays OPEN by construction:
+**anything that changes `deploy/build*.mjs`, `deploy/tailwind.mjs` or `deploy/candidates.mjs` is judged on the
+BUILT page with `vps/eye.sh`**, and a new Tailwind syntax shape in the kit needs a literal in that test first.
+
 ## A ramp can pass every check and still read backwards (clay repaint, 2026-07-26) — FIXED
 
 `air` paints its AQI band onto the text. The clay repaint darkened nothing about that logic, but the page

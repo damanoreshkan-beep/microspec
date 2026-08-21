@@ -199,3 +199,24 @@ the app. Decision log (closed — do not re-litigate):
 Verified locally: ajv · preflight · unit (the `/60` alpha rule caught a placeholder — `.text-muted` now) ·
 `sw.mjs --check` · `counts --check`. The eye pass (three shapes, both themes, each mode) is recorded below
 once the deploy lands.
+
+### The eye pass (deployed, VPS Chromium, 2026-08-21)
+
+Three shapes, both themes, each mode. What the shots said, measured:
+
+- **384×832** — the picture takes ~46% of the view height, the composer ~29%; the field takes its tint from
+  the picture in both themes and every string over it stays legible. First round: the three labelled result
+  pills truncated on the REFERENCE device ("Поділит…", "Оновит…"). Fixed: one word (the hand-off) and two
+  glyphs (save, share).
+- **412×430** — `.ms-side` put the picture beside the composer, and the mode strip ran OUT of its island
+  (pill "Опиши" at x≈770→830 past the island's edge at 790) while the action row below it shrank. Not a
+  layout bug: the deployed CSS had no `[&>button]:flex-1` — `deploy/candidates.mjs` required a token to
+  start with a letter, so every child variant and every `@container` in the kit was absent from `dist/` for
+  the life of the compat build (GATE_BLINDSPOTS §15). Fixed in the scanner, pinned by unit + build self-check.
+- **412×430 / 360×340, second round** — the strip now fits and SQUASHES: "Т… · О.. · О.." and then one letter
+  each. A fitted `Segmented` now demotes to glyphs when its measured labelled width exceeds the rail (kit
+  change, `ui.js`), and the island no longer stretches to the column (a plain `ms-side-main` box takes the
+  stretch, hive's structure).
+
+Still UNVERIFIED: the working state on a real device (the dust + shimmer caption were judged only as a static
+gate frame); the hold-to-compare under a real finger; performance of the field at DPR 2 with a race running.

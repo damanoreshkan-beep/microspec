@@ -17,7 +17,7 @@
 // live in ONE place. Add a height breakpoint in theme.css and every app in the farm compacts correctly.
 import { html } from "htm/preact";
 import { Fragment } from "preact";
-import { useRef, useEffect } from "preact/hooks";
+import { useRef, useEffect, useState } from "preact/hooks";
 import { useSheetDrag } from "./gesture.js";
 import { sys } from "./i18n.js";
 import { REPEAT_ICON, clock } from "./player.js";
@@ -97,8 +97,38 @@ export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size =
 //             (a stage, a photo, a canvas) and a filled ink block would punch a hole in it.
 // Both are monochrome by construction. Colour enters only as `dot` — a small filled disc carrying the
 // app's or the option's own hue, which is the safe place for an arbitrary colour (never text).
+//
+// A fitted strip DEMOTES to glyphs, it never squashes. In .ms-side's narrow column (412×430) a three-way
+// strip of labelled pills rendered "Т… · О.. · О.." — two options with the same visible text — and at 360×340
+// one letter each. The width a labelled strip needs is MEASURED (a truncated span still reports its full
+// scrollWidth), and when the rail is narrower than that every label hides and the button's accessible name
+// becomes the label. Only when every option has an icon — without one, hiding the word is deletion.
 export function Segmented({ items, value, onChange, variant = "solid", size = "md", scroll = false, attr = "data-seg", label, tone = "inset" }) {
   const sm = size === "sm";
+  const railRef = useRef(), needRef = useRef(null), compactRef = useRef(false);
+  const [compact, setCompact] = useState(false);
+  compactRef.current = compact;
+  const demotable = !scroll && items.length > 1 && items.every((it) => it.icon && it.label);
+  const labelKey = items.map((it) => it.label).join("");
+  useEffect(() => { needRef.current = null; setCompact(false); }, [labelKey]);   // new words → measure again
+  useEffect(() => {
+    if (!demotable || typeof ResizeObserver === "undefined") return;
+    const rail = railRef.current; if (!rail) return;
+    const decide = () => {
+      if (needRef.current == null) {
+        if (compactRef.current) return;                                          // labels hidden — nothing to measure yet
+        let need = rail.scrollWidth;
+        for (const s of rail.querySelectorAll("[data-seg-label]")) need += Math.max(0, s.scrollWidth - s.clientWidth);
+        if (!need) return;                                                        // not laid out (preflight's DOM has no geometry)
+        needRef.current = need;
+      }
+      const next = rail.clientWidth < needRef.current - 0.5;
+      if (next !== compactRef.current) setCompact(next);
+    };
+    decide();
+    const ro = new ResizeObserver(decide); ro.observe(rail);
+    return () => ro.disconnect();
+  }, [demotable, labelKey, compact]);
   const pad = sm ? "px-2.5 py-1" : "px-3.5 py-1.5";
   const txt = sm ? "text-[0.78rem]" : "text-sm";
   const skin = (on) => variant === "outline"
@@ -113,6 +143,7 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
     const props = { [attr]: it.id };
     if (it.busy) props["aria-busy"] = "true";
     if (it.title) props.title = it.title;
+    if (compact) { props["aria-label"] = it.label; if (!it.title) props.title = it.label; }
     // NB: no `shrink-0` in the base class. A fitted (non-scroll) strip divides the row between its options,
     // and a button that cannot shrink turns a long label into horizontal overflow — the exact failure the
     // dock hit. The scrolling rail re-adds it below, where not shrinking is the whole point.
@@ -123,11 +154,11 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
             never reaches the label either way, which is what keeps an arbitrary hue safe in both themes. */
         it.dot && !it.icon ? html`<span class="w-2 h-2 rounded-full shrink-0" style=${`background:${it.dot === true ? "var(--app-accent)" : it.dot}`}></span>` : null}
       ${it.icon ? Icon(it.icon, "text-[var(--ms-icon)] shrink-0", it.dot ? `color:${it.dot === true ? "var(--app-accent)" : it.dot}` : "") : null}
-      ${it.label ? html`<span class="truncate">${it.label}</span>` : null}
+      ${it.label ? html`<span data-seg-label class=${`truncate ${compact ? "hidden" : ""}`}>${it.label}</span>` : null}
       ${it.meta != null && it.meta !== "" ? html`<span class="font-mono tabular-nums text-[0.85em] shrink-0">${it.meta}</span>` : null}
     </button>`;
   });
-  const rail = html`<div class=${`flex gap-1 p-1 ${scroll ? "w-max [&>button]:shrink-0" : "w-full [&>button]:flex-1 [&>button]:min-w-0"}`} role="group" aria-label=${label || null}>${btns}</div>`;
+  const rail = html`<div ref=${railRef} data-seg-compact=${compact ? "true" : null} class=${`flex gap-1 p-1 ${scroll ? "w-max [&>button]:shrink-0" : "w-full [&>button]:flex-1 [&>button]:min-w-0"}`} role="group" aria-label=${label || null}>${btns}</div>`;
   // A scrolling strip is a RAIL, not a row that overflows: the scrollbar is hidden (we own the affordance
   // — the pills are visibly cut at the edge), and the scroll is contained so flicking through styles can
   // never rubber-band the page behind it.

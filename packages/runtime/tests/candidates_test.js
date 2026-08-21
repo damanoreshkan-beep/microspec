@@ -16,3 +16,15 @@ Deno.test("scanCandidates: the runtime kit's own classes are all kept whole (no 
   assertEquals(broken, [], "var() tokens cut inside brackets");
   assert(got.includes("rounded-[var(--ms-r)]"), "the radius token must be scanned from render.js");
 });
+
+Deno.test("scanCandidates: tokens that start with a bracket or an at sign survive whole", () => {
+  const got = scanCandidates("class=\"@container flex [&>button]:flex-1 [&>button]:min-w-0 @max-[9rem]/sl:flex-row @max-[17rem]:hidden [&::-webkit-scrollbar]:hidden\"");
+  for (const t of ["@container", "[&>button]:flex-1", "[&>button]:min-w-0", "@max-[9rem]/sl:flex-row", "@max-[17rem]:hidden", "[&::-webkit-scrollbar]:hidden"]) {
+    assert(got.includes(t), "missing: " + t + " in " + JSON.stringify(got));
+  }
+});
+
+Deno.test("scanCandidates: the kit's container queries and child variants are scanned from ui.js", async () => {
+  const got = scanCandidates(await Deno.readTextFile(new URL("../ui.js", import.meta.url)));
+  for (const t of ["@container", "[&>button]:flex-1", "[&>button]:min-w-0", "[&>button]:shrink-0"]) assert(got.includes(t), "missing from ui.js scan: " + t);
+});

@@ -29,5 +29,7 @@ export async function buildTailwind(sourceTexts, { plugins = ["daisyui"], base =
   const candidates = [...new Set(sourceTexts.flatMap(scanCandidates))];
   const css = compiler.build(candidates);
   if (candidates.includes("rounded-[var(--ms-r)]") && !css.includes("var(--ms-r)")) throw new Error("tailwind: rounded-[var(--ms-r)] scanned but not compiled — the token system would ship absent");
+  if (candidates.includes("@container") && !css.includes("container-type")) throw new Error("tailwind: @container scanned but not compiled — container queries would ship absent");
+  if (candidates.includes("[&>button]:flex-1") && !/>\s*button/.test(css)) throw new Error("tailwind: [&>button]:flex-1 scanned but not compiled — Segmented would ship without its flex children");
   return { css, candidateCount: candidates.length };
 }

@@ -34,7 +34,7 @@ export async function follow({ base, job, alive, onLive, onSlide }) {
         } catch {  }
         got = n + 1;
       }
-      if (j.status === "done" || j.status === "error") return j.status;
+      if (j.status === "done" || j.status === "error") return j.status === "error" && j.error === "busy" ? "busy" : j.status;   
     }
     cancelJob(base, job);   
     return "timeout";

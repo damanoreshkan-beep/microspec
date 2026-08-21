@@ -1,15 +1,16 @@
 import { html } from "htm/preact";
-import { useState } from "preact/hooks";
+import { useState, useEffect } from "preact/hooks";
 import { Sheet } from "/_rt/ui.js";
 import { T } from "/_rt/i18n.js";
 import { gate } from "/_rt/gate.js";
 
-const KEY = (ns) => `ms:imagine:hist:${ns}`;
+const KEY = (ns) => `ms:mirage:hist:${ns}`;
 const MAX = 30;
 const read = (ns) => { if (gate) return []; try { const v = JSON.parse(localStorage.getItem(KEY(ns)) || "[]"); return Array.isArray(v) ? v.filter((x) => typeof x === "string") : []; } catch { return []; } };
 
 export function usePromptHistory(ns) {
   const [items, setItems] = useState(() => read(ns));
+  useEffect(() => { setItems(read(ns)); }, [ns]);   
   const remember = (text) => {
     const line = String(text || "").trim(); if (!line) return;
     const next = [line, ...items.filter((x) => x !== line)].slice(0, MAX);

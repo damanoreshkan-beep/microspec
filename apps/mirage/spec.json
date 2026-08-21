@@ -2,13 +2,18 @@
   "id": "mirage",
   "theme": "signal",
   "category": "creative",
+  "accent": "#C9A7E0",
   "tabs": [
     {
       "id": "stage",
       "type": "tool",
       "icon": "lucide:sparkles",
       "label": "tabStage",
-      "view": "mirage"
+      "view": "mirage",
+      "fit": true,
+      "needs": [
+        "camera"
+      ]
     },
     {
       "id": "me",
@@ -23,6 +28,9 @@
     "theme": true,
     "lang": true,
     "install": true,
+    "permissions": [
+      "camera"
+    ],
     "account": "any"
   }
 }

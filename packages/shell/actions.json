@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 28,
+  "bridgeVersion": 29,
   "actions": [
     {
       "id": "system.info",
@@ -2160,6 +2160,123 @@
           "ack": {
             "type": "boolean",
             "description": "The bridge received the subscribe call. Without it a button that reached nobody looks exactly like a button nobody pressed."
+          }
+        }
+      },
+      "mock": {
+        "ack": true
+      }
+    },
+    {
+      "id": "share.target",
+      "capability": "share",
+      "kind": "call",
+      "minBridge": 29,
+      "android": [],
+      "summary": "Put this app in the system share sheet for the listed kinds, and take it out of every other. The manifest is baked per template, so the targets exist as DISABLED activity-aliases in every full shell and the page switches its own on — a farm of sixty APKs must not all answer 'share audio'. Persistent: PackageManager remembers the state across restarts and reboots.",
+      "args": {
+        "type": "object",
+        "required": [
+          "kinds"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "kinds": {
+            "type": "array",
+            "maxItems": 5,
+            "items": {
+              "type": "string",
+              "enum": [
+                "audio",
+                "image",
+                "video",
+                "text",
+                "any"
+              ]
+            },
+            "description": "audio = audio/* + application/ogg · image = image/* · video = video/* · text = text/plain · any = */*. An empty list withdraws from every sheet."
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "kinds"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What is enabled now, as PackageManager reports it — not an echo of the request."
+          }
+        }
+      },
+      "mock": {
+        "kinds": [
+          "audio"
+        ]
+      }
+    },
+    {
+      "id": "share.incoming",
+      "capability": "share",
+      "kind": "subscribe",
+      "minBridge": 29,
+      "android": [],
+      "summary": "What another app shared INTO this one. A share that arrives before the page has subscribed (a cold start straight from the sheet) is held and delivered right after the ack, once; a share into a running app arrives as the next frame. Bytes cross as base64 in one frame, so an item is capped at 8MB like files.read.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ack": {
+            "type": "boolean",
+            "description": "The bridge received the subscribe call. Absent on a share frame: a frame is one or the other."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "mime",
+                "bytes"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "mime": {
+                  "type": "string",
+                  "description": "The intent's type, which is what the SENDER claimed — Telegram says audio/ogg for a voice note; a file manager may say application/octet-stream for the same bytes."
+                },
+                "bytes": {
+                  "type": "integer"
+                },
+                "base64": {
+                  "type": "string"
+                },
+                "tooLarge": {
+                  "type": "boolean",
+                  "description": "Over the 8MB cap: name, mime and size arrive, the bytes do not."
+                }
+              }
+            }
+          },
+          "text": {
+            "type": "string",
+            "description": "EXTRA_TEXT, when the sender attached or shared plain text."
+          },
+          "at": {
+            "type": "integer"
           }
         }
       },

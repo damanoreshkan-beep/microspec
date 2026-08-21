@@ -6,11 +6,11 @@
 
 [![verify](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml/badge.svg)](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml)
 [![gate efficacy](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damanoreshkan-beep/microspec/main/docs/efficacy.json)](packages/gates/efficacy.mjs)
-[![live demo](https://img.shields.io/badge/live-73%20apps-3fb950)](https://dreamstudio.mooo.com/store/)
+[![live demo](https://img.shields.io/badge/live-74%20apps-3fb950)](https://dreamstudio.mooo.com/store/)
 [![built on Android](https://img.shields.io/badge/built%20on-Termux%20%2F%20Android-a78bfa)](#-written-on-a-phone)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-### **[▶ Open the farm — 73 installable apps](https://dreamstudio.mooo.com/store/)**
+### **[▶ Open the farm — 74 installable apps](https://dreamstudio.mooo.com/store/)**
 
 Add any to your home screen. They work offline. Every one is a spec + adapter that **passed the gates.**
 
@@ -67,7 +67,7 @@ change* if the app is broken, inaccessible, or untranslated. The constraint is t
 
 ## 📱 Written on a phone
 
-No laptop. No desktop. The runtime, the gates, and all 73 apps were written and shipped from **Termux on
+No laptop. No desktop. The runtime, the gates, and all 74 apps were written and shipped from **Termux on
 Android** — on-device [Deno](https://deno.com), a phone as the whole workstation.
 
 That constraint *shaped the toolchain*, it isn't a party trick: the heavy browser gate (Chromium + axe)
@@ -99,7 +99,7 @@ Give the agent a **floor it cannot fall through:**
    claims to support, and **fails the build** on any violation. Red gate → nothing ships. Green gate →
    auto-deploy to GitHub Pages.
 
-The 73-app farm is the proof, and doubles as the regression suite for the runtime itself.
+The 74-app farm is the proof, and doubles as the regression suite for the runtime itself.
 
 ## The gate (this is the wedge)
 
@@ -300,7 +300,7 @@ anything.
 | `packages/runtime` | 81 zero-build modules: the 5 families, the UI kit, the design tokens, and the systemic capabilities (sensors · camera · audio · WebUSB · storage · i18n · offline) |
 | `packages/gates` | `verify` (Chromium: a11y / viewport matrix / installability / e2e / shots) + `preflight` (browser-free) + `efficacy` (mutation-tests the gates) + `shoot` (remote stills for design review) |
 | `packages/gen` | `scaffold` — spec + adapter → runnable app shell |
-| `apps/` | the reference farm: 73 apps = family showcase + runtime regression suite |
+| `apps/` | the reference farm: 74 apps = family showcase + runtime regression suite |
 
 ## Quickstart
 

@@ -79,6 +79,9 @@ const PROBE = {
     base64: btoa(unescape(encodeURIComponent(`<!doctype html><meta charset=utf-8><title>${T(t, "title")}</title><h1>${T(t, "title")}</h1>`))) }),
   "server.status": () => ({}),
   "server.stop": () => ({}),
+  // An empty list WITHDRAWS from every share sheet — the only safe probe: os must never start answering
+  // "share audio" for the whole phone because a checklist ran. share.incoming is a subscribe; no probe.
+  "share.target": () => ({ kinds: [] }),
   // ble.scan is a subscribe — no probe, same as location.watch.
   // location.watch is a subscribe, not a call — it has no probe by design; the row says so.
 };
@@ -119,6 +122,7 @@ function summarise(id, v, loc) {
   if (id === "wifi.info") return v.connected ? `${v.ssid || "?"} ${v.rssi}dBm` : "—";
   if (id === "cell.info") return `${(v.cells || []).length}`;
   if (id === "system.grant") return v.state;
+  if (id === "share.target") return (v.kinds || []).join(" ") || "—";
   if (id === "ble.state") {
     if (!v.supported) return "—";
     // maxAdvLen is the number the ether app's whole payload budget rests on, so the console prints it

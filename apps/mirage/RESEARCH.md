@@ -220,3 +220,26 @@ Three shapes, both themes, each mode. What the shots said, measured:
 
 Still UNVERIFIED: the working state on a real device (the dust + shimmer caption were judged only as a static
 gate frame); the hold-to-compare under a real finger; performance of the field at DPR 2 with a race running.
+
+## 2026-08-21 evening — the model is the owner's pick; Blend; vision Spaces
+
+- **`GET /feed/image/models`** (edge `1ddfc98`) lists `gen / edit / read / blend` with HF's word on each Space
+  (`/api/spaces/<id>` → `disabled`, `runtime.stage`; 5-min cache; `?fresh=1`). A `model` on `/image`,
+  `/image/edit`, `/image/blend` runs that Space once per pod; on `/vision` it narrows the cascade to that row or
+  — for a Space — goes through one pod on the worker's text path. Unlisted → 400; `auto` = the pools. The
+  options Sheet exists in every mode with a Model rail (Auto + alive/unknown; a dead Space is never offered).
+- **Blend (images→image)** — a fourth mode: two stacked slots on the stage, each a picture with its own × or a
+  compact chooser; the race is `/image/blend` (edge `7de96e9`). Candidates came from an HF search (likes-sorted,
+  RUNNING) + a STRUCTURAL probe inside the worker container (no clicks, no quota): two input shapes — one
+  `multiple` gallery (Qwen-Image-Edit 2509/2511, FLUX.2 family) or separate inputs (akhaliq's 2509, DreamOmni2,
+  OmniGen2, DreamO, UNO). The worker fills whichever it finds.
+- **Vision Spaces for Read** — the generic adapter drives file + prompt + Run + a text box that fills
+  (Qwen3-VL-Outpost delivered a correct 2-sentence read in 18s); the chat demos (Gemma 3, LLaVA-NeXT, official
+  Qwen3-VL, SmolVLM, MiniCPM-V) cannot be driven: no separate file input, no run button.
+- **What the probes cost and taught (same evening):** three more toasts read as refusals — the ZeroGPU duration
+  WARNING, its bare title, and the queue's "Successfully acquired a GPU"; all are waits now (`5cd7444`). Then the
+  honest wall: the anonymous bucket is **120s** and admission needs `remaining ≥ declared`, so Spaces declaring
+  180/300s or `xlarge` (2×) can never run from a pod — dropped from the pools, which are now ordered by declared
+  duration (klein-9B/4B 85 · DreamOmni2 90 · 2511-Fast/akhaliq 60-but-aborted · dev-turbo 120). **Blend has NOT
+  delivered a picture end-to-end yet**: the probes spent the four pods' daily buckets before the pool was right.
+  Re-verify tomorrow with one run per pod: `[gen] microspec-vpn-pN … OK` in the edge log is the proof.

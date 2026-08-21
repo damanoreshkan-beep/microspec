@@ -31,7 +31,8 @@ const SPARKS = {
   edit: ["turn it into an oil painting", "golden-hour light", "make it snow", "black-and-white film", "turn day into night", "a pencil sketch"],
 };
 const GATE_EDIT = "add falling snow, cinematic";
-const ICONS = { make: "lucide:sparkles", edit: "lucide:wand-sparkles", read: "lucide:scan-eye" };
+const ICONS = { make: "lucide:sparkles", edit: "lucide:wand-sparkles", read: "lucide:scan-eye", blend: "lucide:blend" };
+SPARKS.blend = ["put the second picture into the first", "dress the person in the second picture's outfit", "merge both into one scene", "the style of the second on the first"];
 const ASPECTS = [["screen", "lucide:smartphone"], ["square", "lucide:square"], ["portrait", "lucide:rectangle-vertical"], ["landscape", "lucide:rectangle-horizontal"]];
 const tool = "btn btn-ghost btn-sm btn-circle text-base-content/70";
 // The working line sweeps like the 21st "AI text loading" idiom — a gradient clipped to the glyphs — but it
@@ -48,7 +49,7 @@ export function mirage({ S, toast }) {
   const slides = mode === "read" ? [] : st.slides, cur = slides[st.idx] || slides[0] || null;
   const working = st.phase === "working";
   const anyBusy = make.phase === "working" || edit.phase === "working" || read.phase === "working";
-  const shown = cur?.url || st.src || null;                      // the picture in view: the product, or the source
+  const shown = cur?.url || st.src || st.a || null;              // the picture in view: the product, or the source
   const text = mode === "make" ? st.prompt : mode === "edit" ? st.prompt : st.question;
   const setText = (v) => M.patch(mode, mode === "read" ? { question: v } : { prompt: v });
   const [hist, remember] = usePromptHistory(mode);
@@ -77,6 +78,7 @@ export function mirage({ S, toast }) {
     if (working) return M.cancel(mode);
     if (mode === "make") { remember(st.prompt); return M.conjure(ctx); }
     if (mode === "edit") { remember(st.prompt); return M.rework(ctx); }
+    if (mode === "blend") { remember(st.prompt); return M.blend(ctx); }
     if (st.question.trim()) remember(st.question);
     if (await M.readPhoto(ctx)) S.screen.set("read");
   };
@@ -91,9 +93,10 @@ export function mirage({ S, toast }) {
   const copy = async () => { try { await navigator.clipboard.writeText(read.text); toast?.(T(t, "copied")); } catch { toast?.(T(t, "eNetwork")); } };
   const onScroll = (e) => { const el = e.currentTarget; const n = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (n !== st.idx && n >= 0 && n < slides.length) M.patch(mode, { idx: n }); };
   const onKey = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); go(); } };
-  const canGo = working || (mode === "make" ? !!st.prompt.trim() : mode === "edit" ? !!(st.prompt.trim() && st.src) : !!st.src);
+  const canGo = working || (mode === "make" ? !!st.prompt.trim() : mode === "edit" ? !!(st.prompt.trim() && st.src) : mode === "blend" ? !!(st.prompt.trim() && st.a && st.b) : !!st.src);
   const goIcon = working ? "lucide:square" : ICONS[mode];
-  const goLabel = working ? T(t, "stop") : mode === "make" ? T(t, "go") : mode === "edit" ? T(t, "rework") : T(t, st.question.trim() ? "answer" : "tell");
+  const goLabel = working ? T(t, "stop") : mode === "make" ? T(t, "go") : mode === "edit" ? T(t, "rework") : mode === "blend" ? T(t, "blendGo") : T(t, st.question.trim() ? "answer" : "tell");
+  const placeholder = T(t, mode === "make" ? "promptPlaceholder" : mode === "edit" ? "editPlaceholder" : mode === "blend" ? "blendPlaceholder" : "askPlaceholder");
   const live = M.liveOf(st.live);
   const elapsed = st.t0 ? Math.round((Date.now() - st.t0) / 1000) : 0;
   // the catalogue for this mode; a chosen model that is no longer offered falls back to auto on screen
@@ -111,8 +114,8 @@ export function mirage({ S, toast }) {
   const slot = (inner) => html`<div class="absolute inset-0 flex items-center justify-center p-[var(--ms-gap)] pb-6">${inner}</div>`;
   const stage = () => {
     if (mode !== "make" && st.phase === "empty") return html`<${Chooser} t=${t} onPick=${(u) => M.setSource(mode, u)} onCamera=${() => M.patch(mode, { phase: "camera" })} />`;
-    if (mode !== "make" && st.phase === "camera") return html`<${Camera} t=${t} loc=${loc} S=${S} reason=${T(t, mode === "read" ? "primeReasonRead" : "primeReason")}
-      onCapture=${(u) => M.setSource(mode, u)} onClose=${() => M.patch(mode, { phase: "empty" })} />`;
+    if (mode !== "make" && st.phase === "camera") return html`<${Camera} t=${t} loc=${loc} S=${S} reason=${T(t, mode === "read" ? "primeReasonRead" : mode === "blend" ? "primeReasonBlend" : "primeReason")}
+      onCapture=${(u) => mode === "blend" ? M.setBlendSource(st.cam || "a", u) : M.setSource(mode, u)} onClose=${() => M.patch(mode, { phase: mode === "blend" ? "ready" : "empty", cam: null })} />`;
     const dust = working && !slides.length ? html`<div class="absolute inset-0 rounded-[var(--ms-r)] overflow-hidden sf-raised"><${Dust} active=${true} progress=${live.pct ?? Math.min(0.9, elapsed / 40)} /></div>` : null;
     const caption = working ? html`<div data-working class="absolute inset-x-0 bottom-[var(--ms-pad)] flex flex-col items-center gap-1 pointer-events-none text-white">
       <div class=${`font-mono text-[0.72rem] uppercase tracking-[0.18em] tabular-nums ${gate ? "" : "mg-sh"}`}>${T(t, mode === "read" ? "reading" : live.key)} · ${fmt(elapsed)}</div>
@@ -133,6 +136,15 @@ export function mirage({ S, toast }) {
       </div>` : null}
     </${Fragment}>`;
     if (dust) return html`<${Fragment}>${dust}${caption}</${Fragment}>`;
+    // the blend's two slots, stacked: each is a picture with its own × or a compact chooser until it has one
+    if (mode === "blend") return html`<div class="absolute inset-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-gap)] pb-6">
+      ${["a", "b"].map((sl) => html`<div key=${sl} data-slot=${sl} class="relative flex-1 min-h-0 flex items-center justify-center">
+        ${st[sl] ? html`<${Fragment}>
+          <img data-result src=${st[sl]} alt="" class=${frame} onClick=${() => S.screen.set("view")} />
+          <button data-slot-clear=${sl} aria-label=${T(t, "clearSlot")} class="absolute top-2 left-2 btn btn-circle btn-xs bg-black/50 text-white border-0" onClick=${() => M.clearBlendSource(sl)}>${Icon("lucide:x", "text-sm")}</button>
+        </${Fragment}>` : html`<${Chooser} t=${t} compact onPick=${(u) => M.setBlendSource(sl, u)} onCamera=${() => M.patch("blend", { phase: "camera", cam: sl })} />`}
+      </div>`)}
+    </div>`;
     if (st.src) return html`<${Fragment}>
       ${slot(html`<img data-result src=${st.src} alt="" class=${`${frame} ${working ? "opacity-50" : ""} transition-opacity`} onClick=${() => S.screen.set("view")} />`)}
       ${mode === "read" && read.text && !working ? html`<button data-read-open class="absolute bottom-[var(--ms-pad)] left-1/2 -translate-x-1/2 btn btn-sm rounded-full gap-1.5 bg-black/50 text-white border-0" onClick=${() => S.screen.set("read")}>${Icon("lucide:scan-eye", "text-base")}${T(t, "readTitle")}</button>` : null}
@@ -154,7 +166,7 @@ export function mirage({ S, toast }) {
     <${GlStage} shader=${new URL("mirage.frag", import.meta.url)} seed=${((cur?.seed || 3) % 97) / 97}
       tex=${shown} vary=${vary} texReady=${(r) => { chan.ready = r; }} zClass="z-0" />
 
-    <${Lightbox} open=${screen === "view" && !!shown} slides=${slides.length ? slides : null} src=${slides.length ? null : st.src} index=${st.idx}
+    <${Lightbox} open=${screen === "view" && !!shown} slides=${slides.length ? slides : null} src=${slides.length ? null : (st.src || st.a)} index=${st.idx}
       onIndex=${(i) => M.patch(mode, { idx: i })} alt=${st.prompt || ""} onClose=${() => S.screen.set(null)} />
     <${HistorySheet} id="hist-mirage" open=${screen === "hist"} onClose=${() => S.screen.set(null)} items=${hist} onPick=${setText} t=${t} locale=${loc} />
 
@@ -205,15 +217,15 @@ export function mirage({ S, toast }) {
         <${Segmented} attr="data-mode" label=${T(t, "tabStage")} items=${modeItems} value=${mode} onChange=${(m) => M.$mode.set(m)} />
 
         ${hasResult ? html`<div data-actions class="@container flex items-center gap-1.5">
-          ${mode === "make" ? handoff("to-edit", "lucide:wand-sparkles", T(t, "toEdit"), () => M.toEdit(cur.url)) : handoff("keep", "lucide:wand-sparkles", T(t, "keep"), M.keepEditing)}
+          ${mode === "edit" ? handoff("keep", "lucide:wand-sparkles", T(t, "keep"), M.keepEditing) : handoff("to-edit", "lucide:wand-sparkles", T(t, "toEdit"), () => M.toEdit(cur.url))}
           ${act("save", "lucide:download", T(t, "save"), save)}
           ${act("share", "lucide:share-2", T(t, "share"), share)}
         </div>` : null}
 
         <div data-field class="sf-inset rounded-[var(--ms-r-in)] p-2 flex flex-col gap-1 focus-within:ring-1 focus-within:ring-base-content/25">
-          <textarea id="prompt" rows="2" aria-label=${T(t, mode === "make" ? "promptPlaceholder" : mode === "edit" ? "editPlaceholder" : "askPlaceholder")}
+          <textarea id="prompt" rows="2" aria-label=${placeholder}
             class="w-full resize-none bg-transparent border-0 outline-none px-2 pt-1 text-[0.95rem] leading-snug text-base-content placeholder:text-muted"
-            placeholder=${T(t, mode === "make" ? "promptPlaceholder" : mode === "edit" ? "editPlaceholder" : "askPlaceholder")} value=${text}
+            placeholder=${placeholder} value=${text}
             onInput=${(e) => setText(e.target.value)} onKeyDown=${onKey}></textarea>
           <div class="flex items-center gap-0.5">
             ${mode !== "read" ? html`<button data-dream aria-label=${T(t, "surprise")} class=${tool} disabled=${working} onClick=${dream}>${Icon("lucide:dices", "text-lg")}</button>` : null}

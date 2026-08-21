@@ -13,7 +13,7 @@ import { holdBackground } from "/_rt/bghold.js";
 import { mockArt, toDataURL } from "./bitmap.js";
 import { startJob, follow, cancelJob } from "./race.js";
 
-export const MODES = ["make", "edit", "read"];
+export const MODES = ["make", "edit", "read", "blend"];
 export const GATE_PROMPT = "northern lights over a frozen lake, cinematic, ultra detailed";
 export const GATE_TEXT = "Гірське озеро на світанку: дзеркальна вода віддзеркалює рожеві піки, над берегом стелиться легкий туман. Тиша, прохолода і золоте світло перших променів.\n\nгори, озеро, світанок, туман, тиша";
 const K = 4;
@@ -21,7 +21,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const randSeed = () => Math.floor(Math.random() * 1e9);
 const JOB_KEY = (mode) => `ms:mirage:job:${mode}`;
 const OPTS_KEY = "ms:mirage:opts";
-const BASE = { make: `${VPS_PROXY}/image`, edit: `${VPS_PROXY}/image/edit` };
+const BASE = { make: `${VPS_PROXY}/image`, edit: `${VPS_PROXY}/image/edit`, blend: `${VPS_PROXY}/image/blend` };
 
 // ── atoms ────────────────────────────────────────────────────────────────────────────────────────────
 export const $mode = atom("make");
@@ -31,9 +31,13 @@ export const $make = atom({ prompt: gate ? GATE_PROMPT : "", phase: gate ? "done
 // edit: empty | camera | ready | working | done | error   (src = the picture being reworked, original = the first one loaded)
 export const $edit = atom({ prompt: "", phase: gate ? "ready" : "empty", src: gate ? mockArt(3) : null, original: gate ? mockArt(3) : null,
   slides: [], idx: 0, more: false, error: null, live: null, t0: 0 });
+// blend: two pictures + an instruction → variants. ready | camera | working | done | error; `cam` = the slot the
+// viewfinder is filling. No "empty": the stage shows two slots and each fills on its own.
+export const $blend = atom({ prompt: "", phase: "ready", a: gate ? mockArt(11) : null, b: gate ? mockArt(12) : null, cam: null,
+  slides: [], idx: 0, more: false, error: null, live: null, t0: 0 });
 // read: empty | camera | ready | working | done | error
 export const $read = atom({ question: "", phase: gate ? "ready" : "empty", src: gate ? mockArt(5) : null, text: "", error: null });
-const DEFAULT_OPTS = { quality: "2k", aspect: "screen", model: { make: "auto", edit: "auto", read: "auto" } };
+const DEFAULT_OPTS = { quality: "2k", aspect: "screen", model: { make: "auto", edit: "auto", read: "auto", blend: "auto" } };
 const loadOpts = () => { try { const v = JSON.parse(localStorage.getItem(OPTS_KEY) || "null"); if (v?.quality && v?.aspect) return { ...DEFAULT_OPTS, ...v, model: { ...DEFAULT_OPTS.model, ...(v.model || {}) } }; } catch { /* */ } return DEFAULT_OPTS; };
 export const $opts = atom(loadOpts());
 export const setOpts = (p) => { const v = { ...$opts.get(), ...p }; $opts.set(v); try { localStorage.setItem(OPTS_KEY, JSON.stringify(v)); } catch { /* */ } };
@@ -42,10 +46,11 @@ const modelFor = (mode) => { const m = $opts.get().model[mode]; return m && m !=
 
 // ── the catalogue: what the edge can run right now, with HF's word on whether each Space is alive ─────────
 // Fetched when the options sheet opens, kept 5 min; `fresh` re-probes. Under the gate a fixed list.
-const KIND = { make: "gen", edit: "edit", read: "read" };
+const KIND = { make: "gen", edit: "edit", read: "read", blend: "blend" };
 const GATE_MODELS = { gen: [{ id: "black-forest-labs/FLUX.1-schnell", tier: "2k", alive: true }, { id: "mrfakename/Z-Image-Turbo", tier: "fast", alive: true }, { id: "krea/Krea-2", tier: "fast", alive: null }],
-  edit: [{ id: "LPX55/Qwen-Image-Edit-2511-Turbo-Lightning", tier: "edit", alive: true }, { id: "JitRoy2024/Qwen_Img_Space", tier: "edit", alive: true }], read: [{ id: "ovh/Qwen2.5-VL-72B", tier: "vision", alive: null }] };
-export const $models = atom({ gen: [], edit: [], read: [], at: 0, loading: false, error: false });
+  edit: [{ id: "LPX55/Qwen-Image-Edit-2511-Turbo-Lightning", tier: "edit", alive: true }, { id: "JitRoy2024/Qwen_Img_Space", tier: "edit", alive: true }], read: [{ id: "ovh/Qwen2.5-VL-72B", tier: "vision", alive: null }, { id: "prithivMLmods/Qwen3-VL-Outpost", tier: "space", alive: true }],
+  blend: [{ id: "linoyts/Qwen-Image-Edit-2511-Fast", tier: "blend", alive: true }, { id: "OmniGen2/OmniGen2", tier: "blend", alive: null }] };
+export const $models = atom({ gen: [], edit: [], read: [], blend: [], at: 0, loading: false, error: false });
 export async function loadModels(fresh = false) {
   const cur = $models.get();
   if (gate) { if (!cur.at) $models.set({ ...GATE_MODELS, at: Date.now(), loading: false, error: false }); return; }
@@ -55,22 +60,23 @@ export async function loadModels(fresh = false) {
     const r = await fetch(VPS_PROXY + "/image/models" + (fresh ? "?fresh=1" : ""));
     if (!r.ok) throw new Error(String(r.status));
     const j = await r.json();
-    $models.set({ gen: j.gen || [], edit: j.edit || [], read: j.read || [], at: Date.now(), loading: false, error: false });
+    $models.set({ gen: j.gen || [], edit: j.edit || [], read: j.read || [], blend: j.blend || [], at: Date.now(), loading: false, error: false });
   } catch { $models.set({ ...$models.get(), loading: false, error: true }); }
 }
 // the models a mode may pick from: alive or unknown — a Space HF calls dead is never offered
 export const modelsFor = (mode) => ($models.get()[KIND[mode]] || []).filter((m) => m.alive !== false);
 
-const ATOM = { make: $make, edit: $edit, read: $read };
+const ATOM = { make: $make, edit: $edit, read: $read, blend: $blend };
 export const patch = (mode, p) => { const a = ATOM[mode]; a.set({ ...a.get(), ...(typeof p === "function" ? p(a.get()) : p) }); };
 
 // one run counter, one job, one background hold per racing mode — a superseded run can never land
-const runs = { make: 0, edit: 0, read: 0 }, jobs = { make: null, edit: null }, holds = { make: null, edit: null };
+const runs = { make: 0, edit: 0, read: 0, blend: 0 }, jobs = { make: null, edit: null, blend: null }, holds = { make: null, edit: null, blend: null };
 
 const revoke = (url) => { if (url?.startsWith?.("blob:")) { try { URL.revokeObjectURL(url); } catch { /* */ } } };
 // free a set of slides, except any URL that moved on to live somewhere else (a hand-off, a keep)
 const freeSlides = (list, keep = []) => list.forEach((s) => { if (!keep.includes(s.url)) revoke(s.url); });
-const stillHeld = (url) => [$edit.get().src, $edit.get().original, $read.get().src, ...$make.get().slides.map((s) => s.url), ...$edit.get().slides.map((s) => s.url)].includes(url);
+const held = () => [$edit.get().src, $edit.get().original, $read.get().src, $blend.get().a, $blend.get().b];
+const stillHeld = (url) => [...held(), ...$make.get().slides.map((s) => s.url), ...$edit.get().slides.map((s) => s.url), ...$blend.get().slides.map((s) => s.url)].includes(url);
 
 // ── the race (make + edit share it; only the route and the body differ) ──────────────────────────────
 // ctx = { t } — the dictionary at the moment the run starts, for the notification and the hold's words.
@@ -89,7 +95,7 @@ async function race(mode, body, run, ctx, seed) {
 
 async function followJob(mode, job, run, ctx, seed) {
   const base = BASE[mode], alive = () => run === runs[mode];
-  const release = holdBackground({ title: T(ctx.t, "title"), body: T(ctx.t, mode === "edit" ? "reworking" : "working") });
+  const release = holdBackground({ title: T(ctx.t, "title"), body: T(ctx.t, mode === "edit" ? "reworking" : mode === "blend" ? "blending" : "working") });
   holds[mode] = release;
   const mine = [];
   const status = await follow({
@@ -123,7 +129,7 @@ export async function conjure(ctx) {
   if (!p || st.phase === "working") return;
   const seed = randSeed(), run = ++runs.make;
   holds.make?.(); holds.make = null;
-  freeSlides(st.slides, [$edit.get().src, $edit.get().original, $read.get().src]);
+  freeSlides(st.slides, held());
   patch("make", { slides: [], idx: 0, more: false, error: null, live: null, phase: "working", t0: Date.now() });
   if (gate) { await sleep(90); if (run === runs.make) patch("make", { slides: [seed, seed + 1, seed + 2, seed + 3].map((s) => ({ url: mockArt(s), seed: s })), phase: "done" }); return; }
   notifyAsk();
@@ -141,7 +147,7 @@ export async function rework(ctx) {
   if (!p || !st.src || st.phase === "working") return;
   const seed = randSeed(), run = ++runs.edit;
   holds.edit?.(); holds.edit = null;
-  freeSlides(st.slides, [st.src, st.original, $read.get().src]);
+  freeSlides(st.slides, held());
   patch("edit", { slides: [], idx: 0, more: false, error: null, live: null, phase: "working", t0: Date.now() });
   if (gate) { await sleep(120); if (run === runs.edit) patch("edit", { slides: [0, 1, 2, 3].map((n) => ({ url: mockArt(seed + n), seed: seed + n })), phase: "done" }); return; }
   notifyAsk();
@@ -161,6 +167,39 @@ export function keepEditing() {
   if (!cur) return;
   freeSlides(st.slides, [cur.url, st.original]);
   patch("edit", { src: cur.url, slides: [], idx: 0, more: false, prompt: "", error: null, phase: "ready" });
+}
+
+// ── blend: two pictures + an instruction ─────────────────────────────────────────────────────────────
+export async function blend(ctx) {
+  const st = $blend.get(), p = st.prompt.trim();
+  if (!p || !st.a || !st.b || st.phase === "working") return;
+  const seed = randSeed(), run = ++runs.blend;
+  holds.blend?.(); holds.blend = null;
+  freeSlides(st.slides, held());
+  patch("blend", { slides: [], idx: 0, more: false, error: null, live: null, phase: "working", t0: Date.now() });
+  if (gate) { await sleep(120); if (run === runs.blend) patch("blend", { slides: [0, 1, 2, 3].map((n) => ({ url: mockArt(seed + n), seed: seed + n })), phase: "done" }); return; }
+  notifyAsk();
+  let images;
+  try { images = await Promise.all([toDataURL(st.a), toDataURL(st.b)]); } catch { return fail("blend", run, "eFailed"); }
+  if (run !== runs.blend) return;
+  if (images.some((i) => i.length > 9_000_000)) return fail("blend", run, "eBig");
+  patch("blend", { live: { stage: "translate" } });
+  let pEn = p; try { pEn = await toEnglish(p); } catch { /* */ }
+  if (run !== runs.blend) return;
+  await race("blend", { images, prompt: pEn, seed, k: K, model: modelFor("blend") }, run, ctx, seed);
+}
+export function setBlendSource(slot, url) {
+  const st = $blend.get(), old = st[slot];
+  freeSlides(st.slides, [url, ...held()]);
+  patch("blend", { [slot]: url, slides: [], idx: 0, more: false, error: null, phase: "ready", cam: null });
+  if (old && old !== url && !stillHeld(old)) revoke(old);
+}
+export function clearBlendSource(slot) {
+  runs.blend++;
+  const st = $blend.get(), old = st[slot];
+  freeSlides(st.slides, held());
+  patch("blend", { [slot]: null, slides: [], idx: 0, more: false, error: null, phase: "ready", cam: null });
+  if (old && !stillHeld(old)) revoke(old);
 }
 
 // ── read ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -233,11 +272,11 @@ export const readToEdit = () => { const r = $read.get(); toEdit(r.src, oneLine(r
 // ── resume: the edge keeps a job for five minutes, so a tab Android discarded mid-race is picked up ──
 export function resume(ctx) {
   if (gate) return;
-  for (const mode of ["make", "edit"]) {
+  for (const mode of ["make", "edit", "blend"]) {
     if (runs[mode]) continue;                                   // a live run already owns this mode
     let j = null; try { j = JSON.parse(localStorage.getItem(JOB_KEY(mode)) || "null"); } catch { /* */ }
     if (!j?.job || Date.now() - j.ts > 240000) { try { localStorage.removeItem(JOB_KEY(mode)); } catch { /* */ } continue; }
-    if (mode === "edit" && !$edit.get().src) { try { localStorage.removeItem(JOB_KEY(mode)); } catch { /* */ } continue; }   // the source blob died with the page
+    if ((mode === "edit" && !$edit.get().src) || (mode === "blend" && !($blend.get().a && $blend.get().b))) { try { localStorage.removeItem(JOB_KEY(mode)); } catch { /* */ } continue; }   // the source blob died with the page
     const run = ++runs[mode]; jobs[mode] = j.job;
     patch(mode, { phase: "working", prompt: j.prompt || "", t0: j.ts, error: null });
     followJob(mode, j.job, run, ctx, j.seed || 0);

@@ -202,6 +202,26 @@ export default [
     },
   },
   {
+    // The gate seeds both slots and a fixed "last picture": clearing a slot brings its compact chooser back and
+    // disables the action; the chooser refills it; a blend re-seeds four variants with the hand-off to Rework.
+    name: "поєднай: прибрати слот → вибір, заповнити знову, інструкція → 4 варіанти", run: async (h) => {
+      await mode(h, "blend");
+      h.expect((await h.count("[data-slot=a] img")) === 1 && (await h.count("[data-slot=b] img")) === 1, "обидва слоти мають бути заповнені");
+      await h.click("[data-slot-clear=b]"); await h.wait(250);
+      h.expect((await h.count("[data-slot=b] [data-src-upload]")) === 1, "вибір джерела для слота B не повернувся");
+      await h.type("#prompt", "постав друге фото на перше"); await h.wait(100);
+      h.expect((await h.count("[data-go]:disabled")) === 1, "дія не вимкнена без другого фото");
+      await h.click("[data-slot=b] [data-src-last]"); await h.wait(250);
+      h.expect((await h.count("[data-slot=b] img")) === 1, "слот B не заповнився з останнього образу");
+      await h.click("[data-go]");
+      let ok = false;
+      for (let i = 0; i < 15; i++) { if ((await h.count("[data-slide]")) === 4) { ok = true; break; } await h.wait(250); }
+      h.expect(ok, "поєднання не дало 4 варіантів");
+      h.expect((await h.count("[data-act=to-edit]")) === 1, "немає «оновити це» після поєднання");
+      await mode(h, "make");
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

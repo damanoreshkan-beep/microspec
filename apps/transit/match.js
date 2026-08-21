@@ -91,7 +91,7 @@ export function match({ S, screen, openScreen, closeScreen }) {
         </div>
         <${Bars} r=${r} t=${t} />
         <${Contacts} list=${list} t=${t} />
-        <${Verdict} people=${people} list=${list} r=${r} settled=${settled} locale=${locale} t=${t} />
+        <${Verdict} people=${people} settled=${settled} locale=${locale} t=${t} />
       ` : null}
     </div>
 
@@ -110,8 +110,12 @@ function TimeDial({ p, t }) {
       <span class="text-xs font-mono tabular-nums text-base-content/80">${clock(p.off)}
         ${shift ? html`<span class="text-base-content/55">${shift > 0 ? "+1" : "−1"}</span>` : null} UTC</span>
     </span>
-    <input type="range" min=${-SPAN} max=${SPAN} step=${STEP} value=${p.off} aria-label=${p.label}
-      onInput=${(e) => p.setOff(Number(e.target.value))} class="range range-xs range-primary w-full" />
+    <div class="relative">
+      <input type="range" min=${-SPAN} max=${SPAN} step=${STEP} value=${p.off} aria-label=${p.label}
+        onInput=${(e) => p.setOff(Number(e.target.value))} class="range range-xs range-primary w-full"
+        style="--range-fill:0" />
+      <div class="absolute left-1/2 -bottom-0.5 w-px h-1 -translate-x-1/2 bg-base-content/30 pointer-events-none"></div>
+    </div>
   </label>`;
 }
 
@@ -166,17 +170,22 @@ function Contacts({ list, t }) {
   if (!list.length) return html`<div data-contacts class="text-[0.8rem] text-base-content/65 py-1">${T(t, "matchNoContacts")}</div>`;
   return html`<div data-contacts class="flex flex-col gap-1.5">
     <div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "matchContacts")}</div>
-    ${list.slice(0, 5).map((c) => html`<div data-contact class="flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0" key=${`${c.a}-${c.b}-${c.type}`}>
-      <span class="shrink-0"><${Planet} body=${c.a} /></span>
-      <span class="text-[0.72rem] font-medium truncate">${T(t, ASPECT_KEY[c.type])}</span>
-      <span class="shrink-0"><${Planet} body=${c.b} /></span>
-      <span class="flex-1"></span>
-      <span class="shrink-0 text-[0.68rem] font-mono tabular-nums text-base-content/65">${c.orb.toFixed(1)}° / ${c.limit}°</span>
+    ${list.slice(0, 5).map((c) => html`<div data-contact class="flex items-center gap-1.5 py-1.5 border-b border-base-300/40 last:border-0" key=${`${c.a}-${c.b}-${c.type}`}>
+      <span class="flex items-center gap-1 min-w-0 flex-1">
+        <span class="shrink-0"><${Planet} body=${c.a} /></span>
+        <span class="text-[0.7rem] truncate">${T(t, "pl_" + c.a)}</span>
+      </span>
+      <span class="shrink-0 text-[0.66rem] font-mono uppercase tracking-wide text-muted">${T(t, ASPECT_KEY[c.type])}</span>
+      <span class="flex items-center justify-end gap-1 min-w-0 flex-1">
+        <span class="text-[0.7rem] truncate">${T(t, "pl_" + c.b)}</span>
+        <span class="shrink-0"><${Planet} body=${c.b} /></span>
+      </span>
+      <span class="shrink-0 w-16 text-right text-[0.66rem] font-mono tabular-nums text-muted">${c.orb.toFixed(1)}°/${c.limit}°</span>
     </div>`)}
   </div>`;
 }
 
-function Verdict({ people, list, r, settled, locale, t }) {
+function Verdict({ people, settled, locale, t }) {
   const { ao, bo } = settled;   
   const pos = [chartAt(people[0].date, bo), chartAt(people[1].date, ao)];
   const stable = pos[0] && pos[1];

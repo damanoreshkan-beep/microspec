@@ -32,6 +32,13 @@ SRC="$WORK/build-wasm-simd-web/install/bin/wasm/web"
 mkdir -p "$OUT"
 cp "$SRC/sherpa-onnx-wasm-web.js"   "$OUT/sherpa-onnx-wasm-web.js"
 cp "$SRC/sherpa-onnx-wasm-web.wasm" "$OUT/sherpa-onnx-wasm-web.wasm"
+# The web target ships only the emscripten glue; the high-level JS wrapper (OfflineRecognizer + the config
+# helpers) is a source file, not a build output. Vendor it too, plus the one-line globalThis export footer
+# stt.js needs (a class is a lexical global a module cannot otherwise reach). Keep that footer if present.
+if ! grep -q "globalThis.OfflineRecognizer" "$OUT/sherpa-onnx-asr.js" 2>/dev/null; then
+  cp "$WORK/wasm/asr/sherpa-onnx-asr.js" "$OUT/sherpa-onnx-asr.js"
+  printf '\ntry { globalThis.OfflineRecognizer = OfflineRecognizer; } catch (e) {}\n' >> "$OUT/sherpa-onnx-asr.js"
+fi
 
 echo "built sherpa-onnx wasm/web @ $SHERPA_REF:"
-ls -lh "$OUT"/sherpa-onnx-wasm-web.*
+ls -lh "$OUT"/sherpa-onnx-wasm-web.* "$OUT/sherpa-onnx-asr.js"

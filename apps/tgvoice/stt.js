@@ -137,21 +137,21 @@ export async function engineAvailable() {
   catch { return false; }
 }
 
-function loadEngine() {
-  if (enginePromise) return enginePromise;
-  enginePromise = new Promise((resolve, reject) => {
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
     const s = document.createElement("script");
-    s.src = assetURL("sherpa-onnx-wasm-web.js");
-    s.onload = async () => {
-      try {
-        const factory = globalThis.SherpaOnnx;
-        const Module = await factory({ locateFile: (p) => assetURL(p) });
-        resolve(Module);
-      } catch (e) { reject(e); }
-    };
-    s.onerror = () => reject(new Error("engine script failed"));
+    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error(`script failed: ${src}`));
     document.head.appendChild(s);
   });
+}
+
+function loadEngine() {
+  if (enginePromise) return enginePromise;
+  enginePromise = (async () => {
+    await loadScript(assetURL("sherpa-onnx-asr.js"));            
+    await loadScript(assetURL("sherpa-onnx-wasm-web.js"));       
+    return await globalThis.SherpaOnnx({ locateFile: (p) => assetURL(p) });
+  })();
   return enginePromise;
 }
 

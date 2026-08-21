@@ -182,5 +182,10 @@
   "sign8": "Sagittarius",
   "sign9": "Capricorn",
   "sign10": "Aquarius",
-  "sign11": "Pisces"
+  "sign11": "Pisces",
+  "pickDate": "Choose a date",
+  "moonOpen": "the hour decides this",
+  "matchContacts": "Contacts between the charts",
+  "matchNoContacts": "No contact between these two charts falls inside orb",
+  "verdictTitle": "What this pair is"
 }

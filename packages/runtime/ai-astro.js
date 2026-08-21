@@ -25,6 +25,11 @@ export const askedRead = ASKED.get;
 export const isAskedRead = ASKED.has;
 export const warmAskedRead = ASKED.warm;
 
+const MATCH = reading("astro-m", "astroMatch");
+export const matchRead = MATCH.get;
+export const isMatchRead = MATCH.has;
+export const warmMatchRead = MATCH.warm;
+
 const PORTRAIT = reading("astro-c", "astroChart");
 export const portraitRead = PORTRAIT.get;
 export const isPortraitRead = PORTRAIT.has;

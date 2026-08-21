@@ -1,57 +1,118 @@
 import { html } from "htm/preact";
 import { Fragment } from "preact";
+import { useState, useEffect, useMemo } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { persistentAtom } from "@nanostores/persistent";
 import { T } from "/_rt/i18n.js";
 import { Sign } from "/_rt/zodiac.js";
-import { eclipticPositions } from "/_rt/astro.js";
-import { signOf, compat, band } from "/_rt/synastry.js";
+import { Planet, eclipticPositions } from "/_rt/astro.js";
+import { signOf, contacts, score, band, SYN_BODIES } from "/_rt/synastry.js";
+import { groundSynastry } from "/_rt/signif.js";
+import { matchRead, warmMatchRead, isMatchRead } from "/_rt/ai-astro.js";
 import { gate } from "/_rt/gate.js";
+import { DateField, CalendarSheet, parseYmd } from "./datepick.js";
+import { Reading } from "./reading.js";
 
-const PL = ["sun", "moon", "mercury", "venus", "mars"];
+const AI_MATCH = { get: matchRead, has: isMatchRead, warm: warmMatchRead };
+
 const $a = persistentAtom("compat.a", gate ? "1990-07-15" : "");
 const $b = persistentAtom("compat.b", gate ? "1992-03-22" : "");
-const BAND_COLOR = ["var(--color-error)", "var(--color-warning)", "var(--color-secondary)", "var(--color-success)"];
+const $ao = persistentAtom("compat.ao", "0");
+const $bo = persistentAtom("compat.bo", "0");
 
-const planetsFor = (dateStr) => {
-  if (!dateStr) return null;
-  const d = new Date(dateStr + "T12:00:00Z");
-  if (isNaN(+d)) return null;
-  const pos = eclipticPositions(d, PL);
-  if (pos.length < PL.length) return null;                 
-  const m = {};
-  for (const { key, lon } of pos) m[key] = signOf(lon);
-  return m;
+const BAND_COLOR = ["var(--color-error)", "var(--color-warning)", "var(--color-secondary)", "var(--color-success)"];
+const ASPECT_KEY = { conjunction: "aspConjunction", sextile: "aspSextile", square: "aspSquare", trine: "aspTrine", opposition: "aspOpposition" };
+const STEP = 30, SPAN = 1440;   
+const GATE_MATCH = { uk: "Найтісніший контакт тут — тригон Сонця партнера до твого Місяця, орб 2.1°: те, ким він є свідомо, лягає просто на те, як ти реагуєш, і саме тому ви домовляєтеся швидше, ніж встигаєте посперечатися. Тригон його Венери до твого Марса, орб 1.3°, тримає потяг у тому ж легкому руслі — тут ніхто нікого не здобуває. Секстиль його Місяця до твого Марса дає вихід, але тільки якщо ним скористатися: сам він нічого не зробить. Самі положення влаштовані по-різному — його Сонце в Овні починає прямо, твоє в Раку прихищає і памʼятає, — і ця різниця в темпі буде помітною раніше за все інше. Ціна тут одна й конкретна: легкість тригонів мало кому впадає в око, тож витримку цієї пари ви обидва схильні недооцінювати. Місяць рухається на понад тринадцять градусів за добу, тож точний час народження визначив би його знак.", en: "The closest contact here is your partner's Sun trine your Moon, orb 2.1°: who they consciously are lands straight on the way you react, which is why the two of you settle things before you get round to arguing about them. Their Venus trine your Mars, orb 1.3°, keeps the attraction in the same easy channel — nobody is winning anybody here. Their Moon sextile your Mars is an opening rather than an event: it helps only if it is taken. The placements themselves are built differently — their Aries Sun starts directly, your Cancer Sun shelters and remembers — and that difference in tempo shows up before anything else does. The cost is one and specific: a trine flows so readily that it goes unnoticed, so you both underrate how much this pair actually endures. The Moon moves over thirteen degrees a day, so a birth time would settle its sign." };
+
+const instant = (dateStr, offMin) => {
+  const p = parseYmd(dateStr);
+  return p ? new Date(Date.UTC(p.y, p.m, p.d, 12) + offMin * 60000) : null;
 };
 
-export function match({ S }) {
-  const t = useStore(S.t);
-  const a = useStore($a), b = useStore($b);
-  const A = planetsFor(a), B = planetsFor(b);
-  const r = A && B ? compat(A, B) : null;
+const chartAt = (dateStr, offMin) => {
+  const d = instant(dateStr, offMin);
+  if (!d) return null;
+  const pos = eclipticPositions(d, SYN_BODIES);
+  return pos.length === SYN_BODIES.length ? pos : null;
+};
 
-  const dateField = (val, set, label) => html`<label class="flex flex-col gap-1 min-w-0">
-    <span class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/65">${label}</span>
-    <input type="date" value=${val} max="2035-12-31" onInput=${(e) => set(e.target.value)} class="input input-bordered rounded-2xl h-11 w-full text-sm" />
-  </label>`;
+const bodyOf = (pos, key) => pos.find((p) => p.key === key);
+
+const moonUnsettled = (dateStr, offMin) => {
+  const lo = chartAt(dateStr, offMin - 720), hi = chartAt(dateStr, offMin + 720);
+  if (!lo || !hi) return false;
+  return signOf(bodyOf(lo, "moon").lon) !== signOf(bodyOf(hi, "moon").lon);
+};
+
+const clock = (offMin) => {
+  const total = ((720 + offMin) % 1440 + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+};
+const dayShift = (offMin) => Math.floor((720 + offMin) / 1440);
+
+export function match({ S, screen, openScreen, closeScreen }) {
+  const t = useStore(S.t), locale = useStore(S.locale);
+  const a = useStore($a), b = useStore($b);
+  const ao = +useStore($ao), bo = +useStore($bo);
+
+  const A = useMemo(() => chartAt(a, ao), [a, ao]);
+  const B = useMemo(() => chartAt(b, bo), [b, bo]);
+  const list = useMemo(() => (A && B ? contacts(A, B) : []), [A, B]);
+  const r = A && B ? score(list) : null;
+
+  const [settled, setSettled] = useState({ ao, bo });
+  useEffect(() => {
+    const id = setTimeout(() => setSettled({ ao, bo }), 1000);
+    return () => clearTimeout(id);
+  }, [ao, bo]);
+
+  const people = [
+    { key: "b", label: T(t, "partnerLabel"), date: b, off: bo, setOff: (v) => $bo.set(String(v)), pos: B, attr: "data-person-b" },
+    { key: "a", label: T(t, "youLabel"), date: a, off: ao, setOff: (v) => $ao.set(String(v)), pos: A, attr: "data-person-a" },
+  ];
+  const setDate = (k, v) => (k === "a" ? $a : $b).set(v);
+  const openKey = typeof screen === "string" && screen.startsWith("cal:") ? screen.slice(4) : null;
 
   return html`<${Fragment}>
-    <div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-[var(--ms-gap)]">
       <div class="grid grid-cols-2 gap-3">
-        ${dateField(a, (v) => $a.set(v), T(t, "youLabel"))}
-        ${dateField(b, (v) => $b.set(v), T(t, "partnerLabel"))}
+        ${people.map((p) => html`<${DateField} key=${p.key} value=${p.date} label=${p.label} locale=${locale}
+          placeholder=${T(t, "pickDate")} attr=${`data-date-${p.key}`} onOpen=${() => openScreen("cal:" + p.key)} />`)}
       </div>
+
+      ${people.map((p) => p.date ? html`<${TimeDial} key=${p.key} p=${p} t=${t} /> ` : null)}
 
       ${r ? html`
         <${Ring} score=${r.overall} t=${t} />
         <div class="grid grid-cols-2 gap-3">
-          <${Person} label=${T(t, "youLabel")} P=${A} t=${t} />
-          <${Person} label=${T(t, "partnerLabel")} P=${B} t=${t} />
+          ${people.map((p) => html`<${Person} key=${p.key} label=${p.label} pos=${p.pos} t=${t}
+            unsettled=${moonUnsettled(p.date, p.off)} attr=${p.attr} />`)}
         </div>
         <${Bars} r=${r} t=${t} />
+        <${Contacts} list=${list} t=${t} />
+        <${Verdict} people=${people} list=${list} r=${r} settled=${settled} locale=${locale} t=${t} />
       ` : null}
     </div>
+
+    <${CalendarSheet} open=${!!openKey} onClose=${closeScreen} locale=${locale}
+      title=${openKey === "a" ? T(t, "youLabel") : T(t, "partnerLabel")}
+      value=${openKey === "a" ? a : b} onPick=${(v) => setDate(openKey, v)} />
   </${Fragment}>`;
+}
+
+function TimeDial({ p, t }) {
+  const shift = dayShift(p.off);
+  return html`<label ...${{ [`data-dial-${p.key}`]: p.key }} class="flex flex-col gap-1">
+    <span class="flex items-baseline gap-2">
+      <span class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/65 truncate">${p.label}</span>
+      <span class="flex-1"></span>
+      <span class="text-xs font-mono tabular-nums text-base-content/80">${clock(p.off)}
+        ${shift ? html`<span class="text-base-content/55">${shift > 0 ? "+1" : "−1"}</span>` : null} UTC</span>
+    </span>
+    <input type="range" min=${-SPAN} max=${SPAN} step=${STEP} value=${p.off} aria-label=${p.label}
+      onInput=${(e) => p.setOff(Number(e.target.value))} class="range range-xs range-primary w-full" />
+  </label>`;
 }
 
 function Ring({ score, t }) {
@@ -71,17 +132,22 @@ function Ring({ score, t }) {
   </div>`;
 }
 
-function Person({ label, P, t }) {
-  return html`<div class="rounded-2xl sf-raised sf-e2 p-3 flex flex-col items-center gap-2">
+function Person({ label, pos, t, unsettled, attr }) {
+  const sun = signOf(bodyOf(pos, "sun").lon);
+  return html`<div ...${{ [attr]: "1" }} class="rounded-2xl sf-raised sf-e2 p-3 flex flex-col items-center gap-2">
     <div class="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${label}</div>
-    <${Sign} i=${P.sun} cls="w-9 h-9 text-secondary" />
-    <div class="text-sm font-semibold leading-tight">${T(t, "sign" + P.sun)}</div>
-    <div class="flex gap-3.5 mt-1">
-      ${["moon", "venus", "mars"].map((pl) => html`<div class="flex flex-col items-center gap-1" key=${pl}>
-        <${Sign} i=${P[pl]} cls="w-4 h-4 text-base-content/65" />
-        <span class="text-[0.5rem] font-mono uppercase tracking-wide text-base-content/65">${T(t, "pl_" + pl)}</span>
-      </div>`)}
+    <${Sign} i=${sun} cls="w-9 h-9 text-secondary" />
+    <div class="text-sm font-semibold leading-tight text-center">${T(t, "sign" + sun)}</div>
+    <div class="grid grid-cols-3 gap-1 w-full mt-1">
+      ${["moon", "venus", "mars"].map((pl) => {
+        const soft = pl === "moon" && unsettled;
+        return html`<div class="flex flex-col items-center gap-1 min-w-0" key=${pl}>
+          <${Sign} i=${signOf(bodyOf(pos, pl).lon)} cls=${`w-4 h-4 ${soft ? "text-warning" : "text-base-content/65"}`} />
+          <span class=${`text-[0.5rem] font-mono uppercase tracking-wide truncate w-full text-center ${soft ? "text-warning" : "text-base-content/65"}`}>${T(t, "pl_" + pl)}</span>
+        </div>`;
+      })}
     </div>
+    ${unsettled ? html`<div data-moon-open class="text-[0.55rem] leading-tight text-center text-warning/90">${T(t, "moonOpen")}</div>` : null}
   </div>`;
 }
 
@@ -93,5 +159,42 @@ function Bars({ r, t }) {
       <div class="flex-1 h-2 rounded-full sf-inset overflow-hidden"><div class="h-full rounded-full" style=${`width:${v}%;background:${BAND_COLOR[band(v)]}`}></div></div>
       <div class="w-8 shrink-0 text-right text-xs font-mono tabular-nums text-base-content/70">${v}</div>
     </div>`)}
+  </div>`;
+}
+
+function Contacts({ list, t }) {
+  if (!list.length) return html`<div data-contacts class="text-[0.8rem] text-base-content/65 py-1">${T(t, "matchNoContacts")}</div>`;
+  return html`<div data-contacts class="flex flex-col gap-1.5">
+    <div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "matchContacts")}</div>
+    ${list.slice(0, 5).map((c) => html`<div data-contact class="flex items-center gap-2 py-1.5 border-b border-base-300/40 last:border-0" key=${`${c.a}-${c.b}-${c.type}`}>
+      <span class="shrink-0"><${Planet} body=${c.a} /></span>
+      <span class="text-[0.72rem] font-medium truncate">${T(t, ASPECT_KEY[c.type])}</span>
+      <span class="shrink-0"><${Planet} body=${c.b} /></span>
+      <span class="flex-1"></span>
+      <span class="shrink-0 text-[0.68rem] font-mono tabular-nums text-base-content/65">${c.orb.toFixed(1)}° / ${c.limit}°</span>
+    </div>`)}
+  </div>`;
+}
+
+function Verdict({ people, list, r, settled, locale, t }) {
+  const { ao, bo } = settled;   
+  const pos = [chartAt(people[0].date, bo), chartAt(people[1].date, ao)];
+  const stable = pos[0] && pos[1];
+  const built = useMemo(() => {
+    if (!stable) return null;
+    const settledList = contacts(pos[0], pos[1]);
+    return groundSynastry({
+      people: [{ label: "Partner", points: pos[0] }, { label: "You", points: pos[1] }],
+      list: settledList,
+      scores: score(settledList),
+      refEN: `${clock(bo)} UTC and ${clock(ao)} UTC on the stated birth dates`,
+      moonOpen: moonUnsettled(people[0].date, bo) || moonUnsettled(people[1].date, ao),
+    });
+  }, [people[0].date, people[1].date, bo, ao]);
+  if (!built) return null;
+  return html`<div class="flex flex-col gap-1.5 pt-1">
+    <div class="text-[0.62rem] font-mono uppercase tracking-[0.12em] text-base-content/70">${T(t, "verdictTitle")}</div>
+    <${Reading} sig=${built.sig} input=${built.text} loc=${locale} api=${AI_MATCH} t=${t}
+      gateText=${GATE_MATCH[locale] || GATE_MATCH.en} lines=${[27, 31, 24, 29, 18]} />
   </div>`;
 }

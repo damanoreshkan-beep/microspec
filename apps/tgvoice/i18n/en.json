@@ -28,6 +28,7 @@
   "errDecode": "Could not read this audio. Send it as a voice message or an .ogg file.",
   "errNoModel": "Download a language first, then try again.",
   "errFailed": "Recognition failed. Try again.",
+  "errTooLarge": "This clip is too large (over 8 MB). A voice message should fit; try a shorter one.",
   "profTheme": "Dark theme",
   "profLang": "Language",
   "install": "Install app",

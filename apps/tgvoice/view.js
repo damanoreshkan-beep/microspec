@@ -20,6 +20,8 @@ export function tgvoice({ S, toast }) {
   const [res, setRes] = useState(gate ? { text: "привіт це тестове голосове повідомлення з телеграму все працює офлайн", lang: "uk", ambiguous: false } : null);
   const [errKey, setErrKey] = useState(null);
   const [cached, setCached] = useState({ uk: false, ru: false, en: false });
+  const [audioUrl, setAudioUrl] = useState(null);   
+  const [audioName, setAudioName] = useState(null);
   const fileRef = useRef(null);
   const busyRef = useRef(false);
 
@@ -47,11 +49,20 @@ export function tgvoice({ S, toast }) {
     } finally { busyRef.current = false; refreshCached(); }
   }
 
+  function accept(buf, name, mime) {
+    try {
+      const url = URL.createObjectURL(new Blob([buf], { type: mime || "audio/ogg" }));
+      setAudioUrl((old) => { if (old) { try { URL.revokeObjectURL(old); } catch {  } } return url; });
+      setAudioName(name || "audio");
+    } catch {  }
+    run(buf);
+  }
+
   const onFile = async (e) => {
     const f = e.target.files && e.target.files[0];
     e.target.value = "";
     if (!f) return;
-    try { run(await f.arrayBuffer()); } catch { setErrKey("errDecode"); setPhase("error"); }
+    try { accept(await f.arrayBuffer(), f.name, f.type); } catch { setErrKey("errDecode"); setPhase("error"); }
   };
 
   useEffect(() => {
@@ -61,8 +72,10 @@ export function tgvoice({ S, toast }) {
   useEffect(() => {
     refreshCached();
     const stop = shell.subscribe("share.incoming", {}, (frame) => {
-      const item = frame && frame.items && frame.items.find((it) => !it.tooLarge && it.base64 && /audio|ogg|opus|octet/i.test(it.mime || ""));
-      if (item) run(b64ToBytes(item.base64).buffer);
+      if (!frame || !frame.items || !frame.items.length) return;   
+      const item = frame.items.find((it) => it.base64);
+      if (item) accept(b64ToBytes(item.base64).buffer, item.name, item.mime);
+      else if (frame.items.some((it) => it.tooLarge)) { setErrKey("errTooLarge"); setPhase("error"); }
     }, () => {  });
     return () => { try { stop(); } catch {  } };
   }, [lang]);
@@ -99,6 +112,12 @@ export function tgvoice({ S, toast }) {
   return html`<div class="h-full flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)]">
     <${Segmented} items=${langItems} value=${lang} onChange=${(v) => { setLang(v); buzz(); }} variant="solid" attr="data-lang" />
 
+    ${audioUrl ? html`<div data-audio class="flex items-center gap-2 shrink-0">
+        ${Icon("lucide:file-audio", "text-[color:var(--app-accent)] shrink-0")}
+        <span class="font-mono text-[var(--ms-label)] text-base-content/70 truncate max-w-[40%]">${audioName}</span>
+        <audio controls src=${audioUrl} aria-label=${T(t, "result")} class="h-8 min-w-0 flex-1"></audio>
+      </div>` : null}
+
     <div class="flex-1 min-h-0 flex flex-col">
       ${phase === "result" && res
         ? html`<${Panel} title=${T(t, "result")} className="flex-1 min-h-0">
@@ -131,7 +150,7 @@ export function tgvoice({ S, toast }) {
       ${phase === "result"
         ? html`<button data-copy onClick=${doCopy} class="btn btn-sm btn-ghost" aria-label=${T(t, "copy")}>${Icon("lucide:copy")}</button>
             <button data-share onClick=${doShare} class="btn btn-sm btn-ghost" aria-label=${T(t, "shareOut")}>${Icon("lucide:share-2")}</button>
-            <button data-again onClick=${() => { setPhase("idle"); setRes(null); }} class="btn btn-sm btn-primary gap-1.5 normal-case">${Icon("lucide:plus")}<span>${T(t, "again")}</span></button>`
+            <button data-again onClick=${() => { setPhase("idle"); setRes(null); setAudioUrl((o) => { if (o) { try { URL.revokeObjectURL(o); } catch {  } } return null; }); setAudioName(null); }} class="btn btn-sm btn-primary gap-1.5 normal-case">${Icon("lucide:plus")}<span>${T(t, "again")}</span></button>`
         : phase !== "working"
         ? html`<button data-pick onClick=${() => fileRef.current?.click()} class="btn btn-sm btn-primary gap-1.5 normal-case">
             ${Icon("lucide:folder-open")}<span>${T(t, "pick")}</span></button>`

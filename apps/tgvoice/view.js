@@ -38,6 +38,7 @@ export function tgvoice({ S, toast }) {
   const [bridgeLines, setBridgeLines] = useState(null);
   const fileRef = useRef(null);
   const busyRef = useRef(false);
+  const lastBufRef = useRef(null);
 
   // The flight recorder's two jobs at boot: name a renderer death (a mark left by a heavy step that never
   // finished means the OS killed the page there — the failure that used to read as "nothing happened"),
@@ -85,6 +86,7 @@ export function tgvoice({ S, toast }) {
   // Transcription runs after; even if it fails, the audio stays on screen with the error, never silence.
   function accept(buf, name, mime) {
     log(`accept: ${name || "?"} (${mime || "no mime"}, ${buf.byteLength}b)`);
+    lastBufRef.current = buf;   // what "Retry" re-runs after a failure
     try {
       const url = URL.createObjectURL(new Blob([buf], { type: mime || "audio/ogg" }));
       setAudioUrl((old) => { if (old) { try { URL.revokeObjectURL(old); } catch { /* */ } } return url; });
@@ -192,6 +194,8 @@ export function tgvoice({ S, toast }) {
         ? html`<${Panel} className="flex-1 min-h-0 items-center justify-center text-center gap-3">
             ${Icon("lucide:triangle-alert", "text-2xl text-warning")}
             <p data-error class="text-base-content max-w-[42ch]">${errKey === "errCrashed" ? T(t, "errCrashed", { step: crashStep || "?" }) : T(t, errKey || "errFailed")}</p>
+            ${lastBufRef.current ? html`<button data-retry onClick=${() => run(lastBufRef.current)} class="btn btn-sm btn-primary gap-1.5 normal-case">
+              ${Icon("lucide:rotate-ccw")}<span>${T(t, "retry")}</span></button>` : null}
             ${modelChip}
           <//>`
         : html`<div data-empty class="flex-1 min-h-0 flex flex-col items-center justify-center text-center gap-3 px-4">

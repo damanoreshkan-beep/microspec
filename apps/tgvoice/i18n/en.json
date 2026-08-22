@@ -13,6 +13,7 @@
   "copied": "Copied",
   "shareOut": "Share text",
   "again": "New",
+  "retry": "Retry",
   "detected": "Detected {lang}",
   "stDecode": "Reading audio",
   "stModel": "Downloading model",

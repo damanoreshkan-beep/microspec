@@ -166,6 +166,19 @@ model host, and whether to build+vendor the sherpa `wasm/web` engine now.
 - **Engine binary: build sherpa-onnx `wasm/web` in GitHub Actions, vendor the artifact.** Recipe in
   `tools/wasm/tgvoice/`. **Closed.**
 
+## Post-ship corrections (measured on the S25 via the in-app flight recorder, 2026-08-22)
+
+- **Yehor's Citrinet INT8 has NO sherpa metadata** (vocab_size/normalize_type absent — grepped the binary):
+  sherpa returns a NULL recognizer and every uk run "succeeds" empty. Replaced with **Moonshine v2 base-uk**
+  (`csukuangfj2/sherpa-onnx-moonshine-base-uk-quantized-2026-02-27`, encoder 31 MB + merged decoder 109 MB
+  .ort, CORS OK). The wrapper + C API at v1.13.6 already carry `mergedDecoder`; V2 impl is selected whenever
+  it is non-empty. buildRecognizer now throws `modelInit:<lang>` on a NULL handle instead of silence.
+- **Offline models choke on long clips**: a 548 s voice note aborted Moonshine (wasm abort ptr as the
+  "message"). All runs are now CHUNKED at 45 s windows, joined with spaces.
+- **The renderer-OOM class**: one recognizer alive at a time + engine INITIAL_MEMORY 128 MB (was 512).
+- Engine stdout/stderr are routed into the flight recorder (`log.js`) — SHERPA_ONNX_LOGE is otherwise
+  invisible on a phone.
+
 ## UNVERIFIED — must not be built upon
 - Per-language WER of the multilingual FastConformer **INT8** export (device spike: 30 clips/lang, cold/warm
   load ms, RTF, WER, empty-output rate).

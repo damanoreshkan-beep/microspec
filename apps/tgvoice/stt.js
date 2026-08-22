@@ -11,10 +11,10 @@ export const MODEL_ROOT_FS = "/models";
 const HF = "https://huggingface.co";
 export const MODELS = {
   uk: {
-    label: "Українська", type: "moonshine2", approxMB: 135,
+    label: "Українська", type: "moonshine2", approxMB: 120,
     files: {
-      encoder: `${HF}/csukuangfj2/sherpa-onnx-moonshine-base-uk-quantized-2026-02-27/resolve/main/encoder_model.ort`,
-      mergedDecoder: `${HF}/csukuangfj2/sherpa-onnx-moonshine-base-uk-quantized-2026-02-27/resolve/main/decoder_model_merged.ort`,
+      encoder: `${HF}/onnx-community/moonshine-tiny-uk-ONNX/resolve/main/onnx/encoder_model_quantized.onnx`,
+      mergedDecoder: `${HF}/onnx-community/moonshine-tiny-uk-ONNX/resolve/main/onnx/decoder_model_merged_quantized.onnx`,
       tokens: `${HF}/csukuangfj2/sherpa-onnx-moonshine-base-uk-quantized-2026-02-27/resolve/main/tokens.txt`,
     },
   },

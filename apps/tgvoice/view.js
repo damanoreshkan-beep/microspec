@@ -55,6 +55,10 @@ export function tgvoice({ S, toast }) {
   };
 
   useEffect(() => {
+    if (shell.has("share.target")) shell.call("share.target", { kinds: ["audio"] }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     refreshCached();
     const stop = shell.subscribe("share.incoming", {}, (frame) => {
       const item = frame && frame.items && frame.items.find((it) => !it.tooLarge && it.base64 && /audio|ogg|opus|octet/i.test(it.mime || ""));

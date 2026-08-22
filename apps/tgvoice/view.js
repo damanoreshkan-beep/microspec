@@ -65,6 +65,13 @@ export function tgvoice({ S, toast }) {
     try { run(await f.arrayBuffer()); } catch { setErrKey("errDecode"); setPhase("error"); }
   };
 
+  // Register this app in the system share sheet for AUDIO (a Telegram voice note is audio/ogg). The aliases
+  // are baked DISABLED into every full shell — a page has to turn its own on — so without this call the app
+  // never appears in "Share to". No-op in a browser / on an older shell; persists across reboots once set.
+  useEffect(() => {
+    if (shell.has("share.target")) shell.call("share.target", { kinds: ["audio"] }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     refreshCached();
     // A voice note shared in from another app (Telegram). Under the gate the bridge is mocked and emits only

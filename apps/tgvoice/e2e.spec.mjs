@@ -23,6 +23,18 @@ export default [
     },
   },
   {
+    // The Sheet's children are ALWAYS in the DOM (count-based checks are a false green) — the open state
+    // lives on the dialog element, so that is what is asserted.
+    name: "журнал: відкривається шитом, Back закриває (історія-backed)", run: async (h) => {
+      await ready(h);
+      await h.tap("[data-log]"); await h.wait(250);
+      h.expect((await h.count("#tgvoice-log[open]")) === 1, "журнал не відкрився");
+      h.expect((await h.count("[data-log-copy]")) === 1, "немає кнопки копіювання журналу");
+      await h.back(); await h.wait(300);
+      h.expect((await h.count("#tgvoice-log[open]")) === 0, "Back не закрив журнал");
+    },
+  },
+  {
     name: "нова: очищає результат і показує порожній стан з вибором файлу", run: async (h) => {
       await ready(h);
       await h.tap("[data-again]"); await h.wait(200);

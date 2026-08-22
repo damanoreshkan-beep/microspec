@@ -27,15 +27,17 @@ export const MODEL_ROOT_FS = "/models";     // where models are written inside t
 // file KEYS are the config field names buildRecognizer() maps; `src` is the exact HF filename.
 const HF = "https://huggingface.co";
 export const MODELS = {
-  // uk was Yehor's Citrinet INT8 (37 MB) — REPLACED 2026-08-22: that export carries none of the metadata
-  // sherpa requires (vocab_size/normalize_type/… — checked byte-level), so CreateOfflineRecognizer returned
-  // NULL and every uk run "succeeded" with empty text. Moonshine v2 base-uk is sherpa's own export: encoder
-  // + merged decoder (.ort), chosen by the runtime the moment mergedDecoder is non-empty.
+  // uk model history, each step MEASURED (see RESEARCH.md): Yehor's Citrinet INT8 → no sherpa metadata,
+  // NULL recognizer, silent empty text. csukuangfj2's Moonshine v2 base-uk → .ort files ABORT session
+  // creation in our engine (repro'd byte-identically in Deno: throw ptr 18416256; the same graph as .onnx
+  // works, so the .ort loader path is the problem). Current: Moonshine v2 tiny-uk in plain .onnx
+  // (onnx-community), with the base-uk tokens.txt — same tokenizer family, PROVEN by a clean Ukrainian
+  // transcript with punctuation on the reference wav in the Deno repro.
   uk: {
-    label: "Українська", type: "moonshine2", approxMB: 135,
+    label: "Українська", type: "moonshine2", approxMB: 120,
     files: {
-      encoder: `${HF}/csukuangfj2/sherpa-onnx-moonshine-base-uk-quantized-2026-02-27/resolve/main/encoder_model.ort`,
-      mergedDecoder: `${HF}/csukuangfj2/sherpa-onnx-moonshine-base-uk-quantized-2026-02-27/resolve/main/decoder_model_merged.ort`,
+      encoder: `${HF}/onnx-community/moonshine-tiny-uk-ONNX/resolve/main/onnx/encoder_model_quantized.onnx`,
+      mergedDecoder: `${HF}/onnx-community/moonshine-tiny-uk-ONNX/resolve/main/onnx/decoder_model_merged_quantized.onnx`,
       tokens: `${HF}/csukuangfj2/sherpa-onnx-moonshine-base-uk-quantized-2026-02-27/resolve/main/tokens.txt`,
     },
   },

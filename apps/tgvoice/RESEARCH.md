@@ -179,6 +179,23 @@ model host, and whether to build+vendor the sherpa `wasm/web` engine now.
 - Engine stdout/stderr are routed into the flight recorder (`log.js`) — SHERPA_ONNX_LOGE is otherwise
   invisible on a phone.
 
+## Round 3 (2026-08-22, all browser-free-verified in Deno against the vendored engine)
+
+The engine RUNS IN DENO: hide `globalThis.process` during instantiation (the glue's env probe reads it and
+takes the node/require path), pass `wasmBinary`, shadow `module` for the wrapper. `scratchpad/repro2.mjs`.
+This is the farm's first browser-free harness for the actual WASM engine — measured, not assumed:
+
+- **csukuangfj2's base-uk `.ort` pair ABORTS session creation deterministically** — throw ptr 18416256 in
+  Deno, the SAME number the device logged. Not device memory. The engine has OrtFormat symbols, so it is
+  subtler than "no .ort support" — likely an .ort format-version mismatch with the pinned static ORT 1.27.1.
+- **Control (moonshine v1 en, .onnx): session OK, 6s wav decoded in 1.5s** — engine and wrapper are sound.
+- **Fix: Moonshine v2 tiny-uk in plain `.onnx`** (onnx-community, encoder_model_quantized 8.1 MB +
+  decoder_model_merged_quantized 116.7 MB) with the base-uk `tokens.txt` (same tokenizer family): produced a
+  clean punctuated Ukrainian transcript of the reference wav. This is the shipped uk model.
+- Quality ceiling notes: tiny-uk benchmark WER 24.5% (CV10). Upgrades if needed, in order: convert
+  moonshine-base-uk safetensors → ONNX in CI (better), or the uk FastConformer (4% WER) via NeMo export +
+  sherpa metadata (best, most work). The `.ort` route would need a newer ORT static lib in the engine build.
+
 ## UNVERIFIED — must not be built upon
 - Per-language WER of the multilingual FastConformer **INT8** export (device spike: 30 clips/lang, cold/warm
   load ms, RTF, WER, empty-output rate).

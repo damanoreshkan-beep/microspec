@@ -279,7 +279,7 @@ export async function transcribe(arrayBuffer, lang, onStage) {
     onStage?.({ stage: "detect", lang: l });
     const files = await ensureModel(l);
     candidates[l] = await withRecognizer(l, files, (rec) => runOne(rec, head));
-    log(`detect ${l}: "${(candidates[l] || "").slice(0, 60)}"`);
+    log(`detect ${l}: ${(candidates[l] || "").length} chars`);
   }
   const picked = detect(candidates);
   log(`detect: picked ${picked.lang} (conf ${picked.confidence.toFixed(2)}${picked.ambiguous ? ", ambiguous" : ""})`);

@@ -117,6 +117,14 @@ export function tgvoice({ S, toast }) {
       if (frame && frame.ack) { log("share.incoming: subscribed (ack)"); return; }
       if (!frame || !frame.items || !frame.items.length) { log("share.incoming: frame with no items"); return; }
       log(`share.incoming: ${frame.items.length} item(s) ${frame.items.map((i) => `${i.mime || "?"}:${i.bytes}b${i.tooLarge ? " TOOLARGE" : ""}`).join(" ")}`);
+      // The shell holds a share until a FRESH page collects it (a frame emitted into a reloading renderer
+      // vanishes), so the same frame can legitimately arrive twice — once live, once re-flushed. `at` is the
+      // dedupe key, persisted so a reboot does not re-transcribe an old note.
+      try {
+        const seen = Number(localStorage.getItem("tgvoice.lastShareAt") || 0);
+        if (frame.at && frame.at <= seen) { log(`share.incoming: duplicate (at=${frame.at}) — skipped`); return; }
+        if (frame.at) localStorage.setItem("tgvoice.lastShareAt", String(frame.at));
+      } catch { /* storage gone — accept the rare duplicate over losing a share */ }
       // No MIME gate: the user shared this INTO a voice-to-text app on purpose, and Telegram's declared type
       // is unreliable (sometimes empty). Take the first item with bytes; a too-large one says so, never mute.
       const item = frame.items.find((it) => it.base64);

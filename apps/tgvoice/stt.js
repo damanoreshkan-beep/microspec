@@ -11,10 +11,11 @@ export const MODEL_ROOT_FS = "/models";
 const HF = "https://huggingface.co";
 export const MODELS = {
   uk: {
-    label: "Українська", type: "nemo_ctc", approxMB: 37,
+    label: "Українська", type: "moonshine2", approxMB: 135,
     files: {
-      model: `${HF}/Yehor/citrinet-models-onnx/resolve/main/stt_uk_citrinet_512_gamma_0_25.int8.onnx`,
-      tokens: `${HF}/Yehor/citrinet-models-onnx/resolve/main/tokens_stt_uk_citrinet_512_gamma_0_25.txt`,
+      encoder: `${HF}/csukuangfj2/sherpa-onnx-moonshine-base-uk-quantized-2026-02-27/resolve/main/encoder_model.ort`,
+      mergedDecoder: `${HF}/csukuangfj2/sherpa-onnx-moonshine-base-uk-quantized-2026-02-27/resolve/main/decoder_model_merged.ort`,
+      tokens: `${HF}/csukuangfj2/sherpa-onnx-moonshine-base-uk-quantized-2026-02-27/resolve/main/tokens.txt`,
     },
   },
   ru: {
@@ -153,8 +154,12 @@ function loadEngine() {
     await loadScript(assetURL("sherpa-onnx-asr.js"));            
     await loadScript(assetURL("sherpa-onnx-wasm-web.js"));       
     mark("engine");
-    log("engine: instantiating wasm (512MB heap)");
-    const Module = await globalThis.SherpaOnnx({ locateFile: (p) => assetURL(p) });
+    log("engine: instantiating wasm");
+    const Module = await globalThis.SherpaOnnx({
+      locateFile: (p) => assetURL(p),
+      print: (s) => log(`wasm: ${s}`),
+      printErr: (s) => log(`wasm! ${s}`),
+    });
     mark(null);
     log("engine: ready");
     return Module;
@@ -177,10 +182,12 @@ async function buildRecognizer(Module, lang, files) {
   if (m.type === "nemo_ctc") { modelConfig.nemoCtc = { model: paths.model }; modelConfig.modelType = "nemo_ctc"; }
   else if (m.type === "transducer") { modelConfig.transducer = { encoder: paths.encoder, decoder: paths.decoder, joiner: paths.joiner }; }
   else if (m.type === "moonshine") { modelConfig.moonshine = { preprocessor: paths.preprocessor, encoder: paths.encoder, uncachedDecoder: paths.uncachedDecoder, cachedDecoder: paths.cachedDecoder }; }
+  else if (m.type === "moonshine2") { modelConfig.moonshine = { encoder: paths.encoder, mergedDecoder: paths.mergedDecoder }; }
   const rec = new globalThis.OfflineRecognizer({
     featConfig: { sampleRate: 16000, featureDim: 80 },
     modelConfig, decodingMethod: "greedy_search",
   }, Module);
+  if (!rec.handle) { try { rec.free(); } catch {  } throw new Error(`modelInit:${lang}`); }
   return rec;
 }
 
@@ -204,13 +211,21 @@ async function withRecognizer(lang, files, fn) {
   }
 }
 
+export const CHUNK_SEC = 45;
 function runOne(rec, pcm) {
-  const stream = rec.createStream();
-  stream.acceptWaveform(16000, pcm);
-  rec.decode(stream);
-  const out = rec.getResult(stream);
-  stream.free();
-  return (out && out.text ? out.text : "").trim();
+  const win = CHUNK_SEC * 16000;
+  const parts = [];
+  for (let off = 0; off < pcm.length; off += win) {
+    const stream = rec.createStream();
+    stream.acceptWaveform(16000, pcm.subarray(off, Math.min(off + win, pcm.length)));
+    rec.decode(stream);
+    const out = rec.getResult(stream);
+    stream.free();
+    const text = (out && out.text ? out.text : "").trim();
+    if (text) parts.push(text);
+    if (pcm.length > win) log(`chunk ${(Math.min(off + win, pcm.length) / 16000) | 0}/${(pcm.length / 16000) | 0}s`);
+  }
+  return parts.join(" ").trim();
 }
 
 

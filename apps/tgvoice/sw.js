@@ -1,6 +1,6 @@
 self.MS = {
   app: "tgvoice",
-  version: "f7dea07d72",
+  version: "8d119b976d",
   precache: [
     "./",
     "./i18n/en.json",
@@ -8,6 +8,7 @@ self.MS = {
     "./icon.svg",
     "./icons/apple-touch-icon.png",
     "./index.html",
+    "./log.js",
     "./manifest.json",
     "./spec.json",
     "./stt.js",

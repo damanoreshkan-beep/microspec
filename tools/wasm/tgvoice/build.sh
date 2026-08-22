@@ -23,9 +23,17 @@ rm -rf "$WORK"
 git clone --depth 1 --branch "$SHERPA_REF" https://github.com/k2-fsa/sherpa-onnx "$WORK"
 cd "$WORK"
 
+# ONE deliberate patch before the stock build: the upstream heap is `-s INITIAL_MEMORY=512MB`, which is
+# COMMITTED up front. Inside an Android WebView that baseline plus one ONNX session is enough for the OS to
+# kill the renderer mid-transcription (measured on the S25: the page reloaded silently on every share once
+# models were cached). ALLOW_MEMORY_GROWTH is already on, so a small initial heap grows on demand instead
+# of pre-claiming half a gigabyte. Patching the CLONE in CI, never vendored sources.
+sed -i 's/INITIAL_MEMORY=512MB/INITIAL_MEMORY=128MB/' wasm/wasm-common.cmake
+grep -q 'INITIAL_MEMORY=128MB' wasm/wasm-common.cmake || { echo "heap patch missed — upstream flag moved"; exit 1; }
+
 # The stock script builds the generic web module: full OFFLINE C API + FS exported + MODULARIZE=1 +
 # EXPORT_NAME="SherpaOnnx", ONNX Runtime pulled as a prebuilt static SIMD lib (no local ORT compile, no
-# Python). We do not edit it — a patched build is a build that drifts from upstream.
+# Python).
 ./build-wasm-simd-web.sh
 
 SRC="$WORK/build-wasm-simd-web/install/bin/wasm/web"

@@ -1,6 +1,7 @@
 
 import { detect } from "/_rt/langid.js";
 import { gate } from "/_rt/gate.js";
+import { log, mark } from "./log.js";
 
 const assetURL = (f) => new URL(`./assets/${f}`, import.meta.url).href;
 
@@ -148,10 +149,17 @@ function loadScript(src) {
 function loadEngine() {
   if (enginePromise) return enginePromise;
   enginePromise = (async () => {
+    log("engine: loading scripts");
     await loadScript(assetURL("sherpa-onnx-asr.js"));            
     await loadScript(assetURL("sherpa-onnx-wasm-web.js"));       
-    return await globalThis.SherpaOnnx({ locateFile: (p) => assetURL(p) });
+    mark("engine");
+    log("engine: instantiating wasm (512MB heap)");
+    const Module = await globalThis.SherpaOnnx({ locateFile: (p) => assetURL(p) });
+    mark(null);
+    log("engine: ready");
+    return Module;
   })();
+  enginePromise.catch((e) => { log(`engine: FAILED ${e && e.message || e}`); enginePromise = null; });
   return enginePromise;
 }
 
@@ -176,13 +184,24 @@ async function buildRecognizer(Module, lang, files) {
   return rec;
 }
 
-const recognizers = new Map();
-async function recognizerFor(lang, files) {
-  if (recognizers.has(lang)) return recognizers.get(lang);
+async function withRecognizer(lang, files, fn) {
   const Module = await loadEngine();
+  mark(`recognizer-${lang}`);
+  log(`recognizer ${lang}: creating session`);
   const rec = await buildRecognizer(Module, lang, files);
-  recognizers.set(lang, rec);
-  return rec;
+  try {
+    mark(`run-${lang}`);
+    const out = fn(rec);
+    mark(null);
+    return out;
+  } finally {
+    try { rec.free(); } catch {  }
+    try {
+      const dir = `${MODEL_ROOT_FS}/${lang}`;
+      for (const f of Module.FS.readdir(dir)) if (f !== "." && f !== "..") Module.FS.unlink(`${dir}/${f}`);
+    } catch {  }
+    log(`recognizer ${lang}: freed`);
+  }
 }
 
 function runOne(rec, pcm) {
@@ -213,31 +232,46 @@ export async function transcribe(arrayBuffer, lang, onStage) {
   if (!(await engineAvailable())) throw new Error("engineUnavailable");
 
   if (lang !== "auto") {
+    log(`transcribe ${lang}: start (${arrayBuffer.byteLength}b)`);
     onStage?.({ stage: "model", lang });
     const files = await ensureModel(lang, (f) => onStage?.({ stage: "model", fraction: f, lang }));
     onStage?.({ stage: "decode" });
-    const { pcm } = await decodePcm16k(arrayBuffer);
+    mark("decode");
+    const { pcm, durationSec } = await decodePcm16k(arrayBuffer);
+    mark(null);
+    log(`decode: ${durationSec.toFixed(1)}s → ${pcm.length} samples`);
     onStage?.({ stage: "transcribe", lang });
-    const rec = await recognizerFor(lang, files);
-    return { text: runOne(rec, pcm), lang, ambiguous: false };
+    const text = await withRecognizer(lang, files, (rec) => runOne(rec, pcm));
+    log(`transcribe ${lang}: done (${text.length} chars)`);
+    return { text, lang, ambiguous: false };
   }
 
   const avail = [];
   for (const l of LANGS) if (await isModelCached(l)) avail.push(l);
   if (!avail.length) throw new Error("noModels");
+  log(`transcribe auto: start (${arrayBuffer.byteLength}b, models: ${avail.join(" ")})`);
 
   onStage?.({ stage: "decodeHead" });
-  const { pcm: head } = await decodePcm16k(arrayBuffer, LID_HEAD_SEC);
+  mark("decode");
+  const { pcm, durationSec } = await decodePcm16k(arrayBuffer);
+  mark(null);
+  log(`decode: ${durationSec.toFixed(1)}s → ${pcm.length} samples`);
+  const head = pcm.length > LID_HEAD_SEC * 16000 ? pcm.subarray(0, LID_HEAD_SEC * 16000) : pcm;
+  const wholeClip = head.length === pcm.length;
+
   const candidates = {};
   for (const l of avail) {
     onStage?.({ stage: "detect", lang: l });
     const files = await ensureModel(l);
-    candidates[l] = runOne(await recognizerFor(l, files), head);
+    candidates[l] = await withRecognizer(l, files, (rec) => runOne(rec, head));
+    log(`detect ${l}: "${(candidates[l] || "").slice(0, 60)}"`);
   }
   const picked = detect(candidates);
+  log(`detect: picked ${picked.lang} (conf ${picked.confidence.toFixed(2)}${picked.ambiguous ? ", ambiguous" : ""})`);
+  if (wholeClip) return { text: candidates[picked.lang], lang: picked.lang, ambiguous: picked.ambiguous };
   onStage?.({ stage: "transcribe", lang: picked.lang });
-  const { pcm } = await decodePcm16k(arrayBuffer);
   const files = await ensureModel(picked.lang);
-  const text = runOne(await recognizerFor(picked.lang, files), pcm);
+  const text = await withRecognizer(picked.lang, files, (rec) => runOne(rec, pcm));
+  log(`transcribe ${picked.lang}: done (${text.length} chars)`);
   return { text, lang: picked.lang, ambiguous: picked.ambiguous };
 }

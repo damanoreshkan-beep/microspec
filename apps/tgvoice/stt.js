@@ -198,7 +198,7 @@ async function withRecognizer(lang, files, fn) {
   const rec = await buildRecognizer(Module, lang, files);
   try {
     mark(`run-${lang}`);
-    const out = fn(rec);
+    const out = await fn(rec);
     mark(null);
     return out;
   } finally {
@@ -212,7 +212,7 @@ async function withRecognizer(lang, files, fn) {
 }
 
 export const CHUNK_SEC = 45;
-function runOne(rec, pcm) {
+async function runOne(rec, pcm, onChunk) {
   const win = CHUNK_SEC * 16000;
   const parts = [];
   for (let off = 0; off < pcm.length; off += win) {
@@ -223,7 +223,12 @@ function runOne(rec, pcm) {
     stream.free();
     const text = (out && out.text ? out.text : "").trim();
     if (text) parts.push(text);
-    if (pcm.length > win) log(`chunk ${(Math.min(off + win, pcm.length) / 16000) | 0}/${(pcm.length / 16000) | 0}s`);
+    const done = Math.min(off + win, pcm.length);
+    onChunk?.(done / pcm.length);
+    if (done < pcm.length) {
+      log(`chunk ${(done / 16000) | 0}/${(pcm.length / 16000) | 0}s`);
+      await new Promise((r) => setTimeout(r, 0));
+    }
   }
   return parts.join(" ").trim();
 }
@@ -256,7 +261,8 @@ export async function transcribe(arrayBuffer, lang, onStage) {
     mark(null);
     log(`decode: ${durationSec.toFixed(1)}s → ${pcm.length} samples`);
     onStage?.({ stage: "transcribe", lang });
-    const text = await withRecognizer(lang, files, (rec) => runOne(rec, pcm));
+    const text = await withRecognizer(lang, files, (rec) =>
+      runOne(rec, pcm, (fr) => onStage?.({ stage: "transcribe", lang, fraction: fr })));
     log(`transcribe ${lang}: done (${text.length} chars)`);
     return { text, lang, ambiguous: false };
   }
@@ -286,7 +292,8 @@ export async function transcribe(arrayBuffer, lang, onStage) {
   if (wholeClip) return { text: candidates[picked.lang], lang: picked.lang, ambiguous: picked.ambiguous };
   onStage?.({ stage: "transcribe", lang: picked.lang });
   const files = await ensureModel(picked.lang);
-  const text = await withRecognizer(picked.lang, files, (rec) => runOne(rec, pcm));
+  const text = await withRecognizer(picked.lang, files, (rec) =>
+    runOne(rec, pcm, (fr) => onStage?.({ stage: "transcribe", lang: picked.lang, fraction: fr })));
   log(`transcribe ${picked.lang}: done (${text.length} chars)`);
   return { text, lang: picked.lang, ambiguous: picked.ambiguous };
 }

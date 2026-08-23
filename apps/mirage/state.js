@@ -13,7 +13,11 @@ import { holdBackground } from "/_rt/bghold.js";
 import { mockArt, toDataURL } from "./bitmap.js";
 import { startJob, follow, cancelJob } from "./race.js";
 
-export const MODES = ["make", "edit", "read", "blend"];
+export const MODES = ["make", "edit", "read", "blend", "style"];
+// The two-slot modes: a picture, a second picture, an instruction. They differ ONLY in what the second
+// picture is for — a subject to merge in (blend) or a look to borrow (style) — so they share every action
+// below and separate only at the route.
+export const TWO_SLOT = ["blend", "style"];
 export const GATE_PROMPT = "northern lights over a frozen lake, cinematic, ultra detailed";
 export const GATE_TEXT = "Гірське озеро на світанку: дзеркальна вода віддзеркалює рожеві піки, над берегом стелиться легкий туман. Тиша, прохолода і золоте світло перших променів.\n\nгори, озеро, світанок, туман, тиша";
 const K = 4;
@@ -21,7 +25,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const randSeed = () => Math.floor(Math.random() * 1e9);
 const JOB_KEY = (mode) => `ms:mirage:job:${mode}`;
 const OPTS_KEY = "ms:mirage:opts";
-const BASE = { make: `${VPS_PROXY}/image`, edit: `${VPS_PROXY}/image/edit`, blend: `${VPS_PROXY}/image/blend` };
+const BASE = { make: `${VPS_PROXY}/image`, edit: `${VPS_PROXY}/image/edit`, blend: `${VPS_PROXY}/image/blend`, style: `${VPS_PROXY}/image/style` };
 
 // ── atoms ────────────────────────────────────────────────────────────────────────────────────────────
 export const $mode = atom("make");
@@ -35,9 +39,14 @@ export const $edit = atom({ prompt: "", phase: gate ? "ready" : "empty", src: ga
 // viewfinder is filling. No "empty": the stage shows two slots and each fills on its own.
 export const $blend = atom({ prompt: "", phase: "ready", a: gate ? mockArt(11) : null, b: gate ? mockArt(12) : null, cam: null,
   slides: [], idx: 0, more: false, error: null, live: null, t0: 0 });
+// style: the same two slots, read differently — `a` is the picture, `b` is the picture whose LOOK is borrowed.
+// The Spaces behind it take those as two separate inputs in that order (Content / Style), which is what makes
+// this a mode of its own rather than a prompt someone has to phrase correctly in Blend.
+export const $style = atom({ prompt: "", phase: "ready", a: gate ? mockArt(15) : null, b: gate ? mockArt(16) : null, cam: null,
+  slides: [], idx: 0, more: false, error: null, live: null, t0: 0 });
 // read: empty | camera | ready | working | done | error
 export const $read = atom({ question: "", phase: gate ? "ready" : "empty", src: gate ? mockArt(5) : null, text: "", error: null });
-const DEFAULT_OPTS = { quality: "2k", aspect: "screen", model: { make: "auto", edit: "auto", read: "auto", blend: "auto" } };
+const DEFAULT_OPTS = { quality: "2k", aspect: "screen", model: { make: "auto", edit: "auto", read: "auto", blend: "auto", style: "auto" } };
 const loadOpts = () => { try { const v = JSON.parse(localStorage.getItem(OPTS_KEY) || "null"); if (v?.quality && v?.aspect) return { ...DEFAULT_OPTS, ...v, model: { ...DEFAULT_OPTS.model, ...(v.model || {}) } }; } catch { /* */ } return DEFAULT_OPTS; };
 export const $opts = atom(loadOpts());
 export const setOpts = (p) => { const v = { ...$opts.get(), ...p }; $opts.set(v); try { localStorage.setItem(OPTS_KEY, JSON.stringify(v)); } catch { /* */ } };
@@ -46,11 +55,12 @@ const modelFor = (mode) => { const m = $opts.get().model[mode]; return m && m !=
 
 // ── the catalogue: what the edge can run right now, with HF's word on whether each Space is alive ─────────
 // Fetched when the options sheet opens, kept 5 min; `fresh` re-probes. Under the gate a fixed list.
-const KIND = { make: "gen", edit: "edit", read: "read", blend: "blend" };
+const KIND = { make: "gen", edit: "edit", read: "read", blend: "blend", style: "style" };
 const GATE_MODELS = { gen: [{ id: "black-forest-labs/FLUX.1-schnell", tier: "2k", alive: true }, { id: "mrfakename/Z-Image-Turbo", tier: "fast", alive: true }, { id: "krea/Krea-2", tier: "fast", alive: null }],
   edit: [{ id: "LPX55/Qwen-Image-Edit-2511-Turbo-Lightning", tier: "edit", alive: true }, { id: "JitRoy2024/Qwen_Img_Space", tier: "edit", alive: true }], read: [{ id: "ovh/Qwen2.5-VL-72B", tier: "vision", alive: null }, { id: "prithivMLmods/Qwen3-VL-Outpost", tier: "space", alive: true }],
-  blend: [{ id: "linoyts/Qwen-Image-Edit-2511-Fast", tier: "blend", alive: true }, { id: "OmniGen2/OmniGen2", tier: "blend", alive: null }] };
-export const $models = atom({ gen: [], edit: [], read: [], blend: [], at: 0, loading: false, error: false });
+  blend: [{ id: "linoyts/Qwen-Image-Edit-2511-Fast", tier: "blend", alive: true }, { id: "OmniGen2/OmniGen2", tier: "blend", alive: null }],
+  style: [{ id: "bytedance-research/USO", tier: "style", alive: true }, { id: "multimodalart/flux-style-shaping", tier: "style", alive: true }] };
+export const $models = atom({ gen: [], edit: [], read: [], blend: [], style: [], at: 0, loading: false, error: false });
 export async function loadModels(fresh = false) {
   const cur = $models.get();
   if (gate) { if (!cur.at) $models.set({ ...GATE_MODELS, at: Date.now(), loading: false, error: false }); return; }
@@ -60,23 +70,23 @@ export async function loadModels(fresh = false) {
     const r = await fetch(VPS_PROXY + "/image/models" + (fresh ? "?fresh=1" : ""));
     if (!r.ok) throw new Error(String(r.status));
     const j = await r.json();
-    $models.set({ gen: j.gen || [], edit: j.edit || [], read: j.read || [], blend: j.blend || [], at: Date.now(), loading: false, error: false });
+    $models.set({ gen: j.gen || [], edit: j.edit || [], read: j.read || [], blend: j.blend || [], style: j.style || [], at: Date.now(), loading: false, error: false });
   } catch { $models.set({ ...$models.get(), loading: false, error: true }); }
 }
 // the models a mode may pick from: alive or unknown — a Space HF calls dead is never offered
 export const modelsFor = (mode) => ($models.get()[KIND[mode]] || []).filter((m) => m.alive !== false);
 
-const ATOM = { make: $make, edit: $edit, read: $read, blend: $blend };
+const ATOM = { make: $make, edit: $edit, read: $read, blend: $blend, style: $style };
 export const patch = (mode, p) => { const a = ATOM[mode]; a.set({ ...a.get(), ...(typeof p === "function" ? p(a.get()) : p) }); };
 
 // one run counter, one job, one background hold per racing mode — a superseded run can never land
-const runs = { make: 0, edit: 0, read: 0, blend: 0 }, jobs = { make: null, edit: null, blend: null }, holds = { make: null, edit: null, blend: null };
+const runs = { make: 0, edit: 0, read: 0, blend: 0, style: 0 }, jobs = { make: null, edit: null, blend: null, style: null }, holds = { make: null, edit: null, blend: null, style: null };
 
 const revoke = (url) => { if (url?.startsWith?.("blob:")) { try { URL.revokeObjectURL(url); } catch { /* */ } } };
 // free a set of slides, except any URL that moved on to live somewhere else (a hand-off, a keep)
 const freeSlides = (list, keep = []) => list.forEach((s) => { if (!keep.includes(s.url)) revoke(s.url); });
-const held = () => [$edit.get().src, $edit.get().original, $read.get().src, $blend.get().a, $blend.get().b];
-const stillHeld = (url) => [...held(), ...$make.get().slides.map((s) => s.url), ...$edit.get().slides.map((s) => s.url), ...$blend.get().slides.map((s) => s.url)].includes(url);
+const held = () => [$edit.get().src, $edit.get().original, $read.get().src, $blend.get().a, $blend.get().b, $style.get().a, $style.get().b];
+const stillHeld = (url) => [...held(), ...$make.get().slides.map((s) => s.url), ...$edit.get().slides.map((s) => s.url), ...$blend.get().slides.map((s) => s.url), ...$style.get().slides.map((s) => s.url)].includes(url);
 
 // ── the race (make + edit share it; only the route and the body differ) ──────────────────────────────
 // ctx = { t } — the dictionary at the moment the run starts, for the notification and the hold's words.
@@ -95,7 +105,7 @@ async function race(mode, body, run, ctx, seed) {
 
 async function followJob(mode, job, run, ctx, seed) {
   const base = BASE[mode], alive = () => run === runs[mode];
-  const release = holdBackground({ title: T(ctx.t, "title"), body: T(ctx.t, mode === "edit" ? "reworking" : mode === "blend" ? "blending" : "working") });
+  const release = holdBackground({ title: T(ctx.t, "title"), body: T(ctx.t, mode === "edit" ? "reworking" : mode === "blend" ? "blending" : mode === "style" ? "styling" : "working") });
   holds[mode] = release;
   const mine = [];
   const status = await follow({
@@ -169,36 +179,42 @@ export function keepEditing() {
   patch("edit", { src: cur.url, slides: [], idx: 0, more: false, prompt: "", error: null, phase: "ready" });
 }
 
-// ── blend: two pictures + an instruction ─────────────────────────────────────────────────────────────
-export async function blend(ctx) {
-  const st = $blend.get(), p = st.prompt.trim();
+// ── the two-slot modes: two pictures + an instruction ────────────────────────────────────────────────
+// Blend merges the second picture's SUBJECT into the first; style borrows its LOOK. The pictures travel the
+// same way (slot a first, slot b second — the Spaces read them in that order), so this is one function and
+// the mode is the only thing that changes: the route it posts to and the pool the edge races behind it.
+async function fuse(mode, ctx) {
+  const st = ATOM[mode].get(), p = st.prompt.trim();
   if (!p || !st.a || !st.b || st.phase === "working") return;
-  const seed = randSeed(), run = ++runs.blend;
-  holds.blend?.(); holds.blend = null;
+  const seed = randSeed(), run = ++runs[mode];
+  holds[mode]?.(); holds[mode] = null;
   freeSlides(st.slides, held());
-  patch("blend", { slides: [], idx: 0, more: false, error: null, live: null, phase: "working", t0: Date.now() });
-  if (gate) { await sleep(120); if (run === runs.blend) patch("blend", { slides: [0, 1, 2, 3].map((n) => ({ url: mockArt(seed + n), seed: seed + n })), phase: "done" }); return; }
+  patch(mode, { slides: [], idx: 0, more: false, error: null, live: null, phase: "working", t0: Date.now() });
+  if (gate) { await sleep(120); if (run === runs[mode]) patch(mode, { slides: [0, 1, 2, 3].map((n) => ({ url: mockArt(seed + n), seed: seed + n })), phase: "done" }); return; }
   notifyAsk();
   let images;
-  try { images = await Promise.all([toDataURL(st.a), toDataURL(st.b)]); } catch { return fail("blend", run, "eFailed"); }
-  if (run !== runs.blend) return;
-  if (images.some((i) => i.length > 9_000_000)) return fail("blend", run, "eBig");
-  patch("blend", { live: { stage: "translate" } });
+  try { images = await Promise.all([toDataURL(st.a), toDataURL(st.b)]); } catch { return fail(mode, run, "eFailed"); }
+  if (run !== runs[mode]) return;
+  if (images.some((i) => i.length > 9_000_000)) return fail(mode, run, "eBig");
+  patch(mode, { live: { stage: "translate" } });
   let pEn = p; try { pEn = await toEnglish(p); } catch { /* */ }
-  if (run !== runs.blend) return;
-  await race("blend", { images, prompt: pEn, seed, k: K, model: modelFor("blend") }, run, ctx, seed);
+  if (run !== runs[mode]) return;
+  await race(mode, { images, prompt: pEn, seed, k: K, model: modelFor(mode) }, run, ctx, seed);
 }
-export function setBlendSource(slot, url) {
-  const st = $blend.get(), old = st[slot];
+export const blend = (ctx) => fuse("blend", ctx);
+export const stylize = (ctx) => fuse("style", ctx);
+
+export function setSlot(mode, slot, url) {
+  const st = ATOM[mode].get(), old = st[slot];
   freeSlides(st.slides, [url, ...held()]);
-  patch("blend", { [slot]: url, slides: [], idx: 0, more: false, error: null, phase: "ready", cam: null });
+  patch(mode, { [slot]: url, slides: [], idx: 0, more: false, error: null, phase: "ready", cam: null });
   if (old && old !== url && !stillHeld(old)) revoke(old);
 }
-export function clearBlendSource(slot) {
-  runs.blend++;
-  const st = $blend.get(), old = st[slot];
+export function clearSlot(mode, slot) {
+  runs[mode]++;
+  const st = ATOM[mode].get(), old = st[slot];
   freeSlides(st.slides, held());
-  patch("blend", { [slot]: null, slides: [], idx: 0, more: false, error: null, phase: "ready", cam: null });
+  patch(mode, { [slot]: null, slides: [], idx: 0, more: false, error: null, phase: "ready", cam: null });
   if (old && !stillHeld(old)) revoke(old);
 }
 
@@ -272,11 +288,11 @@ export const readToEdit = () => { const r = $read.get(); toEdit(r.src, oneLine(r
 // ── resume: the edge keeps a job for five minutes, so a tab Android discarded mid-race is picked up ──
 export function resume(ctx) {
   if (gate) return;
-  for (const mode of ["make", "edit", "blend"]) {
+  for (const mode of ["make", "edit", "blend", "style"]) {
     if (runs[mode]) continue;                                   // a live run already owns this mode
     let j = null; try { j = JSON.parse(localStorage.getItem(JOB_KEY(mode)) || "null"); } catch { /* */ }
     if (!j?.job || Date.now() - j.ts > 240000) { try { localStorage.removeItem(JOB_KEY(mode)); } catch { /* */ } continue; }
-    if ((mode === "edit" && !$edit.get().src) || (mode === "blend" && !($blend.get().a && $blend.get().b))) { try { localStorage.removeItem(JOB_KEY(mode)); } catch { /* */ } continue; }   // the source blob died with the page
+    if ((mode === "edit" && !$edit.get().src) || (TWO_SLOT.includes(mode) && !(ATOM[mode].get().a && ATOM[mode].get().b))) { try { localStorage.removeItem(JOB_KEY(mode)); } catch { /* */ } continue; }   // the source blob died with the page
     const run = ++runs[mode]; jobs[mode] = j.job;
     patch(mode, { phase: "working", prompt: j.prompt || "", t0: j.ts, error: null });
     followJob(mode, j.job, run, ctx, j.seed || 0);

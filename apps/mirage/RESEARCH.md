@@ -243,3 +243,86 @@ gate frame); the hold-to-compare under a real finger; performance of the field a
   duration (klein-9B/4B 85 · DreamOmni2 90 · 2511-Fast/akhaliq 60-but-aborted · dev-turbo 120). **Blend has NOT
   delivered a picture end-to-end yet**: the probes spent the four pods' daily buckets before the pool was right.
   Re-verify tomorrow with one run per pod: `[gen] microspec-vpn-pN … OK` in the edge log is the proof.
+
+## 2026-08-22 — Z-Image first, and Style as a mode of its own
+
+Owner's ask: put Z-Image-Turbo first in every mode, and find Spaces that take a picture **and a separate
+style picture**. Everything below is measured on 2026-08-22 — HF's API for the catalogue, real runs through
+the pods for the pictures. What was NOT measured says so.
+
+### Z-Image cannot edit, and that is a fact about the model family, not our plumbing
+
+`Tongyi-MAI` publishes exactly two image models — `Z-Image-Turbo` and `Z-Image`, both `text-to-image`. A
+models search for `Z-Image-Edit` returns nothing of the kind, and the two community "editors" are not
+Z-Image at all:
+
+- `Mccscs2/Z-Image-Turbo_with_image` — a four-TAB Space whose i2i tab runs `FluxImg2ImgPipeline` and
+  `StableDiffusionInstructPix2Pix`; Z-Image is only on its t2i tab. Tabs are also outside what the adapter
+  can drive.
+- `amisima/Z-Image-Turbo-Editor` — `@spaces.GPU(duration=180)`, above the 120s anonymous bucket, so it can
+  never be admitted from a pod whatever it does.
+- `akhaliq/Z-Image-Turbo-controlnet` — a real Z-Image with an image input, but ControlNet is STRUCTURAL
+  conditioning: it redraws the scene from the prompt while keeping edges/depth. "Make the sky sunset" would
+  not be followed. 1 like, unverified.
+
+So **Z-Image leads generation and nothing else** (owner's call, this pass). Rework and Blend keep the
+instruction-following rows — a Z-Image pill in those rails would be a dead entry that looks alive.
+
+### The 2K question, answered by two pictures rather than a slider maximum
+
+`mrfakename/Z-Image-Turbo` exposes width/height to 2048 in steps of 64, so the Space *accepts* 2K. Two runs
+through pods, same prompt (a lighthouse in a storm), nothing else changed:
+
+| | result | read from the picture |
+|---|---|---|
+| 2048×2048 (p1) | real, 60s, 5.6 MB | subject, sky and clouds sharp — **but the foreground rock is littered with invented micro-objects**: little panels with fake readouts and text, scattered across the lower third |
+| 1024×1024 (p4, control) | real, 60s | clean. Rock is rock, sea is sea, no invented junk anywhere |
+
+The control is what makes this a finding rather than a suspicion: **the artefact is the resolution, not the
+prompt.** Z-Image is trained at 1024 and fills unfamiliar high-res texture with hallucinated detail. That is
+not FLUX.1-dev's noise — it is a usable picture — but `GEN_2K`'s standing rule is "only Spaces verified to
+produce a real picture at 2K", and a foreground of invented gadgets does not pass it. So: **Z-Image heads
+`GEN_FAST` and the catalogue rail; `GEN_2K` stays FLUX.1-schnell.** One line moves it if the owner decides
+the artefact is acceptable.
+
+### Style: what a "style Space" has to be, and which ones actually are
+
+The adapter fills separate file inputs in **DOM order**, so a row qualifies only if input #1 is the content
+and input #2 is the style — the labels in `app.py` are the contract. Two rows qualify and are alive:
+
+| Space | inputs | declared | note |
+|---|---|---|---|
+| `bytedance-research/USO` | Content Reference Img · Style Reference Img · Extra Style (Beta) | **120s** | ByteDance UXO family; trained to keep the content subject AND take the style. A full anonymous bucket per run, so it admits only on a pod that has not worked yet today |
+| `multimodalart/flux-style-shaping` | Structure Image (depth ControlNet) · Style Image (IP-Adapter) | 60s (bare decorator) | older stack, admits twice as often; the affordable tail |
+
+Dropped, each for a reason that will not change by wishing:
+`ByteDance/DreamO` does style only when a **Dropdown** is set to `style` — the adapter never touches
+dropdowns, so it would silently run the `ip` subject task instead; `ostris/krea2-style-reference` has ONE
+image input (the style) and no content slot; `hugging-apps/style-controller` declares `size="xlarge"`
+(charged 2×, never admitted anonymously); `InstantX/InstantStyle` is RUNTIME_ERROR and is style-only too.
+
+**flux-style-shaping delivered, and the result is the reason USO is first.** Fed the USO repo's own example
+pair — content: a photoreal elf girl, white hair, dark background; style: a Ghibli-looking girl, brown
+braids, yellow tee, blue sky — it returned a clean 1024² in 60s that took the style completely (flat cel
+shading, Ghibli sky) and kept from the content only the **pose and the pointed ears**. Hair, clothes and
+background all came from the style picture. That is what a depth-ControlNet + IP-Adapter pair does, and it
+means: for "restyle MY photo", flux-style-shaping changes who is in it. USO is the row trained not to.
+
+**UNVERIFIED, and it must stay marked so:** USO has not delivered a picture end to end. Two attempts on p2,
+both refused before any GPU ran — first `ZeroGPU queue timeout … No GPU was available after 60s` (a wait,
+not a refusal), then `120s requested vs. 0s left` (that pod's bucket was already spent). The other three
+pods had 60s left each, and USO needs the full 120. Re-verify on a fresh day, one pod, before trusting the
+order: `[style] microspec-vpn-pN bytedance-research/USO OK` in the edge log is the proof.
+
+### The shape it took in the app
+
+Style is a fifth mode, not a phrasing trick inside Blend, because its two slots are **not peers**: `a` is the
+picture, `b` is the look. That is exactly what the Spaces read, and a user cannot be asked to encode it in a
+sentence. Everything else is shared: `state.js` has one `fuse(mode, ctx)` behind `blend()` and `stylize()`,
+one `setSlot`/`clearSlot` (renamed from the blend-only pair — a name that lies is a bug with a delay fuse),
+and the edge has ONE `runBlendJob(..., kind)` serving `/feed/image/blend` and `/feed/image/style`. The only
+style-specific pixels are the two slot labels.
+
+Fixed on the way past, because the new mode would have inherited it: `anyBusy` in `view.js` listed make ·
+edit · read and not blend, so the elapsed clock and the field's `busy` channel sat still through a whole
+blend race. It now reads every racing mode.

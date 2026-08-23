@@ -222,6 +222,31 @@ export default [
     },
   },
   {
+    // Style is the same two slots as Blend, but the two are NOT peers: `a` is the picture, `b` is the look.
+    // The labels are the whole difference on screen, so they are asserted, not the slot count.
+    name: "стиль: підписані слоти, свій каталог моделей, фото+стиль → 4 варіанти", run: async (h) => {
+      await mode(h, "style");
+      h.expect((await h.count("[data-slot=a] img")) === 1 && (await h.count("[data-slot=b] img")) === 1, "обидва слоти мають бути заповнені");
+      h.expect((await h.count("[data-slot-label=a]")) === 1 && (await h.count("[data-slot-label=b]")) === 1, "слоти стилю без підписів");
+      h.expect((await h.text("[data-slot-label=b]")).trim().length > 0, "підпис слота стилю порожній");
+      await h.click("[data-opts]"); await h.wait(300);
+      h.expect((await h.count('[data-model="bytedance-research/USO"]')) === 1, "USO не в каталозі стилю");
+      h.expect((await h.count("[data-q]")) === 0, "якість показана поза режимом Твори");
+      await h.back(); await h.wait(300);
+      await h.click("[data-slot-clear=b]"); await h.wait(250);
+      await h.type("#prompt", "жінка на балконі надвечір"); await h.wait(100);
+      h.expect((await h.count("[data-go]:disabled")) === 1, "дія не вимкнена без зображення стилю");
+      await h.click("[data-slot=b] [data-src-last]"); await h.wait(250);
+      h.expect((await h.count("[data-slot=b] img")) === 1, "слот стилю не заповнився");
+      await h.click("[data-go]");
+      let ok = false;
+      for (let i = 0; i < 15; i++) { if ((await h.count("[data-slide]")) === 4) { ok = true; break; } await h.wait(250); }
+      h.expect(ok, "стиль не дав 4 варіантів");
+      h.expect((await h.count("[data-act=to-edit]")) === 1, "немає «оновити це» після стилю");
+      await mode(h, "make");
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

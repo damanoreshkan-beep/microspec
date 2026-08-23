@@ -31,8 +31,11 @@ const SPARKS = {
   edit: ["turn it into an oil painting", "golden-hour light", "make it snow", "black-and-white film", "turn day into night", "a pencil sketch"],
 };
 const GATE_EDIT = "add falling snow, cinematic";
-const ICONS = { make: "lucide:sparkles", edit: "lucide:wand-sparkles", read: "lucide:scan-eye", blend: "lucide:blend" };
+const ICONS = { make: "lucide:sparkles", edit: "lucide:wand-sparkles", read: "lucide:scan-eye", blend: "lucide:blend", style: "lucide:palette" };
 SPARKS.blend = ["put the second picture into the first", "dress the person in the second picture's outfit", "merge both into one scene", "the style of the second on the first"];
+// Style takes a DESCRIPTION of what should come out, not an instruction: the Spaces behind it read the look
+// from the second picture and the prompt only says what the subject is (USO's own guidance).
+SPARKS.style = ["a woman on a balcony at dusk", "a quiet street after rain", "a cat on a windowsill", "a portrait against a wide sky"];
 const ASPECTS = [["screen", "lucide:smartphone"], ["square", "lucide:square"], ["portrait", "lucide:rectangle-vertical"], ["landscape", "lucide:rectangle-horizontal"]];
 const tool = "btn btn-ghost btn-sm btn-circle text-base-content/70";
 // The working line sweeps like the 21st "AI text loading" idiom — a gradient clipped to the glyphs — but it
@@ -44,11 +47,14 @@ const SHIMMER = `.mg-sh{background:linear-gradient(90deg,rgba(255,255,255,.45) 0
 export function mirage({ S, toast }) {
   const t = useStore(S.t), loc = useStore(S.locale), screen = useStore(S.screen);
   const mode = useStore(M.$mode);
-  const make = useStore(M.$make), edit = useStore(M.$edit), read = useStore(M.$read), blendSt = useStore(M.$blend), opts = useStore(M.$opts);
-  const st = mode === "make" ? make : mode === "edit" ? edit : mode === "blend" ? blendSt : read;
+  const make = useStore(M.$make), edit = useStore(M.$edit), read = useStore(M.$read), blendSt = useStore(M.$blend), styleSt = useStore(M.$style), opts = useStore(M.$opts);
+  const st = mode === "make" ? make : mode === "edit" ? edit : mode === "blend" ? blendSt : mode === "style" ? styleSt : read;
+  const twoSlot = M.TWO_SLOT.includes(mode);
   const slides = mode === "read" ? [] : st.slides, cur = slides[st.idx] || slides[0] || null;
   const working = st.phase === "working";
-  const anyBusy = make.phase === "working" || edit.phase === "working" || read.phase === "working";
+  // Every racing mode counts: the elapsed clock and the field's `busy` channel are driven from here, so a
+  // mode left out of this list runs with a frozen readout behind a picture that is genuinely forming.
+  const anyBusy = [make, edit, read, blendSt, styleSt].some((s) => s.phase === "working");
   const shown = cur?.url || st.src || st.a || null;              // the picture in view: the product, or the source
   const text = mode === "read" ? st.question : st.prompt;
   const setText = (v) => M.patch(mode, mode === "read" ? { question: v } : { prompt: v });
@@ -79,6 +85,7 @@ export function mirage({ S, toast }) {
     if (mode === "make") { remember(st.prompt); return M.conjure(ctx); }
     if (mode === "edit") { remember(st.prompt); return M.rework(ctx); }
     if (mode === "blend") { remember(st.prompt); return M.blend(ctx); }
+    if (mode === "style") { remember(st.prompt); return M.stylize(ctx); }
     if (st.question.trim()) remember(st.question);
     if (await M.readPhoto(ctx)) S.screen.set("read");
   };
@@ -93,10 +100,10 @@ export function mirage({ S, toast }) {
   const copy = async () => { try { await navigator.clipboard.writeText(read.text); toast?.(T(t, "copied")); } catch { toast?.(T(t, "eNetwork")); } };
   const onScroll = (e) => { const el = e.currentTarget; const n = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (n !== st.idx && n >= 0 && n < slides.length) M.patch(mode, { idx: n }); };
   const onKey = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); go(); } };
-  const canGo = working || (mode === "make" ? !!st.prompt.trim() : mode === "edit" ? !!(st.prompt.trim() && st.src) : mode === "blend" ? !!(st.prompt.trim() && st.a && st.b) : !!st.src);
+  const canGo = working || (mode === "make" ? !!st.prompt.trim() : mode === "edit" ? !!(st.prompt.trim() && st.src) : twoSlot ? !!(st.prompt.trim() && st.a && st.b) : !!st.src);
   const goIcon = working ? "lucide:square" : ICONS[mode];
-  const goLabel = working ? T(t, "stop") : mode === "make" ? T(t, "go") : mode === "edit" ? T(t, "rework") : mode === "blend" ? T(t, "blendGo") : T(t, st.question.trim() ? "answer" : "tell");
-  const placeholder = T(t, mode === "make" ? "promptPlaceholder" : mode === "edit" ? "editPlaceholder" : mode === "blend" ? "blendPlaceholder" : "askPlaceholder");
+  const goLabel = working ? T(t, "stop") : mode === "make" ? T(t, "go") : mode === "edit" ? T(t, "rework") : mode === "blend" ? T(t, "blendGo") : mode === "style" ? T(t, "styleGo") : T(t, st.question.trim() ? "answer" : "tell");
+  const placeholder = T(t, mode === "make" ? "promptPlaceholder" : mode === "edit" ? "editPlaceholder" : mode === "blend" ? "blendPlaceholder" : mode === "style" ? "stylePlaceholder" : "askPlaceholder");
   const live = M.liveOf(st.live);
   const elapsed = st.t0 ? Math.round((Date.now() - st.t0) / 1000) : 0;
   // the catalogue for this mode; a chosen model that is no longer offered falls back to auto on screen
@@ -114,8 +121,8 @@ export function mirage({ S, toast }) {
   const slot = (inner) => html`<div class="absolute inset-0 flex items-center justify-center p-[var(--ms-gap)] pb-6">${inner}</div>`;
   const stage = () => {
     if (mode !== "make" && st.phase === "empty") return html`<${Chooser} t=${t} onPick=${(u) => M.setSource(mode, u)} onCamera=${() => M.patch(mode, { phase: "camera" })} />`;
-    if (mode !== "make" && st.phase === "camera") return html`<${Camera} t=${t} loc=${loc} S=${S} reason=${T(t, mode === "read" ? "primeReasonRead" : mode === "blend" ? "primeReasonBlend" : "primeReason")}
-      onCapture=${(u) => mode === "blend" ? M.setBlendSource(st.cam || "a", u) : M.setSource(mode, u)} onClose=${() => M.patch(mode, { phase: mode === "blend" ? "ready" : "empty", cam: null })} />`;
+    if (mode !== "make" && st.phase === "camera") return html`<${Camera} t=${t} loc=${loc} S=${S} reason=${T(t, mode === "read" ? "primeReasonRead" : mode === "blend" ? "primeReasonBlend" : mode === "style" ? "primeReasonStyle" : "primeReason")}
+      onCapture=${(u) => twoSlot ? M.setSlot(mode, st.cam || "a", u) : M.setSource(mode, u)} onClose=${() => M.patch(mode, { phase: twoSlot ? "ready" : "empty", cam: null })} />`;
     const dust = working && !slides.length ? html`<div class="absolute inset-0 rounded-[var(--ms-r)] overflow-hidden sf-raised"><${Dust} active=${true} progress=${live.pct ?? Math.min(0.9, elapsed / 40)} /></div>` : null;
     const caption = working ? html`<div data-working class="absolute inset-x-0 bottom-[var(--ms-pad)] flex flex-col items-center gap-1 pointer-events-none text-white">
       <div class=${`font-mono text-[0.72rem] uppercase tracking-[0.18em] tabular-nums ${gate ? "" : "mg-sh"}`}>${T(t, mode === "read" ? "reading" : live.key)} · ${fmt(elapsed)}</div>
@@ -136,13 +143,16 @@ export function mirage({ S, toast }) {
       </div>` : null}
     </${Fragment}>`;
     if (dust) return html`<${Fragment}>${dust}${caption}</${Fragment}>`;
-    // the blend's two slots, stacked: each is a picture with its own × or a compact chooser until it has one
-    if (mode === "blend") return html`<div class="absolute inset-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-gap)] pb-6">
+    // the two slots, stacked: each is a picture with its own × or a compact chooser until it has one. In style
+    // the two are NOT interchangeable — the top one is the picture, the bottom one is the look it borrows — so
+    // each carries its name. Blend's two are peers and stay unlabelled.
+    if (twoSlot) return html`<div class="absolute inset-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-gap)] pb-6">
       ${["a", "b"].map((sl) => html`<div key=${sl} data-slot=${sl} class="relative flex-1 min-h-0 flex items-center justify-center">
         ${st[sl] ? html`<${Fragment}>
           <img data-result src=${st[sl]} alt="" class=${frame} onClick=${() => S.screen.set("view")} />
-          <button data-slot-clear=${sl} aria-label=${T(t, "clearSlot")} class="absolute top-2 left-2 btn btn-circle btn-xs bg-black/50 text-white border-0" onClick=${() => M.clearBlendSource(sl)}>${Icon("lucide:x", "text-sm")}</button>
-        </${Fragment}>` : html`<${Chooser} t=${t} compact onPick=${(u) => M.setBlendSource(sl, u)} onCamera=${() => M.patch("blend", { phase: "camera", cam: sl })} />`}
+          <button data-slot-clear=${sl} aria-label=${T(t, "clearSlot")} class="absolute top-2 left-2 btn btn-circle btn-xs bg-black/50 text-white border-0" onClick=${() => M.clearSlot(mode, sl)}>${Icon("lucide:x", "text-sm")}</button>
+        </${Fragment}>` : html`<${Chooser} t=${t} compact onPick=${(u) => M.setSlot(mode, sl, u)} onCamera=${() => M.patch(mode, { phase: "camera", cam: sl })} />`}
+        ${mode === "style" ? html`<span data-slot-label=${sl} class="absolute top-2 right-2 rounded-full bg-black/50 px-2 py-0.5 font-mono uppercase tracking-wide text-[0.62rem] text-white">${T(t, sl === "a" ? "slotPhoto" : "slotStyle")}</span>` : null}
       </div>`)}
     </div>`;
     if (st.src) return html`<${Fragment}>

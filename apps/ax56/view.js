@@ -14,7 +14,7 @@ import { Segmented } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { shell } from "/_rt/shell.js";
 import { VID, PID, REG, cutName, isUnmapped } from "/_rt/ax56.js";
-import { buildInitOps, buildDownloadOps, buildConfigOps, parseRx, parse80211, fromHex, CHANNELS, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand, fwdlSts, canDownload } from "/_rt/ax56cap.js";
+import { buildInitOps, buildDownloadOps, buildConfigOps, cpuStopOps, parseRx, parse80211, fromHex, CHANNELS, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand, fwdlSts, canDownload } from "/_rt/ax56cap.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -54,6 +54,24 @@ let dev = null, xport = null, t0 = 0;
 // and the bridge stops answering, which is exactly what fast channel changes did.
 let runId = 0, inFlight = null;
 
+// Find the adapter and get it into wifi mode, mode-switching it out of its storage identity if that is how it
+// turned up. Shared by connect and by the reset below, so both take the one path that is known to work.
+async function openNative() {
+  const list = async () => ((await shell.call("usb.list")) || {}).devices || [];
+  const has = (ds, v, p) => ds.some((d) => d.vid === v && d.pid === p);
+  let ds = await list();
+  log("devices: " + ds.map((d) => d.vid.toString(16) + ":" + d.pid.toString(16)).join(", "));
+  if (has(ds, VID_STORAGE, PID_STORAGE) && !has(ds, VID, PID)) {
+    $status.set("switching"); log("storage 0bda:1a2b found — SCSI eject");
+    await shell.call("usb.open", { vid: VID_STORAGE, pid: PID_STORAGE });
+    await shell.call("usb.switch", { vid: VID_STORAGE, pid: PID_STORAGE });
+    for (let i = 0; i < 12; i++) { await wait(400); ds = await list(); if (has(ds, VID, PID)) break; }
+    log(has(ds, VID, PID) ? "re-enumerated as 0b05:1997" : "did not re-enumerate — replug and retry");
+  }
+  $status.set("opening"); log("open 0b05:1997");
+  await shell.call("usb.open", { vid: VID, pid: PID });
+}
+
 function startCapture() {
   const me = ++runId;
   const prev = inFlight;
@@ -91,19 +109,7 @@ async function connect() {
   log("connect via " + (native ? "native USB bridge" : "WebUSB"));
   try {
     if (native) {
-      const list = async () => ((await shell.call("usb.list")) || {}).devices || [];
-      const has = (ds, v, p) => ds.some((d) => d.vid === v && d.pid === p);
-      let ds = await list();
-      log("devices: " + ds.map((d) => d.vid.toString(16) + ":" + d.pid.toString(16)).join(", "));
-      if (has(ds, VID_STORAGE, PID_STORAGE) && !has(ds, VID, PID)) {
-        $status.set("switching"); log("storage 0bda:1a2b found — SCSI eject");
-        await shell.call("usb.open", { vid: VID_STORAGE, pid: PID_STORAGE });
-        await shell.call("usb.switch", { vid: VID_STORAGE, pid: PID_STORAGE });
-        for (let i = 0; i < 12; i++) { await wait(400); ds = await list(); if (has(ds, VID, PID)) break; }
-        log(has(ds, VID, PID) ? "re-enumerated as 0b05:1997" : "did not re-enumerate — replug and retry");
-      }
-      $status.set("opening"); log("open 0b05:1997");
-      await shell.call("usb.open", { vid: VID, pid: PID });
+      await openNative();
       xport = "shell";
     } else {
       if (!usbSupported()) { $usbOk.set(false); log("no WebUSB in this browser"); return; }
@@ -124,7 +130,7 @@ async function connect() {
 
 // Full bring-up (firmware + monitor config) over the native bridge, then read 802.11 off EP 0x84 and aggregate
 // beacons into access points and data frames into their clients. Native only — usb.batch is the shell bridge.
-async function runCapture(me) {
+async function runCapture(me, attempt = 0) {
   const live = () => runId === me;   // false as soon as a newer capture has been asked for
   try {
     const ch = $ch.get();
@@ -141,7 +147,19 @@ async function runCapture(me) {
     // Both values are written straight back into registers, so a failed read must not become a garbage write,
     // and a chip left mid-download never arms H2C again — starting anyway is what used to hang the app.
     if (isUnmapped(plat) || isUnmapped(wfc)) { $status.set("error"); log("cannot read the adapter's state — reconnect"); return; }
-    if (!canDownload(wfc)) { $status.set("error"); log("firmware download was interrupted (FWDL_STS=" + fwdlSts(wfc) + "); only a physical replug clears this — unplug the adapter and connect again"); return; }
+    // A download that stopped half way can never arm H2C again, but it does not need the user: clearing
+    // WCPU_EN drops the adapter off the bus and it comes back in storage mode, which openNative switches
+    // straight back. One attempt, then say so honestly rather than loop.
+    if (!canDownload(wfc)) {
+      if (attempt > 0) { $status.set("error"); log("adapter still stuck at FWDL_STS=" + fwdlSts(wfc) + " after a reset — unplug it and connect again"); return; }
+      $status.set("switching"); log("firmware download was interrupted (FWDL_STS=" + fwdlSts(wfc) + ") — resetting the adapter");
+      try { await shell.call("usb.batch", { ops: cpuStopOps(plat) }); } catch { /* the reset drops the device mid-call; that IS the reset */ }
+      await wait(2000);
+      if (!live()) return;
+      await openNative();
+      if (!live()) return;
+      return runCapture(me, attempt + 1);
+    }
     const cfg = buildConfigOps(br);
     log("init: " + buildInitOps({ plat, wfc }).length + " ops");
     let r = await shell.call("usb.batch", { ops: buildInitOps({ plat, wfc }) });

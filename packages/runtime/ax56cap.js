@@ -81,6 +81,12 @@ export function parseReplay(blob) {
 export const fwdlSts = (v) => (v >>> 5) & 7;
 export const canDownload = (v) => !isUnmapped(v) && (fwdlSts(v) === 6 || fwdlSts(v) === 7);
 
+// Clearing WCPU_EN on a chip stuck mid-download makes it re-enumerate all the way back to its storage
+// identity — the software equivalent of pulling it out of the socket. Measured on the phone: 0x1E0 read 0x23,
+// this write dropped the device off the bus, it came back as 0bda:1a2b, and after the usual SCSI eject it
+// read 0xC0, cold and ready. So an interrupted download does not need the user to touch anything.
+export const cpuStopOps = (plat) => [wOp(0x88, plat & ~2)];
+
 export function buildInitOps(entry = {}) {
   const { plat = 0x54f, wfc = 0xc0 } = entry;
   const ops = [];

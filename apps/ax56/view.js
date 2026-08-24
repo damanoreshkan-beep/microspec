@@ -8,7 +8,7 @@ import { Segmented } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { shell } from "/_rt/shell.js";
 import { VID, PID, REG, cutName, isUnmapped } from "/_rt/ax56.js";
-import { buildFwdlOps, buildConfigOps, parseRx, parse80211, fromHex } from "/_rt/ax56cap.js";
+import { buildFwdlOps, buildConfigOps, parseRx, parse80211, fromHex, CHANNELS, DEFAULT_CHANNEL, bringupAsset } from "/_rt/ax56cap.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch {  } };
@@ -24,6 +24,7 @@ const $connected = atom(false), $usbOk = atom(true), $status = atom("idle");
 const $aps = atom([]);       
 const $log = atom([]);       
 const $open = atom("");      
+const $ch = atom(DEFAULT_CHANNEL); 
 
 let dev = null, xport = null, t0 = 0, capturing = false;
 
@@ -85,15 +86,18 @@ async function connect() {
 
 async function runCapture() {
   try {
-    $status.set("opening"); log("bring-up: loading firmware + monitor config");
+    const ch = $ch.get();
+    $status.set("opening"); log("bring-up: loading firmware + monitor config (channel " + ch + ")");
     const fw = new Uint8Array(await (await fetch(new URL("./assets/fw.bin", import.meta.url))).arrayBuffer());
-    const br = new Uint8Array(await (await fetch(new URL("./assets/bringup.bin", import.meta.url))).arrayBuffer());
+    const br = new Uint8Array(await (await fetch(new URL(bringupAsset(ch), import.meta.url))).arrayBuffer());
     const fwdl = buildFwdlOps(fw), cfg = buildConfigOps(br);
     log("firmware download: " + fwdl.length + " ops");
     let r = await shell.call("usb.batch", { ops: fwdl });
     log("firmware download: fail=" + ((r && r.fail) || 0));
     const sts = await readReg32(REG.WCPU_FW_CTRL);
-    log("WCPU 0x1E0 = 0x" + (sts >>> 0).toString(16) + (((sts >> 5) & 7) === 7 ? "  STS=7 BOOTED" : "  not booted (replug cold and retry)"));
+    const booted = ((sts >> 5) & 7) === 7;
+    log("WCPU 0x1E0 = 0x" + (sts >>> 0).toString(16) + (booted ? "  STS=7 BOOTED" : "  not booted (replug cold and retry)"));
+    if (!booted) { $status.set("error"); log("aborting — unplug and replug the adapter, then capture again"); return; }
     log("monitor config: " + cfg.length + " ops");
     let chunk = [], bytes = 0, cfail = 0;
     const flush = async () => { if (!chunk.length) return; const rr = await shell.call("usb.batch", { ops: chunk }); cfail += (rr && rr.fail) || 0; chunk = []; bytes = 0; };
@@ -122,6 +126,15 @@ async function runCapture() {
     }
     log("capture stopped — " + aps.size + " access points");
   } catch (e) { $status.set("error"); log("capture error: " + (e && e.message)); }
+}
+
+async function setChannel(next) {
+  if (next === $ch.get()) return;
+  buzz(); $ch.set(next); $open.set(""); $aps.set([]);
+  if (!$connected.get()) return;
+  capturing = false; await wait(150);
+  log("retuning to channel " + next);
+  await runCapture();
 }
 
 function disconnect() {
@@ -218,7 +231,7 @@ function useGraph(aps, sel, theme) {
 export function pointsView({ S }) {
   const t = useStore(S.t), theme = useStore(S.theme);
   const connected = useStore($connected), usbOk = useStore($usbOk), status = useStore($status);
-  const rawAps = useStore($aps), open = useStore($open), sort = useStore($sort);
+  const rawAps = useStore($aps), open = useStore($open), sort = useStore($sort), ch = useStore($ch);
   const aps = sortAps(rawAps, sort);
   const graphRef = useGraph(rawAps, open, theme);
 
@@ -231,7 +244,13 @@ export function pointsView({ S }) {
       <h2 class="text-2xl font-semibold">${T(t, "connectTitle")}</h2>
       <p class="text-base-content/70 leading-relaxed text-sm">${T(t, "connectBody")}</p>
       ${supported
-        ? html`<button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
+        ? html`<${Fragment}>
+            <div class="w-full flex items-center gap-2">
+              <span class="text-[0.65rem] font-mono uppercase tracking-wider text-base-content/70 shrink-0">${T(t, "ch")}</span>
+              <div class="flex-1 min-w-0"><${Segmented} attr="data-ch" size="sm" items=${CHANNELS.map((c) => ({ id: String(c), label: String(c) }))} value=${String(ch)} onChange=${(v) => setChannel(Number(v))} /></div>
+            </div>
+            <button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>
+          </${Fragment}>`
         : html`<div class="alert bg-warning/12 text-warning rounded-2xl sf-e2 text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
     </div>`;
   }
@@ -250,6 +269,11 @@ export function pointsView({ S }) {
       <!-- channel graph: overlapping bells, 2.4 GHz -->
       <div class="shrink-0 rounded-2xl sf-inset overflow-hidden p-1" style="height:clamp(88px,22vh,132px)">
         <canvas ref=${graphRef} class="block w-full h-full" role="img" aria-label=${T(t, "chart")} data-graph></canvas>
+      </div>
+
+      <div class="shrink-0 flex items-center gap-2">
+        <span class="text-[0.65rem] font-mono uppercase tracking-wider text-base-content/70 shrink-0">${T(t, "ch")}</span>
+        <div class="flex-1 min-w-0"><${Segmented} attr="data-ch" size="sm" items=${CHANNELS.map((c) => ({ id: String(c), label: String(c) }))} value=${String(ch)} onChange=${(v) => setChannel(Number(v))} /></div>
       </div>
 
       <div class="shrink-0"><${Segmented} attr="data-sort" size="sm" items=${[{ id: "signal", label: T(t, "srtSignal") }, { id: "ch", label: T(t, "srtCh") }, { id: "clients", label: T(t, "srtClients") }]} value=${sort} onChange=${(v) => { buzz(); $sort.set(v); }} /></div>

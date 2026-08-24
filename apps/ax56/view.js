@@ -247,7 +247,7 @@ function Bars({ level, label }) {
 const Dot = ({ color }) => html`<span class="w-2 h-2 rounded-full shrink-0" style=${`background:${color}`}></span>`;
 
 // The channel graph (2.4 GHz): one overlapping bell per AP, x = channel, height = signal, colour = its identity.
-function drawChannels(cv, aps, sel) {
+function drawChannels(cv, aps, sel, tuned) {
   let c; try { c = cv.getContext ? cv.getContext("2d") : null; } catch { c = null; }
   const W = cv.width | 0, H = cv.height | 0; if (!c || !W || !H) return;
   const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1);
@@ -256,12 +256,18 @@ function drawChannels(cv, aps, sel) {
   c.clearRect(0, 0, W, H);
   const padL = 6 * dpr, padR = 6 * dpr, padT = 12 * dpr, padB = 15 * dpr;
   const plotW = W - padL - padR, plotH = H - padT - padB, base = padT + plotH;
-  const xCh = (ch) => padL + (Math.max(1, Math.min(13, ch)) - 1) / 12 * plotW;
+  // The axis follows the band the radio is tuned to. Without this a 5 GHz capture filled the list and left
+  // the graph empty, the app contradicting itself on one screen. Channel number is linear in frequency in
+  // both bands, so the same mapping works for each; only the span and the tick labels change.
+  const band5 = tuned > 14;
+  const lo = band5 ? 36 : 1, hi = band5 ? 165 : 13, span = hi - lo;
+  const ticks = band5 ? [36, 64, 100, 132, 165] : [1, 3, 5, 7, 9, 11, 13];
+  const xCh = (ch) => padL + (Math.max(lo, Math.min(hi, ch)) - lo) / span * plotW;
   c.strokeStyle = `rgba(${ink},0.1)`; c.lineWidth = dpr; c.beginPath(); c.moveTo(padL, base); c.lineTo(W - padR, base); c.stroke();
   c.fillStyle = `rgba(${ink},0.38)`; c.font = `${8.5 * dpr}px ui-monospace, monospace`; c.textAlign = "center"; c.textBaseline = "top";
-  for (let ch = 1; ch <= 13; ch += 2) c.fillText(String(ch), xCh(ch), base + 3 * dpr);
-  const width = (2.1 / 12) * plotW;
-  for (const a of aps.filter((x) => x.band !== "5" && x.ch >= 1 && x.ch <= 14)) {
+  for (const ch of ticks) c.fillText(String(ch), xCh(ch), base + 3 * dpr);
+  const width = (2.1 / span) * plotW;   // a 20 MHz channel is ~4 channel numbers wide in both bands
+  for (const a of aps.filter((x) => (band5 ? x.ch >= 36 : x.ch >= 1 && x.ch <= 14))) {
     const cx = xCh(a.ch), norm = Math.max(0.1, Math.min(1, (a.signal + 92) / 52)), hgt = norm * plotH;
     const col = apColor(a.bssid), on = a.bssid === sel;
     c.beginPath(); c.moveTo(cx - width * 2.2, base);
@@ -274,11 +280,11 @@ function drawChannels(cv, aps, sel) {
     c.fillText((a.ssid || "·").slice(0, 9), cx, base - hgt - 3 * dpr);
   }
 }
-function useGraph(aps, sel, theme) {
+function useGraph(aps, sel, theme, tuned) {
   const ref = useRef(null);
   const fit = (cv) => { const box = cv.parentElement; if (!box) return false; const b = box.getBoundingClientRect(), w = Math.round(b.width), h = Math.round(b.height); if (!w || !h) return false; cv.style.width = `${w}px`; cv.style.height = `${h}px`; const d = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1); cv.width = w * d; cv.height = h * d; return true; };
-  useEffect(() => { const cv = ref.current; if (!cv || !cv.parentElement) return; const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => { if (fit(cv)) drawChannels(cv, aps, sel); }) : null; ro && ro.observe(cv.parentElement); return () => ro && ro.disconnect(); }, []);
-  useEffect(() => { const cv = ref.current; if (cv && fit(cv)) drawChannels(cv, aps, sel); }, [aps, sel, theme]);
+  useEffect(() => { const cv = ref.current; if (!cv || !cv.parentElement) return; const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => { if (fit(cv)) drawChannels(cv, aps, sel, tuned); }) : null; ro && ro.observe(cv.parentElement); return () => ro && ro.disconnect(); }, []);
+  useEffect(() => { const cv = ref.current; if (cv && fit(cv)) drawChannels(cv, aps, sel, tuned); }, [aps, sel, theme, tuned]);
   return ref;
 }
 
@@ -287,7 +293,7 @@ export function pointsView({ S }) {
   const connected = useStore($connected), usbOk = useStore($usbOk), status = useStore($status);
   const rawAps = useStore($aps), open = useStore($open), sort = useStore($sort), ch = useStore($ch), chDrag = useStore($chDrag);
   const aps = sortAps(rawAps, sort);
-  const graphRef = useGraph(rawAps, open, theme);
+  const graphRef = useGraph(rawAps, open, theme, chDrag || ch);
 
   useEffect(() => { if (gate) seedDemo(); }, []);
 

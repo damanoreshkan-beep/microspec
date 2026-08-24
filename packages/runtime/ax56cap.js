@@ -28,6 +28,7 @@ const hex = (u8, s = 0, e = u8.length) => { let o = ""; for (let i = s; i < e; i
 export const fromHex = (h) => { if (!h) return new Uint8Array(0); const u = new Uint8Array(h.length / 2); for (let i = 0; i < u.length; i++) u[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16); return u; };
 const hexU32 = (v) => { v = v >>> 0; return [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >>> 24) & 0xff].map((x) => x.toString(16).padStart(2, "0")).join(""); };
 const wOp = (addr, val) => ({ t: "c", rt: 0x40, req: 0x05, val: addr & 0xffff, idx: (addr >>> 16) & 0xff, data: hexU32(val) });
+const rOp = (addr) => ({ t: "c", rt: 0xc0, req: 0x05, val: addr & 0xffff, idx: (addr >>> 16) & 0xff, len: 4 });
 const u16 = (b, i) => b[i] | (b[i + 1] << 8);
 const u32 = (b, i) => (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | ((b[i + 3] << 24) >>> 0)) >>> 0;
 
@@ -65,9 +66,22 @@ export function parseReplay(blob) {
 
 // hwburst init + fwdl (header, poll, all sections, poll STS=7). Kept as ONE batch so the fw does not time out
 // between section packets — the C driver bursts them with no gaps.
-export function buildFwdlOps(fw) {
+//
+// `entry` carries the two registers the C driver reads before it writes anything, because their next value is
+// a function of their current one. Passing the live values is what makes an in-session channel change work:
+// a chip whose firmware is already running has to have that CPU stopped before it will accept a new download,
+// and without the stop the re-init lands on a booted chip and the download never takes. Defaults describe a
+// cold chip, which is what the unit test and a freshly mode-switched adapter both are.
+export function buildFwdlOps(fw, entry = {}) {
+  const { plat = 0x54f, wfc = 0xc0 } = entry;
   const { header, sections } = buildFwdl(fw);
-  const ops = HWBURST_WRITES.map(([a, v]) => wOp(a, v));
+  const ops = [];
+  if (plat & 2) { ops.push(wOp(0x88, plat & ~2)); for (let i = 0; i < 50; i++) ops.push(rOp(0x88)); } // stop the running CPU, let it settle
+  let firstWfc = true;
+  for (const [a, v] of HWBURST_WRITES) {
+    if (a === 0x1e0 && firstWfc) { firstWfc = false; ops.push(wOp(0x1e0, wfc & ~7)); continue; } // RMW, not the cold constant
+    ops.push(wOp(a, v));
+  }
   ops.push({ t: "p", addr: 0x1e0, mask: 2, want: 2, tries: 400000 });      // H2C_PATH_RDY
   ops.push({ t: "b", ep: 7, data: hex(header) });                          // fwdl header
   ops.push({ t: "p", addr: 0x1e0, mask: 4, want: 4, tries: 400000 });      // FWDL_PATH_RDY
@@ -76,12 +90,19 @@ export function buildFwdlOps(fw) {
   return ops;
 }
 
-// Channels we ship a bring-up for. A channel change on the 8852A is a full host-driven RF recalibration, not
-// a register poke, so each channel is its own self-contained capture — the blobs differ in the RF gain tables
-// and carry their channel number in the tuning registers (0x10734, 0x19fe4, 0x1c060/1c07c, 0x1d060/1d07c).
-export const CHANNELS = [1, 6, 11];
+// Every channel the adapter reports (measured off the hardware: `iw phy info`, band 1 + band 2). A channel
+// change on the 8852A is a full host-driven RF recalibration, not a register poke, so each channel is its own
+// self-contained capture — the blobs differ only in the RF gain tables and carry their channel number in the
+// tuning registers (0x1c060/0x1c07c, 0x1d060/0x1d07c, 0x19fe4), which the unit test reads back out.
+export const CHANNELS_24 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+export const CHANNELS_5 = [36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 149, 153, 157, 161, 165];
+export const CHANNELS = [...CHANNELS_24, ...CHANNELS_5];
 export const DEFAULT_CHANNEL = 6;
-export const bringupAsset = (ch) => `./assets/bringup_ch${CHANNELS.includes(ch) ? ch : DEFAULT_CHANNEL}.bin`;
+export const channelMHz = (ch) => (ch === 14 ? 2484 : ch <= 14 ? 2407 + ch * 5 : 5000 + ch * 5);
+export const channelBand = (ch) => (ch <= 14 ? "2.4" : "5");
+// Blobs ship gzipped: a bring-up is ~180 KB of repeated register writes and squeezes to ~33 KB, and only the
+// channel actually tuned to is ever fetched.
+export const bringupAsset = (ch) => `./assets/bringup_ch${CHANNELS.includes(ch) ? ch : DEFAULT_CHANNEL}.bin.gz`;
 
 // The cycle5-tail monitor config (mac/BB/RF init + RFK + channel + filter) as batch ops.
 export function buildConfigOps(replay) { return parseReplay(replay); }

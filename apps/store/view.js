@@ -89,7 +89,7 @@ export function store({ S, openScreen, closeScreen }) {
       ${/* Disclosed BEFORE the tap, not after. Six apps open a HackRF One over WebUSB; without one their
             entire surface is a connect screen, and finding that out by launching is the store failing at
             its one job. Driven by the manifest's `needs`, so a future USB/serial app inherits it. */""}
-      ${(sel.needs || []).includes("usb") ? html`<div data-needs-device class="flex items-center gap-2 text-sm text-warning bg-warning/10 rounded-2xl px-3 py-2">${Icon("lucide:usb", "shrink-0")}<span>${T(t, "needsDeviceHackrf")}</span></div>` : null}
+      ${(sel.needs || []).includes("usb") ? html`<div data-needs-device class="flex items-center gap-2 text-sm text-warning bg-warning/10 rounded-2xl px-3 py-2">${Icon("lucide:usb", "shrink-0")}<span>${T(t, sel.deviceNote || "needsDeviceHackrf")}</span></div>` : null}
       <button id="open-app" class="btn btn-primary btn-lg rounded-2xl gap-2 w-full max-w-xs" onClick=${() => launch(sel)}>${Icon("lucide:external-link")}${T(t, "openApp")}</button>
       <div class="text-xs text-base-content/50 tabular-nums flex items-center gap-1.5">v${sel.version || "1.0"}${b === "upd" ? html`<span class="text-warning font-medium">· ${T(t, "newVersion")}</span>` : null}</div>
     </div>`; })() : null}

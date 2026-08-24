@@ -152,10 +152,10 @@ export function ax56View({ S }) {
       <h2 class="text-2xl font-semibold">${T(t, "connectTitle")}</h2>
       <p class="text-base-content/70 leading-relaxed text-sm">${T(t, "connectBody")}</p>
       <div class="flex flex-col items-stretch gap-2.5 w-full max-w-[15rem]">
+        <button data-demo class="btn btn-primary btn-lg rounded-2xl gap-2" onClick=${() => { buzz(12); startDemo(); }}>${Icon("lucide:play")}${T(t, "demoBtn")}</button>
         ${supported
-          ? html`<button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
-          : html`<div class="alert bg-warning/12 text-warning rounded-2xl sf-e2 text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
-        <button data-demo class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70" onClick=${() => { buzz(12); startDemo(); }}>${Icon("lucide:play")}${T(t, "demoBtn")}</button>
+          ? html`<button id="connect" data-connect class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
+          : null}
       </div>
       <a href="https://github.com/damanoreshkan-beep/rtl8852au-userspace" target="_blank" rel="noopener" class="text-xs font-mono text-base-content/70 hover:text-base-content inline-flex items-center gap-1.5">${Icon("lucide:external-link", "text-xs")}${T(t, "driverLink")}</a>
     </div>`;

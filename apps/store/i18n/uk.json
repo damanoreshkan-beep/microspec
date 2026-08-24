@@ -41,5 +41,6 @@
   "newVersion": "нова версія",
   "installed": "Встановлено",
   "needsDevice": "Потрібен зовнішній пристрій",
-  "needsDeviceHackrf": "Працює лише з підключеним HackRF One"
+  "needsDeviceHackrf": "Працює лише з підключеним HackRF One",
+  "needsDeviceAx56": "Читає підключений адаптер RTL8852AU або перегляньте демо"
 }

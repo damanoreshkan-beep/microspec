@@ -30,6 +30,10 @@
       "pattern": "^#[0-9a-fA-F]{6}$",
       "description": "The app's identity hue as #rrggbb — mirror of brand.json `fg`. The runtime publishes it as the --app-accent CSS token, which the shared UI kit (/_rt/ui.js) uses for MARKS ONLY: dots, rings, fills, glow. Never text and never a background behind text (an arbitrary hue fails contrast in one theme or the other). Omit and the farm's secondary is used."
     },
+    "deviceNote": {
+      "type": "string",
+      "description": "For a `needs:['usb']` app, the store i18n key of the device-disclosure note. Defaults to the HackRF note; a non-HackRF USB app (e.g. ax56, an RTL8852AU) sets its own key so the launcher names the right hardware."
+    },
     "minWidth": {
       "type": "integer",
       "minimum": 200,

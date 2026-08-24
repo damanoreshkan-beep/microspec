@@ -51,6 +51,9 @@ export async function buildManifest() {
       // that disclosure BEFORE the tap, not after. Carried from spec.json `needs`, which only became
       // trustworthy in 9c189eb (it had drifted: all six used WebUSB and none declared it).
       needs: [...new Set((spec.tabs ?? []).flatMap((t) => t.needs ?? []))].sort(),
+      // Which device the `usb` note names. Defaults to the HackRF (six apps); a non-HackRF USB app (ax56, an
+      // RTL8852AU) sets `spec.deviceNote` to its own store i18n key so the disclosure names the right hardware.
+      ...(spec.deviceNote ? { deviceNote: spec.deviceNote } : {}),
     });
   }
   apps.sort((x, y) => x.title.localeCompare(y.title, "uk"));

@@ -26,6 +26,13 @@ const $log = atom([]);
 const $open = atom("");      
 const $ch = atom(DEFAULT_CHANNEL);   
 const $chDrag = atom(0);             
+const $scan = atom(false);           
+
+let apMap = new Map();
+const publishAps = () => $aps.set([...apMap.values()].filter((a) => a.ssid || a.clients.size)
+  .map((a) => ({ bssid: a.bssid, ssid: a.ssid, ch: a.ch, band: a.band, signal: a.signal, clients: [...a.clients] }))
+  .sort((x, y) => y.signal - x.signal));
+const clearAps = () => { apMap = new Map(); $aps.set([]); $open.set(""); };
 
 const fetchBlob = async (url) => {
   const r = await fetch(new URL(url, import.meta.url));
@@ -55,16 +62,31 @@ async function openNative() {
   await shell.call("usb.open", { vid: VID, pid: PID });
 }
 
-function startCapture() {
+function startCapture(rounds = 120) {
   const me = ++runId;
   const prev = inFlight;
   const p = (async () => {
     try { await prev; } catch {  }
     if (runId !== me) return;              
-    await runCapture(me);
+    await runCapture(me, 0, rounds);
   })();
   inFlight = p;
   return p;
+}
+
+let scanGen = 0;
+async function runScan() {
+  const mine = ++scanGen;
+  clearAps();
+  const hop = CHANNELS;                    
+  let i = hop.indexOf($ch.get()); if (i < 0) i = 0;
+  while ($scan.get() && scanGen === mine && $connected.get()) {
+    const ch = hop[i % hop.length];
+    $ch.set(ch); $chDrag.set(0);
+    log("scan → channel " + ch);
+    await startCapture(28);                
+    i++;
+  }
 }
 
 function log(line) {
@@ -111,7 +133,7 @@ async function connect() {
   }
 }
 
-async function runCapture(me, attempt = 0) {
+async function runCapture(me, attempt = 0, rounds = 120) {
   const live = () => runId === me;   
   try {
     const ch = $ch.get();
@@ -131,7 +153,7 @@ async function runCapture(me, attempt = 0) {
       if (!live()) return;
       await openNative();
       if (!live()) return;
-      return runCapture(me, attempt + 1);
+      return runCapture(me, attempt + 1, rounds);
     }
     const cfg = buildConfigOps(br);
     log("init: " + buildInitOps({ plat, wfc }).length + " ops");
@@ -160,40 +182,45 @@ async function runCapture(me, attempt = 0) {
     if (!live()) return;
     log("monitor config: fail=" + cfail + " — RX_FLTR 0x" + ((await readReg32(0xce20)) >>> 0).toString(16));
     $status.set("scanning"); log("reading 802.11 off EP 0x84");
-    const aps = new Map(); const state = { sig: -100 };
-    for (let round = 0; round < 120 && live(); round++) {
+    const state = { sig: -100 };
+    for (let round = 0; round < rounds && live(); round++) {
       let rr = null; try { rr = await shell.call("usb.bulk", { ep: 0x84, length: 16384, timeout: 250 }); } catch {  }
       if (rr && rr.data) {
         const rb = fromHex(rr.data);
         for (const { frame, sig } of parseRx(rb, rb.length, state)) {
           const m = parse80211(frame); if (!m) continue;
-          const a = aps.get(m.bssid) || { bssid: m.bssid, ssid: "", ch: 0, signal: -100, clients: new Set() };
-          if (m.kind === "ap") { if (m.ssid) a.ssid = m.ssid; if (m.ch) a.ch = m.ch; if (sig) a.signal = Math.max(a.signal, sig); }
+          const a = apMap.get(m.bssid) || { bssid: m.bssid, ssid: "", ch: 0, band: "2.4", signal: -100, clients: new Set() };
+          if (m.kind === "ap") { if (m.ssid) a.ssid = m.ssid; if (m.ch) { a.ch = m.ch; a.band = m.band; } if (sig) a.signal = Math.max(a.signal, sig); }
           else a.clients.add(m.client);
-          aps.set(m.bssid, a);
+          apMap.set(m.bssid, a);
         }
-        $aps.set([...aps.values()].filter((a) => a.ssid || a.clients.size)
-          .map((a) => ({ bssid: a.bssid, ssid: a.ssid, ch: a.ch, signal: a.signal, clients: [...a.clients] }))
-          .sort((x, y) => y.signal - x.signal));
+        publishAps();
       }
       await wait(40);
     }
-    if (live()) log("capture stopped — " + aps.size + " access points");
+    if (live()) log("channel " + ch + ": " + apMap.size + " access points so far");
   } catch (e) { if (live()) { $status.set("error"); log("capture error: " + (e && e.message)); } }
 }
 
 async function setChannel(next) {
   if (next === $ch.get()) return;
-  buzz(); $ch.set(next); $open.set(""); $aps.set([]);
+  buzz(); $scan.set(false); scanGen++;   
+  $ch.set(next); clearAps();
   if (!$connected.get()) return;
   $status.set("opening"); log("retuning to channel " + next);
   await startCapture();
 }
 
+function toggleScan() {
+  buzz(); const on = !$scan.get(); $scan.set(on);
+  if (on) { if ($connected.get()) runScan(); }
+  else { scanGen++; log("scan stopped"); }   
+}
+
 function disconnect() {
-  buzz(); runId++;   
+  buzz(); runId++; scanGen++; $scan.set(false);   
   try { dev?.close(); } catch {  }
-  dev = null; xport = null; $connected.set(false); $aps.set([]); $status.set("idle"); $open.set("");
+  dev = null; xport = null; $connected.set(false); clearAps(); $status.set("idle");
   log("disconnected");
 }
 
@@ -301,7 +328,7 @@ function useGraph(aps, sel, theme, tuned) {
 export function pointsView({ S }) {
   const t = useStore(S.t), theme = useStore(S.theme);
   const connected = useStore($connected), usbOk = useStore($usbOk), status = useStore($status);
-  const rawAps = useStore($aps), open = useStore($open), sort = useStore($sort), ch = useStore($ch), chDrag = useStore($chDrag);
+  const rawAps = useStore($aps), open = useStore($open), sort = useStore($sort), ch = useStore($ch), chDrag = useStore($chDrag), scan = useStore($scan);
   const aps = sortAps(rawAps, sort);
   const graphRef = useGraph(rawAps, open, theme, chDrag || ch);
 
@@ -338,7 +365,12 @@ export function pointsView({ S }) {
         <canvas ref=${graphRef} class="block w-full h-full" role="img" aria-label=${T(t, "chart")} data-graph></canvas>
       </div>
 
-      <div class="shrink-0"><${ChannelPicker} t=${t} value=${ch} drag=${chDrag} /></div>
+      <div class="shrink-0 flex items-center gap-2">
+        <div class="flex-1 min-w-0"><${ChannelPicker} t=${t} value=${ch} drag=${chDrag} /></div>
+        <button data-scan aria-pressed=${scan} class=${`btn btn-sm rounded-full gap-1.5 shrink-0 ${scan ? "btn-primary" : "btn-ghost text-base-content/70"}`} onClick=${toggleScan}>
+          ${Icon(scan ? "lucide:radar" : "lucide:scan-line", `text-base ${scan ? "animate-pulse" : ""}`)}${T(t, "scan")}
+        </button>
+      </div>
 
       <div class="shrink-0"><${Segmented} attr="data-sort" size="sm" items=${[{ id: "signal", label: T(t, "srtSignal") }, { id: "ch", label: T(t, "srtCh") }, { id: "clients", label: T(t, "srtClients") }]} value=${sort} onChange=${(v) => { buzz(); $sort.set(v); }} /></div>
 

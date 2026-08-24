@@ -33,5 +33,6 @@
   "copy": "Copy",
   "clear": "Clear",
   "logEmpty": "Nothing logged yet",
-  "disconnect": "Disconnect"
+  "disconnect": "Disconnect",
+  "scan": "Scan"
 }

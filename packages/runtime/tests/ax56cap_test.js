@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
-  buildFwdl, buildFwdlOps, buildInitOps, buildDownloadOps, parseReplay, parse80211, parseRx, fromHex, fwdlSts, canDownload,
+  buildFwdl, buildFwdlOps, buildInitOps, buildDownloadOps, buildConfigOps, parseReplay, parse80211, parseRx, fromHex, fwdlSts, canDownload,
   CHANNELS, CHANNELS_24, CHANNELS_5, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand,
 } from "../ax56cap.js";
 
@@ -117,6 +117,19 @@ Deno.test("canDownload accepts the chip states that can take a download, and onl
   assert(!canDownload(0x23));
   assertEquals(fwdlSts(0xdeadbeef), 7);
   assert(!canDownload(0xdeadbeef));
+});
+
+Deno.test("buildConfigOps drops the plain reads but keeps writes, polls and bulks", () => {
+  const blob = new Uint8Array([
+    1, 0x40, 0x05, 0x88, 0x00, 0x00, 0x00, 0x04, 0x00, 0x21, 0xed, 0x20, 0x00, 
+    3, 0x88, 0x00, 0x00, 0x00,                                                 
+    4, 0xe0, 0x01, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,                         
+    2, 0x07, 0x02, 0x00, 0xaa, 0xbb,                                           
+  ]);
+  const raw = parseReplay(blob);
+  assertEquals(raw.length, 4);                                            
+  const cfg = buildConfigOps(blob);
+  assertEquals(cfg.map((o) => o.t + (o.rt ? ":" + o.rt.toString(16) : "")), ["c:40", "p", "b"]); 
 });
 
 Deno.test("the H2C wait is not handed to the bridge", () => {

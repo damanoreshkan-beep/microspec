@@ -35,7 +35,21 @@ const fetchBlob = async (url) => {
   return new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
 };
 
-let dev = null, xport = null, t0 = 0, capturing = false;
+let dev = null, xport = null, t0 = 0;
+
+let runId = 0, inFlight = null;
+
+function startCapture() {
+  const me = ++runId;
+  const prev = inFlight;
+  const p = (async () => {
+    try { await prev; } catch {  }
+    if (runId !== me) return;              
+    await runCapture(me);
+  })();
+  inFlight = p;
+  return p;
+}
 
 function log(line) {
   if (!t0) t0 = Date.now();
@@ -86,23 +100,27 @@ async function connect() {
     $connected.set(true);
     const sys = await readReg32(REG.SYS_CFG1);
     log("SYS_CFG1 0x00F0 = 0x" + (sys >>> 0).toString(16).padStart(8, "0") + (isUnmapped(sys) ? " (no read)" : "  cut " + cutName(sys)));
-    if (xport === "shell") runCapture();
+    if (xport === "shell") startCapture();
     else { $status.set("scanning"); log("live 802.11 capture runs over the native bridge (app); WebUSB reads registers only"); }
   } catch (e) {
     $status.set("error"); $usbOk.set(false); log("connect failed: " + (e && e.message));
   }
 }
 
-async function runCapture() {
+async function runCapture(me) {
+  const live = () => runId === me;   
   try {
     const ch = $ch.get();
     $status.set("opening"); log("bring-up: channel " + ch + " (" + channelMHz(ch) + " MHz, " + channelBand(ch) + "G)");
     const fw = new Uint8Array(await (await fetch(new URL("./assets/fw.bin", import.meta.url))).arrayBuffer());
     const br = await fetchBlob(bringupAsset(ch));
+    if (!live()) return;
     const plat = await readReg32(0x88), wfc = await readReg32(REG.WCPU_FW_CTRL);
+    if (!live()) return;
     const fwdl = buildFwdlOps(fw, { plat, wfc }), cfg = buildConfigOps(br);
     log("firmware download: " + fwdl.length + " ops");
     let r = await shell.call("usb.batch", { ops: fwdl });
+    if (!live()) return;
     log("firmware download: fail=" + ((r && r.fail) || 0));
     const sts = await readReg32(REG.WCPU_FW_CTRL);
     const booted = ((sts >> 5) & 7) === 7;
@@ -111,13 +129,13 @@ async function runCapture() {
     log("monitor config: " + cfg.length + " ops");
     let chunk = [], bytes = 0, cfail = 0;
     const flush = async () => { if (!chunk.length) return; const rr = await shell.call("usb.batch", { ops: chunk }); cfail += (rr && rr.fail) || 0; chunk = []; bytes = 0; };
-    for (const o of cfg) { chunk.push(o); bytes += (o.data ? o.data.length : 0) + 48; if (bytes > 180000) await flush(); }
+    for (const o of cfg) { chunk.push(o); bytes += (o.data ? o.data.length : 0) + 48; if (bytes > 180000) { await flush(); if (!live()) return; } }
     await flush();
+    if (!live()) return;
     log("monitor config: fail=" + cfail + " — RX_FLTR 0x" + ((await readReg32(0xce20)) >>> 0).toString(16));
     $status.set("scanning"); log("reading 802.11 off EP 0x84");
-    capturing = true;
     const aps = new Map(); const state = { sig: -100 };
-    for (let round = 0; round < 120 && capturing; round++) {
+    for (let round = 0; round < 120 && live(); round++) {
       let rr = null; try { rr = await shell.call("usb.bulk", { ep: 0x84, length: 16384, timeout: 250 }); } catch {  }
       if (rr && rr.data) {
         const rb = fromHex(rr.data);
@@ -134,21 +152,20 @@ async function runCapture() {
       }
       await wait(40);
     }
-    log("capture stopped — " + aps.size + " access points");
-  } catch (e) { $status.set("error"); log("capture error: " + (e && e.message)); }
+    if (live()) log("capture stopped — " + aps.size + " access points");
+  } catch (e) { if (live()) { $status.set("error"); log("capture error: " + (e && e.message)); } }
 }
 
 async function setChannel(next) {
   if (next === $ch.get()) return;
   buzz(); $ch.set(next); $open.set(""); $aps.set([]);
   if (!$connected.get()) return;
-  capturing = false; await wait(150);
-  log("retuning to channel " + next);
-  await runCapture();
+  $status.set("opening"); log("retuning to channel " + next);
+  await startCapture();
 }
 
 function disconnect() {
-  buzz(); capturing = false;
+  buzz(); runId++;   
   try { dev?.close(); } catch {  }
   dev = null; xport = null; $connected.set(false); $aps.set([]); $status.set("idle"); $open.set("");
   log("disconnected");

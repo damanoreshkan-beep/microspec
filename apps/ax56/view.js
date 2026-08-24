@@ -216,6 +216,7 @@ function drawChannels(cv, aps, sel) {
     c.fillStyle = hexA(col, on ? 0.4 : 0.16); c.fill();
     c.strokeStyle = hexA(col, on ? 1 : 0.72); c.lineWidth = (on ? 2 : 1.3) * dpr; c.stroke();
     c.fillStyle = hexA(col, on ? 1 : 0.85); c.font = `${9 * dpr}px ui-monospace, monospace`; c.textBaseline = "alphabetic";
+    c.textAlign = cx < W * 0.13 ? "left" : cx > W * 0.87 ? "right" : "center"; // keep edge labels inside the box
     c.fillText((a.ssid || "·").slice(0, 9), cx, base - hgt - 3 * dpr);
   }
 }

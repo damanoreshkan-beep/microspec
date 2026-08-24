@@ -1,6 +1,6 @@
 // ax56 capture pipeline — pure logic. Firmware/replay op-list assembly and 802.11 parsing verify browser-free.
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { buildFwdl, buildFwdlOps, parseReplay, parse80211, parseRx, fromHex } from "../ax56cap.js";
+import { buildFwdl, buildFwdlOps, parseReplay, parse80211, parseRx, fromHex, CHANNELS, DEFAULT_CHANNEL, bringupAsset } from "../ax56cap.js";
 
 const fwPath = new URL("../../../apps/ax56/assets/fw.bin", import.meta.url);
 
@@ -94,4 +94,32 @@ Deno.test("parseRx strips a WIFI rxd unit and yields the frame", () => {
 
 Deno.test("fromHex round-trips", () => {
   assertEquals([...fromHex("0aff10")], [0x0a, 0xff, 0x10]);
+});
+
+Deno.test("bringupAsset maps each shipped channel, and anything else to the default", () => {
+  assertEquals(CHANNELS, [1, 6, 11]);
+  for (const c of CHANNELS) assertEquals(bringupAsset(c), `./assets/bringup_ch${c}.bin`);
+  assertEquals(bringupAsset(3), `./assets/bringup_ch${DEFAULT_CHANNEL}.bin`);
+  assertEquals(bringupAsset(undefined), `./assets/bringup_ch${DEFAULT_CHANNEL}.bin`);
+});
+
+// The blobs are opaque captures, so nothing else can tell you that bringup_ch11.bin really tunes to 11 — a
+// mislabelled file would silently sniff the wrong channel and just look like a quiet band. rtw89 writes the
+// channel number into the RF tuning registers, so assert it straight out of the shipped asset.
+Deno.test("each shipped bring-up carries its own channel number in the RF tuning registers", () => {
+  const lastWrite = (ops, addr) => {
+    let v = null;
+    for (const o of ops) if (o.t === "c" && o.rt === 0x40 && ((o.val | (o.idx << 16)) >>> 0) === addr) v = o.data;
+    return v === null ? null : fromHex(v).reduce((a, b, i) => a + (b << (8 * i)), 0) >>> 0;
+  };
+  for (const ch of CHANNELS) {
+    const blob = Deno.readFileSync(new URL(`../../../apps/ax56/assets/bringup_ch${ch}.bin`, import.meta.url));
+    const ops = parseReplay(blob);
+    for (const reg of [0x1c060, 0x1c07c, 0x1d060, 0x1d07c]) {
+      const v = lastWrite(ops, reg);
+      assert(v !== null, `ch${ch}: no write to 0x${reg.toString(16)}`);
+      assertEquals(v & 0xff, ch, `ch${ch}: 0x${reg.toString(16)} = 0x${v.toString(16)} should end in the channel`);
+    }
+    assertEquals(lastWrite(ops, 0x19fe4), (ch << 24) | (ch << 8), `ch${ch}: 0x19fe4 holds the channel twice`);
+  }
 });

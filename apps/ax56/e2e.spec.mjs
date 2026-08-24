@@ -10,6 +10,7 @@ export default [
       h.expect((await h.count("[data-aps]")) === 1, "немає списку точок");
       h.expect((await h.count("[data-graph]")) === 1, "немає графіка каналів");
       h.expect((await h.count("[data-sort]")) >= 3, "немає сортування (3 режими)");
+      h.expect((await h.count("[data-ch]")) === 3, "немає перемикача каналу (1/6/11)");
       h.expect((await h.count("[data-ap]")) >= 4, "немає карток точок доступу");
       h.expect((await h.count("[data-clients]")) >= 3, "немає лічильника клієнтів");
       h.expect(/Pioneers|Monako|ZTE|c4:6e:1f/i.test(await h.bodyText()), "немає SSID/BSSID");

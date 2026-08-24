@@ -32,8 +32,8 @@ export default [
       h.expect(/Firmware|Live|Demo|Register/i.test(await h.bodyText()), "не EN");
       await h.click('[data-tab="me"]'); await h.wait(120);
       await h.click('[data-loc="uk"]'); await h.wait(250);
+      await h.click('[data-tab="chip"]'); await h.wait(200);
       h.expect(/Прошивк|Наживо|Демо|Ревізія|Ґратка/.test(await h.bodyText()), "не UA");
-      await h.click('[data-tab="chip"]'); await h.wait(120);
     },
   },
   {

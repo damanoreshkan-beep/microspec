@@ -157,7 +157,7 @@ export function ax56View({ S }) {
           : html`<div class="alert bg-warning/12 text-warning rounded-2xl sf-e2 text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
         <button data-demo class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70" onClick=${() => startDemo()}>${Icon("lucide:play")}${T(t, "demoBtn")}</button>
       </div>
-      <a href="https://github.com/damanoreshkan-beep/rtl8852au-userspace" target="_blank" rel="noopener" class="text-xs font-mono text-base-content/45 hover:text-base-content/70 inline-flex items-center gap-1.5">${Icon("lucide:external-link", "text-xs")}${T(t, "driverLink")}</a>
+      <a href="https://github.com/damanoreshkan-beep/rtl8852au-userspace" target="_blank" rel="noopener" class="text-xs font-mono text-base-content/70 hover:text-base-content inline-flex items-center gap-1.5">${Icon("lucide:external-link", "text-xs")}${T(t, "driverLink")}</a>
     </div>`;
   }
 
@@ -168,16 +168,16 @@ export function ax56View({ S }) {
   const isBooted = booted(reads[REG.WCPU_FW_CTRL]);
   const active = stages[Math.min(STAGES.length - 1, done)] || stages[0]; // the stage in progress (or last)
   const readout = sel >= 0 && page
-    ? html`<span class="text-base-content/50">${addr(sel * 4)}</span> ${hex(page[sel])}`
-    : html`<span class="text-base-content/50 uppercase tracking-wide">${T(t, active.key)}</span> <span class="text-base-content/50">${addr(active.reg)}</span> ${reads[active.reg] != null ? hex(reads[active.reg]) : "· · · ·"}`;
+    ? html`<span class="text-base-content/70">${addr(sel * 4)}</span> ${hex(page[sel])}`
+    : html`<span class="text-base-content/70 uppercase tracking-wide">${T(t, active.key)}</span> <span class="text-base-content/70">${addr(active.reg)}</span> ${reads[active.reg] != null ? hex(reads[active.reg]) : "· · · ·"}`;
 
   return html`<${Fragment}>
     <div class="h-full flex flex-col gap-2.5 max-w-[440px] mx-auto w-full">
       <!-- header: chip identity + mode + control -->
       <div class="flex items-center gap-2 px-0.5 shrink-0">
         <span class="inline-flex items-center gap-1.5 font-mono text-xs px-2.5 py-1 rounded-full sf-raised sf-e1" data-cut>
-          <span class="uppercase tracking-wide text-base-content/55">${T(t, "cut")}</span>
-          <span class="tabular-nums ${cut ? "text-primary" : "text-base-content/40"}">${cut || "—"}</span>
+          <span class="uppercase tracking-wide text-base-content/70">${T(t, "cut")}</span>
+          <span class="tabular-nums ${cut ? "text-primary" : "text-base-content/70"}">${cut || "—"}</span>
         </span>
         <span class="flex-1"></span>
         <span class="inline-flex items-center gap-1.5 text-[0.65rem] font-mono uppercase tracking-wider px-2 py-1 rounded-full ${mode === "demo" ? "text-primary bg-primary/10" : "text-success bg-success/10"}" data-mode=${mode}>
@@ -185,7 +185,7 @@ export function ax56View({ S }) {
         </span>
         ${mode === "demo"
           ? html`<button data-replay aria-label=${T(t, "replay")} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => startDemo()}>${Icon("lucide:rotate-ccw", "text-lg")}</button>`
-          : html`<button data-disconnect aria-label=${T(t, "disconnect")} class="btn btn-circle btn-ghost btn-sm text-base-content/55 shrink-0" onClick=${disconnect}>${Icon("lucide:power", "text-lg")}</button>`}
+          : html`<button data-disconnect aria-label=${T(t, "disconnect")} class="btn btn-circle btn-ghost btn-sm text-base-content/70 shrink-0" onClick=${disconnect}>${Icon("lucide:power", "text-lg")}</button>`}
       </div>
 
       <!-- register lattice (the low page, glow = value activity) -->

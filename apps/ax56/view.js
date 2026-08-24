@@ -1,247 +1,206 @@
-// AX56 Bring-up — reads an RTL8852AU (ASUS USB-AX56) live and replays the chip's cold-to-firmware bring-up on a
-// glowing register lattice. Two transports: the native shell USB bridge (usb.switch/open/control) inside the
-// APK, which mode-switches the adapter out of storage and reads its registers where WebUSB cannot; and WebUSB
-// in desktop Chrome for an already-switched adapter. A full demo replays the solved bring-up with no hardware.
-// Register semantics + stages are unit-tested in packages/runtime/ax56.js; only the transfers are here.
+// AX56 — a no-root Wi-Fi monitor for the RTL8852AU (ASUS USB-AX56). It drives the adapter through the native
+// shell USB bridge in the APK (usb.switch/open/control/bulk) — WebUSB in desktop Chrome — mode-switching the
+// adapter out of storage and, once the firmware is up, sniffing 802.11 to list access points and the clients
+// talking to each. The Log tab shows every driver step so a run can be shared. The 802.11 capture pipeline
+// (firmware download + monitor + RX parse) is being ported from the userspace driver; connect proves the
+// bridge (switch + register read) and logs it meanwhile.
 import { html } from "htm/preact";
 import { Fragment } from "preact";
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect } from "preact/hooks";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Island } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { shell } from "/_rt/shell.js";
-import {
-  VID, PID, USB_FILTERS, REG, STAGES, stageState, demoFrames, DEMO_LOW_PAGE, decodeCut, cutName, isUnmapped, booted,
-} from "/_rt/ax56.js";
+import { VID, PID, REG, cutName, isUnmapped } from "/_rt/ax56.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
-const hex = (v) => "0x" + (v >>> 0).toString(16).padStart(8, "0").toUpperCase();
-const addr = (a) => "0x" + a.toString(16).padStart(4, "0").toUpperCase();
 const usbSupported = () => typeof navigator !== "undefined" && !!navigator.usb;
-const popcount = (v) => { v = v >>> 0; v -= (v >> 1) & 0x55555555; v = (v & 0x33333333) + ((v >> 2) & 0x33333333); return (((v + (v >> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24; };
-
-// The six bring-up registers read on a live connect (beyond the 64-cell low page).
-const STAGE_ADDRS = [REG.SYS_CFG1, REG.PLATFORM_ENABLE, REG.DMAC_FUNC_EN, REG.WDE_INI, REG.PLE_INI, REG.HCI_FUNC_EN, REG.WCPU_FW_CTRL];
-
-const $connected = atom(false), $usbOk = atom(true), $mode = atom("live"); // "live" | "demo"
-const $reads = atom({});          // { addr: value } snapshot driving the stage stepper
-const $page = atom(null);         // Uint32Array(64) low page, or null
-const $reveal = atom(0);          // how many lattice cells have rippled in (0..64)
-const $sel = atom(-1);            // selected lattice cell index, or -1
-
-const VID_STORAGE = 0x0bda, PID_STORAGE = 0x1a2b; // the AX56 before its mode-switch
-let dev = null, timer = null, xport = null;        // xport: "shell" (native APK bridge) | "web" (WebUSB)
-// The native USB driver reaches the chip where WebUSB cannot: inside the APK's WebView, and past the SCSI
-// mode-switch. shell.js is a no-op in a plain browser, so has() is false there and the WebUSB path is used.
 const nativeUsb = () => { try { return shell.has("usb.control") && shell.has("usb.switch"); } catch { return false; } };
 const leU32 = (h) => { if (!h || h.length < 8) return 0xdeadbeef; const b = (i) => parseInt(h.slice(i * 2, i * 2 + 2), 16); return (b(0) | (b(1) << 8) | (b(2) << 16) | (b(3) << 24)) >>> 0; };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const VID_STORAGE = 0x0bda, PID_STORAGE = 0x1a2b;
+const SIG_LO = -92, SIG_HI = -40;
+const sigNorm = (d) => Math.max(0, Math.min(1, (d - SIG_LO) / (SIG_HI - SIG_LO)));
+
+const $connected = atom(false), $usbOk = atom(true), $status = atom("idle"); // idle|switching|opening|scanning|error
+const $aps = atom([]);       // [{ bssid, ssid, ch, signal, clients: [mac], seen }]
+const $log = atom([]);       // [{ ms, line }]
+const $open = atom("");      // bssid whose clients are expanded
+
+let dev = null, xport = null, t0 = 0;
+
+function log(line) {
+  if (!t0) t0 = Date.now();
+  const l = $log.get();
+  $log.set([...l.slice(-400), { ms: Date.now() - t0, line }]);
+}
 
 async function readReg32(a) {
   if (xport === "shell") {
     try { const r = await shell.call("usb.control", { reqType: 0xc0, request: 0x05, value: a & 0xffff, index: (a >> 16) & 0xff, length: 4 }); return leU32(r && r.data); }
-    catch { return 0xdeadbeef; }
+    catch (e) { log("control 0x" + a.toString(16) + " error: " + (e && e.message)); return 0xdeadbeef; }
   }
   try {
     const r = await dev.controlTransferIn({ requestType: "vendor", recipient: "device", request: 0x05, value: a & 0xffff, index: (a >> 16) & 0xff }, 4);
     if (r.status === "ok" && r.data && r.data.byteLength >= 4) return r.data.getUint32(0, true) >>> 0;
-  } catch { /* transfer failed */ }
+  } catch { /* */ }
   return 0xdeadbeef;
 }
 
-// Read the six stage registers + the 64-cell low page over whichever transport connected.
-async function scanChip() {
-  $mode.set("live"); $connected.set(true); $sel.set(-1);
-  const snap = {};
-  for (const a of STAGE_ADDRS) snap[a] = await readReg32(a);
-  $reads.set(snap);
-  const page = new Uint32Array(64);
-  for (let i = 0; i < 64; i++) { page[i] = await readReg32(i * 4); $reveal.set(i + 1); $page.set(page.slice()); }
-}
-
-// Native (APK) path: mode-switch the storage adapter if present, open the Wi-Fi device, read over the bridge.
-async function connectNative() {
+async function connect() {
+  buzz(12);
+  $usbOk.set(true); $log.set([]); t0 = 0;
+  const native = nativeUsb();
+  log("connect via " + (native ? "native USB bridge" : "WebUSB"));
   try {
-    const listed = async () => ((await shell.call("usb.list")) || {}).devices || [];
-    const has = (ds, v, p) => ds.some((d) => d.vid === v && d.pid === p);
-    let ds = await listed();
-    if (has(ds, VID_STORAGE, PID_STORAGE) && !has(ds, VID, PID)) {
-      await shell.call("usb.open", { vid: VID_STORAGE, pid: PID_STORAGE });
-      await shell.call("usb.switch", { vid: VID_STORAGE, pid: PID_STORAGE });
-      for (let i = 0; i < 12; i++) { await wait(400); ds = await listed(); if (has(ds, VID, PID)) break; }
+    if (native) {
+      const list = async () => ((await shell.call("usb.list")) || {}).devices || [];
+      const has = (ds, v, p) => ds.some((d) => d.vid === v && d.pid === p);
+      let ds = await list();
+      log("devices: " + ds.map((d) => d.vid.toString(16) + ":" + d.pid.toString(16)).join(", "));
+      if (has(ds, VID_STORAGE, PID_STORAGE) && !has(ds, VID, PID)) {
+        $status.set("switching"); log("storage 0bda:1a2b found — SCSI eject");
+        await shell.call("usb.open", { vid: VID_STORAGE, pid: PID_STORAGE });
+        await shell.call("usb.switch", { vid: VID_STORAGE, pid: PID_STORAGE });
+        for (let i = 0; i < 12; i++) { await wait(400); ds = await list(); if (has(ds, VID, PID)) break; }
+        log(has(ds, VID, PID) ? "re-enumerated as 0b05:1997" : "did not re-enumerate — replug and retry");
+      }
+      $status.set("opening"); log("open 0b05:1997");
+      await shell.call("usb.open", { vid: VID, pid: PID });
+      xport = "shell";
+    } else {
+      if (!usbSupported()) { $usbOk.set(false); log("no WebUSB in this browser"); return; }
+      let d;
+      try { d = await navigator.usb.requestDevice({ filters: [{ vendorId: VID, productId: PID }] }); } catch { log("picker cancelled"); return; }
+      await d.open(); if (d.configuration === null) await d.selectConfiguration(1); await d.claimInterface(0);
+      dev = d; xport = "web"; log("opened over WebUSB");
     }
-    await shell.call("usb.open", { vid: VID, pid: PID });
-    xport = "shell";
-    await scanChip();
-  } catch { $usbOk.set(false); }
+    $connected.set(true);
+    const sys = await readReg32(REG.SYS_CFG1);
+    log("SYS_CFG1 0x00F0 = 0x" + (sys >>> 0).toString(16).padStart(8, "0") + (isUnmapped(sys) ? " (no read)" : "  cut " + cutName(sys)));
+    $status.set("scanning");
+    // 802.11 capture (firmware download + monitor + RX) is the next build — see the Log tab.
+    log("monitor capture: porting the firmware bring-up over usb.bulk — access points will populate here");
+  } catch (e) {
+    $status.set("error"); $usbOk.set(false); log("connect failed: " + (e && e.message));
+  }
 }
-
-// WebUSB path (desktop Chrome, adapter already switched to Wi-Fi mode).
-async function connectWeb() {
-  if (!usbSupported()) { $usbOk.set(false); return; }
-  let d;
-  try { d = await navigator.usb.requestDevice({ filters: USB_FILTERS }); } catch { return; } // cancelled picker = not a fault
-  try { await d.open(); if (d.configuration === null) await d.selectConfiguration(1); await d.claimInterface(0); }
-  catch { $usbOk.set(false); return; }
-  dev = d; xport = "web";
-  await scanChip();
-}
-
-async function connect() { buzz(12); return nativeUsb() ? connectNative() : connectWeb(); }
 
 function disconnect() {
-  buzz(); stopTimer();
-  try { dev?.close(); } catch { /* already gone */ }
-  dev = null; xport = null; $connected.set(false); $reads.set({}); $page.set(null); $reveal.set(0); $sel.set(-1);
+  buzz();
+  try { dev?.close(); } catch { /* */ }
+  dev = null; xport = null; $connected.set(false); $aps.set([]); $status.set("idle"); $open.set("");
+  log("disconnected");
 }
 
-function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
-
-// Replay the solved bring-up: step the reads snapshot 1->6 while the lattice ripples in. `instant` seeds the
-// booted end state at once (the gate/headless wants the populated victory screen, not a mid-animation frame).
-function startDemo({ instant = false } = {}) {
-  stopTimer(); // no buzz here: the gate/auto path has no user gesture (vibrate would log a blocked-call warning)
-  const frames = demoFrames(); const page = Uint32Array.from(DEMO_LOW_PAGE);
-  $mode.set("demo"); $connected.set(true); $sel.set(-1); $page.set(page);
-  if (instant) { $reads.set(frames[frames.length - 1]); $reveal.set(64); return; }
-  let step = 0; $reads.set(frames[0]); $reveal.set(0);
-  timer = setInterval(() => {
-    $reveal.set(Math.min(64, $reveal.get() + 7));
-    if ($reveal.get() >= 16 && step < frames.length - 1) { step++; $reads.set(frames[step]); }
-    if ($reveal.get() >= 64 && step >= frames.length - 1) stopTimer();
-  }, 260);
+async function copyLog() {
+  buzz();
+  const text = $log.get().map((e) => (e.ms / 1000).toFixed(2).padStart(6) + "  " + e.line).join("\n");
+  try { await navigator.clipboard.writeText(text); log("log copied"); }
+  catch { log("copy failed — select and copy manually"); }
 }
 
-// ---- register lattice canvas (guarded for the linkedom 0x0 stub, sized from its BOX like gsmscan) ----
-function useLattice(page, reveal, sel, theme) {
-  const ref = useRef(null);
-  const draw = (cv) => {
-    let c; try { c = cv && cv.getContext ? cv.getContext("2d") : null; } catch { c = null; }
-    const w = cv?.width | 0, h = cv?.height | 0; if (!c || !w || !h) return;
-    const light = typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light");
-    let accent = "#22d3ee";
-    try { accent = getComputedStyle(document.documentElement).getPropertyValue("--app-accent").trim() || accent; } catch { /* */ }
-    const track = light ? "20,20,26" : "236,236,238";
-    c.clearRect(0, 0, w, h);
-    const N = 8, padX = Math.round(w * 0.02), padY = Math.round(h * 0.02), gap = Math.max(2, Math.round(Math.min(w, h) * 0.012));
-    const stepX = (w - padX * 2 + gap) / N, stepY = (h - padY * 2 + gap) / N;
-    const cwv = stepX - gap, chv = stepY - gap, r = Math.max(2, Math.min(cwv, chv) * 0.2);
-    const rr = (x, y, ww, hh) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + ww, y, x + ww, y + hh, r); c.arcTo(x + ww, y + hh, x, y + hh, r); c.arcTo(x, y + hh, x, y, r); c.arcTo(x, y, x + ww, y, r); c.closePath(); };
-    for (let i = 0; i < 64; i++) {
-      const col = i % N, row = (i / N) | 0;
-      const x = padX + col * stepX, y = padY + row * stepY;
-      c.globalAlpha = 1; c.fillStyle = `rgba(${track},${light ? 0.05 : 0.06})`; rr(x, y, cwv, chv); c.fill();       // track
-      if (i < reveal && page) {
-        const v = page[i] >>> 0;
-        if (!isUnmapped(v) && v !== 0) { c.globalAlpha = 0.14 + 0.86 * (popcount(v) / 32); c.fillStyle = accent; rr(x, y, cwv, chv); c.fill(); }
-      }
-      if (i === sel) { const lw = Math.max(1.5, Math.min(cwv, chv) * 0.06); c.globalAlpha = 1; c.strokeStyle = accent; c.lineWidth = lw; rr(x + lw / 2, y + lw / 2, cwv - lw, chv - lw); c.stroke(); }
-    }
-    c.globalAlpha = 1;
-  };
-  const fit = (cv) => {
-    const box = cv.parentElement; if (!box) return false;
-    const b = box.getBoundingClientRect(), w = Math.round(b.width), h = Math.round(b.height); if (!w || !h) return false;
-    cv.style.display = "block"; cv.style.width = `${w}px`; cv.style.height = `${h}px`;
-    const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1);
-    const ww = w * dpr, hh = h * dpr; if (cv.width !== ww || cv.height !== hh) { cv.width = ww; cv.height = hh; }
-    return true;
-  };
-  useEffect(() => {
-    const cv = ref.current, box = cv && cv.parentElement; if (!cv || !box) return;
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => { if (fit(cv)) draw(cv); }) : null;
-    ro && ro.observe(box);
-    return () => ro && ro.disconnect();
-  }, []);
-  useEffect(() => { const cv = ref.current; if (cv && fit(cv)) draw(cv); }, [page, reveal, sel, theme]);
-  return ref;
+// ---- gate / headless: a populated screen the taste + e2e gates can read ----
+const MOCK = [
+  { bssid: "c4:6e:1f:af:de:9c", ssid: "Pioneers", ch: 6, signal: -59, clients: ["a4:83:e7:2b:11:07", "3c:22:fb:9a:44:e1"] },
+  { bssid: "14:cc:20:33:23:88", ssid: "Monako", ch: 6, signal: -72, clients: ["b8:27:eb:6d:22:aa"] },
+  { bssid: "9a:25:4a:2d:85:57", ssid: "visit", ch: 1, signal: -77, clients: [] },
+  { bssid: "5a:54:45:d5:7d:3c", ssid: "ZTE_D57D3C", ch: 1, signal: -83, clients: ["e4:5f:01:88:9c:12"] },
+];
+function seedDemo() {
+  $connected.set(true); $status.set("scanning"); $aps.set(MOCK);
+  t0 = 0; $log.set([]);
+  ["connect via native USB bridge", "storage 0bda:1a2b found — SCSI eject", "re-enumerated as 0b05:1997",
+   "open 0b05:1997", "SYS_CFG1 0x00F0 = 0x0c492537  cut C", "monitor up — 4 access points, 3 clients"]
+    .forEach((l, i) => $log.set([...$log.get(), { ms: 120 + i * 180, line: l }]));
 }
 
-function tapCell(e, cv) {
-  const b = cv.getBoundingClientRect(); const N = 8;
-  const padX = b.width * 0.02, padY = b.height * 0.02, gap = Math.max(2, Math.min(b.width, b.height) * 0.012);
-  const stepX = (b.width - padX * 2 + gap) / N, stepY = (b.height - padY * 2 + gap) / N;
-  const col = Math.floor((e.clientX - b.left - padX) / stepX), row = Math.floor((e.clientY - b.top - padY) / stepY);
-  if (col < 0 || col > 7 || row < 0 || row > 7) return;
-  const i = row * 8 + col; buzz(6); $sel.set($sel.get() === i ? -1 : i);
+// =================== POINTS ===================
+function Bars({ level }) {
+  const lit = Math.round(level * 4);
+  return html`<div class="flex items-end gap-[3px] h-5 shrink-0" role="img">
+    ${[0, 1, 2, 3].map((i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : ""}`} style=${`height:${40 + i * 20}%${i < lit ? "" : ";background:var(--sf-track-face)"}`}></span>`)}
+  </div>`;
 }
 
-export function ax56View({ S }) {
-  const t = useStore(S.t), theme = useStore(S.theme);
-  const connected = useStore($connected), usbOk = useStore($usbOk), mode = useStore($mode);
-  const reads = useStore($reads), page = useStore($page), reveal = useStore($reveal), sel = useStore($sel);
+export function pointsView({ S }) {
+  const t = useStore(S.t);
+  const connected = useStore($connected), usbOk = useStore($usbOk), status = useStore($status);
+  const aps = useStore($aps), open = useStore($open);
 
-  useEffect(() => { if (gate) startDemo({ instant: true }); return () => stopTimer(); }, []);
-
-  const latticeRef = useLattice(page, reveal, sel, theme);
+  useEffect(() => { if (gate) seedDemo(); }, []);
 
   if (!connected) {
     const supported = nativeUsb() || (usbSupported() && usbOk);
     return html`<div class="h-full flex flex-col items-center justify-center text-center gap-5 px-4 max-w-sm mx-auto">
-      <div class="w-20 h-20 rounded-3xl grid place-items-center bg-primary/12 text-primary sf-e2">${Icon("lucide:cpu", "text-4xl")}</div>
+      <div class="w-20 h-20 rounded-3xl grid place-items-center bg-primary/12 text-primary sf-e2">${Icon("lucide:wifi", "text-4xl")}</div>
       <h2 class="text-2xl font-semibold">${T(t, "connectTitle")}</h2>
       <p class="text-base-content/70 leading-relaxed text-sm">${T(t, "connectBody")}</p>
-      <div class="flex flex-col items-stretch gap-2.5 w-full max-w-[15rem]">
-        <button data-demo class="btn btn-primary btn-lg rounded-2xl gap-2" onClick=${() => { buzz(12); startDemo(); }}>${Icon("lucide:play")}${T(t, "demoBtn")}</button>
-        ${supported
-          ? html`<button id="connect" data-connect class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
-          : null}
-      </div>
+      ${supported
+        ? html`<button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
+        : html`<div class="alert bg-warning/12 text-warning rounded-2xl sf-e2 text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
     </div>`;
   }
 
-  const sys = reads[REG.SYS_CFG1];
-  const cut = sys != null && !isUnmapped(sys) ? cutName(sys) : null;
-  const stages = stageState(reads);
-  const done = stages.filter((s) => s.done).length;
-  const isBooted = booted(reads[REG.WCPU_FW_CTRL]);
-  const active = stages[Math.min(STAGES.length - 1, done)] || stages[0]; // the stage in progress (or last)
-  const readout = sel >= 0 && page
-    ? html`<span class="text-base-content/70">${addr(sel * 4)}</span> ${hex(page[sel])}`
-    : html`<span class="text-base-content/70 uppercase tracking-wide">${T(t, active.key)}</span> <span class="text-base-content/70">${addr(active.reg)}</span> ${reads[active.reg] != null ? hex(reads[active.reg]) : "· · · ·"}`;
-
   return html`<${Fragment}>
     <div class="h-full flex flex-col gap-2.5 max-w-[440px] mx-auto w-full">
-      <!-- header: chip identity + mode + control -->
       <div class="flex items-center gap-2 px-0.5 shrink-0">
-        <span class="inline-flex items-center gap-1.5 font-mono text-xs px-2.5 py-1 rounded-full sf-raised sf-e1" data-cut>
-          <span class="uppercase tracking-wide text-base-content/70">${T(t, "cut")}</span>
-          <span class="tabular-nums ${cut ? "text-primary" : "text-base-content/70"}">${cut || "—"}</span>
+        <span class="inline-flex items-center gap-1.5 text-[0.65rem] font-mono uppercase tracking-wider px-2 py-1 rounded-full text-primary bg-primary/10" data-status=${status}>
+          <span class="w-1.5 h-1.5 rounded-full bg-primary ${status === "scanning" ? "animate-pulse" : ""}"></span>${T(t, "st_" + status)}
         </span>
+        <span class="font-mono text-xs tabular-nums text-base-content/70" data-count>${aps.length}</span>
         <span class="flex-1"></span>
-        <span class="inline-flex items-center gap-1.5 text-[0.65rem] font-mono uppercase tracking-wider px-2 py-1 rounded-full ${mode === "demo" ? "text-primary bg-primary/10" : "text-success bg-success/10"}" data-mode=${mode}>
-          <span class="w-1.5 h-1.5 rounded-full ${mode === "demo" ? "bg-primary" : "bg-success"}"></span>${T(t, mode === "demo" ? "demoTag" : "live")}
-        </span>
-        ${mode === "demo"
-          ? html`<button data-replay aria-label=${T(t, "replay")} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => { buzz(12); startDemo(); }}>${Icon("lucide:rotate-ccw", "text-lg")}</button>`
-          : html`<button data-disconnect aria-label=${T(t, "disconnect")} class="btn btn-circle btn-ghost btn-sm text-base-content/70 shrink-0" onClick=${disconnect}>${Icon("lucide:power", "text-lg")}</button>`}
+        <button data-disconnect aria-label=${T(t, "disconnect")} class="btn btn-circle btn-ghost btn-sm text-base-content/70 shrink-0" onClick=${disconnect}>${Icon("lucide:power", "text-lg")}</button>
       </div>
 
-      <!-- register lattice (the low page, glow = value activity) -->
-      <div class="flex-1 min-h-0 flex items-center justify-center">
-        <div class="rounded-3xl sf-inset overflow-hidden p-1.5" style="width:100%;aspect-ratio:1;max-height:100%">
-          <canvas ref=${latticeRef} onClick=${(e) => tapCell(e, e.currentTarget)} class="block w-full h-full cursor-pointer" role="img" aria-label=${T(t, "lattice")} data-lattice></canvas>
-        </div>
-      </div>
-
-      <!-- bring-up stepper: six stages, light as reached -->
-      <div class="flex flex-col gap-1.5 shrink-0">
-        <div class="flex items-center gap-1" data-stages data-done=${done} role="list" aria-label=${T(t, "stageReg")}>
-          ${stages.map((s, i) => html`<${Fragment} key=${s.id}>
-            ${i ? html`<span class="h-px flex-1 ${s.done ? "bg-primary/60" : "bg-base-content/12"}"></span>` : null}
-            <span role="listitem" data-stage=${s.id} data-done=${s.done ? "1" : "0"} title=${T(t, s.key)}
-              class=${`w-3 h-3 rounded-full shrink-0 transition-colors ${s.done ? "bg-primary" : ""} ${s.id === active.id && !isBooted ? "ring-2 ring-primary/40" : ""}`}
-              style=${s.done ? "" : "background:var(--sf-track-face)"}></span>
-          <//>`)}
-        </div>
-        <div class="flex items-center justify-between gap-2 px-0.5">
-          <span class="font-mono text-xs tabular-nums truncate" data-readout>${readout}</span>
-          ${isBooted ? html`<span class="inline-flex items-center gap-1 text-xs text-primary shrink-0" data-booted>${Icon("lucide:check-circle-2", "text-sm")}${T(t, "bootedMsg")}</span>` : null}
-        </div>
+      <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5 -mx-0.5 px-0.5" data-aps>
+        ${aps.length ? aps.map((a) => {
+          const isOpen = open === a.bssid;
+          return html`<div key=${a.bssid} data-ap=${a.bssid} class="rounded-2xl sf-raised sf-e2">
+            <button class="w-full flex items-center gap-3 px-3.5 py-2.5 text-left" aria-expanded=${isOpen} onClick=${() => { buzz(6); $open.set(isOpen ? "" : a.bssid); }}>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium truncate">${a.ssid || T(t, "hidden")}</div>
+                <div class="font-mono text-[0.68rem] text-base-content/70 tabular-nums truncate">${a.bssid} · ${T(t, "ch")} ${a.ch}</div>
+              </div>
+              <span class="font-mono text-[0.68rem] tabular-nums text-base-content/70 shrink-0">${a.signal}</span>
+              <${Bars} level=${sigNorm(a.signal)} />
+              <span class="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-base-content/70 shrink-0 w-9 justify-end" data-clients>${Icon("lucide:users", "text-sm")}${a.clients.length}</span>
+            </button>
+            ${isOpen ? html`<div class="px-3.5 pb-2.5 pt-0.5 flex flex-col gap-1 border-t border-base-content/10" data-client-list>
+              ${a.clients.length ? a.clients.map((c) => html`<div key=${c} class="font-mono text-[0.68rem] tabular-nums text-base-content/70 flex items-center gap-2">${Icon("lucide:smartphone", "text-xs opacity-70")}${c}</div>`)
+                : html`<div class="text-xs text-base-content/70 py-1">${T(t, "noClients")}</div>`}
+            </div>` : null}
+          </div>`;
+        }) : html`<div class="flex-1 flex flex-col items-center justify-center text-center text-base-content/70 gap-2 px-6">
+          ${Icon("lucide:radar", "text-3xl animate-pulse")}<span class="text-sm">${T(t, "scanningEmpty")}</span>
+        </div>`}
       </div>
     </div>
   </${Fragment}>`;
+}
+
+// =================== LOG ===================
+export function logView({ S }) {
+  const t = useStore(S.t);
+  const lines = useStore($log);
+
+  useEffect(() => { if (gate && $log.get().length === 0) seedDemo(); }, []);
+
+  return html`<div class="flex flex-col gap-2.5 max-w-[560px] mx-auto w-full pb-4">
+    <div class="flex items-center gap-2 px-0.5">
+      <span class="text-xs uppercase tracking-wide text-base-content/70">${T(t, "tabLog")}</span>
+      <span class="font-mono text-xs tabular-nums text-base-content/70" data-logcount>${lines.length}</span>
+      <span class="flex-1"></span>
+      <button data-copy class="btn btn-ghost btn-sm rounded-xl gap-1.5 text-base-content/70" onClick=${copyLog}>${Icon("lucide:copy", "text-sm")}${T(t, "copy")}</button>
+      <button data-clear class="btn btn-ghost btn-sm rounded-xl gap-1.5 text-base-content/70" onClick=${() => { buzz(); $log.set([]); }}>${Icon("lucide:eraser", "text-sm")}${T(t, "clear")}</button>
+    </div>
+    <div class="rounded-2xl sf-inset p-3 font-mono text-[0.7rem] leading-relaxed flex flex-col gap-0.5" data-log>
+      ${lines.length ? lines.map((e, i) => html`<div key=${i} class="flex gap-2.5">
+        <span class="text-base-content/70 tabular-nums shrink-0 w-12 text-right">${(e.ms / 1000).toFixed(2)}</span>
+        <span class="text-base-content/85 break-all">${e.line}</span>
+      </div>`) : html`<div class="text-base-content/70 py-4 text-center">${T(t, "logEmpty")}</div>`}
+    </div>
+  </div>`;
 }

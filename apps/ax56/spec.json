@@ -5,8 +5,9 @@
   "category": "science",
   "deviceNote": "needsDeviceAx56",
   "tabs": [
-    { "id": "chip", "type": "tool", "icon": "lucide:cpu", "label": "tabChip", "view": "ax56View", "needs": ["usb"], "fit": true },
-    { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }
+    { "id": "points", "type": "tool", "icon": "lucide:wifi", "label": "tabPoints", "view": "pointsView", "needs": ["usb"], "fit": true },
+    { "id": "log", "type": "tool", "icon": "lucide:scroll-text", "label": "tabLog", "view": "logView" },
+    { "id": "me", "type": "profile", "icon": "lucide:radar", "label": "tabMe", "titleKey": "tabMe" }
   ],
-  "profile": { "icon": "lucide:cpu", "theme": true, "lang": true, "install": true }
+  "profile": { "icon": "lucide:radar", "theme": true, "lang": true, "install": true }
 }

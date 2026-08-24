@@ -42,5 +42,5 @@
   "installed": "Installed",
   "needsDevice": "Needs an external device",
   "needsDeviceHackrf": "Only works with a HackRF One attached",
-  "needsDeviceAx56": "Reads a connected RTL8852AU adapter, or watch the demo"
+  "needsDeviceAx56": "A no-root Wi-Fi monitor for a connected RTL8852AU (ASUS USB-AX56)"
 }

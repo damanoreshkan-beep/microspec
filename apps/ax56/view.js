@@ -8,7 +8,7 @@ import { Segmented } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { shell } from "/_rt/shell.js";
 import { VID, PID, REG, cutName, isUnmapped } from "/_rt/ax56.js";
-import { buildInitOps, buildDownloadOps, buildConfigOps, parseRx, parse80211, fromHex, CHANNELS, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand, fwdlSts, canDownload } from "/_rt/ax56cap.js";
+import { buildInitOps, buildDownloadOps, buildConfigOps, cpuStopOps, parseRx, parse80211, fromHex, CHANNELS, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand, fwdlSts, canDownload } from "/_rt/ax56cap.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch {  } };
@@ -38,6 +38,22 @@ const fetchBlob = async (url) => {
 let dev = null, xport = null, t0 = 0;
 
 let runId = 0, inFlight = null;
+
+async function openNative() {
+  const list = async () => ((await shell.call("usb.list")) || {}).devices || [];
+  const has = (ds, v, p) => ds.some((d) => d.vid === v && d.pid === p);
+  let ds = await list();
+  log("devices: " + ds.map((d) => d.vid.toString(16) + ":" + d.pid.toString(16)).join(", "));
+  if (has(ds, VID_STORAGE, PID_STORAGE) && !has(ds, VID, PID)) {
+    $status.set("switching"); log("storage 0bda:1a2b found — SCSI eject");
+    await shell.call("usb.open", { vid: VID_STORAGE, pid: PID_STORAGE });
+    await shell.call("usb.switch", { vid: VID_STORAGE, pid: PID_STORAGE });
+    for (let i = 0; i < 12; i++) { await wait(400); ds = await list(); if (has(ds, VID, PID)) break; }
+    log(has(ds, VID, PID) ? "re-enumerated as 0b05:1997" : "did not re-enumerate — replug and retry");
+  }
+  $status.set("opening"); log("open 0b05:1997");
+  await shell.call("usb.open", { vid: VID, pid: PID });
+}
 
 function startCapture() {
   const me = ++runId;
@@ -76,19 +92,7 @@ async function connect() {
   log("connect via " + (native ? "native USB bridge" : "WebUSB"));
   try {
     if (native) {
-      const list = async () => ((await shell.call("usb.list")) || {}).devices || [];
-      const has = (ds, v, p) => ds.some((d) => d.vid === v && d.pid === p);
-      let ds = await list();
-      log("devices: " + ds.map((d) => d.vid.toString(16) + ":" + d.pid.toString(16)).join(", "));
-      if (has(ds, VID_STORAGE, PID_STORAGE) && !has(ds, VID, PID)) {
-        $status.set("switching"); log("storage 0bda:1a2b found — SCSI eject");
-        await shell.call("usb.open", { vid: VID_STORAGE, pid: PID_STORAGE });
-        await shell.call("usb.switch", { vid: VID_STORAGE, pid: PID_STORAGE });
-        for (let i = 0; i < 12; i++) { await wait(400); ds = await list(); if (has(ds, VID, PID)) break; }
-        log(has(ds, VID, PID) ? "re-enumerated as 0b05:1997" : "did not re-enumerate — replug and retry");
-      }
-      $status.set("opening"); log("open 0b05:1997");
-      await shell.call("usb.open", { vid: VID, pid: PID });
+      await openNative();
       xport = "shell";
     } else {
       if (!usbSupported()) { $usbOk.set(false); log("no WebUSB in this browser"); return; }
@@ -107,7 +111,7 @@ async function connect() {
   }
 }
 
-async function runCapture(me) {
+async function runCapture(me, attempt = 0) {
   const live = () => runId === me;   
   try {
     const ch = $ch.get();
@@ -119,7 +123,16 @@ async function runCapture(me) {
     if (!live()) return;
     log("entry: 0x88 = 0x" + (plat >>> 0).toString(16) + "  0x1E0 = 0x" + (wfc >>> 0).toString(16) + "  FWDL_STS=" + fwdlSts(wfc));
     if (isUnmapped(plat) || isUnmapped(wfc)) { $status.set("error"); log("cannot read the adapter's state — reconnect"); return; }
-    if (!canDownload(wfc)) { $status.set("error"); log("firmware download was interrupted (FWDL_STS=" + fwdlSts(wfc) + "); only a physical replug clears this — unplug the adapter and connect again"); return; }
+    if (!canDownload(wfc)) {
+      if (attempt > 0) { $status.set("error"); log("adapter still stuck at FWDL_STS=" + fwdlSts(wfc) + " after a reset — unplug it and connect again"); return; }
+      $status.set("switching"); log("firmware download was interrupted (FWDL_STS=" + fwdlSts(wfc) + ") — resetting the adapter");
+      try { await shell.call("usb.batch", { ops: cpuStopOps(plat) }); } catch {  }
+      await wait(2000);
+      if (!live()) return;
+      await openNative();
+      if (!live()) return;
+      return runCapture(me, attempt + 1);
+    }
     const cfg = buildConfigOps(br);
     log("init: " + buildInitOps({ plat, wfc }).length + " ops");
     let r = await shell.call("usb.batch", { ops: buildInitOps({ plat, wfc }) });

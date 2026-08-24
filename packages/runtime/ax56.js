@@ -19,6 +19,11 @@ export const decodeCut = (sysCfg1) => (sysCfg1 >>> 12) & 0xf;
 export const CUT_NAME = ["A", "B", "C", "D", "E", "F"];
 export const cutName = (sysCfg1) => CUT_NAME[decodeCut(sysCfg1)] ?? "?";
 
+export const fwEn = (v) => (v & 1) !== 0;
+export const h2cReady = (v) => (v & 2) !== 0;
+export const fwSts = (v) => (v >>> 5) & 7;
+export const booted = (v) => v != null && !isUnmapped(v) && fwSts(v) === 7; 
+
 export const STAGES = [
   { id: "power", key: "stagePower", reg: REG.PLATFORM_ENABLE,
     done: (r) => r[REG.PLATFORM_ENABLE] != null && !isUnmapped(r[REG.PLATFORM_ENABLE]) && (r[REG.PLATFORM_ENABLE] & 1) !== 0 },
@@ -29,12 +34,13 @@ export const STAGES = [
   { id: "hci", key: "stageHci", reg: REG.HCI_FUNC_EN,
     done: (r) => (r[REG.HCI_FUNC_EN] & 3) === 3 },
   { id: "cpu", key: "stageCpu", reg: REG.WCPU_FW_CTRL,
-    done: (r) => r[REG.WCPU_FW_CTRL] != null && (r[REG.WCPU_FW_CTRL] & 1) !== 0,
-    wall: (r) => (r[REG.WCPU_FW_CTRL] & 2) !== 0 }, 
+    done: (r) => r[REG.WCPU_FW_CTRL] != null && h2cReady(r[REG.WCPU_FW_CTRL]) },
+  { id: "boot", key: "stageBoot", reg: REG.WCPU_FW_CTRL,
+    done: (r) => booted(r[REG.WCPU_FW_CTRL]) },
 ];
 
 export function stageState(reads) {
-  return STAGES.map((s) => ({ id: s.id, key: s.key, reg: s.reg, done: !!s.done(reads), wall: s.wall ? !!s.wall(reads) : undefined }));
+  return STAGES.map((s) => ({ id: s.id, key: s.key, reg: s.reg, done: !!s.done(reads) }));
 }
 
 export const DEMO_LOW_PAGE = [
@@ -55,6 +61,7 @@ export function demoFrames() {
   f.push({ ...base, [REG.DMAC_FUNC_EN]: 0x64c40000 }); 
   f.push({ ...f[1], [REG.WDE_INI]: 0x3, [REG.PLE_INI]: 0x3 }); 
   f.push({ ...f[2], [REG.HCI_FUNC_EN]: 0x3 }); 
-  f.push({ ...f[3], [REG.WCPU_FW_CTRL]: 0x1 }); 
+  f.push({ ...f[3], [REG.WCPU_FW_CTRL]: 0x23 }); 
+  f.push({ ...f[4], [REG.WCPU_FW_CTRL]: 0x000000e2 }); 
   return f;
 }

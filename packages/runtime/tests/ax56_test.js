@@ -2,6 +2,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   cutName, decodeCut, isUnmapped, DEADBEEF, DEMO_LOW_PAGE, REG, STAGES, stageState, demoFrames,
+  fwSts, h2cReady, booted,
 } from "../ax56.js";
 
 Deno.test("decodeCut reads the real measured value as C-cut", () => {
@@ -22,24 +23,26 @@ Deno.test("the real low page has the expected shape", () => {
   assert(isUnmapped(DEMO_LOW_PAGE[6]));
 });
 
-Deno.test("demo frames light the five stages in order", () => {
+Deno.test("WCPU_FW_CTRL field decode matches the on-chip progression", () => {
+  assert(!h2cReady(0x1) && fwSts(0x1) !== 7); 
+  assert(h2cReady(0x23) && fwSts(0x23) !== 7); 
+  assert(h2cReady(0xe2) && fwSts(0xe2) === 7 && booted(0xe2)); 
+  assert(!booted(DEADBEEF)); 
+});
+
+Deno.test("demo frames light the six stages in order, cold chip to booted", () => {
   const frames = demoFrames();
-  assertEquals(frames.length, 5);
+  assertEquals(frames.length, 6);
   const doneCounts = frames.map((r) => stageState(r).filter((s) => s.done).length);
   for (let i = 1; i < doneCounts.length; i++) assert(doneCounts[i] > doneCounts[i - 1], `frame ${i} advanced`);
   assertEquals(doneCounts[0], 1); 
-  assertEquals(doneCounts[4], 5); 
+  assertEquals(doneCounts[5], 6); 
+  const last = stageState(frames[5]);
+  assert(last.find((s) => s.id === "boot").done, "boot stage reached STS == 7");
 });
 
-Deno.test("the H2C wall never arms in the demo — the honest ending", () => {
-  const last = stageState(demoFrames()[4]);
-  const cpu = last.find((s) => s.id === "cpu");
-  assert(cpu.done, "FWDL_EN is set");
-  assertEquals(cpu.wall, false); 
-});
-
-Deno.test("stages cover the five bring-up registers we read", () => {
+Deno.test("stages cover the six bring-up registers we read", () => {
   assertEquals(STAGES.map((s) => s.reg), [
-    REG.PLATFORM_ENABLE, REG.DMAC_FUNC_EN, REG.WDE_INI, REG.HCI_FUNC_EN, REG.WCPU_FW_CTRL,
+    REG.PLATFORM_ENABLE, REG.DMAC_FUNC_EN, REG.WDE_INI, REG.HCI_FUNC_EN, REG.WCPU_FW_CTRL, REG.WCPU_FW_CTRL,
   ]);
 });

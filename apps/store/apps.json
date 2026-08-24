@@ -100,7 +100,7 @@
     "bg": "#0A0A0C",
     "fg": "#E0A458",
     "href": "./tgvoice/",
-    "version": "1.0",
+    "version": "1.14",
     "category": "tools",
     "needs": []
   },
@@ -238,6 +238,29 @@
     "needs": [
       "usb",
       "wakeLock"
+    ]
+  },
+  {
+    "id": "ax56",
+    "title": "Запуск AX56",
+    "titles": {
+      "en": "AX56 Bring-up",
+      "uk": "Запуск AX56"
+    },
+    "tagline": "Дивіться, як чип Wi-Fi 6 оживає від холодного старту до прошивки, регістр за регістром",
+    "taglines": {
+      "en": "Watch a Wi-Fi 6 chip boot from cold to firmware, register by register",
+      "uk": "Дивіться, як чип Wi-Fi 6 оживає від холодного старту до прошивки, регістр за регістром"
+    },
+    "glyph": "lucide:cpu",
+    "art": "<rect width=\"16\" height=\"16\" x=\"4\" y=\"4\" rx=\"2\"/><rect width=\"6\" height=\"6\" x=\"9\" y=\"9\" rx=\"1\"/><path d=\"M15 2v2\"/><path d=\"M15 20v2\"/><path d=\"M2 15h2\"/><path d=\"M2 9h2\"/><path d=\"M20 15h2\"/><path d=\"M20 9h2\"/><path d=\"M9 2v2\"/><path d=\"M9 20v2\"/>",
+    "bg": "#0A0A0B",
+    "fg": "#22D3EE",
+    "href": "./ax56/",
+    "version": "1.0",
+    "category": "hackrf",
+    "needs": [
+      "usb"
     ]
   },
   {
@@ -1459,7 +1482,7 @@
     "bg": "#0A0A0F",
     "fg": "#5EC8A8",
     "href": "./os/",
-    "version": "1.67",
+    "version": "1.68",
     "category": "tools",
     "needs": []
   },
@@ -1480,7 +1503,7 @@
     "bg": "#221C29",
     "fg": "#C9A7E0",
     "href": "./mirage/",
-    "version": "1.12",
+    "version": "1.13",
     "category": "creative",
     "needs": [
       "camera"

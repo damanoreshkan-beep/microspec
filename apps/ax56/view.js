@@ -8,7 +8,7 @@ import { Segmented } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { shell } from "/_rt/shell.js";
 import { VID, PID, REG, cutName, isUnmapped } from "/_rt/ax56.js";
-import { buildFwdlOps, buildConfigOps, parseRx, parse80211, fromHex, CHANNELS, DEFAULT_CHANNEL, bringupAsset } from "/_rt/ax56cap.js";
+import { buildFwdlOps, buildConfigOps, parseRx, parse80211, fromHex, CHANNELS, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand } from "/_rt/ax56cap.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch {  } };
@@ -24,7 +24,16 @@ const $connected = atom(false), $usbOk = atom(true), $status = atom("idle");
 const $aps = atom([]);       
 const $log = atom([]);       
 const $open = atom("");      
-const $ch = atom(DEFAULT_CHANNEL); 
+const $ch = atom(DEFAULT_CHANNEL);   
+const $chDrag = atom(0);             
+
+const fetchBlob = async (url) => {
+  const r = await fetch(new URL(url, import.meta.url));
+  if (!r.ok) throw new Error(url + " " + r.status);
+  const raw = new Uint8Array(await r.arrayBuffer());
+  if (raw[0] !== 0x1f || raw[1] !== 0x8b) return raw;
+  return new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+};
 
 let dev = null, xport = null, t0 = 0, capturing = false;
 
@@ -87,10 +96,11 @@ async function connect() {
 async function runCapture() {
   try {
     const ch = $ch.get();
-    $status.set("opening"); log("bring-up: loading firmware + monitor config (channel " + ch + ")");
+    $status.set("opening"); log("bring-up: channel " + ch + " (" + channelMHz(ch) + " MHz, " + channelBand(ch) + "G)");
     const fw = new Uint8Array(await (await fetch(new URL("./assets/fw.bin", import.meta.url))).arrayBuffer());
-    const br = new Uint8Array(await (await fetch(new URL(bringupAsset(ch), import.meta.url))).arrayBuffer());
-    const fwdl = buildFwdlOps(fw), cfg = buildConfigOps(br);
+    const br = await fetchBlob(bringupAsset(ch));
+    const plat = await readReg32(0x88), wfc = await readReg32(REG.WCPU_FW_CTRL);
+    const fwdl = buildFwdlOps(fw, { plat, wfc }), cfg = buildConfigOps(br);
     log("firmware download: " + fwdl.length + " ops");
     let r = await shell.call("usb.batch", { ops: fwdl });
     log("firmware download: fail=" + ((r && r.fail) || 0));
@@ -149,6 +159,22 @@ async function copyLog() {
   const text = $log.get().map((e) => (e.ms / 1000).toFixed(2).padStart(6) + "  " + e.line).join("\n");
   try { await navigator.clipboard.writeText(text); log("log copied"); }
   catch { log("copy failed — select and copy manually"); }
+}
+
+function ChannelPicker({ t, value, drag }) {
+  const shown = drag || value;
+  const i = Math.max(0, CHANNELS.indexOf(shown));
+  return html`<div class="w-full flex items-center gap-3" data-chpick>
+    <div class="shrink-0 w-[3.25rem] leading-none">
+      <div class="font-mono text-xl font-semibold tabular-nums" data-ch-value>${shown}</div>
+      <div class="font-mono text-[0.6rem] text-base-content/70 tabular-nums mt-0.5">${channelMHz(shown)}<span class="opacity-70"> ${channelBand(shown)}G</span></div>
+    </div>
+    <input type="range" min="0" max=${CHANNELS.length - 1} step="1" value=${i} data-ch
+      aria-label=${T(t, "ch")} aria-valuetext=${shown + " · " + channelMHz(shown) + " MHz"}
+      onInput=${(e) => $chDrag.set(CHANNELS[Number(e.target.value)])}
+      onChange=${(e) => { $chDrag.set(0); setChannel(CHANNELS[Number(e.target.value)]); }}
+      class="range range-sm range-primary min-w-0 flex-1" />
+  </div>`;
 }
 
 const PALETTE = ["#22d3ee", "#a78bfa", "#34d399", "#fbbf24", "#f472b6", "#60a5fa", "#fb7185", "#2dd4bf"];
@@ -231,7 +257,7 @@ function useGraph(aps, sel, theme) {
 export function pointsView({ S }) {
   const t = useStore(S.t), theme = useStore(S.theme);
   const connected = useStore($connected), usbOk = useStore($usbOk), status = useStore($status);
-  const rawAps = useStore($aps), open = useStore($open), sort = useStore($sort), ch = useStore($ch);
+  const rawAps = useStore($aps), open = useStore($open), sort = useStore($sort), ch = useStore($ch), chDrag = useStore($chDrag);
   const aps = sortAps(rawAps, sort);
   const graphRef = useGraph(rawAps, open, theme);
 
@@ -245,10 +271,7 @@ export function pointsView({ S }) {
       <p class="text-base-content/70 leading-relaxed text-sm">${T(t, "connectBody")}</p>
       ${supported
         ? html`<${Fragment}>
-            <div class="w-full flex items-center gap-2">
-              <span class="text-[0.65rem] font-mono uppercase tracking-wider text-base-content/70 shrink-0">${T(t, "ch")}</span>
-              <div class="flex-1 min-w-0"><${Segmented} attr="data-ch" size="sm" items=${CHANNELS.map((c) => ({ id: String(c), label: String(c) }))} value=${String(ch)} onChange=${(v) => setChannel(Number(v))} /></div>
-            </div>
+            <${ChannelPicker} t=${t} value=${ch} drag=${chDrag} />
             <button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>
           </${Fragment}>`
         : html`<div class="alert bg-warning/12 text-warning rounded-2xl sf-e2 text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
@@ -271,10 +294,7 @@ export function pointsView({ S }) {
         <canvas ref=${graphRef} class="block w-full h-full" role="img" aria-label=${T(t, "chart")} data-graph></canvas>
       </div>
 
-      <div class="shrink-0 flex items-center gap-2">
-        <span class="text-[0.65rem] font-mono uppercase tracking-wider text-base-content/70 shrink-0">${T(t, "ch")}</span>
-        <div class="flex-1 min-w-0"><${Segmented} attr="data-ch" size="sm" items=${CHANNELS.map((c) => ({ id: String(c), label: String(c) }))} value=${String(ch)} onChange=${(v) => setChannel(Number(v))} /></div>
-      </div>
+      <div class="shrink-0"><${ChannelPicker} t=${t} value=${ch} drag=${chDrag} /></div>
 
       <div class="shrink-0"><${Segmented} attr="data-sort" size="sm" items=${[{ id: "signal", label: T(t, "srtSignal") }, { id: "ch", label: T(t, "srtCh") }, { id: "clients", label: T(t, "srtClients") }]} value=${sort} onChange=${(v) => { buzz(); $sort.set(v); }} /></div>
 

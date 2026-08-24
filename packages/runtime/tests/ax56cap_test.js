@@ -1,5 +1,8 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { buildFwdl, buildFwdlOps, parseReplay, parse80211, parseRx, fromHex, CHANNELS, DEFAULT_CHANNEL, bringupAsset } from "../ax56cap.js";
+import {
+  buildFwdl, buildFwdlOps, parseReplay, parse80211, parseRx, fromHex,
+  CHANNELS, CHANNELS_24, CHANNELS_5, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand,
+} from "../ax56cap.js";
 
 const fwPath = new URL("../../../apps/ax56/assets/fw.bin", import.meta.url);
 
@@ -88,27 +91,55 @@ Deno.test("fromHex round-trips", () => {
   assertEquals([...fromHex("0aff10")], [0x0a, 0xff, 0x10]);
 });
 
-Deno.test("bringupAsset maps each shipped channel, and anything else to the default", () => {
-  assertEquals(CHANNELS, [1, 6, 11]);
-  for (const c of CHANNELS) assertEquals(bringupAsset(c), `./assets/bringup_ch${c}.bin`);
-  assertEquals(bringupAsset(3), `./assets/bringup_ch${DEFAULT_CHANNEL}.bin`);
-  assertEquals(bringupAsset(undefined), `./assets/bringup_ch${DEFAULT_CHANNEL}.bin`);
+Deno.test("the channel list matches what the adapter reports, and maps to frequencies", () => {
+  assertEquals(CHANNELS.length, 39);                       
+  assertEquals(CHANNELS_24.length, 14);
+  assertEquals(CHANNELS_5.length, 25);
+  assertEquals(channelMHz(1), 2412);
+  assertEquals(channelMHz(6), 2437);
+  assertEquals(channelMHz(13), 2472);
+  assertEquals(channelMHz(14), 2484);                      
+  assertEquals(channelMHz(36), 5180);
+  assertEquals(channelMHz(165), 5825);
+  assertEquals(channelBand(14), "2.4");
+  assertEquals(channelBand(36), "5");
+  for (const c of CHANNELS) assertEquals(bringupAsset(c), `./assets/bringup_ch${c}.bin.gz`);
+  assertEquals(bringupAsset(15), `./assets/bringup_ch${DEFAULT_CHANNEL}.bin.gz`);
+  assertEquals(bringupAsset(undefined), `./assets/bringup_ch${DEFAULT_CHANNEL}.bin.gz`);
 });
 
-Deno.test("each shipped bring-up carries its own channel number in the RF tuning registers", () => {
+Deno.test("buildFwdlOps stops a running firmware CPU, and reads 0x1E0 rather than assuming a cold chip", () => {
+  const u32 = (h) => fromHex(h).reduce((a, b, i) => a + (b << (8 * i)), 0) >>> 0;
+  const fw = Deno.readFileSync(fwPath);
+  const warm = buildFwdlOps(fw, { plat: 0x54f, wfc: 0xe2 });
+  const first = warm[0];
+  assertEquals(first.t, "c");
+  assertEquals(first.rt, 0x40);
+  assertEquals(first.val, 0x88);
+  assertEquals(u32(first.data), 0x54d);                    
+  const wfcWrite = warm.find((o) => o.t === "c" && o.rt === 0x40 && o.val === 0x1e0);
+  assertEquals(u32(wfcWrite.data), 0xe0);                  
+  const stopped = buildFwdlOps(fw, { plat: 0x54d, wfc: 0xc0 });
+  assertEquals(stopped[0].val, 0xf4);
+});
+
+Deno.test("each shipped bring-up carries its own channel number in the RF tuning registers", async () => {
   const lastWrite = (ops, addr) => {
     let v = null;
     for (const o of ops) if (o.t === "c" && o.rt === 0x40 && ((o.val | (o.idx << 16)) >>> 0) === addr) v = o.data;
     return v === null ? null : fromHex(v).reduce((a, b, i) => a + (b << (8 * i)), 0) >>> 0;
   };
   for (const ch of CHANNELS) {
-    const blob = Deno.readFileSync(new URL(`../../../apps/ax56/assets/bringup_ch${ch}.bin`, import.meta.url));
+    const gz = Deno.readFileSync(new URL(`../../../apps/ax56/assets/bringup_ch${ch}.bin.gz`, import.meta.url));
+    const blob = new Uint8Array(await new Response(
+      new Blob([gz]).stream().pipeThrough(new DecompressionStream("gzip")),
+    ).arrayBuffer());
     const ops = parseReplay(blob);
     for (const reg of [0x1c060, 0x1c07c, 0x1d060, 0x1d07c]) {
       const v = lastWrite(ops, reg);
       assert(v !== null, `ch${ch}: no write to 0x${reg.toString(16)}`);
-      assertEquals(v & 0xff, ch, `ch${ch}: 0x${reg.toString(16)} = 0x${v.toString(16)} should end in the channel`);
+      assertEquals(v & 0xff, ch & 0xff, `ch${ch}: 0x${reg.toString(16)} = 0x${v.toString(16)} should carry the channel`);
     }
-    assertEquals(lastWrite(ops, 0x19fe4), (ch << 24) | (ch << 8), `ch${ch}: 0x19fe4 holds the channel twice`);
+    assertEquals(lastWrite(ops, 0x10734), ch << 16, `ch${ch}: 0x10734 holds the channel in its high half`);
   }
 });

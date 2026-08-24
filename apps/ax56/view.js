@@ -118,9 +118,9 @@ function seedDemo() {
 }
 
 // =================== POINTS ===================
-function Bars({ level }) {
+function Bars({ level, label }) {
   const lit = Math.round(level * 4);
-  return html`<div class="flex items-end gap-[3px] h-5 shrink-0" role="img">
+  return html`<div class="flex items-end gap-[3px] h-5 shrink-0" role="img" aria-label=${label || ""}>
     ${[0, 1, 2, 3].map((i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : ""}`} style=${`height:${40 + i * 20}%${i < lit ? "" : ";background:var(--sf-track-face)"}`}></span>`)}
   </div>`;
 }
@@ -165,7 +165,7 @@ export function pointsView({ S }) {
                 <div class="font-mono text-[0.68rem] text-base-content/70 tabular-nums truncate">${a.bssid} · ${T(t, "ch")} ${a.ch}</div>
               </div>
               <span class="font-mono text-[0.68rem] tabular-nums text-base-content/70 shrink-0">${a.signal}</span>
-              <${Bars} level=${sigNorm(a.signal)} />
+              <${Bars} level=${sigNorm(a.signal)} label=${a.signal + " dBm"} />
               <span class="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-base-content/70 shrink-0 w-9 justify-end" data-clients>${Icon("lucide:users", "text-sm")}${a.clients.length}</span>
             </button>
             ${isOpen ? html`<div class="px-3.5 pb-2.5 pt-0.5 flex flex-col gap-1 border-t border-base-content/10" data-client-list>

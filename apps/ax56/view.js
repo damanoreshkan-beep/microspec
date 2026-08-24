@@ -70,7 +70,7 @@ function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
 // Replay the solved bring-up: step the reads snapshot 1->6 while the lattice ripples in. `instant` seeds the
 // booted end state at once (the gate/headless wants the populated victory screen, not a mid-animation frame).
 function startDemo({ instant = false } = {}) {
-  buzz(12); stopTimer();
+  stopTimer(); // no buzz here: the gate/auto path has no user gesture (vibrate would log a blocked-call warning)
   const frames = demoFrames(); const page = Uint32Array.from(DEMO_LOW_PAGE);
   $mode.set("demo"); $connected.set(true); $sel.set(-1); $page.set(page);
   if (instant) { $reads.set(frames[frames.length - 1]); $reveal.set(64); return; }
@@ -93,19 +93,19 @@ function useLattice(page, reveal, sel, theme) {
     try { accent = getComputedStyle(document.documentElement).getPropertyValue("--app-accent").trim() || accent; } catch { /* */ }
     const track = light ? "20,20,26" : "236,236,238";
     c.clearRect(0, 0, w, h);
-    const N = 8, pad = Math.round(w * 0.02), gap = Math.max(2, Math.round(w * 0.012));
-    const step = (w - pad * 2 + gap) / N, cw = step - gap, r = Math.max(2, cw * 0.22);
-    const oy = (h - (step * N - gap)) / 2; // vertically centre the square grid in its box
-    const rr = (x, y, s) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + s, y, x + s, y + s, r); c.arcTo(x + s, y + s, x, y + s, r); c.arcTo(x, y + s, x, y, r); c.arcTo(x, y, x + s, y, r); c.closePath(); };
+    const N = 8, padX = Math.round(w * 0.02), padY = Math.round(h * 0.02), gap = Math.max(2, Math.round(Math.min(w, h) * 0.012));
+    const stepX = (w - padX * 2 + gap) / N, stepY = (h - padY * 2 + gap) / N;
+    const cwv = stepX - gap, chv = stepY - gap, r = Math.max(2, Math.min(cwv, chv) * 0.2);
+    const rr = (x, y, ww, hh) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + ww, y, x + ww, y + hh, r); c.arcTo(x + ww, y + hh, x, y + hh, r); c.arcTo(x, y + hh, x, y, r); c.arcTo(x, y, x + ww, y, r); c.closePath(); };
     for (let i = 0; i < 64; i++) {
       const col = i % N, row = (i / N) | 0;
-      const x = pad + col * step, y = oy + row * step;
-      c.globalAlpha = 1; c.fillStyle = `rgba(${track},${light ? 0.05 : 0.06})`; rr(x, y, cw); c.fill();       // track
+      const x = padX + col * stepX, y = padY + row * stepY;
+      c.globalAlpha = 1; c.fillStyle = `rgba(${track},${light ? 0.05 : 0.06})`; rr(x, y, cwv, chv); c.fill();       // track
       if (i < reveal && page) {
         const v = page[i] >>> 0;
-        if (!isUnmapped(v) && v !== 0) { c.globalAlpha = 0.14 + 0.86 * (popcount(v) / 32); c.fillStyle = accent; rr(x, y, cw); c.fill(); }
+        if (!isUnmapped(v) && v !== 0) { c.globalAlpha = 0.14 + 0.86 * (popcount(v) / 32); c.fillStyle = accent; rr(x, y, cwv, chv); c.fill(); }
       }
-      if (i === sel) { c.globalAlpha = 1; c.strokeStyle = accent; c.lineWidth = Math.max(1.5, cw * 0.06); rr(x, y, cw - c.lineWidth); c.stroke(); }
+      if (i === sel) { const lw = Math.max(1.5, Math.min(cwv, chv) * 0.06); c.globalAlpha = 1; c.strokeStyle = accent; c.lineWidth = lw; rr(x + lw / 2, y + lw / 2, cwv - lw, chv - lw); c.stroke(); }
     }
     c.globalAlpha = 1;
   };
@@ -129,9 +129,9 @@ function useLattice(page, reveal, sel, theme) {
 
 function tapCell(e, cv) {
   const b = cv.getBoundingClientRect(); const N = 8;
-  const pad = b.width * 0.02, gap = Math.max(2, b.width * 0.012), step = (b.width - pad * 2 + gap) / N;
-  const oy = (b.height - (step * N - gap)) / 2;
-  const col = Math.floor((e.clientX - b.left - pad) / step), row = Math.floor((e.clientY - b.top - oy) / step);
+  const padX = b.width * 0.02, padY = b.height * 0.02, gap = Math.max(2, Math.min(b.width, b.height) * 0.012);
+  const stepX = (b.width - padX * 2 + gap) / N, stepY = (b.height - padY * 2 + gap) / N;
+  const col = Math.floor((e.clientX - b.left - padX) / stepX), row = Math.floor((e.clientY - b.top - padY) / stepY);
   if (col < 0 || col > 7 || row < 0 || row > 7) return;
   const i = row * 8 + col; buzz(6); $sel.set($sel.get() === i ? -1 : i);
 }
@@ -155,7 +155,7 @@ export function ax56View({ S }) {
         ${supported
           ? html`<button id="connect" data-connect class="btn btn-primary btn-lg rounded-2xl gap-2" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
           : html`<div class="alert bg-warning/12 text-warning rounded-2xl sf-e2 text-sm justify-center gap-2">${Icon("lucide:triangle-alert", "shrink-0")}${T(t, "noUsb")}</div>`}
-        <button data-demo class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70" onClick=${() => startDemo()}>${Icon("lucide:play")}${T(t, "demoBtn")}</button>
+        <button data-demo class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70" onClick=${() => { buzz(12); startDemo(); }}>${Icon("lucide:play")}${T(t, "demoBtn")}</button>
       </div>
       <a href="https://github.com/damanoreshkan-beep/rtl8852au-userspace" target="_blank" rel="noopener" class="text-xs font-mono text-base-content/70 hover:text-base-content inline-flex items-center gap-1.5">${Icon("lucide:external-link", "text-xs")}${T(t, "driverLink")}</a>
     </div>`;
@@ -184,13 +184,15 @@ export function ax56View({ S }) {
           <span class="w-1.5 h-1.5 rounded-full ${mode === "demo" ? "bg-primary" : "bg-success"}"></span>${T(t, mode === "demo" ? "demoTag" : "live")}
         </span>
         ${mode === "demo"
-          ? html`<button data-replay aria-label=${T(t, "replay")} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => startDemo()}>${Icon("lucide:rotate-ccw", "text-lg")}</button>`
+          ? html`<button data-replay aria-label=${T(t, "replay")} class="btn btn-circle btn-ghost btn-sm shrink-0" onClick=${() => { buzz(12); startDemo(); }}>${Icon("lucide:rotate-ccw", "text-lg")}</button>`
           : html`<button data-disconnect aria-label=${T(t, "disconnect")} class="btn btn-circle btn-ghost btn-sm text-base-content/70 shrink-0" onClick=${disconnect}>${Icon("lucide:power", "text-lg")}</button>`}
       </div>
 
       <!-- register lattice (the low page, glow = value activity) -->
-      <div class="flex-1 min-h-0 rounded-3xl sf-inset overflow-hidden p-1.5">
-        <canvas ref=${latticeRef} onClick=${(e) => tapCell(e, e.currentTarget)} class="block w-full h-full cursor-pointer" role="img" aria-label=${T(t, "lattice")} data-lattice></canvas>
+      <div class="flex-1 min-h-0 flex items-center justify-center">
+        <div class="rounded-3xl sf-inset overflow-hidden p-1.5" style="width:100%;aspect-ratio:1;max-height:100%">
+          <canvas ref=${latticeRef} onClick=${(e) => tapCell(e, e.currentTarget)} class="block w-full h-full cursor-pointer" role="img" aria-label=${T(t, "lattice")} data-lattice></canvas>
+        </div>
       </div>
 
       <!-- bring-up stepper: six stages, light as reached -->

@@ -1,8 +1,8 @@
-// AX56 Bring-up — reads an RTL8852AU (ASUS USB-AX56) that is already in Wi-Fi mode over WebUSB and replays the
-// chip's cold-to-firmware bring-up on a glowing register lattice. The browser cannot switch the adapter out of
-// storage mode or download firmware (that needs the userspace driver, github.com/damanoreshkan-beep/
-// rtl8852au-userspace); this app is a viewer plus a demo that replays the solved bring-up with no hardware.
-// Register semantics + stages are unit-tested in packages/runtime/ax56.js; only the control transfer is here.
+// AX56 Bring-up — reads an RTL8852AU (ASUS USB-AX56) live and replays the chip's cold-to-firmware bring-up on a
+// glowing register lattice. Two transports: the native shell USB bridge (usb.switch/open/control) inside the
+// APK, which mode-switches the adapter out of storage and reads its registers where WebUSB cannot; and WebUSB
+// in desktop Chrome for an already-switched adapter. A full demo replays the solved bring-up with no hardware.
+// Register semantics + stages are unit-tested in packages/runtime/ax56.js; only the transfers are here.
 import { html } from "htm/preact";
 import { Fragment } from "preact";
 import { useEffect, useRef } from "preact/hooks";
@@ -11,8 +11,9 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { Island } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
+import { shell } from "/_rt/shell.js";
 import {
-  USB_FILTERS, REG, STAGES, stageState, demoFrames, DEMO_LOW_PAGE, decodeCut, cutName, isUnmapped, booted,
+  VID, PID, USB_FILTERS, REG, STAGES, stageState, demoFrames, DEMO_LOW_PAGE, decodeCut, cutName, isUnmapped, booted,
 } from "/_rt/ax56.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -31,38 +32,70 @@ const $page = atom(null);         // Uint32Array(64) low page, or null
 const $reveal = atom(0);          // how many lattice cells have rippled in (0..64)
 const $sel = atom(-1);            // selected lattice cell index, or -1
 
-let dev = null, timer = null;
+const VID_STORAGE = 0x0bda, PID_STORAGE = 0x1a2b; // the AX56 before its mode-switch
+let dev = null, timer = null, xport = null;        // xport: "shell" (native APK bridge) | "web" (WebUSB)
+// The native USB driver reaches the chip where WebUSB cannot: inside the APK's WebView, and past the SCSI
+// mode-switch. shell.js is a no-op in a plain browser, so has() is false there and the WebUSB path is used.
+const nativeUsb = () => { try { return shell.has("usb.control") && shell.has("usb.switch"); } catch { return false; } };
+const leU32 = (h) => { if (!h || h.length < 8) return 0xdeadbeef; const b = (i) => parseInt(h.slice(i * 2, i * 2 + 2), 16); return (b(0) | (b(1) << 8) | (b(2) << 16) | (b(3) << 24)) >>> 0; };
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function readReg32(d, a) {
+async function readReg32(a) {
+  if (xport === "shell") {
+    try { const r = await shell.call("usb.control", { reqType: 0xc0, request: 0x05, value: a & 0xffff, index: (a >> 16) & 0xff, length: 4 }); return leU32(r && r.data); }
+    catch { return 0xdeadbeef; }
+  }
   try {
-    const r = await d.controlTransferIn({ requestType: "vendor", recipient: "device", request: 0x05, value: a & 0xffff, index: (a >> 16) & 0xff }, 4);
+    const r = await dev.controlTransferIn({ requestType: "vendor", recipient: "device", request: 0x05, value: a & 0xffff, index: (a >> 16) & 0xff }, 4);
     if (r.status === "ok" && r.data && r.data.byteLength >= 4) return r.data.getUint32(0, true) >>> 0;
   } catch { /* transfer failed */ }
   return 0xdeadbeef;
 }
 
-async function connect() {
-  buzz(12);
+// Read the six stage registers + the 64-cell low page over whichever transport connected.
+async function scanChip() {
+  $mode.set("live"); $connected.set(true); $sel.set(-1);
+  const snap = {};
+  for (const a of STAGE_ADDRS) snap[a] = await readReg32(a);
+  $reads.set(snap);
+  const page = new Uint32Array(64);
+  for (let i = 0; i < 64; i++) { page[i] = await readReg32(i * 4); $reveal.set(i + 1); $page.set(page.slice()); }
+}
+
+// Native (APK) path: mode-switch the storage adapter if present, open the Wi-Fi device, read over the bridge.
+async function connectNative() {
+  try {
+    const listed = async () => ((await shell.call("usb.list")) || {}).devices || [];
+    const has = (ds, v, p) => ds.some((d) => d.vid === v && d.pid === p);
+    let ds = await listed();
+    if (has(ds, VID_STORAGE, PID_STORAGE) && !has(ds, VID, PID)) {
+      await shell.call("usb.open", { vid: VID_STORAGE, pid: PID_STORAGE });
+      await shell.call("usb.switch", { vid: VID_STORAGE, pid: PID_STORAGE });
+      for (let i = 0; i < 12; i++) { await wait(400); ds = await listed(); if (has(ds, VID, PID)) break; }
+    }
+    await shell.call("usb.open", { vid: VID, pid: PID });
+    xport = "shell";
+    await scanChip();
+  } catch { $usbOk.set(false); }
+}
+
+// WebUSB path (desktop Chrome, adapter already switched to Wi-Fi mode).
+async function connectWeb() {
   if (!usbSupported()) { $usbOk.set(false); return; }
   let d;
   try { d = await navigator.usb.requestDevice({ filters: USB_FILTERS }); } catch { return; } // cancelled picker = not a fault
-  try {
-    await d.open();
-    if (d.configuration === null) await d.selectConfiguration(1);
-    await d.claimInterface(0);
-  } catch { $usbOk.set(false); return; }
-  dev = d; $mode.set("live"); $connected.set(true); $sel.set(-1);
-  const snap = {};
-  for (const a of STAGE_ADDRS) snap[a] = await readReg32(d, a);
-  $reads.set(snap);
-  const page = new Uint32Array(64);
-  for (let i = 0; i < 64; i++) { page[i] = await readReg32(d, i * 4); $reveal.set(i + 1); $page.set(page.slice()); }
+  try { await d.open(); if (d.configuration === null) await d.selectConfiguration(1); await d.claimInterface(0); }
+  catch { $usbOk.set(false); return; }
+  dev = d; xport = "web";
+  await scanChip();
 }
+
+async function connect() { buzz(12); return nativeUsb() ? connectNative() : connectWeb(); }
 
 function disconnect() {
   buzz(); stopTimer();
   try { dev?.close(); } catch { /* already gone */ }
-  dev = null; $connected.set(false); $reads.set({}); $page.set(null); $reveal.set(0); $sel.set(-1);
+  dev = null; xport = null; $connected.set(false); $reads.set({}); $page.set(null); $reveal.set(0); $sel.set(-1);
 }
 
 function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
@@ -146,7 +179,7 @@ export function ax56View({ S }) {
   const latticeRef = useLattice(page, reveal, sel, theme);
 
   if (!connected) {
-    const supported = usbSupported() && usbOk;
+    const supported = nativeUsb() || (usbSupported() && usbOk);
     return html`<div class="h-full flex flex-col items-center justify-center text-center gap-5 px-4 max-w-sm mx-auto">
       <div class="w-20 h-20 rounded-3xl grid place-items-center bg-primary/12 text-primary sf-e2">${Icon("lucide:cpu", "text-4xl")}</div>
       <h2 class="text-2xl font-semibold">${T(t, "connectTitle")}</h2>
@@ -157,7 +190,6 @@ export function ax56View({ S }) {
           ? html`<button id="connect" data-connect class="btn btn-ghost btn-sm rounded-2xl gap-2 text-base-content/70" onClick=${connect}>${Icon("lucide:usb")}${T(t, "connectBtn")}</button>`
           : null}
       </div>
-      <a href="https://github.com/damanoreshkan-beep/rtl8852au-userspace" target="_blank" rel="noopener" class="text-xs font-mono text-base-content/70 hover:text-base-content inline-flex items-center gap-1.5">${Icon("lucide:external-link", "text-xs")}${T(t, "driverLink")}</a>
     </div>`;
   }
 

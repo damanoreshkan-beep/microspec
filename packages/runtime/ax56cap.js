@@ -3,6 +3,8 @@
 // into access points and their clients. Ported from the userspace driver
 // (github.com/damanoreshkan-beep/rtl8852au-userspace, tool/hwdriver.c). Unit-tested browser-free.
 
+import { isUnmapped } from "./ax56.js";
+
 // hwburst_fwdl init writes, in order, for a COLD chip. The two read-modify-writes in the C are hardcoded to
 // their cold-chip result (0x1E0 clears to 0xC0; the warm CPU-stop is skipped — a fresh mode-switched chip is
 // cold). A replug guarantees cold if a re-run misbehaves.
@@ -72,9 +74,15 @@ export function parseReplay(blob) {
 // a chip whose firmware is already running has to have that CPU stopped before it will accept a new download,
 // and without the stop the re-init lands on a booted chip and the download never takes. Defaults describe a
 // cold chip, which is what the unit test and a freshly mode-switched adapter both are.
-export function buildFwdlOps(fw, entry = {}) {
+// FWDL_STS lives in 0x1E0 bits 7:5. Measured on the real adapter: 6 = idle, ready to download (a cold chip
+// reads 0xC0); 7 = firmware booted (a clean warm chip reads 0xE2) — stop its CPU and it will take a new
+// download; 1 = FWDL_ONGOING, a download that started and never finished (0x23). That last state is the trap:
+// H2C_PATH_RDY will never arm again, so every retry waits forever, and only a physical replug clears it.
+export const fwdlSts = (v) => (v >>> 5) & 7;
+export const canDownload = (v) => !isUnmapped(v) && (fwdlSts(v) === 6 || fwdlSts(v) === 7);
+
+export function buildInitOps(entry = {}) {
   const { plat = 0x54f, wfc = 0xc0 } = entry;
-  const { header, sections } = buildFwdl(fw);
   const ops = [];
   if (plat & 2) { ops.push(wOp(0x88, plat & ~2)); for (let i = 0; i < 50; i++) ops.push(rOp(0x88)); } // stop the running CPU, let it settle
   let firstWfc = true;
@@ -82,12 +90,30 @@ export function buildFwdlOps(fw, entry = {}) {
     if (a === 0x1e0 && firstWfc) { firstWfc = false; ops.push(wOp(0x1e0, wfc & ~7)); continue; } // RMW, not the cold constant
     ops.push(wOp(a, v));
   }
-  ops.push({ t: "p", addr: 0x1e0, mask: 2, want: 2, tries: 400000 });      // H2C_PATH_RDY
+  return ops;
+}
+
+// The header, the section burst and the two polls that bracket them. This stays ONE batch: the firmware times
+// out if the section packets arrive with gaps, which is why the C driver bursts them.
+export function buildDownloadOps(fw) {
+  const { header, sections } = buildFwdl(fw);
+  const ops = [];
   ops.push({ t: "b", ep: 7, data: hex(header) });                          // fwdl header
   ops.push({ t: "p", addr: 0x1e0, mask: 4, want: 4, tries: 400000 });      // FWDL_PATH_RDY
   for (const s of sections) ops.push({ t: "b", ep: 7, data: hex(s) });     // fwdl sections
   ops.push({ t: "p", addr: 0x1e0, mask: 0xe0, want: 0xe0, tries: 400000 }); // FWDL_STS == 7 (bits 7:5)
   return ops;
+}
+
+// The whole sequence in one list. The H2C_PATH_RDY poll between init and download is the one wait that can
+// legitimately never end, so the app runs it itself against a clock instead of handing it to the bridge —
+// see buildInitOps. This form is kept for tests and for anything that drives the chip without a bridge.
+export function buildFwdlOps(fw, entry = {}) {
+  return [
+    ...buildInitOps(entry),
+    { t: "p", addr: 0x1e0, mask: 2, want: 2, tries: 400000 },              // H2C_PATH_RDY
+    ...buildDownloadOps(fw),
+  ];
 }
 
 // Every channel the adapter reports (measured off the hardware: `iw phy info`, band 1 + band 2). A channel

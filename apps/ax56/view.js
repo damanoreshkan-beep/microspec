@@ -14,7 +14,7 @@ import { Segmented } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { shell } from "/_rt/shell.js";
 import { VID, PID, REG, cutName, isUnmapped } from "/_rt/ax56.js";
-import { buildFwdlOps, buildConfigOps, parseRx, parse80211, fromHex, CHANNELS, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand } from "/_rt/ax56cap.js";
+import { buildInitOps, buildDownloadOps, buildConfigOps, parseRx, parse80211, fromHex, CHANNELS, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand, fwdlSts, canDownload } from "/_rt/ax56cap.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -137,17 +137,32 @@ async function runCapture(me) {
     // channel change happen in-session instead of demanding a replug.
     const plat = await readReg32(0x88), wfc = await readReg32(REG.WCPU_FW_CTRL);
     if (!live()) return;
-    const fwdl = buildFwdlOps(fw, { plat, wfc }), cfg = buildConfigOps(br);
-    log("firmware download: " + fwdl.length + " ops");
-    let r = await shell.call("usb.batch", { ops: fwdl });
+    log("entry: 0x88 = 0x" + (plat >>> 0).toString(16) + "  0x1E0 = 0x" + (wfc >>> 0).toString(16) + "  FWDL_STS=" + fwdlSts(wfc));
+    // Both values are written straight back into registers, so a failed read must not become a garbage write,
+    // and a chip left mid-download never arms H2C again — starting anyway is what used to hang the app.
+    if (isUnmapped(plat) || isUnmapped(wfc)) { $status.set("error"); log("cannot read the adapter's state — reconnect"); return; }
+    if (!canDownload(wfc)) { $status.set("error"); log("firmware download was interrupted (FWDL_STS=" + fwdlSts(wfc) + "); only a physical replug clears this — unplug the adapter and connect again"); return; }
+    const cfg = buildConfigOps(br);
+    log("init: " + buildInitOps({ plat, wfc }).length + " ops");
+    let r = await shell.call("usb.batch", { ops: buildInitOps({ plat, wfc }) });
+    if (!live()) return;
+    log("init: fail=" + ((r && r.fail) || 0));
+    // The app owns this wait, against a clock. Handed to the bridge it was 400000 untimed retries that no
+    // one could interrupt or see, and on a chip that will never arm it read as a frozen app.
+    let armed = false;
+    for (const t0 = Date.now(); Date.now() - t0 < 4000;) {
+      if (((await readReg32(REG.WCPU_FW_CTRL)) & 2) !== 0) { armed = true; break; }
+      if (!live()) return;
+      await wait(50);
+    }
+    if (!armed) { $status.set("error"); log("H2C path never armed — unplug the adapter and connect again"); return; }
+    r = await shell.call("usb.batch", { ops: buildDownloadOps(fw) });
     if (!live()) return;
     log("firmware download: fail=" + ((r && r.fail) || 0));
     const sts = await readReg32(REG.WCPU_FW_CTRL);
-    const booted = ((sts >> 5) & 7) === 7;
-    log("WCPU 0x1E0 = 0x" + (sts >>> 0).toString(16) + (booted ? "  STS=7 BOOTED" : "  not booted (replug cold and retry)"));
-    // A warm chip cannot re-download firmware: the init writes assume a cold entry. Say so instead of
-    // replaying a 21k-op config onto dead firmware and reporting an empty capture as if the air were quiet.
-    if (!booted) { $status.set("error"); log("aborting — unplug and replug the adapter, then capture again"); return; }
+    const isBooted = fwdlSts(sts) === 7;
+    log("WCPU 0x1E0 = 0x" + (sts >>> 0).toString(16) + (isBooted ? "  STS=7 BOOTED" : "  not booted"));
+    if (!isBooted) { $status.set("error"); log("aborting — unplug and replug the adapter, then capture again"); return; }
     // monitor config in byte-bounded chunks
     log("monitor config: " + cfg.length + " ops");
     let chunk = [], bytes = 0, cfail = 0;

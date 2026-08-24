@@ -1,7 +1,7 @@
 // ax56 capture pipeline — pure logic. Firmware/replay op-list assembly and 802.11 parsing verify browser-free.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
-  buildFwdl, buildFwdlOps, parseReplay, parse80211, parseRx, fromHex,
+  buildFwdl, buildFwdlOps, buildInitOps, buildDownloadOps, parseReplay, parse80211, parseRx, fromHex, fwdlSts, canDownload,
   CHANNELS, CHANNELS_24, CHANNELS_5, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand,
 } from "../ax56cap.js";
 
@@ -114,6 +114,29 @@ Deno.test("the channel list matches what the adapter reports, and maps to freque
   for (const c of CHANNELS) assertEquals(bringupAsset(c), `./assets/bringup_ch${c}.bin.gz`);
   assertEquals(bringupAsset(15), `./assets/bringup_ch${DEFAULT_CHANNEL}.bin.gz`);
   assertEquals(bringupAsset(undefined), `./assets/bringup_ch${DEFAULT_CHANNEL}.bin.gz`);
+});
+
+// The three states below were read off the adapter itself. The dirty one is why the app used to freeze: a
+// download that stopped half way leaves H2C_PATH_RDY unable to arm, so waiting for it never ends.
+Deno.test("canDownload accepts the chip states that can take a download, and only those", () => {
+  assertEquals(fwdlSts(0xc0), 6);           // cold, straight after a mode switch
+  assertEquals(fwdlSts(0xe2), 7);           // clean warm: firmware booted
+  assertEquals(fwdlSts(0x23), 1);           // FWDL_ONGOING — interrupted download, needs a physical replug
+  assert(canDownload(0xc0));
+  assert(canDownload(0xe2));
+  assert(!canDownload(0x23));
+  // a failed read is 0xDEADBEEF, whose STS bits happen to read as 7 — it must not pass for "booted"
+  assertEquals(fwdlSts(0xdeadbeef), 7);
+  assert(!canDownload(0xdeadbeef));
+});
+
+Deno.test("the H2C wait is not handed to the bridge", () => {
+  const fw = Deno.readFileSync(fwPath);
+  const init = buildInitOps({ plat: 0x54f, wfc: 0xe2 });
+  assertEquals(init.filter((o) => o.t === "p").length, 0);   // the app polls this one against a clock
+  const dl = buildDownloadOps(fw);
+  assertEquals(dl.filter((o) => o.t === "b").length, 194);   // header + 193 sections, still one gapless burst
+  assertEquals(buildFwdlOps(fw, { plat: 0x54f, wfc: 0xe2 }).length, init.length + 1 + dl.length);
 });
 
 // A warm chip is the normal case for every channel change after the first: the firmware is already running,

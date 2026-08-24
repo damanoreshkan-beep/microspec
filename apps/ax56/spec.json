@@ -2,7 +2,8 @@
   "id": "ax56",
   "theme": "signal",
   "accent": "#22D3EE",
-  "category": "hackrf",
+  "category": "science",
+  "deviceNote": "needsDeviceAx56",
   "tabs": [
     { "id": "chip", "type": "tool", "icon": "lucide:cpu", "label": "tabChip", "view": "ax56View", "needs": ["usb"], "fit": true },
     { "id": "me", "type": "profile", "icon": "lucide:user", "label": "tabMe", "titleKey": "tabMe" }

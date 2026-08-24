@@ -41,5 +41,6 @@
   "newVersion": "new version",
   "installed": "Installed",
   "needsDevice": "Needs an external device",
-  "needsDeviceHackrf": "Only works with a HackRF One attached"
+  "needsDeviceHackrf": "Only works with a HackRF One attached",
+  "needsDeviceAx56": "Reads a connected RTL8852AU adapter, or watch the demo"
 }

@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
-  buildFwdl, buildFwdlOps, parseReplay, parse80211, parseRx, fromHex,
+  buildFwdl, buildFwdlOps, buildInitOps, buildDownloadOps, parseReplay, parse80211, parseRx, fromHex, fwdlSts, canDownload,
   CHANNELS, CHANNELS_24, CHANNELS_5, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand,
 } from "../ax56cap.js";
 
@@ -106,6 +106,26 @@ Deno.test("the channel list matches what the adapter reports, and maps to freque
   for (const c of CHANNELS) assertEquals(bringupAsset(c), `./assets/bringup_ch${c}.bin.gz`);
   assertEquals(bringupAsset(15), `./assets/bringup_ch${DEFAULT_CHANNEL}.bin.gz`);
   assertEquals(bringupAsset(undefined), `./assets/bringup_ch${DEFAULT_CHANNEL}.bin.gz`);
+});
+
+Deno.test("canDownload accepts the chip states that can take a download, and only those", () => {
+  assertEquals(fwdlSts(0xc0), 6);           
+  assertEquals(fwdlSts(0xe2), 7);           
+  assertEquals(fwdlSts(0x23), 1);           
+  assert(canDownload(0xc0));
+  assert(canDownload(0xe2));
+  assert(!canDownload(0x23));
+  assertEquals(fwdlSts(0xdeadbeef), 7);
+  assert(!canDownload(0xdeadbeef));
+});
+
+Deno.test("the H2C wait is not handed to the bridge", () => {
+  const fw = Deno.readFileSync(fwPath);
+  const init = buildInitOps({ plat: 0x54f, wfc: 0xe2 });
+  assertEquals(init.filter((o) => o.t === "p").length, 0);   
+  const dl = buildDownloadOps(fw);
+  assertEquals(dl.filter((o) => o.t === "b").length, 194);   
+  assertEquals(buildFwdlOps(fw, { plat: 0x54f, wfc: 0xe2 }).length, init.length + 1 + dl.length);
 });
 
 Deno.test("buildFwdlOps stops a running firmware CPU, and reads 0x1E0 rather than assuming a cold chip", () => {

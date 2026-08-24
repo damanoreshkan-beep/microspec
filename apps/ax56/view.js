@@ -191,7 +191,7 @@ function ChannelPicker({ t, value, drag }) {
   return html`<div class="w-full flex items-center gap-3" data-chpick>
     <div class="shrink-0 w-[3.25rem] leading-none">
       <div class="font-mono text-xl font-semibold tabular-nums" data-ch-value>${shown}</div>
-      <div class="font-mono text-[0.6rem] text-base-content/70 tabular-nums mt-0.5">${channelMHz(shown)}<span class="opacity-70"> ${channelBand(shown)}G</span></div>
+      <div class="font-mono text-[0.6rem] text-base-content/70 tabular-nums mt-0.5">${channelMHz(shown)} · ${channelBand(shown)}G</div>
     </div>
     <input type="range" min="0" max=${CHANNELS.length - 1} step="1" value=${i} data-ch
       aria-label=${T(t, "ch")} aria-valuetext=${shown + " · " + channelMHz(shown) + " MHz"}

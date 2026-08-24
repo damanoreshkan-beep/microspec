@@ -13,6 +13,7 @@ import { T } from "/_rt/i18n.js";
 import { gate } from "/_rt/gate.js";
 import { shell } from "/_rt/shell.js";
 import { VID, PID, REG, cutName, isUnmapped } from "/_rt/ax56.js";
+import { buildFwdlOps, buildConfigOps, parseRx, parse80211, fromHex } from "/_rt/ax56cap.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 const buzz = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* */ } };
@@ -29,7 +30,7 @@ const $aps = atom([]);       // [{ bssid, ssid, ch, signal, clients: [mac], seen
 const $log = atom([]);       // [{ ms, line }]
 const $open = atom("");      // bssid whose clients are expanded
 
-let dev = null, xport = null, t0 = 0;
+let dev = null, xport = null, t0 = 0, capturing = false;
 
 function log(line) {
   if (!t0) t0 = Date.now();
@@ -80,16 +81,59 @@ async function connect() {
     $connected.set(true);
     const sys = await readReg32(REG.SYS_CFG1);
     log("SYS_CFG1 0x00F0 = 0x" + (sys >>> 0).toString(16).padStart(8, "0") + (isUnmapped(sys) ? " (no read)" : "  cut " + cutName(sys)));
-    $status.set("scanning");
-    // 802.11 capture (firmware download + monitor + RX) is the next build — see the Log tab.
-    log("monitor capture: porting the firmware bring-up over usb.bulk — access points will populate here");
+    if (xport === "shell") runCapture();
+    else { $status.set("scanning"); log("live 802.11 capture runs over the native bridge (app); WebUSB reads registers only"); }
   } catch (e) {
     $status.set("error"); $usbOk.set(false); log("connect failed: " + (e && e.message));
   }
 }
 
+// Full bring-up (firmware + monitor config) over the native bridge, then read 802.11 off EP 0x84 and aggregate
+// beacons into access points and data frames into their clients. Native only — usb.batch is the shell bridge.
+async function runCapture() {
+  try {
+    $status.set("opening"); log("bring-up: loading firmware + monitor config");
+    const fw = new Uint8Array(await (await fetch(new URL("./assets/fw.bin", import.meta.url))).arrayBuffer());
+    const br = new Uint8Array(await (await fetch(new URL("./assets/bringup.bin", import.meta.url))).arrayBuffer());
+    const fwdl = buildFwdlOps(fw), cfg = buildConfigOps(br);
+    log("firmware download: " + fwdl.length + " ops");
+    let r = await shell.call("usb.batch", { ops: fwdl });
+    log("firmware download: fail=" + ((r && r.fail) || 0));
+    const sts = await readReg32(REG.WCPU_FW_CTRL);
+    log("WCPU 0x1E0 = 0x" + (sts >>> 0).toString(16) + (((sts >> 5) & 7) === 7 ? "  STS=7 BOOTED" : "  not booted (replug cold and retry)"));
+    // monitor config in byte-bounded chunks
+    log("monitor config: " + cfg.length + " ops");
+    let chunk = [], bytes = 0, cfail = 0;
+    const flush = async () => { if (!chunk.length) return; const rr = await shell.call("usb.batch", { ops: chunk }); cfail += (rr && rr.fail) || 0; chunk = []; bytes = 0; };
+    for (const o of cfg) { chunk.push(o); bytes += (o.data ? o.data.length : 0) + 48; if (bytes > 180000) await flush(); }
+    await flush();
+    log("monitor config: fail=" + cfail + " — RX_FLTR 0x" + ((await readReg32(0xce20)) >>> 0).toString(16));
+    $status.set("scanning"); log("reading 802.11 off EP 0x84");
+    capturing = true;
+    const aps = new Map(); const state = { sig: -100 };
+    for (let round = 0; round < 120 && capturing; round++) {
+      let rr = null; try { rr = await shell.call("usb.bulk", { ep: 0x84, length: 16384, timeout: 250 }); } catch { /* */ }
+      if (rr && rr.data) {
+        const rb = fromHex(rr.data);
+        for (const { frame, sig } of parseRx(rb, rb.length, state)) {
+          const m = parse80211(frame); if (!m) continue;
+          const a = aps.get(m.bssid) || { bssid: m.bssid, ssid: "", ch: 0, signal: -100, clients: new Set() };
+          if (m.kind === "ap") { if (m.ssid) a.ssid = m.ssid; if (m.ch) a.ch = m.ch; if (sig) a.signal = Math.max(a.signal, sig); }
+          else a.clients.add(m.client);
+          aps.set(m.bssid, a);
+        }
+        $aps.set([...aps.values()].filter((a) => a.ssid || a.clients.size)
+          .map((a) => ({ bssid: a.bssid, ssid: a.ssid, ch: a.ch, signal: a.signal, clients: [...a.clients] }))
+          .sort((x, y) => y.signal - x.signal));
+      }
+      await wait(40);
+    }
+    log("capture stopped — " + aps.size + " access points");
+  } catch (e) { $status.set("error"); log("capture error: " + (e && e.message)); }
+}
+
 function disconnect() {
-  buzz();
+  buzz(); capturing = false;
   try { dev?.close(); } catch { /* */ }
   dev = null; xport = null; $connected.set(false); $aps.set([]); $status.set("idle"); $open.set("");
   log("disconnected");

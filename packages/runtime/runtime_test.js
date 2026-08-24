@@ -9,6 +9,7 @@ import "./tests/ambient_test.js";
 import "./tests/aspects_test.js";
 import "./tests/audience_test.js";
 import "./tests/ax56_test.js";
+import "./tests/ax56cap_test.js";
 import "./tests/bandplan_test.js";
 import "./tests/birth_test.js";
 import "./tests/blesend_test.js";

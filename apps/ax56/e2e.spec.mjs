@@ -13,6 +13,7 @@ export default [
       h.expect((await h.count("[data-chpick]")) === 1, "немає вибору каналу");
       h.expect((await h.count("[data-ch]")) === 1, "немає повзунка каналу");
       h.expect((await h.prop("[data-ch]", "max")) === "38", "повзунок не покриває всі 39 каналів");
+      h.expect((await h.count("[data-scan]")) === 1, "немає кнопки автосканування");
       h.expect((await h.count("[data-ap]")) >= 4, "немає карток точок доступу");
       h.expect((await h.count("[data-clients]")) >= 3, "немає лічильника клієнтів");
       h.expect(/Pioneers|Monako|ZTE|c4:6e:1f/i.test(await h.bodyText()), "немає SSID/BSSID");

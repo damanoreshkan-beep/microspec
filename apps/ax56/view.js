@@ -32,6 +32,16 @@ const $log = atom([]);       // [{ ms, line }]
 const $open = atom("");      // bssid whose clients are expanded
 const $ch = atom(DEFAULT_CHANNEL);   // the channel the radio is tuned to
 const $chDrag = atom(0);             // channel under the finger mid-drag, 0 when not dragging
+const $scan = atom(false);           // auto-hop across channels, aggregating what each one hears
+
+// Access points live here, not inside one capture, so a scan sweep keeps what earlier channels heard instead
+// of each hop wiping the list — the airodump behaviour. Keyed by BSSID; `ch` is the channel the AP beacons on
+// (from its DS param), which is not always the channel we are tuned to. `seen` timestamps the last hit.
+let apMap = new Map();
+const publishAps = () => $aps.set([...apMap.values()].filter((a) => a.ssid || a.clients.size)
+  .map((a) => ({ bssid: a.bssid, ssid: a.ssid, ch: a.ch, band: a.band, signal: a.signal, clients: [...a.clients] }))
+  .sort((x, y) => y.signal - x.signal));
+const clearAps = () => { apMap = new Map(); $aps.set([]); $open.set(""); };
 
 // Bring-ups ship gzipped — ~180 KB of repeated register writes squeezes to ~33 KB, and only the channel
 // actually tuned to is ever fetched.
@@ -72,16 +82,36 @@ async function openNative() {
   await shell.call("usb.open", { vid: VID, pid: PID });
 }
 
-function startCapture() {
+function startCapture(rounds = 120) {
   const me = ++runId;
   const prev = inFlight;
   const p = (async () => {
     try { await prev; } catch { /* the previous run's failure is its own to report */ }
     if (runId !== me) return;              // superseded while waiting our turn — never touch the device
-    await runCapture(me);
+    await runCapture(me, 0, rounds);
   })();
   inFlight = p;
   return p;
+}
+
+// Auto-hop: bring up each channel in turn with a short dwell, never clearing the list, so the picture fills
+// in the way airodump's does. It rides the same generation token as a manual capture — starting it bumps
+// runId, so a parked read loop stops and this becomes the live run; toggling scan off, a manual channel, or
+// disconnect all supersede it the same way. Each hop is a full bring-up (~1s), the price of the 8852A having
+// no cheap retune; a scan sweep trades latency-per-channel for coverage.
+let scanGen = 0;
+async function runScan() {
+  const mine = ++scanGen;
+  clearAps();
+  const hop = CHANNELS;                    // every channel the adapter has, low to high
+  let i = hop.indexOf($ch.get()); if (i < 0) i = 0;
+  while ($scan.get() && scanGen === mine && $connected.get()) {
+    const ch = hop[i % hop.length];
+    $ch.set(ch); $chDrag.set(0);
+    log("scan → channel " + ch);
+    await startCapture(28);                // ~1.2s dwell reading beacons, then hop
+    i++;
+  }
 }
 
 function log(line) {
@@ -130,7 +160,7 @@ async function connect() {
 
 // Full bring-up (firmware + monitor config) over the native bridge, then read 802.11 off EP 0x84 and aggregate
 // beacons into access points and data frames into their clients. Native only — usb.batch is the shell bridge.
-async function runCapture(me, attempt = 0) {
+async function runCapture(me, attempt = 0, rounds = 120) {
   const live = () => runId === me;   // false as soon as a newer capture has been asked for
   try {
     const ch = $ch.get();
@@ -158,7 +188,7 @@ async function runCapture(me, attempt = 0) {
       if (!live()) return;
       await openNative();
       if (!live()) return;
-      return runCapture(me, attempt + 1);
+      return runCapture(me, attempt + 1, rounds);
     }
     const cfg = buildConfigOps(br);
     log("init: " + buildInitOps({ plat, wfc }).length + " ops");
@@ -190,25 +220,25 @@ async function runCapture(me, attempt = 0) {
     if (!live()) return;
     log("monitor config: fail=" + cfail + " — RX_FLTR 0x" + ((await readReg32(0xce20)) >>> 0).toString(16));
     $status.set("scanning"); log("reading 802.11 off EP 0x84");
-    const aps = new Map(); const state = { sig: -100 };
-    for (let round = 0; round < 120 && live(); round++) {
+    const state = { sig: -100 };
+    // A scan hop dwells briefly and moves on; a parked capture reads until the user leaves. Either way we
+    // stop the instant a newer request lands, so a hop cannot pile onto the one before it.
+    for (let round = 0; round < rounds && live(); round++) {
       let rr = null; try { rr = await shell.call("usb.bulk", { ep: 0x84, length: 16384, timeout: 250 }); } catch { /* */ }
       if (rr && rr.data) {
         const rb = fromHex(rr.data);
         for (const { frame, sig } of parseRx(rb, rb.length, state)) {
           const m = parse80211(frame); if (!m) continue;
-          const a = aps.get(m.bssid) || { bssid: m.bssid, ssid: "", ch: 0, signal: -100, clients: new Set() };
-          if (m.kind === "ap") { if (m.ssid) a.ssid = m.ssid; if (m.ch) a.ch = m.ch; if (sig) a.signal = Math.max(a.signal, sig); }
+          const a = apMap.get(m.bssid) || { bssid: m.bssid, ssid: "", ch: 0, band: "2.4", signal: -100, clients: new Set() };
+          if (m.kind === "ap") { if (m.ssid) a.ssid = m.ssid; if (m.ch) { a.ch = m.ch; a.band = m.band; } if (sig) a.signal = Math.max(a.signal, sig); }
           else a.clients.add(m.client);
-          aps.set(m.bssid, a);
+          apMap.set(m.bssid, a);
         }
-        $aps.set([...aps.values()].filter((a) => a.ssid || a.clients.size)
-          .map((a) => ({ bssid: a.bssid, ssid: a.ssid, ch: a.ch, signal: a.signal, clients: [...a.clients] }))
-          .sort((x, y) => y.signal - x.signal));
+        publishAps();
       }
       await wait(40);
     }
-    if (live()) log("capture stopped — " + aps.size + " access points");
+    if (live()) log("channel " + ch + ": " + apMap.size + " access points so far");
   } catch (e) { if (live()) { $status.set("error"); log("capture error: " + (e && e.message)); } }
 }
 
@@ -217,7 +247,8 @@ async function runCapture(me, attempt = 0) {
 // replug message above rather than on frames.
 async function setChannel(next) {
   if (next === $ch.get()) return;
-  buzz(); $ch.set(next); $open.set(""); $aps.set([]);
+  buzz(); $scan.set(false); scanGen++;   // a manual pick leaves scan mode
+  $ch.set(next); clearAps();
   if (!$connected.get()) return;
   // Say so before the wait, not after it: the new run may sit behind an in-flight bring-up for a few seconds
   // and a screen still claiming "scanning" reads as a hang.
@@ -225,10 +256,16 @@ async function setChannel(next) {
   await startCapture();
 }
 
+function toggleScan() {
+  buzz(); const on = !$scan.get(); $scan.set(on);
+  if (on) { if ($connected.get()) runScan(); }
+  else { scanGen++; log("scan stopped"); }   // the running hop finishes its dwell, then the loop exits
+}
+
 function disconnect() {
-  buzz(); runId++;   // orphan whatever is running: it stops at its next await instead of reading a closed device
+  buzz(); runId++; scanGen++; $scan.set(false);   // orphan whatever is running and stop hopping
   try { dev?.close(); } catch { /* */ }
-  dev = null; xport = null; $connected.set(false); $aps.set([]); $status.set("idle"); $open.set("");
+  dev = null; xport = null; $connected.set(false); clearAps(); $status.set("idle");
   log("disconnected");
 }
 
@@ -348,7 +385,7 @@ function useGraph(aps, sel, theme, tuned) {
 export function pointsView({ S }) {
   const t = useStore(S.t), theme = useStore(S.theme);
   const connected = useStore($connected), usbOk = useStore($usbOk), status = useStore($status);
-  const rawAps = useStore($aps), open = useStore($open), sort = useStore($sort), ch = useStore($ch), chDrag = useStore($chDrag);
+  const rawAps = useStore($aps), open = useStore($open), sort = useStore($sort), ch = useStore($ch), chDrag = useStore($chDrag), scan = useStore($scan);
   const aps = sortAps(rawAps, sort);
   const graphRef = useGraph(rawAps, open, theme, chDrag || ch);
 
@@ -385,7 +422,12 @@ export function pointsView({ S }) {
         <canvas ref=${graphRef} class="block w-full h-full" role="img" aria-label=${T(t, "chart")} data-graph></canvas>
       </div>
 
-      <div class="shrink-0"><${ChannelPicker} t=${t} value=${ch} drag=${chDrag} /></div>
+      <div class="shrink-0 flex items-center gap-2">
+        <div class="flex-1 min-w-0"><${ChannelPicker} t=${t} value=${ch} drag=${chDrag} /></div>
+        <button data-scan aria-pressed=${scan} class=${`btn btn-sm rounded-full gap-1.5 shrink-0 ${scan ? "btn-primary" : "btn-ghost text-base-content/70"}`} onClick=${toggleScan}>
+          ${Icon(scan ? "lucide:radar" : "lucide:scan-line", `text-base ${scan ? "animate-pulse" : ""}`)}${T(t, "scan")}
+        </button>
+      </div>
 
       <div class="shrink-0"><${Segmented} attr="data-sort" size="sm" items=${[{ id: "signal", label: T(t, "srtSignal") }, { id: "ch", label: T(t, "srtCh") }, { id: "clients", label: T(t, "srtClients") }]} value=${sort} onChange=${(v) => { buzz(); $sort.set(v); }} /></div>
 

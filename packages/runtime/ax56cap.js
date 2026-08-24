@@ -136,8 +136,14 @@ export const channelBand = (ch) => (ch <= 14 ? "2.4" : "5");
 // channel actually tuned to is ever fetched.
 export const bringupAsset = (ch) => `./assets/bringup_ch${CHANNELS.includes(ch) ? ch : DEFAULT_CHANNEL}.bin.gz`;
 
-// The cycle5-tail monitor config (mac/BB/RF init + RFK + channel + filter) as batch ops.
-export function buildConfigOps(replay) { return parseReplay(replay); }
+// The cycle5-tail monitor config (mac/BB/RF init + RFK + channel + filter) as batch ops. Nearly half the
+// captured ops are plain register READS — the kernel's read-modify-write reads and status checks — and the
+// bridge replays each as its own USB round trip. We already hold the WRITE the kernel computed, and 8852A RF
+// access is direct-LSSI with no busy-poll, so those reads gate nothing on replay: dropping them roughly
+// halves the bring-up time. Genuine waits survive as poll ops (t:"p"), which the parser separated out.
+export function buildConfigOps(replay) {
+  return parseReplay(replay).filter((o) => !(o.t === "c" && o.rt === 0xc0));
+}
 
 // The full bring-up (fwdl + config) as one list — used by the unit test; the view sends fwdl and config
 // in separate usb.batch calls.

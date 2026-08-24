@@ -1,7 +1,7 @@
 // ax56 capture pipeline — pure logic. Firmware/replay op-list assembly and 802.11 parsing verify browser-free.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
-  buildFwdl, buildFwdlOps, buildInitOps, buildDownloadOps, parseReplay, parse80211, parseRx, fromHex, fwdlSts, canDownload,
+  buildFwdl, buildFwdlOps, buildInitOps, buildDownloadOps, buildConfigOps, parseReplay, parse80211, parseRx, fromHex, fwdlSts, canDownload,
   CHANNELS, CHANNELS_24, CHANNELS_5, DEFAULT_CHANNEL, bringupAsset, channelMHz, channelBand,
 } from "../ax56cap.js";
 
@@ -128,6 +128,19 @@ Deno.test("canDownload accepts the chip states that can take a download, and onl
   // a failed read is 0xDEADBEEF, whose STS bits happen to read as 7 — it must not pass for "booted"
   assertEquals(fwdlSts(0xdeadbeef), 7);
   assert(!canDownload(0xdeadbeef));
+});
+
+Deno.test("buildConfigOps drops the plain reads but keeps writes, polls and bulks", () => {
+  const blob = new Uint8Array([
+    1, 0x40, 0x05, 0x88, 0x00, 0x00, 0x00, 0x04, 0x00, 0x21, 0xed, 0x20, 0x00, // write 0x88 (kind1: brt,br,wv,wi,len,data)
+    3, 0x88, 0x00, 0x00, 0x00,                                                 // read 0x88 (kind3: wv,wi) — discardable
+    4, 0xe0, 0x01, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,                         // poll 0x1e0 (kind4: wv,wi,val)
+    2, 0x07, 0x02, 0x00, 0xaa, 0xbb,                                           // bulk EP7 (kind2: ep,len,data)
+  ]);
+  const raw = parseReplay(blob);
+  assertEquals(raw.length, 4);                                            // parseReplay keeps everything
+  const cfg = buildConfigOps(blob);
+  assertEquals(cfg.map((o) => o.t + (o.rt ? ":" + o.rt.toString(16) : "")), ["c:40", "p", "b"]); // read gone
 });
 
 Deno.test("the H2C wait is not handed to the bridge", () => {

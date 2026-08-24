@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 29,
+  "bridgeVersion": 30,
   "actions": [
     {
       "id": "system.info",
@@ -1213,6 +1213,118 @@
           }
         ]
       }
+    },
+    {
+      "id": "usb.open",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 30,
+      "android": [],
+      "summary": "Open and claim a USB device by vid/pid, asking the user once. Unlike WebUSB (which the WebView does not have) this works inside the app and can drive a vendor interface — it is how the native RTL8852AU driver reads registers.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["vid", "pid"],
+        "properties": {
+          "vid": { "type": "integer" },
+          "pid": { "type": "integer" },
+          "iface": { "type": "integer" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "opened": { "type": "boolean" },
+          "vid": { "type": "integer" },
+          "pid": { "type": "integer" },
+          "name": { "type": "string" }
+        }
+      },
+      "mock": { "opened": true, "vid": 2821, "pid": 6551, "name": "802.11ac WLAN Adapter" }
+    },
+    {
+      "id": "usb.control",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 30,
+      "android": [],
+      "summary": "A control transfer on the open USB device. IN (reqType 0xC0) returns hex; OUT (0x40) sends hex. This is the RTL8852AU vendor register read/write (request 0x05, wValue=addr[15:0], wIndex=addr[23:16]).",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reqType", "request", "value", "index"],
+        "properties": {
+          "reqType": { "type": "integer" },
+          "request": { "type": "integer" },
+          "value": { "type": "integer" },
+          "index": { "type": "integer" },
+          "length": { "type": "integer" },
+          "data": { "type": "string" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "len": { "type": "integer" },
+          "data": { "type": "string" }
+        }
+      },
+      "mock": { "len": 4, "data": "3725490c" }
+    },
+    {
+      "id": "usb.switch",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 30,
+      "android": [],
+      "summary": "Mode-switch a mass-storage adapter to its wireless personality with a SCSI eject (START STOP UNIT). The RTL8852AU arrives as USB storage (0bda:1a2b) and must be ejected to re-enumerate as the Wi-Fi device (0b05:1997) before its registers exist.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["vid", "pid"],
+        "properties": {
+          "vid": { "type": "integer" },
+          "pid": { "type": "integer" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "switched": { "type": "boolean" }
+        }
+      },
+      "mock": { "switched": true }
+    },
+    {
+      "id": "usb.bulk",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 30,
+      "android": [],
+      "summary": "A bulk transfer on the open USB device — OUT sends hex to an endpoint, IN reads up to length bytes. Carries firmware-download packets (EP 0x07) and received 802.11 frames (EP 0x84) for the full RTL8852AU bring-up.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ep"],
+        "properties": {
+          "ep": { "type": "integer" },
+          "data": { "type": "string" },
+          "length": { "type": "integer" },
+          "timeout": { "type": "integer" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "len": { "type": "integer" },
+          "data": { "type": "string" }
+        }
+      },
+      "mock": { "len": 0, "data": "" }
     },
     {
       "id": "system.logs",

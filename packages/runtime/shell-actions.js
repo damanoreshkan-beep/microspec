@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 29;
+export const CATALOGUE_BRIDGE = 30;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -330,6 +330,47 @@ export const ACTIONS = {
           "cls": 255
         }
       ]
+    }
+  },
+  "usb.open": {
+    "capability": "usb",
+    "kind": "call",
+    "minBridge": 30,
+    "android": [],
+    "mock": {
+      "opened": true,
+      "vid": 2821,
+      "pid": 6551,
+      "name": "802.11ac WLAN Adapter"
+    }
+  },
+  "usb.control": {
+    "capability": "usb",
+    "kind": "call",
+    "minBridge": 30,
+    "android": [],
+    "mock": {
+      "len": 4,
+      "data": "3725490c"
+    }
+  },
+  "usb.switch": {
+    "capability": "usb",
+    "kind": "call",
+    "minBridge": 30,
+    "android": [],
+    "mock": {
+      "switched": true
+    }
+  },
+  "usb.bulk": {
+    "capability": "usb",
+    "kind": "call",
+    "minBridge": 30,
+    "android": [],
+    "mock": {
+      "len": 0,
+      "data": ""
     }
   },
   "system.logs": {

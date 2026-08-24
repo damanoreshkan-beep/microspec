@@ -45,7 +45,26 @@ const fetchBlob = async (url) => {
   return new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
 };
 
-let dev = null, xport = null, t0 = 0, capturing = false;
+let dev = null, xport = null, t0 = 0;
+
+// One capture owns the adapter at a time, and the newest request wins. `runId` is the generation: a run keeps
+// its own number and gives up at the next await once a newer one exists, so a superseded read loop cannot
+// resurrect itself the way a single shared flag let it. `inFlight` makes the new run WAIT for the old one to
+// unwind rather than interleaving USB traffic on the same device — two overlapping bring-ups wedge the chip
+// and the bridge stops answering, which is exactly what fast channel changes did.
+let runId = 0, inFlight = null;
+
+function startCapture() {
+  const me = ++runId;
+  const prev = inFlight;
+  const p = (async () => {
+    try { await prev; } catch { /* the previous run's failure is its own to report */ }
+    if (runId !== me) return;              // superseded while waiting our turn — never touch the device
+    await runCapture(me);
+  })();
+  inFlight = p;
+  return p;
+}
 
 function log(line) {
   if (!t0) t0 = Date.now();
@@ -96,7 +115,7 @@ async function connect() {
     $connected.set(true);
     const sys = await readReg32(REG.SYS_CFG1);
     log("SYS_CFG1 0x00F0 = 0x" + (sys >>> 0).toString(16).padStart(8, "0") + (isUnmapped(sys) ? " (no read)" : "  cut " + cutName(sys)));
-    if (xport === "shell") runCapture();
+    if (xport === "shell") startCapture();
     else { $status.set("scanning"); log("live 802.11 capture runs over the native bridge (app); WebUSB reads registers only"); }
   } catch (e) {
     $status.set("error"); $usbOk.set(false); log("connect failed: " + (e && e.message));
@@ -105,19 +124,23 @@ async function connect() {
 
 // Full bring-up (firmware + monitor config) over the native bridge, then read 802.11 off EP 0x84 and aggregate
 // beacons into access points and data frames into their clients. Native only — usb.batch is the shell bridge.
-async function runCapture() {
+async function runCapture(me) {
+  const live = () => runId === me;   // false as soon as a newer capture has been asked for
   try {
     const ch = $ch.get();
     $status.set("opening"); log("bring-up: channel " + ch + " (" + channelMHz(ch) + " MHz, " + channelBand(ch) + "G)");
     const fw = new Uint8Array(await (await fetch(new URL("./assets/fw.bin", import.meta.url))).arrayBuffer());
     const br = await fetchBlob(bringupAsset(ch));
+    if (!live()) return;
     // The chip's entry state decides two of the init writes, so read them rather than assume a cold adapter:
     // firmware already running has to be stopped before it will accept a new download, which is what lets a
     // channel change happen in-session instead of demanding a replug.
     const plat = await readReg32(0x88), wfc = await readReg32(REG.WCPU_FW_CTRL);
+    if (!live()) return;
     const fwdl = buildFwdlOps(fw, { plat, wfc }), cfg = buildConfigOps(br);
     log("firmware download: " + fwdl.length + " ops");
     let r = await shell.call("usb.batch", { ops: fwdl });
+    if (!live()) return;
     log("firmware download: fail=" + ((r && r.fail) || 0));
     const sts = await readReg32(REG.WCPU_FW_CTRL);
     const booted = ((sts >> 5) & 7) === 7;
@@ -129,13 +152,13 @@ async function runCapture() {
     log("monitor config: " + cfg.length + " ops");
     let chunk = [], bytes = 0, cfail = 0;
     const flush = async () => { if (!chunk.length) return; const rr = await shell.call("usb.batch", { ops: chunk }); cfail += (rr && rr.fail) || 0; chunk = []; bytes = 0; };
-    for (const o of cfg) { chunk.push(o); bytes += (o.data ? o.data.length : 0) + 48; if (bytes > 180000) await flush(); }
+    for (const o of cfg) { chunk.push(o); bytes += (o.data ? o.data.length : 0) + 48; if (bytes > 180000) { await flush(); if (!live()) return; } }
     await flush();
+    if (!live()) return;
     log("monitor config: fail=" + cfail + " — RX_FLTR 0x" + ((await readReg32(0xce20)) >>> 0).toString(16));
     $status.set("scanning"); log("reading 802.11 off EP 0x84");
-    capturing = true;
     const aps = new Map(); const state = { sig: -100 };
-    for (let round = 0; round < 120 && capturing; round++) {
+    for (let round = 0; round < 120 && live(); round++) {
       let rr = null; try { rr = await shell.call("usb.bulk", { ep: 0x84, length: 16384, timeout: 250 }); } catch { /* */ }
       if (rr && rr.data) {
         const rb = fromHex(rr.data);
@@ -152,8 +175,8 @@ async function runCapture() {
       }
       await wait(40);
     }
-    log("capture stopped — " + aps.size + " access points");
-  } catch (e) { $status.set("error"); log("capture error: " + (e && e.message)); }
+    if (live()) log("capture stopped — " + aps.size + " access points");
+  } catch (e) { if (live()) { $status.set("error"); log("capture error: " + (e && e.message)); } }
 }
 
 // Retuning is a whole new bring-up, not a register poke: each channel ships its own captured init, and the
@@ -163,13 +186,14 @@ async function setChannel(next) {
   if (next === $ch.get()) return;
   buzz(); $ch.set(next); $open.set(""); $aps.set([]);
   if (!$connected.get()) return;
-  capturing = false; await wait(150);
-  log("retuning to channel " + next);
-  await runCapture();
+  // Say so before the wait, not after it: the new run may sit behind an in-flight bring-up for a few seconds
+  // and a screen still claiming "scanning" reads as a hang.
+  $status.set("opening"); log("retuning to channel " + next);
+  await startCapture();
 }
 
 function disconnect() {
-  buzz(); capturing = false;
+  buzz(); runId++;   // orphan whatever is running: it stops at its next await instead of reading a closed device
   try { dev?.close(); } catch { /* */ }
   dev = null; xport = null; $connected.set(false); $aps.set([]); $status.set("idle"); $open.set("");
   log("disconnected");

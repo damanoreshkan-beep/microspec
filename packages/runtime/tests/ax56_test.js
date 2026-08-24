@@ -5,6 +5,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   cutName, decodeCut, isUnmapped, DEADBEEF, DEMO_LOW_PAGE, REG, STAGES, stageState, demoFrames,
+  fwSts, h2cReady, booted,
 } from "../ax56.js";
 
 Deno.test("decodeCut reads the real measured value as C-cut", () => {
@@ -27,25 +28,27 @@ Deno.test("the real low page has the expected shape", () => {
   assert(isUnmapped(DEMO_LOW_PAGE[6]));
 });
 
-Deno.test("demo frames light the five stages in order", () => {
+Deno.test("WCPU_FW_CTRL field decode matches the on-chip progression", () => {
+  assert(!h2cReady(0x1) && fwSts(0x1) !== 7); // FWDL_EN only
+  assert(h2cReady(0x23) && fwSts(0x23) !== 7); // H2C_PATH_RDY armed, not booted
+  assert(h2cReady(0xe2) && fwSts(0xe2) === 7 && booted(0xe2)); // firmware booted
+  assert(!booted(DEADBEEF)); // an unmapped read is never "booted"
+});
+
+Deno.test("demo frames light the six stages in order, cold chip to booted", () => {
   const frames = demoFrames();
-  assertEquals(frames.length, 5);
+  assertEquals(frames.length, 6);
   const doneCounts = frames.map((r) => stageState(r).filter((s) => s.done).length);
   // strictly increasing: each frame satisfies one more stage
   for (let i = 1; i < doneCounts.length; i++) assert(doneCounts[i] > doneCounts[i - 1], `frame ${i} advanced`);
   assertEquals(doneCounts[0], 1); // power only
-  assertEquals(doneCounts[4], 5); // all five predicates satisfied
+  assertEquals(doneCounts[5], 6); // all six — firmware booted, the milestone
+  const last = stageState(frames[5]);
+  assert(last.find((s) => s.id === "boot").done, "boot stage reached STS == 7");
 });
 
-Deno.test("the H2C wall never arms in the demo — the honest ending", () => {
-  const last = stageState(demoFrames()[4]);
-  const cpu = last.find((s) => s.id === "cpu");
-  assert(cpu.done, "FWDL_EN is set");
-  assertEquals(cpu.wall, false); // H2C_PATH_RDY stays 0 — the real on-chip wall
-});
-
-Deno.test("stages cover the five bring-up registers we read", () => {
+Deno.test("stages cover the six bring-up registers we read", () => {
   assertEquals(STAGES.map((s) => s.reg), [
-    REG.PLATFORM_ENABLE, REG.DMAC_FUNC_EN, REG.WDE_INI, REG.HCI_FUNC_EN, REG.WCPU_FW_CTRL,
+    REG.PLATFORM_ENABLE, REG.DMAC_FUNC_EN, REG.WDE_INI, REG.HCI_FUNC_EN, REG.WCPU_FW_CTRL, REG.WCPU_FW_CTRL,
   ]);
 });

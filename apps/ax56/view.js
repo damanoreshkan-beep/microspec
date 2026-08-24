@@ -6,10 +6,11 @@
 // bridge (switch + register read) and logs it meanwhile.
 import { html } from "htm/preact";
 import { Fragment } from "preact";
-import { useEffect } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import { atom } from "nanostores";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
+import { Segmented } from "/_rt/ui.js";
 import { gate } from "/_rt/gate.js";
 import { shell } from "/_rt/shell.js";
 import { VID, PID, REG, cutName, isUnmapped } from "/_rt/ax56.js";
@@ -146,33 +147,92 @@ async function copyLog() {
   catch { log("copy failed — select and copy manually"); }
 }
 
+// =================== POINTS ===================
+// A per-AP identity colour, stable from the BSSID, shared by its channel-graph bell and its list dot.
+const PALETTE = ["#22d3ee", "#a78bfa", "#34d399", "#fbbf24", "#f472b6", "#60a5fa", "#fb7185", "#2dd4bf"];
+const apColor = (bssid) => PALETTE[(parseInt(bssid.slice(-2), 16) || 0) % PALETTE.length];
+const hexA = (h, a) => { const n = parseInt(h.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+const SEC = {
+  open: { icon: "lucide:lock-open", cls: "text-warning" }, wep: { icon: "lucide:lock", cls: "text-warning" },
+  wpa: { icon: "lucide:lock", cls: "text-base-content/70" }, wpa2: { icon: "lucide:lock", cls: "text-base-content/70" },
+  wpa3: { icon: "lucide:shield-check", cls: "text-success" },
+};
+const $sort = atom("signal"); // signal | ch | clients
+function sortAps(aps, by) {
+  const a = [...aps];
+  if (by === "ch") a.sort((x, y) => x.ch - y.ch || y.signal - x.signal);
+  else if (by === "clients") a.sort((x, y) => y.clients.length - x.clients.length || y.signal - x.signal);
+  else a.sort((x, y) => y.signal - x.signal);
+  return a;
+}
+
 // ---- gate / headless: a populated screen the taste + e2e gates can read ----
 const MOCK = [
-  { bssid: "c4:6e:1f:af:de:9c", ssid: "Pioneers", ch: 6, signal: -59, clients: ["a4:83:e7:2b:11:07", "3c:22:fb:9a:44:e1"] },
-  { bssid: "14:cc:20:33:23:88", ssid: "Monako", ch: 6, signal: -72, clients: ["b8:27:eb:6d:22:aa"] },
-  { bssid: "9a:25:4a:2d:85:57", ssid: "visit", ch: 1, signal: -77, clients: [] },
-  { bssid: "5a:54:45:d5:7d:3c", ssid: "ZTE_D57D3C", ch: 1, signal: -83, clients: ["e4:5f:01:88:9c:12"] },
+  { bssid: "c4:6e:1f:af:de:9c", ssid: "Pioneers", ch: 6, signal: -49, security: "wpa2", band: "2.4", clients: ["a4:83:e7:2b:11:07", "3c:22:fb:9a:44:e1", "f0:99:bf:12:8d:31"] },
+  { bssid: "14:cc:20:33:23:88", ssid: "Monako", ch: 6, signal: -63, security: "wpa3", band: "2.4", clients: ["b8:27:eb:6d:22:aa"] },
+  { bssid: "9a:25:4a:2d:85:57", ssid: "visit", ch: 1, signal: -71, security: "wpa2", band: "2.4", clients: [] },
+  { bssid: "5a:54:45:d5:7d:3c", ssid: "ZTE_D57D3C", ch: 11, signal: -76, security: "wpa2", band: "2.4", clients: ["e4:5f:01:88:9c:12"] },
+  { bssid: "e8:9f:80:14:2a:06", ssid: "", ch: 3, signal: -80, security: "wpa2", band: "2.4", clients: [] },
+  { bssid: "d4:6a:6a:77:1c:9b", ssid: "GuestWiFi", ch: 9, signal: -84, security: "open", band: "2.4", clients: [] },
 ];
 function seedDemo() {
   $connected.set(true); $status.set("scanning"); $aps.set(MOCK);
   t0 = 0; $log.set([]);
-  ["connect via native USB bridge", "storage 0bda:1a2b found — SCSI eject", "re-enumerated as 0b05:1997",
-   "open 0b05:1997", "SYS_CFG1 0x00F0 = 0x0c492537  cut C", "monitor up — 4 access points, 3 clients"]
-    .forEach((l, i) => $log.set([...$log.get(), { ms: 120 + i * 180, line: l }]));
+  ["connect via native USB bridge", "devices: 5e3:764, b05:1997", "open 0b05:1997",
+    "firmware download: 246 ops  fail=0", "WCPU 0x1E0 = 0xe2  STS=7 BOOTED",
+    "monitor config: fail=0  RX_FLTR 0x3174438", "reading 802.11 off EP 0x84", "6 access points, 5 clients"]
+    .forEach((l, i) => $log.set([...$log.get(), { ms: 80 + i * 150, line: l }]));
 }
 
-// =================== POINTS ===================
 function Bars({ level, label }) {
   const lit = Math.round(level * 4);
   return html`<div class="flex items-end gap-[3px] h-5 shrink-0" role="img" aria-label=${label || ""}>
     ${[0, 1, 2, 3].map((i) => html`<span key=${i} class=${`w-1.5 rounded-sm ${i < lit ? "bg-primary" : ""}`} style=${`height:${40 + i * 20}%${i < lit ? "" : ";background:var(--sf-track-face)"}`}></span>`)}
   </div>`;
 }
+const Dot = ({ color }) => html`<span class="w-2 h-2 rounded-full shrink-0" style=${`background:${color}`}></span>`;
+
+// The channel graph (2.4 GHz): one overlapping bell per AP, x = channel, height = signal, colour = its identity.
+function drawChannels(cv, aps, sel) {
+  let c; try { c = cv.getContext ? cv.getContext("2d") : null; } catch { c = null; }
+  const W = cv.width | 0, H = cv.height | 0; if (!c || !W || !H) return;
+  const dpr = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1);
+  const light = typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light");
+  const ink = light ? "20,20,26" : "236,236,238";
+  c.clearRect(0, 0, W, H);
+  const padL = 6 * dpr, padR = 6 * dpr, padT = 12 * dpr, padB = 15 * dpr;
+  const plotW = W - padL - padR, plotH = H - padT - padB, base = padT + plotH;
+  const xCh = (ch) => padL + (Math.max(1, Math.min(13, ch)) - 1) / 12 * plotW;
+  c.strokeStyle = `rgba(${ink},0.1)`; c.lineWidth = dpr; c.beginPath(); c.moveTo(padL, base); c.lineTo(W - padR, base); c.stroke();
+  c.fillStyle = `rgba(${ink},0.38)`; c.font = `${8.5 * dpr}px ui-monospace, monospace`; c.textAlign = "center"; c.textBaseline = "top";
+  for (let ch = 1; ch <= 13; ch += 2) c.fillText(String(ch), xCh(ch), base + 3 * dpr);
+  const width = (2.1 / 12) * plotW;
+  for (const a of aps.filter((x) => x.band !== "5" && x.ch >= 1 && x.ch <= 14)) {
+    const cx = xCh(a.ch), norm = Math.max(0.1, Math.min(1, (a.signal + 92) / 52)), hgt = norm * plotH;
+    const col = apColor(a.bssid), on = a.bssid === sel;
+    c.beginPath(); c.moveTo(cx - width * 2.2, base);
+    for (let dx = -width * 2.2; dx <= width * 2.2; dx += 2 * dpr) c.lineTo(cx + dx, base - hgt * Math.exp(-(dx * dx) / (2 * width * width)));
+    c.lineTo(cx + width * 2.2, base); c.closePath();
+    c.fillStyle = hexA(col, on ? 0.4 : 0.16); c.fill();
+    c.strokeStyle = hexA(col, on ? 1 : 0.72); c.lineWidth = (on ? 2 : 1.3) * dpr; c.stroke();
+    c.fillStyle = hexA(col, on ? 1 : 0.85); c.font = `${9 * dpr}px ui-monospace, monospace`; c.textBaseline = "alphabetic";
+    c.fillText((a.ssid || "·").slice(0, 9), cx, base - hgt - 3 * dpr);
+  }
+}
+function useGraph(aps, sel, theme) {
+  const ref = useRef(null);
+  const fit = (cv) => { const box = cv.parentElement; if (!box) return false; const b = box.getBoundingClientRect(), w = Math.round(b.width), h = Math.round(b.height); if (!w || !h) return false; cv.style.width = `${w}px`; cv.style.height = `${h}px`; const d = Math.min(2, (typeof devicePixelRatio !== "undefined" && devicePixelRatio) || 1); cv.width = w * d; cv.height = h * d; return true; };
+  useEffect(() => { const cv = ref.current; if (!cv || !cv.parentElement) return; const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => { if (fit(cv)) drawChannels(cv, aps, sel); }) : null; ro && ro.observe(cv.parentElement); return () => ro && ro.disconnect(); }, []);
+  useEffect(() => { const cv = ref.current; if (cv && fit(cv)) drawChannels(cv, aps, sel); }, [aps, sel, theme]);
+  return ref;
+}
 
 export function pointsView({ S }) {
-  const t = useStore(S.t);
+  const t = useStore(S.t), theme = useStore(S.theme);
   const connected = useStore($connected), usbOk = useStore($usbOk), status = useStore($status);
-  const aps = useStore($aps), open = useStore($open);
+  const rawAps = useStore($aps), open = useStore($open), sort = useStore($sort);
+  const aps = sortAps(rawAps, sort);
+  const graphRef = useGraph(rawAps, open, theme);
 
   useEffect(() => { if (gate) seedDemo(); }, []);
 
@@ -199,18 +259,26 @@ export function pointsView({ S }) {
         <button data-disconnect aria-label=${T(t, "disconnect")} class="btn btn-circle btn-ghost btn-sm text-base-content/70 shrink-0" onClick=${disconnect}>${Icon("lucide:power", "text-lg")}</button>
       </div>
 
+      <!-- channel graph: overlapping bells, 2.4 GHz -->
+      <div class="shrink-0 rounded-2xl sf-inset overflow-hidden p-1" style="height:clamp(88px,22vh,132px)">
+        <canvas ref=${graphRef} class="block w-full h-full" role="img" aria-label=${T(t, "chart")} data-graph></canvas>
+      </div>
+
+      <div class="shrink-0"><${Segmented} attr="data-sort" size="sm" items=${[{ id: "signal", label: T(t, "srtSignal") }, { id: "ch", label: T(t, "srtCh") }, { id: "clients", label: T(t, "srtClients") }]} value=${sort} onChange=${(v) => { buzz(); $sort.set(v); }} /></div>
+
       <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5 -mx-0.5 px-0.5" data-aps>
         ${aps.length ? aps.map((a) => {
-          const isOpen = open === a.bssid;
+          const isOpen = open === a.bssid, sec = SEC[a.security] || SEC.wpa2;
           return html`<div key=${a.bssid} data-ap=${a.bssid} class="rounded-2xl sf-raised sf-e2">
-            <button class="w-full flex items-center gap-3 px-3.5 py-2.5 text-left" aria-expanded=${isOpen} onClick=${() => { buzz(6); $open.set(isOpen ? "" : a.bssid); }}>
+            <button class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left" aria-expanded=${isOpen} onClick=${() => { buzz(6); $open.set(isOpen ? "" : a.bssid); }}>
+              <${Dot} color=${apColor(a.bssid)} />
               <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium truncate">${a.ssid || T(t, "hidden")}</div>
-                <div class="font-mono text-[0.68rem] text-base-content/70 tabular-nums truncate">${a.bssid} · ${T(t, "ch")} ${a.ch}</div>
+                <div class="flex items-center gap-1.5"><span class=${`text-sm font-medium truncate ${a.ssid ? "" : "text-base-content/70 italic"}`}>${a.ssid || T(t, "hidden")}</span>${Icon(sec.icon, sec.cls + " text-xs shrink-0")}</div>
+                <div class="font-mono text-[0.66rem] text-base-content/70 tabular-nums truncate">${a.bssid} · ${T(t, "ch")} ${a.ch} · ${a.band === "5" ? "5" : "2.4"}G</div>
               </div>
-              <span class="font-mono text-[0.68rem] tabular-nums text-base-content/70 shrink-0">${a.signal}</span>
+              <span class="font-mono text-[0.66rem] tabular-nums text-base-content/70 shrink-0">${a.signal}</span>
               <${Bars} level=${sigNorm(a.signal)} label=${a.signal + " dBm"} />
-              <span class="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-base-content/70 shrink-0 w-9 justify-end" data-clients>${Icon("lucide:users", "text-sm")}${a.clients.length}</span>
+              <span class="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-base-content/70 shrink-0 w-8 justify-end" data-clients>${Icon("lucide:users", "text-sm")}${a.clients.length}</span>
             </button>
             ${isOpen ? html`<div class="px-3.5 pb-2.5 pt-0.5 flex flex-col gap-1 border-t border-base-content/10" data-client-list>
               ${a.clients.length ? a.clients.map((c) => html`<div key=${c} class="font-mono text-[0.68rem] tabular-nums text-base-content/70 flex items-center gap-2">${Icon("lucide:smartphone", "text-xs opacity-70")}${c}</div>`)

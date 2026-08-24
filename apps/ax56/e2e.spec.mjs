@@ -8,7 +8,9 @@ export default [
     name: "точки: список AP, лічильник, розкриття клієнтів", run: async (h) => {
       await ready(h);
       h.expect((await h.count("[data-aps]")) === 1, "немає списку точок");
-      h.expect((await h.count("[data-ap]")) >= 3, "немає карток точок доступу");
+      h.expect((await h.count("[data-graph]")) === 1, "немає графіка каналів");
+      h.expect((await h.count("[data-sort]")) === 1, "немає сортування");
+      h.expect((await h.count("[data-ap]")) >= 4, "немає карток точок доступу");
       h.expect((await h.count("[data-clients]")) >= 3, "немає лічильника клієнтів");
       h.expect(/Pioneers|Monako|ZTE|c4:6e:1f/i.test(await h.bodyText()), "немає SSID/BSSID");
       await h.tap('[data-ap="c4:6e:1f:af:de:9c"] button'); await h.wait(200);

@@ -53,12 +53,19 @@ function beacon() {
   return f;
 }
 
-Deno.test("parse80211 reads a beacon into an access point", () => {
+Deno.test("parse80211 reads a beacon into an access point (security + band)", () => {
   const m = parse80211(beacon());
   assertEquals(m.kind, "ap");
   assertEquals(m.bssid, "aa:bb:cc:dd:ee:ff");
   assertEquals(m.ssid, "Test");
   assertEquals(m.ch, 6);
+  assertEquals(m.security, "open"); // no privacy bit, no RSN
+  assertEquals(m.band, "2.4");
+  // set the privacy bit + an RSN tag with the SAE AKM -> WPA3
+  const f = beacon(); f[34] |= 0x10;
+  const rsn = [48, 6, 0x01, 0x00, 0x00, 0x0f, 0xac, 0x08];
+  const g = new Uint8Array(f.length + rsn.length); g.set(f); g.set(rsn, f.length);
+  assertEquals(parse80211(g).security, "wpa3");
 });
 
 Deno.test("parse80211 reads a data frame into a client of its AP", () => {

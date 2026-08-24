@@ -42,5 +42,5 @@
   "installed": "Встановлено",
   "needsDevice": "Потрібен зовнішній пристрій",
   "needsDeviceHackrf": "Працює лише з підключеним HackRF One",
-  "needsDeviceAx56": "Читає підключений адаптер RTL8852AU або перегляньте демо"
+  "needsDeviceAx56": "Wi-Fi монітор без root для підключеного RTL8852AU (ASUS USB-AX56)"
 }

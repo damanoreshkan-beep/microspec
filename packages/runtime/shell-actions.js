@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 30;
+export const CATALOGUE_BRIDGE = 31;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -371,6 +371,17 @@ export const ACTIONS = {
     "mock": {
       "len": 0,
       "data": ""
+    }
+  },
+  "usb.batch": {
+    "capability": "usb",
+    "kind": "call",
+    "minBridge": 31,
+    "android": [],
+    "mock": {
+      "count": 0,
+      "fail": 0,
+      "reads": []
     }
   },
   "system.logs": {

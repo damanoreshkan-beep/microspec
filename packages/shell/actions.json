@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 30,
+  "bridgeVersion": 31,
   "actions": [
     {
       "id": "system.info",
@@ -1325,6 +1325,64 @@
         }
       },
       "mock": { "len": 0, "data": "" }
+    },
+    {
+      "id": "usb.batch",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 31,
+      "android": [],
+      "summary": "Run a flat list of USB primitives on the open device in one native pass — control (c), bulk (b) and poll-until (p). The RTL8852AU bring-up is thousands of register writes and gated reads; one op per bridge call would be far too slow, so the app builds the op list and the shell executes it, returning only the reads by index.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ops"],
+        "properties": {
+          "stopOnError": { "type": "boolean" },
+          "ops": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "t": { "type": "string" },
+                "rt": { "type": "integer" },
+                "req": { "type": "integer" },
+                "val": { "type": "integer" },
+                "idx": { "type": "integer" },
+                "ep": { "type": "integer" },
+                "addr": { "type": "integer" },
+                "mask": { "type": "integer" },
+                "want": { "type": "integer" },
+                "tries": { "type": "integer" },
+                "data": { "type": "string" },
+                "len": { "type": "integer" },
+                "to": { "type": "integer" }
+              }
+            }
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "count": { "type": "integer" },
+          "fail": { "type": "integer" },
+          "reads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "i": { "type": "integer" },
+                "data": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "mock": { "count": 0, "fail": 0, "reads": [] }
     },
     {
       "id": "system.logs",

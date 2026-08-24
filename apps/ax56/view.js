@@ -188,16 +188,16 @@ async function copyLog() {
 function ChannelPicker({ t, value, drag }) {
   const shown = drag || value;
   const i = Math.max(0, CHANNELS.indexOf(shown));
-  return html`<div class="w-full flex items-center gap-3" data-chpick>
-    <div class="shrink-0 w-[3.25rem] leading-none">
-      <div class="font-mono text-xl font-semibold tabular-nums" data-ch-value>${shown}</div>
-      <div class="font-mono text-[0.6rem] text-base-content/70 tabular-nums mt-0.5">${channelMHz(shown)} · ${channelBand(shown)}G</div>
-    </div>
+  // One line, because the points tab is a fit screen: a stacked readout cost 6px more than the 360×340 floor
+  // has to give, and the dock ate the bottom of the list.
+  return html`<div class="w-full flex items-center gap-2.5" data-chpick>
+    <span class="shrink-0 w-9 text-right font-mono text-lg font-semibold tabular-nums leading-none" data-ch-value>${shown}</span>
     <input type="range" min="0" max=${CHANNELS.length - 1} step="1" value=${i} data-ch
       aria-label=${T(t, "ch")} aria-valuetext=${shown + " · " + channelMHz(shown) + " MHz"}
       onInput=${(e) => $chDrag.set(CHANNELS[Number(e.target.value)])}
       onChange=${(e) => { $chDrag.set(0); setChannel(CHANNELS[Number(e.target.value)]); }}
       class="range range-sm range-primary min-w-0 flex-1" />
+    <span class="shrink-0 w-[3.4rem] text-right font-mono text-[0.6rem] text-base-content/70 tabular-nums leading-none">${channelMHz(shown)}·${channelBand(shown)}G</span>
   </div>`;
 }
 

@@ -5,7 +5,7 @@
   "category": "science",
   "deviceNote": "needsDeviceAx56",
   "tabs": [
-    { "id": "room", "type": "tool", "icon": "lucide:messages-square", "label": "tabRoom", "view": "roomView", "needs": ["usb"], "fit": true },
+    { "id": "room", "type": "tool", "icon": "lucide:messages-square", "label": "tabRoom", "view": "roomView", "fit": true },
     { "id": "me", "type": "profile", "icon": "lucide:radio", "label": "tabMe", "titleKey": "tabMe" }
   ],
   "profile": { "icon": "lucide:radio", "theme": true, "lang": true, "install": true }

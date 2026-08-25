@@ -1264,6 +1264,30 @@
     "needs": []
   },
   {
+    "id": "ax56chat",
+    "title": "AX56 Чат",
+    "titles": {
+      "en": "AX56 Chat",
+      "uk": "AX56 Чат"
+    },
+    "tagline": "Чат поза мережею через сире Wi-Fi — без інтернету й роутера, лише RTL8852AU і ті, хто поруч",
+    "taglines": {
+      "en": "Off-grid chat over raw Wi-Fi — no internet, no router, just the RTL8852AU and whoever is in range",
+      "uk": "Чат поза мережею через сире Wi-Fi — без інтернету й роутера, лише RTL8852AU і ті, хто поруч"
+    },
+    "glyph": "lucide:radio",
+    "art": "<path d=\"M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2Z\"/><path d=\"M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1\"/>",
+    "bg": "#0A0A0B",
+    "fg": "#34D399",
+    "href": "./ax56chat/",
+    "version": "1.1",
+    "category": "science",
+    "needs": [
+      "usb"
+    ],
+    "deviceNote": "needsDeviceAx56"
+  },
+  {
     "id": "dou",
     "title": "DOU · бронювання",
     "titles": {

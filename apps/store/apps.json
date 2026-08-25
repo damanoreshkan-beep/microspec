@@ -1264,30 +1264,6 @@
     "needs": []
   },
   {
-    "id": "ax56",
-    "title": "AX56 Wi-Fi монітор",
-    "titles": {
-      "en": "AX56 Wi-Fi Monitor",
-      "uk": "AX56 Wi-Fi монітор"
-    },
-    "tagline": "Wi-Fi монітор без root для RTL8852AU — точки доступу та їхні клієнти",
-    "taglines": {
-      "en": "No-root Wi-Fi monitor for the RTL8852AU — access points and their clients",
-      "uk": "Wi-Fi монітор без root для RTL8852AU — точки доступу та їхні клієнти"
-    },
-    "glyph": "lucide:radar",
-    "art": "<rect width=\"16\" height=\"16\" x=\"4\" y=\"4\" rx=\"2\"/><rect width=\"6\" height=\"6\" x=\"9\" y=\"9\" rx=\"1\"/><path d=\"M15 2v2\"/><path d=\"M15 20v2\"/><path d=\"M2 15h2\"/><path d=\"M2 9h2\"/><path d=\"M20 15h2\"/><path d=\"M20 9h2\"/><path d=\"M9 2v2\"/><path d=\"M9 20v2\"/>",
-    "bg": "#0A0A0B",
-    "fg": "#22D3EE",
-    "href": "./ax56/",
-    "version": "1.7",
-    "category": "science",
-    "needs": [
-      "usb"
-    ],
-    "deviceNote": "needsDeviceAx56"
-  },
-  {
     "id": "dou",
     "title": "DOU · бронювання",
     "titles": {

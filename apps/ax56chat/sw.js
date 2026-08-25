@@ -3,7 +3,7 @@
 // /_rt/sw-core.js. `precache` is this app's shell — enough to boot with the network unplugged.
 self.MS = {
   app: "ax56chat",
-  version: "7745273dc4",
+  version: "7d171a84f8",
   precache: [
     "./",
     "./i18n/en.json",
@@ -31,12 +31,14 @@ self.MS = {
     "/_rt/mesh.js",
     "/_rt/meshchat.js",
     "/_rt/meshcrypto.js",
+    "/_rt/meshscan.js",
     "/_rt/overlay.js",
     "/_rt/permissions.js",
     "/_rt/playback.js",
     "/_rt/player.js",
     "/_rt/qrcode.js",
     "/_rt/qrgen.vendor.js",
+    "/_rt/radio.js",
     "/_rt/render.js",
     "/_rt/rf.js",
     "/_rt/sealed.js",

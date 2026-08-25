@@ -290,7 +290,9 @@ export function nearbyView({ S }) {
 // 0xF0 (chip health) straight off the vendor control pipe, and the traffic tallies from the shared radio. ----
 const $eng = atom({ e0: null, f0: null, state: "off" });
 const $traffic = atom({ frames: 0, tx: 0, nets: 0, strongest: null, occ: [] });
-const CH24 = [1, 6, 11], CH5 = [36, 44, 149], CH_OK = new Set([6, 36]);   // channels with a bring-up blob shipped
+const CH24 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];                  // 2.4 GHz (all)
+const CH5 = [36, 40, 44, 48, 149, 153, 157, 161, 165];                     // 5 GHz (non-DFS)
+const CH_OK = new Set([...CH24, ...CH5]);                                  // every channel ships a bring-up blob
 const HEALTHY = 0xc492537;
 const chBand = (c) => (c <= 14 ? "2.4 GHz" : "5 GHz");
 const booted = (e0) => e0 != null && ((e0 >> 5) & 7) === 7;
@@ -375,13 +377,14 @@ export function engineerView({ S }) {
 
     <div class="rounded-2xl sf-e1 p-4 flex flex-col gap-2.5">
       <div class="text-xs uppercase tracking-wide text-muted">${T(t, "engChannel")}</div>
-      <div class="flex flex-wrap gap-1.5">
-        ${[...CH24, ...CH5].map((c) => { const active = c === ch, ok = CH_OK.has(c);
-          return html`<button key=${c} disabled=${!ok} data-ch=${c} onClick=${() => ok && setChannel(c)}
-            class=${`btn btn-sm rounded-xl gap-1 ${active ? "btn-primary" : "btn-ghost"} ${!ok ? "opacity-40" : ""}`}>
-            <span class="font-mono">${c}</span>${!ok ? html`<span class="text-[0.5rem] uppercase">${T(t, "engSoon")}</span>` : null}
-          </button>`; })}
-      </div>
+      ${[["2.4", CH24], ["5", CH5]].map(([band, chs]) => html`<div key=${band} class="flex items-center gap-2">
+        <span class="text-[0.55rem] text-muted font-mono w-6 shrink-0">${band}</span>
+        <div class="flex flex-wrap gap-1.5">
+          ${chs.map((c) => { const active = c === ch, ok = CH_OK.has(c);
+            return html`<button key=${c} disabled=${!ok} data-ch=${c} onClick=${() => ok && setChannel(c)}
+              class=${`btn btn-sm rounded-xl font-mono ${active ? "btn-primary" : "btn-ghost"} ${!ok ? "opacity-40" : ""}`}>${c}${!ok ? html`<span class="text-[0.5rem] uppercase ml-1">${T(t, "engSoon")}</span>` : null}</button>`; })}
+        </div>
+      </div>`)}
       <div class="text-[0.6rem] text-muted">${T(t, "engChNote")}</div>
     </div>
 

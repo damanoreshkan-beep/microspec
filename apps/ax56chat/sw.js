@@ -1,6 +1,6 @@
 self.MS = {
   app: "ax56chat",
-  version: "4065087642",
+  version: "7745273dc4",
   precache: [
     "./",
     "./i18n/en.json",
@@ -35,6 +35,7 @@ self.MS = {
     "/_rt/qrcode.js",
     "/_rt/qrgen.vendor.js",
     "/_rt/render.js",
+    "/_rt/rf.js",
     "/_rt/sealed.js",
     "/_rt/sealedfetch.js",
     "/_rt/sensors.js",

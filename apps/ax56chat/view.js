@@ -7,14 +7,18 @@ import { T } from "/_rt/i18n.js";
 import { gate } from "/_rt/gate.js";
 import { createMeshSession, loopbackBus } from "/_rt/mesh.js";
 import { newNodeId } from "/_rt/meshchat.js";
+import { createRfCarrier } from "/_rt/rf.js";
+import { shell } from "/_rt/shell.js";
 import * as meshcrypto from "/_rt/meshcrypto.js";
+
+const hasRf = () => { try { return !!(shell && shell.has && shell.has("usb.bulk")); } catch { return false; } };
 
 const Icon = (i, c) => html`<iconify-icon icon=${i} class=${c || ""}></iconify-icon>`;
 const short = (src) => (src >>> 0).toString(16).padStart(8, "0").slice(-4);
 
 const $joined = atom(false), $status = atom("off");   
 const $room = atom(""), $pass = atom(""), $fp = atom("");
-const $msgs = atom([]), $peers = atom([]), $draft = atom("");
+const $msgs = atom([]), $peers = atom([]), $draft = atom(""), $rf = atom(false);
 
 let session = null, bot = null, me = 0;
 
@@ -28,15 +32,19 @@ async function join() {
   $status.set("joining");
   me = newNodeId();
   try { $fp.set(await meshcrypto.fingerprint(pass, room)); } catch { $fp.set(""); }
-  const bus = loopbackBus();
-  session = createMeshSession({ atom, carrier: bus.carrier(), crypto: meshcrypto, room, passphrase: pass, self: me });
+  const rf = hasRf(); $rf.set(rf);
+  const bus = rf ? null : loopbackBus();
+  const carrier = rf ? createRfCarrier({ shell, channel: 6, src: me }) : bus.carrier();
+  session = createMeshSession({ atom, carrier, crypto: meshcrypto, room, passphrase: pass, self: me });
   session.$messages.subscribe(mirror);
   session.$peers.subscribe((v) => $peers.set(v));
   await session.connect();
-  bot = createMeshSession({ atom, carrier: bus.carrier(), crypto: meshcrypto, room, passphrase: pass, self: 0x5ca1ab1e });
-  await bot.connect();
+  if (bus) {  
+    bot = createMeshSession({ atom, carrier: bus.carrier(), crypto: meshcrypto, room, passphrase: pass, self: 0x5ca1ab1e });
+    await bot.connect();
+    setTimeout(() => { try { bot && bot.send("on the mesh — no towers, just us. demo peer here."); } catch {  } }, 500);
+  }
   $joined.set(true); $status.set("on");
-  setTimeout(() => { try { bot && bot.send("on the mesh — no towers, just us. demo peer here."); } catch {  } }, 500);
 }
 
 async function send() {
@@ -80,7 +88,7 @@ export function roomView({ S }) {
   const t = useStore(S.t);
   const joined = useStore($joined), status = useStore($status);
   const room = useStore($room), pass = useStore($pass), fp = useStore($fp);
-  const msgs = useStore($msgs), peers = useStore($peers);
+  const msgs = useStore($msgs), peers = useStore($peers), rf = useStore($rf);
   const listRef = useRef(null);
 
   useEffect(() => { if (gate) seedDemo(); }, []);
@@ -126,7 +134,7 @@ export function roomView({ S }) {
       </div>`}
     </div>
 
-    <div class="shrink-0 text-[0.6rem] text-muted text-center px-2">${T(t, "demoNote")}</div>
+    ${rf ? null : html`<div class="shrink-0 text-[0.6rem] text-muted text-center px-2">${T(t, "demoNote")}</div>`}
     <${Composer} t=${t} />
   </div>`;
 }

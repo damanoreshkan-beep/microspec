@@ -6,6 +6,7 @@
   "deviceNote": "needsDeviceAx56",
   "tabs": [
     { "id": "room", "type": "tool", "icon": "lucide:messages-square", "label": "tabRoom", "view": "roomView", "fit": true },
+    { "id": "log", "type": "tool", "icon": "lucide:scroll-text", "label": "tabLog", "view": "logView" },
     { "id": "me", "type": "profile", "icon": "lucide:radio", "label": "tabMe", "titleKey": "tabMe" }
   ],
   "profile": { "icon": "lucide:radio", "theme": true, "lang": true, "install": true }

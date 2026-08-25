@@ -135,7 +135,7 @@ export function roomView({ S }) {
     </div>`;
   }
 
-  return html`<div class="h-full flex flex-col gap-2.5 max-w-[560px] mx-auto w-full">
+  return html`<div class="h-full flex flex-col gap-2.5 max-w-[560px] mx-auto w-full pb-2">
     <div class="shrink-0 flex items-center gap-2 px-1">
       <span class="inline-flex items-center gap-1.5 text-[0.65rem] font-mono uppercase tracking-wider px-2 py-1 rounded-full text-primary bg-primary/10" data-status=${status}>
         <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>${T(t, "stOnAir")}
@@ -229,9 +229,8 @@ export function nearbyView({ S }) {
     return () => { clearInterval(tick); release(); };
   }, []);
   const aps = list.filter((d) => d.kind === "ap").length, clients = list.length - aps;
-  const selected = (sel && list.find((d) => d.mac === sel)) || null;
 
-  return html`<div class="h-full flex flex-col gap-2.5 max-w-[560px] mx-auto w-full">
+  return html`<div class="h-full flex flex-col gap-2 max-w-[560px] mx-auto w-full pb-2">
     <div class="shrink-0 flex items-center gap-2 px-1">
       <span class="inline-flex items-center gap-1.5 text-[0.65rem] font-mono uppercase tracking-wider px-2 py-1 rounded-full text-primary bg-primary/10">
         <span class="w-1.5 h-1.5 rounded-full bg-primary ${scanning ? "animate-pulse" : ""}"></span>${T(t, "nearbyScan")} ${T(t, "chShort")}${ch}
@@ -240,8 +239,8 @@ export function nearbyView({ S }) {
       <span class="font-mono text-xs tabular-nums text-muted">${aps} ${T(t, "apsCount")} · ${clients} ${T(t, "clientsCount")}</span>
     </div>
 
-    <div class="flex-1 min-h-0 grid place-items-center" data-scope>
-      <svg viewBox="0 0 200 200" class="w-full h-full max-h-full" style="max-width:min(100%,70vh)" onClick=${() => $sel.set(null)}>
+    <div class="shrink-0 w-full h-[42vh] max-h-[380px] grid place-items-center" data-scope>
+      <svg viewBox="0 0 200 200" class="w-full h-full" onClick=${() => $sel.set(null)}>
         ${[[-45], [-62], [-80]].map(([dBm]) => { const r = rssiRadius(dBm); return html`<g class="text-muted" opacity="0.28">
           <circle cx="100" cy="100" r=${r} fill="none" stroke="currentColor" stroke-width="0.6" />
           <text x="100" y=${100 - r + 3.4} text-anchor="middle" fill="currentColor" font-size="4.6" font-family="monospace">${dBm}</text>
@@ -250,7 +249,7 @@ export function nearbyView({ S }) {
           <animate attributeName="r" values="6;92" dur="3.4s" repeatCount="indefinite" />
           <animate attributeName="opacity" values="0.45;0" dur="3.4s" repeatCount="indefinite" />
         </circle>` : null}
-        <circle cx="100" cy="100" r="3" class="fill-primary" />
+        <circle cx="100" cy="100" r="3" class="text-primary" fill="currentColor" />
         ${list.map((d) => { const r = rssiRadius(d.rssi), a = macAngle(d.mac), x = 100 + r * Math.cos(a), y = 100 + r * Math.sin(a);
           const ap = d.kind === "ap", on = sel === d.mac;
           return html`<g key=${d.mac} class=${`cursor-pointer ${ap ? "text-primary" : "text-muted"}`}
@@ -261,20 +260,21 @@ export function nearbyView({ S }) {
       </svg>
     </div>
 
-    ${selected ? html`<div class="shrink-0 rounded-2xl sf-inset p-3 flex items-center gap-3" data-detail>
-      ${Icon(selected.kind === "ap" ? "lucide:router" : "lucide:smartphone", `text-xl shrink-0 ${selected.kind === "ap" ? "text-primary" : "text-muted"}`)}
-      <div class="min-w-0 flex-1">
-        <div class="text-sm font-medium truncate">${selected.kind === "ap" ? (selected.ssid || T(t, "hiddenNet")) : selected.mac}</div>
-        <div class="font-mono text-[0.62rem] text-muted truncate">
-          ${selected.kind === "ap" ? selected.mac : T(t, "kindClient")}${selected.channel ? ` · ${T(t, "chShort")}${selected.channel}` : ""} · ${selected.count} ${T(t, "pktLabel")}
+    ${list.length ? html`<div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5 px-0.5" data-list>
+      ${list.map((d) => html`<button key=${d.mac} data-dev=${d.mac} onClick=${() => $sel.set(sel === d.mac ? null : d.mac)}
+        class=${`shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors ${sel === d.mac ? "bg-base-300" : "bg-base-200"}`}>
+        ${Icon(d.kind === "ap" ? "lucide:router" : "lucide:smartphone", `text-lg shrink-0 ${d.kind === "ap" ? "text-primary" : "text-muted"}`)}
+        <div class="min-w-0 flex-1">
+          <div class="text-sm truncate">${d.kind === "ap" ? (d.ssid || T(t, "hiddenNet")) : d.mac}</div>
+          <div class="font-mono text-[0.6rem] text-muted truncate">${d.kind === "ap" ? d.mac : T(t, "kindClient")}${d.channel ? ` · ${T(t, "chShort")}${d.channel}` : ""}</div>
         </div>
-      </div>
-      <div class="text-right shrink-0">
-        <div class="font-mono text-sm tabular-nums leading-none">${selected.rssi == null ? "—" : selected.rssi}<span class="text-muted text-[0.55rem] ml-0.5">dBm</span></div>
-        <div class="flex gap-0.5 justify-end mt-1">${[1, 2, 3, 4].map((b) => html`<span class=${`w-1 rounded-sm ${b <= sigBars(selected.rssi) ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${3 + b * 2}px`}></span>`)}</div>
-      </div>
-    </div>` : (!list.length ? html`<div class="shrink-0 flex flex-col items-center gap-1.5 text-muted py-3"><span class="text-sm">${T(t, "nearbyEmpty")}</span></div>`
-      : (!hasRf() ? html`<div class="shrink-0 text-center text-[0.6rem] text-muted">${T(t, "nearbyDemo")}</div>` : null))}
+        <div class="flex items-end gap-2 shrink-0">
+          <div class="flex gap-0.5 items-end">${[1, 2, 3, 4].map((b) => html`<span class=${`w-1 rounded-sm ${b <= sigBars(d.rssi) ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${3 + b * 2}px`}></span>`)}</div>
+          <span class="font-mono text-[0.65rem] tabular-nums text-muted w-9 text-right leading-none">${d.rssi == null ? "—" : d.rssi}</span>
+        </div>
+      </button>`)}
+    </div>` : html`<div class="flex-1 min-h-0 grid place-items-center text-muted px-6 text-center"><span class="text-sm">${T(t, "nearbyEmpty")}</span></div>`}
+    ${!hasRf() && list.length ? html`<div class="shrink-0 text-center text-[0.58rem] text-muted">${T(t, "nearbyDemo")}</div>` : null}
   </div>`;
 }
 

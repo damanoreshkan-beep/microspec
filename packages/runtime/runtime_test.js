@@ -68,6 +68,7 @@ import "./tests/pwned_test.js";
 import "./tests/qrcode_test.js";
 import "./tests/radar_test.js";
 import "./tests/rds_test.js";
+import "./tests/rf_test.js";
 import "./tests/ripple_test.js";
 import "./tests/rtlsdr_test.js";
 import "./tests/scan433_test.js";

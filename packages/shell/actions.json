@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 31,
+  "bridgeVersion": 32,
   "actions": [
     {
       "id": "system.info",
@@ -1383,6 +1383,51 @@
         }
       },
       "mock": { "count": 0, "fail": 0, "reads": [] }
+    },
+    {
+      "id": "rf.attach",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 32,
+      "android": [],
+      "summary": "Bring the already-open RTL8852AU (0b05:1997) on air in monitor mode: firmware download + captured-config replay + live IQK/TSSI/DPK calibration, run natively (the cal is adaptive, not a static op list). Requires a COLD chip — a warm one has degraded RX — so the app must have the user replug before this. After it succeeds, the app injects beacons on EP5 and reads EP0x84 through usb.bulk.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "channel": { "type": "integer" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "attached": { "type": "boolean" },
+          "channel": { "type": "integer" }
+        }
+      },
+      "mock": { "attached": true, "channel": 6 }
+    },
+    {
+      "id": "rf.detach",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 32,
+      "android": [],
+      "summary": "Release the native RTL8852AU libusb session opened by rf.attach (does not close the USB device — usb.close does that). Called when the mesh carrier stops.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "detached": { "type": "boolean" }
+        }
+      },
+      "mock": { "detached": true }
     },
     {
       "id": "system.logs",

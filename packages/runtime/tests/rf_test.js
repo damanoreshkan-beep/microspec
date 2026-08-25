@@ -42,6 +42,34 @@ Deno.test("parseRxFrames ignores non-WIFI (rt!=0) units", () => {
   assertEquals(parseRxFrames(csi).length, 0);
 });
 
+// fire only the delay() (ms=0) as a microtask; capture the loop's 30ms poll so no real timer leaks the test.
+const fakeTimer = (fn, ms) => { if (!ms) queueMicrotask(fn); return 0; };
+
+Deno.test("createRfCarrier.start: cold storage adapter -> switch -> wifi -> attach, in order", async () => {
+  const calls = [];
+  let wifiUp = false;                                          // wifi personality appears only after the switch
+  const shell = { has: () => true, call: (n, a) => {
+    calls.push(n + (a && a.pid ? ":" + a.pid.toString(16) : ""));
+    if (n === "usb.open") return (a.pid === 0x1997 && !wifiUp) ? Promise.reject(new Error("unavailable")) : Promise.resolve({ opened: true });
+    if (n === "usb.switch") { wifiUp = true; return Promise.resolve({ switched: true }); }
+    return Promise.resolve({});                                // rf.attach / usb.bulk
+  } };
+  const c = createRfCarrier({ shell, switchWaitMs: 0, setTimer: fakeTimer });
+  await c.start(); c.stop();
+  const flow = calls.filter((x) => x.startsWith("usb.open") || x.startsWith("usb.switch") || x === "rf.attach");
+  assertEquals(flow.slice(0, 4), ["usb.open:1997", "usb.open:1a2b", "usb.switch:1a2b", "usb.open:1997"]);
+  assert(calls.includes("rf.attach"));                         // brings up only after the wifi device is open
+});
+
+Deno.test("createRfCarrier.start: adapter already in Wi-Fi mode -> attach without a switch", async () => {
+  const calls = [];
+  const shell = { has: () => true, call: (n) => { calls.push(n); return Promise.resolve({ opened: true }); } };
+  const c = createRfCarrier({ shell, setTimer: fakeTimer });
+  await c.start(); c.stop();
+  assertEquals(calls.filter((x) => x === "usb.switch").length, 0);
+  assert(calls.indexOf("rf.attach") > calls.indexOf("usb.open"));
+});
+
 Deno.test("createRfCarrier: send injects the beacon on EP5, repeated", () => {
   const calls = [];
   const shell = { call: (n, a) => { calls.push({ n, a }); return Promise.resolve({}); }, has: () => true };

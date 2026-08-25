@@ -26,6 +26,12 @@ let session = null, bot = null, me = 0;
 let radio = null;
 const $channel = atom(6);
 function getRadio() { if (!radio) radio = createRadio({ shell, channel: $channel.get(), onLog: log }); return radio; }
+function setChannel(ch) {
+  if (ch === $channel.get()) return;
+  $channel.set(ch);
+  if (radio) { try { radio.stop(); } catch {  } radio = null; }
+  log("channel set to ch" + ch + " — cold-replug the adapter, then reopen a room or Nearby");
+}
 
 const LS_KEY = "ax56chat:prefs";
 function log(line) { $log.set([...$log.get().slice(-200), { ms: Date.now(), line }]); }
@@ -262,7 +268,7 @@ export function nearbyView({ S }) {
 
 const $eng = atom({ e0: null, f0: null, state: "off" });
 const $traffic = atom({ frames: 0, tx: 0, nets: 0, strongest: null, occ: [] });
-const CH24 = [1, 6, 11], CH5 = [36, 44, 149], CH_OK = 6;   
+const CH24 = [1, 6, 11], CH5 = [36, 44, 149], CH_OK = new Set([6, 36]);   
 const HEALTHY = 0xc492537;
 const chBand = (c) => (c <= 14 ? "2.4 GHz" : "5 GHz");
 const booted = (e0) => e0 != null && ((e0 >> 5) & 7) === 7;
@@ -348,8 +354,8 @@ export function engineerView({ S }) {
     <div class="rounded-2xl sf-e1 p-4 flex flex-col gap-2.5">
       <div class="text-xs uppercase tracking-wide text-muted">${T(t, "engChannel")}</div>
       <div class="flex flex-wrap gap-1.5">
-        ${[...CH24, ...CH5].map((c) => { const active = c === ch, ok = c === CH_OK;
-          return html`<button key=${c} disabled=${!ok} data-ch=${c} onClick=${() => ok && $channel.set(c)}
+        ${[...CH24, ...CH5].map((c) => { const active = c === ch, ok = CH_OK.has(c);
+          return html`<button key=${c} disabled=${!ok} data-ch=${c} onClick=${() => ok && setChannel(c)}
             class=${`btn btn-sm rounded-xl gap-1 ${active ? "btn-primary" : "btn-ghost"} ${!ok ? "opacity-40" : ""}`}>
             <span class="font-mono">${c}</span>${!ok ? html`<span class="text-[0.5rem] uppercase">${T(t, "engSoon")}</span>` : null}
           </button>`; })}

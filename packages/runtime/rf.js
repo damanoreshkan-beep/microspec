@@ -68,7 +68,7 @@ export function parseRxFrames(rx) {
 // matches loopbackBus so mesh.js swaps one for the other. Injects each chunk `repeats` times (the medium has
 // no ACK) and polls EP0x84, handing decoded chunks up. shell.call is the origin-locked bridge (usb.bulk +
 // the native rf.attach/rf.detach). Available only inside the shell APK with a brought-up adapter.
-export function createRfCarrier({ shell, channel = 6, src = 0xa11ce511, repeats = 3, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
+export function createRfCarrier({ shell, channel = 6, src = 0xa11ce511, repeats = 3, onLog = () => {}, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
   let cb = null, timer = null, stopped = false;
   async function loop() {
     if (stopped) return;
@@ -79,7 +79,13 @@ export function createRfCarrier({ shell, channel = 6, src = 0xa11ce511, repeats 
     if (!stopped) timer = setTimer(loop, 30);
   }
   return {
-    async start() { stopped = false; try { await shell.call("rf.attach", { channel }); } catch { /* older shell / already attached */ } loop(); },
+    async start() {
+      stopped = false;
+      onLog("adapter: switch to Wi-Fi mode -> firmware -> monitor ch" + channel);
+      try { await shell.call("rf.attach", { channel }); onLog("adapter ready on channel " + channel); }
+      catch (e) { onLog("adapter attach failed (" + ((e && e.message) || "no rf.attach in this shell") + ")"); }
+      loop();
+    },
     send(chunk) { const pkt = hex(buildTxPacket(chunk, src)); for (let r = 0; r < repeats; r++) { try { shell.call("usb.bulk", { ep: 5, data: pkt }); } catch { /* */ } } },
     onFrame(fn) { cb = fn; },
     stop() { stopped = true; if (timer) clearTimer(timer); try { shell.call("rf.detach"); } catch { /* */ } },

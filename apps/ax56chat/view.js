@@ -23,9 +23,14 @@ const short = (src) => (src >>> 0).toString(16).padStart(8, "0").slice(-4);
 
 const $joined = atom(false), $status = atom("off");   // off | joining | on
 const $room = atom(""), $pass = atom(""), $fp = atom("");
-const $msgs = atom([]), $peers = atom([]), $draft = atom(""), $rf = atom(false);
+const $msgs = atom([]), $peers = atom([]), $draft = atom(""), $rf = atom(false), $log = atom([]);
 
 let session = null, bot = null, me = 0;
+
+const LS_KEY = "ax56chat:prefs";
+function log(line) { $log.set([...$log.get().slice(-200), { ms: Date.now(), line }]); }
+function loadPrefs() { try { const p = JSON.parse((typeof localStorage !== "undefined" && localStorage.getItem(LS_KEY)) || "{}"); if (p.room) $room.set(p.room); if (p.pass) $pass.set(p.pass); } catch { /* private mode / blocked */ } }
+function savePrefs() { try { localStorage.setItem(LS_KEY, JSON.stringify({ room: $room.get(), pass: $pass.get() })); } catch { /* */ } }
 
 function mirror(list) {
   $msgs.set(list.map((m) => ({ ...m, tag: m.mine ? null : short(m.src) })));
@@ -34,12 +39,14 @@ function mirror(list) {
 async function join() {
   const room = $room.get().trim(), pass = $pass.get();
   if (!room || !pass) return;
-  $status.set("joining");
+  savePrefs();
+  $status.set("joining"); log(`joining room "${room}"`);
   me = newNodeId();
   try { $fp.set(await meshcrypto.fingerprint(pass, room)); } catch { $fp.set(""); }
   const rf = hasRf(); $rf.set(rf);
+  log(rf ? "adapter detected — going over the air" : "no adapter here — loopback demo (real chat needs the app + a connected AX56)");
   const bus = rf ? null : loopbackBus();
-  const carrier = rf ? createRfCarrier({ shell, channel: 6, src: me }) : bus.carrier();
+  const carrier = rf ? createRfCarrier({ shell, channel: 6, src: me, onLog: log }) : bus.carrier();
   session = createMeshSession({ atom, carrier, crypto: meshcrypto, room, passphrase: pass, self: me });
   session.$messages.subscribe(mirror);
   session.$peers.subscribe((v) => $peers.set(v));
@@ -49,7 +56,7 @@ async function join() {
     await bot.connect();
     setTimeout(() => { try { bot && bot.send("on the mesh — no towers, just us. demo peer here."); } catch { /* */ } }, 500);
   }
-  $joined.set(true); $status.set("on");
+  $joined.set(true); $status.set("on"); log(`on air — key ${$fp.get() || "?"}`);
 }
 
 async function send() {
@@ -64,6 +71,7 @@ function leave() {
   try { session && session.disconnect(); bot && bot.disconnect(); } catch { /* */ }
   session = bot = null;
   $joined.set(false); $status.set("off"); $msgs.set([]); $peers.set([]); $draft.set("");
+  log("left the room");
 }
 
 // ---- gate / headless: a deterministic populated room for axe / overflow / shots ----
@@ -71,6 +79,7 @@ function seedDemo() {
   me = 0x00c0ffee;
   $room.set("field"); $fp.set("a1b2c3"); $joined.set(true); $status.set("on");
   $peers.set([0x5ca1ab1e, 0x77aa31d0]);
+  $log.set([{ ms: 0, line: 'joining room "field"' }, { ms: 0, line: "no adapter here — loopback demo" }, { ms: 0, line: "on air — key a1b2c3" }]);
   mirror([
     { id: "1", src: 0x5ca1ab1e, text: "anyone copy? no signal out here at all", mine: false },
     { id: "2", src: me, text: "loud and clear — two ridges over", mine: true },
@@ -97,7 +106,7 @@ export function roomView({ S }) {
   const msgs = useStore($msgs), peers = useStore($peers), rf = useStore($rf);
   const listRef = useRef(null);
 
-  useEffect(() => { if (gate) seedDemo(); }, []);
+  useEffect(() => { if (gate) seedDemo(); else loadPrefs(); }, []);
   useEffect(() => { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; }, [msgs.length]);
 
   if (!joined) {
@@ -142,5 +151,25 @@ export function roomView({ S }) {
 
     ${rf ? null : html`<div class="shrink-0 text-[0.6rem] text-muted text-center px-2">${T(t, "demoNote")}</div>`}
     <${Composer} t=${t} />
+  </div>`;
+}
+
+// Log tab — driver / session steps (connect, adapter attach, on-air), copyable for a bug report.
+export function logView({ S }) {
+  const t = useStore(S.t);
+  const lines = useStore($log);
+  const copy = async () => { try { await navigator.clipboard.writeText(lines.map((e) => e.line).join("\n")); } catch { /* */ } };
+  return html`<div class="flex flex-col gap-2.5 max-w-[560px] mx-auto w-full pb-4">
+    <div class="flex items-center gap-2 px-0.5">
+      <span class="text-xs uppercase tracking-wide text-muted">${T(t, "tabLog")}</span>
+      <span class="font-mono text-xs tabular-nums text-muted" data-logcount>${lines.length}</span>
+      <span class="flex-1"></span>
+      <button data-copy class="btn btn-ghost btn-sm rounded-xl gap-1.5 text-muted" onClick=${copy}>${Icon("lucide:copy", "text-sm")}${T(t, "copy")}</button>
+      <button data-clear class="btn btn-ghost btn-sm rounded-xl gap-1.5 text-muted" onClick=${() => $log.set([])}>${Icon("lucide:eraser", "text-sm")}${T(t, "clear")}</button>
+    </div>
+    <div class="rounded-2xl sf-inset p-3 font-mono text-[0.7rem] leading-relaxed flex flex-col gap-0.5" data-log>
+      ${lines.length ? lines.map((e, i) => html`<div key=${i} class="break-all">${e.line}</div>`)
+        : html`<div class="text-muted py-4 text-center">${T(t, "logEmpty")}</div>`}
+    </div>
   </div>`;
 }

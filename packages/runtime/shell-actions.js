@@ -1,4 +1,4 @@
-export const CATALOGUE_BRIDGE = 31;
+export const CATALOGUE_BRIDGE = 32;
 export const ACTIONS = {
   "system.info": {
     "capability": "system",
@@ -382,6 +382,25 @@ export const ACTIONS = {
       "count": 0,
       "fail": 0,
       "reads": []
+    }
+  },
+  "rf.attach": {
+    "capability": "usb",
+    "kind": "call",
+    "minBridge": 32,
+    "android": [],
+    "mock": {
+      "attached": true,
+      "channel": 6
+    }
+  },
+  "rf.detach": {
+    "capability": "usb",
+    "kind": "call",
+    "minBridge": 32,
+    "android": [],
+    "mock": {
+      "detached": true
     }
   },
   "system.logs": {

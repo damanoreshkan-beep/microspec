@@ -49,8 +49,11 @@ export function parseRxFrames(rx) {
   return out;
 }
 
-export function createRfCarrier({ shell, channel = 6, src = 0xa11ce511, repeats = 3, onLog = () => {}, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
+export function createRfCarrier({ shell, channel = 6, src = 0xa11ce511, repeats = 3, onLog = () => {}, setTimer = setTimeout, clearTimer = clearTimeout, switchWaitMs = 1800 } = {}) {
   let cb = null, timer = null, stopped = false;
+  const delay = (ms) => new Promise((r) => setTimer(r, ms));
+  const WIFI = { vid: 0x0b05, pid: 0x1997 }, STORAGE = { vid: 0x0bda, pid: 0x1a2b };
+  const tryOpen = async (d) => { try { await shell.call("usb.open", d); return true; } catch { return false; } };
   async function loop() {
     if (stopped) return;
     try {
@@ -62,9 +65,19 @@ export function createRfCarrier({ shell, channel = 6, src = 0xa11ce511, repeats 
   return {
     async start() {
       stopped = false;
-      onLog("adapter: switch to Wi-Fi mode -> firmware -> monitor ch" + channel);
-      try { await shell.call("rf.attach", { channel }); onLog("adapter ready on channel " + channel); }
-      catch (e) { onLog("adapter attach failed (" + ((e && e.message) || "no rf.attach in this shell") + ")"); }
+      onLog("looking for the AX56 adapter");
+      let open = await tryOpen(WIFI);                       
+      if (!open) {
+        if (!(await tryOpen(STORAGE))) { onLog("no AX56 found — plug it in and grant USB access, then rejoin"); return; }
+        onLog("adapter is in storage mode — switching it to Wi-Fi");
+        try { await shell.call("usb.switch", STORAGE); } catch {  }
+        await delay(switchWaitMs);                          
+        open = await tryOpen(WIFI);
+        if (!open) { onLog("mode-switch did not surface the Wi-Fi device — replug the adapter and rejoin"); return; }
+      }
+      onLog("bringing up firmware + monitor on ch" + channel + " (needs a COLD chip)");
+      try { await shell.call("rf.attach", { channel }); onLog("on air, channel " + channel); }
+      catch (e) { onLog("bring-up failed: " + ((e && e.message) || "no rf.attach in this shell") + " — cold-replug the adapter and rejoin"); return; }
       loop();
     },
     send(chunk) { const pkt = hex(buildTxPacket(chunk, src)); for (let r = 0; r < repeats; r++) { try { shell.call("usb.bulk", { ep: 5, data: pkt }); } catch {  } } },

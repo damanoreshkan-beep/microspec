@@ -325,8 +325,12 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --color-base-100: #2A2A2E; --color-base-200: #2A2A2E; --color-base-300: #1A1A1F;
   --color-base-content: #EDEDF0;
   --color-primary: #EDEDF0;   --color-primary-content: #2A2A2E;   /* ink = brand */
-  --color-secondary: #C13BFF; --color-secondary-content: #14060F; /* NOIR NEON — the one farm accent (violet→magenta), CTA + default app accent */
-  --color-accent: #C13BFF;    --color-accent-content: #14060F;
+  /* NOIR NEON, text-safe on THIS theme. DaisyUI's text-secondary/badge-secondary put this on TEXT, and no one
+     colour clears 4.5:1 as text on both a near-black and a near-white ground — so, like the palette it replaced,
+     the accent is tuned per theme: a BRIGHT neon-violet here reads on the dark ground. The vivid mark neon lives
+     in --app-accent (glows/rings/fills are not contrast-gated); this token is the one that touches text. */
+  --color-secondary: #D89AFF; --color-secondary-content: #1C0A2A;
+  --color-accent: #D89AFF;    --color-accent-content: #1C0A2A;
   --color-neutral: #34343A;   --color-neutral-content: #EDEDF0;
   --color-success: #7FCF9B;   --color-success-content: #06180E;
   --color-error: #F08A82;     --color-error-content: #2A0A08;
@@ -355,8 +359,10 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --color-base-100: #EEEEF1; --color-base-200: #EEEEF1; --color-base-300: #DCDCE2;
   --color-base-content: #0A0A0C;
   --color-primary: #0A0A0C;   --color-primary-content: #EEEEF1;
-  --color-secondary: #C13BFF; --color-secondary-content: #14060F; /* NOIR NEON — the one farm accent, same hue as dark so identity is single */
-  --color-accent: #C13BFF;    --color-accent-content: #14060F;
+  /* NOIR NEON, text-safe on white: a DEEP neon-violet that clears 4.5:1 as text on the near-white ground (a
+     bright one would fail there). Same neon family as dark; the vivid mark neon stays --app-accent. */
+  --color-secondary: #8B23C4; --color-secondary-content: #FFFFFF;
+  --color-accent: #8B23C4;    --color-accent-content: #FFFFFF;
   --color-neutral: #1E1E22;   --color-neutral-content: #EEEEF1;
   /* deepened past the 4.5 line on purpose: at their "natural" lightness these land at ~4.6 on base-100,
      and any component that puts opacity on the text eats that margin and fails axe. */

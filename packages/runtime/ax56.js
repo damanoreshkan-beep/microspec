@@ -37,14 +37,17 @@ export function parseRxFrames(rx) {
   return out;
 }
 
-// ── Channel retune (direct-RF, 8852a) ─────────────────────────────────────────────────────────────────────
+// ── Channel retune (direct-RF, 8852a) — PHONE-VALIDATED (no-root, cold chip) ───────────────────────────────
 // The 8852a reaches its RF registers DIRECTLY (chip .read_rf/.write_rf = rtw89_phy_read_rf, rf_base_addr =
-// {0xc000, 0xd000}) — RF reg `a` on path p is BB reg base(p)+(a<<2), NOT the SWSI/_v1 path newer chips use.
-// setChannel walks rtw8852a_set_channel's minimal RX subset: bracket (ADC-off + BB-reset-off) → RR_CFGCH(0x18)
-// on both paths → band/sco BB regs → 20 MHz → bracket leave (BB-reset locks the new LO). RFK (IQK/DPK/TSSI) is
-// TX calibration and skipped for passive monitor RX. The CFGCH encoding is hardware-proven on the box:
-// ch11 → 0x0c0b (11 | BIT10 | BIT11), ch149 → 0x10d95 (0x95 | BIT16 | BIT8 | BIT10 | BIT11).
-const RF_BASE = [0xc000, 0xd000];                    // path A, path B
+// {0xc000, 0xd000}), NOT the SWSI/_v1 path newer chips use. TWO facts the hardware forced: (1) RF and these BB
+// regs live on the **+0x10000 BB page** — RF reg `a` on path p is USB reg `0x10000 + base(p) + (a<<2)` (RF 0x18
+// pathA = 0x1c060), addressing an earlier attempt got wrong; (2) writing RR_CFGCH latches the channel but does
+// NOT relock the synthesiser — the LO only follows after **RCK** (rtw8852a_rfk.c _rck: RR_MOD=RX + RCK trigger +
+// the RF clock toggle). Proven on the phone: cold bring-up → setChannel(11)+RCK → RX confirmed on ch11 (~90 ms),
+// a full 2.4 GHz sweep hops across the band. RFK's IQK/DPK/TSSI stay skipped (TX calibration). CFGCH encoding is
+// hardware-proven: ch11 → 0x0c0b (11 | BIT10 | BIT11), ch149 → 0x10d95 (0x95 | BIT16 | BIT8 | BIT10 | BIT11).
+const BBP = 0x10000;                                 // BB/PHY register page: RF + BB regs are at USB +0x10000
+const RF_BASE = [0xc000, 0xd000];                    // path A, path B (kernel BB addrs; +BBP applied per access)
 const ctz = (m) => { let n = 0; if (!m) return 0; while (!(m & 1)) { m >>>= 1; n++; } return n; };
 
 // sco_mapping(central_ch) — R_FC0_BW GENMASK(6,0), from rtw8852a's sco table.
@@ -66,26 +69,41 @@ export const CH_5 = [36, 40, 44, 48, 149, 153, 157, 161, 165];
 // silicon between ADC-off and the frequency write; tests pass a no-op.
 export async function setChannel({ readReg, writeReg, ch, delay = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
   const is2g = ch <= 14;
+  const bb = (a) => (BBP + a) >>> 0;                                                       // kernel BB addr -> USB addr
   const rmw = async (addr, mask, val) => { const v = (await readReg(addr)) >>> 0; await writeReg(addr, ((v & ~mask) | ((val << ctz(mask)) & mask)) >>> 0); };
-  const rfRead = async (p, a) => ((await readReg(RF_BASE[p] + (a << 2))) >>> 0) & 0xfffff;
-  const rfWrite = (p, a, v) => rmw(RF_BASE[p] + (a << 2), 0xfffff, v & 0xfffff);
+  const rfA = (p, a) => bb(RF_BASE[p] + (a << 2));
+  const rfRead = async (p, a) => ((await readReg(rfA(p, a))) >>> 0) & 0xfffff;
+  const rfWrite = (p, a, mask, val) => rmw(rfA(p, a), mask, val);
+  // _rck (rtw8852a_rfk.c) — the synth re-lock: without it the CFGCH write latches but the LO never moves.
+  const rck = async (p) => {
+    const rf5 = await rfRead(p, 0x05);
+    await rfWrite(p, 0x05, 0x1, 0x0);                                                      // RR_RSV1_RST = 0
+    await rfWrite(p, 0x00, 0xf0000, 0x3);                                                  // RR_MOD = V_RX
+    await rfWrite(p, 0x1b, 0xfffff, 0x00240);                                              // RR_RCKC trigger
+    for (let i = 0; i < 20; i++) { if ((await rfRead(p, 0x1c)) & 0x8) break; await delay(1); }  // poll RF0x1c BIT3
+    await rfWrite(p, 0x1b, 0xfffff, ((await rfRead(p, 0x1b)) & 0x7c00) >> 10);             // RR_RCKC = CA
+    await rfWrite(p, 0x1d, 0x3e00, 0x4);                                                   // RR_RCKO_OFF = 4
+    await rfWrite(p, 0xf0, 0x2, 0x1); await rfWrite(p, 0xf0, 0x2, 0x0);                    // RR_RFC_CKEN toggle
+    await rfWrite(p, 0x05, 0xfffff, rf5);                                                  // restore RR_RSV1
+  };
 
-  await rmw(0x20fc, 0xff000000, 0xf); await rmw(0x0704, 0x2, 0); await delay(40);        // bracket enter (ADC off, BB reset off)
+  await rmw(bb(0x20fc), 0xff000000, 0xf); await rmw(bb(0x0704), 0x2, 0); await delay(40);  // bracket enter (ADC off, BB reset off)
   let cfgch = 0;
   for (let p = 0; p < 2; p++) {                                                            // RR_CFGCH — the frequency, both paths
     let rf = await rfRead(p, 0x18); rf &= ~0x303ff; rf |= ch; if (ch > 14) rf |= (1 << 16) | (1 << 8);
-    await rfWrite(p, 0x18, rf); if (p === 0) cfgch = rf;
+    await rfWrite(p, 0x18, 0xfffff, rf); if (p === 0) cfgch = rf;
   }
-  await rmw(0x4644, 0xc0000000, is2g ? 1 : 0); await rmw(0x4718, 0xc0000000, is2g ? 1 : 0);  // ctrl_ch band
-  await rmw(0x4974, 0x7f, scoMapping(ch)); await rmw(0x4498, 0x40000000, is2g ? 1 : 0);
-  await rmw(0x4974, 0xc0000000, 0); await rmw(0x4978, 0x3000, 0); await rmw(0x4978, 0xf00, 0);  // ctrl_bw 20 MHz
+  await rmw(bb(0x4644), 0xc0000000, is2g ? 1 : 0); await rmw(bb(0x4718), 0xc0000000, is2g ? 1 : 0);  // ctrl_ch band
+  await rmw(bb(0x4974), 0x7f, scoMapping(ch)); await rmw(bb(0x4498), 0x40000000, is2g ? 1 : 0);
+  await rmw(bb(0x4974), 0xc0000000, 0); await rmw(bb(0x4978), 0x3000, 0); await rmw(bb(0x4978), 0xf00, 0);  // ctrl_bw 20 MHz
   const adc = [0x12d0, 0x32d0], wbadc = [0x12ec, 0x32ec];
   for (let p = 0; p < 2; p++) {                                                            // bw_setting — 20 MHz bits on RF 0x18
-    await rmw(adc[p], 0x6000, 0); await rmw(wbadc[p], 0x30, 2);
-    let rf = await rfRead(p, 0x18); rf |= (1 << 11) | (1 << 10); await rfWrite(p, 0x18, rf);
+    await rmw(bb(adc[p]), 0x6000, 0); await rmw(bb(wbadc[p]), 0x30, 2);
+    let rf = await rfRead(p, 0x18); rf |= (1 << 11) | (1 << 10); await rfWrite(p, 0x18, 0xfffff, rf);
     if (p === 0) cfgch = rf;
   }
-  await rmw(0x20fc, 0xff000000, 0); await rmw(0x0704, 0x2, 1);                             // bracket leave — BB reset locks the new LO
+  await rmw(bb(0x20fc), 0xff000000, 0); await rmw(bb(0x0704), 0x2, 1);                     // bracket leave — BB reset off
+  await rck(0); await rck(1);                                                              // RCK — the LO actually re-locks here
   return cfgch >>> 0;
 }
 

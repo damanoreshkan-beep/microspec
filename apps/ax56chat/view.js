@@ -200,14 +200,15 @@ export function logView({ S }) {
 // ---- Nearby: the passive 802.11 neighbourhood as a signal scope. Monitor RX hears every beacon + frame; we
 // place each device by SIGNAL (rings are dBm, never metres — RF honesty), routers vs clients by colour. ----
 const $nearby = atom([]), $scanning = atom(false), $sel = atom(null), $sweep = atom(false);
-// Auto-hop the 2.4 GHz plan so Nearby aggregates the whole band (airodump's channel hop), not just the bring-up
-// channel. Only meaningful on air; if the chip refuses a live retune the radio stops the sweep itself and the
-// tick below flips $sweep back. 2.4 GHz only by default — 5 GHz DFS is mostly silent and slows the cycle.
-const HOP24 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+// Auto-hop the whole plan so Nearby aggregates every band (airodump's channel hop), not just the bring-up
+// channel. Phone-validated live retune (setChannel + RCK) moves the LO across 2.4 AND 5 GHz (~90 ms/ch), so the
+// sweep covers both. Only meaningful on air; if the chip refuses a retune the radio stops the sweep itself and
+// the tick below flips $sweep back. ~400 ms dwell keeps a full 22-channel pass near ~11 s.
+const HOP_ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 36, 40, 44, 48, 149, 153, 157, 161, 165];  // 2.4 + non-DFS 5 GHz
 function toggleSweep() {
   const r = radio; if (!r || r.state !== "on") return;
   if (r.hopping) { r.stopHop(); $sweep.set(false); }
-  else { r.startHop(HOP24, 600); $sweep.set(true); }
+  else { r.startHop(HOP_ALL, 400); $sweep.set(true); }
 }
 // One shared neighbourhood fed by ONE onUnits subscription, ref-counted so Nearby and Engineer can both read it
 // without double-counting frames. holdScan() attaches the radio + starts folding units in on the first holder,

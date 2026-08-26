@@ -12,29 +12,30 @@ Deno.test("setChannel writes the board-proven RR_CFGCH for 2.4 GHz (ch11 -> 0x0c
   const rf = regFile();
   const cfg = await setChannel({ ...rf, ch: 11, delay: noDelay });
   assertEquals(cfg & 0xfffff, 0x0c0b);                 
-  assertEquals(rf.m.get(0xc060) & 0xfffff, 0x0c0b);    
-  assertEquals(rf.m.get(0xd060) & 0xfffff, 0x0c0b);    
+  assertEquals(rf.m.get(0x1c060) & 0xfffff, 0x0c0b);   
+  assertEquals(rf.m.get(0x1d060) & 0xfffff, 0x0c0b);   
 });
 
 Deno.test("setChannel writes the board-proven RR_CFGCH for 5 GHz (ch149 -> 0x10d95)", async () => {
   const rf = regFile();
   const cfg = await setChannel({ ...rf, ch: 149, delay: noDelay });
   assertEquals(cfg & 0xfffff, 0x10d95);                
-  assertEquals(rf.m.get(0xc060) & 0xfffff, 0x10d95);
+  assertEquals(rf.m.get(0x1c060) & 0xfffff, 0x10d95);
 });
 
-Deno.test("setChannel brackets the frequency write and sets band + sco", async () => {
+Deno.test("setChannel brackets the frequency write, sets band + sco, and runs RCK", async () => {
   const seq = [];
   const rf = regFile();
   const wrapped = { readReg: rf.readReg, writeReg: (a, v) => { seq.push([a, v >>> 0]); rf.writeReg(a, v); } };
   await setChannel({ ...wrapped, ch: 6, delay: noDelay });
-  const first = seq.findIndex(([a]) => a === 0x0704 && (seq.find(([x]) => x === 0x0704)));
-  const enter = seq.findIndex(([a, v]) => a === 0x0704 && (v & 2) === 0);
-  const cfg = seq.findIndex(([a]) => a === 0xc060);
-  const leave = seq.findIndex(([a, v]) => a === 0x0704 && (v & 2) === 2);
+  const enter = seq.findIndex(([a, v]) => a === 0x10704 && (v & 2) === 0);
+  const cfg = seq.findIndex(([a]) => a === 0x1c060);
+  const leave = seq.findIndex(([a, v]) => a === 0x10704 && (v & 2) === 2);
   assert(enter >= 0 && cfg > enter && leave > cfg, "order: enter -> CFGCH -> leave");
-  assertEquals(rf.m.get(0x4644) >>> 30, 1);            
-  assertEquals(rf.m.get(0x4974) & 0x7f, scoMapping(6));  
+  assertEquals(rf.m.get(0x14644) >>> 30, 1);           
+  assertEquals(rf.m.get(0x14974) & 0x7f, scoMapping(6));  
+  const mod = seq.findIndex(([a]) => a === 0x1c000);
+  assert(mod > leave, "RCK runs after the bracket");
 });
 
 Deno.test("scoMapping matches the rtw8852a table across bands", () => {
@@ -66,6 +67,7 @@ function mockShell(regs, getRxCh) {
     if (m === "usb.control") {
       const addr = (a.value & 0xffff) | ((a.index || 0) << 16);
       if (a.reqType === 0x40) { const b = a.data; regs.set(addr, (parseInt(b.slice(0, 2), 16)) | (parseInt(b.slice(2, 4), 16) << 8) | (parseInt(b.slice(4, 6), 16) << 16) | (parseInt(b.slice(6, 8), 16) << 24)); return Promise.resolve({}); }
+      if (addr === 0x1c070 || addr === 0x1d070) return Promise.resolve({ data: leHex(0x8) });   
       return Promise.resolve({ data: leHex((regs.get(addr) || 0) >>> 0) });
     }
     if (m === "usb.bulk") { const c = getRxCh(); return Promise.resolve({ data: c == null ? "" : beaconRx(c, 3) }); }
@@ -83,7 +85,7 @@ Deno.test("hop confirms a real retune and advances the current channel", T, asyn
   const status = await radio.hop(11);
   assertEquals(status, "ok");
   assertEquals(radio.channel, 11);
-  assertEquals(regs.get(0xc060) & 0xfffff, 0x0c0b);   
+  assertEquals(regs.get(0x1c060) & 0xfffff, 0x0c0b);  
   radio.stop();
 });
 

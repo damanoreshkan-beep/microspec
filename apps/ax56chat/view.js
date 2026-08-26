@@ -183,11 +183,11 @@ export function logView({ S }) {
 }
 
 const $nearby = atom([]), $scanning = atom(false), $sel = atom(null), $sweep = atom(false);
-const HOP24 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+const HOP_ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 36, 40, 44, 48, 149, 153, 157, 161, 165];  
 function toggleSweep() {
   const r = radio; if (!r || r.state !== "on") return;
   if (r.hopping) { r.stopHop(); $sweep.set(false); }
-  else { r.startHop(HOP24, 600); $sweep.set(true); }
+  else { r.startHop(HOP_ALL, 400); $sweep.set(true); }
 }
 let hood = null, hoodOff = null, hoodRefs = 0;
 function holdScan() {

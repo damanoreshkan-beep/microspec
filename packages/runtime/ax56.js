@@ -78,6 +78,25 @@ export async function setChannel({ readReg, writeReg, ch, delay = (ms) => new Pr
   return cfgch >>> 0;
 }
 
+const PWROFF = [
+  [0x02f0, 0xff, 0x00], [0x02f1, 0xff, 0x00],                       
+  [0x0006, 0x01, 0x01], [0x0002, 0x03, 0x00], [0x0082, 0x03, 0x00], 
+  [0x106d, 0x40, 0x40], [0x0005, 0x02, 0x02], [0x0005, 0x02, 0x00, true], 
+  [0x0007, 0x10, 0x00], [0x0005, 0x18, 0x08],                       
+];
+
+export async function resetChip({ shell, delay = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+  const r8 = async (a) => { const r = await shell.call("usb.control", { reqType: 0xc0, request: 0x05, value: a & 0xffff, index: 0, length: 1 }); const h = (r && r.data) || "00"; return parseInt(h.slice(0, 2), 16) & 0xff; };
+  const w8 = (a, v) => shell.call("usb.control", { reqType: 0x40, request: 0x05, value: a & 0xffff, index: 0, data: (v & 0xff).toString(16).padStart(2, "0") });
+  try {
+    for (const [a, mask, val, poll] of PWROFF) {
+      if (poll) { for (let i = 0; i < 40; i++) { if (((await r8(a)) & mask) === (val & mask)) break; await delay(2); } }
+      else { const v = await r8(a); await w8(a, (v & ~mask) | (val & mask)); }
+    }
+    return true;
+  } catch { return false; }
+}
+
 export async function openAndAttach({ shell, channel = 6, onLog = () => {}, setTimer = setTimeout, switchWaitMs = 1800 }) {
   const delay = (ms) => new Promise((r) => setTimer(r, ms));
   const WIFI = { vid: 0x0b05, pid: 0x1997 }, STORAGE = { vid: 0x0bda, pid: 0x1a2b };
@@ -92,7 +111,16 @@ export async function openAndAttach({ shell, channel = 6, onLog = () => {}, setT
     open = await tryOpen(WIFI);
     if (!open) { onLog("mode-switch did not surface the Wi-Fi device — replug the adapter and rejoin"); return false; }
   }
-  onLog("bringing up firmware + monitor on ch" + channel + " (needs a COLD chip)");
+  onLog("bringing up firmware + monitor on ch" + channel);
   try { await shell.call("rf.attach", { channel }); onLog("on air, channel " + channel); return true; }
-  catch (e) { onLog("bring-up failed: " + ((e && e.message) || "no rf.attach in this shell") + " — cold-replug the adapter and rejoin"); return false; }
+  catch (e) {
+    onLog("bring-up failed — resetting the adapter and retrying");
+    if (await resetChip({ shell, delay })) {
+      await delay(30);
+      try { await shell.call("rf.attach", { channel }); onLog("on air, channel " + channel + " (recovered, no replug)"); return true; }
+      catch {  }
+    }
+    onLog("bring-up failed: " + ((e && e.message) || "no rf.attach in this shell") + " — replug the adapter and rejoin");
+    return false;
+  }
 }

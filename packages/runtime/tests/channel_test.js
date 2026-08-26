@@ -1,5 +1,5 @@
 import { assertEquals, assert } from "jsr:@std/assert@1";
-import { setChannel, scoMapping, CH_24, CH_5 } from "../ax56.js";
+import { setChannel, scoMapping, CH_24, CH_5, resetChip } from "../ax56.js";
 import { createRadio } from "../radio.js";
 
 function regFile(init = {}) {
@@ -42,6 +42,21 @@ Deno.test("scoMapping matches the rtw8852a table across bands", () => {
   assertEquals(scoMapping(1), 109); assertEquals(scoMapping(6), 108); assertEquals(scoMapping(11), 106);
   assertEquals(scoMapping(36), 51); assertEquals(scoMapping(149), 46); assertEquals(scoMapping(165), 45);
   assert(CH_24.length === 13 && CH_5.includes(149));
+});
+
+Deno.test("resetChip runs the pwroff teardown (byte R/W) and tolerates a bridge without usb.control", async () => {
+  const reg = new Map(), writes = [];
+  const shell = { call(m, a) {
+    if (m !== "usb.control") return Promise.resolve({});
+    const addr = a.value & 0xffff;
+    if (a.reqType === 0x40) { reg.set(addr, parseInt(a.data.slice(0, 2), 16)); writes.push(addr); return Promise.resolve({}); }
+    return Promise.resolve({ data: addr === 0x0005 ? "00" : (reg.get(addr) || 0).toString(16).padStart(2, "0") });  
+  } };
+  const ok = await resetChip({ shell, delay: () => Promise.resolve() });
+  assert(ok, "teardown sequence completed");
+  assert(writes.includes(0x02f0) && writes.includes(0x0007), "hits the fwdl-reset (0x02f0) and USB-disable (0x0007) regs");
+  const ok2 = await resetChip({ shell: { call: () => Promise.reject(new Error("no usb.control")) }, delay: () => Promise.resolve() });
+  assertEquals(ok2, false);  
 });
 
 const hx = (u) => Array.from(u, (x) => x.toString(16).padStart(2, "0")).join("");

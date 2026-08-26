@@ -292,7 +292,20 @@ const $eng = atom({ e0: null, f0: null, state: "off" });
 const $traffic = atom({ frames: 0, tx: 0, nets: 0, strongest: null, occ: [] });
 const CH24 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];                  // 2.4 GHz (all)
 const CH5 = [36, 40, 44, 48, 149, 153, 157, 161, 165];                     // 5 GHz (non-DFS)
-const CH_OK = new Set([...CH24, ...CH5]);                                  // every channel ships a bring-up blob
+const CHANNELS = [...CH24, ...CH5];                                        // the full band plan the stepper browses
+// The cold bring-up is a CAPTURED replay, not a per-channel tune — the shell ships ONE blob (dist/ax56/assets/
+// bringup.bin, ch6), so only ch6 truly brings up today. The rest are shown as coming-soon, never brought up;
+// as more blobs are captured they join this set and the stepper lights them up.
+const CH_OK = new Set([6]);
+const $selCh = atom(6);   // the channel the stepper is BROWSING (may be a coming-soon one); the LIVE monitor channel is $channel
+// stepChannel(dir) — browse one channel along the plan (clamped). A live channel (has a bring-up blob) is applied
+// as the monitor channel via setChannel; a coming-soon one is only shown, never brought up. dir is -1 / +1.
+function stepChannel(dir) {
+  const i = CHANNELS.indexOf($selCh.get());
+  const c = CHANNELS[Math.min(CHANNELS.length - 1, Math.max(0, (i < 0 ? 0 : i) + dir))];
+  $selCh.set(c);
+  if (CH_OK.has(c)) setChannel(c);
+}
 const HEALTHY = 0xc492537;
 const chBand = (c) => (c <= 14 ? "2.4 GHz" : "5 GHz");
 const booted = (e0) => e0 != null && ((e0 >> 5) & 7) === 7;
@@ -334,7 +347,7 @@ function EngRow({ label, value, tone }) {
 
 export function engineerView({ S }) {
   const t = useStore(S.t);
-  const eng = useStore($eng), tr = useStore($traffic), ch = useStore($channel);
+  const eng = useStore($eng), tr = useStore($traffic), ch = useStore($channel), selCh = useStore($selCh);
   const rf = hasRf();
   useEffect(() => {
     if (gate || !rf) { seedEngDemo(); return; }
@@ -351,6 +364,7 @@ export function engineerView({ S }) {
 
   const healthy = eng.f0 === HEALTHY, on = eng.state === "on";
   const occMax = Math.max(1, ...tr.occ.map(([, n]) => n));
+  const selIdx = CHANNELS.indexOf(selCh), selLive = CH_OK.has(selCh);
 
   return html`<div class="flex flex-col gap-3 max-w-[560px] mx-auto w-full pb-4">
     <div class="rounded-2xl sf-e1 p-4 flex items-center gap-3">
@@ -375,17 +389,32 @@ export function engineerView({ S }) {
       <${EngRow} label=${T(t, "engBand")} value=${chBand(ch)} />
     </div>
 
-    <div class="rounded-2xl sf-e1 p-4 flex flex-col gap-2.5">
-      <div class="text-xs uppercase tracking-wide text-muted">${T(t, "engChannel")}</div>
-      ${[["2.4", CH24], ["5", CH5]].map(([band, chs]) => html`<div key=${band} class="flex items-center gap-2">
-        <span class="text-[0.55rem] text-muted font-mono w-6 shrink-0">${band}</span>
-        <div class="flex flex-wrap gap-1.5">
-          ${chs.map((c) => { const active = c === ch, ok = CH_OK.has(c);
-            return html`<button key=${c} disabled=${!ok} data-ch=${c} onClick=${() => ok && setChannel(c)}
-              class=${`btn btn-sm rounded-xl font-mono ${active ? "btn-primary" : "btn-ghost"} ${!ok ? "opacity-40" : ""}`}>${c}${!ok ? html`<span class="text-[0.5rem] uppercase ml-1">${T(t, "engSoon")}</span>` : null}</button>`; })}
+    <div class="rounded-2xl sf-e1 p-4 flex flex-col gap-3">
+      <div class="flex items-center justify-between">
+        <span class="text-xs uppercase tracking-wide text-muted">${T(t, "engChannel")}</span>
+        <span class="text-[0.6rem] font-mono text-muted">${chBand(selCh)}</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button data-ch-prev aria-label=${T(t, "engChPrev")} disabled=${selIdx <= 0} onClick=${() => stepChannel(-1)}
+          class="btn btn-circle btn-ghost btn-sm shrink-0 disabled:opacity-30">${Icon("lucide:minus", "text-lg")}</button>
+        <div class="flex-1 flex flex-col items-center gap-2 min-w-0">
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-[0.55rem] font-mono uppercase text-muted">${T(t, "chShort")}</span>
+            <span class=${`text-3xl font-mono tabular-nums leading-none ${selLive ? "" : "text-muted"}`} data-ch=${selCh}>${selCh}</span>
+            ${selLive
+              ? html`<span class="w-1.5 h-1.5 rounded-full bg-primary" aria-label=${T(t, "engChLive")}></span>`
+              : html`<span class="text-[0.5rem] font-mono uppercase text-muted border border-base-content/20 rounded px-1 py-0.5">${T(t, "engSoon")}</span>`}
+          </div>
+          <div class="w-full flex items-center gap-[3px]" data-ch-track>
+            ${CHANNELS.map((c, i) => { const live = CH_OK.has(c), on = i === selIdx;
+              return html`<span key=${c}
+                class=${`h-1.5 flex-1 rounded-full ${on ? (live ? "bg-primary" : "bg-base-content/45") : live ? "bg-primary/45" : "bg-base-content/12"}`}></span>`; })}
+          </div>
         </div>
-      </div>`)}
-      <div class="text-[0.6rem] text-muted">${T(t, "engChNote")}</div>
+        <button data-ch-next aria-label=${T(t, "engChNext")} disabled=${selIdx >= CHANNELS.length - 1} onClick=${() => stepChannel(1)}
+          class="btn btn-circle btn-ghost btn-sm shrink-0 disabled:opacity-30">${Icon("lucide:plus", "text-lg")}</button>
+      </div>
+      <div class="text-[0.6rem] text-muted">${selLive ? T(t, "engChNote") : T(t, "engChSoonNote")}</div>
     </div>
 
     <div class="rounded-2xl sf-e1 p-4 flex flex-col gap-3">

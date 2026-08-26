@@ -54,14 +54,31 @@ Deno.test("createRadio: a tab switch (subscribers leave) does NOT detach the ada
   assertEquals(radio.state, "off");
 });
 
-Deno.test("carrierFromRadio.send injects the beacon on EP5 through the radio", async () => {
+Deno.test("carrierFromRadio.send defaults to ONE inject — the mesh session owns repeats, not the carrier", async () => {
+  const shell = stubShell();
+  const radio = createRadio({ shell, setTimer: fakeTimer });
+  const carrier = carrierFromRadio(radio, { src: 0x1234abcd });   // no repeats -> default; session repeats on top
+  await carrier.start();
+  carrier.send(new Uint8Array([0x6d, 0x63, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1]));
+  await flush();
+  const batch = shell.calls.filter((c) => c.n === "usb.batch");
+  assertEquals(batch.length, 1);                                 // coalesced into ONE bridge pass
+  assertEquals(batch[0].a.ops.length, 1);                        // one inject — not N² with the session
+  assertEquals(shell.calls.filter((c) => c.n === "usb.bulk" && c.a.ep === 5).length, 0);   // injects go via usb.batch now
+  carrier.stop(); radio.stop();
+});
+
+Deno.test("carrierFromRadio.send coalesces a burst into one usb.batch of EP5 bulk-OUT ops", async () => {
   const shell = stubShell();
   const radio = createRadio({ shell, setTimer: fakeTimer });
   const carrier = carrierFromRadio(radio, { src: 0x1234abcd, repeats: 2 });
   await carrier.start();
   carrier.send(new Uint8Array([0x6d, 0x63, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1]));
   await flush();
-  assertEquals(shell.calls.filter((c) => c.n === "usb.bulk" && c.a.ep === 5).length, 2);
+  const batch = shell.calls.filter((c) => c.n === "usb.batch");
+  assertEquals(batch.length, 1);                                 // 2 repeats -> still ONE native pass, not 2 calls
+  assertEquals(batch[0].a.ops.length, 2);
+  assert(batch[0].a.ops.every((o) => o.t === "b" && o.ep === 5));  // bulk-OUT on the inject endpoint
   carrier.stop();
   assertEquals(radio.state, "on");                               // carrier.stop drops its tap, not the adapter
   radio.stop();

@@ -6,6 +6,7 @@ import {
   MAGIC0, MAGIC1, VERSION, HEADER_LEN, MAX_CHUNK_PAYLOAD, FLAG_ENCRYPTED,
   roomId, newNodeId, encodeChunk, decodeChunk, fragment, encodeMessage,
   textBytes, bytesText, Deduper, Reassembler,
+  encodeAckPayload, decodeAckPayload,
 } from "../meshchat.js";
 
 const bytes = (...n) => new Uint8Array(n);
@@ -103,6 +104,31 @@ Deno.test("Reassembler completes an empty (single empty fragment) message", () =
   const [c] = encodeMessage({ src: 9, msgId: 1, blob: new Uint8Array(0) });
   const fin = new Reassembler().add(decodeChunk(c));
   assert(fin); assertEquals(fin.blob.length, 0);
+});
+
+// ================= ack payload + partial progress =================
+
+Deno.test("ack payload round-trips target + fragment bitmap; runt decodes to null", () => {
+  const p = encodeAckPayload({ targetSrc: 0xdeadbeef, targetMsgId: 0x1234, total: 10, have: [0, 3, 9] });
+  const a = decodeAckPayload(p);
+  assertEquals(a.targetSrc, 0xdeadbeef);
+  assertEquals(a.targetMsgId, 0x1234);
+  assertEquals(a.total, 10);
+  assertEquals([...a.have].sort((x, y) => x - y), [0, 3, 9]);
+  assertEquals(decodeAckPayload(new Uint8Array(3)), null);              // runt
+  assertEquals(decodeAckPayload(encodeAckPayload({ total: 20, have: [0] }).subarray(0, 8)), null); // bitmap truncated
+});
+
+Deno.test("Reassembler.progress reports which fragments a partial holds", () => {
+  const chunks = encodeMessage({ src: 5, msgId: 8, blob: textBytes("q".repeat(MAX_CHUNK_PAYLOAD * 3)) }).map(decodeChunk);
+  const ra = new Reassembler();
+  ra.add(chunks[0]); ra.add(chunks[2]);
+  const pr = ra.progress(5, 8);
+  assertEquals(pr.total, chunks.length);
+  assertEquals(pr.have, [0, 2]);
+  assertEquals(ra.progress(99, 99), null);                             // unknown message
+  ra.add(chunks[1]);                                                    // completes -> partial evicted
+  assertEquals(ra.progress(5, 8), null);
 });
 
 // ================= dedup =================

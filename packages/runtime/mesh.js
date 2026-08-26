@@ -5,7 +5,7 @@
 // the integration test run against. Protocol lives in meshchat.js, encryption in meshcrypto.js; this wires
 // them to a carrier and to the app's atoms.
 
-import { roomId, newNodeId, encodeMessage, decodeChunk, textBytes, bytesText, FLAG_ENCRYPTED, Deduper, Reassembler } from "./meshchat.js";
+import { roomId, newNodeId, encodeMessage, encodeChunk, decodeChunk, textBytes, bytesText, FLAG_ENCRYPTED, FLAG_ACK, encodeAckPayload, decodeAckPayload, Deduper, Reassembler } from "./meshchat.js";
 
 // createMeshSession — one room membership.
 //
@@ -14,13 +14,20 @@ import { roomId, newNodeId, encodeMessage, decodeChunk, textBytes, bytesText, FL
 // @param carrier    { send(chunkBytes), onFrame(cb), start?(), stop?() } — the radio, injected.
 // @param crypto     { deriveKey(pass,room), seal(key,bytes), open(key,box) } — meshcrypto, injected so a test
 //                   can stub the slow KDF.
-// @param repeats    how many times the carrier re-sends each chunk (the only reliability the medium has).
+// @param repeats    initial blind sends per fragment before the ack loop takes over (default 1 — the ack does the
+//                   reliability now; leave >1 only for a very lossy channel).
+// @param ackTimeoutMs / maxRounds   the ACK-driven retransmit backoff: if a message is not confirmed within
+//                   ackTimeoutMs, resend the unconfirmed fragments, up to maxRounds times, then give up. With a
+//                   confirming peer this collapses to one pass + one ack; with none it degrades to (1+maxRounds)
+//                   bounded repeats — the old blind-3× behaviour at the defaults.
 export function createMeshSession({
   atom, carrier, crypto,
   room = "mesh", passphrase = "",
-  self, repeats = 3,
+  self, repeats = 1,
+  ackTimeoutMs = 1500, maxRounds = 2,
   now = () => Date.now(),
   rand,
+  setTimer = setTimeout, clearTimer = clearTimeout,
 } = {}) {
   const $messages = atom([]);      // [{ id, src, text, ts, mine }]
   const $ready = atom(false);
@@ -29,7 +36,8 @@ export function createMeshSession({
   const rid = roomId(room);
   const dedup = new Deduper(), rasm = new Reassembler();
   const peers = new Set();
-  let key = null, msgSeq = 0;
+  const outbox = new Map();        // msgId -> { chunks, total, acked:Set<frag>, round, timer } awaiting confirmation
+  let key = null, msgSeq = 0, ackSeq = 0;
 
   async function connect() {
     key = await crypto.deriveKey(passphrase, room);
@@ -39,29 +47,78 @@ export function createMeshSession({
     return true;
   }
 
-  function disconnect() { $ready.set(false); try { carrier.stop?.(); } catch { /* */ } }
+  function disconnect() {
+    $ready.set(false);
+    for (const e of outbox.values()) if (e.timer != null) clearTimer(e.timer);
+    outbox.clear();
+    try { carrier.stop?.(); } catch { /* */ }
+  }
+
+  // Radiate the fragments of a message that no peer has confirmed yet (all of them on the first pass).
+  function radiate(entry) {
+    for (let f = 0; f < entry.total; f++) if (!entry.acked.has(f)) carrier.send(entry.chunks[f]);
+  }
+
+  // The mesh has no MAC ACK, so the SESSION owns redundancy: after the initial send, resend the unconfirmed
+  // fragments on an ackTimeoutMs backoff until a FLAG_ACK confirms receipt or maxRounds is spent. One confirmed
+  // ack ends the retransmit — that is the airtime win over a blind fixed-N burst.
+  function armRetransmit(msgId) {
+    const entry = outbox.get(msgId);
+    if (!entry) return;
+    entry.timer = setTimer(() => {
+      entry.timer = null;
+      if (entry.acked.size >= entry.total || entry.round >= maxRounds) { outbox.delete(msgId); return; }
+      entry.round++;
+      radiate(entry);
+      armRetransmit(msgId);
+    }, ackTimeoutMs);
+  }
 
   async function send(text) {
     const t = String(text ?? "").trim();
     if (!key || !t) return false;
     const box = await crypto.seal(key, textBytes(t));
-    const chunks = encodeMessage({ room: rid, src, msgId: msgSeq++ & 0xffff, flags: FLAG_ENCRYPTED, blob: box });
-    for (const c of chunks) for (let r = 0; r < repeats; r++) carrier.send(c);
+    const msgId = msgSeq++ & 0xffff;
+    const chunks = encodeMessage({ room: rid, src, msgId, flags: FLAG_ENCRYPTED, blob: box });
+    const entry = { chunks, total: chunks.length, acked: new Set(), round: 0, timer: null };
+    outbox.set(msgId, entry);
+    for (let r = 0; r < repeats; r++) radiate(entry);
+    armRetransmit(msgId);
     push({ src, text: t, ts: now(), mine: true });
     return true;
   }
 
-  // Every frame the carrier hears passes here. Foreign frames, other rooms and our own echo fall out quietly;
-  // a decode failure (wrong key / tamper) is dropped, never shown. Only a fully reassembled, opened message
-  // becomes a line on screen.
+  // A member that has just DECRYPTED a whole message confirms it to the sender with a FULL ack. Only a successful
+  // decrypt sends one, so a wrong-key / foreign node cannot forge delivery — which is exactly why a per-fragment
+  // (partial) ack, sent before decryption is possible, is deferred until it can be authenticated.
+  function sendFullAck(targetSrc, targetMsgId, total) {
+    const have = []; for (let f = 0; f < total; f++) have.push(f);
+    const payload = encodeAckPayload({ targetSrc, targetMsgId, total, have });
+    carrier.send(encodeChunk({ room: rid, src, msgId: ackSeq++ & 0xffff, frag: 0, total: 1, flags: FLAG_ACK, payload }));
+  }
+
+  function handleAck(payload) {
+    const a = decodeAckPayload(payload);
+    if (!a || a.targetSrc !== src) return;                 // not an ack for a message of ours
+    const entry = outbox.get(a.targetMsgId);
+    if (!entry) return;
+    for (const f of a.have) entry.acked.add(f);
+    if (entry.acked.size >= entry.total) { if (entry.timer != null) clearTimer(entry.timer); outbox.delete(a.targetMsgId); }
+  }
+
+  // Every frame the carrier hears passes here. Foreign frames, other rooms and our own echo fall out quietly; an
+  // ack updates our outbox and stops there; a decode failure (wrong key / tamper) is dropped, never shown. Only a
+  // fully reassembled, opened message becomes a line on screen — and, being proof of membership, sends the ack.
   async function onFrame(bytes) {
     const d = decodeChunk(bytes);
     if (!d || d.room !== rid || d.src === src) return;
     if (dedup.seen(d.src, d.msgId, d.frag)) return;
+    if (d.flags & FLAG_ACK) { handleAck(d.payload); return; }
     const done = rasm.add(d);
     if (!done) return;
     const pt = (done.flags & FLAG_ENCRYPTED) ? await crypto.open(key, done.blob) : done.blob;
     if (!pt) return;
+    sendFullAck(done.src, done.msgId, d.total);            // membership proven by the decrypt above
     if (!peers.has(done.src)) { peers.add(done.src); $peers.set([...peers]); }
     push({ src: done.src, text: bytesText(pt), ts: now(), mine: false });
   }

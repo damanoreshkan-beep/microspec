@@ -1,6 +1,7 @@
 // microspec runtime — rf carrier tests. Pure builders/parsers + a stub-shell carrier. No browser, no shell.
 import { assertEquals, assert } from "jsr:@std/assert@1";
-import { buildTxPacket, extractChunk, parseRxFrames, bssidFor, createRfCarrier } from "../rf.js";
+import { buildTxPacket, extractChunk, bssidFor, createRfCarrier } from "../rf.js";
+import { parseRxFrames } from "../ax56.js";
 import { encodeChunk, decodeChunk, textBytes, bytesText, roomId } from "../meshchat.js";
 
 const fromHex = (h) => { const u = new Uint8Array(h.length / 2); for (let i = 0; i < u.length; i++) u[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16); return u; };
@@ -68,6 +69,14 @@ Deno.test("createRfCarrier.start: adapter already in Wi-Fi mode -> attach withou
   await c.start(); c.stop();
   assertEquals(calls.filter((x) => x === "usb.switch").length, 0);
   assert(calls.indexOf("rf.attach") > calls.indexOf("usb.open"));
+});
+
+Deno.test("createRfCarrier: send defaults to ONE inject — no accidental repeat squaring with the session", () => {
+  const calls = [];
+  const shell = { call: (n, a) => { calls.push({ n, a }); return Promise.resolve({}); }, has: () => true };
+  const c = createRfCarrier({ shell, src: 0x1234abcd });         // no repeats -> default 1
+  c.send(chunkOf("copy that"));
+  assertEquals(calls.filter((x) => x.n === "usb.bulk" && x.a.ep === 5).length, 1);
 });
 
 Deno.test("createRfCarrier: send injects the beacon on EP5, repeated", () => {

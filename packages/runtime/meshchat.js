@@ -32,6 +32,11 @@ export const MAX_CHUNK_PAYLOAD = 224;
 // FLAGS bits. `encrypted` says the reassembled blob is an AEAD box (nonce||ciphertext||tag), not UTF-8 text;
 // the crypto layer is a separate async step (WebCrypto AES-GCM) that owns that box — this module never sees a key.
 export const FLAG_ENCRYPTED = 0x01;
+// `ack` marks a chunk whose payload is a DELIVERY REPORT about another message (encodeAckPayload below), not
+// content. It carries no message text — only who-got-which-fragment within the room — so it rides in the clear
+// (no FLAG_ENCRYPTED); the session only trusts an ack from a peer that proved membership by decrypting, so a
+// fragment-level (partial) ack needs its own authentication before it can be trusted — see mesh.js.
+export const FLAG_ACK = 0x02;
 
 // roomId(name) — a 16-bit label so a receiver can drop other rooms' traffic cheaply BEFORE reassembly. It is
 // NOT a secret and NOT collision-proof: two rooms can share an id and are then separated by the AEAD key
@@ -108,6 +113,38 @@ export function encodeMessage({ room = 0, src = 0, msgId = 0, flags = 0, blob } 
 export const textBytes = (s) => enc.encode(String(s ?? ""));
 export const bytesText = (b) => { try { return dec.decode(b); } catch { return ""; } };
 
+// encodeAckPayload({targetSrc,targetMsgId,total,have}) -> Uint8Array, the body of a FLAG_ACK chunk. It reports,
+// to the ORIGINAL sender (targetSrc) about its message (targetMsgId), which of the `total` fragments the acker
+// holds — `have` is the list/set of frag indices, packed LE into a bitmap (bit f of byte f>>3). A full ack sets
+// every bit; the bitmap exists so a future authenticated per-fragment ack can name exactly what is missing.
+export function encodeAckPayload({ targetSrc = 0, targetMsgId = 0, total = 1, have = [] } = {}) {
+  const nb = Math.ceil(total / 8);
+  const out = new Uint8Array(7 + nb);
+  out[0] = targetSrc & 0xff; out[1] = (targetSrc >>> 8) & 0xff; out[2] = (targetSrc >>> 16) & 0xff; out[3] = (targetSrc >>> 24) & 0xff;
+  out[4] = targetMsgId & 0xff; out[5] = (targetMsgId >>> 8) & 0xff;
+  out[6] = total & 0xff;
+  for (const f of have) if (f >= 0 && f < total) out[7 + (f >> 3)] |= 1 << (f & 7);
+  return out;
+}
+
+// decodeAckPayload(bytes) -> {targetSrc,targetMsgId,total,have:Set} | null. Null on a runt / nonsense total, the
+// same "quietly not ours" contract as decodeChunk — the payload comes off the air.
+export function decodeAckPayload(b) {
+  if (!b || b.length < 7) return null;
+  const total = b[6];
+  if (total < 1) return null;
+  const nb = Math.ceil(total / 8);
+  if (b.length < 7 + nb) return null;
+  const have = new Set();
+  for (let f = 0; f < total; f++) if (b[7 + (f >> 3)] & (1 << (f & 7))) have.add(f);
+  return {
+    targetSrc: (b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0,
+    targetMsgId: b[4] | (b[5] << 8),
+    total,
+    have,
+  };
+}
+
 // Deduper — a bounded set of (src,msgId,frag) keys. seen(k) marks and returns whether the key was ALREADY
 // present, so the carrier's N repeats collapse to one delivered chunk. Bounded because the medium never
 // stops: oldest keys evict FIFO past `capacity`.
@@ -151,5 +188,15 @@ export class Reassembler {
     const blob = new Uint8Array(size);
     let o = 0; for (const f of rec.frags) { blob.set(f, o); o += f.length; }
     return { src, msgId, blob, flags: rec.flags };
+  }
+
+  // progress(src,msgId) -> { total, have:number[] } for a message still being assembled, else null (unknown or
+  // already completed+evicted). Lets the session report an in-flight partial without owning the frag bookkeeping.
+  progress(src, msgId) {
+    const rec = this.parts.get(this.key(src, msgId));
+    if (!rec) return null;
+    const have = [];
+    for (let i = 0; i < rec.total; i++) if (rec.frags[i]) have.push(i);
+    return { total: rec.total, have };
   }
 }

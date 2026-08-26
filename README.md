@@ -101,6 +101,26 @@ Give the agent a **floor it cannot fall through:**
 
 The 75-app farm is the proof, and doubles as the regression suite for the runtime itself.
 
+## The process — author → gate → ship
+
+Every app walks the same line. An author (a model, a script, or a human) writes only the declarative half;
+the runtime and the gates do the rest, and **a red gate stops the change**. The whole floor runs on a phone
+in about 25 seconds; the real-browser matrix runs in CI on every push. Deployment assembles a static site and
+publishes it — no server the README needs to name.
+
+```mermaid
+flowchart LR
+  spec["spec.json + i18n"] --> adapter["adapter<br/>data.js · view.js · stream.js"]
+  adapter --> scaffold["scaffold<br/>index · manifest · sw · README"]
+  scaffold --> gate{{"13 gates · ~25s on a phone<br/>validate · noundef · preflight · unit<br/>a11y · viewport matrix · e2e · sw · readme"}}
+  gate -->|red| blocked["blocked — nothing ships"]
+  gate -->|green| ship["build dist → publish static site"]
+```
+
+The gate is a closed set of nodes, run concurrently — including the docs: `sw` regenerates each app's offline
+precache from the real import graph, and **`readme` regenerates each app's one-screen page from its spec + copy**,
+so neither can drift from the app it describes. Adding a check to the process is adding a node, not a habit.
+
 ## The gate (this is the wedge)
 
 Every changed app is run through a real browser (Astral + Chromium + axe-core) across its **loading,
@@ -255,6 +275,14 @@ code:** it is browser-native ESM (Preact + htm + nanostores) from a CDN import m
 DaisyUI, set in the Geist superfamily. Deployment assembles `dist/` and generates icons and precache
 manifests, but nothing is bundled or transpiled.
 
+```mermaid
+flowchart LR
+  SP["spec.json<br/>tabs · cards · i18n"] --> RT
+  AD["adapter<br/>data.js · view.js · stream.js"] --> RT
+  RT["verified runtime · /_rt<br/>5 families · UI kit · design tokens"] --> OUT["installable PWA<br/>accessible · responsive · offline · routed"]
+  RT -. "a capability an app asks for" .-> CAP["sensors · camera · audio<br/>WebUSB · storage · gestures · AI"]
+```
+
 ### The design system is enforced, not documented
 
 A style guide an agent can ignore is a style guide that drifts. So the material is systemic and the gate
@@ -308,8 +336,11 @@ anything.
 # scaffold a new app from a spec + i18n you (or an agent) authored
 deno run -A packages/gen/scaffold.mjs apps/myapp
 
-# the full local gate — the 8n8 `gates` flow: ten independent nodes, run concurrently, every failure
-# reported in one round. Runs on a phone, ~16s warm (the old sequential chain took 45s).
+# (re)generate every app's one-screen README from its spec + i18n (a gate node — --check fails on drift)
+deno run -A deploy/readme.mjs
+
+# the full local gate — the 8n8 `gates` flow: thirteen independent nodes, run concurrently, every failure
+# reported in one round. Runs on a phone, ~25s (the old sequential chain took 45s).
 deno task gates
 
 # the pipeline itself: every node, script vs agent hand-off, and how much of it no longer needs a model

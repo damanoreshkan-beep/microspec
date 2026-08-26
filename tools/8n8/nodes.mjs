@@ -165,6 +165,12 @@ export const NODES = [
     run: () => ["deno", "run", "-A", "deploy/sw.mjs", "--check"],
   },
   {
+    id: "readme", kind: "script", phase: "gate", needs: ["scaffold"], scope: "farm", frozen: "2026-08-26",
+    why: "Each app's README is a one-screen card generated from its spec + i18n. Change the app's copy and " +
+      "the page drifts, so the regeneration is a gate: --check fails when a README no longer matches its app.",
+    run: () => ["deno", "run", "-A", "deploy/readme.mjs", "--check"],
+  },
+  {
     id: "counts", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-07-09",
     why: "App-count claims in the docs, checked against the directory. Prose rots; this makes it fail.",
     run: () => ["deno", "run", "-A", "deploy/counts.mjs", "--check"],
@@ -249,7 +255,7 @@ export function topo(nodes = NODES) {
 // The named flows. A flow is a SET of target nodes; the runner pulls in their dependencies.
 export const FLOWS = {
   // everything runnable on this device, no network, no Chromium — the pre-push floor
-  gates: ["validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "counts"],
+  gates: ["validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
   // The authoring flow, now genuinely executable: the briefed agent nodes spawn a headless CLI, each is
   // gated by its own deterministic node the moment it returns, and scaffold turns the result into a
   // runnable app. `ideate` is absent on purpose — wanting an app is the one input a pipeline cannot supply.

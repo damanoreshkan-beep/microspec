@@ -90,6 +90,38 @@ export default [
     },
   },
   {
+    name: "звук: аркуш відкривається, слайдер гучності є, Back закриває", run: async (h) => {
+      await ready(h);
+      await h.tap("[data-sound]"); await h.wait(300);
+      h.expect((await h.prop("#sound", "open")) === true, "аркуш звуку не відкрився");
+      h.expect((await h.count("[data-vol-slider] input[type=range]")) === 1, "немає слайдера гучності");
+      await h.back(); await h.wait(300);
+      h.expect((await h.prop("#sound", "open")) !== true, "Back не закрив аркуш звуку");
+    },
+  },
+  {
+    // під гейтом сесія — мок (auth.js MOCK_SESSION) і синк — мок (/_rt/sync.js): 2 пристрої, пір грає
+    // groovesalad. Аркуш мусить показати ЗАПОВНЕНИЙ стан — кімнату і рядок піра з кнопкою паузи.
+    name: "синк: мок-кімната з піром, дзеркала data-sync/data-peers", run: async (h) => {
+      await ready(h);
+      for (let i = 0; i < 20; i++) { if ((await h.attr(wrap, "data-sync")) === "on") break; await h.wait(200); }
+      h.expect((await h.attr(wrap, "data-sync")) === "on", "синк не увімкнувся під гейтом");
+      h.expect((await h.attr(wrap, "data-peers")) === "2", "у мок-кімнаті не 2 пристрої");
+      await h.tap("[data-sound]"); await h.wait(300);
+      h.expect((await h.attr("[data-peer]", "data-peer")) === "live", "рядок піра не показує live");
+      h.expect((await h.count("[data-peer-toggle]")) === 1, "немає кнопки пауза/грати для піра");
+      await h.back(); await h.wait(200);
+    },
+  },
+  {
+    name: "профіль: картка акаунта присутня (вхід — системний)", run: async (h) => {
+      await h.click('[data-tab="me"]'); await h.wait(200);
+      // картка лінива (AccountSlot імпортує account.js) — чекаємо на неї, не на таймер
+      for (let i = 0; i < 20; i++) { if ((await h.count("[data-account]")) === 1) break; await h.wait(200); }
+      h.expect((await h.count("[data-account]")) === 1, "немає картки акаунта у профілі");
+    },
+  },
+  {
     name: "PWA: профіль → модалка встановлення, Back закриває", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click("#p-install"); await h.wait(150);

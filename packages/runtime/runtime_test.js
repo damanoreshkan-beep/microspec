@@ -84,6 +84,7 @@ import "./tests/spectrum_test.js";
 import "./tests/swarm_test.js";
 import "./tests/sweep_test.js";
 import "./tests/sw_test.js";
+import "./tests/sync_test.js";
 import "./tests/synastry_test.js";
 import "./tests/tarot_test.js";
 import "./tests/theme_test.js";

@@ -164,6 +164,47 @@ while the WebView renderer has its own priority — and `onRenderProcessGone`, b
 promise that the renderer survives. Chromium already requests Android audio focus for HTML media itself
 (`AudioFocusDelegate`), so the shell must NOT request a second one.
 
+## Addendum 2026-08-26 — login + cross-device control sync over wss (§6)
+
+Owner ask: "add login and sync controls wss sound volume play". Read: sign-in, a volume control, and the
+sound controls (play/pause · volume) synced across the user's devices over a WebSocket. Facts below measured
+on 2026-08-26 unless named otherwise.
+
+- **Login is systemic, not app work.** `profile.account: "any"` in spec.json renders the runtime's Account
+  card (render.js:447 `AccountSlot`); `S.screen.set("signin")` opens the systemic wall; `session` atom +
+  `restore()` live in `/_rt/auth.js`. Under `gate` restore() seeds `MOCK_SESSION` — no network. VERIFIED in
+  source (auth.js:91, render.js:427-461).
+- **The sid is stateless and verifiable server-side** — AES-GCM-sealed record, `whoami(sid)` returns a
+  stable `{ id, login, provider }` for BOTH providers (github.js:216; Google opens locally, GitHub hits
+  `/user` cached 15 min). Room key for sync = `provider:id`. VERIFIED in edge source.
+- **nginx does NOT pass a WebSocket today.** `location ^~ /feed` in `/etc/nginx/sites-available/dreamstudio`
+  has no `proxy_http_version 1.1`, no `Upgrade`/`Connection` headers (read over ssh 2026-08-26) — the
+  handshake dies at nginx. `/etc/nginx` is sudo territory → the fix ships as an owner-run snapshot-guarded
+  script (`microspec-edge/vps/enable-sync-ws.sh`), a dedicated `location = /feed/sync` (exact match beats
+  `^~ /feed`). Until the owner runs it the client must FAIL OPEN: sync off, player untouched.
+- **Keepalive arithmetic.** `Deno.upgradeWebSocket` pings the client at `idleTimeout` (default **30 s**,
+  read from `deno types` on this box) and closes on a missed pong — that traffic also resets nginx's
+  `proxy_read_timeout`, so the location block carries 90 s (3 missed pings) and no client-side ping exists.
+- **The sealed tunnel does not cover a WebSocket** (sealedfetch wraps `fetch` only) and cannot — a ws is not
+  a POST. The sid therefore rides the FIRST FRAME, never the URL (nginx logs URLs). TLS carries the rest.
+  Origin is checked server-side against `ALLOW_ORIGIN` — a browser does not CORS-guard ws.
+- **Client ws pattern exists in the farm**: `apps/crypto/stream.js` — reconnect on close (no auto-reconnect
+  in the API), `pagehide` teardown, steady flush. Reused shape, plus capped backoff.
+- **Volume**: the element ramps must TARGET the user volume, not 1 — `ramp(a, 0, vol())`, reconnect starts
+  at `vol()`. iOS ignores `.volume` (§2, unchanged) — the slider is honest there about the cut only.
+- **Semantics chosen (decision, closed): remote control, not multi-room.** Devices mirror STATE for display
+  and exchange COMMANDS (`play`/`pause`/`vol`); a local transport press stays local; volume is one
+  user-level value — the slider sets local and broadcasts. Full mirror (station+play everywhere) would play
+  the same stream unsynchronised on two speakers — echo, not a feature.
+- **Server is a pure relay** on core: in-memory `Map room → {socks, lastState}`, no DB, cap 8 sockets/room,
+  4 KB/frame, room state handed to a joiner so a fresh device shows the peer instantly.
+
+## UNVERIFIED (§6)
+
+- That nginx's `limit_conn feedconn` zone tolerates long-lived ws alongside normal /feed traffic in
+  practice (24/IP should be plenty; watch after enabling).
+- Real handshake through the public URL — blocked on the owner's nginx script by design.
+
 ## Addendum 2026-08-20b — it was our own fade, not Android
 
 The background service and the media session landed, and the owner reported the SAME symptom: minimised,

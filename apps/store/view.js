@@ -8,7 +8,6 @@ import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
 import { Sheet, Segmented } from "/_rt/ui.js";
 import { collection } from "/_rt/db.js";
-import { iconTint } from "/_rt/colour.js";
 import apps from "./apps.json" with { type: "json" };
 
 const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls || ""} style=${style || ""}></iconify-icon>`;
@@ -33,7 +32,7 @@ const CATS = ["science", "feeds", "tools", "sound", "hackrf", "creative", "money
 const catKey = (c) => "cat" + c[0].toUpperCase() + c.slice(1);
 
 export function store({ S, openScreen, closeScreen }) {
-  const t = useStore(S.t), screen = useStore(S.screen), theme = useStore(S.theme), locale = useStore(S.locale);
+  const t = useStore(S.t), screen = useStore(S.screen), locale = useStore(S.locale);
   // The tile text is the APP's string, not the store's, so it cannot live in this app's dict — the manifest
   // carries every locale and the view picks one. Without this the chrome switched to English and sixty tiles
   // stayed Ukrainian, which is the farm's only surface with no locale parity.
@@ -42,14 +41,9 @@ export function store({ S, openScreen, closeScreen }) {
   // The manifest bakes ONE order (uk-collated), which is the wrong alphabet the moment the names change
   // language — so the sort belongs to the render, beside the names it sorts.
   const byName = (x, y) => nameOf(x).localeCompare(nameOf(y), locale);
-  // `theme` is subscribed to for the RE-RENDER; the boolean is read off the DOM, which is the only source
-  // that knows the theme actually being painted. `?theme=light` (the taste gate's override) sets
-  // data-theme WITHOUT writing S.theme — deliberately, so a shared link can't change someone's setting —
-  // so keying off the atom drew 60 brand-dark tiles onto a light page in every light-theme screenshot,
-  // i.e. the review tool was lying about the one app whose whole surface is tiles. gsmscan already read
-  // the DOM for exactly this reason. With no override the two agree, so real users are unaffected.
-  void theme;
-  const dark = !(typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light"));
+  // Tiles are now NOIR — one ground, ink art, neon only as accent — so they follow the theme through the CSS
+  // tokens (base-100 / base-content) with no JS re-tint and no need to read data-theme here. The whole grid
+  // recolours on a theme switch for free, which is the point of moving the colour into tokens.
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");   // active category chip; "all" shows every section
   const [seen, setSeen] = useState(null);   // { id: version } last opened at (null while loading from IndexedDB)
@@ -70,7 +64,7 @@ export function store({ S, openScreen, closeScreen }) {
   const badgeOf = (a) => (!seen || !fresh ? null : fresh.has(a.id) && !(a.id in seen) ? "new" : (a.id in seen) && seen[a.id] !== a.version ? "upd" : null);
   const installed = (a) => !!seen && a.id in seen;   // opened at least once = the store's actionable "installed" (no cross-origin install API)
   const launch = (a) => { SEEN.put(a.id, { v: a.version }).catch(() => {}); setSeen((s) => ({ ...(s || {}), [a.id]: a.version })); try { window.open(appUrl(a.id), "_blank", "noopener"); } catch { location.assign(appUrl(a.id)); } };
-  const tag = (b, sm) => b === "new" ? html`<span class=${`badge badge-primary ${sm ? "badge-sm" : "badge-xs"} font-bold px-1 leading-none`}>${T(t, "newBadge")}</span>` : b === "upd" ? html`<span class=${`badge badge-warning ${sm ? "badge-sm" : "badge-xs"} font-bold px-1 leading-none`}>${T(t, "updBadge")}</span>` : null;
+  const tag = (b, sm) => b === "new" ? html`<span class=${`badge badge-secondary ${sm ? "badge-sm" : "badge-xs"} font-bold px-1 leading-none`}>${T(t, "newBadge")}</span>` : b === "upd" ? html`<span class=${`badge badge-warning ${sm ? "badge-sm" : "badge-xs"} font-bold px-1 leading-none`}>${T(t, "updBadge")}</span>` : null;
 
   // ── per-app description sheet (history-backed via S.screen: Back closes it) ──
   // The kit's Sheet, not a hand-rolled full-screen overlay: it owns the shell (drag-to-dismiss, title row,
@@ -79,18 +73,22 @@ export function store({ S, openScreen, closeScreen }) {
   // are mounted conditionally, so `#open-app` genuinely leaves the DOM when the sheet is closed.
   const sel = screen ? apps.find((a) => a.id === screen) : null;
   const detail = html`<${Sheet} id="appsheet" open=${!!sel} onClose=${closeScreen} title=${sel ? nameOf(sel) : ""}>
-    ${sel ? (() => { const it = iconTint(sel.bg, sel.fg, dark), b = badgeOf(sel); return html`<div class="flex flex-col items-center gap-5 py-1 text-center">
-      ${/* same tile geometry as the grid, badge in the same corner — one representation of "new" per app */""}
-      <div class="relative w-24 h-24 rounded-[24%] flex items-center justify-center sf-e3 shrink-0" style=${`background:${it.tile}`}>
-        ${AppArt(sel, it.glyph, "3rem")}
-        ${b ? html`<span class="absolute top-1.5 right-1.5">${tag(b, true)}</span>` : null}
+    ${sel ? (() => { const b = badgeOf(sel); return html`<div class="flex flex-col items-center gap-5 py-1 text-center">
+      ${/* The one featured moment: a noir tile lit from behind by the single neon accent — a soft halo, not a
+            coloured fill. Ink art on the noir ground; badge in the same corner the grid uses. */""}
+      <div class="relative shrink-0">
+        <div class="absolute inset-0 rounded-[24%] blur-2xl opacity-45" style="background:var(--app-accent)" aria-hidden="true"></div>
+        <div class="relative w-24 h-24 rounded-[24%] flex items-center justify-center bg-base-100 sf-e3">
+          ${AppArt(sel, "var(--color-base-content)", "3rem")}
+          ${b ? html`<span class="absolute top-1.5 right-1.5">${tag(b, true)}</span>` : null}
+        </div>
       </div>
       <p class="text-base-content/70 leading-relaxed break-words">${taglineOf(sel)}</p>
       ${/* Disclosed BEFORE the tap, not after. Six apps open a HackRF One over WebUSB; without one their
             entire surface is a connect screen, and finding that out by launching is the store failing at
             its one job. Driven by the manifest's `needs`, so a future USB/serial app inherits it. */""}
       ${(sel.needs || []).includes("usb") ? html`<div data-needs-device class="flex items-center gap-2 text-sm text-warning bg-warning/10 rounded-2xl px-3 py-2">${Icon("lucide:usb", "shrink-0")}<span>${T(t, sel.deviceNote || "needsDeviceHackrf")}</span></div>` : null}
-      <button id="open-app" class="btn btn-primary btn-lg rounded-2xl gap-2 w-full max-w-xs" onClick=${() => launch(sel)}>${Icon("lucide:external-link")}${T(t, "openApp")}</button>
+      <button id="open-app" class="btn btn-secondary btn-lg rounded-2xl gap-2 w-full max-w-xs" onClick=${() => launch(sel)}>${Icon("lucide:external-link")}${T(t, "openApp")}</button>
       <div class="text-xs text-base-content/50 tabular-nums flex items-center gap-1.5">v${sel.version || "1.0"}${b === "upd" ? html`<span class="text-warning font-medium">· ${T(t, "newVersion")}</span>` : null}</div>
     </div>`; })() : null}
   <//>`;
@@ -98,11 +96,13 @@ export function store({ S, openScreen, closeScreen }) {
   // ── search + category chips + sectioned icon grid ──
   // Tap: an app you've already opened launches straight away (no detail sheet); one you haven't opens its
   // description first, so the detail sheet stays a discovery surface. Installed apps carry a quiet corner check.
-  const card = (a) => { const it = iconTint(a.bg, a.fg, dark), b = badgeOf(a), inst = installed(a); return html`<button data-app=${a.id} aria-label=${nameOf(a)} class="group flex flex-col items-center gap-1.5 min-w-0" onClick=${() => (inst ? launch(a) : openScreen(a.id))} key=${a.id}>
-    <div class="relative aspect-square w-full rounded-[26%] flex items-center justify-center sf-e2 transition-transform duration-150 group-active:scale-90" style=${`background:${it.tile}`}>
-      ${AppArt(a, it.glyph, "1.9rem")}
+  const card = (a) => { const b = badgeOf(a), inst = installed(a); return html`<button data-app=${a.id} aria-label=${nameOf(a)} class="group flex flex-col items-center gap-1.5 min-w-0" onClick=${() => (inst ? launch(a) : openScreen(a.id))} key=${a.id}>
+    ${/* Noir tile, ink art. Apple press feedback lives on pointer-down (:active), 1:1 and instant: the tile
+          sinks and the single neon accent rings + glows it — the only place colour touches the grid. */""}
+    <div class="relative aspect-square w-full rounded-[26%] flex items-center justify-center bg-base-100 sf-e2 transition-[transform,box-shadow] duration-150 group-active:scale-90 group-active:shadow-[0_0_0_2px_var(--app-accent),0_10px_32px_-8px_var(--app-accent)]">
+      ${AppArt(a, "var(--color-base-content)", "1.9rem")}
       ${b ? html`<span class="absolute top-1 right-1">${tag(b)}</span>`
-          : inst ? html`<span data-installed class="absolute bottom-1 right-1 grid place-items-center w-[18px] h-[18px] rounded-full bg-base-100 sf-e2" title=${T(t, "installed")}>${Icon("lucide:check", "text-[0.66rem] text-success")}</span>` : null}
+          : inst ? html`<span data-installed class="absolute bottom-1 right-1 grid place-items-center w-[18px] h-[18px] rounded-full bg-base-300 sf-e2" title=${T(t, "installed")}>${Icon("lucide:check", "text-[0.66rem] text-[var(--app-accent)]")}</span>` : null}
     </div>
     <div class="text-[0.72rem] leading-tight text-center line-clamp-2 break-words w-full text-base-content/90">${nameOf(a)}</div>
   </button>`; };

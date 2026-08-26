@@ -22,7 +22,10 @@ import { Scramble } from "/_rt/skeleton.js";
 import { isGate, MOCK, gate } from "/_rt/gate.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const ACCENT = "#34d399";
+// The trace + points are MARKS (canvas fills/strokes), so they carry the one farm accent — read the token,
+// never a hardcoded hue. Fixed at load: --app-accent is the same neon in both themes. Falls back for the
+// preflight stub where getComputedStyle has no real document.
+const ACCENT = (() => { try { return getComputedStyle(document.documentElement).getPropertyValue("--app-accent").trim() || "#C13BFF"; } catch { return "#C13BFF"; } })();
 // a deterministic sample path so the gate/mock sees the live layout (headless has no GPS)
 const SAMPLE = [{ lat: 50.4501, lng: 30.5234, accuracy: 8 }, { lat: 50.4509, lng: 30.5240, accuracy: 8 }, { lat: 50.4512, lng: 30.5258, accuracy: 8 }, { lat: 50.4506, lng: 30.5266, accuracy: 8 }];
 const SAMPLE_CUR = { lat: 50.4500, lng: 30.5270, accuracy: 6, t: 0 };
@@ -220,7 +223,7 @@ export function ruler({ S, toast }) {
         </div>
         <div class="text-right shrink-0">
           <div class="text-[0.62rem] font-mono uppercase text-muted">${live != null ? T(t, "live") : T(t, "points")}</div>
-          <div class="text-lg font-semibold tabular-nums" style="color:light-dark(#0b6e4a,#34d399)">${live != null ? fmt(live) : String(pts.length)}</div>
+          <div class="text-lg font-semibold tabular-nums">${live != null ? fmt(live) : String(pts.length)}</div>
         </div>
       </div>
       <div class="flex items-center justify-between gap-2 text-xs px-1 min-h-4">

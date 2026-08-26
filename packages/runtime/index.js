@@ -74,13 +74,10 @@ export function start(spec, arg2) {
   applyTheme(urlTheme || S.theme.get());
   S.theme.listen((t) => applyTheme(urlTheme || t));
 
-  // The app's own hue, published as ONE token the shared UI kit reads (--app-accent in theme.css). Each
-  // app in this farm has an identity colour, but it used to exist only in brand.json — a build input for
-  // the icon generator — so it reached the launcher tile and stopped there, and every screen inside every
-  // app was the same grey. Declaring it in the spec puts it in the runtime with no extra request and no
-  // per-app CSS. It is a MARK colour (dots, rings, fills, glow); the kit never puts text or text-bearing
-  // backgrounds on it, so an arbitrary brand hex can't break contrast in either theme.
-  if (spec.accent) document.documentElement.style.setProperty("--app-accent", spec.accent);
+  // ONE farm accent — the noir-neon. The farm used to give each app its own hue (spec.accent, written here);
+  // the design now speaks a SINGLE accent across every app, so the per-app override is gone and --app-accent
+  // stays the literal declared once in theme.css. spec.accent lives on only as the icon generator's input.
+  // It is a MARK colour (dots, rings, fills, glow); the kit never puts text or text-bearing backgrounds on it.
 
   // <html lang> follows the UI locale. Every app's index.html ships lang="uk" hardcoded, so switching to
   // English left the document still declaring Ukrainian — a screen reader then pronounces English text

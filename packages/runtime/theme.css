@@ -37,7 +37,10 @@
       The control floor stays ≥36px (WCAG 2.2 target-size is 24px) even in the tightest step.
    ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 :root {
-  --app-accent: var(--color-secondary);
+  /* ONE farm accent — noir neon (violet→magenta). Was per-app (spec.accent, written at boot); the farm now
+     speaks a single accent, so this is the literal the runtime no longer overrides. A hex, not var(--color-
+     secondary), so getComputedStyle("--app-accent") (render.js) reads a real colour, not an unresolved var(). */
+  --app-accent: #C13BFF;
   --app-tint: color-mix(in oklch, var(--app-accent) 16%, transparent);
 
   --ms-gap: 0.75rem;     /* rhythm between blocks */
@@ -319,11 +322,11 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   /* base-100 === base-200 ON PURPOSE. Neumorphism's premise is that a raised object is the PAGE extruded,
      not a lighter panel laid on top — the moment a card is a different tone, the shadows read as a drop
      shadow under a rectangle. base-300 is the one step down, kept for borders and the deepest recesses. */
-  --color-base-100: #2A2A2E; --color-base-200: #2A2A2E; --color-base-300: #212125;
+  --color-base-100: #2A2A2E; --color-base-200: #2A2A2E; --color-base-300: #1A1A1F;
   --color-base-content: #EDEDF0;
   --color-primary: #EDEDF0;   --color-primary-content: #2A2A2E;   /* ink = brand */
-  --color-secondary: #8AB4F8; --color-secondary-content: #10121A; /* the system hue — CTA + default app accent */
-  --color-accent: #8AB4F8;    --color-accent-content: #10121A;
+  --color-secondary: #C13BFF; --color-secondary-content: #14060F; /* NOIR NEON — the one farm accent (violet→magenta), CTA + default app accent */
+  --color-accent: #C13BFF;    --color-accent-content: #14060F;
   --color-neutral: #34343A;   --color-neutral-content: #EDEDF0;
   --color-success: #7FCF9B;   --color-success-content: #06180E;
   --color-error: #F08A82;     --color-error-content: #2A0A08;
@@ -352,8 +355,8 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --color-base-100: #EEEEF1; --color-base-200: #EEEEF1; --color-base-300: #DCDCE2;
   --color-base-content: #0A0A0C;
   --color-primary: #0A0A0C;   --color-primary-content: #EEEEF1;
-  --color-secondary: #1F5FC0; --color-secondary-content: #FFFFFF; /* the system hue — CTA + default app accent */
-  --color-accent: #1F5FC0;    --color-accent-content: #FFFFFF;
+  --color-secondary: #C13BFF; --color-secondary-content: #14060F; /* NOIR NEON — the one farm accent, same hue as dark so identity is single */
+  --color-accent: #C13BFF;    --color-accent-content: #14060F;
   --color-neutral: #1E1E22;   --color-neutral-content: #EEEEF1;
   /* deepened past the 4.5 line on purpose: at their "natural" lightness these land at ~4.6 on base-100,
      and any component that puts opacity on the text eats that margin and fails axe. */

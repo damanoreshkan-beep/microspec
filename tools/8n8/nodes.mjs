@@ -127,6 +127,12 @@ export const NODES = [
     run: () => ["deno", "run", "-A", "deploy/sw.mjs", "--check"],
   },
   {
+    id: "readme", kind: "script", phase: "gate", needs: ["scaffold"], scope: "farm", frozen: "2026-08-26",
+    why: "Each app's README is a one-screen card generated from its spec + i18n. Change the app's copy and " +
+      "the page drifts, so the regeneration is a gate: --check fails when a README no longer matches its app.",
+    run: () => ["deno", "run", "-A", "deploy/readme.mjs", "--check"],
+  },
+  {
     id: "counts", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-07-09",
     why: "App-count claims in the docs, checked against the directory. Prose rots; this makes it fail.",
     run: () => ["deno", "run", "-A", "deploy/counts.mjs", "--check"],
@@ -203,7 +209,7 @@ export function topo(nodes = NODES) {
 }
 
 export const FLOWS = {
-  gates: ["validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "counts"],
+  gates: ["validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
   author: ["research", "spec", "i18n", "view", "scaffold"],
   ship: ["push"],
   all: NODES.map((n) => n.id),

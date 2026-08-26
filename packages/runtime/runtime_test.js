@@ -15,6 +15,7 @@ import "./tests/blesig_test.js";
 import "./tests/burst_test.js";
 import "./tests/candidates_test.js";
 import "./tests/chan433_test.js";
+import "./tests/channel_test.js";
 import "./tests/chat_test.js";
 import "./tests/chroma_test.js";
 import "./tests/codebreak_test.js";

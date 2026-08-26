@@ -33,15 +33,21 @@ let session = null, bot = null, me = 0;
 // monitor channel; only ch6 ships a bring-up blob today (5 GHz is a captured-blob away), so the Engineer picker
 // offers the rest as coming-soon.
 let radio = null;
-const $channel = atom(6);
+const $channel = atom(6);            // the CONFIRMED live monitor channel (starts at the ch6 bring-up)
+const $hop = atom("idle");           // idle | trying | dead | quiet — the last live-retune outcome, for the picker
 function getRadio() { if (!radio) radio = createRadio({ shell, channel: $channel.get(), onLog: log }); return radio; }
-// Switching channel means a different captured bring-up, which is a cold-chip operation — so drop the current
-// radio and ask for a replug; the next surface to open builds a fresh radio on the new channel.
-function setChannel(ch) {
+// A live retune (radio.hop) reprograms RR_CFGCH over USB — no cold replug — and only commits when RX confirms the
+// LO actually moved (a 20 MHz monitor hearing beacons in-band near ch). So the picker asks, then reflects truth:
+// $channel advances only on a confirmed hop; "dead" means this chip state won't retune from userspace, "quiet"
+// means the target had no beacons to confirm against. Never claims a channel it did not measure.
+async function applyHop(ch) {
   if (ch === $channel.get()) return;
-  $channel.set(ch);
-  if (radio) { try { radio.stop(); } catch { /* */ } radio = null; }
-  log("channel set to ch" + ch + " — cold-replug the adapter, then reopen a room or Nearby");
+  const r = radio;
+  if (!r || r.state !== "on") { $channel.set(ch); return; }   // not on air yet — the next attach brings up here
+  $hop.set("trying");
+  const status = await r.hop(ch);
+  if (status === "ok") { $channel.set(r.channel); $hop.set("idle"); }
+  else $hop.set(status === "dead" ? "dead" : "quiet");
 }
 
 const LS_KEY = "ax56chat:prefs";
@@ -193,7 +199,16 @@ export function logView({ S }) {
 
 // ---- Nearby: the passive 802.11 neighbourhood as a signal scope. Monitor RX hears every beacon + frame; we
 // place each device by SIGNAL (rings are dBm, never metres — RF honesty), routers vs clients by colour. ----
-const $nearby = atom([]), $scanning = atom(false), $sel = atom(null);
+const $nearby = atom([]), $scanning = atom(false), $sel = atom(null), $sweep = atom(false);
+// Auto-hop the 2.4 GHz plan so Nearby aggregates the whole band (airodump's channel hop), not just the bring-up
+// channel. Only meaningful on air; if the chip refuses a live retune the radio stops the sweep itself and the
+// tick below flips $sweep back. 2.4 GHz only by default — 5 GHz DFS is mostly silent and slows the cycle.
+const HOP24 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+function toggleSweep() {
+  const r = radio; if (!r || r.state !== "on") return;
+  if (r.hopping) { r.stopHop(); $sweep.set(false); }
+  else { r.startHop(HOP24, 600); $sweep.set(true); }
+}
 // One shared neighbourhood fed by ONE onUnits subscription, ref-counted so Nearby and Engineer can both read it
 // without double-counting frames. holdScan() attaches the radio + starts folding units in on the first holder,
 // and releases (auto-detaching the radio) when the last holder unmounts.
@@ -223,12 +238,16 @@ function seedNearbyDemo() {
 
 export function nearbyView({ S }) {
   const t = useStore(S.t);
-  const list = useStore($nearby), scanning = useStore($scanning), sel = useStore($sel), ch = useStore($channel);
+  const list = useStore($nearby), scanning = useStore($scanning), sel = useStore($sel), ch = useStore($channel), sweep = useStore($sweep);
   useEffect(() => {
     if (gate || !hasRf()) { seedNearbyDemo(); return; }
     const release = holdScan();
-    const tick = setInterval(() => $nearby.set(hood.list(Date.now())), 500);
-    return () => { clearInterval(tick); release(); };
+    const tick = setInterval(() => {
+      $nearby.set(hood.list(Date.now()));
+      // Follow the live channel + reflect a sweep the radio may have stopped on its own (chip refused a retune).
+      if (radio) { if (radio.channel !== $channel.get()) $channel.set(radio.channel); if (radio.hopping !== $sweep.get()) $sweep.set(radio.hopping); }
+    }, 500);
+    return () => { clearInterval(tick); if (radio) radio.stopHop(); $sweep.set(false); release(); };
   }, []);
   const aps = list.filter((d) => d.kind === "ap").length, clients = list.length - aps;
 
@@ -240,6 +259,9 @@ export function nearbyView({ S }) {
         <span class="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)] ${scanning ? "animate-pulse" : "opacity-40"}"></span>${T(t, "nearbyScan")}
       </span>
       <span class="text-muted">${T(t, "chShort")}${ch}</span>
+      ${hasRf() ? html`<button data-sweep onClick=${toggleSweep} disabled=${!scanning}
+        class=${`inline-flex items-center gap-1 uppercase tracking-wider px-1.5 py-0.5 rounded ${sweep ? "text-primary bg-primary/10" : "text-muted"} disabled:opacity-30`}>
+        <span class=${`w-1.5 h-1.5 rounded-full ${sweep ? "bg-primary animate-pulse" : "bg-base-content/30"}`}></span>${T(t, "nearbySweep")}</button>` : null}
       <span class="flex-1"></span>
       <span class="tabular-nums text-muted">${aps} ${T(t, "apsCount")} · ${clients} ${T(t, "clientsCount")}</span>
     </div>
@@ -277,18 +299,15 @@ const $traffic = atom({ frames: 0, tx: 0, nets: 0, strongest: null, occ: [] });
 const CH24 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];                  // 2.4 GHz (all)
 const CH5 = [36, 40, 44, 48, 149, 153, 157, 161, 165];                     // 5 GHz (non-DFS)
 const CHANNELS = [...CH24, ...CH5];                                        // the full band plan the stepper browses
-// The cold bring-up is a CAPTURED replay, not a per-channel tune — the shell ships ONE blob (dist/ax56/assets/
-// bringup.bin, ch6), so only ch6 truly brings up today. The rest are shown as coming-soon, never brought up;
-// as more blobs are captured they join this set and the stepper lights them up.
-const CH_OK = new Set([6]);
-const $selCh = atom(6);   // the channel the stepper is BROWSING (may be a coming-soon one); the LIVE monitor channel is $channel
-// stepChannel(dir) — browse one channel along the plan (clamped). A live channel (has a bring-up blob) is applied
-// as the monitor channel via setChannel; a coming-soon one is only shown, never brought up. dir is -1 / +1.
+// The chip is brought up cold ONCE (ch6 blob); every other channel is reached by a LIVE retune over USB
+// (applyHop -> radio.hop), confirmed by RX. So the stepper browses the whole plan and applies each selection live;
+// the confirmed live channel ($channel) is what lights up, and a retune the chip refuses is shown as such.
+const $selCh = atom(6);   // the channel the stepper is BROWSING; applied live and only confirmed onto $channel
 function stepChannel(dir) {
   const i = CHANNELS.indexOf($selCh.get());
   const c = CHANNELS[Math.min(CHANNELS.length - 1, Math.max(0, (i < 0 ? 0 : i) + dir))];
   $selCh.set(c);
-  if (CH_OK.has(c)) setChannel(c);
+  applyHop(c);
 }
 const HEALTHY = 0xc492537;
 const chBand = (c) => (c <= 14 ? "2.4 GHz" : "5 GHz");
@@ -331,7 +350,7 @@ function EngRow({ label, value, tone }) {
 
 export function engineerView({ S }) {
   const t = useStore(S.t);
-  const eng = useStore($eng), tr = useStore($traffic), ch = useStore($channel), selCh = useStore($selCh);
+  const eng = useStore($eng), tr = useStore($traffic), ch = useStore($channel), selCh = useStore($selCh), hop = useStore($hop);
   const rf = hasRf();
   useEffect(() => {
     if (gate || !rf) { seedEngDemo(); return; }
@@ -348,7 +367,7 @@ export function engineerView({ S }) {
 
   const healthy = eng.f0 === HEALTHY, on = eng.state === "on";
   const occMax = Math.max(1, ...tr.occ.map(([, n]) => n));
-  const selIdx = CHANNELS.indexOf(selCh), selLive = CH_OK.has(selCh);
+  const selIdx = CHANNELS.indexOf(selCh), isLive = selCh === ch;
 
   return html`<div class="flex flex-col gap-3 max-w-[560px] mx-auto w-full pb-4">
     <div class="rounded-2xl sf-e1 p-4 flex items-center gap-3">
@@ -384,21 +403,25 @@ export function engineerView({ S }) {
         <div class="flex-1 flex flex-col items-center gap-2 min-w-0">
           <div class="flex items-baseline gap-1.5">
             <span class="text-[0.55rem] font-mono uppercase text-muted">${T(t, "chShort")}</span>
-            <span class=${`text-3xl font-mono tabular-nums leading-none ${selLive ? "" : "text-muted"}`} data-ch=${selCh}>${selCh}</span>
-            ${selLive
+            <span class=${`text-3xl font-mono tabular-nums leading-none ${isLive ? "" : "text-muted"}`} data-ch=${selCh}>${selCh}</span>
+            ${isLive
               ? html`<span class="w-1.5 h-1.5 rounded-full bg-primary" aria-hidden="true"></span>`
-              : html`<span class="text-[0.5rem] font-mono uppercase text-muted border border-base-content/20 rounded px-1 py-0.5">${T(t, "engSoon")}</span>`}
+              : hop === "trying"
+              ? html`<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" aria-hidden="true"></span>`
+              : (hop === "dead" || hop === "quiet")
+              ? html`<span class="text-[0.5rem] font-mono uppercase text-muted border border-base-content/20 rounded px-1 py-0.5">${T(t, hop === "dead" ? "engChDead" : "engChQuiet")}</span>`
+              : null}
           </div>
           <div class="w-full flex items-center gap-[3px]" data-ch-track>
-            ${CHANNELS.map((c, i) => { const live = CH_OK.has(c), on = i === selIdx;
+            ${CHANNELS.map((c, i) => { const live = c === ch, on = i === selIdx;
               return html`<span key=${c}
-                class=${`h-1.5 flex-1 rounded-full ${on ? (live ? "bg-primary" : "bg-base-content/45") : live ? "bg-primary/45" : "bg-base-content/12"}`}></span>`; })}
+                class=${`h-1.5 flex-1 rounded-full ${on ? "bg-primary" : live ? "bg-primary/45" : "bg-base-content/12"}`}></span>`; })}
           </div>
         </div>
         <button data-ch-next aria-label=${T(t, "engChNext")} disabled=${selIdx >= CHANNELS.length - 1} onClick=${() => stepChannel(1)}
           class="btn btn-circle btn-ghost btn-sm shrink-0 disabled:opacity-30">${Icon("lucide:plus", "text-lg")}</button>
       </div>
-      <div class="text-[0.6rem] text-muted">${selLive ? T(t, "engChNote") : T(t, "engChSoonNote")}</div>
+      <div class="text-[0.6rem] text-muted">${T(t, hop === "dead" ? "engChDeadNote" : hop === "quiet" ? "engChQuietNote" : "engChNote")}</div>
     </div>
 
     <div class="rounded-2xl sf-e1 p-4 flex flex-col gap-3">

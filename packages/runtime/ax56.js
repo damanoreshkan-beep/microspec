@@ -37,6 +37,58 @@ export function parseRxFrames(rx) {
   return out;
 }
 
+// ── Channel retune (direct-RF, 8852a) ─────────────────────────────────────────────────────────────────────
+// The 8852a reaches its RF registers DIRECTLY (chip .read_rf/.write_rf = rtw89_phy_read_rf, rf_base_addr =
+// {0xc000, 0xd000}) — RF reg `a` on path p is BB reg base(p)+(a<<2), NOT the SWSI/_v1 path newer chips use.
+// setChannel walks rtw8852a_set_channel's minimal RX subset: bracket (ADC-off + BB-reset-off) → RR_CFGCH(0x18)
+// on both paths → band/sco BB regs → 20 MHz → bracket leave (BB-reset locks the new LO). RFK (IQK/DPK/TSSI) is
+// TX calibration and skipped for passive monitor RX. The CFGCH encoding is hardware-proven on the box:
+// ch11 → 0x0c0b (11 | BIT10 | BIT11), ch149 → 0x10d95 (0x95 | BIT16 | BIT8 | BIT10 | BIT11).
+const RF_BASE = [0xc000, 0xd000];                    // path A, path B
+const ctz = (m) => { let n = 0; if (!m) return 0; while (!(m & 1)) { m >>>= 1; n++; } return n; };
+
+// sco_mapping(central_ch) — R_FC0_BW GENMASK(6,0), from rtw8852a's sco table.
+export function scoMapping(ch) {
+  if (ch === 1) return 109; if (ch <= 6) return 108; if (ch <= 10) return 107; if (ch <= 14) return 106;
+  if (ch === 36 || ch === 38) return 51; if (ch <= 58) return 50; if (ch <= 64) return 49; if (ch === 100 || ch === 102) return 48;
+  if (ch <= 126) return 47; if (ch <= 151) return 46; if (ch <= 177) return 45; return 0;
+}
+
+// The channels a passive monitor can dwell on. 2.4 GHz first (where phones/IoT beacon densest), then the common
+// non-DFS 5 GHz set — DFS (52–144) is legal to listen on but usually silent, so it is opt-in per surface.
+export const CH_24 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+export const CH_5 = [36, 40, 44, 48, 149, 153, 157, 161, 165];
+
+// setChannel({ readReg, writeReg, ch, delay }) — retune to `ch` via the direct-RF recipe. readReg/writeReg are
+// INJECTED (radio.js backs them with the single-flight USB queue; tests back them with a register Map), so the
+// hardware sequence is one place and unit-testable with no adapter. Returns the RR_CFGCH value written to path A
+// (the hardware-proven channel encoding), for the confirm log. `delay` is the 40 ms the bracket needs on real
+// silicon between ADC-off and the frequency write; tests pass a no-op.
+export async function setChannel({ readReg, writeReg, ch, delay = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+  const is2g = ch <= 14;
+  const rmw = async (addr, mask, val) => { const v = (await readReg(addr)) >>> 0; await writeReg(addr, ((v & ~mask) | ((val << ctz(mask)) & mask)) >>> 0); };
+  const rfRead = async (p, a) => ((await readReg(RF_BASE[p] + (a << 2))) >>> 0) & 0xfffff;
+  const rfWrite = (p, a, v) => rmw(RF_BASE[p] + (a << 2), 0xfffff, v & 0xfffff);
+
+  await rmw(0x20fc, 0xff000000, 0xf); await rmw(0x0704, 0x2, 0); await delay(40);        // bracket enter (ADC off, BB reset off)
+  let cfgch = 0;
+  for (let p = 0; p < 2; p++) {                                                            // RR_CFGCH — the frequency, both paths
+    let rf = await rfRead(p, 0x18); rf &= ~0x303ff; rf |= ch; if (ch > 14) rf |= (1 << 16) | (1 << 8);
+    await rfWrite(p, 0x18, rf); if (p === 0) cfgch = rf;
+  }
+  await rmw(0x4644, 0xc0000000, is2g ? 1 : 0); await rmw(0x4718, 0xc0000000, is2g ? 1 : 0);  // ctrl_ch band
+  await rmw(0x4974, 0x7f, scoMapping(ch)); await rmw(0x4498, 0x40000000, is2g ? 1 : 0);
+  await rmw(0x4974, 0xc0000000, 0); await rmw(0x4978, 0x3000, 0); await rmw(0x4978, 0xf00, 0);  // ctrl_bw 20 MHz
+  const adc = [0x12d0, 0x32d0], wbadc = [0x12ec, 0x32ec];
+  for (let p = 0; p < 2; p++) {                                                            // bw_setting — 20 MHz bits on RF 0x18
+    await rmw(adc[p], 0x6000, 0); await rmw(wbadc[p], 0x30, 2);
+    let rf = await rfRead(p, 0x18); rf |= (1 << 11) | (1 << 10); await rfWrite(p, 0x18, rf);
+    if (p === 0) cfgch = rf;
+  }
+  await rmw(0x20fc, 0xff000000, 0); await rmw(0x0704, 0x2, 1);                             // bracket leave — BB reset locks the new LO
+  return cfgch >>> 0;
+}
+
 // openAndAttach — the adapter bring-up every RX/TX surface drives first: find the AX56, mode-switch it from its
 // storage personality (0bda:1a2b) to Wi-Fi (0b05:1997) if needed, then the native `rf.attach` (fwdl + monitor
 // calibration, COLD chip). Logs each step for the app's Log tab. Returns true only when the adapter is on air.

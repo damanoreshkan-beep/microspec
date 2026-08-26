@@ -52,7 +52,6 @@ export function start(spec, arg2) {
   applyTheme(urlTheme || S.theme.get());
   S.theme.listen((t) => applyTheme(urlTheme || t));
 
-  if (spec.accent) document.documentElement.style.setProperty("--app-accent", spec.accent);
 
   const applyLang = (l) => { try { document.documentElement.lang = l; } catch {  } };
   applyLang(S.locale.get());

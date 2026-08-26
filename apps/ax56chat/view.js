@@ -221,12 +221,6 @@ function seedNearbyDemo() {
   ]);
 }
 
-// signal (dBm) -> radius: strong near the centre, weak at the rim. Angle is a STABLE hash of the MAC — a fixed
-// seat on the scope, never a bearing (we have no direction). bars: a 0-4 strength read for the detail card.
-const rssiRadius = (dBm) => { const d = dBm == null ? -92 : dBm; const t = Math.max(0, Math.min(1, (-32 - d) / 60)); return 13 + t * 82; };
-const macAngle = (mac) => { let h = 2166136261; for (let i = 0; i < mac.length; i++) { h ^= mac.charCodeAt(i); h = (h * 16777619) >>> 0; } return (h % 3600) / 3600 * Math.PI * 2; };
-const sigBars = (dBm) => dBm == null ? 0 : dBm >= -52 ? 4 : dBm >= -64 ? 3 : dBm >= -76 ? 2 : 1;
-
 export function nearbyView({ S }) {
   const t = useStore(S.t);
   const list = useStore($nearby), scanning = useStore($scanning), sel = useStore($sel), ch = useStore($channel);
@@ -239,50 +233,40 @@ export function nearbyView({ S }) {
   const aps = list.filter((d) => d.kind === "ap").length, clients = list.length - aps;
 
   return html`<div class="h-full flex flex-col gap-2 max-w-[560px] mx-auto w-full pb-2">
-    <div class="shrink-0 flex items-center gap-2 px-1">
-      <span class="inline-flex items-center gap-1.5 text-[0.65rem] font-mono uppercase tracking-wider px-2 py-1 rounded-full text-primary bg-primary/10">
-        <span class="w-1.5 h-1.5 rounded-full bg-primary ${scanning ? "animate-pulse" : ""}"></span>${T(t, "nearbyScan")} ${T(t, "chShort")}${ch}
+    ${/* Terminal status line — airodump's header, not a radar: a live monospace table is what an RF operator
+          reads, and it is far lighter than a re-animated SVG scope on a busy channel. */""}
+    <div class="shrink-0 flex items-center gap-2 px-1.5 font-mono text-[0.66rem]">
+      <span class="inline-flex items-center gap-1.5 uppercase tracking-wider text-primary">
+        <span class="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)] ${scanning ? "animate-pulse" : "opacity-40"}"></span>${T(t, "nearbyScan")}
       </span>
+      <span class="text-muted">${T(t, "chShort")}${ch}</span>
       <span class="flex-1"></span>
-      <span class="font-mono text-xs tabular-nums text-muted">${aps} ${T(t, "apsCount")} · ${clients} ${T(t, "clientsCount")}</span>
+      <span class="tabular-nums text-muted">${aps} ${T(t, "apsCount")} · ${clients} ${T(t, "clientsCount")}</span>
     </div>
 
-    <div class="shrink-0 w-full h-[42vh] max-h-[380px] grid place-items-center" data-scope>
-      <svg viewBox="0 0 200 200" class="w-full h-full" onClick=${() => $sel.set(null)}>
-        ${[[-45], [-62], [-80]].map(([dBm]) => { const r = rssiRadius(dBm); return html`<g class="text-muted" opacity="0.28">
-          <circle cx="100" cy="100" r=${r} fill="none" stroke="currentColor" stroke-width="0.6" />
-          <text x="100" y=${100 - r + 3.4} text-anchor="middle" fill="currentColor" font-size="4.6" font-family="monospace">${dBm}</text>
-        </g>`; })}
-        ${scanning ? html`<circle cx="100" cy="100" fill="none" class="text-primary" stroke="currentColor" stroke-width="0.8">
-          <animate attributeName="r" values="6;92" dur="3.4s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.45;0" dur="3.4s" repeatCount="indefinite" />
-        </circle>` : null}
-        <circle cx="100" cy="100" r="3" class="text-primary" fill="currentColor" />
-        ${list.map((d) => { const r = rssiRadius(d.rssi), a = macAngle(d.mac), x = 100 + r * Math.cos(a), y = 100 + r * Math.sin(a);
-          const ap = d.kind === "ap", on = sel === d.mac;
-          return html`<g key=${d.mac} class=${`cursor-pointer ${ap ? "text-primary" : "text-muted"}`}
-            onClick=${(e) => { e.stopPropagation(); $sel.set(on ? null : d.mac); }}>
-            ${on ? html`<circle cx=${x} cy=${y} r=${ap ? 9 : 7} fill="none" stroke="currentColor" stroke-width="1" opacity="0.6" />` : null}
-            <circle cx=${x} cy=${y} r=${ap ? 5 : 3.2} fill="currentColor" />
-          </g>`; })}
-      </svg>
-    </div>
-
-    ${list.length ? html`<div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5 px-0.5" data-list>
-      ${list.map((d) => html`<button key=${d.mac} data-dev=${d.mac} onClick=${() => $sel.set(sel === d.mac ? null : d.mac)}
-        class=${`shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors ${sel === d.mac ? "bg-base-300" : "bg-base-200"}`}>
-        ${Icon(d.kind === "ap" ? "lucide:router" : "lucide:smartphone", `text-lg shrink-0 ${d.kind === "ap" ? "text-primary" : "text-muted"}`)}
-        <div class="min-w-0 flex-1">
-          <div class="text-sm truncate">${d.kind === "ap" ? (d.ssid || T(t, "hiddenNet")) : d.mac}</div>
-          <div class="font-mono text-[0.6rem] text-muted truncate">${d.kind === "ap" ? d.mac : T(t, "kindClient")}${d.channel ? ` · ${T(t, "chShort")}${d.channel}` : ""}</div>
+    ${list.length ? html`<div class="flex-1 min-h-0 overflow-auto rounded-2xl sf-inset" data-list data-scope>
+      <div class="font-mono text-[0.62rem] leading-[1.8] min-w-max">
+        <div class="flex gap-2.5 px-3 pt-2 pb-1 text-muted uppercase tracking-wider sticky top-0 bg-base-100 z-10">
+          <span class="w-9 text-right">PWR</span>
+          <span class="w-5 text-right">CH</span>
+          <span class="w-11 text-right">${T(t, "pktLabel")}</span>
+          <span class="w-[9.5rem]">BSSID</span>
+          <span>ESSID</span>
         </div>
-        <div class="flex items-end gap-2 shrink-0">
-          <div class="flex gap-0.5 items-end">${[1, 2, 3, 4].map((b) => html`<span class=${`w-1 rounded-sm ${b <= sigBars(d.rssi) ? "bg-primary" : "bg-base-content/15"}`} style=${`height:${3 + b * 2}px`}></span>`)}</div>
-          <span class="font-mono text-[0.65rem] tabular-nums text-muted w-9 text-right leading-none">${d.rssi == null ? "—" : d.rssi}</span>
-        </div>
-      </button>`)}
-    </div>` : html`<div class="flex-1 min-h-0 grid place-items-center text-muted px-6 text-center"><span class="text-sm">${T(t, "nearbyEmpty")}</span></div>`}
-    ${!hasRf() && list.length ? html`<div class="shrink-0 text-center text-[0.58rem] text-muted">${T(t, "nearbyDemo")}</div>` : null}
+        ${list.map((d) => { const on = sel === d.mac, ap = d.kind === "ap", strong = d.rssi != null && d.rssi >= -55;
+          return html`<button key=${d.mac} data-dev=${d.mac} onClick=${() => $sel.set(on ? null : d.mac)}
+            class=${`w-full flex gap-2.5 px-3 py-0.5 text-left border-l-2 ${on ? "border-[var(--app-accent)] bg-[var(--app-tint)]" : "border-transparent"}`}>
+            <span class=${`w-9 text-right tabular-nums ${strong ? "text-primary" : "text-muted"}`}>${d.rssi == null ? "—" : d.rssi}</span>
+            <span class="w-5 text-right tabular-nums text-muted">${d.channel ?? "·"}</span>
+            <span class="w-11 text-right tabular-nums text-muted">${d.count ?? 0}</span>
+            <span class=${`w-[9.5rem] truncate ${ap ? "" : "text-muted"}`}>${d.mac}</span>
+            <span class=${`truncate ${ap ? "" : "text-muted"}`}>${ap ? (d.ssid || T(t, "hiddenNet")) : T(t, "kindClient")}</span>
+          </button>`; })}
+      </div>
+    </div>` : html`<div class="flex-1 min-h-0 grid place-items-center px-6 text-center font-mono text-sm text-muted">
+      <span class="inline-flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)] animate-pulse"></span>${T(t, "nearbyEmpty")}</span>
+    </div>`}
+    ${!hasRf() && list.length ? html`<div class="shrink-0 text-center text-[0.58rem] text-muted font-mono">${T(t, "nearbyDemo")}</div>` : null}
   </div>`;
 }
 

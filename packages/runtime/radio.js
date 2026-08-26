@@ -5,7 +5,7 @@ import { parseRxUnits } from "./meshscan.js";
 const hex = (u) => Array.from(u, (x) => x.toString(16).padStart(2, "0")).join("");
 const fromHex = (h) => { const u = new Uint8Array((h && h.length ? h.length : 0) / 2); for (let i = 0; i < u.length; i++) u[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16); return u; };
 
-export function createRadio({ shell, channel = 6, onLog = () => {}, setTimer = setTimeout, clearTimer = clearTimeout, switchWaitMs = 1800, pollMs = 40 } = {}) {
+export function createRadio({ shell, channel = 6, onLog = () => {}, setTimer = setTimeout, clearTimer = clearTimeout, switchWaitMs = 1800, pollMs = 40, scanPollMs = 250 } = {}) {
   let state = "off";                 
   let attaching = null, timer = null;
   const frameCbs = new Set(), unitCbs = new Set();
@@ -27,18 +27,20 @@ export function createRadio({ shell, channel = 6, onLog = () => {}, setTimer = s
 
   async function loop() {
     if (state !== "on") return;
-    if (frameCbs.size || unitCbs.size) {
+    const wantFrames = frameCbs.size > 0;   
+    const wantUnits = unitCbs.size > 0;      
+    if (wantFrames || wantUnits) {
+      const length = wantFrames ? 16384 : 4096;
+      const rtimeout = wantFrames ? 150 : 60;
       try {
-        const r = await usb(() => shell.call("usb.bulk", { ep: 0x84, length: 16384, timeout: 150 }));
+        const r = await usb(() => shell.call("usb.bulk", { ep: 0x84, length, timeout: rtimeout }));
         if (r && r.data) {
           const rx = fromHex(r.data);
-          const frames = parseRxFrames(rx); stats.frames += frames.length;
-          if (frameCbs.size) for (const f of frames) for (const cb of frameCbs) cb(f);
-          const u = parseRxUnits(rx); stats.units += u.length;
-          if (unitCbs.size && u.length) for (const cb of unitCbs) cb(u);
+          if (wantFrames) { const frames = parseRxFrames(rx); stats.frames += frames.length; for (const f of frames) for (const cb of frameCbs) cb(f); }
+          if (wantUnits) { const u = parseRxUnits(rx); stats.units += u.length; if (!wantFrames) stats.frames += u.length; if (u.length) for (const cb of unitCbs) cb(u); }
         }
       } catch {  }
-      if (state === "on") timer = setTimer(loop, pollMs);
+      if (state === "on") timer = setTimer(loop, wantFrames ? pollMs : scanPollMs);
     } else if (state === "on") {
       timer = setTimer(loop, 500);   
     }

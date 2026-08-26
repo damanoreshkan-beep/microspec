@@ -1,4 +1,5 @@
-import { openAndAttach, parseRxFrames, buildTxPacket, extractChunk } from "./rf.js";
+import { openAndAttach, parseRxFrames } from "./ax56.js";
+import { buildTxPacket, extractChunk } from "./rf.js";
 import { parseRxUnits } from "./meshscan.js";
 
 const hex = (u) => Array.from(u, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -59,6 +60,7 @@ export function createRadio({ shell, channel = 6, onLog = () => {}, setTimer = s
     onFrames(cb) { frameCbs.add(cb); return () => frameCbs.delete(cb); },
     onUnits(cb) { unitCbs.add(cb); return () => unitCbs.delete(cb); },
     send(pkt) { stats.tx++; usb(() => shell.call("usb.bulk", { ep: 5, data: pkt })).catch(() => {}); },
+    sendBatch(ops) { if (!ops || !ops.length) return; stats.tx += ops.length; usb(() => shell.call("usb.batch", { ops })).catch(() => {}); },
     stats,
     async readReg(addr) {
       try {
@@ -72,12 +74,17 @@ export function createRadio({ shell, channel = 6, onLog = () => {}, setTimer = s
   };
 }
 
-export function carrierFromRadio(radio, { src = 0xa11ce511, repeats = 3 } = {}) {
-  let cb = null, off = null;
+export function carrierFromRadio(radio, { src = 0xa11ce511, repeats = 1 } = {}) {
+  let cb = null, off = null, pending = [], scheduled = false;
+  const flush = () => { scheduled = false; if (!pending.length) return; const ops = pending; pending = []; radio.sendBatch(ops); };
   return {
     async start() { off = radio.onFrames((f) => { const c = extractChunk(f); if (c && cb) cb(c); }); await radio.attach(); },
-    send(chunk) { const pkt = hex(buildTxPacket(chunk, src)); for (let r = 0; r < repeats; r++) radio.send(pkt); },
+    send(chunk) {
+      const pkt = hex(buildTxPacket(chunk, src));
+      for (let r = 0; r < repeats; r++) pending.push({ t: "b", ep: 5, data: pkt });
+      if (!scheduled) { scheduled = true; queueMicrotask(flush); }
+    },
     onFrame(fn) { cb = fn; },
-    stop() { if (off) { off(); off = null; } cb = null; },
+    stop() { flush(); if (off) { off(); off = null; } cb = null; },
   };
 }

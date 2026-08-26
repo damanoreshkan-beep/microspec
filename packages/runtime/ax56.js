@@ -107,6 +107,33 @@ export async function setChannel({ readReg, writeReg, ch, delay = (ms) => new Pr
   return cfgch >>> 0;
 }
 
+// MAC power-DOWN (rtw8852a_pwroff, USB2 rows for this chip's cut). Running this teardown before the native
+// rf.attach (which powers the chip back up + fwdls) is what a kernel rebind does — it clears a warm/dirty chip
+// (0x1e0=0x23, a fwdl stalled mid-download) so the bring-up succeeds WITHOUT a physical replug. Byte R/W over the
+// vendor control pipe (req 0x05, wLength 1). {addr, mask, val, poll?}; POLL waits for (r8 & mask) == (val & mask).
+const PWROFF = [
+  [0x02f0, 0xff, 0x00], [0x02f1, 0xff, 0x00],                       // reset the fw-download engine state
+  [0x0006, 0x01, 0x01], [0x0002, 0x03, 0x00], [0x0082, 0x03, 0x00], // FEN / func disable
+  [0x106d, 0x40, 0x40], [0x0005, 0x02, 0x02], [0x0005, 0x02, 0x00, true], // enter power-off, wait it settles
+  [0x0007, 0x10, 0x00], [0x0005, 0x18, 0x08],                       // USB disable + suspend latch
+];
+
+// resetChip({ shell, delay }) — best-effort MAC teardown so a warm/dirty chip comes up cleanly on the next
+// rf.attach. Returns true if the whole sequence ran. Never throws: on any bridge error it gives up and lets the
+// normal bring-up proceed (no worse than before). Safe on a clean chip — pwroff then rf.attach's pwron is exactly
+// the kernel's off->on cycle.
+export async function resetChip({ shell, delay = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+  const r8 = async (a) => { const r = await shell.call("usb.control", { reqType: 0xc0, request: 0x05, value: a & 0xffff, index: 0, length: 1 }); const h = (r && r.data) || "00"; return parseInt(h.slice(0, 2), 16) & 0xff; };
+  const w8 = (a, v) => shell.call("usb.control", { reqType: 0x40, request: 0x05, value: a & 0xffff, index: 0, data: (v & 0xff).toString(16).padStart(2, "0") });
+  try {
+    for (const [a, mask, val, poll] of PWROFF) {
+      if (poll) { for (let i = 0; i < 40; i++) { if (((await r8(a)) & mask) === (val & mask)) break; await delay(2); } }
+      else { const v = await r8(a); await w8(a, (v & ~mask) | (val & mask)); }
+    }
+    return true;
+  } catch { return false; }
+}
+
 // openAndAttach — the adapter bring-up every RX/TX surface drives first: find the AX56, mode-switch it from its
 // storage personality (0bda:1a2b) to Wi-Fi (0b05:1997) if needed, then the native `rf.attach` (fwdl + monitor
 // calibration, COLD chip). Logs each step for the app's Log tab. Returns true only when the adapter is on air.
@@ -125,7 +152,19 @@ export async function openAndAttach({ shell, channel = 6, onLog = () => {}, setT
     open = await tryOpen(WIFI);
     if (!open) { onLog("mode-switch did not surface the Wi-Fi device — replug the adapter and rejoin"); return false; }
   }
-  onLog("bringing up firmware + monitor on ch" + channel + " (needs a COLD chip)");
+  onLog("bringing up firmware + monitor on ch" + channel);
   try { await shell.call("rf.attach", { channel }); onLog("on air, channel " + channel); return true; }
-  catch (e) { onLog("bring-up failed: " + ((e && e.message) || "no rf.attach in this shell") + " — cold-replug the adapter and rejoin"); return false; }
+  catch (e) {
+    // A warm/dirty chip (a fwdl stalled in a prior session, 0x1e0=0x23) refuses the bring-up. Recover it IN PLACE
+    // — the MAC teardown a kernel rebind does — and retry once, so the user need not physically replug. Only runs
+    // on the failure path, so a healthy chip's bring-up is untouched.
+    onLog("bring-up failed — resetting the adapter and retrying");
+    if (await resetChip({ shell, delay })) {
+      await delay(30);
+      try { await shell.call("rf.attach", { channel }); onLog("on air, channel " + channel + " (recovered, no replug)"); return true; }
+      catch { /* fall through to the replug hint */ }
+    }
+    onLog("bring-up failed: " + ((e && e.message) || "no rf.attach in this shell") + " — replug the adapter and rejoin");
+    return false;
+  }
 }

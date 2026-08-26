@@ -17,7 +17,7 @@ import { parseRxUnits } from "./meshscan.js";
 const hex = (u) => Array.from(u, (x) => x.toString(16).padStart(2, "0")).join("");
 const fromHex = (h) => { const u = new Uint8Array((h && h.length ? h.length : 0) / 2); for (let i = 0; i < u.length; i++) u[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16); return u; };
 
-export function createRadio({ shell, channel = 6, onLog = () => {}, setTimer = setTimeout, clearTimer = clearTimeout, switchWaitMs = 1800, pollMs = 40 } = {}) {
+export function createRadio({ shell, channel = 6, onLog = () => {}, setTimer = setTimeout, clearTimer = clearTimeout, switchWaitMs = 1800, pollMs = 40, scanPollMs = 250 } = {}) {
   let state = "off";                 // off | attaching | on
   let attaching = null, timer = null;
   const frameCbs = new Set(), unitCbs = new Set();
@@ -41,18 +41,26 @@ export function createRadio({ shell, channel = 6, onLog = () => {}, setTimer = s
 
   async function loop() {
     if (state !== "on") return;
-    if (frameCbs.size || unitCbs.size) {
+    const wantFrames = frameCbs.size > 0;   // the chat carrier — needs low latency, a large read every few ms
+    const wantUnits = unitCbs.size > 0;      // Nearby / Engineer scan — a neighbourhood refreshes fine a few times a second
+    if (wantFrames || wantUnits) {
+      // The read size, its wait, the next delay AND which parse runs all track what is actually subscribed.
+      // Chat wants 16 KB every 40 ms for message latency; a scan-only surface does NOT — and a 16 KB parse on
+      // the MAIN thread every 40 ms is exactly what made a busy channel feel frozen (shell.call is async, so
+      // the freeze was never the USB wait — it was fromHex + parseRx churning the main thread each poll). So a
+      // scan-only tick reads a quarter of that, a quarter as often, and each buffer is parsed ONLY the way a
+      // live surface needs it — never both walks when one is enough.
+      const length = wantFrames ? 16384 : 4096;
+      const rtimeout = wantFrames ? 150 : 60;
       try {
-        const r = await usb(() => shell.call("usb.bulk", { ep: 0x84, length: 16384, timeout: 150 }));
+        const r = await usb(() => shell.call("usb.bulk", { ep: 0x84, length, timeout: rtimeout }));
         if (r && r.data) {
           const rx = fromHex(r.data);
-          const frames = parseRxFrames(rx); stats.frames += frames.length;
-          if (frameCbs.size) for (const f of frames) for (const cb of frameCbs) cb(f);
-          const u = parseRxUnits(rx); stats.units += u.length;
-          if (unitCbs.size && u.length) for (const cb of unitCbs) cb(u);
+          if (wantFrames) { const frames = parseRxFrames(rx); stats.frames += frames.length; for (const f of frames) for (const cb of frameCbs) cb(f); }
+          if (wantUnits) { const u = parseRxUnits(rx); stats.units += u.length; if (!wantFrames) stats.frames += u.length; if (u.length) for (const cb of unitCbs) cb(u); }
         }
       } catch { /* a read miss is normal on a quiet channel */ }
-      if (state === "on") timer = setTimer(loop, pollMs);
+      if (state === "on") timer = setTimer(loop, wantFrames ? pollMs : scanPollMs);
     } else if (state === "on") {
       timer = setTimer(loop, 500);   // nobody listening — idle without touching USB
     }

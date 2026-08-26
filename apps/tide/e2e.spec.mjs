@@ -90,7 +90,9 @@ export default [
     },
   },
   {
+    // тести ділять одну сторінку: i18n-тест перед цим лишає вкладку «Я» — повертаємось на listen
     name: "звук: аркуш відкривається, слайдер гучності є, Back закриває", run: async (h) => {
+      await h.click('[data-tab="listen"]'); await h.wait(200);
       await ready(h);
       await h.tap("[data-sound]"); await h.wait(300);
       h.expect((await h.prop("#sound", "open")) === true, "аркуш звуку не відкрився");
@@ -103,6 +105,7 @@ export default [
     // під гейтом сесія — мок (auth.js MOCK_SESSION) і синк — мок (/_rt/sync.js): 2 пристрої, пір грає
     // groovesalad. Аркуш мусить показати ЗАПОВНЕНИЙ стан — кімнату і рядок піра з кнопкою паузи.
     name: "синк: мок-кімната з піром, дзеркала data-sync/data-peers", run: async (h) => {
+      await h.click('[data-tab="listen"]'); await h.wait(200);
       await ready(h);
       for (let i = 0; i < 20; i++) { if ((await h.attr(wrap, "data-sync")) === "on") break; await h.wait(200); }
       h.expect((await h.attr(wrap, "data-sync")) === "on", "синк не увімкнувся під гейтом");

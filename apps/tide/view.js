@@ -432,7 +432,9 @@ export function tide({ S }) {
           subtitle=${html`<span class="inline-flex items-center gap-1.5"><span class="inline-block w-1.5 h-1.5 rounded-full shrink-0" style=${`background:hsl(${cat.hue} 60% 58%)`}></span>${T(t, cat.key)} · ${T(t, station.genre)}</span>`}
           actions=${[
             { id: "fav", icon: "lucide:heart", label: T(t, isFav ? "aUnfav" : "aFav"), active: isFav, pressed: isFav, onClick: () => toggleFav(station.id), attr: { "data-fav-btn": "" } },
-            { id: "sound", icon: "lucide:volume-2", label: T(t, "aSound"), onClick: () => S.screen.set("sound"), attr: { "data-sound": "" } },
+            // id ≠ the Sound Sheet's dialog id — Transport writes the action id onto the button element,
+            // and two #sound nodes would send every e2e prop() to the wrong one
+            { id: "soundbtn", icon: "lucide:volume-2", label: T(t, "aSound"), onClick: () => S.screen.set("sound"), attr: { "data-sound": "" } },
             { id: "list", icon: "lucide:list-music", label: T(t, "aStations"), onClick: () => S.screen.set("stations"), attr: { "data-stations": "" } },
             ...(fsSupported ? [{ id: "fs", icon: fs ? "lucide:minimize" : "lucide:maximize", label: T(t, fs ? "aFsExit" : "aFs"), onClick: () => toggleFs(fieldRef.current), attr: { "data-fs-btn": "" } }] : []),
           ]} />

@@ -402,7 +402,7 @@ export function engineerView({ S }) {
             <span class="text-[0.55rem] font-mono uppercase text-muted">${T(t, "chShort")}</span>
             <span class=${`text-3xl font-mono tabular-nums leading-none ${selLive ? "" : "text-muted"}`} data-ch=${selCh}>${selCh}</span>
             ${selLive
-              ? html`<span class="w-1.5 h-1.5 rounded-full bg-primary" aria-label=${T(t, "engChLive")}></span>`
+              ? html`<span class="w-1.5 h-1.5 rounded-full bg-primary" aria-hidden="true"></span>`
               : html`<span class="text-[0.5rem] font-mono uppercase text-muted border border-base-content/20 rounded px-1 py-0.5">${T(t, "engSoon")}</span>`}
           </div>
           <div class="w-full flex items-center gap-[3px]" data-ch-track>

@@ -21,7 +21,7 @@ export function createRadio({ shell, channel = 6, onLog = () => {}, setTimer = s
   let state = "off";                 // off | attaching | on
   let attaching = null, timer = null;
   let curChannel = channel;          // the channel the LO is believed to be on (attach ch, then each CONFIRMED hop)
-  let hopTimer = null, hopList = null, hopIdx = 0;   // auto-hop scheduler (Nearby/Engineer only)
+  let hopTimer = null, hopList = null, hopIdx = 0, hopOks = 0;   // auto-hop scheduler (Nearby/Engineer only)
   const frameCbs = new Set(), unitCbs = new Set();
   const stats = { frames: 0, units: 0, tx: 0, channel };
 
@@ -79,9 +79,9 @@ export function createRadio({ shell, channel = 6, onLog = () => {}, setTimer = s
     if (state !== "on" || frameCbs.size > 0) return "skip";
     await setChannelSeq({ readReg: readRegQ, writeReg, ch, delay: (ms) => new Promise((r) => setTimer(r, ms)) });
     const c = await confirmChannel(ch);
-    if (c.ok) { curChannel = ch; stats.channel = ch; onLog("hop -> ch" + ch + " (" + c.seen + " beacons, ~ch" + c.dominant + ")"); return "ok"; }
-    if (c.ok === null) { onLog("hop -> ch" + ch + ": no beacons, can't confirm — staying on ch" + curChannel); return "quiet"; }
-    onLog("hop -> ch" + ch + " did not take (RX still ~ch" + c.dominant + ") — this chip state won't retune from userspace"); return "dead";
+    if (c.ok) { curChannel = ch; stats.channel = ch; onLog("hop -> ch" + ch + " (" + c.seen + " beacons)"); return "ok"; }
+    if (c.ok === null) return "quiet";                          // a quiet channel — silent (a sweep would spam the log)
+    onLog("hop -> ch" + ch + " did not take (RX still ~ch" + c.dominant + ")"); return "dead";
   }
 
   // Auto-hop across a channel list, aircrack-style, so Nearby aggregates the whole band instead of one channel.
@@ -90,15 +90,20 @@ export function createRadio({ shell, channel = 6, onLog = () => {}, setTimer = s
   // pins us to the attach channel — a chip that won't retune from userspace shouldn't thrash the USB queue.
   async function hopTick() {
     if (state !== "on" || !hopList || frameCbs.size > 0) { hopTimer = null; return; }
-    const ch = hopList[hopIdx % hopList.length]; hopIdx++;
+    const n = hopList.length, ch = hopList[hopIdx % n]; hopIdx++;
     const status = ch === curChannel ? "ok" : await hop(ch);
-    if (status === "dead") { onLog("auto-hop off — the adapter won't retune in this state; staying on ch" + curChannel); hopList = null; hopTimer = null; return; }
+    if (status === "ok") hopOks++;
+    if (status === "dead") { onLog("channel hop unsupported here — the adapter isn't retuning; staying on ch" + curChannel); hopList = null; hopTimer = null; return; }
+    if (hopIdx % n === 0) {                                     // finished a full pass — stop if it confirmed nothing
+      if (hopOks === 0) { onLog("no channel confirmed a hop — the RF bridge can't retune yet; staying on ch" + curChannel); hopList = null; hopTimer = null; return; }
+      hopOks = 0;
+    }
     if (hopList && state === "on") hopTimer = setTimer(hopTick, hopDwellMs);
     else hopTimer = null;
   }
   function startHop(channels, dwellMs) {
     if (!channels || !channels.length) return;
-    hopList = channels.slice(); hopIdx = 0; if (dwellMs) hopDwellMs = dwellMs;
+    hopList = channels.slice(); hopIdx = 0; hopOks = 0; if (dwellMs) hopDwellMs = dwellMs;
     if (!hopTimer) hopTick();
   }
   function stopHop() { if (hopTimer) { clearTimer(hopTimer); hopTimer = null; } hopList = null; }

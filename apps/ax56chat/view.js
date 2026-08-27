@@ -317,14 +317,12 @@ export function nearbyView({ S }) {
   useEffect(() => {
     if (gate || !hasRf()) { seedNearbyDemo(); return; }
     const release = holdScan();
-    let autostarted = false;
     const tick = setInterval(() => {
       $nearby.set(hood.list(Date.now()));
-      if (radio) {
-        if (radio.state === "on" && !autostarted && !radio.hopping) { radio.startHop(HOP_ALL, 400); autostarted = true; }  // auto-scan every band once on air
-        if (radio.channel !== $channel.get()) $channel.set(radio.channel);
-        if (radio.hopping !== $sweep.get()) $sweep.set(radio.hopping);
-      }
+      // Follow the live channel + reflect a sweep the radio stopped on its own. Sweeping is OPT-IN (the header
+      // button): a live retune needs the RF page the shell's usb.control can't yet reach, so it is not auto-run —
+      // it would only disrupt the working single-channel RX. Once the bridge forwards wIndex this can auto-start.
+      if (radio) { if (radio.channel !== $channel.get()) $channel.set(radio.channel); if (radio.hopping !== $sweep.get()) $sweep.set(radio.hopping); }
     }, 500);
     return () => { clearInterval(tick); if (radio) radio.stopHop(); $sweep.set(false); release(); };
   }, []);

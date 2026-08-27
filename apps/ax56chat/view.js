@@ -338,7 +338,7 @@ export function nearbyView({ S }) {
       </span>
       ${hasRf() ? html`<button data-sweep onClick=${toggleSweep} disabled=${!scanning}
         class=${`inline-flex items-center gap-1 tabular-nums px-1.5 py-0.5 rounded ${sweep ? "text-primary bg-primary/10" : "text-muted"} disabled:opacity-30`}>
-        ${T(t, "chShort")}${ch}<span class="uppercase tracking-wider opacity-70">${sweep ? T(t, "nearbySweep") : T(t, "nearbyHold")}</span></button>`
+        ${T(t, "chShort")}${ch}<span class="uppercase tracking-wider ml-1">${sweep ? T(t, "nearbySweep") : T(t, "nearbyHold")}</span></button>`
         : html`<span class="text-muted">${T(t, "chShort")}${ch}</span>`}
       <span class="flex-1"></span>
       <span class="tabular-nums text-muted">${aps} ${T(t, "apsCount")} · ${clients} ${T(t, "clientsCount")}</span>

@@ -237,57 +237,130 @@ function seedNearbyDemo() {
   ]);
 }
 
+// FNV-1a of a MAC -> a stable angle, so a device keeps its place on the scope frame to frame.
+function macAngle(mac) {
+  let h = 2166136261;
+  for (let i = 0; i < mac.length; i++) { h ^= mac.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) / 4294967296) * Math.PI * 2;
+}
+const hexA = (hex, a) => { const s = (hex || "").replace("#", ""); const h = s.length === 3 ? s.split("").map((c) => c + c).join("") : (s || "c13bff"); const n = parseInt(h, 16) || 0xc13bff; return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+
+// NearbyRadar — the neighbourhood as a signal scope: each device sits at an angle fixed by its MAC, at a radius
+// set by its signal (rings are dBm — a RELATIVE scope, never metres: RF honesty). A neon sweep pings blips as it
+// passes. Canvas + one rAF loop reading the latest data from a ref, so data churn never restarts the animation.
+function NearbyRadar({ list, sel, onSelect, scanning }) {
+  const ref = useRef(null), dataRef = useRef(null);
+  dataRef.current = { list, sel, scanning };
+  useEffect(() => {
+    const canvas = ref.current; if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const cs = getComputedStyle(document.documentElement);
+    const accent = cs.getPropertyValue("--app-accent").trim() || "#C13BFF";
+    const ink = cs.getPropertyValue("--color-base-content").trim() || "#e9e9ee";
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    let raf = 0;
+    const draw = (now) => {
+      const box = canvas.getBoundingClientRect();
+      const W = Math.max(1, Math.round(box.width * dpr)), H = Math.max(1, Math.round(box.height * dpr));
+      if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+      const { list, sel, scanning } = dataRef.current;
+      const cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 * 0.9;
+      ctx.clearRect(0, 0, W, H);
+      ctx.lineWidth = dpr; ctx.strokeStyle = ink; ctx.fillStyle = ink;
+      const rings = [[-45, 0.34], [-65, 0.63], [-85, 0.92]];
+      ctx.globalAlpha = 0.13; for (const [, rr] of rings) { ctx.beginPath(); ctx.arc(cx, cy, R * rr, 0, 7); ctx.stroke(); }
+      ctx.globalAlpha = 0.07; ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
+      ctx.globalAlpha = 0.36; ctx.font = `${Math.round(8.5 * dpr)}px ui-monospace, monospace`; ctx.textAlign = "center";
+      for (const [db, rr] of rings) ctx.fillText(db, cx, cy - R * rr - 3 * dpr);
+      const sweepA = ((now % 2600) / 2600) * Math.PI * 2;
+      if (scanning) {
+        // A trailing wedge behind the leading line, flat alpha (gradients aren't available everywhere). Two
+        // stacked wedges fake the afterglow: a wide faint one + a narrow brighter one hugging the leading edge.
+        ctx.fillStyle = accent;
+        ctx.globalAlpha = 0.06; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, sweepA - 0.6, sweepA); ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 0.14; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, sweepA - 0.22, sweepA); ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 0.55; ctx.strokeStyle = accent; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(sweepA) * R, cy + Math.sin(sweepA) * R); ctx.stroke();
+      }
+      const hits = [];
+      for (const d of list) {
+        const rssi = d.rssi == null ? -93 : d.rssi;
+        const norm = Math.min(1, Math.max(0, (rssi + 95) / 65));
+        const rr = R * (0.1 + 0.85 * (1 - norm)), a = macAngle(d.mac);
+        const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr, ap = d.kind === "ap";
+        hits.push({ mac: d.mac, x, y });
+        let ping = 0; if (scanning) { const da = Math.abs(((a - sweepA + Math.PI * 3) % (Math.PI * 2)) - Math.PI); ping = Math.max(0, 1 - da / 0.85); }
+        const r0 = (ap ? 3 : 2) * dpr + ping * 2 * dpr; ctx.fillStyle = ap ? accent : ink;
+        ctx.globalAlpha = (ap ? 0.30 : 0.16) + ping * 0.45; ctx.beginPath(); ctx.arc(x, y, r0 * 2.6, 0, 7); ctx.fill();
+        ctx.globalAlpha = Math.min(1, (ap ? 0.9 : 0.55) + ping * 0.4); ctx.beginPath(); ctx.arc(x, y, r0, 0, 7); ctx.fill();
+        if (d.mac === sel) { ctx.globalAlpha = 1; ctx.strokeStyle = accent; ctx.lineWidth = 1.5 * dpr; ctx.beginPath(); ctx.arc(x, y, r0 + 5 * dpr, 0, 7); ctx.stroke(); }
+      }
+      ctx.globalAlpha = 0.9; ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(cx, cy, 2.6 * dpr, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1; canvas._hits = hits;
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const pick = (e) => {
+    const canvas = ref.current, box = canvas.getBoundingClientRect(), dpr = canvas.width / box.width;
+    const x = (e.clientX - box.left) * dpr, y = (e.clientY - box.top) * dpr;
+    let best = null, bd = 24 * dpr;
+    for (const h of (canvas._hits || [])) { const dd = Math.hypot(h.x - x, h.y - y); if (dd < bd) { bd = dd; best = h.mac; } }
+    onSelect(best);
+  };
+  return html`<canvas ref=${ref} onClick=${pick} class="w-full h-full block touch-none" aria-hidden="true"></canvas>`;
+}
+
 export function nearbyView({ S }) {
   const t = useStore(S.t);
   const list = useStore($nearby), scanning = useStore($scanning), sel = useStore($sel), ch = useStore($channel), sweep = useStore($sweep);
   useEffect(() => {
     if (gate || !hasRf()) { seedNearbyDemo(); return; }
     const release = holdScan();
+    let autostarted = false;
     const tick = setInterval(() => {
       $nearby.set(hood.list(Date.now()));
-      // Follow the live channel + reflect a sweep the radio may have stopped on its own (chip refused a retune).
-      if (radio) { if (radio.channel !== $channel.get()) $channel.set(radio.channel); if (radio.hopping !== $sweep.get()) $sweep.set(radio.hopping); }
+      if (radio) {
+        if (radio.state === "on" && !autostarted && !radio.hopping) { radio.startHop(HOP_ALL, 400); autostarted = true; }  // auto-scan every band once on air
+        if (radio.channel !== $channel.get()) $channel.set(radio.channel);
+        if (radio.hopping !== $sweep.get()) $sweep.set(radio.hopping);
+      }
     }, 500);
     return () => { clearInterval(tick); if (radio) radio.stopHop(); $sweep.set(false); release(); };
   }, []);
   const aps = list.filter((d) => d.kind === "ap").length, clients = list.length - aps;
+  const selDev = sel ? list.find((d) => d.mac === sel) : null;
 
   return html`<div class="h-full flex flex-col gap-2 max-w-[560px] mx-auto w-full pb-2">
-    ${/* Terminal status line — airodump's header, not a radar: a live monospace table is what an RF operator
-          reads, and it is far lighter than a re-animated SVG scope on a busy channel. */""}
     <div class="shrink-0 flex items-center gap-2 px-1.5 font-mono text-[0.66rem]">
       <span class="inline-flex items-center gap-1.5 uppercase tracking-wider text-primary">
         <span class="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)] ${scanning ? "animate-pulse" : "opacity-40"}"></span>${T(t, "nearbyScan")}
       </span>
-      <span class="text-muted">${T(t, "chShort")}${ch}</span>
       ${hasRf() ? html`<button data-sweep onClick=${toggleSweep} disabled=${!scanning}
-        class=${`inline-flex items-center gap-1 uppercase tracking-wider px-1.5 py-0.5 rounded ${sweep ? "text-primary bg-primary/10" : "text-muted"} disabled:opacity-30`}>
-        <span class=${`w-1.5 h-1.5 rounded-full ${sweep ? "bg-primary animate-pulse" : "bg-base-content/30"}`}></span>${T(t, "nearbySweep")}</button>` : null}
+        class=${`inline-flex items-center gap-1 tabular-nums px-1.5 py-0.5 rounded ${sweep ? "text-primary bg-primary/10" : "text-muted"} disabled:opacity-30`}>
+        ${T(t, "chShort")}${ch}<span class="uppercase tracking-wider opacity-70">${sweep ? T(t, "nearbySweep") : T(t, "nearbyHold")}</span></button>`
+        : html`<span class="text-muted">${T(t, "chShort")}${ch}</span>`}
       <span class="flex-1"></span>
       <span class="tabular-nums text-muted">${aps} ${T(t, "apsCount")} · ${clients} ${T(t, "clientsCount")}</span>
     </div>
 
-    ${list.length ? html`<div class="flex-1 min-h-0 overflow-auto rounded-2xl sf-inset" data-list data-scope>
-      <div class="font-mono text-[0.62rem] leading-[1.8] min-w-max">
-        <div class="flex gap-2.5 px-3 pt-2 pb-1 text-muted uppercase tracking-wider sticky top-0 bg-base-100 z-10">
-          <span class="w-9 text-right">PWR</span>
-          <span class="w-5 text-right">CH</span>
-          <span class="w-11 text-right">${T(t, "pktLabel")}</span>
-          <span class="w-[9.5rem]">BSSID</span>
-          <span>ESSID</span>
-        </div>
-        ${list.map((d) => { const on = sel === d.mac, ap = d.kind === "ap", strong = d.rssi != null && d.rssi >= -55;
-          return html`<button key=${d.mac} data-dev=${d.mac} onClick=${() => $sel.set(on ? null : d.mac)}
-            class=${`w-full flex gap-2.5 px-3 py-0.5 text-left border-l-2 ${on ? "border-[var(--app-accent)] bg-[var(--app-tint)]" : "border-transparent"}`}>
-            <span class=${`w-9 text-right tabular-nums ${strong ? "text-primary" : "text-muted"}`}>${d.rssi == null ? "—" : d.rssi}</span>
-            <span class="w-5 text-right tabular-nums text-muted">${d.channel ?? "·"}</span>
-            <span class="w-11 text-right tabular-nums text-muted">${d.count ?? 0}</span>
-            <span class=${`w-[9.5rem] truncate ${ap ? "" : "text-muted"}`}>${d.mac}</span>
-            <span class=${`truncate ${ap ? "" : "text-muted"}`}>${ap ? (d.ssid || T(t, "hiddenNet")) : T(t, "kindClient")}</span>
-          </button>`; })}
-      </div>
-    </div>` : html`<div class="flex-1 min-h-0 grid place-items-center px-6 text-center font-mono text-sm text-muted">
-      <span class="inline-flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)] animate-pulse"></span>${T(t, "nearbyEmpty")}</span>
+    <div class="flex-1 min-h-0 relative rounded-2xl sf-inset overflow-hidden grid place-items-center" data-scope>
+      <${NearbyRadar} list=${list} sel=${sel} onSelect=${(m) => $sel.set(m)} scanning=${scanning} />
+      ${!list.length ? html`<div class="absolute inset-0 grid place-items-center pointer-events-none px-6 text-center font-mono text-sm text-muted">
+        <span class="inline-flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)] animate-pulse"></span>${T(t, "nearbyEmpty")}</span></div>` : null}
+      <span class="absolute bottom-1.5 left-2.5 text-[0.5rem] font-mono text-muted uppercase tracking-[0.15em] pointer-events-none">${T(t, "nearbyScopeNote")}</span>
+      <ul class="sr-only">${list.map((d) => html`<li key=${d.mac}>${d.kind === "ap" ? (d.ssid || T(t, "hiddenNet")) : T(t, "kindClient")} ${d.mac} ${d.rssi ?? "—"}dBm ${T(t, "chShort")}${d.channel ?? "·"}</li>`)}</ul>
+    </div>
+
+    ${selDev ? html`<button data-sel class="shrink-0 rounded-2xl sf-e1 px-3 py-2 flex items-center gap-3 font-mono text-[0.66rem] text-left w-full" onClick=${() => $sel.set(null)}>
+      <span class=${`w-1.5 h-1.5 rounded-full shrink-0 ${selDev.kind === "ap" ? "bg-[var(--app-accent)]" : "bg-base-content/40"}`}></span>
+      <span class="truncate flex-1">${selDev.kind === "ap" ? (selDev.ssid || T(t, "hiddenNet")) : T(t, "kindClient")}<span class="text-muted"> · ${selDev.mac}</span></span>
+      <span class="tabular-nums text-muted shrink-0">${selDev.rssi ?? "—"}dBm · ${T(t, "chShort")}${selDev.channel ?? "·"} · ${selDev.count ?? 0}</span>
+    </button>`
+    : html`<div class="shrink-0 flex items-center justify-center gap-4 font-mono text-[0.56rem] uppercase tracking-wider text-muted">
+      <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)]"></span>${T(t, "apsCount")}</span>
+      <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-base-content/40"></span>${T(t, "clientsCount")}</span>
+      ${list.length ? html`<span>${T(t, "nearbyTapHint")}</span>` : null}
     </div>`}
     ${!hasRf() && list.length ? html`<div class="shrink-0 text-center text-[0.58rem] text-muted font-mono">${T(t, "nearbyDemo")}</div>` : null}
   </div>`;

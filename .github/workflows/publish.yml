@@ -1,0 +1,34 @@
+name: publish
+
+# The release path: a version bump in deno.json on main publishes @microspec/core to JSR via OIDC —
+# no token anywhere. Requires the GitHub repo to be LINKED in the package's settings on jsr.io
+# (@microspec/core → Settings → GitHub repository). An unchanged version is a no-op, so this is safe
+# on every deno.json touch.
+on:
+  push:
+    branches: [main]
+    paths: [deno.json]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Publish if this version is not on the registry yet
+        run: |
+          set -euo pipefail
+          V=$(deno eval 'console.log(JSON.parse(Deno.readTextFileSync("deno.json")).version)')
+          if curl -fsS https://jsr.io/@microspec/core/meta.json | grep -q "\"$V\""; then
+            echo "@microspec/core@$V is already on JSR — nothing to publish"
+            exit 0
+          fi
+          deno publish --allow-slow-types

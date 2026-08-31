@@ -93,8 +93,9 @@ its own gates is the existence proof that the author is pluggable.
 
 The runtime here holds only **systemic** modules — device capabilities, audio and viz engines, the UI kit,
 the design tokens, extraction and i18n machinery. A product keeps its **domain** modules (its own theory,
-drivers, content) in its own `rt/`, mirrors the core in beside them with per-file symlinks, and pins this
-repo at one exact commit. Same barrel, same gates, same floor — different owners.
+drivers, content) in its own `rt/` and installs this repo as **[`@microspec/core` on JSR](https://jsr.io/@microspec/core)** —
+a real package at one exact version: the tarball materializes the runtime files for `/_rt` serving, the
+tools run straight off the registry. Same barrel, same gates, same floor — different owners.
 
 | Layer | Role |
 |---|---|

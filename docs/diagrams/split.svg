@@ -33,8 +33,8 @@
   <rect x="488" y="60" width="360" height="150" rx="14" fill="#0A0A0D" stroke="rgba(92,228,220,.55)" stroke-width="1.3"/>
   <text class="t" x="512" y="90">a product built on it</text>
   <text class="s" x="512" y="116">its own apps + domain modules in rt/</text>
-  <text class="s" x="512" y="136">rt/ mirrors the core in beside them —</text>
-  <text class="s" x="512" y="156">one directory IS /_rt for every resolver</text>
+  <text class="s" x="512" y="136">the core arrives as @microspec/core —</text>
+  <text class="s" x="512" y="156">a real JSR package, one exact version</text>
   <text class="s" x="512" y="176" fill="#5CE4DC">same gates, same barrel, same floor</text>
 
   <!-- the two hauls -->
@@ -42,8 +42,8 @@
   <path class="w" d="M488 166 L392 166"/>
   <circle class="lock" r="3.4" fill="#5CE4DC" filter="url(#g3)" style="offset-path: path('M488 166 L392 166');"/>
   <circle class="mirror" r="3.4" fill="#FFE8C4" filter="url(#g3)" style="offset-path: path('M392 110 L488 110');"/>
-  <text class="s" x="368" y="98"  fill="#7d7466">core, linked in at a PIN</text>
-  <text class="s" x="352" y="192" fill="#7d7466">lockfile — one commit, exactly</text>
+  <text class="s" x="368" y="98"  fill="#7d7466">the package, at its pinned version</text>
+  <text class="s" x="352" y="192" fill="#7d7466">deno task install — one version, exactly</text>
 
-  <text class="s" x="32" y="244" fill="#7d7466">A framework bump is a commit here and a one-line pin move there — the product's CI proves the pair.</text>
+  <text class="s" x="32" y="244" fill="#7d7466">A framework bump is a publish here and a version move there — the product's CI proves the pair.</text>
 </svg>

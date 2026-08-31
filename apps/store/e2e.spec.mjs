@@ -10,7 +10,8 @@ export default [
     // контракт тепер зворотний: перший візит задає базову лінію і не позначає нічого.
     name: "стор: сітка + пошук; перший візит не позначає нічого як нове", run: async (h) => {
       await ready(h); await h.wait(200);
-      h.expect((await h.count("[data-app]")) >= 10, "замало плиток застосунків");
+      // ≥3: це ДЕМО-дерево фреймворку (3 апки); повна ферма живе у приватному DreamStudio зі своїм CI.
+      h.expect((await h.count("[data-app]")) >= 3, "замало плиток застосунків");
       h.expect((await h.count(".input")) === 1, "немає поля пошуку");
       const badges = await h.count(".badge-primary");
       h.expect(badges === 0, `перший візит позначив ${badges} застосунків як нові — базова лінія не записалась`);
@@ -21,7 +22,7 @@ export default [
     name: "пошук фільтрує сітку", run: async (h) => {
       await ready(h);
       const base = await h.count("[data-app]");
-      await h.type(".input", "рейв"); await h.wait(250);
+      await h.type(".input", "погод"); await h.wait(250);
       const now = await h.count("[data-app]");
       h.expect(now >= 1 && now < base, "пошук не звузив сітку");
       await h.type(".input", ""); await h.wait(250);
@@ -33,17 +34,17 @@ export default [
     // Back з нього не повертав. Уся ферма — на одній сторінці; кожна категорія показує ВСІ свої застосунки.
     name: "одна сторінка: кожна категорія показує всі свої застосунки", run: async (h) => {
       await ready(h);
-      h.expect((await h.count("[data-app]")) >= 70, "головна не показує всю ферму");
+      h.expect((await h.count("[data-app]")) >= 3, "головна не показує всі апки цього дерева");
       h.expect((await h.count("[data-cat]")) === 0, "перемикач категорій повернувся — Back із нього не працює");
     },
   },
   {
     name: "тап по застосунку → шитик опису, Back закриває", run: async (h) => {
       await ready(h);
-      await h.click('[data-app="rave"]'); await h.wait(250);
+      await h.click('[data-app="hn"]'); await h.wait(250);
       h.expect((await h.prop("#appsheet", "open")) === true, "не відкрився шитик опису");
       h.expect((await h.count("#open-app")) === 1, "немає кнопки Відкрити в шитику");
-      h.expect(/техно|techno/i.test(await h.bodyText()), "немає опису застосунку");
+      h.expect(/hacker news/i.test(await h.bodyText()), "немає опису застосунку");
       await h.back(); await h.wait(250);
       h.expect((await h.prop("#appsheet", "open")) !== true, "Back не закрив шитик опису");
       h.expect((await h.count("#open-app")) === 0, "вміст шитика лишився в DOM після закриття");
@@ -60,19 +61,17 @@ export default [
     },
   },
   {
-    // App Store, не сітка (2026-08-31): добірка великих карток зверху, сторінка апки з Open + Install,
-    // скріншотом та екранами; категорія → рядки-список.
-    name: "стор: добірка карток, сторінка апки з Install і скріном, категорія → рядки", run: async (h) => {
+    // Сторінка апки з Open + Install і версією; рядки з кнопкою. Добірка (spec.featured) і скріни живуть у
+    // ПРОДУКТІ — це демо-дерево фреймворку не несе бренду, тож ці дві поверхні тут порожні за дизайном.
+    name: "стор: сторінка апки з Install і версією, рядки з кнопкою", run: async (h) => {
       await ready(h);
-      h.expect((await h.count("[data-featured]")) >= 2, "немає карток добірки");
-      await h.click('[data-featured][data-app="tide"]'); await h.wait(300);
-      h.expect((await h.prop("#appsheet", "open")) === true, "картка добірки не відкрила сторінку апки");
+      await h.click('[data-app="weather"]'); await h.wait(300);
+      h.expect((await h.prop("#appsheet", "open")) === true, "рядок не відкрив сторінку апки");
       h.expect((await h.count("#install-app")) === 1, "немає кнопки Встановити на сторінці апки");
-      h.expect((await h.count("#appsheet img[src*='shot-tide']")) === 1, "немає скріншота на сторінці апки");
       h.expect(/v\d/.test(await h.text("#appsheet")), "немає версії на сторінці апки");
       await h.back(); await h.wait(250);
       h.expect((await h.prop("#appsheet", "open")) !== true, "Back не закрив сторінку апки");
-      h.expect((await h.count("[data-app] .btn")) >= 10, "рядки без кнопки Відкрити");
+      h.expect((await h.count("[data-app] .btn")) >= 3, "рядки без кнопки Відкрити");
     },
   },
   {

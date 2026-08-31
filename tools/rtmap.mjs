@@ -16,7 +16,7 @@ const pin = /jsr:@microspec\/core@([^/"]+)/.exec(JSON.stringify(consumer.imports
 if (!pin) { console.error("rtmap: deno.json imports carry no jsr:@microspec/core@<version> pin"); Deno.exit(1); }
 const base = `https://jsr.io/@microspec/core/${pin}/`;
 
-const manUrl = new URL("../deno.json", new URL("../", import.meta.url));
+const manUrl = new URL("../deno.json", import.meta.url); 
 const manifest = manUrl.protocol === "file:"
   ? JSON.parse(await Deno.readTextFile(manUrl))
   : await (await fetch(manUrl)).json();

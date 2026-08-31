@@ -1,5 +1,6 @@
 import { serveDir } from "jsr:@std/http@^1/file-server";
-const RT = new URL("../runtime/", import.meta.url).pathname;
+import { pkgRoot } from "../runtime/pkgroot.js";
+const RT = new URL("packages/runtime/", pkgRoot(import.meta.url, 2)).pathname;
 const RT2 = (() => {
   try { return Deno.statSync(`${Deno.cwd()}/rt`).isDirectory ? `${Deno.cwd()}/rt` : null; } catch { return null; }
 })();

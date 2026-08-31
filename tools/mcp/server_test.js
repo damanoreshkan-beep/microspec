@@ -1,11 +1,8 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
-const ROOT = new URL("../../", import.meta.url).pathname;
-
 async function withServer(fn) {
   const child = new Deno.Command("deno", {
-    args: ["run", "-A", "tools/mcp/server.mjs"],
-    cwd: ROOT,
+    args: ["run", "-A", new URL("./server.mjs", import.meta.url).href],
     stdin: "piped",
     stdout: "piped",
     stderr: "piped",

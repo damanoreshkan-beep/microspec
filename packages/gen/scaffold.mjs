@@ -20,7 +20,8 @@ const dict = i18n.uk || i18n.en || {};
 const title = dict.title || spec.id;
 const tagline = dict.profTagline || title;
 const isLight = /light/.test(spec.theme || "");
-const themeCss = await Deno.readTextFile(new URL("../runtime/theme.css", import.meta.url));
+import { pkgRoot } from "../runtime/pkgroot.js";
+const themeCss = await Deno.readTextFile(new URL("packages/runtime/theme.css", pkgRoot(import.meta.url, 2)));
 const baseOf = (t) => {
   const i = themeCss.indexOf(`[data-theme="${t}"] {`);
   const m = /--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(themeCss.slice(i));

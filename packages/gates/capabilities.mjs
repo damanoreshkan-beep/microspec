@@ -1,5 +1,5 @@
 
-const ROOT = new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
+const ROOT = Deno.cwd(); 
 const read = (p) => { try { return Deno.readTextFileSync(`${ROOT}/${p}`); } catch { return null; } };
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 

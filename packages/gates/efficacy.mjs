@@ -1,9 +1,9 @@
 
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", b: "\x1b[1m", x: "\x1b[0m" };
-const PKG = new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
 const ROOT = Deno.cwd();
-const PREFLIGHT = `${PKG}/packages/gates/preflight.mjs`;
-const IMPORTMAP = await Deno.stat(`${ROOT}/preflight.map.json`).then(() => `${ROOT}/preflight.map.json`).catch(() => `${PKG}/packages/gates/preflight.importmap.json`);
+const PREFLIGHT = new URL("./preflight.mjs", import.meta.url).href;
+const IMPORTMAP = await Deno.stat(`${ROOT}/preflight.map.json`).then(() => `${ROOT}/preflight.map.json`)
+  .catch(() => new URL("./preflight.importmap.json", import.meta.url).href);
 
 const args = Deno.args;
 const flag = (n) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] || "") : null; };

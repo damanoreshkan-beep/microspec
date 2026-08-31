@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MIT",
   "publish": {
     "exclude": [
@@ -94,6 +94,7 @@
     "./runtime/orbit.js": "./packages/runtime/orbit.js",
     "./runtime/overlay.js": "./packages/runtime/overlay.js",
     "./runtime/permissions.js": "./packages/runtime/permissions.js",
+    "./runtime/pkgroot.js": "./packages/runtime/pkgroot.js",
     "./runtime/playback.js": "./packages/runtime/playback.js",
     "./runtime/player.js": "./packages/runtime/player.js",
     "./runtime/qrcode.js": "./packages/runtime/qrcode.js",

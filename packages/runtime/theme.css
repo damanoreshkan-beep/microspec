@@ -199,7 +199,8 @@ header.navbar::after {
   --lm-bloom:  color-mix(in oklch, var(--app-accent) 22%, transparent);
   --lm-bloom-hi: color-mix(in oklch, var(--app-accent) 55%, transparent);
   --nm-cast:   rgba(0, 0, 0, 0);
-  --ds-strand: url("ds-n-strand.webp");   
+  
+  --ds-strand: url("/_rt/ds-n-strand.webp");   
 
   --sf-rim:        var(--lm-rim);
   --sf-shadow:     rgba(0, 0, 0, .85);
@@ -227,7 +228,7 @@ header.navbar::after {
   --lm-bloom:  color-mix(in oklch, var(--app-accent) 12%, transparent);
   --lm-bloom-hi: color-mix(in oklch, var(--color-accent) 55%, transparent);
   --nm-cast:   rgba(40, 32, 20, .22);
-  --ds-strand: url("ds-d-strand.webp");   
+  --ds-strand: url("/_rt/ds-d-strand.webp");   
   --sf-rim:        var(--lm-rim);
   --sf-shadow:     rgba(40, 32, 20, .18);
   --sf-drop:       0 0 0 1px var(--lm-rim), inset 0 1px 0 var(--lm-rim-hi), 0 10px var(--lm-g) var(--lm-gs) var(--nm-cast);
@@ -248,7 +249,6 @@ header.navbar::after {
   --ms-vol-sheen:  rgba(255, 255, 255, .9);
   --ms-vol-shade:  rgba(40, 32, 20, .12);
 }
-
 
 body {
   background-image:
@@ -275,13 +275,13 @@ body::after {
 
 .sf-inset [aria-pressed="true"] { box-shadow: var(--sf-drop); }
 
-
 .btn:active:not(:disabled), [aria-pressed]:active { box-shadow: var(--sf-press); }
 
 
 .btn:not(.btn-ghost):not(.btn-link):not(:disabled) { box-shadow: var(--sf-drop); }
 .btn:not(.btn-link):not(:disabled):active { box-shadow: var(--sf-press); }
 .btn:disabled, .btn[disabled] { box-shadow: none; }
+
 .badge:not(.badge-ghost) { box-shadow: var(--sf-lift2); }
 
 
@@ -291,6 +291,7 @@ body::after {
   background: var(--sf-inset-face);
   box-shadow: var(--sf-sink);
 }
+
 .input, .select, .file-input { height: 3rem; }
 
 .input:focus, .input:focus-within, .textarea:focus, .select:focus, .file-input:focus {
@@ -341,7 +342,6 @@ body { letter-spacing: -0.006em; }
   color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
 }
 
-
 #status {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -355,7 +355,6 @@ nav[data-dock] button > span {
   font-size: .58rem;
 }
 
-
 .modal-box {
   background: var(--color-base-100);
   transition-timing-function: cubic-bezier(.22, 1, .3, 1.12);
@@ -364,7 +363,6 @@ nav[data-dock] button > span {
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
-
 @keyframes msRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 .ms-stagger > * { animation: msRise .32s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
 @media (prefers-reduced-motion: reduce) { .ms-stagger > * { animation: none; } }
@@ -378,7 +376,6 @@ nav[data-dock] button > span {
 @keyframes msDetailIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
 .ms-detail-in { animation: msDetailIn .26s cubic-bezier(.2, .8, .2, 1); }
 @media (prefers-reduced-motion: reduce) { .ms-detail-in { animation: none; } }
-
 .truncate { min-width: 0; }
 
 body { -webkit-tap-highlight-color: transparent; }
@@ -404,6 +401,7 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 [data-theme="signal-light"] .ms-shell { --sh-body: #DCD8CC; box-shadow: var(--sf-drop); }
 
 
+
 .ms-screen {
   --sf-inset-face: var(--sh-tint, var(--color-base-200));
   width: 100%;
@@ -419,7 +417,6 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 
 .ms-pad { padding: 4%; }
 .ms-pad-hub { width: 92%; height: 92%; }
-
 .ms-pad-key { border-radius: 12%; }
 
 

@@ -25,8 +25,11 @@ const pin = /jsr:@microspec\/core@([^/"]+)/.exec(JSON.stringify(consumer.imports
 if (!pin) { console.error("rtmap: deno.json imports carry no jsr:@microspec/core@<version> pin"); Deno.exit(1); }
 const base = `https://jsr.io/@microspec/core/${pin}/`;
 
-// the core's own map (fetch — works from the file realm and the jsr cache alike) supplies the CDN pins
-const coreMap = await (await fetch(new URL("../packages/gates/preflight.importmap.json", new URL("../", import.meta.url)))).json();
+// the core's own map supplies the CDN pins (fetch cannot read file: URLs — branch on the realm)
+const mapUrl = new URL("../packages/gates/preflight.importmap.json", import.meta.url);
+const coreMap = mapUrl.protocol === "file:"
+  ? JSON.parse(await Deno.readTextFile(mapUrl))
+  : await (await fetch(mapUrl)).json();
 const imports = {};
 for (const [k, v] of Object.entries(coreMap.imports)) {
   if (k === "canvas" || k === "/_rt/") continue; // relocated below — their values were relative to the core's map

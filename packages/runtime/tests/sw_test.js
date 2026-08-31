@@ -1,6 +1,7 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { manifestFor } from "../../../deploy/sw.mjs";
+import { pkgRoot } from "../pkgroot.js";
 
 class FakeCache {
   constructor(entries = {}) { this.map = new Map(Object.entries(entries)); }
@@ -24,7 +25,7 @@ const swEvent = (request) => {
 };
 
 function loadSwCore(app = "rave", { origin = "https://damanoreshkan-beep.github.io", cached = {}, fetch, connection, onLine = true } = {}) {
-  const src = Deno.readTextFileSync(new URL("../sw-core.js", import.meta.url));
+  const src = Deno.readTextFileSync(new URL("packages/runtime/sw-core.js", pkgRoot(import.meta.url, 3)));
   const events = {};
   const cache = new FakeCache(cached);
   const calls = [];

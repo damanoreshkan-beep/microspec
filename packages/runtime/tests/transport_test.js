@@ -1,8 +1,10 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
+import { pkgRoot } from "../pkgroot.js";
+const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
 
 Deno.test("Transport compacts on its CONTAINER, never on the viewport", async () => {
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const tp = ui.slice(ui.indexOf("export function Transport("));
   assert(/@container/.test(tp), "the transport must establish a container — it is sized by the space IT has");
   assert(/@max-\[\d+px\]:/.test(tp), "no container-query compaction: the row will overflow where it is narrow");
@@ -11,7 +13,7 @@ Deno.test("Transport compacts on its CONTAINER, never on the viewport", async ()
 });
 
 Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable, with its word", async () => {
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const tp = ui.slice(ui.indexOf("export function Transport("));
   const sheet = tp.slice(tp.indexOf("data-tp-sheet"));
   assert(/\.\.\.actions,/.test(sheet), "the sheet must spread every action, not a demoted subset");
@@ -25,14 +27,14 @@ Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable
 });
 
 Deno.test("no app passes the Transport a prop it does not accept (a silent prop is a lost button)", async () => {
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const sig = ui.slice(ui.indexOf("export function Transport("), ui.indexOf("}) {", ui.indexOf("export function Transport(")));
   const bare = sig.replace(/\/\/[^\n]*/g, "").replace(/"[^"]*"|'[^']*'|`[^`]*`/g, "0");
   const accepted = new Set([...bare.matchAll(/(?:^|[,{])\s*([a-zA-Z][a-zA-Z0-9]*)\s*(?=[,=}]|$)/gm)].map((m) => m[1]));
   accepted.add("children"); accepted.add("key");
   assert(accepted.has("actions") && accepted.has("onToggle"), "could not read the Transport signature");
 
-  const appsDir = new URL("../../../apps/", import.meta.url);
+  const appsDir = new URL(`file://${Deno.cwd()}/apps/`); 
   const offenders = [];
   for await (const e of Deno.readDir(appsDir)) {
     if (!e.isDirectory) continue;
@@ -55,7 +57,7 @@ Deno.test("no app passes the Transport a prop it does not accept (a silent prop 
 });
 
 Deno.test("Transport — every control is opt-in, and the mode toggles frame the transport keys", async () => {
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const tp = ui.slice(ui.indexOf("export function Transport("));
   for (const [h, id] of [["onShuffle", "shuffle"], ["onRepeat", "repeat"], ["onPrev", "prev"], ["onNext", "next"]])
     assert(new RegExp(`\\$\\{\\s*${h}\\s*\\?`).test(tp) || new RegExp(`${h}\\s*\\?`).test(tp),
@@ -67,7 +69,7 @@ Deno.test("Transport — every control is opt-in, and the mode toggles frame the
 });
 
 Deno.test("Transport cannot leave its container — the cap is the widget's, not the caller's", async () => {
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const root = /<div data-transport class=\$\{`([^`]*)`/.exec(ui)?.[1] ?? "";
   assert(root.includes("@container"), "the transport must query its OWN width — a viewport query reads the window, and .ms-side / the watch rail both narrow the box while the window stays wide");
   assert(root.includes("max-w-full"), `the transport must be capped by whatever holds it (its classes: ${root}) — its keys are shrink-0 and its row is justify-center, so an uncapped box spills out of BOTH sides of its island instead of demoting into the overflow sheet`);

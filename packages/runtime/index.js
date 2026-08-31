@@ -52,7 +52,6 @@ export function start(spec, arg2) {
   })();
   applyTheme(urlTheme || S.theme.get());
   S.theme.listen((t) => applyTheme(urlTheme || t));
-  if (!gate) import("./tilt.js").then((m) => m.startTilt()).catch(() => {});
 
 
   const applyLang = (l) => { try { document.documentElement.lang = l; } catch {  } };

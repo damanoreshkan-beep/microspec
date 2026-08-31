@@ -3,7 +3,14 @@ let present = false;
 try {
   for (const e of Deno.readDirSync("apps")) if (e.isDirectory && has(`apps/${e.name}/spec.json`)) { present = true; break; }
 } catch {  }
-if (present) { console.log("demo: tree already has apps — nothing to seed"); Deno.exit(0); }
+if (present) {
+  if (!has("apps/store")) {
+    const { code } = await new Deno.Command("deno", { args: ["run", "-A", "deploy/sw.mjs"], stdout: "inherit", stderr: "inherit" }).output();
+    Deno.exit(code);
+  }
+  console.log("demo: tree already has apps — nothing to seed");
+  Deno.exit(0);
+}
 
 const run = async (...args) => {
   const { code } = await new Deno.Command("deno", { args: ["run", "-A", ...args], stdout: "inherit", stderr: "inherit" }).output();

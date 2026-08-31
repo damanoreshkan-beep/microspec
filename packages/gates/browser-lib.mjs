@@ -355,6 +355,27 @@ export async function runDesignChecks(ev) {
   });
   out.push(ovi.ov <= 1 ? { name: "phone 384px: без горизонтального overflow", ok: true } : { name: "phone 384px: overflow", ok: false, msg: `+${ovi.ov}px — винуватець: ${ovi.sel}` });
 
+  
+  
+  
+  const shifted = await ev(() => {
+    const bad = [];
+    for (const sel of ["header.navbar", "nav[data-dock]"]) {
+      const el = document.querySelector(sel);
+      if (!el) continue;
+      for (const ps of ["::before", "::after"]) {
+        const t = getComputedStyle(el, ps).transform;
+        if (!t || t === "none") continue;
+        const m = new DOMMatrix(t);
+        if (Math.abs(m.m41) > 0.5) bad.push(`${sel}${ps} зсунуто на ${m.m41.toFixed(1)}px по X`);
+      }
+    }
+    return bad;
+  });
+  out.push(shifted.length
+    ? { name: "хром-декор без бічного зсуву", ok: false, msg: shifted.join("; ") }
+    : { name: "хром-декор без бічного зсуву", ok: true });
+
   await ev(() => document.getElementById("__freeze")?.remove());
   return out;
 }

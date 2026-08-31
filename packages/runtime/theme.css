@@ -171,17 +171,19 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 :root {
   --r-1: 4px; --r-2: 8px; --r-3: 12px; --r-4: 16px; --r-5: 24px;
   --bw-1: 1px; --bw-2: 2px; --bw-3: 4px;
-  --ds-tx: 0; --ds-ty: 0;
 }
 
-header.navbar { position: sticky; }
+
+header.navbar {
+  position: sticky;
+  background: linear-gradient(to bottom, var(--color-base-100) 62%, color-mix(in srgb, var(--color-base-100) 72%, transparent) 84%, transparent);
+}
 header.navbar::after {
   content: "";
   position: absolute;
   left: 0; right: 0; bottom: -1px; height: 1px;
   pointer-events: none;
   background: linear-gradient(90deg, transparent 8%, var(--lm-rim-hi) 45%, var(--lm-rim-hi) 55%, transparent 92%);
-  transform: translate3d(calc(var(--ds-tx) * 28px), 0, 0);
 }
 @media (max-width: 300px) { header.navbar::after { display: none; } }
 :root {
@@ -229,6 +231,7 @@ header.navbar::after {
   --lm-bloom-hi: color-mix(in oklch, var(--color-accent) 55%, transparent);
   --nm-cast:   rgba(40, 32, 20, .22);
   --ds-strand: url("/_rt/ds-d-strand.webp");   
+
   --sf-rim:        var(--lm-rim);
   --sf-shadow:     rgba(40, 32, 20, .18);
   --sf-drop:       0 0 0 1px var(--lm-rim), inset 0 1px 0 var(--lm-rim-hi), 0 10px var(--lm-g) var(--lm-gs) var(--nm-cast);
@@ -249,7 +252,6 @@ header.navbar::after {
   --ms-vol-sheen:  rgba(255, 255, 255, .9);
   --ms-vol-shade:  rgba(40, 32, 20, .12);
 }
-
 body {
   background-image:
     radial-gradient(140% 88% at 50% -18%, var(--ms-vol-key), transparent 62%),
@@ -282,8 +284,8 @@ body::after {
 .btn:not(.btn-link):not(:disabled):active { box-shadow: var(--sf-press); }
 .btn:disabled, .btn[disabled] { box-shadow: none; }
 
-.badge:not(.badge-ghost) { box-shadow: var(--sf-lift2); }
 
+.badge:not(.badge-ghost) { box-shadow: var(--sf-lift2); }
 
 
 .sf-track, .range { --range-bg: var(--sf-track-face); }
@@ -341,7 +343,6 @@ body { letter-spacing: -0.006em; }
   border: 1px solid var(--color-base-300);
   color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
 }
-
 #status {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -354,7 +355,6 @@ nav[data-dock] button > span {
   letter-spacing: .03em;
   font-size: .58rem;
 }
-
 .modal-box {
   background: var(--color-base-100);
   transition-timing-function: cubic-bezier(.22, 1, .3, 1.12);
@@ -376,18 +376,19 @@ nav[data-dock] button > span {
 @keyframes msDetailIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
 .ms-detail-in { animation: msDetailIn .26s cubic-bezier(.2, .8, .2, 1); }
 @media (prefers-reduced-motion: reduce) { .ms-detail-in { animation: none; } }
-.truncate { min-width: 0; }
 
+
+.truncate { min-width: 0; }
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
 .overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
 
-
 @media (prefers-reduced-motion: reduce) {
   .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }
 }
+
+
 .ms-shell {
-  
   --sh-r: calc(var(--ms-r) * 1.2);
   --sh-r-in: max(var(--r-1), calc(var(--sh-r) - var(--ms-pad)));
   width: 100%;
@@ -409,6 +410,7 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
   border-radius: var(--sh-r-in, var(--ms-r-in));
 }
 
+
 @media (max-height: 520px) and (min-width: 301px) {
   .ms-shell { max-width: 46rem; }
   [data-shell-body].ms-side > [data-stage-box] { flex: 1 1 auto; }
@@ -417,10 +419,10 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 
 .ms-pad { padding: 4%; }
 .ms-pad-hub { width: 92%; height: 92%; }
+
 .ms-pad-key { border-radius: 12%; }
-
-
 .ms-menu { flex-wrap: wrap; justify-content: center; }
+
 
 
 

@@ -75,7 +75,7 @@ for await (const a of Deno.readDir("apps")) {
   const appVer = "1." + (await gitCount(`apps/${a.name}`));   
   for await (const f of Deno.readDir(`apps/${a.name}`)) {
     if (!f.isFile || f.name === "e2e.spec.mjs" || /\.(md|bak\.[a-z]+\.js)$/.test(f.name)) continue;
-    if (/\.(html|js|json|svg|png|webmanifest|wgsl|frag)$/.test(f.name)) {
+    if (/\.(html|js|json|svg|png|webp|webmanifest|wgsl|frag)$/.test(f.name)) {
       if (f.name === "spec.json") {
         const spec = JSON.parse(await Deno.readTextFile(`apps/${a.name}/spec.json`));
         if (!spec.version) spec.version = appVer;               
@@ -105,7 +105,8 @@ for await (const a of Deno.readDir("apps")) {
     if (!(await has(`apps/${a.name}/brand.svg`))) throw new Error(`apps/${a.name}/brand.svg is missing — no PNG icons would be generated and the app would not be installable`);
     const brand = (await has(`apps/${a.name}/brand.json`)) ? JSON.parse(await Deno.readTextFile(`apps/${a.name}/brand.json`)) : { bg: "#1f2430", fg: "#a78bfa" };
     const paths = (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim();
-    await generateAppIcons(`${outDir}/icons`, brand, paths);
+    const master = (await has(`apps/${a.name}/icon.webp`)) ? await Deno.readFile(`apps/${a.name}/icon.webp`) : null;
+    await generateAppIcons(`${outDir}/icons`, brand, paths, master);
     const uk = JSON.parse(await Deno.readTextFile(`apps/${a.name}/i18n/uk.json`));
     const title = uk.title || a.name, tagline = uk.profTagline || uk.heroBody || "";
     await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline }));

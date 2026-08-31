@@ -2,7 +2,7 @@ import { Resvg } from "npm:@resvg/resvg-wasm@2.6.2";
 import { ensure } from "./icons.mjs";   
 
 export const SITE = "https://dreamstudio.mooo.com";
-export const SITE_NAME = "microspec";
+export const SITE_NAME = "DreamStudio";   
 export const OG_W = 1200, OG_H = 630;
 
 let fontsP = null;

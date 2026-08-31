@@ -2,37 +2,41 @@ import { html } from "htm/preact";
 import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { T } from "/_rt/i18n.js";
-import { Sheet, Segmented } from "/_rt/ui.js";
+import { Sheet } from "/_rt/ui.js";
 import { collection } from "/_rt/db.js";
 import apps from "./apps.json" with { type: "json" };
 import spec from "./spec.json" with { type: "json" };
 
 const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls || ""} style=${style || ""}></iconify-icon>`;
-const AppArt = (a, color, size) => a.icon
+const AppArt = (a, size) => a.icon
   ? html`<img src=${`../${a.id}/icon.svg`} alt="" aria-hidden="true" decoding="async" loading="lazy" style=${`width:${size};height:${size}`} class="rounded-[inherit] block" />`
   : a.art
-  ? html`<svg viewBox="0 0 24 24" style=${`width:${size};height:${size};color:${color}`} fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" dangerouslySetInnerHTML=${{ __html: a.art }}></svg>`
-  : Icon(a.glyph, "", `font-size:${size};color:${color}`);
-const Tile = (a, cls) => html`<div class=${`relative shrink-0 rounded-[24%] overflow-hidden bg-black sf-raised sf-e2 flex items-center justify-center ${cls}`}>${AppArt(a, "var(--color-base-content)", a.icon ? "100%" : "45%")}</div>`;
+  ? html`<svg viewBox="0 0 24 24" style=${`width:${size};height:${size};color:var(--color-base-content)`} fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" dangerouslySetInnerHTML=${{ __html: a.art }}></svg>`
+  : Icon(a.glyph, "", `font-size:${size};color:var(--color-base-content)`);
+const Tile = (a, cls) => html`<div class=${`relative shrink-0 rounded-[22%] overflow-hidden bg-black sf-raised sf-e2 flex items-center justify-center ${cls}`}>${AppArt(a, a.icon ? "100%" : "46%")}</div>`;
 const SEEN = collection("seen");      
 const CATALOG = collection("catalog");
 const appUrl = (id, install = false) => `../${id}/${install ? "?install=1" : ""}`;   
-const shotUrl = (a) => `./assets/shot-${a.id}.webp`;
+const shotUrl = (a, tab) => `./assets/shot-${a.id}--${tab}.webp`;
+const firstShot = (a) => (a.shots?.length ? shotUrl(a, a.shots[0]) : null);
 const CATS = ["science", "feeds", "tools", "sound", "hackrf", "creative", "money", "wellness", "play", "esoterica"];
 const catKey = (c) => "cat" + c[0].toUpperCase() + c.slice(1);
 const FEATURED = (spec.featured || []).map((id) => apps.find((a) => a.id === id)).filter(Boolean);
 const isFeatured = (a) => FEATURED.some((f) => f.id === a.id);
+const ROWS_PER_SECTION = 3;
 
 export function store({ S, openScreen, closeScreen }) {
   const t = useStore(S.t), screen = useStore(S.screen), locale = useStore(S.locale);
   const nameOf = (a) => a.titles?.[locale] || a.title;
   const taglineOf = (a) => a.taglines?.[locale] || a.tagline || "";
   const screensOf = (a) => a.screens?.[locale] || a.screens?.en || [];
+  const subtitleOf = (a) => { const s = taglineOf(a); const m = /^(.{12,90}?[.!?—])\s/.exec(s + " "); return m ? m[1].replace(/[—.]$/, "") : s; };
   const byName = (x, y) => nameOf(x).localeCompare(nameOf(y), locale);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");   
   const [seen, setSeen] = useState(null);   
   const [fresh, setFresh] = useState(null); 
+  const [more, setMore] = useState(false);  
   useEffect(() => {
     Promise.all([SEEN.all(), CATALOG.all()]).then(([s, c]) => {
       setSeen(Object.fromEntries(s.map((x) => [x.id, x.v])));
@@ -43,132 +47,147 @@ export function store({ S, openScreen, closeScreen }) {
       CATALOG.put("known", { ids }).catch(() => {});
     }).catch(() => { setSeen({}); setFresh(new Set()); });
   }, []);
+  useEffect(() => { setMore(false); }, [screen]);
   const badgeOf = (a) => (!seen || !fresh ? null : fresh.has(a.id) && !(a.id in seen) ? "new" : (a.id in seen) && seen[a.id] !== a.version ? "upd" : null);
   const installed = (a) => !!seen && a.id in seen;   
   const remember = (a) => { SEEN.put(a.id, { v: a.version }).catch(() => {}); setSeen((s) => ({ ...(s || {}), [a.id]: a.version })); };
   const launch = (a, install = false) => { remember(a); try { window.open(appUrl(a.id, install), "_blank", "noopener"); } catch { location.assign(appUrl(a.id, install)); } };
-  const tag = (b, sm) => b === "new" ? html`<span class=${`badge badge-secondary ${sm ? "badge-sm" : "badge-xs"} font-bold px-1 leading-none`}>${T(t, "newBadge")}</span>` : b === "upd" ? html`<span class=${`badge badge-warning ${sm ? "badge-sm" : "badge-xs"} font-bold px-1 leading-none`}>${T(t, "updBadge")}</span>` : null;
+  const tag = (b) => b === "new" ? html`<span class="badge badge-secondary badge-xs font-bold px-1 leading-none">${T(t, "newBadge")}</span>` : b === "upd" ? html`<span class="badge badge-warning badge-xs font-bold px-1 leading-none">${T(t, "updBadge")}</span>` : null;
   const needsUsb = (a) => (a.needs || []).includes("usb");
-  const deviceNote = (a) => needsUsb(a) ? html`<div data-needs-device class="flex items-center gap-2 text-sm text-warning bg-warning/10 rounded-2xl px-3 py-2">${Icon("lucide:usb", "shrink-0")}<span>${T(t, a.deviceNote || "needsDeviceHackrf")}</span></div>` : null;
   const tap = (a) => (installed(a) ? launch(a) : openScreen(a.id));
+  const pill = (a, extra = "") => html`<button class=${`btn btn-sm rounded-full px-4 min-h-8 h-8 bg-base-300 border-0 text-secondary font-bold shrink-0 ${extra}`} aria-label=${`${T(t, "openApp")} — ${nameOf(a)}`} onClick=${(e) => { e.stopPropagation(); launch(a); }}>${installed(a) ? Icon("lucide:external-link", "text-base") : T(t, "openApp")}</button>`;
 
   const sel = screen ? apps.find((a) => a.id === screen) : null;
   const page = html`<${Sheet} id="appsheet" size="lg" open=${!!sel} onClose=${closeScreen} title=${sel ? nameOf(sel) : ""}>
-    ${sel ? (() => { const b = badgeOf(sel), scr = screensOf(sel); return html`<div class="flex flex-col gap-5 py-1">
-      <div class="flex items-center gap-4">
-        <div class="relative shrink-0">
-          <div class="absolute inset-0 rounded-[24%] blur-2xl opacity-40" style="background:var(--app-accent)" aria-hidden="true"></div>
-          ${Tile(sel, "w-24 h-24")}
-        </div>
-        <div class="min-w-0 flex flex-col gap-1">
-          <div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-lg leading-tight">${nameOf(sel)}</span>${b ? tag(b, true) : null}${isFeatured(sel) ? html`<span class="badge badge-secondary badge-sm font-bold">${T(t, "premium")}</span>` : null}</div>
-          <div class="text-xs font-mono uppercase tracking-wide text-muted">${T(t, catKey(sel.category))} · v${sel.version || "1.0"}</div>
+    ${sel ? (() => { const b = badgeOf(sel), scr = screensOf(sel), shots = sel.shots || [], desc = taglineOf(sel), long = desc.length > 180; return html`<div class="flex flex-col gap-6 pb-2">
+      <div class="flex items-start gap-4">
+        ${Tile(sel, "w-28 h-28")}
+        <div class="min-w-0 flex-1 flex flex-col gap-1 pt-0.5">
+          <div class="font-bold text-[1.35rem] leading-tight break-words">${nameOf(sel)}</div>
+          <div class="text-sm text-muted leading-snug line-clamp-2">${subtitleOf(sel)}</div>
+          <div class="flex items-center gap-2 mt-2">
+            <button id="open-app" class="btn btn-sm btn-secondary rounded-full px-5 min-h-8 h-8 font-bold" onClick=${() => launch(sel)}>${T(t, "openApp")}</button>
+            <button id="install-app" class="btn btn-sm btn-ghost rounded-full px-3 min-h-8 h-8 gap-1.5" onClick=${() => launch(sel, true)}>${Icon("lucide:download", "text-base")}${T(t, "installApp")}</button>
+          </div>
         </div>
       </div>
-      <div class="flex gap-2">
-        <button id="open-app" class="btn btn-secondary rounded-2xl gap-2 flex-1 min-w-0" onClick=${() => launch(sel)}>${Icon("lucide:external-link")}${T(t, "openApp")}</button>
-        <button id="install-app" class="btn btn-outline rounded-2xl gap-2 flex-1 min-w-0" onClick=${() => launch(sel, true)}>${Icon("lucide:download")}${T(t, "installApp")}</button>
+      <div class="grid grid-cols-4 divide-x divide-base-300/60 border-y border-base-300/50 py-3 text-center">
+        ${[[T(t, "version"), `v${sel.version || "1.0"}`], [T(t, "category"), T(t, catKey(sel.category))], [T(t, "offline"), T(t, "yes")], [T(t, "screens"), String(scr.length || 1)]].map(([k, v]) => html`<div class="px-1 min-w-0 flex flex-col gap-1" key=${k}>
+          <div class="text-[0.58rem] font-mono uppercase tracking-wide text-muted truncate">${k}</div>
+          <div class="text-sm font-semibold truncate">${v}</div>
+        </div>`)}
       </div>
-      ${deviceNote(sel)}
-      <p class="text-base-content/80 leading-relaxed break-words">${taglineOf(sel)}</p>
-      ${sel.shot ? html`<div class="rounded-[var(--ms-r-in)] overflow-hidden sf-inset bg-black mx-auto w-full max-w-[16rem]"><img src=${shotUrl(sel)} alt="" loading="lazy" decoding="async" class="w-full h-auto block" /></div>` : null}
-      ${scr.length ? html`<div class="flex flex-col gap-2">
-        <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1">${T(t, "screens")}</div>
-        <div class="flex flex-wrap gap-1.5">${scr.map((s) => html`<span class="badge badge-ghost" key=${s}>${s}</span>`)}</div>
+      ${needsUsb(sel) ? html`<div data-needs-device class="flex items-center gap-2 text-sm text-warning bg-warning/10 rounded-2xl px-3 py-2">${Icon("lucide:usb", "shrink-0")}<span>${T(t, sel.deviceNote || "needsDeviceHackrf")}</span></div>` : null}
+      
+      ${shots.length ? html`<div class="flex flex-col gap-2">
+        <div class="font-bold text-lg px-0.5">${T(t, "screenshots")}</div>
+        <div class="flex gap-3 overflow-x-auto snap-x [overscroll-behavior-x:contain] [scrollbar-width:none] -mx-[var(--ms-pad)] px-[var(--ms-pad)] pb-1">
+          ${shots.map((tab, i) => html`<figure key=${tab} class="snap-start shrink-0 w-[62%] max-w-[15rem] rounded-[1.1rem] overflow-hidden bg-black sf-raised sf-e2 aspect-[384/832]">
+            <img src=${shotUrl(sel, tab)} alt=${scr[i] || ""} loading=${i ? "lazy" : "eager"} decoding="async" class="w-full h-full object-cover object-top block" />
+          </figure>`)}
+        </div>
       </div>` : null}
-      <div class="flex flex-col rounded-[var(--ms-r-in)] overflow-hidden sf-raised sf-e2">
-        <div class="flex items-center gap-3 px-4 py-3 border-b border-base-300/50 text-sm">${Icon("lucide:wifi-off", "text-muted")}<span class="flex-1">${T(t, "offlineYes")}</span>${Icon("lucide:check", "text-[var(--app-accent)]")}</div>
-        <div class="flex items-center gap-3 px-4 py-3 border-b border-base-300/50 text-sm">${Icon("lucide:smartphone", "text-muted")}<span class="flex-1">${T(t, "installableYes")}</span>${Icon("lucide:check", "text-[var(--app-accent)]")}</div>
-        <div class="flex items-center gap-3 px-4 py-3 text-sm">${Icon("lucide:tag", "text-muted")}<span class="flex-1">${T(t, "version")}</span><span class="font-mono tabular-nums">v${sel.version || "1.0"}</span></div>
+      
+      <div class="flex flex-col gap-1">
+        <p class=${`text-[0.95rem] leading-relaxed text-base-content/85 break-words ${more || !long ? "" : "line-clamp-3"}`}>${desc}</p>
+        ${long ? html`<button class="self-end text-sm font-semibold text-secondary" onClick=${() => setMore(!more)}>${more ? T(t, "less") : T(t, "more")}</button>` : null}
       </div>
       <div class="flex flex-col gap-1">
-        <div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center justify-between"><span>${T(t, "whatsNew")}</span>${b === "upd" ? html`<span class="normal-case text-warning">${T(t, "newVersion")}</span>` : null}</div>
-        <p class="text-sm text-base-content/80 px-1">${T(t, "whatsNewBody")}</p>
+        <div class="flex items-baseline justify-between px-0.5"><span class="font-bold text-lg">${T(t, "whatsNew")}</span><span class="text-xs font-mono text-muted">v${sel.version || "1.0"}${b === "upd" ? html` · <span class="text-warning">${T(t, "newVersion")}</span>` : ""}</span></div>
+        <p class="text-sm text-base-content/80">${T(t, "whatsNewBody")}</p>
+      </div>
+      <div class="flex flex-col gap-1">
+        <div class="font-bold text-lg px-0.5">${T(t, "info")}</div>
+        <div class="flex flex-col text-sm">
+          ${[[T(t, "developer"), "DreamStudio"], [T(t, "category"), T(t, catKey(sel.category))], [T(t, "version"), `v${sel.version || "1.0"}`], [T(t, "offline"), T(t, "yes")], [T(t, "installation"), T(t, "homeScreen")], ...(needsUsb(sel) ? [[T(t, "device"), "USB"]] : []), ...(scr.length ? [[T(t, "screens"), scr.join(" · ")]] : [])].map(([k, v]) => html`<div class="flex items-start justify-between gap-4 py-2.5 border-b border-base-300/50 last:border-0" key=${k}><span class="text-muted shrink-0">${k}</span><span class="text-right break-words">${v}</span></div>`)}
+        </div>
       </div>
     </div>`; })() : null}
   <//>`;
 
   
-  const Featured = (a) => html`<button data-featured data-app=${a.id} aria-label=${nameOf(a)} key=${a.id} onClick=${() => tap(a)}
-      class="group relative snap-center shrink-0 w-[84%] max-w-[22rem] aspect-[4/5] rounded-[var(--ms-r)] overflow-hidden bg-black sf-raised sf-e3 text-left transition-[transform,box-shadow] duration-150 active:scale-[.98]">
-    ${a.shot ? html`<img src=${shotUrl(a)} alt="" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover object-top opacity-90" />` : null}
-    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/5" aria-hidden="true"></div>
-    <span class="absolute top-3 left-3 badge badge-secondary badge-sm font-bold">${T(t, "premium")}</span>
-    <div class="absolute inset-x-0 bottom-0 p-4 flex items-end gap-3 text-white">
-      ${Tile(a, "w-14 h-14")}
-      <div class="min-w-0 flex-1 flex flex-col gap-0.5">
-        <span class="font-bold leading-tight truncate">${nameOf(a)}</span>
-        <span class="text-xs text-white/75 leading-snug line-clamp-2">${taglineOf(a)}</span>
+  const Featured = (a) => { const shot = firstShot(a); return html`<button data-featured data-app=${a.id} aria-label=${nameOf(a)} key=${a.id} onClick=${() => tap(a)}
+      class="relative w-full aspect-[4/5] rounded-[var(--ms-r)] overflow-hidden bg-black sf-raised sf-e3 text-left text-white transition-[transform,box-shadow] duration-150 active:scale-[.985]">
+    ${shot ? html`<img src=${shot} alt="" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover object-top" />` : null}
+    <div class="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/85" aria-hidden="true"></div>
+    <div class="absolute inset-x-0 top-0 p-5 flex flex-col gap-1">
+      <div class="text-[0.62rem] font-mono uppercase tracking-[.14em] text-secondary">${T(t, "premium")} · ${T(t, catKey(a.category))}</div>
+      <div class="text-[1.6rem] font-bold leading-[1.1] tracking-tight">${nameOf(a)}</div>
+      <div class="text-sm text-white/80 leading-snug line-clamp-2">${subtitleOf(a)}</div>
+    </div>
+    <div class="absolute inset-x-0 bottom-0 p-3 flex items-center gap-3 bg-black/55 backdrop-blur-md">
+      ${Tile(a, "w-11 h-11")}
+      <div class="min-w-0 flex-1 flex flex-col">
+        <span class="font-semibold text-sm leading-tight truncate">${nameOf(a)}</span>
+        <span class="text-[0.72rem] text-white/70 leading-tight truncate">${T(t, catKey(a.category))}</span>
       </div>
+      ${pill(a, "bg-white/15 text-white")}
     </div>
-  </button>`;
-  const RailTile = (a) => { const b = badgeOf(a); return html`<button data-app=${a.id} aria-label=${nameOf(a)} key=${a.id} onClick=${() => tap(a)} class="group snap-start shrink-0 w-[4.6rem] flex flex-col items-center gap-1.5 min-w-0">
-    <div class="relative w-full">
-      ${Tile(a, "w-full aspect-square transition-[transform,box-shadow] duration-150 group-active:scale-90")}
-      ${b ? html`<span class="absolute top-1 right-1">${tag(b)}</span>` : installed(a) ? html`<span data-installed class="absolute bottom-1 right-1 grid place-items-center w-[18px] h-[18px] rounded-full bg-base-300 sf-e2" title=${T(t, "installed")}>${Icon("lucide:check", "text-[0.66rem] text-[var(--app-accent)]")}</span>` : null}
-    </div>
-    <div class="text-[0.68rem] leading-tight text-center line-clamp-2 break-words w-full text-base-content/90">${nameOf(a)}</div>
   </button>`; };
-  const Row = (a) => { const b = badgeOf(a); return html`<div data-app=${a.id} key=${a.id} class="flex items-center gap-3 py-2.5 border-b border-base-300/50 last:border-0">
-    <button aria-label=${nameOf(a)} onClick=${() => openScreen(a.id)} class="flex items-center gap-3 flex-1 min-w-0 text-left">
-      ${Tile(a, "w-14 h-14")}
+  const Row = (a) => { const b = badgeOf(a); return html`<div data-app=${a.id} key=${a.id} class="flex items-center gap-3 py-2">
+    <button aria-label=${nameOf(a)} onClick=${() => tap(a)} class="flex items-center gap-3 flex-1 min-w-0 text-left">
+      ${Tile(a, "w-16 h-16")}
       <div class="min-w-0 flex-1 flex flex-col gap-0.5">
-        <span class="font-medium leading-tight truncate flex items-center gap-2">${nameOf(a)}${b ? tag(b) : null}</span>
-        <span class="text-xs text-muted leading-snug line-clamp-2">${taglineOf(a)}</span>
+        <span class="font-semibold text-[0.95rem] leading-tight truncate flex items-center gap-2">${nameOf(a)}${b ? tag(b) : null}${isFeatured(a) ? Icon("lucide:sparkles", "text-secondary text-xs") : null}</span>
+        <span class="text-[0.8rem] text-muted leading-snug line-clamp-2">${subtitleOf(a)}</span>
       </div>
     </button>
-    <button class="btn btn-sm btn-secondary rounded-full px-4 shrink-0" aria-label=${`${T(t, "openApp")} — ${nameOf(a)}`} onClick=${() => launch(a)}>${T(t, "openApp")}</button>
+    ${pill(a)}
   </div>`; };
-  const rail = (items) => html`<div class="flex gap-3 overflow-x-auto snap-x px-1 -mx-1 pb-1 [scrollbar-width:none]">${items.map(RailTile)}</div>`;
-  const list = (items) => html`<div class="flex flex-col rounded-[var(--ms-r)] sf-raised sf-e2 px-3">${items.map(Row)}</div>`;
-  const heading = (label, meta) => html`<div class="text-[0.62rem] font-mono uppercase tracking-wide text-muted px-1 flex items-center justify-between gap-3"><span>${label}</span><span class="normal-case tabular-nums">${meta}</span></div>`;
+  
+  const rows = (items) => html`<div class="flex flex-col [&>div+div]:border-t [&>div+div]:border-base-300/50 [&>div+div]:ml-[4.75rem] [&>div+div]:pl-0">${items.map(Row)}</div>`;
+  const sectionHead = (label, count, onAll) => html`<div class="flex items-end justify-between gap-3 px-0.5">
+    <div class="flex flex-col"><span class="font-bold text-[1.25rem] leading-tight tracking-tight">${label}</span>${count != null ? html`<span class="text-xs text-muted">${count} ${T(t, "apps")}</span>` : null}</div>
+    ${onAll ? html`<button class="text-sm font-semibold text-secondary shrink-0 pb-0.5" onClick=${onAll}>${T(t, "seeAll")} ›</button>` : null}
+  </div>`;
   const noResults = html`<div class="flex flex-col items-center text-muted py-16 gap-2 text-center px-6">${Icon("lucide:search-x", "text-4xl")}<span>${T(t, "noResults")}</span></div>`;
   const searchBar = html`<div class="relative">
     <input value=${q} onInput=${(e) => setQ(e.target.value)} placeholder=${T(t, "search")} aria-label=${T(t, "search")} class="input input-bordered w-full rounded-2xl pl-10" />
     ${Icon("lucide:search", "absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50 text-lg pointer-events-none")}
+  </div>`;
+  const dateLine = new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-GB", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
+  
+  
+  const catPills = html`<div class="flex flex-wrap gap-1.5" role="group" aria-label=${T(t, "categories")}>
+    ${["all", ...CATS].map((c) => html`<button data-cat=${c} key=${c} aria-pressed=${cat === c} onClick=${() => setCat(c)}
+        class=${`btn btn-xs rounded-full h-7 min-h-7 px-3 font-medium border-0 ${cat === c ? "btn-primary" : "bg-base-300 text-base-content/85"}`}>${T(t, catKey(c))}</button>`)}
   </div>`;
 
   
   const query = q.trim().toLowerCase();
   if (query) {
     const found = apps.filter((a) => (nameOf(a) + " " + taglineOf(a)).toLowerCase().includes(query)).sort(byName);
-    return html`<div class="flex flex-col gap-4">${searchBar}${found.length ? list(found) : noResults}${page}</div>`;
+    return html`<div class="flex flex-col gap-4">${searchBar}${found.length ? rows(found) : noResults}${page}</div>`;
   }
-
-  
-  
-  const chips = html`<${Segmented} attr="data-cat" scroll label=${T(t, "categories")}
-    items=${["all", ...CATS].map((c) => ({ id: c, label: T(t, catKey(c)) }))}
-    value=${cat} onChange=${setCat} />`;
 
   
   if (cat !== "all") {
     const items = apps.filter((a) => a.category === cat).sort(byName);
-    return html`<div class="flex flex-col gap-4">${searchBar}${chips}
-      ${heading(T(t, catKey(cat)), `${items.length} ${T(t, "inCategory")}`)}
-      ${items.every(needsUsb) ? html`<div class="text-xs text-warning px-1">${T(t, "needsDevice")}</div>` : null}
-      ${items.length ? list(items) : noResults}
+    return html`<div class="flex flex-col gap-4">${searchBar}${catPills}
+      ${sectionHead(T(t, catKey(cat)), items.length)}
+      ${items.every(needsUsb) ? html`<div class="text-xs text-warning px-0.5">${T(t, "needsDevice")}</div>` : null}
+      ${items.length ? rows(items) : noResults}
       ${page}
     </div>`;
   }
 
   
-  return html`<div class="flex flex-col gap-5">${searchBar}${chips}
-    ${FEATURED.length ? html`<div class="flex flex-col gap-2">
-      ${heading(T(t, "featured"), FEATURED.length)}
-      <div class="flex gap-3 overflow-x-auto snap-x snap-mandatory px-1 -mx-1 pb-1 [scrollbar-width:none]">${FEATURED.map(Featured)}</div>
-    </div>` : null}
-    <div class="flex flex-col gap-5">
-      ${CATS.map((c) => {
-        const items = apps.filter((a) => a.category === c).sort(byName);
-        if (!items.length) return null;
-        return html`<div class="flex flex-col gap-2" key=${c}>
-          
-          <button class="text-left" onClick=${() => setCat(c)} aria-label=${`${T(t, catKey(c))} — ${T(t, "seeAll")}`}>${heading(html`${T(t, catKey(c))}${items.every(needsUsb) ? html`<span class="normal-case text-warning"> · ${T(t, "needsDevice")}</span>` : null}`, html`${items.length} ${Icon("lucide:chevron-right", "align-[-2px]")}`)}</button>
-          ${rail(items)}
-        </div>`;
-      })}
+  return html`<div class="flex flex-col gap-7">${searchBar}
+    <div class="flex flex-col gap-0.5 px-0.5">
+      <div class="text-[0.62rem] font-mono uppercase tracking-[.14em] text-muted">${dateLine}</div>
+      <h2 class="text-[2rem] font-bold leading-none tracking-tight">${T(t, "today")}</h2>
     </div>
+    ${catPills}
+    ${FEATURED.length ? html`<div class="flex flex-col gap-4">${FEATURED.map(Featured)}</div>` : null}
+    ${CATS.map((c) => {
+      const items = apps.filter((a) => a.category === c).sort(byName);
+      if (!items.length) return null;
+      return html`<div class="flex flex-col gap-2" key=${c}>
+        ${sectionHead(T(t, catKey(c)), items.length, () => setCat(c))}
+        ${items.every(needsUsb) ? html`<div class="text-xs text-warning px-0.5">${T(t, "needsDevice")}</div>` : null}
+        ${rows(items.slice(0, ROWS_PER_SECTION))}
+      </div>`;
+    })}
     ${page}
   </div>`;
 }

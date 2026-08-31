@@ -23,7 +23,8 @@ export async function buildManifest() {
     const screens = Object.fromEntries(
       Object.entries(i18n).map(([l, dict]) => [l, tabs.map((t) => (t.label && dict?.[t.label]) || (t.titleKey && dict?.[t.titleKey]) || null).filter(Boolean)]).filter(([, v]) => v.length),
     );
-    const shot = await has(`apps/store/assets/shot-${a.name}.webp`);
+    const shots = [];
+    for (const tb of tabs) if (await has(`apps/store/assets/shot-${a.name}--${tb.id}.webp`)) shots.push(tb.id);
     apps.push({
       id: a.name,
       title: d.title || a.name,                  
@@ -34,7 +35,7 @@ export async function buildManifest() {
       art,
       icon,
       screens,
-      shot,
+      shots,
       bg: brand.bg,
       fg: brand.fg,
       href: `./${a.name}/`,

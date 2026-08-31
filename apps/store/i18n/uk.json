@@ -54,5 +54,19 @@
   "installableYes": "Ставиться на домашній екран",
   "allApps": "Усі застосунки",
   "inCategory": "у цій категорії",
-  "seeAll": "Усі"
+  "seeAll": "Усі",
+  "today": "Сьогодні",
+  "info": "Інформація",
+  "category": "Категорія",
+  "offline": "Офлайн",
+  "yes": "Так",
+  "installation": "Встановлення",
+  "homeScreen": "Домашній екран",
+  "device": "Пристрій",
+  "developer": "Розробник",
+  "screenshots": "Скріншоти",
+  "apps": "застосунків",
+  "editorsPick": "Добірка",
+  "more": "більше",
+  "less": "менше"
 }

@@ -54,5 +54,19 @@
   "installableYes": "Installs to the home screen",
   "allApps": "All apps",
   "inCategory": "in this category",
-  "seeAll": "See all"
+  "seeAll": "See all",
+  "today": "Today",
+  "info": "Information",
+  "category": "Category",
+  "offline": "Offline",
+  "yes": "Yes",
+  "installation": "Installation",
+  "homeScreen": "Home screen",
+  "device": "Device",
+  "developer": "Developer",
+  "screenshots": "Screenshots",
+  "apps": "apps",
+  "editorsPick": "Featured",
+  "more": "more",
+  "less": "less"
 }

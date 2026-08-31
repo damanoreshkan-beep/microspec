@@ -36,7 +36,10 @@ function hasWebGL() {
 // 2026-08-31; it was purple→cyan). The spectral-centroid hue only nudges, so the scene stays ink + the pair
 // instead of a rave-rainbow. Saturation held ≤ 0.8. ----
 const H_BASS = 42, H_TREB = 176;
-const bandHue = (frac, st) => H_BASS + (H_TREB - H_BASS) * frac + (st.hue - 235) * 0.12;   // degrees
+// TWO TONES, not a ramp: a hue interpolated from 42° to 176° passes through green, which is in neither pole
+// (measured on the deployed ring — it came out lime). So the low half of any band is amber and the high half
+// is cyan, and the spectral centroid nudges each pole a few degrees rather than sliding between them.
+const bandHue = (frac, st) => (frac < 0.5 ? H_BASS : H_TREB) + (st.hue - 235) * 0.04;   // degrees
 
 // ---- one authored scale, two grounds ----------------------------------------------------------------
 // Every scene says the same thing with brightness: v ∈ 0..1 is "how loud/present is this element". On ink

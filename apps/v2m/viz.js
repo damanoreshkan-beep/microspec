@@ -180,7 +180,8 @@ function makeScene(THREE) {
         matDone.blending = matTodo.blending = mode;
         matDone.needsUpdate = matTodo.needsUpdate = true;
       }
-      const hue = (H_LOW + (H_HIGH - H_LOW) * Math.min(1, st.bands.treble * 1.6) + (st.hue - 235) * 0.1) / 360;
+      // two tones, never a ramp — a hue slid from 42° to 176° passes through green, which is in neither pole
+      const hue = ((st.bands.treble * 1.6 > 0.5 ? H_HIGH : H_LOW) + (st.hue - 235) * 0.04) / 360;
       const h01 = ((hue % 1) + 1) % 1;
 
       // the transcription split
@@ -235,7 +236,7 @@ function drawFallback(canvas, st) {
   const R = Math.min(w, h) * 0.3 * (1 + st.bands.bass * 0.25);
   const a = st.phase * 0.25, ca = Math.cos(a), sa = Math.sin(a);   // phase only advances while audio plays
   g.clearRect(0, 0, w, h);
-  const hue = H_LOW + (H_HIGH - H_LOW) * Math.min(1, st.bands.treble * 1.6);
+  const hue = st.bands.treble * 1.6 > 0.5 ? H_HIGH : H_LOW;   // two tones (see above)
   const lt = isLight();
   g.fillStyle = `hsl(${hue} 70% ${(lt ? 40 : 55) + st.bands.mid * 15}%)`;
   const r = Math.max(1, w * 0.0035);

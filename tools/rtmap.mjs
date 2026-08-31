@@ -39,6 +39,8 @@ const SHIMS = {
   ".microspec/tests/unit_test.js": `import "${base}packages/runtime/runtime_test.js";\n`,
   ".microspec/tests/mcp_test.js": `import "${base}tools/mcp/server_test.js";\n`,
   ".microspec/tests/pipeline_test.js": `import "${base}tools/8n8/run_test.js";\n`,
+  ".microspec/preflight.mjs": `globalThis.__msImport = (s) => import(s);\nawait import("${base}packages/gates/preflight.mjs");\n`,
+  ".microspec/verify.mjs": `globalThis.__msImport = (s) => import(s);\nawait import("${base}packages/gates/verify.mjs");\n`,
 };
 
 const have = await Deno.readTextFile("preflight.map.json").catch(() => "");

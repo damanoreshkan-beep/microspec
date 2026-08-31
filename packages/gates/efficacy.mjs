@@ -1,7 +1,8 @@
 
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", b: "\x1b[1m", x: "\x1b[0m" };
 const ROOT = Deno.cwd();
-const PREFLIGHT = new URL("./preflight.mjs", import.meta.url).href;
+const PREFLIGHT = await Deno.stat(`${Deno.cwd()}/.microspec/preflight.mjs`).then(() => `${Deno.cwd()}/.microspec/preflight.mjs`)
+  .catch(() => new URL("./preflight.mjs", import.meta.url).href);
 const IMPORTMAP = await Deno.stat(`${ROOT}/preflight.map.json`).then(() => `${ROOT}/preflight.map.json`)
   .catch(() => new URL("./preflight.importmap.json", import.meta.url).href);
 

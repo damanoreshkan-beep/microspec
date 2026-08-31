@@ -12,6 +12,8 @@
  */
 import { parseHTML } from "linkedom"; 
 
+const dynImport = (s) => (globalThis.__msImport ?? ((x) => import(x)))(s);
+
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[0m" };
 const TAGS = new Set(["div", "span", "button", "svg", "section", "header", "main", "footer", "nav", "input", "select", "option", "label", "rect", "circle", "path", "line", "polyline", "polygon", "text", "iconify-icon", "img", "table"]);
 
@@ -207,12 +209,12 @@ async function preflight(appdir) {
   
   const { document, rafErr, uncaught } = installDom();
   try {
-    const views = mode === "tool" ? await import(`file://${await Deno.realPath(`${appdir}/view.js`)}`) : {};
-    const { start } = await import("/_rt/index.js");
+    const views = mode === "tool" ? await dynImport(`file://${await Deno.realPath(`${appdir}/view.js`)}`) : {};
+    const { start } = await dynImport("/_rt/index.js");
     const composed = { ...spec, i18n };
     if (mode === "tool") start(composed, { views });
-    else if (mode === "stream") { const { stream } = await import(`file://${await Deno.realPath(`${appdir}/stream.js`)}`); start(composed, { stream }); }
-    else { let load = async () => ({ items: [], meta: {} }); try { ({ load } = await import(`file://${await Deno.realPath(`${appdir}/data.js`)}`)); } catch {  } start(composed, load); }
+    else if (mode === "stream") { const { stream } = await dynImport(`file://${await Deno.realPath(`${appdir}/stream.js`)}`); start(composed, { stream }); }
+    else { let load = async () => ({ items: [], meta: {} }); try { ({ load } = await dynImport(`file://${await Deno.realPath(`${appdir}/data.js`)}`)); } catch {  } start(composed, load); }
     await flush();
 
     const app = document.getElementById("app");

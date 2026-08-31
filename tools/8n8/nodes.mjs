@@ -95,7 +95,8 @@ export const NODES = [
     why: "The farm's own invariants (no emoji, no spinners, camera priming, i18n keys) — linkedom, no Chromium.",
     run: () => ["deno", "run", "-A",
       present("preflight.map.json") ? "--import-map=preflight.map.json" : `--import-map=${at("packages/gates/preflight.importmap.json")}`,
-      at("packages/gates/preflight.mjs"), ...globApps()],
+      present(".microspec/preflight.mjs") ? ".microspec/preflight.mjs" : at("packages/gates/preflight.mjs"),
+      ...globApps()],
   },
   {
     id: "caps", kind: "script", phase: "gate", needs: ["spec", "view", "demo"], scope: "farm", frozen: "2026-08-08",

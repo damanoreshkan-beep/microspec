@@ -3,7 +3,7 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 // ===================== affected-app orchestrator (tools/graph.mjs) =====================
-import { importSpecs, resolveSpec, buildClosure, classifyAffected, isGlobal, RT as RTX } from "../../../tools/graph.mjs";
+import { importSpecs, resolveSpec, buildClosure, classifyAffected, isGlobal, RT as RTX, RT_OVERLAY } from "../../../tools/graph.mjs";
 import { staticSpecs, htmlAssets, importMapOf } from "../../../tools/graph.mjs";
 
 Deno.test("graph: importSpecs finds static, re-export, dynamic and side-effect imports; ignores non-imports", () => {
@@ -14,7 +14,8 @@ Deno.test("graph: importSpecs finds static, re-export, dynamic and side-effect i
 });
 
 Deno.test("graph: resolveSpec maps /_rt/ to the runtime dir, resolves relative, treats bare/esm as external", () => {
-  assertEquals(resolveSpec("/_rt/ambient.js", "apps/drift/view.js"), RTX + "ambient.js");
+  // overlay-aware on purpose: in a product tree ambient.js IS a domain module and routes to rt/
+  assertEquals(resolveSpec("/_rt/ambient.js", "apps/drift/view.js"), RT_OVERLAY.has("ambient.js") ? "rt/ambient.js" : RTX + "ambient.js");
   assertEquals(resolveSpec("./synth.js", "apps/drift/view.js"), "apps/drift/synth.js");
   assertEquals(resolveSpec("../runtime/x.js", "packages/gates/y.js"), "packages/runtime/x.js"); // plain path math, not RT
   assertEquals(resolveSpec("htm/preact", "apps/drift/view.js"), null);

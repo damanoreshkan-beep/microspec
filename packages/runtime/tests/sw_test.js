@@ -7,6 +7,7 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 // We evaluate it against a stubbed `self` instead — which is also the only honest way to prove the policy,
 // since the farm's whole offline story turns on WHICH origins get cached and which app owns which cache.
 import { manifestFor } from "../../../deploy/sw.mjs";
+import { pkgRoot } from "../pkgroot.js";
 
 // A CacheStorage/Cache pair faithful enough for the two behaviours that matter: exact match, and the
 // ignoreSearch/scope-root fallback an installed PWA's `start_url: "./"` navigation depends on.
@@ -32,7 +33,7 @@ const swEvent = (request) => {
 };
 
 function loadSwCore(app = "rave", { origin = "https://damanoreshkan-beep.github.io", cached = {}, fetch, connection, onLine = true } = {}) {
-  const src = Deno.readTextFileSync(new URL("../sw-core.js", import.meta.url));
+  const src = Deno.readTextFileSync(new URL("packages/runtime/sw-core.js", pkgRoot(import.meta.url, 3)));
   const events = {};
   const cache = new FakeCache(cached);
   const calls = [];

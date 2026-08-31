@@ -17,7 +17,8 @@ import { field, declination, decimalYear, inRange, trueFrom } from "../geomag.js
 // A compass whose declination is backwards looks perfect until someone walks north.
 
 Deno.test("geomag: all 100 official NOAA test points", async () => {
-  const txt = await Deno.readTextFile(new URL("../wmm2025_testvalues.txt", import.meta.url));
+  const { pkgRoot } = await import("../pkgroot.js");
+  const txt = await Deno.readTextFile(new URL("packages/runtime/wmm2025_testvalues.txt", pkgRoot(import.meta.url, 3)));
   const pts = txt.split("\n").filter((l) => l.trim() && !l.startsWith("#")).map((l) => l.trim().split(/\s+/).map(Number));
   assertEquals(pts.length, 100, "the official test set is 100 points — a short read is a silent pass");
   for (const [year, alt, lat, lon, D, I, H, X, Y, Z, F] of pts) {

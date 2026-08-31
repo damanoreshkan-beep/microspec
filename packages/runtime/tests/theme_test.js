@@ -2,10 +2,14 @@
 //   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
+import { pkgRoot } from "../pkgroot.js";
+// Package-internal reads via pkgRoot — running from the JSR cache, import.meta is https and the registry
+// serves js with comments stripped; the npm tarball under node_modules is the VERBATIM tree.
+const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
 
 Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit consumes", async () => {
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const declared = new Set([...css.matchAll(/(--(?:ms|app|dock|hdr)-[a-z-]+)\s*:/g)].map((m) => m[1]));
   const used = new Set([...ui.matchAll(/var\((--[a-z-]+)\)/g)].map((m) => m[1]));
   for (const v of used) assert(declared.has(v), `ui.js reads ${v} but theme.css never declares it`);
@@ -19,7 +23,7 @@ Deno.test("design tokens: --ms-hero STEPS with the height ladder", async () => {
   // the weather hero filled a 340px floating window on its own and pushed the whole app below the fold —
   // a defect no gate can see, because a page that scrolls is allowed to scroll. So the rule is not "it
   // exists" but "it moves": a hero that does not compact is the same bug wearing a token's name.
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   const vals = [...css.matchAll(/--ms-hero:\s*([\d.]+)rem/g)].map((m) => Number(m[1]));
   assert(vals.length >= 4, `--ms-hero is declared ${vals.length} time(s); the height ladder has more steps`);
   const base = vals[0];
@@ -27,13 +31,13 @@ Deno.test("design tokens: --ms-hero STEPS with the height ladder", async () => {
   assert(vals.every((v) => v >= 2.5), "a hero below 2.5rem is no longer the screen's one big reading");
 
   // And nothing may re-declare it as a hardcoded font-size beside the element it describes.
-  const render = await Deno.readTextFile(new URL("../render.js", import.meta.url));
+  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
   const heroLine = render.split("\n").find((l) => l.includes("--ms-hero"));
   assert(heroLine, "render.js no longer reads --ms-hero for the dashboard hero value");
 });
 
 Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and stays sane at every step", async () => {
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
 
   const decl = /--ms-r-in:\s*([^;]+);/.exec(css);
   assert(decl, "theme.css lost --ms-r-in — the concentric radius every nested surface reads");
@@ -148,7 +152,7 @@ Deno.test("icons: the farm draws from ONE set (lucide) — a second library is a
 });
 
 Deno.test("a11y: MUTED text (an alpha over a surface) clears 4.5:1 — the pair axe actually measures", async () => {
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   const tokens = (theme) => {
     const i = css.indexOf(`[data-theme="${theme}"] {`);
     const out = {};
@@ -231,7 +235,7 @@ Deno.test("a11y: muted text is the TOKEN, never an alpha — .text-base-content/
 });
 
 Deno.test("design tokens: density steps DOWN as the viewport gets shorter (landscape must compact)", async () => {
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   // each `@media (max-height: N)` block, smallest N last — read --ms-gap out of every one
   const steps = [...css.matchAll(/@media \(max-height:\s*(\d+)px\)\s*\{([\s\S]*?)\n\}/g)]
     .map((m) => ({ h: Number(m[1]), gap: /--ms-gap:\s*([\d.]+)rem/.exec(m[2])?.[1] }))
@@ -249,7 +253,7 @@ Deno.test("design tokens: density steps DOWN as the viewport gets shorter (lands
 });
 
 Deno.test("design system: the fit contract disables page scroll on BOTH html and body", async () => {
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   const rule = /html\.ms-fit,\s*html\.ms-fit body\s*\{([^}]*)\}/.exec(css);
   assert(rule, "html.ms-fit + body rule is gone — a fit screen would scroll again");
   assert(/overflow:\s*hidden/.test(rule[1]), "a fit page must not scroll");
@@ -260,10 +264,10 @@ Deno.test("design system: the fit contract disables page scroll on BOTH html and
 });
 
 Deno.test("design system: the UI kit imports relatively and owns its own chrome strings", async () => {
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   assert(!/from\s+["']\/_rt\//.test(ui), "runtime-internal imports must be relative (./gesture.js), never /_rt/");
   assert(/sys\(\s*["']close["']/.test(ui), "the Sheet's close button must read a SYS string, not demand an i18n key from every app");
-  const i18n = await Deno.readTextFile(new URL("../i18n.js", import.meta.url));
+  const i18n = await Deno.readTextFile(P("packages/runtime/i18n.js"));
   const sys = /export const SYS = \{([\s\S]*?)\n\};/.exec(i18n)[1];
   for (const k of ["close"]) {
     const line = new RegExp(`\\b${k}:\\s*\\{[^}]*\\ben:[^}]*\\buk:`).test(sys);
@@ -272,7 +276,7 @@ Deno.test("design system: the UI kit imports relatively and owns its own chrome 
 });
 
 Deno.test("responsive matrix: the gate sweeps both orientations and the small-phone floor", async () => {
-  const lib = await Deno.readTextFile(new URL("../../gates/browser-lib.mjs", import.meta.url));
+  const lib = await Deno.readTextFile(P("packages/gates/browser-lib.mjs"));
   const block = /export const BREAKPOINTS = \[([\s\S]*?)\n\];/.exec(lib);
   assert(block, "BREAKPOINTS is gone — verify would stop measuring anything but the reference device");
   const bps = [...block[1].matchAll(/w:\s*(\d+),\s*h:\s*(\d+)/g)].map((m) => ({ w: +m[1], h: +m[2] }));
@@ -283,14 +287,14 @@ Deno.test("responsive matrix: the gate sweeps both orientations and the small-ph
 });
 
 Deno.test("dock height is MEASURED, not a constant — nothing may sit under the dock", async () => {
-  const render = await Deno.readTextFile(new URL("../render.js", import.meta.url));
+  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
   assert(/ResizeObserver/.test(render) && /setProperty\("--dock-h"/.test(render),
     "the runtime must measure the dock and publish --dock-h; a hand-written constant is wrong the moment the dock's metrics move (and it fails by COVERING content, which no overflow check can see)");
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   // exactly one declaration — the first-paint fallback at :root. A second one in a media query is the
   // guess this measurement exists to delete.
   assertEquals([...css.matchAll(/--dock-h:/g)].length, 1, "--dock-h must be declared once (the :root fallback); the live value comes from the measurement");
-  const lib = await Deno.readTextFile(new URL("../../gates/browser-lib.mjs", import.meta.url));
+  const lib = await Deno.readTextFile(P("packages/gates/browser-lib.mjs"));
   assert(/nav\[data-dock\]/.test(lib) && /pointerEvents/.test(lib),
     "the matrix must check dock/content collision (excluding pointer-events:none decoration) — overlap is not overflow");
 });
@@ -306,8 +310,8 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
   // The rule that makes it impossible rather than merely remembered: a media query may compact the ELEMENT,
   // never the published number. Write the token and the two disagree; style the element and the measurement
   // follows on its own.
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
-  const render = await Deno.readTextFile(new URL("../render.js", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
 
   for (const v of ["--hdr-h", "--dock-h", "--dock-w"]) {
     assert(render.includes(`setProperty("${v}"`), `${v} is not measured — render.js never publishes it`);
@@ -330,10 +334,10 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
 // Clean screen (S.clean). Three things have to hold together or the mode is a trap rather than a feature,
 // and none of them is visible in a screenshot of the good case.
 Deno.test("clean screen: the chrome that unmounts takes its measurements with it, and leaves a door", async () => {
-  const render = await Deno.readTextFile(new URL("../render.js", import.meta.url));
-  const index = await Deno.readTextFile(new URL("../index.js", import.meta.url));
-  const store = await Deno.readTextFile(new URL("../store.js", import.meta.url));
-  const i18n = await Deno.readTextFile(new URL("../i18n.js", import.meta.url));
+  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
+  const index = await Deno.readTextFile(P("packages/runtime/index.js"));
+  const store = await Deno.readTextFile(P("packages/runtime/store.js"));
+  const i18n = await Deno.readTextFile(P("packages/runtime/i18n.js"));
 
   assert(/\bclean:\s*atom\(false\)/.test(store), "S.clean is gone — the mode has no state");
 
@@ -378,7 +382,7 @@ Deno.test("clean screen: the chrome that unmounts takes its measurements with it
 // shade, so it just draws a white ring. In the dark theme that reads as a soft glow you can argue with; in
 // the light theme --nm-light is bright and reel's island came out hard-outlined in white over black video.
 Deno.test('a "dark" island is glass over MEDIA — it casts alone, never the extrusion pair', async () => {
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const dark = /tone === "dark"\s*[\r\n]*\s*\? "([^"]+)"/.exec(ui);
   assert(dark, 'the tone="dark" surface is gone from IslandBox');
   assert(!/\bsf-e[2-5]\b/.test(dark[1]),
@@ -390,7 +394,7 @@ Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts o
   // The rule answers "what fits inside me", so its input is the component's own box: a slider group can sit
   // in a panel, a sheet, a 38% side column or a 200px watch screen, and the viewport describes none of them.
   // Driving it from a viewport HEIGHT query is what made it unpredictable for three commits.
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   const at = css.indexOf(".ms-cols {");
   assert(at > 0, ".ms-cols rule is gone");
 
@@ -405,7 +409,7 @@ Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts o
   assert(/repeat\(var\(--ms-cols, 3\), minmax\(0, 1fr\)\)/.test(region), "--ms-cols must still name the widest count");
 
   // and something has to BE the container, or every query above reads nothing
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   // Asserted on PANEL'S OWN class list, not on the adjacency of two class names: the previous form was
   // `/@container sf-e2/`, which pinned the check to the ORDER the classes happen to be written in and
   // failed the moment the surface gained `sf-raised` — a change that could not possibly stop a container
@@ -415,7 +419,7 @@ Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts o
 });
 
 Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager, the tap floor holds", async () => {
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   const at = css.indexOf("@media (max-width: 300px)");
   assert(at > 0, "no watch breakpoint — the farm's smallest screen is 208px, not 320px");
   const block = css.slice(at, css.indexOf("\n}\n", css.indexOf(".ms-side >", at)));
@@ -455,10 +459,10 @@ Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager,
 Deno.test("watch mode — the dock's own position is styleable (no inline style can outrank it)", async () => {
   // The rail moves the dock to the right edge. An inline `style="bottom:…"` on the element would win over
   // any stylesheet, so the dock would stay pinned to the bottom AND get a top — stretching it full height.
-  const render = await Deno.readTextFile(new URL("../render.js", import.meta.url));
+  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
   const nav = render.slice(render.indexOf("<nav data-dock"), render.indexOf("</nav>", render.indexOf("<nav data-dock")));
   assert(!/style="[^"]*bottom:/.test(nav), "the dock's `bottom` is an inline style — watch mode cannot move it");
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   assert(/nav\[data-dock\]\s*\{\s*bottom:/.test(css), "…and nothing in theme.css positions it instead");
   // --dock-w is the rail's footprint; content clears it the way it cleared --dock-h.
   assert(/--dock-w/.test(render) && /--dock-w/.test(css), "the rail's width must be published and consumed");
@@ -468,9 +472,9 @@ Deno.test("the surface system: every interactive node declares a state, and none
   // BLOCK 7 — the contract. The system is only a system if a widget's volume comes from a NAMED state
   // rather than a shadow someone wrote in place. Two halves: the kit must not hardcode shadows, and every
   // node the reference enumerates must have a rule.
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
-  const render = await Deno.readTextFile(new URL("../render.js", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
+  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
 
   // no literal shadows left in the kit or the shell — they declare `sf-*` instead
   for (const [name, src] of [["ui.js", ui], ["render.js", render]]) {
@@ -511,7 +515,7 @@ Deno.test("the material: light IS the structure — a rim on every surface, a bl
   // The luminous material (docs/research/luminous-icons.md, 2026-08-31). It replaced the neumorphic pair,
   // and the invariant it replaced was "the base has headroom in both directions". This one is the opposite:
   // the page is TRUE BLACK and nothing is ever darkened to show depth — an edge catches light, or it doesn't.
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   // A theme is declared in MORE THAN ONE block (the palette, then the surface tokens), so reading "the
   // block after the selector" answers a different question than the one being asked. Collect them all.
   const themeBlock = (t) => {
@@ -582,7 +586,7 @@ Deno.test("the material: the pair of light is text-safe in BOTH themes — the C
   // and no single vivid colour clears 4.5:1 on both a black and a paper ground (the noir pass shipped that
   // and failed axe across the whole farm at once, with every local gate green). So the two poles are tuned
   // per theme and checked here, on every bed the muted token is checked on.
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   const tokens = (theme) => {
     const i = css.indexOf(`[data-theme="${theme}"] {`);
     const out = {};
@@ -648,7 +652,7 @@ Deno.test("material: a SURFACE is extruded, never a fill with a line drawn round
   // What is still allowed, deliberately: `border-b` DIVIDERS between rows inside a surface, and the sticky
   // header's underline. A hairline separating two rows is part of the language; a hairline standing in for
   // depth is the thing that was wrong.
-  const src = await Deno.readTextFile(new URL("../render.js", import.meta.url));
+  const src = await Deno.readTextFile(P("packages/runtime/render.js"));
   const surfaces = src.match(/card[^"'`]*border border-base-\d+/g) || [];
   assertEquals(surfaces, [], "a card is declaring a border instead of `sf-raised` — depth is the shadow pair, not a line");
   const wells = src.match(/aspect-(video|square)[^"'`]*border border-base-\d+/g) || [];
@@ -661,7 +665,7 @@ Deno.test("material: a SURFACE is extruded, never a fill with a line drawn round
 });
 
 Deno.test(".ms-stage — a fixed stage consumes the chrome contract, and nobody hand-writes it", async () => {
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   const at = css.indexOf(".ms-stage {");
   assert(at > 0, "no .ms-stage — a fixed stage has nothing to consume but hand-written numbers");
   const rule = css.slice(at, css.indexOf("}", at));

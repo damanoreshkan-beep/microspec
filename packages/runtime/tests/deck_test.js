@@ -3,6 +3,7 @@
 
 import { assert } from "jsr:@std/assert@1";
 import { clusterMetrics, hubOfCross, DIAMOND, DIAMOND_KEY, DIAMOND_BOX, PAIR, PAIR_KEY, PAIR_BOX } from "../deck.js";
+import { pkgRoot } from "../pkgroot.js";
 
 Deno.test("deck · a cluster is measured back out of its own layout, never trusted as a literal", () => {
   /* The alpha shipped two action keys 0.99 key-widths apart — RIMS TOUCHING — for the life of the
@@ -29,7 +30,7 @@ Deno.test("deck · a cluster is measured back out of its own layout, never trust
 
   /* The hub the alpha wrote as 38% meant "a third of the cross" and delivered an eighth, because the
      percentage was against the CENTRE CELL. The derivation is the whole point of keeping it. */
-  const css = Deno.readTextFileSync(new URL("../theme.css", import.meta.url));
+  const css = Deno.readTextFileSync(new URL("packages/runtime/theme.css", pkgRoot(import.meta.url, 3)));
   const cell = +/\.ms-pad-hub\s*\{[^}]*width:\s*([\d.]+)%/.exec(css)?.[1];
   assert(cell, "theme.css no longer sizes .ms-pad-hub — the cross has no hub");
   const whole = hubOfCross(cell);

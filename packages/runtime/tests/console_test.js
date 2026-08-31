@@ -2,6 +2,8 @@
 //   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
 
 import { assert } from "jsr:@std/assert@1";
+import { pkgRoot } from "../pkgroot.js";
+const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
 
 Deno.test("console · one device, and the aperture is never rationed", async () => {
   /* The catalogue of nine shells is gone, and this is the check that keeps it gone. It cost both
@@ -12,7 +14,7 @@ Deno.test("console · one device, and the aperture is never rationed", async () 
 
      So two claims, both about the shape of the code rather than about a number in it: the console
      publishes no catalogue, and the CSS hands the aperture the whole body. */
-  const src = await Deno.readTextFile(new URL("../console.js", import.meta.url));
+  const src = await Deno.readTextFile(P("packages/runtime/console.js"));
   const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
   for (const gone of ["SHELLS", "ShellPicker", "ShellTab", "persistentAtom", "shellVars", "./shells.js"])
     assert(!code.includes(gone), `console.js is growing a shell catalogue again ("${gone}") — there is one device`);
@@ -24,7 +26,7 @@ Deno.test("console · one device, and the aperture is never rationed", async () 
   for (const forbidden of ["brick.wasm", "hunt.wasm", "SCRW", "ammo", "spear", "crouch"])
     assert(!code.includes(forbidden), `console.js references "${forbidden}" in CODE — the shell must be game-agnostic`);
 
-  const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
+  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
   const screen = /\.ms-screen\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
   assert(/width:\s*100%/.test(screen), ".ms-screen no longer takes the whole body width");
   assert(!/--sh-screen-w/.test(css),

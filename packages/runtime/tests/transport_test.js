@@ -2,9 +2,11 @@
 //   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
+import { pkgRoot } from "../pkgroot.js";
+const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
 
 Deno.test("Transport compacts on its CONTAINER, never on the viewport", async () => {
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const tp = ui.slice(ui.indexOf("export function Transport("));
   assert(/@container/.test(tp), "the transport must establish a container — it is sized by the space IT has");
   assert(/@max-\[\d+px\]:/.test(tp), "no container-query compaction: the row will overflow where it is narrow");
@@ -15,7 +17,7 @@ Deno.test("Transport compacts on its CONTAINER, never on the viewport", async ()
 });
 
 Deno.test("Transport compacts by DEMOTION — a hidden action is still reachable, with its word", async () => {
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const tp = ui.slice(ui.indexOf("export function Transport("));
   // The failure this guards: an action row that simply hides what does not fit. A control the narrow window
   // cannot show must still be REACHABLE — the overflow sheet lists `actions` (all of them), never `overflow`.
@@ -40,7 +42,7 @@ Deno.test("no app passes the Transport a prop it does not accept (a silent prop 
   // pads tab was migrated and its BEAT tab was not — so it kept passing `extra=`, JSX-style props being
   // silently ignored when unknown. Every gate stayed green and the control simply stopped existing. Nothing
   // but the eye caught it, on a screenshot, two commits later. This makes it mechanical.
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const sig = ui.slice(ui.indexOf("export function Transport("), ui.indexOf("}) {", ui.indexOf("export function Transport(")));
   // the destructured names, read off the signature with comments and default values removed first
   const bare = sig.replace(/\/\/[^\n]*/g, "").replace(/"[^"]*"|'[^']*'|`[^`]*`/g, "0");
@@ -48,7 +50,7 @@ Deno.test("no app passes the Transport a prop it does not accept (a silent prop 
   accepted.add("children"); accepted.add("key");
   assert(accepted.has("actions") && accepted.has("onToggle"), "could not read the Transport signature");
 
-  const appsDir = new URL("../../../apps/", import.meta.url);
+  const appsDir = new URL(`file://${Deno.cwd()}/apps/`); // the CONSUMER's apps, never the package's
   const offenders = [];
   for await (const e of Deno.readDir(appsDir)) {
     if (!e.isDirectory) continue;
@@ -74,7 +76,7 @@ Deno.test("no app passes the Transport a prop it does not accept (a silent prop 
 });
 
 Deno.test("Transport — every control is opt-in, and the mode toggles frame the transport keys", async () => {
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const tp = ui.slice(ui.indexOf("export function Transport("));
   // Opt-in by handler is the whole reason one component serves a one-button ambient player and a full queue
   // player: pass the handler and the control appears. A control rendered unconditionally would force every
@@ -90,7 +92,7 @@ Deno.test("Transport — every control is opt-in, and the mode toggles frame the
 });
 
 Deno.test("Transport cannot leave its container — the cap is the widget's, not the caller's", async () => {
-  const ui = await Deno.readTextFile(new URL("../ui.js", import.meta.url));
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const root = /<div data-transport class=\$\{`([^`]*)`/.exec(ui)?.[1] ?? "";
   assert(root.includes("@container"), "the transport must query its OWN width — a viewport query reads the window, and .ms-side / the watch rail both narrow the box while the window stays wide");
   assert(root.includes("max-w-full"), `the transport must be capped by whatever holds it (its classes: ${root}) — its keys are shrink-0 and its row is justify-center, so an uncapped box spills out of BOTH sides of its island instead of demoting into the overflow sheet`);

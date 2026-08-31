@@ -3,6 +3,8 @@
 // without the density/radius/accent tokens while every gate was green.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { scanCandidates } from "../../../deploy/candidates.mjs";
+import { pkgRoot } from "../pkgroot.js";
+const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
 
 Deno.test("scanCandidates: tokens with CSS variables inside brackets survive whole", () => {
   const got = scanCandidates(`class="rounded-[var(--ms-r)] h-[var(--ms-ctl)] gap-[var(--ms-gap)] p-[var(--ms-pad)] text-[var(--ms-label)] text-[var(--app-accent)] w-[calc(var(--ms-r)*2)] rounded-(--ms-r) bg-base-content/70 !p-0 -mx-2 hover:bg-white/10 [&>svg]:hidden"`);
@@ -13,7 +15,7 @@ Deno.test("scanCandidates: tokens with CSS variables inside brackets survive who
 });
 
 Deno.test("scanCandidates: the runtime kit's own classes are all kept whole (no token ends at an open bracket)", async () => {
-  const src = await Deno.readTextFile(new URL("../render.js", import.meta.url));
+  const src = await Deno.readTextFile(P("packages/runtime/render.js"));
   const got = scanCandidates(src);
   // over-inclusion (JS fragments like "Icon(") is harmless; a var() token that does not close its bracket is the bug
   const broken = got.filter((t) => t.includes("var(") && !/\)\]$|\)$/.test(t));
@@ -32,6 +34,6 @@ Deno.test("scanCandidates: tokens that start with a bracket or an at sign surviv
 });
 
 Deno.test("scanCandidates: the kit's container queries and child variants are scanned from ui.js", async () => {
-  const got = scanCandidates(await Deno.readTextFile(new URL("../ui.js", import.meta.url)));
+  const got = scanCandidates(await Deno.readTextFile(P("packages/runtime/ui.js")));
   for (const t of ["@container", "[&>button]:flex-1", "[&>button]:min-w-0", "[&>button]:shrink-0"]) assert(got.includes(t), "missing from ui.js scan: " + t);
 });

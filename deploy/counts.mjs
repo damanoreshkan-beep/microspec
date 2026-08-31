@@ -4,7 +4,7 @@ const check = Deno.args.includes("--check");
 const catalog = JSON.parse(await Deno.readTextFile(`${ROOT}/apps/store/apps.json`));
 const N = Array.isArray(catalog) ? catalog.length : Object.keys(catalog).length;
 
-const RULES = [
+const defaultRules = [
   ["README.md", /(live-)(\d+)(%20apps)/g, N],
   ["README.md", /(farm — )(\d+)( installable apps\])/g, N],
   ["README.md", /(The )(\d+)(-app farm)/g, N],
@@ -12,6 +12,9 @@ const RULES = [
   ["README.md", /(the reference farm: )(\d+)( apps)/g, N],
   ["docs/SHOW_HN.md", /(the proof: )(\d+)( apps live)/g, N],
 ];
+const RULES = await Deno.readTextFile(`${ROOT}/counts.rules.json`)
+  .then((s) => JSON.parse(s).map((r) => [r.file, new RegExp(r.pattern, r.flags || "g"), N]))
+  .catch(() => defaultRules);
 
 const files = new Map();
 const stale = [];

@@ -12,11 +12,12 @@ import { buildAppCompat } from "./build-app.mjs";
 const OUT = "dist";
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
 
-// The runtime source for THIS tree. The product's rt/ is a COMPLETE mirror of the runtime — its own domain
-// modules as real files, plus setup.sh symlinks to every framework core file — so when it exists it IS
-// /_rt/; the framework tree has no rt/ and uses packages/runtime directly. readDir reports a symlink as
-// isSymlink (NOT isFile), so file-ness is stat'd through the link.
-const RTSRC = (await has("rt/index.js")) ? "rt" : "packages/runtime";
+// The CORE runtime for THIS tree: the framework checkout's own packages/runtime, or the @microspec/core
+// package materialized under node_modules. The product's rt/ is an OVERLAY of its own domain modules —
+// real files copied on top after the core pass; no mirrors, no symlinks.
+const PKG_RT = "node_modules/@jsr/microspec__core/packages/runtime";
+const RTSRC = (await has("packages/runtime/index.js")) ? "packages/runtime" : PKG_RT;
+const RT_OVERLAY = (await has("rt")) ? "rt" : null;
 const isFileAt = async (dir, e) => e.isFile || (e.isSymlink && (await Deno.stat(`${dir}/${e.name}`).catch(() => ({ isFile: false }))).isFile);
 
 // ── PWA installability gate ─────────────────────────────────────────────────────────────────────────────
@@ -95,6 +96,14 @@ for await (const e of Deno.readDir(RTSRC)) {
   if (e.name === "build.js") await Deno.writeTextFile(`${OUT}/_rt/build.js`, `export const BUILD = "${BUILD_SHA}";\nexport const CORE = "${CORE}";\n`);
   else await Deno.copyFile(`${RTSRC}/${e.name}`, `${OUT}/_rt/${e.name}`);
 }
+// the product's domain overlay lands ON TOP — dist/_rt is then the one flat, merged runtime
+if (RT_OVERLAY) {
+  for await (const e of Deno.readDir(RT_OVERLAY)) {
+    const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp");
+    if (!keep || !(await isFileAt(RT_OVERLAY, e))) continue;
+    await Deno.copyFile(`${RT_OVERLAY}/${e.name}`, `${OUT}/_rt/${e.name}`);
+  }
+}
 
 // 2) each app → dist/<id>; the `store` launcher lands at dist/store/ — its own scope (/…/store/) does NOT
 //    envelop the apps (/…/<id>/), so each app stays independently installable even when the store PWA is
@@ -172,11 +181,14 @@ for await (const a of Deno.readDir("apps")) {
 // to a static stylesheet (the runtime @tailwindcss/browser CDN crashes JSC 16.1). App SOURCE is untouched —
 // dev stays zero-build/modern; this is build-only. Fail LOUD with the full list so no app ships half-migrated.
 // See docs/RESEARCH-safari16-compat.md.
-const RT_ABS = `${Deno.cwd()}/${RTSRC}`;
+// the bundler resolves /_rt/ against the MERGED output built above — core + overlay, one flat dir
+const RT_ABS = `${Deno.cwd()}/${OUT}/_rt`;
 // the shared kit renders most of the UI, so its class names must feed the per-app Tailwind scan (read once)
 const sharedSources = [];
-for await (const f of Deno.readDir(RTSRC)) {
-  if (f.name.endsWith(".js") && !f.name.endsWith("_test.js") && (await isFileAt(RTSRC, f))) sharedSources.push(await Deno.readTextFile(`${RTSRC}/${f.name}`));
+for (const dir of [RTSRC, RT_OVERLAY].filter(Boolean)) {
+  for await (const f of Deno.readDir(dir)) {
+    if (f.name.endsWith(".js") && !f.name.endsWith("_test.js") && (await isFileAt(dir, f))) sharedSources.push(await Deno.readTextFile(`${dir}/${f.name}`));
+  }
 }
 const compatFails = [];
 for (const id of ids) {

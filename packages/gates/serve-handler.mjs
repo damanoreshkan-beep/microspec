@@ -4,7 +4,7 @@
 import { serveDir } from "jsr:@std/http@^1/file-server";
 const RT = new URL("../runtime/", import.meta.url).pathname;
 const RT2 = (() => {
-  try { Deno.statSync(`${Deno.cwd()}/rt/index.js`); return `${Deno.cwd()}/rt`; } catch { return null; }
+  try { return Deno.statSync(`${Deno.cwd()}/rt`).isDirectory ? `${Deno.cwd()}/rt` : null; } catch { return null; }
 })();
 
 export function makeHandler(appdir) {

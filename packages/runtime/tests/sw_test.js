@@ -83,7 +83,7 @@ Deno.test("sw: registers install/activate/fetch/message — a worker with no fet
 
 // These two fixtures are PRODUCT apps (rave; hoard/persona/iching shaders) — absent in the public framework
 // tree (the dreamstudio split); the product repo's CI runs them in full.
-const HAVE_FARM = await Deno.stat(new URL("../../../apps/rave/view.js", import.meta.url)).then(() => true).catch(() => false);
+const HAVE_FARM = await Deno.stat("apps/rave/view.js").then(() => true).catch(() => false); // cwd — the apps live in the CONSUMER'S tree, not in the package
 Deno.test({ name: "sw manifest: a real app's shell covers document, spec, locales, runtime closure and CDN code", ignore: !HAVE_FARM, fn: () => {
   const m = manifestFor("rave");
   for (const u of ["./", "./index.html", "./spec.json", "./i18n/en.json", "./i18n/uk.json", "./view.js", "/_rt/index.js", "/_rt/render.js", "/_rt/theme.css"]) {

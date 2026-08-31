@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "publish": {
     "exclude": [
@@ -138,6 +138,7 @@
     "./preflight": "./packages/gates/preflight.mjs",
     "./readme": "./deploy/readme.mjs",
     "./relimports": "./tools/relimports.mjs",
+    "./rtmap": "./tools/rtmap.mjs",
     "./scaffold": "./packages/gen/scaffold.mjs",
     "./schema": "./packages/schema/validate.mjs",
     "./shell": "./tools/shell-gen.mjs",

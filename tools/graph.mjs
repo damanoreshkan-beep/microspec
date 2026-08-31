@@ -7,13 +7,23 @@
 // runner, workspaces); we just needed the affected-set policy on top — a few small pure functions, not a
 // framework. `tools/affected.mjs` is the thin IO wrapper the CI calls.
 
-// Where /_rt/ actually lives in THIS tree. The product's rt/ is a COMPLETE mirror of the runtime (its own
-// domain modules as real files + setup.sh symlinks to every framework core file), so when it exists it IS
-// the runtime dir; the framework tree has no rt/ and uses packages/runtime directly. Every consumer of this
-// constant (sw closure, affected classification) then attributes paths correctly in both trees.
+// Where the CORE runtime lives in THIS tree: the framework checkout uses its own packages/runtime; a
+// product consumes the core as the @microspec/core PACKAGE, materialized under node_modules by JSR's
+// npm-compat layer. The product's rt/ is an OVERLAY of its own domain modules — real files only, no
+// mirrors: resolveSpec routes each /_rt/ name to the overlay when the file exists there, else to the core.
+const PKG = "node_modules/@jsr/microspec__core/packages/runtime/";
 export const RT = (() => {
-  try { Deno.statSync("rt/index.js"); return "rt/"; } catch { return "packages/runtime/"; }
+  try { Deno.statSync("packages/runtime/index.js"); return "packages/runtime/"; } catch { /* not the framework checkout */ }
+  try { Deno.statSync(PKG + "index.js"); return PKG; } catch { return "packages/runtime/"; }
 })();
+export const RT_OVERLAY = (() => {
+  const names = new Set();
+  try { for (const e of Deno.readDirSync("rt")) if (e.isFile && e.name.endsWith(".js")) names.add(e.name); } catch { /* no overlay */ }
+  return names;
+})();
+// The product's domain modules import the core by BARE specifier (browser: the page import map rewrites it
+// to /_rt/; Deno: package.json). The graph must see those edges as local core files.
+const BARE_RT = "@microspec/core/runtime/";
 
 const dirOf = (p) => {
   const i = p.lastIndexOf("/");
@@ -33,7 +43,11 @@ function normalize(p) {
 // (a bare/esm/jsr/npm specifier — those are CDN-pinned in index.html and never change per commit, so they
 // don't affect which app to re-verify). App files use absolute `/_rt/…`; runtime files use relative `./…`.
 export function resolveSpec(spec, fromFile) {
-  if (spec.startsWith("/_rt/")) return RT + spec.slice(5);
+  if (spec.startsWith("/_rt/")) {
+    const name = spec.slice(5);
+    return RT_OVERLAY.has(name) ? "rt/" + name : RT + name;
+  }
+  if (spec.startsWith(BARE_RT)) return RT + spec.slice(BARE_RT.length);
   if (spec.startsWith("./") || spec.startsWith("../")) {
     return normalize(dirOf(fromFile) + "/" + spec);
   }
@@ -132,7 +146,8 @@ export function isGlobal(f, coreSet) {
     /^tools\//.test(f)
   ) return true;
   if (f === "deno.json" || f === "deno.jsonc" || f === "deno.lock") return true;
-  if (f.startsWith(RT) && !f.endsWith(".js")) return true; // runtime CSS / config / asset → all apps
+  if (f === "package.json" || f === ".npmrc") return true; // the core dependency moved → all apps
+  if ((f.startsWith(RT) || f.startsWith("rt/")) && !f.endsWith(".js")) return true; // runtime CSS / config / asset → all apps
   if (f === RT + "sw-core.js") return true; // the shared service worker: every app importScripts it, but no
   // app's IMPORT graph reaches it (a worker isn't imported), so closure attribution would miss it entirely
   if (coreSet.has(f)) return true; // shared bootstrap module → all apps
@@ -152,7 +167,7 @@ export function classifyAffected(changed, apps, coreSet) {
       if (allIds.includes(am[1])) hit.add(am[1]);
       continue;
     }
-    if (f.startsWith(RT)) {
+    if (f.startsWith(RT) || f.startsWith("rt/")) {
       for (const a of apps) if (a.closure.has(f)) hit.add(a.id);
       continue;
     }

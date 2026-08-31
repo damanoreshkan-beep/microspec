@@ -18,9 +18,12 @@
 // here and marked tier:"verify" so the same catalog drives both.
 
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", b: "\x1b[1m", x: "\x1b[0m" };
-const ROOT = new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
-const IMPORTMAP = `${ROOT}/packages/gates/preflight.importmap.json`;
-const PREFLIGHT = `${ROOT}/packages/gates/preflight.mjs`;
+// PKG = where this tool ships (inside @microspec/core); ROOT = the CONSUMER's tree (apps live there).
+const PKG = new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
+const ROOT = Deno.cwd();
+const PREFLIGHT = `${PKG}/packages/gates/preflight.mjs`;
+// a product carries a GENERATED map that routes its rt/ overlay; the core's own map is the fallback
+const IMPORTMAP = await Deno.stat(`${ROOT}/preflight.map.json`).then(() => `${ROOT}/preflight.map.json`).catch(() => `${PKG}/packages/gates/preflight.importmap.json`);
 
 const args = Deno.args;
 const flag = (n) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] || "") : null; };

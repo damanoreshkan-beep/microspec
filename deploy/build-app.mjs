@@ -35,6 +35,7 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
     const m = html.match(/<script type="importmap">([\s\S]*?)<\/script>/);
     const im = m ? JSON.parse(m[1]) : { imports: {} };
     im.imports["/_rt/"] = `file://${rtDir}/`; // resolve the runtime's absolute /_rt/ imports for the bundler
+    im.imports["@microspec/core/runtime/"] = `file://${rtDir}/`; // the domain modules' bare core imports — same flat dir
     return im;
   })();
 
@@ -100,7 +101,7 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
 
 // ── standalone CLI: build one app into dist-compat/<id>/ (for local spikes / device testing) ──────────────
 if (import.meta.main) {
-  const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+  const ROOT = Deno.cwd(); // the consumer's tree — this CLI spikes an app that lives at the cwd, not in the package
   const id = Deno.args[0] || "store";
   // the product tree's rt/ is the complete runtime mirror (see deploy/build.mjs) — prefer it when present
   const RT = await Deno.stat(`${ROOT}/rt/index.js`).then(() => `${ROOT}/rt`).catch(() => `${ROOT}/packages/runtime`);

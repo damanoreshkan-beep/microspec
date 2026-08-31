@@ -33,6 +33,7 @@ Object.assign(exports, {
   "./preflight": "./packages/gates/preflight.mjs",
   "./readme": "./deploy/readme.mjs",
   "./relimports": "./tools/relimports.mjs",
+  "./rtmap": "./tools/rtmap.mjs",
   "./scaffold": "./packages/gen/scaffold.mjs",
   "./schema": "./packages/schema/validate.mjs",
   "./shell": "./tools/shell-gen.mjs",

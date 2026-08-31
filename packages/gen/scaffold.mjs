@@ -117,7 +117,8 @@ const indexHtml = `<!DOCTYPE html>
       "@nanostores/preact": "https://esm.sh/@nanostores/preact@0.5.2?external=preact,nanostores",
       "motion": "https://esm.sh/motion@11.18.2",
       "d3-geo": "https://esm.sh/d3-geo@3",
-      "topojson-client": "https://esm.sh/topojson-client@3"
+      "topojson-client": "https://esm.sh/topojson-client@3",
+      "@microspec/core/runtime/": "/_rt/"
     }
   }
   </script>

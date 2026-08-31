@@ -10,7 +10,9 @@
 //
 // Source of truth: apps/home/apps.json — the store catalog, i.e. what a user can actually install. NOT the
 // number of directories under apps/: that counts `home` itself, which is the storefront, not an app in it.
-const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+// cwd, NOT import.meta: this tool ships inside the @microspec/core package, and everything it touches —
+// the catalog, counts.rules.json, the README — belongs to the CONSUMER's tree it runs from.
+const ROOT = Deno.cwd();
 const check = Deno.args.includes("--check");
 
 // The store catalog is the PRODUCT's source of truth; the appless framework tree (a generated demo, no

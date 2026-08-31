@@ -1,7 +1,8 @@
 
 const bad = [];
-const dirs = ["packages/runtime"];
-try { Deno.statSync("rt/index.js"); dirs.push("rt"); } catch {  }
+const dirs = [];
+try { Deno.statSync("packages/runtime/index.js"); dirs.push("packages/runtime"); } catch {  }
+try { if (Deno.statSync("rt").isDirectory) dirs.push("rt"); } catch {  }
 for (const dir of dirs) {
   for await (const f of Deno.readDir(dir)) {
     if (!f.isFile || !f.name.endsWith(".js") || f.name.endsWith("_test.js")) continue;

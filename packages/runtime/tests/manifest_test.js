@@ -1,11 +1,11 @@
 import { assert } from "jsr:@std/assert@1";
 
 Deno.test("manifest — no app locks orientation (adaptive design: rotation stays on)", async () => {
-  const root = new URL("../../../apps/", import.meta.url);
-  let n = 0;
-  for await (const d of Deno.readDir(root)) {
+  let n = 0, entries = [];
+  try { entries = [...Deno.readDirSync("apps")]; } catch {  }
+  for (const d of entries) {
     if (!d.isDirectory) continue;
-    let mf; try { mf = JSON.parse(await Deno.readTextFile(new URL(`${d.name}/manifest.json`, root))); } catch { continue; }
+    let mf; try { mf = JSON.parse(await Deno.readTextFile(`apps/${d.name}/manifest.json`)); } catch { continue; }
     n++;
     assert(!mf.orientation || mf.orientation === "any" || mf.orientation === "natural", `${d.name}: manifest locks orientation to "${mf.orientation}"`);
   }

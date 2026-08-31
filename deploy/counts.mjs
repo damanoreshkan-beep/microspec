@@ -1,4 +1,4 @@
-const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+const ROOT = Deno.cwd();
 const check = Deno.args.includes("--check");
 
 const catalog = await Deno.readTextFile(`${ROOT}/apps/store/apps.json`).then(JSON.parse).catch(() => null);

@@ -22,6 +22,7 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
     const m = html.match(/<script type="importmap">([\s\S]*?)<\/script>/);
     const im = m ? JSON.parse(m[1]) : { imports: {} };
     im.imports["/_rt/"] = `file://${rtDir}/`; 
+    im.imports["@microspec/core/runtime/"] = `file://${rtDir}/`; 
     return im;
   })();
 
@@ -70,7 +71,7 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
 }
 
 if (import.meta.main) {
-  const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+  const ROOT = Deno.cwd(); 
   const id = Deno.args[0] || "store";
   const RT = await Deno.stat(`${ROOT}/rt/index.js`).then(() => `${ROOT}/rt`).catch(() => `${ROOT}/packages/runtime`);
   const APP = `${ROOT}/apps/${id}`, OUT = `${ROOT}/dist-compat/${id}`;

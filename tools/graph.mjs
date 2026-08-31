@@ -1,7 +1,15 @@
 
+const PKG = "node_modules/@jsr/microspec__core/packages/runtime/";
 export const RT = (() => {
-  try { Deno.statSync("rt/index.js"); return "rt/"; } catch { return "packages/runtime/"; }
+  try { Deno.statSync("packages/runtime/index.js"); return "packages/runtime/"; } catch {  }
+  try { Deno.statSync(PKG + "index.js"); return PKG; } catch { return "packages/runtime/"; }
 })();
+export const RT_OVERLAY = (() => {
+  const names = new Set();
+  try { for (const e of Deno.readDirSync("rt")) if (e.isFile && e.name.endsWith(".js")) names.add(e.name); } catch {  }
+  return names;
+})();
+const BARE_RT = "@microspec/core/runtime/";
 
 const dirOf = (p) => {
   const i = p.lastIndexOf("/");
@@ -18,7 +26,11 @@ function normalize(p) {
 }
 
 export function resolveSpec(spec, fromFile) {
-  if (spec.startsWith("/_rt/")) return RT + spec.slice(5);
+  if (spec.startsWith("/_rt/")) {
+    const name = spec.slice(5);
+    return RT_OVERLAY.has(name) ? "rt/" + name : RT + name;
+  }
+  if (spec.startsWith(BARE_RT)) return RT + spec.slice(BARE_RT.length);
   if (spec.startsWith("./") || spec.startsWith("../")) {
     return normalize(dirOf(fromFile) + "/" + spec);
   }
@@ -98,7 +110,8 @@ export function isGlobal(f, coreSet) {
     /^tools\//.test(f)
   ) return true;
   if (f === "deno.json" || f === "deno.jsonc" || f === "deno.lock") return true;
-  if (f.startsWith(RT) && !f.endsWith(".js")) return true; 
+  if (f === "package.json" || f === ".npmrc") return true; 
+  if ((f.startsWith(RT) || f.startsWith("rt/")) && !f.endsWith(".js")) return true; 
   if (f === RT + "sw-core.js") return true; 
   if (coreSet.has(f)) return true; 
   return false;
@@ -115,7 +128,7 @@ export function classifyAffected(changed, apps, coreSet) {
       if (allIds.includes(am[1])) hit.add(am[1]);
       continue;
     }
-    if (f.startsWith(RT)) {
+    if (f.startsWith(RT) || f.startsWith("rt/")) {
       for (const a of apps) if (a.closure.has(f)) hit.add(a.id);
       continue;
     }

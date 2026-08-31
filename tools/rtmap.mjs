@@ -25,16 +25,15 @@ const pin = /jsr:@microspec\/core@([^/"]+)/.exec(JSON.stringify(consumer.imports
 if (!pin) { console.error("rtmap: deno.json imports carry no jsr:@microspec/core@<version> pin"); Deno.exit(1); }
 const base = `https://jsr.io/@microspec/core/${pin}/`;
 
-// the core's own map supplies the CDN pins (fetch cannot read file: URLs — branch on the realm)
-const mapUrl = new URL("../packages/gates/preflight.importmap.json", import.meta.url);
-const coreMap = mapUrl.protocol === "file:"
-  ? JSON.parse(await Deno.readTextFile(mapUrl))
-  : await (await fetch(mapUrl)).json();
-const imports = {};
-for (const [k, v] of Object.entries(coreMap.imports)) {
-  if (k === "canvas" || k === "/_rt/") continue; // relocated below — their values were relative to the core's map
-  imports[k] = v;
-}
+// The bare-dep pins come from the CORE'S OWN MANIFEST (npm:…), never esm.sh: the core's modules load from
+// jsr (https) and resolve their preact through the package manifest — npm's copy. If the consumer's views
+// resolved the same names to esm.sh, two preacts would meet in one tree and hooks would crash on `__H`
+// (measured: every tool app red, every list app green). One source of pins ⇒ one instance.
+const manUrl = new URL("../deno.json", new URL("../", import.meta.url));
+const manifest = manUrl.protocol === "file:"
+  ? JSON.parse(await Deno.readTextFile(manUrl))
+  : await (await fetch(manUrl)).json();
+const imports = { ...manifest.imports };
 imports["canvas"] = `${base}packages/gates/canvas-stub.js`;
 for (const n of names) imports[`/_rt/${n}`] = `./rt/${n}`;
 imports["/_rt/"] = `${base}packages/runtime/`;
@@ -71,5 +70,5 @@ if (check) {
   await Deno.writeTextFile("preflight.map.json", want);
   await Deno.mkdir(".microspec/tests", { recursive: true });
   for (const [p, body] of Object.entries(SHIMS)) await Deno.writeTextFile(p, body);
-  console.log(`preflight.map.json + 3 test shims: core ${pin} on jsr.io, ${names.length} overlay entries`);
+  console.log(`preflight.map.json + ${Object.keys(SHIMS).length} shims: core ${pin} on jsr.io, ${names.length} overlay entries`);
 }

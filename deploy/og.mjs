@@ -11,7 +11,7 @@ import { Resvg } from "npm:@resvg/resvg-wasm@2.6.2";
 import { ensure } from "./icons.mjs";   // the one initWasm() for the process
 
 export const SITE = "https://dreamstudio.mooo.com";
-export const SITE_NAME = "microspec";
+export const SITE_NAME = "DreamStudio";   // the product; "microspec" is the core technology's name (docs/research/luminous-icons.md)
 export const OG_W = 1200, OG_H = 630;
 
 let fontsP = null;

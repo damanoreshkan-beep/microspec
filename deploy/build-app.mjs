@@ -106,14 +106,15 @@ if (import.meta.main) {
   await Deno.mkdir(OUT, { recursive: true });
   // static assets + generated icons so a standalone build doesn't 404
   for await (const f of Deno.readDir(APP)) {
-    if (f.isFile && /\.(json|svg|webmanifest)$/.test(f.name) && !["spec.json", "brand.json", "apps.json"].includes(f.name)) {
+    if (f.isFile && /\.(json|svg|webp|webmanifest)$/.test(f.name) && !["spec.json", "brand.json", "apps.json"].includes(f.name)) {
       await Deno.copyFile(`${APP}/${f.name}`, `${OUT}/${f.name}`);
     }
   }
   await Deno.copyFile(`${APP}/sw.js`, `${OUT}/sw.js`).catch(() => {});
   if (await Deno.stat(`${APP}/brand.svg`).then(() => true).catch(() => false)) {
     const brand = await Deno.readTextFile(`${APP}/brand.json`).then(JSON.parse).catch(() => ({ bg: "#1f2430", fg: "#a78bfa" }));
-    await generateAppIcons(`${OUT}/icons`, brand, (await Deno.readTextFile(`${APP}/brand.svg`)).trim());
+    const master = await Deno.readFile(`${APP}/icon.webp`).catch(() => null);
+    await generateAppIcons(`${OUT}/icons`, brand, (await Deno.readTextFile(`${APP}/brand.svg`)).trim(), master);
   }
   await Deno.mkdir(`${ROOT}/dist-compat/_rt`, { recursive: true });
   for await (const f of Deno.readDir(RT)) if (f.isFile && f.name.endsWith(".css")) await Deno.copyFile(`${RT}/${f.name}`, `${ROOT}/dist-compat/_rt/${f.name}`);

@@ -11,10 +11,14 @@ import { collection } from "/_rt/db.js";
 import apps from "./apps.json" with { type: "json" };
 
 const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls || ""} style=${style || ""}></iconify-icon>`;
-// The app's REAL icon: its brand.svg paths rendered inline, inheriting stroke from `currentColor` so the
-// theme-adapted `color` (from iconTint) tints it — right in both light and dark. `size` is a CSS length.
-// Falls back to the flat iconify glyph for any app that has no brand art.
-const AppArt = (a, color, size) => a.art
+// The app's REAL icon. A luminous app (`icon` in the manifest) IS its picture: the icon.svg wrapper — a
+// 256² WebP of light on its own black ground — fills the tile in both themes, because the glow is the
+// identity and re-tinting it would wash it out (docs/research/luminous-icons.md). Apps without one fall back
+// to their brand.svg paths (stroke from `currentColor`, theme-adapted), then to the flat iconify glyph.
+// `size` is a CSS length ("100%" fills a tile).
+const AppArt = (a, color, size) => a.icon
+  ? html`<img src=${`../${a.id}/icon.svg`} alt="" aria-hidden="true" decoding="async" loading="lazy" style=${`width:${size};height:${size}`} class="rounded-[inherit] block" />`
+  : a.art
   ? html`<svg viewBox="0 0 24 24" style=${`width:${size};height:${size};color:${color}`} fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" dangerouslySetInnerHTML=${{ __html: a.art }}></svg>`
   : Icon(a.glyph, "", `font-size:${size};color:${color}`);
 const SEEN = collection("seen");      // { id → { v: lastSeenVersion } } — "you have opened this"
@@ -79,7 +83,7 @@ export function store({ S, openScreen, closeScreen }) {
       <div class="relative shrink-0">
         <div class="absolute inset-0 rounded-[24%] blur-2xl opacity-45" style="background:var(--app-accent)" aria-hidden="true"></div>
         <div class="relative w-24 h-24 rounded-[24%] flex items-center justify-center bg-base-100 sf-e3">
-          ${AppArt(sel, "var(--color-base-content)", "3rem")}
+          ${AppArt(sel, "var(--color-base-content)", sel.icon ? "100%" : "3rem")}
           ${b ? html`<span class="absolute top-1.5 right-1.5">${tag(b, true)}</span>` : null}
         </div>
       </div>
@@ -100,7 +104,7 @@ export function store({ S, openScreen, closeScreen }) {
     ${/* Noir tile, ink art. Apple press feedback lives on pointer-down (:active), 1:1 and instant: the tile
           sinks and the single neon accent rings + glows it — the only place colour touches the grid. */""}
     <div class="relative aspect-square w-full rounded-[26%] flex items-center justify-center bg-base-100 sf-e2 transition-[transform,box-shadow] duration-150 group-active:scale-90 group-active:shadow-[0_0_0_2px_var(--app-accent),0_10px_32px_-8px_var(--app-accent)]">
-      ${AppArt(a, "var(--color-base-content)", "1.9rem")}
+      ${AppArt(a, "var(--color-base-content)", a.icon ? "100%" : "1.9rem")}
       ${b ? html`<span class="absolute top-1 right-1">${tag(b)}</span>`
           : inst ? html`<span data-installed class="absolute bottom-1 right-1 grid place-items-center w-[18px] h-[18px] rounded-full bg-base-300 sf-e2" title=${T(t, "installed")}>${Icon("lucide:check", "text-[0.66rem] text-[var(--app-accent)]")}</span>` : null}
     </div>

@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="icon.svg" width="84" height="84" alt="microspec">
+<img src="icon.svg" width="84" height="84" alt="DreamStudio">
 
-# microspec
+# DreamStudio
 
 **Домашній екран ферми мікрозастосунків — встановлювані, офлайн, з гейтами**
 
@@ -10,7 +10,7 @@
 
 <br>
 
-<img src="../../docs/shots/store.png" width="640" alt="microspec">
+<img src="../../docs/shots/store.png" width="640" alt="DreamStudio">
 
 </div>
 

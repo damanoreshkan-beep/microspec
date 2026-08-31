@@ -105,7 +105,7 @@ for await (const a of Deno.readDir("apps")) {
     // The extension list is an ALLOW-list, so anything new drops out of dist/ silently — hero.wgsl did
     // exactly that, and the app would have 404'd on production with a black stage and a green CI. Unknown
     // extensions are now reported (below) instead of vanishing.
-    if (/\.(html|js|json|svg|png|webmanifest|wgsl|frag)$/.test(f.name)) {
+    if (/\.(html|js|json|svg|png|webp|webmanifest|wgsl|frag)$/.test(f.name)) {
       if (f.name === "spec.json") {
         const spec = JSON.parse(await Deno.readTextFile(`apps/${a.name}/spec.json`));
         if (!spec.version) spec.version = appVer;               // stamp unless the author pinned one
@@ -143,7 +143,10 @@ for await (const a of Deno.readDir("apps")) {
     if (!(await has(`apps/${a.name}/brand.svg`))) throw new Error(`apps/${a.name}/brand.svg is missing — no PNG icons would be generated and the app would not be installable`);
     const brand = (await has(`apps/${a.name}/brand.json`)) ? JSON.parse(await Deno.readTextFile(`apps/${a.name}/brand.json`)) : { bg: "#1f2430", fg: "#a78bfa" };
     const paths = (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim();
-    await generateAppIcons(`${outDir}/icons`, brand, paths);
+    // The luminous master (docs/research/luminous-icons.md) wins when the app has one; the brand tiles remain
+    // the fallback so a freshly scaffolded app is still installable before its art exists.
+    const master = (await has(`apps/${a.name}/icon.webp`)) ? await Deno.readFile(`apps/${a.name}/icon.webp`) : null;
+    await generateAppIcons(`${outDir}/icons`, brand, paths, master);
     // LINK PREVIEW — the card + the meta block, from the same brand and the app's own uk strings. Preview
     // bots read raw HTML, so this is written INTO dist/<app>/index.html; a gap is a build error, not a
     // silent skip (the same rule as the icons). docs/research/link-previews.md.

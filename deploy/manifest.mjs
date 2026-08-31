@@ -33,6 +33,9 @@ export async function buildManifest() {
     // The app's REAL icon paths (lucide-stroke, inheriting stroke → theme-adaptive in the store tile). `glyph`
     // stays as a fallback for any app without a brand.svg.
     const art = (await has(`apps/${a.name}/brand.svg`)) ? (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim() : "";
+    // The luminous icon (apps/<id>/icon.webp + the icon.svg wrapper the grid loads) — the store shows the
+    // picture itself when it exists; `art`/`glyph` stay as the fallback for an app without one.
+    const icon = await has(`apps/${a.name}/icon.webp`);
     apps.push({
       id: a.name,
       title: d.title || a.name,                  // the fallback the view falls back TO (uk-first, unchanged)
@@ -41,6 +44,7 @@ export async function buildManifest() {
       taglines: byLocale("profTagline"),
       glyph: spec.profile?.icon || spec.tabs?.[0]?.icon || "lucide:box",
       art,
+      icon,
       bg: brand.bg,
       fg: brand.fg,
       href: `./${a.name}/`,

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 280" width="880" height="280" role="img" aria-label="The split: the core knows no apps; a product pins the core and mirrors it into rt/ beside its own domain modules.">
+  <style>
+    .t   { font: 600 13px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #f2ead9; }
+    .s   { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #a89f8d; }
+    .cap { font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #7d7466; letter-spacing: .18em; }
+    .lock  { animation: haul 4.6s cubic-bezier(.45,.05,.55,.95) infinite; }
+    .mirror{ animation: haulback 4.6s cubic-bezier(.45,.05,.55,.95) 2.3s infinite; opacity: 0; }
+    @keyframes haul     { 0% { offset-distance: 0%; opacity: 0 } 8% { opacity: 1 } 90% { opacity: 1 } 100% { offset-distance: 100%; opacity: 0 } }
+    @keyframes haulback { 0% { offset-distance: 0%; opacity: 0 } 8% { opacity: 1 } 90% { opacity: 1 } 100% { offset-distance: 100%; opacity: 0 } }
+    .w { fill: none; stroke: rgba(255,232,196,.16); stroke-width: 1.2; stroke-dasharray: 3 8; animation: drift 3s linear infinite; }
+    @keyframes drift { to { stroke-dashoffset: -110; } }
+    @media (prefers-reduced-motion: reduce) { .lock, .mirror { animation: none; display: none; } .w { animation: none; } }
+  </style>
+  <defs>
+    <filter id="g3" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect x="1" y="1" width="878" height="278" rx="16" fill="#050505" stroke="rgba(255,232,196,.14)"/>
+  <text class="cap" x="32" y="36">THE SPLIT — THE CORE DOES NOT KNOW THE PRODUCT</text>
+
+  <!-- the core -->
+  <rect x="32" y="60" width="360" height="150" rx="14" fill="#0A0A0D" stroke="rgba(242,184,75,.55)" stroke-width="1.3"/>
+  <text class="t" x="56" y="90">microspec — the core</text>
+  <text class="s" x="56" y="116">packages/runtime — 68 systemic modules</text>
+  <text class="s" x="56" y="136">schema · gates · gen · 8n8</text>
+  <text class="s" x="56" y="156">apps/ — empty in git</text>
+  <text class="s" x="56" y="176" fill="#F2B84B">its demo app is GENERATED, then gated</text>
+
+  <!-- a product -->
+  <rect x="488" y="60" width="360" height="150" rx="14" fill="#0A0A0D" stroke="rgba(92,228,220,.55)" stroke-width="1.3"/>
+  <text class="t" x="512" y="90">a product built on it</text>
+  <text class="s" x="512" y="116">its own apps + domain modules in rt/</text>
+  <text class="s" x="512" y="136">rt/ mirrors the core in beside them —</text>
+  <text class="s" x="512" y="156">one directory IS /_rt for every resolver</text>
+  <text class="s" x="512" y="176" fill="#5CE4DC">same gates, same barrel, same floor</text>
+
+  <!-- the two hauls -->
+  <path class="w" d="M392 110 L488 110"/>
+  <path class="w" d="M488 166 L392 166"/>
+  <circle class="lock" r="3.4" fill="#5CE4DC" filter="url(#g3)" style="offset-path: path('M488 166 L392 166');"/>
+  <circle class="mirror" r="3.4" fill="#FFE8C4" filter="url(#g3)" style="offset-path: path('M392 110 L488 110');"/>
+  <text class="s" x="368" y="98"  fill="#7d7466">core, linked in at a PIN</text>
+  <text class="s" x="352" y="192" fill="#7d7466">lockfile — one commit, exactly</text>
+
+  <text class="s" x="32" y="244" fill="#7d7466">A framework bump is a commit here and a one-line pin move there — the product's CI proves the pair.</text>
+</svg>

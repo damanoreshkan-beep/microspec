@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" width="880" height="300" role="img" aria-label="The line: an author writes a spec and an adapter; the runtime renders it; the gates verify it; only green ships.">
+  <style>
+    .t  { font: 600 13px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #f2ead9; }
+    .s  { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #a89f8d; }
+    .cap{ font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #7d7466; letter-spacing: .18em; }
+    .wire  { fill: none; stroke-dasharray: 3 9; stroke-width: 1.6; animation: flow 2.8s linear infinite; }
+    .wireq { fill: none; stroke: rgba(255,232,196,.16); stroke-width: 1; }
+    @keyframes flow { to { stroke-dashoffset: -132; } }
+    .pulse  { animation: travel 5.2s cubic-bezier(.45,.05,.55,.95) infinite; }
+    .pulse2 { animation: travel 5.2s cubic-bezier(.45,.05,.55,.95) 2.6s infinite; opacity: 0; }
+    @keyframes travel {
+      0%   { offset-distance: 0%;   opacity: 0; }
+      6%   { opacity: 1; }
+      90%  { opacity: 1; }
+      100% { offset-distance: 100%; opacity: 0; }
+    }
+    .breathe { animation: br 4s ease-in-out infinite; }
+    @keyframes br { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .wire, .breathe { animation: none; }
+      .pulse, .pulse2 { animation: none; display: none; }
+    }
+  </style>
+  <defs>
+    <linearGradient id="amcy" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F2B84B"/><stop offset="1" stop-color="#5CE4DC"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect x="1" y="1" width="878" height="298" rx="16" fill="#050505" stroke="rgba(255,232,196,.14)"/>
+  <text class="cap" x="32" y="36">THE LINE — AUTHOR → CONTRACT → RUNTIME → GATES → LIVE</text>
+
+  <!-- authors: the pluggable end -->
+  <g>
+    <rect x="32" y="70"  width="128" height="34" rx="9" fill="#0A0A0D" stroke="rgba(255,232,196,.18)"/>
+    <text class="s" x="52" y="92">a model</text>
+    <rect x="32" y="116" width="128" height="34" rx="9" fill="#0A0A0D" stroke="rgba(255,232,196,.18)"/>
+    <text class="s" x="52" y="138">a script</text>
+    <rect x="32" y="162" width="128" height="34" rx="9" fill="#0A0A0D" stroke="rgba(255,232,196,.18)"/>
+    <text class="s" x="52" y="184">a human</text>
+    <path class="wireq" d="M160 87 C 180 87 180 133 198 133"/>
+    <path class="wireq" d="M160 133 L 198 133"/>
+    <path class="wireq" d="M160 179 C 180 179 180 133 198 133"/>
+  </g>
+
+  <!-- spec + adapter -->
+  <rect x="198" y="104" width="146" height="58" rx="12" fill="#0A0A0D" stroke="rgba(255,232,196,.24)"/>
+  <text class="t" x="216" y="128">spec + adapter</text>
+  <text class="s" x="216" y="148">a JSON contract</text>
+
+  <!-- runtime -->
+  <rect x="392" y="104" width="146" height="58" rx="12" fill="#0A0A0D" stroke="rgba(92,228,220,.30)"/>
+  <text class="t" x="410" y="128">the runtime</text>
+  <text class="s" x="410" y="148">/_rt — verified, 0-build</text>
+
+  <!-- gates -->
+  <g filter="url(#glow)" class="breathe">
+    <rect x="586" y="94" width="150" height="78" rx="13" fill="#0A0A0D" stroke="#F2B84B" stroke-width="1.4"/>
+  </g>
+  <rect x="586" y="94" width="150" height="78" rx="13" fill="none" stroke="rgba(242,184,75,.9)"/>
+  <text class="t" x="604" y="120">the gates</text>
+  <text class="s" x="604" y="140">a11y · matrix · e2e · sw</text>
+  <text class="s" x="604" y="158">14 nodes · one round</text>
+
+  <!-- outcomes -->
+  <rect x="784" y="82" width="72" height="40" rx="10" fill="#0A0A0D" stroke="rgba(63,185,80,.7)"/>
+  <text class="t" x="800" y="107" fill="#3fb950">live</text>
+  <rect x="784" y="176" width="72" height="40" rx="10" fill="#0A0A0D" stroke="rgba(239,68,68,.55)"/>
+  <text class="s" x="796" y="201" fill="#ef4444">blocked</text>
+
+  <!-- the main wire + the travelling light -->
+  <path class="wire" stroke="url(#amcy)" d="M344 133 L392 133 M538 133 L586 133"/>
+  <path class="wireq" d="M736 118 C 760 112 764 106 784 102"/>
+  <path class="wireq" d="M736 148 C 760 156 764 186 784 194"/>
+  <circle class="pulse" r="3.4" fill="#FFE8C4" filter="url(#glow)"
+    style="offset-path: path('M160 133 L344 133 M344 133 L392 133');"/>
+  <circle class="pulse2" r="3.4" fill="#5CE4DC" filter="url(#glow)"
+    style="offset-path: path('M538 133 L586 133 L736 133 C 760 128 764 108 784 102');"/>
+
+  <text class="s" x="586" y="232" fill="#7d7466">red stops the change — nothing broken can ship</text>
+  <text class="s" x="586" y="252" fill="#7d7466">green deploys with no human in the loop</text>
+</svg>

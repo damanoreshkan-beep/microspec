@@ -67,6 +67,24 @@ export default [
     },
   },
   {
+    // App Store, не сітка (2026-08-31): добірка великих карток зверху, сторінка апки з Open + Install,
+    // скріншотом та екранами; категорія → рядки-список.
+    name: "стор: добірка карток, сторінка апки з Install і скріном, категорія → рядки", run: async (h) => {
+      await ready(h);
+      h.expect((await h.count("[data-featured]")) >= 2, "немає карток добірки");
+      await h.click('[data-featured][data-app="tide"]'); await h.wait(300);
+      h.expect((await h.prop("#appsheet", "open")) === true, "картка добірки не відкрила сторінку апки");
+      h.expect((await h.count("#install-app")) === 1, "немає кнопки Встановити на сторінці апки");
+      h.expect((await h.count("#appsheet img[src*='shot-tide']")) === 1, "немає скріншота на сторінці апки");
+      h.expect(/v\d/.test(await h.text("#appsheet")), "немає версії на сторінці апки");
+      await h.back(); await h.wait(250);
+      h.expect((await h.prop("#appsheet", "open")) !== true, "Back не закрив сторінку апки");
+      await h.tap('[data-cat="sound"]'); await h.wait(200);
+      h.expect((await h.count("[data-app] .btn")) >= 3, "категорія не показала рядки з кнопкою Відкрити");
+      await h.tap('[data-cat="all"]'); await h.wait(150);
+    },
+  },
+  {
     name: "PWA: профіль → модалка встановлення, Back закриває", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       h.expect((await h.count("#p-install")) === 1, "немає кнопки встановлення");

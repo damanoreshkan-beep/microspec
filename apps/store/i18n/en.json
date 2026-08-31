@@ -42,5 +42,17 @@
   "installed": "Installed",
   "needsDevice": "Needs an external device",
   "needsDeviceHackrf": "Only works with a HackRF One attached",
-  "needsDeviceAx56": "Needs a connected RTL8852AU (ASUS USB-AX56) — driven no-root"
+  "needsDeviceAx56": "Needs a connected RTL8852AU (ASUS USB-AX56) — driven no-root",
+  "featured": "Featured",
+  "premium": "Premium",
+  "installApp": "Install",
+  "screens": "Screens",
+  "version": "Version",
+  "whatsNew": "What's new",
+  "whatsNewBody": "Fresh build — open it to get the latest version.",
+  "offlineYes": "Works offline",
+  "installableYes": "Installs to the home screen",
+  "allApps": "All apps",
+  "inCategory": "in this category",
+  "seeAll": "See all"
 }

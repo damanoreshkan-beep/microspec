@@ -36,6 +36,14 @@ export async function buildManifest() {
     // The luminous icon (apps/<id>/icon.webp + the icon.svg wrapper the grid loads) — the store shows the
     // picture itself when it exists; `art`/`glyph` stay as the fallback for an app without one.
     const icon = await has(`apps/${a.name}/icon.webp`);
+    // The app page's material (2026-08-31): its SCREENS (the tab labels, per locale — what the app is made
+    // of, in the app's own words) and whether the store holds a screenshot of it (apps/store/assets/shot-<id>
+    // .webp, imported from the deploy's dist-eye artifact by tools/art/shots-import.mjs).
+    const tabs = (spec.tabs ?? []).filter((t) => t.type !== "profile");
+    const screens = Object.fromEntries(
+      Object.entries(i18n).map(([l, dict]) => [l, tabs.map((t) => (t.label && dict?.[t.label]) || (t.titleKey && dict?.[t.titleKey]) || null).filter(Boolean)]).filter(([, v]) => v.length),
+    );
+    const shot = await has(`apps/store/assets/shot-${a.name}.webp`);
     apps.push({
       id: a.name,
       title: d.title || a.name,                  // the fallback the view falls back TO (uk-first, unchanged)
@@ -45,6 +53,8 @@ export async function buildManifest() {
       glyph: spec.profile?.icon || spec.tabs?.[0]?.icon || "lucide:box",
       art,
       icon,
+      screens,
+      shot,
       bg: brand.bg,
       fg: brand.fg,
       href: `./${a.name}/`,

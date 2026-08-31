@@ -152,8 +152,13 @@ export function start(spec, arg2) {
   // exactly the gap ?detail= closed for drill-downs. Set after the listeners are wired, so the history
   // entry is pushed by the same path a tap takes and Back stays balanced.
   try {
-    const want = new URLSearchParams(location.search).get("screen");
+    const q = new URLSearchParams(location.search);
+    const want = q.get("screen");
     if (want) S.screen.set(want);
+    // ?install=1 — the store's "Install" button. Apps are sibling ORIGIN-SCOPES and no page can prompt an
+    // install for another scope, so the store opens the app with this flag and the app raises its own
+    // install sheet on arrival (the same history-backed overlay the profile row opens).
+    if (q.get("install") && !matchMedia("(display-mode: standalone)").matches) S.installOpen.set(true);
   } catch { /* no URL access — nothing to open */ }
 
   // Double-Back-to-exit at the app ROOT (TikTok-style). A persistent guard entry makes the first hardware/

@@ -22,7 +22,9 @@
         "Генератор"
       ]
     },
-    "shot": true,
+    "shots": [
+      "gen"
+    ],
     "bg": "#07070C",
     "fg": "#9F8CF6",
     "href": "./outpost/",
@@ -55,7 +57,10 @@
         "Збережені"
       ]
     },
-    "shot": true,
+    "shots": [
+      "apps",
+      "saved"
+    ],
     "bg": "#0d1117",
     "fg": "#7c9cf7",
     "href": "./openapps/",
@@ -88,7 +93,10 @@
         "Saved"
       ]
     },
-    "shot": true,
+    "shots": [
+      "search",
+      "saved"
+    ],
     "bg": "#202122",
     "fg": "#ffffff",
     "href": "./wiki/",
@@ -123,7 +131,11 @@
         "Quakes"
       ]
     },
-    "shot": true,
+    "shots": [
+      "earth",
+      "track",
+      "map"
+    ],
     "bg": "#0A0A0B",
     "fg": "#5BA6E8",
     "href": "./globe/",
@@ -154,7 +166,9 @@
         "Текст"
       ]
     },
-    "shot": true,
+    "shots": [
+      "convert"
+    ],
     "bg": "#0A0A0C",
     "fg": "#E0A458",
     "href": "./tgvoice/",
@@ -189,7 +203,11 @@
         "Збережені"
       ]
     },
-    "shot": true,
+    "shots": [
+      "band",
+      "live",
+      "saved"
+    ],
     "bg": "#1c1a17",
     "fg": "#E9A23B",
     "href": "./homin/",
@@ -225,7 +243,9 @@
         "Зорі"
       ]
     },
-    "shot": true,
+    "shots": [
+      "read"
+    ],
     "bg": "#0A0A0F",
     "fg": "#A78BFA",
     "href": "./horoscope/",
@@ -256,7 +276,9 @@
         "Practice"
       ]
     },
-    "shot": true,
+    "shots": [
+      "breathe"
+    ],
     "bg": "#0A1413",
     "fg": "#4FC2B3",
     "href": "./breathe/",
@@ -289,7 +311,10 @@
         "Saved"
       ]
     },
-    "shot": true,
+    "shots": [
+      "find",
+      "saved"
+    ],
     "bg": "#1A1614",
     "fg": "#C2703A",
     "href": "./arc/",
@@ -320,7 +345,9 @@
         "Збірки"
       ]
     },
-    "shot": true,
+    "shots": [
+      "board"
+    ],
     "bg": "#0A0A0B",
     "fg": "#40C173",
     "href": "./actions/",
@@ -355,7 +382,10 @@
         "Радар"
       ]
     },
-    "shot": true,
+    "shots": [
+      "listen",
+      "radar"
+    ],
     "bg": "#0A0A0B",
     "fg": "#38bdf8",
     "href": "./ether/",
@@ -389,7 +419,9 @@
         "Сьогодні"
       ]
     },
-    "shot": true,
+    "shots": [
+      "today"
+    ],
     "bg": "#0d1512",
     "fg": "#10b981",
     "href": "./habits/",
@@ -420,7 +452,9 @@
         "Mixer"
       ]
     },
-    "shot": true,
+    "shots": [
+      "mix"
+    ],
     "bg": "#0E1120",
     "fg": "#A5B4FC",
     "href": "./ambient/",
@@ -455,7 +489,11 @@
         "Записи"
       ]
     },
-    "shot": true,
+    "shots": [
+      "play",
+      "shape",
+      "takes"
+    ],
     "bg": "#0E1416",
     "fg": "#57C4C0",
     "href": "./grain/",
@@ -490,7 +528,9 @@
         "Перевірка"
       ]
     },
-    "shot": true,
+    "shots": [
+      "check"
+    ],
     "bg": "#0A0A0B",
     "fg": "#4ADE80",
     "href": "./pwned/",
@@ -521,7 +561,9 @@
         "Play"
       ]
     },
-    "shot": true,
+    "shots": [
+      "play"
+    ],
     "bg": "#1A1410",
     "fg": "#E0A94B",
     "href": "./kalimba/",
@@ -552,7 +594,9 @@
         "Кадр"
       ]
     },
-    "shot": true,
+    "shots": [
+      "shoot"
+    ],
     "bg": "#0B0B10",
     "fg": "#E7E7EA",
     "href": "./cam/",
@@ -587,7 +631,10 @@
         "Saved"
       ]
     },
-    "shot": true,
+    "shots": [
+      "films",
+      "saved"
+    ],
     "bg": "#0f0f12",
     "fg": "#f4b942",
     "href": "./cinema/",
@@ -618,7 +665,9 @@
         "Клон"
       ]
     },
-    "shot": true,
+    "shots": [
+      "clone"
+    ],
     "bg": "#0A0A0B",
     "fg": "#F0A868",
     "href": "./subclone/",
@@ -653,7 +702,10 @@
         "Журнал"
       ]
     },
-    "shot": true,
+    "shots": [
+      "cast",
+      "log"
+    ],
     "bg": "#0F0D08",
     "fg": "#C9A227",
     "href": "./iching/",
@@ -686,7 +738,10 @@
         "Saved"
       ]
     },
-    "shot": true,
+    "shots": [
+      "feed",
+      "saved"
+    ],
     "bg": "#1c1917",
     "fg": "#d6b370",
     "href": "./books/",
@@ -717,7 +772,9 @@
         "Гра"
       ]
     },
-    "shot": true,
+    "shots": [
+      "play"
+    ],
     "bg": "#0B0A12",
     "fg": "#B98BEA",
     "href": "./code/",
@@ -748,7 +805,9 @@
         "Compass"
       ]
     },
-    "shot": true,
+    "shots": [
+      "rose"
+    ],
     "bg": "#0B1220",
     "fg": "#7DD3FC",
     "href": "./compass/",
@@ -785,7 +844,10 @@
         "Watching"
       ]
     },
-    "shot": true,
+    "shots": [
+      "up",
+      "saved"
+    ],
     "bg": "#0A0A0B",
     "fg": "#9F8CF6",
     "href": "./launches/",
@@ -816,7 +878,9 @@
         "Market"
       ]
     },
-    "shot": true,
+    "shots": [
+      "market"
+    ],
     "bg": "#0A0A0B",
     "fg": "#F0A93B",
     "href": "./crypto/",
@@ -849,7 +913,10 @@
         "Convert"
       ]
     },
-    "shot": true,
+    "shots": [
+      "rates",
+      "convert"
+    ],
     "bg": "#1f2430",
     "fg": "#f0b429",
     "href": "./rates/",
@@ -880,7 +947,9 @@
         "Лови"
       ]
     },
-    "shot": true,
+    "shots": [
+      "play"
+    ],
     "bg": "#1b2430",
     "fg": "#6d9150",
     "href": "./hunt/",
@@ -911,7 +980,9 @@
         "Now"
       ]
     },
-    "shot": true,
+    "shots": [
+      "now"
+    ],
     "bg": "#120A08",
     "fg": "#E2932F",
     "href": "./kp/",
@@ -942,7 +1013,9 @@
         "Гойдання"
       ]
     },
-    "shot": true,
+    "shots": [
+      "swing"
+    ],
     "bg": "#0A0A0F",
     "fg": "#9F8CF6",
     "href": "./pendulum/",
@@ -975,7 +1048,10 @@
         "Saved"
       ]
     },
-    "shot": true,
+    "shots": [
+      "catalog",
+      "saved"
+    ],
     "bg": "#1a1a1a",
     "fg": "#FFD21E",
     "href": "./hf/",
@@ -1006,7 +1082,9 @@
         "Люди"
       ]
     },
-    "shot": true,
+    "shots": [
+      "shelf"
+    ],
     "bg": "#1B1114",
     "fg": "#C4687A",
     "href": "./persona/",
@@ -1041,7 +1119,10 @@
         "Збережені"
       ]
     },
-    "shot": true,
+    "shots": [
+      "grab",
+      "saved"
+    ],
     "bg": "#0A0A0B",
     "fg": "#E8574B",
     "href": "./pins/",
@@ -1072,7 +1153,9 @@
         "Колір"
       ]
     },
-    "shot": true,
+    "shots": [
+      "pick"
+    ],
     "bg": "#0A0A0B",
     "fg": "#3FC7C0",
     "href": "./pipette/",
@@ -1105,7 +1188,9 @@
         "Now"
       ]
     },
-    "shot": true,
+    "shots": [
+      "now"
+    ],
     "bg": "#1f2430",
     "fg": "#38bdf8",
     "href": "./weather/",
@@ -1138,7 +1223,9 @@
         "Малюй"
       ]
     },
-    "shot": true,
+    "shots": [
+      "paint"
+    ],
     "bg": "#0A0A0F",
     "fg": "#5FD0F0",
     "href": "./flux/",
@@ -1171,7 +1258,9 @@
         "Потік"
       ]
     },
-    "shot": true,
+    "shots": [
+      "flow"
+    ],
     "bg": "#0A0A0B",
     "fg": "#F7931A",
     "href": "./btcflow/",
@@ -1202,7 +1291,9 @@
         "Наживо"
       ]
     },
-    "shot": true,
+    "shots": [
+      "live"
+    ],
     "bg": "#0A0A0B",
     "fg": "#40C173",
     "href": "./pulse/",
@@ -1237,7 +1328,11 @@
         "Збережені"
       ]
     },
-    "shot": true,
+    "shots": [
+      "beat",
+      "pads",
+      "saved"
+    ],
     "bg": "#0A0A0F",
     "fg": "#E9458B",
     "href": "./rave/",
@@ -1272,7 +1367,9 @@
         "Рій"
       ]
     },
-    "shot": true,
+    "shots": [
+      "play"
+    ],
     "bg": "#101014",
     "fg": "#FACC15",
     "href": "./swarm/",
@@ -1310,7 +1407,10 @@
         "Ґримуар"
       ]
     },
-    "shot": true,
+    "shots": [
+      "forge",
+      "grimoire"
+    ],
     "bg": "#0A0A0B",
     "fg": "#C6B6FF",
     "href": "./sigil/",
@@ -1343,7 +1443,9 @@
         "Наживо"
       ]
     },
-    "shot": true,
+    "shots": [
+      "live"
+    ],
     "bg": "#0A0A0F",
     "fg": "#9F8CF6",
     "href": "./synesth/",
@@ -1378,7 +1480,10 @@
         "Banked"
       ]
     },
-    "shot": true,
+    "shots": [
+      "flow",
+      "vault"
+    ],
     "bg": "#12100A",
     "fg": "#D8A43A",
     "href": "./hoard/",
@@ -1413,7 +1518,11 @@
         "Сигнал"
       ]
     },
-    "shot": true,
+    "shots": [
+      "room",
+      "log",
+      "signal"
+    ],
     "bg": "#0D1018",
     "fg": "#5B8DEF",
     "href": "./sonar/",
@@ -1447,7 +1556,9 @@
         "Compass"
       ]
     },
-    "shot": true,
+    "shots": [
+      "compass"
+    ],
     "bg": "#0A0A0B",
     "fg": "#F5B94D",
     "href": "./sun/",
@@ -1482,7 +1593,9 @@
         "Play"
       ]
     },
-    "shot": true,
+    "shots": [
+      "play"
+    ],
     "bg": "#231708",
     "fg": "#e8c874",
     "href": "./sopilka/",
@@ -1519,7 +1632,12 @@
         "Вартовий"
       ]
     },
-    "shot": true,
+    "shots": [
+      "hive",
+      "list",
+      "hunt",
+      "guard"
+    ],
     "bg": "#141416",
     "fg": "#D9548E",
     "href": "./hive/",
@@ -1555,7 +1673,9 @@
         "Lists"
       ]
     },
-    "shot": true,
+    "shots": [
+      "lists"
+    ],
     "bg": "#17111a",
     "fg": "#fb7185",
     "href": "./wish/",
@@ -1586,7 +1706,9 @@
         "Broadcast"
       ]
     },
-    "shot": true,
+    "shots": [
+      "board"
+    ],
     "bg": "#0A0A0B",
     "fg": "#6EE7A0",
     "href": "./wall/",
@@ -1619,7 +1741,9 @@
         "Розклади"
       ]
     },
-    "shot": true,
+    "shots": [
+      "read"
+    ],
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./tarot/",
@@ -1658,7 +1782,12 @@
         "Сумісність"
       ]
     },
-    "shot": true,
+    "shots": [
+      "wheel",
+      "hits",
+      "chart",
+      "match"
+    ],
     "bg": "#0E0B1A",
     "fg": "#C0A9F5",
     "href": "./transit/",
@@ -1693,7 +1822,11 @@
         "Опиши"
       ]
     },
-    "shot": true,
+    "shots": [
+      "make",
+      "edit",
+      "read"
+    ],
     "bg": "#0A0A0F",
     "fg": "#C084FC",
     "href": "./imagine/",
@@ -1728,7 +1861,10 @@
         "Saved"
       ]
     },
-    "shot": true,
+    "shots": [
+      "catalog",
+      "saved"
+    ],
     "bg": "#0d1117",
     "fg": "#3fb950",
     "href": "./frontier/",
@@ -1763,7 +1899,11 @@
         "Збережені"
       ]
     },
-    "shot": true,
+    "shots": [
+      "play",
+      "weave",
+      "saved"
+    ],
     "bg": "#0C1014",
     "fg": "#E0B24E",
     "href": "./handpan/",
@@ -1798,7 +1938,9 @@
         "Today"
       ]
     },
-    "shot": true,
+    "shots": [
+      "today"
+    ],
     "bg": "#14100A",
     "fg": "#D4A84B",
     "href": "./onthisday/",
@@ -1829,7 +1971,9 @@
         "Ефір"
       ]
     },
-    "shot": true,
+    "shots": [
+      "air"
+    ],
     "bg": "#141416",
     "fg": "#5BC0BE",
     "href": "./earshot/",
@@ -1860,7 +2004,9 @@
         "Зараз"
       ]
     },
-    "shot": true,
+    "shots": [
+      "now"
+    ],
     "bg": "#08120F",
     "fg": "#41C06F",
     "href": "./air/",
@@ -1893,7 +2039,9 @@
         "Кузня"
       ]
     },
-    "shot": true,
+    "shots": [
+      "forge"
+    ],
     "bg": "#0A0A0F",
     "fg": "#7C3AED",
     "href": "./apkforge/",
@@ -1926,7 +2074,10 @@
         "Saved"
       ]
     },
-    "shot": true,
+    "shots": [
+      "feed",
+      "saved"
+    ],
     "bg": "#1f2430",
     "fg": "#7ee0a6",
     "href": "./dou/",
@@ -1959,7 +2110,10 @@
         "Форма"
       ]
     },
-    "shot": true,
+    "shots": [
+      "play",
+      "shape"
+    ],
     "bg": "#0E1022",
     "fg": "#8B7CF6",
     "href": "./drift/",
@@ -1994,7 +2148,10 @@
         "Збережені"
       ]
     },
-    "shot": true,
+    "shots": [
+      "tune",
+      "saved"
+    ],
     "bg": "#0A0A0B",
     "fg": "#B7ADEB",
     "href": "./fmradio/",
@@ -2028,7 +2185,9 @@
         "Ruler"
       ]
     },
-    "shot": true,
+    "shots": [
+      "ruler"
+    ],
     "bg": "#1f2430",
     "fg": "#34d399",
     "href": "./ruler/",
@@ -2061,7 +2220,9 @@
         "Скан"
       ]
     },
-    "shot": true,
+    "shots": [
+      "scan"
+    ],
     "bg": "#0A0A0B",
     "fg": "#93C5FD",
     "href": "./gsmscan/",
@@ -2096,7 +2257,10 @@
         "Saved"
       ]
     },
-    "shot": true,
+    "shots": [
+      "feed",
+      "saved"
+    ],
     "bg": "#1f2430",
     "fg": "#ff6600",
     "href": "./hn/",
@@ -2127,7 +2291,9 @@
         "Live"
       ]
     },
-    "shot": true,
+    "shots": [
+      "watch"
+    ],
     "bg": "#141414",
     "fg": "#ef4444",
     "href": "./iptv/",
@@ -2158,7 +2324,9 @@
         "Ефір"
       ]
     },
-    "shot": true,
+    "shots": [
+      "watch"
+    ],
     "bg": "#0A0A0B",
     "fg": "#7FD6A8",
     "href": "./lorawatch/",
@@ -2197,7 +2365,12 @@
         "Сигнали"
       ]
     },
-    "shot": true,
+    "shots": [
+      "home",
+      "radar",
+      "files",
+      "alarms"
+    ],
     "bg": "#0A0A0F",
     "fg": "#5EC8A8",
     "href": "./os/",
@@ -2228,7 +2401,9 @@
         "Сцена"
       ]
     },
-    "shot": true,
+    "shots": [
+      "stage"
+    ],
     "bg": "#221C29",
     "fg": "#C9A7E0",
     "href": "./mirage/",
@@ -2263,7 +2438,10 @@
         "Зірки"
       ]
     },
-    "shot": true,
+    "shots": [
+      "discover",
+      "lifted"
+    ],
     "bg": "#0A0A0B",
     "fg": "#9F8CF6",
     "href": "./nova/",
@@ -2298,7 +2476,10 @@
         "Передавач"
       ]
     },
-    "shot": true,
+    "shots": [
+      "air",
+      "send"
+    ],
     "bg": "#16161C",
     "fg": "#9D8CFF",
     "href": "./prox/",
@@ -2329,7 +2510,9 @@
         "Скан"
       ]
     },
-    "shot": true,
+    "shots": [
+      "scan"
+    ],
     "bg": "#0A0A0F",
     "fg": "#34D399",
     "href": "./qr/",
@@ -2366,7 +2549,11 @@
         "Джерела"
       ]
     },
-    "shot": true,
+    "shots": [
+      "reel",
+      "liked",
+      "sources"
+    ],
     "bg": "#0B0B0D",
     "fg": "#ECECEE",
     "href": "./reel/",
@@ -2397,7 +2584,9 @@
         "Слухати"
       ]
     },
-    "shot": true,
+    "shots": [
+      "listen"
+    ],
     "bg": "#0B1424",
     "fg": "#5B8DEF",
     "href": "./tide/",
@@ -2433,7 +2622,10 @@
         "Сьогодні"
       ]
     },
-    "shot": true,
+    "shots": [
+      "month",
+      "today"
+    ],
     "bg": "#111619",
     "fg": "#5E8CA8",
     "href": "./trail/",
@@ -2468,7 +2660,11 @@
         "Бібліотека"
       ]
     },
-    "shot": true,
+    "shots": [
+      "play",
+      "store",
+      "library"
+    ],
     "bg": "#0B0B10",
     "fg": "#C4B5FD",
     "href": "./v2m/",

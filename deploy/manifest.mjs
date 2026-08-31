@@ -43,7 +43,12 @@ export async function buildManifest() {
     const screens = Object.fromEntries(
       Object.entries(i18n).map(([l, dict]) => [l, tabs.map((t) => (t.label && dict?.[t.label]) || (t.titleKey && dict?.[t.titleKey]) || null).filter(Boolean)]).filter(([, v]) => v.length),
     );
-    const shot = await has(`apps/store/assets/shot-${a.name}.webp`);
+    // One REAL capture per screen (tab), in the app's populated ?mock state — apps/store/assets/shot-<id>--
+    // <tab>.webp, from vps/eye-batch.mjs on the deployed farm via tools/art/shots-import.mjs. The array is
+    // the tab ids that have one, in tab order, so the app page's carousel and the featured card's ground
+    // (the first) never point at a file that is not there.
+    const shots = [];
+    for (const tb of tabs) if (await has(`apps/store/assets/shot-${a.name}--${tb.id}.webp`)) shots.push(tb.id);
     apps.push({
       id: a.name,
       title: d.title || a.name,                  // the fallback the view falls back TO (uk-first, unchanged)
@@ -54,7 +59,7 @@ export async function buildManifest() {
       art,
       icon,
       screens,
-      shot,
+      shots,
       bg: brand.bg,
       fg: brand.fg,
       href: `./${a.name}/`,

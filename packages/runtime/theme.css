@@ -488,7 +488,10 @@ header.navbar::after {
   /* NIGHT drops NO black cast (the portal separates floating things with light — rim + bloom; a black smear
      under a sheet on a black page was the "банальна тінь" the repaint removes). Paper keeps its warm cast. */
   --nm-cast:   rgba(0, 0, 0, 0);
-  --ds-strand: url("ds-n-strand.webp");   /* the night garland — the dock's edge decor */
+  /* ABSOLUTE on purpose: a url() inside a custom property is resolved against the DOCUMENT base at the point
+     of use (Chrome's long-standing behaviour), so a relative name resolved to /<app>/ds-…webp and 404'd in
+     every app of the built site. The farm serves at the domain root (the subpath origin retired 2026-08-16). */
+  --ds-strand: url("/_rt/ds-n-strand.webp");   /* the night garland — the dock's edge decor */
 
   --sf-rim:        var(--lm-rim);
   --sf-shadow:     rgba(0, 0, 0, .85);
@@ -521,7 +524,7 @@ header.navbar::after {
   --lm-bloom:  color-mix(in oklch, var(--app-accent) 12%, transparent);
   --lm-bloom-hi: color-mix(in oklch, var(--color-accent) 55%, transparent);
   --nm-cast:   rgba(40, 32, 20, .22);
-  --ds-strand: url("ds-d-strand.webp");   /* the day garland of little suns */
+  --ds-strand: url("/_rt/ds-d-strand.webp");   /* the day garland of little suns (absolute — see the night token) */
 
   --sf-rim:        var(--lm-rim);
   --sf-shadow:     rgba(40, 32, 20, .18);

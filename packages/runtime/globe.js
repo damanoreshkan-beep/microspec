@@ -12,8 +12,10 @@
 // once from /_rt/world-110m.json and is cached across every globe on the page.
 import { html } from "htm/preact";
 import { useRef, useEffect, useState } from "preact/hooks";
-import { geoOrthographic, geoPath, geoGraticule10, geoContains, geoDistance } from "https://esm.sh/d3-geo@3";
-import { feature } from "https://esm.sh/topojson-client@3";
+// BARE on purpose (the package rule): JSR rejects https imports, so the pins live in deno.json (npm:) for
+// Deno/publish, and each app page's import map (esm.sh) for the browser — the same split preact uses.
+import { geoOrthographic, geoPath, geoGraticule10, geoContains, geoDistance } from "d3-geo";
+import { feature } from "topojson-client";
 import { Pixels } from "./skeleton.js";
 
 let LAND = null, LOADING = null;

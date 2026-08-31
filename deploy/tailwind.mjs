@@ -9,7 +9,7 @@
 //   import { buildTailwind } from "./tailwind.mjs";
 //   const { css } = await buildTailwind([htmlText, viewJsText]);   // scans classes, returns CSS
 
-import { compile } from "https://esm.sh/tailwindcss@4.3.3";
+import { compile } from "tailwindcss"; // bare: pinned npm:tailwindcss@4.3.3 in deno.json (same pure-JS engine; oxide is a separate package) — JSR rejects https imports
 
 const TW = "https://cdn.jsdelivr.net/npm/tailwindcss@4.3.3"; // raw package files (index.css + partials)
 const DAISY = "https://esm.sh/daisyui@5";                    // pure-JS plugin (denonext), no oxide

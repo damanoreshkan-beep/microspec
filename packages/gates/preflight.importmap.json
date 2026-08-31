@@ -11,6 +11,9 @@
     "motion": "https://esm.sh/motion@11.18.2",
     "lodash-es": "https://esm.sh/lodash-es@4.17.21",
     "canvas": "./canvas-stub.js",
+    "linkedom": "https://esm.sh/linkedom@0.18.5?external=canvas",
+    "d3-geo": "https://esm.sh/d3-geo@3",
+    "topojson-client": "https://esm.sh/topojson-client@3",
     "/_rt/": "../runtime/"
   }
 }

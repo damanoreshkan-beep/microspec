@@ -115,7 +115,9 @@ const indexHtml = `<!DOCTYPE html>
       "nanostores": "https://esm.sh/nanostores@0.11.4",
       "@nanostores/persistent": "https://esm.sh/@nanostores/persistent@0.10.2?external=nanostores",
       "@nanostores/preact": "https://esm.sh/@nanostores/preact@0.5.2?external=preact,nanostores",
-      "motion": "https://esm.sh/motion@11.18.2"
+      "motion": "https://esm.sh/motion@11.18.2",
+      "d3-geo": "https://esm.sh/d3-geo@3",
+      "topojson-client": "https://esm.sh/topojson-client@3"
     }
   }
   </script>

@@ -10,7 +10,7 @@
  *
  *   deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/<id> [apps/<id> ...]
  */
-import { parseHTML } from "https://esm.sh/linkedom@0.18.5?external=canvas";
+import { parseHTML } from "linkedom"; // bare: pinned in deno.json (npm:) and in preflight.importmap.json (esm.sh) — JSR rejects https imports
 
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[0m" };
 // Tag names an unclosed tag can leak as literal text (htm renders `<span>` with no close as the text

@@ -929,8 +929,15 @@ function QrModal() {
 // the zone every other layout clears, so a fade of exactly that size cannot veil anything. One rem taller
 // and it would wash over the bottom row of rave's sequencer and kalimba's keys — both are fixed panels at
 // the same z-20 that stop precisely at --dock-h, and this paints after them.
+// The dock's ground is no longer a solid black band (the "банальна тінь" the portal repaint removed): a
+// much shorter scrim for the text scrolling underneath, and the DreamStudio garland — the theme's own
+// sprite (--ds-strand: night lights / day suns, theme.css) — hung along the very bottom edge, sliding
+// gently with the device tilt. Decoration wears ms-decor, so the watch ladder drops it with the rest.
 const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
-  style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 38%, transparent)"></div>`;
+  style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 18%, transparent 78%)">
+  <div class="ms-decor absolute inset-x-[-24px] bottom-0 h-9 opacity-40"
+    style="background-image:var(--ds-strand);background-repeat:repeat-x;background-size:auto 200%;background-position:left top;transform:translate3d(calc(var(--ds-tx)*10px),calc(var(--ds-ty)*4px),0)"></div>
+</div>`;
 
 // ── clean screen — the door ───────────────────────────────────────────────────────────────────────────
 // S.clean takes the app bar, the dock and the dock fade off the surface, so a full-bleed app is nothing but

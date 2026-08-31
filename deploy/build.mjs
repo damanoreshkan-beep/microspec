@@ -82,7 +82,7 @@ async function gitCount(path) {
 const BUILD_SHA = (Deno.env.get("GITHUB_SHA") || "dev").slice(0, 7);
 const CORE = "1." + (await gitCount("packages/runtime"));
 for await (const e of Deno.readDir("packages/runtime")) {
-  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json");
+  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp");   // .webp = the DreamStudio chrome sprites (ds-*.webp)
   if (!e.isFile || !keep) continue;
   if (e.name === "build.js") await Deno.writeTextFile(`${OUT}/_rt/build.js`, `export const BUILD = "${BUILD_SHA}";\nexport const CORE = "${CORE}";\n`);
   else await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);

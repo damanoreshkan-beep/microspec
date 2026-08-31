@@ -7,6 +7,7 @@ import { overlayDepth } from "./overlay.js";
 import { setApp, App } from "./render.js";
 import { haptic, hapticFor } from "./sensors.js";
 import { installSealedFetch } from "./sealedfetch.js";
+import { gate } from "./gate.js";
 
 // Wrap fetch before any app code runs, so every call to our backend travels as a sealed envelope without a
 // single app knowing. Apps keep doing plain `fetch(VPS_PROXY + …)`; see sealedfetch.js for what it does not
@@ -73,6 +74,10 @@ export function start(spec, arg2) {
   })();
   applyTheme(urlTheme || S.theme.get());
   S.theme.listen((t) => applyTheme(urlTheme || t));
+  // The DreamStudio tilt engine: device tilt moves the light on the portal's rim (header hairline, dock
+  // strand). Event-driven, zero rAF at rest, never prompts for permission, off under reduced-motion and
+  // under the gate — a page with no sensor is simply statically lit. docs/research/dreamstudio-style.md.
+  if (!gate) import("./tilt.js").then((m) => m.startTilt()).catch(() => {});
 
   // ONE farm accent — the noir-neon. The farm used to give each app its own hue (spec.accent, written here);
   // the design now speaks a SINGLE accent across every app, so the per-app override is gone and --app-accent

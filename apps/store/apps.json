@@ -2372,7 +2372,7 @@
     "bg": "#221C29",
     "fg": "#C9A7E0",
     "href": "./mirage/",
-    "version": "1.17",
+    "version": "1.19",
     "category": "creative",
     "needs": [
       "camera"

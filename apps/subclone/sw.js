@@ -1,6 +1,6 @@
 self.MS = {
   app: "subclone",
-  version: "95ff3e7aa5",
+  version: "6a055031a3",
   precache: [
     "./",
     "./i18n/en.json",
@@ -44,6 +44,7 @@ self.MS = {
     "/_rt/store.js",
     "/_rt/swipe.js",
     "/_rt/theme.css",
+    "/_rt/tilt.js",
     "/_rt/translate.js",
     "/_rt/ui.js",
     "/_rt/usbsession.js",

@@ -1,6 +1,6 @@
 self.MS = {
   app: "arc",
-  version: "0eebe3fdbc",
+  version: "c3b5e48bc5",
   precache: [
     "./",
     "./curated.js",
@@ -50,6 +50,7 @@ self.MS = {
     "/_rt/swipe.js",
     "/_rt/theme.css",
     "/_rt/tile.js",
+    "/_rt/tilt.js",
     "/_rt/translate.js",
     "/_rt/ui.js",
     "/_rt/validate.js",

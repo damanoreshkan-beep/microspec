@@ -814,8 +814,16 @@ function QrModal() {
 
 
 
+
+
 const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
-  style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 38%, transparent)"></div>`;
+  style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 18%, transparent 78%)">
+  <div class="ms-decor absolute inset-x-[-24px] bottom-0 h-9 opacity-40"
+    style="background-image:var(--ds-strand);background-repeat:repeat-x;background-size:auto 200%;background-position:left top;transform:translate3d(calc(var(--ds-tx)*10px),calc(var(--ds-ty)*4px),0)"></div>
+</div>`;
+
+
+
 
 
 function CleanExit() {

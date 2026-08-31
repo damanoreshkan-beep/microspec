@@ -1,6 +1,6 @@
 self.MS = {
   app: "synesth",
-  version: "23c13b0284",
+  version: "2964e7c5ec",
   precache: [
     "./",
     "./i18n/en.json",
@@ -46,6 +46,7 @@ self.MS = {
     "/_rt/store.js",
     "/_rt/swipe.js",
     "/_rt/theme.css",
+    "/_rt/tilt.js",
     "/_rt/translate.js",
     "/_rt/ui.js",
     "/_rt/validate.js",

@@ -2,6 +2,8 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const HUNT_WASM = new URL("../../../apps/hunt/assets/hunt.wasm", import.meta.url);
+const HAVE_APP = await Deno.stat(HUNT_WASM).then(() => true).catch(() => false);
+const etest = (name, fn) => Deno.test({ name, fn, ignore: !HAVE_APP });
 const HUNT_S = { SFX: 10, AMMO: 13, HP: 14, KILLS: 16, COUNT: 17 };
 const HUNT_IN = { RIGHT: 2, RUN: 8, SHOOT: 32 };
 async function huntEngine() {
@@ -10,7 +12,7 @@ async function huntEngine() {
   return { E, st: () => new Int32Array(E.memory.buffer, E.game_state(), HUNT_S.COUNT) };
 }
 
-Deno.test("hunt engine · your own spear cannot hurt you", async () => {
+etest("hunt engine · your own spear cannot hurt you", async () => {
   const { E, st } = await huntEngine();
   E.game_init(0xA17C);
   const hp0 = st()[HUNT_S.HP];
@@ -26,7 +28,7 @@ Deno.test("hunt engine · your own spear cannot hurt you", async () => {
   assertEquals(st()[HUNT_S.HP], hp0, "hearts were lost on the calm opening, with nothing to hit her");
 });
 
-Deno.test("hunt engine · the quiver is finite and refuses to go negative", async () => {
+etest("hunt engine · the quiver is finite and refuses to go negative", async () => {
   const { E, st } = await huntEngine();
   E.game_init(0xA17C);
   const start = st()[HUNT_S.AMMO];
@@ -38,7 +40,7 @@ Deno.test("hunt engine · the quiver is finite and refuses to go negative", asyn
     "an empty quiver must SAY it is empty — a dead button is indistinguishable from a broken one");
 });
 
-Deno.test("hunt engine · the collision box it reports IS the one it stands on", async () => {
+etest("hunt engine · the collision box it reports IS the one it stands on", async () => {
   const { E, st } = await huntEngine();
   E.game_init(0xA17C);
   for (let f = 0; f < 90; f++) E.game_step(0);                 

@@ -17,7 +17,6 @@
       "titleKey": "tabMe"
     }
   ],
-  "featured": ["tide", "reel", "mirage", "persona", "rave", "drift"],
   "profile": {
     "icon": "lucide:layout-grid",
     "account": "any",

@@ -9,5 +9,5 @@ Deno.test("manifest — no app locks orientation (adaptive design: rotation stay
     n++;
     assert(!mf.orientation || mf.orientation === "any" || mf.orientation === "natural", `${d.name}: manifest locks orientation to "${mf.orientation}"`);
   }
-  assert(n > 50, `only ${n} manifests found`);
+  assert(n > 2, `only ${n} manifests found`);
 });

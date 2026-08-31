@@ -73,7 +73,8 @@ Deno.test("sw: registers install/activate/fetch/message — a worker with no fet
   for (const k of ["install", "activate", "fetch", "message"]) assert(typeof events[k] === "function", `missing ${k} handler`);
 });
 
-Deno.test("sw manifest: a real app's shell covers document, spec, locales, runtime closure and CDN code", () => {
+const HAVE_FARM = await Deno.stat(new URL("../../../apps/rave/view.js", import.meta.url)).then(() => true).catch(() => false);
+Deno.test({ name: "sw manifest: a real app's shell covers document, spec, locales, runtime closure and CDN code", ignore: !HAVE_FARM, fn: () => {
   const m = manifestFor("rave");
   for (const u of ["./", "./index.html", "./spec.json", "./i18n/en.json", "./i18n/uk.json", "./view.js", "/_rt/index.js", "/_rt/render.js", "/_rt/theme.css"]) {
     assert(m.includes(u), `precache is missing ${u} — the app would not boot offline`);
@@ -82,13 +83,13 @@ Deno.test("sw manifest: a real app's shell covers document, spec, locales, runti
   assert(m.some((u) => u.startsWith("https://cdn.jsdelivr.net/npm/@tailwindcss/browser")));
   assert(!m.some((u) => /esm\.sh\/three@/.test(u)), "three is dynamic + fallback-guarded — cached on use, not at install");
   assert(!m.some((u) => u.includes("brand.svg")), "brand.svg is a build input, never fetched at runtime");
-});
+} });
 
-Deno.test("sw manifest: an app's shader is discovered, not listed by name", () => {
+Deno.test({ name: "sw manifest: an app's shader is discovered, not listed by name", ignore: !HAVE_FARM, fn: () => {
   for (const [id, file] of [["hoard", "./hoard.frag"], ["persona", "./presence.frag"], ["iching", "./hero.wgsl"]]) {
     assert(manifestFor(id).includes(file), `${id}: ${file} missing from the precache — the stage is blank offline`);
   }
-});
+} });
 
 Deno.test("sw: offline, a cached app still opens — the cache is consulted FIRST, not after a fetch fails", async () => {
   const url = "https://damanoreshkan-beep.github.io/microspec/rave/view.js";

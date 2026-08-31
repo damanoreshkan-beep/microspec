@@ -42,5 +42,17 @@
   "installed": "Встановлено",
   "needsDevice": "Потрібен зовнішній пристрій",
   "needsDeviceHackrf": "Працює лише з підключеним HackRF One",
-  "needsDeviceAx56": "Потрібен підключений RTL8852AU (ASUS USB-AX56) — без root"
+  "needsDeviceAx56": "Потрібен підключений RTL8852AU (ASUS USB-AX56) — без root",
+  "featured": "Добірка",
+  "premium": "Преміум",
+  "installApp": "Встановити",
+  "screens": "Екрани",
+  "version": "Версія",
+  "whatsNew": "Що нового",
+  "whatsNewBody": "Свіжа збірка — відкрий, щоб отримати останню версію.",
+  "offlineYes": "Працює офлайн",
+  "installableYes": "Ставиться на домашній екран",
+  "allApps": "Усі застосунки",
+  "inCategory": "у цій категорії",
+  "seeAll": "Усі"
 }

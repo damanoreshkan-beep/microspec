@@ -90,8 +90,10 @@ export function start(spec, arg2) {
     else if (n < depth) { const d = depth - n; depth = n; if (history.state?.msOverlay) { selfBack++; history.go(-d); } } 
   });
   try {
-    const want = new URLSearchParams(location.search).get("screen");
+    const q = new URLSearchParams(location.search);
+    const want = q.get("screen");
     if (want) S.screen.set(want);
+    if (q.get("install") && !matchMedia("(display-mode: standalone)").matches) S.installOpen.set(true);
   } catch {  }
 
   history.pushState({ msRoot: 1 }, "");

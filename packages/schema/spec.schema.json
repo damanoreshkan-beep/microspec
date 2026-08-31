@@ -34,6 +34,12 @@
       "type": "string",
       "description": "For a `needs:['usb']` app, the store i18n key of the device-disclosure note. Defaults to the HackRF note; a non-HackRF USB app (e.g. ax56, an RTL8852AU) sets its own key so the launcher names the right hardware."
     },
+    "featured": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "STORE ONLY — the app ids shown as the large featured cards at the top of the launcher, in this order (tide, reel, … — the premium set). An id that is not in the catalogue is skipped, so the list can be edited freely."
+    },
     "minWidth": {
       "type": "integer",
       "minimum": 200,

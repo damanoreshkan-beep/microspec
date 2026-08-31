@@ -19,6 +19,11 @@ export async function buildManifest() {
     const brand = (await has(`apps/${a.name}/brand.json`)) ? await readJson(`apps/${a.name}/brand.json`) : { bg: "#1f2430", fg: "#a78bfa" };
     const art = (await has(`apps/${a.name}/brand.svg`)) ? (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim() : "";
     const icon = await has(`apps/${a.name}/icon.webp`);
+    const tabs = (spec.tabs ?? []).filter((t) => t.type !== "profile");
+    const screens = Object.fromEntries(
+      Object.entries(i18n).map(([l, dict]) => [l, tabs.map((t) => (t.label && dict?.[t.label]) || (t.titleKey && dict?.[t.titleKey]) || null).filter(Boolean)]).filter(([, v]) => v.length),
+    );
+    const shot = await has(`apps/store/assets/shot-${a.name}.webp`);
     apps.push({
       id: a.name,
       title: d.title || a.name,                  
@@ -28,6 +33,8 @@ export async function buildManifest() {
       glyph: spec.profile?.icon || spec.tabs?.[0]?.icon || "lucide:box",
       art,
       icon,
+      screens,
+      shot,
       bg: brand.bg,
       fg: brand.fg,
       href: `./${a.name}/`,

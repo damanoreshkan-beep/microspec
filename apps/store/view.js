@@ -137,24 +137,26 @@ export function store({ S, openScreen, closeScreen }) {
   <//>`;
 
   // ── the shapes: FEATURED card, list ROW ──
-  const Featured = (a) => { const shot = firstShot(a); return html`<button data-featured data-app=${a.id} aria-label=${nameOf(a)} key=${a.id} onClick=${() => tap(a)}
-      class="relative w-full aspect-[4/5] rounded-[var(--ms-r)] overflow-hidden bg-black sf-raised sf-e3 text-left text-white transition-[transform,box-shadow] duration-150 active:scale-[.985]">
+  // The card is an ARTICLE with a full-bleed tap layer underneath and the pill above it — never a button
+  // inside a button (axe: nested-interactive, and a screen reader cannot say which one it is on).
+  const Featured = (a) => { const shot = firstShot(a); return html`<article key=${a.id} class="group relative w-full aspect-[4/5] rounded-[var(--ms-r)] overflow-hidden bg-black sf-raised sf-e3 text-white transition-[transform,box-shadow] duration-150 has-[button:active]:scale-[.985]">
     ${shot ? html`<img src=${shot} alt="" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover object-top" />` : null}
     <div class="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/85" aria-hidden="true"></div>
-    <div class="absolute inset-x-0 top-0 p-5 flex flex-col gap-1">
+    <button data-featured data-app=${a.id} aria-label=${nameOf(a)} onClick=${() => tap(a)} class="absolute inset-0 w-full h-full rounded-[inherit] text-left"></button>
+    <div class="absolute inset-x-0 top-0 p-5 flex flex-col gap-1 pointer-events-none">
       <div class="text-[0.62rem] font-mono uppercase tracking-[.14em] text-secondary">${T(t, "premium")} · ${T(t, catKey(a.category))}</div>
       <div class="text-[1.6rem] font-bold leading-[1.1] tracking-tight">${nameOf(a)}</div>
       <div class="text-sm text-white/80 leading-snug line-clamp-2">${subtitleOf(a)}</div>
     </div>
-    <div class="absolute inset-x-0 bottom-0 p-3 flex items-center gap-3 bg-black/55 backdrop-blur-md">
+    <div class="absolute inset-x-0 bottom-0 p-3 flex items-center gap-3 bg-black/55 backdrop-blur-md pointer-events-none">
       ${Tile(a, "w-11 h-11")}
       <div class="min-w-0 flex-1 flex flex-col">
         <span class="font-semibold text-sm leading-tight truncate">${nameOf(a)}</span>
         <span class="text-[0.72rem] text-white/70 leading-tight truncate">${T(t, catKey(a.category))}</span>
       </div>
-      ${pill(a, "bg-white/15 text-white")}
+      ${pill(a, "bg-white/15 text-white pointer-events-auto")}
     </div>
-  </button>`; };
+  </article>`; };
   const Row = (a) => { const b = badgeOf(a); return html`<div data-app=${a.id} key=${a.id} class="flex items-center gap-3 py-2">
     <button aria-label=${nameOf(a)} onClick=${() => tap(a)} class="flex items-center gap-3 flex-1 min-w-0 text-left">
       ${Tile(a, "w-16 h-16")}

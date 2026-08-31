@@ -95,8 +95,6 @@ Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and 
   assert(/--sh-r-in:\s*[^;]*--sh-r[^;]*--ms-pad/.test(css), "--sh-r-in must be --sh-r minus --ms-pad — the shell's OWN outer radius, not --ms-r, since the shell scales its own by 1.2");
 });
 
-import { pkgRoot } from "../pkgroot.js";
-
 Deno.test("motion: no `transition-all` — a transition names the properties it animates", async () => {
   const root = pkgRoot(import.meta.url, 3);
   const offenders = [];

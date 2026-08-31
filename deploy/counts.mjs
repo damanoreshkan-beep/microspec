@@ -19,7 +19,10 @@ const N = Array.isArray(catalog) ? catalog.length : Object.keys(catalog).length;
 // Each rule is [file, regex with the number as group 2, replacement number]. Anchored on surrounding words
 // so a count can never be confused with the efficacy scores or any other digit on the page. Every hardcoded
 // app-count claim across the README + Show HN draft gets a rule; reword a claim and you update its rule here.
-const RULES = [
+// A PRODUCT tree (the dreamstudio split, 2026-08-31) claims the count in its own words: an optional
+// `counts.rules.json` at ROOT — [{ "file": "README.md", "pattern": "(prefix )(\\d+)( suffix)" }] — replaces
+// the built-in rules entirely; the built-ins stay the public framework repo's own claims.
+const defaultRules = [
   ["README.md", /(live-)(\d+)(%20apps)/g, N],
   ["README.md", /(farm — )(\d+)( installable apps\])/g, N],
   ["README.md", /(The )(\d+)(-app farm)/g, N],
@@ -27,6 +30,9 @@ const RULES = [
   ["README.md", /(the reference farm: )(\d+)( apps)/g, N],
   ["docs/SHOW_HN.md", /(the proof: )(\d+)( apps live)/g, N],
 ];
+const RULES = await Deno.readTextFile(`${ROOT}/counts.rules.json`)
+  .then((s) => JSON.parse(s).map((r) => [r.file, new RegExp(r.pattern, r.flags || "g"), N]))
+  .catch(() => defaultRules);
 
 const files = new Map();
 const stale = [];

@@ -77,7 +77,6 @@ export function start(spec, arg2) {
   // The DreamStudio tilt engine: device tilt moves the light on the portal's rim (header hairline, dock
   // strand). Event-driven, zero rAF at rest, never prompts for permission, off under reduced-motion and
   // under the gate — a page with no sensor is simply statically lit. docs/research/dreamstudio-style.md.
-  if (!gate) import("./tilt.js").then((m) => m.startTilt()).catch(() => {});
 
   // ONE farm accent — the noir-neon. The farm used to give each app its own hue (spec.accent, written here);
   // the design now speaks a SINGLE accent across every app, so the per-app override is gone and --app-accent

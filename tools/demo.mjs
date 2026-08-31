@@ -9,7 +9,17 @@ let present = false;
 try {
   for (const e of Deno.readDirSync("apps")) if (e.isDirectory && has(`apps/${e.name}/spec.json`)) { present = true; break; }
 } catch { /* no apps/ dir at all — the appless framework checkout */ }
-if (present) { console.log("demo: tree already has apps — nothing to seed"); Deno.exit(0); }
+if (present) {
+  // The PRODUCT tree (it has the store launcher) is never touched. The FRAMEWORK tree's generated demo is
+  // kept FRESH instead: a runtime change moves the demo's import closure, and a stale sw stub would fail
+  // the sw gate forever (the seed itself is skipped — the app exists; only the derived stub is refreshed).
+  if (!has("apps/store")) {
+    const { code } = await new Deno.Command("deno", { args: ["run", "-A", "deploy/sw.mjs"], stdout: "inherit", stderr: "inherit" }).output();
+    Deno.exit(code);
+  }
+  console.log("demo: tree already has apps — nothing to seed");
+  Deno.exit(0);
+}
 
 const run = async (...args) => {
   const { code } = await new Deno.Command("deno", { args: ["run", "-A", ...args], stdout: "inherit", stderr: "inherit" }).output();

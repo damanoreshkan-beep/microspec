@@ -35,7 +35,6 @@ import "./tests/sse_test.js";
 import "./tests/sw_test.js";
 import "./tests/theme_test.js";
 import "./tests/tile_test.js";
-import "./tests/tilt_test.js";
 import "./tests/transport_test.js";
 import "./tests/urlquery_test.js";
 import "./tests/usbsession_test.js";

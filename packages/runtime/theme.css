@@ -445,24 +445,28 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
 :root {
   --r-1: 4px; --r-2: 8px; --r-3: 12px; --r-4: 16px; --r-5: 24px;
   --bw-1: 1px; --bw-2: 2px; --bw-3: 4px;
-  /* The tilt engine's two channels (−1..1), written by /_rt/tilt.js at most once a frame and ONLY while the
-     device actually moves; everything that consumes them does so through transform: translate3d — the
-     compositor path — so a phone at rest costs nothing and a weak phone pays one layer move. */
-  --ds-tx: 0; --ds-ty: 0;
 }
+/* The tilt engine is GONE (2026-08-31, owner: "укачує") — and its full-width lip translated ±28px was
+   horizontal scroll on every app that no rest-state gate could see. Decor is static now, by rule: chrome
+   decoration never translates sideways (the verify gate reads pseudo transforms and fails a shifted one). */
 
-/* THE PORTAL'S LIP — every app bar carries a lit hairline along its lower edge, and the light SLIDES with
-   the device: tilt the phone and the gleam travels the rim, the way a real edge catches a lamp. This is the
-   header's whole shadow now — an edge of light instead of a band of black. Decoration by contract:
-   pointer-events off, aria-hidden by position, dropped with the rest of the ornament on a watch. */
-header.navbar { position: sticky; }
+/* THE PORTAL'S LIP — every app bar carries a lit hairline along its lower edge: the header's whole shadow
+   is an edge of light instead of a band of black. Decoration by contract: pointer-events off, aria-hidden
+   by position, dropped with the rest of the ornament on a watch. STATIC by rule — a translated full-width
+   lip was viewport overflow on every app (the tilt engine, removed 2026-08-31).
+   And the bar itself is a PANE, not a band (owner: "хедер так і залишається з чорним бекграундом"): solid
+   behind the title, dissolving before its lower edge — over an ambient stage the scene shows through
+   instead of being sliced. The markup carries no bg/shadow classes; this rule owns the surface. */
+header.navbar {
+  position: sticky;
+  background: linear-gradient(to bottom, var(--color-base-100) 62%, color-mix(in srgb, var(--color-base-100) 72%, transparent) 84%, transparent);
+}
 header.navbar::after {
   content: "";
   position: absolute;
   left: 0; right: 0; bottom: -1px; height: 1px;
   pointer-events: none;
   background: linear-gradient(90deg, transparent 8%, var(--lm-rim-hi) 45%, var(--lm-rim-hi) 55%, transparent 92%);
-  transform: translate3d(calc(var(--ds-tx) * 28px), 0, 0);
 }
 @media (max-width: 300px) { header.navbar::after { display: none; } }
 

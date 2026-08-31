@@ -498,7 +498,7 @@ function PermissionsScreen() {
   const grouped = GROUPS.map((g) => [g, keys.filter((k) => PERMISSIONS[k].group === g)]).filter(([, ks]) => ks.length);
   const GROUP_LABEL = { sense: L.gSense, media: L.gMedia, background: L.gBackground, radios: L.gRadios, system: L.gSystem };
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar bg-base-100 sf-e2 sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
+    <header class="navbar sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
       <button id="perms-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${L.back} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${L.title}</div>
     </header>
@@ -571,7 +571,7 @@ function SignInScreen() {
     return mods.session.listen(onSession);
   }, [mods]);
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar bg-base-100 sf-e2 sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
+    <header class="navbar sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
       <button id="signin-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${sys("back", loc)} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${sys("signInTitle", loc)}</div>
     </header>
@@ -626,7 +626,7 @@ function ApkScreen() {
   };
 
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar bg-base-100 sf-e2 sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
+    <header class="navbar sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
       <button id="apk-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${sys("back", loc)} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${sys("apkTitle", loc)}</div>
     </header>
@@ -935,8 +935,8 @@ function QrModal() {
 // gently with the device tilt. Decoration wears ms-decor, so the watch ladder drops it with the rest.
 const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
   style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 18%, transparent 78%)">
-  <div class="ms-decor absolute inset-x-[-24px] bottom-0 h-9 opacity-40"
-    style="background-image:var(--ds-strand);background-repeat:repeat-x;background-size:auto 200%;background-position:left top;transform:translate3d(calc(var(--ds-tx)*10px),calc(var(--ds-ty)*4px),0)"></div>
+  <div class="ms-decor absolute inset-x-0 bottom-0 h-9 opacity-40"
+    style="background-image:var(--ds-strand);background-repeat:repeat-x;background-size:auto 200%;background-position:left top"></div>
 </div>`;
 
 // ── clean screen — the door ───────────────────────────────────────────────────────────────────────────

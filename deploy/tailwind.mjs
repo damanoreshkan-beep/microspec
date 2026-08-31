@@ -16,8 +16,7 @@ async function loadStylesheet(id, base) {
 }
 
 async function loadModule(id, base) {
-  const spec = id.startsWith("daisyui") ? id.replace(/^daisyui/, DAISY) : `https://esm.sh/${id}`;
-  const mod = await import(spec);
+  const mod = id.startsWith("daisyui") ? await import("daisyui") : await import(`https://esm.sh/${id}`);
   return { base, module: mod.default ?? mod };
 }
 

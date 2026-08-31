@@ -24,7 +24,11 @@ const locales = localeList(i18n);
 if (!locales.length) { console.error(`✗ ${dir}/i18n/ has no locale files — author i18n/uk.json + i18n/en.json`); Deno.exit(1); }
 const brand = (await has(`${dir}/brand.json`)) ? await readJson(`${dir}/brand.json`) : { bg: "#1f2430", fg: "#a78bfa" };
 const brandPaths = (await has(`${dir}/brand.svg`)) ? (await Deno.readTextFile(`${dir}/brand.svg`)).trim() : '<rect x="4" y="4" width="16" height="16" rx="3"/>';
-const mode = (await has(`${dir}/view.js`)) ? "tool" : (await has(`${dir}/stream.js`)) ? "stream" : "data";
+// HYBRID is real: an app with view.js AND data.js feeds its list tabs from the adapter while its tool tabs
+// render views (arc, persona). A binary tool-mode once dropped `load` from their boot on a forced
+// re-scaffold and every shelf mounted empty — the mode must follow the FILES, not a hierarchy.
+const hasView = await has(`${dir}/view.js`), hasData = await has(`${dir}/data.js`);
+const mode = hasView && hasData ? "hybrid" : hasView ? "tool" : (await has(`${dir}/stream.js`)) ? "stream" : "data";
 
 const dict = i18n.uk || i18n.en || {};
 const title = dict.title || spec.id;
@@ -51,10 +55,11 @@ const lang = i18n.uk ? "uk" : locales[0];
 // index.html composes the spec from spec.json + each i18n/<locale>.json (imported as JSON modules) and
 // hands start() a { ...spec, i18n } — so the translations stay isolated per-language files on disk.
 const localeImports = locales.map((l) => `    import ${l} from "./i18n/${l}.json" with { type: "json" };`).join("\n");
-const srcImport = mode === "tool" ? `    import * as views from "./view.js";`
+const srcImport = mode === "hybrid" ? `    import * as views from "./view.js";\n    import { load } from "./data.js";`
+  : mode === "tool" ? `    import * as views from "./view.js";`
   : mode === "stream" ? `    import { stream } from "./stream.js";`
   : `    import { load } from "./data.js";`;
-const startArg = mode === "tool" ? "{ views }" : mode === "stream" ? "{ stream }" : "load";
+const startArg = mode === "hybrid" ? "{ load, views }" : mode === "tool" ? "{ views }" : mode === "stream" ? "{ stream }" : "load";
 const startWiring = [
   `    import spec from "./spec.json" with { type: "json" };`,
   localeImports,

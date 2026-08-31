@@ -12,6 +12,11 @@
  */
 import { parseHTML } from "linkedom"; // bare: pinned in deno.json (npm:) and in preflight.importmap.json (esm.sh) — JSR rejects https imports
 
+// Dynamic imports of CONSUMER files (views, adapters, /_rt through the map) must originate in a LOCAL
+// module: a remote (jsr/https) importer may neither import file:// nor use the import map. The consumer's
+// generated shim (.microspec/preflight.mjs) plants a local import() here before loading this script.
+const dynImport = (s) => (globalThis.__msImport ?? ((x) => import(x)))(s);
+
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[0m" };
 // Tag names an unclosed tag can leak as literal text (htm renders `<span>` with no close as the text
 // "span"). Only ≥3-char structural tags — 1–2-char tags (a, p, li, tr, td, ul, ol, g) collide with real
@@ -319,12 +324,12 @@ async function preflight(appdir) {
   // --- mount: render the app in a linkedom DOM and inspect the output ---
   const { document, rafErr, uncaught } = installDom();
   try {
-    const views = mode === "tool" ? await import(`file://${await Deno.realPath(`${appdir}/view.js`)}`) : {};
-    const { start } = await import("/_rt/index.js");
+    const views = mode === "tool" ? await dynImport(`file://${await Deno.realPath(`${appdir}/view.js`)}`) : {};
+    const { start } = await dynImport("/_rt/index.js");
     const composed = { ...spec, i18n };
     if (mode === "tool") start(composed, { views });
-    else if (mode === "stream") { const { stream } = await import(`file://${await Deno.realPath(`${appdir}/stream.js`)}`); start(composed, { stream }); }
-    else { let load = async () => ({ items: [], meta: {} }); try { ({ load } = await import(`file://${await Deno.realPath(`${appdir}/data.js`)}`)); } catch { /* no adapter */ } start(composed, load); }
+    else if (mode === "stream") { const { stream } = await dynImport(`file://${await Deno.realPath(`${appdir}/stream.js`)}`); start(composed, { stream }); }
+    else { let load = async () => ({ items: [], meta: {} }); try { ({ load } = await dynImport(`file://${await Deno.realPath(`${appdir}/data.js`)}`)); } catch { /* no adapter */ } start(composed, load); }
     await flush();
 
     const app = document.getElementById("app");

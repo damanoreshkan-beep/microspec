@@ -20,7 +20,8 @@ const settle = Number(opt("settle", 1500));
 // Headless (default) needs no display; only the HEADFUL debug path requires a live Xvfb.
 if (Deno.env.get("HEADFUL") === "1" && !(await ensureDisplayUp())) { console.error("No virtual display and Xvfb won't start. Try:  deno task setup"); Deno.exit(2); }
 
-const e2eSpec = (await import(`file://${appdir}/e2e.spec.mjs`)).default;
+// through the consumer's local importer when present — a remote (jsr) verify may not import file:// itself
+const e2eSpec = (await (globalThis.__msImport ?? ((x) => import(x)))(`file://${appdir}/e2e.spec.mjs`)).default;
 const srv = serveLocal(appdir);
 const browser = await bootBrowser(dev);
 

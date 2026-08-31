@@ -1,5 +1,7 @@
 
-export const RT = "packages/runtime/"; 
+export const RT = (() => {
+  try { Deno.statSync("rt/index.js"); return "rt/"; } catch { return "packages/runtime/"; }
+})();
 
 const dirOf = (p) => {
   const i = p.lastIndexOf("/");

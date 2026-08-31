@@ -13,8 +13,9 @@
 ### **[▶ DreamStudio — the product built on this core](https://dreamstudio.mooo.com/store/)**
 
 microspec is the technology; **DreamStudio** (private) is the product farm it powers. This repo keeps the
-runtime, the schema, the generators and the gates — plus 3 demo apps that double as the regression suite.
-Add any to your home screen. They work offline. Every one is a spec + adapter that **passed the gates.**
+runtime, the schema, the generators and the gates — and **no apps at all**: the core does not know the
+product. The demo app CI verifies is *generated* on the spot (`deno task demo` — a deterministic recipe,
+zero model calls) and **passes the same gates** as everything the product ships.
 
 <br>
 
@@ -101,7 +102,7 @@ Give the agent a **floor it cannot fall through:**
    claims to support, and **fails the build** on any violation. Red gate → nothing ships. Green gate →
    auto-deploy to GitHub Pages.
 
-The DreamStudio farm is the proof; the 3 demo apps here double as the regression suite for the runtime itself.
+The DreamStudio farm is the proof; the generated demo app doubles as the runtime's regression fixture.
 
 ## The process — author → gate → ship
 
@@ -203,12 +204,14 @@ them; a cold offline launch on a real device is still the only full proof of the
 
 ## Not just feeds
 
-Depth lives in the runtime, not the apps — 81 modules and ~9k lines of it, held by a 3.9k-line unit suite,
-each module shared by every app that asks for it. Read-only catalogs are one slice, and no longer the interesting one.
+Depth lives in the runtime, not the apps — 68 core modules held by a unit suite, each shared by every app
+that asks for it. The product's own domain modules (radio, astrology, instruments) live beside its apps in
+DreamStudio's `rt/` and run through the same barrel and gates — **the core knows systemic capabilities, the
+product knows its domains.** Read-only catalogs are one slice, and no longer the interesting one.
 
-**Radio, from a browser tab.** [`packages/runtime/hackrf.js`](packages/runtime/hackrf.js) drives a HackRF
+**Radio, from a browser tab.** The DreamStudio farm's `hackrf.js` drives a HackRF
 One directly over **WebUSB** (`0x1d50:0x6089`, 256 KiB bulk transfers, RX *and* TX) with no driver, no
-native app and no install. Four apps sit on it: **FM Radio** demodulates broadcast FM with RDS station text
+native app and no install — on the framework's WebUSB session capability. Four apps sit on it: **FM Radio** demodulates broadcast FM with RDS station text
 and an auto-scan; **GSM Scanner** sweeps the ARFCN grid at 200 kHz spacing; **LoRa Watch** dechirps and
 decodes Meshtastic/LoRaWAN packets under a live waterfall; **Remote Cloner** captures a fixed-code OOK
 remote at 433.92/315/868 MHz and replays it. Each has a primary-source research note
@@ -228,9 +231,9 @@ Lee syncopation measure (1984), the inverted-U of groove from
 harmonicity from [Bowling & Purves (2018)](https://www.pnas.org/doi/10.1073/pnas.1505768112). Rave's
 **Generate** samples that space and keeps the highest-scoring bar; the unit gate asserts `bjorklund(3,8)`
 **is** the Cuban tresillo and that the search beats coin-flip random on every seed — so "generated, not
-random" is a test, not a bullet point. `melody.js` scores melodic search for Kalimba and Handpan;
-`ambient.js` does consonance, voice-leading and near-coprime Eno loops for Drift's endless mix. Any future
-music app imports all of it for free.
+random" is a test, not a bullet point. `melody.js` scores melodic search for the pitched instruments;
+Drift's `ambient.js` (a product module) does consonance, voice-leading and near-coprime Eno loops for its
+endless mix. Any future music app imports all of it for free.
 
 **And the rest.** Habits is a stateful offline tracker (IndexedDB, streak math, a 13-week heatmap, JSON
 export); GPS Ruler measures distance and area by walking a polyline (haversine + shoelace); Transits does
@@ -327,14 +330,17 @@ anything.
 | Package | Role |
 |---|---|
 | `packages/schema` | the spec **contract** — JSON Schema (single source of truth) + ajv validator |
-| `packages/runtime` | 81 zero-build modules: the 5 families, the UI kit, the design tokens, and the systemic capabilities (sensors · camera · audio · WebUSB · storage · i18n · offline) |
+| `packages/runtime` | 68 zero-build core modules: the 5 families, the UI kit, the design tokens, and the systemic capabilities (sensors · camera · audio · WebUSB · storage · i18n · offline) |
 | `packages/gates` | `verify` (Chromium: a11y / viewport matrix / installability / e2e / shots) + `preflight` (browser-free) + `efficacy` (mutation-tests the gates) + `shoot` (remote stills for design review) |
 | `packages/gen` | `scaffold` — spec + adapter → runnable app shell |
-| `apps/` | the demo farm: 3 apps + the launcher = showcase + runtime regression suite (the product farm lives in the private DreamStudio repo) |
+| `apps/` | **empty in git** — the demo app is generated (`deno task demo`); the product farm lives in the private DreamStudio repo |
 
 ## Quickstart
 
 ```bash
+# generate the demo app (the repo ships none — the core does not know the product)
+deno task demo
+
 # scaffold a new app from a spec + i18n you (or an agent) authored
 deno run -A packages/gen/scaffold.mjs apps/myapp
 

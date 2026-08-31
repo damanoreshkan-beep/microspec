@@ -1,5 +1,8 @@
 import { serveDir } from "jsr:@std/http@^1/file-server";
 const RT = new URL("../runtime/", import.meta.url).pathname;
+const RT2 = (() => {
+  try { Deno.statSync(`${Deno.cwd()}/rt/index.js`); return `${Deno.cwd()}/rt`; } catch { return null; }
+})();
 
 export function makeHandler(appdir) {
   return async (req) => {
@@ -13,7 +16,11 @@ export function makeHandler(appdir) {
         return new Response(await r.text(), { headers: { "content-type": "text/plain; charset=utf-8", "access-control-allow-origin": "*", "x-resolved-url": r.url } });
       } catch (e) { return new Response("", { status: 502 }); }
     }
-    if (u.pathname.startsWith("/_rt/")) return serveDir(req, { fsRoot: RT, urlRoot: "_rt", quiet: true });
+    if (u.pathname.startsWith("/_rt/")) {
+      const r = await serveDir(req, { fsRoot: RT, urlRoot: "_rt", quiet: true });
+      if (r.status !== 404 || !RT2) return r;
+      return serveDir(req, { fsRoot: RT2, urlRoot: "_rt", quiet: true });
+    }
     return serveDir(req, { fsRoot: appdir, quiet: true });
   };
 }

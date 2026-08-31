@@ -1,11 +1,15 @@
 
 const bad = [];
-for await (const f of Deno.readDir("packages/runtime")) {
-  if (!f.isFile || !f.name.endsWith(".js") || f.name.endsWith("_test.js")) continue;
-  const src = await Deno.readTextFile(`packages/runtime/${f.name}`);
-  src.split("\n").forEach((line, i) => {
-    if (/from\s+["']\/_rt\//.test(line)) bad.push(`packages/runtime/${f.name}:${i + 1}: ${line.trim()}`);
-  });
+const dirs = ["packages/runtime"];
+try { Deno.statSync("rt/index.js"); dirs.push("rt"); } catch {  }
+for (const dir of dirs) {
+  for await (const f of Deno.readDir(dir)) {
+    if (!f.isFile || !f.name.endsWith(".js") || f.name.endsWith("_test.js")) continue;
+    const src = await Deno.readTextFile(`${dir}/${f.name}`);
+    src.split("\n").forEach((line, i) => {
+      if (/from\s+["']\/_rt\//.test(line)) bad.push(`${dir}/${f.name}:${i + 1}: ${line.trim()}`);
+    });
+  }
 }
 
 if (bad.length) {
@@ -13,4 +17,4 @@ if (bad.length) {
   for (const b of bad) console.error("  " + b);
   Deno.exit(1);
 }
-console.log(`  ✓ runtime imports are relative (${"packages/runtime"} scanned)`);
+console.log(`  ✓ runtime imports are relative (${dirs.join(" + ")} scanned)`);

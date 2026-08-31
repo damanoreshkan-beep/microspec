@@ -7,6 +7,9 @@ import { buildAppCompat } from "./build-app.mjs";
 const OUT = "dist";
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
 
+const RTSRC = (await has("rt/index.js")) ? "rt" : "packages/runtime";
+const isFileAt = async (dir, e) => e.isFile || (e.isSymlink && (await Deno.stat(`${dir}/${e.name}`).catch(() => ({ isFile: false }))).isFile);
+
 const iconArea = (s) => Math.max(0, ...String(s || "").split(/\s+/).map((x) => parseInt(x, 10) || 0));
 async function assertInstallable(outDir, id) {
   let mf;
@@ -49,7 +52,7 @@ async function assertInstallable(outDir, id) {
 await Deno.remove(OUT, { recursive: true }).catch(() => {});
 await Deno.mkdir(`${OUT}/_rt`, { recursive: true });
 
-await Deno.writeTextFile("apps/store/apps.json", JSON.stringify(await buildManifest(), null, 2) + "\n");
+if (await has("apps/store")) await Deno.writeTextFile("apps/store/apps.json", JSON.stringify(await buildManifest(), null, 2) + "\n");
 
 async function gitCount(path) {
   try { const { stdout, success } = await new Deno.Command("git", { args: ["rev-list", "--count", "HEAD", "--", path], stdout: "piped", stderr: "null" }).output(); return success ? (parseInt(new TextDecoder().decode(stdout).trim(), 10) || 0) : 0; } catch { return 0; }
@@ -57,11 +60,11 @@ async function gitCount(path) {
 
 const BUILD_SHA = (Deno.env.get("GITHUB_SHA") || "dev").slice(0, 7);
 const CORE = "1." + (await gitCount("packages/runtime"));
-for await (const e of Deno.readDir("packages/runtime")) {
+for await (const e of Deno.readDir(RTSRC)) {
   const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp");   
-  if (!e.isFile || !keep) continue;
+  if (!keep || !(await isFileAt(RTSRC, e))) continue;
   if (e.name === "build.js") await Deno.writeTextFile(`${OUT}/_rt/build.js`, `export const BUILD = "${BUILD_SHA}";\nexport const CORE = "${CORE}";\n`);
-  else await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);
+  else await Deno.copyFile(`${RTSRC}/${e.name}`, `${OUT}/_rt/${e.name}`);
 }
 
 const ids = [];
@@ -116,10 +119,10 @@ for await (const a of Deno.readDir("apps")) {
   ids.push(a.name);
 }
 
-const RT_ABS = `${Deno.cwd()}/packages/runtime`;
+const RT_ABS = `${Deno.cwd()}/${RTSRC}`;
 const sharedSources = [];
-for await (const f of Deno.readDir("packages/runtime")) {
-  if (f.isFile && f.name.endsWith(".js") && !f.name.endsWith("_test.js")) sharedSources.push(await Deno.readTextFile(`packages/runtime/${f.name}`));
+for await (const f of Deno.readDir(RTSRC)) {
+  if (f.name.endsWith(".js") && !f.name.endsWith("_test.js") && (await isFileAt(RTSRC, f))) sharedSources.push(await Deno.readTextFile(`${RTSRC}/${f.name}`));
 }
 const compatFails = [];
 for (const id of ids) {
@@ -147,10 +150,12 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
   for (const c of await self.clients.matchAll({ type: "window" })) c.navigate(c.url).catch(() => {});
 })());
 `);
-{
+if (await has("apps/store")) {
   const storeUk = JSON.parse(await Deno.readTextFile("apps/store/i18n/uk.json"));
   const rootHtml = injectMeta(`<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>${storeUk.title || "microspec"}</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><script>location.replace("./store/"+location.search+location.hash)</script></head><body style="background:#0a0a0b"></body></html>\n`, metaBlock({ path: "/", title: storeUk.title || "microspec", description: storeUk.profTagline || "", image: "/store/og.png" }));
   await Deno.writeTextFile(`${OUT}/index.html`, rootHtml);
+} else {
+  await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>microspec</title></head><body>microspec ${BUILD_SHA}</body></html>\n`);
 }
 await Deno.writeTextFile(`${OUT}/.nojekyll`, "");
 if (skipped.length) console.log(`note: ${skipped.length} app file(s) matched no copy rule: ${skipped.join(", ")}`);

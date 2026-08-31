@@ -72,7 +72,8 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
 if (import.meta.main) {
   const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
   const id = Deno.args[0] || "store";
-  const APP = `${ROOT}/apps/${id}`, RT = `${ROOT}/packages/runtime`, OUT = `${ROOT}/dist-compat/${id}`;
+  const RT = await Deno.stat(`${ROOT}/rt/index.js`).then(() => `${ROOT}/rt`).catch(() => `${ROOT}/packages/runtime`);
+  const APP = `${ROOT}/apps/${id}`, OUT = `${ROOT}/dist-compat/${id}`;
   await Deno.mkdir(OUT, { recursive: true });
   for await (const f of Deno.readDir(APP)) {
     if (f.isFile && /\.(json|svg|webp|webmanifest)$/.test(f.name) && !["spec.json", "brand.json", "apps.json"].includes(f.name)) {
@@ -86,9 +87,10 @@ if (import.meta.main) {
     await generateAppIcons(`${OUT}/icons`, brand, (await Deno.readTextFile(`${APP}/brand.svg`)).trim(), master);
   }
   await Deno.mkdir(`${ROOT}/dist-compat/_rt`, { recursive: true });
-  for await (const f of Deno.readDir(RT)) if (f.isFile && f.name.endsWith(".css")) await Deno.copyFile(`${RT}/${f.name}`, `${ROOT}/dist-compat/_rt/${f.name}`);
+  const isF = async (e) => e.isFile || (e.isSymlink && (await Deno.stat(`${RT}/${e.name}`).catch(() => ({ isFile: false }))).isFile);
+  for await (const f of Deno.readDir(RT)) if (f.name.endsWith(".css") && (await isF(f))) await Deno.copyFile(`${RT}/${f.name}`, `${ROOT}/dist-compat/_rt/${f.name}`);
   const sharedSources = [];
-  for await (const f of Deno.readDir(RT)) if (f.isFile && f.name.endsWith(".js") && !f.name.endsWith("_test.js")) sharedSources.push(await Deno.readTextFile(`${RT}/${f.name}`));
+  for await (const f of Deno.readDir(RT)) if (f.name.endsWith(".js") && !f.name.endsWith("_test.js") && (await isF(f))) sharedSources.push(await Deno.readTextFile(`${RT}/${f.name}`));
   const r = await buildAppCompat({ srcDir: APP, outDir: OUT, rtDir: RT, sharedSources });
   console.log(`built dist-compat/${id}/  app.js ${r.jsKB}KB  app.css ${r.cssKB}KB  (${r.candidateCount} tw candidates) — compat gate clean`);
 }

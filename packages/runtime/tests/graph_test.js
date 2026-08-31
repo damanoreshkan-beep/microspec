@@ -13,7 +13,7 @@ Deno.test("graph: importSpecs finds static, re-export, dynamic and side-effect i
 Deno.test("graph: resolveSpec maps /_rt/ to the runtime dir, resolves relative, treats bare/esm as external", () => {
   assertEquals(resolveSpec("/_rt/ambient.js", "apps/drift/view.js"), RTX + "ambient.js");
   assertEquals(resolveSpec("./synth.js", "apps/drift/view.js"), "apps/drift/synth.js");
-  assertEquals(resolveSpec("../runtime/x.js", "packages/gates/y.js"), "packages/runtime/x.js");
+  assertEquals(resolveSpec("../runtime/x.js", "packages/gates/y.js"), "packages/runtime/x.js"); 
   assertEquals(resolveSpec("htm/preact", "apps/drift/view.js"), null);
   assertEquals(resolveSpec("jsr:@std/assert", "x.js"), null);
 });
@@ -22,11 +22,11 @@ Deno.test("graph: buildClosure walks the transitive local graph, ignoring extern
   const files = {
     "apps/a/view.js": `import "/_rt/rt.js";\nimport "./child.js";\nimport "htm/preact";`,
     "apps/a/child.js": `import "/_rt/shared.js";`,
-    "packages/runtime/rt.js": `import "./shared.js";`,
-    "packages/runtime/shared.js": `export const x = 1;`,
+    [RTX + "rt.js"]: `import "./shared.js";`,
+    [RTX + "shared.js"]: `export const x = 1;`,
   };
   const cl = buildClosure("apps/a/view.js", (f) => files[f] ?? null);
-  for (const f of ["apps/a/view.js", "apps/a/child.js", "packages/runtime/rt.js", "packages/runtime/shared.js"]) assert(cl.has(f), `closure missing ${f}`);
+  for (const f of ["apps/a/view.js", "apps/a/child.js", RTX + "rt.js", RTX + "shared.js"]) assert(cl.has(f), `closure missing ${f}`);
   assertEquals(cl.has("htm/preact"), false, "external leaked into closure");
 });
 

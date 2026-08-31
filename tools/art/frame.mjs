@@ -4,9 +4,18 @@ import { encodePNG } from "./png.mjs";
 const HERE = new URL(".", import.meta.url);
 const MAP = new URL("./frame.importmap.json", HERE);
 
-if (!import.meta.resolve("/_rt/hunt.js").includes("/packages/runtime/")) {
+if (!/\/(packages\/runtime|rt)\//.test(import.meta.resolve("/_rt/ui.js"))) {
+  let mapHref = MAP.href;
+  const rtDir = await Deno.stat(`${Deno.cwd()}/rt/index.js`).then(() => `${Deno.cwd()}/rt/`).catch(() => null);
+  if (rtDir) {
+    const m = JSON.parse(await Deno.readTextFile(MAP));
+    m.imports["/_rt/"] = `file://${rtDir}`;
+    const tmp = await Deno.makeTempFile({ suffix: ".importmap.json" });
+    await Deno.writeTextFile(tmp, JSON.stringify(m));
+    mapHref = `file://${tmp}`;
+  }
   const cmd = new Deno.Command(Deno.execPath(), {
-    args: ["run", "-A", `--import-map=${MAP.href}`, new URL(import.meta.url).pathname, ...Deno.args],
+    args: ["run", "-A", `--import-map=${mapHref}`, new URL(import.meta.url).pathname, ...Deno.args],
     stdout: "inherit", stderr: "inherit",
   });
   Deno.exit((await cmd.output()).code);

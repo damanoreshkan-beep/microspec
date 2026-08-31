@@ -38,6 +38,8 @@ jobs:
           path: ~/.cache/deno
           key: deno-${{ hashFiles('deno.lock', 'packages/**/deno.json') }}
           restore-keys: deno-
+      - name: Seed the demo app (the core carries no apps — gate material is GENERATED)
+        run: deno run -A tools/demo.mjs
       - name: Runtime unit tests (pure logic, no browser)
         run: deno test -A packages/runtime/runtime_test.js
       - name: Schema contract gate (ajv) over every app spec
@@ -106,6 +108,8 @@ jobs:
           path: ~/.cache/deno
           key: deno-${{ hashFiles('deno.lock', 'packages/**/deno.json') }}
           restore-keys: deno-
+      - name: Seed the demo app (this checkout carries no apps either)
+        run: deno run -A tools/demo.mjs
       - name: Verify ${{ matrix.app }}
         # Chrome is preinstalled on the runner (no setup-chrome download) and we run headless (no Xvfb / no
         # apt-get) — that removes ~25s of per-job setup.

@@ -64,25 +64,33 @@ export const NODES = [
     why: "index.html + manifest.json + sw stub + icon.svg. Identical for every app, so it is a function.",
     run: (ctx) => ["deno", "run", "-A", "packages/gen/scaffold.mjs", `apps/${ctx.app}`],
   },
+  {
+    id: "demo", kind: "script", phase: "author", needs: [], scope: "farm", frozen: "2026-08-31",
+    why: "The core carries NO apps (the split: the product owns them). Gate material is GENERATED — " +
+      "authorless → scaffold → sw → readme seed apps/books when the tree has none; a tree with apps " +
+      "(the product) is untouched, so every gate node can depend on this unconditionally.",
+    run: () => ["deno", "run", "-A", "tools/demo.mjs"],
+  },
 
   {
-    id: "validate", kind: "script", phase: "gate", needs: ["spec"], scope: "farm", frozen: "2026-06-11",
+    id: "validate", kind: "script", phase: "gate", needs: ["spec", "demo"], scope: "farm", frozen: "2026-06-11",
     why: "ajv against packages/schema/spec.schema.json — the contract, machine-checked.",
     run: () => ["deno", "run", "-A", "packages/schema/validate.mjs", ...globApps("spec.json")],
   },
   {
-    id: "noundef", kind: "script", phase: "gate", needs: ["scaffold"], scope: "farm", frozen: "2026-06-24",
+    id: "noundef", kind: "script", phase: "gate", needs: ["scaffold", "demo"], scope: "farm", frozen: "2026-06-24",
     why: "Undefined identifiers a zero-build stack would only discover in the browser.",
     run: () => ["deno", "run", "-A", "tools/noundef.mjs"],
   },
   {
-    id: "preflight", kind: "script", phase: "gate", needs: ["scaffold"], scope: "farm", frozen: "2026-06-11",
+    id: "preflight", kind: "script", phase: "gate", needs: ["scaffold", "demo"], scope: "farm", frozen: "2026-06-11",
     why: "The farm's own invariants (no emoji, no spinners, camera priming, i18n keys) — linkedom, no Chromium.",
-    run: () => ["deno", "run", "-A", "--import-map=packages/gates/preflight.importmap.json",
+    run: () => ["deno", "run", "-A",
+      present("rt/preflight.importmap.json") ? "--import-map=rt/preflight.importmap.json" : "--import-map=packages/gates/preflight.importmap.json",
       "packages/gates/preflight.mjs", ...globApps()],
   },
   {
-    id: "caps", kind: "script", phase: "gate", needs: ["spec", "view"], scope: "farm", frozen: "2026-08-08",
+    id: "caps", kind: "script", phase: "gate", needs: ["spec", "view", "demo"], scope: "farm", frozen: "2026-08-08",
     why: "spec.json `needs` must match the capabilities the code actually reaches for. The field was inert " +
       "and had drifted for a whole category (six apps opened WebUSB, none declared it) — make it true " +
       "before making it functional.",
@@ -96,9 +104,11 @@ export const NODES = [
     run: () => ["deno", "run", "-A", "tools/relimports.mjs"],
   },
   {
-    id: "unit", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-06-11",
-    why: "packages/runtime — where the math is supposed to live. A barrel over tests/<module>_test.js.",
-    run: () => ["deno", "test", "-A", "packages/runtime/runtime_test.js"],
+    id: "unit", kind: "script", phase: "gate", needs: ["demo"], scope: "farm", frozen: "2026-06-11",
+    why: "packages/runtime — where the systemic math lives. A barrel over tests/<module>_test.js; the " +
+      "product tree adds its own barrel (rt/rt_test.js) over its domain modules.",
+    run: () => ["deno", "test", "-A", "packages/runtime/runtime_test.js",
+      ...(present("rt/rt_test.js") ? ["rt/rt_test.js"] : [])],
   },
   {
     id: "mcp", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-07-20",
@@ -121,19 +131,19 @@ export const NODES = [
     run: () => ["deno", "run", "-A", "tools/shell-gen.mjs", "--check"],
   },
   {
-    id: "sw", kind: "script", phase: "gate", needs: ["scaffold"], scope: "farm", frozen: "2026-07-09",
+    id: "sw", kind: "script", phase: "gate", needs: ["scaffold", "demo"], scope: "farm", frozen: "2026-07-09",
     why: "Per-app offline precache, regenerated from the REAL import graph. Adopting a kit component is " +
       "enough to stale it, which is why this is a gate and not a habit.",
     run: () => ["deno", "run", "-A", "deploy/sw.mjs", "--check"],
   },
   {
-    id: "readme", kind: "script", phase: "gate", needs: ["scaffold"], scope: "farm", frozen: "2026-08-26",
+    id: "readme", kind: "script", phase: "gate", needs: ["scaffold", "demo"], scope: "farm", frozen: "2026-08-26",
     why: "Each app's README is a one-screen card generated from its spec + i18n. Change the app's copy and " +
       "the page drifts, so the regeneration is a gate: --check fails when a README no longer matches its app.",
     run: () => ["deno", "run", "-A", "deploy/readme.mjs", "--check"],
   },
   {
-    id: "counts", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-07-09",
+    id: "counts", kind: "script", phase: "gate", needs: ["demo"], scope: "farm", frozen: "2026-07-09",
     why: "App-count claims in the docs, checked against the directory. Prose rots; this makes it fail.",
     run: () => ["deno", "run", "-A", "deploy/counts.mjs", "--check"],
   },
@@ -173,9 +183,13 @@ export const NODES = [
   },
 ];
 
+const present = (p) => { try { Deno.statSync(p); return true; } catch { return false; } };
+
 export function globApps(suffix = "") {
   const ids = [];
-  for (const e of Deno.readDirSync("apps")) {
+  let entries = [];
+  try { entries = [...Deno.readDirSync("apps")]; } catch { return ids; }
+  for (const e of entries) {
     if (!e.isDirectory) continue;
     try { Deno.statSync(`apps/${e.name}/spec.json`); } catch { continue; }
     ids.push(suffix ? `apps/${e.name}/${suffix}` : `apps/${e.name}`);
@@ -209,7 +223,7 @@ export function topo(nodes = NODES) {
 }
 
 export const FLOWS = {
-  gates: ["validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
+  gates: ["demo", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
   author: ["research", "spec", "i18n", "view", "scaffold"],
   ship: ["push"],
   all: NODES.map((n) => n.id),

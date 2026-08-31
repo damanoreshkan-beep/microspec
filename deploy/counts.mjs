@@ -1,8 +1,10 @@
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 const check = Deno.args.includes("--check");
 
-const catalog = JSON.parse(await Deno.readTextFile(`${ROOT}/apps/store/apps.json`));
-const N = Array.isArray(catalog) ? catalog.length : Object.keys(catalog).length;
+const catalog = await Deno.readTextFile(`${ROOT}/apps/store/apps.json`).then(JSON.parse).catch(() => null);
+const N = catalog
+  ? (Array.isArray(catalog) ? catalog.length : Object.keys(catalog).length)
+  : (() => { try { return [...Deno.readDirSync(`${ROOT}/apps`)].filter((e) => { try { Deno.statSync(`${ROOT}/apps/${e.name}/spec.json`); return true; } catch { return false; } }).length; } catch { return 0; } })();
 
 const defaultRules = [
   ["README.md", /(live-)(\d+)(%20apps)/g, N],

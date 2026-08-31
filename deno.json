@@ -8,6 +8,7 @@
   ],
   "tasks": {
     "test": "deno test -A packages/runtime/runtime_test.js",
+    "demo": "deno run -A tools/demo.mjs",
     "affected": "deno run -A tools/affected.mjs",
     "verify": "deno run -A packages/gates/verify.mjs",
     "gates": "deno run -A tools/8n8/run.mjs gates",

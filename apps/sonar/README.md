@@ -6,7 +6,7 @@
 
 **Сонар перетворює телефон на ультразвуковий датчик руху. Динамік випромінює рівний тон близько 19 кГц, а мікрофон ловить доплерівські бічні смуги, які відбиває все, що рухається. Застосунок вивчає, як звучить нерухома кімната, і показує рух відносно неї — з напрямком, коли сигнал однозначний, і чесно нічого понад те: без відстані, без пеленга, без швидкості. Усе обчислюється на пристрої: запис не зберігається й нікуди не надсилається.**
 
-![](https://img.shields.io/badge/-science-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-2A2A2E?style=flat-square)
+![](https://img.shields.io/badge/-science-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-000000?style=flat-square)
 
 </div>
 

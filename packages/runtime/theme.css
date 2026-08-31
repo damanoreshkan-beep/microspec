@@ -1,14 +1,17 @@
-/* NEUMORPHIC — neutral greyscale DaisyUI 5 themes for the microspec farm. The theme KEYS are still
-   `signal` / `signal-light`; they are MODE identifiers (dark / light), not palette names.
-   "Ink is the brand": primary = base-content; colour is reserved for meaning
-   (success / error / warning + secondary = the system signal). Loaded via CDN, no build.
-   Muted text is a TOKEN (`--color-base-muted` / `.text-muted`), never an alpha — see below.
+/* LUMINOUS — the DreamStudio material: light IS the structure (docs/research/luminous-icons.md). DaisyUI 5
+   themes for the farm; the theme KEYS are still `signal` / `signal-light` — MODE identifiers (dark / light),
+   not palette names. "Ink is the brand": primary = base-content; colour is reserved for meaning
+   (success / error / warning) plus the farm's ONE pair of light — amber (secondary) and cyan (accent).
+   Loaded via CDN, no build. Muted text is a TOKEN (`--color-base-muted` / `.text-muted`), never an alpha.
 
    THE ONE RULE AN APP AUTHOR NEEDS: a widget never draws its own shadow and never carries a hairline
    border. It DECLARES what it is — `sf-raised` / `sf-inset` / `sf-pressed`, or a rung of the elevation
    ladder `sf-e1`…`sf-e5` — and this file gives it the material. Preflight enforces it.
-   (This header used to say CLAY, and Panel's own doc comment used to say "hairline border"; a review
-   found three apps hand-rolling `border border-base-300` and the kit's own words were the reason.) */
+
+   THE MATERIAL, in one line: the page is true black; a surface is not a lighter panel and not an extrusion —
+   it is an EDGE OF LIGHT (a 1px warm rim, brighter along the top where the light lands) and, when it is
+   lifted or pressed, a soft amber BLOOM. Depth is glow, never a shadow pair — on #000 there is nothing to
+   darken toward, which is exactly why the neumorphic pair this replaces had to keep the page at #2A2A2E. */
 
 /* The dock's total footprint above the safe area — its height plus the gap it floats over.
    ONE number, because four separate things must clear the dock: the scroll padding under <main>, the
@@ -37,10 +40,13 @@
       The control floor stays ≥36px (WCAG 2.2 target-size is 24px) even in the tightest step.
    ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 :root {
-  /* ONE farm accent — noir neon (violet→magenta). Was per-app (spec.accent, written at boot); the farm now
-     speaks a single accent, so this is the literal the runtime no longer overrides. A hex, not var(--color-
-     secondary), so getComputedStyle("--app-accent") (render.js) reads a real colour, not an unresolved var(). */
-  --app-accent: #C13BFF;
+  /* THE PAIR OF LIGHT — amber and cyan, the two temperature poles of the owner's style (2026-08-31). Farm-wide,
+     never per app (spec.accent survives only as an icon-generator input). --app-accent is the warm pole and
+     the MARK colour every component reads for fills, rings, glows and the bloom; --app-accent-2 is the cool
+     pole for a second mark where one is needed (a live dot beside a value, the far end of a range). Both are
+     hexes, not var(--color-*), so getComputedStyle("--app-accent") (render.js) reads a real colour. */
+  --app-accent: #F2B84B;
+  --app-accent-2: #5CE4DC;
   --app-tint: color-mix(in oklch, var(--app-accent) 16%, transparent);
 
   --ms-gap: 0.75rem;     /* rhythm between blocks */
@@ -302,75 +308,58 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   }
 }
 
-/* NEUMORPHIC — dark. The keys stay `signal` / `signal-light` because they are MODE identifiers, not
-   palette names: renaming would touch 59 spec.json files, 7 runtime/gate fallbacks, and would strand every
-   persisted localStorage value on a data-theme that no longer exists (unstyled first load) for zero
-   visual gain. See docs/research/neumorphism-migration.md.
+/* LUMINOUS — dark, the farm's native mode. The keys stay `signal` / `signal-light` because they are MODE
+   identifiers, not palette names: renaming would touch 75 spec.json files, 7 runtime/gate fallbacks, and would
+   strand every persisted localStorage value on a data-theme that no longer exists (unstyled first load).
 
-   NEUTRAL GRAPHITE, zero chroma. The clay repaint before this carried a hue in the surfaces (aubergine
-   dark, cream light); the surfaces are now pure greyscale and colour is reserved for MEANING alone.
+   TRUE BLACK. The owner's reference frames are #000 to the corners and the 75 app icons carry that ground;
+   any grey page under them turned every tile into an island. The material no longer needs headroom below the
+   base (nothing is darkened — depth is light), so the page can finally be the black the icons live on.
 
-   The base tone is the one hard constraint the style imposes, and it is the reason this is #2A2A2E rather
-   than the near-black the farm used to run: neumorphism extrudes by lightening AND darkening the base, so
-   a surface needs headroom in BOTH directions. On #0A0A0B there is nothing to darken toward and the whole
-   material collapses into a one-sided drop shadow — which is a card, not an extrusion.
-
-   Every value below is checked by runtime_test.js against the farm's contrast floors (measured, not
-   guessed: ink@60% clears 5.42:1 here and the muted token clears 4.55:1 on its worst bed). */
+   The ink is WARM white, not cold: on black a neutral #EDEDF0 reads blue beside amber light. Every value
+   below is checked by runtime_test.js against the farm's contrast floors, including the two accents AS TEXT
+   (text-secondary / badge-secondary) — the CI-only trap the noir pass fell into. */
 [data-theme="signal"] {
   color-scheme: dark;
-  /* base-100 === base-200 ON PURPOSE. Neumorphism's premise is that a raised object is the PAGE extruded,
-     not a lighter panel laid on top — the moment a card is a different tone, the shadows read as a drop
-     shadow under a rectangle. base-300 is the one step down, kept for borders and the deepest recesses. */
-  --color-base-100: #2A2A2E; --color-base-200: #2A2A2E; --color-base-300: #1A1A1F;
-  --color-base-content: #EDEDF0;
-  --color-primary: #EDEDF0;   --color-primary-content: #2A2A2E;   /* ink = brand */
-  /* NOIR NEON, text-safe on THIS theme. DaisyUI's text-secondary/badge-secondary put this on TEXT, and no one
-     colour clears 4.5:1 as text on both a near-black and a near-white ground — so, like the palette it replaced,
-     the accent is tuned per theme: a BRIGHT neon-violet here reads on the dark ground. The vivid mark neon lives
-     in --app-accent (glows/rings/fills are not contrast-gated); this token is the one that touches text. */
-  --color-secondary: #D89AFF; --color-secondary-content: #1C0A2A;
-  --color-accent: #D89AFF;    --color-accent-content: #1C0A2A;
-  --color-neutral: #34343A;   --color-neutral-content: #EDEDF0;
+  /* base-100 === base-200 ON PURPOSE, still: a raised surface is the page with a lit edge, not a lighter panel
+     laid on it. base-300 is the one tone step, for tracks, dividers and the deepest wells. */
+  --color-base-100: #000000; --color-base-200: #000000; --color-base-300: #141418;
+  --color-base-content: #F2EEE6;
+  --color-primary: #F2EEE6;   --color-primary-content: #000000;   /* ink = brand */
+  /* THE PAIR AS TEXT. DaisyUI's text-secondary / badge-secondary put these on TEXT, so they are tuned per theme:
+     on black the warm pole is a bright amber (11:1) and the cool pole a bright cyan (13:1). The vivid marks
+     stay --app-accent / --app-accent-2 above. */
+  --color-secondary: #F2B84B; --color-secondary-content: #1A1000;
+  --color-accent: #5CE4DC;    --color-accent-content: #002321;
+  --color-neutral: #1C1C21;   --color-neutral-content: #F2EEE6;
   --color-success: #7FCF9B;   --color-success-content: #06180E;
   --color-error: #F08A82;     --color-error-content: #2A0A08;
   --color-warning: #E0B057;   --color-warning-content: #241904;
-  --color-info: #A9A9B4;      --color-info-content: #17171A;
-  --color-base-muted: #A8A8B2; /* muted ink — a DESIGNED colour, not an alpha. See .text-muted below. */
-  /* radius is half the effect — below ~20px the volume reads as an ordinary drop shadow */
+  --color-info: #5CE4DC;      --color-info-content: #002321;
+  --color-base-muted: #A39E94; /* muted ink — a DESIGNED colour, not an alpha (warm grey, 8:1 on black). */
   --radius-box: 1.75rem; --radius-field: 1rem; --radius-selector: 0.75rem;
   --border: 0; --depth: 0;
 }
 
-/* NEUMORPHIC — light. #EEEEF1, the canonical soft-UI base, and chosen for the same physical reason as the
-   dark one: a NEAR-WHITE page cannot hold this material. On #FFFAF2 (the old cream) there are 5 points of
-   headroom above the base, so the light half of the shadow pair has nowhere to go and every control keeps
-   only its dark side — a bevel, not an extrusion. #EEEEF1 leaves room in both directions.
-
-   base-100 === base-200 for the same reason as dark: the raised object IS the page.
-
-   The binding constraint in ANY light theme is muted/alpha text, and it bites harder here than it did on
-   cream: dropping the page from #FFFAF2 to #EEEEF1 costs contrast on every alpha the farm renders. It is
-   paid for by taking the ink to near-black (#0A0A0C) — which is what "чорно-білі, не пастельні" asks for
-   anyway. Measured: ink@60% = 5.01:1 (it was 4.45:1 with the old #17171A ink — under the floor).
-   runtime_test.js holds the line. */
+/* LUMINOUS — light: PAPER. The glow language is dark-native (a bloom on white composites to a pastel smear —
+   measured on the icons), so the light mode keeps the STRUCTURE of the material — a surface is an edge, a
+   press is a ring of accent — and drops the bloom to a faint tint. Warm off-white, warm near-black ink, and
+   both poles deepened until they clear 4.5:1 AS TEXT on every bed (a bright amber on white is 1.9:1). */
 [data-theme="signal-light"] {
   color-scheme: light;
-  --color-base-100: #EEEEF1; --color-base-200: #EEEEF1; --color-base-300: #DCDCE2;
-  --color-base-content: #0A0A0C;
-  --color-primary: #0A0A0C;   --color-primary-content: #EEEEF1;
-  /* NOIR NEON, text-safe on white: a DEEP neon-violet that clears 4.5:1 as text on the near-white ground (a
-     bright one would fail there). Same neon family as dark; the vivid mark neon stays --app-accent. */
-  --color-secondary: #8B23C4; --color-secondary-content: #FFFFFF;
-  --color-accent: #8B23C4;    --color-accent-content: #FFFFFF;
-  --color-neutral: #1E1E22;   --color-neutral-content: #EEEEF1;
+  --color-base-100: #F6F4EE; --color-base-200: #F6F4EE; --color-base-300: #E3DFD4;
+  --color-base-content: #141210;
+  --color-primary: #141210;   --color-primary-content: #F6F4EE;
+  --color-secondary: #6F4800; --color-secondary-content: #FFFFFF;   /* 6.0:1 on base-300, the worst bed */
+  --color-accent: #0B5C57;    --color-accent-content: #FFFFFF;   /* 5.9:1 on base-300 */
+  --color-neutral: #262320;   --color-neutral-content: #F6F4EE;
   /* deepened past the 4.5 line on purpose: at their "natural" lightness these land at ~4.6 on base-100,
      and any component that puts opacity on the text eats that margin and fails axe. */
   --color-success: #1F6B42;   --color-success-content: #FFFFFF;
   --color-error: #A3302A;     --color-error-content: #FFFFFF;
   --color-warning: #6B4A12;   --color-warning-content: #FFFFFF;
-  --color-info: #5A5A63;      --color-info-content: #FFFFFF;
-  --color-base-muted: #5A5A63; /* muted ink — a DESIGNED colour, not an alpha. See .text-muted below. */
+  --color-info: #0B5C57;      --color-info-content: #FFFFFF;
+  --color-base-muted: #5E5A52; /* muted ink — a DESIGNED colour, not an alpha. See .text-muted below. */
   --radius-box: 1.75rem; --radius-field: 1rem; --radius-selector: 0.75rem;
   --border: 0; --depth: 0;
 }
@@ -426,13 +415,13 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
    nothing. runtime_test.js holds the contrast floor. */
 .text-muted { color: var(--color-base-muted); }
 
-/* THE MATERIAL. Every surface in the farm is one of three shapes, and each is the SAME pair of shadows —
-   one dark away from the light, one light toward it. That symmetry is the whole style: a single-sided
-   shadow is a card sitting on a page, and a pair is the page itself pushed out or pressed in.
-
-   The light sits at 45° top-left, so x and y offsets are equal and the highlight is the negative of the
-   shadow. `--nm-d`/`--nm-b` step with the density ladder, so the extrusion compacts with everything else
-   instead of staying 5px deep on a 200px-tall split-screen window. */
+/* THE MATERIAL. Every surface in the farm is one of three shapes, and each is composed from the same three
+   terms — a RIM (a 1px ring of light around the edge), a TOP EDGE (the rim brighter where the light lands,
+   an inset 1px line) and a BLOOM (a soft accent glow that says "lifted" or "pressed"). There is no shadow
+   pair any more: on a black page a shadow has nothing to fall on, so depth is stated by how much light an
+   edge catches. RAISED = rim + top edge + faint bloom; INSET = a dim rim and a dark inner top (a well the
+   light does not reach); PRESSED = the rim turns to accent and the bloom comes up — the only state you cause
+   by touching, and the strongest one, because in this language pressing something lights it. */
 .sf-raised { background: var(--color-base-100); box-shadow: var(--sf-drop); }
 .sf-inset  { background: var(--sf-inset-face); box-shadow: var(--sf-sink); }
 .sf-pressed, .sf-press:active { background: var(--sf-press-face); box-shadow: var(--sf-press); }
@@ -458,98 +447,79 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
   --bw-1: 1px; --bw-2: 2px; --bw-3: 4px;
 }
 
-/* The extrusion depth, stepped with the density ladder. `--nm-d` is the 45° offset and `--nm-b` the blur;
-   `-d2/-b2` is the shallow (hover/L2) pair and `-dp/-bp` the pressed one — tighter AND deeper, because a
-   pressed control is the strongest state in the kit and the only one you cause by touching. */
+/* The bloom radius, stepped with the density ladder so a lifted surface on a 200px-tall split-screen window
+   does not glow wider than the control it belongs to. `--lm-g` is the blur of the raised bloom, `--lm-gp`
+   the pressed one — the press glows TIGHTER and brighter, because it is the strongest state in the kit. */
 :root {
-  /* Blur stays <= 2x the offset. Past that the blur radius exceeds the distance the shadow was moved, so
-     each half bleeds back around the NEAR edges and paints a faint dark line between the object and its own
-     counter-highlight — a 1px rim on the top and left of every card, which quietly turns "the page
-     extruded" back into "a rectangle with a border". Found by eye on a card list before it was arithmetic. */
-  --nm-d: 5px;  --nm-b: 10px;
-  --nm-d2: 3px; --nm-b2: 6px;
-  --nm-dp: 3px; --nm-bp: 6px;
-  /* The shallow pairs, composed once. These live in :root rather than per theme because a custom property
-     substitutes where it is USED — `var(--nm-dark)` inside them still resolves against whichever theme the
-     element is under, so one definition serves both instead of two that can drift. */
-  --sf-lift2: var(--nm-d2) var(--nm-d2) var(--nm-b2) var(--nm-dark),
-              calc(-1 * var(--nm-d2)) calc(-1 * var(--nm-d2)) var(--nm-b2) var(--nm-light);
-  --sf-sink2: inset var(--nm-d2) var(--nm-d2) var(--nm-b2) var(--nm-dark),
-              inset calc(-1 * var(--nm-d2)) calc(-1 * var(--nm-d2)) var(--nm-b2) var(--nm-light);
+  --lm-g: 32px;  --lm-gs: -14px;   /* raised bloom: blur, spread (negative — the glow hugs the edge) */
+  --lm-gp: 20px; --lm-gps: -4px;   /* pressed bloom */
 }
-@media (max-height: 670px) { :root { --nm-d: 4px; --nm-b: 8px;  --nm-d2: 2px; --nm-b2: 4px; } }
-@media (max-height: 560px) { :root { --nm-d: 3px; --nm-b: 6px;  --nm-dp: 2px; --nm-bp: 4px; } }
-@media (min-width: 120rem) { :root { --nm-d: 8px; --nm-b: 16px; --nm-d2: 4px; --nm-b2: 8px; } }
+@media (max-height: 670px) { :root { --lm-g: 24px; --lm-gs: -12px; --lm-gp: 16px; --lm-gps: -4px; } }
+@media (max-height: 560px) { :root { --lm-g: 18px; --lm-gs: -10px; --lm-gp: 12px; --lm-gps: -3px; } }
+@media (min-width: 120rem) { :root { --lm-g: 48px; --lm-gs: -18px; --lm-gp: 28px; --lm-gps: -6px; } }
 
 [data-theme="signal"] {
-  /* The pair. Neutral by construction — no hue in the surfaces, because colour means something here and a
-     tinted shadow would make every surface say it. On a dark base the "light" half is a LIGHTER GREY, not
-     white: a white counter-highlight on #2A2A2E reads as a chrome bevel, which is the 2020 mistake. */
-  --nm-dark:  #1A1A1E;
-  --nm-light: #3A3A3E;
-  --nm-cast:  rgba(0, 0, 0, .55);   /* what a FLOATING object drops — sheets and popovers only */
+  /* The light. WARM, always — the same amber-white the icons are drawn with. A neutral white rim on black
+     reads as a chrome bevel; a warm one reads as an edge catching the room's light. */
+  --lm-rim:    rgba(255, 232, 196, .11);   /* the ring around every surface */
+  --lm-rim-hi: rgba(255, 238, 208, .20);   /* the top edge, where the light lands */
+  --lm-rim-lo: rgba(255, 232, 196, .06);   /* the rim of a well — dimmer, the light barely reaches in */
+  --lm-bloom:  color-mix(in oklch, var(--app-accent) 22%, transparent);
+  --lm-bloom-hi: color-mix(in oklch, var(--app-accent) 55%, transparent);
+  --nm-cast:   rgba(0, 0, 0, .9);   /* what a FLOATING object drops — sheets and popovers only */
 
-  --sf-rim:        var(--nm-light);
-  --sf-shadow:     var(--nm-dark);
-  --sf-drop:       var(--nm-d) var(--nm-d) var(--nm-b) var(--nm-dark),
-                   calc(-1 * var(--nm-d)) calc(-1 * var(--nm-d)) var(--nm-b) var(--nm-light);
-  --sf-sink:       inset var(--nm-d) var(--nm-d) var(--nm-b) var(--nm-dark),
-                   inset calc(-1 * var(--nm-d)) calc(-1 * var(--nm-d)) var(--nm-b) var(--nm-light);
-  --sf-press:      inset var(--nm-dp) var(--nm-dp) var(--nm-bp) var(--nm-press-dark),
-                   inset calc(-1 * var(--nm-dp)) calc(-1 * var(--nm-dp)) var(--nm-bp) var(--nm-light);
-  --nm-press-dark: #131316;
-  /* The recess is the SAME colour as the page — that is the premise. Depth comes from the shadow pair
-     alone, never from a darker fill, which is what separates this from the panel-on-panel look. */
-  --sf-inset-face: var(--color-base-100);
-  --sf-inset-top:  var(--nm-dark);
-  --sf-press-face: var(--color-base-100);
-  --sf-press-top:  var(--nm-press-dark);
-  --sf-track-face: #1F1F23;   /* a track is too thin for a shadow pair — see .sf-track below */
+  --sf-rim:        var(--lm-rim);
+  --sf-shadow:     rgba(0, 0, 0, .85);
+  --sf-drop:       0 0 0 1px var(--lm-rim), inset 0 1px 0 var(--lm-rim-hi), 0 10px var(--lm-g) var(--lm-gs) var(--lm-bloom);
+  --sf-lift2:      0 0 0 1px var(--lm-rim), inset 0 1px 0 var(--lm-rim-hi);
+  --sf-sink:       inset 0 0 0 1px var(--lm-rim-lo), inset 0 2px 6px rgba(0, 0, 0, .9);
+  --sf-sink2:      inset 0 0 0 1px var(--lm-rim-lo), inset 0 1px 3px rgba(0, 0, 0, .9);
+  --sf-press:      0 0 0 1px var(--lm-bloom-hi), 0 0 var(--lm-gp) var(--lm-gps) var(--lm-bloom), inset 0 2px 8px rgba(0, 0, 0, .7);
+  /* A well is where light POOLS: the recessed face sits one step above black rather than below the page,
+     because below black does not exist. Still the same colour family as the page, still not a panel. */
+  --sf-inset-face: #0A0A0D;
+  --sf-inset-top:  rgba(0, 0, 0, .9);
+  --sf-press-face: #0A0A0D;
+  --sf-press-top:  rgba(0, 0, 0, .7);
+  --sf-track-face: #1B1B21;   /* a track is too thin for a rim — a real tone step, see .sf-track below */
 
-  --ms-vol-key:    rgba(255, 255, 255, .04);    /* key light entering the top of the box */
-  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 10%, transparent);
-  --ms-vol-rim:    rgba(255, 255, 255, .06);    /* where the wall catches the light */
-  --ms-vol-sheen:  rgba(255, 255, 255, .05);
-  --ms-vol-shade:  rgba(0, 0, 0, .55);          /* the wall's own shadow */
+  --ms-vol-key:    rgba(255, 238, 208, .035);   /* key light entering the top of the box — warm */
+  --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 12%, transparent);
+  --ms-vol-rim:    rgba(255, 232, 196, .07);    /* where the wall catches the light */
+  --ms-vol-sheen:  rgba(255, 238, 208, .05);
+  --ms-vol-shade:  rgba(0, 0, 0, .7);           /* the wall's own shadow */
 }
 [data-theme="signal-light"] {
-  /* Same structure, inverted. Here the light half CAN be pure white — on #EEEEF1 there is headroom above
-     the base, which is the entire reason the page is not #FFFFFF. */
-  /* SYMMETRY, measured. The first cut of this theme ran --nm-dark #C6C6CC against --nm-light #FFFFFF on a
-     #EEEEF1 base: −39 down against +16 up, a dark half 2.4× the light one. The dark theme is exactly ±16,
-     and on screen that difference is the whole story — dark read as a genuine extrusion while light read
-     as an ordinary drop shadow with a faint halo. Two independent app reviews measured it before anyone
-     explained it, which is the tell that it was real and not taste.
-     The ceiling is arithmetic: #EEEEF1 leaves only 16 levels of headroom toward white, so a PERFECTLY
-     symmetric pair here would be ±16 and too faint to carry the material. −21 is the compromise — 1.3×
-     rather than 2.4× — close enough to read as one light source, strong enough to see. Going further needs
-     a darker base, and the base is the owner's call. */
-  --nm-dark:  #DADADE;
-  --nm-light: #FFFFFF;
-  --nm-cast:  rgba(80, 80, 92, .28);
+  /* Paper: the same three terms, with the rim a hairline of INK (light on light is invisible) and the bloom
+     reduced to a tint — a glow on white is a smear, measured on the icons. The top edge stays a white line,
+     which on off-white paper is the one lit edge that still reads. */
+  --lm-rim:    rgba(20, 18, 16, .10);
+  --lm-rim-hi: rgba(255, 255, 255, .9);
+  --lm-rim-lo: rgba(20, 18, 16, .08);
+  --lm-bloom:  color-mix(in oklch, var(--app-accent) 12%, transparent);
+  --lm-bloom-hi: color-mix(in oklch, var(--color-accent) 55%, transparent);
+  --nm-cast:   rgba(40, 32, 20, .22);
 
-  --sf-rim:        var(--nm-light);
-  --sf-shadow:     var(--nm-dark);
-  --sf-drop:       var(--nm-d) var(--nm-d) var(--nm-b) var(--nm-dark),
-                   calc(-1 * var(--nm-d)) calc(-1 * var(--nm-d)) var(--nm-b) var(--nm-light);
-  --sf-sink:       inset var(--nm-d) var(--nm-d) var(--nm-b) var(--nm-dark),
-                   inset calc(-1 * var(--nm-d)) calc(-1 * var(--nm-d)) var(--nm-b) var(--nm-light);
-  --sf-press:      inset var(--nm-dp) var(--nm-dp) var(--nm-bp) var(--nm-press-dark),
-                   inset calc(-1 * var(--nm-dp)) calc(-1 * var(--nm-dp)) var(--nm-bp) var(--nm-light);
-  --nm-press-dark: #B4B4BC;
-  --sf-inset-face: var(--color-base-100);
-  --sf-inset-top:  var(--nm-dark);
-  --sf-press-face: var(--color-base-100);
-  --sf-press-top:  var(--nm-press-dark);
-  --sf-track-face: #D3D3D9;   /* a track is too thin for a shadow pair — see .sf-track below */
+  --sf-rim:        var(--lm-rim);
+  --sf-shadow:     rgba(40, 32, 20, .18);
+  --sf-drop:       0 0 0 1px var(--lm-rim), inset 0 1px 0 var(--lm-rim-hi), 0 10px var(--lm-g) var(--lm-gs) var(--nm-cast);
+  --sf-lift2:      0 0 0 1px var(--lm-rim), inset 0 1px 0 var(--lm-rim-hi);
+  --sf-sink:       inset 0 0 0 1px var(--lm-rim-lo), inset 0 2px 5px rgba(40, 32, 20, .16);
+  --sf-sink2:      inset 0 0 0 1px var(--lm-rim-lo), inset 0 1px 3px rgba(40, 32, 20, .14);
+  --sf-press:      0 0 0 1px var(--lm-bloom-hi), 0 0 var(--lm-gp) var(--lm-gps) var(--lm-bloom), inset 0 2px 6px rgba(40, 32, 20, .18);
+  --sf-inset-face: #ECE9E1;
+  --sf-inset-top:  rgba(40, 32, 20, .16);
+  --sf-press-face: #ECE9E1;
+  --sf-press-top:  rgba(40, 32, 20, .18);
+  --sf-track-face: #D8D3C7;   /* a track is too thin for a rim — a real tone step, see .sf-track below */
 
-  /* A light room is lit the other way round: the wash is white and the walls are grey. Weaker than the dark
-     theme on purpose — a dark band over dark text is the one place this style eats legibility. */
+  /* A paper room is lit the other way round: the wash is white and the walls are a warm grey. Weaker than the
+     dark theme on purpose — a dark band over dark text is the one place a wash eats legibility. */
   --ms-vol-key:    rgba(255, 255, 255, .85);
   --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 8%, transparent);
-  --ms-vol-rim:    rgba(90, 90, 100, .08);
+  --ms-vol-rim:    rgba(40, 32, 20, .08);
   --ms-vol-sheen:  rgba(255, 255, 255, .9);
-  --ms-vol-shade:  rgba(90, 90, 100, .14);
+  --ms-vol-shade:  rgba(40, 32, 20, .12);
 }
 
 /* The volume itself — painted as body's own background rather than a layer, so it is underneath every
@@ -792,9 +762,10 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
    competition with the only thing that matters on a phone — HOW BIG THE GAME IS. What is left is
    the device the first game shipped with, stated once, here. */
 
-/* The plastic. Muted and mid-range by construction, so the neumorphic pair keeps headroom both
-   ways, and stated as CSS rather than computed in JS: the view does not re-render when the theme
-   flips, so a colour chosen at mount would be the wrong one half the time.
+/* The plastic. A warm near-black in the dark theme (a device body on a black page reads through its lit
+   rim, not through a tone step) and a warm grey on paper, stated as CSS rather than computed in JS: the
+   view does not re-render when the theme flips, so a colour chosen at mount would be the wrong one half
+   the time.
 
    The body HUGS its contents and is capped at the view, and getting here took two goes. It used
    to shrink-wrap a 24rem shell around a 55%-wide aperture, which left two thirds of a 390×844
@@ -821,8 +792,8 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
   background: var(--sh-body, var(--color-base-100));
   border-radius: var(--sh-r);
 }
-[data-theme="signal"]       .ms-shell { --sh-body: #35342C; }
-[data-theme="signal-light"] .ms-shell { --sh-body: #D8D5C2; }
+[data-theme="signal"]       .ms-shell { --sh-body: #14120E; box-shadow: var(--sf-drop); }
+[data-theme="signal-light"] .ms-shell { --sh-body: #DCD8CC; box-shadow: var(--sf-drop); }
 
 /* The aperture. `--sf-inset-face` is `.sf-inset`'s OWN knob for the recessed face — setting it is
    how a plate colour reaches the screen without a second background rule fighting the component

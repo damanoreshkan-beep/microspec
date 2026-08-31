@@ -6,7 +6,7 @@
 
 **Плеєр чіптюнів Farbrausch V2 (.v2m) — демосценний синтезатор, що вміщує цілі композиції в кілька кілобайтів. Магазин читає архів modland V2 наживо: трек зазвичай 20–60 КБ, у десятки разів менше за ту саму музику в MP3, тому качається миттєво й лишається назавжди. Синтезатор V2 працює в браузері як власноруч зібраний WebAssembly-модуль, що рендерить PCM на AudioWorklet; плеєр малює власні байти треку в 3D. Фонове відтворення з керуванням на локскріні. Офлайн.**
 
-![](https://img.shields.io/badge/-sound-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-2A2A2E?style=flat-square)
+![](https://img.shields.io/badge/-sound-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-000000?style=flat-square)
 
 <br>
 

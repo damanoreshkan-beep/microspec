@@ -6,7 +6,7 @@
 
 **Запиши дві секунди світу — двері, чашку, дощ, власний голос — і грай ним. Зерно ріже запис на короткі зерна у вікні Ганна й повертає їх хмарою, яку ти вдаряєш на восьми полях у своєму ладі: коренем є сам запис, тож безтоновий удар працює як чаша і йому ніколи не приписують ноту, якої немає. Нахил гне розмір зерна й тон, Потік пише фразу, а почуте експортується у WAV. Запис і обробка на твоєму пристрої, офлайн.**
 
-![](https://img.shields.io/badge/-sound-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-2A2A2E?style=flat-square)
+![](https://img.shields.io/badge/-sound-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-000000?style=flat-square)
 
 </div>
 

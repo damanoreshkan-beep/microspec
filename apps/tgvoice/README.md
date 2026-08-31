@@ -6,7 +6,7 @@
 
 **Перетворює голосове повідомлення з Телеграму на текст повністю офлайн. Поділіться голосівкою просто в застосунок або відкрийте аудіофайл — мовлення розпізнається на вашому пристрої, без хмари й без акаунта: українська, російська та англійська з автоматичним вибором мови. Модель кожної мови завантажується один раз і далі працює без мережі.**
 
-![](https://img.shields.io/badge/-tools-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-2A2A2E?style=flat-square)
+![](https://img.shields.io/badge/-tools-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-000000?style=flat-square)
 
 </div>
 

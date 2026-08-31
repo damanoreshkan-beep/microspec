@@ -6,7 +6,7 @@
 
 **Викуй особистий сигіл із наміру — камеа Агриппи, накреслена живим металом**
 
-![](https://img.shields.io/badge/-esoterica-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-2A2A2E?style=flat-square)
+![](https://img.shields.io/badge/-esoterica-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-000000?style=flat-square)
 
 <br>
 

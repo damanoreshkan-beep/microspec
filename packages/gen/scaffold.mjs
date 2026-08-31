@@ -33,8 +33,18 @@ const isLight = /light/.test(spec.theme || "");
 // The installed-PWA splash + Android status bar. These MUST track the theme bases: they were left at
 // the pre-redesign near-black through the neumorphic repaint, so every installed app showed a #0A0A0B
 // splash butted against a #2A2A2E page. No screenshot can catch this — microlink does not render OS chrome.
-const themeColor = isLight ? "#EEEEF1" : "#2A2A2E";
-const bg = isLight ? "#EEEEF1" : "#2A2A2E";
+// MEASURED off theme.css, never written here: a hex typed beside the thing it describes is right until the
+// base moves, then silently wrong in every app at once (76 chrome files carried #2A2A2E after the black
+// repaint). runtime_test.js still cross-checks every app's chrome against the same two bases.
+const themeCss = await Deno.readTextFile(new URL("../runtime/theme.css", import.meta.url));
+const baseOf = (t) => {
+  const i = themeCss.indexOf(`[data-theme="${t}"] {`);
+  const m = /--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(themeCss.slice(i));
+  if (i < 0 || !m) throw new Error(`theme.css: no --color-base-100 for [data-theme="${t}"]`);
+  return m[1].toUpperCase();
+};
+const themeColor = isLight ? baseOf("signal-light") : baseOf("signal");
+const bg = themeColor;
 const lang = i18n.uk ? "uk" : locales[0];
 
 // index.html composes the spec from spec.json + each i18n/<locale>.json (imported as JSON modules) and
@@ -58,15 +68,17 @@ const startWiring = [
 // loading line, and the dock island in the EXACT places the real chrome lands, so when the runtime mounts it
 // simply fades to the live app — no blank frame, no white flash, no spinner. index.js removes #boot after
 // the first render. Plain CSS only (Tailwind utilities don't exist yet).
+// The shell wears the LUMINOUS material (theme.css): the header and the dock are the page with a lit edge
+// (--sf-lift2 — rim + top edge), never a shadow pair. Fallbacks are the dark theme's own values.
 const bootCss = `
-    html,body{background:var(--color-base-200,#2A2A2E)}
-    #boot{position:fixed;inset:0;z-index:60;background:var(--color-base-200,#2A2A2E);opacity:1;transition:opacity .4s ease;pointer-events:none}
+    html,body{background:var(--color-base-200,${bg})}
+    #boot{position:fixed;inset:0;z-index:60;background:var(--color-base-200,${bg});opacity:1;transition:opacity .4s ease;pointer-events:none}
     #boot.gone{opacity:0}
-    #boot .bh{height:3.5rem;padding-top:env(safe-area-inset-top);display:flex;align-items:center;padding-left:1rem;background:var(--color-base-100,#2A2A2E);box-shadow:3px 3px 6px var(--nm-dark,#1A1A1E),-3px -3px 6px var(--nm-light,#3A3A3E)}
-    #boot .bm{font-family:var(--font-mono,ui-monospace,monospace);text-transform:uppercase;letter-spacing:.05em;font-weight:700;font-size:1.02rem;color:var(--color-base-content,#ececee);opacity:.85}
-    #boot .bb{position:absolute;left:0;right:0;top:calc(3.5rem + env(safe-area-inset-top));height:2px;overflow:hidden;background:color-mix(in oklch,var(--color-base-content,#ececee) 8%,transparent)}
-    #boot .bb i{position:absolute;top:0;height:100%;width:38%;border-radius:2px;background:var(--color-primary,#ececee);animation:bootslide 1.1s cubic-bezier(.4,0,.2,1) infinite}
-    #boot .bd{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + .75rem);width:12rem;height:3.25rem;border-radius:1.35rem;background:var(--color-base-100,#2A2A2E);box-shadow:3px 3px 6px var(--nm-dark,#1A1A1E),-3px -3px 6px var(--nm-light,#3A3A3E)}
+    #boot .bh{height:3.5rem;padding-top:env(safe-area-inset-top);display:flex;align-items:center;padding-left:1rem;background:var(--color-base-100,${bg});box-shadow:var(--sf-lift2,0 0 0 1px rgba(255,232,196,.11),inset 0 1px 0 rgba(255,238,208,.2))}
+    #boot .bm{font-family:var(--font-mono,ui-monospace,monospace);text-transform:uppercase;letter-spacing:.05em;font-weight:700;font-size:1.02rem;color:var(--color-base-content,#f2eee6);opacity:.85}
+    #boot .bb{position:absolute;left:0;right:0;top:calc(3.5rem + env(safe-area-inset-top));height:2px;overflow:hidden;background:color-mix(in oklch,var(--color-base-content,#f2eee6) 8%,transparent)}
+    #boot .bb i{position:absolute;top:0;height:100%;width:38%;border-radius:2px;background:var(--app-accent,#f2b84b);animation:bootslide 1.1s cubic-bezier(.4,0,.2,1) infinite}
+    #boot .bd{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + .75rem);width:12rem;height:3.25rem;border-radius:1.35rem;background:var(--color-base-100,${bg});box-shadow:var(--sf-lift2,0 0 0 1px rgba(255,232,196,.11),inset 0 1px 0 rgba(255,238,208,.2))}
     @keyframes bootslide{0%{left:-38%}100%{left:100%}}
     @media(prefers-reduced-motion:reduce){#boot .bb i{animation:none;left:0;width:100%;opacity:.5}}`;
 const bootShell = `  <div id="boot" aria-hidden="true"><div class="bh"><span class="bm">${title}</span></div><div class="bb"><i></i></div><div class="bd"></div></div>`;
@@ -140,9 +152,13 @@ const sw = `// PLACEHOLDER — run \`deno run -A deploy/sw.mjs\` to generate the
 const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="104" fill="${brand.bg}"/><g transform="translate(81.92,81.92) scale(14.506666666666666)" fill="none" stroke="${brand.fg}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${brandPaths}</g></svg>\n`;
 
 const files = { "index.html": indexHtml, "manifest.json": manifest, "sw.js": sw, "icon.svg": iconSvg };
+// An app with a luminous master (icon.webp) owns its icon.svg — tools/art/icon-import.mjs wrote it as the
+// wrapper of that art, and the brand tile above is only the fallback for an app that has no art yet.
+const hasArt = await has(`${dir}/icon.webp`);
 let wrote = 0;
 for (const [name, content] of Object.entries(files)) {
   const p = `${dir}/${name}`;
+  if (name === "icon.svg" && hasArt) { console.log(`  · ${name} (luminous art, kept)`); continue; }
   if (!force && (await has(p))) { console.log(`  · ${name} (exists, kept)`); continue; }
   await Deno.writeTextFile(p, content);
   console.log(`  ✓ ${name}`);

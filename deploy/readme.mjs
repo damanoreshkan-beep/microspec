@@ -39,13 +39,13 @@ async function build(dir, id) {
   const shot = (await has(`docs/shots/${id}.png`)) ? `../../docs/shots/${id}.png` : null;
 
   const capBadges = needs.length
-    ? needs.map((n) => shield("cap", CAP[n] || n, "2A2A2E")).join(" ")
+    ? needs.map((n) => shield("cap", CAP[n] || n, "000000")).join(" ")
     : "";
   const badges = [
     shield("", cat, ACCENT),
     capBadges,
     shield("", "offline", "1F6B42"),
-    shield("", "installable", "2A2A2E"),
+    shield("", "installable", "000000"),
   ].filter(Boolean).join(" ");
 
   const lede = tagline || `${title} — part of the microspec farm.`;

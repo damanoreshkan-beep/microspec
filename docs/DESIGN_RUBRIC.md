@@ -122,31 +122,32 @@ established language; match it and push it forward, never regress to generic. (M
 a standing assumption, not a per-task ask.)
 
 - **Type:** the Geist superfamily (Geist + Geist Mono, Cyrillic) — never Inter/system defaults.
-- **Ink is the brand:** primary IS base-content — `#EDEDF0` dark / `#0A0A0C` light, both NEUTRAL; colour
-  (blue secondary/accent, success/warning/error) is for *meaning* only. `packages/runtime/theme.css`.
-- **The palette is NEUTRAL GREYSCALE and the material is NEUMORPHIC**
-  (`docs/research/neumorphism-migration.md`). This replaced the clay repaint wholesale — surfaces carry no
-  hue at all now, and the volume is a symmetric shadow pair rather than an edge treatment. Four rules, and
-  the first two get violated by instinct:
-  1. **The surface IS the page.** `base-100 === base-200`, and a recess is the same colour as what it sits
-     in. A raised object is the page *extruded*, not a lighter panel laid on top — the moment a card gets
-     its own tone the pair reads as a drop shadow under a rectangle, which is the look this replaced.
-     Lightening a face to say "raised" is the classic mistake and flattens the material instantly.
-  2. **Volume is a PAIR: one dark shadow away from the light, one light shadow toward it.** A single-sided
-     shadow is a card on a page. Both halves, always, at 45° — x and y offsets are the same token so the
-     farm has exactly one light source and no component can drift its own.
-  3. **The base tone needs headroom in BOTH directions**, which is why dark is `#2A2A2E` and light is
-     `#EEEEF1` rather than the near-black/near-white they replaced. On `#0A0A0B` there is nothing to darken
-     toward; on `#FFFAF2` nothing to lighten toward. Either way the counter-highlight dies and the
-     extrusion collapses to a bevel. **This is physics, not taste — do not "clean up" the base to pure
-     black or pure white.**
-  4. **The shadow is NEUTRAL.** The clay system tinted it with `--app-accent`; this one must not, or every
-     surface starts saying something and colour stops meaning anything. `--app-accent` stays a MARK colour.
-  **Check the COMPOSITED pair, never the solid one.** The farm renders `text-base-content/60` in 66 files;
-  an alpha over a surface is what axe measures. Dropping the light page from `#FFFAF2` to `#EEEEF1` cost
-  exactly that pair its margin (4.45:1 — under the floor), and it was paid for by taking the ink to
-  near-black. Muted text is the binding constraint of any light theme, so the **base tone is set by
-  contrast, not by taste**. `runtime_test.js` computes it locally and matches axe exactly.
+- **Ink is the brand:** primary IS base-content — warm white `#F2EEE6` on black / warm near-black `#141210`
+  on paper; colour is for *meaning* (success/warning/error) plus the farm's ONE PAIR OF LIGHT — amber
+  (`secondary`, `--app-accent`) and cyan (`accent`, `--app-accent-2`). `packages/runtime/theme.css`.
+- **The material is LUMINOUS — light IS the structure** (`docs/research/luminous-icons.md`, 2026-08-31; this
+  replaced the neumorphic pair, which replaced clay). The page is TRUE BLACK, and depth is never a shadow:
+  a surface is an EDGE OF LIGHT. Four rules, and the first two get violated by instinct:
+  1. **The surface IS the page, still.** `base-100 === base-200 === #000000`. A raised object is the page
+     with a lit edge — a 1px warm rim, brighter along the top where the light lands — never a lighter panel.
+     Lightening a face to say "raised" is still the classic mistake: on black it reads as a grey card.
+  2. **Depth is glow, never shade.** RAISED = rim + top edge + a faint amber BLOOM (`--sf-drop`); INSET = a
+     dim rim and a dark inner top, the well the light does not reach (`--sf-sink`); PRESSED = the rim turns
+     to accent and the bloom comes up (`--sf-press`) — pressing something LIGHTS it. No `Npx Npx` offset
+     pair anywhere: on a black page a shadow has nothing to fall on, and the unit test refuses one.
+  3. **The dark page is #000000 because the icons are.** The 75 app icons were generated on true black; any
+     grey under them turned every tile into an island. The light mode is PAPER (`#F6F4EE`, warm), not white —
+     the glow language is dark-native, so paper keeps the structure (rim, accent ring on press) and swaps the
+     bloom for a soft warm cast. A bloom on white is a smear, measured on the icons.
+  4. **The bloom is the accent, and the rim is warm.** A neutral white rim on black reads as a chrome bevel;
+     the rim is amber-white like the icons' filaments. The bloom is `--app-accent` at ~22% — the one place the
+     mark colour touches a surface, and it never sits behind text.
+  **Check the accents AS TEXT, not just the ink.** DaisyUI puts `--color-secondary`/`--color-accent` on text
+  (`text-secondary`, `badge-secondary`) and no vivid colour clears 4.5:1 on both black and paper — the noir
+  pass shipped that and failed axe farm-wide with every local gate green. Both poles are tuned per theme
+  (bright on black, deep on paper) and `theme_test.js` measures them on every bed, including `primary/10`.
+  The muted token and the composited `/70` ink are checked the same way; the **base tone is set by
+  contrast, not by taste**.
 - **No glass over our own surface, and no hairlines.** Frosted glass and the extrusion answer the same
   question and cannot both be on screen — the blur erases the very shadow pair that makes the surface read.
   Sheets are opaque (`.modal-box`), which also makes their text contrast deterministic. Blur over FOREIGN

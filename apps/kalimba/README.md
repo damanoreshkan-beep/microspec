@@ -6,7 +6,7 @@
 
 **Калімба на 17 пелюсток на весь екран — грай горизонтально, перемикай лади й обирай із 6 різних голосів (класик, скринька, скло, марімба, дзвін, електро). Грай готові пісні (Аватар: «Листя з лози») або дай Потоку згенерувати мелодію (науково обґрунтований мелодичний пошук: консонанс, голосоведення, розв'язання). Кожна нота синтезується наживо, без файлів, офлайн.**
 
-![](https://img.shields.io/badge/-sound-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-2A2A2E?style=flat-square)
+![](https://img.shields.io/badge/-sound-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-000000?style=flat-square)
 
 </div>
 

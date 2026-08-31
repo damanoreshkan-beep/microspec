@@ -1,13 +1,13 @@
 {
   "name": "Транзити",
   "short_name": "Транзити",
-  "description": "Живі транзити планет по знаках зодіаку — колесо, знаки, ретрогради",
+  "description": "Справжні транзити до твоєї натальної карти — точна мить народження, доми і момент, коли аспект стає точним",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "theme_color": "#2A2A2E",
-  "background_color": "#2A2A2E",
+  "theme_color": "#000000",
+  "background_color": "#000000",
   "lang": "uk",
   "icons": [
     {

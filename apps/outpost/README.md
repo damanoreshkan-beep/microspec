@@ -6,7 +6,7 @@
 
 **Програмний генератор саундскейпів космічних станцій для фокусу та сну. Ступи на реакторне ядро, командний місток, кріовідсік чи покинутий фрахтовик — гул корпусу, вентиляція, розстроєний дрон реактора, сервоприводи, телеметрія й сигнал далекого космосу синтезуються наживо з рівномірно-темперованих строїв, без файлів, офлайн. Шість макро-фейдерів формують мікс; станції плавно перетікають одна в одну.**
 
-![](https://img.shields.io/badge/-sound-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-2A2A2E?style=flat-square)
+![](https://img.shields.io/badge/-sound-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-000000?style=flat-square)
 
 </div>
 

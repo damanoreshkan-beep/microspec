@@ -1,5 +1,5 @@
 
-import { compile } from "https://esm.sh/tailwindcss@4.3.3";
+import { compile } from "tailwindcss"; 
 
 const TW = "https://cdn.jsdelivr.net/npm/tailwindcss@4.3.3"; 
 const DAISY = "https://esm.sh/daisyui@5";                    

@@ -1,7 +1,7 @@
 import { html } from "htm/preact";
 import { useRef, useEffect, useState } from "preact/hooks";
-import { geoOrthographic, geoPath, geoGraticule10, geoContains, geoDistance } from "https://esm.sh/d3-geo@3";
-import { feature } from "https://esm.sh/topojson-client@3";
+import { geoOrthographic, geoPath, geoGraticule10, geoContains, geoDistance } from "d3-geo";
+import { feature } from "topojson-client";
 import { Pixels } from "./skeleton.js";
 
 let LAND = null, LOADING = null;

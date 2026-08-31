@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "license": "MIT",
   "publish": {
     "exclude": [
@@ -23,7 +23,8 @@
     "d3-geo": "npm:d3-geo@3",
     "topojson-client": "npm:topojson-client@3",
     "linkedom": "npm:linkedom@0.18.5",
-    "tailwindcss": "npm:tailwindcss@4.3.3"
+    "tailwindcss": "npm:tailwindcss@4.3.3",
+    "daisyui": "npm:daisyui@5"
   },
   "//": "Farm workspace root. The farm IS its own monorepo framework — Deno workspaces + a tiny affected orchestrator (tools/affected.mjs) — so there is NO Turborepo/Nx and NO node_modules. Packages below are workspace members; apps stay pure Deno (resolved at serve time by each index.html import map); CI verifies only the apps a change actually reaches.",
   "tasks": {

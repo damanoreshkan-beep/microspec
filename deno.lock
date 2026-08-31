@@ -13,6 +13,7 @@
     "npm:ajv-formats@3": "3.0.1_ajv@8.20.0",
     "npm:ajv@8": "8.20.0",
     "npm:d3-geo@3": "3.1.1",
+    "npm:daisyui@5": "5.7.22",
     "npm:htm@3.1.1": "3.1.1",
     "npm:linkedom@0.18.5": "0.18.5",
     "npm:nanostores@0.11.4": "0.11.4",
@@ -111,6 +112,9 @@
       "dependencies": [
         "d3-array"
       ]
+    },
+    "daisyui@5.7.22": {
+      "integrity": "sha512-pYii+2NCN0+OIL6Lpuc054LK0QJeNv+GRK9UzN1GRmjdYhYO6WFl0QLoj5oPcitPD7o+okiiI0SKFkn641TxmA=="
     },
     "dom-serializer@2.0.0": {
       "integrity": "sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg==",
@@ -526,6 +530,7 @@
       "npm:@nanostores/persistent@0.10.2",
       "npm:@nanostores/preact@0.5.2",
       "npm:d3-geo@3",
+      "npm:daisyui@5",
       "npm:htm@3.1.1",
       "npm:linkedom@0.18.5",
       "npm:nanostores@0.11.4",

@@ -26,10 +26,11 @@ async function loadStylesheet(id, base) {
   return { base: url.slice(0, url.lastIndexOf("/")), content: await r.text() };
 }
 
-// resolve @plugin "daisyui" (and any other JS plugin) to its module
+// resolve @plugin "daisyui" (and any other JS plugin) to its module. daisyui goes through the MANIFEST
+// (npm:) — a jsr-executed module may not dynamically import a non-JSR https URL (74/74 compat builds died
+// on the esm.sh form the first time the build ran from the registry).
 async function loadModule(id, base) {
-  const spec = id.startsWith("daisyui") ? id.replace(/^daisyui/, DAISY) : `https://esm.sh/${id}`;
-  const mod = await import(spec);
+  const mod = id.startsWith("daisyui") ? await import("daisyui") : await import(`https://esm.sh/${id}`);
   return { base, module: mod.default ?? mod };
 }
 

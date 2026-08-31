@@ -29,19 +29,12 @@ export default [
     },
   },
   {
-    name: "чіпи фільтрують за категорією", run: async (h) => {
+    // Немає внутрішньої навігації БЕЗ history (2026-08-31): перемикач категорій жив у локальному стані і
+    // Back з нього не повертав. Уся ферма — на одній сторінці; кожна категорія показує ВСІ свої застосунки.
+    name: "одна сторінка: кожна категорія показує всі свої застосунки", run: async (h) => {
       await ready(h);
-      h.expect((await h.count("[data-cat]")) >= 5, "немає чіпів категорій");
-      const all = await h.count("[data-app]");
-      await h.tap('[data-cat="sound"]'); await h.wait(200);
-      const sound = await h.count("[data-app]");
-      h.expect(sound >= 1 && sound < all, "чіп не звузив до категорії");
-      // стан, не клас: Segmented позначає обраний варіант через aria-pressed
-      h.expect((await h.attr('[data-cat="sound"]', "aria-pressed")) === "true", "обрана категорія не має aria-pressed");
-      await h.tap('[data-cat="all"]'); await h.wait(150);
-      h.expect((await h.count("[data-app]")) === all, "не відновилось на «Усі»");
-      h.expect((await h.attr('[data-cat="all"]', "aria-pressed")) === "true", "«Усі» не має aria-pressed");
-      h.expect((await h.attr('[data-cat="sound"]', "aria-pressed")) === "false", "стара категорія лишилась позначеною");
+      h.expect((await h.count("[data-app]")) >= 70, "головна не показує всю ферму");
+      h.expect((await h.count("[data-cat]")) === 0, "перемикач категорій повернувся — Back із нього не працює");
     },
   },
   {
@@ -79,9 +72,7 @@ export default [
       h.expect(/v\d/.test(await h.text("#appsheet")), "немає версії на сторінці апки");
       await h.back(); await h.wait(250);
       h.expect((await h.prop("#appsheet", "open")) !== true, "Back не закрив сторінку апки");
-      await h.tap('[data-cat="sound"]'); await h.wait(200);
-      h.expect((await h.count("[data-app] .btn")) >= 3, "категорія не показала рядки з кнопкою Відкрити");
-      await h.tap('[data-cat="all"]'); await h.wait(150);
+      h.expect((await h.count("[data-app] .btn")) >= 10, "рядки без кнопки Відкрити");
     },
   },
   {

@@ -720,6 +720,14 @@ nav[data-dock] button > span {
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
 
+/* .ms-stagger — a LIST arrives, one child after another: a short rise + fade, compositor-only, each child
+   delayed by its own `--i` (set inline by the view; capped so a 70-row list does not take three seconds —
+   past the fold everything lands together). Remount the container (a fresh `key`) to play it — a filter
+   switch, a search. The premium feel is the cascade, not the distance: 8px and ~200ms, never a slide. */
+@keyframes msRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+.ms-stagger > * { animation: msRise .32s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
+@media (prefers-reduced-motion: reduce) { .ms-stagger > * { animation: none; } }
+
 /* streamed text ARRIVES softly: each frame's new words fade in from a slight blur (persona). Inline spans, so
    opacity + filter only — a transform would need inline-block and break the wrap. */
 @keyframes msWordIn { from { opacity: 0; filter: blur(3px) } to { opacity: 1; filter: none } }

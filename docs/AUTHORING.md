@@ -256,9 +256,12 @@ CI: `unit` (runtime tests + ajv over every spec) → a Chromium `verify` job per
 - **Fail-fast / cost:** a verify run >1 min is a warning — investigate (check "Set up job" for GitHub infra
   first). Don't let a job burn minutes red.
 
-Anything provable without a browser belongs in `packages/runtime/*` with a suite in
-`packages/runtime/tests/<module>_test.js` (imported by the `runtime_test.js` barrel — see `TESTING.md`).
-That half of the gate runs in ~10 s locally; the Chromium half costs minutes per app in CI.
+Anything provable without a browser belongs in the runtime with a unit suite — **systemic** math (device,
+audio, viz, extraction, design system) in `packages/runtime/*` + `packages/runtime/tests/<module>_test.js`
+(the `runtime_test.js` barrel), **product-domain** math (an app's own theory: radio bands, astrology,
+instruments) in the product tree's `rt/` + `rt/tests/` (the `rt/rt_test.js` barrel — the `unit` node runs
+both). The core does not know the product. That half of the gate runs in ~10 s locally; the Chromium half
+costs minutes per app in CI.
 
 ## Why this shape
 

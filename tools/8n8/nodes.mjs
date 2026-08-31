@@ -85,7 +85,8 @@ export const NODES = [
     produces: (ctx) => [`apps/${ctx.app}/view.js`],
     brief: (ctx) => `Write apps/${ctx.app}/view.js for the microspec farm. Read docs/AUTHORING.md and` +
       ` apps/${ctx.app}/spec.json first; export one function per tab \`view\` named in the spec.\n\n` +
-      `Hard rules: math goes in packages/runtime/, not here. Runtime imports are /_rt/*.js from an app file.` +
+      `Hard rules: math goes in the runtime, not here — systemic math in packages/runtime/, product-domain` +
+      ` math in the product tree's rt/. Runtime imports are /_rt/*.js from an app file.` +
       ` No emoji, no content-less spinners (use /_rt/skeleton.js), no explanatory hint text. Seed a` +
       ` deterministic fixture under \`gate\` from /_rt/gate.js so the POPULATED screen renders with no network.` +
       ` Reuse the kit in /_rt/ui.js rather than hand-rolling sheets or controls.`,

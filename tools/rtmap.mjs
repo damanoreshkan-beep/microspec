@@ -29,7 +29,7 @@ const base = `https://jsr.io/@microspec/core/${pin}/`;
 // jsr (https) and resolve their preact through the package manifest — npm's copy. If the consumer's views
 // resolved the same names to esm.sh, two preacts would meet in one tree and hooks would crash on `__H`
 // (measured: every tool app red, every list app green). One source of pins ⇒ one instance.
-const manUrl = new URL("../deno.json", new URL("../", import.meta.url));
+const manUrl = new URL("../deno.json", import.meta.url); // tools/ → the package root — NEVER nest a second "../" base (this exact off-by-one 404'd twice)
 const manifest = manUrl.protocol === "file:"
   ? JSON.parse(await Deno.readTextFile(manUrl))
   : await (await fetch(manUrl)).json();

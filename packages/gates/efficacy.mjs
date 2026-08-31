@@ -8,7 +8,7 @@ const args = Deno.args;
 const flag = (n) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] || "") : null; };
 const has = (n) => args.includes(n);
 
-const SAMPLE = ["hn", "hf", "frontier", "weather", "dou", "rave", "kalimba", "ruler"];
+const SAMPLE = ["hn", "hf", "frontier", "weather", "dou", "rave", "kalimba", "ruler", "code"];
 
 const readJson = async (p) => JSON.parse(await Deno.readTextFile(p));
 const exists = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
@@ -101,6 +101,11 @@ const MUTATIONS = [
 async function run() {
   const gate = flag("--gate") || "preflight";
   let apps = flag("--apps") ? flag("--apps").split(",") : (has("--all") ? await listApps() : SAMPLE);
+  const present = [];
+  for (const a of apps) if (await exists(`${ROOT}/apps/${a}/spec.json`)) present.push(a);
+  if (!present.length) { console.error("efficacy: none of the sample apps exist in this tree"); Deno.exit(1); }
+  if (present.length < apps.length) console.log(`efficacy: sample filtered to what this tree holds → ${present.join(", ")}`);
+  apps = present;
   apps = apps.filter(Boolean);
   const muts = MUTATIONS.filter((m) => m.tier === gate);
 

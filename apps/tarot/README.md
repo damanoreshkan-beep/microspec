@@ -6,7 +6,7 @@
 
 **Витягни карти колоди Райдера-Вейта-Сміт для розкладу — карта дня або один із дев'яти розкладів: від швидкого трикартового до Вибору, Зірки, Піраміди душі зі старших арканів і повного Кельтського хреста. Кожен розклад просто пояснює, на що відповідає. Класичні ілюстрації 1909 року й канонічні значення, повністю на пристрої та офлайн.**
 
-![](https://img.shields.io/badge/-esoterica-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-2A2A2E?style=flat-square)
+![](https://img.shields.io/badge/-esoterica-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-000000?style=flat-square)
 
 </div>
 

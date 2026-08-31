@@ -6,7 +6,7 @@
 
 **Хендпан, на якому можна грати: удар по тон-полю дає солодкий гармонічний дзвін 1:2:3 (основна, октава, дуодецима), 10 налаштованих строїв і 5 голосів, Потік автоматично генерує медитативну лінію (науково обґрунтований мелодичний пошук — консонанс, голосоведення, розв'язання), запиши власні лупи ударами й тчи їх на сітці. Синтез наживо, без семплів, офлайн.**
 
-![](https://img.shields.io/badge/-sound-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-2A2A2E?style=flat-square)
+![](https://img.shields.io/badge/-sound-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-000000?style=flat-square)
 
 <br>
 

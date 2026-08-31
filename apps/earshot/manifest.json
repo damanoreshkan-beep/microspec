@@ -1,13 +1,13 @@
 {
-  "name": "earshot",
-  "short_name": "earshot",
-  "description": "earshot",
+  "name": "Чутно",
+  "short_name": "Чутно",
+  "description": "Скажи щось тим, хто досить близько, щоб почути",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "theme_color": "#2A2A2E",
-  "background_color": "#2A2A2E",
+  "theme_color": "#000000",
+  "background_color": "#000000",
   "lang": "uk",
   "icons": [
     {

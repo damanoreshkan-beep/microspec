@@ -6,7 +6,7 @@
 
 **День, записаний самим телефоном, а потім надрукований. Встановлений застосунок тримає фонову службу, тож трек переживає вимкнений екран — а там, де запис не слухав, лінія рветься, замість вигадувати середину. Місяць днів стає одним аркушем: кожен день — одна позначка, усі в одному масштабі, тож довгий день і виглядає довгим. Запис і малювання на твоєму пристрої, офлайн, і нікуди не вивантажується.**
 
-![](https://img.shields.io/badge/-creative-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-2A2A2E?style=flat-square)
+![](https://img.shields.io/badge/-creative-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-000000?style=flat-square)
 
 </div>
 

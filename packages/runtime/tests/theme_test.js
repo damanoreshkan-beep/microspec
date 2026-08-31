@@ -405,85 +405,86 @@ Deno.test("the surface system: every interactive node declares a state, and none
   assert(!/background:\s*var\(--app-accent\)/.test(focus), "focus fills the field with the accent");
 });
 
-Deno.test("the material: one light at 45°, a symmetric pair, and the surface IS the page", async () => {
+Deno.test("the material: light IS the structure — a rim on every surface, a bloom on the lifted ones, a black page", async () => {
   const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
   const themeBlock = (t) => {
     let out = "", i = -1;
     while ((i = css.indexOf(`[data-theme="${t}"] {`, i + 1)) > -1) out += css.slice(i, css.indexOf("\n}", i)) + "\n";
     return out;
   };
+  const value = (b, v) => { const d = b.slice(b.indexOf(v + ":")); return d.slice(0, d.indexOf(";")); };
 
   for (const theme of ["signal", "signal-light"]) {
     const b = themeBlock(theme);
 
-    for (const v of ["--nm-dark", "--nm-light", "--nm-cast"]) {
-      assert(b.includes(v + ":"), `${theme} does not define ${v} — the pair is the material`);
+    for (const v of ["--lm-rim", "--lm-rim-hi", "--lm-rim-lo", "--lm-bloom", "--nm-cast"]) {
+      assert(b.includes(v + ":"), `${theme} does not define ${v} — the rim and the bloom are the material`);
     }
 
-    for (const v of ["--sf-drop", "--sf-sink", "--sf-press"]) {
-      const decl = b.slice(b.indexOf(v + ":"));
-      const value = decl.slice(0, decl.indexOf(";"));
-      assert(value.includes("--nm-dark") || value.includes("--nm-press-dark"), `${theme} ${v} has no dark half`);
-      assert(value.includes("--nm-light"), `${theme} ${v} has no LIGHT half — a one-sided shadow is a drop shadow, not an extrusion`);
+    const ring = /(?:^|,|:)\s*(?:inset\s+)?0 0 0 1px var\(--lm-(?:rim|rim-lo|bloom-hi)\)/;
+    for (const v of ["--sf-drop", "--sf-lift2", "--sf-sink", "--sf-sink2", "--sf-press"]) {
+      assert(b.includes(v + ":"), `${theme} does not define ${v}`);
+      assert(ring.test(value(b, v)), `${theme} ${v} has no rim — a surface with no lit edge is invisible on black`);
     }
+    assert(/--lm-bloom\b|--nm-cast/.test(value(b, "--sf-drop")) && value(b, "--sf-drop").includes("--lm-rim-hi"),
+      `${theme} --sf-drop must carry the top edge AND a bloom (dark) or a cast (paper) — a raised surface is the one the light lands on`);
+    assert(value(b, "--sf-press").includes("--lm-bloom-hi"), `${theme} --sf-press must turn the rim to accent — pressing something LIGHTS it`);
+    assert(/inset 0 \d+px \d+px rgba\(/.test(value(b, "--sf-sink")), `${theme} --sf-sink needs a dark inner top — a well the light does not reach`);
+    assert(!/--lm-bloom\b/.test(value(b, "--sf-sink")), `${theme} --sf-sink glows — a recess does not catch light`);
 
     const tok = (n) => /#[0-9A-Fa-f]{6}/.exec(b.slice(b.indexOf(`--color-${n}:`)))[0].toUpperCase();
-    assertEquals(tok("base-100"), tok("base-200"), `${theme}: base-100 and base-200 differ — a raised surface must be the same colour as the page it rises out of`);
+    assertEquals(tok("base-100"), tok("base-200"), `${theme}: base-100 and base-200 differ — a raised surface must be the same colour as the page`);
 
-    assert(/--sf-inset-face:\s*var\(--color-base-100\)/.test(b), `${theme}: the recessed face is a different colour — that is a panel, not a hole`);
+    for (const v of ["--sf-drop", "--sf-lift2", "--sf-sink", "--sf-sink2", "--sf-press"]) {
+      assert(!/(\d+)px \1px \d+px/.test(value(b, v)), `${theme} ${v} carries a 45° offset pair — that is the extrusion, not light`);
+    }
   }
 
-  const pair = /var\(--nm-d\) var\(--nm-d\)|var\(--nm-d2\) var\(--nm-d2\)|var\(--nm-dp\) var\(--nm-dp\)/;
-  for (const v of ["--sf-drop", "--sf-sink", "--sf-press", "--sf-lift2", "--sf-sink2"]) {
-    const i = css.indexOf(v + ":");
-    assert(i > -1, `${v} is not defined`);
-    assert(pair.test(css.slice(i, css.indexOf(";", i))), `${v} does not offset x and y equally — the light must stay at 45°`);
-  }
+  const dark = themeBlock("signal");
+  assertEquals(/--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(dark)[1].toUpperCase(), "#000000", "the dark page must be #000000 — the icons' own ground");
+  const light = themeBlock("signal-light");
+  assert(/--color-base-100:\s*#(?!FFFFFF)[0-9A-Fa-f]{6}/i.test(light), "the light page must be paper, not #FFFFFF — a white rim on white is nothing");
 
-  const steps = [...css.matchAll(/@media \(max-height:\s*(\d+)px\)\s*\{[^}]*--nm-d:\s*(\d+)px/g)]
-    .map((m) => ({ h: +m[1], d: +m[2] })).sort((a, b) => b.h - a.h);
-  assert(steps.length >= 2, "the extrusion depth does not step with the density ladder");
+  const steps = [...css.matchAll(/@media \(max-height:\s*(\d+)px\)\s*\{[^}]*--lm-g:\s*(\d+)px/g)]
+    .map((m) => ({ h: +m[1], g: +m[2] })).sort((a, b) => b.h - a.h);
+  assert(steps.length >= 2, "the bloom radius does not step with the density ladder");
   for (let i = 1; i < steps.length; i++) {
-    assert(steps[i].d < steps[i - 1].d, `--nm-d does not shrink at ${steps[i].h}px — depth must compact with everything else`);
+    assert(steps[i].g < steps[i - 1].g, `--lm-g does not shrink at ${steps[i].h}px — the bloom must compact with everything else`);
   }
+  for (const m of css.matchAll(/--lm-gs:\s*(-?\d+)px/g)) assert(Number(m[1]) < 0, `--lm-gs is ${m[1]}px — the raised bloom must have a NEGATIVE spread`);
 });
 
-Deno.test("the material: the two halves of the pair are near-symmetric in BOTH themes", async () => {
+Deno.test("the material: the pair of light is text-safe in BOTH themes — the CI-only trap", async () => {
   const css = await Deno.readTextFile(new URL("../theme.css", import.meta.url));
-  const lum = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).reduce((a, b) => a + b) / 3;
-  const grab = (block, name) => /#[0-9A-Fa-f]{6}/.exec(block.slice(block.indexOf(name + ":")))?.[0];
-  const themeBlocks = (t) => {
-    let out = "", i = -1;
-    while ((i = css.indexOf(`[data-theme="${t}"] {`, i + 1)) > -1) out += css.slice(i, css.indexOf("\n}", i)) + "\n";
+  const tokens = (theme) => {
+    const i = css.indexOf(`[data-theme="${theme}"] {`);
+    const out = {};
+    for (const m of css.slice(i, css.indexOf("}", i)).matchAll(/(--color-[a-z0-9-]+):\s*(#[0-9A-Fa-f]{6})/g)) out[m[1]] = m[2];
     return out;
   };
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const lin = (v) => (v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  const relLum = (p) => 0.2126 * lin(p[0]) + 0.7152 * lin(p[1]) + 0.0722 * lin(p[2]);
+  const ratio = (a, b) => { const [x, y] = [relLum(a), relLum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  const over = (fg, a, bg) => fg.map((v, i) => a * v + (1 - a) * bg[i]);
 
   for (const theme of ["signal", "signal-light"]) {
-    const b = themeBlocks(theme);
-    const base = lum(grab(b, "--color-base-100"));
-    const down = base - lum(grab(b, "--nm-dark"));
-    const up = lum(grab(b, "--nm-light")) - base;
-    assert(down > 0 && up > 0, `${theme}: the pair must straddle the base — down=${down}, up=${up}`);
-    const ratio = Math.max(down, up) / Math.min(down, up);
-    assert(
-      ratio <= 1.5,
-      `${theme}: the shadow pair is lopsided — dark half ${down.toFixed(0)}, light half ${up.toFixed(0)} ` +
-        `(${ratio.toFixed(1)}x). One side that dominates turns the extrusion back into a drop shadow. ` +
-        `If the base has no headroom left in the weak direction, MOVE THE BASE — do not widen the strong side.`,
-    );
+    const t = tokens(theme);
+    const bed = { "base-100": rgb(t["--color-base-100"]), "base-200": rgb(t["--color-base-200"]), "base-300": rgb(t["--color-base-300"]) };
+    bed["primary/10 on base-100"] = over(rgb(t["--color-primary"]), 0.10, bed["base-100"]);
+    for (const pole of ["secondary", "accent", "info"]) {
+      const fg = rgb(t[`--color-${pole}`]);
+      for (const [surface, px] of Object.entries(bed)) {
+        const r = ratio(fg, px);
+        assert(r >= 4.5, `${theme}: --color-${pole} as TEXT on ${surface} is ${r.toFixed(2)}:1 — text-${pole} fails axe farm-wide. Tune the pole per theme; the vivid mark stays in --app-accent.`);
+      }
+      const r = ratio(rgb(t[`--color-${pole}-content`]), fg);
+      assert(r >= 4.5, `${theme}: --color-${pole}-content on --color-${pole} is ${r.toFixed(2)}:1 — badge-${pole} fails axe`);
+    }
   }
 
-  const pairs = [...css.matchAll(/--nm-(d2?|dp):\s*(\d+)px;\s*--nm-(b2?|bp):\s*(\d+)px/g)];
-  assert(pairs.length >= 4, `expected the base pair plus every density step, found ${pairs.length}`);
-  for (const m of pairs) {
-    const [off, bl] = [Number(m[2]), Number(m[4])];
-    assert(
-      bl <= off * 2,
-      `--nm-${m[3]} (${bl}px) exceeds 2x --nm-${m[1]} (${off}px) — the blur bleeds past the NEAR edge and ` +
-        `paints a faint rim between the object and its own highlight, turning "the page extruded" back into ` +
-        `"a rectangle with a border". Every density step has to hold this, not just the base one.`,
-    );
-  }
+  assert(/:root\s*\{[^}]*--app-accent:\s*#[0-9A-Fa-f]{6}/.test(css), "--app-accent must be a hex on :root");
+  assert(/:root\s*\{[^}]*--app-accent-2:\s*#[0-9A-Fa-f]{6}/.test(css), "--app-accent-2 (the cool pole) must be a hex on :root");
 });
 
 Deno.test("PWA chrome colours track the theme bases — the surface no screenshot can see", async () => {

@@ -12,7 +12,7 @@ Deno.test("manifest — no app locks orientation (adaptive design: rotation stay
     n++;
     assert(!mf.orientation || mf.orientation === "any" || mf.orientation === "natural", `${d.name}: manifest locks orientation to "${mf.orientation}"`);
   }
-  // ≥3: this tree may be the public framework repo (3 demo apps + the launcher) or the full private
-  // product farm — the invariant is per-manifest either way (the dreamstudio split, 2026-08-31).
-  assert(n > 2, `only ${n} manifests found`);
+  // ≥1: the framework tree carries only its GENERATED demo app (the core knows no apps; the split,
+  // 2026-08-31), the product tree the whole farm — the invariant is per-manifest either way.
+  assert(n > 0, `only ${n} manifests found`);
 });

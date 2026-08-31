@@ -1,5 +1,1 @@
-[
-  { "file": "README.md", "pattern": "(the demo farm: )(\\d+)( apps)" },
-  { "file": "README.md", "pattern": "(the )(\\d+)( demo apps here double)" },
-  { "file": "README.md", "pattern": "(plus )(\\d+)( demo apps that double)" }
-]
+[]

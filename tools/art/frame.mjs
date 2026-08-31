@@ -28,9 +28,20 @@ const MAP = new URL("./frame.importmap.json", HERE);
    `import.meta.resolve` answers with file:///_rt/… when no map is in play — a path that exists
    nowhere. Re-exec rather than fail: a preview tool that only runs when you remember a flag is a
    preview tool nobody runs. */
-if (!import.meta.resolve("/_rt/hunt.js").includes("/packages/runtime/")) {
+if (!/\/(packages\/runtime|rt)\//.test(import.meta.resolve("/_rt/ui.js"))) {
+  // In the product tree /_rt/ must resolve through rt/ (the complete runtime mirror: the game modules are
+  // domain modules and only exist there) — synthesize the map; the framework tree uses the committed one.
+  let mapHref = MAP.href;
+  const rtDir = await Deno.stat(`${Deno.cwd()}/rt/index.js`).then(() => `${Deno.cwd()}/rt/`).catch(() => null);
+  if (rtDir) {
+    const m = JSON.parse(await Deno.readTextFile(MAP));
+    m.imports["/_rt/"] = `file://${rtDir}`;
+    const tmp = await Deno.makeTempFile({ suffix: ".importmap.json" });
+    await Deno.writeTextFile(tmp, JSON.stringify(m));
+    mapHref = `file://${tmp}`;
+  }
   const cmd = new Deno.Command(Deno.execPath(), {
-    args: ["run", "-A", `--import-map=${MAP.href}`, new URL(import.meta.url).pathname, ...Deno.args],
+    args: ["run", "-A", `--import-map=${mapHref}`, new URL(import.meta.url).pathname, ...Deno.args],
     stdout: "inherit", stderr: "inherit",
   });
   Deno.exit((await cmd.output()).code);

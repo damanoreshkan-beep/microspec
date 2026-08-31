@@ -94,8 +94,8 @@ Deno.test("determinism is the share of script nodes", () => {
 
 Deno.test("globApps returns real app directories that carry a spec", () => {
   const dirs = globApps();
-  // ≥3: the public framework tree carries 3 demo apps + the launcher; the private product tree the farm.
-  assert(dirs.length > 2, `only ${dirs.length} apps found — is the cwd the repo root?`);
+  // ≥1: the framework tree carries only its GENERATED demo app (tools/demo.mjs); the product tree the farm.
+  assert(dirs.length > 0, `only ${dirs.length} apps found — is the cwd the repo root (after the demo node)?`);
   for (const d of dirs) Deno.statSync(`${d}/spec.json`);
   assertEquals(globApps("spec.json")[0], `${dirs[0]}/spec.json`);
 });

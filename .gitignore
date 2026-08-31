@@ -1,6 +1,9 @@
 node_modules/
 dist/
 dist-compat/
+# the core carries NO apps — the demo the gates run is GENERATED (tools/demo.mjs); the product's apps
+# live in the private DreamStudio repo
+apps/
 states/
 *.log
 .DS_Store

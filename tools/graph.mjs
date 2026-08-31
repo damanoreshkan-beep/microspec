@@ -7,7 +7,13 @@
 // runner, workspaces); we just needed the affected-set policy on top — a few small pure functions, not a
 // framework. `tools/affected.mjs` is the thin IO wrapper the CI calls.
 
-export const RT = "packages/runtime/"; // where /_rt/ actually lives in the repo
+// Where /_rt/ actually lives in THIS tree. The product's rt/ is a COMPLETE mirror of the runtime (its own
+// domain modules as real files + setup.sh symlinks to every framework core file), so when it exists it IS
+// the runtime dir; the framework tree has no rt/ and uses packages/runtime directly. Every consumer of this
+// constant (sw closure, affected classification) then attributes paths correctly in both trees.
+export const RT = (() => {
+  try { Deno.statSync("rt/index.js"); return "rt/"; } catch { return "packages/runtime/"; }
+})();
 
 const dirOf = (p) => {
   const i = p.lastIndexOf("/");

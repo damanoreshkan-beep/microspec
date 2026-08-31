@@ -145,7 +145,9 @@ async function run() {
   let apps = flag("--apps") ? flag("--apps").split(",") : (has("--all") ? await listApps() : SAMPLE);
   const present = [];
   for (const a of apps) if (await exists(`${ROOT}/apps/${a}/spec.json`)) present.push(a);
-  if (!present.length) { console.error("efficacy: none of the sample apps exist in this tree"); Deno.exit(1); }
+  // the appless framework tree holds none of the sample — measure whatever it generated (the demo app)
+  if (!present.length) for (const a of await listApps()) present.push(a);
+  if (!present.length) { console.error("efficacy: no apps in this tree — seed one first (deno run -A tools/demo.mjs)"); Deno.exit(1); }
   if (present.length < apps.length) console.log(`efficacy: sample filtered to what this tree holds → ${present.join(", ")}`);
   apps = present;
   apps = apps.filter(Boolean);

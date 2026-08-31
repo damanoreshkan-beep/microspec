@@ -13,8 +13,12 @@
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 const check = Deno.args.includes("--check");
 
-const catalog = JSON.parse(await Deno.readTextFile(`${ROOT}/apps/store/apps.json`));
-const N = Array.isArray(catalog) ? catalog.length : Object.keys(catalog).length;
+// The store catalog is the PRODUCT's source of truth; the appless framework tree (a generated demo, no
+// launcher) counts app dirs directly — its rules file is empty, so the number carries no claims there.
+const catalog = await Deno.readTextFile(`${ROOT}/apps/store/apps.json`).then(JSON.parse).catch(() => null);
+const N = catalog
+  ? (Array.isArray(catalog) ? catalog.length : Object.keys(catalog).length)
+  : (() => { try { return [...Deno.readDirSync(`${ROOT}/apps`)].filter((e) => { try { Deno.statSync(`${ROOT}/apps/${e.name}/spec.json`); return true; } catch { return false; } }).length; } catch { return 0; } })();
 
 // Each rule is [file, regex with the number as group 2, replacement number]. Anchored on surrounding words
 // so a count can never be confused with the efficacy scores or any other digit on the page. Every hardcoded

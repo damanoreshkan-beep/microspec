@@ -12,6 +12,13 @@ import { buildAppCompat } from "./build-app.mjs";
 const OUT = "dist";
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
 
+// The runtime source for THIS tree. The product's rt/ is a COMPLETE mirror of the runtime — its own domain
+// modules as real files, plus setup.sh symlinks to every framework core file — so when it exists it IS
+// /_rt/; the framework tree has no rt/ and uses packages/runtime directly. readDir reports a symlink as
+// isSymlink (NOT isFile), so file-ness is stat'd through the link.
+const RTSRC = (await has("rt/index.js")) ? "rt" : "packages/runtime";
+const isFileAt = async (dir, e) => e.isFile || (e.isSymlink && (await Deno.stat(`${dir}/${e.name}`).catch(() => ({ isFile: false }))).isFile);
+
 // ── PWA installability gate ─────────────────────────────────────────────────────────────────────────────
 // Nothing else in the farm verifies that an app can actually be INSTALLED — the Chromium verify gate checks
 // a11y / overflow / e2e / runtime errors, but never the manifest, icons or service worker. So a
@@ -67,8 +74,9 @@ async function assertInstallable(outDir, id) {
 await Deno.remove(OUT, { recursive: true }).catch(() => {});
 await Deno.mkdir(`${OUT}/_rt`, { recursive: true });
 
-// 0) refresh the store launcher's app list from the current specs (home/data.js imports it)
-await Deno.writeTextFile("apps/store/apps.json", JSON.stringify(await buildManifest(), null, 2) + "\n");
+// 0) refresh the store launcher's app list from the current specs (home/data.js imports it).
+//    The launcher is the PRODUCT's app — the appless framework tree builds its generated demo without one.
+if (await has("apps/store")) await Deno.writeTextFile("apps/store/apps.json", JSON.stringify(await buildManifest(), null, 2) + "\n");
 
 // git-derived versions (auto, no manual bump): the number of commits that touched a path IS its version's
 // build number, so a version moves exactly when its code changes. Needs history — the deploy checkout uses
@@ -81,11 +89,11 @@ async function gitCount(path) {
 //    the core version (commits touching the runtime).
 const BUILD_SHA = (Deno.env.get("GITHUB_SHA") || "dev").slice(0, 7);
 const CORE = "1." + (await gitCount("packages/runtime"));
-for await (const e of Deno.readDir("packages/runtime")) {
+for await (const e of Deno.readDir(RTSRC)) {
   const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp");   // .webp = the DreamStudio chrome sprites (ds-*.webp)
-  if (!e.isFile || !keep) continue;
+  if (!keep || !(await isFileAt(RTSRC, e))) continue;
   if (e.name === "build.js") await Deno.writeTextFile(`${OUT}/_rt/build.js`, `export const BUILD = "${BUILD_SHA}";\nexport const CORE = "${CORE}";\n`);
-  else await Deno.copyFile(`packages/runtime/${e.name}`, `${OUT}/_rt/${e.name}`);
+  else await Deno.copyFile(`${RTSRC}/${e.name}`, `${OUT}/_rt/${e.name}`);
 }
 
 // 2) each app → dist/<id>; the `store` launcher lands at dist/store/ — its own scope (/…/store/) does NOT
@@ -164,11 +172,11 @@ for await (const a of Deno.readDir("apps")) {
 // to a static stylesheet (the runtime @tailwindcss/browser CDN crashes JSC 16.1). App SOURCE is untouched —
 // dev stays zero-build/modern; this is build-only. Fail LOUD with the full list so no app ships half-migrated.
 // See docs/RESEARCH-safari16-compat.md.
-const RT_ABS = `${Deno.cwd()}/packages/runtime`;
+const RT_ABS = `${Deno.cwd()}/${RTSRC}`;
 // the shared kit renders most of the UI, so its class names must feed the per-app Tailwind scan (read once)
 const sharedSources = [];
-for await (const f of Deno.readDir("packages/runtime")) {
-  if (f.isFile && f.name.endsWith(".js") && !f.name.endsWith("_test.js")) sharedSources.push(await Deno.readTextFile(`packages/runtime/${f.name}`));
+for await (const f of Deno.readDir(RTSRC)) {
+  if (f.name.endsWith(".js") && !f.name.endsWith("_test.js") && (await isFileAt(RTSRC, f))) sharedSources.push(await Deno.readTextFile(`${RTSRC}/${f.name}`));
 }
 const compatFails = [];
 for (const id of ids) {
@@ -205,12 +213,15 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
 })());
 `);
 // root → redirect to the store (which now lives in its own scope at /store/)
-{
+if (await has("apps/store")) {
   // The site root redirects to the store, but a preview bot does not follow a meta refresh — so the root
   // carries the store's own preview block (its card is dist/store/og.png).
   const storeUk = JSON.parse(await Deno.readTextFile("apps/store/i18n/uk.json"));
   const rootHtml = injectMeta(`<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>${storeUk.title || "microspec"}</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><script>location.replace("./store/"+location.search+location.hash)</script></head><body style="background:#0a0a0b"></body></html>\n`, metaBlock({ path: "/", title: storeUk.title || "microspec", description: storeUk.profTagline || "", image: "/store/og.png" }));
   await Deno.writeTextFile(`${OUT}/index.html`, rootHtml);
+} else {
+  // the appless framework tree: no launcher — a plain index naming the build is enough for the build check
+  await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>microspec</title></head><body>microspec ${BUILD_SHA}</body></html>\n`);
 }
 await Deno.writeTextFile(`${OUT}/.nojekyll`, "");
 if (skipped.length) console.log(`note: ${skipped.length} app file(s) matched no copy rule: ${skipped.join(", ")}`);

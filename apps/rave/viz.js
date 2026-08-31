@@ -15,7 +15,7 @@ function hasWebGL() {
 }
 
 const H_BASS = 42, H_TREB = 176;
-const bandHue = (frac, st) => H_BASS + (H_TREB - H_BASS) * frac + (st.hue - 235) * 0.12;   
+const bandHue = (frac, st) => (frac < 0.5 ? H_BASS : H_TREB) + (st.hue - 235) * 0.04;   
 
 const L = (light, v) => (light ? 0.66 - v * 0.5 : 0.26 + v * 0.52);
 const O = (light, v) => Math.min(1, light ? v * 2 : v);

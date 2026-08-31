@@ -21,9 +21,11 @@
 struct U { res: vec2f, time: f32, seed: f32, ink: vec4f, vary: vec4f };
 @group(0) @binding(0) var<uniform> u: U;
 
-// Wine-black → oxblood → candle gold. Deliberately warm, where iching is deliberately cold.
-const BAIZE: vec3f = vec3f(0.030, 0.012, 0.019);
-const CLOTH: vec3f = vec3f(0.098, 0.040, 0.058);
+// Warm black → dark amber cloth → candle gold. Deliberately warm, where iching is deliberately cold. The
+// oxblood it used to be was the one hue in the farm outside the pair of light; the cloth is now the same
+// amber family as the flame, darkened to a table (luminous repaint, 2026-08-31).
+const BAIZE: vec3f = vec3f(0.012, 0.008, 0.004);
+const CLOTH: vec3f = vec3f(0.070, 0.046, 0.020);
 const FLAME: vec3f = vec3f(1.000, 0.760, 0.420);
 
 fn hash(p: vec2f) -> f32 {

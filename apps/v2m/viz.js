@@ -28,9 +28,9 @@ function hasWebGL() {
   try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; }
 }
 
-// palette: bass → violet (262°, the app's accent), treble → cyan (190°). The spectral centroid only nudges,
-// so the stage stays ink + one hue instead of a rainbow.
-const H_LOW = 262, H_HIGH = 190;
+// palette: bass → amber (42°), treble → cyan (176°) — the farm's pair of light (luminous repaint, 2026-08-31;
+// it was violet→cyan). The spectral centroid only nudges, so the stage stays ink + the pair, not a rainbow.
+const H_LOW = 42, H_HIGH = 176;
 
 // ---- audio binding: view.js hands us a getter returning the live FFT frame while playing, else null ----
 let _getBytes = null;

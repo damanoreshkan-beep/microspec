@@ -32,9 +32,10 @@ function hasWebGL() {
   try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; }
 }
 
-// ---- palette: bass → purple (255°), treble → cyan (190°); the spectral-centroid hue only nudges, so the
-// scene stays Linear-tasteful (ink + one accent) instead of a rave-rainbow. Saturation held ≤ 0.8. ----
-const H_BASS = 255, H_TREB = 190;
+// ---- palette: bass → amber (42°), treble → cyan (176°) — the farm's pair of light (luminous repaint,
+// 2026-08-31; it was purple→cyan). The spectral-centroid hue only nudges, so the scene stays ink + the pair
+// instead of a rave-rainbow. Saturation held ≤ 0.8. ----
+const H_BASS = 42, H_TREB = 176;
 const bandHue = (frac, st) => H_BASS + (H_TREB - H_BASS) * frac + (st.hue - 235) * 0.12;   // degrees
 
 // ---- one authored scale, two grounds ----------------------------------------------------------------
@@ -48,7 +49,7 @@ const bandHue = (frac, st) => H_BASS + (H_TREB - H_BASS) * frac + (st.hue - 235)
 const L = (light, v) => (light ? 0.66 - v * 0.5 : 0.26 + v * 0.52);
 const O = (light, v) => Math.min(1, light ? v * 2 : v);
 const BLEND = (THREE, light) => (light ? THREE.NormalBlending : THREE.AdditiveBlending);
-const FOG = (light) => (light ? 0xeeeef1 : 0x07070a);
+const FOG = (light) => (light ? 0xf6f4ee : 0x000000);   // the page's bases (luminous repaint): fog IS the page
 export const isLightTheme = () => typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light");
 
 // ---- the rig: a scene authors a DIRECTION and a subject BOX, never a distance ------------------------

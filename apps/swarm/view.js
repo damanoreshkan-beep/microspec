@@ -218,7 +218,7 @@ export function swarm(props) {
         const w = cv.current.width / dpr, hgt = cv.current.height / dpr;
         const hh = (((headingT.current + dragT.current) % 3600) + 3600) % 3600;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        let accent = "#FACC15";
+        let accent = "#F2B84B";
         try { accent = getComputedStyle(cv.current).getPropertyValue("--app-accent").trim() || accent; } catch { /* preflight stub */ }
         const locked = st[S.DEAD] ? -1 : lockOn(dl, n, hh, pitchT.current);
         renderFrame(ctx, dl, n, st, hh, pitchT.current, w, hgt, { muzzle, lockedIdx: locked, accent });
@@ -288,7 +288,7 @@ export function swarm(props) {
   return html`<${Fragment}>
     <div class="ms-stage z-20 bg-black overflow-hidden select-none" ref=${stage} data-swarm>
       ${gate ? html`<div class="absolute inset-0" aria-hidden="true"
-        style="background:radial-gradient(130% 90% at 50% 18%, #232332, #0b0b10 68%)"></div>` : null}
+        style="background:radial-gradient(130% 90% at 50% 18%, #141210, #000000 68%)"></div>` : null}
       ${enabled && !camErr && !gate ? html`<video ref=${video} autoplay muted playsinline
         class="absolute inset-0 w-full h-full object-cover" aria-hidden="true"></video>` : null}
       <canvas ref=${cv} class="absolute inset-0 w-full h-full touch-none" role="img"

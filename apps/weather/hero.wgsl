@@ -26,20 +26,27 @@
 struct U { res: vec2f, time: f32, seed: f32, ink: vec4f, vary: vec4f, env: vec4f };
 @group(0) @binding(0) var<uniform> u: U;
 
-// The page's own two bases: #2A2A2E and #EEEEF1 from theme.css.  The sky is these colours lit, never a
-// palette of its own — that is what keeps the stage and the panels one material.
+// Two grounds, since the luminous repaint (2026-08-31): the PAGE — #000000 / #F6F4EE from theme.css, what
+// the stage returns to at the bottom and at the vignette's edges, so the seam with the panels is invisible —
+// and the SKY's own floor, the dome the weather is painted onto. On the graphite page they were the same
+// number; on true black the sky keeps its 0.165 floor, because every "+step" in the budget below (0.030,
+// 0.018 …) was tuned as a visible-but-quiet move above THAT floor, and on 0.012 the whole frame is black.
+// Read as light: a dome of lit atmosphere fading to the black page at the rim, which is the material.
+// The dark page is written a hair above zero (0.012, #030303 — invisible at the seam).
 //
 // EVERYTHING HERE COMPOSITES IN DISPLAY SPACE, not linear, and that is a correction rather than a shortcut.
 // The first cut worked in linear light with tarot's constants, and against a base of 0.024 linear an
 // innocent "+0.055" is a 2.3× lift: every term slammed into the legibility clamp and the whole frame came
 // out one flat slab of grey with no sun in it. In display space the numbers below mean what they look like
 // — base 0.165, so +0.03 is a visible but quiet step — and the budget is legible to the next reader.
-const BASE_D: vec3f = vec3f(0.1647, 0.1647, 0.1804);
-const BASE_L: vec3f = vec3f(0.9333, 0.9333, 0.9451);
+const PAGE_D: vec3f = vec3f(0.012, 0.012, 0.012);
+const BASE_D: vec3f = vec3f(0.1647, 0.1647, 0.1804);   // the sky's floor (see above), not the page
+const BASE_L: vec3f = vec3f(0.965, 0.957, 0.933);
 // Light temperature is the ONE place hue is allowed, because it means something: low sun is warm, high sun
 // is neutral-cool, night is cold. Chroma stays under ~0.05 so it reads as temperature, not as a colour scheme.
-const WARM: vec3f = vec3f(1.000, 0.760, 0.520);
-const COOL: vec3f = vec3f(0.760, 0.840, 1.000);
+// The two poles are the farm's pair of light — amber and cyan — at temperature strength, not as a scheme.
+const WARM: vec3f = vec3f(1.000, 0.780, 0.480);
+const COOL: vec3f = vec3f(0.720, 0.920, 0.900);
 
 fn hash(p: vec2f) -> f32 {
   return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453123);
@@ -104,6 +111,7 @@ fn fs(@builtin(position) frag: vec4f) -> @location(0) vec4f {
   let lit = clamp(u.env.x, 0.0, 1.0);                          // 0 dark theme, 1 light theme
 
   let base = mix(BASE_D, BASE_L, lit);
+  let page = mix(PAGE_D, BASE_L, lit);   // where the stage meets the panels and the rim
   // Two directions, not one. STRUCTURE (horizon ramp, cloud bodies, veil) moves away from the page — up out
   // of a dark page, down out of a light one — because that is what makes it visible at all. LIGHT (the sun,
   // the moon, stars) always moves toward brighter, in both themes: a sun that darkened in the light theme
@@ -308,9 +316,9 @@ fn fs(@builtin(position) frag: vec4f) -> @location(0) vec4f {
   // ---- the page takes over ----------------------------------------------------------------------------
   // The panels start around 72% down. Below that the stage returns to the flat base so a surface sits on
   // the page and not on weather — the sky is atmosphere for the glance, never a texture under a list.
-  col = mix(col, base, smoothstep(0.66, 0.96, uv.y));
+  col = mix(col, page, smoothstep(0.66, 0.96, uv.y));
   let vign = smoothstep(1.15, 0.30, length((uv - vec2f(0.5, 0.36)) * vec2f(1.0, 0.8)));
-  col = mix(base, col, mix(0.55, 1.0, vign));
+  col = mix(page, col, mix(0.55, 1.0, vign));
 
   // ---- THE LEGIBILITY CLAMP (see the header) ----------------------------------------------------------
   // Display-space luminance may move 0.17 toward the page's own extreme and 0.30 away from it. Scaling the

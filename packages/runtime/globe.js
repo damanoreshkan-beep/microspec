@@ -39,8 +39,9 @@ export function worldReady() { return !!LAND; }
 // Signal-ish palette, theme-aware via the document's data-theme (hardcoded so canvas never depends on
 // oklch var support). Selected country + marker use the accent so they pop on the monochrome map.
 const PALETTE = {
-  dark:  { ocean: "#0c0c10", land: "#1c1c22", stroke: "#31313a", edge: "#3d3d48", grid: "#242430", accent: "#9F8CF6", accentInk: "#0a0a0b" },
-  light: { ocean: "#e9e9e6", land: "#ffffff", stroke: "#dad9d3", edge: "#c4c3bd", grid: "#e6e5df", accent: "#6C5CE7", accentInk: "#ffffff" },
+  // theme.css's bases + the amber pole as the accent (luminous repaint, 2026-08-31): ocean = the page.
+  dark:  { ocean: "#000000", land: "#141418", stroke: "#2A2A30", edge: "#3A3A42", grid: "#1B1B21", accent: "#F2B84B", accentInk: "#1A1000" },
+  light: { ocean: "#ECEAE3", land: "#F6F4EE", stroke: "#D6D2C8", edge: "#C2BEB3", grid: "#E3DFD4", accent: "#6F4800", accentInk: "#ffffff" },
 };
 const pal = () => PALETTE[(document.documentElement.getAttribute("data-theme") || "").includes("light") ? "light" : "dark"];
 const easeInOut = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);

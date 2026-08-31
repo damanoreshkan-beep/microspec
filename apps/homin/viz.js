@@ -30,12 +30,12 @@ export function hasWebGL() {
 function readTheme() {
   try {
     const cs = getComputedStyle(document.documentElement);
-    const ink = cs.getPropertyValue("--color-base-content").trim() || "#ECECEE";
-    const accent = cs.getPropertyValue("--app-accent").trim() || cs.getPropertyValue("--color-primary").trim() || "#E9A23B";
+    const ink = cs.getPropertyValue("--color-base-content").trim() || "#F2EEE6";
+    const accent = cs.getPropertyValue("--app-accent").trim() || cs.getPropertyValue("--color-primary").trim() || "#F2B84B";
     const dt = document.documentElement.getAttribute("data-theme");
     const dark = dt ? dt !== "light" : (typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches);
     return { ink, accent, dark };
-  } catch { return { ink: "#ECECEE", accent: "#E9A23B", dark: true }; }
+  } catch { return { ink: "#F2EEE6", accent: "#F2B84B", dark: true }; }
 }
 
 const angleOf = (ch) => ((ch - 1) / LPD433.count) * Math.PI * 2 - Math.PI / 2;

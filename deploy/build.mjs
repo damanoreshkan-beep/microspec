@@ -152,7 +152,7 @@ for await (const a of Deno.readDir("apps")) {
     // silent skip (the same rule as the icons). docs/research/link-previews.md.
     const uk = JSON.parse(await Deno.readTextFile(`apps/${a.name}/i18n/uk.json`));
     const title = uk.title || a.name, tagline = uk.profTagline || uk.heroBody || "";
-    await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline }));
+    await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline, master }));
     previews.set(a.name, { title, description: tagline || `${title} — ${SITE_NAME}` });   // injected AFTER the compat pass (which rewrites index.html)
   }
   await assertInstallable(outDir, a.name);   // fail the build if this app cannot be installed as a PWA

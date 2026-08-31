@@ -590,7 +590,7 @@ function ApkScreen() {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
   const name = T(t, "title");
   const url = location.href.split("#")[0];
-  const accent = () => (getComputedStyle(document.documentElement).getPropertyValue("--app-accent").trim() || "#7C3AED");
+  const accent = () => (getComputedStyle(document.documentElement).getPropertyValue("--app-accent").trim() || "#F2B84B");
   const [icons, setIcons] = useState(null);   // { icon, fg, bg } — legacy tile + adaptive layers
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);

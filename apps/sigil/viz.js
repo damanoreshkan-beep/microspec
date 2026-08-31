@@ -29,12 +29,12 @@ function hexRgb(h) { const m = /^#?([0-9a-f]{6})$/i.exec((h || "").trim()); if (
 function readTheme() {
   try {
     const cs = getComputedStyle(document.documentElement);
-    const ink = cs.getPropertyValue("--color-base-content").trim() || "#ECECEE";
-    const accent = cs.getPropertyValue("--color-primary").trim() || "#8B7CF6";
+    const ink = cs.getPropertyValue("--color-base-content").trim() || "#F2EEE6";
+    const accent = cs.getPropertyValue("--color-primary").trim() || "#F2B84B";
     const dt = document.documentElement.getAttribute("data-theme");
     const dark = dt ? dt !== "light" : (typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches);
     return { ink, accent, dark };
-  } catch { return { ink: "#ECECEE", accent: "#8B7CF6", dark: true }; }
+  } catch { return { ink: "#F2EEE6", accent: "#F2B84B", dark: true }; }
 }
 function radialTex(THREE, rgb) {
   const c = document.createElement("canvas"); c.width = c.height = 128;
@@ -216,7 +216,7 @@ export function draw2D(canvas, sigil, opts = {}) {
   const ctx = canvas.getContext && canvas.getContext("2d");
   if (!ctx || !sigil) return;
   const W = canvas.width || 0, H = canvas.height || 0; if (!W || !H) return;
-  const theme = opts.live ? readTheme() : { ink: "#ECECEE", accent: "#8B7CF6", dark: true };
+  const theme = opts.live ? readTheme() : { ink: "#F2EEE6", accent: "#F2B84B", dark: true };
   const cx = W / 2, cy = opts.live ? H * 0.42 : H / 2, R = Math.min(W, H) * 0.34;
   ctx.clearRect(0, 0, W, H);
   if (!opts.live) { const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.7); g.addColorStop(0, "#141018"); g.addColorStop(1, "#070709"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }

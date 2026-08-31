@@ -48,7 +48,7 @@ void main(){
   float focus = (1.0 - smoothstep(0.1, 1.0, length((p - vec2(0.0,-0.34))*vec2(0.85,1.0)))) * (1.0 - smoothstep(-0.05, 0.62, p.y));
   float k = (0.38 + 0.08*breath + 0.16*speak + 0.10*think) * focus * ready;
   float pulse = speak * 0.035 * (0.5+0.5*sin(p.y*9.0 - time*5.0)) * (1.0-light*0.5);
-  vec3 bgD = vec3(0.165,0.165,0.18), bgL = vec3(0.93,0.925,0.935);
+  vec3 bgD = vec3(0.012,0.012,0.012), bgL = vec3(0.965,0.957,0.933);   // the page's bases: #000 / #F6F4EE (luminous repaint)
   vec3 bg = mix(bgD, bgL, light);
   vec3 col = mix(bg, pal, k*(0.9+0.2*n3));
   col += pulse*focus;

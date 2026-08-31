@@ -82,7 +82,7 @@ void main(){
   // rescale below turns every deep blue into a glowing one
   pal = mix(vec3(luma(pal)), pal, mix(0.34, 0.11, lite));
   // before a picture exists there is no palette: fall back to a neutral that carries the theme, not a hue
-  vec3 neutral = mix(vec3(0.16, 0.17, 0.20), vec3(0.90, 0.91, 0.94), lite);
+  vec3 neutral = mix(vec3(0.012, 0.012, 0.012), vec3(0.965, 0.957, 0.933), lite);   // the page's bases: #000 / #F6F4EE
   vec3 col = mix(neutral, pal, ready*0.85);
 
   // ── arrival: a bloom that swells from the middle and settles ─────────────────────────────────────────

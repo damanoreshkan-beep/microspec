@@ -133,7 +133,7 @@ void main(){
   col = mix(col, vec3(Lt), mix(0.16, 0.48, light));              // light pulls harder: a pastel at L 0.8 reads as candy
   col = clamp(col, 0.0, 1.0);
 
-  vec3 bg = mix(vec3(0.165,0.165,0.18), vec3(0.93,0.925,0.935), light);
+  vec3 bg = mix(vec3(0.012,0.012,0.012), vec3(0.965,0.957,0.933), light);   // the page's bases: #000 / #F6F4EE (luminous repaint)
   float presence = clamp(mass*0.97 + gem, 0.0, 1.0);
   float vig = 1.0 - 0.18*smoothstep(0.55, 1.15, length(p*vec2(0.85,1.0)));
   col = mix(bg, col, presence*vig);

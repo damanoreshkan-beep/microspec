@@ -116,7 +116,7 @@ export function flux({ S }) {
     const c = paintRef.current; if (!c) return;
     try {
       const out = document.createElement("canvas"); out.width = c.width; out.height = c.height;
-      const o = out.getContext("2d"); o.fillStyle = "#0a0a0f"; o.fillRect(0, 0, out.width, out.height); o.drawImage(c, 0, 0);
+      const o = out.getContext("2d"); o.fillStyle = "#000000"; o.fillRect(0, 0, out.width, out.height); o.drawImage(c, 0, 0);
       downloadUrl(out.toDataURL("image/png"), "flux.png");
       S.toast?.(T(t, "toastSaved"));
     } catch { /* export blocked */ }

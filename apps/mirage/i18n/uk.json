@@ -88,5 +88,18 @@
   "installDesc": "Працює офлайн, відкривається як застосунок",
   "installIosHint": "У Safari: натисни «Поділитися», далі «На початковий екран».",
   "installGenericHint": "У меню браузера обери «Встановити» або «Додати на головний екран».",
-  "close": "Закрити"
+  "close": "Закрити",
+  "styleSheet": "Стиль",
+  "styleNone": "Без стилю",
+  "styleLum": "Сяйво",
+  "styleSmoke": "Дим",
+  "styleChrome": "Ртуть",
+  "stylePaper": "Папір",
+  "styleThread": "Нитка",
+  "styleInk": "Туш",
+  "styleCircuit": "Плата",
+  "styleVeil": "Завіса",
+  "styleFerro": "Ферофлюїд",
+  "stylePorcelain": "Порцеляна",
+  "styleSand": "Пісок"
 }

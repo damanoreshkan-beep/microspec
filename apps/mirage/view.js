@@ -21,6 +21,7 @@ import { downloadUrl, shareFile } from "/_rt/apk.js";
 import { Lightbox } from "./lightbox.js";
 import { usePromptHistory, HistorySheet } from "./history.js";
 import { Chooser, Camera } from "./source.js";
+import { STYLES, styleOf, styleThumb } from "./styles.js";
 import * as M from "./state.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -113,6 +114,7 @@ export function mirage({ S, toast }) {
   const modelSel = chosen !== "auto" && !modelList.some((m) => m.id === chosen) && models.at && !models.error ? "auto" : chosen;
   const shortName = (id) => { const n = id.split("/").pop(); return n.length > 20 ? n.slice(0, 19) + "…" : n; };
   const optsMeta = modelSel !== "auto" ? shortName(modelSel) : mode === "make" ? T(t, opts.quality === "2k" ? "q2k" : "qFast") : null;
+  const styleSel = styleOf(opts.style);   // the chosen style card, null for "none"
   const label = "font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70";
   const [body, tags] = (() => { const lines = read.text.trim().split(/\n+/); const last = lines[lines.length - 1] || ""; const isTags = lines.length > 1 && last.split(",").length >= 3 && last.length < 120; return isTags ? [lines.slice(0, -1).join("\n"), last.split(",").map((s) => s.trim()).filter(Boolean)] : [read.text, []]; })();
 
@@ -203,6 +205,24 @@ export function mirage({ S, toast }) {
       </div>
     <//>
 
+    ${/* The style cards of Make — the first card is the farm's own material (the icons' luminous plexus),
+          the rest are MATERIALS, not genres (styles.js). A card = the same fox through that card's block, so
+          the picture tells the truth about what the style does. History-backed like every sheet here. */""}
+    <${Sheet} id="styles" open=${screen === "styles"} onClose=${() => S.screen.set(null)} title=${T(t, "styleSheet")} icon="lucide:paintbrush" locale=${loc}>
+      <div class="grid grid-cols-3 gap-2.5">
+        <button data-style="none" aria-pressed=${!styleSel} onClick=${() => { M.setOpts({ style: "none" }); S.screen.set(null); }}
+            class=${`flex flex-col items-center gap-1.5 rounded-[var(--ms-r-in)] p-2 sf-inset ${!styleSel ? "ring-2 ring-[var(--app-accent)]" : ""}`}>
+          <span class="w-full aspect-square rounded-[0.6rem] border border-dashed border-base-content/25 flex items-center justify-center">${Icon("lucide:ban", "text-xl text-base-content/40")}</span>
+          <span class="text-[0.68rem] leading-tight text-center">${T(t, "styleNone")}</span>
+        </button>
+        ${STYLES.map((s) => html`<button data-style=${s.id} key=${s.id} aria-pressed=${opts.style === s.id} onClick=${() => { M.setOpts({ style: s.id }); S.screen.set(null); }}
+            class=${`flex flex-col items-center gap-1.5 rounded-[var(--ms-r-in)] p-2 sf-inset ${opts.style === s.id ? "ring-2 ring-[var(--app-accent)]" : ""}`}>
+          <img src=${styleThumb(s.id)} alt="" loading="lazy" decoding="async" class="w-full aspect-square rounded-[0.6rem] object-cover bg-black" />
+          <span class="text-[0.68rem] leading-tight text-center">${T(t, s.key)}</span>
+        </button>`)}
+      </div>
+    <//>
+
     <${Sheet} id="read" open=${screen === "read"} onClose=${() => S.screen.set(null)} title=${T(t, "readTitle")} icon="lucide:scan-eye" locale=${loc}>
       <p data-text class="text-[0.95rem] leading-relaxed whitespace-pre-line">${body}</p>
       ${tags.length ? html`<div data-tags class="flex flex-wrap gap-1.5">${tags.map((tg) => html`<span key=${tg} class="badge badge-ghost rounded-lg font-mono text-[0.68rem] uppercase tracking-wide">${tg}</span>`)}</div>` : null}
@@ -240,6 +260,9 @@ export function mirage({ S, toast }) {
           <div class="flex items-center gap-0.5">
             ${mode !== "read" ? html`<button data-dream aria-label=${T(t, "surprise")} class=${tool} disabled=${working} onClick=${dream}>${Icon("lucide:dices", "text-lg")}</button>` : null}
             <button data-history aria-label=${T(t, "history")} class=${tool} onClick=${() => S.screen.set("hist")}>${Icon("lucide:history", "text-lg")}</button>
+            ${mode === "make" ? html`<button data-styles aria-label=${T(t, "styleSheet")} title=${styleSel ? T(t, styleSel.key) : T(t, "styleSheet")} class=${`${tool} ${styleSel ? "ring-1 ring-[var(--app-accent)]" : ""}`} disabled=${working} onClick=${() => S.screen.set("styles")}>
+              ${styleSel ? html`<img src=${styleThumb(styleSel.id)} alt="" class="w-5 h-5 rounded-md object-cover" />` : Icon("lucide:paintbrush", "text-lg")}
+            </button>` : null}
             <button data-opts aria-label=${T(t, "options")} class="btn btn-ghost btn-sm rounded-full gap-1.5 text-base-content/70 px-2.5" onClick=${() => { M.loadModels(); S.screen.set("opts"); }}>${Icon("lucide:sliders-horizontal", "text-lg")}${optsMeta ? html`<span class="font-mono text-[0.68rem] uppercase tracking-wide">${optsMeta}</span>` : null}</button>
             ${mode !== "make" && st.src ? html`<button data-new aria-label=${T(t, "newPhoto")} class=${tool} disabled=${working} onClick=${() => M.clearSource(mode)}>${Icon("lucide:image-plus", "text-lg")}</button>` : null}
             <div class="flex-1"></div>

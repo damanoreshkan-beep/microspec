@@ -247,6 +247,26 @@ export default [
     },
   },
   {
+    // Картки стилів у Творенні: перша — власний матеріал ферми («Сяйво»), вибір тримається в опціях і
+    // підмішується до промпту (state.js), Back закриває шит.
+    name: "стиль-картки: Сяйво перша, вибір позначається, Back закриває", run: async (h) => {
+      await mode(h, "make");
+      await h.click("[data-styles]"); await h.wait(250);
+      h.expect((await h.prop("#styles", "open")) === true, "шит стилів не відкрився");
+      h.expect((await h.count("[data-style]")) === 12, "має бути 12 карток (без стилю + 11)");
+      h.expect(/Сяйво|Glow/.test(await h.text('[data-style="lum"]')), "перша картка — не Сяйво");
+      await h.click('[data-style="lum"]'); await h.wait(250);
+      h.expect((await h.prop("#styles", "open")) !== true, "вибір не закрив шит");
+      h.expect((await h.count("[data-styles] img")) === 1, "кнопка стилю не показує вибрану картку");
+      await h.click("[data-styles]"); await h.wait(250);
+      h.expect((await h.attr('[data-style="lum"]', "aria-pressed")) === "true", "вибрана картка не позначена");
+      await h.back(); await h.wait(250);
+      h.expect((await h.prop("#styles", "open")) !== true, "Back не закрив шит стилів");
+      await h.click("[data-styles]"); await h.wait(200);
+      await h.click('[data-style="none"]'); await h.wait(200);
+    },
+  },
+  {
     name: "i18n EN/UA", run: async (h) => {
       await h.click('[data-tab="me"]'); await h.wait(150);
       await h.click('[data-loc="en"]'); await h.wait(250);

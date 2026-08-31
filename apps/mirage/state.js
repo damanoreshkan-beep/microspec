@@ -12,6 +12,7 @@ import { notify, notifyAsk } from "/_rt/notify.js";
 import { holdBackground } from "/_rt/bghold.js";
 import { mockArt, toDataURL } from "./bitmap.js";
 import { startJob, follow, cancelJob } from "./race.js";
+import { styleOf } from "./styles.js";
 
 export const MODES = ["make", "edit", "read", "blend", "style"];
 // The two-slot modes: a picture, a second picture, an instruction. They differ ONLY in what the second
@@ -46,7 +47,7 @@ export const $style = atom({ prompt: "", phase: "ready", a: gate ? mockArt(15) :
   slides: [], idx: 0, more: false, error: null, live: null, t0: 0 });
 // read: empty | camera | ready | working | done | error
 export const $read = atom({ question: "", phase: gate ? "ready" : "empty", src: gate ? mockArt(5) : null, text: "", error: null });
-const DEFAULT_OPTS = { quality: "2k", aspect: "screen", model: { make: "auto", edit: "auto", read: "auto", blend: "auto", style: "auto" } };
+const DEFAULT_OPTS = { quality: "2k", aspect: "screen", style: "none", model: { make: "auto", edit: "auto", read: "auto", blend: "auto", style: "auto" } };
 const loadOpts = () => { try { const v = JSON.parse(localStorage.getItem(OPTS_KEY) || "null"); if (v?.quality && v?.aspect) return { ...DEFAULT_OPTS, ...v, model: { ...DEFAULT_OPTS.model, ...(v.model || {}) } }; } catch { /* */ } return DEFAULT_OPTS; };
 export const $opts = atom(loadOpts());
 export const setOpts = (p) => { const v = { ...$opts.get(), ...p }; $opts.set(v); try { localStorage.setItem(OPTS_KEY, JSON.stringify(v)); } catch { /* */ } };
@@ -146,6 +147,10 @@ export async function conjure(ctx) {
   patch("make", { live: { stage: "translate" } });
   let pEn = p; try { pEn = await toEnglish(p); } catch { /* the Spaces prefer English; the original still runs */ }
   if (run !== runs.make) return;
+  // The style card: its English block rides AFTER the subject, the same order the farm's own icons were
+  // art-directed (subject first, then the material) — apps/mirage/styles.js.
+  const sb = styleOf($opts.get().style)?.block;
+  if (sb) pEn = `${pEn}, ${sb}`;
   const { quality, aspect } = $opts.get();
   const ratio = Math.max(0.3, Math.min(3, (window.innerWidth || 1) / (window.innerHeight || 1)));
   await race("make", { prompt: pEn, quality, aspect, ratio, seed, k: K, model: modelFor("make") }, run, ctx, seed);

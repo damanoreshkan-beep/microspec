@@ -160,24 +160,26 @@ export const NODES = [
     run: () => ["deno", "run", "-A", at("tools/relimports.mjs")],
   },
   {
-    id: "unit", kind: "script", phase: "gate", needs: ["demo"], scope: "farm", frozen: "2026-06-11",
+    id: "unit", kind: "script", phase: "gate", needs: ["demo", "rtmap"], scope: "farm", frozen: "2026-06-11",
     why: "packages/runtime — where the systemic math lives. A barrel over tests/<module>_test.js; the " +
       "product tree adds its own barrel (rt/rt_test.js) over its domain modules.",
     // a consumer runs the core's suites through the LOCAL shim rtmap generates — `deno test` refuses a
-    // remote URL as a test module, and silently so when a local file rides along (half a suite once passed).
+    // remote URL as a test module, and silently so when a local file rides along (half a suite once
+    // passed). rtmap (a dependency here) writes the shims even under --check, so a fresh CI checkout has
+    // them by the time this node runs; the rt/ marker decides which tree this is.
     run: () => ["deno", "test", "-A",
-      present(".microspec/tests/unit_test.js") ? ".microspec/tests/unit_test.js" : at("packages/runtime/runtime_test.js"),
+      present("rt/rt_test.js") ? ".microspec/tests/unit_test.js" : at("packages/runtime/runtime_test.js"),
       ...(present("rt/rt_test.js") ? ["rt/rt_test.js"] : [])],
   },
   {
-    id: "mcp", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-07-20",
+    id: "mcp", kind: "script", phase: "gate", needs: ["rtmap"], scope: "farm", frozen: "2026-07-20",
     why: "tools/mcp server contract.",
-    run: () => ["deno", "test", "-A", present(".microspec/tests/mcp_test.js") ? ".microspec/tests/mcp_test.js" : at("tools/mcp/server_test.js")],
+    run: () => ["deno", "test", "-A", present("rt/rt_test.js") ? ".microspec/tests/mcp_test.js" : at("tools/mcp/server_test.js")],
   },
   {
-    id: "pipeline", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-08-08",
+    id: "pipeline", kind: "script", phase: "gate", needs: ["rtmap"], scope: "farm", frozen: "2026-08-08",
     why: "8n8's own registry: the DAG is acyclic, every `needs` resolves, every script node has a run().",
-    run: () => ["deno", "test", "-A", present(".microspec/tests/pipeline_test.js") ? ".microspec/tests/pipeline_test.js" : at("tools/8n8/run_test.js")],
+    run: () => ["deno", "test", "-A", present("rt/rt_test.js") ? ".microspec/tests/pipeline_test.js" : at("tools/8n8/run_test.js")],
   },
   {
     id: "kit", kind: "script", phase: "gate", needs: ["scaffold"], scope: "farm", frozen: "2026-07-02",

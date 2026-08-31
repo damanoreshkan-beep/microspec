@@ -65,17 +65,16 @@ const SHIMS = {
   ".microspec/verify.mjs": `globalThis.__msImport = (s) => import(s);\nawait import("${base}packages/gates/verify.mjs");\n`,
 };
 
+// The shims are gitignored BUILD ARTIFACTS — a fresh checkout (CI) has none, so even --check WRITES them
+// (always safe: derived, never committed). Only the COMMITTED map is drift-checked.
+await Deno.mkdir(".microspec/tests", { recursive: true });
+for (const [p, body] of Object.entries(SHIMS)) await Deno.writeTextFile(p, body);
+
 const have = await Deno.readTextFile("preflight.map.json").catch(() => "");
-let shimsStale = false;
-for (const [p, body] of Object.entries(SHIMS)) {
-  if ((await Deno.readTextFile(p).catch(() => "")) !== body) shimsStale = true;
-}
 if (check) {
-  if (want !== have || shimsStale) { console.error("preflight.map.json / .microspec test shims are stale — run the core's tools/rtmap.mjs"); Deno.exit(1); }
-  console.log(`  ✓ preflight map + test shims match rt/ + the ${pin} pin (${names.length} overlay entries)`);
+  if (want !== have) { console.error("preflight.map.json is stale — run the core's tools/rtmap.mjs"); Deno.exit(1); }
+  console.log(`  ✓ preflight map matches rt/ + the ${pin} pin (${names.length} overlay entries; shims refreshed)`);
 } else {
   await Deno.writeTextFile("preflight.map.json", want);
-  await Deno.mkdir(".microspec/tests", { recursive: true });
-  for (const [p, body] of Object.entries(SHIMS)) await Deno.writeTextFile(p, body);
-  console.log(`preflight.map.json + ${Object.keys(SHIMS).length} shims: core ${pin} on jsr.io, ${names.length} overlay entries`);
+  console.log(`preflight.map.json + ${Object.keys(SHIMS).length} shims: core ${pin}, ${names.length} overlay entries`);
 }

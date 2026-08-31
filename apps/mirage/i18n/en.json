@@ -88,5 +88,18 @@
   "installDesc": "Works offline, opens like an app",
   "installIosHint": "In Safari: tap Share, then Add to Home Screen.",
   "installGenericHint": "In the browser menu choose Install or Add to Home Screen.",
-  "close": "Close"
+  "close": "Close",
+  "styleSheet": "Style",
+  "styleNone": "No style",
+  "styleLum": "Glow",
+  "styleSmoke": "Smoke",
+  "styleChrome": "Mercury",
+  "stylePaper": "Paper",
+  "styleThread": "Thread",
+  "styleInk": "Ink",
+  "styleCircuit": "Circuit",
+  "styleVeil": "Aurora",
+  "styleFerro": "Ferrofluid",
+  "stylePorcelain": "Porcelain",
+  "styleSand": "Sand"
 }

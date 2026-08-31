@@ -5,6 +5,11 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 
 // ── hunt — the ranged engine ──────────────────────────────────────────────────────────────
 const HUNT_WASM = new URL("../../../apps/hunt/assets/hunt.wasm", import.meta.url);
+// The engine suite exercises the PRODUCT app's wasm. In the public framework tree (the dreamstudio split,
+// 2026-08-31) that app is absent — the suite still runs in full in the product repo, whose CI drives these
+// same tests through the framework symlink with the farm present.
+const HAVE_APP = await Deno.stat(HUNT_WASM).then(() => true).catch(() => false);
+const etest = (name, fn) => Deno.test({ name, fn, ignore: !HAVE_APP });
 const HUNT_S = { SFX: 10, AMMO: 13, HP: 14, KILLS: 16, COUNT: 17 };
 const HUNT_IN = { RIGHT: 2, RUN: 8, SHOOT: 32 };
 async function huntEngine() {
@@ -13,7 +18,7 @@ async function huntEngine() {
   return { E, st: () => new Int32Array(E.memory.buffer, E.game_state(), HUNT_S.COUNT) };
 }
 
-Deno.test("hunt engine · your own spear cannot hurt you", async () => {
+etest("hunt engine · your own spear cannot hurt you", async () => {
   // It could, and it did: the contact check listed the kinds to SKIP rather than the kinds that
   // are a threat, so particles were excluded and the player's own projectile was not. A spear
   // leaves from inside her box and on a sprint travels alongside her, so throwing while running
@@ -34,7 +39,7 @@ Deno.test("hunt engine · your own spear cannot hurt you", async () => {
   assertEquals(st()[HUNT_S.HP], hp0, "hearts were lost on the calm opening, with nothing to hit her");
 });
 
-Deno.test("hunt engine · the quiver is finite and refuses to go negative", async () => {
+etest("hunt engine · the quiver is finite and refuses to go negative", async () => {
   const { E, st } = await huntEngine();
   E.game_init(0xA17C);
   const start = st()[HUNT_S.AMMO];
@@ -46,7 +51,7 @@ Deno.test("hunt engine · the quiver is finite and refuses to go negative", asyn
     "an empty quiver must SAY it is empty — a dead button is indistinguishable from a broken one");
 });
 
-Deno.test("hunt engine · the collision box it reports IS the one it stands on", async () => {
+etest("hunt engine · the collision box it reports IS the one it stands on", async () => {
   // The renderer stands sprites on game_box(). If that number and the simulation's own idea of the
   // player's feet ever disagree, the character hovers — which is what happened when the sprite was
   // stood on the bottom of a TILE instead: one pixel out in brick, twelve here, and twelve pixels

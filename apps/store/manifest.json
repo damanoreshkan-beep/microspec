@@ -1,6 +1,6 @@
 {
-  "name": "DreamStudio",
-  "short_name": "DreamStudio",
+  "name": "microspec",
+  "short_name": "microspec",
   "description": "Домашній екран ферми мікрозастосунків — встановлювані, офлайн, з гейтами",
   "start_url": "./",
   "scope": "./",

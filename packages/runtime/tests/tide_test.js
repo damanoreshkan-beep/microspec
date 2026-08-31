@@ -22,12 +22,16 @@ Deno.test("tide registry — every station is https, unique, in a real category,
   assertEquals(tStationById("nope"), null);
 });
 
-Deno.test("tide i18n — every category + genre key exists in BOTH locales", async () => {
+// The i18n parity half needs the PRODUCT app's dictionaries — absent in the public framework tree (the
+// dreamstudio split); the product repo's CI runs it in full.
+const TIDE_I18N = new URL("../../../apps/tide/i18n/en.json", import.meta.url);
+const HAVE_TIDE = await Deno.stat(TIDE_I18N).then(() => true).catch(() => false);
+Deno.test({ name: "tide i18n — every category + genre key exists in BOTH locales", ignore: !HAVE_TIDE, fn: async () => {
   const read = async (l) => JSON.parse(await Deno.readTextFile(new URL(`../../../apps/tide/i18n/${l}.json`, import.meta.url)));
   const en = await read("en"), uk = await read("uk");
   for (const c of tCATEGORIES) { assert(en[c.key], `en missing ${c.key}`); assert(uk[c.key], `uk missing ${c.key}`); }
   for (const s of tSTATIONS) { assert(en[s.genre], `en missing ${s.genre}`); assert(uk[s.genre], `uk missing ${s.genre}`); }
-});
+} });
 
 Deno.test("tide somaNow — the measured shape, empty and broken inputs", () => {
   assertEquals(tSomaNow({ id: "groovesalad", songs: [{ title: " A ", artist: "B", album: "C", date: "1" }, { title: "old" }] }), { title: "A", artist: "B" });

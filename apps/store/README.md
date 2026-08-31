@@ -1,16 +1,12 @@
 <div align="center">
 
-<img src="icon.svg" width="84" height="84" alt="DreamStudio">
+<img src="icon.svg" width="84" height="84" alt="microspec">
 
-# DreamStudio
+# microspec
 
 **Домашній екран ферми мікрозастосунків — встановлювані, офлайн, з гейтами**
 
 ![](https://img.shields.io/badge/-app-C13BFF?style=flat-square) ![](https://img.shields.io/badge/-offline-1F6B42?style=flat-square) ![](https://img.shields.io/badge/-installable-000000?style=flat-square)
-
-<br>
-
-<img src="../../docs/shots/store.png" width="640" alt="DreamStudio">
 
 </div>
 

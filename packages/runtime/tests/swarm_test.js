@@ -5,6 +5,10 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 import { S, SFX, packInput, decodeEntry, wrapT, project, lockOn, betterRun, radarPoint } from "../swarm.js";
 
 const WASM = new URL("../../../apps/swarm/assets/swarm.wasm", import.meta.url);
+// The engine suite exercises the PRODUCT app's wasm — absent in the public framework tree (the dreamstudio
+// split); the product repo's CI runs it in full. The math suite below needs no app and always runs.
+const HAVE_APP = await Deno.stat(WASM).then(() => true).catch(() => false);
+const etest = (name, fn) => Deno.test({ name, fn, ignore: !HAVE_APP });
 
 async function engine() {
   const { instance } = await WebAssembly.instantiate(await Deno.readFile(WASM), {});
@@ -30,7 +34,7 @@ function botStep(g) {
   g.E.game_step(packInput(az, Math.round(el / 10), st[S.COOLDOWN] === 0));
 }
 
-Deno.test("swarm engine · deterministic: same seed, same 300 frames, same state", async () => {
+etest("swarm engine · deterministic: same seed, same 300 frames, same state", async () => {
   const a = await engine(), b = await engine();
   a.E.game_init(0xB0DA); b.E.game_init(0xB0DA);
   for (let f = 0; f < 300; f++) {
@@ -41,7 +45,7 @@ Deno.test("swarm engine · deterministic: same seed, same 300 frames, same state
   assertEquals([...a.dl()], [...b.dl()], "display lists diverged");
 });
 
-Deno.test("swarm engine · the ring attacks from every quadrant — turning is the game", async () => {
+etest("swarm engine · the ring attacks from every quadrant — turning is the game", async () => {
   // Not a distribution nicety: with a 60° FOV, a swarm that clusters in one quadrant is a
   // shooting gallery you never turn for. The spawn spread is even-with-jitter by construction;
   // assert the construction holds across seeds.
@@ -58,7 +62,7 @@ Deno.test("swarm engine · the ring attacks from every quadrant — turning is t
   }
 });
 
-Deno.test("swarm engine · a perfect aim survives two waves — the game is winnable", async () => {
+etest("swarm engine · a perfect aim survives two waves — the game is winnable", async () => {
   const g = await engine();
   g.E.game_init(0xB0DA);
   let f = 0;
@@ -70,7 +74,7 @@ Deno.test("swarm engine · a perfect aim survives two waves — the game is winn
   assert(st[S.SCORE] > 0, "kills scored nothing");
 });
 
-Deno.test("swarm engine · ignoring the swarm is fatal — the threat is real", async () => {
+etest("swarm engine · ignoring the swarm is fatal — the threat is real", async () => {
   const g = await engine();
   g.E.game_init(0xB0DA);
   let f = 0;
@@ -79,7 +83,7 @@ Deno.test("swarm engine · ignoring the swarm is fatal — the threat is real", 
   assert(g.st()[S.HP] === 0, "dead with hearts remaining");
 });
 
-Deno.test("swarm engine · firing away from everything kills nothing", async () => {
+etest("swarm engine · firing away from everything kills nothing", async () => {
   const g = await engine();
   g.E.game_init(0xB0DA);
   for (let f = 0; f < 600; f++) {
@@ -92,7 +96,7 @@ Deno.test("swarm engine · firing away from everything kills nothing", async () 
   assert(st[S.SHOTS] > 20, `only ${st[S.SHOTS]} shots left the trigger — the test never actually fired`);
 });
 
-Deno.test("swarm engine · the trigger has a cooldown and says so", async () => {
+etest("swarm engine · the trigger has a cooldown and says so", async () => {
   const g = await engine();
   g.E.game_init(0xB0DA);
   g.E.game_step(packInput(0, 0, 1));
@@ -103,7 +107,7 @@ Deno.test("swarm engine · the trigger has a cooldown and says so", async () => 
   assert(g.st()[S.COOLDOWN] > 0, "fired with no cooldown reported");
 });
 
-Deno.test("swarm engine · a cleared wave gives a breath, then a bigger ring and a heart back", async () => {
+etest("swarm engine · a cleared wave gives a breath, then a bigger ring and a heart back", async () => {
   const g = await engine();
   g.E.game_init(0xB0DA);
   let f = 0, sawBreak = false;

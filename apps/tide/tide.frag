@@ -42,7 +42,7 @@ void main(){
   vec3 col = pal * (Lt / Lp);
   col = mix(col, vec3(Lt), mix(0.22, 0.62, light));
   col = clamp(col, 0.0, 1.0);
-  vec3 bgD = vec3(0.165,0.165,0.18), bgL = vec3(0.93,0.925,0.935);
+  vec3 bgD = vec3(0.012,0.012,0.012), bgL = vec3(0.965,0.957,0.933);
   vec3 bg = mix(bgD, bgL, light);
   float vig = 1.0 - 0.20*smoothstep(0.55, 1.15, length(p*vec2(0.85,1.0)));
   col = mix(bg, col, vig);

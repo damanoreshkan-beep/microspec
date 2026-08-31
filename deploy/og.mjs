@@ -1,5 +1,5 @@
 import { Resvg } from "npm:@resvg/resvg-wasm@2.6.2";
-import { ensure } from "./icons.mjs";   
+import { ensure, masterPngB64 } from "./icons.mjs";   
 
 export const SITE = "https://dreamstudio.mooo.com";
 export const SITE_NAME = "DreamStudio";   
@@ -28,20 +28,32 @@ function wrap(text, perLine, maxLines = 2) {
   return lines;
 }
 
-/** Render the card: brand tile with the glyph on the left, name / site / tagline on the right. */
-export async function renderOgCard({ brand, paths, title, tagline }) {
+const INK = "#F2EEE6", MUTED = "#A39E94", AMBER = "#F2B84B", RIM = "rgba(255,232,196,.14)", RIM_HI = "rgba(255,238,208,.22)";
+
+/** Render the card: the app's icon (its luminous master, or the brand glyph for an app without one) on the
+ *  left, name / site / tagline on the right. `master` = the bytes of apps/<id>/icon.webp when present. */
+export async function renderOgCard({ brand, paths, title, tagline, master = null }) {
   await ensure();
   const fb = await fonts();
   const titleSize = Math.max(40, Math.min(88, Math.floor(612 / (0.62 * Math.max(1, title.length)))));
   const tagLines = wrap(tagline, 34);
   const tagSize = 32;
+  const tile = master
+    ? `<clipPath id="t"><rect x="96" y="135" width="360" height="360" rx="72"/></clipPath>
+<image clip-path="url(#t)" x="96" y="135" width="360" height="360" href="data:image/png;base64,${(await masterPngB64(master)).png}"/>
+<rect x="96.5" y="135.5" width="359" height="359" rx="72" fill="none" stroke="${RIM}" stroke-width="1"/>
+<path d="M168 135.5 H384" stroke="${RIM_HI}" stroke-width="1"/>`
+    : `<rect x="96" y="135" width="360" height="360" rx="72" fill="#000" stroke="${RIM}" stroke-width="1"/>
+<g transform="translate(156,195) scale(10)" fill="none" stroke="${brand.fg}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${paths}</g>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${OG_W}" height="${OG_H}" viewBox="0 0 ${OG_W} ${OG_H}">
-<rect width="${OG_W}" height="${OG_H}" fill="${brand.bg}"/>
-<rect x="96" y="135" width="360" height="360" rx="80" fill="${brand.fg}" fill-opacity="0.12"/>
-<g transform="translate(156,195) scale(10)" fill="none" stroke="${brand.fg}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${paths}</g>
-<text x="528" y="${tagLines.length > 1 ? 262 : 292}" font-family="Geist" font-weight="700" font-size="${titleSize}" fill="#F2EEF0">${esc(title)}</text>
-<text x="530" y="${tagLines.length > 1 ? 318 : 352}" font-family="Geist Mono" font-weight="500" font-size="28" fill="${brand.fg}" letter-spacing="2">${SITE_NAME.toUpperCase()}</text>
-${tagLines.map((l, i) => `<text x="528" y="${(tagLines.length > 1 ? 386 : 424) + i * 44}" font-family="Geist" font-weight="700" font-size="${tagSize}" fill="#F2EEF0" fill-opacity="0.75">${esc(l)}</text>`).join("\n")}
+<defs><radialGradient id="bloom" cx="0.5" cy="0.55" r="0.5"><stop offset="0" stop-color="${AMBER}" stop-opacity="0.22"/><stop offset="1" stop-color="${AMBER}" stop-opacity="0"/></radialGradient></defs>
+<rect width="${OG_W}" height="${OG_H}" fill="#000000"/>
+<ellipse cx="276" cy="330" rx="300" ry="270" fill="url(#bloom)"/>
+${tile}
+<text x="528" y="${tagLines.length > 1 ? 262 : 292}" font-family="Geist" font-weight="700" font-size="${titleSize}" fill="${INK}">${esc(title)}</text>
+<text x="530" y="${tagLines.length > 1 ? 318 : 352}" font-family="Geist Mono" font-weight="500" font-size="28" fill="${AMBER}" letter-spacing="2">${SITE_NAME.toUpperCase()}</text>
+${tagLines.map((l, i) => `<text x="528" y="${(tagLines.length > 1 ? 386 : 424) + i * 44}" font-family="Geist" font-weight="700" font-size="${tagSize}" fill="${MUTED}">${esc(l)}</text>`).join("\n")}
+<rect x="0.5" y="0.5" width="${OG_W - 1}" height="${OG_H - 1}" fill="none" stroke="${RIM}" stroke-width="1"/>
 </svg>`;
   return new Resvg(svg, { fitTo: { mode: "width", value: OG_W }, font: { loadSystemFonts: false, fontBuffers: fb, defaultFontFamily: "Geist" } }).render().asPng();
 }

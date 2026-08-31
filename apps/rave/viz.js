@@ -14,13 +14,13 @@ function hasWebGL() {
   try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; }
 }
 
-const H_BASS = 255, H_TREB = 190;
+const H_BASS = 42, H_TREB = 176;
 const bandHue = (frac, st) => H_BASS + (H_TREB - H_BASS) * frac + (st.hue - 235) * 0.12;   
 
 const L = (light, v) => (light ? 0.66 - v * 0.5 : 0.26 + v * 0.52);
 const O = (light, v) => Math.min(1, light ? v * 2 : v);
 const BLEND = (THREE, light) => (light ? THREE.NormalBlending : THREE.AdditiveBlending);
-const FOG = (light) => (light ? 0xeeeef1 : 0x07070a);
+const FOG = (light) => (light ? 0xf6f4ee : 0x000000);   
 export const isLightTheme = () => typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light");
 
 function Rig(THREE, cam, box, lift = 0.1) {

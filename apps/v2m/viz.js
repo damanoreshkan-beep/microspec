@@ -12,7 +12,7 @@ function hasWebGL() {
   try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; }
 }
 
-const H_LOW = 262, H_HIGH = 190;
+const H_LOW = 42, H_HIGH = 176;
 
 let _getBytes = null;
 export function bindAudio(fn) { _getBytes = fn; }

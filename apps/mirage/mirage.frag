@@ -44,7 +44,7 @@ void main(){
   float m = clamp(0.5 + 0.5*sin(6.283*(facet + 0.25*w1)), 0.0, 1.0);
   vec3 pal = mix(c1, c2, m);
   pal = mix(vec3(luma(pal)), pal, mix(0.34, 0.11, lite));
-  vec3 neutral = mix(vec3(0.16, 0.17, 0.20), vec3(0.90, 0.91, 0.94), lite);
+  vec3 neutral = mix(vec3(0.012, 0.012, 0.012), vec3(0.965, 0.957, 0.933), lite);
   vec3 col = mix(neutral, pal, ready*0.85);
 
   float d = length(p - vec2(asp*0.5, 0.42));

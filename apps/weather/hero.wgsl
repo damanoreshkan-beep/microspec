@@ -2,10 +2,11 @@
 struct U { res: vec2f, time: f32, seed: f32, ink: vec4f, vary: vec4f, env: vec4f };
 @group(0) @binding(0) var<uniform> u: U;
 
+const PAGE_D: vec3f = vec3f(0.012, 0.012, 0.012);
 const BASE_D: vec3f = vec3f(0.1647, 0.1647, 0.1804);
-const BASE_L: vec3f = vec3f(0.9333, 0.9333, 0.9451);
-const WARM: vec3f = vec3f(1.000, 0.760, 0.520);
-const COOL: vec3f = vec3f(0.760, 0.840, 1.000);
+const BASE_L: vec3f = vec3f(0.965, 0.957, 0.933);
+const WARM: vec3f = vec3f(1.000, 0.780, 0.480);
+const COOL: vec3f = vec3f(0.720, 0.920, 0.900);
 
 fn hash(p: vec2f) -> f32 {
   return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453123);
@@ -67,6 +68,7 @@ fn fs(@builtin(position) frag: vec4f) -> @location(0) vec4f {
   let lit = clamp(u.env.x, 0.0, 1.0);
 
   let base = mix(BASE_D, BASE_L, lit);
+  let page = mix(PAGE_D, BASE_L, lit);
   let sign = mix(1.0, -1.0, lit);
   let glow = mix(1.0, 0.42, lit);
   let dayness = smoothstep(-0.30, 0.16, alt);
@@ -179,9 +181,9 @@ fn fs(@builtin(position) frag: vec4f) -> @location(0) vec4f {
     }
   }
 
-  col = mix(col, base, smoothstep(0.66, 0.96, uv.y));
+  col = mix(col, page, smoothstep(0.66, 0.96, uv.y));
   let vign = smoothstep(1.15, 0.30, length((uv - vec2f(0.5, 0.36)) * vec2f(1.0, 0.8)));
-  col = mix(base, col, mix(0.55, 1.0, vign));
+  col = mix(page, col, mix(0.55, 1.0, vign));
 
   let baseY = dot(base, vec3f(0.2126, 0.7152, 0.0722));
   let y = dot(col, vec3f(0.2126, 0.7152, 0.0722));

@@ -30,6 +30,17 @@ async function generateVectorIcons(dir, brand, paths) {
 
 const b64 = (b) => { let s = ""; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); };
 
+const pngCache = new WeakMap();
+export async function masterPngB64(webp) {
+  if (pngCache.has(webp)) return pngCache.get(webp);
+  const img = await decodeWebp(webp);
+  if (img.width !== 1024 || img.height !== 1024) throw new Error(`icon.webp must be 1024×1024, got ${img.width}×${img.height}`);
+  const opaque = new Uint8ClampedArray(img.data); for (let i = 3; i < opaque.length; i += 4) opaque[i] = 255;
+  const out = { png: b64(new Uint8Array(await encodePng({ data: opaque, width: 1024, height: 1024 }))), rgba: img.data };
+  pngCache.set(webp, out);
+  return out;
+}
+
 const rasterTile = (pngB64, { rx = 0, scale = 1, ground = "#000" } = {}) => {
   const o = (1 - scale) / 2 * 1024, s = 1024 * scale;
   const clip = rx ? `<clipPath id="c"><rect width="1024" height="1024" rx="${rx}"/></clipPath>` : "";
@@ -70,10 +81,7 @@ async function icoOf(framePromises) {
 
 async function generateLuminousIcons(dir, webp) {
   await ensure();
-  const img = await decodeWebp(webp);
-  if (img.width !== 1024 || img.height !== 1024) throw new Error(`icon.webp must be 1024×1024, got ${img.width}×${img.height}`);
-  const opaque = new Uint8ClampedArray(img.data); for (let i = 3; i < opaque.length; i += 4) opaque[i] = 255;
-  const pngB64 = b64(new Uint8Array(await encodePng({ data: opaque, width: 1024, height: 1024 })));
+  const { png: pngB64, rgba } = await masterPngB64(webp);
   const any = rasterTile(pngB64, { rx: 208 });                  
   const mask = rasterTile(pngB64, { scale: 0.74 });             
   await Deno.writeFile(`${dir}/icon-192.png`, await toPng(any, 192));
@@ -81,7 +89,7 @@ async function generateLuminousIcons(dir, webp) {
   await Deno.writeFile(`${dir}/icon-192-maskable.png`, await toPng(mask, 192));
   await Deno.writeFile(`${dir}/icon-512-maskable.png`, await toPng(mask, 512));
   await Deno.writeFile(`${dir}/apple-touch-icon.png`, await toPng(rasterTile(pngB64), 180)); 
-  const fgB64 = b64(new Uint8Array(await encodePng({ data: alphaFromBlack(img.data, 1024, 1024), width: 1024, height: 1024 })));
+  const fgB64 = b64(new Uint8Array(await encodePng({ data: alphaFromBlack(rgba, 1024, 1024), width: 1024, height: 1024 })));
   await Deno.writeFile(`${dir}/icon-fg-432.png`, await toPng(rasterTile(fgB64, { scale: 0.5, ground: null }), 432));
   await Deno.writeFile(`${dir}/favicon.ico`, await icoOf([16, 32, 48].map((s) => toPng(any, s))));
 }

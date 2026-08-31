@@ -109,7 +109,7 @@ for await (const a of Deno.readDir("apps")) {
     await generateAppIcons(`${outDir}/icons`, brand, paths, master);
     const uk = JSON.parse(await Deno.readTextFile(`apps/${a.name}/i18n/uk.json`));
     const title = uk.title || a.name, tagline = uk.profTagline || uk.heroBody || "";
-    await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline }));
+    await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline, master }));
     previews.set(a.name, { title, description: tagline || `${title} — ${SITE_NAME}` });   
   }
   await assertInstallable(outDir, a.name);   

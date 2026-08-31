@@ -73,6 +73,13 @@ export const NODES = [
     run: () => ["deno", "run", "-A", at("tools/demo.mjs")],
   },
   {
+    id: "realmlint", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-08-31",
+    why: "The core runs from a checkout AND from the JSR cache. Two patterns compile fine and break only " +
+      "in the second realm (relative-import.meta fs; raw harness dynamic imports) — five publishes died " +
+      "on them in one night, so the classes are banned statically, like relimports.",
+    run: () => ["deno", "run", "-A", at("tools/realmlint.mjs")],
+  },
+  {
     id: "rtmap", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-08-31",
     why: "The product's preflight import map, generated from its rt/ overlay (exact keys beat the prefix " +
       "key). Preflight mounts real views in Deno, and their /_rt/ imports must route per-file — a stale " +
@@ -235,7 +242,7 @@ export function topo(nodes = NODES) {
 }
 
 export const FLOWS = {
-  gates: ["demo", "rtmap", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
+  gates: ["demo", "rtmap", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
   author: ["research", "spec", "i18n", "view", "scaffold"],
   ship: ["push"],
   all: NODES.map((n) => n.id),

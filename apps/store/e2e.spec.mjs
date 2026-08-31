@@ -32,7 +32,7 @@ export default [
   {
     name: "тап по застосунку → шитик опису, Back закриває", run: async (h) => {
       await ready(h);
-      await h.click('[data-app="hn"]'); await h.wait(250);
+      await h.click('[data-app="hn"] button'); await h.wait(250);
       h.expect((await h.prop("#appsheet", "open")) === true, "не відкрився шитик опису");
       h.expect((await h.count("#open-app")) === 1, "немає кнопки Відкрити в шитику");
       h.expect(/hacker news/i.test(await h.bodyText()), "немає опису застосунку");
@@ -54,7 +54,7 @@ export default [
   {
     name: "стор: сторінка апки з Install і версією, рядки з кнопкою", run: async (h) => {
       await ready(h);
-      await h.click('[data-app="weather"]'); await h.wait(300);
+      await h.click('[data-app="weather"] button'); await h.wait(300);
       h.expect((await h.prop("#appsheet", "open")) === true, "рядок не відкрив сторінку апки");
       h.expect((await h.count("#install-app")) === 1, "немає кнопки Встановити на сторінці апки");
       h.expect(/v\d/.test(await h.text("#appsheet")), "немає версії на сторінці апки");

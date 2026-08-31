@@ -21,6 +21,11 @@ const manifest = manUrl.protocol === "file:"
   ? JSON.parse(await Deno.readTextFile(manUrl))
   : await (await fetch(manUrl)).json();
 const imports = { ...manifest.imports };
+const pfUrl = new URL("../packages/gates/preflight.importmap.json", import.meta.url);
+const pf = pfUrl.protocol === "file:" ? JSON.parse(await Deno.readTextFile(pfUrl)) : await (await fetch(pfUrl)).json();
+for (const [k, v] of Object.entries(pf.imports)) {
+  if (!(k in imports) && k !== "canvas" && k !== "/_rt/") imports[k] = v;
+}
 imports["canvas"] = `${base}packages/gates/canvas-stub.js`;
 for (const n of names) imports[`/_rt/${n}`] = `./rt/${n}`;
 imports["/_rt/"] = `${base}packages/runtime/`;

@@ -9,7 +9,8 @@
 // plan) is what catches a disagreement on a real device.
 import Ajv2020 from "npm:ajv@8/dist/2020.js";   // the catalogue schema is draft 2020-12, like spec.schema.json
 
-const ROOT = new URL("../", import.meta.url);
+import { pkgRoot } from "../packages/runtime/pkgroot.js";
+const ROOT = pkgRoot(import.meta.url, 1);
 const CATALOGUE = new URL("packages/shell/actions.json", ROOT);
 const SCHEMA = new URL("packages/shell/catalogue.schema.json", ROOT);
 const OUT = new URL("packages/runtime/shell-actions.js", ROOT);

@@ -36,7 +36,8 @@ const isLight = /light/.test(spec.theme || "");
 // MEASURED off theme.css, never written here: a hex typed beside the thing it describes is right until the
 // base moves, then silently wrong in every app at once (76 chrome files carried #2A2A2E after the black
 // repaint). runtime_test.js still cross-checks every app's chrome against the same two bases.
-const themeCss = await Deno.readTextFile(new URL("../runtime/theme.css", import.meta.url));
+import { pkgRoot } from "../runtime/pkgroot.js";
+const themeCss = await Deno.readTextFile(new URL("packages/runtime/theme.css", pkgRoot(import.meta.url, 2)));
 const baseOf = (t) => {
   const i = themeCss.indexOf(`[data-theme="${t}"] {`);
   const m = /--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(themeCss.slice(i));

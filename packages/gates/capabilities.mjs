@@ -25,7 +25,7 @@
 //        so charging them a geo declaration would demand a permission they went out of their way not to
 //        need. The opt-out is read here.
 
-const ROOT = new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
+const ROOT = Deno.cwd(); // the apps it audits live in the CONSUMER's tree, never in the package
 const read = (p) => { try { return Deno.readTextFileSync(`${ROOT}/${p}`); } catch { return null; } };
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 

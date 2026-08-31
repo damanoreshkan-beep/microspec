@@ -14,7 +14,8 @@
 //                  agent asking "what does Segmented take" gets the real signature and the author's own
 //                  reasoning, not a second copy that drifts the first time a prop is added.
 //   docs/*       — read from disk per request, never cached, so an edit is live in the next call.
-const ROOT = new URL("../../", import.meta.url);
+import { pkgRoot } from "../../packages/runtime/pkgroot.js";
+const ROOT = pkgRoot(import.meta.url, 2);
 const PROTOCOL = "2025-06-18";
 const SUPPORTED = new Set([PROTOCOL, "2025-03-26", "2024-11-05"]);
 

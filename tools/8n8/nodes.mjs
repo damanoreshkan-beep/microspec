@@ -95,38 +95,38 @@ export const NODES = [
     id: "authorless", kind: "script", phase: "author", needs: ["ideate"], scope: "app", frozen: "2026-07-05",
     why: "The frozen author. A recipe (source + field map) → a complete list-family app, no model. " +
       "This node is the existence proof that agent nodes can freeze.",
-    run: (ctx) => ["deno", "run", "-A", `${CORE}/packages/gen/authorless.mjs`, ctx.recipe ?? "recipes/<id>.json"],
+    run: (ctx) => ["deno", "run", "-A", at("packages/gen/authorless.mjs"), ctx.recipe ?? "recipes/<id>.json"],
   },
   {
     id: "scaffold", kind: "script", phase: "author", needs: ["view", "i18n"], scope: "app", frozen: "2026-06-18",
     why: "index.html + manifest.json + sw stub + icon.svg. Identical for every app, so it is a function.",
-    run: (ctx) => ["deno", "run", "-A", `${CORE}/packages/gen/scaffold.mjs`, `apps/${ctx.app}`],
+    run: (ctx) => ["deno", "run", "-A", at("packages/gen/scaffold.mjs"), `apps/${ctx.app}`],
   },
   {
     id: "demo", kind: "script", phase: "author", needs: [], scope: "farm", frozen: "2026-08-31",
     why: "The core carries NO apps (the split: the product owns them). Gate material is GENERATED — " +
       "authorless → scaffold → sw → readme seed apps/books when the tree has none; a tree with apps " +
       "(the product) is untouched, so every gate node can depend on this unconditionally.",
-    run: () => ["deno", "run", "-A", `${CORE}/tools/demo.mjs`],
+    run: () => ["deno", "run", "-A", at("tools/demo.mjs")],
   },
   {
     id: "rtmap", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-08-31",
     why: "The product's preflight import map, generated from its rt/ overlay (exact keys beat the prefix " +
       "key). Preflight mounts real views in Deno, and their /_rt/ imports must route per-file — a stale " +
       "map is a gate that tests the wrong runtime. A tree with no overlay generates nothing.",
-    run: () => ["deno", "run", "-A", `${CORE}/tools/rtmap.mjs`, "--check"],
+    run: () => ["deno", "run", "-A", at("tools/rtmap.mjs"), "--check"],
   },
 
   // ── gate: the deterministic half. Every node here answers with a NAMED failure. ────────────────
   {
     id: "validate", kind: "script", phase: "gate", needs: ["spec", "demo"], scope: "farm", frozen: "2026-06-11",
     why: "ajv against packages/schema/spec.schema.json — the contract, machine-checked.",
-    run: () => ["deno", "run", "-A", `${CORE}/packages/schema/validate.mjs`, ...globApps("spec.json")],
+    run: () => ["deno", "run", "-A", at("packages/schema/validate.mjs"), ...globApps("spec.json")],
   },
   {
     id: "noundef", kind: "script", phase: "gate", needs: ["scaffold", "demo"], scope: "farm", frozen: "2026-06-24",
     why: "Undefined identifiers a zero-build stack would only discover in the browser.",
-    run: () => ["deno", "run", "-A", `${CORE}/tools/noundef.mjs`],
+    run: () => ["deno", "run", "-A", at("tools/noundef.mjs")],
   },
   {
     id: "preflight", kind: "script", phase: "gate", needs: ["scaffold", "demo", "rtmap"], scope: "farm", frozen: "2026-06-11",
@@ -134,78 +134,78 @@ export const NODES = [
     // a product carries a GENERATED map (rtmap) that routes its rt/ overlay per-file; the core's own map
     // is the framework tree's fallback.
     run: () => ["deno", "run", "-A",
-      present("preflight.map.json") ? "--import-map=preflight.map.json" : `--import-map=${CORE}/packages/gates/preflight.importmap.json`,
-      `${CORE}/packages/gates/preflight.mjs`, ...globApps()],
+      present("preflight.map.json") ? "--import-map=preflight.map.json" : `--import-map=${at("packages/gates/preflight.importmap.json")}`,
+      at("packages/gates/preflight.mjs"), ...globApps()],
   },
   {
     id: "caps", kind: "script", phase: "gate", needs: ["spec", "view", "demo"], scope: "farm", frozen: "2026-08-08",
     why: "spec.json `needs` must match the capabilities the code actually reaches for. The field was inert " +
       "and had drifted for a whole category (six apps opened WebUSB, none declared it) — make it true " +
       "before making it functional.",
-    run: () => ["deno", "run", "-A", `${CORE}/packages/gates/capabilities.mjs`, "--check"],
+    run: () => ["deno", "run", "-A", at("packages/gates/capabilities.mjs"), "--check"],
   },
   {
     id: "relimports", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-08-09",
     why: "Runtime modules must import each other relatively — an absolute /_rt/ 404s on the /microspec/ " +
       "subpath while working locally, so only a rule can catch it. The check existed ONLY in verify.yml, " +
       "so a violation cost a whole CI round; /_rt/hero.js shipped with one.",
-    run: () => ["deno", "run", "-A", `${CORE}/tools/relimports.mjs`],
+    run: () => ["deno", "run", "-A", at("tools/relimports.mjs")],
   },
   {
     id: "unit", kind: "script", phase: "gate", needs: ["demo"], scope: "farm", frozen: "2026-06-11",
     why: "packages/runtime — where the systemic math lives. A barrel over tests/<module>_test.js; the " +
       "product tree adds its own barrel (rt/rt_test.js) over its domain modules.",
-    run: () => ["deno", "test", "-A", `${CORE}/packages/runtime/runtime_test.js`,
+    run: () => ["deno", "test", "-A", at("packages/runtime/runtime_test.js"),
       ...(present("rt/rt_test.js") ? ["rt/rt_test.js"] : [])],
   },
   {
     id: "mcp", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-07-20",
     why: "tools/mcp server contract.",
-    run: () => ["deno", "test", "-A", `${CORE}/tools/mcp/server_test.js`],
+    run: () => ["deno", "test", "-A", at("tools/mcp/server_test.js")],
   },
   {
     id: "pipeline", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-08-08",
     why: "8n8's own registry: the DAG is acyclic, every `needs` resolves, every script node has a run().",
-    run: () => ["deno", "test", "-A", `${CORE}/tools/8n8/run_test.js`],
+    run: () => ["deno", "test", "-A", at("tools/8n8/run_test.js")],
   },
   {
     id: "kit", kind: "script", phase: "gate", needs: ["scaffold"], scope: "farm", frozen: "2026-07-02",
     why: "The kit manifest matches what the runtime actually exports.",
-    run: () => ["deno", "run", "-A", `${CORE}/tools/kit-manifest.mjs`, "--check"],
+    run: () => ["deno", "run", "-A", at("tools/kit-manifest.mjs"), "--check"],
   },
   {
     id: "shell", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-07-28",
     why: "The Android action catalogue generates both sides; --check fails when they drift.",
-    run: () => ["deno", "run", "-A", `${CORE}/tools/shell-gen.mjs`, "--check"],
+    run: () => ["deno", "run", "-A", at("tools/shell-gen.mjs"), "--check"],
   },
   {
     id: "sw", kind: "script", phase: "gate", needs: ["scaffold", "demo"], scope: "farm", frozen: "2026-07-09",
     why: "Per-app offline precache, regenerated from the REAL import graph. Adopting a kit component is " +
       "enough to stale it, which is why this is a gate and not a habit.",
-    run: () => ["deno", "run", "-A", `${CORE}/deploy/sw.mjs`, "--check"],
+    run: () => ["deno", "run", "-A", at("deploy/sw.mjs"), "--check"],
   },
   {
     id: "readme", kind: "script", phase: "gate", needs: ["scaffold", "demo"], scope: "farm", frozen: "2026-08-26",
     why: "Each app's README is a one-screen card generated from its spec + i18n. Change the app's copy and " +
       "the page drifts, so the regeneration is a gate: --check fails when a README no longer matches its app.",
-    run: () => ["deno", "run", "-A", `${CORE}/deploy/readme.mjs`, "--check"],
+    run: () => ["deno", "run", "-A", at("deploy/readme.mjs"), "--check"],
   },
   {
     id: "counts", kind: "script", phase: "gate", needs: ["demo"], scope: "farm", frozen: "2026-07-09",
     why: "App-count claims in the docs, checked against the directory. Prose rots; this makes it fail.",
-    run: () => ["deno", "run", "-A", `${CORE}/deploy/counts.mjs`, "--check"],
+    run: () => ["deno", "run", "-A", at("deploy/counts.mjs"), "--check"],
   },
 
   // ── ship ──────────────────────────────────────────────────────────────────────────────────────
   {
     id: "manifest", kind: "script", phase: "ship", needs: ["scaffold"], scope: "farm", frozen: "2026-06-19",
     why: "The launcher list (apps/store/apps.json) — the app's identity OUTSIDE its own folder.",
-    run: () => ["deno", "run", "-A", `${CORE}/deploy/manifest.mjs`],
+    run: () => ["deno", "run", "-A", at("deploy/manifest.mjs")],
   },
   {
     id: "affected", kind: "script", phase: "ship", needs: [], scope: "farm", frozen: "2026-07-16",
     why: "Which apps a change actually reaches, from the real import graph — CI's scope, computed not guessed.",
-    run: () => ["deno", "run", "-A", `${CORE}/tools/affected.mjs`, "--all"],
+    run: () => ["deno", "run", "-A", at("tools/affected.mjs"), "--all"],
   },
   {
     id: "push", kind: "script", phase: "ship", needs: ["validate", "preflight", "unit", "sw", "counts"],
@@ -234,10 +234,12 @@ export const NODES = [
 
 const present = (p) => { try { Deno.statSync(p); return true; } catch { return false; } };
 
-// Where the core's tools live: the framework checkout runs its own files; a PRODUCT runs them from the
-// @microspec/core package materialized under node_modules (real files — import.meta inside them then
-// resolves package-internal siblings correctly, and the cwd stays the consumer's tree).
-const CORE = present("packages/runtime/index.js") ? "." : "node_modules/@jsr/microspec__core";
+// Every spawned tool is addressed as a URL off THIS module — one mechanism for both realms: a file URL in
+// the framework checkout, an https jsr URL when a consumer runs the registry via `jsr:@microspec/core/8n8`.
+// (Never a node_modules PATH: code under node_modules executes in the npm realm, where jsr:/https imports
+// are refused — the materialized tree is for SERVING files, not for running them.) The cwd stays the
+// consumer's tree; tools read apps/, rt/ and the generated artifacts from there.
+const at = (p) => new URL(`../../${p}`, import.meta.url).href;
 
 // apps/*/… — expanded here rather than shelling out to a glob, so a node's argv is data, not a string
 // a shell will re-interpret. (`deno task gates` passed `apps/*` through the shell; a node does not.)

@@ -6,7 +6,8 @@ import Ajv2020 from "npm:ajv@8/dist/2020.js";
 import addFormats from "npm:ajv-formats@3";
 import { readLocales } from "../gen/compose.mjs";
 
-const schema = JSON.parse(await Deno.readTextFile(new URL("./spec.schema.json", import.meta.url)));
+import { pkgRoot } from "../runtime/pkgroot.js";
+const schema = JSON.parse(await Deno.readTextFile(new URL("packages/schema/spec.schema.json", pkgRoot(import.meta.url, 2))));
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);
 export const validateSchema = ajv.compile(schema);

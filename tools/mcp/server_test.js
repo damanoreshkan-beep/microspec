@@ -5,13 +5,12 @@
 //   deno test -A tools/mcp/server_test.js
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
-const ROOT = new URL("../../", import.meta.url).pathname;
-
-// A tiny MCP client: writes newline-delimited JSON-RPC, matches responses by id.
+// A tiny MCP client: writes newline-delimited JSON-RPC, matches responses by id. The server is addressed
+// as a sibling URL (realm-agnostic — file in the framework checkout, https from the JSR cache) and runs at
+// the CONSUMER's cwd like every other tool.
 async function withServer(fn) {
   const child = new Deno.Command("deno", {
-    args: ["run", "-A", "tools/mcp/server.mjs"],
-    cwd: ROOT,
+    args: ["run", "-A", new URL("./server.mjs", import.meta.url).href],
     stdin: "piped",
     stdout: "piped",
     stderr: "piped",

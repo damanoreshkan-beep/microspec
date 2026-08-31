@@ -91,8 +91,10 @@ Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and 
   assert(/--sh-r-in:\s*[^;]*--sh-r[^;]*--ms-pad/.test(css), "--sh-r-in must be --sh-r minus --ms-pad — the shell's OWN outer radius, not --ms-r, since the shell scales its own by 1.2");
 });
 
+import { pkgRoot } from "../pkgroot.js";
+
 Deno.test("motion: no `transition-all` — a transition names the properties it animates", async () => {
-  const root = new URL("../../../", import.meta.url);
+  const root = pkgRoot(import.meta.url, 3);
   const offenders = [];
   const walk = async (dir) => {
     for await (const e of Deno.readDir(dir)) {
@@ -120,7 +122,7 @@ Deno.test("motion: no `transition-all` — a transition names the properties it 
 });
 
 Deno.test("icons: the farm draws from ONE set (lucide) — a second library is a visible seam", async () => {
-  const root = new URL("../../../", import.meta.url);
+  const root = pkgRoot(import.meta.url, 3);
   const FOREIGN = /["'](mdi|ph|tabler|carbon|ri|material-symbols|simple-icons|logos|bi|heroicons|solar|iconoir|fluent|octicon|codicon|fa6-[a-z]+|ic|majesticons|mingcute|hugeicons|akar-icons):[a-z0-9-]+["']/;
   const offenders = [];
   const walk = async (dir) => {
@@ -202,7 +204,7 @@ Deno.test("a11y: MUTED text (an alpha over a surface) clears 4.5:1 — the pair 
 });
 
 Deno.test("a11y: muted text is the TOKEN, never an alpha — .text-base-content/60 may not return", async () => {
-  const root = new URL("../../../", import.meta.url);
+  const root = pkgRoot(import.meta.url, 3);
   const offenders = [];
   const walk = async (dir) => {
     for await (const e of Deno.readDir(dir)) {
@@ -217,7 +219,8 @@ Deno.test("a11y: muted text is the TOKEN, never an alpha — .text-base-content/
       }
     }
   };
-  for (const d of ["packages/", "apps/"]) await walk(new URL(d, root));
+  await walk(new URL("packages/", root));
+  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { /* absent */ } }
   assertEquals(
     offenders,
     [],
@@ -614,8 +617,8 @@ Deno.test("the material: the pair of light is text-safe in BOTH themes — the C
 });
 
 Deno.test("PWA chrome colours track the theme bases — the surface no screenshot can see", async () => {
-  const root = new URL("../../../", import.meta.url);
-  const css = await Deno.readTextFile(new URL("packages/runtime/theme.css", root));
+  const root = `file://${Deno.cwd()}/`; // the apps are the CONSUMER's; the css is the package's
+  const css = await Deno.readTextFile(new URL("packages/runtime/theme.css", pkgRoot(import.meta.url, 3)));
   const baseOf = (t) => {
     const i = css.indexOf(`[data-theme="${t}"] {`);
     return /--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(css.slice(i))[1].toUpperCase();
@@ -675,10 +678,10 @@ Deno.test(".ms-stage — a fixed stage consumes the chrome contract, and nobody 
   // The enforcement half: eleven apps had each hand-written the same two terms, all eleven wrong in the same
   // two ways, and no gate could see it because the geometry was inline. One class, or the farm drifts again.
   const offenders = [];
-  for await (const e of Deno.readDir(new URL("../../../apps", import.meta.url))) {
+  for await (const e of Deno.readDir("apps")) {
     if (!e.isDirectory) continue;
     let src;
-    try { src = await Deno.readTextFile(new URL(`../../../apps/${e.name}/view.js`, import.meta.url)); } catch { continue; }
+    try { src = await Deno.readTextFile(`apps/${e.name}/view.js`); } catch { continue; }
     if (/bottom:\s*calc\(var\(--dock-h\)/.test(src) || /top:\s*calc\(3\.5rem/.test(src)) offenders.push(e.name);
   }
   assertEquals(offenders, [], `these apps hand-write the chrome geometry instead of using .ms-stage: ${offenders.join(", ")}`);

@@ -7,9 +7,6 @@
 //   deno run -A tools/art/docart.mjs --check    # the 8n8 node: fail if any is stale
 //   deno run -A tools/art/docart.mjs --png      # also rasterise a static preview per file (scratch) — the eye
 // Runs only in the core's tree (like dts); a consumer has no registry docs.
-import { NODES } from "../8n8/nodes.mjs";
-import { BREAKPOINTS } from "../../packages/gates/browser-lib.mjs";
-
 const check = Deno.args.includes("--check");
 const wantPng = Deno.args.includes("--png");
 const manifest = JSON.parse(await Deno.readTextFile("deno.json"));
@@ -17,6 +14,10 @@ if (manifest.name !== "@microspec/core") {
   if (check) console.log("  ✓ not the core — no doc art to generate");
   Deno.exit(0);
 }
+// Imported only past the guard: browser-lib pulls the Chromium driver, which a consumer's npm-realm copy
+// of this file cannot resolve — and a consumer never draws the core's docs anyway.
+const { NODES } = await import("../8n8/nodes.mjs");
+const { BREAKPOINTS } = await import("../../packages/gates/browser-lib.mjs");
 const OUT = "docs/art";
 
 // ── the material ─────────────────────────────────────────────────────────────────────────────────────

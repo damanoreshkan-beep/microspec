@@ -20,7 +20,8 @@ export async function importIcon(id, pngPath) {
   const small = new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024"><image width="1024" height="1024" href="data:image/png;base64,${b64(png)}"/></svg>`, { fitTo: { mode: "width", value: 256 } }).render();
   const px = small.pixels;
   const webp256 = new Uint8Array(await encodeWebp({ data: new Uint8ClampedArray(px.buffer, px.byteOffset, px.byteLength), width: 256, height: 256 }, { quality: 82 }));
-  const dir = `${ROOT}/apps/${id}`;
+  const appsDir = Deno.args.find((a) => a.startsWith("--out="))?.slice(6) ?? `${ROOT}/apps`;
+  const dir = `${appsDir}/${id}`;
   await Deno.stat(dir);   
   await Deno.writeFile(`${dir}/icon.webp`, master);
   await Deno.writeTextFile(`${dir}/icon.svg`, iconSvgFor(webp256));
@@ -29,6 +30,7 @@ export async function importIcon(id, pngPath) {
 
 if (import.meta.main) {
   for (const arg of Deno.args) {
+    if (arg.startsWith("--")) continue;                                  
     const i = arg.indexOf("="); if (i < 0) throw new Error(`usage: <id>=<png>, got ${arg}`);
     const id = arg.slice(0, i), src = arg.slice(i + 1);
     const r = await importIcon(id, src);

@@ -442,16 +442,18 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
    is an edge of light instead of a band of black. Decoration by contract: pointer-events off, aria-hidden
    by position, dropped with the rest of the ornament on a watch. STATIC by rule — a translated full-width
    lip was viewport overflow on every app (the tilt engine, removed 2026-08-31).
-   And the bar itself is a PANE, not a band (owner: "хедер так і залишається з чорним бекграундом"): solid
-   behind the title, dissolving before its lower edge — over an ambient stage the scene shows through
-   instead of being sliced. The markup carries no bg/shadow classes; this rule owns the surface. */
+   And the bar itself has NO surface (owner, 2026-09-01: "я все ще бачу чорний бекграунд, тінь має бути лише
+   під тайтлом" — the pane that dissolved before its lower edge still sliced tide's and rave's scenes in
+   half). The page shows through the whole bar; what keeps the wordmark legible over a stage is a shadow
+   under the TITLE alone (`[data-title]` below, in the page's own tone). The markup carries no bg/shadow
+   classes; nothing here paints one. */
 header.navbar {
   position: sticky;
   /* SMALL: 2.75rem, not DaisyUI's 4rem nor the old 3.5rem — a bar that presses on the content is chrome the
      owner feels ("не давив на голову", 2026-09-01). --hdr-h is measured off this element, so every fit
      screen and stage follows for free; controls are btn-sm (2rem) and fit with air. */
   min-height: 2.75rem;
-  background: linear-gradient(to bottom, var(--color-base-100) 62%, color-mix(in srgb, var(--color-base-100) 72%, transparent) 84%, transparent);
+  background: transparent;
 }
 /* THE HOOKS a brand decorates — declared here so a tree with no brand renders them as nothing at all, and
    a brand needs no markup change to light them: the header's lip (`::before` band, `::after` hairline),
@@ -660,6 +662,10 @@ body { letter-spacing: -0.006em; }
   letter-spacing: .09em;
   font-weight: 700;
   font-size: 0.82rem;   /* a small, neat wordmark — a label on the lip, not a headline */
+  /* The header's ONLY shadow, under the title alone: a halo in the page's tone (ink on black casts black,
+     ink on paper casts paper), so the wordmark reads over a stage without a band across the bar. A brand
+     that glows its wordmark composes its bloom WITH this (theme-lum), never instead of it. */
+  text-shadow: 0 1px 2px var(--color-base-100), 0 0 14px var(--color-base-100);
 }
 
 /* Stage B — instrument details. Global CSS over DaisyUI/render classes; no structural change.

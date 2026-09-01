@@ -95,7 +95,9 @@ const heatInk = (x) => (x >= 0.5 ? `light-dark(#7a4a00,rgba(240,169,59,${(0.55 +
 let _searchT;
 const debouncedLoad = () => { clearTimeout(_searchT); _searchT = setTimeout(() => A.load(), 350); };
 
-const Empty = (icon, text, hint) => html`<div class="flex flex-col items-center text-muted py-16 gap-2 text-center px-6">${Icon(icon, "text-4xl")}<span class="font-medium">${text}</span>${hint && html`<span class="text-sm text-muted">${hint}</span>`}</div>`;
+// data-empty: theme.css scatters the theme's own light behind the glyph (fireflies / gold motes) — the
+// "support plane is scattered light" rule of the icons, applied to the one screen that has nothing else.
+const Empty = (icon, text, hint) => html`<div data-empty class="flex flex-col items-center text-muted py-16 gap-2 text-center px-6">${Icon(icon, "text-4xl")}<span class="font-medium">${text}</span>${hint && html`<span class="text-sm text-muted">${hint}</span>`}</div>`;
 
 // Loading placeholder: decoding cards (scramble text + blinking-pixel image) — never a spinner. The
 // placeholder must match the layout it stands in, or it misreports the shape of what is coming and guarantees
@@ -890,12 +892,13 @@ function AppBar() {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
   const qL = QR_LBL[loc] || QR_LBL.en;
   const hdrRef = usePublishedChrome("header");
-  // Modern header: NO bar, NO border — a top-down gradient scrim (base bg → transparent) with a light blur,
-  // so the title floats and content fades UP into it on scroll instead of hitting a welded hairline. The
-  // title is the app's wordmark (mono/uppercase/heavy, styled via [data-title]). Height min-h-14 (3.5rem).
+  // The portal's lip: NO bar, NO border, NO surface classes — theme.css owns the header entirely (the
+  // dissolving pane, the woven-light band and the lit hairline, `header.navbar` there). A `bg-base-100 sf-e2`
+  // here made it a flat card with a ring, welded over every ambient stage. The title is the app's wordmark
+  // (mono/uppercase/heavy, styled via [data-title]). Height min-h-14 (3.5rem).
   // The "open on phone" trigger is desktop-only (hidden lg:) — a QR of THIS page to hop to your phone; it
   // stays in the DOM on mobile (display:none) so nothing needs a special build, and it's harmless there.
-  return html`<header ref=${hdrRef} class="navbar bg-base-100 sf-e2 sticky top-0 z-30 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 
 // Desktop "open on phone": a QR of the current URL so you can continue on a phone, with an explicit "stay on
@@ -931,12 +934,12 @@ function QrModal() {
 // the same z-20 that stop precisely at --dock-h, and this paints after them.
 // The dock's ground is no longer a solid black band (the "банальна тінь" the portal repaint removed): a
 // much shorter scrim for the text scrolling underneath, and the DreamStudio garland — the theme's own
-// sprite (--ds-strand: night lights / day suns, theme.css) — hung along the very bottom edge, sliding
-// gently with the device tilt. Decoration wears ms-decor, so the watch ladder drops it with the rest.
-const DockFade = () => html`<div aria-hidden="true" class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
+// sprite (--ds-strand: night lights / day suns) — hung inside this very zone, its bulbs ending on the
+// screen's bottom edge. Geometry lives in theme.css ([data-garland]): the offsets are MEASURED off the
+// sprites' alpha, not typed here. Decoration wears ms-decor, so the watch ladder drops it with the rest.
+const DockFade = () => html`<div aria-hidden="true" data-dock-fade class="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
   style="height:calc(var(--dock-h) + env(safe-area-inset-bottom));background:linear-gradient(to top, var(--color-base-200) 18%, transparent 78%)">
-  <div class="ms-decor absolute inset-x-0 bottom-0 h-9 opacity-40"
-    style="background-image:var(--ds-strand);background-repeat:repeat-x;background-size:auto 200%;background-position:left top"></div>
+  <div data-garland class="ms-decor"></div>
 </div>`;
 
 // ── clean screen — the door ───────────────────────────────────────────────────────────────────────────

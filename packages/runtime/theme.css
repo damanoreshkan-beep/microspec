@@ -461,14 +461,61 @@ header.navbar {
   position: sticky;
   background: linear-gradient(to bottom, var(--color-base-100) 62%, color-mix(in srgb, var(--color-base-100) 72%, transparent) 84%, transparent);
 }
+/* The lip is WOVEN from light, not drawn as a line: the theme's horizon sprite (--ds-lip — night: the
+   filament arc; day: none, gold on paper is drawn by the hairline alone) straddles the lower edge, under
+   the wordmark's baseline and never under it. Measured off ds-n-arc.webp: the band's core is rows 187–239
+   of 384 (peak 194), so `center 52%` lands the peak inside a 28px window; the masks fade it out sideways
+   and top/bottom so the strip has no cut edge. z-index −1 paints it above the pane, below the controls. */
+header.navbar::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -10px; height: 28px;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--ds-lip) center 52% / 100% auto no-repeat;
+  opacity: var(--ds-lip-a, 0);
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent), linear-gradient(180deg, transparent, #000 32%, #000 68%, transparent);
+  mask-composite: intersect;
+}
+/* …and the hairline itself is the lit edge: a real line of warm light (night) or a hairline of ink (day),
+   with the light's bloom hanging off it — the same "edge, not a band" a raised surface carries. */
 header.navbar::after {
   content: "";
   position: absolute;
   left: 0; right: 0; bottom: -1px; height: 1px;
   pointer-events: none;
-  background: linear-gradient(90deg, transparent 8%, var(--lm-rim-hi) 45%, var(--lm-rim-hi) 55%, transparent 92%);
+  background: linear-gradient(90deg, transparent 5%, var(--lm-lip) 38%, var(--lm-lip) 62%, transparent 95%);
+  box-shadow: 0 0 12px 1px var(--lm-lip-glow);
 }
-@media (max-width: 300px) { header.navbar::after { display: none; } }
+@media (max-width: 300px) { header.navbar::before, header.navbar::after { display: none; } }
+
+/* The garland hangs inside the dock zone: the sprite tiles at half the width (one seam, hidden behind the
+   dock pill), and its bulbs END on the screen's bottom edge — `100% + N` pushes the sprite's empty lower
+   part below the viewport. N is measured off the alpha: ds-n-strand's art stops at row 271 of 512 (47.1%
+   blank × half-width tile = 23.5vw), the day suns at row 279 (45.5% → 22.75vw). Past 640px the tile is
+   pinned to 192px so a desktop does not get a 3× garland. */
+[data-garland] {
+  position: absolute;
+  inset: 0;
+  background: var(--ds-strand) center var(--ds-strand-y) / 50% auto repeat-x;
+  opacity: var(--ds-strand-a);
+}
+@media (min-width: 640px) { [data-garland] { background-size: 192px auto; background-position: center calc(100% + 89px); } }
+
+/* An empty state sits on scattered light — fireflies at night, gold motes by day — centred on the glyph:
+   the sprite's dense core is at 48% of its height (ds-n-scatter rows 173–200 of 384; ds-d-scatter 225–271
+   of 512), so on a 260px sprite it lands 125px down; the glyph's centre is 82px below the box top
+   (py-16 + half of text-4xl). Behind the text only the sparse tail remains. */
+[data-empty] { position: relative; isolation: isolate; }
+[data-empty]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--ds-scatter) center -44px / 260px auto no-repeat;
+  opacity: var(--ds-scatter-a);
+}
 
 /* The bloom radius, stepped with the density ladder so a lifted surface on a 200px-tall split-screen window
    does not glow wider than the control it belongs to. `--lm-g` is the blur of the raised bloom, `--lm-gp`
@@ -496,6 +543,14 @@ header.navbar::after {
      of use (Chrome's long-standing behaviour), so a relative name resolved to /<app>/ds-…webp and 404'd in
      every app of the built site. The farm serves at the domain root (the subpath origin retired 2026-08-16). */
   --ds-strand: url("/_rt/ds-n-strand.webp");   /* the night garland — the dock's edge decor */
+  --ds-strand-y: calc(100% + 23.5vw);          /* bulbs end on the bottom edge — see [data-garland] */
+  --ds-strand-a: .85;
+  --ds-lip: url("/_rt/ds-n-arc.webp");         /* the header's woven-light band */
+  --ds-lip-a: .6;
+  --ds-scatter: url("/_rt/ds-n-scatter.webp"); /* fireflies behind an empty state */
+  --ds-scatter-a: .8;
+  --lm-lip:      rgba(255, 238, 208, .58);     /* the header's lit hairline — a real line of light */
+  --lm-lip-glow: color-mix(in oklch, var(--app-accent) 26%, transparent);
 
   --sf-rim:        var(--lm-rim);
   --sf-shadow:     rgba(0, 0, 0, .85);
@@ -529,6 +584,14 @@ header.navbar::after {
   --lm-bloom-hi: color-mix(in oklch, var(--color-accent) 55%, transparent);
   --nm-cast:   rgba(40, 32, 20, .22);
   --ds-strand: url("/_rt/ds-d-strand.webp");   /* the day garland of little suns (absolute — see the night token) */
+  --ds-strand-y: calc(100% + 22.75vw);
+  --ds-strand-a: .9;
+  --ds-lip: none;                              /* gold on paper is the hairline's job; a band would be a smear */
+  --ds-lip-a: 0;
+  --ds-scatter: url("/_rt/ds-d-scatter.webp"); /* gold motes behind an empty state */
+  --ds-scatter-a: .9;
+  --lm-lip:      rgba(20, 18, 16, .18);        /* the lip on paper: a hairline of ink */
+  --lm-lip-glow: transparent;
 
   --sf-rim:        var(--lm-rim);
   --sf-shadow:     rgba(40, 32, 20, .18);
@@ -695,6 +758,9 @@ body { letter-spacing: -0.006em; }
   font-weight: 700;
   font-size: 1.02rem;
 }
+/* At night the wordmark is a filament: the same amber bloom the icons glow with, faint enough that the ink
+   stays ink. Paper gets none — a glow on white is a smear (measured on the icons). */
+[data-theme="signal"] [data-title] { text-shadow: 0 0 14px color-mix(in oklch, var(--app-accent) 42%, transparent); }
 
 /* Stage B — instrument details. Global CSS over DaisyUI/render classes; no structural change.
    Badges become mono, uppercase, hairline tags — the "instrument" signal. Colour still means:

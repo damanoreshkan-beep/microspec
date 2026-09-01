@@ -105,6 +105,7 @@ export const SYS = {
   signInBody: { en: "AI generation is for signed-in users — so the free quota goes to people, not bots.", uk: "AI-генерація доступна після входу — так безкоштовна квота дістається людям, а не ботам." },
   close: { en: "Close", uk: "Закрити" },
   material: { en: "Theme", uk: "Тема" },
+  battery: { en: "Battery", uk: "Батарея" },
   modeDay: { en: "Day", uk: "День" },
   modeNight: { en: "Night", uk: "Ніч" },
   clean: { en: "Clean screen", uk: "Чистий екран" },

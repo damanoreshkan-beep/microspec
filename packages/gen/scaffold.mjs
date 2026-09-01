@@ -215,7 +215,7 @@ const icons = [
 ];
 const manifest = JSON.stringify({
   name: title, short_name: title, description: tagline, start_url: "./", scope: "./",
-  display: "standalone", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
+  display: "fullscreen", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
 }, null, 2) + "\n";
 
 const sw = `// PLACEHOLDER — run \`deno run -A deploy/sw.mjs\` to generate the real worker for this app.\n` +

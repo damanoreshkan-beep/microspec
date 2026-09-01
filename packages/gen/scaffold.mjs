@@ -1,9 +1,75 @@
 /* @ts-self-types="./scaffold.d.mts" */
 /**
- * App scaffolder — the deterministic half of authoring. From the authored spec.json + i18n/ (+ data.js,
- * view.js, stream.js) it emits the boilerplate every app needs: index.html with the instant app-shell and
- * the mode-composed start() wiring, manifest.json, a placeholder sw.js and icon.svg. Authored files are
- * never overwritten unless --force. A CLI script — it exports nothing.
+ * # scaffold — the deterministic half of authoring
+ *
+ * The agent writes only the app-specific files — `spec.json` (structure), `i18n/<locale>.json` (one file per
+ * language) and `data.js`, `view.js` or `stream.js` — and this emits the boilerplate every app needs:
+ * `index.html` with the instant app-shell and the mode-composed `start()` wiring, `manifest.json`, a
+ * placeholder `sw.js` and `icon.svg`. It is identical for every app, so it is a function, not a habit; it
+ * never overwrites a file that exists unless told to. A CLI script — it exports nothing.
+ *
+ * ![The pipeline around scaffold — every node a lit point, its needs as filaments](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/pipeline-scaffold.svg)
+ *
+ * ## Usage
+ * ```sh
+ * deno run -A jsr:@microspec/core/scaffold apps/<id>            # emit what is missing
+ * deno run -A jsr:@microspec/core/scaffold apps/<id> --force    # regenerate the four files
+ * ```
+ * `deno task 8n8 author` ends with it as the 8n8 node `scaffold`; `deno task demo` runs it over the generated
+ * `apps/books` when the tree carries no apps.
+ *
+ * ## Flags and arguments
+ * | Argument | Effect |
+ * | --- | --- |
+ * | `<appdir>` | The app folder, e.g. `apps/<id>`; a trailing slash is stripped. Missing: usage line, exit 2. |
+ * | `--force` | Overwrite `index.html`, `manifest.json`, `sw.js`, `icon.svg` even when they exist. An `icon.svg` that wraps luminous art (`icon.webp` present) is kept even so. |
+ *
+ * ## What it checks / produces
+ * Refuses, with a named reason, before writing anything:
+ * - `✗ <appdir>/spec.json missing — author it first`
+ * - `✗ <appdir>/i18n/ has no locale files — author i18n/uk.json + i18n/en.json`
+ *
+ * The mode is COMPOSED from the files present, never picked from a hierarchy: `tool` when `view.js` exists,
+ * `stream` when `stream.js` exists, `data` when `data.js` exists (and by default), joined with `+`. The
+ * boot wiring imports each part and hands `start()` either `load` alone or `{ load, views, stream }` — a
+ * binary tool-else-data pick once dropped the second half on a forced re-scaffold and lists mounted empty
+ * with zero runtime errors.
+ *
+ * Optional inputs: `brand.json` (`bg`, `fg`; default `#1f2430` on `#a78bfa`) and `brand.svg` (icon paths;
+ * default a rounded square) for the icon tile; `head.html`, inlined verbatim into the head so app-owned
+ * styles survive a regeneration; `icon.webp`, whose presence marks `icon.svg` as owned art.
+ *
+ * Written into `<appdir>`:
+ * - `index.html` — `lang` (`uk` when the app has it, else the first locale), `data-theme` from `spec.theme`
+ *   (default `dim`), `theme-color`, the CDN links (Tailwind, daisyUI, `/_rt/theme.css`, iconify, Geist), the
+ *   browser import map, the plain-CSS boot shell (wordmark, sliding line, dock island, in the exact places
+ *   the real chrome lands), then the module that composes `spec.json` + every `i18n/<locale>.json` and calls
+ *   `start` from `/_rt/index.js`.
+ * - `manifest.json` — name and short_name from the `uk`/`en` dictionary's `title` (else `spec.id`),
+ *   description from `profTagline`, standalone display, the icon set under `icons/`.
+ * - `sw.js` — a placeholder that precaches `./` and `./index.html` through `/_rt/sw-core.js`; `deploy/sw.mjs`
+ *   replaces it from the finished import graph.
+ * - `icon.svg` — the brand paths on a rounded 512 tile, the fallback for an app that has no art yet.
+ *
+ * `theme-color` and `background_color` are MEASURED from the runtime's `theme.css` (`--color-base-100` of
+ * `signal`, or `signal-light` when `spec.theme` contains `light`), never typed here: 76 chrome files once
+ * carried a stale base after a repaint. A `theme.css` without that base throws.
+ *
+ * Every file reports `✓ <name>`, `· <name> (exists, kept)` or `· icon.svg (luminous art, kept)`, then
+ * `scaffolded <appdir> [<mode> mode] — <n> file(s) written`.
+ *
+ * ## Exit codes
+ * - `0` — scaffolded; a run that kept every file is still green.
+ * - `1` — `spec.json` missing, or `i18n/` has no locale files.
+ * - `2` — no app directory given (usage printed).
+ *
+ * ## Where it sits
+ * 8n8 node `scaffold` · phase author · script · needs: view, i18n · needed by: noundef, preflight, kit, sw,
+ * readme, manifest. Frozen 2026-06-18. `view` MUST run before it — the mode is read off the files, and the
+ * wrong order yields a green preflight over an empty screen.
+ *
+ * ## Why
+ * index.html + manifest.json + sw stub + icon.svg. Identical for every app, so it is a function.
  * @module
  */
 // microspec — app scaffolder (the deterministic half of authoring). The agent (LLM) writes only the

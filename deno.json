@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "license": "MIT",
   "publish": {
     "exclude": [
@@ -30,6 +30,7 @@
   "tasks": {
     "test": "deno test -A packages/runtime/runtime_test.js",
     "dts": "deno run -A tools/dts.mjs",
+    "docart": "deno run -A tools/art/docart.mjs",
     "demo": "deno run -A tools/demo.mjs",
     "affected": "deno run -A tools/affected.mjs",
     "verify": "deno run -A packages/gates/verify.mjs",

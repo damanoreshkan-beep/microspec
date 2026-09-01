@@ -1,8 +1,71 @@
 /**
- * Generates the consumer's preflight import map (preflight.map.json) and its gitignored test shims: each
- * /_rt/ name routes to the rt/ overlay's own file or to the pinned core on JSR, with bare deps pinned from
- * the core's manifest so the whole mounted graph shares one preact. `--check` fails when the committed map
- * is stale. A CLI script — it exports nothing.
+ * # rtmap — the product's preflight import map, generated from its rt/ overlay
+ *
+ * The browser-free gate (preflight) mounts real app views in Deno, and every `/_rt/` import they make has to
+ * route per-file: the domain overlay's own names to `./rt/`, everything else to the pinned core on JSR. This
+ * script derives that map from the tree instead of trusting a hand-kept one — a stale map is a gate that
+ * tests the wrong runtime. One realm for the whole mounted graph: the views (file), the overlay (file) and
+ * the core (https) all resolve their bare deps through this map's pins, so there is exactly one preact.
+ * A tree with no `rt/` overlay (the framework itself) needs no map and generates none. A CLI script — it
+ * exports nothing.
+ *
+ * ![The three realms the core runs from — a file checkout, the JSR cache, node_modules — and their laws](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/realms.svg)
+ *
+ * ## Usage
+ * ```sh
+ * deno run -A jsr:@microspec/core/rtmap            # (re)write preflight.map.json at the consumer's root
+ * deno run -A jsr:@microspec/core/rtmap --check    # fail if the committed map is stale
+ * ```
+ * Run it from the consumer's root. `deno task gates` runs it as the 8n8 node `rtmap`, with `--check`.
+ *
+ * ## Flags and arguments
+ * | Flag | Effect |
+ * | --- | --- |
+ * | `--check` | Compare the committed `preflight.map.json` with what the tree implies; red on drift, the map is not rewritten. The shims are written regardless. |
+ *
+ * No positional arguments — it reads the tree it is run in: `rt/`, `deno.json`, `preflight.map.json`.
+ *
+ * ## What it checks / produces
+ * Inputs, in the order the code reads them:
+ * - `rt/` — every `.js` file except `_test.js` suites, sorted: the overlay's names. No `rt/`, or an empty
+ *   one, means the framework tree: `✓ no rt/ overlay — no preflight map needed`, exit 0, nothing written.
+ * - the consumer's `deno.json` `imports` — must carry a `jsr:@microspec/core@<version>` pin; that version is
+ *   the base `https://jsr.io/@microspec/core/<version>/`. Without it: `rtmap: deno.json imports carry no
+ *   jsr:@microspec/core@<version> pin`, exit 1.
+ * - the core's own `deno.json` manifest (the npm pins — ONE source, so one preact instance) and its
+ *   `packages/gates/preflight.importmap.json` (the app-only pins: motion, lodash-es, …). Manifest keys win.
+ *
+ * `preflight.map.json` (committed, drift-checked) routes:
+ * - the bare deps — manifest pins first, preflight-map extras where the manifest has no key;
+ * - `canvas` → the pinned core's `packages/gates/canvas-stub.js`;
+ * - `/_rt/<name>` → `./rt/<name>` for every overlay file — exact keys beat the prefix key by the import-map spec;
+ * - `/_rt/` and `@microspec/core/runtime/` → the pinned core's `packages/runtime/`.
+ *
+ * The gitignored test shims under `.microspec/` are written on EVERY run, `--check` included, because a
+ * fresh CI checkout has none: `tests/unit_test.js`, `tests/mcp_test.js` and `tests/pipeline_test.js` import
+ * the core's suites at the pin (`deno test` refuses a remote URL as a test module — silently, when a local
+ * file rides along, which once passed a unit node that had run half its suites); `preflight.mjs` and
+ * `verify.mjs` plant a local `__msImport` before loading the core's harness, so a gate can dynamically
+ * import consumer files.
+ *
+ * Green: `✓ preflight map matches rt/ + the <pin> pin (<n> overlay entries; shims refreshed)`.
+ * Red: `preflight.map.json is stale — run the core's tools/rtmap.mjs`.
+ *
+ * ## Exit codes
+ * - `0` — map written (or, under `--check`, the committed map matches), or the tree has no `rt/` overlay.
+ * - `1` — `deno.json` carries no `jsr:@microspec/core@<version>` pin, or `--check` found the committed map stale.
+ *
+ * ## Where it sits
+ * 8n8 node `rtmap` · phase gate · script · needs: nothing · needed by: preflight, unit, mcp, pipeline.
+ * Frozen 2026-08-31. It is part of the `gates` flow, and because it writes the shims even under `--check`,
+ * the nodes that follow it point at `.microspec/` instead of a remote URL.
+ *
+ * ![The pipeline around rtmap — every node a lit point, its needs as filaments](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/pipeline-rtmap.svg)
+ *
+ * ## Why
+ * The product's preflight import map, generated from its rt/ overlay (exact keys beat the prefix key).
+ * Preflight mounts real views in Deno, and their /_rt/ imports must route per-file — a stale map is a gate
+ * that tests the wrong runtime. A tree with no overlay generates nothing.
  * @module
  */
 // GENERATED by tools/dts.mjs from tools/rtmap.mjs — edit the JSDoc there, never this file.

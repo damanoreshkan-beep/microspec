@@ -1,8 +1,61 @@
 /* @ts-self-types="./readme.d.mts" */
 /**
- * Per-app README generator and gate: builds one deterministic, one-screen README.md for every app from
- * its own spec.json + i18n + brand, so no app's page drifts from its copy. `--check` fails when a spec or
- * its strings changed but the README did not. A CLI script — it exports nothing.
+ * # readme — every app's page, generated from the app itself
+ *
+ * Each app gets one deterministic, one-screen README.md built from its own `spec.json` + `i18n/` + brand:
+ * the icon, the title and tagline, a screenshot when one exists, a badge row for what it is and what it
+ * can reach, and relative links back into the farm. The page is a function of the app, so a change to
+ * the app's copy makes the page stale — and staleness is a named failure, not a drift nobody notices:
+ * `--check` is the 8n8 gate node `readme`. No infrastructure URLs: the READMEs travel with the public repo
+ * and say nothing about where the live farm is hosted. A CLI script — it exports nothing.
+ *
+ * ![The 8n8 pipeline with the readme node lit](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/pipeline-readme.svg)
+ *
+ * ## Usage
+ * ```sh
+ * deno run -A jsr:@microspec/core/readme            # (re)generate apps/<id>/README.md for every app
+ * deno run -A jsr:@microspec/core/readme --check    # the gate: exit 1 if any README is stale
+ * ```
+ * `deno task gates` runs it as the 8n8 node `readme` with `--check`. The `demo` node runs it without the
+ * flag as the last step of seeding `apps/books` (authorless → scaffold → sw → readme) in a tree that
+ * carries no apps of its own.
+ *
+ * ## Flags and arguments
+ * | flag | meaning |
+ * | --- | --- |
+ * | `--check` | compare only: report every app whose README no longer matches, write nothing |
+ *
+ * No positional arguments — it walks every `apps/<id>` that has a `spec.json`, in sorted order.
+ *
+ * ## What it produces
+ * `apps/<id>/README.md`, one screen, in this order:
+ * - `<img src="icon.svg">`, then `# title` — the `uk` dictionary wins over `en` (`title`, then the id).
+ * - the lede: `profTagline` or `tagline`, else "title — part of the microspec farm".
+ * - the badge row (shields.io, flat-square): the `category` in the farm accent, one shield per declared
+ *   capability (`needs` → `WebUSB`, `Camera`, `Bluetooth`, `AI`, …), then `offline` and `installable`.
+ * - `docs/shots/<id>.png` at 640px when the screenshot exists.
+ * - the facts line: **Screens** (every non-profile tab's label, resolved through i18n), **Capabilities**,
+ *   **Offline**, **Installable**.
+ * - a link to the farm root and the store, and the footer naming this generator.
+ *
+ * Locales are read through `readLocales` from `packages/gen/compose.mjs`, the same reader the runtime
+ * composes with. The generated text is byte-stable, so the gate is a string equality.
+ *
+ * Green is `readme: N app READMEs up to date`. Red is `stale app READMEs (run: deno run -A
+ * deploy/readme.mjs): a, b, c` — the ids to regenerate. A plain run prints `readme: N written, M unchanged`.
+ *
+ * ## Exit codes
+ * - `0` — every README matches its app (`--check`), or the READMEs were written.
+ * - `1` — `--check` found at least one stale README.
+ *
+ * ## Where it sits
+ * gate · script · needs: `scaffold`, `demo` · needed by: none — a leaf of the `gates` flow; `push` does
+ * not gate on it, `deno task gates` does. `scaffold` precedes it because the page links `icon.svg`, and
+ * `demo` precedes it because the core tree has no apps until the demo seeds one.
+ *
+ * ## Why
+ * Each app's README is a one-screen card generated from its spec + i18n. Change the app's copy and the
+ * page drifts, so the regeneration is a gate: `--check` fails when a README no longer matches its app.
  * @module
  */
 // microspec — per-app README generator. Each app gets ONE deterministic, one-screen "card" built from its

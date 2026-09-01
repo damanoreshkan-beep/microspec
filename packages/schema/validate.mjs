@@ -1,8 +1,54 @@
 /* @ts-self-types="./validate.d.mts" */
 /**
- * Author-time contract gate: the compiled ajv validator for spec.json against the microspec JSON Schema
- * (draft 2020-12). Exports `validateSchema`, the same validator the generator runs in its retry loop, so a
- * bad spec never reaches the runtime; as a CLI it composes each spec with its i18n/ and reports errors.
+ * # schema — the contract, machine-checked
+ *
+ * The author-time gate: ajv (draft 2020-12) over each app's `spec.json` against
+ * `packages/schema/spec.schema.json`. This is the SoT-driven half of "AI can't emit an invalid spec" — the
+ * generator runs the same compiled validator in its retry loop (packages/gen), so a bad spec never reaches
+ * the runtime. The CLI validates the COMPOSED spec — structure plus the `i18n/<locale>.json` dictionaries
+ * beside it — because that composition is the contract the runtime actually sees. As a module it exports
+ * {@link validateSchema}, the compiled validator itself.
+ *
+ * ![The pipeline around validate — every node a lit point, its needs as filaments](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/pipeline-validate.svg)
+ *
+ * ## Usage
+ * ```sh
+ * deno run -A jsr:@microspec/core/schema apps/<id>/spec.json [apps/<other>/spec.json ...]
+ * ```
+ * `deno task gates` runs it as the 8n8 node `validate` over every `apps/<id>/spec.json` the tree holds
+ * (expanded in code, not by a shell). CI's verify.yml runs the same command over a shell glob of `apps/`.
+ *
+ * ## Flags and arguments
+ * | Argument | Effect |
+ * | --- | --- |
+ * | `<spec.json> ...` | One or more spec files; each is composed with the `i18n/` folder next to it. None given: usage line, exit 2. |
+ *
+ * No flags.
+ *
+ * ## What it checks / produces
+ * Per file, in order — every file is reported, the run does not stop at the first red:
+ * - `✗ <file> — not valid JSON: <message>` — the spec (or a locale file beside it) did not parse.
+ * - `✗ <file>` followed by one line per schema violation: `<instancePath> <message>`, with the offending
+ *   key in parentheses when the violation is an unknown property. `allErrors` is on, so a spec lists all
+ *   of its failures in one run. A missing `i18n/en.json` reads `/i18n must have required property 'en'`.
+ * - `✓ <file>` — the composed spec meets the schema.
+ *
+ * It writes nothing. Green means every spec in the argument list, with its dictionaries, is a valid
+ * microspec contract; the runtime's own `validate.js` guards the same shape at boot.
+ *
+ * ## Exit codes
+ * - `0` — every spec valid.
+ * - `1` — at least one spec failed to parse or violated the schema.
+ * - `2` — no spec files given (usage printed).
+ *
+ * ## Where it sits
+ * 8n8 node `validate` · phase gate · script · needs: spec, demo · needed by: push. Frozen 2026-06-11. It is
+ * also the `verify` gate of the `i18n` agent node — deliberately not of `spec`, because the composition it
+ * checks first exists once the dictionaries are written. verify.yml runs it as the step "Schema contract
+ * gate (ajv) over every app spec".
+ *
+ * ## Why
+ * ajv against packages/schema/spec.schema.json — the contract, machine-checked.
  * @module
  */
 // Author-time contract gate: validate a spec.json against the microspec JSON Schema (draft 2020-12).

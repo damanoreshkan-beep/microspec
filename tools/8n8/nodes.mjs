@@ -130,6 +130,13 @@ export const NODES = [
       "render. A stale declaration is red here, before it is stale on the registry. No-op in a consumer.",
     run: () => ["deno", "run", "-A", at("tools/dts.mjs"), "--check"],
   },
+  {
+    id: "docart", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-09-01",
+    why: "The registry docs' diagrams (docs/art/*.svg) are generated from THIS registry and the breakpoint " +
+      "table — a node added here gets its diagram on the next run, and a drawing can never contradict " +
+      "the DAG it explains. Stale art is red before jsr.io shows it. No-op in a consumer.",
+    run: () => ["deno", "run", "-A", at("tools/art/docart.mjs"), "--check"],
+  },
 
   // ── gate: the deterministic half. Every node here answers with a NAMED failure. ────────────────
   {
@@ -307,7 +314,7 @@ export function topo(nodes = NODES) {
 // The named flows. A flow is a SET of target nodes; the runner pulls in their dependencies.
 export const FLOWS = {
   // everything runnable on this device, no network, no Chromium — the pre-push floor
-  gates: ["demo", "rtmap", "dts", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
+  gates: ["demo", "rtmap", "dts", "docart", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
   // The authoring flow, now genuinely executable: the briefed agent nodes spawn a headless CLI, each is
   // gated by its own deterministic node the moment it returns, and scaffold turns the result into a
   // runnable app. `ideate` is absent on purpose — wanting an app is the one input a pipeline cannot supply.

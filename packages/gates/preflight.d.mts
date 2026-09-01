@@ -1,8 +1,71 @@
 /**
- * The FAST, browser-free half of the gate: mounts an app's spec + view in a linkedom DOM and catches the
- * render-time class of bugs (a throwing view, an unclosed tag, a missing i18n key, a blank render) plus
- * the farm's static bans (spinners, hand-rolled sheets/transports, app-authored shadows, foreign icon
- * sets, emoji) before the CI round-trip. A gate script with no exports.
+ * # preflight — the fast, browser-free half of the gate
+ *
+ * Mounts an app's spec + view in a linkedom DOM, no Chromium, and answers in about two seconds what the
+ * CI round-trip would take a minute to say: the view throws, a tag was left unclosed, a string is missing
+ * from a locale, the screen rendered blank. Around the mount it enforces the farm's own invariants
+ * statically — no emoji, no spinners, no hand-rolled sheets or transports, no app-authored shadows, one
+ * icon set, camera and mic priming, every runtime-rendered key present in every locale. It does not
+ * replace `verify` (axe, overflow and screenshots need a real browser); it runs before every push so the
+ * browser only ever sees what already mounts. A gate script with no exports.
+ *
+ * ![The 8n8 pipeline with the preflight node lit](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/pipeline-preflight.svg)
+ *
+ * ## Usage
+ * ```sh
+ * deno run -A --import-map=preflight.map.json jsr:@microspec/core/preflight apps/<id> [apps/<id> ...] [--url "?tab=<id>&screen=<key>"]
+ * ```
+ * `deno task gates` runs it as the 8n8 node `preflight` over every `apps/<id>` that has a `spec.json`. The
+ * node picks the map and the script per realm: a product tree runs `.microspec/preflight.mjs` (the shim
+ * `rtmap` generates) under `preflight.map.json`, because a dynamic import of consumer files must originate
+ * in a local module; the core checkout runs this file under `packages/gates/preflight.importmap.json`.
+ *
+ * ## Flags and arguments
+ * | argument | meaning |
+ * | --- | --- |
+ * | `apps/<id>` (one or more) | app directories to mount; a trailing slash is stripped |
+ * | `--url "<query>"` | mount the app AT a screen (`?tab=hits&screen=pl:mars`) instead of its landing state — whatever the runtime routes from `location.search`, preflight can mount |
+ *
+ * Without `--url`, every `tool` tab after the first gets its own mount (`?tab=<id>`), so what sits behind a
+ * tool tab no longer fails one CI round later. An explicit `--url` disables that sweep.
+ *
+ * ## What it checks
+ * Static, before the mount (the mode is `view.js` → tool, `stream.js` → stream, else `data.js`):
+ * - `i18n/en.json` missing — en is the required fallback.
+ * - every `T(t,"key")` in the source and every `label` / `titleKey` / `searchKey` in the spec must exist in every locale.
+ * - locale parity: every locale defines exactly the en keys, in both directions.
+ * - keys the RUNTIME renders because the spec declared a capability (`searchPrompt`, `loadMore`, `statusError`, `back`, `favAria`, `title`, `profTagline`, `profTheme`, `profLang`, `install…`) — parity cannot see these, so they are tied to the declaration.
+ * - a DaisyUI `loading-spinner` (use `/_rt/skeleton.js`), `transition-all`, a `shadow-*` surface utility, frosted glass over a `bg-base-*` surface.
+ * - a hand-rolled bottom sheet (`modal-bottom`, or `fixed inset-0` + `role="dialog"` without the kit's `Sheet`) and a hand-rolled play/pause toggle without `Transport`.
+ * - a canvas measured against itself (`x.width = x.clientWidth * dpr`), a `requestAnimationFrame` driving a `.volume` fade, locale-blind `toLocaleString()`.
+ * - a non-lucide icon set, and emoji anywhere in the source, the spec or a locale.
+ *
+ * At the mount (`fetch` is refused for anything but `file:` — apps render their `?mock` fixture):
+ * - render produced (almost) no output — a blank or crashed view.
+ * - stray tag-name text (`"div"`, `"span"` on screen) — an unclosed tag htm turned into literal text.
+ * - a sensor app that rendered no `[data-live]` element — the empty waiting state every downstream check would measure.
+ * - a camera or mic import without `CameraPrime` / `MicPrime`.
+ * - a throw from the render loop, from an async effect, or from the mount itself.
+ *
+ * It writes nothing. Each app prints `✓` or `✗` with every finding in full; the summary counts failed apps
+ * and problems separately, so twenty missing keys read as one broken app, not twenty.
+ *
+ * ## Exit codes
+ * - `0` — all clean.
+ * - `1` — at least one problem in at least one app.
+ * - `2` — no app directory given (prints the usage line).
+ *
+ * ## Where it sits
+ * gate · script · needs: `scaffold`, `demo`, `rtmap` · needed by: `push`. Part of the `gates` flow, the
+ * pre-push floor. The same file runs in both realms — a checkout and the JSR cache — which is why the
+ * consumer files are loaded through a local shim rather than from here.
+ *
+ * ![The three realms and their laws](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/realms.svg)
+ *
+ * ## Why
+ * The farm's own invariants — no emoji, no spinners, camera priming, i18n keys — checked in linkedom,
+ * with no Chromium. `scaffold` precedes it because there is nothing to mount before the shell exists;
+ * `rtmap` precedes it because a stale import map is a gate that tests the wrong runtime.
  * @module
  */
 // GENERATED by tools/dts.mjs from packages/gates/preflight.mjs — edit the JSDoc there, never this file.

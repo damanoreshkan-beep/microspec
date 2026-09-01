@@ -50,7 +50,8 @@
  *   replaces it from the finished import graph.
  * - `icon.svg` — the brand paths on a rounded 512 tile, the fallback for an app that has no art yet.
  *
- * `theme-color` and `background_color` are MEASURED from the runtime's `theme.css` (`--color-base-100` of
+ * `theme-color` and `background_color` are MEASURED from the EFFECTIVE theme — the tree's `rt/theme.css`
+ * when it has a brand, else the core's neutral `runtime.css` (`--color-base-100` of
  * `signal`, or `signal-light` when `spec.theme` contains `light`), never typed here: 76 chrome files once
  * carried a stale base after a repaint. A `theme.css` without that base throws.
  *

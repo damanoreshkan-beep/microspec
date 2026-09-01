@@ -101,7 +101,7 @@ Compose the shared runtime components instead of writing geometry/astronomy from
     Pass `manual: true` for a button press: repeat-one replays a track that ended, but must never trap a
     listener who pressed skip.
 
-  Components size themselves from the **design tokens** in `theme.css` — `--ms-gap/-pad/-r/-ctl/-icon/`
+  Components size themselves from the **design tokens** in the core's `runtime.css` — `--ms-gap/-pad/-r/-ctl/-icon/`
   `-title/-label`, which **step by viewport HEIGHT** (780/670/560px). Never hardcode a gap or a control
   height in an app: one token step compacts the entire farm, including a phone in landscape.
   Padding alone can't save a tall stack, so there is one layout primitive for that: **`.ms-cols`** turns a

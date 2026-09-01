@@ -18,9 +18,11 @@ export function makeHandler(appdir) {
       } catch (e) { return new Response("", { status: 502 }); }
     }
     if (u.pathname.startsWith("/_rt/")) {
-      const r = await serveDir(req, { fsRoot: RT, urlRoot: "_rt", quiet: true });
-      if (r.status !== 404 || !RT2) return r;
-      return serveDir(req, { fsRoot: RT2, urlRoot: "_rt", quiet: true });
+      if (RT2) {
+        const o = await serveDir(req, { fsRoot: RT2, urlRoot: "_rt", quiet: true });
+        if (o.status !== 404) return o;
+      }
+      return serveDir(req, { fsRoot: RT, urlRoot: "_rt", quiet: true });
     }
     return serveDir(req, { fsRoot: appdir, quiet: true });
   };

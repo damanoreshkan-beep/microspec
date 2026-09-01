@@ -51,7 +51,8 @@
  *   replaces it from the finished import graph.
  * - `icon.svg` — the brand paths on a rounded 512 tile, the fallback for an app that has no art yet.
  *
- * `theme-color` and `background_color` are MEASURED from the runtime's `theme.css` (`--color-base-100` of
+ * `theme-color` and `background_color` are MEASURED from the EFFECTIVE theme — the tree's `rt/theme.css`
+ * when it has a brand, else the core's neutral `runtime.css` (`--color-base-100` of
  * `signal`, or `signal-light` when `spec.theme` contains `light`), never typed here: 76 chrome files once
  * carried a stale base after a repaint. A `theme.css` without that base throws.
  *
@@ -97,7 +98,8 @@ const title = dict.title || spec.id;
 const tagline = dict.profTagline || title;
 const isLight = /light/.test(spec.theme || "");
 import { pkgRoot } from "../runtime/pkgroot.js";
-const themeCss = await Deno.readTextFile(new URL("packages/runtime/theme.css", pkgRoot(import.meta.url, 2)));
+const themeCss = await Deno.readTextFile(`${Deno.cwd()}/rt/theme.css`).catch(() =>
+  Deno.readTextFile(new URL("packages/runtime/runtime.css", pkgRoot(import.meta.url, 2))));
 const baseOf = (t) => {
   const i = themeCss.indexOf(`[data-theme="${t}"] {`);
   const m = /--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(themeCss.slice(i));

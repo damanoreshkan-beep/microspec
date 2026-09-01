@@ -124,7 +124,9 @@ a standing assumption, not a per-task ask.)
 - **Type:** the Geist superfamily (Geist + Geist Mono, Cyrillic) — never Inter/system defaults.
 - **Ink is the brand:** primary IS base-content — warm white `#F2EEE6` on black / warm near-black `#141210`
   on paper; colour is for *meaning* (success/warning/error) plus the farm's ONE PAIR OF LIGHT — amber
-  (`secondary`, `--app-accent`) and cyan (`accent`, `--app-accent-2`). `packages/runtime/theme.css`.
+  (`secondary`, `--app-accent`) and cyan (`accent`, `--app-accent-2`). The brand is the PRODUCT's theme
+  module, DreamStudio `rt/theme.css` (+ its sprites); the core's `runtime.css` carries only the structure
+  and a neutral default (`docs/research/theme-split.md`).
 - **The material is LUMINOUS — light IS the structure** (`docs/research/luminous-icons.md`, 2026-08-31; this
   replaced the neumorphic pair, which replaced clay). The page is TRUE BLACK, and depth is never a shadow:
   a surface is an EDGE OF LIGHT. Four rules, and the first two get violated by instinct:
@@ -160,7 +162,7 @@ a standing assumption, not a per-task ask.)
   bespoke copy of any of them is a defect (preflight bans a hand-rolled `modal-bottom` **and a hand-rolled
   play/pause toggle**). Components size off the `--ms-*` density tokens, which step by viewport HEIGHT, and
   carry the app's own hue via `--app-accent` (`spec.accent`) — a MARK colour for dots/rings/fills, never text.
-- **The screen is a lit volume, not a flat sheet** (`theme.css` — "the enclosure"). A viewport-fixed wash
+- **The screen is a lit volume, not a flat sheet** (`rt/theme.css` — "the enclosure"). A viewport-fixed wash
   lights the box from above and the walls are an edge-only inner shadow + rim. Surfaces then MEAN
   something: **raised** (`sf-raised` — dock, sheet, island, button, card) vs **recessed** (`sf-inset` — a
   slider track, a rail, a field, a skeleton: something a value sits in) vs **pressed** (`sf-pressed` — the

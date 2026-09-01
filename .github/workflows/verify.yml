@@ -45,9 +45,9 @@ jobs:
       - name: Schema contract gate (ajv) over every app spec
         run: deno run -A packages/schema/validate.mjs apps/*/spec.json
       - name: Runtime files import each other relatively (absolute /_rt/ 404s at a subpath like /microspec/)
-        run: |
-          # runtime MODULES must import relatively; *_test.js is exempt (fixtures legitimately embed "/_rt/…" strings).
-          if grep -rn 'from "/_rt/' packages/runtime/*.js | grep -v '_test\.js:'; then echo "::error::runtime files must use relative imports (./x.js), not /_rt/ — absolute breaks on GitHub Pages"; exit 1; fi
+        # the tool, not a raw grep: it skips comment lines, and the module docs legitimately show how an APP
+        # imports "/_rt/x.js" (a raw grep went red on the docs, 2026-09-01)
+        run: deno run -A tools/relimports.mjs
       - name: UI kit manifest matches the kit (agents read the manifest, so a stale one is a wrong signature)
         run: deno run -A tools/kit-manifest.mjs --check
       - name: MCP server contract (driven over real stdio, as a client does)

@@ -4,6 +4,8 @@
 
 <br>
 
+[![JSR](https://jsr.io/badges/@microspec/core)](https://jsr.io/@microspec/core)
+[![JSR score](https://jsr.io/badges/@microspec/core/score)](https://jsr.io/@microspec/core/score)
 [![verify](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml/badge.svg)](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml)
 [![gate efficacy](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damanoreshkan-beep/microspec/main/docs/efficacy.json)](packages/gates/efficacy.mjs)
 [![DreamStudio](https://img.shields.io/badge/DreamStudio-live-3fb950)](https://dreamstudio.mooo.com/store/)
@@ -16,6 +18,16 @@ A JSON **spec contract**, a **verified zero-build runtime**, and **CI gates** th
 shipping. This repo carries **no apps at all** — not even a demo: the app its CI verifies is *generated*
 on the spot (`deno task demo`, a deterministic recipe, zero model calls) and walks the same gates as
 everything a product ships. The first product built on it is **[DreamStudio](https://github.com/damanoreshkan-beep/dreamstudio)**.
+
+**It is a package: [`@microspec/core` on JSR](https://jsr.io/@microspec/core)** — documented module by module,
+every export typed, published from CI with provenance.
+
+```sh
+deno add jsr:@microspec/core          # the runtime, schema, gates and tools — execution rides jsr:
+```
+```json
+{ "dependencies": { "@microspec/core": "npm:@jsr/microspec__core@1.0.8" } }   # the FILES (css, sprites) via JSR's npm-compat, for /_rt serving and the build
+```
 
 <br>
 

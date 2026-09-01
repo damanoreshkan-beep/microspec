@@ -459,6 +459,10 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
    instead of being sliced. The markup carries no bg/shadow classes; this rule owns the surface. */
 header.navbar {
   position: sticky;
+  /* SMALL: 2.75rem, not DaisyUI's 4rem nor the old 3.5rem — a bar that presses on the content is chrome the
+     owner feels ("не давив на голову", 2026-09-01). --hdr-h is measured off this element, so every fit
+     screen and stage follows for free; controls are btn-sm (2rem) and fit with air. */
+  min-height: 2.75rem;
   background: linear-gradient(to bottom, var(--color-base-100) 62%, color-mix(in srgb, var(--color-base-100) 72%, transparent) 84%, transparent);
 }
 /* The lip is WOVEN from light, not drawn as a line: the theme's horizon sprite (--ds-lip — night: the
@@ -469,7 +473,9 @@ header.navbar {
 header.navbar::before {
   content: "";
   position: absolute;
-  left: 0; right: 0; bottom: -9px; height: 26px;
+  /* a THREAD along the lip, not a band: a 10px window on the weave's core reads as one filament of light
+     hugging the edge (the 26px band weighed on the header, 2026-09-01) */
+  left: 0; right: 0; bottom: -4px; height: 10px;
   z-index: -1;
   pointer-events: none;
   /* 150%, not 100%: at the viewport's width the weave is too fine and its threads average into a brown
@@ -578,7 +584,7 @@ header.navbar::after {
   --ds-strand-y: calc(100% + 23.5vw);          /* bulbs end on the bottom edge — see [data-garland] */
   --ds-strand-a: .85;
   --ds-lip: url("/_rt/ds-n-arc.webp");         /* the header's woven-light band */
-  --ds-lip-a: .75;
+  --ds-lip-a: .6;
   --ds-scatter: url("/_rt/ds-n-scatter.webp"); /* fireflies behind an empty state */
   --ds-scatter-a: .8;
   --ds-corner: url("/_rt/ds-n-corner.webp");   /* the curl of light in the portal's bottom corners */
@@ -792,13 +798,13 @@ body { letter-spacing: -0.006em; }
 [data-title] {
   font-family: var(--font-mono);
   text-transform: uppercase;
-  letter-spacing: .05em;
+  letter-spacing: .09em;
   font-weight: 700;
-  font-size: 1.02rem;
+  font-size: 0.82rem;   /* a small, neat wordmark — a label on the lip, not a headline */
 }
 /* At night the wordmark is a filament: the same amber bloom the icons glow with, faint enough that the ink
    stays ink. Paper gets none — a glow on white is a smear (measured on the icons). */
-[data-theme="signal"] [data-title] { text-shadow: 0 0 14px color-mix(in oklch, var(--app-accent) 42%, transparent); }
+[data-theme="signal"] [data-title] { text-shadow: 0 0 10px color-mix(in oklch, var(--app-accent) 32%, transparent); }
 
 /* Stage B — instrument details. Global CSS over DaisyUI/render classes; no structural change.
    Badges become mono, uppercase, hairline tags — the "instrument" signal. Colour still means:

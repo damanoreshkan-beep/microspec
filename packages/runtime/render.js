@@ -583,7 +583,7 @@ function PermissionsScreen() {
   const grouped = GROUPS.map((g) => [g, keys.filter((k) => PERMISSIONS[k].group === g)]).filter(([, ks]) => ks.length);
   const GROUP_LABEL = { sense: L.gSense, media: L.gMedia, background: L.gBackground, radios: L.gRadios, system: L.gSystem };
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
+    <header class="navbar sticky top-0 z-10 px-2 gap-1" style="padding-top:env(safe-area-inset-top)">
       <button id="perms-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${L.back} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${L.title}</div>
     </header>
@@ -656,7 +656,7 @@ function SignInScreen() {
     return mods.session.listen(onSession);
   }, [mods]);
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
+    <header class="navbar sticky top-0 z-10 px-2 gap-1" style="padding-top:env(safe-area-inset-top)">
       <button id="signin-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${sys("back", loc)} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${sys("signInTitle", loc)}</div>
     </header>
@@ -711,7 +711,7 @@ function ApkScreen() {
   };
 
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar sticky top-0 z-10 px-2 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)">
+    <header class="navbar sticky top-0 z-10 px-2 gap-1" style="padding-top:env(safe-area-inset-top)">
       <button id="apk-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${sys("back", loc)} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${sys("apkTitle", loc)}</div>
     </header>
@@ -785,7 +785,7 @@ function DetailView() {
   // through, frosted) and the h1 block is the body's to draw — the app-bar title is the only chrome left.
   const staged = !!(d.stage && CustomBody);
   return html`<div role="dialog" aria-modal="true" data-detail class=${`fixed inset-0 z-40 bg-base-200 overflow-y-auto ms-detail-in ${staged ? "isolate" : ""}`} style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class=${`navbar sticky top-0 z-10 px-2 min-h-14 gap-1 ${staged ? "bg-base-100/70 backdrop-blur-xl" : "bg-base-100 sf-e2"}`} style="padding-top:env(safe-area-inset-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${field(it, d.title, loc) ?? ""}</div>${star}</header>
+    <header class=${`navbar sticky top-0 z-10 px-2 gap-1 ${staged ? "bg-base-100/70 backdrop-blur-xl" : "bg-base-100 sf-e2"}`} style="padding-top:env(safe-area-inset-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${field(it, d.title, loc) ?? ""}</div>${star}</header>
     <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">${img}${staged ? null : html`<div><h1 class="text-2xl font-bold leading-tight break-words">${field(it, d.title, loc) ?? ""}</h1>${d.subtitle && it[d.subtitle] ? html`<div class="text-base-content/70 mt-0.5">${field(it, d.subtitle, loc)}</div>` : null}</div>`}${bodyNode}${customNode}${rows.some(Boolean) ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 py-1">${rows}</div></div>` : null}${actions.some(Boolean) ? html`<div class="flex flex-col gap-2">${actions}</div>` : null}</div>
   </div>`;
 }
@@ -978,10 +978,11 @@ function AppBar() {
   // The portal's lip: NO bar, NO border, NO surface classes — theme.css owns the header entirely (the
   // dissolving pane, the woven-light band and the lit hairline, `header.navbar` there). A `bg-base-100 sf-e2`
   // here made it a flat card with a ring, welded over every ambient stage. The title is the app's wordmark
-  // (mono/uppercase/heavy, styled via [data-title]). Height min-h-14 (3.5rem).
+  // (mono/uppercase/heavy, styled via [data-title]). Height is theme.css's (2.75rem — small, out of the way;
+  // owner 2026-09-01: "маленький акуратний, не давив на голову"), and --hdr-h is MEASURED off the element.
   // The "open on phone" trigger is desktop-only (hidden lg:) — a QR of THIS page to hop to your phone; it
   // stays in the DOM on mobile (display:none) so nothing needs a special build, and it's harmless there.
-  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 min-h-14 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 
 // Desktop "open on phone": a QR of the current URL so you can continue on a phone, with an explicit "stay on

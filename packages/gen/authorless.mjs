@@ -1,3 +1,11 @@
+/* @ts-self-types="./authorless.d.mts" */
+/**
+ * Deterministic, LLM-free app generator — a script with no exports. Turns a recipe (source URL + field
+ * map) into a full list-family app under apps/<id>/ (spec.json, data.js, i18n, brand, e2e) that must clear
+ * the same ajv + preflight + Chromium gates as any hand- or model-authored app: swap the author, keep
+ * the floor. `--check` generates into a temp dir and runs the browser-free gates only.
+ * @module
+ */
 // authorless — a deterministic app generator. NO LLM. Point: the moat isn't the model, it's the contract
 // + runtime + gates. A plain function turns a recipe (source URL + a field map) into a full list-family app
 // — spec.json + data.js + i18n + brand — that passes the SAME ajv + preflight + Chromium gates as any hand-

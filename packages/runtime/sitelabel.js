@@ -1,3 +1,12 @@
+/* @ts-self-types="./sitelabel.d.ts" */
+/**
+ * sitelabel — turn a page URL into something a human reads in a list row, and group pages by the site they
+ * belong to. Pure, DOM-free and network-free, so it is unit-tested, deterministic in the gate and correct
+ * offline. Exports humanText (decode machine text once, where it enters a label), hostOf/registrableDomain/
+ * siteName, pageLabel/pageLabelInfo/isWeakLabel, cleanPageTitle, sourceTitle (THE answer to "what is this
+ * page called") and groupByDomain.
+ * @module
+ */
 // sitelabel — turn a page URL into something a human reads in a list row, and group pages by the site they
 // belong to. Pure + DOM-free + network-free → unit-tested, deterministic in the gate, correct offline.
 //
@@ -48,6 +57,11 @@ const decodeEntities = (s) => s.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z][a-z0-9]{1,9
 });
 
 // humanText(raw) → the same string as text a person reads: decoded, unmarked-up, single-spaced. Never throws.
+/**
+ * Turn machine text (percent-encoded, entity-laden, or both) into the text a person reads. Never throws.
+ * @param raw a URL segment, a scraped title, a filename-derived title
+ * @returns the decoded, unmarked-up, single-spaced string
+ */
 export function humanText(raw) {
   const s = decodeEntities(percentDecode(String(raw ?? "")));
   return s
@@ -65,11 +79,21 @@ const MULTI_SUFFIX = new Set([
   "com.mx", "com.ar", "com.sg", "com.hk", "com.tw", "com.ru", "org.ru", "net.ru",
 ]);
 
+/**
+ * The hostname of a URL without a leading `www.`; a string that is not a URL comes back as itself.
+ * @param url a page URL
+ * @returns the bare hostname
+ */
 export function hostOf(url) {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return String(url || "").replace(/^www\./, ""); }
 }
 
 // The grouping key: the registrable domain (site), not the hostname — subdomains are pages of one site.
+/**
+ * The registrable domain of a host — the site, so subdomains group together (commons.wikimedia.org → wikimedia.org).
+ * @param host a hostname
+ * @returns the registrable domain, two-label public suffixes respected (bbc.co.uk stays bbc.co.uk)
+ */
 export function registrableDomain(host) {
   const h = String(host || "").toLowerCase().replace(/^www\./, "").replace(/\.$/, "");
   const p = h.split(".").filter(Boolean);
@@ -81,6 +105,11 @@ const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 // The site's display name: the label before the public suffix. mixkit.co → Mixkit · commons.wikimedia.org →
 // Wikimedia. Deliberately NOT the full host — the host is shown next to it, in mono, as the precise value.
+/**
+ * The site's display name: the capitalised label before the public suffix (mixkit.co → Mixkit).
+ * @param url a page URL
+ * @returns the site name, or the registrable domain when there is no label to show
+ */
 export function siteName(url) {
   const d = registrableDomain(hostOf(url));
   const first = (d.split(".")[0] || d).replace(/[-_]+/g, " ").trim();
@@ -99,6 +128,11 @@ const WEAK_WORD = /^(?:a|the|view|views|watch|watching|play|player|preview|video
 // (`video81234567`, `abC123`, `ph5f2a1b`). A real title's words are one or the other.
 const isWeakToken = (w) => WEAK_WORD.test(w) || /^\d+$/.test(w) || (/[A-Za-z]/.test(w) && /\d/.test(w)) || w.length < 2;
 // A label is weak when every token in it is weak — "Big buck bunny" is a title, "View video" is a URL shape.
+/**
+ * Is this label only a URL shape ("View video", "Video81234567") rather than a name? True when every token is weak.
+ * @param label a derived label
+ * @returns true when the label tells the reader nothing and the page should be asked for its own title
+ */
 export function isWeakLabel(label) {
   const toks = String(label || "").split(/[\s.,:;/|–—-]+/).filter(Boolean);
   return !toks.length || toks.every(isWeakToken);
@@ -123,6 +157,12 @@ const prettify = (raw, max) => {
 // pageLabelInfo(url) → the readable title of THAT page derived from its URL, PLUS whether that derivation
 // actually found a name (`weak: false`) or only produced a shape (`weak: true`). The caller needs the second
 // half: a weak label is the signal to ask the page itself what it is called, instead of showing "View video".
+/**
+ * Derive a page's readable title from its URL and say whether the derivation found a name or only a shape.
+ * @param url the page URL (a search results page is titled by its term)
+ * @param opts `max` — the label's character cap (default 42)
+ * @returns `{ label, weak }` — `weak: true` means the caller should ask the page for its own title
+ */
 export function pageLabelInfo(url, { max = 42 } = {}) {
   const raw = String(url || "").trim();
   if (!raw) return { label: "", weak: true };
@@ -148,6 +188,12 @@ export function pageLabelInfo(url, { max = 42 } = {}) {
 
 // pageLabel(url) → the readable title of THAT page (not the site). Falls back to the site name for a bare
 // root URL, and to the raw string for anything that isn't a URL at all.
+/**
+ * The readable title of THAT page (not the site), derived from its URL.
+ * @param url the page URL
+ * @param opts `max` — the label's character cap (default 42)
+ * @returns the label; the site name for a bare root, the raw string for a non-URL
+ */
 export function pageLabel(url, opts) { return pageLabelInfo(url, opts).label; }
 
 // cleanPageTitle(raw, url) → a page's OWN title (<title>/og:title, or an extracted clip title), with the site
@@ -155,6 +201,13 @@ export function pageLabel(url, opts) { return pageLabelInfo(url, opts).label; }
 // chunk that names the SITE is cut — never an inner one — so a real title containing a dash survives whole.
 // Returns "" when nothing worth showing is left, so a caller can just `||` its way down the fallback chain.
 const SEP = /\s+[-–—|·•:»«]+\s+|\s+[-–—|·•»«]\s*$|^\s*[-–—|·•»«]\s+/;
+/**
+ * A page's OWN title with the site chrome stripped off its ends ("Slow river - TUBE.EXAMPLE" → "Slow river").
+ * @param raw the <title>/og:title or extracted clip title
+ * @param url the page URL, used to recognise the site's name in the title
+ * @param opts `max` — the character cap (default 64)
+ * @returns the cleaned title, or "" when nothing worth showing is left
+ */
 export function cleanPageTitle(raw, url, { max = 64 } = {}) {
   let s = humanText(raw);                                            // entities + escapes, before anything reads it
   if (!s) return "";
@@ -187,6 +240,13 @@ export function cleanPageTitle(raw, url, { max = 64 } = {}) {
 // surface got the producers' own caps (42 from a URL, 64 from a page title) — so a row with three lines
 // spare still showed a name ending in "…". Passed, it overrides BOTH producers with the same number, so the
 // two can never disagree about where a name ends; omitted, each keeps the cap it always had.
+/**
+ * THE one answer to "what is this page called": a URL that names the page wins, then the page's own title,
+ * then the caller's hint, and only then the shape the URL could manage.
+ * @param url the page URL
+ * @param opts `pageTitle` (the page's own title), `hint` (the title of the clip dived from), `max` (the caller's room; 0 = each producer's own cap)
+ * @returns the name to show
+ */
 export function sourceTitle(url, { pageTitle = "", hint = "", max = 0 } = {}) {
   const lim = max ? { max } : undefined;
   const { label, weak } = pageLabelInfo(url, lim);
@@ -196,6 +256,11 @@ export function sourceTitle(url, { pageTitle = "", hint = "", max = 0 } = {}) {
 
 // groupByDomain(list) → [{ domain, name, items }] in first-appearance order. `items` keep their input order,
 // so "the page you added last" stays where the caller put it.
+/**
+ * Group pages by the site they belong to, in first-appearance order.
+ * @param list URL strings or objects with a `url`
+ * @returns [{ domain, name, items }] — `items` keep their input order
+ */
 export function groupByDomain(list) {
   const groups = new Map();
   for (const s of list || []) {

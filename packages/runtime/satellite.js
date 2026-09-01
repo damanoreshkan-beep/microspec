@@ -1,3 +1,11 @@
+/* @ts-self-types="./satellite.d.ts" */
+/**
+ * Vendored satellite.js v5.0.0 (MIT) — the canonical SGP4/SDP4 propagator, self-contained and kept
+ * same-origin so the SW caches it for offline. Exports the satellite.js API as-is (`twoline2satrec`,
+ * `propagate`, `sgp4`, `gstime`, the ECI/ECF/geodetic conversions, `constants`); the runtime reaches it
+ * through ./orbit.js.
+ * @module
+ */
 // VENDORED — satellite.js v5.0.0 (MIT, github.com/shashwatak/satellite-js). SGP4/SDP4 orbital
 // propagator: the canonical Vallado port. Self-contained (Math only, zero deps), fetched from esm.sh and
 // kept same-origin so the SW caches it for offline. Do not hand-edit; re-vendor from esm.sh to update.

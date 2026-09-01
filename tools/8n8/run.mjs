@@ -1,3 +1,11 @@
+/* @ts-self-types="./run.d.mts" */
+/**
+ * The 8n8 runner — a CLI script, not a library (it exports nothing). Executes a flow's DAG from
+ * nodes.mjs: independent nodes concurrently, dependents after, every failure printed in full with its
+ * node id and argv, and the exit code is the number of failed nodes. A green `gates` run stamps
+ * .8n8/last-green.json with the working tree's hash so the push hook can enforce "gates before push".
+ * @module
+ */
 // 8n8 — the runner. Executes a flow's DAG: independent nodes concurrently, dependents after.
 //
 //   deno run -A tools/8n8/run.mjs gates              # the pre-push floor

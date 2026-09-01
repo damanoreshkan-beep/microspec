@@ -1,3 +1,11 @@
+/* @ts-self-types="./index.d.ts" */
+/**
+ * The runtime entry: an app's index.html imports its spec.json + data.js and calls `start()`. It validates
+ * the spec, builds the store, wires theme/locale/haptics, installs the sealed fetch, registers the
+ * cache-first service worker and owns the Back-button routing invariant (one history entry per open
+ * overlay, double-Back-to-exit at the root). Exports `start` only.
+ * @module
+ */
 // microspec runtime — entry. The app's index.html imports its spec.json + data.js and calls start().
 import { render } from "preact";
 import { html } from "htm/preact";
@@ -50,6 +58,12 @@ function registerWorker(app) {
 }
 
 // start(spec, load) — data app; OR start(spec, { load?, views? }) — tool app with custom views.
+/**
+ * Boot the app: validate the spec, create the store, mount the UI and start loading (or streaming) data.
+ * @param spec the app's spec.json object
+ * @param arg2 a `load` function (data app) or `{ load?, views?, stream? }` (tool / stream app)
+ * @returns nothing; throws when the spec is invalid so a broken app never starts half-way
+ */
 export function start(spec, arg2) {
   try { validateSpec(spec); }
   catch (e) { console.error("%c⛔ Invalid spec.json — app not started\n%c" + e.message, "font-weight:bold;color:#f87171", "color:#fca5a5"); throw e; }

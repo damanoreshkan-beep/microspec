@@ -1,3 +1,12 @@
+/* @ts-self-types="./geomag.d.ts" */
+/**
+ * The Earth's magnetic field from the World Magnetic Model (WMM2025), so a compass can turn a magnetic
+ * bearing into a true one — the declination depends on where you are and drifts every year, and it is
+ * proven against NOAA's 100 official test points rather than a demo. Exports `field` (X/Y/Z/H/F plus
+ * declination and inclination), `declination`, `trueFrom`, `decimalYear`, `inRange` and the
+ * `EPOCH`/`VALID_UNTIL` bounds.
+ * @module
+ */
 // microspec runtime — the Earth's magnetic field, from the World Magnetic Model.
 //
 // Why this exists: a phone's compass points at MAGNETIC north. True north is somewhere else — in Ukraine
@@ -20,7 +29,9 @@
 // Refs: NOAA NCEI WMM2025 (WMM2025COF.zip · WMM2025_TestValues.txt) · The US/UK World Magnetic Model for
 // 2025-2030: Technical Report, doi:10.25923/prbc-s316.
 
+/** The model epoch as a decimal year; secular variation is applied relative to it. */
 export const EPOCH = 2025.0;
+/** End of the model's validity as a decimal year (exclusive); beyond it the coefficients are extrapolation. */
 export const VALID_UNTIL = 2030.0;
 const NMAX = 12;
 
@@ -46,6 +57,15 @@ for (let n = 0; n <= NMAX + 1; n++) { SQ[n] = []; for (let m = 0; m <= NMAX + 1;
 
 // field — X (north), Y (east), Z (down) in nT at a geodetic point, plus the derived angles.
 // lat/lon in degrees, altitude in KILOMETRES above the WGS84 ellipsoid, year as a decimal year.
+/**
+ * Evaluates the WMM2025 field at a geodetic point.
+ * @param latDeg geodetic latitude in degrees
+ * @param lonDeg longitude in degrees
+ * @param altKm altitude in kilometres above the WGS84 ellipsoid
+ * @param year decimal year (see `decimalYear`)
+ * @returns `{ X, Y, Z, H, F, declination, inclination }` — components in nT, angles in degrees
+ *   (declination positive when magnetic north lies east of true north)
+ */
 export function field(latDeg, lonDeg, altKm = 0, year = EPOCH) {
   const dt = year - EPOCH;
   const rlon = lonDeg * D2R, rlat = latDeg * D2R;
@@ -130,10 +150,23 @@ export function field(latDeg, lonDeg, altKm = 0, year = EPOCH) {
 }
 
 // declination — the only number a compass actually needs: add it to a magnetic bearing to get a true one.
+/**
+ * Magnetic declination at a point, in degrees (east-positive).
+ * @param lat geodetic latitude in degrees
+ * @param lon longitude in degrees
+ * @param altKm altitude in kilometres above the WGS84 ellipsoid
+ * @param year decimal year
+ * @returns the declination to ADD to a magnetic bearing for a true one
+ */
 export const declination = (lat, lon, altKm = 0, year = EPOCH) => field(lat, lon, altKm, year).declination;
 
 // decimalYear — the model is a function of time, not a snapshot; a compass that ignores this is stale by
 // design. Pass a Date; get what the WMM wants.
+/**
+ * Converts a Date to the decimal year the model takes (UTC, fraction of the year elapsed).
+ * @param d the date; defaults to now
+ * @returns the decimal year
+ */
 export const decimalYear = (d = new Date()) => {
   const y = d.getUTCFullYear();
   const start = Date.UTC(y, 0, 1), end = Date.UTC(y + 1, 0, 1);
@@ -142,10 +175,21 @@ export const decimalYear = (d = new Date()) => {
 
 // inRange — WMM2025 is only valid 2025.0–2030.0. Outside that the coefficients are extrapolation, and the
 // honest thing is to say so rather than quietly keep drawing an arrow.
+/**
+ * Whether a decimal year falls inside the model's validity window.
+ * @param year decimal year; defaults to now
+ * @returns true for EPOCH ≤ year < VALID_UNTIL
+ */
 export const inRange = (year = decimalYear()) => year >= EPOCH && year < VALID_UNTIL;
 
 // Compose a magnetic heading with the local declination into a true one. The whole correction is this
 // single line — which is exactly why it belongs in one place: spread across apps it is one addition each
 // of them can get backwards (the sign of declination is east-positive, so it ADDS) or simply never do.
 // A null declination means no position, hence no model, hence no correction: the heading stays magnetic.
+/**
+ * Composes a magnetic heading with the local declination into a true heading, normalised to 0..360.
+ * @param magneticDeg magnetic heading in degrees
+ * @param dec declination in degrees, or null/undefined to leave the heading magnetic
+ * @returns the true heading in degrees
+ */
 export const trueFrom = (magneticDeg, dec) => ((dec == null ? magneticDeg : magneticDeg + dec) % 360 + 360) % 360;

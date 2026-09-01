@@ -1,3 +1,11 @@
+/* @ts-self-types="./usbsession.d.ts" */
+/**
+ * The HackRF-over-WebUSB session lifecycle, once: request the device, spawn a DSP worker, route its
+ * messages, tear it down on error and again on disconnect. Exports `createUsbSession` and
+ * `TERMINATE_GRACE_MS`. Everything browser-bound (`requestDevice`, `spawn`, even `atom`) is injected, so the
+ * whole lifecycle is testable in Deno with no WebUSB and no Worker.
+ * @module
+ */
 // microspec — the HackRF-over-WebUSB session lifecycle, once.
 //
 // Five apps (ether, fmradio, gsmscan, lorawatch, subclone) carried a byte-identical copy of this: request
@@ -25,23 +33,28 @@
 // Four of the five copies used 400ms and `ether` used 300 — a divergence with no reason behind it that
 // only became visible once they sat side by side. Unified on the LONGER one: both numbers are arbitrary,
 // and the failure this guards against is terminating too early, so the conservative direction is up.
+/** Delay in ms between telling the DSP worker to stop and calling terminate() on it. */
 export const TERMINATE_GRACE_MS = 400;
 
 /**
  * createUsbSession — one connect/disconnect/worker lifecycle.
  *
- * @param spawn         () => Worker. Stays the APP's job: `new URL("./dsp.worker.js", import.meta.url)`
- *                      must resolve against the app's own module, never this file's.
- * @param onMessage     (msg, session) => void. App-specific routing. `{type:"error"}` is handled here.
- * @param start         () => object | null. The message posted right after the worker spawns.
- * @param reset         () => void. Clears the app's own atoms when the link drops. Optional.
- * @param onOpen        () => void. Runs after the device is granted and BEFORE the worker spawns. This
- *                      window is not cosmetic: fmradio builds its AudioContext here, and doing it any
- *                      later would drop the worker's first audio chunks into a context that does not
- *                      exist yet; doing it any earlier would build one for a picker the user cancelled.
- * @param requestDevice () => Promise<device>. Defaults to WebUSB; injected in tests.
- * @param supported     () => boolean. Defaults to WebUSB feature detection.
- * @param setTimer/clearTimer  injected so a test need not wait 400ms of real time.
+ * @param {object} [opts]
+ * @param [opts.atom]          the store's atom constructor (nanostores `atom`), so this module owns no store copy
+ * @param [opts.spawn]         () => Worker. Stays the APP's job: `new URL("./dsp.worker.js", import.meta.url)`
+ *                             must resolve against the app's own module, never this file's.
+ * @param [opts.onMessage]     (msg, session) => void. App-specific routing. `{type:"error"}` is handled here.
+ * @param [opts.start]         () => object | null. The message posted right after the worker spawns.
+ * @param [opts.reset]         () => void. Clears the app's own atoms when the link drops. Optional.
+ * @param [opts.onOpen]        () => void. Runs after the device is granted and BEFORE the worker spawns. This
+ *                             window is not cosmetic: fmradio builds its AudioContext here, and doing it any
+ *                             later would drop the worker's first audio chunks into a context that does not
+ *                             exist yet; doing it any earlier would build one for a picker the user cancelled.
+ * @param [opts.requestDevice] () => Promise<device>. Defaults to WebUSB; injected in tests.
+ * @param [opts.supported]     () => boolean. Defaults to WebUSB feature detection.
+ * @param [opts.filters]       WebUSB device filters for the picker (`[{ vendorId, productId }]`)
+ * @param [opts.setTimer]      injected so a test need not wait 400ms of real time (default setTimeout)
+ * @param [opts.clearTimer]    the matching clear (default clearTimeout)
  */
 export function createUsbSession({
   atom,

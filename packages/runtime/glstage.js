@@ -1,3 +1,11 @@
+/* @ts-self-types="./glstage.d.ts" */
+/**
+ * The GL stage: hero.js's twin on WebGL2, for a stage that has to be seen where WebGPU is not (iOS 16,
+ * Firefox on Android, CI's headless Chromium). Same uniform contract as HeroStage (`res`, `time`, `seed`,
+ * `ink`, `vary`, `env`, plus an optional palette texture), probe-guarded rather than gate-guarded so the
+ * verify shot shows the real field. Exports the `GlStage` component and the `hasWebGL2` probe.
+ * @module
+ */
 // microspec runtime — the GL stage: hero.js's twin on WebGL2, for a stage that has to be seen where WebGPU
 // is not (an iPad on iOS 16, Firefox on Android, CI's headless Chromium — which HAS WebGL, so the verify
 // shot shows the real field). Same contract as HeroStage so an app can carry the same numbers to either:
@@ -34,6 +42,10 @@ in vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
 const themeLight = () =>
   (typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light")) ? 1 : 0;
 
+/**
+ * Probe whether this document can hand out a WebGL2 context (false wherever `getContext` throws or answers null).
+ * @returns true when a WebGL2 context is available
+ */
 export const hasWebGL2 = () => {
   try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2")); } catch { return false; }
 };

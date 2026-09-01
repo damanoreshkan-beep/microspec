@@ -123,6 +123,13 @@ export const NODES = [
       "map is a gate that tests the wrong runtime. A tree with no overlay generates nothing.",
     run: () => ["deno", "run", "-A", at("tools/rtmap.mjs"), "--check"],
   },
+  {
+    id: "dts", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-09-01",
+    why: "The package's .d.ts files, generated from the JavaScript + its JSDoc (tools/dts.mjs): JSR " +
+      "cannot type a JS entrypoint, so without them every export is a slow type and the docs never " +
+      "render. A stale declaration is red here, before it is stale on the registry. No-op in a consumer.",
+    run: () => ["deno", "run", "-A", at("tools/dts.mjs"), "--check"],
+  },
 
   // ── gate: the deterministic half. Every node here answers with a NAMED failure. ────────────────
   {
@@ -300,7 +307,7 @@ export function topo(nodes = NODES) {
 // The named flows. A flow is a SET of target nodes; the runner pulls in their dependencies.
 export const FLOWS = {
   // everything runnable on this device, no network, no Chromium — the pre-push floor
-  gates: ["demo", "rtmap", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
+  gates: ["demo", "rtmap", "dts", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
   // The authoring flow, now genuinely executable: the briefed agent nodes spawn a headless CLI, each is
   // gated by its own deterministic node the moment it returns, and scaffold turns the result into a
   // runnable app. `ideate` is absent on purpose — wanting an app is the one input a pipeline cannot supply.

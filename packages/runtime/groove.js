@@ -1,3 +1,12 @@
+/* @ts-self-types="./groove.d.ts" */
+/**
+ * Groove theory: the maths behind "generate a beat a human actually wants to move to", so no music app has
+ * to reinvent it. Pure functions, zero deps, no DOM. Four results from the literature — Euclidean rhythms
+ * (`bjorklund`), Longuet-Higgins & Lee syncopation (`syncopation`), Witek's inverted-U (`grooveU`) and
+ * Bowling & Purves harmonicity (`harmonicity`) — feed a scored search (`generateGroove`) that beats random by
+ * construction, which the unit gate asserts.
+ * @module
+ */
 // microspec runtime — groove theory. The maths behind "generate a beat a human actually wants to move to",
 // so no music app has to reinvent it. Pure functions, zero deps, no DOM → fully unit-testable by the
 // browser-free gate (packages/runtime/runtime_test.js), which is the point: the claim "this is not random"
@@ -25,15 +34,23 @@
 // score each against the curves above, keep the best. generateGroove() beats random by construction — and
 // runtime_test.js asserts exactly that.
 
+/** Steps per bar — a 16-step 4/4 grid (sixteenths). */
 export const N = 16;
 
 // Longuet-Higgins & Lee metric weights for a 16-step 4/4 bar (subdivision tree 2×2×2×2).
 // 0 = the downbeat (strongest); -4 = a sixteenth offbeat (weakest). Higher = more metrically salient.
+/** Metric weight of each of the 16 grid positions (Longuet-Higgins & Lee): 0 on the downbeat down to -4 on a sixteenth offbeat. */
 export const METRIC_WEIGHTS = [0, -4, -3, -4, -2, -4, -3, -4, -1, -4, -3, -4, -2, -4, -3, -4];
 const WMIN = -4, WSPAN = 4;   // the widest possible weight jump — used to normalise syncopation to 0..1
 
 // ---- 1. Euclidean rhythm (Toussaint 2005 / Bjorklund) ----
 // Distribute k onsets over n steps as evenly as possible. Returns bool[n].
+/**
+ * Euclidean rhythm (Toussaint 2005 / Bjorklund): spread k onsets over n steps as evenly as possible.
+ * @param k number of onsets
+ * @param n number of steps
+ * @returns a boolean array of length n, true where an onset falls
+ */
 export function bjorklund(k, n) {
   n = Math.max(0, Math.floor(n)); k = Math.floor(k);
   if (n === 0) return [];
@@ -53,12 +70,23 @@ export function bjorklund(k, n) {
 
 // Rotate a pattern left by r (a rotation of a Euclidean rhythm is still one of its traditional forms —
 // son clave and rumba clave are rotations of each other).
+/**
+ * Rotate a pattern left by r steps (negative r rotates right).
+ * @param p the pattern array
+ * @param r number of steps to rotate
+ * @returns a new array of the same length
+ */
 export const rotate = (p, r) => p.map((_, i) => p[(((i + r) % p.length) + p.length) % p.length]);
 
 // ---- 2. Syncopation (Longuet-Higgins & Lee 1984) ----
 // A note sounds until the next onset (wrapping at the bar). If, while it sounds, it covers a position with
 // a HIGHER metric weight than its own onset, it outlasts the unit it initiated → syncopation, scored by the
 // difference. Sum over the bar.
+/**
+ * Raw Longuet-Higgins & Lee syncopation score of a 16-step pattern, summed over the bar.
+ * @param p boolean pattern of length N
+ * @returns the summed weight difference (0 for an empty or unsyncopated pattern)
+ */
 export function syncopation(p) {
   const on = [];
   for (let i = 0; i < p.length; i++) if (p[i]) on.push(i);
@@ -79,17 +107,34 @@ export function syncopation(p) {
 
 // Syncopation per onset, normalised to 0..1 — comparable across densities (a raw LHL sum just grows with
 // the number of notes, which would make "more notes" look like "more groove").
+/**
+ * Syncopation per onset, normalised to 0..1 so patterns of different density compare fairly.
+ * @param p boolean pattern of length N
+ * @returns a value in 0..1
+ */
 export function syncopationNorm(p) {
   const onsets = p.reduce((n, v) => n + (v ? 1 : 0), 0);
   if (!onsets) return 0;
   return Math.min(1, syncopation(p) / (onsets * WSPAN));
 }
 
+/**
+ * Fraction of steps that carry an onset.
+ * @param p boolean pattern
+ * @returns onsets ÷ length, 0 for an empty pattern
+ */
 export const density = (p) => (p.length ? p.reduce((n, v) => n + (v ? 1 : 0), 0) / p.length : 0);
 
 // ---- 3. The Witek inverted-U ----
 // A Gaussian IS the inverted-U curve the paper measured: reward peaks at `mu` and falls off either side, so
 // "no syncopation" and "chaos" are both scored down. sigma = how forgiving the peak is.
+/**
+ * Witek's inverted-U as a Gaussian: reward peaks at `mu` and falls off either side.
+ * @param x the measured value (e.g. normalised syncopation)
+ * @param mu where the reward peaks
+ * @param sigma how forgiving the peak is
+ * @returns a reward in 0..1
+ */
 export const grooveU = (x, mu, sigma) => Math.exp(-((x - mu) ** 2) / (2 * sigma * sigma));
 
 // ---- 4. Harmonicity (Bowling & Purves 2018) ----
@@ -97,6 +142,11 @@ export const grooveU = (x, mu, sigma) => Math.exp(-((x - mu) ** 2) / (2 * sigma 
 // 1/log2(a·b): unison/octave/fifth high, tritone/minor-second low. Computed from the ratios, not a taste table.
 const RATIOS = [[1, 1], [16, 15], [9, 8], [6, 5], [5, 4], [4, 3], [45, 32], [3, 2], [8, 5], [5, 3], [9, 5], [15, 8]];
 const HMAX = 1 / Math.log2(2);   // the unison (1:1 → log2(1)=0) is clamped to the octave's score as the ceiling
+/**
+ * Consonance of an interval (Bowling & Purves 2018), scored from its just-intonation ratio.
+ * @param semitones interval from the root in semitones (any integer; reduced mod 12)
+ * @returns a value in 0..1 — unison/octave/fifth high, tritone/minor-second low
+ */
 export function harmonicity(semitones) {
   const s = ((Math.round(semitones) % 12) + 12) % 12;
   const [a, b] = RATIOS[s];
@@ -106,6 +156,11 @@ export function harmonicity(semitones) {
 
 // ---- deterministic RNG (mulberry32) ----
 // Seeded so a generated beat is reproducible and shareable — "seed 42" always yields the same groove.
+/**
+ * Seeded mulberry32 PRNG.
+ * @param seed 32-bit integer seed
+ * @returns a function yielding uniform floats in [0, 1)
+ */
 export function mulberry32(seed) {
   let a = seed >>> 0;
   return () => {
@@ -129,6 +184,7 @@ const pick = (rng, arr) => arr[Math.floor(rng() * arr.length) % arr.length];
 // Not one global syncopation number: the polyphonic groove literature is clear that the roles differ — the
 // low end ANCHORS the metre (near-zero syncopation) while the mid/bass voices syncopate AGAINST it, and that
 // tension is where the groove lives. So each band gets its own inverted-U target.
+/** Per-band syncopation targets `{ mu, sigma, w }` for the low / mid / high roles — each its own inverted-U and weight. */
 export const BANDS = {
   low: { mu: 0.06, sigma: 0.12, w: 1.4 },    // kick/sub: hold the pulse down
   mid: { mu: 0.42, sigma: 0.18, w: 2.2 },    // bass/stab: Witek's peak — the groove driver
@@ -139,6 +195,11 @@ export const BANDS = {
 // candidate note is weighted by harmonicity(), so the fifth and octave dominate and the tritone is rare.
 const CHROMA = [0, 3, 5, 7, 10, 12];
 
+/**
+ * Draw a 16-step bass riff: tonic/fifth on strong positions, harmonicity-weighted pentatonic notes elsewhere.
+ * @param rng a seeded random function (see `mulberry32`)
+ * @returns an array of N semitone offsets from the root
+ */
 export function makeRiff(rng) {
   return Array.from({ length: N }, (_, i) => {
     // Strong metric positions anchor the tonic (a root on the downbeat is what makes the rest legible as
@@ -150,6 +211,12 @@ export function makeRiff(rng) {
 
 // Mean harmonicity of the notes you ACTUALLY hear (riff steps where a bass voice fires) — scoring the whole
 // riff would reward notes that never sound.
+/**
+ * Mean harmonicity of the riff notes that actually sound.
+ * @param riff semitone offsets per step (from `makeRiff`)
+ * @param bassPattern boolean pattern of the steps where a bass voice fires
+ * @returns a value in 0..1, 0 when no bass step fires
+ */
 export function riffHarmonicity(riff, bassPattern) {
   const hit = riff.filter((_, i) => bassPattern[i]);
   if (!hit.length) return 0;
@@ -168,6 +235,12 @@ export function riffHarmonicity(riff, bassPattern) {
 // Fixing the line-up first means each generation searches a different space — the scorer then answers the
 // question it is actually good at ("where do these voices go?") instead of one it is bad at ("what is
 // interesting?"). Variety is the app's taste; placement is the runtime's science.
+/**
+ * Draw the line-up for one generation: each role plays with probability `p`, and a low-band voice is always kept.
+ * @param rng a seeded random function
+ * @param roles the app's voice roles `[{ id, band, ks, rots, p }]`
+ * @returns the subset of roles that will play
+ */
 export function sampleVoices(rng, roles) {
   const on = roles.filter((r) => r.p >= 1 || rng() < r.p);
   const low = roles.filter((r) => r.band === "low");
@@ -176,6 +249,12 @@ export function sampleVoices(rng, roles) {
 
 // Build one candidate: every supplied voice plays, with its onset count and rotation drawn from the legal
 // Euclidean space the app declared for it.
+/**
+ * Build one candidate groove from the fixed line-up.
+ * @param rng a seeded random function
+ * @param voices the roles that play (from `sampleVoices`)
+ * @returns `{ tracks: { [id]: bool[N] }, riff }`
+ */
 export function buildCandidate(rng, voices) {
   const tracks = {};
   for (const r of voices) tracks[r.id] = rotate(bjorklund(pick(rng, r.ks), N), pick(rng, r.rots));
@@ -183,6 +262,12 @@ export function buildCandidate(rng, voices) {
 }
 
 // Score a candidate against the four results. Higher = more likely to make a human move.
+/**
+ * Score a candidate against the four literature results plus density, backbeat, floor and doubling terms.
+ * @param cand a candidate from `buildCandidate`
+ * @param roles the roles the candidate's tracks belong to
+ * @returns the score — higher is more likely to make a human move
+ */
 export function scoreGroove(cand, roles) {
   const band = (name) => {
     const ids = roles.filter((r) => r.band === name).map((r) => r.id);
@@ -231,6 +316,14 @@ export function scoreGroove(cand, roles) {
 // generateGroove — draw `tries` candidates from the Euclidean space and keep the highest-scoring one.
 // This is the whole thesis: the space is a formula (Toussaint), the ranking is measured human preference
 // (Witek · LHL · Bowling & Purves), so the output is a search result, not a dice roll.
+/**
+ * Generate a groove: fix the line-up, draw `tries` candidates from the Euclidean space and keep the best-scoring one.
+ * @param roles the app's voice roles `[{ id, band, ks, rots, p, bass?, backbeat? }]`
+ * @param {object} [opts]
+ * @param [opts.seed] seed for reproducibility
+ * @param [opts.tries] candidates to score (default 220)
+ * @returns the best candidate with `voices`, `seed`, `score`, `meanScore` and `tries` attached
+ */
 export function generateGroove(roles, { seed, tries = 220 } = {}) {
   const s = seed >>> 0;
   const rng = mulberry32(s);

@@ -1,3 +1,11 @@
+/* @ts-self-types="./relimports.d.mts" */
+/**
+ * Pre-push rule: runtime modules (packages/runtime and the consumer's rt/ overlay) must import each other
+ * relatively, never via an absolute "/_rt/…" — that resolves to the domain root and 404s under the
+ * GitHub Pages subpath while working locally. Scans the files and exits 1 on a violation. A CLI script — it
+ * exports nothing.
+ * @module
+ */
 // Runtime modules must import each OTHER relatively.
 //
 // The farm is served from https://…github.io/microspec/, a SUBPATH. An absolute "/_rt/x.js" resolves to

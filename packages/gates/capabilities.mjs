@@ -1,3 +1,12 @@
+/* @ts-self-types="./capabilities.d.mts" */
+/**
+ * The capability gate: `spec.json`'s `needs` must match what the app's own source actually reaches for,
+ * measured by the named gateway symbols it imports (`SYMBOL_CAPS`) and raw browser calls (`RAW_CAPS`),
+ * with the compass trueNorth opt-out read rather than assumed. Exports the pure `importedNames` and
+ * `capabilitiesOf` plus the per-app `scanApp`; run as a script it reports every mismatch in the farm and
+ * `--check` exits 1 on any.
+ * @module
+ */
 // microspec — the capability gate. `spec.json`'s `needs` must match what the app actually reaches for.
 //
 //   deno run -A packages/gates/capabilities.mjs            # report
@@ -30,6 +39,7 @@ const read = (p) => { try { return Deno.readTextFileSync(`${ROOT}/${p}`); } catc
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // imported symbol → the capabilities it actually reaches for
+/** Runtime module → imported symbol → the capabilities that symbol reaches for (`"*"` = any import of the module). */
 export const SYMBOL_CAPS = {
   "/_rt/sensors.js": {
     geo: ["geo"], camera: ["camera"], mic: ["microphone"],
@@ -41,6 +51,7 @@ export const SYMBOL_CAPS = {
 };
 
 // raw calls in the app's own files — an app reaching past the runtime still declares the capability
+/** Capability → regex matching a raw browser API call in the app's own source. */
 export const RAW_CAPS = {
   usb: /navigator\.usb\b/,
   geo: /navigator\.geolocation\b/,
@@ -52,6 +63,12 @@ export const RAW_CAPS = {
 };
 
 // The names imported from one module. Pure, so it is testable without a filesystem.
+/**
+ * The names an app source imports from one module specifier; `"*"` is added whenever the module is imported at all.
+ * @param src JavaScript source text
+ * @param moduleSpec the exact module specifier, e.g. "/_rt/sensors.js"
+ * @returns a Set of imported names
+ */
 export function importedNames(src, moduleSpec) {
   const names = new Set();
   const re = new RegExp(`import\\s*(?:[\\w$]+\\s*,\\s*)?\\{([^}]*)\\}\\s*from\\s*["']${esc(moduleSpec)}["']`, "g");
@@ -66,6 +83,11 @@ export function importedNames(src, moduleSpec) {
 }
 
 // Everything one app's own source reaches for. `src` is the app's .js files concatenated.
+/**
+ * Every capability one app's own source reaches for, via gateway imports and raw browser calls.
+ * @param src the app's .js files concatenated
+ * @returns a Set of capability ids (geo, camera, microphone, compass, orientation, motion, wakeLock, usb, auth)
+ */
 export function capabilitiesOf(src) {
   const used = new Set();
   for (const [mod, map] of Object.entries(SYMBOL_CAPS)) {
@@ -78,6 +100,11 @@ export function capabilitiesOf(src) {
   return used;
 }
 
+/**
+ * Audit one app under apps/<id>: compare the capabilities its code uses against the `needs` its spec.json declares.
+ * @param id the app directory name
+ * @returns `{ id, missing, stale }` — used but undeclared, and declared but unused, both sorted
+ */
 export function scanApp(id) {
   let src = "";
   for (const f of Deno.readDirSync(`${ROOT}/apps/${id}`)) {

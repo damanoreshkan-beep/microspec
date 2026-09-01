@@ -1,3 +1,12 @@
+/* @ts-self-types="./auth.d.ts" */
+/**
+ * The farm's authentication module — GitHub OAuth and Sign in with Google, with the token NEVER reaching the
+ * browser: the edge keeps it and the PWA holds only an opaque sid. Exports the `session` atom, the sign-in /
+ * restore / logout flows (`login`, `loginGoogle`, `restore`, `logout`, `adoptSession`, the pairing trio for
+ * the APK's WebView), the narrow acting-on-behalf calls (`star`, `repos`, `runs`, `jobs`) and the
+ * deterministic MOCK_* fixtures the gate renders with, since under the gate there is no network.
+ * @module
+ */
 // microspec runtime — GitHub OAuth. The farm's first authentication system module: reusable by any app that
 // needs "who is the signed-in user" and acting on their behalf (nova is the first consumer).
 //
@@ -28,20 +37,28 @@ const EDGE_ORIGIN = (() => { try { return new URL(VPS_PROXY).origin; } catch { r
 // The scope we request. `public_repo` is the narrowest CLASSIC OAuth scope that permits starring on the
 // user's behalf (PUT /user/starred/…); the login sheet discloses it. A GitHub App with a fine-grained
 // "Starring" permission would be narrower but a heavier install flow — a documented future tightening.
+/** The default GitHub OAuth scope — the narrowest classic scope that permits starring on the user's behalf. */
 export const SCOPE = "public_repo";
 
 // session: null = signed out; { sid, user, provider } = signed in. `user` is the trimmed profile — the same
 // four fields whichever provider minted it (login · name · avatar · html_url), so no consumer branches.
 // `provider` is "github" | "google": an app that needs to ACT on GitHub (star, read Actions) checks it —
 // a Google session identifies the reader but holds no GitHub token.
+/** The session atom: null when signed out, `{ sid, user, provider }` when signed in. */
 export const session = atom(null);
 
 // A deterministic stand-in so the login-gated feed renders under the gate (the shot must see the populated
 // screen, not the sign-in wall). Never used off the gate.
+/** The deterministic GitHub user the gate signs in as; never used off the gate. */
 export const MOCK_USER = { login: "octocat", name: "Octocat", avatar: "", html_url: "https://github.com/octocat" };
 const MOCK_SESSION = { sid: "mock-sid", user: MOCK_USER, provider: "github" };
+/** The deterministic Google session the gate uses for the Google sign-in path; never used off the gate. */
 export const MOCK_GOOGLE_SESSION = { sid: "mock-sid-google", user: { login: "octo@example.com", name: "Octocat", avatar: "", html_url: "" }, provider: "google" };
 
+/**
+ * Whether a session is currently held.
+ * @returns true when `session` is non-null
+ */
 export const isLoggedIn = () => !!session.get();
 
 // ── localStorage, guarded (private mode / SSR / preflight) ───────────────────────────────────────────────
@@ -87,6 +104,10 @@ const me = (sid, provider) => (provider === "google" ? edgeAt(`${GOOGLE}/me`, { 
 // is dropped ONLY on a DEFINITIVE 401 (the edge says the sid/token is dead). Every transient failure — network
 // down, timeout, edge 5xx, GitHub rate-limited — KEEPS the session: this was the bug that logged users out on a
 // restart when me() so much as hiccuped.
+/**
+ * Rehydrate the session on app boot: cached profile immediately, revalidated in the background; dropped only on a definitive 401.
+ * @returns the session, or null when signed out
+ */
 export async function restore() {
   if (gate) { session.set(MOCK_SESSION); return MOCK_SESSION; }
   const sid = lsGet(SID_KEY);
@@ -115,6 +136,11 @@ export async function restore() {
 // every app that only stars things ask for the wider one. Each app asks for what it actually needs, and the
 // login sheet discloses it. (An existing session keeps the scope it was minted with — an app that needs more
 // has to have the user sign in again, which is the honest behaviour.)
+/**
+ * Open the GitHub consent popup and resolve once the edge posts back an opaque sid.
+ * @param opts `{ scope }` — the OAuth scope this app actually needs (default `SCOPE`)
+ * @returns a promise of the session; rejects on "popup-blocked", "popup-closed", "timeout" or a missing profile
+ */
 export function login({ scope = SCOPE } = {}) {
   if (gate) { session.set(MOCK_SESSION); return Promise.resolve(MOCK_SESSION); }
   return new Promise((resolve, reject) => {
@@ -152,6 +178,13 @@ export function login({ scope = SCOPE } = {}) {
 // star(owner, repo, on=true) — star (on) or unstar (off) on the user's behalf. Gate → local no-op (no
 // network under the gate), resolves true. Off the gate, requires a session; returns true on success, false on
 // any failure (the caller reverts its optimistic UI). A DELIBERATE, one-at-a-time human action — never bulk.
+/**
+ * Star or unstar a repository on the user's behalf.
+ * @param owner the repository owner
+ * @param repo the repository name
+ * @param on true to star, false to unstar
+ * @returns true on success (always under the gate), false on any failure
+ */
 export async function star(owner, repo, on = true) {
   if (gate) return true;
   const s = session.get();
@@ -170,6 +203,11 @@ export async function star(owner, repo, on = true) {
 // `conclusion` (success|failure|cancelled|…). Collapsing those two into one word is the single thing every
 // CI UI has to get right, and it is why `state` exists below — a run that is still going has NO conclusion,
 // and reading `conclusion` alone makes a running build look cancelled.
+/**
+ * Collapse a GitHub run/job/step's `status` + `conclusion` into one word.
+ * @param r the raw GitHub object carrying `status` and (once completed) `conclusion`
+ * @returns "queued" | "running" | the conclusion ("success", "failure", …) | "unknown"
+ */
 export const runState = (r) => (r.status !== "completed" ? (r.status === "queued" ? "queued" : "running") : (r.conclusion || "unknown"));
 
 const trimRepo = (r) => ({
@@ -188,11 +226,13 @@ const trimJob = (j) => ({
 
 // Deterministic fixtures — the gate has no network and no session, and the shot must show a POPULATED
 // board rather than a sign-in wall. Same reason MOCK_USER exists.
+/** Deterministic repository fixtures `repos()` returns under the gate. */
 export const MOCK_REPOS = [
   { id: 1, name: "microspec", full: "octocat/microspec", owner: "octocat", private: false, pushed: "2026-07-26T10:00:00Z", url: "" },
   { id: 2, name: "microspec-edge", full: "octocat/microspec-edge", owner: "octocat", private: true, pushed: "2026-07-25T18:20:00Z", url: "" },
   { id: 3, name: "anubis-launcher", full: "octocat/anubis-launcher", owner: "octocat", private: false, pushed: "2026-07-24T09:05:00Z", url: "" },
 ];
+/** Deterministic workflow-run fixtures keyed by "owner/repo", returned by `runs()` under the gate. */
 export const MOCK_RUNS = {
   "octocat/microspec": [
     { id: 11, n: 412, name: "verify", title: "watch mode — the dock turns 90°", state: "failure", event: "push", branch: "main", sha: "950be55", started: "2026-07-26T10:01:00Z", updated: "2026-07-26T10:07:00Z", url: "" },
@@ -204,6 +244,7 @@ export const MOCK_RUNS = {
   ],
   "octocat/anubis-launcher": [],
 };
+/** Deterministic job/step fixtures `jobs()` returns under the gate. */
 export const MOCK_JOBS = [
   { id: 101, name: "unit", state: "success", started: "2026-07-26T10:01:10Z", completed: "2026-07-26T10:02:40Z",
     steps: [{ n: 1, name: "Checkout", state: "success" }, { n: 2, name: "Setup Deno", state: "success" }, { n: 3, name: "deno test", state: "success" }] },
@@ -246,6 +287,11 @@ export async function jobs(owner, repo, id) {
 // A Google session also tells GIS not to auto-select next time (the documented "no dead loop" step).
 // adoptSession — a session minted elsewhere (the phone's browser, via the edge's pairing) becomes THIS page's:
 // persisted under the same keys restore() reads, and set on the atom so every surface flips at once.
+/**
+ * Make a session minted elsewhere (the pairing flow) this page's own: persist it and set the atom.
+ * @param s `{ sid, provider?, user? }` — the opaque sid, "github" | "google", and the trimmed profile
+ * @returns the adopted session, or null when the sid is missing
+ */
 export function adoptSession({ sid, provider = "github", user }) {
   if (typeof sid !== "string" || !sid) return null;
   const u = user && user.login ? { login: user.login, name: user.name || user.login, avatar: user.avatar || "", html_url: user.html_url || "" } : null;
@@ -257,10 +303,28 @@ export function adoptSession({ sid, provider = "github", user }) {
 // Pairing (the APK's WebView cannot pop a window nor run GIS): pairNew() → an id; the browser page that signs
 // in calls pairComplete(id, sid); the WebView polls pairPoll(id) until the session arrives.
 const PAIR = `${VPS_PROXY}/pair`;
+/**
+ * Ask the edge for a fresh pairing id (the WebView side of pairing).
+ * @returns the pairing id, or null when the edge refused
+ */
 export async function pairNew() { const r = await fetch(`${PAIR}/new`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }); const j = await r.json().catch(() => null); return r.ok && typeof j?.pair === "string" ? j.pair : null; }
+/**
+ * Hand a signed-in sid to a pairing id (the browser side of pairing).
+ * @param pair the pairing id
+ * @param sid the session id just minted in this browser
+ * @returns true when the edge accepted it
+ */
 export async function pairComplete(pair, sid) { const r = await fetch(`${PAIR}/complete`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pair, sid }) }); return r.ok; }
+/**
+ * Poll a pairing id for the session the browser side completed; throws an Error carrying `.status` on a non-ok reply.
+ * @param pair the pairing id
+ * @returns the edge's JSON reply (the session once it has arrived)
+ */
 export async function pairPoll(pair) { const r = await fetch(`${PAIR}/poll?pair=${encodeURIComponent(pair)}`); if (!r.ok) throw Object.assign(new Error("pair " + r.status), { status: r.status }); return r.json(); }
 
+/**
+ * Drop the local sid + session and best-effort tell the edge (or GIS auto-select) to forget it.
+ */
 export async function logout() {
   const s = session.get();
   dropStored();

@@ -1,3 +1,11 @@
+/* @ts-self-types="./permissions.d.ts" */
+/**
+ * Runtime permissions — ONE registry, TWO backends. A permission is a thing the user grants, not an API, so
+ * each entry may carry a browser backend, a shell capability, or both, and `permState` reports the gate that
+ * is ACTUALLY blocking (including "needs the app"). Exports the `PERMISSIONS` registry and `GROUPS`,
+ * `refreshHeld`/`heldPermissions`, `permState`, `permRequest`, `permAndroid` and the built-in `permLabels`.
+ * @module
+ */
 // Runtime permissions — ONE registry, TWO backends.
 //
 // A permission is a thing the user grants, not an API: "Notifications" is one row whether it is granted
@@ -13,6 +21,10 @@ import { shell, ERR } from "./shell.js";
 // Android permissions this app actually holds, filled from system.info. Until it arrives a shell
 // capability can only be reported as present, which is the lie every tile was telling.
 let HELD = null;
+/**
+ * Refresh the map of Android permissions the app actually holds from the shell's system.info.
+ * @returns the held-permission map, or null where there is no shell / the call failed
+ */
 export async function refreshHeld() {
   if (!shell.has("system.info")) { HELD = null; return null; }
   try { HELD = (await shell.call("system.info", {})).perms || null; } catch { HELD = null; }
@@ -28,9 +40,11 @@ const iosMotion = () => typeof DeviceOrientationEvent !== "undefined" && typeof 
 
 // The five groups a long registry has to break into. Radios and system are declared now and fill up as
 // phases 5–8 land capabilities; an empty group renders nothing.
+/** The groups the permission registry renders in, in display order. */
 export const GROUPS = ["sense", "media", "background", "radios", "system"];
 
 // name → { icon, group, capability?, query()?, request()? }
+/** The permission registry: name → `{ icon, group, capability?, query()?, request()? }`. */
 export const PERMISSIONS = {
   geolocation: {
     icon: "lucide:map-pin",
@@ -125,6 +139,12 @@ export const PERMISSIONS = {
 /** The raw held-permission map, for a screen that must show WHICH one is missing rather than a verdict. */
 export const heldPermissions = () => HELD;
 
+/**
+ * Report the gate that is actually blocking a permission — shell first, then the browser backend.
+ * @param name a key of `PERMISSIONS`
+ * @returns `{ state, via }` — state: granted | partial | prompt | denied | unsupported | needsApp | staleApp;
+ *   via: "shell" | "browser" | ""
+ */
 export async function permState(name) {
   const def = PERMISSIONS[name];
   if (!def) return { state: "unsupported", via: "" };
@@ -197,4 +217,9 @@ const L = {
     staleAppHint: "The installed app predates this capability. Update it from the profile.",
   },
 };
+/**
+ * Built-in labels for the permissions screen (uk/en), falling back to English.
+ * @param loc the locale code
+ * @returns the label table for that locale
+ */
 export const permLabels = (loc) => L[loc] || L.en;

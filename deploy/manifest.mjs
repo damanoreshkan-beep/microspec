@@ -1,3 +1,10 @@
+/* @ts-self-types="./manifest.d.mts" */
+/**
+ * Generates the store launcher's data: scans every app's spec.json, brand and locales and builds the grid
+ * items the store renders (titles per locale, icon material, screens, shots, version, hardware needs).
+ * Exports `buildManifest`; run as a script it writes apps/store/apps.json.
+ * @module
+ */
 // microspec — generate the store launcher's data. Scans every app's spec.json + brand.json and writes
 // apps/home/apps.json (the grid items the `home` store app renders). Run by build.mjs, and standalone
 // whenever an app is added/removed:
@@ -15,6 +22,10 @@ async function gitCount(path) {
   try { const { stdout, success } = await new Deno.Command("git", { args: ["rev-list", "--count", "HEAD", "--", path], stdout: "piped", stderr: "null" }).output(); return success ? (parseInt(new TextDecoder().decode(stdout).trim(), 10) || 0) : 0; } catch { return 0; }
 }
 
+/**
+ * Scans apps/ (every directory with a spec.json, the store itself excluded) and builds the launcher's grid items.
+ * @returns the app entries sorted by title (uk collation), ready to be written as apps/store/apps.json
+ */
 export async function buildManifest() {
   const apps = [];
   for await (const a of Deno.readDir("apps")) {

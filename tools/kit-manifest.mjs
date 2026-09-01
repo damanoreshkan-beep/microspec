@@ -1,3 +1,11 @@
+/* @ts-self-types="./kit-manifest.d.mts" */
+/**
+ * The UI kit manifest generator: a deliberately loud hand-rolled scanner over packages/runtime/ui.js that
+ * derives every export's signature (the destructuring pattern) and doctrine (the comment block above it)
+ * into tools/mcp/kit.json, so an agent's view of the kit can never drift from the code. A script with no
+ * exports; `--check` makes a stale committed manifest a hard gate failure.
+ * @module
+ */
 // microspec — the UI kit manifest, GENERATED from packages/runtime/ui.js.
 //
 //   deno run -A tools/kit-manifest.mjs           # write tools/mcp/kit.json

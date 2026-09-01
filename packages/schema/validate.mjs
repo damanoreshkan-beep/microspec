@@ -1,3 +1,10 @@
+/* @ts-self-types="./validate.d.mts" */
+/**
+ * Author-time contract gate: the compiled ajv validator for spec.json against the microspec JSON Schema
+ * (draft 2020-12). Exports `validateSchema`, the same validator the generator runs in its retry loop, so a
+ * bad spec never reaches the runtime; as a CLI it composes each spec with its i18n/ and reports errors.
+ * @module
+ */
 // Author-time contract gate: validate a spec.json against the microspec JSON Schema (draft 2020-12).
 // This is the SoT-driven half of "AI can't emit an invalid spec" — the generator runs the same
 // compiled validator in its retry loop (packages/gen), so a bad spec never reaches the runtime.
@@ -10,6 +17,10 @@ import { pkgRoot } from "../runtime/pkgroot.js";
 const schema = JSON.parse(await Deno.readTextFile(new URL("packages/schema/spec.schema.json", pkgRoot(import.meta.url, 2))));
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);
+/**
+ * The compiled ajv validator for a composed spec (spec.json + i18n): returns true when the spec meets the
+ * schema, otherwise false with the failures in `validateSchema.errors`.
+ */
 export const validateSchema = ajv.compile(schema);
 
 if (import.meta.main) {

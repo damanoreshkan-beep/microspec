@@ -1,3 +1,11 @@
+/* @ts-self-types="./rtmap.d.mts" */
+/**
+ * Generates the consumer's preflight import map (preflight.map.json) and its gitignored test shims: each
+ * /_rt/ name routes to the rt/ overlay's own file or to the pinned core on JSR, with bare deps pinned from
+ * the core's manifest so the whole mounted graph shares one preact. `--check` fails when the committed map
+ * is stale. A CLI script — it exports nothing.
+ * @module
+ */
 // microspec — the PRODUCT's preflight import map, GENERATED (like the sw stubs): the browser-free gate
 // mounts real app views in Deno, and their /_rt/ imports must route per-file — the domain overlay's names
 // to ./rt/, everything else to the CORE ON JSR (https). One realm for the whole mounted graph: the views

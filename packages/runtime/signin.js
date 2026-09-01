@@ -1,3 +1,11 @@
+/* @ts-self-types="./signin.d.ts" */
+/**
+ * The sign-in surface — ONE Preact component, `SignIn`, so every app that gates on a session shows the same
+ * thing: Google first (the GIS button, One Tap/FedCM once per page), GitHub as the quiet second way, and
+ * inside the APK a "sign in via browser" pairing flow, since a WebView has no popups and no GIS. Gate-safe:
+ * under `gate` a plain kit button sets the mock Google session.
+ * @module
+ */
 // microspec runtime — the sign-in surface. ONE component for "who are you", so every app that gates on a
 // session shows the same thing: Google first (Sign in with Google — the GIS button, and One Tap / FedCM once
 // per page), GitHub as the quiet second way. An app that must ACT on GitHub (nova stars repos) passes
@@ -41,6 +49,8 @@ const loadGis = () => (gisP ||= new Promise((resolve, reject) => {
 let prompted = false;   // One Tap once per page — GIS has its own cooldowns, but a second call on every re-mount is noise
 
 /**
+ * The sign-in surface: Google's GIS button plus a quiet GitHub action in a browser, a browser-pairing button
+ * inside the APK, a mock Google button under the gate. Props:
  * @param github   "quiet" (default: a small text action under Google) · "primary" (GitHub is the button, no
  *                 Google — for apps that need a GitHub token) · false (Google only)
  * @param scope    the GitHub scope to ask for (see auth.js SCOPE)

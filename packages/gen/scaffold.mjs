@@ -1,3 +1,11 @@
+/* @ts-self-types="./scaffold.d.mts" */
+/**
+ * App scaffolder — the deterministic half of authoring. From the authored spec.json + i18n/ (+ data.js,
+ * view.js, stream.js) it emits the boilerplate every app needs: index.html with the instant app-shell and
+ * the mode-composed start() wiring, manifest.json, a placeholder sw.js and icon.svg. Authored files are
+ * never overwritten unless --force. A CLI script — it exports nothing.
+ * @module
+ */
 // microspec — app scaffolder (the deterministic half of authoring). The agent (LLM) writes only the
 // app-specific files — spec.json (structure) + i18n/<locale>.json (translations, one file per language)
 // + data.js (or view.js for a tool) — and this emits the identical boilerplate every app needs:

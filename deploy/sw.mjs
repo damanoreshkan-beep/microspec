@@ -1,3 +1,11 @@
+/* @ts-self-types="./sw.d.mts" */
+/**
+ * Generates each app's service-worker stub (apps/<id>/sw.js) from the REAL import graph: the stub holds
+ * only the app's identity and its precache manifest — the shell needed to boot with the network unplugged —
+ * and imports the shared /_rt/sw-core.js. Exports `manifestFor` (the precache list) and `stubFor` (the
+ * stub source, versioned by a hash of the manifest); as a CLI it writes every stub or `--check`s for drift.
+ * @module
+ */
 // microspec — generate each app's service-worker stub (apps/<id>/sw.js) from the REAL import graph.
 //
 //   deno run -A deploy/sw.mjs           # (re)write every app's stub
@@ -34,6 +42,13 @@ async function hash(s) {
   return [...new Uint8Array(buf)].slice(0, 5).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * Computes an app's precache manifest — the shell URLs (own files, /_rt/ modules, tag-loaded assets, CDN
+ * pins behind static bare specifiers, shaders) reached from apps/<id>/index.html through the import graph.
+ * @param id the app id (apps/<id>)
+ * @param opts optional `{ read }` — a file reader injected by the unit tests in place of the real one
+ * @returns the sorted list of URLs to precache, or null when the app has no index.html
+ */
 export function manifestFor(id, { read: rd = read } = {}) {
   const dir = `apps/${id}`;
   const html = rd(`${dir}/index.html`);
@@ -88,6 +103,12 @@ const STUB = (id, version, precache) =>
   precache.map((u) => `    ${JSON.stringify(u)},\n`).join("") +
   `  ],\n};\nimportScripts("/_rt/sw-core.js");\n`;
 
+/**
+ * Builds the source of an app's sw.js stub: its precache manifest wrapped in the generated worker, with a
+ * version hashed from the manifest itself so the cache name changes only when the shell's shape does.
+ * @param id the app id (apps/<id>)
+ * @returns the stub source, or null when the app has no index.html
+ */
 export async function stubFor(id) {
   const precache = manifestFor(id);
   return precache && STUB(id, await hash(JSON.stringify(precache)), precache);

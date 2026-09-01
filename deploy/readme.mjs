@@ -1,3 +1,10 @@
+/* @ts-self-types="./readme.d.mts" */
+/**
+ * Per-app README generator and gate: builds one deterministic, one-screen README.md for every app from
+ * its own spec.json + i18n + brand, so no app's page drifts from its copy. `--check` fails when a spec or
+ * its strings changed but the README did not. A CLI script — it exports nothing.
+ * @module
+ */
 // microspec — per-app README generator. Each app gets ONE deterministic, one-screen "card" built from its
 // own spec.json + i18n + brand, so every app has a premium page and none drifts from its copy. `--check`
 // fails when an app's spec or strings changed but its README did not — a gate node, exactly like sw.mjs.

@@ -1,3 +1,12 @@
+/* @ts-self-types="./validate.d.ts" */
+/**
+ * Loud, fail-fast spec guard — the lightweight runtime half of two-tier validation (packages/schema's ajv
+ * contract is the exhaustive author-time half, too heavy to ship to the browser). Exports `validateSpec`,
+ * which catches the high-value AI footguns and throws an Error naming the exact JSON path so a bad spec
+ * fails at boot instead of rendering blank, and `SPEC_MAJOR`. Zero dependencies, so unit tests import it
+ * with no import map.
+ * @module
+ */
 // microspec runtime — loud, fail-fast spec guard (pure, zero-dependency).
 //
 // Two-tier validation by design:
@@ -9,11 +18,18 @@
 //
 // Kept dependency-free on purpose: importable from Deno/Node unit tests with no import map.
 
+/** Spec contract major version; a spec declaring a different `v` is rejected. Bump on a breaking spec change. */
 export const SPEC_MAJOR = 1; // spec contract major; bump on a breaking spec change
 
 const TAB_TYPES = new Set(["list", "converter", "profile", "dashboard", "tool"]);
 const nonEmpty = (v) => typeof v === "string" && v.trim() !== "";
 
+/**
+ * Check a spec for the high-value footguns (version, id, tabs, i18n, fav, per-tab card contracts, detail
+ * actions, filter controls) and throw an Error naming the exact JSON path on the first failure.
+ * @param spec the app spec object as passed to start()
+ * @returns the same spec, unchanged, so the call can be inlined
+ */
 export function validateSpec(spec) {
   const die = (path, msg) => { throw new Error(`Invalid spec at ${path}: ${msg}`); };
   const need = (cond, path, msg) => { if (!cond) die(path, msg); };

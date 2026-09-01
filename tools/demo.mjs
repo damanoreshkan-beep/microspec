@@ -1,3 +1,10 @@
+/* @ts-self-types="./demo.d.mts" */
+/**
+ * Seeds the framework tree's gate material: the core carries no apps, so the demo app the gates and CI
+ * verify is generated on demand (authorless → scaffold → sw → readme) and a tree that already has apps is
+ * left untouched. A script with no exports; every gate node can depend on it unconditionally.
+ * @module
+ */
 // microspec — seed the framework tree's gate material. The core carries NO apps (the product owns them;
 // the split, 2026-08-31), so the demo app the gates and CI verify is GENERATED, not stored: authorless
 // (recipe → app, zero model calls) + scaffold (shell) + sw (precache stub) + readme (the app's page).

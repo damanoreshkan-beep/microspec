@@ -469,12 +469,14 @@ header.navbar {
 header.navbar::before {
   content: "";
   position: absolute;
-  left: 0; right: 0; bottom: -10px; height: 28px;
+  left: 0; right: 0; bottom: -9px; height: 26px;
   z-index: -1;
   pointer-events: none;
-  background: var(--ds-lip) center 52% / 100% auto no-repeat;
+  /* 150%, not 100%: at the viewport's width the weave is too fine and its threads average into a brown
+     stripe (eye, 2026-09-01); zoomed, single filaments read and the band is light again. */
+  background: var(--ds-lip) center 52% / 150% auto no-repeat;
   opacity: var(--ds-lip-a, 0);
-  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent), linear-gradient(180deg, transparent, #000 32%, #000 68%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent), linear-gradient(180deg, transparent, #000 38%, #000 62%, transparent);
   mask-composite: intersect;
 }
 /* …and the hairline itself is the lit edge: a real line of warm light (night) or a hairline of ink (day),
@@ -546,7 +548,7 @@ header.navbar::after {
   --ds-strand-y: calc(100% + 23.5vw);          /* bulbs end on the bottom edge — see [data-garland] */
   --ds-strand-a: .85;
   --ds-lip: url("/_rt/ds-n-arc.webp");         /* the header's woven-light band */
-  --ds-lip-a: .6;
+  --ds-lip-a: .75;
   --ds-scatter: url("/_rt/ds-n-scatter.webp"); /* fireflies behind an empty state */
   --ds-scatter-a: .8;
   --lm-lip:      rgba(255, 238, 208, .58);     /* the header's lit hairline — a real line of light */

@@ -1,3 +1,10 @@
+/* @ts-self-types="./player.d.ts" */
+/**
+ * The queue logic behind the kit's Transport widget — one pure, unit-tested answer to "where does the
+ * transport go next" instead of five hand-rolled players. Exports the repeat cycle (`REPEAT_MODES`,
+ * `REPEAT_ICON`, `cycleRepeat`), `advance` and the `clock` readout.
+ * @module
+ */
 // microspec runtime — PLAYBACK: the queue logic behind the kit's Transport widget (SYSTEMIC, pure).
 //
 // Before this, every music app hand-rolled its own: rave had prev/play/next with a square stop and no seek,
@@ -10,8 +17,15 @@
 // and whether the listener pressed the button or the track simply ended. Pure, unit-tested, no DOM.
 
 // ── repeat: the standard three-state cycle every player uses ──────────────────────────────────────────
+/** The three repeat modes, in cycle order: off → all → one. */
 export const REPEAT_MODES = ["off", "all", "one"];
+/** Icon name per repeat mode, for the Transport widget. */
 export const REPEAT_ICON = { off: "lucide:repeat", all: "lucide:repeat", one: "lucide:repeat-1" };
+/**
+ * The next repeat mode in the cycle; an unset or unknown mode counts as "off".
+ * @param mode the current repeat mode
+ * @returns the following entry of REPEAT_MODES
+ */
 export function cycleRepeat(mode) {
   const i = Math.max(0, REPEAT_MODES.indexOf(mode));    // an unset/unknown mode IS "off" — cycle on from it
   return REPEAT_MODES[(i + 1) % REPEAT_MODES.length];

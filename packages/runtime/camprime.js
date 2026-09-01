@@ -1,3 +1,10 @@
+/* @ts-self-types="./camprime.d.ts" */
+/**
+ * The permission priming screen for the camera and the microphone: explains WHAT the hardware is for
+ * before the native prompt, and only the user's tap triggers the real getUserMedia call. Exports the
+ * `Prime` view plus the `CameraPrime` / `MicPrime` presets; chrome strings (uk/en) are built in.
+ * @module
+ */
 // camprime.js — the permission priming screen, for the two hardware capabilities that open a native prompt:
 // the camera and the microphone. Neither may be opened cold — a native prompt with no context scares people
 // into denying — so the view shows this first: WHAT the hardware is for and that the capture never leaves the
@@ -41,6 +48,11 @@ const LBL = {
 //   onSettings, denied?, unavailable?, privacy?, privacyIcon? } — privacy/privacyIcon OVERRIDE the built-in
 //   "processed on your device" line for apps where that would be untrue (e.g. an editor that uploads the photo
 //   to a service): pass an honest line + a fitting icon instead of implying the capture stays local.
+/**
+ * Render the priming screen for one hardware capability, including its blocked / unavailable states.
+ * @param props `{ kind, loc, reason, onEnable, onSettings, denied?, unavailable?, privacy?, privacyIcon? }` — see the note above
+ * @returns the preact vnode of the full-bleed priming overlay
+ */
 export function Prime({ kind = "camera", loc, reason, onEnable, onSettings, denied, unavailable, privacy, privacyIcon }) {
   const K = LBL[kind] || LBL.camera, L = K[loc] || K.en;
   const bad = denied || unavailable;
@@ -57,5 +69,7 @@ export function Prime({ kind = "camera", loc, reason, onEnable, onSettings, deni
   </div>`;
 }
 
+/** `Prime` preset for the camera. */
 export const CameraPrime = (props) => Prime({ ...props, kind: "camera" });
+/** `Prime` preset for the microphone. */
 export const MicPrime = (props) => Prime({ ...props, kind: "microphone" });

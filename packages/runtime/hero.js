@@ -1,3 +1,11 @@
+/* @ts-self-types="./hero.d.ts" */
+/**
+ * The hero stage: one WebGPU renderer, one shader per app. An app supplies `hero.wgsl` and nothing else —
+ * adapter, device, canvas, the fullscreen triangle, the 64-byte uniform block (`res`, `time`, `seed`,
+ * `ink`, `vary`, `env`), resize, reduced-motion and teardown live here exactly once. No fallback by design:
+ * without WebGPU the island sits over a plain background. Exports the `HeroStage` component.
+ * @module
+ */
 // microspec runtime — the hero stage: one WebGPU renderer, one shader per app.
 //
 // An app supplies `apps/<id>/hero.wgsl` and nothing else. Everything mechanical — adapter, device, canvas

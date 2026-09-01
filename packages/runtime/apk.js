@@ -1,3 +1,12 @@
+/* @ts-self-types="./apk.d.ts" */
+/**
+ * Client helper for the on-demand APK generator: the edge does the patch + sign, this module calls it through
+ * the sealed tunnel (`buildApk`), rasterises launcher / adaptive icons in the browser so the edge needs no
+ * image library (`rasterizeIcon`, `letterTilePng`, `fetchAppIcons`, `adaptiveFromTile`, `fetchSiteIconPng`),
+ * and owns the one save/share path that works both in a browser and inside the Android shell
+ * (`downloadBlob`, `downloadUrl`, `shareFile`).
+ * @module
+ */
 // Client helper for the on-demand APK generator. The heavy lifting (patch + v1-sign) is pure-Deno on the
 // edge (microspec-edge /feed/apk, core, holds the key); this only calls it through the sealed tunnel and
 // downloads the result, plus rasterises an icon in the browser (canvas → PNG) so the edge needs no image
@@ -16,6 +25,12 @@ function canvasToPngB64(cv) {
 }
 
 // rasterizeIcon(blob, size) → square PNG (base64, no data: prefix). Cover-fits any format (svg/ico/png/webp).
+/**
+ * Rasterise any image blob (svg/ico/png/webp) into a square PNG, cover-fitted.
+ * @param blob the source image
+ * @param size the square edge in pixels (default 192)
+ * @returns base64 PNG bytes, no data: prefix
+ */
 export async function rasterizeIcon(blob, size = 192) {
   const url = URL.createObjectURL(blob);
   try {
@@ -32,6 +47,13 @@ export async function rasterizeIcon(blob, size = 192) {
 
 // letterTilePng(text, accent, size) → a crafted fallback icon: accent field + the first letter (no emoji,
 // no scraped clip-art). Async (canvas.toBlob).
+/**
+ * A crafted fallback icon: an accent field with the first letter of the name.
+ * @param text the display name whose first letter is drawn
+ * @param accent the "#rrggbb" fill (a default violet when absent)
+ * @param size the square edge in pixels (default 192)
+ * @returns a promise of base64 PNG bytes
+ */
 export function letterTilePng(text, accent, size = 192) {
   const cv = document.createElement("canvas");
   cv.width = cv.height = size;
@@ -75,6 +97,10 @@ async function cornerHex(pngB64) {
 // letter tile). icon = the 192px tile Chrome puts on the home screen (the APK's legacy launcher icon);
 // fg = the transparent adaptive foreground (glyph in the safe zone); bg = brand.bg, sampled off the maskable
 // tile. So an APK carries exactly the identity the installed PWA has, on every launcher shape.
+/**
+ * Load THIS app's built icon set (legacy tile, adaptive foreground, sampled background colour).
+ * @returns `{ icon, fg, bg }` as base64 / "#rrggbb", or null when the build's icons do not exist
+ */
 export async function fetchAppIcons() {
   const icon = await fetchPngB64("icons/icon-192.png");
   if (!icon) return null;
@@ -87,6 +113,12 @@ export async function fetchAppIcons() {
 // tile): the tile shrunk to 46% into the safe zone on a transparent 432px layer, and its corner colour as
 // the background (a flat-background tile becomes seamless; a transparent logo sits on fallbackBg). This is
 // what Android itself does to a legacy icon, done once here so the APK ships a real adaptive icon.
+/**
+ * Derive an adaptive icon (foreground layer + background colour) from a full-bleed tile.
+ * @param pngB64 the tile as base64 PNG
+ * @param fallbackBg background used when the tile's corner is not opaque (default white)
+ * @returns `{ fg, bg }` — base64 PNG of the 432px foreground layer and the "#rrggbb" background
+ */
 export async function adaptiveFromTile(pngB64, fallbackBg = "#ffffff") {
   const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `data:image/png;base64,${pngB64}`; });
   const size = 432, box = Math.round(size * 0.46);
@@ -98,6 +130,12 @@ export async function adaptiveFromTile(pngB64, fallbackBg = "#ffffff") {
 
 // fetchSiteIconPng(url) → the site's best icon rasterised to a PNG (base64), or null. Goes through the edge
 // (open /feed/appicon — SSRF-guarded), so cross-origin favicons work without CORS taint.
+/**
+ * Fetch a site's best icon through the edge and rasterise it to a square PNG.
+ * @param url the site URL
+ * @param size the square edge in pixels (default 192)
+ * @returns base64 PNG bytes, or null on any failure
+ */
 export async function fetchSiteIconPng(url, size = 192) {
   try {
     const r = await fetch(`${VPS_PROXY}/appicon?url=${encodeURIComponent(url)}`);
@@ -111,6 +149,11 @@ export async function fetchSiteIconPng(url, size = 192) {
 // buildApk({url, name, iconB64, fgB64?, bg?}) → a signed APK Blob. Calls the edge (core /feed/apk) via the
 // sealed tunnel. iconB64 = legacy launcher PNG; fgB64 + bg = the adaptive icon's foreground layer and
 // "#rrggbb" background (API 26+); the edge falls back to iconB64 for the foreground when fg is absent.
+/**
+ * Ask the edge to build and sign an APK for a URL; throws with the edge's one-line reason on a non-ok status.
+ * @param opts `{ url, name, iconB64, fgB64?, bg? }` — the site, its display name and the launcher / adaptive icon parts
+ * @returns the signed APK as a Blob
+ */
 export async function buildApk({ url, name, iconB64, fgB64, bg }) {
   const r = await fetch(`${VPS_PROXY}/apk`, {
     method: "POST",
@@ -123,6 +166,11 @@ export async function buildApk({ url, name, iconB64, fgB64, bg }) {
   return await r.blob();
 }
 
+/**
+ * Save a Blob as a file: via the Android shell's bridge where present, else through an anchor download.
+ * @param blob the bytes to save
+ * @param filename the name the file is saved under
+ */
 export function downloadBlob(blob, filename) {
   // Inside our Android shell an <a download> with a blob: URL does nothing at all — WebView has no blob
   // download path — so hand the bytes over instead. Absent (every browser), fall through to the anchor.
@@ -185,6 +233,11 @@ export async function shareFile(blob, filename) {
 // downloadUrl(url, filename) — same contract as downloadBlob for a blob:/data: URL you already hold.
 // Anything that saves a file must come through here: a bare <a download> is silently dead in the shell,
 // and each app inventing its own anchor is how five of them ended up broken at once.
+/**
+ * Save a blob:/data: URL you already hold as a file, with the same shell-aware contract as `downloadBlob`.
+ * @param url the blob: or data: URL
+ * @param filename the name the file is saved under
+ */
 export async function downloadUrl(url, filename) {
   if (!url) return;
   try { downloadBlob(await (await fetch(url)).blob(), filename); }
@@ -192,6 +245,11 @@ export async function downloadUrl(url, filename) {
 }
 
 // A safe .apk filename from a display name.
+/**
+ * A safe, lowercase, dash-separated `.apk` filename from a display name ("app.apk" when empty).
+ * @param name the display name
+ * @returns the filename
+ */
 export function apkFilename(name) {
   const base = (name || "app").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "app";
   return `${base}.apk`;

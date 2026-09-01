@@ -1,3 +1,11 @@
+/* @ts-self-types="./globe.d.ts" */
+/**
+ * Reusable interactive globe for any tool view: a canvas orthographic Earth (d3-geo, no WebGL, so it
+ * renders in the headless gate too) with country outlines, drag-to-spin, pinch/wheel zoom, idle rotation
+ * and tap-to-select. Data-agnostic — the app decides what a pick means. Exports the `Globe` component
+ * plus `countryAt`/`worldReady`, which reuse the world topology any Globe on the page has already fetched.
+ * @module
+ */
 // microspec runtime — reusable interactive globe (SYSTEMIC: shared by any tool view).
 //
 // A canvas orthographic Earth (d3-geo, no WebGL → renders in the headless gate too) with country
@@ -31,11 +39,21 @@ async function loadWorld() {
 }
 // which country a point falls in — {id, name} or null (ocean / topology not loaded yet). Uses the world
 // topology any Globe on the page has already fetched. Systemic: reused e.g. by the ISS tracker.
+/**
+ * Look up which country a lat/lon falls in, using the already-loaded world topology.
+ * @param lat latitude in degrees
+ * @param lon longitude in degrees
+ * @returns `{ id, name }` of the containing country, or null for ocean / topology not loaded yet
+ */
 export function countryAt(lat, lon) {
   if (!LAND) return null;
   const f = LAND.find((c) => geoContains(c, [lon, lat]));
   return f ? { id: String(f.id), name: f.properties?.name || null } : null;
 }
+/**
+ * Whether the world topology has finished loading (so `countryAt` can answer).
+ * @returns true once /_rt/world-110m.json has been fetched and parsed
+ */
 export function worldReady() { return !!LAND; }
 
 // Signal-ish palette, theme-aware via the document's data-theme (hardcoded so canvas never depends on
@@ -48,6 +66,18 @@ const PALETTE = {
 const pal = () => PALETTE[(document.documentElement.getAttribute("data-theme") || "").includes("light") ? "light" : "dark"];
 const easeInOut = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
 
+/**
+ * The interactive globe component (Preact). Shows a skeleton until the world topology is loaded, then
+ * runs one continuous rAF loop that only redraws when something is dirty.
+ * @param onPick   fired on a tap with `{ lat, lon, id, name, point }` — `point` is the hit overlay point, if any
+ * @param selected country id to highlight with the accent
+ * @param marker   `{ lat, lon }` pin for a chosen location
+ * @param focus    `{ lat, lon }` — animate the globe to centre it (used as the initial view when supplied at mount)
+ * @param points   `[{ lat, lon, r, color, pulse }]` overlay dots; `pulse: true` draws expanding rings on the canvas
+ * @param spin     idle auto-rotation (default true; pauses while dragging, zoomed, selected or marked)
+ * @param height   max size in px (the globe is square)
+ * @returns the globe's VNode
+ */
 export function Globe({ onPick, selected, marker, focus, points, spin = true, height = 340 }) {
   const wrap = useRef(), canvas = useRef();
   // start centred on `focus` when it's supplied at mount (e.g. an ISS tracker opens already looking at the

@@ -1,3 +1,11 @@
+/* @ts-self-types="./console.d.ts" */
+/**
+ * The farm's game shell, once: ONE handheld device (body, recessed aperture, D-pad, action keys) drawn as
+ * large as the viewport allows, with only the deck's CONTENT and the `plate` decided per game. Exports the
+ * `GameConsole` view; it owns no input logic — the pointer behaviour is `useTouchDeck` in dpad.js and the
+ * key geometry is deck.js.
+ * @module
+ */
 // console — the farm's game shell, once, and there is only ONE of it.
 //
 // The first game grew a handheld: a body extruded from the page, a screen recessed into it, a

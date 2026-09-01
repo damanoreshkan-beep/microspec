@@ -1,3 +1,11 @@
+/* @ts-self-types="./weather.d.ts" */
+/**
+ * Weather numbers, dependency-free on purpose: WMO 4677 code tables (`wmoIcon`, `wmoKey`, `isSnowCode`,
+ * `isStormCode`), low-precision solar position and moon phase (`solarPosition`, `moonPhase`), the mapping
+ * from raw readings to the live-sky shader's channels (`skyVary`, `skyInk`), and the hourly temperature
+ * spline (`curvePath`). Nothing here touches the DOM or the network, so every function is unit-tested.
+ * @module
+ */
 // microspec runtime — weather: WMO code tables, solar position, and the numbers a live sky is driven by.
 //
 // DEPENDENCY-FREE ON PURPOSE. `astro.js` already wraps SunCalc and astronomy-engine, and it would have
@@ -17,6 +25,11 @@ const clamp01 = (v) => Math.max(0, Math.min(1, v));
 // Open-Meteo returns these for current, hourly and daily. The daily one is the day's most SEVERE code, not
 // its midday one — a single 03:00 shower labels the whole row rain. That is the useful reading for a
 // forecast, but it is not the same question as "what is it doing now".
+/**
+ * Lucide icon name for a WMO 4677 present-weather code.
+ * @param c the WMO code (0..99)
+ * @returns an `lucide:*` icon id
+ */
 export const wmoIcon = (c) =>
   c === 0 ? "lucide:sun"
     : c <= 2 ? "lucide:cloud-sun"

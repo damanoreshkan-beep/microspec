@@ -1,3 +1,12 @@
+/* @ts-self-types="./skeleton.d.ts" */
+/**
+ * Modern loading placeholders — no content-less spinners and no layout-hiding loading screens: the real
+ * structure renders at once and only the not-yet-known VALUES are atomic skeletons in place. Exports the
+ * Scramble text decode, the Pixels image placeholder, useReveal (hold a skeleton a minimum time, then
+ * reveal), Reveal and a last-resort Loading block. Everything goes instant in the gate and under
+ * prefers-reduced-motion so shots and e2e stay deterministic.
+ * @module
+ */
 // microspec runtime — modern loading placeholders. NO content-less spinners and NO layout-hiding "loading
 // screens": the app's real structure renders immediately, and only the not-yet-known VALUES are atomic
 // skeletons in place — text decodes (a letters/digits scramble that resolves into the value; also the reveal
@@ -18,6 +27,11 @@ const instant = () => !forceAnim && (isGate || reduced());
 // Scramble — atomic value slot. With a value it holds a scramble for ~minMs (no flash on a fast load) then
 // DECODES into the value; without one it's a perpetual placeholder bar. Value slots decode smoothly; the
 // gate/reduced-motion show the final value instantly.
+/**
+ * Atomic text value slot: holds a scramble for ~minMs then decodes into `text`; a perpetual placeholder bar without one.
+ * @param props `text` (the value, or none for a placeholder), `len` (placeholder length guess), `cls`, `speed` (ms per tick), `minMs` (hold before decoding)
+ * @returns the <span> the slot renders into
+ */
 export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) {
   const ref = useRef(), born = useRef(0);
   const ph = !(typeof text === "string" && text.trim());
@@ -55,6 +69,11 @@ export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) 
 }
 
 // Pixels — a blinking-pixel image placeholder on a <canvas>, sized to its box. Neutral grey (both themes).
+/**
+ * A blinking-pixel image placeholder on a <canvas> sized to its box; a single frozen frame in the gate.
+ * @param props `cls` — extra classes on the canvas
+ * @returns the aria-hidden <canvas>
+ */
 export function Pixels({ cls = "" }) {
   const ref = useRef();
   useEffect(() => {
@@ -73,6 +92,12 @@ export function Pixels({ cls = "" }) {
 
 // useReveal(ready, minMs) — hold a whole skeleton for a MIN time (no flash on a fast load), then reveal.
 // Returns false while a skeleton should show. Instant in the gate / reduced-motion (deterministic).
+/**
+ * Hold a whole skeleton for a minimum time (no flash on a fast load), then reveal.
+ * @param ready whether the real content is available
+ * @param minMs the minimum hold since first render
+ * @returns false while the skeleton should still show, true once it may reveal
+ */
 export function useReveal(ready, minMs = 1000) {
   const born = useRef(0), [, bump] = useState(0);
   if (!born.current) born.current = now();
@@ -83,10 +108,16 @@ export function useReveal(ready, minMs = 1000) {
 }
 
 // Content that fades in when it replaces a skeleton (smooth, fast). Frozen (final state) in the gate.
+/** Wrapper whose children fade in when they replace a skeleton (the `ms-reveal` class); final state in the gate. */
 export const Reveal = ({ children, cls = "" }) => html`<div class=${`ms-reveal ${cls}`}>${children}</div>`;
 
 // Loading — a LAST-RESORT modern loading block (a few decoding lines) for a view with no meaningful structure
 // to show yet. Prefer rendering the real layout with atomic Scramble/Pixels slots instead of this.
+/**
+ * Last-resort loading block: a few decoding lines for a view with no meaningful structure to show yet.
+ * @param props `lines` — the placeholder length of each line
+ * @returns the role="status" block
+ */
 export function Loading({ lines = [15, 22, 18, 25, 14] } = {}) {
   return html`<div class="flex flex-col gap-3 py-8 px-1" role="status" aria-busy="true">
     ${lines.map((n, i) => html`<div class="text-base-content/70 text-sm truncate" key=${i}><${Scramble} len=${n} /></div>`)}

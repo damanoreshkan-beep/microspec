@@ -1,3 +1,11 @@
+/* @ts-self-types="./dpad.d.ts" */
+/**
+ * A game control deck on Pointer Events: the deck root owns the pointer and resolves the pressed key by
+ * POSITION on every move, several fingers at once, state written by ref rather than re-render. Exports
+ * `useTouchDeck` (the deck as one touch surface), `useKeyboardPad` + `KEYS` / `ACTION_KEYS` (the desktop
+ * layout), the `PAD` bit mask shared with the simulations, and the `keyboardOnly` activation guard.
+ * @module
+ */
 // dpad — a game control deck on Pointer Events.
 //
 // gesture.js already owns drag-to-dismiss and swipe-to-navigate; neither is a game control. A deck
@@ -25,7 +33,17 @@ import { haptic } from "./sensors.js";
    without a record of the first, a real tap fires both and the sound toggles twice. Kept module-
    level and weak so it costs nothing and holds no element alive. */
 const pointered = new WeakMap();
+/**
+ * Record that a pointer gesture just handled this element, so the click that follows can be ignored.
+ * @param el the key element (nullable)
+ */
 export const markPointer = (el) => { if (el) pointered.set(el, Date.now()); };
+/**
+ * Whether a pointer gesture handled this element recently.
+ * @param el the key element (nullable)
+ * @param within the window in ms (default 500)
+ * @returns true if a pointer marked it inside the window
+ */
 export const fromPointer = (el, within = 500) => !!el && Date.now() - (pointered.get(el) ?? -Infinity) < within;
 
 /** The activation guard every app's onClick should use: keyboard and AT only. */
@@ -41,6 +59,7 @@ export const keyboardOnly = (fn) => (e) => { if (!e.detail && !fromPointer(e.cur
    touch deck drove it, the e2e tapped it and watched the quiver go down, and the one input path
    the gate never exercised was the only one a keyboard has. A bit that an app can send but the
    shared keyboard map cannot name is a control that exists on half the devices. */
+/** The input bit mask — the contract between a deck and a simulation, mirrored in every game. */
 export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16, SHOOT: 32 };
 
 /**
@@ -68,6 +87,11 @@ export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16, SHOOT: 32 };
    and they are extended by the same mechanism a keyboard or a screen reader already uses. */
 const MIN_PRESS = 90;
 
+/**
+ * The whole control deck as ONE touch surface — see the note above.
+ * @param opts `{ onAct, latchMs, minPress }` — momentary-action callback `(act, el)`, the double-tap latch window in ms, the minimum press length in ms
+ * @returns `{ mask, deckProps, release, pulse, setKeys }` — the held-bits ref, the props to spread on the deck root, and the keyboard / assistive feeders
+ */
 export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}) {
   const mask = useRef(0);
   const held = useRef(new Map());          // pointerId → the element it is currently pressing
@@ -200,6 +224,7 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
    A game that only has four of these still only receives four: the mask is an AND of what the
    keyboard sends and what the simulation reads, so a binding no game uses costs nothing. The
    inverse is what cost something — see the note on SHOOT above. */
+/** Keyboard `code` → `PAD` bit: arrows or WASD to move, Z/Space to jump, X/Shift to run, C/Ctrl to throw. */
 export const KEYS = {
   ArrowLeft: PAD.LEFT, KeyA: PAD.LEFT,
   ArrowRight: PAD.RIGHT, KeyD: PAD.RIGHT,

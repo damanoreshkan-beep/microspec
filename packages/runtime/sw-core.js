@@ -1,3 +1,12 @@
+/* @ts-self-types="./sw-core.d.ts" */
+/**
+ * THE service worker — one implementation shared by every app in the farm. A classic worker script (not an
+ * ES module: `importScripts` cannot load one), so it exports nothing; each app's generated `sw.js` stub sets
+ * `self.MS = { app, version, precache }` and imports this file. It precaches the shell (own files, /_rt/
+ * closure and the pinned CDN graph), serves stale-while-revalidate, never blocks on a dying link, and backs
+ * off on a bad one; the manifest alone is network-first because it is the installed app's identity.
+ * @module
+ */
 // microspec runtime — THE service worker. One implementation, shared by every app in the farm.
 //
 // Each app ships a generated stub `apps/<id>/sw.js` that sets `self.MS = { app, version, precache }` and then

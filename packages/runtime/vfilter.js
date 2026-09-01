@@ -1,3 +1,11 @@
+/* @ts-self-types="./vfilter.d.ts" */
+/**
+ * Pure, DOM-free helpers for cleaning a scraped video feed: `dedupeVideos` collapses the same clip
+ * published under several urls, and `isBlackSample` / `isFlatSample` / `hasPoster` classify posters so
+ * broken or placeholder thumbnails can be dropped. Lives in the runtime (not the app) so the logic is
+ * unit-tested; the app owns only the canvas side.
+ * @module
+ */
 // vfilter — pure helpers for cleaning a scraped video feed (apps/reel): drop duplicate clips and detect
 // "black/broken" posters. Kept here (not in the app) so the logic is unit-tested; the app owns only the DOM
 // side (loading a poster into a canvas) — this module never touches the DOM.
@@ -26,6 +34,11 @@ const clipId = (u) => {
 //
 // Which copy SURVIVES matters: first-wins keeps the posterless source asset, i.e. the black slide, and makes
 // the bug worse. So a later copy WITH a poster replaces an earlier one without, in place. Otherwise first wins.
+/**
+ * Drop duplicate clips from a feed, preserving order; a later copy with a poster replaces an earlier posterless one.
+ * @param items feed items ({ video, orig?, poster? }); a non-array yields []
+ * @returns the deduplicated items
+ */
 export function dedupeVideos(items) {
   const at = new Map(), out = [];
   for (const it of (Array.isArray(items) ? items : [])) {
@@ -67,6 +80,12 @@ function lumaStats(rgba) {
 // AND no meaningfully bright pixel ANYWHERE. The peak test is the discriminator — a real frame, even a night
 // scene, has some highlight (a light, a rim, a face); a broken or placeholder frame is uniformly ~0.
 // Conservative thresholds → fail toward KEEPING a clip.
+/**
+ * Classify an RGBA sample as a black/broken poster: near-zero mean luma and no bright pixel anywhere.
+ * @param rgba RGBA bytes from getImageData
+ * @param opts thresholds — `meanMax` (default 12) and `peakMax` (default 24) on 0..255 luma
+ * @returns true when the sample is black; false for an empty sample (keep the clip)
+ */
 export function isBlackSample(rgba, { meanMax = 12, peakMax = 24 } = {}) {
   const s = lumaStats(rgba);
   return !!s && s.mean <= meanMax && s.peak <= peakMax;
@@ -78,6 +97,12 @@ export function isBlackSample(rgba, { meanMax = 12, peakMax = 24 } = {}) {
 // above the floor even for a foggy sky or a night scene), a synthetic fill does not. Complements isBlackSample,
 // which only catches the *black* case; this also catches uniform light/coloured placeholders. It subsumes a
 // perfectly flat black frame too, so callers OR the two. Conservative threshold → fail toward KEEPING a clip.
+/**
+ * Classify an RGBA sample as a flat/placeholder poster: a near-uniform fill of any colour (luma std ≈ 0).
+ * @param rgba RGBA bytes from getImageData
+ * @param opts thresholds — `stdMax` (default 6) on 0..255 luma standard deviation
+ * @returns true when the sample is flat; false for an empty sample (keep the clip)
+ */
 export function isFlatSample(rgba, { stdMax = 6 } = {}) {
   const s = lumaStats(rgba);
   return !!s && s.std <= stdMax;
@@ -85,6 +110,11 @@ export function isFlatSample(rgba, { stdMax = 6 } = {}) {
 
 // hasPoster(item) — does the item carry a usable poster? A poster is present only when it is a non-empty
 // string (after trimming); null / "" / whitespace / non-strings count as posterless. Pure, DOM-free.
+/**
+ * Whether a feed item carries a usable poster (a non-empty string after trimming).
+ * @param item a feed item, possibly null
+ * @returns true when `item.poster` is a non-blank string
+ */
 export function hasPoster(item) {
   return !!item && typeof item.poster === "string" && item.poster.trim() !== "";
 }

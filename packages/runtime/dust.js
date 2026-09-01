@@ -1,3 +1,11 @@
+/* @ts-self-types="./dust.d.ts" */
+/**
+ * The DUST field: a premium WebGL particle cloud that scatters and gathers, used as the generation/wait
+ * stage. Exports the `Dust` preact component — particles rest in a gathered orb, breathe out into dust and
+ * draw back in, tightening as `progress` nears 1. Under the gate (or without WebGL) it renders a static CSS
+ * orb so screenshots stay deterministic.
+ * @module
+ */
 // microspec runtime — the DUST field: a premium WebGL particle cloud that scatters and gathers, used as the
 // generation/wait stage (apps/imagine). Particles rest in a gathered orb, breathe outward into dust and draw
 // back in; as `progress` rises toward 1 the cloud gathers tighter — anticipation before the image reveals.
@@ -38,6 +46,14 @@ function compile(gl, type, src) { const s = gl.createShader(type); gl.shaderSour
 // near-white, which turned the whole cloud white). Gold reads premium on the dark stage in both themes.
 function hexTint() { return [0.98, 0.74, 0.38]; }
 
+/**
+ * The dust stage component: a dark vignette with a gold glow orb and, off the gate, a WebGL particle cloud
+ * that gathers tighter as `progress` rises toward 1.
+ * @param props component props
+ * @param props.active kept for API compatibility; the field breathes in idle and while generating alike
+ * @param props.progress 0..1 generation progress, or null for the idle breathe
+ * @returns the rendered stage
+ */
 export function Dust({ active = true, progress = null }) {
   const ref = useRef(null);
   const progRef = useRef(progress);

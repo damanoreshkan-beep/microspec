@@ -40,6 +40,7 @@ const alphaFromWhite = (d, w, h) => {
 };
 
 for (const arg of Deno.args) {
+  if (arg.startsWith("--")) continue;                            
   const m = /^([nd]):([a-z]+)=(.+)$/.exec(arg);
   if (!m) throw new Error(`usage: n:<name>=<png> | d:<name>=<png>, got ${arg}`);
   const [, set, name, src] = m;
@@ -49,7 +50,8 @@ for (const arg of Deno.args) {
   const rgba = (set === "n" ? alphaFromBlack : alphaFromWhite)(px, r.width, r.height);
   const webp = new Uint8Array(await encodeWebp({ data: rgba, width: r.width, height: r.height }, { quality: 80 }));
   const outDir = Deno.args.find((a) => a.startsWith("--out="))?.slice(6) ?? `${ROOT}/packages/runtime`;
-  const out = `${outDir}/ds-${set}-${name}.webp`;
-  await Deno.writeFile(out, webp);
-  console.log(`ds-${set}-${name}.webp ${(webp.length / 1024).toFixed(0)}KB`);
+  const prefix = Deno.args.find((a) => a.startsWith("--prefix="))?.slice(9);
+  const file = `ds-${prefix ? prefix + "-" : ""}${set}-${name}.webp`;
+  await Deno.writeFile(`${outDir}/${file}`, webp);
+  console.log(`${file} ${(webp.length / 1024).toFixed(0)}KB`);
 }

@@ -456,29 +456,52 @@ const AndroidMark = () => html`<svg width="26" height="16" viewBox="0 0 256 150"
 
 
 
-function MaterialSheet({ open, materials, current, loc, theme }) {
+const artOf = (k) => {
+  try { const v = getComputedStyle(document.documentElement).getPropertyValue(`--ds-art-${k}`).trim(); return !!v && v !== "none"; }
+  catch { return false; }
+};
+function ThemeWidget({ t, loc, theme, modeToggle, materials, current }) {
+  
   const applied = typeof document !== "undefined" ? document.documentElement.getAttribute("data-theme") : null;
   const mode = (applied || theme) === "signal-light" ? "light" : "dark";
-  return html`<${Sheet} id="material-sheet" open=${open} onClose=${() => A.S.screen.set(null)} title=${sys("material", loc)} subtitle=${sys("materialPick", loc)} icon="lucide:palette" locale=${loc}>
-    <div class="grid grid-cols-3 gap-2.5" data-materials>
+  const name = (m) => m?.name?.[loc] || m?.name?.en || m?.id || "";
+  const chosen = materials.find((m) => m.id === current);
+  return html`<div id="p-material" data-materials class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 gap-3">
+    <div class="flex items-center gap-3">
+      ${Icon("lucide:palette", "text-xl")}
+      <div class="flex-1 min-w-0">
+        <div class="font-medium truncate">${sys("material", loc)}</div>
+        <div class="text-xs text-muted truncate">${[chosen ? name(chosen) : null, modeToggle ? sys(mode === "dark" ? "modeNight" : "modeDay", loc) : null].filter(Boolean).join(" · ")}</div>
+      </div>
+      ${modeToggle ? html`<div id="p-theme" role="radiogroup" aria-label=${T(t, "profTheme")} class="flex gap-1 p-1 rounded-full sf-inset shrink-0">
+        ${[["light", "day", "lucide:sun"], ["dark", "night", "lucide:moon"]].map(([m, k, glyph]) => {
+          const on = mode === m;
+          return html`<button key=${k} type="button" role="radio" aria-checked=${on} aria-label=${sys(k === "day" ? "modeDay" : "modeNight", loc)} data-mode=${k}
+            class=${`size-9 rounded-full grid place-items-center transition ${on ? "sf-lift2 bg-base-100" : "opacity-45"}`}
+            onClick=${() => A.S.theme.set(m === "dark" ? "signal" : "signal-light")}>
+            ${artOf(k) ? html`<span data-theme-art=${k} aria-hidden="true"></span>` : Icon(glyph, "text-lg")}
+          </button>`;
+        })}
+      </div>` : null}
+    </div>
+    ${materials.length > 1 ? html`<div class="flex gap-2 overflow-x-auto -mx-2 px-2 py-1 snap-x">
       ${materials.map((m) => {
-        const sw = m.swatch?.[mode] || m.swatch?.dark;
-        return html`<button key=${m.id} type="button" data-material-id=${m.id} aria-pressed=${m.id === current}
-          class="flex flex-col items-center gap-1.5 rounded-[var(--ms-r-in)] p-2 sf-inset"
-          onClick=${() => { A.S.material.set(m.id); A.S.screen.set(null); }}>
+        const on = m.id === current, sw = m.swatch?.[mode] || m.swatch?.dark;
+        return html`<button key=${m.id} type="button" data-material-id=${m.id} aria-pressed=${on} aria-label=${name(m)}
+          class="flex flex-col items-center gap-1 shrink-0 w-16 snap-start" onClick=${() => A.S.material.set(m.id)}>
           ${m.thumb
-            ? html`<img src=${`/_rt/${m.thumb}`} alt="" loading="lazy" decoding="async" class="w-full aspect-square rounded-full object-cover bg-black" />`
-            : html`<span class="w-full aspect-square rounded-full block sf-lift2" style=${sw ? `background:radial-gradient(circle at 34% 32%, ${sw[1]} 0 24%, ${sw[0]} 27%)` : ""}></span>`}
-          <span class="text-[0.68rem] leading-tight text-center">${m.name?.[loc] || m.name?.en || m.id}</span>
+            ? html`<img data-thumb src=${`/_rt/${m.thumb}`} alt="" loading="lazy" decoding="async" class="size-12 rounded-full object-cover bg-black" />`
+            : html`<span data-thumb class="size-12 rounded-full block" style=${sw ? `background:radial-gradient(circle at 34% 32%, ${sw[1]} 0 24%, ${sw[0]} 27%)` : ""}></span>`}
+          <span class=${`text-[0.62rem] leading-tight truncate max-w-full ${on ? "" : "text-muted"}`}>${name(m)}</span>
         </button>`;
       })}
-    </div>
-  <//>`;
+    </div>` : null}
+  </div></div>`;
 }
 
 function Profile({ tab }) {
   const t = useStore(A.S.t), theme = useStore(A.S.theme), loc = useStore(A.S.locale), fav = useStore(A.S.fav);
-  const materials = useStore(A.S.materials), materialId = useStore(A.S.material), screen = useStore(A.S.screen);
+  const materials = useStore(A.S.materials), materialId = useStore(A.S.material);
   const material = materials.find((m) => m.id === materialId) || materials[0];
   const p = A.spec.profile || {};
   const account = p.account || (A.spec.tabs.some((x) => (x.needs || []).includes("auth")) ? "any" : null);
@@ -503,9 +526,7 @@ function Profile({ tab }) {
     </div>
     <button id="p-share" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${shareApp}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:share-2", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("share", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></button>
     ${savedTab ? html`<button class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
-    ${p.theme ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3"><span data-theme-art aria-hidden="true"></span><span class="flex-1 min-w-0 truncate font-medium">${T(t, "profTheme")}</span><input id="p-theme" type="checkbox" class="toggle toggle-primary" aria-label=${T(t, "profTheme")} checked=${theme === "signal"} onChange=${(e) => A.S.theme.set(e.target.checked ? "signal" : "signal-light")} /></div></div>` : null}
-    ${materials.length > 1 ? html`<button id="p-material" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("material")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:palette", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("material", loc)}</span><span class="text-sm text-muted truncate">${material?.name?.[loc] || material?.name?.en || ""}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>
-      <${MaterialSheet} open=${screen === "material"} materials=${materials} current=${material?.id} loc=${loc} theme=${theme} />` : null}
+    ${p.theme || materials.length > 1 ? html`<${ThemeWidget} t=${t} loc=${loc} theme=${theme} modeToggle=${!!p.theme} materials=${materials} current=${material?.id} />` : null}
     ${p.lang ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
     ${p.permissions?.length ? html`<button id="p-perms" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("perms")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield-check", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${permLabels(loc).row}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>` : null}
     ${p.source ? html`<a href=${p.source.url} target="_blank" rel="noopener" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon(p.source.icon || "lucide:database", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, p.source.label)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}

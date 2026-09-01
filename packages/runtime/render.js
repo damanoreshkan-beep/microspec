@@ -530,15 +530,26 @@ const AndroidMark = () => html`<svg width="26" height="16" viewBox="0 0 256 150"
 // The material picker — the product's theme modules as style cards (mirage's sheet, made systemic):
 // the thumbnail is the product's mascot rendered in that material, the current card is the raised one.
 // History-backed through S.screen so Back closes it; the choice is one atom (material.js applies it).
-function MaterialSheet({ open, materials, current, loc }) {
-  return html`<${Sheet} id="material-sheet" open=${open} onClose=${() => A.S.screen.set(null)} title=${sys("material", loc)} subtitle=${sys("materialPick", loc)} icon="lucide:layers" locale=${loc}>
-    <div class="grid grid-cols-2 gap-[var(--ms-gap)]" data-materials>
-      ${materials.map((m) => html`<button key=${m.id} type="button" data-material-id=${m.id} aria-pressed=${m.id === current}
-        class=${`rounded-[var(--ms-r-in)] p-[var(--ms-pad)] flex flex-col items-start gap-2 text-left transition-shadow ${m.id === current ? "sf-raised" : "sf-inset"}`}
-        onClick=${() => { A.S.material.set(m.id); A.S.screen.set(null); }}>
-        ${m.thumb ? html`<img src=${`/_rt/${m.thumb}`} alt="" class="w-full aspect-square rounded-[var(--r-3)] object-cover" loading="lazy" />` : html`<div class="w-full aspect-square rounded-[var(--r-3)] sf-inset"></div>`}
-        <span class="font-medium text-sm truncate w-full">${m.name?.[loc] || m.name?.en || m.id}</span>
-      </button>`)}
+// The grid is mirage's style sheet, exactly (apps/mirage/view.js): three cards to a row, an inset card
+// with a round picture and a small caption, the chosen one ringed in the accent. The picture is the
+// product's mascot in that theme (`thumb`) once it exists; until then a SWATCH — the theme's own page and
+// accent for the current mode (`swatch: { dark: [base, accent], light: [...] }` in themes.json) — so a
+// theme shows its colours before it has a face.
+function MaterialSheet({ open, materials, current, loc, theme }) {
+  const mode = theme === "signal-light" ? "light" : "dark";
+  return html`<${Sheet} id="material-sheet" open=${open} onClose=${() => A.S.screen.set(null)} title=${sys("material", loc)} subtitle=${sys("materialPick", loc)} icon="lucide:palette" locale=${loc}>
+    <div class="grid grid-cols-3 gap-2.5" data-materials>
+      ${materials.map((m) => {
+        const sw = m.swatch?.[mode] || m.swatch?.dark;
+        return html`<button key=${m.id} type="button" data-material-id=${m.id} aria-pressed=${m.id === current}
+          class=${`flex flex-col items-center gap-1.5 rounded-[var(--ms-r-in)] p-2 sf-inset ${m.id === current ? "ring-2 ring-[var(--app-accent)]" : ""}`}
+          onClick=${() => { A.S.material.set(m.id); A.S.screen.set(null); }}>
+          ${m.thumb
+            ? html`<img src=${`/_rt/${m.thumb}`} alt="" loading="lazy" decoding="async" class="w-full aspect-square rounded-full object-cover bg-black" />`
+            : html`<span class="w-full aspect-square rounded-full block sf-lift2" style=${sw ? `background:radial-gradient(circle at 34% 32%, ${sw[1]} 0 24%, ${sw[0]} 27%)` : ""}></span>`}
+          <span class="text-[0.68rem] leading-tight text-center">${m.name?.[loc] || m.name?.en || m.id}</span>
+        </button>`;
+      })}
     </div>
   <//>`;
 }
@@ -571,8 +582,8 @@ function Profile({ tab }) {
     <button id="p-share" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${shareApp}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:share-2", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("share", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></button>
     ${savedTab ? html`<button class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
     ${p.theme ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3"><span data-theme-art aria-hidden="true"></span><span class="flex-1 min-w-0 truncate font-medium">${T(t, "profTheme")}</span><input id="p-theme" type="checkbox" class="toggle toggle-primary" aria-label=${T(t, "profTheme")} checked=${theme === "signal"} onChange=${(e) => A.S.theme.set(e.target.checked ? "signal" : "signal-light")} /></div></div>` : null}
-    ${materials.length > 1 ? html`<button id="p-material" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("material")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:layers", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("material", loc)}</span><span class="text-sm text-muted truncate">${material?.name?.[loc] || material?.name?.en || ""}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>
-      <${MaterialSheet} open=${screen === "material"} materials=${materials} current=${material?.id} loc=${loc} />` : null}
+    ${materials.length > 1 ? html`<button id="p-material" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("material")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:palette", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("material", loc)}</span><span class="text-sm text-muted truncate">${material?.name?.[loc] || material?.name?.en || ""}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>
+      <${MaterialSheet} open=${screen === "material"} materials=${materials} current=${material?.id} loc=${loc} theme=${theme} />` : null}
     ${p.lang ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
     ${p.permissions?.length ? html`<button id="p-perms" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("perms")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield-check", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${permLabels(loc).row}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>` : null}
     ${p.source ? html`<a href=${p.source.url} target="_blank" rel="noopener" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon(p.source.icon || "lucide:database", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, p.source.label)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}

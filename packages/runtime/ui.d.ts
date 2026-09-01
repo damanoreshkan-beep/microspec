@@ -138,6 +138,7 @@ export function Stage({ children, className }: {
 export const FROST: "bg-base-100/60 backdrop-blur-xl border border-base-content/10 sf-frost text-base-content";
 /** The sheet box's class list — the shell every bottom sheet in the farm shares (radius, width cap, 88dvh height cap). */
 export const SHEET_BOX: "modal-box rounded-t-[1.75rem] max-w-[min(36rem,100vw)] mx-auto min-w-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)] pb-8 max-h-[88dvh]";
+/** The one-line flex row used inside panels and sheets (label left, control right) at the kit's gap. */
 export function Row({ children, className }: {
     children: any;
     className?: string;

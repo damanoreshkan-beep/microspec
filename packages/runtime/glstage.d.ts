@@ -24,4 +24,8 @@ export function GlStage({ shader, seed, ink, vary, tex, texReady, zClass }: {
     texReady: any;
     zClass?: string;
 }): any;
+/**
+ * Probe whether this document can hand out a WebGL2 context (false wherever `getContext` throws or answers null).
+ * @returns true when a WebGL2 context is available
+ */
 export function hasWebGL2(): boolean;

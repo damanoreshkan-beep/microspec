@@ -37,7 +37,31 @@ export function field(latDeg: any, lonDeg: any, altKm?: number, year?: number): 
 export const EPOCH: 2025;
 /** End of the model's validity as a decimal year (exclusive); beyond it the coefficients are extrapolation. */
 export const VALID_UNTIL: 2030;
+/**
+ * Magnetic declination at a point, in degrees (east-positive).
+ * @param lat geodetic latitude in degrees
+ * @param lon longitude in degrees
+ * @param altKm altitude in kilometres above the WGS84 ellipsoid
+ * @param year decimal year
+ * @returns the declination to ADD to a magnetic bearing for a true one
+ */
 export function declination(lat: any, lon: any, altKm?: number, year?: number): number;
+/**
+ * Converts a Date to the decimal year the model takes (UTC, fraction of the year elapsed).
+ * @param d the date; defaults to now
+ * @returns the decimal year
+ */
 export function decimalYear(d?: Date): number;
+/**
+ * Whether a decimal year falls inside the model's validity window.
+ * @param year decimal year; defaults to now
+ * @returns true for EPOCH ≤ year < VALID_UNTIL
+ */
 export function inRange(year?: number): boolean;
+/**
+ * Composes a magnetic heading with the local declination into a true heading, normalised to 0..360.
+ * @param magneticDeg magnetic heading in degrees
+ * @param dec declination in degrees, or null/undefined to leave the heading magnetic
+ * @returns the true heading in degrees
+ */
 export function trueFrom(magneticDeg: any, dec: any): number;

@@ -35,8 +35,5 @@ export function clock(ms: any): string;
  */
 /** The three repeat modes, in cycle order: off → all → one. */
 export const REPEAT_MODES: string[];
-export namespace REPEAT_ICON {
-    let off: string;
-    let all: string;
-    let one: string;
-}
+/** Icon name per repeat mode, for the Transport widget. */
+export const REPEAT_ICON: {};

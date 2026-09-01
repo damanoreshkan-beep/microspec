@@ -21,5 +21,7 @@ export function Prime({ kind, loc, reason, onEnable, onSettings, denied, unavail
     privacy: any;
     privacyIcon: any;
 }): any;
+/** `Prime` preset for the camera. */
 export function CameraPrime(props: any): any;
+/** `Prime` preset for the microphone. */
 export function MicPrime(props: any): any;

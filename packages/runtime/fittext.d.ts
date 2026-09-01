@@ -26,6 +26,7 @@ export function fitText(el: {
     clientWidth: number;
     clientHeight: number;
 }): number;
+/** The function's own source, for a page that cannot import it. Pairs with FIT_CSS. */
 export function fitTextSource(): string;
 /** Inline CSS for the fitted element — the wrapping contract `fitText` assumes; `overflow-wrap` is left to fitText. */
 export const FIT_CSS: "white-space:pre-wrap;word-break:normal;line-height:0.95";

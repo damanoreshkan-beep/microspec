@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "license": "MIT",
   "publish": {
     "exclude": [
@@ -100,9 +100,7 @@
     "./runtime/playback.js": "./packages/runtime/playback.js",
     "./runtime/player.js": "./packages/runtime/player.js",
     "./runtime/qrcode.js": "./packages/runtime/qrcode.js",
-    "./runtime/qrgen.vendor.js": "./packages/runtime/qrgen.vendor.js",
     "./runtime/render.js": "./packages/runtime/render.js",
-    "./runtime/satellite.js": "./packages/runtime/satellite.js",
     "./runtime/sealed.js": "./packages/runtime/sealed.js",
     "./runtime/sealedfetch.js": "./packages/runtime/sealedfetch.js",
     "./runtime/sensors.js": "./packages/runtime/sensors.js",

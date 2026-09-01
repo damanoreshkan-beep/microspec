@@ -61,7 +61,15 @@ export function curvePath(values: any, w: any, h: any, pad?: number): {
     min: number;
     max: number;
 };
+/**
+ * Lucide icon name for a WMO 4677 present-weather code.
+ * @param c the WMO code (0..99)
+ * @returns an `lucide:*` icon id
+ */
 export function wmoIcon(c: any): "lucide:sun" | "lucide:cloud-sun" | "lucide:cloud" | "lucide:cloud-fog" | "lucide:cloud-drizzle" | "lucide:cloud-rain" | "lucide:snowflake" | "lucide:cloud-rain-wind" | "lucide:cloud-snow" | "lucide:cloud-lightning";
+/** i18n key for the condition in words. The app owns the strings; this owns the mapping. */
 export function wmoKey(c: any): "wClear" | "wPartly" | "wOvercast" | "wFog" | "wDrizzle" | "wRain" | "wSnow" | "wShowers" | "wSnowShowers" | "wThunder";
+/** Frozen precipitation: snowfall 71-77, snow grains included, and snow showers 85-86. */
 export function isSnowCode(c: any): boolean;
+/** Thunderstorm, with or without hail. */
 export function isStormCode(c: any): boolean;

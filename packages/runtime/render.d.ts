@@ -18,5 +18,7 @@ export function setApp(app: any, views: any): void;
  * @returns the Preact tree the boot mounts into `#app`
  */
 export function App(): any;
+/** Whether the page runs on an iOS device (the install flow differs: no `beforeinstallprompt`). */
 export function isIOS(): boolean;
+/** Whether the page runs as an installed PWA (standalone display mode, or iOS's `navigator.standalone`). */
 export function isStandalone(): any;

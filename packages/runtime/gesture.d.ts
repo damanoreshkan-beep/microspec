@@ -83,4 +83,10 @@ export function useSwipe({ onLeft, onRight, onUp, onDown, threshold }?: {
     onPointerCancel: () => void;
     onClickCapture: (e: any) => void;
 };
+/**
+ * Pure dismiss decision for a dragged sheet.
+ * @param dy drag distance in px, down positive
+ * @param vy release velocity in px/ms, down positive
+ * @returns true when the sheet should fly out rather than spring back
+ */
 export function pastDismiss(dy: any, vy: any): boolean;

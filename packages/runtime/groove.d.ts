@@ -107,29 +107,26 @@ export function generateGroove(roles: any, { seed, tries }?: {
 export const N: 16;
 /** Metric weight of each of the 16 grid positions (Longuet-Higgins & Lee): 0 on the downbeat down to -4 on a sixteenth offbeat. */
 export const METRIC_WEIGHTS: number[];
+/**
+ * Rotate a pattern left by r steps (negative r rotates right).
+ * @param p the pattern array
+ * @param r number of steps to rotate
+ * @returns a new array of the same length
+ */
 export function rotate(p: any, r: any): any;
+/**
+ * Fraction of steps that carry an onset.
+ * @param p boolean pattern
+ * @returns onsets ÷ length, 0 for an empty pattern
+ */
 export function density(p: any): number;
+/**
+ * Witek's inverted-U as a Gaussian: reward peaks at `mu` and falls off either side.
+ * @param x the measured value (e.g. normalised syncopation)
+ * @param mu where the reward peaks
+ * @param sigma how forgiving the peak is
+ * @returns a reward in 0..1
+ */
 export function grooveU(x: any, mu: any, sigma: any): number;
-export namespace BANDS {
-    namespace low {
-        let mu: number;
-        let sigma: number;
-        let w: number;
-    }
-    namespace mid {
-        let mu_1: number;
-        export { mu_1 as mu };
-        let sigma_1: number;
-        export { sigma_1 as sigma };
-        let w_1: number;
-        export { w_1 as w };
-    }
-    namespace high {
-        let mu_2: number;
-        export { mu_2 as mu };
-        let sigma_2: number;
-        export { sigma_2 as sigma };
-        let w_2: number;
-        export { w_2 as w };
-    }
-}
+/** Per-band syncopation targets `{ mu, sigma, w }` for the low / mid / high roles — each its own inverted-U and weight. */
+export const BANDS: {};

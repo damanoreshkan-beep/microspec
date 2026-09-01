@@ -129,10 +129,5 @@ export function frameFit(halfW: any, halfH: any, fovYDeg: any, aspect: any, { ma
  * @returns Uint8Array(bins) of 0..255 magnitudes
  */
 export function seedFrame(bins?: number, phase?: number): Uint8Array;
-export namespace DEFAULTS {
-    let fMin: number;
-    let fMax: number;
-    let bars: number;
-    let sr: number;
-    let fftSize: number;
-}
+/** Default analysis parameters: frequency range, bar count, sample rate and FFT size. */
+export const DEFAULTS: {};

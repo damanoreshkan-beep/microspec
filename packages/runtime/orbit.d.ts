@@ -46,9 +46,18 @@ export function sunEciUnit(date: any): {
  * @returns true when sunlit, false when eclipsed
  */
 export function isSunlit(eci: any, date: any): boolean;
-export namespace FALLBACK_TLE {
-    let name: string;
-    let line1: string;
-    let line2: string;
-}
+/**
+ * The vendored SGP4 propagator (satellite.js), exposed for callers that need the raw API. Typed as a plain
+ * record on purpose: it is a vendored library, and its eighteen internals are not this package's API.
+ * @type {Record<string, any>}
+ */
+export const sat: Record<string, any>;
+/** A recent ISS TLE (`{ name, line1, line2 }`) baked in as the offline / first-paint / gate fallback. */
+export const FALLBACK_TLE: {};
+/**
+ * Build a satellite record from two TLE lines (whitespace-tolerant).
+ * @param l1 TLE line 1
+ * @param l2 TLE line 2
+ * @returns the SGP4 `satrec` to pass to `subpoint`
+ */
 export function makeSat(l1: any, l2: any): any;

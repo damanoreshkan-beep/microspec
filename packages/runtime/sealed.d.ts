@@ -41,7 +41,27 @@ export function unseal(privKey: any, serverPubB64u: any, wire: any): Promise<{
  * @returns the reply envelope bytes
  */
 export function sealResponse(resKey: any, payload: any): Promise<Uint8Array>;
+/**
+ * Encode bytes as unpadded base64url.
+ * @param bytes an ArrayBuffer or typed array
+ * @returns the base64url string
+ */
 export function b64u(bytes: any): any;
+/**
+ * Decode an unpadded base64url string to bytes.
+ * @param s the base64url string
+ * @returns a Uint8Array
+ */
 export function unb64u(s: any): Uint8Array;
+/**
+ * Import the server's pinned P-256 public key from its raw base64url form.
+ * @param rawB64u the raw uncompressed-point public key, base64url
+ * @returns a CryptoKey usable as the ECDH peer
+ */
 export function importServerKey(rawB64u: any): any;
+/**
+ * Server side: import the server's P-256 private key from a JWK.
+ * @param jwk the private key as a JWK object
+ * @returns a CryptoKey usable for deriveBits
+ */
 export function importServerPrivate(jwk: any): any;

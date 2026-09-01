@@ -44,8 +44,25 @@ export function meanFix(ss: any): {
  */
 /** Fraction of a fix's reported accuracy treated as unremovable bias — the floor `meanFix` never claims below. */
 export const BIAS_FRAC: 0.5;
+/**
+ * 95% error of one measured segment: both endpoints' accuracies added in quadrature.
+ * @param a first endpoint fix
+ * @param b second endpoint fix
+ * @returns the segment error in metres
+ */
 export function segErr(a: any, b: any): number;
+/**
+ * 95% error of a total distance: the segment errors added in quadrature.
+ * @param errs per-segment errors in metres
+ * @returns the total error in metres
+ */
 export function totalErr(errs: any): number;
 /** Default accuracy ceiling in metres for a fix to be accepted as a vertex. */
 export const ACC_LIMIT: 30;
+/**
+ * Whether a fix is precise enough to be a vertex of a measured line.
+ * @param p the fix
+ * @param limit accuracy ceiling in metres
+ * @returns true when the fix has a positive accuracy at or under the limit
+ */
 export function usableFix(p: any, limit?: number): boolean;

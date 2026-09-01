@@ -41,52 +41,23 @@ export function useTouchDeck({ onAct, latchMs, minPress }?: {
  * in the app would drive the player.
  */
 export function useKeyboardPad(setKeys: any, onAction: any): void;
+/**
+ * Record that a pointer gesture just handled this element, so the click that follows can be ignored.
+ * @param el the key element (nullable)
+ */
 export function markPointer(el: any): void;
+/**
+ * Whether a pointer gesture handled this element recently.
+ * @param el the key element (nullable)
+ * @param within the window in ms (default 500)
+ * @returns true if a pointer marked it inside the window
+ */
 export function fromPointer(el: any, within?: number): boolean;
+/** The activation guard every app's onClick should use: keyboard and AT only. */
 export function keyboardOnly(fn: any): (e: any) => void;
-export namespace PAD {
-    let LEFT: number;
-    let RIGHT: number;
-    let JUMP: number;
-    let RUN: number;
-    let DOWN: number;
-    let SHOOT: number;
-}
-export namespace KEYS {
-    import ArrowLeft = PAD.LEFT;
-    export { ArrowLeft };
-    import KeyA = PAD.LEFT;
-    export { KeyA };
-    import ArrowRight = PAD.RIGHT;
-    export { ArrowRight };
-    import KeyD = PAD.RIGHT;
-    export { KeyD };
-    import ArrowDown = PAD.DOWN;
-    export { ArrowDown };
-    import KeyS = PAD.DOWN;
-    export { KeyS };
-    import ArrowUp = PAD.JUMP;
-    export { ArrowUp };
-    import KeyW = PAD.JUMP;
-    export { KeyW };
-    import Space = PAD.JUMP;
-    export { Space };
-    import KeyZ = PAD.JUMP;
-    export { KeyZ };
-    import ShiftLeft = PAD.RUN;
-    export { ShiftLeft };
-    import ShiftRight = PAD.RUN;
-    export { ShiftRight };
-    import KeyX = PAD.RUN;
-    export { KeyX };
-    import KeyC = PAD.SHOOT;
-    export { KeyC };
-    import ControlLeft = PAD.SHOOT;
-    export { ControlLeft };
-    import ControlRight = PAD.SHOOT;
-    export { ControlRight };
-}
-export namespace ACTION_KEYS {
-    let Enter: string;
-    let KeyM: string;
-}
+/** The input bit mask — the contract between a deck and a simulation, mirrored in every game. */
+export const PAD: {};
+/** Keyboard `code` → `PAD` bit: arrows or WASD to move, Z/Space to jump, X/Shift to run, C/Ctrl to throw. */
+export const KEYS: {};
+/** Momentary keys — the ones a console has as buttons rather than as directions. */
+export const ACTION_KEYS: {};

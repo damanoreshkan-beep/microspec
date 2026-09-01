@@ -1,4 +1,3 @@
-/* @ts-self-types="./qrgen.vendor.d.ts" */
 /**
  * Vendored qrcode-generator 1.4.4 (MIT, Kazuhiko Arase) — the QR encoder behind ./qrcode.js, kept
  * same-origin and offline because a battle-tested codec is not worth reimplementing. The default export

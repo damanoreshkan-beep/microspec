@@ -51,12 +51,5 @@ export const SYMBOL_CAPS: {
         "*": string[];
     };
 };
-export namespace RAW_CAPS {
-    let usb: RegExp;
-    let geo: RegExp;
-    let wakeLock: RegExp;
-    let camera: RegExp;
-    let microphone: RegExp;
-    let orientation: RegExp;
-    let motion: RegExp;
-}
+/** Capability → regex matching a raw browser API call in the app's own source. */
+export const RAW_CAPS: {};

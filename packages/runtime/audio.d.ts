@@ -69,8 +69,41 @@ export function createEngine({ master, noise }?: {
 export const AC: any;
 /** Whether Web Audio exists in this environment (false in the headless gate / linkedom pre-flight). */
 export const audioSupported: boolean;
+/**
+ * A looping buffer source over a noise buffer (not started).
+ * @param ctx the AudioContext
+ * @param buf the buffer from `noiseBuffer`
+ * @returns the AudioBufferSourceNode
+ */
 export function noiseSource(ctx: any, buf: any): any;
+/**
+ * A biquad filter node with its type, frequency and optional Q set.
+ * @param ctx the AudioContext
+ * @param type the BiquadFilterType ("lowpass", "bandpass", …)
+ * @param freq cutoff / centre frequency in Hz
+ * @param q resonance; left at the default when null
+ * @returns the BiquadFilterNode
+ */
 export function filter(ctx: any, type: any, freq: any, q: any): any;
+/**
+ * Start a low-frequency oscillator that modulates an AudioParam by ±depth around base.
+ * @param ctx the AudioContext
+ * @param hz the LFO rate
+ * @param depth modulation amplitude in the target's units
+ * @param target the AudioParam to modulate
+ * @param base the target's centre value; left untouched when null
+ * @returns the running OscillatorNode (stop it to end the modulation)
+ */
 export function lfo(ctx: any, hz: any, depth: any, target: any, base: any): any;
+/**
+ * Equal-temperament frequency of a MIDI note number (A4 = 69 = 440 Hz).
+ * @param m the MIDI note number
+ * @returns the frequency in Hz
+ */
 export function midiToFreq(m: any): number;
+/**
+ * Frequency of a note name via `noteToMidi` + `midiToFreq`.
+ * @param note the note name
+ * @returns the frequency in Hz, or null when the name does not parse
+ */
 export function noteFreq(note: any): number;

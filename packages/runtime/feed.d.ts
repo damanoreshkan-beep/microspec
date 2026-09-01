@@ -39,5 +39,7 @@ export function pool(items: any, n: any, fn: any): Promise<void>;
 export const VPS_PROXY: "https://dreamstudio.mooo.com/feed";
 /** The backend's pinned long-term public key (base64url), used by sealedfetch.js to seal calls to VPS_PROXY. */
 export const SEALED_KEY: "BLP-06vCYzSiakKos1Sk7Yqzneb0MrbBjozH3EQ_YRgvzqc_0hcZeeFXoDzMhHlXL3awFtjOMFg08dzcKUmbNOM";
+/** Validator for `viaProxy`: true when the response text looks like a JSON array (not an HTML error page). */
 export function isJsonArray(x: any): any;
+/** Validator for `viaProxy`: true when the response text looks like a JSON object (not an HTML error page). */
 export function isJsonObject(x: any): any;

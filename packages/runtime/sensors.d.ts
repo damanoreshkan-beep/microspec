@@ -36,68 +36,64 @@ export function screenHeadingDeg(alpha: any, beta: any): number;
  * @returns heading in [0, 360); never null while β/γ are numbers
  */
 export function heldHeadingDeg(alpha: any, beta: any, gamma: any, screenAngle?: number): number;
-export namespace haptic {
-    export { canVibrate as supported };
-    export function buzz(pattern: any): void;
-    export function tick(): void;
-    export function bump(): void;
-    export function ok(): void;
-}
-export namespace geo {
-    let supported: boolean;
-    function watch(onPos: any, onErr: any, opts: any): () => void;
-    function once(opts: any): Promise<any>;
-}
-export namespace wakeLock {
-    let supported_1: boolean;
-    export { supported_1 as supported };
-    export function acquire(): {
+/** Short vibration feedback — `buzz(pattern)`, `tick`, `bump`, `ok`; a silent no-op where unsupported. */
+export const haptic: {
+    buzz(pattern: any): void;
+    tick(): void;
+    bump(): void;
+    ok(): void;
+};
+/** Geolocation as a callback `watch` or a single promised fix via `once`; errors arrive as "denied" | "unavailable" | "unsupported". */
+export const geo: {};
+/** Screen wake lock — `acquire()` returns a handle that re-acquires on visibilitychange until `release()`. */
+export const wakeLock: {
+    supported: boolean;
+    acquire(): {
         release: () => void;
         supported: boolean;
     };
-}
-export namespace compass {
-    let supported_2: boolean;
-    export { supported_2 as supported };
-    export let needsPermission: boolean;
-    export function request(): Promise<boolean>;
-    export function start(onHeading: any, { trueNorth, look }?: {
+};
+/** Compass heading in degrees clockwise from TRUE north — `request()` for the gesture-gated permission, `start(onHeading, opts)` → stop fn. */
+export const compass: {
+    supported: boolean;
+    needsPermission: boolean;
+    request(): Promise<boolean>;
+    start(onHeading: any, { trueNorth, look }?: {
         trueNorth?: boolean;
         look?: boolean;
     }): () => void;
-}
-export namespace tilt {
-    let supported_3: boolean;
-    export { supported_3 as supported };
-    let needsPermission_1: boolean;
-    export { needsPermission_1 as needsPermission };
-    export function request(): Promise<boolean>;
-    export function start(onTilt: any): () => void;
-}
-export namespace camera {
-    let supported_4: boolean;
-    export { supported_4 as supported };
-    export function start(video: any, onErr: any, { facingMode }?: {
+};
+/** Raw device pitch/roll (β/γ, degrees) for parallax — `request()` shares the compass permission, `start(onTilt)` → stop fn. */
+export const tilt: {
+    supported: boolean;
+    needsPermission: boolean;
+    request(): Promise<boolean>;
+    start(onTilt: any): () => void;
+};
+/** A live camera stream on a <video> — `start(videoEl, onErr, opts)` → stop fn that releases every track. */
+export const camera: {
+    supported: boolean;
+    start(video: any, onErr: any, { facingMode }?: {
         facingMode?: string;
     }): Promise<() => void>;
-}
+};
 /** Recorder MIME types to try, in preference order. */
 export const MIC_MIMES: string[];
-export namespace mic {
-    let supported_5: boolean;
-    export { supported_5 as supported };
-    export function mime(): string;
+/** A short microphone take — `mime()` picks a supported type, `record(opts)` → { done, stop, cancel }. */
+export const mic: {
+    supported: boolean;
+    mime(): string;
     /**
-     * Record one take from the microphone.
-     * @param {object} [opts]
-     * @param [opts.seconds] take length (default 2)
-     * @param [opts.timeoutMs] give up waiting for the stream after this long (default 10000)
-     * @param [opts.bitsPerSecond] encoder bitrate (default 128000)
-     * @param [opts.onStream] called with the live MediaStream once it is granted
-     * @param [opts.onErr] called with a short reason string ("denied", "unavailable", "unsupported", "error")
-     * @returns `{ done, stop, cancel }` — `done` resolves to `{ blob, mime, settings }` or null
-     */
-    export function record({ seconds, timeoutMs, bitsPerSecond, onStream, onErr }?: {
+         * Record one take from the microphone.
+         * @param {object} [opts]
+         * @param [opts.seconds] take length (default 2)
+         * @param [opts.timeoutMs] give up waiting for the stream after this long (default 10000)
+         * @param [opts.bitsPerSecond] encoder bitrate (default 128000)
+         * @param [opts.onStream] called with the live MediaStream once it is granted
+         * @param [opts.onErr] called with a short reason string ("denied", "unavailable", "unsupported", "error")
+         * @returns `{ done, stop, cancel }` — `done` resolves to `{ blob, mime, settings }` or null
+         */
+    record({ seconds, timeoutMs, bitsPerSecond, onStream, onErr }?: {
         seconds?: any;
         timeoutMs?: any;
         bitsPerSecond?: any;
@@ -108,7 +104,7 @@ export namespace mic {
         stop(): void;
         cancel(): void;
     };
-}
+};
 /**
  * Hardware capability layer — one uniform shape per capability (`supported` plus methods that no-op when
  * unavailable) so views can feature-detect and degrade. Exports `haptic` / `hapticFor`, `geo`, `wakeLock`,

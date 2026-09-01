@@ -56,10 +56,25 @@ export function iconTint(bg: any, fg: any, dark: any): {
  * @returns up to `k` `[r, g, b]` triples; fewer only if the image has fewer colours
  */
 export function palette(px: any, k?: number): number[][];
+/**
+ * Clamp a number into a rounded 0..255 channel value.
+ * @param n any number
+ * @returns an integer 0..255
+ */
 export function clamp8(n: any): number;
+/**
+ * `[r,g,b]` 0..255 → upper-case "#RRGGBB"; channels are clamped first.
+ * @param rgb `[r, g, b]`
+ * @returns the hex string
+ */
 export function rgbToHex([r, g, b]: [
     any,
     any,
     any
 ]): string;
+/**
+ * Readable ink over a swatch: black on light colours, white on dark ones.
+ * @param rgb `[r, g, b]` 0..255
+ * @returns "#000000" or "#FFFFFF"
+ */
 export function ink(rgb: any): "#000000" | "#FFFFFF";

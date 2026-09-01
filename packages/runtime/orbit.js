@@ -12,9 +12,13 @@
 // (orbital elements change slowly, ~daily) and propagate the live position locally every second with zero
 // further network — so the tracker no longer dies when a live-position API's certificate or uptime does.
 // Refs: satellite.js (SGP4) · low-precision solar position (Astronomical Almanac) · cylindrical shadow model.
-import * as sat from "./satellite.js";
-/** The vendored SGP4 propagator namespace (satellite.js), re-exported for callers that need the raw API. */
-export * as sat from "./satellite.js";
+import * as satlib from "./satellite.js";
+/**
+ * The vendored SGP4 propagator (satellite.js), exposed for callers that need the raw API. Typed as a plain
+ * record on purpose: it is a vendored library, and its eighteen internals are not this package's API.
+ * @type {Record<string, any>}
+ */
+export const sat = satlib;
 
 const R_EARTH = 6378.137;   // WGS84 equatorial radius (km) — the umbra cylinder radius for the shadow test
 

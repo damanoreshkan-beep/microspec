@@ -42,6 +42,7 @@ export function useReveal(ready: any, minMs?: number): boolean;
 export function Loading({ lines }?: {
     lines?: number[];
 }): any;
+/** Wrapper whose children fade in when they replace a skeleton (the `ms-reveal` class); final state in the gate. */
 export function Reveal({ children, cls }: {
     children: any;
     cls?: string;

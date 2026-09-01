@@ -23,4 +23,10 @@ export function qrSvg(text: any, { ecc, margin, dark, light }?: {
     dark?: string;
     light?: string;
 }): string;
+/**
+ * The QR SVG as a `data:image/svg+xml` URI, ready for an <img src>.
+ * @param text the text to encode
+ * @param opts the same options as qrSvg
+ * @returns the data URI string
+ */
 export function qrDataUri(text: any, opts: any): string;

@@ -97,27 +97,20 @@ export function loginGoogle(credential: any): Promise<{
 export const SCOPE: "public_repo";
 /** The session atom: null when signed out, `{ sid, user, provider }` when signed in. */
 export const session: any;
-export namespace MOCK_USER {
-    let login: string;
-    let name: string;
-    let avatar: string;
-    let html_url: string;
-}
-export namespace MOCK_GOOGLE_SESSION {
-    let sid: string;
-    namespace user {
-        let login_1: string;
-        export { login_1 as login };
-        let name_1: string;
-        export { name_1 as name };
-        let avatar_1: string;
-        export { avatar_1 as avatar };
-        let html_url_1: string;
-        export { html_url_1 as html_url };
-    }
-    let provider: string;
-}
+/** The deterministic GitHub user the gate signs in as; never used off the gate. */
+export const MOCK_USER: {};
+/** The deterministic Google session the gate uses for the Google sign-in path; never used off the gate. */
+export const MOCK_GOOGLE_SESSION: {};
+/**
+ * Whether a session is currently held.
+ * @returns true when `session` is non-null
+ */
 export function isLoggedIn(): boolean;
+/**
+ * Collapse a GitHub run/job/step's `status` + `conclusion` into one word.
+ * @param r the raw GitHub object carrying `status` and (once completed) `conclusion`
+ * @returns "queued" | "running" | the conclusion ("success", "failure", …) | "unknown"
+ */
 export function runState(r: any): any;
 /** Deterministic repository fixtures `repos()` returns under the gate. */
 export const MOCK_REPOS: {

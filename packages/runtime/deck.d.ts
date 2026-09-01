@@ -20,12 +20,8 @@ export function clusterMetrics(a: any, b: any, key: any, box: any): {
     span: number;
     angle: number;
 };
-export namespace DIAMOND {
-    let right: number[];
-    let down: number[];
-    let up: number[];
-    let left: number[];
-}
+/** Four-key cluster slot centres, `[x%, y%]` of the cluster box, axis-aligned. */
+export const DIAMOND: {};
 /** Which slot each action takes, in the order a game declares them. */
 export const DIAMOND_ORDER: string[];
 /** A triangle is the diamond without its left slot — the shape three keys actually make. */
@@ -40,4 +36,5 @@ export const PAIR: number[][];
 export const PAIR_KEY: 40.26;
 /** Pair cluster box `[w, h]` in key diameters. */
 export const PAIR_BOX: number[];
+/** The hub as a fraction of the whole cross, given its share of the centre cell. */
 export function hubOfCross(hubOfCell: any): number;

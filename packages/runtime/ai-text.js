@@ -102,13 +102,14 @@ import { CONTENT_LANG } from "./translate.js";
 // ── suggest: a one-shot creative generation, never cached ────────────────────────────────────────────────
 
 // suggest(mode, spark, locale) — mode "dream" → a vivid scene prompt; "edit" → a short photo-edit
-// instruction. Returns "" on any failure (the caller keeps the field unchanged). Never called under the
-// gate (no network). The image models want English, but we generate in-locale for a native feel and let
-// translate.js/toEnglish convert it at send time.
+// instruction; "line" → one short thought of meaning (vydyvo's caption — the spark carries the essence and
+// the already-shown lines to avoid). Returns "" on any failure (the caller keeps the field unchanged).
+// Never called under the gate (no network). The image models want English, but we generate in-locale for a
+// native feel and let translate.js/toEnglish convert it at send time.
 /**
- * One-shot creative generation for the "surprise me" wand; never cached, "" on any failure.
- * @param mode "dream" (a vivid scene prompt) or "edit" (a short photo-edit instruction)
- * @param spark the caller's random seed text that drives variety
+ * One-shot creative generation; never cached, "" on any failure.
+ * @param mode "dream" (a vivid scene prompt), "edit" (a short photo-edit instruction), "line" (one short thought of meaning) or "scene" (one style-free visual scene in a given spirit) — for "line"/"scene" the spark carries the essence and what to avoid repeating
+ * @param spark the caller's context/seed text that drives the answer and its variety
  * @param locale the language to generate in
  * @returns the generated line, or "" so the caller keeps its field unchanged
  */

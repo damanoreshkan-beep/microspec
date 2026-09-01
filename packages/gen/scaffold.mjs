@@ -120,16 +120,33 @@ const isLight = /light/.test(spec.theme || "");
 // MEASURED off theme.css, never written here: a hex typed beside the thing it describes is right until the
 // base moves, then silently wrong in every app at once (76 chrome files carried #2A2A2E after the black
 // repaint). runtime_test.js still cross-checks every app's chrome against the same two bases.
+// The EFFECTIVE theme, as the cascade sees it: the core's runtime.css first, then a product's rt/theme.css
+// with its local `@import "./x.css"` chain inlined (a product's theme.css is one import of its default
+// MODULE, theme-<id>.css, which imports runtime.css and then declares the brand). The LAST palette block
+// that carries a base wins — exactly what the browser resolves.
 import { pkgRoot } from "../runtime/pkgroot.js";
-// The EFFECTIVE theme: a product's rt/theme.css (its brand — the overlay replaces the core's theme.css by
-// name) when the tree has one, else the core's runtime.css with its neutral palettes.
-const themeCss = await Deno.readTextFile(`${Deno.cwd()}/rt/theme.css`).catch(() =>
-  Deno.readTextFile(new URL("packages/runtime/runtime.css", pkgRoot(import.meta.url, 2))));
+const themeCss = await (async () => {
+  const rt = `${Deno.cwd()}/rt/`;
+  const expand = async (text) => {
+    let head = "";
+    for (const m of text.matchAll(/@import\s+"\.\/([\w.-]+\.css)";/g)) {
+      const local = await Deno.readTextFile(rt + m[1]).catch(() => null);
+      if (local != null) head += await expand(local) + "\n";
+    }
+    return head + text;
+  };
+  const core = await Deno.readTextFile(new URL("packages/runtime/runtime.css", pkgRoot(import.meta.url, 2)));
+  const own = await Deno.readTextFile(rt + "theme.css").catch(() => null);
+  return own == null ? core : core + "\n" + await expand(own);
+})();
 const baseOf = (t) => {
-  const i = themeCss.indexOf(`[data-theme="${t}"] {`);
-  const m = /--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(themeCss.slice(i));
-  if (i < 0 || !m) throw new Error(`theme.css: no --color-base-100 for [data-theme="${t}"]`);
-  return m[1].toUpperCase();
+  let i = -1, base = null;
+  while ((i = themeCss.indexOf(`[data-theme="${t}"] {`, i + 1)) > -1) {
+    const m = /--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(themeCss.slice(i, themeCss.indexOf("\n}", i)));
+    if (m) base = m[1].toUpperCase();
+  }
+  if (!base) throw new Error(`theme: no --color-base-100 for [data-theme="${t}"]`);
+  return base;
 };
 const themeColor = isLight ? baseOf("signal-light") : baseOf("signal");
 const bg = themeColor;

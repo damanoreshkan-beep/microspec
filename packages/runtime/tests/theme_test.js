@@ -614,12 +614,27 @@ Deno.test("the material: the pair of light is text-safe in BOTH themes — the C
 
 Deno.test("PWA chrome colours track the theme bases — the surface no screenshot can see", async () => {
   const root = `file://${Deno.cwd()}/`; // the apps are the CONSUMER's; the css is the EFFECTIVE theme —
-  // the consumer's rt/theme.css when it has a brand, else the package's neutral runtime.css (what scaffold measures)
-  const css = await Deno.readTextFile(new URL("rt/theme.css", root)).catch(() =>
-    Deno.readTextFile(new URL("packages/runtime/runtime.css", pkgRoot(import.meta.url, 3))));
+  // the core's runtime.css, then the consumer's rt/theme.css with its local @import chain inlined (a
+  // product's theme.css imports its default MODULE); the LAST palette with a base wins, as in the cascade —
+  // the same resolution scaffold measures with.
+  const expand = async (text) => {
+    let head = "";
+    for (const m of text.matchAll(/@import\s+"\.\/([\w.-]+\.css)";/g)) {
+      const local = await Deno.readTextFile(new URL(`rt/${m[1]}`, root)).catch(() => null);
+      if (local != null) head += await expand(local) + "\n";
+    }
+    return head + text;
+  };
+  const core = await Deno.readTextFile(new URL("packages/runtime/runtime.css", pkgRoot(import.meta.url, 3)));
+  const own = await Deno.readTextFile(new URL("rt/theme.css", root)).catch(() => null);
+  const css = own == null ? core : core + "\n" + await expand(own);
   const baseOf = (t) => {
-    const i = css.indexOf(`[data-theme="${t}"] {`);
-    return /--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(css.slice(i))[1].toUpperCase();
+    let i = -1, base = null;
+    while ((i = css.indexOf(`[data-theme="${t}"] {`, i + 1)) > -1) {
+      const m = /--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(css.slice(i, css.indexOf("\n}", i)));
+      if (m) base = m[1].toUpperCase();
+    }
+    return base;
   };
   const allowed = new Set([baseOf("signal"), baseOf("signal-light")]);
   const bad = [];

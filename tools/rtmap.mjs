@@ -30,9 +30,11 @@
  * Inputs, in the order the code reads them:
  * - `rt/` — every `.js` file except `_test.js` suites, sorted: the overlay's names. No `rt/`, or an empty
  *   one, means the framework tree: `✓ no rt/ overlay — no preflight map needed`, exit 0, nothing written.
- * - the consumer's `deno.json` `imports` — must carry a `jsr:@microspec/core@<version>` pin; that version is
- *   the base `https://jsr.io/@microspec/core/<version>/`. Without it: `rtmap: deno.json imports carry no
- *   jsr:@microspec/core@<version> pin`, exit 1.
+ * - the consumer's `deno.json` `imports` — must carry a `jsr:@microspec/core@<spec>` entry. The spec is a
+ * RANGE by default, so the base is the version that
+ *   RESOLVED — `deno.lock`'s specifiers entry, else the npm-compat package under node_modules — as
+ *   `https://jsr.io/@microspec/core/<resolved>/`. No entry: `rtmap: deno.json imports carry no
+ *   jsr:@microspec/core@<spec> entry`, exit 1; a range that has not resolved yet: `run deno task install first`.
  * - the core's own `deno.json` manifest (the npm pins — ONE source, so one preact instance) and its
  *   `packages/gates/preflight.importmap.json` (the app-only pins: motion, lodash-es, …). Manifest keys win.
  *
@@ -88,8 +90,19 @@ if (!names.length) {
 }
 
 const consumer = JSON.parse(await Deno.readTextFile("deno.json"));
-const pin = /jsr:@microspec\/core@([^/"]+)/.exec(JSON.stringify(consumer.imports ?? {}))?.[1];
-if (!pin) { console.error("rtmap: deno.json imports carry no jsr:@microspec/core@<version> pin"); Deno.exit(1); }
+const spec = /jsr:@microspec\/core@([^/"]+)/.exec(JSON.stringify(consumer.imports ?? {}))?.[1];
+if (!spec) { console.error("rtmap: deno.json imports carry no jsr:@microspec/core@<spec> entry"); Deno.exit(1); }
+const resolvedCore = async () => {
+  if (/^\d+\.\d+\.\d+/.test(spec)) return spec;
+  try {
+    const lock = JSON.parse(await Deno.readTextFile("deno.lock"));
+    const v = lock.specifiers?.[`jsr:@microspec/core@${spec}`];
+    if (v) return v;
+  } catch {  }
+  try { return JSON.parse(await Deno.readTextFile("node_modules/@microspec/core/package.json")).version; } catch {  }
+  console.error(`rtmap: jsr:@microspec/core@${spec} has not resolved yet — run deno task install first`); Deno.exit(1);
+};
+const pin = await resolvedCore();
 const base = `https://jsr.io/@microspec/core/${pin}/`;
 
 const manUrl = new URL("../deno.json", import.meta.url); 

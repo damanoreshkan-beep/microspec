@@ -1,6 +1,3 @@
-import { NODES } from "../8n8/nodes.mjs";
-import { BREAKPOINTS } from "../../packages/gates/browser-lib.mjs";
-
 const check = Deno.args.includes("--check");
 const wantPng = Deno.args.includes("--png");
 const manifest = JSON.parse(await Deno.readTextFile("deno.json"));
@@ -8,6 +5,8 @@ if (manifest.name !== "@microspec/core") {
   if (check) console.log("  ✓ not the core — no doc art to generate");
   Deno.exit(0);
 }
+const { NODES } = await import("../8n8/nodes.mjs");
+const { BREAKPOINTS } = await import("../../packages/gates/browser-lib.mjs");
 const OUT = "docs/art";
 
 const C = { amber: "#F2B84B", cyan: "#5CE4DC", ink: "#F2EEE6", muted: "#A39E94", rim: "rgba(255,232,196,.14)", edge: "rgba(255,238,208,.22)" };

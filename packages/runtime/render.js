@@ -1028,6 +1028,51 @@ function usePublishedChrome(kind) {
   return ref;
 }
 
+// THE BATTERY — the one thing the system status bar carried that a fullscreen app still needs (owner,
+// 2026-09-01: "я хочу свій показ батареї бо лише вона потрібна на повному екрані"). The farm's manifests are
+// `display: "fullscreen"` since the same day, so a WebAPK hides the system bars entirely; this indicator
+// appears ONLY when the page actually runs in fullscreen display-mode (a browser tab still has the system
+// bar) — or when the eye forces one with `?battery=NN[&charging=1]`, since a headless shot cannot arrange a
+// display mode. Colour = meaning: the fill is ink, the accent while charging, the error red at ≤15 %.
+function useBattery() {
+  const [b, setB] = useState(null);
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(location.search), f = q.get("battery");
+      if (f != null) { setB({ level: Math.max(0, Math.min(1, Number(f) / 100 || 0)), charging: q.get("charging") === "1", forced: true }); return; }
+    } catch { /* no URL */ }
+    if (!matchMedia("(display-mode: fullscreen)").matches || typeof navigator === "undefined" || !navigator.getBattery) return;
+    let bat, dead = false;
+    const read = () => { if (!dead && bat) setB({ level: bat.level, charging: bat.charging }); };
+    navigator.getBattery().then((m) => { bat = m; read(); m.addEventListener("levelchange", read); m.addEventListener("chargingchange", read); }).catch(() => {});
+    return () => { dead = true; bat?.removeEventListener("levelchange", read); bat?.removeEventListener("chargingchange", read); };
+  }, []);
+  return b;
+}
+
+/**
+ * The runtime's own battery indicator — a small glyph + percentage, shown only when the page runs in
+ * fullscreen display-mode (the farm's WebAPKs hide the system status bar, so the runtime carries the one
+ * reading that bar provided). `force` renders it regardless of display mode — for a surface that hides the
+ * chrome itself, like a screensaver's show. Renders nothing when the Battery API is silent.
+ * @param props `force` show even outside fullscreen display-mode
+ * @returns the `[data-battery]` element, or null
+ */
+export function Battery({ force = false } = {}) {
+  const b = useBattery(), loc = useStore(A.S.locale);
+  if (!b || (!force && !b.forced && !matchMedia("(display-mode: fullscreen)").matches)) return null;
+  const pct = Math.round(b.level * 100), low = !b.charging && pct <= 15;
+  return html`<span data-battery data-charging=${b.charging ? "1" : null} role="status" aria-label=${`${sys("battery", loc)} ${pct}%`}
+    class=${`flex items-center gap-1.5 shrink-0 font-mono text-[0.7rem] tabular-nums ${low ? "text-error" : "text-base-content/80"}`}>
+    <svg width="24" height="12" viewBox="0 0 24 12" aria-hidden="true" class="shrink-0">
+      <rect x="1" y="1.5" width="19" height="9" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".5" />
+      <rect x="21.3" y="4" width="2" height="4" rx="1" fill="currentColor" opacity=".5" />
+      <rect x="3" y="3.5" width=${Math.max(0.8, 15 * b.level)} height="5" rx="1.2" fill=${b.charging ? "var(--app-accent)" : "currentColor"} />
+    </svg>
+    <span>${pct}</span>
+  </span>`;
+}
+
 function AppBar() {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
   const qL = QR_LBL[loc] || QR_LBL.en;
@@ -1039,7 +1084,7 @@ function AppBar() {
   // owner 2026-09-01: "маленький акуратний, не давив на голову"), and --hdr-h is MEASURED off the element.
   // The "open on phone" trigger is desktop-only (hidden lg:) — a QR of THIS page to hop to your phone; it
   // stays in the DOM on mobile (display:none) so nothing needs a special build, and it's harmless there.
-  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><${Battery} /><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 
 // Desktop "open on phone": a QR of the current URL so you can continue on a phone, with an explicit "stay on
@@ -1504,5 +1549,5 @@ export function App() {
 
 /** Whether the page runs on an iOS device (the install flow differs: no `beforeinstallprompt`). */
 export const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
-/** Whether the page runs as an installed PWA (standalone display mode, or iOS's `navigator.standalone`). */
-export const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+/** Whether the page runs as an installed PWA (fullscreen or standalone display mode, or iOS's `navigator.standalone`). */
+export const isStandalone = () => matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;

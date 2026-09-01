@@ -252,7 +252,10 @@ const icons = [
 ];
 const manifest = JSON.stringify({
   name: title, short_name: title, description: tagline, start_url: "./", scope: "./",
-  display: "standalone", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
+  // fullscreen, not standalone (owner 2026-09-01): a WebAPK then hides the system status bar AND the
+  // gesture strip — the app owns the whole panel. What the system bar carried is re-provided by the
+  // runtime: the AppBar shows its own battery when the page actually runs in fullscreen display-mode.
+  display: "fullscreen", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
 }, null, 2) + "\n";
 
 // A placeholder worker, replaced the moment `deploy/sw.mjs` runs (which is gated in CI): the real precache

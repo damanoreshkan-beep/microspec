@@ -83,6 +83,17 @@
  */
 export function setApp(app: any, views: any): void;
 /**
+ * The runtime's own battery indicator — a small glyph + percentage, shown only when the page runs in
+ * fullscreen display-mode (the farm's WebAPKs hide the system status bar, so the runtime carries the one
+ * reading that bar provided). `force` renders it regardless of display mode — for a surface that hides the
+ * chrome itself, like a screensaver's show. Renders nothing when the Battery API is silent.
+ * @param props `force` show even outside fullscreen display-mode
+ * @returns the `[data-battery]` element, or null
+ */
+export function Battery({ force }?: {
+    force?: boolean;
+}): any;
+/**
  * The app root: the chrome (app bar, dock, dock fade, toast), the current tab's view and every systemic
  * overlay (detail, permissions, sign-in, APK, QR, install) driven by the routing atoms in the app context.
  * @returns the Preact tree the boot mounts into `#app`
@@ -90,5 +101,5 @@ export function setApp(app: any, views: any): void;
 export function App(): any;
 /** Whether the page runs on an iOS device (the install flow differs: no `beforeinstallprompt`). */
 export function isIOS(): boolean;
-/** Whether the page runs as an installed PWA (standalone display mode, or iOS's `navigator.standalone`). */
+/** Whether the page runs as an installed PWA (fullscreen or standalone display mode, or iOS's `navigator.standalone`). */
 export function isStandalone(): any;

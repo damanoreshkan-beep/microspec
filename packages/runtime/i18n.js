@@ -116,6 +116,7 @@ export const SYS = {
   // the raw key the first time someone forgets (which is how "profTheme" reached a real screen).
   close: { en: "Close", uk: "Закрити" },
   material: { en: "Theme", uk: "Тема" },
+  battery: { en: "Battery", uk: "Батарея" },
   modeDay: { en: "Day", uk: "День" },
   modeNight: { en: "Night", uk: "Ніч" },
   // Clean screen (S.clean): the runtime's chrome steps off a full-bleed surface. Both halves live here for

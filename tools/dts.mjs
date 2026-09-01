@@ -131,7 +131,24 @@ if (check) {
   if (stale) Deno.exit(1);
   const out = await new Deno.Command("deno", { args: ["check", ...entries.map((e) => `${root}/${e}`)], stdout: "inherit", stderr: "inherit" }).output();
   if (!out.success) { console.error("  ✗ the declarations do not type-check — fix the JSDoc they were emitted from"); Deno.exit(1); }
-  console.log(`  ✓ ${entries.length} declaration files current and type-checked`);
+  // @ts-self-types; a namespace's members are symbols too). The score read 67% while every export in
+  const doc = await new Deno.Command("deno", { args: ["doc", "--json", ...entries.map((e) => `${root}/${e}`)], stdout: "piped", stderr: "piped" }).output();
+  if (!doc.success) { console.error(`  ✗ deno doc failed: ${new TextDecoder().decode(doc.stderr).split("\n")[0]}`); Deno.exit(1); }
+  const own = new Set(entries.flatMap((e) => [`file://${root}/${e}`, `file://${root}/${outFor(e)}`]));
+  const gaps = [];
+  let total = 0;
+  const walk = (symbols, file, prefix) => {
+    for (const s of symbols) {
+      total++;
+      if (!s.declarations.some((d) => d.jsDoc && (d.jsDoc.doc || d.jsDoc.tags?.length))) gaps.push(`${file}: ${prefix}${s.name}`);
+      for (const d of s.declarations) if (d.kind === "namespace" && d.def?.elements) walk(d.def.elements, file, `${prefix}${s.name}.`);
+    }
+  };
+  for (const [file, m] of Object.entries(JSON.parse(new TextDecoder().decode(doc.stdout)).nodes)) {
+    if (own.has(file)) walk(m.symbols ?? [], file.slice(`file://${root}/`.length), "");
+  }
+  if (gaps.length) { console.error(`  ✗ ${gaps.length} exported symbol(s) without a JSDoc:\n    ${gaps.join("\n    ")}`); Deno.exit(1); }
+  console.log(`  ✓ ${entries.length} declaration files current, type-checked, ${total}/${total} symbols documented`);
 } else {
   console.log(`dts: ${entries.length} entrypoints, ${written} written`);
 }

@@ -8,11 +8,13 @@ import { encode as encodeWebp } from "npm:@jsquash/webp@1.4.0";
 import { initWasm, Resvg } from "npm:@resvg/resvg-wasm@2.6.2";
 
 const ROOT = new URL("../..", import.meta.url).pathname.replace(/\/$/, "");
-const dir = Deno.args[0];
-if (!dir) { console.error("usage: shots-import.mjs <dist-eye dir>"); Deno.exit(2); }
+const dir = Deno.args.find((a) => !a.startsWith("--"));
+if (!dir) { console.error("usage: shots-import.mjs <dist-eye dir> [--out=<store assets dir>]"); Deno.exit(2); }
+// --out=: the PRODUCT's apps/store/assets — this checkout has no store since the split (the same trap
+// icon-import and ds-import already fixed: ROOT is the core)
 await initWasm(fetch("https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm"));
 const b64 = (b) => { let s = ""; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); };
-const OUT = `${ROOT}/apps/store/assets`;
+const OUT = Deno.args.find((a) => a.startsWith("--out="))?.slice(6) ?? `${ROOT}/apps/store/assets`;
 await Deno.mkdir(OUT, { recursive: true });
 let n = 0, bytes = 0;
 for await (const e of Deno.readDir(dir)) {

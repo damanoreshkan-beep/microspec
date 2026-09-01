@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 238" width="960" height="238" role="img" aria-labelledby="t">
+<title id="t">runtime/sw-core.js — imports, exports, dependants</title>
+<style>
+  text { font-family: 'Geist Mono', ui-monospace, 'Liberation Mono', Menlo, monospace; fill: #F2EEE6; }
+  .m { fill: #A39E94; font-size: 11px; letter-spacing: .08em; }
+  .l { font-size: 11.5px; }
+  .h { font-size: 12px; fill: #5CE4DC; letter-spacing: .06em; }
+  .flow { stroke-dasharray: 5 11; animation: flow 3s linear infinite; }
+  @keyframes flow { to { stroke-dashoffset: -32; } }
+  .breathe { animation: breathe 4.2s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .38; } }
+  .beat { animation: beat 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes beat { 50% { opacity: .55; transform: scale(1.35); } }
+  .spin { transform-box: fill-box; transform-origin: center; animation: spin 48s linear infinite; }
+  .spin-r { transform-box: fill-box; transform-origin: center; animation: spin 64s linear infinite reverse; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+<defs>
+  <filter id="bloom" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="4.5"/></filter>
+  <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.4"/></filter>
+  <radialGradient id="key" cx="50%" cy="-10%" r="80%"><stop offset="0" stop-color="#F2B84B" stop-opacity=".09"/><stop offset="1" stop-color="#F2B84B" stop-opacity="0"/></radialGradient>
+  <linearGradient id="pair" x1="0" x2="1"><stop offset="0" stop-color="#F2B84B"/><stop offset="1" stop-color="#5CE4DC"/></linearGradient>
+</defs>
+<rect width="960" height="238" rx="22" fill="#000"/>
+<rect width="960" height="238" rx="22" fill="url(#key)"/>
+<rect x=".5" y=".5" width="959" height="237" rx="21.5" fill="none" stroke="rgba(255,232,196,.14)"/>
+<path d="M 24 1 H 936" stroke="rgba(255,238,208,.22)" stroke-width="1"/>
+<g><circle cx="488.71" cy="236.78" r="0.77" fill="#F2B84B" opacity="0.34" class="breathe" style="animation-delay:-4.04s"/><circle cx="746.97" cy="235.18" r="1.14" fill="#F2B84B" opacity="0.55" class="breathe" style="animation-delay:-3.5s"/><circle cx="953.12" cy="216.71" r="1.16" fill="#F2B84B" opacity="0.51" class="breathe" style="animation-delay:-1.55s"/><circle cx="333.32" cy="18.85" r="1.1" fill="#F2B84B" opacity="0.67" class="breathe" style="animation-delay:-3.95s"/><circle cx="118.95" cy="147.99" r="1.38" fill="#5CE4DC" opacity="0.42" class="breathe" style="animation-delay:-0.34s"/><circle cx="882" cy="20.87" r="1.22" fill="#F2B84B" opacity="0.55" class="breathe" style="animation-delay:-1.23s"/><circle cx="789.32" cy="231.58" r="1.14" fill="#5CE4DC" opacity="0.71" class="breathe" style="animation-delay:-0.03s"/><circle cx="147.76" cy="232.82" r="1.21" fill="#F2B84B" opacity="0.7" class="breathe" style="animation-delay:-1.53s"/><circle cx="194.43" cy="106.34" r="1.26" fill="#F2B84B" opacity="0.72" class="breathe" style="animation-delay:-4.06s"/><circle cx="495.76" cy="103.55" r="1.62" fill="#F2B84B" opacity="0.41" class="breathe" style="animation-delay:-3.16s"/><circle cx="739.93" cy="226" r="0.77" fill="#F2B84B" opacity="0.41" class="breathe" style="animation-delay:-1.44s"/><circle cx="734.55" cy="215.54" r="1.43" fill="#F2B84B" opacity="0.3" class="breathe" style="animation-delay:-1.31s"/><circle cx="892.19" cy="131.24" r="1.59" fill="#F2B84B" opacity="0.52" class="breathe" style="animation-delay:-2.38s"/><circle cx="426.57" cy="167.13" r="0.72" fill="#F2B84B" opacity="0.41" class="breathe" style="animation-delay:-4.03s"/><circle cx="909.48" cy="55.36" r="1.63" fill="#F2B84B" opacity="0.42" class="breathe" style="animation-delay:-2.78s"/><circle cx="635.64" cy="151.09" r="1.06" fill="#F2B84B" opacity="0.45" class="breathe" style="animation-delay:-2.89s"/><circle cx="548.19" cy="98.72" r="1.66" fill="#F2B84B" opacity="0.67" class="breathe" style="animation-delay:-0.14s"/><circle cx="305.22" cy="237.27" r="1.38" fill="#F2B84B" opacity="0.73" class="breathe" style="animation-delay:-1.8s"/><circle cx="93.76" cy="207.6" r="1.42" fill="#5CE4DC" opacity="0.71" class="breathe" style="animation-delay:-1.15s"/><circle cx="824.48" cy="132.46" r="0.85" fill="#5CE4DC" opacity="0.66" class="breathe" style="animation-delay:-3.22s"/><circle cx="255.3" cy="46.25" r="1.65" fill="#F2B84B" opacity="0.38" class="breathe" style="animation-delay:-3.55s"/><circle cx="690.34" cy="102.09" r="1.02" fill="#F2B84B" opacity="0.29" class="breathe" style="animation-delay:-2.03s"/></g>
+<text x="40" y="42" class="m" text-anchor="start">RUNTIME MODULE MAP · DRAWN FROM THE IMPORT GRAPH</text><text x="920" y="42" class="h" text-anchor="end">runtime/sw-core.js</text><text x="40" y="78" class="m" text-anchor="start">IMPORTS · 0 RUNTIME MODULES</text><text x="430" y="78" class="m" text-anchor="start">EXPORTS · 0</text><text x="920" y="78" class="m" text-anchor="end">IMPORTED BY · 0 RUNTIME MODULES</text><circle cx="300" cy="138" r="26" fill="#5CE4DC" opacity=".35" filter="url(#bloom)" class="beat"/><g><circle cx="300" cy="138" r="15" fill="#5CE4DC" opacity="0.85" filter="url(#bloom)" class="beat" style="animation-delay:-0s"/><circle cx="300" cy="138" r="5" fill="#5CE4DC"/></g><text x="300" y="168" class="l" text-anchor="middle" fill="#5CE4DC" font-weight="700" font-size="13">sw-core</text><path d="M 300 138 C 365 138, 365 112, 430 112" fill="none" stroke="#5CE4DC" stroke-opacity="0.55" stroke-width="1.2"/><path d="M 300 138 C 365 138, 365 112, 430 112" fill="none" stroke="#5CE4DC" stroke-opacity="0.95" stroke-width="1.2" class="flow"/><text x="450" y="116" class="l" text-anchor="start" fill="#F2EEE6" fill-opacity=".82">no exports — a script</text></svg>

@@ -101,6 +101,8 @@ export function createApp(spec, dataLoad) {
   const S = {
     locale: urlLocale ? atom(urlLocale) : persistentAtom(ns + "locale", "uk"),
     theme: persistentAtom(ns + "theme", spec.theme || "dim"),
+    material: persistentAtom("ms:material", ""),
+    materials: atom([]),
     fav: persistentAtom(ns + "fav", {}, JSON_CODEC),
     amount: persistentAtom(ns + "amount", "100"),
     from: persistentAtom(ns + "from", conv?.defaultFrom || "USD"),

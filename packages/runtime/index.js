@@ -64,6 +64,7 @@ import { setApp, App } from "./render.js";
 import { haptic, hapticFor } from "./sensors.js";
 import { installSealedFetch } from "./sealedfetch.js";
 import { gate } from "./gate.js";
+import { loadMaterials, applyMaterial } from "./material.js";
 
 installSealedFetch();
 
@@ -115,6 +116,11 @@ export function start(spec, arg2) {
   })();
   applyTheme(urlTheme || S.theme.get());
   S.theme.listen((t) => applyTheme(urlTheme || t));
+  loadMaterials().then((list) => {
+    S.materials.set(list);
+    if (list.length) applyMaterial(S.material.get() || list[0].id, list);
+  });
+  S.material.listen((id) => applyMaterial(id, S.materials.get()));
 
 
   const applyLang = (l) => { try { document.documentElement.lang = l; } catch {  } };

@@ -103,6 +103,7 @@ export function manifestFor(id, { read: rd = read } = {}) {
     else if (!a.startsWith("/")) urls.add(a.startsWith("./") ? a : `./${a}`);
   }
   const cssOf = (name) => rd(`rt/${name}`) ?? rd(`${RT}${name}`);
+  if (rd("rt/themes.json") != null) urls.add("/_rt/themes.json");
   for (const u of [...urls]) {
     const m = /^\/_rt\/([\w.-]+\.css)$/.exec(u);
     if (!m) continue;

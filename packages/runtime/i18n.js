@@ -116,7 +116,8 @@ export const SYS = {
   // the raw key the first time someone forgets (which is how "profTheme" reached a real screen).
   close: { en: "Close", uk: "Закрити" },
   material: { en: "Theme", uk: "Тема" },
-  materialPick: { en: "The look of every screen", uk: "Вигляд кожного екрана" },
+  modeDay: { en: "Day", uk: "День" },
+  modeNight: { en: "Night", uk: "Ніч" },
   // Clean screen (S.clean): the runtime's chrome steps off a full-bleed surface. Both halves live here for
   // the same reason `close` does — the runtime paints the door, so the runtime owns its name; an app that
   // merely asks for the mode must not have to restate it in two locales.

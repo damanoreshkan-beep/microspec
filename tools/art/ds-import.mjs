@@ -49,6 +49,7 @@ const alphaFromWhite = (d, w, h) => {
 };
 
 for (const arg of Deno.args) {
+  if (arg.startsWith("--")) continue;                            // --out= / --prefix= are options, not sprites
   const m = /^([nd]):([a-z]+)=(.+)$/.exec(arg);
   if (!m) throw new Error(`usage: n:<name>=<png> | d:<name>=<png>, got ${arg}`);
   const [, set, name, src] = m;
@@ -60,7 +61,9 @@ for (const arg of Deno.args) {
   const webp = new Uint8Array(await encodeWebp({ data: rgba, width: r.width, height: r.height }, { quality: 80 }));
   // --out=<dir>: the product's rt/ overlay is where a brand's sprites live (theme-split); the core keeps none
   const outDir = Deno.args.find((a) => a.startsWith("--out="))?.slice(6) ?? `${ROOT}/packages/runtime`;
-  const out = `${outDir}/ds-${set}-${name}.webp`;
-  await Deno.writeFile(out, webp);
-  console.log(`ds-${set}-${name}.webp ${(webp.length / 1024).toFixed(0)}KB`);
+  // --prefix=<theme>: a product with several theme modules keeps one sprite set per theme (ds-paper-n-lip.webp)
+  const prefix = Deno.args.find((a) => a.startsWith("--prefix="))?.slice(9);
+  const file = `ds-${prefix ? prefix + "-" : ""}${set}-${name}.webp`;
+  await Deno.writeFile(`${outDir}/${file}`, webp);
+  console.log(`${file} ${(webp.length / 1024).toFixed(0)}KB`);
 }

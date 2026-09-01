@@ -472,21 +472,25 @@ header.navbar::after {
 @media (max-width: 300px) { header.navbar::before, header.navbar::after { display: none; } }
 [data-dock-fade] { overflow: hidden; }
 [data-garland] { position: absolute; inset: 0; z-index: 1; }
+/* The theme widget's mode faces — the brand's sun and moon, both present whatever mode the page is in. */
 [data-theme-art] {
   display: block;
-  width: 2.5rem; height: 2.5rem;
+  width: 1.75rem; height: 1.75rem;
   flex-shrink: 0;
-  background: var(--ds-theme-art) center / contain no-repeat;
+  background: center / contain no-repeat;
 }
+[data-theme-art="day"] { background-image: var(--ds-art-day); }
+[data-theme-art="night"] { background-image: var(--ds-art-night); }
 [data-empty] { position: relative; isolation: isolate; }
-/* The theme picker's chosen card is RINGED in the accent (mirage's style sheet). A rule, not a Tailwind
-   `ring-[var(--app-accent)]`: the build's class scanner drops an arbitrary var() utility, and a ring that
-   exists only in the source is a ring nobody sees. Composed with the card's own inset so neither wins. */
-[data-materials] [aria-pressed="true"] { box-shadow: var(--sf-sink), 0 0 0 2px var(--app-accent); }
+/* The theme widget's chosen picture is RINGED in the accent, with a gap of page between (mirage's style
+   sheet). A rule, not a Tailwind `ring-[var(--app-accent)]`: the build's class scanner drops an arbitrary
+   var() utility, and a ring that exists only in the source is a ring nobody sees. */
+[data-materials] [data-thumb] { box-shadow: 0 0 0 1px var(--lm-rim, transparent); }
+[data-materials] [aria-pressed="true"] [data-thumb] { box-shadow: 0 0 0 2px var(--color-base-100), 0 0 0 4px var(--app-accent); }
 :root {
   --ds-strand: none; --ds-lip: none; --ds-scatter: none; --ds-corner: none;
-  /* the neutral toggle art: a plain disc of ink — a brand replaces it with its own sun and moon */
-  --ds-theme-art: radial-gradient(circle at 50% 50%, var(--color-base-content) 0 28%, transparent 30%);
+  /* the mode faces: none here, so the widget shows its sun and moon glyphs — a brand sets both pictures */
+  --ds-art-day: none; --ds-art-night: none;
 }
 
 /* The bloom radius, stepped with the density ladder so a lifted surface on a 200px-tall split-screen window

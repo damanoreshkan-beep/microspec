@@ -1,9 +1,80 @@
 /* @ts-self-types="./weather.d.ts" */
 /**
- * Weather numbers, dependency-free on purpose: WMO 4677 code tables (`wmoIcon`, `wmoKey`, `isSnowCode`,
- * `isStormCode`), low-precision solar position and moon phase (`solarPosition`, `moonPhase`), the mapping
- * from raw readings to the live-sky shader's channels (`skyVary`, `skyInk`), and the hourly temperature
- * spline (`curvePath`). Nothing here touches the DOM or the network, so every function is unit-tested.
+ * # runtime/weather.js — the numbers a live sky is driven by, dependency-free on purpose
+ *
+ * WMO 4677 present-weather code tables ({@link wmoIcon}, {@link wmoKey}, {@link isSnowCode},
+ * {@link isStormCode}), a low-precision solar position and moon phase ({@link solarPosition},
+ * {@link moonPhase}), the mapping from raw readings to the live-sky shader's channels ({@link skyVary},
+ * {@link skyInk}), and the hourly temperature spline ({@link curvePath}). `astro.js` already wraps SunCalc
+ * and astronomy-engine and would answer "where is the sun" in one line — but it pulls two ESM packages
+ * and `htm/preact`, so a weather adapter would load a natal-chart engine to place a glow and its unit test
+ * would need the network. The solar series here is the standard low-precision NOAA/Almanac one, ~0.01° on
+ * altitude — four orders of magnitude better than "where should this gradient sit". Nothing touches the
+ * DOM or the network, so every function is unit-tested in `packages/runtime/tests/weather_test.js`.
+ *
+ * ![The module's map: WMO codes, solar position and moon phase feeding the sky's vary and ink channels, and the hourly curve](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-weather.svg)
+ *
+ * ## Import
+ * ```js
+ * import { wmoIcon, wmoKey, solarPosition, moonPhase, skyVary, skyInk, curvePath } from "/_rt/weather.js";                    // an app's page: the import map resolves /_rt/
+ * import { wmoIcon, wmoKey, solarPosition, moonPhase, skyVary, skyInk, curvePath } from "@microspec/core/runtime/weather.js";  // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * **WMO 4677 codes**
+ * - {@link wmoIcon} — `(c) => "lucide:…"`: the Lucide icon id for a present-weather code 0..99.
+ * - {@link wmoKey} — `(c) => "wClear" … "wThunder"`: the i18n key for the condition in words; the app owns the strings, this owns the mapping.
+ * - {@link isSnowCode} — frozen precipitation: snowfall 71-77 (snow grains included) and snow showers 85-86.
+ * - {@link isStormCode} — thunderstorm, with or without hail: code 95 and above.
+ *
+ * **Sun and moon**
+ * - {@link solarPosition} — `(lat, lng, ms) => {alt, az}`: degrees above the horizon and azimuth 0=N clockwise, for epoch milliseconds UTC.
+ * - {@link moonPhase} — `(ms) => 0..1`: 0 and 1 new, 0.5 full; mean synodic month from a reference new moon, good to about half a day.
+ *
+ * **The sky's channels**
+ * - {@link skyVary} — `({alt, cloudPct, precipMm, precipProb, windKmh}) => [sun altitude, cloud, wet, wind]`, each in the shader's range.
+ * - {@link skyInk} — `({code, visibilityM, az}) => [snow, haze, storm, lightX]`, the sun's azimuth flattened to a screen position.
+ *
+ * **The hourly curve**
+ * - {@link curvePath} — `(values, w, h, pad = 0) => {line, area, points, min, max}`: Catmull-Rom through evenly spaced values as SVG `d` strings; empty strings when there is nothing to draw.
+ *
+ * ## In practice
+ * ```js
+ * // apps/weather/data.js — an Open-Meteo response shaped into the dashboard's meta
+ * const ms = Date.parse(now.time + "Z") - (d.utc_offset_seconds || 0) * 1000;
+ * const sun = solarPosition(lat, lng, ms);
+ * const [skyAlt, skyCloud, skyWet, skyWind] = skyVary({
+ *   alt: sun.alt, cloudPct: now.cloud_cover, precipMm: now.precipitation,
+ *   precipProb: now.precipitation_probability, windKmh: now.wind_speed_10m,
+ * });
+ * const [skySnow, skyHaze, skyStorm, skyLight] = skyInk({
+ *   code: now.weather_code, visibilityM: now.visibility, az: sun.az,
+ * });
+ * const meta = {
+ *   cond: wmoKey(now.weather_code),            // an i18n key — the caption goes through T()
+ *   wicon: wmoIcon(now.weather_code),
+ *   skyAlt, skyCloud, skyWet, skyWind, skySnow, skyHaze, skyStorm, skyLight,   // see spec.stage
+ *   moon: moonPhase(ms),
+ * };
+ * ```
+ *
+ * ## How it fits
+ * Imports nothing. `render.js` imports {@link curvePath} to draw the hourly strip's temperature spline
+ * (`StripCurve`: the strip's values as a spline, each value printed at its point), so every farm app with
+ * a strip curve reaches this file through the renderer. One farm app imports it directly — weather, whose
+ * `data.js` turns an Open-Meteo response into the sky's channels and the dashboard's meta; its `hero.wgsl`
+ * documents what each `vary` and `ink` slot means, and the two files are a contract that must move
+ * together.
+ *
+ * ## Invariants and pitfalls
+ * - Dependency-free on purpose: no `astro.js`, no DOM, no network — every function stays unit-testable in `weather_test.js`.
+ * - Open-Meteo's daily code is the day's most SEVERE code, not its midday one: a single 03:00 shower labels the whole row rain. Right for a forecast, not the same question as "what is it doing now".
+ * - `skyVary` and `skyInk` are the ONLY place raw readings become scene parameters; the shader never learns what a millimetre or a km/h is, and the mapping stays testable.
+ * - Sun altitude normalises -1 to civil twilight's floor (-12°), not the nadir: below that the sky stops changing, and spending range there would waste the whole night on one flat value.
+ * - Precipitation is dominated by its low end (0.5 mm/h is visible rain, 8 mm/h a downpour), so `wet` is a sqrt, not linear; probability alone wets the sky a little, because "it is about to rain" is a real state of the sky.
+ * - `lightX` is northern-hemisphere framing, deliberately: sunrise (90°) at the left edge, noon (180°, due south) centred, sunset (270°) at the right.
+ * - `curvePath`: flat data sits on the centre line, not the bottom (a nominal span alone pins the line to the bottom of the band, which reads as a cold snap); tension 1/6 is the Catmull-Rom → Bézier identity, anything larger invents a peak the data does not have.
+ * - `curvePath` returns empty strings for fewer than two finite values — callers must not have to guard.
  * @module
  */
 // microspec runtime — weather: WMO code tables, solar position, and the numbers a live sky is driven by.

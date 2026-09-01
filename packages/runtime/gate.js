@@ -1,8 +1,56 @@
 /* @ts-self-types="./gate.d.ts" */
 /**
- * Shared gate/mock detection, so apps seed a deterministic fixture instead of hitting live data under the
- * headless verify/shoot gate or a `?mock` preview. Exports `isGate` (localhost), `MOCK` (the query param)
- * and `gate` (either).
+ * # runtime/gate.js — one answer to "am I under the gate?"
+ *
+ * Shared gate/mock detection, once copy-pasted into ~17 apps. The headless verify/shoot gate serves an app
+ * from localhost, and a phone or `?mock` preview also forces gate mode; in both, an app seeds a
+ * deterministic fixture instead of reaching for live data. Three constants, evaluated once at import, so
+ * the decision is made in one place and every module reads the same answer.
+ *
+ * ![The gate module's map: hostname and the mock query param folding into one gate flag](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-gate.svg)
+ *
+ * ## Import
+ * ```js
+ * import { gate, isGate, MOCK } from "/_rt/gate.js";                    // an app's page: the import map resolves /_rt/
+ * import { gate, isGate, MOCK } from "@microspec/core/runtime/gate.js";  // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link isGate} — true under the headless verify/shoot gate: `location.hostname` is `localhost`, `127.0.0.1` or `[::1]`.
+ * - {@link MOCK} — the `?mock` query param value: a string (empty when present without a value), or `null` when absent.
+ * - {@link gate} — `isGate || MOCK != null`; when true the app seeds a deterministic fixture.
+ *
+ * ## In practice
+ * ```js
+ * // apps/wiki/data.js — a search e2e that is stable regardless of the network
+ * import { fetchJson } from "/_rt/feed.js";
+ * import { isGate } from "/_rt/gate.js";
+ *
+ * export async function load(filters) {
+ *   const q = (filters.q || "").trim();
+ *   if (!q) return { items: [], meta: { count: 0 }, next: null };
+ *   if (isGate) {
+ *     const items = GATE_ARTS.map(([title, desc, extract], i) => ({ id: `uk:${1000 + i}`, title, desc, extract }));
+ *     return { items, meta: { count: items.length }, next: null };
+ *   }
+ *   const data = await fetchJson(`https://uk.wikipedia.org/w/api.php?origin=*&…&gsrsearch=${encodeURIComponent(q)}`);
+ *   // …
+ * }
+ * ```
+ *
+ * ## How it fits
+ * Imports nothing. Inside the runtime it is read by index.js, render.js, localize.js, auth.js, shell.js,
+ * hero.js, glstage.js, dust.js and signin.js — every module that must stay deterministic or networkless
+ * under verify. 57 farm apps import it directly (arc, wiki, gsmscan, sigil, homin, tide, rave, v2m, mirage,
+ * persona, hoard …), almost always `gate` in data.js or view.js, and the product's rt/characters.js,
+ * rt/places.js and rt/sync.js gate their fixtures on it too.
+ *
+ * ## Invariants and pitfalls
+ * - `gate` is true for `?mock` with no value: `MOCK` is `""` then, and `"" != null`. Test `MOCK != null`, never `!!MOCK`.
+ * - `isGate` is a hostname test — a dev server on `localhost` is the gate as far as an app can tell, which is the point: the same fixture the gate sees is what you see.
+ * - The three values are computed at import from `location`; a later `history.replaceState` that adds or drops `?mock` does not change them.
+ * - Outside a browser (no `location`, e.g. a Deno test importing the module) all three read as not-gated: `isGate` false, `MOCK` null, `gate` false.
+ * - The contract is a deterministic fixture, not merely "no network": the same input must draw the same screen on every run.
  * @module
  */
 // Shared gate/mock detection — was copy-pasted into ~17 apps. `isGate` is true under the headless

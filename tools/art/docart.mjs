@@ -230,9 +230,68 @@ const verify = () => {
   return s + tail;
 };
 
+// ── module-<name>: a runtime module's place in the graph — what it imports, what it exports, who imports it
+// Read from the sources, so the map is the import graph as it is, not as a doc remembers it.
+const RT = "packages/runtime";
+const runtimeNames = [...Deno.readDirSync(RT)].filter((e) => e.isFile && e.name.endsWith(".js") && !e.name.endsWith("_test.js")).map((e) => e.name.slice(0, -3)).sort();
+// Comments stripped before scanning: the module docs quote import lines and export names in prose and
+// code samples, and a map drawn from those would show the doc, not the module.
+const uncommented = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+const rtSrc = Object.fromEntries(runtimeNames.map((n) => [n, uncommented(Deno.readTextFileSync(`${RT}/${n}.js`))]));
+const importsOf = (n) => [...new Set([...rtSrc[n].matchAll(/from\s+"\.\/([\w-]+)\.js"/g)].map((m) => m[1]).filter((d) => d !== n && rtSrc[d]))].sort();
+const exportsOf = (n) => {
+  const src = rtSrc[n];
+  const named = [...src.matchAll(/^export\s+(?:async\s+)?(?:function\*?|const|let|class|var)\s+([A-Za-z_$][\w$]*)/gm)].map((m) => m[1]);
+  const braces = [...src.matchAll(/^export\s*\{([^}]*)\}/gm)].flatMap((m) => m[1].split(",").map((x) => x.trim().split(/\s+as\s+/).pop()).filter(Boolean));
+  const stars = [...src.matchAll(/^export\s*\*\s*as\s+([\w$]+)/gm)].map((m) => m[1]);
+  return [...new Set([...named, ...braces, ...stars])];
+};
+const dependantsOf = (n) => runtimeNames.filter((m) => m !== n && importsOf(m).includes(n));
+const moduleMap = (name) => {
+  const deps = importsOf(name), users = dependantsOf(name), exps = exportsOf(name);
+  const CAP = 9, EXP_CAP = 14, step = 26;
+  const col = (list) => list.length > CAP ? [...list.slice(0, CAP - 1), `+${list.length - CAP + 1} more`] : list;
+  const L = col(deps), R = col(users);
+  const E = exps.length > EXP_CAP ? [...exps.slice(0, EXP_CAP - 1), `+${exps.length - EXP_CAP + 1} more`] : exps;
+  const rows = Math.max(L.length, R.length, Math.ceil(E.length / 2), 3);
+  const w = 960, h = 120 + rows * step + 40, y0 = 112, cy = y0 + ((rows - 1) * step) / 2;
+  const rnd = seeded("module-" + name);
+  let s = head("module-" + name, w, h, `runtime/${name}.js — imports, exports, dependants`);
+  s += fireflies("module-" + name, w, h, 22);
+  s += micro(40, 42, "runtime module map · drawn from the import graph");
+  s += `<text x="${w - 40}" y="42" class="h" text-anchor="end">${esc(`runtime/${name}.js`)}</text>`;
+  s += micro(40, 78, `imports · ${deps.length} runtime modules`) + micro(430, 78, `exports · ${exps.length}`) + micro(w - 40, 78, `imported by · ${users.length} runtime modules`, "end");
+  const cx = 300;
+  L.forEach((d, i) => {
+    const y = y0 + i * step, more = d.startsWith("+");
+    if (!more) s += filament(150, y, cx, cy, { w: 1, bend: 0.55 });
+    s += node(150, y, { delay: r2(rnd() * 4) });
+    s += label(136, y + 4, d, { anchor: "end" });
+  });
+  R.forEach((d, i) => {
+    const y = y0 + i * step, more = d.startsWith("+");
+    if (!more) s += filament(cx, cy, 810, y, { w: 1, bend: 0.55 });
+    s += node(810, y, { delay: r2(rnd() * 4) });
+    s += label(824, y + 4, d, { anchor: "start" });
+  });
+  // the module itself, lit, with its export rail hanging off it
+  s += `<circle cx="${cx}" cy="${cy}" r="26" fill="${C.cyan}" opacity=".35" filter="url(#bloom)" class="beat"/>`;
+  s += node(cx, cy, { lit: true });
+  s += `<text x="${cx}" y="${cy + 30}" class="l" text-anchor="middle" fill="${C.cyan}" font-weight="700" font-size="13">${esc(name)}</text>`;
+  s += filament(cx, cy, 430, y0, { lit: true, w: 1.2, bend: 0.5 });
+  E.forEach((e, i) => {
+    const x = 450 + (i % 2) * 165, y = y0 + Math.floor(i / 2) * step;
+    s += node(x, y, { lit: false, delay: r2(rnd() * 4) });
+    s += label(x + 12, y + 4, e, { anchor: "start" });
+  });
+  if (!E.length) s += label(450, y0 + 4, "no exports — a script", { anchor: "start" });
+  return s + tail;
+};
+
 // ── emit ─────────────────────────────────────────────────────────────────────────────────────────────
 const files = { "hero.svg": hero(), "realms.svg": realms(), "build.svg": build(), "verify.svg": verify() };
 for (const n of NODES) if (n.kind === "script") files[`pipeline-${n.id}.svg`] = pipeline(n.id);
+for (const k of Object.keys(manifest.exports)) if (k.startsWith("./runtime/")) files[`module-${k.slice(10, -3)}.svg`] = moduleMap(k.slice(10, -3));
 
 await Deno.mkdir(OUT, { recursive: true });
 let stale = 0, written = 0;

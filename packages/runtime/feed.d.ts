@@ -1,8 +1,62 @@
 /**
- * CORS strategy with graceful fallback for a static host with no backend: `viaProxy` tries direct, then the
- * dev `/feed` proxy (localhost only), then our own allowlisted VPS proxy, skipping any response a validator
- * rejects. Also exports `fetchJson` (proxy chain + shape-checked JSON.parse), `pool` (bounded-concurrency
- * map), the `isJsonArray`/`isJsonObject` validators, and the `VPS_PROXY` URL with its pinned `SEALED_KEY`.
+ * # runtime/feed.js — the proxy chain a static host fetches through
+ *
+ * A CORS strategy with graceful fallback for a farm that has no backend of its own on the page host. Order:
+ * direct (CORS-friendly APIs) → the dev `/feed` proxy (localhost only) → our own host-allowlisted proxy
+ * (microspec-edge on the VPS, behind nginx) for the few CORS-blocked sources. A validator lets a bad or
+ * HTML proxy response be skipped to the next hop instead of parsed. Public CORS proxies used to sit at the
+ * end of that list and are gone on purpose: a third party in the data path degrades silently and often, an
+ * app goes blank for real users, and — because `verify` is the farm gate and a data-less app fails its e2e —
+ * the whole deploy goes red for an outage we neither caused nor can fix. Our proxy is ours to keep up.
+ *
+ * ![The feed module's map: direct, dev proxy and VPS proxy hops with the validator between them](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-feed.svg)
+ *
+ * ## Import
+ * ```js
+ * import { fetchJson, viaProxy, pool, VPS_PROXY } from "/_rt/feed.js";                    // an app's page: the import map resolves /_rt/
+ * import { fetchJson, viaProxy, pool, VPS_PROXY } from "@microspec/core/runtime/feed.js";  // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link viaProxy} — `viaProxy(url, validate = (x) => !!x, timeout = 10000)`: fetch as text through the chain; moves to the next hop on a non-OK status, a timeout, or a validator rejection; throws the last error when every hop failed.
+ * - {@link fetchJson} — `fetchJson(url, { array = false, timeout = 10000 })`: the one-liner every data.js repeated — `viaProxy` with the matching shape validator, then `JSON.parse`.
+ * - {@link isJsonArray} / {@link isJsonObject} — validators for `viaProxy`: the trimmed text starts with `[` / `{`, so an HTML error page never reaches the parser.
+ * - {@link pool} — `pool(items, n, fn)`: bounded-concurrency map, at most `n` of `fn` in flight; resolves when all are done.
+ * - {@link VPS_PROXY} — `https://dreamstudio.mooo.com/feed`, the last hop; not an open proxy, it forwards only to hosts in microspec-edge's ALLOW list.
+ * - {@link SEALED_KEY} — the backend's pinned long-term public key (base64url), consumed by sealedfetch.js.
+ *
+ * ## In practice
+ * ```js
+ * // apps/hn/data.js — Hacker News adapter (Algolia front-page API, CORS *, no key)
+ * import { fetchJson } from "/_rt/feed.js";
+ *
+ * export async function load(filters = {}) {
+ *   const page = Number(filters.cursor) || 0;
+ *   const url = `https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=30&page=${page}`;
+ *   const data = await fetchJson(url);
+ *   const items = (data.hits || []).filter((h) => h.title).map((h) => ({
+ *     id: String(h.objectID), title: h.title, url: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`,
+ *   }));
+ *   const next = data.page + 1 < data.nbPages ? data.page + 1 : null;
+ *   return { items, meta: {}, next };
+ * }
+ * ```
+ *
+ * ## How it fits
+ * Imports nothing — it is a leaf, which is why so much sits on it. Inside the runtime, enrich.js takes
+ * `viaProxy` + `pool`, ai-text.js takes `pool`, and apk.js, auth.js and ai-core.js take `VPS_PROXY`;
+ * sealedfetch.js takes `VPS_PROXY` + `SEALED_KEY` and re-expresses every call to the proxy as an encrypted
+ * envelope. 17 farm apps import it directly — hn, wiki, weather, rates, launches, books, hf, frontier,
+ * openapps, dou, pins, horoscope, imagine, mirage, nova, reel, tide — mostly `fetchJson` in data.js, a few
+ * `VPS_PROXY` in view.js; the product's rt/characters.js and rt/sync.js take `VPS_PROXY` as well.
+ *
+ * ## Invariants and pitfalls
+ * - The chain is direct → dev `/feed` (only when `location.hostname` is localhost) → `VPS_PROXY`. No public proxy is ever appended; a new CORS-blocked source is a one-line allowlist change in microspec-edge (feed-core.mjs) plus a restart.
+ * - The validator is what makes fallback safe: a proxy that answers 200 with an HTML error page fails `isJsonObject` and the next hop is tried, instead of `JSON.parse` throwing on `<!doctype`.
+ * - `timeout` is per hop, not per call — three hops at the default 10 s can take 30 s before the last error surfaces.
+ * - `SEALED_KEY` is pinned in source and never fetched at runtime: a key collected over the channel you are defending pins nothing. Check the pin after a rotation with GET /feed/pubkey by hand (see the comment above the constant).
+ * - The pin is deliberately not a CI gate either — that would turn a proxy outage into a red farm, the exact failure the module exists to avoid.
+ * - `pool` exists because translate/enrich endpoints rate-limit; a burst of 30 gets throttled. It processes `items` in order with `Math.min(n, items.length)` workers.
  * @module
  */
 // GENERATED by tools/dts.mjs from packages/runtime/feed.js — edit the JSDoc there, never this file.

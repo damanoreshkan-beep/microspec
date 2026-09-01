@@ -1,8 +1,54 @@
 /* @ts-self-types="./swipe.d.ts" */
 /**
- * The pure decision behind gesture.js useSwipe, kept apart so the unit gate can import it without pulling
- * htm/preact through the browser import map. Exports `swipeDir`, which turns a released pointer's delta into
- * "left" / "right" / "up" / "down", or null for a tap or wobble.
+ * # runtime/swipe.js — which way a released pointer went, as a pure function
+ *
+ * The decision behind gesture.js's `useSwipe`, kept in its own file so the unit gate can import it:
+ * gesture.js pulls `htm/preact`, which Deno's type-check cannot resolve outside the browser import map, and
+ * a decision that lives inside a hook cannot be tested without a DOM. Its one export, `swipeDir`, turns a
+ * released pointer's delta into `"left"` / `"right"` / `"up"` / `"down"`, or `null` for a tap or a wobble.
+ * The dominant axis wins and a perfect diagonal reads as horizontal; `dx` is right-positive, `dy`
+ * down-positive. What it buys the farm is one answer to "was that a swipe" for every stage and field that
+ * flicks — proven by a Deno test, not by a thumb.
+ *
+ * ![The swipe map: a pointer's dx and dy entering the threshold check, the dominant-axis split and the four directions or null](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-swipe.svg)
+ *
+ * ## Import
+ * ```js
+ * import { swipeDir } from "/_rt/swipe.js";                    // an app's page: the import map resolves /_rt/
+ * import { swipeDir } from "@microspec/core/runtime/swipe.js";  // a product rt/ module or a Deno test
+ * ```
+ * In a page the same function is also reachable as `import { swipeDir } from "/_rt/gesture.js"`, which re-exports it.
+ *
+ * ## What it exports
+ * - {@link swipeDir} — `swipeDir(dx, dy, threshold = 52)` → `"left" | "right" | "up" | "down" | null`; `null` when the
+ *   travel on the dominant axis is below `threshold` px.
+ *
+ * ## In practice
+ * ```js
+ * // tests/gesture_test.js — the unit gate's own contract for the decision
+ * assertEquals(swipeDir(0, 0), null);
+ * assertEquals(swipeDir(30, 40), null);                  // below the 52 px threshold: a wobble
+ * assertEquals(swipeDir(80, 10), "right");
+ * assertEquals(swipeDir(-40, -70), "up");
+ * assertEquals(swipeDir(60, 60), "right");               // a perfect diagonal reads as horizontal
+ * assertEquals(swipeDir(20, 20, 10), "right");           // a custom threshold
+ *
+ * // gesture.js useSwipe — the only browser caller: on pointer release, commit and fire the app's handler
+ * const dir = swipeDir(s.dx, s.dy, threshold);
+ * ```
+ *
+ * ## How it fits
+ * Imports nothing. Imported by gesture.js, which both uses it inside `useSwipe` and re-exports it, and by
+ * `tests/gesture_test.js`. No farm app imports it directly — the five apps that flick a surface (tarot, iching,
+ * rave…) reach it through `useSwipe` — but it sits in every app's /_rt/ precache closure, so all 74 ship it.
+ *
+ * ## Invariants and pitfalls
+ * - Pure and DOM-free on purpose: nothing from preact or htm may ever be imported here, or the unit gate loses the file.
+ * - The threshold applies to the DOMINANT axis only: `(30, 40)` is `null` at the default 52 even though the total travel is 50.
+ * - A perfect diagonal (`ax === ay`) is horizontal — `>=` in the axis comparison, not `>`.
+ * - Sign convention is the pointer's: `dx` right positive, `dy` down positive — so a flick UP is a negative `dy`.
+ * - The element bound to `useSwipe` still needs `touch-none` (or `touch-pan-y`), or the browser claims the gesture before
+ *   this function ever sees a delta — that rule lives in gesture.js, not here.
  * @module
  */
 // microspec runtime — the PURE decision behind gesture.js useSwipe (kept apart so the unit gate can import

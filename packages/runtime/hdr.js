@@ -1,9 +1,69 @@
 /* @ts-self-types="./hdr.d.ts" */
 /**
- * Radiance (.hdr) decoding for image-based lighting. A browser cannot decode Radiance, so this is the short
- * path: the asset stays the original CC0 file and the bytes come back UNCHANGED as RGBE (three mantissas
- * plus a shared exponent) for the shader to expand in one instruction. Pure functions over bytes — no DOM,
- * no GPU — so `deno test` covers the parser. Exports `decodeHDR`, `rgbeToLinear` and `downsampleRGBE`.
+ * # runtime/hdr.js — Radiance (.hdr) decoding, the short path to image-based lighting
+ *
+ * A browser cannot decode Radiance, so an HDR environment map needs either a conversion step or a decoder.
+ * This is the decoder, and deliberately the SHORT path: the asset stays the original CC0 file from Poly Haven
+ * or ambientCG — no intermediate format, no build artefact, nothing to keep in sync. An ordinary image tops
+ * out at 255 per channel and the real world does not: metal looks like metal because its reflection of a
+ * lamp is hundreds of times brighter than its reflection of the wall, and flattening that range renders
+ * plastic. The bytes therefore come back UNCHANGED as RGBE — three mantissas and a shared exponent, 512 KB
+ * for a 512x256 map against 2 MB as float32 — and the shader expands a sample in one instruction:
+ * `radiance = rgbe.rgb * exp2(rgbe.a * 255.0 - 128.0)`. Pure functions over bytes, no DOM, no GPU, so
+ * `deno test` covers the parser that everything else trusts.
+ *
+ * ![The HDR decoder: header, flat or RLE scanlines, RGBE out, linear averaging on the way down](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-hdr.svg)
+ *
+ * ## Import
+ * ```js
+ * import { decodeHDR, downsampleRGBE } from "/_rt/hdr.js";                    // an app's page: the import map resolves /_rt/
+ * import { decodeHDR, downsampleRGBE } from "@microspec/core/runtime/hdr.js";  // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link decodeHDR} — `(bytes)` a Radiance file (Uint8Array or ArrayBuffer) to `{ width, height, rgbe }`, RGBA8 bytes
+ *   with alpha = shared exponent + 128; throws a named `hdr: …` error on anything it will not read.
+ * - {@link rgbeToLinear} — `(r, g, b, e)` one RGBE pixel to linear radiance `[r, g, b]`, the shader's maths on the CPU.
+ * - {@link downsampleRGBE} — `({ width, height, rgbe }, outW)` a box-downsample that averages in LINEAR radiance and
+ *   re-packs each pixel with a fresh shared exponent.
+ *
+ * ## In practice
+ * ```js
+ * import { decodeHDR, downsampleRGBE } from "../../packages/runtime/hdr.js";   // tools/art/hero.mjs
+ *
+ * const raw = await Deno.readFile(new URL(`../../apps/${app}/assets/env.hdr`, import.meta.url));
+ * const full = decodeHDR(raw);
+ * const env = ENV_W && full.width > ENV_W ? downsampleRGBE(full, ENV_W) : full;
+ *
+ * // A MIP CHAIN, every level averaged in linear radiance — a rough surface samples a blurred reflection.
+ * let lvl = env;
+ * for (let m = 0; m < MIPS; m++) {
+ *   device.queue.writeTexture({ texture: envTex, mipLevel: m }, lvl.rgbe,
+ *     { bytesPerRow: lvl.width * 4, rowsPerImage: lvl.height }, [lvl.width, lvl.height]);
+ *   if (m + 1 < MIPS) lvl = downsampleRGBE(lvl, Math.max(1, lvl.width >> 1));
+ * }
+ * ```
+ *
+ * ## How it fits
+ * Imports nothing and nothing in the runtime imports it. Its consumer today is the offline renderer
+ * `tools/art/hero.mjs`, which decodes `apps/<id>/assets/env.hdr` into the environment texture the hero shader
+ * reflects; `tests/hdr_test.js` covers flat and RLE files, the error paths and linear-domain averaging. No farm
+ * app imports it yet — an app that wants the same map in the browser fetches the `.hdr`, decodes it here and
+ * uploads `rgbe` as RGBA8.
+ *
+ * ## Invariants and pitfalls
+ * - Two encodings exist in the wild. New-style RLE marks a scanline `2, 2, hi, lo` (width 8..32767) and stores the
+ *   four components SEPARATELY, each run-length encoded; anything else is flat RGBE quadruples. A decoder that
+ *   assumes RLE does not fail loudly on a flat file — it produces noise, which is worse — so the marker is checked
+ *   per scanline, and a width under 8 always takes the flat path.
+ * - Only `-Y h +X w` orientation and an RGBE `FORMAT=` (or none) are accepted; a header that never ends, a
+ *   truncated run, a zero-length span or a run that overflows its row throw with the row number.
+ * - Never average packed RGBE bytes. The exponent is SHARED per pixel, so two neighbours at different scales
+ *   cannot be mixed byte-wise; doing it naively dims every bright source — precisely the part of the map that makes
+ *   a reflection look like metal. {@link downsampleRGBE} converts to linear, averages, then re-packs.
+ * - An exponent byte of 0 decodes to black; otherwise {@link rgbeToLinear} scales by `2^(e - 136)`, i.e.
+ *   `2^(e - 128) / 256` — the shader's expansion, for tests and CPU-side checks.
+ * - The output of {@link downsampleRGBE} keeps the aspect: `outH = round(outW * height / width)`, at least 1.
  * @module
  */
 // hdr — Radiance (.hdr) decoding, for image-based lighting.

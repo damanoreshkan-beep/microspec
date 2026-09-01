@@ -1,9 +1,66 @@
 /* @ts-self-types="./hero.d.ts" */
 /**
- * The hero stage: one WebGPU renderer, one shader per app. An app supplies `hero.wgsl` and nothing else —
- * adapter, device, canvas, the fullscreen triangle, the 64-byte uniform block (`res`, `time`, `seed`,
- * `ink`, `vary`, `env`), resize, reduced-motion and teardown live here exactly once. No fallback by design:
- * without WebGPU the island sits over a plain background. Exports the `HeroStage` component.
+ * # runtime/hero.js — the hero stage: one WebGPU renderer, one shader per app
+ *
+ * An app supplies `apps/<id>/hero.wgsl` and nothing else. Everything mechanical — adapter, device, canvas
+ * configuration, the fullscreen triangle, the 64-byte uniform block, resize, reduced-motion, teardown — lives
+ * here exactly once. The first version of this file was copied into an app directory, which is how a farm ends
+ * up with eight subtly different renderers and a bug fixed in one of them. The SAME shader is what
+ * `tools/art/hero.mjs` renders offline, so a frame judged locally at 384x832 is what ships: the eye test stops
+ * being a deployment. NO FALLBACK, deliberately (owner's call): a device without WebGPU gets the island over
+ * a plain background — the stage is atmosphere, and every meaning it carries is also in the DOM, which is the
+ * only thing axe and the e2e gate can see anyway. Where the stage has to be seen without WebGPU, {@link GlStage}
+ * in `glstage.js` carries the same contract on WebGL2.
+ *
+ * ![The hero stage: hero.wgsl, the 64-byte uniform block, the app's channels and the runtime's](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-hero.svg)
+ *
+ * ## Import
+ * ```js
+ * import { HeroStage } from "/_rt/hero.js";                    // an app's page: the import map resolves /_rt/
+ * import { HeroStage } from "@microspec/core/runtime/hero.js";  // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link HeroStage} — the component: `{ shader, seed = 0, ink, vary }` renders a `fixed inset-0 z-0` canvas
+ *   (`data-stage`, `aria-hidden`) and drives the app's `hero.wgsl` fragment entry `fs` every frame.
+ *
+ * ## In practice
+ * ```js
+ * import { HeroStage } from "/_rt/hero.js";                                   // apps/tarot/view.js
+ *
+ * // The seed is the shader's business: here the first drawn card, 0..1. Changing it never rebuilds the pipeline.
+ * html`<${HeroStage} shader=${new URL("hero.wgsl", import.meta.url)} seed=${((drawn[0]?.card ?? 0) + 1) / 79} />`;
+ * ```
+ * The app's WGSL supplies the fragment entry `fs` (the runtime prepends the vertex entry `vs`) and binds the
+ * uniform block at group 0, binding 0: `res: vec2f · time: f32 · seed: f32 · ink: vec4f · vary: vec4f · env: vec4f`.
+ * A 48-byte struct that stops at `vary` still binds against the 64-byte buffer; WGSL only requires the declared
+ * struct to FIT.
+ *
+ * ## How it fits
+ * Imports `htm/preact`, `preact/hooks` and `gate` from `./gate.js` — relatively, because `/_rt/` 404s under
+ * `/microspec/`. `render.js` lazily imports it for a tab that declares `tab.stage` (the dashboard family's
+ * atmosphere), so the ~60 apps without a stage never fetch it; 3 farm apps reach it that way (mirage, persona,
+ * weather) and 2 import {@link HeroStage} directly (iching, tarot), while 74 precache `/_rt/hero.js` in their
+ * generated service worker. `tools/art/hero.mjs` renders the same `hero.wgsl` offline with a byte-identical
+ * uniform block.
+ *
+ * ## Invariants and pitfalls
+ * - Gate-guarded: under the verify gate the effect returns before touching the GPU — headless has no GPU, no
+ *   network, nothing to draw. Without `navigator.gpu` it returns too; a failed init only warns.
+ * - `ink` and `vary` are the APP's channels, `env` is the RUNTIME's, and the split is deliberate: `env.x` is how
+ *   light the theme is (0 dark, 1 light), read from `data-theme` on the document and eased over ~250 ms so a
+ *   toggle cross-fades instead of cutting. A stage cannot derive that itself — the view does not re-render on a
+ *   toggle, and every scene would grow its own MutationObserver and drift.
+ * - `ink` and `vary` may be FUNCTIONS, read fresh every frame: that is how an app animates the stage (a flare, a
+ *   pulse) without re-rendering its whole view sixty times a second. A wrong-length `ink` falls back to
+ *   `[0.9, 0.89, 0.93, 1]`, a wrong-length `vary` to zeros.
+ * - `layout: "auto"` derives the bind group from what the WGSL declares, so a field shader that reads no texture
+ *   must not be handed one — that is a validation error, not harmless extra baggage.
+ * - The canvas is sized from `getBoundingClientRect` through a ResizeObserver, DPR capped at 2 — 3.5 native on a
+ *   modern phone is wasted fill rate for a full-screen field.
+ * - `prefers-reduced-motion: reduce` freezes `time` at 2 and snaps `env.x`: the scene still renders, it holds still.
+ * - Teardown cancels the frame, disconnects the observer and destroys the device; a device that arrives after
+ *   unmount is dropped by the `dead` flag.
  * @module
  */
 // microspec runtime — the hero stage: one WebGPU renderer, one shader per app.

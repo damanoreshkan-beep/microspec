@@ -1,8 +1,67 @@
 /**
- * Melodic phrase generation for the pitched instruments (kalimba, handpan): a seeded SCORED SEARCH over a
- * scale, not a random walk — candidates are ranked on measured consonance, stepwise motion, an arch contour
- * and a tonic cadence. Pure and DOM-free so the gate proves the claim. Exports `scoreMelody` and
- * `generateMelody`.
+ * # runtime/melody.js — a seeded scored search for a phrase that sounds sweet, not a random walk
+ *
+ * Melodic phrase generation for the pitched instruments (kalimba thumb-piano, handpan), shared the way
+ * groove.js is shared by the drum apps and built on the same thesis: draw candidate phrases from the scale,
+ * score each against measured consonance and melodic expectation, keep the best. Each term of the score maps
+ * to one result from the literature — Bowling & Purves (2018) on small-integer frequency ratios reading as
+ * consonant (`harmonicity`, reused from groove.js), Huron (2006) on melodies moving by SMALL intervals with a
+ * leap setting up a step back (the smoothness term and leap penalty), and the melodic arch with a tonic
+ * resolution (the arch-contour term and a guaranteed cadence). Pure, DOM-free, zero deps, so the claim "this
+ * is not random" is mechanically PROVEN head-to-head against a coin-flip line by the browser-free unit gate,
+ * not asserted in a comment.
+ *
+ * ![melody.js: candidates drawn from the scale, scored on consonance, smoothness, resolution, arch and variety, the best kept and snapped to the tonic](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-melody.svg)
+ *
+ * ## Import
+ * ```js
+ * import { generateMelody } from "/_rt/melody.js";                              // an app's page: the import map resolves /_rt/
+ * import { generateMelody, scoreMelody } from "@microspec/core/runtime/melody.js";   // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link generateMelody} — `generateMelody(scale, { seed = 1, len = 16, restP = 0.18, tries = 200 })` →
+ *   `{ notes, seed, score, meanScore, tries }`; `notes` are `{ i }` indices INTO `scale` plus `{ rest: true }`
+ *   rests, the final sounding note snapped to the nearest tonic. A scale shorter than two steps returns
+ *   `{ notes: [], seed }`.
+ * - {@link scoreMelody} — `scoreMelody(notes, scale)` → the score (higher is sweeter), or `-Infinity` for a
+ *   phrase with fewer than three sounding notes. Five terms: consonance of the notes heard, smoothness of the
+ *   mean interval (~2–3 semitones) minus a penalty per leap over a fifth, resolution on the tonic (or, weaker,
+ *   the fifth) plus a tonic opening, the peak near the middle, and moderate variety.
+ *
+ * ## In practice
+ * The kalimba's Flow: the current tuning as ~1.4 octaves of degree offsets, a fresh seed, and the returned
+ * indices played straight through the same path as a song.
+ * ```js
+ * import { generateMelody } from "/_rt/melody.js";   // apps/kalimba/view.js
+ *
+ * const flow = () => {
+ *   const steps = STEPS[scale]; const offs = [0]; let acc = 0;
+ *   for (let k = 0; k < 9; k++) { acc += steps[k % steps.length]; offs.push(acc); }
+ *   const g = generateMelody(offs, { seed: (Math.random() * 0xffffffff) >>> 0, len: 14, restP: 0.16, tries: 220 });
+ *   play({ id: "flow", step: 300, seq: g.notes.map((n) => (n.rest ? null : n.i)) });
+ * };
+ * ```
+ * The handpan does the same over its tone-field offsets with `restP: 0.24, tries: 260`.
+ *
+ * ## How it fits
+ * Imports `mulberry32` and `harmonicity` from groove.js — the same seeded PRNG and consonance measure the drum
+ * apps rank patterns with. No other runtime module imports it; tests/melody_test.js proves the head-to-head
+ * against random. 3 farm apps import `generateMelody` — kalimba, handpan, grain.
+ *
+ * ## Invariants and pitfalls
+ * - A `scale` is ascending semitone offsets from the tonic with index 0 the tonic (D Kurd from the ding:
+ *   `[0, 7, 8, 10, 12, 14, 15, 17, 19]`; a C-major kalimba octave: `[0, 2, 4, 5, 7, 9, 11, 12]`). The result is
+ *   indices into that array, so each app maps a step back to its own tone-field or tine and its frequency —
+ *   the runtime never knows the instrument's geometry.
+ * - A note is "a tonic" when its offset is the root in any octave (`offset % 12 === 0`); the cadence snaps to
+ *   the tonic index NEAREST the line's last note, not to index 0, so the landing is smooth.
+ * - Deterministic in `seed` (`mulberry32(seed >>> 0)`): the same seed, scale and options reproduce the phrase,
+ *   so a line is shareable. Draw a random seed only when you want a new phrase.
+ * - The first sounding note is always grounded on the tonic; generation is only MILDLY biased (small steps,
+ *   consonant degrees) so the search space stays musical — the scorer does the real ranking.
+ * - `len` counts rests; with `restP` high and `len` small a candidate can fall under three sounding notes and
+ *   score `-Infinity`, so keep `tries` large enough that the best is a real phrase.
  * @module
  */
 // GENERATED by tools/dts.mjs from packages/runtime/melody.js — edit the JSDoc there, never this file.

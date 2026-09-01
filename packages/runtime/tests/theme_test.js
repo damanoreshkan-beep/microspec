@@ -263,7 +263,9 @@ Deno.test("design system: the fit contract disables page scroll on BOTH html and
 
 Deno.test("design system: the UI kit imports relatively and owns its own chrome strings", async () => {
   const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
-  assert(!/from\s+["']\/_rt\//.test(ui), "runtime-internal imports must be relative (./gesture.js), never /_rt/");
+  // code lines only: the module doc quotes how an APP imports "/_rt/ui.js", which is the right form there
+  const code = ui.split("\n").filter((l) => !/^\s*(\*|\/\/|\/\*)/.test(l)).join("\n");
+  assert(!/from\s+["']\/_rt\//.test(code), "runtime-internal imports must be relative (./gesture.js), never /_rt/");
   assert(/sys\(\s*["']close["']/.test(ui), "the Sheet's close button must read a SYS string, not demand an i18n key from every app");
   const i18n = await Deno.readTextFile(P("packages/runtime/i18n.js"));
   const sys = /export const SYS = \{([\s\S]*?)\n\};/.exec(i18n)[1];

@@ -1,8 +1,63 @@
 /* @ts-self-types="./camprime.d.ts" */
 /**
- * The permission priming screen for the camera and the microphone: explains WHAT the hardware is for
- * before the native prompt, and only the user's tap triggers the real getUserMedia call. Exports the
- * `Prime` view plus the `CameraPrime` / `MicPrime` presets; chrome strings (uk/en) are built in.
+ * # runtime/camprime.js — never open the camera or the microphone cold
+ *
+ * The permission priming screen for the two hardware capabilities that open a native prompt. A native
+ * prompt with no context scares people into denying, so the view shows this first: WHAT the hardware is
+ * for (the app's one-line reason) and that the capture never leaves the device, and only the user's tap
+ * on "Enable" triggers the real getUserMedia call. It also renders the blocked and unavailable states,
+ * the blocked one offering the permissions screen. Chrome strings (uk/en) are built in — cross-cutting,
+ * like the permissions labels — so an app passes only its own reason and the two callbacks.
+ *
+ * ![The priming flow: reason, Enable tap, getUserMedia, blocked and unavailable branches](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-camprime.svg)
+ *
+ * ## Import
+ * ```js
+ * import { CameraPrime, MicPrime } from "/_rt/camprime.js";                    // an app's page: the import map resolves /_rt/
+ * import { Prime, CameraPrime } from "@microspec/core/runtime/camprime.js";    // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link Prime} — the full-bleed priming overlay for one `kind` ("camera" | "microphone"), with its
+ *   blocked / unavailable states; props `{ kind, loc, reason, onEnable, onSettings, denied?, unavailable?, privacy?, privacyIcon? }`.
+ * - {@link CameraPrime} — `Prime` with `kind: "camera"`.
+ * - {@link MicPrime} — `Prime` with `kind: "microphone"`.
+ *
+ * ## In practice
+ * ```js
+ * import { CameraPrime } from "/_rt/camprime.js";   // apps/pipette/view.js
+ *
+ * // Rendered over the stage until the user enabled the camera or the stream failed.
+ * ${!enabled || err ? html`<${CameraPrime}
+ *     loc=${loc}
+ *     reason=${T(t, "primeReason")}
+ *     onEnable=${() => setEnabled(true)}
+ *     onSettings=${() => S.screen.set("perms")}
+ *     denied=${err === "denied"}
+ *     unavailable=${err === "unavailable" || err === "unsupported"} />` : null}
+ * ```
+ * The app opens getUserMedia in an effect that runs only once `enabled` is true — the tap is the trigger.
+ *
+ * ## How it fits
+ * It imports only `htm/preact`; no runtime module imports it. 10 farm apps reach it — the camera apps
+ * (cam, pipette, qr, flux, swarm, synesth, mirage, imagine) through `CameraPrime` and the microphone apps
+ * (grain, sonar) through `MicPrime`. `onSettings` conventionally routes to the shared permissions screen
+ * (`S.screen.set("perms")`, the chrome from permissions.js).
+ *
+ * ## Invariants and pitfalls
+ * - Neither capability may be opened cold: the view is shown BEFORE the native prompt, and the real
+ *   getUserMedia call happens only in the app's reaction to `onEnable`.
+ * - `reason` is the app's own translated one-liner — what the hardware is FOR. Everything else (title,
+ *   privacy line, button labels, blocked hint) is built in and picked by `loc`; an unknown `loc` falls
+ *   back to English, an unknown `kind` to the camera set.
+ * - The built-in privacy line says the capture is processed on the device. Where that would be untrue
+ *   (an editor uploading the photo to a service) pass an honest `privacy` + a fitting `privacyIcon`
+ *   instead of implying the capture stays local.
+ * - `denied` swaps the reason for the blocked hint and the button for "Open permissions" (`onSettings`);
+ *   `unavailable` draws no button at all. Both hide the privacy line.
+ * - The overlay is `absolute inset-0 z-30`: the parent must be positioned, and it covers the stage rather
+ *   than replacing it.
+ * - Test hooks are `data-prime` on the overlay and `data-enable` on the button.
  * @module
  */
 // camprime.js — the permission priming screen, for the two hardware capabilities that open a native prompt:

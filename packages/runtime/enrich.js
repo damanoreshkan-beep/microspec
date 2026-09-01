@@ -1,9 +1,64 @@
 /* @ts-self-types="./enrich.d.ts" */
 /**
- * Link enrichment: fills a feed card's preview slot with the linked article's description, because a card
- * that is just a title is "raw" and the runtime forbids it. Render-time, cached, fail-open — `enrich(url)`
- * is a sync cache read, `warmMeta(urls)` is the async fill that bumps `metaTick` so cards re-render as
- * previews arrive. A miss leaves the slot empty; previews are an enhancement, never a dependency.
+ * # runtime/enrich.js — the article preview a link feed never gave you
+ *
+ * Link-feed APIs (Hacker News, launches, …) return a title and a URL but no preview text, and a feed card
+ * that is just a title is "raw" — validate.js refuses it unless the card declares a preview slot. This
+ * module fills that slot: given an item's outbound URL it fetches the article's description once (Jina
+ * Reader JSON mode — free, keyless, CORS-friendly, ~7/8 hit rate on a live HN front page against 1/8 for
+ * og-scraping through public proxies) and exposes it as a virtual field the card renders. Same shape as
+ * translate.js, for the same reasons: render-time, cached, fail-open. `enrich(url)` is a synchronous cache
+ * read used in render; `warmMeta(urls)` is the async side that fills the cache and bumps `metaTick` so
+ * cards re-render as previews arrive. A miss leaves the slot empty and the card degrades to title + badges.
+ * Previews are an enhancement, never a dependency.
+ *
+ * ![The enrich module's map: URL in, cached description out, metaTick fanning out to cards](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-enrich.svg)
+ *
+ * ## Import
+ * ```js
+ * import { enrich, warmMeta, metaTick } from "/_rt/enrich.js";                    // an app's page: the import map resolves /_rt/
+ * import { enrich, warmMeta, metaTick } from "@microspec/core/runtime/enrich.js";  // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link enrich} — `enrich(url)`: synchronous cache read; `{ description }` when cached, `null` on a miss.
+ * - {@link warmMeta} — `warmMeta(urls)`: fetches a description for every not-yet-cached URL (5 in flight at once via `pool`), persists the cache and bumps `metaTick` once if anything arrived.
+ * - {@link metaTick} — a nanostores counter atom bumped once per `warmMeta` batch that added previews; subscribe to re-render.
+ *
+ * ## In practice
+ * ```js
+ * // packages/runtime/render.js — the one importer. An app never calls this module; it declares
+ * // spec.enrich = { url: "url", body: "desc" } (hn, hf) and the renderer resolves the virtual field.
+ * import { enrich, warmMeta, metaTick } from "./enrich.js";
+ *
+ * function field(it, name) {
+ *   const e = A.spec.enrich;
+ *   return (e && name === e.body) ? (enrich(it[e.url])?.description ?? "") : it[name];
+ * }
+ *
+ * function ListView({ tab }) {
+ *   const mt = useStore(metaTick);                       // re-render as previews land
+ *   useEffect(() => {
+ *     if (A.spec.enrich) warmMeta(items.map((it) => it[A.spec.enrich.url]));
+ *   }, [items, mt]);
+ *   // …
+ * }
+ * ```
+ *
+ * ## How it fits
+ * Imports `atom` from nanostores and `viaProxy` + `pool` from feed.js (the proxy chain carries the one
+ * bespoke resolver — Hugging Face README.md through the CORS proxy — and `pool` bounds the Jina burst).
+ * Its only importer is render.js, which resolves `spec.enrich.body` through `enrich()` and warms every
+ * visible item's URL; no farm app imports it directly. Two farm apps reach it through `spec.enrich` today —
+ * hn and hf — and translate.js runs after it so a translated locale localizes the fetched preview too.
+ *
+ * ## Invariants and pitfalls
+ * - `enrich()` is synchronous and never fetches; only `warmMeta()` touches the network. Calling `warmMeta` on every render/effect is cheap: cached and in-flight URLs are skipped.
+ * - Failures stay uncached so a later load can retry — fail-open, never a poisoned negative cache. A miss means empty slot, not a broken card.
+ * - The cache is a permanent per-URL `localStorage` entry (`ms:meta`), so repeat loads and the saved tab are instant; a quota or private-mode failure still serves from memory.
+ * - Jina takes the raw URL as its path, not query-encoded; `X-Timeout: 8` bounds Jina's own upstream fetch and a 10 s abort bounds ours.
+ * - Per-host resolvers (`RESOLVERS`) exist for hosts that hide their prose: Hugging Face blocks anonymous Jina and its og:description is a site blurb, so the model card's first prose paragraph comes from README.md. A resolver returning `null` falls through to Jina; one that throws fails open.
+ * - `metaTick` is bumped at most once per batch, and only when something arrived — an empty batch is a no-op.
  * @module
  */
 // microspec runtime — link enrichment (article previews).

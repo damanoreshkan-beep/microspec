@@ -1,10 +1,71 @@
 /* @ts-self-types="./validate.d.ts" */
 /**
- * Loud, fail-fast spec guard — the lightweight runtime half of two-tier validation (packages/schema's ajv
- * contract is the exhaustive author-time half, too heavy to ship to the browser). Exports `validateSpec`,
- * which catches the high-value AI footguns and throws an Error naming the exact JSON path so a bad spec
- * fails at boot instead of rendering blank, and `SPEC_MAJOR`. Zero dependencies, so unit tests import it
- * with no import map.
+ * # runtime/validate.js — the loud, fail-fast spec guard at boot
+ *
+ * The lightweight runtime half of two-tier validation. packages/schema (ajv, draft 2020-12) is the
+ * EXHAUSTIVE author-time contract, run by the generator's retry loop and CI where loading a big validator
+ * is fine; `validateSpec` is the guard that runs in the browser at `start()`, where ajv is too heavy to
+ * ship. It catches the high-value "AI footguns" — version, id, tabs, i18n, fav, the per-layout card
+ * contracts, detail actions, filter controls — and throws an Error naming the exact JSON path on the first
+ * failure, so a bad spec fails loudly at boot instead of rendering blank. What it buys the farm is a red
+ * that says WHERE: `Invalid spec at spec.tabs[0].card.body: …` instead of an empty screen. Pure and
+ * dependency-free on purpose, so unit tests import it from Deno with no import map.
+ *
+ * ![The spec guard: spec.json into validateSpec, the tab / detail / controls checks, the path-named Error out](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-validate.svg)
+ *
+ * ## Import
+ * ```js
+ * import { validateSpec, SPEC_MAJOR } from "/_rt/validate.js";                    // an app's page: the import map resolves /_rt/
+ * import { validateSpec, SPEC_MAJOR } from "@microspec/core/runtime/validate.js";  // a product rt/ module or a Deno test
+ * ```
+ * In practice no app imports it: `start()` in index.js calls it first, before the store or the UI exist.
+ *
+ * ## What it exports
+ * - {@link validateSpec} — `validateSpec(spec)` → the same spec, unchanged (so the call can be inlined); throws
+ *   `Error("Invalid spec at <path>: <why>")` on the first failure.
+ * - {@link SPEC_MAJOR} — the spec contract major (1); a spec declaring a different `v` is rejected. Bump on a
+ *   breaking spec change.
+ *
+ * ## In practice
+ * ```js
+ * import { validateSpec } from "./validate.js";            // runtime/index.js — start()
+ *
+ * export function start(spec, arg2) {
+ *   try { validateSpec(spec); }
+ *   catch (e) { console.error("Invalid spec.json — app not started\n" + e.message); throw e; }
+ *   // …createApp, setApp, mount — none of it runs on a broken spec
+ * }
+ * ```
+ * ```js
+ * import { validateSpec } from "../validate.js";           // tests/validate_test.js — no import map needed
+ * validateSpec({ id: "app", i18n: { en: {} }, translate: ["desc"],
+ *   tabs: [{ id: "feed", type: "list", icon: "lucide:list", label: "hi",
+ *            card: { layout: "feed", title: "name", body: "desc" } }] });
+ * ```
+ *
+ * ## How it fits
+ * It imports nothing. index.js is its only runtime importer — `start()` validates before it creates the
+ * store — and tests/validate_test.js holds the contract in the unit gate. Every one of the 74 farm apps
+ * runs through it at boot and none imports it by name; each app's generated sw.js precaches `/_rt/validate.js`.
+ * The rules here mirror spec.schema.json in lockstep: the schema is the exhaustive list, this file is the
+ * subset worth a browser-side check.
+ *
+ * ## Invariants and pitfalls
+ * - Tab types are exactly `list`, `converter`, `profile`, `dashboard`, `tool`; card layouts exactly `row`,
+ *   `feed`, `grid`, `gallery`, `table`. `row` needs `lead` and `trailing`; `table` needs a non-empty
+ *   `columns` array; `grid` and `gallery` need a tile (`icon` or `image`).
+ * - `card.href` without `spec.detail` is rejected for every layout but `grid`: a tap must never throw the
+ *   user out of the app — read in-app first, the detail carries the "open" action. `grid` is the launcher
+ *   tile, where leaving IS the point.
+ * - A `feed` card needs a preview slot (`subtitle`, `body` or `image`) — a title-only feed card is raw; use
+ *   `row` for a compact title+value line, or `spec.enrich` to fetch a body preview.
+ * - A `feed` `card.body` is API prose and must be listed in `spec.translate`, unless `spec.localized` says
+ *   the adapter already returns the active locale (dou shipped English job descriptions to a Ukrainian UI
+ *   for months). Scoped to `body` only: titles, names and addresses are identifiers, not prose.
+ * - A detail action carries exactly one of `href` / `play` — leave the app, or play in it, never both.
+ * - `searchFetch` requires `search: true`; `select` controls need `optionsFrom` or inline `options`;
+ *   `segment` / `multi` need a non-empty `options` array of `[value, labelKey]` pairs.
+ * - `spec.i18n.en` is required: `en` is the fallback locale. `spec.v`, when present, must equal `SPEC_MAJOR`.
  * @module
  */
 // microspec runtime — loud, fail-fast spec guard (pure, zero-dependency).

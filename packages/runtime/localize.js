@@ -1,8 +1,58 @@
 /* @ts-self-types="./localize.d.ts" */
 /**
- * Systemic "localize body text" hook: drives the two-stage translate → polish pipeline for body prose and
- * reports ONE `pending` flag so an app holds a skeleton until the final text is ready. Fail-open (reveals the
- * best text after a timeout) and a settled passthrough under the gate. Exports `useLocalized`.
+ * # runtime/localize.js — one `pending` flag over translate → polish, so the UI never shows the intermediate
+ *
+ * Body prose from an API is first translated (`translate.js`, free gtx) and then lightly rewritten to read
+ * naturally (`ai-text.js`, a server-side LLM). Both stages are async and fail-open, and without coordination the
+ * screen shows the half-finished result popping in — English, then the wooden machine translation, then the
+ * natural rewrite. `useLocalized` drives that two-stage pipeline as one systemic step and reports ONE `pending`
+ * flag, so an app holds an animated skeleton UNTIL the final (translated + polished) text is ready and only then
+ * reveals it. It never hangs: after a timeout it reveals the best text so far and upgrades in place; under the
+ * gate it is a settled passthrough with no network, which is why an app needs no gate guard of its own.
+ *
+ * ![The localize module map: text → tr (translate.js) → polish (ai-text.js) → one pending flag, with the fail-open timer and the gate passthrough](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-localize.svg)
+ *
+ * ## Import
+ * ```js
+ * import { useLocalized } from "/_rt/localize.js";                    // an app's page: the import map resolves /_rt/
+ * import { useLocalized } from "@microspec/core/runtime/localize.js";  // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link useLocalized} — `useLocalized(text, locale, { timeout = 6000 })` → `{ text, pending }`: a Preact hook; `text` is the polished › translated › original prose to render (`""` while pending), `pending` is whether a skeleton should hold.
+ *
+ * ## In practice
+ * ```js
+ * import { useLocalized } from "/_rt/localize.js";
+ *
+ * // Translate → naturally rewrite the reading for the active locale, as one systemic step: `localizing`
+ * // stays true until the FINAL text is ready, so the UI animates a skeleton instead of flashing the wooden
+ * // intermediate. Fail-open + gate-safe (the hook handles the network + the gate — no guard needed here).
+ * const { text: readingText, pending: localizing } = useLocalized(data?.text, loc);
+ * ...
+ * ${localizing
+ *   ? html`<div class="flex flex-col gap-2">${[26, 30, 28, 18].map((n, i) => html`<${Scramble} len=${n} key=${i} />`)}</div>`
+ *   : html`<p data-reading data-live>${readingText}</p>`}                             // apps/horoscope/view.js
+ * ```
+ *
+ * ## How it fits
+ * Imports `preact/hooks` and `@nanostores/preact`, and composes three runtime modules: `translate.js` (`tr`,
+ * `warm`, `trTick`, `isTranslated`, `CONTENT_LANG`), `ai-text.js` (`polish`, `warmPolish`, `aiTick`, `isPolished`)
+ * and `gate.js` (`gate`). No other runtime module imports it. 1 farm app reaches it — horoscope, for the daily
+ * reading's body prose.
+ *
+ * ## Invariants and pitfalls
+ * - `pending` is ONE flag for both stages: hold the skeleton on it, never on the translation alone — the point is
+ *   that the wooden intermediate never reaches the screen.
+ * - Fail-open: after `timeout` ms (default 6000 — offline, an endpoint down) the hook reveals the best text
+ *   available (polished › translated › original) and still upgrades in place if a later stage lands.
+ * - Under the gate (shot / e2e) it is a passthrough — settled immediately, no `warm()` / `warmPolish()` call — so
+ *   renders stay deterministic and the app itself needs no gate guard.
+ * - "Done" without any network: empty text, `locale === CONTENT_LANG`, or both stages already cached
+ *   (`isTranslated` and `isPolished`) settle on the first render.
+ * - Stage 2 only starts once the translation has landed (`translated !== src`); a non-string `text` is treated as empty.
+ * - The reveal timer resets whenever the source text or the locale changes — a new reading starts a new hold.
+ * - The hook re-renders on `trTick` and `aiTick`; call it unconditionally at the top of the component like any hook.
  * @module
  */
 // microspec runtime — systemic "localize body text" hook.

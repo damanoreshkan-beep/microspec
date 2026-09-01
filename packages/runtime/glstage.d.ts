@@ -1,8 +1,65 @@
 /**
- * The GL stage: hero.js's twin on WebGL2, for a stage that has to be seen where WebGPU is not (iOS 16,
- * Firefox on Android, CI's headless Chromium). Same uniform contract as HeroStage (`res`, `time`, `seed`,
- * `ink`, `vary`, `env`, plus an optional palette texture), probe-guarded rather than gate-guarded so the
- * verify shot shows the real field. Exports the `GlStage` component and the `hasWebGL2` probe.
+ * # runtime/glstage.js — hero.js's twin on WebGL2, for a stage that has to be seen where WebGPU is not
+ *
+ * A full-screen fragment-shader stage on `getContext("webgl2")`, carrying the same uniform contract as
+ * {@link HeroStage} (`res`, `time`, `seed`, `ink`, `vary`, `env`) plus an optional palette texture, so an app can
+ * hand the same numbers to either renderer. It buys the farm a field that renders on an iPad on iOS 16, on
+ * Firefox on Android and in CI's headless Chromium — which HAS WebGL, so the verify shot shows the real field
+ * instead of a plain background. The lesson behind it: guard by PROBE, never by gate. Init runs wherever the
+ * context answers; preflight's canvas stub answers null and the effect ends there; under a dead GL the element
+ * stays an empty canvas and every meaning the stage carries is also in the DOM, which is the only thing axe
+ * and the e2e can see anyway.
+ *
+ * ![The GL stage: fragment shader, uniforms, the palette texture and the probe guard](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-glstage.svg)
+ *
+ * ## Import
+ * ```js
+ * import { GlStage, hasWebGL2 } from "/_rt/glstage.js";                    // an app's page: the import map resolves /_rt/
+ * import { GlStage, hasWebGL2 } from "@microspec/core/runtime/glstage.js";  // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link GlStage} — the component: `{ shader, seed = 0, ink, vary, tex, texReady, zClass = "-z-10" }` renders a
+ *   `fixed inset-0` canvas (`data-stage`, `aria-hidden`) and drives the app's GLSL ES 3.00 fragment shader every frame.
+ * - {@link hasWebGL2} — the probe: true when this document can hand out a WebGL2 context, false wherever
+ *   `getContext` throws or answers null.
+ *
+ * ## In practice
+ * ```js
+ * import { GlStage } from "/_rt/glstage.js";                                // apps/tide/view.js
+ *
+ * // `ink` and `vary` are functions: GlStage reads them fresh every frame, so the view never re-renders
+ * // to move the field. `tex` is the station's logo — a PALETTE for the shader, downsampled to 64 px.
+ * html`<${GlStage} shader=${new URL("tide.frag", import.meta.url)} seed=${seedFor(station)} zClass="z-0"
+ *   ink=${inkFor} vary=${bands} tex=${station.logo || null} texReady=${(r) => { env.readyTo = r; }} />`;
+ * ```
+ * The shader declares `out vec4 o` and the uniforms `res: vec2 · time: float · seed: float · ink: vec4 ·
+ * vary: vec4 · env: vec4`, plus `tex: sampler2D` and `texAspect: vec2` when it samples the palette.
+ *
+ * ## How it fits
+ * Imports `htm/preact`, `preact/hooks` and `gate` from `./gate.js` (the gate does not skip the stage — it only
+ * lowers the DPR to 1 and halves the frame rate, because headless Chromium draws WebGL in software). Nothing in
+ * the runtime imports it; 4 farm apps do — tide, persona, mirage, hoard — each with its own `.frag` beside the
+ * view. {@link HeroStage} in `hero.js` is the WebGPU sibling with the identical uniform block.
+ *
+ * ## Invariants and pitfalls
+ * - Probe-guarded, never gate-guarded: there is deliberately no `if (gate) return` — the `getContext("webgl2")`
+ *   answer is the guard, so CI renders the real field and preflight (linkedom, no GL) skips it.
+ * - The canvas is measured against the VIEWPORT (`innerWidth`/`innerHeight`), never against itself: before the
+ *   stylesheet lands a canvas's clientWidth is its intrinsic 300, and preflight fails a stage that bakes that in.
+ * - `ink` and `vary` are the app's channels; `env.x` is the runtime's — how light the theme is, read from
+ *   `data-theme` on the document and eased (~250 ms) so a toggle cross-fades. A wrong-length `ink` falls back to
+ *   `[0.9, 0.89, 0.93, 1]`, a wrong-length `vary` to zeros.
+ * - `tex` is downsampled to at most 64 px before upload, on purpose: a stage borrows a palette from a portrait,
+ *   it does not project the picture. A 1x1 neutral texture is bound from the first frame so a shader that samples
+ *   `tex` never reads an unbound unit; a URL that will not read (no CORS, 404) leaves that neutral palette.
+ * - `texReady` is called with 0 when a load starts and 1 when the texture is bound — the app fades the field in
+ *   through its own `vary` channel. Changing `tex` swaps the texture without rebuilding the program.
+ * - Under the gate: DPR 1 and every other frame skipped (a full-screen fbm field at DPR 2 in SwiftShader starved a
+ *   fixture stream from 0.7 s to 30 s). Elsewhere DPR is capped at 2. A hidden tab draws nothing.
+ * - `prefers-reduced-motion: reduce` freezes `time` at 2 and snaps `env.x` instead of easing it.
+ * - The canvas reports itself: `data-haswebgl` yes/no, `data-render="webgl"` once a frame drew, `data-tex="yes"`
+ *   once the palette is bound, `data-err` with the first 120 chars of a compile/link failure.
  * @module
  */
 // GENERATED by tools/dts.mjs from packages/runtime/glstage.js — edit the JSDoc there, never this file.

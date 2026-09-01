@@ -1,9 +1,74 @@
 /* @ts-self-types="./orbit.d.ts" */
 /**
- * Satellite orbit propagation: wraps the vendored SGP4 propagator (./satellite.js) into the small surface the
- * farm needs — TLE → sub-satellite point, ground speed and a sunlit/eclipsed test — so a tracker fetches a
- * TLE once and propagates locally with zero further network. Exports `sat`, `FALLBACK_TLE`, `makeSat`,
- * `parseTleText`, `subpoint`, `sunEciUnit` and `isSunlit`.
+ * # runtime/orbit.js — fetch a TLE once, propagate the satellite locally forever
+ *
+ * Satellite orbit propagation: wraps the vendored SGP4 propagator (./satellite.js, the canonical Vallado
+ * port) into the small surface the farm needs — TLE → sub-satellite point (lat/lon/alt), ground speed, and a
+ * physically-correct sunlit/eclipsed test. The point is resilience: orbital elements change slowly (~daily),
+ * so a tracker fetches a TLE once and propagates the live position locally every second with zero further
+ * network — it no longer dies when a live-position API's certificate or uptime does. A baked ISS TLE means
+ * first paint, offline and the headless gate all get a plausible position before any fetch. Refs: satellite.js
+ * (SGP4) · low-precision solar position (Astronomical Almanac) · cylindrical shadow model.
+ *
+ * ![orbit.js: TLE lines into a satrec, propagated to a sub-satellite point, ground speed and a sunlit test against the Earth's shadow cylinder](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-orbit.svg)
+ *
+ * ## Import
+ * ```js
+ * import { subpoint, makeSat, FALLBACK_TLE } from "/_rt/orbit.js";                       // an app's page: the import map resolves /_rt/
+ * import { makeSat, parseTleText, subpoint, isSunlit } from "@microspec/core/runtime/orbit.js";   // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link makeSat} — `makeSat(l1, l2)` → the SGP4 `satrec` for two TLE lines (whitespace-tolerant).
+ * - {@link parseTleText} — `parseTleText(txt)` → `{ line1, line2 }` from a 2-line or 3-line (name header) block,
+ *   or null when either line is missing.
+ * - {@link subpoint} — `subpoint(rec, date)` → `{ lat, lon, altKm, velocityKmh, eci, sunlit }`, or null if the
+ *   propagator diverges (a decayed or garbage TLE).
+ * - {@link isSunlit} — `isSunlit(eci, date)` → true when sunlit, false when eclipsed, by the cylindrical
+ *   Earth-shadow model (WGS84 equatorial radius).
+ * - {@link sunEciUnit} — `sunEciUnit(date)` → the Sun's direction as a unit vector in the propagator's
+ *   ECI-equatorial frame, accurate to ~0.01°.
+ * - {@link FALLBACK_TLE} — a recent ISS TLE `{ name, line1, line2 }` for offline, first paint and the gate.
+ * - {@link sat} — the vendored satellite.js namespace (`twoline2satrec`, `propagate`, `gstime`,
+ *   `eciToGeodetic`, …) for callers that need the raw API; typed as a plain record on purpose.
+ *
+ * ## In practice
+ * The ISS tracker in globe: a satrec from the cache or the baked fallback, one fetch, then a local tick.
+ * ```js
+ * import { subpoint, makeSat, FALLBACK_TLE } from "/_rt/orbit.js";   // apps/globe/track.js
+ *
+ * // a satrec from cache or the baked fallback, so first paint (and offline / the gate) already has a position
+ * function initialSat() {
+ *   try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); if (c && c.line1 && c.line2) return makeSat(c.line1, c.line2); } catch { }
+ *   return makeSat(FALLBACK_TLE.line1, FALLBACK_TLE.line2);
+ * }
+ *
+ * // propagate the current TLE locally every second — the dot moves with zero network per frame
+ * const id = setInterval(() => { const r = recRef.current; if (r) { const p = subpoint(r, new Date()); if (p) setPos(p); } }, 1000);
+ *
+ * // fetch a fresh TLE once (refresh every few hours) and cache it; on failure keep propagating what we have
+ * const j = await (await fetch(TLE_URL)).json();
+ * recRef.current = makeSat(j.line1, j.line2);
+ * ```
+ *
+ * ## How it fits
+ * Imports the whole of satellite.js (`import * as satlib`) and re-exports it as `sat`; satellite.js is used
+ * only through this module. No other runtime module imports it; tests/orbit_test.js verifies the propagator
+ * against the standard SGP4 reference vector (TLE 00005, t=0) and the shadow test. 1 farm app imports it —
+ * globe (the ISS tracker).
+ *
+ * ## Invariants and pitfalls
+ * - `subpoint` returns null when the propagator diverges: a decayed or garbage TLE. Keep the last good
+ *   position and the last good satrec; never let a null overwrite them.
+ * - A fetched TLE REPLACES the baked one only after it loads; until then, and on any failed fetch, keep
+ *   propagating what you have — the position stays live, just from slightly older elements.
+ * - The ECI position from `subpoint` and the vector from `sunEciUnit` are in the same TEME/ECI-equatorial
+ *   frame; `isSunlit` assumes that, so feed it `eci` from `subpoint`, not a geodetic point.
+ * - `sunEciUnit` reads the date as UTC (`getUTC*`), so pass a real `Date` for the instant, not a local
+ *   wall-clock reconstruction.
+ * - `parseTleText` is whitespace-tolerant and finds lines by their `1 ` / `2 ` prefixes; a block with a name
+ *   header parses, a block with only one line returns null.
+ * - `sat` is a vendored library exposed as a plain record; its internals are not this package's API.
  * @module
  */
 // microspec runtime — satellite orbit propagation. Wraps the vendored SGP4 propagator (./satellite.js, the

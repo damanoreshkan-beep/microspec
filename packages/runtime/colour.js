@@ -1,9 +1,78 @@
 /* @ts-self-types="./colour.d.ts" */
 /**
- * Pixel → colour maths for the camera picker and any app reading a frame: pure, zero-dependency and
- * unit-tested on plain `[r,g,b]` triples and RGBA buffers, so everything runs in the headless gate.
- * Exports conversions (`rgbToHex`, `rgbToHsl`, `hexRgb`), `luminance` / `ink` for readable text over a
- * swatch, `avgColor` and the median-cut `palette`, and the theme-adaptive `iconTint`.
+ * # runtime/colour.js — pixel → colour maths with no canvas in sight
+ *
+ * The colour maths for the camera picker and any app reading a frame: conversions between `[r,g,b]`,
+ * hex and HSL, the mean colour and the dominant palette of an RGBA buffer, WCAG luminance and the ink
+ * that stays readable over a swatch, and the theme-adaptive icon tint. Pure and zero-dependency by
+ * construction — inputs are plain 0..255 triples and RGBA byte buffers (Uint8ClampedArray or number[]),
+ * so every function runs in the headless gate on a seeded buffer, and an app's colour logic is
+ * unit-tested here instead of trusted on a phone. The palette is deterministic: same pixels, same
+ * palette — shareable, gate-stable.
+ *
+ * ![The colour pipeline: RGBA buffer to avgColor and palette, triples to hex, HSL, luminance and ink](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-colour.svg)
+ *
+ * ## Import
+ * ```js
+ * import { avgColor, palette, rgbToHex, rgbToHsl } from "/_rt/colour.js";   // an app's page: the import map resolves /_rt/
+ * import { rgbToHsl } from "@microspec/core/runtime/colour.js";             // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * **Conversions**
+ * - {@link clamp8} — clamp a number into a rounded 0..255 channel.
+ * - {@link rgbToHex} — `[r,g,b]` → upper-case "#RRGGBB", channels clamped first.
+ * - {@link rgbToHsl} — `[r,g,b]` → `[h 0..360, s 0..100, l 0..100]`, rounded.
+ * - {@link hexRgb} — "#rgb" / "#rrggbb" → `[r,g,b]`, tolerant: the '#' is optional, shorthand expands, garbage becomes 0.
+ *
+ * **Buffers**
+ * - {@link avgColor} — mean colour of an RGBA buffer, alpha ignored; `[0,0,0]` for an empty one.
+ * - {@link palette} — up to `k` (default 5) dominant colours by deterministic median cut; fewer only if the image has fewer colours.
+ *
+ * **Readability and theme**
+ * - {@link luminance} — WCAG relative luminance 0..1.
+ * - {@link ink} — "#000000" over light colours (luminance > 0.4), "#FFFFFF" over dark ones.
+ * - {@link iconTint} — `{ tile, glyph }` CSS strings (color-mix / gradients) for an app icon from its brand `bg` + accent `fg`, per theme.
+ *
+ * ## In practice
+ * ```js
+ * import { avgColor, palette, rgbToHex, rgbToHsl } from "/_rt/colour.js";   // apps/pipette/view.js
+ *
+ * // Each frame: the 6×6 sample under the reticle and the whole frame's palette.
+ * setPicked(avgColor(ctx.getImageData(cx, cy, 6, 6).data));
+ * setPal(palette(ctx.getImageData(0, 0, W, H).data, 5));
+ *
+ * // In the gate there is no camera: the same maths on a seeded buffer, so the screen is populated.
+ * const pal = palette(seedBuffer(), 5);
+ *
+ * const hex = rgbToHex(picked);                                        // "#3FA7D6"
+ * const [h, s, l] = rgbToHsl(picked);                                  // `hsl(${h} ${s}% ${l}%)`
+ * const grad = `linear-gradient(135deg, ${pal.map(rgbToHex).join(", ")})`;
+ * ```
+ *
+ * ## How it fits
+ * It imports nothing, and no runtime module imports it: in the core it is reached only by the unit
+ * tests — tests/tile_test.js for {@link iconTint} and {@link hexRgb}, tests/colour_test.js for the rest,
+ * both on synthetic buffers with no browser and no import map. 2 farm apps import
+ * it directly — pipette (the picker) and synesth (palette, luminance, ink) — and the product's rt/chroma.js
+ * takes `rgbToHsl` through the package path. The pixels themselves (canvas → getImageData) stay in the app;
+ * only the maths on them lives here.
+ *
+ * ## Invariants and pitfalls
+ * - Stay pure: no canvas, no DOM, no imports. That is what lets the gate run the picker on a seeded
+ *   buffer instead of a camera.
+ * - Buffers are RGBA: every 4th byte is alpha and is ignored; a buffer that is not a multiple of 4 is
+ *   read as far as a full triple exists.
+ * - `palette` samples at most ~4000 pixels (a stride over the buffer) and splits the box with the widest
+ *   channel spread at its median until `k` boxes; it stops early when every box is a single colour,
+ *   so the result can be shorter than `k`.
+ * - `hexRgb` never throws: it strips '#', expands "#rgb", pads or truncates to six digits and turns an
+ *   unparsable channel into 0.
+ * - `iconTint` takes its colour from the accent unless the accent is inky / near-neutral-light
+ *   (saturation < 18 and luminance > 0.5), in which case it falls back to the brand `bg` so the light
+ *   tile is not a washed-out white with an invisible glyph. It returns CSS the browser resolves —
+ *   no per-pixel re-tint in JS.
+ * - `ink` is a 0.4 luminance threshold, not a contrast ratio; it picks pure black or pure white only.
  * @module
  */
 // colour.js — pixel → colour maths for the camera picker (and any app reading a frame). Pure,

@@ -1,9 +1,71 @@
 /* @ts-self-types="./vfilter.d.ts" */
 /**
- * Pure, DOM-free helpers for cleaning a scraped video feed: `dedupeVideos` collapses the same clip
- * published under several urls, and `isBlackSample` / `isFlatSample` / `hasPoster` classify posters so
- * broken or placeholder thumbnails can be dropped. Lives in the runtime (not the app) so the logic is
- * unit-tested; the app owns only the canvas side.
+ * # runtime/vfilter.js — a scraped video feed, cleaned without a DOM
+ *
+ * Pure helpers for cleaning a scraped video feed: `dedupeVideos` collapses the same clip published under
+ * several urls (re-signed variants, JSON-LD plus the video tag, one clip as two files on two hosts) and
+ * `isBlackSample` / `isFlatSample` / `hasPoster` classify posters so broken or placeholder thumbnails can
+ * be dropped. It lives in the runtime, not in the app, so the logic is unit-tested; the app owns only the
+ * DOM side (loading a poster into a canvas and reading the pixels back) and this module never touches the
+ * DOM. What it buys the farm is that the black slide — the posterless source asset that used to win the
+ * dedupe — is decided by a test, not by whichever copy the page listed first.
+ *
+ * ![The feed cleaner: items through clipId, url and poster identity into dedupeVideos; RGBA samples through luma stats into black or flat](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-vfilter.svg)
+ *
+ * ## Import
+ * ```js
+ * import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";                    // an app's page: the import map resolves /_rt/
+ * import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "@microspec/core/runtime/vfilter.js";  // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link dedupeVideos} — `dedupeVideos(items)` → the items without duplicate clips, ORDER preserved; a later
+ *   copy with a poster replaces an earlier posterless one in place. A non-array yields `[]`.
+ * - {@link isBlackSample} — `isBlackSample(rgba, { meanMax = 12, peakMax = 24 })` → true when the sample has
+ *   near-zero mean luma AND no bright pixel anywhere; false for an empty sample.
+ * - {@link isFlatSample} — `isFlatSample(rgba, { stdMax = 6 })` → true when luma standard deviation is ≈ 0,
+ *   a uniform fill of any colour; false for an empty sample.
+ * - {@link hasPoster} — `hasPoster(item)` → true when `item.poster` is a non-blank string.
+ *
+ * ## In practice
+ * ```js
+ * import { dedupeVideos, isBlackSample, isFlatSample, hasPoster } from "/_rt/vfilter.js";   // apps/reel/view.js
+ *
+ * // the app owns the canvas: a 24×24 sample of the poster, then the pure classifier
+ * const c = document.createElement("canvas"); c.width = 24; c.height = 24;
+ * const cx = c.getContext("2d", { willReadFrequently: true }); cx.drawImage(img, 0, 0, 24, 24);
+ * const px = cx.getImageData(0, 0, 24, 24).data;
+ * const blank = isBlackSample(px) || isFlatSample(px);          // black OR uniform flat-fill
+ *
+ * // blanks rejected BEFORE dedupe, so a blank never wins a duplicate's slot
+ * function clean(arr, { requirePoster = false } = {}) {
+ *   let out = arr.filter((i) => !(i.poster && blankPosters.has(i.poster)));
+ *   if (requirePoster) out = out.filter(hasPoster);
+ *   return dedupeVideos(out);
+ * }
+ * ```
+ *
+ * ## How it fits
+ * It imports nothing and no runtime module imports it; tests/vfilter_test.js holds the contract in the
+ * unit gate. One farm app reaches it — reel, whose feed is scraped from several hosts — and reel's
+ * generated sw.js precaches it. The playback side of the same app is video.js (`createPlayer`); this file
+ * is the feed side only.
+ *
+ * ## Invariants and pitfalls
+ * - Identity is three keys, any of which matches: the CLIP ID (a 6+ digit number that is BOTH the filename's
+ *   token AND its own path segment — both halves required, or a path-wide scan fuses every clip of a month
+ *   by its date segment), the normalised video url (origin + pathname, no query or hash), and the
+ *   normalised poster url.
+ * - `orig` beats `video` as the identity source: the proxied `video` url has no extension and no identity,
+ *   the original one does.
+ * - Which copy survives matters: first-wins keeps the posterless source asset (the black slide). A later
+ *   copy WITH a poster replaces the earlier one in place and answers to both copies' keys; otherwise first wins.
+ * - Items with no poster never collide on the poster key — a null poster is not a shared placeholder.
+ * - Both classifiers fail toward KEEPING a clip: an empty or too-short sample returns false, and the
+ *   thresholds are conservative. The peak test is the discriminator for black — a real night scene still has
+ *   a highlight; the std test for flat — a real frame always carries texture or JPEG noise.
+ * - `isFlatSample` subsumes a perfectly flat black frame too, so callers OR the two rather than pick one.
+ * - Alpha is ignored: posters are opaque, and a fully transparent one reads as blank, which is equally unwanted.
  * @module
  */
 // vfilter — pure helpers for cleaning a scraped video feed (apps/reel): drop duplicate clips and detect

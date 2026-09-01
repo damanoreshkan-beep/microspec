@@ -1,8 +1,63 @@
 /* @ts-self-types="./playback.d.ts" */
 /**
- * Playback rules for the runtime's video player — where to resume a remembered position — kept pure and
- * dependency-free so the unit gate can hold the decision. Exports the resume band (`RESUME_MIN`,
- * `RESUME_TAIL`) and `resumeAt`.
+ * # runtime/playback.js — the resume band, kept where a test can hold it
+ *
+ * The playback rules of the runtime's video player, pure and dependency-free ON PURPOSE: `video.js` is a
+ * Preact component and drags htm/preact behind it, so anything living there can never be reached by the
+ * unit gate. The decisions worth getting right are decisions, not markup — they belong where a test can
+ * hold them. The one decision here: where to actually start, given a remembered position. Resuming is only
+ * kind when it lands you where you left. Two ways it turns hostile: a few seconds in, it "resumes" you to a
+ * spot you would rather just watch from the top; at the very end, it drops you on the credits of a film you
+ * already finished and offers no way back in. Both read as the app being broken, so the rule is a band, not
+ * a saved number — and a live stream has no position at all.
+ *
+ * ![The playback module's map](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-playback.svg)
+ *
+ * ## Import
+ * ```js
+ * import { resumeAt, RESUME_MIN, RESUME_TAIL } from "/_rt/playback.js";                    // an app's page: the import map resolves /_rt/
+ * import { resumeAt, RESUME_MIN, RESUME_TAIL } from "@microspec/core/runtime/playback.js";  // a product rt/ module or a Deno test
+ * ```
+ * `/_rt/video.js` re-exports all three, so an app that already imports the player needs no second import.
+ *
+ * ## What it exports
+ * - {@link resumeAt} — `resumeAt(saved, duration)`: the position to seek to, or 0 to start from the top.
+ * - {@link RESUME_MIN} — 30 seconds; below this you have not started, starting over costs you nothing.
+ * - {@link RESUME_TAIL} — 0.98 of the duration; past this you have finished, the film starts over.
+ *
+ * ## In practice
+ * ```js
+ * import { resumeAt } from "./playback.js";                          // runtime/video.js, inside Player
+ *
+ * const ready = () => {
+ *   if (dead) return;
+ *   // Seek before the first frame is shown, not after: seeking a visible <video> makes the resume look
+ *   // like a glitch — you watch the opening for a beat, then get yanked.
+ *   const at = resumeAt(startAt, v.duration);
+ *   if (at > 0) { try { v.currentTime = at; } catch { } }                 // not seekable
+ *   setState("playing");
+ * };
+ * createPlayer(v, url, { type, onReady: ready, onError: () => { if (!dead) setState("error"); } });
+ * ```
+ * The app owns persistence: it stores what `onTime(t, duration)` reports and hands it back as `startAt`.
+ *
+ * ## How it fits
+ * Imports nothing. `runtime/video.js` imports `resumeAt` for the `Player` component's first-frame seek and
+ * re-exports `resumeAt`, `RESUME_MIN`, `RESUME_TAIL`. No farm app imports it directly; two reach it through
+ * `/_rt/video.js` — iptv and reel, the video apps whose `startAt` goes through the band. Every generated
+ * `sw.js` precaches it. The unit gate holds it in `tests/playback_test.js` (a 90-minute film, the credits,
+ * a live stream, nothing saved, a negative position).
+ *
+ * ## Invariants and pitfalls
+ * - The rule is a band, not a saved number: below `RESUME_MIN` and at or past `duration × RESUME_TAIL`
+ *   the answer is 0. The threshold itself (`saved === RESUME_MIN`) resumes.
+ * - A live stream has no position to return to: `duration` of Infinity, NaN, 0 or negative answers 0.
+ *   Infinity must never become a seek.
+ * - Nothing saved (undefined, NaN, a non-number) answers 0; so does a negative position — never seek
+ *   backwards out of the file. Inputs go through `Number()`, so a stored string is fine.
+ * - Seek in `onReady`, before the first frame is shown; a seek on a visible element reads as a glitch.
+ * - Persistence is NOT here — the app stores the position and passes `startAt`; this module never
+ *   touches storage.
  * @module
  */
 // microspec runtime — playback rules. Pure and dependency-free ON PURPOSE: video.js is a Preact component

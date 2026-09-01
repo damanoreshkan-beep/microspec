@@ -1,7 +1,50 @@
 /* @ts-self-types="./build.d.ts" */
 /**
- * Deploy stamp: `BUILD` (git short-SHA of the deployed commit) and `CORE` (the core version), rewritten
- * by deploy/build.mjs at build time and left as placeholders in local dev and the gate.
+ * # runtime/build.js — the deploy stamp: which commit, which core
+ *
+ * Two constants and nothing else. `BUILD` is the git short-SHA of the deployed commit and `CORE` is the
+ * runtime version counter; deploy/build.mjs rewrites this file into dist/_rt/build.js at build time
+ * (`GITHUB_SHA` cut to 7 characters, `CORE` = 1.<commits touching packages/runtime>), while local dev and
+ * the gate serve the runtime SOURCE and keep the placeholders. What it buys the farm is the single
+ * unambiguous "which commit is on this device" for a continuously-deployed fleet: every app's profile
+ * footer shows it beside the app's own version, so a bug report names a commit, not a date.
+ *
+ * ![The build stamp: source placeholders, deploy/build.mjs, dist/_rt/build.js](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-build.svg)
+ *
+ * ## Import
+ * ```js
+ * import { BUILD, CORE } from "/_rt/build.js";                    // an app's page: the import map resolves /_rt/
+ * import { BUILD, CORE } from "@microspec/core/runtime/build.js";  // a product rt/ module or a Deno test
+ * ```
+ * In practice nobody imports it directly: version.js re-exports both, and render.js reads them there.
+ *
+ * ## What it exports
+ * - {@link BUILD} — git short-SHA of the deployed commit; the string "dev" until deploy/build.mjs stamps it.
+ * - {@link CORE} — core (runtime) version counter; "1.0" until stamped.
+ *
+ * ## In practice
+ * ```js
+ * import { CORE, BUILD, appVersion } from "./version.js";   // runtime/render.js — the profile footer
+ *
+ * html`<div data-version class="text-center text-[11px] text-base-content/70 pt-1 tabular-nums">
+ *   v${appVersion(A.spec)} · core ${CORE}${BUILD && BUILD !== "dev" ? ` · ${BUILD}` : ""}
+ * </div>`;
+ * ```
+ *
+ * ## How it fits
+ * It imports nothing. version.js re-exports `BUILD` and `CORE` next to `appVersion`, and render.js draws
+ * the three together in the profile footer, so every one of the 74 farm apps reaches this file through
+ * the shared chrome; each app's generated sw.js also lists `/_rt/build.js` in its precache. The stamping
+ * itself is deploy/build.mjs, which writes the two exports verbatim into dist/_rt/build.js.
+ *
+ * ## Invariants and pitfalls
+ * - The source values are placeholders by design: the gate and local dev serve packages/runtime, not the
+ *   built dist, so `BUILD === "dev"` there is correct, not a missing stamp.
+ * - The footer hides the SHA when it is "dev" — a placeholder must never read as a deployed commit.
+ * - `CORE` is derived from git history, never bumped by hand; a shallow clone yields a low but
+ *   deterministic number.
+ * - Keep the file to these two exports: deploy/build.mjs REPLACES it wholesale with two export lines,
+ *   so anything else added here would vanish from the built runtime.
  * @module
  */
 // Deploy stamp — the git short-SHA of the deployed commit + the core version (commits touching the runtime),

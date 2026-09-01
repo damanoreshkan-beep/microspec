@@ -77,6 +77,9 @@ for (const dir of dirs) {
     if (!f.isFile || !f.name.endsWith(".js") || f.name.endsWith("_test.js")) continue;
     const src = await Deno.readTextFile(`${dir}/${f.name}`);
     src.split("\n").forEach((line, i) => {
+      // a comment line is prose: the module docs quote how an APP imports `/_rt/x.js`, which is the
+      // legitimate form there — only a real import statement in a runtime module is the violation
+      if (/^\s*(\*|\/\/|\/\*)/.test(line)) return;
       if (/from\s+["']\/_rt\//.test(line)) bad.push(`${dir}/${f.name}:${i + 1}: ${line.trim()}`);
     });
   }

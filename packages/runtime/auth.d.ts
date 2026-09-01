@@ -1,9 +1,89 @@
 /**
- * The farm's authentication module — GitHub OAuth and Sign in with Google, with the token NEVER reaching the
- * browser: the edge keeps it and the PWA holds only an opaque sid. Exports the `session` atom, the sign-in /
- * restore / logout flows (`login`, `loginGoogle`, `restore`, `logout`, `adoptSession`, the pairing trio for
- * the APK's WebView), the narrow acting-on-behalf calls (`star`, `repos`, `runs`, `jobs`) and the
- * deterministic MOCK_* fixtures the gate renders with, since under the gate there is no network.
+ * # runtime/auth.js — who is signed in, with the token never reaching the browser
+ *
+ * The farm's authentication module: GitHub OAuth and Sign in with Google, reusable by any app that needs "who
+ * is the signed-in user" and acting on their behalf (nova was the first consumer). The edge
+ * (microspec-edge, routes /feed/gh/* and /feed/google/*) runs the code→token exchange with the client secret
+ * and keeps the access token in a server-side session; the PWA is handed only an opaque session id (`sid`),
+ * persisted in localStorage. Authenticated calls ride the sealed tunnel carrying the sid, and the edge
+ * attaches the real token upstream. A stolen sid can act as the user until logout or an edge restart — but it
+ * is not the token, and it cannot be replayed off-farm (origin-guarded). This mirrors the edge's founding
+ * rule: key material never sits next to a public bundle. Under the gate there is no network, so the module
+ * seeds a deterministic mock session and fixtures, and every network path fails open — a down edge leaves the
+ * app usable in its logged-out state, never wedged.
+ *
+ * ![The auth module's map: popup, edge, sid, session atom, the narrow reads](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-auth.svg)
+ *
+ * ## Import
+ * ```js
+ * import { session, login, logout, restore, star } from "/_rt/auth.js";                    // an app's page: the import map resolves /_rt/
+ * import { session, runState } from "@microspec/core/runtime/auth.js";  // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * **State**
+ * - {@link session} — the nanostores atom: null when signed out, `{ sid, user, provider }` when signed in; `user` is the trimmed profile (login · name · avatar · html_url), `provider` is "github" | "google".
+ * - {@link isLoggedIn} — `!!session.get()`.
+ * - {@link SCOPE} — "public_repo", the narrowest classic OAuth scope that permits starring on the user's behalf.
+ *
+ * **Sign in, restore, sign out**
+ * - {@link restore} — rehydrate on boot: cached profile immediately, revalidated in the background; dropped only on a definitive 401.
+ * - {@link login} — `({ scope = SCOPE })` opens the GitHub consent popup, resolves with the session when the edge posts back a sid; rejects "popup-blocked", "popup-closed", "timeout" or "no-profile".
+ * - {@link loginGoogle} — `(credential)` exchanges a GIS ID token for a farm session; throws with `.status` 502 when the edge returns no sid.
+ * - {@link googleClientId} — the Google client id the edge is configured with ("" when unset — the surface then offers GitHub alone); fetched once per page.
+ * - {@link logout} — drop the local sid and session, best-effort tell the edge (or GIS auto-select) to forget it.
+ * - {@link adoptSession} — `({ sid, provider, user })` makes a session minted elsewhere this page's own: persisted under the keys `restore` reads, set on the atom.
+ *
+ * **Pairing (the APK's WebView can pop no window and run no GIS)**
+ * - {@link pairNew} — ask the edge for a fresh pairing id (WebView side), or null when refused.
+ * - {@link pairComplete} — `(pair, sid)` hand a freshly minted sid to that id (browser side); true when accepted.
+ * - {@link pairPoll} — `(pair)` poll for the session the browser completed; throws an Error carrying `.status` on a non-ok reply.
+ *
+ * **Acting on GitHub**
+ * - {@link star} — `(owner, repo, on = true)` star or unstar; true on success, false on any failure, always true under the gate.
+ * - {@link repos} — the user's repositories, most recently pushed first, trimmed to `{ id, name, full, owner, private, pushed, url }`.
+ * - {@link runs} — `(owner, repo, per)` the latest workflow runs, newest first; `per` caps the payload for a board that needs one run per row.
+ * - {@link jobs} — `(owner, repo, id)` the jobs and steps of one run — the "what actually broke" view.
+ * - {@link runState} — collapse GitHub's `status` + `conclusion` into one word: "queued" | "running" | the conclusion | "unknown".
+ *
+ * **Gate fixtures (deterministic, never used off the gate)**
+ * - {@link MOCK_USER}, {@link MOCK_GOOGLE_SESSION}, {@link MOCK_REPOS}, {@link MOCK_RUNS}, {@link MOCK_JOBS} — what the shot and e2e see, so the gate renders a populated board rather than a sign-in wall.
+ *
+ * ## In practice
+ * ```js
+ * import { session, login, logout, restore, star } from "/_rt/auth.js";          // apps/nova/view.js
+ *
+ * const sess = useStore(session);                                                 // null | { sid, user, provider }
+ * useEffect(() => { restore().catch(() => {}); }, []);                            // boot: cached profile first, revalidate behind
+ *
+ * const onStar = async (d, on) => {
+ *   const ok = await star(d.owner, d.repo, on);                                   // false → revert the optimistic dot
+ *   if (!ok) revert(d);
+ * };
+ * const onLogin = async () => {
+ *   try { await login(); }                                                        // default scope: public_repo
+ *   catch (e) { if (e?.message !== "popup-closed") toast(T(t, "loginFailed")); }
+ * };
+ * ```
+ *
+ * ## How it fits
+ * Imports `atom` from nanostores, `VPS_PROXY` from feed.js (the edge's base URL) and `gate` from gate.js.
+ * The runtime builds its sign-in surfaces on it: signin.js (the systemic screen — `login`, `loginGoogle`,
+ * `googleClientId`, the pairing trio, `adoptSession`), account.js (`session`, `restore`, `logout`) and
+ * render.js, which imports it dynamically when the sign-in wall opens. 3 farm apps import it directly —
+ * nova, persona, tide — plus rt/characters.js for `session`; every farm app reaches it through the shell.
+ * Authenticated calls are enveloped by sealedfetch.js, which index.js installs.
+ *
+ * ## Invariants and pitfalls
+ * - The token never reaches the browser; the PWA holds only an opaque sid, and calls to VPS_PROXY/gh/* are JSON POSTs because the sealed tunnel only envelopes JSON POSTs.
+ * - Only a definitive 401 signs the user out. Network down, timeout, edge 5xx, GitHub rate-limited — every transient failure KEEPS the session; that was the bug that logged users out on a restart when `me()` so much as hiccuped.
+ * - `restore()` shows the cached profile immediately and revalidates behind it — a restart never flashes logged-out.
+ * - A Google session identifies the reader but holds no GitHub token: an app that acts on GitHub checks `session.get().provider === "github"`.
+ * - `scope` is per app, not farm-wide: starring needs `public_repo`, reading a private repo's Actions needs `repo`; an existing session keeps the scope it was minted with, so an app that needs more has to sign the user in again.
+ * - `login()` trusts only a `message` from the edge origin tagged `source: "microspec-gh"` with a string sid; the popup is 640×720 and times out after 180 s.
+ * - `repos` / `runs` / `jobs` are three narrow reads, not a passthrough — a generic proxy would hand the token's power back to the browser.
+ * - Read `state` (from `runState`), never `conclusion` alone: a run still going has no conclusion and would look cancelled.
+ * - `star` is a deliberate, one-at-a-time human action — never bulk.
  * @module
  */
 // GENERATED by tools/dts.mjs from packages/runtime/auth.js — edit the JSDoc there, never this file.

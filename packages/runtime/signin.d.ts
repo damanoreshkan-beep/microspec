@@ -1,8 +1,68 @@
 /**
- * The sign-in surface — ONE Preact component, `SignIn`, so every app that gates on a session shows the same
- * thing: Google first (the GIS button, One Tap/FedCM once per page), GitHub as the quiet second way, and
- * inside the APK a "sign in via browser" pairing flow, since a WebView has no popups and no GIS. Gate-safe:
- * under `gate` a plain kit button sets the mock Google session.
+ * # runtime/signin.js — the sign-in surface: ONE component for "who are you", so every app shows the same thing
+ *
+ * Every app that gates on a session renders this and nothing of its own: Google first (Sign in with Google —
+ * the GIS button, and One Tap / FedCM once per page), GitHub as the quiet second way. An app that must ACT
+ * on GitHub (nova stars repos) passes `github="primary"` and gets the older surface with GitHub as the
+ * button. The Google button is Google's own (`google.accounts.id.renderButton`), because the brand rules ask
+ * for it and because that is where FedCM lives; its theme follows `<html data-theme>` live through a
+ * MutationObserver, its width is measured off the slot (GIS caps at 400px). Inside the APK a WebView has no
+ * popups and no GIS, so the phone's real browser signs in and hands the session back through the edge's
+ * pairing. Under the gate there is no network and no GIS — a plain kit button with the same hooks sets the
+ * mock Google session, so the shot and the e2e see the signed-in screen. Strings (en / uk, off `<html lang>`)
+ * live here: a shared component never demands an i18n key from every app.
+ *
+ * ![The sign-in surface: Google's GIS button, the quiet GitHub action, the APK pairing loop, the gate mock](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-signin.svg)
+ *
+ * ## Import
+ * ```js
+ * import { SignIn } from "/_rt/signin.js";                    // an app's page: the import map resolves /_rt/
+ * import { SignIn } from "@microspec/core/runtime/signin.js";  // a product rt/ module or a Deno test
+ * ```
+ *
+ * ## What it exports
+ * - {@link SignIn} — the Preact component. Props: `github` (`"quiet"` default · `"primary"` · `false`),
+ *   `scope` (the GitHub scope, default auth.js `SCOPE`), `locale` (`"en"` | `"uk"`, default `<html lang>`),
+ *   `onDone(session)`, `onError(err)`, `className`. Renders `[data-signin]` with `[data-signin-google]`,
+ *   `[data-signin-github]`, `[data-signin-browser]` and `[data-signin-waiting]` hooks.
+ *
+ * ## In practice
+ * ```js
+ * import { SignIn } from "/_rt/signin.js";                                    // apps/tide/view.js
+ *
+ * // The sound sheet: device sync needs a session, so the surface sits in place of the peer list.
+ * ${!sess ? html`
+ *   <p class="text-sm text-base-content/75">${T(t, "syncSignIn")}</p>
+ *   <${SignIn} locale=${loc} className="self-center" />`
+ * : html`…the peer row…`}
+ *
+ * // persona: the app hears about a failure through onError and shows its own line as well.
+ * html`<${SignIn} locale=${loc} onError=${() => setErr("loginFailed")} className="pt-1" />`
+ * ```
+ * Most apps never import it: the account kit (account.js) and the runtime's `signin` screen (render.js)
+ * already put this surface where a session is missing.
+ *
+ * ## How it fits
+ * Imports `html` from htm/preact and the hooks from preact/hooks, `gate` from gate.js, `googleClientId` /
+ * `loginGoogle` / `login` / `SCOPE` / `pairNew` / `pairPoll` / `adoptSession` from auth.js, and `shell` from
+ * shell.js (to know it is inside the APK). account.js imports `SignIn` for its card; render.js lazy-imports
+ * this module together with auth.js for the built-in `signin` screen. 2 farm apps import it by name — tide
+ * and persona; every app with an account reaches it through account.js.
+ *
+ * ## Invariants and pitfalls
+ * - Google's button lives in a cross-origin iframe. The slot carries `color-scheme:light`, because Chrome
+ *   paints an OPAQUE white backdrop under an iframe whose colour scheme differs from its embedder's — on the
+ *   dark theme the pill sat in a white slab (eye pass).
+ * - The theme is re-rendered by a MutationObserver on `data-theme`: the view does not re-render on a toggle.
+ * - One Tap is prompted once per page (module-level `prompted`) — GIS has its own cooldowns, but a second
+ *   call on every re-mount is noise. It is best effort and its failure is swallowed.
+ * - No Google client id (the edge has none, or GIS failed to load) collapses the surface to GitHub as the
+ *   button; `github=false` with no client id renders nothing but the error line.
+ * - Inside the APK the browser is opened with an `intent://` URL, which the shell routes to Android's
+ *   ACTION_VIEW instead of loading in place; the page then polls `pairPoll` every 3 s for up to 10 minutes,
+ *   fails with `pair-gone` on a 404 and `timeout` at the end, and adopts the session the browser produced.
+ * - Under the gate the mock button calls `loginGoogle("mock")` — the same `data-signin-google` hook, so the
+ *   e2e clicks the same thing it would on a phone.
  * @module
  */
 // GENERATED by tools/dts.mjs from packages/runtime/signin.js — edit the JSDoc there, never this file.

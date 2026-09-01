@@ -116,6 +116,7 @@ export function start(spec, arg2) {
   })();
   applyTheme(urlTheme || S.theme.get());
   S.theme.listen((t) => applyTheme(urlTheme || t));
+  try { if (new URLSearchParams(location.search).get("update") === "1") S.update.set(true); } catch {  }
   loadMaterials().then((list) => {
     S.materials.set(list);
     if (list.length) applyMaterial(S.material.get() || list[0].id, list);

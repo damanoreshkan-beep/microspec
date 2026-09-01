@@ -42,24 +42,29 @@
  * - `/_rt/<name>` → `./rt/<name>` for every overlay file — exact keys beat the prefix key by the import-map spec;
  * - `/_rt/` and `@microspec/core/runtime/` → the pinned core's `packages/runtime/`.
  *
- * The gitignored test shims under `.microspec/` are written on EVERY run, `--check` included, because a
- * fresh CI checkout has none: `tests/unit_test.js`, `tests/mcp_test.js` and `tests/pipeline_test.js` import
- * the core's suites at the pin (`deno test` refuses a remote URL as a test module — silently, when a local
- * file rides along, which once passed a unit node that had run half its suites); `preflight.mjs` and
- * `verify.mjs` plant a local `__msImport` before loading the core's harness, so a gate can dynamically
- * import consumer files.
+ * The consumer's local entries under `.microspec/` are written ONCE, when missing, and then committed —
+ * the scaffold rule, not a build artifact. They carry no version: `tests/unit_test.js`, `tests/mcp_test.js`
+ * and `tests/pipeline_test.js` import the core's exported suites by bare specifier (`deno test` refuses a
+ * remote URL as a test module — silently, when a local file rides along, which once passed a unit node
+ * that had run half its suites); `preflight.mjs` and `verify.mjs` plant a local `__msImport` before loading
+ * the core's harness, so a gate can dynamically import consumer files; `core.mjs` is the one dispatcher
+ * for every core tool (`deno run -A .microspec/core.mjs 8n8 gates`) — `import.meta.resolve` applies the
+ * import map, so the pinned version lives in `deno.json` imports alone.
  *
- * Green: `✓ preflight map matches rt/ + the <pin> pin (<n> overlay entries; shims refreshed)`.
- * Red: `preflight.map.json is stale — run the core's tools/rtmap.mjs`.
+ * Green: `✓ preflight map matches rt/ + the <pin> pin (<n> overlay entries; .microspec/ entries present)`.
+ * Red: `preflight.map.json is stale — run the core's tools/rtmap.mjs`, or `.microspec/ entries were
+ * missing and have been written — commit them`.
  *
  * ## Exit codes
- * - `0` — map written (or, under `--check`, the committed map matches), or the tree has no `rt/` overlay.
- * - `1` — `deno.json` carries no `jsr:@microspec/core@<version>` pin, or `--check` found the committed map stale.
+ * - `0` — map written (or, under `--check`, the committed map matches and every entry exists), or the tree
+ *   has no `rt/` overlay.
+ * - `1` — `deno.json` carries no `jsr:@microspec/core@<version>` pin, `--check` found the committed map
+ *   stale, or an entry under `.microspec/` was missing (it is written, and must be committed).
  *
  * ## Where it sits
  * 8n8 node `rtmap` · phase gate · script · needs: nothing · needed by: preflight, unit, mcp, pipeline.
- * Frozen 2026-08-31. It is part of the `gates` flow, and because it writes the shims even under `--check`,
- * the nodes that follow it point at `.microspec/` instead of a remote URL.
+ * Frozen 2026-08-31. It is part of the `gates` flow; the nodes that follow it point at the committed
+ * `.microspec/` entries instead of a remote URL.
  *
  * ![The pipeline around rtmap — every node a lit point, its needs as filaments](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/pipeline-rtmap.svg)
  *
@@ -107,22 +112,35 @@ const want = JSON.stringify({
   imports,
 }, null, 2) + "\n";
 
-const SHIMS = {
-  ".microspec/tests/unit_test.js": `import "${base}packages/runtime/runtime_test.js";\n`,
-  ".microspec/tests/mcp_test.js": `import "${base}tools/mcp/server_test.js";\n`,
-  ".microspec/tests/pipeline_test.js": `import "${base}tools/8n8/run_test.js";\n`,
-  ".microspec/preflight.mjs": `globalThis.__msImport = (s) => import(s);\nawait import("${base}packages/gates/preflight.mjs");\n`,
-  ".microspec/verify.mjs": `globalThis.__msImport = (s) => import(s);\nawait import("${base}packages/gates/verify.mjs");\n`,
+const ENTRIES = {
+  ".microspec/tests/unit_test.js": `import "@microspec/core/tests/runtime";\n`,
+  ".microspec/tests/mcp_test.js": `import "@microspec/core/tests/mcp";\n`,
+  ".microspec/tests/pipeline_test.js": `import "@microspec/core/tests/8n8";\n`,
+  ".microspec/preflight.mjs": `globalThis.__msImport = (s) => import(s);\nawait import("@microspec/core/preflight");\n`,
+  ".microspec/verify.mjs": `globalThis.__msImport = (s) => import(s);\nawait import("@microspec/core/verify");\n`,
+  ".microspec/core.mjs": `// The core's tools, run from THIS tree's pin: \`deno run -A .microspec/core.mjs <tool> [args]\`.
+const [tool, ...rest] = Deno.args;
+if (!tool) { console.error("usage: core.mjs <tool> [args]"); Deno.exit(2); }
+const spec = import.meta.resolve(\`@microspec/core/\${tool}\`);
+const out = await new Deno.Command(Deno.execPath(), { args: ["run", "-A", "--minimum-dependency-age", "0", spec, ...rest], stdin: "inherit", stdout: "inherit", stderr: "inherit" }).output();
+Deno.exit(out.code);
+`,
 };
 
 await Deno.mkdir(".microspec/tests", { recursive: true });
-for (const [p, body] of Object.entries(SHIMS)) await Deno.writeTextFile(p, body);
+const missing = [];
+for (const [p, body] of Object.entries(ENTRIES)) {
+  if (await Deno.stat(p).then(() => true, () => false)) continue;
+  await Deno.writeTextFile(p, body);
+  missing.push(p);
+}
 
 const have = await Deno.readTextFile("preflight.map.json").catch(() => "");
 if (check) {
   if (want !== have) { console.error("preflight.map.json is stale — run the core's tools/rtmap.mjs"); Deno.exit(1); }
-  console.log(`  ✓ preflight map matches rt/ + the ${pin} pin (${names.length} overlay entries; shims refreshed)`);
+  if (missing.length) { console.error(`.microspec/ entries were missing and have been written — commit them:\n  ${missing.join("\n  ")}`); Deno.exit(1); }
+  console.log(`  ✓ preflight map matches rt/ + the ${pin} pin (${names.length} overlay entries; .microspec/ entries present)`);
 } else {
   await Deno.writeTextFile("preflight.map.json", want);
-  console.log(`preflight.map.json + ${Object.keys(SHIMS).length} shims: core ${pin}, ${names.length} overlay entries`);
+  console.log(`preflight.map.json: core ${pin}, ${names.length} overlay entries${missing.length ? `; wrote ${missing.length} .microspec/ entr${missing.length === 1 ? "y" : "ies"} — commit them` : ""}`);
 }

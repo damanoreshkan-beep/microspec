@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "license": "MIT",
   "publish": {
     "exclude": [
@@ -91,6 +91,7 @@
     "./runtime/index.js": "./packages/runtime/index.js",
     "./runtime/lastgen.js": "./packages/runtime/lastgen.js",
     "./runtime/localize.js": "./packages/runtime/localize.js",
+    "./runtime/material.js": "./packages/runtime/material.js",
     "./runtime/mediasession.js": "./packages/runtime/mediasession.js",
     "./runtime/melody.js": "./packages/runtime/melody.js",
     "./runtime/notify.js": "./packages/runtime/notify.js",

@@ -130,6 +130,8 @@ export function manifestFor(id, { read: rd = read } = {}) {
   //     product's overlay, `@import "./runtime.css"` — a shell that precached only the link would style
   //     nothing offline. The overlay's copy wins when the tree has one, as it does when served.
   const cssOf = (name) => rd(`rt/${name}`) ?? rd(`${RT}${name}`);
+  // a product's theme registry (material.js reads it at boot) is part of the shell when the tree ships one
+  if (rd("rt/themes.json") != null) urls.add("/_rt/themes.json");
   for (const u of [...urls]) {
     const m = /^\/_rt\/([\w.-]+\.css)$/.exec(u);
     if (!m) continue;

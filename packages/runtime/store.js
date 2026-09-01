@@ -113,6 +113,10 @@ export function createApp(spec, dataLoad) {
     // persisted preferences
     locale: urlLocale ? atom(urlLocale) : persistentAtom(ns + "locale", "uk"),
     theme: persistentAtom(ns + "theme", spec.theme || "dim"),
+    // the MATERIAL (a product's theme module, material.js): the person's choice for the whole farm, so the
+    // key is NOT namespaced by app; `materials` is the product's registry, [] when it ships none
+    material: persistentAtom("ms:material", ""),
+    materials: atom([]),
     fav: persistentAtom(ns + "fav", {}, JSON_CODEC),
     amount: persistentAtom(ns + "amount", "100"),
     from: persistentAtom(ns + "from", conv?.defaultFrom || "USD"),

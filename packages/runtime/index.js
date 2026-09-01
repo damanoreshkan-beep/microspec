@@ -65,6 +65,7 @@ import { setApp, App } from "./render.js";
 import { haptic, hapticFor } from "./sensors.js";
 import { installSealedFetch } from "./sealedfetch.js";
 import { gate } from "./gate.js";
+import { loadMaterials, applyMaterial } from "./material.js";
 
 // Wrap fetch before any app code runs, so every call to our backend travels as a sealed envelope without a
 // single app knowing. Apps keep doing plain `fetch(VPS_PROXY + …)`; see sealedfetch.js for what it does not
@@ -137,6 +138,13 @@ export function start(spec, arg2) {
   })();
   applyTheme(urlTheme || S.theme.get());
   S.theme.listen((t) => applyTheme(urlTheme || t));
+  // The MATERIAL — a product's theme modules (material.js). The registry decides whether a picker exists:
+  // no /_rt/themes.json (the core's own demo, a product with one look) → an empty list and no row.
+  loadMaterials().then((list) => {
+    S.materials.set(list);
+    if (list.length) applyMaterial(S.material.get() || list[0].id, list);
+  });
+  S.material.listen((id) => applyMaterial(id, S.materials.get()));
   // The DreamStudio tilt engine: device tilt moves the light on the portal's rim (header hairline, dock
   // strand). Event-driven, zero rAF at rest, never prompts for permission, off under reduced-motion and
   // under the gate — a page with no sensor is simply statically lit. docs/research/dreamstudio-style.md.

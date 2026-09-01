@@ -104,7 +104,7 @@ export const SYS = {
   pairFail: { en: "The app did not receive the sign-in — try again from the app.", uk: "Застосунок не отримав вхід — спробуй ще раз із застосунку." },
   signInBody: { en: "AI generation is for signed-in users — so the free quota goes to people, not bots.", uk: "AI-генерація доступна після входу — так безкоштовна квота дістається людям, а не ботам." },
   close: { en: "Close", uk: "Закрити" },
-  material: { en: "Material", uk: "Матеріал" },
+  material: { en: "Theme", uk: "Тема" },
   materialPick: { en: "The look of every screen", uk: "Вигляд кожного екрана" },
   clean: { en: "Clean screen", uk: "Чистий екран" },
   cleanExit: { en: "Show controls", uk: "Показати керування" },

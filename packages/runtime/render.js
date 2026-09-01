@@ -566,11 +566,11 @@ function ThemeWidget({ t, loc, theme, modeToggle, materials, current }) {
         })}
       </div>` : null}
     </div>
-    ${materials.length > 1 ? html`<div class="flex gap-2 overflow-x-auto -mx-2 px-2 py-1 snap-x">
+    ${materials.length > 1 ? html`<div class="flex gap-1 overflow-x-auto -mx-2 px-2 py-1 snap-x">
       ${materials.map((m) => {
         const on = m.id === current, sw = m.swatch?.[mode] || m.swatch?.dark;
         return html`<button key=${m.id} type="button" data-material-id=${m.id} aria-pressed=${on} aria-label=${name(m)}
-          class="flex flex-col items-center gap-1 shrink-0 w-16 snap-start" onClick=${() => A.S.material.set(m.id)}>
+          class="flex flex-col items-center gap-1 shrink-0 w-14 snap-start" onClick=${() => A.S.material.set(m.id)}>
           ${m.thumb
             ? html`<img data-thumb src=${`/_rt/${m.thumb}`} alt="" loading="lazy" decoding="async" class="size-12 rounded-full object-cover bg-black" />`
             : html`<span data-thumb class="size-12 rounded-full block" style=${sw ? `background:radial-gradient(circle at 34% 32%, ${sw[1]} 0 24%, ${sw[0]} 27%)` : ""}></span>`}
@@ -1176,13 +1176,24 @@ function Toast() {
   }
   // The freshness half of a cache-first service worker: a newer build is already cached, and applying it
   // costs a reload the user has to consent to. Persistent (no timer) but dismissable, and it yields to the
-  // undo snackbar above, which is time-critical.
+  // undo snackbar above, which is time-critical. A CARD, not a snackbar (owner, 2026-09-01: "нотіф попап…
+  // зараз він технічний занадто"): the app's own mark in the accent's tint, a title and one line, and the
+  // two answers as real buttons under them — a small announcement in the material of the theme, raised on
+  // the page like every surface, never a grey bar with an ✕.
   if (update && !key) {
     return html`<div data-toast class="pointer-events-none" style=${band}>
-      <div data-update class="pointer-events-auto alert bg-neutral text-neutral-content border-0 rounded-2xl sf-e5 py-2 pl-4 pr-2 font-medium flex items-center gap-2 w-max max-w-[calc(100vw-1.5rem)] ms-reveal">
-        ${Icon("lucide:sparkles", "text-base-content/55 text-lg shrink-0")}<span class="truncate">${sys("updateReady", loc)}</span>
-        <button data-update-apply class="btn btn-sm btn-ghost text-primary font-semibold rounded-xl gap-1.5 shrink-0" onClick=${() => { A.S.update.set(false); A.applyUpdate?.(); }}>${Icon("lucide:rotate-cw", "text-base")}${sys("restart", loc)}</button>
-        <button data-update-dismiss class="btn btn-sm btn-ghost btn-circle shrink-0" aria-label=${sys("cancel", loc)} onClick=${() => A.S.update.set(false)}>${Icon("lucide:x", "text-base")}</button>
+      <div data-update role="status" class="pointer-events-auto sf-raised sf-e5 bg-base-100 rounded-[var(--ms-r)] p-4 flex flex-col gap-3 w-[calc(100vw-1.5rem)] max-w-sm ms-reveal">
+        <div class="flex items-center gap-3">
+          <div class="size-12 rounded-full grid place-items-center bg-primary/10 text-primary sf-lift2 shrink-0">${Icon(A.spec.profile?.icon || A.spec.icon || "lucide:sparkles", "text-2xl")}</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold leading-tight">${sys("updateReady", loc)}</div>
+            <div class="text-xs text-muted mt-0.5">${sys("updateHint", loc)}</div>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button data-update-dismiss class="btn btn-sm btn-ghost rounded-full px-4" onClick=${() => A.S.update.set(false)}>${sys("later", loc)}</button>
+          <button data-update-apply class="btn btn-sm btn-primary rounded-full flex-1 gap-1.5" onClick=${() => { A.S.update.set(false); A.applyUpdate?.(); }}>${Icon("lucide:rotate-cw", "text-base")}${sys("updateNow", loc)}</button>
+        </div>
       </div>
     </div>`;
   }

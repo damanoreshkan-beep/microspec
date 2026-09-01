@@ -138,6 +138,10 @@ export function start(spec, arg2) {
   })();
   applyTheme(urlTheme || S.theme.get());
   S.theme.listen((t) => applyTheme(urlTheme || t));
+  // `?update=1` — the same reason: the update card only exists when a worker has found a newer build, which
+  // no screenshot can arrange. The flag raises the offer without a worker so the eye can judge the card.
+  // Nothing is applied by it: the card's button still goes through applyUpdate, which needs a real worker.
+  try { if (new URLSearchParams(location.search).get("update") === "1") S.update.set(true); } catch { /* no URL */ }
   // The MATERIAL — a product's theme modules (material.js). The registry decides whether a picker exists:
   // no /_rt/themes.json (the core's own demo, a product with one look) → an empty list and no row.
   loadMaterials().then((list) => {

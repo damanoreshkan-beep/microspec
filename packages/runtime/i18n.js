@@ -126,6 +126,9 @@ export const SYS = {
   share: { en: "Share app", uk: "Поділитися" },
   shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
   updateReady: { en: "New version ready", uk: "Нова версія готова" },
+  updateHint: { en: "Already on your device — a restart applies it", uk: "Вже на пристрої — перезапуск застосує її" },
+  updateNow: { en: "Update", uk: "Оновити" },
+  later: { en: "Later", uk: "Пізніше" },
   restart: { en: "Restart", uk: "Перезапустити" },
   // The transport widget's chrome (/_rt/player.js). Same rule as `close`: the component that renders these
   // labels owns them, so no music app has to restate the word "Play" in two locales to mount a play button.

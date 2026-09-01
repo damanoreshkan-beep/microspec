@@ -1,3 +1,11 @@
+/* @ts-self-types="./render.d.ts" */
+/**
+ * The Preact render catalogue: reads an app's spec and renders it through an allow-listed set of
+ * component families — the shell (app bar, dock, toast, sheets), the list family, profile, detail
+ * drill-down, filters and the install flow — so an app declares what it is and never draws chrome.
+ * Exports the app root ({@link App}), the context binder ({@link setApp}) and two platform probes.
+ * @module
+ */
 import { Fragment } from "preact";
 import { useRef, useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
@@ -18,6 +26,11 @@ import { curvePath } from "./weather.js";
 
 let A;            
 let VIEWS = {};   
+/**
+ * Binds the app context the catalogue renders from. Called once by the boot before the first render.
+ * @param app the app context — { spec, S (atoms), load, toast, toggleFav, favKey, swap, … }
+ * @param views tool-app custom views keyed by `tab.view`, or nothing for declarative apps
+ */
 export function setApp(app, views) { A = app; VIEWS = views || {}; }
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -1063,6 +1076,11 @@ function TabView({ tab }) {
   return Empty("lucide:construction", `${tab.type} view — coming soon`, null);
 }
 
+/**
+ * The app root: the chrome (app bar, dock, dock fade, toast), the current tab's view and every systemic
+ * overlay (detail, permissions, sign-in, APK, QR, install) driven by the routing atoms in the app context.
+ * @returns the Preact tree the boot mounts into `#app`
+ */
 export function App() {
   const cur = useStore(A.S.tab), screen = useStore(A.S.screen);
   
@@ -1148,5 +1166,7 @@ export function App() {
   </${Fragment}>`;
 }
 
+/** Whether the page runs on an iOS device (the install flow differs: no `beforeinstallprompt`). */
 export const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+/** Whether the page runs as an installed PWA (standalone display mode, or iOS's `navigator.standalone`). */
 export const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;

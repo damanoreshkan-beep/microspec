@@ -1,0 +1,9 @@
+/**
+ * Vendored qrcode-generator 1.4.4 (MIT, Kazuhiko Arase) — the QR encoder behind ./qrcode.js, kept
+ * same-origin and offline because a battle-tested codec is not worth reimplementing. The default export
+ * is the `qrcode(typeNumber, errorCorrectionLevel)` factory; reach it through the thin, unit-tested
+ * wrapper in ./qrcode.js rather than directly.
+ * @module
+ */
+export { _r as default };
+declare var _r: any;

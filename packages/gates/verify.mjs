@@ -1,4 +1,12 @@
 #!/usr/bin/env -S deno run -A
+/* @ts-self-types="./verify.d.mts" */
+/**
+ * The deep gate: every DOM check across an app's STATES in one Chromium session — loading/skeleton,
+ * settled (design + responsive matrix + shots), e2e, animated — with runtime-error surveillance the whole
+ * time, plus the farm-wide haptic and PWA-installability checks. Exit code is the failure count. A CLI
+ * script — it exports nothing.
+ * @module
+ */
 /**
  * verify — the deep gate: every DOM check across the app's STATES in ONE Chromium session. Beyond the
  * happy path, it exercises the states production actually hits — loading/skeleton, animated, interactive —

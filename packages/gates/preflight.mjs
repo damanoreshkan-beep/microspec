@@ -1,4 +1,12 @@
 #!/usr/bin/env -S deno run -A --import-map=packages/gates/preflight.importmap.json
+/* @ts-self-types="./preflight.d.mts" */
+/**
+ * The FAST, browser-free half of the gate: mounts an app's spec + view in a linkedom DOM and catches the
+ * render-time class of bugs (a throwing view, an unclosed tag, a missing i18n key, a blank render) plus
+ * the farm's static bans (spinners, hand-rolled sheets/transports, app-authored shadows, foreign icon
+ * sets, emoji) before the CI round-trip. A gate script with no exports.
+ * @module
+ */
 /**
  * preflight — the FAST, browser-free half of the gate. Mounts an app's spec + view in a linkedom DOM (no
  * Chromium) and catches the render-time class of bugs BEFORE the ~1-min CI round-trip:

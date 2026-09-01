@@ -1,6 +1,18 @@
+/* @ts-self-types="./permissions.d.ts" */
+/**
+ * Runtime permissions — ONE registry, TWO backends. A permission is a thing the user grants, not an API, so
+ * each entry may carry a browser backend, a shell capability, or both, and `permState` reports the gate that
+ * is ACTUALLY blocking (including "needs the app"). Exports the `PERMISSIONS` registry and `GROUPS`,
+ * `refreshHeld`/`heldPermissions`, `permState`, `permRequest`, `permAndroid` and the built-in `permLabels`.
+ * @module
+ */
 import { shell, ERR } from "./shell.js";
 
 let HELD = null;
+/**
+ * Refresh the map of Android permissions the app actually holds from the shell's system.info.
+ * @returns the held-permission map, or null where there is no shell / the call failed
+ */
 export async function refreshHeld() {
   if (!shell.has("system.info")) { HELD = null; return null; }
   try { HELD = (await shell.call("system.info", {})).perms || null; } catch { HELD = null; }
@@ -14,8 +26,10 @@ async function gum(c) {
 }
 const iosMotion = () => typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function";
 
+/** The groups the permission registry renders in, in display order. */
 export const GROUPS = ["sense", "media", "background", "radios", "system"];
 
+/** The permission registry: name → `{ icon, group, capability?, query()?, request()? }`. */
 export const PERMISSIONS = {
   geolocation: {
     icon: "lucide:map-pin",
@@ -110,6 +124,12 @@ export const PERMISSIONS = {
 /** The raw held-permission map, for a screen that must show WHICH one is missing rather than a verdict. */
 export const heldPermissions = () => HELD;
 
+/**
+ * Report the gate that is actually blocking a permission — shell first, then the browser backend.
+ * @param name a key of `PERMISSIONS`
+ * @returns `{ state, via }` — state: granted | partial | prompt | denied | unsupported | needsApp | staleApp;
+ *   via: "shell" | "browser" | ""
+ */
 export async function permState(name) {
   const def = PERMISSIONS[name];
   if (!def) return { state: "unsupported", via: "" };
@@ -176,4 +196,9 @@ const L = {
     staleAppHint: "The installed app predates this capability. Update it from the profile.",
   },
 };
+/**
+ * Built-in labels for the permissions screen (uk/en), falling back to English.
+ * @param loc the locale code
+ * @returns the label table for that locale
+ */
 export const permLabels = (loc) => L[loc] || L.en;

@@ -1,3 +1,11 @@
+/* @ts-self-types="./video.d.ts" */
+/**
+ * Video playback primitive for any video app: `createPlayer` attaches a stream to a `<video>` and owns
+ * HLS vs progressive, hls.js vs native, fatal-error recovery and teardown; `Player` is the full-screen
+ * overlay component with the a11y / skeleton / error chrome, wake lock, PiP, fullscreen and resume.
+ * Re-exports `resumeAt`, `RESUME_MIN`, `RESUME_TAIL` from playback.js.
+ * @module
+ */
 import { html } from "htm/preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { media } from "./i18n.js";
@@ -9,6 +17,13 @@ export { resumeAt, RESUME_MIN, RESUME_TAIL } from "./playback.js";
 const HLS = "https://esm.sh/hls.js@1.5.17";
 const clearSrc = (v) => { try { v.removeAttribute("src"); v.load(); } catch {  } };
 
+/**
+ * Attach a stream url to a `<video>` element, choosing hls.js, the native element or progressive playback; never throws.
+ * @param video the `<video>` element
+ * @param url the stream url (HLS manifest or progressive file)
+ * @param opts `onReady` (first frame / manifest), `onError` (fatal failure), `type` ("hls" | "progressive" | null to sniff)
+ * @returns a handle whose `destroy()` fully tears playback down
+ */
 export async function createPlayer(video, url, { onReady = () => {}, onError = () => {}, type = null } = {}) {
   const kind = type
     || (/\.m3u8(\?|#|$)/i.test(url) ? "hls" : /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(url) ? "progressive" : null);
@@ -39,19 +54,25 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
 }
 
 
+/**
+ * Full-screen video overlay component: connecting skeleton → playing (PiP, fullscreen, wake lock) or unavailable.
+ * @param props `url`, `title`, `locale`, `onClose` (history-backed), `poster`, `startAt` (seconds), `onTime(t, duration)` progress callback, `type` (see createPlayer)
+ * @returns the rendered overlay
+ */
 export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime, type = null }) {
   const ref = useRef(), boxRef = useRef();
   const [state, setState] = useState("loading");   
   const [fs, setFs] = useState(false);
   const canPip = typeof document !== "undefined" && document.pictureInPictureEnabled;
   const canFs = typeof document !== "undefined" && !!(document.fullscreenEnabled || document.documentElement?.requestFullscreen);
-
   useEffect(() => {
     const v = ref.current; if (!v) return;
     let handle, dead = false;
     setState("loading");
     const ready = () => {
       if (dead) return;
+      
+      
       const at = resumeAt(startAt, v.duration);
       if (at > 0) { try { v.currentTime = at; } catch {  } }
       setState("playing");

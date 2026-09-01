@@ -1,12 +1,34 @@
+/* @ts-self-types="./i18n.d.ts" */
+/**
+ * Tiny i18n (pure, zero-dependency). The whole UI is translated through `T()` over flat `{ key: string }`
+ * dicts, falling back to the raw key so a miss is visible rather than a crash. Also owns the runtime's own
+ * chrome strings (`SYS`/`sys`, `MEDIA`/`media`) so no app restates them, and the locale-aware time labels
+ * (`whenLabel`, `sinceLabel`, `ago`) so a data.js never bakes a language into a date.
+ * @module
+ */
 
+/**
+ * Translate a key through a locale dict, interpolating `{param}` tokens; a missing key returns the key itself.
+ * @param dict flat `{ key: string }` locale map (may be undefined)
+ * @param key the string key
+ * @param params optional `{ name: value }` substitutions for `{name}` tokens
+ * @returns the translated, interpolated string
+ */
 export const T = (dict, key, params) => {
   let s = dict?.[key] ?? key;
   if (params) for (const k in params) s = String(s).replaceAll("{" + k + "}", params[k]);
   return s;
 };
 
+/**
+ * Pick the dict for a locale from an app's i18n table, falling back to `en`, then to an empty dict.
+ * @param i18n `{ [locale]: dict }`
+ * @param locale the active locale code
+ * @returns the flat dict to hand to `T`
+ */
 export const dictFor = (i18n, locale) => i18n?.[locale] || i18n?.en || {};
 
+/** Built-in runtime chrome strings, `{ key: { en, uk } }` — the shell, sheets, share, update, account and APK flows. */
 export const SYS = {
   exit: { en: "Press Back again to exit", uk: "Натисніть «Назад» ще раз, щоб вийти" },
   deleted: { en: "Deleted", uk: "Видалено" },
@@ -49,8 +71,15 @@ export const SYS = {
     uk: "Лише sideload. На Samsung вимкни Auto Blocker (Налаштування → Безпека і приватність) або встанови через adb, тоді дозволь невідомі джерела.",
   },
 };
+/**
+ * Read a `SYS` string for a locale, falling back to English, then to "".
+ * @param key a `SYS` key
+ * @param locale the active locale code
+ * @returns the localised string
+ */
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 
+/** Built-in video-player chrome strings, `{ key: { en, uk } }`. */
 export const MEDIA = {
   player: { en: "Player", uk: "Плеєр" },
   back: { en: "Back", uk: "Назад" },
@@ -61,8 +90,22 @@ export const MEDIA = {
   fullscreen: { en: "Fullscreen", uk: "На весь екран" },
   exitFullscreen: { en: "Exit fullscreen", uk: "Вийти з повного екрана" },
 };
+/**
+ * Read a `MEDIA` string for a locale, falling back to English, then to "".
+ * @param key a `MEDIA` key
+ * @param locale the active locale code
+ * @returns the localised string
+ */
 export const media = (key, locale) => MEDIA[key]?.[locale] || MEDIA[key]?.en || "";
 
+/**
+ * Locale-aware absolute + relative label for a future timestamp (`format: "when"`).
+ * @param dict the app dict carrying whenPast / whenMin / whenHours / whenDays
+ * @param ts a Date-parseable timestamp
+ * @param locale the active locale code
+ * @param full include the relative countdown tail (default true)
+ * @returns e.g. "12 Sep, 14:30 · in 3 h", or "" for an invalid date
+ */
 export function whenLabel(dict, ts, locale, full = true) {
   const d = new Date(ts);
   if (isNaN(d)) return "";
@@ -76,6 +119,13 @@ export function whenLabel(dict, ts, locale, full = true) {
   return `${abs} · ${rel}`;
 }
 
+/**
+ * Fine-grained "x ago" label for live feeds (`format: "since"`), at seconds/minutes granularity.
+ * @param dict the app dict carrying sinceNow / sinceSec / sinceMin / sinceHour / sinceDay
+ * @param ts a millisecond timestamp
+ * @param locale the active locale code
+ * @returns the translated relative label
+ */
 export function sinceLabel(dict, ts, locale) {
   const s = Math.max(0, Math.floor((Date.now() - Number(ts)) / 1000));
   if (isNaN(s)) return "";
@@ -86,6 +136,13 @@ export function sinceLabel(dict, ts, locale) {
   return T(dict, "sinceDay", { n: Math.floor(s / 86400) });
 }
 
+/**
+ * Coarse relative date for card meta (`format: "ago"`): today / yesterday / days / weeks, then a locale date.
+ * @param dict the app dict carrying agoToday / agoYesterday / agoDays / agoWeeks
+ * @param ts a millisecond timestamp
+ * @param locale the active locale code
+ * @returns the translated relative label or a formatted date
+ */
 export function ago(dict, ts, locale) {
   const ms = Date.now() - Number(ts);
   const days = Math.floor(ms / 86400000);

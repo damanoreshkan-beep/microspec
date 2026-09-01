@@ -1,3 +1,11 @@
+/* @ts-self-types="./console.d.ts" */
+/**
+ * The farm's game shell, once: ONE handheld device (body, recessed aperture, D-pad, action keys) drawn as
+ * large as the viewport allows, with only the deck's CONTENT and the `plate` decided per game. Exports the
+ * `GameConsole` view; it owns no input logic — the pointer behaviour is `useTouchDeck` in dpad.js and the
+ * key geometry is deck.js.
+ * @module
+ */
 
 import { html } from "htm/preact";
 import { T } from "./i18n.js";

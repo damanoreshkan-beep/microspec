@@ -1,6 +1,15 @@
+/* @ts-self-types="./sensors.d.ts" */
+/**
+ * Hardware capability layer — one uniform shape per capability (`supported` plus methods that no-op when
+ * unavailable) so views can feature-detect and degrade. Exports `haptic` / `hapticFor`, `geo`, `wakeLock`,
+ * `compass` with its pure heading projections (`lookHeadingDeg`, `screenHeadingDeg`, `heldHeadingDeg`),
+ * `tilt`, `camera`, and `mic` / `MIC_MIMES`.
+ * @module
+ */
 
 const canVibrate = typeof navigator !== "undefined" && "vibrate" in navigator;
 
+/** Short vibration feedback — `buzz(pattern)`, `tick`, `bump`, `ok`; a silent no-op where unsupported. */
 export const haptic = {
   supported: canVibrate,
   buzz: (pattern) => { try { if (canVibrate) navigator.vibrate(pattern); } catch {  } },
@@ -11,6 +20,11 @@ export const haptic = {
 
 const TAPPABLE = 'button, a[href], summary, label[for], select, input, textarea, [role="button"], [role="tab"], [role="switch"], [role="option"], [data-tab], [data-loc], .btn, .tab';
 const QUIET_INPUT = /^(text|search|email|url|tel|password|number)$/;
+/**
+ * Which haptic a tap on this element deserves, honouring data-haptic and the disabled state.
+ * @param el the tapped element (the event target)
+ * @returns "tick" | "bump" | the element's own data-haptic value, or null for none
+ */
 export function hapticFor(el) {
   const t = el?.closest?.(TAPPABLE);
   if (!t) return null;
@@ -24,6 +38,7 @@ export function hapticFor(el) {
   return "tick";
 }
 
+/** Geolocation as a callback `watch` or a single promised fix via `once`; errors arrive as "denied" | "unavailable" | "unsupported". */
 export const geo = {
   supported: typeof navigator !== "undefined" && "geolocation" in navigator,
   watch(onPos, onErr, opts) {
@@ -49,6 +64,7 @@ export const geo = {
   },
 };
 
+/** Screen wake lock — `acquire()` returns a handle that re-acquires on visibilitychange until `release()`. */
 export const wakeLock = {
   supported: typeof navigator !== "undefined" && "wakeLock" in navigator,
   acquire() {
@@ -77,6 +93,13 @@ export const wakeLock = {
 
 const LOCK = 0.15, FLAT = 0.5;
 
+/**
+ * Heading of the device −z axis (what the rear camera points at), degrees clockwise from north.
+ * @param alpha device orientation alpha, degrees
+ * @param beta device orientation beta, degrees
+ * @param gamma device orientation gamma, degrees
+ * @returns heading in [0, 360), or null within ~9° of straight up or down
+ */
 export function lookHeadingDeg(alpha, beta, gamma) {
   const r = Math.PI / 180, cA = Math.cos(alpha * r), sA = Math.sin(alpha * r);
   const sB = Math.sin(beta * r), cG = Math.cos(gamma * r), sG = Math.sin(gamma * r);
@@ -85,6 +108,12 @@ export function lookHeadingDeg(alpha, beta, gamma) {
   if (Math.hypot(x, y) < LOCK) return null;
   return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
 }
+/**
+ * Heading of the top edge of the screen, degrees clockwise from north, taken from the spec's rotation matrix.
+ * @param alpha device orientation alpha, degrees
+ * @param beta device orientation beta, degrees
+ * @returns heading in [0, 360), or null within ~9° of upright
+ */
 export function screenHeadingDeg(alpha, beta) {
   const r = Math.PI / 180, cB = Math.cos(beta * r);
   const x = -Math.sin(alpha * r) * cB;                                 
@@ -93,6 +122,14 @@ export function screenHeadingDeg(alpha, beta) {
   return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
 }
 
+/**
+ * The heading a hand-held compass should show at any pitch: screen-top while flat, camera axis while upright, crossfaded between.
+ * @param alpha device orientation alpha, degrees
+ * @param beta device orientation beta, degrees
+ * @param gamma device orientation gamma, degrees
+ * @param screenAngle screen.orientation.angle, applied to the screen-top term only
+ * @returns heading in [0, 360); never null while β/γ are numbers
+ */
 export function heldHeadingDeg(alpha, beta, gamma, screenAngle = 0) {
   const flat = screenHeadingDeg(alpha, beta);
   const look = lookHeadingDeg(alpha, beta, gamma);
@@ -107,6 +144,7 @@ export function heldHeadingDeg(alpha, beta, gamma, screenAngle = 0) {
   return (ui + w * d + 360) % 360;
 }
 
+/** Compass heading in degrees clockwise from TRUE north — `request()` for the gesture-gated permission, `start(onHeading, opts)` → stop fn. */
 export const compass = {
   supported: typeof window !== "undefined" && typeof DeviceOrientationEvent !== "undefined",
   needsPermission: typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function",
@@ -152,6 +190,7 @@ export const compass = {
   },
 };
 
+/** Raw device pitch/roll (β/γ, degrees) for parallax — `request()` shares the compass permission, `start(onTilt)` → stop fn. */
 export const tilt = {
   supported: typeof window !== "undefined" && typeof DeviceOrientationEvent !== "undefined",
   needsPermission: typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function",
@@ -172,6 +211,7 @@ export const tilt = {
   },
 };
 
+/** A live camera stream on a <video> — `start(videoEl, onErr, opts)` → stop fn that releases every track. */
 export const camera = {
   supported: typeof navigator !== "undefined" && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
   async start(video, onErr, { facingMode = "environment" } = {}) {
@@ -193,6 +233,7 @@ export const camera = {
   },
 };
 
+/** Recorder MIME types to try, in preference order. */
 export const MIC_MIMES = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
 const MIC_CONSTRAINTS = { audio: { channelCount: { ideal: 1 }, echoCancellation: { ideal: false }, noiseSuppression: { ideal: false }, autoGainControl: { ideal: false } }, video: false };
 const micErr = (e) => {
@@ -202,9 +243,20 @@ const micErr = (e) => {
   return "error";
 };
 
+/** A short microphone take — `mime()` picks a supported type, `record(opts)` → { done, stop, cancel }. */
 export const mic = {
   supported: typeof navigator !== "undefined" && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && typeof MediaRecorder !== "undefined",
   mime() { try { return MIC_MIMES.find((m) => MediaRecorder.isTypeSupported?.(m)) || ""; } catch { return ""; } },
+  /**
+   * Record one take from the microphone.
+   * @param {object} [opts]
+   * @param [opts.seconds] take length (default 2)
+   * @param [opts.timeoutMs] give up waiting for the stream after this long (default 10000)
+   * @param [opts.bitsPerSecond] encoder bitrate (default 128000)
+   * @param [opts.onStream] called with the live MediaStream once it is granted
+   * @param [opts.onErr] called with a short reason string ("denied", "unavailable", "unsupported", "error")
+   * @returns `{ done, stop, cancel }` — `done` resolves to `{ blob, mime, settings }` or null
+   */
   record({ seconds = 2, timeoutMs = 10000, bitsPerSecond = 128000, onStream, onErr } = {}) {
     if (!this.supported) { onErr?.("unsupported"); return { done: Promise.resolve(null), stop() {}, cancel() {} }; }
     let stream = null, rec = null, take = 0, dead = false, settle = null;

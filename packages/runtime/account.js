@@ -1,3 +1,10 @@
+/* @ts-self-types="./account.d.ts" */
+/**
+ * The ACCOUNT card at the top of the profile tab, for apps that sign a reader in: who is signed in (avatar,
+ * name, login, provider) with one quiet sign-out, or the farm's SignIn surface in the same card — so no app
+ * grows its own sign-out or a second sign-in wall. Exports the `Account` component.
+ * @module
+ */
 import { html } from "htm/preact";
 import { useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";

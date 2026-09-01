@@ -1,9 +1,23 @@
+/* @ts-self-types="./store.d.ts" */
+/**
+ * App state factory. The one export, createApp(spec, dataLoad), builds the nanostores state graph for one
+ * app — persisted preferences, ephemeral UI state, the history-backed overlays index.js watches — plus the
+ * side-effecting helpers (load/loadMore, toast, undo/confirm, toggleFav, swap). No rendering here;
+ * render.js subscribes to these.
+ * @module
+ */
 import { atom, map, computed } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { dictFor } from "./i18n.js";
 
 const JSON_CODEC = { encode: JSON.stringify, decode: (s) => { try { return JSON.parse(s); } catch { return {}; } } };
 
+/**
+ * Build the nanostores state graph and side-effecting helpers for one app.
+ * @param spec the app spec (id, tabs, filters, i18n, theme, fav)
+ * @param dataLoad async (filters) → { items, meta, next } — the app's data.js loader
+ * @returns { spec, S, load, loadMore, toast, undo, confirm, toggleFav, favKey, swap }
+ */
 export function createApp(spec, dataLoad) {
   const ns = (spec.id || "app") + ":";
   const conv = spec.tabs.find((t) => t.type === "converter");

@@ -1,0 +1,20 @@
+/**
+ * The hero stage: one WebGPU renderer, one shader per app. An app supplies `hero.wgsl` and nothing else —
+ * adapter, device, canvas, the fullscreen triangle, the 64-byte uniform block (`res`, `time`, `seed`,
+ * `ink`, `vary`, `env`), resize, reduced-motion and teardown live here exactly once. No fallback by design:
+ * without WebGPU the island sits over a plain background. Exports the `HeroStage` component.
+ * @module
+ */
+/**
+ * @param shader  URL of the app's hero.wgsl — pass `new URL("hero.wgsl", import.meta.url)` from the view
+ * @param seed    0..1, meaning is the shader's business; changing it does NOT rebuild the pipeline
+ * @param ink     optional vec4 tint handed to the shader — a value, or a function read fresh every frame
+ * @param vary    optional vec4 of scene parameters — same contract as `ink`. This is how a stage becomes
+ *                DATA-driven (weather's sky reads the real cloud cover here) rather than decorative.
+ */
+export function HeroStage({ shader, seed, ink, vary }: {
+    shader: any;
+    seed?: number;
+    ink: any;
+    vary: any;
+}): any;

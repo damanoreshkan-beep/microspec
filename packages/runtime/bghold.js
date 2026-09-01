@@ -1,10 +1,22 @@
+/* @ts-self-types="./bghold.d.ts" */
+/**
+ * Hold the shell's foreground service while a long job runs, so Android does not freeze the backgrounded
+ * WebView mid-generation. Exports `holdBackground`, a ref-counted hold that returns its own release and is
+ * a no-op where there is no shell.
+ * @module
+ */
 import { shell } from "./shell.js";
 
 let holds = 0, up = false;
 
 const can = () => { try { return shell.present && shell.has("bg.start") && shell.has("bg.stop"); } catch { return false; } };
 
-/** holdBackground({ title, body }) → release(). Idempotent per release; safe to call without a shell. */
+/**
+ * Take one ref-counted hold on the shell's foreground service; the first hold starts it, the last release stops it.
+ * Idempotent per release; safe to call without a shell (then a no-op).
+ * @param opts `{ title, body }` — the persistent notification's text
+ * @returns a `release()` function that drops this hold
+ */
 export function holdBackground({ title = "", body = "" } = {}) {
   let released = false;
   if (can()) {

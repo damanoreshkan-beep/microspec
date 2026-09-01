@@ -1,17 +1,35 @@
+/* @ts-self-types="./dpad.d.ts" */
+/**
+ * A game control deck on Pointer Events: the deck root owns the pointer and resolves the pressed key by
+ * POSITION on every move, several fingers at once, state written by ref rather than re-render. Exports
+ * `useTouchDeck` (the deck as one touch surface), `useKeyboardPad` + `KEYS` / `ACTION_KEYS` (the desktop
+ * layout), the `PAD` bit mask shared with the simulations, and the `keyboardOnly` activation guard.
+ * @module
+ */
 
 import { useRef, useEffect, useCallback } from "preact/hooks";
 import { haptic } from "./sensors.js";
 
 const pointered = new WeakMap();
+/**
+ * Record that a pointer gesture just handled this element, so the click that follows can be ignored.
+ * @param el the key element (nullable)
+ */
 export const markPointer = (el) => { if (el) pointered.set(el, Date.now()); };
+/**
+ * Whether a pointer gesture handled this element recently.
+ * @param el the key element (nullable)
+ * @param within the window in ms (default 500)
+ * @returns true if a pointer marked it inside the window
+ */
 export const fromPointer = (el, within = 500) => !!el && Date.now() - (pointered.get(el) ?? -Infinity) < within;
 
 /** The activation guard every app's onClick should use: keyboard and AT only. */
 export const keyboardOnly = (fn) => (e) => { if (!e.detail && !fromPointer(e.currentTarget)) fn(e); };
 
 
+/** The input bit mask — the contract between a deck and a simulation, mirrored in every game. */
 export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16, SHOOT: 32 };
-
 /**
  * `useTouchDeck()` — the whole control deck as ONE touch surface.
  *
@@ -32,6 +50,11 @@ export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16, SHOOT: 32 };
 
 const MIN_PRESS = 90;
 
+/**
+ * The whole control deck as ONE touch surface — see the note above.
+ * @param opts `{ onAct, latchMs, minPress }` — momentary-action callback `(act, el)`, the double-tap latch window in ms, the minimum press length in ms
+ * @returns `{ mask, deckProps, release, pulse, setKeys }` — the held-bits ref, the props to spread on the deck root, and the keyboard / assistive feeders
+ */
 export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}) {
   const mask = useRef(0);
   const held = useRef(new Map());          
@@ -39,11 +62,11 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
   const pressed = useRef(new Set());
   const latched = useRef(new Set());       
   const lastTap = useRef(new Map());       
-
   const synth = useRef(0);                 
   const keys = useRef(0);                  
   const root = useRef(null);               
   const bitOf = (el) => +el?.getAttribute("data-bit") || 0;
+  
   const recompute = () => {
     let m = synth.current | keys.current;
     for (const el of held.current.values()) m |= bitOf(el);
@@ -143,6 +166,7 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
   return { mask, deckProps, release, pulse, setKeys };
 }
 
+/** Keyboard `code` → `PAD` bit: arrows or WASD to move, Z/Space to jump, X/Shift to run, C/Ctrl to throw. */
 export const KEYS = {
   ArrowLeft: PAD.LEFT, KeyA: PAD.LEFT,
   ArrowRight: PAD.RIGHT, KeyD: PAD.RIGHT,
@@ -154,7 +178,6 @@ export const KEYS = {
 
 /** Momentary keys — the ones a console has as buttons rather than as directions. */
 export const ACTION_KEYS = { Enter: "start", KeyM: "sound" };
-
 /**
  * Feeds the deck's mask from the keyboard. It reports the WHOLE held set on every change rather
  * than toggling a bit, so the deck stays the single owner of the mask and a key held while a

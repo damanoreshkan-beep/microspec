@@ -1,3 +1,11 @@
+/* @ts-self-types="./hdr.d.ts" */
+/**
+ * Radiance (.hdr) decoding for image-based lighting. A browser cannot decode Radiance, so this is the short
+ * path: the asset stays the original CC0 file and the bytes come back UNCHANGED as RGBE (three mantissas
+ * plus a shared exponent) for the shader to expand in one instruction. Pure functions over bytes — no DOM,
+ * no GPU — so `deno test` covers the parser. Exports `decodeHDR`, `rgbeToLinear` and `downsampleRGBE`.
+ * @module
+ */
 
 /** @returns {{ width: number, height: number, rgbe: Uint8Array }} RGBA8 bytes, alpha = shared exponent + 128 */
 export function decodeHDR(bytes) {

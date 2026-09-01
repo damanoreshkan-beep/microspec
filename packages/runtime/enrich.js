@@ -1,6 +1,15 @@
+/* @ts-self-types="./enrich.d.ts" */
+/**
+ * Link enrichment: fills a feed card's preview slot with the linked article's description, because a card
+ * that is just a title is "raw" and the runtime forbids it. Render-time, cached, fail-open — `enrich(url)`
+ * is a sync cache read, `warmMeta(urls)` is the async fill that bumps `metaTick` so cards re-render as
+ * previews arrive. A miss leaves the slot empty; previews are an enhancement, never a dependency.
+ * @module
+ */
 import { atom } from "nanostores";
 import { viaProxy, pool } from "./feed.js";
 
+/** Counter atom bumped once per `warmMeta` batch that added previews, so cards subscribed to it re-render. */
 export const metaTick = atom(0);
 
 function hfReadmeDesc(md) {
@@ -49,6 +58,11 @@ function persist() {
   try { localStorage.setItem("ms:meta", JSON.stringify(Object.fromEntries(mem))); } catch {  }
 }
 
+/**
+ * Synchronous cache read of an article preview for a URL.
+ * @param url the item's outbound URL
+ * @returns `{ description }` when cached, or null on a miss (not yet fetched, offline, blocked)
+ */
 export function enrich(url) {
   if (typeof url !== "string" || !url) return null;
   return cache().get(url) || null;
@@ -71,6 +85,12 @@ async function fetchMeta(url) {
   } finally { clearTimeout(t); }
 }
 
+/**
+ * Fetches a description for every not-yet-cached URL (bounded concurrency), persists the cache and bumps
+ * `metaTick` once if anything arrived. Cached and in-flight URLs are skipped; failures stay uncached.
+ * @param urls outbound URLs to warm
+ * @returns resolves when the batch is done
+ */
 export async function warmMeta(urls) {
   const c = cache();
   const todo = [...new Set((urls || []).filter((u) => typeof u === "string" && u && !c.has(u) && !pending.has(u)))];

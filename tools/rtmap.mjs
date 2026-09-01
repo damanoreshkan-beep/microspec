@@ -1,3 +1,11 @@
+/* @ts-self-types="./rtmap.d.mts" */
+/**
+ * Generates the consumer's preflight import map (preflight.map.json) and its gitignored test shims: each
+ * /_rt/ name routes to the rt/ overlay's own file or to the pinned core on JSR, with bare deps pinned from
+ * the core's manifest so the whole mounted graph shares one preact. `--check` fails when the committed map
+ * is stale. A CLI script — it exports nothing.
+ * @module
+ */
 const check = Deno.args.includes("--check");
 
 let names = [];

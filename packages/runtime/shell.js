@@ -1,6 +1,15 @@
+/* @ts-self-types="./shell.d.ts" */
+/**
+ * The shell facade — the ONE way app code reaches Android capabilities the web does not have. Exports
+ * `shell` (present/version/has/why/call/subscribe over the catalogue, mocked under the gate), the closed
+ * `ERR` set every failure maps onto, and `ShellError`. App code never sees window.__msShell or JSON: it asks
+ * for an action and degrades honestly when the answer is "unsupported" or "staleBridge".
+ * @module
+ */
 import { gate } from "./gate.js";
 import { ACTIONS, CATALOGUE_BRIDGE } from "./shell-actions.js";
 
+/** The closed set of ShellError codes — app code branches on these values, never on a message. */
 export const ERR = {
   unsupported: "unsupported",   
   staleBridge: "staleBridge",   
@@ -10,7 +19,12 @@ export const ERR = {
   failed: "failed",             
 };
 
+/** The error every shell call/subscribe rejects with: `code` is one of ERR.*, `detail` the shell's own note. */
 export class ShellError extends Error {
+  /**
+   * @param code one of ERR.*
+   * @param detail optional free text from the shell (an action id, a native message)
+   */
   constructor(code, detail) {
     super(detail ? `${code}: ${detail}` : code);
     this.code = code;
@@ -49,6 +63,10 @@ function listen() {
   window.addEventListener("msShell:reply", (e) => deliver(e && e.detail));   
 }
 
+/**
+ * The shell facade app code talks to: presence and bridge version, has()/why() per action or capability,
+ * call() for request/response and subscribe() for native-pushed streams. Mocked from the catalogue under the gate.
+ */
 export const shell = {
   /** Is there a shell at all? False in every browser, true inside our APK (and under the gate). */
   get present() { return gate || !!native(); },
@@ -97,6 +115,7 @@ export const shell = {
    */
   hasCapability(cap) { return shell.actions.some((id) => ACTIONS[id].capability === cap && shell.has(id)); },
 
+  /** ERR.* explaining why hasCapability() is false, or "" when it is true. */
   whyCapability(cap) {
     const ids = shell.actions.filter((id) => ACTIONS[id].capability === cap);
     if (!ids.length) return ERR.unsupported;                    

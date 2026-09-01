@@ -1,5 +1,19 @@
+/* @ts-self-types="./mediasession.d.ts" */
+/**
+ * Background audio + OS media session for SYNTHESISED players: a pure Web Audio page owns no media session,
+ * so the OS suspends it in the background. `holdAudio` plays a tiny silent looping element to hold audio
+ * focus, wires MediaSession metadata/handlers, and polyfills the session over the shell bridge inside the
+ * APK where the web API is absent. Exports `silentWav` and `holdAudio`.
+ * @module
+ */
 import { shell } from "./shell.js";
 
+/**
+ * Synthesise a minimal valid silent WAV (16-bit mono PCM, all-zero samples) as a data URI.
+ * @param ms duration of silence in milliseconds (default 250)
+ * @param rate sample rate in Hz (default 8000)
+ * @returns a `data:audio/wav;base64,…` URI (empty payload where `btoa` is absent)
+ */
 export function silentWav(ms = 250, rate = 8000) {
   const frames = Math.max(1, Math.round(rate * ms / 1000)), bps = 2, ch = 1;   
   const dataLen = frames * bps * ch, buf = new ArrayBuffer(44 + dataLen), v = new DataView(buf);
@@ -15,6 +29,14 @@ export function silentWav(ms = 250, rate = 8000) {
   return "data:audio/wav;base64," + b64;
 }
 
+/**
+ * Hold audio focus for a synthesised player: own an OS media session (or its shell polyfill in the APK),
+ * publish now-playing metadata and transport handlers, and re-resume the AudioContext on return to the tab.
+ * A no-op stub where audio/mediaSession is absent, so callers never branch.
+ * @param options `title`, `artist`, `artwork`, transport callbacks `onPlay`/`onPause`/`onPrev`/`onNext`, and
+ *   `resumeCtx` — called on visibility return to resume the app's AudioContext
+ * @returns a handle `{ supported, setPlaying, setPaused, meta, position, release }`
+ */
 export function holdAudio({ title = "microspec", artist = "microspec", artwork = null,
   onPlay = null, onPause = null, onPrev = null, onNext = null, resumeCtx = null } = {}) {
   const noop = { supported: false, setPlaying() {}, setPaused() {}, meta() {}, release() {} };

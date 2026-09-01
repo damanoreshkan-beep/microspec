@@ -1,9 +1,32 @@
+/* @ts-self-types="./colour.d.ts" */
+/**
+ * Pixel → colour maths for the camera picker and any app reading a frame: pure, zero-dependency and
+ * unit-tested on plain `[r,g,b]` triples and RGBA buffers, so everything runs in the headless gate.
+ * Exports conversions (`rgbToHex`, `rgbToHsl`, `hexRgb`), `luminance` / `ink` for readable text over a
+ * swatch, `avgColor` and the median-cut `palette`, and the theme-adaptive `iconTint`.
+ * @module
+ */
 
+/**
+ * Clamp a number into a rounded 0..255 channel value.
+ * @param n any number
+ * @returns an integer 0..255
+ */
 export const clamp8 = (n) => (n < 0 ? 0 : n > 255 ? 255 : Math.round(n));
 
+/**
+ * `[r,g,b]` 0..255 → upper-case "#RRGGBB"; channels are clamped first.
+ * @param rgb `[r, g, b]`
+ * @returns the hex string
+ */
 export const rgbToHex = ([r, g, b]) =>
   "#" + [r, g, b].map((n) => clamp8(n).toString(16).padStart(2, "0")).join("").toUpperCase();
 
+/**
+ * Convert an RGB triple to HSL.
+ * @param rgb `[r, g, b]` 0..255
+ * @returns `[h 0..360, s 0..100, l 0..100]`, rounded
+ */
 export function rgbToHsl([r, g, b]) {
   r /= 255; g /= 255; b /= 255;
   const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
@@ -18,24 +41,51 @@ export function rgbToHsl([r, g, b]) {
   return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
 }
 
+/**
+ * Mean colour of an RGBA pixel buffer; alpha is ignored.
+ * @param px RGBA bytes (Uint8ClampedArray or number[])
+ * @returns `[r, g, b]`, or `[0, 0, 0]` for an empty buffer
+ */
 export function avgColor(px) {
   let r = 0, g = 0, b = 0, n = 0;
   for (let i = 0; i + 2 < px.length; i += 4) { r += px[i]; g += px[i + 1]; b += px[i + 2]; n++; }
   return n ? [Math.round(r / n), Math.round(g / n), Math.round(b / n)] : [0, 0, 0];
 }
 
+/**
+ * WCAG relative luminance of an RGB triple.
+ * @param rgb `[r, g, b]` 0..255
+ * @returns luminance 0..1
+ */
 export function luminance([r, g, b]) {
   const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
   return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
 }
+/**
+ * Readable ink over a swatch: black on light colours, white on dark ones.
+ * @param rgb `[r, g, b]` 0..255
+ * @returns "#000000" or "#FFFFFF"
+ */
 export const ink = (rgb) => (luminance(rgb) > 0.4 ? "#000000" : "#FFFFFF");
 
+/**
+ * Parse a hex colour string into an RGB triple, tolerantly.
+ * @param hex "#rgb" or "#rrggbb" (the '#' is optional)
+ * @returns `[r, g, b]` 0..255; unparsable channels become 0
+ */
 export function hexRgb(hex) {
   const s = String(hex).replace(/^#/, "");
   const h = (s.length === 3 ? s.replace(/(.)/g, "$1$1") : s).padEnd(6, "0").slice(0, 6);
   return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) || 0);
 }
 
+/**
+ * Derive a theme-adaptive `{ tile, glyph }` pair for an app icon from its brand colours.
+ * @param bg the app's dark brand background (hex)
+ * @param fg the app's accent (hex)
+ * @param dark whether the dark theme is active
+ * @returns `{ tile, glyph }` CSS colour strings (color-mix / gradients), resolved by the browser
+ */
 export function iconTint(bg, fg, dark) {
   const rgb = hexRgb(fg), [, sat] = rgbToHsl(rgb);
   const hue = (sat < 18 && luminance(rgb) > 0.5) ? bg : fg;   
@@ -44,6 +94,12 @@ export function iconTint(bg, fg, dark) {
     : { tile: `linear-gradient(145deg, color-mix(in oklch, ${hue} 22%, #fff), color-mix(in oklch, ${hue} 8%, #fff))`, glyph: `color-mix(in oklch, ${hue} 84%, #000)` };
 }
 
+/**
+ * Dominant palette of an RGBA buffer via deterministic median cut.
+ * @param px RGBA bytes (Uint8ClampedArray or number[])
+ * @param k how many colours to extract (default 5)
+ * @returns up to `k` `[r, g, b]` triples; fewer only if the image has fewer colours
+ */
 export function palette(px, k = 5) {
   const pts = [];
   const stride = 4 * Math.max(1, Math.floor(px.length / 4 / 4000)); 

@@ -1,6 +1,14 @@
+/* @ts-self-types="./fittext.d.ts" */
+/**
+ * The largest font-size at which a phrase still fits its box, MEASURED rather than estimated: `fitText`
+ * binary-searches font-size against the layout engine's real wrapped extent, preferring word-boundary wraps
+ * over `anywhere`. `fitTextSource` hands the function's own source to a page that cannot import it, and
+ * `FIT_CSS` is the wrapping contract the search assumes.
+ * @module
+ */
 
 /**
- * @param {{style: CSSStyleDeclaration, scrollWidth: number, scrollHeight: number}} el the text element
+ * @param {{style: object, scrollWidth: number, scrollHeight: number}} el the text element (its `style` is a CSSStyleDeclaration)
  * @param {{clientWidth: number, clientHeight: number}} box the frame it must not exceed
  * @returns {number} the applied size in px
  */
@@ -30,4 +38,5 @@ export function fitText(el, box) {
 /** The function's own source, for a page that cannot import it. Pairs with FIT_CSS. */
 export const fitTextSource = () => fitText.toString();
 
+/** Inline CSS for the fitted element — the wrapping contract `fitText` assumes; `overflow-wrap` is left to fitText. */
 export const FIT_CSS = "white-space:pre-wrap;word-break:normal;line-height:0.95";

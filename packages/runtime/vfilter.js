@@ -1,3 +1,11 @@
+/* @ts-self-types="./vfilter.d.ts" */
+/**
+ * Pure, DOM-free helpers for cleaning a scraped video feed: `dedupeVideos` collapses the same clip
+ * published under several urls, and `isBlackSample` / `isFlatSample` / `hasPoster` classify posters so
+ * broken or placeholder thumbnails can be dropped. Lives in the runtime (not the app) so the logic is
+ * unit-tested; the app owns only the canvas side.
+ * @module
+ */
 
 const norm = (u) => { try { const x = new URL(u); return x.origin + x.pathname; } catch { return u || ""; } };
 
@@ -13,6 +21,11 @@ const clipId = (u) => {
 
 
 
+/**
+ * Drop duplicate clips from a feed, preserving order; a later copy with a poster replaces an earlier posterless one.
+ * @param items feed items ({ video, orig?, poster? }); a non-array yields []
+ * @returns the deduplicated items
+ */
 export function dedupeVideos(items) {
   const at = new Map(), out = [];
   for (const it of (Array.isArray(items) ? items : [])) {
@@ -54,6 +67,12 @@ function lumaStats(rgba) {
 
 
 
+/**
+ * Classify an RGBA sample as a black/broken poster: near-zero mean luma and no bright pixel anywhere.
+ * @param rgba RGBA bytes from getImageData
+ * @param opts thresholds — `meanMax` (default 12) and `peakMax` (default 24) on 0..255 luma
+ * @returns true when the sample is black; false for an empty sample (keep the clip)
+ */
 export function isBlackSample(rgba, { meanMax = 12, peakMax = 24 } = {}) {
   const s = lumaStats(rgba);
   return !!s && s.mean <= meanMax && s.peak <= peakMax;
@@ -63,6 +82,12 @@ export function isBlackSample(rgba, { meanMax = 12, peakMax = 24 } = {}) {
 
 
 
+/**
+ * Classify an RGBA sample as a flat/placeholder poster: a near-uniform fill of any colour (luma std ≈ 0).
+ * @param rgba RGBA bytes from getImageData
+ * @param opts thresholds — `stdMax` (default 6) on 0..255 luma standard deviation
+ * @returns true when the sample is flat; false for an empty sample (keep the clip)
+ */
 export function isFlatSample(rgba, { stdMax = 6 } = {}) {
   const s = lumaStats(rgba);
   return !!s && s.std <= stdMax;
@@ -70,6 +95,11 @@ export function isFlatSample(rgba, { stdMax = 6 } = {}) {
 
 
 
+/**
+ * Whether a feed item carries a usable poster (a non-empty string after trimming).
+ * @param item a feed item, possibly null
+ * @returns true when `item.poster` is a non-blank string
+ */
 export function hasPoster(item) {
   return !!item && typeof item.poster === "string" && item.poster.trim() !== "";
 }

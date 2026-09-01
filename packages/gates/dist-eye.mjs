@@ -1,3 +1,11 @@
+/* @ts-self-types="./dist-eye.d.mts" */
+/**
+ * The eye on the BUILT site: serves dist/ exactly as production does, opens every app in a real Chromium
+ * at the reference device, measures that the token system survived the build (boot, --ms-r, kit radius,
+ * precompiled app.css, no same-origin 4xx/5xx) and keeps a PNG of each. A gate script with no exports;
+ * it fails on numbers, not impressions, because verify.mjs only ever looked at the source.
+ * @module
+ */
 import { serveDir } from "jsr:@std/http@1/file-server";
 import { bootBrowser, DEVICES } from "./browser-lib.mjs";
 

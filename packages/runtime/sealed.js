@@ -1,11 +1,34 @@
+/* @ts-self-types="./sealed.d.ts" */
+/**
+ * The sealed envelope: HPKE base mode (RFC 9180) on bare WebCrypto — DHKEM(P-256, HKDF-SHA256) /
+ * HKDF-SHA256 / AES-256-GCM — the same file running in the browser and the Deno backend. Exports the
+ * client side (`seal`, `openResponse`), the server side (`importServerPrivate`, `unseal`, `sealResponse`),
+ * `importServerKey` and the base64url helpers `b64u` / `unb64u`.
+ * @module
+ */
 
 const ENC = new TextEncoder();
 const DEC = new TextDecoder();
 const P256 = { name: "ECDH", namedCurve: "P-256" };
 
+/**
+ * Encode bytes as unpadded base64url.
+ * @param bytes an ArrayBuffer or typed array
+ * @returns the base64url string
+ */
 export const b64u = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+/**
+ * Decode an unpadded base64url string to bytes.
+ * @param s the base64url string
+ * @returns a Uint8Array
+ */
 export const unb64u = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
 
+/**
+ * Import the server's pinned P-256 public key from its raw base64url form.
+ * @param rawB64u the raw uncompressed-point public key, base64url
+ * @returns a CryptoKey usable as the ECDH peer
+ */
 export const importServerKey = (rawB64u) => crypto.subtle.importKey("raw", unb64u(rawB64u), P256, false, []);
 
 async function deriveKeys(priv, pub, epkRaw, serverRaw) {
@@ -35,6 +58,12 @@ function unframe(bytes) {
   return JSON.parse(DEC.decode(bytes.subarray(4, 4 + n)));
 }
 
+/**
+ * Client side: seal a request payload to the server's pinned key under a fresh ephemeral keypair.
+ * @param serverKeyB64u the server's raw P-256 public key, base64url
+ * @param payload the real request, e.g. {p: "/feed/ai", m: "POST", b: {...}}; a `ts` is added
+ * @returns `{ wire, resKey }` — the envelope bytes and the AES-GCM key that opens the reply
+ */
 export async function seal(serverKeyB64u, payload) {
   const serverKey = await importServerKey(serverKeyB64u);
   const eph = await crypto.subtle.generateKey(P256, false, ["deriveBits"]);   
@@ -49,6 +78,12 @@ export async function seal(serverKeyB64u, payload) {
   return { wire, resKey: res };
 }
 
+/**
+ * Client side: decrypt a sealed reply with the response key that seal() returned.
+ * @param resKey the response key from seal()
+ * @param wire the reply envelope bytes
+ * @returns the decoded reply payload
+ */
 export async function openResponse(resKey, wire) {
   if (wire[0] !== 1) throw new Error("bad version");
   const iv = wire.subarray(1, 13);
@@ -56,8 +91,20 @@ export async function openResponse(resKey, wire) {
   return unframe(pt);
 }
 
+/**
+ * Server side: import the server's P-256 private key from a JWK.
+ * @param jwk the private key as a JWK object
+ * @returns a CryptoKey usable for deriveBits
+ */
 export const importServerPrivate = (jwk) => crypto.subtle.importKey("jwk", jwk, P256, false, ["deriveBits"]);
 
+/**
+ * Server side: open a client envelope and derive the key the reply must be sealed with.
+ * @param privKey the server private key (see importServerPrivate)
+ * @param serverPubB64u the server's raw public key, base64url — part of the HKDF salt
+ * @param wire the request envelope bytes
+ * @returns `{ payload, resKey }` — the decoded request and the reply key
+ */
 export async function unseal(privKey, serverPubB64u, wire) {
   if (wire[0] !== 1) throw new Error("bad version");
   const epkRaw = wire.subarray(1, 66);
@@ -67,6 +114,12 @@ export async function unseal(privKey, serverPubB64u, wire) {
   return { payload: unframe(pt), resKey: res };
 }
 
+/**
+ * Server side: seal a reply payload with the response key from unseal().
+ * @param resKey the response key
+ * @param payload the reply object
+ * @returns the reply envelope bytes
+ */
 export async function sealResponse(resKey, payload) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, resKey, frame(payload)));

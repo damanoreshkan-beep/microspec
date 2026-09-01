@@ -182,12 +182,12 @@ header.navbar {
 header.navbar::before {
   content: "";
   position: absolute;
-  left: 0; right: 0; bottom: -10px; height: 28px;
+  left: 0; right: 0; bottom: -9px; height: 26px;
   z-index: -1;
   pointer-events: none;
-  background: var(--ds-lip) center 52% / 100% auto no-repeat;
+  background: var(--ds-lip) center 52% / 150% auto no-repeat;
   opacity: var(--ds-lip-a, 0);
-  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent), linear-gradient(180deg, transparent, #000 32%, #000 68%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent), linear-gradient(180deg, transparent, #000 38%, #000 62%, transparent);
   mask-composite: intersect;
 }
 header.navbar::after {
@@ -217,6 +217,7 @@ header.navbar::after {
   background: var(--ds-scatter) center -44px / 260px auto no-repeat;
   opacity: var(--ds-scatter-a);
 }
+
 :root {
   --lm-g: 32px;  --lm-gs: -14px;   
   --lm-gp: 20px; --lm-gps: -4px;   
@@ -238,7 +239,7 @@ header.navbar::after {
   --ds-strand-y: calc(100% + 23.5vw);          
   --ds-strand-a: .85;
   --ds-lip: url("/_rt/ds-n-arc.webp");         
-  --ds-lip-a: .6;
+  --ds-lip-a: .75;
   --ds-scatter: url("/_rt/ds-n-scatter.webp"); 
   --ds-scatter-a: .8;
   --lm-lip:      rgba(255, 238, 208, .58);     
@@ -263,6 +264,7 @@ header.navbar::after {
   --ms-vol-shade:  rgba(0, 0, 0, .34);          
 }
 [data-theme="signal-light"] {
+  
   --lm-rim:    rgba(20, 18, 16, .10);
   --lm-rim-hi: rgba(255, 255, 255, .9);
   --lm-rim-lo: rgba(20, 18, 16, .08);
@@ -291,13 +293,14 @@ header.navbar::after {
   --sf-press-face: #ECE9E1;
   --sf-press-top:  rgba(40, 32, 20, .18);
   --sf-track-face: #D8D3C7;   
-  
+
   --ms-vol-key:    rgba(255, 255, 255, .85);
   --ms-vol-bounce: color-mix(in oklch, var(--app-accent) 8%, transparent);
   --ms-vol-rim:    rgba(40, 32, 20, .08);
   --ms-vol-sheen:  rgba(255, 255, 255, .9);
   --ms-vol-shade:  rgba(40, 32, 20, .12);
 }
+
 
 body {
   background-image:
@@ -342,10 +345,12 @@ body::after {
 .toggle, .checkbox, .radio { box-shadow: var(--sf-sink2); }
 .toggle:checked, .checkbox:checked, .radio:checked { box-shadow: var(--sf-lift2); }
 
+
 .progress { background: var(--sf-inset-face); box-shadow: var(--sf-sink2); }
 .progress::-webkit-progress-value { box-shadow: var(--sf-lift2); }
 .progress::-moz-progress-bar { box-shadow: var(--sf-lift2); }
 .skeleton, [data-skeleton] { background: var(--sf-inset-face); box-shadow: var(--sf-sink2); }
+
 nav[data-dock] button[aria-current="page"] { box-shadow: var(--sf-drop); }
 .tabs .tab-active, .steps .step-primary .step-icon, .join > .btn-active { box-shadow: var(--sf-lift2); }
 
@@ -356,9 +361,9 @@ nav[data-dock] button[aria-current="page"] { box-shadow: var(--sf-drop); }
   box-shadow: 0 14px 46px -10px var(--nm-cast), var(--sf-drop);
 }
 
+
 .modal-box { box-shadow: 0 -10px 44px -12px var(--nm-cast), var(--sf-drop); }
 [data-toast] .alert { box-shadow: 0 14px 46px -10px var(--nm-cast), var(--sf-drop); }
-
 :root { --font-mono: "Geist Mono", ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
 body { letter-spacing: -0.006em; }
 [data-title] {
@@ -387,7 +392,6 @@ body { letter-spacing: -0.006em; }
   color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
 }
 
-
 #status {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -400,7 +404,6 @@ nav[data-dock] button > span {
   letter-spacing: .03em;
   font-size: .58rem;
 }
-
 .modal-box {
   background: var(--color-base-100);
   transition-timing-function: cubic-bezier(.22, 1, .3, 1.12);
@@ -411,7 +414,6 @@ nav[data-dock] button > span {
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
-
 @keyframes msRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 .ms-stagger > * { animation: msRise .32s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
 @media (prefers-reduced-motion: reduce) { .ms-stagger > * { animation: none; } }
@@ -428,10 +430,10 @@ nav[data-dock] button > span {
 
 .truncate { min-width: 0; }
 
-
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
 .overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
+
 
 @media (prefers-reduced-motion: reduce) {
   .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }
@@ -439,7 +441,6 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 
 
 .ms-shell {
-  
   --sh-r: calc(var(--ms-r) * 1.2);
   --sh-r-in: max(var(--r-1), calc(var(--sh-r) - var(--ms-pad)));
   width: 100%;
@@ -453,13 +454,13 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 [data-theme="signal-light"] .ms-shell { --sh-body: #DCD8CC; box-shadow: var(--sf-drop); }
 
 
-
 .ms-screen {
   --sf-inset-face: var(--sh-tint, var(--color-base-200));
   width: 100%;
   padding: max(0.3rem, 2.5%);
   border-radius: var(--sh-r-in, var(--ms-r-in));
 }
+
 @media (max-height: 520px) and (min-width: 301px) {
   .ms-shell { max-width: 46rem; }
   [data-shell-body].ms-side > [data-stage-box] { flex: 1 1 auto; }
@@ -468,12 +469,9 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 
 .ms-pad { padding: 4%; }
 .ms-pad-hub { width: 92%; height: 92%; }
-
 .ms-pad-key { border-radius: 12%; }
 
-
 .ms-menu { flex-wrap: wrap; justify-content: center; }
-
 
 .ms-sweep { animation: ms-sweep 4s linear infinite; }
 @keyframes ms-sweep { to { transform: rotate(360deg); } }

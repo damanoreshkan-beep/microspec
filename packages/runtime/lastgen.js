@@ -1,3 +1,11 @@
+/* @ts-self-types="./lastgen.d.ts" */
+/**
+ * A tiny same-origin handoff for "the last image I made": every farm app shares one origin, so Imagine
+ * WRITES its finished generation to localStorage (a downscaled JPEG data URL, newest only) and Retouch
+ * READS it to offer "edit the image you just imagined". Fail-open everywhere — a miss or quota error just
+ * hides the source, never breaks an app. Exports `writeLastGen` and `readLastGen`.
+ * @module
+ */
 const KEY = "ms:lastgen";
 const STORE_SIDE = 768;   
 
@@ -22,6 +30,12 @@ function downscale(src) {
   });
 }
 
+/**
+ * Persist the newest generated image and its prompt for another app to pick up; swallows every failure.
+ * @param src a Blob, object URL or data URL of the image
+ * @param prompt the prompt that produced it (stored truncated to 400 chars)
+ * @returns resolves once stored or skipped
+ */
 export async function writeLastGen(src, prompt) {
   try {
     const url = await downscale(src);
@@ -30,6 +44,10 @@ export async function writeLastGen(src, prompt) {
   } catch {  }
 }
 
+/**
+ * Read the newest handoff written by `writeLastGen`.
+ * @returns `{ url, prompt, ts }` or null when nothing valid is stored
+ */
 export async function readLastGen() {
   try {
     const raw = localStorage.getItem(KEY);

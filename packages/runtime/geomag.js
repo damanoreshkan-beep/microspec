@@ -1,5 +1,16 @@
+/* @ts-self-types="./geomag.d.ts" */
+/**
+ * The Earth's magnetic field from the World Magnetic Model (WMM2025), so a compass can turn a magnetic
+ * bearing into a true one — the declination depends on where you are and drifts every year, and it is
+ * proven against NOAA's 100 official test points rather than a demo. Exports `field` (X/Y/Z/H/F plus
+ * declination and inclination), `declination`, `trueFrom`, `decimalYear`, `inRange` and the
+ * `EPOCH`/`VALID_UNTIL` bounds.
+ * @module
+ */
 
+/** The model epoch as a decimal year; secular variation is applied relative to it. */
 export const EPOCH = 2025.0;
+/** End of the model's validity as a decimal year (exclusive); beyond it the coefficients are extrapolation. */
 export const VALID_UNTIL = 2030.0;
 const NMAX = 12;
 
@@ -19,6 +30,15 @@ const D2R = Math.PI / 180, R2D = 180 / Math.PI;
 const SQ = [];
 for (let n = 0; n <= NMAX + 1; n++) { SQ[n] = []; for (let m = 0; m <= NMAX + 1; m++) SQ[n][m] = Math.sqrt(n * n - m * m); }
 
+/**
+ * Evaluates the WMM2025 field at a geodetic point.
+ * @param latDeg geodetic latitude in degrees
+ * @param lonDeg longitude in degrees
+ * @param altKm altitude in kilometres above the WGS84 ellipsoid
+ * @param year decimal year (see `decimalYear`)
+ * @returns `{ X, Y, Z, H, F, declination, inclination }` — components in nT, angles in degrees
+ *   (declination positive when magnetic north lies east of true north)
+ */
 export function field(latDeg, lonDeg, altKm = 0, year = EPOCH) {
   const dt = year - EPOCH;
   const rlon = lonDeg * D2R, rlat = latDeg * D2R;
@@ -86,14 +106,38 @@ export function field(latDeg, lonDeg, altKm = 0, year = EPOCH) {
   };
 }
 
+/**
+ * Magnetic declination at a point, in degrees (east-positive).
+ * @param lat geodetic latitude in degrees
+ * @param lon longitude in degrees
+ * @param altKm altitude in kilometres above the WGS84 ellipsoid
+ * @param year decimal year
+ * @returns the declination to ADD to a magnetic bearing for a true one
+ */
 export const declination = (lat, lon, altKm = 0, year = EPOCH) => field(lat, lon, altKm, year).declination;
 
+/**
+ * Converts a Date to the decimal year the model takes (UTC, fraction of the year elapsed).
+ * @param d the date; defaults to now
+ * @returns the decimal year
+ */
 export const decimalYear = (d = new Date()) => {
   const y = d.getUTCFullYear();
   const start = Date.UTC(y, 0, 1), end = Date.UTC(y + 1, 0, 1);
   return y + (d.getTime() - start) / (end - start);
 };
 
+/**
+ * Whether a decimal year falls inside the model's validity window.
+ * @param year decimal year; defaults to now
+ * @returns true for EPOCH ≤ year < VALID_UNTIL
+ */
 export const inRange = (year = decimalYear()) => year >= EPOCH && year < VALID_UNTIL;
 
+/**
+ * Composes a magnetic heading with the local declination into a true heading, normalised to 0..360.
+ * @param magneticDeg magnetic heading in degrees
+ * @param dec declination in degrees, or null/undefined to leave the heading magnetic
+ * @returns the true heading in degrees
+ */
 export const trueFrom = (magneticDeg, dec) => ((dec == null ? magneticDeg : magneticDeg + dec) % 360 + 360) % 360;

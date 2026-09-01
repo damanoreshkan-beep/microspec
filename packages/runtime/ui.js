@@ -1,3 +1,10 @@
+/* @ts-self-types="./ui.d.ts" */
+/**
+ * The UI kit — the farm's ONE set of interaction nodes: {@link Sheet}, {@link Segmented}, {@link Island},
+ * {@link Panel}, {@link Slider}, {@link Transport}, plus {@link Stage} and {@link Row}. Every app composes
+ * these instead of hand-rolling its own; each reads the density tokens in theme.css rather than a size.
+ * @module
+ */
 import { html } from "htm/preact";
 import { Fragment } from "preact";
 import { useRef, useEffect, useState } from "preact/hooks";
@@ -7,35 +14,19 @@ import { REPEAT_ICON, clock } from "./player.js";
 
 const Icon = (icon, cls, style) => html`<iconify-icon icon=${icon} class=${cls || ""} style=${style || ""}></iconify-icon>`;
 
-/**
- * ── Sheet — the farm's ONE bottom sheet ───────────────────────────────────────────────────────────────
- * The shell only: liquid glass (.modal-box in theme.css), drag-to-dismiss by the grip, a title row with a
- * close button, a tappable backdrop. Everything inside is the caller's — a sheet is a container, so
- * standardising it costs an app nothing and buys the farm one geometry.
- *
- * It is NOT history-backed by itself, deliberately: routing is the runtime's job and the atom is the
- * caller's (S.screen for a tool app, S.sheet for the filter sheet). Pass `open`/`onClose` from that atom
- * and Back closes it, per the routing invariant — a sheet that owned its own state would be the one
- * screen the system Back button couldn't reach.
- * `locale` defaults to <html lang>, which the runtime keeps pointed at the UI locale — so a shared
- * component never has to demand a prop (or an i18n key) from every app that mounts it.
- * The box, as one exported string. The shell has four dialogs of its own (the filter sheet, the install
- * modal, the QR invite, the danger confirm) that predate this kit and each wrote their own box classes —
- * which is how three apps ended up overflowing at 208px through a sheet none of them wrote: no width
- * ceiling, no min-w-0, so a control inside pushed the DOCUMENT wide. One definition, one place.
- * ── FROST — the material for a surface floating over a STAGE ───────────────────────────────────────────
- * Over the farm's own extrusion a blur is banned (preflight: glass and the shadow pair answer the same
- * question). Over FOREIGN content — a WebGL field, a video frame, a camera feed — the page beneath is not a
- * surface at all, and a solid base-100 panel simply hides the one thing the screen is for. Frost is the
- * detail header's recipe (render.js "staged"), named once: a 60% base-100 wash (deterministic contrast in
- * both themes), the default-xl blur, a 10% hairline so the edge survives a busy frame, and ONE soft cast (the
- * extrusion pair would paint a light halo round glass — the light theme showed it; glass is not extruded).
- * Island / Segmented / Sheet take `tone="frost"` — an app never writes the recipe itself.
- */
+/** The frost recipe (class list): a 60% base-100 wash, xl blur, a 10% hairline and one soft cast — glass over a stage. */
 export const FROST = "bg-base-100/60 backdrop-blur-xl border border-base-content/10 sf-frost text-base-content";
 
+/** The sheet box's class list — the shell every bottom sheet in the farm shares (radius, width cap, 88dvh height cap). */
 export const SHEET_BOX = "modal-box rounded-t-[1.75rem] max-w-[min(36rem,100vw)] mx-auto min-w-0 flex flex-col gap-[var(--ms-gap)] p-[var(--ms-pad)] pb-8 max-h-[88dvh]";
 
+/**
+ * The ONE bottom sheet: a native `<dialog>` with drag-to-dismiss grip, optional title/subtitle/icon header
+ * and close button, backdrop, and its own inner scroll (the farm's only sanctioned nested scroll).
+ * @param props `open` / `onClose` should come from a routing atom so system Back closes it; `size` "md"|"lg";
+ *   `tone` "glass" (opaque base-100) | "frost" (translucent over a stage); `locale` for the close label
+ * @returns the sheet element
+ */
 export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size = "md", tone = "glass", children }) {
   const loc = locale || (typeof document !== "undefined" ? document.documentElement.lang : "") || "en";
   const ref = useRef();
@@ -58,24 +49,19 @@ export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size =
     <form method="dialog" class="modal-backdrop"><button>${sys("close", loc)}</button></form>
   </dialog>`;
 }
+
+
+
+
+
+
 /**
- * ── Segmented — the farm's ONE tab / option strip ─────────────────────────────────────────────────────
- * One geometry, two skins, and the choice between them is semantic rather than decorative:
- * solid   — the ACTIVE option is a filled ink pill (the dock's language). Use where the choice is the
- * screen's primary mode. Contrast is a shape, not a luminance step: in a theme whose axiom is "ink
- * is the brand", --color-primary and --color-base-content are the same hex, so the usual
- * "active = text-primary" idiom resolves to 100% vs 80% of ONE colour — 1.56:1, invisible.
- * The farm's dock shipped exactly that bug for its whole life with every gate green.
- * outline — the active option is a hairline-ringed tinted pill. Use where the strip sits ON content
- * (a stage, a photo, a canvas) and a filled ink block would punch a hole in it.
- * Both are monochrome by construction. Colour enters only as `dot` — a small filled disc carrying the
- * app's or the option's own hue, which is the safe place for an arbitrary colour (never text).
- *
- * A fitted strip DEMOTES to glyphs, it never squashes. In .ms-side's narrow column (412×430) a three-way
- * strip of labelled pills rendered "Т… · О.. · О.." — two options with the same visible text — and at 360×340
- * one letter each. The width a labelled strip needs is MEASURED (a truncated span still reports its full
- * scrollWidth), and when the rail is narrower than that every label hides and the button's accessible name
- * becomes the label. Only when every option has an icon — without one, hiding the word is deletion.
+ * The ONE tab / option strip for a one-of-N choice. Items carry `id`, `label`, and optionally `icon`,
+ * `dot` (the option's colour, painted on its mark), `meta` (trailing mono count), `busy`, `title`.
+ * @param props `value` the selected id; `onChange(id)`; `variant` "solid" (filled ink pill) | "outline"
+ *   (hairline pill, for strips sitting ON content); `size` "md"|"sm"; `scroll` makes it a rail; `attr`
+ *   the data attribute each button carries (e2e hook); `label` the group's accessible name; `tone` "inset"|"frost"
+ * @returns the strip element
  */
 export function Segmented({ items, value, onChange, variant = "solid", size = "md", scroll = false, attr = "data-seg", label, tone = "inset" }) {
   const sm = size === "sm";
@@ -137,23 +123,18 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
     ? html`<div class=${`${face} overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-full`}>${rail}</div>`
     : html`<div class=${`${face} rounded-full`}>${rail}</div>`;
 }
+
+
+
+
+
+
 /**
- * ── Island — the floating glass panel ─────────────────────────────────────────────────────────────────
- * The dock's material, reusable: a tool app's persistent controls are islands like it, not bars welded to
- * an edge. Opacity stays high (80%) so text contrast over whatever scrolls beneath is deterministic — the
- * blur does the glass. Translucency you can't predict is a contrast bug waiting for one screen to break.
- * `pinned` — the island that floats between the content and the dock. Six apps had written the same
- * positioner by hand (`fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none` plus a
- * `bottom: calc(var(--dock-h) + env(safe-area-inset-bottom) + …)`), and they had already drifted: four used
- * a 0.4rem gap and two used 0.5rem, for one measurement. The POSITION and the MATERIAL are the kit's; the
- * width, the radius and the row inside stay the app's, through className.
- * `at` — which edge it clears: "bottom" floats above the dock, "top" hangs under the header. Both are the
- * same idea (a bar that clears the chrome without an app knowing the chrome's height), and both read the
- * MEASURED numbers rather than restating them.
- * `tone` — what it floats ON. "glass" is the farm's base-100 material; "dark" is for a bar over arbitrary
- * media, where a light-surface island simply disappears against a bright video frame; "frost" (FROST below)
- * is the translucent wash for a panel over the app's own STAGE (a GL field, a hero). That is a material
- * decision with a reason, not a per-app taste, which is why it belongs here.
+ * The floating glass panel — the dock's material, reusable for a tool app's persistent controls.
+ * @param props `pinned` fixes it to clear the chrome (`at` "bottom" above the dock | "top" under the header,
+ *   both off the MEASURED chrome tokens); `tone` "glass" | "dark" (over media) | "frost" (over a stage);
+ *   `tag` "div" | "section"; `className` for width/radius/row; other props pass to the element
+ * @returns the island element (wrapped in a positioner when pinned)
  */
 export function Island({ children, className = "", tag = "div", pinned = false, at = "bottom", tone = "glass", ...rest }) {
   if (pinned) {
@@ -186,11 +167,11 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
     : html`<div data-island class=${cls} ...${rest}>${children}</div>`;
 }
 
+
 /**
- * ── Panel — the solid surface ─────────────────────────────────────────────────────────────────────────
- * What a card is in the list family: the page EXTRUDED (sf-raised at the shallow elevation), no border, an
- * optional mono micro-label header. Use it for grouped controls; use Island only where the panel floats
- * OVER content. It has no hairline — this comment used to say it did, and app authors copied that.
+ * The solid in-flow surface: the page extruded at the shallow elevation, with an optional mono micro-label.
+ * @param props `title` the micro-label; `className` extra classes; other props pass to the element
+ * @returns the panel element
  */
 export function Panel({ title, children, className = "", ...rest }) {
   return html`<div ...${rest} class=${`@container sf-raised sf-e2 rounded-[var(--ms-r)] p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
@@ -199,10 +180,14 @@ export function Panel({ title, children, className = "", ...rest }) {
   </div>`;
 }
 
+
+
+
 /**
- * ── Slider — a labelled range ─────────────────────────────────────────────────────────────────────────
- * The value is not printed. A macro like "space" or "density" has no unit a number would honestly carry,
- * and a readout the user cannot act on is hint text with extra steps (the farm's no-hand-holding rule).
+ * A labelled range whose mono caption is also the input's accessible name; the value is deliberately not printed.
+ * @param props `id`; `label`; `value`; `onInput(number)`; `min`/`max`/`step` (default 0…1 by 0.02);
+ *   `attr` the data attribute the label carries (default `data-macro`)
+ * @returns the label element wrapping the range input
  */
 export function Slider({ id, label, value, onInput, min = 0, max = 1, step = 0.02, attr = "data-macro" }) {
   const props = { [attr]: id };
@@ -218,20 +203,22 @@ export function Slider({ id, label, value, onInput, min = 0, max = 1, step = 0.0
   </label>`;
 }
 
-/**
- * Row — the one-line flex used inside Panels/Sheets (label left, control right). Not a component so much
- * as the shape they all share; exported so a caller never re-guesses the gap.
- */
+
+
+/** The one-line flex row used inside panels and sheets (label left, control right) at the kit's gap. */
 export const Row = ({ children, className = "" }) => html`<${Fragment}><div class=${`flex items-center gap-[var(--ms-gap)] ${className}`}>${children}</div></${Fragment}>`;
 
+
+
+
+
+
 /**
- * ── Transport — the widget ────────────────────────────────────────────────────────────────────────────
- * Every piece is opt-in: no `onNext` → no skip button; no `dur` → no seek bar; no `onRepeat` → no repeat
- * control. So a one-button ambient player and a full queue player are the same component, and a fix to the
- * scrub interaction or the a11y labels lands in all of them at once.
- *
- * Localisation: the runtime's SYS dictionary carries the transport strings (aPlay/aPause/aPrev/aNext/
- * aSeek/aRepeat…), so an app adopting this does not restate them — pass `locale`, not a dict.
+ * The ONE play control. Every part is opt-in by handler: `onToggle` (play/pause), `onPrev`/`onNext`,
+ * `onSeek` with `pos`/`dur` (the seek bar), `onRepeat`/`onShuffle`, `title`/`subtitle`, `actions` (the
+ * app's own tools, demoted into an overflow sheet when they do not fit). Sizes "md" | "sm" | "hero".
+ * @param props see the destructured parameter list; `locale` selects the SYS strings for the labels
+ * @returns the transport container (an `@container` that compacts on width and height)
  */
 export function Transport({
   locale = "en",                                       
@@ -366,16 +353,18 @@ export function Transport({
       <//>` : null}
     </div>`;
 }
+
+
+
+
+
+
+
+
 /**
- * ── Stage — where a visualiser lives ──────────────────────────────────────────────────────────────────
- * A full-bleed `absolute inset-0` canvas centres its subject on the SCREEN, which is the wrong centre: the
- * header sits over the top of it and the transport island over the bottom, so the object reads as pushed
- * up and off-balance on every phone. A visualiser belongs in the box that is actually visible — the flex
- * void between the chrome — and then its own geometry centring is correct for free, at every breakpoint,
- * with no measuring and no magic numbers.
- *
- * Use it as the `flex-1 min-h-0` void of a fit view: header · <Stage> · controls. The canvas inside is
- * `absolute inset-0` relative to THIS box, not the screen.
+ * The visible void between the chrome — the `flex-1 min-h-0` box a fit view's canvas centres in.
+ * @param props `children` the canvas/stage content; `className` extra classes
+ * @returns the `data-stage-box` element
  */
 export function Stage({ children, className = "" }) {
   return html`<div data-stage-box class=${`relative flex-1 min-h-0 ${className}`}>${children}</div>`;

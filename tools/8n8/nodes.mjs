@@ -86,6 +86,13 @@ export const NODES = [
       "map is a gate that tests the wrong runtime. A tree with no overlay generates nothing.",
     run: () => ["deno", "run", "-A", at("tools/rtmap.mjs"), "--check"],
   },
+  {
+    id: "dts", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-09-01",
+    why: "The package's .d.ts files, generated from the JavaScript + its JSDoc (tools/dts.mjs): JSR " +
+      "cannot type a JS entrypoint, so without them every export is a slow type and the docs never " +
+      "render. A stale declaration is red here, before it is stale on the registry. No-op in a consumer.",
+    run: () => ["deno", "run", "-A", at("tools/dts.mjs"), "--check"],
+  },
 
   {
     id: "validate", kind: "script", phase: "gate", needs: ["spec", "demo"], scope: "farm", frozen: "2026-06-11",
@@ -242,7 +249,7 @@ export function topo(nodes = NODES) {
 }
 
 export const FLOWS = {
-  gates: ["demo", "rtmap", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
+  gates: ["demo", "rtmap", "dts", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
   author: ["research", "spec", "i18n", "view", "scaffold"],
   ship: ["push"],
   all: NODES.map((n) => n.id),

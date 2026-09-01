@@ -1,0 +1,8 @@
+/**
+ * The undefined-identifier gate for app entry points: runs `deno lint` with only no-undef over every
+ * view.js/data.js/stream.js and fails on any name that is neither declared nor a measured browser global,
+ * so a dangling reference is caught statically instead of by the one screen that renders it. A script
+ * with no exports.
+ * @module
+ */
+export {};

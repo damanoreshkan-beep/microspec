@@ -1,7 +1,20 @@
+/* @ts-self-types="./weather.d.ts" */
+/**
+ * Weather numbers, dependency-free on purpose: WMO 4677 code tables (`wmoIcon`, `wmoKey`, `isSnowCode`,
+ * `isStormCode`), low-precision solar position and moon phase (`solarPosition`, `moonPhase`), the mapping
+ * from raw readings to the live-sky shader's channels (`skyVary`, `skyInk`), and the hourly temperature
+ * spline (`curvePath`). Nothing here touches the DOM or the network, so every function is unit-tested.
+ * @module
+ */
 
 const D2R = Math.PI / 180, R2D = 180 / Math.PI;
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
+/**
+ * Lucide icon name for a WMO 4677 present-weather code.
+ * @param c the WMO code (0..99)
+ * @returns an `lucide:*` icon id
+ */
 export const wmoIcon = (c) =>
   c === 0 ? "lucide:sun"
     : c <= 2 ? "lucide:cloud-sun"

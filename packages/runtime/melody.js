@@ -1,3 +1,11 @@
+/* @ts-self-types="./melody.d.ts" */
+/**
+ * Melodic phrase generation for the pitched instruments (kalimba, handpan): a seeded SCORED SEARCH over a
+ * scale, not a random walk — candidates are ranked on measured consonance, stepwise motion, an arch contour
+ * and a tonic cadence. Pure and DOM-free so the gate proves the claim. Exports `scoreMelody` and
+ * `generateMelody`.
+ * @module
+ */
 
 import { mulberry32, harmonicity } from "./groove.js";
 
@@ -39,6 +47,12 @@ function buildPhrase(rng, scale, len, restP) {
   return notes;
 }
 
+/**
+ * Score a phrase against consonance, smoothness, resolution, arch and variety — higher is sweeter to the ear.
+ * @param notes the phrase: `{ i }` scale-index notes and `{ rest: true }` rests
+ * @param scale ascending semitone offsets from the tonic (index 0 = tonic)
+ * @returns the score, or `-Infinity` for a phrase with fewer than three sounding notes
+ */
 export function scoreMelody(notes, scale) {
   const sounding = notes.filter((n) => !n.rest);
   if (sounding.length < 3) return -Infinity;
@@ -65,6 +79,13 @@ export function scoreMelody(notes, scale) {
   return s;
 }
 
+/**
+ * Generate the best-scoring phrase out of `tries` seeded candidates, with the final sounding note snapped to
+ * the nearest tonic so the line always cadences.
+ * @param scale ascending semitone offsets from the tonic (index 0 = tonic)
+ * @param options `seed` (deterministic), `len` (notes incl. rests), `restP` (rest probability), `tries`
+ * @returns `{ notes, seed, score, meanScore, tries }` — `notes` are indices into `scale` plus rests
+ */
 export function generateMelody(scale, { seed = 1, len = 16, restP = 0.18, tries = 200 } = {}) {
   if (!Array.isArray(scale) || scale.length < 2) return { notes: [], seed: seed >>> 0 };
   const rng = mulberry32(seed >>> 0);

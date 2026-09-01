@@ -4,4 +4,10 @@
  * accident" is proven rather than inlined in the bootstrap. Exports `overlayDepth`.
  * @module
  */
+/**
+ * How many history entries an overlay atom's value is worth: a stack's length, 1 for an open plain overlay,
+ * 0 when closed.
+ * @param v the overlay atom's value (array, truthy, or falsy)
+ * @returns the depth as a non-negative integer
+ */
 export function overlayDepth(v: any): number;

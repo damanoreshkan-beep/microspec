@@ -6,9 +6,13 @@
  * `parseTleText`, `subpoint`, `sunEciUnit` and `isSunlit`.
  * @module
  */
-import * as sat from "./satellite.js";
-/** The vendored SGP4 propagator namespace (satellite.js), re-exported for callers that need the raw API. */
-export * as sat from "./satellite.js";
+import * as satlib from "./satellite.js";
+/**
+ * The vendored SGP4 propagator (satellite.js), exposed for callers that need the raw API. Typed as a plain
+ * record on purpose: it is a vendored library, and its eighteen internals are not this package's API.
+ * @type {Record<string, any>}
+ */
+export const sat = satlib;
 
 const R_EARTH = 6378.137;   
 

@@ -1,4 +1,3 @@
-/* @ts-self-types="./satellite.d.ts" */
 /**
  * Vendored satellite.js v5.0.0 (MIT) — the canonical SGP4/SDP4 propagator, self-contained and kept
  * same-origin so the SW caches it for offline. Exports the satellite.js API as-is (`twoline2satrec`,

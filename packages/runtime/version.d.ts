@@ -4,4 +4,9 @@
  * deployed git short-SHA (`BUILD`), the last two re-exported from the build-time stamp in build.js.
  * @module
  */
+/**
+ * The app's own version as declared in its spec.
+ * @param spec the app spec
+ * @returns `spec.version`, or "1.0" when the spec declares none
+ */
 export function appVersion(spec: any): any;

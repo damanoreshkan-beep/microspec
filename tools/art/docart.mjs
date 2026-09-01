@@ -289,8 +289,31 @@ const moduleMap = (name) => {
   return s + tail;
 };
 
+// ── theme-split: structure in the core, the brand in the product, one <link> on the page ──────────────
+const themeSplit = () => {
+  const w = 960, h = 300;
+  let s = head("theme-split", w, h, "The theme split: runtime.css (structure, neutral) → a product's rt/theme.css (the brand) → the page's one link");
+  s += fireflies("theme-split", w, h, 18);
+  const box = (x, y, bw, bh, title, sub, lines, lit) => {
+    let o = `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="16" fill="${lit ? C.cyan : C.amber}" fill-opacity="${lit ? .06 : .03}" stroke="${lit ? C.cyan : C.rim}" stroke-opacity="${lit ? .8 : 1}"/><path d="M ${x + 16} ${y + .5} H ${x + bw - 16}" stroke="${C.edge}"/>`;
+    o += `<text x="${x + 18}" y="${y + 28}" class="h" font-size="13" fill="${lit ? C.cyan : C.amber}">${esc(title.toUpperCase())}</text>`;
+    o += `<text x="${x + 18}" y="${y + 46}" class="m">${esc(sub)}</text>`;
+    lines.forEach((t, i) => { o += label(x + 18, y + 74 + i * 20, t, { anchor: "start" }); });
+    return o;
+  };
+  s += box(40, 70, 270, 190, "the core · runtime.css", "structure + a neutral default", ["--ms-* ladder, chrome contract", "fit · split · watch rules", "sf-* surface SYSTEM (what a class means)", "hooks: lip, garland, empty, theme-art", "every token has a plain value"], false);
+  s += box(345, 70, 270, 190, "the product · rt/theme.css", "@import \"./runtime.css\" + the brand", ["the pair of light, two palettes", "material token VALUES (rim · bloom)", "sprites in rt/ds-*.webp", "portal chrome geometry, enclosure", "tests in rt/tests/theme_test.js"], true);
+  s += box(650, 70, 270, 190, "the page", "<link href=\"/_rt/theme.css\">", ["no brand → the core's theme.css", "  (one line: @import runtime.css)", "a brand → the overlay REPLACES it", "  by name: gate server + build alike", "sw precache follows the @import"], false);
+  // the links run BELOW the text rows (74 + 4·20 ≈ 154 from the box top → y 224), never across them
+  s += filament(310, 246, 345, 246, { lit: true, w: 1.4, bend: 0.4 }) + filament(615, 246, 650, 246, { lit: true, w: 1.4, bend: 0.4 });
+  s += node(310, 246, { lit: true }) + node(345, 246) + node(615, 246, { lit: true }) + node(650, 246);
+  s += micro(40, 42, "theme split · docs/research/theme-split.md");
+  s += `<text x="${w - 40}" y="42" class="h" text-anchor="end">a brand change is a product commit, not a core release</text>`;
+  return s + tail;
+};
+
 // ── emit ─────────────────────────────────────────────────────────────────────────────────────────────
-const files = { "hero.svg": hero(), "realms.svg": realms(), "build.svg": build(), "verify.svg": verify() };
+const files = { "hero.svg": hero(), "realms.svg": realms(), "build.svg": build(), "verify.svg": verify(), "theme-split.svg": themeSplit() };
 for (const n of NODES) if (n.kind === "script") files[`pipeline-${n.id}.svg`] = pipeline(n.id);
 for (const k of Object.keys(manifest.exports)) if (k.startsWith("./runtime/")) files[`module-${k.slice(10, -3)}.svg`] = moduleMap(k.slice(10, -3));
 

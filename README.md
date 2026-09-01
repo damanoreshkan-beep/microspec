@@ -136,6 +136,20 @@ poles are asserted as *text* in both themes by unit test, and the chrome publish
 test forbids re-declaring them. Offline is the runtime's property, not each app's: one shared service
 worker precaches an app's whole shell from its **real import graph**, regenerated and gated on every push.
 
+## Theming — structure in the core, the brand in the product
+
+The core ships **`runtime.css`**: the density ladder, the chrome contract, the fit / split-screen / watch
+rules, the surface *system* (what `sf-raised` means) and every hook the markup carries — with neutral
+defaults, so a tree with no brand renders clean and legible. A product brings its **theme module**,
+`rt/theme.css` (`@import "./runtime.css";` first, then its palettes, its material's token values, its
+sprites, its type), and the overlay replaces `/_rt/theme.css` by name — in the gate's server and in the
+build alike. No colour, sprite or font ever enters the core; a brand change is a product commit. DreamStudio's
+luminous material is one such module; the contract is `docs/research/theme-split.md`.
+
+<div align="center">
+<img src="https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/theme-split.svg" width="880" alt="runtime.css (structure, neutral) → a product's rt/theme.css (the brand, sprites, tests) → the page's one link; the overlay wins by name in the gate's server and the build">
+</div>
+
 ## Quickstart
 
 ```bash

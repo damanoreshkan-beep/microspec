@@ -30,7 +30,9 @@
  * ## What it checks / produces
  * The precache manifest of an app, in order of discovery:
  * - `./`, `./index.html`, `./manifest.json` — always;
- * - what index.html loads by tag — same-origin (theme.css, icon.svg) and CDN `<script>` / `<link>` alike;
+ * - what index.html loads by tag — same-origin (theme.css, icon.svg) and CDN `<script>` / `<link>` alike —
+ *   and what a same-origin runtime stylesheet `@import`s (`/_rt/theme.css` is one line, `@import
+ *   "./runtime.css"`, in the core and in a product's overlay; the overlay's copy is read when the tree has one);
  * - the module closure of index.html: the app's own files (spec.json, the i18n dictionaries, view.js …)
  *   and the /_rt/ modules it reaches, followed through code files only — an i18n string that happens to
  *   contain `from "…"` must not invent a dependency;
@@ -123,6 +125,23 @@ export function manifestFor(id, { read: rd = read } = {}) {
     if (/^https?:\/\//.test(a)) urls.add(a);
     else if (a.startsWith("/_rt/")) urls.add(a);
     else if (!a.startsWith("/")) urls.add(a.startsWith("./") ? a : `./${a}`);
+  }
+  // 1b) …and what a same-origin runtime stylesheet @imports: /_rt/theme.css is one line in the core and a
+  //     product's overlay, `@import "./runtime.css"` — a shell that precached only the link would style
+  //     nothing offline. The overlay's copy wins when the tree has one, as it does when served.
+  const cssOf = (name) => rd(`rt/${name}`) ?? rd(`${RT}${name}`);
+  for (const u of [...urls]) {
+    const m = /^\/_rt\/([\w.-]+\.css)$/.exec(u);
+    if (!m) continue;
+    const seen = new Set([m[1]]), queue = [m[1]];
+    while (queue.length) {
+      const src = cssOf(queue.shift());
+      if (!src) continue;
+      for (const im of src.matchAll(/@import\s+(?:url\()?["']\.\/([\w.-]+\.css)["']\)?/g)) {
+        if (seen.has(im[1])) continue;
+        seen.add(im[1]); queue.push(im[1]); urls.add(`/_rt/${im[1]}`);
+      }
+    }
   }
 
   // 2) the module closure of index.html: the app's own files + the /_rt/ modules they reach

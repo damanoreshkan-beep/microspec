@@ -58,7 +58,9 @@ for (const arg of Deno.args) {
   const px = new Uint8ClampedArray(r.pixels.buffer, r.pixels.byteOffset, r.pixels.byteLength);
   const rgba = (set === "n" ? alphaFromBlack : alphaFromWhite)(px, r.width, r.height);
   const webp = new Uint8Array(await encodeWebp({ data: rgba, width: r.width, height: r.height }, { quality: 80 }));
-  const out = `${ROOT}/packages/runtime/ds-${set}-${name}.webp`;
+  // --out=<dir>: the product's rt/ overlay is where a brand's sprites live (theme-split); the core keeps none
+  const outDir = Deno.args.find((a) => a.startsWith("--out="))?.slice(6) ?? `${ROOT}/packages/runtime`;
+  const out = `${outDir}/ds-${set}-${name}.webp`;
   await Deno.writeFile(out, webp);
   console.log(`ds-${set}-${name}.webp ${(webp.length / 1024).toFixed(0)}KB`);
 }

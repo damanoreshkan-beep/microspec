@@ -1,6 +1,7 @@
 // Shared request handler: /feed proxy + /_rt/* (shared runtime) + static app files.
-// /_rt/ is served framework-first, then from the product's rt/ overlay (its domain modules — the core does
-// not know the product, so those files live beside the product's apps and only exist in that tree).
+// /_rt/ is served OVERLAY-first — the product's rt/ (its domain modules AND its theme: rt/theme.css, its
+// sprites) shadows the framework file of the same name, exactly as the build copies the overlay on top —
+// then from the framework. The core does not know the product; those files only exist in that tree.
 import { serveDir } from "jsr:@std/http@^1/file-server";
 import { pkgRoot } from "../runtime/pkgroot.js";
 const RT = new URL("packages/runtime/", pkgRoot(import.meta.url, 2)).pathname;
@@ -23,9 +24,11 @@ export function makeHandler(appdir) {
       } catch (e) { return new Response("", { status: 502 }); }
     }
     if (u.pathname.startsWith("/_rt/")) {
-      const r = await serveDir(req, { fsRoot: RT, urlRoot: "_rt", quiet: true });
-      if (r.status !== 404 || !RT2) return r;
-      return serveDir(req, { fsRoot: RT2, urlRoot: "_rt", quiet: true });
+      if (RT2) {
+        const o = await serveDir(req, { fsRoot: RT2, urlRoot: "_rt", quiet: true });
+        if (o.status !== 404) return o;
+      }
+      return serveDir(req, { fsRoot: RT, urlRoot: "_rt", quiet: true });
     }
     return serveDir(req, { fsRoot: appdir, quiet: true });
   };

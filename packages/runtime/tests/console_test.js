@@ -26,7 +26,7 @@ Deno.test("console · one device, and the aperture is never rationed", async () 
   for (const forbidden of ["brick.wasm", "hunt.wasm", "SCRW", "ammo", "spear", "crouch"])
     assert(!code.includes(forbidden), `console.js references "${forbidden}" in CODE — the shell must be game-agnostic`);
 
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const screen = /\.ms-screen\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
   assert(/width:\s*100%/.test(screen), ".ms-screen no longer takes the whole body width");
   assert(!/--sh-screen-w/.test(css),

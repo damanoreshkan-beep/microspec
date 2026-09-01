@@ -8,7 +8,7 @@ import { pkgRoot } from "../pkgroot.js";
 const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
 
 Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit consumes", async () => {
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const declared = new Set([...css.matchAll(/(--(?:ms|app|dock|hdr)-[a-z-]+)\s*:/g)].map((m) => m[1]));
   const used = new Set([...ui.matchAll(/var\((--[a-z-]+)\)/g)].map((m) => m[1]));
@@ -23,7 +23,7 @@ Deno.test("design tokens: --ms-hero STEPS with the height ladder", async () => {
   // the weather hero filled a 340px floating window on its own and pushed the whole app below the fold —
   // a defect no gate can see, because a page that scrolls is allowed to scroll. So the rule is not "it
   // exists" but "it moves": a hero that does not compact is the same bug wearing a token's name.
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const vals = [...css.matchAll(/--ms-hero:\s*([\d.]+)rem/g)].map((m) => Number(m[1]));
   assert(vals.length >= 4, `--ms-hero is declared ${vals.length} time(s); the height ladder has more steps`);
   const base = vals[0];
@@ -37,7 +37,7 @@ Deno.test("design tokens: --ms-hero STEPS with the height ladder", async () => {
 });
 
 Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and stays sane at every step", async () => {
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
 
   const decl = /--ms-r-in:\s*([^;]+);/.exec(css);
   assert(decl, "theme.css lost --ms-r-in — the concentric radius every nested surface reads");
@@ -150,7 +150,7 @@ Deno.test("icons: the farm draws from ONE set (lucide) — a second library is a
 });
 
 Deno.test("a11y: MUTED text (an alpha over a surface) clears 4.5:1 — the pair axe actually measures", async () => {
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const tokens = (theme) => {
     const i = css.indexOf(`[data-theme="${theme}"] {`);
     const out = {};
@@ -233,7 +233,7 @@ Deno.test("a11y: muted text is the TOKEN, never an alpha — .text-base-content/
 });
 
 Deno.test("design tokens: density steps DOWN as the viewport gets shorter (landscape must compact)", async () => {
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   // each `@media (max-height: N)` block, smallest N last — read --ms-gap out of every one
   const steps = [...css.matchAll(/@media \(max-height:\s*(\d+)px\)\s*\{([\s\S]*?)\n\}/g)]
     .map((m) => ({ h: Number(m[1]), gap: /--ms-gap:\s*([\d.]+)rem/.exec(m[2])?.[1] }))
@@ -251,7 +251,7 @@ Deno.test("design tokens: density steps DOWN as the viewport gets shorter (lands
 });
 
 Deno.test("design system: the fit contract disables page scroll on BOTH html and body", async () => {
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const rule = /html\.ms-fit,\s*html\.ms-fit body\s*\{([^}]*)\}/.exec(css);
   assert(rule, "html.ms-fit + body rule is gone — a fit screen would scroll again");
   assert(/overflow:\s*hidden/.test(rule[1]), "a fit page must not scroll");
@@ -290,7 +290,7 @@ Deno.test("dock height is MEASURED, not a constant — nothing may sit under the
   const render = await Deno.readTextFile(P("packages/runtime/render.js"));
   assert(/ResizeObserver/.test(render) && /setProperty\("--dock-h"/.test(render),
     "the runtime must measure the dock and publish --dock-h; a hand-written constant is wrong the moment the dock's metrics move (and it fails by COVERING content, which no overflow check can see)");
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   // exactly one declaration — the first-paint fallback at :root. A second one in a media query is the
   // guess this measurement exists to delete.
   assertEquals([...css.matchAll(/--dock-h:/g)].length, 1, "--dock-h must be declared once (the :root fallback); the live value comes from the measurement");
@@ -310,7 +310,7 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
   // The rule that makes it impossible rather than merely remembered: a media query may compact the ELEMENT,
   // never the published number. Write the token and the two disagree; style the element and the measurement
   // follows on its own.
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const render = await Deno.readTextFile(P("packages/runtime/render.js"));
 
   for (const v of ["--hdr-h", "--dock-h", "--dock-w"]) {
@@ -394,7 +394,7 @@ Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts o
   // The rule answers "what fits inside me", so its input is the component's own box: a slider group can sit
   // in a panel, a sheet, a 38% side column or a 200px watch screen, and the viewport describes none of them.
   // Driving it from a viewport HEIGHT query is what made it unpredictable for three commits.
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const at = css.indexOf(".ms-cols {");
   assert(at > 0, ".ms-cols rule is gone");
 
@@ -419,7 +419,7 @@ Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts o
 });
 
 Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager, the tap floor holds", async () => {
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const at = css.indexOf("@media (max-width: 300px)");
   assert(at > 0, "no watch breakpoint — the farm's smallest screen is 208px, not 320px");
   const block = css.slice(at, css.indexOf("\n}\n", css.indexOf(".ms-side >", at)));
@@ -462,7 +462,7 @@ Deno.test("watch mode — the dock's own position is styleable (no inline style 
   const render = await Deno.readTextFile(P("packages/runtime/render.js"));
   const nav = render.slice(render.indexOf("<nav data-dock"), render.indexOf("</nav>", render.indexOf("<nav data-dock")));
   assert(!/style="[^"]*bottom:/.test(nav), "the dock's `bottom` is an inline style — watch mode cannot move it");
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   assert(/nav\[data-dock\]\s*\{\s*bottom:/.test(css), "…and nothing in theme.css positions it instead");
   // --dock-w is the rail's footprint; content clears it the way it cleared --dock-h.
   assert(/--dock-w/.test(render) && /--dock-w/.test(css), "the rail's width must be published and consumed");
@@ -472,7 +472,7 @@ Deno.test("the surface system: every interactive node declares a state, and none
   // BLOCK 7 — the contract. The system is only a system if a widget's volume comes from a NAMED state
   // rather than a shadow someone wrote in place. Two halves: the kit must not hardcode shadows, and every
   // node the reference enumerates must have a rule.
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const render = await Deno.readTextFile(P("packages/runtime/render.js"));
 
@@ -511,11 +511,12 @@ Deno.test("the surface system: every interactive node declares a state, and none
   assert(!/background:\s*var\(--app-accent\)/.test(focus), "focus fills the field with the accent");
 });
 
-Deno.test("the material: light IS the structure — a rim on every surface, a bloom on the lifted ones, a black page", async () => {
-  // The luminous material (docs/research/luminous-icons.md, 2026-08-31). It replaced the neumorphic pair,
-  // and the invariant it replaced was "the base has headroom in both directions". This one is the opposite:
-  // the page is TRUE BLACK and nothing is ever darkened to show depth — an edge catches light, or it doesn't.
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+// The BRAND's material test ("light IS the structure — a rim on every surface, a bloom on the lifted ones, a
+// black page") lives with the brand now: DreamStudio's rt/tests/theme_test.js reads rt/theme.css. The core's
+// runtime.css carries the STRUCTURE and a neutral default, and this suite holds only what every brand must
+// keep: the tokens exist, every composed surface carries a ring, no 45° pair, the poles are text-safe.
+Deno.test("the neutral material: every surface token a brand composes has a value, with a ring and no 45° pair", async () => {
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   // A theme is declared in MORE THAN ONE block (the palette, then the surface tokens), so reading "the
   // block after the selector" answers a different question than the one being asked. Collect them all.
   const themeBlock = (t) => {
@@ -541,13 +542,9 @@ Deno.test("the material: light IS the structure — a rim on every surface, a bl
       assert(b.includes(v + ":"), `${theme} does not define ${v}`);
       assert(ring.test(value(b, v)), `${theme} ${v} has no rim — a surface with no lit edge is invisible on black`);
     }
-    // The third term is the BLOOM on black; on paper a glow is a smear (measured on the icons), so the raised
-    // surface casts instead — a soft warm shadow is what a lifted sheet of paper does.
-    assert(/--lm-bloom\b|--nm-cast/.test(value(b, "--sf-drop")) && value(b, "--sf-drop").includes("--lm-rim-hi"),
-      `${theme} --sf-drop must carry the top edge AND a bloom (dark) or a cast (paper) — a raised surface is the one the light lands on`);
+    assert(value(b, "--sf-drop").includes("--lm-rim-hi"), `${theme} --sf-drop must carry the top edge — a raised surface is the one the light lands on`);
     assert(value(b, "--sf-press").includes("--lm-bloom-hi"), `${theme} --sf-press must turn the rim to accent — pressing something LIGHTS it`);
     assert(/inset 0 \d+px \d+px rgba\(/.test(value(b, "--sf-sink")), `${theme} --sf-sink needs a dark inner top — a well the light does not reach`);
-    assert(!/--lm-bloom\b/.test(value(b, "--sf-sink")), `${theme} --sf-sink glows — a recess does not catch light`);
 
     // 3. base-100 === base-200, still: a raised surface is the page with a lit edge, not a lighter panel.
     const tok = (n) => /#[0-9A-Fa-f]{6}/.exec(b.slice(b.indexOf(`--color-${n}:`)))[0].toUpperCase();
@@ -560,24 +557,19 @@ Deno.test("the material: light IS the structure — a rim on every surface, a bl
     }
   }
 
-  // 5. The dark page is TRUE BLACK — the ground the 75 icons were generated on. A grey page under them turns
-  //    every tile into an island; the whole point of the base repaint was to let the tiles melt into it.
-  const dark = themeBlock("signal");
-  assertEquals(/--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(dark)[1].toUpperCase(), "#000000", "the dark page must be #000000 — the icons' own ground");
-  // …and the light one is not pure white: paper, so the white top edge still has a page to read against.
-  const light = themeBlock("signal-light");
-  assert(/--color-base-100:\s*#(?!FFFFFF)[0-9A-Fa-f]{6}/i.test(light), "the light page must be paper, not #FFFFFF — a white rim on white is nothing");
+  // 5. Every brand hook resolves to NOTHING here: a tree with no brand must not reach for a sprite.
+  for (const v of ["--ds-strand", "--ds-lip", "--ds-scatter", "--ds-corner"]) {
+    assert(new RegExp(`${v}:\\s*none`).test(css), `${v} must default to none — the core owns no sprite`);
+  }
+  assert(!/ds-[nd]-[a-z]+\.webp/.test(css), "runtime.css names a brand sprite — sprites live in the product's rt/");
 
-  // 6. The bloom compacts with the density ladder. A 32px glow that never steps is most of a control on a
-  //    200px-tall split-screen window.
+  // 6. The bloom ladder is structural: it steps with the density ladder, negative spread at every step.
   const steps = [...css.matchAll(/@media \(max-height:\s*(\d+)px\)\s*\{[^}]*--lm-g:\s*(\d+)px/g)]
     .map((m) => ({ h: +m[1], g: +m[2] })).sort((a, b) => b.h - a.h);
   assert(steps.length >= 2, "the bloom radius does not step with the density ladder");
   for (let i = 1; i < steps.length; i++) {
     assert(steps[i].g < steps[i - 1].g, `--lm-g does not shrink at ${steps[i].h}px — the bloom must compact with everything else`);
   }
-  // A negative spread on the raised bloom, at every step: the glow hugs the edge instead of flooding the
-  // neighbours. A positive spread turns a list of cards into one continuous haze.
   for (const m of css.matchAll(/--lm-gs:\s*(-?\d+)px/g)) assert(Number(m[1]) < 0, `--lm-gs is ${m[1]}px — the raised bloom must have a NEGATIVE spread`);
 });
 
@@ -586,7 +578,7 @@ Deno.test("the material: the pair of light is text-safe in BOTH themes — the C
   // and no single vivid colour clears 4.5:1 on both a black and a paper ground (the noir pass shipped that
   // and failed axe across the whole farm at once, with every local gate green). So the two poles are tuned
   // per theme and checked here, on every bed the muted token is checked on.
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const tokens = (theme) => {
     const i = css.indexOf(`[data-theme="${theme}"] {`);
     const out = {};
@@ -621,8 +613,10 @@ Deno.test("the material: the pair of light is text-safe in BOTH themes — the C
 });
 
 Deno.test("PWA chrome colours track the theme bases — the surface no screenshot can see", async () => {
-  const root = `file://${Deno.cwd()}/`; // the apps are the CONSUMER's; the css is the package's
-  const css = await Deno.readTextFile(new URL("packages/runtime/theme.css", pkgRoot(import.meta.url, 3)));
+  const root = `file://${Deno.cwd()}/`; // the apps are the CONSUMER's; the css is the EFFECTIVE theme —
+  // the consumer's rt/theme.css when it has a brand, else the package's neutral runtime.css (what scaffold measures)
+  const css = await Deno.readTextFile(new URL("rt/theme.css", root)).catch(() =>
+    Deno.readTextFile(new URL("packages/runtime/runtime.css", pkgRoot(import.meta.url, 3))));
   const baseOf = (t) => {
     const i = css.indexOf(`[data-theme="${t}"] {`);
     return /--color-base-100:\s*(#[0-9A-Fa-f]{6})/.exec(css.slice(i))[1].toUpperCase();
@@ -665,7 +659,7 @@ Deno.test("material: a SURFACE is extruded, never a fill with a line drawn round
 });
 
 Deno.test(".ms-stage — a fixed stage consumes the chrome contract, and nobody hand-writes it", async () => {
-  const css = await Deno.readTextFile(P("packages/runtime/theme.css"));
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const at = css.indexOf(".ms-stage {");
   assert(at > 0, "no .ms-stage — a fixed stage has nothing to consume but hand-written numbers");
   const rule = css.slice(at, css.indexOf("}", at));

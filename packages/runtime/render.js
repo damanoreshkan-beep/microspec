@@ -536,13 +536,15 @@ const AndroidMark = () => html`<svg width="26" height="16" viewBox="0 0 256 150"
 // accent for the current mode (`swatch: { dark: [base, accent], light: [...] }` in themes.json) — so a
 // theme shows its colours before it has a face.
 function MaterialSheet({ open, materials, current, loc, theme }) {
-  const mode = theme === "signal-light" ? "light" : "dark";
+  // the mode the DOCUMENT is in — `?theme=light` (the gate, the eye) overrides the atom without writing it
+  const applied = typeof document !== "undefined" ? document.documentElement.getAttribute("data-theme") : null;
+  const mode = (applied || theme) === "signal-light" ? "light" : "dark";
   return html`<${Sheet} id="material-sheet" open=${open} onClose=${() => A.S.screen.set(null)} title=${sys("material", loc)} subtitle=${sys("materialPick", loc)} icon="lucide:palette" locale=${loc}>
     <div class="grid grid-cols-3 gap-2.5" data-materials>
       ${materials.map((m) => {
         const sw = m.swatch?.[mode] || m.swatch?.dark;
         return html`<button key=${m.id} type="button" data-material-id=${m.id} aria-pressed=${m.id === current}
-          class=${`flex flex-col items-center gap-1.5 rounded-[var(--ms-r-in)] p-2 sf-inset ${m.id === current ? "ring-2 ring-[var(--app-accent)]" : ""}`}
+          class="flex flex-col items-center gap-1.5 rounded-[var(--ms-r-in)] p-2 sf-inset"
           onClick=${() => { A.S.material.set(m.id); A.S.screen.set(null); }}>
           ${m.thumb
             ? html`<img src=${`/_rt/${m.thumb}`} alt="" loading="lazy" decoding="async" class="w-full aspect-square rounded-full object-cover bg-black" />`

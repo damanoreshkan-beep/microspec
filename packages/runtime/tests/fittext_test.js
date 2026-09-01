@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "jsr:@std/assert";
+import { assert, assertEquals } from "jsr:@std/assert@1";
 import { fitText, fitTextSource, FIT_CSS } from "../fittext.js";
 
 /** An element whose wrapped extent is a known function of the font size. */

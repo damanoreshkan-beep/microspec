@@ -1,3 +1,12 @@
+/* @ts-self-types="./server_test.d.ts" */
+/**
+ * # tests/mcp — the MCP server contract, as a consumer-runnable suite
+ *
+ * Spawns the core's MCP server as a real subprocess and drives it over stdio exactly as a client does —
+ * the only path production traffic takes. Exported so a consumer's 8n8 node `mcp` runs it through a local
+ * one-line test file (`import "@microspec/core/tests/mcp";`). It exports nothing.
+ * @module
+ */
 // microspec — MCP server contract test. Spawns tools/mcp/server.mjs as a real subprocess and drives it
 // over stdio exactly as a client does, because that is the only path production traffic takes: an in-process
 // call to a handler would pass while the framing, the notification rule or the stdout discipline was broken.

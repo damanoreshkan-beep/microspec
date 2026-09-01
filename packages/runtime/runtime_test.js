@@ -1,3 +1,14 @@
+/* @ts-self-types="./runtime_test.d.ts" */
+/**
+ * # tests/runtime — the runtime's unit-test barrel, runnable by a consumer
+ *
+ * One file per module under `packages/runtime/tests/`, imported here so Deno registers every suite the
+ * moment the barrel loads. Exported so a consumer tree runs the SAME suites against the pinned core with a
+ * one-line local test file (`deno test` refuses a remote URL as a test module — silently, when a local file
+ * rides along): the 8n8 node `unit` in a consumer points at `.microspec/tests/unit_test.js`, which is
+ * `import "@microspec/core/tests/runtime";`. It exports nothing.
+ * @module
+ */
 // microspec runtime — the unit-test BARREL. The suite used to be one 6287-line file; it is now one file per
 // module under ./tests/, imported here. CI and `deno task test` both name THIS path, so the barrel is what
 // keeps them working: Deno registers a test the moment its module is imported. Adding a suite means adding a

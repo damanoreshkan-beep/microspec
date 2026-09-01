@@ -1,3 +1,12 @@
+/* @ts-self-types="./run_test.d.ts" */
+/**
+ * # tests/8n8 — the pipeline registry's contract, as a consumer-runnable suite
+ *
+ * The runner trusts the registry completely, so the registry is what gets tested: unique ids, resolvable
+ * `needs`, no cycles, every script node with an argv. Exported so a consumer's 8n8 node `pipeline` runs it
+ * through a local one-line test file (`import "@microspec/core/tests/8n8";`). It exports nothing.
+ * @module
+ */
 // 8n8 registry contract. The runner trusts the registry completely, so the registry is what gets tested:
 // a bad `needs` or a cycle would surface as a hang or a silently-skipped gate, which is the failure mode
 // this whole tool exists to remove.

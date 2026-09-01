@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "license": "MIT",
   "publish": {
     "exclude": [
@@ -87,6 +87,7 @@
     "./runtime/hdr.js": "./packages/runtime/hdr.js",
     "./runtime/hero.js": "./packages/runtime/hero.js",
     "./runtime/i18n.js": "./packages/runtime/i18n.js",
+    "./runtime/imagejob.js": "./packages/runtime/imagejob.js",
     "./runtime/imgsize.js": "./packages/runtime/imgsize.js",
     "./runtime/index.js": "./packages/runtime/index.js",
     "./runtime/lastgen.js": "./packages/runtime/lastgen.js",

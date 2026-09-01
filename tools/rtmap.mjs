@@ -30,9 +30,11 @@
  * Inputs, in the order the code reads them:
  * - `rt/` — every `.js` file except `_test.js` suites, sorted: the overlay's names. No `rt/`, or an empty
  *   one, means the framework tree: `✓ no rt/ overlay — no preflight map needed`, exit 0, nothing written.
- * - the consumer's `deno.json` `imports` — must carry a `jsr:@microspec/core@<version>` pin; that version is
- *   the base `https://jsr.io/@microspec/core/<version>/`. Without it: `rtmap: deno.json imports carry no
- *   jsr:@microspec/core@<version> pin`, exit 1.
+ * - the consumer's `deno.json` `imports` — must carry a `jsr:@microspec/core@<spec>` entry. The spec is a
+ *   RANGE by default (`@1` = every 1.x; the owner edits no version by hand), so the base is the version that
+ *   RESOLVED — `deno.lock`'s specifiers entry, else the npm-compat package under node_modules — as
+ *   `https://jsr.io/@microspec/core/<resolved>/`. No entry: `rtmap: deno.json imports carry no
+ *   jsr:@microspec/core@<spec> entry`, exit 1; a range that has not resolved yet: `run deno task install first`.
  * - the core's own `deno.json` manifest (the npm pins — ONE source, so one preact instance) and its
  *   `packages/gates/preflight.importmap.json` (the app-only pins: motion, lodash-es, …). Manifest keys win.
  *
@@ -95,10 +97,24 @@ if (!names.length) {
   Deno.exit(0);
 }
 
-// the consumer's pinned core version — the single source is its own deno.json imports entry
+// the consumer's core version. Its deno.json imports name a jsr:@microspec/core@<spec>; the spec is a RANGE
+// by default (`@1` = every 1.x — the owner edits no version by hand, 2026-09-01), so the version the map is
+// built for is the one that RESOLVED: deno.lock's specifiers entry for that spec, else the package the
+// npm-compat channel materialized. An exact spec needs no lookup.
 const consumer = JSON.parse(await Deno.readTextFile("deno.json"));
-const pin = /jsr:@microspec\/core@([^/"]+)/.exec(JSON.stringify(consumer.imports ?? {}))?.[1];
-if (!pin) { console.error("rtmap: deno.json imports carry no jsr:@microspec/core@<version> pin"); Deno.exit(1); }
+const spec = /jsr:@microspec\/core@([^/"]+)/.exec(JSON.stringify(consumer.imports ?? {}))?.[1];
+if (!spec) { console.error("rtmap: deno.json imports carry no jsr:@microspec/core@<spec> entry"); Deno.exit(1); }
+const resolvedCore = async () => {
+  if (/^\d+\.\d+\.\d+/.test(spec)) return spec;
+  try {
+    const lock = JSON.parse(await Deno.readTextFile("deno.lock"));
+    const v = lock.specifiers?.[`jsr:@microspec/core@${spec}`];
+    if (v) return v;
+  } catch { /* no lock */ }
+  try { return JSON.parse(await Deno.readTextFile("node_modules/@microspec/core/package.json")).version; } catch { /* not installed */ }
+  console.error(`rtmap: jsr:@microspec/core@${spec} has not resolved yet — run deno task install first`); Deno.exit(1);
+};
+const pin = await resolvedCore();
 const base = `https://jsr.io/@microspec/core/${pin}/`;
 
 // The bare-dep pins come from the CORE'S OWN MANIFEST (npm:…), never esm.sh: the core's modules load from

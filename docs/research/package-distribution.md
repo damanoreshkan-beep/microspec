@@ -16,6 +16,13 @@ note; this file records what the build actually depends on).
    under node_modules runs in the **npm realm**, where `jsr:`/`https:` imports are refused and preact
    splits into two instances.
 
+**2026-09-01 — a RANGE, not a pin.** The owner: "постав версію просто 1.х.х щоб усі версії". Both
+channels now carry `@1` (`jsr:@microspec/core@1`, `npm:@jsr/microspec__core@1`): every 1.x release
+satisfies it, nobody edits a version by hand, `deno.lock` records what resolved and `deno task install`
+takes the newest. Anything that needs the concrete version (rtmap's `https://jsr.io/@microspec/core/<v>/`
+base) reads it from the lock's `specifiers` entry, else from the materialized package — never from the
+import string. The `.microspec/core.mjs` dispatcher needs nothing: it resolves through the import map.
+
 ## The realm laws (each one cost a red round)
 
 - **A remote (jsr/https) importer may neither `import()` a `file://` nor resolve through the import map.**

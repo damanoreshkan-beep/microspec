@@ -29,9 +29,11 @@
  * Inputs, in the order the code reads them:
  * - `rt/` — every `.js` file except `_test.js` suites, sorted: the overlay's names. No `rt/`, or an empty
  *   one, means the framework tree: `✓ no rt/ overlay — no preflight map needed`, exit 0, nothing written.
- * - the consumer's `deno.json` `imports` — must carry a `jsr:@microspec/core@<version>` pin; that version is
- *   the base `https://jsr.io/@microspec/core/<version>/`. Without it: `rtmap: deno.json imports carry no
- *   jsr:@microspec/core@<version> pin`, exit 1.
+ * - the consumer's `deno.json` `imports` — must carry a `jsr:@microspec/core@<spec>` entry. The spec is a
+ *   RANGE by default (`@1` = every 1.x; the owner edits no version by hand), so the base is the version that
+ *   RESOLVED — `deno.lock`'s specifiers entry, else the npm-compat package under node_modules — as
+ *   `https://jsr.io/@microspec/core/<resolved>/`. No entry: `rtmap: deno.json imports carry no
+ *   jsr:@microspec/core@<spec> entry`, exit 1; a range that has not resolved yet: `run deno task install first`.
  * - the core's own `deno.json` manifest (the npm pins — ONE source, so one preact instance) and its
  *   `packages/gates/preflight.importmap.json` (the app-only pins: motion, lodash-es, …). Manifest keys win.
  *

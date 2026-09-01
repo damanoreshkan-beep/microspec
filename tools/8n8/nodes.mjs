@@ -93,6 +93,13 @@ export const NODES = [
       "render. A stale declaration is red here, before it is stale on the registry. No-op in a consumer.",
     run: () => ["deno", "run", "-A", at("tools/dts.mjs"), "--check"],
   },
+  {
+    id: "docart", kind: "script", phase: "gate", needs: [], scope: "farm", frozen: "2026-09-01",
+    why: "The registry docs' diagrams (docs/art/*.svg) are generated from THIS registry and the breakpoint " +
+      "table — a node added here gets its diagram on the next run, and a drawing can never contradict " +
+      "the DAG it explains. Stale art is red before jsr.io shows it. No-op in a consumer.",
+    run: () => ["deno", "run", "-A", at("tools/art/docart.mjs"), "--check"],
+  },
 
   {
     id: "validate", kind: "script", phase: "gate", needs: ["spec", "demo"], scope: "farm", frozen: "2026-06-11",
@@ -249,7 +256,7 @@ export function topo(nodes = NODES) {
 }
 
 export const FLOWS = {
-  gates: ["demo", "rtmap", "dts", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
+  gates: ["demo", "rtmap", "dts", "docart", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
   author: ["research", "spec", "i18n", "view", "scaffold"],
   ship: ["push"],
   all: NODES.map((n) => n.id),

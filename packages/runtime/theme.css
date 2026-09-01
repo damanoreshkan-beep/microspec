@@ -499,10 +499,40 @@ header.navbar::after {
 [data-garland] {
   position: absolute;
   inset: 0;
+  z-index: 1;                      /* the garland hangs in front of the corner curls */
   background: var(--ds-strand) center var(--ds-strand-y) / 50% auto repeat-x;
   opacity: var(--ds-strand-a);
 }
 @media (min-width: 640px) { [data-garland] { background-size: 192px auto; background-position: center calc(100% + 89px); } }
+
+/* The corner curls — the enclosure's own decor, in the two corners nothing else claims: the bottom ones,
+   either side of the centred dock pill. The 150px sprite sits mostly OUTSIDE the viewport (−42px sideways,
+   −58px down) and the dock zone clips it, so what shows is the swirl's inner arc climbing out of the
+   corner, never a whole pasted picture. Night's curl opens to the right; the left one is mirrored so both
+   curl inward. A scaleX carries no translation, which is what the chrome-decor gate reads. */
+[data-dock-fade] { overflow: hidden; }
+[data-dock-fade]::before, [data-dock-fade]::after {
+  content: "";
+  position: absolute;
+  bottom: -58px;
+  width: 150px; height: 150px;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--ds-corner) center / contain no-repeat;
+  opacity: var(--ds-corner-a);
+}
+[data-dock-fade]::before { left: -42px; transform: scaleX(-1); }
+[data-dock-fade]::after { right: -42px; }
+@media (max-width: 300px) { [data-dock-fade]::before, [data-dock-fade]::after { display: none; } }
+
+/* The theme toggle's art: the portal's two sides are a moon and a sun, so the switch between them shows
+   the side you are on — a ring of woven light at night, the gilded sun by day (the sprites, not glyphs). */
+[data-theme-art] {
+  display: block;
+  width: 2.5rem; height: 2.5rem;
+  flex-shrink: 0;
+  background: var(--ds-theme-art) center / contain no-repeat;
+}
 
 /* An empty state sits on scattered light — fireflies at night, gold motes by day — centred on the glyph:
    the sprite's dense core is at 48% of its height (ds-n-scatter rows 173–200 of 384; ds-d-scatter 225–271
@@ -551,6 +581,9 @@ header.navbar::after {
   --ds-lip-a: .75;
   --ds-scatter: url("/_rt/ds-n-scatter.webp"); /* fireflies behind an empty state */
   --ds-scatter-a: .8;
+  --ds-corner: url("/_rt/ds-n-corner.webp");   /* the curl of light in the portal's bottom corners */
+  --ds-corner-a: .55;
+  --ds-theme-art: url("/_rt/ds-n-ring.webp");  /* the theme toggle's moon — a ring of woven light */
   --lm-lip:      rgba(255, 238, 208, .58);     /* the header's lit hairline — a real line of light */
   --lm-lip-glow: color-mix(in oklch, var(--app-accent) 26%, transparent);
 
@@ -592,6 +625,9 @@ header.navbar::after {
   --ds-lip-a: 0;
   --ds-scatter: url("/_rt/ds-d-scatter.webp"); /* gold motes behind an empty state */
   --ds-scatter-a: .9;
+  --ds-corner: url("/_rt/ds-d-corner.webp");   /* a gilded thread curling out of the corner */
+  --ds-corner-a: .8;
+  --ds-theme-art: url("/_rt/ds-d-sun.webp");   /* the theme toggle's sun */
   --lm-lip:      rgba(20, 18, 16, .18);        /* the lip on paper: a hairline of ink */
   --lm-lip-glow: transparent;
 

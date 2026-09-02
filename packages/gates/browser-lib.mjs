@@ -426,8 +426,22 @@ export async function runDesignChecks(ev) {
   const ovi = await ev(() => {
     const ov = document.documentElement.scrollWidth - window.innerWidth;
     if (ov <= 1) return { ov: 0 };
+    const nameOf = (el) => { const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; return el.tagName.toLowerCase() + (cls ? "." + cls : ""); };
     let sel = "?", far = window.innerWidth;
-    for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; sel = el.tagName.toLowerCase() + (cls ? "." + cls : ""); } }
+    for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; sel = nameOf(el); } }
+    // A report with no subject costs commits of guessing (sonar, 2026-09-01: "+42px — винуватець: ?").
+    // When nothing ends past the right edge — a transform mid-frame, or a negative left widening the scroll
+    // box — name the leftmost negative element, else the widest one, so the failure always carries a lead.
+    if (sel === "?") {
+      let leftmost = 0, lsel = "", widest = null, w = 0;
+      for (const el of document.querySelectorAll("body *")) {
+        const r = el.getBoundingClientRect(); if (r.width <= 0) continue;
+        if (r.left < leftmost - 0.5) { leftmost = r.left; lsel = nameOf(el); }
+        if (r.width > w) { w = r.width; widest = el; }
+      }
+      sel = leftmost < -0.5 ? `${lsel} (виступає ліворуч на ${Math.round(-leftmost)}px)`
+        : widest ? `${nameOf(widest)}[w${Math.round(w)}] — найширший; за правий край ніхто не вийшов, підозрюй transform у кадрі` : "?";
+    }
     return { ov, sel };
   });
   out.push(ovi.ov <= 1 ? { name: "phone 384px: без горизонтального overflow", ok: true } : { name: "phone 384px: overflow", ok: false, msg: `+${ovi.ov}px — винуватець: ${ovi.sel}` });

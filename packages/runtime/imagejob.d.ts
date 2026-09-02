@@ -19,6 +19,8 @@
  * ## What it exports
  * - {@link startJob} — `(base, body)` POSTs the job and resolves its id; throws `{ code }` with the i18n key a view should show.
  * - {@link follow} — `({ base, job, alive, onLive, onSlide })` polls until the race ends; resolves `"done" | "error" | "busy" | "timeout" | "stale"`.
+ * - {@link followOne} — `({ base, job, alive, onLive })` the ONE-RESULT contract (`k: 1`, and every audio job): the status URL itself
+ *   turns into the bytes; resolves `{ status, blob?, url?, by? }` with the same status words.
  * - {@link cancelJob} — `(base, job)` tells the edge to stop a race nobody will watch; fire-and-forget.
  * - {@link POLLS} · {@link EVERY} — the poll budget (135 × 1500 ms ≈ 200 s), exported so a caller can size its own timers.
  *
@@ -41,7 +43,8 @@
  *   picture that landed at 160 s (measured 2026-08-20). 135 × 1.5 s it is.
  * - `alive()` is the caller's staleness guard — a superseded run resolves `"stale"` and lands nothing.
  * - `k > 1` is the SLIDES protocol and the only one that honours `aspect` + `ratio`; `k: 1` returns the
- *   single picture's bytes from the status URL itself, which this follower does not read.
+ *   single result's bytes from the status URL itself — that is {@link followOne}'s contract (`/feed/voice`
+ *   answers only this way: one clip, `content-type: audio/*`), and `follow` never reads it.
  * - `"busy"` is capacity, not words: every Space queued out or refused. Back off; do not retry at once.
  * - Running out of polls CANCELS the job on the edge, or it spends the day's quota on pictures nobody reads.
  * @module
@@ -67,6 +70,27 @@ export function follow({ base, job, alive, onLive, onSlide }: {
     onLive: any;
     onSlide: any;
 }): Promise<any>;
+/**
+ * Follow a ONE-RESULT job to its end: the status URL answers progress JSON until the bytes themselves arrive.
+ * @param opts `base` the route (e.g. `${VPS_PROXY}/voice`) · `job` the id · `alive()` the caller's staleness guard · `onLive(meta)` mirrors progress (`stage`, `phase`, `eta`, `pct`, `elapsed`)
+ * @returns `{ status, blob?, url?, by? }` — `status` is `"done" | "error" | "busy" | "timeout" | "stale"`; `blob`/`url`/`by` only on `"done"`
+ */
+export function followOne({ base, job, alive, onLive }: {
+    base: any;
+    job: any;
+    alive?: () => boolean;
+    onLive: any;
+}): Promise<{
+    status: string;
+    blob?: undefined;
+    url?: undefined;
+    by?: undefined;
+} | {
+    status: string;
+    blob: any;
+    url: any;
+    by: any;
+}>;
 /**
  * Cancel a job on the edge (idempotent, fire-and-forget).
  * @param base the route

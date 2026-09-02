@@ -482,6 +482,13 @@ header.navbar::after {
 [data-theme-art="day"] { background-image: var(--ds-art-day); }
 [data-theme-art="night"] { background-image: var(--ds-art-night); }
 [data-empty] { position: relative; isolation: isolate; }
+/* The brand's MASCOT in an empty state — a figure above the glyph, from the product's tokens: the image in
+   --ds-mascot, the size in --ds-mascot-s (0 = no box, so a tree with no brand renders nothing at all). */
+[data-mascot] {
+  display: block;
+  width: var(--ds-mascot-s, 0px); height: var(--ds-mascot-s, 0px);
+  background: var(--ds-mascot, none) center / contain no-repeat;
+}
 /* The theme widget's chosen picture is RINGED in the accent, with a gap of page between (mirage's style
    sheet). A rule, not a Tailwind `ring-[var(--app-accent)]`: the build's class scanner drops an arbitrary
    var() utility, and a ring that exists only in the source is a ring nobody sees. */

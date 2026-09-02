@@ -181,7 +181,7 @@ const debouncedLoad = () => { clearTimeout(_searchT); _searchT = setTimeout(() =
 
 // data-empty: theme.css scatters the theme's own light behind the glyph (fireflies / gold motes) — the
 // "support plane is scattered light" rule of the icons, applied to the one screen that has nothing else.
-const Empty = (icon, text, hint) => html`<div data-empty class="flex flex-col items-center text-muted py-16 gap-2 text-center px-6">${Icon(icon, "text-4xl")}<span class="font-medium">${text}</span>${hint && html`<span class="text-sm text-muted">${hint}</span>`}</div>`;
+const Empty = (icon, text, hint) => html`<div data-empty class="flex flex-col items-center text-muted py-16 gap-2 text-center px-6"><span data-mascot aria-hidden="true"></span>${Icon(icon, "text-4xl")}<span class="font-medium">${text}</span>${hint && html`<span class="text-sm text-muted">${hint}</span>`}</div>`;
 
 // Loading placeholder: decoding cards (scramble text + blinking-pixel image) — never a spinner. The
 // placeholder must match the layout it stands in, or it misreports the shape of what is coming and guarantees

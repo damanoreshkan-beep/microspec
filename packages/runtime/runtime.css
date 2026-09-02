@@ -200,10 +200,16 @@ header.navbar::after {
 [data-theme-art="night"] { background-image: var(--ds-art-night); }
 [data-empty] { position: relative; isolation: isolate; }
 
+[data-mascot] {
+  display: block;
+  width: var(--ds-mascot-s, 0px); height: var(--ds-mascot-s, 0px);
+  background: var(--ds-mascot, none) center / contain no-repeat;
+}
 [data-materials] [data-thumb] { box-shadow: 0 0 0 1px var(--lm-rim, transparent); }
 [data-materials] [aria-pressed="true"] [data-thumb] { box-shadow: 0 0 0 2px var(--color-base-100), 0 0 0 4px var(--app-accent); }
 :root {
   --ds-strand: none; --ds-lip: none; --ds-scatter: none; --ds-corner: none;
+  
   --ds-art-day: none; --ds-art-night: none;
 }
 :root {
@@ -259,8 +265,12 @@ header.navbar::after {
   --sf-track-face: #DEDEE4;
   --ms-vol-key: transparent; --ms-vol-bounce: transparent; --ms-vol-rim: transparent; --ms-vol-sheen: transparent; --ms-vol-shade: transparent;
 }
+
 .sf-inset [aria-pressed="true"] { box-shadow: var(--sf-drop); }
+
+
 .btn:active:not(:disabled), [aria-pressed]:active { box-shadow: var(--sf-press); }
+
 
 .btn:not(.btn-ghost):not(.btn-link):not(:disabled) { box-shadow: var(--sf-drop); }
 .btn:not(.btn-link):not(:disabled):active { box-shadow: var(--sf-press); }
@@ -276,7 +286,6 @@ header.navbar::after {
   background: var(--sf-inset-face);
   box-shadow: var(--sf-sink);
 }
-
 .input, .select, .file-input { height: 3rem; }
 
 .input:focus, .input:focus-within, .textarea:focus, .select:focus, .file-input:focus {
@@ -287,11 +296,8 @@ header.navbar::after {
   box-shadow: var(--sf-sink), 0 0 0 2px color-mix(in oklch, var(--color-error) 35%, transparent);
 }
 
-
 .toggle, .checkbox, .radio { box-shadow: var(--sf-sink2); }
 .toggle:checked, .checkbox:checked, .radio:checked { box-shadow: var(--sf-lift2); }
-
-
 .progress { background: var(--sf-inset-face); box-shadow: var(--sf-sink2); }
 .progress::-webkit-progress-value { box-shadow: var(--sf-lift2); }
 .progress::-moz-progress-bar { box-shadow: var(--sf-lift2); }
@@ -331,6 +337,7 @@ body { letter-spacing: -0.006em; }
   border: 1px solid var(--color-base-300);
   color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
 }
+
 #status {
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -344,7 +351,6 @@ nav[data-dock] button > span {
   font-size: .58rem;
 }
 
-
 .modal-box {
   background: var(--color-base-100);
   transition-timing-function: cubic-bezier(.22, 1, .3, 1.12);
@@ -353,7 +359,6 @@ nav[data-dock] button > span {
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
-
 @keyframes msRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 .ms-stagger > * { animation: msRise .32s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
 @media (prefers-reduced-motion: reduce) { .ms-stagger > * { animation: none; } }
@@ -365,10 +370,11 @@ nav[data-dock] button > span {
 @media (prefers-reduced-motion: reduce) { .ms-detail-in { animation: none; } }
 
 .truncate { min-width: 0; }
-
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
 .overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
+
+
 @media (prefers-reduced-motion: reduce) {
   .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }
 }
@@ -377,7 +383,6 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 
 
 .ms-shell {
-  
   --sh-r: calc(var(--ms-r) * 1.2);
   --sh-r-in: max(var(--r-1), calc(var(--sh-r) - var(--ms-pad)));
   width: 100%;
@@ -387,7 +392,6 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
   background: var(--sh-body, var(--color-base-100));
   border-radius: var(--sh-r);
 }
-
 .ms-shell { --sh-body: var(--color-base-300); box-shadow: var(--sf-drop); }
 
 
@@ -407,10 +411,11 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 }
 .ms-pad { padding: 4%; }
 .ms-pad-hub { width: 92%; height: 92%; }
+
 .ms-pad-key { border-radius: 12%; }
 
-
 .ms-menu { flex-wrap: wrap; justify-content: center; }
+
 
 
 .ms-sweep { animation: ms-sweep 4s linear infinite; }

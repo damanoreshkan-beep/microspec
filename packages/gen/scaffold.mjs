@@ -50,6 +50,10 @@
  * - `sw.js` — a placeholder that precaches `./` and `./index.html` through `/_rt/sw-core.js`; `deploy/sw.mjs`
  *   replaces it from the finished import graph.
  * - `icon.svg` — the brand paths on a rounded 512 tile, the fallback for an app that has no art yet.
+ * - `spec.json` gains `added` (today, `YYYY-MM-DD`) on an app's FIRST scaffold only — no `index.html` yet
+ *   and no `added` — reported as `✓ spec.json (added: <date>)`. It is the app's birthday: `manifest` carries
+ *   it into the store's apps.json and the store's Fresh rubric lists the newest apps by it. A re-scaffold,
+ *   forced or not, never touches it.
  *
  * `theme-color` and `background_color` are MEASURED from the EFFECTIVE theme — the tree's `rt/theme.css`
  * when it has a brand, else the core's neutral `runtime.css` (`--color-base-100` of
@@ -226,6 +230,7 @@ const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512
 
 const files = { "index.html": indexHtml, "manifest.json": manifest, "sw.js": sw, "icon.svg": iconSvg };
 const hasArt = await has(`${dir}/icon.webp`);
+const firstScaffold = !(await has(`${dir}/index.html`));
 let wrote = 0;
 for (const [name, content] of Object.entries(files)) {
   const p = `${dir}/${name}`;
@@ -233,6 +238,12 @@ for (const [name, content] of Object.entries(files)) {
   if (!force && (await has(p))) { console.log(`  · ${name} (exists, kept)`); continue; }
   await Deno.writeTextFile(p, content);
   console.log(`  ✓ ${name}`);
+  wrote++;
+}
+if (firstScaffold && !spec.added) {
+  spec.added = new Date().toISOString().slice(0, 10);
+  await Deno.writeTextFile(`${dir}/spec.json`, JSON.stringify(spec, null, 2) + "\n");
+  console.log(`  ✓ spec.json (added: ${spec.added})`);
   wrote++;
 }
 console.log(`\nscaffolded ${dir} [${mode} mode] — ${wrote} file(s) written`);

@@ -31,6 +31,10 @@ A micro-app = `spec.json` (declarative UI) + `data.js` (`export async function l
   floor the glance check still narrows `#view`, still measures, and still prints its number and the
   offending element; it reports a **warning** instead of a failure. An app that has stated its limits
   is not hiding a defect — but reaching for this to quiet a layout you could have compacted is.
+- `added` (OPTIONAL, `YYYY-MM-DD`) — the day the app joined the farm. **Not authored:** `scaffold` stamps it
+  into `spec.json` the first time it scaffolds an app (no `index.html` yet), `manifest` carries it into the
+  store's `apps.json`, and the store's Fresh rubric lists the newest apps by it and lets them fall out as
+  they age. Never edit it after the first commit; an app without it is simply never "fresh".
 
 ---
 

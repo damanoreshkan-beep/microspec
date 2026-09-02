@@ -85,6 +85,7 @@ import { useRef, useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
 import { authWall } from "./authwall.js";
+import { shell } from "./shell.js";
 import { T, ago, whenLabel, sinceLabel, sys } from "./i18n.js";
 import { buildApk, fetchAppIcons, adaptiveFromTile, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
 import { gate } from "./gate.js";
@@ -1041,7 +1042,7 @@ function useBattery() {
       const q = new URLSearchParams(location.search), f = q.get("battery");
       if (f != null) { setB({ level: Math.max(0, Math.min(1, Number(f) / 100 || 0)), charging: q.get("charging") === "1", forced: true }); return; }
     } catch { /* no URL */ }
-    if (!matchMedia("(display-mode: fullscreen)").matches || typeof navigator === "undefined" || !navigator.getBattery) return;
+    if ((!matchMedia("(display-mode: fullscreen)").matches && !shell.present) || typeof navigator === "undefined" || !navigator.getBattery) return;
     let bat, dead = false;
     const read = () => { if (!dead && bat) setB({ level: bat.level, charging: bat.charging }); };
     navigator.getBattery().then((m) => { bat = m; read(); m.addEventListener("levelchange", read); m.addEventListener("chargingchange", read); }).catch(() => {});
@@ -1060,7 +1061,7 @@ function useBattery() {
  */
 export function Battery({ force = false } = {}) {
   const b = useBattery(), loc = useStore(A.S.locale);
-  if (!b || (!force && !b.forced && !matchMedia("(display-mode: fullscreen)").matches)) return null;
+  if (!b || (!force && !b.forced && !matchMedia("(display-mode: fullscreen)").matches && !shell.present)) return null;
   const pct = Math.round(b.level * 100), low = !b.charging && pct <= 15;
   return html`<span data-battery data-charging=${b.charging ? "1" : null} role="status" aria-label=${`${sys("battery", loc)} ${pct}%`}
     class=${`flex items-center gap-1.5 shrink-0 font-mono text-[0.7rem] tabular-nums ${low ? "text-error" : "text-base-content/80"}`}>

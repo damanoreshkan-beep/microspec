@@ -30,7 +30,9 @@
  *   `icon` (whether icon.webp exists), `screens` (per-locale tab labels, profile tabs excluded), `shots`
  *   (tab ids that have apps/store/assets/shot-id--tab.webp, in tab order), `bg` / `fg` (brand.json, or
  *   `#1f2430` / `#a78bfa`), `href`, `version`, `category` (`feeds` by default), `needs` (the sorted union
- *   of every tab's `needs`), and `deviceNote` when the spec names one.
+ *   of every tab's `needs`), `deviceNote` when the spec names one, and `added` (the app's birthday,
+ *   `YYYY-MM-DD`, stamped into spec.json by scaffold on the first scaffold) when the spec carries it — the
+ *   store's Fresh rubric lists the newest apps by it and drops them as they age.
  * - `version` is `spec.version`, or `1.` plus the number of commits touching the app — the same count
  *   deploy/build.mjs uses, so the store can flag a new version. Outside a git tree the count is 0.
  * - A directory without spec.json is skipped, never an error. brand.json, brand.svg and icon.webp are
@@ -131,6 +133,9 @@ export async function buildManifest() {
       // Which device the `usb` note names. Defaults to the HackRF (six apps); a non-HackRF USB app (ax56, an
       // RTL8852AU) sets `spec.deviceNote` to its own store i18n key so the disclosure names the right hardware.
       ...(spec.deviceNote ? { deviceNote: spec.deviceNote } : {}),
+      // The app's birthday (scaffold stamps it on the first scaffold). The store's Fresh rubric is this field
+      // and a window — the newest apps join by being scaffolded and leave by ageing, nobody curates a list.
+      ...(spec.added ? { added: spec.added } : {}),
     });
   }
   apps.sort((x, y) => x.title.localeCompare(y.title, "uk"));

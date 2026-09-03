@@ -101,7 +101,7 @@ const server = Deno.serve({ port: 0, signal: ac.signal, onListen: () => {} }, as
   return res;
 });
 const JOBS = Math.max(1, Math.min(8, Number(flag("--jobs", "4")) || 4));
-const base = `http://localhost:${server.addr.port}`;
+const baseOf = (w) => `http://127.0.0.${1 + (w % 8)}:${server.addr.port}`;
 await Deno.mkdir(OUT, { recursive: true });
 
 const NOISE = /favicon|net::|Failed to load resource|ERR_|status of [45]|CORS|Access-Control|manifest/i;
@@ -109,7 +109,8 @@ const browser = await bootBrowser(dev);
 const rows = [];
 let fails = 0;
 const byApp = new Map();
-async function runOne(app) {
+async function runOne(app, w = 0) {
+    const base = baseOf(w);
     const page = await browser.newPage();
     const errs = [];
     page.addEventListener("pageerror", (e) => errs.push("uncaught: " + String(e.detail?.message || e.detail || e).split("\n")[0].slice(0, 160)));
@@ -153,7 +154,7 @@ async function runOne(app) {
 }
 try {
   let next = 0;
-  await Promise.all(Array.from({ length: Math.min(JOBS, list.length) }, async () => { while (next < list.length) await runOne(list[next++]); }));
+  await Promise.all(Array.from({ length: Math.min(JOBS, list.length) }, async (_, w) => { while (next < list.length) await runOne(list[next++], w); }));
   for (const app of list) {
     const r = byApp.get(app) || { app, ok: false, why: ["not run"] };
     rows.push(r);

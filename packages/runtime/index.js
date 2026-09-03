@@ -65,6 +65,7 @@ import { haptic, hapticFor } from "./sensors.js";
 import { installSealedFetch } from "./sealedfetch.js";
 import { gate } from "./gate.js";
 import { loadMaterials, applyMaterial } from "./material.js";
+import { installTelemetry } from "./telemetry.js";
 
 installSealedFetch();
 
@@ -109,6 +110,7 @@ export function start(spec, arg2) {
   app.canRefresh = typeof opts.load === "function";
   setApp(app, opts.views || {});
   const { S, load } = app;
+  installTelemetry(spec.id);   
 
   const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
   const urlTheme = (() => {

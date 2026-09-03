@@ -53,6 +53,7 @@ import { Fragment } from "preact";
 import { useState, useRef, useEffect } from "preact/hooks";
 import { gate } from "./gate.js";
 import { VPS_PROXY } from "./feed.js";
+import { report } from "./telemetry.js";
 import { Island } from "./ui.js";
 import { CameraPrime } from "./camprime.js";
 import { readLastGen } from "./lastgen.js";
@@ -96,8 +97,14 @@ export async function toDataURL(url, maxSide = MAX_SIDE) {
   try { return await decodeHere(url, maxSide); }
   catch (e) {
     if (gate || !/^(blob|data):/.test(url)) throw e;
-    const converted = await convertAtEdge(url);
-    return decodeHere(converted, maxSide);
+    let about = { type: "", size: 0 };
+    try { const bl = await (await fetch(url)).blob(); about = { type: bl.type, size: bl.size }; } catch {  }
+    report("intake.decode", { step: "local", msg: e?.message || String(e), ...about }, "warn");
+    let converted;
+    try { converted = await convertAtEdge(url); }
+    catch (e2) { report("intake.convert", { msg: e2?.message || String(e2), ...about }); throw e2; }
+    try { return await decodeHere(converted, maxSide); }
+    catch (e3) { report("intake.decode", { step: "converted", msg: e3?.message || String(e3), ...about }); throw e3; }
   }
 }
 function decodeHere(url, maxSide) {

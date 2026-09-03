@@ -49,3 +49,12 @@ Deno.test("startJob: the status maps to the i18n code the view shows", async () 
   const id = await withFetch(() => Promise.resolve(jsonRes({ job: "abc" })), () => startJob("http://x/feed/voice", { text: "hi" }));
   assertEquals(id, "abc");
 });
+
+Deno.test("followOne: a video answer carries its Space through x-video-by", async () => {
+  const mp4 = new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109]);   // ....ftypisom
+  const got = await withFetch(() => Promise.resolve(new Response(mp4, { headers: { "content-type": "video/mp4", "x-video-by": "Lightricks/LTX-2-3" } })),
+    () => followOne({ base: "http://x/feed/video", job: "j2" }));
+  assertEquals(got.status, "done");
+  assertEquals(got.by, "Lightricks/LTX-2-3");
+  assertEquals(got.blob.type, "video/mp4");
+});

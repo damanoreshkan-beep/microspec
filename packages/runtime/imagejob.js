@@ -20,7 +20,7 @@
  * ## What it exports
  * - {@link startJob} — `(base, body)` POSTs the job and resolves its id; throws `{ code }` with the i18n key a view should show.
  * - {@link follow} — `({ base, job, alive, onLive, onSlide })` polls until the race ends; resolves `"done" | "error" | "busy" | "timeout" | "stale"`.
- * - {@link followOne} — `({ base, job, alive, onLive })` the ONE-RESULT contract (`k: 1`, and every audio job): the status URL itself
+ * - {@link followOne} — `({ base, job, alive, onLive })` the ONE-RESULT contract (`k: 1`, and every audio or video job): the status URL itself
  *   turns into the bytes; resolves `{ status, blob?, url?, by? }` with the same status words.
  * - {@link cancelJob} — `(base, job)` tells the edge to stop a race nobody will watch; fire-and-forget.
  * - {@link POLLS} · {@link EVERY} — the poll budget (135 × 1500 ms ≈ 200 s), exported so a caller can size its own timers.
@@ -122,7 +122,7 @@ export async function followOne({ base, job, alive = () => true, onLive }) {
       if (!/json/.test(ct)) {
         const blob = await r.blob();
         if (!alive()) return { status: "stale" };
-        return { status: "done", blob, url: URL.createObjectURL(blob), by: r.headers.get("x-audio-by") || r.headers.get("x-image-by") || "" };
+        return { status: "done", blob, url: URL.createObjectURL(blob), by: r.headers.get("x-audio-by") || r.headers.get("x-image-by") || r.headers.get("x-video-by") || "" };
       }
       const j = await r.json().catch(() => null);
       if (!j) continue;

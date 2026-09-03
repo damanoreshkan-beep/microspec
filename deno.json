@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "1.2.13",
+  "version": "1.2.14",
   "license": "MIT",
   "publish": {
     "exclude": [
@@ -90,6 +90,7 @@
     "./runtime/imagejob.js": "./packages/runtime/imagejob.js",
     "./runtime/imgsize.js": "./packages/runtime/imgsize.js",
     "./runtime/index.js": "./packages/runtime/index.js",
+    "./runtime/intake.js": "./packages/runtime/intake.js",
     "./runtime/lastgen.js": "./packages/runtime/lastgen.js",
     "./runtime/localize.js": "./packages/runtime/localize.js",
     "./runtime/material.js": "./packages/runtime/material.js",

@@ -21,7 +21,8 @@
  * ## What it exports
  * - {@link Chooser} — `({ loc, onPick, onCamera, compact })` the frost island with the three sources; `compact` is one row of glyphs for a half-stage.
  * - {@link Camera} — `({ loc, reason, privacy, onCapture, onClose, onSettings })` the viewfinder, PRIMED before it opens (never a cold camera), one shutter.
- * - {@link toDataURL} — `(url, maxSide)` any same-origin picture → a JPEG data URL capped at {@link MAX_SIDE} on the long side, plus the size sent.
+ * - {@link toDataURL} — `(url, maxSide)` any same-origin picture → a JPEG data URL capped at {@link MAX_SIDE} on the long side, plus the size sent;
+ *   a picture the browser cannot decode (HEIC/HEIF from a Samsung gallery) goes to the edge's `/feed/convert` (media's ffmpeg) and comes back a JPEG.
  * - {@link sizeOf} — `(blobOrUrl)` the pixel size of a picture, MEASURED with `createImageBitmap` (naturalWidth lies on a scaled `<img>`).
  * - {@link extOf} — `(blob)` `webp` · `png` · `jpg` from the blob's type, for a filename.
  * - {@link mockArt} — `(seed, scale)` a deterministic SVG data URL for the gate: no network, the same frame for the same seed.
@@ -51,6 +52,7 @@ import { html } from "htm/preact";
 import { Fragment } from "preact";
 import { useState, useRef, useEffect } from "preact/hooks";
 import { gate } from "./gate.js";
+import { VPS_PROXY } from "./feed.js";
 import { Island } from "./ui.js";
 import { CameraPrime } from "./camprime.js";
 import { readLastGen } from "./lastgen.js";
@@ -91,7 +93,18 @@ export const mockArt = (seed, scale = 1) => {
  * @param maxSide the cap on the long side (default {@link MAX_SIDE})
  * @returns `{ data, w, h }` — the JPEG data URL and the pixel size sent
  */
-export function toDataURL(url, maxSide = MAX_SIDE) {
+export async function toDataURL(url, maxSide = MAX_SIDE) {
+  try { return await decodeHere(url, maxSide); }
+  catch (e) {
+    // The browser could not decode it — Android Chrome reads no HEIC/HEIF, and that is what a Samsung gallery
+    // hands an <input accept="image/*"> (mirage, 2026-09-03: "Не вдалося прочитати" before any request left the
+    // phone). The edge's media process decodes it with ffmpeg and answers a JPEG; the gate has no network.
+    if (gate || !/^(blob|data):/.test(url)) throw e;
+    const converted = await convertAtEdge(url);
+    return decodeHere(converted, maxSide);
+  }
+}
+function decodeHere(url, maxSide) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -108,6 +121,17 @@ export function toDataURL(url, maxSide = MAX_SIDE) {
     img.onerror = () => reject(new Error("load failed"));
     img.src = url;
   });
+}
+// the bytes as a data: URL (a blob: URL is read back; a data: URL is passed as is), POSTed to /feed/convert
+async function convertAtEdge(url) {
+  const image = url.startsWith("data:") ? url : await new Promise(async (ok, no) => {
+    try { const bl = await (await fetch(url)).blob(); const fr = new FileReader(); fr.onload = () => ok(String(fr.result)); fr.onerror = () => no(new Error("read failed")); fr.readAsDataURL(bl); } catch (e) { no(e); }
+  });
+  const r = await fetch(`${VPS_PROXY}/convert`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ image }) });
+  if (!r.ok) throw new Error("convert " + r.status);
+  const j = await r.json().catch(() => null);
+  if (!j?.image?.startsWith?.("data:image/")) throw new Error("convert: no image");
+  return j.image;
 }
 
 /**

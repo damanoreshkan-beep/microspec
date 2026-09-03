@@ -53,6 +53,7 @@ import { Fragment } from "preact";
 import { useState, useRef, useEffect } from "preact/hooks";
 import { gate } from "./gate.js";
 import { VPS_PROXY } from "./feed.js";
+import { report } from "./telemetry.js";
 import { Island } from "./ui.js";
 import { CameraPrime } from "./camprime.js";
 import { readLastGen } from "./lastgen.js";
@@ -100,8 +101,15 @@ export async function toDataURL(url, maxSide = MAX_SIDE) {
     // hands an <input accept="image/*"> (mirage, 2026-09-03: "Не вдалося прочитати" before any request left the
     // phone). The edge's media process decodes it with ffmpeg and answers a JPEG; the gate has no network.
     if (gate || !/^(blob|data):/.test(url)) throw e;
-    const converted = await convertAtEdge(url);
-    return decodeHere(converted, maxSide);
+    // the numbers a bug report cannot carry: what the browser was handed (type · bytes) and which step refused
+    let about = { type: "", size: 0 };
+    try { const bl = await (await fetch(url)).blob(); about = { type: bl.type, size: bl.size }; } catch { /* unreadable url */ }
+    report("intake.decode", { step: "local", msg: e?.message || String(e), ...about }, "warn");
+    let converted;
+    try { converted = await convertAtEdge(url); }
+    catch (e2) { report("intake.convert", { msg: e2?.message || String(e2), ...about }); throw e2; }
+    try { return await decodeHere(converted, maxSide); }
+    catch (e3) { report("intake.decode", { step: "converted", msg: e3?.message || String(e3), ...about }); throw e3; }
   }
 }
 function decodeHere(url, maxSide) {

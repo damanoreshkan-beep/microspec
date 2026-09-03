@@ -81,6 +81,18 @@ Deno.test("rememberEnglish: a seeded pair answers without the wire; suggestPromp
   m = mock({ gtxOut: "never", aiOut: '{"en":"a harbour at night"}' });
   try { assertEquals(await suggestPrompt("dream", "x", "en"), { en: "a harbour at night", local: "a harbour at night" }, "en: local is the English itself"); }
   finally { m.restore(); }
+  // the rendering under the language's own key (llama-3.2-3b wrote "ua", 2026-09-03) is still the rendering
+  m = mock({ gtxOut: "never", aiOut: '{"en":"a red umbrella on wet stone","ua":"червона парасолька на мокрому камені' + R + '"}' });
+  try { assertEquals((await suggestPrompt("dream", "x", "uk")).local, "червона парасолька на мокрому камені" + R); }
+  finally { m.restore(); }
+  // a garbled rendering (Latin letters inside Cyrillic words) is replaced by the translator's clean prose
+  m = mock({ gtxOut: "маяк у бурю, кінематографічно", aiOut: '{"en":"a lighthouse in a storm, cinematic' + R + '","uk":"маяк, що гisinює у бурі, chyjarosсuro"}' });   // R: the uk bucket persists across runs too
+  try {
+    const p = await suggestPrompt("dream", "x", "uk");
+    assertEquals(p.local, "маяк у бурю, кінематографічно", "the broken Ukrainian never reaches the field");
+    assertEquals(m.calls.gtx, 1, "one gtx call renders the English");
+    assertEquals(await toEnglish(p.local), p.en, "and the pair still sends the model's own English");
+  } finally { m.restore(); }
   m = mock({ gtxOut: "never", aiOut: "Самотній маяк на світанку." });
   try { assertEquals(await suggestPrompt("dream", "x", "uk"), null, "prose instead of the envelope is a miss"); }
   finally { m.restore(); }

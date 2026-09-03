@@ -102,7 +102,7 @@
 // Everything shared (the wire, the caches, the dedupe, aiTick) lives in ai-core.js.
 import { askAI, cacheFor, persist, pending, aiTick, reading } from "./ai-core.js";
 import { pool } from "./feed.js";
-import { CONTENT_LANG, rememberEnglish } from "./translate.js";
+import { CONTENT_LANG, rememberEnglish, warm, tr } from "./translate.js";
 
 // ── suggest: a one-shot creative generation, never cached ────────────────────────────────────────────────
 
@@ -141,10 +141,23 @@ export async function suggestPrompt(mode, spark, locale) {
   try { const m = raw.match(/\{[\s\S]*\}/); j = m ? JSON.parse(m[0]) : null; } catch { /* not the envelope */ }
   const en = typeof j?.en === "string" ? j.en.trim() : "";
   if (!en) return null;
-  const local = (typeof j.local === "string" && j.local.trim()) || en;
+  const loc = String(locale || CONTENT_LANG).slice(0, 2);
+  // the rendering's key: "local", the locale itself, or whatever other string the model filed it under
+  // (llama-3.2-3b wrote "ua" for Ukrainian, 2026-09-03)
+  let local = [j.local, j[loc], ...Object.entries(j).filter(([k]) => k !== "en").map(([, v]) => v)].find((v) => typeof v === "string" && v.trim())?.trim() || "";
+  // a rendering a small model garbled ("гisinюють", Latin letters inside Cyrillic words) is not shown: the
+  // English is rendered by the translator instead — clean machine prose beats broken native prose
+  if (loc !== CONTENT_LANG && (!local || !cleanScript(local))) {
+    await warm([en], loc).catch(() => {});
+    local = tr(en, loc);
+  }
+  if (!local || loc === CONTENT_LANG) local = en;
   rememberEnglish(local, en);
   return { en, local };
 }
+// cleanScript(text) — true when no WORD mixes Latin with another script's letters, the tell of a model
+// that cannot write the language (it keeps a Latin syllable inside a Cyrillic word)
+const cleanScript = (text) => !/\p{Script=Latin}[\p{L}\p{M}]*[^\p{Script=Latin}\P{L}]|[^\p{Script=Latin}\P{L}][\p{L}\p{M}]*\p{Script=Latin}/u.test(text);
 
 // ── polish: a light rewrite of wooden machine translation ────────────────────────────────────────────────
 //

@@ -13,7 +13,7 @@
  *
  * ## Usage
  * ```sh
- * deno run -A jsr:@microspec/core/dist-eye [--dist dist] [--out dist-eye] [--apps a,b] [--light]
+ * deno run -A jsr:@microspec/core/dist-eye [--dist dist] [--out dist-eye] [--apps a,b] [--light] [--jobs 4]
  * ```
  * The product runs it as `deno task dist-eye --dist dist --out dist-eye` in `deploy.yml`, right after
  * `deno task build` and before the rsync. Chromium comes from `CHROMIUM_PATH` (CI sets
@@ -26,6 +26,7 @@
  * | `--out <dir>` | `dist-eye` | where the PNGs and `report.json` go; created if missing |
  * | `--apps a,b` | all | restrict the run to these app ids |
  * | `--light` | off | open each page with `&theme=light`; shots are named `<app>~light.png` |
+ * | `--jobs <n>` | `4` | pages opened at once in the one Chromium (1–8); 79 apps one after another took 216 s of a 305 s deploy (2026-09-03) |
  *
  * Every page is opened at `/<app>/?mock` on the S25 Ultra frame (384×832) at DPR 2 — enough for the eye,
  * and it keeps a farm of PNGs under the artifact budget. The gate waits for `load`, not for a quiet

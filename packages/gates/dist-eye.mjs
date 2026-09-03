@@ -14,7 +14,7 @@
  *
  * ## Usage
  * ```sh
- * deno run -A jsr:@microspec/core/dist-eye [--dist dist] [--out dist-eye] [--apps a,b] [--light]
+ * deno run -A jsr:@microspec/core/dist-eye [--dist dist] [--out dist-eye] [--apps a,b] [--light] [--jobs 4]
  * ```
  * The product runs it as `deno task dist-eye --dist dist --out dist-eye` in `deploy.yml`, right after
  * `deno task build` and before the rsync. Chromium comes from `CHROMIUM_PATH` (CI sets
@@ -27,6 +27,7 @@
  * | `--out <dir>` | `dist-eye` | where the PNGs and `report.json` go; created if missing |
  * | `--apps a,b` | all | restrict the run to these app ids |
  * | `--light` | off | open each page with `&theme=light`; shots are named `<app>~light.png` |
+ * | `--jobs <n>` | `4` | pages opened at once in the one Chromium (1–8); 79 apps one after another took 216 s of a 305 s deploy (2026-09-03) |
  *
  * Every page is opened at `/<app>/?mock` on the S25 Ultra frame (384×832) at DPR 2 — enough for the eye,
  * and it keeps a farm of PNGs under the artifact budget. The gate waits for `load`, not for a quiet
@@ -92,13 +93,14 @@ const list = only.length ? apps.filter((a) => only.includes(a)) : apps;
 if (!list.length) { console.error("dist-eye: no apps found under " + DIST); Deno.exit(2); }
 
 const ac = new AbortController();
-let missing = [];
+const missingBy = new Map();
 const server = Deno.serve({ port: 0, signal: ac.signal, onListen: () => {} }, async (req) => {
   const res = await serveDir(req, { fsRoot: DIST, quiet: true, headers: ["cache-control: no-store"] });
   const path = new URL(req.url).pathname;
-  if (res.status >= 400 && !path.startsWith("/feed")) missing.push(`${res.status} ${path}`);
+  if (res.status >= 400 && !path.startsWith("/feed")) { const seg = path.split("/")[1] || ""; if (!missingBy.has(seg)) missingBy.set(seg, []); missingBy.get(seg).push(`${res.status} ${path}`); }
   return res;
 });
+const JOBS = Math.max(1, Math.min(8, Number(flag("--jobs", "4")) || 4));
 const base = `http://localhost:${server.addr.port}`;
 await Deno.mkdir(OUT, { recursive: true });
 
@@ -106,15 +108,15 @@ const NOISE = /favicon|net::|Failed to load resource|ERR_|status of [45]|CORS|Ac
 const browser = await bootBrowser(dev);
 const rows = [];
 let fails = 0;
-try {
-  for (const app of list) {
+const byApp = new Map();
+async function runOne(app) {
     const page = await browser.newPage();
     const errs = [];
     page.addEventListener("pageerror", (e) => errs.push("uncaught: " + String(e.detail?.message || e.detail || e).split("\n")[0].slice(0, 160)));
     page.addEventListener("console", (e) => { if (e.detail?.type === "error") { const tx = String(e.detail.text || ""); if (!NOISE.test(tx)) errs.push("console.error: " + tx.slice(0, 160)); } });
     const url = `${base}/${app}/?mock${light ? "&theme=light" : ""}`;
     let m = null, why = [];
-    missing = [];
+    missingBy.delete(app);
     try {
       await page.setViewportSize({ width: dev.width, height: dev.height });
       await page.goto(url, { waitUntil: "load" });
@@ -139,6 +141,7 @@ try {
       if (m.surface && !(px > 0)) why.push(`first kit surface has border-radius ${m.surface.radius} (token classes not compiled): ${m.surface.cls}`);
       if (!m.surface) why.push("no kit surface found (.sf-raised/[data-island]/.card/.modal-box/.btn)");
       if (errs.length) why.push(...errs.slice(0, 3));
+      const missing = [...(missingBy.get(app) || []), ...(missingBy.get("_rt") || [])];
       if (missing.length) why.push(`same-origin ${missing.length} missing: ${[...new Set(missing)].slice(0, 4).join(", ")}`);
       await Deno.writeFile(`${OUT}/${app}${light ? "~light" : ""}.png`, await page.screenshot());
     } catch (e) {
@@ -146,8 +149,15 @@ try {
     } finally { await page.close().catch(() => {}); }
     const bad = why.length > 0;
     if (bad) fails++;
-    rows.push({ app, ok: !bad, msR: m?.msR, radius: m?.surface?.radius, appCss: m?.appCss, why });
-    console.log(`  ${bad ? "✗" : "✓"} ${app.padEnd(12)} --ms-r=${(m?.msR || "-").padEnd(8)} radius=${(m?.surface?.radius || "-").padEnd(6)} app.css=${String(m?.appCss ?? "-").padEnd(4)}${bad ? " — " + why.join(" · ") : ""}`);
+    byApp.set(app, { app, ok: !bad, msR: m?.msR, radius: m?.surface?.radius, appCss: m?.appCss, why });
+}
+try {
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(JOBS, list.length) }, async () => { while (next < list.length) await runOne(list[next++]); }));
+  for (const app of list) {
+    const r = byApp.get(app) || { app, ok: false, why: ["not run"] };
+    rows.push(r);
+    console.log(`  ${r.ok ? "✓" : "✗"} ${app.padEnd(12)} --ms-r=${(r.msR || "-").padEnd(8)} radius=${(r.radius || "-").padEnd(6)} app.css=${String(r.appCss ?? "-").padEnd(4)}${r.ok ? "" : " — " + r.why.join(" · ")}`);
   }
 } finally {
   await browser.close().catch(() => {});

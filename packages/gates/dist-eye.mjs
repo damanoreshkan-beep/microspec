@@ -128,7 +128,11 @@ const server = Deno.serve({ port: 0, signal: ac.signal, onListen: () => {} }, as
   return res;
 });
 const JOBS = Math.max(1, Math.min(8, Number(flag("--jobs", "4")) || 4));
-const base = `http://localhost:${server.addr.port}`;
+// One ORIGIN per worker (127.0.0.1 … 127.0.0.8 are all loopback and all distinct origins to Chromium): the
+// parallel pages must not share localStorage — @nanostores/persistent listens to the `storage` events of
+// sibling tabs, and a clear() in one app reset another app's atoms mid-render (vidlunnia: `undefined.trim()`,
+// the first parallel deploy, 2026-09-03). The server binds 0.0.0.0, so every alias reaches it.
+const baseOf = (w) => `http://127.0.0.${1 + (w % 8)}:${server.addr.port}`;
 await Deno.mkdir(OUT, { recursive: true });
 
 const NOISE = /favicon|net::|Failed to load resource|ERR_|status of [45]|CORS|Access-Control|manifest/i;
@@ -139,7 +143,8 @@ let fails = 0;
 // 305 s deploy — the pages are static and the machine idles between loads). Each worker takes the next app
 // off the list; rows are reported in list order at the end so the log reads the same as before.
 const byApp = new Map();
-async function runOne(app) {
+async function runOne(app, w = 0) {
+    const base = baseOf(w);
     const page = await browser.newPage();
     const errs = [];
     page.addEventListener("pageerror", (e) => errs.push("uncaught: " + String(e.detail?.message || e.detail || e).split("\n")[0].slice(0, 160)));
@@ -185,7 +190,7 @@ async function runOne(app) {
 }
 try {
   let next = 0;
-  await Promise.all(Array.from({ length: Math.min(JOBS, list.length) }, async () => { while (next < list.length) await runOne(list[next++]); }));
+  await Promise.all(Array.from({ length: Math.min(JOBS, list.length) }, async (_, w) => { while (next < list.length) await runOne(list[next++], w); }));
   for (const app of list) {
     const r = byApp.get(app) || { app, ok: false, why: ["not run"] };
     rows.push(r);

@@ -20,7 +20,8 @@
  * ## What it exports
  * - {@link Chooser} — `({ loc, onPick, onCamera, compact })` the frost island with the three sources; `compact` is one row of glyphs for a half-stage.
  * - {@link Camera} — `({ loc, reason, privacy, onCapture, onClose, onSettings })` the viewfinder, PRIMED before it opens (never a cold camera), one shutter.
- * - {@link toDataURL} — `(url, maxSide)` any same-origin picture → a JPEG data URL capped at {@link MAX_SIDE} on the long side, plus the size sent.
+ * - {@link toDataURL} — `(url, maxSide)` any same-origin picture → a JPEG data URL capped at {@link MAX_SIDE} on the long side, plus the size sent;
+ *   a picture the browser cannot decode (HEIC/HEIF from a Samsung gallery) goes to the edge's `/feed/convert` (media's ffmpeg) and comes back a JPEG.
  * - {@link sizeOf} — `(blobOrUrl)` the pixel size of a picture, MEASURED with `createImageBitmap` (naturalWidth lies on a scaled `<img>`).
  * - {@link extOf} — `(blob)` `webp` · `png` · `jpg` from the blob's type, for a filename.
  * - {@link mockArt} — `(seed, scale)` a deterministic SVG data URL for the gate: no network, the same frame for the same seed.

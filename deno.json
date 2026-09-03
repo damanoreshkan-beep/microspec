@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "1.2.15",
+  "version": "1.2.16",
   "license": "MIT",
   "publish": {
     "exclude": [
@@ -148,6 +148,7 @@
     "./schema": "./packages/schema/validate.mjs",
     "./shell": "./tools/shell-gen.mjs",
     "./sw": "./deploy/sw.mjs",
+    "./see": "./packages/gates/see.mjs",
     "./verify": "./packages/gates/verify.mjs",
     "./tests/runtime": "./packages/runtime/runtime_test.js",
     "./tests/mcp": "./tools/mcp/server_test.js",

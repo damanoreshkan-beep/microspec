@@ -199,6 +199,27 @@ const build = () => {
   return s + tail;
 };
 
+// ── see: the working tree, served for the eye BEFORE the push ─────────────────────────────────────────
+const see = () => {
+  const w = 960, h = 250;
+  let s = head("see", w, h, "see: the working tree is served and shot before anything is pushed");
+  s += fireflies("see", w, h, 18);
+  const st = [
+    ["the tree", "edits, gates green"], ["rsync", "over the existing ssh"], ["see", "the gate handler on :8790"],
+    ["/_rt overlay", "rt/ first, then the runtime"], ["shot.mjs", "the eye's Chromium"], ["PNG", "back on the phone"], ["push", "only when it is right"],
+  ];
+  const xs = st.map((_, i) => 80 + i * 133), y = 130;
+  for (let i = 1; i < st.length; i++) s += filament(xs[i - 1], y, xs[i], y, { lit: i === 2 || i === 4, w: 1.3, bend: 0.3 });
+  st.forEach(([t, sub], i) => {
+    s += node(xs[i], y, { lit: i === 2 || i === 4, delay: i * 0.6 });
+    s += label(xs[i], i % 2 ? y - 22 : y + 30, t, { lit: i === 2 || i === 4 });
+    s += `<text x="${xs[i]}" y="${i % 2 ? y - 40 : y + 46}" class="m" text-anchor="middle" font-size="10">${esc(sub)}</text>`;
+  });
+  s += micro(40, 42, "vps/see.sh <app> [--w --h --light --tap] · no commit, no branch, no deploy");
+  s += `<text x="${w - 40}" y="42" class="h" text-anchor="end">seen before it is pushed</text>`;
+  return s + tail;
+};
+
 // ── verify: the breakpoint matrix, to scale ───────────────────────────────────────────────────────────
 const verify = () => {
   const w = 960, h = 360, k = 0.1;
@@ -313,7 +334,7 @@ const themeSplit = () => {
 };
 
 // ── emit ─────────────────────────────────────────────────────────────────────────────────────────────
-const files = { "hero.svg": hero(), "realms.svg": realms(), "build.svg": build(), "verify.svg": verify(), "theme-split.svg": themeSplit() };
+const files = { "hero.svg": hero(), "realms.svg": realms(), "build.svg": build(), "see.svg": see(), "verify.svg": verify(), "theme-split.svg": themeSplit() };
 for (const n of NODES) if (n.kind === "script") files[`pipeline-${n.id}.svg`] = pipeline(n.id);
 for (const k of Object.keys(manifest.exports)) if (k.startsWith("./runtime/")) files[`module-${k.slice(10, -3)}.svg`] = moduleMap(k.slice(10, -3));
 

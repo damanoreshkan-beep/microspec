@@ -147,6 +147,7 @@ export function start(spec, arg2) {
     [S.sheet, () => S.sheet.set(false), (v) => v === true],
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],
     [S.qrOpen, () => S.qrOpen.set(false), (v) => v === true],
+    [S.searchOpen, () => S.searchOpen.set(false), (v) => v === true],   
     [S.detail, () => S.detail.set(null), (v) => v != null],
     [S.screen, () => S.screen.set(null), (v) => v != null],
     [S.player, () => S.player.set(null), (v) => v != null],

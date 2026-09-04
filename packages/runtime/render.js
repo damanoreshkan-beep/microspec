@@ -839,16 +839,26 @@ function InstallModal() {
 }
 
 
-function SearchBar({ tab }) {
+
+
+
+
+
+
+const statusOf = (t, tab, data, q, fav) => tab.source === "fav" ? T(t, "savedCount", { n: Object.keys(fav).length })
+  : data.loading ? T(t, "statusLoading") : data.error ? T(t, "statusError")
+  : (tab.browse && !q) ? ""
+  : T(t, tab.statusKey || "status", { ...(data.meta || {}) });
+function SearchField({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query), fav = useStore(A.S.fav);
-  const status = tab.source === "fav" ? T(t, "savedCount", { n: Object.keys(fav).length })
-    : data.loading ? T(t, "statusLoading") : data.error ? T(t, "statusError")
-    
-    
-    : (tab.browse && !q) ? ""
-    : T(t, tab.statusKey || "status", { ...(data.meta || {}) });
-  return html`<div class="sticky top-14 z-20 bg-base-200 border-b border-base-300/50 px-4 pt-3 pb-2"><label class="input input-bordered flex items-center gap-2 h-11 rounded-2xl">${Icon("lucide:search", "text-lg opacity-50")}<input id="filter" type="search" class="grow" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /></label><div id="status" class="text-xs text-base-content/70 mt-1 min-h-4 px-1">${status}</div></div>`;
+  const ref = useRef();
+  useEffect(() => { ref.current?.focus(); }, []);
+  const onInput = (e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); };
+  return html`<label data-search class="flex-1 min-w-0 flex items-center gap-2 h-9">${Icon("lucide:search", "text-lg opacity-50 shrink-0")}<input id="filter" ref=${ref} type="search" class="grow min-w-0 bg-transparent text-base focus:outline-none placeholder:text-base-content/45" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${onInput} /><span id="status" class="font-mono text-xs text-muted shrink-0 max-w-[38%] truncate">${statusOf(t, tab, data, q, fav)}</span></label>`;
 }
+
+
+
 
 
 
@@ -963,13 +973,21 @@ function AppBar() {
   const qL = QR_LBL[loc] || QR_LBL.en;
   const hdrRef = usePublishedChrome("header");
   
+  const cur = useStore(A.S.tab), searchOpen = useStore(A.S.searchOpen);
+  const tab = A.spec.tabs.find((x) => x.id === cur) || A.spec.tabs[0];
+  const searchable = tab?.type === "list" && !!tab.search;
+  useEffect(() => { if (A.S.searchOpen.get()) A.S.searchOpen.set(false); }, [cur]);   
+  const fold = () => { A.S.query.set(""); if (tab?.searchFetch) debouncedLoad(); A.S.searchOpen.set(false); };
+  if (searchable && searchOpen) {
+    return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:env(safe-area-inset-top)"><${SearchField} tab=${tab} /><button id="search-close" class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, "close")} onClick=${fold}>${Icon("lucide:x", "text-xl")}</button></header>`;
+  }
   
   
   
   
   
   
-  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><${Battery} /><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><${Battery} />${searchable ? html`<input id="filter" type="search" class="hidden" tabindex="-1" aria-hidden="true" onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /><button id="search-btn" class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, tab.searchKey || "search")} onClick=${() => A.S.searchOpen.set(true)}>${Icon("lucide:search", "text-xl")}</button>` : null}<button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 function QrModal() {
   const open = useStore(A.S.qrOpen), loc = useStore(A.S.locale);
@@ -1318,7 +1336,6 @@ export function App() {
   }, [clean]);
   return html`<${Fragment}>
     ${clean ? null : html`<${AppBar} />`}
-    ${tab.type === "list" && tab.search ? html`<${SearchBar} tab=${tab} />` : null}
     ${A.spec.filters ? html`<${FilterChips} />` : null}
     ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
     ${tab.type === "list" && tab.segments ? html`<${SegmentBar} tab=${tab} />` : null}

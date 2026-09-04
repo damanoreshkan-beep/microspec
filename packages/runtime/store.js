@@ -125,6 +125,7 @@ export function createApp(spec, dataLoad) {
     installEvent: atom(null),
     installOpen: atom(false),
     qrOpen: atom(false),          
+    searchOpen: atom(false),      
     confirm: atom(null),          
     undo: atom(null),             
     update: atom(false),          

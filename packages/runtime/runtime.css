@@ -438,15 +438,14 @@ nav[data-dock] { bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
    horizontal scroll on every app that no rest-state gate could see. Decor is static now, by rule: chrome
    decoration never translates sideways (the verify gate reads pseudo transforms and fails a shifted one). */
 
-/* THE PORTAL'S LIP — every app bar carries a lit hairline along its lower edge: the header's whole shadow
-   is an edge of light instead of a band of black. Decoration by contract: pointer-events off, aria-hidden
-   by position, dropped with the rest of the ornament on a watch. STATIC by rule — a translated full-width
-   lip was viewport overflow on every app (the tilt engine, removed 2026-08-31).
-   And the bar itself has NO surface (owner, 2026-09-01: "я все ще бачу чорний бекграунд, тінь має бути лише
-   під тайтлом" — the pane that dissolved before its lower edge still sliced tide's and rave's scenes in
-   half). The page shows through the whole bar; what keeps the wordmark legible over a stage is a shadow
-   under the TITLE alone (`[data-title]` below, in the page's own tone). The markup carries no bg/shadow
-   classes; nothing here paints one. */
+/* THE HEADER IS THE WORDMARK AND NOTHING ELSE. No surface (owner, 2026-09-01: "я все ще бачу чорний
+   бекграунд, тінь має бути лише під тайтлом" — a pane that dissolved before its lower edge still sliced tide's
+   and rave's scenes in half) and NO edge (owner, 2026-09-04: "прибери з хедера бордери усі, щоб лише напис
+   і та тінь, щоб шапка не давила на контент" — the lit hairline that replaced the band was still a line
+   across the content). The page shows through the whole bar; what keeps the wordmark legible over a stage
+   is the shadow under the TITLE alone (`[data-title]` below, in the page's own tone). The markup carries no
+   bg/border/shadow classes and nothing here paints one — a theme decorates the dock zone and the empty
+   state, never the header (`--ds-lip` is banned by the product's theme suite). */
 header.navbar {
   position: sticky;
   /* SMALL: 2.75rem, not DaisyUI's 4rem nor the old 3.5rem — a bar that presses on the content is chrome the
@@ -456,20 +455,10 @@ header.navbar {
   background: transparent;
 }
 /* THE HOOKS a brand decorates — declared here so a tree with no brand renders them as nothing at all, and
-   a brand needs no markup change to light them: the header's lip (`::before` band, `::after` hairline),
-   the dock zone's decor (`[data-garland]`, the `[data-dock-fade]` corners), the empty state's ground
-   (`[data-empty]::before`) and the theme toggle's art (`[data-theme-art]`). Every image comes from a
-   `--ds-*` token the brand sets; the neutral default is `none`, and a hairline of ink is the one edge the
-   header keeps, because a sticky bar over content needs an edge in any material. */
-header.navbar::after {
-  content: "";
-  position: absolute;
-  left: 0; right: 0; bottom: -1px; height: 1px;
-  pointer-events: none;
-  background: linear-gradient(90deg, transparent 5%, var(--lm-lip) 38%, var(--lm-lip) 62%, transparent 95%);
-  box-shadow: 0 0 12px 1px var(--lm-lip-glow);
-}
-@media (max-width: 300px) { header.navbar::before, header.navbar::after { display: none; } }
+   a brand needs no markup change to light them: the dock zone's decor (`[data-garland]`, the
+   `[data-dock-fade]` corners), the empty state's ground (`[data-empty]::before`) and the theme toggle's art
+   (`[data-theme-art]`). Every image comes from a `--ds-*` token the brand sets; the neutral default is
+   `none`. The header has no hook at all (its lit hairline went on 2026-09-04, see above). */
 [data-dock-fade] { overflow: hidden; }
 [data-garland] { position: absolute; inset: 0; z-index: 1; }
 /* The theme widget's mode faces — the brand's sun and moon, both present whatever mode the page is in. */
@@ -522,8 +511,6 @@ header.navbar::after {
   --lm-bloom:  transparent;
   --lm-bloom-hi: color-mix(in oklch, var(--app-accent) 55%, transparent);
   --nm-cast:   rgba(0, 0, 0, .5);
-  --lm-lip:      rgba(255, 255, 255, .14);
-  --lm-lip-glow: transparent;
   --sf-rim:        var(--lm-rim);
   --sf-shadow:     rgba(0, 0, 0, .6);
   --sf-drop:       0 0 0 1px var(--lm-rim), inset 0 1px 0 var(--lm-rim-hi), 0 8px 24px -12px var(--nm-cast);
@@ -545,8 +532,6 @@ header.navbar::after {
   --lm-bloom:  transparent;
   --lm-bloom-hi: color-mix(in oklch, var(--color-accent) 55%, transparent);
   --nm-cast:   rgba(0, 0, 0, .16);
-  --lm-lip:      rgba(0, 0, 0, .14);
-  --lm-lip-glow: transparent;
   --sf-rim:        var(--lm-rim);
   --sf-shadow:     rgba(0, 0, 0, .14);
   --sf-drop:       0 0 0 1px var(--lm-rim), inset 0 1px 0 var(--lm-rim-hi), 0 8px 24px -12px var(--nm-cast);

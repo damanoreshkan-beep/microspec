@@ -187,7 +187,7 @@ export function Chooser({ loc, onPick, onCamera, compact = false }) {
   return html`<div class="absolute inset-0 flex items-center justify-center p-[var(--ms-pad)]">
     <input ref=${fileRef} type="file" accept="image/*" class="hidden" aria-hidden="true" onChange=${onFile} />
     <${Island} tone="frost" data-source className="w-full max-w-[17rem] flex flex-col gap-[var(--ms-gap)]">
-      <div class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${L.pick}</div>
+      <div class="font-mono uppercase tracking-wide font-semibold text-[length:var(--ms-label)] text-base-content/70">${L.pick}</div>
       <button data-src-upload class="btn btn-primary rounded-full justify-start gap-2.5" onClick=${() => fileRef.current?.click()}>${Icon("lucide:upload", "text-lg")}${L.upload}</button>
       <button data-src-camera class="btn rounded-full justify-start gap-2.5" onClick=${onCamera}>${Icon("lucide:camera", "text-lg")}${L.camera}</button>
       ${last ? html`<button data-src-last class="btn btn-ghost rounded-full justify-start gap-2.5" onClick=${() => onPick(last)}>${Icon("lucide:sparkles", "text-lg")}${L.last}</button>` : null}

@@ -165,10 +165,10 @@ export function Sheet({ id, open, onClose, title, subtitle, icon, locale, size =
   return html`<dialog id=${id} ref=${ref} class="modal modal-bottom" onClose=${onClose}>
     <div ref=${boxRef} class=${box} style=${frostBg}>${grip}
       ${title ? html`<div class="flex items-center gap-2 shrink-0">
-        ${icon ? Icon(icon, "shrink-0 text-[var(--ms-icon)] text-[var(--app-accent)]") : null}
+        ${icon ? Icon(icon, "shrink-0 text-[length:var(--ms-icon)] text-[var(--app-accent)]") : null}
         <div class="flex-1 min-w-0">
-          <h3 class="font-bold text-[var(--ms-title)] leading-tight truncate">${title}</h3>
-          ${subtitle ? html`<div class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70 truncate">${subtitle}</div>` : null}
+          <h3 class="font-bold text-[length:var(--ms-title)] leading-tight truncate">${title}</h3>
+          ${subtitle ? html`<div class="font-mono uppercase tracking-wide text-[length:var(--ms-label)] text-base-content/70 truncate">${subtitle}</div>` : null}
         </div>
         <button aria-label=${sys("close", loc)} class="btn btn-ghost btn-sm btn-circle shrink-0" onClick=${onClose}>${Icon("lucide:x", "text-xl")}</button>
       </div>` : null}
@@ -260,7 +260,7 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
             it tints the glyph (a user's list colour, a station's band); without one it becomes a disc. Colour
             never reaches the label either way, which is what keeps an arbitrary hue safe in both themes. */
         it.dot && !it.icon ? html`<span class="w-2 h-2 rounded-full shrink-0" style=${`background:${it.dot === true ? "var(--app-accent)" : it.dot}`}></span>` : null}
-      ${it.icon ? Icon(it.icon, "text-[var(--ms-icon)] shrink-0", it.dot ? `color:${it.dot === true ? "var(--app-accent)" : it.dot}` : "") : null}
+      ${it.icon ? Icon(it.icon, "text-[length:var(--ms-icon)] shrink-0", it.dot ? `color:${it.dot === true ? "var(--app-accent)" : it.dot}` : "") : null}
       ${it.label ? html`<span data-seg-label class=${`truncate ${compact ? "hidden" : ""}`}>${it.label}</span>` : null}
       ${it.meta != null && it.meta !== "" ? html`<span class="font-mono tabular-nums text-[0.85em] shrink-0">${it.meta}</span>` : null}
     </button>`;
@@ -346,7 +346,7 @@ function IslandBox({ children, className = "", tag = "div", tone = "glass", ...r
  */
 export function Panel({ title, children, className = "", ...rest }) {
   return html`<div ...${rest} class=${`@container sf-raised sf-e2 rounded-[var(--ms-r)] p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${className}`}>
-    ${title ? html`<div data-panel-title class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${title}</div>` : null}
+    ${title ? html`<div data-panel-title class="font-mono uppercase tracking-wide font-semibold text-[length:var(--ms-label)] text-base-content/70">${title}</div>` : null}
     ${children}
   </div>`;
 }
@@ -367,7 +367,7 @@ export function Slider({ id, label, value, onInput, min = 0, max = 1, step = 0.0
   // of costing a line above it.
   return html`<label ...${props} class="@container/sl block">
     <span class="flex flex-col gap-1 @max-[9rem]/sl:flex-row @max-[9rem]/sl:items-center @max-[9rem]/sl:gap-2">
-      <span class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70 truncate">${label}</span>
+      <span class="font-mono uppercase tracking-wide font-semibold text-[length:var(--ms-label)] text-base-content/70 truncate">${label}</span>
       <input type="range" min=${min} max=${max} step=${step} value=${value} aria-label=${label}
         onInput=${(e) => onInput(Number(e.target.value))} class="range range-sm range-primary min-w-0 flex-1" />
     </span>
@@ -543,7 +543,7 @@ export function Transport({
             disabled=${a.disabled || false} data-haptic=${a.haptic || null}
             onClick=${() => { onMoreClose?.(); a.onClick?.(); }}
             class=${`btn btn-ghost justify-start gap-3 h-[var(--ms-ctl)] min-h-0 ${a.active ? "text-primary" : ""}`}>
-            ${Icon(a.icon, "text-[var(--ms-icon)] shrink-0")}<span class="truncate">${a.label}</span></button>`)}
+            ${Icon(a.icon, "text-[length:var(--ms-icon)] shrink-0")}<span class="truncate">${a.label}</span></button>`)}
         </div>
       <//>` : null}
     </div>`;

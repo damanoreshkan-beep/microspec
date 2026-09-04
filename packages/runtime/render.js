@@ -330,7 +330,7 @@ function SectionHead({ sec, t, filters, n, collapsible = false, open = true, onT
        `text-muted` alongside it loses on specificity and the count stayed at axe-serious contrast in
        dark. Overriding a component's own colour is a fight you win only until it restyles; the farm's
        mono micro-label owes DaisyUI nothing and is the house idiom for a number anyway. */
-    : html`<span class="font-mono text-[var(--ms-label)] text-muted tabular-nums">${n}</span>`;
+    : html`<span class="font-mono text-[length:var(--ms-label)] text-muted tabular-nums">${n}</span>`;
   const rule = html`<span class="flex-1 h-px bg-base-300"></span>`;
   // collapsible → the whole head is a toggle button with a chevron; every app that declares `collapsible`
   // on a section gets an accordion, no bespoke code (systemic).
@@ -1371,7 +1371,7 @@ function StripCurve({ items, valueKey, unit }) {
       <circle cx=${points[0].x} cy=${points[0].y} r="3.2" fill="currentColor" />
     </svg>
     ${points.map((pt, i) => html`<span key=${i}
-      class="absolute font-mono text-[var(--ms-label)] font-semibold tabular-nums -translate-x-1/2 -translate-y-full"
+      class="absolute font-mono text-[length:var(--ms-label)] font-semibold tabular-nums -translate-x-1/2 -translate-y-full"
       style=${`left:${pt.x + COL_W / 2}px;top:${pt.y - 4}px`}>${items[i][valueKey]}${unit || ""}</span>`)}
   </div>`;
 }
@@ -1389,8 +1389,8 @@ function DashboardView({ tab }) {
   // "still locating" screen no user ever sees.
   const liveAttr = h.live ? { "data-live": "" } : {};
   const place = placeText ? (A.spec.filters
-    ? html`<button ...${liveAttr} class="inline-flex items-center gap-1 font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70" onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:map-pin", "text-[0.8em]")}${placeText} ${Icon("lucide:chevron-down", "text-[0.8em]")}</button>`
-    : html`<span ...${liveAttr} class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70 inline-flex items-center gap-1">${Icon("lucide:map-pin", "text-[0.8em]")}${placeText}</span>`) : null;
+    ? html`<button ...${liveAttr} class="inline-flex items-center gap-1 font-mono uppercase tracking-wide text-[length:var(--ms-label)] text-base-content/70" onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:map-pin", "text-[0.8em]")}${placeText} ${Icon("lucide:chevron-down", "text-[0.8em]")}</button>`
+    : html`<span ...${liveAttr} class="font-mono uppercase tracking-wide text-[length:var(--ms-label)] text-base-content/70 inline-flex items-center gap-1">${Icon("lucide:map-pin", "text-[0.8em]")}${placeText}</span>`) : null;
   const strip = tab.strip && Array.isArray(m[tab.strip.from]) ? m[tab.strip.from] : null;
   // The week's own range, so a day's bar says where that day sits INSIDE the forecast rather than against a
   // fixed scale — which is the only version that means anything at five rows.
@@ -1400,7 +1400,7 @@ function DashboardView({ tab }) {
   const wkLo = dayVals.length ? Math.min(...dayVals) : 0;
   const wkSpan = (dayVals.length ? Math.max(...dayVals) : 1) - wkLo || 1;
   const Sect = (label, body, extra = "") => html`<div class=${`sf-raised sf-e2 rounded-[var(--ms-r)] p-[var(--ms-pad)] flex flex-col gap-[var(--ms-gap)] ${extra}`}>
-    ${label ? html`<div class="font-mono uppercase tracking-wide font-semibold text-[var(--ms-label)] text-base-content/70">${label}</div>` : null}
+    ${label ? html`<div class="font-mono uppercase tracking-wide font-semibold text-[length:var(--ms-label)] text-base-content/70">${label}</div>` : null}
     ${body}
   </div>`;
   // `relative z-10` is what keeps the content above a `fixed inset-0 z-0` stage: a positioned z-0 element
@@ -1427,15 +1427,15 @@ function DashboardView({ tab }) {
       ${h.metrics ? html`<div class="flex items-stretch justify-center mt-3 divide-x divide-base-content/15">
         ${h.metrics.map((mt) => html`<div class="flex flex-col items-center gap-0.5 px-4 @max-[300px]:px-3" key=${mt.field}>
           <span class="font-mono font-semibold tabular-nums text-[0.95rem] inline-flex items-center gap-1">
-            ${mt.icon ? Icon(mt.icon, "text-[var(--ms-label)] text-base-content/70") : null}${m[mt.field] ?? "—"}${mt.unit || ""}</span>
-          <span class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70 whitespace-nowrap">${T(t, mt.label)}</span>
+            ${mt.icon ? Icon(mt.icon, "text-[length:var(--ms-label)] text-base-content/70") : null}${m[mt.field] ?? "—"}${mt.unit || ""}</span>
+          <span class="font-mono uppercase tracking-wide text-[length:var(--ms-label)] text-base-content/70 whitespace-nowrap">${T(t, mt.label)}</span>
         </div>`)}
       </div>` : null}
     </div>
     ${strip ? Sect(T(t, tab.strip.label), html`<div class="overflow-x-auto -mx-1 px-1" tabindex="0" role="group" aria-label=${T(t, tab.strip.label)}>
       <div class="flex flex-col w-max gap-1.5">
         <div class="flex">${strip.map((s, i) => html`<div class="flex flex-col items-center gap-1 shrink-0" style=${`width:${COL_W}px`} key=${i}>
-          <span data-striptime class="font-mono text-[var(--ms-label)] text-base-content/70 tabular-nums">${s[tab.strip.time]}</span>
+          <span data-striptime class="font-mono text-[length:var(--ms-label)] text-base-content/70 tabular-nums">${s[tab.strip.time]}</span>
           ${tab.strip.icon && s[tab.strip.icon] ? Icon(s[tab.strip.icon], "text-lg text-base-content/80") : null}
         </div>`)}</div>
         ${tab.strip.curve
@@ -1450,7 +1450,7 @@ function DashboardView({ tab }) {
         ${/* Muted text, NOT the accent: --app-accent is a MARK colour (dots, rings, fills, glow) and an
               arbitrary hue as type fails contrast in one theme — #38BDF8 on the light page is 2.1:1. */ ""}
         ${tab.days.prob && Number(d[tab.days.prob]) > 0
-          ? html`<span class="font-mono text-[var(--ms-label)] tabular-nums text-base-content/70 w-8 shrink-0">${d[tab.days.prob]}%</span>`
+          ? html`<span class="font-mono text-[length:var(--ms-label)] tabular-nums text-base-content/70 w-8 shrink-0">${d[tab.days.prob]}%</span>`
           : html`<span class="w-8 shrink-0"></span>`}
         ${tab.days.lo ? html`<span class="tabular-nums text-base-content/70 w-8 text-right shrink-0">${d[tab.days.lo]}${tab.days.unit || ""}</span>` : null}
         ${tab.days.bar ? html`<span data-daybar class="flex-1 min-w-6 h-1.5 rounded-full sf-inset relative overflow-hidden" aria-hidden="true">

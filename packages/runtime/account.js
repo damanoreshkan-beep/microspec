@@ -90,7 +90,7 @@ export function Account({ github = "quiet", loc, onChange }) {
           <div class="flex-1 min-w-0">
             <div data-account-name class="font-bold truncate">${sess.user?.name || sess.user?.login}</div>
             <div class="text-sm text-base-content/70 truncate">${sess.user?.login}</div>
-            <div class="font-mono uppercase tracking-wide text-[var(--ms-label)] text-base-content/70 mt-0.5">${sys("accountVia", loc)} ${provider}</div>
+            <div class="font-mono uppercase tracking-wide text-[length:var(--ms-label)] text-base-content/70 mt-0.5">${sys("accountVia", loc)} ${provider}</div>
           </div>
           <button data-signout type="button" aria-label=${sys("signOut", loc)} class="btn btn-ghost btn-sm btn-circle shrink-0"
             onClick=${async () => { await logout(); onChange?.(null); }}>${Icon("lucide:log-out", "text-xl")}</button>

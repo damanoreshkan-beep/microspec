@@ -228,6 +228,16 @@ async function preflight(appdir) {
   // Pixels) instead. DaisyUI loading spinners are banned in app source.
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
+  /* A size token in Tailwind's COLOR slot. `text-[var(--ms-label)]` compiles to `color: var(--ms-label)`,
+     an invalid colour that the browser drops — so the label keeps the parent's font-size and nothing at all
+     looks broken. Measured 2026-09-04 in the built CSS: 79 of 79 apps carried the rule, i.e. EVERY micro-label
+     on the farm rendered at body size (~14px) instead of --ms-label (~9.3px), the kit's own Panel/Sheet/Slider
+     captions included. The arbitrary-value syntax needs the hint: `text-[length:var(--ms-label)]`. */
+  for (const m of src.matchAll(/text-\[var\(--ms-(label|title|icon|hero)\)\]/g)) {
+    const line = src.slice(0, m.index).split("\n").length;
+    errs.push(`${m[0]} in ${srcFile}:${line} is a COLOUR, not a size — Tailwind compiles it to \`color: var(--ms-${m[1]})\`, the browser drops the invalid value and the text silently keeps its parent's size. Write \`text-[length:var(--ms-${m[1]})]\`.`);
+  }
+
   /* requestAnimationFrame may not drive anything AUDIBLE. rAF does not fire in a hidden document, so a
      fade written with it stops dead the moment the app is backgrounded — and unlike a stalled animation,
      a stalled fade is not invisible, it is INAUDIBLE. tide reconnected its stream in the background,

@@ -166,8 +166,8 @@ function Key({ k, t, radius = "rounded-full", style = "", cls = "", onKeyboard }
       onClick=${keyboardOnly(() => onKeyboard?.(k))}
     >
       ${k.text
-        ? html`<span class="font-mono uppercase tracking-wide text-[var(--ms-label)] opacity-85 px-2 truncate">${k.text}</span>`
-        : Icon(k.icon, `text-[var(--ms-icon)] opacity-90 ${k.iconCls || ""}`)}
+        ? html`<span class="font-mono uppercase tracking-wide text-[length:var(--ms-label)] opacity-85 px-2 truncate">${k.text}</span>`
+        : Icon(k.icon, `text-[length:var(--ms-icon)] opacity-90 ${k.iconCls || ""}`)}
     </button>`;
 }
 

@@ -960,7 +960,7 @@ function SearchField({ tab }) {
   const ref = useRef();
   useEffect(() => { ref.current?.focus(); }, []);
   const onInput = (e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); };
-  return html`<label data-search class="flex-1 min-w-0 flex items-center gap-2 h-9">${Icon("lucide:search", "text-lg opacity-50 shrink-0")}<input id="filter" ref=${ref} type="search" class="grow min-w-0 bg-transparent text-base focus:outline-none placeholder:text-base-content/45" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${onInput} /><span id="status" class="font-mono text-xs text-muted shrink-0 max-w-[38%] truncate">${statusOf(t, tab, data, q, fav)}</span></label>`;
+  return html`<label data-search class="flex-1 min-w-0 flex items-center gap-2 h-9">${Icon("lucide:search", "text-lg opacity-50 shrink-0")}<input id="filter" ref=${ref} type="search" class="grow min-w-0 bg-transparent text-base border-0 outline-none appearance-none focus:outline-none focus:ring-0 shadow-none placeholder:text-base-content/45 [&::-webkit-search-cancel-button]:hidden" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${onInput} /><span id="status" class="font-mono text-xs text-muted shrink-0 max-w-[38%] truncate">${statusOf(t, tab, data, q, fav)}</span></label>`;
 }
 
 // Declarative, persisted sort control (segmented). The chosen key lives in S.sort (persistentAtom), so

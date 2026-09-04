@@ -765,10 +765,16 @@ nav[data-dock] button > span {
    - kill the grey iOS/Android tap-flash (we own every :active state ourselves),
    - `manipulation` drops the legacy double-tap-zoom delay on anything tappable,
    - `overscroll-behavior: contain` stops a scrolled sheet/strip from chaining into the page body
-     (rubber-band that scrolls the whole app behind an open modal). */
+     (rubber-band that scrolls the whole app behind an open modal).
+   A HORIZONTAL strip contains its own axis ONLY. `overflow-x: auto` makes the element a scroll container on
+   both axes (overflow-y computes to auto), so a two-axis `contain` swallowed every vertical swipe that began
+   on a strip — the page under a store rubric or a toggle row would not scroll (owner, 2026-09-04: "не можу
+   скролити сторінку вниз коли торкаюсь таких контейнерів"). With only the x axis contained, a vertical pan
+   chains to the page as it should, and a horizontal one still never drags the app. */
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
-.overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
+.overflow-y-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
+.overflow-x-auto { overscroll-behavior-x: contain; overscroll-behavior-y: auto; }
 
 /* Respect prefers-reduced-motion for the decorative Tailwind loops too (ping/pulse/spin/bounce), not just
    our own reveal — a live-dot pulse or a spinning glyph is motion a sensitive user asked us to still. */

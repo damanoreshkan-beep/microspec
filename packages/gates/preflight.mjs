@@ -176,6 +176,12 @@ async function preflight(appdir) {
 
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
+  for (const m of src.matchAll(/text-\[var\(--ms-(label|title|icon|hero)\)\]/g)) {
+    const line = src.slice(0, m.index).split("\n").length;
+    errs.push(`${m[0]} in ${srcFile}:${line} is a COLOUR, not a size — Tailwind compiles it to \`color: var(--ms-${m[1]})\`, the browser drops the invalid value and the text silently keeps its parent's size. Write \`text-[length:var(--ms-${m[1]})]\`.`);
+  }
+
+  
   {
     const audible = /(^|[^\w.])(\w+)\.volume\s*=/;
     for (const m of src.matchAll(/function\s+\w+[\s\S]{0,600}?\n\}/g)) {
@@ -185,16 +191,13 @@ async function preflight(appdir) {
       }
     }
   }
-
-  
-  
-  
   
   
   if (/modal-bottom/.test(src)) {
     errs.push(`hand-rolled bottom sheet (\`modal-bottom\`) in ${srcFile} — import { Sheet } from "/_rt/ui.js" instead. The kit owns the shell (glass, drag-to-dismiss, title row, close, backdrop); pass open/onClose from your S.screen atom so Back still closes it.`);
   }
 
+  
   {
     const self = new RegExp(
       String.raw`(\w+)\.width\s*=[^;\n]*\b\1\.client(Width|Height)|` +
@@ -205,6 +208,8 @@ async function preflight(appdir) {
       errs.push(`\`${el}\` is a canvas measured against itself in ${srcFile} — \`${el}.width = ${el}.clientWidth * dpr\`. Before the browser-generated stylesheet lands, \`clientWidth\` on a canvas is its INTRINSIC size (300), so this bakes 300×DPR into layout and the page overflows on a cold open; an ancestor's \`overflow-hidden\` has not applied yet either, so nothing clips it. Measure a wrapper whose height is its own (or the viewport for a fixed field), set \`style.width\`/\`style.height\` AND the backing store, and observe the BOX — never the canvas.`);
     }
   }
+
+  
   {
     const bespokeSheet = /role=["']dialog["']/.test(src) && /fixed inset-0/.test(src);
     if (bespokeSheet && !/\bSheet\b/.test(src)) {
@@ -212,6 +217,8 @@ async function preflight(appdir) {
     }
   }
 
+  
+  
   
   
   
@@ -231,31 +238,24 @@ async function preflight(appdir) {
   
   
   {
-    
-    
-    
     const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
     const surfaceShadow = /(?:^|[\s"'`])shadow-(?:sm|md|lg|xl|2xl|inner)\b/;
     if (surfaceShadow.test(code)) {
       errs.push(`app-authored shadow in ${srcFile} — the material is systemic. Declare what the surface IS: \`sf-raised\` / \`sf-inset\` / \`sf-pressed\`, or a rung of the ladder \`sf-e2\` (hover) … \`sf-e5\` (popover). A hardcoded shadow does not invert with the theme and does not compact with the density ladder.`);
     }
+    
+    
+    
     const glassOnOurSurface = /backdrop-blur(-[a-z0-9]+)?\b[^"'`]*\bbg-base-|bg-base-[0-9]+\/[0-9]+[^"'`]*\bbackdrop-blur\b/;
     if (glassOnOurSurface.test(code)) {
       errs.push(`frosted glass over a base surface in ${srcFile} — glass and the extrusion are answers to the same question and cannot both be on screen: the blur erases the shadow pair that makes the surface read. Use \`sf-raised\`/\`sf-e4\` and an opaque bg-base-100. (Blur over a VIDEO or camera frame is still fine — that is foreign content, not our surface.)`);
     }
-
-    
-    
     
     
     
     if (/(?:^|[\s"'`])transition-all\b/.test(code)) {
       errs.push(`\`transition-all\` in ${srcFile} — name the properties instead. It animates the material too: sf-raised/sf-inset are box-shadow pairs, so the extrusion cross-fades on every state change, and layout properties (width/margin) re-layout each frame off the compositor. Use \`transition-colors\`/\`transition-opacity\`/\`transition-shadow\`/\`transition-transform\`, or an arbitrary set like \`transition-[width]\` / \`transition-[box-shadow,background-color,scale]\`.`);
     }
-    
-    
-    
-    
     
     { const foreign = [...code.matchAll(/["']([a-z0-9-]+):[a-z0-9-]+["']/g)]
         .map((m) => m[1])
@@ -264,16 +264,11 @@ async function preflight(appdir) {
         errs.push(`non-lucide icon set (${[...new Set(foreign)].join(", ")}) in ${srcFile} — the farm draws from ONE set. Mixed sets differ in stroke weight and optical size on the same row, which reads as sloppiness rather than variety. Use a \`lucide:*\` glyph, or draw a runtime SVG if lucide genuinely lacks the shape.`);
       } }
   }
-  
-  
-  
   { const emojiRe = /\p{Emoji_Presentation}/gu;
     const scan = (label, text) => { const m = text.match(emojiRe); if (m) errs.push(`emoji ${[...new Set(m)].join(" ")} in ${label} — emoji are banned farm-wide; use a crafted vector (iconify lucide:*/mdi:*, an /_rt SVG like Sign) or plain words, never an emoji`); };
     scan(srcFile, src);
     scan("spec.json", JSON.stringify(spec));
     for (const l of locales) scan(`i18n/${l}.json`, JSON.stringify(i18n[l])); }
-  
-  
   { const m = src.match(/\.toLocale(?:Date|Time)?String\(\s*(?:undefined\b|\))/);
     if (m) errs.push(`locale-blind \`${m[0]}…\` — pass the app locale, or return a raw value for the renderer to format (never bake a locale-frozen string in an adapter/view)`); }
 
@@ -287,15 +282,15 @@ async function preflight(appdir) {
     else if (mode === "stream") { const { stream } = await dynImport(`file://${await Deno.realPath(`${appdir}/stream.js`)}`); start(composed, { stream }); }
     else { let load = async () => ({ items: [], meta: {} }); try { ({ load } = await dynImport(`file://${await Deno.realPath(`${appdir}/data.js`)}`)); } catch {  } start(composed, load); }
     await flush();
-
     const app = document.getElementById("app");
     const htmlOut = app?.innerHTML || "";
     if (!htmlOut.trim() || htmlOut.length < 30) errs.push("render produced (almost) no output — blank/crashed view");
+
+    
     const strays = new Set();
     const walk = (n) => { for (const c of n.childNodes || []) { if (c.nodeType === 3) { const v = (c.textContent || "").trim(); if (v.length >= 3 && TAGS.has(v)) strays.add(v); } else walk(c); } };
     walk(app);
     if (strays.size) errs.push(`stray tag-name text ${[...strays].map((s) => `"${s}"`).join(", ")} — likely an UNCLOSED tag in ${srcFile}`);
-
     
     
     
@@ -313,10 +308,10 @@ async function preflight(appdir) {
     }
     
     
-    
     if (sensorImport && /\bcamera\b/.test(sensorImport[1]) && !/CameraPrime/.test(src)) {
       errs.push(`imports the camera but never renders <${"CameraPrime"}/> — a camera view must PRIME the permission with a custom "why + processed on your device" screen before the native getUserMedia prompt, never open the stream cold. Import { CameraPrime } from "/_rt/camprime.js" and show it until the user opts in.`);
     }
+    
     if (sensorImport && /\bmic\b/.test(sensorImport[1]) && !/MicPrime/.test(src)) {
       errs.push(`imports the microphone but never renders <${"MicPrime"}/> — a mic view must PRIME the permission with a custom "why + processed on your device" screen before the native getUserMedia prompt. Import { MicPrime } from "/_rt/camprime.js" and show it until the user opts in.`);
     }
@@ -325,19 +320,18 @@ async function preflight(appdir) {
   } catch (e) {
     errs.push("mount threw: " + (e?.stack?.split("\n").slice(0, 3).join(" | ") || e?.message || e));
   }
-
   const name = appdir.replace(/\/$/, "").split("/").pop() + (URL_QUERY ? C.d + " " + URL_QUERY + C.x : "");
   if (errs.length) { console.log(`  ${C.r}✗ ${name}${C.x}`); errs.forEach((e) => console.log(`      ${C.r}${e}${C.x}`)); }
   else { console.log(`  ${C.g}✓ ${name}${C.x}${warns.length ? C.y + " (" + warns.length + " warn)" + C.x : ""}`); warns.forEach((w) => console.log(`      ${C.y}${w}${C.x}`)); }
   return errs.length;
 }
+
 async function exists(p) { try { await Deno.stat(p); return true; } catch { return false; } }
 
 const dirs = Deno.args.filter((a) => !a.startsWith("--") && a !== URL_ARG).map((a) => a.replace(/\/$/, ""));
 if (!dirs.length) { console.error(`usage: preflight.mjs apps/<id> [apps/<id> ...] [--url "?tab=<id>&screen=<key>"]`); Deno.exit(2); }
 console.log(`\n  preflight (browser-free)${URL_ARG ? C.d + "  " + URL_ARG + C.x : ""}\n`);
 let fail = 0;
-
 
 
 const toolTabsAfterFirst = (d) => {

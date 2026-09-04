@@ -176,10 +176,11 @@ async function preflight(appdir) {
 
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
-  for (const m of src.matchAll(/text-\[var\(--ms-(label|title|icon|hero)\)\]/g)) {
-    const line = src.slice(0, m.index).split("\n").length;
-    errs.push(`${m[0]} in ${srcFile}:${line} is a COLOUR, not a size — Tailwind compiles it to \`color: var(--ms-${m[1]})\`, the browser drops the invalid value and the text silently keeps its parent's size. Write \`text-[length:var(--ms-${m[1]})]\`.`);
-  }
+  src.split("\n").forEach((ln, i) => {
+    if (/^\s*(\/\/|\*|\/\*)/.test(ln)) return;
+    const m = ln.match(/text-\[var\(--ms-(label|title|icon|hero)\)\]/);
+    if (m) errs.push(`${m[0]} in ${srcFile}:${i + 1} is a COLOUR, not a size — Tailwind compiles it to \`color: var(--ms-${m[1]})\`, the browser drops the invalid value and the text silently keeps its parent's size. Write \`text-[length:var(--ms-${m[1]})]\`.`);
+  });
 
   
   {

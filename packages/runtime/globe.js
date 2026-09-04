@@ -165,7 +165,11 @@ export function Globe({ onPick, selected, marker, focus, points, spin = true, he
       ctx.beginPath(); path(geoGraticule10()); ctx.strokeStyle = c.grid; ctx.lineWidth = 0.4; ctx.stroke();
       for (const f of LAND) {
         ctx.beginPath(); path(f);
-        ctx.fillStyle = String(f.id) === String(p.selected) ? c.accent : c.land; ctx.fill();
+        // `p.selected == null` is checked FIRST: without it, a feature that carries no id at all matches
+        // "nothing is selected" through String(undefined) === String(undefined), and Natural Earth's 110m
+        // world has such a feature — Somaliland. Every globe with no selection painted it in the accent, a
+        // country lit up as if chosen (found in hive's lookup sheet, 2026-09-04).
+        ctx.fillStyle = p.selected != null && String(f.id) === String(p.selected) ? c.accent : c.land; ctx.fill();
         ctx.strokeStyle = c.stroke; ctx.lineWidth = 0.4; ctx.stroke();
       }
       ctx.beginPath(); path({ type: "Sphere" }); ctx.strokeStyle = c.edge; ctx.lineWidth = 1; ctx.stroke();

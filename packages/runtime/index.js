@@ -206,6 +206,7 @@ export function start(spec, arg2) {
     [S.sheet, () => S.sheet.set(false), (v) => v === true],
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],
     [S.qrOpen, () => S.qrOpen.set(false), (v) => v === true],
+    [S.searchOpen, () => S.searchOpen.set(false), (v) => v === true],   // the header's search field: Back folds it
     // detail BELOW screen (since 2026-08-17): a detail BODY (`detail.view`) may open a sheet on S.screen —
     // persona's conversation history — and Back must close that sheet before the drill-down under it.
     // Nothing opens a detail from inside a screen (checked across apps/), so the other order had no client.

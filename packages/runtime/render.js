@@ -77,7 +77,7 @@
  * @module
  */
 // microspec runtime — Preact render catalog. Reads a spec, renders via an allow-listed set of
-// components (families). This slice ships: shell (AppBar, Dock, SearchBar, Toast), the LIST family
+// components (families). This slice ships: shell (AppBar with its SearchField, Dock, Toast), the LIST family
 // (feed + row cards, badges, sections, search/searchFetch), PROFILE, top-level DETAIL drill-down,
 // and FILTER sheet/chips + InstallModal. converter/dashboard/tool views land in the next slice.
 import { Fragment } from "preact";
@@ -943,16 +943,24 @@ function InstallModal() {
 }
 
 // ---- shell ------------------------------------------------------------------
-function SearchBar({ tab }) {
+// THE SEARCH LIVES IN THE HEADER (owner 2026-09-04: "усі пошук інпути … сховати інпут за кнопку-іконку на рівні
+// хеду … багато займає місця у шапці, і плаває за екраном — це поганий дизайн"). Until then every searchable
+// list carried a sticky bar under the app bar: a full-width input plus a status line, 4 rem of chrome that
+// floated over the list. Now the app bar shows ONE icon; a tap unfolds the field IN the bar's own row (the
+// wordmark steps aside), focused, with the status as a small mono count at its right, and × or Back folds
+// it and clears the query (S.searchOpen is an overlay: one history entry). A hidden twin `#filter` stays in
+// the DOM while folded so the gate's `h.type("#filter", …)` still drives a query the way it always did.
+const statusOf = (t, tab, data, q, fav) => tab.source === "fav" ? T(t, "savedCount", { n: Object.keys(fav).length })
+  : data.loading ? T(t, "statusLoading") : data.error ? T(t, "statusError")
+  // A browse screen has not searched for anything, so a result count is a lie with a number in it
+  : (tab.browse && !q) ? ""
+  : T(t, tab.statusKey || "status", { ...(data.meta || {}) });
+function SearchField({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), q = useStore(A.S.query), fav = useStore(A.S.fav);
-  const status = tab.source === "fav" ? T(t, "savedCount", { n: Object.keys(fav).length })
-    : data.loading ? T(t, "statusLoading") : data.error ? T(t, "statusError")
-    // A browse screen has not searched for anything, so a result count is a lie with a number in it
-    // ("found: 41" over a shelf nobody queried). The line stays in the DOM — it reserves its own height,
-    // so the list does not jump the moment a query does produce a count.
-    : (tab.browse && !q) ? ""
-    : T(t, tab.statusKey || "status", { ...(data.meta || {}) });
-  return html`<div class="sticky top-14 z-20 bg-base-200 border-b border-base-300/50 px-4 pt-3 pb-2"><label class="input input-bordered flex items-center gap-2 h-11 rounded-2xl">${Icon("lucide:search", "text-lg opacity-50")}<input id="filter" type="search" class="grow" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /></label><div id="status" class="text-xs text-base-content/70 mt-1 min-h-4 px-1">${status}</div></div>`;
+  const ref = useRef();
+  useEffect(() => { ref.current?.focus(); }, []);
+  const onInput = (e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); };
+  return html`<label data-search class="flex-1 min-w-0 flex items-center gap-2 h-9">${Icon("lucide:search", "text-lg opacity-50 shrink-0")}<input id="filter" ref=${ref} type="search" class="grow min-w-0 bg-transparent text-base focus:outline-none placeholder:text-base-content/45" placeholder=${T(t, tab.searchKey || "search")} autocomplete="off" value=${q} onInput=${onInput} /><span id="status" class="font-mono text-xs text-muted shrink-0 max-w-[38%] truncate">${statusOf(t, tab, data, q, fav)}</span></label>`;
 }
 
 // Declarative, persisted sort control (segmented). The chosen key lives in S.sort (persistentAtom), so
@@ -1078,6 +1086,15 @@ function AppBar() {
   const t = useStore(A.S.t), loc = useStore(A.S.locale);
   const qL = QR_LBL[loc] || QR_LBL.en;
   const hdrRef = usePublishedChrome("header");
+  // the search: an icon when the active tab is a searchable list, the unfolded field while open (see SearchField)
+  const cur = useStore(A.S.tab), searchOpen = useStore(A.S.searchOpen);
+  const tab = A.spec.tabs.find((x) => x.id === cur) || A.spec.tabs[0];
+  const searchable = tab?.type === "list" && !!tab.search;
+  useEffect(() => { if (A.S.searchOpen.get()) A.S.searchOpen.set(false); }, [cur]);   // a tab change folds it
+  const fold = () => { A.S.query.set(""); if (tab?.searchFetch) debouncedLoad(); A.S.searchOpen.set(false); };
+  if (searchable && searchOpen) {
+    return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:env(safe-area-inset-top)"><${SearchField} tab=${tab} /><button id="search-close" class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, "close")} onClick=${fold}>${Icon("lucide:x", "text-xl")}</button></header>`;
+  }
   // The portal's lip: NO bar, NO border, NO surface classes — theme.css owns the header entirely (the
   // dissolving pane, the woven-light band and the lit hairline, `header.navbar` there). A `bg-base-100 sf-e2`
   // here made it a flat card with a ring, welded over every ambient stage. The title is the app's wordmark
@@ -1085,7 +1102,8 @@ function AppBar() {
   // owner 2026-09-01: "маленький акуратний, не давив на голову"), and --hdr-h is MEASURED off the element.
   // The "open on phone" trigger is desktop-only (hidden lg:) — a QR of THIS page to hop to your phone; it
   // stays in the DOM on mobile (display:none) so nothing needs a special build, and it's harmless there.
-  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><${Battery} /><button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+  // folded: the wordmark, then the actions; the hidden twin `#filter` keeps the gate's typed queries working
+  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><${Battery} />${searchable ? html`<input id="filter" type="search" class="hidden" tabindex="-1" aria-hidden="true" onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /><button id="search-btn" class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, tab.searchKey || "search")} onClick=${() => A.S.searchOpen.set(true)}>${Icon("lucide:search", "text-xl")}</button>` : null}<button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 
 // Desktop "open on phone": a QR of the current URL so you can continue on a phone, with an explicit "stay on
@@ -1524,7 +1542,6 @@ export function App() {
   }, [clean]);
   return html`<${Fragment}>
     ${clean ? null : html`<${AppBar} />`}
-    ${tab.type === "list" && tab.search ? html`<${SearchBar} tab=${tab} />` : null}
     ${A.spec.filters ? html`<${FilterChips} />` : null}
     ${tab.type === "list" && tab.chart ? html`<${Chart} tab=${tab} />` : null}
     ${tab.type === "list" && tab.segments ? html`<${SegmentBar} tab=${tab} />` : null}

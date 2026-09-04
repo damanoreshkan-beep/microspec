@@ -154,6 +154,7 @@ export function createApp(spec, dataLoad) {
     installEvent: atom(null),
     installOpen: atom(false),
     qrOpen: atom(false),          // desktop "open on phone" self-QR (history-backed like the others)
+    searchOpen: atom(false),      // the list search field unfolded in the header (history-backed; owner 2026-09-04: no bar under the header)
     confirm: atom(null),          // { title, body?, verb, onConfirm } — danger-confirm sheet (history-backed)
     undo: atom(null),             // { fn, label } — interactive undo snackbar; NOT history-backed (transient)
     update: atom(false),          // a newer build is cached and ready — offer a restart (see index.js)

@@ -372,7 +372,8 @@ nav[data-dock] button > span {
 .truncate { min-width: 0; }
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
-.overflow-y-auto, .overflow-x-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
+.overflow-y-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
+.overflow-x-auto { overscroll-behavior-x: contain; overscroll-behavior-y: auto; }
 
 
 @media (prefers-reduced-motion: reduce) {
@@ -383,6 +384,7 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 
 
 .ms-shell {
+  
   --sh-r: calc(var(--ms-r) * 1.2);
   --sh-r-in: max(var(--r-1), calc(var(--sh-r) - var(--ms-pad)));
   width: 100%;
@@ -411,11 +413,10 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 }
 .ms-pad { padding: 4%; }
 .ms-pad-hub { width: 92%; height: 92%; }
-
 .ms-pad-key { border-radius: 12%; }
 
-.ms-menu { flex-wrap: wrap; justify-content: center; }
 
+.ms-menu { flex-wrap: wrap; justify-content: center; }
 
 
 .ms-sweep { animation: ms-sweep 4s linear infinite; }

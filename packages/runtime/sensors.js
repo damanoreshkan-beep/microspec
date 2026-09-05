@@ -304,8 +304,15 @@ export const camera = {
   async start(video, onErr, { facingMode = "environment" } = {}) {
     if (!this.supported) { onErr?.("unsupported"); return () => {}; }
     let stream = null, stopped = false;
+    const open = () => navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
+      try { stream = await open(); }
+      catch (e) {
+        if (!e || !/NotReadableError|AbortError|OverconstrainedError/.test(e.name)) throw e;
+        await new Promise((r) => setTimeout(r, RELEASE_MS));   
+        if (stopped) return () => {};
+        stream = await open();
+      }
       if (stopped) { stream.getTracks().forEach((tr) => tr.stop()); return () => {}; } 
       if (video) { video.srcObject = stream; video.setAttribute?.("playsinline", ""); try { await video.play?.(); } catch {  } }
     } catch (e) {
@@ -315,10 +322,12 @@ export const camera = {
     return () => {
       stopped = true;
       try { stream?.getTracks().forEach((tr) => tr.stop()); } catch {  }
-      try { if (video) video.srcObject = null; } catch {  }
+      try { if (video && video.srcObject === stream) video.srcObject = null; } catch {  }
     };
   },
 };
+/** How long a stopped camera keeps its hardware on Android before the other one can open (measured ~300 ms). */
+const RELEASE_MS = 350;
 
 /** Recorder MIME types to try, in preference order. */
 export const MIC_MIMES = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];

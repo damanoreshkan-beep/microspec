@@ -12,6 +12,17 @@
       "minimum": 1,
       "description": "The bridge version the CURRENT template implements. A shell reports its own; the facade compares the two, because the web ships in minutes and an APK ships when the user reinstalls it."
     },
+    "flavours": {
+      "type": "object",
+      "description": "Which shell template flavours CARRY a capability, by capability name. A capability absent here is in every trusted flavour (full and the heavier ones); one listed here is granted only by the flavours named — the engine's `godot` lives only in the template that links the engine. The template generator derives each flavour's grant list from this, so no list is typed by hand.",
+      "propertyNames": { "pattern": "^[a-z-]+$" },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": { "type": "string", "enum": ["full", "godot"] }
+      }
+    },
     "actions": {
       "type": "array",
       "minItems": 1,

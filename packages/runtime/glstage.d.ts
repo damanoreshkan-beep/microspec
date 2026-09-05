@@ -22,7 +22,9 @@
  * - {@link GlStage} — the component: `{ shader, seed = 0, ink, vary, tex, texReady, cam, zClass = "-z-10" }` renders a
  *   `fixed inset-0` canvas (`data-stage`, `aria-hidden`) and drives the app's GLSL ES 3.00 fragment shader every frame.
  *   `cam` is a LIVE picture source (a `<video>` of the camera, a canvas, an image) uploaded at full resolution every
- *   frame it changes — the one channel that projects a picture instead of borrowing a palette from it.
+ *   frame it changes — the one channel that projects a picture instead of borrowing a palette from it. `tex2` is a
+ *   MATERIAL texture (full resolution, mirrored-repeat, unit 2) a shader tiles over that picture; `preserve` keeps
+ *   the drawing buffer so the app can save the live frame from the canvas.
  * - {@link hasWebGL2} — the probe: true when this document can hand out a WebGL2 context, false wherever
  *   `getContext` throws or answers null.
  *
@@ -81,9 +83,13 @@
  *                 the texture is (not) bound, so the app can fade the field in through its own `vary` channel
  * @param cam      optional live picture source — a `<video>`, canvas, image or ImageBitmap, or a function
  *                 returning one (read every frame); projected at full resolution as `cam` / `camAspect`
+ * @param tex2     optional MATERIAL texture URL (CORS-readable): full resolution, unit 2, mirrored-repeat, so a
+ *                 shader can tile a generated material over a picture — `tex2` / `tex2Aspect` (x = w/h, y = bound)
+ * @param preserve keep the drawing buffer after each frame, so the app can read the canvas (`toBlob`) — a
+ *                 shutter that saves the live frame; costs a copy per frame, so only a stage that captures asks
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed, ink, vary, tex, texReady, cam, zClass }: {
+export function GlStage({ shader, seed, ink, vary, tex, texReady, cam, tex2, preserve, zClass }: {
     shader: any;
     seed?: number;
     ink: any;
@@ -91,6 +97,8 @@ export function GlStage({ shader, seed, ink, vary, tex, texReady, cam, zClass }:
     tex: any;
     texReady: any;
     cam: any;
+    tex2: any;
+    preserve?: boolean;
     zClass?: string;
 }): any;
 /**

@@ -23,7 +23,9 @@
  * - {@link GlStage} — the component: `{ shader, seed = 0, ink, vary, tex, texReady, cam, zClass = "-z-10" }` renders a
  *   `fixed inset-0` canvas (`data-stage`, `aria-hidden`) and drives the app's GLSL ES 3.00 fragment shader every frame.
  *   `cam` is a LIVE picture source (a `<video>` of the camera, a canvas, an image) uploaded at full resolution every
- *   frame it changes — the one channel that projects a picture instead of borrowing a palette from it.
+ *   frame it changes — the one channel that projects a picture instead of borrowing a palette from it. `tex2` is a
+ *   MATERIAL texture (full resolution, mirrored-repeat, unit 2) a shader tiles over that picture; `preserve` keeps
+ *   the drawing buffer so the app can save the live frame from the canvas.
  * - {@link hasWebGL2} — the probe: true when this document can hand out a WebGL2 context, false wherever
  *   `getContext` throws or answers null.
  *
@@ -125,11 +127,15 @@ export const hasWebGL2 = () => {
  *                 the texture is (not) bound, so the app can fade the field in through its own `vary` channel
  * @param cam      optional live picture source — a `<video>`, canvas, image or ImageBitmap, or a function
  *                 returning one (read every frame); projected at full resolution as `cam` / `camAspect`
+ * @param tex2     optional MATERIAL texture URL (CORS-readable): full resolution, unit 2, mirrored-repeat, so a
+ *                 shader can tile a generated material over a picture — `tex2` / `tex2Aspect` (x = w/h, y = bound)
+ * @param preserve keep the drawing buffer after each frame, so the app can read the canvas (`toBlob`) — a
+ *                 shutter that saves the live frame; costs a copy per frame, so only a stage that captures asks
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, cam, zClass = "-z-10" }) {
+export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, cam, tex2, preserve = false, zClass = "-z-10" }) {
   const ref = useRef();
-  const state = useRef({ raf: 0, dead: false, gl: null, light: themeLight(), texUrl: null }).current;
+  const state = useRef({ raf: 0, dead: false, gl: null, light: themeLight(), texUrl: null, tex2Url: null }).current;
   state.seed = seed; state.ink = ink; state.vary = vary; state.texReady = texReady; state.cam = cam;
 
   useEffect(() => {
@@ -138,7 +144,7 @@ export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, cam, zClas
     const canvas = ref.current;
     if (!canvas) return;
     let gl;
-    try { gl = canvas.getContext("webgl2", { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: "low-power" }); } catch { gl = null; }
+    try { gl = canvas.getContext("webgl2", { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: "low-power", preserveDrawingBuffer: !!preserve }); } catch { gl = null; }
     canvas.dataset.haswebgl = gl ? "yes" : "no";
     if (!gl) return;
     state.gl = gl;
@@ -191,6 +197,33 @@ export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, cam, zClas
           camLast = src; camTime = video ? src.currentTime : -1; camAspect = w / h;
           if (!camBound) { camBound = 1; canvas.dataset.cam = "yes"; }
         };
+        // The material texture, on unit 2: full resolution, mirrored-repeat (a generated material tiles over the
+        // picture without a visible seam), mipmapped once at load (it is static, unlike `cam`). A 1×1 grey sits
+        // there until the picture is bound; `tex2Aspect.y` tells the shader.
+        const uTex2 = U("tex2"), uTex2Aspect = U("tex2Aspect");
+        const tex2Tex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, tex2Tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 128, 255]));
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+        if (uTex2) gl.uniform1i(uTex2, 2);
+        let tex2Aspect = 1, tex2Bound = 0;
+        state.loadTex2 = async (url) => {
+          if (!url) { tex2Bound = 0; return; }
+          try {
+            const img = new Image(); img.crossOrigin = "anonymous"; img.decoding = "async"; img.src = url;
+            await img.decode();
+            if (state.dead || state.tex2Url !== url) return;
+            gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, tex2Tex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+            gl.generateMipmap(gl.TEXTURE_2D);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+            gl.activeTexture(gl.TEXTURE0);
+            tex2Aspect = img.naturalWidth / (img.naturalHeight || 1); tex2Bound = 1;
+            canvas.dataset.tex2 = "yes";
+          } catch { /* a material that will not read leaves the grey */ }
+        };
+        if (state.tex2Url) state.loadTex2(state.tex2Url);
         gl.activeTexture(gl.TEXTURE0);   // the palette below binds on unit 0 without saying so
         // A 1×1 neutral texture is bound from the first frame, so a shader that samples `tex` never reads
         // an unbound unit while the portrait is still on the wire.
@@ -250,6 +283,7 @@ export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, cam, zClas
           if (uEnv) gl.uniform4f(uEnv, state.light, 0, 0, 0);
           if (uTexAspect) gl.uniform2f(uTexAspect, texAspect, 0);
           if (uCam) { uploadCam(typeof state.cam === "function" ? state.cam() : state.cam); gl.uniform2f(uCamAspect, camAspect, camBound); }
+          if (uTex2Aspect) gl.uniform2f(uTex2Aspect, tex2Aspect, tex2Bound);
           gl.drawArrays(gl.TRIANGLES, 0, 3);
           canvas.dataset.render = "webgl";
           state.raf = requestAnimationFrame(frame);
@@ -277,6 +311,10 @@ export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, cam, zClas
     state.texUrl = tex || null;
     if (state.loadTex) state.loadTex(state.texUrl);
   }, [tex]);
+  useEffect(() => {
+    state.tex2Url = tex2 || null;
+    if (state.loadTex2) state.loadTex2(state.tex2Url);
+  }, [tex2]);
 
   return html`<canvas ref=${ref} data-stage aria-hidden="true"
     class=${`fixed inset-0 ${zClass} w-full h-full pointer-events-none`}></canvas>`;

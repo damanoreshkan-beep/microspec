@@ -14,6 +14,7 @@ Deno.test("material · the link swap keeps the path and changes only the file, f
   assertEquals(materialHref("/_rt/theme.css", "theme-smoke.css"), "/_rt/theme-smoke.css");
   assertEquals(materialHref("/_rt/theme-lum.css?v=3", "theme-plain.css"), "/_rt/theme-plain.css", "a query string is dropped with the file it belonged to");
   assertEquals(materialHref("/_rt/app.css", "theme-plain.css"), "/_rt/app.css", "a link that is not the theme is left alone");
+  assertEquals(materialHref("https://cdn.jsdelivr.net/npm/daisyui@5/themes.css", "theme-lum.css"), "https://cdn.jsdelivr.net/npm/daisyui@5/themes.css", "daisyui's themes.css is not the theme link");
 });
 
 Deno.test("material · applyMaterial rewrites the theme link, stamps the root, and falls back to the default for an unknown id", () => {

@@ -41,6 +41,7 @@ import "./tests/permissions_test.js";
 import "./tests/playback_test.js";
 import "./tests/player_test.js";
 import "./tests/qrcode_test.js";
+import "./tests/camstage_test.js";
 import "./tests/sensors_test.js";
 import "./tests/strip_test.js";
 import "./tests/shell_test.js";

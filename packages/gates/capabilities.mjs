@@ -99,6 +99,7 @@ export const SYMBOL_CAPS = {
     compass: ["compass", "orientation"], tilt: ["orientation"], wakeLock: ["wakeLock"],
   },
   "/_rt/camprime.js": { CameraPrime: ["camera"], MicPrime: ["microphone"] },
+  "/_rt/camstage.js": { CamStage: ["camera", "wakeLock"] },   // the kit's camera stage (1.2.39) opens the stream and holds the screen awake itself
   "/_rt/intake.js": { Camera: ["camera"] },   // the kit's viewfinder (1.2.14) opens the stream itself; the chooser alone needs nothing
   "/_rt/auth.js": { "*": ["auth"] },
   "/_rt/hackrf.js": { "*": ["usb"] },

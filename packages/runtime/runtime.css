@@ -163,6 +163,10 @@
    gate measures this at every breakpoint, so "it fits on my phone" is no longer the standard.
    Height math is the two chrome constants, never a local guess: --hdr-h + --dock-h. */
 html.ms-fit, html.ms-fit body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+/* THE ENGINE UNDER THE PAGE (runtime/godotstage.js): while a GodotStage is mounted the document is marked
+   data-engine="godot" and its ground is transparent, so the Godot picture behind the WebView shows through
+   everything but the chrome. !important because the theme paints the body's ground unlayered. */
+html[data-engine="godot"], html[data-engine="godot"] body, html[data-engine="godot"] main#view { background: transparent !important; }
 /* The last thing in a fit column must not end flush with the padding edge. The padding is arithmetic —
    --dock-h plus a safe area — and arithmetic is exactly what put rave's transport 6px from the tab bar
    while every check passed. A margin on the last child is not arithmetic: it is air that cannot be

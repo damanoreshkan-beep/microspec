@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 33,
+  "bridgeVersion": 34,
   "actions": [
     {
       "id": "system.info",
@@ -2498,6 +2498,144 @@
       "mock": {
         "ack": true
       }
+    },
+    {
+      "id": "godot.start",
+      "capability": "godot",
+      "kind": "call",
+      "minBridge": 34,
+      "android": ["CAMERA"],
+      "summary": "Start the Godot engine UNDER the page with a project pack from the page's own origin. The shell's `godot` flavour carries Godot as a library (Vulkan Mobile, the camera through Godot's CameraServer); the page stays the UI on a transparent WebView. One engine per process: a second start replaces the pack.",
+      "args": {
+        "type": "object",
+        "required": ["pack"],
+        "additionalProperties": false,
+        "properties": {
+          "pack": { "type": "string", "description": "https URL of the .pck, on the page's origin. Cached by its bytes' digest." },
+          "params": { "type": "object", "additionalProperties": true, "description": "Initial key/values handed to the project (the same as godot.set, before the first frame)." }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["state"],
+        "additionalProperties": false,
+        "properties": {
+          "state": { "type": "string", "enum": ["starting", "running"] },
+          "engine": { "type": "string", "description": "The library's version, e.g. 4.7.2.stable." },
+          "cached": { "type": "boolean" }
+        }
+      },
+      "mock": { "state": "running", "engine": "4.7.2.stable", "cached": true }
+    },
+    {
+      "id": "godot.stop",
+      "capability": "godot",
+      "kind": "call",
+      "minBridge": 34,
+      "android": [],
+      "summary": "Stop rendering and release the camera; the engine stays loaded for the next start.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": {
+        "type": "object",
+        "required": ["state"],
+        "additionalProperties": false,
+        "properties": { "state": { "type": "string", "enum": ["stopped"] } }
+      },
+      "mock": { "state": "stopped" }
+    },
+    {
+      "id": "godot.set",
+      "capability": "godot",
+      "kind": "call",
+      "minBridge": 34,
+      "android": [],
+      "summary": "Hand one key/value to the running project (a preset, a knob, a mode) — the project's `MsPortal` singleton emits it as a signal.",
+      "args": {
+        "type": "object",
+        "required": ["key", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "key": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "value": { "description": "Any JSON value." }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["ok"],
+        "additionalProperties": false,
+        "properties": { "ok": { "type": "boolean" } }
+      },
+      "mock": { "ok": true }
+    },
+    {
+      "id": "godot.input",
+      "capability": "godot",
+      "kind": "call",
+      "minBridge": 34,
+      "android": [],
+      "summary": "A gesture on the stage, forwarded from the page — the WebView owns every touch, so the page relays what belongs to the picture: a tap (focus), a pinch (zoom), a pan.",
+      "args": {
+        "type": "object",
+        "required": ["type"],
+        "additionalProperties": false,
+        "properties": {
+          "type": { "type": "string", "enum": ["tap", "pinch", "pan", "end"] },
+          "x": { "type": "number", "description": "0..1 across the stage." },
+          "y": { "type": "number", "description": "0..1 down the stage." },
+          "scale": { "type": "number", "description": "pinch: the factor since the pinch began." },
+          "dx": { "type": "number" },
+          "dy": { "type": "number" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["ok"],
+        "additionalProperties": false,
+        "properties": { "ok": { "type": "boolean" } }
+      },
+      "mock": { "ok": true }
+    },
+    {
+      "id": "godot.save",
+      "capability": "godot",
+      "kind": "call",
+      "minBridge": 34,
+      "android": [],
+      "summary": "The current frame as a PNG in Downloads (MediaStore), the way every save in the shell lands where the user can find it.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 128 } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["name", "bytes"],
+        "additionalProperties": false,
+        "properties": { "name": { "type": "string" }, "bytes": { "type": "integer" } }
+      },
+      "mock": { "name": "portal-1.png", "bytes": 245760 }
+    },
+    {
+      "id": "godot.state",
+      "capability": "godot",
+      "kind": "subscribe",
+      "minBridge": 34,
+      "android": [],
+      "summary": "What the engine is doing: loading the pack, running (with the frame rate the project reports), stopped, or failed with a reason.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ack": { "type": "boolean" },
+          "state": { "type": "string", "enum": ["loading", "starting", "running", "stopped", "failed"] },
+          "fps": { "type": "number" },
+          "width": { "type": "integer" },
+          "height": { "type": "integer" },
+          "detail": { "type": "string" }
+        }
+      },
+      "mock": { "ack": true }
     }
   ]
 }

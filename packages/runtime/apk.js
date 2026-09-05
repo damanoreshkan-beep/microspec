@@ -210,14 +210,16 @@ export async function fetchSiteIconPng(url, size = 192) {
 
 /**
  * Ask the edge to build and sign an APK for a URL; throws with the edge's one-line reason on a non-ok status.
- * @param opts `{ url, name, iconB64, fgB64?, bg? }` — the site, its display name and the launcher / adaptive icon parts
+ * @param opts `{ url, name, iconB64, fgB64?, bg?, power? }` — the site, its display name, the launcher / adaptive icon
+ *   parts, and `power: "godot"` for an app whose stage is the Godot engine (the shell's heavier flavour; the edge
+ *   still grants it only to our own origin)
  * @returns the signed APK as a Blob
  */
-export async function buildApk({ url, name, iconB64, fgB64, bg }) {
+export async function buildApk({ url, name, iconB64, fgB64, bg, power }) {
   const r = await fetch(`${VPS_PROXY}/apk`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url, name, icon: iconB64 || undefined, fg: fgB64 || undefined, bg: bg || undefined }),
+    body: JSON.stringify({ url, name, icon: iconB64 || undefined, fg: fgB64 || undefined, bg: bg || undefined, power: power || undefined }),
   });
   if (!r.ok) { const why = await r.text().catch(() => ""); throw new Error(`apk ${r.status}${why ? ` ${why}` : ""}`); }
   return await r.blob();

@@ -671,7 +671,10 @@ function ApkScreen() {
     try {
       let i = icons;
       if (!i) { try { i = await resolveIcons(); } catch { i = {}; } }
-      if (!gate) { const blob = await buildApk({ url, name, iconB64: i.icon, fgB64: i.fg, bg: i.bg }); downloadBlob(blob, apkFilename(name)); }
+      
+      
+      const power = A.spec.profile?.apk === "godot" ? "godot" : undefined;
+      if (!gate) { const blob = await buildApk({ url, name, iconB64: i.icon, fgB64: i.fg, bg: i.bg, power }); downloadBlob(blob, apkFilename(name)); }
       setDone(true); A.toast(sys("apkDone", loc));
     } catch (e) {
       

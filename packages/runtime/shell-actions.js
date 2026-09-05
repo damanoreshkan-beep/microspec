@@ -18,7 +18,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 48 actions (bridge 33).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 54 actions (bridge 34).
  *
  * ## How it fits
  * Imported by runtime/shell.js, which compares CATALOGUE_BRIDGE with the bridge the APK reports and refuses
@@ -27,7 +27,7 @@
  * @module
  */
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
-export const CATALOGUE_BRIDGE = 33;
+export const CATALOGUE_BRIDGE = 34;
 /** Every shell action by id: { capability, kind ("call"|"subscribe"), minBridge, android permissions, mock }. */
 export const ACTIONS = {
   "system.info": {
@@ -686,6 +686,65 @@ export const ACTIONS = {
     "capability": "share",
     "kind": "subscribe",
     "minBridge": 29,
+    "android": [],
+    "mock": {
+      "ack": true
+    }
+  },
+  "godot.start": {
+    "capability": "godot",
+    "kind": "call",
+    "minBridge": 34,
+    "android": [
+      "CAMERA"
+    ],
+    "mock": {
+      "state": "running",
+      "engine": "4.7.2.stable",
+      "cached": true
+    }
+  },
+  "godot.stop": {
+    "capability": "godot",
+    "kind": "call",
+    "minBridge": 34,
+    "android": [],
+    "mock": {
+      "state": "stopped"
+    }
+  },
+  "godot.set": {
+    "capability": "godot",
+    "kind": "call",
+    "minBridge": 34,
+    "android": [],
+    "mock": {
+      "ok": true
+    }
+  },
+  "godot.input": {
+    "capability": "godot",
+    "kind": "call",
+    "minBridge": 34,
+    "android": [],
+    "mock": {
+      "ok": true
+    }
+  },
+  "godot.save": {
+    "capability": "godot",
+    "kind": "call",
+    "minBridge": 34,
+    "android": [],
+    "mock": {
+      "name": "portal-1.png",
+      "bytes": 245760
+    }
+  },
+  "godot.state": {
+    "capability": "godot",
+    "kind": "subscribe",
+    "minBridge": 34,
     "android": [],
     "mock": {
       "ack": true

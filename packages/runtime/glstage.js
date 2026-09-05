@@ -20,8 +20,10 @@
  * ```
  *
  * ## What it exports
- * - {@link GlStage} — the component: `{ shader, seed = 0, ink, vary, tex, texReady, zClass = "-z-10" }` renders a
+ * - {@link GlStage} — the component: `{ shader, seed = 0, ink, vary, tex, texReady, cam, zClass = "-z-10" }` renders a
  *   `fixed inset-0` canvas (`data-stage`, `aria-hidden`) and drives the app's GLSL ES 3.00 fragment shader every frame.
+ *   `cam` is a LIVE picture source (a `<video>` of the camera, a canvas, an image) uploaded at full resolution every
+ *   frame it changes — the one channel that projects a picture instead of borrowing a palette from it.
  * - {@link hasWebGL2} — the probe: true when this document can hand out a WebGL2 context, false wherever
  *   `getContext` throws or answers null.
  *
@@ -35,7 +37,8 @@
  *   ink=${inkFor} vary=${bands} tex=${station.logo || null} texReady=${(r) => { env.readyTo = r; }} />`;
  * ```
  * The shader declares `out vec4 o` and the uniforms `res: vec2 · time: float · seed: float · ink: vec4 ·
- * vary: vec4 · env: vec4`, plus `tex: sampler2D` and `texAspect: vec2` when it samples the palette.
+ * vary: vec4 · env: vec4`, plus `tex: sampler2D` and `texAspect: vec2` when it samples the palette, and
+ * `cam: sampler2D` + `camAspect: vec2` (x = width/height, y = 1 once a frame is bound) when it projects `cam`.
  *
  * ## How it fits
  * Imports `htm/preact`, `preact/hooks` and `gate` from `./gate.js` (the gate does not skip the stage — it only
@@ -56,6 +59,12 @@
  *   `tex` never reads an unbound unit; a URL that will not read (no CORS, 404) leaves that neutral palette.
  * - `texReady` is called with 0 when a load starts and 1 when the texture is bound — the app fades the field in
  *   through its own `vary` channel. Changing `tex` swaps the texture without rebuilding the program.
+ * - `cam` is the opposite of `tex` on purpose: FULL resolution, texture unit 1, no mipmaps, clamped edges. A
+ *   function is read every frame (the way `ink`/`vary` are); a `<video>` uploads only when `currentTime` moved
+ *   and `readyState ≥ 2`, any other source (canvas, image, bitmap) when its identity changes — so a still handed in
+ *   under the gate costs one upload, and a camera costs one per new frame. The canvas reports `data-cam="yes"`
+ *   once a frame is bound; `camAspect.y` says the same to the shader, which reads a 1×1 grey until then. Rows are
+ *   uploaded top-first (no `UNPACK_FLIP_Y`), so a shader that flips `uv.y` for the DOM samples it upright.
  * - Under the gate: DPR 1 and every other frame skipped (a full-screen fbm field at DPR 2 in SwiftShader starved a
  *   fixture stream from 0.7 s to 30 s). Elsewhere DPR is capped at 2. A hidden tab draws nothing.
  * - `prefers-reduced-motion: reduce` freezes `time` at 2 and snaps `env.x` instead of easing it.
@@ -114,12 +123,14 @@ export const hasWebGL2 = () => {
  * @param vary     optional vec4 — same; the app's live parameters (this is how a stage answers real state)
  * @param tex      optional image URL (CORS-readable); `texReady` — a function the stage calls with 0/1 when
  *                 the texture is (not) bound, so the app can fade the field in through its own `vary` channel
+ * @param cam      optional live picture source — a `<video>`, canvas, image or ImageBitmap, or a function
+ *                 returning one (read every frame); projected at full resolution as `cam` / `camAspect`
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, zClass = "-z-10" }) {
+export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, cam, zClass = "-z-10" }) {
   const ref = useRef();
   const state = useRef({ raf: 0, dead: false, gl: null, light: themeLight(), texUrl: null }).current;
-  state.seed = seed; state.ink = ink; state.vary = vary; state.texReady = texReady;
+  state.seed = seed; state.ink = ink; state.vary = vary; state.texReady = texReady; state.cam = cam;
 
   useEffect(() => {
     // No gate guard, on purpose (see the header): the probe below is the guard. Preflight's canvas stub
@@ -154,6 +165,33 @@ export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, zClass = "
         gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
         const U = (n) => gl.getUniformLocation(prog, n);
         const uRes = U("res"), uTime = U("time"), uSeed = U("seed"), uInk = U("ink"), uVary = U("vary"), uEnv = U("env"), uTex = U("tex"), uTexAspect = U("texAspect");
+        const uCam = U("cam"), uCamAspect = U("camAspect");
+        // The live picture, on unit 1: full resolution, no mipmaps (a per-frame generateMipmap on a camera frame is
+        // the cost that stutters), clamped so an aspect-fitted sample never wraps. A 1×1 grey sits there until a frame lands.
+        const camTex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, camTex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 128, 255]));
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        if (uCam) gl.uniform1i(uCam, 1);
+        let camAspect = 1, camBound = 0, camLast = null, camTime = -1;
+        const sizeOfSrc = (s) => [s.videoWidth || s.naturalWidth || s.width || 0, s.videoHeight || s.naturalHeight || s.height || 0];
+        const uploadCam = (src) => {
+          if (!src) return;
+          const video = typeof HTMLVideoElement !== "undefined" && src instanceof HTMLVideoElement;
+          if (video) { if (src.readyState < 2 || src.currentTime === camTime) return; }
+          else if (src === camLast) return;
+          const [w, h] = sizeOfSrc(src);
+          if (!(w > 0 && h > 0)) return;
+          try {
+            gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, camTex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+            gl.activeTexture(gl.TEXTURE0);
+          } catch { return; }   // a tainted or not-yet-decoded source: the grey stays, the next frame tries again
+          camLast = src; camTime = video ? src.currentTime : -1; camAspect = w / h;
+          if (!camBound) { camBound = 1; canvas.dataset.cam = "yes"; }
+        };
+        gl.activeTexture(gl.TEXTURE0);   // the palette below binds on unit 0 without saying so
         // A 1×1 neutral texture is bound from the first frame, so a shader that samples `tex` never reads
         // an unbound unit while the portrait is still on the wire.
         const texture = gl.createTexture();
@@ -211,6 +249,7 @@ export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, zClass = "
           state.light = still ? target : state.light + (target - state.light) * 0.13;
           if (uEnv) gl.uniform4f(uEnv, state.light, 0, 0, 0);
           if (uTexAspect) gl.uniform2f(uTexAspect, texAspect, 0);
+          if (uCam) { uploadCam(typeof state.cam === "function" ? state.cam() : state.cam); gl.uniform2f(uCamAspect, camAspect, camBound); }
           gl.drawArrays(gl.TRIANGLES, 0, 3);
           canvas.dataset.render = "webgl";
           state.raf = requestAnimationFrame(frame);

@@ -19,8 +19,10 @@
  * ```
  *
  * ## What it exports
- * - {@link GlStage} — the component: `{ shader, seed = 0, ink, vary, tex, texReady, zClass = "-z-10" }` renders a
+ * - {@link GlStage} — the component: `{ shader, seed = 0, ink, vary, tex, texReady, cam, zClass = "-z-10" }` renders a
  *   `fixed inset-0` canvas (`data-stage`, `aria-hidden`) and drives the app's GLSL ES 3.00 fragment shader every frame.
+ *   `cam` is a LIVE picture source (a `<video>` of the camera, a canvas, an image) uploaded at full resolution every
+ *   frame it changes — the one channel that projects a picture instead of borrowing a palette from it.
  * - {@link hasWebGL2} — the probe: true when this document can hand out a WebGL2 context, false wherever
  *   `getContext` throws or answers null.
  *
@@ -34,7 +36,8 @@
  *   ink=${inkFor} vary=${bands} tex=${station.logo || null} texReady=${(r) => { env.readyTo = r; }} />`;
  * ```
  * The shader declares `out vec4 o` and the uniforms `res: vec2 · time: float · seed: float · ink: vec4 ·
- * vary: vec4 · env: vec4`, plus `tex: sampler2D` and `texAspect: vec2` when it samples the palette.
+ * vary: vec4 · env: vec4`, plus `tex: sampler2D` and `texAspect: vec2` when it samples the palette, and
+ * `cam: sampler2D` + `camAspect: vec2` (x = width/height, y = 1 once a frame is bound) when it projects `cam`.
  *
  * ## How it fits
  * Imports `htm/preact`, `preact/hooks` and `gate` from `./gate.js` (the gate does not skip the stage — it only
@@ -55,6 +58,12 @@
  *   `tex` never reads an unbound unit; a URL that will not read (no CORS, 404) leaves that neutral palette.
  * - `texReady` is called with 0 when a load starts and 1 when the texture is bound — the app fades the field in
  *   through its own `vary` channel. Changing `tex` swaps the texture without rebuilding the program.
+ * - `cam` is the opposite of `tex` on purpose: FULL resolution, texture unit 1, no mipmaps, clamped edges. A
+ *   function is read every frame (the way `ink`/`vary` are); a `<video>` uploads only when `currentTime` moved
+ *   and `readyState ≥ 2`, any other source (canvas, image, bitmap) when its identity changes — so a still handed in
+ *   under the gate costs one upload, and a camera costs one per new frame. The canvas reports `data-cam="yes"`
+ *   once a frame is bound; `camAspect.y` says the same to the shader, which reads a 1×1 grey until then. Rows are
+ *   uploaded top-first (no `UNPACK_FLIP_Y`), so a shader that flips `uv.y` for the DOM samples it upright.
  * - Under the gate: DPR 1 and every other frame skipped (a full-screen fbm field at DPR 2 in SwiftShader starved a
  *   fixture stream from 0.7 s to 30 s). Elsewhere DPR is capped at 2. A hidden tab draws nothing.
  * - `prefers-reduced-motion: reduce` freezes `time` at 2 and snaps `env.x` instead of easing it.
@@ -70,15 +79,18 @@
  * @param vary     optional vec4 — same; the app's live parameters (this is how a stage answers real state)
  * @param tex      optional image URL (CORS-readable); `texReady` — a function the stage calls with 0/1 when
  *                 the texture is (not) bound, so the app can fade the field in through its own `vary` channel
+ * @param cam      optional live picture source — a `<video>`, canvas, image or ImageBitmap, or a function
+ *                 returning one (read every frame); projected at full resolution as `cam` / `camAspect`
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed, ink, vary, tex, texReady, zClass }: {
+export function GlStage({ shader, seed, ink, vary, tex, texReady, cam, zClass }: {
     shader: any;
     seed?: number;
     ink: any;
     vary: any;
     tex: any;
     texReady: any;
+    cam: any;
     zClass?: string;
 }): any;
 /**

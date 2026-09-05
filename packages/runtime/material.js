@@ -65,6 +65,10 @@ export async function loadMaterials(fetchFn = globalThis.fetch) {
   } catch { return []; }
 }
 
+// `theme.css` or `theme-<id>.css`, nothing else: `theme[\w-]*\.css` also matched daisyui's `themes.css`, which
+// every page links FIRST — the swap rewrote the daisyui link to `daisyui@5/theme-lum.css` (text/plain, refused)
+// and the farm's own theme link never changed (found on the see pod with a stored material, 2026-09-05).
+const THEME_FILE = /theme(-\w+)?\.css(\?.*)?$/;
 /**
  * The new href for the page's theme link: the file name swapped, the path kept (a built page links
  * `../_rt/theme.css`, a source page `/_rt/theme.css`; both keep their prefix).
@@ -72,7 +76,7 @@ export async function loadMaterials(fetchFn = globalThis.fetch) {
  * @param css the material's stylesheet name, e.g. `theme-smoke.css`
  * @returns the rewritten href
  */
-export const materialHref = (href, css) => href.replace(/theme[\w-]*\.css(\?.*)?$/, css);
+export const materialHref = (href, css) => href.replace(THEME_FILE, css);
 
 /**
  * Apply a material to the document: rewrite the theme link and stamp `html[data-material]`.
@@ -84,7 +88,7 @@ export const materialHref = (href, css) => href.replace(/theme[\w-]*\.css(\?.*)?
 export function applyMaterial(id, materials, doc = globalThis.document) {
   if (!materials?.length || !doc) return null;
   const m = materials.find((x) => x.id === id) || materials[0];
-  const link = [...doc.querySelectorAll('link[rel="stylesheet"]')].find((l) => /theme[\w-]*\.css(\?.*)?$/.test(l.getAttribute("href") || ""));
+  const link = [...doc.querySelectorAll('link[rel="stylesheet"]')].find((l) => THEME_FILE.test(l.getAttribute("href") || ""));
   if (!link) return null;
   const next = materialHref(link.getAttribute("href"), m.css);
   if (link.getAttribute("href") !== next) link.setAttribute("href", next);

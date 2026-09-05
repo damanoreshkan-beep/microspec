@@ -429,14 +429,26 @@ export const tilt = {
 //   opts.facingMode: "environment" (default, rear) | "user" (selfie).
 // The stop fn releases the camera (stops every track) AND survives being called before the async open
 // resolves — an unmount mid-permission must not leak a hot camera the moment the user grants it.
+// Switching cameras (lychyna's flip, 2026-09-05) taught two more rules: Android releases the first camera's
+// hardware AFTER its tracks stop, so the second open can fail NotReadableError for ~300 ms — one retry after
+// RELEASE_MS covers it ("камера недоступна" on every flip otherwise); and a stop fn that fires after a NEWER
+// start has already attached its stream must not blank the element — it nulls `srcObject` only when it is
+// still its own stream (the stale one blanked the live camera and the mirror "hung").
 /** A live camera stream on a <video> — `start(videoEl, onErr, opts)` → stop fn that releases every track. */
 export const camera = {
   supported: typeof navigator !== "undefined" && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
   async start(video, onErr, { facingMode = "environment" } = {}) {
     if (!this.supported) { onErr?.("unsupported"); return () => {}; }
     let stream = null, stopped = false;
+    const open = () => navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
+      try { stream = await open(); }
+      catch (e) {
+        if (!e || !/NotReadableError|AbortError|OverconstrainedError/.test(e.name)) throw e;
+        await new Promise((r) => setTimeout(r, RELEASE_MS));   // the other camera is still letting go
+        if (stopped) return () => {};
+        stream = await open();
+      }
       if (stopped) { stream.getTracks().forEach((tr) => tr.stop()); return () => {}; } // unmounted mid-open
       if (video) { video.srcObject = stream; video.setAttribute?.("playsinline", ""); try { await video.play?.(); } catch { /* autoplay quirk */ } }
     } catch (e) {
@@ -446,10 +458,12 @@ export const camera = {
     return () => {
       stopped = true;
       try { stream?.getTracks().forEach((tr) => tr.stop()); } catch { /* already gone */ }
-      try { if (video) video.srcObject = null; } catch { /* detached */ }
+      try { if (video && video.srcObject === stream) video.srcObject = null; } catch { /* detached */ }
     };
   },
 };
+/** How long a stopped camera keeps its hardware on Android before the other one can open (measured ~300 ms). */
+const RELEASE_MS = 350;
 
 // mic — a SHORT take of the room, for apps that turn sound into material. Like `camera` it owns only the
 // hardware lifecycle: prompt → stream → recorder → every track stopped. The maths on the samples belongs to

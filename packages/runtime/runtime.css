@@ -761,6 +761,28 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 .overflow-y-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
 .overflow-x-auto { overscroll-behavior-x: contain; overscroll-behavior-y: auto; }
 
+/* A horizontal strip shows NO scrollbar (owner, 2026-09-05: "виглядає старомодньо"); what says "there is more" is
+   the strip's own edge fading out — and only on the side that hides content. The fade is a mask driven by the
+   strip's scroll position (a scroll-driven animation on two registered numbers): no overflow → the timeline is
+   inactive → the base values (no fade on either side) apply; at the start the right edge fades, at the end the
+   left one, in between both. Nothing to wire per app and no background needed, so it works over glass.
+   Where the browser has no scroll timelines (the Safari 16 floor) the scrollbar is still hidden and the edges
+   stay plain — a strip is never worse than before. */
+@property --ms-sx-l { syntax: "<number>"; inherits: false; initial-value: 0; }
+@property --ms-sx-r { syntax: "<number>"; inherits: false; initial-value: 0; }
+.overflow-x-auto { scrollbar-width: none; }
+.overflow-x-auto::-webkit-scrollbar { display: none; }
+@supports (animation-timeline: scroll()) {
+  .overflow-x-auto {
+    --ms-sx-l: 0; --ms-sx-r: 0;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 calc(var(--ms-sx-l) * 1.75rem), #000 calc(100% - var(--ms-sx-r) * 1.75rem), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 calc(var(--ms-sx-l) * 1.75rem), #000 calc(100% - var(--ms-sx-r) * 1.75rem), transparent 100%);
+    animation: ms-strip-edges linear both;
+    animation-timeline: scroll(self inline);
+  }
+  @keyframes ms-strip-edges { from { --ms-sx-l: 0; --ms-sx-r: 1; } to { --ms-sx-l: 1; --ms-sx-r: 0; } }
+}
+
 /* Respect prefers-reduced-motion for the decorative Tailwind loops too (ping/pulse/spin/bounce), not just
    our own reveal — a live-dot pulse or a spinning glyph is motion a sensitive user asked us to still. */
 @media (prefers-reduced-motion: reduce) {

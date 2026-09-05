@@ -42,6 +42,7 @@ import "./tests/playback_test.js";
 import "./tests/player_test.js";
 import "./tests/qrcode_test.js";
 import "./tests/sensors_test.js";
+import "./tests/strip_test.js";
 import "./tests/shell_test.js";
 import "./tests/sitelabel_test.js";
 import "./tests/spectrum_test.js";

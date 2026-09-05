@@ -134,15 +134,18 @@ export function adaptiveFromTile(pngB64: any, fallbackBg?: string): Promise<{
 export function fetchSiteIconPng(url: any, size?: number): Promise<any>;
 /**
  * Ask the edge to build and sign an APK for a URL; throws with the edge's one-line reason on a non-ok status.
- * @param opts `{ url, name, iconB64, fgB64?, bg? }` — the site, its display name and the launcher / adaptive icon parts
+ * @param opts `{ url, name, iconB64, fgB64?, bg?, power? }` — the site, its display name, the launcher / adaptive icon
+ *   parts, and `power: "godot"` for an app whose stage is the Godot engine (the shell's heavier flavour; the edge
+ *   still grants it only to our own origin)
  * @returns the signed APK as a Blob
  */
-export function buildApk({ url, name, iconB64, fgB64, bg }: {
+export function buildApk({ url, name, iconB64, fgB64, bg, power }: {
     url: any;
     name: any;
     iconB64: any;
     fgB64: any;
     bg: any;
+    power: any;
 }): Promise<any>;
 /**
  * Save a Blob as a file: via the Android shell's bridge where present, else through an anchor download.

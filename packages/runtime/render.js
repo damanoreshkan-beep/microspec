@@ -759,7 +759,10 @@ function ApkScreen() {
     try {
       let i = icons;
       if (!i) { try { i = await resolveIcons(); } catch { i = {}; } }
-      if (!gate) { const blob = await buildApk({ url, name, iconB64: i.icon, fgB64: i.fg, bg: i.bg }); downloadBlob(blob, apkFilename(name)); }
+      // spec.profile.apk = "godot": the app's stage is the Godot engine, so its APK is the shell's `godot`
+      // flavour (Godot as a library under the WebView) — the edge grants it only to our own origin anyway
+      const power = A.spec.profile?.apk === "godot" ? "godot" : undefined;
+      if (!gate) { const blob = await buildApk({ url, name, iconB64: i.icon, fgB64: i.fg, bg: i.bg, power }); downloadBlob(blob, apkFilename(name)); }
       setDone(true); A.toast(sys("apkDone", loc));
     } catch (e) {
       // The reason is the whole point of an error line — a generic "failed" is why "rate limited" (429),

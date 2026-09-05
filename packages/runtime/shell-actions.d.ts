@@ -17,7 +17,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 48 actions (bridge 33).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 54 actions (bridge 34).
  *
  * ## How it fits
  * Imported by runtime/shell.js, which compares CATALOGUE_BRIDGE with the bridge the APK reports and refuses
@@ -45,7 +45,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 48 actions (bridge 33).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 54 actions (bridge 34).
  *
  * ## How it fits
  * Imported by runtime/shell.js, which compares CATALOGUE_BRIDGE with the bridge the APK reports and refuses
@@ -54,7 +54,7 @@
  * @module
  */
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
-export const CATALOGUE_BRIDGE: 33;
+export const CATALOGUE_BRIDGE: 34;
 /** Every shell action by id: { capability, kind ("call"|"subscribe"), minBridge, android permissions, mock }. */
 export const ACTIONS: {
     "system.info": {
@@ -622,6 +622,63 @@ export const ACTIONS: {
         };
     };
     "share.incoming": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            ack: boolean;
+        };
+    };
+    "godot.start": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: string[];
+        mock: {
+            state: string;
+            engine: string;
+            cached: boolean;
+        };
+    };
+    "godot.stop": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            state: string;
+        };
+    };
+    "godot.set": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            ok: boolean;
+        };
+    };
+    "godot.input": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            ok: boolean;
+        };
+    };
+    "godot.save": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            name: string;
+            bytes: number;
+        };
+    };
+    "godot.state": {
         capability: string;
         kind: string;
         minBridge: number;

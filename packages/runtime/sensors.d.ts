@@ -35,7 +35,8 @@
  * - {@link tilt} — `supported`, `needsPermission`, `request()` (the same gesture-gated permission as compass); `start(onTilt) → stop fn`, `onTilt({ beta, gamma })` screen-orientation aware, no true-north, no geolocation.
  *
  * **Media**
- * - {@link camera} — `supported`; `async start(videoEl, onErr, { facingMode = "environment" }) → stop fn` that stops every track and survives being called before the open resolves.
+ * - {@link camera} — `supported`; `async start(videoEl, onErr, { facingMode = "environment" }) → stop fn` that stops every track and survives being called before the open resolves; `controls(videoEl)` → the running track's {@link camControls}.
+ * - {@link camControls} — `(track) → { caps: { torch, zoom, focus }, torch(on), zoom(z), focusAt(x, y) }`, pure over `getCapabilities` / `applyConstraints`.
  * - {@link mic} — `supported`; `mime()` picks the first supported recorder type; `record({ seconds = 2, timeoutMs = 10000, bitsPerSecond = 128000, onStream, onErr }) → { done, stop(), cancel() }` where `done` resolves to `{ blob, mime, settings }` or null.
  * - {@link MIC_MIMES} — the recorder MIME types tried, in preference order.
  *
@@ -123,6 +124,30 @@ export function screenHeadingDeg(alpha: any, beta: any): number;
  * @returns heading in [0, 360); never null while β/γ are numbers
  */
 export function heldHeadingDeg(alpha: any, beta: any, gamma: any, screenAngle?: number): number;
+/**
+ * Controls over one video track (pure over `getCapabilities` / `applyConstraints`, so a fake track tests it).
+ * `caps.torch` — the LED exists; `caps.zoom` — `{ min, max, step, now }` or null; `caps.focus` — the track takes a
+ * focus mode. `torch(on)`, `zoom(z)` (clamped to the range) and `focusAt(x, y)` (0..1 from the top-left; tries
+ * single-shot at the point, then single-shot alone, then continuous) each resolve true when applied, false when the
+ * track lacks it or refuses — a button that shows only on `caps` never has to handle a rejection.
+ * @param track a `MediaStreamTrack` of kind video, or null
+ * @returns `{ caps, torch, zoom, focusAt }`
+ */
+export function camControls(track: any): {
+    caps: {
+        torch: boolean;
+        zoom: {
+            min: any;
+            max: any;
+            step: any;
+            now: any;
+        };
+        focus: any;
+    };
+    torch: (on: any) => Promise<boolean>;
+    zoom: (z: any) => Promise<boolean>;
+    focusAt: (x: any, y: any) => Promise<boolean>;
+};
 /** Short vibration feedback — `buzz(pattern)`, `tick`, `bump`, `ok`; a silent no-op where unsupported. */
 export const haptic: {
     buzz(pattern: any): void;
@@ -163,6 +188,27 @@ export const camera: {
     start(video: any, onErr: any, { facingMode }?: {
         facingMode?: string;
     }): Promise<() => void>;
+    /**
+         * Live controls over the running track of a `<video>` that `start` attached: the torch, a zoom, a focus point —
+         * the three gestures every mirror wants. Nothing is guessed: `caps` says what the track declares.
+         * @param video the element `start` attached the stream to
+         * @returns see {@link camControls}
+         */
+    controls(video: any): {
+        caps: {
+            torch: boolean;
+            zoom: {
+                min: any;
+                max: any;
+                step: any;
+                now: any;
+            };
+            focus: any;
+        };
+        torch: (on: any) => Promise<boolean>;
+        zoom: (z: any) => Promise<boolean>;
+        focusAt: (x: any, y: any) => Promise<boolean>;
+    };
 };
 /** Recorder MIME types to try, in preference order. */
 export const MIC_MIMES: string[];
@@ -229,7 +275,8 @@ export const mic: {
  * - {@link tilt} — `supported`, `needsPermission`, `request()` (the same gesture-gated permission as compass); `start(onTilt) → stop fn`, `onTilt({ beta, gamma })` screen-orientation aware, no true-north, no geolocation.
  *
  * **Media**
- * - {@link camera} — `supported`; `async start(videoEl, onErr, { facingMode = "environment" }) → stop fn` that stops every track and survives being called before the open resolves.
+ * - {@link camera} — `supported`; `async start(videoEl, onErr, { facingMode = "environment" }) → stop fn` that stops every track and survives being called before the open resolves; `controls(videoEl)` → the running track's {@link camControls}.
+ * - {@link camControls} — `(track) → { caps: { torch, zoom, focus }, torch(on), zoom(z), focusAt(x, y) }`, pure over `getCapabilities` / `applyConstraints`.
  * - {@link mic} — `supported`; `mime()` picks the first supported recorder type; `record({ seconds = 2, timeoutMs = 10000, bitsPerSecond = 128000, onStream, onErr }) → { done, stop(), cancel() }` where `done` resolves to `{ blob, mime, settings }` or null.
  * - {@link MIC_MIMES} — the recorder MIME types tried, in preference order.
  *

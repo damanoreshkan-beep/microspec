@@ -36,7 +36,8 @@
  * - {@link tilt} — `supported`, `needsPermission`, `request()` (the same gesture-gated permission as compass); `start(onTilt) → stop fn`, `onTilt({ beta, gamma })` screen-orientation aware, no true-north, no geolocation.
  *
  * **Media**
- * - {@link camera} — `supported`; `async start(videoEl, onErr, { facingMode = "environment" }) → stop fn` that stops every track and survives being called before the open resolves.
+ * - {@link camera} — `supported`; `async start(videoEl, onErr, { facingMode = "environment" }) → stop fn` that stops every track and survives being called before the open resolves; `controls(videoEl)` → the running track's {@link camControls}.
+ * - {@link camControls} — `(track) → { caps: { torch, zoom, focus }, torch(on), zoom(z), focusAt(x, y) }`, pure over `getCapabilities` / `applyConstraints`.
  * - {@link mic} — `supported`; `mime()` picks the first supported recorder type; `record({ seconds = 2, timeoutMs = 10000, bitsPerSecond = 128000, onStream, onErr }) → { done, stop(), cancel() }` where `done` resolves to `{ blob, mime, settings }` or null.
  * - {@link MIC_MIMES} — the recorder MIME types tried, in preference order.
  *
@@ -461,9 +462,49 @@ export const camera = {
       try { if (video && video.srcObject === stream) video.srcObject = null; } catch { /* detached */ }
     };
   },
+  /**
+   * Live controls over the running track of a `<video>` that `start` attached: the torch, a zoom, a focus point —
+   * the three gestures every mirror wants. Nothing is guessed: `caps` says what the track declares.
+   * @param video the element `start` attached the stream to
+   * @returns see {@link camControls}
+   */
+  controls(video) { return camControls(video?.srcObject?.getVideoTracks?.()[0] || null); },
 };
 /** How long a stopped camera keeps its hardware on Android before the other one can open (measured ~300 ms). */
 const RELEASE_MS = 350;
+
+/**
+ * Controls over one video track (pure over `getCapabilities` / `applyConstraints`, so a fake track tests it).
+ * `caps.torch` — the LED exists; `caps.zoom` — `{ min, max, step, now }` or null; `caps.focus` — the track takes a
+ * focus mode. `torch(on)`, `zoom(z)` (clamped to the range) and `focusAt(x, y)` (0..1 from the top-left; tries
+ * single-shot at the point, then single-shot alone, then continuous) each resolve true when applied, false when the
+ * track lacks it or refuses — a button that shows only on `caps` never has to handle a rejection.
+ * @param track a `MediaStreamTrack` of kind video, or null
+ * @returns `{ caps, torch, zoom, focusAt }`
+ */
+export function camControls(track) {
+  const c = (() => { try { return track?.getCapabilities?.() || {}; } catch { return {}; } })();
+  const s = (() => { try { return track?.getSettings?.() || {}; } catch { return {}; } })();
+  const modes = Array.isArray(c.focusMode) ? c.focusMode : [];
+  const zoom = c.zoom && typeof c.zoom.max === "number" && c.zoom.max > (c.zoom.min ?? 1)
+    ? { min: c.zoom.min ?? 1, max: c.zoom.max, step: c.zoom.step || 0.1, now: s.zoom ?? c.zoom.min ?? 1 } : null;
+  const caps = { torch: !!c.torch, zoom, focus: modes.includes("single-shot") || modes.includes("continuous") };
+  const apply = async (adv) => { if (!track?.applyConstraints) return false; try { await track.applyConstraints({ advanced: [adv] }); return true; } catch { return false; } };
+  return {
+    caps,
+    torch: (on) => caps.torch ? apply({ torch: !!on }) : Promise.resolve(false),
+    zoom: (z) => zoom ? apply({ zoom: Math.min(zoom.max, Math.max(zoom.min, Number(z) || zoom.min)) }) : Promise.resolve(false),
+    focusAt: async (x, y) => {
+      if (!caps.focus) return false;
+      const pt = { x: Math.min(1, Math.max(0, Number(x) || 0)), y: Math.min(1, Math.max(0, Number(y) || 0)) };
+      if (modes.includes("single-shot")) {
+        if (await apply({ focusMode: "single-shot", pointsOfInterest: [pt] })) return true;
+        if (await apply({ focusMode: "single-shot" })) return true;
+      }
+      return modes.includes("continuous") ? apply({ focusMode: "continuous" }) : false;
+    },
+  };
+}
 
 // mic — a SHORT take of the room, for apps that turn sound into material. Like `camera` it owns only the
 // hardware lifecycle: prompt → stream → recorder → every track stopped. The maths on the samples belongs to

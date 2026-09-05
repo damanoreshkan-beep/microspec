@@ -3,7 +3,41 @@
 
 import { assertEquals, assertAlmostEquals } from "jsr:@std/assert@1";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
-import { hapticFor, lookHeadingDeg, screenHeadingDeg, heldHeadingDeg } from "../sensors.js";
+import { hapticFor, lookHeadingDeg, screenHeadingDeg, heldHeadingDeg, camControls } from "../sensors.js";
+
+// camControls — a fake track records what applyConstraints received; nothing is guessed beyond getCapabilities
+const fakeTrack = (caps, { settings = {}, reject = () => false } = {}) => {
+  const calls = [];
+  return { calls, getCapabilities: () => caps, getSettings: () => settings,
+    applyConstraints: (c) => { calls.push(c.advanced[0]); return reject(c.advanced[0]) ? Promise.reject(new Error("no")) : Promise.resolve(); } };
+};
+Deno.test("camControls: caps read from the track; torch, zoom (clamped) and a focus point apply", async () => {
+  const tr = fakeTrack({ torch: true, zoom: { min: 1, max: 8, step: 0.1 }, focusMode: ["continuous", "single-shot"] }, { settings: { zoom: 2 } });
+  const c = camControls(tr);
+  assertEquals(c.caps, { torch: true, zoom: { min: 1, max: 8, step: 0.1, now: 2 }, focus: true });
+  assertEquals(await c.torch(true), true);
+  assertEquals(await c.zoom(40), true);
+  assertEquals(await c.zoom(0), true);
+  assertEquals(await c.focusAt(1.4, -2), true);
+  assertEquals(tr.calls, [{ torch: true }, { zoom: 8 }, { zoom: 1 }, { focusMode: "single-shot", pointsOfInterest: [{ x: 1, y: 0 }] }]);
+});
+Deno.test("camControls: a point the track refuses falls back to single-shot, then continuous", async () => {
+  const tr = fakeTrack({ focusMode: ["continuous", "single-shot"] }, { reject: (a) => !!a.pointsOfInterest });
+  assertEquals(await camControls(tr).focusAt(0.5, 0.5), true);
+  assertEquals(tr.calls.map((a) => a.focusMode), ["single-shot", "single-shot"]);
+  const tr2 = fakeTrack({ focusMode: ["continuous"] });
+  assertEquals(await camControls(tr2).focusAt(0.5, 0.5), true);
+  assertEquals(tr2.calls, [{ focusMode: "continuous" }]);
+});
+Deno.test("camControls: no track, or a track without the feature → caps off and every call resolves false", async () => {
+  const none = camControls(null);
+  assertEquals(none.caps, { torch: false, zoom: null, focus: false });
+  assertEquals([await none.torch(true), await none.zoom(2), await none.focusAt(0.5, 0.5)], [false, false, false]);
+  const flat = fakeTrack({ zoom: { min: 1, max: 1 } });
+  assertEquals(camControls(flat).caps.zoom, null);
+  assertEquals(await camControls(flat).zoom(2), false);
+  assertEquals(flat.calls, []);
+});
 
 // shortest angular distance, the only honest way to compare two headings
 const apart = (a, b) => Math.abs(((a - b + 540) % 360) - 180);

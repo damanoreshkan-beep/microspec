@@ -2638,7 +2638,7 @@
           "detail": { "type": "string" }
         }
       },
-      "mock": { "ack": true }
+      "mock": { "state": "running", "fps": 60, "width": 1080, "height": 2340 }
     }
   ]
 }

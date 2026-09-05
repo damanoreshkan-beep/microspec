@@ -749,7 +749,10 @@ export const ACTIONS = {
     "minBridge": 34,
     "android": [],
     "mock": {
-      "ack": true
+      "state": "running",
+      "fps": 60,
+      "width": 1080,
+      "height": 2340
     }
   }
 };

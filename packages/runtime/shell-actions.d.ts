@@ -684,7 +684,10 @@ export const ACTIONS: {
         minBridge: number;
         android: any[];
         mock: {
-            ack: boolean;
+            state: string;
+            fps: number;
+            width: number;
+            height: number;
         };
     };
 };

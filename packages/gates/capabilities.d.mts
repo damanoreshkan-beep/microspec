@@ -96,6 +96,9 @@ export const SYMBOL_CAPS: {
         CameraPrime: string[];
         MicPrime: string[];
     };
+    "/_rt/camstage.js": {
+        CamStage: string[];
+    };
     "/_rt/intake.js": {
         Camera: string[];
     };

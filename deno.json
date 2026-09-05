@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "1.2.41",
+  "version": "1.2.42",
   "license": "MIT",
   "publish": {
     "exclude": [

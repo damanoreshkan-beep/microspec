@@ -230,6 +230,8 @@ const indexHtml = `<!DOCTYPE html>
       "motion": "https://esm.sh/motion@11.18.2",
       "lodash-es": "https://esm.sh/lodash-es@4.17.21",
       "three": "https://esm.sh/three@0.171.0",
+      "pixi.js": "https://cdn.jsdelivr.net/npm/pixi.js@8.20.1/dist/pixi.min.mjs",
+      "pixi-filters": "https://cdn.jsdelivr.net/npm/pixi-filters@6.1.5/dist/pixi-filters.min.mjs",
       "d3-geo": "https://esm.sh/d3-geo@3",
       "topojson-client": "https://esm.sh/topojson-client@3",
       "@microspec/core/runtime/": "/_rt/"

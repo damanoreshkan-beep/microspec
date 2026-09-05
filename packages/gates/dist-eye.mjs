@@ -122,7 +122,7 @@ async function runOne(app, w = 0) {
       await page.setViewportSize({ width: dev.width, height: dev.height });
       await page.goto(url, { waitUntil: "load" });
       await new Promise((r) => setTimeout(r, 2000));
-      m = await page.evaluate(() => {
+      const measure = () => page.evaluate(() => {
         const cs = (el) => (el ? getComputedStyle(el) : null);
         const surf = document.querySelector(".sf-raised, [data-island], .card, .modal-box, .btn");
         const sheets = [...document.styleSheets].map((s) => { let n = 0; try { n = s.cssRules.length; } catch { n = -1; } return { href: (s.href || "").split("/").pop(), rules: n }; });
@@ -135,6 +135,8 @@ async function runOne(app, w = 0) {
           themeCss: sheets.find((s) => s.href === "theme.css")?.rules ?? 0,
         };
       });
+      m = await measure();
+      if (!m.msR || m.appCss < 50 || !m.surface || !m.booted) { await new Promise((r) => setTimeout(r, 2500)); m = await measure(); }
       const px = parseFloat(m.surface?.radius || "0") || 0;
       if (!m.booted) why.push("did not boot (#app empty)");
       if (!m.msR) why.push("--ms-r missing on :root (theme.css not applied)");

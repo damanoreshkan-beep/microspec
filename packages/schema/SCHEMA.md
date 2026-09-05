@@ -369,6 +369,7 @@ The profile tab renders rows from the top-level `profile` object:
   "theme": true,                  // show dark-mode toggle row (needs "profTheme")
   "lang": true,                   // show uk/en switch row (needs "profLang")
   "install": true,                // show install row + modal (needs install* keys)
+  "apk": "godot",                 // optional: the Download APK row asks for the shell flavour with the Godot engine
   "source": { "label": "profSource", "url": "https://...", "icon": "lucide:database" }
 }
 ```

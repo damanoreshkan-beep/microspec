@@ -134,6 +134,11 @@
           "type": "boolean",
           "description": "Show PWA install entry."
         },
+        "apk": {
+          "type": "string",
+          "enum": ["godot"],
+          "description": "Which shell flavour the app's 'Download APK' row asks for. `godot`: the app's stage is a Godot project (runtime/godotstage.js) and needs the shell that links the engine; the edge grants it only to our own origin."
+        },
         "permissions": {
           "type": "array",
           "description": "Show a history-backed Permissions screen (a row in the profile) with a toggle per listed permission; enabling triggers the native prompt.",

@@ -30,7 +30,9 @@
  *   {@link camControls}: torch · zoom · focus), whether the stage is fullscreen, the priming error;
  *   `fullscreen` (default true — a tap on the stage toggles the fullscreen of the stage subtree);
  *   `gestures` (default true — a pinch zooms within what the track declares, a tap focuses under the finger
- *   and draws one ring); `className` for the stage element; `children` — the app's surface.
+ *   and draws one ring); `show` (default false — the stage DISPLAYS the stream itself, cover-fit and never
+ *   mirrored, for an app that reads the picture instead of drawing it); `className` for the stage element;
+ *   `children` — the app's surface.
  * - {@link camPoint} — `(u, v, vw, vh, mirror) → { x, y }`: a viewport point (0..1) to the sensor point it
  *   shows under a cover fit — the maths a tap-to-focus needs, pure.
  *
@@ -50,6 +52,10 @@
  * ## The contract
  * - The camera never opens cold: the priming screen is rendered until the person taps Enable (in the gate it
  *   is skipped and the still plays). `onVideo` fires on the `playing` event — the first frame exists.
+ * - **Under the gate with no `still` the stage stands aside**: no stream, no priming screen, `onVideo` never
+ *   fires — the app's own seeded fixture is what the shot shows (`ready` is reported true so the verbs are
+ *   live). An app that has a mock picture passes it as `still` and gets the real path instead; an app whose
+ *   gate value is a deterministic seed (a decoded link, a palette) keeps that seed and passes nothing.
  * - A flip (a new `facing`) stops the stream, then opens the other camera; the kit's retry after the hardware
  *   lets go (sensors.js, core ≥ 1.2.32) is inside `camera.start`.
  * - The tap does two things at once, on purpose: it focuses the track at the point under the finger and
@@ -69,6 +75,7 @@ import { html } from "htm/preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { camera, wakeLock } from "./sensors.js";
 import { CameraPrime } from "./camprime.js";
+import { gate } from "./gate.js";
 
 const LBL = {
   uk: { stage: "Полотно камери: тап — на весь екран, щипок — зум", exit: "Вийти з повного екрана" },
@@ -104,17 +111,19 @@ export function camPoint(u, v, vw, vh, mirror, asp) {
  * @param props see the module note
  * @returns the stage element with the app's surface inside it
  */
-export function CamStage({ loc, reason, onSettings, facing = "environment", torch = false, still = null, onVideo, onState, fullscreen = true, gestures = true, className = "", children }) {
+export function CamStage({ loc, reason, onSettings, facing = "environment", torch = false, still = null, onVideo, onState, fullscreen = true, gestures = true, show = false, className = "", children }) {
   const L = LBL[loc] || LBL.en;
-  const [enabled, setEnabled] = useState(!!still);   // the camera opens only after the tap on Enable; a still plays at once
+  const standby = gate && !still;                    // the gate with no picture: the app seeds its own, the stage stands aside
+  const [enabled, setEnabled] = useState(!!still || standby);   // the camera opens only after the tap on Enable; a still plays at once
   const [err, setErr] = useState(null);
   const [focus, setFocus] = useState(null);           // the ring of the last tap { x, y, k }
   const [full, setFull] = useState(false);
   const videoRef = useRef(), imgRef = useRef(), stageRef = useRef();
-  const ctl = useRef(null), capsRef = useRef(null), readyRef = useRef(false);
+  const ctl = useRef(null), capsRef = useRef(null), readyRef = useRef(standby);
   const cb = useRef({ onVideo, onState }); cb.current = { onVideo, onState };
   const emit = () => cb.current.onState?.({ ready: readyRef.current, caps: capsRef.current, fullscreen: full, err });
   useEffect(emit, [full, err]);
+  useEffect(() => { if (standby) emit(); }, []);      // the seeded stage is ready from its first frame
 
   // the still (the gate's camera): the image plays the stream's part the moment it decodes
   useEffect(() => {
@@ -129,7 +138,7 @@ export function CamStage({ loc, reason, onSettings, facing = "environment", torc
   // the stream: the kit's lifecycle, reopened on flip, every track stopped on the way out; the controls are
   // read from the running track once it plays — nothing is guessed, `caps` says what exists
   useEffect(() => {
-    if (still || !enabled) return;
+    if (still || standby || !enabled) return;
     if (!camera.supported) { setErr("unsupported"); return; }
     let alive = true, stop = () => {};
     readyRef.current = false; capsRef.current = null; ctl.current = null; emit();
@@ -202,10 +211,14 @@ export function CamStage({ loc, reason, onSettings, facing = "environment", torc
   };
 
   const on = enabled && !err;
+  // shown, the picture IS the stage: cover-fit and NEVER mirrored (a mirrored live feed makes people seasick);
+  // hidden, it is a 1px source the app draws from
+  const HIDDEN = "absolute w-px h-px opacity-0 pointer-events-none", SHOWN = "absolute inset-0 w-full h-full object-cover";
+  const pic = show ? SHOWN : HIDDEN;
   return html`<div ref=${stageRef} data-camstage data-live=${on ? "1" : null} data-ready=${readyRef.current ? "1" : null} data-fullscreen=${full ? "1" : null} data-facing=${facing} class=${`absolute inset-0 ${full ? "bg-black" : ""} ${className}`}>
     <style>${CSS}</style>
-    <video ref=${videoRef} autoplay muted playsinline aria-hidden="true" class="absolute w-px h-px opacity-0 pointer-events-none"></video>
-    ${still ? html`<img ref=${imgRef} src=${still} alt="" aria-hidden="true" decoding="async" class="absolute w-px h-px opacity-0 pointer-events-none" />` : null}
+    <video ref=${videoRef} autoplay muted playsinline aria-hidden="true" class=${still ? HIDDEN : pic}></video>
+    ${still ? html`<img ref=${imgRef} src=${still} alt="" aria-hidden="true" decoding="async" class=${pic} />` : null}
     ${children}
     <div data-gestures role=${fullscreen ? "button" : null} aria-label=${fullscreen ? (full ? L.exit : L.stage) : null} class="absolute inset-0 z-[1] touch-none" style="touch-action:none"
       onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp}>

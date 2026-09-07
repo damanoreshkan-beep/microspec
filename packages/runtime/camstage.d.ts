@@ -29,7 +29,9 @@
  *   {@link camControls}: torch · zoom · focus), whether the stage is fullscreen, the priming error;
  *   `fullscreen` (default true — a tap on the stage toggles the fullscreen of the stage subtree);
  *   `gestures` (default true — a pinch zooms within what the track declares, a tap focuses under the finger
- *   and draws one ring); `className` for the stage element; `children` — the app's surface.
+ *   and draws one ring); `show` (default false — the stage DISPLAYS the stream itself, cover-fit and never
+ *   mirrored, for an app that reads the picture instead of drawing it); `className` for the stage element;
+ *   `children` — the app's surface.
  * - {@link camPoint} — `(u, v, vw, vh, mirror) → { x, y }`: a viewport point (0..1) to the sensor point it
  *   shows under a cover fit — the maths a tap-to-focus needs, pure.
  *
@@ -49,6 +51,10 @@
  * ## The contract
  * - The camera never opens cold: the priming screen is rendered until the person taps Enable (in the gate it
  *   is skipped and the still plays). `onVideo` fires on the `playing` event — the first frame exists.
+ * - **Under the gate with no `still` the stage stands aside**: no stream, no priming screen, `onVideo` never
+ *   fires — the app's own seeded fixture is what the shot shows (`ready` is reported true so the verbs are
+ *   live). An app that has a mock picture passes it as `still` and gets the real path instead; an app whose
+ *   gate value is a deterministic seed (a decoded link, a palette) keeps that seed and passes nothing.
  * - A flip (a new `facing`) stops the stream, then opens the other camera; the kit's retry after the hardware
  *   lets go (sensors.js, core ≥ 1.2.32) is inside `camera.start`.
  * - The tap does two things at once, on purpose: it focuses the track at the point under the finger and
@@ -86,7 +92,7 @@ export function camPoint(u: any, v: any, vw: any, vh: any, mirror: any, asp: any
  * @param props see the module note
  * @returns the stage element with the app's surface inside it
  */
-export function CamStage({ loc, reason, onSettings, facing, torch, still, onVideo, onState, fullscreen, gestures, className, children }: {
+export function CamStage({ loc, reason, onSettings, facing, torch, still, onVideo, onState, fullscreen, gestures, show, className, children }: {
     loc: any;
     reason: any;
     onSettings: any;
@@ -97,6 +103,7 @@ export function CamStage({ loc, reason, onSettings, facing, torch, still, onVide
     onState: any;
     fullscreen?: boolean;
     gestures?: boolean;
+    show?: boolean;
     className?: string;
     children: any;
 }): any;

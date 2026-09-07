@@ -20,7 +20,7 @@
  * ```
  *
  * ## What it exports
- * - {@link PERMISSIONS} — the registry, name → `{ icon, group, capability?, query()?, request()? }`; sixteen rows from
+ * - {@link PERMISSIONS} — the registry, name → `{ icon, group, capability?, query()?, request()? }`; seventeen rows from
  *   `geolocation` to `microphone`, most of the radios and system rows shell-only.
  * - {@link GROUPS} — `["sense", "media", "background", "radios", "system"]`, the display order; an empty group renders nothing.
  * - {@link permState} — `permState(name)` → `{ state, via }`; state is granted | partial | prompt | denied | unsupported |
@@ -60,9 +60,10 @@
  * `has`/`call` for `system.info` and `system.grant`. Inside the runtime it is imported by `render.js`
  * (the profile row and the history-backed permissions screen, which lists `spec.profile.permissions`) and
  * by `notify.js` (`notifyAsk`); `camprime.js` routes its "Open permissions" button to that screen. In the
- * farm one app imports it directly — os, whose launcher renders the whole registry as tiles — and 18 apps
+ * farm one app imports it directly — os, whose launcher renders the whole registry as tiles — and 19 apps
  * reach it through the shared screen by declaring `profile.permissions` in their spec (cam, earshot, flux,
- * grain, hive, imagine, mirage, pipette, prox, qr, sonar, sun, swarm, synesth, tarot, trail, wall, os).
+ * grain, hive, imagine, mirage, pipette, poholos, prox, qr, sonar, sun, swarm, synesth, tarot, trail,
+ * wall, os).
  * Every generated `sw.js` precaches it. The unit gate holds it in `tests/permissions_test.js`.
  *
  * ## Invariants and pitfalls

@@ -590,12 +590,19 @@ function Profile({ tab }) {
   const account = p.account || (A.spec.tabs.some((x) => (x.needs || []).includes("auth")) ? "any" : null);
   const savedTab = A.spec.tabs.find((x) => x.source === "fav");
   const install = !!p.install && !isStandalone();
-  // Systemic share — available in every app's profile. Native sheet where supported (mobile), clipboard
-  // fallback elsewhere. Strip the route hash so the shared link opens the app clean, not a stale overlay.
+  // Systemic share — available in every app's profile. The APK's WebView has no Web Share API, so the
+  // shell polyfills it: `share.send` fires the native chooser. Order: the bridge (installed APK) → the Web
+  // Share API (mobile Chrome / PWA) → clipboard (desktop, or a WebView too old for the action). Strip the
+  // route hash so the shared link opens the app clean, not a stale overlay.
   const shareApp = async () => {
     const url = location.href.split("#")[0];
+    const title = T(t, "title");
+    if (shell.has("share.send")) {
+      try { await shell.call("share.send", { title, url }); return; }
+      catch { /* the chooser failed to open — fall through to the web paths */ }
+    }
     if (navigator.share) {
-      try { await navigator.share({ title: T(t, "title"), url }); return; }
+      try { await navigator.share({ title, url }); return; }
       catch (e) { if (e?.name === "AbortError") return; }   // user dismissed the native sheet — not a fallback case
     }
     try { await navigator.clipboard.writeText(url); A.toast(sys("shareCopied", loc)); } catch { /* clipboard unavailable */ }

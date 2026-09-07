@@ -17,7 +17,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 63 actions (bridge 35).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 64 actions (bridge 36).
  *
  * ## How it fits
  * Imported by runtime/shell.js, which compares CATALOGUE_BRIDGE with the bridge the APK reports and refuses
@@ -45,7 +45,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 63 actions (bridge 35).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 64 actions (bridge 36).
  *
  * ## How it fits
  * Imported by runtime/shell.js, which compares CATALOGUE_BRIDGE with the bridge the APK reports and refuses
@@ -54,7 +54,7 @@
  * @module
  */
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
-export const CATALOGUE_BRIDGE: 35;
+export const CATALOGUE_BRIDGE: 36;
 /** Every shell action by id: { capability, kind ("call"|"subscribe"), minBridge, android permissions, mock }. */
 export const ACTIONS: {
     "system.info": {
@@ -628,6 +628,15 @@ export const ACTIONS: {
         android: any[];
         mock: {
             ack: boolean;
+        };
+    };
+    "share.send": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            opened: boolean;
         };
     };
     "godot.start": {

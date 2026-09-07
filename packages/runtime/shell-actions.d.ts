@@ -17,7 +17,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 54 actions (bridge 34).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 63 actions (bridge 35).
  *
  * ## How it fits
  * Imported by runtime/shell.js, which compares CATALOGUE_BRIDGE with the bridge the APK reports and refuses
@@ -45,7 +45,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 54 actions (bridge 34).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 63 actions (bridge 35).
  *
  * ## How it fits
  * Imported by runtime/shell.js, which compares CATALOGUE_BRIDGE with the bridge the APK reports and refuses
@@ -54,7 +54,7 @@
  * @module
  */
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
-export const CATALOGUE_BRIDGE: 34;
+export const CATALOGUE_BRIDGE: 35;
 /** Every shell action by id: { capability, kind ("call"|"subscribe"), minBridge, android permissions, mock }. */
 export const ACTIONS: {
     "system.info": {
@@ -688,6 +688,100 @@ export const ACTIONS: {
             fps: number;
             width: number;
             height: number;
+        };
+    };
+    "mesh.start": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: string[];
+        mock: {
+            peerID: string;
+            nick: string;
+        };
+    };
+    "mesh.stop": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            running: boolean;
+        };
+    };
+    "mesh.state": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            running: boolean;
+            peerCount: number;
+            myPeerID: string;
+            nick: string;
+        };
+    };
+    "mesh.setNick": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            nick: string;
+        };
+    };
+    "mesh.sendPublic": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            ok: boolean;
+        };
+    };
+    "mesh.sendPrivate": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            ok: boolean;
+        };
+    };
+    "mesh.peers": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            peers: {
+                peerID: string;
+                nick: string;
+            }[];
+        };
+    };
+    "mesh.messages": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            msgId: string;
+            kind: string;
+            fromPeerID: string;
+            nick: string;
+            text: string;
+            ts: number;
+        };
+    };
+    "mesh.receipts": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            msgId: string;
+            state: string;
         };
     };
 };

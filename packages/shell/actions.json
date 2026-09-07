@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 35,
+  "bridgeVersion": 36,
   "flavours": {
     "godot": ["godot"],
     "mesh": ["mesh"]
@@ -2501,6 +2501,51 @@
       },
       "mock": {
         "ack": true
+      }
+    },
+    {
+      "id": "share.send",
+      "capability": "share",
+      "kind": "call",
+      "minBridge": 36,
+      "android": [],
+      "summary": "Share OUT of this app — hand a link or text to the Android chooser (ACTION_SEND). The WebView has no navigator.share (Web Share is not implemented in Android WebView), so the profile's 'Поділитися' can only copy to the clipboard without this; the shell gives every app the real system sheet. Text-only, no bytes: the one thing every farm app shares is its own URL.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "The chooser's title and the EXTRA_SUBJECT — the app's name, so a mail target has a subject line."
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "The link to share. Appended to text when both are present, so a receiver that reads only EXTRA_TEXT still gets it."
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Free text to share instead of, or alongside, the url."
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": [
+          "opened"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "opened": {
+            "type": "boolean",
+            "description": "The chooser was launched. Android never tells an app whether the user completed the share or which target they picked, so this is the only honest signal — never a delivery receipt."
+          }
+        }
+      },
+      "mock": {
+        "opened": true
       }
     },
     {

@@ -510,10 +510,17 @@ function Profile({ tab }) {
   const install = !!p.install && !isStandalone();
   
   
+  
+  
   const shareApp = async () => {
     const url = location.href.split("#")[0];
+    const title = T(t, "title");
+    if (shell.has("share.send")) {
+      try { await shell.call("share.send", { title, url }); return; }
+      catch {  }
+    }
     if (navigator.share) {
-      try { await navigator.share({ title: T(t, "title"), url }); return; }
+      try { await navigator.share({ title, url }); return; }
       catch (e) { if (e?.name === "AbortError") return; }   
     }
     try { await navigator.clipboard.writeText(url); A.toast(sys("shareCopied", loc)); } catch {  }

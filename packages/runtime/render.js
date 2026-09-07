@@ -87,7 +87,7 @@ import { useStore } from "@nanostores/preact";
 import { authWall } from "./authwall.js";
 import { shell } from "./shell.js";
 import { T, ago, whenLabel, sinceLabel, sys } from "./i18n.js";
-import { buildApk, fetchAppIcons, adaptiveFromTile, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
+import { buildApk, apkPower, fetchAppIcons, adaptiveFromTile, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
 import { gate } from "./gate.js";
 import { Sheet } from "./ui.js";
 import { SHEET_BOX } from "./ui.js";
@@ -768,7 +768,10 @@ function ApkScreen() {
       if (!i) { try { i = await resolveIcons(); } catch { i = {}; } }
       // spec.profile.apk = "godot": the app's stage is the Godot engine, so its APK is the shell's `godot`
       // flavour (Godot as a library under the WebView) — the edge grants it only to our own origin anyway
-      const power = A.spec.profile?.apk === "godot" ? "godot" : undefined;
+      // The DECLARED flavour, checked against the CATALOGUE — never a literal. This was
+      // `=== "godot" ? "godot" : undefined`, so the moment `apk: "mesh"` entered the schema every mesh app
+      // silently downloaded the `full` shell and had its own capability refused on the device.
+      const power = apkPower(A.spec);
       if (!gate) { const blob = await buildApk({ url, name, iconB64: i.icon, fgB64: i.fg, bg: i.bg, power }); downloadBlob(blob, apkFilename(name)); }
       setDone(true); A.toast(sys("apkDone", loc));
     } catch (e) {

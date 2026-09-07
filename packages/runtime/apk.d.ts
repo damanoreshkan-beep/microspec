@@ -21,8 +21,10 @@
  *
  * ## What it exports
  * **The build**
- * - {@link buildApk} — `buildApk({ url, name, iconB64, fgB64?, bg? })` → a signed APK Blob; throws
+ * - {@link buildApk} — `buildApk({ url, name, iconB64, fgB64?, bg?, power? })` → a signed APK Blob; throws
  *   `apk <status> <reason>` with the edge's one-line reason on a non-ok status.
+ * - {@link apkPower} — `apkPower(spec)` → the shell FLAVOUR the app declared (`profile.apk`), checked
+ *   against the catalogue; the value `buildApk` must be handed, so no caller re-types a flavour name.
  * - {@link apkFilename} — `apkFilename(name)` → a safe lowercase dash-separated `.apk` name ("app.apk" when empty).
  *
  * **Icons, rasterised in the browser**
@@ -135,8 +137,10 @@ export function fetchSiteIconPng(url: any, size?: number): Promise<any>;
 /**
  * Ask the edge to build and sign an APK for a URL; throws with the edge's one-line reason on a non-ok status.
  * @param opts `{ url, name, iconB64, fgB64?, bg?, power? }` — the site, its display name, the launcher / adaptive icon
- *   parts, and `power: "godot"` for an app whose stage is the Godot engine (the shell's heavier flavour; the edge
- *   still grants it only to our own origin)
+ *   parts, and `power` naming a heavier shell FLAVOUR the app needs — {@link apkPower} of the spec, passed
+ *   straight through (`"godot"` for a Godot stage, `"mesh"` for the vendored BLE transport). Omitting it
+ *   builds the `full` shell, whose bridge refuses that capability on the device; the edge grants a flavour
+ *   only to our own origin. Never re-derive it from a literal: forward whatever the spec declared.
  * @returns the signed APK as a Blob
  */
 export function buildApk({ url, name, iconB64, fgB64, bg, power }: {
@@ -180,3 +184,13 @@ export function downloadUrl(url: any, filename: any): Promise<void>;
  * @returns the filename
  */
 export function apkFilename(name: any): string;
+/**
+ * The shell flavour an app's APK must be built with, taken from its spec — `undefined` for the plain
+ * `full` shell. It exists as a named function because deriving it from a literal is a fault with a delay
+ * fuse: `profile.apk === "godot" ? "godot" : undefined` was correct until `"mesh"` entered the schema,
+ * after which every mesh app downloaded the `full` shell and had its own capability refused on the device
+ * with "capability not granted to this page". The catalogue's own flavour list is what admits a value here.
+ * @param spec the app's spec object
+ * @returns the flavour name, or undefined for the default shell
+ */
+export function apkPower(spec: any): any;

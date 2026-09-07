@@ -129,6 +129,8 @@ const body = `/* @ts-self-types="./shell-actions.d.ts" */
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
  * - {@link ACTIONS} — id → \`{ capability, kind, minBridge, android, mock }\` for all ${catalogue.actions.length} actions (bridge ${catalogue.bridgeVersion}).
+ * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
+ *   spec declares instead of a hand-typed name (which is how every \`mesh\` app once downloaded the \`full\` shell).
  *
  * ## How it fits
  * Imported by runtime/shell.js, which compares CATALOGUE_BRIDGE with the bridge the APK reports and refuses
@@ -140,9 +142,27 @@ const body = `/* @ts-self-types="./shell-actions.d.ts" */
 // Run \`deno task shell\` after changing the catalogue; \`--check\` gates it before every push.
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
 export const CATALOGUE_BRIDGE = ${catalogue.bridgeVersion};
+/** The heavier shell FLAVOURS, capability -> the flavours that carry it. A capability absent here is carried
+ *  by every flavour; one named here needs the APK built with one of its flavours, or the bridge refuses the
+ *  action on the device with "capability not granted to this page". Derived so no caller re-types the list. */
+export const FLAVOUR_OF = ${JSON.stringify(catalogue.flavours || {}, null, 2)};
+/** The flavour names a spec's profile.apk may ask for, from FLAVOUR_OF — the ONE list, never a literal. */
+export const FLAVOURS = [...new Set(Object.values(FLAVOUR_OF).flat())].sort();
 /** Every shell action by id: { capability, kind ("call"|"subscribe"), minBridge, android permissions, mock }. */
 export const ACTIONS = ${JSON.stringify(table, null, 2)};
 `;
+
+// The spec schema names the flavours a second time, in profile.apk's enum. It is the list an APP is
+// validated against, so a flavour the catalogue carries but the schema refuses is unreachable — and one
+// the schema admits but no flavour carries builds an APK that cannot answer. Neither is visible anywhere
+// else: both halves stay green on their own. Tie them together here, where the catalogue is already read.
+const SPEC_SCHEMA = new URL("packages/schema/spec.schema.json", ROOT);
+const flavours = [...new Set(Object.values(catalogue.flavours || {}).flat())].sort();
+const schemaEnum = [...(JSON.parse(await Deno.readTextFile(SPEC_SCHEMA)).properties?.profile?.properties?.apk?.enum || [])].sort();
+if (JSON.stringify(flavours) !== JSON.stringify(schemaEnum)) {
+  console.error(`✗ spec.schema.json profile.apk enum [${schemaEnum}] does not match the catalogue's flavours [${flavours}]`);
+  Deno.exit(1);
+}
 
 const check = Deno.args.includes("--check");
 const current = await Deno.readTextFile(OUT).catch(() => null);

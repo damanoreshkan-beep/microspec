@@ -16,6 +16,7 @@
 // Since the split (2026-08-31) this holds the CORE's suites only: the product's domain modules (radio,
 // astrology, instruments, …) moved to DreamStudio's rt/ with their tests, barrelled by rt/rt_test.js.
 //   deno test -A packages/runtime/runtime_test.js
+import "./tests/apk_test.js";
 import "./tests/candidates_test.js";
 import "./tests/colour_test.js";
 import "./tests/console_test.js";

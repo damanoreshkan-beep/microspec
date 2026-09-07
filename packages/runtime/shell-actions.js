@@ -19,6 +19,8 @@
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
  * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 64 actions (bridge 36).
+ * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
+ *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
  * ## How it fits
  * Imported by runtime/shell.js, which compares CATALOGUE_BRIDGE with the bridge the APK reports and refuses
@@ -30,6 +32,19 @@
 // Run `deno task shell` after changing the catalogue; `--check` gates it before every push.
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
 export const CATALOGUE_BRIDGE = 36;
+/** The heavier shell FLAVOURS, capability -> the flavours that carry it. A capability absent here is carried
+ *  by every flavour; one named here needs the APK built with one of its flavours, or the bridge refuses the
+ *  action on the device with "capability not granted to this page". Derived so no caller re-types the list. */
+export const FLAVOUR_OF = {
+  "godot": [
+    "godot"
+  ],
+  "mesh": [
+    "mesh"
+  ]
+};
+/** The flavour names a spec's profile.apk may ask for, from FLAVOUR_OF — the ONE list, never a literal. */
+export const FLAVOURS = [...new Set(Object.values(FLAVOUR_OF).flat())].sort();
 /** Every shell action by id: { capability, kind ("call"|"subscribe"), minBridge, android permissions, mock }. */
 export const ACTIONS = {
   "system.info": {

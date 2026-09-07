@@ -1,8 +1,9 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 34,
+  "bridgeVersion": 35,
   "flavours": {
-    "godot": ["godot"]
+    "godot": ["godot"],
+    "mesh": ["mesh"]
   },
   "actions": [
     {
@@ -2639,6 +2640,105 @@
         }
       },
       "mock": { "state": "running", "fps": 60, "width": 1080, "height": 2340 }
+    },
+    {
+      "id": "mesh.start",
+      "capability": "mesh",
+      "kind": "call",
+      "minBridge": 35,
+      "android": ["BLUETOOTH_SCAN", "BLUETOOTH_ADVERTISE", "BLUETOOTH_CONNECT", "ACCESS_FINE_LOCATION"],
+      "summary": "Start the off-grid BLE mesh. The `mesh` flavour vendors bitchat's transport (interoperable with stock bitchat): the device becomes a GATT central AND peripheral, advertising and relaying in a controlled flood. Returns this node's stable peer id and nickname.",
+      "args": { "type": "object", "additionalProperties": false, "properties": { "nick": { "type": "string", "description": "Optional nickname to announce; the stored one is kept when omitted." } } },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "peerID": { "type": "string" }, "nick": { "type": "string" } } },
+      "mock": { "peerID": "anon4f2a", "nick": "anon4f2a" }
+    },
+    {
+      "id": "mesh.stop",
+      "capability": "mesh",
+      "kind": "call",
+      "minBridge": 35,
+      "android": [],
+      "summary": "Stop the mesh: drop every link, stop advertising and scanning.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "running": { "type": "boolean" } } },
+      "mock": { "running": false }
+    },
+    {
+      "id": "mesh.state",
+      "capability": "mesh",
+      "kind": "call",
+      "minBridge": 35,
+      "android": [],
+      "summary": "A snapshot of the mesh: whether it is running, how many peers are reachable, this node's id and nickname.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "running": { "type": "boolean" }, "peerCount": { "type": "integer" }, "myPeerID": { "type": "string" }, "nick": { "type": "string" } } },
+      "mock": { "running": true, "peerCount": 2, "myPeerID": "anon4f2a", "nick": "anon4f2a" }
+    },
+    {
+      "id": "mesh.setNick",
+      "capability": "mesh",
+      "kind": "call",
+      "minBridge": 35,
+      "android": [],
+      "summary": "Set the nickname announced to peers. Identity is the on-device Noise key; the nickname is only a label.",
+      "args": { "type": "object", "required": ["name"], "additionalProperties": false, "properties": { "name": { "type": "string" } } },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "nick": { "type": "string" } } },
+      "mock": { "nick": "anon4f2a" }
+    },
+    {
+      "id": "mesh.sendPublic",
+      "capability": "mesh",
+      "kind": "call",
+      "minBridge": 35,
+      "android": [],
+      "summary": "Broadcast a public message to everyone in the mesh (no end-to-end encryption; the room is public). Stored and gossiped so a peer who arrives within the window still receives it.",
+      "args": { "type": "object", "required": ["text"], "additionalProperties": false, "properties": { "text": { "type": "string" } } },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "ok": { "type": "boolean" } } },
+      "mock": { "ok": true }
+    },
+    {
+      "id": "mesh.sendPrivate",
+      "capability": "mesh",
+      "kind": "call",
+      "minBridge": 35,
+      "android": [],
+      "summary": "Send a Noise end-to-end encrypted message to one peer. A session is established on first send.",
+      "args": { "type": "object", "required": ["peerID", "text"], "additionalProperties": false, "properties": { "peerID": { "type": "string" }, "text": { "type": "string" } } },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "ok": { "type": "boolean" } } },
+      "mock": { "ok": true }
+    },
+    {
+      "id": "mesh.peers",
+      "capability": "mesh",
+      "kind": "subscribe",
+      "minBridge": 35,
+      "android": [],
+      "summary": "The peers reachable right now — the honest 'who is near me' the room header shows. Emits a fresh snapshot on every change.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "peers": { "type": "array", "items": { "type": "object", "properties": { "peerID": { "type": "string" }, "nick": { "type": "string" } } } } } },
+      "mock": { "peers": [ { "peerID": "5aa3", "nick": "anon5aa3" }, { "peerID": "0f68", "nick": "мандрівник" } ] }
+    },
+    {
+      "id": "mesh.messages",
+      "capability": "mesh",
+      "kind": "subscribe",
+      "minBridge": 35,
+      "android": [],
+      "summary": "Incoming messages as they arrive — public (room) and private (a Noise thread), one event each.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "msgId": { "type": "string" }, "kind": { "type": "string", "enum": ["public", "private"] }, "fromPeerID": { "type": "string" }, "nick": { "type": "string" }, "text": { "type": "string" }, "ts": { "type": "integer" } } },
+      "mock": { "msgId": "m1", "kind": "public", "fromPeerID": "5aa3", "nick": "anon5aa3", "text": "є хтось поруч?", "ts": 0 }
+    },
+    {
+      "id": "mesh.receipts",
+      "capability": "mesh",
+      "kind": "subscribe",
+      "minBridge": 35,
+      "android": [],
+      "summary": "Delivery state of a private message you sent: delivered, then read.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "msgId": { "type": "string" }, "state": { "type": "string", "enum": ["sent", "delivered", "read", "queued"] } } },
+      "mock": { "msgId": "d2", "state": "read" }
     }
   ]
 }

@@ -20,7 +20,7 @@
         "type": "array",
         "minItems": 1,
         "uniqueItems": true,
-        "items": { "type": "string", "enum": ["full", "godot"] }
+        "items": { "type": "string", "enum": ["full", "godot", "mesh"] }
       }
     },
     "actions": {
@@ -38,7 +38,7 @@
           },
           "capability": {
             "type": "string",
-            "enum": ["notify", "alarm", "background", "media", "wifi", "cell", "ble", "advertise", "advertise-raw", "usb", "location", "files", "system", "server", "lan", "share", "godot"],
+            "enum": ["notify", "alarm", "background", "media", "wifi", "cell", "ble", "advertise", "advertise-raw", "usb", "location", "files", "system", "server", "lan", "share", "godot", "mesh"],
             "description": "Permission group and bridge flag. The registry in docs/research/apk-sdk-plan.md §3."
           },
           "kind": {

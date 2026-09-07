@@ -20,7 +20,7 @@
  * ```
  *
  * ## What it exports
- * - {@link GlStage} — the component: `{ shader, seed = 0, ink, vary, tex, texReady, cam, zClass = "-z-10" }` renders a
+ * - {@link GlStage} — the component: `{ shader, seed = 0, ink, vary, points, tex, texReady, cam, zClass = "-z-10" }` renders a
  *   `fixed inset-0` canvas (`data-stage`, `aria-hidden`) and drives the app's GLSL ES 3.00 fragment shader every frame.
  *   `cam` is a LIVE picture source (a `<video>` of the camera, a canvas, an image) uploaded at full resolution every
  *   frame it changes — the one channel that projects a picture instead of borrowing a palette from it. `tex2` is a
@@ -39,8 +39,9 @@
  *   ink=${inkFor} vary=${bands} tex=${station.logo || null} texReady=${(r) => { env.readyTo = r; }} />`;
  * ```
  * The shader declares `out vec4 o` and the uniforms `res: vec2 · time: float · seed: float · ink: vec4 ·
- * vary: vec4 · env: vec4`, plus `tex: sampler2D` and `texAspect: vec2` when it samples the palette, and
- * `cam: sampler2D` + `camAspect: vec2` (x = width/height, y = 1 once a frame is bound) when it projects `cam`.
+ * vary: vec4 · env: vec4`, plus `tex: sampler2D` and `texAspect: vec2` when it samples the palette,
+ * `cam: sampler2D` + `camAspect: vec2` (x = width/height, y = 1 once a frame is bound) when it projects `cam`,
+ * and `points: vec4[8]` + `pointCount: float` when it draws one thing per entry of the moving set.
  *
  * ## How it fits
  * Imports `htm/preact`, `preact/hooks` and `gate` from `./gate.js` (the gate does not skip the stage — it only
@@ -69,6 +70,10 @@
  *   uploaded top-first (no `UNPACK_FLIP_Y`), so a shader that flips `uv.y` for the DOM samples it upright.
  * - Under the gate: DPR 1 and every other frame skipped (a full-screen fbm field at DPR 2 in SwiftShader starved a
  *   fixture stream from 0.7 s to 30 s). Elsewhere DPR is capped at 2. A hidden tab draws nothing.
+ * - `points` is the only VARIABLE-LENGTH channel: a flat array of up to 8 vec4s (`[x,y,z,w, x,y,z,w, …]`),
+ *   read every frame the way `ink`/`vary` are, and zero-filled past `pointCount` so a shader that loops to
+ *   the compiled array size never reads a stale slot. `ink` and `vary` are four floats each and cannot carry
+ *   a list, which is why a stage that wanted one well per neighbour previously had no channel at all.
  * - `prefers-reduced-motion: reduce` freezes `time` at 2 and snaps `env.x` instead of easing it.
  * - The canvas reports itself: `data-haswebgl` yes/no, `data-render="webgl"` once a frame drew, `data-tex="yes"`
  *   once the palette is bound, `data-err` with the first 120 chars of a compile/link failure.
@@ -102,6 +107,9 @@ const DPR_CAP = 2;
 // DPR 1 — the shot is still the real field, at a quarter of the fill — and skips every other frame.
 const GATE_DPR = 1;
 const TEX_MAX = 64;
+// The moving set's fixed length. A GLSL array size is compiled in, so this number is part of the contract:
+// a shader declares `uniform vec4 points[8]` and reads `pointCount` to know how many slots are live.
+const POINTS = 8;
 
 const VS = `#version 300 es
 in vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
@@ -123,6 +131,8 @@ export const hasWebGL2 = () => {
  * @param seed     0..1, the shader's business
  * @param ink      optional vec4 — a value or a function read every frame
  * @param vary     optional vec4 — same; the app's live parameters (this is how a stage answers real state)
+ * @param points   optional flat array of up to 8 vec4s (or a function returning one, read every frame) —
+ *                 the moving set, one shader-drawn thing per entry; zero-filled past `pointCount`
  * @param tex      optional image URL (CORS-readable); `texReady` — a function the stage calls with 0/1 when
  *                 the texture is (not) bound, so the app can fade the field in through its own `vary` channel
  * @param cam      optional live picture source — a `<video>`, canvas, image or ImageBitmap, or a function
@@ -133,10 +143,10 @@ export const hasWebGL2 = () => {
  *                 shutter that saves the live frame; costs a copy per frame, so only a stage that captures asks
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, cam, tex2, preserve = false, zClass = "-z-10" }) {
+export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, cam, tex2, preserve = false, zClass = "-z-10" }) {
   const ref = useRef();
   const state = useRef({ raf: 0, dead: false, gl: null, light: themeLight(), texUrl: null, tex2Url: null }).current;
-  state.seed = seed; state.ink = ink; state.vary = vary; state.texReady = texReady; state.cam = cam;
+  state.seed = seed; state.ink = ink; state.vary = vary; state.points = points; state.texReady = texReady; state.cam = cam;
 
   useEffect(() => {
     // No gate guard, on purpose (see the header): the probe below is the guard. Preflight's canvas stub
@@ -172,6 +182,12 @@ export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, cam, tex2,
         const U = (n) => gl.getUniformLocation(prog, n);
         const uRes = U("res"), uTime = U("time"), uSeed = U("seed"), uInk = U("ink"), uVary = U("vary"), uEnv = U("env"), uTex = U("tex"), uTexAspect = U("texAspect");
         const uCam = U("cam"), uCamAspect = U("camAspect");
+        // The MOVING SET: up to 8 vec4s a shader can draw one thing per entry — a peer, a hit, a hand.
+        // `ink`/`vary` carry the app's scalars, and neither can carry a variable-length list, which is why
+        // an app that wanted a well per neighbour had no channel at all and would otherwise have grown its
+        // own second renderer. Declared `uniform vec4 points[8]; uniform float pointCount;`.
+        const uPoints = U("points"), uPointCount = U("pointCount");
+        const pts = new Float32Array(POINTS * 4);
         // The live picture, on unit 1: full resolution, no mipmaps (a per-frame generateMipmap on a camera frame is
         // the cost that stutters), clamped so an aspect-fitted sample never wraps. A 1×1 grey sits there until a frame lands.
         const camTex = gl.createTexture();
@@ -281,6 +297,14 @@ export function GlStage({ shader, seed = 0, ink, vary, tex, texReady, cam, tex2,
           const target = themeLight();
           state.light = still ? target : state.light + (target - state.light) * 0.13;
           if (uEnv) gl.uniform4f(uEnv, state.light, 0, 0, 0);
+          if (uPoints) {
+            const p = typeof state.points === "function" ? state.points() : state.points;
+            const n = p ? Math.min(POINTS, p.length >> 2) : 0;
+            pts.fill(0);
+            for (let i = 0; i < n * 4; i++) pts[i] = p[i];
+            gl.uniform4fv(uPoints, pts);
+            if (uPointCount) gl.uniform1f(uPointCount, n);
+          }
           if (uTexAspect) gl.uniform2f(uTexAspect, texAspect, 0);
           if (uCam) { uploadCam(typeof state.cam === "function" ? state.cam() : state.cam); gl.uniform2f(uCamAspect, camAspect, camBound); }
           if (uTex2Aspect) gl.uniform2f(uTex2Aspect, tex2Aspect, tex2Bound);

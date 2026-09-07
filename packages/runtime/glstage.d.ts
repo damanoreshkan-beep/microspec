@@ -19,7 +19,7 @@
  * ```
  *
  * ## What it exports
- * - {@link GlStage} — the component: `{ shader, seed = 0, ink, vary, tex, texReady, cam, zClass = "-z-10" }` renders a
+ * - {@link GlStage} — the component: `{ shader, seed = 0, ink, vary, points, tex, texReady, cam, zClass = "-z-10" }` renders a
  *   `fixed inset-0` canvas (`data-stage`, `aria-hidden`) and drives the app's GLSL ES 3.00 fragment shader every frame.
  *   `cam` is a LIVE picture source (a `<video>` of the camera, a canvas, an image) uploaded at full resolution every
  *   frame it changes — the one channel that projects a picture instead of borrowing a palette from it. `tex2` is a
@@ -38,8 +38,9 @@
  *   ink=${inkFor} vary=${bands} tex=${station.logo || null} texReady=${(r) => { env.readyTo = r; }} />`;
  * ```
  * The shader declares `out vec4 o` and the uniforms `res: vec2 · time: float · seed: float · ink: vec4 ·
- * vary: vec4 · env: vec4`, plus `tex: sampler2D` and `texAspect: vec2` when it samples the palette, and
- * `cam: sampler2D` + `camAspect: vec2` (x = width/height, y = 1 once a frame is bound) when it projects `cam`.
+ * vary: vec4 · env: vec4`, plus `tex: sampler2D` and `texAspect: vec2` when it samples the palette,
+ * `cam: sampler2D` + `camAspect: vec2` (x = width/height, y = 1 once a frame is bound) when it projects `cam`,
+ * and `points: vec4[8]` + `pointCount: float` when it draws one thing per entry of the moving set.
  *
  * ## How it fits
  * Imports `htm/preact`, `preact/hooks` and `gate` from `./gate.js` (the gate does not skip the stage — it only
@@ -68,6 +69,10 @@
  *   uploaded top-first (no `UNPACK_FLIP_Y`), so a shader that flips `uv.y` for the DOM samples it upright.
  * - Under the gate: DPR 1 and every other frame skipped (a full-screen fbm field at DPR 2 in SwiftShader starved a
  *   fixture stream from 0.7 s to 30 s). Elsewhere DPR is capped at 2. A hidden tab draws nothing.
+ * - `points` is the only VARIABLE-LENGTH channel: a flat array of up to 8 vec4s (`[x,y,z,w, x,y,z,w, …]`),
+ *   read every frame the way `ink`/`vary` are, and zero-filled past `pointCount` so a shader that loops to
+ *   the compiled array size never reads a stale slot. `ink` and `vary` are four floats each and cannot carry
+ *   a list, which is why a stage that wanted one well per neighbour previously had no channel at all.
  * - `prefers-reduced-motion: reduce` freezes `time` at 2 and snaps `env.x` instead of easing it.
  * - The canvas reports itself: `data-haswebgl` yes/no, `data-render="webgl"` once a frame drew, `data-tex="yes"`
  *   once the palette is bound, `data-err` with the first 120 chars of a compile/link failure.
@@ -79,6 +84,8 @@
  * @param seed     0..1, the shader's business
  * @param ink      optional vec4 — a value or a function read every frame
  * @param vary     optional vec4 — same; the app's live parameters (this is how a stage answers real state)
+ * @param points   optional flat array of up to 8 vec4s (or a function returning one, read every frame) —
+ *                 the moving set, one shader-drawn thing per entry; zero-filled past `pointCount`
  * @param tex      optional image URL (CORS-readable); `texReady` — a function the stage calls with 0/1 when
  *                 the texture is (not) bound, so the app can fade the field in through its own `vary` channel
  * @param cam      optional live picture source — a `<video>`, canvas, image or ImageBitmap, or a function
@@ -89,11 +96,12 @@
  *                 shutter that saves the live frame; costs a copy per frame, so only a stage that captures asks
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed, ink, vary, tex, texReady, cam, tex2, preserve, zClass }: {
+export function GlStage({ shader, seed, ink, vary, points, tex, texReady, cam, tex2, preserve, zClass }: {
     shader: any;
     seed?: number;
     ink: any;
     vary: any;
+    points: any;
     tex: any;
     texReady: any;
     cam: any;

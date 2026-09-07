@@ -107,7 +107,7 @@ export function Prime({ kind = "camera", loc, reason, onEnable, onSettings, deni
       <div class="text-xl font-bold">${unavailable ? L.unavailable : denied ? L.blocked : L.title}</div>
       <p class="text-sm text-base-content/70 max-w-xs leading-relaxed">${denied ? L.blockedHint : reason}</p>
     </div>
-    ${bad ? null : html`<div class="flex items-center gap-1.5 text-xs text-muted max-w-xs">${Icon(privacyIcon || "lucide:shield-check", "text-sm shrink-0")}<span>${privacy || L.privacy}</span></div>`}
+    ${bad ? null : html`<p class="text-xs text-muted max-w-xs leading-relaxed">${Icon(privacyIcon || "lucide:shield-check", "text-sm align-[-0.15em] mr-1.5")}${privacy || L.privacy}</p>`}
     ${unavailable ? null : denied
       ? html`<button data-enable class="btn btn-primary rounded-2xl px-6 gap-2" onClick=${onSettings}>${Icon("lucide:settings")}${L.settings}</button>`
       : html`<button data-enable class="btn btn-primary rounded-2xl px-6 gap-2" onClick=${onEnable}>${Icon(K.icon)}${L.enable}</button>`}

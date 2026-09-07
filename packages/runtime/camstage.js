@@ -36,6 +36,9 @@
  *   app's own layers with it); `onEnable` — the person's tap on Enable, forwarded so an app can prime its
  *   OTHER gesture-gated permission on the same gesture; `privacy` / `privacyIcon` — an honest override of
  *   the priming screen's built-in privacy line (camprime.js) for an app where "never uploaded" is untrue;
+ *   `primeFull` (default false — the priming screen fills the stage; true pins it to `.ms-stage`, for an app
+ *   whose stage is a small box that would clip the Enable button); `constraints` — extra video constraints
+ *   for the ask (a photo app: `{ width: { ideal: 1920 } }`), read when the stream opens;
  *   `className` for the stage element; `children` — the app's surface.
  * - {@link camPoint} — `(u, v, vw, vh, mirror) → { x, y }`: a viewport point (0..1) to the sensor point it
  *   shows under a cover fit — the maths a tap-to-focus needs, pure.
@@ -121,7 +124,7 @@ export function camPoint(u, v, vw, vh, mirror, asp) {
  * @param props see the module note
  * @returns the stage element with the app's surface inside it
  */
-export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, facing = "environment", torch = false, still = null, onVideo, onState, fullscreen = true, gestures = true, show = false, picClassName = "", className = "", children }) {
+export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, primeFull = false, facing = "environment", torch = false, constraints = null, still = null, onVideo, onState, fullscreen = true, gestures = true, show = false, picClassName = "", className = "", children }) {
   const L = LBL[loc] || LBL.en;
   const standby = gate && !still;                    // the gate with no picture: the app seeds its own, the stage stands aside
   const [enabled, setEnabled] = useState(!!still || standby);   // the camera opens only after the tap on Enable; a still plays at once
@@ -131,6 +134,7 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
   const videoRef = useRef(), imgRef = useRef(), stageRef = useRef();
   const ctl = useRef(null), capsRef = useRef(null), readyRef = useRef(standby);
   const cb = useRef({ onVideo, onState }); cb.current = { onVideo, onState };
+  const cons = useRef(constraints); cons.current = constraints;   // read when the stream opens, never a dep: an object literal would reopen the camera every render
   const emit = () => cb.current.onState?.({ ready: readyRef.current, caps: capsRef.current, fullscreen: full, err });
   useEffect(emit, [full, err]);
   useEffect(() => { if (standby) emit(); }, []);      // the seeded stage is ready from its first frame
@@ -160,7 +164,7 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
       cb.current.onVideo?.(v, { facing, mirror: facing === "user" });
     };
     v?.addEventListener("playing", onPlaying);
-    camera.start(v, (e) => { if (alive) setErr(e); }, { facingMode: facing }).then((s) => { if (alive) stop = s; else s(); });
+    camera.start(v, (e) => { if (alive) setErr(e); }, { facingMode: facing, constraints: cons.current }).then((s) => { if (alive) stop = s; else s(); });
     return () => {
       alive = false; v?.removeEventListener("playing", onPlaying); stop(); wl?.release?.();
       readyRef.current = false; capsRef.current = null; ctl.current = null;
@@ -234,8 +238,14 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
       onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp}>
       ${focus ? html`<div key=${focus.k} data-focus aria-hidden="true" class="cs-focus" style=${`left:${focus.x}px;top:${focus.y}px`}></div>` : null}
     </div>
-    ${on ? null : html`<${CameraPrime} loc=${loc} reason=${reason} privacy=${privacy} privacyIcon=${privacyIcon}
-      onEnable=${() => { setErr(null); setEnabled(true); onEnable?.(); }} onSettings=${onSettings}
-      denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />`}
+    ${on ? null : (() => {
+      // the priming screen fills the stage; where the stage is a small box of the screen (a viewfinder well)
+      // the app asks for `primeFull` and it is pinned to .ms-stage instead — the chrome contract, watch rail
+      // included — because a clipped Enable button is a camera that cannot be turned on at all
+      const prime = html`<${CameraPrime} loc=${loc} reason=${reason} privacy=${privacy} privacyIcon=${privacyIcon}
+        onEnable=${() => { setErr(null); setEnabled(true); onEnable?.(); }} onSettings=${onSettings}
+        denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />`;
+      return primeFull ? html`<div class="ms-stage z-30">${prime}</div>` : prime;
+    })()}
   </div>`;
 }

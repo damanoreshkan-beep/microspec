@@ -35,6 +35,9 @@
  *   app's own layers with it); `onEnable` — the person's tap on Enable, forwarded so an app can prime its
  *   OTHER gesture-gated permission on the same gesture; `privacy` / `privacyIcon` — an honest override of
  *   the priming screen's built-in privacy line (camprime.js) for an app where "never uploaded" is untrue;
+ *   `primeFull` (default false — the priming screen fills the stage; true pins it to `.ms-stage`, for an app
+ *   whose stage is a small box that would clip the Enable button); `constraints` — extra video constraints
+ *   for the ask (a photo app: `{ width: { ideal: 1920 } }`), read when the stream opens;
  *   `className` for the stage element; `children` — the app's surface.
  * - {@link camPoint} — `(u, v, vw, vh, mirror) → { x, y }`: a viewport point (0..1) to the sensor point it
  *   shows under a cover fit — the maths a tap-to-focus needs, pure.
@@ -102,15 +105,17 @@ export function camPoint(u: any, v: any, vw: any, vh: any, mirror: any, asp: any
  * @param props see the module note
  * @returns the stage element with the app's surface inside it
  */
-export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, facing, torch, still, onVideo, onState, fullscreen, gestures, show, picClassName, className, children }: {
+export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, primeFull, facing, torch, constraints, still, onVideo, onState, fullscreen, gestures, show, picClassName, className, children }: {
     loc: any;
     reason: any;
     onSettings: any;
     onEnable: any;
     privacy: any;
     privacyIcon: any;
+    primeFull?: boolean;
     facing?: string;
     torch?: boolean;
+    constraints?: any;
     still?: any;
     onVideo: any;
     onState: any;

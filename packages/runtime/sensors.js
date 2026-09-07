@@ -36,7 +36,7 @@
  * - {@link tilt} — `supported`, `needsPermission`, `request()` (the same gesture-gated permission as compass); `start(onTilt) → stop fn`, `onTilt({ beta, gamma })` screen-orientation aware, no true-north, no geolocation.
  *
  * **Media**
- * - {@link camera} — `supported`; `async start(videoEl, onErr, { facingMode = "environment" }) → stop fn` that stops every track and survives being called before the open resolves; `controls(videoEl)` → the running track's {@link camControls}.
+ * - {@link camera} — `supported`; `async start(videoEl, onErr, { facingMode = "environment", constraints = null }) → stop fn` that stops every track and survives being called before the open resolves; `controls(videoEl)` → the running track's {@link camControls}.
  * - {@link camControls} — `(track) → { caps: { torch, zoom, focus }, torch(on), zoom(z), focusAt(x, y) }`, pure over `getCapabilities` / `applyConstraints`.
  * - {@link mic} — `supported`; `mime()` picks the first supported recorder type; `record({ seconds = 2, timeoutMs = 10000, bitsPerSecond = 128000, onStream, onErr }) → { done, stop(), cancel() }` where `done` resolves to `{ blob, mime, settings }` or null.
  * - {@link MIC_MIMES} — the recorder MIME types tried, in preference order.
@@ -428,6 +428,8 @@ export const tilt = {
 //
 //   start(videoEl, onErr?, opts?) → stop fn.  onErr("denied" | "unavailable" | "unsupported").
 //   opts.facingMode: "environment" (default, rear) | "user" (selfie).
+//   opts.constraints: extra video constraints merged into the ask (a photo app: { width: { ideal: 1920 } });
+//     the retry opens bare, so hardware that cannot meet them still yields a stream.
 // The stop fn releases the camera (stops every track) AND survives being called before the async open
 // resolves — an unmount mid-permission must not leak a hot camera the moment the user grants it.
 // Switching cameras (lychyna's flip, 2026-09-05) taught two more rules: Android releases the first camera's
@@ -438,17 +440,20 @@ export const tilt = {
 /** A live camera stream on a <video> — `start(videoEl, onErr, opts)` → stop fn that releases every track. */
 export const camera = {
   supported: typeof navigator !== "undefined" && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
-  async start(video, onErr, { facingMode = "environment" } = {}) {
+  async start(video, onErr, { facingMode = "environment", constraints = null } = {}) {
     if (!this.supported) { onErr?.("unsupported"); return () => {}; }
     let stream = null, stopped = false;
-    const open = () => navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false });
+    // `constraints` is what the caller adds to the video track (a photo app asks for width/height 1920). The
+    // RETRY below opens bare: a device that cannot meet the ask degrades to the plain stream instead of
+    // losing the camera, which is why an `exact` here is survivable and not a trap.
+    const open = (bare) => navigator.mediaDevices.getUserMedia({ video: bare ? { facingMode } : { facingMode, ...(constraints || {}) }, audio: false });
     try {
       try { stream = await open(); }
       catch (e) {
         if (!e || !/NotReadableError|AbortError|OverconstrainedError/.test(e.name)) throw e;
         await new Promise((r) => setTimeout(r, RELEASE_MS));   // the other camera is still letting go
         if (stopped) return () => {};
-        stream = await open();
+        stream = await open(true);
       }
       if (stopped) { stream.getTracks().forEach((tr) => tr.stop()); return () => {}; } // unmounted mid-open
       if (video) { video.srcObject = stream; video.setAttribute?.("playsinline", ""); try { await video.play?.(); } catch { /* autoplay quirk */ } }

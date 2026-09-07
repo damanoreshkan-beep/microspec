@@ -136,8 +136,8 @@
         },
         "apk": {
           "type": "string",
-          "enum": ["godot"],
-          "description": "Which shell flavour the app's 'Download APK' row asks for. `godot`: the app's stage is a Godot project (runtime/godotstage.js) and needs the shell that links the engine; the edge grants it only to our own origin."
+          "enum": ["godot", "mesh"],
+          "description": "Which shell flavour the app's 'Download APK' row asks for. `godot`: the app's stage is a Godot project (runtime/godotstage.js) and needs the shell that links the engine. `mesh`: the app is an off-grid BLE-mesh chat and needs the shell that vendors the bitchat transport. The edge grants either only to our own origin."
         },
         "permissions": {
           "type": "array",

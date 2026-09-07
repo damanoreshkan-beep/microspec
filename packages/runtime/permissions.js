@@ -21,7 +21,7 @@
  * ```
  *
  * ## What it exports
- * - {@link PERMISSIONS} — the registry, name → `{ icon, group, capability?, query()?, request()? }`; sixteen rows from
+ * - {@link PERMISSIONS} — the registry, name → `{ icon, group, capability?, query()?, request()? }`; seventeen rows from
  *   `geolocation` to `microphone`, most of the radios and system rows shell-only.
  * - {@link GROUPS} — `["sense", "media", "background", "radios", "system"]`, the display order; an empty group renders nothing.
  * - {@link permState} — `permState(name)` → `{ state, via }`; state is granted | partial | prompt | denied | unsupported |
@@ -61,9 +61,10 @@
  * `has`/`call` for `system.info` and `system.grant`. Inside the runtime it is imported by `render.js`
  * (the profile row and the history-backed permissions screen, which lists `spec.profile.permissions`) and
  * by `notify.js` (`notifyAsk`); `camprime.js` routes its "Open permissions" button to that screen. In the
- * farm one app imports it directly — os, whose launcher renders the whole registry as tiles — and 18 apps
+ * farm one app imports it directly — os, whose launcher renders the whole registry as tiles — and 19 apps
  * reach it through the shared screen by declaring `profile.permissions` in their spec (cam, earshot, flux,
- * grain, hive, imagine, mirage, pipette, prox, qr, sonar, sun, swarm, synesth, tarot, trail, wall, os).
+ * grain, hive, imagine, mirage, pipette, poholos, prox, qr, sonar, sun, swarm, synesth, tarot, trail,
+ * wall, os).
  * Every generated `sw.js` precaches it. The unit gate holds it in `tests/permissions_test.js`.
  *
  * ## Invariants and pitfalls
@@ -176,6 +177,11 @@ export const PERMISSIONS = {
     group: "radios",
     capability: "advertise",    // the peripheral role: Web Bluetooth is central-only, so a page can
   },                            // never be heard by another phone — only listen to one
+  mesh: {
+    icon: "lucide:share-2",
+    group: "radios",
+    capability: "mesh",         // both roles at once, which is what a mesh is: the node scans, connects
+  },                            // AND advertises, so this one row rests on four Android permissions
   usb: {
     icon: "lucide:usb",
     group: "radios",
@@ -276,7 +282,7 @@ const L = {
   uk: {
     title: "Дозволи", row: "Дозволи", back: "Назад", intro: "Увімкни, щоб застосунок міг цим користуватись. Дозвіл питає сам браузер.",
     geolocation: "Геолокація", notifications: "Сповіщення", motion: "Рух і компас", camera: "Камера", microphone: "Мікрофон", alarm: "Будильники",
-    background: "Фонова робота", backgroundLocation: "Трек у фоні", wifi: "Wi-Fi", cell: "Мобільна мережа", ble: "Bluetooth", advertise: "Мовлення", usb: "USB", server: "Сервер", files: "Файли", lan: "Мережа",
+    background: "Фонова робота", backgroundLocation: "Трек у фоні", wifi: "Wi-Fi", cell: "Мобільна мережа", ble: "Bluetooth", advertise: "Мовлення", mesh: "Меш", usb: "USB", server: "Сервер", files: "Файли", lan: "Мережа",
     gSense: "Довкола", gMedia: "Медіа", gBackground: "Фонова робота", gRadios: "Радіо і пристрої", gSystem: "Система",
     partial: "Частково", granted: "Дозволено", denied: "Заблоковано", unsupported: "Недоступно", needsApp: "Потрібен застосунок", staleApp: "Застосунок застарів",
     deniedHint: "Заблоковано. Увімкни в налаштуваннях браузера для цього сайту.",
@@ -287,7 +293,7 @@ const L = {
   en: {
     title: "Permissions", row: "Permissions", back: "Back", intro: "Enable so the app can use these. The browser itself asks.",
     geolocation: "Location", notifications: "Notifications", motion: "Motion & compass", camera: "Camera", microphone: "Microphone", alarm: "Alarms",
-    background: "Background work", backgroundLocation: "Background track", wifi: "Wi-Fi", cell: "Cellular", ble: "Bluetooth", advertise: "Broadcast", usb: "USB", server: "Server", files: "Files", lan: "Network",
+    background: "Background work", backgroundLocation: "Background track", wifi: "Wi-Fi", cell: "Cellular", ble: "Bluetooth", advertise: "Broadcast", mesh: "Mesh", usb: "USB", server: "Server", files: "Files", lan: "Network",
     gSense: "Around you", gMedia: "Media", gBackground: "Background work", gRadios: "Radios & devices", gSystem: "System",
     partial: "Partial", granted: "Allowed", denied: "Blocked", unsupported: "Unavailable", needsApp: "Needs the app", staleApp: "App too old",
     deniedHint: "Blocked. Enable it in your browser settings for this site.",

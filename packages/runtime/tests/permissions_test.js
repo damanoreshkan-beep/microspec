@@ -2,7 +2,7 @@
 //   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { PERMISSIONS, GROUPS, permState, permAndroid } from "../permissions.js";
+import { PERMISSIONS, GROUPS, permLabels, permState, permAndroid } from "../permissions.js";
 
 // ---- permissions registry ---------------------------------------------------
 // The row must report the gate that is ACTUALLY blocking. "Blocked" when the truth is "this needs the
@@ -41,4 +41,26 @@ Deno.test("permissions: every entry has a group, and every group is one the scre
     assert(GROUPS.includes(def.group), `${name} is in unknown group ${def.group}`);
     assert(def.query || def.capability, `${name} has neither a browser backend nor a capability`);
   }
+});
+
+// A row with no label renders as a blank line in every app that lists it, and the labels are built in
+// rather than per-app i18n — so nothing else in the farm can catch a row added without one.
+Deno.test("permissions: every row is labelled in both locales", () => {
+  for (const loc of ["uk", "en"]) {
+    const L = permLabels(loc);
+    for (const name of Object.keys(PERMISSIONS)) assert(L[name], `${name} has no ${loc} label`);
+  }
+});
+
+// mesh is one row over four Android permissions: a node scans, connects AND advertises. Declaring the
+// two halves separately was the alternative; one row that grants all four is what an app actually needs.
+Deno.test("permissions: the mesh row rests on the whole set the transport needs", () => {
+  globalThis.window = globalThis;
+  globalThis.__msShell = { version: () => 99, call: () => {}, subscribe: () => {}, cancel: () => {} };
+  try {
+    const need = permAndroid("mesh");
+    for (const p of ["BLUETOOTH_SCAN", "BLUETOOTH_ADVERTISE", "BLUETOOTH_CONNECT", "ACCESS_FINE_LOCATION"]) {
+      assert(need.includes(p), `the mesh row must rest on ${p}`);
+    }
+  } finally { delete globalThis.__msShell; delete globalThis.window; }
 });

@@ -158,6 +158,7 @@
               "ble",
               "advertise",
               "advertise-raw",
+              "mesh",
               "usb",
               "server",
               "files",

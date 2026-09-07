@@ -30,8 +30,12 @@
  *   `fullscreen` (default true — a tap on the stage toggles the fullscreen of the stage subtree);
  *   `gestures` (default true — a pinch zooms within what the track declares, a tap focuses under the finger
  *   and draws one ring); `show` (default false — the stage DISPLAYS the stream itself, cover-fit and never
- *   mirrored, for an app that reads the picture instead of drawing it); `className` for the stage element;
- *   `children` — the app's surface.
+ *   mirrored, for an app that reads the picture instead of drawing it); `picClassName` — classes for the
+ *   shown picture itself (a dimmed backdrop is `opacity-*` here, NOT on `className`, which would dim the
+ *   app's own layers with it); `onEnable` — the person's tap on Enable, forwarded so an app can prime its
+ *   OTHER gesture-gated permission on the same gesture; `privacy` / `privacyIcon` — an honest override of
+ *   the priming screen's built-in privacy line (camprime.js) for an app where "never uploaded" is untrue;
+ *   `className` for the stage element; `children` — the app's surface.
  * - {@link camPoint} — `(u, v, vw, vh, mirror) → { x, y }`: a viewport point (0..1) to the sensor point it
  *   shows under a cover fit — the maths a tap-to-focus needs, pure.
  *
@@ -62,6 +66,12 @@
  *   The browser leaving fullscreen on its own (Back, ESC, the system gesture) is mirrored into `onState`.
  * - The pinch sends ONE constraint per frame, never per event — the track's `applyConstraints` is slow.
  * - The wake lock is held while the stream runs and released with it.
+ * - **The app's children lie UNDER the priming screen** (it is `z-30`) and OVER the picture; the gesture
+ *   layer sits between them at `z-[1]`, so a layer of the app's own that must be seen or tapped while the
+ *   stream runs carries `relative z-[2]`.
+ * - **The privacy line must be true.** The built-in one says the frames are processed on the device; an app
+ *   that uploads what it captures passes its own `privacy` + `privacyIcon` — the priming screen is where
+ *   the person decides, so a claim that is false there is the one lie the kit must not tell.
  *
  * ## Why
  * A camera app is its picture and its verbs; the stream is plumbing, and plumbing copied is plumbing that
@@ -92,10 +102,13 @@ export function camPoint(u: any, v: any, vw: any, vh: any, mirror: any, asp: any
  * @param props see the module note
  * @returns the stage element with the app's surface inside it
  */
-export function CamStage({ loc, reason, onSettings, facing, torch, still, onVideo, onState, fullscreen, gestures, show, className, children }: {
+export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, facing, torch, still, onVideo, onState, fullscreen, gestures, show, picClassName, className, children }: {
     loc: any;
     reason: any;
     onSettings: any;
+    onEnable: any;
+    privacy: any;
+    privacyIcon: any;
     facing?: string;
     torch?: boolean;
     still?: any;
@@ -104,6 +117,7 @@ export function CamStage({ loc, reason, onSettings, facing, torch, still, onVide
     fullscreen?: boolean;
     gestures?: boolean;
     show?: boolean;
+    picClassName?: string;
     className?: string;
     children: any;
 }): any;

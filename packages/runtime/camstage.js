@@ -31,8 +31,12 @@
  *   `fullscreen` (default true — a tap on the stage toggles the fullscreen of the stage subtree);
  *   `gestures` (default true — a pinch zooms within what the track declares, a tap focuses under the finger
  *   and draws one ring); `show` (default false — the stage DISPLAYS the stream itself, cover-fit and never
- *   mirrored, for an app that reads the picture instead of drawing it); `className` for the stage element;
- *   `children` — the app's surface.
+ *   mirrored, for an app that reads the picture instead of drawing it); `picClassName` — classes for the
+ *   shown picture itself (a dimmed backdrop is `opacity-*` here, NOT on `className`, which would dim the
+ *   app's own layers with it); `onEnable` — the person's tap on Enable, forwarded so an app can prime its
+ *   OTHER gesture-gated permission on the same gesture; `privacy` / `privacyIcon` — an honest override of
+ *   the priming screen's built-in privacy line (camprime.js) for an app where "never uploaded" is untrue;
+ *   `className` for the stage element; `children` — the app's surface.
  * - {@link camPoint} — `(u, v, vw, vh, mirror) → { x, y }`: a viewport point (0..1) to the sensor point it
  *   shows under a cover fit — the maths a tap-to-focus needs, pure.
  *
@@ -63,6 +67,12 @@
  *   The browser leaving fullscreen on its own (Back, ESC, the system gesture) is mirrored into `onState`.
  * - The pinch sends ONE constraint per frame, never per event — the track's `applyConstraints` is slow.
  * - The wake lock is held while the stream runs and released with it.
+ * - **The app's children lie UNDER the priming screen** (it is `z-30`) and OVER the picture; the gesture
+ *   layer sits between them at `z-[1]`, so a layer of the app's own that must be seen or tapped while the
+ *   stream runs carries `relative z-[2]`.
+ * - **The privacy line must be true.** The built-in one says the frames are processed on the device; an app
+ *   that uploads what it captures passes its own `privacy` + `privacyIcon` — the priming screen is where
+ *   the person decides, so a claim that is false there is the one lie the kit must not tell.
  *
  * ## Why
  * A camera app is its picture and its verbs; the stream is plumbing, and plumbing copied is plumbing that
@@ -111,7 +121,7 @@ export function camPoint(u, v, vw, vh, mirror, asp) {
  * @param props see the module note
  * @returns the stage element with the app's surface inside it
  */
-export function CamStage({ loc, reason, onSettings, facing = "environment", torch = false, still = null, onVideo, onState, fullscreen = true, gestures = true, show = false, className = "", children }) {
+export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, facing = "environment", torch = false, still = null, onVideo, onState, fullscreen = true, gestures = true, show = false, picClassName = "", className = "", children }) {
   const L = LBL[loc] || LBL.en;
   const standby = gate && !still;                    // the gate with no picture: the app seeds its own, the stage stands aside
   const [enabled, setEnabled] = useState(!!still || standby);   // the camera opens only after the tap on Enable; a still plays at once
@@ -213,7 +223,7 @@ export function CamStage({ loc, reason, onSettings, facing = "environment", torc
   const on = enabled && !err;
   // shown, the picture IS the stage: cover-fit and NEVER mirrored (a mirrored live feed makes people seasick);
   // hidden, it is a 1px source the app draws from
-  const HIDDEN = "absolute w-px h-px opacity-0 pointer-events-none", SHOWN = "absolute inset-0 w-full h-full object-cover";
+  const HIDDEN = "absolute w-px h-px opacity-0 pointer-events-none", SHOWN = `absolute inset-0 w-full h-full object-cover ${picClassName}`;
   const pic = show ? SHOWN : HIDDEN;
   return html`<div ref=${stageRef} data-camstage data-live=${on ? "1" : null} data-ready=${readyRef.current ? "1" : null} data-fullscreen=${full ? "1" : null} data-facing=${facing} class=${`absolute inset-0 ${full ? "bg-black" : ""} ${className}`}>
     <style>${CSS}</style>
@@ -224,6 +234,8 @@ export function CamStage({ loc, reason, onSettings, facing = "environment", torc
       onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp}>
       ${focus ? html`<div key=${focus.k} data-focus aria-hidden="true" class="cs-focus" style=${`left:${focus.x}px;top:${focus.y}px`}></div>` : null}
     </div>
-    ${on ? null : html`<${CameraPrime} loc=${loc} reason=${reason} onEnable=${() => { setErr(null); setEnabled(true); }} onSettings=${onSettings} denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />`}
+    ${on ? null : html`<${CameraPrime} loc=${loc} reason=${reason} privacy=${privacy} privacyIcon=${privacyIcon}
+      onEnable=${() => { setErr(null); setEnabled(true); onEnable?.(); }} onSettings=${onSettings}
+      denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />`}
   </div>`;
 }

@@ -29,7 +29,9 @@
  *   {@link camControls}: torch · zoom · focus), whether the stage is fullscreen, the priming error;
  *   `fullscreen` (default true — a tap on the stage toggles the fullscreen of the stage subtree);
  *   `gestures` (default true — a pinch zooms within what the track declares, a tap focuses under the finger
- *   and draws one ring); `show` (default false — the stage DISPLAYS the stream itself, cover-fit and never
+ *   and draws one ring); `pinch` / `tap` — either gesture on its own, each defaulting to `gestures`, because
+ *   they are not always wanted together (a scanner wants the pinch and not the ring, which inside an
+ *   aperture reads as "code caught"); with both off the gesture layer takes no pointers at all; `show` (default false — the stage DISPLAYS the stream itself, cover-fit and never
  *   mirrored, for an app that reads the picture instead of drawing it); `picClassName` — classes for the
  *   shown picture itself (a dimmed backdrop is `opacity-*` here, NOT on `className`, which would dim the
  *   app's own layers with it); `onEnable` — the person's tap on Enable, forwarded so an app can prime its
@@ -110,7 +112,7 @@ export function camPoint(u: any, v: any, vw: any, vh: any, mirror: any, asp: any
  * @param props see the module note
  * @returns the stage element with the app's surface inside it
  */
-export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, primeFull, facing, torch, constraints, still, onVideo, onState, fullscreen, gestures, show, picClassName, className, children }: {
+export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, primeFull, facing, torch, constraints, still, onVideo, onState, fullscreen, gestures, pinch, tap, show, picClassName, className, children }: {
     loc: any;
     reason: any;
     onSettings: any;
@@ -126,6 +128,8 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
     onState: any;
     fullscreen?: boolean;
     gestures?: boolean;
+    pinch?: any;
+    tap?: any;
     show?: boolean;
     picClassName?: string;
     className?: string;

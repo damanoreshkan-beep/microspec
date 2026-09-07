@@ -30,7 +30,9 @@
  *   {@link camControls}: torch · zoom · focus), whether the stage is fullscreen, the priming error;
  *   `fullscreen` (default true — a tap on the stage toggles the fullscreen of the stage subtree);
  *   `gestures` (default true — a pinch zooms within what the track declares, a tap focuses under the finger
- *   and draws one ring); `show` (default false — the stage DISPLAYS the stream itself, cover-fit and never
+ *   and draws one ring); `pinch` / `tap` — either gesture on its own, each defaulting to `gestures`, because
+ *   they are not always wanted together (a scanner wants the pinch and not the ring, which inside an
+ *   aperture reads as "code caught"); with both off the gesture layer takes no pointers at all; `show` (default false — the stage DISPLAYS the stream itself, cover-fit and never
  *   mirrored, for an app that reads the picture instead of drawing it); `picClassName` — classes for the
  *   shown picture itself (a dimmed backdrop is `opacity-*` here, NOT on `className`, which would dim the
  *   app's own layers with it); `onEnable` — the person's tap on Enable, forwarded so an app can prime its
@@ -129,7 +131,7 @@ export function camPoint(u, v, vw, vh, mirror, asp) {
  * @param props see the module note
  * @returns the stage element with the app's surface inside it
  */
-export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, primeFull = false, facing = "environment", torch = false, constraints = null, still = null, onVideo, onState, fullscreen = true, gestures = true, show = false, picClassName = "", className = "", children }) {
+export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, primeFull = false, facing = "environment", torch = false, constraints = null, still = null, onVideo, onState, fullscreen = true, gestures = true, pinch = gestures, tap = gestures, show = false, picClassName = "", className = "", children }) {
   const L = LBL[loc] || LBL.en;
   const standby = gate && !still;                    // the gate with no picture: the app seeds its own, the stage stands aside
   const [enabled, setEnabled] = useState(!!still || standby);   // the camera opens only after the tap on Enable; a still plays at once
@@ -194,30 +196,32 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
   };
 
   // gestures: a pinch zooms the track within what it declares; a tap focuses under the finger, draws one
-  // ring and toggles the fullscreen
-  const pinch = useRef({ pts: new Map(), d0: 0, z0: 1, z: 1, raf: 0 }).current;
-  useEffect(() => { pinch.z = 1; }, [facing]);
+  // ring and toggles the fullscreen. The two are separable because they are not always wanted together —
+  // a scanner wants the far-away code brought closer, but a focus ring inside its aperture reads as
+  // "code caught" and lies to the person (qr, 2026-09-07).
+  const pg = useRef({ pts: new Map(), d0: 0, z0: 1, z: 1, raf: 0 }).current;
+  useEffect(() => { pg.z = 1; }, [facing]);
   useEffect(() => { if (!focus) return; const id = setTimeout(() => setFocus(null), 950); return () => clearTimeout(id); }, [focus]);
   const onDown = (e) => {
-    if (!gestures || !readyRef.current) return;
-    pinch.pts.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now(), moved: false });
+    if ((!pinch && !tap) || !readyRef.current) return;
+    pg.pts.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now(), moved: false });
     e.currentTarget.setPointerCapture?.(e.pointerId);
-    if (pinch.pts.size === 2) { const [a, b] = [...pinch.pts.values()]; pinch.d0 = Math.hypot(a.x - b.x, a.y - b.y) || 1; pinch.z0 = pinch.z; }
+    if (pg.pts.size === 2) { const [a, b] = [...pg.pts.values()]; pg.d0 = Math.hypot(a.x - b.x, a.y - b.y) || 1; pg.z0 = pg.z; }
   };
   const onMove = (e) => {
-    const p = pinch.pts.get(e.pointerId); if (!p) return;
+    const p = pg.pts.get(e.pointerId); if (!p) return;
     if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) p.moved = true;
     p.cx = e.clientX; p.cy = e.clientY;
     const zc = capsRef.current?.zoom;
-    if (pinch.pts.size !== 2 || !zc) return;
-    const [a, b] = [...pinch.pts.values()];
+    if (!pinch || pg.pts.size !== 2 || !zc) return;
+    const [a, b] = [...pg.pts.values()];
     const d = Math.hypot((a.cx ?? a.x) - (b.cx ?? b.x), (a.cy ?? a.y) - (b.cy ?? b.y));
-    pinch.z = Math.min(zc.max, Math.max(zc.min, pinch.z0 * d / pinch.d0));
-    if (!pinch.raf) pinch.raf = requestAnimationFrame(() => { pinch.raf = 0; ctl.current?.zoom(pinch.z); });   // one constraint per frame, never per event
+    pg.z = Math.min(zc.max, Math.max(zc.min, pg.z0 * d / pg.d0));
+    if (!pg.raf) pg.raf = requestAnimationFrame(() => { pg.raf = 0; ctl.current?.zoom(pg.z); });   // one constraint per frame, never per event
   };
   const onUp = (e) => {
-    const p = pinch.pts.get(e.pointerId); pinch.pts.delete(e.pointerId);
-    if (!p || p.moved || pinch.pts.size || performance.now() - p.t > 350) return;
+    const p = pg.pts.get(e.pointerId); pg.pts.delete(e.pointerId);
+    if (!tap || !p || p.moved || pg.pts.size || performance.now() - p.t > 350) return;
     const r = e.currentTarget.getBoundingClientRect();
     if (capsRef.current?.focus) {
       const v = videoRef.current;
@@ -239,7 +243,10 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
     <video ref=${videoRef} autoplay muted playsinline aria-hidden="true" class=${still ? HIDDEN : pic}></video>
     ${still ? html`<img ref=${imgRef} src=${still} alt="" aria-hidden="true" decoding="async" class=${pic} />` : null}
     ${children}
-    <div data-gestures role=${fullscreen ? "button" : null} aria-label=${fullscreen ? (full ? L.exit : L.stage) : null} class="absolute inset-0 z-[1] touch-none" style="touch-action:none"
+    ${/* with neither gesture the layer stops taking pointers at all — it used to sit inert but still
+         intercepting, and an app's own layers had to climb over it */""}
+    <div data-gestures role=${tap && fullscreen ? "button" : null} aria-label=${tap && fullscreen ? (full ? L.exit : L.stage) : null}
+      class=${`absolute inset-0 z-[1] touch-none ${pinch || tap ? "" : "pointer-events-none"}`} style="touch-action:none"
       onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp}>
       ${focus ? html`<div key=${focus.k} data-focus aria-hidden="true" class="cs-focus" style=${`left:${focus.x}px;top:${focus.y}px`}></div>` : null}
     </div>

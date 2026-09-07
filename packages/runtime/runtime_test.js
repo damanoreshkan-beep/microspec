@@ -9,6 +9,7 @@
  * `import "@microspec/core/tests/runtime";`. It exports nothing.
  * @module
  */
+import "./tests/apk_test.js";
 import "./tests/candidates_test.js";
 import "./tests/colour_test.js";
 import "./tests/console_test.js";

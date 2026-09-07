@@ -83,7 +83,7 @@ import { useStore } from "@nanostores/preact";
 import { authWall } from "./authwall.js";
 import { shell } from "./shell.js";
 import { T, ago, whenLabel, sinceLabel, sys } from "./i18n.js";
-import { buildApk, fetchAppIcons, adaptiveFromTile, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
+import { buildApk, apkPower, fetchAppIcons, adaptiveFromTile, letterTilePng, downloadBlob, apkFilename } from "./apk.js";
 import { gate } from "./gate.js";
 import { Sheet } from "./ui.js";
 import { SHEET_BOX } from "./ui.js";
@@ -680,7 +680,9 @@ function ApkScreen() {
       if (!i) { try { i = await resolveIcons(); } catch { i = {}; } }
       
       
-      const power = A.spec.profile?.apk === "godot" ? "godot" : undefined;
+      
+      
+      const power = apkPower(A.spec);
       if (!gate) { const blob = await buildApk({ url, name, iconB64: i.icon, fgB64: i.fg, bg: i.bg, power }); downloadBlob(blob, apkFilename(name)); }
       setDone(true); A.toast(sys("apkDone", loc));
     } catch (e) {

@@ -72,6 +72,11 @@
  * - **The app's children lie UNDER the priming screen** (it is `z-30`) and OVER the picture; the gesture
  *   layer sits between them at `z-[1]`, so a layer of the app's own that must be seen or tapped while the
  *   stream runs carries `relative z-[2]`.
+ * - **`primeFull` dies inside a `filter` or a `transform`.** `.ms-stage` is `position: fixed`, and an
+ *   ancestor carrying either becomes the containing block for everything fixed below it — so a stage wrapped
+ *   in a filtered "look" layer silently pins the priming screen back to the small box it was escaping, and
+ *   the Enable button can be clipped again with every gate green (cam, 2026-09-07: the wrapper's style is
+ *   null until a frame exists, which is why it works and why that `ready` is load-bearing).
  * - **The privacy line must be true.** The built-in one says the frames are processed on the device; an app
  *   that uploads what it captures passes its own `privacy` + `privacyIcon` — the priming screen is where
  *   the person decides, so a claim that is false there is the one lie the kit must not tell.

@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "1.2.54",
+  "version": "1.2.55",
   "license": "MIT",
   "publish": {
     "exclude": [
@@ -123,6 +123,7 @@
     "./runtime/tile.js": "./packages/runtime/tile.js",
     "./runtime/translate.js": "./packages/runtime/translate.js",
     "./runtime/telemetry.js": "./packages/runtime/telemetry.js",
+    "./runtime/usage.js": "./packages/runtime/usage.js",
     "./runtime/ui.js": "./packages/runtime/ui.js",
     "./runtime/urlquery.js": "./packages/runtime/urlquery.js",
     "./runtime/usbsession.js": "./packages/runtime/usbsession.js",

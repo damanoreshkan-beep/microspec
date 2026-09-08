@@ -66,6 +66,7 @@ import { installSealedFetch } from "./sealedfetch.js";
 import { gate } from "./gate.js";
 import { loadMaterials, applyMaterial } from "./material.js";
 import { installTelemetry } from "./telemetry.js";
+import { installUsage } from "./usage.js";
 
 installSealedFetch();
 
@@ -111,6 +112,7 @@ export function start(spec, arg2) {
   setApp(app, opts.views || {});
   const { S, load } = app;
   installTelemetry(spec.id);   
+  installUsage(S);             
 
   const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
   const urlTheme = (() => {

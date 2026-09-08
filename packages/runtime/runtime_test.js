@@ -32,6 +32,7 @@ import "./tests/i18n_test.js";
 import "./tests/imagejob_test.js";
 import "./tests/intake_test.js";
 import "./tests/telemetry_test.js";
+import "./tests/usage_test.js";
 import "./tests/imgsize_test.js";
 import "./tests/manifest_test.js";
 import "./tests/mediasession_test.js";

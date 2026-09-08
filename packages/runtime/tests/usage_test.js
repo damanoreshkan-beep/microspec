@@ -4,22 +4,43 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { hookOf, flushUsage, installUsage, CENSUS_MS, MAX_KEYS } from "../usage.js";
 
-/** The smallest thing that behaves like the DOM nodes hookOf walks: attributes + parentElement. */
-const node = (attrs, parent = null) => ({
+/** The smallest thing that behaves like the DOM nodes hookOf walks: tag, attributes, parentElement. */
+const node = (attrs, parent = null, tagName = "DIV") => ({
+  tagName,
   attributes: Object.entries(attrs).map(([name, value]) => ({ name, value })),
   parentElement: parent,
   getAttribute: (n) => attrs[n] ?? null,
 });
+const button = (attrs, parent = null) => node(attrs, parent, "BUTTON");
 
 Deno.test("hookOf: the data-* name of the control, without the prefix and without the value", () => {
-  assertEquals(hookOf(node({ "data-montage": "" })), "montage");
-  assertEquals(hookOf(node({ "data-chunk": "7" })), "chunk", "the NAME is the census key; the value never is");
+  assertEquals(hookOf(button({ "data-montage": "" })), "montage");
+  assertEquals(hookOf(button({ "data-chunk": "7" })), "chunk", "the NAME is the census key; the value never is");
 });
 
 Deno.test("hookOf: walks up from the icon inside the button to the element that carries the hook", () => {
-  const button = node({ "data-generate": "", class: "btn" });
-  const icon = node({ class: "icon" }, button);
+  const btn = button({ "data-generate": "", class: "btn" });
+  const icon = node({ class: "icon" }, btn);
   assertEquals(hookOf(icon), "generate");
+});
+
+// The live failure this rule exists for: ui.js Segmented paints `<span data-seg-label>` INSIDE the button
+// that carries the app's own hook, so a tap landing on the label used to report the kit's plumbing and every
+// option strip in the farm read as the same meaningless key (measured on the live site, 2026-09-09).
+Deno.test("hookOf: the app's hook on the button beats the kit's own attribute on the span inside it", () => {
+  const pill = button({ "data-length": "15" });
+  const label = node({ "data-seg-label": "" }, pill);
+  assertEquals(hookOf(label), "length");
+});
+
+Deno.test("hookOf: role=tab and role=button count as controls, not just real buttons", () => {
+  const tab = node({ "data-tab-clips": "", role: "tab" });
+  assertEquals(hookOf(node({ class: "inner" }, tab)), "tab-clips");
+});
+
+Deno.test("hookOf: with no interactive ancestor the nearest hook is still better than nothing", () => {
+  const card = node({ "data-row": "" });
+  assertEquals(hookOf(node({ class: "text" }, card)), "row");
 });
 
 Deno.test("hookOf: the runtime's own machinery attributes are not controls", () => {

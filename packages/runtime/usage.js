@@ -55,18 +55,33 @@ const bump = (into, key) => {
 };
 
 /**
- * The `data-*` hook that names this control, walking up from the tapped node — a tap usually lands on the
- * icon or the label inside a button, not on the element that carries the hook. Attributes the runtime uses
- * for its own machinery are skipped, so the census is about what an app OFFERS, not how it is built.
+ * The `data-*` hook that names the CONTROL that was touched.
+ *
+ * A tap lands on whatever is painted under the finger — the icon, or the label span — and the semantic hook
+ * sits on the interactive element around it. Measured live 2026-09-09: the first version returned the first
+ * `data-*` it met walking up, which for the option strip is `data-seg-label` on the label span inside the
+ * button (`ui.js` Segmented), while the app's own `data-length` sits on the button itself. Every Segmented
+ * in every app would therefore have reported the same meaningless key.
+ *
+ * So the walk looks for the nearest INTERACTIVE ancestor and reads the hook from there: the button is the
+ * control, the span inside it is how the button looks. Anything with no interactive ancestor in reach falls
+ * back to the first hook seen, which is what a tap on a bare labelled `div` should give.
  */
 const SKIP = /^data-(theme|haptic|testid|state|open|active|selected|value|index|key)$/;
-export function hookOf(node) {
-  for (let el = node, hops = 0; el && el.getAttribute && hops < 6; el = el.parentElement, hops++) {
-    for (const a of el.attributes || []) {
-      if (a.name.startsWith("data-") && !SKIP.test(a.name)) return a.name.slice(5);
-    }
-  }
+const INTERACTIVE = /^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY|LABEL)$/;
+const hookOn = (el) => {
+  for (const a of el.attributes || []) if (a.name.startsWith("data-") && !SKIP.test(a.name)) return a.name.slice(5);
   return "";
+};
+export function hookOf(node) {
+  let fallback = "";
+  for (let el = node, hops = 0; el && el.attributes && hops < 6; el = el.parentElement, hops++) {
+    const here = hookOn(el);
+    const role = el.getAttribute?.("role") || "";
+    if (here && (INTERACTIVE.test(el.tagName || "") || role === "button" || role === "tab" || role === "option")) return here;
+    if (here && !fallback) fallback = here;
+  }
+  return fallback;
 }
 
 /** Roll the census into one event and start a fresh one. Sends nothing when nothing happened. */

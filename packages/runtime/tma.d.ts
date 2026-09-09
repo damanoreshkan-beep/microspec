@@ -25,3 +25,6 @@ export function initTelegram(): Promise<void>;
  * @param stars whole number of Telegram Stars
  */
 export function payStars(stars: number): Promise<string>;
+
+/** A confetti salute for the moment a tip lands. Self-contained, auto-removes, respects reduced-motion. */
+export function celebrate(): void;

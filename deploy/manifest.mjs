@@ -80,6 +80,7 @@ export async function buildManifest() {
   for await (const a of Deno.readDir("apps")) {
     if (!a.isDirectory || a.name === "store" || !(await has(`apps/${a.name}/spec.json`))) continue;
     const spec = await readJson(`apps/${a.name}/spec.json`);
+    if (spec.hidden) continue;   // unlisted (WIP): builds and works at its own URL, but stays out of the catalogue
     const i18n = await readLocales(`apps/${a.name}`);
     const d = i18n.uk || i18n.en || {};
     // Every OTHER string in the farm has en+uk parity — the preflight gate fails a build that drops one.

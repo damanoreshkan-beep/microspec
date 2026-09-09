@@ -25,6 +25,10 @@
       "enum": ["feeds", "money", "science", "tools", "sound", "hackrf", "creative", "play", "wellness", "esoterica"],
       "description": "Store category — the launcher sections and filter-chips group apps by this."
     },
+    "hidden": {
+      "type": "boolean",
+      "description": "Unlisted: the app still builds, deploys and works at its own URL, but the manifest leaves it out of apps/store/apps.json — so it shows in neither the store grid nor the bot's catalogue. For work-in-progress apps not ready to be listed."
+    },
     "accent": {
       "type": "string",
       "pattern": "^#[0-9a-fA-F]{6}$",

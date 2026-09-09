@@ -126,6 +126,7 @@ export const SYS = {
   cleanExit: { en: "Show controls", uk: "Показати керування" },
   share: { en: "Share app", uk: "Поділитися" },
   shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
+  openTelegram: { en: "Open in Telegram", uk: "Відкрити в Telegram" },
   support: { en: "Support the maker", uk: "Підтримати автора" },
   supportSub: { en: "with Telegram Stars", uk: "зірками в Телеграмі" },
   supportThanks: { en: "Thank you 💛", uk: "Дякую 💛" },

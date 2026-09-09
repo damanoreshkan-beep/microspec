@@ -28,3 +28,6 @@ export function payStars(stars: number): Promise<string>;
 
 /** A confetti salute for the moment a tip lands. Self-contained, auto-removes, respects reduced-motion. */
 export function celebrate(): void;
+
+/** The `t.me/<bot>?startapp=<param>` value (slug-shaped only), from initDataUnsafe.start_param or the URL. */
+export function startParam(w?: any): string;

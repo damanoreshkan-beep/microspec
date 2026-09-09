@@ -56,6 +56,30 @@ export async function initTelegram() {
   try { w.ready(); } catch { /* SDK too old */ }
   try { w.expand(); } catch { /* */ }
   try { if (w.isVersionAtLeast && w.isVersionAtLeast("8.0")) w.requestFullscreen && w.requestFullscreen(); } catch { /* */ }
+  routeStartApp(w);
+}
+
+/**
+ * The orchestrator's routing: one bot, one Main Mini App (the store launcher), every app reachable at
+ * `t.me/<bot>?startapp=<appid>`. That deep link opens the launcher with a start param; from the ROOT we send
+ * the viewer on to that app's own page. A slug guard keeps a bad link from redirecting anywhere odd, and we
+ * only redirect from the root, so the target app (and every non-root page) never loops.
+ */
+export function startParam(w) {
+  try {
+    const tgw = w || tg();
+    let p = (tgw && tgw.initDataUnsafe && tgw.initDataUnsafe.start_param) || "";
+    if (!p) { const m = /[?&#]tgWebAppStartParam=([^&]+)/.exec((location.hash || "") + (location.search || "")); if (m) p = decodeURIComponent(m[1]); }
+    return /^[a-z0-9_-]{1,64}$/.test(p) ? p : "";
+  } catch { return ""; }
+}
+
+function routeStartApp(w) {
+  try {
+    const sp = startParam(w);
+    const atRoot = location.pathname === "/" || location.pathname === "/index.html";
+    if (sp && atRoot) location.replace("/" + sp + "/");
+  } catch { /* a failed route must not break boot */ }
 }
 
 /**

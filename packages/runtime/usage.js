@@ -105,6 +105,13 @@ export function installUsage(S) {
   installed = true;
   startedAt = Date.now();
 
+  // The visit beacon: one `open` row per app-open. The rolled-up `use` event only fires when something was
+  // touched (`dirty`), so a visit that opens the app, sees it work and taps nothing leaves NO row — which
+  // undercounts real visitors. This one event closes that gap: `distinct sid_hash where event='open'` per
+  // day is the honest visitor count (`vps/visits.sh`). `start()` installs telemetry before this, so the pipe
+  // is ready; `report` is inert under the gate and in tests, so this stays silent there.
+  report("open", null, "info");
+
   // ONE listener for the whole app, in the capture phase so it still sees the tap when a handler stops
   // propagation. `pointerdown` rather than `click`: a control that opens a sheet on press, or a drag that
   // never becomes a click, is still a use.

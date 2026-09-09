@@ -67,6 +67,7 @@ import { gate } from "./gate.js";
 import { loadMaterials, applyMaterial } from "./material.js";
 import { installTelemetry } from "./telemetry.js";
 import { installUsage } from "./usage.js";
+import { initTelegram } from "./tma.js";
 
 installSealedFetch();
 
@@ -113,6 +114,7 @@ export function start(spec, arg2) {
   const { S, load } = app;
   installTelemetry(spec.id);   
   installUsage(S);             
+  initTelegram();              
 
   const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
   const urlTheme = (() => {

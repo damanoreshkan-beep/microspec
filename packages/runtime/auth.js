@@ -111,6 +111,7 @@ const USER_KEY = "ms:gh:user";   // last-known profile, so a restart shows signe
                                  // me() hiccup never flashes (or sticks at) logged-out.
 const PROV_KEY = "ms:gh:prov";   // which provider minted the sid: "github" (default, the older sessions) | "google"
 const GOOGLE = `${VPS_PROXY}/google`;
+const TG = `${VPS_PROXY}/tg`;   // Sign in with Telegram — a Mini App session from the launch initData
 const PWA_ORIGIN = typeof location !== "undefined" ? location.origin : "";
 const EDGE_ORIGIN = (() => { try { return new URL(VPS_PROXY).origin; } catch { return ""; } })();
 
@@ -177,7 +178,7 @@ async function edgeAt(url, body, timeout = 12000) {
 }
 // The provider-aware "who am I" — GitHub sessions ask /gh/me (the edge asks GitHub), Google ones /google/me
 // (the edge opens the sealed sid, no network behind it).
-const me = (sid, provider) => (provider === "google" ? edgeAt(`${GOOGLE}/me`, { sid }) : edge("me", { sid }));
+const me = (sid, provider) => (provider === "google" ? edgeAt(`${GOOGLE}/me`, { sid }) : provider === "telegram" ? edgeAt(`${TG}/me`, { sid }) : edge("me", { sid }));
 
 // restore() — rehydrate the session on app boot. Gate → mock. Else: if a sid is stored, show the cached profile
 // IMMEDIATELY (optimistic — a restart never flashes logged-out), then revalidate in the background. The session
@@ -197,7 +198,7 @@ export async function restore() {
   if (cached) session.set({ sid, user: cached, provider });   // optimistic: stay signed-in across the revalidation
   try {
     const j = await me(sid, provider);
-    const user = provider === "google" ? trimGoogleUser(j && j.user) : trimUser(j && j.user);
+    const user = provider === "github" ? trimUser(j && j.user) : trimGoogleUser(j && j.user);
     if (user) { lsSetJSON(USER_KEY, user); const s = { sid, user, provider }; session.set(s); return s; }
     // 200 without a user shouldn't happen (the edge now answers 401 for a dead token, 5xx for a transient one)
     // — treat it as transient and KEEP the session rather than risk a false logout.
@@ -445,6 +446,25 @@ export async function loginGoogle(credential) {
   if (!j?.sid || !user) throw Object.assign(new Error("google-verify"), { status: 502 });
   lsSet(SID_KEY, j.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "google");
   const s = { sid: j.sid, user, provider: "google" };
+  session.set(s);
+  return s;
+}
+
+/**
+ * Sign in with Telegram — inside a Mini App the viewer is already authenticated, so the launch `initData`
+ * (signed by the bot) becomes a farm session with no popup and no second login. Reads `WebApp.initData` when
+ * not passed one; throws `no-telegram` outside Telegram, `tg-verify` (`.status` 502) if the edge refuses.
+ */
+export async function loginTelegram(initData) {
+  if (gate) { session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
+  let id = initData;
+  if (!id) { try { id = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData; } catch { /* not in Telegram */ } }
+  if (!id) throw Object.assign(new Error("no-telegram"), { status: 0 });
+  const j = await edgeAt(`${TG}/verify`, { initData: String(id) });
+  const user = trimGoogleUser(j && j.user);
+  if (!j?.sid || !user) throw Object.assign(new Error("tg-verify"), { status: 502 });
+  lsSet(SID_KEY, j.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "telegram");
+  const s = { sid: j.sid, user, provider: "telegram" };
   session.set(s);
   return s;
 }

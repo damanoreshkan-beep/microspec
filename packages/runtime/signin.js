@@ -82,7 +82,8 @@
 import { html } from "htm/preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { gate } from "./gate.js";
-import { googleClientId, loginGoogle, login, SCOPE, pairNew, pairPoll, adoptSession } from "./auth.js";
+import { googleClientId, loginGoogle, login, SCOPE, pairNew, pairPoll, adoptSession, loginTelegram } from "./auth.js";
+import { inTelegram } from "./tma.js";
 import { shell } from "./shell.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -127,6 +128,17 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
 
   const fail = (e) => { setErr(t.failed); onError?.(e); };
   const finish = (s) => { setErr(""); onDone?.(s); };
+
+  // Inside Telegram the viewer is already authenticated — sign in silently from the launch initData and never
+  // show the Google/GitHub wall. Falls back to the normal surface only if that fails (a plain web/PWA visit
+  // is never in Telegram, so this is inert there).
+  const [tgTrying, setTgTrying] = useState(() => { try { return inTelegram() && !gate; } catch { return false; } });
+  useEffect(() => {
+    if (!tgTrying) return;
+    let live = true;
+    loginTelegram().then((s) => { if (live) finish(s); }).catch(() => { if (live) setTgTrying(false); });
+    return () => { live = false; };
+  }, []);
 
   useEffect(() => { if (wantGoogle && !gate) googleClientId().then(setClientId, () => setClientId("")); }, [wantGoogle]);
 
@@ -206,6 +218,9 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
 
   const googleOn = wantGoogle && clientId !== "";
   const ghPrimary = !googleOn || github === "primary";
+  if (tgTrying) return html`<div ref=${box} data-signin class=${`flex flex-col items-stretch gap-2 w-full max-w-[400px] ${className}`}>
+    <p data-signin-waiting class="text-sm text-center text-base-content/75">${lang(locale) === "uk" ? "Вхід через Telegram…" : "Signing in via Telegram…"}</p>
+  </div>`;
   if (inShell) return html`<div ref=${box} data-signin class=${`flex flex-col items-stretch gap-2 w-full max-w-[400px] ${className}`}>
     ${pairing
       ? html`<p data-signin-waiting class="text-sm text-center text-base-content/75">${t.waiting}</p>

@@ -468,3 +468,36 @@ export async function loginTelegram(initData) {
   session.set(s);
   return s;
 }
+
+/**
+ * Web "Log in with Telegram" (outside a Mini App). Opens Telegram's OpenID Connect consent in a popup (the
+ * edge runs the code flow at /feed/tg/oidc/*) and resolves with the same telegram session the Mini App path
+ * mints. Mirrors {@link login}: trusts only a `microspec-tg` message from the edge origin carrying a sid.
+ */
+export function loginTelegramWeb() {
+  if (gate) { session.set(MOCK_GOOGLE_SESSION); return Promise.resolve(MOCK_GOOGLE_SESSION); }
+  return new Promise((resolve, reject) => {
+    const url = `${TG}/oidc/start?origin=${encodeURIComponent(PWA_ORIGIN)}`;
+    const w = 640, h = 720;
+    const left = (screen.width - w) / 2, top = (screen.height - h) / 2;
+    const popup = window.open(url, "tg-oidc", `width=${w},height=${h},left=${left},top=${top}`);
+    if (!popup) { reject(new Error("popup-blocked")); return; }
+    let done = false;
+    const finish = (fn, arg) => { if (done) return; done = true; cleanup(); fn(arg); };
+    const onMsg = (e) => {
+      if (e.origin !== EDGE_ORIGIN) return;
+      const d = e.data;
+      if (!d || d.source !== "microspec-tg" || typeof d.sid !== "string") return;
+      const user = trimGoogleUser(d.user);
+      if (!user) { finish(reject, new Error("no-profile")); return; }
+      lsSet(SID_KEY, d.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "telegram");
+      const s = { sid: d.sid, user, provider: "telegram" };
+      session.set(s);
+      finish(resolve, s);
+    };
+    const poll = setInterval(() => { if (popup.closed) finish(reject, new Error("popup-closed")); }, 500);
+    const timer = setTimeout(() => { try { popup.close(); } catch { /* */ } finish(reject, new Error("timeout")); }, 180000);
+    function cleanup() { removeEventListener("message", onMsg); clearInterval(poll); clearTimeout(timer); try { popup.close(); } catch { /* */ } }
+    addEventListener("message", onMsg);
+  });
+}

@@ -82,7 +82,7 @@
 import { html } from "htm/preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { gate } from "./gate.js";
-import { googleClientId, loginGoogle, login, SCOPE, pairNew, pairPoll, adoptSession, loginTelegram } from "./auth.js";
+import { googleClientId, loginGoogle, login, SCOPE, pairNew, pairPoll, adoptSession, loginTelegram, loginTelegramWeb } from "./auth.js";
 import { inTelegram } from "./tma.js";
 import { shell } from "./shell.js";
 
@@ -91,8 +91,8 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 const GoogleG = () => html`<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.5 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-7.9-6.1C.9 16.6 0 20.2 0 24s.9 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>`;
 
 const L = {
-  en: { google: "Continue with Google", github: "Continue with GitHub", ghQuiet: "GitHub", failed: "Sign-in did not complete", or: "or", browser: "Sign in via browser", waiting: "Finish signing in in the browser, then come back here.", cancel: "Cancel" },
-  uk: { google: "Продовжити з Google", github: "Продовжити з GitHub", ghQuiet: "GitHub", failed: "Вхід не завершився", or: "або", browser: "Увійти через браузер", waiting: "Заверши вхід у браузері й повернись сюди.", cancel: "Скасувати" },
+  en: { google: "Continue with Google", github: "Continue with GitHub", ghQuiet: "GitHub", telegram: "Continue with Telegram", failed: "Sign-in did not complete", or: "or", browser: "Sign in via browser", waiting: "Finish signing in in the browser, then come back here.", cancel: "Cancel" },
+  uk: { google: "Продовжити з Google", github: "Продовжити з GitHub", ghQuiet: "GitHub", telegram: "Продовжити з Telegram", failed: "Вхід не завершився", or: "або", browser: "Увійти через браузер", waiting: "Заверши вхід у браузері й повернись сюди.", cancel: "Скасувати" },
 };
 const lang = (locale) => locale || (typeof document !== "undefined" ? document.documentElement.lang : "") || "uk";
 const themeLight = () => (typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light"));
@@ -185,6 +185,10 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
     setBusy(true); setErr("");
     try { finish(await loginGoogle("mock")); } catch (e) { fail(e); } finally { setBusy(false); }
   };
+  const viaTelegram = async () => {
+    setBusy(true); setErr("");
+    try { finish(await loginTelegramWeb()); } catch (e) { if (e?.message !== "popup-closed") fail(e); } finally { setBusy(false); }
+  };
 
   // ── the APK: no popups (setSupportMultipleWindows(false)), no GIS in a WebView — so the phone's real
   // browser signs in and hands the session back through the edge's pairing (see edge/pair.js). We open the
@@ -242,6 +246,8 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
       : html`<button data-signin-github type="button" disabled=${busy} onClick=${viaGithub}
           class="btn btn-ghost btn-sm rounded-full self-center gap-1.5 text-base-content/70">${Icon("lucide:github", "text-base")}${t.ghQuiet}</button>`)
     : null}
+    ${!gate ? html`<button data-signin-telegram type="button" disabled=${busy} onClick=${viaTelegram}
+        class="btn btn-ghost btn-sm rounded-full self-center gap-1.5 text-base-content/70">${Icon("lucide:send", "text-base text-primary")}${t.telegram || "Log in with Telegram"}</button>` : null}
     ${err ? html`<p role="alert" class="text-error text-sm text-center">${err}</p>` : null}
   </div>`;
 }

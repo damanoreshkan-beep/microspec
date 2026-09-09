@@ -175,6 +175,8 @@ export function loginGoogle(credential: any): Promise<{
 }>;
 /** Sign in with Telegram — the Mini App's launch initData becomes a farm session, no popup. */
 export function loginTelegram(initData?: string): Promise<any>;
+/** Web "Log in with Telegram" — Telegram OIDC in a popup, resolving to the same telegram session. */
+export function loginTelegramWeb(): Promise<any>;
 /** The default GitHub OAuth scope — the narrowest classic scope that permits starring on the user's behalf. */
 export const SCOPE: "public_repo";
 /** The session atom: null when signed out, `{ sid, user, provider }` when signed in. */

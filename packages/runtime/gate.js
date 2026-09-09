@@ -57,8 +57,13 @@
 // verify/shoot gate (localhost); `MOCK` is the ?mock query param (a phone/mock preview also forces gate
 // mode); `gate` = either (MOCK present, even empty). Apps seed a deterministic fixture when `gate` is true.
 const QS = new URLSearchParams(typeof location !== "undefined" ? location.search : "");
-/** True under the headless verify/shoot gate — the page is served from localhost. */
-export const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+/**
+ * True under the headless verify/shoot gate — the page is served from localhost. `?live` is a human's
+ * explicit opt-OUT: it decouples "am I on localhost" from "should I mock", so a developer on a localhost dev
+ * server can force the REAL app (live data + network) with `…/?live`. CI never passes `?live` (verify/shoot
+ * load the app without it), so the gate stays deterministic there — this only ever turns mock OFF, for a human.
+ */
+export const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && QS.get("live") == null;
 /** The `?mock` query param value (empty string when present without a value), or null when absent. */
 export const MOCK = QS.get("mock");
 /** True when the app should seed a deterministic fixture: under the gate, or with `?mock` present. */

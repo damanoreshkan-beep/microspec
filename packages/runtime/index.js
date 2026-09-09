@@ -68,6 +68,7 @@ import { gate } from "./gate.js";
 import { loadMaterials, applyMaterial } from "./material.js";
 import { installTelemetry } from "./telemetry.js";
 import { installUsage } from "./usage.js";
+import { initTelegram } from "./tma.js";
 
 // Wrap fetch before any app code runs, so every call to our backend travels as a sealed envelope without a
 // single app knowing. Apps keep doing plain `fetch(VPS_PROXY + …)`; see sealedfetch.js for what it does not
@@ -129,6 +130,7 @@ export function start(spec, arg2) {
   const { S, load } = app;
   installTelemetry(spec.id);   // the farm's own Sentry: page errors + app reports → /feed/log (never under the gate)
   installUsage(S);             // and what was USED: one delegated listener over the data-* hooks, rolled up
+  initTelegram();              // if launched as a Telegram Mini App: expand + enable the Stars "support" tip (inert otherwise)
 
   const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
   // `?theme=light` — a URL override, and the reason it exists is the taste gate rather than the product.

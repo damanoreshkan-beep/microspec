@@ -99,6 +99,7 @@ import { enrich, warmMeta, metaTick } from "./enrich.js";
 import { collection } from "./db.js";
 import { useSheetDrag } from "./gesture.js";
 import { curvePath } from "./weather.js";
+import { inTelegram, payStars } from "./tma.js";
 
 let A;            // app context: { spec, S, load, toast, toggleFav, favKey, swap }
 let VIEWS = {};   // tool-app custom views: { viewKey: PreactComponent }
@@ -615,6 +616,11 @@ function Profile({ tab }) {
       <button id="p-apk" class=${`card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition ${install ? "" : "col-span-2"}`} onClick=${() => A.S.screen.set("apk")}><div class="card-body p-4 gap-3 items-start"><div class="size-11 rounded-xl grid place-items-center" style="background:rgba(52,168,83,.14)"><${AndroidMark} /></div><span class="font-medium text-sm leading-tight text-left">${sys("apkRow", loc)}</span></div></button>
     </div>
     <button id="p-share" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${shareApp}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:share-2", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("share", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></button>
+    ${inTelegram() ? html`<div id="p-support" class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 gap-3">
+      <div class="flex items-center gap-3">${Icon("lucide:heart", "text-xl text-primary")}<span class="flex-1 min-w-0 truncate font-medium">${sys("support", loc)}</span></div>
+      <div class="flex gap-2">${[25, 100, 500].map((n) => html`<button key=${n} type="button" data-stars=${n} class="btn btn-sm flex-1 rounded-full"
+        onClick=${async () => { const s = await payStars(n); if (s === "paid") A.toast(sys("supportThanks", loc)); else if (s === "error" || s === "failed") A.toast(sys("supportFailed", loc)); }}>${n}★</button>`)}</div>
+    </div></div>` : null}
     ${savedTab ? html`<button class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
     ${p.theme || materials.length > 1 ? html`<${ThemeWidget} t=${t} loc=${loc} theme=${theme} modeToggle=${!!p.theme} materials=${materials} current=${material?.id} />` : null}
     ${p.lang ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}

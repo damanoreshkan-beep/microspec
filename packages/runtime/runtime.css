@@ -24,6 +24,15 @@
    the moment the dock changed shape. Consumers add env(safe-area-inset-bottom) themselves. */
 :root { --dock-h: 4.25rem; --hdr-h: 3.5rem; }
 
+/* The top inset every piece of chrome clears. On the web / installed PWA it is just the device notch
+   (env(safe-area-inset-top)). Inside a Telegram Mini App in FULLSCREEN, Telegram's header turns transparent
+   and floats its close / ⋯ controls OVER the app — so the top must also clear the band Telegram's own UI
+   occupies. Telegram reports that band as --tg-content-safe-area-inset-top, on top of the device notch it
+   reports as --tg-safe-area-inset-top (tma.js mirrors both onto :root, and keeps them fresh on the client's
+   change events). Both are absent outside Telegram, so this collapses to exactly env(safe-area-inset-top) and
+   no web/PWA layout moves a pixel. */
+:root { --ms-safe-top: calc(max(env(safe-area-inset-top), var(--tg-safe-area-inset-top, 0px)) + var(--tg-content-safe-area-inset-top, 0px)); }
+
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════════
    THE DESIGN SYSTEM — two token families every shared component reads.
 
@@ -189,7 +198,7 @@ html.ms-fit [data-island] { margin-bottom: calc(var(--ms-gap) * 1.5); }
   position: fixed;
   left: 0;
   right: calc(var(--dock-w, 0px) + min(var(--dock-w, 0px), 1rem));
-  top: calc(var(--hdr-h) + env(safe-area-inset-top));
+  top: calc(var(--hdr-h) + var(--ms-safe-top));
   bottom: calc(var(--dock-h) + env(safe-area-inset-bottom));
 }
 html.ms-fit main#view {

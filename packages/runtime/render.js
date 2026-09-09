@@ -660,7 +660,7 @@ function PermissionsScreen() {
   const grouped = GROUPS.map((g) => [g, keys.filter((k) => PERMISSIONS[k].group === g)]).filter(([, ks]) => ks.length);
   const GROUP_LABEL = { sense: L.gSense, media: L.gMedia, background: L.gBackground, radios: L.gRadios, system: L.gSystem };
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar sticky top-0 z-10 px-2 gap-1" style="padding-top:env(safe-area-inset-top)">
+    <header class="navbar sticky top-0 z-10 px-2 gap-1" style="padding-top:var(--ms-safe-top)">
       <button id="perms-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${L.back} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${L.title}</div>
     </header>
@@ -733,7 +733,7 @@ function SignInScreen() {
     return mods.session.listen(onSession);
   }, [mods]);
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar sticky top-0 z-10 px-2 gap-1" style="padding-top:env(safe-area-inset-top)">
+    <header class="navbar sticky top-0 z-10 px-2 gap-1" style="padding-top:var(--ms-safe-top)">
       <button id="signin-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${sys("back", loc)} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${sys("signInTitle", loc)}</div>
     </header>
@@ -794,7 +794,7 @@ function ApkScreen() {
   };
 
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class="navbar sticky top-0 z-10 px-2 gap-1" style="padding-top:env(safe-area-inset-top)">
+    <header class="navbar sticky top-0 z-10 px-2 gap-1" style="padding-top:var(--ms-safe-top)">
       <button id="apk-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${sys("back", loc)} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
       <div class="flex-1 font-bold tracking-tight px-1">${sys("apkTitle", loc)}</div>
     </header>
@@ -868,7 +868,7 @@ function DetailView() {
   // through, frosted) and the h1 block is the body's to draw — the app-bar title is the only chrome left.
   const staged = !!(d.stage && CustomBody);
   return html`<div role="dialog" aria-modal="true" data-detail class=${`fixed inset-0 z-40 bg-base-200 overflow-y-auto ms-detail-in ${staged ? "isolate" : ""}`} style="padding-bottom:env(safe-area-inset-bottom)">
-    <header class=${`navbar sticky top-0 z-10 px-2 gap-1 ${staged ? "bg-base-100/70 backdrop-blur-xl" : "bg-base-100 sf-e2"}`} style="padding-top:env(safe-area-inset-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${field(it, d.title, loc) ?? ""}</div>${star}</header>
+    <header class=${`navbar sticky top-0 z-10 px-2 gap-1 ${staged ? "bg-base-100/70 backdrop-blur-xl" : "bg-base-100 sf-e2"}`} style="padding-top:var(--ms-safe-top)"><button id="detail-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "back")} onClick=${close}>${Icon("lucide:arrow-left", "text-xl")}</button><div class="flex-1 font-bold tracking-tight truncate px-1">${field(it, d.title, loc) ?? ""}</div>${star}</header>
     <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">${img}${staged ? null : html`<div><h1 class="text-2xl font-bold leading-tight break-words">${field(it, d.title, loc) ?? ""}</h1>${d.subtitle && it[d.subtitle] ? html`<div class="text-base-content/70 mt-0.5">${field(it, d.subtitle, loc)}</div>` : null}</div>`}${bodyNode}${customNode}${rows.some(Boolean) ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 py-1">${rows}</div></div>` : null}${actions.some(Boolean) ? html`<div class="flex flex-col gap-2">${actions}</div>` : null}</div>
   </div>`;
 }
@@ -1118,7 +1118,7 @@ function AppBar() {
   useEffect(() => { if (A.S.searchOpen.get()) A.S.searchOpen.set(false); }, [cur]);   // a tab change folds it
   const fold = () => { A.S.query.set(""); if (tab?.searchFetch) debouncedLoad(); A.S.searchOpen.set(false); };
   if (searchable && searchOpen) {
-    return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:env(safe-area-inset-top)"><${SearchField} tab=${tab} /><button id="search-close" class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, "close")} onClick=${fold}>${Icon("lucide:x", "text-xl")}</button></header>`;
+    return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:var(--ms-safe-top)"><${SearchField} tab=${tab} /><button id="search-close" class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, "close")} onClick=${fold}>${Icon("lucide:x", "text-xl")}</button></header>`;
   }
   // The portal's lip: NO bar, NO border, NO surface classes — theme.css owns the header entirely (the
   // dissolving pane, the woven-light band and the lit hairline, `header.navbar` there). A `bg-base-100 sf-e2`
@@ -1128,7 +1128,7 @@ function AppBar() {
   // The "open on phone" trigger is desktop-only (hidden lg:) — a QR of THIS page to hop to your phone; it
   // stays in the DOM on mobile (display:none) so nothing needs a special build, and it's harmless there.
   // folded: the wordmark, then the actions; the hidden twin `#filter` keeps the gate's typed queries working
-  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:env(safe-area-inset-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><${Battery} />${searchable ? html`<input id="filter" type="search" class="hidden" tabindex="-1" aria-hidden="true" onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /><button id="search-btn" class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, tab.searchKey || "search")} onClick=${() => A.S.searchOpen.set(true)}>${Icon("lucide:search", "text-xl")}</button>` : null}<button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:var(--ms-safe-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><${Battery} />${searchable ? html`<input id="filter" type="search" class="hidden" tabindex="-1" aria-hidden="true" onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /><button id="search-btn" class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, tab.searchKey || "search")} onClick=${() => A.S.searchOpen.set(true)}>${Icon("lucide:search", "text-xl")}</button>` : null}<button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 
 // Desktop "open on phone": a QR of the current URL so you can continue on a phone, with an explicit "stay on
@@ -1192,7 +1192,7 @@ function CleanExit() {
   // has the word for it (.sf-frost, added when the same pair haloed a glass rail). A utility cannot fix this
   // from the outside: the DaisyUI rule is (0,4,0) and `shadow-none` is (0,1,0), so it has to not apply.
   return html`<button data-clean-exit class="fixed right-3 z-30 btn btn-ghost btn-sm btn-circle sf-frost border border-white/15 bg-black/55 text-white/85 backdrop-blur-sm"
-    style="top:calc(env(safe-area-inset-top) + 0.5rem)" aria-label=${sys("cleanExit", loc)}
+    style="top:calc(var(--ms-safe-top) + 0.5rem)" aria-label=${sys("cleanExit", loc)}
     onClick=${() => A.S.clean.set(false)}>${Icon("lucide:minimize-2", "text-base")}</button>`;
 }
 

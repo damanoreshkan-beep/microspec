@@ -56,7 +56,36 @@ export async function initTelegram() {
   try { w.ready(); } catch { /* SDK too old */ }
   try { w.expand(); } catch { /* */ }
   try { if (w.isVersionAtLeast && w.isVersionAtLeast("8.0")) w.requestFullscreen && w.requestFullscreen(); } catch { /* */ }
+  applyInsets(w);
   routeStartApp(w);
+}
+
+/**
+ * Fullscreen [8.0+] makes Telegram's header transparent and floats the close/⋯ controls OVER the app, so the
+ * top of our chrome must clear them. Telegram measures that band as `contentSafeAreaInset` (the room Telegram's
+ * own UI takes) on top of `safeAreaInset` (the device notch). Recent clients publish both as the CSS variables
+ * `--tg-{safe,content-safe}-area-inset-*` on their own, but older ones only expose the JS objects — so we mirror
+ * them onto :root under the SAME names and keep them fresh as the client fires its change events. theme.css's
+ * `--ms-safe-top` then reads them; outside Telegram they are absent (→ 0) and the chrome falls back to `env()`.
+ */
+function applyInsets(w) {
+  try {
+    const root = document.documentElement;
+    const set = (name, v) => { try { root.style.setProperty(name, (Number(v) || 0) + "px"); } catch { /* */ } };
+    const push = () => {
+      const s = w.safeAreaInset || {}, c = w.contentSafeAreaInset || {};
+      for (const side of ["top", "right", "bottom", "left"]) {
+        set(`--tg-safe-area-inset-${side}`, s[side]);
+        set(`--tg-content-safe-area-inset-${side}`, c[side]);
+      }
+    };
+    push();
+    if (w.onEvent) for (const ev of ["safeAreaChanged", "contentSafeAreaChanged", "fullscreenChanged", "viewportChanged"]) {
+      try { w.onEvent(ev, push); } catch { /* an unknown event on an old SDK is harmless */ }
+    }
+    // In fullscreen the header is transparent; give Telegram a solid tone so the clock/battery stay legible.
+    try { w.setHeaderColor && w.setHeaderColor("bg_color"); } catch { /* keyword unsupported on old SDK */ }
+  } catch { /* insets are an enhancement — never break boot */ }
 }
 
 /**

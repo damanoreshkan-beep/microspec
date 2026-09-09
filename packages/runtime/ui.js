@@ -302,7 +302,7 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
 export function Island({ children, className = "", tag = "div", pinned = false, at = "bottom", tone = "glass", ...rest }) {
   if (pinned) {
     const pos = at === "top"
-      ? "top:calc(var(--hdr-h) + env(safe-area-inset-top) + 0.25rem)"
+      ? "top:calc(var(--hdr-h) + var(--ms-safe-top) + 0.25rem)"
       : "bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)";
     return html`<div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style=${pos}>
       <${Island} className=${`pointer-events-auto ${className}`} tag=${tag} tone=${tone} ...${rest}>${children}<//>

@@ -79,7 +79,7 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 export function Account({ github = "quiet", loc, onChange }) {
   const sess = useStore(session);
   useEffect(() => { restore(); }, []);
-  const provider = sess?.provider === "google" ? "Google" : "GitHub";
+  const provider = sess?.provider === "google" ? "Google" : sess?.provider === "telegram" ? "Telegram" : "GitHub";
   const initial = (sess?.user?.name || sess?.user?.login || "?").trim().charAt(0).toUpperCase();
   return html`<div data-account class="card sf-raised sf-e2 rounded-[var(--ms-r)]">
     ${sess

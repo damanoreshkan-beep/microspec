@@ -127,6 +127,7 @@ export const SYS = {
   share: { en: "Share app", uk: "Поділитися" },
   shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
   support: { en: "Support the maker", uk: "Підтримати автора" },
+  supportSub: { en: "with Telegram Stars", uk: "зірками в Телеграмі" },
   supportThanks: { en: "Thank you 💛", uk: "Дякую 💛" },
   supportFailed: { en: "Payment didn't go through", uk: "Оплата не пройшла" },
   updateReady: { en: "New version ready", uk: "Нова версія готова" },

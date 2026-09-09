@@ -83,3 +83,39 @@ export async function payStars(stars) {
     catch { resolve("error"); }
   });
 }
+
+/**
+ * A little Stars salute — a confetti burst on a throwaway top-layer canvas, for the moment a tip lands. Self
+ * contained (no dependency), auto-removes after ~1.3 s, and stays silent under `prefers-reduced-motion`.
+ */
+export function celebrate() {
+  try {
+    if (typeof document === "undefined") return;
+    if (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const dpr = Math.min(2, typeof devicePixelRatio === "number" ? devicePixelRatio : 1);
+    const c = document.createElement("canvas");
+    c.style.cssText = "position:fixed;inset:0;z-index:9999;pointer-events:none";
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+    const ctx = c.getContext("2d"); ctx.scale(dpr, dpr);
+    document.body.appendChild(c);
+    const colors = ["#FFD54A", "#FF6B6B", "#4ECDC4", "#A78BFA", "#FFB81C", "#66E0A3"];
+    const cx = innerWidth / 2, cy = innerHeight * 0.6;
+    const parts = Array.from({ length: 110 }, () => {
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.1, v = 5 + Math.random() * 9;
+      return { x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, col: colors[(Math.random() * colors.length) | 0], s: 4 + Math.random() * 5, r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.4 };
+    });
+    let t = 0;
+    const tick = () => {
+      t++; ctx.clearRect(0, 0, innerWidth, innerHeight);
+      for (const p of parts) {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.22; p.vx *= 0.99; p.r += p.vr;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r);
+        ctx.globalAlpha = Math.max(0, 1 - t / 80); ctx.fillStyle = p.col;
+        ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.62);
+        ctx.restore();
+      }
+      if (t < 80) requestAnimationFrame(tick); else c.remove();
+    };
+    requestAnimationFrame(tick);
+  } catch { /* a celebration must never throw */ }
+}

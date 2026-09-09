@@ -99,7 +99,7 @@ import { enrich, warmMeta, metaTick } from "./enrich.js";
 import { collection } from "./db.js";
 import { useSheetDrag } from "./gesture.js";
 import { curvePath } from "./weather.js";
-import { inTelegram, payStars } from "./tma.js";
+import { inTelegram, payStars, celebrate } from "./tma.js";
 
 let A;            // app context: { spec, S, load, toast, toggleFav, favKey, swap }
 let VIEWS = {};   // tool-app custom views: { viewKey: PreactComponent }
@@ -617,9 +617,14 @@ function Profile({ tab }) {
     </div>
     <button id="p-share" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${shareApp}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:share-2", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("share", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></button>
     ${inTelegram() ? html`<div id="p-support" class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 gap-3">
-      <div class="flex items-center gap-3">${Icon("lucide:heart", "text-xl text-primary")}<span class="flex-1 min-w-0 truncate font-medium">${sys("support", loc)}</span></div>
-      <div class="flex gap-2">${[25, 100, 500].map((n) => html`<button key=${n} type="button" data-stars=${n} class="btn btn-sm flex-1 rounded-full"
-        onClick=${async () => { const s = await payStars(n); if (s === "paid") A.toast(sys("supportThanks", loc)); else if (s === "error" || s === "failed") A.toast(sys("supportFailed", loc)); }}>${n}★</button>`)}</div>
+      <div class="flex items-center gap-3">
+        <div class="size-11 rounded-xl grid place-items-center bg-primary/10 text-primary shrink-0">${Icon("lucide:heart", "text-2xl")}</div>
+        <div class="flex-1 min-w-0"><div class="font-semibold leading-tight truncate">${sys("support", loc)}</div><div class="text-xs text-muted truncate">${sys("supportSub", loc)}</div></div>
+      </div>
+      <div class="grid grid-cols-4 gap-2">${[1, 25, 100, 500].map((n) => html`<button key=${n} type="button" data-stars=${n} aria-label=${`${n} ★`}
+        class="btn btn-sm rounded-full font-semibold tabular-nums px-0 gap-0.5 active:scale-95 transition"
+        onClick=${async () => { const s = await payStars(n); if (s === "paid") { celebrate(); A.toast(sys("supportThanks", loc)); } else if (s === "error" || s === "failed") A.toast(sys("supportFailed", loc)); }}>
+        ${Icon("lucide:star", "text-[0.9em] opacity-80")}${n}</button>`)}</div>
     </div></div>` : null}
     ${savedTab ? html`<button class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
     ${p.theme || materials.length > 1 ? html`<${ThemeWidget} t=${t} loc=${loc} theme=${theme} modeToggle=${!!p.theme} materials=${materials} current=${material?.id} />` : null}

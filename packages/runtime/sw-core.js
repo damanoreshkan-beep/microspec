@@ -134,7 +134,11 @@ const WALK_PARSE_MAX = 512 * 1024; // don't regex a 400KB bundle for imports it 
 // third-party we haven't pinned).
 function cacheNameFor(url) {
   if (url.origin === self.location.origin) {
-    return url.pathname.replace(/\/+$/, "").endsWith("/feed") || url.pathname === "/feed" ? null : APP_CACHE;
+    // The feed proxy is live data — the bare "/feed" AND everything under it. Measured 2026-09-11 (afterdark's
+    // HLS DVR at /feed/live/…): with only the bare path exempt, playlists and segments went into the app cache,
+    // the client re-read a frozen playlist forever, drained its buffer and fell silent.
+    const path = url.pathname.replace(/\/+$/, "");
+    return path === "/feed" || path.endsWith("/feed") || /\/feed\//.test(url.pathname) ? null : APP_CACHE;
   }
   return CDN.includes(url.origin) ? CDN_CACHE : null;
 }

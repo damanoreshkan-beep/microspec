@@ -27,9 +27,11 @@
  * - {@link MAX_BATCH} · {@link FLUSH_MS} · {@link PER_MINUTE} — the budget: 20 events a batch, 3 s, 40 a minute.
  *
  * ## What a row carries
- * `t` (ms), `level` (error · warn · info), `event` (a dotted name), `msg`, `data` (the app's object), and the
- * client context the edge adds: app id, user agent, locale, viewport, display mode, a hash of the session id
- * (never the sid), a hash of the address. No picture bytes, no prompt text unless an app puts it in `data`.
+ * `t` (ms), `level` (error · warn · info), `event` (a dotted name), `msg`, `data` (the app's object, plus
+ * `build` — the deployed short SHA of the shell that sent the row, so a phone still running an old
+ * service-worker cache is told apart from a bug in the new code), and the client context the edge adds:
+ * app id, user agent, locale, viewport, display mode, a hash of the session id (never the sid), a hash of
+ * the address. No picture bytes, no prompt text unless an app puts it in `data`.
  *
  * ## Why
  * The one thing a bug report from a phone cannot carry is the number the diagnosis needs — the mime type
@@ -40,6 +42,7 @@
  */
 import { VPS_PROXY } from "./feed.js";
 import { gate } from "./gate.js";
+import { BUILD } from "./build.js";
 
 /** Events per batch. */
 export const MAX_BATCH = 20;
@@ -88,6 +91,11 @@ function push(level, event, msg, data) {
   sentThisMinute++;
   let d = null;
   if (data != null) { try { const s = JSON.stringify(data); d = s.length > DATA_MAX ? { truncated: true, head: s.slice(0, DATA_MAX) } : data; } catch { d = { unserializable: true }; } }
+  // Every row names the SHELL that sent it: a phone that keeps an old service-worker cache reports from old
+  // code, and without the deploy stamp the log cannot tell that apart from a bug in the new one (2026-09-11:
+  // Samsung Internet "has no dancer picker" — the log had taps and no build). `build` = the deployed short
+  // SHA (deploy/build.mjs stamps it), "dev" in the gate and local dev.
+  d = d && typeof d === "object" && !Array.isArray(d) ? { ...d, build: BUILD } : (d == null ? { build: BUILD } : { value: d, build: BUILD });
   queue.push({ t: now, level, event: String(event).slice(0, 80), msg: String(msg || "").slice(0, 500), data: d });
   if (queue.length >= MAX_BATCH) { clearTimeout(timer); flush(); }
   else if (!timer) timer = setTimeout(flush, FLUSH_MS);

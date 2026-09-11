@@ -173,9 +173,26 @@ export function loginGoogle(credential: any): Promise<{
     };
     provider: string;
 }>;
-/** Sign in with Telegram — the Mini App's launch initData becomes a farm session, no popup. */
-export function loginTelegram(initData?: string): Promise<any>;
-/** Web "Log in with Telegram" — Telegram OIDC in a popup, resolving to the same telegram session. */
+/**
+ * Sign in with Telegram — inside a Mini App the viewer is already authenticated, so the launch `initData`
+ * (signed by the bot) becomes a farm session with no popup and no second login. Reads `WebApp.initData` when
+ * not passed one; throws `no-telegram` outside Telegram, `tg-verify` (`.status` 502) if the edge refuses.
+ */
+export function loginTelegram(initData: any): Promise<{
+    sid: any;
+    user: {
+        login: any;
+        name: any;
+        avatar: any;
+        html_url: string;
+    };
+    provider: string;
+}>;
+/**
+ * Web "Log in with Telegram" (outside a Mini App). Opens Telegram's OpenID Connect consent in a popup (the
+ * edge runs the code flow at /feed/tg/oidc/*) and resolves with the same telegram session the Mini App path
+ * mints. Mirrors {@link login}: trusts only a `microspec-tg` message from the edge origin carrying a sid.
+ */
 export function loginTelegramWeb(): Promise<any>;
 /** The default GitHub OAuth scope — the narrowest classic scope that permits starring on the user's behalf. */
 export const SCOPE: "public_repo";

@@ -1,6 +1,7 @@
 
 import { buildTailwind } from "./tailwind.mjs";
 import { generateAppIcons } from "./icons.mjs";
+import { BOOT_BEACON } from "./boot-beacon.mjs";
 
 const dec = new TextDecoder();
 
@@ -47,6 +48,7 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
   await Deno.writeTextFile(`${outDir}/app.css`, css);
 
   let out = html
+    .replace(/<head>/, `<head>\n  <script>${BOOT_BEACON}</script>`)
     .replace(/[ \t]*<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@tailwindcss\/browser@4"><\/script>\n?/, "")
     .replace(/[ \t]*<link href="https:\/\/cdn\.jsdelivr\.net\/npm\/daisyui@5[^"]*"[^>]*>\n?/g, "")
     .replace(/[ \t]*<script type="importmap">[\s\S]*?<\/script>\n?/, "")

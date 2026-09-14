@@ -141,6 +141,7 @@ export function start(spec, arg2) {
   }, { capture: true, passive: true });
 
   render(html`<${App} />`, document.getElementById("app"));
+  try { clearTimeout(globalThis.__msBootT); } catch {  }
   const boot = document.getElementById("boot");
   if (boot && !/[?&]__boot\b/.test(location.search)) { requestAnimationFrame(() => { boot.classList.add("gone"); setTimeout(() => boot.remove(), 450); }); } 
   S.tab.listen(() => { window.scrollTo({ top: 0 }); if (S.screen.get()) S.screen.set(null); }); 

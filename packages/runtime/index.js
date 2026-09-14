@@ -188,6 +188,10 @@ export function start(spec, arg2) {
   }, { capture: true, passive: true });
 
   render(html`<${App} />`, document.getElementById("app"));
+  // This line running IS "mounted": cancel the inline pre-boot watchdog (in <head>, see deploy/build-app.mjs)
+  // that would otherwise fire at ~8s and report a silent boot failure. A shell with no watchdog (a bare demo
+  // page, an older build) simply has no __msBootT to clear.
+  try { clearTimeout(globalThis.__msBootT); } catch { /* no boot beacon in this shell */ }
   // Dissolve the HTML instant app-shell (#boot) now the live app is painted underneath it — a crossfade from
   // the wordmark/loading-line shell to the real chrome in the same places, so first load never flashes blank.
   const boot = document.getElementById("boot");

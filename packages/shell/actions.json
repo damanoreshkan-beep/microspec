@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 36,
+  "bridgeVersion": 37,
   "flavours": {
     "godot": ["godot"],
     "mesh": ["mesh"]
@@ -1387,6 +1387,61 @@
         }
       },
       "mock": { "count": 0, "fail": 0, "reads": [] }
+    },
+    {
+      "id": "usb.serOpen",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 37,
+      "android": [],
+      "summary": "Build the vendored usb-serial-for-android CDC port on the already-open device (call usb.open first) and set its line coding; esptool-js drives this proven serial port to flash an ESP32.",
+      "args": { "type": "object", "additionalProperties": false, "properties": { "baud": { "type": "integer" } } },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "opened": { "type": "boolean" } } },
+      "mock": { "opened": true }
+    },
+    {
+      "id": "usb.serParams",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 37,
+      "android": [],
+      "summary": "Set the CDC line coding (baud rate) on the open serial port.",
+      "args": { "type": "object", "additionalProperties": false, "required": ["baud"], "properties": { "baud": { "type": "integer" } } },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "ok": { "type": "boolean" } } },
+      "mock": { "ok": true }
+    },
+    {
+      "id": "usb.serSignals",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 37,
+      "android": [],
+      "summary": "Set the serial control lines DTR and RTS — how esptool resets an ESP32 into its bootloader (RTS to EN, DTR to GPIO0).",
+      "args": { "type": "object", "additionalProperties": false, "properties": { "dtr": { "type": "boolean" }, "rts": { "type": "boolean" } } },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "ok": { "type": "boolean" } } },
+      "mock": { "ok": true }
+    },
+    {
+      "id": "usb.serRead",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 37,
+      "android": [],
+      "summary": "Read up to length bytes from the serial port as hex; empty on timeout.",
+      "args": { "type": "object", "additionalProperties": false, "properties": { "length": { "type": "integer" }, "timeout": { "type": "integer" } } },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "data": { "type": "string" } } },
+      "mock": { "data": "" }
+    },
+    {
+      "id": "usb.serWrite",
+      "capability": "usb",
+      "kind": "call",
+      "minBridge": 37,
+      "android": [],
+      "summary": "Write hex bytes to the serial port.",
+      "args": { "type": "object", "additionalProperties": false, "required": ["data"], "properties": { "data": { "type": "string" }, "timeout": { "type": "integer" } } },
+      "result": { "type": "object", "additionalProperties": false, "properties": { "wrote": { "type": "integer" } } },
+      "mock": { "wrote": 0 }
     },
     {
       "id": "rf.attach",

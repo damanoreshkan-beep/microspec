@@ -24,6 +24,9 @@
  * - {@link resumeAt} — `resumeAt(saved, duration)`: the position to seek to, or 0 to start from the top.
  * - {@link RESUME_MIN} — 30 seconds; below this you have not started, starting over costs you nothing.
  * - {@link RESUME_TAIL} — 0.98 of the duration; past this you have finished, the film starts over.
+ * - {@link recoverPlan} — `recoverPlan(kind, tried)`: what a FATAL player error deserves — reload the
+ *   stream, recover the decoder, or give up.
+ * - {@link NET_RETRIES} / {@link MEDIA_RETRIES} — 2 and 1; the bound on that recovery.
  *
  * ## In practice
  * ```js
@@ -58,6 +61,9 @@
  * - Seek in `onReady`, before the first frame is shown; a seek on a visible element reads as a glitch.
  * - Persistence is NOT here — the app stores the position and passes `startAt`; this module never
  *   touches storage.
+ * - "Fatal" is hls.js's word for "my own retries are spent", not for "this stream is gone": a network
+ *   error is reloadable and a media error is recoverable. Only the third kind, and a spent budget, is
+ *   really the end — see `recoverPlan`.
  * @module
  */
 // microspec runtime — playback rules. Pure and dependency-free ON PURPOSE: video.js is a Preact component
@@ -87,4 +93,33 @@ export function resumeAt(saved, duration) {
   if (!isFinite(d) || d <= 0) return 0;                 // live / unknown length → no such thing as resuming
   if (t >= d * RESUME_TAIL) return 0;
   return t;
+}
+
+/* WHAT TO DO ABOUT A FATAL PLAYER ERROR — the second decision worth a test.
+   hls.js calls an error "fatal" when its own retries are spent, and the first version of video.js treated
+   that word as final: one fatal error, `onError`, "Stream unavailable" forever, with nothing to press. But
+   two of the three fatal kinds are recoverable, and hls.js's own guidance is to recover them rather than
+   report them — a network error means "start loading again", a media error means "flush and recover the
+   decoder". Both are exactly what a viewer does by hand when they close the clip and open it again, which
+   is how this failure was actually being worked around: a proxied clip that 403s ONE segment, a manifest
+   that arrives late on a mobile link, a decoder that trips over a discontinuity — every one of them ended
+   the clip, and every one of them played on the second attempt.
+   Bounded on purpose: two network attempts and one decoder recovery. Past that the stream really is gone,
+   and a player that retries forever is a player that never says so. The delay backs off (0.5s, then 1s) —
+   an immediate retry hits the same dead socket, and hls.js's own retry budget is already spent by then. */
+/** Fatal network errors to retry with a reload before giving up. */
+export const NET_RETRIES = 2;
+/** Fatal media (decoder) errors to recover from before giving up. */
+export const MEDIA_RETRIES = 1;
+/**
+ * What to do about a FATAL player error: reload the stream, recover the decoder, or give up.
+ * @param kind "network", "media", or anything else (an unrecoverable kind)
+ * @param tried how many of each have been attempted already, `{ net, media }`
+ * @returns `{ act: "reload" | "recover" | "fail", delay }` — `delay` in ms, 0 for immediate
+ */
+export function recoverPlan(kind, tried = {}) {
+  const net = Number(tried.net) || 0, med = Number(tried.media) || 0;
+  if (kind === "network" && net < NET_RETRIES) return { act: "reload", delay: 500 * (net + 1) };
+  if (kind === "media" && med < MEDIA_RETRIES) return { act: "recover", delay: 0 };
+  return { act: "fail", delay: 0 };
 }

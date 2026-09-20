@@ -114,19 +114,21 @@ export async function gotoAndSettle(page, url, settle = 3500) {
 export async function layoutStill(page, { tries = 12, gap = 80 } = {}) {
   const read = () => page.evaluate(() => {
     try { document.fonts?.ready?.catch?.(() => {}); } catch {  }
+    
+    const pending = [...document.querySelectorAll('link[rel~="stylesheet"]')]
+      .filter((l) => { try { return new URL(l.href, location.href).origin === location.origin && !l.sheet; } catch { return false; } }).length;
     return document.documentElement.scrollWidth + ":" + document.documentElement.scrollHeight +
-      ":" + (document.fonts && document.fonts.status === "loaded" ? 1 : 0);
+      ":" + (document.fonts && document.fonts.status === "loaded" ? 1 : 0) + ":" + pending;
   });
   let prev = await read();
   for (let i = 0; i < tries; i++) {
     await sleep(gap);
     const now = await read();
-    if (now === prev && now.endsWith(":1")) return true;
+    if (now === prev && /:1:0$/.test(now)) return true;                 
     prev = now;
   }
   return false;
 }
-
 export const BREAKPOINTS = [
   { id: "phone-sm",    w: 320,  h: 568,  note: "9:16 · small-phone floor" },
   { id: "phone",       w: 384,  h: 832,  note: "20:9 · reference device" },
@@ -144,9 +146,11 @@ export const BREAKPOINTS = [
 
 
 
+
 export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) {
   const out = [];
   for (const bp of BREAKPOINTS) {
+    
     if (bp.w < minWidth) continue;
     await page.setViewportSize({ width: bp.w, height: bp.h });
     await sleep(260);                                   
@@ -173,10 +177,10 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
         const chain = [];
         for (let el = node; el && el !== document.body && chain.length < 5; el = el.parentElement) {
           const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
-          
-          
           const b = el.getBoundingClientRect();
           chain.push(`${el.tagName.toLowerCase()}${c ? "." + c : ""}[w${Math.round(b.width)}→x${Math.round(b.right)}]`);
+          
+          
           if (chain.length === 2) {
             const sibs = [...el.children].slice(0, 6).map((k) => {
               const kb = k.getBoundingClientRect();
@@ -194,14 +198,11 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
         const v = document.getElementById("view");
         oy = v ? Math.max(v.scrollHeight - v.clientHeight, de.scrollHeight - window.innerHeight) : 0;
         
-        
         if (oy > 1 && v) {
           let low = v.getBoundingClientRect().bottom, node = null;
           for (const el of v.querySelectorAll("*")) { const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom > low + 0.5) { low = r.bottom; node = el; } }
           const name = (el) => { const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; return el.tagName.toLowerCase() + (c ? "." + c : ""); };
           if (node) {
-            
-            
             
             
             const kids = [...node.children].slice(0, 4).map((k) => {
@@ -219,6 +220,9 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
       
       
       
+      
+      
+      
       let hide = 0, hsel = "?", hgeo = "";
       const nav = document.querySelector("nav[data-dock]");
       const view = document.getElementById("view");
@@ -229,12 +233,13 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
           if (r.width < 8 || r.height < 8) continue;
           
           
-          
-          
-          
-          
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
+          
+          
+          
+          
+          
           let vr = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
           for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
             const pcs = getComputedStyle(p);
@@ -249,6 +254,7 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
             hide = over;
             const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
             hsel = el.tagName.toLowerCase() + (c ? "." + c : "");
+            
             const chain = [];
             for (let q = el; q && q !== document.body && chain.length < 4; q = q.parentElement) {
               const qs = getComputedStyle(q), qr = q.getBoundingClientRect();
@@ -260,8 +266,6 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
         }
       }
       
-      
-      
       let clear = 999, csel = "?";
       if (nav && view) {
         const d = nav.getBoundingClientRect();
@@ -272,11 +276,11 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
           
-          
           const painted = cs.backgroundImage !== "none" ||
             !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.backgroundColor) ||
             cs.boxShadow !== "none" || parseFloat(cs.borderTopWidth) > 0;
           if (!painted) continue;
+          
           
           let skip = false;
           for (let q = el.parentElement; q && q !== document.body; q = q.parentElement) {
@@ -294,8 +298,6 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
           if (gap < clear) { clear = gap; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; csel = el.tagName.toLowerCase() + (c ? "." + c : ""); }
         }
       }
-      
-      
       const minGap = Math.max(10, (parseFloat(getComputedStyle(de).getPropertyValue("--ms-gap")) * 16 || 8) * 1.5);
       return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel, hgeo, clear: clear === 999 ? -1 : Math.round(clear), minGap: Math.round(minGap), csel };
     });
@@ -328,9 +330,9 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
 
 
 
+
 export async function runDesignChecks(ev) {
   const out = [];
-  
   
   await ev(() => { const s = document.createElement("style"); s.id = "__freeze"; s.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}"; document.head.appendChild(s); });
   const runAxe = () => ev(async () => {
@@ -355,6 +357,7 @@ export async function runDesignChecks(ev) {
     await ev((th) => document.documentElement.setAttribute("data-theme", th), base);
   } catch (e) { out.push({ name: "a11y (axe)", ok: false, msg: "не вдалось завантажити axe: " + e.message }); }
 
+  
   const ovi = await ev(() => {
     const ov = document.documentElement.scrollWidth - window.innerWidth;
     if (ov <= 1) return { ov: 0 };
@@ -365,8 +368,6 @@ export async function runDesignChecks(ev) {
     };
     let sel = "?", far = window.innerWidth;
     for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; sel = nameOf(el); } }
-    
-    
     
     if (sel === "?") {
       let leftmost = 0, lsel = "", widest = null, w = 0;
@@ -381,7 +382,6 @@ export async function runDesignChecks(ev) {
     return { ov, sel };
   });
   out.push(ovi.ov <= 1 ? { name: "phone 384px: без горизонтального overflow", ok: true } : { name: "phone 384px: overflow", ok: false, msg: `+${ovi.ov}px — винуватець: ${ovi.sel}` });
-
   
   
   
@@ -402,7 +402,6 @@ export async function runDesignChecks(ev) {
   out.push(shifted.length
     ? { name: "хром-декор без бічного зсуву", ok: false, msg: shifted.join("; ") }
     : { name: "хром-декор без бічного зсуву", ok: true });
-
   await ev(() => document.getElementById("__freeze")?.remove());
   return out;
 }

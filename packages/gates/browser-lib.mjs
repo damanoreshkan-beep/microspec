@@ -153,6 +153,32 @@ export function makeHelpers(page) {
 export async function gotoAndSettle(page, url, settle = 3500) {
   await page.goto(url, { waitUntil: "load" });
   await sleep(settle);
+  await layoutStill(page);
+}
+
+/* WAIT FOR THE LAYOUT TO STOP MOVING, not for a number of milliseconds.
+   A fixed sleep is a bet on the runner, and the farm kept losing it in one specific place: the LOADING
+   state, whose settle is the short one (900ms). Two whole-farm runs, 2026-09-20, failed the 384px overflow
+   check on a different app each time — books, then launches — with the same shape both times: "+42px,
+   button.btn.btn-ghost", green on the re-run and green locally. That is not an app being 42px too wide; it
+   is the probe reading a frame in which one chrome button had not taken its final box yet.
+   So the width is READ until it stops changing: two identical measurements a frame apart, plus the web
+   fonts (a late font reflows every label under it). Bounded, because a page that never stops moving is its
+   own finding and must not hang the gate — the caller measures whatever the last frame says. */
+export async function layoutStill(page, { tries = 12, gap = 80 } = {}) {
+  const read = () => page.evaluate(() => {
+    try { document.fonts?.ready?.catch?.(() => {}); } catch { /* no font API */ }
+    return document.documentElement.scrollWidth + ":" + document.documentElement.scrollHeight +
+      ":" + (document.fonts && document.fonts.status === "loaded" ? 1 : 0);
+  });
+  let prev = await read();
+  for (let i = 0; i < tries; i++) {
+    await sleep(gap);
+    const now = await read();
+    if (now === prev && now.endsWith(":1")) return true;
+    prev = now;
+  }
+  return false;
 }
 
 // ── The responsive matrix ─────────────────────────────────────────────────────────────────────────────
@@ -426,7 +452,12 @@ export async function runDesignChecks(ev) {
   const ovi = await ev(() => {
     const ov = document.documentElement.scrollWidth - window.innerWidth;
     if (ov <= 1) return { ov: 0 };
-    const nameOf = (el) => { const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; return el.tagName.toLowerCase() + (cls ? "." + cls : ""); };
+    /* The id FIRST, when the element has one: this chrome is a row of ghost circle buttons that all report
+       as `button.btn.btn-ghost`, and two whole-farm runs were spent guessing which of them it was. */
+    const nameOf = (el) => {
+      const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
+      return (el.id ? "#" + el.id : el.tagName.toLowerCase()) + (cls ? "." + cls : "");
+    };
     let sel = "?", far = window.innerWidth;
     for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; sel = nameOf(el); } }
     // A report with no subject costs commits of guessing (sonar, 2026-09-01: "+42px — винуватець: ?").

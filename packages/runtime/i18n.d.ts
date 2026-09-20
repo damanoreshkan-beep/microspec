@@ -149,6 +149,30 @@ export const MEDIA: {
         en: string;
         uk: string;
     };
+    play: {
+        en: string;
+        uk: string;
+    };
+    pause: {
+        en: string;
+        uk: string;
+    };
+    mute: {
+        en: string;
+        uk: string;
+    };
+    unmute: {
+        en: string;
+        uk: string;
+    };
+    seek: {
+        en: string;
+        uk: string;
+    };
+    live: {
+        en: string;
+        uk: string;
+    };
     pip: {
         en: string;
         uk: string;

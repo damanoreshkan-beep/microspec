@@ -2,7 +2,7 @@
 //   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { resumeAt, RESUME_MIN, recoverPlan, NET_RETRIES, MEDIA_RETRIES } from "../playback.js";
+import { resumeAt, RESUME_MIN, recoverPlan, NET_RETRIES, MEDIA_RETRIES, fmtClock } from "../playback.js";
 
 // ── resumeAt — resuming is only kind when it lands you where you left ─────────────────────────────
 
@@ -43,3 +43,14 @@ Deno.test("recoverPlan — any other kind is the end, and nothing is counted twi
   assertEquals(recoverPlan("network", { net: "2" }).act, "fail", "a count that arrives as a string still counts");
 });
 
+Deno.test("fmtClock — the hours field appears only when there is one, and live has no clock", () => {
+  assertEquals(fmtClock(0), "0:00");
+  assertEquals(fmtClock(7), "0:07");
+  assertEquals(fmtClock(243), "4:03");
+  assertEquals(fmtClock(3600), "1:00:00");
+  assertEquals(fmtClock(3905), "1:05:05", "under an hour the minutes pad, above it they must");
+  assertEquals(fmtClock(59.9), "0:59", "a fraction of a second is not a second yet");
+  for (const bad of [Infinity, NaN, -1, undefined, null, "abc"]) {
+    assertEquals(fmtClock(bad), "", `a length nobody stated must not read as 0:00 (${bad})`);
+  }
+});

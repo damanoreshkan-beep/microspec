@@ -27,6 +27,7 @@
  * - {@link recoverPlan} — `recoverPlan(kind, tried)`: what a FATAL player error deserves — reload the
  *   stream, recover the decoder, or give up.
  * - {@link NET_RETRIES} / {@link MEDIA_RETRIES} — 2 and 1; the bound on that recovery.
+ * - {@link fmtClock} — `fmtClock(sec)`: seconds as `4:03` / `1:05:00`, and "" for a live or unknown length.
  *
  * ## In practice
  * ```js
@@ -122,4 +123,25 @@ export function recoverPlan(kind, tried = {}) {
   if (kind === "network" && net < NET_RETRIES) return { act: "reload", delay: 500 * (net + 1) };
   if (kind === "media" && med < MEDIA_RETRIES) return { act: "recover", delay: 0 };
   return { act: "fail", delay: 0 };
+}
+
+/* THE CLOCK UNDER THE PICTURE. Pure, and here rather than in the component, for the same reason as the rest
+   of this file: it is a decision (what a duration LOOKS like) and the unit gate can hold it.
+   An hour changes the shape — 1:05 is a minute and five seconds, 1:05:00 is an hour — so the hours field
+   appears only when there is one, and the minutes pad only under it. A stream that has not said how long it
+   is (NaN, Infinity, a negative) has no clock at all: the caller shows LIVE, never "0:00", which reads as a
+   video that failed to load. */
+/**
+ * Seconds as a clock: `0:07`, `4:03`, `1:05:00`. Empty string for a live or unknown duration.
+ * @param sec seconds
+ * @returns the clock string, or "" when there is no finite position to show
+ */
+export function fmtClock(sec) {
+  // `Number(null)` is 0, and 0 is a real position — so nothing-at-all is rejected before the conversion.
+  if (sec === null || sec === undefined || sec === "") return "";
+  const n = Number(sec);
+  if (!isFinite(n) || n < 0) return "";
+  const whole = Math.floor(n), h = Math.floor(whole / 3600), m = Math.floor((whole % 3600) / 60), s = whole % 60;
+  const ss = String(s).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
 }

@@ -26,6 +26,7 @@
  * - {@link recoverPlan} — `recoverPlan(kind, tried)`: what a FATAL player error deserves — reload the
  *   stream, recover the decoder, or give up.
  * - {@link NET_RETRIES} / {@link MEDIA_RETRIES} — 2 and 1; the bound on that recovery.
+ * - {@link fmtClock} — `fmtClock(sec)`: seconds as `4:03` / `1:05:00`, and "" for a live or unknown length.
  *
  * ## In practice
  * ```js
@@ -84,6 +85,12 @@ export function recoverPlan(kind: any, tried?: {}): {
     delay: number;
 };
 /**
+ * Seconds as a clock: `0:07`, `4:03`, `1:05:00`. Empty string for a live or unknown duration.
+ * @param sec seconds
+ * @returns the clock string, or "" when there is no finite position to show
+ */
+export function fmtClock(sec: any): string;
+/**
  * # runtime/playback.js — the resume band, kept where a test can hold it
  *
  * The playback rules of the runtime's video player, pure and dependency-free ON PURPOSE: `video.js` is a
@@ -111,6 +118,7 @@ export function recoverPlan(kind: any, tried?: {}): {
  * - {@link recoverPlan} — `recoverPlan(kind, tried)`: what a FATAL player error deserves — reload the
  *   stream, recover the decoder, or give up.
  * - {@link NET_RETRIES} / {@link MEDIA_RETRIES} — 2 and 1; the bound on that recovery.
+ * - {@link fmtClock} — `fmtClock(sec)`: seconds as `4:03` / `1:05:00`, and "" for a live or unknown length.
  *
  * ## In practice
  * ```js

@@ -24,7 +24,8 @@
  * - {@link createPlayer} — `createPlayer(video, url, { onReady, onError, type })` → a promise of `{ destroy() }`.
  *   `type` is "hls" | "progressive" | null (sniff the extension). Never throws: every failure routes through `onError`.
  * - {@link Player} — `<Player url title locale onClose poster startAt onTime type />`, the full-screen overlay
- *   component: loading (Pixels skeleton) → playing (PiP, fullscreen, wake lock) or error (unavailable + open externally).
+ *   component: loading (Pixels skeleton) → playing (its own transport, PiP, wake lock) or error
+ *   (unavailable + try again + open externally).
  * - {@link resumeAt} — `resumeAt(saved, duration)` → where to actually start, re-exported from playback.js.
  * - {@link recoverPlan} — what a FATAL error deserves (reload / recover / fail), re-exported from playback.js.
  * - {@link RESUME_MIN} — 30 s; below it a saved position counts as not started (re-exported from playback.js).
@@ -75,6 +76,14 @@
  * - `backBufferLength` is capped at 30 s (hls.js's default is Infinity): reel holds a window of three players,
  *   and three unbounded back buffers on a long stream is a memory leak with a polite name. Forward buffer is
  *   12 s, and hls.js treats `maxBufferLength` as a target it reaches regardless of `maxBufferSize`.
+ * - The element carries NO `controls`, and that is load-bearing rather than cosmetic: Android's native
+ *   media controls bring a rotate-to-fullscreen delegate, so turning the phone promoted the ELEMENT to
+ *   fullscreen — outside this dialog, without its chrome or an app's filters, interrupting playback. The
+ *   delegate lives on those controls; `Player` draws its own transport instead (play/pause, position,
+ *   length, sound) and rotating now only rotates the video. `controlsList="nofullscreen"` and
+ *   `disableRemotePlayback` are the belt and braces for a shell that shows controls anyway.
+ * - There is no fullscreen button either: the overlay already covers the screen, so it only ever handed
+ *   OUR surface to the browser's.
  * - `destroy()` fully tears down (hls instance, `src`, `load()`, a pending retry timer), so switching
  *   channels or closing never leaks. Keep a `dead` flag: the promise may resolve after unmount, and the
  *   handle must be destroyed then.
@@ -98,12 +107,13 @@
 //   createPlayer(videoEl, url, { onReady, onError })  → { destroy() }   // headless logic
 //   <${Player} url=… title=… locale=… onClose=… startAt=… onTime=… />  // full-screen overlay component
 import { html } from "htm/preact";
+import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { media } from "./i18n.js";
 import { Pixels } from "./skeleton.js";
 import { wakeLock } from "./sensors.js";
-import { resumeAt, recoverPlan } from "./playback.js";
-export { resumeAt, RESUME_MIN, RESUME_TAIL, recoverPlan } from "./playback.js";
+import { resumeAt, recoverPlan, fmtClock } from "./playback.js";
+export { resumeAt, RESUME_MIN, RESUME_TAIL, recoverPlan, fmtClock } from "./playback.js";
 
 const HLS = "https://esm.sh/hls.js@1.5.17";
 const clearSrc = (v) => { try { v.removeAttribute("src"); v.load(); } catch { /* torn down */ } };
@@ -213,9 +223,7 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
      again was to close the clip and open it from the feed, which people were doing and calling the app
      broken. It rides the effect's deps, so pressing it tears the old instance down and builds a new one. */
   const [attempt, setAttempt] = useState(0);
-  const [fs, setFs] = useState(false);
   const canPip = typeof document !== "undefined" && document.pictureInPictureEnabled;
-  const canFs = typeof document !== "undefined" && !!(document.fullscreenEnabled || document.documentElement?.requestFullscreen);
 
   useEffect(() => {
     const v = ref.current; if (!v) return;
@@ -256,14 +264,40 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     };
   }, [onTime]);
 
+  /* OUR OWN TRANSPORT, AND WHY THE ELEMENT NO LONGER CARRIES `controls`.
+     Android's native media controls bring a delegate nobody asked for: turn the phone while a video plays
+     and Chromium promotes THAT ELEMENT to fullscreen by itself. The promoted element is painted by the
+     browser, outside this dialog — our chrome gone, the noir filter gone with it, playback interrupted at
+     the moment the owner was only trying to look at the picture sideways. Undoing it afterwards (which this
+     tried first) trades one jump for two. The delegate lives on the native controls, so the fix is to not
+     have them: rotating now only rotates the video, because there is nothing left to fire.
+     What the native bar did, this does — play/pause, position, length, sound — and nothing else it did not
+     do. The fullscreen button went with it, on purpose: this overlay already covers the screen, so the
+     control only ever left OUR surface for the browser's. */
+  const [playing, setPlaying] = useState(true);
+  const [at, setAt] = useState(0);
+  const [len, setLen] = useState(0);
+  const [muted, setMuted] = useState(false);
+  // While a finger is on the slider the element's own timeupdate must not fight it back.
+  const seeking = useRef(false);
   useEffect(() => {
-    const on = () => setFs(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", on);
-    return () => document.removeEventListener("fullscreenchange", on);
-  }, []);
+    const v = ref.current; if (!v) return;
+    const sync = () => { setPlaying(!v.paused); setMuted(v.muted); };
+    const time = () => { if (!seeking.current) setAt(v.currentTime || 0); };
+    const dur = () => setLen(isFinite(v.duration) ? v.duration : 0);
+    v.addEventListener("play", sync); v.addEventListener("pause", sync); v.addEventListener("volumechange", sync);
+    v.addEventListener("timeupdate", time); v.addEventListener("durationchange", dur); v.addEventListener("loadedmetadata", dur);
+    sync(); dur();
+    return () => {
+      v.removeEventListener("play", sync); v.removeEventListener("pause", sync); v.removeEventListener("volumechange", sync);
+      v.removeEventListener("timeupdate", time); v.removeEventListener("durationchange", dur); v.removeEventListener("loadedmetadata", dur);
+    };
+  }, [url, attempt]);
+  const toggle = () => { const v = ref.current; if (!v) return; if (v.paused) v.play().catch(() => {}); else v.pause(); };
+  const seek = (e) => { const v = ref.current, to = Number(e.target.value); setAt(to); if (v && isFinite(to)) { try { v.currentTime = to; } catch { /* not seekable */ } } };
+  const sound = () => { const v = ref.current; if (v) v.muted = !v.muted; };
 
   const pip = async () => { try { const v = ref.current; document.pictureInPictureElement ? await document.exitPictureInPicture() : await v?.requestPictureInPicture(); } catch { /* denied / not ready */ } };
-  const full = async () => { try { document.fullscreenElement ? await document.exitFullscreen() : await boxRef.current?.requestFullscreen(); } catch { /* denied */ } };
   const openBtn = html`<a href=${url} target="_blank" rel="noopener" class="btn btn-sm btn-outline text-white border-white/30 gap-2"><iconify-icon icon="lucide:external-link"></iconify-icon>${media("openExternal", locale)}</a>`;
   // The first thing to reach for on this screen, so it is the filled one and it comes first; leaving for an
   // external player is the fallback it always was.
@@ -273,16 +307,39 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
       <button id="player-back" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media("back", locale)} onClick=${onClose}><iconify-icon icon="lucide:arrow-left" class="text-xl"></iconify-icon></button>
       <span class="flex-1 min-w-0 truncate font-medium">${title || ""}</span>
       ${state === "playing" && canPip ? html`<button id="player-pip" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media("pip", locale)} onClick=${pip}><iconify-icon icon="lucide:picture-in-picture-2" class="text-lg"></iconify-icon></button>` : null}
-      ${state === "playing" && canFs ? html`<button id="player-fs" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media(fs ? "exitFullscreen" : "fullscreen", locale)} onClick=${full}><iconify-icon icon=${fs ? "lucide:minimize" : "lucide:maximize"} class="text-lg"></iconify-icon></button>` : null}
       ${state !== "error" ? html`<a href=${url} target="_blank" rel="noopener" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media("openExternal", locale)}><iconify-icon icon="lucide:external-link" class="text-lg"></iconify-icon></a>` : null}
     </header>
     <div class="flex-1 relative flex items-center justify-center overflow-hidden">
-      <video ref=${ref} controls autoplay playsinline poster=${poster || ""} class=${`w-full max-h-full bg-black ${state === "playing" ? "" : "opacity-0 pointer-events-none"}`}></video>
+      ${/* `controlsList` and `disableRemotePlayback` are belt and braces for a shell that shows controls
+            anyway (a WebView with its own policy): there is then still no fullscreen button on them. A tap
+            on the picture is play/pause, which is what the native bar did and the one gesture worth keeping. */""}
+      <video ref=${ref} autoplay playsinline disableremoteplayback controlslist="nodownload nofullscreen noremoteplayback"
+        poster=${poster || ""} onClick=${toggle}
+        class=${`w-full max-h-full bg-black ${state === "playing" ? "" : "opacity-0 pointer-events-none"}`}></video>
       ${state === "loading" ? html`<div class="absolute inset-0"><${Pixels} cls="w-full h-full" /><div class="absolute inset-0 flex items-center justify-center text-white/70 text-sm">${media("loading", locale)}</div></div>` : null}
       ${state === "error" ? html`<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/70 p-6 text-center">
         <iconify-icon icon="lucide:tv-minimal-play" class="text-5xl opacity-40"></iconify-icon>
         <div>${media("unavailable", locale)}</div>
         <div class="flex items-center gap-2 flex-wrap justify-center">${retryBtn}${openBtn}</div></div>` : null}
     </div>
+    ${/* The transport. Always there, like the header above it: a bar that hides itself on a timer is a bar
+          you hunt for, and this surface is already one tap deep. A live stream has no position to show, so
+          it says so instead of drawing a slider that means nothing. */""}
+    ${state === "playing" ? html`<div id="player-bar" class="flex items-center gap-3 px-3 py-2 text-white bg-black/70" style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.5rem)">
+      <button id="player-play" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media(playing ? "pause" : "play", locale)} onClick=${toggle}>
+        <iconify-icon icon=${playing ? "lucide:pause" : "lucide:play"} class="text-lg"></iconify-icon></button>
+      ${len > 0
+        ? html`<${Fragment}>
+            <span class="text-xs tabular-nums opacity-80 w-11 text-right">${fmtClock(at)}</span>
+            <input id="player-seek" type="range" class="range range-xs flex-1 min-w-0" aria-label=${media("seek", locale)}
+              min="0" max=${len} step="0.1" value=${Math.min(at, len)}
+              onPointerDown=${() => { seeking.current = true; }} onPointerUp=${() => { seeking.current = false; }}
+              onInput=${seek} onChange=${seek} />
+            <span class="text-xs tabular-nums opacity-60 w-11">${fmtClock(len)}</span>
+          </${Fragment}>`
+        : html`<span class="flex-1 text-xs font-semibold tracking-wide opacity-80">${media("live", locale)}</span>`}
+      <button id="player-mute" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media(muted ? "unmute" : "mute", locale)} onClick=${sound}>
+        <iconify-icon icon=${muted ? "lucide:volume-x" : "lucide:volume-2"} class="text-lg"></iconify-icon></button>
+    </div>` : null}
   </div>`;
 }

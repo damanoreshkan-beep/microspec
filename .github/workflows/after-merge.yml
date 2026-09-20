@@ -1,0 +1,69 @@
+name: after-merge
+
+# What GitHub does NOT do for us when auto-merge lands a PR.
+#
+# auto-merge.yml arms `gh pr merge --auto` with the repository's GITHUB_TOKEN, so GitHub performs the merge
+# as github-actions[bot] — and an event triggered by GITHUB_TOKEN never starts a new workflow run. Measured
+# here on PR #38 and in the sibling app repository on its #2 and #5: the squash lands on main and no
+# push-to-main run appears at all — not `verify`, not `publish`, and no `pull_request: closed` run either. Two things that were supposed to follow the merge therefore
+# never happened: `--delete-branch` (gh is long gone by the time GitHub merges, and the repository setting
+# for it is off), and the release, which publish.yml hangs off a `push` to main that is never delivered.
+#
+# So this job hangs off the PR's OWN verify run — started by a human push, so it is allowed to exist — and
+# waits out the few seconds between "gate green" and "GitHub merges it". If the PR does not land inside the
+# window, nothing happens: it deletes only a branch whose PR GitHub reports as MERGED.
+#
+# Here the thing owed after a merge is the RELEASE, not a deploy: publish.yml is on `push: main`, which the
+# bot merge never raises, so a version bump landed and @microspec/core stayed on the old version until
+# somebody dispatched it by hand. Same trap, same fix. publish.yml no-ops when the version in deno.json is
+# already on JSR, so dispatching it after a merge that did not bump costs one green job.
+on:
+  workflow_run:
+    workflows: [verify]
+    types: [completed]
+
+permissions:
+  contents: write         # delete the head ref
+  actions: write          # dispatch the release
+  pull-requests: read
+
+concurrency:
+  group: after-merge-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  land:
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wait for the merge, then take the branch and release main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # A fork's head branch is not ours to delete, and its PR carries a repo we cannot write to.
+          num=$(gh pr list --repo "$REPO" --head "$BRANCH" --state all --json number,headRepositoryOwner \
+                  --jq "[.[] | select(.headRepositoryOwner.login == \"${REPO%%/*}\")] | .[0].number // empty")
+          [ -n "$num" ] || { echo "no PR from this repo for $BRANCH — nothing to land"; exit 0; }
+
+          # 10 minutes in 20s steps: auto-merge usually fires within one, but a queued merge or a second
+          # required check can push it out. Not merged by then → the PR is still open and this exits quiet.
+          state=OPEN
+          for _ in $(seq 1 30); do
+            state=$(gh pr view "$num" --repo "$REPO" --json state --jq .state)
+            if [ "$state" = "MERGED" ]; then break; fi
+            if [ "$state" = "CLOSED" ]; then echo "PR #$num closed without merging"; exit 0; fi
+            sleep 20
+          done
+          if [ "$state" != "MERGED" ]; then echo "PR #$num still $state after 10 min — leaving it alone"; exit 0; fi
+
+          echo "PR #$num merged → deleting $BRANCH"
+          gh api -X DELETE "repos/$REPO/git/refs/heads/$BRANCH" || echo "  (already gone)"
+
+          # The release that the suppressed push-to-main event owed us. It publishes what is on main, and it
+          # checks JSR first: a merge that did not bump the version is a no-op, not a failed release.
+          echo "dispatching publish for main"
+          gh workflow run publish.yml --repo "$REPO" --ref main

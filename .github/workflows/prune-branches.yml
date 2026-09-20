@@ -1,0 +1,55 @@
+name: prune-branches
+
+# Delete branches whose pull request has already been merged. after-merge.yml takes the head with each PR
+# that lands, so this is the net for what accumulated before that, and for a merge done by hand that forgot.
+#
+# It asks GITHUB for merged PRs rather than asking git. `git branch --merged origin/main` cannot answer this
+# repository's question at all: every PR lands as a SQUASH, so the branch tip is never an ancestor of main
+# and the first version of this workflow reported nothing to delete — then died on `set -o pipefail` when
+# its own grep found no lines (run 1, 2026-09-20).
+# Runs only when asked: a workflow that deletes refs on a schedule is a workflow nobody reads until it
+# deletes the wrong one.
+#
+#   Actions → prune-branches → Run workflow        (dry run by default — it prints what it would delete)
+#   …then run it again with `apply` set to true.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Actually delete (unchecked = dry run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Delete the branches of merged PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLY: ${{ inputs.apply }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Only PRs into main, only heads from THIS repository (a fork's branch is not ours), and only the
+          # ones whose branch is still there. A merged PR is the safety rule: main already carries its work.
+          gh pr list --repo "$REPO" --state merged --base main --limit 100 \
+            --json number,headRefName,headRepositoryOwner \
+            --jq ".[] | select(.headRepositoryOwner.login == \"${REPO%%/*}\") | \"\(.number) \(.headRefName)\"" \
+            | while read -r num branch; do
+                if [ -z "$branch" ] || [ "$branch" = "main" ]; then continue; fi
+                gh api "repos/$REPO/git/ref/heads/$branch" >/dev/null 2>&1 || continue   # already gone
+                if [ "$APPLY" = "true" ]; then
+                  echo "deleting $branch (PR #$num)"
+                  gh api -X DELETE "repos/$REPO/git/refs/heads/$branch" || echo "  (skipped: $branch)"
+                else
+                  echo "would delete $branch (PR #$num)"
+                fi
+              done
+          echo "done (apply=$APPLY)"

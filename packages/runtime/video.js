@@ -26,6 +26,7 @@
  * - {@link Player} — `<Player url title locale onClose poster startAt onTime type />`, the full-screen overlay
  *   component: loading (Pixels skeleton) → playing (PiP, fullscreen, wake lock) or error (unavailable + open externally).
  * - {@link resumeAt} — `resumeAt(saved, duration)` → where to actually start, re-exported from playback.js.
+ * - {@link recoverPlan} — what a FATAL error deserves (reload / recover / fail), re-exported from playback.js.
  * - {@link RESUME_MIN} — 30 s; below it a saved position counts as not started (re-exported from playback.js).
  * - {@link RESUME_TAIL} — 0.98; past that fraction the film counts as finished (re-exported from playback.js).
  *
@@ -74,8 +75,14 @@
  * - `backBufferLength` is capped at 30 s (hls.js's default is Infinity): reel holds a window of three players,
  *   and three unbounded back buffers on a long stream is a memory leak with a polite name. Forward buffer is
  *   12 s, and hls.js treats `maxBufferLength` as a target it reaches regardless of `maxBufferSize`.
- * - `destroy()` fully tears down (hls instance, `src`, `load()`), so switching channels or closing never
- *   leaks. Keep a `dead` flag: the promise may resolve after unmount, and the handle must be destroyed then.
+ * - `destroy()` fully tears down (hls instance, `src`, `load()`, a pending retry timer), so switching
+ *   channels or closing never leaks. Keep a `dead` flag: the promise may resolve after unmount, and the
+ *   handle must be destroyed then.
+ * - "Fatal" is hls.js saying its OWN retries are spent, not that the stream is gone. A fatal network error
+ *   is reloaded (twice, backing off) and a fatal media error recovers the decoder once — `recoverPlan` owns
+ *   the rule, this file only counts. `onError` fires when that budget is spent, and `Player` then offers
+ *   the viewer the same thing by hand: a retry that rebuilds the instance. Reading "fatal" as final is what
+ *   made one expired segment or one late manifest end a clip that played on the next attempt.
  * - `Player` seeks before the first frame is shown, not after — seeking a visible video makes the resume look
  *   like a glitch. The wake lock is held only while the overlay is open; a lock left behind is a battery bug
  *   nobody connects to the video app they closed an hour ago.
@@ -89,8 +96,8 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { media } from "./i18n.js";
 import { Pixels } from "./skeleton.js";
 import { wakeLock } from "./sensors.js";
-import { resumeAt } from "./playback.js";
-export { resumeAt, RESUME_MIN, RESUME_TAIL } from "./playback.js";
+import { resumeAt, recoverPlan } from "./playback.js";
+export { resumeAt, RESUME_MIN, RESUME_TAIL, recoverPlan } from "./playback.js";
 
 const HLS = "https://esm.sh/hls.js@1.5.17";
 const clearSrc = (v) => { try { v.removeAttribute("src"); v.load(); } catch {  } };
@@ -123,13 +130,36 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
     const Hls = mod.default || mod;
     if (!Hls?.isSupported?.()) return attach(null);
     
-    const hls = new Hls({ maxBufferLength: 12, backBufferLength: 30, manifestLoadingTimeOut: 12000, manifestLoadingMaxRetry: 1 });
+    
+    const hls = new Hls({ maxBufferLength: 12, backBufferLength: 30, manifestLoadingTimeOut: 12000, manifestLoadingMaxRetry: 3 });
     hls.on(Hls.Events.MANIFEST_PARSED, () => onReady());
-    hls.on(Hls.Events.ERROR, (_e, d) => { if (d?.fatal) onError(d); });
+    
+    const tried = { net: 0, media: 0 };
+    let timer = 0;
+    hls.on(Hls.Events.ERROR, (_e, d) => {
+      if (!d?.fatal) return;
+      const kind = d.type === Hls.ErrorTypes.NETWORK_ERROR ? "network" : d.type === Hls.ErrorTypes.MEDIA_ERROR ? "media" : "";
+      const { act, delay } = recoverPlan(kind, tried);
+      if (act === "fail") return onError(d);
+      if (act === "reload") {
+        tried.net++;
+        clearTimeout(timer);
+        timer = setTimeout(() => { try { hls.startLoad(); } catch { onError(d); } }, delay);
+        return;
+      }
+      tried.media++;
+      try { hls.recoverMediaError(); } catch { onError(d); }
+    });
     hls.loadSource(url); hls.attachMedia(video);
-    return { destroy() { try { hls.destroy(); } catch {  } clearSrc(video); } };
+    return { destroy() { clearTimeout(timer); try { hls.destroy(); } catch {  } clearSrc(video); } };
   } catch (e) { onError(e); return { destroy() { clearSrc(video); } }; }
 }
+
+
+
+
+
+
 
 
 /**
@@ -140,6 +170,8 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
 export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime, type = null }) {
   const ref = useRef(), boxRef = useRef();
   const [state, setState] = useState("loading");   
+  
+  const [attempt, setAttempt] = useState(0);
   const [fs, setFs] = useState(false);
   const canPip = typeof document !== "undefined" && document.pictureInPictureEnabled;
   const canFs = typeof document !== "undefined" && !!(document.fullscreenEnabled || document.documentElement?.requestFullscreen);
@@ -149,8 +181,6 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     setState("loading");
     const ready = () => {
       if (dead) return;
-      
-      
       const at = resumeAt(startAt, v.duration);
       if (at > 0) { try { v.currentTime = at; } catch {  } }
       setState("playing");
@@ -158,14 +188,13 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     createPlayer(v, url, { type, onReady: ready, onError: () => { if (!dead) setState("error"); } })
       .then((h) => { handle = h; if (dead) h.destroy(); });
     return () => { dead = true; handle?.destroy(); };
-  }, [url, type]);
-
-  
-  
+  }, [url, type, attempt]);
   useEffect(() => {
     const lock = wakeLock.acquire();
     return () => lock.release();
   }, []);
+
+  
   
   useEffect(() => {
     if (!onTime) return;
@@ -185,10 +214,12 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     document.addEventListener("fullscreenchange", on);
     return () => document.removeEventListener("fullscreenchange", on);
   }, []);
-
   const pip = async () => { try { const v = ref.current; document.pictureInPictureElement ? await document.exitPictureInPicture() : await v?.requestPictureInPicture(); } catch {  } };
   const full = async () => { try { document.fullscreenElement ? await document.exitFullscreen() : await boxRef.current?.requestFullscreen(); } catch {  } };
   const openBtn = html`<a href=${url} target="_blank" rel="noopener" class="btn btn-sm btn-outline text-white border-white/30 gap-2"><iconify-icon icon="lucide:external-link"></iconify-icon>${media("openExternal", locale)}</a>`;
+  
+  
+  const retryBtn = html`<button id="player-retry" class="btn btn-sm btn-primary gap-2" onClick=${() => { setState("loading"); setAttempt((n) => n + 1); }}><iconify-icon icon="lucide:rotate-cw"></iconify-icon>${media("retry", locale)}</button>`;
   return html`<div ref=${boxRef} role="dialog" aria-modal="true" aria-label=${title || media("player", locale)} class="fixed inset-0 z-40 bg-black flex flex-col" style="padding-top:var(--ms-safe-top)">
     <header class="flex items-center gap-1 px-2 py-1.5 text-white bg-black/70">
       <button id="player-back" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media("back", locale)} onClick=${onClose}><iconify-icon icon="lucide:arrow-left" class="text-xl"></iconify-icon></button>
@@ -202,7 +233,8 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
       ${state === "loading" ? html`<div class="absolute inset-0"><${Pixels} cls="w-full h-full" /><div class="absolute inset-0 flex items-center justify-center text-white/70 text-sm">${media("loading", locale)}</div></div>` : null}
       ${state === "error" ? html`<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/70 p-6 text-center">
         <iconify-icon icon="lucide:tv-minimal-play" class="text-5xl opacity-40"></iconify-icon>
-        <div>${media("unavailable", locale)}</div>${openBtn}</div>` : null}
+        <div>${media("unavailable", locale)}</div>
+        <div class="flex items-center gap-2 flex-wrap justify-center">${retryBtn}${openBtn}</div></div>` : null}
     </div>
   </div>`;
 }

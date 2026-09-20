@@ -144,6 +144,10 @@ export const MEDIA: {
         en: string;
         uk: string;
     };
+    retry: {
+        en: string;
+        uk: string;
+    };
     pip: {
         en: string;
         uk: string;

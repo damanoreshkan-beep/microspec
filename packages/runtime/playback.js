@@ -24,6 +24,9 @@
  * - {@link resumeAt} — `resumeAt(saved, duration)`: the position to seek to, or 0 to start from the top.
  * - {@link RESUME_MIN} — 30 seconds; below this you have not started, starting over costs you nothing.
  * - {@link RESUME_TAIL} — 0.98 of the duration; past this you have finished, the film starts over.
+ * - {@link recoverPlan} — `recoverPlan(kind, tried)`: what a FATAL player error deserves — reload the
+ *   stream, recover the decoder, or give up.
+ * - {@link NET_RETRIES} / {@link MEDIA_RETRIES} — 2 and 1; the bound on that recovery.
  *
  * ## In practice
  * ```js
@@ -58,6 +61,9 @@
  * - Seek in `onReady`, before the first frame is shown; a seek on a visible element reads as a glitch.
  * - Persistence is NOT here — the app stores the position and passes `startAt`; this module never
  *   touches storage.
+ * - "Fatal" is hls.js's word for "my own retries are spent", not for "this stream is gone": a network
+ *   error is reloadable and a media error is recoverable. Only the third kind, and a spent budget, is
+ *   really the end — see `recoverPlan`.
  * @module
  */
 
@@ -78,4 +84,21 @@ export function resumeAt(saved, duration) {
   if (!isFinite(d) || d <= 0) return 0;                 
   if (t >= d * RESUME_TAIL) return 0;
   return t;
+}
+
+/** Fatal network errors to retry with a reload before giving up. */
+export const NET_RETRIES = 2;
+/** Fatal media (decoder) errors to recover from before giving up. */
+export const MEDIA_RETRIES = 1;
+/**
+ * What to do about a FATAL player error: reload the stream, recover the decoder, or give up.
+ * @param kind "network", "media", or anything else (an unrecoverable kind)
+ * @param tried how many of each have been attempted already, `{ net, media }`
+ * @returns `{ act: "reload" | "recover" | "fail", delay }` — `delay` in ms, 0 for immediate
+ */
+export function recoverPlan(kind, tried = {}) {
+  const net = Number(tried.net) || 0, med = Number(tried.media) || 0;
+  if (kind === "network" && net < NET_RETRIES) return { act: "reload", delay: 500 * (net + 1) };
+  if (kind === "media" && med < MEDIA_RETRIES) return { act: "recover", delay: 0 };
+  return { act: "fail", delay: 0 };
 }

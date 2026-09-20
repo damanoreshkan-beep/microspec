@@ -25,6 +25,7 @@
  * - {@link Player} — `<Player url title locale onClose poster startAt onTime type />`, the full-screen overlay
  *   component: loading (Pixels skeleton) → playing (PiP, fullscreen, wake lock) or error (unavailable + open externally).
  * - {@link resumeAt} — `resumeAt(saved, duration)` → where to actually start, re-exported from playback.js.
+ * - {@link recoverPlan} — what a FATAL error deserves (reload / recover / fail), re-exported from playback.js.
  * - {@link RESUME_MIN} — 30 s; below it a saved position counts as not started (re-exported from playback.js).
  * - {@link RESUME_TAIL} — 0.98; past that fraction the film counts as finished (re-exported from playback.js).
  *
@@ -73,8 +74,14 @@
  * - `backBufferLength` is capped at 30 s (hls.js's default is Infinity): reel holds a window of three players,
  *   and three unbounded back buffers on a long stream is a memory leak with a polite name. Forward buffer is
  *   12 s, and hls.js treats `maxBufferLength` as a target it reaches regardless of `maxBufferSize`.
- * - `destroy()` fully tears down (hls instance, `src`, `load()`), so switching channels or closing never
- *   leaks. Keep a `dead` flag: the promise may resolve after unmount, and the handle must be destroyed then.
+ * - `destroy()` fully tears down (hls instance, `src`, `load()`, a pending retry timer), so switching
+ *   channels or closing never leaks. Keep a `dead` flag: the promise may resolve after unmount, and the
+ *   handle must be destroyed then.
+ * - "Fatal" is hls.js saying its OWN retries are spent, not that the stream is gone. A fatal network error
+ *   is reloaded (twice, backing off) and a fatal media error recovers the decoder once — `recoverPlan` owns
+ *   the rule, this file only counts. `onError` fires when that budget is spent, and `Player` then offers
+ *   the viewer the same thing by hand: a retry that rebuilds the instance. Reading "fatal" as final is what
+ *   made one expired segment or one late manifest end a clip that played on the next attempt.
  * - `Player` seeks before the first frame is shown, not after — seeking a visible video makes the resume look
  *   like a glitch. The wake lock is held only while the overlay is open; a lock left behind is a battery bug
  *   nobody connects to the video app they closed an hour ago.

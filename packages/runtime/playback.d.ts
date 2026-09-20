@@ -27,6 +27,8 @@
  *   stream, recover the decoder, or give up.
  * - {@link NET_RETRIES} / {@link MEDIA_RETRIES} — 2 and 1; the bound on that recovery.
  * - {@link fmtClock} — `fmtClock(sec)`: seconds as `4:03` / `1:05:00`, and "" for a live or unknown length.
+ * - {@link scrubSpan} / {@link scrubTo} / {@link skipTo} / {@link fmtDelta} — the drag-to-seek rules: what a
+ *   screen-width of travel is worth, where it lands, and how the offset reads while the finger is down.
  *
  * ## In practice
  * ```js
@@ -90,6 +92,27 @@ export function recoverPlan(kind: any, tried?: {}): {
  * @returns the clock string, or "" when there is no finite position to show
  */
 export function fmtClock(sec: any): string;
+/** Seconds of media that one full screen-width of drag is worth, for a clip of this length. */
+export function scrubSpan(duration: any): number;
+/**
+ * Where a horizontal drag lands: the position it started from, plus what the travel is worth, clamped.
+ * @param from position the drag started at, in seconds
+ * @param dx horizontal travel in CSS pixels (right is forward)
+ * @param width the surface's width in CSS pixels
+ * @param duration the media duration in seconds
+ * @returns the target position in seconds, inside [0, duration]
+ */
+export function scrubTo(from: any, dx: any, width: any, duration: any): number;
+/**
+ * A position moved by a delta and kept inside the media: the rule behind both the drag and the ±10s tap.
+ * @param from position in seconds
+ * @param delta seconds to move (negative rewinds)
+ * @param duration the media duration in seconds
+ * @returns the new position, inside [0, duration]
+ */
+export function skipTo(from: any, delta: any, duration: any): number;
+/** A signed offset for the scrubbing HUD: `+0:10`, `−1:04`, `0:00`. */
+export function fmtDelta(sec: any): string;
 /**
  * # runtime/playback.js — the resume band, kept where a test can hold it
  *
@@ -119,6 +142,8 @@ export function fmtClock(sec: any): string;
  *   stream, recover the decoder, or give up.
  * - {@link NET_RETRIES} / {@link MEDIA_RETRIES} — 2 and 1; the bound on that recovery.
  * - {@link fmtClock} — `fmtClock(sec)`: seconds as `4:03` / `1:05:00`, and "" for a live or unknown length.
+ * - {@link scrubSpan} / {@link scrubTo} / {@link skipTo} / {@link fmtDelta} — the drag-to-seek rules: what a
+ *   screen-width of travel is worth, where it lands, and how the offset reads while the finger is down.
  *
  * ## In practice
  * ```js

@@ -180,6 +180,7 @@ export const MEDIA = {
   loading: { en: "Connecting…", uk: "Підключення…" },
   unavailable: { en: "Stream unavailable", uk: "Потік недоступний" },
   openExternal: { en: "Open in player", uk: "Відкрити у плеєрі" },
+  retry: { en: "Try again", uk: "Спробувати ще" },
   pip: { en: "Picture in picture", uk: "Картинка в картинці" },
   fullscreen: { en: "Fullscreen", uk: "На весь екран" },
   exitFullscreen: { en: "Exit fullscreen", uk: "Вийти з повного екрана" },

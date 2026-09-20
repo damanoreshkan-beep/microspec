@@ -28,6 +28,8 @@
  *   stream, recover the decoder, or give up.
  * - {@link NET_RETRIES} / {@link MEDIA_RETRIES} — 2 and 1; the bound on that recovery.
  * - {@link fmtClock} — `fmtClock(sec)`: seconds as `4:03` / `1:05:00`, and "" for a live or unknown length.
+ * - {@link scrubSpan} / {@link scrubTo} / {@link skipTo} / {@link fmtDelta} — the drag-to-seek rules: what a
+ *   screen-width of travel is worth, where it lands, and how the offset reads while the finger is down.
  *
  * ## In practice
  * ```js
@@ -118,4 +120,44 @@ export function fmtClock(sec) {
   const whole = Math.floor(n), h = Math.floor(whole / 3600), m = Math.floor((whole % 3600) / 60), s = whole % 60;
   const ss = String(s).padStart(2, "0");
   return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+}
+/** Seconds of media that one full screen-width of drag is worth, for a clip of this length. */
+export function scrubSpan(duration) {
+  const d = Number(duration);
+  if (!isFinite(d) || d <= 0) return 0;                  
+  return Math.min(180, Math.max(30, d / 4));
+}
+/**
+ * Where a horizontal drag lands: the position it started from, plus what the travel is worth, clamped.
+ * @param from position the drag started at, in seconds
+ * @param dx horizontal travel in CSS pixels (right is forward)
+ * @param width the surface's width in CSS pixels
+ * @param duration the media duration in seconds
+ * @returns the target position in seconds, inside [0, duration]
+ */
+export function scrubTo(from, dx, width, duration) {
+  const d = Number(duration), w = Number(width), span = scrubSpan(d);
+  if (!span || !isFinite(w) || w <= 0) return Number(from) || 0;
+  return skipTo(from, (Number(dx) || 0) / w * span, d);
+}
+/**
+ * A position moved by a delta and kept inside the media: the rule behind both the drag and the ±10s tap.
+ * @param from position in seconds
+ * @param delta seconds to move (negative rewinds)
+ * @param duration the media duration in seconds
+ * @returns the new position, inside [0, duration]
+ */
+export function skipTo(from, delta, duration) {
+  const d = Number(duration), to = (Number(from) || 0) + (Number(delta) || 0);
+  if (!isFinite(to)) return Number(from) || 0;
+  
+  
+  const top = isFinite(d) && d > 0 ? Math.max(0, d - 0.25) : Infinity;
+  return Math.min(top, Math.max(0, to));
+}
+/** A signed offset for the scrubbing HUD: `+0:10`, `−1:04`, `0:00`. */
+export function fmtDelta(sec) {
+  const n = Math.round(Number(sec) || 0);
+  if (!n) return "0:00";
+  return (n < 0 ? "\u2212" : "+") + fmtClock(Math.abs(n));
 }

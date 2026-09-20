@@ -23,8 +23,8 @@
  * - {@link createPlayer} — `createPlayer(video, url, { onReady, onError, type })` → a promise of `{ destroy() }`.
  *   `type` is "hls" | "progressive" | null (sniff the extension). Never throws: every failure routes through `onError`.
  * - {@link Player} — `<Player url title locale onClose poster startAt onTime type />`, the full-screen overlay
- *   component: loading (Pixels skeleton) → playing (its own transport, PiP, wake lock) or error
- *   (unavailable + try again + open externally).
+ *   component: loading (Pixels skeleton) → playing (its own transport and gestures, PiP, wake lock) or
+ *   error (unavailable + try again + open externally).
  * - {@link resumeAt} — `resumeAt(saved, duration)` → where to actually start, re-exported from playback.js.
  * - {@link recoverPlan} — what a FATAL error deserves (reload / recover / fail), re-exported from playback.js.
  * - {@link RESUME_MIN} — 30 s; below it a saved position counts as not started (re-exported from playback.js).
@@ -83,6 +83,11 @@
  *   `disableRemotePlayback` are the belt and braces for a shell that shows controls anyway.
  * - There is no fullscreen button either: the overlay already covers the screen, so it only ever handed
  *   OUR surface to the browser's.
+ * - The picture is a transport: a horizontal drag scrubs (axis locked at 8px, so a vertical thumb-slide
+ *   does nothing), a double tap on a side jumps ±10s, a single tap plays/pauses, and arrows/space do the
+ *   same from a keyboard. Where a gesture LANDS is playback.js (`scrubTo`/`skipTo`/`scrubSpan`), under the
+ *   unit gate; video.js only holds the finger. The click that ends a drag is swallowed — without that,
+ *   every scrub also paused the clip.
  * - `destroy()` fully tears down (hls instance, `src`, `load()`, a pending retry timer), so switching
  *   channels or closing never leaks. Keep a `dead` flag: the promise may resolve after unmount, and the
  *   handle must be destroyed then.

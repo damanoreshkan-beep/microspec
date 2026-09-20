@@ -1,0 +1,27 @@
+name: auto-merge
+
+# Every PR gets auto-merge armed the moment it opens, so a PR from the UI app lands on main by
+# itself once `gate` goes green — then the normal push-to-main deploy runs. Fork PRs get a
+# read-only token here, so `--auto` fails for them and they still need a human. Branch protection
+# holds the line: nothing merges until the required `gate` check passes.
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  arm:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - name: Arm auto-merge (squash)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "${{ github.event.pull_request.html_url }}"

@@ -163,19 +163,29 @@ export async function gotoAndSettle(page, url, settle = 3500) {
    button.btn.btn-ghost", green on the re-run and green locally. That is not an app being 42px too wide; it
    is the probe reading a frame in which one chrome button had not taken its final box yet.
    So the width is READ until it stops changing: two identical measurements a frame apart, plus the web
-   fonts (a late font reflows every label under it). Bounded, because a page that never stops moving is its
-   own finding and must not hang the gate — the caller measures whatever the last frame says. */
+   fonts (a late font reflows every label under it) — and plus every stylesheet having actually APPLIED,
+   which is the half that mattered. Measured on the live pendulum at 384px: while `app.css` is still on the
+   wire the stage button computes `position: static; overflow-x: visible` instead of `fixed … hidden`, its
+   scene spills 42px, and the document reads 426. Nothing is MOVING in that state, so "two stable readings"
+   is perfectly happy with it — a cold cache measures the unstyled page and a warm one measures the styled
+   one, which is exactly the "+42px" that came back green on every re-run.
+   Bounded, because a page that never stops moving is its own finding and must not hang the gate — the
+   caller measures whatever the last frame says. */
 export async function layoutStill(page, { tries = 12, gap = 80 } = {}) {
   const read = () => page.evaluate(() => {
     try { document.fonts?.ready?.catch?.(() => {}); } catch { /* no font API */ }
+    // `link.sheet` is null until that stylesheet is parsed and attached: the one signal that says the page
+    // in front of us is the styled one. A cross-origin sheet never exposes it, so only ours are counted.
+    const pending = [...document.querySelectorAll('link[rel~="stylesheet"]')]
+      .filter((l) => { try { return new URL(l.href, location.href).origin === location.origin && !l.sheet; } catch { return false; } }).length;
     return document.documentElement.scrollWidth + ":" + document.documentElement.scrollHeight +
-      ":" + (document.fonts && document.fonts.status === "loaded" ? 1 : 0);
+      ":" + (document.fonts && document.fonts.status === "loaded" ? 1 : 0) + ":" + pending;
   });
   let prev = await read();
   for (let i = 0; i < tries; i++) {
     await sleep(gap);
     const now = await read();
-    if (now === prev && now.endsWith(":1")) return true;
+    if (now === prev && /:1:0$/.test(now)) return true;                 // stable, fonts in, every sheet applied
     prev = now;
   }
   return false;

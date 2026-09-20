@@ -31,6 +31,7 @@
     "jsr:@std/path@^1.0.8": "1.1.5",
     "jsr:@std/path@^1.1.5": "1.1.5",
     "jsr:@std/streams@^1.1.1": "1.1.1",
+    "jsr:@std/yaml@*": "1.1.1",
     "jsr:@zip-js/zip-js@^2.7.52": "2.8.26",
     "npm:@jsquash/png@3.0.1": "3.0.1",
     "npm:@jsquash/webp@1.4.0": "1.4.0",
@@ -152,6 +153,9 @@
     },
     "@std/streams@1.1.1": {
       "integrity": "92556d350e537e9dce527a6d08f6f15be3ff65e656079dea69d15252187c7613"
+    },
+    "@std/yaml@1.1.1": {
+      "integrity": "a57665ecf3d17b926380593a56625d8a10cc7281802f1e993b5ebc94a48e71f8"
     },
     "@zip-js/zip-js@2.8.26": {
       "integrity": "2b78bfa2c5d43766c9a487fc0274981d45732de41bb5b82433d29d235be67191"

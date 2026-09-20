@@ -195,3 +195,4 @@ photographable by a machine that isn't yours.
 ## License
 
 [MIT](LICENSE) © 2026 Daman Oreshkan. Contributions welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+

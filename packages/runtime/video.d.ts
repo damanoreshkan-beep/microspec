@@ -112,10 +112,11 @@
  * @param opts `onReady` (first frame / manifest), `onError` (fatal failure), `type` ("hls" | "progressive" | null to sniff)
  * @returns a handle whose `destroy()` fully tears playback down
  */
-export function createPlayer(video: any, url: any, { onReady, onError, type }?: {
+export function createPlayer(video: any, url: any, { onReady, onError, type, buffer }?: {
     onReady?: () => void;
     onError?: () => void;
     type?: any;
+    buffer?: number;
 }): Promise<{
     destroy(): void;
 }>;

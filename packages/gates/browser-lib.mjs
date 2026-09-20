@@ -107,14 +107,25 @@ export function makeHelpers(page) {
 export async function gotoAndSettle(page, url, settle = 3500) {
   await page.goto(url, { waitUntil: "load" });
   await sleep(settle);
+  await layoutStill(page);
 }
 
 
-
-
-
-
-
+export async function layoutStill(page, { tries = 12, gap = 80 } = {}) {
+  const read = () => page.evaluate(() => {
+    try { document.fonts?.ready?.catch?.(() => {}); } catch {  }
+    return document.documentElement.scrollWidth + ":" + document.documentElement.scrollHeight +
+      ":" + (document.fonts && document.fonts.status === "loaded" ? 1 : 0);
+  });
+  let prev = await read();
+  for (let i = 0; i < tries; i++) {
+    await sleep(gap);
+    const now = await read();
+    if (now === prev && now.endsWith(":1")) return true;
+    prev = now;
+  }
+  return false;
+}
 
 export const BREAKPOINTS = [
   { id: "phone-sm",    w: 320,  h: 568,  note: "9:16 · small-phone floor" },
@@ -129,12 +140,13 @@ export const BREAKPOINTS = [
 ];
 
 
+
+
+
+
 export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) {
   const out = [];
   for (const bp of BREAKPOINTS) {
-    
-    
-    
     if (bp.w < minWidth) continue;
     await page.setViewportSize({ width: bp.w, height: bp.h });
     await sleep(260);                                   
@@ -143,6 +155,9 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
       const ox = de.scrollWidth - window.innerWidth;
       let sel = "?";
       if (ox > 1) {
+        
+        
+        
         const clipped = (el) => {
           for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
             const cs = getComputedStyle(p);
@@ -155,8 +170,6 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
         let far = window.innerWidth, node = null;
         for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5 && !clipped(el)) { far = r.right; node = el; } }
         
-        
-        
         const chain = [];
         for (let el = node; el && el !== document.body && chain.length < 5; el = el.parentElement) {
           const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
@@ -164,9 +177,6 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
           
           const b = el.getBoundingClientRect();
           chain.push(`${el.tagName.toLowerCase()}${c ? "." + c : ""}[w${Math.round(b.width)}→x${Math.round(b.right)}]`);
-          
-          
-          
           if (chain.length === 2) {
             const sibs = [...el.children].slice(0, 6).map((k) => {
               const kb = k.getBoundingClientRect();
@@ -183,7 +193,6 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
       if (fit) {
         const v = document.getElementById("view");
         oy = v ? Math.max(v.scrollHeight - v.clientHeight, de.scrollHeight - window.innerHeight) : 0;
-        
         
         
         if (oy > 1 && v) {
@@ -218,12 +227,14 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
         for (const el of view.querySelectorAll("*")) {
           const r = el.getBoundingClientRect();
           if (r.width < 8 || r.height < 8) continue;
+          
+          
+          
+          
+          
+          
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
-          
-          
-          
-          
           let vr = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
           for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
             const pcs = getComputedStyle(p);
@@ -266,8 +277,6 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
             !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.backgroundColor) ||
             cs.boxShadow !== "none" || parseFloat(cs.borderTopWidth) > 0;
           if (!painted) continue;
-          
-          
           
           let skip = false;
           for (let q = el.parentElement; q && q !== document.body; q = q.parentElement) {
@@ -319,9 +328,9 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
 
 
 
-
 export async function runDesignChecks(ev) {
   const out = [];
+  
   
   await ev(() => { const s = document.createElement("style"); s.id = "__freeze"; s.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}"; document.head.appendChild(s); });
   const runAxe = () => ev(async () => {
@@ -338,6 +347,7 @@ export async function runDesignChecks(ev) {
     await ev(async (src) => { await new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }, AXE);
     out.push(axeResult(await runAxe(), "(dark)"));
     
+    
     const base = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
     const flipped = await ev((th) => { const t = th.includes("light") ? th : th + "-light"; document.documentElement.setAttribute("data-theme", t); return t; }, base);
     await sleep(200);
@@ -345,11 +355,14 @@ export async function runDesignChecks(ev) {
     await ev((th) => document.documentElement.setAttribute("data-theme", th), base);
   } catch (e) { out.push({ name: "a11y (axe)", ok: false, msg: "не вдалось завантажити axe: " + e.message }); }
 
-  
   const ovi = await ev(() => {
     const ov = document.documentElement.scrollWidth - window.innerWidth;
     if (ov <= 1) return { ov: 0 };
-    const nameOf = (el) => { const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; return el.tagName.toLowerCase() + (cls ? "." + cls : ""); };
+    
+    const nameOf = (el) => {
+      const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
+      return (el.id ? "#" + el.id : el.tagName.toLowerCase()) + (cls ? "." + cls : "");
+    };
     let sel = "?", far = window.innerWidth;
     for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; sel = nameOf(el); } }
     
@@ -369,7 +382,6 @@ export async function runDesignChecks(ev) {
   });
   out.push(ovi.ov <= 1 ? { name: "phone 384px: без горизонтального overflow", ok: true } : { name: "phone 384px: overflow", ok: false, msg: `+${ovi.ov}px — винуватець: ${ovi.sel}` });
 
-  
   
   
   

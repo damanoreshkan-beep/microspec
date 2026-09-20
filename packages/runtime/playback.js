@@ -27,6 +27,7 @@
  * - {@link recoverPlan} — `recoverPlan(kind, tried)`: what a FATAL player error deserves — reload the
  *   stream, recover the decoder, or give up.
  * - {@link NET_RETRIES} / {@link MEDIA_RETRIES} — 2 and 1; the bound on that recovery.
+ * - {@link fmtClock} — `fmtClock(sec)`: seconds as `4:03` / `1:05:00`, and "" for a live or unknown length.
  *
  * ## In practice
  * ```js
@@ -101,4 +102,20 @@ export function recoverPlan(kind, tried = {}) {
   if (kind === "network" && net < NET_RETRIES) return { act: "reload", delay: 500 * (net + 1) };
   if (kind === "media" && med < MEDIA_RETRIES) return { act: "recover", delay: 0 };
   return { act: "fail", delay: 0 };
+}
+
+
+/**
+ * Seconds as a clock: `0:07`, `4:03`, `1:05:00`. Empty string for a live or unknown duration.
+ * @param sec seconds
+ * @returns the clock string, or "" when there is no finite position to show
+ */
+export function fmtClock(sec) {
+  
+  if (sec === null || sec === undefined || sec === "") return "";
+  const n = Number(sec);
+  if (!isFinite(n) || n < 0) return "";
+  const whole = Math.floor(n), h = Math.floor(whole / 3600), m = Math.floor((whole % 3600) / 60), s = whole % 60;
+  const ss = String(s).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
 }

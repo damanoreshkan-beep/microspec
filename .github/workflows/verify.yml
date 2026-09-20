@@ -136,3 +136,19 @@ jobs:
 
   # The verify-gate mutation test (expensive Chromium mutation runs) is NOT here — it moved to its own
   # nightly workflow (.github/workflows/efficacy.yml) so it never adds ~5 minutes to a push's wait.
+
+  # One stable check for branch protection to require: green only when the gate DAG and every
+  # affected-app verify passed. `verify` is skipped when nothing is affected — that counts as pass.
+  gate:
+    runs-on: ubuntu-latest
+    needs: [unit, verify]
+    if: always()
+    steps:
+      - name: All required jobs passed
+        run: |
+          echo "unit=${{ needs.unit.result }} verify=${{ needs.verify.result }}"
+          [ "${{ needs.unit.result }}" = "success" ] || { echo "gates failed"; exit 1; }
+          case "${{ needs.verify.result }}" in
+            success|skipped) : ;;
+            *) echo "app verify failed"; exit 1 ;;
+          esac

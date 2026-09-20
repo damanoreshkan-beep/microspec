@@ -143,7 +143,7 @@ const clearSrc = (v) => { try { v.removeAttribute("src"); v.load(); } catch { /*
  * @param opts `onReady` (first frame / manifest), `onError` (fatal failure), `type` ("hls" | "progressive" | null to sniff)
  * @returns a handle whose `destroy()` fully tears playback down
  */
-export async function createPlayer(video, url, { onReady = () => {}, onError = () => {}, type = null } = {}) {
+export async function createPlayer(video, url, { onReady = () => {}, onError = () => {}, type = null, buffer = 12 } = {}) {
   const kind = type
     || (/\.m3u8(\?|#|$)/i.test(url) ? "hls" : /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(url) ? "progressive" : null);
   const attach = (fallback) => {
@@ -177,7 +177,12 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
        stream's front door: miss it and there is nothing to recover from later, so this is the one budget
        worth spending before the first frame. 3 at hls.js's own backoff still gives up well inside a wait
        anyone would sit through. */
-    const hls = new Hls({ maxBufferLength: 12, backBufferLength: 30, manifestLoadingTimeOut: 12000, manifestLoadingMaxRetry: 3 });
+    /* `buffer` is the caller's, because the two callers are not alike: a reel holds a WINDOW of three
+       players and must stay small (12s, its own note below), while this overlay is one clip on the screen
+       and wants a cushion — after a seek, a bigger forward target is the difference between playing on and
+       stalling at the next segment boundary. Measured: one segment of this stream is 10.7s, so 12s of
+       forward buffer is barely one fragment ahead. */
+    const hls = new Hls({ maxBufferLength: buffer, backBufferLength: 30, manifestLoadingTimeOut: 12000, manifestLoadingMaxRetry: 3 });
     hls.on(Hls.Events.MANIFEST_PARSED, () => onReady());
     /* A FATAL error is not a verdict on the stream — see recoverPlan (playback.js) for what each kind
        deserves and why. This is the bookkeeping only: count what has been tried, do what the plan says,
@@ -242,7 +247,7 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
       if (at > 0) { try { v.currentTime = at; } catch { /* not seekable */ } }
       setState("playing");
     };
-    createPlayer(v, url, { type, onReady: ready, onError: () => { if (!dead) setState("error"); } })
+    createPlayer(v, url, { type, buffer: 30, onReady: ready, onError: () => { if (!dead) setState("error"); } })
       .then((h) => { handle = h; if (dead) h.destroy(); });
     return () => { dead = true; handle?.destroy(); };
   }, [url, type, attempt]);
@@ -317,9 +322,9 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
   const lastTap = useRef({ t: 0, x: 0 });
   const surfaceRef = useRef();
   const widthOf = () => surfaceRef.current?.getBoundingClientRect?.().width || 0;
-  const seekTo = (to, { preview = false } = {}) => {
+  const seekTo = (to) => {
     const v = ref.current; if (!v || !isFinite(to)) return;
-    try { if (preview && typeof v.fastSeek === "function") v.fastSeek(to); else v.currentTime = to; } catch { /* not seekable */ }
+    try { v.currentTime = to; } catch { /* not seekable */ }
     setAt(to);
   };
   const down = (e) => {
@@ -340,13 +345,18 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     seeking.current = true;
     const to = scrubTo(d.from, dx, widthOf(), len);
     setScrub({ to, delta: to - d.from });
-    seekTo(to, { preview: true });
+    /* The element is NOT seeked while the finger moves, and that is the whole difference between a scrub
+       that answers and one you wait out. Measured through our own proxy on a real clip: one 10.7s segment
+       is 3.98MB at 1080p. Every `currentTime` write makes hls.js drop its buffer and fetch the segment at
+       the new position, so a drag across the screen queued dozens of multi-megabyte loads — each one
+       cancelling the last, the last one landing after everything before it had already cost bandwidth. The
+       time readout follows the finger (it is the feedback that matters); the media moves once, on release. */
   };
   const up = () => {
     const d = drag.current; if (!d.on) return;
     d.on = false;
     if (d.axis === 1 && Math.abs(d.moved) > 8) {
-      seekTo(scrubTo(d.from, d.moved, widthOf(), len));      // the commit: an exact seek where the preview left off
+      seekTo(scrubTo(d.from, d.moved, widthOf(), len));      // the one seek this gesture is worth
       d.at = Date.now();                                     // …and the click this drag ends with is not a tap
     }
     seeking.current = false;

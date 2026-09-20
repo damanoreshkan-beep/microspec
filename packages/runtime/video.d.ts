@@ -23,7 +23,8 @@
  * - {@link createPlayer} — `createPlayer(video, url, { onReady, onError, type })` → a promise of `{ destroy() }`.
  *   `type` is "hls" | "progressive" | null (sniff the extension). Never throws: every failure routes through `onError`.
  * - {@link Player} — `<Player url title locale onClose poster startAt onTime type />`, the full-screen overlay
- *   component: loading (Pixels skeleton) → playing (PiP, fullscreen, wake lock) or error (unavailable + open externally).
+ *   component: loading (Pixels skeleton) → playing (its own transport, PiP, wake lock) or error
+ *   (unavailable + try again + open externally).
  * - {@link resumeAt} — `resumeAt(saved, duration)` → where to actually start, re-exported from playback.js.
  * - {@link recoverPlan} — what a FATAL error deserves (reload / recover / fail), re-exported from playback.js.
  * - {@link RESUME_MIN} — 30 s; below it a saved position counts as not started (re-exported from playback.js).
@@ -74,6 +75,14 @@
  * - `backBufferLength` is capped at 30 s (hls.js's default is Infinity): reel holds a window of three players,
  *   and three unbounded back buffers on a long stream is a memory leak with a polite name. Forward buffer is
  *   12 s, and hls.js treats `maxBufferLength` as a target it reaches regardless of `maxBufferSize`.
+ * - The element carries NO `controls`, and that is load-bearing rather than cosmetic: Android's native
+ *   media controls bring a rotate-to-fullscreen delegate, so turning the phone promoted the ELEMENT to
+ *   fullscreen — outside this dialog, without its chrome or an app's filters, interrupting playback. The
+ *   delegate lives on those controls; `Player` draws its own transport instead (play/pause, position,
+ *   length, sound) and rotating now only rotates the video. `controlsList="nofullscreen"` and
+ *   `disableRemotePlayback` are the belt and braces for a shell that shows controls anyway.
+ * - There is no fullscreen button either: the overlay already covers the screen, so it only ever handed
+ *   OUR surface to the browser's.
  * - `destroy()` fully tears down (hls instance, `src`, `load()`, a pending retry timer), so switching
  *   channels or closing never leaks. Keep a `dead` flag: the promise may resolve after unmount, and the
  *   handle must be destroyed then.

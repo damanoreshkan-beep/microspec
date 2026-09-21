@@ -111,4 +111,4 @@
  * @param threshold minimum travel on the dominant axis before it counts as a swipe (default 52)
  * @returns "left" | "right" | "up" | "down", or null for a tap / wobble below the threshold
  */
-export function swipeDir(dx: any, dy: any, threshold?: number): "up" | "left" | "right" | "down";
+export function swipeDir(dx: any, dy: any, threshold?: number): "left" | "up" | "right" | "down";

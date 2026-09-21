@@ -152,7 +152,10 @@ const metaText = (meta, it, dict, loc) => {
   if (!meta) return "";
   if (typeof meta === "string") return it[meta] ?? "";
   const v = it[meta.field];
-  return v == null ? "" : (meta.format === "ago" ? ago(dict, v, loc) : meta.format === "when" ? whenLabel(dict, v, loc) : meta.format === "since" ? sinceLabel(dict, v, loc) : String(v));
+  // `precision` names a COMPANION FIELD, not a value: how far the item's own date is to be believed lives
+  // in the item (a feed mixes a confirmed minute with a "sometime in Q4"), so the spec points at the field
+  // and whenLabel decides how much of the label is honest. See i18n.js.
+  return v == null ? "" : (meta.format === "ago" ? ago(dict, v, loc) : meta.format === "when" ? whenLabel(dict, v, loc, true, meta.precision ? it[meta.precision] : undefined) : meta.format === "since" ? sinceLabel(dict, v, loc) : String(v));
 };
 // meta formats that carry a clock affordance
 const isTimeFmt = (fmt) => fmt === "ago" || fmt === "when" || fmt === "since";
@@ -160,7 +163,7 @@ const fmtNum = (n, loc) => new Intl.NumberFormat(loc === "uk" ? "uk-UA" : "en-US
 
 // locale date formats reusable by card meta, detail rows AND table columns (format: ago|when|since)
 const DATE_FMT = { ago, when: whenLabel, since: sinceLabel };
-const fmtCell = (c, it, t, loc) => (c.format && DATE_FMT[c.format]) ? DATE_FMT[c.format](t, it[c.field], loc) : it[c.field];
+const fmtCell = (c, it, t, loc) => (c.format && DATE_FMT[c.format]) ? DATE_FMT[c.format](t, it[c.field], loc, true, c.precision ? it[c.precision] : undefined) : it[c.field];
 
 // Sequential magnitude → intensity 0..1, log-scaled (suits money / long-tailed data) and normalized across
 // the currently-visible items. Reusable by table `heat` columns and `chart` bars — the color-by-strength.
@@ -845,7 +848,7 @@ function DetailView() {
   const rows = (d.rows || []).map((r) => {
     // a row with a date `format` is locale-formatted from the raw timestamp; otherwise the resolved
     // (enrich/translate-aware) field value.
-    const v = r.format === "when" ? whenLabel(t, it[r.field], loc) : r.format === "ago" ? ago(t, it[r.field], loc) : r.format === "since" ? sinceLabel(t, it[r.field], loc) : field(it, r.field, loc);
+    const v = r.format === "when" ? whenLabel(t, it[r.field], loc, true, r.precision ? it[r.precision] : undefined) : r.format === "ago" ? ago(t, it[r.field], loc) : r.format === "since" ? sinceLabel(t, it[r.field], loc) : field(it, r.field, loc);
     return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-muted">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
   const actions = (d.actions || []).map((a) => {
     // `play` keeps the viewer in the app: the runtime's player, stacked over this detail, so Back returns

@@ -207,7 +207,10 @@ export function Calendar({ month, value, marks, onPick, onMonth, min, max, pick 
         const label = `${new Date(year, mon - 1, c.day).toLocaleDateString(loc, { day: "numeric", month: "long" })}${n ? ` — ${n}` : ""}`;
         // pick="marked": an empty day is plain text. A disabled button is still a tab stop that answers
         // nothing, and no a11y gate reports "this control does nothing" — so it simply is not a control.
-        if (pick === "marked" && !n) return html`<span key=${c.key} class=${`${face} text-base-content/35`}>${c.day}</span>`;
+        // `.text-muted` and never an alpha: muted ink in this farm is a DESIGNED colour with a checked
+        // contrast (runtime.css), and a faded base-content is the exact shape of the defect that once put
+        // axe-serious on all 58 apps at once.
+        if (pick === "marked" && !n) return html`<span key=${c.key} class=${`${face} text-muted`}>${c.day}</span>`;
         return html`<button key=${c.key} type="button" data-cal-day=${c.key} aria-pressed=${on} aria-current=${isToday ? "date" : null}
           aria-label=${label} class=${`${face} transition-colors ${on ? "" : "hover:bg-base-content/10"}`}
           onClick=${() => onPick && onPick(c.key)}>${c.day}${dot}</button>`;

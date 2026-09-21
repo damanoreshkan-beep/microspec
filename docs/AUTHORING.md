@@ -34,7 +34,9 @@ prompt → probe source → author spec.json (ajv-gated) → author data.js|view
      `import { viaProxy, isJsonObject } from "/_rt/feed.js"`. Every field a card/detail references must
      exist on each item. **Never format dates here** (no locale → a baked string freezes one language):
      return the raw timestamp; the card `meta`/detail renders it locale-aware with `format` `ago`/`when`/
-     `since`. `searchFetch` reads `filters.q`; `paginate` returns a `next` cursor. Missing images: emit a
+     `since`. If the source's dates are partly ESTIMATES, emit a companion field (`"day"`/`"month"`/
+     `"quarter"`/`"year"`) and name it in `meta.precision` — the label then stops where the timestamp stops
+     being true, instead of counting down to a minute nobody promised. `searchFetch` reads `filters.q`; `paginate` returns a `next` cursor. Missing images: emit a
      deterministic data-URI placeholder so a card is never image-less (see `apps/wiki`).
    - **stream app** → `stream.js` (live WS/SSE rendered as a list).
    - **tool app** → `view.js` (custom Preact view) — see next section.
@@ -142,6 +144,10 @@ Compose the shared runtime components instead of writing geometry/astronomy from
 
 - `/_rt/globe.js` — `<Globe onPick marker focus points spin/>`: canvas orthographic Earth, **no WebGL so
   it renders in the headless gate**. Location picker / country explorer.
+- `/_rt/calendar.js` — `<Calendar month value marks onPick onMonth min max pick/>`: a month grid that knows
+  nothing about what a day contains — the caller marks the days and gets the tapped one back. Month and
+  weekday names come from `Intl`, so it needs no i18n key from the app. Pure helpers beside it (`dayKey`,
+  `monthKey`, `addMonths`, `monthGrid`) key days **locally**, never off the ISO string.
 - `/_rt/astro.js` — `BODIES`, `Planet({body})` (shaded micro-sphere, ring/glow), `skyPositions()` (horizon
   az/alt), `eclipticPositions()` (zodiac longitude), `sunHorizon`, `sunTimes`.
 - `/_rt/skydial.js` — `<SkyDial marks radial opacityFor fan rotate rim center overlay/>`: a

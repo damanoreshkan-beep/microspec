@@ -138,13 +138,13 @@ const metaText = (meta, it, dict, loc) => {
   if (!meta) return "";
   if (typeof meta === "string") return it[meta] ?? "";
   const v = it[meta.field];
-  return v == null ? "" : (meta.format === "ago" ? ago(dict, v, loc) : meta.format === "when" ? whenLabel(dict, v, loc) : meta.format === "since" ? sinceLabel(dict, v, loc) : String(v));
+  return v == null ? "" : (meta.format === "ago" ? ago(dict, v, loc) : meta.format === "when" ? whenLabel(dict, v, loc, true, meta.precision ? it[meta.precision] : undefined) : meta.format === "since" ? sinceLabel(dict, v, loc) : String(v));
 };
 const isTimeFmt = (fmt) => fmt === "ago" || fmt === "when" || fmt === "since";
 const fmtNum = (n, loc) => new Intl.NumberFormat(loc === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
 const DATE_FMT = { ago, when: whenLabel, since: sinceLabel };
-const fmtCell = (c, it, t, loc) => (c.format && DATE_FMT[c.format]) ? DATE_FMT[c.format](t, it[c.field], loc) : it[c.field];
+const fmtCell = (c, it, t, loc) => (c.format && DATE_FMT[c.format]) ? DATE_FMT[c.format](t, it[c.field], loc, true, c.precision ? it[c.precision] : undefined) : it[c.field];
 
 function heatMap(items, field) {
   const v = items.map((it) => Math.max(0, Number(it[field]) || 0));
@@ -747,7 +747,7 @@ function DetailView() {
     ? html`<${CustomBody} item=${it} t=${t} loc=${loc} S=${A.S} toast=${A.toast} undo=${A.undo} confirm=${A.confirm} />` : null;
   const rows = (d.rows || []).map((r) => {
     
-    const v = r.format === "when" ? whenLabel(t, it[r.field], loc) : r.format === "ago" ? ago(t, it[r.field], loc) : r.format === "since" ? sinceLabel(t, it[r.field], loc) : field(it, r.field, loc);
+    const v = r.format === "when" ? whenLabel(t, it[r.field], loc, true, r.precision ? it[r.precision] : undefined) : r.format === "ago" ? ago(t, it[r.field], loc) : r.format === "since" ? sinceLabel(t, it[r.field], loc) : field(it, r.field, loc);
     return (v == null || v === "") ? null : html`<div class="flex items-start gap-3 py-3 border-b border-base-300/60 last:border-0" key=${r.field}>${r.icon ? Icon(r.icon, "text-lg text-primary/80 mt-0.5 shrink-0") : null}<div class="flex-1 min-w-0"><div class="text-xs text-muted">${T(t, r.label)}</div><div class="font-medium break-words">${v}</div></div></div>`; });
   const actions = (d.actions || []).map((a) => {
     

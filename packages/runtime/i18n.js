@@ -30,7 +30,7 @@
  * - {@link media} — `media(key, locale)`: a `MEDIA` string for a locale, same fallback as `sys`.
  *
  * **Time labels** (each takes the app dict, a timestamp and the locale; `uk` formats as `uk-UA`, everything else as `en-US`)
- * - {@link whenLabel} — `whenLabel(dict, ts, locale, full = true)`: absolute month + HH:MM plus a relative countdown for a future event (`format: "when"`); `""` for an invalid date.
+ * - {@link whenLabel} — `whenLabel(dict, ts, locale, full = true, precision)`: absolute month + HH:MM plus a relative countdown for a future event (`format: "when"`); `""` for an invalid date. `precision` ("day" | "month" | "quarter" | "year") stops the label where the timestamp stops being true.
  * - {@link sinceLabel} — `sinceLabel(dict, ts, locale)`: fine-grained "x ago" at seconds/minutes granularity for live feeds (`format: "since"`).
  * - {@link ago} — `ago(dict, ts, locale)`: today / yesterday / days / weeks, then a locale date past ~a month (`format: "ago"`).
  *
@@ -63,7 +63,7 @@
  *   every app that mounts it ships the raw key the first time someone forgets (how "profTheme" reached a real screen).
  * - The runtime paints the door, so the runtime owns its name: both halves of the clean-screen pair (`clean`,
  *   `cleanExit`) and the transport labels (`aPlay`…`aShuffle`) belong here.
- * - {@link whenLabel} needs the app keys `whenPast` / `whenMin` / `whenHours` / `whenDays`; {@link sinceLabel}
+ * - {@link whenLabel} needs the app keys `whenPast` / `whenMin` / `whenHours` / `whenDays` (plus `whenQuarter` when a caller passes `precision: "quarter"`); {@link sinceLabel}
  *   needs `sinceNow` / `sinceSec` / `sinceMin` / `sinceHour` / `sinceDay`; {@link ago} needs `agoToday` / `agoYesterday`
  *   / `agoDays` / `agoWeeks` — each with `{n}`. Without them the label renders the bare key.
  * - Interpolation is `replaceAll` on `{name}`; the value is stringified. There is no pluralisation — the `{n}` keys carry the number.
@@ -132,6 +132,8 @@ export const SYS = {
   aShuffle: { en: "Shuffle", uk: "Перемішати" },
   more: { en: "More", uk: "Ще" },
   back: { en: "Back", uk: "Назад" },
+  calPrev: { en: "Previous month", uk: "Попередній місяць" },
+  calNext: { en: "Next month", uk: "Наступний місяць" },
   apkRow: { en: "Download APK", uk: "Завантажити APK" },
   signOut: { en: "Sign out", uk: "Вийти" },
   signedOut: { en: "Not signed in", uk: "Ви не увійшли" },
@@ -187,12 +189,19 @@ export const media = (key, locale) => MEDIA[key]?.[locale] || MEDIA[key]?.en || 
  * @param ts a Date-parseable timestamp
  * @param locale the active locale code
  * @param full include the relative countdown tail (default true)
- * @returns e.g. "12 Sep, 14:30 · in 3 h", or "" for an invalid date
+ * @param precision how far the timestamp is to be believed — "day" | "month" | "quarter" | "year"; anything else reads it to the minute
+ * @returns e.g. "12 Sep, 14:30 · in 3 h", "October 2026" at month precision, or "" for an invalid date
  */
-export function whenLabel(dict, ts, locale, full = true) {
+export function whenLabel(dict, ts, locale, full = true, precision) {
   const d = new Date(ts);
   if (isNaN(d)) return "";
-  const abs = d.toLocaleString(locale === "uk" ? "uk-UA" : "en-US", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const loc = locale === "uk" ? "uk-UA" : "en-US";
+  if (precision === "year") return String(d.getFullYear());
+  if (precision === "quarter") return T(dict, "whenQuarter", { n: Math.floor(d.getMonth() / 3) + 1, y: d.getFullYear() });
+  if (precision === "month") return d.toLocaleDateString(loc, { month: "long", year: "numeric" });
+  const abs = precision === "day"
+    ? d.toLocaleDateString(loc, { day: "numeric", month: "short" })
+    : d.toLocaleString(loc, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   if (!full) return abs;
   const min = Math.round((d - Date.now()) / 60000);
   const rel = min < 0 ? T(dict, "whenPast")

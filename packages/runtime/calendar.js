@@ -193,7 +193,7 @@ export function Calendar({ month, value, marks, onPick, onMonth, min, max, pick 
         const dot = n ? html`<span class=${`absolute bottom-[12%] w-1 h-1 rounded-full ${on ? "bg-primary-content" : ""}`}
           style=${on ? "" : "background:var(--app-accent)"} aria-hidden="true"></span>` : null;
         const label = `${new Date(year, mon - 1, c.day).toLocaleDateString(loc, { day: "numeric", month: "long" })}${n ? ` — ${n}` : ""}`;
-        if (pick === "marked" && !n) return html`<span key=${c.key} class=${`${face} text-base-content/35`}>${c.day}</span>`;
+        if (pick === "marked" && !n) return html`<span key=${c.key} class=${`${face} text-muted`}>${c.day}</span>`;
         return html`<button key=${c.key} type="button" data-cal-day=${c.key} aria-pressed=${on} aria-current=${isToday ? "date" : null}
           aria-label=${label} class=${`${face} transition-colors ${on ? "" : "hover:bg-base-content/10"}`}
           onClick=${() => onPick && onPick(c.key)}>${c.day}${dot}</button>`;

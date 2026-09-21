@@ -17,6 +17,7 @@
 // astrology, instruments, …) moved to DreamStudio's rt/ with their tests, barrelled by rt/rt_test.js.
 //   deno test -A packages/runtime/runtime_test.js
 import "./tests/apk_test.js";
+import "./tests/calendar_test.js";
 import "./tests/candidates_test.js";
 import "./tests/colour_test.js";
 import "./tests/console_test.js";

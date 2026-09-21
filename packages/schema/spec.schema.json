@@ -277,6 +277,11 @@
                   "since"
                 ],
                 "description": "Optional: locale-format the field as a date instead of raw text — 'ago' (past relative) or 'when' (future absolute+countdown from a timestamp)."
+              },
+              "precision": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OPTIONAL with format:'when' — the name of a COMPANION item field saying how far THIS item's date is to be believed ('day' | 'month' | 'quarter' | 'year'). A feed mixes a confirmed minute with a 'sometime in Q4' the source returns as the last day of the quarter; without this the label prints a countdown to a date nobody promised."
               }
             }
           }
@@ -937,7 +942,12 @@
                         "since"
                       ],
                       "description": "Locale-format the field as a date."
-                    }
+                    },
+                      "precision": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "OPTIONAL with format:'when' — the name of a COMPANION item field saying how far THIS item's date is to be believed ('day' | 'month' | 'quarter' | 'year'). A feed mixes a confirmed minute with a 'sometime in Q4' the source returns as the last day of the quarter; without this the label prints a countdown to a date nobody promised."
+                      }
                   }
                 }
               },
@@ -1040,11 +1050,16 @@
                           "when",
                           "since"
                         ]
+                      },
+                      "precision": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "OPTIONAL with format:'when' — the name of a COMPANION item field saying how far THIS item's date is to be believed ('day' | 'month' | 'quarter' | 'year'). A feed mixes a confirmed minute with a 'sometime in Q4' the source returns as the last day of the quarter; without this the label prints a countdown to a date nobody promised."
                       }
                     }
                   }
                 ],
-                "description": "feed layout — footer meta: an item field name, OR { field, format } for a locale-aware date. format:'ago' = past relative (needs i18n agoToday/agoYesterday/agoDays/agoWeeks); format:'when' = future absolute+countdown from a timestamp (needs i18n whenPast/whenMin/whenHours/whenDays)."
+                "description": "feed layout — footer meta: an item field name, OR { field, format, precision } for a locale-aware date. format:'ago' = past relative (needs i18n agoToday/agoYesterday/agoDays/agoWeeks); format:'when' = future absolute+countdown from a timestamp (needs i18n whenPast/whenMin/whenHours/whenDays)."
               },
               "body": {
                 "type": "string",

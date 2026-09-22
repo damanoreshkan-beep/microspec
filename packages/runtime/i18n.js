@@ -155,7 +155,8 @@ export const SYS = {
   // The bell (/_rt/watch.js). An alert is the one thing the farm sells over data anybody can fetch, so its
   // control is systemic and its words live here — an app opts in with one spec key and restates nothing.
   watchRow: { en: "Tell me when", uk: "Сповісти мене" },
-  watchNeedTg: { en: "Alerts arrive in Telegram — sign in there", uk: "Сповіщення приходять у Telegram — увійдіть там" },
+  watchNeedTg: { en: "Alerts arrive in Telegram", uk: "Сповіщення приходять у Telegram" },
+  watchSignIn: { en: "Sign in with Telegram", uk: "Увійти через Telegram" },
   watchCost: { en: "1 coin per alert", uk: "1 монета за сповіщення" },
   watchBalance: { en: "balance", uk: "баланс" },
   watchAbove: { en: "above", uk: "вище" },

@@ -8,7 +8,7 @@ import spec from "../../schema/spec.schema.json" with { type: "json" };
 
 const WORDS = [
   "watchRow", "watchNeedTg", "watchCost", "watchBalance", "watchAbove", "watchBelow",
-  "watchNow", "watchQuiet", "watchSave", "watchOff", "watchNoPlace", "watchTooMany", "watchFailed",
+  "watchNow", "watchQuiet", "watchSave", "watchSignIn", "watchOff", "watchNoPlace", "watchTooMany", "watchFailed",
 ];
 
 Deno.test("the bell paints nothing it cannot say in both languages", () => {

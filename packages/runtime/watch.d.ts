@@ -3,9 +3,10 @@
  * The profile card for ONE source. `params` pins what the source needs when the app already knows it (a
  * currency pair); otherwise a `needs: "geo"` source asks for the place itself on the first save.
  */
-export function Bell({ source, loc, params, className }: {
+export function Bell({ source, loc, app, params, className }: {
     source: any;
     loc: any;
+    app?: string;
     params?: any;
     className?: string;
 }): any;

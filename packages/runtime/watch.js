@@ -66,7 +66,7 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 const fixture = (source) => ({
   rules: [{ id: 1, source, params: {}, op: "above", value: 35, last: 12, firedAt: null, quiet: false }],
   sources: { [source]: { app: source, unit: "", dflt: 35, min: 0, max: 1000, needs: null } },
-  balance: 12, cost: 1, max: 20,
+  balance: 12, cost: 1, max: 20, role: "user", free: false,
 });
 
 const call = async (route, body) => {
@@ -116,7 +116,7 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
   const load = () => watchList(source).then((j) => {
     setState(j);
     setValue((v) => (v == null ? (j.sources?.[source]?.dflt ?? 0) : v));
-  }).catch(() => setState({ rules: [], sources: {}, balance: 0, cost: 1, max: 0, down: true }));
+  }).catch(() => setState({ rules: [], sources: {}, balance: 0, cost: 1, max: 0, role: "user", free: false, down: true }));
 
   useEffect(() => { if (sess || gate) load(); else setState(null); }, [sess?.sid]);
 
@@ -174,7 +174,11 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
       <div class="size-11 rounded-xl grid place-items-center bg-primary/10 text-primary shrink-0">${Icon("lucide:bell", "text-2xl")}</div>
       <div class="flex-1 min-w-0">
         <div class="font-semibold leading-tight truncate">${sys("watchRow", loc)}</div>
-        <div class="text-xs text-muted truncate">${sys("watchCost", loc)} · ${sys("watchBalance", loc)} ${state.balance}</div>
+        ${/* A role is only real to its holder if they can see it. Free means no balance line either — the
+             number would be beside the point, and a zero there reads as a problem when it is not. */""}
+        <div class="text-xs text-muted truncate">${state.free
+          ? html`<span data-watch-role=${state.role}>${state.role} · ${sys("watchFree", loc)}</span>`
+          : html`${sys("watchCost", loc)} · ${sys("watchBalance", loc)} ${state.balance}`}</div>
       </div>
     </div>
 

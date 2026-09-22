@@ -158,6 +158,7 @@ export const SYS = {
   watchNeedTg: { en: "Alerts arrive in Telegram", uk: "Сповіщення приходять у Telegram" },
   watchSignIn: { en: "Sign in with Telegram", uk: "Увійти через Telegram" },
   watchCost: { en: "1 coin per alert", uk: "1 монета за сповіщення" },
+  watchFree: { en: "free for you", uk: "тобі безкоштовно" },
   watchBalance: { en: "balance", uk: "баланс" },
   watchAbove: { en: "above", uk: "вище" },
   watchBelow: { en: "below", uk: "нижче" },

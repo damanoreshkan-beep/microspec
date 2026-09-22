@@ -25,3 +25,17 @@ Deno.test("the bell is declared on the TAB, because one app can hold two things 
   assertEquals(Object.keys(w.properties).sort(), ["params", "source"]);
   assert(!spec.properties.profile.properties.watch, "profile.watch is still there");
 });
+
+Deno.test("the fixture offers words only where the edge does", async () => {
+  const { gateFixture } = await import("../watch.js");
+  for (const s of ["iss", "air", "kp", "quake"]) {
+    const f = gateFixture(s);
+    assert(f.sources[s].bands?.length, `${s} answers in words on the edge and must here`);
+    assertEquals(f.rules[0].band, "close");
+  }
+  for (const s of ["weather", "rate", "uah", "coin", "launch"]) {
+    const f = gateFixture(s);
+    assertEquals(f.sources[s].bands, null, `${s} is a number a person reads`);
+    assertEquals(f.rules[0].band, null);
+  }
+});

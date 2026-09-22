@@ -36,7 +36,8 @@
  * ## The rules it renders
  *
  * - **A rule needs the Telegram account**, because delivery IS the identity: a rule with nowhere to arrive
- *   is not a rule. Signed in another way, the card says so and offers the one that works.
+ *   is not a rule. Signed in another way, the card SIGNS THEM IN — the OIDC popup in a browser, the deep
+ *   link into this app's Mini App in our APK or when the popup is refused. Never a link to the bot's chat.
  * - **The line is the app's business, the unit is the edge's.** The number input is bounded by `min`/`max`
  *   from the source matrix, so an app cannot offer a Kp of 40.
  * - **A place is asked for once, and only when the source needs one** (`needs: "geo"`). The coordinates go
@@ -50,7 +51,8 @@
 import { html } from "htm/preact";
 import { useState, useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
-import { session } from "./auth.js";
+import { session, loginTelegramWeb } from "./auth.js";
+import { shell } from "./shell.js";
 import { VPS_PROXY } from "./feed.js";
 import { gate } from "./gate.js";
 import { sys } from "./i18n.js";
@@ -98,13 +100,14 @@ const fmt = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 100)
  * The profile card for ONE source. `params` pins what the source needs when the app already knows it (a
  * currency pair); otherwise a `needs: "geo"` source asks for the place itself on the first save.
  */
-export function Bell({ source, loc, params = null, className = "" }) {
+export function Bell({ source, loc, app = "", params = null, className = "" }) {
   const sess = useStore(session);
   const [state, setState] = useState(null);      
   const [value, setValue] = useState(null);
   const [op, setOp] = useState("above");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [fallback, setFallback] = useState(false);   
 
   const load = () => watchList(source).then((j) => {
     setState(j);
@@ -118,12 +121,22 @@ export function Bell({ source, loc, params = null, className = "" }) {
   const mine = (state?.rules || []).filter((r) => r.source === source);
 
   if (!tg) {
-    return html`<div data-watch=${source} class=${`card sf-raised sf-e2 rounded-[var(--ms-r)] ${className}`}><div class="card-body p-4 gap-2">
+    const deep = `https://t.me/dreamstudio_x_bot?startapp=${encodeURIComponent(app || "")}`;
+    const viaTelegram = async () => {
+      setBusy(true); setErr("");
+      try { await loginTelegramWeb(); }
+      catch (e) { if (e?.message !== "popup-closed") setErr(sys("watchFailed", loc)); setFallback(true); }
+      setBusy(false);
+    };
+    return html`<div data-watch=${source} class=${`card sf-raised sf-e2 rounded-[var(--ms-r)] ${className}`}><div class="card-body p-4 gap-3">
       <div class="flex items-center gap-3">
         <div class="size-11 rounded-xl grid place-items-center bg-primary/10 text-primary shrink-0">${Icon("lucide:bell", "text-2xl")}</div>
         <div class="flex-1 min-w-0"><div class="font-semibold leading-tight">${sys("watchRow", loc)}</div><div class="text-xs text-muted">${sys("watchNeedTg", loc)}</div></div>
       </div>
-      <a data-watch-tg href="https://t.me/dreamstudio_x_bot" target="_blank" rel="noopener" class="btn btn-sm btn-primary rounded-full self-start">${Icon("lucide:send", "text-[1em]")} Telegram</a>
+      ${shell.present || fallback
+        ? html`<a data-watch-tg href=${deep} target="_blank" rel="noopener" class="btn btn-sm btn-primary rounded-full self-start gap-1.5">${Icon("lucide:send", "text-[1em]")}${sys("openTelegram", loc)}</a>`
+        : html`<button data-watch-signin type="button" disabled=${busy} onClick=${viaTelegram} class="btn btn-sm btn-primary rounded-full self-start gap-1.5">${Icon("lucide:send", "text-[1em]")}${sys("watchSignIn", loc)}</button>`}
+      ${err ? html`<div data-watch-err class="text-xs text-error">${err}</div>` : null}
     </div></div>`;
   }
   if (!state || !S) return null;

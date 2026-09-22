@@ -463,7 +463,7 @@ function WatchSlot({ source, params, loc }) {
     import("./watch.js").then((m) => { if (live) setComp(() => m.Bell); }).catch(() => {});
     return () => { live = false; };
   }, []);
-  return Comp ? html`<${Comp} source=${source} params=${params} loc=${loc} />` : null;
+  return Comp ? html`<${Comp} source=${source} params=${params} app=${A.spec.id} loc=${loc} />` : null;
 }
 
 

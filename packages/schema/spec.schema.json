@@ -195,25 +195,6 @@
               "description": "Iconify icon for the source row."
             }
           }
-        },
-        "watch": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "source"
-          ],
-          "description": "THE BELL — the app offers 'tell me when' over one watchable source (/_rt/watch.js). The edge owns the unit, the bounds and the poll interval (microspec-edge edge/watch.js), so nothing about the number is restated here; an app declares WHICH source and nothing else.",
-          "properties": {
-            "source": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Source key in the edge's matrix: kp · rate · air · weather · launch · quake."
-            },
-            "params": {
-              "type": "object",
-              "description": "Fixed parameters, when the app already knows them (e.g. a currency pair). A source that needs a place and is given none asks the reader for one, once."
-            }
-          }
         }
       }
     },
@@ -598,6 +579,25 @@
             "type": "string",
             "minLength": 1,
             "description": "i18n key for the app-bar title when this tab is active (defaults to 'title')."
+          },
+          "watch": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source"
+            ],
+            "description": "THE BELL — while THIS tab is open, the app bar carries a bell that opens 'tell me when' over one watchable source (/_rt/watch.js). It belongs to the TAB and not to the app because an app can hold several numbers worth watching: the globe's ISS screen and its earthquakes screen are two different rules, and the reader must be offered the one they are looking at. The edge owns the unit, the bounds and the poll interval (microspec-edge edge/watch.js).",
+            "properties": {
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Source key in the edge's matrix: kp · uah · coin · iss · air · weather · launch · quake."
+              },
+              "params": {
+                "type": "object",
+                "description": "Fixed parameters, when the tab already knows them (a currency code, a coin id). A source that needs a place and is given none asks the reader for one, once."
+              }
+            }
           },
           "search": {
             "type": "boolean",

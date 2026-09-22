@@ -21,10 +21,12 @@ Deno.test("the bell paints nothing it cannot say in both languages", () => {
   }
 });
 
-Deno.test("an app opts into the bell with one key, and the schema knows it", () => {
-  const w = spec.properties.profile.properties.watch;
-  assert(w, "profile.watch is not in the schema");
+Deno.test("the bell is declared on the TAB, because one app can hold two things worth watching", () => {
+  const w = spec.properties.tabs.items.properties.watch;
+  assert(w, "tabs[].watch is not in the schema");
   assertEquals(w.required, ["source"]);
   assertEquals(w.additionalProperties, false);
   assertEquals(Object.keys(w.properties).sort(), ["params", "source"]);
+  // And it is NOT on the profile any more: two declaration sites is the shape that drifts.
+  assert(!spec.properties.profile.properties.watch, "profile.watch is still there");
 });

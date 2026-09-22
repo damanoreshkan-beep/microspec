@@ -66,13 +66,23 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 // there to photograph. The fixture is built AROUND THE SOURCE THE APP ASKED FOR rather than a fixed one:
 // a canned payload naming `air` renders nothing in the five apps that watch something else, and "the
 // control is missing" is exactly what the gate exists to catch — it must not be the fixture's own doing.
-const fixture = (source) => ({
-  rules: [{ id: 1, source, params: { band: "close" }, band: "close", op: "below", value: 752, last: 900, firedAt: null, quiet: false }],
-  // The fixture's source offers WORDS, because the band control is what the gate must photograph now.
-  sources: { [source]: { app: source, unit: "", dflt: 35, min: 0, max: 1000, needs: null,
-    bands: [{ id: "close", uk: "близько", en: "close" }, { id: "overhead", uk: "прямо над головою", en: "right overhead" }] } },
-  balance: 12, cost: 1, max: 20, role: "user", free: false,
-});
+// Which sources answer in WORDS, mirroring the edge's own table (microspec-edge edge/watch.js SOURCES).
+// The gate has no edge to ask, and a fixture that gave every source bands would photograph a control five
+// apps do not have — the gate would then be green on a screen production never shows. A source is here
+// because its number is unreadable (a distance in km, a Kp index, µg/m³, a magnitude); °C, a rate and hours
+// to a launch are numbers people read, and they keep the input.
+const BAND_SOURCES = new Set(["iss", "air", "kp", "quake"]);
+const BANDS = [{ id: "close", uk: "близько", en: "close" }, { id: "overhead", uk: "прямо над головою", en: "right overhead" }];
+const fixture = (source) => {
+  const worded = BAND_SOURCES.has(source);
+  return {
+    rules: [worded
+      ? { id: 1, source, params: { band: "close" }, band: "close", op: "below", value: 752, last: 900, firedAt: null, quiet: false }
+      : { id: 1, source, params: {}, band: null, op: "above", value: 35, last: 12, firedAt: null, quiet: false }],
+    sources: { [source]: { app: source, unit: "", dflt: 35, min: 0, max: 1000, needs: null, bands: worded ? BANDS : null } },
+    balance: 12, cost: 1, max: 20, role: "user", free: false,
+  };
+};
 
 const call = async (route, body) => {
   const r = await fetch(`${VPS_PROXY}/watch/${route}`, {
@@ -82,6 +92,9 @@ const call = async (route, body) => {
   if (!r.ok) throw Object.assign(new Error("watch " + r.status), { status: r.status, reason: j?.error || "" });
   return j;
 };
+
+/** The gate's canned payload for one source — exported so a test can hold it to the edge's own table. */
+export const gateFixture = fixture;
 
 /** Every rule this account has, plus what the edge will let it make. `source` is read only under the
  *  gate, where it shapes the fixture; the live call always answers with the whole matrix. */

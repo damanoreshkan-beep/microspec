@@ -30,3 +30,20 @@ Deno.test("the bell is declared on the TAB, because one app can hold two things 
   // And it is NOT on the profile any more: two declaration sites is the shape that drifts.
   assert(!spec.properties.profile.properties.watch, "profile.watch is still there");
 });
+
+// The gate's fixture is the only edge a headless run has, so a source that answers in numbers must go on
+// answering in numbers there. A fixture that gave every source bands would photograph a control five apps
+// do not have, and the gate would be green on a screen production never shows.
+Deno.test("the fixture offers words only where the edge does", async () => {
+  const { gateFixture } = await import("../watch.js");
+  for (const s of ["iss", "air", "kp", "quake"]) {
+    const f = gateFixture(s);
+    assert(f.sources[s].bands?.length, `${s} answers in words on the edge and must here`);
+    assertEquals(f.rules[0].band, "close");
+  }
+  for (const s of ["weather", "rate", "uah", "coin", "launch"]) {
+    const f = gateFixture(s);
+    assertEquals(f.sources[s].bands, null, `${s} is a number a person reads`);
+    assertEquals(f.rules[0].band, null);
+  }
+});

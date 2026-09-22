@@ -14,6 +14,54 @@ export function Bell({ source, loc, app, params, className }: {
     params?: any;
     className?: string;
 }): any;
+/** The gate's canned payload for one source — exported so a test can hold it to the edge's own table. */
+export function gateFixture(source: any): {
+    rules: ({
+        id: number;
+        source: any;
+        params: {
+            band: string;
+        };
+        band: string;
+        op: string;
+        value: number;
+        last: number;
+        firedAt: any;
+        quiet: boolean;
+    } | {
+        id: number;
+        source: any;
+        params: {
+            band?: undefined;
+        };
+        band: any;
+        op: string;
+        value: number;
+        last: number;
+        firedAt: any;
+        quiet: boolean;
+    })[];
+    sources: {
+        [x: number]: {
+            app: any;
+            unit: string;
+            dflt: number;
+            min: number;
+            max: number;
+            needs: any;
+            bands: {
+                id: string;
+                uk: string;
+                en: string;
+            }[];
+        };
+    };
+    balance: number;
+    cost: number;
+    max: number;
+    role: string;
+    free: boolean;
+};
 /** Every rule this account has, plus what the edge will let it make. `source` is read only under the
  *  gate, where it shapes the fixture; the live call always answers with the whole matrix. */
 export function watchList(source?: string): Promise<any>;

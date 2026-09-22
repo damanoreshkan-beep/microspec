@@ -29,7 +29,9 @@
  * ## What it exports
  *
  * - {@link watchList} — `()` → `{rules, sources, balance, cost, max}`; the edge decides all five.
- * - {@link watchAdd} — `({source, params, op, value, lang})` → the stored rule, or throws with `.reason`.
+ * - {@link watchAdd} — `({source, params, band, lang})` for a source that offers WORDS, or the older
+ *   `({source, params, op, value, lang})` for one whose number a person actually reads → the stored rule,
+ *   or throws with `.reason`. A band rule sends no threshold at all: the edge derives it and keeps it.
  * - {@link watchDel} — `(id)` → true.
  * - {@link Bell} — the profile card: the rules on one source, and one form to add another.
  *
@@ -38,7 +40,8 @@
  * - **A rule needs the Telegram account**, because delivery IS the identity: a rule with nowhere to arrive
  *   is not a rule. Signed in another way, the card SIGNS THEM IN — the OIDC popup in a browser, the deep
  *   link into this app's Mini App in our APK or when the popup is refused. Never a link to the bot's chat.
- * - **The line is the app's business, the unit is the edge's.** The number input is bounded by `min`/`max`
+ * - **The line is the app's business, the unit is the edge's** — and for most sources there is no longer a
+ *   line on this screen at all: the reader picks a word and the edge derives the number. The number input is bounded by `min`/`max`
  *   from the source matrix, so an app cannot offer a Kp of 40.
  * - **A place is asked for once, and only when the source needs one** (`needs: "geo"`). The coordinates go
  *   to the edge rounded — it rounds again to ~110 m to make the poll shared — and nothing is stored here.
@@ -60,8 +63,9 @@ import { sys } from "./i18n.js";
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
 const fixture = (source) => ({
-  rules: [{ id: 1, source, params: {}, op: "above", value: 35, last: 12, firedAt: null, quiet: false }],
-  sources: { [source]: { app: source, unit: "", dflt: 35, min: 0, max: 1000, needs: null } },
+  rules: [{ id: 1, source, params: { band: "close" }, band: "close", op: "below", value: 752, last: 900, firedAt: null, quiet: false }],
+  sources: { [source]: { app: source, unit: "", dflt: 35, min: 0, max: 1000, needs: null,
+    bands: [{ id: "close", uk: "близько", en: "close" }, { id: "overhead", uk: "прямо над головою", en: "right overhead" }] } },
   balance: 12, cost: 1, max: 20, role: "user", free: false,
 });
 
@@ -82,8 +86,10 @@ export const watchAdd = (rule) => (gate ? Promise.resolve({ rule: { ...rule, id:
 /** Forget one rule. */
 export const watchDel = (id) => (gate ? Promise.resolve(true) : call("del", { id }).then(() => true));
 
-/** One fix, or null. Asked for only when the source needs a place, and never kept. */
-function place() {
+/** One fix, or null. Asked for only when something needs a place, and never kept here.
+ * Exported because the globe asks the same question — — and two copies of
+ *  "where am I" would drift into two different accuracies and two different timeouts. */
+export function place() {
   return new Promise((ok) => {
     if (!navigator.geolocation) return ok(null);
     navigator.geolocation.getCurrentPosition(
@@ -104,6 +110,7 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
   const sess = useStore(session);
   const [state, setState] = useState(null);      
   const [value, setValue] = useState(null);
+  const [band, setBand] = useState(null);        
   const [op, setOp] = useState("above");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -112,6 +119,7 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
   const load = () => watchList(source).then((j) => {
     setState(j);
     setValue((v) => (v == null ? (j.sources?.[source]?.dflt ?? 0) : v));
+    setBand((b) => b || j.sources?.[source]?.bands?.[0]?.id || null);
   }).catch(() => setState({ rules: [], sources: {}, balance: 0, cost: 1, max: 0, role: "user", free: false, down: true }));
 
   useEffect(() => { if (sess || gate) load(); else setState(null); }, [sess?.sid]);
@@ -146,7 +154,7 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
     try {
       let p = params;
       if (!p && S.needs === "geo") { p = await place(); if (!p) { setErr(sys("watchNoPlace", loc)); setBusy(false); return; } }
-      await watchAdd({ source, params: p || {}, op, value: Number(value), lang: loc });
+      await watchAdd(bands ? { source, params: p || {}, band, lang: loc } : { source, params: p || {}, op, value: Number(value), lang: loc });
       await load();
     } catch (e) {
       setErr(e?.reason === "too many" ? sys("watchTooMany", loc) : sys("watchFailed", loc));
@@ -155,6 +163,9 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
   };
 
   const unit = S.unit ? " " + S.unit : "";
+  const bands = S.bands && S.bands.length ? S.bands : null;
+  const wordOf = (b) => (String(loc || "").startsWith("uk") ? b.uk : b.en) || b.id;
+  const bandOf = (id) => (bands || []).find((b) => b.id === id) || null;
   return html`<div data-watch=${source} class=${`card sf-raised sf-e2 rounded-[var(--ms-r)] ${className}`}><div class="card-body p-4 gap-3">
     <div class="flex items-center gap-3">
       <div class="size-11 rounded-xl grid place-items-center bg-primary/10 text-primary shrink-0">${Icon("lucide:bell", "text-2xl")}</div>
@@ -168,7 +179,9 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
 
     ${mine.length
       ? html`<ul data-watch-rules class="flex flex-col gap-1">${mine.map((r) => html`<li key=${r.id} class="flex items-center gap-2 rounded-[var(--ms-r-in)] sf-inset px-3 py-2">
-          <span class="flex-1 min-w-0 truncate text-sm tabular-nums">${sys(r.op === "above" ? "watchAbove" : "watchBelow", loc)} ${fmt(r.value)}${unit}${r.last == null ? "" : ` · ${sys("watchNow", loc)} ${fmt(r.last)}`}</span>
+          ${r.band && bandOf(r.band)
+            ? html`<span class="flex-1 min-w-0 truncate text-sm">${wordOf(bandOf(r.band))}</span>`
+            : html`<span class="flex-1 min-w-0 truncate text-sm tabular-nums">${sys(r.op === "above" ? "watchAbove" : "watchBelow", loc)} ${fmt(r.value)}${unit}${r.last == null ? "" : ` · ${sys("watchNow", loc)} ${fmt(r.last)}`}</span>`}
           ${r.quiet ? html`<span class="badge badge-sm">${sys("watchQuiet", loc)}</span>` : null}
           <button type="button" data-watch-del=${r.id} aria-label=${sys("watchOff", loc)} class="btn btn-ghost btn-xs btn-circle shrink-0"
             onClick=${async () => { await watchDel(r.id); load(); }}>${Icon("lucide:x", "text-base")}</button>
@@ -176,17 +189,22 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
       : null}
 
     ${mine.length < (state.max || 0)
-      ? html`<div class="flex items-center gap-2">
-          <div class="join">
-            ${[["above", "watchAbove"], ["below", "watchBelow"]].map(([o, k]) => html`<button key=${o} type="button" data-watch-op=${o}
-              class=${`btn btn-sm join-item ${op === o ? "btn-active btn-primary" : ""}`} onClick=${() => setOp(o)}>${sys(k, loc)}</button>`)}
-          </div>
-          <label class="flex-1 min-w-0 flex items-center gap-1">
-            <span class="sr-only">${sys("watchRow", loc)}</span>
-            <input data-watch-value type="number" inputmode="decimal" class="input input-sm input-bordered w-full tabular-nums"
-              min=${S.min} max=${S.max} value=${value ?? S.dflt} onInput=${(e) => setValue(e.currentTarget.value)} />
-            ${S.unit ? html`<span class="text-xs text-muted shrink-0">${S.unit}</span>` : null}
-          </label>
+      ? html`<div class="flex items-center gap-2 flex-wrap">
+          ${bands
+            ? html`<div data-watch-bands class="flex-1 min-w-0 flex flex-wrap gap-1.5">
+                ${bands.map((b) => html`<button key=${b.id} type="button" data-watch-band=${b.id} aria-pressed=${band === b.id}
+                  class=${`btn btn-sm rounded-full ${band === b.id ? "btn-primary" : "btn-ghost sf-inset"}`} onClick=${() => setBand(b.id)}>${wordOf(b)}</button>`)}
+              </div>`
+            : html`<div class="join">
+                  ${[["above", "watchAbove"], ["below", "watchBelow"]].map(([o, k]) => html`<button key=${o} type="button" data-watch-op=${o}
+                    class=${`btn btn-sm join-item ${op === o ? "btn-active btn-primary" : ""}`} onClick=${() => setOp(o)}>${sys(k, loc)}</button>`)}
+                </div>
+                <label class="flex-1 min-w-0 flex items-center gap-1">
+                  <span class="sr-only">${sys("watchRow", loc)}</span>
+                  <input data-watch-value type="number" inputmode="decimal" class="input input-sm input-bordered w-full tabular-nums"
+                    min=${S.min} max=${S.max} value=${value ?? S.dflt} onInput=${(e) => setValue(e.currentTarget.value)} />
+                  ${S.unit ? html`<span class="text-xs text-muted shrink-0">${S.unit}</span>` : null}
+                </label>`}
           <button type="button" data-watch-add aria-label=${sys("watchSave", loc)} class="btn btn-sm btn-primary rounded-full shrink-0" disabled=${busy} onClick=${save}>
             ${busy ? html`<span class="loading loading-spinner loading-xs"></span>` : Icon("lucide:check", "text-base")}
           </button>

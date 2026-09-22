@@ -62,7 +62,7 @@
  */
 import { html } from "htm/preact";
 import { useRef, useEffect, useState } from "preact/hooks";
-import { geoOrthographic, geoPath, geoGraticule10, geoContains, geoDistance } from "d3-geo";
+import { geoOrthographic, geoPath, geoGraticule10, geoContains, geoDistance, geoCircle } from "d3-geo";
 import { feature } from "topojson-client";
 import { Pixels } from "./skeleton.js";
 
@@ -97,6 +97,14 @@ const pal = () => PALETTE[(document.documentElement.getAttribute("data-theme") |
 const easeInOut = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
 
 /**
+ * A great-circle ring of `km` radius around a point, as GeoJSON for {@link Globe}'s `paths`.
+ * The globe is a sphere of R = 6371 km, so the ring's angular radius is simply km/R in degrees — which is
+ * why a band ("close", 752 km) can be DRAWN rather than described: the circle is the word, at the size the
+ * edge resolved it to, around the place the reader is standing.
+ */
+export const ringAround = (lat, lon, km) => geoCircle().center([lon, lat]).radius((km / 6371) * 180 / Math.PI)();
+
+/**
  * The interactive globe component (Preact). Shows a skeleton until the world topology is loaded, then
  * runs one continuous rAF loop that only redraws when something is dirty.
  * @param onPick   fired on a tap with `{ lat, lon, id, name, point }` — `point` is the hit overlay point, if any
@@ -104,14 +112,16 @@ const easeInOut = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2)
  * @param marker   `{ lat, lon }` pin for a chosen location
  * @param focus    `{ lat, lon }` — animate the globe to centre it (used as the initial view when supplied at mount)
  * @param points   `[{ lat, lon, r, color, pulse }]` overlay dots; `pulse: true` draws expanding rings on the canvas
+ * @param paths    `[{ geo, color, width, alpha, dash }]` GeoJSON geometries stroked on the sphere — a ground
+ *                 track (LineString) or a band ({@link ringAround}); `dash` carries meaning, not decoration
  * @param spin     idle auto-rotation (default true; pauses while dragging, zoomed, selected or marked)
  * @param height   max size in px (the globe is square)
  * @returns the globe's VNode
  */
-export function Globe({ onPick, selected, marker, focus, points, spin = true, height = 340 }) {
+export function Globe({ onPick, selected, marker, focus, points, paths, spin = true, height = 340 }) {
   const wrap = useRef(), canvas = useRef();
   const S = useRef({ rot: focus ? [-focus.lon, -focus.lat] : [10, -20], drag: null, fly: null, raf: 0, zoom: 1, ptrs: new Map(), pinch: null, pinched: false, lastTap: 0 });
-  const P = useRef({}); P.current = { onPick, selected, marker, points, spin }; 
+  const P = useRef({}); P.current = { onPick, selected, marker, points, paths, spin }; 
   const [ready, setReady] = useState(!!LAND);
 
   useEffect(() => { loadWorld().then(() => setReady(true)).catch(() => {}); }, []);
@@ -142,6 +152,15 @@ export function Globe({ onPick, selected, marker, focus, points, spin = true, he
         ctx.strokeStyle = c.stroke; ctx.lineWidth = 0.4; ctx.stroke();
       }
       ctx.beginPath(); path({ type: "Sphere" }); ctx.strokeStyle = c.edge; ctx.lineWidth = 1; ctx.stroke();
+      if (p.paths) for (const g of p.paths) {
+        if (!g || !g.geo) continue;
+        ctx.beginPath(); path(g.geo);
+        ctx.strokeStyle = g.color || c.accent; ctx.lineWidth = g.width || 1.2;
+        ctx.globalAlpha = g.alpha == null ? 1 : g.alpha;
+        if (g.dash) ctx.setLineDash(g.dash);
+        ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha = 1;
+      }
       const center = [-s.rot[0], -s.rot[1]];
       const dot = (lon, lat, r, fill, ring) => { if (geoDistance([lon, lat], center) > Math.PI / 2) return; const xy = proj([lon, lat]); if (!xy) return; ctx.beginPath(); ctx.arc(xy[0], xy[1], r, 0, 2 * Math.PI); ctx.fillStyle = fill; ctx.fill(); if (ring) { ctx.strokeStyle = ring; ctx.lineWidth = 1.5; ctx.stroke(); } };
       if (p.points) for (const pt of p.points) dot(pt.lon, pt.lat, pt.r || 3, pt.color || c.accent);

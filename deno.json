@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "1.2.80",
+  "version": "1.2.81",
   "license": "MIT",
   "publish": {
     "exclude": [
@@ -72,6 +72,7 @@
     "./runtime/camprime.js": "./packages/runtime/camprime.js",
     "./runtime/camstage.js": "./packages/runtime/camstage.js",
     "./runtime/calendar.js": "./packages/runtime/calendar.js",
+    "./runtime/watch.js": "./packages/runtime/watch.js",
     "./runtime/godotstage.js": "./packages/runtime/godotstage.js",
     "./runtime/colour.js": "./packages/runtime/colour.js",
     "./runtime/console.js": "./packages/runtime/console.js",

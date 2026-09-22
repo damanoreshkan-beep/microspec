@@ -1,0 +1,16 @@
+/**
+ * The profile card for ONE source. `params` pins what the source needs when the app already knows it (a
+ * currency pair); otherwise a `needs: "geo"` source asks for the place itself on the first save.
+ */
+export function Bell({ source, loc, params, className }: {
+    source: any;
+    loc: any;
+    params?: any;
+    className?: string;
+}): any;
+/** Every rule this account has, plus what the edge will let it make. */
+export function watchList(): Promise<any>;
+/** Store one rule. Throws with `.reason` — "telegram" (wrong account), "too many", "bad rule". */
+export function watchAdd(rule: any): Promise<any>;
+/** Forget one rule. */
+export function watchDel(id: any): Promise<boolean>;

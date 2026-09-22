@@ -195,6 +195,25 @@
               "description": "Iconify icon for the source row."
             }
           }
+        },
+        "watch": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source"
+          ],
+          "description": "THE BELL — the app offers 'tell me when' over one watchable source (/_rt/watch.js). The edge owns the unit, the bounds and the poll interval (microspec-edge edge/watch.js), so nothing about the number is restated here; an app declares WHICH source and nothing else.",
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Source key in the edge's matrix: kp · rate · air · weather · launch · quake."
+            },
+            "params": {
+              "type": "object",
+              "description": "Fixed parameters, when the app already knows them (e.g. a currency pair). A source that needs a place and is given none asks the reader for one, once."
+            }
+          }
         }
       }
     },

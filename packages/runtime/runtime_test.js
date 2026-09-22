@@ -25,6 +25,7 @@ import "./tests/console_test.js";
 import "./tests/deck_test.js";
 import "./tests/fittext_test.js";
 import "./tests/geofix_test.js";
+import "./tests/globe_test.js";
 import "./tests/gesture_test.js";
 import "./tests/geomag_test.js";
 import "./tests/graph_test.js";

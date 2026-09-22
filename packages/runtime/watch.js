@@ -1,0 +1,182 @@
+/* @ts-self-types="./watch.d.ts" */
+/**
+ * # runtime/watch.js — "tell me when", for any app with a number in it
+ *
+ * Every app in the farm answers the same shape of question: what is it NOW. This is the other half — a
+ * rule the edge keeps: a source, a line, and a Telegram chat to say it in. It is systemic in the sense
+ * `globe.js` and `calendar.js` are: it knows nothing about what the number MEANS. The edge's source matrix
+ * (microspec-edge `edge/watch.js`) names what can be watched, its unit and its sane bounds; this component
+ * renders whatever comes back, so a seventh source appears in every app's profile without a line changing
+ * here.
+ *
+ * ## Why it lives in the runtime and not in an app
+ *
+ * Because the bell is not a feature of the weather app. Free data is pull-only — no public API will ever
+ * wake anyone — so "tell me when" is the one thing the farm can sell over any of them, and a control that
+ * exists once is a control that is designed, translated and accessible once. An app opts in with a single
+ * spec key:
+ *
+ * ```json
+ * "profile": { "watch": { "source": "air" } }
+ * ```
+ *
+ * ## Import
+ * ```js
+ * import { Bell, watchList, watchAdd, watchDel } from "/_rt/watch.js";                    // an app's page
+ * import { Bell } from "@microspec/core/runtime/watch.js";                                 // a product rt/ module
+ * ```
+ *
+ * ## What it exports
+ *
+ * - {@link watchList} — `()` → `{rules, sources, balance, cost, max}`; the edge decides all five.
+ * - {@link watchAdd} — `({source, params, op, value, lang})` → the stored rule, or throws with `.reason`.
+ * - {@link watchDel} — `(id)` → true.
+ * - {@link Bell} — the profile card: the rules on one source, and one form to add another.
+ *
+ * ## The rules it renders
+ *
+ * - **A rule needs the Telegram account**, because delivery IS the identity: a rule with nowhere to arrive
+ *   is not a rule. Signed in another way, the card says so and offers the one that works.
+ * - **The line is the app's business, the unit is the edge's.** The number input is bounded by `min`/`max`
+ *   from the source matrix, so an app cannot offer a Kp of 40.
+ * - **A place is asked for once, and only when the source needs one** (`needs: "geo"`). The coordinates go
+ *   to the edge rounded — it rounds again to ~110 m to make the poll shared — and nothing is stored here.
+ * - **The cost is shown before the button, never after the alert.** One coin per delivered message is the
+ *   whole price list, and a balance of zero is not an error state: rules go quiet and resume on a top-up.
+ */
+import { html } from "htm/preact";
+import { useState, useEffect } from "preact/hooks";
+import { useStore } from "@nanostores/preact";
+import { session } from "./auth.js";
+import { VPS_PROXY } from "./feed.js";
+import { gate } from "./gate.js";
+import { sys } from "./i18n.js";
+
+const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
+
+// Under the gate there is no edge and no account, and a headless run must still see the control it is
+// there to photograph — so the fixture is one source, one rule, and a balance that can afford it.
+const FIXTURE = {
+  rules: [{ id: 1, source: "air", params: { lat: 50.45, lon: 30.523 }, op: "above", value: 35, last: 12, firedAt: null, quiet: false }],
+  sources: { air: { app: "air", unit: "µg/m³", dflt: 35, min: 0, max: 1000, needs: "geo" } },
+  balance: 12, cost: 1, max: 20,
+};
+
+const call = async (route, body) => {
+  const r = await fetch(`${VPS_PROXY}/watch/${route}`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}),
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw Object.assign(new Error("watch " + r.status), { status: r.status, reason: j?.error || "" });
+  return j;
+};
+
+/** Every rule this account has, plus what the edge will let it make. */
+export const watchList = () => (gate ? Promise.resolve(FIXTURE) : call("list"));
+/** Store one rule. Throws with `.reason` — "telegram" (wrong account), "too many", "bad rule". */
+export const watchAdd = (rule) => (gate ? Promise.resolve({ rule: { ...rule, id: Date.now() } }) : call("add", rule)).then((j) => j.rule);
+/** Forget one rule. */
+export const watchDel = (id) => (gate ? Promise.resolve(true) : call("del", { id }).then(() => true));
+
+/** One fix, or null. Asked for only when the source needs a place, and never kept. */
+function place() {
+  return new Promise((ok) => {
+    if (!navigator.geolocation) return ok(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => ok({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      () => ok(null),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 },
+    );
+  });
+}
+
+const fmt = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100));
+
+/**
+ * The profile card for ONE source. `params` pins what the source needs when the app already knows it (a
+ * currency pair); otherwise a `needs: "geo"` source asks for the place itself on the first save.
+ */
+export function Bell({ source, loc, params = null, className = "" }) {
+  const sess = useStore(session);
+  const [state, setState] = useState(null);      // {rules, sources, balance, cost, max} | null while loading
+  const [value, setValue] = useState(null);
+  const [op, setOp] = useState("above");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const load = () => watchList().then((j) => {
+    setState(j);
+    setValue((v) => (v == null ? (j.sources?.[source]?.dflt ?? 0) : v));
+  }).catch(() => setState({ rules: [], sources: {}, balance: 0, cost: 1, max: 0, down: true }));
+
+  useEffect(() => { if (sess || gate) load(); else setState(null); }, [sess?.sid]);
+
+  const tg = gate || sess?.provider === "telegram";
+  const S = state?.sources?.[source];
+  const mine = (state?.rules || []).filter((r) => r.source === source);
+
+  // Not the Telegram account → the card says what is missing and stops. Offering a form that can only end
+  // in a 409 would be a control that lies about what it does.
+  if (!tg) {
+    return html`<div data-watch=${source} class=${`card sf-raised sf-e2 rounded-[var(--ms-r)] ${className}`}><div class="card-body p-4 gap-2">
+      <div class="flex items-center gap-3">
+        <div class="size-11 rounded-xl grid place-items-center bg-primary/10 text-primary shrink-0">${Icon("lucide:bell", "text-2xl")}</div>
+        <div class="flex-1 min-w-0"><div class="font-semibold leading-tight">${sys("watchRow", loc)}</div><div class="text-xs text-muted">${sys("watchNeedTg", loc)}</div></div>
+      </div>
+      <a data-watch-tg href="https://t.me/dreamstudio_x_bot" target="_blank" rel="noopener" class="btn btn-sm btn-primary rounded-full self-start">${Icon("lucide:send", "text-[1em]")} Telegram</a>
+    </div></div>`;
+  }
+  if (!state || !S) return null;
+
+  const save = async () => {
+    setBusy(true); setErr("");
+    try {
+      let p = params;
+      if (!p && S.needs === "geo") { p = await place(); if (!p) { setErr(sys("watchNoPlace", loc)); setBusy(false); return; } }
+      await watchAdd({ source, params: p || {}, op, value: Number(value), lang: loc });
+      await load();
+    } catch (e) {
+      setErr(e?.reason === "too many" ? sys("watchTooMany", loc) : sys("watchFailed", loc));
+    }
+    setBusy(false);
+  };
+
+  const unit = S.unit ? " " + S.unit : "";
+  return html`<div data-watch=${source} class=${`card sf-raised sf-e2 rounded-[var(--ms-r)] ${className}`}><div class="card-body p-4 gap-3">
+    <div class="flex items-center gap-3">
+      <div class="size-11 rounded-xl grid place-items-center bg-primary/10 text-primary shrink-0">${Icon("lucide:bell", "text-2xl")}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold leading-tight truncate">${sys("watchRow", loc)}</div>
+        <div class="text-xs text-muted truncate">${sys("watchCost", loc)} · ${sys("watchBalance", loc)} ${state.balance}</div>
+      </div>
+    </div>
+
+    ${mine.length
+      ? html`<ul data-watch-rules class="flex flex-col gap-1">${mine.map((r) => html`<li key=${r.id} class="flex items-center gap-2 rounded-[var(--ms-r-in)] sf-inset px-3 py-2">
+          <span class="flex-1 min-w-0 truncate text-sm tabular-nums">${sys(r.op === "above" ? "watchAbove" : "watchBelow", loc)} ${fmt(r.value)}${unit}${r.last == null ? "" : ` · ${sys("watchNow", loc)} ${fmt(r.last)}`}</span>
+          ${r.quiet ? html`<span class="badge badge-sm">${sys("watchQuiet", loc)}</span>` : null}
+          <button type="button" data-watch-del=${r.id} aria-label=${sys("watchOff", loc)} class="btn btn-ghost btn-xs btn-circle shrink-0"
+            onClick=${async () => { await watchDel(r.id); load(); }}>${Icon("lucide:x", "text-base")}</button>
+        </li>`)}</ul>`
+      : null}
+
+    ${mine.length < (state.max || 0)
+      ? html`<div class="flex items-center gap-2">
+          <div class="join">
+            ${[["above", "watchAbove"], ["below", "watchBelow"]].map(([o, k]) => html`<button key=${o} type="button" data-watch-op=${o}
+              class=${`btn btn-sm join-item ${op === o ? "btn-active btn-primary" : ""}`} onClick=${() => setOp(o)}>${sys(k, loc)}</button>`)}
+          </div>
+          <label class="flex-1 min-w-0 flex items-center gap-1">
+            <span class="sr-only">${sys("watchRow", loc)}</span>
+            <input data-watch-value type="number" inputmode="decimal" class="input input-sm input-bordered w-full tabular-nums"
+              min=${S.min} max=${S.max} value=${value ?? S.dflt} onInput=${(e) => setValue(e.currentTarget.value)} />
+            ${S.unit ? html`<span class="text-xs text-muted shrink-0">${S.unit}</span>` : null}
+          </label>
+          <button type="button" data-watch-add class="btn btn-sm btn-primary rounded-full shrink-0" disabled=${busy} onClick=${save}>
+            ${busy ? html`<span class="loading loading-spinner loading-xs"></span>` : Icon("lucide:check", "text-base")}
+          </button>
+        </div>`
+      : null}
+    ${err ? html`<div data-watch-err class="text-xs text-error">${err}</div>` : null}
+  </div></div>`;
+}

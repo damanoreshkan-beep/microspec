@@ -18,6 +18,7 @@
 //   deno test -A packages/runtime/runtime_test.js
 import "./tests/apk_test.js";
 import "./tests/calendar_test.js";
+import "./tests/watch_test.js";
 import "./tests/candidates_test.js";
 import "./tests/colour_test.js";
 import "./tests/console_test.js";

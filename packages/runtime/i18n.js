@@ -152,6 +152,20 @@ export const SYS = {
   // a control owns its name, so no app has to restate "previous month" in two locales to mount a calendar.
   calPrev: { en: "Previous month", uk: "Попередній місяць" },
   calNext: { en: "Next month", uk: "Наступний місяць" },
+  // The bell (/_rt/watch.js). An alert is the one thing the farm sells over data anybody can fetch, so its
+  // control is systemic and its words live here — an app opts in with one spec key and restates nothing.
+  watchRow: { en: "Tell me when", uk: "Сповісти мене" },
+  watchNeedTg: { en: "Alerts arrive in Telegram — sign in there", uk: "Сповіщення приходять у Telegram — увійдіть там" },
+  watchCost: { en: "1 coin per alert", uk: "1 монета за сповіщення" },
+  watchBalance: { en: "balance", uk: "баланс" },
+  watchAbove: { en: "above", uk: "вище" },
+  watchBelow: { en: "below", uk: "нижче" },
+  watchNow: { en: "now", uk: "зараз" },
+  watchQuiet: { en: "out of coins", uk: "немає монет" },
+  watchOff: { en: "Remove this alert", uk: "Прибрати сповіщення" },
+  watchNoPlace: { en: "Couldn't get your location", uk: "Не вдалося визначити місце" },
+  watchTooMany: { en: "That is as many alerts as one account keeps", uk: "Більше сповіщень на один акаунт не можна" },
+  watchFailed: { en: "Couldn't save the alert", uk: "Не вдалося зберегти сповіщення" },
   // Systemic "Download APK" — every app can emit itself as a sideloadable Android APK (edge-signed).
   apkRow: { en: "Download APK", uk: "Завантажити APK" },
   signOut: { en: "Sign out", uk: "Вийти" },

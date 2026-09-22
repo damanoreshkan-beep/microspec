@@ -1,6 +1,7 @@
 {
   "name": "@microspec/core",
   "version": "1.2.81",
+  "//release": "A version bump here publishes to JSR — but ONLY on a push event to main. Measured 2026-09-22: after-merge.yml dispatches publish.yml, and a workflow_dispatch run is attributed to github-actions[bot], which JSR refuses with `actorNotScopeMember` because the bot is not a member of the @microspec scope. Every green dispatch run in the history was a no-op that found the version already on the registry, put there by the push run beside it. So a pull request merged through the API (no push event) leaves the bump unpublished and silent: the workflow list shows one red publish and dreamstudio installs the previous core. If that happens, land a commit touching this file on main as the owner.",
   "license": "MIT",
   "publish": {
     "exclude": [

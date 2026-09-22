@@ -162,6 +162,7 @@ export const SYS = {
   watchBelow: { en: "below", uk: "нижче" },
   watchNow: { en: "now", uk: "зараз" },
   watchQuiet: { en: "out of coins", uk: "немає монет" },
+  watchSave: { en: "Save this alert", uk: "Зберегти сповіщення" },
   watchOff: { en: "Remove this alert", uk: "Прибрати сповіщення" },
   watchNoPlace: { en: "Couldn't get your location", uk: "Не вдалося визначити місце" },
   watchTooMany: { en: "That is as many alerts as one account keeps", uk: "Більше сповіщень на один акаунт не можна" },

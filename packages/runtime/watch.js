@@ -41,6 +41,9 @@
  *   from the source matrix, so an app cannot offer a Kp of 40.
  * - **A place is asked for once, and only when the source needs one** (`needs: "geo"`). The coordinates go
  *   to the edge rounded — it rounds again to ~110 m to make the poll shared — and nothing is stored here.
+ * - **Every control here carries its own name.** The save button is a tick and the remove button an
+ *   ×; an icon-only button with no `aria-label` is a critical axe failure, and it is the one this
+ *   component shipped with until the farm's verify gate caught it on all seven apps at once.
  * - **The cost is shown before the button, never after the alert.** One coin per delivered message is the
  *   whole price list, and a balance of zero is not an error state: rules go quiet and resume on a top-up.
  */
@@ -175,7 +178,7 @@ export function Bell({ source, loc, params = null, className = "" }) {
               min=${S.min} max=${S.max} value=${value ?? S.dflt} onInput=${(e) => setValue(e.currentTarget.value)} />
             ${S.unit ? html`<span class="text-xs text-muted shrink-0">${S.unit}</span>` : null}
           </label>
-          <button type="button" data-watch-add class="btn btn-sm btn-primary rounded-full shrink-0" disabled=${busy} onClick=${save}>
+          <button type="button" data-watch-add aria-label=${sys("watchSave", loc)} class="btn btn-sm btn-primary rounded-full shrink-0" disabled=${busy} onClick=${save}>
             ${busy ? html`<span class="loading loading-spinner loading-xs"></span>` : Icon("lucide:check", "text-base")}
           </button>
         </div>`

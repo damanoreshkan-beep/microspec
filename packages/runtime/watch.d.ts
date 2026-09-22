@@ -9,8 +9,9 @@ export function Bell({ source, loc, params, className }: {
     params?: any;
     className?: string;
 }): any;
-/** Every rule this account has, plus what the edge will let it make. */
-export function watchList(): Promise<any>;
+/** Every rule this account has, plus what the edge will let it make. `source` is read only under the
+ *  gate, where it shapes the fixture; the live call always answers with the whole matrix. */
+export function watchList(source?: string): Promise<any>;
 /** Store one rule. Throws with `.reason` — "telegram" (wrong account), "too many", "bad rule". */
 export function watchAdd(rule: any): Promise<any>;
 /** Forget one rule. */

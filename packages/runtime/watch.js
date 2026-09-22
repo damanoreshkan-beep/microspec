@@ -55,12 +55,14 @@ import { sys } from "./i18n.js";
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
 // Under the gate there is no edge and no account, and a headless run must still see the control it is
-// there to photograph — so the fixture is one source, one rule, and a balance that can afford it.
-const FIXTURE = {
-  rules: [{ id: 1, source: "air", params: { lat: 50.45, lon: 30.523 }, op: "above", value: 35, last: 12, firedAt: null, quiet: false }],
-  sources: { air: { app: "air", unit: "µg/m³", dflt: 35, min: 0, max: 1000, needs: "geo" } },
+// there to photograph. The fixture is built AROUND THE SOURCE THE APP ASKED FOR rather than a fixed one:
+// a canned payload naming `air` renders nothing in the five apps that watch something else, and "the
+// control is missing" is exactly what the gate exists to catch — it must not be the fixture's own doing.
+const fixture = (source) => ({
+  rules: [{ id: 1, source, params: {}, op: "above", value: 35, last: 12, firedAt: null, quiet: false }],
+  sources: { [source]: { app: source, unit: "", dflt: 35, min: 0, max: 1000, needs: null } },
   balance: 12, cost: 1, max: 20,
-};
+});
 
 const call = async (route, body) => {
   const r = await fetch(`${VPS_PROXY}/watch/${route}`, {
@@ -71,8 +73,9 @@ const call = async (route, body) => {
   return j;
 };
 
-/** Every rule this account has, plus what the edge will let it make. */
-export const watchList = () => (gate ? Promise.resolve(FIXTURE) : call("list"));
+/** Every rule this account has, plus what the edge will let it make. `source` is read only under the
+ *  gate, where it shapes the fixture; the live call always answers with the whole matrix. */
+export const watchList = (source = "kp") => (gate ? Promise.resolve(fixture(source)) : call("list"));
 /** Store one rule. Throws with `.reason` — "telegram" (wrong account), "too many", "bad rule". */
 export const watchAdd = (rule) => (gate ? Promise.resolve({ rule: { ...rule, id: Date.now() } }) : call("add", rule)).then((j) => j.rule);
 /** Forget one rule. */
@@ -104,7 +107,7 @@ export function Bell({ source, loc, params = null, className = "" }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const load = () => watchList().then((j) => {
+  const load = () => watchList(source).then((j) => {
     setState(j);
     setValue((v) => (v == null ? (j.sources?.[source]?.dflt ?? 0) : v));
   }).catch(() => setState({ rules: [], sources: {}, balance: 0, cost: 1, max: 0, down: true }));

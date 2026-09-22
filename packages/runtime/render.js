@@ -644,13 +644,34 @@ function Profile({ tab }) {
         onClick=${async () => { const s = await payStars(n); if (s === "paid") { celebrate(); A.toast(sys("supportThanks", loc)); } else if (s === "error" || s === "failed") A.toast(sys("supportFailed", loc)); }}>
         ${Icon("lucide:star", "text-[0.9em] opacity-80")}${n}</button>`)}</div>
     </div></div>` : null}
-    ${p.watch?.source ? html`<${WatchSlot} source=${p.watch.source} params=${p.watch.params || null} loc=${loc} />` : null}
+    ${p.watch?.source ? html`<button id="p-watch" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("watch")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bell", "text-xl text-primary")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("watchRow", loc)}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>` : null}
     ${savedTab ? html`<button class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
     ${p.theme || materials.length > 1 ? html`<${ThemeWidget} t=${t} loc=${loc} theme=${theme} modeToggle=${!!p.theme} materials=${materials} current=${material?.id} />` : null}
     ${p.lang ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
     ${p.permissions?.length ? html`<button id="p-perms" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("perms")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield-check", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${permLabels(loc).row}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>` : null}
     ${p.source ? html`<a href=${p.source.url} target="_blank" rel="noopener" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon(p.source.icon || "lucide:database", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, p.source.label)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
     <div data-version class="text-center text-[11px] text-base-content/70 pt-1 tabular-nums">v${appVersion(A.spec)} · core ${CORE}${BUILD && BUILD !== "dev" ? ` · ${BUILD}` : ""}</div>
+  </div>`;
+}
+
+// ---- the bell screen (history-backed, opened from the app bar AND the profile) ----
+// One surface, two doors. The card used to sit inline in the profile tab, which is where nobody goes: a
+// reader opens "Magnetic storms" to look at Kp and leaves — the settings page is not on that path. So the
+// bar carries a bell whenever the spec names a watchable source, and the profile keeps a row that opens the
+// same screen. Making it a SCREEN rather than a second inline card is what stops there being two of it, and
+// it also stops the profile tab doing a network call every time it is opened.
+function WatchScreen() {
+  const loc = useStore(A.S.locale), t = useStore(A.S.t);
+  const w = A.spec.profile?.watch || {};
+  return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">
+    <header class="navbar sticky top-0 z-10 px-2 gap-1" style="padding-top:var(--ms-safe-top)">
+      <button id="watch-back" class="btn btn-ghost btn-sm btn-circle" aria-label=${sys("back", loc)} onClick=${() => A.S.screen.set(null)}>${Icon("lucide:arrow-left", "text-xl")}</button>
+      <div class="flex-1 font-bold tracking-tight px-1">${sys("watchRow", loc)}</div>
+    </header>
+    <div class="px-4 pt-3 pb-8 flex flex-col gap-3 max-w-xl mx-auto">
+      <p class="text-sm text-muted px-1">${T(t, "profTagline")}</p>
+      <${WatchSlot} source=${w.source} params=${w.params || null} loc=${loc} />
+    </div>
   </div>`;
 }
 
@@ -1146,7 +1167,7 @@ function AppBar() {
   // The "open on phone" trigger is desktop-only (hidden lg:) — a QR of THIS page to hop to your phone; it
   // stays in the DOM on mobile (display:none) so nothing needs a special build, and it's harmless there.
   // folded: the wordmark, then the actions; the hidden twin `#filter` keeps the gate's typed queries working
-  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:var(--ms-safe-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><${Battery} />${searchable ? html`<input id="filter" type="search" class="hidden" tabindex="-1" aria-hidden="true" onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /><button id="search-btn" class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, tab.searchKey || "search")} onClick=${() => A.S.searchOpen.set(true)}>${Icon("lucide:search", "text-xl")}</button>` : null}<button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
+  return html`<header ref=${hdrRef} class="navbar sticky top-0 z-30 px-4 gap-1" style="padding-top:var(--ms-safe-top)"><div class="flex-1 min-w-0"><span data-title class="block truncate">${T(t, "title")}</span></div><${Battery} />${A.spec.profile?.watch?.source ? html`<button id="watch-btn" class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${sys("watchRow", loc)} onClick=${() => A.S.screen.set("watch")}>${Icon("lucide:bell", "text-xl")}</button>` : null}${searchable ? html`<input id="filter" type="search" class="hidden" tabindex="-1" aria-hidden="true" onInput=${(e) => { A.S.query.set(e.target.value); if (tab.searchFetch) debouncedLoad(); }} /><button id="search-btn" class="btn btn-ghost btn-sm btn-circle shrink-0" aria-label=${T(t, tab.searchKey || "search")} onClick=${() => A.S.searchOpen.set(true)}>${Icon("lucide:search", "text-xl")}</button>` : null}<button id="qr-open" class="btn btn-ghost btn-sm btn-circle shrink-0 hidden lg:inline-flex" aria-label=${qL.open} onClick=${() => A.S.qrOpen.set(true)}>${Icon("lucide:smartphone", "text-xl")}</button>${A.spec.filters ? html`<button id="filter-btn" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "ariaFilter")} onClick=${() => A.S.sheet.set(true)}>${Icon("lucide:sliders-horizontal", "text-xl")}</button>` : null}${A.canRefresh ? html`<button id="refresh" class="btn btn-ghost btn-sm btn-circle" aria-label=${T(t, "refresh")} onClick=${() => A.load()}>${Icon("lucide:rotate-cw", "text-xl")}</button>` : null}</header>`;
 }
 
 // Desktop "open on phone": a QR of the current URL so you can continue on a phone, with an explicit "stay on
@@ -1597,6 +1618,7 @@ export function App() {
     <${PlayerHost} />
     ${A.spec.filters ? html`<${FilterSheet} />` : null}
     ${screen === "perms" ? html`<${PermissionsScreen} />` : null}
+    ${screen === "watch" ? html`<${WatchScreen} />` : null}
     ${screen === "apk" ? html`<${ApkScreen} />` : null}
     ${screen === "signin" ? html`<${SignInScreen} />` : null}
     ${clean ? null : html`<${DockFade} />`}

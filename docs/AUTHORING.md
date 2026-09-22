@@ -148,8 +148,9 @@ Compose the shared runtime components instead of writing geometry/astronomy from
   nothing about what a day contains — the caller marks the days and gets the tapped one back. Month and
   weekday names come from `Intl`, so it needs no i18n key from the app. Pure helpers beside it (`dayKey`,
   `monthKey`, `addMonths`, `monthGrid`) key days **locally**, never off the ISO string.
-- `/_rt/watch.js` — `<Bell source params loc/>`: the farm's "tell me when". An app opts in with one spec
-  key, `profile.watch.source`, and the profile grows the card; the EDGE owns the source matrix (its unit,
+- `/_rt/watch.js` — `<Bell source params app loc/>`: the farm's "tell me when". An app opts in with one
+  spec key, `profile.watch.source`, and the app bar grows a BELL that opens it (the profile keeps a row to
+  the same screen — one surface, two doors); the EDGE owns the source matrix (its unit,
   its bounds, its poll interval), so a new watchable source appears in every app that names it without a
   line changing in the runtime. A rule needs the Telegram account, because delivery is the identity, and
   it costs one coin per delivered alert out of the wallet that already exists.

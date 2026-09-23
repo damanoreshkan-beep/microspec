@@ -171,6 +171,7 @@ export const SYS = {
   watchFailed: { en: "Couldn't save the alert", uk: "Не вдалося зберегти сповіщення" },
   // Systemic "Download APK" — every app can emit itself as a sideloadable Android APK (edge-signed).
   apkRow: { en: "Download APK", uk: "Завантажити APK" },
+  adminRow: { en: "Farm admin", uk: "Адмінка ферми" },
   signOut: { en: "Sign out", uk: "Вийти" },
   signedOut: { en: "Not signed in", uk: "Ви не увійшли" },
   accountVia: { en: "via", uk: "через" },

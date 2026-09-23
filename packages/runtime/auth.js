@@ -128,6 +128,26 @@ export const SCOPE = "public_repo";
 /** The session atom: null when signed out, `{ sid, user, provider }` when signed in. */
 export const session = atom(null);
 
+// ── the admin way in ─────────────────────────────────────────────────────────────────────────────────────
+// The farm has one private panel and this repository is PUBLIC, so its path is not written here — not even
+// in this comment, which is where the test below first caught it: `/feed/admin/whoami` answers about the CALLER only, and hands back a `panel` field to an
+// account whose role is admin and to nobody else. The profile renders a row when the field arrives and has
+// no idea what it would point at when it does not.
+//
+// One call per session, cached: every signed-in reader's profile would otherwise ask this on every open, to
+// be told "no" — and the answer cannot change without a new sid, because the role is keyed to the account.
+// `dropStored` clears the cache, which is the only way a session ends here.
+let panelAsked = null;
+export function adminPanel() {
+  if (gate) return Promise.resolve(null);          // a row in a headless screenshot would publish the surface
+  const s = session.get();
+  if (!s?.sid) { panelAsked = null; return Promise.resolve(null); }
+  panelAsked ??= fetch(`${VPS_PROXY}/admin/whoami`, {
+    method: "POST", headers: { "content-type": "application/json", "x-ms-sid": s.sid }, body: "{}",
+  }).then((r) => (r.ok ? r.json() : null)).then((j) => (typeof j?.panel === "string" ? j.panel : null)).catch(() => null);
+  return panelAsked;
+}
+
 // A deterministic stand-in so the login-gated feed renders under the gate (the shot must see the populated
 // screen, not the sign-in wall). Never used off the gate.
 /** The deterministic GitHub user the gate signs in as; never used off the gate. */
@@ -149,7 +169,7 @@ const lsDel = (k) => { try { localStorage.removeItem(k); } catch { /* private mo
 const lsGetJSON = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } };
 const lsSetJSON = (k, o) => { try { localStorage.setItem(k, JSON.stringify(o)); } catch { /* quota / private mode */ } };
 // Forget the session everywhere (both keys), used only on an explicit logout or a DEFINITIVE 401.
-const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); lsDel(PROV_KEY); };
+const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); lsDel(PROV_KEY); panelAsked = null; };   // the admin answer is keyed to the account, so it goes with it
 
 // Trim a raw GitHub /user payload to what the UI shows — never hold more than needed.
 const trimUser = (u) => (u && u.login ? {

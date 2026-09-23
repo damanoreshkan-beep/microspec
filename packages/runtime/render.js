@@ -606,6 +606,22 @@ function Profile({ tab }) {
   const material = materials.find((m) => m.id === materialId) || materials[0];
   const p = A.spec.profile || {};
   const account = p.account || (A.spec.tabs.some((x) => (x.needs || []).includes("auth")) ? "any" : null);
+  // THE WAY INTO THE FARM'S PANEL, for the one account that has one. Its path is NOT written in this
+  // repository, which is public: the edge answers /feed/admin/whoami with a `panel` field to an admin and to
+  // nobody else, and this row renders whatever arrives. A reader who is not an admin never learns there is
+  // a row to look for.
+  //
+  // auth.js is lazily imported here for the same reason AccountSlot does it — sixty apps never sign anybody
+  // in and must not pay for the module — and only for an app that has an account at all. It is asked once
+  // per profile mount: a reader who signs in while looking at this screen sees the row the next time they
+  // open it, which is the cheap end of a trade nobody will notice.
+  const [adminHref, setAdminHref] = useState(null);
+  useEffect(() => {
+    if (!account) return;
+    let live = true;
+    import("./auth.js").then((m) => m.adminPanel()).then((u) => { if (live) setAdminHref(u || null); }).catch(() => {});
+    return () => { live = false; };
+  }, [account]);
   const savedTab = A.spec.tabs.find((x) => x.source === "fav");
   const install = !!p.install && !isStandalone();
   // Systemic share — available in every app's profile. The APK's WebView has no Web Share API, so the
@@ -647,6 +663,7 @@ function Profile({ tab }) {
     ${savedTab ? html`<button class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
     ${p.theme || materials.length > 1 ? html`<${ThemeWidget} t=${t} loc=${loc} theme=${theme} modeToggle=${!!p.theme} materials=${materials} current=${material?.id} />` : null}
     ${p.lang ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
+    ${adminHref ? html`<a id="p-admin" href=${adminHref} class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield", "text-xl text-primary")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("adminRow", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
     ${p.permissions?.length ? html`<button id="p-perms" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("perms")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield-check", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${permLabels(loc).row}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>` : null}
     ${p.source ? html`<a href=${p.source.url} target="_blank" rel="noopener" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon(p.source.icon || "lucide:database", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, p.source.label)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
     <div data-version class="text-center text-[11px] text-base-content/70 pt-1 tabular-nums">v${appVersion(A.spec)} · core ${CORE}${BUILD && BUILD !== "dev" ? ` · ${BUILD}` : ""}</div>

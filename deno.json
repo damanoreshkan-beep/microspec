@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "1.2.89",
+  "version": "1.2.90",
   "//release": "A version bump here publishes to JSR — but ONLY on a PUSH event to main, and the merge does not always produce one. Measured across 2026-09-22: after-merge.yml dispatches publish.yml, and a workflow_dispatch run is attributed to github-actions[bot], which JSR refuses with `actorNotScopeMember` because the bot is not a member of the @microspec scope. Every green dispatch in the history was a no-op that found the version already on the registry, put there by a push run beside it. 1.2.81 and 1.2.82 both merged green and both stayed unpublished — one merged through the API, one squashed by auto-merge — while dreamstudio went on installing the previous core with no error anywhere near the change. THE CHECK, after every merge that bumps this number: `curl -s https://jsr.io/@microspec/core/meta.json | grep <version>`. If it is not there, push a commit touching this file to main from the command line; that is the one path that has ever published.",
   "license": "MIT",
   "publish": {

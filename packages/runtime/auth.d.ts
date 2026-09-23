@@ -86,6 +86,7 @@
  * - `star` is a deliberate, one-at-a-time human action — never bulk.
  * @module
  */
+export function adminPanel(): any;
 /**
  * Rehydrate the session on app boot: cached profile immediately, revalidated in the background; dropped only on a definitive 401.
  * @returns the session, or null when signed out

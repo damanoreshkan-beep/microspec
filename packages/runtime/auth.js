@@ -106,6 +106,17 @@ export const SCOPE = "public_repo";
 /** The session atom: null when signed out, `{ sid, user, provider }` when signed in. */
 export const session = atom(null);
 
+let panelAsked = null;
+export function adminPanel() {
+  if (gate) return Promise.resolve(null);          
+  const s = session.get();
+  if (!s?.sid) { panelAsked = null; return Promise.resolve(null); }
+  panelAsked ??= fetch(`${VPS_PROXY}/admin/whoami`, {
+    method: "POST", headers: { "content-type": "application/json", "x-ms-sid": s.sid }, body: "{}",
+  }).then((r) => (r.ok ? r.json() : null)).then((j) => (typeof j?.panel === "string" ? j.panel : null)).catch(() => null);
+  return panelAsked;
+}
+
 /** The deterministic GitHub user the gate signs in as; never used off the gate. */
 export const MOCK_USER = { login: "octocat", name: "Octocat", avatar: "", html_url: "https://github.com/octocat" };
 const MOCK_SESSION = { sid: "mock-sid", user: MOCK_USER, provider: "github" };
@@ -123,7 +134,7 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {  } };
 const lsDel = (k) => { try { localStorage.removeItem(k); } catch {  } };
 const lsGetJSON = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } };
 const lsSetJSON = (k, o) => { try { localStorage.setItem(k, JSON.stringify(o)); } catch {  } };
-const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); lsDel(PROV_KEY); };
+const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); lsDel(PROV_KEY); panelAsked = null; };   
 
 const trimUser = (u) => (u && u.login ? {
   login: u.login, name: u.name || u.login, avatar: u.avatar_url || "", html_url: u.html_url || `https://github.com/${u.login}`,

@@ -150,6 +150,7 @@ export const SYS = {
   watchTooMany: { en: "That is as many alerts as one account keeps", uk: "Більше сповіщень на один акаунт не можна" },
   watchFailed: { en: "Couldn't save the alert", uk: "Не вдалося зберегти сповіщення" },
   apkRow: { en: "Download APK", uk: "Завантажити APK" },
+  adminRow: { en: "Farm admin", uk: "Адмінка ферми" },
   signOut: { en: "Sign out", uk: "Вийти" },
   signedOut: { en: "Not signed in", uk: "Ви не увійшли" },
   accountVia: { en: "via", uk: "через" },

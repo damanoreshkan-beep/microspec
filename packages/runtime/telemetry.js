@@ -31,7 +31,8 @@
  * `build` — the deployed short SHA of the shell that sent the row, so a phone still running an old
  * service-worker cache is told apart from a bug in the new code), and the client context the edge adds:
  * app id, user agent, locale, viewport, display mode, a hash of the session id (never the sid), a hash of
- * the address. No picture bytes, no prompt text unless an app puts it in `data`.
+ * the address, a hash of a coarse device seed (never raw — see {@link seedOf}). No picture bytes, no prompt
+ * text unless an app puts it in `data`.
  *
  * ## Why
  * The one thing a bug report from a phone cannot carry is the number the diagnosis needs — the mime type
@@ -52,7 +53,33 @@ export const FLUSH_MS = 3000;
 export const PER_MINUTE = 40;
 const DATA_MAX = 2048;
 
-let app = "", queue = [], timer = 0, sentThisMinute = 0, minuteAt = 0, dropped = 0, installed = false;
+let app = "", queue = [], timer = 0, sentThisMinute = 0, minuteAt = 0, dropped = 0, installed = false, seedCache = null;
+
+/**
+ * A coarse, stable-per-device value: screen size, timezone, platform, cpu/mem, GPU renderer — computed once
+ * and cached. Sent RAW in the batch body; the edge hashes it before it ever touches Postgres (same as the
+ * sid and the address), so this module never stores or reads back an identifying value itself. Exists
+ * because `ip_hash` alone cannot tell one visitor from the next reload on a mobile carrier (CGNAT rotates
+ * the address per tower/session) — this is the value that survives that rotation.
+ */
+function seedOf() {
+  if (seedCache !== null) return seedCache;
+  try {
+    const scr = typeof screen !== "undefined" ? `${screen.width}x${screen.height}` : "";
+    const tz = typeof Intl !== "undefined" ? (Intl.DateTimeFormat().resolvedOptions().timeZone || "") : "";
+    const plat = typeof navigator !== "undefined" ? (navigator.platform || "") : "";
+    const cpu = typeof navigator !== "undefined" ? (navigator.hardwareConcurrency || 0) : 0;
+    const mem = typeof navigator !== "undefined" ? (navigator.deviceMemory || 0) : 0;
+    let gpu = "";
+    try {
+      const gl = document.createElement("canvas").getContext("webgl");
+      const dbg = gl?.getExtension("WEBGL_debug_renderer_info");
+      gpu = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)).slice(0, 80) : "";
+    } catch { /* no webgl */ }
+    seedCache = [scr, tz, plat, cpu, mem, gpu].join("|");
+  } catch { seedCache = ""; }
+  return seedCache;
+}
 
 /**
  * An Error, a string or anything thrown → `{ msg, stack }`, capped so a row stays small.
@@ -70,6 +97,7 @@ const context = () => ({
   vw: typeof innerWidth === "number" ? innerWidth : 0, vh: typeof innerHeight === "number" ? innerHeight : 0, dpr: typeof devicePixelRatio === "number" ? devicePixelRatio : 1,
   mode: typeof matchMedia === "function" && (matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: standalone)").matches) ? "app" : "tab",
   path: typeof location !== "undefined" ? location.pathname : "",
+  seed: seedOf(),
 });
 
 async function flush() {

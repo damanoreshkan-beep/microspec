@@ -30,7 +30,8 @@
  * `build` — the deployed short SHA of the shell that sent the row, so a phone still running an old
  * service-worker cache is told apart from a bug in the new code), and the client context the edge adds:
  * app id, user agent, locale, viewport, display mode, a hash of the session id (never the sid), a hash of
- * the address. No picture bytes, no prompt text unless an app puts it in `data`.
+ * the address, a hash of a coarse device seed (never raw — see {@link seedOf}). No picture bytes, no prompt
+ * text unless an app puts it in `data`.
  *
  * ## Why
  * The one thing a bug report from a phone cannot carry is the number the diagnosis needs — the mime type

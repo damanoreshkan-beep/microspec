@@ -51,12 +51,14 @@
  * Undefined identifiers a zero-build stack would only discover in the browser.
  * @module
  */
+import { importSpecs, resolveSpec } from "./graph.mjs";
+
 
 const BROWSER = new Set([
   "document", "requestAnimationFrame", "cancelAnimationFrame", "getComputedStyle", "devicePixelRatio",
   "matchMedia", "Image", "DOMParser", "IntersectionObserver", "ResizeObserver", "MutationObserver",
   "DeviceOrientationEvent", "AudioContext", "webkitAudioContext", "AudioWorkletNode", "OfflineAudioContext",
-  "OffscreenCanvas",
+  "OffscreenCanvas", "innerWidth", "innerHeight", "screen", "Audio",
 ]);
 
 const entries = [];
@@ -64,6 +66,17 @@ for await (const e of Deno.readDir("apps")) {
   if (!e.isDirectory) continue;
   for (const f of ["view.js", "data.js", "stream.js"]) {
     try { await Deno.stat(`apps/${e.name}/${f}`); entries.push(`apps/${e.name}/${f}`); } catch { }
+  }
+}
+for (let i = 0; i < entries.length; i++) {
+  const dir = entries[i].slice(0, entries[i].lastIndexOf("/") + 1);
+  let text;
+  try { text = await Deno.readTextFile(entries[i]); } catch { continue; }
+  for (const s of importSpecs(text)) {
+    const r = resolveSpec(s, entries[i]);
+    if (!r?.startsWith(dir) || !r.endsWith(".js") || r.endsWith(".vendor.js") || entries.includes(r)) continue;
+    try { if ((await Deno.readTextFile(r)).split("\n").some((l) => l.length > 2000)) continue; } catch { continue; }
+    entries.push(r);
   }
 }
 entries.sort();
@@ -83,7 +96,7 @@ const offenders = (report.diagnostics || []).filter((d) => {
 });
 
 if (!offenders.length) {
-  console.log(`  ✓ no undefined identifiers in ${entries.length} app entry points`);
+  console.log(`  ✓ no undefined identifiers in ${entries.length} app modules`);
   Deno.exit(0);
 }
 for (const d of offenders) {

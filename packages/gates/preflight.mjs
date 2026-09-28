@@ -81,6 +81,7 @@
  *   deno run -A --import-map=packages/gates/preflight.importmap.json packages/gates/preflight.mjs apps/<id> [apps/<id> ...]
  */
 import { parseHTML } from "linkedom";
+import { importSpecs, resolveSpec } from "../../tools/graph.mjs";
 
 const dynImport = (s) => (globalThis.__msImport ?? ((x) => import(x)))(s);
 
@@ -142,8 +143,19 @@ async function preflight(appdir) {
 
   const mode = await exists(`${appdir}/view.js`) ? "tool" : await exists(`${appdir}/stream.js`) ? "stream" : "data";
   const srcFile = mode === "tool" ? "view.js" : mode === "stream" ? "stream.js" : "data.js";
-  let src = "";
-  try { src = await Deno.readTextFile(`${appdir}/${srcFile}`); } catch { }
+  const parts = [];
+  { const base = appdir.replace(/\/+$/, ""), seen = new Set(), stack = [`${base}/${srcFile}`];
+    while (stack.length) {
+      const f = stack.pop();
+      if (seen.has(f)) continue;
+      seen.add(f);
+      let text;
+      try { text = await Deno.readTextFile(f); } catch { continue; }
+      parts.push([f.slice(base.length + 1), text]);
+      for (const s of importSpecs(text)) { const r = resolveSpec(s, f); if (r?.startsWith(`${base}/`) && r.endsWith(".js")) stack.push(r); }
+    } }
+  const src = parts.map(([, t]) => t).join("\n");
+  const at = (re) => parts.find(([, t]) => re.test(t))?.[0] ?? srcFile;
   const keys = new Set();
   for (const m of src.matchAll(/\bT\(\s*t\s*,\s*["'`]([A-Za-z][\w]*)["'`]\s*[),]/g)) keys.add(m[1]);
   for (const m of JSON.stringify(spec).matchAll(/"(?:label|titleKey|searchKey)":"([A-Za-z][\w]*)"/g)) keys.add(m[1]);
@@ -175,24 +187,24 @@ async function preflight(appdir) {
 
   if (/loading loading-(spinner|ring|dots|ball|bars|infinity)/.test(src)) errs.push(`spinner loader banned — use <${"Loading"}/> from /_rt/skeleton.js (or Scramble/Pixels skeletons), never a content-less spinner`);
 
-  src.split("\n").forEach((ln, i) => {
+  for (const [file, text] of parts) text.split("\n").forEach((ln, i) => {
     if (/^\s*(\/\/|\*|\/\*)/.test(ln)) return;
     const m = ln.match(/text-\[var\(--ms-(label|title|icon|hero)\)\]/);
-    if (m) errs.push(`${m[0]} in ${srcFile}:${i + 1} is a COLOUR, not a size — Tailwind compiles it to \`color: var(--ms-${m[1]})\`, the browser drops the invalid value and the text silently keeps its parent's size. Write \`text-[length:var(--ms-${m[1]})]\`.`);
+    if (m) errs.push(`${m[0]} in ${file}:${i + 1} is a COLOUR, not a size — Tailwind compiles it to \`color: var(--ms-${m[1]})\`, the browser drops the invalid value and the text silently keeps its parent's size. Write \`text-[length:var(--ms-${m[1]})]\`.`);
   });
 
   {
     const audible = /(^|[^\w.])(\w+)\.volume\s*=/;
-    for (const m of src.matchAll(/function\s+\w+[\s\S]{0,600}?\n\}/g)) {
+    for (const [file, text] of parts) for (const m of text.matchAll(/function\s+\w+[\s\S]{0,600}?\n\}/g)) {
       if (audible.test(m[0]) && /requestAnimationFrame/.test(m[0])) {
-        const line = src.slice(0, m.index).split("\n").length;
-        errs.push(`requestAnimationFrame drives a \`.volume\` fade in ${srcFile}:${line} — rAF does not fire in a hidden document, so this fade stalls when the app is backgrounded and leaves the element SILENT (a reconnect that lands in the background never becomes audible). Drive it with setTimeout, and when document.visibilityState === "hidden" set the target value and finish synchronously.`);
+        const line = text.slice(0, m.index).split("\n").length;
+        errs.push(`requestAnimationFrame drives a \`.volume\` fade in ${file}:${line} — rAF does not fire in a hidden document, so this fade stalls when the app is backgrounded and leaves the element SILENT (a reconnect that lands in the background never becomes audible). Drive it with setTimeout, and when document.visibilityState === "hidden" set the target value and finish synchronously.`);
       }
     }
   }
 
   if (/modal-bottom/.test(src)) {
-    errs.push(`hand-rolled bottom sheet (\`modal-bottom\`) in ${srcFile} — import { Sheet } from "/_rt/ui.js" instead. The kit owns the shell (glass, drag-to-dismiss, title row, close, backdrop); pass open/onClose from your S.screen atom so Back still closes it.`);
+    errs.push(`hand-rolled bottom sheet (\`modal-bottom\`) in ${at(/modal-bottom/)} — import { Sheet } from "/_rt/ui.js" instead. The kit owns the shell (glass, drag-to-dismiss, title row, close, backdrop); pass open/onClose from your S.screen atom so Back still closes it.`);
   }
 
   {
@@ -202,7 +214,7 @@ async function preflight(appdir) {
     ).exec(src);
     if (self) {
       const el = self[1] || self[3];
-      errs.push(`\`${el}\` is a canvas measured against itself in ${srcFile} — \`${el}.width = ${el}.clientWidth * dpr\`. Before the browser-generated stylesheet lands, \`clientWidth\` on a canvas is its INTRINSIC size (300), so this bakes 300×DPR into layout and the page overflows on a cold open; an ancestor's \`overflow-hidden\` has not applied yet either, so nothing clips it. Measure a wrapper whose height is its own (or the viewport for a fixed field), set \`style.width\`/\`style.height\` AND the backing store, and observe the BOX — never the canvas.`);
+      errs.push(`\`${el}\` is a canvas measured against itself in ${parts.find(([, t]) => t.includes(self[0]))?.[0] ?? srcFile} —\`${el}.width = ${el}.clientWidth * dpr\`. Before the browser-generated stylesheet lands, \`clientWidth\` on a canvas is its INTRINSIC size (300), so this bakes 300×DPR into layout and the page overflows on a cold open; an ancestor's \`overflow-hidden\` has not applied yet either, so nothing clips it. Measure a wrapper whose height is its own (or the viewport for a fixed field), set \`style.width\`/\`style.height\` AND the backing store, and observe the BOX — never the canvas.`);
     }
   }
 
@@ -224,15 +236,15 @@ async function preflight(appdir) {
     const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
     const surfaceShadow = /(?:^|[\s"'`])shadow-(?:sm|md|lg|xl|2xl|inner)\b/;
     if (surfaceShadow.test(code)) {
-      errs.push(`app-authored shadow in ${srcFile} — the material is systemic. Declare what the surface IS: \`sf-raised\` / \`sf-inset\` / \`sf-pressed\`, or a rung of the ladder \`sf-e2\` (hover) … \`sf-e5\` (popover). A hardcoded shadow does not invert with the theme and does not compact with the density ladder.`);
+      errs.push(`app-authored shadow in ${at(surfaceShadow)} — the material is systemic. Declare what the surface IS: \`sf-raised\` / \`sf-inset\` / \`sf-pressed\`, or a rung of the ladder \`sf-e2\` (hover) … \`sf-e5\` (popover). A hardcoded shadow does not invert with the theme and does not compact with the density ladder.`);
     }
     const glassOnOurSurface = /backdrop-blur(-[a-z0-9]+)?\b[^"'`]*\bbg-base-|bg-base-[0-9]+\/[0-9]+[^"'`]*\bbackdrop-blur\b/;
     if (glassOnOurSurface.test(code)) {
-      errs.push(`frosted glass over a base surface in ${srcFile} — glass and the extrusion are answers to the same question and cannot both be on screen: the blur erases the shadow pair that makes the surface read. Use \`sf-raised\`/\`sf-e4\` and an opaque bg-base-100. (Blur over a VIDEO or camera frame is still fine — that is foreign content, not our surface.)`);
+      errs.push(`frosted glass over a base surface in ${at(glassOnOurSurface)} — glass and the extrusion are answers to the same question and cannot both be on screen: the blur erases the shadow pair that makes the surface read. Use \`sf-raised\`/\`sf-e4\` and an opaque bg-base-100. (Blur over a VIDEO or camera frame is still fine — that is foreign content, not our surface.)`);
     }
 
     if (/(?:^|[\s"'`])transition-all\b/.test(code)) {
-      errs.push(`\`transition-all\` in ${srcFile} — name the properties instead. It animates the material too: sf-raised/sf-inset are box-shadow pairs, so the extrusion cross-fades on every state change, and layout properties (width/margin) re-layout each frame off the compositor. Use \`transition-colors\`/\`transition-opacity\`/\`transition-shadow\`/\`transition-transform\`, or an arbitrary set like \`transition-[width]\` / \`transition-[box-shadow,background-color,scale]\`.`);
+      errs.push(`\`transition-all\` in ${at(/(?:^|[\s"'`])transition-all\b/)} — name the properties instead. It animates the material too: sf-raised/sf-inset are box-shadow pairs, so the extrusion cross-fades on every state change, and layout properties (width/margin) re-layout each frame off the compositor. Use \`transition-colors\`/\`transition-opacity\`/\`transition-shadow\`/\`transition-transform\`, or an arbitrary set like \`transition-[width]\` / \`transition-[box-shadow,background-color,scale]\`.`);
     }
 
     { const foreign = [...code.matchAll(/["']([a-z0-9-]+):[a-z0-9-]+["']/g)]
@@ -245,7 +257,7 @@ async function preflight(appdir) {
 
   { const emojiRe = /\p{Emoji_Presentation}/gu;
     const scan = (label, text) => { const m = text.match(emojiRe); if (m) errs.push(`emoji ${[...new Set(m)].join(" ")} in ${label} — emoji are banned farm-wide; use a crafted vector (iconify lucide:*/mdi:*, an /_rt SVG like Sign) or plain words, never an emoji`); };
-    scan(srcFile, src);
+    for (const [file, text] of parts) scan(file, text);
     scan("spec.json", JSON.stringify(spec));
     for (const l of locales) scan(`i18n/${l}.json`, JSON.stringify(i18n[l])); }
 

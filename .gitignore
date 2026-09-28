@@ -23,3 +23,7 @@ AGENTS.md
 .serena/
 # 8n8 run stamps — a green-gates record is about THIS machine and THIS tree, never shared
 .8n8/
+
+# sibling repos checked out inside this tree
+dreamstudio/
+edge/

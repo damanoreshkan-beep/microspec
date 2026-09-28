@@ -189,7 +189,12 @@ export const NODES = [
     run: () => ["deno", "run", "-A", at("tools/affected.mjs"), "--all"],
   },
   {
-    id: "push", kind: "script", phase: "ship", needs: ["validate", "preflight", "unit", "sw", "counts"],
+    id: "clean", kind: "script", phase: "ship", needs: [], scope: "farm", frozen: "2026-09-28",
+    why: "Nothing ships with litter: untracked leftovers, committed build output, dead submodules. Green gates prove what was added; this proves what should have left did.",
+    run: () => ["deno", "run", "-A", at("tools/clean.mjs")],
+  },
+  {
+    id: "push", kind: "script", phase: "ship", needs: ["validate", "preflight", "unit", "sw", "counts", "clean"],
     scope: "farm", frozen: "2026-06-11",
     why: "git push origin main. Gated on the local gates by the DAG itself, not by a promise.",
     run: () => ["git", "push", "origin", "main"],
@@ -257,6 +262,6 @@ export function topo(nodes = NODES) {
 export const FLOWS = {
   gates: ["demo", "rtmap", "dts", "docart", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
   author: ["research", "spec", "i18n", "view", "scaffold"],
-  ship: ["push"],
+  ship: ["clean", "push"],
   all: NODES.map((n) => n.id),
 };

@@ -30,9 +30,9 @@
  *   second group. A product tree claims the count in its own words, so its rules REPLACE the built-ins.
  *
  * ## What it checks and writes
- * The built-in rules are the public framework repo's own claims — five in README.md (the `live-N%20apps`
+ * The built-in rules are the public framework repo's own claims — the five in README.md (the `live-N%20apps`
  * badge, `farm — N installable apps]`, `The N-app farm`, `and all N apps were written`,
- * `the reference farm: N apps`) and one in docs/SHOW_HN.md (`the proof: N apps live`). Each is anchored
+ * `the reference farm: N apps`). Each is anchored
  * on its surrounding words so a count is never confused with an efficacy score or any other digit.
  * - a rule whose number differs from N is stale: `README.md: "The 25-app farm" → should be 28`.
  * - a rule that matches nothing is stale too: `pattern … matched nothing — the claim was reworded, fix

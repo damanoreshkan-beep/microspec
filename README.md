@@ -173,8 +173,9 @@ deno run -A deploy/build.mjs
 ```
 
 See [`docs/AUTHORING.md`](docs/AUTHORING.md) for the authoring loop, [`docs/TESTING.md`](docs/TESTING.md)
-for the gate internals, [`docs/DESIGN_RUBRIC.md`](docs/DESIGN_RUBRIC.md) for the taste review, and
-[`packages/schema/SCHEMA.md`](packages/schema/SCHEMA.md) for the spec reference.
+for the gate internals, [`docs/DESIGN_RUBRIC.md`](docs/DESIGN_RUBRIC.md) for the taste review,
+[`packages/schema/SCHEMA.md`](packages/schema/SCHEMA.md) for the spec reference,
+[`docs/8N8.md`](docs/8N8.md) for the pipeline model, and [`docs/DEMO.md`](docs/DEMO.md) for the demo recipe.
 
 ## The author is pluggable
 

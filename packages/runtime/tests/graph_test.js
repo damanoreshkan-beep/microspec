@@ -1,8 +1,4 @@
-// microspec runtime — graph + affected-app orchestrator unit tests. Pure logic: no browser, no import map.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
-// ===================== affected-app orchestrator (tools/graph.mjs) =====================
 import { importSpecs, resolveSpec, buildClosure, classifyAffected, isGlobal, RT as RTX, RT_OVERLAY } from "../../../tools/graph.mjs";
 import { staticSpecs, htmlAssets, importMapOf } from "../../../tools/graph.mjs";
 
@@ -14,17 +10,14 @@ Deno.test("graph: importSpecs finds static, re-export, dynamic and side-effect i
 });
 
 Deno.test("graph: resolveSpec maps /_rt/ to the runtime dir, resolves relative, treats bare/esm as external", () => {
-  // overlay-aware on purpose: in a product tree ambient.js IS a domain module and routes to rt/
   assertEquals(resolveSpec("/_rt/ambient.js", "apps/drift/view.js"), RT_OVERLAY.has("ambient.js") ? "rt/ambient.js" : RTX + "ambient.js");
   assertEquals(resolveSpec("./synth.js", "apps/drift/view.js"), "apps/drift/synth.js");
-  assertEquals(resolveSpec("../runtime/x.js", "packages/gates/y.js"), "packages/runtime/x.js"); // plain path math, not RT
+  assertEquals(resolveSpec("../runtime/x.js", "packages/gates/y.js"), "packages/runtime/x.js");
   assertEquals(resolveSpec("htm/preact", "apps/drift/view.js"), null);
   assertEquals(resolveSpec("jsr:@std/assert", "x.js"), null);
 });
 
 Deno.test("graph: buildClosure walks the transitive local graph, ignoring externals and dangling leaves", () => {
-  // fixture keys go through RTX: RT is tree-dependent since the split (rt/ in the product, packages/runtime
-  // in the framework), and this test runs in both trees.
   const files = {
     "apps/a/view.js": `import "/_rt/rt.js";\nimport "./child.js";\nimport "htm/preact";`,
     "apps/a/child.js": `import "/_rt/shared.js";`,
@@ -42,11 +35,8 @@ Deno.test("affected: a runtime module re-verifies ONLY the apps that import it (
     { id: "rave", closure: new Set(["apps/rave/view.js", RTX + "groove.js", RTX + "spectrum.js"]) },
   ];
   const core = new Set([RTX + "index.js", RTX + "render.js"]);
-  // ambient.js is drift-only → just drift (NOT the whole farm — this is what killed the 17-min run)
   assertEquals(classifyAffected([RTX + "ambient.js"], apps, core), ["drift"]);
-  // spectrum.js is shared by both → both
   assertEquals(classifyAffected([RTX + "spectrum.js"], apps, core), ["drift", "rave"]);
-  // a runtime module nobody imports → nobody
   assertEquals(classifyAffected([RTX + "orphan.js"], apps, core), []);
 });
 

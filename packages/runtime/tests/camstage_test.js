@@ -1,5 +1,3 @@
-// camstage.js — the one camera stage of the kit. The maths a tap-to-focus needs is pure and pinned here: a
-// viewport point under a cover fit maps to the sensor point it shows, and the front camera mirrors it.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { camPoint, CamStage } from "../camstage.js";
 
@@ -13,7 +11,6 @@ Deno.test("camPoint: the centre is the centre, whatever the fit", () => {
 });
 
 Deno.test("camPoint: a landscape picture on a portrait screen is cropped left and right — the screen's edge is inside the sensor", () => {
-  // 16:9 picture over a 9:19.5 viewport: the visible strip is a narrow slice of the sensor's width
   const asp = 384 / 832, l = camPoint(0, 0.5, 1920, 1080, false, asp), r = camPoint(1, 0.5, 1920, 1080, false, asp);
   assert(l.x > 0.3 && l.x < 0.5, `left edge ${l.x}`);
   assert(r.x > 0.5 && r.x < 0.7, `right edge ${r.x}`);

@@ -96,7 +96,7 @@ export async function follow({ base, job, alive = () => true, onLive, onSlide })
             const blob = await pr.blob(), meta = (j.slides || [])[n] || {};
             onSlide?.({ url: URL.createObjectURL(blob), blob, w: meta.w, h: meta.h, by: meta.by, n });
           }
-        } catch { /* a variant that failed to transfer is skipped; the rest still land */ }
+        } catch { }
         got = n + 1;
       }
       if (j.status === "done" || j.status === "error") return j.status === "error" && j.error === "busy" ? "busy" : j.status;

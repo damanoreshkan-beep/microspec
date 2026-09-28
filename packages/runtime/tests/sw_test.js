@@ -1,16 +1,7 @@
-// microspec runtime — offline-first service worker unit tests. Pure logic: no browser, no import map.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
-// ===================== offline-first service worker (sw-core.js + deploy/sw.mjs) =====================
-// The SW is a CLASSIC worker script (importScripts can't load an ES module), so it can't be imported here.
-// We evaluate it against a stubbed `self` instead — which is also the only honest way to prove the policy,
-// since the farm's whole offline story turns on WHICH origins get cached and which app owns which cache.
 import { manifestFor } from "../../../deploy/sw.mjs";
 import { pkgRoot } from "../pkgroot.js";
 
-// A CacheStorage/Cache pair faithful enough for the two behaviours that matter: exact match, and the
-// ignoreSearch/scope-root fallback an installed PWA's `start_url: "./"` navigation depends on.
 class FakeCache {
   constructor(entries = {}) { this.map = new Map(Object.entries(entries)); }
   key(req) { return typeof req === "string" ? req : req.url; }
@@ -82,9 +73,7 @@ Deno.test("sw: registers install/activate/fetch/message — a worker with no fet
   for (const k of ["install", "activate", "fetch", "message"]) assert(typeof events[k] === "function", `missing ${k} handler`);
 });
 
-// These two fixtures are PRODUCT apps (rave; hoard/persona/iching shaders) — absent in the public framework
-// tree (the dreamstudio split); the product repo's CI runs them in full.
-const HAVE_FARM = await Deno.stat("apps/rave/view.js").then(() => true).catch(() => false); // cwd — the apps live in the CONSUMER'S tree, not in the package
+const HAVE_FARM = await Deno.stat("apps/rave/view.js").then(() => true).catch(() => false);
 Deno.test({ name: "sw manifest: a real app's shell covers document, spec, locales, runtime closure and CDN code", ignore: !HAVE_FARM, fn: () => {
   const m = manifestFor("rave");
   for (const u of ["./", "./index.html", "./spec.json", "./i18n/en.json", "./i18n/uk.json", "./view.js", "/_rt/index.js", "/_rt/render.js", "/_rt/theme.css"]) {
@@ -96,15 +85,12 @@ Deno.test({ name: "sw manifest: a real app's shell covers document, spec, locale
   assert(!m.some((u) => u.includes("brand.svg")), "brand.svg is a build input, never fetched at runtime");
 } });
 
-// A shader is fetched, not imported, so the import graph cannot see it — it used to be TWO hardcoded
-// filenames, and an app whose shader was named anything else booted offline to a blank canvas.
 Deno.test({ name: "sw manifest: an app's shader is discovered, not listed by name", ignore: !HAVE_FARM, fn: () => {
   for (const [id, file] of [["hoard", "./hoard.frag"], ["persona", "./presence.frag"], ["iching", "./hero.wgsl"]]) {
     assert(manifestFor(id).includes(file), `${id}: ${file} missing from the precache — the stage is blank offline`);
   }
 } });
 
-// The four behaviours the whole change exists for. Proved browser-free, against the real sw-core.js source.
 Deno.test("sw: offline, a cached app still opens — the cache is consulted FIRST, not after a fetch fails", async () => {
   const url = "https://damanoreshkan-beep.github.io/microspec/rave/view.js";
   const { fire, calls } = loadSwCore("rave", { cached: { [url]: new Response("cached", { status: 200 }) }, onLine: false });
@@ -120,9 +106,9 @@ Deno.test("sw: a weak link is served from cache instantly; the refresh happens B
   const { events, cache } = loadSwCore("rave", { cached: { [url]: new Response("cached", { status: 200 }) }, fetch: slow });
   const e = swEvent(swReq(url));
   events.fetch(e);
-  const res = await e.responded;   // resolves while the network request is STILL in flight — the 2G fix
+  const res = await e.responded;
   assertEquals(await res.text(), "cached", "the response must never wait on a slow link when we hold a copy");
-  release();                        // now let the background revalidation land
+  release();
   await Promise.allSettled(e.waits);
   assertEquals(await (await cache.match(url)).text(), "fresh", "…and freshness still arrives, just behind the user");
 });
@@ -151,12 +137,6 @@ Deno.test("sw: on a 2g/saveData link we do NOT spend bandwidth revalidating what
   assertEquals(twice.calls.length, 1, "at most one revalidation per URL per worker lifetime");
 });
 
-// The one exception to stale-while-revalidate, and the most expensive bug this worker has shipped. An
-// Android install BAKES orientation/display/name/icons into a WebAPK; the only way they ever change again is
-// the browser re-reading manifest.json (once a day at best) and diffing. That read is `destination:
-// "manifest"` and lands here — so a cache hit hands the update check the manifest the app was installed
-// with, and the app's own cache pins its own identity. reel was installed while every manifest said
-// `orientation: "portrait"`; a stale read is what would have kept it portrait after the fix shipped.
 Deno.test("sw: the manifest is fetched network-FIRST — a cached one pins the installed app's identity", async () => {
   const url = "https://damanoreshkan-beep.github.io/microspec/reel/manifest.json";
   const stale = () => new Response('{"orientation":"portrait"}', { status: 200 });

@@ -53,9 +53,6 @@
  * - The contract is a deterministic fixture, not merely "no network": the same input must draw the same screen on every run.
  * @module
  */
-// Shared gate/mock detection — was copy-pasted into ~17 apps. `isGate` is true under the headless
-// verify/shoot gate (localhost); `MOCK` is the ?mock query param (a phone/mock preview also forces gate
-// mode); `gate` = either (MOCK present, even empty). Apps seed a deterministic fixture when `gate` is true.
 const QS = new URLSearchParams(typeof location !== "undefined" ? location.search : "");
 /**
  * True under the headless verify/shoot gate — the page is served from localhost. `?live` is a human's

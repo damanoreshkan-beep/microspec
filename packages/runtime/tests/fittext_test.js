@@ -22,7 +22,6 @@ const box = (w, h) => ({ clientWidth: w, clientHeight: h });
 
 Deno.test("fittext: converges just under the largest size that fits", () => {
   const IDEAL = 137.4;
-  // A cliff model: anything at or below IDEAL fits exactly, anything above overflows.
   const el = stub((s) => (s <= IDEAL ? { w: 100, h: 100 } : { w: 9999, h: 9999 }));
   const got = fitText(el, box(100, 100));
   assert(got <= IDEAL, `${got} must not exceed the ideal ${IDEAL}`);
@@ -31,7 +30,6 @@ Deno.test("fittext: converges just under the largest size that fits", () => {
 });
 
 Deno.test("fittext: a single line scales linearly with the font size", () => {
-  // 12 characters at 0.55em advance: width = 6.6 * size, height = 1.2 * size.
   const el = stub((s) => ({ w: 6.6 * s, h: 1.2 * s }));
   const got = fitText(el, box(330, 800));
   assertEquals(Math.round(got), 50, "330 / 6.6 = 50px is the width-bound answer");
@@ -59,8 +57,6 @@ Deno.test("fittext: quarter-pixel quantisation, never above the fitting size", (
   }
 });
 
-// The reason fitText may not grow a closure: the wall's viewer page is served off a phone's LAN socket and
-// inlines this source instead of importing it. Compiling in an empty scope is exactly what that page does.
 Deno.test("fittext: the source survives being inlined with no module scope", () => {
   const src = fitTextSource();
   assert(src.startsWith("function fitText"), src.slice(0, 40));
@@ -69,8 +65,6 @@ Deno.test("fittext: the source survives being inlined with no module scope", () 
   assertEquals(Math.round(inlined(el, box(330, 800))), 50, "the inlined copy must behave identically");
 });
 
-// A layout model for the two wrap passes: every glyph advances 0.6em, lines are 0.95em tall. `normal`
-// packs whole words greedily; `anywhere` packs glyphs, so it always fills the width.
 function phrase(words, boxW) {
   return (s, wrap) => {
     const em = 0.6 * s;
@@ -88,8 +82,6 @@ function phrase(words, boxW) {
   };
 }
 
-// A phrase on a portrait screen: breaking anywhere reads about 2x bigger (measured on the reference device:
-// "Почи / наєм / о за 5 / хвили / н"), and it must still LOSE — a poster is words, not glyphs.
 Deno.test("fittext: word boundaries win when breaking anywhere is under 3x bigger", () => {
   const el = stub(phrase(["Починаємо", "за", "5", "хвилин"], 340));
   const got = fitText(el, box(340, 700));
@@ -97,8 +89,6 @@ Deno.test("fittext: word boundaries win when breaking anywhere is under 3x bigge
   assertEquals(Math.round(got), 63, "340 / (9 × 0.6) = 63px: the longest word sets the size");
 });
 
-// The case anywhere exists for: one long unbreakable token (a URL) that would otherwise be the whole poster's
-// width, at a size nobody across a room can read.
 Deno.test("fittext: one long unbreakable word falls back to breaking anywhere", () => {
   const el = stub(phrase(["https://example.com/very/long/path/to/a/thing"], 340));
   const got = fitText(el, box(340, 700));

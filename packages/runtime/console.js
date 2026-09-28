@@ -83,52 +83,6 @@
  * - `--sh-body` is picked per theme in CSS, never in JS: the view does not re-render on a theme toggle.
  * @module
  */
-// console — the farm's game shell, once, and there is only ONE of it.
-//
-// The first game grew a handheld: a body extruded from the page, a screen recessed into it, a
-// D-pad and two action keys. The second game wanted the same controls, and the honest options were
-// to copy the first one or to lift it here. A copied component fails by DIVERGENCE, silently, and
-// no gate ever reports "this app's pad is two pixels rounder than the other one's": the farm
-// already learned that with the sheet, the transport and the tab strip.
-//
-// IT THEN GREW A CATALOGUE OF NINE DEVICES, and that was the mistake this file is now the repair
-// of. A catalogue is a decision handed to the player that the player never asked for: it cost a
-// whole tab in each game (a settings screen with a picture of a settings screen), it cost every
-// game half its screen to a body that had to stay small enough for nine silhouettes to differ,
-// and it cost the colour game a yellow-green LCD plate around a forest, because the shell owned a
-// tint and one of the two games could not use it. Nine consoles is nine chances to be wrong about
-// the only thing that matters here: HOW BIG THE GAME IS. So there is one device, it is the one
-// the first game shipped with, and it is drawn as large as the viewport allows.
-//
-// What stays per-game is only the deck's CONTENT: which directions the pad carries, which action
-// keys exist and whether one latches, what sits in the menu row and the centre column. How MANY
-// action keys there are is the game's business too — a shell that demanded exactly four would be a
-// shell that fits one game. What the shell decides is how they are laid out.
-//
-// The one thing a GAME still hands the shell is its `plate` — the backplate its aperture shows
-// where the picture does not reach. That direction matters: the game owns its own panel — a
-// monochrome game is an ink density on a tinted plate, a colour game is art in a dark well — and a
-// shell that owned the tint painted one game’s plate around the other one’s picture.
-//
-// The geometry is measured from real devices and written down in `docs/research/console-shells.md`.
-// Three numbers there replaced values that had been wrong since the alpha and that no gate could
-// see:
-//
-//   · the pad's hub was 38% of the CENTRE CELL, i.e. 12.7% of the cross — a hub you cannot find.
-//     A real one is ~34% of the whole cross, so it is the centre cell, near enough.
-//   · a `round` shell rounded the pad's arms to 50%, turning the cross into a four-petal flower.
-//     The ends of a cross are radiused at about 10% of the arm's width.
-//   · the two action keys sat 0.99 D apart — their rims TOUCHING. (The angle, 21.4°, was fine;
-//     the first research pass claimed 32.6° and was wrong about which half was broken.) A real
-//     pair is 1.60 D apart on a 22° axis.
-//
-// It owns no input logic. The pointer behaviour — press by POSITION, a thumb that drifts keeps its
-// key, a double tap latches, a press shorter than a simulation step is extended — is dpad.js, and
-// this component only lays out elements carrying the data-* attributes that hook expects. One
-// place decides what a game deck feels like; one place decides what it looks like; neither is
-// duplicated per app.
-//
-// Runtime-internal imports must be RELATIVE.
 
 import { html } from "htm/preact";
 import { T } from "./i18n.js";
@@ -199,8 +153,6 @@ function Pad({ pad, t, onKeyboard, size = "var(--ms-ctl)" }) {
     </div>`;
 }
 
-/* One key, placed. The geometry itself is deck.js — pure, measurable, and unit-tested by deriving
-   the span and the angle back out of it rather than by matching the literals written here. */
 const at = ([x, y], d) =>
   `left:${x}%;top:${y}%;width:${d}%;aspect-ratio:1`;
 
@@ -261,12 +213,6 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
     const inner = deck?.onPointerDown;
     spread.onPointerDown = (e) => { onPointerDown(e); inner?.(e); };
   }
-  /* MERGED, not written twice. The deck hook carries a style of its own (`touch-action: none`, so a
-     thumb on the pad does not scroll the page), and it is spread onto the same element — so an
-     attribute written before the spread is silently replaced by it, not combined with it. That is
-     how every shell shipped with its geometry switched off while nine of nine gates stayed green:
-     the JS branches still worked, so it looked like a catalogue, and only the half that travels as
-     custom properties never reached the element. A green gate is a floor. */
   const style = { ...(deck?.style || {}) };
   if (plate) style["--sh-tint"] = plate;
 
@@ -288,11 +234,6 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
           cls="px-2 py-1 w-full max-w-[7rem] truncate" />`)}
     </div>`;
 
-  /* The aperture, and the whole point of the repair. It is given every pixel the deck does not
-     need — full body width, all the remaining height — and the canvas letterboxes inside it
-     (`max-w-full max-h-full w-auto h-auto`), so the picture is as large as the device can show.
-     The catalogue used to write a width FRACTION here, because nine silhouettes have to differ
-     somewhere, and 55% of a 24rem body is a 155px game on a 390px phone. */
   const stage = html`
     <div data-stage-box class="flex-1 min-h-0 min-w-0 grid place-items-center">
       <div class="ms-screen sf-inset max-w-full max-h-full min-w-0 min-h-0 grid place-items-center">
@@ -308,12 +249,6 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
       ${padNode}${centreNode}${actionNode}
     </div>`;
 
-  /* The body is the page EXTRUDED and the screen a recess cut into it — the same light as
-     everything else in the farm, one level deeper. It carries its own plastic (`--sh-body`, picked
-     per theme in CSS, never in JS: the view does not re-render on a theme toggle), and it FILLS
-     the view rather than shrink-wrapping its contents. Sizing it to its contents was the other
-     half of the small-screen bug: a body that hugs a 55%-wide aperture leaves two thirds of a
-     phone as empty page above and below a device nobody can read. */
   return html`
     <div class="h-full min-h-0 flex flex-col items-center justify-center">
       <div class="ms-shell sf-raised ms-side min-h-0 flex flex-col gap-[var(--ms-gap)]"

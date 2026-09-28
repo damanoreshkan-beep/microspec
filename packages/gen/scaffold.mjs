@@ -77,16 +77,6 @@
  * index.html + manifest.json + sw stub + icon.svg. Identical for every app, so it is a function.
  * @module
  */
-// microspec — app scaffolder (the deterministic half of authoring). The agent (LLM) writes only the
-// app-specific files — spec.json (structure) + i18n/<locale>.json (translations, one file per language)
-// + data.js (or view.js for a tool) — and this emits the identical boilerplate every app needs:
-// index.html (composes spec + locale files, wired by mode), manifest.json, sw.js (placeholder — deploy/sw.mjs
-// generates the real offline-first worker from the finished import graph),
-// icon.svg (from brand). It never overwrites the authored files unless --force.
-//
-//   deno run -A scaffold.mjs <appdir> [--force]
-//
-// Modes: `tool` if view.js exists (start(spec,{views})), else `data` (start(spec, load)).
 import { readLocales, localeList } from "./compose.mjs";
 
 const dir = (Deno.args[0] ?? "").replace(/\/$/, "");
@@ -98,19 +88,12 @@ const readJson = async (p) => JSON.parse(await Deno.readTextFile(p));
 
 if (!(await has(`${dir}/spec.json`))) { console.error(`✗ ${dir}/spec.json missing — author it first`); Deno.exit(1); }
 const spec = await readJson(`${dir}/spec.json`);
-const i18n = await readLocales(dir);           // translations live in apps/<id>/i18n/<locale>.json
+const i18n = await readLocales(dir);
 const locales = localeList(i18n);
 if (!locales.length) { console.error(`✗ ${dir}/i18n/ has no locale files — author i18n/uk.json + i18n/en.json`); Deno.exit(1); }
 const brand = (await has(`${dir}/brand.json`)) ? await readJson(`${dir}/brand.json`) : { bg: "#1f2430", fg: "#a78bfa" };
 const brandPaths = (await has(`${dir}/brand.svg`)) ? (await Deno.readTextFile(`${dir}/brand.svg`)).trim() : '<rect x="4" y="4" width="16" height="16" rx="3"/>';
-// The boot is COMPOSED from the files, never picked from a hierarchy: an app may carry views AND an
-// adapter (arc, persona: { load, views }) or views AND a stream (homin: { views, stream }). A binary
-// tool-else-data pick once dropped the second half on a forced re-scaffold, and shelves/signal lists
-// mounted empty with zero runtime errors.
 const hasView = await has(`${dir}/view.js`), hasData = await has(`${dir}/data.js`), hasStream = await has(`${dir}/stream.js`);
-// APP-OWNED head content (a custom <style>, an extra tag) lives in head.html and is inlined verbatim —
-// index.html stays fully regenerable. Three apps once carried such blocks INSIDE the generated file and a
-// forced re-scaffold silently amputated them (reel's noir, handpan's tone fields, hive's living comb).
 const headExtra = (await has(`${dir}/head.html`)) ? (await Deno.readTextFile(`${dir}/head.html`)).trimEnd() + "\n" : "";
 const mode = [hasView && "tool", hasStream && "stream", hasData && "data"].filter(Boolean).join("+") || "data";
 
@@ -118,16 +101,6 @@ const dict = i18n.uk || i18n.en || {};
 const title = dict.title || spec.id;
 const tagline = dict.profTagline || title;
 const isLight = /light/.test(spec.theme || "");
-// The installed-PWA splash + Android status bar. These MUST track the theme bases: they were left at
-// the pre-redesign near-black through the neumorphic repaint, so every installed app showed a #0A0A0B
-// splash butted against a #2A2A2E page. No screenshot can catch this — microlink does not render OS chrome.
-// MEASURED off theme.css, never written here: a hex typed beside the thing it describes is right until the
-// base moves, then silently wrong in every app at once (76 chrome files carried #2A2A2E after the black
-// repaint). runtime_test.js still cross-checks every app's chrome against the same two bases.
-// The EFFECTIVE theme, as the cascade sees it: the core's runtime.css first, then a product's rt/theme.css
-// with its local `@import "./x.css"` chain inlined (a product's theme.css is one import of its default
-// MODULE, theme-<id>.css, which imports runtime.css and then declares the brand). The LAST palette block
-// that carries a base wins — exactly what the browser resolves.
 import { pkgRoot } from "../runtime/pkgroot.js";
 const themeCss = await (async () => {
   const rt = `${Deno.cwd()}/rt/`;
@@ -156,8 +129,6 @@ const themeColor = isLight ? baseOf("signal-light") : baseOf("signal");
 const bg = themeColor;
 const lang = i18n.uk ? "uk" : locales[0];
 
-// index.html composes the spec from spec.json + each i18n/<locale>.json (imported as JSON modules) and
-// hands start() a { ...spec, i18n } — so the translations stay isolated per-language files on disk.
 const localeImports = locales.map((l) => `    import ${l} from "./i18n/${l}.json" with { type: "json" };`).join("\n");
 const srcImport = [
   hasView && `    import * as views from "./view.js";`,
@@ -174,14 +145,6 @@ const startWiring = [
   `    start({ ...spec, i18n: { ${locales.join(", ")} } }, ${startArg});`,
 ].join("\n");
 
-// Instant app-shell (2027 first-paint pattern): painted straight from HTML on the FIRST frame, before the
-// Tailwind CDN script or any ESM module has run — theme.css is a render-blocking <link>, so its vars are
-// already available (fallbacks cover the microsecond before). It draws the header wordmark, a thin sliding
-// loading line, and the dock island in the EXACT places the real chrome lands, so when the runtime mounts it
-// simply fades to the live app — no blank frame, no white flash, no spinner. index.js removes #boot after
-// the first render. Plain CSS only (Tailwind utilities don't exist yet).
-// The shell wears the LUMINOUS material (theme.css): the header and the dock are the page with a lit edge
-// (--sf-lift2 — rim + top edge), never a shadow pair. Fallbacks are the dark theme's own values.
 const bootCss = `
     html,body{background:var(--color-base-200,${bg})}
     #boot{position:fixed;inset:0;z-index:60;background:var(--color-base-200,${bg});opacity:1;transition:opacity .4s ease;pointer-events:none}
@@ -259,29 +222,17 @@ const icons = [
 ];
 const manifest = JSON.stringify({
   name: title, short_name: title, description: tagline, start_url: "./", scope: "./",
-  // fullscreen, not standalone (owner 2026-09-01): a WebAPK then hides the system status bar AND the
-  // gesture strip — the app owns the whole panel. What the system bar carried is re-provided by the
-  // runtime: the AppBar shows its own battery when the page actually runs in fullscreen display-mode.
   display: "fullscreen", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
 }, null, 2) + "\n";
 
-// A placeholder worker, replaced the moment `deploy/sw.mjs` runs (which is gated in CI): the real precache
-// manifest is derived from the app's finished import graph, which does not exist yet at scaffold time.
 const sw = `// PLACEHOLDER — run \`deno run -A deploy/sw.mjs\` to generate the real worker for this app.\n` +
   `self.MS = { app: ${JSON.stringify(spec.id)}, version: "scaffold", precache: ["./", "./index.html"] };\n` +
   `importScripts("/_rt/sw-core.js");\n`;
 
-// icon.svg: brand paths on a rounded tile (matches the hand-authored icons; PNGs are a CI concern)
 const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="104" fill="${brand.bg}"/><g transform="translate(81.92,81.92) scale(14.506666666666666)" fill="none" stroke="${brand.fg}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${brandPaths}</g></svg>\n`;
 
 const files = { "index.html": indexHtml, "manifest.json": manifest, "sw.js": sw, "icon.svg": iconSvg };
-// An app with a luminous master (icon.webp) owns its icon.svg — tools/art/icon-import.mjs wrote it as the
-// wrapper of that art, and the brand tile above is only the fallback for an app that has no art yet.
 const hasArt = await has(`${dir}/icon.webp`);
-// The app's BIRTHDAY, stamped once: the first scaffold of an app (no index.html yet) writes `added` into
-// spec.json when the author did not. The store's Fresh rubric is driven by this field alone (manifest carries
-// it), so a new app joins the rubric by being scaffolded and leaves it by ageing — nobody edits a list.
-// A re-scaffold, --force included, never writes it: index.html exists by then.
 const firstScaffold = !(await has(`${dir}/index.html`));
 let wrote = 0;
 for (const [name, content] of Object.entries(files)) {

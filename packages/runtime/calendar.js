@@ -62,10 +62,6 @@
  *   honoured as the initial month in the second case, so both callers write the same prop.
  * @module
  */
-// microspec runtime — the month grid (SYSTEMIC: shared by any tool view that has dated things).
-//
-// The caller owns the data and the panel below; this owns the geometry, the locale names and the three
-// events (a day picked, a month paged, the bounds that stop the paging). Same contract as globe.js.
 import { html } from "htm/preact";
 import { useState } from "preact/hooks";
 import { sys } from "./i18n.js";
@@ -115,12 +111,11 @@ export function monthGrid(ym, weekStart = 1) {
   const year = Number(m[1]), month = Number(m[2]);
   const first = new Date(year, month - 1, 1);
   const len = new Date(year, month, 0).getDate();
-  // how many blanks before the 1st: the distance from the row's first weekday to the 1st's weekday
   const lead = (first.getDay() - weekStart + 7) % 7;
   const cells = [];
   for (let i = 0; i < lead; i++) cells.push(null);
   for (let d = 1; d <= len; d++) cells.push({ key: `${year}-${pad2(month)}-${pad2(d)}`, day: d });
-  while (cells.length % 7) cells.push(null);          // pad the LAST row only — never a whole empty one
+  while (cells.length % 7) cells.push(null);
   const weeks = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
   return { year, month, weeks };
@@ -140,11 +135,8 @@ export function markMap(marks) {
   return out;
 }
 
-// The names come from Intl, not from the app's dictionary: a shared component that demanded twelve month
-// names and seven weekday names from every app that mounts it would ship the raw key the first time one
-// of them was forgotten — the same rule that put the Sheet's "Close" in SYS.
 const intlLoc = (loc) => (loc === "uk" ? "uk-UA" : loc || "en-US");
-const WEEK_REF = Date.UTC(2024, 0, 1);   // a Monday, in UTC — a fixed anchor for naming the weekdays
+const WEEK_REF = Date.UTC(2024, 0, 1);
 
 /**
  * The month calendar (Preact): a 7-column grid of the month's own days, a dot on every marked day, one
@@ -185,7 +177,7 @@ export function Calendar({ month, value, marks, onPick, onMonth, min, max, pick 
   return html`<div class="@container flex flex-col gap-2" data-calendar=${ym}>
     <div class="flex items-center justify-between gap-1">
       ${arrow("lucide:chevron-left", prev, canPrev, sys("calPrev", lang))}
-      ${/* the month name is the calendar's heading; aria-live so paging is announced without a focus move */""}
+      ${""}
       <span data-cal-title aria-live="polite" class="font-semibold text-center grow min-w-0 truncate first-letter:uppercase">${title}</span>
       ${arrow("lucide:chevron-right", next, canNext, sys("calNext", lang))}
     </div>
@@ -197,19 +189,11 @@ export function Calendar({ month, value, marks, onPick, onMonth, min, max, pick 
         if (!c) return html`<span key=${`${wi}-${ci}`} class="aspect-square"></span>`;
         const n = marked.get(c.key) || 0;
         const on = c.key === value, isToday = c.key === today;
-        // The accent is a MARK (the dot), never the fill behind a number — an arbitrary hue as type fails
-        // contrast in one of the two themes. The SELECTED day therefore takes the theme's own primary pair,
-        // exactly as Segmented's solid variant does.
         const face = `relative aspect-square w-full rounded-[var(--ms-r-in)] flex items-center justify-center tabular-nums text-[0.82rem] @max-[260px]:text-[0.7rem] ${
           on ? "bg-primary text-primary-content font-semibold" : isToday ? "sf-inset font-semibold" : ""}`;
         const dot = n ? html`<span class=${`absolute bottom-[12%] w-1 h-1 rounded-full ${on ? "bg-primary-content" : ""}`}
           style=${on ? "" : "background:var(--app-accent)"} aria-hidden="true"></span>` : null;
         const label = `${new Date(year, mon - 1, c.day).toLocaleDateString(loc, { day: "numeric", month: "long" })}${n ? ` — ${n}` : ""}`;
-        // pick="marked": an empty day is plain text. A disabled button is still a tab stop that answers
-        // nothing, and no a11y gate reports "this control does nothing" — so it simply is not a control.
-        // `.text-muted` and never an alpha: muted ink in this farm is a DESIGNED colour with a checked
-        // contrast (runtime.css), and a faded base-content is the exact shape of the defect that once put
-        // axe-serious on all 58 apps at once.
         if (pick === "marked" && !n) return html`<span key=${c.key} class=${`${face} text-muted`}>${c.day}</span>`;
         return html`<button key=${c.key} type="button" data-cal-day=${c.key} aria-pressed=${on} aria-current=${isToday ? "date" : null}
           aria-label=${label} class=${`${face} transition-colors ${on ? "" : "hover:bg-base-content/10"}`}

@@ -93,10 +93,6 @@
  * - The edge falls back to `iconB64` for the adaptive foreground when `fgB64` is absent (API 26+).
  * @module
  */
-// Client helper for the on-demand APK generator. The heavy lifting (patch + v1-sign) is pure-Deno on the
-// edge (microspec-edge /feed/apk, core, holds the key); this only calls it through the sealed tunnel and
-// downloads the result, plus rasterises an icon in the browser (canvas → PNG) so the edge needs no image
-// library. Used by the apkforge app and the systemic profile "Download APK" row. See apps/apkforge/RESEARCH.md.
 import { VPS_PROXY } from "./feed.js";
 import { shell } from "./shell.js";
 import { FLAVOURS } from "./shell-actions.js";
@@ -111,7 +107,6 @@ function canvasToPngB64(cv) {
   return new Promise((resolve) => cv.toBlob(async (b) => resolve(bytesToB64(new Uint8Array(await b.arrayBuffer()))), "image/png"));
 }
 
-// rasterizeIcon(blob, size) → square PNG (base64, no data: prefix). Cover-fits any format (svg/ico/png/webp).
 /**
  * Rasterise any image blob (svg/ico/png/webp) into a square PNG, cover-fitted.
  * @param blob the source image
@@ -132,8 +127,6 @@ export async function rasterizeIcon(blob, size = 192) {
   } finally { URL.revokeObjectURL(url); }
 }
 
-// letterTilePng(text, accent, size) → a crafted fallback icon: accent field + the first letter (no emoji,
-// no scraped clip-art). Async (canvas.toBlob).
 /**
  * A crafted fallback icon: an accent field with the first letter of the name.
  * @param text the display name whose first letter is drawn
@@ -155,8 +148,6 @@ export function letterTilePng(text, accent, size = 192) {
   return canvasToPngB64(cv);
 }
 
-// fetchPngB64(relUrl) → same-origin PNG as base64, or null (404, or a 200 that is not a PNG — an HTML fallback
-// page must never become a launcher icon).
 async function fetchPngB64(rel) {
   try {
     const r = await fetch(new URL(rel, location.href), { cache: "force-cache" });
@@ -167,8 +158,6 @@ async function fetchPngB64(rel) {
   } catch { return null; }
 }
 
-// cornerHex(pngB64) → "#rrggbb" of the top-left pixel, or null when it is not opaque. Reads a colour off a
-// tile instead of asking anyone to declare it — the build's maskable icon is a full-bleed brand.bg square.
 async function cornerHex(pngB64) {
   try {
     const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `data:image/png;base64,${pngB64}`; });
@@ -179,11 +168,6 @@ async function cornerHex(pngB64) {
   } catch { return null; }
 }
 
-// fetchAppIcons() → { icon, fg, bg } for THIS app from the icon set the build writes to <app>/icons/
-// (deploy/icons.mjs), or null where it does not exist (source / gate mode → the caller falls back to a
-// letter tile). icon = the 192px tile Chrome puts on the home screen (the APK's legacy launcher icon);
-// fg = the transparent adaptive foreground (glyph in the safe zone); bg = brand.bg, sampled off the maskable
-// tile. So an APK carries exactly the identity the installed PWA has, on every launcher shape.
 /**
  * Load THIS app's built icon set (legacy tile, adaptive foreground, sampled background colour).
  * @returns `{ icon, fg, bg }` as base64 / "#rrggbb", or null when the build's icons do not exist
@@ -196,10 +180,6 @@ export async function fetchAppIcons() {
   return { icon, fg: fg || undefined, bg: bg || undefined };
 }
 
-// adaptiveFromTile(pngB64, fallbackBg) → { fg, bg } derived from a full-bleed tile (a site favicon, a letter
-// tile): the tile shrunk to 46% into the safe zone on a transparent 432px layer, and its corner colour as
-// the background (a flat-background tile becomes seamless; a transparent logo sits on fallbackBg). This is
-// what Android itself does to a legacy icon, done once here so the APK ships a real adaptive icon.
 /**
  * Derive an adaptive icon (foreground layer + background colour) from a full-bleed tile.
  * @param pngB64 the tile as base64 PNG
@@ -215,8 +195,6 @@ export async function adaptiveFromTile(pngB64, fallbackBg = "#ffffff") {
   return { fg: await canvasToPngB64(cv), bg };
 }
 
-// fetchSiteIconPng(url) → the site's best icon rasterised to a PNG (base64), or null. Goes through the edge
-// (open /feed/appicon — SSRF-guarded), so cross-origin favicons work without CORS taint.
 /**
  * Fetch a site's best icon through the edge and rasterise it to a square PNG.
  * @param url the site URL
@@ -233,9 +211,6 @@ export async function fetchSiteIconPng(url, size = 192) {
   } catch { return null; }
 }
 
-// buildApk({url, name, iconB64, fgB64?, bg?}) → a signed APK Blob. Calls the edge (core /feed/apk) via the
-// sealed tunnel. iconB64 = legacy launcher PNG; fgB64 + bg = the adaptive icon's foreground layer and
-// "#rrggbb" background (API 26+); the edge falls back to iconB64 for the foreground when fg is absent.
 /**
  * The shell flavour an app's APK must be built with, taken from its spec — `undefined` for the plain
  * `full` shell. It exists as a named function because deriving it from a literal is a fault with a delay
@@ -265,8 +240,6 @@ export async function buildApk({ url, name, iconB64, fgB64, bg, power }) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ url, name, icon: iconB64 || undefined, fg: fgB64 || undefined, bg: bg || undefined, power: power || undefined }),
   });
-  // The status alone can't tell "bad url" from "name required" — both are 400 — so carry the edge's own
-  // one-line reason back to the screen. It is short, safe text (util.send), never a page.
   if (!r.ok) { const why = await r.text().catch(() => ""); throw new Error(`apk ${r.status}${why ? ` ${why}` : ""}`); }
   return await r.blob();
 }
@@ -277,15 +250,13 @@ export async function buildApk({ url, name, iconB64, fgB64, bg, power }) {
  * @param filename the name the file is saved under
  */
 export function downloadBlob(blob, filename) {
-  // Inside our Android shell an <a download> with a blob: URL does nothing at all — WebView has no blob
-  // download path — so hand the bytes over instead. Absent (every browser), fall through to the anchor.
   const shell = typeof window !== "undefined" && window.__msDownload;
   if (shell && typeof shell.save === "function") {
     const fr = new FileReader();
     fr.onload = () => {
       const dataUrl = String(fr.result);
       try { shell.save(filename, blob.type || "application/octet-stream", dataUrl.slice(dataUrl.indexOf(",") + 1)); }
-      catch { /* shell refused — nothing better to try */ }
+      catch { }
     };
     fr.readAsDataURL(blob);
     return;
@@ -320,14 +291,12 @@ export async function shareFile(blob, filename) {
     try {
       await shell.call("files.share", { name: filename, mime, base64: bytesToB64(new Uint8Array(await blob.arrayBuffer())) });
       return "shared";
-    } catch { /* the bridge refused — fall through and at least save it */ }
+    } catch { }
   } else {
     try {
       const file = new File([blob], filename, { type: mime });
       if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file] }); return "shared"; }
     } catch (e) {
-      // AbortError is the user closing the sheet. That is a decision, not a failure, and must NOT be
-      // "helpfully" turned into a download they did not ask for.
       if (e?.name === "AbortError") return "cancel";
     }
   }
@@ -335,9 +304,6 @@ export async function shareFile(blob, filename) {
   return "saved";
 }
 
-// downloadUrl(url, filename) — same contract as downloadBlob for a blob:/data: URL you already hold.
-// Anything that saves a file must come through here: a bare <a download> is silently dead in the shell,
-// and each app inventing its own anchor is how five of them ended up broken at once.
 /**
  * Save a blob:/data: URL you already hold as a file, with the same shell-aware contract as `downloadBlob`.
  * @param url the blob: or data: URL
@@ -346,10 +312,9 @@ export async function shareFile(blob, filename) {
 export async function downloadUrl(url, filename) {
   if (!url) return;
   try { downloadBlob(await (await fetch(url)).blob(), filename); }
-  catch { /* revoked or unreadable — nothing to save */ }
+  catch { }
 }
 
-// A safe .apk filename from a display name.
 /**
  * A safe, lowercase, dash-separated `.apk` filename from a display name ("app.apk" when empty).
  * @param name the display name

@@ -73,11 +73,10 @@ export function godotSave(name) { return shell.call("godot.save", name ? { name 
  */
 export function GodotStage({ pack, params = {}, onState, gestures = true, className = "", children }) {
   const [state, setState] = useState("idle");
-  const sent = useRef({});            // the params the project has, by key → JSON
+  const sent = useRef({});
   const cb = useRef(onState); cb.current = onState;
   const live = godotAvailable();
 
-  // the engine's life = the element's: start with the first params, stream the state, stop on the way out
   useEffect(() => {
     if (!live || !pack) return;
     document.documentElement.dataset[MARK] = "godot";
@@ -98,7 +97,6 @@ export function GodotStage({ pack, params = {}, onState, gestures = true, classN
     };
   }, [live, pack]);
 
-  // params: every key whose JSON changed goes over as one godot.set — the project keeps the rest
   useEffect(() => {
     if (!live || state === "idle" || state === "failed") return;
     for (const [k, v] of Object.entries(params)) {
@@ -109,8 +107,6 @@ export function GodotStage({ pack, params = {}, onState, gestures = true, classN
     }
   }, [live, state, params]);
 
-  // gestures: a tap (focus) and a pinch (zoom) belong to the picture — the WebView owns every touch, so the
-  // page relays them; a pinch sends one frame per animation frame, never one per event
   const pinch = useRef({ pts: new Map(), d0: 0, raf: 0, scale: 1 }).current;
   const send = (type, extra) => shell.call("godot.input", { type, ...extra }).catch(() => {});
   const onDown = (e) => {

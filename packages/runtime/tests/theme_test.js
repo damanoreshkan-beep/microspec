@@ -1,10 +1,5 @@
-// microspec runtime — design system / theme unit tests. Pure logic: no browser, no import map.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { pkgRoot } from "../pkgroot.js";
-// Package-internal reads via pkgRoot — running from the JSR cache, import.meta is https and the registry
-// serves js with comments stripped; the npm tarball under node_modules is the VERBATIM tree.
 const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
 
 Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit consumes", async () => {
@@ -19,10 +14,6 @@ Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit
 });
 
 Deno.test("design tokens: --ms-hero STEPS with the height ladder", async () => {
-  // The one token whose value is measured in screen-thirds. Written as a literal (it was `text-[5.5rem]`)
-  // the weather hero filled a 340px floating window on its own and pushed the whole app below the fold —
-  // a defect no gate can see, because a page that scrolls is allowed to scroll. So the rule is not "it
-  // exists" but "it moves": a hero that does not compact is the same bug wearing a token's name.
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const vals = [...css.matchAll(/--ms-hero:\s*([\d.]+)rem/g)].map((m) => Number(m[1]));
   assert(vals.length >= 4, `--ms-hero is declared ${vals.length} time(s); the height ladder has more steps`);
@@ -30,7 +21,6 @@ Deno.test("design tokens: --ms-hero STEPS with the height ladder", async () => {
   assert(vals.some((v) => v < base * 0.7), `--ms-hero never drops below 70% of its ${base}rem base — it is not compacting`);
   assert(vals.every((v) => v >= 2.5), "a hero below 2.5rem is no longer the screen's one big reading");
 
-  // And nothing may re-declare it as a hardcoded font-size beside the element it describes.
   const render = await Deno.readTextFile(P("packages/runtime/render.js"));
   const heroLine = render.split("\n").find((l) => l.includes("--ms-hero"));
   assert(heroLine, "render.js no longer reads --ms-hero for the dashboard hero value");
@@ -46,20 +36,11 @@ Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and 
   }
   assert(/--r-1:\s*4px/.test(css), "--ms-r-in floors on --r-1; theme.css must still declare it");
 
-  // Walk the ladder in SOURCE ORDER and accumulate, because the steps cascade: a 430px-tall viewport
-  // matches 780, 670, 560 and 440 at once, and a step that sets only --ms-pad (560px does) inherits the
-  // --ms-r above it. Checking each block in isolation would pass a pair that never co-occurs.
-  //
-  // Every step is LABELLED with its real at-rule. The first version of this parser matched the @media
-  // prefix only when `:root` followed it immediately, so the `max-width: 300px` step — the one with the
-  // tightest pair in the whole ladder — reported as "base", and a failure would have named the wrong
-  // breakpoint. A check that reports a number without the right subject is the defect it is meant to catch.
   const at = (idx) => {
     const before = css.slice(0, idx);
     const m = [...before.matchAll(/@media\s*\(([^{]*)\)\s*\{/g)].pop();
     if (!m) return "base";
     const between = before.slice(m.index + m[0].length);
-    // Only the enclosing at-rule counts: if its block already closed, this :root is at top level.
     return (between.split("}").length - 1) > (between.split("{").length - 1) ? "base" : `@media (${m[1].trim()})`;
   };
   const steps = [...css.matchAll(/:root\s*\{([^}]*)\}/g)]
@@ -76,7 +57,6 @@ Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and 
     if (nr) r = rem(nr[1]);
     if (np) pad = rem(np[1]);
     if (r == null || pad == null) continue;
-    // The TV end steps UP rather than down; it is the same relation, so it is checked the same way.
     const inner = Math.max(4, r - pad);
     assert(r > pad, `${b.at}: --ms-pad (${pad}px) has caught up with --ms-r (${r}px), so every nested surface's concentric radius clamps to the 4px floor at once. Compact the two together.`);
     assert(inner < r, `${b.at}: derived inner radius ${inner}px is not smaller than the outer ${r}px (pad ${pad}px)`);
@@ -84,8 +64,6 @@ Deno.test("design tokens: --ms-r-in is DERIVED from the pair it reconciles, and 
   }
   assert(checked.length >= 6, `only ${checked.length} steps carried both --ms-r and --ms-pad; the ladder has more. Walked: ${checked.join(" | ")}`);
 
-  // The console shell is the worked example and the one that was wrong. Its aperture must derive from the
-  // shell's own radius, never restate --ms-r beside it.
   const screen = /\.ms-screen\s*\{[^}]*border-radius:\s*([^;]+);/.exec(css);
   assert(screen, "theme.css lost .ms-screen's border-radius");
   assert(
@@ -105,15 +83,13 @@ Deno.test("motion: no `transition-all` — a transition names the properties it 
         if (["node_modules", ".git", "dist", "states"].includes(e.name)) continue;
         await walk(p);
       } else if (/\.(js|mjs|html|css)$/.test(e.name) && !/_test\.js$/.test(e.name) && !/gates\/preflight\.mjs$/.test(p.pathname)) {
-        // preflight.mjs is exempt: it names the banned class in the ban's own message.
         const src = await Deno.readTextFile(p);
         if (/(?:^|[\s"'`])transition-all\b/.test(src)) offenders.push(p.pathname.replace(root.pathname, ""));
       }
     }
   };
-  // the core scans itself via import.meta (it ships as a package); the CONSUMER's apps + rt live at the cwd
   await walk(new URL("packages/", root));
-  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { /* absent in this tree */ } }
+  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
   assertEquals(
     offenders,
     [],
@@ -140,7 +116,7 @@ Deno.test("icons: the farm draws from ONE set (lucide) — a second library is a
     }
   };
   await walk(new URL("packages/", root));
-  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { /* absent in this tree */ } }
+  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
   assertEquals(
     offenders,
     [],
@@ -161,7 +137,7 @@ Deno.test("a11y: MUTED text (an alpha over a surface) clears 4.5:1 — the pair 
   const lin = (v) => (v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
   const relLum = (p) => 0.2126 * lin(p[0]) + 0.7152 * lin(p[1]) + 0.0722 * lin(p[2]);
   const ratio = (a, b) => { const [x, y] = [relLum(a), relLum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
-  const over = (fg, a, bg) => fg.map((v, i) => a * v + (1 - a) * bg[i]);   // sRGB compositing, what Chrome does
+  const over = (fg, a, bg) => fg.map((v, i) => a * v + (1 - a) * bg[i]);
 
   for (const theme of ["signal", "signal-light"]) {
     const t = tokens(theme);
@@ -170,7 +146,6 @@ Deno.test("a11y: MUTED text (an alpha over a surface) clears 4.5:1 — the pair 
       "base-200": rgb(t["--color-base-200"]),
       "base-300": rgb(t["--color-base-300"]),
     };
-    // `bg-primary/10` is a real tinted backdrop in the farm — text sits on it, so it is a surface too.
     bed["primary/10 on base-100"] = over(rgb(t["--color-primary"]), 0.10, bed["base-100"]);
     bed["primary/10 on base-200"] = over(rgb(t["--color-primary"]), 0.10, bed["base-200"]);
     const ink = rgb(t["--color-base-content"]);
@@ -188,10 +163,6 @@ Deno.test("a11y: MUTED text (an alpha over a surface) clears 4.5:1 — the pair 
       );
     }
 
-    // The muted token is SOLID, so it is checked directly — no compositing, which is the entire point of
-    // it existing. It must clear the floor on every surface INCLUDING the tinted ones, because those are
-    // where alpha-derived muted text died: a 10% primary wash moves the bed toward the text in BOTH
-    // themes (it darkens a light page and lightens a dark one), so no single alpha can survive both.
     const muted = rgb(t["--color-base-muted"]);
     for (const [surface, px] of Object.entries(bed)) {
       const r = ratio(muted, px);
@@ -215,14 +186,13 @@ Deno.test("a11y: muted text is the TOKEN, never an alpha — .text-base-content/
         if (["node_modules", ".git", "dist", "states"].includes(e.name)) continue;
         await walk(p);
       } else if (/\.(js|mjs|html|css)$/.test(e.name) && !/_test\.js$/.test(e.name)) {
-        // a test file names the banned pattern on purpose — this one does, three lines down
         const src = await Deno.readTextFile(p);
         if (src.includes("text-base-content/60")) offenders.push(p.pathname.replace(root.pathname, ""));
       }
     }
   };
   await walk(new URL("packages/", root));
-  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { /* absent */ } }
+  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
   assertEquals(
     offenders,
     [],
@@ -234,7 +204,6 @@ Deno.test("a11y: muted text is the TOKEN, never an alpha — .text-base-content/
 
 Deno.test("design tokens: density steps DOWN as the viewport gets shorter (landscape must compact)", async () => {
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
-  // each `@media (max-height: N)` block, smallest N last — read --ms-gap out of every one
   const steps = [...css.matchAll(/@media \(max-height:\s*(\d+)px\)\s*\{([\s\S]*?)\n\}/g)]
     .map((m) => ({ h: Number(m[1]), gap: /--ms-gap:\s*([\d.]+)rem/.exec(m[2])?.[1] }))
     .filter((s) => s.gap != null)
@@ -246,7 +215,6 @@ Deno.test("design tokens: density steps DOWN as the viewport gets shorter (lands
     assert(Number(s.gap) < prev, `@media (max-height:${s.h}px) must be TIGHTER than the step above it (${s.gap}rem vs ${prev}rem)`);
     prev = Number(s.gap);
   }
-  // the tap target never collapses below the WCAG 2.2 target-size floor, however short the screen
   for (const m of css.matchAll(/--ms-ctl:\s*([\d.]+)rem/g)) assert(Number(m[1]) * 16 >= 36, `--ms-ctl: ${m[1]}rem is below the 36px tap floor`);
 });
 
@@ -255,7 +223,6 @@ Deno.test("design system: the fit contract disables page scroll on BOTH html and
   const rule = /html\.ms-fit,\s*html\.ms-fit body\s*\{([^}]*)\}/.exec(css);
   assert(rule, "html.ms-fit + body rule is gone — a fit screen would scroll again");
   assert(/overflow:\s*hidden/.test(rule[1]), "a fit page must not scroll");
-  // #view is sized off the two chrome constants, never a magic number
   const view = /html\.ms-fit main#view\s*\{([^}]*)\}/.exec(css);
   assert(view, "html.ms-fit main#view sizing rule is gone");
   assert(view[1].includes("var(--hdr-h)") && view[1].includes("var(--dock-h)"), "fit height must derive from --hdr-h/--dock-h, not a hardcoded rem");
@@ -263,7 +230,6 @@ Deno.test("design system: the fit contract disables page scroll on BOTH html and
 
 Deno.test("design system: the UI kit imports relatively and owns its own chrome strings", async () => {
   const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
-  // code lines only: the module doc quotes how an APP imports "/_rt/ui.js", which is the right form there
   const code = ui.split("\n").filter((l) => !/^\s*(\*|\/\/|\/\*)/.test(l)).join("\n");
   assert(!/from\s+["']\/_rt\//.test(code), "runtime-internal imports must be relative (./gesture.js), never /_rt/");
   assert(/sys\(\s*["']close["']/.test(ui), "the Sheet's close button must read a SYS string, not demand an i18n key from every app");
@@ -291,8 +257,6 @@ Deno.test("dock height is MEASURED, not a constant — nothing may sit under the
   assert(/ResizeObserver/.test(render) && /setProperty\("--dock-h"/.test(render),
     "the runtime must measure the dock and publish --dock-h; a hand-written constant is wrong the moment the dock's metrics move (and it fails by COVERING content, which no overflow check can see)");
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
-  // exactly one declaration — the first-paint fallback at :root. A second one in a media query is the
-  // guess this measurement exists to delete.
   assertEquals([...css.matchAll(/--dock-h:/g)].length, 1, "--dock-h must be declared once (the :root fallback); the live value comes from the measurement");
   const lib = await Deno.readTextFile(P("packages/gates/browser-lib.mjs"));
   assert(/nav\[data-dock\]/.test(lib) && /pointerEvents/.test(lib),
@@ -300,29 +264,16 @@ Deno.test("dock height is MEASURED, not a constant — nothing may sit under the
 });
 
 Deno.test("the chrome contract: a measured number may never be overwritten by a declared one", async () => {
-  // THE class of bug this closes, and it has now bitten twice. --dock-h and --hdr-h are what every fit
-  // screen's height math is built from. The dock is MEASURED (render.js publishes its real footprint); the
-  // header was DECLARED in theme.css while its actual height came from a Tailwind class — two facts joined
-  // by nothing but intention. Watch mode then compacted the token to 2.25rem, the element stayed 56px, and
-  // every fit screen on a watch was 20px too tall with its transport cut off the bottom. No gate could see
-  // it: nothing overflowed, nothing was hidden under the dock — the page was simply the wrong size.
-  //
-  // The rule that makes it impossible rather than merely remembered: a media query may compact the ELEMENT,
-  // never the published number. Write the token and the two disagree; style the element and the measurement
-  // follows on its own.
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const render = await Deno.readTextFile(P("packages/runtime/render.js"));
 
   for (const v of ["--hdr-h", "--dock-h", "--dock-w"]) {
     assert(render.includes(`setProperty("${v}"`), `${v} is not measured — render.js never publishes it`);
   }
-  // Both chrome elements report through ONE mechanism, so there is no second thing to remember.
   assert(/function usePublishedChrome/.test(render), "the two chrome measurements have drifted into two mechanisms");
   assert((render.match(/usePublishedChrome\(/g) || []).length >= 3, "a chrome element is not wired to the measurement");
   assert(/<header ref=\$\{/.test(render), "the header is not measured — its height is a guess again");
 
-  // …and no media query re-declares one of them. Outside a media query they are the pre-JS FALLBACK, which
-  // is legitimate and is why :root still carries them.
   for (const m of css.matchAll(/@media[^{]+\{([\s\S]*?)\n\}/g)) {
     for (const v of ["--hdr-h", "--dock-h", "--dock-w"]) {
       assert(!new RegExp(`${v}\\s*:`).test(m[1]),
@@ -331,8 +282,6 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
   }
 });
 
-// Clean screen (S.clean). Three things have to hold together or the mode is a trap rather than a feature,
-// and none of them is visible in a screenshot of the good case.
 Deno.test("clean screen: the chrome that unmounts takes its measurements with it, and leaves a door", async () => {
   const render = await Deno.readTextFile(P("packages/runtime/render.js"));
   const index = await Deno.readTextFile(P("packages/runtime/index.js"));
@@ -341,25 +290,15 @@ Deno.test("clean screen: the chrome that unmounts takes its measurements with it
 
   assert(/\bclean:\s*atom\(false\)/.test(store), "S.clean is gone — the mode has no state");
 
-  // 1) The chrome is gone. All three pieces: a dock that unmounts while its fade still paints leaves a
-  //    gradient band floating over the content with nothing under it to explain it.
   for (const el of ["AppBar", "DockFade", "Dock"]) {
     assert(new RegExp(`clean \\? null : html\`<\\$\\{${el}\\}|clean \\? html\`<\\$\\{CleanExit\\}[^\`]*\` : html\`<\\$\\{${el}\\}`).test(render),
       `${el} still renders in clean screen — the surface is not clean`);
   }
 
-  // 2) …and so are the numbers it publishes. An element that unmounted is still describing the layout
-  //    through --hdr-h/--dock-h until someone says otherwise, and a stale one fails by COVERING content
-  //    (an island pinned at="bottom" reads --dock-h), which no overflow check can see.
   const zeroed = /if \(!clean\) return;[\s\S]{0,400}?setProperty\("--hdr-h", "0px"\)[\s\S]{0,200}?setProperty\("--dock-h", "0px"\)/;
   assert(zeroed.test(render), "clean screen unmounts the chrome without zeroing --hdr-h/--dock-h — every consumer still lays out around chrome that is not on screen");
 
-  // 3) There is a way back, and it is history-backed. Hiding the dock removes the app's only navigation:
-  //    without an overlay entry the Back that should restore it exits the PWA instead.
   assert(/function CleanExit/.test(render) && /data-clean-exit/.test(render), "no door out of clean screen");
-  // …and the door is glass over media, so it must not be extruded. On a screen that has been deliberately
-  // cleared, --sf-drop's light half IS the only thing on it. btn-ghost is how it escapes that rule: the
-  // DaisyUI selector is (0,4,0) and `shadow-none` is (0,1,0), so a utility cannot switch it off.
   const door = /data-clean-exit class="([^"]+)"/.exec(render);
   assert(door && /\bbtn-ghost\b/.test(door[1]) && /\bsf-frost\b/.test(door[1]),
     `the clean-screen door is extruded (${door?.[1]}) — it needs btn-ghost + sf-frost, or it wears a white halo on the screen it just cleared`);
@@ -369,18 +308,12 @@ Deno.test("clean screen: the chrome that unmounts takes its measurements with it
   assert(overlays.trimStart().split("\n").filter((l) => l.trim().startsWith("[S.")).shift().includes("S.clean"),
     "S.clean must be the BOTTOM-most overlay — a dive taken with the chrome hidden has to unwind before the chrome comes back");
 
-  // 4) Both names are the runtime's, in both locales — the app only asks for the mode.
   const sys = /export const SYS = \{([\s\S]*?)\n\};/.exec(i18n)[1];
   for (const k of ["clean", "cleanExit"]) {
     assert(new RegExp(`\\b${k}:\\s*\\{[^}]*\\ben:[^}]*\\buk:`).test(sys), `SYS.${k} must carry BOTH locales`);
   }
 });
 
-// The third time the SAME defect has shipped: .sf-frost was carved out of the kit when the extrusion pair
-// haloed a glass rail, the clean-screen door repeated it, and this one had been on reel's island all along.
-// The pair's light half is --nm-light, and it exists to shade a surface — over a PICTURE there is nothing to
-// shade, so it just draws a white ring. In the dark theme that reads as a soft glow you can argue with; in
-// the light theme --nm-light is bright and reel's island came out hard-outlined in white over black video.
 Deno.test('a "dark" island is glass over MEDIA — it casts alone, never the extrusion pair', async () => {
   const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const dark = /tone === "dark"\s*[\r\n]*\s*\? "([^"]+)"/.exec(ui);
@@ -391,29 +324,18 @@ Deno.test('a "dark" island is glass over MEDIA — it casts alone, never the ext
 });
 
 Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts out loud", async () => {
-  // The rule answers "what fits inside me", so its input is the component's own box: a slider group can sit
-  // in a panel, a sheet, a 38% side column or a 200px watch screen, and the viewport describes none of them.
-  // Driving it from a viewport HEIGHT query is what made it unpredictable for three commits.
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const at = css.indexOf(".ms-cols {");
   assert(at > 0, ".ms-cols rule is gone");
 
-  // container queries, and no viewport query anywhere near it
   const region = css.slice(at - 900, at + 700);
   assert(/@container \(min-width/.test(region), ".ms-cols must respond to its container");
   assert(!/@media \([^)]*height[^)]*\)\s*\{[^}]*\.ms-cols/.test(css), ".ms-cols is back on a viewport height query");
 
-  // explicit steps rather than intrinsic arithmetic: auto-fit derives the count from a guessed floor and
-  // collapses to ONE track in silence when the container is intrinsically sized (CSS Grid §7.2.3.1)
   assert(!/grid-template-columns:[^;]*auto-fit/.test(css), "auto-fit is back — the count must be stated, not derived");
   assert(/repeat\(var\(--ms-cols, 3\), minmax\(0, 1fr\)\)/.test(region), "--ms-cols must still name the widest count");
 
-  // and something has to BE the container, or every query above reads nothing
   const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
-  // Asserted on PANEL'S OWN class list, not on the adjacency of two class names: the previous form was
-  // `/@container sf-e2/`, which pinned the check to the ORDER the classes happen to be written in and
-  // failed the moment the surface gained `sf-raised` — a change that could not possibly stop a container
-  // from being a container. A check that breaks on a reorder is testing the source, not the behaviour.
   const panelCls = /export function Panel\([^)]*\)\s*\{[\s\S]*?class=\$\{`([^`]*)`/.exec(ui)?.[1] ?? "";
   assert(panelCls.includes("@container"), `Panel no longer establishes a container — the queries have nothing to read (its classes: ${panelCls})`);
 });
@@ -424,30 +346,19 @@ Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager,
   assert(at > 0, "no watch breakpoint — the farm's smallest screen is 208px, not 320px");
   const block = css.slice(at, css.indexOf("\n}\n", css.indexOf(".ms-side >", at)));
 
-  // 1) the dock is a RAIL: row flow, off the bottom, and its captions gone. Trading 40px of width once
-  //    beats 68px of height forever on a 248px-tall screen.
   assert(/grid-auto-flow:\s*row/.test(block), "the dock must turn 90° — horizontal it costs 27% of the height");
   assert(/nav\[data-dock\] button > span\s*\{\s*display:\s*none/.test(block), "dock captions must go at watch size");
-  // …but never its targets. --ms-ctl is the tap floor and it is the one token that may not shrink.
   const ctl = /--ms-ctl:\s*([\d.]+)rem/.exec(block);
   assert(ctl && parseFloat(ctl[1]) * 16 >= 36, `watch --ms-ctl is ${ctl?.[1]}rem — below the 36px tap floor`);
 
-  // 2) .ms-side becomes a snap PAGER, and its two halves are full-width pages. The app writes nothing new:
-  //    [data-stage-box] + .ms-side-main already name the two things, so watch mode is inherited.
   assert(/scroll-snap-type:\s*x mandatory/.test(block), ".ms-side must become a horizontal snap pager");
-  // A page PEEKS (<100%) so the next one is visible. A full-width page on a watch is an empty screen with no
-  // evidence anything else exists, and ::scroll-marker cannot cover for it — being unsupported is precisely
-  // the case that needs covering. Found on a 208×248 shot: the transport was one swipe away and invisible.
   const page = /flex:\s*0 0 (\d+)%/.exec(block);
   assert(page, "the pager's pages have no width");
   assert(Number(page[1]) < 100 && Number(page[1]) >= 80,
     `a page is ${page[1]}% — at 100% nothing hints the next page exists; below ~80% it stops being a page`);
   assert(/scroll-snap-align/.test(block), "snap targets need an alignment or the pager free-scrolls");
-  // …and you land on the CONTROLS. On a watch the reason you opened a player is to press play.
   assert(/\.ms-side > \.ms-side-main\s*\{\s*order:\s*-1/.test(block), "the transport must be the first page");
 
-  // 3) the markers are an ENHANCEMENT, never a dependency: Firefox is still partial as of mid-2026, and
-  //    without them the swipe must be identical, minus dots.
   const markers = css.indexOf("::scroll-marker");
   assert(markers > 0, "no scroll markers — the pager has no indicator where the browser supports one");
   assert(/@supports selector\(::scroll-marker\)/.test(css), "scroll markers must be @supports-gated");
@@ -457,40 +368,29 @@ Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager,
 });
 
 Deno.test("watch mode — the dock's own position is styleable (no inline style can outrank it)", async () => {
-  // The rail moves the dock to the right edge. An inline `style="bottom:…"` on the element would win over
-  // any stylesheet, so the dock would stay pinned to the bottom AND get a top — stretching it full height.
   const render = await Deno.readTextFile(P("packages/runtime/render.js"));
   const nav = render.slice(render.indexOf("<nav data-dock"), render.indexOf("</nav>", render.indexOf("<nav data-dock")));
   assert(!/style="[^"]*bottom:/.test(nav), "the dock's `bottom` is an inline style — watch mode cannot move it");
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   assert(/nav\[data-dock\]\s*\{\s*bottom:/.test(css), "…and nothing in theme.css positions it instead");
-  // --dock-w is the rail's footprint; content clears it the way it cleared --dock-h.
   assert(/--dock-w/.test(render) && /--dock-w/.test(css), "the rail's width must be published and consumed");
 });
 
 Deno.test("the surface system: every interactive node declares a state, and none draws its own shadow", async () => {
-  // BLOCK 7 — the contract. The system is only a system if a widget's volume comes from a NAMED state
-  // rather than a shadow someone wrote in place. Two halves: the kit must not hardcode shadows, and every
-  // node the reference enumerates must have a rule.
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
   const render = await Deno.readTextFile(P("packages/runtime/render.js"));
 
-  // no literal shadows left in the kit or the shell — they declare `sf-*` instead
   for (const [name, src] of [["ui.js", ui], ["render.js", render]]) {
     const lits = [...src.matchAll(/shadow-\[[^\]]+\]|shadow-(?:sm|md|lg|xl|2xl)\b/g)].map((m) => m[0]);
     assertEquals(lits, [], `${name} still writes its own shadows instead of declaring a surface`);
   }
 
-  // the four states exist, in both themes, and are RELATIVE moves rather than borrowed palette entries
-  // Defined TWICE each — once per theme. Slicing "the block after the selector" is unreliable here because
-  // a theme is declared in more than one place; counting definitions asks the real question.
   for (const v of ["--sf-rim", "--sf-drop", "--sf-inset-face", "--sf-inset-top", "--sf-press-face", "--sf-press-top"]) {
     const defs = (css.match(new RegExp(v.replace(/-/g, "\\-") + ":", "g")) || []).length;
     assert(defs >= 2, `${v} is defined ${defs}× — a state that exists in one theme only is not a state`);
   }
 
-  // every node the reference enumerates has a rule. If one is added to the kit and not here, this fails.
   const nodes = [
     [".btn:not(.btn-ghost)", "buttons raise at rest"],
     [":not(:disabled):active", "buttons press under a finger"],
@@ -505,20 +405,13 @@ Deno.test("the surface system: every interactive node declares a state, and none
   ];
   for (const [sel, why] of nodes) assert(css.includes(sel), `no surface rule for ${sel} — ${why}`);
 
-  // and the accent never becomes a FILL behind text: focus is a ring
   const focus = css.slice(css.indexOf(".input:focus"), css.indexOf("}", css.indexOf(".input:focus")));
   assert(/0 0 0 \d+px var\(--app-accent\)/.test(focus), "focus must be a ring — an arbitrary hue behind text fails contrast in one theme");
   assert(!/background:\s*var\(--app-accent\)/.test(focus), "focus fills the field with the accent");
 });
 
-// The BRAND's material test ("light IS the structure — a rim on every surface, a bloom on the lifted ones, a
-// black page") lives with the brand now: DreamStudio's rt/tests/theme_test.js reads rt/theme.css. The core's
-// runtime.css carries the STRUCTURE and a neutral default, and this suite holds only what every brand must
-// keep: the tokens exist, every composed surface carries a ring, no 45° pair, the poles are text-safe.
 Deno.test("the neutral material: every surface token a brand composes has a value, with a ring and no 45° pair", async () => {
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
-  // A theme is declared in MORE THAN ONE block (the palette, then the surface tokens), so reading "the
-  // block after the selector" answers a different question than the one being asked. Collect them all.
   const themeBlock = (t) => {
     let out = "", i = -1;
     while ((i = css.indexOf(`[data-theme="${t}"] {`, i + 1)) > -1) out += css.slice(i, css.indexOf("\n}", i)) + "\n";
@@ -529,14 +422,10 @@ Deno.test("the neutral material: every surface token a brand composes has a valu
   for (const theme of ["signal", "signal-light"]) {
     const b = themeBlock(theme);
 
-    // 1. The three terms exist and are NAMED, so a rule composes them instead of restating an rgba.
     for (const v of ["--lm-rim", "--lm-rim-hi", "--lm-rim-lo", "--lm-bloom", "--nm-cast"]) {
       assert(b.includes(v + ":"), `${theme} does not define ${v} — the rim and the bloom are the material`);
     }
 
-    // 2. Every composed surface carries a RIM — a `0 0 0 1px` ring — because on a black page a surface with
-    //    no lit edge simply is not there. Raised and pressed surfaces also carry a bloom; a well does not
-    //    (light does not reach into it), it carries a dark inner top instead.
     const ring = /(?:^|,|:)\s*(?:inset\s+)?0 0 0 1px var\(--lm-(?:rim|rim-lo|bloom-hi)\)/;
     for (const v of ["--sf-drop", "--sf-lift2", "--sf-sink", "--sf-sink2", "--sf-press"]) {
       assert(b.includes(v + ":"), `${theme} does not define ${v}`);
@@ -546,24 +435,19 @@ Deno.test("the neutral material: every surface token a brand composes has a valu
     assert(value(b, "--sf-press").includes("--lm-bloom-hi"), `${theme} --sf-press must turn the rim to accent — pressing something LIGHTS it`);
     assert(/inset 0 \d+px \d+px rgba\(/.test(value(b, "--sf-sink")), `${theme} --sf-sink needs a dark inner top — a well the light does not reach`);
 
-    // 3. base-100 === base-200, still: a raised surface is the page with a lit edge, not a lighter panel.
     const tok = (n) => /#[0-9A-Fa-f]{6}/.exec(b.slice(b.indexOf(`--color-${n}:`)))[0].toUpperCase();
     assertEquals(tok("base-100"), tok("base-200"), `${theme}: base-100 and base-200 differ — a raised surface must be the same colour as the page`);
 
-    // 4. No 45° pair survives anywhere in the material. A `Npx Npx` offset pair is the neumorphic light
-    //    source coming back, and it cannot exist on a page with no headroom below it.
     for (const v of ["--sf-drop", "--sf-lift2", "--sf-sink", "--sf-sink2", "--sf-press"]) {
       assert(!/(\d+)px \1px \d+px/.test(value(b, v)), `${theme} ${v} carries a 45° offset pair — that is the extrusion, not light`);
     }
   }
 
-  // 5. Every brand hook resolves to NOTHING here: a tree with no brand must not reach for a sprite.
   for (const v of ["--ds-strand", "--ds-lip", "--ds-scatter", "--ds-corner"]) {
     assert(new RegExp(`${v}:\\s*none`).test(css), `${v} must default to none — the core owns no sprite`);
   }
   assert(!/ds-[nd]-[a-z]+\.webp/.test(css), "runtime.css names a brand sprite — sprites live in the product's rt/");
 
-  // 6. The bloom ladder is structural: it steps with the density ladder, negative spread at every step.
   const steps = [...css.matchAll(/@media \(max-height:\s*(\d+)px\)\s*\{[^}]*--lm-g:\s*(\d+)px/g)]
     .map((m) => ({ h: +m[1], g: +m[2] })).sort((a, b) => b.h - a.h);
   assert(steps.length >= 2, "the bloom radius does not step with the density ladder");
@@ -574,10 +458,6 @@ Deno.test("the neutral material: every surface token a brand composes has a valu
 });
 
 Deno.test("the material: the pair of light is text-safe in BOTH themes — the CI-only trap", async () => {
-  // DaisyUI's text-secondary / badge-secondary / text-accent put --color-secondary / --color-accent on TEXT,
-  // and no single vivid colour clears 4.5:1 on both a black and a paper ground (the noir pass shipped that
-  // and failed axe across the whole farm at once, with every local gate green). So the two poles are tuned
-  // per theme and checked here, on every bed the muted token is checked on.
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const tokens = (theme) => {
     const i = css.indexOf(`[data-theme="${theme}"] {`);
@@ -601,22 +481,17 @@ Deno.test("the material: the pair of light is text-safe in BOTH themes — the C
         const r = ratio(fg, px);
         assert(r >= 4.5, `${theme}: --color-${pole} as TEXT on ${surface} is ${r.toFixed(2)}:1 — text-${pole} fails axe farm-wide. Tune the pole per theme; the vivid mark stays in --app-accent.`);
       }
-      // …and the badge: the pole as a FILL with its -content ink on top.
       const r = ratio(rgb(t[`--color-${pole}-content`]), fg);
       assert(r >= 4.5, `${theme}: --color-${pole}-content on --color-${pole} is ${r.toFixed(2)}:1 — badge-${pole} fails axe`);
     }
   }
 
-  // The marks are declared ONCE, as hexes, so render.js can read them off :root.
   assert(/:root\s*\{[^}]*--app-accent:\s*#[0-9A-Fa-f]{6}/.test(css), "--app-accent must be a hex on :root");
   assert(/:root\s*\{[^}]*--app-accent-2:\s*#[0-9A-Fa-f]{6}/.test(css), "--app-accent-2 (the cool pole) must be a hex on :root");
 });
 
 Deno.test("PWA chrome colours track the theme bases — the surface no screenshot can see", async () => {
-  const root = `file://${Deno.cwd()}/`; // the apps are the CONSUMER's; the css is the EFFECTIVE theme —
-  // the core's runtime.css, then the consumer's rt/theme.css with its local @import chain inlined (a
-  // product's theme.css imports its default MODULE); the LAST palette with a base wins, as in the cascade —
-  // the same resolution scaffold measures with.
+  const root = `file://${Deno.cwd()}/`;
   const expand = async (text) => {
     let head = "";
     for (const m of text.matchAll(/@import\s+"\.\/([\w.-]+\.css)";/g)) {
@@ -648,25 +523,17 @@ Deno.test("PWA chrome colours track the theme bases — the surface no screensho
       const html = await Deno.readTextFile(new URL(`apps/${e.name}/index.html`, root));
       const meta = /<meta name="theme-color" content="(#[0-9A-Fa-f]{6})"/.exec(html)?.[1];
       if (meta && !allowed.has(meta.toUpperCase())) bad.push(`${e.name}/index.html meta theme-color=${meta}`);
-    } catch { /* an app without a manifest is another gate's problem */ }
+    } catch { }
   }
   assertEquals(bad, [], `PWA chrome is off-theme (allowed: ${[...allowed].join(", ")}). An installed app would show a splash and status bar from the previous design: ${bad.join(", ")}`);
 });
 
 Deno.test("material: a SURFACE is extruded, never a fill with a line drawn round it", async () => {
-  // The neumorphic migration reached theme.css, Panel, Island and the sheets — and never reached the card
-  // catalogue in render.js, so every declarative list app stayed flat while the design doc said otherwise.
-  // `arc` is card-heavy and surfaced it. This pins the finished migration.
-  //
-  // What is still allowed, deliberately: `border-b` DIVIDERS between rows inside a surface, and the sticky
-  // header's underline. A hairline separating two rows is part of the language; a hairline standing in for
-  // depth is the thing that was wrong.
   const src = await Deno.readTextFile(P("packages/runtime/render.js"));
   const surfaces = src.match(/card[^"'`]*border border-base-\d+/g) || [];
   assertEquals(surfaces, [], "a card is declaring a border instead of `sf-raised` — depth is the shadow pair, not a line");
   const wells = src.match(/aspect-(video|square)[^"'`]*border border-base-\d+/g) || [];
   assertEquals(wells, [], "a media well is declaring a border instead of `sf-inset` — a picture sits IN the surface");
-  // and every remaining hairline must be a divider or an edge, never a box
   for (const m of src.match(/border-base-\d+[^"'`]*/g) || []) {
     const line = src.slice(Math.max(0, src.indexOf(m) - 160), src.indexOf(m) + m.length);
     assert(/border-b|border-t|btn-ghost/.test(line), `a boxed hairline survives: …${m.slice(0, 60)}`);
@@ -679,17 +546,12 @@ Deno.test(".ms-stage — a fixed stage consumes the chrome contract, and nobody 
   assert(at > 0, "no .ms-stage — a fixed stage has nothing to consume but hand-written numbers");
   const rule = css.slice(at, css.indexOf("}", at));
 
-  // both chrome numbers are MEASURED ones, never a literal: --hdr-h compacts to 2.25rem on a watch, and a
-  // 3.5rem guess is 20px of content off the bottom of every fit screen there.
   assert(/top:\s*calc\(var\(--hdr-h\)/.test(rule), "the stage's top must come from --hdr-h, not a literal");
   assert(/bottom:\s*calc\(var\(--dock-h\)/.test(rule), "the stage's bottom must come from --dock-h");
   assert(!/3\.5rem/.test(rule), "the header height is measured, not declared");
-  // …and the watch's dock is a RAIL, so a stage that only clears --dock-h slides under it (grain: 137px).
   assert(/right:\s*calc\(var\(--dock-w/.test(rule), "the stage must clear the watch rail (--dock-w), not just the bar");
   assert(/min\(var\(--dock-w/.test(rule), "the rail clearance must switch itself off when --dock-w is 0 — else every phone is inset");
 
-  // The enforcement half: eleven apps had each hand-written the same two terms, all eleven wrong in the same
-  // two ways, and no gate could see it because the geometry was inline. One class, or the farm drifts again.
   const offenders = [];
   for await (const e of Deno.readDir("apps")) {
     if (!e.isDirectory) continue;

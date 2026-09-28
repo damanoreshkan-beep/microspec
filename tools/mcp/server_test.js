@@ -7,16 +7,8 @@
  * one-line test file (`import "@microspec/core/tests/mcp";`). It exports nothing.
  * @module
  */
-// microspec — MCP server contract test. Spawns tools/mcp/server.mjs as a real subprocess and drives it
-// over stdio exactly as a client does, because that is the only path production traffic takes: an in-process
-// call to a handler would pass while the framing, the notification rule or the stdout discipline was broken.
-//
-//   deno test -A tools/mcp/server_test.js
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
-// A tiny MCP client: writes newline-delimited JSON-RPC, matches responses by id. The server is addressed
-// as a sibling URL (realm-agnostic — file in the framework checkout, https from the JSR cache) and runs at
-// the CONSUMER's cwd like every other tool.
 async function withServer(fn) {
   const child = new Deno.Command("deno", {
     args: ["run", "-A", new URL("./server.mjs", import.meta.url).href],
@@ -112,7 +104,6 @@ Deno.test("list_components returns the whole kit, and lookup_component its full 
     const one = await call("tools/call", { name: "lookup_component", arguments: { name: "Transport" } });
     const md = one.result.content[0].text;
     assert(md.includes("onScrubEnd"), "the full prop table must be present");
-    // The prop note must arrive on the prop it describes — the attribution bug this manifest exists to avoid.
     const seekRow = md.split("\n").find((l) => l.startsWith("| `onSeek`"));
     assert(seekRow?.includes("seek bar appears"), `onSeek's note is misattributed: ${seekRow}`);
   });
@@ -180,7 +171,6 @@ Deno.test("a notification gets no reply at all", async () => {
   await withServer(async ({ call, notify }) => {
     await notify("notifications/initialized");
     await notify("notifications/cancelled", { requestId: 1 });
-    // If either produced a response, it would sit in the stream and be mistaken for this call's reply.
     const res = await call("ping", {});
     assertEquals(res.id, 1, "ping must be the first message on the wire");
     assertEquals(res.result, {});

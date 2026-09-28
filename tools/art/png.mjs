@@ -1,8 +1,3 @@
-// Minimal PNG decode for the art importer. BUILD-TIME ONLY — nothing here ships to a browser.
-// DecompressionStream does the inflate; the rest is a few dozen lines of spec.
-// Supports 8-bit RGBA/RGB/grey/palette and sub-byte palette/grey depths, which is every PNG
-// Kenney ships.
-
 const cat = (...a) => { const t = new Uint8Array(a.reduce((s, x) => s + x.length, 0)); let o = 0; for (const x of a) { t.set(x, o); o += x.length; } return t; };
 
 export async function decodePNG(bytes) {
@@ -74,7 +69,7 @@ export async function encodePNG(rgba, w, h) {
 export async function unzipOne(zip, name) {
   const dv = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
   for (let i = zip.length - 22; i >= 0; i--) {
-    if (dv.getUint32(i, true) !== 0x06054b50) continue;          // end-of-central-directory
+    if (dv.getUint32(i, true) !== 0x06054b50) continue;
     let p = dv.getUint32(i + 16, true);
     const n = dv.getUint16(i + 10, true);
     for (let k = 0; k < n; k++) {

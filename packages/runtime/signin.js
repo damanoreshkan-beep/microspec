@@ -66,19 +66,6 @@
  *   e2e clicks the same thing it would on a phone.
  * @module
  */
-// microspec runtime — the sign-in surface. ONE component for "who are you", so every app that gates on a
-// session shows the same thing: Google first (Sign in with Google — the GIS button, and One Tap / FedCM once
-// per page), GitHub as the quiet second way. An app that must ACT on GitHub (nova stars repos) passes
-// `github="primary"` and gets the older surface with GitHub as the button.
-//
-// The Google button is Google's — `google.accounts.id.renderButton` — because the brand rules ask for it and
-// because that is where FedCM lives; its theme follows <html data-theme> live (a MutationObserver re-renders
-// it: the view does not re-render on a toggle). Its width is MEASURED off the slot (GIS caps at 400px).
-//
-// GATE-SAFE: under `gate` there is no network and no GIS — a plain kit button with the same hooks
-// (`data-signin-google`) sets the mock Google session, so the shot and the e2e see the signed-in screen.
-//
-// Strings live here (en/uk, off <html lang>) — a shared component never demands an i18n key from every app.
 import { html } from "htm/preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { gate } from "./gate.js";
@@ -87,7 +74,6 @@ import { inTelegram } from "./tma.js";
 import { shell } from "./shell.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-// Google's "G", as the brand draws it — the one non-lucide glyph here, because it is a mark, not an icon.
 const GoogleG = () => html`<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.5 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-7.9-6.1C.9 16.6 0 20.2 0 24s.9 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>`;
 
 const L = {
@@ -107,7 +93,7 @@ const loadGis = () => (gisP ||= new Promise((resolve, reject) => {
   s.onerror = () => { gisP = null; reject(new Error("gis-load")); };
   document.head.appendChild(s);
 }));
-let prompted = false;   // One Tap once per page — GIS has its own cooldowns, but a second call on every re-mount is noise
+let prompted = false;
 
 /**
  * The sign-in surface: Google's GIS button plus a quiet GitHub action in a browser, a browser-pairing button
@@ -121,7 +107,7 @@ let prompted = false;   // One Tap once per page — GIS has its own cooldowns, 
 export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onError, className = "" }) {
   const t = L[lang(locale)] || L.en;
   const slot = useRef(), box = useRef();
-  const [clientId, setClientId] = useState(gate ? "mock-google-client" : null);   // null = asking, "" = none
+  const [clientId, setClientId] = useState(gate ? "mock-google-client" : null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const wantGoogle = github !== "primary";
@@ -129,9 +115,6 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
   const fail = (e) => { setErr(t.failed); onError?.(e); };
   const finish = (s) => { setErr(""); onDone?.(s); };
 
-  // Inside Telegram the viewer is already authenticated — sign in silently from the launch initData and never
-  // show the Google/GitHub wall. Falls back to the normal surface only if that fails (a plain web/PWA visit
-  // is never in Telegram, so this is inert there).
   const [tgTrying, setTgTrying] = useState(() => { try { return inTelegram() && !gate; } catch { return false; } });
   useEffect(() => {
     if (!tgTrying) return;
@@ -142,7 +125,6 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
 
   useEffect(() => { if (wantGoogle && !gate) googleClientId().then(setClientId, () => setClientId("")); }, [wantGoogle]);
 
-  // Mount Google's button into the slot once the client id is known; re-render it when the theme flips.
   useEffect(() => {
     if (gate || !wantGoogle || !clientId) return;
     let live = true, mo = null;
@@ -172,7 +154,7 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
       render();
       mo = new MutationObserver(render);
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-      if (!prompted) { prompted = true; try { gis.prompt(); } catch { /* One Tap is best effort */ } }
+      if (!prompted) { prompted = true; try { gis.prompt(); } catch { } }
     })();
     return () => { live = false; mo?.disconnect(); };
   }, [clientId, wantGoogle]);
@@ -190,11 +172,8 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
     try { finish(await loginTelegramWeb()); } catch (e) { if (e?.message !== "popup-closed") fail(e); } finally { setBusy(false); }
   };
 
-  // ── the APK: no popups (setSupportMultipleWindows(false)), no GIS in a WebView — so the phone's real
-  // browser signs in and hands the session back through the edge's pairing (see edge/pair.js). We open the
-  // browser with an intent:// URL, which the shell routes to Android's ACTION_VIEW instead of loading in place.
   const inShell = !gate && shell.present;
-  const [pairing, setPairing] = useState(null);   // the pair id while we wait
+  const [pairing, setPairing] = useState(null);
   useEffect(() => {
     if (!pairing) return;
     let live = true; const t0 = Date.now();
@@ -236,8 +215,6 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
     ${googleOn ? (gate
       ? html`<button data-signin-google type="button" disabled=${busy} onClick=${viaMockGoogle}
           class="btn btn-primary rounded-full w-full gap-2"><${GoogleG} />${t.google}</button>`
-      // color-scheme:light on the slot: Chrome paints an OPAQUE white backdrop under a cross-origin iframe whose
-      // colour scheme differs from its embedder's, so on the dark theme the pill sat in a white slab (eye pass).
       : html`<div data-signin-google ref=${slot} class="flex justify-center min-h-[44px]" style="color-scheme:light" aria-label=${t.google}></div>`)
     : null}
     ${github ? (ghPrimary

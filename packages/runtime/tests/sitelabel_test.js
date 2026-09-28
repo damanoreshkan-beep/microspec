@@ -1,10 +1,6 @@
-// microspec runtime — sitelabel unit tests. Pure logic: no browser, no import map.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { registrableDomain, siteName, pageLabel, pageLabelInfo, cleanPageTitle, sourceTitle, groupByDomain, hostOf, humanText } from "../sitelabel.js";
 
-// ── sitelabel: readable page titles + domain grouping (derived from the URL, never fetched) ─────────────
 Deno.test("registrableDomain: subdomains fold into one site, multi-label suffixes survive", () => {
   assertEquals(registrableDomain("commons.wikimedia.org"), "wikimedia.org");
   assertEquals(registrableDomain("www.mixkit.co"), "mixkit.co");
@@ -39,9 +35,6 @@ Deno.test("pageLabel: caps length on a word boundary so a row can't be blown out
   assert(!/\s…$/.test(long), "no dangling space before the ellipsis");
 });
 
-// A video PAGE is where URL-derived titling runs out: its path is a shape, not a name. These are the URL
-// SHAPES a reel dives into (hosts kept generic on purpose) — `/view_video.php` is what the owner saw as
-// "View video" in the source island.
 Deno.test("pageLabelInfo: a label that only describes the medium is weak, and says so", () => {
   const weak = (u) => pageLabelInfo(u).weak;
   assert(weak("https://tube.example/view_video.php?viewkey=k5f2a1b"), "view_video.php is a shape, not a title");
@@ -79,10 +72,6 @@ Deno.test("sourceTitle: the URL names the page when it can, the page names itsel
   assertEquals(sourceTitle(""), "");
 });
 
-/* A page's name arrives as MACHINE TEXT and has to stop being machine text before it is shown. Every case
-   below was measured against the shipped code first, and every one of them reached the sources list: the
-   percent-escapes as `%20`, the entities as `&amp;` — and the literal-percent URL not as bad text but as a
-   THROWN URIError, because decodeURIComponent rejects the whole string over one bad escape. */
 Deno.test("humanText: percent-escapes, entities and invisible characters, and never a throw", () => {
   assertEquals(humanText("%D0%9A%D0%B8%D1%97%D0%B2%20%D0%B2%D0%BD%D0%BE%D1%87%D1%96"), "Київ вночі");
   assertEquals(humanText("a-100%-sure-thing"), "a-100%-sure-thing", "a literal percent is text, not a broken escape");
@@ -96,8 +85,6 @@ Deno.test("humanText: percent-escapes, entities and invisible characters, and ne
 });
 
 Deno.test("sitelabel: a malformed escape anywhere never takes the label down with it", () => {
-  // The whole chain, on the URL that threw: pageLabelInfo → prettify → sourceTitle. A row that renders a
-  // label is a row that a URIError erases, so "does not throw" IS the user-visible behaviour here.
   assertEquals(pageLabel("https://tube.example/clips/a-100%-sure-thing/"), "A 100% sure thing");
   assertEquals(sourceTitle("https://tube.example/%E0%A4%A/watch/1/", { hint: "Nightfall" }), "Nightfall");
   assertEquals(cleanPageTitle("Half %E0%A4%A decoded &amp; fine - Tube.example", "https://tube.example/x"), "Half %E0%A4%A decoded & fine");
@@ -110,9 +97,6 @@ Deno.test("sitelabel: an encoded path segment is a title once it is decoded", ()
   assertEquals(sourceTitle("https://tube.example/watch/9/", { pageTitle: "Sunrise &amp; the sea &#8212; Tube.example" }), "Sunrise & the sea");
 });
 
-/* `max` is the caller's room. The island is a chip beside four controls and takes the short form; a sources
-   row wraps and takes the whole name. Before this, both got 42/64 characters and the row's spare line was
-   spent on an ellipsis. */
 Deno.test("sourceTitle: the caller states how much room it has, and both producers honour it", () => {
   const longUrl = "https://site.com/a-very-long-page-name-that-keeps-going-and-going-forever/";
   const vid = "https://tube.example/view_video.php?viewkey=k5f2a1b";

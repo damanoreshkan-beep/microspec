@@ -87,59 +87,28 @@
  * - `star` is a deliberate, one-at-a-time human action — never bulk.
  * @module
  */
-// microspec runtime — GitHub OAuth. The farm's first authentication system module: reusable by any app that
-// needs "who is the signed-in user" and acting on their behalf (nova is the first consumer).
-//
-// THE TOKEN NEVER REACHES THE BROWSER. The edge (microspec-edge, routes /feed/gh/*) runs the OAuth
-// code→token exchange with the client secret and keeps the GitHub access token in a server-side session; the
-// PWA is handed only an opaque session id (`sid`), persisted in localStorage. Authenticated calls ride the
-// sealed tunnel (index.js installs installSealedFetch, so a POST to VPS_PROXY/gh/* is enveloped to /feed/f),
-// carrying the sid; the edge attaches the real token to api.github.com. A stolen sid can act as the user
-// until it is logged out or the edge restarts — but it is not the token, and it cannot be replayed off-farm
-// (origin-guarded). This mirrors the edge's founding rule: key material never sits next to a public bundle.
-//
-// GATE-SAFE. Under `gate` (headless verify / ?mock preview) there is NO network: we seed a deterministic mock
-// session + mock user so the login-gated UI renders for the shot/e2e, and star() is a local no-op. Every
-// network path fails open — a down edge leaves the app usable in its logged-out state, never wedged.
 import { atom } from "nanostores";
 import { VPS_PROXY } from "./feed.js";
 import { gate } from "./gate.js";
 
 const GH = `${VPS_PROXY}/gh`;
 const SID_KEY = "ms:gh:sid";
-const USER_KEY = "ms:gh:user";   // last-known profile, so a restart shows signed-in instantly and a transient
-                                 // me() hiccup never flashes (or sticks at) logged-out.
-const PROV_KEY = "ms:gh:prov";   // which provider minted the sid: "github" (default, the older sessions) | "google"
+const USER_KEY = "ms:gh:user";
+const PROV_KEY = "ms:gh:prov";
 const GOOGLE = `${VPS_PROXY}/google`;
-const TG = `${VPS_PROXY}/tg`;   // Sign in with Telegram — a Mini App session from the launch initData
+const TG = `${VPS_PROXY}/tg`;
 const PWA_ORIGIN = typeof location !== "undefined" ? location.origin : "";
 const EDGE_ORIGIN = (() => { try { return new URL(VPS_PROXY).origin; } catch { return ""; } })();
 
-// The scope we request. `public_repo` is the narrowest CLASSIC OAuth scope that permits starring on the
-// user's behalf (PUT /user/starred/…); the login sheet discloses it. A GitHub App with a fine-grained
-// "Starring" permission would be narrower but a heavier install flow — a documented future tightening.
 /** The default GitHub OAuth scope — the narrowest classic scope that permits starring on the user's behalf. */
 export const SCOPE = "public_repo";
 
-// session: null = signed out; { sid, user, provider } = signed in. `user` is the trimmed profile — the same
-// four fields whichever provider minted it (login · name · avatar · html_url), so no consumer branches.
-// `provider` is "github" | "google": an app that needs to ACT on GitHub (star, read Actions) checks it —
-// a Google session identifies the reader but holds no GitHub token.
 /** The session atom: null when signed out, `{ sid, user, provider }` when signed in. */
 export const session = atom(null);
 
-// ── the admin way in ─────────────────────────────────────────────────────────────────────────────────────
-// The farm has one private panel and this repository is PUBLIC, so its path is not written here — not even
-// in this comment, which is where the test below first caught it: `/feed/admin/whoami` answers about the CALLER only, and hands back a `panel` field to an
-// account whose role is admin and to nobody else. The profile renders a row when the field arrives and has
-// no idea what it would point at when it does not.
-//
-// One call per session, cached: every signed-in reader's profile would otherwise ask this on every open, to
-// be told "no" — and the answer cannot change without a new sid, because the role is keyed to the account.
-// `dropStored` clears the cache, which is the only way a session ends here.
 let panelAsked = null;
 export function adminPanel() {
-  if (gate) return Promise.resolve(null);          // a row in a headless screenshot would publish the surface
+  if (gate) return Promise.resolve(null);
   const s = session.get();
   if (!s?.sid) { panelAsked = null; return Promise.resolve(null); }
   panelAsked ??= fetch(`${VPS_PROXY}/admin/whoami`, {
@@ -148,8 +117,6 @@ export function adminPanel() {
   return panelAsked;
 }
 
-// A deterministic stand-in so the login-gated feed renders under the gate (the shot must see the populated
-// screen, not the sign-in wall). Never used off the gate.
 /** The deterministic GitHub user the gate signs in as; never used off the gate. */
 export const MOCK_USER = { login: "octocat", name: "Octocat", avatar: "", html_url: "https://github.com/octocat" };
 const MOCK_SESSION = { sid: "mock-sid", user: MOCK_USER, provider: "github" };
@@ -162,24 +129,17 @@ export const MOCK_GOOGLE_SESSION = { sid: "mock-sid-google", user: { login: "oct
  */
 export const isLoggedIn = () => !!session.get();
 
-// ── localStorage, guarded (private mode / SSR / preflight) ───────────────────────────────────────────────
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
-const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* quota / private mode */ } };
-const lsDel = (k) => { try { localStorage.removeItem(k); } catch { /* private mode */ } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
+const lsDel = (k) => { try { localStorage.removeItem(k); } catch { } };
 const lsGetJSON = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } };
-const lsSetJSON = (k, o) => { try { localStorage.setItem(k, JSON.stringify(o)); } catch { /* quota / private mode */ } };
-// Forget the session everywhere (both keys), used only on an explicit logout or a DEFINITIVE 401.
-const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); lsDel(PROV_KEY); panelAsked = null; };   // the admin answer is keyed to the account, so it goes with it
+const lsSetJSON = (k, o) => { try { localStorage.setItem(k, JSON.stringify(o)); } catch { } };
+const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); lsDel(PROV_KEY); panelAsked = null; };
 
-// Trim a raw GitHub /user payload to what the UI shows — never hold more than needed.
 const trimUser = (u) => (u && u.login ? {
   login: u.login, name: u.name || u.login, avatar: u.avatar_url || "", html_url: u.html_url || `https://github.com/${u.login}`,
 } : null);
 
-// One authenticated wire call to the edge, sealed-tunnelled. `path` is the /feed/gh/<path> leaf. Always POSTs
-// JSON (the sealed tunnel only envelopes JSON POSTs). Throws an Error carrying `.status` — the HTTP status on a
-// non-ok response, or 0 on a network/timeout failure — so callers can tell a DEFINITIVE 401 (log out) apart
-// from a TRANSIENT hiccup (keep the session). Only 401 means "this session is dead".
 function edge(path, body, timeout = 12000) { return edgeAt(`${GH}/${path}`, body, timeout); }
 async function edgeAt(url, body, timeout = 12000) {
   const ctrl = new AbortController();
@@ -193,18 +153,11 @@ async function edgeAt(url, body, timeout = 12000) {
     return await r.json();
   } catch (e) {
     if (e && typeof e.status === "number") throw e;
-    const err = new Error(`${url} network`); err.status = 0; throw err;   // network / timeout / abort → transient
+    const err = new Error(`${url} network`); err.status = 0; throw err;
   } finally { clearTimeout(to); }
 }
-// The provider-aware "who am I" — GitHub sessions ask /gh/me (the edge asks GitHub), Google ones /google/me
-// (the edge opens the sealed sid, no network behind it).
 const me = (sid, provider) => (provider === "google" ? edgeAt(`${GOOGLE}/me`, { sid }) : provider === "telegram" ? edgeAt(`${TG}/me`, { sid }) : edge("me", { sid }));
 
-// restore() — rehydrate the session on app boot. Gate → mock. Else: if a sid is stored, show the cached profile
-// IMMEDIATELY (optimistic — a restart never flashes logged-out), then revalidate in the background. The session
-// is dropped ONLY on a DEFINITIVE 401 (the edge says the sid/token is dead). Every transient failure — network
-// down, timeout, edge 5xx, GitHub rate-limited — KEEPS the session: this was the bug that logged users out on a
-// restart when me() so much as hiccuped.
 /**
  * Rehydrate the session on app boot: cached profile immediately, revalidated in the background; dropped only on a definitive 401.
  * @returns the session, or null when signed out
@@ -215,28 +168,18 @@ export async function restore() {
   if (!sid) { session.set(null); return null; }
   const provider = lsGet(PROV_KEY) || "github";
   const cached = lsGetJSON(USER_KEY);
-  if (cached) session.set({ sid, user: cached, provider });   // optimistic: stay signed-in across the revalidation
+  if (cached) session.set({ sid, user: cached, provider });
   try {
     const j = await me(sid, provider);
     const user = provider === "github" ? trimUser(j && j.user) : trimGoogleUser(j && j.user);
     if (user) { lsSetJSON(USER_KEY, user); const s = { sid, user, provider }; session.set(s); return s; }
-    // 200 without a user shouldn't happen (the edge now answers 401 for a dead token, 5xx for a transient one)
-    // — treat it as transient and KEEP the session rather than risk a false logout.
     return session.get();
   } catch (e) {
-    if (e && e.status === 401) { dropStored(); session.set(null); return null; }   // definitively invalid → sign out
-    return session.get();                                                          // transient → keep the session
+    if (e && e.status === 401) { dropStored(); session.set(null); return null; }
+    return session.get();
   }
 }
 
-// login() — open the GitHub consent popup and resolve when the edge posts back an opaque sid. Gate → mock,
-// resolves immediately (no popup, no network). Rejects on a closed/blocked popup or timeout so the UI can
-// surface an error rather than hang.
-// `scope` is a per-app argument rather than one farm-wide constant: starring a public repo needs
-// `public_repo`, but reading the Actions runs of a PRIVATE repo needs `repo`, and it would be wrong to make
-// every app that only stars things ask for the wider one. Each app asks for what it actually needs, and the
-// login sheet discloses it. (An existing session keeps the scope it was minted with — an app that needs more
-// has to have the user sign in again, which is the honest behaviour.)
 /**
  * Open the GitHub consent popup and resolve once the edge posts back an opaque sid.
  * @param opts `{ scope }` — the OAuth scope this app actually needs (default `SCOPE`)
@@ -254,11 +197,10 @@ export function login({ scope = SCOPE } = {}) {
     let done = false;
     const finish = (fn, arg) => { if (done) return; done = true; cleanup(); fn(arg); };
     const onMsg = async (e) => {
-      // Only trust a message from the edge origin, tagged as our OAuth reply, carrying a sid.
       if (e.origin !== EDGE_ORIGIN) return;
       const d = e.data;
       if (!d || d.source !== "microspec-gh" || typeof d.sid !== "string") return;
-      lsSet(SID_KEY, d.sid);                              // store the sid first — a later restore() can recover it
+      lsSet(SID_KEY, d.sid);
       try {
         const j = await edge("me", { sid: d.sid });
         const user = trimUser(j && j.user);
@@ -270,15 +212,12 @@ export function login({ scope = SCOPE } = {}) {
       } catch (err) { finish(reject, err); }
     };
     const poll = setInterval(() => { if (popup.closed) finish(reject, new Error("popup-closed")); }, 500);
-    const timer = setTimeout(() => { try { popup.close(); } catch { /* */ } finish(reject, new Error("timeout")); }, 180000);
-    function cleanup() { removeEventListener("message", onMsg); clearInterval(poll); clearTimeout(timer); try { popup.close(); } catch { /* */ } }
+    const timer = setTimeout(() => { try { popup.close(); } catch { } finish(reject, new Error("timeout")); }, 180000);
+    function cleanup() { removeEventListener("message", onMsg); clearInterval(poll); clearTimeout(timer); try { popup.close(); } catch { } }
     addEventListener("message", onMsg);
   });
 }
 
-// star(owner, repo, on=true) — star (on) or unstar (off) on the user's behalf. Gate → local no-op (no
-// network under the gate), resolves true. Off the gate, requires a session; returns true on success, false on
-// any failure (the caller reverts its optimistic UI). A DELIBERATE, one-at-a-time human action — never bulk.
 /**
  * Star or unstar a repository on the user's behalf.
  * @param owner the repository owner
@@ -294,16 +233,6 @@ export async function star(owner, repo, on = true) {
   catch { return false; }
 }
 
-// ── GitHub Actions, read-only ────────────────────────────────────────────────────────────────────────────
-// Three narrow reads, not a passthrough. The token lives on the edge precisely so the browser cannot spend
-// it freely, and a generic "proxy any GitHub path" route would hand that back — so each of these maps to one
-// upstream GET with validated arguments. Everything is shaped here (not in the app) because the next app that
-// wants CI status should not re-derive "which of the 40 fields matter".
-//
-// A run's shape: GitHub reports `status` (queued|in_progress|completed) and, only once completed,
-// `conclusion` (success|failure|cancelled|…). Collapsing those two into one word is the single thing every
-// CI UI has to get right, and it is why `state` exists below — a run that is still going has NO conclusion,
-// and reading `conclusion` alone makes a running build look cancelled.
 /**
  * Collapse a GitHub run/job/step's `status` + `conclusion` into one word.
  * @param r the raw GitHub object carrying `status` and (once completed) `conclusion`
@@ -325,8 +254,6 @@ const trimJob = (j) => ({
   steps: (j.steps || []).map((s) => ({ name: s.name || "", state: runState(s), n: s.number })),
 });
 
-// Deterministic fixtures — the gate has no network and no session, and the shot must show a POPULATED
-// board rather than a sign-in wall. Same reason MOCK_USER exists.
 /** Deterministic repository fixtures `repos()` returns under the gate. */
 export const MOCK_REPOS = [
   { id: 1, name: "microspec", full: "octocat/microspec", owner: "octocat", private: false, pushed: "2026-07-26T10:00:00Z", url: "" },
@@ -384,10 +311,6 @@ export async function jobs(owner, repo, id) {
   return (j?.jobs || []).map(trimJob);
 }
 
-// logout() — drop the local sid + session and best-effort tell the edge to forget the server-side token.
-// A Google session also tells GIS not to auto-select next time (the documented "no dead loop" step).
-// adoptSession — a session minted elsewhere (the phone's browser, via the edge's pairing) becomes THIS page's:
-// persisted under the same keys restore() reads, and set on the atom so every surface flips at once.
 /**
  * Make a session minted elsewhere (the pairing flow) this page's own: persist it and set the atom.
  * @param s `{ sid, provider?, user? }` — the opaque sid, "github" | "google", and the trimmed profile
@@ -401,8 +324,6 @@ export function adoptSession({ sid, provider = "github", user }) {
   session.set(sess); return sess;
 }
 
-// Pairing (the APK's WebView cannot pop a window nor run GIS): pairNew() → an id; the browser page that signs
-// in calls pairComplete(id, sid); the WebView polls pairPoll(id) until the session arrives.
 const PAIR = `${VPS_PROXY}/pair`;
 /**
  * Ask the edge for a fresh pairing id (the WebView side of pairing).
@@ -431,14 +352,10 @@ export async function logout() {
   dropStored();
   session.set(null);
   if (gate || !s) return;
-  if (s.provider === "google") { try { globalThis.google?.accounts?.id?.disableAutoSelect?.(); } catch { /* not loaded */ } return; }
-  try { await edge("logout", { sid: s.sid }); } catch { /* best effort */ }
+  if (s.provider === "google") { try { globalThis.google?.accounts?.id?.disableAutoSelect?.(); } catch { } return; }
+  try { await edge("logout", { sid: s.sid }); } catch { }
 }
 
-// ── Sign in with Google ───────────────────────────────────────────────────────────────────────────────────
-// The edge verifies the ID token (RS256 against Google's JWKS, aud = the client id it holds) and mints the
-// same sealed, stateless sid the GitHub flow does; the browser never sees a Google token it could replay
-// off-farm either — the credential goes straight to the edge and comes back as a sid.
 const trimGoogleUser = (u) => (u && (u.email || u.login) ? {
   login: u.email || u.login, name: u.name || u.email || u.login, avatar: u.picture || u.avatar_url || "", html_url: "",
 } : null);
@@ -454,7 +371,7 @@ export function googleClientId() {
       const r = await fetch(`${GOOGLE}/config`, { signal: ctrl.signal }); clearTimeout(to);
       if (!r.ok) return "";
       const j = await r.json(); return typeof j?.clientId === "string" ? j.clientId : "";
-    } catch { clientIdP = null; return ""; }     // transient: the next surface asks again
+    } catch { clientIdP = null; return ""; }
   })());
 }
 
@@ -478,7 +395,7 @@ export async function loginGoogle(credential) {
 export async function loginTelegram(initData) {
   if (gate) { session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
   let id = initData;
-  if (!id) { try { id = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData; } catch { /* not in Telegram */ } }
+  if (!id) { try { id = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData; } catch { } }
   if (!id) throw Object.assign(new Error("no-telegram"), { status: 0 });
   const j = await edgeAt(`${TG}/verify`, { initData: String(id) });
   const user = trimGoogleUser(j && j.user);
@@ -516,8 +433,8 @@ export function loginTelegramWeb() {
       finish(resolve, s);
     };
     const poll = setInterval(() => { if (popup.closed) finish(reject, new Error("popup-closed")); }, 500);
-    const timer = setTimeout(() => { try { popup.close(); } catch { /* */ } finish(reject, new Error("timeout")); }, 180000);
-    function cleanup() { removeEventListener("message", onMsg); clearInterval(poll); clearTimeout(timer); try { popup.close(); } catch { /* */ } }
+    const timer = setTimeout(() => { try { popup.close(); } catch { } finish(reject, new Error("timeout")); }, 180000);
+    function cleanup() { removeEventListener("message", onMsg); clearInterval(poll); clearTimeout(timer); try { popup.close(); } catch { } }
     addEventListener("message", onMsg);
   });
 }

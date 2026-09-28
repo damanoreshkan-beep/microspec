@@ -1,11 +1,7 @@
-// microspec runtime — orbit unit tests. Pure logic: no browser, no import map.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { sat, makeSat, parseTleText, subpoint, sunEciUnit, isSunlit, FALLBACK_TLE } from "../orbit.js";
 
 Deno.test("orbit SGP4: matches the standard reference vector (TLE 00005, t=0)", () => {
-  // Vallado "Revisiting Spacetrack Report #3" verification case — the published TEME position at epoch.
   const rec = makeSat(
     "1 00005U 58002B   00179.78495062  .00000023  00000-0  28098-4 0  4753",
     "2 00005  34.2682 348.7242 1859667 331.7664  19.3264 10.82419157413667");
@@ -39,7 +35,6 @@ Deno.test("orbit sun + shadow: sunlit geometry is correct", () => {
   const far = 8000;
   assert(isSunlit({ x: s.x * far, y: s.y * far, z: s.z * far }, d), "toward the sun → lit");
   assert(!isSunlit({ x: -s.x * 6800, y: -s.y * 6800, z: -s.z * 6800, }, d), "on the shadow axis behind Earth → eclipsed");
-  // behind Earth but well off the shadow axis → still lit (add a perpendicular offset)
   const ax = { x: -s.x * 6800, y: -s.y * 6800, z: -s.z * 6800 };
   const perp = Math.abs(s.z) < 0.9 ? { x: 0, y: 0, z: 9000 } : { x: 9000, y: 0, z: 0 };
   assert(isSunlit({ x: ax.x + perp.x, y: ax.y + perp.y, z: ax.z + perp.z }, d), "off-axis behind Earth → lit");

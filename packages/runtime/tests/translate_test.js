@@ -1,15 +1,9 @@
-// translate.js — the SEND side (toEnglish) and the pair seeding behind suggestPrompt. English under the hood
-// (2026-09-03): a prompt either becomes English or throws — the fixtures are the two wires (gtx, /feed/ai
-// mode "english") mocked at fetch, so the cascade order and the fail-closed end are what is tested.
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import { toEnglish, isLatin, rememberEnglish } from "../translate.js";
 import { suggestPrompt } from "../ai-text.js";
 
 const gtx = (en) => JSON.stringify([[[en, "х"]]]);
-// Deno's localStorage persists between runs and the module mirrors it — every source string carries a run
-// token so a cached answer from the previous run cannot stand in for the wire.
 const R = " #" + Date.now().toString(36);
-// mock(wires) — fetch answering the gtx endpoint and the edge's /feed/ai from the given behaviours; counts calls
 function mock({ gtxOut, aiOut }) {
   const calls = { gtx: 0, ai: 0 };
   const real = globalThis.fetch;
@@ -81,12 +75,10 @@ Deno.test("rememberEnglish: a seeded pair answers without the wire; suggestPromp
   m = mock({ gtxOut: "never", aiOut: '{"en":"a harbour at night"}' });
   try { assertEquals(await suggestPrompt("dream", "x", "en"), { en: "a harbour at night", local: "a harbour at night" }, "en: local is the English itself"); }
   finally { m.restore(); }
-  // the rendering under the language's own key (llama-3.2-3b wrote "ua", 2026-09-03) is still the rendering
   m = mock({ gtxOut: "never", aiOut: '{"en":"a red umbrella on wet stone","ua":"червона парасолька на мокрому камені' + R + '"}' });
   try { assertEquals((await suggestPrompt("dream", "x", "uk")).local, "червона парасолька на мокрому камені" + R); }
   finally { m.restore(); }
-  // a garbled rendering (Latin letters inside Cyrillic words) is replaced by the translator's clean prose
-  m = mock({ gtxOut: "маяк у бурю, кінематографічно", aiOut: '{"en":"a lighthouse in a storm, cinematic' + R + '","uk":"маяк, що гisinює у бурі, chyjarosсuro"}' });   // R: the uk bucket persists across runs too
+  m = mock({ gtxOut: "маяк у бурю, кінематографічно", aiOut: '{"en":"a lighthouse in a storm, cinematic' + R + '","uk":"маяк, що гisinює у бурі, chyjarosсuro"}' });
   try {
     const p = await suggestPrompt("dream", "x", "uk");
     assertEquals(p.local, "маяк у бурю, кінематографічно", "the broken Ukrainian never reaches the field");

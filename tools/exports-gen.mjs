@@ -1,11 +1,3 @@
-// microspec — the JSR exports map, GENERATED (wildcards are rejected by the registry, so every runtime
-// module is enumerated — the same shape as kit.json: a generated artifact with a --check gate).
-//   deno run -A tools/exports-gen.mjs            # rewrite the "exports" block in deno.json
-//   deno run -A tools/exports-gen.mjs --check    # fail if it is stale
-//
-// Consumers import the runtime as  @dreamstudio/microspec/runtime/<name>.js  (browser: an import map entry
-// rewrites the prefix to /_rt/; Deno: package.json exports in the npm-compat tarball). The CLIs are short
-// names: gates, build, sw, scaffold, …
 const check = Deno.args.includes("--check");
 
 const exports = { ".": "./packages/runtime/index.js" };
@@ -16,7 +8,6 @@ for (const e of Deno.readDirSync("packages/runtime")) {
 }
 for (const n of names.sort()) exports[`./runtime/${n}`] = `./packages/runtime/${n}`;
 
-// The command surface — one export per tool the product's tasks call.
 Object.assign(exports, {
   "./8n8": "./tools/8n8/run.mjs",
   "./affected": "./tools/affected.mjs",

@@ -81,23 +81,6 @@
  * - Never fetch the pinned key over the channel it defends — `SEALED_KEY` is pinned in source (feed.js).
  * @module
  */
-// microspec runtime — the sealed envelope. HPKE base mode (RFC 9180) hand-rolled on bare WebCrypto:
-// DHKEM(P-256, HKDF-SHA256) / HKDF-SHA256 / AES-256-GCM. Zero dependencies, no authorization anywhere — the
-// server is authenticated to the client by a pinned public key, the client stays anonymous.
-//
-// This exact file runs on BOTH sides: the browser imports it, and the Deno backend imports a verbatim copy
-// whose hash is asserted in its tests. WebCrypto is the same API in both, which is the whole reason the port
-// went to Deno.
-//
-// P-256 and not X25519, deliberately: X25519 only reached WebCrypto in Chromium 133/137 (2025) and Samsung
-// Internet trails Chromium by several releases, whereas ECDH P-256 has shipped since Chromium 44 ≈ Samsung
-// Internet 4. The difference costs ~1 ms per request.
-//
-// WHAT THIS DOES AND DOES NOT BUY. It removes the payload from anything that merely *inspects* TLS — a
-// corporate middlebox, an antivirus doing "HTTPS scanning", mitmproxy on the device — and from the server's
-// own nginx logs and any future CDN. It does NOT make a browser app immune to an attacker who can rewrite
-// the delivered JavaScript, because that attacker simply swaps the pinned key below. Nothing served over the
-// web can beat that; see docs/research/e2e-envelope-and-transport.md.
 
 const ENC = new TextEncoder();
 const DEC = new TextDecoder();
@@ -123,7 +106,6 @@ export const unb64u = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/
  */
 export const importServerKey = (rawB64u) => crypto.subtle.importKey("raw", unb64u(rawB64u), P256, false, []);
 
-// Two independent keys from one shared secret — never one key for both directions.
 async function deriveKeys(priv, pub, epkRaw, serverRaw) {
   const bits = await crypto.subtle.deriveBits({ name: "ECDH", public: pub }, priv, 256);
   const salt = new Uint8Array(epkRaw.length + serverRaw.length);
@@ -136,8 +118,6 @@ async function deriveKeys(priv, pub, epkRaw, serverRaw) {
   return { req: await one("microspec/v1/req"), res: await one("microspec/v1/res") };
 }
 
-// GCM preserves length, so an observer still learns the payload SIZE. Round up to a 256-byte boundary; the
-// padding is stripped by length prefix, not by scanning, so a plaintext ending in zeros is safe.
 const PAD = 256;
 function frame(obj) {
   const body = ENC.encode(JSON.stringify(obj));
@@ -153,10 +133,6 @@ function unframe(bytes) {
   return JSON.parse(DEC.decode(bytes.subarray(4, 4 + n)));
 }
 
-// ── client ────────────────────────────────────────────────────────────────────────────────────────────────
-// Returns the wire bytes plus the response key, which the caller needs to open the reply.
-// `payload` carries the real request — {p: "/feed/ai", m: "POST", b: {...}} — so the route itself is inside
-// the envelope and never on the wire.
 /**
  * Client side: seal a request payload to the server's pinned key under a fresh ephemeral keypair.
  * @param serverKeyB64u the server's raw P-256 public key, base64url
@@ -165,14 +141,14 @@ function unframe(bytes) {
  */
 export async function seal(serverKeyB64u, payload) {
   const serverKey = await importServerKey(serverKeyB64u);
-  const eph = await crypto.subtle.generateKey(P256, false, ["deriveBits"]);   // fresh per request
+  const eph = await crypto.subtle.generateKey(P256, false, ["deriveBits"]);
   const epkRaw = new Uint8Array(await crypto.subtle.exportKey("raw", eph.publicKey));
   const serverRaw = unb64u(serverKeyB64u);
   const { req, res } = await deriveKeys(eph.privateKey, serverKey, epkRaw, serverRaw);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, req, frame({ ...payload, ts: Date.now() })));
   const wire = new Uint8Array(1 + 65 + 12 + ct.length);
-  wire[0] = 1;                                   // version
+  wire[0] = 1;
   wire.set(epkRaw, 1); wire.set(iv, 66); wire.set(ct, 78);
   return { wire, resKey: res };
 }
@@ -190,7 +166,6 @@ export async function openResponse(resKey, wire) {
   return unframe(pt);
 }
 
-// ── server ────────────────────────────────────────────────────────────────────────────────────────────────
 /**
  * Server side: import the server's P-256 private key from a JWK.
  * @param jwk the private key as a JWK object

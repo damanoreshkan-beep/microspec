@@ -1,6 +1,3 @@
-// Shared browser plumbing for the gates — boot, in-process serve, e2e helpers, design checks.
-// Used by verify.mjs (one-browser fast path) and, transitively, check-all.mjs. Keeps the e2e
-// helper surface and the 3 design checks in ONE place so the fast path can't drift from intent.
 import { launch } from "jsr:@astral/astral@^0.5.3";
 import { makeHandler } from "./serve-handler.mjs";
 
@@ -12,7 +9,6 @@ const MOBILE_UA = "Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 
 const AXE = "https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// proot-safe display + dbus muting (same contract as shot.mjs/setup.mjs)
 export function ensureDisplay() {
   const DNUM = Deno.env.get("DISPLAY_NUM") ?? "99";
   if (!Deno.env.get("DISPLAY")) Deno.env.set("DISPLAY", `:${DNUM}`);
@@ -26,20 +22,14 @@ async function xvfbRunning(dnum) {
   catch { return false; }
 }
 
-// THE crash guard. Chromium booted against a DEAD X server floods zygote/dbus errors that —
-// under Termux/proot — print straight to the user's real terminal (past every redirect we own),
-// crashing it and spilling bytes into their input. So we NEVER launch a browser until a display
-// is verified ALIVE (pgrep, not just the socket file — a dead Xvfb leaves a stale socket behind).
-// If it's down we restart it the one safe way (MIT-SHM + fully detached + stdio null, per setup.mjs).
-// Returns false (caller exits cleanly) rather than letting Chromium spew.
 export async function ensureDisplayUp() {
   ensureDisplay();
   const dnum = Deno.env.get("DISPLAY_NUM") ?? "99";
-  if (Deno.env.get("DISPLAY") !== `:${dnum}`) return true;                 // a real/external display — trust it
+  if (Deno.env.get("DISPLAY") !== `:${dnum}`) return true;
   const sock = `/tmp/.X11-unix/X${dnum}`;
-  if (await xvfbRunning(dnum) && await fileExists(sock)) return true;       // already alive
-  try { await Deno.remove(sock); } catch { /* stale socket */ }            // clear the lie a dead Xvfb left
-  try { await Deno.remove(`/tmp/.X${dnum}-lock`); } catch { /* stale lock */ }
+  if (await xvfbRunning(dnum) && await fileExists(sock)) return true;
+  try { await Deno.remove(sock); } catch { }
+  try { await Deno.remove(`/tmp/.X${dnum}-lock`); } catch { }
   new Deno.Command("Xvfb", { args: [`:${dnum}`, "-screen", "0", "1280x900x24", "-extension", "MIT-SHM", "-nolisten", "tcp"], stdin: "null", stdout: "null", stderr: "null" }).spawn().unref();
   for (let i = 0; i < 50; i++) { if (await fileExists(sock) && await xvfbRunning(dnum)) return true; await sleep(100); }
   return false;
@@ -54,8 +44,6 @@ export function serveLocal(dir) {
 export async function bootBrowser(dev = DEVICES.s25ultra) {
   return await launch({
     path: Deno.env.get("CHROMIUM_PATH") ?? "/usr/sbin/chromium",
-    // Headless by default (the farm is canvas-2D / no WebGL, so it renders identically and needs no Xvfb —
-    // that's what kills ~15s of apt-get per matrix job). HEADFUL=1 forces a real display for debugging.
     headless: Deno.env.get("HEADFUL") === "1" ? false : true,
     args: [
       "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage",
@@ -65,7 +53,6 @@ export async function bootBrowser(dev = DEVICES.s25ultra) {
   });
 }
 
-// e2e helper surface — identical to e2e.mjs, plus waitFor() for async data (cold-cache safe).
 export function makeHelpers(page) {
   const ev = (fn, ...args) => page.evaluate(fn, { args });
   const h = {
@@ -76,12 +63,8 @@ export function makeHelpers(page) {
     storage: (k) => ev((k) => localStorage.getItem(k), k),
     bodyText: () => ev(() => document.body.innerText),
     type:  (s, v) => ev((s, v) => { const e = document.querySelector(s); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); }, s, v),
-    // set a <select> value and fire change (native selects react to change, not input)
     select: (s, v) => ev((s, v) => { const e = document.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }, s, v),
     click: (s) => ev((s) => document.querySelector(s)?.click(), s),
-    // A real tap: pointerdown THEN click. `click()` alone dispatches neither pointer nor touch events, so
-    // anything a finger triggers — the runtime's delegated haptic, a press state, a pointer-driven
-    // instrument — is invisible to click() and passes a test it never actually exercised.
     tap: (s) => ev((s) => {
       const e = document.querySelector(s);
       if (!e) return false;
@@ -90,15 +73,6 @@ export function makeHelpers(page) {
       e.click();
       return true;
     }, s),
-    /* Hold a key, then let go. Until this existed no gate in the farm could press a key at all, so
-       "it works with a keyboard" was an assertion nobody could check — and a game is the one app
-       where that claim is load-bearing. `code` is the physical key (ArrowRight, KeyZ, ShiftLeft),
-       which is what a game listens to; dispatching on window matches where the handler lives. */
-    /* keyDown/keyUp are separate on purpose: a HELD key is a state, and the interesting assertions
-       (does the on-screen key light up, does a tap erase what the keyboard is holding) can only be
-       made while it is still down. A press-and-release helper cannot express that, and a test
-       written against one silently checks the moment AFTER the release — which is how the first
-       version of these cases failed against perfectly good code. */
     keyDown: (code) => ev((code) => dispatchEvent(new KeyboardEvent("keydown", { code, key: code, bubbles: true })), code),
     keyUp: (code) => ev((code) => dispatchEvent(new KeyboardEvent("keyup", { code, key: code, bubbles: true })), code),
     key: async (code, ms = 250) => { await h.keyDown(code); await sleep(ms); await h.keyUp(code); },
@@ -109,17 +83,6 @@ export function makeHelpers(page) {
       for (const c of codes) await h.keyUp(c);
     },
     hasClass: (s, c) => ev((s, c) => !!document.querySelector(s)?.classList.contains(c), s, c),
-    /* The COMPUTED value, which is a different thing from the class list and a very different thing
-       from the source. The farm's own rule says "do not assert source text where you can assert the
-       computed result", and until now the harness could not: `hasClass` proves a class was written,
-       not that anything came of it.
-       It exists because of a defect that shipped with every gate green. A console's whole geometry —
-       its plastic, its aperture, its radii, its plate — travels as custom properties on one element,
-       and that element also receives a spread of props carrying a `style` of its own. The spread came
-       second, so it REPLACED the geometry rather than merging with it, and nine shells rendered as
-       one. Nothing could see it: the classes were all present, the JS-level differences still worked,
-       a11y and overflow were unaffected. `getPropertyValue` reads custom properties too, which is the
-       only way to prove a variable actually reached the element it is supposed to describe. */
     css: (s, prop) => ev((s, prop) => {
       const el = document.querySelector(s);
       return el ? getComputedStyle(el).getPropertyValue(prop).trim() : null;
@@ -127,15 +90,7 @@ export function makeHelpers(page) {
     scrollTo: (y) => ev((y) => window.scrollTo(0, y), y),
     scrollY: () => ev(() => window.scrollY),
     back: () => ev(() => history.back()),
-    // Reload the page and wait for the app to settle. The ONLY way to test that something survives a
-    // session: an app persisting to IndexedDB is indistinguishable from one that silently drops it until
-    // you actually come back. Without this the gate could never tell "saved" from "lost".
     reload: async (settle = 1200) => { await page.reload({ waitUntil: "load" }); await sleep(settle); },
-    // Load the app AT a query — `?tab=`/`?screen=`/`?theme=`/`?locale=`/`?detail=`/`?mock`. Those params
-    // exist because the screenshot service and preflight cannot tap, so they are the only way a deep screen
-    // is ever reviewed; a gate that never exercises them lets that door rot shut without a single failure.
-    // The current URL comes from INSIDE the page (`location.href`), not from a `page.url()` accessor — this
-    // driver has no such method, and reaching for the Puppeteer name cost a CI round.
     goto: async (query = "", settle = 1200) => {
       const u = new URL(await ev(() => location.href));
       u.search = query ? (query.startsWith("?") ? query.slice(1) : query) : "";
@@ -144,7 +99,6 @@ export function makeHelpers(page) {
     },
     wait: (ms) => sleep(ms),
     expect: (cond, msg) => { if (!cond) throw new Error(msg || "assertion failed"); },
-    // poll a body-text regex up to `ms` — the cold-cache settle lesson, reusable
     waitFor: async (re, ms = 12000, step = 500) => { let t = ""; for (let i = 0; i < Math.ceil(ms / step); i++) { t = await ev(() => document.body.innerText); if (re.test(t)) return true; await sleep(step); } return re.test(t); },
   };
   return { h, ev };
@@ -156,26 +110,9 @@ export async function gotoAndSettle(page, url, settle = 3500) {
   await layoutStill(page);
 }
 
-/* WAIT FOR THE LAYOUT TO STOP MOVING, not for a number of milliseconds.
-   A fixed sleep is a bet on the runner, and the farm kept losing it in one specific place: the LOADING
-   state, whose settle is the short one (900ms). Two whole-farm runs, 2026-09-20, failed the 384px overflow
-   check on a different app each time — books, then launches — with the same shape both times: "+42px,
-   button.btn.btn-ghost", green on the re-run and green locally. That is not an app being 42px too wide; it
-   is the probe reading a frame in which one chrome button had not taken its final box yet.
-   So the width is READ until it stops changing: two identical measurements a frame apart, plus the web
-   fonts (a late font reflows every label under it) — and plus every stylesheet having actually APPLIED,
-   which is the half that mattered. Measured on the live pendulum at 384px: while `app.css` is still on the
-   wire the stage button computes `position: static; overflow-x: visible` instead of `fixed … hidden`, its
-   scene spills 42px, and the document reads 426. Nothing is MOVING in that state, so "two stable readings"
-   is perfectly happy with it — a cold cache measures the unstyled page and a warm one measures the styled
-   one, which is exactly the "+42px" that came back green on every re-run.
-   Bounded, because a page that never stops moving is its own finding and must not hang the gate — the
-   caller measures whatever the last frame says. */
 export async function layoutStill(page, { tries = 12, gap = 80 } = {}) {
   const read = () => page.evaluate(() => {
-    try { document.fonts?.ready?.catch?.(() => {}); } catch { /* no font API */ }
-    // `link.sheet` is null until that stylesheet is parsed and attached: the one signal that says the page
-    // in front of us is the styled one. A cross-origin sheet never exposes it, so only ours are counted.
+    try { document.fonts?.ready?.catch?.(() => {}); } catch { }
     const pending = [...document.querySelectorAll('link[rel~="stylesheet"]')]
       .filter((l) => { try { return new URL(l.href, location.href).origin === location.origin && !l.sheet; } catch { return false; } }).length;
     return document.documentElement.scrollWidth + ":" + document.documentElement.scrollHeight +
@@ -185,20 +122,12 @@ export async function layoutStill(page, { tries = 12, gap = 80 } = {}) {
   for (let i = 0; i < tries; i++) {
     await sleep(gap);
     const now = await read();
-    if (now === prev && /:1:0$/.test(now)) return true;                 // stable, fonts in, every sheet applied
+    if (now === prev && /:1:0$/.test(now)) return true;
     prev = now;
   }
   return false;
 }
 
-// ── The responsive matrix ─────────────────────────────────────────────────────────────────────────────
-// Real breakpoints at real aspect ratios, because "it fits on my phone" was never the standard and the
-// gate that only ever measured 384×832 could not say otherwise. Two dimensions were missing and both
-// ship bugs: WIDTH below the reference device (a 320px phone is still the floor of the market), and
-// HEIGHT at all — a phone in landscape is 390px tall, which is less than half the reference, and every
-// single-screen instrument in this farm was laid out as if that viewport did not exist.
-//
-// 20:9, 9:16, 4:3, 3:4, 19.5:9 landscape and 16:10 — the proportions real screens actually come in.
 export const BREAKPOINTS = [
   { id: "phone-sm",    w: 320,  h: 568,  note: "9:16 · small-phone floor" },
   { id: "phone",       w: 384,  h: 832,  note: "20:9 · reference device" },
@@ -211,30 +140,17 @@ export const BREAKPOINTS = [
   { id: "desktop",     w: 1280, h: 900,  note: "16:10 · desktop" },
 ];
 
-// runResponsiveMatrix — sweep every breakpoint and assert the layout HOLDS at each one.
-//   • horizontal: nothing spills past the viewport, anywhere, ever;
-//   • vertical: only for a FIT screen (a tab with `fit` → .ms-fit on <html>), where the contract is that
-//     the page is exactly one viewport. Measured on #view's own box, not the document's, because a fit
-//     page sets overflow:hidden — so content that does not fit is CLIPPED rather than scrollable, and a
-//     document-level scroll check would call that a pass while the bottom control sits off-screen.
-// Restores the original viewport before returning, so shots after it are still the reference device.
 export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) {
   const out = [];
   for (const bp of BREAKPOINTS) {
-    // An app may DECLARE a floor (spec.minWidth) — a width below which it does not claim to run (a
-    // USB-tethered SDR is never opened on a watch). Below that floor we don't assert the layout, the same
-    // way the glance check goes soft. Default 0 → every app is still swept down to the watch, unchanged.
     if (bp.w < minWidth) continue;
     await page.setViewportSize({ width: bp.w, height: bp.h });
-    await sleep(260);                                   // let the height-token step + container queries settle
+    await sleep(260);
     const m = await ev(() => {
       const de = document.documentElement;
       const ox = de.scrollWidth - window.innerWidth;
       let sel = "?";
       if (ox > 1) {
-        // Only elements that are actually ON SCREEN can be the reason the DOCUMENT is too wide. Anything
-        // parked inside a horizontal scroller is clipped by it — the sheet's own inner scroll reported a
-        // button at x736 in a 200px viewport, which is 536px of pure red herring.
         const clipped = (el) => {
           for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
             const cs = getComputedStyle(p);
@@ -246,20 +162,11 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
         };
         let far = window.innerWidth, node = null;
         for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5 && !clipped(el)) { far = r.right; node = el; } }
-        // The CHAIN, not just the furthest element. Three rounds were spent fixing "a button sticks out"
-        // when the button was only the last thing in a container that was already too wide — the widest
-        // ancestor is the one that has to change, and it is invisible if the check names a leaf. Each link
-        // reports its own width so the first one wider than the viewport is the actual subject.
         const chain = [];
         for (let el = node; el && el !== document.body && chain.length < 5; el = el.parentElement) {
           const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
-          // width AND right edge: a link that is narrow but sits far to the right overflows just as surely
-          // as a wide one, and the two cases need opposite fixes (shrink it vs. stop pushing it).
           const b = el.getBoundingClientRect();
           chain.push(`${el.tagName.toLowerCase()}${c ? "." + c : ""}[w${Math.round(b.width)}→x${Math.round(b.right)}]`);
-          // On the FIRST parent, list the siblings with their widths. A row overflows because of what is in
-          // it, and "this child sticks out" never says which of its neighbours refuses to give up space —
-          // which is the whole question when several are shrink-0.
           if (chain.length === 2) {
             const sibs = [...el.children].slice(0, 6).map((k) => {
               const kb = k.getBoundingClientRect();
@@ -276,19 +183,11 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
       if (fit) {
         const v = document.getElementById("view");
         oy = v ? Math.max(v.scrollHeight - v.clientHeight, de.scrollHeight - window.innerHeight) : 0;
-        // The vertical case needs the same treatment the horizontal one got: naming the lowest element says
-        // WHO overflows but never WHY, and "a Panel is too tall" is not something you can act on. So report
-        // the offender with its own height, then its tallest children — the row that actually costs the
-        // pixels is always one of them, and it is invisible from the parent alone.
         if (oy > 1 && v) {
           let low = v.getBoundingClientRect().bottom, node = null;
           for (const el of v.querySelectorAll("*")) { const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom > low + 0.5) { low = r.bottom; node = el; } }
           const name = (el) => { const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; return el.tagName.toLowerCase() + (c ? "." + c : ""); };
           if (node) {
-            // …and the COMPUTED display/tracks of each child. Three rounds went into why `.ms-cols` was
-            // "choosing one column" before the measurement showed the grid had never applied at all — a
-            // rule can be present, correct and matched, and still lose a cascade fight it never reports.
-            // Geometry says what happened; computed style says what the browser decided.
             const kids = [...node.children].slice(0, 4).map((k) => {
               const cs = getComputedStyle(k);
               const tracks = cs.display.includes("grid") ? ` ${cs.gridTemplateColumns.split(" ").length}tr` : "";
@@ -298,16 +197,6 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
           }
         }
       }
-      // The dock is `fixed`, so anything it covers is NOT an overflow — the page measures perfectly while
-      // the bottom control sits under the bar. Nothing caught that: axe compares text to its background,
-      // the fit check compares content to its box, and neither compares two boxes to each other.
-      //
-      // FIT SCREENS ONLY, and that distinction is the whole check. In a scrolling app the dock is a
-      // floating island that content passes UNDER by design — whatever it covers at this scroll position
-      // scrolls clear a moment later, and `main`'s --dock-h bottom padding guarantees the end of the list
-      // can be reached. On a fit screen nothing scrolls, so anything under the dock is hidden forever.
-      // (Decorative fixed layers — the dock fade, the stage scrim — are pointer-events-none and excluded;
-      // they are MEANT to overlap.)
       let hide = 0, hsel = "?", hgeo = "";
       const nav = document.querySelector("nav[data-dock]");
       const view = document.getElementById("view");
@@ -316,19 +205,8 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
         for (const el of view.querySelectorAll("*")) {
           const r = el.getBoundingClientRect();
           if (r.width < 8 || r.height < 8) continue;
-          // Only IN-FLOW content counts. Three things legitimately live under the dock and all three are
-          // the farm's own idioms: the full-bleed ambient backdrop (`fixed inset-0 z-0`, aria-hidden — see
-          // drift/rave/handpan), the dock's own fade, and any scrim. A `fixed` element sits outside the
-          // layout that main's --dock-h padding protects, and aria-hidden means it is decoration, not
-          // content. What must stay visible is the flowing column — and the island that started this
-          // check is exactly that, so it is still caught.
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
-          // Compare the VISIBLE part of the element, not its raw rect. A page parked off-screen inside a
-          // horizontal snap pager still has a bounding box out there to the right, and that box overlaps a
-          // right-hand dock rail perfectly — so the check reported the watch pager as "content hidden under
-          // the dock forever" when the page in question was simply the one you have not swiped to yet.
-          // Clip against every scroll-clipping ancestor; nothing outside those is on screen at all.
           let vr = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
           for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
             const pcs = getComputedStyle(p);
@@ -336,19 +214,13 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
             const pr = p.getBoundingClientRect();
             vr = { top: Math.max(vr.top, pr.top), bottom: Math.min(vr.bottom, pr.bottom), left: Math.max(vr.left, pr.left), right: Math.min(vr.right, pr.right) };
           }
-          if (vr.right - vr.left <= 1 || vr.bottom - vr.top <= 1) continue;   // clipped away → not on screen
+          if (vr.right - vr.left <= 1 || vr.bottom - vr.top <= 1) continue;
           const over = Math.min(vr.bottom, d.bottom) - Math.max(vr.top, d.top);
           const across = Math.min(vr.right, d.right) - Math.max(vr.left, d.left);
           if (over > 1 && across > 1 && over > hide) {
             hide = over;
             const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
             hsel = el.tagName.toLowerCase() + (c ? "." + c : "");
-            /* The magnitude alone cannot tell you WHY. Two different layout bugs both report "38px
-               under the dock", and the only way to tell them apart is where the boxes actually are —
-               so print the geometry and the chain of ancestors that decided it. Three rounds went
-               into guessing at this number with competing mental models; none of them survived one
-               look at the rects. A check that names a subject but no geometry still leaves the fix
-               to intuition. */
             const chain = [];
             for (let q = el; q && q !== document.body && chain.length < 4; q = q.parentElement) {
               const qs = getComputedStyle(q), qr = q.getBoundingClientRect();
@@ -359,27 +231,19 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
           }
         }
       }
-      // CLEARANCE — how much air is left between the flowing content and the chrome. Overlap is a bug;
-      // zero clearance is a design failure the overlap test cannot see, and it is what makes a transport
-      // look welded to the tab bar. Measured against --ms-gap so it follows the density ladder.
       let clear = 999, csel = "?";
       if (nav && view) {
         const d = nav.getBoundingClientRect();
-        const vertical = d.width < window.innerWidth * 0.9;      // the watch rail is a column, not a bar
+        const vertical = d.width < window.innerWidth * 0.9;
         for (const el of view.querySelectorAll("*")) {
           const r = el.getBoundingClientRect();
           if (r.width < 24 || r.height < 12) continue;
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
-          // Only PAINTED boxes count. A layout wrapper has no surface, so its edge is not something the eye
-          // can see resting against the bar — measuring it just reports every full-height container.
           const painted = cs.backgroundImage !== "none" ||
             !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.backgroundColor) ||
             cs.boxShadow !== "none" || parseFloat(cs.borderTopWidth) > 0;
           if (!painted) continue;
-          // Third scan to learn the same rule: a box inside a horizontal RAIL is clipped by it, and a pill
-          // touching the rail's edge is what a rail IS. The clearance that matters belongs to the rail, not
-          // to its contents — so anything clipped by a scroll ancestor is not measured.
           let skip = false;
           for (let q = el.parentElement; q && q !== document.body; q = q.parentElement) {
             const qs = getComputedStyle(q);
@@ -396,8 +260,6 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
           if (gap < clear) { clear = gap; const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; csel = el.tagName.toLowerCase() + (c ? "." + c : ""); }
         }
       }
-      // 1.5× the rhythm token, floored at 10px: --ms-gap alone passed a 12px gap between two glass panels
-      // that the eye reads as one object. A gate that agrees with a bad screenshot is set too low.
       const minGap = Math.max(10, (parseFloat(getComputedStyle(de).getPropertyValue("--ms-gap")) * 16 || 8) * 1.5);
       return { ox, sel, fit, oy, vsel, hide: Math.round(hide), hsel, hgeo, clear: clear === 999 ? -1 : Math.round(clear), minGap: Math.round(minGap), csel };
     });
@@ -412,7 +274,6 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
         pass: { name: `${label}: один екран без скролу (fit)`, ok: true },
         fail: { name: `${label}: fit-екран не вміщується`, ok: false, msg: `+${m.oy}px по висоті — винуватець: ${m.vsel}. Ущільніть через --ms-* або перенесіть у Sheet` },
       });
-      // zero clearance passes the overlap test and still looks welded — so it is its own check
       if (m.clear >= 0 && m.clear < m.minGap) {
         out.push({ name: `${label}: контент притиснутий до хрому (fit)`, ok: false,
           msg: `${m.clear}px замість ${m.minGap}px — ${m.csel}. Просвіт має бути щонайменше --ms-gap: інакше віджет читається як приварений до таб-бару` });
@@ -428,13 +289,8 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
   return out;
 }
 
-// The design checks (a11y in both themes / horizontal overflow@384). Returns [{name, ok, msg}].
-// The declared floor (spec.minWidth) is applied by the responsive matrix, which skips any breakpoint
-// narrower than an app's stated minimum — see runResponsiveMatrix.
 export async function runDesignChecks(ev) {
   const out = [];
-  // Freeze all CSS transitions/animations for the duration of the checks: otherwise flipping data-theme
-  // (dark→light) samples axe mid-transition and a borderline contrast flickers pass/fail. Removed at the end.
   await ev(() => { const s = document.createElement("style"); s.id = "__freeze"; s.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}"; document.head.appendChild(s); });
   const runAxe = () => ev(async () => {
     const r = await axe.run(document, { resultTypes: ["violations"] });
@@ -449,8 +305,6 @@ export async function runDesignChecks(ev) {
   try {
     await ev(async (src) => { await new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }, AXE);
     out.push(axeResult(await runAxe(), "(dark)"));
-    // SAME pass in the LIGHT theme — contrast is theme-specific (a pale label on white passes the dark pass
-    // but fails here). Flip data-theme, re-run axe, restore — so both themes are guaranteed accessible.
     const base = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
     const flipped = await ev((th) => { const t = th.includes("light") ? th : th + "-light"; document.documentElement.setAttribute("data-theme", t); return t; }, base);
     await sleep(200);
@@ -458,21 +312,15 @@ export async function runDesignChecks(ev) {
     await ev((th) => document.documentElement.setAttribute("data-theme", th), base);
   } catch (e) { out.push({ name: "a11y (axe)", ok: false, msg: "не вдалось завантажити axe: " + e.message }); }
 
-  // overflow@384 + NAME the widest element that spills past the viewport, so a failure is instantly fixable
   const ovi = await ev(() => {
     const ov = document.documentElement.scrollWidth - window.innerWidth;
     if (ov <= 1) return { ov: 0 };
-    /* The id FIRST, when the element has one: this chrome is a row of ghost circle buttons that all report
-       as `button.btn.btn-ghost`, and two whole-farm runs were spent guessing which of them it was. */
     const nameOf = (el) => {
       const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
       return (el.id ? "#" + el.id : el.tagName.toLowerCase()) + (cls ? "." + cls : "");
     };
     let sel = "?", far = window.innerWidth;
     for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; sel = nameOf(el); } }
-    // A report with no subject costs commits of guessing (sonar, 2026-09-01: "+42px — винуватець: ?").
-    // When nothing ends past the right edge — a transform mid-frame, or a negative left widening the scroll
-    // box — name the leftmost negative element, else the widest one, so the failure always carries a lead.
     if (sel === "?") {
       let leftmost = 0, lsel = "", widest = null, w = 0;
       for (const el of document.querySelectorAll("body *")) {
@@ -487,10 +335,6 @@ export async function runDesignChecks(ev) {
   });
   out.push(ovi.ov <= 1 ? { name: "phone 384px: без горизонтального overflow", ok: true } : { name: "phone 384px: overflow", ok: false, msg: `+${ovi.ov}px — винуватець: ${ovi.sel}` });
 
-  // Chrome decor must not be SHIFTED sideways. A full-width lip translated by runtime state escaped the
-  // viewport on every app, and no rest-state overflow check could see it (the tilt engine, removed
-  // 2026-08-31 — "укачує"). Pseudo-element geometry is unreadable from JS, but its computed transform is
-  // not — so the rule is checkable: header/dock ::before/::after carry NO horizontal translation, ever.
   const shifted = await ev(() => {
     const bad = [];
     for (const sel of ["header.navbar", "nav[data-dock]"]) {

@@ -105,12 +105,9 @@ export function installUsage(S) {
   installed = true;
   startedAt = Date.now();
 
-  // ONE listener for the whole app, in the capture phase so it still sees the tap when a handler stops
-  // propagation. `pointerdown` rather than `click`: a control that opens a sheet on press, or a drag that
-  // never becomes a click, is still a use.
-  document.addEventListener("pointerdown", (e) => { try { bump(taps, hookOf(e.target)); } catch { /* never break a tap */ } }, { capture: true, passive: true });
+  document.addEventListener("pointerdown", (e) => { try { bump(taps, hookOf(e.target)); } catch { } }, { capture: true, passive: true });
 
-  try { S?.screen?.listen?.((v) => bump(screens, v || "root")); } catch { /* an app without screens */ }
+  try { S?.screen?.listen?.((v) => bump(screens, v || "root")); } catch { }
 
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushUsage(); });
   addEventListener("pagehide", flushUsage);

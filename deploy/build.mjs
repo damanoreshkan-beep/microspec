@@ -70,34 +70,20 @@
  * verify gate looks. Fail loud, per app, on every build.
  * @module
  */
-// microspec — assemble the farm into a static site (served from our VPS at https://dreamstudio.mooo.com/; GitHub Pages until 2026-08-16). No backend: apps use the
-// direct-first CORS chain (feed.js). Output: dist/_rt (shared runtime), dist/<app>/ per app, and the
-// `home` store app assembled at the site ROOT (dist/index.html) as the launcher. Absolute `/_rt/`
-// imports become relative `../_rt/` (or `./_rt/` at root) so the site works at any base path.
-//   deno run -A deploy/build.mjs
 
 import { generateAppIcons } from "./icons.mjs";
-import { renderOgCard, metaBlock, injectMeta, previewGaps, SITE_NAME } from "./og.mjs";   // link previews — every app, every build
+import { renderOgCard, metaBlock, injectMeta, previewGaps, SITE_NAME } from "./og.mjs";
 import { buildManifest } from "./manifest.mjs";
 import { buildAppCompat } from "./build-app.mjs";
 
 const OUT = "dist";
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
 
-// The CORE runtime for THIS tree: the framework checkout's own packages/runtime, or the @microspec/core
-// package materialized under node_modules. The product's rt/ is an OVERLAY of its own domain modules —
-// real files copied on top after the core pass; no mirrors, no symlinks.
 const PKG_RT = "node_modules/@jsr/microspec__core/packages/runtime";
 const RTSRC = (await has("packages/runtime/index.js")) ? "packages/runtime" : PKG_RT;
 const RT_OVERLAY = (await has("rt")) ? "rt" : null;
 const isFileAt = async (dir, e) => e.isFile || (e.isSymlink && (await Deno.stat(`${dir}/${e.name}`).catch(() => ({ isFile: false }))).isFile);
 
-// ── PWA installability gate ─────────────────────────────────────────────────────────────────────────────
-// Nothing else in the farm verifies that an app can actually be INSTALLED — the Chromium verify gate checks
-// a11y / overflow / e2e / runtime errors, but never the manifest, icons or service worker. So a
-// non-installable app shipped green (books, with zero icons; and any app whose manifest drifts). This asserts
-// the real criteria Chrome uses to offer "Install", against the BUILT output (built manifest + generated
-// icons live here, not in the source the verify gate serves) — fail-loud, per app, on every build.
 const iconArea = (s) => Math.max(0, ...String(s || "").split(/\s+/).map((x) => parseInt(x, 10) || 0));
 async function assertInstallable(outDir, id) {
   let mf;
@@ -111,8 +97,6 @@ async function assertInstallable(outDir, id) {
   if (!pngs.some((i) => iconArea(i.sizes) >= 192)) missing.push("a ≥192px png icon (purpose any)");
   if (!pngs.some((i) => iconArea(i.sizes) >= 512)) missing.push("a ≥512px png icon (purpose any)");
   if (missing.length) throw new Error(`${id}: manifest is not installable — missing ${missing.join(", ")}`);
-  // every icon the manifest points at must EXIST in the build and (for png) be a real PNG of the stated size —
-  // a 404 or wrong-size icon makes Chrome silently refuse the install.
   for (const i of mf.icons || []) {
     const p = `${outDir}/${i.src}`;
     if (!(await has(p))) throw new Error(`${id}: manifest references "${i.src}" but it is not in the build — it would 404 and block install`);
@@ -124,11 +108,6 @@ async function assertInstallable(outDir, id) {
       if (want && (w !== want || h !== want)) throw new Error(`${id}: "${i.src}" is ${w}×${h} but the manifest declares ${want}×${want}`);
     }
   }
-  // Chrome will not offer install without a service worker that has a fetch handler, and the page must link
-  // the manifest.
-  // The worker is a generated stub (deploy/sw.mjs) that importScripts the shared core, so the fetch handler
-  // Chrome requires lives one hop away — follow it, and fail if the hop is broken. A stub pointing at a
-  // missing core would install, serve nothing, and quietly un-installable every app in the farm at once.
   const sw = await Deno.readTextFile(`${outDir}/sw.js`).catch(() => "");
   if (!sw) throw new Error(`${id}: sw.js missing — not installable`);
   let swBody = sw;
@@ -147,28 +126,20 @@ async function assertInstallable(outDir, id) {
 await Deno.remove(OUT, { recursive: true }).catch(() => {});
 await Deno.mkdir(`${OUT}/_rt`, { recursive: true });
 
-// 0) refresh the store launcher's app list from the current specs (home/data.js imports it).
-//    The launcher is the PRODUCT's app — the appless framework tree builds its generated demo without one.
 if (await has("apps/store")) await Deno.writeTextFile("apps/store/apps.json", JSON.stringify(await buildManifest(), null, 2) + "\n");
 
-// git-derived versions (auto, no manual bump): the number of commits that touched a path IS its version's
-// build number, so a version moves exactly when its code changes. Needs history — the deploy checkout uses
-// fetch-depth: 0; a shallow clone falls back to a low count (still deterministic per deploy via BUILD sha).
 async function gitCount(path) {
   try { const { stdout, success } = await new Deno.Command("git", { args: ["rev-list", "--count", "HEAD", "--", path], stdout: "piped", stderr: "null" }).output(); return success ? (parseInt(new TextDecoder().decode(stdout).trim(), 10) || 0) : 0; } catch { return 0; }
 }
 
-// 1) shared runtime → dist/_rt (all .js except unit tests). build.js is stamped with the deployed commit +
-//    the core version (commits touching the runtime).
 const BUILD_SHA = (Deno.env.get("GITHUB_SHA") || "dev").slice(0, 7);
 const CORE = "1." + (await gitCount("packages/runtime"));
 for await (const e of Deno.readDir(RTSRC)) {
-  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp");   // .webp = the DreamStudio chrome sprites (ds-*.webp)
+  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp");
   if (!keep || !(await isFileAt(RTSRC, e))) continue;
   if (e.name === "build.js") await Deno.writeTextFile(`${OUT}/_rt/build.js`, `export const BUILD = "${BUILD_SHA}";\nexport const CORE = "${CORE}";\n`);
   else await Deno.copyFile(`${RTSRC}/${e.name}`, `${OUT}/_rt/${e.name}`);
 }
-// the product's domain overlay lands ON TOP — dist/_rt is then the one flat, merged runtime
 if (RT_OVERLAY) {
   for await (const e of Deno.readDir(RT_OVERLAY)) {
     const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp");
@@ -177,29 +148,21 @@ if (RT_OVERLAY) {
   }
 }
 
-// 2) each app → dist/<id>; the `store` launcher lands at dist/store/ — its own scope (/…/store/) does NOT
-//    envelop the apps (/…/<id>/), so each app stays independently installable even when the store PWA is
-//    installed. The root is a redirect to ./store/ (below).
 const ids = [];
 const skipped = [];
-const previews = new Map();   // app id → { title, description } for the link-preview block   // app files no copy rule matched — printed at the end so they cannot vanish quietly
+const previews = new Map();
 for await (const a of Deno.readDir("apps")) {
   if (!a.isDirectory || !(await has(`apps/${a.name}/spec.json`))) continue;
   const outDir = `${OUT}/${a.name}`;
-  const rt = (s) => s.replaceAll("/_rt/", "../_rt/");   // everything is now one level deep under dist/
+  const rt = (s) => s.replaceAll("/_rt/", "../_rt/");
   await Deno.mkdir(outDir, { recursive: true });
-  const appVer = "1." + (await gitCount(`apps/${a.name}`));   // app version = commits touching this app
+  const appVer = "1." + (await gitCount(`apps/${a.name}`));
   for await (const f of Deno.readDir(`apps/${a.name}`)) {
     if (!f.isFile || f.name === "e2e.spec.mjs" || /\.(md|bak\.[a-z]+\.js)$/.test(f.name)) continue;
-    // The extension list is an ALLOW-list, so anything new drops out of dist/ silently — hero.wgsl did
-    // exactly that, and the app would have 404'd on production with a black stage and a green CI. Unknown
-    // extensions are now reported (below) instead of vanishing.
-    // .css joined on 2026-09-04: hive vendored Leaflet's stylesheet next to its bundle and the built site
-    // 404'd on /hive/leaflet.css — the dist eye caught it, the list had not.
     if (/\.(html|js|css|json|svg|png|webp|webmanifest|wgsl|frag)$/.test(f.name)) {
       if (f.name === "spec.json") {
         const spec = JSON.parse(await Deno.readTextFile(`apps/${a.name}/spec.json`));
-        if (!spec.version) spec.version = appVer;               // stamp unless the author pinned one
+        if (!spec.version) spec.version = appVer;
         await Deno.writeTextFile(`${outDir}/spec.json`, rt(JSON.stringify(spec, null, 2) + "\n"));
       } else if (/\.(html|js|json)$/.test(f.name)) {
         await Deno.writeTextFile(`${outDir}/${f.name}`, rt(await Deno.readTextFile(`apps/${a.name}/${f.name}`)));
@@ -210,54 +173,34 @@ for await (const a of Deno.readDir("apps")) {
       skipped.push(`${a.name}/${f.name}`);
     }
   }
-  // per-locale translations live in an i18n/ subdir the top-level file loop skips — copy it through
   if (await has(`apps/${a.name}/i18n`)) {
     await Deno.mkdir(`${outDir}/i18n`, { recursive: true });
     for await (const lf of Deno.readDir(`apps/${a.name}/i18n`)) {
       if (lf.isFile && lf.name.endsWith(".json")) await Deno.copyFile(`apps/${a.name}/i18n/${lf.name}`, `${outDir}/i18n/${lf.name}`);
     }
   }
-  // static binary assets (e.g. tarot's public-domain card scans) live in an assets/ subdir the top-level
-  // file loop also skips — copy it through verbatim so image-backed apps work offline at the /<app>/ path.
   if (await has(`apps/${a.name}/assets`)) {
     await Deno.mkdir(`${outDir}/assets`, { recursive: true });
     for await (const af of Deno.readDir(`apps/${a.name}/assets`)) {
       if (af.isFile) await Deno.copyFile(`apps/${a.name}/assets/${af.name}`, `${outDir}/assets/${af.name}`);
     }
   }
-  // PWA icons — real PNGs (installability); generated from the app's brand.
-  // A missing brand.svg is FATAL, never a silent skip: Chrome needs a real PNG ≥192 to offer an install, so
-  // skipping quietly ships an app that simply cannot be installed while every gate stays green. That is not
-  // hypothetical — `books` shipped exactly that way (authorless never wrote brand.svg), and nobody noticed
-  // until someone tried to install it. Fail loudly at build instead.
   {
     if (!(await has(`apps/${a.name}/brand.svg`))) throw new Error(`apps/${a.name}/brand.svg is missing — no PNG icons would be generated and the app would not be installable`);
     const brand = (await has(`apps/${a.name}/brand.json`)) ? JSON.parse(await Deno.readTextFile(`apps/${a.name}/brand.json`)) : { bg: "#1f2430", fg: "#a78bfa" };
     const paths = (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim();
-    // The luminous master (docs/research/luminous-icons.md) wins when the app has one; the brand tiles remain
-    // the fallback so a freshly scaffolded app is still installable before its art exists.
     const master = (await has(`apps/${a.name}/icon.webp`)) ? await Deno.readFile(`apps/${a.name}/icon.webp`) : null;
     await generateAppIcons(`${outDir}/icons`, brand, paths, master);
-    // LINK PREVIEW — the card + the meta block, from the same brand and the app's own uk strings. Preview
-    // bots read raw HTML, so this is written INTO dist/<app>/index.html; a gap is a build error, not a
-    // silent skip (the same rule as the icons). docs/research/link-previews.md.
     const uk = JSON.parse(await Deno.readTextFile(`apps/${a.name}/i18n/uk.json`));
     const title = uk.title || a.name, tagline = uk.profTagline || uk.heroBody || "";
     await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline, master }));
-    previews.set(a.name, { title, description: tagline || `${title} — ${SITE_NAME}` });   // injected AFTER the compat pass (which rewrites index.html)
+    previews.set(a.name, { title, description: tagline || `${title} — ${SITE_NAME}` });
   }
-  await assertInstallable(outDir, a.name);   // fail the build if this app cannot be installed as a PWA
+  await assertInstallable(outDir, a.name);
   ids.push(a.name);
 }
 
-// COMPAT PASS — the deployed artifact must run on the compat floor (Safari 16.1, the owner's iPad). Every
-// app is bundled (import attributes + import maps + esm.sh deps resolved away) and its Tailwind precompiled
-// to a static stylesheet (the runtime @tailwindcss/browser CDN crashes JSC 16.1). App SOURCE is untouched —
-// dev stays zero-build/modern; this is build-only. Fail LOUD with the full list so no app ships half-migrated.
-// See docs/RESEARCH-safari16-compat.md.
-// the bundler resolves /_rt/ against the MERGED output built above — core + overlay, one flat dir
 const RT_ABS = `${Deno.cwd()}/${OUT}/_rt`;
-// the shared kit renders most of the UI, so its class names must feed the per-app Tailwind scan (read once)
 const sharedSources = [];
 for (const dir of [RTSRC, RT_OVERLAY].filter(Boolean)) {
   for await (const f of Deno.readDir(dir)) {
@@ -272,8 +215,6 @@ for (const id of ids) {
 if (compatFails.length) throw new Error(`compat build failed for ${compatFails.length}/${ids.length} app(s):\n  ${compatFails.join("\n  ")}`);
 console.log(`compat: bundled JS + precompiled CSS for ${ids.length} apps (Safari 16.1 floor)`);
 
-// LINK PREVIEWS — after compat, because that pass rewrites index.html from the SOURCE and would drop the
-// block. Every app, asserted: a page a preview bot cannot unfurl is a build error (docs/research/link-previews.md).
 for (const id of ids) {
   const p = previews.get(id);
   if (!p) throw new Error(`${id}: no link-preview record — the app loop did not render its card`);
@@ -285,12 +226,6 @@ for (const id of ids) {
 }
 console.log(`link previews: og.png + meta block for ${ids.length} apps`);
 
-// A KILL-SWITCH for the site that lived on this origin before the farm (a Vite PWA, "dreamstudio", whose
-// worker was /sw-custom.js at scope /). A browser that ever visited it still holds that worker and serves the
-// old shell offline-first without asking the server — the owner saw the old site the day the farm moved in
-// (2026-08-16). Same URL, new script: the browser fetches it on its next check, installs this, and this
-// deletes every cache that is not ours (ours are namespaced ms-*) and unregisters itself; the open tabs are
-// reloaded onto the real page. Kept indefinitely — it is one file, and the old worker has no expiry.
 await Deno.writeTextFile(`${OUT}/sw-custom.js`, `self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (!k.startsWith("ms-")) await caches.delete(k);
@@ -298,15 +233,11 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
   for (const c of await self.clients.matchAll({ type: "window" })) c.navigate(c.url).catch(() => {});
 })());
 `);
-// root → redirect to the store (which now lives in its own scope at /store/)
 if (await has("apps/store")) {
-  // The site root redirects to the store, but a preview bot does not follow a meta refresh — so the root
-  // carries the store's own preview block (its card is dist/store/og.png).
   const storeUk = JSON.parse(await Deno.readTextFile("apps/store/i18n/uk.json"));
   const rootHtml = injectMeta(`<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>${storeUk.title || "microspec"}</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><script>location.replace("./store/"+location.search+location.hash)</script></head><body style="background:#0a0a0b"></body></html>\n`, metaBlock({ path: "/", title: storeUk.title || "microspec", description: storeUk.profTagline || "", image: "/store/og.png" }));
   await Deno.writeTextFile(`${OUT}/index.html`, rootHtml);
 } else {
-  // the appless framework tree: no launcher — a plain index naming the build is enough for the build check
   await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>microspec</title></head><body>microspec ${BUILD_SHA}</body></html>\n`);
 }
 await Deno.writeTextFile(`${OUT}/.nojekyll`, "");

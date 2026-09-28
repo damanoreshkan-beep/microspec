@@ -88,28 +88,10 @@
  *   request; and a `truncated` / `ungrounded` reply is never cached (ai-core's rule).
  * @module
  */
-// microspec runtime — the LANGUAGE capabilities: rewrite it, invent it, or collapse it.
-//
-//   • polish(text, locale)   — machine translation (translate.js gtx) is literal and reads wooden; this
-//     LIGHTLY rewrites it into natural prose in the SAME language, meaning preserved. The content language
-//     (en) is a passthrough: the English source is the original, not a translation.
-//   • suggest(mode, spark)   — a one-shot CREATIVE line for the "surprise me" wand (imagine/retouch).
-//     Deliberately UNCACHED: every tap must return something new, so the caller's random `spark` drives the
-//     variety rather than a cache key.
-//   • summary(key, locale)   — collapse a STRUCTURED block of facts (a tarot spread: positions + cards +
-//     meanings) into one short cohesive reading. Not a passthrough — even `en` is synthesised.
-//
-// Everything shared (the wire, the caches, the dedupe, aiTick) lives in ai-core.js.
 import { askAI, cacheFor, persist, pending, aiTick, reading } from "./ai-core.js";
 import { pool } from "./feed.js";
 import { CONTENT_LANG, rememberEnglish, warm, tr } from "./translate.js";
 
-// ── suggest: a one-shot creative generation, never cached ────────────────────────────────────────────────
-
-// suggest(mode, spark, locale) — mode "dream" → a vivid scene prompt; "edit" → a short photo-edit
-// instruction; "line" → one short thought of meaning (vydyvo's caption — the spark carries the essence and
-// the already-shown lines to avoid). Returns "" on any failure (the caller keeps the field unchanged).
-// Never called under the gate (no network).
 /**
  * One-shot creative generation, the raw answer; never cached, "" on any failure.
  * @param mode "line" (one short thought of meaning) or "scene" (one style-free visual scene in a given spirit, in English) — the spark carries the essence and what to avoid repeating; the picture prompts are {@link suggestPrompt}
@@ -122,12 +104,6 @@ export async function suggest(mode, spark, locale) {
   catch { return ""; }
 }
 
-// suggestPrompt — the "surprise me" wand for a PICTURE. English under the hood (owner, 2026-09-03: "під
-// капотом має бути en, а для кастомера з локалізацією ua — дуже якісний переклад"): the edge's dream/edit
-// modes answer {"en": the prompt the Space will get, "local": the same prompt written for the reader} in one
-// call, and the pair is remembered in translate.js's `_en` bucket, so what the field shows is the reader's
-// language and what is sent (toEnglish at generate time) is the model's own English — never gtx over a
-// suggestion. The envelope is parsed tolerantly (fences, stray prose); a missing `en` is a miss.
 /**
  * A picture prompt for the "surprise me" wand: the English the Space will get and the reader's rendering.
  * @param mode "dream" (a vivid scene prompt) or "edit" (a short photo-edit instruction)
@@ -138,15 +114,11 @@ export async function suggest(mode, spark, locale) {
 export async function suggestPrompt(mode, spark, locale) {
   const raw = await suggest(mode, spark, locale);
   let j = null;
-  try { const m = raw.match(/\{[\s\S]*\}/); j = m ? JSON.parse(m[0]) : null; } catch { /* not the envelope */ }
+  try { const m = raw.match(/\{[\s\S]*\}/); j = m ? JSON.parse(m[0]) : null; } catch { }
   const en = typeof j?.en === "string" ? j.en.trim() : "";
   if (!en) return null;
   const loc = String(locale || CONTENT_LANG).slice(0, 2);
-  // the rendering's key: "local", the locale itself, or whatever other string the model filed it under
-  // (llama-3.2-3b wrote "ua" for Ukrainian, 2026-09-03)
   let local = [j.local, j[loc], ...Object.entries(j).filter(([k]) => k !== "en").map(([, v]) => v)].find((v) => typeof v === "string" && v.trim())?.trim() || "";
-  // a rendering a small model garbled ("гisinюють", Latin letters inside Cyrillic words) is not shown: the
-  // English is rendered by the translator instead — clean machine prose beats broken native prose
   if (loc !== CONTENT_LANG && (!local || !cleanScript(local))) {
     await warm([en], loc).catch(() => {});
     local = tr(en, loc);
@@ -155,17 +127,8 @@ export async function suggestPrompt(mode, spark, locale) {
   rememberEnglish(local, en);
   return { en, local };
 }
-// cleanScript(text) — true when no WORD mixes Latin with another script's letters, the tell of a model
-// that cannot write the language (it keeps a Latin syllable inside a Cyrillic word)
 const cleanScript = (text) => !/\p{Script=Latin}[\p{L}\p{M}]*[^\p{Script=Latin}\P{L}]|[^\p{Script=Latin}\P{L}][\p{L}\p{M}]*\p{Script=Latin}/u.test(text);
 
-// ── polish: a light rewrite of wooden machine translation ────────────────────────────────────────────────
-//
-// The odd one out, and it stays hand-written rather than going through `reading()`: it is keyed by the
-// SOURCE TEXT itself (not a signature), it warms a BATCH with bounded concurrency, and a failure caches the
-// input so the app shows the literal translation rather than nothing.
-
-// polish(text, locale) — synchronous. The cached natural rewrite, or the input on a miss / passthrough.
 /**
  * The cached natural rewrite of a machine-translated string, synchronously.
  * @param text the literal translation to look up
@@ -177,8 +140,6 @@ export function polish(text, locale) {
   return cacheFor("", locale)[text] || text;
 }
 
-// isPolished(text, locale) — already rewritten and cached? (false while still in flight, so a caller can
-// hold a loading state until the natural rewrite lands). Passthrough/empty count as done.
 /**
  * Whether a string's rewrite is already cached (false while still in flight).
  * @param text the literal translation
@@ -190,9 +151,6 @@ export function isPolished(text, locale) {
   return text in cacheFor("", locale);
 }
 
-// warmPolish(texts, locale) — rewrite every not-yet-cached string, then bump aiTick once. No-op for the
-// content language or when everything is already cached, so it is cheap to call on every render/effect.
-// Low concurrency — the free LLM tiers rate-limit and the volume here is tiny.
 /**
  * Rewrite every not-yet-cached string in a batch (concurrency 2), then bump `aiTick` once.
  * @param texts the literal translations to warm
@@ -209,13 +167,11 @@ export async function warmPolish(texts, locale) {
   let changed = false;
   await pool(todo, 2, async (src) => {
     try { const { text: out } = await askAI(src, locale, "polish"); cache[src] = out || src; changed = true; }
-    catch { /* fail-open: leave uncached so a later warm can retry */ }
+    catch { }
     finally { pending.delete(locale + " " + src); }
   });
   if (changed) { persist("", locale, cache); aiTick.set(aiTick.get() + 1); }
 }
-
-// ── summary: structured facts → one short reading ────────────────────────────────────────────────────────
 
 const SUM = reading("sum", "summarize");
 /** Sync: the cached reading for a facts signature `key` in `locale`, or "" on a miss. */

@@ -71,35 +71,12 @@
  * stale it, which is why this is a gate and not a habit.
  * @module
  */
-// microspec — generate each app's service-worker stub (apps/<id>/sw.js) from the REAL import graph.
-//
-//   deno run -A deploy/sw.mjs           # (re)write every app's stub
-//   deno run -A deploy/sw.mjs --check   # fail if any stub is stale (a local gate, like counts.mjs --check)
-//
-// A per-app sw.js file is unavoidable — a worker's scope is derived from its own path and GitHub Pages can't
-// send `Service-Worker-Allowed` — but it holds no logic: just the app's identity and the precache manifest,
-// then `importScripts("/_rt/sw-core.js")` (build.mjs rewrites /_rt/ → ../_rt/ like every other app file).
-//
-// The manifest is the app's SHELL: everything needed to boot with the network unplugged.
-//   · the app's own files, reached from index.html through the import graph (spec.json, i18n/*.json, view.js…)
-//   · the /_rt/ modules that closure reaches
-//   · what index.html loads by tag (theme.css, icon.svg, the CDN <script>/<link>s)
-//   · the CDN URLs behind bare specifiers the closure imports STATICALLY (preact, htm, nanostores, motion)
-// Deliberately NOT in it: apps/<id>/assets/* (card scans, wasm, sample kits) and anything reached only by a
-// guarded dynamic import("three"). Those are cached on first use; the shell is a small fixed install cost,
-// media is not.
-//
-// The version is a hash of the manifest itself, NOT of the files' contents — a runtime edit must not rewrite
-// 57 stubs (and drag the whole farm through verify) when stale-while-revalidate already refreshes content.
-// The cache name only has to change when the SHAPE of the shell changes.
 
 import { buildClosure, htmlAssets, importMapOf, resolveSpec, RT, staticSpecs } from "../tools/graph.mjs";
 
 const read = (f) => { try { return Deno.readTextFileSync(f); } catch { return null; } };
 const exists = (f) => read(f) != null;
 
-// Follow imports through code only. buildClosure regexes whatever read() returns, and an i18n string that
-// happens to contain `from "…"` would otherwise invent a phantom dependency.
 const codeOnly = (f) => (/\.(js|mjs|html)$/.test(f) ? read(f) : read(f) == null ? null : "");
 
 async function hash(s) {
@@ -120,17 +97,12 @@ export function manifestFor(id, { read: rd = read } = {}) {
   if (html == null) return null;
   const urls = new Set(["./", "./index.html", "./manifest.json"]);
 
-  // 1) what index.html loads by tag — same-origin (theme.css, icon.svg) and CDN alike
   for (const a of htmlAssets(html)) {
     if (/^https?:\/\//.test(a)) urls.add(a);
     else if (a.startsWith("/_rt/")) urls.add(a);
     else if (!a.startsWith("/")) urls.add(a.startsWith("./") ? a : `./${a}`);
   }
-  // 1b) …and what a same-origin runtime stylesheet @imports: /_rt/theme.css is one line in the core and a
-  //     product's overlay, `@import "./runtime.css"` — a shell that precached only the link would style
-  //     nothing offline. The overlay's copy wins when the tree has one, as it does when served.
   const cssOf = (name) => rd(`rt/${name}`) ?? rd(`${RT}${name}`);
-  // a product's theme registry (material.js reads it at boot) is part of the shell when the tree ships one
   if (rd("rt/themes.json") != null) urls.add("/_rt/themes.json");
   for (const u of [...urls]) {
     const m = /^\/_rt\/([\w.-]+\.css)$/.exec(u);
@@ -146,35 +118,28 @@ export function manifestFor(id, { read: rd = read } = {}) {
     }
   }
 
-  // 2) the module closure of index.html: the app's own files + the /_rt/ modules they reach
   const closure = [...buildClosure(`${dir}/index.html`, codeOnly)].filter((f) => rd(f) != null).sort();
   for (const f of closure) {
     if (f.startsWith(RT)) urls.add(`/_rt/${f.slice(RT.length)}`);
     else if (f.startsWith(`${dir}/`) && f !== `${dir}/index.html`) urls.add(`./${f.slice(dir.length + 1)}`);
   }
 
-  // 3) bare specifiers the closure imports statically → their CDN URLs, via the page's own import map
   const imports = importMapOf(html);
   for (const f of closure) {
     const src = rd(f);
     if (!src || !/\.(js|mjs|html)$/.test(f)) continue;
     for (const spec of staticSpecs(src)) {
-      if (resolveSpec(spec, f)) continue;                       // local — already handled above
+      if (resolveSpec(spec, f)) continue;
       const url = imports[spec] || imports[spec.replace(/\/.*$/, "/")];
       if (url) urls.add(url);
     }
   }
 
-  // 4) the app's shaders. They are part of the shell — a few hundred bytes a stage cannot start without —
-  // but they arrive by fetch() rather than import, so the closure above is blind to them. DISCOVERED, not
-  // listed: this was two hardcoded filenames (hero.wgsl, presence.frag) and the third app to ship a shader
-  // would have gone offline-blank with every gate green. The environment map beside them stays OUT, like
-  // every other assets/* payload: it is megabytes, and SWR caches it on the first online run.
   try {
     for (const e of Deno.readDirSync(dir)) {
       if (e.isFile && /\.(wgsl|frag)$/.test(e.name)) urls.add(`./${e.name}`);
     }
-  } catch { /* an injected read() against a directory that does not exist — the unit tests' shape */ }
+  } catch { }
 
   return [...urls].sort();
 }

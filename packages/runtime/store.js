@@ -70,15 +70,12 @@
  * - `player` stacks on top of `detail`, so Back from a video returns to the item, not to the list.
  * @module
  */
-// microspec runtime — app state factory. Builds the nanostores state graph for one app + the
-// side-effecting helpers (load, fav, toast, swap). No rendering here; render.js subscribes to these.
 import { atom, map, computed } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
 import { dictFor } from "./i18n.js";
 
 const JSON_CODEC = { encode: JSON.stringify, decode: (s) => { try { return JSON.parse(s); } catch { return {}; } } };
 
-// createApp(spec, dataLoad) → { spec, S (state), load, toast, toggleFav, favKey, swap }
 /**
  * Build the nanostores state graph and side-effecting helpers for one app.
  * @param spec the app spec (id, tabs, filters, i18n, theme, fav)
@@ -90,18 +87,10 @@ export function createApp(spec, dataLoad) {
   const conv = spec.tabs.find((t) => t.type === "converter");
   const sortTab = spec.tabs.find((t) => Array.isArray(t.sort) && t.sort.length);
   const segTab = spec.tabs.find((t) => Array.isArray(t.segments) && t.segments.length);
-  // filters + sort persist across sessions (declared at the schema level; the runtime remembers the choice)
   const FKEY = ns + "filters";
   let savedFilters = {};
-  try { savedFilters = JSON.parse(localStorage.getItem(FKEY) || "{}"); } catch { /* bad/empty */ }
+  try { savedFilters = JSON.parse(localStorage.getItem(FKEY) || "{}"); } catch { }
 
-  // `?locale=en` — a URL override, and it exists for the same reason `?theme=` does (see index.js): the
-  // screenshot service is the only browser this project has, and the farm's stored default is `uk`, so
-  // EVERY still it could produce shipped Cyrillic chrome — including the ones in the public README. The
-  // override is validated against the app's OWN dicts, so an unknown value falls through to the stored
-  // preference rather than rendering raw keys.
-  // It does NOT persist: under override the atom is a plain one, nothing reaches localStorage, so a shared
-  // link cannot silently change someone's language (the same promise the theme override makes).
   const urlLocale = (() => {
     try {
       const q = new URLSearchParams(location.search).get("locale");
@@ -110,66 +99,43 @@ export function createApp(spec, dataLoad) {
   })();
 
   const S = {
-    // persisted preferences
     locale: urlLocale ? atom(urlLocale) : persistentAtom(ns + "locale", "uk"),
     theme: persistentAtom(ns + "theme", spec.theme || "dim"),
-    // the MATERIAL (a product's theme module, material.js): the person's choice for the whole farm, so the
-    // key is NOT namespaced by app; `materials` is the product's registry, [] when it ships none
     material: persistentAtom("ms:material", ""),
     materials: atom([]),
     fav: persistentAtom(ns + "fav", {}, JSON_CODEC),
     amount: persistentAtom(ns + "amount", "100"),
     from: persistentAtom(ns + "from", conv?.defaultFrom || "USD"),
     to: persistentAtom(ns + "to", conv?.defaultTo || conv?.base || "UAH"),
-    // ephemeral UI state
     query: atom(""),
     tab: atom(spec.tabs?.[0]?.id),
     sort: persistentAtom(ns + "sort", sortTab?.sort?.[0]?.key || ""),
-    seg: persistentAtom(ns + "seg", segTab?.segments?.[0]?.key || ""),   // one-of-N top filter strip (tab.segments)
-    toggles: persistentAtom(ns + "toggles", {}, JSON_CODEC),   // pinned per-tab multi-toggle strip (tab.toggles); {} = all on
+    seg: persistentAtom(ns + "seg", segTab?.segments?.[0]?.key || ""),
+    toggles: persistentAtom(ns + "toggles", {}, JSON_CODEC),
 
-    // next = opaque cursor for the following page (null = no more); loadingMore/moreError = paging state
     data: map({ items: [], meta: {}, loading: true, error: false, next: null, loadingMore: false, moreError: false }),
     filters: map({ ...(spec.filters?.defaults || {}), ...savedFilters }),
     toast: atom(""),
-    // history-backed overlays (index.js watches these for the back-button invariant)
-    // A drill-down STACK inside a tab (reel: swipe a video → its own page becomes the next feed, as deep as
-    // you like). Unlike every other overlay it is worth one history entry PER LEVEL — its length IS its
-    // depth — so Back walks the drill-down back one step at a time instead of collapsing it. The elements
-    // are the app's own (a label shown while dragging back); the runtime only counts them.
     stack: atom([]),
-    // CLEAN SCREEN — the runtime's chrome steps off the surface entirely (app bar, dock, dock fade) so a
-    // full-bleed app is nothing but its content. It lives here rather than in an app because the runtime
-    // OWNS that chrome: an app can only reach it by `display:none` on someone else's element, which also
-    // silently falsifies the measured --hdr-h/--dock-h every fit screen's math is built from. Registered as
-    // an overlay in index.js, so hiding the dock never strands anyone: system Back brings it all back, and
-    // the runtime paints one quiet door (CleanExit) for the tap that means the same thing.
     clean: atom(false),
     sheet: atom(false),
     detail: atom(null),
     screen: atom(null),
-    // The video an in-app `play` action opened: { url, title, poster, key }. Stacks ON TOP of detail, so
-    // Back returns to the item rather than to the list.
     player: atom(null),
     installEvent: atom(null),
     installOpen: atom(false),
-    qrOpen: atom(false),          // desktop "open on phone" self-QR (history-backed like the others)
-    searchOpen: atom(false),      // the list search field unfolded in the header (history-backed; owner 2026-09-04: no bar under the header)
-    confirm: atom(null),          // { title, body?, verb, onConfirm } — danger-confirm sheet (history-backed)
-    undo: atom(null),             // { fn, label } — interactive undo snackbar; NOT history-backed (transient)
-    update: atom(false),          // a newer build is cached and ready — offer a restart (see index.js)
+    qrOpen: atom(false),
+    searchOpen: atom(false),
+    confirm: atom(null),
+    undo: atom(null),
+    update: atom(false),
   };
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
-  // persist filter selections as JSON (keeps booleans intact, unlike per-key string storage)
-  S.filters.listen((v) => { try { localStorage.setItem(FKEY, JSON.stringify(v)); } catch { /* private mode / quota */ } });
+  S.filters.listen((v) => { try { localStorage.setItem(FKEY, JSON.stringify(v)); } catch { } });
 
-  // Full (re)load — page one. Resets the accumulated list + pagination cursor. Fires on init, filter
-  // change/refetch, searchFetch query change, and manual refresh.
   async function load() {
     S.data.set({ ...S.data.get(), loading: true, error: false, moreError: false });
     try {
-      // searchFetch family: the trimmed query reaches data.js as filters.q. `next` (optional) is the
-      // cursor for infinite scroll — data.js returns it and receives it back as filters.cursor.
       const { items, meta, next } = await dataLoad({ ...S.filters.get(), q: S.query.get().trim() });
       S.data.set({ items: items || [], meta: meta || {}, loading: false, error: false, next: next ?? null, loadingMore: false, moreError: false });
     } catch {
@@ -177,8 +143,6 @@ export function createApp(spec, dataLoad) {
     }
   }
 
-  // Append the next page (infinite scroll). No-op if there's no cursor or a load is already in flight —
-  // so the IntersectionObserver can fire freely. A failed page keeps the list and flags moreError (retry).
   async function loadMore() {
     const d = S.data.get();
     if (d.next == null || d.loading || d.loadingMore) return;
@@ -194,24 +158,18 @@ export function createApp(spec, dataLoad) {
 
   let toastTimer;
   function toast(key) {
-    S.undo.set(null);                                  // a plain toast supersedes any pending undo snackbar
+    S.undo.set(null);
     S.toast.set(key);
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => S.toast.set(""), 2200);
   }
 
-  // Delete safety — the reversible half. A destructive action does its delete OPTIMISTICALLY (the caller
-  // removes it and captures what's needed to restore), then calls undo(restore, label): an interactive
-  // snackbar offers "Undo" for 5s. NN/g's preferred pattern — an undo you notice protects a mis-tap far
-  // better than a confirm dialog clicked reflexively. High-consequence deletes use confirm() instead.
   let undoTimer;
   function undo(fn, label = "") {
     clearTimeout(undoTimer); clearTimeout(toastTimer);
     S.toast.set(""); S.undo.set({ fn, label });
     undoTimer = setTimeout(() => S.undo.set(null), 5000);
   }
-  // Delete safety — the irreversible half. Opens a history-backed danger-confirm sheet (Back = cancel). The
-  // caller carries the copy (name the thing, say what's lost) and the verb; onConfirm runs only on explicit tap.
   function confirm(opts) { S.confirm.set(opts); }
 
   const favKey = (it) => it[spec.fav?.key];

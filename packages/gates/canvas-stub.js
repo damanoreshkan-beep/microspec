@@ -1,6 +1,3 @@
-// Stub for linkedom's optional native `canvas` dependency — the browser-free pre-flight never rasterises
-// anything (globe/chart draws are no-ops), so this just satisfies linkedom's imports without pulling the
-// native module (which won't build under Deno).
 class Canvas {
   getContext() { return null; }
   toDataURL() { return ""; }

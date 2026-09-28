@@ -1,18 +1,5 @@
-// microspec — the REALM lint. The core executes from three realms (a file checkout, the JSR https cache,
-// and — never intentionally — node_modules), and two patterns compile fine yet break the moment the module
-// leaves disk. Five publishes in one night died on them, so the rule is a gate, not a review note:
-//
-//   1. fs THROUGH A RELATIVE import.meta — `readTextFile(new URL("../x", import.meta.url))` reads https
-//      in the JSR realm (and the registry strips comments, so even a "working" read lies to a scanner).
-//      Package-internal reads go through pkgRoot() (packages/runtime/pkgroot.js).
-//   2. a RAW dynamic import in a gate harness — a remote importer may neither import file:// nor use the
-//      import map; harness dynamic imports go through dynImport()/__msImport (the consumer shim plants a
-//      local importer).
-//
-//   deno run -A tools/realmlint.mjs
 const bad = [];
 const scanDirs = ["packages/gates", "packages/gen", "packages/schema", "packages/runtime/tests", "tools", "deploy"];
-// art tools run only in a checkout by design; frame is publish-excluded outright
 const exempt = (p) => /tools\/art\//.test(p) || /pkgroot\.js$/.test(p) || /realmlint\.mjs$/.test(p);
 
 const walk = function* (dir) {

@@ -71,5 +71,5 @@ try { if (!Deno.statSync(root).isDirectory) throw new Error(); } catch { console
 
 const handler = makeHandler(root);
 const ac = new AbortController();
-for (const sig of ["SIGINT", "SIGTERM"]) { try { Deno.addSignalListener(sig, () => ac.abort()); } catch { /* not on this platform */ } }
+for (const sig of ["SIGINT", "SIGTERM"]) { try { Deno.addSignalListener(sig, () => ac.abort()); } catch { } }
 await Deno.serve({ hostname: host, port, signal: ac.signal, onListen: ({ hostname, port }) => console.log(`see: ${root}/<id>/ at http://${hostname}:${port}/<id>/?mock — /_rt/ overlay-first`) }, handler).finished;

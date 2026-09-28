@@ -51,10 +51,6 @@
  * ajv against packages/schema/spec.schema.json — the contract, machine-checked.
  * @module
  */
-// Author-time contract gate: validate a spec.json against the microspec JSON Schema (draft 2020-12).
-// This is the SoT-driven half of "AI can't emit an invalid spec" — the generator runs the same
-// compiled validator in its retry loop (packages/gen), so a bad spec never reaches the runtime.
-//   deno run -A validate.mjs <spec.json> [<spec.json> ...]
 import Ajv2020 from "npm:ajv@8/dist/2020.js";
 import addFormats from "npm:ajv-formats@3";
 import { readLocales } from "../gen/compose.mjs";
@@ -75,8 +71,6 @@ if (import.meta.main) {
   let bad = 0;
   for (const f of files) {
     let spec;
-    // Compose the full spec: structure (spec.json) + translations (i18n/<locale>.json), so ajv validates
-    // the contract the runtime actually sees (i18n is required but lives in separate per-locale files).
     try {
       spec = JSON.parse(await Deno.readTextFile(f));
       spec.i18n = await readLocales(f.replace(/\/spec\.json$/, ""));

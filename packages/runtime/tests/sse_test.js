@@ -1,4 +1,3 @@
-// sse.js — the SSE event parser: chunk boundaries, event names, comments, CRLF, the unterminated tail.
 import { assertEquals } from "jsr:@std/assert@1";
 import { parseSse } from "../sse.js";
 

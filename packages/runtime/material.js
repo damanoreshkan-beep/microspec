@@ -65,9 +65,6 @@ export async function loadMaterials(fetchFn = globalThis.fetch) {
   } catch { return []; }
 }
 
-// `theme.css` or `theme-<id>.css`, nothing else: `theme[\w-]*\.css` also matched daisyui's `themes.css`, which
-// every page links FIRST — the swap rewrote the daisyui link to `daisyui@5/theme-lum.css` (text/plain, refused)
-// and the farm's own theme link never changed (found on the see pod with a stored material, 2026-09-05).
 const THEME_FILE = /theme(-\w+)?\.css(\?.*)?$/;
 /**
  * The new href for the page's theme link: the file name swapped, the path kept (a built page links

@@ -1,5 +1,3 @@
-// intake.js — the browser-free half: the gate's stand-in picture is deterministic, the extension follows the
-// blob type, the copy has en/uk parity. The chooser and the viewfinder are exercised by their consumers' e2e.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { mockArt, extOf, MAX_SIDE, sizeOf } from "../intake.js";
 

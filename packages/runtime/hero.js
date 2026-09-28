@@ -63,34 +63,11 @@
  *   unmount is dropped by the `dead` flag.
  * @module
  */
-// microspec runtime — the hero stage: one WebGPU renderer, one shader per app.
-//
-// An app supplies `apps/<id>/hero.wgsl` and nothing else. Everything mechanical — adapter, device, canvas
-// configuration, the fullscreen triangle, the uniform block, resize, reduced-motion, teardown — lives here
-// exactly once. The first version of this file was copied into an app directory, which is how a farm ends
-// up with eight subtly different renderers and a bug fixed in one of them.
-//
-// The SAME shader is what tools/art/hero.mjs renders offline, so a frame judged locally at 384×832 is what
-// ships. That is the whole point of the arrangement: the eye test stops being a deployment.
-//
-// NO FALLBACK, deliberately (owner's call): a device without WebGPU gets the island over a plain
-// background. The app still works — the stage is atmosphere, and every meaning it carries is also in the
-// DOM, which is the only thing axe and the e2e gate can see anyway.
-//
-// Uniform block (64 bytes, matching tools/art/hero.mjs byte for byte):
-//   res: vec2f · time: f32 · seed: f32 · ink: vec4f · vary: vec4f · env: vec4f
-//
-// `ink` and `vary` are the APP's channels; `env` is the RUNTIME's, and the split is deliberate. env.x is
-// how light the current theme is (0 dark, 1 light), eased over ~250ms so a theme toggle cross-fades the
-// scene instead of cutting. A stage cannot derive that itself: the view does not re-render on a toggle, so
-// every scene would grow its own MutationObserver and they would drift. A 48-byte struct still binds
-// against the larger buffer (WGSL only requires the declared struct to FIT), so iching and tarot are
-// untouched — verified by rendering both through tools/art/hero.mjs after the change.
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
-import { gate } from "./gate.js";   // runtime modules import RELATIVELY — /_rt/ 404s under /microspec/
+import { gate } from "./gate.js";
 
-const DPR_CAP = 2;   // 3.5 native on a modern phone is wasted fill rate for a full-screen field
+const DPR_CAP = 2;
 
 const VS = `
 @vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
@@ -117,7 +94,7 @@ export function HeroStage({ shader, seed = 0, ink, vary }) {
   state.vary = vary;
 
   useEffect(() => {
-    if (gate) return;                                  // headless: no GPU, no network, nothing to draw
+    if (gate) return;
     const canvas = ref.current;
     if (!canvas || !navigator.gpu) return;
 
@@ -144,8 +121,6 @@ export function HeroStage({ shader, seed = 0, ink, vary }) {
           primitive: { topology: "triangle-list" },
         });
 
-        // `layout: "auto"` derives the bind group from what the WGSL declares, so a field shader that reads
-        // no texture must not be handed one — that is a validation error, not harmless extra baggage.
         const uniBuf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
         const bind = device.createBindGroup({
           layout: pipeline.getBindGroupLayout(0),
@@ -163,7 +138,6 @@ export function HeroStage({ shader, seed = 0, ink, vary }) {
         const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(size) : null;
         ro?.observe(canvas);
 
-        // Reduced motion freezes the clock at a chosen frame — the scene still renders, it just holds still.
         const still = matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
         const t0 = performance.now();
 
@@ -171,14 +145,10 @@ export function HeroStage({ shader, seed = 0, ink, vary }) {
           if (state.dead) return;
           const now = performance.now();
           uni.set([canvas.width, canvas.height, still ? 2 : (now - t0) / 1000, state.seed ?? 0], 0);
-          // `ink`/`vary` may be FUNCTIONS, read fresh every frame. That is how an app animates the stage (a
-          // flare, a pulse) without re-rendering its whole view sixty times a second to move a background.
           const ink = typeof state.ink === "function" ? state.ink() : state.ink;
           const vary = typeof state.vary === "function" ? state.vary() : state.vary;
           uni.set(ink?.length === 4 ? ink : [0.9, 0.89, 0.93, 1], 4);
           uni.set(vary?.length === 4 ? vary : [0, 0, 0, 0], 8);
-          // Ease toward the document's theme rather than snapping: a hard cut on toggle is a flash the size
-          // of the screen. ~250ms at 60fps; `still` skips the easing so a frozen frame is exact.
           const target = themeLight();
           state.light = still ? target : state.light + (target - state.light) * 0.13;
           uni.set([state.light, 0, 0, 0], 12);
@@ -198,7 +168,6 @@ export function HeroStage({ shader, seed = 0, ink, vary }) {
         frame();
         state.cleanup = () => ro?.disconnect();
       } catch (e) {
-        // A dead GPU must not take the app with it — the island carries the meaning either way.
         console.warn("hero: WebGPU init failed —", e?.message ?? e);
       }
     })();
@@ -207,7 +176,7 @@ export function HeroStage({ shader, seed = 0, ink, vary }) {
       state.dead = true;
       cancelAnimationFrame(state.raf);
       state.cleanup?.();
-      try { state.device?.destroy?.(); } catch { /* already gone */ }
+      try { state.device?.destroy?.(); } catch { }
       state.device = null;
     };
   }, []);

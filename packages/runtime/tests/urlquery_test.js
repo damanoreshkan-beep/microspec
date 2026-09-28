@@ -1,10 +1,5 @@
-// microspec runtime — urlquery unit tests. Pure logic: no browser, no import map.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { resolveSearch, buildSearchUrl } from "../urlquery.js";
-
-// ---- urlquery: search-param resolver (recognise the search key across popular sites) ---------------------
 
 Deno.test("urlquery resolveSearch: recognises the search key across popular engines/sites", () => {
   const cases = [
@@ -16,8 +11,8 @@ Deno.test("urlquery resolveSearch: recognises the search key across popular engi
     ["https://www.baidu.com/s?wd=天气", "wd", "天气"],
     ["https://yandex.com/search/?text=погода", "text", "погода"],
     ["https://search.yahoo.com/search?p=news", "p", "news"],
-    ["https://www.aliexpress.com/wholesale?SearchText=drone", "SearchText", "drone"],   // original casing preserved
-    ["https://example.com/?s=hello", "s", "hello"],                                      // WordPress
+    ["https://www.aliexpress.com/wholesale?SearchText=drone", "SearchText", "drone"],
+    ["https://example.com/?s=hello", "s", "hello"],
     ["https://site.dev/find?keyword=shoes&sort=price", "keyword", "shoes"],
   ];
   for (const [url, key, term] of cases) {

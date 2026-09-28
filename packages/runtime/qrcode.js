@@ -54,15 +54,10 @@
  *   first paint for a feature most sessions never open.
  * @module
  */
-// QR encoder wrapper — the thin, unit-tested surface over the vendored codec (./qrgen.vendor.js). Powers the
-// desktop "open on phone" self-QR: encode a URL, get a boolean module matrix, an SVG, or a data-URI. Byte
-// mode, auto-version (typeNumber 0). ECC "M" (15% recovery) is a good default for a phone reading a screen.
 import qrgen from "./qrgen.vendor.js";
 
 const LEVELS = { L: "L", M: "M", Q: "Q", H: "H" };
 
-// text → boolean[][] (rows × cols, true = a dark module). Throws only if the text is too long for any QR
-// version — the page URL always fits, and callers that take arbitrary text should guard.
 /**
  * Encode text into a boolean module matrix (rows × cols, true = a dark module); throws when the text exceeds every QR version.
  * @param text the text to encode, byte mode
@@ -79,8 +74,6 @@ export function qrMatrix(text, ecc = "M") {
   return m;
 }
 
-// One <path> of every dark module over a white field with the mandatory quiet zone (≥4 modules — a QR with
-// no quiet zone often will not scan). crispEdges keeps the modules hard at any render size.
 /**
  * Render the QR for `text` as an SVG string: one path of dark modules over a light field with a quiet zone.
  * @param text the text to encode

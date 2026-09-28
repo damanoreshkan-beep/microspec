@@ -75,7 +75,7 @@ function seedOf() {
       const gl = document.createElement("canvas").getContext("webgl");
       const dbg = gl?.getExtension("WEBGL_debug_renderer_info");
       gpu = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)).slice(0, 80) : "";
-    } catch { /* no webgl */ }
+    } catch { }
     seedCache = [scr, tz, plat, cpu, mem, gpu].join("|");
   } catch { seedCache = ""; }
   return seedCache;
@@ -107,7 +107,7 @@ async function flush() {
   const body = JSON.stringify({ ...context(), dropped, events });
   dropped = 0;
   try { await fetch(`${VPS_PROXY}/log`, { method: "POST", headers: { "content-type": "application/json" }, body, keepalive: true }); }
-  catch { /* offline: the events are gone; a log must never wedge the app */ }
+  catch { }
   if (queue.length) timer = setTimeout(flush, FLUSH_MS);
 }
 
@@ -119,10 +119,6 @@ function push(level, event, msg, data) {
   sentThisMinute++;
   let d = null;
   if (data != null) { try { const s = JSON.stringify(data); d = s.length > DATA_MAX ? { truncated: true, head: s.slice(0, DATA_MAX) } : data; } catch { d = { unserializable: true }; } }
-  // Every row names the SHELL that sent it: a phone that keeps an old service-worker cache reports from old
-  // code, and without the deploy stamp the log cannot tell that apart from a bug in the new one (2026-09-11:
-  // Samsung Internet "has no dancer picker" — the log had taps and no build). `build` = the deployed short
-  // SHA (deploy/build.mjs stamps it), "dev" in the gate and local dev.
   d = d && typeof d === "object" && !Array.isArray(d) ? { ...d, build: BUILD } : (d == null ? { build: BUILD } : { value: d, build: BUILD });
   queue.push({ t: now, level, event: String(event).slice(0, 80), msg: String(msg || "").slice(0, 500), data: d });
   if (queue.length >= MAX_BATCH) { clearTimeout(timer); flush(); }
@@ -150,6 +146,6 @@ export function installTelemetry(appId) {
   window.addEventListener("error", (e) => { const d = describe(e.error || e.message); push("error", "window.error", d.msg, { stack: d.stack, src: String(e.filename || "").slice(-80), line: e.lineno }); });
   window.addEventListener("unhandledrejection", (e) => { const d = describe(e.reason); push("error", "unhandledrejection", d.msg, { stack: d.stack }); });
   const orig = console.error.bind(console);
-  console.error = (...args) => { orig(...args); try { const d = describe(args[0]); push("error", "console.error", d.msg || args.map(String).join(" ").slice(0, 500), { stack: d.stack, rest: args.slice(1).map((a) => String(a).slice(0, 120)) }); } catch { /* */ } };
+  console.error = (...args) => { orig(...args); try { const d = describe(args[0]); push("error", "console.error", d.msg || args.map(String).join(" ").slice(0, 500), { stack: d.stack, rest: args.slice(1).map((a) => String(a).slice(0, 120)) }); } catch { } };
   window.addEventListener("pagehide", () => { clearTimeout(timer); flush(); });
 }

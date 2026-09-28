@@ -9,13 +9,6 @@
  * `import "@microspec/core/tests/runtime";`. It exports nothing.
  * @module
  */
-// microspec runtime — the unit-test BARREL. The suite used to be one 6287-line file; it is now one file per
-// module under ./tests/, imported here. CI and `deno task test` both name THIS path, so the barrel is what
-// keeps them working: Deno registers a test the moment its module is imported. Adding a suite means adding a
-// file there and a line here — nothing else.
-// Since the split (2026-08-31) this holds the CORE's suites only: the product's domain modules (radio,
-// astrology, instruments, …) moved to DreamStudio's rt/ with their tests, barrelled by rt/rt_test.js.
-//   deno test -A packages/runtime/runtime_test.js
 import "./tests/apk_test.js";
 import "./tests/calendar_test.js";
 import "./tests/watch_test.js";

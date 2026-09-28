@@ -1,12 +1,5 @@
-// microspec runtime — shell unit tests. Pure logic: no browser, no import map.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { shell, ERR } from "../shell.js";
-
-// ---- shell facade -----------------------------------------------------------
-// The bridge does not exist in Java yet (phase 3), so what is under test is the CONTRACT: a browser sees
-// nothing, an out-of-date shell says so instead of failing obscurely, and a current one round-trips.
 
 Deno.test("shell: a browser has no bridge, and says so in one closed vocabulary", async () => {
   delete globalThis.window;
@@ -14,15 +7,15 @@ Deno.test("shell: a browser has no bridge, and says so in one closed vocabulary"
   assertEquals(shell.version, 0);
   assertEquals(shell.has("system.info"), false);
   assertEquals(shell.why("system.info"), ERR.unsupported);
-  assertEquals(shell.why("nope.nope"), ERR.unsupported);          // unknown action, same answer
+  assertEquals(shell.why("nope.nope"), ERR.unsupported);
   const e = await shell.call("system.info").catch((x) => x);
   assertEquals(e.code, ERR.unsupported);
-  assertEquals(shell.subscribe("system.info", {}, () => {})(), undefined);   // no-op canceller, never throws
+  assertEquals(shell.subscribe("system.info", {}, () => {})(), undefined);
 });
 
 Deno.test("shell: a shell older than the action is staleBridge, not a silent failure", async () => {
   globalThis.window = globalThis;
-  globalThis.__msShell = { call: () => {}, subscribe: () => {}, cancel: () => {} };   // reports no version
+  globalThis.__msShell = { call: () => {}, subscribe: () => {}, cancel: () => {} };
   try {
     assertEquals(shell.present, true);
     assertEquals(shell.version, 0);
@@ -47,7 +40,7 @@ Deno.test("shell: a current bridge round-trips a call, and errors keep their cod
     const p = shell.call("system.info", { a: 1 });
     assertEquals(sent.length, 1);
     assertEquals(sent[0].action, "system.info");
-    assertEquals(sent[0].args, '{"a":1}');                        // args cross as JSON, never as objects
+    assertEquals(sent[0].args, '{"a":1}');
     globalThis.dispatchEvent(new CustomEvent("msShell:reply", { detail: { id: sent[0].id, ok: true, value: { bridge: 1 } } }));
     assertEquals((await p).bridge, 1);
 
@@ -64,7 +57,7 @@ Deno.test("shell: the catalogue is the surface, and an action carries what a scr
   const a = shell.action("system.info");
   assertEquals(a.capability, "system");
   assertEquals(a.kind, "call");
-  assertEquals(a.android, []);                                    // the one action needing no permission
+  assertEquals(a.android, []);
   assertEquals(shell.action("nope.nope"), null);
 });
 
@@ -83,7 +76,6 @@ Deno.test("shell: a subscription that fails tells the caller, instead of looking
     assertEquals(events, 0);
     assertEquals(failed?.code, ERR.denied, "a refused stream must reach onError, not vanish");
 
-    // An action this shell is too old for must also report, rather than returning a silent no-op.
     globalThis.__msShell.version = () => 1;
     let stale = null;
     shell.subscribe("ble.scan", {}, () => {}, (e) => { stale = e; });

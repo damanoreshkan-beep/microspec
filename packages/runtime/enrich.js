@@ -61,47 +61,25 @@
  * - `metaTick` is bumped at most once per batch, and only when something arrived — an empty batch is a no-op.
  * @module
  */
-// microspec runtime — link enrichment (article previews).
-//
-// Link-feed APIs (Hacker News, launches, …) give a title + URL but no preview text. A card that is just
-// a title is "raw" — the runtime forbids it (see validate.js: a feed card must declare a preview slot).
-// This module fills that slot: given an item's outbound URL it fetches the article's description once and
-// exposes it as a virtual field the card renders.
-//
-// Same shape as translate.js — and for the same reasons:
-//   • Render-time, cached, fail-open. enrich(url) is a SYNC cache read used in render; warmMeta(urls)
-//     is the async side that fills the cache and bumps `metaTick` so cards re-render as previews arrive.
-//   • A miss (not yet fetched, offline, site blocked) leaves the slot empty — the card degrades to
-//     title + badges, never breaks. Previews are an enhancement, not a dependency.
-//   • Permanent per-URL localStorage cache → repeat loads and the saved tab are instant.
-//
-// Source: Jina Reader (r.jina.ai) JSON mode — free, no key, sends CORS headers (so we fetch it directly,
-// no proxy needed), and extracts a clean description even when a page has no og:description meta. Probed
-// at ~7/8 hit rate on a live HN front page vs 1/8 for og-scraping through public proxies.
 import { atom } from "nanostores";
 import { viaProxy, pool } from "./feed.js";
 
 /** Counter atom bumped once per `warmMeta` batch that added previews, so cards subscribed to it re-render. */
 export const metaTick = atom(0);
 
-// Per-host description resolvers. Default = Jina Reader (fetchMeta below). A few hosts need a bespoke
-// extractor: Hugging Face blocks anonymous Jina AND its og:description is a generic site blurb, so the
-// real model card lives in README.md — fetched through the CORS proxy (HF restricts CORS to its own
-// origin) and reduced to its first prose paragraph. Same { description } contract, same cache, same
-// fail-open. A new host that hides its prose the same way just adds an entry here.
 function hfReadmeDesc(md) {
-  let t = String(md || "").replace(/^---\s*\r?\n[\s\S]*?\r?\n---\s*\r?\n/, ""); // strip YAML frontmatter
-  if (/access to (model|this repo|the model) .*is restricted/i.test(t.slice(0, 400))) return ""; // gated
+  let t = String(md || "").replace(/^---\s*\r?\n[\s\S]*?\r?\n---\s*\r?\n/, "");
+  if (/access to (model|this repo|the model) .*is restricted/i.test(t.slice(0, 400))) return "";
   const out = [];
   for (const raw of t.split("\n")) {
     const line = raw.trim();
-    if (!line) { if (out.length) break; else continue; }                  // blank line ends 1st paragraph
-    if (/^(#|!\[|<|\[!|\||-{3,}|={3,}|>|\*\s|-\s|\d+\.\s)/.test(line)) continue; // heading/img/html/badge/table/rule/quote/list
-    const s = line.replace(/!\[[^\]]*\]\([^)]*\)/g, "")                    // images
-                  .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")                 // links → their text
-                  .replace(/<[^>]+>/g, "")                                 // inline html
-                  .replace(/https?:\/\/\S+/g, "")                          // bare URLs
-                  .replace(/[*`_]/g, "").replace(/\s+/g, " ").trim();      // emphasis / code ticks / gaps
+    if (!line) { if (out.length) break; else continue; }
+    if (/^(#|!\[|<|\[!|\||-{3,}|={3,}|>|\*\s|-\s|\d+\.\s)/.test(line)) continue;
+    const s = line.replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+                  .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+                  .replace(/<[^>]+>/g, "")
+                  .replace(/https?:\/\/\S+/g, "")
+                  .replace(/[*`_]/g, "").replace(/\s+/g, " ").trim();
     if (s.length < 20) continue;
     out.push(s);
     if (out.join(" ").length > 220) break;
@@ -111,32 +89,30 @@ function hfReadmeDesc(md) {
 
 const RESOLVERS = {
   "huggingface.co": async (url) => {
-    // models: /org/repo ; spaces & datasets carry a /spaces|/datasets prefix → /spaces/org/repo
     const m = url.match(/^https?:\/\/huggingface\.co\/((?:spaces|datasets)\/[^/?#]+\/[^/?#]+|[^/?#]+\/[^/?#]+)/);
-    if (!m) return null;                                                    // not a repo page → let Jina try
+    if (!m) return null;
     const md = await viaProxy(`https://huggingface.co/${m[1]}/raw/main/README.md`, (x) => typeof x === "string" && x.length > 0, 12000);
     const description = hfReadmeDesc(md);
-    if (!description) throw new Error("no card");                           // gated / no README → fail-open
+    if (!description) throw new Error("no card");
     return { description };
   },
 };
 
-const mem = new Map();      // url → { description }
-const pending = new Set();  // urls in flight (dedupe concurrent warms)
+const mem = new Map();
+const pending = new Set();
 
 function cache() {
   if (mem.__loaded) return mem;
   let obj = {};
-  try { obj = JSON.parse(localStorage.getItem("ms:meta") || "{}"); } catch { /* private mode / bad json */ }
+  try { obj = JSON.parse(localStorage.getItem("ms:meta") || "{}"); } catch { }
   for (const k in obj) mem.set(k, obj[k]);
   mem.__loaded = true;
   return mem;
 }
 function persist() {
-  try { localStorage.setItem("ms:meta", JSON.stringify(Object.fromEntries(mem))); } catch { /* quota — mem cache still serves */ }
+  try { localStorage.setItem("ms:meta", JSON.stringify(Object.fromEntries(mem))); } catch { }
 }
 
-// enrich(url) — synchronous. Returns { description } or null on a miss.
 /**
  * Synchronous cache read of an article preview for a URL.
  * @param url the item's outbound URL
@@ -149,13 +125,12 @@ export function enrich(url) {
 
 async function fetchMeta(url) {
   let host = "";
-  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { /* bad url → Jina */ }
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { }
   const resolver = RESOLVERS[host];
-  if (resolver) { const r = await resolver(url); if (r) return r; }   // resolver may throw (fail-open) or null → Jina
+  if (resolver) { const r = await resolver(url); if (r) return r; }
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 10000);
   try {
-    // Jina takes the raw URL as its path (not query-encoded). X-Timeout bounds Jina's own upstream fetch.
     const r = await fetch("https://r.jina.ai/" + url, { signal: ctrl.signal, headers: { Accept: "application/json", "X-Timeout": "8" } });
     if (!r.ok) throw new Error("status " + r.status);
     const d = (await r.json())?.data || {};
@@ -165,9 +140,6 @@ async function fetchMeta(url) {
   } finally { clearTimeout(t); }
 }
 
-// warmMeta(urls) — fetch a description for every not-yet-cached URL, then bump metaTick once. Cheap to
-// call on every render/effect: already-cached and in-flight URLs are skipped. Failures stay uncached so
-// a later load can retry (fail-open, never a poisoned negative cache).
 /**
  * Fetches a description for every not-yet-cached URL (bounded concurrency), persists the cache and bumps
  * `metaTick` once if anything arrived. Cached and in-flight URLs are skipped; failures stay uncached.
@@ -182,7 +154,7 @@ export async function warmMeta(urls) {
   let changed = false;
   await pool(todo, 5, async (u) => {
     try { c.set(u, await fetchMeta(u)); changed = true; }
-    catch { /* fail-open: leave uncached for retry */ }
+    catch { }
     finally { pending.delete(u); }
   });
   if (changed) { persist(); metaTick.set(metaTick.get() + 1); }

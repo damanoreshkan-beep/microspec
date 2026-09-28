@@ -62,15 +62,6 @@ import { sys } from "./i18n.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
-// Under the gate there is no edge and no account, and a headless run must still see the control it is
-// there to photograph. The fixture is built AROUND THE SOURCE THE APP ASKED FOR rather than a fixed one:
-// a canned payload naming `air` renders nothing in the five apps that watch something else, and "the
-// control is missing" is exactly what the gate exists to catch — it must not be the fixture's own doing.
-// Which sources answer in WORDS, mirroring the edge's own table (microspec-edge edge/watch.js SOURCES).
-// The gate has no edge to ask, and a fixture that gave every source bands would photograph a control five
-// apps do not have — the gate would then be green on a screen production never shows. A source is here
-// because its number is unreadable (a distance in km, a Kp index, µg/m³, a magnitude); °C, a rate and hours
-// to a launch are numbers people read, and they keep the input.
 const BAND_SOURCES = new Set(["iss", "air", "kp", "quake"]);
 const BANDS = [{ id: "close", uk: "близько", en: "close" }, { id: "overhead", uk: "прямо над головою", en: "right overhead" }];
 const fixture = (source) => {
@@ -126,19 +117,17 @@ const fmt = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 100)
  */
 export function Bell({ source, loc, app = "", params = null, className = "" }) {
   const sess = useStore(session);
-  const [state, setState] = useState(null);      // {rules, sources, balance, cost, max} | null while loading
+  const [state, setState] = useState(null);
   const [value, setValue] = useState(null);
-  const [band, setBand] = useState(null);        // the WORD the reader picked, when this source offers words
+  const [band, setBand] = useState(null);
   const [op, setOp] = useState("above");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [fallback, setFallback] = useState(false);   // the popup did not work — show the deep link instead
+  const [fallback, setFallback] = useState(false);
 
   const load = () => watchList(source).then((j) => {
     setState(j);
     setValue((v) => (v == null ? (j.sources?.[source]?.dflt ?? 0) : v));
-    // The first band is the default, decided on the edge beside the number it resolves to — the surface
-    // does not get to have its own opinion about which word a reader means.
     setBand((b) => b || j.sources?.[source]?.bands?.[0]?.id || null);
   }).catch(() => setState({ rules: [], sources: {}, balance: 0, cost: 1, max: 0, role: "user", free: false, down: true }));
 
@@ -148,16 +137,6 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
   const S = state?.sources?.[source];
   const mine = (state?.rules || []).filter((r) => r.source === source);
 
-  // Not the Telegram account → the card SIGNS THEM IN rather than pointing at the bot. The first version
-  // shipped a link to `t.me/dreamstudio_x_bot` and it was a dead end in the most literal way: Telegram opens
-  // the bot's chat, the chat has nothing to do with this app, and there is no way back — the reader taps a
-  // button labelled Telegram and nothing happens. A control that hands the problem to the user is not a
-  // control. Three paths, in the order they can work:
-  //   · in the Mini App — never reached; the bootstrap already signed in from initData (index.js).
-  //   · in a browser — loginTelegramWeb(), the same OIDC popup signin.js uses; the bell then works in place.
-  //   · in our APK, or when the popup is blocked or dismissed — the WebView has no popups at all, so the
-  //     DEEP LINK opens this very app inside Telegram (?startapp=<app id>), where sign-in is automatic.
-  //     That link is what the profile's "Open in Telegram" row already uses; the bare bot link is not.
   if (!tg) {
     const deep = `https://t.me/dreamstudio_x_bot?startapp=${encodeURIComponent(app || "")}`;
     const viaTelegram = async () => {
@@ -184,9 +163,6 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
     try {
       let p = params;
       if (!p && S.needs === "geo") { p = await place(); if (!p) { setErr(sys("watchNoPlace", loc)); setBusy(false); return; } }
-      // A band rule sends the WORD and nothing else: the edge resolves it against the upstream as it is at
-      // this second and stores the number. Sending `op` or `value` alongside would be this surface having
-      // an opinion about a threshold it is the whole point of never showing.
       await watchAdd(bands ? { source, params: p || {}, band, lang: loc } : { source, params: p || {}, op, value: Number(value), lang: loc });
       await load();
     } catch (e) {
@@ -196,10 +172,6 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
   };
 
   const unit = S.unit ? " " + S.unit : "";
-  // «в км не зрозуміло. просто це "близько" і все» (owner, 2026-09-22). When a source offers words, this
-  // card shows words: no number, no unit, no direction — the word already carries all three, and the
-  // kilometres stay on the server where they were computed. Sources whose number a person actually reads
-  // (°C, a rate, hours to a launch) send no bands and keep the input they had.
   const bands = S.bands && S.bands.length ? S.bands : null;
   const wordOf = (b) => (String(loc || "").startsWith("uk") ? b.uk : b.en) || b.id;
   const bandOf = (id) => (bands || []).find((b) => b.id === id) || null;
@@ -208,8 +180,7 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
       <div class="size-11 rounded-xl grid place-items-center bg-primary/10 text-primary shrink-0">${Icon("lucide:bell", "text-2xl")}</div>
       <div class="flex-1 min-w-0">
         <div class="font-semibold leading-tight truncate">${sys("watchRow", loc)}</div>
-        ${/* A role is only real to its holder if they can see it. Free means no balance line either — the
-             number would be beside the point, and a zero there reads as a problem when it is not. */""}
+        ${""}
         <div class="text-xs text-muted truncate">${state.free
           ? html`<span data-watch-role=${state.role}>${state.role} · ${sys("watchFree", loc)}</span>`
           : html`${sys("watchCost", loc)} · ${sys("watchBalance", loc)} ${state.balance}`}</div>

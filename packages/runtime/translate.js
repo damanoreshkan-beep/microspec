@@ -74,53 +74,30 @@
  *   `warm` returns immediately.
  * @module
  */
-// microspec runtime — dynamic body translation.
-//
-// UI chrome is translated at author time via the i18n dicts. This handles the *body*: text that comes
-// from an API (e.g. Hacker News titles) and is therefore in the source language (English) regardless of
-// the user's locale. When a spec declares `translate: ["title", ...]`, the runtime shows those item
-// fields in the active locale.
-//
-// Design (why render-time, not load-time):
-//   • The ORIGINAL text is what we store (fav/localStorage) and translate — never the translated copy.
-//     So a bookmark saved in UK still restores its English original when the user switches to EN, and
-//     the fav list re-localizes with the rest of the UI. Mutating items in load() would bake one locale
-//     into persisted data.
-//   • tr() is a SYNC cache read used inside render; warm() is the async side that fills the cache and
-//     bumps `trTick` so subscribed components re-render when translations arrive.
-//   • Fail-open: a miss (not yet fetched, offline, endpoint down) returns the original text. The app is
-//     always readable; translation is an enhancement, never a dependency.
-//
-// Backend: the free Google `gtx` endpoint (no key), reached through viaProxy() like any other CORS-
-// blocked source — no VPS change needed. Every unique string is translated once and cached permanently
-// in localStorage, so repeat loads (and the saved tab) are instant and offline-friendly.
 import { atom } from "nanostores";
 import { viaProxy, isJsonArray, pool } from "./feed.js";
 import { askAI } from "./ai-core.js";
 
-// The language our source APIs speak. Targets equal to this are a passthrough (no translation).
 /** The language the source APIs speak ("en"); a target equal to this is a passthrough. */
 export const CONTENT_LANG = "en";
 
-// Bumped whenever new translations land in the cache → components that `useStore(trTick)` re-render.
 /** Counter atom bumped whenever new translations land, so components subscribed to it re-render. */
 export const trTick = atom(0);
 
-const mem = new Map();       // target → { [source]: translated }  (mirror of localStorage)
-const pending = new Set();   // `${target} ${source}` currently in flight (dedupe concurrent warms)
+const mem = new Map();
+const pending = new Set();
 
 function cacheFor(target) {
   if (mem.has(target)) return mem.get(target);
   let obj = {};
-  try { obj = JSON.parse(localStorage.getItem("ms:tr:" + target) || "{}"); } catch { /* private mode / bad json */ }
+  try { obj = JSON.parse(localStorage.getItem("ms:tr:" + target) || "{}"); } catch { }
   mem.set(target, obj);
   return obj;
 }
 function persist(target, obj) {
-  try { localStorage.setItem("ms:tr:" + target, JSON.stringify(obj)); } catch { /* quota / private mode — mem cache still works */ }
+  try { localStorage.setItem("ms:tr:" + target, JSON.stringify(obj)); } catch { }
 }
 
-// tr(text, target) — synchronous. Returns the cached translation, or the original on a miss / passthrough.
 /**
  * Synchronous cache read for use inside render: the cached translation of `text`, or `text` itself on a
  * miss or passthrough.
@@ -133,8 +110,6 @@ export function tr(text, target) {
   return cacheFor(target)[text] || text;
 }
 
-// isTranslated(text, target) — has this string already been translated + cached? (false while still in flight,
-// so a caller can show a loading state until the translation lands). Passthrough/empty count as done.
 /**
  * Whether `text` already has a cached translation for `target` (false while still in flight, so a caller
  * can show a loading state); passthrough and empty strings count as done.
@@ -150,20 +125,10 @@ export function isTranslated(text, target) {
 async function translateOne(text, target) {
   const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${CONTENT_LANG}&tl=${target}&dt=t&q=${encodeURIComponent(text)}`;
   const data = JSON.parse(await viaProxy(url, isJsonArray, 8000));
-  // data[0] = [[translatedSegment, sourceSegment, …], …]; concatenate the segments to rebuild the string.
   return (data[0] || []).map((seg) => seg[0]).join("").trim() || text;
 }
 
-// toEnglish(text) — user text INTO English for the image models, which only understand English. ENGLISH
-// UNDER THE HOOD (owner, 2026-09-03: "під капотом має бути en"): this used to be fail-open — any error
-// returned the original — and a Ukrainian prompt reaching a Space painted vydyvo's "дуже дивні картинки".
-// Now it is fail-CLOSED: Latin-script text passes untouched (no round-trip of English through gtx), anything
-// else goes through gtx (`sl=auto`) and, when gtx is down or its answer still carries a non-Latin letter,
-// through the edge's `english` mode (/feed/ai, itself guarded to Latin script); if neither yields English
-// it THROWS with `code: "eTranslate"`, and the caller shows that instead of generating. Cached permanently
-// in its own bucket (`ms:tr:_en`, keyed by the source) — the bucket `suggestPrompt` (ai-text.js) also seeds
-// with the AI's own {local → en} pairs, so a suggested prompt sends as the model's English, never a re-translation.
-const NON_LATIN = /[^\p{Script=Latin}\P{L}]/u;              // any letter outside the Latin script
+const NON_LATIN = /[^\p{Script=Latin}\P{L}]/u;
 /** True when the text carries no letter outside the Latin script — what an image Space can read as-is. */
 export const isLatin = (text) => !NON_LATIN.test(String(text || ""));
 /**
@@ -182,7 +147,7 @@ export async function toEnglish(text) {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${CONTENT_LANG}&dt=t&q=${encodeURIComponent(text)}`;
     const data = JSON.parse(await viaProxy(url, isJsonArray, 8000));
     out = (data[0] || []).map((seg) => seg[0]).join("").trim();
-  } catch { /* gtx down or blocked — the edge translates */ }
+  } catch { }
   if (!out || !isLatin(out)) {
     try { out = (await askAI(text, CONTENT_LANG, "english")).text; } catch { out = ""; }
   }
@@ -200,8 +165,6 @@ export function rememberEnglish(local, en) {
   const cache = cacheFor("_en"); cache[local] = en; persist("_en", cache);
 }
 
-// warm(texts, target) — translate every not-yet-cached string, then bump trTick once. No-op for the
-// content language or when everything is already cached (so it's cheap to call on every render/effect).
 /**
  * Translate every not-yet-cached string in `texts` (6 in flight at a time, de-duplicated against concurrent
  * warms), persist the cache and bump `trTick` once if anything landed. Cheap no-op when nothing is missing.
@@ -219,7 +182,7 @@ export async function warm(texts, target) {
   let changed = false;
   await pool(todo, 6, async (src) => {
     try { cache[src] = await translateOne(src, target); changed = true; }
-    catch { /* fail-open: leave uncached so a later warm can retry */ }
+    catch { }
     finally { pending.delete(target + " " + src); }
   });
   if (changed) { persist(target, cache); trTick.set(trTick.get() + 1); }

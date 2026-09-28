@@ -1,5 +1,3 @@
-// telemetry.js — the browser-free half: describe() shapes and caps, report() before install is a no-op (no
-// fetch, no throw), the budget constants. The hooks and the flush are exercised on the live site by the drivers.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { describe, report, MAX_BATCH, FLUSH_MS, PER_MINUTE } from "../telemetry.js";
 

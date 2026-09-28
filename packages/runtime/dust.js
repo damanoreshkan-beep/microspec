@@ -57,24 +57,12 @@
  *   and the cleanup cancels the frame, disconnects the observer and loses the context.
  * @module
  */
-// microspec runtime — the DUST field: a premium WebGL particle cloud that scatters and gathers, used as the
-// generation/wait stage (apps/imagine). Particles rest in a gathered orb, breathe outward into dust and draw
-// back in; as `progress` rises toward 1 the cloud gathers tighter — anticipation before the image reveals.
-//
-// Adapted from a 21st.dev particle field (lovesickfromthe6ix/particle-text): the soft radial glow point and
-// the spring-to-target physics are theirs; the scatter/gather choreography, the phyllotaxis orb and the
-// zero-build preact wrapper are ours. No post-processing (bloom/aberration) — additive glow over a dark
-// vignette reads premium and holds 60fps on a phone. The stage is always dark (a darkroom while developing),
-// so it looks right in both themes.
-//
-// Gate-safe: under a screenshot/e2e run there is no animation and no WebGL — a static gathered orb renders as
-// plain CSS, so the gate is deterministic and axe sees a stable frame.
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
-import { gate } from "./gate.js";   // runtime modules import RELATIVELY — /_rt/ 404s under /microspec/
+import { gate } from "./gate.js";
 
 const DPR_CAP = 2;
-const N = 800;                     // fine points — additive glow means MANY overlaps blow to white, so keep it sparse
+const N = 800;
 
 const VS = `
   attribute vec2 a_pos; attribute float a_size; attribute float a_alpha;
@@ -93,8 +81,6 @@ const FS = `
   }`;
 
 function compile(gl, type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; }
-// A FIXED warm gold — the dust stage is its own cinematic element, not tied to the app accent (imagine's is
-// near-white, which turned the whole cloud white). Gold reads premium on the dark stage in both themes.
 function hexTint() { return [0.98, 0.74, 0.38]; }
 
 /**
@@ -111,7 +97,7 @@ export function Dust({ active = true, progress = null }) {
   progRef.current = progress;
 
   useEffect(() => {
-    if (gate) return;                                  // static CSS orb under the gate (below)
+    if (gate) return;
     const canvas = ref.current; if (!canvas) return;
     const gl = canvas.getContext("webgl", { alpha: true, premultipliedAlpha: false, antialias: true });
     if (!gl) return;
@@ -119,16 +105,15 @@ export function Dust({ active = true, progress = null }) {
     gl.attachShader(prog, compile(gl, gl.VERTEX_SHADER, VS));
     gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, FS));
     gl.linkProgram(prog); gl.useProgram(prog);
-    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);   // NORMAL blend — additive piled dense dust into a white blob; this composites toward the tint, never past it
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    // particle home = phyllotaxis disc (a dense, even, organic orb); scatter = an outward ray per particle.
     const home = new Float32Array(N * 2), ang = new Float32Array(N), rad = new Float32Array(N),
       ph = new Float32Array(N), sz = new Float32Array(N), px = new Float32Array(N * 2), pv = new Float32Array(N * 2);
     const GA = Math.PI * (3 - Math.sqrt(5));
     for (let i = 0; i < N; i++) {
       const r = Math.sqrt(i / N), a = i * GA;
       home[i * 2] = Math.cos(a) * r * 0.78; home[i * 2 + 1] = Math.sin(a) * r * 0.78;
-      ang[i] = Math.random() * Math.PI * 2; rad[i] = 0.45 + Math.random() * 1.5;   // drift out to the frame edges
+      ang[i] = Math.random() * Math.PI * 2; rad[i] = 0.45 + Math.random() * 1.5;
       ph[i] = Math.random() * Math.PI * 2; sz[i] = 1.0 + Math.random() * 1.6;
       px[i * 2] = home[i * 2]; px[i * 2 + 1] = home[i * 2 + 1];
     }
@@ -151,10 +136,9 @@ export function Dust({ active = true, progress = null }) {
     let raf = 0, t0 = performance.now(), gather = 0;
     const frame = (now) => {
       const t = (now - t0) / 1000;
-      // gatherPull: rises with progress (tighten as it nears done); a gentle floor so it always breathes.
       const target = progRef.current == null ? 0 : Math.min(1, Math.max(0, progRef.current));
       gather += (target - gather) * 0.03;
-      const fit = aspect >= 1 ? [1 / aspect, 1] : [1, aspect];   // keep the orb circular
+      const fit = aspect >= 1 ? [1 / aspect, 1] : [1, aspect];
       for (let i = 0; i < N; i++) {
         const wave = 0.5 + 0.5 * Math.sin(t * 0.7 + ph[i]);
         const spread = (0.28 + 0.9 * wave) * (1 - gather * 0.85);
@@ -166,7 +150,7 @@ export function Dust({ active = true, progress = null }) {
         pv[i * 2 + 1] += (ty - px[i * 2 + 1]) * 0.05; pv[i * 2 + 1] *= 0.9; px[i * 2 + 1] += pv[i * 2 + 1];
         pos[i * 2] = px[i * 2] * fit[0]; pos[i * 2 + 1] = px[i * 2 + 1] * fit[1];
         size[i] = sz[i] * dpr * (0.75 + wave * 0.5);
-        alpha[i] = 0.13 + 0.11 * (1 - Math.min(1, spread));   // normal blend → higher alpha reads as solid gold dust, brighter when gathered
+        alpha[i] = 0.13 + 0.11 * (1 - Math.min(1, spread));
       }
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.bindBuffer(gl.ARRAY_BUFFER, bPos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
@@ -180,18 +164,10 @@ export function Dust({ active = true, progress = null }) {
     };
     raf = requestAnimationFrame(frame);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); const ext = gl.getExtension("WEBGL_lose_context"); if (ext) ext.loseContext(); };
-    // Mount/unmount ONLY. This used to depend on [active]: the idle→generating flip re-ran the effect, whose
-    // cleanup had just called loseContext() on the one canvas — getContext() then handed back that same DEAD
-    // context, every GL call became a no-op, and Chrome painted the lost canvas as an opaque white sheet with a
-    // broken-image glyph (measured on the VPS eye and the owner's phone, 2026-08-17). `active` is not read
-    // inside; the field breathes in idle and while generating alike, and `progress` arrives through the ref.
   }, []);
 
-  // The dark stage + vignette is a plain element, so the gate (and a no-WebGL device) still gets a premium
-  // frame: a soft radial glow orb standing in for the gathered dust.
   return html`<div class="absolute inset-0 overflow-hidden" style="background:radial-gradient(120% 120% at 50% 45%, #16131f 0%, #0a0a0f 70%)">
-    ${/* a fixed, subtle warm glow behind the dust — NOT var(--app-accent): imagine's accent is near-white and
-         painted the whole screen white. Low-opacity gold reads as a gentle backdrop, not a wash. */""}
+    ${""}
     <div class="absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 rounded-full"
       style="width:40vmin;height:40vmin;background:radial-gradient(circle, rgba(242,199,102,0.22) 0%, transparent 62%);filter:blur(8px)"></div>
     ${gate ? null : html`<canvas ref=${ref} class="absolute inset-0 w-full h-full"></canvas>`}

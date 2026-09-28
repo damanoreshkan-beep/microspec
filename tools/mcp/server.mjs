@@ -1,19 +1,3 @@
-// microspec — MCP server. Exposes the farm's kit and its authoring doctrine to any MCP client
-// (Claude Code, Codex, …) over stdio.
-//
-//   deno run -A tools/mcp/server.mjs
-//
-// Hand-rolled JSON-RPC, no SDK. The official SDK is an npm package, and this farm has no npm and no
-// node_modules by design; MCP over stdio is newline-delimited JSON-RPC 2.0 and the whole surface we need is
-// nine methods. Spec: modelcontextprotocol.io/specification/2025-06-18 — messages are delimited by newlines
-// and MUST NOT contain embedded ones (JSON.stringify escapes them, so this holds by construction), and
-// stdout MUST carry nothing but MCP messages. Every log in this file therefore goes to stderr.
-//
-// What it serves, and why each piece is derived rather than written:
-//   kit.json     — GENERATED from packages/runtime/ui.js by tools/kit-manifest.mjs, gated by --check. An
-//                  agent asking "what does Segmented take" gets the real signature and the author's own
-//                  reasoning, not a second copy that drifts the first time a prop is added.
-//   docs/*       — read from disk per request, never cached, so an edit is live in the next call.
 import { pkgRoot } from "../../packages/runtime/pkgroot.js";
 const ROOT = pkgRoot(import.meta.url, 2);
 const PROTOCOL = "2025-06-18";
@@ -23,9 +7,6 @@ const enc = new TextEncoder();
 const log = (...a) => console.error("[microspec-mcp]", ...a);
 const read = (rel) => Deno.readTextFile(new URL(rel, ROOT));
 
-// ── What the server exposes ───────────────────────────────────────────────────────────────────────────
-// One table, consumed by both resources/* and the get_doc tool, so the two can never disagree about which
-// files exist. Descriptions say when to reach for the doc — that is what a client picking context needs.
 const DOCS = {
   authoring: { path: "docs/AUTHORING.md", title: "Authoring a microspec app", desc: "The authoring loop, tool apps vs data apps, systemic capabilities, sensor apps. Read before creating an app." },
   "spec-schema": { path: "packages/schema/SCHEMA.md", title: "spec.json contract", desc: "Every field of spec.json — the contract the ajv gate enforces. Read before writing or editing a spec." },
@@ -37,8 +18,6 @@ const DOCS = {
 const kit = async () => JSON.parse(await read("tools/mcp/kit.json"));
 
 const renderComponent = (e) => {
-  // The section header in ui.js already opens with the component's name ("Segmented — the farm's ONE tab
-  // strip"), so prefixing it again reads as a stutter.
   const title = e.headline ? (e.headline.startsWith(e.name) ? e.headline : `${e.name} — ${e.headline}`) : e.name;
   const out = [`## ${title}`, ``, `import { ${e.name} } from "/_rt/ui.js";   // ${e.kind}, ${e.source ?? "packages/runtime/ui.js"}:${e.line}`, ``];
   if (e.kind === "constant") out.push("```js", `${e.name} = ${JSON.stringify(e.value)}`, "```", "");
@@ -52,7 +31,6 @@ const renderComponent = (e) => {
   return out.join("\n");
 };
 
-// ── Handlers ──────────────────────────────────────────────────────────────────────────────────────────
 const TOOLS = [
   {
     name: "list_components",
@@ -110,8 +88,6 @@ async function callTool(name, args) {
 
   if (name === "scaffold_app") {
     const dir = String(args?.dir ?? "").replace(/\/+$/, "");
-    // The tool writes to the working tree, so the path is constrained rather than trusted: an app dir and
-    // nothing else. Without this the argument is an arbitrary write target chosen by a model.
     if (!/^apps\/[a-z0-9-]+$/.test(dir)) throw new Error(`dir must look like apps/<id> (lowercase, digits, hyphens) — got ${JSON.stringify(args?.dir)}`);
     const cmd = new Deno.Command("deno", {
       args: ["run", "-A", "packages/gen/scaffold.mjs", dir, ...(args?.force ? ["--force"] : [])],
@@ -228,7 +204,6 @@ async function readResource(uri) {
   return null;
 }
 
-// ── JSON-RPC plumbing ─────────────────────────────────────────────────────────────────────────────────
 const send = (msg) => Deno.stdout.write(enc.encode(JSON.stringify(msg) + "\n"));
 const ok = (id, result) => send({ jsonrpc: "2.0", id, result });
 const err = (id, code, message, data) => send({ jsonrpc: "2.0", id, error: { code, message, ...(data ? { data } : {}) } });
@@ -251,14 +226,12 @@ async function handle(msg) {
       }
       case "notifications/initialized":
       case "notifications/cancelled":
-        return;                                                  // notifications get no reply, ever
+        return;
       case "ping":
         return ok(id, {});
       case "tools/list":
         return ok(id, { tools: TOOLS });
       case "tools/call": {
-        // A tool that throws reports isError in the RESULT, not a protocol error: the model is meant to see
-        // the message and correct itself (a wrong component name comes back with the list of real ones).
         try {
           const text = await callTool(params?.name, params?.arguments ?? {});
           return ok(id, { content: [{ type: "text", text }], isError: false });
@@ -282,7 +255,7 @@ async function handle(msg) {
       case "prompts/get":
         return ok(id, await getPrompt(params?.name, params?.arguments ?? {}));
       default:
-        if (isNotification) return;                              // unknown notification — ignore, per spec
+        if (isNotification) return;
         return err(id, -32601, `Method not found: ${method}`);
     }
   } catch (e) {
@@ -291,7 +264,6 @@ async function handle(msg) {
   }
 }
 
-// stdin → newline-delimited JSON. A chunk boundary can fall mid-message, so the tail is buffered.
 const decoder = new TextDecoder();
 let buf = "";
 log(`serving ${new URL(".", ROOT).pathname} on stdio (protocol ${PROTOCOL})`);

@@ -54,21 +54,13 @@
  * - Both functions are async on purpose: a future IndexedDB backing must not change callers.
  * @module
  */
-// lastgen.js — a tiny same-origin handoff for "the last image I made". Every farm app is served from the one
-// origin (damanoreshkan-beep.github.io), so localStorage is shared between them: Уяви (apps/imagine) WRITES its
-// finished generation here, and Онови (apps/retouch) READS it to offer "edit the image you just imagined" as a
-// source. Stored as a downscaled JPEG data URL (≤768px long edge) so one image sits comfortably inside the
-// localStorage quota; only the newest is kept. Fail-open everywhere — a miss / private-mode / quota error just
-// means the "From Imagine" source doesn't appear, never a broken app.
 const KEY = "ms:lastgen";
-const STORE_SIDE = 768;   // long-edge cap for the stored copy — small enough for the quota, big enough to edit
+const STORE_SIDE = 768;
 
-// Draw a Blob | object-URL | data-URL onto a capped canvas → JPEG data URL. Same-origin sources only (they are),
-// so the canvas never taints. Resolves null on any failure.
 function downscale(src) {
   return new Promise((resolve) => {
     const url = typeof src === "string" ? src : URL.createObjectURL(src);
-    const done = (v) => { if (typeof src !== "string") { try { URL.revokeObjectURL(url); } catch { /* */ } } resolve(v); };
+    const done = (v) => { if (typeof src !== "string") { try { URL.revokeObjectURL(url); } catch { } } resolve(v); };
     const img = new Image();
     img.onload = () => {
       try {
@@ -86,7 +78,6 @@ function downscale(src) {
   });
 }
 
-// writeLastGen(src, prompt) — persist the newest generated image (Blob or URL) + its prompt. Fire-and-forget.
 /**
  * Persist the newest generated image and its prompt for another app to pick up; swallows every failure.
  * @param src a Blob, object URL or data URL of the image
@@ -98,11 +89,9 @@ export async function writeLastGen(src, prompt) {
     const url = await downscale(src);
     if (!url) return;
     localStorage.setItem(KEY, JSON.stringify({ url, prompt: String(prompt || "").slice(0, 400), ts: Date.now() }));
-  } catch { /* quota / private mode — the handoff is a nicety, never required */ }
+  } catch { }
 }
 
-// readLastGen() — the newest handoff { url, prompt, ts } or null. Async to mirror writeLastGen (and leave room
-// for a future IndexedDB backing without changing callers).
 /**
  * Read the newest handoff written by `writeLastGen`.
  * @returns `{ url, prompt, ts }` or null when nothing valid is stored

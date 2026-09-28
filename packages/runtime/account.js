@@ -58,10 +58,6 @@
  *   a broken image.
  * @module
  */
-// microspec runtime — the ACCOUNT card at the top of the profile tab, for apps that sign a reader in.
-// Signed in: who (avatar, name, login/e-mail, the provider as a mono label) and one quiet way out. Signed
-// out: the farm's SignIn surface, in the same card, so an app never grows its own sign-out or a second
-// sign-in wall. Lazily imported from render.js (Profile) — the ~60 apps without auth never fetch auth.js.
 import { html } from "htm/preact";
 import { useEffect } from "preact/hooks";
 import { useStore } from "@nanostores/preact";

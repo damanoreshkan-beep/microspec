@@ -60,12 +60,6 @@
  * - Test hooks are `data-prime` on the overlay and `data-enable` on the button.
  * @module
  */
-// camprime.js — the permission priming screen, for the two hardware capabilities that open a native prompt:
-// the camera and the microphone. Neither may be opened cold — a native prompt with no context scares people
-// into denying — so the view shows this first: WHAT the hardware is for and that the capture never leaves the
-// device, and only the user's tap on "Enable" triggers the real getUserMedia call. Also renders the blocked /
-// unavailable states (offering the permissions screen). Chrome strings are built in (uk/en) — cross-cutting,
-// like the permissions labels; each app passes only its own one-line reason.
 import { html } from "htm/preact";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
@@ -99,10 +93,6 @@ const LBL = {
   },
 };
 
-// { kind: "camera" | "microphone", loc, reason (translated one-liner: what the hardware is for), onEnable,
-//   onSettings, denied?, unavailable?, privacy?, privacyIcon? } — privacy/privacyIcon OVERRIDE the built-in
-//   "processed on your device" line for apps where that would be untrue (e.g. an editor that uploads the photo
-//   to a service): pass an honest line + a fitting icon instead of implying the capture stays local.
 /**
  * Render the priming screen for one hardware capability, including its blocked / unavailable states.
  * @param props `{ kind, loc, reason, onEnable, onSettings, denied?, unavailable?, privacy?, privacyIcon? }` — see the note above
@@ -117,8 +107,7 @@ export function Prime({ kind = "camera", loc, reason, onEnable, onSettings, deni
       <div class="text-xl font-bold">${unavailable ? L.unavailable : denied ? L.blocked : L.title}</div>
       <p class="text-sm text-base-content/70 max-w-xs leading-relaxed">${denied ? L.blockedHint : reason}</p>
     </div>
-    ${/* the shield rides INSIDE the sentence, not beside it: as a flex sibling it kept its own left edge while
-         the centred text wrapped away from it, and on a narrow screen the icon read as orphaned punctuation */""}
+    ${""}
     ${bad ? null : html`<p class="text-xs text-muted max-w-xs leading-relaxed">${Icon(privacyIcon || "lucide:shield-check", "text-sm align-[-0.15em] mr-1.5")}${privacy || L.privacy}</p>`}
     ${unavailable ? null : denied
       ? html`<button data-enable class="btn btn-primary rounded-2xl px-6 gap-2" onClick=${onSettings}>${Icon("lucide:settings")}${L.settings}</button>`

@@ -1,37 +1,4 @@
-// 8n8 — the farm's pipeline registry. n8n inside out.
-//
-// n8n: a human draws the graph, the machine executes it. The graph precedes the work.
-// 8n8: the AGENT does the work, and a run that proved itself FREEZES into a deterministic node.
-// The graph does not precede the work — it precipitates out of it. Every `script` node below was an
-// `agent` node once; `packages/gen/authorless.mjs` is the proof that a whole authoring stage can freeze
-// (it emits a complete list-family app from a recipe with no LLM at all).
-//
-// So the registry is not documentation. It is the measurement: `determinism()` is the share of the
-// pipeline that no longer needs a model, and the job of every cycle is to move that number up.
-//
-// A node:
-//   id      unique
-//   kind    "script" — a command, reproducible, no model.  "agent" — still needs judgment.
-//   phase   which stage of the loop it belongs to
-//   needs   node ids that must be green first (the DAG edges)
-//   scope   "farm" — runs once.  "app" — runs per app id.
-//   run     for script nodes: argv array, or (ctx) => argv
-//   why     one line: what it buys. For agent nodes, what would have to be true to freeze it.
-//   frozen  ISO date the node stopped being an agent node, or null if it never was one
-//
-// An `agent` node may additionally carry:
-//   agent     "claude" | "codex" — which CLI runs it. Reading goes to codex (rules/research.md); the rest
-//             to claude. Both run headless as subprocesses, so this works in CI and off a phone alike.
-//   brief     (ctx) => string. The prompt. A node WITHOUT a brief is a hand-off the runner only announces —
-//             `taste` is deliberately one of those, because an eye cannot be spawned.
-//   produces  (ctx) => string[]. Files the node MUST have created or modified. Checked by mtime+existence
-//             after it returns, and this is the whole point: an agent node that "succeeded" while writing
-//             nothing is the failure mode automation invites, so it is a hard error rather than a green tick.
-//   verify    node id. The deterministic gate that judges the output — spec→validate, view→noundef.
-//             Generation you do not check is not a pipeline stage, it is a suggestion.
-
 export const NODES = [
-  // ── author: the generative half ────────────────────────────────────────────────────────────────
   {
     id: "ideate", kind: "agent", phase: "author", needs: [], scope: "farm", frozen: null,
     why: "Propose the app. Unfreezable by nature — a registry of app ideas is a registry of the past.",
@@ -54,11 +21,6 @@ export const NODES = [
     why: "spec.json — the tab contract. Freezable per FAMILY, not in general: authorless.mjs already " +
       "emits it deterministically for the list family from a recipe.",
     agent: "claude",
-    // No `verify` here, and that is a measured correction rather than an omission: validate.mjs checks the
-    // COMPOSITION of spec + i18n (composeSpec reads apps/<id>/i18n/*.json), so running it after `spec`
-    // fails on a missing `en` dictionary that this node was never supposed to write. A real run said
-    // "/i18n must have required property 'en'". The contract is checked one node later, after `i18n`,
-    // which is the first moment the thing validate actually validates exists.
     produces: (ctx) => [`apps/${ctx.app}/spec.json`],
     brief: (ctx) => `Author apps/${ctx.app}/spec.json for the microspec farm. Read packages/schema/SCHEMA.md` +
       ` first and obey it exactly; read apps/${ctx.app}/RESEARCH.md if it exists.\n\nApp: ${ctx.task ?? ctx.app}\n\n` +
@@ -138,7 +100,6 @@ export const NODES = [
     run: () => ["deno", "run", "-A", at("tools/art/docart.mjs"), "--check"],
   },
 
-  // ── gate: the deterministic half. Every node here answers with a NAMED failure. ────────────────
   {
     id: "validate", kind: "script", phase: "gate", needs: ["spec", "demo"], scope: "farm", frozen: "2026-06-11",
     why: "ajv against packages/schema/spec.schema.json — the contract, machine-checked.",
@@ -152,8 +113,6 @@ export const NODES = [
   {
     id: "preflight", kind: "script", phase: "gate", needs: ["scaffold", "demo", "rtmap"], scope: "farm", frozen: "2026-06-11",
     why: "The farm's own invariants (no emoji, no spinners, camera priming, i18n keys) — linkedom, no Chromium.",
-    // a product carries a GENERATED map (rtmap) that routes its rt/ overlay per-file; the core's own map
-    // is the framework tree's fallback.
     run: () => ["deno", "run", "-A",
       present("preflight.map.json") ? "--import-map=preflight.map.json" : `--import-map=${at("packages/gates/preflight.importmap.json")}`,
       present(".microspec/preflight.mjs") ? ".microspec/preflight.mjs" : at("packages/gates/preflight.mjs"),
@@ -177,10 +136,6 @@ export const NODES = [
     id: "unit", kind: "script", phase: "gate", needs: ["demo", "rtmap"], scope: "farm", frozen: "2026-06-11",
     why: "packages/runtime — where the systemic math lives. A barrel over tests/<module>_test.js; the " +
       "product tree adds its own barrel (rt/rt_test.js) over its domain modules.",
-    // a consumer runs the core's suites through the LOCAL shim rtmap generates — `deno test` refuses a
-    // remote URL as a test module, and silently so when a local file rides along (half a suite once
-    // passed). rtmap (a dependency here) writes the shims even under --check, so a fresh CI checkout has
-    // them by the time this node runs; the rt/ marker decides which tree this is.
     run: () => ["deno", "test", "-A",
       present("rt/rt_test.js") ? ".microspec/tests/unit_test.js" : at("packages/runtime/runtime_test.js"),
       ...(present("rt/rt_test.js") ? ["rt/rt_test.js"] : [])],
@@ -223,7 +178,6 @@ export const NODES = [
     run: () => ["deno", "run", "-A", at("deploy/counts.mjs"), "--check"],
   },
 
-  // ── ship ──────────────────────────────────────────────────────────────────────────────────────
   {
     id: "manifest", kind: "script", phase: "ship", needs: ["scaffold"], scope: "farm", frozen: "2026-06-19",
     why: "The launcher list (apps/store/apps.json) — the app's identity OUTSIDE its own folder.",
@@ -261,16 +215,8 @@ export const NODES = [
 
 const present = (p) => { try { Deno.statSync(p); return true; } catch { return false; } };
 
-// Every spawned tool is addressed as a URL off THIS module — one mechanism for both realms: a file URL in
-// the framework checkout, an https jsr URL when a consumer runs the registry via `jsr:@microspec/core/8n8`.
-// (Never a node_modules PATH: code under node_modules executes in the npm realm, where jsr:/https imports
-// are refused — the materialized tree is for SERVING files, not for running them.) The cwd stays the
-// consumer's tree; tools read apps/, rt/ and the generated artifacts from there.
 const at = (p) => new URL(`../../${p}`, import.meta.url).href;
 
-// apps/*/… — expanded here rather than shelling out to a glob, so a node's argv is data, not a string
-// a shell will re-interpret. (`deno task gates` passed `apps/*` through the shell; a node does not.)
-// The framework tree may have NO apps/ at all before the demo node seeds it — that is an empty list, not a crash.
 export function globApps(suffix = "") {
   const ids = [];
   let entries = [];
@@ -285,14 +231,11 @@ export function globApps(suffix = "") {
 
 export const byId = (id) => NODES.find((n) => n.id === id);
 
-// The measurement 8n8 exists to produce: how much of the pipeline no longer needs a model.
 export function determinism(nodes = NODES) {
   const script = nodes.filter((n) => n.kind === "script").length;
   return { script, agent: nodes.length - script, total: nodes.length, pct: Math.round((script / nodes.length) * 100) };
 }
 
-// Topological order, and it REFUSES to guess: an unknown `needs` or a cycle is a registry bug, not a
-// runtime hiccup, so it throws with the offending ids named.
 export function topo(nodes = NODES) {
   const known = new Set(nodes.map((n) => n.id));
   for (const n of nodes) {
@@ -311,13 +254,8 @@ export function topo(nodes = NODES) {
   return out;
 }
 
-// The named flows. A flow is a SET of target nodes; the runner pulls in their dependencies.
 export const FLOWS = {
-  // everything runnable on this device, no network, no Chromium — the pre-push floor
   gates: ["demo", "rtmap", "dts", "docart", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
-  // The authoring flow, now genuinely executable: the briefed agent nodes spawn a headless CLI, each is
-  // gated by its own deterministic node the moment it returns, and scaffold turns the result into a
-  // runnable app. `ideate` is absent on purpose — wanting an app is the one input a pipeline cannot supply.
   author: ["research", "spec", "i18n", "view", "scaffold"],
   ship: ["push"],
   all: NODES.map((n) => n.id),

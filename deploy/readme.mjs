@@ -58,24 +58,12 @@
  * page drifts, so the regeneration is a gate: `--check` fails when a README no longer matches its app.
  * @module
  */
-// microspec — per-app README generator. Each app gets ONE deterministic, one-screen "card" built from its
-// own spec.json + i18n + brand, so every app has a premium page and none drifts from its copy. `--check`
-// fails when an app's spec or strings changed but its README did not — a gate node, exactly like sw.mjs.
-//
-//   deno run -A deploy/readme.mjs            # (re)generate apps/<id>/README.md for every app
-//   deno run -A deploy/readme.mjs --check    # fail (exit 1) if any is stale — the gate
-//
-// Deliberately COMPACT (one screen): the app's icon, its title + tagline, a screenshot when one exists, a
-// bright badge row for what it is and what it can reach, and relative links back into the farm. No infra
-// URLs — the READMEs travel with the public repo and say nothing about where the live farm is hosted.
 import { readLocales } from "../packages/gen/compose.mjs";
 
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
 const readJson = async (p) => JSON.parse(await Deno.readTextFile(p));
 
-// A capability id → the human name + a shield colour. The farm's own accent (neon) marks the app's category;
-// capabilities are a cooler grey so the eye lands on the category first.
-const ACCENT = "C13BFF";                 // the one farm accent (noir neon)
+const ACCENT = "C13BFF";
 const CAP = {
   usb: "WebUSB", camera: "Camera", sensors: "Sensors", audio: "Audio", geo: "Location",
   storage: "Offline store", clipboard: "Clipboard", share: "Share", wakelock: "Wake lock",

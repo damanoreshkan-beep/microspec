@@ -51,10 +51,6 @@
  *   this function ever sees a delta — that rule lives in gesture.js, not here.
  * @module
  */
-// microspec runtime — the PURE decision behind gesture.js useSwipe (kept apart so the unit gate can import
-// it: gesture.js pulls htm/preact, which Deno's type-check cannot resolve outside the browser import map).
-// Which way a released pointer went, or null for a tap/wobble. The dominant axis wins; a perfect diagonal
-// reads as horizontal. dx right +, dy down +.
 /**
  * Classify a released pointer's travel as a swipe direction; the dominant axis wins, a perfect diagonal
  * reads as horizontal.

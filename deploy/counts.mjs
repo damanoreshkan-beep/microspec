@@ -59,36 +59,14 @@
  * all at the same time.
  * @module
  */
-// counts — the farm's app count, derived once and written everywhere it is claimed.
-//
-//   deno run -A deploy/counts.mjs            # rewrite the claims from the source of truth
-//   deno run -A deploy/counts.mjs --check    # fail instead of writing (CI)
-//
-// Why this exists: the number is claimed in a badge, a CTA link, three prose lines, a repo-layout table and
-// the Show HN draft — six places, hand-typed. It drifted to "25" in one file, "26" in another and 28 in the
-// build log, all at the same time. A README that overstates the farm is the same class of defect as an app
-// that overstates its a11y: a claim nobody measured. So it gets a gate like everything else here.
-//
-// Source of truth: apps/home/apps.json — the store catalog, i.e. what a user can actually install. NOT the
-// number of directories under apps/: that counts `home` itself, which is the storefront, not an app in it.
-// cwd, NOT import.meta: this tool ships inside the @microspec/core package, and everything it touches —
-// the catalog, counts.rules.json, the README — belongs to the CONSUMER's tree it runs from.
 const ROOT = Deno.cwd();
 const check = Deno.args.includes("--check");
 
-// The store catalog is the PRODUCT's source of truth; the appless framework tree (a generated demo, no
-// launcher) counts app dirs directly — its rules file is empty, so the number carries no claims there.
 const catalog = await Deno.readTextFile(`${ROOT}/apps/store/apps.json`).then(JSON.parse).catch(() => null);
 const N = catalog
   ? (Array.isArray(catalog) ? catalog.length : Object.keys(catalog).length)
   : (() => { try { return [...Deno.readDirSync(`${ROOT}/apps`)].filter((e) => { try { Deno.statSync(`${ROOT}/apps/${e.name}/spec.json`); return true; } catch { return false; } }).length; } catch { return 0; } })();
 
-// Each rule is [file, regex with the number as group 2, replacement number]. Anchored on surrounding words
-// so a count can never be confused with the efficacy scores or any other digit on the page. Every hardcoded
-// app-count claim across the README + Show HN draft gets a rule; reword a claim and you update its rule here.
-// A PRODUCT tree (the dreamstudio split, 2026-08-31) claims the count in its own words: an optional
-// `counts.rules.json` at ROOT — [{ "file": "README.md", "pattern": "(prefix )(\\d+)( suffix)" }] — replaces
-// the built-in rules entirely; the built-ins stay the public framework repo's own claims.
 const defaultRules = [
   ["README.md", /(live-)(\d+)(%20apps)/g, N],
   ["README.md", /(farm — )(\d+)( installable apps\])/g, N],

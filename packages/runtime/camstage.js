@@ -133,20 +133,19 @@ export function camPoint(u, v, vw, vh, mirror, asp) {
  */
 export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, primeFull = false, facing = "environment", torch = false, constraints = null, still = null, onVideo, onState, fullscreen = true, gestures = true, pinch = gestures, tap = gestures, show = false, picClassName = "", className = "", children }) {
   const L = LBL[loc] || LBL.en;
-  const standby = gate && !still;                    // the gate with no picture: the app seeds its own, the stage stands aside
-  const [enabled, setEnabled] = useState(!!still || standby);   // the camera opens only after the tap on Enable; a still plays at once
+  const standby = gate && !still;
+  const [enabled, setEnabled] = useState(!!still || standby);
   const [err, setErr] = useState(null);
-  const [focus, setFocus] = useState(null);           // the ring of the last tap { x, y, k }
+  const [focus, setFocus] = useState(null);
   const [full, setFull] = useState(false);
   const videoRef = useRef(), imgRef = useRef(), stageRef = useRef();
   const ctl = useRef(null), capsRef = useRef(null), readyRef = useRef(standby);
   const cb = useRef({ onVideo, onState }); cb.current = { onVideo, onState };
-  const cons = useRef(constraints); cons.current = constraints;   // read when the stream opens, never a dep: an object literal would reopen the camera every render
+  const cons = useRef(constraints); cons.current = constraints;
   const emit = () => cb.current.onState?.({ ready: readyRef.current, caps: capsRef.current, fullscreen: full, err });
   useEffect(emit, [full, err]);
-  useEffect(() => { if (standby) emit(); }, []);      // the seeded stage is ready from its first frame
+  useEffect(() => { if (standby) emit(); }, []);
 
-  // the still (the gate's camera): the image plays the stream's part the moment it decodes
   useEffect(() => {
     if (!still) return;
     const img = imgRef.current; if (!img) return;
@@ -156,8 +155,6 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
     return () => { alive = false; readyRef.current = false; cb.current.onVideo?.(null, { facing, mirror: false }); };
   }, [still]);
 
-  // the stream: the kit's lifecycle, reopened on flip, every track stopped on the way out; the controls are
-  // read from the running track once it plays — nothing is guessed, `caps` says what exists
   useEffect(() => {
     if (still || standby || !enabled) return;
     if (!camera.supported) { setErr("unsupported"); return; }
@@ -179,10 +176,8 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
     };
   }, [enabled, facing, still]);
 
-  // the torch follows the prop, only when the track has one
   useEffect(() => { if (readyRef.current && capsRef.current?.torch) ctl.current?.torch(torch); }, [torch]);
 
-  // fullscreen of the stage subtree, mirrored from the document so state and display never disagree
   useEffect(() => {
     if (!fsSupported) return;
     const onChange = () => setFull(document.fullscreenElement === stageRef.current);
@@ -191,14 +186,10 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
   }, []);
   const toggleFull = () => {
     const el = stageRef.current; if (!fsSupported || !el) return;
-    if (document.fullscreenElement === el) { try { document.exitFullscreen?.(); } catch { /* */ } return; }
-    try { const r = el.requestFullscreen?.({ navigationUI: "hide" }) || el.webkitRequestFullscreen?.(); r?.catch?.(() => {}); } catch { /* denied: nothing changes */ }
+    if (document.fullscreenElement === el) { try { document.exitFullscreen?.(); } catch { } return; }
+    try { const r = el.requestFullscreen?.({ navigationUI: "hide" }) || el.webkitRequestFullscreen?.(); r?.catch?.(() => {}); } catch { }
   };
 
-  // gestures: a pinch zooms the track within what it declares; a tap focuses under the finger, draws one
-  // ring and toggles the fullscreen. The two are separable because they are not always wanted together —
-  // a scanner wants the far-away code brought closer, but a focus ring inside its aperture reads as
-  // "code caught" and lies to the person (qr, 2026-09-07).
   const pg = useRef({ pts: new Map(), d0: 0, z0: 1, z: 1, raf: 0 }).current;
   useEffect(() => { pg.z = 1; }, [facing]);
   useEffect(() => { if (!focus) return; const id = setTimeout(() => setFocus(null), 950); return () => clearTimeout(id); }, [focus]);
@@ -217,7 +208,7 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
     const [a, b] = [...pg.pts.values()];
     const d = Math.hypot((a.cx ?? a.x) - (b.cx ?? b.x), (a.cy ?? a.y) - (b.cy ?? b.y));
     pg.z = Math.min(zc.max, Math.max(zc.min, pg.z0 * d / pg.d0));
-    if (!pg.raf) pg.raf = requestAnimationFrame(() => { pg.raf = 0; ctl.current?.zoom(pg.z); });   // one constraint per frame, never per event
+    if (!pg.raf) pg.raf = requestAnimationFrame(() => { pg.raf = 0; ctl.current?.zoom(pg.z); });
   };
   const onUp = (e) => {
     const p = pg.pts.get(e.pointerId); pg.pts.delete(e.pointerId);
@@ -225,7 +216,6 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
     const r = e.currentTarget.getBoundingClientRect();
     if (capsRef.current?.focus) {
       const v = videoRef.current;
-      // viewport-relative: the stage IS the viewport's cover fit, whatever box the gesture layer occupies
       const pt = camPoint(e.clientX / (globalThis.innerWidth || 1), e.clientY / (globalThis.innerHeight || 1), v?.videoWidth || 3, v?.videoHeight || 4, facing === "user");
       ctl.current?.focusAt(pt.x, pt.y);
     }
@@ -234,8 +224,6 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
   };
 
   const on = enabled && !err;
-  // shown, the picture IS the stage: cover-fit and NEVER mirrored (a mirrored live feed makes people seasick);
-  // hidden, it is a 1px source the app draws from
   const HIDDEN = "absolute w-px h-px opacity-0 pointer-events-none", SHOWN = `absolute inset-0 w-full h-full object-cover ${picClassName}`;
   const pic = show ? SHOWN : HIDDEN;
   return html`<div ref=${stageRef} data-camstage data-live=${on ? "1" : null} data-ready=${readyRef.current ? "1" : null} data-fullscreen=${full ? "1" : null} data-facing=${facing} class=${`absolute inset-0 ${full ? "bg-black" : ""} ${className}`}>
@@ -243,17 +231,13 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
     <video ref=${videoRef} autoplay muted playsinline aria-hidden="true" class=${still ? HIDDEN : pic}></video>
     ${still ? html`<img ref=${imgRef} src=${still} alt="" aria-hidden="true" decoding="async" class=${pic} />` : null}
     ${children}
-    ${/* with neither gesture the layer stops taking pointers at all — it used to sit inert but still
-         intercepting, and an app's own layers had to climb over it */""}
+    ${""}
     <div data-gestures role=${tap && fullscreen ? "button" : null} aria-label=${tap && fullscreen ? (full ? L.exit : L.stage) : null}
       class=${`absolute inset-0 z-[1] touch-none ${pinch || tap ? "" : "pointer-events-none"}`} style="touch-action:none"
       onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp}>
       ${focus ? html`<div key=${focus.k} data-focus aria-hidden="true" class="cs-focus" style=${`left:${focus.x}px;top:${focus.y}px`}></div>` : null}
     </div>
     ${on ? null : (() => {
-      // the priming screen fills the stage; where the stage is a small box of the screen (a viewfinder well)
-      // the app asks for `primeFull` and it is pinned to .ms-stage instead — the chrome contract, watch rail
-      // included — because a clipped Enable button is a camera that cannot be turned on at all
       const prime = html`<${CameraPrime} loc=${loc} reason=${reason} privacy=${privacy} privacyIcon=${privacyIcon}
         onEnable=${() => { setErr(null); setEnabled(true); onEnable?.(); }} onSettings=${onSettings}
         denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />`;

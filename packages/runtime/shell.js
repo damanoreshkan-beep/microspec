@@ -76,31 +76,17 @@
  *   without an `onEvent` function, returns a no-op cancel and never reaches the bridge.
  * @module
  */
-// The shell facade — the ONE way app code reaches Android capabilities the web does not have.
-//
-// Rules this file exists to enforce:
-//   · App code never touches window.__msShell, never sees JSON, never knows Java exists. It asks for an
-//     action and degrades honestly when the answer is "unsupported" — exactly like a missing sensor.
-//   · The web ships in minutes; an APK ships when the user reinstalls it. So a page is routinely NEWER
-//     than the shell it runs in: every action declares minBridge and has() accounts for it. Without that,
-//     adding an action later becomes a flag day.
-//   · Under the gate the bridge is MOCKED from the catalogue, because CI runs Chromium and will never run
-//     the APK. That is what stops "works in the browser, dead in the APK" from being invisible.
-//
-// The catalogue (packages/shell/actions.json) is the source of truth; shell-actions.js is generated from
-// it by tools/shell-gen.mjs and checked in CI. See docs/research/apk-sdk-plan.md §2.
 import { gate } from "./gate.js";
 import { ACTIONS, CATALOGUE_BRIDGE } from "./shell-actions.js";
 
-// One closed set of failures, so app code branches on a value and never on a message.
 /** The closed set of ShellError codes — app code branches on these values, never on a message. */
 export const ERR = {
-  unsupported: "unsupported",   // no bridge here at all — a browser, or a capability this shell lacks
-  staleBridge: "staleBridge",   // the shell is older than the action; the user must update the app
-  denied: "denied",             // the user said no
-  needsSettings: "needsSettings", // grantable, but only by walking into Android settings
-  unavailable: "unavailable",   // the hardware/service is not there or is switched off
-  failed: "failed",             // it broke
+  unsupported: "unsupported",
+  staleBridge: "staleBridge",
+  denied: "denied",
+  needsSettings: "needsSettings",
+  unavailable: "unavailable",
+  failed: "failed",
 };
 
 /** The error every shell call/subscribe rejects with: `code` is one of ERR.*, `detail` the shell's own note. */
@@ -118,14 +104,10 @@ export class ShellError extends Error {
 
 const native = () => (typeof window === "undefined" ? null : window.__msShell || null);
 
-// The shell reports its own bridge version; the catalogue says what the page was built against. They are
-// deliberately allowed to differ — that is the whole point of the negotiation.
 function bridgeVersion() {
   if (gate) return CATALOGUE_BRIDGE;
   const n = native();
   if (!n) return 0;
-  // @JavascriptInterface exposes METHODS, not fields — `n.version` is undefined across a real bridge.
-  // Accept both so a test double can be a plain object without lying about the shape.
   let v;
   try { v = typeof n.version === "function" ? n.version() : n.version; } catch { return 0; }
   v = Number(v);
@@ -135,11 +117,10 @@ function bridgeVersion() {
 let seq = 0;
 const pending = new Map();
 
-// Native replies land as one event carrying {id, ok, value, code, detail}; correlate and settle.
 function deliver(msg) {
   const entry = msg && pending.get(msg.id);
   if (!entry) return;
-  if (msg.stream) { entry.onEvent?.(msg.value); return; }     // subscribe: many values, never settles
+  if (msg.stream) { entry.onEvent?.(msg.value); return; }
   pending.delete(msg.id);
   if (msg.ok) entry.resolve(msg.value);
   else entry.reject(new ShellError(msg.code || ERR.failed, msg.detail));
@@ -148,11 +129,8 @@ function deliver(msg) {
 function listen() {
   if (typeof window === "undefined" || listen.done) return;
   listen.done = true;
-  // A DIRECT function, not only an event. The shell logged every frame as sent — ack, started, dozens of
-  // devices, subs=1, web=true — and not one arrived, which leaves the event dispatch itself as the only
-  // suspect. A plain call has nothing in between to lose it.
   window.__msShellReply = deliver;
-  window.addEventListener("msShell:reply", (e) => deliver(e && e.detail));   // kept for older shells
+  window.addEventListener("msShell:reply", (e) => deliver(e && e.detail));
 }
 
 /**
@@ -210,9 +188,8 @@ export const shell = {
   /** ERR.* explaining why hasCapability() is false, or "" when it is true. */
   whyCapability(cap) {
     const ids = shell.actions.filter((id) => ACTIONS[id].capability === cap);
-    if (!ids.length) return ERR.unsupported;                    // nothing in the catalogue claims it
+    if (!ids.length) return ERR.unsupported;
     if (ids.some((id) => shell.has(id))) return "";
-    // Every action exists but none runs: either there is no bridge, or this shell predates them.
     return ids.some((id) => shell.why(id) === ERR.staleBridge) ? ERR.staleBridge : ERR.unsupported;
   },
 
@@ -247,9 +224,7 @@ export const shell = {
     const a = ACTIONS[id];
     if (!a || a.kind !== "subscribe" || typeof onEvent !== "function") return () => {};
     if (gate) { onEvent(structuredCloneish(a.mock)); return () => {}; }
-    // A stream that FAILS must say so. This swallowed every rejection, so a scan the OS refused looked
-    // exactly like a scan that found nothing — the screen sat empty with no way to tell which.
-    const fail = (e) => { try { onError?.(e); } catch { /* the caller's problem, not ours */ } };
+    const fail = (e) => { try { onError?.(e); } catch { } };
     const why = shell.why(id);
     if (why) { fail(new ShellError(why, id)); return () => {}; }
     listen();
@@ -259,13 +234,11 @@ export const shell = {
     catch (e) { pending.delete(reqId); fail(new ShellError(ERR.failed, String(e && e.message || e))); return () => {}; }
     return () => {
       pending.delete(reqId);
-      try { native().cancel(reqId); } catch { /* the shell went away; nothing to cancel */ }
+      try { native().cancel(reqId); } catch { }
     };
   },
 };
 
-// The mock must never be mutated by whoever receives it — one app editing a result would silently change
-// what the next app sees. structuredClone is not in linkedom (preflight), so fall back to JSON.
 function structuredCloneish(v) {
   if (v === null || typeof v !== "object") return v;
   try { return structuredClone(v); } catch { return JSON.parse(JSON.stringify(v)); }

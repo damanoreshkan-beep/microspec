@@ -66,24 +66,6 @@
  * - The output of {@link downsampleRGBE} keeps the aspect: `outH = round(outW * height / width)`, at least 1.
  * @module
  */
-// hdr — Radiance (.hdr) decoding, for image-based lighting.
-//
-// A browser cannot decode Radiance, so an HDR environment map needs either a conversion step or a decoder.
-// This is the decoder, and it is deliberately the SHORT path: the asset stays the original CC0 file from
-// Poly Haven / ambientCG, with no intermediate format, no build artefact and nothing to keep in sync.
-//
-// WHY HDR AT ALL. An ordinary image tops out at 255 per channel. The real world does not: a lamp is
-// thousands of times brighter than the wall beside it. Metal looks like metal because its reflection of
-// that lamp is *hundreds* of times brighter than its reflection of the wall — flatten the range and the
-// same shader renders plastic. So the environment map has to carry true radiance, which is what Radiance's
-// RGBE encoding does: three mantissa bytes and one shared exponent.
-//
-// The decoder returns the bytes UNCHANGED as RGBE rather than expanding to float. A 512×256 environment is
-// 512 KB as RGBA8 and 2 MB as float32, and the shader can decode a sample in one instruction:
-//
-//     radiance = rgbe.rgb * exp2(rgbe.a * 255.0 - 128.0)
-//
-// Pure functions over bytes — no DOM, no GPU — so `deno test` covers the parser that everything else trusts.
 
 /** @returns {{ width: number, height: number, rgbe: Uint8Array }} RGBA8 bytes, alpha = shared exponent + 128 */
 export function decodeHDR(bytes) {
@@ -102,7 +84,7 @@ export function decodeHDR(bytes) {
   for (;;) {
     if (pos >= buf.length) throw new Error("hdr: header never ended");
     const l = line();
-    if (l === "") break;                                  // a blank line closes the header
+    if (l === "") break;
     if (l.startsWith("FORMAT=")) format = l.slice(7).trim();
   }
   if (format && !/rgbe/i.test(format)) throw new Error(`hdr: unsupported FORMAT=${format}`);
@@ -117,9 +99,6 @@ export function decodeHDR(bytes) {
     const row = y * width * 4;
     if (pos + 4 > buf.length) throw new Error(`hdr: data ended at row ${y} of ${height}`);
 
-    // Two encodings exist in the wild. New-style RLE marks a scanline with 2,2,hi,lo and then stores the
-    // four components SEPARATELY, each run-length encoded. Anything else is flat RGBE quadruples. A
-    // decoder that assumes RLE does not fail loudly on a flat file — it produces noise, which is worse.
     const isRLE = buf[pos] === 2 && buf[pos + 1] === 2 &&
       ((buf[pos + 2] << 8) | buf[pos + 3]) === width && width >= 8 && width < 32768;
 
@@ -140,7 +119,7 @@ export function decodeHDR(bytes) {
         if (pos >= buf.length) throw new Error(`hdr: truncated run at row ${y}`);
         let count = buf[pos++];
         if (count > 128) {
-          count -= 128;                                   // a run of one repeated byte
+          count -= 128;
           const v = buf[pos++];
           if (x + count > width) throw new Error(`hdr: run overflows row ${y}`);
           for (let i = 0; i < count; i++) rgbe[row + (x++) * 4 + c] = v;
@@ -158,7 +137,7 @@ export function decodeHDR(bytes) {
 /** One RGBE pixel → linear radiance. The same maths the shader does, for tests and for CPU-side checks. */
 export function rgbeToLinear(r, g, b, e) {
   if (e === 0) return [0, 0, 0];
-  const f = Math.pow(2, e - 136);                         // 2^(e-128) / 256
+  const f = Math.pow(2, e - 136);
   return [r * f, g * f, b * f];
 }
 

@@ -1,12 +1,5 @@
-// microspec runtime — permissions unit tests. Pure logic: no browser, no import map.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { PERMISSIONS, GROUPS, permLabels, permState, permAndroid } from "../permissions.js";
-
-// ---- permissions registry ---------------------------------------------------
-// The row must report the gate that is ACTUALLY blocking. "Blocked" when the truth is "this needs the
-// app" is a lie the user acts on, and a shell-only permission has no browser prompt to fall back to.
 
 Deno.test("permState: a shell-only permission is needsApp in a browser, not unsupported", async () => {
   delete globalThis.window;
@@ -29,7 +22,7 @@ Deno.test("permState: with a bridge, a capability answers via the shell", async 
 
 Deno.test("permState: a shell too old for the capability says so instead of failing quietly", async () => {
   globalThis.window = globalThis;
-  globalThis.__msShell = { call: () => {}, subscribe: () => {}, cancel: () => {} };   // no version → 0
+  globalThis.__msShell = { call: () => {}, subscribe: () => {}, cancel: () => {} };
   try {
     assertEquals((await permState("alarm")).state, "staleApp");
   } finally { delete globalThis.__msShell; delete globalThis.window; }
@@ -43,8 +36,6 @@ Deno.test("permissions: every entry has a group, and every group is one the scre
   }
 });
 
-// A row with no label renders as a blank line in every app that lists it, and the labels are built in
-// rather than per-app i18n — so nothing else in the farm can catch a row added without one.
 Deno.test("permissions: every row is labelled in both locales", () => {
   for (const loc of ["uk", "en"]) {
     const L = permLabels(loc);
@@ -52,8 +43,6 @@ Deno.test("permissions: every row is labelled in both locales", () => {
   }
 });
 
-// mesh is one row over four Android permissions: a node scans, connects AND advertises. Declaring the
-// two halves separately was the alternative; one row that grants all four is what an app actually needs.
 Deno.test("permissions: the mesh row rests on the whole set the transport needs", () => {
   globalThis.window = globalThis;
   globalThis.__msShell = { version: () => 99, call: () => {}, subscribe: () => {}, cancel: () => {} };

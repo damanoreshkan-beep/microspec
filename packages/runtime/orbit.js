@@ -71,12 +71,6 @@
  * - `sat` is a vendored library exposed as a plain record; its internals are not this package's API.
  * @module
  */
-// microspec runtime — satellite orbit propagation. Wraps the vendored SGP4 propagator (./satellite.js, the
-// canonical Vallado port) into the small surface the farm needs: TLE → sub-satellite point (lat/lon/alt),
-// ground speed, and a physically-correct sunlit/eclipsed test. The point is resilience: fetch a TLE once
-// (orbital elements change slowly, ~daily) and propagate the live position locally every second with zero
-// further network — so the tracker no longer dies when a live-position API's certificate or uptime does.
-// Refs: satellite.js (SGP4) · low-precision solar position (Astronomical Almanac) · cylindrical shadow model.
 import * as satlib from "./satellite.js";
 /**
  * The vendored SGP4 propagator (satellite.js), exposed for callers that need the raw API. Typed as a plain
@@ -85,10 +79,8 @@ import * as satlib from "./satellite.js";
  */
 export const sat = satlib;
 
-const R_EARTH = 6378.137;   // WGS84 equatorial radius (km) — the umbra cylinder radius for the shadow test
+const R_EARTH = 6378.137;
 
-// A recent ISS TLE baked in as a fallback: first paint, offline, the headless gate, or a failed fetch all
-// still get a plausible position by propagating this. A fresh TLE from the network replaces it when it loads.
 /** A recent ISS TLE (`{ name, line1, line2 }`) baked in as the offline / first-paint / gate fallback. */
 export const FALLBACK_TLE = {
   name: "ISS (ZARYA)",
@@ -104,7 +96,6 @@ export const FALLBACK_TLE = {
  */
 export const makeSat = (l1, l2) => sat.twoline2satrec(l1.trim(), l2.trim());
 
-// pull line1/line2 out of a TLE block (2-line, or 3-line with a name header) — tolerant of extra whitespace
 /**
  * Pull line1/line2 out of a TLE text block (2-line, or 3-line with a name header).
  * @param txt the raw TLE text
@@ -116,7 +107,6 @@ export function parseTleText(txt) {
   return l1 && l2 ? { line1: l1, line2: l2 } : null;
 }
 
-// sub-satellite point + telemetry at `date`. Returns null if the propagator diverges (decayed/garbage TLE).
 /**
  * Propagate a satellite record to `date` and return the sub-satellite point plus telemetry.
  * @param rec a `satrec` from `makeSat`
@@ -138,8 +128,6 @@ export function subpoint(rec, date) {
   };
 }
 
-// low-precision solar position → unit vector in the same (TEME/ECI-equatorial) frame as the propagator output.
-// Accurate to ~0.01°, which is far finer than the shadow test needs. Refs: USNO low-precision sun formulae.
 /**
  * Low-precision solar direction as a unit vector in the propagator's ECI-equatorial frame.
  * @param date the instant (UTC)
@@ -147,16 +135,14 @@ export function subpoint(rec, date) {
  */
 export function sunEciUnit(date) {
   const jd = sat.jday(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds());
-  const n = jd - 2451545.0;                                   // days since J2000.0
+  const n = jd - 2451545.0;
   const g = ((357.529 + 0.98560028 * n) % 360) * Math.PI / 180;
   const L = (280.459 + 0.98564736 * n) % 360;
-  const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;   // ecliptic longitude
-  const eps = (23.439 - 3.6e-7 * n) * Math.PI / 180;          // obliquity of the ecliptic
+  const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
+  const eps = (23.439 - 3.6e-7 * n) * Math.PI / 180;
   return { x: Math.cos(lambda), y: Math.cos(eps) * Math.sin(lambda), z: Math.sin(eps) * Math.sin(lambda) };
 }
 
-// is the satellite in sunlight? Sun-facing hemisphere is always lit; on the night side it is lit unless it
-// falls inside Earth's cylindrical shadow (perpendicular distance from the anti-sun axis < Earth's radius).
 /**
  * Whether a satellite at ECI position `eci` is in sunlight at `date` (cylindrical Earth-shadow model).
  * @param eci position `{ x, y, z }` in km, same frame as the propagator output

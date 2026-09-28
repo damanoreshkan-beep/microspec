@@ -68,19 +68,9 @@
  * - `spec.i18n.en` is required: `en` is the fallback locale. `spec.v`, when present, must equal `SPEC_MAJOR`.
  * @module
  */
-// microspec runtime — loud, fail-fast spec guard (pure, zero-dependency).
-//
-// Two-tier validation by design:
-//   • packages/schema (ajv, draft 2020-12) is the EXHAUSTIVE author-time contract — run by the
-//     generator's retry loop and CI, where loading a big validator is fine.
-//   • validateSpec() below is the LIGHTWEIGHT runtime guard — it runs in the browser at start(),
-//     where ajv is too heavy to ship. It catches the high-value "AI footguns" and throws an Error
-//     naming the exact JSON path, so a bad spec fails loudly at boot instead of rendering blank.
-//
-// Kept dependency-free on purpose: importable from Deno/Node unit tests with no import map.
 
 /** Spec contract major version; a spec declaring a different `v` is rejected. Bump on a breaking spec change. */
-export const SPEC_MAJOR = 1; // spec contract major; bump on a breaking spec change
+export const SPEC_MAJOR = 1;
 
 const TAB_TYPES = new Set(["list", "converter", "profile", "dashboard", "tool"]);
 const nonEmpty = (v) => typeof v === "string" && v.trim() !== "";
@@ -135,37 +125,19 @@ function validateTab(tab, p, die, need, spec) {
       need(nonEmpty(c.lead), `${p}.card.lead`, 'required for layout "row"');
       need(nonEmpty(c.trailing), `${p}.card.trailing`, 'required for layout "row"');
     }
-    // A tap must never throw the user out of the app. With spec.detail the runtime turns the whole card into
-    // a drill-down; without it, card.href makes the card an <a target="_blank"> that leaves for the source
-    // before the user could read, save or even see what the item is. So an external href REQUIRES a detail —
-    // read in-app first, and the detail carries the "open" action. `grid` is exempt: it is the launcher tile,
-    // where leaving IS the point (it opens another app, same tab).
     if (c.layout !== "grid" && nonEmpty(c.href)) {
       need(!!spec.detail, `${p}.card.href`, 'card.href without spec.detail — a tap would leave the app instead of opening the in-app detail; add spec.detail (put the link in detail.actions), or drop card.href');
     }
     if (c.layout === "grid") {
       need(nonEmpty(c.icon) || nonEmpty(c.image), `${p}.card`, 'layout "grid" needs a tile — set icon (item field with an iconify name) or image (item field with an icon URL)');
     }
-    // gallery is art-forward: the tile IS how you recognise the thing while scanning a catalogue. Strip the
-    // art and it is just a worse feed. Mirrors spec.schema.json (lockstep).
     if (c.layout === "gallery") {
       need(nonEmpty(c.image) || nonEmpty(c.icon), `${p}.card`, 'layout "gallery" needs art — set image (item field with an icon/cover URL) or icon (item field with an iconify name)');
     }
-    // UX guardrail: a "feed" card is the large, content-forward card — a title with nothing under it is a
-    // raw card. Require at least one preview slot (subtitle / body / image); badges & meta are metadata,
-    // not a preview. For a compact title+value line use layout:"row" instead. (Link feeds with no preview
-    // text in their API can fill `body` via spec.enrich — see enrich.js.)
     if (c.layout === "feed") {
       need(nonEmpty(c.subtitle) || nonEmpty(c.body) || nonEmpty(c.image), `${p}.card`,
         'a "feed" card needs a preview slot — set at least one of subtitle/body/image (a title-only feed card is raw; use layout:"row" for a compact title+value line, or add spec.enrich to fetch a body preview)');
     }
-    // Body prose must reach the reader in their language. `card.body` is the preview paragraph — it comes
-    // from an API, so it is in the source language regardless of locale (dou shipped English job
-    // descriptions to a Ukrainian UI for months). Either the runtime translates it (list it in
-    // spec.translate) or the adapter already returns the active locale (spec.localized, e.g. wiki fetching
-    // ${lang}.wikipedia.org — machine-translating that would be uk→uk).
-    // Deliberately scoped to `body` only: titles, names and addresses are identifiers, not prose. Machine-
-    // translating a company name, a coin, or "Kyiv, Khreshchatyk 1" makes the app worse, not localized.
     if (c.layout === "feed" && nonEmpty(c.body) && !spec.localized) {
       need((spec.translate || []).includes(c.body), `${p}.card.body`,
         `card.body "${c.body}" is API prose but is not in spec.translate — a non-English reader would get it in the source language. Add "${c.body}" to spec.translate, or set spec.localized:true if the adapter already returns the active locale.`);
@@ -229,8 +201,6 @@ function validateDetail(d, die, need) {
     d.actions.forEach((a, i) => {
       const ap = `spec.detail.actions[${i}]`;
       need(nonEmpty(a?.label), `${ap}.label`, "required i18n key");
-      // Exactly one of href/play. An action carrying both has two meanings — leave the app, or stay in it
-      // — and the runtime would have to guess which was meant. Mirrors spec.schema.json (lockstep).
       const hasHref = nonEmpty(a?.href), hasPlay = nonEmpty(a?.play);
       need(hasHref || hasPlay, `${ap}.href`, "required: item field holding a URL — or use `play` for an item field holding a video URL (in-app player)");
       need(!(hasHref && hasPlay), `${ap}.play`, "cannot set both href and play — an action either leaves the app or plays in it, not both");

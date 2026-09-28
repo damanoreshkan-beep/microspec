@@ -7,9 +7,6 @@
  * through a local one-line test file (`import "@microspec/core/tests/8n8";`). It exports nothing.
  * @module
  */
-// 8n8 registry contract. The runner trusts the registry completely, so the registry is what gets tested:
-// a bad `needs` or a cycle would surface as a hang or a silently-skipped gate, which is the failure mode
-// this whole tool exists to remove.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { NODES, FLOWS, byId, topo, determinism, globApps } from "./nodes.mjs";
 
@@ -19,7 +16,7 @@ Deno.test("every node id is unique", () => {
 });
 
 Deno.test("the DAG is acyclic and every `needs` resolves", () => {
-  const order = topo();                       // throws, with the offending ids named, if either is false
+  const order = topo();
   assertEquals(order.length, NODES.length);
   const seen = new Set();
   for (const n of order) {
@@ -46,7 +43,6 @@ Deno.test("every script node produces a non-empty argv, and no agent node preten
 Deno.test("a frozen node is a script node, and vice versa", () => {
   for (const n of NODES) assertEquals(n.kind === "script", n.frozen !== null || n.kind === "script",
     `${n.id}: kind/frozen disagree`);
-  // the direction that actually matters: nothing may claim a freeze date without being deterministic
   for (const n of NODES) if (n.frozen) assertEquals(n.kind, "script", `${n.id} froze but is not a script node`);
 });
 
@@ -59,10 +55,7 @@ Deno.test("every flow names real nodes", () => {
 Deno.test("the gates flow is fully deterministic AND farm-scoped", () => {
   for (const id of FLOWS.gates) {
     const n = byId(id);
-    // A gate you have to ask a model to run is not a gate.
     assertEquals(n.kind, "script", `gates target "${id}" is an agent node`);
-    // A per-app node in `gates` would demand --app for a whole-farm check — the exact bug that showed
-    // `needs` was conflating pipeline ORDER with what a run has to execute.
     assertEquals(n.scope, "farm", `gates target "${id}" is per-app; gates inspects the whole farm`);
   }
 });
@@ -74,7 +67,6 @@ Deno.test("an executable agent node carries a brief, a producer and a verifier",
     assert(typeof brief === "string" && brief.length > 80, `${n.id}: brief is too thin to act on`);
     assert(brief.includes("demo"), `${n.id}: brief ignores the app it is authoring`);
     assert(["claude", "codex"].includes(n.agent), `${n.id}: unknown agent runner ${n.agent}`);
-    // The rule that makes an agent node a pipeline stage rather than a suggestion.
     const produces = n.produces?.(ctx) ?? [];
     assert(produces.length > 0, `${n.id} is executable but promises no output — nothing could verify it`);
     for (const p of produces) assert(p.startsWith("apps/demo/"), `${n.id} writes outside its app: ${p}`);
@@ -83,7 +75,6 @@ Deno.test("an executable agent node carries a brief, a producer and a verifier",
 });
 
 Deno.test("the two nodes that need a human have NO brief", () => {
-  // Spawning a CLI for these would be the pipeline pretending to do the one thing it cannot.
   for (const id of ["ideate", "taste"]) {
     assertEquals(typeof byId(id).brief, "undefined", `${id} must stay a hand-off — it needs a person`);
   }
@@ -103,7 +94,6 @@ Deno.test("determinism is the share of script nodes", () => {
 
 Deno.test("globApps returns real app directories that carry a spec", () => {
   const dirs = globApps();
-  // ≥1: the framework tree carries only its GENERATED demo app (tools/demo.mjs); the product tree the farm.
   assert(dirs.length > 0, `only ${dirs.length} apps found — is the cwd the repo root (after the demo node)?`);
   for (const d of dirs) Deno.statSync(`${d}/spec.json`);
   assertEquals(globApps("spec.json")[0], `${dirs[0]}/spec.json`);

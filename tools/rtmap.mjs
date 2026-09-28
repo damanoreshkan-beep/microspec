@@ -76,14 +76,6 @@
  * that tests the wrong runtime. A tree with no overlay generates nothing.
  * @module
  */
-// microspec — the PRODUCT's preflight import map, GENERATED (like the sw stubs): the browser-free gate
-// mounts real app views in Deno, and their /_rt/ imports must route per-file — the domain overlay's names
-// to ./rt/, everything else to the CORE ON JSR (https). One realm for the whole mounted graph: the views
-// (file), the overlay (file) and the core (https) all resolve their bare deps through THIS map's esm.sh
-// pins, so there is exactly one preact. Exact keys beat the prefix key by the import-map spec.
-//   deno run -A <core>/tools/rtmap.mjs            # (re)write preflight.map.json at the consumer's root
-//   deno run -A <core>/tools/rtmap.mjs --check    # fail if it is stale
-// A tree with no rt/ overlay (the framework itself) needs no map and generates none.
 const check = Deno.args.includes("--check");
 
 let names = [];
@@ -91,16 +83,12 @@ try {
   names = [...Deno.readDirSync("rt")]
     .filter((e) => e.isFile && e.name.endsWith(".js") && !e.name.endsWith("_test.js"))
     .map((e) => e.name).sort();
-} catch { /* no overlay */ }
+} catch { }
 if (!names.length) {
   if (check) console.log("  ✓ no rt/ overlay — no preflight map needed");
   Deno.exit(0);
 }
 
-// the consumer's core version. Its deno.json imports name a jsr:@microspec/core@<spec>; the spec is a RANGE
-// by default (`@1` = every 1.x — the owner edits no version by hand, 2026-09-01), so the version the map is
-// built for is the one that RESOLVED: deno.lock's specifiers entry for that spec, else the package the
-// npm-compat channel materialized. An exact spec needs no lookup.
 const consumer = JSON.parse(await Deno.readTextFile("deno.json"));
 const spec = /jsr:@microspec\/core@([^/"]+)/.exec(JSON.stringify(consumer.imports ?? {}))?.[1];
 if (!spec) { console.error("rtmap: deno.json imports carry no jsr:@microspec/core@<spec> entry"); Deno.exit(1); }
@@ -110,24 +98,18 @@ const resolvedCore = async () => {
     const lock = JSON.parse(await Deno.readTextFile("deno.lock"));
     const v = lock.specifiers?.[`jsr:@microspec/core@${spec}`];
     if (v) return v;
-  } catch { /* no lock */ }
-  try { return JSON.parse(await Deno.readTextFile("node_modules/@microspec/core/package.json")).version; } catch { /* not installed */ }
+  } catch { }
+  try { return JSON.parse(await Deno.readTextFile("node_modules/@microspec/core/package.json")).version; } catch { }
   console.error(`rtmap: jsr:@microspec/core@${spec} has not resolved yet — run deno task install first`); Deno.exit(1);
 };
 const pin = await resolvedCore();
 const base = `https://jsr.io/@microspec/core/${pin}/`;
 
-// The bare-dep pins come from the CORE'S OWN MANIFEST (npm:…), never esm.sh: the core's modules load from
-// jsr (https) and resolve their preact through the package manifest — npm's copy. If the consumer's views
-// resolved the same names to esm.sh, two preacts would meet in one tree and hooks would crash on `__H`
-// (measured: every tool app red, every list app green). One source of pins ⇒ one instance.
-const manUrl = new URL("../deno.json", import.meta.url); // tools/ → the package root — NEVER nest a second "../" base (this exact off-by-one 404'd twice)
+const manUrl = new URL("../deno.json", import.meta.url);
 const manifest = manUrl.protocol === "file:"
   ? JSON.parse(await Deno.readTextFile(manUrl))
   : await (await fetch(manUrl)).json();
 const imports = { ...manifest.imports };
-// …plus the APP-ONLY pins (motion, lodash-es, …) from the core's own preflight map — names the manifest
-// does not carry because no core module imports them. Manifest keys WIN: those must stay one-instance.
 const pfUrl = new URL("../packages/gates/preflight.importmap.json", import.meta.url);
 const pf = pfUrl.protocol === "file:" ? JSON.parse(await Deno.readTextFile(pfUrl)) : await (await fetch(pfUrl)).json();
 for (const [k, v] of Object.entries(pf.imports)) {
@@ -143,18 +125,6 @@ const want = JSON.stringify({
   imports,
 }, null, 2) + "\n";
 
-// The consumer's LOCAL ENTRIES under .microspec/ — committed, not generated: written once when missing
-// (the scaffold rule), then owned by the tree. They carry NO version: every specifier is bare and resolves
-// through the consumer's own import map, so the pin lives in deno.json imports alone.
-// - tests/*: `deno test` refuses a remote URL as a test module ("No test modules found") — and worse,
-//   SILENTLY when a local file rides along, which once passed a unit node that had run only half its
-//   suites. A one-line local file importing the exported suite is the fix; the gate nodes point at these.
-// - preflight.mjs / verify.mjs: gate harnesses that dynamically import CONSUMER files. The import() must
-//   originate locally (a remote importer may neither import file:// nor use the import map), so the entry
-//   plants a local importer first.
-// - core.mjs: the one dispatcher for every core tool (`deno run -A .microspec/core.mjs 8n8 gates`):
-//   import.meta.resolve applies the import map, so `@microspec/core/8n8` becomes the pinned jsr: URL, and
-//   the tool still EXECUTES in the registry realm — as a child with the caller's args and permissions.
 const ENTRIES = {
   ".microspec/tests/unit_test.js": `import "@microspec/core/tests/runtime";\n`,
   ".microspec/tests/mcp_test.js": `import "@microspec/core/tests/mcp";\n`,

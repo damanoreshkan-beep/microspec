@@ -1,10 +1,5 @@
-// Generates docs/demo/gate.svg — an animated (SMIL) terminal that plays the Act A demo and loops.
-// Animated SVG plays inside a GitHub README <img>, needs no chromium/ffmpeg, and stays crisp at any size.
-// The terminal output shown here is the REAL output of the commands (see docs/DEMO.md). Regenerate with:
-//   node docs/demo/make-svg.mjs
-const LOOP = 12; // seconds
+const LOOP = 12;
 
-// [text, color, startSeconds]. "" = blank spacer line.
 const P = "#58a6ff", T = "#c9d1d9", G = "#3fb950", R = "#f85149", D = "#8b949e";
 const lines = [
   [`<tspan fill="${P}">$</tspan> pf apps/hf`, T, 0.3],
@@ -27,7 +22,7 @@ const lines = [
 
 const padX = 24, top = 52, lh = 22, W = 760;
 const H = top + lines.length * lh + 20;
-const esc = (s) => s; // tspans already crafted; plain text has no special chars here
+const esc = (s) => s;
 
 const rows = lines.map(([txt, , start], i) => {
   const y = top + i * lh;

@@ -1,21 +1,11 @@
-// Link-preview material for EVERY app, generated at build — the 1200×630 card (og.png) and the meta block
-// (Open Graph + Twitter card + description + canonical) — so a farm URL pasted into Telegram / WhatsApp /
-// Signal / Slack / X unfurls with the app's name, its one line and its brand, and no app author ever writes
-// a preview by hand. Research + sources: docs/research/link-previews.md.
-//
-// Facts the shape rests on: preview bots read the RAW HTML (no JS), want an ABSOLUTE og:image that is
-// JPEG/PNG/WebP (never SVG) at ~1200×630, and lay it out full-width only with twitter:card=summary_large_image.
-// The card is drawn from what every app already has (brand.json, brand.svg, i18n/uk.json) by resvg — the
-// same WASM renderer as the PWA icons — with Geist/Geist Mono fetched as TTF once per build.
 import { Resvg } from "npm:@resvg/resvg-wasm@2.6.2";
-import { ensure, masterPngB64 } from "./icons.mjs";   // the one initWasm() for the process; the master, decoded once
+import { ensure, masterPngB64 } from "./icons.mjs";
 
 export const SITE = "https://dreamstudio.mooo.com";
-export const SITE_NAME = "DreamStudio";   // the product; "microspec" is the core technology's name (docs/research/luminous-icons.md)
+export const SITE_NAME = "DreamStudio";
 export const OG_W = 1200, OG_H = 630;
 
 let fontsP = null;
-// Google Fonts hands out TTF (what resvg reads) to an OLD user-agent; the modern answer is woff2, which it cannot.
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Geist:wght@700&family=Geist+Mono:wght@500";
 const fonts = () => (fontsP ||= (async () => {
   const css = await (await fetch(FONT_CSS, { headers: { "user-agent": "Mozilla/4.0" } })).text();
@@ -26,7 +16,6 @@ const fonts = () => (fontsP ||= (async () => {
 
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-// Wrap a line by words to a character budget — resvg has no text wrapping; two lines is the card's ceiling.
 function wrap(text, perLine, maxLines = 2) {
   const words = String(text || "").split(/\s+/).filter(Boolean), lines = [];
   let cur = "";
@@ -39,10 +28,6 @@ function wrap(text, perLine, maxLines = 2) {
   return lines;
 }
 
-// The card wears the luminous material (docs/research/luminous-icons.md): a true-black ground, the app's own
-// icon on the left as a rounded tile with the farm's warm rim and an amber bloom behind it, warm ink for the
-// name, the product wordmark in amber mono, the tagline in the muted warm grey. These are theme.css's dark
-// tokens as literals — a preview bot renders no CSS, so the card carries its colours itself.
 const INK = "#F2EEE6", MUTED = "#A39E94", AMBER = "#F2B84B", RIM = "rgba(255,232,196,.14)", RIM_HI = "rgba(255,238,208,.22)";
 
 /** Render the card: the app's icon (its luminous master, or the brand glyph for an app without one) on the
@@ -50,8 +35,6 @@ const INK = "#F2EEE6", MUTED = "#A39E94", AMBER = "#F2B84B", RIM = "rgba(255,232
 export async function renderOgCard({ brand, paths, title, tagline, master = null }) {
   await ensure();
   const fb = await fonts();
-  // The title must FIT the 612px column: Geist Bold runs ~0.6em per glyph (Cyrillic a touch wider), so the
-  // size follows the length — 88px for a short name, down to whatever a long one needs, never clipped.
   const titleSize = Math.max(40, Math.min(88, Math.floor(612 / (0.62 * Math.max(1, title.length)))));
   const tagLines = wrap(tagline, 34);
   const tagSize = 32;
@@ -76,8 +59,6 @@ ${tagLines.map((l, i) => `<text x="528" y="${(tagLines.length > 1 ? 386 : 424) +
 }
 
 /** The meta block for one page. `path` is the site-relative directory ("/persona/"), image is `${path}og.png`. */
-// A preview description is one or two lines: bots clip around 200 characters, so a long tagline is cut at a
-// word boundary here rather than mid-word by the bot.
 export const shortDescription = (s, max = 200) => { s = String(s || "").trim(); if (s.length <= max) return s; const cut = s.slice(0, max).replace(/\s+\S*$/, ""); return cut + "…"; };
 
 export function metaBlock({ path, title, description, image = `${path}og.png`, alt }) {

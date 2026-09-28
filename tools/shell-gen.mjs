@@ -58,16 +58,7 @@
  * The Android action catalogue generates both sides; `--check` fails when they drift.
  * @module
  */
-// Generate everything that must agree with the shell action catalogue, so the two sides cannot drift.
-//
-//   deno run -A tools/shell-gen.mjs           write the generated files
-//   deno run -A tools/shell-gen.mjs --check   fail if they are stale (the pre-push gate)
-//
-// Today it emits the runtime's action table. The Java dispatch registry lives in the PRIVATE edge repo
-// and is NOT generated from here yet — that crosses a repo boundary and gets decided in phase 3 rather
-// than guessed at now. Until then the Java side is hand-written against this file, and `os` (§6 of the
-// plan) is what catches a disagreement on a real device.
-import Ajv2020 from "npm:ajv@8/dist/2020.js";   // the catalogue schema is draft 2020-12, like spec.schema.json
+import Ajv2020 from "npm:ajv@8/dist/2020.js";
 
 import { pkgRoot } from "../packages/runtime/pkgroot.js";
 const ROOT = pkgRoot(import.meta.url, 1);
@@ -85,12 +76,10 @@ if (!ajv.validate(schema, catalogue)) {
   Deno.exit(1);
 }
 
-// Duplicate ids would silently shadow each other in the table; the schema cannot express it.
 const ids = catalogue.actions.map((a) => a.id);
 const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
 if (dupes.length) { console.error(`duplicate action ids: ${[...new Set(dupes)].join(", ")}`); Deno.exit(1); }
 
-// An action the current template cannot possibly implement is a typo, not a plan.
 const ahead = catalogue.actions.filter((a) => a.minBridge > catalogue.bridgeVersion);
 if (ahead.length) {
   console.error(`minBridge ahead of bridgeVersion ${catalogue.bridgeVersion}: ${ahead.map((a) => a.id).join(", ")}`);
@@ -105,9 +94,6 @@ const table = Object.fromEntries(catalogue.actions.map((a) => [a.id, {
   mock: a.mock,
 }]));
 
-// The generated module carries its own registry docs (the @ts-self-types directive, a module doc and a
-// JSDoc per export) — JSR scores a generated entrypoint like any other, and a doc written into the output
-// by hand is deleted by the next regeneration.
 const body = `/* @ts-self-types="./shell-actions.d.ts" */
 /**
  * # runtime/shell-actions.js — the Android action catalogue as code
@@ -152,10 +138,6 @@ export const FLAVOURS = [...new Set(Object.values(FLAVOUR_OF).flat())].sort();
 export const ACTIONS = ${JSON.stringify(table, null, 2)};
 `;
 
-// The spec schema names the flavours a second time, in profile.apk's enum. It is the list an APP is
-// validated against, so a flavour the catalogue carries but the schema refuses is unreachable — and one
-// the schema admits but no flavour carries builds an APK that cannot answer. Neither is visible anywhere
-// else: both halves stay green on their own. Tie them together here, where the catalogue is already read.
 const SPEC_SCHEMA = new URL("packages/schema/spec.schema.json", ROOT);
 const flavours = [...new Set(Object.values(catalogue.flavours || {}).flat())].sort();
 const schemaEnum = [...(JSON.parse(await Deno.readTextFile(SPEC_SCHEMA)).properties?.profile?.properties?.apk?.enum || [])].sort();

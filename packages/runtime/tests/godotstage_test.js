@@ -1,6 +1,3 @@
-// godotstage.js — the engine under the page. Without a shell (this test, every browser) there is no engine:
-// available() is false and the element is honest about it. The gate's mock makes the has-engine branch of an
-// app's tree render in Chromium; the engine itself is proven on a device.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { GodotStage, godotAvailable, godotSave } from "../godotstage.js";
 import { ACTIONS } from "../shell-actions.js";

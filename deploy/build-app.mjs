@@ -1,14 +1,3 @@
-// deploy/build-app.mjs — the Safari-16.1 compat overlay for ONE built app, Deno-native (no Node).
-//
-// `buildAppCompat` is called by deploy/build.mjs for EVERY app after the normal copy pass: it bundles the
-// app's JS and precompiles its Tailwind CSS, then rewrites the app's dist index.html to load those instead
-// of the runtime CDNs + import map + import attributes. Fixes the three 16.1 blockers BY CONSTRUCTION:
-//   • `import … with {type:json}`      → deno bundle inlines the JSON
-//   • `<script type=importmap>`+esm.sh → deno bundle resolves + inlines the deps
-//   • `@tailwindcss/browser@4` (regex) → precompiled static app.css (tailwind.mjs)
-// App SOURCE is never touched — dev stays zero-build/modern; this transform is BUILD-only.
-// See docs/RESEARCH-safari16-compat.md.
-
 import { buildTailwind } from "./tailwind.mjs";
 import { generateAppIcons } from "./icons.mjs";
 import { BOOT_BEACON } from "./boot-beacon.mjs";
@@ -23,9 +12,6 @@ async function copyTree(src, dst) {
   }
 }
 
-// Bundle + precompile CSS + rewrite index.html INTO outDir (which already holds the normal-build output:
-// manifest, icons, sw, i18n). srcDir = apps/<id> (has /_rt/ imports + the import map). rtDir = ABSOLUTE
-// path to packages/runtime (for the file:// import-map entry that resolves the runtime's /_rt/ imports).
 export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = [] }) {
   const html = await Deno.readTextFile(`${srcDir}/index.html`);
 
@@ -35,20 +21,17 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
   const importmap = (() => {
     const m = html.match(/<script type="importmap">([\s\S]*?)<\/script>/);
     const im = m ? JSON.parse(m[1]) : { imports: {} };
-    im.imports["/_rt/"] = `file://${rtDir}/`; // resolve the runtime's absolute /_rt/ imports for the bundler
-    im.imports["@microspec/core/runtime/"] = `file://${rtDir}/`; // the domain modules' bare core imports — same flat dir
+    im.imports["/_rt/"] = `file://${rtDir}/`;
+    im.imports["@microspec/core/runtime/"] = `file://${rtDir}/`;
     return im;
   })();
 
-  // staging dir alongside the output, holding app sources + generated entry + import map so relative
-  // imports (./spec.json, ./view.js, ./i18n/…) resolve during bundling.
   const stage = `${outDir}/.stage`;
   await Deno.remove(stage, { recursive: true }).catch(() => {});
   await copyTree(srcDir, stage);
   await Deno.writeTextFile(`${stage}/entry.js`, entry[1]);
   await Deno.writeTextFile(`${stage}/importmap.json`, JSON.stringify(importmap, null, 2));
 
-  // 1) bundle JS (native): inlines JSON + esm.sh deps → no importmap / no `with` at runtime
   const bundle = await new Deno.Command("deno", {
     args: ["bundle", "--platform", "browser", "--minify", "--import-map", `${stage}/importmap.json`, `${stage}/entry.js`, "-o", `${outDir}/app.js`],
     stdout: "piped", stderr: "piped",
@@ -56,16 +39,6 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
   await Deno.remove(stage, { recursive: true }).catch(() => {});
   if (!bundle.success) throw new Error(`deno bundle failed:\n${dec.decode(bundle.stderr).split("\n").slice(-8).join("\n")}`);
 
-  // 2) precompile Tailwind + daisyui → static app.css. Scan this app's HTML + view.js AND the shared runtime
-  //    kit (packages/runtime/*.js) — most of the UI (daisyui components) is rendered by the runtime, so an
-  //    app-only scan misses ~95% of the real classes and the page renders unstyled. sharedSources = runtime.
-  //    EVERY app-local .js, not just view.js. An app that splits its UI across sibling modules had those
-  //    files invisible to the scanner, so a class used ONLY there was never compiled — and the failure is
-  //    silent in the worst way, because the class name is right there in the markup and simply has no rule.
-  //    Measured: transit's calendar (datepick.js) uses `grid-cols-7`, which appears nowhere else in the
-  //    farm; it was dropped, the day grid collapsed to a single column on production, and every gate stayed
-  //    green. 36 apps ship sibling modules, so this had been quietly true for all of them — anything they
-  //    used that view.js or the runtime happened to use too survived, and anything unique to them did not.
   const appJs = [];
   for await (const e of Deno.readDir(srcDir)) {
     if (e.isFile && e.name.endsWith(".js")) appJs.push(await Deno.readTextFile(`${srcDir}/${e.name}`));
@@ -73,23 +46,18 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
   const { css, candidateCount } = await buildTailwind([html, ...appJs, ...sharedSources]);
   await Deno.writeTextFile(`${outDir}/app.css`, css);
 
-  // 3) rewrite index.html: drop tailwind/daisyui CDN + importmap + inline module; link app.css/app.js
-  // Boot beacon FIRST, right inside <head> — before Tailwind/daisyUI/fonts/importmap, so it runs and can
-  // catch a failure in any of what follows. See boot-beacon.mjs for what it does and why it exists.
   let out = html
     .replace(/<head>/, `<head>\n  <script>${BOOT_BEACON}</script>`)
     .replace(/[ \t]*<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@tailwindcss\/browser@4"><\/script>\n?/, "")
     .replace(/[ \t]*<link href="https:\/\/cdn\.jsdelivr\.net\/npm\/daisyui@5[^"]*"[^>]*>\n?/g, "")
     .replace(/[ \t]*<script type="importmap">[\s\S]*?<\/script>\n?/, "")
     .replace(/<script type="module">[\s\S]*?<\/script>/, '<script type="module" src="app.js"></script>');
-  // link the precompiled CSS after theme.css if present, else in <head>
   out = /<link href="\/_rt\/theme\.css"[^>]*>/.test(out)
     ? out.replace(/(<link href="\/_rt\/theme\.css"[^>]*>)/, '$1\n  <link rel="stylesheet" href="app.css">')
     : out.replace(/<\/head>/, '  <link rel="stylesheet" href="app.css">\n</head>');
-  out = out.replaceAll("/_rt/", "../_rt/"); // app lives one level deep under dist/<id>/
+  out = out.replaceAll("/_rt/", "../_rt/");
   await Deno.writeTextFile(`${outDir}/index.html`, out);
 
-  // 4) per-app compat gate: none of the three blockers may survive in the shipped files
   const shipped = out + "\n" + (await Deno.readTextFile(`${outDir}/app.js`));
   const leaks = [
     [/with\s*\{\s*type/, "import-with"],
@@ -103,15 +71,12 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
   return { candidateCount, jsKB, cssKB };
 }
 
-// ── standalone CLI: build one app into dist-compat/<id>/ (for local spikes / device testing) ──────────────
 if (import.meta.main) {
-  const ROOT = Deno.cwd(); // the consumer's tree — this CLI spikes an app that lives at the cwd, not in the package
+  const ROOT = Deno.cwd();
   const id = Deno.args[0] || "store";
-  // the product tree's rt/ is the complete runtime mirror (see deploy/build.mjs) — prefer it when present
   const RT = await Deno.stat(`${ROOT}/rt/index.js`).then(() => `${ROOT}/rt`).catch(() => `${ROOT}/packages/runtime`);
   const APP = `${ROOT}/apps/${id}`, OUT = `${ROOT}/dist-compat/${id}`;
   await Deno.mkdir(OUT, { recursive: true });
-  // static assets + generated icons so a standalone build doesn't 404
   for await (const f of Deno.readDir(APP)) {
     if (f.isFile && /\.(json|svg|webp|webmanifest)$/.test(f.name) && !["spec.json", "brand.json", "apps.json"].includes(f.name)) {
       await Deno.copyFile(`${APP}/${f.name}`, `${OUT}/${f.name}`);
@@ -124,7 +89,6 @@ if (import.meta.main) {
     await generateAppIcons(`${OUT}/icons`, brand, (await Deno.readTextFile(`${APP}/brand.svg`)).trim(), master);
   }
   await Deno.mkdir(`${ROOT}/dist-compat/_rt`, { recursive: true });
-  // rt/ holds symlinks (readDir reports isSymlink, not isFile) — file-ness goes through stat
   const isF = async (e) => e.isFile || (e.isSymlink && (await Deno.stat(`${RT}/${e.name}`).catch(() => ({ isFile: false }))).isFile);
   for await (const f of Deno.readDir(RT)) if (f.name.endsWith(".css") && (await isF(f))) await Deno.copyFile(`${RT}/${f.name}`, `${ROOT}/dist-compat/_rt/${f.name}`);
   const sharedSources = [];

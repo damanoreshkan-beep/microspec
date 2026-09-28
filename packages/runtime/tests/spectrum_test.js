@@ -1,6 +1,3 @@
-// microspec runtime — spectrum unit tests. Pure logic: no browser, no import map.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, advanceTerrain, Parallax, seedFrame, sampleBand, idle, fib, galaxyDisc, frameFit } from "../spectrum.js";
 
@@ -107,14 +104,8 @@ Deno.test("spectrum frameFit: the binding axis wins, and a portrait viewport pus
   assert(Math.abs(square.dist - halfH / ty) < 1e-9, "square viewport: the vertical field decides");
   const portrait = frameFit(halfW, halfH, fov, 390 / 844, { margin: 1 });
   assert(portrait.dist > square.dist * 2, "portrait: the horizontal field binds and pulls the camera way back");
-  // the whole point — at the fitted distance the subject fits BOTH axes, which is what the authored
-  // constants did not: a 6.8-unit ring inside a 3.8-unit-wide frustum was sliced off at both rims.
   const a = 390 / 844, halfFrameH = portrait.dist * ty, halfFrameW = halfFrameH * a;
   assert(halfFrameW >= halfW - 1e-9 && halfFrameH >= halfH - 1e-9, "subject inside the frustum on both axes");
-  // the counter-intuitive half, and the reason the gallery looked broken: on a PORTRAIT screen a wide-but-
-  // short subject (a galaxy disc seen from above) needs MORE distance than a tall narrow one of the same
-  // area — width is the scarce axis here, so framing by "how big is it" rather than by both fields is what
-  // put six of ten scenes off the side of the screen.
   const disc = frameFit(6.6, 4, 55, a, { margin: 1 }), tall = frameFit(4, 6.6, 55, a, { margin: 1 });
   assert(disc.dist > tall.dist, "portrait: width binds, so the wide subject is the far one");
   assert(frameFit(6.6, 4, 55, 16 / 9, { margin: 1 }).dist < frameFit(4, 6.6, 55, 16 / 9, { margin: 1 }).dist, "landscape: it flips");

@@ -80,27 +80,6 @@
  * a named failure, and the whole work list comes back in one round.
  * @module
  */
-// 8n8 — the runner. Executes a flow's DAG: independent nodes concurrently, dependents after.
-//
-//   deno run -A tools/8n8/run.mjs gates              # the pre-push floor
-//   deno run -A tools/8n8/run.mjs gates --json       # machine-readable result
-//   deno run -A tools/8n8/run.mjs --list             # the registry + the determinism number
-//   deno run -A tools/8n8/run.mjs gates --dry        # print the argv of every node, run nothing
-//   deno run -A tools/8n8/run.mjs author --app=myapp # per-app nodes need an app id
-//   deno run -A tools/8n8/run.mjs spec --app=myapp   # ONE node — how you test or redo a single stage
-//   deno run -A tools/8n8/run.mjs author --app=x --no-agents      # deterministic nodes only
-//   deno run -A tools/8n8/run.mjs author --app=x --max-agents=2   # cap the spend (default 6)
-//
-// Why this exists rather than `cmd-a && cmd-b && cmd-c`:
-//
-//  1. `&&` stops at the FIRST red, so one round answers one boolean. This runs every node whose
-//     dependencies are green and returns the WHOLE work list — the rule the farm keeps re-learning.
-//  2. `&&` loses which command failed; a pipe into grep loses the exit code entirely (`gates | grep …`
-//     returns grep's status, which is how a red farm got pushed). Here the exit code is the number of
-//     failed nodes and every failure is printed with its node id, its argv, and its output IN FULL.
-//  3. Independent nodes have no reason to be sequential.
-//
-// Output is never truncated. A diagnostic you cut is a diagnostic you will re-run.
 
 import { NODES, FLOWS, byId, topo, determinism } from "./nodes.mjs";
 
@@ -109,7 +88,7 @@ const flagOf = (name) => args.find((a) => a.startsWith(`--${name}=`))?.split("="
 const has = (name) => args.includes(`--${name}`);
 const flow = args.find((a) => !a.startsWith("--")) ?? "gates";
 const ctx = { app: flagOf("app"), recipe: flagOf("recipe") };
-const CONCURRENCY = Number(flagOf("jobs") ?? 4);   // proot on a phone: 4 is measured-comfortable, not a guess
+const CONCURRENCY = Number(flagOf("jobs") ?? 4);
 
 const C = { dim: "\x1b[2m", red: "\x1b[31m", green: "\x1b[32m", yellow: "\x1b[33m", bold: "\x1b[1m", off: "\x1b[0m" };
 
@@ -128,30 +107,18 @@ if (has("list")) {
   Deno.exit(0);
 }
 
-// Resolve the flow to its transitive closure, in topological order.
-// A flow name, or a single node id — running one stage is how you test a stage, and it is how you redo the
-// one that failed without paying for the four that already worked.
 const targets = FLOWS[flow] ?? (byId(flow) ? [flow] : null);
 if (!targets) {
   console.error(`8n8: unknown flow or node "${flow}". Flows: ${Object.keys(FLOWS).join(", ")}`);
   Deno.exit(2);
 }
-// A flow is a CLOSED set, not a transitive closure. `needs` records the pipeline's order — scaffold
-// precedes preflight when you are AUTHORING an app — but the gates flow inspects a repo whose scaffold
-// already happened and is committed. Pulling dependencies in would drag every gate back through the
-// authoring nodes and demand an --app for a whole-farm check. So: the flow names what runs, and `needs`
-// only orders it. A dependency outside the plan is treated as already satisfied, by definition.
 const wanted = new Set(targets);
 const plan = topo().filter((n) => wanted.has(n.id));
 
-// An agent node with a `brief` is EXECUTABLE — it spawns a headless CLI. One without a brief is a genuine
-// hand-off the runner only announces (`ideate` needs a person to want something; `taste` needs an eye).
-// Both were hand-offs until this; treating the briefed ones as work is what makes `author` a real flow.
 const noAgents = has("no-agents");
 const executable = (n) => n.kind === "script" || (typeof n.brief === "function" && !noAgents);
 const runnable = plan.filter(executable);
 const handoffs = plan.filter((n) => !executable(n));
-// A budget, because an agent node costs real money and a runaway loop costs a lot of it.
 const MAX_AGENTS = Number(flagOf("max-agents") ?? 6);
 let agentsRun = 0;
 
@@ -171,16 +138,13 @@ if (needsApp.length && !ctx.app) {
   Deno.exit(2);
 }
 
-const results = new Map();   // id → { ok, ms, code, out }
+const results = new Map();
 const started = Date.now();
 
-// In-plan dependencies gate; out-of-plan ones are history, and agent deps are hand-offs, not blockers.
 const inPlan = (d) => wanted.has(d) && byId(d).kind === "script";
 const ready = (n) => n.needs.every((d) => !inPlan(d) || results.get(d)?.ok === true);
 const blockedBy = (n) => n.needs.filter((d) => inPlan(d) && results.get(d)?.ok === false);
 
-// The headless CLIs. Reading goes to codex, authoring to claude (rules/research.md draws that line), and
-// both are subprocesses rather than an API client so this needs no key and works the same in CI.
 const agentArgv = (n) => n.agent === "codex"
   ? ["codex", "exec", "--sandbox", "danger-full-access", n.brief(ctx)]
   : ["claude", "-p", n.brief(ctx), "--output-format", "text"];
@@ -208,9 +172,6 @@ async function execAgent(n) {
   } catch (e) {
     out = `8n8: could not spawn ${argv[0]} — ${e.message}`;
   }
-  // The check that makes this a pipeline stage rather than a suggestion: an agent that exits 0 having
-  // written nothing has NOT done its job, and without this it would report green and the next node would
-  // gate an unchanged tree.
   if (code === 0 && want.length) {
     const after = mtimes(want);
     const untouched = want.filter((_, i) => after[i] === 0 || after[i] === before[i]);
@@ -223,7 +184,6 @@ async function execAgent(n) {
   results.set(n.id, r);
   console.log(`  ${r.ok ? C.green + "ok  " : C.red + "FAIL"}${C.off} ${n.id.padEnd(11)} ${C.dim}${(r.ms / 1000).toFixed(1)}s · ${n.agent ?? "claude"}${C.off}`);
 
-  // Its own gate, immediately — spec→validate, view→noundef. Verifying later means debugging a pile.
   if (r.ok && n.verify && byId(n.verify)) {
     const v = byId(n.verify);
     const vr = await exec(v, `${n.id}→`);
@@ -251,8 +211,6 @@ async function exec(n, prefix = "") {
   return r;
 }
 
-// Wave scheduling: everything whose dependencies are settled runs together, capped at CONCURRENCY.
-// A node whose dependency FAILED is skipped and said so — never silently dropped.
 const pending = new Set(runnable.map((n) => n.id));
 const skipped = [];
 const nScript = runnable.filter((n) => n.kind === "script").length, nAgent = runnable.length - nScript;
@@ -268,7 +226,7 @@ while (pending.size) {
   }
   if (!wave.length) {
     if (dead.length) continue;
-    break;    // nothing ready, nothing dead → the remainder waits on agent work
+    break;
   }
   for (let i = 0; i < wave.length; i += CONCURRENCY) {
     await Promise.all(wave.slice(i, i + CONCURRENCY).map((n) => { pending.delete(n.id); return exec(n); }));
@@ -277,7 +235,6 @@ while (pending.size) {
 
 const failed = [...results.entries()].filter(([, r]) => !r.ok);
 
-// The whole work list, in full. This is the payload the runner exists for.
 for (const [id, r] of failed) {
   console.log(`\n${C.red}${C.bold}✗ ${id}${C.off}  ${C.dim}exit ${r.code} · ${r.argv.join(" ")}${C.off}`);
   console.log(r.out.trimEnd());
@@ -301,15 +258,6 @@ if (has("json")) {
   }, null, 1));
 }
 
-// A green run leaves a trace, so the push hook can enforce "gates green before EVERY push" mechanically
-// instead of trusting a promise. A gate result is about a TREE, not about a moment.
-//
-// The stamp is the git tree hash of the full working tree — every tracked and untracked-but-not-ignored
-// file, content-addressed. Built against a THROWAWAY index (GIT_INDEX_FILE), so the real index is never
-// touched. That choice matters: `HEAD + git status --porcelain` would have been easier and wrong, because
-// committing changes both while changing no file content, so every commit would have demanded another
-// 24-second run before the push was allowed. A hook that costs a pointless minute is a hook that gets
-// switched off, and a switched-off hook enforces nothing.
 function treeHash(cwd = ".") {
   const env = { ...Deno.env.toObject(), GIT_INDEX_FILE: `${Deno.makeTempDirSync()}/idx` };
   const git = (...args) => new Deno.Command("git", { args, cwd, env, stdout: "piped", stderr: "null" }).outputSync();
@@ -324,8 +272,7 @@ if (!failed.length && flow === "gates") {
       flow, at: new Date().toISOString(), seconds: Number(secs),
       tree: treeHash(), nodes: [...results.keys()].sort(),
     }, null, 1));
-  } catch { /* a stamp is a convenience; never fail a green run over it */ }
+  } catch { }
 }
 
-// The exit code is the number of failed nodes — never a grep's status, never a truncated tail.
 Deno.exit(failed.length ? 1 : 0);

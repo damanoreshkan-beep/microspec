@@ -71,12 +71,6 @@
  *   a fast load still holds the skeleton for `minMs`, a slow one reveals as soon as it is ready.
  * @module
  */
-// microspec runtime — modern loading placeholders. NO content-less spinners and NO layout-hiding "loading
-// screens": the app's real structure renders immediately, and only the not-yet-known VALUES are atomic
-// skeletons in place — text decodes (a letters/digits scramble that resolves into the value; also the reveal
-// when EN is translated to the locale), images are blinking pixels. Skeletons hold for a MIN time (no flash)
-// then reveal smoothly. All decorative bits are aria-hidden and go INSTANT (final value, no animation) in the
-// gate/preflight and under prefers-reduced-motion, so shots + e2e stay deterministic; the effect is device-only.
 import { html } from "htm/preact";
 import { useRef, useEffect, useState } from "preact/hooks";
 
@@ -84,13 +78,10 @@ const CH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789абвгґдежзиклмнпр
 const rc = () => CH[(Math.random() * CH.length) | 0];
 const now = () => (typeof performance !== "undefined" && performance.now ? performance.now() : 0);
 const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const forceAnim = typeof location !== "undefined" && location.search.includes("__anim");   // gate hook: exercise animations
+const forceAnim = typeof location !== "undefined" && location.search.includes("__anim");
 const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const instant = () => !forceAnim && (isGate || reduced());
 
-// Scramble — atomic value slot. With a value it holds a scramble for ~minMs (no flash on a fast load) then
-// DECODES into the value; without one it's a perpetual placeholder bar. Value slots decode smoothly; the
-// gate/reduced-motion show the final value instantly.
 /**
  * Atomic text value slot: holds a scramble for ~minMs then decodes into `text`; a perpetual placeholder bar without one.
  * @param props `text` (the value, or none for a placeholder), `len` (placeholder length guess), `cls`, `speed` (ms per tick), `minMs` (hold before decoding)
@@ -103,11 +94,6 @@ export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) 
     const el = ref.current; if (!el) return;
     if (!born.current) born.current = now();
     const target = ph ? null : text;
-    // A known value scrambles at its OWN full length — never a capped stand-in. The 72-char cap used to
-    // apply here too, so a 600-char description spent ~900ms as 72 random characters and then jumped to its
-    // real size: the block grew ~8× and everything under it moved. A skeleton that misreports the size of
-    // what is coming is worse than none — it guarantees the layout shift it exists to prevent.
-    // The cap still bounds a PLACEHOLDER (no text yet), where `len` is only the caller's guess.
     const n = Math.max(1, target ? target.length : Math.min(72, len));
     if (instant()) { el.textContent = target ?? "".padEnd(n, "░"); return; }
     const decodeAt = born.current + minMs;
@@ -119,10 +105,6 @@ export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) 
         const done = Math.floor(Math.min(1, (t0 - decodeStart) / 480) * n);
         if (done >= n) { el.textContent = target; return; }
         el.textContent = target.slice(0, done) + target.slice(done).replace(/\S/g, rc);
-      // With a target, scramble the text IN PLACE: `\S` → noise, whitespace untouched. That keeps the exact
-      // length, the word shapes and therefore the wrap points, so the paragraph occupies its final box from
-      // the first frame and resolves into itself. A run of N random glyphs cannot do that — it wraps
-      // differently and reflows on decode.
       } else el.textContent = target ? target.replace(/\S/g, rc) : Array.from({ length: n }, rc).join("");
       timer = setTimeout(tick, speed);
     };
@@ -132,7 +114,6 @@ export function Scramble({ text, len = 14, cls = "", speed = 32, minMs = 900 }) 
   return html`<span ref=${ref} aria-hidden=${ph ? "true" : null} class=${`${ph ? "font-mono tracking-tight [overflow-wrap:anywhere] min-w-0" : ""} ${cls}`}></span>`;
 }
 
-// Pixels — a blinking-pixel image placeholder on a <canvas>, sized to its box. Neutral grey (both themes).
 /**
  * A blinking-pixel image placeholder on a <canvas> sized to its box; a single frozen frame in the gate.
  * @param props `cls` — extra classes on the canvas
@@ -154,8 +135,6 @@ export function Pixels({ cls = "" }) {
   return html`<canvas ref=${ref} aria-hidden="true" class=${`w-full h-full block ${cls}`}></canvas>`;
 }
 
-// useReveal(ready, minMs) — hold a whole skeleton for a MIN time (no flash on a fast load), then reveal.
-// Returns false while a skeleton should show. Instant in the gate / reduced-motion (deterministic).
 /**
  * Hold a whole skeleton for a minimum time (no flash on a fast load), then reveal.
  * @param ready whether the real content is available
@@ -171,12 +150,9 @@ export function useReveal(ready, minMs = 1000) {
   return !!ready && left <= 0;
 }
 
-// Content that fades in when it replaces a skeleton (smooth, fast). Frozen (final state) in the gate.
 /** Wrapper whose children fade in when they replace a skeleton (the `ms-reveal` class); final state in the gate. */
 export const Reveal = ({ children, cls = "" }) => html`<div class=${`ms-reveal ${cls}`}>${children}</div>`;
 
-// Loading — a LAST-RESORT modern loading block (a few decoding lines) for a view with no meaningful structure
-// to show yet. Prefer rendering the real layout with atomic Scramble/Pixels slots instead of this.
 /**
  * Last-resort loading block: a few decoding lines for a view with no meaningful structure to show yet.
  * @param props `lines` — the placeholder length of each line

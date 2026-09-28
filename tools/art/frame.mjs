@@ -1,36 +1,9 @@
-// Offline frame preview — one real frame of a game, as a PNG, with no browser.
-//
-//   deno run -A tools/art/frame.mjs hunt --out /tmp/hunt.png
-//   deno run -A tools/art/frame.mjs hunt --frames 150 --scale 3 --seed 0xA17C --out x.png
-//
-// The `/_rt/…` specifiers the app files use need an import map, so the tool RE-EXECS itself with
-// tools/art/frame.importmap.json when it notices the map is not active. If you would rather be
-// explicit, this is the invocation it runs for you:
-//
-//   deno run -A --import-map=tools/art/frame.importmap.json tools/art/frame.mjs hunt --out x.png
-//
-// WHY this exists at all: the eye test is a required gate, and the only honest preview is one that
-// draws through the code that ships. apps/<id>/render.js owns the pass ORDER and draws against a
-// `painter`; apps/<id>/engine.js supplies the Canvas2D one. This file supplies the second painter
-// the abstraction was written for — the same method surface, writing into a plain RGBA buffer —
-// so the picture below and the picture in the browser come off the same renderFrame().
-//
-// Nothing in apps/ or packages/ is touched. The wasm is instantiated the way loadEngine() does it,
-// with Deno.readFile in place of fetch, because loadEngine is a browser function and copying seven
-// lines is cheaper than making the shipping host care about a build tool.
-
 import { encodePNG } from "./png.mjs";
 
 const HERE = new URL(".", import.meta.url);
 const MAP = new URL("./frame.importmap.json", HERE);
 
-/* ── the import map, without making the caller remember it ────────────────────────────────
-   `import.meta.resolve` answers with file:///_rt/… when no map is in play — a path that exists
-   nowhere. Re-exec rather than fail: a preview tool that only runs when you remember a flag is a
-   preview tool nobody runs. */
 if (!/\/(packages\/runtime|rt)\//.test(import.meta.resolve("/_rt/ui.js"))) {
-  // In the product tree /_rt/ must resolve through rt/ (the complete runtime mirror: the game modules are
-  // domain modules and only exist there) — synthesize the map; the framework tree uses the committed one.
   let mapHref = MAP.href;
   const rtDir = await Deno.stat(`${Deno.cwd()}/rt/index.js`).then(() => `${Deno.cwd()}/rt/`).catch(() => null);
   if (rtDir) {
@@ -47,14 +20,9 @@ if (!/\/(packages\/runtime|rt)\//.test(import.meta.resolve("/_rt/ui.js"))) {
   Deno.exit((await cmd.output()).code);
 }
 
-/* ── an RGBA buffer that composites like a canvas ─────────────────────────────────────────
-   Canvas2D rounds fill geometry (fillRect takes device pixels but snaps nothing itself — the
-   painters in engine.js do the rounding, and they round the same way here) and composites
-   source-over: dst = dst*(1-a) + src*a. The buffer is always opaque, because both games mount
-   its canvas with { alpha: false }. */
 function surface(W, H) {
   const buf = new Uint8ClampedArray(W * H * 4);
-  for (let i = 3; i < buf.length; i += 4) buf[i] = 255;      // opaque, like an alpha:false canvas
+  for (let i = 3; i < buf.length; i += 4) buf[i] = 255;
 
   const px = (o, r, g, b, a) => {
     if (a <= 0) return;
@@ -63,8 +31,6 @@ function surface(W, H) {
     buf[o + 1] = buf[o + 1] * (1 - a) + g * a;
     buf[o + 2] = buf[o + 2] * (1 - a) + b * a;
   };
-  // The rounding is engine.js's, verbatim: Math.round on the origin, Math.max(1, Math.round()) on
-  // the extent — a sub-pixel rect still paints one pixel rather than vanishing.
   const rect = (x, y, w, h, [r, g, b], a = 1) => {
     const x0 = Math.round(x), y0 = Math.round(y);
     const x1 = x0 + Math.max(1, Math.round(w)), y1 = y0 + Math.max(1, Math.round(h));
@@ -76,9 +42,6 @@ function surface(W, H) {
 
 const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 
-/* A cell flipped in X. The browser bakes the flipped variant into its own canvas by reading
-   `cell.px[y*w + (w-1-x)]`; reversing the rows once produces the identical index buffer, so the
-   shared blitter stays the only blitter. Cells are cached objects upstream, so this cache hits. */
 const flipped = new WeakMap();
 function flipCell(cell) {
   let f = flipped.get(cell);
@@ -91,9 +54,6 @@ function flipCell(cell) {
   return f;
 }
 
-/* ── hunt: the same abstraction, in colour ────────────────────────────────────────────────
-   A cell here is a table of palette indices rather than one ink at N densities, so the blitter is
-   local — apps/hunt/atlas.js has no paint() to borrow. */
 function huntPainter(s, rt, PAL, glyphRects, WORLD_INDEX) {
   const { SCRH, WORLD } = rt;
   const TRANSPARENT = 255;
@@ -101,8 +61,7 @@ function huntPainter(s, rt, PAL, glyphRects, WORLD_INDEX) {
   const glyphInk = hex("#f0f0f5");
 
   return {
-    keep() {},                                   // no persistence pass: hunt is not an LCD
-    /* The world palette is LIVE now (worldAt) — same mutation the browser painter does. */
+    keep() {},
     setWorld(colors) {
       for (const [k, idx] of Object.entries(WORLD_INDEX)) if (colors[k]) PAL[idx] = hex(colors[k]);
     },
@@ -143,10 +102,6 @@ function huntPainter(s, rt, PAL, glyphRects, WORLD_INDEX) {
   };
 }
 
-/* ── the engines ──────────────────────────────────────────────────────────────────────────
-   loadEngine() in apps/<id>/engine.js, with Deno.readFile for fetch. The export surface and the
-   view onto wasm memory are copied deliberately: this is the one place a divergence would be
-   invisible, so it is kept short enough to diff by eye. */
 async function loadEngine(wasmPath, S, withBox) {
   const { instance } = await WebAssembly.instantiate(await Deno.readFile(wasmPath), {});
   const E = instance.exports;
@@ -159,10 +114,6 @@ async function loadEngine(wasmPath, S, withBox) {
   };
 }
 
-/* ── the apps ─────────────────────────────────────────────────────────────────────────────
-   `track` is the gate's input track, copied from each view.js. It has to be the SAME track: the
-   screenshots, the a11y sweep and the taste pass all photograph the frame it produces, and a
-   preview of a different frame is a preview of a different game. */
 const APPS = {
   hunt: {
     frames: 150,
@@ -175,10 +126,8 @@ const APPS = {
       const s = surface(rt.SCRW, rt.SCRH);
       return {
         E, s, seed: seedOverride ?? GATE_SEED,
-        // apps/hunt/view.js: IN.RIGHT | ((i % 60) < 16 ? IN.JUMP : 0) | ((i % 30) === 0 ? IN.SHOOT : 0)
         track: (i) => rt.IN.RIGHT | ((i % 60) < 16 ? rt.IN.JUMP : 0) | ((i % 30) === 0 ? rt.IN.SHOOT : 0),
         p: huntPainter(s, rt, atlas.FULL.map(hex), render.glyphRects, atlas.WORLD_INDEX),
-        /* --dist fakes ONLY the palette input, on a copy — the wasm state is never written. */
         draw: (p, dl, n, st, dist) => {
           let stc = st;
           if (dist != null) { stc = Int32Array.from(st); stc[rt.S.DIST] = dist; }
@@ -203,7 +152,6 @@ function upscale(buf, W, H, k) {
   return { buf: out, W: W * k, H: H * k };
 }
 
-/* ── cli ──────────────────────────────────────────────────────────────────────────────── */
 function args(argv) {
   const o = { app: null, out: null, scale: 3, frames: null, seed: null, dist: null };
   for (let i = 0; i < argv.length; i++) {
@@ -211,8 +159,8 @@ function args(argv) {
     if (a === "--out") o.out = argv[++i];
     else if (a === "--scale") o.scale = Math.max(1, parseInt(argv[++i], 10) || 1);
     else if (a === "--frames") o.frames = Math.max(0, parseInt(argv[++i], 10) || 0);
-    else if (a === "--seed") o.seed = Number(argv[++i]) >>> 0;       // Number() takes 0x… as written
-    else if (a === "--dist") o.dist = Math.max(0, parseInt(argv[++i], 10) || 0);   // fake the hour
+    else if (a === "--seed") o.seed = Number(argv[++i]) >>> 0;
+    else if (a === "--dist") o.dist = Math.max(0, parseInt(argv[++i], 10) || 0);
     else if (!a.startsWith("-") && !o.app) o.app = a;
   }
   return o;
@@ -230,9 +178,6 @@ const N = opt.frames ?? app.frames;
 const { E, s, p, seed, track, draw } = await app.build(opt.seed);
 E.init(seed);
 
-/* One pass draws the whole frame. No persistence pass: a `ghost()` that composited the previous
-   frame under every mark once existed here, and it was the loudest single source of the
-   see-through look this tool was built to find. */
 const frame = () => { const { dl, n } = E.list(); draw(p, dl, n, E.state(), opt.dist); };
 for (let i = 0; i < N; i++) E.step(track(i));
 frame();
@@ -240,7 +185,6 @@ frame();
 const up = upscale(s.buf, s.W, s.H, opt.scale);
 await Deno.writeFile(out, await encodePNG(up.buf, up.W, up.H));
 
-// A preview you cannot check is not evidence. Report what is actually in the buffer.
 const seen = new Set();
 for (let o = 0; o < s.buf.length; o += 4) seen.add((s.buf[o] << 16) | (s.buf[o + 1] << 8) | s.buf[o + 2]);
 console.log(`${opt.app}: ${s.W}×${s.H} ×${opt.scale} → ${up.W}×${up.H}  seed 0x${seed.toString(16).toUpperCase()}  ${N} steps  ${seen.size} distinct colours  → ${out}`);

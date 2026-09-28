@@ -79,36 +79,13 @@
  *   once the palette is bound, `data-err` with the first 120 chars of a compile/link failure.
  * @module
  */
-// microspec runtime — the GL stage: hero.js's twin on WebGL2, for a stage that has to be seen where WebGPU
-// is not (an iPad on iOS 16, Firefox on Android, CI's headless Chromium — which HAS WebGL, so the verify
-// shot shows the real field). Same contract as HeroStage so an app can carry the same numbers to either:
-//
-//   uniforms  res: vec2 · time: f32 · seed: f32 · ink: vec4 · vary: vec4 · env: vec4   (+ tex: sampler2D)
-//
-// `ink`/`vary` are the APP's channels (a value or a function read fresh every frame); `env.x` is the
-// RUNTIME's — how light the theme is, eased over ~250ms so a toggle cross-fades. `tex` is an optional
-// CORS-readable image URL: it is downsampled to at most TEX_MAX px before upload, deliberately — a stage
-// borrows a PALETTE from a portrait, it does not project the picture — and swapping it cross-fades through
-// `vary`-style easing on the shader's side (the app reads `ready` from the `texReady` channel below).
-//
-// PROBE-guarded, never gate-guarded: init runs wherever `getContext("webgl2")` answers, so CI's Chromium
-// renders it and preflight (linkedom, no GL) skips it. Under a dead GL the element stays an empty canvas
-// and every meaning the stage carries is also in the DOM — the only thing axe and the e2e can see anyway.
-//
-// The canvas is measured against the VIEWPORT (it is `fixed inset-0`), never against itself: before the
-// stylesheet lands a canvas's clientWidth is its intrinsic 300, and preflight fails a stage that bakes that in.
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
 import { gate } from "./gate.js";
 
 const DPR_CAP = 2;
-// Headless Chromium draws WebGL in SOFTWARE (SwiftShader): a full-screen fbm field at DPR 2 is ~1.3M fragments a
-// frame and starves the page's own timers (a fixture stream that should take 0.7 s took 30). The gate renders at
-// DPR 1 — the shot is still the real field, at a quarter of the fill — and skips every other frame.
 const GATE_DPR = 1;
 const TEX_MAX = 64;
-// The moving set's fixed length. A GLSL array size is compiled in, so this number is part of the contract:
-// a shader declares `uniform vec4 points[8]` and reads `pointCount` to know how many slots are live.
 const POINTS = 8;
 
 const VS = `#version 300 es
@@ -149,8 +126,6 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
   state.seed = seed; state.ink = ink; state.vary = vary; state.points = points; state.texReady = texReady; state.cam = cam;
 
   useEffect(() => {
-    // No gate guard, on purpose (see the header): the probe below is the guard. Preflight's canvas stub
-    // answers null to getContext and the effect ends there; CI's Chromium answers a context and draws.
     const canvas = ref.current;
     if (!canvas) return;
     let gl;
@@ -182,14 +157,8 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
         const U = (n) => gl.getUniformLocation(prog, n);
         const uRes = U("res"), uTime = U("time"), uSeed = U("seed"), uInk = U("ink"), uVary = U("vary"), uEnv = U("env"), uTex = U("tex"), uTexAspect = U("texAspect");
         const uCam = U("cam"), uCamAspect = U("camAspect");
-        // The MOVING SET: up to 8 vec4s a shader can draw one thing per entry — a peer, a hit, a hand.
-        // `ink`/`vary` carry the app's scalars, and neither can carry a variable-length list, which is why
-        // an app that wanted a well per neighbour had no channel at all and would otherwise have grown its
-        // own second renderer. Declared `uniform vec4 points[8]; uniform float pointCount;`.
         const uPoints = U("points"), uPointCount = U("pointCount");
         const pts = new Float32Array(POINTS * 4);
-        // The live picture, on unit 1: full resolution, no mipmaps (a per-frame generateMipmap on a camera frame is
-        // the cost that stutters), clamped so an aspect-fitted sample never wraps. A 1×1 grey sits there until a frame lands.
         const camTex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, camTex);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 128, 255]));
@@ -209,13 +178,10 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, camTex);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
             gl.activeTexture(gl.TEXTURE0);
-          } catch { return; }   // a tainted or not-yet-decoded source: the grey stays, the next frame tries again
+          } catch { return; }
           camLast = src; camTime = video ? src.currentTime : -1; camAspect = w / h;
           if (!camBound) { camBound = 1; canvas.dataset.cam = "yes"; }
         };
-        // The material texture, on unit 2: full resolution, mirrored-repeat (a generated material tiles over the
-        // picture without a visible seam), mipmapped once at load (it is static, unlike `cam`). A 1×1 grey sits
-        // there until the picture is bound; `tex2Aspect.y` tells the shader.
         const uTex2 = U("tex2"), uTex2Aspect = U("tex2Aspect");
         const tex2Tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, tex2Tex);
@@ -237,12 +203,10 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             gl.activeTexture(gl.TEXTURE0);
             tex2Aspect = img.naturalWidth / (img.naturalHeight || 1); tex2Bound = 1;
             canvas.dataset.tex2 = "yes";
-          } catch { /* a material that will not read leaves the grey */ }
+          } catch { }
         };
         if (state.tex2Url) state.loadTex2(state.tex2Url);
-        gl.activeTexture(gl.TEXTURE0);   // the palette below binds on unit 0 without saying so
-        // A 1×1 neutral texture is bound from the first frame, so a shader that samples `tex` never reads
-        // an unbound unit while the portrait is still on the wire.
+        gl.activeTexture(gl.TEXTURE0);
         const texture = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 128, 255]));
@@ -267,7 +231,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             texAspect = w / h;
             canvas.dataset.tex = "yes";
             state.texReady?.(1);
-          } catch { /* a portrait that will not read (no CORS, 404) leaves the neutral palette */ }
+          } catch { }
         };
         if (state.texUrl) state.loadTex(state.texUrl);
 
@@ -285,7 +249,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
         let tick = 0;
         const frame = () => {
           if (state.dead) return;
-          if (document.hidden || (gate && (tick++ & 1))) { state.raf = requestAnimationFrame(frame); return; }   // hidden tab: no draw; gate: half rate
+          if (document.hidden || (gate && (tick++ & 1))) { state.raf = requestAnimationFrame(frame); return; }
           const now = performance.now();
           gl.uniform2f(uRes, canvas.width, canvas.height);
           gl.uniform1f(uTime, still ? 2 : (now - t0) / 1000);
@@ -324,13 +288,11 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
       state.dead = true;
       cancelAnimationFrame(state.raf);
       state.cleanup?.();
-      try { state.gl?.getExtension("WEBGL_lose_context")?.loseContext(); } catch { /* gone */ }
+      try { state.gl?.getExtension("WEBGL_lose_context")?.loseContext(); } catch { }
       state.gl = null;
     };
   }, []);
 
-  // The texture follows the prop without a rebuild — the same person's field keeps flowing while a new
-  // portrait arrives, and a person swap fades through the app's `ready` channel rather than cutting.
   useEffect(() => {
     state.texUrl = tex || null;
     if (state.loadTex) state.loadTex(state.texUrl);

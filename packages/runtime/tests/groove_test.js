@@ -1,19 +1,10 @@
-// microspec runtime — groove theory unit tests. Pure logic: no browser, no import map.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "../groove.js";
 
-// ---- groove theory (packages/runtime/groove.js) ----
-// These tests are the proof behind the "generated, not random" claim. They run in the browser-free unit
-// gate, so the claim is enforced on every push rather than asserted in prose.
 
 const str = (p) => p.map((v) => (v ? "x" : ".")).join("");
 
 Deno.test("bjorklund reproduces Toussaint's traditional rhythms", () => {
-  // Toussaint (2005): the Euclidean algorithm's outputs ARE world rhythms. If these break, the whole
-  // premise ("the vocabulary is a formula") is gone.
   assertEquals(str(bjorklund(3, 8)), "x..x..x.", "tresillo (Cuba)");
   assertEquals(str(bjorklund(5, 8)), "x.xx.xx.", "cinquillo (Cuba)");
   assertEquals(str(bjorklund(2, 5)), "x.x..", "E(2,5)");
@@ -24,7 +15,7 @@ Deno.test("bjorklund reproduces Toussaint's traditional rhythms", () => {
 Deno.test("bjorklund edges: k<=0, k>=n, n=0 never throw", () => {
   assertEquals(str(bjorklund(0, 8)), "........");
   assertEquals(str(bjorklund(8, 8)), "xxxxxxxx");
-  assertEquals(str(bjorklund(99, 4)), "xxxx");     // k>n clamps, no crash
+  assertEquals(str(bjorklund(99, 4)), "xxxx");
   assertEquals(bjorklund(3, 0), []);
   assertEquals(str(bjorklund(-2, 4)), "....");
 });
@@ -39,7 +30,6 @@ Deno.test("rotate preserves onset count and wraps both ways", () => {
 Deno.test("syncopation (Longuet-Higgins & Lee): four-on-the-floor is zero, a held offbeat is not", () => {
   assertEquals(syncopation(bjorklund(4, 16)), 0, "the metre's own pulse cannot syncopate against itself");
   assertEquals(syncopation(Array(16).fill(false)), 0, "silence is not syncopated");
-  // A note on step 3 (weight -4) sounding across the strong step 8 (weight -1) outlasts its unit → 3.
   const held = Array(16).fill(false); held[0] = true; held[3] = true;
   assertEquals(syncopation(held), 3);
   assert(syncopationNorm(bjorklund(4, 16)) === 0);
@@ -70,7 +60,6 @@ Deno.test("mulberry32 is deterministic and in range", () => {
   for (let i = 0; i < 200; i++) { const v = r(); assert(v >= 0 && v < 1); }
 });
 
-// A miniature of rave's voice vocabulary — enough bands to exercise the scorer.
 const ROLES = [
   { id: "kick", band: "low", ks: [4, 5, 6], rots: [0], p: 1 },
   { id: "sub", band: "low", ks: [4, 6, 7], rots: [0, 2], p: 0.8, bass: true },
@@ -90,15 +79,12 @@ Deno.test("generateGroove is deterministic, seed-addressable, and always lands a
     const g = generateGroove(ROLES, { seed });
     assert(g.tracks.kick[0], `seed ${seed}: no kick on the downbeat — nothing to dance to`);
     assertEquals(g.riff.length, 16, `seed ${seed}: riff must cover the bar`);
-    // Voices outside the drawn line-up are simply absent — the app spreads the result over its empty grid.
     for (const id of g.voices) assertEquals(g.tracks[id].length, 16, `seed ${seed}: ${id} wrong length`);
     assertEquals(Object.keys(g.tracks).sort().join(), [...g.voices].sort().join(), `seed ${seed}: tracks must match the line-up`);
   }
 });
 
 Deno.test("THE CLAIM: the scored search beats random — it is not a dice roll", () => {
-  // A naive coin-flip pattern (what "random" means in most drum machines) vs generateGroove, scored by the
-  // same research-backed function. If the search ever stops winning, this app's premise is false.
   const coinFlip = (rng) => ({
     tracks: Object.fromEntries(ROLES.map((r) => [r.id, Array.from({ length: 16 }, () => rng() < 0.4)])),
     riff: Array.from({ length: 16 }, () => Math.floor(rng() * 13)),
@@ -126,9 +112,7 @@ Deno.test("generated beats land in the researched sweet spots (random ones do no
   const SEEDS = 30;
   for (let seed = 0; seed < SEEDS; seed++) {
     const g = generateGroove(ROLES, { seed });
-    // The low end anchors the metre (Witek's "pulse"): near-zero syncopation.
     if (syncopationNorm(merge(g.tracks, "low")) <= 0.3) lowOk++;
-    // The mid band drives the groove: medium syncopation — the peak of the inverted U, never 0 and never 1.
     const mid = syncopationNorm(merge(g.tracks, "mid"));
     if (mid > 0.05 && mid < 0.8) midOk++;
   }
@@ -138,8 +122,6 @@ Deno.test("generated beats land in the researched sweet spots (random ones do no
 
 Deno.test("scoreGroove punishes a floorless beat and rewards the backbeat", () => {
   const base = buildCandidate(mulberry32(3), ROLES);
-  // The penalty is on the BAND, not one track: any low voice on the downbeat anchors the metre, so silence
-  // the whole low end to test it (killing just the kick still leaves the sub holding the floor).
   const lowIds = ROLES.filter((r) => r.band === "low").map((r) => r.id);
   const floorless = { ...base, tracks: { ...base.tracks, ...Object.fromEntries(lowIds.map((id) => [id, Array(16).fill(false)])) } };
   assert(scoreGroove(floorless, ROLES) < scoreGroove(base, ROLES), "no low end on the downbeat must cost");
@@ -158,9 +140,6 @@ Deno.test("METRIC_WEIGHTS is the LHL 4/4 tree", () => {
 });
 
 Deno.test("the line-up is drawn once per generation → pressing Generate keeps surprising", () => {
-  // Regression guard for a real defect: when the search chose the instrumentation per candidate, argmax
-  // converged on the same 4 "safest" voices and near-identical patterns on every seed — a generator you
-  // press twice. Variety must come from the line-up draw, not from luck.
   const lineups = new Set(), patterns = new Set();
   for (let seed = 0; seed < 60; seed++) {
     const g = generateGroove(ROLES, { seed });

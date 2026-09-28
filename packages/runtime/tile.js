@@ -52,9 +52,6 @@
  *   the shorter side is not the weight you want.
  * @module
  */
-// letterTile — a deterministic first-letter placeholder as a self-contained data-URI SVG (no fetch, so the
-// "cards always have a thumbnail" gate stays honest offline). Was near-identically hand-rolled in cinema,
-// books and wiki; extracted here. hue defaults to a stable hash of the text; sat/light/size are overridable.
 /**
  * Build a data-URI SVG tile showing the first letter of `text` on a solid HSL ground.
  * @param text the title to tile; its first non-blank character is shown upper-cased ("?" when empty)

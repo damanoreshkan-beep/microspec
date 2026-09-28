@@ -59,18 +59,7 @@
  * - An unset or unknown repeat mode is treated as "off" by `cycleRepeat` — it starts the cycle and never throws.
  * @module
  */
-// microspec runtime — PLAYBACK: the queue logic behind the kit's Transport widget (SYSTEMIC, pure).
-//
-// Before this, every music app hand-rolled its own: rave had prev/play/next with a square stop and no seek,
-// v2m had prev/play/next with a seek bar, drift/ambient/synesth/fmradio had a bare play toggle — five
-// vocabularies for one idea, diverging quietly. This is the kit's answer, same as Sheet/Segmented: one
-// component, configured, never forked. Every control is OPTIONAL — pass the handler and it appears.
-//
-// The WIDGET is a kit node (ui.js Transport). What lives here is what a player has to get RIGHT and what
-// a screenshot can never check: where the transport goes next at the end of a list, under each repeat mode,
-// and whether the listener pressed the button or the track simply ended. Pure, unit-tested, no DOM.
 
-// ── repeat: the standard three-state cycle every player uses ──────────────────────────────────────────
 /** The three repeat modes, in cycle order: off → all → one. */
 export const REPEAT_MODES = ["off", "all", "one"];
 /** Icon name per repeat mode, for the Transport widget. */
@@ -81,7 +70,7 @@ export const REPEAT_ICON = { off: "lucide:repeat", all: "lucide:repeat", one: "l
  * @returns the following entry of REPEAT_MODES
  */
 export function cycleRepeat(mode) {
-  const i = Math.max(0, REPEAT_MODES.indexOf(mode));    // an unset/unknown mode IS "off" — cycle on from it
+  const i = Math.max(0, REPEAT_MODES.indexOf(mode));
   return REPEAT_MODES[(i + 1) % REPEAT_MODES.length];
 }
 
@@ -99,12 +88,12 @@ export function advance(index, length, { step = 1, repeat = "off", shuffle = fal
   if (repeat === "one" && !manual) return Math.min(Math.max(index, 0), len - 1);
   if (shuffle) {
     let n = Math.floor(rng() * (len - 1));
-    if (n >= index) n += 1;                            // never the track already playing
+    if (n >= index) n += 1;
     return Math.min(n, len - 1);
   }
   const next = index + step;
   if (next >= len) return repeat === "off" && !manual ? -1 : 0;
-  if (next < 0) return len - 1;                        // "previous" from the first track wraps to the end
+  if (next < 0) return len - 1;
   return next;
 }
 

@@ -63,7 +63,6 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 /** The upload cap on the long side: 1024 → an upscaler's 4× is 4096², and the JPEG stays ~300 KB on the wire. */
 export const MAX_SIDE = 1024;
 
-// The chooser's own words (en · uk), the way camprime.js carries the priming screen's — never an app key.
 const LBL = {
   uk: { pick: "Обери фото", upload: "Завантажити", camera: "Камера", last: "Остання картинка", capture: "Зробити фото", back: "Нове фото" },
   en: { pick: "Choose a photo", upload: "Upload", camera: "Camera", last: "Last picture", capture: "Take a photo", back: "New photo" },
@@ -97,13 +96,9 @@ export const mockArt = (seed, scale = 1) => {
 export async function toDataURL(url, maxSide = MAX_SIDE) {
   try { return await decodeHere(url, maxSide); }
   catch (e) {
-    // The browser could not decode it — Android Chrome reads no HEIC/HEIF, and that is what a Samsung gallery
-    // hands an <input accept="image/*"> (mirage, 2026-09-03: "Не вдалося прочитати" before any request left the
-    // phone). The edge's media process decodes it with ffmpeg and answers a JPEG; the gate has no network.
     if (gate || !/^(blob|data):/.test(url)) throw e;
-    // the numbers a bug report cannot carry: what the browser was handed (type · bytes) and which step refused
     let about = { type: "", size: 0 };
-    try { const bl = await (await fetch(url)).blob(); about = { type: bl.type, size: bl.size }; } catch { /* unreadable url */ }
+    try { const bl = await (await fetch(url)).blob(); about = { type: bl.type, size: bl.size }; } catch { }
     report("intake.decode", { step: "local", msg: e?.message || String(e), ...about }, "warn");
     let converted;
     try { converted = await convertAtEdge(url); }
@@ -130,7 +125,6 @@ function decodeHere(url, maxSide) {
     img.src = url;
   });
 }
-// the bytes as a data: URL (a blob: URL is read back; a data: URL is passed as is), POSTed to /feed/convert
 async function convertAtEdge(url) {
   const image = url.startsWith("data:") ? url : await new Promise(async (ok, no) => {
     try { const bl = await (await fetch(url)).blob(); const fr = new FileReader(); fr.onload = () => ok(String(fr.result)); fr.onerror = () => no(new Error("read failed")); fr.readAsDataURL(bl); } catch (e) { no(e); }
@@ -216,14 +210,14 @@ export function Camera({ loc, reason, privacy, onCapture, onClose, onSettings })
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1920 } }, audio: false });
         if (!live) { stream.getTracks().forEach((tr) => tr.stop()); return; }
         streamRef.current = stream;
-        const v = videoRef.current; if (v) { v.srcObject = stream; v.setAttribute?.("playsinline", ""); try { await v.play?.(); } catch { /* */ } }
+        const v = videoRef.current; if (v) { v.srcObject = stream; v.setAttribute?.("playsinline", ""); try { await v.play?.(); } catch { } }
       } catch (e) { if (live) setErr(e && e.name === "NotAllowedError" ? "denied" : "unavailable"); }
     })();
-    return () => { live = false; try { streamRef.current?.getTracks().forEach((tr) => tr.stop()); } catch { /* */ } streamRef.current = null; const v = videoRef.current; try { if (v) v.srcObject = null; } catch { /* */ } };
+    return () => { live = false; try { streamRef.current?.getTracks().forEach((tr) => tr.stop()); } catch { } streamRef.current = null; const v = videoRef.current; try { if (v) v.srcObject = null; } catch { } };
   }, [enabled]);
   const capture = () => {
     const v = videoRef.current; if (!v || !(v.videoWidth > 0)) return;
-    try { const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext("2d").drawImage(v, 0, 0); onCapture(c.toDataURL("image/jpeg", 0.92)); } catch { /* capture blocked */ }
+    try { const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext("2d").drawImage(v, 0, 0); onCapture(c.toDataURL("image/jpeg", 0.92)); } catch { }
   };
   const on = enabled && !err;
   return html`<${Fragment}>

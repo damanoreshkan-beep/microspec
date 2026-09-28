@@ -1,14 +1,8 @@
-// microspec runtime — usbsession unit tests. The whole point of injecting `spawn`/`requestDevice` is that
-// this lifecycle is testable with no browser, no WebUSB and no Worker — on a device that may never run one.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { createUsbSession, TERMINATE_GRACE_MS } from "../usbsession.js";
 
-// A minimal atom, so the test also proves the module needs no nanostores at all.
 const testAtom = (v) => { let cur = v; return { get: () => cur, set: (n) => { cur = n; } }; };
 
-// A Worker stand-in that records everything done to it.
 function fakeWorker() {
   const w = {
     posted: [], terminated: false, onmessage: null,
@@ -18,7 +12,6 @@ function fakeWorker() {
   return w;
 }
 
-// Deterministic timers: the 400ms grace is a real delay in a browser and must never be one in a test.
 function fakeClock() {
   const q = new Map();
   let id = 0;
@@ -53,8 +46,6 @@ Deno.test("connect: no WebUSB → usbOk false, no worker", async () => {
 });
 
 Deno.test("connect: a DISMISSED picker is not a fault", async () => {
-  // The distinction that matters: a rejected requestDevice means "not now", not "your browser cannot do
-  // this". Flipping usbOk here would show an unsupported-browser message for a dialog the user dismissed.
   const { s, workers } = harness({ requestDevice: () => Promise.reject(new Error("cancelled")) });
   assertEquals(await s.connect(), false);
   assertEquals(s.$usbOk.get(), true, "a dismissed picker must not claim the browser is unsupported");
@@ -147,7 +138,6 @@ Deno.test("the worker handle is cleared BEFORE terminate, so a late message cann
   await s.connect();
   const w = workers[0];
   s.disconnect();
-  // the worker is still alive during the grace window and may still post
   w.onmessage({ data: { type: "sweep" } });
   assertEquals(s.running(), false);
   assertEquals(seen, [{ type: "sweep" }], "routing still works, but the session is not 'running'");
@@ -164,12 +154,8 @@ Deno.test("post: no-op on a dead worker instead of throwing", async () => {
 });
 
 Deno.test("restart is gated on the WORKER, not on the connected atom", async () => {
-  // The regression this pins: a headless gate seeds $connected true so the populated screen renders. If
-  // restart() trusted that, a preset change would spawn a real Worker under the gate, which reaches for
-  // USB, errors, and disconnects the session — taking the seeded fixture off screen. CI found it; this
-  // keeps it found.
   const { s, workers } = harness();
-  s.$connected.set(true);                       // exactly what an app's gate fixture does
+  s.$connected.set(true);
   assertEquals(s.restart(), false, "restart must not spawn a worker just because the atom says connected");
   assertEquals(workers.length, 0);
 });

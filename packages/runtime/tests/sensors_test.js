@@ -1,11 +1,7 @@
-// microspec runtime — sensors unit tests. Pure logic: no browser, no import map.
-//   deno test -A packages/runtime/runtime_test.js   (the barrel imports this file)
-
 import { assertEquals, assertAlmostEquals } from "jsr:@std/assert@1";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 import { hapticFor, lookHeadingDeg, screenHeadingDeg, heldHeadingDeg, camControls } from "../sensors.js";
 
-// camControls — a fake track records what applyConstraints received; nothing is guessed beyond getCapabilities
 const fakeTrack = (caps, { settings = {}, reject = () => false } = {}) => {
   const calls = [];
   return { calls, getCapabilities: () => caps, getSettings: () => settings,
@@ -39,11 +35,8 @@ Deno.test("camControls: no track, or a track without the feature → caps off an
   assertEquals(flat.calls, []);
 });
 
-// shortest angular distance, the only honest way to compare two headings
 const apart = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
 
-// Parsed with the real linkedom DOM, not a stub with a fake closest(): the whole function IS a selector
-// plus a few exceptions, and a hand-rolled closest() would only ever prove that my stub agrees with me.
 const el = (h, sel) => new DOMParser().parseFromString(`<body>${h}</body>`, "text/html").querySelector(sel);
 
 Deno.test("hapticFor — every tappable answers, by default and without the app asking", () => {
@@ -57,7 +50,6 @@ Deno.test("hapticFor — every tappable answers, by default and without the app 
     ["<select id=x><option>a</option></select>", "#x"],
     ["<summary id=x>more</summary>", "#x"],
   ]) assertEquals(hapticFor(el(h, sel)), "tick", `${h} should tick`);
-  // the tap lands on the icon INSIDE the button — closest() is why this works
   assertEquals(hapticFor(el('<button><span id=i>go</span></button>', "#i")), "tick");
 });
 
@@ -66,7 +58,6 @@ Deno.test("hapticFor — silence where a buzz would be a fault, not feedback", (
   assertEquals(hapticFor(el('<input id=x type="text">', "#x")), null, "a buzz per keystroke is a broken phone");
   assertEquals(hapticFor(el("<textarea id=x></textarea>", "#x")), null);
   assertEquals(hapticFor(el('<input id=x type="search">', "#x")), null);
-  // Feedback for an action that will not happen is a lie you can feel.
   assertEquals(hapticFor(el("<button id=x disabled>go</button>", "#x")), null);
   assertEquals(hapticFor(el('<button id=x aria-disabled="true">go</button>', "#x")), null);
   assertEquals(hapticFor(null), null);
@@ -79,8 +70,6 @@ Deno.test("lookHeadingDeg — camera heading, checked against the W3C worked exa
 });
 
 Deno.test("lookHeadingDeg — invariant under the gimbal-lock re-expression that broke swarm's aim", () => {
-  // at β=90° the sensor may hand back the SAME orientation with α jumped and γ compensating;
-  // the exact leap the owner reported: α 1° → −300° (≡60°). The projected heading must not move.
   const a = lookHeadingDeg(1, 90, 0), b = lookHeadingDeg(60, 90, -59);
   assertAlmostEquals(a, 359, 1e-9);
   assertAlmostEquals(b, a, 1e-6, "α+γ preserved ⇒ same physical orientation ⇒ same heading");
@@ -96,13 +85,11 @@ Deno.test("lookHeadingDeg — null where a camera heading does not exist", () =>
 Deno.test("screenHeadingDeg — flat, it IS the (360−α) it replaces", () => {
   for (const a of [0, 37, 90, 180, 271, 359]) {
     assertAlmostEquals(screenHeadingDeg(a, 0), (360 - a) % 360, 1e-9, `α=${a}`);
-    // a phone tilted the way one is actually read still reports the same direction
     assertAlmostEquals(screenHeadingDeg(a, 30), (360 - a) % 360, 1e-9, `α=${a} at 30° of pitch`);
   }
 });
 
 Deno.test("screenHeadingDeg — face-down the top edge points behind you, and says so", () => {
-  // (360−α) claimed north here for a phone whose top edge is aimed due south.
   assertAlmostEquals(screenHeadingDeg(0, 180), 180, 1e-9);
   assertAlmostEquals(screenHeadingDeg(90, 170), (180 - 90 + 360) % 360, 1e-9);
 });
@@ -114,15 +101,12 @@ Deno.test("screenHeadingDeg — null where the top edge points at the sky", () =
 });
 
 Deno.test("heldHeadingDeg — the leap the owner reported does not survive the projection", () => {
-  // The sensor re-expresses one physical orientation with α jumped and γ absorbing it. Raw α moves 40°
-  // between these two events; the phone has not moved at all.
   const a = heldHeadingDeg(20, 90, 0), b = heldHeadingDeg(-300, 90, 320);
   assertAlmostEquals(apart(a, b), 0, 1e-6, "same orientation ⇒ same heading");
   assertAlmostEquals(apart((360 - 20) % 360, (360 - -300) % 360), 40, 1e-9, "…which the old formula did not give");
 });
 
 Deno.test("heldHeadingDeg — raising the phone does not turn the needle", () => {
-  // One facing, every grip from flat on the palm to straight up. Nothing about the direction changed.
   for (const a of [0, 47, 200, 314]) {
     for (let beta = 0; beta <= 90; beta += 3) {
       assertAlmostEquals(apart(heldHeadingDeg(a, beta, 0), (360 - a) % 360), 0, 1e-6, `α=${a} β=${beta}`);
@@ -131,8 +115,6 @@ Deno.test("heldHeadingDeg — raising the phone does not turn the needle", () =>
 });
 
 Deno.test("heldHeadingDeg — never null, at any orientation", () => {
-  // |h_y|² + |h_z|² = 1 + sin²γ·cos²β ≥ 1: the two axes cannot go degenerate together. A dial that
-  // freezes reads as broken exactly like one that jumps, so this is a contract, not an optimisation.
   for (let beta = -180; beta <= 180; beta += 7) {
     for (let gamma = -90; gamma <= 90; gamma += 7) {
       const h = heldHeadingDeg(123, beta, gamma);
@@ -143,11 +125,6 @@ Deno.test("heldHeadingDeg — never null, at any orientation", () => {
 });
 
 Deno.test("heldHeadingDeg — continuous through the handoff, at any roll", () => {
-  // The contract behind "it jumps" is CONTINUITY, and a fixed threshold does not test it: rolled 60° the
-  // camera axis genuinely aims 60° off the screen's top edge, so the handoff has that much ground to
-  // cover and covering it smoothly is the most anyone can ask. What separates a slew from a jump is that
-  // a slew shrinks with the step — quarter the pitch step, quarter the movement. A discontinuity does not
-  // care how finely it is sampled, which is exactly how the old α reading behaved at β≈90.
   const sweep = (gamma, step) => {
     let prev = heldHeadingDeg(80, 0, gamma), worst = 0;
     for (let beta = step; beta <= 100; beta += step) {

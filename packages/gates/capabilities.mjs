@@ -60,38 +60,11 @@
  * the trueNorth opt-out. Both were caught by dry-running the farm before the gate was ever fatal.
  * @module
  */
-// microspec — the capability gate. `spec.json`'s `needs` must match what the app actually reaches for.
-//
-//   deno run -A packages/gates/capabilities.mjs            # report
-//   deno run -A packages/gates/capabilities.mjs --check     # exit 1 on any mismatch (the 8n8 node)
-//
-// Why this exists: `needs` was inert. Exactly one place in the farm read it — packages/runtime/validate.js
-// asserts it is an array — while the schema's own description claimed it "drives permission priming".
-// Nothing did. So it drifted: six apps opened a WebUSB device and none declared it, `air` used geolocation
-// undeclared, `sun` declared geo and also consumed compass. Make it TRUE first; only then is it safe to
-// make it functional (priming, a store affordance, the Android shell's permission set), because wiring a
-// wrong field into the permission surface ships the drift.
-//
-// THE MEASUREMENT, and the two wrong versions it took to get here — both caught by dry-running the whole
-// farm before this was ever fatal:
-//
-//  v1  "the app's import closure contains navigator.geolocation" → 30 apps flagged, including `habits`,
-//      a habit tracker. Wrong because /_rt/sensors.js holds EVERY sensor API in one module, so importing
-//      it at all looked like using all of them. A signal that fires on a habit tracker measures nothing.
-//  v2  "which named gateway does the app import" — right idea, still wrong twice over:
-//      · haptic is SYSTEMIC. index.js delegates one pointerdown listener for the whole farm and
-//        hapticFor() decides ("An app writes nothing"). Every app with a button has haptics, so declaring
-//        it says nothing. It is a runtime property, not an app capability — and it is absent here.
-//      · a gateway is TRANSITIVE: compass.start() defaults to trueNorth and watches geolocation inside to
-//        fetch a declination. But `handpan` and `rave` pass { trueNorth: false } precisely to avoid that,
-//        so charging them a geo declaration would demand a permission they went out of their way not to
-//        need. The opt-out is read here.
 
-const ROOT = Deno.cwd(); // the apps it audits live in the CONSUMER's tree, never in the package
+const ROOT = Deno.cwd();
 const read = (p) => { try { return Deno.readTextFileSync(`${ROOT}/${p}`); } catch { return null; } };
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// imported symbol → the capabilities it actually reaches for
 /** Runtime module → imported symbol → the capabilities that symbol reaches for (`"*"` = any import of the module). */
 export const SYMBOL_CAPS = {
   "/_rt/sensors.js": {
@@ -99,13 +72,12 @@ export const SYMBOL_CAPS = {
     compass: ["compass", "orientation"], tilt: ["orientation"], wakeLock: ["wakeLock"],
   },
   "/_rt/camprime.js": { CameraPrime: ["camera"], MicPrime: ["microphone"] },
-  "/_rt/camstage.js": { CamStage: ["camera", "wakeLock"] },   // the kit's camera stage (1.2.39) opens the stream and holds the screen awake itself
-  "/_rt/intake.js": { Camera: ["camera"] },   // the kit's viewfinder (1.2.14) opens the stream itself; the chooser alone needs nothing
+  "/_rt/camstage.js": { CamStage: ["camera", "wakeLock"] },
+  "/_rt/intake.js": { Camera: ["camera"] },
   "/_rt/auth.js": { "*": ["auth"] },
   "/_rt/hackrf.js": { "*": ["usb"] },
 };
 
-// raw calls in the app's own files — an app reaching past the runtime still declares the capability
 /** Capability → regex matching a raw browser API call in the app's own source. */
 export const RAW_CAPS = {
   usb: /navigator\.usb\b/,
@@ -117,7 +89,6 @@ export const RAW_CAPS = {
   motion: /DeviceMotionEvent\b|["']devicemotion["']/,
 };
 
-// The names imported from one module. Pure, so it is testable without a filesystem.
 /**
  * The names an app source imports from one module specifier; `"*"` is added whenever the module is imported at all.
  * @param src JavaScript source text
@@ -137,7 +108,6 @@ export function importedNames(src, moduleSpec) {
   return names;
 }
 
-// Everything one app's own source reaches for. `src` is the app's .js files concatenated.
 /**
  * Every capability one app's own source reaches for, via gateway imports and raw browser calls.
  * @param src the app's .js files concatenated
@@ -150,7 +120,6 @@ export function capabilitiesOf(src) {
     for (const [sym, caps] of Object.entries(map)) if (names.has(sym)) caps.forEach((c) => used.add(c));
   }
   for (const [cap, re] of Object.entries(RAW_CAPS)) if (re.test(src)) used.add(cap);
-  // the trueNorth opt-out, read rather than assumed
   if (used.has("compass") && !/trueNorth\s*:\s*false/.test(src)) used.add("geo");
   return used;
 }
@@ -163,7 +132,6 @@ export function capabilitiesOf(src) {
 export function scanApp(id) {
   let src = "";
   for (const f of Deno.readDirSync(`${ROOT}/apps/${id}`)) {
-    // e2e drives the app from outside and sw.js is generated — neither is the app reaching for hardware
     if (f.isFile && /\.(js|mjs)$/.test(f.name) && f.name !== "e2e.spec.mjs" && f.name !== "sw.js") {
       src += (read(`apps/${id}/${f.name}`) ?? "") + "\n";
     }
@@ -191,7 +159,6 @@ if (import.meta.main) {
     const r = scanApp(id);
     if (r.missing.length || r.stale.length) bad.push(r);
   }
-  // Name every app AND every capability, so one run returns the whole work list rather than a count.
   for (const r of bad) {
     const parts = [];
     if (r.missing.length) parts.push(`undeclared: ${r.missing.join(", ")}`);

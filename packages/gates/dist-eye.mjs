@@ -75,25 +75,6 @@
  * the shot the taste review reads next.
  * @module
  */
-// dist-eye — the eye on the BUILT site. Serves dist/ exactly as production does (one static root, apps at
-// /<id>/, the runtime at /_rt/), opens every app in a real Chromium at the reference device, MEASURES what
-// the token system did to the page, and keeps a PNG of each — before anything is shipped.
-//
-// Why a separate gate: verify.mjs runs the SOURCE with the CDN. Between 2026-08-14 and 08-16 the compat
-// build's class scanner cut every `[var(--…)]` token and production rendered with border-radius 0, no
-// density ladder and no accent — while every gate stayed green, because none of them ever looked at dist/.
-// This one does, and it fails on numbers, not impressions:
-//   • the page booted (#app has children, no uncaught error, no console.error outside network noise)
-//   • the token system is alive: --ms-r resolves on :root AND the first kit surface (.sf-raised) has a
-//     computed border-radius > 0 AND the precompiled app.css is loaded with real rules
-//   • no same-origin request 4xx/5xx while it loads (measured at this gate's own server — a built file the
-//     page asks for and does not get is a shipping bug, whatever the console says)
-//   • the shot exists (the taste review reads it next; a gate that cannot show its work is a rumour)
-//
-//   deno run -A packages/gates/dist-eye.mjs [--dist dist] [--out dist-eye] [--apps a,b] [--light]
-//
-// Chromium: CHROMIUM_PATH (CI: /usr/bin/google-chrome). Prints one line per app and a summary; exit 1 on
-// any failure. Deno, no Xvfb (headless).
 import { serveDir } from "jsr:@std/http@1/file-server";
 import { bootBrowser, DEVICES } from "./browser-lib.mjs";
 
@@ -103,7 +84,7 @@ const DIST = flag("--dist", "dist");
 const OUT = flag("--out", "dist-eye");
 const only = (flag("--apps", "") || "").split(",").filter(Boolean);
 const light = args.includes("--light");
-const dev = { ...DEVICES.s25ultra, dpr: 2 };   // 2× is plenty for the eye and keeps 71 PNGs under the artifact budget
+const dev = { ...DEVICES.s25ultra, dpr: 2 };
 
 const apps = [];
 for await (const e of Deno.readDir(DIST)) if (e.isDirectory && e.name !== "_rt" && !e.name.startsWith(".")) apps.push(e.name);
@@ -112,26 +93,14 @@ const list = only.length ? apps.filter((a) => only.includes(a)) : apps;
 if (!list.length) { console.error("dist-eye: no apps found under " + DIST); Deno.exit(2); }
 
 const ac = new AbortController();
-// Every same-origin request the page makes comes through THIS server, so a missing built file is measured
-// here — status + path, exact — instead of being inferred from a console line. The console filter below
-// deliberately drops "Failed to load resource" (third-party noise under ?mock), which is precisely how a
-// 404 for the runtime's world-110m.json (bundled path drift) shipped to every deployed globe unseen.
-// Missing built files, keyed by the FIRST path segment — the app id (`/rukh/assets/x.webp`) or `_rt` — so
-// that pages opened in parallel attribute a 404 to the app that asked for it; a runtime miss is everyone's.
 const missingBy = new Map();
 const server = Deno.serve({ port: 0, signal: ac.signal, onListen: () => {} }, async (req) => {
   const res = await serveDir(req, { fsRoot: DIST, quiet: true, headers: ["cache-control: no-store"] });
-  // Scope: BUILT FILES. /feed/* is the edge proxy nginx serves in production — this file server has no
-  // backend, so its 404s here say nothing about dist (dou/hf lit up on exactly that in the dry run).
   const path = new URL(req.url).pathname;
   if (res.status >= 400 && !path.startsWith("/feed")) { const seg = path.split("/")[1] || ""; if (!missingBy.has(seg)) missingBy.set(seg, []); missingBy.get(seg).push(`${res.status} ${path}`); }
   return res;
 });
 const JOBS = Math.max(1, Math.min(8, Number(flag("--jobs", "4")) || 4));
-// One ORIGIN per worker (127.0.0.1 … 127.0.0.8 are all loopback and all distinct origins to Chromium): the
-// parallel pages must not share localStorage — @nanostores/persistent listens to the `storage` events of
-// sibling tabs, and a clear() in one app reset another app's atoms mid-render (vidlunnia: `undefined.trim()`,
-// the first parallel deploy, 2026-09-03). The server binds 0.0.0.0, so every alias reaches it.
 const baseOf = (w) => `http://127.0.0.${1 + (w % 8)}:${server.addr.port}`;
 await Deno.mkdir(OUT, { recursive: true });
 
@@ -139,9 +108,6 @@ const NOISE = /favicon|net::|Failed to load resource|ERR_|status of [45]|CORS|Ac
 const browser = await bootBrowser(dev);
 const rows = [];
 let fails = 0;
-// JOBS pages at once in the ONE Chromium (measured 2026-09-03: 79 apps one after another took 216 s of a
-// 305 s deploy — the pages are static and the machine idles between loads). Each worker takes the next app
-// off the list; rows are reported in list order at the end so the log reads the same as before.
 const byApp = new Map();
 async function runOne(app, w = 0) {
     const base = baseOf(w);
@@ -154,8 +120,6 @@ async function runOne(app, w = 0) {
     missingBy.delete(app);
     try {
       await page.setViewportSize({ width: dev.width, height: dev.height });
-      // "load", not networkidle2: an app that keeps a request in flight under ?mock (hf polls its Spaces) never
-      // goes idle and Astral gives up after 5 retries. The token measurement needs the shell, not a quiet network.
       await page.goto(url, { waitUntil: "load" });
       await new Promise((r) => setTimeout(r, 2000));
       const measure = () => page.evaluate(() => {
@@ -172,9 +136,6 @@ async function runOne(app, w = 0) {
         };
       });
       m = await measure();
-      // A sheet still arriving is a timing race, not a build defect: the same built sonar read "--ms-r missing on
-      // :root" on 2 of 4 deploys (2026-09-05) and passed on the reruns. One more look 2.5 s later decides; a real
-      // drop (the class scanner cutting a token) is missing on BOTH looks.
       if (!m.msR || m.appCss < 50 || !m.surface || !m.booted) { await new Promise((r) => setTimeout(r, 2500)); m = await measure(); }
       const px = parseFloat(m.surface?.radius || "0") || 0;
       if (!m.booted) why.push("did not boot (#app empty)");

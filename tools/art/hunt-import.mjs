@@ -1,23 +1,3 @@
-// Import apps/hunt's art from LuizMelo's CC0 character packs.
-//
-//   deno run -A tools/art/hunt-import.mjs           # → apps/hunt/art.js
-//   deno run -A tools/art/hunt-import.mjs --check   # fail if the committed file is stale
-//   deno run -A tools/art/hunt-import.mjs --preview out.png
-//
-// Unlike brick, this app has COLOUR. brick quantises to five densities of one ink because an LCD
-// has no colour at all; here the art keeps its palette, so the pipeline changes in exactly three
-// places and nowhere else:
-//
-//   · a pixel is a PALETTE INDEX, not a density;
-//   · the light model cannot do index ± 1 — neighbouring palette entries are not neighbouring
-//     shades — so a RAMP is derived from the palette itself and committed alongside it;
-//   · the plate, the ghost, the segment lattice and the polariser are gone. They were the LCD.
-//
-// The frames are trimmed per ANIMATION, not per frame: trimming each frame to its own content box
-// re-centres the character on every step and the walk cycle jitters.
-//
-// LICENCE: LuizMelo's packs are CC0 1.0 — see apps/hunt/assets/NOTICE.md.
-
 import { decodePNG, encodePNG } from "./png.mjs";
 
 const ROOT = new URL("../../", import.meta.url);
@@ -25,8 +5,6 @@ const CACHE = new URL("tools/art/.cache/hunt/", ROOT);
 const OUT = new URL("apps/hunt/art.js", ROOT);
 const PALETTE_SIZE = 32;
 
-/* Which sheet is which pose. The engine's frame numbers are the contract (see game.c build_dl);
-   everything else is animation the renderer cycles through. */
 const SHEETS = {
   hero: { file: "huntress", anims: ["idle", "run", "jump", "fall", "attack", "hit", "dead"] },
   foe:  { file: "hunter",   anims: ["idle", "run", "jump", "fall", "attack", "attacked", "dead"] },
@@ -55,11 +33,10 @@ function boxOf(img) {
   return { x: minx, y: miny, w: maxx - minx + 1, h: maxy - miny + 1 };
 }
 
-// ── the palette, measured from the art ────────────────────────────────────────────────────
 const sheets = {};
 for (const g of Object.values(SHEETS))
   for (const a of g.anims) {
-    try { sheets[`${g.file}_${a}`] = await load(`${g.file}_${a}`); } catch { /* optional pose */ }
+    try { sheets[`${g.file}_${a}`] = await load(`${g.file}_${a}`); } catch { }
   }
 if (!Object.keys(sheets).length) throw new Error(`no sheets in ${CACHE} — see apps/hunt/assets/NOTICE.md for where they come from`);
 
@@ -85,17 +62,12 @@ const indexOf = (r, g, b) => {
   return best;
 };
 
-/* The RAMP. For every palette entry, which entry is its highlight and which is its shade — the one
-   thing the ink model got for free (level ± 1) and colour does not. Derived, not authored: the
-   lighter neighbour is the closest entry that is brighter AND near in hue, so a lit edge on skin
-   stays skin rather than jumping to the nearest bright thing in the picture. */
 function rampFor(i) {
   const c = PAL[i], L = lum(...c);
   let up = i, dn = i, ud = Infinity, dd = Infinity;
   for (let j = 0; j < PAL.length; j++) {
     if (j === i) continue;
     const o = PAL[j], Lo = lum(...o);
-    // hue proximity = colour distance with the brightness difference discounted
     const d = dist2(c, o) - (Lo - L) ** 2 * 0.75;
     if (Lo > L + 8 && d < ud) { ud = d; up = j; }
     if (Lo < L - 8 && d < dd) { dd = d; dn = j; }
@@ -104,15 +76,9 @@ function rampFor(i) {
 }
 const RAMP = PAL.map((_, i) => rampFor(i));
 
-// ── frames ────────────────────────────────────────────────────────────────────────────────
 const TRANSPARENT = 255;
 const b64 = (u8) => { let s = ""; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode(...u8.subarray(i, i + 8192)); return btoa(s); };
 
-/* Run-length, because a trimmed sprite box is still mostly nothing: a figure is thin and its box
-   is as wide as its widest frame. One byte per pixel came to 231 KB of base64 for fourteen
-   animations, against 8.8 KB for the whole of brick — deliverable after gzip, but an unreadable
-   third of a megabyte sitting in a repository people review. Pairs of (value, run), runs capped at
-   255. Decoded in one pass by the atlas. */
 function rle(px) {
   const out = [];
   let i = 0;

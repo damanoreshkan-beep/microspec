@@ -86,20 +86,8 @@
  * - `getUserMedia` probes stop their tracks at once; a `NotAllowedError` is "denied", any other failure "prompt".
  * @module
  */
-// Runtime permissions — ONE registry, TWO backends.
-//
-// A permission is a thing the user grants, not an API: "Notifications" is one row whether it is granted
-// to a browser tab or to our Android shell. So each entry may carry a browser backend, a shell
-// capability, or both, and `permState` reports the gate that is ACTUALLY blocking — a row that says
-// "blocked" when the real answer is "this needs the app" lies to the user.
-//
-// Key browser limitation, unchanged: a permission already "denied" CANNOT be re-prompted from script —
-// the user must change it in browser settings, and we reflect that honestly.
-// Labels are built in (uk/en) rather than per-app i18n because this is cross-cutting.
 import { shell, ERR } from "./shell.js";
 
-// Android permissions this app actually holds, filled from system.info. Until it arrives a shell
-// capability can only be reported as present, which is the lie every tile was telling.
 let HELD = null;
 /**
  * Refresh the map of Android permissions the app actually holds from the shell's system.info.
@@ -118,12 +106,9 @@ async function gum(c) {
 }
 const iosMotion = () => typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function";
 
-// The five groups a long registry has to break into. Radios and system are declared now and fill up as
-// phases 5–8 land capabilities; an empty group renders nothing.
 /** The groups the permission registry renders in, in display order. */
 export const GROUPS = ["sense", "media", "background", "radios", "system"];
 
-// name → { icon, group, capability?, query()?, request()? }
 /** The permission registry: name → `{ icon, group, capability?, query()?, request()? }`. */
 export const PERMISSIONS = {
   geolocation: {
@@ -138,70 +123,70 @@ export const PERMISSIONS = {
   notifications: {
     icon: "lucide:bell",
     group: "background",
-    capability: "notify",          // in the shell this is the bridge's job — WebView has no Notification API
+    capability: "notify",
     query: async () => { try { return (await navigator.permissions.query({ name: "notifications" })).state; } catch { return typeof Notification !== "undefined" ? (Notification.permission === "default" ? "prompt" : Notification.permission) : "unsupported"; } },
     request: async () => { try { const r = await Notification.requestPermission(); return r === "default" ? "prompt" : r; } catch { return "denied"; } },
   },
   alarm: {
     icon: "lucide:alarm-clock",
     group: "background",
-    capability: "alarm",           // shell only: the web has had no local scheduled notification since
-  },                               // Chrome abandoned Notification Triggers
+    capability: "alarm",
+  },
   background: {
     icon: "lucide:activity",
     group: "background",
-    capability: "background",   // shell only: a browser tab stops when the screen does
+    capability: "background",
   },
   backgroundLocation: {
     icon: "lucide:route",
     group: "sense",
-    capability: "location",     // web geolocation dies when the page is backgrounded; this does not
+    capability: "location",
   },
   wifi: {
     icon: "lucide:wifi",
     group: "radios",
-    capability: "wifi",         // no browser exposes nearby networks, on any platform
+    capability: "wifi",
   },
   cell: {
     icon: "lucide:radio-tower",
     group: "radios",
-    capability: "cell",         // nor the cells the radio can see
+    capability: "cell",
   },
   ble: {
     icon: "lucide:bluetooth",
     group: "radios",
-    capability: "ble",          // Web Bluetooth can only open a chooser; it can never enumerate
+    capability: "ble",
   },
   advertise: {
     icon: "lucide:radio",
     group: "radios",
-    capability: "advertise",    // the peripheral role: Web Bluetooth is central-only, so a page can
-  },                            // never be heard by another phone — only listen to one
+    capability: "advertise",
+  },
   mesh: {
     icon: "lucide:share-2",
     group: "radios",
-    capability: "mesh",         // both roles at once, which is what a mesh is: the node scans, connects
-  },                            // AND advertises, so this one row rests on four Android permissions
+    capability: "mesh",
+  },
   usb: {
     icon: "lucide:usb",
     group: "radios",
-    capability: "usb",          // same for WebUSB
+    capability: "usb",
   },
   server: {
     icon: "lucide:server",
     group: "system",
-    capability: "server",       // the phone as a station: a browser can be a client, never a server
+    capability: "server",
   },
   lan: {
     icon: "lucide:network",
     group: "radios",
-    capability: "lan",          // no raw sockets, no ARP, no probing an unknown host — nowhere on the web
+    capability: "lan",
   },
   files: {
     icon: "lucide:folder-open",
     group: "system",
-    capability: "files",        // a browser gets one file at a time and a Downloads dead-drop; this walks
-  },                            // a folder the user granted, and writes back into it
+    capability: "files",
+  },
   motion: {
     icon: "lucide:compass",
     group: "sense",
@@ -238,8 +223,6 @@ export async function permState(name) {
     const why = shell.whyCapability(def.capability);
     if (why === ERR.staleBridge) return { state: "staleApp", via: "shell" };
     if (!why) {
-      // Green means the OS granted everything this capability rests on — not merely that the bridge
-      // carries it. Partial is its own state: some of it works and some of it will refuse.
       const need = shell.androidFor(def.capability);
       if (HELD && need.length) {
         const held = need.filter((p) => HELD[p]);
@@ -248,7 +231,6 @@ export async function permState(name) {
       }
       return { state: "granted", via: "shell" };
     }
-    // The bridge is here but does not carry this capability — fall through to the browser backend.
   }
   if (def.query) return { state: await def.query(), via: "browser" };
   return { state: def.capability ? "needsApp" : "unsupported", via: "" };
@@ -257,9 +239,6 @@ export async function permState(name) {
 /** Trigger the native prompt where one exists. Shell-only permissions have nothing to ask for. */
 export async function permRequest(name) {
   const def = PERMISSIONS[name];
-  // In the shell, ask Android directly for every permission the capability rests on. Before this, wifi
-  // and cell sat refused forever because the permission they needed was only ever requested by a
-  // different tile (geolocation) — or, for READ_PHONE_STATE, by nothing at all.
   if (def?.capability && shell.present && shell.has("system.grant")) {
     let last = "granted";
     for (const p of shell.androidFor(def.capability)) {

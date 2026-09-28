@@ -60,22 +60,8 @@
  * - `countryAt` answers null until `worldReady()`; the ISS tracker polls `worldReady` each second until it is.
  * @module
  */
-// microspec runtime — reusable interactive globe (SYSTEMIC: shared by any tool view).
-//
-// A canvas orthographic Earth (d3-geo, no WebGL → renders in the headless gate too) with country
-// outlines, drag-to-spin, idle auto-rotation and tap-to-select. It is data-agnostic: apps supply what to
-// do with a selection. Two consumers by design:
-//   • globe app  — explore mode: onPick → look a country's facts up by id.
-//   • sun compass — pick mode: onPick → set a target lat/lon so the sun math recomputes for that place.
-//
-// Props: onPick({lat,lon,id,name}) fired on a tap · selected (country id to highlight) · marker ({lat,lon}
-// pin for a chosen location) · focus ({lat,lon} — animate the globe to centre it) · points ([{lat,lon,r,
-// color}] overlay) · spin (idle auto-rotate, default true) · height (max px). The world topology loads
-// once from /_rt/world-110m.json and is cached across every globe on the page.
 import { html } from "htm/preact";
 import { useRef, useEffect, useState } from "preact/hooks";
-// BARE on purpose (the package rule): JSR rejects https imports, so the pins live in deno.json (npm:) for
-// Deno/publish, and each app page's import map (esm.sh) for the browser — the same split preact uses.
 import { geoOrthographic, geoPath, geoGraticule10, geoContains, geoDistance, geoCircle } from "d3-geo";
 import { feature } from "topojson-client";
 import { Pixels } from "./skeleton.js";
@@ -83,16 +69,9 @@ import { Pixels } from "./skeleton.js";
 let LAND = null, LOADING = null;
 async function loadWorld() {
   if (LAND) return;
-  // Resolve against the DOCUMENT, not import.meta.url: the deploy bundles this module into <app>/app.js, so
-  // a module-relative URL asked for /<app>/world-110m.json and 404'd on every deployed globe (2026-08-18) —
-  // while the source-mode gate, which serves /_rt/ as real files, stayed green. "../_rt/" is right in every
-  // layout: source mode serves the app at the origin root ("../" clamps to "/"), dist puts it one level deep,
-  // and a base-path mirror (/microspec/<app>/) keeps its prefix. An absolute "/_rt/…" would break the last.
   if (!LOADING) LOADING = fetch(new URL("../_rt/world-110m.json", document.baseURI)).then((r) => { if (!r.ok) throw new Error(`world-110m.json ${r.status}`); return r.json(); }).then((topo) => { LAND = feature(topo, topo.objects.countries).features; });
   await LOADING;
 }
-// which country a point falls in — {id, name} or null (ocean / topology not loaded yet). Uses the world
-// topology any Globe on the page has already fetched. Systemic: reused e.g. by the ISS tracker.
 /**
  * Look up which country a lat/lon falls in, using the already-loaded world topology.
  * @param lat latitude in degrees
@@ -110,10 +89,7 @@ export function countryAt(lat, lon) {
  */
 export function worldReady() { return !!LAND; }
 
-// Signal-ish palette, theme-aware via the document's data-theme (hardcoded so canvas never depends on
-// oklch var support). Selected country + marker use the accent so they pop on the monochrome map.
 const PALETTE = {
-  // theme.css's bases + the amber pole as the accent (luminous repaint, 2026-08-31): ocean = the page.
   dark:  { ocean: "#000000", land: "#141418", stroke: "#2A2A30", edge: "#3A3A42", grid: "#1B1B21", accent: "#F2B84B", accentInk: "#1A1000" },
   light: { ocean: "#ECEAE3", land: "#F6F4EE", stroke: "#D6D2C8", edge: "#C2BEB3", grid: "#E3DFD4", accent: "#6F4800", accentInk: "#ffffff" },
 };
@@ -144,10 +120,8 @@ export const ringAround = (lat, lon, km) => geoCircle().center([lon, lat]).radiu
  */
 export function Globe({ onPick, selected, marker, focus, points, paths, spin = true, height = 340 }) {
   const wrap = useRef(), canvas = useRef();
-  // start centred on `focus` when it's supplied at mount (e.g. an ISS tracker opens already looking at the
-  // station) — otherwise the default oblique view; a later focus change animates via the fly tween below.
   const S = useRef({ rot: focus ? [-focus.lon, -focus.lat] : [10, -20], drag: null, fly: null, raf: 0, zoom: 1, ptrs: new Map(), pinch: null, pinched: false, lastTap: 0 });
-  const P = useRef({}); P.current = { onPick, selected, marker, points, paths, spin }; // latest props for the loop
+  const P = useRef({}); P.current = { onPick, selected, marker, points, paths, spin };
   const [ready, setReady] = useState(!!LAND);
 
   useEffect(() => { loadWorld().then(() => setReady(true)).catch(() => {}); }, []);
@@ -160,7 +134,6 @@ export function Globe({ onPick, selected, marker, focus, points, paths, spin = t
     const markDirty = () => { dirty = true; };
     S.current.markDirty = markDirty;
 
-    // Size via ResizeObserver (fires initially + on change) — never read clientWidth per-frame (reflow).
     const measure = () => {
       const w = Math.floor(wrap.current?.clientWidth || 0);
       if (w > 0 && w !== size) { size = w; cv.width = size * dpr; cv.height = size * dpr; cv.style.height = size + "px"; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); baseScale = size / 2 - 2; proj.translate([size / 2, size / 2]); dirty = true; }
@@ -168,26 +141,17 @@ export function Globe({ onPick, selected, marker, focus, points, paths, spin = t
 
     const draw = () => {
       const s = S.current, p = P.current, c = pal();
-      proj.scale(baseScale * s.zoom).rotate(s.rot); // pinch/wheel zoom scales the projection about the centre
+      proj.scale(baseScale * s.zoom).rotate(s.rot);
       const path = geoPath(proj, ctx);
       ctx.clearRect(0, 0, size, size);
       ctx.beginPath(); path({ type: "Sphere" }); ctx.fillStyle = c.ocean; ctx.fill();
       ctx.beginPath(); path(geoGraticule10()); ctx.strokeStyle = c.grid; ctx.lineWidth = 0.4; ctx.stroke();
       for (const f of LAND) {
         ctx.beginPath(); path(f);
-        // `p.selected == null` is checked FIRST: without it, a feature that carries no id at all matches
-        // "nothing is selected" through String(undefined) === String(undefined), and Natural Earth's 110m
-        // world has such a feature — Somaliland. Every globe with no selection painted it in the accent, a
-        // country lit up as if chosen (found in hive's lookup sheet, 2026-09-04).
         ctx.fillStyle = p.selected != null && String(f.id) === String(p.selected) ? c.accent : c.land; ctx.fill();
         ctx.strokeStyle = c.stroke; ctx.lineWidth = 0.4; ctx.stroke();
       }
       ctx.beginPath(); path({ type: "Sphere" }); ctx.strokeStyle = c.edge; ctx.lineWidth = 1; ctx.stroke();
-      // PATHS — any GeoJSON geometry, stroked. One prop instead of a prop per shape: a ground track is a
-      // LineString and a band is a circle, and both are "draw this geometry on the sphere". d3's projection
-      // resamples along great circles, so a two-point segment across the Pacific bends the way the flight
-      // does and the antimeridian needs no special case. `dash` is a meaning, not a decoration — the ISS
-      // track is solid where it has been and dashed where it is going.
       if (p.paths) for (const g of p.paths) {
         if (!g || !g.geo) continue;
         ctx.beginPath(); path(g.geo);
@@ -200,15 +164,10 @@ export function Globe({ onPick, selected, marker, focus, points, paths, spin = t
       const center = [-s.rot[0], -s.rot[1]];
       const dot = (lon, lat, r, fill, ring) => { if (geoDistance([lon, lat], center) > Math.PI / 2) return; const xy = proj([lon, lat]); if (!xy) return; ctx.beginPath(); ctx.arc(xy[0], xy[1], r, 0, 2 * Math.PI); ctx.fillStyle = fill; ctx.fill(); if (ring) { ctx.strokeStyle = ring; ctx.lineWidth = 1.5; ctx.stroke(); } };
       if (p.points) for (const pt of p.points) dot(pt.lon, pt.lat, pt.r || 3, pt.color || c.accent);
-      // a point with `pulse:true` gets expanding rings drawn ON the canvas at its projected position — so the
-      // pulse stays anchored to the real lat/lon and moves with rotation/drag (never a fixed DOM overlay).
       if (p.points) { const now = performance.now(); for (const pt of p.points) { if (!pt.pulse || geoDistance([pt.lon, pt.lat], center) > Math.PI / 2) continue; const xy = proj([pt.lon, pt.lat]); if (!xy) continue; for (let i = 0; i < 2; i++) { const ph = ((now / 1800) + i * 0.5) % 1; ctx.beginPath(); ctx.arc(xy[0], xy[1], (pt.r || 3) + 2 + ph * 22, 0, 2 * Math.PI); ctx.strokeStyle = pt.color || c.accent; ctx.globalAlpha = (1 - ph) * 0.5; ctx.lineWidth = 1.6; ctx.stroke(); } ctx.globalAlpha = 1; } }
       if (p.marker) dot(p.marker.lon, p.marker.lat, 5.5, c.accent, c.accentInk);
     };
 
-    // ONE continuous rAF loop (best practice: per-frame updates imperatively, bypassing React). It always
-    // ticks; auto-rotate/drag/fly set `dirty`, and it only redraws when dirty — so idle costs ~nothing but
-    // the animation is guaranteed to run from mount (no "starts only after you touch it").
     const frame = () => {
       if (!alive) return;
       const s = S.current, p = P.current;
@@ -219,15 +178,13 @@ export function Globe({ onPick, selected, marker, focus, points, paths, spin = t
         if (k >= 1) s.fly = null; dirty = true;
       } else if (p.spin && s.ptrs.size === 0 && s.zoom <= 1.05 && p.selected == null && p.marker == null) { s.rot = [s.rot[0] + 0.12, s.rot[1]]; dirty = true; }
       if (s.drag) dirty = true;
-      if (p.points && p.points.some((pt) => pt.pulse)) dirty = true; // keep animating while a point pulses
+      if (p.points && p.points.some((pt) => pt.pulse)) dirty = true;
       if (size && dirty) { draw(); dirty = false; }
       S.current.raf = requestAnimationFrame(frame);
     };
 
     const clampZoom = (z) => Math.max(0.9, Math.min(7, z));
     const pinchDist = () => { const [a, b] = [...S.current.ptrs.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
-    // 1 pointer = drag-rotate; 2 pointers = pinch-zoom (Pointer Events, cached in a Map). touch-action:none
-    // on the canvas hands us the gesture so the page never zooms/scrolls under it.
     const onDown = (e) => {
       const s = S.current; s.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); s.fly = null; cv.setPointerCapture?.(e.pointerId);
       if (s.ptrs.size === 1) { s.drag = { x: e.clientX, y: e.clientY, rot: [...s.rot], moved: 0 }; s.pinched = false; }
@@ -243,25 +200,21 @@ export function Globe({ onPick, selected, marker, focus, points, paths, spin = t
       const s = S.current; if (!s.ptrs.has(e.pointerId)) return;
       s.ptrs.delete(e.pointerId); dirty = true;
       if (s.ptrs.size < 2) s.pinch = null;
-      if (s.ptrs.size === 1) { const pt = [...s.ptrs.values()][0]; s.drag = { x: pt.x, y: pt.y, rot: [...s.rot], moved: 99 }; return; } // finger left after pinch → keep rotating
+      if (s.ptrs.size === 1) { const pt = [...s.ptrs.values()][0]; s.drag = { x: pt.x, y: pt.y, rot: [...s.rot], moved: 99 }; return; }
       if (s.ptrs.size > 0) return;
       const tap = s.drag && s.drag.moved < 6 && !s.pinched; s.drag = null;
       if (!tap) return;
       const now = performance.now();
-      if (now - s.lastTap < 280 && s.zoom > 1.02) { s.zoom = 1; s.lastTap = 0; return; }  // double-tap resets zoom
+      if (now - s.lastTap < 280 && s.zoom > 1.02) { s.zoom = 1; s.lastTap = 0; return; }
       s.lastTap = now;
       if (P.current.onPick) {
         const rect = cv.getBoundingClientRect(), px = e.clientX - rect.left, py = e.clientY - rect.top;
         const ll = proj.invert([px, py]);
-        // hit-test overlay points first: the nearest VISIBLE point within (its radius + 10px) is "tapped".
-        // Systemic — any app with `points` gets tappable markers; the hit point rides along in the payload.
         let hit = null, best = Infinity; const ctr = [-s.rot[0], -s.rot[1]];
         for (const pt of (P.current.points || [])) { if (geoDistance([pt.lon, pt.lat], ctr) > Math.PI / 2) continue; const xy = proj([pt.lon, pt.lat]); if (!xy) continue; const d = Math.hypot(xy[0] - px, xy[1] - py), thr = (pt.r || 3) + 10; if (d <= thr && d < best) { best = d; hit = pt; } }
         if (ll || hit) { const f = ll ? LAND.find((c) => geoContains(c, ll)) : null; P.current.onPick({ lat: ll ? ll[1] : hit.lat, lon: ll ? ll[0] : hit.lon, id: f ? String(f.id) : null, name: f?.properties?.name || null, point: hit }); }
       }
     };
-    // desktop: wheel / trackpad-pinch (ctrlKey) zoom — clamp deltaY so mouse-wheel (±100) and trackpad
-    // (±small) both feel smooth; passive:false so the page doesn't zoom.
     const onWheel = (e) => { e.preventDefault(); const d = Math.max(-10, Math.min(10, e.deltaY)); S.current.zoom = clampZoom(S.current.zoom * Math.exp(-d * 0.012)); dirty = true; };
 
     measure();
@@ -273,13 +226,11 @@ export function Globe({ onPick, selected, marker, focus, points, paths, spin = t
     return () => { alive = false; cancelAnimationFrame(S.current.raf); ro.disconnect(); mo.disconnect(); cv.removeEventListener("pointerdown", onDown); removeEventListener("pointermove", onMove); removeEventListener("pointerup", onUp); removeEventListener("pointercancel", onUp); cv.removeEventListener("wheel", onWheel); };
   }, [ready]);
 
-  // focus prop → animate the globe to centre that lat/lon
   useEffect(() => {
     if (!focus || !S.current.raf) return;
     S.current.fly = { from: [...S.current.rot], to: [-focus.lon, -focus.lat], t0: performance.now() };
     S.current.markDirty?.();
   }, [focus?.lat, focus?.lon]);
-  // any prop change (selected/marker/points) → redraw next frame
   useEffect(() => { S.current.markDirty?.(); });
 
   return html`<div ref=${wrap} class="relative w-full mx-auto select-none" style=${`max-width:${height}px`}>

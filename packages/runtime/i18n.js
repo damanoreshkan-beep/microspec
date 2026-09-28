@@ -70,13 +70,7 @@
  * - Absolute dates are Intl output for `uk-UA` or `en-US` only; other locales share the English date shape.
  * @module
  */
-// microspec runtime — tiny i18n (pure, zero-dependency).
-//
-// The whole UI is translated through T(): no static English in the render layer. A locale dict is a
-// flat { key: string } map; T() interpolates {param} tokens and falls back to the raw key on a miss
-// (so a missing translation shows as a visible key, never a crash or blank).
 
-// T(dict, key, params?) — e.g. T(dict, "saved {n}", { n: 3 }) → "saved 3"
 /**
  * Translate a key through a locale dict, interpolating `{param}` tokens; a missing key returns the key itself.
  * @param dict flat `{ key: string }` locale map (may be undefined)
@@ -90,7 +84,6 @@ export const T = (dict, key, params) => {
   return s;
 };
 
-// Pick the active dict for a locale, falling back to en (the required fallback locale).
 /**
  * Pick the dict for a locale from an app's i18n table, falling back to `en`, then to an empty dict.
  * @param i18n `{ [locale]: dict }`
@@ -99,7 +92,6 @@ export const T = (dict, key, params) => {
  */
 export const dictFor = (i18n, locale) => i18n?.[locale] || i18n?.en || {};
 
-// Built-in runtime strings — chrome shared by EVERY app, so they live here (not each app's i18n dict).
 /** Built-in runtime chrome strings, `{ key: { en, uk } }` — the shell, sheets, share, update, account and APK flows. */
 export const SYS = {
   exit: { en: "Press Back again to exit", uk: "Натисніть «Назад» ще раз, щоб вийти" },
@@ -111,17 +103,11 @@ export const SYS = {
   pairDone: { en: "Signed in — go back to the app.", uk: "Готово — повернись у застосунок." },
   pairFail: { en: "The app did not receive the sign-in — try again from the app.", uk: "Застосунок не отримав вхід — спробуй ще раз із застосунку." },
   signInBody: { en: "AI generation is for signed-in users — so the free quota goes to people, not bots.", uk: "AI-генерація доступна після входу — так безкоштовна квота дістається людям, а не ботам." },
-  // The UI kit's own chrome (a Sheet's close button). Systemic strings live HERE, never in an app dict —
-  // a shared component that demands an i18n key from every app that mounts it is a component that ships
-  // the raw key the first time someone forgets (which is how "profTheme" reached a real screen).
   close: { en: "Close", uk: "Закрити" },
   material: { en: "Theme", uk: "Тема" },
   battery: { en: "Battery", uk: "Батарея" },
   modeDay: { en: "Day", uk: "День" },
   modeNight: { en: "Night", uk: "Ніч" },
-  // Clean screen (S.clean): the runtime's chrome steps off a full-bleed surface. Both halves live here for
-  // the same reason `close` does — the runtime paints the door, so the runtime owns its name; an app that
-  // merely asks for the mode must not have to restate it in two locales.
   clean: { en: "Clean screen", uk: "Чистий екран" },
   cleanExit: { en: "Show controls", uk: "Показати керування" },
   share: { en: "Share app", uk: "Поділитися" },
@@ -136,8 +122,6 @@ export const SYS = {
   updateNow: { en: "Update", uk: "Оновити" },
   later: { en: "Later", uk: "Пізніше" },
   restart: { en: "Restart", uk: "Перезапустити" },
-  // The transport widget's chrome (/_rt/player.js). Same rule as `close`: the component that renders these
-  // labels owns them, so no music app has to restate the word "Play" in two locales to mount a play button.
   aPlay: { en: "Play", uk: "Грати" },
   aPause: { en: "Pause", uk: "Пауза" },
   aStop: { en: "Stop", uk: "Стоп" },
@@ -148,12 +132,8 @@ export const SYS = {
   aShuffle: { en: "Shuffle", uk: "Перемішати" },
   more: { en: "More", uk: "Ще" },
   back: { en: "Back", uk: "Назад" },
-  // The month grid's own two controls (/_rt/calendar.js). Same rule as `close`: the component that paints
-  // a control owns its name, so no app has to restate "previous month" in two locales to mount a calendar.
   calPrev: { en: "Previous month", uk: "Попередній місяць" },
   calNext: { en: "Next month", uk: "Наступний місяць" },
-  // The bell (/_rt/watch.js). An alert is the one thing the farm sells over data anybody can fetch, so its
-  // control is systemic and its words live here — an app opts in with one spec key and restates nothing.
   watchRow: { en: "Tell me when", uk: "Сповісти мене" },
   watchNeedTg: { en: "Alerts arrive in Telegram", uk: "Сповіщення приходять у Telegram" },
   watchSignIn: { en: "Sign in with Telegram", uk: "Увійти через Telegram" },
@@ -169,7 +149,6 @@ export const SYS = {
   watchNoPlace: { en: "Couldn't get your location", uk: "Не вдалося визначити місце" },
   watchTooMany: { en: "That is as many alerts as one account keeps", uk: "Більше сповіщень на один акаунт не можна" },
   watchFailed: { en: "Couldn't save the alert", uk: "Не вдалося зберегти сповіщення" },
-  // Systemic "Download APK" — every app can emit itself as a sideloadable Android APK (edge-signed).
   apkRow: { en: "Download APK", uk: "Завантажити APK" },
   adminRow: { en: "Farm admin", uk: "Адмінка ферми" },
   signOut: { en: "Sign out", uk: "Вийти" },
@@ -194,7 +173,6 @@ export const SYS = {
  */
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 
-// Built-in chrome for the video player (/_rt/video.js) — shared by every video app, so no app duplicates it.
 /** Built-in video-player chrome strings, `{ key: { en, uk } }`. */
 export const MEDIA = {
   player: { en: "Player", uk: "Плеєр" },
@@ -221,10 +199,6 @@ export const MEDIA = {
  */
 export const media = (key, locale) => MEDIA[key]?.[locale] || MEDIA[key]?.en || "";
 
-// Locale-aware absolute+relative timestamp for `format: "when"` (future events — launch countdowns,
-// schedules). Absolute part via Intl (locale month + HH:MM); relative countdown uses the i18n keys
-// whenPast / whenMin({n}) / whenHours({n}) / whenDays({n}). Kept in the runtime so a data.js never bakes
-// a language into a date string. `full:false` omits the relative tail.
 /**
  * Locale-aware absolute + relative label for a future timestamp (`format: "when"`).
  * @param dict the app dict carrying whenPast / whenMin / whenHours / whenDays
@@ -238,12 +212,6 @@ export function whenLabel(dict, ts, locale, full = true, precision) {
   const d = new Date(ts);
   if (isNaN(d)) return "";
   const loc = locale === "uk" ? "uk-UA" : "en-US";
-  // PRECISION — a feed whose dates are estimates must not print them as appointments. Launch Library
-  // answers "sometime in Q4" by handing back the last day of the quarter at 00:00Z, and 27 of the next 40
-  // rocket launches came back that way (measured 2026-09-21): thirteen of them on 31 December. Rendered
-  // through the exact branch below, every one of those reads as a confirmed minute with a countdown to it.
-  // So the caller may say how far the timestamp is actually to be believed, and the label stops one step
-  // short of the lie. Anything unrecognised (and the usual: nothing) keeps the exact reading.
   if (precision === "year") return String(d.getFullYear());
   if (precision === "quarter") return T(dict, "whenQuarter", { n: Math.floor(d.getMonth() / 3) + 1, y: d.getFullYear() });
   if (precision === "month") return d.toLocaleDateString(loc, { month: "long", year: "numeric" });
@@ -259,8 +227,6 @@ export function whenLabel(dict, ts, locale, full = true, precision) {
   return `${abs} · ${rel}`;
 }
 
-// Fine-grained past-relative for live feeds (`format: "since"`) — seconds/minutes granularity, updates as
-// the list re-renders. Needs i18n keys sinceNow / sinceSec({n}) / sinceMin({n}) / sinceHour({n}) / sinceDay({n}).
 /**
  * Fine-grained "x ago" label for live feeds (`format: "since"`), at seconds/minutes granularity.
  * @param dict the app dict carrying sinceNow / sinceSec / sinceMin / sinceHour / sinceDay
@@ -278,8 +244,6 @@ export function sinceLabel(dict, ts, locale) {
   return T(dict, "sinceDay", { n: Math.floor(s / 86400) });
 }
 
-// Locale-aware relative date for card `meta: { field, format: "ago" }`. Needs the i18n keys
-// agoToday / agoYesterday / agoDays({n}) / agoWeeks({n}); older than ~a month falls back to a date.
 /**
  * Coarse relative date for card meta (`format: "ago"`): today / yesterday / days / weeks, then a locale date.
  * @param dict the app dict carrying agoToday / agoYesterday / agoDays / agoWeeks

@@ -1,5 +1,3 @@
-// imagejob.js — the one-result follower: bytes end it, an error names capacity, a superseded run lands nothing.
-// fetch is stubbed per test; one poll costs EVERY (1.5 s), so each case answers on its first poll.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { followOne, startJob } from "../imagejob.js";
 
@@ -51,7 +49,7 @@ Deno.test("startJob: the status maps to the i18n code the view shows", async () 
 });
 
 Deno.test("followOne: a video answer carries its Space through x-video-by", async () => {
-  const mp4 = new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109]);   // ....ftypisom
+  const mp4 = new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109]);
   const got = await withFetch(() => Promise.resolve(new Response(mp4, { headers: { "content-type": "video/mp4", "x-video-by": "Lightricks/LTX-2-3" } })),
     () => followOne({ base: "http://x/feed/video", job: "j2" }));
   assertEquals(got.status, "done");

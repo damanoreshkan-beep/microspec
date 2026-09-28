@@ -142,6 +142,7 @@
     "./authorless": "./packages/gen/authorless.mjs",
     "./build": "./deploy/build.mjs",
     "./caps": "./packages/gates/capabilities.mjs",
+    "./clean": "./tools/clean.mjs",
     "./counts": "./deploy/counts.mjs",
     "./demo": "./tools/demo.mjs",
     "./dist-eye": "./packages/gates/dist-eye.mjs",

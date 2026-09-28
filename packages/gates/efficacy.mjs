@@ -1,4 +1,5 @@
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", b: "\x1b[1m", x: "\x1b[0m" };
+import { APPS } from "../../tools/graph.mjs";
 const ROOT = Deno.cwd();
 const PREFLIGHT = await Deno.stat(`${Deno.cwd()}/.microspec/preflight.mjs`).then(() => `${Deno.cwd()}/.microspec/preflight.mjs`)
   .catch(() => new URL("./preflight.mjs", import.meta.url).href);
@@ -16,14 +17,14 @@ const exists = async (p) => { try { await Deno.stat(p); return true; } catch { r
 
 async function listApps() {
   const out = [];
-  for await (const e of Deno.readDir(`${ROOT}/apps`)) if (e.isDirectory && await exists(`${ROOT}/apps/${e.name}/spec.json`)) out.push(e.name);
+  for await (const e of Deno.readDir(`${ROOT}/${APPS}`)) if (e.isDirectory && await exists(`${ROOT}/${APPS}/${e.name}/spec.json`)) out.push(e.name);
   return out.sort();
 }
 
 async function copyApp(app) {
   const dir = await Deno.makeTempDir({ prefix: `eff_${app}_` });
   const dst = `${dir}/${app}`;
-  const p = new Deno.Command("cp", { args: ["-r", `${ROOT}/apps/${app}`, dst] });
+  const p = new Deno.Command("cp", { args: ["-r", `${ROOT}/${APPS}/${app}`, dst] });
   const { success } = await p.output();
   if (!success) throw new Error(`copy failed for ${app}`);
   return { dir, dst };
@@ -102,7 +103,7 @@ async function run() {
   const gate = flag("--gate") || "preflight";
   let apps = flag("--apps") ? flag("--apps").split(",") : (has("--all") ? await listApps() : SAMPLE);
   const present = [];
-  for (const a of apps) if (await exists(`${ROOT}/apps/${a}/spec.json`)) present.push(a);
+  for (const a of apps) if (await exists(`${ROOT}/${APPS}/${a}/spec.json`)) present.push(a);
   if (!present.length) for (const a of await listApps()) present.push(a);
   if (!present.length) { console.error("efficacy: no apps in this tree — seed one first (deno run -A tools/demo.mjs)"); Deno.exit(1); }
   if (present.length < apps.length) console.log(`efficacy: sample filtered to what this tree holds → ${present.join(", ")}`);
@@ -114,8 +115,8 @@ async function run() {
 
   const trials = [];
   for (const app of apps) {
-    const spec = await readJson(`${ROOT}/apps/${app}/spec.json`);
-    const mode = await exists(`${ROOT}/apps/${app}/view.js`) ? "tool" : await exists(`${ROOT}/apps/${app}/stream.js`) ? "stream" : "data";
+    const spec = await readJson(`${ROOT}/${APPS}/${app}/spec.json`);
+    const mode = await exists(`${ROOT}/${APPS}/${app}/view.js`) ? "tool" : await exists(`${ROOT}/${APPS}/${app}/stream.js`) ? "stream" : "data";
     const ctx = { spec, mode };
 
     const base = await copyApp(app);

@@ -46,13 +46,13 @@
   "lint": {
     "exclude": [
       "dist/",
-      "apps/"
+      ".8n8/"
     ]
   },
   "fmt": {
     "exclude": [
       "dist/",
-      "apps/",
+      ".8n8/",
       "packages/"
     ]
   },

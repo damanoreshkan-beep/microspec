@@ -1,9 +1,6 @@
 node_modules/
 dist/
 dist-compat/
-# the core carries NO apps — the demo the gates run is GENERATED (tools/demo.mjs); the product's apps
-# live in the private DreamStudio repo
-apps/
 states/
 *.log
 .DS_Store
@@ -21,7 +18,8 @@ proxy/
 # (absolute home paths, private-repo references); same reason as .claude/skills/
 AGENTS.md
 .serena/
-# 8n8 run stamps — a green-gates record is about THIS machine and THIS tree, never shared
+# 8n8 run stamps — a green-gates record is about THIS machine and THIS tree, never shared — and the
+# generated demo app the gates run (.8n8/demo, tools/demo.mjs); the product's apps live in DreamStudio
 .8n8/
 
 # sibling repos checked out inside this tree

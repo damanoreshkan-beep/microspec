@@ -19,14 +19,15 @@
  * app — the core carries no apps, gate material is GENERATED").
  *
  * ## Flags and arguments
- * None — it reads the tree it is run in. Everything it decides comes from what exists under `apps/`.
+ * None — it reads the tree it is run in. Everything it decides comes from what exists under the apps root
+ * (`APPS` from `tools/graph.mjs`): `apps/` in a product tree, `.8n8/demo/` in the framework checkout.
  *
  * ## What it checks / produces
- * Three trees, three behaviours, decided by one probe: is there any `apps/<id>/spec.json`?
- * - No `apps/` at all, or no app with a spec (the appless framework checkout, a fresh CI runner): seeds
- *   `apps/books` — `packages/gen/authorless.mjs recipes/books.json` → `packages/gen/scaffold.mjs apps/books`
+ * Three trees, three behaviours, decided by one probe: is there any `<apps root>/<id>/spec.json`?
+ * - No apps root at all, or no app with a spec (the framework checkout, a fresh CI runner): seeds
+ *   `.8n8/demo/books` — `packages/gen/authorless.mjs recipes/books.json` → `packages/gen/scaffold.mjs .8n8/demo/books`
  *   → `deploy/sw.mjs` → `deploy/readme.mjs`, each as a child `deno run -A`, stdout and stderr inherited.
- *   Prints `demo: generated apps/books (authorless → scaffold → sw → readme)`.
+ *   Prints `demo: generated .8n8/demo/books (authorless → scaffold → sw → readme)`.
  * - Apps present and `apps/store` absent (a framework checkout where the demo already exists): the seed is
  *   skipped, but `deploy/sw.mjs` is re-run so the demo's precache stub follows the runtime — a runtime
  *   change moves the demo's import closure, and a stale stub would fail the `sw` gate forever.
@@ -47,17 +48,18 @@
  *
  * ## Why
  * The core carries no apps — the split gave them to the product. Gate material is generated:
- * authorless → scaffold → sw → readme seed `apps/books` when the tree has none; a tree with apps (the
+ * authorless → scaffold → sw → readme seed `.8n8/demo/books` when the checkout has none; a tree with apps (the
  * product) is untouched, so every gate node can depend on this unconditionally.
  * @module
  */
+import { APPS } from "./graph.mjs";
 const has = (p) => { try { Deno.statSync(p); return true; } catch { return false; } };
 let present = false;
 try {
-  for (const e of Deno.readDirSync("apps")) if (e.isDirectory && has(`apps/${e.name}/spec.json`)) { present = true; break; }
+  for (const e of Deno.readDirSync(APPS)) if (e.isDirectory && has(`${APPS}/${e.name}/spec.json`)) { present = true; break; }
 } catch { }
 if (present) {
-  if (!has("apps/store")) {
+  if (!has(`${APPS}/store`)) {
     const { code } = await new Deno.Command("deno", { args: ["run", "-A", "deploy/sw.mjs"], stdout: "inherit", stderr: "inherit" }).output();
     Deno.exit(code);
   }
@@ -70,7 +72,7 @@ const run = async (...args) => {
   if (code) Deno.exit(code);
 };
 await run("packages/gen/authorless.mjs", "recipes/books.json");
-await run("packages/gen/scaffold.mjs", "apps/books");
+await run("packages/gen/scaffold.mjs", `${APPS}/books`);
 await run("deploy/sw.mjs");
 await run("deploy/readme.mjs");
-console.log("demo: generated apps/books (authorless → scaffold → sw → readme)");
+console.log(`demo: generated ${APPS}/books (authorless → scaffold → sw → readme)`);

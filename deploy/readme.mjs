@@ -59,6 +59,7 @@
  * @module
  */
 import { readLocales } from "../packages/gen/compose.mjs";
+import { APPS } from "../tools/graph.mjs";
 
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
 const readJson = async (p) => JSON.parse(await Deno.readTextFile(p));
@@ -128,14 +129,14 @@ responsive, installable and offline by construction. Browse the whole set from t
 }
 
 const apps = [];
-for await (const e of Deno.readDir("apps")) if (e.isDirectory && (await has(`apps/${e.name}/spec.json`))) apps.push(e.name);
+for await (const e of Deno.readDir(APPS)) if (e.isDirectory && (await has(`${APPS}/${e.name}/spec.json`))) apps.push(e.name);
 apps.sort();
 
 const check = Deno.args.includes("--check");
 const stale = [];
 let wrote = 0;
 for (const id of apps) {
-  const dir = `apps/${id}`;
+  const dir = `${APPS}/${id}`;
   const md = await build(dir, id);
   const p = `${dir}/README.md`;
   const cur = (await has(p)) ? await Deno.readTextFile(p) : null;

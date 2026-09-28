@@ -51,7 +51,7 @@
  * Undefined identifiers a zero-build stack would only discover in the browser.
  * @module
  */
-import { importSpecs, resolveSpec } from "./graph.mjs";
+import { APPS, importSpecs, resolveSpec } from "./graph.mjs";
 
 
 const BROWSER = new Set([
@@ -62,10 +62,10 @@ const BROWSER = new Set([
 ]);
 
 const entries = [];
-for await (const e of Deno.readDir("apps")) {
+for await (const e of Deno.readDir(APPS)) {
   if (!e.isDirectory) continue;
   for (const f of ["view.js", "data.js", "stream.js"]) {
-    try { await Deno.stat(`apps/${e.name}/${f}`); entries.push(`apps/${e.name}/${f}`); } catch { }
+    try { await Deno.stat(`${APPS}/${e.name}/${f}`); entries.push(`${APPS}/${e.name}/${f}`); } catch { }
   }
 }
 for (let i = 0; i < entries.length; i++) {

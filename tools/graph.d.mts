@@ -121,5 +121,10 @@ export function isGlobal(f: any, coreSet: any): boolean;
 export function classifyAffected(changed: any, apps: any, coreSet: any): any;
 /** Repo-relative prefix of the core runtime directory in this tree (the framework checkout's own, else the JSR package's). */
 export const RT: "node_modules/@jsr/microspec__core/packages/runtime/" | "packages/runtime/";
+/**
+ * Repo-relative directory that holds the apps: `apps` in a product tree; in the framework checkout (the one
+ * tree that carries `packages/runtime/`) the generated demo fixture, `.8n8/demo`. Served URLs stay `/<id>/`.
+ */
+export const APPS: ".8n8/demo" | "apps";
 /** File names of the product's own domain modules under rt/ — the overlay that shadows the core for those /_rt/ names. */
 export const RT_OVERLAY: Set<any>;

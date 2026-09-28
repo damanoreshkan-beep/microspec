@@ -72,7 +72,7 @@
  * @module
  */
 
-import { buildClosure, htmlAssets, importMapOf, resolveSpec, RT, staticSpecs } from "../tools/graph.mjs";
+import { APPS, buildClosure, htmlAssets, importMapOf, resolveSpec, RT, staticSpecs } from "../tools/graph.mjs";
 
 const read = (f) => { try { return Deno.readTextFileSync(f); } catch { return null; } };
 const exists = (f) => read(f) != null;
@@ -92,7 +92,7 @@ async function hash(s) {
  * @returns the sorted list of URLs to precache, or null when the app has no index.html
  */
 export function manifestFor(id, { read: rd = read } = {}) {
-  const dir = `apps/${id}`;
+  const dir = `${APPS}/${id}`;
   const html = rd(`${dir}/index.html`);
   if (html == null) return null;
   const urls = new Set(["./", "./index.html", "./manifest.json"]);
@@ -164,7 +164,7 @@ export async function stubFor(id) {
 }
 
 if (import.meta.main) {
-  const ids = [...Deno.readDirSync("apps")].filter((e) => e.isDirectory && exists(`apps/${e.name}/spec.json`)).map((e) => e.name).sort();
+  const ids = [...Deno.readDirSync(APPS)].filter((e) => e.isDirectory && exists(`${APPS}/${e.name}/spec.json`)).map((e) => e.name).sort();
   const check = Deno.args.includes("--check");
   const stale = [];
   let written = 0;
@@ -172,7 +172,7 @@ if (import.meta.main) {
   for (const id of ids) {
     const want = await stubFor(id);
     if (!want) { console.warn(`${id}: no index.html — skipped`); continue; }
-    const path = `apps/${id}/sw.js`;
+    const path = `${APPS}/${id}/sw.js`;
     if (read(path) === want) continue;
     if (check) { stale.push(id); continue; }
     Deno.writeTextFileSync(path, want);

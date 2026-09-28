@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { pkgRoot } from "../pkgroot.js";
+import { APPS } from "../../../tools/graph.mjs";
 const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
 const readRender = async () => (await Promise.all(["render", "render-ctx", "list", "profile", "screens", "chrome", "dash"].map((n) => Deno.readTextFile(P(`packages/runtime/${n}.js`))))).join("\n");
 
@@ -90,7 +91,7 @@ Deno.test("motion: no `transition-all` — a transition names the properties it 
     }
   };
   await walk(new URL("packages/", root));
-  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
+  for (const d of [`${APPS}/`, "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
   assertEquals(
     offenders,
     [],
@@ -117,7 +118,7 @@ Deno.test("icons: the farm draws from ONE set (lucide) — a second library is a
     }
   };
   await walk(new URL("packages/", root));
-  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
+  for (const d of [`${APPS}/`, "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
   assertEquals(
     offenders,
     [],
@@ -193,7 +194,7 @@ Deno.test("a11y: muted text is the TOKEN, never an alpha — .text-base-content/
     }
   };
   await walk(new URL("packages/", root));
-  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
+  for (const d of [`${APPS}/`, "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
   assertEquals(
     offenders,
     [],
@@ -514,14 +515,14 @@ Deno.test("PWA chrome colours track the theme bases — the surface no screensho
   };
   const allowed = new Set([baseOf("signal"), baseOf("signal-light")]);
   const bad = [];
-  for await (const e of Deno.readDir(new URL("apps/", root))) {
+  for await (const e of Deno.readDir(new URL(`${APPS}/`, root))) {
     if (!e.isDirectory) continue;
     try {
-      const m = JSON.parse(await Deno.readTextFile(new URL(`apps/${e.name}/manifest.json`, root)));
+      const m = JSON.parse(await Deno.readTextFile(new URL(`${APPS}/${e.name}/manifest.json`, root)));
       for (const k of ["theme_color", "background_color"]) {
         if (m[k] && !allowed.has(m[k].toUpperCase())) bad.push(`${e.name}/manifest.json ${k}=${m[k]}`);
       }
-      const html = await Deno.readTextFile(new URL(`apps/${e.name}/index.html`, root));
+      const html = await Deno.readTextFile(new URL(`${APPS}/${e.name}/index.html`, root));
       const meta = /<meta name="theme-color" content="(#[0-9A-Fa-f]{6})"/.exec(html)?.[1];
       if (meta && !allowed.has(meta.toUpperCase())) bad.push(`${e.name}/index.html meta theme-color=${meta}`);
     } catch { }
@@ -554,10 +555,10 @@ Deno.test(".ms-stage — a fixed stage consumes the chrome contract, and nobody 
   assert(/min\(var\(--dock-w/.test(rule), "the rail clearance must switch itself off when --dock-w is 0 — else every phone is inset");
 
   const offenders = [];
-  for await (const e of Deno.readDir("apps")) {
+  for await (const e of Deno.readDir(APPS)) {
     if (!e.isDirectory) continue;
     let src;
-    try { src = await Deno.readTextFile(`apps/${e.name}/view.js`); } catch { continue; }
+    try { src = await Deno.readTextFile(`${APPS}/${e.name}/view.js`); } catch { continue; }
     if (/bottom:\s*calc\(var\(--dock-h\)/.test(src) || /top:\s*calc\(3\.5rem/.test(src)) offenders.push(e.name);
   }
   assertEquals(offenders, [], `these apps hand-write the chrome geometry instead of using .ms-stage: ${offenders.join(", ")}`);

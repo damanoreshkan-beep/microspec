@@ -1,3 +1,4 @@
+import { APPS } from "../graph.mjs";
 export const NODES = [
   {
     id: "ideate", kind: "agent", phase: "author", needs: [], scope: "farm", frozen: null,
@@ -8,10 +9,10 @@ export const NODES = [
     why: "The long read → apps/<id>/RESEARCH.md. Delegated to Codex; freezing it would mean the farm " +
       "already knows the API it has never met.",
     agent: "codex",
-    produces: (ctx) => [`apps/${ctx.app}/RESEARCH.md`],
+    produces: (ctx) => [`${APPS}/${ctx.app}/RESEARCH.md`],
     brief: (ctx) => `You are a READ-ONLY researcher for the microspec farm (see AGENTS.md). Do not edit any` +
-      ` file except apps/${ctx.app}/RESEARCH.md, which you must write.\n\nTask: ${ctx.task ?? "research this app`s domain"}\n\n` +
-      `Write apps/${ctx.app}/RESEARCH.md as a research note: the concrete recipe the build will follow —` +
+      ` file except ${APPS}/${ctx.app}/RESEARCH.md, which you must write.\n\nTask: ${ctx.task ?? "research this app`s domain"}\n\n` +
+      `Write ${APPS}/${ctx.app}/RESEARCH.md as a research note: the concrete recipe the build will follow —` +
       ` numbers, formulas, idioms, pitfalls. Every load-bearing claim carries its source (a URL, or a path:line` +
       ` in this repo). Label each claim VERIFIED / INFERRED / UNKNOWN. End with an UNVERIFIED section naming` +
       ` what the build must NOT depend on. Numbers, not adjectives. No Chromium on this device.`,
@@ -21,9 +22,9 @@ export const NODES = [
     why: "spec.json — the tab contract. Freezable per FAMILY, not in general: authorless.mjs already " +
       "emits it deterministically for the list family from a recipe.",
     agent: "claude",
-    produces: (ctx) => [`apps/${ctx.app}/spec.json`],
-    brief: (ctx) => `Author apps/${ctx.app}/spec.json for the microspec farm. Read packages/schema/SCHEMA.md` +
-      ` first and obey it exactly; read apps/${ctx.app}/RESEARCH.md if it exists.\n\nApp: ${ctx.task ?? ctx.app}\n\n` +
+    produces: (ctx) => [`${APPS}/${ctx.app}/spec.json`],
+    brief: (ctx) => `Author ${APPS}/${ctx.app}/spec.json for the microspec farm. Read packages/schema/SCHEMA.md` +
+      ` first and obey it exactly; read ${APPS}/${ctx.app}/RESEARCH.md if it exists.\n\nApp: ${ctx.task ?? ctx.app}\n\n` +
       `Write ONLY spec.json. Tab types are list | dashboard | converter | tool | profile. Declare \`needs\`` +
       ` honestly — packages/gates/capabilities.mjs checks it against the code. Do not write any other file.`,
   },
@@ -32,9 +33,9 @@ export const NODES = [
     why: "en + uk, hand-written, no machine translation of UI copy. Partially frozen: authorless.mjs " +
       "carries the BASE dictionary every list app needs, so only app-specific strings are authored.",
     agent: "claude", verify: "validate",
-    produces: (ctx) => [`apps/${ctx.app}/i18n/en.json`, `apps/${ctx.app}/i18n/uk.json`],
-    brief: (ctx) => `Write apps/${ctx.app}/i18n/en.json and apps/${ctx.app}/i18n/uk.json for the microspec` +
-      ` farm. Read apps/${ctx.app}/spec.json — every \`label\`, \`titleKey\` and string key it references must` +
+    produces: (ctx) => [`${APPS}/${ctx.app}/i18n/en.json`, `${APPS}/${ctx.app}/i18n/uk.json`],
+    brief: (ctx) => `Write ${APPS}/${ctx.app}/i18n/en.json and ${APPS}/${ctx.app}/i18n/uk.json for the microspec` +
+      ` farm. Read ${APPS}/${ctx.app}/spec.json — every \`label\`, \`titleKey\` and string key it references must` +
       ` exist in BOTH files, with identical key sets (a parity gate fails otherwise).\n\nRules: no emoji` +
       ` (a gate rejects them). No hand-holding hint text. Ukrainian is authored, never machine-translated` +
       ` from the English. Include the runtime profile/install keys other apps carry.`,
@@ -44,9 +45,9 @@ export const NODES = [
     why: "view.js or data.js. MUST run before scaffold — scaffold picks tool-mode vs data-mode by whether " +
       "view.js exists, and getting that order wrong yields a green preflight over an empty screen.",
     agent: "claude", verify: "noundef",
-    produces: (ctx) => [`apps/${ctx.app}/view.js`],
-    brief: (ctx) => `Write apps/${ctx.app}/view.js for the microspec farm. Read docs/AUTHORING.md and` +
-      ` apps/${ctx.app}/spec.json first; export one function per tab \`view\` named in the spec.\n\n` +
+    produces: (ctx) => [`${APPS}/${ctx.app}/view.js`],
+    brief: (ctx) => `Write ${APPS}/${ctx.app}/view.js for the microspec farm. Read docs/AUTHORING.md and` +
+      ` ${APPS}/${ctx.app}/spec.json first; export one function per tab \`view\` named in the spec.\n\n` +
       `Hard rules: math goes in the runtime, not here — systemic math in packages/runtime/, product-domain` +
       ` math in the product tree's rt/. Runtime imports are /_rt/*.js from an app file.` +
       ` No emoji, no content-less spinners (use /_rt/skeleton.js), no explanatory hint text. Seed a` +
@@ -62,12 +63,12 @@ export const NODES = [
   {
     id: "scaffold", kind: "script", phase: "author", needs: ["view", "i18n"], scope: "app", frozen: "2026-06-18",
     why: "index.html + manifest.json + sw stub + icon.svg. Identical for every app, so it is a function.",
-    run: (ctx) => ["deno", "run", "-A", at("packages/gen/scaffold.mjs"), `apps/${ctx.app}`],
+    run: (ctx) => ["deno", "run", "-A", at("packages/gen/scaffold.mjs"), `${APPS}/${ctx.app}`],
   },
   {
     id: "demo", kind: "script", phase: "author", needs: [], scope: "farm", frozen: "2026-08-31",
     why: "The core carries NO apps (the split: the product owns them). Gate material is GENERATED — " +
-      "authorless → scaffold → sw → readme seed apps/books when the tree has none; a tree with apps " +
+      "authorless → scaffold → sw → readme seed .8n8/demo/books when the checkout has none; a tree with apps " +
       "(the product) is untouched, so every gate node can depend on this unconditionally.",
     run: () => ["deno", "run", "-A", at("tools/demo.mjs")],
   },
@@ -225,11 +226,11 @@ const at = (p) => new URL(`../../${p}`, import.meta.url).href;
 export function globApps(suffix = "") {
   const ids = [];
   let entries = [];
-  try { entries = [...Deno.readDirSync("apps")]; } catch { return ids; }
+  try { entries = [...Deno.readDirSync(APPS)]; } catch { return ids; }
   for (const e of entries) {
     if (!e.isDirectory) continue;
-    try { Deno.statSync(`apps/${e.name}/spec.json`); } catch { continue; }
-    ids.push(suffix ? `apps/${e.name}/${suffix}` : `apps/${e.name}`);
+    try { Deno.statSync(`${APPS}/${e.name}/spec.json`); } catch { continue; }
+    ids.push(suffix ? `${APPS}/${e.name}/${suffix}` : `${APPS}/${e.name}`);
   }
   return ids.sort();
 }

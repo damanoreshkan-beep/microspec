@@ -1,6 +1,7 @@
 import { buildTailwind } from "./tailwind.mjs";
 import { generateAppIcons } from "./icons.mjs";
 import { BOOT_BEACON } from "./boot-beacon.mjs";
+import { APPS } from "../tools/graph.mjs";
 
 const dec = new TextDecoder();
 
@@ -75,7 +76,7 @@ if (import.meta.main) {
   const ROOT = Deno.cwd();
   const id = Deno.args[0] || "store";
   const RT = await Deno.stat(`${ROOT}/rt/index.js`).then(() => `${ROOT}/rt`).catch(() => `${ROOT}/packages/runtime`);
-  const APP = `${ROOT}/apps/${id}`, OUT = `${ROOT}/dist-compat/${id}`;
+  const APP = `${ROOT}/${APPS}/${id}`, OUT = `${ROOT}/dist-compat/${id}`;
   await Deno.mkdir(OUT, { recursive: true });
   for await (const f of Deno.readDir(APP)) {
     if (f.isFile && /\.(json|svg|webp|webmanifest)$/.test(f.name) && !["spec.json", "brand.json", "apps.json"].includes(f.name)) {

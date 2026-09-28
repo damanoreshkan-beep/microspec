@@ -73,6 +73,7 @@
  * @module
  */
 
+import { APPS } from "../../tools/graph.mjs";
 const recipePath = Deno.args[0];
 const check = Deno.args.includes("--check");
 if (!recipePath) { console.error("usage: authorless.mjs <recipe.json> [--check]"); Deno.exit(2); }
@@ -217,7 +218,7 @@ async function brandSvg(icon) {
   return shapes.join("");
 }
 
-const dir = check ? await Deno.makeTempDir({ prefix: `authorless_${R.id}_` }) + `/${R.id}` : `apps/${R.id}`;
+const dir = check ? await Deno.makeTempDir({ prefix: `authorless_${R.id}_` }) + `/${R.id}` : `${APPS}/${R.id}`;
 await Deno.mkdir(`${dir}/i18n`, { recursive: true });
 await Deno.writeTextFile(`${dir}/spec.json`, JSON.stringify(spec, null, 2) + "\n");
 await Deno.writeTextFile(`${dir}/data.js`, data);

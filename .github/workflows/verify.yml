@@ -40,10 +40,12 @@ jobs:
           restore-keys: deno-
       - name: Seed the demo app (the core carries no apps — gate material is GENERATED)
         run: deno run -A tools/demo.mjs
+      - name: Apps root (tools/graph.mjs APPS — .8n8/demo in this checkout)
+        run: echo "APPS_DIR=$(deno eval 'console.log((await import(`file://${Deno.cwd()}/tools/graph.mjs`)).APPS)')" >> "$GITHUB_ENV"
       - name: Runtime unit tests (pure logic, no browser)
         run: deno test -A packages/runtime/runtime_test.js
       - name: Schema contract gate (ajv) over every app spec
-        run: deno run -A packages/schema/validate.mjs apps/*/spec.json
+        run: deno run -A packages/schema/validate.mjs "$APPS_DIR"/*/spec.json
       - name: Runtime files import each other relatively (absolute /_rt/ 404s at a subpath like /microspec/)
         # the tool, not a raw grep: it skips comment lines, and the module docs legitimately show how an APP
         # imports "/_rt/x.js" (a raw grep went red on the docs, 2026-09-01)
@@ -110,6 +112,8 @@ jobs:
           restore-keys: deno-
       - name: Seed the demo app (this checkout carries no apps either)
         run: deno run -A tools/demo.mjs
+      - name: Apps root (tools/graph.mjs APPS)
+        run: echo "APPS_DIR=$(deno eval 'console.log((await import(`file://${Deno.cwd()}/tools/graph.mjs`)).APPS)')" >> "$GITHUB_ENV"
       - name: Verify ${{ matrix.app }}
         # Chrome is preinstalled on the runner (no setup-chrome download) and we run headless (no Xvfb / no
         # apt-get) — that removes ~25s of per-job setup.
@@ -125,13 +129,14 @@ jobs:
         timeout-minutes: 3
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
-        run: deno run -A packages/gates/verify.mjs "$GITHUB_WORKSPACE/apps/${{ matrix.app }}" --shots
+        run: deno run -A packages/gates/verify.mjs "$GITHUB_WORKSPACE/$APPS_DIR/${{ matrix.app }}" --shots
       - name: Upload screenshot
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: shot-${{ matrix.app }}
-          path: apps/${{ matrix.app }}/states/
+          path: ${{ env.APPS_DIR }}/${{ matrix.app }}/states/
+          include-hidden-files: true
           if-no-files-found: warn
 
   # The verify-gate mutation test (expensive Chromium mutation runs) is NOT here — it moved to its own

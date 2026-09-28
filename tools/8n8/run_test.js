@@ -9,6 +9,7 @@
  */
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { NODES, FLOWS, byId, topo, determinism, globApps } from "./nodes.mjs";
+import { APPS } from "../graph.mjs";
 
 Deno.test("every node id is unique", () => {
   const ids = NODES.map((n) => n.id);
@@ -69,7 +70,7 @@ Deno.test("an executable agent node carries a brief, a producer and a verifier",
     assert(["claude", "codex"].includes(n.agent), `${n.id}: unknown agent runner ${n.agent}`);
     const produces = n.produces?.(ctx) ?? [];
     assert(produces.length > 0, `${n.id} is executable but promises no output — nothing could verify it`);
-    for (const p of produces) assert(p.startsWith("apps/demo/"), `${n.id} writes outside its app: ${p}`);
+    for (const p of produces) assert(p.startsWith(`${APPS}/demo/`), `${n.id} writes outside its app: ${p}`);
     if (n.verify) assertEquals(byId(n.verify)?.kind, "script", `${n.id}.verify must name a deterministic node`);
   }
 });

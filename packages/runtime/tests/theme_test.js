@@ -1,6 +1,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { pkgRoot } from "../pkgroot.js";
 const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
+const readRender = async () => (await Promise.all(["render", "render-ctx", "list", "profile", "screens", "chrome", "dash"].map((n) => Deno.readTextFile(P(`packages/runtime/${n}.js`))))).join("\n");
 
 Deno.test("design tokens: theme.css defines the whole --ms-* contract the UI kit consumes", async () => {
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
@@ -21,7 +22,7 @@ Deno.test("design tokens: --ms-hero STEPS with the height ladder", async () => {
   assert(vals.some((v) => v < base * 0.7), `--ms-hero never drops below 70% of its ${base}rem base — it is not compacting`);
   assert(vals.every((v) => v >= 2.5), "a hero below 2.5rem is no longer the screen's one big reading");
 
-  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
+  const render = await readRender();
   const heroLine = render.split("\n").find((l) => l.includes("--ms-hero"));
   assert(heroLine, "render.js no longer reads --ms-hero for the dashboard hero value");
 });
@@ -253,7 +254,7 @@ Deno.test("responsive matrix: the gate sweeps both orientations and the small-ph
 });
 
 Deno.test("dock height is MEASURED, not a constant — nothing may sit under the dock", async () => {
-  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
+  const render = await readRender();
   assert(/ResizeObserver/.test(render) && /setProperty\("--dock-h"/.test(render),
     "the runtime must measure the dock and publish --dock-h; a hand-written constant is wrong the moment the dock's metrics move (and it fails by COVERING content, which no overflow check can see)");
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
@@ -265,7 +266,7 @@ Deno.test("dock height is MEASURED, not a constant — nothing may sit under the
 
 Deno.test("the chrome contract: a measured number may never be overwritten by a declared one", async () => {
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
-  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
+  const render = await readRender();
 
   for (const v of ["--hdr-h", "--dock-h", "--dock-w"]) {
     assert(render.includes(`setProperty("${v}"`), `${v} is not measured — render.js never publishes it`);
@@ -283,7 +284,7 @@ Deno.test("the chrome contract: a measured number may never be overwritten by a 
 });
 
 Deno.test("clean screen: the chrome that unmounts takes its measurements with it, and leaves a door", async () => {
-  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
+  const render = await readRender();
   const index = await Deno.readTextFile(P("packages/runtime/index.js"));
   const store = await Deno.readTextFile(P("packages/runtime/store.js"));
   const i18n = await Deno.readTextFile(P("packages/runtime/i18n.js"));
@@ -368,7 +369,7 @@ Deno.test("watch mode — the dock turns 90°, the side-by-side becomes a pager,
 });
 
 Deno.test("watch mode — the dock's own position is styleable (no inline style can outrank it)", async () => {
-  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
+  const render = await readRender();
   const nav = render.slice(render.indexOf("<nav data-dock"), render.indexOf("</nav>", render.indexOf("<nav data-dock")));
   assert(!/style="[^"]*bottom:/.test(nav), "the dock's `bottom` is an inline style — watch mode cannot move it");
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
@@ -379,7 +380,7 @@ Deno.test("watch mode — the dock's own position is styleable (no inline style 
 Deno.test("the surface system: every interactive node declares a state, and none draws its own shadow", async () => {
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
-  const render = await Deno.readTextFile(P("packages/runtime/render.js"));
+  const render = await readRender();
 
   for (const [name, src] of [["ui.js", ui], ["render.js", render]]) {
     const lits = [...src.matchAll(/shadow-\[[^\]]+\]|shadow-(?:sm|md|lg|xl|2xl)\b/g)].map((m) => m[0]);
@@ -529,7 +530,7 @@ Deno.test("PWA chrome colours track the theme bases — the surface no screensho
 });
 
 Deno.test("material: a SURFACE is extruded, never a fill with a line drawn round it", async () => {
-  const src = await Deno.readTextFile(P("packages/runtime/render.js"));
+  const src = await readRender();
   const surfaces = src.match(/card[^"'`]*border border-base-\d+/g) || [];
   assertEquals(surfaces, [], "a card is declaring a border instead of `sf-raised` — depth is the shadow pair, not a line");
   const wells = src.match(/aspect-(video|square)[^"'`]*border border-base-\d+/g) || [];

@@ -44,6 +44,10 @@
  * - a CLI script's shebang is dropped (behind the module doc it is no longer line 1 and Deno refuses the
  *   file); a classic script that exports nothing (sw-core.js under `importScripts`) becomes `export {};`
  *   instead of thirty global phantom symbols — decided on tsc's OUTPUT, not the source text;
+ * - a relative re-export (`export { a } from "./x.js"`), which `noResolve` elides whenever `./x.js` is not in
+ *   the program or has a `.d.ts` beside it, is put back: kept as the line when `x.js` is an entrypoint, and
+ *   replaced by x's own emitted declarations (JSDoc kept, plus any local type they name) when it is an internal
+ *   module — so render.js keeps its surface after the split into render-ctx/list/profile/screens/chrome/dash;
  * - the module doc block, the one thing declaration emit drops, is copied in front, where JSR reads it.
  *
  * Written next to each entrypoint: `<entry>.d.ts` for a `.js` file, `<entry>.d.mts` for a `.mjs` file —
@@ -63,7 +67,7 @@
  * - `✗ deno doc failed: <first line of stderr>`.
  * - `✗ <n> exported symbol(s) without a JSDoc:` and the list, `file: Name` or `file: Namespace.member` — the
  *   documentation score counted the way the registry counts (`deno doc --json` over the entrypoints,
- *   namespace members included). It read 67% while every export in the source carried a JSDoc: the loss was
+ *   namespace members included; a re-export of another entrypoint's symbol counts as documented there). It read 67% while every export in the source carried a JSDoc: the loss was
  *   in the emit, so the number is measured HERE, on the declarations.
  *
  * Green under `--check`: `✓ <n> declaration files current, type-checked, <total>/<total> symbols documented`.
@@ -99,10 +103,25 @@ const ts = (await import("npm:typescript@5.6.3")).default;
 const root = Deno.cwd();
 const outFor = (src) => src.endsWith(".mjs") ? src.slice(0, -4) + ".d.mts" : src.slice(0, -3) + ".d.ts";
 
+const reexportsOf = (entry, src) => {
+  const sf = ts.createSourceFile(entry, src, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
+  const dir = entry.slice(0, entry.lastIndexOf("/") + 1);
+  return sf.statements.filter((s) => ts.isExportDeclaration(s) && !s.isTypeOnly && s.moduleSpecifier && ts.isStringLiteral(s.moduleSpecifier)
+    && s.moduleSpecifier.text.startsWith("./") && s.exportClause && ts.isNamedExports(s.exportClause))
+    .map((s) => ({
+      text: s.getText(sf), spec: s.moduleSpecifier.text, target: dir + s.moduleSpecifier.text.slice(2),
+      names: s.exportClause.elements.map((el) => ({ name: el.name.text, local: (el.propertyName ?? el.name).text })),
+    }));
+};
+const sources = Object.fromEntries(await Promise.all(entries.map(async (e) => [e, await Deno.readTextFile(`${root}/${e}`)])));
+const reexports = Object.fromEntries(entries.map((e) => [e, reexportsOf(e, sources[e])]));
+const inner = [...new Set(Object.values(reexports).flat().map((r) => r.target).filter((t) => !entries.includes(t)))].sort();
+for (const t of inner) sources[t] = await Deno.readTextFile(`${root}/${t}`);
+
 const emitted = {};
 const host = ts.createCompilerHost({});
 host.writeFile = (name, text) => { emitted[name] = text; };
-const program = ts.createProgram(entries.map((e) => `${root}/${e}`), {
+const program = ts.createProgram([...entries, ...inner].map((e) => `${root}/${e}`), {
   allowJs: true, declaration: true, emitDeclarationOnly: true, skipLibCheck: true, noResolve: true,
   target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
   lib: ["lib.es2022.d.ts"],
@@ -196,15 +215,74 @@ const rewrite = (text, fileName, src) => {
 
 const moduleDoc = (src) => /^(?:#!.*\n)?\s*(?:\/\*[^*][\s\S]*?\*\/\s*)?(\/\*\*[\s\S]*?@module[\s\S]*?\*\/)/.exec(src)?.[1] ?? null;
 
+const topName = (s) => declName(s) ?? ((ts.isInterfaceDeclaration(s) || ts.isTypeAliasDeclaration(s)) ? s.name.text : null);
+const innerDecls = {};
+const declsOf = (target) => innerDecls[target] ??= (() => {
+  const body = emitted[`${root}/.dts-out/${outFor(target)}`];
+  if (body == null) throw new Error(`dts: tsc emitted no declaration for ${target}, re-exported by an entrypoint`);
+  const text = rewrite(body, outFor(target), sources[target]);
+  const sf = ts.createSourceFile(outFor(target), text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const top = new Map();
+  for (const s of sf.statements) {
+    if (ts.isImportDeclaration(s)) for (const n of s.importClause?.namedBindings?.elements ?? []) top.set(n.name.text, [{ s, imported: true }]);
+    const n = topName(s);
+    if (n) top.set(n, [...(top.get(n) ?? []), { s }]);
+  }
+  return { text, top };
+})();
+const inlineReexports = (printed, entry) => {
+  const sf = ts.createSourceFile(outFor(entry), printed, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const own = new Set(sf.statements.map(topName).filter(Boolean));
+  let out = printed;
+  const tail = [];
+  const edits = [];
+  for (const r of reexports[entry]) {
+    const kept = sf.statements.find((s) => ts.isExportDeclaration(s) && s.moduleSpecifier && ts.isStringLiteral(s.moduleSpecifier) && s.moduleSpecifier.text === r.spec);
+    if (entries.includes(r.target)) { if (!kept) tail.push(r.text); continue; }
+    const { text, top } = declsOf(r.target);
+    const chunks = [], seen = new Set();
+    const pull = (name, as, exported) => {
+      if (seen.has(name)) return;
+      seen.add(name);
+      const decls = top.get(name);
+      if (!decls) throw new Error(`dts: ${r.target} declares no ${name} (re-exported by ${entry})`);
+      for (const { s, imported } of decls) {
+        if (imported) throw new Error(`dts: ${name}, needed by a symbol ${entry} re-exports from ${r.target}, is imported there — cannot inline it`);
+        let t = text.slice(s.getFullStart(), s.end).replace(/^\n+/, "");
+        const id = ts.isVariableStatement(s) ? s.declarationList.declarations[0].name : s.name;
+        const at = id.getStart() - s.getFullStart() - (text.slice(s.getFullStart(), s.end).length - t.length);
+        if (as !== name) t = t.slice(0, at) + as + t.slice(at + name.length);
+        if (!exported && hasExport(s)) t = t.replace(/^((?:\/\*\*[\s\S]*?\*\/\s*)?)export /, "$1");
+        if (!exported && own.has(as)) throw new Error(`dts: ${as} from ${r.target} collides with a declaration of ${entry}`);
+        chunks.push(t);
+        const refs = new Set();
+        const head = (e) => ts.isQualifiedName(e) ? head(e.left) : ts.isPropertyAccessExpression(e) ? head(e.expression) : e;
+        const visit = (n) => {
+          const e = ts.isTypeReferenceNode(n) ? n.typeName : ts.isTypeQueryNode(n) ? n.exprName : ts.isExpressionWithTypeArguments(n) ? n.expression : null;
+          if (e && ts.isIdentifier(head(e))) refs.add(head(e).text);
+          ts.forEachChild(n, visit);
+        };
+        ts.forEachChild(s, visit);
+        for (const ref of refs) if (top.has(ref) && !r.names.some((x) => x.local === ref)) pull(ref, ref, false);
+      }
+    };
+    for (const { name, local } of r.names) pull(local, name, true);
+    if (kept) edits.push([kept.getFullStart(), kept.end, "\n" + chunks.join("\n")]);
+    else tail.push(chunks.join("\n"));
+  }
+  for (const [a, b, t] of edits.sort((x, y) => y[0] - x[0])) out = out.slice(0, a) + t + out.slice(b);
+  return tail.length ? out.replace(/\n*$/, "\n") + tail.join("\n") + "\n" : out;
+};
+
 let stale = 0, written = 0;
 for (const entry of entries) {
-  const src = await Deno.readTextFile(`${root}/${entry}`);
+  const src = sources[entry];
   const key = `${root}/.dts-out/${outFor(entry)}`;
   let body = emitted[key];
   if (body == null) { console.error(`  ✗ ${entry}: tsc emitted no declaration`); stale++; continue; }
   if (body.startsWith("#!")) body = body.slice(body.indexOf("\n") + 1);
   const isModule = /^\s*export\b/m.test(body);
-  body = isModule ? rewrite(body, outFor(entry), src) : "export {};\n";
+  body = isModule ? inlineReexports(rewrite(body, outFor(entry), src), entry) : "export {};\n";
   const doc = moduleDoc(src);
   const text = `${doc ? doc + "\n" : ""}// GENERATED by tools/dts.mjs from ${entry} — edit the JSDoc there, never this file.\n${body}`;
   const out = `${root}/${outFor(entry)}`;
@@ -227,7 +305,8 @@ if (check) {
   const walk = (symbols, file, prefix) => {
     for (const s of symbols) {
       total++;
-      if (!s.declarations.some((d) => d.jsDoc && (d.jsDoc.doc || d.jsDoc.tags?.length))) gaps.push(`${file}: ${prefix}${s.name}`);
+      const home = (d) => d.kind === "reference" && own.has(d.def?.target?.filename);
+      if (!s.declarations.some((d) => home(d) || (d.jsDoc && (d.jsDoc.doc || d.jsDoc.tags?.length)))) gaps.push(`${file}: ${prefix}${s.name}`);
       for (const d of s.declarations) if (d.kind === "namespace" && d.def?.elements) walk(d.def.elements, file, `${prefix}${s.name}.`);
     }
   };

@@ -61,9 +61,10 @@
  * @module
  */
 import { makeHandler } from "./serve-handler.mjs";
+import { APPS } from "../../tools/graph.mjs";
 
 const arg = (k, d) => { const i = Deno.args.indexOf(k); return i >= 0 && Deno.args[i + 1] ? Deno.args[i + 1] : d; };
-const root = arg("--root", "apps");
+const root = arg("--root", APPS);
 const port = Number(arg("--port", "8790")) || 8790;
 const host = arg("--host", "127.0.0.1");
 

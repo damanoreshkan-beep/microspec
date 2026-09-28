@@ -59,13 +59,14 @@
  * all at the same time.
  * @module
  */
+import { APPS } from "../tools/graph.mjs";
 const ROOT = Deno.cwd();
 const check = Deno.args.includes("--check");
 
-const catalog = await Deno.readTextFile(`${ROOT}/apps/store/apps.json`).then(JSON.parse).catch(() => null);
+const catalog = await Deno.readTextFile(`${ROOT}/${APPS}/store/apps.json`).then(JSON.parse).catch(() => null);
 const N = catalog
   ? (Array.isArray(catalog) ? catalog.length : Object.keys(catalog).length)
-  : (() => { try { return [...Deno.readDirSync(`${ROOT}/apps`)].filter((e) => { try { Deno.statSync(`${ROOT}/apps/${e.name}/spec.json`); return true; } catch { return false; } }).length; } catch { return 0; } })();
+  : (() => { try { return [...Deno.readDirSync(`${ROOT}/${APPS}`)].filter((e) => { try { Deno.statSync(`${ROOT}/${APPS}/${e.name}/spec.json`); return true; } catch { return false; } }).length; } catch { return 0; } })();
 
 const defaultRules = [
   ["README.md", /(live-)(\d+)(%20apps)/g, N],

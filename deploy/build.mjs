@@ -75,6 +75,7 @@ import { generateAppIcons } from "./icons.mjs";
 import { renderOgCard, metaBlock, injectMeta, previewGaps, SITE_NAME } from "./og.mjs";
 import { buildManifest } from "./manifest.mjs";
 import { buildAppCompat } from "./build-app.mjs";
+import { APPS } from "../tools/graph.mjs";
 
 const OUT = "dist";
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
@@ -126,7 +127,7 @@ async function assertInstallable(outDir, id) {
 await Deno.remove(OUT, { recursive: true }).catch(() => {});
 await Deno.mkdir(`${OUT}/_rt`, { recursive: true });
 
-if (await has("apps/store")) await Deno.writeTextFile("apps/store/apps.json", JSON.stringify(await buildManifest(), null, 2) + "\n");
+if (await has(`${APPS}/store`)) await Deno.writeTextFile(`${APPS}/store/apps.json`, JSON.stringify(await buildManifest(), null, 2) + "\n");
 
 async function gitCount(path) {
   try { const { stdout, success } = await new Deno.Command("git", { args: ["rev-list", "--count", "HEAD", "--", path], stdout: "piped", stderr: "null" }).output(); return success ? (parseInt(new TextDecoder().decode(stdout).trim(), 10) || 0) : 0; } catch { return 0; }
@@ -151,47 +152,47 @@ if (RT_OVERLAY) {
 const ids = [];
 const skipped = [];
 const previews = new Map();
-for await (const a of Deno.readDir("apps")) {
-  if (!a.isDirectory || !(await has(`apps/${a.name}/spec.json`))) continue;
+for await (const a of Deno.readDir(APPS)) {
+  if (!a.isDirectory || !(await has(`${APPS}/${a.name}/spec.json`))) continue;
   const outDir = `${OUT}/${a.name}`;
   const rt = (s) => s.replaceAll("/_rt/", "../_rt/");
   await Deno.mkdir(outDir, { recursive: true });
-  const appVer = "1." + (await gitCount(`apps/${a.name}`));
-  for await (const f of Deno.readDir(`apps/${a.name}`)) {
+  const appVer = "1." + (await gitCount(`${APPS}/${a.name}`));
+  for await (const f of Deno.readDir(`${APPS}/${a.name}`)) {
     if (!f.isFile || f.name === "e2e.spec.mjs" || /\.(md|bak\.[a-z]+\.js)$/.test(f.name)) continue;
     if (/\.(html|js|css|json|svg|png|webp|webmanifest|wgsl|frag)$/.test(f.name)) {
       if (f.name === "spec.json") {
-        const spec = JSON.parse(await Deno.readTextFile(`apps/${a.name}/spec.json`));
+        const spec = JSON.parse(await Deno.readTextFile(`${APPS}/${a.name}/spec.json`));
         if (!spec.version) spec.version = appVer;
         await Deno.writeTextFile(`${outDir}/spec.json`, rt(JSON.stringify(spec, null, 2) + "\n"));
       } else if (/\.(html|js|json)$/.test(f.name)) {
-        await Deno.writeTextFile(`${outDir}/${f.name}`, rt(await Deno.readTextFile(`apps/${a.name}/${f.name}`)));
+        await Deno.writeTextFile(`${outDir}/${f.name}`, rt(await Deno.readTextFile(`${APPS}/${a.name}/${f.name}`)));
       } else {
-        await Deno.copyFile(`apps/${a.name}/${f.name}`, `${outDir}/${f.name}`);
+        await Deno.copyFile(`${APPS}/${a.name}/${f.name}`, `${outDir}/${f.name}`);
       }
     } else {
       skipped.push(`${a.name}/${f.name}`);
     }
   }
-  if (await has(`apps/${a.name}/i18n`)) {
+  if (await has(`${APPS}/${a.name}/i18n`)) {
     await Deno.mkdir(`${outDir}/i18n`, { recursive: true });
-    for await (const lf of Deno.readDir(`apps/${a.name}/i18n`)) {
-      if (lf.isFile && lf.name.endsWith(".json")) await Deno.copyFile(`apps/${a.name}/i18n/${lf.name}`, `${outDir}/i18n/${lf.name}`);
+    for await (const lf of Deno.readDir(`${APPS}/${a.name}/i18n`)) {
+      if (lf.isFile && lf.name.endsWith(".json")) await Deno.copyFile(`${APPS}/${a.name}/i18n/${lf.name}`, `${outDir}/i18n/${lf.name}`);
     }
   }
-  if (await has(`apps/${a.name}/assets`)) {
+  if (await has(`${APPS}/${a.name}/assets`)) {
     await Deno.mkdir(`${outDir}/assets`, { recursive: true });
-    for await (const af of Deno.readDir(`apps/${a.name}/assets`)) {
-      if (af.isFile) await Deno.copyFile(`apps/${a.name}/assets/${af.name}`, `${outDir}/assets/${af.name}`);
+    for await (const af of Deno.readDir(`${APPS}/${a.name}/assets`)) {
+      if (af.isFile) await Deno.copyFile(`${APPS}/${a.name}/assets/${af.name}`, `${outDir}/assets/${af.name}`);
     }
   }
   {
-    if (!(await has(`apps/${a.name}/brand.svg`))) throw new Error(`apps/${a.name}/brand.svg is missing — no PNG icons would be generated and the app would not be installable`);
-    const brand = (await has(`apps/${a.name}/brand.json`)) ? JSON.parse(await Deno.readTextFile(`apps/${a.name}/brand.json`)) : { bg: "#1f2430", fg: "#a78bfa" };
-    const paths = (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim();
-    const master = (await has(`apps/${a.name}/icon.webp`)) ? await Deno.readFile(`apps/${a.name}/icon.webp`) : null;
+    if (!(await has(`${APPS}/${a.name}/brand.svg`))) throw new Error(`${APPS}/${a.name}/brand.svg is missing — no PNG icons would be generated and the app would not be installable`);
+    const brand = (await has(`${APPS}/${a.name}/brand.json`)) ? JSON.parse(await Deno.readTextFile(`${APPS}/${a.name}/brand.json`)) : { bg: "#1f2430", fg: "#a78bfa" };
+    const paths = (await Deno.readTextFile(`${APPS}/${a.name}/brand.svg`)).trim();
+    const master = (await has(`${APPS}/${a.name}/icon.webp`)) ? await Deno.readFile(`${APPS}/${a.name}/icon.webp`) : null;
     await generateAppIcons(`${outDir}/icons`, brand, paths, master);
-    const uk = JSON.parse(await Deno.readTextFile(`apps/${a.name}/i18n/uk.json`));
+    const uk = JSON.parse(await Deno.readTextFile(`${APPS}/${a.name}/i18n/uk.json`));
     const title = uk.title || a.name, tagline = uk.profTagline || uk.heroBody || "";
     await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline, master }));
     previews.set(a.name, { title, description: tagline || `${title} — ${SITE_NAME}` });
@@ -209,7 +210,7 @@ for (const dir of [RTSRC, RT_OVERLAY].filter(Boolean)) {
 }
 const compatFails = [];
 for (const id of ids) {
-  try { await buildAppCompat({ srcDir: `apps/${id}`, outDir: `${OUT}/${id}`, rtDir: RT_ABS, sharedSources }); }
+  try { await buildAppCompat({ srcDir: `${APPS}/${id}`, outDir: `${OUT}/${id}`, rtDir: RT_ABS, sharedSources }); }
   catch (e) { compatFails.push(`${id}: ${String(e.message).split("\n")[0]}`); }
 }
 if (compatFails.length) throw new Error(`compat build failed for ${compatFails.length}/${ids.length} app(s):\n  ${compatFails.join("\n  ")}`);
@@ -233,8 +234,8 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
   for (const c of await self.clients.matchAll({ type: "window" })) c.navigate(c.url).catch(() => {});
 })());
 `);
-if (await has("apps/store")) {
-  const storeUk = JSON.parse(await Deno.readTextFile("apps/store/i18n/uk.json"));
+if (await has(`${APPS}/store`)) {
+  const storeUk = JSON.parse(await Deno.readTextFile(`${APPS}/store/i18n/uk.json`));
   const rootHtml = injectMeta(`<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>${storeUk.title || "microspec"}</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><script>location.replace("./store/"+location.search+location.hash)</script></head><body style="background:#0a0a0b"></body></html>\n`, metaBlock({ path: "/", title: storeUk.title || "microspec", description: storeUk.profTagline || "", image: "/store/og.png" }));
   await Deno.writeTextFile(`${OUT}/index.html`, rootHtml);
 } else {

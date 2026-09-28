@@ -59,7 +59,7 @@
  * @module
  */
 
-import { buildClosure, classifyAffected, RT } from "./graph.mjs";
+import { APPS, buildClosure, classifyAffected, RT } from "./graph.mjs";
 
 const read = (f) => {
   try {
@@ -72,18 +72,18 @@ const read = (f) => {
 function allApps() {
   const ids = [];
   try {
-    for (const e of Deno.readDirSync("apps")) {
+    for (const e of Deno.readDirSync(APPS)) {
       if (!e.isDirectory) continue;
       if (
-        read(`apps/${e.name}/spec.json`) != null &&
-        read(`apps/${e.name}/e2e.spec.mjs`) != null
+        read(`${APPS}/${e.name}/spec.json`) != null &&
+        read(`${APPS}/${e.name}/e2e.spec.mjs`) != null
       ) ids.push(e.name);
     }
   } catch { }
   return ids.sort();
 }
 const appEntry = (id) =>
-  ["view.js", "data.js"].map((c) => `apps/${id}/${c}`).find((p) =>
+  ["view.js", "data.js"].map((c) => `${APPS}/${id}/${c}`).find((p) =>
     read(p) != null
   ) || null;
 
@@ -120,7 +120,7 @@ if (Deno.args.includes("--all") || changed === null) {
     const e = appEntry(id);
     return {
       id,
-      closure: e ? buildClosure(e, read) : new Set([`apps/${id}/`]),
+      closure: e ? buildClosure(e, read) : new Set([`${APPS}/${id}/`]),
     };
   });
   affected = classifyAffected(changed, apps, core);

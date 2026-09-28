@@ -55,6 +55,7 @@
  * @module
  */
 import { readLocales } from "../packages/gen/compose.mjs";
+import { APPS } from "../tools/graph.mjs";
 
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
 const readJson = async (p) => JSON.parse(await Deno.readTextFile(p));
@@ -68,24 +69,24 @@ async function gitCount(path) {
  */
 export async function buildManifest() {
   const apps = [];
-  for await (const a of Deno.readDir("apps")) {
-    if (!a.isDirectory || a.name === "store" || !(await has(`apps/${a.name}/spec.json`))) continue;
-    const spec = await readJson(`apps/${a.name}/spec.json`);
+  for await (const a of Deno.readDir(APPS)) {
+    if (!a.isDirectory || a.name === "store" || !(await has(`${APPS}/${a.name}/spec.json`))) continue;
+    const spec = await readJson(`${APPS}/${a.name}/spec.json`);
     if (spec.hidden) continue;
-    const i18n = await readLocales(`apps/${a.name}`);
+    const i18n = await readLocales(`${APPS}/${a.name}`);
     const d = i18n.uk || i18n.en || {};
     const byLocale = (key) => Object.fromEntries(
       Object.entries(i18n).map(([l, dict]) => [l, dict?.[key]]).filter(([, v]) => v),
     );
-    const brand = (await has(`apps/${a.name}/brand.json`)) ? await readJson(`apps/${a.name}/brand.json`) : { bg: "#1f2430", fg: "#a78bfa" };
-    const art = (await has(`apps/${a.name}/brand.svg`)) ? (await Deno.readTextFile(`apps/${a.name}/brand.svg`)).trim() : "";
-    const icon = await has(`apps/${a.name}/icon.webp`);
+    const brand = (await has(`${APPS}/${a.name}/brand.json`)) ? await readJson(`${APPS}/${a.name}/brand.json`) : { bg: "#1f2430", fg: "#a78bfa" };
+    const art = (await has(`${APPS}/${a.name}/brand.svg`)) ? (await Deno.readTextFile(`${APPS}/${a.name}/brand.svg`)).trim() : "";
+    const icon = await has(`${APPS}/${a.name}/icon.webp`);
     const tabs = (spec.tabs ?? []).filter((t) => t.type !== "profile");
     const screens = Object.fromEntries(
       Object.entries(i18n).map(([l, dict]) => [l, tabs.map((t) => (t.label && dict?.[t.label]) || (t.titleKey && dict?.[t.titleKey]) || null).filter(Boolean)]).filter(([, v]) => v.length),
     );
     const shots = [];
-    for (const tb of tabs) if (await has(`apps/store/assets/shot-${a.name}--${tb.id}.webp`)) shots.push(tb.id);
+    for (const tb of tabs) if (await has(`${APPS}/store/assets/shot-${a.name}--${tb.id}.webp`)) shots.push(tb.id);
     apps.push({
       id: a.name,
       title: d.title || a.name,
@@ -100,7 +101,7 @@ export async function buildManifest() {
       bg: brand.bg,
       fg: brand.fg,
       href: `./${a.name}/`,
-      version: spec.version || ("1." + (await gitCount(`apps/${a.name}`))),
+      version: spec.version || ("1." + (await gitCount(`${APPS}/${a.name}`))),
       category: spec.category || "feeds",
       needs: [...new Set((spec.tabs ?? []).flatMap((t) => t.needs ?? []))].sort(),
       ...(spec.deviceNote ? { deviceNote: spec.deviceNote } : {}),
@@ -113,6 +114,6 @@ export async function buildManifest() {
 
 if (import.meta.main) {
   const apps = await buildManifest();
-  await Deno.writeTextFile("apps/store/apps.json", JSON.stringify(apps, null, 2) + "\n");
-  console.log(`manifest: ${apps.length} apps → apps/store/apps.json (${apps.map((a) => a.id).join(", ")})`);
+  await Deno.writeTextFile(`${APPS}/store/apps.json`, JSON.stringify(apps, null, 2) + "\n");
+  console.log(`manifest: ${apps.length} apps → ${APPS}/store/apps.json (${apps.map((a) => a.id).join(", ")})`);
 }

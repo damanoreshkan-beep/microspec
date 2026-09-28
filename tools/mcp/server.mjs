@@ -1,4 +1,5 @@
 import { pkgRoot } from "../../packages/runtime/pkgroot.js";
+import { APPS } from "../graph.mjs";
 const ROOT = pkgRoot(import.meta.url, 2);
 const PROTOCOL = "2025-06-18";
 const SUPPORTED = new Set([PROTOCOL, "2025-03-26", "2024-11-05"]);
@@ -88,7 +89,7 @@ async function callTool(name, args) {
 
   if (name === "scaffold_app") {
     const dir = String(args?.dir ?? "").replace(/\/+$/, "");
-    if (!/^apps\/[a-z0-9-]+$/.test(dir)) throw new Error(`dir must look like apps/<id> (lowercase, digits, hyphens) — got ${JSON.stringify(args?.dir)}`);
+    if (!dir.startsWith(`${APPS}/`) || !/^[a-z0-9-]+$/.test(dir.slice(APPS.length + 1))) throw new Error(`dir must look like ${APPS}/<id> (lowercase, digits, hyphens) — got ${JSON.stringify(args?.dir)}`);
     const cmd = new Deno.Command("deno", {
       args: ["run", "-A", "packages/gen/scaffold.mjs", dir, ...(args?.force ? ["--force"] : [])],
       cwd: new URL(".", ROOT).pathname,

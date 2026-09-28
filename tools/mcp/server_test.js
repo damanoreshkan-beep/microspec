@@ -8,6 +8,7 @@
  * @module
  */
 import { assert, assertEquals } from "jsr:@std/assert@1";
+import { APPS } from "../graph.mjs";
 
 async function withServer(fn) {
   const child = new Deno.Command("deno", {
@@ -123,7 +124,7 @@ Deno.test("scaffold_app refuses a path outside apps/", async () => {
     for (const dir of ["../etc", "/etc/passwd", "packages/runtime", "apps/x/../../etc"]) {
       const res = await call("tools/call", { name: "scaffold_app", arguments: { dir } });
       assertEquals(res.result.isError, true, `${dir} must be refused`);
-      assert(res.result.content[0].text.includes("apps/<id>"), `${dir} must be refused by the path rule`);
+      assert(res.result.content[0].text.includes(`${APPS}/<id>`), `${dir} must be refused by the path rule`);
     }
   });
 });

@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { pkgRoot } from "../pkgroot.js";
+import { APPS } from "../../../tools/graph.mjs";
 const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
 
 Deno.test("Transport compacts on its CONTAINER, never on the viewport", async () => {
@@ -33,7 +34,7 @@ Deno.test("no app passes the Transport a prop it does not accept (a silent prop 
   accepted.add("children"); accepted.add("key");
   assert(accepted.has("actions") && accepted.has("onToggle"), "could not read the Transport signature");
 
-  const appsDir = new URL(`file://${Deno.cwd()}/apps/`);
+  const appsDir = new URL(`file://${Deno.cwd()}/${APPS}/`);
   const offenders = [];
   for await (const e of Deno.readDir(appsDir)) {
     if (!e.isDirectory) continue;

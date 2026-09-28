@@ -73,6 +73,13 @@ export const RT = (() => {
   try { Deno.statSync("packages/runtime/index.js"); return "packages/runtime/"; } catch { }
   try { Deno.statSync(PKG + "index.js"); return PKG; } catch { return "packages/runtime/"; }
 })();
+/**
+ * Repo-relative directory that holds the apps: `apps` in a product tree; in the framework checkout (the one
+ * tree that carries `packages/runtime/`) the generated demo fixture, `.8n8/demo`. Served URLs stay `/<id>/`.
+ */
+export const APPS = (() => {
+  try { Deno.statSync("packages/runtime/index.js"); return ".8n8/demo"; } catch { return "apps"; }
+})();
 /** File names of the product's own domain modules under rt/ — the overlay that shadows the core for those /_rt/ names. */
 export const RT_OVERLAY = (() => {
   const names = new Set();
@@ -238,9 +245,9 @@ export function classifyAffected(changed, apps, coreSet) {
   for (const f of changed) {
     if (isTest(f) || isDoc(f)) continue;
     if (isGlobal(f, coreSet)) return allIds;
-    const am = /^apps\/([^/]+)\//.exec(f);
-    if (am) {
-      if (allIds.includes(am[1])) hit.add(am[1]);
+    const am = f.startsWith(`${APPS}/`) ? f.slice(APPS.length + 1).split("/") : null;
+    if (am && am.length > 1) {
+      if (allIds.includes(am[0])) hit.add(am[0]);
       continue;
     }
     if (f.startsWith(RT) || f.startsWith("rt/")) {

@@ -61,6 +61,7 @@
  * @module
  */
 
+import { APPS } from "../../tools/graph.mjs";
 const ROOT = Deno.cwd();
 const read = (p) => { try { return Deno.readTextFileSync(`${ROOT}/${p}`); } catch { return null; } };
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -131,12 +132,12 @@ export function capabilitiesOf(src) {
  */
 export function scanApp(id) {
   let src = "";
-  for (const f of Deno.readDirSync(`${ROOT}/apps/${id}`)) {
+  for (const f of Deno.readDirSync(`${ROOT}/${APPS}/${id}`)) {
     if (f.isFile && /\.(js|mjs)$/.test(f.name) && f.name !== "e2e.spec.mjs" && f.name !== "sw.js") {
-      src += (read(`apps/${id}/${f.name}`) ?? "") + "\n";
+      src += (read(`${APPS}/${id}/${f.name}`) ?? "") + "\n";
     }
   }
-  const spec = JSON.parse(read(`apps/${id}/spec.json`));
+  const spec = JSON.parse(read(`${APPS}/${id}/spec.json`));
   const declared = new Set((spec.tabs ?? []).flatMap((t) => t.needs ?? []));
   const used = capabilitiesOf(src);
   return {
@@ -149,8 +150,8 @@ export function scanApp(id) {
 if (import.meta.main) {
   const check = Deno.args.includes("--check");
   const ids = [];
-  for (const e of Deno.readDirSync(`${ROOT}/apps`)) {
-    if (e.isDirectory && read(`apps/${e.name}/spec.json`)) ids.push(e.name);
+  for (const e of Deno.readDirSync(`${ROOT}/${APPS}`)) {
+    if (e.isDirectory && read(`${APPS}/${e.name}/spec.json`)) ids.push(e.name);
   }
   ids.sort();
 

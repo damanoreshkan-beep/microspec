@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { importSpecs, resolveSpec, buildClosure, classifyAffected, isGlobal, RT as RTX, RT_OVERLAY } from "../../../tools/graph.mjs";
+import { importSpecs, resolveSpec, buildClosure, classifyAffected, isGlobal, RT as RTX, RT_OVERLAY, APPS } from "../../../tools/graph.mjs";
 import { staticSpecs, htmlAssets, importMapOf } from "../../../tools/graph.mjs";
 
 Deno.test("graph: importSpecs finds static, re-export, dynamic and side-effect imports; ignores non-imports", () => {
@@ -43,7 +43,7 @@ Deno.test("affected: a runtime module re-verifies ONLY the apps that import it (
 Deno.test("affected: app-dir changes scope to that app; tests/docs affect nothing", () => {
   const apps = [{ id: "drift", closure: new Set(["apps/drift/view.js"]) }, { id: "rave", closure: new Set(["apps/rave/view.js"]) }];
   const core = new Set();
-  assertEquals(classifyAffected(["apps/drift/synth.js", "apps/drift/i18n/uk.json"], apps, core), ["drift"]);
+  assertEquals(classifyAffected([`${APPS}/drift/synth.js`, `${APPS}/drift/i18n/uk.json`], apps, core), ["drift"]);
   assertEquals(classifyAffected([RTX + "ambient_test.js", "README.md", "docs/x.md"], apps, core), []);
 });
 
